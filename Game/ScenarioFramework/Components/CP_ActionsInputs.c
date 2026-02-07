@@ -66,10 +66,10 @@ class CP_ActionInputOnTaskEventIncreaseCounter : CP_ActionInputBase
 
 enum CP_EOperatorCompare
 {
-	LESS_THEN,
+	LESS_THAN,
 	LESS_OR_EQUAL,
-	BIGGER_THEN,
-	BIGGER_OR_EQUAL,
+	GREATER_THEN,
+	GREATER_OR_EQUAL,
 	EQUAL
 };
 
@@ -124,11 +124,11 @@ class CP_ActionInputCheckEntitiesInTrigger : CP_ActionInputBase
 		int iNrOfEnts = m_pTrig.GetCountEntitiesInside();
 		
 		if ( 
-				( ( m_EOperatorCompare == CP_EOperatorCompare.LESS_THEN ) 			&& ( iNrOfEnts < m_iValue ) ) 	||
+				( ( m_EOperatorCompare == CP_EOperatorCompare.LESS_THAN ) 			&& ( iNrOfEnts < m_iValue ) ) 	||
 				( ( m_EOperatorCompare == CP_EOperatorCompare.LESS_OR_EQUAL ) 		&& ( iNrOfEnts <= m_iValue ) ) 	||
 				( ( m_EOperatorCompare == CP_EOperatorCompare.EQUAL ) 				&& ( iNrOfEnts == m_iValue ) ) 	||
-				( ( m_EOperatorCompare == CP_EOperatorCompare.BIGGER_OR_EQUAL ) 	&& ( iNrOfEnts >= m_iValue ) ) 	||
-				( ( m_EOperatorCompare == CP_EOperatorCompare.BIGGER_THEN ) 		&& ( iNrOfEnts > m_iValue ) ) 
+				( ( m_EOperatorCompare == CP_EOperatorCompare.GREATER_OR_EQUAL ) 	&& ( iNrOfEnts >= m_iValue ) ) 	||
+				( ( m_EOperatorCompare == CP_EOperatorCompare.GREATER_THEN ) 		&& ( iNrOfEnts > m_iValue ) ) 
 			)
 		{
 			m_pInput.OnActivate( true );

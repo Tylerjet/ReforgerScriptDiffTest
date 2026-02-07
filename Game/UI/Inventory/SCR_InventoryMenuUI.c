@@ -1659,7 +1659,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotAssign", true);
 		}
 
-		if (m_pActiveStorageUI == m_pQuickSlotStorage)
+		bool isQuickSlotStorage = (m_pActiveStorageUI == m_pQuickSlotStorage);
+		if (isQuickSlotStorage)
 		{
 			bool itmToAssign = m_pItemToAssign != null;
 			m_pNavigationBar.SetAllButtonEnabled(false);
@@ -1681,24 +1682,25 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		bool arsenalItem = IsStorageArsenal(m_pFocusedSlotUI.GetStorageUI().GetCurrentNavigationStorage());
 		if (itemComp && itemComp.GetOwner() && !arsenalItem)
 			m_pNavigationBar.SetButtonEnabled("ButtonInspect", (itemComp.GetOwner().FindComponent(SCR_WeaponAttachmentsStorageComponent) != null));
-				
-		
+
 		if (m_CloseButton)
 			m_CloseButton.SetLabel("#AR-Menu_Back");
 
 		m_pNavigationBar.SetButtonEnabled("ButtonDrop",
 			(m_pFocusedSlotUI != null) &&
-			(m_pActiveStorageUI != m_pQuickSlotStorage) &&
+			!isQuickSlotStorage &&
 			m_pFocusedSlotUI.IsDraggable() &&
 			!m_AttachmentSpinBox.IsFocused()
 		);
 
 		bool flag = m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI;
 		m_pNavigationBar.SetButtonEnabled("ButtonPickup", flag);
-		m_pNavigationBar.SetButtonEnabled("ButtonDrop", !flag);
 		
-		if (m_pActiveStorageUI != m_pQuickSlotStorage)
+		if (!isQuickSlotStorage)
+		{
+			m_pNavigationBar.SetButtonEnabled("ButtonDrop", !flag);
 			HandleSlottedItemFunction();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

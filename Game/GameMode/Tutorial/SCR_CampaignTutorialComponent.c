@@ -666,7 +666,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (charController.IsDead())
 			return;
 		
-		SCR_PopUpNotification.GetInstance().HideCurrentPopupMsg();
+		SCR_PopUpNotification.GetInstance().HideCurrentMsg();
 		SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
 				
 		if (accessComp)
@@ -693,7 +693,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		if (charController.IsDead())
 			return;
 		
-		SCR_PopUpNotification.GetInstance().HideCurrentPopupMsg();
+		SCR_PopUpNotification.GetInstance().HideCurrentMsg();
 		GetGame().GetCallqueue().Remove(SCR_HintManagerComponent.ShowCustomHint);
 		SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
 				

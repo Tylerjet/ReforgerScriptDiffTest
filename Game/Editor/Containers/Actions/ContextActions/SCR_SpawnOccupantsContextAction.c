@@ -26,12 +26,18 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 	
 	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
+		//~ Disabled until the system is reworked. HasEnoughBudgetForDefaultOccupants should be called here or at least in the budget component and the player Id needs to be send over to get the contentbrowser!
+		return false;
+		
 		SCR_EditableVehicleComponent vehicle = SCR_EditableVehicleComponent.Cast(selectedEntity);
 		return vehicle && vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, false);
 	}
 	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{		
+		//~ Disabled until the system is reworked. HasEnoughBudgetForDefaultOccupants should be called here or at least in the budget component and the player Id needs to be send over to get the contentbrowser!
+		return;
+		
 		SCR_EditableVehicleComponent vehicle = SCR_EditableVehicleComponent.Cast(selectedEntity);
 		
 		//~ Spawn occupants in vehicle and check when spawning was completed

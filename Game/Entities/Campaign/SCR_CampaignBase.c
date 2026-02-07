@@ -952,6 +952,9 @@ class SCR_CampaignBase : GenericEntity
 		if (!IsBaseInFactionRadioSignal(owner))
 			finalKey = FactionKey.Empty;
 		
+		if(!m_bCanAnswerHQ)
+			finalKey = FactionKey.Empty;
+		
 		if (Replication.Time() < m_fRespawnAvailableSince)
 			finalKey = FactionKey.Empty;
 		

@@ -629,7 +629,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		if(!spawnPoint)
 			return;
 		
-		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && SCR_SelectSpawnPointSubMenu.GetInstance() != null);
+		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && SCR_SelectSpawnPointSubMenu.GetInstance() != null && m_Base.GetIsLinkedToHQ());
 	}
 
 	//------------------------------------------------------------------------------	

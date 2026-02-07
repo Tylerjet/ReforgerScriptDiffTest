@@ -17,7 +17,7 @@ class CP_LayerBase : ScriptComponent
 	[Attribute( defvalue: "0", UIWidgets.ComboBox, desc: "Spawn all children, only random one or random multiple ones?", "", ParamEnumArray.FromEnum( CP_ESpawnChildrenType ), category: "Children" )];
 	protected CP_ESpawnChildrenType			m_SpawnChildren;
 	
-	[Attribute( defvalue: "50", desc: "If the RANDOM_MULTIPLE option is selected, what's the percentage? ", UIWidgets.Graph, "0 100 1", category: "Children" )];
+	[Attribute( defvalue: "100", desc: "If the RANDOM_MULTIPLE option is selected, what's the percentage? ", UIWidgets.Graph, "0 100 1", category: "Children" )];
 	protected int 							m_iRandomPercent;
 		
 	[Attribute( defvalue: "0", desc: "Show the debug shapes during runtime", category: "Debug" )];
@@ -393,7 +393,31 @@ class CP_PluginTrigger: CP_Plugin
  	protected FactionKey 		m_sActivatedByThisFaction;
 	
 	[Attribute( defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")];
-	protected bool 							m_bOnce;
+	protected bool		m_bOnce;
+	
+	[Attribute(defvalue: "0", UIWidgets.CheckBox, desc: "Whether or not the notification is allowed to be displayed", category: "Trigger")]
+	protected bool		m_bNotificationEnabled;
+	
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Minimm players needed to activate this trigger when PLAYER Activation presence is selected", params: "0 1 0.01", precision: 2, category: "Trigger")]
+	protected float		m_fMinimumPlayersNeededPercentage;
+	
+	[Attribute(desc: "Notification title text that will be displayed when the PLAYER Activation presence is selected", category: "Trigger")]
+	protected string 	m_sPlayerActivationNotificationTitle;
+	
+	[Attribute(desc: "Notification subtitle text that will be displayed when the PLAYER Activation presence is selected", category: "Trigger")]
+	protected string 	m_sPlayerActivationNotificationSubtitle;
+	
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "For how long the trigger conditions must be true in order for the trigger to activate. If conditions become false, timer resets", params: "0 86400 1", category: "Trigger")]
+	protected float 	m_iActivationCountdownTimer;
+	
+	[Attribute(desc: "Notification text that will be displayed when Activation Countdown Timer is set to value higher than 0", category: "Trigger")]
+	protected string 	m_sActivationCountdownTimerNotification;
+	
+	[Attribute(defvalue: "0", UIWidgets.CheckBox, desc: "Whether or not the audio sound is played and affected by the trigger", category: "Trigger")]
+	protected bool		m_bEnableAudio;
+	
+	[Attribute(desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
+	protected string 	m_sCountdownAudio;
 	
 	
 	override void Init( CP_LayerBase pObj )
@@ -411,11 +435,19 @@ class CP_PluginTrigger: CP_Plugin
 		SCR_CharacterTriggerEntity pTrig = SCR_CharacterTriggerEntity.Cast( pEnt );
 		if ( pTrig )
 		{
-			pTrig.SetActivationPresence( m_EActivationPresence );
-			pTrig.SetOwnerFaction( m_sActivatedByThisFaction );
-			pTrig.SetSpecificClass( m_sSpecificClassName );
-			pTrig.SetSpecificPrefabName( m_sSpecificPrefabName );
-			pTrig.SetOnce( m_bOnce );
+			pTrig.SetActivationPresence(m_EActivationPresence);
+			pTrig.SetOwnerFaction(m_sActivatedByThisFaction);
+			pTrig.SetSpecificClass(m_sSpecificClassName);
+			pTrig.SetSpecificPrefabName(m_sSpecificPrefabName);
+			pTrig.SetOnce(m_bOnce);
+			pTrig.SetNotificationEnabled(m_bNotificationEnabled);
+			pTrig.SetEnableAudio(m_bEnableAudio);
+			pTrig.SetMinimumPlayersNeeded(m_fMinimumPlayersNeededPercentage);
+			pTrig.SetPlayerActivationNotificationTitle(m_sPlayerActivationNotificationTitle);
+			pTrig.SetPlayerActivationNotificationSubtitle(m_sPlayerActivationNotificationSubtitle);
+			pTrig.SetActivationCountdownTimer(m_iActivationCountdownTimer);
+			pTrig.SetActivationCountdownTimerNotification(m_sActivationCountdownTimerNotification);
+			pTrig.SetCountdownAudio(m_sCountdownAudio);
 		}
 	}
 	

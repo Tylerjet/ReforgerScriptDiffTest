@@ -8,17 +8,13 @@ class SCR_GameModeCombatOpsManagerClass : SCR_GameModeSFManagerClass
 
 class SCR_GameModeCombatOpsManager : SCR_GameModeSFManager
 {	
-	[Attribute( defvalue: "2", desc: "Extraction Task activated after how many tasks succeeded" )];
-	protected int 				m_iExtractionCounter;
-		
+	[Attribute( defvalue: "3", desc: "Maximal number of tasks that can be generated", category: "Tasks" )];
+	protected int 				m_iMaxNumberOfTasks;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnTaskFinished( SCR_BaseTask pTask )
 	{
 		super.OnTaskFinished( pTask );
-		/*
-		if ( --m_iExtractionCounter == 0 )
-			GenerateExtractionArea();
-		*/
 		if ( pTask == m_pExtractionAreaTask )
 			Finish();
 	}
@@ -31,12 +27,15 @@ class SCR_GameModeCombatOpsManager : SCR_GameModeSFManager
 		if ( m_aTaskTypesAvailable.IsEmpty() )
 			return;
 		
+		if (m_iMaxNumberOfTasks > m_aTaskTypesAvailable.Count())
+			m_iMaxNumberOfTasks = m_aTaskTypesAvailable.Count();
+		
 		ESFTaskType eTaskType;
 		CP_TaskType pTaskType;
 		
 		//shuffle tasks to prevent selecting them always in the same order
 		Print( "CP: ---------------------------------------------------------------" );
-		for ( int i = 0; i < m_aTaskTypesAvailable.Count(); i++ )
+		for ( int i = 0; i < m_iMaxNumberOfTasks; i++ )
 		{
 			pTaskType = m_aTaskTypesAvailable.GetRandomElement();
 			eTaskType = pTaskType.GetTaskType();	
@@ -61,6 +60,7 @@ class SCR_GameModeCombatOpsManager : SCR_GameModeSFManager
 				CP_LayerTask pLayer = pArea.Create( eTaskType );
 				PrintFormat( "CP: Creating area %1", pArea.GetOwner().GetName() );
 				m_aTaskTypesAvailable.RemoveItem( pTaskType );
+				m_iMaxNumberOfTasks--;
 				i--;
 			}
 		}

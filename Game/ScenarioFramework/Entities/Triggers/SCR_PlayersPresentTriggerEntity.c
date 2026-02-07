@@ -81,7 +81,7 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 		if ( !ChimeraCharacter.Cast( ent ) )
 			return false;
 		// take only players
-		if ( m_EActivationPresence == TA_EActivationPresence.ALL_PLAYERS || m_EActivationPresence == TA_EActivationPresence.PLAYER )
+		if ( m_EActivationPresence == TA_EActivationPresence.PLAYER )
 		{
 			if ( !EntityUtils.IsPlayer( ent ) )
 				return false;
@@ -101,12 +101,7 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 		if ( !IsMaster() )
 			return;
 		m_iEntitiesInside++;
-		if ( m_EActivationPresence == TA_EActivationPresence.ALL_PLAYERS )
-		{
-			if ( m_iEntitiesInside == GetPlayersCountByFaction() )
-				m_OnActivate.Invoke(ent);
-		}
-		else if ( m_EActivationPresence == TA_EActivationPresence.PLAYER || m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER )
+		if ( m_EActivationPresence == TA_EActivationPresence.PLAYER || m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER )
 		{
 			m_OnActivate.Invoke(ent);
 		}

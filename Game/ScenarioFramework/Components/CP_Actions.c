@@ -148,6 +148,72 @@ class CP_ActionEndMission : CP_ActionBase
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_ContainerActionTitle()]
+class CP_ActionCompareCounterAndExecute : CP_ActionBase
+{
+
+	[Attribute("0", UIWidgets.ComboBox, "Operator", "", ParamEnumArray.FromEnum(CP_EOperatorCompare))]
+	protected CP_EOperatorCompare			m_EOperatorCompare;
+	
+	[Attribute(desc: "Value")];
+	protected int							m_iValue;
+
+	[Attribute( defvalue: "", UIWidgets.EditBox, desc: "Counter to increment", category: "")];
+	protected string						m_sCounterName;
+	
+	[Attribute(defvalue: "1", desc: "What to do once counter is reached", UIWidgets.Auto, category: "OnActivate")];
+	protected ref array<ref CP_ActionBase>	m_aActions;
+
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate(IEntity pObject)
+	{
+		int counterValue;
+		
+		IEntity pEnt = GetGame().GetWorld().FindEntityByName(m_sCounterName);
+		if (!pEnt)
+			return;
+		
+		string className = pEnt.ClassName();
+		if (className == "CP_LogicCounter")
+		{
+			CP_LogicCounter logicCounter = CP_LogicCounter.Cast(pEnt);
+			counterValue = logicCounter.m_iCnt;
+		}	
+		
+		if ( 
+				(( m_EOperatorCompare == CP_EOperatorCompare.LESS_THAN) 			&& (counterValue < m_iValue )) 	||
+				(( m_EOperatorCompare == CP_EOperatorCompare.LESS_OR_EQUAL) 		&& (counterValue <= m_iValue )) ||
+				(( m_EOperatorCompare == CP_EOperatorCompare.EQUAL) 				&& (counterValue == m_iValue )) ||
+				(( m_EOperatorCompare == CP_EOperatorCompare.GREATER_OR_EQUAL) 		&& (counterValue >= m_iValue )) ||
+				(( m_EOperatorCompare == CP_EOperatorCompare.GREATER_THEN) 			&& (counterValue > m_iValue )) 
+			)
+		{
+			foreach (CP_ActionBase actions : m_aActions)
+				actions.OnActivate(null);
+		}
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class CP_ActionSetMissionEndScreen : CP_ActionBase
+{
+	
+	[Attribute("1", UIWidgets.ComboBox, "Game Over Type", "", ParamEnumArray.FromEnum(EGameOverTypes))];
+	protected EGameOverTypes			m_eGameOverType;
+	
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActivate(IEntity pObject)
+	{
+		SCR_GameModeSFManager pManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
+		if (!pManager)
+			return;
+		pManager.SetMissionEndScreen(m_eGameOverType);
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(), SCR_ContainerActionTitle()]
 class CP_ActionShowHint : CP_ActionBase
 {
 	[Attribute()];

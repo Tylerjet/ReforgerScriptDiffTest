@@ -93,7 +93,7 @@ class SCR_PlayerEntitySpawnerRequestComponent : ScriptComponent
 			}
 		}
 		
-		SCR_PopUpNotification.GetInstance().PopupMsg(msg, 2, 0.5, msg2);
+		SCR_PopUpNotification.GetInstance().PopupMsg(msg, 2, msg2);
 	}
 	
 	//------------------------------------------------------------------------------------------------		

@@ -81,7 +81,7 @@ class CP_LogicCounter : CP_Logic
 	[Attribute( defvalue: "1", desc: "What to do once value is increased", UIWidgets.Auto, category: "OnIncrease" )];
 	protected ref array<ref CP_ActionBase>	m_aOnIncreaseActions;
 			
-	protected int 							m_iCnt = 0;
+	int 							m_iCnt = 0;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInput( bool pSignal = true )

@@ -629,7 +629,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		
 		// NAV Unsubscribe button
 		// Enabled only for online addons
-		m_NavUnsubscribe.SetEnabled(m_WorkshopItem.GetOnline() && m_WorkshopItem.GetOffline());		
+		m_NavUnsubscribe.SetEnabled(m_WorkshopItem.GetOffline());		
 		
 		
 		

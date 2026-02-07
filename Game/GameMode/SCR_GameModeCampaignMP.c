@@ -188,7 +188,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected Widget m_wPlayersListSlot;
 	protected bool m_bNegativeXP = false;
 	ref array<Widget> m_aPlayerList = new ref array<Widget>();
-	protected eCampaignStatusMessage m_iLastStatusMsgShown = -1;
 	protected Widget m_wInfoOverlay;
 	protected Widget m_wCountdownOverlay;
 	protected Widget m_wCountdownOverlayMap;
@@ -2356,7 +2355,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	protected void RegisterTasksShown()
 	{
-		SCR_PopUpNotification.GetInstance().HideCurrentPopupMsg();
+		SCR_PopUpNotification.GetInstance().HideCurrentMsg();
 		GetGame().GetInputManager().RemoveActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
 		GetGame().GetInputManager().RemoveActionListener("GadgetMap", EActionTrigger.DOWN, RegisterTasksShown);
 	}
@@ -2784,15 +2783,16 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//! \param timeSlice Time since last update
 	protected void ProcessUI(float timeSlice)
 	{
+		SCR_PopUpNotification popup = SCR_PopUpNotification.GetInstance();
+		SCR_PopupMessage currentMsg = popup.GetCurrentMsg();
+		
 		if (!m_FirstBaseWithPlayer)
 		{
-			if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_YOU)
-				SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false, category: SCR_EPopupMsgFilter.TUTORIAL);
+			if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU)
+				popup.HideCurrentMsg();
 			
-			if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_ENEMY)
-				SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false, category: SCR_EPopupMsgFilter.TUTORIAL);
-			
-			m_iLastStatusMsgShown = -1;
+			if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
+				popup.HideCurrentMsg();
 		}
 		else
 		{
@@ -2800,13 +2800,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			if (!baseWithPlayerCapturingFaction)
 			{
-				if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_YOU)
-					SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false, category: SCR_EPopupMsgFilter.TUTORIAL);
+				if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU)
+					popup.HideCurrentMsg();
 			
-				if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_ENEMY)
-					SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false, category: SCR_EPopupMsgFilter.TUTORIAL);
-				
-				m_iLastStatusMsgShown = -1;
+				if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
+					popup.HideCurrentMsg();
 			}
 			else
 			{
@@ -2832,8 +2830,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				{
 					if (m_FirstBaseWithPlayer.GetReconfiguredByID() != SCR_PlayerController.GetLocalPlayerId())
 					{
-						if (m_iLastStatusMsgShown != eCampaignStatusMessage.SEIZING_YOU)
-							SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, true, captureStart, captureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
+						if (!currentMsg || currentMsg.m_iPriority != SCR_ECampaignSeizingMessagePrio.SEIZING_YOU)
+							popup.PopupMsg("#AR-Campaign_SeizingFriendly-UC", -1, prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, progressStart: captureStart, progressEnd: captureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
 						else if (baseSeizingComp && baseSeizingComp.GetRefreshUI())
 						{
 							baseSeizingComp.SetRefreshUI(false);
@@ -2841,16 +2839,14 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 						}
 					}
 					
-					if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_ENEMY)
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, false, category: SCR_EPopupMsgFilter.TUTORIAL);
-					
-					m_iLastStatusMsgShown = eCampaignStatusMessage.SEIZING_YOU;
+					if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
+						popup.HideCurrentMsg();
 				}
 				else
 				{
-					if (m_iLastStatusMsgShown != eCampaignStatusMessage.SEIZING_ENEMY)
+					if (!currentMsg || currentMsg.m_iPriority != SCR_ECampaignSeizingMessagePrio.SEIZING_ENEMY)
 					{
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_ENEMY, true, captureStart, captureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
+						popup.PopupMsg("#AR-Campaign_SeizingEnemy-UC", -1, prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, progressStart: captureStart, progressEnd: captureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
 					}
 					else if (baseSeizingComp && baseSeizingComp.GetRefreshUI())
 					{
@@ -2858,10 +2854,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 						SCR_PopUpNotification.GetInstance().ChangeProgressBarFinish(captureEnd);
 					}
 					
-					if (m_iLastStatusMsgShown == eCampaignStatusMessage.SEIZING_YOU)
-						SCR_PopUpNotification.GetInstance().ToggleStatusMsg(eCampaignStatusMessage.SEIZING_YOU, false, category: SCR_EPopupMsgFilter.TUTORIAL);
-					
-					m_iLastStatusMsgShown = eCampaignStatusMessage.SEIZING_ENEMY;
+					if (currentMsg && currentMsg.m_iPriority == SCR_ECampaignSeizingMessagePrio.SEIZING_YOU)
+						popup.HideCurrentMsg();
 				}
 			}
 		};
@@ -3081,16 +3075,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!clientData)
 			return;
 		
-		if (clientData.GetApplied())
-			return;
-		
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		
 		if (!pc)
 			return;
-		
-		// Data was applied, don't do it again until another reconnection
-		clientData.SetApplied(true);	
 		
 		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.Cast(GetRespawnSystemComponent());
 		
@@ -3120,7 +3108,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			clientData.SetID(playerData.GetID());
 			clientData.SetXP(playerData.GetXP());
 			clientData.SetFactionIndex(playerData.GetFactionIndex());
-			clientData.SetApplied(false);
 			
 			m_aRegisteredClients.Insert(clientData);
 		}
@@ -3158,9 +3145,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		if (!pc)
 			return;
-
-		if (disconnecting)
-			clientData.SetApplied(false);	// Player is disconnecting, flag their data for re-application
 		
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
 		
@@ -4132,7 +4116,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			m_aBasesWithPlayer.Clear();
 			m_FirstBaseWithPlayer = null;
 			m_SupplyDepotWithPlayer = null;
-			SCR_PopUpNotification.GetInstance().HideCurrentPopupMsg();
+			SCR_PopUpNotification.GetInstance().HideCurrentMsg();
 		}
 		
 		if (!IsProxy())
@@ -4400,8 +4384,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		{
 			SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionAssigned);
 			SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(OnSpawnPointRemoved);
-			
-			GetGame().GetCallqueue().CallLater(WriteAllClientsData, BACKEND_WRITE_PERIOD, true);
 			
 			if (m_iCustomRadioRange != -1)
 				OverrideBaseRadioRanges();
@@ -4718,6 +4700,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 
 };
 
+//------------------------------------------------------------------------------------------------
 enum SCR_ECampaignHints
 {
 	NONE,
@@ -4734,3 +4717,27 @@ enum SCR_ECampaignHints
 	TICKETS,
 	BASE_LOST
 };
+
+//------------------------------------------------------------------------------------------------
+//! Popup message priorities sorted from lowest to highest
+enum SCR_ECampaignPopupPriority
+{
+	DEFAULT,
+	SUPPLIES_HANDLED,
+	TASK_AVAILABLE,
+	RELAY_DETECTED,
+	TASK_PROGRESS,
+	TASK_DONE,
+	BASE_LOST,
+	MHQ,
+	BASE_UNDER_ATTACK,
+	RESPAWN,
+	MATCH_END
+};
+
+enum SCR_ECampaignSeizingMessagePrio
+{
+	NONE,
+	SEIZING_YOU = 998,
+	SEIZING_ENEMY = 999
+}

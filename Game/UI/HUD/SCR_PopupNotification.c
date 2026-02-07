@@ -1,37 +1,18 @@
 //------------------------------------------------------------------------------------------------
-//! List of status notifications with non-fixed duration
-enum eCampaignStatusMessage
+class SCR_PopupMessage
 {
-	SEIZING_ENEMY,
-	SEIZING_YOU,
-	CANT_SEIZE,
-	SESSION_RESTART
-};
-
-//------------------------------------------------------------------------------------------------
-enum SCR_EPopupMsgFilter
-{
-	ALL,
-	NONE,
-	TUTORIAL
-};
-
-//------------------------------------------------------------------------------------------------
-//! Popup message priorities sorted from lowest to highest
-enum SCR_ECampaignPopupPriority
-{
-	DEFAULT,
-	SUPPLIES_HANDLED,
-	TASK_AVAILABLE,
-	RELAY_DETECTED,
-	TASK_PROGRESS,
-	TASK_DONE,
-	BASE_LOST,
-	MHQ,
-	BASE_UNDER_ATTACK,
-	RESPAWN,
-	MATCH_END
-};
+	string m_sText;
+	string m_sSubtitle;
+	float m_fDuration;
+	int m_iPriority;
+	string m_sSound;
+	string m_aTextParams[4] = {"", "", "", ""};
+	string m_aSubtitleParams[4] = {"", "", "", ""};
+	SCR_EPopupMsgFilter m_Filter;
+	float m_fProgressStart;
+	float m_fProgressEnd;
+	float m_fHideTimestamp = -1;
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_PopUpNotificationClass: GenericEntityClass
@@ -39,82 +20,34 @@ class SCR_PopUpNotificationClass: GenericEntityClass
 };
 
 //------------------------------------------------------------------------------------------------
-/*class SCR_PopupMessage
-{
-	private string m_sText;
-	private string m_sSubtitle;
-	private float m_fDuration;
-	private SCR_ECampaignPopupPriority m_ePrio;
-	private string m_sSound;
-	private ref array<string> m_aTextParams = {};
-	private ref array<string> m_aSubtitleParams = {};
-	
-	void SCR_PopupMessage(string text, string subtitle = "", float duration = SCR_PopUpNotification.DEFAULT_DURATION)
-	{
-		m_aTextParams.Clear();
-		m_aSubtitleParams.Clear();
-		m_aTextParams = null;
-		m_aSubtitleParams = null;
-	}
-	
-	void ~SCR_PopupMessage()
-	{
-		m_aTextParams.Clear();
-		m_aSubtitleParams.Clear();
-		m_aTextParams = null;
-		m_aSubtitleParams = null;
-	}
-}*/
-
-//------------------------------------------------------------------------------------------------
 //! Takes care of dynamic and static onscreen popups
 class SCR_PopUpNotification: GenericEntity
 {
+	protected static const int INVALID_ID = -1;
+	protected static const float FADE_DURATION = 1;
+	protected static const ResourceName LAYOUT_NAME = "{8EF935F196AADE33}UI/layouts/Common/PopupUI.layout";
+	
 	protected static SCR_PopUpNotification s_Instance = null;
+	protected static SCR_EPopupMsgFilter s_eFilter;
+	
 	static const float DEFAULT_DURATION = 4;
 	static const string TASKS_KEY_IMAGE_FORMAT = "<color rgba='226,168,79,200'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name='TasksOpen'/></shadow></color>";
-	protected static SCR_EPopupMsgFilter m_sFilter = SCR_EPopupMsgFilter.ALL;
 	
-	protected ref array<string> m_aPopupMsgTextsQueue = new ref array<string>();
-	protected ref array<string> m_aPopupMsgTextsSmallQueue = new ref array<string>();
-	protected ref array<float> m_aPopupMsgTimersQueue = new ref array<float>();
-	protected ref array<int> m_aPopupMsgPrioQueue = new ref array<int>();
-	protected ref array<string> m_aPopupMsgSoundQueue = new ref array<string>();
-	protected ref array<int> m_aActiveStatusMsgs = new ref array<int>();
-	protected ref array<ref array<string>> m_aParamsArrayTextQueue = new ref array<ref array<string>>();
-	protected ref array<ref array<string>> m_aParamsArrayText2Queue = new ref array<ref array<string>>();
+	protected ref array<ref SCR_PopupMessage> m_aQueue = {};
 	
 	protected RichTextWidget m_wPopupMsg;
 	protected RichTextWidget m_wPopupMsgSmall;
 	protected ProgressBarWidget m_wStatusProgress;
 	
-	protected eCampaignStatusMessage m_ePrevMsg = -1;
+	protected float m_fDefaultAlpha;
 	
-	protected bool m_bStatusMsgRefresh = false;
-	protected bool m_bStatusMsgActive = false;
-	protected bool m_bPopupQueueRefresh = true;
-	protected bool m_bInventoryOpen = false;
-	
-	protected float m_fCurPopupMsgFadeInStart = -1;
-	protected float m_fCurPopupMsgDurationStart;
-	protected float m_fCurPopupMsgFadeOutStart;
-	protected float m_fCurPopupMsgFadeOutEnd;
-	protected float m_fPopupMsgDefaultAlpha;
-	protected float m_fCurStatusMsgFadeInStart = -1;
-	protected float m_fCurStatusMsgDurationStart;
-	protected float m_fCurStatusMsgFadeOutStart;
-	protected float m_fCurStatusMsgFadeOutEnd;
-	protected float m_fProgressBarStart = -1;
-	protected float m_fProgressBarFinish = -1;
-	protected float m_fQueueProcessorTimer = -1;
-	
-	protected int m_iLastQueueSize = 0;
-	protected int m_iHighestPrioIndex = 0;
+	protected bool m_bInventoryOpen;
 	
 	protected IEntity m_Player;
 	
+	protected SCR_PopupMessage m_ShownMsg;
+	
 	//------------------------------------------------------------------------------------------------
-	//! Returns an instance of this manager.
 	static SCR_PopUpNotification GetInstance()
 	{
 		if (!s_Instance)
@@ -131,51 +64,86 @@ class SCR_PopUpNotification: GenericEntity
 	//------------------------------------------------------------------------------------------------
 	static void SetFilter(SCR_EPopupMsgFilter filter)
 	{
-		m_sFilter = filter;
+		s_eFilter = filter;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RefreshPlayer()
+	protected void ProcessInit()
 	{
-		IEntity player = GetGame().GetPlayerController().GetControlledEntity();
-		
-		if (player == m_Player)
+		if (!GetGame().GetHUDManager())
 			return;
 		
-		if (m_Player)
+		Widget root;
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.Cast(GetGame().GetGameMode());
+		
+		if (campaign)
+			root = campaign.GetOverlayWidget();
+		else
+			root = GetGame().GetHUDManager().CreateLayout(LAYOUT_NAME, EHudLayers.MEDIUM, 0);
+		
+		if (!root)
+			return;
+		
+		// Init can be safely processed
+		GetGame().GetCallqueue().Remove(ProcessInit);
+		
+		// Initialize popups UI
+		m_wPopupMsg = RichTextWidget.Cast(root.FindAnyWidget("Popup"));
+		m_wPopupMsgSmall = RichTextWidget.Cast(root.FindAnyWidget("PopupSmall"));
+		m_wStatusProgress = ProgressBarWidget.Cast(root.FindAnyWidget("Progress"));
+		m_fDefaultAlpha = m_wPopupMsg.GetColor().A();
+		m_wPopupMsg.SetVisible(false);
+		m_wPopupMsgSmall.SetVisible(false);
+		m_wStatusProgress.SetVisible(false);
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		
+		if (playerController)
+			playerController.m_OnControlledEntityChanged.Insert(RefreshInventoryInvoker);
+		
+		RefreshQueue();
+		
+		// Popups should not be visible in map
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		
+		if (mapEntity)
 		{
-			SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(m_Player.FindComponent(SCR_InventoryStorageManagerComponent));
+			MapConfiguration config = mapEntity.GetMapConfig();
+			
+			if (!config)
+				return;
+			
+			Widget mapWidget = config.RootWidgetRef;
+			
+			if (mapWidget)
+				root.SetZOrder(mapWidget.GetZOrder() - 1);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RefreshInventoryInvoker(IEntity previousPlayer, IEntity currentPlayer)
+	{
+		SCR_InventoryStorageManagerComponent inventory;
+		
+		if (previousPlayer)
+		{
+			inventory = SCR_InventoryStorageManagerComponent.Cast(previousPlayer.FindComponent(SCR_InventoryStorageManagerComponent));
 		
 			if (inventory)
 				inventory.m_OnInventoryOpenInvoker.Remove(OnInventoryToggle);
 		}
 		
-		m_Player = player;
-		
-		if (!m_Player)
+		if (!currentPlayer)
 			return;
 		
-		SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(m_Player.FindComponent(SCR_InventoryStorageManagerComponent));
+		inventory = SCR_InventoryStorageManagerComponent.Cast(currentPlayer.FindComponent(SCR_InventoryStorageManagerComponent));
 		
 		if (!inventory)
 			return;
 		
+		// Make absolutely sure invoker is not used multiple times in the same inventory
 		inventory.m_OnInventoryOpenInvoker.Remove(OnInventoryToggle);
 		inventory.m_OnInventoryOpenInvoker.Insert(OnInventoryToggle);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns whether the pop up notification is being shown or not.
-	bool IsShowing()
-	{
-		if (m_wPopupMsg && m_wPopupMsg.IsVisibleInHierarchy())
-		{
-			float opacityEpsilon = 0.001;
-			if (m_wPopupMsg.GetOpacity() > opacityEpsilon)
-				return true;
-		}
-		
-		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -187,194 +155,225 @@ class SCR_PopUpNotification: GenericEntity
 	//------------------------------------------------------------------------------------------------
 	//! Queue new popup notification 
 	//! \param text Text to be shown 
-	//! \param duration How long the text should stay on screen (excluding fade in / fade out)
-	//! \param fade How long the fade transitions should be
+	//! \param duration How long the text should stay on screen, -1 for infinite duration (use HideCurrentMsg() to toggle off)
 	//! \param text2 Secondary (smaller) text
-	void PopupMsg(string text, float duration = DEFAULT_DURATION, float fade = 0.5, string text2 = "", int prio = -1, string param1 = "", string param2 = "", string param3 = "", string param4 = "", string param5 = "", string text2param1 = "", string text2param2 = "", string text2param3 = "", string text2param4 = "", string sound = "", SCR_EPopupMsgFilter category = SCR_EPopupMsgFilter.ALL)
+	//! \param prio Priority (when more popups are queued)
+	//! \param param1 (and subsequent) Text or secondary text parameters to be parsed
+	//! \param sound Sound event to be played via SCR_UISoundEntity
+	//! \param category See SCR_EPopupMsgFilter for settings
+	//! \param progressStart Progress bar start value (relative to Replication.Time())
+	//! \param progressEnd Progress bar end value (relative to Replication.Time()
+	void PopupMsg(string text, float duration = DEFAULT_DURATION, string text2 = "", int prio = -1, string param1 = "", string param2 = "", string param3 = "", string param4 = "", string text2param1 = "", string text2param2 = "", string text2param3 = "", string text2param4 = "", string sound = "", SCR_EPopupMsgFilter category = SCR_EPopupMsgFilter.ALL, float progressStart = 0, float progressEnd = 0)
 	{
 		// Don't show UI on headless
 		if (System.IsConsoleApp())
 			return;
 		
-		if (m_sFilter == SCR_EPopupMsgFilter.NONE || (m_sFilter == SCR_EPopupMsgFilter.TUTORIAL && category != SCR_EPopupMsgFilter.TUTORIAL))
+		// Check filter settings, stop if the message is filtered out
+		if (s_eFilter == SCR_EPopupMsgFilter.NONE || (s_eFilter == SCR_EPopupMsgFilter.TUTORIAL && category != SCR_EPopupMsgFilter.TUTORIAL))
 			return;
 		
-		if ((text.IsEmpty() && text2.IsEmpty()) || !GetWorld())
+		// Invalid params
+		if ((text.IsEmpty() && text2.IsEmpty()) || duration == 0)
 			return;
 		
-		RefreshPlayer();
+		SCR_PopupMessage msg = new SCR_PopupMessage;
 		
-		m_aPopupMsgTextsQueue.Insert(text);
-		m_aPopupMsgTextsSmallQueue.Insert(text2);
+		if (!msg)
+			return;
 		
-		array<string> params = {param1, param2, param3, param4, param5};
-		array<string> params2 = {text2param1, text2param2, text2param3, text2param4};
-	
-		m_aParamsArrayTextQueue.Insert(params);
-		m_aParamsArrayText2Queue.Insert(params2);
+		msg.m_sText = text;
+		msg.m_sSubtitle = text2;
+		msg.m_fDuration = duration;
+		msg.m_iPriority = prio;
+		msg.m_sSound = sound;
+		msg.m_aTextParams = {param1, param2, param3, param4};
+		msg.m_aSubtitleParams = {text2param1, text2param2, text2param3, text2param4};
+		msg.m_Filter = category;
+		msg.m_fProgressStart = progressStart;
+		msg.m_fProgressEnd = progressEnd;
 		
-		m_aPopupMsgTimersQueue.Insert(duration);
-		m_aPopupMsgTimersQueue.Insert(fade);
-		m_aPopupMsgPrioQueue.Insert(prio);
-		m_aPopupMsgSoundQueue.Insert(sound);
+		RefreshQueue(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void HideCurrentPopupMsg()
+	SCR_PopupMessage GetCurrentMsg()
 	{
-		m_fCurPopupMsgFadeOutEnd = -float.MAX;
+		return m_ShownMsg;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void AlphaLerp(Widget widget, float startedAt, float time, float duration, float defaultAlpha, bool fadeIn = true)
+	void HideCurrentMsg()
 	{
-		float start = 0;
-		float end = defaultAlpha;
-		
-		if (!fadeIn)
-		{
-			start = defaultAlpha;
-			end = 0;
-		};
-		
-		float alpha = Math.Lerp(start, end, (time - startedAt) / duration);
-		widget.SetOpacity(alpha);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ToggleStatusMsg(int msgID, bool show, float progressStart = -1, float progressEnd = -1, SCR_EPopupMsgFilter category = SCR_EPopupMsgFilter.ALL)
-	{
-		// Don't show UI on headless
-		if (System.IsConsoleApp())
+		if (!m_ShownMsg)
 			return;
 		
-		// Method called too early, init not yet processed. Terminate.
-		if (!m_wPopupMsg)
-			return;
-		
-		if (m_sFilter == SCR_EPopupMsgFilter.NONE || (m_sFilter == SCR_EPopupMsgFilter.TUTORIAL && category != SCR_EPopupMsgFilter.TUTORIAL))
-			return;
-		
-		if (show)
-		{
-			BaseWorld world = GetGame().GetWorld();
-			
-			if (world)
-			{
-				float timeDiff = Replication.Time() - world.GetWorldTime();
-				m_fProgressBarStart = progressStart - timeDiff;
-				m_fProgressBarFinish = progressEnd - timeDiff;
-				m_wStatusProgress.SetVisible(false);		// Needed to reset the progress bar limits
-			}
-			
-			if (m_aActiveStatusMsgs.Find(msgID) == -1)
-			{
-				int prevFirstElement = -1;
-				
-				if (m_aActiveStatusMsgs.Count() != 0)
-					prevFirstElement = m_aActiveStatusMsgs[0];
-				
-				m_aActiveStatusMsgs.Insert(msgID);
-				m_aActiveStatusMsgs.Sort();
-				
-				if (m_aActiveStatusMsgs[0] != prevFirstElement)
-					m_bStatusMsgRefresh = true;
-			}
-		} else {
-			int elementID = m_aActiveStatusMsgs.Find(msgID);
-			if (elementID != -1)
-			{
-				m_aActiveStatusMsgs.Remove(elementID);
-				m_bStatusMsgRefresh = true;
-			};
-		};
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void ProcessInit()
-	{
-		if (!GetGame().GetHUDManager())
-			return;
-		Widget root;
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.Cast(GetGame().GetGameMode());
-		
-		if (!campaign)
-			root = GetGame().GetHUDManager().CreateLayout("{8EF935F196AADE33}UI/layouts/Common/PopupUI.layout", EHudLayers.MEDIUM, 0);
-		else
-			root = campaign.GetOverlayWidget();
-		
-		if (!root)
-			return;
-		
-		// Init can be safely processed
-		GetGame().GetCallqueue().Remove(ProcessInit);
-		
-		// Initialize popups UI
-		m_wPopupMsg = RichTextWidget.Cast(root.FindAnyWidget("Popup"));
-		m_wPopupMsgSmall = RichTextWidget.Cast(root.FindAnyWidget("PopupSmall"));
-		m_fPopupMsgDefaultAlpha = m_wPopupMsg.GetColor().A();
-		m_wPopupMsg.SetOpacity(0);
-		m_wPopupMsgSmall.SetVisible(false);
-		
-		// Initialize status UI
-		m_wStatusProgress = ProgressBarWidget.Cast(root.FindAnyWidget("Progress"));
-		m_wStatusProgress.SetVisible(false);
-		
-		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
-		
-		GetGame().GetCallqueue().Remove(RefreshPlayer);
-		GetGame().GetCallqueue().CallLater(RefreshPlayer, 250, true);
-		
-		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
-		
-		if (mapEntity)
-		{
-			MapConfiguration config = mapEntity.GetMapConfig();
-			if (!config)
-				return;
-			
-			Widget mapWidget = config.RootWidgetRef;
-			if (mapWidget)
-				root.SetZOrder(mapWidget.GetZOrder() - 1);
-		}
+		m_ShownMsg.m_fHideTimestamp = 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ChangeProgressBarFinish(float progressEnd)
 	{
-		float curTime = GetWorld().GetWorldTime();
-		
-		if (m_fProgressBarStart < 0 || m_fProgressBarFinish < 0)
+		if (!m_ShownMsg || m_ShownMsg.m_fProgressEnd == 0)
 			return;
 		
+		float curTime = GetWorld().GetWorldTime();
+		
 		// Save progress bar status so only its filling speed is changed
-		float curProgress = Math.InverseLerp(m_fProgressBarStart, m_fProgressBarFinish, curTime);
+		float curProgress = Math.InverseLerp(m_ShownMsg.m_fProgressStart, m_ShownMsg.m_fProgressEnd, curTime);
 		
 		// Avoid possible division by 0 later
 		if (curProgress == 1)
 			return;
 		
 		// Apply WorldTime offset so we can use it for filling the bar instead of Replication.Time() which is not as smooth
-		m_fProgressBarFinish = progressEnd - (Replication.Time() - curTime);
+		m_ShownMsg.m_fProgressEnd = progressEnd - (Replication.Time() - curTime);
 		
 		// Recalculate start value so the bar keeps its original progress
-		m_fProgressBarStart = curTime - ((m_fProgressBarFinish - curTime) / (1 - curProgress)) * curProgress;
+		m_ShownMsg.m_fProgressStart = curTime - ((m_ShownMsg.m_fProgressEnd - curTime) / (1 - curProgress)) * curProgress;
 		
 		// Needed to reset the progress bar limits
 		m_wStatusProgress.SetVisible(false);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	protected void FadeWidget(notnull Widget widget, bool fadeOut = false)
 	{
-		BaseWorld world = GetGame().GetWorld();
+		float alpha, targetAlpha;
 		
-		if (!world)
+		if (fadeOut)
+		{
+			alpha = m_fDefaultAlpha;
+			targetAlpha = 0;
+		}
+		else
+		{
+			alpha = 0;
+			targetAlpha = m_fDefaultAlpha;
+		}
+		
+		widget.SetOpacity(alpha);
+		AnimateWidget.Opacity(widget, targetAlpha, FADE_DURATION, !fadeOut || widget.IsVisible());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RefreshQueue(SCR_PopupMessage msg = null)
+	{
+		if (msg)
+		{
+			int index = m_aQueue.Find(msg);
+			
+			if (index == -1)
+			{
+				// Find the correct array index for the new message (based on priority)
+				SCR_PopupMessage checkedMsg;
+				
+				for (int i = 0, cnt = m_aQueue.Count(); i < cnt; i++)
+				{
+					checkedMsg = m_aQueue[i];
+					
+					// Infinite duration is always considered higher prio
+					if (msg.m_fDuration == -1)
+					{
+						if (checkedMsg.m_fDuration != -1 || checkedMsg.m_iPriority < msg.m_iPriority)
+							index = i;
+					}
+					else if (checkedMsg.m_fDuration != -1 && checkedMsg.m_iPriority < msg.m_iPriority)
+					{
+						index = i;
+					}
+					
+					if (index != -1)
+						break;
+				}
+				
+				if (index == -1)
+					m_aQueue.Insert(msg);
+				else
+					m_aQueue.InsertAt(msg, index);
+			}
+			else
+			{
+				m_aQueue.RemoveOrdered(index);
+			}
+		}
+		
+		if (m_aQueue.IsEmpty())
+		{
+			ClearEventMask(EntityEvent.FRAME);
+			ClearFlags(EntityFlags.ACTIVE, true);
+		}
+		else if (m_wPopupMsg)
+		{
+			if (m_aQueue[0] != m_ShownMsg)
+				ShowMsg(m_aQueue[0]);
+			
+			SetEventMask(EntityEvent.FRAME);
+			SetFlags(EntityFlags.ACTIVE, true);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowMsg(notnull SCR_PopupMessage msg)
+	{
+		if (msg == m_ShownMsg)
 			return;
 		
-		float curTime = world.GetWorldTime();
-		int queueCnt = m_aPopupMsgTextsQueue.Count();
+		if (m_ShownMsg)
+			HideMsg(m_ShownMsg);
+		
+		if (msg.m_fDuration != -1)
+			msg.m_fHideTimestamp = Replication.Time() + (msg.m_fDuration * 1000);
+		
+		m_wPopupMsg.SetTextFormat(msg.m_sText, msg.m_aTextParams[0], msg.m_aTextParams[1], msg.m_aTextParams[2], msg.m_aTextParams[3]);
+		FadeWidget(m_wPopupMsg);
+		
+		if (!msg.m_sSubtitle.IsEmpty())
+		{
+			m_wPopupMsgSmall.SetTextFormat(msg.m_sSubtitle, msg.m_aSubtitleParams[0], msg.m_aSubtitleParams[1], msg.m_aSubtitleParams[2], msg.m_aSubtitleParams[3]);
+			FadeWidget(m_wPopupMsgSmall);
+		}
+		
+		if (msg.m_fProgressStart > 0 && msg.m_fProgressEnd > 0)
+		{
+			float timeDiff = Replication.Time() - GetGame().GetWorld().GetWorldTime();
+			
+			if (timeDiff < msg.m_fProgressStart)
+			{ 
+				msg.m_fProgressStart = msg.m_fProgressStart - timeDiff;
+				msg.m_fProgressEnd = msg.m_fProgressEnd - timeDiff;
+			}
+			
+			m_wStatusProgress.SetVisible(false);
+			FadeWidget(m_wStatusProgress);
+		}
+		
+		if (!msg.m_sSound.IsEmpty())
+			SCR_UISoundEntity.SoundEvent(msg.m_sSound);
+		
+		m_ShownMsg = msg;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void HideMsg(notnull SCR_PopupMessage msg)
+	{
+		if (msg == m_ShownMsg)
+		{
+			m_ShownMsg = null;
+			
+			FadeWidget(m_wPopupMsg, true);
+			FadeWidget(m_wPopupMsgSmall, true);
+			FadeWidget(m_wStatusProgress, true);
+		}
+		
+		RefreshQueue(msg);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void EOnFrame(IEntity owner, float timeSlice)
+	{
+		if (!m_ShownMsg)
+			return;
 		
 		if (m_bInventoryOpen)
 		{
@@ -384,227 +383,40 @@ class SCR_PopUpNotification: GenericEntity
 			return;
 		}
 		
-		// Popup msg queue
-		if (queueCnt != 0)
+		BaseWorld world = GetGame().GetWorld();
+		
+		if (!world)
+			return;
+		
+		float curTime = world.GetWorldTime();
+		
+		if (m_ShownMsg.m_fHideTimestamp != -1 && Replication.Time() >= m_ShownMsg.m_fHideTimestamp)
 		{
-			// Status msg is active, ignore popups
-			if (m_bStatusMsgActive)
-			{
-				if (m_fCurPopupMsgFadeInStart != -1)
-				{
-					m_wPopupMsgSmall.SetVisible(false);
-					m_fCurPopupMsgFadeInStart = -1;
-					m_aPopupMsgTextsQueue.Remove(m_iHighestPrioIndex);
-					m_aPopupMsgTextsSmallQueue.Remove(m_iHighestPrioIndex);
-					m_aParamsArrayTextQueue.Remove(m_iHighestPrioIndex);
-					m_aParamsArrayText2Queue.Remove(m_iHighestPrioIndex);
-					m_aPopupMsgPrioQueue.Remove(m_iHighestPrioIndex);
-					m_aPopupMsgSoundQueue.Remove(m_iHighestPrioIndex);
-					m_aPopupMsgTimersQueue.Remove(m_iHighestPrioIndex * 2);
-					m_aPopupMsgTimersQueue.Remove(m_iHighestPrioIndex * 2);
-				}
-			}
-			else
-			{
-				if (m_iLastQueueSize == 0)
-				{
-					m_fQueueProcessorTimer = curTime + 250;
-					m_iLastQueueSize = queueCnt;
-					return;
-				}
-	
-				m_iLastQueueSize = queueCnt;
-				
-				if (curTime < m_fQueueProcessorTimer)
-					return;
-	
-				if (m_bPopupQueueRefresh)
-				{
-					m_bPopupQueueRefresh = false;
-					m_iHighestPrioIndex = 0;
-				
-					foreach (int i, int prio: m_aPopupMsgPrioQueue)
-					{
-						if (prio > m_aPopupMsgPrioQueue[m_iHighestPrioIndex])
-							m_iHighestPrioIndex = i;
-					}
-				}
-	
-				string text = m_aPopupMsgTextsQueue[m_iHighestPrioIndex];
-				string textSmall = m_aPopupMsgTextsSmallQueue[m_iHighestPrioIndex];
-				array<string> params = m_aParamsArrayTextQueue[m_iHighestPrioIndex];
-				array<string> params2 = m_aParamsArrayText2Queue[m_iHighestPrioIndex];
-				float duration = m_aPopupMsgTimersQueue[m_iHighestPrioIndex * 2] * 1000;
-				float fade = m_aPopupMsgTimersQueue[(m_iHighestPrioIndex * 2) + 1] * 1000;
-				string sound = m_aPopupMsgSoundQueue[m_iHighestPrioIndex];
-				bool isMapOpen = false;
-				SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
-				
-				if (mapEntity)
-					isMapOpen = mapEntity.IsOpen();
-				
-				// Map is open, increase the popup timers
-				if (m_fCurPopupMsgFadeOutEnd > curTime && isMapOpen)
-				{
-					float toAdd = timeSlice * 1000;
-					m_fCurPopupMsgFadeInStart += toAdd;
-					m_fCurPopupMsgDurationStart += toAdd;
-					m_fCurPopupMsgFadeOutStart += toAdd;
-					m_fCurPopupMsgFadeOutEnd += toAdd;
-				}
-				
-				if (m_fCurPopupMsgFadeInStart == -1)
-				{
-					m_wPopupMsg.SetTextFormat(text, params[0], params[1], params[2], params[3], params[4]);
-					m_wPopupMsgSmall.SetTextFormat(textSmall, params2[0], params2[1], params2[2], params2[3]);
-	
-					if (duration > 0)
-					{
-						AlphaLerp(m_wPopupMsg, curTime, curTime, fade, m_fPopupMsgDefaultAlpha);
-						AlphaLerp(m_wPopupMsgSmall, curTime, curTime, fade, m_fPopupMsgDefaultAlpha);
-					};
-					
-					m_wPopupMsgSmall.SetVisible(true);
-					m_fCurPopupMsgFadeInStart = curTime;
-					m_fCurPopupMsgDurationStart = m_fCurPopupMsgFadeInStart + fade;
-					m_fCurPopupMsgFadeOutStart = m_fCurPopupMsgDurationStart + duration;
-					m_fCurPopupMsgFadeOutEnd = m_fCurPopupMsgFadeOutStart + fade;
-					
-					if (!sound.IsEmpty())
-						SCR_UISoundEntity.SoundEvent(sound);
-				}
-				else
-				{
-					if (curTime >= m_fCurPopupMsgFadeOutEnd)
-					{
-						m_wPopupMsg.SetOpacity(0);
-						m_wPopupMsgSmall.SetVisible(false);
-						m_fCurPopupMsgFadeInStart = -1;
-						m_aPopupMsgTextsQueue.Remove(m_iHighestPrioIndex);
-						m_aPopupMsgTextsSmallQueue.Remove(m_iHighestPrioIndex);
-						m_aParamsArrayTextQueue.Remove(m_iHighestPrioIndex);
-						m_aParamsArrayText2Queue.Remove(m_iHighestPrioIndex);
-						m_aPopupMsgPrioQueue.Remove(m_iHighestPrioIndex);
-						m_aPopupMsgSoundQueue.Remove(m_iHighestPrioIndex);
-						m_aPopupMsgTimersQueue.Remove(m_iHighestPrioIndex * 2);
-						m_aPopupMsgTimersQueue.Remove(m_iHighestPrioIndex * 2);
-						m_bPopupQueueRefresh = true;
-					}
-					else
-					{
-						m_wPopupMsg.SetVisible(true);
-						m_wPopupMsgSmall.SetVisible(true);
-						
-						if (curTime < m_fCurPopupMsgDurationStart)
-						{
-							AlphaLerp(m_wPopupMsg, m_fCurPopupMsgFadeInStart, curTime, fade, m_fPopupMsgDefaultAlpha);
-							AlphaLerp(m_wPopupMsgSmall, m_fCurPopupMsgFadeInStart, curTime, fade, m_fPopupMsgDefaultAlpha);
-						}
-						else
-						{
-							if (curTime >= m_fCurPopupMsgFadeOutStart)
-							{
-								AlphaLerp(m_wPopupMsg, m_fCurPopupMsgFadeOutStart, curTime, fade, m_fPopupMsgDefaultAlpha, false);
-								AlphaLerp(m_wPopupMsgSmall, m_fCurPopupMsgFadeOutStart, curTime, fade, m_fPopupMsgDefaultAlpha, false);
-							}
-						}
-					}
-				}
-			}
+			HideMsg(m_ShownMsg);
+			return;
 		}
 		
-		// Refresh status msg 
-		if (m_bStatusMsgRefresh && curTime > m_fCurStatusMsgFadeOutEnd && curTime > m_fCurStatusMsgDurationStart)
-		{
-			m_bStatusMsgRefresh = false;
-			
-			switch(m_aActiveStatusMsgs.Count())
-			{
-				case 0:
-					m_fCurStatusMsgFadeOutStart = curTime;
-					m_fCurStatusMsgFadeOutEnd = m_fCurStatusMsgFadeOutStart + 500;
-					break;
-				case 1:
-					m_fCurStatusMsgFadeInStart = curTime;
-					m_fCurStatusMsgDurationStart = m_fCurStatusMsgFadeInStart + 500;
-					break;
-				case 2:
-					m_fCurStatusMsgFadeOutStart = curTime;
-					m_fCurStatusMsgFadeOutEnd = m_fCurStatusMsgFadeOutStart + 500;
-					m_fCurStatusMsgFadeInStart = m_fCurStatusMsgFadeOutEnd;
-					m_fCurStatusMsgDurationStart = m_fCurStatusMsgFadeInStart + 500;
-					break;
-			};
-		};
-		
-		if (curTime > m_fCurStatusMsgFadeOutEnd && m_fCurStatusMsgFadeOutEnd > m_fCurStatusMsgDurationStart && m_bStatusMsgActive)
-		{
-			m_bStatusMsgActive = false;
-			m_bPopupQueueRefresh = true;
-			m_wPopupMsg.SetOpacity(0);
-			m_wStatusProgress.SetVisible(false);
-		};
-		
-		if (m_aActiveStatusMsgs.Count() != 0 && m_fCurStatusMsgFadeOutEnd < m_fCurStatusMsgDurationStart && (!m_bStatusMsgActive || m_ePrevMsg != m_aActiveStatusMsgs[0]))
-		{
-			m_bStatusMsgActive = true;
-			string text;
-			
-			switch (m_aActiveStatusMsgs[0])
-			{
-				case eCampaignStatusMessage.SEIZING_ENEMY:
-					text = "#AR-Campaign_SeizingEnemy-UC";
-					break;
-
-				case eCampaignStatusMessage.SEIZING_YOU:
-					text = "#AR-Campaign_SeizingFriendly-UC";
-					break;
-					
-				case eCampaignStatusMessage.SESSION_RESTART:
-					text = "#AR-Campaign_Restarting-UC";
-					break;
-			}
-
-			m_wPopupMsg.SetTextFormat(text);
-		};
-		
-		// Process status msg 
-		if (m_wPopupMsg && m_bStatusMsgActive)
-		{
+		if (m_ShownMsg.m_sText && !m_wPopupMsg.IsVisible())
 			m_wPopupMsg.SetVisible(true);
-			
-			if (m_fCurStatusMsgFadeOutEnd >= curTime)
-			{
-				AlphaLerp(m_wPopupMsg, m_fCurStatusMsgFadeOutStart, curTime, 500, m_fPopupMsgDefaultAlpha, false);
-				AlphaLerp(m_wStatusProgress, m_fCurStatusMsgFadeOutStart, curTime, 500, m_fPopupMsgDefaultAlpha, false);
-			} else {
-				if (m_fCurStatusMsgDurationStart >= curTime)
-				{
-					AlphaLerp(m_wPopupMsg, m_fCurStatusMsgFadeInStart, curTime, 500, m_fPopupMsgDefaultAlpha);
-					AlphaLerp(m_wStatusProgress, m_fCurStatusMsgFadeInStart, curTime, 500, m_fPopupMsgDefaultAlpha);
-				}
-			};
-			
-			if (curTime < m_fProgressBarFinish)
-			{
-				if (!m_wStatusProgress.IsVisible() || (m_aActiveStatusMsgs.Count() > 0 && m_aActiveStatusMsgs[0] != m_ePrevMsg))
-				{
-					m_wStatusProgress.SetVisible(true);
-					m_wStatusProgress.SetMin(m_fProgressBarStart);
-					m_wStatusProgress.SetMax(m_fProgressBarFinish);
-				}
-				
-				if (m_fCurStatusMsgFadeOutEnd < curTime)
-					m_wStatusProgress.SetCurrent(curTime);
-				
-			} else {
-				if (m_wStatusProgress.IsVisible())
-					m_wStatusProgress.SetVisible(false);
-			}
-		};
 		
-		if (m_aActiveStatusMsgs.Count() > 0)
-			m_ePrevMsg = m_aActiveStatusMsgs[0];
+		if (m_ShownMsg.m_sSubtitle && !m_wPopupMsgSmall.IsVisible())
+			m_wPopupMsgSmall.SetVisible(true);
+		
+		if (m_ShownMsg.m_fProgressEnd > curTime)
+		{
+			if (!m_wStatusProgress.IsVisible())
+			{
+				m_wStatusProgress.SetVisible(true);
+				m_wStatusProgress.SetMin(m_ShownMsg.m_fProgressStart);
+				m_wStatusProgress.SetMax(m_ShownMsg.m_fProgressEnd);
+			}
+			
+			m_wStatusProgress.SetCurrent(curTime);
+		}
+		else if (m_wStatusProgress.IsVisible())
+		{
+			m_wStatusProgress.SetVisible(false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -615,50 +427,26 @@ class SCR_PopUpNotification: GenericEntity
 			return;
 		
 		// Make sure init can be processed properly (when HUD Manager is ready, check in ProcessInit())
-		GetGame().GetCallqueue().CallLater(ProcessInit, 1000, true)
+		GetGame().GetCallqueue().Remove(ProcessInit);
+		GetGame().GetCallqueue().CallLater(ProcessInit, 1000, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_PopUpNotification()
 	{
-		m_aPopupMsgTextsQueue = null;
-		m_aPopupMsgTextsSmallQueue = null;
-		m_aPopupMsgTimersQueue = null;
-		m_aActiveStatusMsgs = null;
-		m_aPopupMsgPrioQueue = null;
-		m_aPopupMsgSoundQueue = null;
-		
-		int cnt = m_aParamsArrayTextQueue.Count();
-		
-		for (int i = cnt - 1; i >= 0; i--)
-		{
-			if (m_aParamsArrayTextQueue[i])
-			{
-				m_aParamsArrayTextQueue[i].Clear();
-				m_aParamsArrayTextQueue[i] = null;
-			}
-			
-			m_aParamsArrayTextQueue.Remove(i);
-		}
-	
-		m_aParamsArrayTextQueue = null;
-		
-		cnt = m_aParamsArrayText2Queue.Count();
-		
-		for (int i = cnt - 1; i >= 0; i--)
-		{
-			if (m_aParamsArrayText2Queue[i])
-			{
-				m_aParamsArrayText2Queue[i].Clear();
-				m_aParamsArrayText2Queue[i] = null;
-			}
-			
-			m_aParamsArrayText2Queue.Remove(i);
-		}
-	
-		m_aParamsArrayText2Queue = null;
-		
 		if (m_wPopupMsg)
 			m_wPopupMsg.GetParent().RemoveFromHierarchy();
+		
+		s_eFilter = SCR_EPopupMsgFilter.ALL;
+		
+		GetGame().GetCallqueue().Remove(ProcessInit);
 	}
+};
+
+//------------------------------------------------------------------------------------------------
+enum SCR_EPopupMsgFilter
+{
+	ALL,
+	NONE,
+	TUTORIAL
 };

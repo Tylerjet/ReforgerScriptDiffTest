@@ -105,4 +105,11 @@ class EntitySlotInfo: PointInfo
 	\param childEntity The entity to attach
 	*/
 	proto external void AttachEntity(IEntity entity);
+	
+	// callbacks
+	
+	//! Runs every time an entity is attached to the slot.
+	event void OnAttachedEntity(IEntity entity);
+	//! Runs every time an entity is detached from the slot.
+	event void OnDetachedEntity(IEntity entity);
 };

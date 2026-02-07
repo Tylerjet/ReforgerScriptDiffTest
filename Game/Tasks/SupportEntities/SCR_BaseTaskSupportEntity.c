@@ -195,7 +195,6 @@ class SCR_BaseTaskSupportEntity : GenericEntity
 			return;
 		
 		task.Finish();
-		GetTaskManager().DeleteTask(task);
 	}
 	
 	//------------------------------------------------------------------------------------------------

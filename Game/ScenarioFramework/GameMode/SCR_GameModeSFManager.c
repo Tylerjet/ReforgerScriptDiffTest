@@ -23,6 +23,7 @@ enum ESFTaskType
 	NONE,
 	DELIVER,
 	DESTROY,
+	KILL,
 	CLEAR_AREA,
 	LAST,
 	EXTRACTION,
@@ -31,7 +32,7 @@ enum ESFTaskType
 
 class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 {	
-	[Attribute( "Available Tasks for the Scenario" )];
+	[Attribute( "Available Tasks for the Scenario", category: "Tasks" )];
 	protected ref array<ref CP_TaskType> m_aTaskTypesAvailable;
 	
 	[Attribute( desc: "Name of the Area which will be only one to spawn", category: "Debug" )];
@@ -46,6 +47,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	protected SCR_BaseTask		m_pLastFinishedTask;
 	protected CP_LayerBase		m_pLastFinishedTaskLayer;
 	protected bool				m_bInitialized = false;
+	protected EGameOverTypes m_eGameOverType = EGameOverTypes.COMBATPATROL_DEFEAT;
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc( RplChannel.Reliable, RplRcver.Broadcast )]
@@ -148,11 +150,17 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		//CP_Task.Cast( pTask ).ShowPopUpMessage( "#AR-Tasks_Objective" + " " + "#AR-Workshop_ButtonUpdate" );		//TODO: localize properly
 		GetOnTaskStateChanged().Invoke(pTask, mask);
 	}
-			
+	
+	void SetMissionEndScreen(EGameOverTypes GameOverType)
+	{
+		m_eGameOverType = GameOverType;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void Finish()
 	{
-		SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(SCR_GameModeEndData.ENDREASON_TIMELIMIT, 0,0);
+		SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(m_eGameOverType, 0,0);
+		
 		SCR_BaseGameMode.Cast( GetOwner() ).EndGameMode( endData );
 		if (RplSession.Mode() == RplMode.Dedicated)
 		{

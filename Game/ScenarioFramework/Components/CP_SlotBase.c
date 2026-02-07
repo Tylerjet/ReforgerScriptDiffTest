@@ -47,33 +47,60 @@ class CP_SlotBase : CP_LayerBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get object of type defined in m_rObjectToSpawn
-	protected bool GetEntity( notnull IEntity pEnt )
+	protected bool GetEntity(notnull IEntity pEnt)
 	{
-		IEntity pParent = SCR_EntityHelper.GetMainParent( pEnt, true );
+		IEntity pParent = SCR_EntityHelper.GetMainParent(pEnt, true);
 		EntityPrefabData pPrefabData = pParent.GetPrefabData();
-		if ( !pPrefabData )
+		if (!pPrefabData)
 			return true;
-		//TODO: it ignores vehicles, find out why
-		ResourceName pResource = pPrefabData.GetPrefabName();			
-		if ( pResource.IsEmpty() )
+
+		ResourceName pResource = pPrefabData.GetPrefabName();
+		if (pResource.IsEmpty())
 		{
-			if ( !m_sID.IsEmpty() )
+			pResource = pPrefabData.GetPrefab().GetAncestor().GetName();
+			if (pResource.IsEmpty())
 			{
-				if ( pEnt.GetName() != m_sID )
+				if (!m_sID.IsEmpty())
+				{
+					if (pEnt.GetName() != m_sID)
+						return true;
+				}
+				else
+				{
 					return true;
+				}			
 			}
 			else
 			{
-				return true;
+				if (m_rObjectToSpawn.IsEmpty())
+					return true;
+				
+				TStringArray strs = new TStringArray;
+				pResource.Split("/", strs, true);
+				string pResourceName = strs[strs.Count() - 1];
+				
+				TStringArray strsObject = new TStringArray;
+				m_rObjectToSpawn.Split("/", strsObject, true);
+				string pResourceObject = strsObject[strsObject.Count() - 1];
+				
+				if (pResourceName == pResourceObject)
+				{
+					m_pEntity = pEnt;
+					return false;
+				}
+				else
+				{
+					return true;
+				}
 			}
 		}
 		else
 		{	
-			if ( pResource != m_rObjectToSpawn )
+			if (pResource != m_rObjectToSpawn)
 				return true;
 		}
 		
-		m_pEntity = pParent;
+		m_pEntity = pEnt;
 		return false;
 	}
 	

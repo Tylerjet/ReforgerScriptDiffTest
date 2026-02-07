@@ -39,6 +39,7 @@ class SCR_BaseTaskManager : GenericEntity
 	protected float m_fTimestamp = 0;
 	protected float m_fTimestampTimer = 0;
 	protected ref array<SCR_BaseTask> m_aTaskList = new ref array<SCR_BaseTask>();
+	protected ref array<SCR_BaseTask> m_aFinishedTaskList = {};
 	protected ref array<ref SCR_TaskAssignmentData> m_aCachedTaskAssignments = new ref array<ref SCR_TaskAssignmentData>();
 	
 	[Attribute("1")]
@@ -124,7 +125,7 @@ class SCR_BaseTaskManager : GenericEntity
 	//! An event called when a task is deleted.
 	void OnTaskDeleted(SCR_BaseTask task)
 	{
-		if (m_aTaskList.Find(task) != -1)
+		if (m_aTaskList.Contains(task))
 			m_aTaskList.RemoveItem(task);
 	}
 	
@@ -132,8 +133,18 @@ class SCR_BaseTaskManager : GenericEntity
 	//! An event called when a new task is created.
 	void OnTaskCreated(SCR_BaseTask task)
 	{
-		if (m_aTaskList.Find(task) == -1)
+		if (!m_aTaskList.Contains(task))
 			m_aTaskList.Insert(task);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! An event called when a task is finished.
+	void OnTaskFinished(SCR_BaseTask task)
+	{
+		if (!m_aFinishedTaskList.Contains(task))
+			m_aFinishedTaskList.Insert(task);
+		
+		OnTaskDeleted(task);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -249,7 +260,25 @@ class SCR_BaseTaskManager : GenericEntity
 		if (taskID == -1)
 			return null;
 		
-		foreach (SCR_BaseTask task: m_aTaskList)
+		foreach (SCR_BaseTask task : m_aTaskList)
+		{
+			if (task.GetTaskID() == taskID)
+			{
+				return task;
+			}
+		}
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns the found finished task if it exists.
+	SCR_BaseTask GetFinishedTask(int taskID)
+	{
+		if (taskID == -1)
+			return null;
+		
+		foreach (SCR_BaseTask task : m_aFinishedTaskList)
 		{
 			if (task.GetTaskID() == taskID)
 			{
@@ -362,11 +391,33 @@ class SCR_BaseTaskManager : GenericEntity
 			return GetTasks(tasks);
 		
 		Faction taskFaction;
-		foreach (SCR_BaseTask task: m_aTaskList)
+		foreach (SCR_BaseTask task : m_aTaskList)
 		{
-			if (!task)
-				continue;
-			
+			taskFaction = task.GetTargetFaction();
+			if (!taskFaction || taskFaction == filterFaction)
+			{
+				tasks.Insert(task);
+				count++;
+			}
+		}
+		
+		return count;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Outs an array of tasks filtered by faction.
+	//! filterFaction param is the allowed faction!
+	int GetFilteredFinishedTasks(notnull out array<SCR_BaseTask> tasks, Faction filterFaction = null)
+	{
+		int count = 0;
+		tasks.Clear();
+		
+		if (!filterFaction)
+			return GetTasks(tasks);
+		
+		Faction taskFaction;
+		foreach (SCR_BaseTask task : m_aFinishedTaskList)
+		{
 			taskFaction = task.GetTargetFaction();
 			if (!taskFaction || taskFaction == filterFaction)
 			{
@@ -476,7 +527,22 @@ class SCR_BaseTaskManager : GenericEntity
 	{
 		int count = 0;
 		
-		foreach (SCR_BaseTask task: m_aTaskList)
+		foreach (SCR_BaseTask task : m_aTaskList)
+		{
+			tasks.Insert(task);
+			count++;
+		}
+		
+		return count;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Outs an array of all of the finished tasks.
+	int GetFinishedTasks(notnull out array<SCR_BaseTask> tasks)
+	{
+		int count = 0;
+		
+		foreach (SCR_BaseTask task : m_aFinishedTaskList)
 		{
 			tasks.Insert(task);
 			count++;
@@ -722,6 +788,7 @@ class SCR_BaseTaskManager : GenericEntity
 		
 		//Register to Script Invokers
 		s_OnTaskCreated.Insert(OnTaskCreated);
+		s_OnTaskFinished.Insert(OnTaskFinished);
 		s_OnTaskDeleted.Insert(OnTaskDeleted);
 	}
 	
@@ -738,13 +805,8 @@ class SCR_BaseTaskManager : GenericEntity
 		m_aTaskList = null;
 		
 		//Unregister from Script Invokers
-		s_OnTaskCancelled.Remove(OnTaskUpdate);
-		s_OnTaskAssigned.Remove(OnTaskUpdate);
-		s_OnTaskUnassigned.Remove(OnTaskUpdate);
-		s_OnTaskFactionAssigned.Remove(OnTaskUpdate);
-		s_OnTaskFinished.Remove(OnTaskUpdate);
-		s_OnTaskFailed.Remove(OnTaskUpdate);
-		s_OnTaskCreated.Remove(OnTaskUpdate);
 		s_OnTaskCreated.Remove(OnTaskCreated);
+		s_OnTaskFinished.Remove(OnTaskFinished);
+		s_OnTaskDeleted.Remove(OnTaskDeleted);
 	}
 };

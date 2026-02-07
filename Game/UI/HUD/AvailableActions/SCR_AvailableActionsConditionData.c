@@ -459,7 +459,10 @@ class SCR_AvailableActionsConditionData
 	//! Returns the actual animation controller
 	CharacterAnimationComponent GetAnimationComponent()
 	{
-		return m_CharacterEntity.GetAnimationComponent();
+		if (m_CharacterEntity)
+			return m_CharacterEntity.GetAnimationComponent();
+		
+		return null;
 	}
 	
 	

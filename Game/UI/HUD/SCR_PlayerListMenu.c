@@ -1217,6 +1217,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 #ifdef WORKBENCH
 		GetGame().GetInputManager().RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
 #endif
+		
+		//--- Close when some other menu is opened on top
+		Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------

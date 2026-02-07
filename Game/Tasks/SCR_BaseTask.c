@@ -387,7 +387,7 @@ class SCR_BaseTask : GenericEntity
 		m_TargetFaction = targetFaction;
 		SCR_BaseTaskManager.s_OnTaskFactionAssigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 		
 		SetHUDIcon();
 	}
@@ -582,7 +582,7 @@ class SCR_BaseTask : GenericEntity
 	void SetTitle(string title)
 	{
 		m_sName = title;
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -596,7 +596,7 @@ class SCR_BaseTask : GenericEntity
 	void SetDescription(string description)
 	{
 		m_sDescription = description;
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -636,7 +636,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskCancelled.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_CANCELED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_CANCELED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -653,7 +653,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskRemoved.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_REMOVED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_REMOVED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -676,7 +676,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskFinished.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_FINISHED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_FINISHED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -693,7 +693,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskFailed.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_FAILED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_FAILED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -723,7 +723,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskUnassigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -766,7 +766,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskUnassigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -810,7 +810,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskAssigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -973,8 +973,8 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Adds task event mask for OnTaskUpdate
-	void AddTaskToInvoker(SCR_ETaskEventMask TaskEventMask)
+	//! Registers task event mask for OnTaskUpdate
+	void RegisterTaskUpdate(SCR_ETaskEventMask TaskEventMask)
 	{
 		if (GetTaskManager())
 			GetTaskManager().OnTaskUpdate(this, TaskEventMask);
@@ -1071,7 +1071,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskCreated.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_CREATED);
+		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_CREATED);
 		
 		ClearFlags(EntityFlags.ACTIVE, false);
 		
