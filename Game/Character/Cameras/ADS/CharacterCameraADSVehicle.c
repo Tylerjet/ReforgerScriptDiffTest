@@ -91,6 +91,9 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		TurretComponent turret = m_TurretController.GetTurretComponent();
 		vector aimingTranslationWeaponLS = turret.GetRawAimingTranslation();
 
+		// Disable recoil camera translation of turret mounted weapons
+		aimingTranslationWeaponLS -= turret.GetCurrentRecoilTranslation();
+
 		// Sight camera slot
 		BaseSightsComponent sights = turret.GetSights();
 		PointInfo cameraSlot;

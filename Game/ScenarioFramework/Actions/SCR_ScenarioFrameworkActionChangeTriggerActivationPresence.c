@@ -1,17 +1,17 @@
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionChangeTriggerActivationPresence : SCR_ScenarioFrameworkActionBase
 {
-	[Attribute(desc: "Target layer that spawns Trigger to change")]
+	[Attribute(desc: "Target layer that spawns Trigger to change - layer needs to spawn ScenarioFrameworkTriggerEntity or inherited variants")]
 	ref SCR_ScenarioFrameworkGetLayerBase m_Getter;
 
-	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "By whom the trigger is activated", params: ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation).ToString(), category: "Trigger")]
+	[Attribute(defvalue: SCR_EScenarioFrameworkTriggerActivation.PLAYER.ToString(), uiwidget: UIWidgets.ComboBox, desc: "By whom the trigger is activated - target trigger needs to be ScenarioFrameworkTriggerEntity or inherited variant", enums: ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation), category: "Trigger")]
 	SCR_EScenarioFrameworkTriggerActivation m_eActivationPresence;
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] object
-	//! \param[out] trigger
-	//! \return
+	//! Activates trigger if not exceeded max number of activations, removes event handlers if max reached.
+	//! \param[in] object Checks if trigger can be activated, increments activation count if possible, removes event handlers if max activations reached
+	//! \param[out] trigger Trigger entity in scenario framework, used for activating/deactivating events.
+	//! \return true if trigger can be activated, false otherwise.
 	bool CanActivateTriggerVariant(IEntity object, out SCR_ScenarioFrameworkTriggerEntity trigger)
 	{
 		trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(object);
@@ -86,6 +86,7 @@ class SCR_ScenarioFrameworkActionChangeTriggerActivationPresence : SCR_ScenarioF
 			trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
 		}
 
-		trigger.SetActivationPresence(m_eActivationPresence);
+		if (trigger)
+			trigger.SetActivationPresence(m_eActivationPresence);
 	}
 }

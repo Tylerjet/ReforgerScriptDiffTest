@@ -256,7 +256,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		if (!m_GroupManager)
 			return;
 
-		SCR_AIGroup playerGroup = m_GroupManager.GetFirstNotFullForFaction(m_PlyFaction);
+		SCR_AIGroup playerGroup = m_GroupManager.GetFirstNotFullForFaction(m_PlyFaction, respectPrivate: true);
 		if (!playerGroup)
 		{
 			RequestNewGroup();

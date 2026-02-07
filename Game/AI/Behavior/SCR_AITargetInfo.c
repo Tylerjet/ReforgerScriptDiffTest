@@ -25,7 +25,7 @@ class SCR_AITargetInfo
 	EAITargetInfoCategory m_eCategory;
 	
 	//----------------------------------------------------------------------------------------------------------
-	void Init(IEntity entity = null,
+	void Init(IEntity entity = null, PerceivableComponent perceivable = null,
 		vector worldPos = vector.Zero,
 		float timestamp = 0.0,
 		EAITargetInfoCategory category = 0,
@@ -59,7 +59,10 @@ class SCR_AITargetInfo
 			
 			// Init pointers to components
 			m_DamageManager = DamageManagerComponent.Cast(entity.FindComponent(DamageManagerComponent));
-			m_Perceivable = PerceivableComponent.Cast(entity.FindComponent(PerceivableComponent));
+			if (perceivable)
+				m_Perceivable = perceivable;
+			else
+				m_Perceivable = PerceivableComponent.Cast(entity.FindComponent(PerceivableComponent));
 		}
 	}
 	
@@ -82,13 +85,14 @@ class SCR_AITargetInfo
 			timestamp = tgt.GetTimeLastDetected();
 			category = EAITargetInfoCategory.DETECTED;
 		}
-		Init(entity, pos, timestamp, category);
+		PerceivableComponent perceivable = tgt.GetPerceivableComponent();
+		Init(entity, perceivable, pos, timestamp, category);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------
-	void InitFromGunshot(IEntity entity, vector posWorld, float timestamp, bool endangering)
+	void InitFromGunshot(IEntity entity, PerceivableComponent perceivable, vector posWorld, float timestamp, bool endangering)
 	{
-		Init(entity, posWorld, timestamp, category: EAITargetInfoCategory.DETECTED, endangering);
+		Init(entity, perceivable, posWorld, timestamp, category: EAITargetInfoCategory.DETECTED, endangering);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------

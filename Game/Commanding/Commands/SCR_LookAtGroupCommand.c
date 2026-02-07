@@ -39,4 +39,14 @@ class SCR_LookAtGroupCommand : SCR_BaseGroupCommand
 		
 		return true;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShown()
+	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
+		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		return groupController && CanRoleShow();
+	}
 }

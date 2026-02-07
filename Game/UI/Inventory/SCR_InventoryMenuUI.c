@@ -3010,8 +3010,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!pStorageToComponent)
 			pStorageToComponent = m_pCallBack.m_pStorageTo.GetStorage();
-		
-		if (!pStorageToComponent && SCR_SupplyInventorySlotUI.Cast(m_pFocusedSlotUI))
+
+		if (!pStorageToComponent || pStorageToComponent == pStorageFromComponent)
 			return;
 
 		if (IsStorageArsenal(pStorageToComponent))
@@ -4114,6 +4114,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//~ Don't call directly. Call CloseLinkedStorages() instead!
 	protected void CloseLinkedStoragesDelayed(SCR_UniversalInventoryStorageComponent scrStorage)
 	{
+		if (!scrStorage)
+			return;
+		
 		array<BaseInventoryStorageComponent> linkedStorages = {};
 		if (scrStorage.GetLinkedStorages(linkedStorages) <= 0)
 			return;
@@ -4125,6 +4128,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		//~ Trying to close linked storages but the parent storage is still open as a container
 		foreach (SCR_InventoryOpenedStorageUI openedStorage : m_aOpenedStoragesUI)
 		{
+			if (!openedStorage)
+				continue;
+			
 			if (openedStorage.GetStorage() == scrStorage)
 				return;
 		}
@@ -4134,6 +4140,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			foreach (SCR_InventoryOpenedStorageUI openedStorage : m_aOpenedStoragesUI)
 			{
+				if (!openedStorage)
+					continue;
+				
 				//~ Storage is open
 				if (openedStorage.GetStorage() == linkedStorage)
 				{

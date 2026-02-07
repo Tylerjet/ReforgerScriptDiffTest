@@ -34,8 +34,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	static protected Widget s_DraggedWidget;
 	static protected Widget s_RotatedWidget;
 	
-	protected SCR_MapCursorModule m_CursorModule;
-	protected SCR_MapCursorInfo m_CursorInfo;
+	static protected SCR_MapCursorModule s_CursorModule;
+	static protected SCR_MapCursorInfo s_CursorInfo;
 	
 	// Invokers
 	//------------------------------------------------------------------------------------------------
@@ -89,6 +89,12 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 			return false;
 		
 		s_fDragTime = 0;
+
+		if (s_CursorInfo)
+		{
+			s_CursorInfo.lastX = s_CursorInfo.x;
+			s_CursorInfo.lastY = s_CursorInfo.y;
+		}
 		
 		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		SCR_MapElementMoveComponent moveComp;
@@ -128,6 +134,12 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	//! \return Returns true if there is a rotatable widget under the cursor
 	static bool StartRotate()
 	{
+		if (s_CursorInfo)
+		{
+			s_CursorInfo.lastX = s_CursorInfo.x;
+			s_CursorInfo.lastY = s_CursorInfo.y;
+		}
+
 		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		SCR_MapElementMoveComponent moveComp;
 		
@@ -195,8 +207,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	//! Drag widget
 	//! \param[in] widget
-	//! \param[in] cursorInfo
-	void DragWidget(Widget widget, SCR_MapCursorInfo cursorInfo)
+	static void DragWidget(notnull Widget widget)
 	{				
 		int screenX = GetGame().GetWorkspace().GetWidth();
 		int screenY = GetGame().GetWorkspace().GetHeight();
@@ -204,8 +215,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		float widgetX, widgetY, fx, fy, minX, minY, maxX, maxY;
 		
 		// mouse position difference
-		fx = cursorInfo.x - cursorInfo.lastX; 
-		fy = cursorInfo.y - cursorInfo.lastY;
+		fx = s_CursorInfo.x - s_CursorInfo.lastX; 
+		fy = s_CursorInfo.y - s_CursorInfo.lastY;
 
 		// no change
 		if (fx == 0 && fy == 0)
@@ -235,13 +246,15 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		
 		// set new postion
 		FrameSlot.SetPos(widget, fx, fy);
+
+		s_CursorInfo.lastX = s_CursorInfo.x;
+		s_CursorInfo.lastY = s_CursorInfo.y;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Rotate widget based on mouse movement
 	//! \param[in] widget
-	//! \param[in] cursorInfo
-	static void RotateWidget(notnull Widget widget, SCR_MapCursorInfo cursorInfo)
+	static void RotateWidget(notnull Widget widget)
 	{
 		ImageWidget image = ImageWidget.Cast(widget.GetChildren());
 		if (!image)
@@ -251,8 +264,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		// float fx, fy, minX, minY, maxX, maxY;
 
 		// mouse position difference
-		float fx = cursorInfo.x - cursorInfo.lastX; 
-		float fy = cursorInfo.y - cursorInfo.lastY;
+		float fx = s_CursorInfo.x - s_CursorInfo.lastX; 
+		float fy = s_CursorInfo.y - s_CursorInfo.lastY;
 
 		// no change
 		if (fx == 0 && fy == 0)
@@ -271,13 +284,13 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		centerX = workspace.DPIUnscale(centerX);
 		centerY = workspace.DPIUnscale(centerY);
 
-		float newAngle = Math.RAD2DEG * Math.Atan2(cursorInfo.x - centerX, cursorInfo.y - centerY);
-		float lastAngle = Math.RAD2DEG * Math.Atan2(cursorInfo.lastX - centerX, cursorInfo.lastY - centerY);
+		float newAngle = Math.RAD2DEG * Math.Atan2(s_CursorInfo.x - centerX, s_CursorInfo.y - centerY);
+		float lastAngle = Math.RAD2DEG * Math.Atan2(s_CursorInfo.lastX - centerX, s_CursorInfo.lastY - centerY);
 
 		float rotation = fixAngle_180_180(newAngle - lastAngle);
 
 		// Slow down rotation near the center
-		vector grip = Vector(cursorInfo.x - centerX, cursorInfo.y - centerY, 0);
+		vector grip = Vector(s_CursorInfo.x - centerX, s_CursorInfo.y - centerY, 0);
 		float rotationScale = 1;
 		if (widgetH > 0 && ROTATION_DEADZONE > 0)
 			rotationScale = Math.Clamp(grip.Length() / (widgetH * ROTATION_DEADZONE), 0, 1);
@@ -286,6 +299,9 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 
 		// Apply new rotation
 		image.SetRotation(image.GetRotation() - rotation);
+
+		s_CursorInfo.lastX = s_CursorInfo.x;
+		s_CursorInfo.lastY = s_CursorInfo.y;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -293,8 +309,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	{
 		super.OnMapOpen(config);
 		
-		m_CursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
-		m_CursorInfo = m_CursorModule.GetCursorInfo();
+		s_CursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
+		s_CursorInfo = s_CursorModule.GetCursorInfo();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -308,6 +324,8 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		s_bIsDragging = false;
 		s_bIsRotating = false;
 		s_fDragTime = 0;
+		s_CursorModule = null;
+		s_CursorInfo = null;
 		
 		super.OnMapClose(config);
 	}
@@ -317,12 +335,12 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	{
 		if (s_bIsDragging)
 		{
-			DragWidget(s_DraggedWidget, m_CursorInfo);
+			DragWidget(s_DraggedWidget);
 			s_fDragTime += timeSlice;
 		}
 		else if (s_bIsRotating)
 		{
-			RotateWidget(s_RotatedWidget, m_CursorInfo);
+			RotateWidget(s_RotatedWidget);
 		}
 	}
 }

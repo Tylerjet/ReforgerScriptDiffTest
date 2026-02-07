@@ -195,8 +195,15 @@ class SCR_AIGroupPerception : Managed
 		else
 		{
 			// Create new data
+			PerceivableComponent perceivable = PerceivableComponent.Cast(shooter.FindComponent(PerceivableComponent));
+			
+			// Ignore aircrafts. Fix to prevent suppression of aircrafts,
+			// but also there is no reason to track aircrafts in group perception.
+			if (perceivable.GetUnitType() == EAIUnitType.UnitType_Aircraft)
+				return;
+			
 			SCR_AITargetInfo targetInfo = new SCR_AITargetInfo();
-			targetInfo.InitFromGunshot(shooter, worldPos, timestamp, endangering);
+			targetInfo.InitFromGunshot(shooter, perceivable, worldPos, timestamp, endangering);
 			
 			m_aTargets.Insert(targetInfo);
 			m_aTargetEntities.Insert(shooter);
@@ -240,6 +247,19 @@ class SCR_AIGroupPerception : Managed
 			perception.GetTargetsList(targets, ETargetCategory.DETECTED);
 			foreach (BaseTarget baseTarget : targets)
 			{
+				PerceivableComponent perceivable = baseTarget.GetPerceivableComponent();
+				if (!perceivable)
+					continue;
+				
+				// Ignore if target is in vehicle, from group perspective we don't care about vehicle occupants
+				if (perceivable.IsInCompartment())
+					continue;
+				
+				// Ignore aircrafts. Fix to prevent suppression of aircrafts,
+				// but also there is no reason to track aircrafts in group perception.
+				if (perceivable.GetUnitType() == EAIUnitType.UnitType_Aircraft)
+					continue;
+				
 				targetInfo = AddOrUpdateTarget(baseTarget, targetIsNew);
 				
 				if (targetIsNew && !invokedEvent)
@@ -257,6 +277,19 @@ class SCR_AIGroupPerception : Managed
 			perception.GetTargetsList(targets, ETargetCategory.ENEMY);
 			foreach (BaseTarget baseTarget : targets)
 			{
+				PerceivableComponent perceivable = baseTarget.GetPerceivableComponent();
+				if (!perceivable)
+					continue;
+				
+				// Ignore aircrafts. Fix to prevent suppression of aircrafts,
+				// but also there is no reason to track aircrafts in group perception.
+				if (perceivable.GetUnitType() == EAIUnitType.UnitType_Aircraft)
+					continue;
+				
+				// Ignore if target is in vehicle, from group perspective we don't care about vehicle occupants
+				if (perceivable.IsInCompartment())
+					continue;
+				
 				targetInfo = AddOrUpdateTarget(baseTarget, targetIsNew);
 				
 				if (targetIsNew && !invokedEvent)

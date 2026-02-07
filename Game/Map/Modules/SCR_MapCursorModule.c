@@ -243,9 +243,11 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_MapWidget.GetScreenSize(screenX, screenY);
 		
 		m_InputManager.SetCursorPosition(screenX/2, screenY/2);
-		m_CursorInfo.x = screenX/2;
-		m_CursorInfo.y = screenY/2;
-		
+
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		m_CursorInfo.x = workspace.DPIUnscale(screenX/2);
+		m_CursorInfo.y = workspace.DPIUnscale(screenY/2);
+
 		if (!m_CursorInfo.isFixedMode)
 			m_fFreeCursorTime = FREE_CURSOR_RESET;
 	}
@@ -686,11 +688,15 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_MapWidget.GetScreenSize(screenX, screenY);
 		m_MapWidget.GetScreenPos(offX, offY);
 		
-		WidgetManager.GetMousePos(x, y);
+		// Needed for precision sake
+		float fX, fY;
 		
 		// gamepad cursor
 		if (m_CursorInfo.isGamepad)
 		{
+			fX = workspace.DPIScale(x);
+			fY = workspace.DPIScale(y);
+
 			// free mode
 			if (!m_CursorInfo.isFixedMode)
 			{
@@ -712,23 +718,34 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 					m_CustomCursor.SetOpacity(1);
 					
 					ForceCenterCursor();
-					WidgetManager.GetMousePos(x, y);
+
+					int iX, iY;
+					WidgetManager.GetMousePos(iX, iY);
+					fX = iX;
+					fY = iY;
 				}
 			}
 		}
+		else
+		{
+			int iX, iY;
+			WidgetManager.GetMousePos(iX, iY);
+			fX = iX;
+			fY = iY;
+		}
 		
 		// If the widget is not fullscreen, cursor position needs to be offset to match it
-		x -= offX;
-		y -= offY;
+		fX -= offX;
+		fY -= offY;
 		
 		// Screen edge pan
 		EMapEntityMode mode = m_MapEntity.GetMapConfig().MapEntityMode;
 		if (m_bEnableCursorEdgePan)
-			TestEdgePan(x, y, screenX, screenY);
+			TestEdgePan(fX, fY, screenX, screenY);
 				
 		// unscale the result
-		x = workspace.DPIUnscale(x);
-		y = workspace.DPIUnscale(y);
+		x = workspace.DPIUnscale(fX);
+		y = workspace.DPIUnscale(fY);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -842,12 +859,13 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (!m_CursorInfo.isGamepad)
 			return;
 				
-		if (value != 0)
-		{
-			m_fFreeCursorTime = 0;
-			m_CustomCursor.SetOpacity(1);
-			m_CursorInfo.isFixedMode = false;
-		}
+		if (value == 0)
+			return;
+
+		m_fFreeCursorTime = 0;
+		m_CustomCursor.SetOpacity(1);
+		m_CursorInfo.isFixedMode = false;
+		m_CursorInfo.x += value * System.GetFrameTimeS() * 1000 * m_fPanStickMultiplier;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -857,18 +875,22 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		if (!m_CursorInfo.isGamepad)
 			return;
 				
-		if (value != 0)
-		{
-			m_fFreeCursorTime = 0;
-			m_CustomCursor.SetOpacity(1);
-			m_CursorInfo.isFixedMode = false;
-		}
+		if (value == 0)
+			return;
+
+		m_fFreeCursorTime = 0;
+		m_CustomCursor.SetOpacity(1);
+		m_CursorInfo.isFixedMode = false;
+		m_CursorInfo.y -= value * System.GetFrameTimeS() * 1000 * m_fPanStickMultiplier;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Digital zoom
-	protected void OnInputZoom( float value, EActionTrigger reason )
+	protected void OnInputZoom(float value, EActionTrigger reason)
 	{
+		if (Math.AbsFloat(value) < 0.001)
+			return;
+
 		//! zoom disabled
 		if (m_CursorState & STATE_ZOOM_RESTRICTED)
 			return;
@@ -878,10 +900,11 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			return;
 		
 		float zoomPPU = m_MapEntity.GetCurrentZoom();
-		if (value == 1)
-				m_MapEntity.ZoomSmooth(zoomPPU + zoomPPU/m_fZoomStrength, m_fZoomAnimTime, false);
-			else
-				m_MapEntity.ZoomSmooth(zoomPPU - zoomPPU/m_fZoomStrength, m_fZoomAnimTime, false);
+		if (value != 0)
+		{
+			float zoomValue = value.Sign() * Math.Min(1, value * value) * zoomPPU / m_fZoomStrength;
+			m_MapEntity.ZoomSmooth(zoomPPU + zoomValue, m_fZoomAnimTime, false);
+		}
 		
 		m_fZoomHoldTime = 0;
 	}
@@ -1164,7 +1187,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.AddActionListener("MapPanVGamepad", EActionTrigger.VALUE, OnInputPanVGamepad);
 		m_InputManager.AddActionListener("MapGamepadCursorX", EActionTrigger.VALUE, OnInputGamepadCursorH);
 		m_InputManager.AddActionListener("MapGamepadCursorY", EActionTrigger.VALUE, OnInputGamepadCursorV);
-		m_InputManager.AddActionListener("MapZoom", EActionTrigger.PRESSED, OnInputZoom);
+		m_InputManager.AddActionListener("MapZoom", EActionTrigger.VALUE, OnInputZoom);
 		m_InputManager.AddActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.AddActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
 		m_InputManager.AddActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
@@ -1217,7 +1240,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.RemoveActionListener("MapPanVGamepad", EActionTrigger.VALUE, OnInputPanVGamepad);
 		m_InputManager.RemoveActionListener("MapGamepadCursorX", EActionTrigger.VALUE, OnInputGamepadCursorH);
 		m_InputManager.RemoveActionListener("MapGamepadCursorY", EActionTrigger.VALUE, OnInputGamepadCursorV);
-		m_InputManager.RemoveActionListener("MapZoom", EActionTrigger.PRESSED, OnInputZoom);
+		m_InputManager.RemoveActionListener("MapZoom", EActionTrigger.VALUE, OnInputZoom);
 		m_InputManager.RemoveActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.RemoveActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
 		m_InputManager.RemoveActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
@@ -1271,10 +1294,6 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			return;
 		
 		m_bRecentlyTraced = false;
-		
-		// update last pos
-		m_CursorInfo.lastX = m_CursorInfo.x;
-		m_CursorInfo.lastY = m_CursorInfo.y;
 		
 		// update current pos
 		GetCursorPosition(m_CursorInfo.x, m_CursorInfo.y);

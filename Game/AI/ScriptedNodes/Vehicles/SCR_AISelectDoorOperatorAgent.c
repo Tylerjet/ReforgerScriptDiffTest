@@ -7,6 +7,7 @@ class SCR_AISelectDoorOperatorAgent : AITaskScripted
 	// Outputs
 	protected static const string PORT_DOOR_USER_AGENT = "DoorUserAgent";
 	protected static const string PORT_DOOR_USER_ENTITY = "DoorUserEntity";
+	protected static const string PORT_USE_TELEKINESIS = "UseTelekinesis";
 	
 	//------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
@@ -82,9 +83,18 @@ class SCR_AISelectDoorOperatorAgent : AITaskScripted
 			}
 		}
 		
+		bool telekinesisUse = false;
 		IEntity bestAgentEntity;
 		if (bestAgent)
+		{
 			bestAgentEntity = bestAgent.GetControlledEntity();
+			if (bestAgent.GetLOD() == bestAgent.GetMaxLOD())
+			{
+				telekinesisUse = true;
+			}
+		}
+		
+		SetVariableOut(PORT_USE_TELEKINESIS, telekinesisUse);
 		SetVariableOut(PORT_DOOR_USER_AGENT, bestAgent);
 		SetVariableOut(PORT_DOOR_USER_ENTITY, bestAgentEntity);
 		
@@ -97,11 +107,14 @@ class SCR_AISelectDoorOperatorAgent : AITaskScripted
 	//------------------------------------------------------------------------
 	override bool VisibleInPalette() { return true; }
 	
-	override string GetOnHoverDescription() { return "Selects an absolutely best possible group member to open a gate when driving a vehicle";	};
+	//------------------------------------------------------------------------
+	override string GetOnHoverDescription() { return "Selects an absolutely best possible group member to open a gate when driving a vehicle";};
 	
-	protected static ref TStringArray s_aVarsOut = {PORT_DOOR_USER_AGENT, PORT_DOOR_USER_ENTITY };
+	//------------------------------------------------------------------------
+	protected static ref TStringArray s_aVarsOut = {PORT_DOOR_USER_AGENT, PORT_DOOR_USER_ENTITY, PORT_USE_TELEKINESIS };
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
+	//------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {PORT_VEHICLE_ENTITY, PORT_NAVLINK_ENTITY };
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 }

@@ -33,6 +33,9 @@ class PerceivableComponent: GameComponent
 	//! Returns true when this perceivable is considered disarmed
 	proto external bool IsDisarmed();
 	proto external void SetDisarmed(bool disarmed);
+	//! Compartment access component
+	proto external CompartmentAccessComponent GetCompartmentAccessComponent();
+	proto external bool IsInCompartment();
 
 	// callbacks
 
