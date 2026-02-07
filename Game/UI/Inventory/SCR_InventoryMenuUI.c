@@ -355,7 +355,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected float 											m_fX, m_fY;	//debug;
 	protected bool												m_bShowIt = true;
 	protected int												m_iMouseX, m_iMouseY
-	const int													DRAG_THRESHOLD 			= 5;
+	const int													DRAG_THRESHOLD 			= 1;
 
 	//other character's information
 	protected SCR_CharacterControllerComponent					m_CharController;

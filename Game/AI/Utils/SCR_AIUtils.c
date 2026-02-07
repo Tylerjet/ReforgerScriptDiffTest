@@ -238,14 +238,14 @@ class SCR_AIVehicleUsability
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	static bool VehicleCanMove(IEntity vehicle, SCR_VehicleDamageManagerComponent damageManager = null)
+	static bool VehicleCanMove(IEntity vehicle, SCR_DamageManagerComponent damageManager = null)
 	{
 		if (!vehicle)
 			return false;
 		
 		if (!damageManager)
 		{
-			damageManager = SCR_VehicleDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(vehicle));
+			damageManager = SCR_DamageManagerComponent.GetDamageManager(vehicle);
 			if (!damageManager)
 				return false;
 		}

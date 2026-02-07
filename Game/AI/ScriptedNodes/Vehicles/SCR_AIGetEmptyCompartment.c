@@ -83,14 +83,14 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 			else if (!cargoComp.IsEmpty())
 				compartmentToAlocate = cargoComp[0];
 		}
-		else  // this is leader -> he has priority driver if m_bAllowLeaderAsDriver is true > cargo > turret > 			
+		else  // this is leader -> he has priority driver if m_bAllowLeaderAsDriver is true > turret > cargo 			
 		{
 			if (m_bAllowLeaderAsDriver && !pilotComp.IsEmpty())
 				compartmentToAlocate = pilotComp[0];
-			else if (!cargoComp.IsEmpty())
-				compartmentToAlocate = cargoComp[0];
 			else if (!turretComp.IsEmpty())
 				compartmentToAlocate = turretComp[0];
+			else if (!cargoComp.IsEmpty())
+				compartmentToAlocate = cargoComp[0];			
 		}
 		
 		if (compartmentToAlocate)

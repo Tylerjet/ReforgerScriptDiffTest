@@ -39,7 +39,15 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 	{
 		m_DeployableItemComp.SetDeploying(false);
 		
-		if (pUserEntity == GetGame().GetPlayerController().GetControlledEntity())
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+		
+		IEntity controlledEntity = playerController.GetControlledEntity();
+		if (!controlledEntity)
+			return;
+		
+		if (pUserEntity == controlledEntity)
 			m_bActionStarted = false;
 	}
 	
@@ -51,7 +59,15 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 		
 		m_DeployableItemComp.SetDeploying(true);
 		
-		if (pUserEntity == GetGame().GetPlayerController().GetControlledEntity())
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+		
+		IEntity controlledEntity = playerController.GetControlledEntity();
+		if (!controlledEntity)
+			return;
+		
+		if (pUserEntity == controlledEntity)
 			m_bActionStarted = true;
 	}
 	
@@ -63,7 +79,15 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 		
 		m_DeployableItemComp.SetDeploying(false);
 		
-		if (pUserEntity == GetGame().GetPlayerController().GetControlledEntity())
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+		
+		IEntity controlledEntity = playerController.GetControlledEntity();
+		if (!controlledEntity)
+			return;
+		
+		if (pUserEntity == controlledEntity)
 			m_bActionStarted = false;
 	}
 	

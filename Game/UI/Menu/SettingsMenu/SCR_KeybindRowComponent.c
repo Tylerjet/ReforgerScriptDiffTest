@@ -235,13 +235,17 @@ class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 		else
 			finalPreset = m_SettingsKeybindModule.GetGamepadPresetPrefix() + m_sGamepadAltActionPreset;
 		
-		m_SettingsKeybindModule.StartCaptureForAction(m_sActionName, finalPreset, EInputDeviceType.GAMEPAD, false);
+		string actionName = m_sActionName;
+		if (!m_sGamepadAltActionName.IsEmpty())
+			actionName = m_sGamepadAltActionName;
+
+		m_SettingsKeybindModule.StartCaptureForAction(actionName, finalPreset, EInputDeviceType.GAMEPAD, false);
 		
 		// Dialog
 		SCR_SimpleKeybindDialogUI dialog = SCR_KeybindDialogs.CreateSimpleKeybindDialog(
 			m_Entry,
 			m_sActionDisplayName,
-			m_sActionName,
+			actionName,
 			m_Binding, 
 			EInputDeviceType.GAMEPAD
 		);
@@ -402,7 +406,11 @@ class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 	{
 		EInputDeviceType device = GetGame().GetInputManager().GetLastUsedInputDevice();
 		
-		m_SettingsKeybindModule.ResetAction(m_sActionName, GetFinalActionPreset(), device);
+		string actionName = m_sActionName;
+		if (device == EInputDeviceType.GAMEPAD && !m_sGamepadAltActionName.IsEmpty())
+			actionName = m_sGamepadAltActionName;
+
+		m_SettingsKeybindModule.ResetAction(actionName, GetFinalActionPreset(), device);
 		
 		SetRichTextAction(device);
 		UpdateActionDisplayScrolling(false);
@@ -417,7 +425,11 @@ class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 		if (device == EInputDeviceType.MOUSE)
 			device = EInputDeviceType.KEYBOARD;
 		
-		m_SettingsKeybindModule.UnbindAction(m_sActionName, GetFinalActionPreset(), device);
+		string actionName = m_sActionName;
+		if (device == EInputDeviceType.GAMEPAD && !m_sGamepadAltActionName.IsEmpty())
+			actionName = m_sGamepadAltActionName;
+
+		m_SettingsKeybindModule.UnbindAction(actionName, GetFinalActionPreset(), device);
 		
 		SetRichTextAction(device);
 		UpdateActionDisplayScrolling(false);

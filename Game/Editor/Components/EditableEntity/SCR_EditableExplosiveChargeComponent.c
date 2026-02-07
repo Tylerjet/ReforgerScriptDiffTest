@@ -8,6 +8,9 @@ class SCR_EditableExplosiveChargeComponentClass : SCR_EditableSystemComponentCla
 //! Editable Mine
 class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 {
+	[Attribute(desc: "If charge should be armed by default when spawned by the GM.")]
+	protected bool m_bArmedByDefault;
+
 	[Attribute("120", desc: "Default fuze time that will be used when object is spawned by GM.")]
 	protected float m_fDefaultFuzeTime;
 
@@ -29,7 +32,8 @@ class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 		if (explosiveChargeComp)
 		{
 			explosiveChargeComp.SetFuzeTime(m_fDefaultFuzeTime, true);
-			explosiveChargeComp.ArmWithTimedFuze(true);
+			if (m_bArmedByDefault)
+				explosiveChargeComp.ArmWithTimedFuze(true);
 		}
 	}
 

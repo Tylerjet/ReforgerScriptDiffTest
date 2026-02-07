@@ -91,7 +91,7 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 		
 		// if damageManager is not cast, throw assert
 		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
-		damageMgr.FindDamageEffectsOnHitZone(effects, this);
+		damageMgr.FindDamageEffectsOnHitZone(this, effects);
 		
 		// if wanted dps is physical hitZone passive regen, return the exact value. If the regen is still in delaytimer, return 0
 		if (targetDamageType == EDamageType.REGENERATION && SCR_CharacterHitZone.Cast(this))
@@ -109,7 +109,7 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 		
 		// if wanted dps is physical hitZone healing, add defaultHitZone to checked hitZones
 		if (SCR_CharacterHitZone.Cast(this) && targetDamageType == EDamageType.HEALING)
-			damageMgr.FindDamageEffectsOnHitZone(effects, damageMgr.GetDefaultHitZone());
+			damageMgr.FindDamageEffectsOnHitZone(damageMgr.GetDefaultHitZone(), effects);
 		
 		foreach (BaseDamageEffect effect : effects)
 		{

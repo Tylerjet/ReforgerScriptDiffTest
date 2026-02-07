@@ -6,7 +6,7 @@ class SCR_CommandingManagerComponentClass : SCR_BaseGameModeComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 {
-	[Attribute("{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et")]
+	[Attribute("{04D3B38E23F51754}Prefabs/AI/Groups/Slave_Group.et")]
 	protected ResourceName m_sAIGroupPrefab;
 	
 	[Attribute("{54764D4E706F348C}Configs/Commanding/Commands.conf")]

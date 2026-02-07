@@ -356,6 +356,11 @@ class SCR_MeleeComponent : ScriptComponent
 			damageManager.GetOwner(), hitZone, Instigator.CreateInstigator(GetOwner()), 
 			m_MeleeHitData.m_SurfaceProps, m_MeleeHitData.m_iColliderIndex, m_MeleeHitData.m_iNodeIndex);
 
+		if (m_MeleeHitData.m_Bayonet)
+			context.damageSource = m_MeleeHitData.m_Bayonet;
+		else
+			context.damageSource = m_MeleeHitData.m_Weapon;
+		
 		context.damageEffect = new SCR_MeleeDamageEffect();
 		damageManager.HandleDamage(context);
 	}

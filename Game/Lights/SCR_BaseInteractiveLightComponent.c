@@ -10,11 +10,21 @@ class SCR_BaseInteractiveLightComponentClass : SCR_BaseLightComponentClass
 	[Attribute("0", UIWidgets.EditBox, "LV of light effect")]
 	private float m_fLV;
 	
+	[Attribute("2", UIWidgets.EditBox, "Distance attenuation of light effect")]
+	private float m_fDistanceAttenuation;
+	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	float GetLightLV()
 	{
 		return m_fLV;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetDistanceAttenuation()
+	{
+		return m_fDistanceAttenuation;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -165,6 +175,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			for (int i = 0, count = m_aLights.Count(); i < count; i++)
 			{
 				m_aLights[i].SetColor(Color.FromVector(componentData.GetLightData()[i].GetLightColor()), componentData.GetLightLV());
+				m_aLights[i].SetDistanceAtt(componentData.GetDistanceAttenuation());
 			}
 
 			return;
