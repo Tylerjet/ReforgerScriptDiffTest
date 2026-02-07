@@ -21,8 +21,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	static proto void GetAimingSensitivity(out float mouse, out float gamepad, out float ads);
 	//!------------------------------------------------------------------------
 	//! FOV input curves
-	static proto void SetFOVInputCurve(float mouse, float gamepad, float gyro);
-	static proto void GetFOVInputCurve(out float mouse, out float gamepad, out float gyro);
+	static proto void SetFOVInputCurve(float mouse, float gamepad, float gyro, float trackIR);
+	static proto void GetFOVInputCurve(out float mouse, out float gamepad, out float gyro, out float trackIR);
 	//!------------------------------------------------------------------------
 	//! Gyro input sensitivity yaw/pitch/roll
 	static proto void SetGyroSensitivity(float yaw, float pitch, float roll);
@@ -47,14 +47,24 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	static proto bool GetMouseControlAircraft();
 	//!------------------------------------------------------------------------
 	//! Track-IR controls
-	static proto void SetTrackIRFreelookEnable(bool enable);
-	static proto bool GetTrackIRFreelookEnable();
+	static proto void SetTrackIREnable(bool enable);
+	static proto bool GetTrackIREnable();
 	static proto void SetTrackIRLeaningEnable(bool enable);
 	static proto bool GetTrackIRLeaningEnable();
+	static proto void SetTrackIRFreelookEnable(bool enable);
+	static proto bool GetTrackIRFreelookEnable();
+	static proto void SetTrackIRWhileADSEnable(bool enable);
+	static proto bool GetTrackIRWhileADSEnable();
+	static proto void SetTrackIRLeaningMode(ETrackIRLeanMode enable);
+	static proto ETrackIRLeanMode GetTrackIRLeaningMode();
 	static proto void SetTrackIRFreelookSensitivity(float sensitivity);
 	static proto float GetTrackIRFreelookSensitivity();
-	static proto void SetTrackIRLeaningSensitivity(float sensitivity);
-	static proto float GetTrackIRLeaningSensitivity();
+	static proto void SetTrackIRMoveLeaningSensitivity(float sensitivity);
+	static proto float GetTrackIRMoveLeaningSensitivity();
+	static proto void SetTrackIRRollLeaningSensitivity(float sensitivity);
+	static proto float GetTrackIRRollLeaningSensitivity();
+	static proto void SetTrackIRFreelookDeadzoneADS(float deadzone);
+	static proto float GetTrackIRFreelookDeadzoneADS();
 	static proto void SetTrackIRLeaningDeadzone(float deadzone);
 	static proto float GetTrackIRLeaningDeadzone();
 	static proto void SetTrackIRLeaningActiveYawRange(float range);

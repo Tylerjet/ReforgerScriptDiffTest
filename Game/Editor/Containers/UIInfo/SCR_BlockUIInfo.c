@@ -8,6 +8,7 @@ class SCR_BlockUIInfo : SCR_UIInfo
 	{
 		return super.HasDescription() || m_aDescriptionBlocks && !m_aDescriptionBlocks.IsEmpty();
 	}
+	
 	override LocalizedString GetDescription()
 	{
 		LocalizedString description = super.GetDescription();
@@ -18,13 +19,13 @@ class SCR_BlockUIInfo : SCR_UIInfo
 				if (m_aDescriptionBlocks[i].HasName())
 				{
 					if (m_aDescriptionBlocks[i].IsInline() || description.IsEmpty())
-						description += /*" " +*/ m_aDescriptionBlocks[i].GetName();
+						description += m_aDescriptionBlocks[i].GetName() + "<br/>";
 					else
 						description += "<br/>" + m_aDescriptionBlocks[i].GetName();
 				}
 			}
 		}
-		return description;
+		return description + "<br/>";
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -55,7 +56,6 @@ class SCR_BlockUIInfo : SCR_UIInfo
 
 		Name = text;
 	}
-	
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_SubBlockUIName: SCR_UIName
@@ -198,6 +198,7 @@ class SCR_SimpleTagBlockUIName: SCR_SubBlockUIName
 		
 		return text;
 	}
+	
 	override bool IsInline()
 	{
 		return super.IsInline() || m_iTags & 1; //--- <p> is always inline, we don't want extra <br/> there
@@ -228,7 +229,7 @@ class SCR_ImageBlockUIName: SCR_SubBlockUIName
 			return string.Empty;
 		}
 		
-		return "</br>" + string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(m_fColor), m_sImageSet, m_sImage, m_fScale);
+		return string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(m_fColor), m_sImageSet, m_sImage, m_fScale) + "</br>";
 	}
 }
 

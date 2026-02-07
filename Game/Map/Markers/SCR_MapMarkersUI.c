@@ -964,6 +964,10 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		if (!mapRadial)
 			return;
 		
+		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
+		if (focusedWidget)
+			return;
+		
 		mapRadial.GetRadialController().OnInputOpen();
 		mapRadial.GetRadialController().GetRadialMenu().PerformEntry(m_RootCategoryEntry);
 	

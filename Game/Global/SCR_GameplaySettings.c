@@ -187,54 +187,6 @@ class SCR_HintSettings : ModuleGameSettings
 	}
 };
 
-class SCR_AimSensitivitySettings : ModuleGameSettings
-{
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0.1 2 0.01", desc: "Mouse aim sensitivity")]
-	float m_fMouseSensitivity;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0.1 2 0.01", desc: "Stick aim sensitivity")]
-	float m_fStickSensitivity;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0.1 2 0.01", desc: "Additional aim sensitivity multiplier for ADS")]
-	float m_fAimADS;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "FOV input curve for mouse")]
-	float m_fFOVInputCurveMouse;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "FOV input curve for stick")]
-	float m_fFOVInputCurveStick;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "FOV input curve for gyro")]
-	float m_fFOVInputCurveGyro;
-};
-
-class SCR_ControllerSettings : ModuleGameSettings
-{
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, "Enable gyro always")]
-	bool m_bGyroAlways;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, "Enable gyro while freelooking")]
-	bool m_bGyroFreelook;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, "Enable gyro while aiming down sights")]
-	bool m_bGyroADS;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 20 0.1", desc: "Gyro sensitivity")]
-	float m_fGyroSensitivity;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 2 0.01", desc: "Gyro vertical horizontal ratio")]
-	float m_fGyroVerticalHorizontalRatio;
-
-	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.ENABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro yaw direction", enums: ParamEnumArray.FromEnum(SCR_EGyroAxisDirection))]
-	SCR_EGyroAxisDirection m_eGyroDirectionYaw;
-
-	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.ENABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro pitch direction", enums: ParamEnumArray.FromEnum(SCR_EGyroAxisDirection))]
-	SCR_EGyroAxisDirection m_eGyroDirectionPitch;
-
-	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_EGyroAxisDirection.DISABLED), uiwidget: UIWidgets.ComboBox, desc: "Gyro roll direction", enums: ParamEnumArray.FromEnum(SCR_EGyroAxisDirection))]
-	SCR_EGyroAxisDirection m_eGyroDirectionRoll;
-}
-
 class SCR_RecentGames : ModuleGameSettings
 {
 	[Attribute("", UIWidgets.ResourceAssignArray, "Recent game headers", "conf")]

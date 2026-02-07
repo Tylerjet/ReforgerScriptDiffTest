@@ -103,11 +103,14 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		
 		// Footer Buttons
 		CreateResetAllKeybindsButton();
-		CreateCalibrateGyroButton();
 		CreateSimpleBindingButton();
 		CreateUnbindSingleButton();
 		CreateSingleKeybindResetButton();
 		CreateAdvancedBindingButton();
+
+		PlatformService ps = GetGame().GetPlatformService();
+		if (ps && ps.GetLocalPlatformKind() == PlatformKind.PSN)
+			CreateCalibrateGyroButton();
 		
 		// Actions
 		m_ActionsComponent = SCR_MenuActionsComponent.FindComponent(GetRootWidget());

@@ -6,6 +6,7 @@ class CharacterCameraSet : ScriptedCameraSet
 	static const int	CHARACTERCAMERA_1ST_VEHICLE				= 3;		//!< vehicle 1st person
 	static const int	CHARACTERCAMERA_1ST_VEHICLE_TRANSITION	= 4;		//!< vehicle 1st person
 	static const int	CHARACTERCAMERA_1ST_TURRET				= 5;		//!< turret in 1st person
+	static const int 	CHARACTERCAMERA_1ST_TURRET_TRANSITION	= 35;
 	static const int	CHARACTERCAMERA_1ST_READY				= 6;		//!< weapon ready in 1st person
 	static const int	CHARACTERCAMERA_1ST_FLOAT				= 7;		//!< 1st person floating cam
 	
@@ -63,6 +64,7 @@ class CharacterCameraSet : ScriptedCameraSet
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_VEHICLE, CharacterCamera1stPersonVehicle);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_VEHICLE_TRANSITION, CharacterCamera1stPersonVehicleTransition);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_TURRET, CharacterCamera1stPersonTurret);
+		RegisterCameraCreator(CHARACTERCAMERA_1ST_TURRET_TRANSITION, CharacterCamera1stPersonTurretTransition);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_READY, CharacterCamera1stPersonReady);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_FLOAT, CharacterCamera1stPersonFloat);
 		RegisterCameraCreator(CHARACTERCAMERA_1ST_UNCONSCIOUS, CharacterCamera1stPersonUnconscious);

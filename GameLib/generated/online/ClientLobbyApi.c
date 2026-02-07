@@ -54,8 +54,9 @@ sealed class ClientLobbyApi
 	\brief Set callback for periodical room refresh
 	*/
 	proto external void SetRefreshCallback(BackendCallback callback);
-	/*
-	\brief Set a time span between page updates (in ms).
+	/*!
+	Set a time span between page updates (in ms).
+	\note Minimal value is 20000 ms.
 	*/
 	proto external void SetRefreshRate(int iRate);
 	/*

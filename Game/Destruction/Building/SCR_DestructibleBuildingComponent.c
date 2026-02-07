@@ -998,10 +998,16 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		// Exclude characters and vehicles right away.
 		// Note, we query with NO_PROXY flags so characters inside vehicles or inventory
 		// items of characters won't even make it here.
-		if (ChimeraCharacter.Cast(e) || Vehicle.Cast(e))
+		if (ChimeraCharacter.Cast(e))
 		{
 			// Kill occupants after destruction starts determined by delay set in prefab data, so it appears as if they died from the building falling on top of them
 			GetGame().GetCallqueue().CallLater(DamageOccupantsDelayed, GetDelay() * 1000, param1: e);
+			return true;
+		} 
+		else if (Vehicle.Cast(e))
+		{
+			//destroy the vehicle after the destruction delay
+			GetGame().GetCallqueue().CallLater(HandleVehicle, GetDelay() * 1000, param1: e);
 			return true;
 		}
 		
@@ -1077,6 +1083,22 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		if (headHitzone)
 			headHitzone.HandleDamage(1000, EDamageType.TRUE, null);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void HandleVehicle(IEntity targetEntity)
+	{
+		if (!IsInside(targetEntity))
+			return;
+		
+		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(targetEntity.FindComponent(DamageManagerComponent));
+		if (!damageManager)
+			return;
+		
+		HitZone defaultHitzone = damageManager.GetDefaultHitZone();
+		if (defaultHitzone)
+			defaultHitzone.HandleDamage(defaultHitzone.GetMaxHealth(), EDamageType.TRUE, null);
+	}
+
 
 	//------------------------------------------------------------------------------------------------
 	void GoToDestroyedStateLoad()

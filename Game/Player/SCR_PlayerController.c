@@ -214,40 +214,15 @@ class SCR_PlayerController : PlayerController
 			m_CharacterController = null;
 
 		SetGameUserSettings();
+		
+		SCR_AimSensitivitySettings.SetAimSensitivitySettings();
+		SCR_HeadTrackingSettings.SetHeadTrackingSettings();
+		SCR_ControllerSettings.SetControllerSettings();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static void SetGameUserSettings()
 	{
-		BaseContainer aimSensitivitySettings = GetGame().GetGameUserSettings().GetModule("SCR_AimSensitivitySettings");
-
-		if (aimSensitivitySettings)
-		{
-			float aimSensitivityMouse;
-			float aimSensitivityGamepad;
-			float aimMultipADS;
-
-			if (aimSensitivitySettings.Get("m_fMouseSensitivity", aimSensitivityMouse) &&
-				aimSensitivitySettings.Get("m_fStickSensitivity", aimSensitivityGamepad) &&
-				aimSensitivitySettings.Get("m_fAimADS", aimMultipADS))
-			{
-				CharacterControllerComponent.SetAimingSensitivity(aimSensitivityMouse, aimSensitivityGamepad, aimMultipADS);
-				SCR_CharacterCameraHandlerComponent.SetADSSensitivity(aimMultipADS);
-			}
-
-			// Input curve: 0 = constant, 1 = linear
-			float inputCurveMouse;
-			float inputCurveStick;
-			float inputCurveGyro;
-
-			if (aimSensitivitySettings.Get("m_fFOVInputCurveMouse", inputCurveMouse) &&
-				aimSensitivitySettings.Get("m_fFOVInputCurveStick", inputCurveStick) &&
-				aimSensitivitySettings.Get("m_fFOVInputCurveGyro", inputCurveGyro))
-			{
-				CharacterControllerComponent.SetFOVInputCurve(inputCurveMouse, inputCurveStick, inputCurveGyro);
-			}
-		}
-
 		BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
 
 		if (gameplaySettings)
@@ -271,71 +246,6 @@ class SCR_PlayerController : PlayerController
 			EVehicleDrivingAssistanceMode drivingAssistance;
 			if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
 				VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
-		}
-
-		BaseContainer controllerSettings = GetGame().GetGameUserSettings().GetModule("SCR_ControllerSettings");
-		if (controllerSettings)
-		{
-			bool gyroAlways;
-			bool gyroFreelook;
-			bool gyroADS;
-			if (controllerSettings.Get("m_bGyroAlways", gyroAlways)
-				&& controllerSettings.Get("m_bGyroFreelook", gyroFreelook)
-				&& controllerSettings.Get("m_bGyroADS", gyroADS))
-			{
-				CharacterControllerComponent.SetGyroControl(gyroAlways, gyroFreelook, gyroADS);
-			}
-
-			float gyroSensitivity;
-			float gyroVerticalHorizontalRatio;
-
-			SCR_EGyroAxisDirection gyroDirectionYaw;
-			SCR_EGyroAxisDirection gyroDirectionPitch;
-			SCR_EGyroAxisDirection gyroDirectionRoll;
-
-			if (controllerSettings.Get("m_fGyroSensitivity", gyroSensitivity)
-				&& controllerSettings.Get("m_fGyroVerticalHorizontalRatio", gyroVerticalHorizontalRatio)
-				&& controllerSettings.Get("m_eGyroDirectionYaw", gyroDirectionYaw)
-				&& controllerSettings.Get("m_eGyroDirectionPitch", gyroDirectionPitch)
-				&& controllerSettings.Get("m_eGyroDirectionRoll", gyroDirectionRoll))
-			{
-				float sensitivityYaw;
-				switch (gyroDirectionYaw)
-				{
-					case SCR_EGyroAxisDirection.ENABLED: sensitivityYaw = gyroSensitivity; break;
-					case SCR_EGyroAxisDirection.INVERTED: sensitivityYaw = -gyroSensitivity; break;
-				}
-
-				float sensitivityPitch;
-				switch (gyroDirectionPitch)
-				{
-					case SCR_EGyroAxisDirection.ENABLED: sensitivityPitch = gyroSensitivity; break;
-					case SCR_EGyroAxisDirection.INVERTED: sensitivityPitch = -gyroSensitivity; break;
-				}
-
-				float sensitivityRoll;
-				switch (gyroDirectionRoll)
-				{
-					case SCR_EGyroAxisDirection.ENABLED: sensitivityRoll = gyroSensitivity; break;
-					case SCR_EGyroAxisDirection.INVERTED: sensitivityRoll = -gyroSensitivity; break;
-				}
-
-				if (gyroVerticalHorizontalRatio > 1)
-				{
-					// Slider over 50%: reduce horizontal
-					float horizontalRatio = Math.Max(2 - gyroVerticalHorizontalRatio, 0);
-					sensitivityYaw  *= horizontalRatio;
-					sensitivityRoll *= horizontalRatio;
-				}
-				else
-				{
-					// Slider below 50%: reduce vertical
-					float verticalRatio = Math.Max(gyroVerticalHorizontalRatio, 0);
-					sensitivityPitch *= verticalRatio;
-				}
-
-				CharacterControllerComponent.SetGyroSensitivity(sensitivityYaw, sensitivityPitch, sensitivityRoll);
-			}
 		}
 
 		BaseContainer fovSettings = GetGame().GetGameUserSettings().GetModule("SCR_FieldOfViewSettings");

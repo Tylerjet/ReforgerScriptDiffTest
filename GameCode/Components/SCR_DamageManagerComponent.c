@@ -609,14 +609,15 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		// Check if any hitzone is damaged
 		array<HitZone> hitZones = {};
 		GetAllHitZonesInHierarchy(hitZones);
+		SCR_FlammableHitZone flammableHitZone;
 		foreach (HitZone hitZone : hitZones)
 		{
 			if (hitZone && hitZone.GetDamageState() != EDamageState.UNDAMAGED)
 				return true;
 
 			// Flammable hitzone may be smoking
-			SCR_FlammableHitZone flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
-			if (flammableHitZone && flammableHitZone.GetFireState() != SCR_EBurningState.NONE)
+			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
+			if (flammableHitZone && IsOnFire(flammableHitZone))
 				return true;
 		}
 

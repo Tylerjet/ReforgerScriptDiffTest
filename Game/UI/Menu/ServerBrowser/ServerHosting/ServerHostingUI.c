@@ -300,7 +300,7 @@ class ServerHostingUI : SCR_TabDialog
 		// Open workshop
 		ContentBrowserUI workshopUI = ContentBrowserUI.Cast(GetGame().GetMenuManager().GetTopMenu());
 		if (!workshopUI)
-			workshopUI = ContentBrowserUI.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowser));
+			SCR_WorkshopUiCommon.TryOpenWorkshop();
 	}
 
 	//------------------------------------------------------------------------------------------------

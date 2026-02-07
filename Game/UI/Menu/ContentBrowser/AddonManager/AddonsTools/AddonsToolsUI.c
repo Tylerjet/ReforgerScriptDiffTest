@@ -76,7 +76,7 @@ class AddonsToolsUI : SCR_TabDialog
 		
 		ContentBrowserUI workshopUI = ContentBrowserUI.Cast(GetGame().GetMenuManager().GetTopMenu());
 		if (!workshopUI)
-			workshopUI = ContentBrowserUI.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowser));
+			SCR_WorkshopUiCommon.TryOpenWorkshop();
 		
 		// Open tab
 		if (workshopUI)

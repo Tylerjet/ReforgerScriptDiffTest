@@ -670,8 +670,6 @@ class ArmaReforgerScripted : ChimeraGame
 		
 #ifdef PLATFORM_CONSOLE
 		SCR_SettingsManager settingsManager = GetSettingsManager();
-		//by default we do not expect console to have keyboard
-		m_bHasKeyboard = false;
 
 		//setup default quality settings for consoles
 		if (settingsManager)
@@ -835,7 +833,7 @@ class ArmaReforgerScripted : ChimeraGame
 	override void OnInputDeviceIsGamepadEvent(bool isGamepad)
 	{
 		m_OnInputDeviceIsGamepadInvoker.Invoke(isGamepad);
-		if (!isGamepad && !m_bHasKeyboard)
+		if (!m_bHasKeyboard && !isGamepad)
 			m_bHasKeyboard = true;
 	}
 

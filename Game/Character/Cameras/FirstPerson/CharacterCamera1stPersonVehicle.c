@@ -165,7 +165,7 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 // ************************************************************************************
 class CharacterCamera1stPersonVehicleTransition extends CharacterCamera1stPersonVehicle
 {
-	private bool m_isExiting = false;
+	protected bool m_isExiting = false;
 
 	//-----------------------------------------------------------------------------
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)

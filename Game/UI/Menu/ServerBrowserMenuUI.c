@@ -62,7 +62,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected ref OnDirectJoinCallback m_CallbackSearchTarget = new OnDirectJoinCallback();
 	
 	// Room data refresh
-	protected ref ServerBrowserCallback m_CallbackAutoRefresh = new ServerBrowserCallback();
+	protected ref ServerBrowserCallback m_CallbackAutoRefresh;
 	protected bool m_bFirstRoomLoad = true;
 	protected bool m_bForceUnfilteredRequest;
 	protected int m_iTotalNumberOfRooms;
@@ -137,7 +137,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Accessing handlers
 		SetupHandlers();
 		SetupCallbacks();
-		m_CallbackAutoRefresh.m_OnSuccess.Insert(OnRoomAutoRefresh);
+		SetupRefreshCallback();
 
 		SetupParams(m_Lobby);
 
@@ -224,10 +224,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Lobby.StoreParams();
 
 		// Remove callbacks
-		m_Lobby.SetRefreshCallback(null);
+		ClearRefreshCallback();
 
 		m_ScrollableList.GetOnSetPage().Remove(CallOnServerListSetPage);
-		m_CallbackAutoRefresh.m_OnSuccess.Clear();
 
 		ClearConnectionTimeoutWaiting();
 
@@ -360,9 +359,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 		
 		CheckBackendState();
-		
-		// Remove callbacks
-		m_Lobby.SetRefreshCallback(null);
 
 		// Start loading
 		if (m_bFirstRoomLoad)
@@ -621,9 +617,6 @@ class ServerBrowserMenuUI : MenuRootBase
 				PrintDebug("No room found", "OnRoomsFound");
 		}
 		
-		// Setup room data refresh
-		lobby.SetRefreshCallback(m_CallbackAutoRefresh);
-		lobby.SetRefreshRate(ROOM_REFRESH_RATE);
 
 		DisplayRooms(m_aRooms);
 
@@ -738,9 +731,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Start loading and show loading feedback
 		m_SelectedServerEntry = null;
 		m_ModsManager.Clear();
-		
-		// Remove callbacks
-		m_Lobby.SetRefreshCallback(null);
 
 		if (!m_bForceUnfilteredRequest)
 		{
@@ -902,7 +892,22 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Server list
 		m_ScrollableList.GetOnSetPage().Insert(CallOnServerListSetPage);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetupRefreshCallback()
+	{
+		m_CallbackAutoRefresh = new ServerBrowserCallback();
+		m_CallbackAutoRefresh.m_OnSuccess.Insert(OnRoomAutoRefresh);
+		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
+		m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ClearRefreshCallback()
+	{
+		m_CallbackAutoRefresh = null;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// --- ENTRIES ---
 	//------------------------------------------------------------------------------------------------
@@ -2655,7 +2660,7 @@ class ServerBrowserMenuUI : MenuRootBase
 				joinRoom.SetQueueBackendCallback(m_CallbackQueue);
 				
 				// Remove auto refresh callback, as it is not needed while in queue
-				m_Lobby.SetRefreshCallback(null);
+				ClearRefreshCallback();
 				break;
 			}
 			
@@ -2672,7 +2677,7 @@ class ServerBrowserMenuUI : MenuRootBase
 					dialog.GetOnFavorite().Insert(OnActionFavorite);
 				}
 			
-				m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+				SetupRefreshCallback();
 				JoinProcess_Clear();
 				break;
 			}
@@ -2681,7 +2686,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			case SCR_EJoinFailUI.BANNED:
 			{
 				m_Dialogs.DisplayJoinBan(m_JoinData);
-				m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+				SetupRefreshCallback();
 				JoinProcess_Clear();
 				break;
 			}
@@ -2690,7 +2695,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			default:
 			{
 				m_Dialogs.DisplayJoinFail(apiCode);
-				m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+				SetupRefreshCallback();
 				JoinProcess_Clear();
 				break;
 			}
@@ -2703,7 +2708,10 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Lobby.GetJoinRoom().LeaveJoinQueue();
 		m_Dialogs.CloseCurrentDialog();
 		
-		JoinProcess_Clear();		
+		JoinProcess_Clear();
+		
+		// Restore auto refresh callback
+		SetupRefreshCallback();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2726,7 +2734,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		JoinProcess_Clear();
 		
 		// Restore auto refresh callback
-		m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+		SetupRefreshCallback();
 	}
 	
 	//------------------------------------------------------------------------------------------------

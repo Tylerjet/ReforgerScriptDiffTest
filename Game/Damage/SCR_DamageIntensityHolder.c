@@ -26,7 +26,7 @@ class SCR_DamageIntensityHolder
 			Print("'SCR_DamageIntensityEntry' Damage scaled cannot be less than 0!", LogLevel.WARNING);
 			value = 0;
 		}
-		
+
 		SCR_DamageIntensityEntry entry;
 		for (int i = 0, count = m_SortedDamageIntensityEntries.Count(); i < count; i++)
 		{
@@ -49,9 +49,24 @@ class SCR_DamageIntensityHolder
 			return null;
 		
 		float healthScaled = 0;
+		SCR_FlammableHitZone flammableHitZone;
+		SCR_DamageManagerComponent hitZoneContainer;
 		foreach (HitZone hitZone : hitZones)
 		{
+			if (!hitZone)
+				continue;
+
 			healthScaled += hitZone.GetHealthScaled();
+			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
+			if (!flammableHitZone)
+				continue;
+
+			hitZoneContainer = SCR_DamageManagerComponent.Cast(flammableHitZone.GetHitZoneContainer());
+			if (!hitZoneContainer || !hitZoneContainer.IsOnFire(flammableHitZone))
+				continue;
+
+			healthScaled = 0;
+			break;
 		}
 		
 		return GetValidIntensityEntry(healthScaled / hitZones.Count());

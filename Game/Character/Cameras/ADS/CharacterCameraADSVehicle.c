@@ -133,6 +133,7 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 	
 				pOutResult.m_CameraTM[3]            = (sightLSMat[3] - cameraSlotMat[3]).InvMultiply3(cameraSlotMat);
 				pOutResult.m_pWSAttachmentReference = cameraSlot;
+				pOutResult.m_pOwner                 = m_OwnerCharacter;
 			}
 			else
 			{

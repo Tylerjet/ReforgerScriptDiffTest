@@ -20,6 +20,7 @@ sealed class InputManager: ActionManager
 	proto external void SetCursorPosition(int x, int y);
 	//! Returns true when mouse/keyboard is preferred input method
 	proto external bool IsUsingMouseAndKeyboard();
+	proto external bool IsTrackIRConnected();
 	/*!
 	\brief Returns last dominant input device used by user.
 	EInputDeviceType.MOUSE for standard mouse & keyboard combination

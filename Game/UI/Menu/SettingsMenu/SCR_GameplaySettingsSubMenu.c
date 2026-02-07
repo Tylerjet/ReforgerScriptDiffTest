@@ -28,6 +28,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		super.OnTabHide();
 
 		SCR_PlayerController.SetGameUserSettings();
+		SCR_AimSensitivitySettings.SetAimSensitivitySettings();
+		SCR_ControllerSettings.SetControllerSettings();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -82,9 +84,6 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 
 		LoadSettings();
 		
-		BindFOVSettings();
-		BindSensitivitySettings();
-		BindControllerSettings();
 		BindLanguage();
 		BindCrossplaySettings();
 
@@ -194,30 +193,6 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void BindFOVSettings()
-	{
-		BindSettingChange("1PP");
-		BindSettingChange("3PP");
-		BindSettingChange("VehicleFOV");
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void BindSensitivitySettings()
-	{
-		BindSettingChange("AimMouse");
-		BindSettingChange("AimGamepad");
-		BindSettingChange("AimADS");
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void BindControllerSettings()
-	{
-		BindSettingChange("GyroSensitivity");
-		BindSettingChange("FOVInputCurveGyro");
-		BindSettingChange("GyroVerticalHorizontalRatio");
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void OnLanguageChange(SCR_SpinBoxComponent comp, int i)
 	{
 		BaseContainer setting = GetGame().GetEngineUserSettings().GetModule("UserInterfaceSettings");
@@ -231,19 +206,5 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		GetGame().UserSettingsChanged();
 		
 		m_OnLanguageChanged.Invoke(this);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void BindSettingChange(string settingName)
-	{
-		SCR_SliderComponent slider = SCR_SliderComponent.GetSliderComponent(settingName, m_wRoot);
-		if (slider)
-			slider.GetOnChangedFinal().Insert(OnSliderChange);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnSliderChange(SCR_SliderComponent comp, float val)
-	{
-		SCR_PlayerController.SetGameUserSettings();
 	}
 }

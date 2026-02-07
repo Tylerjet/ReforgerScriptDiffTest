@@ -175,4 +175,39 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		return cameraManager.GetVehicleFOV();
 	}
 }
+// *************************************************************************************
+// ! CharacterCamera1stPersonTurretTransition - 1st person camera when character is getting in/out turret
+// ************************************************************************************
+class CharacterCamera1stPersonTurretTransition extends CharacterCamera1stPersonVehicleTransition
+{
+	private bool m_bDoorTransformSet = false;
+	private vector m_vDoorTransform[4];
+	
+	//-----------------------------------------------------------------------------
+	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
+	{
+		super.OnActivate(pPrevCamera, pPrevCameraResult);
+	}
+	
+	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
+	{
+		super.OnUpdate(pDt, pOutResult);
+		if (m_pCompartmentAccess)
+		{
+			BaseCompartmentSlot compartment = m_pCompartmentAccess.GetCompartment();
+			if (compartment && !m_bDoorTransformSet)
+			{
+				compartment.GetManager().GetDoorInfo(compartment.PickDoorIndexForPoint(m_OwnerCharacter.GetOrigin())).GetExitPointInfo().GetWorldTransform(m_vDoorTransform);
+				m_bDoorTransformSet = true;
+			}
+			
+			if (!m_pCompartmentAccess.IsInCompartment() && m_isExiting)
+			{
+				m_Input.SetHeadingAngle(m_vDoorTransform[2][0]);
+				m_Input.SetAimingAngles(m_vDoorTransform[2]);
+			}
+		}
+	}
+}
+
 //---- REFACTOR NOTE END ----

@@ -85,7 +85,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 
 			activeDoT = EDamageType.FIRE;
 			
-			fireRateHealAmount += flammableHitZone.GetFireRate();
+			fireRateHealAmount += Math.Max(1, flammableHitZone.GetFireRate());
 			
 			if (fireRateHealAmount >= m_fFireRateReductionEachExecute)
 				return m_fFireRateReductionEachExecute;

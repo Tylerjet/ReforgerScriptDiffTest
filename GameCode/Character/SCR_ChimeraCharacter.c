@@ -13,12 +13,13 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 	[NonSerialized()]
 	SCR_CharacterPerceivableComponent m_pPerceivableComponent;
 	
-	[Attribute(defvalue: "1", desc: "Can this character be recruited by players"), RplProp()]
+	[Attribute(defvalue: "1", desc: "Can this character be recruited by players"), RplProp(), NonSerialized()]
 	protected bool m_bRecruitable;
 	
+	[NonSerialized()]
 	protected ref array<IEntity> m_aContacts;
 	
-	[RplProp()]
+	[RplProp(), NonSerialized()]
 	protected bool m_bIsRecruited = 0;
 
 	protected static const string SIGNAL_NAME_SPECIAL_CONTACT = "SpecialContact";

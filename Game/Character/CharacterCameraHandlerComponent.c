@@ -281,6 +281,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		}
 		else if (compartmentAccess && (compartmentAccess.IsGettingIn() || compartmentAccess.IsGettingOut()))
 		{
+			if (compartmentAccess.GetCompartment() && TurretControllerComponent.Cast(compartmentAccess.GetCompartment().GetController())) // is leaving turret
+				return CharacterCameraSet.CHARACTERCAMERA_1ST_TURRET_TRANSITION;
 			return CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION;
 		}
 		else if( m_OwnerCharacter.IsInVehicle() )
@@ -388,7 +390,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		{
 			transTime = 0.0;
 		}
-		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION || pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION)
+		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION || pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE_TRANSITION ||
+				 pFrom == CharacterCameraSet.CHARACTERCAMERA_1ST_TURRET_TRANSITION || pTo == CharacterCameraSet.CHARACTERCAMERA_1ST_TURRET_TRANSITION)
 		{
 			transTime = 0.8;
 		}
@@ -627,7 +630,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		vector resultWorldTransform[4]; // If pOutResult.m_CameraTM is in someone's model space, this transforms it back to world space.
 		if (pOutResult.m_pWSAttachmentReference && pOutResult.m_pWSAttachmentReference.GetOwner())
-			pOutResult.m_pWSAttachmentReference.GetOwner().GetWorldTransform(resultWorldTransform);
+			pOutResult.m_pWSAttachmentReference.GetWorldTransform(resultWorldTransform);
 		else if (owner)
 			owner.GetWorldTransform(resultWorldTransform);
 		else
@@ -653,15 +656,6 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		vector camTransformLS[4];
 		Math3D.MatrixCopy(pOutResult.m_CameraTM, camTransformLS);
-		
-		if (pOutResult.m_pWSAttachmentReference)
-		{
-			// If pOutResult.m_pWSAttachmentReference has value, the matrix was supplied in PointInfo space
-			// Here we transform it to world space because we want the camera to follow the attachment reference without being owned by it
-			vector wsAttachmentWorldTransform[4];
-			pOutResult.m_pWSAttachmentReference.GetWorldTransform(wsAttachmentWorldTransform);
-			Math3D.MatrixMultiply4(wsAttachmentWorldTransform, camTransformLS, camTransformLS);
-		}
 		
 		vector basePos = camTransformLS[3]; // Camera position without heading applied.
 		

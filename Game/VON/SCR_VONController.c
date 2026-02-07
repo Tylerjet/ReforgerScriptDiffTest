@@ -212,7 +212,10 @@ class SCR_VONController : ScriptComponent
 		
 		SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
 		if (radioEntry)
+		{
+			m_LongRangeEntry = m_ActiveEntry;
 			SetVONLongRange(radioEntry.IsLongRange(), false);
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -263,6 +266,21 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Finds first unmuted entry and sets it as the active entry
+	void SelectFirstUnmutedEntry()
+	{
+		foreach (SCR_VONEntry entry : m_aEntries)
+		{
+			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+			if (!radioEntry)
+				continue;
+			
+			SetEntryActive(entry, true);
+			break;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetVONProximity(bool activate)
 	{
 		if (!m_VONComp)
@@ -307,6 +325,10 @@ class SCR_VONController : ScriptComponent
 	{
 		if (!m_VONComp)
 			return;
+		
+		// If active entry is null, attempt to select another.
+		if (!m_ActiveEntry)
+			SelectFirstUnmutedEntry();
 
 		// if active entry disabled or character is incapacitated, use direct instead
 		if (m_eLifeState != ECharacterLifeState.ALIVE || !m_ActiveEntry || !m_ActiveEntry.IsUsable())
@@ -338,6 +360,8 @@ class SCR_VONController : ScriptComponent
 
 		if (longRange)
 		{
+			DeactivateVON(EVONTransmitType.CHANNEL);
+			
 			// saved entry to switch back to after using long range mode
 			if (!m_SavedEntry && m_ActiveEntry != m_LongRangeEntry)
 				m_SavedEntry = m_ActiveEntry;

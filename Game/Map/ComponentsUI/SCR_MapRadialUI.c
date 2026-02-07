@@ -113,6 +113,10 @@ class SCR_MapRadialUI : SCR_MapUIBaseComponent
 			SCR_HUDManagerComponent hud = GetGame().GetHUDManager();
 			m_Display = SCR_MapRadialDisplay.Cast(hud.FindInfoDisplay(SCR_MapRadialDisplay));
 			m_RadialMenu.SetMenuDisplay(m_Display);
+			
+			float w, h;
+			GetGame().GetWorkspace().GetScreenSize(w, h);
+			m_RadialMenu.SetMenuCenterPos(Vector(w, h, 0) * 0.5);
 		}
 		else if (m_RadialMenu.IsOpened())	// TODO proper close here
 			return;

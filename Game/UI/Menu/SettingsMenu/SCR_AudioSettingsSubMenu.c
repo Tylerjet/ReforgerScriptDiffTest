@@ -12,8 +12,13 @@ class SCR_AudioSettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "VolumeVoiceChat", "VOIP"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "VolumeDialog", "Dialogue"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "StereoMode", "ProcessingMode"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("AudioSettings", "DualsenseSpeakerEnabled", "DualsenseSpeakerEnabled"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AudioSettings", "m_fDynamicRange", "DynamicRange"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AudioSettings", "m_bGTinnitus", "EnableTinnitus"));
 		LoadSettings();
+		
+		Widget dualsenseSpeakerWidget = m_wRoot.FindAnyWidget("DualsenseSpeakerEnabled");
+		if (dualsenseSpeakerWidget && System.GetPlatform() != EPlatform.PS5 && System.GetPlatform() != EPlatform.PS5_PRO)
+			dualsenseSpeakerWidget.SetVisible(false);
 	}
 };

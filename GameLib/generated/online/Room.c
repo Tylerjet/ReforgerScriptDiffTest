@@ -41,6 +41,7 @@ sealed class Room
 	/*
 	\brief Returns region in which server is located
 	*/
+	[Obsolete()]
 	proto external string Region();
 	/*
 	\brief Returns name of server
@@ -65,10 +66,12 @@ sealed class Room
 	/*
 	\brief BI-account name of the server owner (if known)
 	*/
+	[Obsolete()]
 	proto external string OwnerName();
 	/*
 	\brief Returns Gamemode name on the server
 	*/
+	[Obsolete()]
 	proto external string GameMode();
 	/*
 	\brief Issue Join request to the server. On Successful result can initiate transition to the server.

@@ -79,9 +79,13 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
+		//++ Ensure the tooltip is only hijacked if its a publish tooltip
+		string tag = tooltip.GetTag();
+		if (tag != "publish_action" && tag != "publish_disabled_empty" && tag != "publish_disabled_downloaded")
+			return;
+		
 		WorldSaveItem saveItem;
 		SCR_SaveWorkshopManager.GetInstance().GetCurrentSave(saveItem);
-		
 		string message = TOOLTIP_PUBLISH_EMPTY;
 		
 		if (saveItem)
