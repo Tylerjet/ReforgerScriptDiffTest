@@ -14,13 +14,24 @@ class SCR_WaypointLinesEditorUIComponent : SCR_BaseEditorUIComponent
 	protected ref map<SCR_EditableEntityComponent, int> m_Groups = new map<SCR_EditableEntityComponent, int>(); //--- ToDo: Save entities in an array if tokens prove to be unreliable
 	protected int m_iLineColorPacked;
 	
+	protected CanvasWidget m_wCanvas;
+	protected ref array<ref CanvasWidgetCommand> m_aDrawCommands;
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuUpdate(float timeSlice)
 	{
-		SCR_EditableEntityComponent child, prevWaypoint;
+		if (m_wCanvas)
+			m_aDrawCommands.Clear();
+		
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		BaseWorld world = GetGame().GetWorld();
+		SCR_EditableEntityComponent child, prevChild;
+		SCR_EditableGroupComponent prevGroup;
 		SCR_EditableWaypointComponent waypoint;
+		LineDrawCommand line;
+		
 		vector points[2];
-		vector pos1, pos2;
+		vector pos1, pos2, pos3;
 		foreach (SCR_EditableEntityComponent group, int groupTokens : m_Groups)
 		{
 			if (!group)
@@ -33,16 +44,41 @@ class SCR_WaypointLinesEditorUIComponent : SCR_BaseEditorUIComponent
 					continue;
 				
 				waypoint = SCR_EditableWaypointComponent.Cast(child);
-				prevWaypoint = waypoint.GetPrevWaypoint();
+				prevChild = waypoint.GetPrevWaypoint();
 				
-				if (!waypoint.GetPos(pos1) || !prevWaypoint.GetPos(pos2))
+				if (!waypoint.GetPos(pos1) || !prevChild.GetPos(pos2))
 					continue;
 				
 				points = {pos1, pos2};
 				Shape.CreateLines(m_iLineColorPacked, m_ShapeFlags, points, 2);
+				
+				if (!m_wCanvas)
+					continue;
+				
+				//++ If current waypoint is the active waypoint of the AIGroup
+				//++ And cycle waypoints are enabled, draw an arrow between both
+				prevGroup = SCR_EditableGroupComponent.Cast(waypoint.GetAIGroup());
+				if (prevGroup && prevGroup.AreCycledWaypointsEnabled() && waypoint.GetAIWaypoint() == prevGroup.GetAIGroupComponent().GetCurrentWaypoint() && prevGroup.GetPos(pos3))
+				{
+					//++ Calculate screen position of points
+					vector x0 = workspace.ProjWorldToScreenNative(pos1, world);
+					vector x1 = workspace.GetWorkspace().ProjWorldToScreenNative(pos3, world);
+					
+					//++ Create draw command
+					line = new LineDrawCommand();	
+					line.m_iColor = m_iLineColorPacked;
+					line.m_fOutlineWidth = 0;
+					line.m_fWidth = 2;
+					line.m_Vertices = { x0[0], x0[1], x1[0], x1[1] };
+					
+					//++ Insert into pool of draw commands
+					m_aDrawCommands.Insert(line);
+				}
 			}
-			
 		}
+		
+		if (m_wCanvas)
+			m_wCanvas.SetDrawCommands(m_aDrawCommands);
 		
 #ifdef WAYPOINT_LINES_DEBUG
 		DbgUI.Begin("");
@@ -135,6 +171,9 @@ class SCR_WaypointLinesEditorUIComponent : SCR_BaseEditorUIComponent
 		MenuRootBase menu = GetMenu();
 		if (menu)
 			menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
+		
+		m_wCanvas = CanvasWidget.Cast(GetGame().GetWorkspace().FindAnyWidget("m_wCanvas"));
+		m_aDrawCommands = {};
 	}
 
 	//------------------------------------------------------------------------------------------------

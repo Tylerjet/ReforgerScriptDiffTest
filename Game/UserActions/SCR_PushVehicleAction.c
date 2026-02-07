@@ -72,7 +72,12 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 		if (controller.GetStance() == ECharacterStance.PRONE)
 			return false;
 
-		Physics physics = GetOwner().GetRootParent().GetPhysics();
+		IEntity owner = GetOwner().GetRootParent();
+		CharacterAnimationComponent characterAnimationComp = controller.GetAnimationComponent();
+		if (!characterAnimationComp || characterAnimationComp.GetLinkedEntity() == owner)
+			return false;
+
+		Physics physics = owner.GetPhysics();
 		if (!physics)
 			return false;
 

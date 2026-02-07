@@ -511,11 +511,6 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 };
 
 [BaseContainerProps()]
-class SCR_AIGoalReaction_Retreat : SCR_AIGoalReaction
-{
-};
-
-[BaseContainerProps()]
 class SCR_AIGoalReaction_ThrowGrenadeTo : SCR_AIGoalReaction
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
@@ -645,12 +640,3 @@ class SCR_AIGoalReaction_ArtillerySupport : SCR_AIGoalReaction
 		utility.AddAction(b);
 	}
 };
-
-//--------------------------------------------------------------------------------------------------------
-// Helper methods used in above
-
-static void UpdateLastSeenPosition2(BaseTarget baseTarget, SCR_AITargetInfo newTargetInfo)
-{
-	if (baseTarget && baseTarget.GetTargetEntity() == newTargetInfo.m_Entity)
-		baseTarget.UpdateLastSeenPosition(newTargetInfo.m_vWorldPos, newTargetInfo.m_fTimestamp);
-}

@@ -248,33 +248,46 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			if (soundComponent.GetEventIndex(audioConfig.m_sSoundEventName) > 0)
 			{
 				if (action)
+				{
+					vector mat[4] = {vector.Right, vector.Up, vector.Forward, action.GetWorldPositionAction()};
+					soundComponent.SetTransformation(mat); // this is necessary as otherwise sound system may use some old position, which might be far enough, that the sound is going to fail audibility test
 					soundComponent.SoundEventOffset(audioConfig.m_sSoundEventName, action.GetLocalPositionAction());
-				else 
-					soundComponent.SoundEventOffset(audioConfig.m_sSoundEventName, vector.Zero);
+				}
+				else
+				{
+					soundComponent.SoundEventOffset(audioConfig.m_sSoundEventName, audioConfig.m_vOffset);
+				}
+
 				return;
 			}
 			//~ Sound was not played
 			else
 			{
-				Print(string.Format("'SCR_BaseSupportStationComponent': Trying to play sound for '%1' but sound either sound event '%2' or more likely sound file '%3' is not included on the SoundComponent! SCR_SoundManagerEntity is used instead but that means position of sound is not updated if entity moves while sound is playing.", soundOwner, audioConfig.m_sSoundEventName, audioConfig.m_sSoundProject), LogLevel.WARNING);
+				Print(string.Format("'SCR_BaseSupportStationComponent': Trying to play sound for '%1' but sound either sound event '%2' or more likely sound file '%3' is not included on the SoundComponent! SCR_SoundManagerModule is used instead but that means position of sound is not updated if entity moves while sound is playing.", soundOwner, audioConfig.m_sSoundEventName, audioConfig.m_sSoundProject), LogLevel.WARNING);
 			}
 		}
 
 		//~ No sound manager
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(soundOwner.GetWorld());
+		if (!soundManager)
 			return;
-
-		vector transform[4];
-		soundOwner.GetTransform(transform);
+		
+		SCR_AudioSource audioSource;
 		
 		if (action)
-			transform[3] = action.GetWorldPositionAction();
-		else 
-			transform[3] = soundOwner.GetOrigin();
+		{
+			audioSource = soundManager.CreateAudioSource(soundOwner, audioConfig, action.GetWorldPositionAction());
+		}
+		else
+		{
+			audioSource = soundManager.CreateAudioSource(soundOwner, audioConfig);
+		}
 
-		//~  Play sound
-		soundManagerEntity.CreateAndPlayAudioSource(soundOwner, audioConfig, transform);
+		//~ Play sound
+		if (!audioSource)
+			return;
+
+		soundManager.PlayAudioSource(audioSource);
 	}
 
 	//------------------------------------------------------------------------------------------------

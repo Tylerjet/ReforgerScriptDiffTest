@@ -51,7 +51,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Activation Conditions", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Activation")]
 	SCR_EScenarioFrameworkLogicOperators m_eActivationConditionLogic;
 
-	[Attribute(desc: "Actions that will be activated when this gets initialized", category: "OnInit")]
+	[Attribute(desc: "Actions that will be activated on initalization.", category: "OnInit")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActivationActions;
 
 	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from observer cameras be enabled?", category: "Activation")]
@@ -824,6 +824,8 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		if (!previouslyRandomized && !m_aRandomlySpawnedChildren.IsEmpty())
 			previouslyRandomized = true;
 
+		const bool isWorldLoadInit = SCR_ScenarioFrameworkSystem.IsWorldLoadInit();
+		
 		if (m_SpawnChildren == SCR_EScenarioFrameworkSpawnChildrenType.ALL)
 		{
 			int slotCount;
@@ -839,7 +841,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 				
 				if (SCR_ScenarioFrameworkSlotBase.Cast(child))
 				{
-					if (SCR_ScenarioFrameworkSlotMarker.Cast(child) || SCR_ScenarioFrameworkSlotWaypoint.Cast(child))
+					if (isWorldLoadInit || SCR_ScenarioFrameworkSlotMarker.Cast(child) || SCR_ScenarioFrameworkSlotWaypoint.Cast(child))
 					{
 						InitChild(child);	
 					}
@@ -857,13 +859,11 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		}
 		else if (m_SpawnChildren == SCR_EScenarioFrameworkSpawnChildrenType.RANDOM_ONE)
 		{
-			//We need to introduce slight delay for the randomization by time seed to occur
-			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(SpawnRandomOneChild, Math.RandomInt(200, 400), false, previouslyRandomized);
+			SpawnRandomOneChild(previouslyRandomized);
 		}
 		else
 		{
-			//We need to introduce slight delay for the randomization by time seed to occur
-			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(SpawnRandomMultipleChildren, Math.RandomInt(200, 400), false, previouslyRandomized);
+			SpawnRandomMultipleChildren(previouslyRandomized);
 		}
 	}
 
@@ -872,8 +872,16 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	void SpawnPreviouslyRandomizedChildren()
 	{
 		CalculateSupposedSpawnedChildren(true);
+		
+		const bool isWorldLoadInit = SCR_ScenarioFrameworkSystem.IsWorldLoadInit();
 		foreach (int i, SCR_ScenarioFrameworkLayerBase child : m_aRandomlySpawnedChildren)
 		{
+			if (isWorldLoadInit)
+			{
+				InitChild(child);
+				continue;
+			}
+
 			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(InitChild, 200 * i, false, child);
 		}
 	}
@@ -973,10 +981,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		m_bDynamicallyDespawned = false;
 		m_bIsTerminated = false;
 
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
-		{
-			activationAction.RestoreToDefault();
-		}
+		RestoreActionsToDefault();
 
 		if (includeChildren)
 		{
@@ -1235,10 +1240,7 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 			plugin.Init(this);
 		}
 
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
-		{
-			activationAction.Init(GetOwner());
-		}
+		InitActivationActions();
 
 		if (m_ParentLayer)
 			m_ParentLayer.CheckAllChildrenSpawned(this);
@@ -1311,7 +1313,27 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_ScenarioFrameworkActionBase> GetActions()
+	protected void InitActivationActions()
+	{
+		const IEntity owner = GetOwner();
+
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		{
+			activationAction.Init(owner);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void RestoreActionsToDefault()
+	{
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
+		{
+			activationAction.RestoreToDefault();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_ScenarioFrameworkActionBase> GetActivationActions()
 	{
 		return m_aActivationActions;
 	}

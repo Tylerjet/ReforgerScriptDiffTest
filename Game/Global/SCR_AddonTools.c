@@ -1,51 +1,20 @@
+[Obsolete("Use SCR_ParamEnumArray")]
 class ParamEnumAddons : array<ref ParamEnum>
 {
-	protected static const int CORE_MODULE_COUNT = 2;
-
 	//------------------------------------------------------------------------------------------------
-	//! Get ParamEnumArray compatible with Attribute's enums parameter
-	//! Example:
-	//! \code
-	//! [Attribute(desc: "Pick an addon", uiwidget: UIWidgets.ComboBox, enums: ParamEnumAddons.FromEnum())]
-	//! protected int m_iAddon;
-	//! \endcode
-	//! \param[in] titleFormat 0 for "AddonID", 1 for "AddonTitle", 2 for "AddonTitle (AddonID)"
-	//! \param[in] hideCoreModules 0 to hide nothing, 1 to hide core (vanilla) addons, 2 to hide core addons only when more addons are available
-	//! \return an [Attribute] combobox-compatible ParamEnumArray value (for int variable)
-	static ParamEnumArray FromEnum(int titleFormat = 2, int hideCoreModules = 0)
+	[Obsolete("Use SCR_ParamEnumArray.FromAddons instead")]
+	private static ParamEnumArray FromEnum(int titleFormat = 2, int hideCoreModules = 0)
 	{
-		ParamEnumArray params = new ParamEnumArray();
-		array<string> addonGUIDs = {};
-		GameProject.GetLoadedAddons(addonGUIDs);
-
-		for (int i, count = addonGUIDs.Count(); i < count; i++)
-		{
-			string addonGUID = addonGUIDs[i];
-
-			if (hideCoreModules == 1 && GameProject.IsVanillaAddon(addonGUID))
-				continue;
-
-			if (hideCoreModules == 2 && count > CORE_MODULE_COUNT && GameProject.IsVanillaAddon(addonGUID))
-				continue;
-
-			string title;
-			switch (titleFormat)
-			{
-				case 0: title = GameProject.GetAddonID(addonGUID); break;
-				case 1: title = GameProject.GetAddonTitle(addonGUID); break;
-				default:
-				case 2: title = string.Format("%1 (%2)", GameProject.GetAddonTitle(addonGUID), GameProject.GetAddonID(addonGUID)); break;
-			}
-			params.Insert(new ParamEnum(title, i.ToString()));
-		}
-
-		return params;
+		return SCR_ParamEnumArray.FromAddons(titleFormat, hideCoreModules);
 	}
 }
 
 // TODO: rename to SCR_AddonTools?
 class SCR_AddonTool
 {
+	protected static const ref array<string> LOADED_ADDON_IDS = {}; // static values get reset every time addons are loaded/unloaded
+	protected static const ref array<string> LOADED_ADDON_GUIDS = {};
+
 	protected static const ref array<string> CORE_ADDONS = { "core", "ArmaReforger" };
 
 	//------------------------------------------------------------------------------------------------
@@ -100,23 +69,18 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use GetAddonID instead")]
-	static string GetAddonIndex(int index)
-	{
-		return GetAddonID(index);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Get addon name by providing index of the addon.
 	//! Can be used in tandem with ParamEnumAddons.
 	//! \param[in] index Index number
 	//! \return Addon ID
 	static string GetAddonID(int index)
 	{
-		array<string> addons = {};
-		GameProject.GetLoadedAddons(addons);
+		LoadAddons();
 
-		return GameProject.GetAddonID(addons[index]);
+		if (!LOADED_ADDON_IDS.IsIndexValid(index))
+			return string.Empty;
+
+		return LOADED_ADDON_IDS[index];
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -124,14 +88,9 @@ class SCR_AddonTool
 	//! \return addon IDs (format "core", "ArmaReforger" etc)
 	static array<string> GetAllAddonIDs(/* bool ignoreCoreAddons = false */)
 	{
-		array<string> addonGUIDs = {};
-		GameProject.GetLoadedAddons(addonGUIDs);
-		array<string> result = {};
-		foreach (string addonGUID : addonGUIDs)
-		{
-			result.Insert(GameProject.GetAddonID(addonGUID));
-		}
-		return result;
+		LoadAddons();
+
+		return SCR_ArrayHelperT<string>.GetCopy(LOADED_ADDON_IDS);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -139,9 +98,12 @@ class SCR_AddonTool
 	//! \return addon file system, e.g "$core:", "$ArmaReforger:" etc
 	static string GetAddonFileSystem(int addonIndex)
 	{
-		array<string> addonGUIDs = {};
-		GameProject.GetLoadedAddons(addonGUIDs);
-		return ToFileSystem(GameProject.GetAddonID(addonGUIDs[addonIndex]));
+		LoadAddons();
+
+		if (!LOADED_ADDON_IDS.IsIndexValid(addonIndex))
+			return string.Empty;
+
+		return ToFileSystem(LOADED_ADDON_IDS[addonIndex]);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -149,14 +111,39 @@ class SCR_AddonTool
 	//! \return addon IDs (format "$core:", "$ArmaReforger:" etc)
 	static array<string> GetAllAddonFileSystems(/* bool ignoreCoreAddons = false */)
 	{
-		array<string> addonGUIDs = {};
-		GameProject.GetLoadedAddons(addonGUIDs);
+		LoadAddons();
+
 		array<string> result = {};
-		foreach (string addonGUID : addonGUIDs)
+
+		foreach (string addonID : LOADED_ADDON_IDS)
 		{
-			result.Insert(ToFileSystem(GameProject.GetAddonID(addonGUID)));
+			result.Insert(ToFileSystem(addonID));
 		}
+
 		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] addonIndex
+	//! \return
+	static bool IsVanillaAddon(int addonIndex)
+	{
+		if (!LOADED_ADDON_GUIDS.IsIndexValid(addonIndex))
+			return false;
+
+		return GameProject.IsVanillaAddon(LOADED_ADDON_GUIDS[addonIndex]);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] addonID
+	//! \return
+	static bool IsVanillaAddon(string addonID)
+	{
+		int addonIndex = LOADED_ADDON_IDS.Find(addonID);
+		if (addonIndex < 0)
+			return false;
+
+		return GameProject.IsVanillaAddon(LOADED_ADDON_GUIDS[addonIndex]);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -182,7 +169,7 @@ class SCR_AddonTool
 		if (colonIndex < 0)
 			return fileSystemPath;
 
-		colonIndex++;
+		++colonIndex;
 		if (colonIndex == length)
 			return string.Empty;
 
@@ -192,15 +179,31 @@ class SCR_AddonTool
 	//------------------------------------------------------------------------------------------------
 	//!  Convert addon name to file system format.
 	//! For instance, "ArmaReforger" will get converted to "$ArmaReforger:".
-	//! \param[in] addon Addon ID
+	//! \param[in] addonID
 	//! \return addon name or empty string on wrong input
-	static string ToFileSystem(string addon)
+	static string ToFileSystem(string addonID)
 	{
-		addon.TrimInPlace();
-		if (!addon) // !.IsEmpty()
+		addonID.TrimInPlace();
+		if (!addonID) // !.IsEmpty()
 			return string.Empty;
 
-		return "$" + addon + ":";
+		return string.Format("$%1:", addonID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static void LoadAddons()
+	{
+		if (!LOADED_ADDON_IDS.IsEmpty())
+			return;
+
+		array<string> guids = {};
+		GameProject.GetLoadedAddons(guids);
+
+		LOADED_ADDON_GUIDS.Copy(guids);
+		foreach (string addonGUID : LOADED_ADDON_GUIDS)
+		{
+			LOADED_ADDON_IDS.Insert(GameProject.GetAddonID(addonGUID));
+		}
 	}
 
 #ifdef WORKBENCH

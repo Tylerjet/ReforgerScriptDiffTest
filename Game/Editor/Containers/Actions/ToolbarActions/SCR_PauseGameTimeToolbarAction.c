@@ -1,22 +1,9 @@
 [BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_Info")]
 class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 {
-	protected bool m_bIsGameTimePaused;
 	protected ChimeraWorld m_World;
 	protected SCR_BaseGameMode m_GameMode; 
-	
-	//---------------------------------------------------------------------------------------------
-	//--- ToDo: Use event?
-	protected void UpdateGameTimePause()
-	{
-		if (m_bIsGameTimePaused != m_World.IsGameTimePaused())
-		{
-			m_bIsGameTimePaused = m_World.IsGameTimePaused();
-			
-			Toggle(!m_bIsGameTimePaused, !m_bIsGameTimePaused);
-		}
-	}
-	
+
 	//---------------------------------------------------------------------------------------------
 	override bool IsServer()
 	{
@@ -54,7 +41,7 @@ class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 		if (pauseManager)
 			pauseManager.TogglePause();
 		else
-			m_GameMode.PauseGame(!m_World.IsGameTimePaused(), SCR_EPauseReason.EDITOR);
+			m_GameMode.PauseGame(!m_World.IsGameTimePaused(), SCR_EPauseReason.EDITOR | SCR_EPauseReason.MUSIC);
 	}
 	
 	//---------------------------------------------------------------------------------------------
@@ -62,15 +49,20 @@ class SCR_PauseGameTimeToolbarAction : SCR_BaseToggleToolbarAction
 	{
 		m_World = GetGame().GetWorld();
 		m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		m_bIsGameTimePaused = m_World.IsGameTimePaused();
+		UpdateGameTimePause();
 		GetGame().GetCallqueue().CallLater(UpdateGameTimePause, 1, true);
-		
-		Toggle(!m_bIsGameTimePaused, !m_bIsGameTimePaused);
 	}
 	
 	//---------------------------------------------------------------------------------------------
 	override void Untrack()
 	{
 		GetGame().GetCallqueue().Remove(UpdateGameTimePause);
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	protected void UpdateGameTimePause()
+	{
+		const bool isPaused = m_World.IsGameTimePaused();
+		Toggle(isPaused, isPaused);
 	}
 }

@@ -45,8 +45,6 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 		
 		if (m_ControllerComponent.IsFreeLookEnabled())
 		{
-			m_fFreelookBlend = Math.Clamp(m_fFreelookBlend + FREELOOK_FADE_SPEED * pDt, 0.0, 1.0); // Fade-in the effect
-			
 			// Override angle limits based on terrain slope
 			float downLimit = Math.Lerp(-60.0, 0.0, tSlopeDn);
 			float upLimit = Math.Lerp(89.9, 40.0, tSlope);
@@ -56,8 +54,6 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 		}
 		else
 		{
-			m_fFreelookBlend = Math.Clamp(m_fFreelookBlend - FREELOOK_FADE_SPEED * pDt, 0.0, 1.0); // Fade-out the effect
-			
 			m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();
 		}
 
@@ -72,12 +68,6 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 		lookAngles[1] = Math.Lerp(charaRot[1], -charaRot[1], tYaw); // Calc. backtrace direction's Pitch
 		
 		pOutResult.m_vBacktraceDir = lookAngles.AnglesToVector(); // Custom backtrace direction
-		
-		// Blend into using custom backtrace usiong as the camera looks up.
-		const float pitchMin = Math.Lerp(-10.0, -charaRot[1], tYaw);
-		const float pitchMax = pitchMin + 20.0;
-		float alpha = Math.InverseLerp(pitchMin, pitchMax, Math.Clamp(lookPitch, pitchMin, pitchMax));
-		pOutResult.m_fUseBacktraceDir = m_fFreelookBlend * alpha; // Use custom backtrace direction
 		
 		// Additionally, tweak the PitchLimitReduction curve multiplier
 		float pitchReductionMultiplier = 1.0;

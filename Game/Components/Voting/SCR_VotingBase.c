@@ -37,6 +37,9 @@ class SCR_VotingBase
 	[Attribute("0", desc: "Cooldown in seconds between instantiating votes. If a player has started a vote than they will no longer be able to do the same vote until the time has passed. Ignored if 0.", params: "0 inf")]
 	protected int m_iVoteCooldownTime;
 	
+	[Attribute("0", desc: "When true, the subject of voting has voting timer always enabled during the voting progress.")]
+	protected bool m_bAlwaysDisplayVoteSubjectVotingTimer;
+	
 	protected float m_fVoteCooldownTimeStamp = -1;
 	protected bool m_bHasInitiatedVotingLocallyOnce;
 	
@@ -342,6 +345,13 @@ class SCR_VotingBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool GetAlwaysDisplayVoteSubjectVotingTimer()
+	{
+		return m_bAlwaysDisplayVoteSubjectVotingTimer;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Periodically update the voting.
 	//! \param[in] timeSlice Time since the last update
 	void Update(float timeSlice)
@@ -363,6 +373,9 @@ class SCR_VotingBase
 		m_iMinParticipation = Math.Min(template.m_iMinParticipation, template.m_fThreshold); //--- Min participation cannot be stricter than threshold
 		m_iMinVotes = template.m_iMinVotes;
 		m_iVoteAuthorId = startingPlayerID;
+		m_bCancelWhenSubjectLeavesTheServer = template.m_bCancelWhenSubjectLeavesTheServer;
+		m_iVoteCooldownTime = template.m_iVoteCooldownTime;
+		m_bAlwaysDisplayVoteSubjectVotingTimer = template.m_bAlwaysDisplayVoteSubjectVotingTimer;
 		
 		if (remainingDuration == -1)
 			m_fDuration = template.m_fDuration;

@@ -74,9 +74,9 @@ class BaseRplComponent: GenericComponent
 	proto external RplNode GetNode();
 	/*!
 	Transfers ownership of the hierarchy to given connection.
-	\param identity connection identity.
+	\param newOwner Identity of new owner.
 	*/
-	proto external void Give(RplIdentity identity);
+	proto external void Give(RplIdentity newOwner);
 	/*!
 	Returns replication id of the RplComponent.
 	*/

@@ -80,6 +80,9 @@ class SCR_AvailableActionsConditionData
 	//! Current weapon magazine
 	protected BaseMagazineComponent m_CurrentMagazine;
 
+	protected string m_sCurrentlyPlacedItemName;
+	protected IEntity m_LastPlacedItem;
+
 	//! Current vehicle
 	protected IEntity m_CurrentVehicle;
 	//! How long is player using turbo as driver of vehicle
@@ -490,6 +493,13 @@ class SCR_AvailableActionsConditionData
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Returns current character weapon or null if none
+	string GetCurrentlyPlacedItemName()
+	{
+		return m_sCurrentlyPlacedItemName;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns current controlled vehicle
 	IEntity GetCurrentVehicle()
 	{
@@ -576,6 +586,36 @@ class SCR_AvailableActionsConditionData
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
+	protected void FetchCurrentlyPlacedItemName()
+	{
+		SCR_CampaignBuildingGadgetToolComponent gadgetComponent = SCR_CampaignBuildingGadgetToolComponent.Cast(m_GadgetManager.GetHeldGadgetComponent());
+		if (!gadgetComponent)
+			return;
+
+		SCR_MultiPartDeployableItemComponent deployableItemComp = gadgetComponent.GetCurrentlyHandledComponent();
+		if (!deployableItemComp)
+			return;
+
+		IEntity item = deployableItemComp.GetOwner();
+		if (!item)
+			return;
+
+		if (item != m_LastPlacedItem)
+		{
+			InventoryItemComponent iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+			if (!iic)
+				return;
+
+			UIInfo info = iic.GetUIInfo();
+			if (!info)
+				return;
+
+			m_sCurrentlyPlacedItemName = info.GetName();
+			m_LastPlacedItem = item;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Fetches data from the provided entity
 	//! Sets the validity of the data which can be received via IsValid()
 	void FetchData(IEntity controlledEntity, float timeSlice)
@@ -593,6 +633,9 @@ class SCR_AvailableActionsConditionData
 				m_VON = SCR_VoNComponent.Cast(character.FindComponent(SCR_VoNComponent));
 			}
 		}
+
+		if (m_GadgetManager)
+			FetchCurrentlyPlacedItemName();
 
 		if (!m_Character)
 		{
@@ -825,9 +868,9 @@ class SCR_AvailableActionsConditionData
 	//! Gets vehicle entity from potentially attached entity
 	protected IEntity GetVehicle(IEntity vehicle)	
 	{
-		IEntity parent;
+		IEntity parent = null;
 		
-		if (vehicle.Type() != Vehicle)
+		if (vehicle && vehicle.Type() != Vehicle)
 			parent = vehicle.GetParent();	
 	
 		if (parent)

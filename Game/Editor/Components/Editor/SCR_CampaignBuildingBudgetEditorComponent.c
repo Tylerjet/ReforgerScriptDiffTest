@@ -163,6 +163,10 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 				maxBudget = m_eHighestRank;
 				return true;
 
+			case EEditableEntityBudget.ESTABLISH_BASE:
+				maxBudget = CanEstablishBase();
+				return true;
+
 			case EEditableEntityBudget.PROPS:
 				maxBudget = GetProviderMaxValue(type);
 				return true;
@@ -234,6 +238,9 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 			case EEditableEntityBudget.RANK_GENERAL:
 				return m_eHighestRank - GetUserRank();
 
+			case EEditableEntityBudget.ESTABLISH_BASE:
+				return !CanEstablishBase();
+
 			case EEditableEntityBudget.PROPS:
 				return providerComponent.GetCurrentPropValue();
 			
@@ -296,6 +303,69 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 			return 0;
 
 		return providerComponent.GetCooldownValue(m_Manager.GetPlayerID());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CanEstablishBase()
+	{
+		// Establish base is allowed in others game modes like Gamemaster
+		SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.GetInstance();
+		if (!campaignGameMode)
+			return true;
+
+		if (!m_CampaignBuildingComponent)
+			return false;
+
+		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
+		if (!providerComponent)
+			return false;
+
+		IEntity player = SCR_PlayerController.GetLocalControlledEntity();
+		if (!player)
+			return false;
+
+		Faction faction = SCR_FactionManager.SGetLocalPlayerFaction();
+		if (!faction)
+			return false;
+
+		if (!campaignGameMode.GetBaseManager().CanFactionBuildNewBase(faction))
+			return false;
+
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
+			return false;
+
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasksByState(tasks, SCR_ETaskState.CREATED | SCR_ETaskState.ASSIGNED, faction.GetFactionKey());
+
+		SCR_EstablishBaseTaskEntity establishTask;
+		SCR_EstablishBaseTaskEntity nearestRelevantTask;
+
+		float distance;
+		float distanceToNearestRelevantTask;
+
+		foreach (SCR_Task task : tasks)
+		{
+			establishTask = SCR_EstablishBaseTaskEntity.Cast(task);
+
+			if (!establishTask)
+				continue;
+
+			distance = vector.DistanceSqXZ(providerComponent.GetOwner().GetOrigin(), establishTask.GetOrigin());
+
+			if (!nearestRelevantTask || distance < distanceToNearestRelevantTask)
+			{
+				nearestRelevantTask = establishTask;
+				distanceToNearestRelevantTask = distance;
+			}
+		}
+
+		int threshold = SCR_CampaignFactionCommanderHandlerComponent.Cast(SCR_FactionCommanderHandlerComponent.GetInstance()).GetBaseEstablishingRadius();
+
+		if (!nearestRelevantTask || distanceToNearestRelevantTask > (threshold * threshold))
+			return false;
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -465,6 +535,17 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 					break;
 				}
 
+				case EEditableEntityBudget.ESTABLISH_BASE:
+				{
+					SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.GetInstance();
+					Faction faction = SCR_FactionManager.SGetLocalPlayerFaction();
+					if (campaignGameMode && faction && !campaignGameMode.GetBaseManager().CanFactionBuildNewBase(faction))
+						GetManager().SendNotification(ENotification.EDITOR_PLACING_ESTABLISH_BASE_LIMIT_REACHED);
+					else
+						GetManager().SendNotification(ENotification.EDITOR_PLACING_BUDGET_ESTABLISH_BASE);
+					break;
+				}
+
 				case EEditableEntityBudget.PROPS:
 				{
 					GetManager().SendNotification(ENotification.EDITOR_PLACING_NO_MORE_COMPOSITIONS_AT_BASE);
@@ -563,6 +644,12 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 			case EEditableEntityBudget.RANK_GENERAL:
 			{
 				newMaxBudget = GetUserRank();
+				break;
+			}
+
+			case EEditableEntityBudget.ESTABLISH_BASE:
+			{
+				newMaxBudget = !CanEstablishBase();
 				break;
 			}
 

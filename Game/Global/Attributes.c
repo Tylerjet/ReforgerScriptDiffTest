@@ -63,15 +63,13 @@ class SCR_BaseContainerCustomTitleField : BaseContainerCustomTitle
 	}
 };
 
-/*!
-	\brief allow to define multiple fields - up to 9 elements
-	@code
-	[BaseContainerProps(), SCR_BaseContainerCustomTitleFields({ "m_sTitle", "m_sIcon" }, "[%2] %1")]
-	class TestConfigClass
-	{
-	}
-	@endcode
-*/
+//! \brief allow to define multiple fields (string or ResourceName) - up to 5 elements
+//! \code
+//! [BaseContainerProps(), SCR_BaseContainerCustomTitleFields({ "m_sTitle", "m_sIcon" }, "[%2] %1")]
+//! class TestConfigClass
+//! {
+//! }
+//! \endcode
 class SCR_BaseContainerCustomTitleFields : BaseContainerCustomTitle
 {
 	protected ref array<string> m_aPropertyNames;
@@ -94,25 +92,35 @@ class SCR_BaseContainerCustomTitleFields : BaseContainerCustomTitle
 		}
 
 		int count = m_aPropertyNames.Count();
+		if (count > 5)
+			count = 5;
+
 		array<string> arguments = {};
 		arguments.Resize(count); // needed here
 
 		for (int i = 0; i < count; i++)
 		{
-			title = "<°))))-<";
-			if (!source.Get(m_aPropertyNames[i], title) || title == "<°))))-<")
+			if (!source.Get(m_aPropertyNames[i], title))	// not a string, try a ResourceName
 			{
 				ResourceName tempResourceName;
 				if (source.Get(m_aPropertyNames[i], tempResourceName))
 					title = FilePath.StripPath(tempResourceName);
 				else
-					title = "x";
+					title = "x";							// not a string, not a ResourceName
 			}
 
 			arguments[i] = title;
 		}
 
-		title = SCR_StringHelper.Format(m_sFormat, arguments);
+		switch (count)
+		{
+			case 0: title = WidgetManager.Translate(m_sFormat); break;
+			case 1: title = WidgetManager.Translate(m_sFormat, arguments[0]); break;
+			case 2: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1]); break;
+			case 3: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1], arguments[2]); break;
+			case 4: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1], arguments[2], arguments[3]); break;
+			default: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]); break;
+		}
 
 		return true;
 	}
@@ -150,22 +158,24 @@ class SCR_BaseContainerLocalizedTitleField : BaseContainerCustomTitle
 	}
 };
 
-/*!
-	\brief allow to define multiple fields - up to 9 elements
-	@code
-	[BaseContainerProps(), SCR_BaseContainerLocalizedTitleFields({ "m_sTitle", "m_sIcon" }, "[%2] %1")]
-	class TestConfigClass
-	{
-	}
-	@endcode
-*/
+//! \brief allow to define multiple fields (string or ResourceName) in a translated text - up to 5 elements
+//! \code
+//! [BaseContainerProps(), SCR_BaseContainerLocalizedTitleFields({ "m_sFirstName", "m_sLastName" }, "MY-Translation_NamePresentation")]
+//! class TestConfigClass
+//! {
+//! 	protected string m_sFirstName;
+//! 	protected string m_sLastName;
+//! }
+//! \endcode
 class SCR_BaseContainerLocalizedTitleFields : BaseContainerCustomTitle
 {
 	protected ref array<string> m_aPropertyNames;
 	protected string m_sFormat;
 
 	//------------------------------------------------------------------------------------------------
-	void SCR_BaseContainerMultipleParametersTitleField(array<string> propertyNames, string format = "%1")
+	//! \param[in] propertyNames
+	//! \param[in] format
+	void SCR_BaseContainerLocalizedTitleFields(array<string> propertyNames, string format = "%1")
 	{
 		m_aPropertyNames = propertyNames;
 		m_sFormat = format;
@@ -181,25 +191,35 @@ class SCR_BaseContainerLocalizedTitleFields : BaseContainerCustomTitle
 		}
 
 		int count = m_aPropertyNames.Count();
+		if (count > 5)
+			count = 5;
+
 		array<string> arguments = {};
 		arguments.Resize(count); // needed here
 
 		for (int i = 0; i < count; i++)
 		{
-			title = "<°))))-<"; // looks fishy hey?
-			if (!source.Get(m_aPropertyNames[i], title) || title == "<°))))-<")
+			if (!source.Get(m_aPropertyNames[i], title))	// not a string, try a ResourceName
 			{
 				ResourceName tempResourceName;
-				if (source.Get(m_aPropertyNames[i], tempResourceName) && title != "<°))))-<")
+				if (source.Get(m_aPropertyNames[i], tempResourceName))
 					title = FilePath.StripPath(tempResourceName);
 				else
-					title = "x";
+					title = "x";							// not a string, not a ResourceName
 			}
 
 			arguments[i] = title;
 		}
 
-		title = SCR_StringHelper.Translate(m_sFormat, arguments);
+		switch (count)
+		{
+			case 0: title = WidgetManager.Translate(m_sFormat); break;
+			case 1: title = WidgetManager.Translate(m_sFormat, arguments[0]); break;
+			case 2: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1]); break;
+			case 3: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1], arguments[2]); break;
+			case 4: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1], arguments[2], arguments[3]); break;
+			default: title = WidgetManager.Translate(m_sFormat, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]); break;
+		}
 
 		return true;
 	}

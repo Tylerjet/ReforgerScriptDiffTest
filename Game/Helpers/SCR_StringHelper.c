@@ -15,6 +15,7 @@ class SCR_StringHelper
 	static const string STAR = "*";
 	static const string POUND = "#";
 	static const string HASHTAG = POUND;
+	static const string EQUALS = "=";
 	static const string QUESTION_MARK = "?";
 	static const string EXCLAMATION_MARK = "!";
 	static const string DOUBLE_SPACE = SPACE + SPACE;
@@ -143,6 +144,7 @@ class SCR_StringHelper
 			if (characters.Contains(letter) != useCharactersAsBlacklist) // if it contains but shouldn't, or vice-versa
 				result += letter;
 		}
+
 		return result;
 	}
 
@@ -636,6 +638,7 @@ class SCR_StringHelper
 			if (joinEmptyEntries || piece) // !piece.IsEmpty()'s fast version
 				result += separator + piece;
 		}
+
 		return result;
 	}
 
@@ -1260,67 +1263,6 @@ class SCR_StringHelper
 		return false;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	//! Get the actual translation from the translation key
-	//! If not a translation key, the provided input is returned
-	//! It is NOT recommended to manipulate a potentially non-ASCII string (multibyte UTF-8), use at your own risk!
-	//! \param[in] input
-	//! \param[in] param1
-	//! \param[in] param2
-	//! \param[in] param3
-	//! \param[in] param4
-	//! \param[in] param5
-	//! \param[in] param6
-	//! \param[in] param7
-	//! \param[in] param8
-	//! \param[in] param9
-	//! \return translated string, multibyte UTF-8 format
-	static string Translate(
-		string input,
-		string param1 = string.Empty,
-		string param2 = string.Empty,
-		string param3 = string.Empty,
-		string param4 = string.Empty,
-		string param5 = string.Empty,
-		string param6 = string.Empty,
-		string param7 = string.Empty,
-		string param8 = string.Empty,
-		string param9 = string.Empty)
-	{
-		return WidgetManager.Translate(input, param1, param2, param3, param4, param5, param6, param7, param8, param9);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Get the actual translation from the translation key
-	//! If not a translation key, the provided input is returned
-	//! It is NOT recommended to manipulate a potentially non-ASCII string (multibyte UTF-8) in script, use at your own risk!
-	//! \param[in] input
-	//! \param[in] arguments
-	//! \return translated string, multibyte UTF-8 format
-	static string Translate(string input, notnull array<string> arguments)
-	{
-		if (input.IsEmpty())
-			return string.Empty;
-
-		if (!input.Contains("%"))
-			return input;
-
-		switch (arguments.Count())
-		{
-			case 0: return WidgetManager.Translate(input);
-			case 1: return WidgetManager.Translate(input, arguments[0]);
-			case 2: return WidgetManager.Translate(input, arguments[0], arguments[1]);
-			case 3: return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2]);
-			case 4: return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2], arguments[3]);
-			case 5: return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4]);
-			case 6: return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5]);
-			case 7: return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6]);
-			case 8: return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7]);
-		}
-
-		// 9 and more
-		return WidgetManager.Translate(input, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
-	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Remove spaces, tabs and line returns on the left end of the provided string

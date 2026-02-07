@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class AimingComponentClass: BaseAimingComponentClass
-{
-}
-
 class AimingComponent: BaseAimingComponent
 {
 	//! Get the init rotation defined in the prefab in degrees

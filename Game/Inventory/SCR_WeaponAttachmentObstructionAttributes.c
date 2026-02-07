@@ -7,9 +7,9 @@ class SCR_WeaponAttachmentObstructionAttributes : WeaponAttachmentAttributes
 	protected ref array<ref BaseAttachmentType> m_aRequiredAttachmentTypes;
 	
 	//------------------------------------------------------------------------------------------------
-	array<typename> GetObstructedAttachmentTypes()
+	set<typename> GetObstructedAttachmentTypes()
 	{
-		array<typename> types = {};
+		set<typename> types();
 		foreach (BaseAttachmentType obstructedType : m_aObstructedAttachmentTypes)
 		{
 			types.Insert(obstructedType.Type());
@@ -19,9 +19,9 @@ class SCR_WeaponAttachmentObstructionAttributes : WeaponAttachmentAttributes
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<typename> GetRequiredAttachmentTypes()
+	set<typename> GetRequiredAttachmentTypes()
 	{
-		array<typename> types = {};
+		set<typename> types();
 		foreach (BaseAttachmentType requiredType : m_aRequiredAttachmentTypes)
 		{
 			types.Insert(requiredType.Type());

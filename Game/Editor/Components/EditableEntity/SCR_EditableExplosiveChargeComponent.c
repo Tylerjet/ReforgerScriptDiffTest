@@ -50,7 +50,7 @@ class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool Destroy()
+	override bool Destroy(int editorPlayerID)
 	{
 		if (!IsServer())
 			return false;
@@ -58,6 +58,7 @@ class SCR_EditableExplosiveChargeComponent : SCR_EditableSystemComponent
 		SCR_ExplosiveTriggerComponent explosiveChargeTrigger = SCR_ExplosiveTriggerComponent.Cast(GetOwner().FindComponent(SCR_ExplosiveTriggerComponent));
 		if (explosiveChargeTrigger)
 		{
+			explosiveChargeTrigger.SetInstigator(Instigator.CreateInstigatorGM(editorPlayerID));
 			explosiveChargeTrigger.UseTrigger();
 			return true;
 		}

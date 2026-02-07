@@ -1,3 +1,8 @@
+sealed class BtVariableGroup: BtVariable
+{
+	AIGroup m_Value;
+}
+
 class SCR_AIGetMyGroup: AITaskScripted
 {
 	static const string PORT_GROUP_OUT	= "GroupOut";
@@ -20,7 +25,7 @@ class SCR_AIGetMyGroup: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
-		if (GetVariableType(false, PORT_GROUP_OUT) != AIGroup)
+		if (!GetVariableType(false, PORT_GROUP_OUT).IsInherited(Managed))
 		{
 			NodeError(this, owner, PORT_GROUP_OUT+" should be AIGroup");
 		}

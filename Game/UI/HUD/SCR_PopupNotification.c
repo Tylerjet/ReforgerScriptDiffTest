@@ -36,6 +36,7 @@ class SCR_PopUpNotification : GenericEntity
 
 	protected ref array<ref SCR_PopupMessage> m_aQueue = {};
 
+	protected Widget m_wRoot;
 	protected RichTextWidget m_wPopupMsg;
 	protected RichTextWidget m_wPopupMsgSmall;
 	protected ProgressBarWidget m_wStatusProgress;
@@ -50,7 +51,8 @@ class SCR_PopUpNotification : GenericEntity
 	protected IEntity m_Player;
 
 	protected SCR_PopupMessage m_ShownMsg;
-	
+	protected string m_sCachedLanguage;
+
 	protected static const string INTERFACE_SETTINGS_NAME = "m_bShowNotifications";
 
 	//------------------------------------------------------------------------------------------------
@@ -105,13 +107,20 @@ class SCR_PopUpNotification : GenericEntity
 		if (!pc || !pc.GetControlledEntity())
 			return;
 
-		Widget root = GetGame().GetHUDManager().CreateLayout(LAYOUT_NAME, EHudLayers.MEDIUM, 0);
+		Widget root = GetGame().GetHUDManager().FindLayoutByResourceName(LAYOUT_NAME);
+		if (!root)
+			root = GetGame().GetHUDManager().CreateLayout(LAYOUT_NAME, EHudLayers.ALWAYS_TOP, 0);
 
 		if (!root)
 			return;
 
 		// Init can be safely processed
 		GetGame().GetCallqueue().Remove(ProcessInit);
+
+		SCR_EditorManagerEntity.GetInstance().GetOnModeChange().Insert(OnEditorModeChanged);
+		SCR_EditorManagerEntity.GetInstance().GetOnOpened().Insert(OnEditorOpened);
+		SCR_EditorManagerEntity.GetInstance().GetOnClosed().Insert(OnEditorClosed);
+		m_wRoot = root;
 
 		// Initialize popups UI
 		m_wPopupMsg = RichTextWidget.Cast(root.FindAnyWidget("Popup"));
@@ -164,6 +173,15 @@ class SCR_PopUpNotification : GenericEntity
 		
 		if (!m_bIsEnabledInSettings)
 			HideCurrentMsg();
+
+		string newLanguage;
+		WidgetManager.GetLanguage(newLanguage);
+		if (newLanguage.IsEmpty() || newLanguage == m_sCachedLanguage) // check if language is really changed
+			return;
+
+		m_sCachedLanguage = newLanguage;
+
+		ClearMsg();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -197,7 +215,52 @@ class SCR_PopUpNotification : GenericEntity
 	{
 		m_bInventoryOpen = open;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEditorOpened()
+	{
+		if (!m_wRoot)
+			return;
+
+		if (SCR_Enum.HasFlag(SCR_EditorManagerEntity.GetInstance().GetCurrentMode(), EEditorMode.BUILDING))
+			m_wRoot.SetVisible(true);
+		else
+			m_wRoot.SetVisible(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEditorClosed()
+	{
+		if (!m_wRoot)
+			return;
+
+		m_wRoot.SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEditorModeChanged(SCR_EditorModeEntity currentMode, SCR_EditorModeEntity prevMode)
+	{
+		if (!m_wRoot || !SCR_EditorManagerEntity.GetInstance().IsOpened())
+			return;
+
+		if (SCR_Enum.HasFlag(currentMode.GetModeType(), EEditorMode.BUILDING))
+			m_wRoot.SetVisible(true);
+		else
+			m_wRoot.SetVisible(false);
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool IsPresentPopupWithHigherPriority(int priority)
+	{
+		for (int i = 0, cnt = m_aQueue.Count(); i < cnt; i++)
+		{
+			if (m_aQueue[i].m_iPriority > priority)
+				return true;
+		}
+
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SetTitleText(string text)
 	{
@@ -302,7 +365,7 @@ class SCR_PopUpNotification : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FadeWidget(notnull Widget widget, bool fadeOut = false)
+	protected void FadeWidget(notnull Widget widget, bool fadeOut = false, bool instant = false)
 	{
 		float alpha, targetAlpha;
 
@@ -317,8 +380,15 @@ class SCR_PopUpNotification : GenericEntity
 			targetAlpha = m_fDefaultAlpha;
 		}
 
-		widget.SetOpacity(alpha);
-		AnimateWidget.Opacity(widget, targetAlpha, FADE_DURATION, !fadeOut || widget.IsVisible());
+		if (instant)
+		{
+			widget.SetOpacity(targetAlpha);
+		}
+		else
+		{
+			widget.SetOpacity(alpha);
+			AnimateWidget.Opacity(widget, targetAlpha, FADE_DURATION, !fadeOut || widget.IsVisible());
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -433,6 +503,23 @@ class SCR_PopUpNotification : GenericEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Clear and instant fade all popup messages
+	void ClearMsg()
+	{
+		if (m_wPopupMsg)
+			FadeWidget(m_wPopupMsg, true, true);
+
+		if (m_wPopupMsgSmall)
+			FadeWidget(m_wPopupMsgSmall, true, true);
+
+		if (m_wStatusProgress)
+			FadeWidget(m_wStatusProgress, true, true);
+
+		m_aQueue.Clear();
+		m_ShownMsg = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void SetDefaultHorizontalPosition()
 	{
 		float x, y;
@@ -514,7 +601,10 @@ class SCR_PopUpNotification : GenericEntity
 			return;
 		
 		if (interfaceSettings.Get(INTERFACE_SETTINGS_NAME, m_bIsEnabledInSettings))
+		{
 			GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);
+			WidgetManager.GetLanguage(m_sCachedLanguage);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -528,6 +618,13 @@ class SCR_PopUpNotification : GenericEntity
 		s_eFilter = SCR_EPopupMsgFilter.ALL;
 
 		GetGame().GetCallqueue().Remove(ProcessInit);
+
+		if (!SCR_EditorManagerEntity.GetInstance())
+			return;
+
+		SCR_EditorManagerEntity.GetInstance().GetOnModeChange().Remove(OnEditorModeChanged);
+		SCR_EditorManagerEntity.GetInstance().GetOnOpened().Remove(OnEditorOpened);
+		SCR_EditorManagerEntity.GetInstance().GetOnClosed().Remove(OnEditorClosed);
 	}
 };
 

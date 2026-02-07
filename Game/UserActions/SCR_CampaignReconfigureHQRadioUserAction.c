@@ -146,7 +146,7 @@ class SCR_CampaignReconfigureHQRadioUserAction : ScriptedUserAction
 			// No radio signal
 			if (m_Base != playerFaction.GetMainBase() && !m_Base.IsHQRadioTrafficPossible(playerFaction))
 			{
-				SetCannotPerformReason("#AR-Campaign_Action_NoSignal-UC");
+				SetCannotPerformReason("#AR-Campaign_Action_NoSignal");
 				return false;
 			}
 			

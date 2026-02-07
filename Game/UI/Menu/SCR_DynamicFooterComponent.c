@@ -213,7 +213,7 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 		if(!button)
 			return string.Empty;
 		
-		return m_Buttons.GetKeyByValue(button);
+		return SCR_MapHelper<string, SCR_InputButtonComponent>.GetKeyByValue(m_Buttons, button);
 	}
 	
 	//------------------------------------------------------------------------------------------------

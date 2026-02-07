@@ -10,9 +10,9 @@ class CampaignBasesSystem : GameSystem
 	protected ref array<SCR_CampaignMilitaryBaseComponent> m_Components = {};
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_CampaignMilitaryBaseComponent comp: m_Components)
 		{

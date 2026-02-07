@@ -2,7 +2,7 @@ class SCR_SpawnRequestComponentClass : ScriptComponentClass
 {
 	static override bool DependsOn(string className)
 	{		
-		if (className == "SCR_RespawnComponentClass")
+		if (className == "SCR_RespawnComponent")
 			return true;
 		
 		return false;
@@ -38,6 +38,9 @@ class SCR_SpawnRequestComponent : ScriptComponent
 	//! \return
 	int GetPlayerId()
 	{
+		if (!m_PlayerController)
+			return 0;
+		
 		return m_PlayerController.GetPlayerId();
 	}
 
@@ -166,7 +169,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			//Debug.Error("Caught request on locked player!"); //~ No need to error as it simply returns on locked. As requests can be made in various situations
+			//Print("SCR_SpawnRequestComponent::CanRequestRespawn - Caught request on locked player!", LogLevel.DEBUG); //~ No need to error as it simply returns on locked. As requests can be made in various situations
 			return false;
 		}
 		
@@ -215,7 +218,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, true))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_SpawnRequestComponent::ProcessCanRequest_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
 
@@ -302,7 +305,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Print("Caught request spawn on locked player!", LogLevel.WARNING);
+			Print("SCR_SpawnRequestComponent::RequestRespawn - Caught request spawn on locked player!", LogLevel.DEBUG);
 			return false;
 		}
 		
@@ -348,7 +351,7 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, true))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_SpawnRequestComponent::ProcessRequest_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
 
@@ -592,6 +595,9 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		SCR_RespawnComponent respawnComponent = GetRespawnComponent();
 		respawnComponent.GetOnRespawnResponseInvoker_O().Invoke(this, response, m_ConfirmationPendingData);
 		SCR_RespawnComponent.SGetOnLocalPlayerSpawned().Invoke();
+		auto respawnSystem = SCR_RespawnSystemComponent.GetInstance();
+		if (respawnSystem)
+			respawnSystem.DestroyLoadingPlaceholder();
 	}
 	
 	//------------------------------------------------------------------------------------------------

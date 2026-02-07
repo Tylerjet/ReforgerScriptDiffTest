@@ -6,8 +6,11 @@
 typedef func QueryEntitiesCallback;
 bool QueryEntitiesCallback(IEntity e);
 
-typedef func TraceEntitiesCallback;
-bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0");
+typedef func TraceFilterCallback;
+bool TraceFilterCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0");
+
+typedef func AsyncTraceFinishedCallback;
+void AsyncTraceFinishedCallback(notnull TraceParam param = null, float fraction = 0);
 
 /*!
 Post-process effect type.
@@ -37,7 +40,8 @@ enum PostProcessEffectType
 	SunMask,
 	GaussFilter,
 	SSR,
-	DepthOfFieldBokeh
+	DepthOfFieldBokeh,
+	ThermalImaging
 }
 
 class SharedItem: pointer

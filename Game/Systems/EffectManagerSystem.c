@@ -10,9 +10,9 @@ class EffectManagerSystem : GameSystem
 	protected ref array<SCR_BaseEffectManagerComponent> m_Components = {};
 	
 	//------------------------------------------------------------------------------------------------
-	protected override void OnUpdate(ESystemPoint point)
+	protected override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_BaseEffectManagerComponent comp: m_Components)
 		{

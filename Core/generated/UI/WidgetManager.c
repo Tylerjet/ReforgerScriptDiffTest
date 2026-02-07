@@ -21,15 +21,47 @@ sealed class WidgetManager
 	static const string NonBreakingSpace;
 
 	/*!
-	Gets all widgets at given position returning them in array from the closest to the farthest
-	Widgets with DISABLED or IGNORE_CURSOR or without VISIBLE flags are ignored.
+	Finds all widgets on specified position and returns them sorted by proximity.
+	Traverses the widget hierarchy starting from the given root widget and collects all widgets that
+	intersect with the specified position. Widgets with the flags `DISABLED`, or
+	those that are not `VISIBLE` are skipped. The resulting list is sorted from the closest to the farthest
+	widget relative to the viewer (e.g., front-to-back rendering order).
 
-	\param x X coordinate on screen in NATIVE resolution
-	\param y Y coordinate on screen in NATIVE resolution
-	\param rootWidget Where in the hierarchy should the tracing start. Is included in tracing.
-	\param outWidgets Array filled with traced widgets sorted from the closest to the farthest
+	\param x X coordinate in screen space, using NATIVE resolution units.
+	\param y Y coordinate in screen space, using NATIVE resolution units.
+	\param rootWidget The root widget at which to begin the trace. This widget and its entire hierarchy will be considered.
+	\param outWidgets Output array to be filled with intersecting widgets, sorted from closest to farthest.
 	*/
 	static proto void TraceWidgets(int x, int y, notnull Widget rootWidget, notnull array<Widget> outWidgets);
+	/*!
+	Finds all widgets intersecting a specified rectangle and returns them sorted by proximity.
+	Traverses the widget hierarchy starting from the given root widget and collects all widgets that
+	intersect with the specified rectangle. Widgets with the flags `DISABLED`, or
+	those that are not `VISIBLE` are skipped. The resulting list is sorted from the closest to the farthest
+	widget relative to the viewer (e.g., front-to-back rendering order).
+
+	\param x X coordinate (top-left corner) of the rectangle in screen space, using NATIVE resolution units.
+	\param y Y coordinate (top-left corner) of the rectangle in screen space, using NATIVE resolution units.
+	\param width Width of the rectangle in NATIVE resolution units.
+	\param height Height of the rectangle in NATIVE resolution units.
+	\param rootWidget The root widget at which to begin the trace. This widget and its entire hierarchy will be considered.
+	\param outWidgets Output array to be filled with intersecting widgets, sorted from closest to farthest.
+	*/
+	static proto void TraceWidgetsRect(int x, int y, int width, int height, notnull Widget rootWidget, notnull array<Widget> outWidgets);
+	/*!
+	Finds all widgets intersecting a specified circle and returns them sorted by proximity.
+	Traverses the widget hierarchy starting from the given root widget and collects all widgets that
+	intersect with the specified circle. Widgets with the flags `DISABLED`, or
+	those that are not `VISIBLE` are skipped. The resulting list is sorted from the closest to the farthest
+	widget relative to the viewer (e.g., front-to-back rendering order).
+
+	\param x X coordinate of the circle center in screen space, using NATIVE resolution units.
+	\param y Y coordinate of the circle center in screen space, using NATIVE resolution units.
+	\param radius Radius of the circle in NATIVE resolution units.
+	\param rootWidget The root widget at which to begin the trace. This widget and its entire hierarchy will be considered.
+	\param outWidgets Output array to be filled with intersecting widgets, sorted from closest to farthest.
+	*/
+	static proto void TraceWidgetsCircle(int x, int y, float radius, notnull Widget rootWidget, notnull array<Widget> outWidgets);
 	static proto void SetLanguage(string languageCode);
 	static proto void GetLanguage(out string languageCode);
 	static proto void SetCursor(int cursorIndex);

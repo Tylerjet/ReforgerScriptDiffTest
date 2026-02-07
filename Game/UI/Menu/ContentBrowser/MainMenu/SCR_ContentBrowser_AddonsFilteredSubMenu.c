@@ -1,39 +1,9 @@
 class SCR_ContentBrowser_AddonsFilteredSubMenu : SCR_ContentBrowser_AddonsSubMenu
 {
 	//------------------------------------------------------------------------------------------------
-	//! Requests a filtered page from backend to get the actual items to display
-	override protected void RequestOnlinePage(int pageId)
-	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
-
-		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
-		callback.GetEventOnSuccess().Insert(Callback_OnRequestPageGetAssets);
-		callback.GetEventOnFail().Insert(Callback_OnRequestPageTimeout);
-		callback.GetEventOnTimeOut().Insert(Callback_OnRequestPageTimeout);
-
-		m_aSearchCallbacks.Insert(callback);
-
-		if (!m_GetAssetListParams)
-			m_GetAssetListParams = new SCR_ContentBrowser_GetAssetListParams(this);
-
-		m_GetAssetListParams.limit = GRID_N_ROWS * GRID_N_COLUMNS;
-		m_GetAssetListParams.offset = pageId * GRID_N_ROWS * GRID_N_COLUMNS;
-		m_GetAssetListParams.type = "addon";
-
-		//m_GetAssetListParams.PackToFile("$profile:GetAssetList.json");
-		#ifdef WORKSHOP_DEBUG
-		ContentBrowserUI._print(string.Format("WorkshopApi.RequestPage() limit: %1, offset: %2", m_GetAssetListParams.limit, m_GetAssetListParams.offset));
-		#endif
-
-		m_WorkshopApi.RequestPage(callback, m_GetAssetListParams, m_bClearCacheAtNextRequest);
-
-		m_bClearCacheAtNextRequest = false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override protected void DisplayOfflineItems(int pageId)
 	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
 
 		// Get offline items from API
 		array<WorkshopItem> rawWorkshopItems = {};

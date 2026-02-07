@@ -10,12 +10,18 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	
 	[Attribute("0", UIWidgets.CheckBox, "Can the building mode at this provider executed only via user action?")]
 	protected bool m_bUserActionActivationOnly;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Can be used by any faction")]
+	protected bool m_bAnyFactionCanUse;
 
 	[Attribute("0", UIWidgets.CheckBox, "Master provider is for example HQ with other service (providers) in vicinity.")]
 	protected bool m_bIsMasterProvider;
 	
 	[Attribute("0", UIWidgets.CheckBox, "When opening a Free Roam Building mode, try to use master provider. Master provider is HQ where the service is registered in.")]
 	protected bool m_bUseMasterProvider;
+
+	[Attribute("0", UIWidgets.CheckBox, "Reads data(EEditableEntityLabel) from available providers as and extends the building option.")]
+	protected bool m_bUseAllAvailableProviders;
 		
 	[Attribute("0", UIWidgets.CheckBox, "Register at nearby base, if available.")]
 	protected bool m_bRegisterAtBase;
@@ -60,6 +66,7 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	
 	protected ref array<ref Tuple2<int, WorldTimestamp>> m_aPlacingCooldown = {};
 	protected bool m_bCooldownClientLock;
+	protected bool m_bUseAllAvailableProvidersByPlayer;
 	
 	SCR_CampaignBuildingProviderComponent m_MasterProviderComponent;
 	
@@ -221,6 +228,18 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 		return m_bIsMasterProvider;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool UseAllAvailableProviders()
+	{
+		return m_bUseAllAvailableProviders || m_bUseAllAvailableProvidersByPlayer;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetUseAllAvailableProvidersByPlayer(bool useByPlayer)
+	{
+		m_bUseAllAvailableProvidersByPlayer = useByPlayer;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \return Can player from this provider control friendly AI in building radius.
 	bool CanCommandAI()
@@ -430,6 +449,24 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 
 		return bases[0];
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return a Campaign military base component of the base this provider is registered to.
+	SCR_CampaignMilitaryBaseComponent GetCampaignMilitaryBaseComponent()
+	{
+		array<SCR_MilitaryBaseComponent> bases = {};
+		GetBases(bases);
+
+		SCR_CampaignMilitaryBaseComponent campaignBase;
+		foreach (SCR_MilitaryBaseComponent base : bases)
+		{
+			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+			if (campaignBase)
+				return campaignBase;
+		}
+
+		return null;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -592,6 +629,49 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	{
 		array<EEditableEntityLabel> availableTraits = {};
 		availableTraits.Copy(m_aAvailableTraits);
+
+		// if Establishing Bases is disabled, remove Base building trait
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+		if (campaign && !campaign.GetEstablishingBasesEnabled())
+			availableTraits.RemoveItem(EEditableEntityLabel.TRAIT_BASE);
+
+		// extends available traits from other providers traits
+		if (!UseAllAvailableProviders())
+			return availableTraits;
+
+		array<SCR_MilitaryBaseComponent> bases = {};
+		int count = GetBases(bases);
+		if (count == 0)
+			return availableTraits;
+
+		array<SCR_CampaignBuildingProviderComponent> campaignBuildingProvides = {};
+		int providerCount = bases[0].GetBuildingProviders(campaignBuildingProvides);
+		bool isVehicle;
+		array<EEditableEntityLabel> otherProviderAvailableTraits;
+		int providerAvailableTraitCount;
+
+		for (int i = 0; i < providerCount; i++)
+		{
+			if (campaignBuildingProvides[i].UseAllAvailableProviders())
+				continue;
+
+			// checks if the provider is in the vehicle and skips them, we need only providers from compositions
+			isVehicle = Vehicle.Cast(campaignBuildingProvides[i].GetOwner().GetParent());
+			if (isVehicle)
+				continue;
+
+			otherProviderAvailableTraits = campaignBuildingProvides[i].GetAvailableTraits();
+			providerAvailableTraitCount = otherProviderAvailableTraits.Count();
+
+			for (int j = 0; j < providerAvailableTraitCount; j++)
+			{
+				if (!availableTraits.Contains(otherProviderAvailableTraits[j]))
+				{
+					availableTraits.Insert(otherProviderAvailableTraits[j]);
+				}
+			}
+		}
+
 		return availableTraits;
 	}
 
@@ -923,6 +1003,13 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	{
 		return m_bUserActionActivationOnly;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool CanBeUsedByAnyFaction()
+	{
+		return m_bAnyFactionCanUse;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return Network Manager
@@ -979,27 +1066,22 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 
 		return GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Does character faction match the provider faction
-	// Method called by a user action to make sure it can only be shown to the players of the same faction the base belongs to.
-	//! \param[in] character
+	//! Does entity faction one match faction of entity two.
+	//! \param[in] entity
 	//! \return
-	bool IsCharacterFactionSame(notnull IEntity character)
+	bool IsEntityFactionSame(notnull IEntity ent1, notnull IEntity ent2)
 	{
-		Faction playerFaction = GetEntityFaction(character);
-		if (!playerFaction)
+		Faction ent1Faction = GetEntityFaction(ent1);
+		if (!ent1Faction)
 			return false;
 
-		IEntity provider = GetOwner();
-		if (!provider)
+		Faction ent2Faction = GetEntityFaction(ent2);
+		if (!ent2Faction)
 			return false;
 
-		Faction owningFaction = GetEntityFaction(provider);
-		if (!owningFaction)
-			return false;
-
-		return playerFaction == owningFaction;
+		return ent1Faction == ent2Faction;
 	}
 
 	//------------------------------------------------------------------------------------------------

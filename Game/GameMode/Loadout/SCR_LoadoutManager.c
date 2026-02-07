@@ -327,17 +327,20 @@ class SCR_LoadoutManager : GenericEntity
 	//! Returns the first loadout with the provided name, or null if none were found.
 	//! \param[in] name
 	//! \return
-	SCR_BasePlayerLoadout GetLoadoutByName(string name)
+	SCR_BasePlayerLoadout GetLoadoutByName(string name, FactionKey faction = string.Empty)
 	{
-		int count = m_aPlayerLoadouts.Count();
-		for (int i = 0; i < count; i++)
+		foreach (SCR_BasePlayerLoadout candidate : m_aPlayerLoadouts)
 		{
-			SCR_BasePlayerLoadout candidate = m_aPlayerLoadouts[i];
-			
 			if (candidate.GetLoadoutName() == name)
+			{
+				auto factionLoadout = SCR_FactionPlayerLoadout.Cast(candidate);
+				if (faction && factionLoadout && factionLoadout.GetFactionKey() != faction)
+					continue;
+				
 				return candidate;
+			}
 		}
-		
+
 		return null;
 	}
 	
@@ -396,6 +399,54 @@ class SCR_LoadoutManager : GenericEntity
 		return outCount;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] group
+	//! \param[in] faction
+	//! \param[out] outLoadouts
+	//! \return
+	int GetPlayerLoadoutsByGroup(notnull SCR_AIGroup group, notnull Faction faction, out notnull array<ref SCR_BasePlayerLoadout> outLoadouts)
+	{
+		outLoadouts.Clear();
+
+		if (!m_aPlayerLoadouts)
+			return 0;
+
+		ArmaReforgerScripted game = GetGame();
+		if (!game)
+			return 0;
+
+		FactionManager factionManager = game.GetFactionManager();
+		if (!factionManager)
+			return 0;
+
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+		if (!scrFaction)
+			return 0;
+
+		SCR_FactionPlayerLoadout factionLoadout;
+		Faction ldFaction;
+		int outCount;
+		foreach (SCR_BasePlayerLoadout loadout : m_aPlayerLoadouts)
+		{
+#ifdef DISABLE_ARSENAL_LOADOUTS
+			if (SCR_PlayerArsenalLoadout.Cast(loadout))
+				continue;
+#endif
+			factionLoadout = SCR_FactionPlayerLoadout.Cast(loadout);
+			if (!factionLoadout)
+				continue;
+
+			ldFaction = factionManager.GetFactionByKey(factionLoadout.m_sAffiliatedFaction);
+			if (faction == ldFaction && group.IsLoadoutInGroup(factionLoadout))
+			{
+				outLoadouts.Insert(factionLoadout);
+				outCount++;
+			}
+		}
+
+		return outCount;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[out] outLoadouts
 	//! \return

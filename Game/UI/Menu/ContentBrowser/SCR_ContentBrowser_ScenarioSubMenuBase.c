@@ -2,6 +2,12 @@
 Sub menu base for handlign scenario lines.
 */
 
+class SCR_ScenarioMenuLoadContext
+{
+	ref array<MissionWorkshopItem> m_aScenarios;
+	Widget m_wListRoot;
+}
+
 class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 {
 	[Attribute("{FEFDB7917AB8310F}UI/layouts/Menus/ContentBrowser/ScenariosMenu/ContentBrowser_ScenarioLine.layout", UIWidgets.ResourceNamePicker, ".layout for the scenario lines", params: "layout")]
@@ -34,7 +40,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 
 	protected bool m_bIsListeningForCommStatus;
 	protected WorkshopApi m_WorkshopApi;
-		
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -345,18 +351,19 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Play(MissionWorkshopItem scenario)
+	protected bool Play(MissionWorkshopItem scenario)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
-			return;
+		if (!SCR_ScenarioUICommon.CanPlay(scenario))
+			return false;
 
 		// Save behavior
+		/*
 		WorldSaveItem save = WorldSaveItem.Cast(scenario.GetOwner());
 		if (save)
 		{
 			// Find save by id
 			string id = save.Id();
-			string fileName = GetGame().GetSaveManager().FindFileNameById(id);
+			string fileName = ""; //GetGame().GetSaveManager().FindFileNameById(id);
 			
 			if (!fileName)
 			{
@@ -366,16 +373,19 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 			
 			GetGame().GetSaveManager().SetFileNameToLoad(fileName);
 		}
+		*/
 		
 		// Play scenario 
 		SCR_ScenarioUICommon.TryPlayScenario(scenario);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Continue(MissionWorkshopItem scenario)
+	protected bool Continue(MissionWorkshopItem scenario)
 	{
 		SCR_ScenarioUICommon.LoadSave(scenario, m_Header, ChimeraMenuPreset.ScenarioMenu);
 		SCR_ScenarioUICommon.TryPlayScenario(scenario);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -397,8 +407,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnRestartConfirmed()
 	{
-		GetGame().GetSaveManager().ResetFileNameToLoad();
-		SCR_ScenarioUICommon.TryPlayScenario(m_SelectedScenario);
+		SCR_ScenarioUICommon.RestartScenario(m_SelectedScenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -442,22 +451,25 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 			m_OnLineFavorite.Invoke(isFavorite);
 	}
 
-	// ---- HELPERS ----
-	// Create lines for scenarios
 	//------------------------------------------------------------------------------------------------
 	protected bool CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
 	{
+		array<ResourceName> missionFilter();
+		
+		SCR_ScenarioMenuLoadContext context();
+		context.m_aScenarios = scenarios;
+		context.m_wListRoot = parent;
+		
 		foreach (MissionWorkshopItem scenario : scenarios)
 		{
-			if (!CreateLine(m_sLinesLayout, parent, scenario))
-				return false;
+			missionFilter.Insert(scenario.Id())
 		}
 
-		return true;
+		return GetGame().GetSaveGameManager().RetrieveSaveGameInfo(missionFilter, new SaveGameOperationCb(OnSaveGameDataLoaded, context));
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected Widget CreateLine(ResourceName layout,  Widget parent, MissionWorkshopItem scenario)
+	protected Widget CreateLine(ResourceName layout, Widget parent, MissionWorkshopItem scenario)
 	{
 		Widget w = GetGame().GetWorkspace().CreateWidgets(layout, parent);
 		if (!w)
@@ -478,6 +490,29 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		
 		return w;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnSaveGameDataLoaded(bool success, Managed context)
+	{
+		if (!success)
+		{
+			OnScenariosLoadFailed();
+			return;
+		}
+
+		auto ctx = SCR_ScenarioMenuLoadContext.Cast(context);
+		if (!ctx.m_wListRoot)
+			return; // Menu closed already before callback could invoke
+
+		foreach (MissionWorkshopItem scenario : ctx.m_aScenarios)
+		{
+			if (scenario)
+				CreateLine(m_sLinesLayout, ctx.m_wListRoot, scenario);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnScenariosLoadFailed();
 	
 	//------------------------------------------------------------------------------------------------
 	protected void InitWidgets();

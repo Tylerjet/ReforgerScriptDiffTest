@@ -10,9 +10,9 @@ class SCR_DeployableSpawnPointSystem : GameSystem
 	protected ref array<SCR_BaseDeployableSpawnPointComponent> m_aComponents = {};
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_BaseDeployableSpawnPointComponent comp: m_aComponents)
 		{

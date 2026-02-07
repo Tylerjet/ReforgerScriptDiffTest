@@ -27,6 +27,8 @@ class SCR_MotionControlCalibrationPromptDialog : SCR_ConfigurableDialogUi
 class SCR_MotionControlCalibrationProcessDialog : SCR_ConfigurableDialogUi
 {
 	SCR_InputButtonComponent m_ConfirmButton;
+	ref InputBinding m_Binding;
+	bool calibrating = false;
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_MotionControlCalibrationProcessDialog()
@@ -37,13 +39,37 @@ class SCR_MotionControlCalibrationProcessDialog : SCR_ConfigurableDialogUi
 		if (m_ConfirmButton)
 			m_ConfirmButton.SetVisible(false);
 		
+		m_Binding = GetGame().GetInputManager().CreateUserBinding();
+		if (!m_Binding)
+		{
+			Print("SCR_MotionControlCalibrationProcessDialog: InputBindings were not created!", LogLevel.WARNING);
+			OnResult(false);
+			return;
+		}
 		
-	
-		//Start the process of calibration here when enf API is done and hook onresult into it
-		
-		//OnResult(false);
+		m_Binding.StartCalibration(EInputDeviceType.GYRO);
+		calibrating = true;
 	}
 	
+	override void OnCancel()
+	{
+		calibrating = false;
+		m_Binding.StopCalibration();
+		Close();
+	}
+	
+	override void OnMenuUpdate(float tDelta)
+	{
+		if (calibrating)
+		{
+			EInputBindingCalibrationStatus status = m_Binding.GetCalibrationStatus();
+			if (status != EInputBindingCalibrationStatus.CALIBRATING && status != EInputBindingCalibrationStatus.IDLE)
+			{
+				calibrating = false;
+				OnResult(status == EInputBindingCalibrationStatus.CALIBRATION_SUCCESS);
+			}
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void OnResult(bool success)

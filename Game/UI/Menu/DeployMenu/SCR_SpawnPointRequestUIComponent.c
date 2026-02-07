@@ -46,8 +46,8 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		if (spinbox.GetSpawnPointId(itemId) != m_SelectedSpawnPointId)
 		{
 			m_SelectedSpawnPointId = spinbox.GetSpawnPointId(itemId);
-			GetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId, true);
-			SGetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId, true);
+			GetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
+			SGetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
 		}
 	}
 
@@ -149,14 +149,88 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			return;
 		}
 
+		infos.Sort(true);
+
 		int pid = SCR_PlayerController.GetLocalPlayerId();
 		foreach (SCR_SpawnPoint info : infos)
 		{
 			if (info.IsSpawnPointVisibleForPlayer(pid))
 				AddSpawnPoint(info);
 		}
+
+		SetLastUsedSpawnPointSelected();
+		SetRallyPointSpawnSelected();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the last used spawned point by player as default selected option in spawn selector
+	//! Does not affect selection if there is no last used spawn point, or it is unavailable
+	protected void SetLastUsedSpawnPointSelected()
+	{
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return;
+
+		SCR_PlayerDeployMenuHandlerComponent menuHandler = SCR_PlayerDeployMenuHandlerComponent.Cast(pc.FindComponent(SCR_PlayerDeployMenuHandlerComponent));
+		if (!menuHandler)
+			return;
+
+		int lastUsedSpawnPointRplId = menuHandler.GetLastUsedSpawnPointId();
+
+		if (!SCR_SpawnPoint.GetSpawnPointByRplId(lastUsedSpawnPointRplId))
+			return;
+
+		int lastUsedSpawnPointId = m_SpawnPointSelector.GetItemId(lastUsedSpawnPointRplId);
+		if (lastUsedSpawnPointId <= 0)
+			return;
+
+		m_SpawnPointSelector.SetCurrentItem(lastUsedSpawnPointId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets the player group Rally Point as default selected option in spawn selector
+	protected void SetRallyPointSpawnSelected()
+	{
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return;
+
+		SCR_PlayerControllerGroupComponent playerControllerGroupComponent = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(pc.GetPlayerId());
+		if (!playerControllerGroupComponent)
+			return;
+
+		int playerGroupId = playerControllerGroupComponent.GetGroupID();
+		SCR_AIGroup playerGroup = SCR_GroupsManagerComponent.GetInstance().FindGroup(playerGroupId);
+		if (!playerGroup)
+			return;
+
+		int rallyPointBaseCallsignId = playerGroup.GetRallyPointId();
+		if (rallyPointBaseCallsignId < 0)
+			return;
+
+		array<SCR_SpawnPoint> spawnPoints = m_SpawnPointSelector.GetSpawnPointsInList();
+		IEntity parentEntity;
+		SCR_MilitaryBaseComponent baseComponent;
+		foreach (SCR_SpawnPoint spawnPoint : spawnPoints)
+		{
+			parentEntity = spawnPoint.GetRootParent();
+			if (!parentEntity)
+				continue;
+
+			baseComponent = SCR_MilitaryBaseComponent.Cast(parentEntity.FindComponent(SCR_MilitaryBaseComponent));
+			if (!baseComponent)
+				continue;
+
+			if (baseComponent.GetCallsign() != rallyPointBaseCallsignId)
+				continue;
+
+			int rallyPointSpawnPointId = m_SpawnPointSelector.GetItemId(spawnPoint.GetRplId());
+			m_SpawnPointSelector.SetCurrentItem(rallyPointSpawnPointId);
+
+			return;
+		}
+	}
+
 	void UpdateRelevantSpawnPoints()
 	{
 		array<SCR_SpawnPoint> spawnPoints = m_SpawnPointSelector.GetSpawnPointsInList();

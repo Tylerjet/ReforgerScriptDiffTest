@@ -39,20 +39,32 @@ class ScriptedWidgetEventHandler: Managed
 	*/
 	event bool OnHide(Widget w);
 	/*!
+	Called when a widget's enabled/disabled state has changed and the widget is now enabled. This information does not take into account whether the whole hierarchy is enabled or not, only that the widget itself is flagged as enabled.
+	\param w The widget on which the event was triggered.
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnEnable(Widget w);
+	/*!
+	Called when a widget's enabled/disabled state has changed and the widget is now disabled. This information does not take into account whether the whole hierarchy is enabled or not, only that the widget itself is flagged as disabled.
+	\param w The widget on which the event was triggered.
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnDisable(Widget w);
+	/*!
 	Called when a modal widget is closed.
 	\param modalRoot The widget on which the event was triggered.
 	\return When returning true, the event is considered processed.
 	*/
 	event bool OnModalClosed(Widget modalRoot);
 	/*!
-	Called when the user clicks outside a modal widget.
+	Called when the user clicks outside a modal widget. If the event is not processed, the click procedure is repeated to enable clicking on the widgets underneath once the modal is closed.
 	\param modalRoot The widget on which the event was triggered.
 	\param x Mouse position (if triggered by the mouse).
 	\param y Mouse position (if triggered by the mouse).
 	\param button Index of the mouse button (if triggered by the mouse).
 	\return When returning true, the event is considered processed.
 	*/
-	event bool OnModalClickOut(Widget modalRoot, int x, int y, int button);
+	event bool OnModalClickOut(Widget modalRoot, int x, int y, int button) { return true; };
 	/*!
 	Called when the user double-clicks on a widget.
 	\param w The widget on which the event was triggered.
@@ -128,6 +140,34 @@ class ScriptedWidgetEventHandler: Managed
 	*/
 	event bool OnMouseButtonUp(Widget w, int x, int y, int button);
 	/*!
+	Called when a hyper link gets under the mouse cursor.
+	\param w The widget on which the event was triggered.
+	\param x Mouse position.
+	\param y Mouse position.
+	\param link Link value.
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnLinkEnter(Widget w, int x, int y, string link);
+	/*!
+	Called when a hyper link is no longer under the mouse cursor.
+	\param w The widget on which the event was triggered.
+	\param x Mouse position.
+	\param y Mouse position.
+	\param link Link value.
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnLinkLeave(Widget w, int x, int y, string link);
+	/*!
+	Called when a hyper link is clicked.
+	\param w The widget on which the event was triggered.
+	\param x Mouse position (if triggered by the mouse).
+	\param y Mouse position (if triggered by the mouse).
+	\param button Index of the mouse button (if triggered by the mouse).
+	\param link Link value.
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnLinkClick(Widget w, int x, int y, int button, string link);
+	/*!
 	Called on a focused widget when the user triggers a controller action via keyboard or game device.
 	\param w The widget on which the event was triggered.
 	\param control Type of the control action.
@@ -175,6 +215,14 @@ class ScriptedWidgetEventHandler: Managed
 	\return When returning true, the event is considered processed.
 	*/
 	event bool OnChildRemove(Widget w, Widget child);
+	/*!
+	Called when event is emitted by call of Widget.EmitCustomEvent
+	\param w The widget on which the event was triggered.
+	\param iUserData User parameter passed to Widget.EmitCustomEvent
+	\param pUserData User parameter passed to Widget.EmitCustomEvent
+	\return When returning true, the event is considered processed.
+	*/
+	event bool OnCustomEvent(Widget w, int iUserData, Managed pUserData);
 	/*!
 	Called when a widget is updated due to a layout change.
 	\param w The widget on which the event was triggered.

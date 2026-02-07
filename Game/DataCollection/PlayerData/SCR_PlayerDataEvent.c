@@ -51,4 +51,16 @@ class SCR_PlayerDataEvent
 	int gt3_total_points;
 	int seconds_as_controller;
 	int seconds_as_keyboard;
+	int amt_res_spent;
+	string amt_res_consumption;
+	int amt_xp_gained;
+	string array_rank_points_source;
+	string name_rank_level;
+	bool is_verbal_comm;
+	string array_tutorialstep_id;
+	string array_tutorialstep_started;
+	string array_tutorialstep_completed;
+	string name_faction_player;
+	string num_daytime;
+	bool is_night;
 }

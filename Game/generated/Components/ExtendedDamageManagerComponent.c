@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class ExtendedDamageManagerComponentClass: SCR_DamageManagerComponentClass
-{
-}
-
 class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 {
 	/*!

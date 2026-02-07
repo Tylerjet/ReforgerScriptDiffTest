@@ -16,7 +16,13 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	protected const int MAX_ENTRIES_EACH_COLUMN = 12;
 		
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
-		
+				
+	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.VERTICAL;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	SCR_InventorySlotUI GetUISlotBySlotID( ESlotID slotID )

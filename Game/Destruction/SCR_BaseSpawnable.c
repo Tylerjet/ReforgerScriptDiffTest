@@ -1,9 +1,9 @@
 [BaseContainerProps()]
 class SCR_BaseSpawnable
 {
-	[Attribute("0 0 0", UIWidgets.Coords, desc: "Positional offset (in local space to the destructible)")]
+	[Attribute("0 0 0", UIWidgets.Coords, desc: "Positional offset (in local space to the destructible)", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vOffsetPosition")]
 	protected vector m_vOffsetPosition;
-	[Attribute("0 0 0", UIWidgets.Coords, desc: "Yaw, pitch & roll offset (in local space to the destructible)")]
+	[Attribute("0 0 0", UIWidgets.Coords, desc: "Yaw, pitch & roll offset (in local space to the destructible)", params: "inf inf 0 purpose=angles space=entity anglesVar=m_vOffsetRotation")]
 	protected vector m_vOffsetRotation;
 	
 #ifdef WORKBENCH

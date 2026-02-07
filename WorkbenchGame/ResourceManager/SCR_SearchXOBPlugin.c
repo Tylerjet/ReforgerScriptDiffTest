@@ -35,7 +35,7 @@ class SCR_SearchXOBFunctor
 
 		string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonID(m_iAddon));
 
-		m_aFiles = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "xob" }, null, addon + m_sSearchedDirectory.GetPath());
+		m_aFiles = SCR_WorkbenchHelper.SearchWorkbenchResources({ "xob" }, null, addon + m_sSearchedDirectory.GetPath());
 		int count = m_aFiles.Count();
 		int updateMask = SCR_Math.IntegerMask(count * 0.1);
 
@@ -200,7 +200,7 @@ class SearchXOBPlugin : WorkbenchPlugin // TODO: SCR_
 	[Attribute("0", UIWidgets.ComboBox, "Type of search", "", enumType: SCR_ESearchXOBPluginSearchType)]
 	protected SCR_ESearchXOBPluginSearchType m_eSearchType;
 
-	[Attribute("1", UIWidgets.ComboBox, "In which addon should be search performed", "", ParamEnumAddons.FromEnum())]
+	[Attribute("1", UIWidgets.ComboBox, "In which addon should be search performed", "", SCR_ParamEnumArray.FromAddons())]
 	protected int m_iAddon;
 
 	[Attribute(defvalue: "", desc: "Folder where to perform search. If empty, search is performed everywhere", params: "unregFolders")]

@@ -17,6 +17,8 @@ class SCR_MapMarkerBase
 	protected int m_iIconEntry;				// placed marker icon entry id
 	protected int m_iRotation;
 	protected string m_sCustomText;
+	protected WorldTimestamp m_Timestamp;
+	protected bool m_bIsTimestampVisible;
 	
 	// server only
 	protected bool m_bIsServerSideDisabled; // in hosted server scenario, opposing faction markers have to be properly managed but still disabled from showing up
@@ -199,6 +201,32 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return int timestamp when the marker was created
+	WorldTimestamp GetTimestamp()
+	{
+		return m_Timestamp;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] timestamp when the marker was created
+	void SetTimestamp(WorldTimestamp timestamp)
+	{
+		m_Timestamp = timestamp;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetTimestampVisibility(bool isVisible)
+	{
+		m_bIsTimestampVisible = isVisible;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsTimestampVisible()
+	{
+		return m_bIsTimestampVisible;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Disable marker UI display on server -> for dedicated servers(no UI) or hosted server enemy faction 
 	void SetServerDisabled(bool state)
 	{
@@ -227,7 +255,7 @@ class SCR_MapMarkerBase
 		
 		m_bIsUpdateDisabled = state;
 		
-		if (m_wRoot)
+		if (m_wRoot && m_wRoot.IsVisible() == state)
 			m_wRoot.SetVisible(!state);
 	}
 	
@@ -236,6 +264,13 @@ class SCR_MapMarkerBase
 	void SetBlocked(bool state)
 	{
 		m_bIsBlocked = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Gets if marker is blocked (this changes visibility)
+	bool GetBlocked()
+	{
+		return m_bIsBlocked;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -408,6 +443,8 @@ class SCR_MapMarkerBase
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
 		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
 		snapshot.SerializeString(instance.m_sCustomText);
+		snapshot.SerializeBool(instance.m_bIsTimestampVisible);
+		snapshot.SerializeBytes(instance.m_Timestamp, 8);
 		return true;
 	}
 
@@ -426,6 +463,8 @@ class SCR_MapMarkerBase
 		snapshot.SerializeBytes(instance.m_iColorEntry, 1);
 		snapshot.SerializeBytes(instance.m_iIconEntry, 2);
 		snapshot.SerializeString(instance.m_sCustomText);
+		snapshot.SerializeBool(instance.m_bIsTimestampVisible);
+		snapshot.SerializeBytes(instance.m_Timestamp, 8);
 		return true;
 	}
 
@@ -434,6 +473,8 @@ class SCR_MapMarkerBase
 	{
 		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.EncodeString(packet);
+		snapshot.EncodeBool(packet); // m_bIsTimestampVisible
+		snapshot.Serialize(packet, 8); // m_Timestamp
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -441,6 +482,8 @@ class SCR_MapMarkerBase
 	{
 		snapshot.Serialize(packet, SERIALIZED_BYTES);
 		snapshot.DecodeString(packet);
+		snapshot.DecodeBool(packet); // m_bIsTimestampVisible
+		snapshot.Serialize(packet, 8); // m_Timestamp
 		return true;
 	}
 
@@ -448,7 +491,8 @@ class SCR_MapMarkerBase
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
 	{
 		return lhs.CompareSnapshots(rhs, SERIALIZED_BYTES)	// m_iPosWorldX(4) + m_iPosWorldY(4) + m_iMarkerID(4) + m_iMarkerOwnerID(4) + m_iFlags(4) + m_iConfigID(4) + m_iFactionFlags(4) + m_iRotation(2) + m_eType(1) + m_iColorEntry(1) + m_iIconEntry(2)
-			&& lhs.CompareStringSnapshots(rhs); // m_sCustomText
+			&& lhs.CompareStringSnapshots(rhs) // m_sCustomText
+			&& lhs.CompareSnapshots(rhs, 4 + 8); // m_bIsTimestampVisible + m_Timestamp
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -465,6 +509,8 @@ class SCR_MapMarkerBase
 			&& snapshot.Compare(instance.m_eType, 1)
 			&& snapshot.Compare(instance.m_iColorEntry, 1)
 			&& snapshot.Compare(instance.m_iIconEntry, 2)
-			&& snapshot.CompareString(instance.m_sCustomText);
+			&& snapshot.CompareString(instance.m_sCustomText)
+			&& snapshot.CompareBool(instance.m_bIsTimestampVisible)
+			&& snapshot.Compare(instance.m_Timestamp, 8);
 	}
 };

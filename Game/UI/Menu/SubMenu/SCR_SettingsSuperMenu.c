@@ -45,7 +45,23 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 		m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoConsole", playSound: false);	
 #endif
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+				
+		SCR_AnalyticsApplication.GetInstance().OpenSettings();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
+	
+		SCR_AnalyticsApplication.GetInstance().CloseSettings();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void OnBack()
 	{

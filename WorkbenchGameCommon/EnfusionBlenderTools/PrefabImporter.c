@@ -13,6 +13,8 @@ class PrefabImporterRequest : JsonApiStruct
 
 class PrefabImporterResponse : JsonApiStruct
 {
+	string status;
+	string message;
 	// absolute fbx path
 	ref array<string> fbx = new array<string>;
 	// transformation
@@ -34,6 +36,8 @@ class PrefabImporterResponse : JsonApiStruct
 
 	void PrefabImporterResponse()
 	{
+		RegV("status");
+		RegV("message");
 		RegV("fbx");
 		RegV("coords");
 		RegV("angles");
@@ -74,15 +78,16 @@ class PrefabImporterUtils
 	{
 		BaseContainer empty;
 		BaseContainer ancestorSource = prefab.GetAncestor();
+		// edge-case for null prefab
+		if (!ancestorSource)
+		{
+			return;
+		}
 		ResourceName ancestor = ancestorSource.GetResourceName();
 		IEntitySource parent = prefab.GetParent();
 		string pivotID = "";
 		
-		// edge-case for null prefab
-		if (ancestor == "")
-		{
-			return;
-		}
+
 
 		// get hierarchy
 		int hierarchy = GetPrefabParamIndex(prefab, EBTContainerFields.hierarchy);
@@ -127,21 +132,11 @@ class PrefabImporterUtils
 			scale = "1";
 		}
 		// getting angles as one string (EBT formatting)
-		string allAngles;
-		for (int j = 0; j < EBTContainerFields.angles.Count(); j++)
+		string angles = "0 0 0";
+		// getting coords in local space
+		if (prefab.IsVariableSet(EBTContainerFields.angles))
 		{
-			string angle;
-			//If angle is set
-			if (prefab.IsVariableSet(EBTContainerFields.angles[j]))
-			{
-				prefab.Get(EBTContainerFields.angles[j], angle);
-				allAngles += " " + angle;
-			}
-			// if not then 0
-			else
-			{
-				allAngles += " 0";
-			}
+			prefab.Get(EBTContainerFields.angles, angles);
 		}
 
 
@@ -168,9 +163,7 @@ class PrefabImporterUtils
 		// insert data
 		response.coords.Insert(coords);
 		response.scales.Insert(scale);
-		response.angles.Insert(allAngles);
-		// clear string
-		allAngles = "";
+		response.angles.Insert(angles);
 
 		// check if fbx paths is the same count as coords
 		// if not add -1 as a parent since that means its the heighest prefab with no parents
@@ -186,8 +179,13 @@ class PrefabImporterUtils
 		// and read its ancestor
 		if (meshObjectID != -1)
 		{
-			response.fbx.Insert(GetFBXPath(prefab, meshObjectID, EBTContainerFields.object, response, true));
-			ReadAncestor(ancestorSource, response, true);
+			string fbxPath = GetFBXPath(prefab, meshObjectID, EBTContainerFields.object, response, true);
+			// If filepath does not contain FBX, do not send it
+			if (fbxPath.Contains(".fbx"))
+			{
+				response.fbx.Insert(fbxPath);
+				ReadAncestor(ancestorSource, response, true);
+			}
 		}
 		
 		// if not then add a collection
@@ -217,6 +215,9 @@ class PrefabImporterUtils
 		prefabMesh.Get(meshVarName, relXob);
 		Workbench.GetAbsolutePath(relXob.GetPath(), output);
 		output.Replace("xob","fbx");
+		if (!FileIO.FileExists(output)){
+			output = "";
+		}
 		return output;
 	}
 
@@ -288,7 +289,12 @@ class PrefabImporterUtils
 		MetaFile meta = resourceManager.GetMetaFile(path);
 		Resource resource = Resource.Load(meta.GetResourceID());
 		BaseContainer prefab = resource.GetResource().ToEntitySource();
+		
 		BaseContainer ancestorPrefab = prefab.GetAncestor();
+		if(!ancestorPrefab)
+		{
+			return;
+		}
 
 		// get its paramas and read the child
 		GetPrefabParams(prefab, response);
@@ -327,9 +333,6 @@ class PrefabImporterUtils
 	}
 }
 
-
-
-
 class PrefabImporter : NetApiHandler
 {
 	override JsonApiStruct GetRequest()
@@ -343,6 +346,19 @@ class PrefabImporter : NetApiHandler
 		PrefabImporterResponse response = new PrefabImporterResponse();
 		PrefabImporterUtils utils = new PrefabImporterUtils();
 		
+		
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		MetaFile meta = resourceManager.GetMetaFile(req.absPath);
+		
+		if (!meta)
+		{
+			response.status = "ERROR";
+			response.message = string.Format("Prefab Resource with path \"%1\" is missing!", req.absPath);
+			return response;
+		}
+		
+		response.status = "OK";
+				
 		// get prefabs with params
 		utils.ReadFirst(req.absPath, response);
 		

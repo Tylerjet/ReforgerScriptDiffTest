@@ -24,7 +24,8 @@ class SCR_HitZoneStateSignal
 			m_aScriptedHitZones.Insert(hitzone);
 		}
 		
-		if (m_aScriptedHitZones.Count() == 0)
+		// No hitzones are spawned in the edit mode so only check the playmode
+		if (!SCR_Global.IsEditMode() && m_aScriptedHitZones.Count() == 0)
 		{
 			Print("AUDIO: SCR_HitZoneStateSignal: No HitZone found", LogLevel.WARNING);
 			return false;

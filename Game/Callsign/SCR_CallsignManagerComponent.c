@@ -229,10 +229,10 @@ class SCR_CallsignManagerComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//A callsign is assigned
+	[Friend(SCR_CallsignBaseComponentSerializer)]
 	protected void RemoveAvailableGroupCallsign(Faction faction, int companyIndex, int platoonIndex, int squadIndex)
 	{
 		SCR_FactionCallsignData factionCallsignData;
-		
 		if (m_mAvailableCallsigns.Find(faction, factionCallsignData))
 			factionCallsignData.RemoveCallsign(companyIndex, platoonIndex, squadIndex);
 	}

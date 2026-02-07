@@ -34,7 +34,7 @@ class SCR_EditableEffectsModuleComponent: SCR_EditableSystemComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//~ Destroys one entity. Will return true if all entities are destroyed
-	override bool Destroy()
+	override bool Destroy(int editorPlayerID)
 	{		
 		SCR_PressureTriggerComponent pressureTriggerComponent;
 		
@@ -54,6 +54,7 @@ class SCR_EditableEffectsModuleComponent: SCR_EditableSystemComponent
 				continue;
 			}
 			
+			pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM(editorPlayerID));
 			pressureTriggerComponent.TriggerManuallyServer();
 			break;
 		}

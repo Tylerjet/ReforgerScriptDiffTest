@@ -3,18 +3,21 @@ void OnAllBasesInitializedDelegate();
 void OnLocalPlayerEnteredBaseDelegate(SCR_CampaignMilitaryBaseComponent base);
 void OnLocalPlayerLeftBaseDelegate(SCR_CampaignMilitaryBaseComponent base);
 void OnLocalFactionCapturedBaseDelegate();
+void OnBaseBuiltDelegate(SCR_CampaignMilitaryBaseComponent base, Faction faction);
 
 typedef func OnSignalChangedDelegate;
 typedef func OnAllBasesInitializedDelegate;
 typedef func OnLocalPlayerEnteredBaseDelegate;
 typedef func OnLocalPlayerLeftBaseDelegate;
 typedef func OnLocalFactionCapturedBaseDelegate;
+typedef func OnBaseBuiltDelegate;
 
 typedef ScriptInvokerBase<OnSignalChangedDelegate> OnSignalChangedInvoker;
 typedef ScriptInvokerBase<OnAllBasesInitializedDelegate> OnAllBasesInitializedInvoker;
 typedef ScriptInvokerBase<OnLocalPlayerEnteredBaseDelegate> OnLocalPlayerEnteredBaseInvoker;
 typedef ScriptInvokerBase<OnLocalPlayerLeftBaseDelegate> OnLocalPlayerLeftBaseInvoker;
 typedef ScriptInvokerBase<OnLocalFactionCapturedBaseDelegate> OnLocalFactionCapturedBaseInvoker;
+typedef ScriptInvokerBase<OnBaseBuiltDelegate> OnBaseBuiltInvoker;
 
 //------------------------------------------------------------------------------------------------
 //! Created in SCR_GameModeCampaign
@@ -42,11 +45,140 @@ class SCR_CampaignMilitaryBaseManager
 	protected ref OnAllBasesInitializedInvoker m_OnAllBasesInitialized;
 	protected ref OnLocalPlayerEnteredBaseInvoker m_OnLocalPlayerEnteredBase;
 	protected ref OnLocalPlayerLeftBaseInvoker m_OnLocalPlayerLeftBase;
+	protected ref OnBaseBuiltInvoker m_OnBaseBuilt;
 
 	protected int m_iActiveBases;
 	protected int m_iTargetActiveBases;
+	protected int m_iMaxAvailableCallsignsAmount;
+
+	protected ref map<FactionKey, int> m_mFactionEstablishedBasesAmount = new map<FactionKey, int>();
 
 	protected bool m_bAllBasesInitialized;
+
+	//------------------------------------------------------------------------------------------------
+	//! Calculates the maximum amount of available callsigns for establishing of new bases
+	protected void CalculateMaxAvailableCallsignAmount()
+	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		array<Faction> factions = {};
+		factionManager.GetFactionsList(factions);
+		SCR_CampaignFaction campaignFaction;
+		array<int> baseCallsignIndexes = {};
+
+		int minBaseCallsignCount = int.MAX;
+		foreach (Faction faction : factions)
+		{
+			campaignFaction = SCR_CampaignFaction.Cast(faction);
+			if (!campaignFaction)
+				continue;
+
+			if (!campaignFaction.IsPlayable())
+				continue;
+
+			baseCallsignIndexes = campaignFaction.GetBaseCallsignIndexes();
+
+			// Skip faction that does not use any callsigns
+			if (baseCallsignIndexes.IsEmpty())
+				continue;
+
+			minBaseCallsignCount = Math.Min(minBaseCallsignCount, baseCallsignIndexes.Count());
+			m_mFactionEstablishedBasesAmount.Insert(campaignFaction.GetFactionKey(), 0);
+		}
+
+		int predefinedBaseCallsignCount;
+		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
+		{
+			// Skip uninitialized bases
+			if (!base.IsInitialized())
+				continue;
+
+			// Relays do not have callsigns
+			if (base.GetType() == SCR_ECampaignBaseType.RELAY)
+				continue;
+
+			if (base.GetBuiltByPlayers())
+				continue;
+
+			predefinedBaseCallsignCount++;
+		}
+
+		m_iMaxAvailableCallsignsAmount = minBaseCallsignCount - predefinedBaseCallsignCount;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Goes through all bases and counts the amount of established bases for each faction
+	protected void CountFactionEstablishedBasesAmount()
+	{
+		FactionKey baseFactionKey;
+		int factionBuiltBases;
+
+		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
+		{
+			if (!base.GetBuiltByPlayers())
+				continue;
+
+			baseFactionKey = base.GetBuiltFaction();
+			if (baseFactionKey.IsEmpty())
+				continue;
+
+			factionBuiltBases = m_mFactionEstablishedBasesAmount.Get(baseFactionKey) + 1;
+
+			m_mFactionEstablishedBasesAmount.Set(baseFactionKey, factionBuiltBases);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] faction
+	//! \return false if no callsigns available or game mode limit for established bases reached, true otherwise
+	bool CanFactionBuildNewBase(notnull Faction faction)
+	{
+		// Establishing bases is not enabled at all
+		if (!m_Campaign.GetEstablishingBasesEnabled())
+			return false;
+
+		int factionsWithBuiltBases = m_mFactionEstablishedBasesAmount.Count();
+		if (factionsWithBuiltBases == 0)
+			return true;
+
+		int builtBases = m_mFactionEstablishedBasesAmount.Get(faction.GetFactionKey());
+		int gameModeLimit = m_Campaign.GetFactionEstablishBaseLimit();
+
+		// When Gamemode limit is -1, establishing bases is only limited by callsign availability
+		if (gameModeLimit == -1)
+			return m_iMaxAvailableCallsignsAmount / factionsWithBuiltBases > builtBases;
+		else
+			return Math.Min(gameModeLimit, m_iMaxAvailableCallsignsAmount / factionsWithBuiltBases) > builtBases;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	OnBaseBuiltInvoker GetOnBaseBuilt()
+	{
+		if (!m_OnBaseBuilt)
+			m_OnBaseBuilt = new OnBaseBuiltInvoker();
+
+		return m_OnBaseBuilt;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetBases(notnull out array<SCR_CampaignMilitaryBaseComponent> bases, Faction faction = null)
+	{
+		bases.Clear();
+		foreach (SCR_CampaignMilitaryBaseComponent theBase : m_aBases)
+		{
+			if (!theBase)
+				continue;
+
+			if (theBase.GetType() != SCR_ECampaignBaseType.BASE && theBase.GetType() != SCR_ECampaignBaseType.SOURCE_BASE)
+				continue;
+
+			if (faction && theBase.GetFaction() != faction)
+				continue;
+
+			bases.Insert(theBase);
+		}
+
+		return bases.Count();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Bases which have been initialized
@@ -65,16 +197,8 @@ class SCR_CampaignMilitaryBaseManager
 	//------------------------------------------------------------------------------------------------
 	void AddActiveBase()
 	{
-		m_iActiveBases++;
-
-		if (m_iActiveBases == m_iTargetActiveBases)
+		if (++m_iActiveBases == m_iTargetActiveBases)
 			OnAllBasesInitialized();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void AddTargetActiveBase()
-	{
-		m_iTargetActiveBases++;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -126,9 +250,7 @@ class SCR_CampaignMilitaryBaseManager
 	{
 		m_bAllBasesInitialized = true;
 
-		// On server, this is done in gamemode class Start() method
-		if (m_Campaign.IsProxy())
-			UpdateBases();
+		UpdateBases();
 
 		if (m_OnAllBasesInitialized)
 			m_OnAllBasesInitialized.Invoke();
@@ -139,14 +261,19 @@ class SCR_CampaignMilitaryBaseManager
 			HideUnusedBaseIcons();
 		}
 
+		CalculateMaxAvailableCallsignAmount();
+		CountFactionEstablishedBasesAmount();
+
 		if (m_Campaign.IsProxy())
 			return;
 
 		SCR_MilitaryBaseSystem.GetInstance().GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
+		SCR_MilitaryBaseSystem.GetInstance().GetOnBaseRegistered().Insert(OnBaseRegistered);
+		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
+		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
+		EvaluateControlPoints();
+
 		ProcessRemnantsPresence();
-		SCR_RadioCoverageSystem.UpdateAll(true);
-		SelectPrimaryTarget(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
-		SelectPrimaryTarget(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -176,7 +303,7 @@ class SCR_CampaignMilitaryBaseManager
 
 	//------------------------------------------------------------------------------------------------
 	//! Update the list of Conflict bases
-	int UpdateBases()
+	int UpdateBases(bool refreshTargetCount = false)
 	{
 		SCR_RadioCoverageSystem.UpdateAll();
 		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
@@ -185,39 +312,44 @@ class SCR_CampaignMilitaryBaseManager
 
 		m_aBases.Clear();
 		m_aControlPoints.Clear();
-		int count;
+
+		if (refreshTargetCount)
+			m_iTargetActiveBases = 0;
 
 		foreach (SCR_MilitaryBaseComponent base : bases)
 		{
 			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
-
 			if (!campaignBase)
 				continue;
 
+			if (refreshTargetCount && campaignBase.IsInitialized())
+				++m_iTargetActiveBases;
+
 			m_aBases.Insert(campaignBase);
-			count++;
 
 			if (campaignBase.IsControlPoint())
 				m_aControlPoints.Insert(campaignBase);
 		}
 
-		return count;
+		return m_aBases.Count();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Picks Main Operating Bases from a list of candidates by checking average distance to active control points
 	void SelectHQs(notnull array<SCR_CampaignMilitaryBaseComponent> candidates, notnull array<SCR_CampaignMilitaryBaseComponent> controlPoints, out notnull array<SCR_CampaignMilitaryBaseComponent> selectedHQs)
 	{
+		int candidatesCount = candidates.Count();
+		if (candidatesCount < 2)
+			return;
+
 		// Pick the same HQs every time when debugging
-#ifdef ENABLE_DIAG
+		#ifdef ENABLE_DIAG
 		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
 		{
 			SelectHQsSimple(candidates, selectedHQs);
 			return;
 		}
-#endif
-
-		int candidatesCount = candidates.Count();
+		#endif
 
 		// If only two HQs are set up, don't waste time with processing
 		if (candidatesCount == 2)
@@ -226,68 +358,38 @@ class SCR_CampaignMilitaryBaseManager
 			return;
 		}
 
-		int iterations;
-		int totalBasesDistance;
 		SCR_CampaignMilitaryBaseComponent bluforHQ;
 		SCR_CampaignMilitaryBaseComponent opforHQ;
-		array<SCR_CampaignMilitaryBaseComponent> eligibleForHQ;
-		vector bluforHQPos;
-		int averageHQDistance;
-		int averageCPDistance;
-		int acceptedCPDistanceDiff;
+		array<SCR_CampaignMilitaryBaseComponent> preferredForHQ = {};
 
-		while (!opforHQ && iterations < MAX_HQ_SELECTION_ITERATIONS)
+		// Pick one of the HQs at random
+		bluforHQ = candidates.GetRandomElement();
+		candidates.RemoveItem(bluforHQ);
+
+		vector bluforHQPos = bluforHQ.GetOwner().GetOrigin();
+		float distanceBetweenHQs;
+		float acceptableDistanceBetweenHQs = m_Campaign.GetAcceptableDistanceBetweenFactionHQs() * m_Campaign.GetAcceptableDistanceBetweenFactionHQs();
+		float preferredDistanceBetweenHQs = m_Campaign.GetPreferredDistanceBetweenFactionHQs() * m_Campaign.GetPreferredDistanceBetweenFactionHQs();
+
+		foreach (SCR_CampaignMilitaryBaseComponent otherHQ : candidates)
 		{
-			iterations++;
-			totalBasesDistance = 0;
-			eligibleForHQ = {};
-
-			// Pick one of the HQs at random
-			bluforHQ = candidates.GetRandomElement();
-			bluforHQPos = bluforHQ.GetOwner().GetOrigin();
-
-			// Calculate average distance between our HQ and others
-			foreach (SCR_CampaignMilitaryBaseComponent otherHQ : candidates)
+			// Candidates with a distance to first HQ greater than acceptableDistanceBetweenHQs are acceptable to be picked
+			distanceBetweenHQs = vector.DistanceSqXZ(bluforHQPos, otherHQ.GetOwner().GetOrigin());
+			if (distanceBetweenHQs > acceptableDistanceBetweenHQs)
 			{
-				if (otherHQ == bluforHQ)
-					continue;
+				preferredForHQ.Insert(otherHQ);
 
-				totalBasesDistance += vector.DistanceSqXZ(bluforHQPos, otherHQ.GetOwner().GetOrigin());
+				// Candidates with a distance to first HQ greater than preferredDistanceBetweenHQs have double chance to be picked
+				if (distanceBetweenHQs > preferredDistanceBetweenHQs)
+					preferredForHQ.Insert(otherHQ);
 			}
-
-			averageHQDistance = totalBasesDistance / (candidatesCount - 1);	// Our HQ is subtracted
-			averageCPDistance = GetAvgCPDistanceSq(bluforHQ, controlPoints);
-			acceptedCPDistanceDiff = averageCPDistance * CP_AVG_DISTANCE_TOLERANCE;
-
-			foreach (SCR_CampaignMilitaryBaseComponent candidate : candidates)
-			{
-				if (candidate == bluforHQ)
-					continue;
-
-				// Ignore HQs closer than the average distance
-				if (vector.DistanceSqXZ(bluforHQPos, candidate.GetOwner().GetOrigin()) < averageHQDistance)
-					continue;
-
-				// Ignore HQs too far from control points (relative to our HQ)
-				if (Math.AbsInt(averageCPDistance - GetAvgCPDistanceSq(candidate, controlPoints)) > acceptedCPDistanceDiff)
-					continue;
-
-				eligibleForHQ.Insert(candidate);
-			}
-
-			// No HQs fit the condition, restart loop
-			if (eligibleForHQ.Count() == 0)
-				continue;
-
-			opforHQ = eligibleForHQ.GetRandomElement();
 		}
 
-		// Selection failed, use the simplified but reliable one
-		if (!opforHQ)
-		{
-			SelectHQsSimple(candidates, selectedHQs);
-			return;
-		}
+		// In case none of the candidates are within the acceptable distance, pick any candidate
+		if (preferredForHQ.IsEmpty())
+			opforHQ = candidates.GetRandomElement();
+		else
+			opforHQ = preferredForHQ.GetRandomElement();
 
 		// Randomly assign the factions in reverse in case primary selection gets too limited
 		if (Math.RandomFloat01() >= 0.5)
@@ -463,19 +565,17 @@ class SCR_CampaignMilitaryBaseManager
 			}
 
 			// Assign callsign
-			if (campaignBase.GetType() == SCR_ECampaignBaseType.BASE)
+			if (campaignBase.GetType() == SCR_ECampaignBaseType.RELAY)
+			{
+				// Relays use a dummy callsign just so search by callsign is still possible
+				campaignBase.SetCallsignIndex(callsignsCount + iBase);
+			}
+			else
 			{
 				callsignIndex = allCallsignIndexes.GetRandomIndex();
 				campaignBase.SetCallsignIndex(allCallsignIndexes[callsignIndex]);
 				allCallsignIndexes.Remove(callsignIndex);
 			}
-			else
-			{
-				// Relays use a dummy callsign just so search by callsign is still possible
-				campaignBase.SetCallsignIndex(callsignsCount + iBase);
-			}
-
-			campaignBase.RefreshTasks();
 
 			// Sort bases by distance to a HQ so randomized supplies can be applied fairly (if enabled)
 			if (randomizeSupplies && campaignBase.GetType() == SCR_ECampaignBaseType.BASE)
@@ -558,46 +658,6 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! On clients, the tasks are not properly synced upon deserialization due to delay in callsign assignment
-	//! This method will update the task list with the proper bases
-	void UpdateTaskBases(Faction assignedFaction)
-	{
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
-		{
-			if (base.IsInitialized() && base.GetCallsignDisplayName().IsEmpty())
-				base.GetMapDescriptor().HandleMapInfo();
-		}
-
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-
-		if (!taskManager)
-			return;
-
-		array<SCR_BaseTask> tasks = {};
-		taskManager.GetFilteredTasks(tasks, assignedFaction);
-
-		foreach (SCR_BaseTask task : tasks)
-		{
-			SCR_CampaignBaseTask conflictTask = SCR_CampaignBaseTask.Cast(task);
-
-			if (!conflictTask)
-				continue;
-
-			int baseId = conflictTask.GetTargetBaseId();
-
-			if (baseId == -1)
-				continue;
-
-			SCR_CampaignMilitaryBaseComponent base = FindBaseByCallsign(baseId);
-
-			if (!base || base.GetFaction() == conflictTask.GetTargetFaction())
-				continue;
-
-			conflictTask.SetTargetBase(base);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Show icons only for supply depots close enough to an active base
 	void InitializeSupplyDepotIcons()
 	{
@@ -618,14 +678,12 @@ class SCR_CampaignMilitaryBaseManager
 				continue;
 
 			mapDescriptorComponent = SCR_MapDescriptorComponent.Cast(depot.FindComponent(SCR_MapDescriptorComponent));
-
 			if (!mapDescriptorComponent)
 				continue;
 
 			item = mapDescriptorComponent.Item();
 			origin = depot.GetOrigin();
 			closestBase = FindClosestBase(origin);
-
 			if (!closestBase)
 				continue;
 
@@ -682,127 +740,9 @@ class SCR_CampaignMilitaryBaseManager
 	//! Determine the radio coverage of all bases (no coverage / can be reached / can respond / both ways)
 	void RecalculateRadioCoverage(notnull SCR_CampaignFaction faction)
 	{
-		SCR_RadioCoverageSystem.UpdateAll();
-		EvaluateControlPoints();
-		SelectPrimaryTarget(faction);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Find a base which is most profitable for a faction to capture next
-	void SelectPrimaryTarget(notnull SCR_CampaignFaction faction)
-	{
-		array<SCR_CampaignMilitaryBaseComponent> controlPointsInRange = {};
-
-		// Get all Control Points which are now available for capture
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aControlPoints)
-		{
-			if (!base.IsInitialized() || base.IsHQ())
-				continue;
-
-			if (base.GetFaction() == faction)
-				continue;
-
-			if (!base.IsHQRadioTrafficPossible(faction))
-				continue;
-
-			controlPointsInRange.Insert(base);
-		}
-
-		SCR_CampaignMilitaryBaseComponent target;
-		int minDistance = int.MAX;
-
-		// If there are some Control Points in radio range, find the closest one
-		if (!controlPointsInRange.IsEmpty())
-		{
-			array<SCR_CampaignMilitaryBaseComponent> ownedBases = {};
-
-			// Get all bases the given faction currently holds
-			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
-			{
-				if (!base.IsInitialized())
-					continue;
-
-				if (base.GetFaction() != faction)
-					continue;
-
-				if (!base.IsHQRadioTrafficPossible(faction))
-					continue;
-
-				ownedBases.Insert(base);
-			}
-
-			foreach (SCR_CampaignMilitaryBaseComponent controlPoint : controlPointsInRange)
-			{
-				vector positionCP = controlPoint.GetOwner().GetOrigin();
-
-				foreach (SCR_CampaignMilitaryBaseComponent base : ownedBases)
-				{
-					int distance = vector.DistanceSqXZ(base.GetOwner().GetOrigin(), positionCP);
-
-					if (distance > minDistance)
-						continue;
-
-					minDistance = distance;
-					target = controlPoint;
-				}
-			}
-		}
-		else	// Otherwise, find the Control Point closest to one of the capturable bases
-		{
-			array<SCR_CampaignMilitaryBaseComponent> basesInRange = {};
-
-			// Get all bases which are now available for capture
-			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
-			{
-				if (!base.IsInitialized() || base.IsHQ())
-					continue;
-
-				if (base.GetFaction() == faction)
-					continue;
-
-				if (!base.IsHQRadioTrafficPossible(faction))
-					continue;
-
-				basesInRange.Insert(base);
-			}
-
-			const bool targetCoversControlPoint; // TODO: check for good const usage
-
-			foreach (SCR_CampaignMilitaryBaseComponent controlPoint : m_aControlPoints)
-			{
-				if (!controlPoint.IsInitialized() || controlPoint.IsHQ())
-					continue;
-
-				if (controlPoint.GetFaction() == faction)
-					continue;
-
-				vector positionCP = controlPoint.GetOwner().GetOrigin();
-
-				foreach (SCR_CampaignMilitaryBaseComponent base : basesInRange)
-				{
-					int distance = vector.DistanceSqXZ(base.GetOwner().GetOrigin(), positionCP);
-					bool closer = distance < minDistance;
-					bool coversControlPoint = base.CanReachByRadio(controlPoint.GetOwner());
-
-					// Also check if some of the bases in range can reach the Control Point with radio
-					if (coversControlPoint)
-					{
-						if (targetCoversControlPoint && !closer)
-							continue;
-					}
-					else
-					{
-						if (targetCoversControlPoint || !closer)
-							continue;
-					}
-
-					minDistance = distance;
-					target = base;
-				}
-			}
-		}
-
-		m_Campaign.SetPrimaryTarget(faction, target);
+		bool newSettingsDetected = SCR_RadioCoverageSystem.UpdateAll();
+		if (newSettingsDetected)
+			EvaluateControlPoints();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -924,6 +864,9 @@ class SCR_CampaignMilitaryBaseManager
 
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
+			if (!base)
+				continue;
+
 			if (base.GetCallsign() == callsign)
 				return base;
 		}
@@ -936,6 +879,9 @@ class SCR_CampaignMilitaryBaseManager
 	{
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
+			if (!base)
+				continue;
+
 			if (base.GetOwner().GetOrigin() == position)
 				return base;
 		}
@@ -944,10 +890,29 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_CampaignSuppliesComponent FindClosestSupplyDepot(vector position)
+	{
+		SCR_CampaignSuppliesComponent closestDepot;
+		float closestDepotDistance = float.MAX;
+
+		foreach (SCR_CampaignSuppliesComponent depot : m_aRemnantSupplyDepots)
+		{
+			float distance = vector.DistanceSq(depot.GetOwner().GetOrigin(), position);
+
+			if (distance < closestDepotDistance)
+			{
+				closestDepotDistance = distance;
+				closestDepot = depot;
+			}
+		}
+
+		return closestDepot;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	bool IsEntityInFactionRadioSignal(notnull IEntity entity, notnull Faction faction)
 	{
 		SCR_CampaignFaction factionC = SCR_CampaignFaction.Cast(faction);
-
 		if (!factionC)
 			return false;
 
@@ -975,49 +940,53 @@ class SCR_CampaignMilitaryBaseManager
 		return false;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	void StoreBasesStates(out notnull array<ref SCR_CampaignBaseStruct> outEntries)
+    //------------------------------------------------------------------------------------------------
+	//! \param[in] position
+	//! \param[in] faction
+	//! \param[in] signalRangeOffset
+	//! \return true if a signal from HQ is available at the position
+	bool IsPositionInFactionRadioSignal(vector position, notnull Faction faction, float signalRangeOffset = 0)
 	{
+		SCR_CampaignFaction campaignFaction = SCR_CampaignFaction.Cast(faction);
+		if (!campaignFaction)
+			return false;
+
+		// Check if the entity is within range of deployed mobile HQ which is able to relay the signal
+		SCR_CampaignMobileAssemblyStandaloneComponent mobileHQ = campaignFaction.GetMobileAssembly();
+		if (mobileHQ && mobileHQ.IsInRadioRange())
+		{
+			if (vector.DistanceSq(position, mobileHQ.GetOwner().GetOrigin()) < Math.Pow(mobileHQ.GetRadioRange() + signalRangeOffset, 2))
+				return true;
+		}
+
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
-			if (!base.IsInitialized())
-				continue;
-
-			SCR_CampaignBaseStruct struct = new SCR_CampaignBaseStruct();
-			base.StoreState(struct);
-			outEntries.Insert(struct);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void LoadBasesStates(notnull array<ref SCR_CampaignBaseStruct> entries)
-	{
-		foreach (SCR_CampaignBaseStruct struct : entries)
-		{
-			SCR_CampaignMilitaryBaseComponent base = FindBaseByPosition(struct.GetPosition());
-
 			if (!base)
 				continue;
 
-			base.LoadState(struct);
+			if (faction != base.GetFaction())
+				continue;
+
+			if (vector.DistanceSq(position, base.GetOwner().GetOrigin()) <= Math.Pow(base.GetRadioRange() + signalRangeOffset, 2) && base.IsHQRadioTrafficPossible(campaignFaction))
+				return true;
 		}
 
-		UpdateBases();
+		return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
 	//! Clean up ambient patrols around Main Operating Bases, assign parent bases where applicable
 	void ProcessRemnantsPresence()
 	{
 		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
-
 		if (!manager)
 			return;
 
 		array<SCR_AmbientPatrolSpawnPointComponent> patrols = {};
 		manager.GetPatrols(patrols);
 
-		int distLimit = Math.Pow(PARENT_BASE_DISTANCE_THRESHOLD, 2);
+		const int distLimit = Math.Pow(PARENT_BASE_DISTANCE_THRESHOLD, 2);
 		float minDistance;
 		SCR_CampaignMilitaryBaseComponent nearestBase;
 		bool register = true;
@@ -1041,15 +1010,13 @@ class SCR_CampaignMilitaryBaseManager
 
 				dist = vector.DistanceSqXZ(center, base.GetOwner().GetOrigin());
 
-				// Don't clear Remnants patrols around HQs if their state was already loaded
-				if (base.IsHQ() && !m_Campaign.WasRemnantsStateLoaded())
+				if (base.IsHQ())
 				{
 					if (dist < distLimitHQ)
 					{
 						patrol.SetMembersAlive(0);
 						register = false;
 						break;
-
 					}
 					else if (dist < distLimitHQPatrol)
 					{
@@ -1182,6 +1149,260 @@ class SCR_CampaignMilitaryBaseManager
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_CampaignMilitaryBaseComponent SelectAndReturnPrimaryTarget(notnull SCR_CampaignFaction faction)
+	{
+		array<SCR_CampaignMilitaryBaseComponent> controlPointsInRange = {};
+
+		// Get all Control Points which are now available for capture
+		foreach (SCR_CampaignMilitaryBaseComponent base : m_aControlPoints)
+		{
+			if (!base.IsInitialized() || base.IsHQ())
+				continue;
+
+			if (base.GetFaction() == faction)
+				continue;
+
+			if (!base.IsHQRadioTrafficPossible(faction))
+				continue;
+
+			controlPointsInRange.Insert(base);
+		}
+
+		SCR_CampaignMilitaryBaseComponent target;
+		int minDistance = int.MAX;
+
+		// If there are some Control Points in radio range, find the closest one
+		if (!controlPointsInRange.IsEmpty())
+		{
+			array<SCR_CampaignMilitaryBaseComponent> ownedBases = {};
+
+			// Get all bases the given faction currently holds
+			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
+			{
+				if (!base.IsInitialized())
+					continue;
+
+				if (base.GetFaction() != faction)
+					continue;
+
+				if (!base.IsHQRadioTrafficPossible(faction))
+					continue;
+
+				ownedBases.Insert(base);
+			}
+
+			foreach (SCR_CampaignMilitaryBaseComponent controlPoint : controlPointsInRange)
+			{
+				vector positionCP = controlPoint.GetOwner().GetOrigin();
+
+				foreach (SCR_CampaignMilitaryBaseComponent base : ownedBases)
+				{
+					int distance = vector.DistanceSqXZ(base.GetOwner().GetOrigin(), positionCP);
+
+					if (distance > minDistance)
+						continue;
+
+					minDistance = distance;
+					target = controlPoint;
+				}
+			}
+		}
+		else	// Otherwise, find the Control Point closest to one of the capturable bases
+		{
+			array<SCR_CampaignMilitaryBaseComponent> basesInRange = {};
+
+			// Get all bases which are now available for capture
+			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
+			{
+				if (!base.IsInitialized() || base.IsHQ())
+					continue;
+
+				if (base.GetFaction() == faction)
+					continue;
+
+				if (!base.IsHQRadioTrafficPossible(faction))
+					continue;
+
+				basesInRange.Insert(base);
+			}
+
+			foreach (SCR_CampaignMilitaryBaseComponent controlPoint : m_aControlPoints)
+			{
+				if (!controlPoint.IsInitialized() || controlPoint.IsHQ())
+					continue;
+
+				if (controlPoint.GetFaction() == faction)
+					continue;
+
+				vector positionCP = controlPoint.GetOwner().GetOrigin();
+
+				foreach (SCR_CampaignMilitaryBaseComponent base : basesInRange)
+				{
+					int distance = vector.DistanceSqXZ(base.GetOwner().GetOrigin(), positionCP);
+					bool closer = distance < minDistance;
+					bool coversControlPoint = base.CanReachByRadio(controlPoint.GetOwner());
+
+					if (!coversControlPoint && !closer)
+						continue;
+
+					minDistance = distance;
+					target = base;
+				}
+			}
+		}
+
+		return target;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisablePatrolSpawn(IEntity entity)
+	{
+		if (!entity)
+			return;
+
+		array<Managed> outComponents = {};
+		IEntity child = entity.GetChildren();
+		while (child)
+		{
+			Managed entityComponent = child.FindComponent(SCR_AmbientPatrolSpawnPointComponent);
+			if (entityComponent)
+				outComponents.Insert(entityComponent);
+
+			child = child.GetSibling();
+		}
+
+		SCR_AmbientPatrolSpawnPointComponent component;
+		foreach (Managed outComponent : outComponents)
+		{
+			component = SCR_AmbientPatrolSpawnPointComponent.Cast(outComponent);
+			if (!component)
+				continue;
+
+			component.SetMembersAlive(0);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CreateCampaignMilitaryBase(notnull SCR_MilitaryBaseComponent base)
+	{
+		EntitySpawnParams params = EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		base.GetOwner().GetTransform(params.Transform);
+
+		const IEntity entity = GetGame().SpawnEntityPrefab(Resource.Load("{1391CE8C0E255636}Prefabs/Systems/MilitaryBase/ConflictMilitaryBase.et"), null, params);
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(entity.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		if (campaignBase)
+		{
+			campaignBase.SetFaction(SCR_CampaignFaction.Cast(base.GetFaction(true)));
+
+			// The base was not linked yet (e.g. player built), attempt to link it now
+			const IEntity baseComposition = base.GetOwner().GetParent();
+			if (baseComposition)
+				campaignBase.SetBaseBuildingComposition(baseComposition);
+		}
+
+		DisablePatrolSpawn(entity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
+	{
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+		if (campaignBase)
+			return;
+
+		if (GetGame().GetWorld().GetWorldTime() < SCR_GameModeCampaign.BACKEND_DELAY)
+			return;
+
+		GetGame().GetCallqueue().Call(CreateCampaignMilitaryBase, base);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnBaseUnregistered(SCR_MilitaryBaseComponent base)
+	{
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+		if (!campaignBase)
+			return;
+
+		// HQ candidates are unregistered before active bases is set
+		if (campaignBase.CanBeHQ() && !campaignBase.IsHQ() && (m_iTargetActiveBases <= 0 || m_Campaign.IsProxy()))
+			return;
+
+		string factionKey = campaignBase.GetBuiltFaction();
+		if (campaignBase.GetBuiltByPlayers() && !factionKey.IsEmpty())
+			m_mFactionEstablishedBasesAmount.Set(factionKey, m_mFactionEstablishedBasesAmount.Get(factionKey) - 1);
+
+		m_iActiveBases--;
+		m_iTargetActiveBases--;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnBaseInitialized(notnull SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (!m_bAllBasesInitialized)
+			return;
+
+		if (!m_Campaign.IsProxy())
+		{
+			array<int> callsignsPool = {};
+
+			array<int> callsignIndexesBLUFOR = m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).GetBaseCallsignIndexes();
+			SCR_CampaignFaction factionOPFOR = m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR);
+
+			// Grab all valid base callsign indexes (if both factions have the index)
+			foreach (int indexBLUFOR : callsignIndexesBLUFOR)
+			{
+				if (factionOPFOR.GetBaseCallsignByIndex(indexBLUFOR))
+					callsignsPool.Insert(indexBLUFOR);
+			}
+
+			// Ignore callsigns which are already assigned to other bases
+			foreach (SCR_CampaignMilitaryBaseComponent existingBase : m_aBases)
+			{
+				if (!existingBase.IsInitialized())
+					continue;
+
+				callsignsPool.RemoveItem(existingBase.GetCallsign());
+			}
+
+			base.SetCallsignIndex(callsignsPool.GetRandomElement());
+			base.OnCallsignAssigned();
+
+			base.SetBuiltByPlayers(true);
+			base.SetBuiltFaction(base.GetFaction());
+			base.Initialize();
+
+			GetGame().GetCallqueue().CallLater(RecalculateRadioCoverageForced, SCR_GameModeCampaign.MINIMUM_DELAY, false, m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
+			GetGame().GetCallqueue().CallLater(RecalculateRadioCoverageForced, SCR_GameModeCampaign.MINIMUM_DELAY, false, m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
+		}
+
+		UpdateBases(true);
+		SetFactionBaseEstablished(base.GetFaction());
+
+		if (m_OnBaseBuilt)
+			m_OnBaseBuilt.Invoke(base, base.GetCampaignFaction());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Increments faction established bases counter with newly established base
+	//! \param[in] faction which built the base
+	protected void SetFactionBaseEstablished(Faction faction)
+	{
+		FactionKey factionKey = faction.GetFactionKey();
+		m_mFactionEstablishedBasesAmount.Set(factionKey, m_mFactionEstablishedBasesAmount.Get(factionKey) + 1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Determine the radio coverage of all bases (no coverage / can be reached / can respond / both ways)
+	void RecalculateRadioCoverageForced(notnull SCR_CampaignFaction faction)
+	{
+		bool newSettingsDetected = SCR_RadioCoverageSystem.UpdateAll(true);
+
+		if (newSettingsDetected)
+			EvaluateControlPoints();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignMilitaryBaseManager(notnull SCR_GameModeCampaign campaign)
 	{
 		m_Campaign = campaign;
@@ -1192,6 +1413,7 @@ class SCR_CampaignMilitaryBaseManager
 
 		baseManager.GetOnLogicUnregisteredInBase().Insert(OnServiceRemoved);
 		baseManager.GetOnBaseFactionChanged().Insert(OnBaseFactionChanged);
+		baseManager.GetOnBaseUnregistered().Insert(OnBaseUnregistered);
 
 		m_Campaign.GetOnStarted().Insert(OnConflictStarted);
 	}
@@ -1206,6 +1428,7 @@ class SCR_CampaignMilitaryBaseManager
 		{
 			baseManager.GetOnLogicUnregisteredInBase().Remove(OnServiceRemoved);
 			baseManager.GetOnBaseFactionChanged().Remove(OnBaseFactionChanged);
+			baseManager.GetOnBaseUnregistered().Remove(OnBaseUnregistered);
 		}
 
 		if (m_Campaign)

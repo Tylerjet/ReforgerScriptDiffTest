@@ -5,6 +5,9 @@ class SCR_MapUIBaseComponent : ScriptedWidgetComponent
 	[Attribute("0", UIWidgets.Auto, "Disable this component, useful for example when we want to inherit config without a specific component" )]
 	protected bool m_bDisableComponent;
 	
+	[Attribute("0", desc: "All other exclusive Map UI Components are disabled when this component is enabled")]
+	protected bool m_bIsExclusive;
+
 	protected bool m_bHookToRoot = false;							// determine whether this component is hooked to the root widget for use of ScriptedWidgetEventHandler events
 	protected Widget m_RootWidget;									// map layout root widget	
 	protected SCR_MapEntity m_MapEntity;	
@@ -38,6 +41,13 @@ class SCR_MapUIBaseComponent : ScriptedWidgetComponent
 		return m_bDisableComponent;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return true if this component should disable other exclusive UI components on the map when toggled on
+	bool IsExclusive()
+	{
+		return m_bIsExclusive;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Enable open/close events, called every time component is activated, usually on map open
 	//! \param[in] active is target state

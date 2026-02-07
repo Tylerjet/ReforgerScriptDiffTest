@@ -34,11 +34,11 @@ class PersistentDamageEffect: SCR_DamageEffect
 	/*!
 	* It is indented to work togeter with SCR_OnEffectApplied to send replicated data to clients.
 	*/
-	event bool SaveApplyEffect(ScriptBitWriter w);
+	event bool SaveApplyEffect(ScriptBitWriter w) { return true; };
 	/*!
 	* It is indented to work togeter with SCR_OnEffectApplied to load replicated data to clients.
 	*/
-	event bool LoadApplyEffect(ScriptBitReader r);
+	event bool LoadApplyEffect(ScriptBitReader r) { return true; };
 }
 
 /*!

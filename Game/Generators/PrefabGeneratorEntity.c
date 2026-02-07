@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Prefab Generator", dynamicBox: true, visible: false)]
+[EntityEditorProps(category: "GameScripted/Generators", description: "Prefab Generator", dynamicBox: true, visible: false)]
 class PrefabGeneratorEntityClass : SCR_LineTerrainShaperGeneratorBaseEntityClass
 {
 }
@@ -7,7 +7,7 @@ class PrefabGeneratorEntityClass : SCR_LineTerrainShaperGeneratorBaseEntityClass
 class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 {
 	/*
-		Mirrors
+		Category: Mirrors
 	*/
 
 	[Attribute(category: "Mirrors", defvalue: "0", desc: "Generate mirrored Prefabs - matching according to the shape (duplicate values are ignored).\n- Empty = normal Prefab generation\n- Number # = mirror at +# and -#\n- Use 0 to have the usual central line", params: "0 inf 0.01", precision: 2)]
@@ -17,7 +17,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	protected bool m_bMirrorRandomPrefabs;
 
 	/*
-		Prefabs
+		Category: Prefabs
 	*/
 
 	[Attribute(category: "Prefabs", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Prefab list", params: "et")]
@@ -32,17 +32,20 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	[Attribute(category: "Prefabs", defvalue: "5", desc: "Distance between spawned assets along the spline/polyline", params: "0 inf")]
 	protected float m_fDistance;
 
-	[Attribute(category: "Prefabs", defvalue: "1", desc: "Orient Prefabs to the shape's direction")]
+	[Attribute(category: "Prefabs", defvalue: "1", desc: "Orient Prefabs to the shape's direction - if Yaw Rotation Step below is set, it will start from shape's direction")]
 	protected bool m_bAlignWithShape;
 
 	[Attribute(category: "Prefabs", defvalue: "0", desc: "Only when aligning with shape")]
 	protected bool m_bUseXAsForward;
 
-	[Attribute(category: "Prefabs", defvalue: "0", desc: "Flip forward")]
+	[Attribute(category: "Prefabs", defvalue: "0", desc: "Rotate 180°")]
 	protected bool m_bFlipForward;
 
+	[Attribute(category: "Prefabs", defvalue: "0", desc: "Rotation step starting from 0 / shape direction (if Align With Shape above is used)\n- 0 = disabled, default Prefab yaw behaviour\n- 45 = 0, 45, 90, 135, 180, 225, 270 or 335°\n- 90 = 0, 90, 180 or 270°\n- 135 = 0, 135 or 270° (NOT 405-45°)\n- 180 = front or back", params: "0 180")]
+	protected float m_fYawRotationStep;
+
 	/*
-		Offset
+		Category: Offset
 	*/
 
 	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility (since 2024-10-01)
@@ -64,7 +67,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	protected float m_fOffsetForward;
 
 	/*
-		Perlin
+		Category: Perlin
 	*/
 
 	[Attribute(category: "Perlin", defvalue: "0", desc: "Prefab spawn density uses Perlin distribution")]
@@ -95,7 +98,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	protected bool m_fPerlinThrowAway; // m_b
 
 	/*
-		Debug
+		Category: Debug
 	*/
 
 	[Attribute(category: "Debug", defvalue: "0", desc: "Draw developer debug")]
@@ -321,7 +324,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 			return;
 		}
 
-		m_RandomGenerator.SetSeed(m_iSeed);
+		SetSeed();
 
 		// TODO: move this code to a "PrepareData" method or something
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
@@ -457,6 +460,11 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 		map<ResourceName, ref SCR_RandomisationEditorData> randomValuesMap = new map<ResourceName, ref SCR_RandomisationEditorData>();
 		SCR_RandomisationEditorData randomnessData;
 
+		int maxRandomYawStep;
+		bool useYawStep = m_fYawRotationStep > 0;
+		if (useYawStep)
+			maxRandomYawStep = 360 / m_fYawRotationStep; // int, so it floors the value (2.9 = 2)
+
 		bool isGeneratorVisible = worldEditorAPI.IsEntityVisible(m_Source);
 
 		vector upOffset = m_vShapeOffset[1] * vector.Up;
@@ -529,8 +537,7 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 				if (!randomValuesMap.Find(prefabToUse, randomnessData))
 				{
 					randomnessData = SCR_RandomisationEditorData.CreateFromEntitySource(entitySource);
-
-					if (randomnessData && m_bAlignWithShape)
+					if (randomnessData && (m_bAlignWithShape || useYawStep))
 						randomnessData.m_bRandomYaw = false;
 
 					randomValuesMap.Insert(prefabToUse, randomnessData);
@@ -553,6 +560,17 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 					}
 
 					randomnessData.RandomiseExt(worldEditorAPI, entitySource, m_RandomGenerator);
+				}
+
+				if (useYawStep)
+				{
+					// I never knew my real yaw
+					float stepYaw = Math.Repeat(m_RandomGenerator.RandInt(0, maxRandomYawStep) * m_fYawRotationStep, 360);
+					if (entitySource.Get("angles", angles))
+					{
+						angles[1] = Math.Repeat(angles[1] + stepYaw, 360);
+						worldEditorAPI.SetVariableValue(entitySource, null, "angles", angles.ToString(false));
+					}
 				}
 
 				if (!isGeneratorVisible)
@@ -591,6 +609,16 @@ class PrefabGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 
 				if (randomnessData)
 					randomnessData.RandomiseExt(worldEditorAPI, entitySource, m_RandomGenerator);
+
+				if (useYawStep)
+				{
+					float stepYaw = Math.Repeat(m_RandomGenerator.RandInt(0, maxRandomYawStep) * m_fYawRotationStep, 360);
+					if (entitySource.Get("angles", angles))
+					{
+						angles[1] = Math.Repeat(angles[1] + stepYaw, 360);
+						worldEditorAPI.SetVariableValue(entitySource, null, "angles", string.Format("%1 %2 %3", angles[0], angles[1], angles[2]));
+					}
+				}
 
 				if (!isGeneratorVisible)
 					worldEditorAPI.SetEntityVisible(entitySource, false, false);

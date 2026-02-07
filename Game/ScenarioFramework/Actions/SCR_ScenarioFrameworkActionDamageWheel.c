@@ -1,7 +1,7 @@
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionDamageWheel : SCR_ScenarioFrameworkActionBase
 {
-	[Attribute(desc: "Target entity to manipulate fuel (Optional if action is attached on Slot that spawns target entity)")]
+	[Attribute(desc: "Target entity. (Optional if action is attached on Slot that spawns target entity)")]
 	ref SCR_ScenarioFrameworkGet m_Getter;
 
 	[Attribute(defvalue: "", desc: "Name of Slots that are defined on the SlotManagerComponent on target vehicle")]

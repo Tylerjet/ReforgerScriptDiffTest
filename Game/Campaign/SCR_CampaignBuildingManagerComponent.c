@@ -1,3 +1,11 @@
+void ScriptInvokerEntitySpawnedByProviderMethod(int prefabID, SCR_EditableEntityComponent editableEntity, int playerId, SCR_CampaignBuildingProviderComponent provider);
+typedef func ScriptInvokerEntitySpawnedByProviderMethod;
+typedef ScriptInvokerBase<ScriptInvokerEntitySpawnedByProviderMethod> ScriptInvokerEntitySpawnedByProvider;
+
+void ScriptInvokerCompositionUnregisteredMethod(SCR_CampaignBuildingCompositionComponent composition);
+typedef func ScriptInvokerCompositionUnregisteredMethod;
+typedef ScriptInvokerBase<ScriptInvokerCompositionUnregisteredMethod> ScriptInvokerCompositionUnregistered;
+
 [ComponentEditorProps(category: "GameScripted/GameMode/Components", description: "Base for gamemode scripted component.")]
 class SCR_CampaignBuildingManagerComponentClass : SCR_BaseGameModeComponentClass
 {
@@ -25,6 +33,12 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("10", UIWidgets.EditBox, "How many times player has to perform build step to gain a XP reward", "")]
 	protected int m_iXpRewardTreshold;
 
+	[Attribute("1", UIWidgets.EditBox, "How many times player has to perform building step at the beginning of gradual reward process to gain his first XP reward.", params: "1 inf 1")]
+	protected int m_iInitialRewardInterval;
+
+	[Attribute("0.2", UIWidgets.EditBox, "How steep curve of the gradual reward process will be.", params: "0 inf 0.001")]
+	protected float m_fRewardCurveIncrement;
+
 	//! Note: Provider is saved to composition only when it's built from base.
 	[Attribute("0", UIWidgets.CheckBox, "If checked, only players of faction that match the owning faction of provider can disassemble composition")]
 	protected bool m_bSameFactionDisassembleOnly;
@@ -42,11 +56,17 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	protected ResourceName m_sPrefabToHoldSupplyOnRefund;
 
 	protected ref array<ResourceName> m_aPlaceablePrefabs = {};
+	protected ref map<SCR_CampaignMilitaryBaseComponent, ref array<SCR_CampaignBuildingCompositionComponent>> m_mCampaignBuildingComponents;
 
 	protected SCR_EditableEntityCore m_EntityCore;
 	protected IEntity m_TemporaryProvider;
 	protected RplComponent m_RplComponent;
-	protected int m_iBuildingCycle
+	protected int m_iBuildingCycle;
+	protected float m_fRewardCurveProgress;
+
+	protected ref ScriptInvokerEntitySpawnedByProvider m_OnEntitySpawnedByProvider;
+	protected ref ScriptInvokerVoid m_OnAnyCompositionSpawned;
+	protected ref ScriptInvokerCompositionUnregistered m_OnCompositionUnregistered;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -163,10 +183,15 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	void ProcesXPreward()
 	{
 		m_iBuildingCycle++;
-		if (m_iBuildingCycle < m_iXpRewardTreshold)
+
+		int currentThreshold = Math.Round(Math.Lerp(m_iInitialRewardInterval, m_iXpRewardTreshold, m_fRewardCurveProgress));
+		if (m_iBuildingCycle < currentThreshold)
 			return;
 
 		m_iBuildingCycle = 0;
+
+		m_fRewardCurveProgress += m_fRewardCurveIncrement;
+		m_fRewardCurveProgress = Math.Clamp(m_fRewardCurveProgress, 0, 1);
 
 		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
@@ -200,10 +225,14 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (entity.GetOwner().IsLoaded() && budgetChange > 0)
 			return;
 
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-
-		if (campaign && campaign.IsSessionLoadInProgress())
+		//CampaignBuildingManagerComponent should not do anything if there is no campaign
+        const SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
 			return;
+
+		// Do not react to changes during loading of session
+		if (SCR_PersistenceSystem.IsLoadInProgress())
+			return; 
 
 		int propBudgetValue;
 		array<ref SCR_EntityBudgetValue> budgets = {};
@@ -311,7 +340,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		if (!GetGameMode().IsMaster())
 			return;
-		
+
 		// Supplies are disabled in this mode. No need for an event.
 		if (!SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled(EResourceType.SUPPLIES))
 			return;
@@ -471,6 +500,9 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 			return;
 
 		campaign.OnEntityRequested(editableEntity.GetOwner(), player, SCR_Faction.Cast(SCR_Faction.GetEntityFaction(editableEntity.GetOwner())), provider);
+
+		if (m_OnEntitySpawnedByProvider)
+			m_OnEntitySpawnedByProvider.Invoke(prefabID, editableEntity, playerId, provider);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -661,5 +693,132 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 			return null;
 
 		return core.GetEditorManager(playerID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] composition
+	void RegisterComposition(notnull SCR_CampaignBuildingCompositionComponent composition)
+	{
+		if (!m_mCampaignBuildingComponents)
+			m_mCampaignBuildingComponents = new map<SCR_CampaignMilitaryBaseComponent, ref array<SCR_CampaignBuildingCompositionComponent>>();
+
+		SCR_MilitaryBaseSystem baseSystem = SCR_MilitaryBaseSystem.GetInstance();
+		if (!baseSystem)
+			return;
+
+		vector position = composition.GetOwner().GetOrigin();
+		array<SCR_MilitaryBaseComponent> bases = {};
+		baseSystem.GetBases(bases);
+
+		foreach (SCR_MilitaryBaseComponent base : bases)
+		{
+			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+			if (!campaignBase)
+				continue;
+
+			if (vector.DistanceSqXZ(campaignBase.GetOwner().GetOrigin(), position) <= (campaignBase.GetRadius() * campaignBase.GetRadius()))
+			{
+				if (!m_mCampaignBuildingComponents.Contains(campaignBase))
+				{
+					m_mCampaignBuildingComponents.Set(campaignBase, new array<SCR_CampaignBuildingCompositionComponent>());
+				}
+
+				array<SCR_CampaignBuildingCompositionComponent> baseComponents = m_mCampaignBuildingComponents[campaignBase];
+				if (!baseComponents.Contains(composition))
+				{
+					baseComponents.Insert(composition);
+					composition.GetOnCompositionSpawned().Insert(OnCompositionSpawned);
+				}
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] composition
+	void UnregisterComposition(notnull SCR_CampaignBuildingCompositionComponent composition)
+	{
+		if (!m_mCampaignBuildingComponents)
+			return;
+
+		SCR_MilitaryBaseSystem baseSystem = SCR_MilitaryBaseSystem.GetInstance();
+		if (!baseSystem)
+			return;
+
+		array<SCR_MilitaryBaseComponent> bases = {};
+		baseSystem.GetBases(bases);
+
+		foreach (SCR_MilitaryBaseComponent base : bases)
+		{
+			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+			if (!campaignBase)
+				continue;
+
+			array<SCR_CampaignBuildingCompositionComponent> baseComponents = m_mCampaignBuildingComponents[campaignBase];
+			if (!baseComponents)
+				continue;
+
+			if (baseComponents.Contains(composition))
+			{
+				baseComponents.RemoveItem(composition);
+				composition.GetOnCompositionSpawned().Remove(OnCompositionSpawned);
+
+				if (m_OnCompositionUnregistered)
+					m_OnCompositionUnregistered.Invoke(composition);
+
+				break;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCompositionSpawned(bool spawned)
+	{
+		if (!spawned)
+			return;
+
+		if (m_OnAnyCompositionSpawned)
+			m_OnAnyCompositionSpawned.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetBuildingCompositions(SCR_CampaignMilitaryBaseComponent base, out array<SCR_CampaignBuildingCompositionComponent> compositions)
+	{
+		if (!m_mCampaignBuildingComponents)
+			return 0;
+
+		array<SCR_CampaignBuildingCompositionComponent> baseComponents = m_mCampaignBuildingComponents[base];
+		if (!baseComponents)
+			return 0;
+
+		return compositions.Copy(baseComponents);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerEntitySpawnedByProvider GetOnEntitySpawnedByProvider()
+	{
+		if (!m_OnEntitySpawnedByProvider)
+			m_OnEntitySpawnedByProvider = new ScriptInvokerEntitySpawnedByProvider();
+
+		return m_OnEntitySpawnedByProvider;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnAnyCompositionSpawned()
+	{
+		if (!m_OnAnyCompositionSpawned)
+			m_OnAnyCompositionSpawned = new ScriptInvokerVoid();
+
+		return m_OnAnyCompositionSpawned;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerCompositionUnregistered GetOnCompositionUnregistered()
+	{
+		if (!m_OnCompositionUnregistered)
+			m_OnCompositionUnregistered = new ScriptInvokerCompositionUnregistered();
+
+		return m_OnCompositionUnregistered;
 	}
 }

@@ -3,6 +3,8 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	// Const localized strings 
 	protected const string MSG_SELECT = "#AR-Workshop_SelectMsg";
 	protected const string LINE_DOWNLOADED = "#AR-Workshop_Details_Downloaded";
+	protected const string MSG_REPORT_SUCCESS = "#AR-Workshop_Dialog_Report_SuccessDescription";
+	protected const string MSG_UNBLOCK_AUTHOR_CONFIRM = "#AR-Workshop_CancelAuthorReport";
 	protected const string TAG_AUTHOR_UNBLOCK = "unblock_author_simple";
 	
 	protected const int AUTHOR_MOD_LIMIT = 50;
@@ -118,7 +120,7 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		string msg;
 		
 		if (!isAuthorBlocked)
-			msg = dlg.GetMessageStr() + "\n\n" ;
+			msg = MSG_REPORT_SUCCESS + "\n\n" ;
 		
 		msg += "#AR-Workshop_ReportModReverse";
 		dlg.GetMessageWidget().SetTextFormat(msg, "#AR-Workshop_Filter_Reported", "#AR-Workshop_CancelReport");
@@ -171,7 +173,8 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		m_CurrentDialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_sDialogsConfig, TAG_AUTHOR_UNBLOCK);
 		
 		// Add author to message
-		string msg = m_CurrentDialog.GetMessageStr();
+		string msg = MSG_UNBLOCK_AUTHOR_CONFIRM;
+		
 		string author = m_Item.GetAuthorName();
 		m_CurrentDialog.GetMessageWidget().SetTextFormat(msg, author);
 		

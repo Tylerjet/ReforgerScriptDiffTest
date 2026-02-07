@@ -63,15 +63,21 @@ class SCR_MenuTileComponent : ScriptedWidgetComponent
 		
 		SetOrHideImage(m_wImageDefault, m_sImageDefault, string.Empty);
 		SetOrHideImage(m_wImageSelected, m_sImageSelected, string.Empty);
-		SetOrHideImage(m_wIcon, m_sIconTexture, m_sIconImage);
+		if (!m_sIconImage.IsEmpty())
+			SetOrHideImage(m_wIcon, m_sIconTexture, m_sIconImage);
 
 		if (m_wImageSelected)
 			m_wImageSelected.SetOpacity(0);
 		
 		if (m_wDescription)
 		{
-			m_wDescription.SetText(m_sDescription);
-			m_wDescription.SetOpacity(0);
+			if (!m_sDescription.IsEmpty())
+			{
+				m_wDescription.SetText(m_sDescription);
+				m_wDescription.SetOpacity(0);
+			}
+			else
+				m_wDescription.SetVisible(false);
 		}
 		
 		if (m_wTitle)

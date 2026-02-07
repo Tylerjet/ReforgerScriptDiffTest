@@ -32,7 +32,10 @@ enum EMapEntityMode
 	SPAWNSCREEN,
 	MINIMAP,
 	PLAIN,
-	TUTORIALFASTTRAVEL
+	TUTORIALFASTTRAVEL,
+	COMBAT_SUPPORT_STATION,
+	OPERATIONS_STATION,
+	LOGISTICS_STATION,
 };
 
 //------------------------------------------------------------------------------------------------
@@ -55,7 +58,9 @@ enum EMapCursorState
 	CS_ASSIGN_WP		= 1<<12,
 	CS_SUB_MENU			= 1<<13,
 	CS_DIALOG			= 1<<14,
-	CS_LAST				= 1<<15
+	CS_COMMAND_POSITIVE	= 1<<15,
+	CS_COMMAND_NEGATIVE	= 1<<16,
+	CS_LAST				= 1<<17
 };
 
 //------------------------------------------------------------------------------------------------

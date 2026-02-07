@@ -475,4 +475,23 @@ class SCR_Math3D
 
 		return v;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns cross product of two vector. You can optionally have them normalize before calculation.
+	//! \param[in] first vector
+	//! \param[in] second vector
+	//! \param[in] normalizeVectors if set then both vectors will be normalized before cross product calculation.
+	//! \return cross product of those two vectors
+	static vector Cross(vector first, vector second, bool normalizeVectors = false)
+	{
+		if (normalizeVectors)
+		{
+			first.Normalize();
+			second.Normalize();
+		}
+
+		return { 	first[1] * second[2] - first[2] * second[1],
+					first[2] * second[0] - first[0] * second[2],
+					first[0] * second[1] - first[1] * second[0]};
+	}
 }

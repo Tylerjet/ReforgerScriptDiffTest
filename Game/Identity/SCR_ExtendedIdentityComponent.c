@@ -448,6 +448,10 @@ class SCR_ExtendedIdentityComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void DelayedInit(IEntity owner)
 	{
+		//corner case where DelayedInit gets queued and entity is already deleted.
+		if(!owner)
+			return;
+		
 		m_bDelayedInitCalled = true;
 
 		if (m_bRandomizeIdentityOnInit)

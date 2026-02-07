@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class SndSystem: BaseSystem
+class SndSystem: WorldSystem
 {
 	//! Returns actual listener position.
 	proto external vector GetListenerPos();

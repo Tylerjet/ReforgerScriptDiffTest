@@ -68,8 +68,10 @@ sealed class World: BaseWorld
 	proto external void OutlineEntityGroup(notnull array<IEntity> entities, notnull Color color, float occlOpacity = 1.0, float fillOpacity = 0.0);
 	//! Reload all systems, by deleting all current systems, and create them again
 	proto external void ReloadSystems();
-	//! Find a system from his type
-	proto external BaseSystem FindSystem(typename type);
+	//! Find a world system based on its type.
+	proto external WorldSystem FindSystem(typename type);
+	//! Access world systems associated with this world.
+	proto external WorldSystems GetSystems();
 }
 
 /*!

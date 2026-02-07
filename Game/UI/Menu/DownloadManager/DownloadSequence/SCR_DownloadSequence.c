@@ -278,11 +278,14 @@ class SCR_DownloadSequence
 				continue;
 			}
 			
-			// Catch missing 
+			// Catch missing
 			Revision revision;
-			
+			// server browser still uses Dependency class
 			if (dependency.GetDependency())
 				revision = dependency.GetDependency().GetRevision();
+			// workshop uses WorkshopItem only
+			else			 
+				revision = dependency.GetLatestRevision();
 			
 			// Pending download
 			if (!revision)
@@ -311,7 +314,8 @@ class SCR_DownloadSequence
 			
 			// Setup callback and compute
 			SCR_BackendCallbackWorkshopItem callback = new SCR_BackendCallbackWorkshopItem(dependency);
-			callback.GetEventOnResponse().Insert(OnDependencyPatchSizeLoadResponse);
+			callback.SetOnSuccess(OnDependencyPatchSizeLoadResponse);
+			callback.SetOnError(OnDependencyPatchSizeLoadError);
 			m_aPatchSizeCallbacks.Insert(callback);
 			
 			revision.ComputePatchSize(callback);
@@ -371,26 +375,20 @@ class SCR_DownloadSequence
 	//------------------------------------------------------------------------------------------------
 	//! Call on any response to dependency patch size 
 	protected void OnDependencyPatchSizeLoadResponse(SCR_BackendCallbackWorkshopItem callback)
-	{
-		// Handle callback reponse
-		if (callback)
-		{
-			// Cleanup
-			callback.GetEventOnResponse().Remove(OnDependencyPatchSizeLoadResponse);
-			
-			if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS) 
-			{
-				OnItemError(callback.GetItem());
-				return;
-			}
-			
-			float size;
-			callback.GetItem().GetDependency().GetRevision().GetPatchSize(size);
-			callback.GetItem().SetTargetRevisionPatchSize(size);
-		}
+	{			
+		float size;
+		callback.GetItem().GetDependency().GetRevision().GetPatchSize(size);
+		callback.GetItem().SetTargetRevisionPatchSize(size);
 
 		m_iPatchesLoaded++;
 		CheckAllPatchSizeLoaded();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call on error response to dependency patch size 
+	protected void OnDependencyPatchSizeLoadError(SCR_BackendCallbackWorkshopItem callback)
+	{
+		OnItemError(callback.GetItem());
 	}
 	
 	//------------------------------------------------------------------------------------------------

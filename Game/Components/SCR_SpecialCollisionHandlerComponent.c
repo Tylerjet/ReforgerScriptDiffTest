@@ -40,4 +40,16 @@ class SCR_SpecialCollisionHandlerComponent : ScriptComponent
 		m_fContactHeightOverride = maxs[1] - mins[1];
 		return m_fContactHeightOverride;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called when character starts colliding with this entity
+	//! Method is executed on the client that owns the character as well as on the server
+	//! \param[in] character which got in contact with this entity
+	void OnContactStart(notnull SCR_ChimeraCharacter character);
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called when character stops colliding with this entity
+	//! Method is executed on the client that owns the character as well as on the server
+	//! \param[in] character which got in contact with this entity
+	void OnContactEnd(notnull SCR_ChimeraCharacter character);
 }

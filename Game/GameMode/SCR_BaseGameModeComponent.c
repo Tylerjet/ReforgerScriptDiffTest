@@ -81,13 +81,6 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	//! \param[in] cause Reason player disconnected
 	//! \param[in] timeout Timeout for when players are allowed to connect again. -1 means Ban without an assigned timeout
 	void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout);
-
-	//------------------------------------------------------------------------------------------------
-	//! Called after a player is spawned.
-	//! \param[in] playerId PlayerId of spawned player.
-	//! \param[in] controlledEntity Spawned entity for this player.
-	[Obsolete("Use OnPlayerSpawnFinalize_S instead")]
-	void OnPlayerSpawned(int playerId, IEntity controlledEntity);
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] requestComponent
@@ -152,21 +145,6 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	//! Called once loading of all entities of the world have been finished (still within the loading)
 	//! \param[in] world Loaded world
 	void OnWorldPostProcess(World world);
-
-	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a loadout
-	[Obsolete()]
-	void HandleOnLoadoutAssigned(int playerID, SCR_BasePlayerLoadout assignedLoadout);
-
-	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a faction
-	[Obsolete()]
-	void HandleOnFactionAssigned(int playerID, Faction assignedFaction);
-
-	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a spawn point
-	[Obsolete()]
-	void HandleOnSpawnPointAssigned(int playerID, SCR_SpawnPoint spawnPoint);
 
 	//------------------------------------------------------------------------------------------------
 	//! When a controllable entity is spawned, this event is raised.

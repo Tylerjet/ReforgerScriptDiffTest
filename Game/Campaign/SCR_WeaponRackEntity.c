@@ -41,7 +41,7 @@ class SCR_WeaponRackEntity : GenericEntity
 			}
 		}
 		
-		m_ArsenalDisplayComponent.RefreshArsenal(faction);
+		m_ArsenalDisplayComponent.RefreshArsenal(false, faction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

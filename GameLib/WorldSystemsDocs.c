@@ -60,17 +60,22 @@ Let us take a look at how a world system is implemented and integrated in the
 game.
 
 There are a few things necessary for every world system to work:
-1. Your world system class must be derived from BaseSystem or one of its
+1. Your world system class must be derived from WorldSystem or one of its
    subclasses.
-2. You need to override BaseSystem.InitInfo().
+2. You need to override WorldSystem.InitInfo().
 3. In your implementation of `InitInfo()` function, you set information about
    your world system so that engine knows how to handle it.
 
-\remarks Arma Reforger currently uses a legacy version of world systems. This
+\remarks Arma Reforger previously used a legacy version of world systems. This
 document will refer to these as "legacy systems". Differences between current and
-legacy systems will be described as they come up. Unfortunately, not every feature
-is supported by legacy systems using current version on Arma Reforger is not
-possible yet.
+legacy systems will be described as they come up. To make transition easier, there
+is support for migrating systems gradually from legacy to new version. A world
+system will follow legacy rules if it does not override `InitInfo()`. Once `InitInfo()`
+is provided, all information will be taken from WorldSystemInfo and legacy sources
+will only be used for mismatch warnings. Eventually, this support for legacy sources
+will be dropped altogether, so it is best to migrate as soon as possible.
+\remarks In legacy version, your world system had to be subclass of `BaseSystem`
+instead of WorldSystem.
 
 Following code is an example of very simple world system, with each of the above
 points marked.
@@ -140,7 +145,7 @@ which might not be available in all projects).
 	World world = GetGame().GetWorld();
 
 	// Once you have the world, you query it for particular system.
-	BaseSystem foundSystem = world.FindSystem(HelloWorldSystem);
+	WorldSystem foundSystem = world.FindSystem(HelloWorldSystem);
 	Print(foundSystem);
 \endcode
 
@@ -169,7 +174,7 @@ Default values of WorldSystemInfo properties are well defined, but you might not
 always be able to rely on them. Specifically, all world systems implemented in
 native code get to modify these default values in WorldSystemInfo before
 `InitInfo()` is called. The only system that guarantees to leave default values
-unchanged is BaseSystem. If it is necessary to ensure that WorldSystemInfo has
+unchanged is WorldSystem. If it is necessary to ensure that WorldSystemInfo has
 everything set to default, one can use WorldSystemInfo.RestoreDefaults() to
 achieve it.
 
@@ -200,9 +205,9 @@ are not limited to):
 - reliance on any kind of state of classes or variables (including global or
   static variables)
 
-\section WorldSystemDocs_SystemPoints System points
-Every world system can register for updates at particular points in world update
-loop. We have already seen how this is done in previous example, so let's look
+\section WorldSystemDocs_SystemPoints World system points
+Every world system can register for notifications at particular points during world
+lifetime. We have already seen how this is done in previous example, so let's look
 at it again:
 \snippet{trimleft} this Hello world system - modded InitInfo
 
@@ -210,20 +215,30 @@ at it again:
 which can be modified in world system config.
 
 When we initialize WorldSystemInfo, we call WorldSystemInfo.AddPoint(), passing
-ESystemPoint.Frame as argument (marked by `2.` in the example). This tells
-engine that our world system wants to update during this system point. If a
-world system is registered for updates on at least one system point, its
-`OnUpdate()` function will be called whenever that system point is hit during
-world update loop.
+WorldSystemPoint.Frame as argument (marked by `2.` in the example). This tells
+engine that our world system wants to be notified at this system point.
+
+\remarks WorldSystemPoint enum was previously called `ESystemPoint`. Old name is
+still provided as an alias, but it is deprecated and will be removed in the future.
 
 There are several system points that world systems can register to. For a full
-list you can refer to \ref ESystemPoint. Many of them are related to entity
-events (see \ref EntityEvent) and thus follow similar rules. For example, every
-iteration of world update loop is guaranteed to hit ESystemPoint.Frame (same as
-EntityEvent.FRAME) exactly once. On the other hand, ESystemPoint.FixedFrame
+list you can refer to WorldSystemPoint. In short, there are two kinds of system
+points: update points and one-time points. Update points occur during world update
+loop periodically. On the other hand, one-time points occur only once during lifetime
+of particular world and its associated world systems. Many of them are related to
+entity events (see EntityEvent) and thus follow similar rules. For example, every
+iteration of world update loop is guaranteed to hit WorldSystemPoint.Frame (same as
+EntityEvent.FRAME) exactly once. On the other hand, WorldSystemPoint.FixedFrame
 (same as EntityEvent.FIXEDFRAME) may be hit zero or more times, depending on how
 much time one iteration of world update loop took and what is the fixed timestep
 logic used by particular game.
+
+If a world system is registered for notification on at least one system point of
+particular kind, corresponding notification function will be called whenever that
+point is hit. For update points, notification function is `OnUpdatePoint()`, while
+for one-time points it is `OnOneTimePoint()`.
+
+\remarks Legacy version only supports update points, for which it calls notification function `OnUpdate()`.
 
 It is also possibly to affect the relative ordering of world systems that
 registered to same system point. To do so, WorldSystemInfo has `ExecuteBefore`
@@ -242,7 +257,7 @@ execution constraint on our HelloWorldSystem from previous examples:
 
 \remarks Legacy systems can provide virtual function
 ```
-bool DependsOn(ESystemPoint point, BaseSystem system)
+bool DependsOn(WorldSystemPoint point, WorldSystem system)
 ```
 to describe dependencies. This is similar to `ExecuteAfter` in that when this
 function returns `true` for particular combination of point and system,
@@ -251,18 +266,18 @@ set. There is no `ExecuteBefore` equivalent available for legacy systems.
 
 This system registers to three system points (`1.`). It also adds one execution
 constraint using WorldSystemInfo.AddExecuteBefore() (`2.`). This constraint says
-that in ESystemPoint.Frame, MultiPointSystem.OnUpdate() must execute before
-HelloWorldSystem.OnUpdate().
+that in WorldSystemPoint.Frame, MultiPointSystem.OnUpdatePoint() must execute before
+HelloWorldSystem.OnUpdatePoint().
 
 Rest of the code demonstrates different behavior of various system points. It
 counts how many times was particular system point hit and prints messages with
 system point and its hit index. After enough hits have been printed, system
-disables itself, preventing further calls to `OnUpdate()`.
+disables itself, preventing further calls to `OnUpdatePoint()`.
 
 Now add MultiPointSystem to our previously created config that already contains
 HelloWorldSystem and run a world using this config. Based on order in which log
 messages from each system appear, you can see that HelloWorldSystem and
-MultiPointSystem execute ESystemPoint.Frame in order we specified. You can try
+MultiPointSystem execute WorldSystemPoint.Frame in order we specified. You can try
 to change constraint from `ExecuteBefore` to `ExecuteAfter` to see messages
 appear in the opposite order. Or you can remove execution constraint altogether
 and see in what order they execute afterwards (though don't rely on it to stay
@@ -277,7 +292,7 @@ else' system.
 
 Very likely you will also notice that number of hits at the end is different for
 each system point we registered. This is because of different system points
-having different relation to world update loop. ESystemPoint.SimulatePhysics
+having different relation to world update loop. WorldSystemPoint.SimulatePhysics
 might not appear at all if there are no objects that require simulation of
 physics. However, order in which these system points are hit (assuming they are
 hit at all) is guaranteed. Describing world update loop in detail is outside
@@ -289,9 +304,6 @@ config. This is done by decorating variable declarations with Attribute. These
 variables will then be initialized by engine and world system can use them at
 runtime.
 
-\warning As of right now, config variables are initialized after constructor is
-executed. In other words, constructor will not see values from config file.
-
 Here is an example of exposing variables in world system config:
 \snippet this Configurable system
 
@@ -301,12 +313,8 @@ Here is an example of exposing variables in world system config:
    be exposed through config, as well as how to expose it (in this case, what
    should be its default value).
 3. We print value of `m_ConfigInt` we obtained from config.
-4. We demonstrate that constructor can observe uninitialized value of
-   `m_ConfigInt` by also printing it there.
 
-Running world with this world system will produce two messages in log. First
-will come from constructor of ConfigurableSystem, showing value of
-`m_ConfigInt` is 0, second will come from ConfigurableSystem.OnInit(), where
+Running world with this world system will produce a message in log, showing that
 value of `m_ConfigInt` will match whatever you set in the config (2 by default).
 
 \note In general, a world system can also change its behavior based on entities
@@ -321,7 +329,7 @@ Sometimes, there just isn't a simple answer.
 
 \section WorldSystemDocs_ClassHierarchySupport Support for class hierarchies
 Let's say we want to model multiple game modes by having one common base class
-for them (derived from BaseSystem) which defines common interface of all game
+for them (derived from WorldSystem) which defines common interface of all game
 modes. For two game modes (using deathmatch and team-deathmatch example from
 \ref WorldSystemsDocs_Introduction) we would like to have following inheritance
 relationship:
@@ -329,8 +337,8 @@ relationship:
 \dot
 digraph GameModes {
 	rankdir="BT";
-	BaseSystem;
-	GameMode -> BaseSystem;
+	WorldSystem;
+	GameMode -> WorldSystem;
 	DeathmatchMode -> GameMode;
 	TeamDeathmatchMode -> GameMode;
 }
@@ -346,7 +354,7 @@ We would also like to enforce a few rules:
 Enforcing rule 2 is the easiest and we have already seen it before in previous
 examples: `Abstract` property of WorldSystemInfo. Basically, abstract systems
 cannot be instantiated and they will not appear as option when editing world
-system config. All world systems derived from BaseSystem are abstract by
+system config. All world systems derived from WorldSystem are abstract by
 default. In all of our previous examples, we were marking world systems as not
 abstract so we could add them to world system config. This time, we will do the
 opposite and mark GameMode as abstract.
@@ -392,7 +400,7 @@ game mode exactly is created:
 \endcode
 
 \remarks Legacy systems are marked as *unique* automatically based on their base
-class. If their direct base class is either BaseSystem or `GameSystem`, they are
+class. If their direct base class is either WorldSystem or `GameSystem`, they are
 marked as unique. It is not possible to change this.
 
 \section WorldSystemDocs_Replication Replication of world systems
@@ -420,10 +428,10 @@ communicate with specific client (neither sending, nor receiving). We'll talk
 about communication between specific client and server in section
 \ref WorldSystemDocs_WorldController.
 
-\subsection WorldSystemDocs_SystemLocation System location
+\subsection WorldSystemDocs_SystemLocation World system location
 To limit world system creation to either server or client, we use `Location`
 property of WorldSystemInfo. WorldSystemInfo.SetLocation() takes
-\ref ESystemLocation, which has three possible values: `Both`, `Client` and
+WorldSystemLocation, which has three possible values: `Both`, `Client` and
 `Server`. However, game can be running in various multiplayer modes, and mapping
 might not be obvious. Following table summarizes which multiplayer modes match
 which locations (yes - system is created, no - system is not created):
@@ -436,22 +444,25 @@ which locations (yes - system is created, no - system is not created):
 | Multiplayer dedicated server | yes  | no     | yes    |
 
 This table may look strange at first. After all, why is mode with "server" in
-its name sometimes creating systems with ESystemLocation.Client? You might want
-to think of ESystemLocation.Client as "place where player interacts with the
+its name sometimes creating systems with WorldSystemLocation.Client? You might want
+to think of WorldSystemLocation.Client as "place where player interacts with the
 game" (providing inputs, getting audio-visual output). On the other hand,
-ESystemLocation.Server is "place where full game simulation happens" (ie. the
+WorldSystemLocation.Server is "place where full game simulation happens" (ie. the
 only place that knows about everything). In that sense, because there is no way
 to interact with dedicated server, it makes no sense for world system that
-should only appear on ESystemLocation.Client to be there. On the other hand,
+should only appear on WorldSystemLocation.Client to be there. On the other hand,
 a multiplayer client knows only what server told it and doesn't have full
 picture required for running simulation, so world system that only appears on
-ESystemLocation.Server wouldn't be able to function there. Single-player and
+WorldSystemLocation.Server wouldn't be able to function there. Single-player and
 listen server (ie. player-hosted server) are basically the same in this regard -
 they allow player interaction and also know about everything. In fact,
 single-player is just listen server that doesn't allow clients to connect.
 
 \remarks Legacy system specifies location using config property "System Location"
 which can be modified in world system config.
+\remarks WorldSystemLocation enum was previous called `ESystemLocation`. Old name
+is still provided as an alias, but it is deprecated and will be removed in the
+futured.
 
 \subsection WorldSystemDocs_WorldController World controllers
 As mentioned before, world systems are not able to communicate with specific
@@ -474,7 +485,7 @@ Let's now take a look at an example of a world controller.
    which is derived from WorldController. This is how world controllers are
    declared.
 2. We set up WorldSystemInfo. There are two interesting bits here:
-	1. We set `Location` to ESystemLocation.Client. This system just provides
+	1. We set `Location` to WorldSystemLocation.Client. This system just provides
 	   means for player to provide us with some input (player name), so we don't
 	   need it on server.
 	2. We add PlayerNameInputController to WorldSystemInfo property
@@ -526,7 +537,7 @@ instance on owning client is fully prepared.
 
 You might have been wondering why PlayerNameInputController is created both on
 client and server, even though PlayerNameInputSystem has its `Location` set to
-ESystemLocation.Client. This is is because world controllers exist purely to
+WorldSystemLocation.Client. This is is because world controllers exist purely to
 allow client-server communication within replication infrastructure. It makes no
 sense to have client-only or server-only controller. Therefore, when gathering
 set of world controllers to create based on world systems in config, all world
@@ -538,7 +549,7 @@ created as well.
 #ifdef DOXYGEN
 
 //! [Hello world system]
-class HelloWorldSystem : BaseSystem // 1.
+class HelloWorldSystem : WorldSystem // 1.
 {
 	override static void InitInfo(WorldSystemInfo outInfo) // 2.
 	{
@@ -559,15 +570,15 @@ modded class HelloWorldSystem
 	override static void InitInfo(WorldSystemInfo outInfo)
 	{
 		super.InitInfo(outInfo); // 1.
-		outInfo.AddPoint(ESystemPoint.Frame); // 2.
+		outInfo.AddPoint(WorldSystemPoint.Frame); // 2.
 	}
 	//! [Hello world system - modded InitInfo]
 
 	private int m_FrameCount = 0;
 
-	override void OnUpdate(ESystemPoint point)
+	override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		if (point == ESystemPoint.Frame)
+		if (args.GetPoint() == WorldSystemPoint.Frame)
 		{
 			int frameIndex = m_FrameCount;
 			PrintFormat("Hello world (systems) frame %1", frameIndex);
@@ -583,37 +594,37 @@ modded class HelloWorldSystem
 //! [Hello world system - modded]
 
 //! [Multi-point system]
-class MultiPointSystem : BaseSystem
+class MultiPointSystem : WorldSystem
 {
 	override static void InitInfo(WorldSystemInfo outInfo)
 	{
 		outInfo
 			.SetAbstract(false)
 			// 1.
-			.AddPoint(ESystemPoint.Frame)
-			.AddPoint(ESystemPoint.FixedFrame)
-			.AddPoint(ESystemPoint.SimulatePhysics)
+			.AddPoint(WorldSystemPoint.Frame)
+			.AddPoint(WorldSystemPoint.FixedFrame)
+			.AddPoint(WorldSystemPoint.SimulatePhysics)
 			// 2.
-			.AddExecuteBefore(HelloWorldSystem, ESystemPoint.Frame);
+			.AddExecuteBefore(HelloWorldSystem, WorldSystemPoint.Frame);
 	}
 
 	private int m_FrameCount = 0;
 	private int m_FixedFrameCount = 0;
 	private int m_SimulatePhysicsCount = 0;
 
-	override void OnUpdate(ESystemPoint point)
+	override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		switch (point)
+		switch (args.GetPoint())
 		{
-		case ESystemPoint.Frame:
+		case WorldSystemPoint.Frame:
 			PrintFormat("MultiPointSystem Frame %1", m_FrameCount);
 			m_FrameCount += 1;
 			break;
-		case ESystemPoint.FixedFrame:
+		case WorldSystemPoint.FixedFrame:
 			PrintFormat("MultiPointSystem FixedFrame %1", m_FixedFrameCount);
 			m_FixedFrameCount += 1;
 			break;
-		case ESystemPoint.SimulatePhysics:
+		case WorldSystemPoint.SimulatePhysics:
 			PrintFormat("MultiPointSystem SimulatePhysics %1", m_SimulatePhysicsCount);
 			m_SimulatePhysicsCount += 1;
 			break;
@@ -627,7 +638,7 @@ class MultiPointSystem : BaseSystem
 //! [Multi-point system]
 
 //! [Configurable system]
-class ConfigurableSystem : BaseSystem
+class ConfigurableSystem : WorldSystem
 {
 	override static void InitInfo(WorldSystemInfo outInfo)
 	{
@@ -639,18 +650,13 @@ class ConfigurableSystem : BaseSystem
 
 	void ConfigurableSystem()
 	{
-		PrintFormat("ConfigurableSystem.ctor m_ConfigInt = %1", m_ConfigInt); // 4.
-	}
-
-	override protected void OnInit()
-	{
-		PrintFormat("ConfigurableSystem.OnInit m_ConfigInt = %1", m_ConfigInt); // 3.
+		PrintFormat("ConfigurableSystem.ctor m_ConfigInt = %1", m_ConfigInt); // 3.
 	}
 }
 //! [Configurable system]
 
 //! [Class hierarchy example]
-class GameMode : BaseSystem
+class GameMode : WorldSystem
 {
 	override static void InitInfo(WorldSystemInfo outInfo)
 	{
@@ -715,19 +721,19 @@ class TeamDeathmatchMode : GameMode
 
 
 //! [World controller example]
-class PlayerNameInputSystem : BaseSystem // 1.
+class PlayerNameInputSystem : WorldSystem // 1.
 {
 	override static void InitInfo(WorldSystemInfo outInfo)
 	{
 		// 2.
 		outInfo
 			.SetAbstract(false)
-			.SetLocation(ESystemLocation.Client)
-			.AddPoint(ESystemPoint.Frame)
+			.SetLocation(WorldSystemLocation.Client)
+			.AddPoint(WorldSystemPoint.Frame)
 			.AddController(PlayerNameInputController);
 	}
 
-	override void OnUpdate(ESystemPoint point)
+	override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
 		string playerName;
 		bool apply = false;
@@ -742,7 +748,7 @@ class PlayerNameInputSystem : BaseSystem // 1.
 		{
 			// 4.
 			auto controller = PlayerNameInputController.Cast(
-				WorldController.FindMyController(this.GetWorld(), PlayerNameInputController)
+				GetSystems().FindMyController(PlayerNameInputController)
 			);
 			controller.RequestNameChange(playerName);
 		}
@@ -780,9 +786,9 @@ class PlayerNameInputController : WorldController // 1.
 
 	private void OnPlayerNameChanged()
 	{
-		auto serverSideOwner = this.GetServerSideOwner();
+		PlayerId ownerPlayerId = this.GetOwnerPlayerId();
 		// This message will appear on server and all clients.
-		PrintFormat("Player %1 name '%2'", serverSideOwner, m_PlayerName);
+		PrintFormat("Player %1 name '%2'", ownerPlayerId, m_PlayerName);
 	}
 }
 

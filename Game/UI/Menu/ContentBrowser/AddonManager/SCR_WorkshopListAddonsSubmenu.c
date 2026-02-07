@@ -12,7 +12,8 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavDeleteAll;
 	protected SCR_InputButtonComponent m_NavOpenDetails;
 	protected SCR_InputButtonComponent m_NavUpdate;
-
+	protected SCR_InputButtonComponent m_NavValidate;
+	
 	protected SCR_InputButtonComponent m_NavOpenTools;
 	protected SCR_InputButtonComponent m_NavOpenPresets;
 
@@ -56,6 +57,10 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		// Delete all mods
 		m_Widgets.m_DeleteAllEnabledComponent0.m_OnClicked.Insert(OnDeleteAllEnabled);
 		m_Widgets.m_DeleteAllDisabledComponent0.m_OnClicked.Insert(OnDeleteAllDisabled);
+
+		// Validate and repair all mods
+		m_Widgets.m_ValidateRepairAllEnabledComponent0.m_OnClicked.Insert(OnValidateAllEnabled);
+		m_Widgets.m_ValidateRepairAllDisabledComponent0.m_OnClicked.Insert(OnValidateAllDisabled);
 	
 		
 		// Right Panel
@@ -105,6 +110,8 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 			m_MenuActionsComponent.ActivateActions();
 		
 		RefreshAll();
+		
+		SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(SCR_EAnalyticsWorkshopTab.MOD_MANAGER);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -597,6 +604,26 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		else
 			OnDeleteAllDisabled();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnValidateAllEnabled()
+	{		
+		SCR_ValidateRepair_Dialog dialogValidator = CreateValidateDialog();
+		dialogValidator.LoadAddons(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnValidateAllDisabled()
+	{		
+		SCR_ValidateRepair_Dialog dialogValidator = CreateValidateDialog();
+		dialogValidator.LoadAddons(false);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	static SCR_ValidateRepair_Dialog CreateValidateDialog()
+	{
+		return SCR_CommonDialogs.CreateValidateRepairDialog();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnDeleteAllEnabled()
@@ -659,7 +686,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 				continue;
 			
 			if (item.GetEnabled())
-			SCR_AddonManager.GetInstance().GetPresetStorage().ClearUsedPreset();
+				SCR_AddonManager.GetInstance().GetPresetStorage().ClearUsedPreset();
 		
 			if (item.GetSubscribed())
 				item.SetSubscribed(false);

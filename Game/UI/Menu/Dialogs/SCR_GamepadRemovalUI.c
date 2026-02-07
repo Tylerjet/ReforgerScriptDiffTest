@@ -6,6 +6,7 @@ class SCR_GamepadRemovalUI : DialogUI
 	protected const string TEXTURE_PLAYSTATION = 	"{7DB8A1E50905C0EB}UI/Textures/Common/PlayStation_controller.edds";
 	
 	protected const string GAMEPAD_ANY_BUTTON_ACTION = "GamepadAnyButton";
+	protected const string KEYBOARD_ANY_BUTTON_ACTION = "KeyboardAnyButton";	
 	
 	protected static ref ScriptInvokerDialog m_OnGamepadRemovalDialogOpen;
 	protected static ref ScriptInvokerDialog m_OnGamepadRemovalDialogClose;
@@ -31,7 +32,8 @@ class SCR_GamepadRemovalUI : DialogUI
 		m_wImage = ImageWidget.Cast(GetRootWidget().FindAnyWidget("ControllerImage"));
 		UpdateImage();
 		
-		GetGame().GetInputManager().AddActionListener(GAMEPAD_ANY_BUTTON_ACTION, EActionTrigger.PRESSED, Close);
+		GetGame().GetInputManager().AddActionListener(GAMEPAD_ANY_BUTTON_ACTION, EActionTrigger.PRESSED, CloseAnimated);
+		GetGame().GetInputManager().AddActionListener(KEYBOARD_ANY_BUTTON_ACTION, EActionTrigger.PRESSED, CloseAnimated);
 		
 		if (m_OnGamepadRemovalDialogOpen)
 			m_OnGamepadRemovalDialogOpen.Invoke(this);
@@ -39,10 +41,11 @@ class SCR_GamepadRemovalUI : DialogUI
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose() 
-	{	
+	{
 		super.OnMenuClose();
 		
-		GetGame().GetInputManager().RemoveActionListener(GAMEPAD_ANY_BUTTON_ACTION, EActionTrigger.PRESSED, Close);
+		GetGame().GetInputManager().RemoveActionListener(GAMEPAD_ANY_BUTTON_ACTION, EActionTrigger.PRESSED, CloseAnimated);
+		GetGame().GetInputManager().RemoveActionListener(KEYBOARD_ANY_BUTTON_ACTION, EActionTrigger.PRESSED, CloseAnimated);
 		
 		if (m_OnGamepadRemovalDialogClose)
 			m_OnGamepadRemovalDialogClose.Invoke(this);
@@ -107,12 +110,13 @@ class SCR_GamepadRemovalUI : DialogUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static ScriptInvokerDialog GetOnGamepadRemovalDialogOpen()
+	static void CloseGamepadRemovalDialog()
 	{
-		if (!m_OnGamepadRemovalDialogOpen)
-			m_OnGamepadRemovalDialogOpen = new ScriptInvokerDialog();
+		ArmaReforgerScripted game = GetGame();
+		MenuManager menuManager = game.GetMenuManager();
 
-		return m_OnGamepadRemovalDialogOpen;
+		if (game.IsPlatformGameConsole())
+			menuManager.CloseMenuByPreset(ChimeraMenuPreset.GamepadRemovalDialog);
 	}
 
 	//------------------------------------------------------------------------------------------------

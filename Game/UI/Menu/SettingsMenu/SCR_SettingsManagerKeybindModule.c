@@ -7,74 +7,29 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	protected ref InputBinding m_Binding;
 	
 	protected ref SCR_KeyBindingMenuConfig m_KeybindConfig;
+
+	// Duplicate configs mayy be found as active preset for multiple combo boxes.
+	// Configs linked must be unique for each list to prevent it.
 	protected ref SCR_ControllerPresetsConfig m_ControllerPresetsConfig;
-	
-	protected static const string KEY_BINDING_CONFIG = "{4EE7794C9A3F11EF}Configs/System/keyBindingMenu.conf";
-	
-	protected static const string CONTROLLER_PRESETS_CONFIG = "{27780DD27C5E97CF}Configs/System/ControlSchemes/Gamepad/ControllerPresets.conf";
-	
+	protected ref SCR_ControllerPresetsConfig m_JoystickPresetsConfig;
+
+	protected static const ResourceName KEY_BINDING_CONFIG = "{4EE7794C9A3F11EF}Configs/System/keyBindingMenu.conf";
+	protected static const ResourceName CONTROLLER_PRESETS_CONFIG = "{27780DD27C5E97CF}Configs/System/ControlSchemes/Gamepad/ControllerPresets.conf";
+	protected static const ResourceName JOYSTICK_0_PRESETS_CONFIG = "{2823E147630F55BF}Configs/System/ControlSchemes/Joystick/Joystick0Presets.conf";
+	protected static const ResourceName JOYSTICK_1_PRESETS_CONFIG = "{810AEDDD191484A0}Configs/System/ControlSchemes/Joystick/Joystick1Presets.conf";
+
 	//------------------------------------------------------------------------------------------------
+	// constructor
 	void SCR_SettingsManagerKeybindModule()
 	{
-		LoadKeybindConfig();
-		LoadControllerPresetsConfig();
-		
+		m_KeybindConfig = SCR_KeyBindingMenuConfig.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(KEY_BINDING_CONFIG, true));
+		m_ControllerPresetsConfig = SCR_ControllerPresetsConfig.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(CONTROLLER_PRESETS_CONFIG, true));
+		m_JoystickPresetsConfig = SCR_ControllerPresetsConfig.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(JOYSTICK_0_PRESETS_CONFIG, true));
+
 		SetModuleType(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING);
 		m_Binding = GetGame().GetInputManager().CreateUserBinding();
 		if (!m_Binding)
-		{
 			Print("SCR_SettingsManagerKeybindModule: InputBindings were not created!", LogLevel.WARNING);
-			return;
-		}
-	}
-	
-	void LoadKeybindConfig()
-	{
-		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);
-		if (!holder)
-		{
-			Print("SCR_SettingsManagerKeybindModule: Loading of keybinding config failed!", LogLevel.WARNING);
-			return;		
-		}
-		
-		BaseContainer container = holder.GetResource().ToBaseContainer();
-		if (!container)
-		{
-			Print("SCR_SettingsManagerKeybindModule: Loading of keybinding config failed!", LogLevel.WARNING);
-			return;		
-		}
-		
-		m_KeybindConfig = SCR_KeyBindingMenuConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
-		if (!m_KeybindConfig)
-		{
-			Print("SCR_SettingsManagerKeybindModule: Loading of keybinding config failed!", LogLevel.WARNING);
-			return;		
-		}
-	}
-	
-	void LoadControllerPresetsConfig()
-	{
-		Resource holder = BaseContainerTools.LoadContainer(CONTROLLER_PRESETS_CONFIG);
-		if (!holder || !holder.IsValid())
-		{
-			Print("SCR_SettingsManagerKeybindModule: Loading of controller presets config failed!", LogLevel.WARNING);
-			return;		
-		}
-		
-		BaseContainer container = holder.GetResource().ToBaseContainer();
-		if (!container)
-		{
-			Print("SCR_SettingsManagerKeybindModule: Loading of controller presets config failed!", LogLevel.WARNING);
-			return;		
-		}
-		
-		//if we only had pointers :(
-		m_ControllerPresetsConfig = SCR_ControllerPresetsConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
-		if (!m_ControllerPresetsConfig)
-		{
-			Print("SCR_SettingsManagerKeybindModule: Loading of controller presets config failed!", LogLevel.WARNING);
-			return;		
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -243,6 +198,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		m_Binding.StartCapture(actionName, device, preset, false);
 		m_Binding.SaveCapture();
 		m_Binding.Save();
+		SCR_AnalyticsApplication.GetInstance().ChangeKeybind(actionName, preset);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -268,7 +224,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	{
 		if (!m_Binding)
 			return;
-		
+
 		bool reset;
 		switch (device)
 		{
@@ -315,7 +271,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		string finalPreset;
 		string devicePrefix;
 		string actionName;
-		
+
 		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.m_KeyBindingCategories)
 		{
 			foreach (SCR_KeyBindingEntry entry: category.m_KeyBindingEntries)
@@ -338,7 +294,9 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 				ResetAction(actionName, finalPreset, device);
 			}
 		}
+		
 		m_Binding.Save();
+		SCR_AnalyticsApplication.GetInstance().ResetAllKeybinds();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -354,51 +312,128 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_ControllerPreset> GetControllerPresets()
+	//! Get all preset lists defined in this module
+	//! \param[out] controllerPresets
+	//! \param[out] joystick0Presets
+	//! \param[out] joystick1Presets
+	void GetControllerPresets(notnull out array<ref SCR_ControllerPreset> controllerPresets)
 	{
 		if (m_ControllerPresetsConfig)
-			return m_ControllerPresetsConfig.GetPresets();
-		
-		Print("SCR_SettingsManagerKeybindModule: Controller preset not present, check init process!", LogLevel.ERROR);
-		return null;	
+			controllerPresets = m_ControllerPresetsConfig.GetPresets();
+		else
+			Print("SCR_SettingsManagerKeybindModule: Controller presets not present, check init process!", LogLevel.ERROR);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all preset lists defined for joysticks
+	//todo: add so this returns presets loaded from profile folder
+	void GetJoystickPresets(notnull out array<ref SCR_ControllerPreset> joystickPresets)
+	{
+		if (m_JoystickPresetsConfig)
+			joystickPresets = m_JoystickPresetsConfig.GetPresets();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetControllerPreset(int presetIndex)
+	//! Combines selected presets and feeds it to SetCustomConfigs
+	//! \param[in] presetIndex
+	void SelectControllerPresets(int presetIndex = -1)
 	{
 		if (!m_Binding)
 			return;
-		
-		array<ref SCR_ControllerPreset> presets = GetControllerPresets();
-		if (!presets || presets.IsEmpty() || presets.Count() <= presetIndex)
-			return;
-		
-		array<ResourceName> presetToSet = {};
-		
+
+		array<ref SCR_ControllerPreset> controllerPresets = {};
+		GetControllerPresets(controllerPresets);
+
 		//empty preset config means we set it to default
-		if (!presets.Get(presetIndex).GetResourceName().IsEmpty())
-			presetToSet.Insert(presets.Get(presetIndex).GetResourceName());
-		
-		m_Binding.SetCustomConfigs(presetToSet);
+		array<ResourceName> presets = {};
+		SCR_ControllerPreset preset;
+		int index;
+
+		// Controller
+		if (controllerPresets.IsIndexValid(presetIndex))
+			index = presetIndex;
+		else
+			index = GetActivePresetIndex(controllerPresets);
+
+		if (controllerPresets.IsIndexValid(index))
+		{
+			preset = controllerPresets.Get(index);
+			if (preset && !preset.GetResourceName().IsEmpty())
+				presets.Insert(preset.GetResourceName());
+		}
+
+		m_Binding.SetCustomConfigs(presets);
 		m_Binding.Save();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetActivePresetIndex()
+	//! Combines selected presets and feeds it to SetCustomConfigs
+	//! \param[in] presetIndex
+	void SelectJoystickPreset(int presetIndex = -1)
+	{
+		if (!m_Binding)
+			return;
+
+		array<ref SCR_ControllerPreset> joystickPresets = {};
+		GetJoystickPresets(joystickPresets);
+
+		//empty preset config means we set it to default
+		array<ResourceName> presets = {};
+		SCR_ControllerPreset preset;
+		int index;
+
+		// Controller
+		if (joystickPresets.IsIndexValid(presetIndex))
+			index = presetIndex;
+		else
+			index = GetActivePresetIndex(joystickPresets);
+
+		if (joystickPresets.IsIndexValid(index))
+		{
+			preset = joystickPresets.Get(index);
+			if (preset && !preset.GetResourceName().IsEmpty())
+				presets.Insert(preset.GetResourceName());
+		}
+
+		m_Binding.SetCustomConfigs(presets);
+		m_Binding.Save();
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Combines selected presets and feeds it to SetCustomConfigs
+	//! \param[in] presetIndex
+	void SelectJoystickPresetPath(string path)
+	{
+		if (!m_Binding)
+			return;
+
+		array<ref SCR_ControllerPreset> joystickPresets = {};
+		GetJoystickPresets(joystickPresets);
+
+		//empty preset config means we set it to default
+		array<ResourceName> presets = {};
+		presets.Insert(path);
+
+		m_Binding.SetCustomConfigs(presets);
+		m_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find index of active preset from provided controller preset list
+	//! \param[in] presets
+	//! \return
+	int GetActivePresetIndex(notnull array<ref SCR_ControllerPreset> presets)
 	{
 		if (!m_Binding)
 			return -1;
 		
 		array<ResourceName> setPresets = {};
 		m_Binding.GetCustomConfigs(setPresets);
-		if (setPresets.IsEmpty())
-			return 0;
-		
-		array<ref SCR_ControllerPreset> presets = GetControllerPresets();
-		
+		string path;
 		foreach (int i, SCR_ControllerPreset preset : presets)
 		{
-			if (preset.GetResourceName() == setPresets.Get(0))
+			if (setPresets.Contains(preset.GetResourceName()))
 				return i;
 		}
 		

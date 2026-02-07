@@ -25,7 +25,7 @@ class ScriptedBaseInventoryStorageComponent : BaseInventoryStorageComponent
 		{
 			storageUI.Refresh();
 			BaseInventoryStorageComponent storage = storageUI.GetCurrentNavigationStorage();
-			auto open = menu.GetOpenedStorage(storage);
+			SCR_InventoryOpenedStorageUI open = menu.GetOpenedStorage(storage);
 			if (open)
 				open.Refresh();
 		}

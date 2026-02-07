@@ -100,6 +100,21 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 	protected ParticleEffectEntity		m_BurningParticle; // Rapid fire damage particle emitter
 	protected ParticleEffectEntity		m_BurningGroundParticle; // Burning fuel on ground particle
 
+	override bool Save(notnull ScriptBitWriter writer)
+	{
+		writer.WriteInt(GetFireState());
+		return true;
+	}
+	
+	override bool Load(notnull ScriptBitReader reader)
+	{
+		int fireState;
+		
+		reader.ReadInt(fireState);
+		SetFireState(fireState);
+		return true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
@@ -249,6 +264,9 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 
 		if (!GetGame().GetWorld())
 			return;
+		
+		if(isJIP)
+			return;
 
 		if (GetDamageState() == EDamageState.DESTROYED)
 			StartDestructionFire();
@@ -371,7 +389,7 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 		hitZoneContainer.GetAllHitZones(hitZones);
 		int hitZoneIndex = hitZones.Find(this);
 		if (hitZoneIndex >= 0)
-			hitZoneContainer.Rpc(hitZoneContainer.RpcDo_SetFireState, hitZoneIndex, m_eFireState);
+			hitZoneContainer.RpcDo_SetFireState(hitZoneIndex, m_eFireState);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -556,14 +574,6 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 	{
 		IEntity owner = GetOwner();
 		if (!owner)
-			return;
-
-		SCR_DamageManagerComponent hitZoneContainer = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-
-		if (!hitZoneContainer)
-			return;
-
-		if (IsProxy() && !hitZoneContainer.IsRplReady())
 			return;
 
 		float depth;

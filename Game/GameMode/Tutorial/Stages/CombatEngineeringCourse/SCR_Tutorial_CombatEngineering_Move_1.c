@@ -17,7 +17,7 @@ class SCR_Tutorial_CombatEngineering_Move_1 : SCR_BaseTutorialStage
 			wp.m_iMaximumDrawDistance = 50;
 		
 		CreateMarkerPath("CE_PATH_DOTS");
-		CreateMarkerCustom("WP_CE_PATH6", SCR_EScenarioFrameworkMarkerCustom.OBJECTIVE_MARKER, SCR_EScenarioFrameworkMarkerCustomColor.REFORGER_ORANGE, "Construction site");
+		CreateMarkerCustom("WP_CE_PATH6", SCR_EScenarioFrameworkMarkerCustom.OBJECTIVE_MARKER, SCR_EScenarioFrameworkMarkerCustomColor.REFORGER_ORANGE);
 	}
 	
 	//------------------------------------------------------------------------------------------------

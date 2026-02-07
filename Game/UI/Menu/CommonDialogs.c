@@ -65,6 +65,13 @@ class SCR_CommonDialogs
 	}
 	
 	//---------------------------------------------------------------------------------------------
+	static SCR_ValidateRepair_Dialog CreateValidateRepairDialog()
+	{
+		SCR_ValidateRepair_Dialog dialog = new SCR_ValidateRepair_Dialog();
+		return SCR_ValidateRepair_Dialog.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "validate_repair", dialog));
+	}
+	
+	//---------------------------------------------------------------------------------------------
 	static SCR_ConfigurableDialogUi CreateScenarioLoadDialog()
 	{
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "scenario_load");

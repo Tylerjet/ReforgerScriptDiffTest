@@ -95,6 +95,8 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 
 		if (m_UnconMaskAnim)
 			m_UnconMaskAnim.GetOnCompleted().Insert(OnAnimCycleComplete);
+		
+		SCR_LogitechLEDManager.ActivateState(ELogitechLEDState.UNCONSCIOUS);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -137,6 +139,7 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 
 		AnimateWidget.AlphaMask(m_wDeath, 0, UNCONSCIOUS_FADEOUT_DURATION);
 		AnimateWidget.Opacity(m_wDeath, 0, UNCONSCIOUS_FADEOUT_DURATION, true);
+		SCR_LogitechLEDManager.ActivateState(ELogitechLEDState.DEFAULT);
 	}
 
 	//------------------------------------------------------------------------------------------------

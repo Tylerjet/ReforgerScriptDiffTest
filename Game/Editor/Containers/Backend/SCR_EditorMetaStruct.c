@@ -3,6 +3,7 @@
 
 Saved data for editor-specific information, e.g., camera position
 */
+[Obsolete("Only used for backwards compatiblity for GM saves. Will be removed entirely.")]
 class SCR_EditorMetaStruct: JsonApiStruct
 {
 	protected float pX; //--- Camera pos X

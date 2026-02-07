@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class ChimeraWorld: World
+sealed class ChimeraWorld: ChimeraWorldBase
 {
 	//! Returns the time and weather manager entity
 	proto external TimeAndWeatherManagerEntity GetTimeAndWeatherManager();

@@ -5,7 +5,7 @@ It solves smooth scrolling with thumb stick and auto-focusing of widgets when su
 Must be attached to a vertical scroll widget.
 */
 
-// #define GAMEPAD_SCROLL_DEBUG
+//#define GAMEPAD_SCROLL_DEBUG
 
 class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 {
@@ -14,10 +14,19 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 
 	[Attribute("1", UIWidgets.CheckBox, "Set scroll's initial state")]
 	protected bool m_bScrollEnabled;
+	
+	[Attribute("1", UIWidgets.CheckBox, "Is the scroll vertical or horizontal")]
+	protected bool m_bIsVerticalScroll;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Should mouse wheel inputs be allowed")]
+	protected bool m_bAllowScrollWheel;
 
 	// Constants
 	static const float SCROLL_SPEED_PX_PER_SECOND_MAX = 1500;
 	static const float WIDGET_DETECTION_MARGIN_PX = 3;
+	
+	static const float MOUSE_SCROLL_SPEED = 5;
+	static const float MOUSE_RAW_SCROLL_SPEED = 1000;
 
 	protected ScrollLayoutWidget m_wScroll;
 
@@ -27,6 +36,7 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 	protected ref array<Widget> m_aDebugMarksBusy;
 #endif
 
+	protected bool m_bMouseScrolled;
 	protected bool m_bShouldBeEnabled = true;
 	protected bool m_bForceDisabled;
 
@@ -93,8 +103,13 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 	{
 #ifdef GAMEPAD_SCROLL_DEBUG
 		DebugMarks_StartUpdate();
+		
+		vector refPoint;
+		if (m_bIsVerticalScroll)
+			refPoint = GetVReferencePoint(wScroll);
+		else
+			refPoint = GetHReferencePoint(wScroll);
 
-		vector refPoint = GetReferencePoint(wScroll);
 		PlaceDebugMark(refPoint, "-");
 #endif
 
@@ -103,28 +118,58 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 		Widget scrollContent = m_wScroll.GetChildren();
 		if (!scrollContent)
 			return;
+		
 		SCR_Rect2D scrollContentRect = GetWidgetRect(scrollContent);
-		if (scrollContentRect.GetHeight() <= scrollRect.GetHeight())
-			return;
-
-		// Handle scrolling, try find a new focus
-		float vScrollInput = GetVScrollInput();
-		if (vScrollInput != 0)
+		if (m_bIsVerticalScroll)
 		{
-			HandleGamepadScrolling(tDelta, wScroll);
-			if (m_bTryFindNewFocus)
-				TryFindNewFocus(wScroll);
-		}
+			if (scrollContentRect.GetHeight() <= scrollRect.GetHeight())
+				return;
+
+			// Handle scrolling, try find a new focus
+			float vScrollInput = GetVScrollInput();
+			if (m_bAllowScrollWheel)
+				vScrollInput += GetMouseScrollInput();
+			
+			if (vScrollInput != 0)
+			{
+				HandleGamepadVScrolling(tDelta, wScroll);
+				if (m_bTryFindNewFocus)
+					TryFindNewFocus(wScroll);
+			}
 
 #ifdef GAMEPAD_SCROLL_DEBUG
 		PlaceDebugMark("200 40 0", string.Format("V Scroll Input: notNull: %1, value: %2", vScrollInput != 0, vScrollInput));
-		PlaceDebugMark("700 40 0", string.Format("Current focus: %1", GetGame().GetWorkspace().GetFocusedWidget()));
+		PlaceDebugMark("800 40 0", string.Format("Current focus: %1", GetGame().GetWorkspace().GetFocusedWidget()));
 		DebugMarks_EndUpdate();
 #endif
+		}
+		else
+		{
+			if (scrollContentRect.GetWidth() <= scrollRect.GetWidth())
+				return;
+
+			// Handle scrolling, try find a new focus
+			float hScrollInput = GetHScrollInput();
+			if (m_bAllowScrollWheel)
+				hScrollInput += GetMouseScrollInput();
+			
+			if (hScrollInput != 0)
+			{
+				HandleGamepadHScrolling(tDelta, wScroll);
+				if (m_bTryFindNewFocus)
+					TryFindNewFocus(wScroll);
+			}
+
+#ifdef GAMEPAD_SCROLL_DEBUG
+		PlaceDebugMark("200 40 0", string.Format("H Scroll Input: notNull: %1, value: %2", hScrollInput != 0, hScrollInput));
+		PlaceDebugMark("800 40 0", string.Format("Current focus: %1", GetGame().GetWorkspace().GetFocusedWidget()));
+		DebugMarks_EndUpdate();
+#endif
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected static void HandleGamepadScrolling(float tDelta, ScrollLayoutWidget wScroll)
+	protected void HandleGamepadVScrolling(float tDelta, ScrollLayoutWidget wScroll)
 	{
 		Widget scrollContent = wScroll.GetChildren();
 
@@ -136,25 +181,77 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 
 		float xContentSize, yContentSize;
 		scrollContent.GetScreenSize(xContentSize, yContentSize);
-
+		
 		if (yContentSize <= yScrollSize || yContentSize == 0)
 			return;
 
 		float scrollInputValue = GetVScrollInput();
+		if (m_bAllowScrollWheel)
+			scrollInputValue += GetMouseScrollInput();
+		
 		float xPosAbsCurrent, yPosAbsCurrent;
 		wScroll.GetSliderPosPixels(xPosAbsCurrent, yPosAbsCurrent);
 
 		float yPosAbsNew = yPosAbsCurrent - scrollInputValue * tDelta * SCROLL_SPEED_PX_PER_SECOND_MAX;
-
-		//yPosRelNew = Math.Clamp(yPosRelNew, 0, 1);
-
+		
 		wScroll.SetSliderPosPixels(0, yPosAbsNew);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HandleGamepadHScrolling(float tDelta, ScrollLayoutWidget wScroll)
+	{
+		Widget scrollContent = wScroll.GetChildren();
+
+		if (!scrollContent)
+			return;
+
+		float xScrollSize, yScrollSize;
+		wScroll.GetScreenSize(xScrollSize, yScrollSize);
+
+		float xContentSize, yContentSize;
+		scrollContent.GetScreenSize(xContentSize, yContentSize);
+		
+		if (xContentSize <= xScrollSize || xContentSize == 0)
+			return;
+
+		float scrollInputValue = GetHScrollInput();
+		if (m_bAllowScrollWheel)
+			scrollInputValue -= GetMouseScrollInput();
+		
+		float xPosAbsCurrent, yPosAbsCurrent;
+		wScroll.GetSliderPosPixels(xPosAbsCurrent, yPosAbsCurrent);
+		
+		float xPosAbsNew = xPosAbsCurrent + scrollInputValue * tDelta * SCROLL_SPEED_PX_PER_SECOND_MAX;
+		
+		wScroll.SetSliderPosPixels(xPosAbsNew, 0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static float GetHScrollInput()
+	{
+		return GetGame().GetInputManager().GetActionValue("MenuScrollHorizontal");
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected static float GetVScrollInput()
 	{
 		return GetGame().GetInputManager().GetActionValue("MenuScrollVertical");
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetMouseScrollInput()
+	{
+		float value = GetGame().GetInputManager().GetActionValue("MouseWheel");
+		if (value != 0)
+		{
+			m_bMouseScrolled = true;
+			value = value / MOUSE_RAW_SCROLL_SPEED * MOUSE_SCROLL_SPEED;
+			return value;
+		}
+		
+		m_bMouseScrolled = false;
+		
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -177,6 +274,9 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 	//! Tries to find the new widget to focus
 	protected void TryFindNewFocus(ScrollLayoutWidget wScroll)
 	{
+		if (m_bMouseScrolled)
+			return;
+		
 		SCR_Rect2D scrollRect = GetWidgetRect(wScroll);
 		scrollRect.ExpandAllDirections(WIDGET_DETECTION_MARGIN_PX); // Otherwise the strict conditions omit some widgets at the edge sometimes
 
@@ -195,8 +295,12 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 
 		if (widgetsInFrame.IsEmpty())
 			return;
-
-		vector refPos = GetReferencePoint(wScroll);
+		
+		vector refPos;
+		if (m_bIsVerticalScroll)
+			refPos = GetVReferencePoint(wScroll);
+		else
+			refPos = GetHReferencePoint(wScroll);
 
 		// Sort widgets by their proximity to prev focus, or just select any widget
 		Widget newFocus = null;
@@ -224,29 +328,54 @@ class SCR_GamepadScrollComponent : SCR_ScriptedWidgetComponent
 
 		GetGame().GetWorkspace().SetFocusedWidget(newFocus);
 	}
-
 	//------------------------------------------------------------------------------------------------
 	//! Returns reference point of the scroll widget
-	protected static vector GetReferencePoint(ScrollLayoutWidget wScroll)
+	protected static vector GetVReferencePoint(ScrollLayoutWidget wScroll)
 	{
 		SCR_Rect2D scrollRect = GetWidgetRect(wScroll);
 		float sliderX, sliderY;
 		wScroll.GetSliderPos(sliderX, sliderY);
 		vector refPoint;
+		
 		refPoint[0] = scrollRect.p0[0];
 		refPoint[1] = scrollRect.p0[1] + sliderY * scrollRect.GetHeight();
 
 		if (!SCR_WidgetTools.InHierarchy(GetGame().GetWorkspace().GetFocusedWidget(), wScroll))
-		{
 			return refPoint;
-		}
 
 		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
 		float xPos, yPos, width, height;
 		focusedWidget.GetScreenPos(xPos, yPos);
 		focusedWidget.GetScreenSize(width, height);
 		SCR_Rect2D focusedRect = GetWidgetRect(focusedWidget);
+		
 		refPoint[0] = width * 0.5 + xPos - 1;
+
+		return refPoint;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns reference point of the scroll widget
+	protected static vector GetHReferencePoint(ScrollLayoutWidget wScroll)
+	{
+		SCR_Rect2D scrollRect = GetWidgetRect(wScroll);
+		float sliderX, sliderY;
+		wScroll.GetSliderPos(sliderX, sliderY);
+		vector refPoint;
+		
+		refPoint[0] = scrollRect.p0[0] + sliderX * scrollRect.GetWidth();
+		refPoint[1] = scrollRect.p0[1];
+
+		if (!SCR_WidgetTools.InHierarchy(GetGame().GetWorkspace().GetFocusedWidget(), wScroll))
+			return refPoint;
+
+		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
+		float xPos, yPos, width, height;
+		focusedWidget.GetScreenPos(xPos, yPos);
+		focusedWidget.GetScreenSize(width, height);
+		SCR_Rect2D focusedRect = GetWidgetRect(focusedWidget);
+		
+		refPoint[1] = height * 0.5 + yPos - 1;
 
 		return refPoint;
 	}

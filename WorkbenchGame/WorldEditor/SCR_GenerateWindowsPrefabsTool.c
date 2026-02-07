@@ -23,7 +23,7 @@ class SCR_GenerateWindowsPrefabsTool : WorldEditorTool
 		Category: General
 	*/
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where new prefabs will be created", enums: ParamEnumAddons.FromEnum(), category: "General")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where new prefabs will be created", enums: SCR_ParamEnumArray.FromAddons(), category: "General")]
 	protected int m_iAddonToUse;
 
 	[Attribute(defvalue: "1", desc: "Remove updated prefab's existing children", category: "General")]
@@ -584,7 +584,7 @@ class SCR_GenerateWindowsPrefabsTool : WorldEditorTool
 		array<ResourceName> searchResult;
 		foreach (array<string> searchStrings : searchStringGroups)
 		{
-			foreach (ResourceName resourceName : SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, searchStrings))
+			foreach (ResourceName resourceName : SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, searchStrings))
 			{
 				string toLowerFileNameWithoutExtension = FilePath.StripExtension(FilePath.StripPath(resourceName));
 				toLowerFileNameWithoutExtension.ToLower();

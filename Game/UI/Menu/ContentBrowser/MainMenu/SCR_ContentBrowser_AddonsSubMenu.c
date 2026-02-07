@@ -80,6 +80,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavPrimary;
 	protected SCR_InputButtonComponent m_NavEnable;
 	protected SCR_InputButtonComponent m_NavFavourite;
+	protected SCR_InputButtonComponent m_NavRepair;
 	protected SCR_InputButtonComponent m_NavFilter;
 
 	// Focus
@@ -88,12 +89,13 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	// Items found message
 	protected int m_iItemsTotal;
 	protected int m_iOnlineFilteredItems;
-	protected ref array<ref SCR_WorkshopApiCallback_RequestPage> m_aSearchCallbacks = {};
+	protected ref BackendCallback m_PageCallbackItemsTotal = null;
+	protected ref BackendCallback m_PageCallback = null;
 	
 	// Mouse wheel input
 	protected bool m_bCanPlayMouseWheelSound = true;
 	protected const int MOUSE_WHEEL_SOUND_COOLDOWN = 75;
-
+	
 	// --- Overrides ---
 	//------------------------------------------------------------------------------------------------
 	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
@@ -171,6 +173,8 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			else
 				GetGame().GetCallqueue().Call(SwitchFocus, m_eFocusedWidgetState);
 		}
+		
+		SCR_AnalyticsApplication.GetInstance().WorkshopSetTab(m_iIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -183,6 +187,15 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		
 		if (m_MenuActionsComponent)
 			m_MenuActionsComponent.DeactivateActions();
+		
+		// clear callbacks to kill pending requests
+		m_PageCallback = null;
+		m_PageCallbackItemsTotal = null;
+
+		// put browser into state so that it again properly loads when shown again
+		m_bFailToLoad = true;
+		m_bFirstLoad = true;
+		m_bFirstPage = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -199,7 +212,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		if (m_LastFocusedTile)
 			m_LastFocusedTile.GetOnChange().Remove(OnTileStateChange);
 		
-		GetGame().GetCallqueue().Remove(RequestOnlinePageUnfiltered);
+		// clear callbacks to kill pending requests
+		m_PageCallback = null;
+		m_PageCallbackItemsTotal = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -253,6 +268,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			m_NavDetails = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT, "#AR-Workshop_Details_MenuTitle", true);
 		}
 		
+		m_NavRepair = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT_HOLD, "#AR-FactionCommander_TaskRepair", true);
 		m_NavEnable = CreateNavigationButton(UIConstants.MENU_ACTION_ENABLE, SCR_WorkshopUiCommon.LABEL_ENABLE, true);
 		m_NavPrimary = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT_HOLD, SCR_WorkshopUiCommon.LABEL_DOWNLOAD, true);
 		m_NavFavourite = CreateNavigationButton(UIConstants.MENU_ACTION_FAVORITE, UIConstants.FAVORITE_LABEL_ADD, true);
@@ -283,6 +299,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		m_NavEnable.m_OnActivated.Insert(OnEnableButton);
 		m_NavPrimary.m_OnActivated.Insert(OnPrimaryButton);
 		m_NavFavourite.m_OnActivated.Insert(OnFavouriteButton);
+		m_NavRepair.m_OnActivated.Insert(OnRepairButton);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -338,8 +355,10 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 				break;
 			
 			case EContentBrowserAddonsSubMenuMode.MODE_ONLINE:
-				GetGame().GetCallqueue().Remove(RequestOnlinePage);
-				GetGame().GetCallqueue().CallLater(RequestOnlinePage, LOAD_PAGE_DELAY, false, pageId);
+				if (m_bFirstLoad)
+					RequestOnlinePageUnfiltered(pageId);
+				else
+					RequestOnlinePage(pageId);
 				break;
 			
 			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
@@ -353,39 +372,34 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	//! Requests an unfiltered page from backend to get the total number of items
 	protected void RequestOnlinePageUnfiltered(int pageId)
 	{
-		GetGame().GetCallqueue().Remove(RequestOnlinePageUnfiltered);
+		// Hotfix: 0 is not allowed page size and there is no other way to get unfiltered total count
+		m_WorkshopApi.SetPageSize(1);
 
-		m_WorkshopApi.SetPageItems(0);
-
-		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
-		callback.GetEventOnSuccess().Insert(Callback_OnRequestPageGetAllAssets);
-		callback.GetEventOnFail().Insert(Callback_OnRequestPageGetAllAssets);
-		callback.GetEventOnTimeOut().Insert(Callback_OnRequestPageGetAllAssets);
-
-		m_aSearchCallbacks.Insert(callback);
-
+		m_PageCallbackItemsTotal = new BackendCallback();
+		m_PageCallbackItemsTotal.SetOnSuccess(Callback_OnRequestPageGetAllAssets);
+		
 		if (!m_GetAssetListParamsDefault)
 			m_GetAssetListParamsDefault = new SCR_ContentBrowser_GetAssetListParams(this, true);
 
 		m_GetAssetListParamsDefault.limit = GRID_N_ROWS * GRID_N_COLUMNS;
 		m_GetAssetListParamsDefault.offset = pageId * GRID_N_ROWS * GRID_N_COLUMNS;
 
-		m_WorkshopApi.RequestPage(callback, m_GetAssetListParamsDefault, m_bClearCacheAtNextRequest);
+		m_WorkshopApi.RequestPage(m_PageCallbackItemsTotal, m_GetAssetListParamsDefault, m_bClearCacheAtNextRequest);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Requests a filtered page from backend to get the actual items to display
 	protected void RequestOnlinePage(int pageId)
 	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
 
-		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
-		callback.GetEventOnSuccess().Insert(Callback_OnRequestPageGetAssets);
-		callback.GetEventOnFail().Insert(Callback_OnRequestPageTimeout);
-		callback.GetEventOnTimeOut().Insert(Callback_OnRequestPageTimeout);
-
-		m_aSearchCallbacks.Insert(callback);
-
+		if (!m_PageCallback)
+		{
+			m_PageCallback = new BackendCallback();
+			m_PageCallback.SetOnSuccess(Callback_OnRequestPageGetAssets);
+			m_PageCallback.SetOnError(Callback_OnRequestPageTimeout);
+		}
+		
 		if (!m_GetAssetListParams)
 			m_GetAssetListParams = new SCR_ContentBrowser_GetAssetListParams(this);
 
@@ -398,26 +412,16 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		ContentBrowserUI._print(string.Format("WorkshopApi.RequestPage() limit: %1, offset: %2", m_GetAssetListParams.limit, m_GetAssetListParams.offset));
 		#endif
 
-		m_WorkshopApi.RequestPage(callback, m_GetAssetListParams, m_bClearCacheAtNextRequest);
+		m_WorkshopApi.RequestPage(m_PageCallback, m_GetAssetListParams, m_bClearCacheAtNextRequest);
 
 		m_bClearCacheAtNextRequest = false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void PageRequestCallbackCleanup(SCR_WorkshopApiCallback_RequestPage callback)
-	{
-		callback.GetEventOnSuccess().Clear();
-		callback.GetEventOnFail().Clear();
-		callback.GetEventOnTimeOut().Clear();
-
-		m_aSearchCallbacks.RemoveItem(callback);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Selects items from the externally provided array and shows them on grid, only makes sense in external array mode
 	protected void DisplayExternalItems(int pageId)
 	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
 
 		array<ref SCR_WorkshopItem> itemsAtPage = SelectItemsAtPage(m_aExternalItems, pageId);
 
@@ -441,7 +445,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void DisplayOfflineItems(int pageId)
 	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
+		m_WorkshopApi.SetPageSize(GRID_N_COLUMNS * GRID_N_ROWS);
 
 		// Get offline items from API
 		array<WorkshopItem> rawWorkshopItems = {};
@@ -677,6 +681,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			SetNavigationButtonVisibile(m_NavFavourite, false);
 			SetNavigationButtonVisibile(m_NavEnable, false);
 			SetNavigationButtonVisibile(m_NavPrimary, false);
+			SetNavigationButtonVisibile(m_NavRepair, false);			
 			return;
 		}
 		
@@ -689,6 +694,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		SetNavigationButtonVisibile(m_NavFavourite, show);
 		SetNavigationButtonVisibile(m_NavEnable, show && item.GetOffline() && !SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item) && !(!item.GetEnabled() && state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD));
 		SetNavigationButtonVisibile(m_NavPrimary, show && !primaryLabel.IsEmpty());
+		SetNavigationButtonVisibile(m_NavRepair, show && primaryLabel.IsEmpty() && item.GetCorrupted());
 		
 		// Favorite
 		if (m_NavFavourite)
@@ -883,6 +889,8 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
 		else
 			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
+
+		SCR_AnalyticsApplication.GetInstance().WorkshopUseFilterOn();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -946,6 +954,23 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnRepairButton(SCR_ButtonBaseComponent comp)
+	{
+		SetItemRepair();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetItemRepair()
+	{
+		SCR_WorkshopItem item = GetSelectedItem();
+		if (!item || item.GetRestricted())
+			return;
+
+		SCR_ValidateRepair_Dialog dialogValidator = SCR_CommonDialogs.CreateValidateRepairDialog();
+		dialogValidator.LoadAddon(item);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnFavouriteButton(SCR_ButtonBaseComponent comp)
 	{
 		SetItemFavorite();
@@ -978,20 +1003,17 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageGetAllAssets(SCR_WorkshopApiCallback_RequestPage callback)
+	protected void Callback_OnRequestPageGetAllAssets(BackendCallback callback)
 	{
-		PageRequestCallbackCleanup(callback);
-
 		m_iItemsTotal = m_WorkshopApi.GetTotalItemCount();
 		UpdateItemsFoundMessage(m_iOnlineFilteredItems, m_iItemsTotal);
 		m_bFirstLoad = false;
+		RequestOnlinePage(m_iCurrentPage);	
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageGetAssets(SCR_WorkshopApiCallback_RequestPage callback)
+	protected void Callback_OnRequestPageGetAssets()
 	{
-		PageRequestCallbackCleanup(callback);
-
 		// Search Box Message
 		m_iOnlineFilteredItems = m_WorkshopApi.GetTotalItemCount();
 
@@ -1006,10 +1028,6 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		if (!m_bFirstLoad)
 			UpdateItemsFoundMessage(m_iOnlineFilteredItems, m_iItemsTotal);
-
-		// Update Displayed items
-		if (callback.m_iPageId != m_iCurrentPage)
-			return; // ?!
 
 		array<ref SCR_WorkshopItem> itemsRegistered = {};
 		SCR_WorkshopItem iRegistered
@@ -1035,16 +1053,11 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		GridScreen_DisplayItems(itemsRegistered);
 
 		m_bFirstPage = false;
-
-		if (m_bFirstLoad)
-			GetGame().GetCallqueue().CallLater(RequestOnlinePageUnfiltered, LOAD_PAGE_DELAY, false, callback.m_iPageId);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageTimeout(SCR_WorkshopApiCallback_RequestPage callback)
+	protected void Callback_OnRequestPageTimeout()
 	{
-		PageRequestCallbackCleanup(callback);
-
 		if (GetShown())
 		{
 			// This submenu is shown, show the timeout dialog
@@ -1188,6 +1201,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(0);
+		SCR_AnalyticsApplication.GetInstance().WorkshopSetFilter(filter.GetCategory().m_sInternalName, filter.m_sInternalName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1196,6 +1210,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(0);
+		SCR_AnalyticsApplication.GetInstance().WorkshopUseSearch();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1204,6 +1219,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	{
 		m_bClearCacheAtNextRequest = true;
 		RequestPage(0);
+		SCR_AnalyticsApplication.GetInstance().WorkshopSetSorting(sortHeader.GetSortElementName());
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -14,6 +14,9 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseItemHolderSupportStationAct
 	[Attribute("#AR-SupportStation_Resupply_ActionInvalid_RankTooLow", desc: "Text shown on action if player cannot resupply because their rank is Renegade", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sInvalidRankTooLow;
 	
+	[Attribute("#AR-SupportStation_Resupply_ActionInvalid_NotEnoughAvailableAllocatedSupplies", desc: "Text shown on action if player cannot resupply because the player does not have enough Available Allocated Supplies", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sInvalidNotEnoughAvailableAllocatedSupplies;
+	
 	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Notification when the action is used. Shown to player using the action if resupply self or on the player that is being resupplied if resupply other. Leave unknown to ignore", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
 	protected ENotification m_eNotificationOnUse; 
 	
@@ -46,6 +49,8 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseItemHolderSupportStationAct
 			return m_sInvalidNoInventorySpace;
 		else if (reasonInvalid == ESupportStationReasonInvalid.RANK_TOO_LOW)
 			return m_sInvalidRankTooLow;
+		else if (reasonInvalid == ESupportStationReasonInvalid.NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES)
+			return m_sInvalidNotEnoughAvailableAllocatedSupplies;
 		
 		return super.GetInvalidPerformReasonString(reasonInvalid);
 	}
@@ -60,7 +65,7 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseItemHolderSupportStationAct
 		if (m_eResupplyUnavailableReason == EResupplyUnavailableReason.ENOUGH_ITEMS || m_eResupplyUnavailableReason == EResupplyUnavailableReason.INVENTORY_FULL)
 			return true;
 			
-		if (m_eCannotPerformReason == ESupportStationReasonInvalid.NO_SUPPLIES || m_eCannotPerformReason == ESupportStationReasonInvalid.RANK_TOO_LOW)
+		if (m_eCannotPerformReason == ESupportStationReasonInvalid.NO_SUPPLIES || m_eCannotPerformReason == ESupportStationReasonInvalid.RANK_TOO_LOW || m_eCannotPerformReason == ESupportStationReasonInvalid.NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES)
 			return true;
 		
 		return false;
@@ -116,6 +121,8 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseItemHolderSupportStationAct
 				SetCanPerform(false, ESupportStationReasonInvalid.RESUPPLY_NO_VALID_WEAPON);
 			else if (m_eResupplyUnavailableReason == EResupplyUnavailableReason.RANK_TOO_LOW)
 				SetCanPerform(false, ESupportStationReasonInvalid.RANK_TOO_LOW);
+			else if (m_eResupplyUnavailableReason == EResupplyUnavailableReason.NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES)
+				SetCanPerform(false, ESupportStationReasonInvalid.NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES);
 			
 			return false;
 		}
@@ -163,14 +170,38 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseItemHolderSupportStationAct
 		//~ Check for rank if items are ranked locked and disable the action if player is Renegade or doesnt meet rank requirement
 		if (!m_bCanResupply || !m_ArsenalManager || !m_ArsenalManager.AreItemsRankLocked())
 			return;
-		
+
 		SCR_ECharacterRank characterRank = SCR_CharacterRankComponent.GetCharacterRank(m_InventoryManagerTarget.GetOwner());
 		SCR_ResupplyCatalogItemSupportStationData catalogSupportData = SCR_ResupplyCatalogItemSupportStationData.Cast(m_ResupplyData);
-		if (characterRank > SCR_ECharacterRank.RENEGADE && (!catalogSupportData || characterRank >= catalogSupportData.GetRequiredRank(owner, m_SupportStationGadget)))
-			return;
+		SCR_ResupplyHeldWeaponSupportStationData muzzleSupportData = SCR_ResupplyHeldWeaponSupportStationData.Cast(m_ResupplyData);
+		
+		if (characterRank <= SCR_ECharacterRank.RENEGADE || (catalogSupportData && characterRank < catalogSupportData.GetRequiredRank(owner, m_SupportStationGadget)))
+			m_eResupplyUnavailableReason = EResupplyUnavailableReason.RANK_TOO_LOW;
 
-		m_eResupplyUnavailableReason = EResupplyUnavailableReason.RANK_TOO_LOW;
-		m_bCanResupply = false;
+		if (SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+		{
+			PlayerManager playerManager = GetGame().GetPlayerManager();
+			int playerId = playerManager.GetPlayerIdFromControlledEntity(user);
+
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(playerManager.GetPlayerController(playerId));
+			SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent;
+
+			if (playerController)
+				playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(playerController.FindComponent(SCR_PlayerSupplyAllocationComponent));
+
+			if (muzzle)
+			{
+				if (playerSupplyAllocationComponent && muzzleSupportData && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(muzzleSupportData.GetRequiredAvailableAllocatedSupplies(owner, m_sItemPrefab)))
+					m_eResupplyUnavailableReason = EResupplyUnavailableReason.NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES;
+			}
+			else
+			{
+				if (playerSupplyAllocationComponent && catalogSupportData && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(catalogSupportData.GetRequiredAvailableAllocatedSupplies(owner, m_SupportStationGadget)))
+					m_eResupplyUnavailableReason = EResupplyUnavailableReason.NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES;
+			}
+		}
+
+		m_bCanResupply = m_eResupplyUnavailableReason == EResupplyUnavailableReason.RESUPPLY_VALID;
 	}
 	
 	//------------------------------------------------------------------------------------------------

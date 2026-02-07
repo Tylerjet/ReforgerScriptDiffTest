@@ -190,7 +190,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (!m_RadialMenu)
 			return;
 
-		m_RadialMenu.GetOnBeforeOpen().Insert(OnPlayerRadialMenuOpen);
+		m_RadialMenu.GetOnBeforeOpen().Insert(OnPlayerRadialMenuBeforeOpen);
+		m_RadialMenu.GetOnOpen().Insert(OnPlayerRadialMenuOpen);
 		m_RadialMenu.GetOnClose().Insert(OnPlayerRadialMenuClose);
 		m_RadialMenu.GetOnPerform().Insert(OnRadialMenuPerformed);
 		m_RadialMenu.GetOnSelect().Insert(OnRadialMenuSelected);
@@ -208,7 +209,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (!m_RadialMenu)
 			return;
 
-		m_RadialMenu.GetOnBeforeOpen().Remove(OnPlayerRadialMenuOpen);
+		m_RadialMenu.GetOnBeforeOpen().Remove(OnPlayerRadialMenuBeforeOpen);
+		m_RadialMenu.GetOnOpen().Remove(OnPlayerRadialMenuOpen);
 		m_RadialMenu.GetOnClose().Remove(OnPlayerRadialMenuClose);
 		m_RadialMenu.GetOnPerform().Remove(OnRadialMenuPerformed);
 		m_RadialMenu.GetOnSelect().Remove(OnRadialMenuSelected);
@@ -810,7 +812,15 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	{
 		SCR_SelectionMenuCategoryEntry newCategory = new SCR_SelectionMenuCategoryEntry();
 
+		string id;
+		if (parentCategory)
+			id = parentCategory.GetId() + SCR_StringHelper.UNDERSCORE + parentCategory.GetEntries().Count().ToString();
+		else
+			id = m_RadialMenu.GetEntries().Count().ToString();
+
+		newCategory.SetId(id);
 		newCategory.SetName(category.GetCategoryDisplayText());
+
 		ResourceName imagesetName = category.GetIconImageset();
 		string iconName = category.GetIconName();
 		if (!imagesetName.IsEmpty() && !iconName.IsEmpty())
@@ -852,16 +862,25 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		string displayName = command.GetCommandCustomName();
 		if (displayName.IsEmpty())
 			displayName = commandingManager.GetCommandDisplayTextByName(command.GetCommandName());
-
+	
 		//entry.SetName(displayName);
+		bool canExecute;
 		bool canPerform = groupCommand.CanBePerformed(user);
+		
+		if (canPerform)
+		{
+			canExecute = groupCommand.CanBeExecuted(m_SelectedEntity);
+		}
+		
 		entry.SetId(command.GetCommandName());
 		entry.SetIcon(groupCommand.GetIconImageset(), groupCommand.GetIconName());
-		entry.Enable(canPerform);
+		entry.Enable(canPerform && canExecute);
 		entry.SetCommandText(displayName);
 		if (!canPerform)
 			entry.SetDescription(groupCommand.GetCannotPerformReason());
-
+		else if (!canExecute)
+			entry.SetDescription(groupCommand.GetCannotExecuteReason());
+		
 		if (parentCategory)
 			parentCategory.AddEntry(entry);
 		else
@@ -872,7 +891,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//!
-	void OnPlayerRadialMenuOpen()
+	void OnPlayerRadialMenuBeforeOpen()
 	{
 		if (!m_RadialMenu || !m_CommandingMenuConfig)
 			return;
@@ -898,13 +917,15 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		GetGame().GetInputManager().AddActionListener("BindQuickslot8", EActionTrigger.DOWN, OnQuickslotBind8);
 		GetGame().GetInputManager().AddActionListener("BindQuickslot9", EActionTrigger.DOWN, OnQuickslotBind9);
 
-		SCR_WeaponSwitchingBaseUI baseUI = SCR_WeaponSwitchingBaseUI.GetWeaponSwitchingBaseUI();
-		if (baseUI)
-			baseUI.OpenQuickSlots();
-
 		m_bIsCommandSelected = false;
 	}
-
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerRadialMenuOpen()
+	{
+		SCR_WeaponSwitchingBaseUI baseUI = SCR_WeaponSwitchingBaseUI.GetWeaponSwitchingBaseUI();
+		if (baseUI)
+			baseUI.OpenQuickSlots();		
+	}
 	//------------------------------------------------------------------------------------------------
 	void OnPlayerRadialMenuClose()
 	{

@@ -38,9 +38,9 @@ class SCR_NameTagConfig : Managed
 		
 		for (int i = 0; i < m_iZoneCount; i++)	// individual zone adjustment
 		{
-			m_aZones[i].m_iZoneEndPow2 = Math.Pow(m_aZones[i].m_iZoneEnd * modifier, 2);
-			if (m_aZones[i].m_iZoneEndPow2 > MAX_ZONE_RANGE)
-				m_aZones[i].m_iZoneEndPow2 = MAX_ZONE_RANGE;
+			m_aZones[i].m_iZoneEndSq = Math.Pow(m_aZones[i].m_iZoneEnd * modifier, 2);
+			if (m_aZones[i].m_iZoneEndSq > MAX_ZONE_RANGE)
+				m_aZones[i].m_iZoneEndSq = MAX_ZONE_RANGE;
 		}
 		
 		m_fFarthestZoneRange = m_fFarthestZoneRange * modifier;	// cached last zone adjustment
@@ -55,7 +55,7 @@ class SCR_NameTagConfig : Managed
 	{
 		for (int i = 0; i < m_iZoneCount; i++)
 		{
-			m_aZones[i].m_iZoneEndPow2 = m_aZones[i].m_iZoneEnd * m_aZones[i].m_iZoneEnd;
+			m_aZones[i].m_iZoneEndSq = m_aZones[i].m_iZoneEnd * m_aZones[i].m_iZoneEnd;
 		}
 		
 		m_fFarthestZoneRange = m_fFarthestZoneRangeOriginal;
@@ -120,9 +120,18 @@ class SCR_NameTagZone
 	[Attribute("", UIWidgets.Object, "Nametag elements")]
 	protected ref array<ref SCR_NTElementBase> m_aElements;
 	
-	int m_iZoneEndPow2;		// used in distance calculations
+	int m_iZoneStartSq;
+	int m_iZoneEndSq;		// used in distance calculations
 	int m_iElementsCount;
-			
+	
+	//------------------------------------------------------------------------------------------------
+	//! Getter - nametag zone name
+	//! \return string zone name
+	string GetZoneName()
+	{
+		return m_sZoneName;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Getter - minimum distance for the nametag to be drawn in this zone
 	//! \return min draw distance 
@@ -180,7 +189,8 @@ class SCR_NameTagZone
 	//------------------------------------------------------------------------------------------------	
 	void SCR_NameTagZone()
 	{
-		m_iZoneEndPow2 = m_iZoneEnd * m_iZoneEnd;
+		m_iZoneStartSq = m_iZoneStart * m_iZoneStart;
+		m_iZoneEndSq = m_iZoneEnd * m_iZoneEnd;
 		m_iElementsCount = m_aElements.Count();
 	}
 	

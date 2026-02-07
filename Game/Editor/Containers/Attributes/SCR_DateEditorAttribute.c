@@ -19,12 +19,12 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 	
 	[Attribute(defvalue: "1940")]
 	protected int m_iYearStartDate;
+
 	[Attribute(defvalue: "1995")]
 	protected int m_iYearEndDate;
 	
-	ref array<ref int> m_aYearArray = new array<ref int>();
-	
-	
+	protected ref array<int> m_aYearArray = {};
+
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		//If opened in global attributes

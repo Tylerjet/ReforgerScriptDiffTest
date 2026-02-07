@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator/Helper", description: "", dynamicBox: true, visible: false)]
+[EntityEditorProps(category: "GameScripted/Generators/Helpers", description: "", dynamicBox: true, visible: false)]
 class SCR_ShapeAnalyserEntityClass : SCR_GeneratorBaseEntityClass
 {
 }
@@ -46,19 +46,19 @@ class SCR_ShapeAnalyserEntity : SCR_GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
-		bool parentResult = super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+		if (!super._WB_OnKeyChanged(src, key, ownerContainers, parent))
+			return false;
 
 		if (!m_ParentShapeSource)
-			return parentResult;
+			return false;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
-			return parentResult;
+			return false;
 
 		ShapeEntity parentShape = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
-
 		if (!parentShape)
-			return parentResult;
+			return false;
 
 		src = worldEditorAPI.EntityToSource(this);
 		BaseContainerTools.WriteToInstance(this, src); // refresh attributes

@@ -27,30 +27,31 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_CONDITION_INSPECTOR))
 			ConditionInspector();
+		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_DEBUG_ACTIONS))
+			DebugActions();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! The method displays active scenario framework tasks, allows inspection of areas, layer tasks, slot tasks, and provides options manipulating with them further
 	static void Tasks()
 	{
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
-			return;
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+	    if (!taskSystem)
+	        return;
 
 		DbgUI.Begin("ScenarioFramework Tasks");
 		{
-			array<SCR_BaseTask> tasks = {};
 			array<SCR_ScenarioFrameworkTask> scenarioFrameworkTasks = {};
-			array<SCR_BaseTask> finishedTasks = {};
+			array<SCR_Task> finishedTasks = {};
 			array<string> listElements = {};
-			int activeTaskCount = taskManager.GetTasks(tasks);
-			int finishedTaskCount = taskManager.GetFinishedTasks(finishedTasks);
-			tasks.InsertAll(finishedTasks);
+			array<SCR_Task> tasks = {};
+			taskSystem.GetTasks(tasks);
 			SCR_ScenarioFrameworkTask scenarioFrameworkTask;
 			SCR_ScenarioFrameworkSlotTask scenarioFrameworkSlotTask;
 			SCR_ScenarioFrameworkLayerTask scenarioFrameworkLayerTask;
 			SCR_ScenarioFrameworkArea scenarioFrameworkArea;
-			foreach (SCR_BaseTask task : tasks)
+			foreach (SCR_Task task : tasks)
 			{
 				scenarioFrameworkTask = SCR_ScenarioFrameworkTask.Cast(task);
 				if (!scenarioFrameworkTask)
@@ -68,7 +69,7 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 				if (!scenarioFrameworkArea)
 					continue;
 
-				listElements.Insert(WidgetManager.Translate(string.Format("%1 - Area: %2 - LayerTask: %3 - SlotTask: %4", scenarioFrameworkTask.GetTitle(), scenarioFrameworkArea.GetName(), scenarioFrameworkLayerTask.GetName(), scenarioFrameworkSlotTask.GetName())));
+				listElements.Insert(WidgetManager.Translate(string.Format("%1 - Area: %2 - LayerTask: %3 - SlotTask: %4", scenarioFrameworkTask.GetTaskName(), scenarioFrameworkArea.GetName(), scenarioFrameworkLayerTask.GetName(), scenarioFrameworkSlotTask.GetName())));
 				scenarioFrameworkTasks.Insert(scenarioFrameworkTask);
 			}
 
@@ -148,6 +149,50 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 		DbgUI.End();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! The method displays debug actions prepared for scenario
+	static void DebugActions()
+	{
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
+			return;
+		
+		DbgUI.Begin("ScenarioFramework Debug Actions");
+		{
+			array<string> listElements = {};
+			if (!scenarioFrameworkSystem.m_aDebugActions || scenarioFrameworkSystem.m_aDebugActions.IsEmpty())
+				return;
+			
+			foreach (SCR_ScenarioFrameworkDebugAction action : scenarioFrameworkSystem.m_aDebugActions)
+			{
+				listElements.Insert(action.m_sDebugActionName);
+			}
+			
+			if (listElements.IsEmpty())
+				return;
+			
+			int selectedActionIndex;
+			DbgUI.List("Available actions", selectedActionIndex, listElements);
+			
+			if (scenarioFrameworkSystem.m_aDebugActions.IsIndexValid(selectedActionIndex))
+				ProcessDebugAction(scenarioFrameworkSystem.m_aDebugActions[selectedActionIndex]);
+		}
+		DbgUI.End();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void ProcessDebugAction(SCR_ScenarioFrameworkDebugAction debugAction)
+	{
+		if (!DbgUI.Button("ACTIVATE"))
+			return;
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : debugAction.m_aDebugActions)
+		{
+			action.Init(null);
+			action.OnActivate(null);
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Debugs areas UI for managing scenario framework debug areas, including adding, removing, and clearing them.
 	static void DebugAreas()
@@ -250,8 +295,6 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 		
 		SCR_ScenarioFrameworkSystem.GetCallQueuePausable().Clear();
 		scenarioFrameworkSystem.m_bDebugInit = true;
-		scenarioFrameworkSystem.m_iCurrentlySpawnedLayerTasks = 0;
-
 		scenarioFrameworkSystem.m_aSelectedAreas.Clear();
 		scenarioFrameworkSystem.m_aLayerTasksToBeInitialized.Clear();
 		scenarioFrameworkSystem.m_aLayerTasksForRandomization.Clear();
@@ -453,13 +496,22 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 			IEntity layerEntity = GetGame().GetWorld().FindEntityByName(inputLayerName);
 			if (layerEntity)
 			{
-				bool slotTaskHasFinishConditions;
+				bool layerTaskHasFinishConditions;
 				bool layerTaskHasFinishActions;
+				bool layerTaskHasCreateActions;
+				bool layerTaskHasFailedActions;
+				bool layerTaskHasCancelledActions;
+				bool layerTaskHasProgressActions;
+				bool layerTaskHasAssignedActions;
+				
+				
+				bool slotTaskHasFinishConditions;
 				bool slotTaskHasFinishActions;
 				bool slotTaskHasCreateActions;
 				bool slotTaskHasFailedActions;
+				bool slotTaskHasCancelledActions;
 				bool slotTaskHasProgressActions;
-				bool slotTaskHasUpdatedActions;
+				bool slotTaskHasAssignedActions;
 				SCR_ScenarioFrameworkLayerBase layerBase = SCR_ScenarioFrameworkLayerBase.Cast(layerEntity.FindComponent(SCR_ScenarioFrameworkLayerBase));
 				if (layerBase)
 				{
@@ -494,8 +546,26 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 					if (layerTask)
 					{
 						ProcessSlotTask(layerTask.m_SlotTask);
+						if ((layerTask.m_aFinishConditions && !layerTask.m_aFinishConditions.IsEmpty()))
+							layerTaskHasFinishConditions = true;
+						
 						if ((layerTask.m_aTriggerActionsOnFinish && !layerTask.m_aTriggerActionsOnFinish.IsEmpty()))
 							layerTaskHasFinishActions = true;
+						
+						if ((layerTask.m_aActionsOnCreated && !layerTask.m_aActionsOnCreated.IsEmpty()))
+							layerTaskHasCreateActions = true;
+
+						if ((layerTask.m_aActionsOnFailed && !layerTask.m_aActionsOnFailed.IsEmpty()))
+							layerTaskHasFailedActions = true;
+						
+						if ((layerTask.m_aActionsOnCancelled && !layerTask.m_aActionsOnCancelled.IsEmpty()))
+							layerTaskHasCancelledActions = true;
+
+						if ((layerTask.m_aActionsOnProgress && !layerTask.m_aActionsOnProgress.IsEmpty()))
+							layerTaskHasProgressActions = true;
+
+						if ((layerTask.m_aActionsOnAssigned && !layerTask.m_aActionsOnAssigned.IsEmpty()))
+							layerTaskHasAssignedActions = true;
 					}
 
 					SCR_ScenarioFrameworkSlotBase slotBase = SCR_ScenarioFrameworkSlotBase.Cast(layerBase);
@@ -540,12 +610,15 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 
 							if ((slotTask.m_aActionsOnFailed && !slotTask.m_aActionsOnFailed.IsEmpty()))
 								slotTaskHasFailedActions = true;
+							
+							if ((slotTask.m_aActionsOnCancelled && !slotTask.m_aActionsOnCancelled.IsEmpty()))
+								slotTaskHasCancelledActions = true;
 
 							if ((slotTask.m_aActionsOnProgress && !slotTask.m_aActionsOnProgress.IsEmpty()))
 								slotTaskHasProgressActions = true;
 
-							if ((slotTask.m_aActionsOnUpdated && !slotTask.m_aActionsOnUpdated.IsEmpty()))
-								slotTaskHasUpdatedActions = true;
+							if ((slotTask.m_aActionsOnAssigned && !slotTask.m_aActionsOnAssigned.IsEmpty()))
+								slotTaskHasAssignedActions = true;
 						}
 						else if (spawnedEntity)
 						{
@@ -615,8 +688,9 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 						}
 					}
 
-					if ((layerBase.m_aActivationActions && !layerBase.m_aActivationActions.IsEmpty()) || layerTaskHasFinishActions || slotTaskHasFinishActions
-						|| slotTaskHasCreateActions || slotTaskHasFailedActions || slotTaskHasProgressActions || slotTaskHasUpdatedActions
+					if ((layerBase.m_aActivationActions && !layerBase.m_aActivationActions.IsEmpty()) || layerTaskHasFinishActions 
+						|| layerTaskHasCreateActions || layerTaskHasFailedActions || layerTaskHasCancelledActions || layerTaskHasProgressActions || layerTaskHasAssignedActions || slotTaskHasFinishActions
+						|| slotTaskHasCreateActions || slotTaskHasFailedActions || slotTaskHasCancelledActions || slotTaskHasProgressActions || slotTaskHasAssignedActions
 						)
 					{
 						bool inspectActivationActions;
@@ -625,7 +699,7 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 							ActionInspector(inputLayerName);
 					}
 
-					if ((layerBase.m_aActivationConditions && !layerBase.m_aActivationConditions.IsEmpty()) || slotTaskHasFinishConditions)
+					if ((layerBase.m_aActivationConditions && !layerBase.m_aActivationConditions.IsEmpty()) || slotTaskHasFinishConditions || layerTaskHasFinishConditions)
 					{
 						bool inspectActivationConditions;
 						DbgUI.Check("Inspect Conditions", inspectActivationConditions);
@@ -698,13 +772,28 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 		if (!slotTask)
 			return;
 
-		SCR_TaskState state = slotTask.GetTaskState();
-		DbgUI.Text((string.Format("Task State: %1", SCR_Enum.GetEnumName(SCR_TaskState, state))));
+		SCR_ETaskState state = slotTask.GetTaskState();
+		DbgUI.Text((string.Format("Task State: %1", SCR_Enum.GetEnumName(SCR_ETaskState, state))));
 
-		if (state != SCR_TaskState.FINISHED && state != SCR_TaskState.CANCELLED && state != SCR_TaskState.REMOVED)
+		if (state != SCR_ETaskState.COMPLETED && state != SCR_ETaskState.FAILED && state != SCR_ETaskState.CANCELLED)
 		{
 			if (DbgUI.Button("Finish Task"))
-				slotTask.GetLayerTask().m_SupportEntity.FinishTask(slotTask.GetLayerTask().m_Task);
+			{
+				SCR_ScenarioFrameworkLayerTask layerTask = slotTask.GetLayerTask();
+				if (layerTask)
+				{
+					layerTask.ProcessLayerTaskState(SCR_ETaskState.COMPLETED);
+				}
+			}
+			
+			if (DbgUI.Button("Finish Task (Forced)"))
+			{
+				SCR_ScenarioFrameworkLayerTask layerTask = slotTask.GetLayerTask();
+				if (layerTask)
+				{
+					layerTask.ProcessLayerTaskState(SCR_ETaskState.COMPLETED, true);
+				}
+			}
 		}
 
 		IEntity spawnedEntity = slotTask.GetSpawnedEntity();
@@ -725,7 +814,7 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 				char.SetOrigin(destination)
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! The method displays actions associated with a specified scenario layer in an inspector interface.
 	//! \param[in] inputLayerName Input Layer Name represents the name of the scenario layer to inspect for its actions in the ScenarioFramework.
@@ -748,6 +837,11 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 					if (layerTask)
 					{
 						PrepareActionStrings(layerTask.m_aTriggerActionsOnFinish, layerEntity, "Finish Actions");
+						PrepareActionStrings(layerTask.m_aActionsOnCreated, layerEntity, "Created Actions");
+						PrepareActionStrings(layerTask.m_aActionsOnFailed, layerEntity, "Failed Actions");
+						PrepareActionStrings(layerTask.m_aActionsOnCancelled, layerEntity, "Cancelled Actions");
+						PrepareActionStrings(layerTask.m_aActionsOnProgress, layerEntity, "Progress Actions");
+						PrepareActionStrings(layerTask.m_aActionsOnAssigned, layerEntity, "Assigned Actions");
 					}
 
 					SCR_ScenarioFrameworkSlotTask slotTask = SCR_ScenarioFrameworkSlotTask.Cast(layerBase);
@@ -756,8 +850,9 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 						PrepareActionStrings(slotTask.m_aActionsOnFinished, layerEntity, "Finish Actions");
 						PrepareActionStrings(slotTask.m_aActionsOnCreated, layerEntity, "Created Actions");
 						PrepareActionStrings(slotTask.m_aActionsOnFailed, layerEntity, "Failed Actions");
+						PrepareActionStrings(slotTask.m_aActionsOnCancelled, layerEntity, "Cancelled Actions");
 						PrepareActionStrings(slotTask.m_aActionsOnProgress, layerEntity, "Progress Actions");
-						PrepareActionStrings(slotTask.m_aActionsOnUpdated, layerEntity, "Updated Actions");
+						PrepareActionStrings(slotTask.m_aActionsOnAssigned, layerEntity, "Assigned Actions");
 					}
 				}
 			}
@@ -1339,6 +1434,10 @@ class SCR_ScenarioFrameworkDebug : ScriptAndConfig
 				if (layerBase)
 				{
 					PrepareConditionStrings(layerBase.m_aActivationConditions, layerEntity, "Condition");
+					
+					SCR_ScenarioFrameworkLayerTask layerTask = SCR_ScenarioFrameworkLayerTask.Cast(layerBase);
+					if (layerTask)
+						PrepareConditionStrings(layerTask.m_aFinishConditions, layerEntity, "Finish Condition");
 
 					SCR_ScenarioFrameworkSlotTask slotTask = SCR_ScenarioFrameworkSlotTask.Cast(layerBase);
 					if (slotTask)

@@ -243,7 +243,12 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 
 		int nearestDoorInd;
 		if (!ejectOnTheSpot)
-			 nearestDoorInd = PickDoorIndexForPoint(character.GetOrigin());
+		{
+			nearestDoorInd = PickDoorIndexForPoint(character.GetOrigin());
+			BaseCompartmentManagerComponent compartmentManager = GetManager();
+			if (compartmentManager)
+				ejectOnTheSpot = compartmentManager.IsDoorFake(nearestDoorInd);
+		}
 		
 		if (ejectUnconsciously)
 		{

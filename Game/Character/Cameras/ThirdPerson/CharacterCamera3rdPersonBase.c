@@ -31,16 +31,23 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 	//-----------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
+		pOutResult.m_fUseHeading = 1.0;
 		pOutResult.m_vBaseAngles = GetBaseAngles();
-		bool isLinked = m_CharacterAnimationComponent.PhysicsIsLinked();
 		
 		//! update fov
 		m_fFOV = GetBaseFOV();
 		
 		//! yaw pitch roll vector
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
+		
+		if (m_CharacterAnimationComponent.PhysicsIsLinked())
+		{
+			pOutResult.m_fUseHeading = 0.0; // Do not use heading after so that we can calculate it ourselves here
+			
+			lookAngles[0] = m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG;
+		}
 
-		if (!m_bIgnoreCharacterPitch && !isLinked)
+		if (!m_bIgnoreCharacterPitch)
 			lookAngles[1] = lookAngles[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
 
 		//! apply to rotation matrix
@@ -113,16 +120,7 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		
 		pOutResult.m_CameraTM[3][1] = m_fYoffsetPrevFrame * yDelta;
 		
-				
-		if (isLinked)
-		{
-			vector headMat[4];
-			Math3D.AnglesToMatrix(Vector(m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG, 0, 0), headMat);
-	
-			Math3D.MatrixMultiply4(headMat, pOutResult.m_CameraTM, pOutResult.m_CameraTM);
-		}
-		
-		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, !isLinked);
+		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, true);
 		// follow hip bone when ragdolling
 		if(m_OwnerCharacter.GetAnimationComponent().IsRagdollActive())
 		{
@@ -135,7 +133,6 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		pOutResult.m_iDirectBoneMode		= EDirectBoneMode.None;
 		pOutResult.m_fShoulderDist			= GetShoulderDistance();
 		pOutResult.m_fNearPlane	 			= 0.04;
-		pOutResult.m_fUseHeading			= !isLinked;
 		pOutResult.m_fPositionModelSpace 	= 1.0;
 		pOutResult.m_pWSAttachmentReference = null;
 		pOutResult.m_pOwner 				= m_OwnerCharacter;

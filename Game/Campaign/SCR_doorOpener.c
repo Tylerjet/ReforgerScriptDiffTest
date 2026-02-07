@@ -51,17 +51,24 @@ class SCR_DoorOpenerEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		RplId instigatorId;
+		
 		// server only
 		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (rplComponent && !rplComponent.IsMaster())
-			return;
+		if (rplComponent)
+		{
+			 if (!rplComponent.IsMaster())
+				return;
+			
+			instigatorId = rplComponent.Id();
+		}
 		
 		// capture doors around
 		m_aQueriedDoors = {};
 		GetDoors(m_fRadius);
 		// set state
 		foreach (DoorStruct door : m_aQueriedDoors)
-			door.component.SetControlValue(m_fControlValue);
+			door.component.SetControlValue(m_fControlValue, instigatorId);
 		
 		// cleanup
 		m_aQueriedDoors.Clear();

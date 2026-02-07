@@ -15,8 +15,8 @@ class SCR_NameTagRulesetBase : Managed
 	[Attribute("1", UIWidgets.CheckBox, desc: "seconds \n how long does it take to delete tags from dead entities")]
 	float m_fDeadEntitiesCleanup;
 	
-	[Attribute("true", UIWidgets.CheckBox, "Whether entities in this zone should be traced for obstructed visibility")]
-	protected bool m_bTraceForLOS;
+	[Attribute(SCR_Enum.GetDefault(SCR_ELOSTraceMode.ALL_PLAYERS), desc: "Filters which entities within the zone should be traced for obstructed visibility", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ELOSTraceMode))];
+	protected SCR_ELOSTraceMode m_eTraceForLOSMode;
 	
 	[Attribute("0", UIWidgets.CheckBox, desc: "seconds \n how long it takes for the tag to start fading if LOS is obstructed")]
 	protected float m_fLOSFadeDelay;
@@ -33,7 +33,9 @@ class SCR_NameTagRulesetBase : Managed
 	const float POS_TRANSITION_MULT = 2;			// multiplier of time it takes to transition between different tag positions (HEAD -> BODY), default is 1 second
 	const float VERT_ANGLE_ADJUST = 0.3; 			// multiplies vertical angle weight when determining whether tag should be displayed, lower number means higher vertical tolerance -> easier to focus tag
 	const vector HEAD_LOS_OFFSET = "0 0.05 0";		// ajdustment of head pos for LOS tracing
+	protected vector m_CameraPosition;
 	const float VON_STOP_TIME = 1;					// time (seconds) it takes for the VON state to end since the last received VON
+	protected const string ZONE_SCOPED = "Scoped";
 
 	protected float m_fTimeElapsed = 0;				// used to calculate elapsed time for nametag expand/collapse delay	
 	protected float m_fTimeFade = 0;				// time for the tag to fade when no longer visible
@@ -80,18 +82,36 @@ class SCR_NameTagRulesetBase : Managed
 			data.m_fDistance = vector.DistanceSq(m_CurrentPlayerTag.m_vEntWorldPos, data.m_Entity.GetOrigin()); // checked through origin here to avoid more expensive pos check bottom
 		}
 		
-		int notScopedMaxRangeSqrd = m_ZoneCfg.m_fFarthestZoneRangePow2 - 2500; // don't show tags farther than 50m (50^2) unless scoping
-		bool isZoomed = (SCR_2DPIPSightsComponent.IsPIPActive() || SCR_BinocularsComponent.IsZoomedView()) && !m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled();
-		int distMax = m_ZoneCfg.m_fFarthestZoneRangePow2 - (int)(!isZoomed) * notScopedMaxRangeSqrd; // increase max distance if player is using a scope or binoculars
-		if (data.m_fDistance >= distMax) // distance of visible tag is updated per frame for scaling, which is why this check has its own scope
+		bool foundZone;
+		int distMin;
+		int distMax;
+		foreach (SCR_NameTagZone zone : m_ZoneCfg.m_aZones)
 		{
-			if (data.m_fDistance >= distMax + 100)		// cleanup tags which are more than distance + 10m (10^2) away from base zone query 
+			if (zone.GetZoneName() == ZONE_SCOPED)
+			{
+				if ((!SCR_2DPIPSightsComponent.IsPIPActive() && !SCR_BinocularsComponent.IsZoomedView()) || m_CurrentPlayerTag.m_CharController.IsFreeLookEnabled())
+					continue;
+			}
+			
+			distMin = zone.m_iZoneStartSq;
+			distMax = zone.m_iZoneEndSq;
+			
+			if (data.m_fDistance < distMax && data.m_fDistance > distMin)
+			{
+				data.m_fTimeSliceCleanup = 0;
+				foundZone = true;
+				break;
+			}
+		}
+		
+		if (!foundZone)
+		{
+			// cleanup tags which are more than distance + 10m (10^2) away from base zone query 
+			if (data.m_fDistance >= m_ZoneCfg.m_fFarthestZoneRangePow2 + 100)
 				data.m_fTimeSliceCleanup += timeSlice;			
 			
 			return false;
 		}
-		else
-			data.m_fTimeSliceCleanup = 0;
 		
 		// vehicle visibility 
 		if (data.m_Flags & ENameTagFlags.VEHICLE)	// in vehicle
@@ -156,7 +176,7 @@ class SCR_NameTagRulesetBase : Managed
 		int currentZone = -1;
 		for (int i = 0; i < m_ZoneCfg.m_iZoneCount; i++) 	// get lowest nametag zone and use it to display the tag, for perf improvement, only nearest zone is searched for when deciding where to draw
 		{
-			if ( data.m_fDistance <=  m_ZoneCfg.m_aZones[i].m_iZoneEndPow2 )
+			if ( data.m_fDistance <=  m_ZoneCfg.m_aZones[i].m_iZoneEndSq )
 			{
 				currentZone = i;
 				break; 		// zones are ordered from lowest, if we find a match leave
@@ -214,6 +234,10 @@ class SCR_NameTagRulesetBase : Managed
 		if (m_iIndexLOS >= count)
 			m_iIndexLOS = 0;
 		
+		vector cameraMat[4];
+		m_World.GetCurrentCamera(cameraMat);
+		m_CameraPosition = cameraMat[3];
+		
 		int id;
 		
 		while (m_iIndexLOS < count)
@@ -227,6 +251,9 @@ class SCR_NameTagRulesetBase : Managed
 			id = data.m_iZoneID;
 			if (id == -1)
 				id = 0;
+			
+			if (m_eTraceForLOSMode == SCR_ELOSTraceMode.NON_GROUP_MEMBERS && data.m_iGroupID == m_CurrentPlayerTag.m_iGroupID)
+				continue;
 			
 			// trace
 			if ( TraceLOS(data) )
@@ -254,15 +281,28 @@ class SCR_NameTagRulesetBase : Managed
 	protected bool TraceLOS(SCR_NameTagData data)
 	{						
 		TraceParam param = new TraceParam;
-		param.Start = m_CurrentPlayerTag.m_vEntHeadPos;
+		param.Start = m_CameraPosition;
 		param.End = data.m_vEntHeadPos + HEAD_LOS_OFFSET;
-		param.LayerMask = EPhysicsLayerDefs.Camera;
 		param.Flags = TraceFlags.ANY_CONTACT | TraceFlags.WORLD | TraceFlags.ENTS; 
-		param.Exclude = m_CurrentPlayerTag.m_Entity;
-			
+		IEntity targetEntity = data.m_Entity;
+		
+		if (data.GetVehicleCompartment())
+			targetEntity = data.GetVehicleCompartment().GetVehicle();
+		
+		array<IEntity> ExcludeArray = {};
+		ExcludeArray.Insert(targetEntity);
+		ExcludeArray.Insert(m_CurrentPlayerTag.m_Entity);
+		param.ExcludeArray = ExcludeArray;
+		
+		param.LayerMask = TRACE_LAYER_CAMERA;
 		float percent = GetGame().GetWorld().TraceMove(param, null);
-		if (percent == 1 || param.TraceEnt == data.m_Entity)
-			return true; // If trace travels the entire path, return true
+		if (percent == 1)
+			return true;
+		
+		param.LayerMask = EPhysicsLayerDefs.Projectile;
+		percent = GetGame().GetWorld().TraceMove(param, null);
+		if (percent == 1)
+			return true;
 		
 		return false;
 	}
@@ -377,6 +417,11 @@ class SCR_NameTagRulesetBase : Managed
 			data.m_NameTagWidget.SetVisible(false);
 			data.m_Flags &= ~ENameTagFlags.UPDATE_DISABLE;
 			data.m_Flags |= ENameTagFlags.DISABLED;
+
+			// Hide zone elements
+			if (m_ZoneCfg.m_aZones.IsIndexValid(data.m_iZoneID))
+				m_ZoneCfg.m_aZones[data.m_iZoneID].HideElements(data);
+
 			data.m_iZoneID = -1; // zone id reset, needed for proper update
 			
 			if (m_PrimaryTag == data)
@@ -394,7 +439,7 @@ class SCR_NameTagRulesetBase : Managed
 	protected float GetCameraToEntityAngle(vector targetOrigin, float verticalWeight)
 	{
 		vector cameraMat[4];
-		m_World.GetCurrentCamera(cameraMat);	
+		m_World.GetCurrentCamera(cameraMat);
 						
 		vector camPosFix = cameraMat[3];
 		vector camDirFix = cameraMat[2];
@@ -548,7 +593,7 @@ class SCR_NameTagRulesetBase : Managed
 		}
 		
 		// Line of sight checks
-		if (m_bTraceForLOS)
+		if (m_eTraceForLOSMode != SCR_ELOSTraceMode.NO_TRACE)
 			CheckLOS();
 	}
 	
@@ -632,3 +677,10 @@ class SCR_NameTagRulesetBase : Managed
 		Cleanup();
 	}
 };
+
+enum SCR_ELOSTraceMode
+{
+	NO_TRACE,			// Line of sight tracing turned off
+	NON_GROUP_MEMBERS,	// Trace only players outside your group
+	ALL_PLAYERS			// Line of sight tracing of everyone
+}

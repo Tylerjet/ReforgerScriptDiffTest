@@ -34,7 +34,7 @@ class SCR_PrefabTemplateClassCheckPlugin : WorkbenchPlugin
 				continue;
 
 			Print("Looking into " + addonID + "/PrefabLibrary", LogLevel.NORMAL);
-			resourceNames.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, null, SCR_AddonTool.ToFileSystem(addonID) + "PrefabLibrary"));
+			resourceNames.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, null, SCR_AddonTool.ToFileSystem(addonID) + "PrefabLibrary"));
 		}
 
 		int count = resourceNames.Count();

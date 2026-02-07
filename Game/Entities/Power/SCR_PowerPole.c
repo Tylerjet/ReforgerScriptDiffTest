@@ -154,11 +154,10 @@ class SCR_PowerPole : PowerPoleEntity
 		if (!prefabData)
 			return;
 
-		const float angle = 45 * Math.DEG2RAD;
 		array<vector> lines = {
-			{ Math.Cos(angle), 0, Math.Sin(angle) } * DEBUG_PRECISION_LINE_SIZE,
+			vector.FromYaw(45) * DEBUG_PRECISION_LINE_SIZE,
 			vector.Up * DEBUG_PRECISION_LINE_SIZE,
-			{ Math.Cos(-angle), 0, Math.Sin(-angle) } * DEBUG_PRECISION_LINE_SIZE,
+			vector.FromYaw(-45) * DEBUG_PRECISION_LINE_SIZE,
 		};
 
 		s_DebugShapeManager.Clear();

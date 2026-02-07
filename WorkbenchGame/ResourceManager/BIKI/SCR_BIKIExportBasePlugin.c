@@ -4,7 +4,9 @@ class SCR_BIKIExportBasePlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		Print("The Run method has not been overridden", LogLevel.ERROR);
+		const string error = "The Run method has not been overridden";
+		Print(error, LogLevel.ERROR);
+		Workbench.Dialog("BIKI Export Base", error);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -12,22 +14,22 @@ class SCR_BIKIExportBasePlugin : WorkbenchPlugin
 	{
 		Workbench.ScriptDialog(
 			"Result to copy/paste",
-			"Copy/paste the text below - be sure to expand the field to get all the line returns.",
+			"Copy/paste the text below - be sure to expand the field or use Ctrl+A to get all the content.",
 			new SCR_BIKIExportPlugin_Result(result));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("OK", true)]
-	protected bool ButtonOK()
+	protected int ButtonOK()
 	{
-		return true;
+		return 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Cancel")]
-	protected bool ButtonCancel()
+	protected int ButtonCancel()
 	{
-		return false;
+		return 0;
 	}
 }
 

@@ -12,6 +12,12 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	//------------------------------------------------------------------------ USER METHODS ----------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.HORIZONTAL;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
 		super.Init();

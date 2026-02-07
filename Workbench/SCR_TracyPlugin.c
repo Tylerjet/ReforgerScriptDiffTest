@@ -10,6 +10,7 @@ class SCR_TracyPlugin : WorkbenchPlugin
 	{
 		string binDir;
 		Workbench.GetCwd(binDir);
-		Workbench.RunProcess(binDir + "/tracy/Tracy.exe");
+		if (!Workbench.RunProcess(binDir + "/tracy/tracy-profiler.exe"))
+			Print("SCR_TracyPlugin -> Tracy failed to start!", LogLevel.ERROR);
 	}
 }

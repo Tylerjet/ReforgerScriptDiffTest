@@ -9,6 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
+[EnumBitFlag()]
 enum MusicCategory
 {
 	Ambient,

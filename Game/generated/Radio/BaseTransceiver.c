@@ -23,7 +23,7 @@ class BaseTransceiver: ScriptAndConfig
 	*/
 	proto external int GetMaxFrequency();
 	/*!
-	Sets frequency. Doesn't support proxies
+	Sets frequency. Supports proxies and server.
 	\param[in] freq Frequency in KHz.
 	*/
 	proto external void SetFrequency(int freq);
@@ -32,6 +32,14 @@ class BaseTransceiver: ScriptAndConfig
 	\return Frequency in KHz.
 	*/
 	proto external int GetFrequencyResolution();
+	/*!
+	Returns true if the transceiver is muted.
+	*/
+	proto external bool IsMuted();
+	/*!
+	Toggles the mute state of the transceiver.
+	*/
+	proto external bool SetMuteState(bool state);
 	/*!
 	Gets maximum transmitting range of radio.
 	\return Distance in meters.

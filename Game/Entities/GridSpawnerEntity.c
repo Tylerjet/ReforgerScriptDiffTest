@@ -174,12 +174,6 @@ class SCR_GridSpawnerEntity: GenericEntity
 		// Define spacing - if not absolute, get data from bounding box, add spacing to that
 		float spacing = m_fSpacing;
 		
-		// Set randomization seed, if we want randomization (!= 0)
-		if (m_iRandomizationSeed != 0)
-		{
-			Math.Randomize(m_iRandomizationSeed);
-		}
-		
 		// If relative (i.e. based on model bounds) spacing is desired,
 		// spawn a dummy object and read data from it before deleting it
 		if (!m_bUseAbsoluteSpacing)
@@ -348,6 +342,13 @@ class SCR_GridSpawnerEntity: GenericEntity
 				
 				file.Close();
 			}
+		}
+		
+		// Set randomization seed, if we want randomization (!= 0)
+		// Note: The generator is shared - seeding may not be deterministic
+		if (m_iRandomizationSeed != 0)
+		{
+			s_AIRandomGenerator.SetSeed(m_iRandomizationSeed);
 		}
 	}
 	

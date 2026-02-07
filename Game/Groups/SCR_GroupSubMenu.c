@@ -69,6 +69,7 @@ class SCR_GroupSubMenu : SCR_GroupSubMenuBase
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnFrequencyChanged().Insert(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnGroupRoleChanged().Insert(OnGroupRoleChanged);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Insert(UpdateGroupsMenu);
 		SetAcceptButtonStatus();
 	}	
@@ -132,6 +133,7 @@ class SCR_GroupSubMenu : SCR_GroupSubMenuBase
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnFlagSelected().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnFrequencyChanged().Remove(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnGroupRoleChanged().Remove(OnGroupRoleChanged);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Remove(UpdateGroupsMenu);
 		if (s_PlayerGroupController)
 			s_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);	
@@ -139,6 +141,12 @@ class SCR_GroupSubMenu : SCR_GroupSubMenuBase
 		SetNavigationButtonVisibile(m_GroupSettingsButton, false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnGroupRoleChanged(int groupID, SCR_EGroupRole groupRole)
+	{
+		UpdateGroupsMenu();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void CreateAddGroupButton()
 	{

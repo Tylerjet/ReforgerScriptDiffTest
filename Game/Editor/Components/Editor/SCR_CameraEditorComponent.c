@@ -35,6 +35,7 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	protected IEntity m_PreActivateControlledEntity;
 	protected bool m_bIsReplacingCamera;	
 	protected ref ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated> m_OnCameraCreate = new ScriptInvokerBase<SCR_CameraEditorComponent_OnCameraCreated>();
+	private SCR_EditorManagerEntity editorManagerEntity;
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public Functions
@@ -118,12 +119,12 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 			return;
 		}
 		
-		//--- In case of player camera, wait for it to be initialized (moved toward its target). ToDo: Cleaner?
-		if (currentCamera.GetParent() && currentCamera.GetLocalTransformAxis(3).Length() > 100)
-			return;
+		if (m_PreActivateControlledEntity && PlayerCamera.Cast(currentCamera) && !currentCamera.GetParent())
+			return; // Wait for player camera to be assigned to inital entity before grabbing the transform
 		
-		currentCamera.GetWorldTransform(m_vInitCameraTransform);
+		currentCamera.GetWorldTransform(m_vInitCameraTransform);		
 	}
+
 	protected void TryCreateCamera()
 	{
 		if ((!m_CameraData || !m_CameraData.IsSave()) && m_vInitCameraTransform[3] == vector.Zero)
@@ -219,17 +220,29 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	{
 		return m_CameraPrefab;
 	}
+
+	SCR_EditorManagerEntity GetEditorManagerEntity()
+	{
+		SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.Cast(GetOwner().GetParent());		
+		//NOTE @JK: Maybe I could do SCR_EditorManagerEntity.GetInstance() but I'm not 100% sure if it would be the right thing to do.
+		return editorManagerEntity;
+	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
 	override void ResetEditorComponent()
 	{
-		m_Camera.ResetComponents();
+		if (m_Camera)
+			m_Camera.ResetComponents();
 	}
 	override protected void EOnEditorInit()
 	{
 		m_CameraManager = GetGame().GetCameraManager();
 		m_CameraData = SCR_CameraDataEditorComponent.Cast(SCR_CameraDataEditorComponent.GetInstance(SCR_CameraDataEditorComponent, true));
+
+		SCR_EditorManagerEntity editorManagerEntity = GetEditorManagerEntity();
+		if (editorManagerEntity)
+			editorManagerEntity.EnableCameraNwkSimulation(false);
 	}
 	override protected void EOnEditorPreActivate()
 	{
@@ -244,14 +257,40 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	override protected void EOnEditorPostActivate()
 	{
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		
+		SCR_EditorManagerCore editorCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (editorCore)
+			editorManagerEntity = editorCore.GetEditorManager(GetGame().GetPlayerController().GetPlayerId());
+		
+		SCR_EditorManagerEntity editorManagerEntity = GetEditorManagerEntity();
+		if (editorManagerEntity)
+			editorManagerEntity.EnableCameraNwkSimulation(true);
+
 		//TryCreateCamera(); //--- Don't try to create camera just yet, wait for GUI to initialize in its own EOnEditorPostActivate
 	}
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
+		// Tell server where camera is located by moving the EditorManagerEntity
+		SCR_EditorManagerEntity editorManagerEntity = GetEditorManagerEntity();		
+		if(!editorManagerEntity)
+			return;
+
+		//if editor isn't open we shouldn't worry about it
+		if(!editorManagerEntity.IsOpened())
+			return;
+	
+		//if(editorManagerEntity)
 		if (!m_Camera)
 			TryCreateCamera();
 		
 		TryForceCamera();
+		
+		if (!m_Camera)
+			return;
+		
+		vector mat[4];
+		m_Camera.GetWorldTransform(mat);
+		editorManagerEntity.SetWorldTransform(mat);
 	}
 	override protected void EOnEditorDeactivate()
 	{
@@ -260,6 +299,10 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 		
 		if (m_Camera)
 			m_Camera.Terminate();
+
+		SCR_EditorManagerEntity editorManagerEntity = GetEditorManagerEntity();
+		if (editorManagerEntity)
+			editorManagerEntity.EnableCameraNwkSimulation(false);
 	}
 	override protected void EOnEditorPostDeactivate()
 	{

@@ -61,7 +61,7 @@ class SCR_Global
 		if (GetGame().GetBackendApi().IsLocalPlatformAssigned())
 		{
 			Print("Profile - Using Local Platform Name!");
-			name = GetGame().GetBackendApi().GetCredentialsItem(EBackendCredentials.EBCRED_PLATFORMUID);
+			name = BohemiaAccountApi.GetName();
 			return name;
 		}
 

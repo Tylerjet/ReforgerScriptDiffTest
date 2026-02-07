@@ -73,9 +73,9 @@ class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 
 		int suggestedUsers = Math.Ceil((physics.GetMass() / forcePerUser) * m_fSuggestedUsersMultiplier);
 
-		outName = info.GetName();
-		ActionNameParams[0] = m_aUsers.Count().ToString();
-		ActionNameParams[1] = suggestedUsers.ToString();
+		// Manually translate instead of using BaseUserAction.ActionNameParams, as SCR_ActionMenuInteractionDisplay.CompareNewDateWithOld() will not see the change in ActionNameParams
+		// In this case it wont cause the problems, as it is being refreshed every other frame or so, thus even after language change string will regenerate
+		outName = WidgetManager.Translate(info.GetName(), m_aUsers.Count(), suggestedUsers);
 		return true;
 	}
 

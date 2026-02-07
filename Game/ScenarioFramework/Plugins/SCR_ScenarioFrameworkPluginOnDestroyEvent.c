@@ -17,28 +17,49 @@ class SCR_ScenarioFrameworkPluginOnDestroyEvent : SCR_ScenarioFrameworkPlugin
 		super.Init(object);
 		IEntity entity = object.GetSpawnedEntity();
 		if (!entity)
+		{
+			Print("ScenarioFramework: No entity was spawned by layer to add OnDestroy event to", LogLevel.ERROR);
 			return;
+		}
 
 		m_Asset = entity;
-		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
-		if (objectDmgManager)
-			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
-		else
-			PrintFormat("ScenarioFramework: Registering OnDestroy of entity %1 failed! The entity doesn't have damage manager", entity, LogLevel.ERROR);
-
-		if (Vehicle.Cast(m_Asset))
+		
+		SCR_AIGroup group = SCR_AIGroup.Cast(m_Asset);
+		if (!group)
 		{
-			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
-			if (vehicleController)
-				vehicleController.GetOnEngineStop().Insert(CheckEngineDrowned);
-
-			//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-			
-			// Since there is no invoker and no reliable way how to tackle drowned vehicles, in order to make it reliable,
-			// We cannot solely rely on GetOnEngineStop because vehicle could have been pushed/moved into the water without started engine.
-			SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(CheckEngineDrowned, 5000, true);
-			
-			//---- REFACTOR NOTE END ----
+			SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
+			if (objectDmgManager)
+				objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
+			else
+				PrintFormat("ScenarioFramework: Registering OnDestroy of entity %1 failed! The entity doesn't have damage manager", entity, LogLevel.ERROR);
+	
+			if (Vehicle.Cast(m_Asset))
+			{
+				VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
+				if (vehicleController)
+					vehicleController.GetOnEngineStop().Insert(CheckEngineDrowned);
+	
+				//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+				
+				// Since there is no invoker and no reliable way how to tackle drowned vehicles, in order to make it reliable,
+				// We cannot solely rely on GetOnEngineStop because vehicle could have been pushed/moved into the water without started engine.
+				SCR_ScenarioFrameworkSystem.GetCallQueuePausable().CallLater(CheckEngineDrowned, 5000, true);
+				
+				//---- REFACTOR NOTE END ----
+			}
+		}
+		else
+		{
+			group.GetOnEmpty().Insert(OnGroupEmpty);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnActivate()
+	{
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnDestroy)
+		{
+			action.OnActivate(m_Asset);
 		}
 	}
 
@@ -65,10 +86,7 @@ class SCR_ScenarioFrameworkPluginOnDestroyEvent : SCR_ScenarioFrameworkPlugin
 				vehicleController.GetOnEngineStop().Remove(CheckEngineDrowned);
 		}
 
-		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnDestroy)
-		{
-			action.OnActivate(m_Asset);
-		}
+		OnActivate();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -93,11 +111,19 @@ class SCR_ScenarioFrameworkPluginOnDestroyEvent : SCR_ScenarioFrameworkPlugin
 			if (objectDmgManager)
 		 		objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 
-			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnDestroy)
-			{
-				action.OnActivate(m_Asset);
-			}
+			OnActivate();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnGroupEmpty(AIGroup group)
+	{
+		SCR_AIGroup aiGroup = SCR_AIGroup.Cast(group);
+		if (!aiGroup)
+			return;
+		
+		aiGroup.GetOnEmpty().Remove(OnGroupEmpty);
+		OnActivate();
 	}
 	
 	//------------------------------------------------------------------------------------------------

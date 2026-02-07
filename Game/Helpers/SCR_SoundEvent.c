@@ -84,6 +84,12 @@ class SCR_SoundEvent
 	static const string SOUND_HQ_RRL = "SOUND_HQ_RRL";
 	static const string SOUND_HQ_BHA = "SOUND_HQ_BHA";
 
+	// HQ COMMANDER
+	static const string SOUND_PA_HQCOMMANDER_SUPPLIES_ARRIVED = "SOUND_PA_HQCOMMANDER_SUPPLIES_ARRIVED";
+	static const string SOUND_HQC_ARRIVAL_HQCBATTALION = "SOUND_HQC_ARRIVAL_HQCBATTALION";
+	static const string SOUND_HQC_RESIGNATION_HQCBATTALION = "SOUND_HQC_RESIGNATION_HQCBATTALION";
+	static const string SOUND_HQC_DISRUPTION_HQCBATTALION = "SOUND_HQC_DISRUPTION_HQCBATTALION";
+
 	//Combat Ops
 	static const string	SOUND_CP_IPL_1 = "SOUND_CP_IPL_1";				//Insertion plan
 	static const string	SOUND_CP_IPL_2 = "SOUND_CP_IPL_2";				//Insertion plan
@@ -121,6 +127,8 @@ class SCR_SoundEvent
 	static const string ERROR = "SOUND_FE_ERROR";
 	static const string TAB_CLICK = "SOUND_FE_TAB_CONFIRM";
 	static const string TAB_SWITCH = "SOUND_FE_TAB_SWITCH";
+	static const string SOUND_FE_TEXT_ENTERED = "SOUND_FE_TEXT_ENTERED";
+	static const string SOUND_FE_TEXT_LEFT = "SOUND_FE_TEXT_LEFT";
 
 	static const string TURN_PAGE = "SOUND_FE_TURN_PAGE";
 
@@ -180,6 +188,9 @@ class SCR_SoundEvent
 	static const string SOUND_INV_CONTAINER_CLOSE = "SOUND_INV_CONTAINER_CLOSE";
 	static const string SOUND_INV_DROP_ERROR = "SOUND_INV_DROP_ERROR";
 	static const string SOUND_INV_VICINITY_DRAG = "SOUND_INV_VICINITY_DRAG";
+	static const string SOUND_INV_WEAPON_INSPECT = "SOUND_INV_INSPECT";
+	static const string SOUND_INV_QUICKSLOT_ASSIGN = "SOUND_INV_CONTAINER_SAME_DROP";
+	static const string SOUND_INV_QUICKSLOT_CLEAR = "SOUND_INV_CONTAINER_DRAG";
 
 	//UI sounds - Editor
 	static const string SOUND_E_MULTI_SELECT_START_KEYBOARD = "SOUND_E_MULTI_SELECT_START_KEYBOARD";
@@ -280,6 +291,7 @@ class SCR_SoundEvent
 	static const string SOUND_BODYFALL_TERMINAL = "SOUND_BODYFALL_TERMINAL";
 	static const string SOUND_KNOCKOUT = "SOUND_BREATH_OUT";
 	static const string SOUND_VOICE_PAIN_RELIEVE = "SOUND_VOICE_PAIN_RELIEVE";
+	static const string SOUND_CHAR_MOVEMENT_WEAPON_SIGHT_TOGGLE = "SOUND_CHAR_MOVEMENT_WEAPON_SIGHT_TOGGLE";
 	
 	// Weapon
 	static const string SOUND_SCOPE_ILLUM_ON = "SOUND_SCOPE_ILLUM_ON";
@@ -310,6 +322,7 @@ class SCR_SoundEvent
 	static const string SOUND_RADIO_TURN_ON = "SOUND_RADIO_TURN_ON";
 	static const string SOUND_RADIO_TURN_OFF = "SOUND_RADIO_TURN_OFF";
 	static const string SOUND_RADIO_FREQUENCY_CYCLE = "SOUND_RADIO_FREQUENCY_CYCLE";
+	static const string SOUND_MINEFLAG_PLACE = "SOUND_MINEFLAG_PLACE";
 
 	//Destruction
 	static const string SOUND_BUILDING_CRACK = "SOUND_BUILDING_CRACK";

@@ -55,7 +55,8 @@ class SCR_RotorHitZone : SCR_VehicleHitZone
 	float RotorHitChance(vector worldPosition)
 	{
 		if (!m_RotorPointInfo || !m_Simulation || m_fBladeWidth <= 0 || m_iBladeCount < 1)
-		
+			return 1;
+
 		if (m_Simulation.RotorGetState(GetRotorIndex()) != RotorState.SPINNING)
 			return 1;
 
@@ -66,7 +67,7 @@ class SCR_RotorHitZone : SCR_VehicleHitZone
 		float distanceFromAxis = vector.DistanceXZ(relativePosition, vector.Zero);
 		if (distanceFromAxis == 0)
 			return 1;
-
+		
 		return m_fBladeWidth * m_iBladeCount / (Math.PI2 * distanceFromAxis);
 	}
 

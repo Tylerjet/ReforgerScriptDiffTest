@@ -59,10 +59,14 @@ sealed class WorkspaceWidget: RTTextureWidget
 	proto external vector ProjWorldToScreenNative(vector pos, BaseWorld world, int cam = -1);
 	//! Works just like \see ProjScreenToWorld but takes x and y in native (current) not reference resolution
 	proto external vector ProjScreenToWorldNative(float x, float y, out vector outDir, BaseWorld world, int cam = -1);
-	//!Scale value from reference to current resolution
+	//! Return user DPI scale (1.0 by default)
+	proto external float GetUserDPIScale();
+	//! Set user DPI scale (1.0 by default), user DPI scale multiply window DPI scale.
+	proto external void SetUserDPIScale(float fUserDPIScale);
+	//!Scale value from reference to physical resolution
 	proto external float DPIScale(float valueInReferenceResolution);
-	//!Scale value from current to reference resolution
-	proto external float DPIUnscale(float valueInScaledResolution);
+	//!Scale value from physical to reference resolution
+	proto external float DPIUnscale(float valueInPhysicalResolution);
 	//!Create widgets by \ref WidgetType, null Color means full alpha white
 	proto external Widget CreateWidget(WidgetType type, WidgetFlags flags, Color color, int sort, Widget parentWidget = NULL);
 	//!Create widget in this workspace, null Color means full alpha white

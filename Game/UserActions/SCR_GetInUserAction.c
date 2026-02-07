@@ -101,7 +101,13 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 			SetCannotPerformReason(m_pLockComp.GetCannotPerformReason(user));
 			return false;
 		}
-		
+
+		if (compartment.IsReserved() && !compartment.IsReservedBy(user))
+		{
+			SetCannotPerformReason("#AR-Campaign_Action_CannotEnterVehicle-UC");
+			return false;
+		}
+
 		// Make sure vehicle can be enter via provided door, if not, set reason.
 		if (!compartmentAccess.CanGetInVehicleViaDoor(owner, m_CompartmentManager, GetRelevantDoorIndex(user)))
 		{

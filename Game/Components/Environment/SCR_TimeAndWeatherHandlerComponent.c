@@ -4,50 +4,80 @@ class SCR_TimeAndWeatherHandlerComponentClass : SCR_BaseGameModeComponentClass
 
 class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 {
-	[Attribute("8", UIWidgets.Slider, "Starting time of day (hours)", "0 23 1")]
+	[Attribute("8", UIWidgets.Slider, "Starting time of day (hours)", "0 23 1", category:"Time")]
 	protected int m_iStartingHours;
 
-	[Attribute("0", UIWidgets.Slider, "Starting time of day (minutes)", "0 59 1")]
+	[Attribute("0", UIWidgets.Slider, "Starting time of day (minutes)", "0 59 1", category:"Time")]
 	protected int m_iStartingMinutes;
 
-	[Attribute("0")]
+	[Attribute("0", category:"Time")]
 	protected bool m_bRandomStartingDaytime;
 
-	[Attribute("0", desc: "Random time range is superior to random time. When both are set to true, random range will be used.")]
+	[Attribute("0", desc: "Random time range is superior to random time. When both are set to true, random range will be used.", category:"Time")]
 	protected bool m_bRandomStartingDaytimeRange;
 
-	[Attribute("8", UIWidgets.Slider, "Starting range of starting time of day \n (hours)", "0 23 1")]
+	[Attribute("8", UIWidgets.Slider, "Starting range of starting time of day \n (hours)", "0 23 1", category:"Time")]
 	protected int m_iRangeHoursStart;
 
-	[Attribute("0", UIWidgets.Slider, "Starting range of starting time of day \n (minutes)", "0 59 1")]
+	[Attribute("0", UIWidgets.Slider, "Starting range of starting time of day \n (minutes)", "0 59 1", category:"Time")]
 	protected int m_iRangeMinutesStart;
 
-	[Attribute("8", UIWidgets.Slider, "Ending range of starting time of day \n (hours)", "0 23 1")]
+	[Attribute("8", UIWidgets.Slider, "Ending range of starting time of day \n (hours)", "0 23 1", category:"Time")]
 	protected int m_iRangeHoursEnd;
 
-	[Attribute("0", UIWidgets.Slider, "Ending range of starting time of day \n (minutes)", "0 59 1")]
+	[Attribute("0", UIWidgets.Slider, "Ending range of starting time of day \n (minutes)", "0 59 1", category:"Time")]
 	protected int m_iRangeMinutesEnd;
 
-	[Attribute("1", UIWidgets.Slider, "Time acceleration during the day (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
+	[Attribute("1", UIWidgets.Slider, "Time acceleration during the day (1 = 100%, 2 = 200% etc)", "0.1 12 0.1", category:"Time")]
 	protected float m_fDayTimeAcceleration;
 
-	[Attribute("1", UIWidgets.Slider, "Time acceleration during the night (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
+	[Attribute("1", UIWidgets.Slider, "Time acceleration during the night (1 = 100%, 2 = 200% etc)", "0.1 12 0.1", category:"Time")]
 	protected float m_fNightTimeAcceleration;
 
-	[Attribute("0")]
+	[Attribute("0", category:"Weather")]
 	protected bool m_bRandomStartingWeather;
 
-	[Attribute("0", desc: "Use predefine sets of weather and time.")]
+	[Attribute("0", desc: "Use predefine sets of weather and time.", category:"Weather")]
 	protected bool m_bUsePredefineStartingTimeAndWeather;
 
-	[Attribute(desc: "List of predefine time and weather settings.")]
+	[Attribute(desc: "List of predefine time and weather settings.", category:"Weather")]
 	protected ref array<ref SCR_TimeAndWeatherState> m_aStartingWeatherAndTime;
 
-	[Attribute("0", desc: "Weather can change during gameplay")]
+	[Attribute("0", desc: "Weather can change during gameplay", category:"Weather")]
 	protected bool m_bRandomWeatherChanges;
 
-	[Attribute("0", desc: "Scenario header setting will overwrite these values.")]
+	[Attribute("0", desc: "Scenario header setting will overwrite these values.", category:"Weather")]
 	protected bool m_bAllowHeaderSettings;
+
+	[Attribute(defvalue: "0", desc: "Wind Override", category:"Wind")]
+	protected bool m_bWindOverride;
+
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Wind Speed", params: "0 20", category:"Wind")]
+	protected float m_fWindSpeed;
+
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Wind Direction", params: "0 1", category:"Wind")]
+	protected float m_fWindDirection;
+
+	[Attribute(defvalue: "0", desc: "Fog Override", category:"Fog")]
+	protected bool m_bFogOverride;
+
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Fog Amount", params: "0 1", category:"Fog")]
+	protected float m_fFogAmount;
+
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Fog Height Density", params: "0 1", category:"Fog")]
+	protected float m_fFogHeightDensity;
+
+	[Attribute(defvalue: "0", desc: "Override Date", category:"Date")]
+	protected bool m_bDateOverride;
+
+	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "Day", params: "1 12", category:"Date")]
+	protected int m_iDay;
+
+	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "Month", params: "1 12", category:"Date")]
+	protected int m_iMonth;
+
+	[Attribute(defvalue: "1989", UIWidgets.Slider, desc: "Year", params: "1899 2050", category:"Date")]
+	protected int m_iYear;
 
 	const int DAYTIME_CHECK_PERIOD = 60000;	//ms
 	const float DEFAULT_DAYTIME_START = 5.0;
@@ -64,6 +94,51 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	static SCR_TimeAndWeatherHandlerComponent GetInstance()
 	{
 		return s_Instance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetupWind(float windSpeed, float windDirection)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return;
+
+		manager.SetWindSpeedOverride(true, windSpeed);
+		manager.SetWindDirectionOverride(true, windDirection);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetupFog(float fogAmount, float fogHeightDensity)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return;
+
+		manager.SetFogAmountOverride(true, fogAmount);
+		manager.SetFogHeightDensityOverride(true, fogHeightDensity);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetupDate(int day, int month, int year)
+	{
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
+		if (!world)
+			return;
+
+		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
+		if (!manager)
+			return;
+
+		if (!manager.SetDate(year, month, day))
+			Print("SCR_TimeAndWeatherHandlerComponent: Invalid date parameter", LogLevel.ERROR);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -223,6 +298,15 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 		}
 
 		SetupDaytimeAndWeather(m_iStartingHours, m_iStartingMinutes);
+
+		if (m_bDateOverride)
+			SetupDate(m_iDay, m_iMonth, m_iYear);
+
+		if (m_bFogOverride)
+			SetupFog(m_fFogAmount, m_fFogHeightDensity);
+
+		if (m_bWindOverride)
+			SetupWind(m_fWindSpeed, m_fWindDirection);
 	}
 
 	//------------------------------------------------------------------------------------------------

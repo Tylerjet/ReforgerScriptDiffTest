@@ -4,6 +4,7 @@ class SCR_VONEntry : SCR_SelectionMenuEntry
 {
 	protected bool m_bIsUsable = true; 	// whether this entry is allowed to be used (f.e. radio turned off)
 	protected bool m_bIsActive;		// this entry will be used in case of outgoing transmission
+	protected bool m_bIsMuted; 		// this transceiver entry is muted
 	protected bool m_bIsSelected; 	// this entry is currently selected/hovered in a menu
 	protected string m_sText;  	 	// current display text
 			
@@ -38,6 +39,13 @@ class SCR_VONEntry : SCR_SelectionMenuEntry
 	bool IsActive()
 	{
 		return m_bIsActive;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Activate entry 
+	void SetMuted(bool state)
+	{
+		m_bIsMuted = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------

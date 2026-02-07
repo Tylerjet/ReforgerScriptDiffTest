@@ -5,6 +5,10 @@ class SCR_BaseCaptureMusic : ScriptedMusic
 	//~ Delay to make sure the OnSpawn music is played correctly after the respawn menu music
 	protected void OnBaseCapture(SCR_MilitaryBaseComponent base, Faction faction)
 	{
+		SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+		if (!campaignBase || campaignBase.GetBuiltByPlayers())
+			return;
+
 		PlayerController pc = GetGame().GetPlayerController();
 		
 		if (!pc)

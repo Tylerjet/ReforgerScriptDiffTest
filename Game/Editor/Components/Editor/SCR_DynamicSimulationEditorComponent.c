@@ -45,7 +45,7 @@ class SCR_DynamicSimulationEditorComponent : SCR_BaseEditorComponent
 	protected void EnableStreamingForEntity(SCR_EditableEntityComponent entity, bool enable)
 	{
 		//--- Check if the entity was meanwhile deleted (e.g., when placing a waypoint that's instantly completed)
-		if (!entity.GetOwner())
+		if (!entity || !entity.GetOwner())
 			return;
 		
 		if(!m_bStreamingRulesInitialized)

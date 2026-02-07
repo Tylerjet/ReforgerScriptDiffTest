@@ -22,6 +22,14 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 
 	protected bool m_bToolActiveWhenEditorOpen;
 
+	protected ref array<IEntity> m_aFoundDeployables;
+	protected SCR_MultiPartDeployableItemComponent m_CurrentlyHandledComponent;
+	protected int m_iCurrentVariant = -1;
+	protected bool m_bPlacementModeEnabled;
+	protected bool m_bCanEnterPlacementMode;
+	protected bool m_bHasMoreItemsToPlace;
+	protected bool m_bHasMoreVariantsToChoose;
+
 //	protected SCR_CampaignBuildingLayoutComponent m_LayoutComponent;
 
 	//------------------------------------------------------------------------------------------------
@@ -79,6 +87,12 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 			ToolToInventory();
 
 		super.ModeSwitch(mode, charOwner);
+
+		if (mode != EGadgetMode.IN_HAND)
+			return;
+
+		if (m_CharacterOwner && m_CharacterOwner == SCR_PlayerController.GetLocalControlledEntity())
+			m_bCanEnterPlacementMode = FindDeployableItems(skipUniqueCountCheck: true) > 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -400,5 +414,507 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 				editorManagerEntity.GetOnClosed().Remove(OnEditorClosed);
 		}
 	}
-}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool GetCanEnterPlacementMode()
+	{
+		return m_bCanEnterPlacementMode;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool HasMoreItemsToPlace()
+	{
+		return m_bHasMoreItemsToPlace;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool HasMoreVariants()
+	{
+		return m_bHasMoreVariantsToChoose;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool GetIsPlacementModeEnabled()
+	{
+		return m_bPlacementModeEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	SCR_MultiPartDeployableItemComponent GetCurrentlyHandledComponent()
+	{
+		return m_CurrentlyHandledComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Searches the inventory for compatible deployable items
+	//! \param[in] ignoredItem
+	//! \param[in] skipUniqueCountCheck true if game should not try validate if player can cycle between available deployable items
+	//! \return number of found items
+	protected int FindDeployableItems(IEntity ignoredItem = null, bool skipUniqueCountCheck = false)
+	{
+		if (!m_CharacterOwner)
+			return 0;
+
+		CharacterControllerComponent controller = m_CharacterOwner.GetCharacterController();
+		if (!controller)
+			return 0;
+
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
+		if (!storageManager)
+			return 0;
+
+		SCR_DeployableItemSearchPredicate searchPredicate = new SCR_DeployableItemSearchPredicate(ignoredItem);
+		if (!m_aFoundDeployables)
+			m_aFoundDeployables = {};
+		else
+			m_aFoundDeployables.Clear();
+
+		int count = storageManager.FindItems(m_aFoundDeployables, searchPredicate);
+
+		m_bHasMoreItemsToPlace = false;
+		if (skipUniqueCountCheck)
+			return count;
+
+		GetGame().GetInputManager().RemoveActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_ITEM, EActionTrigger.DOWN, CycleItems);
+		if (count > 1)
+		{
+			BaseContainer firstPrefab = m_aFoundDeployables[0].GetPrefabData().GetPrefab();
+			foreach (IEntity ent : m_aFoundDeployables)
+			{
+				if (firstPrefab != ent.GetPrefabData().GetPrefab())
+				{
+					m_bHasMoreItemsToPlace = true;
+					GetGame().GetInputManager().AddActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_ITEM, EActionTrigger.DOWN, CycleItems);
+					return count;
+				}
+			}
+		}
+
+		return count;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Action listener callback
+	override protected void ActivateAction()
+	{
+		SetPlacementMode(!m_bPlacementModeEnabled);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void ModeClear(EGadgetMode mode)
+	{
+		super.ModeClear(mode);
+
+		if (m_CharacterOwner && m_CharacterOwner == SCR_PlayerController.GetLocalControlledEntity())
+			SetPlacementMode(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] newState
+	protected void SetPlacementMode(bool newState)
+	{
+		if (m_bPlacementModeEnabled == newState)
+			return;
+
+		PlayerController controller = GetGame().GetPlayerController();
+		if (!controller)
+			return;
+
+		SCR_ItemPlacementComponent placementComp = SCR_ItemPlacementComponent.Cast(controller.FindComponent(SCR_ItemPlacementComponent));
+		if (!placementComp)
+			return;
+
+		if (!newState)
+		{
+			EnablePreview(false, placementComp);
+
+			if (m_CurrentlyHandledComponent)
+			{
+				m_CurrentlyHandledComponent.ClearCache();
+				SCR_DeployablePlaceableItemComponent placeableItemComp = SCR_DeployablePlaceableItemComponent.Cast(m_CurrentlyHandledComponent.GetOwner().FindComponent(SCR_DeployablePlaceableItemComponent));
+				if (placeableItemComp)
+					placeableItemComp.SetPlacingGadget(null);
+
+				m_CurrentlyHandledComponent = null;
+			}
+
+			m_aFoundDeployables.Clear();
+			m_iCurrentVariant = -1;
+
+			placementComp.EnablePlacement(false);
+			placementComp.SetPlacedItem(null);
+
+			InputManager inputMgr = GetGame().GetInputManager();
+			inputMgr.RemoveActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_ITEM, EActionTrigger.DOWN, CycleItems);
+			inputMgr.RemoveActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_VARIANT, EActionTrigger.DOWN, CycleVariants);
+			m_bPlacementModeEnabled = newState;
+			return;
+		}
+
+		m_bCanEnterPlacementMode = FindDeployableItems() > 0;
+		if (!m_bCanEnterPlacementMode)
+			return;
+
+		m_bPlacementModeEnabled = newState;
+		SelectNextPlaceableItem(placementComp);
+
+		placementComp.EnablePlacement(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!Callback method used to cycle between all unique deployable items
+	//! \param[in] value
+	//! \param[in] reason
+	//! \param[in] actionName
+	protected void CycleItems(float value = 0.0, EActionTrigger reason = 0, string actionName = string.Empty)
+	{
+		PlayerController controller = GetGame().GetPlayerController();
+		if (!controller)
+			return;
+
+		SCR_ItemPlacementComponent placementComp = SCR_ItemPlacementComponent.Cast(controller.FindComponent(SCR_ItemPlacementComponent));
+		if (!placementComp)
+			return;
+
+		EnablePreview(false, placementComp);
+		SelectNextPlaceableItem(placementComp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method used to cycle between all available variants for currently used deployable
+	//! \param[in] value
+	//! \param[in] reason
+	//! \param[in] actionName
+	protected void CycleVariants(float value = 0.0, EActionTrigger reason = 0, string actionName = string.Empty)
+	{
+		PlayerController controller = GetGame().GetPlayerController();
+		if (!controller)
+			return;
+
+		SCR_ItemPlacementComponent placementComp = SCR_ItemPlacementComponent.Cast(controller.FindComponent(SCR_ItemPlacementComponent));
+		if (!placementComp)
+			return;
+
+		EnablePreview(false, placementComp);
+
+		if (!SelectNextVariant())
+		{
+			SetPlacementMode(false);
+			return;
+		}
+
+		EnablePreview(true, placementComp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return currently placed deployable max allowed tilt, and if such data is not available then it will return -1
+	float GetMaxAllowedTilt()
+	{
+		if (!m_CurrentlyHandledComponent)
+			return -1;
+
+		SCR_MultiPartDeployableItemComponentClass data = SCR_MultiPartDeployableItemComponentClass.Cast(m_CurrentlyHandledComponent.GetComponentData(m_CurrentlyHandledComponent.GetOwner()));
+		if (!data)
+			return -1;
+
+		SCR_DeployableVariantContainer container = data.GetVariantContainer(m_iCurrentVariant);
+		if (!container)
+			return -1;
+
+		return container.GetMaxAllowedTilt();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to check if there is enough space for currently handled deployable variant
+	//! \param[in] caller
+	//! \param[in,out] transform of the position for which validation should be performed. This position has already applied offset of 1% of its up vector (1cm)
+	//! \param[out] cantPlaceReason
+	//! \return
+	bool ValidateSpace(notnull SCR_ItemPlacementComponent caller, inout vector transform[4], out ENotification cantPlaceReason)
+	{
+		if (!m_CurrentlyHandledComponent)
+			return false;
+
+		vector angle = Math3D.MatrixToAngles(transform);
+		vector matCopy[4] = transform;
+		// remove the offset to ensure that CheckAvailableSpace will have the same position when it is called by the user action
+		matCopy[3] = matCopy[3] - matCopy[1] * 0.01;
+
+		if (m_CurrentlyHandledComponent.CheckAvailableSpace(matCopy, angle))
+		{
+			m_CurrentlyHandledComponent.SetPreviewState(SCR_EPreviewState.PLACEABLE);
+			return true;
+		}
+
+		cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_NOT_ENOUGH_SPACE;
+		m_CurrentlyHandledComponent.SetPreviewState(SCR_EPreviewState.BLOCKED);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] caller
+	void OnItemPlacementStart(notnull SCR_ItemPlacementComponent caller)
+	{
+		caller.EnablePlacement(false);
+		EnablePreview(false, caller);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] caller
+	//! \param[in] item
+	//! \param[in] succes
+	//! \param[in] equipNext
+	void OnAfterItemPlaced(notnull SCR_ItemPlacementComponent caller, notnull IEntity item, bool success, bool equipNext)
+	{
+		if (!success || !equipNext)
+		{
+			SetPlacementMode(false);
+			return;
+		}
+
+		m_bCanEnterPlacementMode = FindDeployableItems(item) > 0;
+		if (!m_bCanEnterPlacementMode)
+		{
+			SetPlacementMode(false);
+			return;
+		}
+
+		//find the same prefab
+		BaseContainer previousPrefab = item.GetPrefabData().GetPrefab();
+		BaseContainer nextPrefab;
+		if (m_CurrentlyHandledComponent)
+			EnablePreview(false, caller);
+
+		m_CurrentlyHandledComponent = null;
+		foreach (IEntity otherItem : m_aFoundDeployables)
+		{
+			nextPrefab = otherItem.GetPrefabData().GetPrefab();
+			if (previousPrefab != nextPrefab)
+				continue;
+
+			m_CurrentlyHandledComponent = SCR_MultiPartDeployableItemComponent.Cast(otherItem.FindComponent(SCR_MultiPartDeployableItemComponent));
+			break;
+		}
+
+		if (!m_CurrentlyHandledComponent)
+		{
+			SelectNextPlaceableItem(caller);
+			if (m_CurrentlyHandledComponent)
+				caller.EnablePlacement(true);
+
+			return;
+		}
+
+		IEntity nowCurrentItem = m_CurrentlyHandledComponent.GetOwner();
+		SCR_DeployablePlaceableItemComponent placeableItemComp = SCR_DeployablePlaceableItemComponent.Cast(nowCurrentItem.FindComponent(SCR_DeployablePlaceableItemComponent));
+		if (!placeableItemComp)
+			return;
+
+		placeableItemComp.SetPlacingGadget(this);
+		caller.SetPlaceableItemComponent(placeableItemComp);
+		caller.SetPlacedItem(nowCurrentItem);
+
+		if (!m_CurrentlyHandledComponent.FetchVariantData(m_iCurrentVariant))
+		{
+			SetPlacementMode(false);
+			return;
+		}
+
+		EnablePreview(true, caller);
+		caller.EnablePlacement(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	bool SelectNextVariant()
+	{
+		if (!m_CurrentlyHandledComponent)
+			return false;
+
+		GetGame().GetInputManager().RemoveActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_VARIANT, EActionTrigger.DOWN, CycleVariants);
+		IEntity deployableEntity = m_CurrentlyHandledComponent.GetOwner();
+		if (!deployableEntity)
+			return false;
+
+		SCR_MultiPartDeployableItemComponentClass data = SCR_MultiPartDeployableItemComponentClass.Cast(m_CurrentlyHandledComponent.GetComponentData(deployableEntity));
+		if (!data)
+			return false;
+
+		array<ref SCR_DeployableVariantContainer> variantsArrayPointer = data.GetVariants();
+		if (!variantsArrayPointer)
+			return false;
+
+		int numberOfVariants = variantsArrayPointer.Count();
+		m_bHasMoreVariantsToChoose = numberOfVariants > 1;
+
+		if (m_iCurrentVariant < 0 || !m_bHasMoreVariantsToChoose)
+		{
+			m_iCurrentVariant = variantsArrayPointer[0].GetVariantId();
+			m_CurrentlyHandledComponent.FetchVariantData(m_iCurrentVariant);
+			if (m_bHasMoreVariantsToChoose)
+				GetGame().GetInputManager().AddActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_VARIANT, EActionTrigger.DOWN, CycleVariants);
+
+			return true;
+		}
+
+		int nextVariantId = -1;
+		foreach (int i, SCR_DeployableVariantContainer variant : variantsArrayPointer)
+		{
+			if (variant.GetVariantId() == m_iCurrentVariant)
+			{
+				nextVariantId = i + 1;
+				break;
+			}
+		}
+
+		if (nextVariantId < 0)
+			return false;
+
+		GetGame().GetInputManager().AddActionListener(SCR_ItemPlacementComponent.ACTION_NAME_CHANGE_VARIANT, EActionTrigger.DOWN, CycleVariants);
+		if (nextVariantId >= numberOfVariants)
+			nextVariantId = 0;
+
+		SCR_DeployableVariantContainer variantPointer = variantsArrayPointer[nextVariantId];
+		if (!variantPointer)
+			return false;
+
+		m_iCurrentVariant = variantPointer.GetVariantId();
+
+		return m_CurrentlyHandledComponent.FetchVariantData(m_iCurrentVariant);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] placementComp
+	protected void SelectNextPlaceableItem(notnull SCR_ItemPlacementComponent placementComp)
+	{
+		if (!m_aFoundDeployables)
+			return;
+
+		if (!m_bPlacementModeEnabled)
+			return;
+
+		int numberOfPlaceables = m_aFoundDeployables.Count();
+		if (!m_CurrentlyHandledComponent)
+		{
+			if (numberOfPlaceables < 1)
+				return;
+
+			m_CurrentlyHandledComponent = SCR_MultiPartDeployableItemComponent.Cast(m_aFoundDeployables[0].FindComponent(SCR_MultiPartDeployableItemComponent));
+		}
+		else
+		{
+			if (numberOfPlaceables < 2)
+				return;
+
+			IEntity currentItem = m_CurrentlyHandledComponent.GetOwner();
+			if (!currentItem)
+				return;
+
+			int currentId = m_aFoundDeployables.Find(currentItem);
+			if (currentId < 0)
+			{
+				m_CurrentlyHandledComponent = null;
+				SelectNextPlaceableItem(placementComp);
+				return;
+			}
+
+			BaseContainer currentPrefab = currentItem.GetPrefabData().GetPrefab();
+			IEntity otherItem;
+			for (int i = currentId; i < numberOfPlaceables; i++)
+			{
+				otherItem = m_aFoundDeployables[i];
+				if (otherItem && otherItem != currentItem && currentPrefab != otherItem.GetPrefabData().GetPrefab())
+					break;
+
+				otherItem = null;
+				if (currentId > 0 && i == numberOfPlaceables - 1)
+				{
+					//restart from the begining
+					i = -1;
+					numberOfPlaceables = currentId;
+					currentId = -1;
+				}
+			}
+
+			if (!otherItem)
+				return;
+
+			m_CurrentlyHandledComponent = SCR_MultiPartDeployableItemComponent.Cast(otherItem.FindComponent(SCR_MultiPartDeployableItemComponent));
+		}
+
+		if (!m_CurrentlyHandledComponent)
+			return;
+
+		m_iCurrentVariant = -1;
+		if (!SelectNextVariant())
+		{
+			SetPlacementMode(false);
+			return;
+		}
+
+		if (!placementComp)
+		{
+			PlayerController controller = GetGame().GetPlayerController();
+			if (!controller)
+				return;
+
+			placementComp = SCR_ItemPlacementComponent.Cast(controller.FindComponent(SCR_ItemPlacementComponent));
+			if (!placementComp)
+				return;
+		}
+
+		IEntity nowCurrentItem = m_CurrentlyHandledComponent.GetOwner();
+		SCR_DeployablePlaceableItemComponent placeableItemComp = SCR_DeployablePlaceableItemComponent.Cast(nowCurrentItem.FindComponent(SCR_DeployablePlaceableItemComponent));
+		if (!placeableItemComp)
+			return;
+
+		placeableItemComp.SetPlacingGadget(this);
+		placementComp.SetPlaceableItemComponent(placeableItemComp);
+		placementComp.SetPlacedItem(nowCurrentItem);
+
+		EnablePreview(m_bPlacementModeEnabled, placementComp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] enabled
+	//! \param[in] placementComp
+	protected void EnablePreview(bool enabled, notnull SCR_ItemPlacementComponent placementComp)
+	{
+		if (!enabled)
+		{
+			placementComp.SetPreviewEntity(null, false);
+			m_CurrentlyHandledComponent.SetPreviewState(SCR_EPreviewState.NONE);
+			return;
+		}
+
+		if (!m_CurrentlyHandledComponent)
+			return;
+
+		IEntity deployableEntity = m_CurrentlyHandledComponent.GetOwner();
+		if (!deployableEntity)
+			return;
+
+		SCR_MultiPartDeployableItemComponentClass data = SCR_MultiPartDeployableItemComponentClass.Cast(m_CurrentlyHandledComponent.GetComponentData(deployableEntity));
+		if (!data)
+			return;
+
+		vector transform[4];
+		Math3D.MatrixIdentity4(transform);
+		m_CurrentlyHandledComponent.VisualizeReplacementEntity(transform);
+
+		IEntity previewEnt = data.GetPreviewEntity();
+		if (!previewEnt)
+			return;
+
+		data.SetPreviewState(SCR_EPreviewState.PLACEABLE);
+		placementComp.SetPreviewEntity(previewEnt, false);
+	}
+}

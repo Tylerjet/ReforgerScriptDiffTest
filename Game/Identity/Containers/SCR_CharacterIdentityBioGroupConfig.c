@@ -214,7 +214,11 @@ class SCR_CharacterIdentityBioGroupConfig: SCR_IdentityBioGroupConfig
 		//~ Refill available list if empty
 		if (m_mAvailableGenderSpecificBioIndexLists[gender].IsEmpty())
 		{
-			m_mAvailableGenderSpecificBioIndexLists[gender].Copy(m_mUnavailableGenderSpecificBioIndexLists[gender]);
+			foreach (int unavailableIndex : m_mUnavailableGenderSpecificBioIndexLists[gender])
+			{
+				m_mAvailableGenderSpecificBioIndexLists[gender].Insert(unavailableIndex);
+			}
+			
 			m_mUnavailableGenderSpecificBioIndexLists[gender].Clear();
 		}
 		

@@ -369,8 +369,15 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMessageFiltered(SCR_ProfanityFilterRequestCallback callback, array<string> filteredTexts, SCR_ChatMessage originalMessage)
-	{
-		originalMessage.m_sMessage = filteredTexts.Get(0);
+	{		
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX)
+		{
+			SCR_ProfaneFilter.ReplaceProfanities(filteredTexts.Get(0), originalMessage.m_sMessage);
+		}
+		else
+		{
+			originalMessage.m_sMessage = filteredTexts.Get(0);
+		}
 		
 		m_aMessages.Insert(originalMessage);
 		

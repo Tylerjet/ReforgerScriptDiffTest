@@ -27,7 +27,7 @@ class CareerMenuUI: ChimeraMenuBase
 	// Values
 	static CareerMenuUI m_sInstance;
 	ref CareerBackendData m_BackendData;
-	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
+	protected ref BackendCallback m_Callback = new BackendCallback();
 
 	[MenuBindAttribute()]
 	ButtonWidget Back;
@@ -136,7 +136,7 @@ class CareerMenuUI: ChimeraMenuBase
 			BackendApi backendApi = GetGame().GetBackendApi();
 			if (backendApi)
 			{
-				m_Callback.GetEventOnSuccess().Insert(UpdateCareerData);
+				m_Callback.SetOnSuccess(UpdateCareerData);
 				backendApi.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_Callback, m_BackendData, 0);
 			}
 		}

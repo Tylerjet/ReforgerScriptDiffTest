@@ -1,11 +1,17 @@
 void OnBaseFactionChangedDelegate(SCR_MilitaryBaseComponent base, Faction faction);
 void OnLogicPresenceChangedDelegate(SCR_MilitaryBaseComponent base, SCR_MilitaryBaseLogicComponent logic);
+void OnBaseRegisteredDelegate(SCR_MilitaryBaseComponent base);
+void OnBaseUnregisteredDelegate(SCR_MilitaryBaseComponent base);
 
 typedef func OnBaseFactionChangedDelegate;
 typedef func OnLogicPresenceChangedDelegate;
+typedef func OnBaseRegisteredDelegate;
+typedef func OnBaseUnregisteredDelegate;
 
 typedef ScriptInvokerBase<OnBaseFactionChangedDelegate> OnBaseFactionChangedInvoker;
 typedef ScriptInvokerBase<OnLogicPresenceChangedDelegate> OnLogicPresenceChangedInvoker;
+typedef ScriptInvokerBase<OnBaseRegisteredDelegate> OnBaseRegisteredInvoker;
+typedef ScriptInvokerBase<OnBaseUnregisteredDelegate> OnBaseUnregisteredInvoker;
 
 //------------------------------------------------------------------------------------------------
 class SCR_MilitaryBaseSystem : GameSystem
@@ -24,6 +30,8 @@ class SCR_MilitaryBaseSystem : GameSystem
 	protected ref OnBaseFactionChangedInvoker m_OnBaseFactionChanged;
 	protected ref OnLogicPresenceChangedInvoker m_OnLogicRegisteredInBase;
 	protected ref OnLogicPresenceChangedInvoker m_OnLogicUnregisteredInBase;
+	protected ref OnBaseRegisteredInvoker m_OnBaseRegistered;
+	protected ref OnBaseUnregisteredInvoker m_OnBaseUnregistered;
 
 	//------------------------------------------------------------------------------------------------
 	static SCR_MilitaryBaseSystem GetInstance()
@@ -34,6 +42,24 @@ class SCR_MilitaryBaseSystem : GameSystem
 			return null;
 
 		return SCR_MilitaryBaseSystem.Cast(world.FindSystem(SCR_MilitaryBaseSystem));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	OnBaseRegisteredInvoker GetOnBaseRegistered()
+	{
+		if (!m_OnBaseRegistered)
+			m_OnBaseRegistered = new OnBaseRegisteredInvoker();
+
+		return m_OnBaseRegistered;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	OnBaseUnregisteredInvoker GetOnBaseUnregistered()
+	{
+		if (!m_OnBaseUnregistered)
+			m_OnBaseUnregistered = new OnBaseUnregisteredInvoker();
+
+		return m_OnBaseUnregistered;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -277,15 +303,24 @@ class SCR_MilitaryBaseSystem : GameSystem
 				component.RegisterBase(base);
 			}
 		}
+
+		if (m_OnBaseRegistered)
+			m_OnBaseRegistered.Invoke(base);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void UnregisterBase(notnull SCR_MilitaryBaseComponent base)
 	{
+		if (!m_aBases.Contains(base))
+			return;
+
 		if (m_aAvailableCallsignIds)
 			m_aAvailableCallsignIds.Insert(base.GetCallsign());
 
 		m_aBases.RemoveItem(base);
+
+		if (m_OnBaseUnregistered)
+			m_OnBaseUnregistered.Invoke(base);
 	}
 
 	//------------------------------------------------------------------------------------------------

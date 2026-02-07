@@ -701,6 +701,19 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type Type of the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \return whether vote always displays voting timer for subject of the vote or not based on vote type
+	bool GetVoteAlwaysDisplayVoteSubjectVotingTimer(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
+	{
+		SCR_VotingBase voting = FindVoting(type, value);
+		if (!voting)
+			return false;
+
+		return voting.GetAlwaysDisplayVoteSubjectVotingTimer();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Print out information about all ongoing voting instances.
 	void Log()
 	{
@@ -737,6 +750,14 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		
 		EndVotingBroadcast(type, value, winner);
 		Rpc(EndVotingBroadcast, type, value, winner);
+		
+		if (type != EVotingType.KICK)
+			return;
+
+		if (winner != SCR_VotingBase.DEFAULT_VALUE)
+			SCR_AnalyticsApplication.GetInstance().VoteToKickSucessful();
+		else
+			SCR_AnalyticsApplication.GetInstance().VoteToKickFailed();
 	}
 
 	//------------------------------------------------------------------------------------------------

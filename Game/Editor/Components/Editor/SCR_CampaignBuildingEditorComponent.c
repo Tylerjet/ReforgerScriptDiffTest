@@ -243,8 +243,8 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	//! Make the area around where is possible to build composition visible for player
 	override protected void EOnEditorActivate()
 	{
-		SCR_CampaignBuildingProviderComponent providerComponenet = GetProviderComponent(true);
-		if (!providerComponenet)
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent(true);
+		if (!providerComponent)
 			return;
 		
 		if (!System.IsConsoleApp() && GetGame().GetPlayerController())
@@ -253,7 +253,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 			if (m_BuildingAreaTrigger)
 			{
-				m_BuildingAreaTrigger.SetSphereRadius(providerComponenet.GetBuildingRadius());
+				m_BuildingAreaTrigger.SetSphereRadius(providerComponent.GetBuildingRadius());
 
 				SCR_CampaignBuildingAreaMeshComponent areaMeshComponent = SCR_CampaignBuildingAreaMeshComponent.Cast(m_BuildingAreaTrigger.FindComponent(SCR_CampaignBuildingAreaMeshComponent));
 				if (areaMeshComponent && areaMeshComponent.ShouldEnableFrameUpdateDuringEditor())
@@ -266,23 +266,28 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			}
 		}
 		
-		if (providerComponenet.ObstrucViewWhenEnemyInRange())
+		if (providerComponent.ObstrucViewWhenEnemyInRange())
 			SetOnEnterEvent();
 
 		m_ContentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent));
 
 		FactionAffiliationComponent factionComponent = GetProviderFactionComponent();
-		if (factionComponent)
+		if (!factionComponent)
+			return;
+
+		Faction buildingFaction;
+		if (SCR_VehicleFactionAffiliationComponent.Cast(factionComponent))
+			buildingFaction = factionComponent.GetDefaultAffiliatedFaction();
+		else
 		{
-			// here we have to check both Affiliated faction and Default affiliated faction in case of vehicles. It's because vehicles can't have set a affiliated faction if no one is sitting inside (to prevent AI to shoot at empty vehicles)
-			Faction buildingFaction = factionComponent.GetAffiliatedFaction();
+			buildingFaction = factionComponent.GetAffiliatedFaction();
 
 			if (!buildingFaction)
 				buildingFaction = factionComponent.GetDefaultAffiliatedFaction();
-
-			if (buildingFaction)
-				AddRemoveFactionLabel(SCR_Faction.Cast(buildingFaction), true);
 		}
+
+		if (buildingFaction)
+			AddRemoveFactionLabel(SCR_Faction.Cast(buildingFaction), true);
 
 		array<SCR_EditorContentBrowserSaveStateDataUI> contentBrowserStates = {};
 		int tabsCount = m_ContentBrowserManager.GetContentBrowserTabStates(contentBrowserStates);
@@ -299,6 +304,21 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		}
 
 		ToggleBuildingTool(false);
+
+		SCR_CampaignBuildingProviderComponent nonMasterProviderComponent = GetProviderComponent(false);
+		if (!nonMasterProviderComponent)
+			return;
+
+		if (!nonMasterProviderComponent.UseAllAvailableProviders())
+			return;
+
+		array<SCR_MilitaryBaseComponent> bases = {};
+		int basesCount = nonMasterProviderComponent.GetBases(bases);
+		if (basesCount > 0)
+		{
+			bases[0].GetOnMilitaryBaseRegistered().Insert(OnMilitaryBaseRegistrationChanged);
+			bases[0].GetOnMilitaryBaseUnregistered().Insert(OnMilitaryBaseRegistrationChanged);
+		}
 	}
 	//---- REFACTOR NOTE END ----
 
@@ -607,6 +627,53 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		}
 		
 		ToggleBuildingTool(true);
+
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent(false);
+		if (!providerComponent)
+			return;
+
+		if (!providerComponent.UseAllAvailableProviders())
+			return;
+
+		array<SCR_MilitaryBaseComponent> bases = {};
+		int basesCount = providerComponent.GetBases(bases);
+		if (basesCount > 0)
+		{
+			bases[0].GetOnMilitaryBaseRegistered().Remove(OnMilitaryBaseRegistrationChanged);
+			bases[0].GetOnMilitaryBaseUnregistered().Remove(OnMilitaryBaseRegistrationChanged);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMilitaryBaseRegistrationChanged(SCR_MilitaryBaseLogicComponent baseComponent)
+	{
+		SCR_CampaignBuildingProviderComponent provider = SCR_CampaignBuildingProviderComponent.Cast(baseComponent);
+		if (!provider)
+			return;
+
+		UpdateTabs();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update tabs
+	void UpdateTabs()
+	{
+		if (!m_ContentBrowserManager)
+			m_ContentBrowserManager = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent));
+
+		array<SCR_EditorContentBrowserSaveStateDataUI> contentBrowserStates = {};
+		int tabsCount = m_ContentBrowserManager.GetContentBrowserTabStates(contentBrowserStates);
+
+		for (int i = 0; i < tabsCount; i++)
+		{
+			if (!contentBrowserStates[i])
+				continue;
+
+			if (i == 0 || !CanBeShown(contentBrowserStates[i]))
+				m_ContentBrowserManager.SetStateTabVisible(i, false);
+			else
+				m_ContentBrowserManager.SetStateTabVisible(i, true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

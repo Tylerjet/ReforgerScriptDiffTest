@@ -37,7 +37,6 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	PlayerListMenu,
 	FieldManualDialog,
 	WidgetLibraryMenu,
-	PickAssignee,
 	TaskDetail,
 	EndgameScreen,
 	ScenarioMenu,
@@ -57,7 +56,11 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	GroupFlagDialog,
 	RoleSelectionDialog,
 	GamepadRemovalDialog,
-	TutorialFastTravel
+	TutorialFastTravel,
+	CreateGroupSettingsDialog,
+	CommandPostMapMenu,
+	VolunteerForGroupLeaderDialog,
+	CampaignMenu
 };
 
 //------------------------------------------------------------------------------------------------

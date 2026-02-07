@@ -4,6 +4,7 @@ class SCR_VONEntryComponent : SCR_SelectionMenuEntryComponent
 {
 	protected ImageWidget m_wPowerIcon;
 	protected ImageWidget m_wActiveIcon;
+	protected ImageWidget m_wMuteIcon;
 	protected TextWidget m_wTransceiverText;
 	protected TextWidget m_wFrequencyText;
 	protected TextWidget m_wChannelText;
@@ -24,6 +25,15 @@ class SCR_VONEntryComponent : SCR_SelectionMenuEntryComponent
 			m_wActiveIcon.SetOpacity(1);
 		else 
 			m_wActiveIcon.SetOpacity(0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMuteIcon(bool state)
+	{
+		if (state)
+			m_wMuteIcon.SetOpacity(1);
+		else 
+			m_wMuteIcon.SetOpacity(0);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -71,6 +81,7 @@ class SCR_VONEntryComponent : SCR_SelectionMenuEntryComponent
 
 		m_wPowerIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("PowerIcon"));
 		m_wActiveIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("ActiveIcon"));
+		m_wMuteIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("MuteIcon"));
 		m_wTransceiverText = TextWidget.Cast(m_wRoot.FindAnyWidget("TransceiverText"));
 		m_wFrequencyText = TextWidget.Cast(m_wRoot.FindAnyWidget("FrequencyText"));
 		m_wChannelText = TextWidget.Cast(m_wRoot.FindAnyWidget("ChannelText"));

@@ -13,7 +13,7 @@ class SCR_TestScriptedRadioMsgUserAction : ScriptedUserAction
 			return;
 
 		//ScriptedRadioMessage msg = new ScriptedRadioMessage();
-		SCR_RequestTransportMessage msg = new SCR_RequestTransportMessage();
-		transmitter.BeginTransmission(msg);
+		//SCR_RequestTransportMessage msg = new SCR_RequestTransportMessage();
+		//transmitter.BeginTransmission(msg);
 	}
 }

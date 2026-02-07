@@ -42,6 +42,7 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 		
 		ClearEditedSave();
 		
+		/*
 		SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
 		WorldSaveItem saveItem;
 		string saveName = saveWorkshopManager.GetCurrentSave(saveItem);
@@ -51,6 +52,7 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 		
 		// Setup callbacks 
 		saveWorkshopManager.GetOnCurrentSaveChanged().Insert(OnEditedSaveChange);
+		*/
 		
 		m_UploadButton.m_OnClicked.Insert(OnUploadButtonClick);
 		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Insert(OnTooltipShow);
@@ -84,10 +86,11 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 		if (tag != "publish_action" && tag != "publish_disabled_empty" && tag != "publish_disabled_downloaded")
 			return;
 		
-		WorldSaveItem saveItem;
-		SCR_SaveWorkshopManager.GetInstance().GetCurrentSave(saveItem);
+		//WorldSaveItem saveItem;
+		//SCR_SaveWorkshopManager.GetInstance().GetCurrentSave(saveItem);
 		string message = TOOLTIP_PUBLISH_EMPTY;
 		
+		/*
 		if (saveItem)
 		{
 			if (SCR_SaveWorkshopManager.CanOverrideSave(saveItem))
@@ -95,6 +98,7 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 			else
 				message = TOOLTIP_PUBLISH_DISABLED_DOWNLOADED;
 		}
+		*/
 		
 		tooltip.GetContent().SetMessage(message);
 			
@@ -108,9 +112,9 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 	//! Reaction to changing of current editing save - name should be changed accordingly
 	protected void OnEditedSaveChange(string fileName)
 	{
-		string name = GetGame().GetSaveManager().GetCustomName(fileName);
+		//string name = GetGame().GetSaveManager().GetCustomName(fileName);
 		
-		m_wName.SetText(name);
+		m_wName.SetText(fileName);
 		
 		UpdatePublishButtonState();
 		
@@ -120,7 +124,7 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 	//! Setup current tooltip based on current save state
 	protected void UpdatePublishButtonState()
 	{
-		WorldSaveItem saveItem;
+		/*WorldSaveItem saveItem;
 		SCR_SaveWorkshopManager.GetInstance().GetCurrentSave(saveItem);
 		
 		m_bCanUpload = saveItem && SCR_SaveWorkshopManager.CanOverrideSave(saveItem);
@@ -137,6 +141,7 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 			m_wName.SetColor(UIColors.WHITE_DISABLED);
 			m_wSaveBackground.SetColor(UIColors.BACKGROUND_HOVERED);
 		}
+		*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -146,10 +151,10 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 			return;
 		
 		// Check linked account
-		if (!GetGame().GetBackendApi().IsBIAccountLinked())
+		if (!BohemiaAccountApi.IsLinked())
 		{
 			SCR_LoginProcessDialogUI loginDialog = SCR_LoginProcessDialogUI.CreateLoginDialog();
-			loginDialog.GetCallback().GetEventOnSuccess().Insert(OnLoginSuccess);
+			loginDialog.GetCallback().SetOnSuccess(OnLoginSuccess);
 			return;
 		}
 		
@@ -157,9 +162,8 @@ class SCR_EditedSaveUIComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnLoginSuccess(SCR_BackendCallback callback)
+	protected void OnLoginSuccess()
 	{
-		callback.GetEventOnSuccess().Remove(OnLoginSuccess);
 		new SCR_PublishSaveDialog();
 	}
 	

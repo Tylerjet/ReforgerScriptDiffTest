@@ -4,6 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
+/*!
+Generic ingame editor implementation.
+*/
 class GameWorldEditor: Managed
 {
 	proto external WorldEditorAPI GetEditorAPI();
@@ -15,6 +18,6 @@ class GameWorldEditor: Managed
 	proto external bool SaveWorldAs(string savePath, bool overridePath = false);
 	proto external void Undo();
 	proto external void Redo();
-	proto external bool SwitchToGameMode();
+	proto external bool SwitchToGameMode(ResourceName worldSystemsConfig);
 	proto external void SwitchToEditMode();
 }

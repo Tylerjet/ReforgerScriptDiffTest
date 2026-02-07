@@ -305,9 +305,11 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(editorMode);
 		if (!modeEntity)
 			return false;
-		
-		SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(modeEntity.FindComponent(SCR_ContentBrowserEditorComponent));
-		return contentBrowser && contentBrowser.CanPlace(occupantsToSpawn, EEditableEntityType.CHARACTER);
+
+		SCR_PlacingEditorComponent placingComponent;
+
+		placingComponent = SCR_PlacingEditorComponent.Cast(modeEntity.FindComponent(SCR_PlacingEditorComponent));
+		return placingComponent.IsThereEnoughBudgetToSpawnVehicleOccupants(occupantsToSpawn);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -30,10 +30,6 @@ sealed class BackendApi
 			result = "Cannot be called from current state";
 		else if (code == EBackendError.EBERR_BUSY)
 			result = "Busy processing requests";
-		else if (code == EBackendError.EBERR_ALREADY_OFFLINE)
-			result = "Already disconnected";
-		else if (code == EBackendError.EBERR_ALREADY_ONLINE)
-			result = "Already connected";
 		else if (code == EBackendError.EBERR_LOGIN_FAILED)
 			result = "Failed to logon";
 		else if (code == EBackendError.EBERR_AUTH_FAILED)
@@ -89,6 +85,14 @@ sealed class BackendApi
 	*/
 	proto external PopupFeedItem GetPopupItem( int iIndex );
 	/*!
+	\brief Triggers OnSuccess when check for popup image finished
+	*/
+	proto external void OnPopupReady(BackendCallback callback);
+	/*!
+	\brief Triggers OnSuccess when check for news image finished
+	*/
+	proto external void OnNewsReady(BackendCallback callback);
+	/*!
 	\brief Return specific Link by it's name
 	*/
 	proto external string GetLinkItem( string linkName );
@@ -99,22 +103,27 @@ sealed class BackendApi
 	/*!
 	\brief Invoke credentials update (authenticate with new name+password)
 	*/
+	[Obsolete("Use BohemiaAccountApi.Link() instead.")]
 	proto external void VerifyCredentials(BackendCallback callback, bool storeCredentials);
 	/*!
 	\brief Unlink the bi-account and clear credentials
 	*/
+	[Obsolete("Use BohemiaAccountApi.Unlink() instead.")]
 	proto external void Unlink(BackendCallback callback);
 	/*!
 	\brief The bi-account remains locked for X seconds
 	*/
+	[Obsolete("Use BohemiaAccountApi.GetSecondsUntilAccountUnlockTime() instead.")]
 	proto external int RemainingAccountLockedTime();
 	/*!
 	\brief Client is Authenticated - relate requests may proceed
 	*/
+	[Obsolete("Use BackendAuthenticatorApi.IsAuthenticated() instead.")]
 	proto external bool IsAuthenticated();
 	/*!
 	\brief Client is busy - Authentication in process
 	*/
+	[Obsolete("Use BackendAuthenticatorApi.IsAuthInProgress() instead.")]
 	proto external bool IsAuthInProgress();
 	/*!
 	\brief True if HTTP communication enabled (initialization, runtime or shutdown may be pending at same time)
@@ -162,6 +171,7 @@ sealed class BackendApi
 	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param iPlayerId Is Player Id used on player identity
 	*/
+	[Obsolete()]
 	proto external void PlayerRequest( int request, BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
 	/*!
 	\brief Expand player data upon defined structure, this is Server-Side only!
@@ -169,6 +179,7 @@ sealed class BackendApi
 	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param iPlayerId Is Player Id used on player identity
 	*/
+	[Obsolete()]
 	proto external void PlayerData( JsonApiStruct dataObject, int iPlayerId );
 	/*!
 	\brief Expand settings data upon defined structure, this is Server-Side only!
@@ -227,21 +238,25 @@ sealed class BackendApi
 	\brief Get Player Identity ID by Player ID
 	\param iPlayerId Is id of player in session
 	*/
+	[Obsolete()]
 	proto external string GetPlayerIdentityId(int iPlayerId);
 	/*!
 	\brief Get Local Identity ID on client
 	*/
+	[Obsolete("Use BackendAuthenticatorApi.GetIdentityId() instead.")]
 	proto external string GetLocalIdentityId();
 	/*!
 	\brief Get Player Platform Kind by Player ID
 	\param iPlayerId Is id of player in session
 	*/
+	[Obsolete()]
 	proto external PlatformKind GetPlayerPlatformKind(int iPlayerId);
 	/*!
 	\brief Get Player Platform ID by Player ID
 	\param iPlayerId Is id of player in session
 	\note Xbox and PS Ids are hashed in SHA-256
 	*/
+	[Obsolete()]
 	proto external string GetPlayerPlatformId(int iPlayerId);
 	/*!
 	\brief Return true if local platform data are to be used for authentication/ persistency of client (meaningless on server)
@@ -252,15 +267,18 @@ sealed class BackendApi
 	\param item Is type of EBackendCredentials parameter you want to set
 	\param str Is value itself
 	*/
+	[Obsolete("Use BohemiaAccountApi.Link() instead.")]
 	proto external void SetCredentialsItem( EBackendCredentials item, string str );
 	/*!
 	\brief Get credentials value per item
 	\param item Is type of EBackendCredentials parameter you want to read
 	*/
+	[Obsolete("Use BohemiaAccountApi.GetEmail() or BohemiaAccountApi.GetName() instead.")]
 	proto external string GetCredentialsItem( EBackendCredentials item );
 	/*!
 	\brief Return true if BI Account is linked to local Identity
 	*/
+	[Obsolete("Use BohemiaAccountApi.IsLinked() instead.")]
 	proto external bool IsBIAccountLinked();
 	/*!
 	\brief Get target backend environment
@@ -291,10 +309,6 @@ sealed class BackendApi
 	\brief Called when platform is not ready - perhaps user is not signed-in
 	*/
 	event void OnPlatformMissing();
-	/*!
-	\brief Called when initiate cannot be called
-	*/
-	event void OnCannotInitiate(int code);
 }
 
 /*!

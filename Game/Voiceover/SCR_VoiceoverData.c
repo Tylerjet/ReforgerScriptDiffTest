@@ -33,6 +33,26 @@ class SCR_VoiceoverData
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_VoiceoverLine GetLineBySoundEvent(string eventName, string sequenceName)
+	{
+		SCR_VoiceoverSequence sequence = GetSequenceByName(sequenceName);
+
+		if (!sequence)
+			return null;
+
+		array<ref SCR_VoiceoverLine> lines = {};
+		sequence.GetLines(lines);
+
+		foreach (SCR_VoiceoverLine line : lines)
+		{
+			if (line.GetSoundEventName() == eventName)
+				return line;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	SCR_VoiceoverSequence GetSequenceByName(string name)
 	{
 		foreach (SCR_VoiceoverSequence sequence : m_aSequences)
@@ -93,6 +113,18 @@ class SCR_VoiceoverLine
 	[Attribute("0", desc: "Non-zero value overrides the maximum distance from the voiceover source at which a subtitle will still be displayed.", params: "0 inf 1")]
 	protected int m_iCustomSubtitleDistanceThreshold;
 
+	[Attribute("0", desc: "Non-zero value executes an animation command with this parameter upon event start.")]
+	protected int m_iStartAnimCommandParameter;
+
+	[Attribute("0", desc: "Non-zero value executes an animation command with this parameter upon event finish.")]
+	protected int m_iFinishAnimCommandParameter;
+	
+	[Attribute("1", desc: "Interrupt the currently played line when this line starts playing.")]
+	protected bool m_bInterruptCurrentLine;
+	
+	[Attribute("-1", desc: "Non-negative value overrides the default pause between lines.")]
+	protected float m_fPauseBeforeLine;
+
 	//------------------------------------------------------------------------------------------------
 	SCR_EVoiceoverActor GetActor()
 	{
@@ -122,10 +154,34 @@ class SCR_VoiceoverLine
 	{
 		return m_iCustomSubtitleDistanceThreshold;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetStartAnimCommandParameter()
+	{
+		return m_iStartAnimCommandParameter;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetFinishAnimCommandParameter()
+	{
+		return m_iFinishAnimCommandParameter;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool InterruptCurrentLine()
+	{
+		return m_bInterruptCurrentLine;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetPauseBeforeLine()
+	{
+		return m_fPauseBeforeLine;
+	}
 }
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sSoundEventName")]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sName")]
 class SCR_VoiceoverLineStandalone : SCR_VoiceoverLine
 {
 	[Attribute("")]

@@ -121,7 +121,7 @@ class SCR_MapRadialUI : SCR_MapUIBaseComponent
 		else if (m_RadialMenu.IsOpened())	// TODO proper close here
 			return;
 
-		if (m_RadialMenu.GetEntryCount() == 0 || !m_CursorModule.HandleContextualMenu())		// map side conditions to open
+		if (!m_CursorModule.HandleContextualMenu())		// map side conditions to open
 			m_RadialController.SetEnableControl(false);
 		else 
 			m_RadialController.SetEnableControl(true);

@@ -3,6 +3,10 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 {
 	[Attribute(ResourceName.Empty, UIWidgets.ResourcePickerThumbnail, "Debris model prefabs to spawn (spawns ALL of them)", "et xob")]
 	ref array<ResourceName> m_ModelPrefabs;
+	[Attribute("0", desc: "Remap materials on all models defined in Phase Model array to those used on owner prefab. Remap is applied based on material slot names.")]
+	bool m_bUseMaterialsFromParent;
+	[Attribute("", UIWidgets.Object, "List of slots which should be remaped. If Materials From Parent is active, materials from parent will be extented by this list.", category: "Destruction Multi-Phase")]
+	ref array<ref SCR_DamageRemapData> m_aRemapData;
 	[Attribute("10", UIWidgets.Slider, "Mass of the debris", "0.01 1000 0.01")]
 	float m_fMass;
 	[Attribute("5", UIWidgets.Slider, "Minimum lifetime value for the debris (in s)", "0 3600 0.5")]
@@ -120,7 +124,20 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 		int numModelPrefabs = 0;
 		if (m_ModelPrefabs)
 			numModelPrefabs = m_ModelPrefabs.Count();
-		
+
+		ResourceName modelEmpty;
+		string remapParent;
+		if(m_bUseMaterialsFromParent)
+		{
+			ResourceName parentModel = SCR_ResourceNameUtils.GetPrefabName(owner);
+			SCR_Global.GetModelAndRemapFromResource(parentModel, modelEmpty, remapParent);
+		}
+		string remapData;
+		foreach (SCR_DamageRemapData remapEntry: m_aRemapData)
+		{
+			remapData += "$remap '" + remapEntry.m_sMaterialSlotName + "' '" + remapEntry.m_sMaterialName + "';";
+		}
+
 		for (int i = 0; i < numModelPrefabs; i++)
 		{
 			ResourceName prefabPath = m_ModelPrefabs[i];
@@ -128,7 +145,23 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 			ResourceName modelPath;
 			string remap;
 			SCR_Global.GetModelAndRemapFromResource(prefabPath, modelPath, remap);
-			
+			// Trying to remap slots which are not present in modelPath will result in error in Log Console. This is why we need to sanitize remap string to only contain valid entries.
+			// GetModelAndRemapFromResource will return non empty remap only if prefabPath is linking to actual prefab with remaped materials.
+			// Above behavior can be used to create a prefab, which remaps only 2 certain slots - those will be retrieved by code and used in sanitization process.
+			if (m_bUseMaterialsFromParent)
+			{
+				if (remap)
+				{
+					remap = SCR_DestructionUtility.SanitizeRemapString(remap,remapParent);
+				}
+				else
+				{
+					remap = remapParent;
+				}
+			}
+
+			remap += remapData;
+
 			if (modelPath == ResourceName.Empty)
 				continue;
 			

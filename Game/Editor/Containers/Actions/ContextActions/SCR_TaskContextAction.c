@@ -6,7 +6,7 @@ class SCR_TaskContextAction : SCR_SelectedEntitiesContextAction
 	
 	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
-		return selectedEntity && selectedEntity.GetEntityType() == EEditableEntityType.TASK && GetTaskManager();
+		return selectedEntity && selectedEntity.GetEntityType() == EEditableEntityType.TASK && SCR_TaskSystem.GetInstance();
 	}
 	
 	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
@@ -16,14 +16,10 @@ class SCR_TaskContextAction : SCR_SelectedEntitiesContextAction
 	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
-		if (!GetTaskManager())
+		if (!SCR_TaskSystem.GetInstance())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
-			return;
-		
-		SCR_BaseTask task = SCR_BaseTask.Cast(selectedEntity.GetOwner());
+		SCR_Task task = SCR_Task.Cast(selectedEntity.GetOwner());
 		if (!task)
 			return;
 		
@@ -32,13 +28,13 @@ class SCR_TaskContextAction : SCR_SelectedEntitiesContextAction
 			//--- Complete
 			case 0:
 			{
-				supportEntity.FinishTask(task);
+				task.SetTaskState(SCR_ETaskState.COMPLETED);
 				break;
 			}
 			//--- Fail
 			case 1:
 			{
-				supportEntity.FailTask(task);
+				task.SetTaskState(SCR_ETaskState.FAILED);
 				break;
 			}
 		}

@@ -71,7 +71,7 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 
 		float chromAberProgress = Math.InverseLerp(m_fRegenEffectDuration, 0, m_fRegenEffectTimeRemaining);
 
-		vector chromAberPowerScaled = Math3D.Curve(ECurveType.CatmullRom, chromAberProgress, m_Curve);
+		vector chromAberPowerScaled = LegacyCurve.Curve(ECurveType.CatmullRom, chromAberProgress, m_Curve);
 
 		// The maximum value of the EMAT is 0.05. The chromatic aberiation cannot go over this value
 		s_fChromAberPower = Math.Lerp(0, 0.05, chromAberPowerScaled[1]);

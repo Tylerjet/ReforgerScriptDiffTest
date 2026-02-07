@@ -60,7 +60,7 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 		}
 		
 		//--- No faction defined
-		if (!m_OwnerFaction)
+		if (!m_aOwnerFactionKeys || m_aOwnerFactionKeys.IsEmpty())
 		{
 			m_iFriendlyCount = 0;
 			m_iEnemyCount = 0;
@@ -72,6 +72,10 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 			return false;
 		
 		//--- Increase faction counters
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return false;
+		
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
 		if (factionAffiliation)
 		{
@@ -80,10 +84,13 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 			{
 				if (!m_aIgnoredFactionKeys || m_aIgnoredFactionKeys.IsEmpty() || !m_aIgnoredFactionKeys.Contains(entFaction.GetFactionKey()))
 				{
-				    if (m_OwnerFaction.IsFactionEnemy(entFaction))
-				        m_iEnemyCount++;
-				    else
-				        m_iFriendlyCount++;
+					foreach (FactionKey key : m_aOwnerFactionKeys)
+					{
+						if (factionManager.GetFactionByKey(key).IsFactionEnemy(entFaction))
+				        	m_iEnemyCount++;
+				    	else
+				        	m_iFriendlyCount++;
+					}
 				}
 			}
 		}

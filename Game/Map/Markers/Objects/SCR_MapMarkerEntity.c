@@ -2,6 +2,14 @@
 [EntityEditorProps(category: "GameScripted/Markers")]
 class SCR_MapMarkerEntityClass : GenericEntityClass
 {
+	[Attribute(defvalue: "1", desc:"Update delay in seconds", params: "0 inf")]
+	protected float m_fUpdateDelayData;
+
+	//------------------------------------------------------------------------------------------------
+	float GetUpdateDelay()
+	{
+		return m_fUpdateDelayData;
+	}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -281,7 +289,11 @@ class SCR_MapMarkerEntity : GenericEntity
 			SetFlags(EntityFlags.ACTIVE, true);
 			SetEventMask(EntityEvent.FRAME);
 		}
-		
+
+		SCR_MapMarkerEntityClass markerEntityClass = SCR_MapMarkerEntityClass.Cast(GetPrefabData());
+		if (markerEntityClass)
+			m_fUpdateDelay = markerEntityClass.GetUpdateDelay();
+
 		m_fTimeTracker = m_fUpdateDelay; // tick first update instantly
 	}
 	

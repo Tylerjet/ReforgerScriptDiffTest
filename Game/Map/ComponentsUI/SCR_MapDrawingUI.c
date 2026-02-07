@@ -462,7 +462,7 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 13); // add to menu
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 13, m_bIsExclusive); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleDrawMode);
 			m_ToolMenuEntry.SetEnabled(true);
 			

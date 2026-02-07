@@ -47,46 +47,6 @@ class SCR_AIMoveFromDangerBehavior : SCR_AIBehaviorBase
 		else
 			return false;
 	}
-};
-
-class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
-{
-	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromUnknownFire(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
-	{
-		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_UNKNOWN_FIRE);
-		m_Stance.m_Value = ECharacterStance.STAND;
-		m_MovementType.m_Value = EMovementType.SPRINT;
-		m_bIsInterruptable = false;
-		
-		m_bAllowLook = false;
-	}
-	
-	//-----------------------------------------------------------------------------------------------------
-	override float CustomEvaluate()
-	{
-		// This behavior is started by the fact that we don't have a current target,
-		// so it also ends when we have selected a target
-		if (m_Utility.m_CombatComponent.GetCurrentTarget())
-		{
-			Complete();
-			return 0;
-		}
-			
-		return GetPriority();
-	}
-	
-	//-----------------------------------------------------------------------------------------------------
-	override void OnActionSelected()
-	{
-		super.OnActionSelected();
-		
-		if (!m_Utility.m_CommsHandler.CanBypass())
-		{
-			SCR_AITalkRequest rq = new SCR_AITalkRequest(ECommunicationType.REPORT_UNDER_FIRE, null, vector.Zero, 0, false, true, SCR_EAITalkRequestPreset.IRRELEVANT);
-			m_Utility.m_CommsHandler.AddRequest(rq);
-		}
-	}
 }
 
 class SCR_AIMoveFromUnsafeAreaBehavior : SCR_AIMoveFromDangerBehavior

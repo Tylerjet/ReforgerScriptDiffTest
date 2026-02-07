@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class LadderComponentClass: GameComponentClass
-{
-}
-
 class LadderComponent: GameComponent
 {
 	/*!
@@ -23,9 +19,12 @@ class LadderComponent: GameComponent
 	proto external bool IsAbove(vector pPositionWS);
 	/*!
 	Enable or disable the top front entry of the ladder.
-	\param frontTop Desired state of entry.
+	Use when for design reasons you need to allow the associated DoorComponent's door to be entered even when closed,
+	or vice-versa, prevent from being entered even when open.
+	This call is synchronized in MP, and only has effect on the server.
+	\param entryState Desired state.
 	*/
-	proto external void SetEnabledEntry(bool frontTop);
+	proto external void SetEnabledEntry(ELadderDoorState entryState);
 }
 
 /*!

@@ -39,6 +39,8 @@ class SCR_DestructionFractalComponent: SCR_DestructionDamageManagerComponent
 		protected static ref array<SCR_FragmentEntity> s_FragmentToCheckList = {};
 		protected static ref array<SCR_FragmentEntity> s_FragmentCheckedList = {};
 
+		protected static ref s_RandomGenerator = new RandomGenerator();
+	
 		#ifdef WORKBENCH
 			[Attribute("0", UIWidgets.CheckBox, "Check to generate fragment hierarchies for each fractal variant", category: "EDITOR: Destruction Fractal")]
 			protected bool GenerateFragmentHierarchies;
@@ -544,9 +546,9 @@ class SCR_DestructionFractalComponent: SCR_DestructionDamageManagerComponent
 			x = x % 10000;
 			z = z % 10000;
 			seed += x + z;
-			Math.Randomize(seed); // Set randomizer to seed based on position
+			s_RandomGenerator.Randomize(seed); // Set randomizer to seed based on position
 
-			int randomVariant = Math.RandomInt(0, numVariants);
+			int randomVariant = s_RandomGenerator.RandomInt(0, numVariants);
 			SCR_FractalVariation variant = m_FractalVariants.Get(randomVariant);
 
 			return variant;

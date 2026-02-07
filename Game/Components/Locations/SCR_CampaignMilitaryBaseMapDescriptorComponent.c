@@ -21,7 +21,7 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		MapItem item = Item();
 		Faction baseFaction = m_CampaignBase.GetFaction();
 		
-		if (m_CampaignBase.IsHQ() && faction != baseFaction)
+		if (faction != baseFaction && (m_CampaignBase.IsHQ() || (m_CampaignBase.GetBuiltByPlayers() && !m_CampaignBase.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(faction)))))
 		{
 			item.SetVisible(false);
 			return;
@@ -56,7 +56,6 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 	void HandleMapInfo(SCR_CampaignFaction playerFactionCampaign = null)
 	{
 		SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.GetInstance();
-
 		if (!campaignGameMode)
 			return;
 		
@@ -69,23 +68,27 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		if (!playerFactionCampaign)
 			return;
 
-		if (m_CampaignBase.IsHQ() && m_CampaignBase.GetFaction() != playerFactionCampaign)
-			return;
+		// Don't display enemy HQs and undiscovered bases
+		if (m_CampaignBase.GetFaction() != playerFactionCampaign && (m_CampaignBase.IsHQ() || (m_CampaignBase.GetBuiltByPlayers() && !m_CampaignBase.IsHQRadioTrafficPossible(playerFactionCampaign))))
+		{
+			if (m_CampaignBase.GetBuiltByPlayers())
+				UpdateServices(false);
+
+			return;	
+		}
 		
 		// Set callsign based on player's faction
-		if (m_CampaignBase.GetType() != SCR_ECampaignBaseType.RELAY && m_CampaignBase.GetCallsignDisplayName().IsEmpty())
+		if (m_CampaignBase.GetCallsignDisplayName().IsEmpty())
 			m_CampaignBase.SetCallsign(playerFactionCampaign);
 		
 		SCR_CampaignMapUIBase mapUI = m_CampaignBase.GetMapUI();
-		
 		if (mapUI)
 			mapUI.SetIconInfoText();
 
 		// Update base icon color
-		EFactionMapID factionMapID = EFactionMapID.UNKNOWN;
-		bool isInRange = m_CampaignBase.IsHQRadioTrafficPossible(playerFactionCampaign);
-
 		// Show proper faction color only for HQs or bases within radio signal
+		EFactionMapID factionMapID = EFactionMapID.UNKNOWN;
+		const bool isInRange = m_CampaignBase.IsHQRadioTrafficPossible(playerFactionCampaign);
 		if (m_CampaignBase.GetFaction() && (m_CampaignBase.IsHQ() || isInRange))
 		{
 			switch (m_CampaignBase.GetFaction().GetFactionKey())
@@ -98,28 +101,37 @@ class SCR_CampaignMilitaryBaseMapDescriptorComponent : SCR_MilitaryBaseMapDescri
 		
 		Item().SetFactionIndex(factionMapID);
 
-		array<SCR_ServicePointDelegateComponent> delegates = {};
-		m_CampaignBase.GetServiceDelegates(delegates);
-		
-		foreach (SCR_ServicePointDelegateComponent delegate: delegates)
-		{
-			IEntity owner = delegate.GetOwner();
-			
-			if (!owner)
-				continue;
-			
-			SCR_ServicePointMapDescriptorComponent comp = SCR_ServicePointMapDescriptorComponent.Cast(owner.FindComponent(SCR_ServicePointMapDescriptorComponent));
-
-			if (comp)
-			{
-				if (isInRange)
-					comp.SetServiceMarker(m_CampaignBase.GetCampaignFaction());
-				else
-					comp.SetServiceMarker(visible: false);
-			}
-		}
+		UpdateServices(isInRange);
 
 		if (mapUI)
 			mapUI.UpdateBaseIcon(factionMapID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Shows or hides services on the map based on the fact whether base is in range or not
+	//! \param[in] isInRange
+	protected void UpdateServices(bool isInRange)
+	{
+		array<SCR_ServicePointDelegateComponent> delegates = {};
+		m_CampaignBase.GetServiceDelegates(delegates);
+
+		SCR_ServicePointMapDescriptorComponent comp;
+		IEntity owner;
+
+		foreach (SCR_ServicePointDelegateComponent delegate: delegates)
+		{
+			owner = delegate.GetOwner();
+			if (!owner)
+				continue;
+
+			comp = SCR_ServicePointMapDescriptorComponent.Cast(owner.FindComponent(SCR_ServicePointMapDescriptorComponent));
+			if (!comp)
+				continue;
+
+			if (isInRange)
+				comp.SetServiceMarker(m_CampaignBase.GetCampaignFaction());
+			else
+				comp.SetServiceMarker(visible: false);
+		}
 	}
 }

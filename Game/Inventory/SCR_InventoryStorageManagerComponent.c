@@ -29,6 +29,7 @@ enum EResupplyUnavailableReason
 	NOT_IN_GIVEN_STORAGE = 30,
 	INVENTORY_FULL = 40,
 	RANK_TOO_LOW = 50,
+	NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES = 60,
 
 	//~ Resupply was valid. Add invalid reasons above
 	RESUPPLY_VALID = 99999,
@@ -267,21 +268,24 @@ class SCR_PrefabDataPredicate : InventorySearchPredicate
 class SCR_ResourceNamePredicate : InventorySearchPredicate
 {
 	//! either set this manually or pass ResourceName to the constructor 
-	BaseContainer prefab;
+	BaseContainer m_PrefabContainer;
+	//! Entity which is going to be ignored
+	IEntity m_ExcludedItem;
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] rn ResourceName of the prefab that will be used for matching
-	void SCR_ResourceNamePredicate(ResourceName rn = string.Empty)
+	void SCR_ResourceNamePredicate(ResourceName rn = string.Empty, IEntity excludedItem = null)
 	{
+		m_ExcludedItem = excludedItem;
 		Resource resource = Resource.Load(rn);
 		if (resource.IsValid())
-			prefab = resource.GetResource().ToBaseContainer();
+			m_PrefabContainer = resource.GetResource().ToBaseContainer();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{
-		return item.GetPrefabData().GetPrefab() == prefab;
+		return item != m_ExcludedItem && item.GetPrefabData().GetPrefab() == m_PrefabContainer;
 	}
 }
 
@@ -503,6 +507,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! Get an array of all root items in the inventory storage.
 	//! \param[out] rootItems All root items without going in the sub inventory of the items or attachments
 	//! \return Count of root items
+	[Obsolete("Use GetItems or a custom predicate with Find instead.")]
 	int GetAllRootItems(out notnull array<IEntity> rootItems)
 	{
 		rootItems.Clear();
@@ -513,7 +518,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		GetStorages(storages, EStoragePurpose.PURPOSE_WEAPON_PROXY);
 		
 		array<IEntity> items = {};
-		array<BaseInventoryStorageComponent> clothStorages;
 		foreach (BaseInventoryStorageComponent storage : storages)
 		{
 			//~ If backpack or jacked or any other cloth storage only get what is inside the storage
@@ -522,7 +526,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if (!storage)
 					continue;
 				
-				clothStorages = {};
+				array<BaseInventoryStorageComponent> clothStorages = {};
 				storage.GetOwnedStorages(clothStorages, 1, false);
 			
 				foreach (BaseInventoryStorageComponent clothStorage : clothStorages)
@@ -532,15 +536,15 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 					
 					clothStorage.GetAll(items);
 					rootItems.Copy(items);
+					items.Clear();
 				}
 				
 				continue;
 			}
-			else 
-			{
-				storage.GetAll(items);
-				rootItems.Copy(items);
-			}
+
+			storage.GetAll(items);
+			rootItems.Copy(items);
+			items.Clear();
 		}
 		
 		return rootItems.Count();
@@ -604,12 +608,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				soundComp.SoundEvent(soundEvent);
 			}
 			else
-			{
-				SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-				if (!soundManagerEntity)
-					return;
-			
-				soundManagerEntity.CreateAndPlayAudioSource(entity, soundEvent);	
+			{			
+				SCR_SoundManagerModule.CreateAndPlayAudioSource(entity, soundEvent);	
 			}
 		}
 	}
@@ -646,12 +646,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			soundComp.SoundEvent(soundAction);
 		}
 		else
-		{
-			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-			if (!soundManagerEntity)
-				return;
-			
-			soundManagerEntity.CreateAndPlayAudioSource(entity, soundAction);	
+		{			
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(entity, soundAction);	
 		}
 	}
 	
@@ -966,32 +962,34 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! \param[in] pOwnerEntity
 	//! \param[in] cb
 	//! \param[in] bFromVicinity
-	void EquipWeapon( IEntity pOwnerEntity, SCR_InvCallBack cb = null, bool bFromVicinity = true )
+	bool EquipWeapon( IEntity pOwnerEntity, SCR_InvCallBack cb = null, bool bFromVicinity = true )
 	{
 		if ( !bFromVicinity )
 		{
-			if (!TrySwapItems(pOwnerEntity, m_Storage.GetWeaponStorage(), cb))
-				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
-			else
+			bool result = TrySwapItems(pOwnerEntity, m_Storage.GetWeaponStorage(), cb);
+			if (result)
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
-			
-			return;
+			else
+				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
+
+			return result;
 		}
 		
 		IEntity user = GetOwner();
 		if (!user)
-			return;
+			return false;
 		
 		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(user.FindComponent(BaseWeaponManagerComponent));
 		if (!weaponManager)
-			return;
+			return false;
 	
 		WeaponSlotComponent slot = weaponManager.GetCurrentSlot();
 		int preferred = 0;
 		if ( slot )
 			preferred = slot.GetWeaponSlotIndex();
-		
-		if (!EquipAny(m_Storage.GetWeaponStorage(), pOwnerEntity, preferred, cb))
+
+		bool result = EquipAny(m_Storage.GetWeaponStorage(), pOwnerEntity, preferred, cb);
+		if (!result)
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 		
 		if (cb && cb.m_pStorageFrom != cb.m_pStorageTo)
@@ -1001,6 +999,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		
 		// Play sound
 		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1148,7 +1147,69 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		// we return the result of swap opoeration were item from slotA will be transfered to slotB and item from slotB to slotA
 		return TrySwapItemStorages(item, m_TargetSlot.GetAttachedEntity(), cb);
 	} 
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Method that attempts to assign to the quick slot a different instance of the same prefab or a different item with the same common item type
+	//! \param[in] currentItem Item that is going to be replaced.
+	//! \param[in] quickSlotId Slot ID which is going to be used for choosing to which slot it should be assigned. If not provided, the game will try to find in which slot the provided item is.
+	//! \param[in] mustBeSamePrefab If the found item can be a different prefab of the same ECommonItemType. Even when this is true, the game will first try to find the same prefab.
+	//! \param[in] equipCallback Provide one if you would like to wait for this, e.g., until item transfer is finished.
+	//! \param[in] equipNewItem If you want to equip the found item.
+	//! \return true if script was able to find a fitting item, otherwise false.
+	bool TryAssigningNextItemToQuickSlot(notnull IEntity currentItem, int quickSlotId = -1, bool mustBeSamePrefab = true, out SCR_InvEquipAnyItemCB equipCallback = null, bool equipNewItem = false)
+	{
+		if (quickSlotId < 0)
+		{
+			quickSlotId = m_Storage.GetEntityIndexInQuickslots(currentItem);
+			if (quickSlotId < 0)
+				return false;
+		}
+
+		SCR_ResourceNamePredicate specificItemSearch = new SCR_ResourceNamePredicate(excludedItem: currentItem);
+		specificItemSearch.m_PrefabContainer = currentItem.GetPrefabData().GetPrefab();
+		array<IEntity> foundItems = {};
+		if (FindItems(foundItems, specificItemSearch) <= 0)
+		{
+			if (mustBeSamePrefab)
+				return false;
+
+			foundItems.Clear();
+			InventoryItemComponent iic = InventoryItemComponent.Cast(currentItem.FindComponent(InventoryItemComponent));
+			if (!iic)
+				return false;
+
+			ItemAttributeCollection attributes = iic.GetAttributes();
+			if (!attributes)
+				return false;
+
+			ECommonItemType itemType = attributes.GetCommonType();
+			if (itemType == ECommonItemType.NONE)
+				return false;
+
+			SCR_CommonItemTypeSearchPredicate itemTypeSearch = new SCR_CommonItemTypeSearchPredicate(itemType, currentItem);
+			if (FindItems(foundItems, itemTypeSearch) <= 0)
+				return false;
+		}
+
+		IEntity selectedItem = foundItems[0];
+		if (equipCallback)
+		{
+			equipCallback.m_pItem = selectedItem;
+			equipCallback.m_pStorageToPickUp = m_Storage;
+			equipCallback.m_iSlotToFocus = quickSlotId;
+			equipCallback.m_bShouldEquip = equipNewItem;
+			return true;
+		}
+
+		m_Storage.RemoveItemFromQuickSlotAtIndex(quickSlotId);
+		m_Storage.StoreItemToQuickSlot(selectedItem, quickSlotId);
+		SCR_WeaponSwitchingBaseUI.HighlightQuickSlot(quickSlotId);
+		if (equipNewItem)
+			m_Storage.UseItem(selectedItem);
+		
+		return true;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Try to drop the original item and replace it by itemToReplace at the slot specified by slotID
 	//! \param[in] storage
@@ -1596,6 +1657,8 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		// Inspection or lowered weapon stance
 		m_bWasRaised = m_CharacterController.IsWeaponRaised();
 		m_CharacterController.SetWeaponRaised(false);
+				
+		SCR_AnalyticsApplication.GetInstance().OpenInventory(GetTotalWeightOfAllStorages());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1660,7 +1723,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		
 		// Revert inspection or lowered weapon stance
 		if (m_CharacterController)
-			m_CharacterController.SetWeaponRaised(m_bWasRaised);
+			m_CharacterController.SetWeaponRaised(m_bWasRaised);		
+		
+		SCR_AnalyticsApplication.GetInstance().CloseInventory(GetTotalWeightOfAllStorages());
 	}
 	
 	//------------------------------------------------------------------------------------------------

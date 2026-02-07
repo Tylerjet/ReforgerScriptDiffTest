@@ -270,6 +270,24 @@ class SCR_ArrayHelperRefT<Class T>
 		{
 			result.Insert(sourceRef);
 		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] source
+	//! \return a copy of non-ref pointer values or null if source is null
+	static array<T> GetNonRefCopy(array<ref T> source)
+	{
+		if (!source)
+			return null;
+
+		array<T> result = {};
+		foreach (T sourceRef : source)
+		{
+			result.Insert(sourceRef);
+		}
+
 		return result;
 	}
 

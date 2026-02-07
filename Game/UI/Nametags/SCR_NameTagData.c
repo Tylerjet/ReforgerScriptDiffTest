@@ -7,10 +7,11 @@ enum ENameTagEntityState
 	FOCUSED 		= 1<<1,	// focused
 	AI_SUBORDINATE	= 1<<2, // used for AIs that are under players command through commanding system
 	GROUP_MEMBER	= 1<<3,	// part of the same squad
-	UNCONSCIOUS 	= 1<<4,	// unconscious
-	VON 			= 1<<5,	// voice over network
-	DEAD 			= 1<<6,	// dead
-	HIDDEN 			= 1<<7	// tag is hidden
+	GROUP_LEADER	= 1<<4, // squad leader
+	UNCONSCIOUS 	= 1<<5,	// unconscious
+	VON 			= 1<<6,	// voice over network
+	DEAD 			= 1<<7,	// dead
+	HIDDEN 			= 1<<8	// tag is hidden
 };
 
 //------------------------------------------------------------------------------------------------
@@ -184,7 +185,7 @@ class SCR_NameTagData : Managed
 	//! \param animate controls if the widget should fade in/out 
 	void SetVisibility(Widget widget, bool visible, float visibleOpacity, bool animate = true)
 	{
-		if ( !widget )
+		if (!widget)
 			return;
 						
 		float targetVal;
@@ -303,6 +304,11 @@ class SCR_NameTagData : Managed
 		nameParams.Copy(m_aNameParams);
 	}
 	
+	BaseCompartmentSlot GetVehicleCompartment()
+	{
+		return m_VehicleCompartment;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Set what is the nametag position attached to
 	//! \param pos is the new tag position
@@ -331,13 +337,26 @@ class SCR_NameTagData : Managed
 			}
 		
 			if (m_NTDisplay.m_CurrentPlayerTag.m_iGroupID == m_iGroupID)
-				ActivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+			{
+				if (group.IsPlayerLeader(m_iPlayerID))
+				{
+					ActivateEntityState(ENameTagEntityState.GROUP_LEADER);
+				}
+				else
+				{
+					ActivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+					DeactivateEntityState(ENameTagEntityState.GROUP_LEADER);
+				}
+			}
 		}
 		else
 		{
 			m_iGroupID = -1;
 			if (m_eEntityStateFlags & ENameTagEntityState.GROUP_MEMBER)
 				DeactivateEntityState(ENameTagEntityState.GROUP_MEMBER);
+			
+			if (m_eEntityStateFlags & ENameTagEntityState.GROUP_LEADER)
+				DeactivateEntityState(ENameTagEntityState.GROUP_LEADER);
 			
 			if (m_bIsCurrentPlayer)
 				m_NTDisplay.CleanupAllTags();

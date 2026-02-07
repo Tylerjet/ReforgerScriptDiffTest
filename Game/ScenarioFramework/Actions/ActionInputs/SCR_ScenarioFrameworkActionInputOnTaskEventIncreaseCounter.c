@@ -2,30 +2,33 @@
 class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioFrameworkActionInputBase
 {
 	[Attribute(desc: "Insert name of the task layer or leave empty for any task")];
-	protected string			m_sTaskLayerName;
+	string m_sTaskLayerName;
 	
-	[Attribute("1", UIWidgets.ComboBox, "Task state", "", ParamEnumArray.FromEnum(SCR_TaskState))];
-	protected SCR_TaskState			m_eEventName;
+	[Attribute(defvalue: SCR_ETaskState.COMPLETED.ToString(), UIWidgets.ComboBox, "Task state", "", ParamEnumArray.FromEnum(SCR_ETaskState))];
+	SCR_ETaskState m_eEventName;
 	
-	protected int 					m_iActionsInput;
+	[Attribute(desc: "Names of task layers whose events should be ignored")]
+	ref array<string> m_aIgnoredLayerNames;
+	
+	protected int m_iActionsInput;
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkLogicInput input)
 	{	
 		super.Init(input);
-		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
-		if (!scenarioFrameworkSystem)
-			return;
-			
-		scenarioFrameworkSystem.GetOnTaskStateChanged().Remove(OnActivate);
-		scenarioFrameworkSystem.GetOnTaskStateChanged().Insert(OnActivate);
+		
+		SCR_Task.GetOnTaskStateChanged().Remove(OnActivate);
+		SCR_Task.GetOnTaskStateChanged().Insert(OnActivate);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] task
 	//! \param[in] mask
-	void OnActivate(SCR_BaseTask task, SCR_ETaskEventMask mask)
+	void OnActivate(SCR_Task task, SCR_ETaskState taskState)
 	{
+		if (!task)
+			return;
+		
 		if (task.GetTaskState() != m_eEventName || !m_Input)
 			return;
 			
@@ -37,6 +40,9 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 			if (taskLayer)
 			{
 				sTaskLayerName = taskLayer.GetOwner().GetName();
+				if (m_aIgnoredLayerNames && m_aIgnoredLayerNames.Contains(sTaskLayerName))
+					return;
+				
 				if (taskLayer.GetLayerTaskResolvedBeforeLoad())
 					return;
 			}
@@ -44,18 +50,10 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 		
 		if (m_sTaskLayerName.IsEmpty() || m_sTaskLayerName == sTaskLayerName)
 		{
-			if (!(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
-				m_Input.OnActivate(1, null);
-				
-			if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
-			{	
-				if (taskLayer)
-				{
-					SCR_ScenarioFrameworkSlotTask slotTask = taskLayer.GetSlotTask();
-					if (slotTask)
-						slotTask.OnTaskStateChanged(m_eEventName)
-				}
-			}	
+			if (taskState == SCR_ETaskState.ASSIGNED)
+				return;
+			
+			m_Input.OnActivate(1, null);
 		}
 	}	
 }

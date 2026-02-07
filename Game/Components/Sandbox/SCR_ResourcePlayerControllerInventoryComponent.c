@@ -10,6 +10,10 @@ void ScriptInvoker_ResourceOnPlayerInteraction(EResourcePlayerInteractionType in
 typedef func ScriptInvokerActiveWidgetInteractionFunc;
 typedef ScriptInvokerBase<ScriptInvokerActiveWidgetInteractionFunc> ScriptInvokerResourceOnPlayerInteraction;
 
+void OnArsenalItemRequestedMethod(SCR_ResourceComponent resourceComponent, ResourceName resourceName, IEntity requesterEntity, BaseInventoryStorageComponent inventoryStorageComponent, EResourceType resourceType, int resourceValue);
+typedef func OnArsenalItemRequestedMethod;
+typedef ScriptInvokerBase<OnArsenalItemRequestedMethod> OnArsenalItemRequestedInvoker;
+
 [ComponentEditorProps(category: "GameScripted/Resources", description: "")]
 class SCR_ResourcePlayerControllerInventoryComponentClass : ScriptComponentClass
 {	
@@ -20,7 +24,12 @@ typedef SCR_ResourceSystemSubscriptionHandle<SCR_ResourcePlayerControllerInvento
 class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 {
 	protected ref ScriptInvokerResourceOnPlayerInteraction m_OnPlayerInteractionInvoker;
+	protected ref ScriptInvokerResourceOnPlayerInteraction m_OnBeforePlayerInteractionInvoker;
+	protected static ref OnArsenalItemRequestedInvoker s_OnArsenalItemRequested;
 	
+	protected const float VERTICAL_SPAWN_OFFSET = 10;
+	protected const float HORIZONTAL_SPAWN_OFFSET = 2.5;
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	ScriptInvokerResourceOnPlayerInteraction GetOnPlayerInteraction()
@@ -31,6 +40,25 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		return m_OnPlayerInteractionInvoker;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerResourceOnPlayerInteraction GetOnBeforePlayerInteraction()
+	{
+		if (!m_OnBeforePlayerInteractionInvoker)
+			m_OnBeforePlayerInteractionInvoker = new ScriptInvokerResourceOnPlayerInteraction();
+		
+		return m_OnBeforePlayerInteractionInvoker;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static OnArsenalItemRequestedInvoker GetOnArsenalItemRequested()
+	{
+		if (!s_OnArsenalItemRequested)
+			s_OnArsenalItemRequested = new OnArsenalItemRequestedInvoker();
+
+		return s_OnArsenalItemRequested;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected SCR_ResourceActor TryGetGenerationActor(notnull SCR_ResourceComponent resourceComponent, EResourceType resourceType, out float currentResourceValue, out float maxResourceValue)
 	{
@@ -318,7 +346,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	//! \param[in] resourceNameItem
 	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RpcAsk_ArsenalRequestItem(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, ResourceName resourceNameItem, EResourceType resourceType)
+	protected void RpcAsk_ArsenalRequestItem_(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, ResourceName resourceNameItem, EResourceType resourceType)
 	{
 		if (!rplIdInventoryManager.IsValid())
 			return;
@@ -350,6 +378,8 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		float resourceCost = 0;
 		
+		SCR_ArsenalItem data;
+		SCR_Faction faction;
 		//~ Get item cost
 		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
 		if (entityCatalogManager)
@@ -366,7 +396,6 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
 			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
 			{
-				SCR_Faction faction;
 				if (arsenalComponent)
 					faction = arsenalComponent.GetAssignedFaction();
 				
@@ -379,7 +408,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 				
 				if (entry)
 				{
-					SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+					data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
 					if (data)
 					{
 						if (arsenalComponent)
@@ -392,11 +421,34 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			}
 		}
 
+		//~ If Military Supply Allocation is enabled, check if player has enough Available Allocated Supplies
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(GetOwner().FindComponent(SCR_PlayerSupplyAllocationComponent));
+		if (playerSupplyAllocationComponent && faction && data && data.GetUseMilitarySupplyAllocation() && SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+		{
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (factionManager)
+			{
+				SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(SCR_PlayerController.Cast(GetOwner()).GetControlledEntity())));
+				if (playerFaction)
+				{
+					if (playerFaction == faction && !playerSupplyAllocationComponent.HasPlayerEnoughAvailableAllocatedSupplies(resourceCost))
+						return;
+				}
+			}
+		}
+
 		resourceCost *= consumer.GetBuyMultiplier();
 		if (!TryPerformResourceConsumption(consumer, resourceCost))
 			return;
-		
-		inventoryManagerComponent.TrySpawnPrefabToStorage(resourceNameItem, storageComponent, cb: new SCR_PrefabSpawnCallback(storageComponent));
+
+		if (inventoryManagerComponent.TrySpawnPrefabToStorage(resourceNameItem, storageComponent, cb: new SCR_PrefabSpawnCallback(storageComponent)) && s_OnArsenalItemRequested)
+			s_OnArsenalItemRequested.Invoke(resourceComponent, resourceNameItem, GetOwner(), storageComponent, resourceType, resourceCost);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RpcAsk_ArsenalRequestItem(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, ResourceName resourceNameItem, EResourceType resourceType)
+	{
+		Rpc(RpcAsk_ArsenalRequestItem_, rplIdResourceComponent, rplIdInventoryManager, rplIdStorageComponent, resourceNameItem, resourceType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -405,7 +457,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	//! \param[in] rplIdInventoryItem
 	//! \param[in] resourceType
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RpcAsk_ArsenalRefundItem(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
+	protected void RpcAsk_ArsenalRefundItem_(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
 	{
 		if (!rplIdInventoryItem.IsValid())
 			return;
@@ -445,6 +497,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		IEntity parentEntity = inventoryItemEntity.GetParent();
 		SCR_InventoryStorageManagerComponent inventoryManagerComponent;
+		ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
 		
 		//~ On item refunded just before the item is deleted
 		SCR_ArsenalManagerComponent.OnItemRefunded_S(inventoryItemEntity, PlayerController.Cast(GetOwner()), arsenalComponent);
@@ -459,10 +512,50 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		if (resourceCost <= 0)
 			return;
-		
-		generator.RequestGeneration(resourceCost);
+
+		if (!SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+			return;
+
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return;
+
+		SCR_Faction faction = arsenalComponent.GetAssignedFaction();
+
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+
+		SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(SCR_PlayerController.Cast(GetOwner()).GetControlledEntity())));
+		if (faction && playerFaction && faction != playerFaction)
+			return;
+
+		SCR_EntityCatalogEntry entry;
+
+		if (faction)
+			entry = entityCatalogManager.GetEntryWithPrefabFromFactionCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
+		else 
+			entry = entityCatalogManager.GetEntryWithPrefabFromCatalog(EEntityCatalogType.ITEM, resourceNameItem);
+
+		if (!entry)
+			return;
+
+		SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!data)
+			return;
+
+		if (!data.GetUseMilitarySupplyAllocation())
+			return;
+
+		//~ Add refund cost to player's Available Allocated Supplies
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(GetOwner().FindComponent(SCR_PlayerSupplyAllocationComponent));
+		if (playerSupplyAllocationComponent)
+			playerSupplyAllocationComponent.AddPlayerAvailableAllocatedSupplies(resourceCost);
 	}
-	
+	void RpcAsk_ArsenalRefundItem(RplId rplIdResourceComponent, RplId rplIdInventoryItem, EResourceType resourceType)
+	{
+		Rpc(RpcAsk_ArsenalRefundItem_, rplIdResourceComponent, rplIdInventoryItem, resourceType);
+	}
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] rplIdFrom
@@ -494,6 +587,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		if (CheckResourceConsumptionAvailability(actorFrom, resourceUsed) && CheckResourceGenerationAvailability(actorTo, resourceUsed))
 		{
+			OnBeforePlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, componentFrom, componentTo, resourceType, resourceUsed);
 			TryPerformResourceConsumption(actorFrom, resourceUsed);
 			TryPerformResourceGeneration(actorTo, resourceUsed);
 			OnPlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, componentFrom, componentTo, resourceType, resourceUsed);
@@ -507,7 +601,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	//! \param[in] resourceType
 	//! \param[in] requestedResources
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RpcAsk_MergeContainerWithContainerPartial(RplId rplIdFrom, RplId rplIdTo, EResourceType resourceType, float requestedResources)
+	protected void RpcAsk_MergeContainerWithContainerPartial_(RplId rplIdFrom, RplId rplIdTo, EResourceType resourceType, float requestedResources)
 	{
 		if (!rplIdFrom.IsValid() || !rplIdTo.IsValid())
 			return;
@@ -532,11 +626,24 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		if (CheckResourceConsumptionAvailability(actorFrom, resourceUsed) && CheckResourceGenerationAvailability(actorTo, resourceUsed))
 		{
+			OnBeforePlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, componentFrom, componentTo, resourceType, resourceUsed);
 			TryPerformResourceConsumption(actorFrom, resourceUsed);
 			TryPerformResourceGeneration(actorTo, resourceUsed);
 			OnPlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, componentFrom, componentTo, resourceType, resourceUsed);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rplIdFrom
+	//! \param[in] rplIdTo
+	//! \param[in] resourceType
+	//! \param[in] requestedResources
+	void RpcAsk_MergeContainerWithContainerPartial(RplId rplIdFrom, RplId rplIdTo, EResourceType resourceType, float requestedResources)
+	{
+		Rpc(RpcAsk_MergeContainerWithContainerPartial_, rplIdFrom, rplIdTo, resourceType, requestedResources);
+	}
+
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -546,7 +653,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	//! \param[in] resourceType
 	//! \param[in] requestedResources
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RpcAsk_CreatePhysicalContainerWithContainer(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, EResourceType resourceType, float requestedResources)
+	protected void RpcAsk_CreatePhysicalContainerWithContainer_(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, EResourceType resourceType, float requestedResources)
 	{
 		if (!rplIdResourceComponent.IsValid())
 			return;
@@ -592,20 +699,15 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			
 			if (!TryPerformResourceConsumption(actorFrom, resourceUsed))
 				return;
+
+			// WARNING: From now on resourceComponentFrom.GetOwner().IsDeleted() can be true!
+			// That happens, for example, when moving one last supply from player to supply truck. 
+			// Due to a bug in Enfusion GenericEntity owner = resourceComponentFrom.GetOwner() 
+			// will be NULL, so we always need to access the entity via resource component
+			// and shall from now on never assign it directly to GenericEntity.
 			
-			RandomGenerator randGenerator	= new RandomGenerator();
-			vector center					= resourceComponentFrom.GetOwner().GetOrigin();
-			vector position					= vector.Up * center[1] + randGenerator.GenerateRandomPointInRadius(0.0, 2.5, center);
-			TraceParam param				= new TraceParam();
-			param.Start						= position + "0.0 10.0 0.0";
-			param.End						= position;
-			param.Flags						= TraceFlags.WORLD | TraceFlags.ENTS;
-			param.LayerMask					= EPhysicsLayerDefs.Projectile;
-			
-			float traced = GetGame().GetWorld().TraceMove(param, null);
-			
-			if (traced < 1)
-				position = (param.End - param.Start) * traced + param.Start;
+			vector position = resourceComponentFrom.GetOwner().GetOrigin();
+			FindSuitablePosition(position, HORIZONTAL_SPAWN_OFFSET, VERTICAL_SPAWN_OFFSET);
 			
 			EntitySpawnParams spawnParams				= new EntitySpawnParams();
 			spawnParams.TransformMode					= ETransformMode.WORLD;
@@ -698,13 +800,73 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		inventoryManagerComponent.TryInsertItemInStorage(newStorageEntity, storageComponent);
 		OnPlayerInteraction(EResourcePlayerInteractionType.INVENTORY_SPLIT, resourceComponentFrom, resourceComponentTo, resourceType, resourceUsed);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used for finding a position at which supplies can be spawned
+	//! \param[in,out] position around which we want to search
+	//! \param[in] maxHorizontalOffset determines how far the position can be on the X and Z axis
+	//! \param[in] maxVerticalOffset determines how much higher search will be starting
+	static void FindSuitablePosition(inout vector position, float maxHorizontalOffset, float maxVerticalOffset)
+	{
+		position = vector.Up * position[1] + SCR_Math2D.GenerateRandomPointInRadius(0, maxHorizontalOffset, position);
+
+		TraceParam param	= new TraceParam();
+		param.Start			= position + vector.Up * maxVerticalOffset;
+		param.End			= position;
+		param.Flags			= TraceFlags.WORLD | TraceFlags.ENTS;
+		param.LayerMask		= EPhysicsLayerDefs.Projectile;
+
+		float distanceTraveled = GetGame().GetWorld().TraceMove(param, TraceFilter);
+		if (param.TraceEnt == null && distanceTraveled == 1)
+		{ // If f.e. someone dropped supplies from a helo, then find the position on the ground, so they dont stay mid air
+			position[1] = GetGame().GetWorld().GetSurfaceY(param.End[0], param.End[2]);
+			param.End = position;
+			param.Start = param.End + vector.Up * maxVerticalOffset;
+			distanceTraveled = GetGame().GetWorld().TraceMove(param, TraceFilter);
+		}
+
+		if (distanceTraveled < 1)
+			position = (param.End - param.Start) * distanceTraveled + param.Start;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to filter entities found by the trace
+	//! \param[in] e
+	//! \param[in] start
+	//! \param[in] dir
+	protected static bool TraceFilter(notnull IEntity e, vector start = vector.Zero, vector dir = vector.Zero)
+	{
+		if (BaseTree.Cast(e))
+			return false;//ignore trees and bushes
+
+		if (Vehicle.Cast(e) || Vehicle.Cast(e.GetRootParent()))
+			return false;//ignore vehicles and its parts
+
+		if (ChimeraCharacter.Cast(e))
+			return false;//ignore characters
+
+		if (ChimeraCharacter.Cast(e.GetRootParent()))
+			return false;//ignore character equipment
+
+		if (SCR_BaseDebrisSmallEntity.Cast(e))
+			return false;//ignore debris
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RpcAsk_CreatePhysicalContainerWithContainer(RplId rplIdResourceComponent, RplId rplIdInventoryManager, RplId rplIdStorageComponent, EResourceType resourceType, float requestedResources)
+	{
+		Rpc(RpcAsk_CreatePhysicalContainerWithContainer_, rplIdResourceComponent, rplIdInventoryManager, rplIdStorageComponent, resourceType, requestedResources);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] interactionType
 	//! \param[in] resourceComponentFrom
 	//! \param[in] resourceComponentTo
 	//! \param[in] resourceType
 	//! \param[in] resourceValue
+	//! \param[in] shouldBroadcast
 	void OnPlayerInteraction(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue, bool shouldBroadcast = true)
 	{
 		IEntity owner = GetOwner();
@@ -727,6 +889,17 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		}
 
 			GetOnPlayerInteraction().Invoke(interactionType, owner, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] interactionType
+	//! \param[in] resourceComponentFrom
+	//! \param[in] resourceComponentTo
+	//! \param[in] resourceType
+	//! \param[in] resourceValue
+	void OnBeforePlayerInteraction(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
+	{
+		GetOnBeforePlayerInteraction().Invoke(interactionType, GetOwner(), resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);
 	}
 	
 	//------------------------------------------------------------------------------------------------

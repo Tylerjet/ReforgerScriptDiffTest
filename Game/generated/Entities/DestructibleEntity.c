@@ -30,8 +30,8 @@ class DestructibleEntity: StaticModelEntity
 	\param hitTransform Hit position, direction and normal
 	\param impactVelocity Projectile velocity at the time of impact
 	*/
-	event float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity damageSource, notnull Instigator instigator, const GameMaterial hitMaterial, inout vector hitTransform[3], const vector impactVelocity);
-	event protected void OnDamage(int previousState, int newState, EDamageType type, float damageTaken, float currentHealth, inout vector hitTransform[3], ScriptBitWriter frameData);
+	event float ComputeEffectiveDamage(notnull BaseDamageContext damageContext);
+	event protected void OnDamage(int previousState, int newState, float currentHealth, notnull BaseDamageContext damageContext, ScriptBitWriter frameData);
 	//Notification when the destructible state has changed. If JIP is true, the state has changed because of synchronization
 	event protected void OnStateChanged(int destructibleState, ScriptBitReader frameData, bool JIP);
 	event protected void OnBeforeDestroyed();

@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Wall Generator", dynamicBox: true, visible: false)]
+[EntityEditorProps(category: "GameScripted/Generators", description: "Wall Generator", dynamicBox: true, visible: false)]
 class WallGeneratorEntityClass : SCR_LineTerrainShaperGeneratorBaseEntityClass
 {
 }
@@ -87,7 +87,7 @@ class WallGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	[Attribute("0", UIWidgets.Slider, "Allow pre-padding on first wall asset in each line segment", params: "-2 2 0.01", category: "Global")]
 	protected float PostPadding;
 
-	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
+	[Attribute("0.5", UIWidgets.Slider, "Allow overshooting the segment line by this amount when placing assets\nOnly applies to polylines", params: "-5 5 0.01", precision: 2, category: "Global")]
 	protected float m_fOvershoot;
 
 	[Attribute(uiwidget: UIWidgets.None)] // obsolete, kept for Prefabs and layers retrocompatibility
@@ -152,7 +152,7 @@ class WallGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 			return;
 		}
 
-		m_RandomGenerator.SetSeed(m_iSeed);
+		SetSeed();
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
@@ -161,9 +161,6 @@ class WallGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 		BaseWorld world = worldEditorAPI.GetWorld();
 		if (!world)
 			return;
-
-		if (!m_WallGroupContainer)
-			m_WallGroupContainer = new SCR_WallGroupContainer(m_aWallGroups, UseXAsForward, MiddleObject);
 
 		DeleteAllChildren();
 
@@ -199,6 +196,9 @@ class WallGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 		bool isStraightLineMode = isPolyline; // in case we make it a checkbox
 
 		s_World = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi().GetWorld();
+
+		if (!m_WallGroupContainer) // needs s_World
+			m_WallGroupContainer = new SCR_WallGroupContainer(m_aWallGroups, UseXAsForward, MiddleObject);
 
 		if (isStraightLineMode)
 			GenerateInStraightLine(anchorPoints, rotationOffset, forwardAxis);
@@ -619,7 +619,12 @@ break;
 			return result;
 		}
 
-		IEntity wallEntity = GetGame().SpawnEntityPrefab(resource, s_World);
+		IEntity wallEntity;
+		if (s_World) // "little" safety, soon™ SCR_WallGroupContainer will not be the one measuring entities
+			wallEntity = GetGame().SpawnEntityPrefab(resource, s_World);
+		else
+			wallEntity = GetGame().SpawnEntityPrefab(resource, ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi().GetWorld());
+
 		if (wallEntity)
 		{
 			vector minBB;
@@ -787,9 +792,22 @@ break;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected override void _WB_OnParentChange(IEntitySource src, IEntitySource prevParentSrc)
+	{
+		super._WB_OnParentChange(src, prevParentSrc);
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
+			return;
+
+		Generate();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
-		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+		if (!super._WB_OnKeyChanged(src, key, ownerContainers, parent))
+			return false;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
@@ -806,7 +824,7 @@ break;
 			array<vector> tesselatedPoints = {};
 			if (!SCR_ParallelShapeHelper.GetAnchorsAndTesselatedPointsFromShape(shapeEntity, m_vShapeOffset, m_bYOffsetInShapeSpace, anchorPoints, tesselatedPoints))
 			{
-				PrintFormat("[SCR_LineGeneratorBaseEntity.ResetShapeNextPointHelper] error getting anchors and tesselated points from shape (" + __FILE__ + " L" + __LINE__ + ")", this, level: LogLevel.WARNING);
+				PrintFormat("[WallGeneratorEntity._WB_OnKeyChanged] error getting shape points from shape with %1 points at position %2", shapeEntity.GetPointCount(), shapeEntity.CoordToParent(shapeEntity.GetOrigin()), level: LogLevel.WARNING);
 				return false;
 			}
 
@@ -828,8 +846,6 @@ break;
 	protected override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
 		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
-		if (!shapeEntitySrc || _WB_GetEditorAPI().UndoOrRedoIsRestoring())
-			return;
 
 		Generate();
 	}

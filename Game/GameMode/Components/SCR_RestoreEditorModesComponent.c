@@ -17,8 +17,8 @@ class SCR_RestoreEditorModesComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorManagerCreatedServer(SCR_EditorManagerEntity editorManager)
 	{
-		int playerID = editorManager.GetPlayerID();
-		string playerUID = GetGame().GetBackendApi().GetPlayerIdentityId(playerID);
+		const int playerID = editorManager.GetPlayerID();
+		const UUID playerUID = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerID);
 		EEditorMode modes;
 		if (m_mModes.Find(playerUID, modes))
 		{
@@ -45,7 +45,7 @@ class SCR_RestoreEditorModesComponent : SCR_BaseGameModeComponent
 		foreach (SCR_EditorManagerEntity editorManager: managers)
 		{
 			if (m_bRestoreLimitedEditors || !editorManager.IsLimited())
-				modes += backendApi.GetPlayerIdentityId(editorManager.GetPlayerID()) + DELIMITER_VALUES + editorManager.GetEditorModes() + DELIMITER_PLAYERS;
+				modes += SCR_PlayerIdentityUtils.GetPlayerIdentityId(editorManager.GetPlayerID()) + DELIMITER_VALUES + editorManager.GetEditorModes() + DELIMITER_PLAYERS;
 		}
 		
 		GameSessionStorage.s_Data.Insert(GAME_SESSION_STORAGE_MODES, modes);

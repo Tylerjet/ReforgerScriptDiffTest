@@ -931,13 +931,39 @@ manage prefab structure and inheritance, have at least basic understanding of
 rules and examples described in this document.
 
 \section CreationOfRplNode Creation of RplNode
-Simply put, `RplComponent` during its `EOnInit` will start by visiting its owner
-entity (and its components), then recursively visit children of this entity
-(and their components), collecting all replicated entities or components it
-finds. Recursive search does not enter entities with `RplComponent`, as those
-are part of another `RplNode`. Any entities and components that do not use
-replication system (no RPCs and no replicated properties) will not be part of
-created `RplNode`.
+Simply put, RplComponent during its `EOnInit` will collect replicated entities
+and components (those that have RPCs or replicated properties) and add them as
+items into its RplNode. Gathering process first considers entity to which
+RplComponent is attached, and its components. Then it checks whether RplComponent
+has Recursive property enabled. If it is not enabled, process ends. If it is
+enabled, it recursively processes child entities in same manner. Recursion does
+not enter entities which have their own RplComponent.
+
+Following is pseudo-code version of the algorithm:
+```
+void GatherItems(entity, rplComponent)
+{
+	if (entity.IsReplicated())
+		rplComponent.InsertItem(entity);
+
+	foreach (component in entity.components)
+	{
+		if (component.IsReplicated())
+			rplComponent.InsertItem(component);
+	}
+
+	if (rplComponent.recursive)
+	{
+		foreach (child in entity.children)
+		{
+			if (!child.HasComponent(RplComponent))
+				GatherItems(child, rplComponent);
+		}
+	}
+}
+
+GatherItems(rplComponent.entity, rplComponent);
+```
 
 While above process may appear simple at first, it affects quite a lot and it is
 important that people working with replication intuitively understand how items
@@ -994,7 +1020,9 @@ replicated items. Components b and c are not replicated (they do not have any
 RPCs or replicated state) and so they are not part of created `RplNode`.
 `RplNode` in replication hierarchy will then contain 3 items: r, A and a. Notice
 how `RplComponent` is first item in the node, which means it is the head (see
-\ref Page_Replication_RplNode for details).
+\ref Page_Replication_RplNode for details). Because this example only has one
+entity, results of simple (non-recursive) and recursive gathering look the same.
+Differences start to show up with entity hierarchies.
 
 \section Hierarchies Hierarchies
 Let's first take a look at some simple entity hierarchy and how it will
@@ -1033,10 +1061,10 @@ digraph g {
 			label = <
 				<table border="0" cellborder="1" cellpadding="3" cellspacing="0">
 					<tr>
-						<td align="left" bgcolor="lightblue" rowspan="2">B</td>
+						<td align="left" bgcolor="white:lightblue" rowspan="2">B</td>
 						<td align="left">c</td>
 					</tr>
-					<tr><td align="left" bgcolor="lightblue">d</td></tr>
+					<tr><td align="left" bgcolor="white:lightblue">d</td></tr>
 				</table>
 			>
 		]
@@ -1045,7 +1073,7 @@ digraph g {
 				<table border="0" cellborder="1" cellpadding="3" cellspacing="0">
 					<tr>
 						<td align="left" rowspan="2">C</td>
-						<td align="left" bgcolor="lightblue">e</td>
+						<td align="left" bgcolor="white:lightblue">e</td>
 					</tr>
 					<tr><td align="left">f</td></tr>
 				</table>
@@ -1056,12 +1084,24 @@ digraph g {
 	}
 
 	subgraph cluster_RplHierarchy {
-		label = "Replication hierarchy"
+		label = "Replication hierarchy (simple)"
 		node [
 			shape = record
 			style = filled
 		]
 		nodeA [
+			label = "r1|A|a"
+			fillcolor = lightblue
+		]
+	}
+
+	subgraph cluster_RplHierarchy_r {
+		label = "Replication hierarchy (recursive)"
+		node [
+			shape = record
+			style = filled
+		]
+		nodeA_r [
 			label = "r1|A|a|B|d|e"
 			fillcolor = lightblue
 		]
@@ -1069,16 +1109,21 @@ digraph g {
 }
 \enddot
 
-Once again, first item in the node is `RplComponent` r1. We then collect
+Once again, first item in the node is RplComponent r1. We then collect
 replicated items from the hierarchy and insert them into the node as well, while
 ignoring items which are not replicated. Important to notice is that entity
 hierarchy itself is not reflected in the node structure. %Node is, after all,
-just a flat list of items. Notice how, even though entity C is not replicated,
-its replicated component e was still added to the node.
+just a flat list of items. Pay attention to differences between results of
+simple and recursive gathering. In simple version, entities B and C are
+completely ignored, and replication knows nothing about them (thus RPCs,
+replicated properties and other replication features will not work). In recursive
+version, both of them were considered during gathering process. Notice also that
+in recursive version, even though entity C is not replicated, its replicated
+component e was still added to the node.
 
-Hierarchies with just one `RplComponent` on root entity will always produce one
+Hierarchies with just one RplComponent on root entity will always produce one
 node consisting of flattened list of replicated items. Things become more
-interesting when there are are multiple `RplComponents` present in the
+interesting when there are are multiple RplComponents present in the
 hierarchy:
 
 \dot
@@ -1127,7 +1172,7 @@ digraph g {
 				<table border="0" cellborder="1" cellpadding="3" cellspacing="0">
 					<tr>
 						<td align="left" rowspan="3">C</td>
-						<td align="left" bgcolor="lightblue">e</td>
+						<td align="left" bgcolor="white:lightblue">e</td>
 					</tr>
 					<tr><td align="left">f</td></tr>
 				</table>
@@ -1138,7 +1183,7 @@ digraph g {
 	}
 
 	subgraph cluster_RplHierarchy {
-		label = "Replication hierarchy"
+		label = "Replication hierarchy (simple)"
 		node [
 			shape = record
 			style = filled
@@ -1147,7 +1192,7 @@ digraph g {
 			dir = back
 		]
 		nodeR1 [
-			label = "r1|A|a|e"
+			label = "r1|A|a"
 			fillcolor = lightblue
 		]
 		nodeR2 [
@@ -1156,14 +1201,36 @@ digraph g {
 		]
 		nodeR1 -> nodeR2
 	}
+
+	subgraph cluster_RplHierarchy_r {
+		label = "Replication hierarchy (recursive)"
+		node [
+			shape = record
+			style = filled
+		]
+		edge [
+			dir = back
+		]
+		nodeR1_r [
+			label = "r1|A|a|e"
+			fillcolor = lightblue
+		]
+		nodeR2_r [
+			label = "r2|B|d"
+			fillcolor = lightgoldenrod
+		]
+		nodeR1_r -> nodeR2_r
+	}
 }
 \enddot
 
 By adding component r2 to entity B, we have created a new node r2, which is
 child of node r1 (previously node r). This allows us to detach entity B (node
-r2) from entity A (node r1) at runtime. However, entity C must always remain
-child of entity A, because they are part of the same node that cannot be
-modified after it has been inserted into replication.
+r2) from entity A (node r1) at runtime. What we can and cannot do with entity C
+now differs between simple and recursive version. In simple version, replication
+does not put any constraints on what we can do with C. However, in recursive
+version, entity C must always remain child of entity A, because they are part of
+the same node that cannot be modified after it has been inserted into replication.
 
 One more example that demonstrates a bit more complicated hierarchy. Notice how
 hierarchy of entities and hierarchy of nodes can look quite different:
@@ -1204,7 +1271,7 @@ digraph g {
 						<td rowspan="2">B</td>
 						<td align="left">c</td>
 					</tr>
-					<tr><td align="left" bgcolor="lightblue">d</td></tr>
+					<tr><td align="left" bgcolor="white:lightblue">d</td></tr>
 				</table>
 			>
 		]
@@ -1220,10 +1287,14 @@ digraph g {
 			>
 		]
 		entD [
-			label = "D|f"
-			shape = record
-			style = filled
-			fillcolor = lightgoldenrod
+			label = <
+				<table border="0" cellborder="1" cellpadding="3" cellspacing="0">
+					<tr>
+						<td align="left" bgcolor="white:lightgoldenrod">D</td>
+						<td align="left" bgcolor="white:lightgoldenrod">f</td>
+					</tr>
+				</table>
+			>
 		]
 		entE [
 			label = <
@@ -1232,7 +1303,7 @@ digraph g {
 						<td align="left" rowspan="2">E</td>
 						<td align="left">g</td>
 					</tr>
-					<tr><td align="left" bgcolor="lightgoldenrod">h</td></tr>
+					<tr><td align="left" bgcolor="white:lightgoldenrod">h</td></tr>
 				</table>
 			>
 		]
@@ -1255,10 +1326,10 @@ digraph g {
 			label = <
 				<table border="0" cellborder="1" cellpadding="3" cellspacing="0">
 					<tr>
-						<td align="left" bgcolor="lightcoral" rowspan="2">H</td>
-						<td align="left" bgcolor="lightcoral">j</td>
+						<td align="left" bgcolor="white:lightcoral" rowspan="2">H</td>
+						<td align="left" bgcolor="white:lightcoral">j</td>
 					</tr>
-					<tr><td align="left" bgcolor="lightcoral">k</td></tr>
+					<tr><td align="left" bgcolor="white:lightcoral">k</td></tr>
 				</table>
 			>
 		]
@@ -1290,7 +1361,7 @@ digraph g {
 	}
 
 	subgraph cluster_RplHierarchy {
-		label = "Replication hierarchy"
+		label = "Replication hierarchy (simple)"
 		node [
 			shape = record
 			style = filled
@@ -1299,15 +1370,15 @@ digraph g {
 			dir = back
 		]
 		nodeR1 [
-			label = "r1|A|b|d"
+			label = "r1|A|b"
 			fillcolor = lightblue
 		]
 		nodeR2 [
-			label = "r2|D|f|h"
+			label = "r2"
 			fillcolor = lightgoldenrod
 		]
 		nodeR3 [
-			label = "r3|G|i|H|j|k"
+			label = "r3|G|i"
 			fillcolor = lightcoral
 		]
 		nodeR4 [
@@ -1318,17 +1389,47 @@ digraph g {
 		nodeR2 -> nodeR3
 		nodeR1 -> nodeR4
 	}
+
+	subgraph cluster_RplHierarchy_r {
+		label = "Replication hierarchy (recursive)"
+		node [
+			shape = record
+			style = filled
+		]
+		edge [
+			dir = back
+		]
+		nodeR1_r [
+			label = "r1|A|b|d"
+			fillcolor = lightblue
+		]
+		nodeR2_r [
+			label = "r2|D|f|h"
+			fillcolor = lightgoldenrod
+		]
+		nodeR3_r [
+			label = "r3|G|i|H|j|k"
+			fillcolor = lightcoral
+		]
+		nodeR4_r [
+			label = "r4|J"
+			fillcolor = lightcyan
+		]
+		nodeR1_r -> nodeR2_r
+		nodeR2_r -> nodeR3_r
+		nodeR1_r -> nodeR4_r
+	}
 }
 \enddot
 
-`RplComponent` sets up and maintains replication hierarchy by listening for
+RplComponent sets up and maintains replication hierarchy by listening for
 changes in entity hierarchy and performing similar operations on node hierarchy
-in replication. This behavior is controlled using `RplComponent` property
+in replication. This behavior is controlled using RplComponent property
 "Parent Node From Parent Entity", which is currently turned on by default. When
 turned off, replication node managed by this component will not have its parent
 replication node modified to match node of new parent entity. We can demonstrate
 this on above example. If we were to turn off "Parent Node from Parent Entity"
-on `RplComponent` r2, we would create two independent replication hierarchies:
+on RplComponent r2, we would create two independent replication hierarchies:
 
 \dot
 digraph g {
@@ -1340,7 +1441,7 @@ digraph g {
 	edge [ fontname = "Helvetica" ]
 
 	subgraph cluster_RplHierarchy {
-		label = "Replication hierarchy"
+		label = "Replication hierarchy (simple)"
 		node [
 			shape = record
 			style = filled
@@ -1349,15 +1450,15 @@ digraph g {
 			dir = back
 		]
 		nodeR1 [
-			label = "r1|A|b|d"
+			label = "r1|A|b"
 			fillcolor = lightblue
 		]
 		nodeR2 [
-			label = "r2|D|f|h"
+			label = "r2"
 			fillcolor = lightgoldenrod
 		]
 		nodeR3 [
-			label = "r3|G|i|H|j|k"
+			label = "r3|G|i"
 			fillcolor = lightcoral
 		]
 		nodeR4 [
@@ -1366,6 +1467,35 @@ digraph g {
 		]
 		nodeR2 -> nodeR3
 		nodeR1 -> nodeR4
+	}
+
+	subgraph cluster_RplHierarchy_r {
+		label = "Replication hierarchy (recursive)"
+		node [
+			shape = record
+			style = filled
+		]
+		edge [
+			dir = back
+		]
+		nodeR1_r [
+			label = "r1|A|b|d"
+			fillcolor = lightblue
+		]
+		nodeR2_r [
+			label = "r2|D|f|h"
+			fillcolor = lightgoldenrod
+		]
+		nodeR3_r [
+			label = "r3|G|i|H|j|k"
+			fillcolor = lightcoral
+		]
+		nodeR4_r [
+			label = "r4|J"
+			fillcolor = lightcyan
+		]
+		nodeR2_r -> nodeR3_r
+		nodeR1_r -> nodeR4_r
 	}
 }
 \enddot
@@ -1488,7 +1618,7 @@ digraph g {
 	}
 
 	subgraph cluster_RplHierarchy {
-		label = "Replication hierarchy"
+		label = "Replication hierarchy (recursive)"
 		node [
 			shape = record
 			style = filled
@@ -1518,13 +1648,14 @@ cause client to interpret that position against different parent, giving wrong
 results.
 
 More insidious case of this would arise if entity B was not replicated (no
-replicated state or RPCs), in which case, it wouldn't even exist in the
-`RplNode` r1. It wouldn't have RplId assigned in which case user code can't
-correct the hierarchy either, because there is no way for server to address this
-entity on client and set it as correct parent.
+replicated state or RPCs) or if simple gathering of items was used (instead of
+recursive), in which case, it wouldn't even exist in the `RplNode` r1. It
+wouldn't have RplId assigned in which case user code can't correct the hierarchy
+either, unless it implements its own mechanism for addressing these
+non-replicated entities.
 
 Possible solutions are:
-1. Add `RplComponent` to entity B, making it a node itself and thus getting
+1. Add RplComponent to entity B, making it a node itself and thus getting
    replication hierarchy closer to entity hierarchy.
 2. Make entity C direct child of entity A.
 

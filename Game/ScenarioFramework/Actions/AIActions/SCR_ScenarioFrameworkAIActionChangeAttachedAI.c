@@ -59,7 +59,7 @@ class SCR_ScenarioFrameworkAIActionChangeAttachedAI : SCR_ScenarioFrameworkAIAct
 							slotTaskAI.m_Entity = entity;
 							slotTaskAI.m_AIGroup = group;	
 							if (slotTaskAI.m_TaskLayer && slotTaskAI.m_TaskLayer.m_Task)
-									slotTaskAI.m_TaskLayer.m_Task.RehookTaskAsset(entity);
+									slotTaskAI.m_TaskLayer.m_Task.HookTaskAsset(entity);
 						}
 						
 						return;
@@ -77,7 +77,7 @@ class SCR_ScenarioFrameworkAIActionChangeAttachedAI : SCR_ScenarioFrameworkAIAct
 							{
 								slotTaskAI.m_Entity = character;	
 								if (slotTaskAI.m_TaskLayer && slotTaskAI.m_TaskLayer.m_Task)
-									slotTaskAI.m_TaskLayer.m_Task.RehookTaskAsset(entity);
+									slotTaskAI.m_TaskLayer.m_Task.HookTaskAsset(entity);
 							}
 							
 							return;

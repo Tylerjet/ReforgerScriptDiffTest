@@ -100,6 +100,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(indices[i], values[i]);
 		}
+
 		return result;
 	}
 
@@ -116,6 +117,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(indices[i], values[i]);
 		}
+
 		return result;
 	}
 
@@ -132,6 +134,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(indices[i], values[i]);
 		}
+
 		return result;
 	}
 
@@ -148,6 +151,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(indices[i], values[i]);
 		}
+
 		return result;
 	}
 
@@ -162,6 +166,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(key);
 		}
+
 		return result;
 	}
 
@@ -176,6 +181,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(key);
 		}
+
 		return result;
 	}
 
@@ -190,6 +196,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(key);
 		}
+
 		return result;
 	}
 
@@ -204,6 +211,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(key);
 		}
+
 		return result;
 	}
 
@@ -218,6 +226,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(input.GetElement(i));
 		}
+
 		return result;
 	}
 
@@ -232,6 +241,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(value);
 		}
+
 		return result;
 	}
 
@@ -246,6 +256,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(value);
 		}
+
 		return result;
 	}
 
@@ -260,6 +271,7 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			result.Insert(value);
 		}
+
 		return result;
 	}
 
@@ -275,15 +287,14 @@ class SCR_MapHelperT<Class T, Class U>
 		{
 			foreach (T key, U value : sender)
 			{
-				receiver.Insert(key, value);
+				receiver.Set(key, value);
 			}
 		}
 		else
 		{
 			foreach (T key, U value : sender)
 			{
-				if (!receiver.Contains(key))
-					receiver.Insert(key, value);
+				receiver.Insert(key, value);
 			}
 		}
 	}
@@ -361,5 +372,43 @@ class SCR_MapHelperT<Class T, Class U>
 					receiver.Insert(key, value);
 			}
 		}
+	}
+}
+
+class SCR_MapHelper<Class T, Class U>
+{
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] input
+	//! \param[in] value
+	//! \return
+	static T GetKeyByValue(notnull map<T, U> input, U value)
+	{
+		for (int i, count = input.Count(); i < count; i++)
+		{
+			if (input.GetElement(i) == value)
+			{
+				return input.GetKey(i);
+				break;
+			}
+		}
+
+		const T result;
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] input
+	//! \param[in] oldKey
+	//! \param[in] newKey
+	//! \return
+	static bool ReplaceKey(notnull map<T, U> input, T oldKey, T newKey)
+	{
+		if (!input.Contains(oldKey))
+			return false;
+
+		input.Set(newKey, input.Get(oldKey));
+		input.Remove(oldKey);
+		return true;
 	}
 }

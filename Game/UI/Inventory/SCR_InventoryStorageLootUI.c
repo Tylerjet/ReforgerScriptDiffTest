@@ -8,6 +8,12 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 //	protected string											sGridPath 					= "centerFrame.gridFrame.size.grid";	
 	
 	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.VICINITY;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// ! creates the slot
 	protected override SCR_InventorySlotUI CreateSlotUI( InventoryItemComponent pComponent, SCR_ItemAttributeCollection pAttributes = null )
 	{

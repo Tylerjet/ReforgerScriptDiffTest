@@ -3,6 +3,8 @@
 
 Saved data for editor attribute.
 */
+/*
+[Obsolete("Only used for backwards compatiblity for GM saves. Will be removed entirely.")]
 class SCR_EditorAttributeStruct: JsonApiStruct
 {
 	//--- Serialized (names shortened to save memory)
@@ -12,12 +14,6 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 	protected float v1; //--- Var 1
 	protected float v2; //--- Var 2
 	
-	/*!
-	Save all attributes for given item.
-	\param[out] outEntries Array to be filled with save entries
-	\param attributeList List of attributes to be evaluated
-	\param item Target whose attributes will be saved
-	*/
 	static void SerializeAttributes(out notnull array<ref SCR_EditorAttributeStruct> outEntries, SCR_EditorAttributeList attributeList = null, Managed item = null)
 	{
 		outEntries.Clear();
@@ -43,12 +39,7 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 			entry.v2 = var.GetVector()[2];
 		}
 	}
-	/*!
-	Load all attributes for given item.
-	\param entries List of saved entries
-	\param attributeList List of attributes to be evaluated
-	\param item Target whose attributes will be loaded
-	*/
+
 	static void DeserializeAttributes(notnull array<ref SCR_EditorAttributeStruct> entries, SCR_EditorAttributeList attributeList = null, Managed item = null)
 	{
 		SCR_BaseEditorAttribute attribute;
@@ -64,12 +55,7 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 			attribute.WriteVariable(item, var, null, -1);
 		}
 	}
-	/*!
-	Print out all attributes.
-	\param entries List of saved entries
-	\param attributeList List of attributes to be evaluated
-	\param prefix String added at the beginning of each print-out
-	*/
+
 	static void LogAttributes(out notnull array<ref SCR_EditorAttributeStruct> entries, SCR_EditorAttributeList attributeList = null, string prefix = "")
 	{
 		Print(prefix + "  SCR_EditorAttributeStruct: " + entries.Count());
@@ -86,3 +72,4 @@ class SCR_EditorAttributeStruct: JsonApiStruct
 		RegV("v2");
 	}
 };
+*/

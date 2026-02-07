@@ -85,12 +85,28 @@ class SCR_AIPerformSmartUserAction : AITaskScripted
 	{
 		if (m_bPerformOnAbort && !m_bHasAborted)
 		{
-			PerformAction(owner, false);
+			ENodeResult result = PerformAction(owner, false);
 			m_bHasAborted = true;
+			if (result != ENodeResult.SUCCESS)
+				ForceAbortAllActions(owner);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void ForceAbortAllActions(AIAgent owner)
+	{
+		// Right now it only aborts loitering; If other smart actions cause the AI to get stuck, they should be added here too
+		IEntity controlledEntity = owner.GetControlledEntity();
+		if (!controlledEntity)
+			return;
+		
+		SCR_CharacterCommandHandlerComponent cmd = SCR_CharacterCommandHandlerComponent.Cast(controlledEntity.FindComponent(SCR_CharacterCommandHandlerComponent));
+		if (cmd && cmd.IsLoitering())
+		{
+			cmd.StopLoitering(false);
+		}
+	}
+	//-----------------------------------------------------------------------------------------------
 	private void GetActions(IEntity targetEntity, notnull out array<BaseUserAction> outActions)
 	{
 		if (!targetEntity)

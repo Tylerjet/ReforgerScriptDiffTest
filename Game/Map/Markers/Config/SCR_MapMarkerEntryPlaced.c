@@ -139,10 +139,20 @@ class SCR_MarkerColorEntry
 	[Attribute("1.0 1.0 1.0 1.0")]
 	protected ref Color m_Color;
 	
+	[Attribute(desc: "Color name, used for pairing settings with predefined markers")]
+	protected string m_sName;
+
 	//------------------------------------------------------------------------------------------------
 	Color GetColor()
 	{
 		return Color.FromInt(m_Color.PackToInt());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Name
+	string GetName()
+	{
+		return m_sName;
 	}
 	
 }

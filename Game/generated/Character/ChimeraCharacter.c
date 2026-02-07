@@ -54,6 +54,16 @@ class ChimeraCharacter: GameEntity
 	proto external void DoPerformContinuousObjectAction(BaseUserAction pAction, float timeSlice);
 	//! Cancel action performed by the current character
 	proto external void DoCancelObjectAction(BaseUserAction pAction);
+	/*!
+	This variant of TraceMove can be used as an optimization if you want to do BaseWorld.TraceMove with a filter that filters out all ChimeraCharacter entities.
+	This way, the trace doesn't have to go into script callback to filter out ChimeraCharacter entities.
+	This variant doesn't support another filter callback, which would be applied on top of the filtering of ChimeraCharacter entities.
+	Traces shape movement along start->end, return 0..1 if trace was sucessfull. Results are filled in param object @see TraceParam
+	\param param BaseWorld object. Normally you'd call world.TraceMove(...);
+	\param param object used for both input parameters and output parameters @see TraceParam
+	\returns	value 0...1, percentage of a path traveled
+	*/
+	static proto float TraceMoveWithoutCharacters(BaseWorld world, inout TraceParam param);
 
 	// callbacks
 

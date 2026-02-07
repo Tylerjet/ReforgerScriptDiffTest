@@ -76,6 +76,20 @@ class HitZone: ScriptAndConfig
 
 	// callbacks
 
+	/*!
+	Called to save information related to the hitzone
+	EnableScriptDataStreaming has to return true for this method to be called
+	\param ScriptBitWriter writer: Buffer where you will write the data necessary.
+	Remember: Don't waste bandwidth, only write information if it has changed.
+	This means that if it has no changes, you should only send a bit to indicate that.
+	*/
+	event protected bool Save(notnull ScriptBitWriter writer);
+	/*!
+	Load the buffer written on Save
+	EnableScriptDataStreaming has to return true for this method to be called
+	\param ScriptBitReader reader: Buffer to read the data from.
+	*/
+	event protected bool Load(notnull ScriptBitReader reader);
 	//! Call OnInit method from script
 	event void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent);
 	//! Called when damage changes

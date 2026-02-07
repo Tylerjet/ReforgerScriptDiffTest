@@ -36,7 +36,7 @@ class SCR_AddonPatchSizeLoader
 		m_aItems.Clear();
 	}
 	
-	protected ref array<ref SCR_BackendCallback> m_aCallbacks = {};
+	protected ref array<ref BackendCallback> m_aCallbacks = {};
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call compute patch size and setup response reaction
@@ -56,7 +56,8 @@ class SCR_AddonPatchSizeLoader
 			
 			// Compute patch size
 			SCR_BackendCallbackWorkshopItem callback = new SCR_BackendCallbackWorkshopItem(item);
-			callback.GetEventOnResponse().Insert(OnPatchSizeLoadResponse);
+			callback.SetOnSuccess(OnPatchSizeLoadResponse);
+			callback.SetOnError(OnPatchSizeLoadError);
 			m_aCallbacks.Insert(callback);
 			
 			target.ComputePatchSize(callback);
@@ -72,24 +73,16 @@ class SCR_AddonPatchSizeLoader
 	{
 		SCR_WorkshopItem item = callback.GetItem();
 		
-		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
+		float size;
+		if (item.GetItemTargetRevision().GetPatchSize(size))
 		{
-			float size;
-			if (item.GetItemTargetRevision().GetPatchSize(size))
-			{
-				// Setup size
-				item.SetTargetRevisionPatchSize(size);
-				m_iLoadedPatches++;
-			}
-			else
-			{
-				// Patch size not loaded
-				m_aItemsFailed.Insert(item);
-			}
+			// Setup size
+			item.SetTargetRevisionPatchSize(size);
+			m_iLoadedPatches++;
 		}
 		else
 		{
-			// Fail or timeout
+			// Patch size not loaded
 			m_aItemsFailed.Insert(item);
 		}
 		
@@ -102,7 +95,26 @@ class SCR_AddonPatchSizeLoader
 				m_OnAllPatchSizeLoaded.Invoke(this, allLoaded);
 		}
 		
-		callback.GetEventOnResponse().Remove(OnPatchSizeLoadResponse);
+		m_aCallbacks.RemoveItem(callback);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPatchSizeLoadError(SCR_BackendCallbackWorkshopItem callback)
+	{
+		SCR_WorkshopItem item = callback.GetItem();
+		
+		// Fail or timeout
+		m_aItemsFailed.Insert(item);
+		
+		// All loaded 
+		if (m_iLoadedPatches + m_aItemsFailed.Count() == m_aItems.Count())
+		{
+			bool allLoaded = m_aItemsFailed.IsEmpty();
+			
+			if (m_OnAllPatchSizeLoaded)
+				m_OnAllPatchSizeLoaded.Invoke(this, allLoaded);
+		}
+
 		m_aCallbacks.RemoveItem(callback);	
 	}
 	
@@ -135,7 +147,7 @@ class SCR_AddonPatchSizeLoader
 }
 
 //------------------------------------------------------------------------------------------------
-class SCR_BackendCallbackWorkshopItem : SCR_BackendCallback
+class SCR_BackendCallbackWorkshopItem : BackendCallback
 {
 	protected ref SCR_WorkshopItem m_Item;
 	

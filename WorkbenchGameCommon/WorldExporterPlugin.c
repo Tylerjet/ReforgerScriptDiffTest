@@ -1594,15 +1594,12 @@ class WorldExporterPlugin : WorkbenchPlugin
 		#ifdef WE_LOGGING_ENABLED
 		int indx = LogTimedStart("CloneSingleEntity:"+className);
 		#endif
-		float angleX, angleY, angleZ;
+
+		vector angles;
 		
-		oldEntSrc.Get("angleX", angleX);
-		oldEntSrc.Get("angleY", angleY);
-		oldEntSrc.Get("angleZ", angleZ);
+		oldEntSrc.Get("angles", angles);
 		
-		vector rot = Vector(angleX, angleY, angleZ);
-		
-		IEntitySource newEntSrc = m_WEapi.CreateEntityExt(className, string.Empty, layerID, parent, "0 0 0", rot, 0);
+		IEntitySource newEntSrc = m_WEapi.CreateEntityExt(className, string.Empty, layerID, parent, vector.Zero, angles, 0);
 		if(newEntSrc)
 			OnAfterEntityCloned(oldEntSrc, newEntSrc);
 		else

@@ -12,6 +12,7 @@ Do not modify, this script is generated
 class TextDialogueData: TimedDialogueData
 {
 	proto external string GetText();
+	proto external bool TextIsLocalizationId();
 }
 
 /*!

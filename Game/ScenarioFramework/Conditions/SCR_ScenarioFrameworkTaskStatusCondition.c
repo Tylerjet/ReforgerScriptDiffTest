@@ -4,8 +4,8 @@ class SCR_ScenarioFrameworkTaskStatusCondition : SCR_ScenarioFrameworkActivation
 	[Attribute(desc: "Layer task(s) to check for condition. If multiple layer tasks are specified, they must all have an acceptable state.")]
 	ref SCR_ScenarioFrameworkGet m_Getter;
 
-	[Attribute(desc: "If the layer task is any of these states, the condition will be statisfied", defvalue: SCR_TaskState.FINISHED.ToString(), uiwidget: UIWidgets.ComboBox, enums: SCR_TaskStateHelper.GetParamInfo())]
-	ref array<SCR_TaskState> m_aAcceptableTaskStates;
+	[Attribute(desc: "If the layer task is any of these states, the condition will be statisfied", defvalue: SCR_ETaskState.COMPLETED.ToString(), uiwidget: UIWidgets.ComboBox, enumType: SCR_ETaskState)]
+	ref array<SCR_ETaskState> m_aAcceptableTaskStates;
 
 	//------------------------------------------------------------------------------------------------
 	override bool Init(IEntity entity)
@@ -74,7 +74,7 @@ class SCR_ScenarioFrameworkTaskStatusCondition : SCR_ScenarioFrameworkActivation
 	//! \return true if state is acceptable.
 	protected bool EvaluateTaskState(notnull SCR_ScenarioFrameworkLayerTask layer)
 	{
-		SCR_TaskState state = layer.GetLayerTaskState();
+		SCR_ETaskState state = layer.GetLayerTaskState();
 		return m_aAcceptableTaskStates.Contains(state);
 	}
 }

@@ -8,6 +8,8 @@ class SCR_HelicopterControllerComponentClass : HelicopterControllerComponentClas
 */
 class SCR_HelicopterControllerComponent : HelicopterControllerComponent
 {
+	BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnCompartmentEntered(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
@@ -54,5 +56,40 @@ class SCR_HelicopterControllerComponent : HelicopterControllerComponent
 		BaseLightManagerComponent lightManager = GetLightManager();
 		if (lightManager)
 			lightManager.SetLightsState(ELightType.HiBeam, !lightManager.GetLightsState(ELightType.HiBeam));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// This is required because GameCode CollectiveMode has more options that are not available in the settings (ECollectiveModeForSettings).
+	// The usage of this function can not be avoided by explicitly specifying enumerator values for ECollectiveModeForSettings because that will break UI.
+	CollectiveMode GetCollectiveModeFromSettings(ECollectiveModeForSettings settingCollectiveMode)
+	{
+		if (settingCollectiveMode == ECollectiveModeForSettings.Default)
+			return CollectiveMode.LocalYOffsetAuto;
+		return settingCollectiveMode;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected event void OnPrepareControls()
+	{
+		// Set the collective based on the last used input device.
+		EInputDeviceType deviceType = GetGame().GetInputManager().GetLastUsedInputDevice();
+		if (deviceType == EInputDeviceType.GAMEPAD)
+		{
+			ECollectiveModeForSettings collectiveMode;
+			if (gameplaySettings.Get("m_eGamepadCollective", collectiveMode))
+				SetCollectiveMode(GetCollectiveModeFromSettings(collectiveMode));
+		}
+		else if (deviceType == EInputDeviceType.JOYSTICK)
+		{
+			ECollectiveModeForSettings collectiveMode;
+			if (gameplaySettings.Get("m_eHotasCollective", collectiveMode))
+				SetCollectiveMode(GetCollectiveModeFromSettings(collectiveMode));
+		}
+		else
+		{
+			ECollectiveModeForSettings collectiveMode;
+			if (gameplaySettings.Get("m_eKeyboardCollective", collectiveMode))
+				SetCollectiveMode(GetCollectiveModeFromSettings(collectiveMode));
+		}
 	}
 }

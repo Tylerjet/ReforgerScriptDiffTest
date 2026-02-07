@@ -18,6 +18,8 @@ sealed class Animation: pointer
 	proto external void	GetBoneNames(out notnull array<string> boneNames);
 	proto external bool	GetBoneLocalMatrix(TNodeId bone, out vector mat[4]);
 	proto external bool	SetMorphState(string name, float value);
+	proto external TMeshIndex	GetNamedMeshIndex(string meshName);
+	proto external bool	ShowMesh(TMeshIndex namedMeshIndex, bool show);
 }
 
 /*!

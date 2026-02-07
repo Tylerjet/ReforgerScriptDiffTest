@@ -10,6 +10,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	
 	protected const string MSG_AUTHOR = "#AR-Workshop_FilterCategory_Author";
 	protected const string STR_FIXED_REPORT = "#AR-Workshop_Dialog_Success";
+	protected const string UNBLOCK_AUTHOR_MESSAGE = "#AR-Workshop_CancelAuthorReport";
 	
 	protected const string WIDGET_DETAIL = "TxtDetailType";
 	protected const string WIDGET_MESSAGE = "TxtDetailMessage";
@@ -39,7 +40,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	protected ref map<SCR_ModularButtonComponent, WorkshopAuthor> m_mButtonsAuthors;
 	
 	protected WorkshopAuthor m_LoadingAuthor;
-	protected ref SCR_BackendCallback m_ReportCallback = new SCR_BackendCallback();
+	protected ref BackendCallback m_ReportCallback = new BackendCallback();
 	
 	//------------------------------------------------------------------------------------------------
 	// Override API
@@ -236,7 +237,8 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 		params.limit = AUTHOR_MOD_LIMIT;
 		params.offset = 0;
 		
-		m_ReportCallback.GetEventOnResponse().Insert(OnAuthorReportLoadResponse);
+		m_ReportCallback.SetOnSuccess(OnAuthorReportLoadResponse);
+		m_ReportCallback.SetOnError(OnAuthorReportLoadError);
 		
 		m_LoadingAuthor.RequestPage(m_ReportCallback, params, false);
 		
@@ -265,7 +267,8 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	protected void AuthorBlockCancelDialog()
 	{
 		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, AUTHOR_UNBLOCK_TAG);
-		dialog.SetMessage(WidgetManager.Translate(dialog.GetMessageStr(), m_LoadingAuthor.Name()));
+		
+		dialog.GetMessageWidget().SetTextFormat(UNBLOCK_AUTHOR_MESSAGE, m_LoadingAuthor.Name());
 		
 		dialog.m_OnConfirm.Insert(OnConfirmRemoveAuthorBlock);
 		dialog.m_OnCancel.Insert(OnCancelRemoveAuthorReport);
@@ -273,15 +276,16 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnAuthorReportLoadResponse(SCR_BackendCallback callback)
+	protected void OnAuthorReportLoadResponse()
 	{
 		m_LoadingOvelay.Close();
-		callback.GetEventOnResponse().Remove(OnAuthorReportLoadResponse);
-		
-		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
-		{
-			OpenAuthorModsDialog(m_LoadingAuthor);
-		}
+		OpenAuthorModsDialog(m_LoadingAuthor);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAuthorReportLoadError()
+	{
+		m_LoadingOvelay.Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -316,7 +320,8 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	//------------------------------------------------------------------------------------------------
 	protected void OnConfirmRemoveAuthorBlock(SCR_ConfigurableDialogUi dialog)
 	{
-		m_ReportCallback.GetEventOnResponse().Insert(OnRemoveAuthorBlockResponse);
+		m_ReportCallback.SetOnSuccess(OnRemoveAuthorBlockResponse);
+		m_ReportCallback.SetOnSuccess(OnRemoveAuthorBlockError);
 		
 		m_LoadingAuthor.RemoveBlock(m_ReportCallback);
 		
@@ -325,25 +330,24 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnRemoveAuthorBlockResponse(SCR_BackendCallback callback)
+	protected void OnRemoveAuthorBlockResponse()
 	{
 		m_LoadingOvelay.Close();
-		callback.GetEventOnResponse().Remove(OnRemoveAuthorBlockResponse);
 		
-		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
-		{
-			SCR_ModularButtonComponent button = m_mButtonsAuthors.GetKeyByValue(m_LoadingAuthor);
-			DisplayReportCancelSuccess(button);
-			
-			// Remove item 
-			m_mButtonsAuthors.Remove(button);
-			
-			AllButtonsCanceled();
-		}
-		else
-		{
-			SCR_CommonDialogs.CreateRequestErrorDialog();
-		}
+		SCR_ModularButtonComponent button = SCR_MapHelper<SCR_ModularButtonComponent, WorkshopAuthor>.GetKeyByValue(m_mButtonsAuthors, m_LoadingAuthor);
+		DisplayReportCancelSuccess(button);
+		
+		// Remove item 
+		m_mButtonsAuthors.Remove(button);
+		
+		AllButtonsCanceled();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRemoveAuthorBlockError()
+	{
+		m_LoadingOvelay.Close();
+		SCR_CommonDialogs.CreateRequestErrorDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -433,7 +437,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancelReportSuccess(SCR_WorkshopItemActionCancelReport action)
 	{	
-		SCR_ModularButtonComponent button = m_mButtonsItems.GetKeyByValue(action.GetWorkshopItem());
+		SCR_ModularButtonComponent button = SCR_MapHelper<SCR_ModularButtonComponent, SCR_WorkshopItem>.GetKeyByValue(m_mButtonsItems, action.GetWorkshopItem());
 		DisplayReportCancelSuccess(button);
 		
 		// Remove item 

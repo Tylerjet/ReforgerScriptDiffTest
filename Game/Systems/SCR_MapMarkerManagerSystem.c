@@ -12,9 +12,9 @@ class SCR_MapMarkerManagerSystem : GameSystem
 	protected ref array<SCR_MapMarkerManagerComponent> m_Components = {};
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_MapMarkerManagerComponent comp: m_Components)
 		{

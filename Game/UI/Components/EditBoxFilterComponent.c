@@ -329,6 +329,19 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetCharWhiteList(string list)
+	{
+		m_aWhitelist.Clear();
+		
+		int whitelistSize = list.Length();
+		for (int i = 0; i < whitelistSize; i++)
+		{
+			int char = list.Get(i).ToAscii();
+			m_aWhitelist.Insert(char);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetCharacterLimit(string list)
 	{
 		m_sCharWhitelist = list;

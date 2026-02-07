@@ -16,6 +16,7 @@ class ChimeraGame: Game
 	proto external PlayerController GetPlayerController();
 	//! PlayerManager holding info about players who joined MP. It always returns a valid instance.
 	proto external PlayerManager GetPlayerManager();
+	proto external GameBlocklist GetGameBlocklist();
 	// returns the Perception Manager
 	proto external PerceptionManager GetPerceptionManager();
 	//! returns entity holding info about factions
@@ -28,6 +29,8 @@ class ChimeraGame: Game
 	proto external BaseGameMode GetGameMode();
 	//! Returns the map manager entity
 	proto external MapEntity GetMapManager();
+	//! SaveGameManager holds all meta info about available save-games
+	proto external SaveGameManager GetSaveGameManager();
 	//! Sets view distance in meters (far clipping plane of cameras)
 	proto external void SetViewDistance(float viewDistance);
 	//! Returns view distance in meters (far clipping plane of cameras)
@@ -54,6 +57,8 @@ class ChimeraGame: Game
 	proto external bool GetVONCanTransmitCrossFaction();
 	//! Returns currently active mission or null if none
 	proto external MissionHeader GetMissionHeader();
+	//! Returns currently used systems config
+	proto external ResourceName GetSystemsConfig();
 	//! Returns the AI World
 	proto external AIWorld GetAIWorld();
 	//! Returns analytics Api
@@ -75,6 +80,8 @@ class ChimeraGame: Game
 	\param msec gap in milliseconds at which time the log/calculate FPS is calculated. <= 0 to disable it.
 	*/
 	proto external void LogFPS(int msec);
+	//! Efective on game consoles, where parts of game may be installled in the background.
+	proto external float GetGameInstallStatus();
 	/*!
 	Checks is a prefab can be spawned localy. Required for multiplayer
 	*/
@@ -92,6 +99,8 @@ class ChimeraGame: Game
 	event void OnCinematicStart();
 	event void OnCinematicEnd();
 	event void OnCinematicBlending(float blendFactor, vector cameraPosition);
+	//! Called when game is fully installed. Used on game consoles, where parts of game may be installled in the background.
+	event void OnGameInstallComplete();
 	/*!
 	\brief Called when a mission header is set (to both a valid one or to null as well)
 	\param mission can be passed in as null when mission is cleared, make sure to nullptr check!
@@ -103,6 +112,8 @@ class ChimeraGame: Game
 	event protected void ShowErrorMessage(string msg);
 	//! Called when the player data is requested
 	event protected ref Managed GetPlayerDataStats(int playerID);
+	//! Called when the session data is requested
+	event protected ref Managed GetSessionDataStats();
 	/*!
 	\brief Called when DS downloads required addons and is ready to run a world
 	FIXME: I'm not named properly!

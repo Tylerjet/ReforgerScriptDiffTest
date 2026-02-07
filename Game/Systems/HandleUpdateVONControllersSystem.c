@@ -9,9 +9,9 @@ class HandleUpdateVONControllersSystem: GameSystem
 
 	protected ref array<SCR_VONController> m_Components = {};
 	
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_VONController comp: m_Components)
 		{

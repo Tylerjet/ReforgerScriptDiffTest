@@ -51,6 +51,9 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (!m_CharacterOwner || !animParams)
 			return;
 		
+		if (!m_TargetCharacter)
+			SetTargetCharacter(m_CharacterOwner);
+
 		SetHealedGroup(animParams.GetIntParam(), true);
 	}
 
@@ -92,20 +95,16 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	{
 		m_iStoredHealedGroup = group * healed;
 
-		if (!m_CharacterOwner)
-			return;
-
-		SCR_CharacterDamageManagerComponent targetDamageMan;
-		IEntity target = GetTargetCharacter();
-		ChimeraCharacter targetChar;
-		if (target)
-			targetChar = ChimeraCharacter.Cast(target);
-		else
+		ChimeraCharacter targetChar = ChimeraCharacter.Cast(GetTargetCharacter());;
+		if (!targetChar)
+		{
 			targetChar = m_CharacterOwner;
 
-		if (targetChar)
-			targetDamageMan = SCR_CharacterDamageManagerComponent.Cast(targetChar.GetDamageManager());
-		
+			if (!targetChar)
+				return;
+		}
+
+		SCR_CharacterDamageManagerComponent targetDamageMan = SCR_CharacterDamageManagerComponent.Cast(targetChar.GetDamageManager());
 		if (!targetDamageMan)
 			return;
 
@@ -207,6 +206,16 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		m_CharController.m_OnItemUseBeganInvoker.Remove(OnUseBegan);
 		
 		m_CharController = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		// Force clear these as we need to ensure that this item is not going to be blocking any healed groups
+		// This is necessary because for proxies this item will be streamed out before ModeClear will be able to call CearInvokers
+		ClearInvokers(-1);
+		
+		super.OnDelete(owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -69,18 +69,36 @@ class SCR_EditorAttributeFloatStringValueHolder
 	protected LocalizedString m_sEntryDescription;
 	
 	[Attribute()]
-	protected float m_fEntryFloatValue;	
+	protected float m_fEntryFloatValue;
+	
+	// Hack to get this to work with imagesets, as it was made without them in mind
+	protected string m_sIconSetPath;
+	protected string m_sIconName;
+	protected bool m_bIsImageset;
 	
 	//------------------------------------------------------------------------------------------------
-	void SetIcon(ResourceName newIcon)
+	void SetIcon(ResourceName newIcon, bool isImageset = false)
 	{
 		m_Icon = newIcon;
+		m_bIsImageset = isImageset;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetIcon()
 	{
 		return m_Icon;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetIconName()
+	{
+		return m_sIconName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsImageset()
+	{
+		return m_bIsImageset;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -125,6 +143,12 @@ class SCR_EditorAttributeFloatStringValueHolder
 		SetName(info.GetName());
 		SetIcon(info.GetIconPath());
 		SetFloatValue(value);
+		
+		if (m_Icon.IsEmpty())
+		{
+			SetIcon(info.GetImageSetPath(), true);
+			m_sIconName = info.GetIconSetName();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

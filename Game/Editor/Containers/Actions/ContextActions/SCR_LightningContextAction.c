@@ -4,7 +4,11 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 	[Attribute("{A8FFCD3F3697D77F}Prefabs/Editor/Lightning/LightningStrike.et")]
 	protected ResourceName m_sLightningPrefab;
 		
-	
+	override int GetParam()
+	{
+		return GetGame().GetPlayerController().GetPlayerId();
+	}
+
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
 		ChimeraWorld world = GetGame().GetWorld();
@@ -21,7 +25,7 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 		return CanBeShown(hoveredEntity, selectedEntities, cursorWorldPosition, flags);
 	}
 	
-	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition,int flags, int param = -1)
+	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{		
 		if (hoveredEntity)
 			hoveredEntity.GetPos(cursorWorldPosition);
@@ -60,6 +64,6 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 			return;
 		
 		//~ Add GM as instigator
-		trigger.SetInstigator(Instigator.CreateInstigatorGM());
+		trigger.SetInstigator(Instigator.CreateInstigatorGM(param));
 	}
 };

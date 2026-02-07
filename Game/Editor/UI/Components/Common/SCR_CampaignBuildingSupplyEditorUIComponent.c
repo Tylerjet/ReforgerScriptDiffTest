@@ -191,27 +191,28 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(targetEntity.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
 			return;
-		
+
 		string providerName = providerComponent.GetProviderDisplayName();
-		
-		SCR_MilitaryBaseComponent targetBase = providerComponent.GetMilitaryBaseComponent();
 		string callsignName;
-		
-		if (targetBase)
+
+		// Campaign behavior
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (campaign)
 		{
-			callsignName = targetBase.GetCallsignDisplayName();
-			
-			// Campaign behavior 
-			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-			
-			if (campaign)
+			SCR_CampaignMilitaryBaseComponent targetBase = providerComponent.GetCampaignMilitaryBaseComponent();
+			if (targetBase)
 			{
-				int baseCallsign = targetBase.GetCallsign();
-				SCR_CampaignMilitaryBaseComponent base = campaign.GetBaseManager().FindBaseByCallsign(baseCallsign);
-				providerName = base.GetBaseName();
+				callsignName = targetBase.GetCallsignDisplayName();
+				providerName = targetBase.GetBaseName();
 			}
 		}
-		
+		else
+		{
+			SCR_MilitaryBaseComponent targetBase = providerComponent.GetMilitaryBaseComponent();
+			if (targetBase)
+				callsignName = targetBase.GetCallsignDisplayName();
+		}
+
 		m_ProviderCallsign.SetText(callsignName);
 		m_ProviderName.SetText(providerName);
 	}

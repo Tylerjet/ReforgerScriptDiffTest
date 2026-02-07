@@ -12,7 +12,6 @@ Do not modify, this script is generated
 enum EEquipItemType
 {
 	EEquipTypeNone,
-	EEquipTypeGeneric,
 	EEquipTypeWeapon,
 	EEquipTypeUnarmedDeliberate,
 	// If the player hides the weapon themselves (Tab+Z or dropped).

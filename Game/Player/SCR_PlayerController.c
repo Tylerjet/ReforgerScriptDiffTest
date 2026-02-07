@@ -91,21 +91,33 @@ class SCR_PlayerController : PlayerController
 				SCR_EditorManagerCore managerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 				managerCore.Event_OnEditorManagerInitOwner.Insert(OnPlayerRegistered);
 			}
-		}			
+		}
+
+		SCR_DamageSufferingSystem.GetInstance().StartObservingControlledEntityChanges(this, changing, becameOwner);
 		
 		m_OnOwnershipChangedInvoker.Invoke(changing, becameOwner);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override protected void OnInit(IEntity owner)
+	{
+		if (!GetGame().InPlayMode())
+			return;
+
+		if (Replication.IsServer()) // this is here because listen server or SP client will not call OnOwnershipChanged as there is no transfer of ownership
+			SCR_DamageSufferingSystem.GetInstance().StartObservingControlledEntityChanges(this, false, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void OnPlayerRegistered(SCR_EditorManagerEntity managerEntity)
 	{
 		SCR_EditorManagerCore managerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 		managerCore.Event_OnEditorManagerInitOwner.Remove(OnPlayerRegistered);
-
-		// Wait for blocklist to be updated by SocialComponent.
-		// Reinitiate blocklist update (if possible)
-		SocialComponent.s_OnBlockListUpdateInvoker.Insert(OnBlockedListUpdated);
-		SocialComponent.UpdateBlockList();
+		
+		// Register for blocklist update and request it
+		GameBlocklist blocklist = GetGame().GetGameBlocklist();
+		blocklist.OnBlockListUpdateInvoker.Insert(OnBlockedListUpdated);
+		blocklist.UpdateBlockList();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -118,7 +130,8 @@ class SCR_PlayerController : PlayerController
 		}
 
 		// Remove only when it succeeds
-		SocialComponent.s_OnBlockListUpdateInvoker.Remove(OnBlockedListUpdated);
+		GameBlocklist blocklist = GetGame().GetGameBlocklist();
+		blocklist.OnBlockListUpdateInvoker.Remove(OnBlockedListUpdated);
 
 		// Request all the authors
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -139,13 +152,8 @@ class SCR_PlayerController : PlayerController
 		core.Event_OnAuthorsRegisteredFinished.Remove(OnAuthorsRequestFinished);
 		
 		PrintFormat("SCR_PlayerController::OnAuthorsRequestFinished - Number of UGC Authors: %1", activeUGCAuthors.Count(), level: LogLevel.VERBOSE);
-
-		SocialComponent socialComp = SocialComponent.Cast(FindComponent(SocialComponent));
-		if (!socialComp)
-		{
-			PrintFormat("SCR_PlayerController::OnAuthorsRequestFinished - Missing SocialComponent", level: LogLevel.VERBOSE);
-			return;
-		}
+		
+		GameBlocklist blocklist = GetGame().GetGameBlocklist();
 		
 		array<string> identityIDs = {};
 		foreach (SCR_EditableEntityAuthor author : activeUGCAuthors)
@@ -158,7 +166,7 @@ class SCR_PlayerController : PlayerController
 		bool isBlockedAuthorPresent;
 		foreach (SCR_EditableEntityAuthor author : activeUGCAuthors)
 		{
-			const bool isBlocked = socialComp.IsBlockedIdentity(author.m_sAuthorUID, author.m_ePlatform, author.m_sAuthorPlatformID);
+			const bool isBlocked = blocklist.IsBlockedIdentity(author.m_sAuthorUID, author.m_ePlatform, author.m_sAuthorPlatformID);
 			if (isBlocked)
 			{
 				PrintFormat(

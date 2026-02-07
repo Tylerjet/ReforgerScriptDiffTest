@@ -13,10 +13,10 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	[Attribute(defvalue: "")]
 	protected string m_sSoundEvent;
 	
-	[Attribute(defvalue: "255,255,255,0", desc: "Color of Camera attached light")]
+	[Attribute(defvalue: "1 1 1 0", desc: "Color of Camera attached light")]
 	protected ref Color m_cCameraLightColor;
 
-	[Attribute(defvalue: "255,255,255,0", desc: "Color of pointing light")]
+	[Attribute(defvalue: "1 1 1 0", desc: "Color of pointing light")]
 	protected ref Color m_cPointingLightColor;
 	
 	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
@@ -192,7 +192,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	protected void CameraLightIntensityUpdate(vector cameraTransform[4])
 	{		
 		//~ Get light intensity using distance from ground and max distance intensity and using that value as alpha in the m_cCameraLightIntensityCurve
-		float lightIntensity = Math.Lerp(m_fCameraLightIntesityMin, m_fCameraLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(SCR_TerrainHelper.GetHeightAboveTerrain(cameraTransform[3], m_World, true) / m_fCameraLightIntensityMaxHeight, 0, 1), m_cCameraLightIntensityCurve)[1]);
+		float lightIntensity = Math.Lerp(m_fCameraLightIntesityMin, m_fCameraLightIntesityMax, LegacyCurve.Curve(ECurveType.CurveProperty2D, Math.Clamp(SCR_TerrainHelper.GetHeightAboveTerrain(cameraTransform[3], m_World, true) / m_fCameraLightIntensityMaxHeight, 0, 1), m_cCameraLightIntensityCurve)[1]);
 		m_CameraLight.SetColor(m_cCameraLightColor, Math.Clamp(lightIntensity, m_fLightMinLV, m_fLightMaxLV));
 	}
 	
@@ -261,7 +261,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			m_PointingLight.SetWorldTransform(lightTransform);
 			
 			//~ Set light intensity depending on distance
-			float lightIntensity =  Math.Lerp(m_fPointingLightIntesityMin, m_fPointingLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp((distanceSq - lightDetachDistanceSq) / (m_fPointingLightIntensityMaxDistance - lightDetachDistanceSq), 0, 1), m_cPointingLightIntensityCurve)[1]);
+			float lightIntensity =  Math.Lerp(m_fPointingLightIntesityMin, m_fPointingLightIntesityMax, LegacyCurve.Curve(ECurveType.CurveProperty2D, Math.Clamp((distanceSq - lightDetachDistanceSq) / (m_fPointingLightIntensityMaxDistance - lightDetachDistanceSq), 0, 1), m_cPointingLightIntensityCurve)[1]);
 			m_PointingLight.SetColor(m_cPointingLightColor, Math.Clamp(lightIntensity, m_fLightMinLV, m_fLightMaxLV));						
 		}
 		//~ Delete the light if there is any

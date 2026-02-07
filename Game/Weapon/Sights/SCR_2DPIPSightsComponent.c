@@ -31,9 +31,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("8", UIWidgets.Slider, "Camera index used for this PIP component\n", params: "0 31 1", category: "PiPSights")]
 	protected int m_iCameraIndex;
 
-	[Attribute("2", UIWidgets.Slider, "GUI widget index for this PIP component\n", category: "PiPSights")]
-	protected int m_iGuiIndex;
-
 	[Attribute("21", UIWidgets.Slider, "Camera field of view used by this PIP component. Determines LOD used. Set to 0 to use Focus FOV.\n[°]", params: "0 89.99 0.01", category: "PiPSights")]
 	protected float m_fMainCameraFOV;
 
@@ -91,10 +88,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("0 0 0", UIWidgets.Slider, "Offset when not unfocused to improve view\n[m]", params: "-1 1 0.001", category: "PiPSights")]
 	protected vector m_vMainCameraOffsetUnfocused;
 
-	[Attribute("1.0", UIWidgets.Slider, "PIP objective inner edge. Should be lower than max\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
+	[Attribute("0.98", UIWidgets.Slider, "PIP objective inner edge. Should be lower than max\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMin;
 
-	[Attribute("1.05", UIWidgets.Slider, "PIP objective outer edge\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
+	[Attribute("1.00", UIWidgets.Slider, "PIP objective outer edge\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMax;
 
 	[Attribute("{5366CEDE2A151631}Terrains/Common/Water/UnderWater/oceanUnderwater.emat", UIWidgets.ResourcePickerThumbnail, "Underwater postprocess material\n", params: "emat", category: "PiPSights")]
@@ -332,6 +329,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//! \param farPlane Far clipping plane of the camera in metres
 	protected CameraBase CreateCamera(IEntity parent, vector position, vector angles, int cameraIndex, float fov, float nearPlane, float farPlane)
 	{
+		// Limit camera's far distance to game's settings.
+		farPlane = GetMaxViewDistance(farPlane);
+		
 		// Spawn camera
 		BaseWorld baseWorld = parent.GetWorld();
 
@@ -421,6 +421,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				return;
 			}
 
+			// Now that everything is ready, we can start observing possible changes of the game settings, so we can react to them
+			SCR_MenuHelper.GetOnMenuClose().Insert(OnSettingsMenuClosed);
+
 			// Set camera index of render target widget
 			BaseWorld baseWorld = owner.GetWorld();
 			m_wRenderTargetWidget.SetWorld(baseWorld, m_iCameraIndex);
@@ -429,7 +432,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			m_wRenderTargetWidget.SetResolutionScale(m_fResolutionScale, m_fResolutionScale);
 
 			if (!owner.IsDeleted())
-				m_wRenderTargetTextureWidget.SetGUIWidget(owner, m_iGuiIndex);
+				m_wRenderTargetTextureWidget.SetRenderTarget(owner);
 
 			if (m_pMaterial)
 				GetGame().GetWorld().SetCameraPostProcessEffect(m_iCameraIndex, 10, PostProcessEffectType.HDR, m_rScopeHDRMatrial);
@@ -473,12 +476,48 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Method used to limit desired distance to the values set by the game or the server
+	//! \param[in] desiredDistance distance that should be evaluated against the game settings
+	//! \return maximum possible render distance value
+	protected float GetMaxViewDistance(float desiredDistance)
+	{
+		// Min view distance value allowed by the project
+		float absoluteMax = GetGame().GetMaximumViewDistance();
+		// Max view distance value allowed by the project
+		float absoluteMin = GetGame().GetMinimumViewDistance();
+		// Limit camera's far distance to game's settings.
+		float serverMax = GetGame().GetViewDistanceServerLimit();
+
+		// Max view distance is enforced by server, then consider that while clamping.
+		if (serverMax > 0)
+			return Math.Clamp(desiredDistance, absoluteMin, Math.Min(serverMax, absoluteMax));
+
+		return Math.Clamp(desiredDistance, absoluteMin, absoluteMax);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method used to update PIP properties when settings menu is closed
+	//! \param[in] menu which was just closed
+	protected void OnSettingsMenuClosed(ChimeraMenuBase menu)
+	{
+		if (!SCR_SettingsSuperMenu.Cast(menu))
+			return;
+
+		if (!m_PIPCamera)
+			return;
+
+		float maxViewDistance = GetMaxViewDistance(GetGame().GetViewDistance());
+		if (m_PIPCamera.GetFarPlane() != maxViewDistance)
+			m_PIPCamera.SetFarPlane(maxViewDistance);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// Destroy everything this component created during its lifetime
 	protected void Destroy()
 	{
 		IEntity owner = GetOwner();
 		if (m_wRenderTargetTextureWidget && owner && !owner.IsDeleted())
-			m_wRenderTargetTextureWidget.SetGUIWidget(owner, -1);
+			m_wRenderTargetTextureWidget.RemoveRenderTarget(owner);
 
 		if (m_wPIPRoot)
 		{
@@ -486,6 +525,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			m_wPIPRoot = null;
 		}
 
+		SCR_MenuHelper.GetOnMenuClose().Remove(OnSettingsMenuClosed);
 		DestroyCamera(m_PIPCamera);
 	}
 

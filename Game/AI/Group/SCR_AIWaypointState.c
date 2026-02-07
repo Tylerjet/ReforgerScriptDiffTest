@@ -23,7 +23,7 @@ class SCR_AIWaypointState : Managed
 	//! Can be overridden in inherited class. Don't forget to call OnDeselected of base class.
 	void OnDeselected()
 	{
-		m_Utility.CancelActivitiesRelatedToWaypoint(m_Waypoint);
+		m_Utility.CancelActivitiesRelatedToWaypoint(m_Waypoint, doNotCompleteWaypoint: true);
 	}
 	
 	//! Called when group switches from Moving towards waypoint to behavior ON waypoint

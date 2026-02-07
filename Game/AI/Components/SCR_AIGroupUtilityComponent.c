@@ -16,7 +16,7 @@ class SCR_AIGroupUtilityComponentClass : SCR_AIBaseUtilityComponentClass
 
 class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 {
-	protected static const float AUTONOMOUS_DISTANCE_MAX_DEFAULT = 9999;
+	static const float AUTONOMOUS_DISTANCE_MAX_DEFAULT = 9999;
 	
 	SCR_AIGroup m_Owner;
 	SCR_AIConfigComponent m_ConfigComponent;
@@ -439,7 +439,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//------------------------------------------------------------------------------------------------
 	//! Updates info of group members to planner - should be called when adding or removing group member
 	//! \param[in] agent
-	void OnAgentAdded(AIAgent agent)
+	protected void OnAgentAdded(AIAgent agent)
 	{
 		// Add to array of AIInfo
 		SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
@@ -469,7 +469,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] group
 	//! \param[in] agent
-	void OnAgentRemoved(SCR_AIGroup group, AIAgent agent)
+	protected void OnAgentRemoved(SCR_AIGroup group, AIAgent agent)
 	{	
 		SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(agent.FindComponent(SCR_AIUtilityComponent));
 		if(!utility)
@@ -499,11 +499,12 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 		
 		m_FireteamMgr.OnAgentRemoved(agent);
+		m_VehicleMgr.OnAgentRemoved(agent, group);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] waypoint
-	void OnWaypointCompleted(AIWaypoint waypoint)
+	protected void OnWaypointCompleted(AIWaypoint waypoint)
 	{
 		if (m_WaypointState && waypoint && m_WaypointState.GetWaypoint() == waypoint)
 		{
@@ -515,7 +516,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] waypoint
 	//! \param[in] isCurrentWaypoint
-	void OnWaypointRemoved(AIWaypoint waypoint, bool isCurrentWaypoint)
+	protected void OnWaypointToRemove(AIWaypoint waypoint, bool isCurrentWaypoint)
 	{
 		// Remove old wp state, if it existed
 		if (isCurrentWaypoint)
@@ -660,7 +661,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnAgentLifeStateChanged(AIAgent incapacitatedAgent, SCR_AIInfoComponent infoIncap, IEntity vehicle, ECharacterLifeState lifeState)
+	protected void OnAgentLifeStateChanged(AIAgent incapacitatedAgent, SCR_AIInfoComponent infoIncap, IEntity vehicle, ECharacterLifeState lifeState)
 	{
 		m_OnAgentLifeStateChanged.Invoke(incapacitatedAgent, infoIncap, vehicle, lifeState);
 	}
@@ -668,7 +669,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] currentWp
 	//! \param[in] prevWp
-	void OnCurrentWaypointChanged(AIWaypoint currentWp, AIWaypoint prevWp)
+	protected void OnCurrentWaypointChanged(AIWaypoint currentWp, AIWaypoint prevWp)
 	{
 		// Remove old wp state, if it existed
 		if (m_WaypointState && prevWp && m_WaypointState.GetWaypoint() == prevWp)
@@ -756,7 +757,8 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//!
 	//! \param[in] waypoint
 	//! \param[in] activityType
-	void CancelActivitiesRelatedToWaypoint(notnull AIWaypoint waypoint, typename activityType = typename.Empty)
+	//! \param[in] doNotCompleteWaypoint
+	void CancelActivitiesRelatedToWaypoint(notnull AIWaypoint waypoint, typename activityType = typename.Empty, bool doNotCompleteWaypoint = false)
 	{
 		array<ref AIActionBase> actions = {};
 		GetActions(actions);
@@ -774,7 +776,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 				continue;
 			
 			if (activity.m_RelatedWaypoint == waypoint)
-				activity.Fail();
+				activity.Fail(doNotCompleteWaypoint);
 		}
 	}
 	
@@ -838,7 +840,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		m_Owner.GetOnAgentAdded().Insert(OnAgentAdded);
 		m_Owner.GetOnAgentRemoved().Insert(OnAgentRemoved);
 		m_Owner.GetOnWaypointCompleted().Insert(OnWaypointCompleted);
-		m_Owner.GetOnWaypointRemoved().Insert(OnWaypointRemoved);
+		m_Owner.GetOnWaypointToRemove().Insert(OnWaypointToRemove);
 		m_Owner.GetOnCurrentWaypointChanged().Insert(OnCurrentWaypointChanged);
 		
 		m_GroupInfo = SCR_AIGroupInfoComponent.Cast(m_Owner.FindComponent(SCR_AIGroupInfoComponent));

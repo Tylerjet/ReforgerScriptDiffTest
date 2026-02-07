@@ -32,7 +32,7 @@ class ForestGeneratorOutline : ForestGeneratorLevel
 	[Attribute(defvalue: "15", uiwidget: UIWidgets.SpinBox, desc: "In what radius should trees around be taken into account for clusters [m]", params: "0 inf")]
 	float m_fClusterRadius;
 
-	[Attribute("0", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EForestGeneratorOutlineType), desc: "Outline type")]
+	[Attribute("0", UIWidgets.ComboBox, enumType: SCR_EForestGeneratorOutlineType, desc: "Outline type")]
 	SCR_EForestGeneratorOutlineType m_eOutlineType;
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimal distance from spline [m]", params: "0 inf")]

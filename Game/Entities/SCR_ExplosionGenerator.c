@@ -86,6 +86,8 @@ class SCR_ExplosionGenerator: GenericEntity
 		owner.GetTransform(spawnParams.Transform);
 
 		IEntity spawnedProjectile = GetGame().SpawnEntityPrefab(prefab, owner.GetWorld(), spawnParams);
+		if (!spawnedProjectile)
+			return;
 		
 		Managed managedComp = spawnedProjectile.FindComponent(BaseTriggerComponent);
 	

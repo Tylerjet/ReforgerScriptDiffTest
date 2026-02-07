@@ -51,9 +51,7 @@ class SCR_JointBaseEntity: GenericEntity
 		
 		IEntitySource src = _WB_GetEditorAPI().EntityToSource(this);
 		worldEditorAPI.SetVariableValue(src, null, "coords", pos.ToString(false));
-		worldEditorAPI.SetVariableValue(src, null, "angleX", angles[1].ToString());
-		worldEditorAPI.SetVariableValue(src, null, "angleY", angles[0].ToString());
-		worldEditorAPI.SetVariableValue(src, null, "angleZ", angles[2].ToString());
+		worldEditorAPI.SetVariableValue(src, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 		worldEditorAPI.SetVariableValue(src, null, "SNAP_TO_PARENT_BONE", "-1");
 		worldEditorAPI.EndEntityAction("Move to parent bone");
 	#endif
@@ -78,9 +76,7 @@ class SCR_JointBaseEntity: GenericEntity
 			worldEditorAPI.BeginEntityAction("Move child to joint by bone", "");
 			worldEditorAPI.ClearEntitySelection();
 			worldEditorAPI.SetVariableValue(m_JointChild, null, "coords", "0 0 0");
-			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleX", "0");
-			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleY", "0");
-			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleZ", "0");
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angles", "0 0 0");
 			worldEditorAPI.SetVariableValue(this, null, "SNAP_CHILD_BY_JOINT", "-1");
 			worldEditorAPI.EndEntityAction("Move child to joint by bone");
 		}
@@ -100,9 +96,7 @@ class SCR_JointBaseEntity: GenericEntity
 			worldEditorAPI.BeginEntityAction("Move child to joint by bone", "");
 			worldEditorAPI.ClearEntitySelection();
 			worldEditorAPI.SetVariableValue(m_JointChild, null, "coords", pos.ToString(false));
-			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleX", angles[1].ToString());
-			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleY", angles[0].ToString());
-			worldEditorAPI.SetVariableValue(m_JointChild, null, "angleZ", angles[2].ToString());
+			worldEditorAPI.SetVariableValue(m_JointChild, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 			worldEditorAPI.SetVariableValue(this, null, "SNAP_CHILD_BY_JOINT", "-1");
 			worldEditorAPI.EndEntityAction("Move child to joint by bone");
 		}

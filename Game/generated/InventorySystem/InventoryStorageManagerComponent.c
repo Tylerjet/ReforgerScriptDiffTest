@@ -44,7 +44,7 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Get all managed storages
 	proto external int GetStorages(out notnull array<BaseInventoryStorageComponent> outStorages, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! Get all items from all managed storages
-	proto external int GetItems(out notnull array<IEntity> outItems);
+	proto external int GetItems(out notnull array<IEntity> outItems, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! Returns true if item is in the storage, false otherwise
 	proto external bool Contains(IEntity item);
 	//! Will try to find suitable storage for item

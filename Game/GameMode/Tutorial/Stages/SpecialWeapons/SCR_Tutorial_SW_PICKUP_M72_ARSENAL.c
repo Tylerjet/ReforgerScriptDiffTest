@@ -38,31 +38,23 @@ class SCR_Tutorial_SW_PICKUP_M72_ARSENAL : SCR_BaseTutorialStage
 		if (!inventory)
 			return false;
 		
-		array <IEntity> entities = {};
-		inventory.GetAllRootItems(entities);
-		
-		if (entities.IsEmpty())
-			return false;
-		
-		BaseWeaponComponent weaponComp;
-		BaseMuzzleComponent muzzle;
-		foreach (IEntity ent : entities)
+		SCR_ResourceNamePredicate predicate("{9C5C20FB0E01E64F}Prefabs/Weapons/Launchers/M72/Launcher_M72A3.et");
+		array<IEntity> foundItems = {};
+		inventory.FindItems(foundItems, predicate, EStoragePurpose.PURPOSE_ANY);
+		foreach (IEntity item : foundItems)
 		{
-			if (!ent || ent.GetPrefabData().GetPrefabName() != "{9C5C20FB0E01E64F}Prefabs/Weapons/Launchers/M72/Launcher_M72A3.et")
+			const BaseWeaponComponent weapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
+			if (!weapon)
 				continue;
 			
-			weaponComp = BaseWeaponComponent.Cast(ent.FindComponent(BaseWeaponComponent));
-			if (!weaponComp)
-				continue;
-			
-			muzzle = weaponComp.GetCurrentMuzzle();
+			const BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
 			if (!muzzle)
 				continue;
 			
-			if (muzzle.GetAmmoCount() != 0)
+			if (muzzle.GetAmmoCount() > 0)
 				return true;
 		}
-		
+
 		return false;
 	}
 	

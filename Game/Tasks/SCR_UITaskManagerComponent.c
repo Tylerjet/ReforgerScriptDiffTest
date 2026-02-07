@@ -1,10 +1,12 @@
-[EntityEditorProps(category: "GameScripted/Tasks", description: "This is a task manager related component that allows you to display the available tasks.", color: "0 0 255 255")]
+[Obsolete(), EntityEditorProps(category: "GameScripted/Tasks", description: "This is a task manager related component that allows you to display the available tasks.", color: "0 0 255 255")]
 class SCR_UITaskManagerComponentClass : ScriptComponentClass
 {
 }
 
+[Obsolete("Replaced with SCR_TaskManagerUIComponent")]
 class SCR_UITaskManagerComponent : ScriptComponent
 {
+	/*
 	protected static const string NO_ASSIGNED_TASK = "#AR-Tasks_NoAssignedTaskTitle";
 	protected static const string ASSIGN_TASK_HINT = "#AR-Tasks_NoAssignedTaskDescription";
 
@@ -41,7 +43,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	[Attribute("{10C0A9A305E8B3A4}UI/Imagesets/Tasks/Task_Icons.imageset", category: "Task icon")]
 	protected ResourceName m_sIconImageset;
 	
-	[Attribute("{ACCF501DD69CAF7B}UI/layouts/Tasks/TaskList.layout")]
+	[Attribute("{ACCF501DD69CAF7B}UI/layouts/Tasks/TaskListWrapper.layout")]
 	ResourceName m_UIResource;
 
 	[Attribute("{EE9497AB43F556F9}UI/layouts/Tasks/CurrentTask.layout")]
@@ -317,9 +319,11 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			if (task == taskToFocus)
 			{
 				m_wWidgetToFocus = currentTaskUI;
+				
 				SCR_TaskListEntryHandler handler = SCR_TaskListEntryHandler.Cast(m_wWidgetToFocus.FindHandler(SCR_TaskListEntryHandler));
 				if (handler)
 					handler.SetCollapsed(false);
+				
 			}
 		}
 
@@ -327,6 +331,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	
 	protected void GenerateRequestButtons()
 	{
 		// note: turned off now
@@ -344,7 +349,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			supportedTasks[i].OnTaskListOpen(this);
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void ClearUI()
 	{
@@ -561,6 +566,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//!
+	
 	void Action_PickAssignee()
 	{
 		Widget pickAssigneeWidget;
@@ -634,7 +640,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		GetGame().GetMenuManager().CloseMenu(pickAssigneeMenu);
 	}
-
+	
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	void Action_TasksOpen()
@@ -808,10 +815,11 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		{
 			if (!w)
 				continue;
-
+			
 			SCR_TaskListEntryHandler handler = SCR_TaskListEntryHandler.Cast(w.FindHandler(SCR_TaskListEntryHandler));
 			if (handler && handler.GetTask() == m_SelectedTask)
 				handler.ExpandTaskLayout();
+			
 		}
 	}
 
@@ -897,7 +905,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	{
 		if (!task)
 			return;
-
+		
 		foreach (Widget w : m_aWidgets)
 		{
 			if (!w)
@@ -910,6 +918,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 				break;
 			}
 		}
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -927,7 +936,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			return;
 		}
 
-		taskListUI.HandleTaskList();
+		//taskListUI.HandleTaskList();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -938,7 +947,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 
 		if (task == m_LastSelectedTask)
 			m_LastSelectedTask = null;
-
+		
 		foreach (Widget w : m_aWidgets)
 		{
 			if (!w)
@@ -951,7 +960,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 					w.RemoveFromHierarchy();
 			}
 		}
-
+		
 		task.ClearWidgetIcon();
 	}
 
@@ -1163,4 +1172,5 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		if (m_wUI)
 			m_wUI.RemoveFromHierarchy();
 	}
+	*/
 }

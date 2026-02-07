@@ -233,7 +233,9 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 
 		int chargeRingDif = m_aChargeRingConfig[configId][0] - m_aChargeRingConfig[m_iChargeRingConfigIndex][0];
 		m_iChargeRingConfigIndex = configId;
-		ProjectileMoveComponent moveComp = ProjectileMoveComponent.Cast(GetOwner().FindComponent(ProjectileMoveComponent));
+		
+		const IEntity owner = GetOwner();
+		ProjectileMoveComponent moveComp = ProjectileMoveComponent.Cast(owner.FindComponent(ProjectileMoveComponent));
 		if (!moveComp)
 			return;
 
@@ -242,14 +244,10 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 
 		if (!silent)
 		{
-			SCR_SoundManagerEntity soundMan = GetGame().GetSoundManagerEntity();
-			if (soundMan)
-			{
-				if (chargeRingDif > 0)
-					soundMan.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_SHELL_CHARGE_RING_ADD);
-				else if (chargeRingDif < 0)
-					soundMan.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_SHELL_CHARGE_RING_REMOVE);
-			}
+			if (chargeRingDif > 0)
+				SCR_SoundManagerModule.CreateAndPlayAudioSource(owner, SCR_SoundEvent.SOUND_SHELL_CHARGE_RING_ADD);
+			else if (chargeRingDif < 0)
+				SCR_SoundManagerModule.CreateAndPlayAudioSource(owner, SCR_SoundEvent.SOUND_SHELL_CHARGE_RING_REMOVE);
 		}
 
 		if (!replicate)
@@ -346,7 +344,7 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 		if(m_MortarMuzzleComp)
 		{
 			m_MortarMuzzleComp.SetLoadingState(false);
-			m_MortarMuzzleComp = null;
+			SetLoadedState(false);
 		}
 	}
 
@@ -378,6 +376,21 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 
 		controller.SyncShellChargeRingConfig(this, config.GetChargeRingConfigId());
 		SetChargeRingConfig(config.GetChargeRingConfigId(), true, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Clear gadget mode
+	//! \param[in] mode that is being cleared
+	override protected void ModeClear(EGadgetMode mode)
+	{
+		if (mode != EGadgetMode.IN_HAND)
+			return;
+
+		if (!m_MortarMuzzleComp)
+			return;
+
+		m_MortarMuzzleComp.SetLoadingState(false);
+		SetLoadedState(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -472,8 +485,8 @@ class SCR_MortarShellGadgetComponent : SCR_GadgetComponent
 
 			if (m_fMaxFuzeTime == m_fMinFuzeTime)
 				m_bIsUsingTimeFuze = false;
-
-			m_fFuzeTime = m_fMinFuzeTime;
+			else
+				SetFuzeTime(m_fMinFuzeTime);
 		}
 
 		m_SlotManagerComp = SlotManagerComponent.Cast(owner.FindComponent(SlotManagerComponent));

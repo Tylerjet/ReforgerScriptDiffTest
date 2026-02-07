@@ -21,9 +21,9 @@ class SCR_MineDamageManager : SCR_DamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override event protected void OnDamageStateChanged(EDamageState state)
+	override event protected void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		if (state != EDamageState.DESTROYED)
+		if (newState != EDamageState.DESTROYED)
 			return;
 		
 		IEntity owner = GetOwner();
@@ -43,7 +43,11 @@ class SCR_MineDamageManager : SCR_DamageManagerComponent
 	//!
 	void ExplodeWrapper()
 	{
+		// Can be called from CallLater. Therefore, we need to check if the entity still exists.
 		IEntity owner = GetOwner();
+		if (!owner)
+			return;
+
 		BaseTriggerComponent triggerComponent = BaseTriggerComponent.Cast(owner.FindComponent(BaseTriggerComponent));
 		if (!triggerComponent)
 			return;

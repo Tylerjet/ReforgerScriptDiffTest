@@ -194,10 +194,6 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 			return m_iBaseSupplyCostOnUse + 1;
 		}
 
-		//~ There is damage so there should always be a cost of 1
-		if ((damageHealCost + m_iBaseSupplyCostOnUse) < 1)
-			return 1;
-
 		return Math.Ceil(damageHealCost + m_iBaseSupplyCostOnUse);
 	}
 

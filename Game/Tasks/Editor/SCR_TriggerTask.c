@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "")]
 class SCR_TriggerTaskClass : SCR_AttachableTaskClass
 {
-};
+}
 
 class SCR_TriggerTask : SCR_AttachableTask
 {
@@ -13,13 +13,11 @@ class SCR_TriggerTask : SCR_AttachableTask
 	
 	protected SCR_BaseFactionTriggerEntity m_Trigger;
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnTriggerActivate()
 	{
-		if (!GetTaskManager())
-			return;
-		
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
 		if (m_iTaskCompletionType != EEditorTaskCompletionType.AUTOMATIC)
@@ -28,18 +26,17 @@ class SCR_TriggerTask : SCR_AttachableTask
 		if (!m_bOnTriggerDeactivate)
 		{
 			if (m_bToFail)
-				supportEntity.FailTask(this);
+				taskSystem.SetTaskState(this, SCR_ETaskState.FAILED);
 			else
-				supportEntity.FinishTask(this);
+				taskSystem.SetTaskState(this, SCR_ETaskState.COMPLETED);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnTriggerDeactivate()
 	{
-		if (!GetTaskManager())
-			return;
-		
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
 		if (m_iTaskCompletionType != EEditorTaskCompletionType.AUTOMATIC)
@@ -48,19 +45,22 @@ class SCR_TriggerTask : SCR_AttachableTask
 		if (m_bOnTriggerDeactivate)
 		{
 			if (m_bToFail)
-				supportEntity.FailTask(this);
+				taskSystem.SetTaskState(this, SCR_ETaskState.FAILED);
 			else
-				supportEntity.FinishTask(this);
+				taskSystem.SetTaskState(this, SCR_ETaskState.COMPLETED);
 		}
 	}
 	
-	override void SetTargetFaction(Faction targetFaction)
+	//------------------------------------------------------------------------------------------------
+	override void AddOwnerFactionKey(FactionKey factionKey)
 	{
-		super.SetTargetFaction(targetFaction);
+		super.AddOwnerFactionKey(factionKey);
 		
 		if (m_Trigger)
-			m_Trigger.SetOwnerFaction(targetFaction);
+			m_Trigger.AddOwnerFaction(factionKey);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
@@ -88,4 +88,4 @@ class SCR_TriggerTask : SCR_AttachableTask
 			}
 		}
 	}
-};
+}

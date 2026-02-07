@@ -35,9 +35,9 @@ class AIBaseUtilityComponent: AIComponent
 	proto external bool CallActionsOnMessage(AIMessage msg);
 	//Getters and Setters
 	proto external void GetActions(notnull array<ref AIActionBase> outActions);
-	proto external ref AIActionBase GetCurrentAction();
+	proto external AIActionBase GetCurrentAction();
 	proto external void SetCurrentAction(AIActionBase executed);
-	proto external ref AIActionBase GetExecutedAction();
+	proto external AIActionBase GetExecutedAction();
 	proto external void SetExecutedAction(AIActionBase executed);
 	proto external AIAgent GetOwner();
 

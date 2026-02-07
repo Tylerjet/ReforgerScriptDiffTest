@@ -41,7 +41,7 @@ class SCR_AIConfigComponent : ScriptComponent
 
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIDangerReaction> m_aDangerReactions;	
-	ref map<SCR_EAIDangerEventType, ref SCR_AIDangerReaction> m_mDangerReactions = new map<SCR_EAIDangerEventType, ref SCR_AIDangerReaction>();
+	ref map<EAIDangerEventType, ref SCR_AIDangerReaction> m_mDangerReactions = new map<EAIDangerEventType, ref SCR_AIDangerReaction>();
 	
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIGoalReaction> m_aGoalReactions;	

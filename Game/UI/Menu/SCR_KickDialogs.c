@@ -18,7 +18,7 @@ class SCR_KickDialogs
 	protected static ref ScriptInvokerVoid s_OnCancel;
 	protected static ref ScriptInvokerVoid s_OnReconnect;
 	
-	protected static ref SCR_BackendCallback m_ProcessLastHostCallback = new SCR_BackendCallback();
+	protected static ref BackendCallback m_ProcessLastHostCallback = new BackendCallback();
 
 	//------------------------------------------------------------------------------------------------
 	//! Set message for error dialog and create it
@@ -129,37 +129,30 @@ class SCR_KickDialogs
 	static void CheckLastServerHost()
 	{
 		// Check for hosting errors 
-		m_ProcessLastHostCallback.GetEventOnResponse().Insert(OnProcessLastHostResponse);
+		m_ProcessLastHostCallback.SetOnError(OnProcessLastHostError);
 		GetGame().GetBackendApi().GetClientLobby().ProcessLastHostError(m_ProcessLastHostCallback);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected static void OnProcessLastHostResponse(SCR_BackendCallback callback)
+	protected static void OnProcessLastHostError(BackendCallback callback)
 	{
-		int code = callback.GetCode();
-		int rest = callback.GetRestCode();
-		int api = callback.GetApiCode();
+		int apiCode = callback.GetApiCode();		
+
+		string apiStr = typename.EnumToString(EApiCode, apiCode);
 		
-		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
+		switch (apiCode)
 		{
-			string apiStr = typename.EnumToString(EApiCode, api);
-			
-			switch (api)
+			case EApiCode.EACODE_ERROR_ASSET_NOT_FOUND:
 			{
-				case EApiCode.EACODE_ERROR_ASSET_NOT_FOUND:
-				{
-					SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(HOSTING_ERROR_DIALOG_CONFIG, apiStr);
-					return;
-				}
-				default:
-				{
-					SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(HOSTING_ERROR_DIALOG_CONFIG, "unknown");
-					return;
-				}
+				SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(HOSTING_ERROR_DIALOG_CONFIG, apiStr);
+				return;
+			}
+			default:
+			{
+				SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(HOSTING_ERROR_DIALOG_CONFIG, "unknown");
+				return;
 			}
 		}
-		
-		callback.GetEventOnResponse().Remove(OnProcessLastHostResponse);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -113,17 +113,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		if (silent)
 			return;
 
-		PlaySound(SCR_SoundEvent.SOUND_EXPLOSIVE_ADJUST_TIMER);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void PlaySound(string soundName)
-	{
-		SCR_SoundManagerEntity soundManager = GetGame().GetSoundManagerEntity();
-		if (!soundManager)
-			return;
-
-		soundManager.CreateAndPlayAudioSource(GetOwner(), soundName);
+		SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_EXPLOSIVE_ADJUST_TIMER);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -169,7 +159,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		}
 
 		if (!silent)
-			PlaySound(SCR_SoundEvent.SOUND_EXPLOSIVE_ARM);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_EXPLOSIVE_ARM);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -198,9 +188,9 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 			return;
 
 		if (m_eUsedFuzeType == SCR_EFuzeType.REMOTE)
-			PlaySound(SCR_SoundEvent.SOUND_EXPLOSIVE_CONNECT_WIRES);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_EXPLOSIVE_CONNECT_WIRES);
 		else
-			PlaySound(SCR_SoundEvent.SOUND_EXPLOSIVE_ARM);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_EXPLOSIVE_ARM);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -324,7 +314,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 
 		OnFuzeChanged(oldFuzeType, m_eUsedFuzeType);
 		if (playSound)
-			PlaySound(SCR_SoundEvent.SOUND_EXPLOSIVE_DISARM);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_EXPLOSIVE_DISARM);
 	}
 
 	//------------------------------------------------------------------------------------------------

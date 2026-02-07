@@ -15,6 +15,12 @@ class SCR_InventoryStorageBackpackUI : SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.CHARACTER_STORAGE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached( Widget w )
 	{
 		super.HandlerAttached( w );

@@ -45,7 +45,11 @@ class AttachToSlotManagerCinematicTrack : CinematicTrackBase
 		{
 			//Finding effect entity each frame for keep working in edit time
 			findEntity(globalWorld);
-			m_EntityToAttach = GenericEntity.Cast(globalWorld.FindEntityByName(m_sEntityToAttach));	
+			
+			if (m_sEntityToAttach == "player" && GetGame().GetPlayerController())
+				m_EntityToAttach = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+			else
+				m_EntityToAttach = GenericEntity.Cast(globalWorld.FindEntityByName(m_sEntityToAttach));	
 		}
 		
 		//Attaching entity to slot

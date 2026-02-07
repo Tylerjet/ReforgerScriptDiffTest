@@ -1,7 +1,7 @@
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 {
-	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "0 inf", desc: "Radius of the trigger if selected", category: "Trigger")]
+	[Attribute(defvalue: "5.0", params: "0 inf", desc: "Radius of the trigger if selected", category: "Trigger")]
 	float m_fAreaRadius;
 
 	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation), category: "Trigger Activation")]
@@ -129,7 +129,7 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 			factionTrigger.SetSphereRadius(m_fAreaRadius);
 			FactionManager factionManager = GetGame().GetFactionManager();
 			if (factionManager)
-				factionTrigger.SetOwnerFaction(factionManager.GetFactionByKey(m_sActivatedByThisFaction));
+				factionTrigger.AddOwnerFaction(m_sActivatedByThisFaction);
 		}
 	}
 

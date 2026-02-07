@@ -22,9 +22,9 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 	//---------------------------------------------------------------------------------------------
 	override void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, MenuBase proxyMenu)
 	{
-		WorldSaveItem saveItem;
-		SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
-		saveWorkshopManager.GetCurrentSave(saveItem);
+		//WorldSaveItem saveItem;
+		//SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
+		//saveWorkshopManager.GetCurrentSave(saveItem);
 		
 		super.Init(root, preset, proxyMenu);
 		
@@ -57,7 +57,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		GameProject.GetLoadedAddons(addonGUIDs); 
 		
 		WorkshopApi workshop = GetGame().GetBackendApi().GetWorkshop();
-		MissionWorkshopItem mission = SCR_SaveWorkshopManager.GetCurrentScenario();
+		MissionWorkshopItem mission = null;// SCR_SaveWorkshopManager.GetCurrentScenario();
 		
 		if (m_EntryDependenciesList.GetVisible())
 		{
@@ -87,7 +87,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		m_EntryDependenciesLabel.GetEntryRoot().SetVisible(showDependencies);
 		
 		// Fill scenario 
-		m_EntryScenario.SetValue(SCR_SaveWorkshopManager.GetCurrentScenarioNameTranslated());
+		//m_EntryScenario.SetValue(SCR_SaveWorkshopManager.GetCurrentScenarioNameTranslated());
 		
 		// Arma vision callback
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
@@ -100,11 +100,12 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		photoModeEntity.GetOnActivate().Insert(OnArmaVisionActivated);
 		
 		// Fill with editing manifest
+		/*
 		SCR_EditedSaveManifest editedManifest = saveWorkshopManager.GetEditedSaveManifest();
 		if (editedManifest)
 		{
 			FillListFromWorldSaveManifest(editedManifest.GetManifest());
-		}
+		}*/
 	}
 	
 	//---------------------------------------------------------------------------------------------
@@ -130,7 +131,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 			return null;
 		}
 		
-		SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
+		//SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
 		
 		WorldSaveManifest manifest = new WorldSaveManifest();
 		
@@ -140,7 +141,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		manifest.m_sDescription = m_EntryDescription.ValueAsString();
 		
 		// Filled from scenario 
-		manifest.m_sScenarioId = saveWorkshopManager.GetCurrentScenarioId();
+		manifest.m_sScenarioId = ""; //saveWorkshopManager.GetCurrentScenarioId();
 		
 		//string image = "";
 		//image = saveWorkshopManager.CurrentScenarioImage();
@@ -165,6 +166,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		manifest.m_aDependencyIds = m_EntryDependenciesList.EnabledCheckListPropertyNames();
 		
 		// Files 
+		/*
 		WorldSaveItem saveItem;
 		string fileName = saveWorkshopManager.GetCurrentSave(saveItem);
 		
@@ -188,6 +190,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 			
 			manifest.m_aFileNames = {fileNames[0]};
 		}
+		*/
 		
 		return manifest;
 	}
@@ -238,7 +241,7 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		*/
 		
 		// Add dependencies setup
-		array<Dependency> dependencies = {};
+		array<WorkshopItem> dependencies = {};
 		Revision currentRev = saveItem.GetActiveRevision();
 		if (!currentRev)
 			currentRev = saveItem.GetLocalRevision();
@@ -247,10 +250,10 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 		
 		SCR_ListBoxElementComponent checkbox;
 		
-		foreach (Dependency dependency : dependencies)
+		foreach (WorkshopItem dependency : dependencies)
 		{
 			// Enable required dependency 
-			checkbox = m_EntryDependenciesList.FindCheckboxByPropertyName(dependency.GetID());
+			checkbox = m_EntryDependenciesList.FindCheckboxByPropertyName(dependency.Id());
 			if (checkbox)
 				m_EntryDependenciesList.ToggleCheckbox(checkbox, true);
 		}
@@ -311,8 +314,8 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 	//---------------------------------------------------------------------------------------------
 	protected void OnThumbnailPickerClick(SCR_ImagePickerComponent picker)
 	{			
-		WorldSaveManifest manifest = ManifestFromConfigList();
-		SCR_SaveWorkshopManager.GetInstance().SetEditedSaveManifest(manifest, "thumbnail", string.Empty);
+		//WorldSaveManifest manifest = ManifestFromConfigList();
+		//SCR_SaveWorkshopManager.GetInstance().SetEditedSaveManifest(manifest, "thumbnail", string.Empty);
 		
 		if (picker.GetResourcePath().IsEmpty())
 			m_GalleryPickersList.RemoveElementByWidget(picker.GetRootWidget())
@@ -323,9 +326,9 @@ class SCR_EditorSaveDialog: SCR_ConfigurableDialogUi
 	//---------------------------------------------------------------------------------------------
 	protected void OnGalleryAddElemented()
 	{	
-		SCR_SaveWorkshopManager manager = SCR_SaveWorkshopManager.GetInstance();
-		WorldSaveManifest manifest = ManifestFromConfigList();
-		manager.SetEditedSaveManifest(manifest, "gallery", string.Empty);
+		//SCR_SaveWorkshopManager manager = SCR_SaveWorkshopManager.GetInstance();
+		//WorldSaveManifest manifest = ManifestFromConfigList();
+		//manager.SetEditedSaveManifest(manifest, "gallery", string.Empty);
 		
 		SCR_EditorManagerEntity.GetInstance().SetCurrentMode(EEditorMode.PHOTO_SAVE);
 	}

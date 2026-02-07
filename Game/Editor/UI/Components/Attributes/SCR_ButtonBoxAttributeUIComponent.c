@@ -210,8 +210,10 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 				{
 					if (!icon.IsEmpty())
 					{
-						imageWidget.LoadImageTexture(0, icon);
-						//imageWidget.SetImage(0);
+						if (!value.IsImageset())
+							imageWidget.LoadImageTexture(0, icon);
+						else
+							imageWidget.LoadImageFromSet(0, icon, value.GetIconName());
 					}
 					else 
 					{

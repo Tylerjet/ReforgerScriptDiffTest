@@ -30,11 +30,11 @@ class AnimateWidgetSystem : GameSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnUpdate(ESystemPoint point)
+	override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		super.OnUpdate(point);
+		super.OnUpdate(args.GetPoint());
 		
-		m_Animator.UpdateAnimations(GetWorld().GetTimeSlice());
+		m_Animator.UpdateAnimations(args.GetTimeSliceSeconds());
 	}
 	
 	//------------------------------------------------------------------------------------------------

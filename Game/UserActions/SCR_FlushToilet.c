@@ -3,10 +3,7 @@ class SCR_FlushToilet : ScriptedUserAction
 {	
 	[Attribute("", UIWidgets.Auto)]
 	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
-	
-	[Attribute("", UIWidgets.Coords)]
-	private vector m_vSoundOffset;
-	
+		
 	private AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	
 	protected static ref ScriptInvokerInt s_onToiletFlushed;
@@ -17,22 +14,18 @@ class SCR_FlushToilet : ScriptedUserAction
 		if (s_onToiletFlushed)
 			s_onToiletFlushed.Invoke(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity));
 		
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
-			return;
-		
 		if (!m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
 			return;
 		
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(pOwnerEntity, m_AudioSourceConfiguration);
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(pOwnerEntity.GetWorld());
+		if (!soundManager)
+			return;
+				
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(pOwnerEntity, m_AudioSourceConfiguration);
 		if (!audioSource)
 			return;
-		
-		vector mat[4];
-		pOwnerEntity.GetTransform(mat);
-		mat[3] = pOwnerEntity.CoordToParent(m_vSoundOffset);
-		
-		soundManagerEntity.PlayAudioSource(audioSource, mat);
+				
+		soundManager.PlayAudioSource(audioSource);
 	
 		m_AudioHandle = audioSource.m_AudioHandle;
 	}

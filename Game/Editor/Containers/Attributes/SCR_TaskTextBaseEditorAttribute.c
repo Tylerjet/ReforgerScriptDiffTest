@@ -38,7 +38,7 @@ class SCR_TaskTextBaseEditorAttribute: SCR_BaseEditorAttribute
 		int count = textsComponent.GetTexts(m_TextType, infos);
 		for (int i; i < count; i++)
 		{
-			outEntries.Insert( new SCR_BaseEditorAttributeEntryText(infos[i].GetName()));
+			outEntries.Insert(new SCR_BaseEditorAttributeEntryText(infos[i].GetName()));
 		}
 	
 		return outEntries.Count();

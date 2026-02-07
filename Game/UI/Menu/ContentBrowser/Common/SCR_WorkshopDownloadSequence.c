@@ -56,7 +56,8 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 	{
 		// Setup callback and compute
 		SCR_BackendCallbackWorkshopItem callback = new SCR_BackendCallbackWorkshopItem(m_Item);
-		callback.GetEventOnResponse().Insert(OnItemPatchLoaded);
+		callback.SetOnSuccess(OnItemPatchLoaded);
+		callback.SetOnError(OnItemPatchError);
 		m_aPatchSizeCallbacks.Insert(callback);
 		
 		m_ItemTargetRevision.ComputePatchSize(callback);
@@ -229,15 +230,8 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 	//------------------------------------------------------------------------------------------------
 	//! Call when main item patch size is loaded 
 	//! Server as AllPatchSizeLoaded in base class
-	protected void OnItemPatchLoaded(SCR_BackendCallback callback = null)
-	{
-		// Error handling
-		if (callback && callback.GetResponseType() == EBackendCallbackResponse.ERROR)
-		{
-			HandleError();
-			return;
-		}
-		
+	protected void OnItemPatchLoaded()
+	{	
 		// Size 
 		float size;
 		m_ItemTargetRevision.GetPatchSize(size);
@@ -253,6 +247,14 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 			
 			ShowConfirmationUI();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call when main item patch size fails to load
+	//! Server as AllPatchSizeLoaded in base class
+	protected void OnItemPatchError()
+	{
+		HandleError();
 	}
 	
 	//------------------------------------------------------------------------------------------------

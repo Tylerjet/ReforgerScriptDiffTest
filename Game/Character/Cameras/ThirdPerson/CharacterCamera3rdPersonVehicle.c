@@ -26,7 +26,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	protected float m_fShakeScale;
 	protected float m_fSpeedMax;
 
-	protected IEntity m_OwnerVehicle;
+	IEntity m_OwnerVehicle;
 	protected BaseCompartmentSlot m_pCompartment;
 	protected vector m_vCameraCenter; // In vehicle space
 
@@ -161,6 +161,8 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			m_fLeftRightAngle	= f[1]; 
 		}
 		
+		InitCameraData();
+		
 		CharacterCamera1stPersonVehicle characterCamera1stPersonVehicle  = CharacterCamera1stPersonVehicle.Cast(pPrevCamera);
 		if (characterCamera1stPersonVehicle)
 		{
@@ -168,9 +170,29 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			m_fRollSmoothVel = characterCamera1stPersonVehicle.m_fRollSmoothVel;
 			m_fPitchSmooth = characterCamera1stPersonVehicle.m_fPitchSmooth;
 			m_fPitchSmoothVel = characterCamera1stPersonVehicle.m_fPitchSmoothVel;
+			
+			if (m_OwnerVehicle && m_OwnerCharacter)
+			{
+				// Offset rotation of 3rd person camera if player is sitting sideways in vehicle
+				float thirdPersonCameraOffset = (m_OwnerVehicle.GetYawPitchRoll()[0] - m_OwnerCharacter.GetYawPitchRoll()[0]) * Math.DEG2RAD;
+		
+				if (!float.AlmostEqual(thirdPersonCameraOffset, 0))
+				{	
+					vector angles = m_Input.GetLookAtAngles();
+					angles[0] = angles[0] + thirdPersonCameraOffset;
+					m_Input.SetLookAtAngles(angles);
+				}
+			}
 		}
 		
-		InitCameraData();
+		m_CharacterCameraHandler.SetTraceCharacters(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDeactivate(ScriptedCameraItem pNextCamera)
+	{
+		super.OnDeactivate(pNextCamera);
+		m_CharacterCameraHandler.SetTraceCharacters(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -421,15 +443,12 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	
 	void CalculateLookAngles(vector vehicleAngles, vector characterAngles, out ScriptedCameraItemResult pOutResult)
 	{
-		// Offset rotation of 3rd person camera if player is sitting sideways in vehicle
-		float thirdPersonCameraOffset = vehicleAngles[0] - characterAngles[0];
-		
 		// Horizontal 3rd person camera lag
 		float horizontalLag = Math.Clamp(-m_vLastAngVel[1] * m_fCameraHorizontalLag, -m_fCameraHorizontalLagMax, m_fCameraHorizontalLagMax); //m_vLastAngVel[1] is actually yaw angular velocity
 		
 		//! yaw pitch roll vector
 		vector lookAngles;
-		lookAngles[0] = m_fLeftRightAngle + horizontalLag + thirdPersonCameraOffset;
+		lookAngles[0] = m_fLeftRightAngle + horizontalLag;
 		lookAngles[1] = m_fUpDownAngleCurrent + m_fInertiaAngle;
 		lookAngles[2] = 0.0;
 		

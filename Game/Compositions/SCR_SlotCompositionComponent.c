@@ -144,9 +144,7 @@ class SCR_SlotCompositionComponent : ScriptComponent
 			vector angles = Math3D.MatrixToAngles(transform);
 			IEntitySource ownerSrc = api.EntityToSource(owner);
 			api.SetVariableValue(ownerSrc, null, "coords", pos.ToString(false));
-			api.SetVariableValue(ownerSrc, null, "angleX", angles[1].ToString());
-			api.SetVariableValue(ownerSrc, null, "angleY", angles[0].ToString());
-			api.SetVariableValue(ownerSrc, null, "angleZ", angles[2].ToString());
+			api.SetVariableValue(ownerSrc, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 		}
 		else
 		{

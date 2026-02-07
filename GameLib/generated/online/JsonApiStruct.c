@@ -27,10 +27,6 @@ class JsonApiStruct: Managed
 	*/
 	proto external void RegAll();
 	/*!
-	\brief Push object to parse (only during parse operation)
-	*/
-	proto external void Push(JsonApiStruct obj);
-	/*!
 	\brief Start object at hierarchy - !!! Be cautious and doublecheck results when using this !!!
 	*/
 	proto external void StartObject(string name);
@@ -99,39 +95,31 @@ class JsonApiStruct: Managed
 	*/
 	proto external void ItemArray();
 	/*!
-	\brief Call this when you've done packing or unpacking (interrupt operation)
-	*/
-	proto external void SetDone();
-	/*!
-	\brief Call this when you've done packing or unpacking + want to generate error - prevent to send invalid data etc.
-	*/
-	proto external void SetFail();
-	/*!
-	\brief Start object packing now - for use at main thread only!
+	\brief Create JSON data from this object
 	*/
 	proto external void Pack();
 	/*!
-	\brief Start object unpacking from RAW string data
+	\brief Start object initialization from provided RAW string data
 	*/
 	proto external void ExpandFromRAW(string data);
 	/*!
-	\brief Get packed JSON as string (!only if you called Pack() first, it may return null)
+	\brief Get object as JSON string (If no data are present - empty JSON string object is passed)
 	*/
 	proto external string AsString();
 	/*!
-	\brief Return true if there are present JSON data which can be expanded on script object (typically you check this after load of file)
+	\brief Return true if stringified JSON are present (readable as string)
 	*/
 	proto external bool HasData();
 	/*!
-	\brief Pack() content and Save to file/ Keep content handle alive if it existed
+	\brief Create JSON data and save it to file
 	*/
 	proto external bool PackToFile(string FileName);
 	/*!
-	\brief Save JSON to file (only If something was loaded or received previously!)
+	\brief Save to file (only if data are present from previous operation - load for example) as JSON data
 	*/
 	proto external bool SaveToFile(string FileName);
 	/*!
-	\brief Load JSON from file and Expand
+	\brief Load JSON from file and use it to initialize this object
 	*/
 	proto external bool LoadFromFile(string FileName);
 

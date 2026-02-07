@@ -117,6 +117,17 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 			
 			SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Insert(OnTooltipShow);
 		}
+		
+		// Hide news menu button (top right corner) on PS
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			Widget newsButton = GetRootWidget().FindAnyWidget("NewsButton");
+			if (newsButton)
+			{
+				newsButton.SetVisible(false);
+				newsButton.SetEnabled(false);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -165,7 +176,7 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 		if (m_Tooltip)
 			tooltipContent = m_Tooltip.GetContent();
 		
-		if (m_BackendApi.IsAuthInProgress())
+		if (BackendAuthenticatorApi.IsAuthInProgress())
 		{
 			color = m_ColorConnecting;
 			image = m_sIconConnecting;
@@ -227,7 +238,7 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	protected void OnProfile()
 	{
 		// Show profile screen
-		if (m_BackendApi.IsBIAccountLinked())
+		if (BohemiaAccountApi.IsLinked())
 			SCR_LoginProcessDialogUI.CreateProfileDialog();
 		else
 			SCR_LoginProcessDialogUI.CreateLoginDialog();

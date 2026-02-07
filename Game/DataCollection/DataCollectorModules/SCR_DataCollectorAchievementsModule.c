@@ -196,7 +196,6 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 	{
 		array<int> players = {};
 		GetGame().GetPlayerManager().GetPlayers(players);
-		int playerCount = players.Count();
 		
 		SCR_GameModeCombatOpsManager combatOps = SCR_GameModeCombatOpsManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeCombatOpsManager));
 		SCR_GameModeCampaign conflict = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
@@ -204,71 +203,62 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		if (!combatOps && !conflict)
 			return;
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
-		array<SCR_BaseTask> activeTasks = {};
-		array<SCR_BaseTask> finishedTasks = {};
-		taskManager.GetTasks(activeTasks);
-		taskManager.GetFinishedTasks(finishedTasks);
+		array<SCR_Task> activeTasks = {};
+		array<SCR_Task> finishedTasks = {};
+		taskSystem.GetTasksByState(activeTasks, SCR_ETaskState.CREATED);
+		taskSystem.GetTasksByState(finishedTasks, SCR_ETaskState.COMPLETED);
 		
 		if (combatOps)
 		{
 			/* Achievement CLEAN_SWEEP || PAPER_PUSHER */
 			
-			if (finishedTasks.Count() > activeTasks.Count())
-			{	
-				for(int i = 0; i < playerCount; i++)
-				{
-					CleanSweepCombatOps(players[i]);
-					SecureIntelCombatOps(players[i]);
-				}
-				return;
-			}
-			/* Achievement 008 - meaningless number I cannot deduce */
-			else
+			bool foundIntel, cleanSweep;
+			foreach (SCR_Task task : finishedTasks)
 			{
-				//unnecesary if finishedTasks are not nulls
-				bool foundIntel = false;
-				foreach (SCR_BaseTask task : finishedTasks)
+				if (!task)
+					continue;
+				
+				if (task.GetTaskName().Contains("Intel"))
 				{
-					//Currently, all tasks on finishedTasks are null
-					//@todo Task system refactor will fix this
-					if (!task)
+					foundIntel = true;
+					break;
+				}
+			}
+			
+			if (activeTasks.IsEmpty()) // all tasks finished
+				cleanSweep = true;
+			
+			if (finishedTasks.Count() > activeTasks.Count()) // mission successful
+			{	
+				foreach(int player: players)
+				{
+					if (cleanSweep)
+						CleanSweepCombatOps(player);
+					
+					if (foundIntel)
+						SecureIntelCombatOps(player);
+				}
+			}
+			else // mission lost
+			{
+				foreach (SCR_Task task : activeTasks)
+				{
+					if (!task || task.GetTaskState() != SCR_ETaskState.COMPLETED)
 						continue;
 					
-					if (task.GetTitle().Contains("Intel"))
-					{			
-						foundIntel = true;		
-						for(int i = 0; i < playerCount; i++)
+					if (task.GetTaskName().Contains("Intel")) // should be in finished tasks, no?!
+					{
+						foreach(int player: players)
 						{
-							SecureIntelCombatOps(players[i]);
+							SecureIntelCombatOps(player);
 						}
 						break;
 					}
 				}
-				
-				/* Doing this in case finishedTasks tasks are null, which should not happen. @todo fix */
-				if (!foundIntel)
-				{
-					foreach (SCR_BaseTask task : activeTasks)
-					{
-						if (!task)
-							continue;
-						
-						if (task.GetTaskState() == SCR_TaskState.FINISHED && task.GetTitle().Contains("Intel"))
-						{
-							foundIntel = true;		
-							for(int i = 0; i < playerCount; i++)
-							{
-								SecureIntelCombatOps(players[i]);
-							}
-							break;
-						}
-					}
-				}
-				/* Achievement 009 - meaningless number */
 			}
 		}
 		else if (conflict && conflict.IsTutorial())
@@ -276,9 +266,9 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 			/* Achievement SWEAT_SAVES_BLOOD */
 			if (finishedTasks.Count() >= activeTasks.Count())
 			{	
-				for(int i = 0; i < playerCount; i++)
+				foreach(int player: players)
 				{
-					CleanSweepTutorial(players[i]);
+					CleanSweepTutorial(player);
 				}
 				return;
 			}

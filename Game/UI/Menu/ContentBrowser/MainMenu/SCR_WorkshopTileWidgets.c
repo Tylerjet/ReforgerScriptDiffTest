@@ -19,6 +19,11 @@ class SCR_WorkshopTileWidgets
 
 	TextWidget m_wMainActionText;
 
+	ButtonWidget m_wRepairActionButton;
+	SCR_ModularButtonComponent m_RepairActionButtonComponent0;
+	SCR_DynamicIconComponent m_RepairActionButtonComponent1;
+
+
 	ButtonWidget m_wFavouriteButton;
 	SCR_ModularButtonComponent m_FavouriteButtonComponent0;
 	SCR_DynamicIconComponent m_FavouriteButtonComponent1;
@@ -83,6 +88,11 @@ class SCR_WorkshopTileWidgets
 		m_MainActionButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wMainActionButton.FindHandler(SCR_DynamicIconComponent));
 
 		m_wMainActionText = TextWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wMainActionButton.MainActionSizeLayout.MainActionOverlay.MainActionHorizontalLayout.m_wMainActionText"));
+
+		m_wRepairActionButton = ButtonWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wRepairActionButton"));
+		m_RepairActionButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wRepairActionButton.FindHandler(SCR_ModularButtonComponent));
+		m_RepairActionButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wRepairActionButton.FindHandler(SCR_DynamicIconComponent));
+
 
 		m_wFavouriteButton = ButtonWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wFavouriteButton"));
 		m_FavouriteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wFavouriteButton.FindHandler(SCR_ModularButtonComponent));

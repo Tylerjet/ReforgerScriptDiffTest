@@ -21,6 +21,11 @@ class SCR_FailedModsDownloadDialog : SCR_ConfigurableDialogUi
 	protected const string STR_AFFECTED_MODS = "#AR-Workshop_FailedModsDownload";
 	protected const string FAILED_ADDON_FORMAT = "- %1 \n"; 
 	
+	protected const string MESSAGE_ERROR_UNKNOWN = "#AR-AddonValidate_Error_Unknown_UC";
+	protected const string MESSAGE_ERROR_BUSY = "#AR-AddonValidate_Error_Busy_UC";
+	protected const string MESSAGE_ERROR_AUTH = "#AR-AddonValidate_Error_NoInternet_UC";
+	protected const string MESSAGE_ERROR_STORAGE = "#AR-AddonValidate_Error_AvailableSpace_UC";
+	
 	protected static ref SCR_FailedModsDownloadDialog m_Instance;
 	
 	protected ref array<SCR_WorkshopItemActionDownload> m_aDisplayedActions = {};
@@ -40,10 +45,11 @@ class SCR_FailedModsDownloadDialog : SCR_ConfigurableDialogUi
 		// Choose message dialog
 		switch (reason)
 		{
-			// Connection failed
-			case 1: message = SCR_ConnectionUICommon.MESSAGE_VERBOSE_TIMEOUT; break;
-			
-			// TODO
+			default:
+			case EBackendError.EBERR_UNKNOWN: 			message = MESSAGE_ERROR_UNKNOWN; break;	// Unknown
+			case EBackendError.EBERR_BUSY: 				message = MESSAGE_ERROR_BUSY; break;	// Mod is busy doing something else
+			case EBackendError.EBERR_AUTH_FAILED: 		message = MESSAGE_ERROR_AUTH; break;	// Cant login ?
+			case EBackendError.EBERR_STORAGE_IS_FULL: 	message = MESSAGE_ERROR_STORAGE; break;	// No Available space
 		}
 		
 		if (!message.IsEmpty())
@@ -53,8 +59,18 @@ class SCR_FailedModsDownloadDialog : SCR_ConfigurableDialogUi
 		m_Instance = new SCR_FailedModsDownloadDialog();
 		
 		CreateFromPreset(SCR_WorkshopDialogs.DIALOGS_CONFIG, FAILED_ADDON_LIST_DIALOG, m_Instance);
-		m_Instance.SetMessage(message);
+		m_Instance.SetMessageFormat(message, reason);
 		m_Instance.UpdateFailedModsDialogContent(action, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMessageFormat(string text, int reason)
+	{
+		if (m_wMessage)
+		{
+			m_wMessage.SetVisible(true);
+			m_wMessage.SetTextFormat(text, reason);
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------

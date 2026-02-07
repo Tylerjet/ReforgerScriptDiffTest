@@ -37,6 +37,13 @@ class SCR_MapCompassUI : SCR_MapRTWBaseUI
 			vector anglesCompass = vector.Zero;
 			anglesCompass[1] = player.GetCharacterController().GetInputContext().GetHeadingAngle() * Math.RAD2DEG;
 			
+			// if player is inside the vehicle - check for the vehicle rotation instead
+			// GetHeadingAngle returns the wrong value when in vehicle and map is opened 
+			if (player.IsInVehicle())
+			{
+				anglesCompass[1] = player.GetAngles()[1];
+			}
+			
 			m_RTEntity.SetAngles(anglesCompass);
 			
 			// activate, apply proc anims
@@ -114,7 +121,7 @@ class SCR_MapCompassUI : SCR_MapRTWBaseUI
 		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 11);
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 11, m_bIsExclusive);
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 			
 			GetGame().GetInputManager().AddActionListener("MapToolCompass", EActionTrigger.DOWN, OnInputQuickBind);

@@ -383,7 +383,7 @@ class SCR_ArsenalComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] faction unused parameter
-	void RefreshArsenal(SCR_Faction faction = null)
+	void RefreshArsenal(bool init = false, SCR_Faction faction = null)
 	{
 		ClearArsenal();
 
@@ -408,7 +408,9 @@ class SCR_ArsenalComponent : ScriptComponent
 		if (m_OnArsenalUpdated)
 			m_OnArsenalUpdated.Invoke(arsenalPrefabs);
 		
-		if (Replication.IsServer())
+		// If we know this is called form EOnInit we don't send any RPC.
+		// At that point RplComponent is not initialized yet and calling the RPC would only result in error spam.
+		if (!init && Replication.IsServer())
 			Rpc(RPC_OnArsenalUpdated, m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes);	
 	}
 	

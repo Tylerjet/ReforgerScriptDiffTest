@@ -27,6 +27,11 @@ class ScriptedSerializationLoadContainer: BaseSerializationLoadContainer
 	event protected bool ReadFloat(out float value) {return false;};
 	event protected bool ReadVector(out vector value) {return false;};
 
+	//! Reset the container to re-use for new data.
+	event protected void Reset();
+	//! Data extension of the serialized format (e.g. txt, csv, yml) if stored in a filesystem.
+	event protected string GetDataExtension() {return ".txt";};
+	event protected bool ImportFromString(string data) {return false;};
 }
 
 /*!

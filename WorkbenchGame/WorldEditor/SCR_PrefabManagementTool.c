@@ -13,7 +13,7 @@ class SCR_PrefabManagementTool : WorldEditorTool
 		Category: General
 	*/
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where new prefabs will be created", enums: ParamEnumAddons.FromEnum(), category: "General")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "File system where new prefabs will be created", enums: SCR_ParamEnumArray.FromAddons(), category: "General")]
 	protected int m_iAddon;
 
 	[Attribute(defvalue: "1", desc: "If a destination file already exists, it is overwritten", category: "General")]

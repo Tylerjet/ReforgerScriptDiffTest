@@ -9,17 +9,26 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 	[Attribute("Time")]
 	protected string m_sRemainingVotingTimeName;
 	
+	[Attribute("VotingInstantVoteButtons")]
+	protected string m_sVotingInstantVoteButtonsName;
+
 	[Attribute("#AR-Voting_PlayerCountFormatting")]
 	protected string m_sCurrentVoteCountFormatting;
 	
 	protected Widget m_InstantVoteLayout;
 	protected TextWidget m_RemainingVotingTime;
+	protected Widget m_VotingInstantVoteButtons;
 	
 	protected SCR_VotingManagerComponent m_VotingManagerComponent;
 	
 	//~ If one vote is set then the duration left is shown
 	protected EVotingType m_eActiveSingularVoteType;
 	protected int m_eActiveSingularVoteValue;
+
+	//~ If there is a voting about local player that should display the vote timer
+	protected EVotingType m_eActiveVotingAboutLocalPlayerVoteType;
+	protected int m_iActiveVotingAboutLocalPlayerVoteValue;
+	protected bool m_bIsDisplayingLocalVoteTimer;
 	
 	protected bool m_bIsUpdatingTime;
 	protected bool m_bIsUpdatingActionContext;
@@ -32,6 +41,7 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 		array<EVotingType> validActiveVotingTypes = {};
 		array<int> votingValues = {};
 		int count = m_VotingManagerComponent.GetAllVotingsWithValue(validActiveVotingTypes, votingValues, false, true);
+		m_bIsDisplayingLocalVoteTimer = false;
 		
 		int value;
 		EVotingType voteType;
@@ -39,9 +49,18 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 		{
 			voteType = validActiveVotingTypes[i];
 			value = votingValues[i];
+
 			//~ Ignore any abstained, unavailible or voted votes
-			if (m_VotingManagerComponent.HasAbstainedLocally(voteType, value) || m_VotingManagerComponent.IsLocalVote(voteType, value))
+			if (!m_VotingManagerComponent.IsVotingAvailable(voteType, value) || m_VotingManagerComponent.HasAbstainedLocally(voteType, value) || m_VotingManagerComponent.IsLocalVote(voteType, value))
 			{
+				if (m_VotingManagerComponent.GetVoteAlwaysDisplayVoteSubjectVotingTimer(voteType, value) && value == SCR_PlayerController.GetLocalPlayerId())
+				{
+					m_bIsDisplayingLocalVoteTimer = true;
+					m_eActiveVotingAboutLocalPlayerVoteType = voteType;
+					m_iActiveVotingAboutLocalPlayerVoteValue = value;
+					continue;
+				}
+
 				validActiveVotingTypes.RemoveOrdered(i);
 				votingValues.RemoveOrdered(i);
 			}	
@@ -66,18 +85,25 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 		{
 			m_Text.SetTextFormat(m_sMultipleVotesText, votingCount.ToString());
 			
-			if (m_InstantVoteLayout)
-				m_InstantVoteLayout.SetVisible(false);
 			if (m_OptionalMessageLayout)
 				m_OptionalMessageLayout.SetVisible(true);
-			
-			EnableVotingTimerUI(false);
+
+			if (m_InstantVoteLayout)
+				m_InstantVoteLayout.SetVisible(m_bIsDisplayingLocalVoteTimer);
+
+			if (m_VotingInstantVoteButtons)
+				m_VotingInstantVoteButtons.SetVisible(false);
+
+			if (m_RemainingVotingTime)
+				m_RemainingVotingTime.SetVisible(m_bIsDisplayingLocalVoteTimer);
+
+			EnableVotingTimerUI(m_bIsDisplayingLocalVoteTimer);
 			EnableContextAction(false);
 			menuInvoker.Remove(OnSettingsMenuClosed);
 		}
 		//One vote active
-		else 
-		{		
+		else
+		{
 			m_eActiveSingularVoteType = validActiveVotingTypes[0];
 			m_eActiveSingularVoteValue = votingValues[0];
 			
@@ -98,15 +124,21 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 				else 
 					m_Text.SetTextFormat(text);
 			}
-			
+
 			if (m_InstantVoteLayout)
 				m_InstantVoteLayout.SetVisible(true);
 
 			if (m_OptionalMessageLayout)
 				m_OptionalMessageLayout.SetVisible(false);
+
+			if (m_VotingInstantVoteButtons)
+				m_VotingInstantVoteButtons.SetVisible(!m_bIsDisplayingLocalVoteTimer);
+
+			if (m_RemainingVotingTime)
+				m_InstantVoteLayout.SetVisible(true);
 			
 			EnableVotingTimerUI(true);
-			EnableContextAction(true);
+			EnableContextAction(!m_bIsDisplayingLocalVoteTimer);
 
 			menuInvoker.Insert(OnSettingsMenuClosed);
 		}		
@@ -238,10 +270,13 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Called when only 1 vote is active. Called every 1 second to update
+	//! Called when only 1 vote is active or when local player is the subject of the vote and timer is displayed. Called every 1 second to update
 	protected void VotingTimeUpdate()
 	{
-		m_RemainingVotingTime.SetText(SCR_FormatHelper.GetTimeFormatting(Math.Clamp(m_VotingManagerComponent.GetRemainingDurationOfVote(m_eActiveSingularVoteType, m_eActiveSingularVoteValue), 0, float.MAX), ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES));	
+		if (m_bIsDisplayingLocalVoteTimer)
+			m_RemainingVotingTime.SetText(SCR_FormatHelper.GetTimeFormatting(Math.Clamp(m_VotingManagerComponent.GetRemainingDurationOfVote(m_eActiveVotingAboutLocalPlayerVoteType, m_iActiveVotingAboutLocalPlayerVoteValue), 0, float.MAX), ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES));
+		else
+			m_RemainingVotingTime.SetText(SCR_FormatHelper.GetTimeFormatting(Math.Clamp(m_VotingManagerComponent.GetRemainingDurationOfVote(m_eActiveSingularVoteType, m_eActiveSingularVoteValue), 0, float.MAX), ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -294,8 +329,11 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 		
 		m_InstantVoteLayout = m_Root.FindAnyWidget(m_sInstantVoteLayoutName);
 		if (m_InstantVoteLayout)
+		{
 			m_RemainingVotingTime = TextWidget.Cast(m_InstantVoteLayout.FindAnyWidget(m_sRemainingVotingTimeName));	
-			
+			m_VotingInstantVoteButtons = m_InstantVoteLayout.FindAnyWidget(m_sVotingInstantVoteButtonsName);
+		}
+
 		m_VotingManagerComponent = SCR_VotingManagerComponent.GetInstance();
 		if (m_VotingManagerComponent)
 		{			

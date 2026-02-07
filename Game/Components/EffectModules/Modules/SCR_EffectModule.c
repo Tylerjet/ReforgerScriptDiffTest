@@ -213,7 +213,11 @@ class SCR_EffectsModule
 			//~ Mine logics
 			SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(spawnedEntity.FindComponent(SCR_PressureTriggerComponent));
 			if (pressureTriggerComponent)
+			{
 				pressureTriggerComponent.ActivateTrigger();
+				if (pressureTriggerComponent.GetArmingTime() > 0)
+					pressureTriggerComponent.ResetTimeout();
+			}
 		}
 		OnEntitySpawnedBroadcast(spawnedChild, targetPosition);
 	}	

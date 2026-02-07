@@ -4,13 +4,13 @@ class SCR_PlayerProfileDialogUI : SCR_LoginProcessDialogUI
 	//------------------------------------------------------------------------------------------------
 	override void OnConfirm()
 	{
-		GetGame().GetBackendApi().Unlink(m_Callback);
+		BohemiaAccountApi.Unlink(m_Callback);
 		
 		super.OnConfirm();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnSuccess(SCR_BackendCallback callback)
+	override void OnSuccess(BackendCallback callback)
 	{
 		Close();
 	}

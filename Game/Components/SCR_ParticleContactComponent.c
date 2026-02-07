@@ -37,15 +37,15 @@ class SCR_ParticleContactComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	private void PlaySound(IEntity owner, SCR_ParticleContactComponentClass prefabData, Contact contact)
 	{
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
-			return;
-				
 		if (!prefabData.m_AudioSourceConfiguration || !prefabData.m_AudioSourceConfiguration.IsValid())
+			return;
+		
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
+		if (!soundManager)
 			return;
 				
 		// Create audio source
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(owner, prefabData.m_AudioSourceConfiguration);	
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(owner, prefabData.m_AudioSourceConfiguration, contact.Position);	
 		if (!audioSource)
 			return;
 
@@ -54,20 +54,13 @@ class SCR_ParticleContactComponent : ScriptComponent
 		{
 			GameMaterial material = contact.Material2;
 			if (material)
+			{
 				audioSource.SetSignalValue(SCR_AudioSource.SURFACE_SIGNAL_NAME, material.GetSoundInfo().GetSignalValue());
+			}
 		}
-		
-		// Play sound
-		if (SCR_Enum.HasFlag(prefabData.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.Static))
-		{
-			vector mat[4];
-			Math3D.MatrixIdentity4(mat);
-			mat[3] = contact.Position;
-			
-			soundManagerEntity.PlayAudioSource(audioSource, mat);
-		}
-		else		
-			soundManagerEntity.PlayAudioSource(audioSource);		
+				
+		// Play sound	
+		soundManager.PlayAudioSource(audioSource);		
 	}
 	
 	//------------------------------------------------------------------------------------------------			
@@ -137,10 +130,10 @@ class SCR_ParticleContactComponent : ScriptComponent
 				ParticleEffectEntity.SpawnParticleEffect(prefabData.m_Particle, spawnParams);
 				
 #ifdef ENABLE_DIAG
-					if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_CONTACT_COMPONENT))
-						return;
-				
-					DebugTextWorldSpace.Create(GetOwner().GetWorld(), contact.Material2.GetName(), DebugTextFlags.CENTER, contact.Position[0], contact.Position[1], contact.Position[2]);
+					if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_CONTACT_COMPONENT))
+					{
+						DebugTextWorldSpace.Create(GetOwner().GetWorld(), contact.Material2.GetName(), DebugTextFlags.CENTER, contact.Position[0], contact.Position[1], contact.Position[2]);
+					}
 #endif
 			}
 		}

@@ -2,10 +2,10 @@
 class SCR_ScenarioFrameworkActionSpawnClosestObjectFromList : SCR_ScenarioFrameworkActionBase
 {
 	[Attribute(desc: "Closest to what - use getter")]
-	ref SCR_ScenarioFrameworkGet		m_Getter;
+	ref SCR_ScenarioFrameworkGet m_Getter;
 
-	[Attribute(defvalue: "", UIWidgets.EditComboBox, desc: "The closest one from the list will be spawned")]
-	ref array<string> 	m_aListOfObjects;
+	[Attribute(defvalue: "", desc: "The closest one from the list will be spawned")]
+	ref array<string> m_aListOfObjects;
 	
 	[Attribute(defvalue: SCR_ScenarioFrameworkEActivationType.ON_TRIGGER_ACTIVATION.ToString(), uiwidget: UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(SCR_ScenarioFrameworkEActivationType))]
 	SCR_ScenarioFrameworkEActivationType m_eActivationType;

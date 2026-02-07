@@ -6,7 +6,6 @@ class SCR_GameOverScreenCombatControlPatrolUIComponent: SCR_GameOverScreenConten
 	[Attribute("GameOver_Tasks")]
 	protected string m_sTasks;
 	
-	protected ref array<SCR_BaseTask> 	m_aFinishedTasks = {};
 	protected string 					timeElapsed;
 	
 	override void InitContent(SCR_GameOverScreenUIContentData endScreenUIContent)
@@ -36,19 +35,26 @@ class SCR_GameOverScreenCombatControlPatrolUIComponent: SCR_GameOverScreenConten
 		if (timeWidget)
 			timeWidget.SetTextFormat(string.Format("<color rgba=%1>%2</color> <br/> %3", UIColors.FormatColor(UIColors.CONTRAST_COLOR), "#AR-CombatScenario_Total_Operation_Time",  timeElapsed));
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
-		taskManager.GetFinishedTasks(m_aFinishedTasks);
+		array<SCR_Task> allTasks = {};
+		taskSystem.GetTasksByState(allTasks, SCR_ETaskState.COMPLETED);
 		
 		string tasksToShow = "<br/>";
-		foreach (SCR_BaseTask task : m_aFinishedTasks)
+		SCR_TaskUIInfo taskUiInfo;
+		
+		foreach (SCR_Task task : allTasks)
 		{
+			taskUiInfo = task.GetTaskUIInfo();
+			if (!taskUiInfo)
+				continue;
+			
 			if (tasksToShow == "<br/>")
-				tasksToShow = tasksToShow + string.Format(WidgetManager.Translate(task.GetTitle()));
+				tasksToShow = tasksToShow + taskUiInfo.GetTranslatedName();
 			else 
-				tasksToShow = tasksToShow + "<br/>" + string.Format(WidgetManager.Translate(task.GetTitle()));
+				tasksToShow = tasksToShow + "<br/>" + taskUiInfo.GetTranslatedName();
 		}
 		
 		if (tasksWidget)

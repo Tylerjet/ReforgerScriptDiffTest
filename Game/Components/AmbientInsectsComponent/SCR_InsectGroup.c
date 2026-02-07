@@ -1,3 +1,10 @@
+enum ESpawnMethod
+{
+	ENTITY,
+	TERRAIN,
+	SOUNDMAP
+}
+
 [BaseContainerProps(configRoot: true)]
 class SCR_InsectGroup
 {

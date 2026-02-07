@@ -27,8 +27,6 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	protected int m_iSpawnPointCount = -1;
 	protected int m_iTaskCount = -1;
 	
-	//Task Safty
-	protected SCR_BaseTask m_PrevTask = null;
 	
 	//Script invokers
 	protected ref ScriptInvoker Event_OnSpawnPointCountChanged = new ScriptInvoker();
@@ -38,6 +36,9 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	protected SCR_EArsenalItemType m_AllowedArsenalItemTypes;
 	protected ref map<SCR_EArsenalItemType, int> m_aCurrentItemTaken = new map<SCR_EArsenalItemType, int>();
 	
+	private bool m_bQueuedSpawnpointChanges = false;
+	private bool m_bQueuedTaskCountChanged = false;
+
 	//------------------------------------------------------------------------------------------------
 	//! Assign faction to this editable entity.
 	//! \param[in] index Index of the faction in FactionManager array
@@ -99,12 +100,12 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		GetGame().GetCallqueue().CallLater(InitTaskCount);
 		
 		//Spawnpoints
-		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Insert(OnSpawnPointsChanged);
+		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Insert(OnSpawnPointCountChanged);
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnpointFactionChanged);
 		
 		//Tasks
-		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTasksChanged);
-		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(OnTasksChanged);
+		SCR_TaskSystem.GetOnTaskAdded().Insert(OnTaskAdded);
+		SCR_TaskSystem.GetOnTaskRemoved().Insert(OnTaskRemoved);
 	}
 	
 	//======================================== FACTION RELATIONSHIP REPLICATION ========================================\\
@@ -183,23 +184,55 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnSpawnpointFactionChanged(SCR_SpawnPoint spawnPoint)
 	{
-		OnSpawnPointsChanged(m_Faction.GetFactionKey());
+		QueueSpawnPointChanged(m_Faction.GetFactionKey());
 	}
 	
 	//---------------------------------------- On Faction Spawnpoints changed ----------------------------------------\\
-
-	//------------------------------------------------------------------------------------------------
-	// Called on server
-	protected void OnSpawnPointsChanged(string factionKey)
-	{		
-		if (factionKey != m_Faction.GetFactionKey()) 
+	//! Queues a spawn point change. We only have to notify once per frame that spawnpoints changed, instead of once per changed spawnpoint.
+	//! \param[in] FactionKey faction faction that changed
+	private void QueueSpawnPointChanged(FactionKey faction)
+	{
+		//changes already queued
+		if(m_bQueuedSpawnpointChanges)
 			return;
+		
+		m_bQueuedSpawnpointChanges = true;
+		GetGame().GetCallqueue().CallLater(ProcessQueuedSpawnPointChanges);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Queues a spawn point change.
+	//! \param[in] FactionKey faction faction that changed
+	protected void OnSpawnPointCountChanged(string factionKey)
+	{
+		if (factionKey != m_Faction.GetFactionKey()) 
+			return;		
+		
+		QueueSpawnPointChanged(factionKey);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Calls the method that sends the invoker and calls the RPC for clients for spawn points changed
+	//! Basically we are "accumulating" spawn point changes through the frame and then notifying about 
+	//! all of them at once instead of one by one
+	protected void ProcessQueuedSpawnPointChanges()
+	{
+		m_bQueuedSpawnpointChanges = false;
 		
 		int spawnPointCount = SCR_SpawnPoint.GetSpawnPointCountForFaction(m_Faction.GetFactionKey());
 		
 		//No change
 		if (spawnPointCount == m_iSpawnPointCount)
 			return;
+		
+		OnSpawnPointsChanged(m_Faction.GetFactionKey());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Called on server
+	protected void OnSpawnPointsChanged(string factionKey)
+	{		
+		int spawnPointCount = SCR_SpawnPoint.GetSpawnPointCountForFaction(m_Faction.GetFactionKey());
 		
 		//Notification no spawns
 		if (spawnPointCount == 0)
@@ -210,6 +243,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		
 		//Update Spawn count
 		OnSpawnPointCountChangedBroadcast(spawnPointCount);
+		
 		Rpc(OnSpawnPointCountChangedBroadcast, spawnPointCount);
 	}
 	
@@ -227,15 +261,15 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	// Called on server
 	protected void InitTaskCount()
 	{		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
-		array<SCR_BaseTask> tasks = {};
-		int factionTaskCount = taskManager.GetFilteredTasks(tasks, m_Faction);
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasksByState(tasks, SCR_ETaskState.CREATED, m_Faction.GetFactionKey());
 		
-		InitTaskCountBroadcast(factionTaskCount);
-		Rpc(InitTaskCountBroadcast, factionTaskCount);
+		InitTaskCountBroadcast(tasks.Count());
+		Rpc(InitTaskCountBroadcast, tasks.Count());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -247,28 +281,65 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	
 	//---------------------------------------- Faction Task Count Changed ----------------------------------------\\
 	//Called on server
-	protected void OnTasksChanged(notnull SCR_BaseTask task)
+	protected void OnTaskAdded(notnull SCR_Task task)
 	{		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		QueueTaskCountChanges(task);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnTaskRemoved(notnull SCR_Task task)
+	{		
+		QueueTaskCountChanges(task);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Queues a task change. We only have to notify once per frame that tasks changed, instead of once per changed task.
+	//! \param[in] SCR_Task task task that changed
+	protected void QueueTaskCountChanges(notnull SCR_Task task)
+	{
+		if(m_bQueuedTaskCountChanged)
 			return;
 		
-		Faction faction = task.GetTargetFaction();
-		if (!faction || faction != m_Faction)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
-		array<SCR_BaseTask> tasks = {};
-		int factionTaskCount = taskManager.GetFilteredTasks(tasks, m_Faction);
+		if (!task)
+			return;
+		
+		array<string> factionKeys = task.GetOwnerFactionKeys();
+		if (factionKeys.IsEmpty() || !factionKeys.Contains(m_Faction.GetFactionKey()))
+			return;
+		
+		m_bQueuedTaskCountChanged = true;
+		GetGame().GetCallqueue().CallLater(OnTaskCountChanged);	
+		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Calls the method that sends the invoker and calls the RPC for clients for task count changes
+	//! Basically we are "accumulating" task changes through the frame and then notifying about 
+	//! all of them at once instead of one by one
+	protected void OnTaskCountChanged()
+	{		
+		m_bQueuedTaskCountChanged = false;
+		
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
+			return;
+		
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasksByState(tasks, SCR_ETaskState.CREATED |  SCR_ETaskState.ASSIGNED |  SCR_ETaskState.PROGRESSED , m_Faction.GetFactionKey());
+		
+		int tasksCount = tasks.Count();
 		
 		//Safty as task Update is called on any change in tasks, but it should catch all the OnTaskUpdates types regardless. So if the same value is given don't do anything
-		if (m_PrevTask == task && m_iTaskCount == factionTaskCount)
+		if (m_iTaskCount == tasksCount)
 			return;
 		
-		m_PrevTask = task;
-		
 		//Update task count
-		OnTaskCountChangedBroadcast(factionTaskCount);
-		Rpc(OnTaskCountChangedBroadcast, factionTaskCount);	
+		OnTaskCountChangedBroadcast(tasksCount);
+		Rpc(OnTaskCountChangedBroadcast, tasksCount);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -567,8 +638,8 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 			SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnpointFactionChanged);
 		
 			//Tasks
-			SCR_BaseTaskManager.s_OnTaskUpdate.Remove(OnTasksChanged);
-			SCR_BaseTaskManager.s_OnTaskDeleted.Remove(OnTasksChanged);
+			SCR_TaskSystem.GetInstance().GetOnTaskAdded().Remove(OnTaskAdded);
+			SCR_TaskSystem.GetInstance().GetOnTaskRemoved().Remove(OnTaskRemoved);
 		}
 	}
 }

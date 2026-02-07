@@ -428,7 +428,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		if(!button)
 			return string.Empty;
 		
-		return m_aButtonComponents.GetKeyByValue(button);
+		return SCR_MapHelper<string, SCR_InputButtonComponent>.GetKeyByValue(m_aButtonComponents, button);
 	}
 	
 	// --- Protected ---

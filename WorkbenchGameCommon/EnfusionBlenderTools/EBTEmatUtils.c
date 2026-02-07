@@ -16,17 +16,17 @@ class EBTContainerFields
 	static const string toLinear = "ToLinear";
 	static const string raw = "Raw";
 	static const string sRGB = "sRGB";
+	static const string redHQCompression = "RedHQCompression";
 	//PREFAB
 	static const string coords = "coords";
-	static const string angle = "angle";
+	static const string angles = "angles";
 	static const string scale = "scale";
 	static const string pivot = "PivotID";
 	static const string hierarchy = "Hierarchy";
 	static const string components = "components";
 	static const string meshObject = "MeshObject";
 	static const string object = "Object";
-	static const ref array<string> supportedTypes = {"GenericEntity", "Building", "GameEntity"};
-	static const ref array<string> angles = {"angleX","angleY","angleZ"};
+	static const ref array<string> supportedTypes = {"GenericEntity", "Building", "GameEntity", "StaticModelEntity"};
 }
 
 

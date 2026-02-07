@@ -34,7 +34,7 @@ class SCR_ScenarioFrameworkMedicalConditionHealth : SCR_ScenarioFrameworkMedical
 
 		foreach (string hitZoneName : m_aHitZoneNames)
 		{
-			HitZone hitZone = damageManager.GetHitZoneByName(hitZoneName, caseSensitive: false);
+			HitZone hitZone = damageManager.GetHitZoneByName(hitZoneName);
 			if (EvaluateHealthScaled(hitZone.GetHealthScaled()))
 				return true;
 		}

@@ -46,9 +46,21 @@ class ScriptedCameraItem : BaseScriptedCameraItem
 
 		return cameraManager.GetFirstPersonFOV();
 	}
+	
+	void OverrideDirectBoneMode(EDirectBoneMode boneMode)
+	{
+		m_OverrideDirectBoneMode = boneMode;
+	}
+	
+	EDirectBoneMode GetOverrideDirectBoneMode()
+	{
+		return m_OverrideDirectBoneMode;
+	}
 			
 	//! data 
 	protected CameraHandlerComponent m_CameraHandler;	//!< component owner
+	
+	protected EDirectBoneMode m_OverrideDirectBoneMode = 0;
 };
 
 // *************************************************************************************

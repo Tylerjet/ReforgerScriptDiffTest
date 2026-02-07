@@ -13,7 +13,7 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	string m_sToolMenuIconName;
 	
 	[Attribute("", UIWidgets.Object, desc: "Array of sizes, multiplicator values of default base ruler length of 1km")]
-	protected ref array<ref int> m_aSizesArray; 
+	protected ref array<int> m_aSizesArray; 
 
 	protected bool m_bIsVisible;
 	protected bool m_bWantedVisible;
@@ -69,7 +69,15 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 
 			IEntity mapItem = controller.GetAttachedGadgetAtLeftHandSlot();
 			if (!mapItem)
-				return;
+			{
+				SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(player);
+				if (!gadgetManager)
+					return;
+
+				mapItem = gadgetManager.GetGadgetByType(EGadgetType.MAP);
+				if (!mapItem)
+					return;
+			}
 
 			SCR_MapGadgetComponent mapGadget = SCR_MapGadgetComponent.Cast(mapItem.FindComponent(SCR_MapGadgetComponent));
 			if (!mapGadget)
@@ -247,7 +255,7 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 10); // add to menu
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 10, m_bIsExclusive); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 			m_ToolMenuEntry.SetEnabled(true);
 			

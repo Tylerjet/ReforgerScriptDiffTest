@@ -213,7 +213,7 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 		callBack.m_pStorageMan = m_InventoryManager;
 		callBack.m_eAttachAction = EAttachAction.ATTACH;
 		
-		m_InventoryManager.TryReplaceAndDropItemAtSlot(m_Storage, item, GetFocusedSlotId(), callBack);
+		m_InventoryManager.EquipAny(m_Storage, item, -1, callBack);
 		
 		return true;
 	}

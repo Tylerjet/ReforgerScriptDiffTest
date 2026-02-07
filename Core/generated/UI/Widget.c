@@ -137,9 +137,9 @@ sealed class Widget: Managed
 	*/
 	proto external int ClearFlags(int flags);
 	proto external WidgetType GetTypeID();
-	//! Returns position of this widget's top left corner in DPI scaled resolution
+	//! Returns position of this widget's top left corner in physical resolution
 	proto void GetScreenPos(out float x, out float y);
-	//! Returns size of this widget in DPI scaled resolution
+	//! Returns size of this widget in physical resolution
 	proto void GetScreenSize(out float width, out float height);
 	//! Remove callback with given callbackId (callback ID is returned from AddCallback method)
 	proto external bool RemoveCallback(int eventId, int callbackId);
@@ -149,6 +149,15 @@ sealed class Widget: Managed
 	proto external bool EmitCallback(int eventId);
 	//! Add callback for given event id and returns callback id
 	proto int AddCallback(int eventId, WidgetEventCallback fn);
+	/*!
+	Emits custom widget event (called over hierarchy like other widget events).
+	\see ScriptedWidgetEventHandler
+
+	\param iData User parameter passed to event listener.
+	\param pData User parameter passed to event listener.
+	\return Returns true when event is processed by any listener.
+	*/
+	proto external bool EmitCustomEvent(int iData, Managed pData);
 }
 
 /*!

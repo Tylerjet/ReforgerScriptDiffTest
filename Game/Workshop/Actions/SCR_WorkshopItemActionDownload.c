@@ -13,7 +13,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	
 	protected bool m_bTargetVersionLatest;	// When true, means we want to download latest version
 	
-	protected ref SCR_BackendCallback m_Callback;
+	protected ref BackendCallback m_Callback;
 	
 	protected float m_fSizeBytes; // Total size of this download.
 	
@@ -31,7 +31,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	protected bool m_bAddonEnabledAtStart;
 	
 	// Pause and resume handling
-	protected ref SCR_BackendCallback m_PauseDownloadCallback = new SCR_BackendCallback();
+	protected ref BackendCallback m_PauseDownloadCallback = new BackendCallback();
 	protected bool m_bRunningImmediate;		// Immediate change what is requested
 	protected bool m_bRunningAsync;	// Changes after reponse
 	
@@ -184,7 +184,8 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		{
 			m_bRunningImmediate = false;
 			
-			m_PauseDownloadCallback.GetEventOnResponse().Insert(OnPauseResponse);
+			m_PauseDownloadCallback.SetOnSuccess(OnPauseResponse);
+			m_PauseDownloadCallback.SetOnError(OnPauseError);
 			item.PauseDownload(m_PauseDownloadCallback);
 		}
 		
@@ -193,21 +194,18 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void OnPauseResponse(SCR_BackendCallback callback)
-	{
-		callback.GetEventOnResponse().Remove(OnPauseResponse);
-		
-		// Fail
-		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
-		{
-			// Get back to previsius reqeusted state 
-			m_bRunningImmediate = true;
-			return;
-		}
-		
+	protected void OnPauseResponse(BackendCallback callback)
+	{	
 		// Success
 		m_bRunningAsync = false;
 		InvokeOnChanged();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnPauseError(BackendCallback callback)
+	{	
+		// Get back to previsius reqeusted state
+		m_bRunningImmediate = true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -223,9 +221,8 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		{
 			m_bRunningImmediate = true;
 			
-			m_Callback = new SCR_BackendCallback();
-			m_Callback.GetEventOnFail().Insert(Callback_OnError);
-			m_Callback.GetEventOnTimeOut().Insert(Callback_OnTimeout);
+			m_Callback = new BackendCallback();
+			m_Callback.SetOnError(Callback_OnError);
 			
 			m_bRunningAsync = true;
 			item.ResumeDownload(m_Callback);
@@ -271,9 +268,8 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 			return false;
 		}
 		
-		m_Callback = new SCR_BackendCallback();
-		m_Callback.GetEventOnFail().Insert(Callback_OnError);
-		m_Callback.GetEventOnTimeOut().Insert(Callback_OnTimeout);
+		m_Callback = new BackendCallback();
+		m_Callback.SetOnError(Callback_OnError);
 		
 		if (m_bTargetVersionLatest)
 		{
@@ -360,26 +356,28 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnError(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	protected void Callback_OnError(BackendCallback callback)
 	{
-		//if (code != EBackendError.EBERR_INVALID_STATE) // Ignore this one for now // EApiCode.EACODE_ERROR_OK
+		int restCode = callback.GetRestResult();
+		int httpCode = callback.GetHttpCode();
+		//if (httpCode != EBackendError.EBERR_INVALID_STATE) // Ignore this one for now // EApiCode.EACODE_ERROR_OK
 		
-		callback.GetEventOnFail().Remove(Callback_OnError);
-		callback.GetEventOnTimeOut().Remove(Callback_OnTimeout);
-		
-		Fail(code);
+		Fail(httpCode);
 		
 		// Full storage issues 
-		if (code == EBackendError.EBERR_STORAGE_IS_FULL)
+		if (callback.GetHttpCode() == EBackendError.EBERR_STORAGE_IS_FULL)
 		{
 			FullStorageFail();
 		}
 		//data are not available or validation failed
-		else if ((restCode >= 400 && restCode < 500) || (code == EBackendError.EBERR_VALIDATION_FAILED))	
+		else if ((restCode >= 400 && restCode < 500) || (httpCode == EBackendError.EBERR_VALIDATION_FAILED))	
 		{
 			m_Wrapper.DeleteDownloadProgress();
 		}
-		//else network error
+		else
+		{
+			Fail();
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -393,12 +391,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 				m_OnFullStorageError.Invoke(this, size);
 		}
 	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnTimeout(SCR_BackendCallback callback)
-	{
-		Fail();
-	}
+
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Try redownload failed addon

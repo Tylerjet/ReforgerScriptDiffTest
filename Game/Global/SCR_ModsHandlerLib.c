@@ -92,16 +92,11 @@ class SCR_ModHandlerLib
 				aRoomItems.Insert(item);
 		}
 		
-		// Compare items 
+		// Compare items
 		foreach (WorkshopItem item : aRoomItems)
 		{
-			int flags = item.GetStateFlags();
-
-			if (flags & EWorkshopItemState.EWSTATE_OFFLINE)
-			{
-				if (flags & EWorkshopItemState.EWSTATE_OUTDATED)
-					return false;
-			}
+			if (item.GetActiveRevision())
+				continue;
 			else 
 				return false;
 		}

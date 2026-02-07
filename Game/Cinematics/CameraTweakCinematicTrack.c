@@ -2,6 +2,9 @@
 class CameraTweekCinematicTrack : CinematicTrackBase
 {
 	
+	[Attribute("false")]
+	bool m_bDisablePlayerHead;
+	
 	[Attribute("")]
 	string m_sAttachCameraTo;
 	
@@ -17,6 +20,10 @@ class CameraTweekCinematicTrack : CinematicTrackBase
 	private CinematicEntity cineEntity;
 	private GenericEntity m_entityAttachTo;
 	private World actualWorld;
+	
+	vector headBoneMat[4];
+	int m_iHeadBoneIndex;
+	vector charMat[4];
 
 	
 	override void OnInit(World world)
@@ -41,6 +48,30 @@ class CameraTweekCinematicTrack : CinematicTrackBase
 			} else
 			{
 				cineEntity.DetachCamera();
+			}
+		}
+		
+		//disable player head
+		if (m_bDisablePlayerHead)
+		{
+			if (!GetGame().GetWorld())
+				return; 
+		
+			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+			if (!character)
+				return;
+			
+			SCR_CharacterCameraHandlerComponent camHandlerComp = SCR_CharacterCameraHandlerComponent.Cast(character.FindComponent(SCR_CharacterCameraHandlerComponent));
+			if (camHandlerComp)
+			{
+				
+				m_iHeadBoneIndex = character.GetAnimation().GetBoneIndex("Head");
+				character.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
+				
+				character.GetWorldTransform(charMat);
+				Math3D.MatrixMultiply4(charMat, headBoneMat, headBoneMat);
+				
+				camHandlerComp.UpdateHeadVisibility(headBoneMat[3]);
 			}
 		}
 	}

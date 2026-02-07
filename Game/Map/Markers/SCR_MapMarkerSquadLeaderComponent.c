@@ -23,12 +23,17 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 	[Attribute("lineIcon", desc: "line icon widget")]
 	protected string m_sLineIconWidgetName;
 	
+	[Attribute("groupCohesionIcon", desc: "group cohesion icon widget")]
+	protected string m_sGroupCohesionWidgetName;
+	
 	[Attribute("PlatformIcon")]
 	protected string m_sPlatformIconWidgetName;
 	
 	[Attribute("40", desc: "pixels, group info offset")]
 	protected int m_iGroupInfoOffset;
 		
+	protected ref array<int> m_aDisplayedPlayerIDs = {};
+
 	//------------------------------------------------------------------------------------------------
 	//! Differentiates visuals between our group and the others
 	//! \param[in] state
@@ -82,6 +87,14 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 
 		if (cursorModule && cursorModule.GetCursorState() & SCR_MapCursorModule.STATE_POPUP_RESTRICTED)
 			return true;
+		
+		SCR_AIGroup group = SCR_MapMarkerSquadLeader.Cast(m_MarkerEnt).GetGroup();
+		if (!group)
+			return false;
+
+		SCR_PlayerControllerGroupComponent playerControllerGroup = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (playerControllerGroup)
+			playerControllerGroup.SetSelectedGroupID(group.GetGroupID());
 
 		GetGame().OpenGroupMenu();
 		
@@ -183,6 +196,21 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 			}
 			
 			m_wGroupInfo.SetVisible(true);
+
+			m_aDisplayedPlayerIDs.Clear();
+			m_aDisplayedPlayerIDs.Insert(leaderID);
+			foreach (int id : membersCopy)
+			{
+				m_aDisplayedPlayerIDs.Insert(id);
+			}
+
+			SCR_AIGroupCohesionComponent cohesionComponent = SCR_AIGroupCohesionComponent.Cast(group.FindComponent(SCR_AIGroupCohesionComponent));
+			if (cohesionComponent) 
+			{
+				array<int> cluster = {};
+				cohesionComponent.GetPlayersInCohesion(cluster);
+				OnClusterUpdated(cluster);
+			}
 		}
 		
 		m_bIsHovered = true;
@@ -190,6 +218,27 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnClusterUpdated(notnull array<int> cluster)
+	{
+		array<int> players = SCR_MapMarkerSquadLeader.Cast(m_MarkerEnt).GetGroup().GetPlayerIDs();
+		if (!players || players.Count() == 0)
+			return;
+
+		foreach (int i, int playerID : m_aDisplayedPlayerIDs)
+		{
+			int playerId = m_aDisplayedPlayerIDs[i];
+			ImageWidget cohesionImage = ImageWidget.Cast(m_aGroupMemberEntries[i].FindAnyWidget(m_sGroupCohesionWidgetName));
+			if (!cohesionImage)
+				continue;
+
+			if (cluster.Contains(playerId))
+				cohesionImage.SetColor(Color.FromInt(Color.WHITE));
+			else
+				cohesionImage.SetColor(Color.FromInt(Color.GRAY_25));
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{

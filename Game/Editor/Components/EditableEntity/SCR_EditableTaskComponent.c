@@ -83,26 +83,6 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Reveal the task to all players.
-	void ActivateTask()
-	{
-		if (!GetTaskManager())
-			return;
-		
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (supportEntity)
-			supportEntity.SetTargetFaction(m_Task, m_TargetFaction);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Check if the task is active, i.e., shown to players.
-	//! \return true when active
-	bool IsTaskActivated()
-	{
-		return m_Task.GetTargetFaction() == m_TargetFaction;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Get type of custom texts this task should use.
 	//! \return Type of texts
 	ETaskTextType GetTextType()
@@ -166,10 +146,22 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateText()
 	{
-		UpdateInfo(m_Task.GetInfo());
+		UpdateInfo(m_UIInfoDescriptor);
 		
 		m_Task.SetTextIndex(m_iTextIndex);
 		m_Task.SetLocationName(m_UIInfoDescriptor.GetLocationName());
+		
+		SCR_TextsTaskManagerComponent textsComponent = SCR_TextsTaskManagerComponent.GetInstance();
+		if (!textsComponent)
+			return;
+		
+		SCR_UIDescription info = textsComponent.GetText(m_Task.GetTextType(), m_Task.GetTextIndex());
+		m_Task.SetTaskName(info.GetUnformattedName(), {m_Task.GetLocationName()});
+		m_Task.SetTaskDescription(info.GetUnformattedDescription());
+		m_Task.SetTaskIconPath(m_UIInfoDescriptor.GetIconPath());
+		m_Task.SetTaskIconSetName(m_UIInfoDescriptor.GetIconSetName());
+		
+		UpdateInfo(m_Task.GetTaskUIInfo());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -196,6 +188,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		UpdateNearestLocation();
 	}
 	
+	/*
 	//------------------------------------------------------------------------------------------------
 	override bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
@@ -208,13 +201,14 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	{
 		super.Deserialize(target, targetValue);
 		
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
 		m_TargetFaction = GetGame().GetFactionManager().GetFactionByIndex(targetValue);
-		supportEntity.SetTargetFaction(m_Task, m_TargetFaction);
+		taskSystem.AddTaskFaction(m_Task, m_TargetFaction.GetFactionKey());
 	}
+	*/
 
 	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnUIRefresh()
@@ -235,9 +229,6 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		writer.WriteInt(factionIndex);
 		writer.WriteInt(m_iTextIndex);
 		writer.WriteRplId(m_AttachedToId);
-			
-		if (m_Task)
-			m_Task.Serialize(writer);
 		
 		return true;
 	}
@@ -259,8 +250,6 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		
 		m_Task.SetTextIndex(m_iTextIndex);
 		
-		m_Task.Deserialize(reader);
-		
 		UpdateText();
 		
 		return true;
@@ -275,10 +264,14 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 			if (m_TargetFaction)
 			{
 				//--- When the task is placed as inactive, don't assign faction yet, do it only upon manual activation
-				if (!SCR_Enum.HasFlag(flags, EEditorPlacingFlags.TASK_INACTIVE))
-					m_Task.SetTargetFaction(m_TargetFaction);
+				//if (!SCR_Enum.HasFlag(flags, EEditorPlacingFlags.TASK_INACTIVE))
+					//m_Task.SetTargetFaction(m_TargetFaction);
 				
 				UpdateNearestLocation();
+				
+				m_Task.SetTaskOwnership(SCR_ETaskOwnership.FACTION);
+				m_Task.SetTaskVisibility(SCR_ETaskVisibility.FACTION);
+				m_Task.AddOwnerFactionKey(m_TargetFaction.GetFactionKey());
 			}
 		}
 		return this;

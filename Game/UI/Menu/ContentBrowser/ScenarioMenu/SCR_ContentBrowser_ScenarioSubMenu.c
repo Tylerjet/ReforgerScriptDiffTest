@@ -34,13 +34,20 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 
 	protected int m_iEntriesTotal;
 	protected int m_iEntriesCurrent;
+	protected static bool m_bIsOpened = false;
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
 
+		m_bIsOpened = false;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
 		super.OnTabCreate(menuRoot, buttonsLayout, index);
-
-		InitWidgets();
 
 		m_ScenarioDetailsPanel = m_Widgets.m_ScenarioDetailsPanelComponent;
 		m_AddonDetailsPanel = m_Widgets.m_AddonDetailsPanelComponent;
@@ -60,6 +67,10 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		// We do it on tab show becasue this tab and others persists when all other tabs are closed,
 		// But we can switch back to it later, and we must setup the workshop api again
 		InitWorkshopApi();
+		
+		SCR_AnalyticsApplication.GetInstance().ScenariosSetTab(m_eMode);
+
+		m_bIsOpened = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -89,6 +100,12 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnScenariosLoadFailed()
+	{
+		ScenarioEmptyMessage({}, MESSAGE_TAG_NOTHING_FOUND);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void InitWidgets()
 	{
 		super.InitWidgets();
@@ -108,23 +125,23 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Play(MissionWorkshopItem scenario)
+	override bool Play(MissionWorkshopItem scenario)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
-			return;
+		if (!super.Play(scenario))
+			return false;
 
-		super.Play(scenario);
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Continue(MissionWorkshopItem scenario)
+	override bool Continue(MissionWorkshopItem scenario)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
-			return;
+		if (!super.Continue(scenario))
+			return false;
 
-		super.Continue(scenario);
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -141,27 +158,17 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		UpdateNavigationButtons();
 		super.OnScenarioStateChanged(comp);
 	}
-
-	//------------------------------------------------------------------------------------------------\
-	//! Be able to create various lines type - saves
-	override protected bool CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
-	{
-		foreach (MissionWorkshopItem scenario : scenarios)
-		{
-			ResourceName layout = m_sLinesLayout;
-			if (WorldSaveItem.Cast(scenario.GetOwner()))
-				layout = m_sSaveLineLayout;
-			
-			if (!CreateLine(layout, parent, scenario))
-				return false;
-		}
-
-		return true;
-	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected Widget CreateLine(ResourceName layout,  Widget parent, MissionWorkshopItem scenario)
+	override protected Widget CreateLine(ResourceName layout, Widget parent, MissionWorkshopItem scenario)
 	{
+		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(SCR_MissionHeader.ReadMissionHeader(scenario.Id()));
+		if (missionHeader && !missionHeader.m_bShowInScenarioMenu)
+			return null;
+		
+		if (WorldSaveItem.Cast(scenario.GetOwner()))
+			layout = m_sSaveLineLayout;
+		
 		Widget w = super.CreateLine(layout, parent, scenario);
 		if (!w)
 			return null;
@@ -201,15 +208,11 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 			
 			if (scriptedItem && scriptedItem.GetAnyDependencyMissing())
 				missionItemsAll.Remove(i);
-			
-			// Remove save which is not containing file 
-			WorldSaveItem save = WorldSaveItem.Cast(addon);
-			if (!save)
-				continue;
-			
-			string id = save.Id();
-			string fileName = GetGame().GetSaveManager().FindFileNameById(id);
-			if (!fileName)
+		}
+
+		for (int i = missionItemsAll.Count() - 1; i >= 0; i--)
+		{
+			if (SCR_ScenarioSequenceProgress.IsScenarioLocked(missionItemsAll[i]))
 				missionItemsAll.Remove(i);
 		}
 
@@ -500,6 +503,8 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	protected void OnSearchConfirm(SCR_EditBoxComponent comp, string newValue)
 	{
 		UpdateScenarioList(false);
+		
+		SCR_AnalyticsApplication.GetInstance().ScenariosUseSearch();		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -507,6 +512,8 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	protected void OnSortingHeaderChange(SCR_SortHeaderComponent sortHeader)
 	{
 		UpdateScenarioList(false);
+		
+		SCR_AnalyticsApplication.GetInstance().ScenariosSetSorting(sortHeader.GetSortElementName());
 	}
 
 	// ---- PUBLIC ----

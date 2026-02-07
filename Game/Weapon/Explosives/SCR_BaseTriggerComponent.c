@@ -5,7 +5,7 @@ class SCR_BaseTriggerComponentClass : BaseTriggerComponentClass
 
 class SCR_BaseTriggerComponent : BaseTriggerComponent
 {
-	[Attribute("0", "Is this mine live by default?")]
+	[Attribute("0", desc: "Is this mine live by default?")]
 	protected bool m_bLive;
 	
 	[RplProp(onRplName:"OnActivatedChanged")]
@@ -22,6 +22,13 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	bool IsActivated()
 	{
 		return m_bActivated;
+	}
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	bool IsActivatedByDefault()
+	{
+		return m_bLive;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -52,6 +59,12 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 		Replication.BumpMe();
 	}
 	
+	void DisarmTrigger()
+	{
+		m_bActivated = false;
+		Replication.BumpMe();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	void ShowFuse()
@@ -77,11 +90,16 @@ class SCR_BaseTriggerComponent : BaseTriggerComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoTrigger()
 	{
-		BaseTriggerComponent baseTriggerComponent = BaseTriggerComponent.Cast(GetOwner().FindComponent(BaseTriggerComponent));
+		// Can be called from CallLater. Therefore, we need to check if the entity still exists.
+		IEntity owner = GetOwner();
+		if (!owner)
+			return;
+
+		BaseTriggerComponent baseTriggerComponent = BaseTriggerComponent.Cast(owner.FindComponent(BaseTriggerComponent));
 		if (!baseTriggerComponent)
 			return;
 		
-		baseTriggerComponent.OnUserTriggerOverrideInstigator(GetOwner(), GetInstigator());
+		baseTriggerComponent.OnUserTriggerOverrideInstigator(owner, GetInstigator());
 	}
 	
 	//------------------------------------------------------------------------------------------------

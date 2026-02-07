@@ -55,6 +55,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 
 		UpdateHeader();
 		m_Widgets.m_MainActionButtonComponent0.m_OnClicked.Insert(OnMainActionButtonClicked);
+		m_Widgets.m_RepairActionButtonComponent0.m_OnClicked.Insert(OnRepairActionButtonClicked);
 
 		SCR_DownloadManager downloadManager = SCR_DownloadManager.GetInstance();
 		if (downloadManager)
@@ -133,6 +134,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		
 		SCR_AddonManager addonManager = SCR_AddonManager.GetInstance();
 		WorkshopItem item = m_Item.GetWorkshopItem();
+		Revision itemRevision = item.GetActiveRevision();
 		EWorkshopItemProblem itemProblem = m_Item.GetHighestPriorityProblem();
 		
 		// --- Revision Availability ---
@@ -152,6 +154,8 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			m_eErrorState = SCR_EWorkshopTileErrorState.DEPENDENCIES_ISSUE;
 		else if (item && (item.IsUnlisted() && (item.IsAuthor() || item.IsContributor())))
 			m_eErrorState = SCR_EWorkshopTileErrorState.UNLISTED;
+		else if (itemRevision && itemRevision.IsCorrupted())
+			m_eErrorState = SCR_EWorkshopTileErrorState.DAMAGED;
 		else
 			m_eErrorState = SCR_EWorkshopTileErrorState.NONE;
 	}
@@ -168,10 +172,10 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	{
 		if (m_bFocused)
 		{
-			if (!m_Widgets.m_FrameNameComponent.GetContentFit())
+			if (!m_Widgets.m_FrameNameComponent.GetContentFitX())
 				m_Widgets.m_FrameNameComponent.AnimationStart();
 
-			if (!m_Widgets.m_FrameAuthorComponent.GetContentFit())
+			if (!m_Widgets.m_FrameAuthorComponent.GetContentFitX())
 				m_Widgets.m_FrameAuthorComponent.AnimationStart();
 		}
 		else
@@ -331,6 +335,13 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 				m_Widgets.m_WarningOverlayComponent.SetWarningColor(color, color);
 				break;
 			}
+			
+			case SCR_EWorkshopTileErrorState.DAMAGED:
+			{
+				m_Widgets.m_WarningOverlayComponent.SetWarning(SCR_WorkshopUiCommon.MESSAGE_CORRUPTED, SCR_WorkshopUiCommon.ICON_REPAIR);
+				m_Widgets.m_WarningOverlayComponent.ResetWarningColor();
+				break;
+			}
 		}
 	}
 
@@ -339,6 +350,8 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	{
 		if (!m_Item)
 			return;
+		
+		m_Widgets.m_wRepairActionButton.SetVisible(m_bFocused && m_eErrorState == SCR_EWorkshopTileErrorState.DAMAGED);
 
 		m_Widgets.m_wMainActionButton.SetVisible(
 			(m_bFocused || m_ePrimaryActionState != SCR_EAddonPrimaryActionState.DOWNLOAD) &&
@@ -534,6 +547,16 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	{
 		SCR_WorkshopUiCommon.ExecutePrimaryAction(m_Item, m_DownloadRequest);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRepairActionButtonClicked(SCR_ModularButtonComponent comp)
+	{
+		if (!m_Item || m_Item.GetRestricted())
+			return;
+
+		SCR_ValidateRepair_Dialog dialogValidator = SCR_CommonDialogs.CreateValidateRepairDialog();
+		dialogValidator.LoadAddon(m_Item);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnWorkshopItemChange()
@@ -692,5 +715,6 @@ enum SCR_EWorkshopTileErrorState
 	RESTRICTED,
 	REVISION_AVAILABILITY_ISSUE,
 	DEPENDENCIES_ISSUE,
-	UNLISTED
+	UNLISTED,
+	DAMAGED
 }

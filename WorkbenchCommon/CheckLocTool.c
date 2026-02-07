@@ -41,7 +41,8 @@ class CheckLocalizationPlugin: LocalizationEditorPlugin
 		{
 			progress.SetProgress(i / count);
 			Resource res = BaseContainerTools.LoadContainer(resNames[i]);
-			if (res.IsValid())
+	
+			if (res && res.IsValid())
 			{
 				WidgetSource cont = res.GetResource();
 				

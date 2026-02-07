@@ -22,6 +22,9 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	
 	// bleeding rate multiplier after death - used to stop particles sooner
 	const float DEATH_BLEEDOUT_SCALE = 4;
+
+	//equivalent of colliding with s105 while it is moving at around ~3.5m/s (~10km/h)
+	protected const int MIN_OTHER_MOMENTUM = 3000;
 	
 	// Physics variables
 	protected float m_fHighestContact;
@@ -89,6 +92,15 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Allow this character to show bleeding effects on any clothing items when damaged or bleeding", category: "Bleeding")]
 	protected bool m_bAllowBloodyClothes;
+
+	[Attribute(defvalue: "0.1", desc: "Poison buildup speed factor", params: "0.01 1 0.01")]
+	protected float m_fPoisonBuildupFactor;
+
+	//-----------------------------------------------------------------------------------------------------------
+	float GetPoisonBuildupFactor()
+	{
+		return m_fPoisonBuildupFactor;
+	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	//! Check whether character health state meets requirements for consciousness
@@ -179,17 +191,18 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState, bool isJIP)
 	{
+		if(isJIP)
+			return;
+				
 		if (newLifeState == ECharacterLifeState.INCAPACITATED)
 		{
 			SoundKnockout();
 		}
 		else if (newLifeState == ECharacterLifeState.DEAD)
 		{
-			if (IsRplReady() || !GetDefaultHitZone().IsProxy())
-				SoundDeath(previousLifeState);
-		
+			SoundDeath(previousLifeState);
 			RemoveAllBleedingParticlesAfterDeath();
 		}
 	}
@@ -382,6 +395,103 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Method used to attempt to detach player's helmet when his head is hit
+	//! \param[in] damageContext
+	protected void KnockOffTheHelmet(notnull BaseDamageContext damageContext)
+	{
+		SCR_CharacterHeadHitZone headHZ = SCR_CharacterHeadHitZone.Cast(damageContext.struckHitZone);
+		if (!headHZ)
+			return;
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return;
+
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+
+		SCR_InventoryStorageManagerComponent storageMgr = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
+		if (!storageMgr)
+			return;
+
+		SCR_CharacterInventoryStorageComponent characterStorage = storageMgr.GetCharacterStorage();
+		if (!characterStorage)
+			return;
+
+		SCR_HeadgearInventoryItemComponent hatIIC = SCR_HeadgearInventoryItemComponent.Cast(characterStorage.GetItemFromLoadoutSlot(new LoadoutHeadCoverArea()));
+		if (hatIIC)
+			hatIIC.DetachHelmet(damageContext.damageValue, damageContext.damageType, damageContext.hitDirection, damageContext.hitPosition, character);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used by the authority to synchronize an execution of the sound playback for a damage effect
+	//! \param[in] effectType for which sound playback should be executed
+	//! \return true if playback was successful, otherwise false
+	bool SynchronizedSoundEvent(typename effectType)
+	{
+		array<ref SCR_PersistentDamageEffect> persistentEffects = {};
+		GetPersistentEffects(persistentEffects);
+		foreach (int i, SCR_PersistentDamageEffect effect : persistentEffects)
+		{
+			if (effect.Type() != effectType)
+				continue;
+
+			return SynchronizedSoundEvent(effect, i);
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used by the authority to synchronize an execution of the sound playback for a damage effect
+	//! \param[in] broadcastingEffect from which sound playback will be triggered locally
+	//! \param[in] effectId optionally if id is already known
+	//! \return true if playback was successful, otherwise false
+	bool SynchronizedSoundEvent(notnull SCR_PersistentDamageEffect broadcastingEffect, int effectId = -1)
+	{
+		if (effectId < 0)
+		{
+			array<ref SCR_PersistentDamageEffect> persistentEffects = {};
+			GetPersistentEffects(persistentEffects);
+			foreach (int i, SCR_PersistentDamageEffect effect : persistentEffects)
+			{
+				if (effect != broadcastingEffect)
+					continue;
+	
+				effectId = i;
+				break;
+			}
+		}
+
+		if (effectId < 0)
+			return false;
+		
+		if (!broadcastingEffect.ExecuteSynchronizedSoundPlayback(this))
+			return false;
+
+		Rpc(Do_SynchronizedSoundEvent, effectId);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] effectId id of the damage effect that should be used for the sound playback
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void Do_SynchronizedSoundEvent(int effectId)
+	{
+		array<ref SCR_PersistentDamageEffect> persistentEffects = {};
+		GetPersistentEffects(persistentEffects);
+		foreach (int i, SCR_PersistentDamageEffect effect : persistentEffects)
+		{
+			if (i != effectId)
+				continue;
+
+			effect.ExecuteSynchronizedSoundPlayback(this);
+			break;
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SoundHit(bool critical, EDamageType damageType)
@@ -402,7 +512,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! Tell m_CommunicationSound to stop character from screaming, otherwise ignore
 	void SoundKnockout()
 	{
-		if (m_CommunicationSound && m_CommunicationSound.IsPlaying())
+		if (m_CommunicationSound && !m_CommunicationSound.IsPlaying())
 			m_CommunicationSound.SoundEventDeath(true);
 	}
 
@@ -541,11 +651,20 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//-----------------------------------------------------------------------------------------------------------
 	protected void TryClearDamageHistory()
 	{
-		// do not clear damage history if there are positive OR negative effects left on the character
-		if (CanBeHealed(false))
-			return;
-		
-		ClearDamageHistory();
+		// Upon death, do not clear damage history. It will instead be cleared OnDelete()
+		if (GetState() == EDamageState.DESTROYED)
+		{
+			// Dead bodies keep their history for as long as they aren't despawned. This is memory expensive. To prevent it, we clear history after x seconds
+			GetGame().GetCallqueue().CallLater(ClearDamageHistory, 1500);
+		}
+		else if (GetState() == EDamageState.UNDAMAGED)
+		{
+			// do not clear damage history if there are positive OR negative effects left on the character
+			if (CanBeHealed(false))
+				return;
+			
+			ClearDamageHistory();
+		}
 	}
 
 	//-----------------------------------------------------------------------------------------------------------
@@ -739,7 +858,13 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 
 		SCR_BleedingDamageEffect hitZoneBleeding = new SCR_BleedingDamageEffect();
 		if (colliderDescriptorIndex == -1)
-			colliderDescriptorIndex = Math.RandomInt(0, hitZone.GetNumColliderDescriptors() - 1);
+		{
+			int descriptorCnt = hitZone.GetNumColliderDescriptors();
+			if (descriptorCnt == 1)
+				colliderDescriptorIndex = 0;
+			else if (descriptorCnt > 1)
+				colliderDescriptorIndex = Math.RandomInt(0, descriptorCnt - 1);
+		}
 			
 		hitZoneBleeding.m_iColliderDescriptorIndex = colliderDescriptorIndex;
 		hitZoneBleeding.SetDPS(bleedingRate * GetBleedingScale());
@@ -793,7 +918,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 
 		// TODO: Blood traces on ground that should be left regardless of clothing, perhaps just delayed
 		SCR_CharacterHitZone characterHitZone = SCR_CharacterHitZone.Cast(hitZone);
-		if (characterHitZone.IsCovered())
+		if (!characterHitZone || characterHitZone.IsCovered())
 			return;
 		
 		array<HitZone> groupHitZones = {};
@@ -1267,7 +1392,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			
 			float rightLegDamage;
 			if (GetGroupTourniquetted(ECharacterHitZoneGroup.RIGHTLEG))
-				rightLegDamage = TOURNIQUETTED_LEG_DAMAGE;			
+				rightLegDamage = TOURNIQUETTED_LEG_DAMAGE;
 			else
 				rightLegDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.RIGHTLEG));
 
@@ -1280,7 +1405,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		{
 			float leftArmDamage;
 			if (GetGroupTourniquetted(ECharacterHitZoneGroup.LEFTARM))
-				leftArmDamage = TOURNIQUETTED_ARMS_DAMAGE;			
+				leftArmDamage = TOURNIQUETTED_ARMS_DAMAGE;
 			else
 				leftArmDamage = (1 - GetGroupHealthScaled(ECharacterHitZoneGroup.LEFTARM));
 
@@ -1426,11 +1551,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		
-		#ifdef ENABLE_DIAG
-		DiagInit(owner);
-		#endif
-		
+
 		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (baseGameMode)
 			s_HealthSettings = baseGameMode.GetGameModeHealthSettings();
@@ -1442,16 +1563,20 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		if (!character)
 			return;
 		
-		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(owner.FindComponent(SCR_CharacterControllerComponent));
 		if (controller)
 			controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 			
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
-		if (rpl && !GetDefaultHitZone().IsProxy())
-		{		
-			SCR_CharacterBuoyancyComponent charBuoyancyComp = SCR_CharacterBuoyancyComponent.Cast(owner.FindComponent(SCR_CharacterBuoyancyComponent));
-			if (charBuoyancyComp)
-				charBuoyancyComp.GetOnWaterEnter().Insert(OnWaterEnter);
+		if (rpl)
+		{
+			auto hz = GetDefaultHitZone();
+			if (hz && !hz.IsProxy())
+			{
+				SCR_CharacterBuoyancyComponent charBuoyancyComp = SCR_CharacterBuoyancyComponent.Cast(owner.FindComponent(SCR_CharacterBuoyancyComponent));
+				if (charBuoyancyComp)
+					charBuoyancyComp.GetOnWaterEnter().Insert(OnWaterEnter);
+			}
 		}
 		
 		m_CommunicationSound = SCR_CommunicationSoundComponent.Cast(owner.FindComponent(SCR_CommunicationSoundComponent));
@@ -1535,18 +1660,53 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//! Filter out any contacts under a reasonable speed for damage
 	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
 	{
-		if (Math.AbsFloat(contact.GetRelativeNormalVelocityBefore()) > 3)
-		{
-			// Do not recompute collisiondamage within the impulseDelay if it's lower than the highest one thus far
-			float relativeNormalVelocityBefore = Math.AbsFloat(contact.GetRelativeNormalVelocityBefore());
-			if (m_fHighestContact > relativeNormalVelocityBefore)
-				return false;
-		
-			m_fHighestContact = relativeNormalVelocityBefore;
-			return super.FilterContact(owner, other, contact);
-		}
-		
-		return false;
+		if (Math.AbsFloat(contact.GetRelativeNormalVelocityBefore()) <= 3)
+			return false;
+
+		// Do not recompute collisiondamage within the impulseDelay if it's lower than the highest one thus far
+		float relativeNormalVelocityBefore = Math.AbsFloat(contact.GetRelativeNormalVelocityBefore());
+		if (m_fHighestContact > relativeNormalVelocityBefore)
+			return false;
+
+		if (!super.FilterContact(owner, other, contact))
+			return false;
+
+		Physics otherPhys = other.GetPhysics();
+		if (!otherPhys)
+			return false;
+
+		if (!otherPhys.IsDynamic())
+			return false;//if player just run into a wall then lets not make his life worse
+
+		float otherMomentum = contact.VelocityBefore2.Length() * otherPhys.GetMass();
+		if (otherMomentum < MIN_OTHER_MOMENTUM)
+			return false;//dont harm the player just for running into things
+
+		Physics ownerPhys = owner.GetPhysics();
+		if (!ownerPhys)
+			return false;
+
+		vector otherDirectionToCollisionPoint = vector.Direction(other.GetOrigin(), contact.Position).Normalized();
+		vector ownerDirectionToCollisionPoint = vector.Direction(owner.GetOrigin(), contact.Position).Normalized();
+
+		float otherDot = vector.Dot(contact.VelocityBefore2.Normalized(), otherDirectionToCollisionPoint);
+		if (otherDot > 0.7)
+			otherDot = 1;//close enough to being direct frontal impact, thus consider it as such
+
+		otherMomentum *= otherDot;
+
+		float ownerDot = vector.Dot(contact.VelocityBefore1.Normalized(), ownerDirectionToCollisionPoint);
+		float ownerMomentum = contact.VelocityBefore1.Length() * ownerPhys.GetMass() * ownerDot;
+
+		float directionalMomentum = otherMomentum + ownerMomentum;
+
+		//if momentum was not directed at the collision then it shouldnt matter, but this isnt perfect!
+		//Because if you would have a 'M' shaped object moving right, then other object which would happen to be inside of it, would not receive damage because of this
+		if (directionalMomentum < MIN_OTHER_MOMENTUM)
+			return false;
+
+		m_fHighestContact = relativeNormalVelocityBefore;
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1558,7 +1718,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	{
 		CalculateCollisionDamage(owner, other, contact.Position);
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	//
 	protected void CalculateCollisionDamage(IEntity owner, IEntity other, vector collisionPosition, bool instantUnconsciousness = true)
@@ -1648,7 +1808,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		if (animComp)
 		{		
 			float randomDirectional = Math.RandomFloat(-0.5, 0.3);
-			animComp.AddRagdollEffectorDamage(Vector(randomDirectional, 1, 0), Vector(randomDirectional, -0.5, 0.3), 82, 15, 2);
+			animComp.AddRagdollEffectorDamage(Vector(randomDirectional, 1, 0), Vector(randomDirectional, -0.5, 0.3).Normalized(), 82, 15, 2);
 		}
 	}
 	
@@ -1802,16 +1962,14 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!	Invoked when damage state changes.
-	protected override void OnDamageStateChanged(EDamageState state)
+	protected override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged(state);
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 		
-		if (state == EDamageState.UNDAMAGED)
+		if (newState == EDamageState.UNDAMAGED || newState == EDamageState.DESTROYED)
 			TryClearDamageHistory();
-		else if (state == EDamageState.DESTROYED)
-			ClearDamageHistory();
 	}
-
+	
 	//-----------------------------------------------------------------------------------------------------------
 	protected override void OnDamage(notnull BaseDamageContext damageContext)
 	{		
@@ -1820,6 +1978,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		if (damageContext.damageValue > 0)
 			RegenPhysicalHitZones();
 
+		KnockOffTheHelmet(damageContext);
 		#ifdef ENABLE_DIAG	
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE))
 		{
@@ -1896,97 +2055,79 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		}
 		#endif
 	}
-	#ifdef ENABLE_DIAG	
+
+	#ifdef ENABLE_DIAG
+	//-----------------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
-	{
-		DisconnectFromDiagSystem(owner);
-		
+	{		
 		super.OnDelete(owner);
 	}
-	
-	//-----------------------------------------------------------------------------------------------------------
-	void DiagInit(IEntity owner)
-	{
-		ConnectToDiagSystem(owner);
-		// Register to debug menu
-		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE,"","Deal damage debug","Character");
-		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE,0);
-	}
-	
-	//-----------------------------------------------------------------------------------------------------------
-	override void OnDiag(IEntity owner, float timeSlice)
+
+	override void DiagOnlyIfPossessedByPlayerController(notnull IEntity owner)
 	{
 		ProcessDebug(owner);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void ProcessDebug(IEntity owner)
-	{
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_DAMAGE))
-		{
-			// Only apply debug damages to currently controlled character
-			IEntity playerEntity = GetGame().GetPlayerController().GetControlledEntity();
-			if (playerEntity != owner)
-				return;
-			
-			DbgUI.Text("See: GameCode >> Hit Zones >> Player HitZones for damages");
-			DbgUI.Text("Applying damage from client is NOT possible");
-			DbgUI.Text("Only conventional DOT damage are shown in debug");
-			DbgUI.Text("Y to damage every hitZone for 4 damage");
-			DbgUI.Text("U to reduce chest health by 10");
-			DbgUI.Text("I to reduce right thigh health by 10");
-			DbgUI.Text("O to reduce left thigh health by 10");
-			DbgUI.Text("P to add bleeding to right thigh");
-			DbgUI.Text("T to add bleeding to left thigh");
-			DbgUI.Text("K to reset damage effect");
+	{			
+		DbgUI.Text("See: GameCode >> Hit Zones >> Player HitZones for damages");
+		DbgUI.Text("Applying damage from client is NOT possible");
+		DbgUI.Text("Only conventional DOT damage are shown in debug");
+		DbgUI.Text("Y to damage every hitZone for 4 damage");
+		DbgUI.Text("U to reduce chest health by 10");
+		DbgUI.Text("I to reduce right thigh health by 10");
+		DbgUI.Text("O to reduce left thigh health by 10");
+		DbgUI.Text("P to add bleeding to right thigh");
+		DbgUI.Text("T to add bleeding to left thigh");
+		DbgUI.Text("K to reset damage effect");
+	
+		vector hitPosDirNorm[3];
 		
-			vector hitPosDirNorm[3];
+		if (Debug.KeyState(KeyCode.KC_Y))
+		{
+			Debug.ClearKey(KeyCode.KC_Y);
+			AddParticularBleeding("RThigh", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			AddParticularBleeding("LThigh", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			AddParticularBleeding("Chest", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			AddParticularBleeding("Head", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			AddParticularBleeding("LArm", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			AddParticularBleeding("Abdomen", intensityFloat: Math.RandomFloat(0.9, 0.99));
+			AddParticularBleeding("RArm", intensityFloat: Math.RandomFloat(0.9, 0.99));
+		}
+		if (Debug.KeyState(KeyCode.KC_U))
+		{
+			Debug.ClearKey(KeyCode.KC_U);
+			Print(HealHitZones(10, false, true));	
+		}
+		if (Debug.KeyState(KeyCode.KC_I))
+		{
+			Debug.ClearKey(KeyCode.KC_I);
 			
-			if (Debug.KeyState(KeyCode.KC_Y))
-			{
-				Debug.ClearKey(KeyCode.KC_Y);
-				AddParticularBleeding("RThigh", intensityFloat: Math.RandomFloat(0.9, 0.99));
-				AddParticularBleeding("LThigh", intensityFloat: Math.RandomFloat(0.9, 0.99));
-				AddParticularBleeding("Chest", intensityFloat: Math.RandomFloat(0.9, 0.99));
-				AddParticularBleeding("Head", intensityFloat: Math.RandomFloat(0.9, 0.99));
-				AddParticularBleeding("LArm", intensityFloat: Math.RandomFloat(0.9, 0.99));
-				AddParticularBleeding("Abdomen", intensityFloat: Math.RandomFloat(0.9, 0.99));
-				AddParticularBleeding("RArm", intensityFloat: Math.RandomFloat(0.9, 0.99));
-			}
-			if (Debug.KeyState(KeyCode.KC_U))
-			{
-				Debug.ClearKey(KeyCode.KC_U);
-				Print(HealHitZones(10, false, true));	
-			}
-			if (Debug.KeyState(KeyCode.KC_I))
-			{
-				Debug.ClearKey(KeyCode.KC_I);
-				
-				SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("RThigh"), Instigator.CreateInstigator(GetGame().GetPlayerController().GetControlledEntity()), null, -1, -1);
-				HandleDamage(damageContext);
-			}
-			if (Debug.KeyState(KeyCode.KC_O))
-			{
-				Debug.ClearKey(KeyCode.KC_O);
-				
-				SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 10, hitPosDirNorm, GetGame().GetPlayerController().GetControlledEntity(), GetHitZoneByName("LThigh"), Instigator.CreateInstigator(GetGame().GetPlayerController().GetControlledEntity()), null, -1, -1);
-				HandleDamage(damageContext);
-			}
-			if (Debug.KeyState(KeyCode.KC_P))
-			{
-				Debug.ClearKey(KeyCode.KC_P);
-				AddParticularBleeding("RThigh");
-			}
-			if (Debug.KeyState(KeyCode.KC_T))
-			{
-				Debug.ClearKey(KeyCode.KC_T);
-				AddParticularBleeding("LThigh");
-			}
-			if (Debug.KeyState(KeyCode.KC_K))
-			{
-				Debug.ClearKey(KeyCode.KC_K);
-				FullHeal();
-			}
+			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 10, hitPosDirNorm, owner, GetHitZoneByName("RThigh"), Instigator.CreateInstigator(owner), null, -1, -1);
+			HandleDamage(damageContext);
+		}
+		if (Debug.KeyState(KeyCode.KC_O))
+		{
+			Debug.ClearKey(KeyCode.KC_O);
+			
+			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, 10, hitPosDirNorm, owner, GetHitZoneByName("LThigh"), Instigator.CreateInstigator(owner), null, -1, -1);
+			HandleDamage(damageContext);
+		}
+		if (Debug.KeyState(KeyCode.KC_P))
+		{
+			Debug.ClearKey(KeyCode.KC_P);
+			AddParticularBleeding("RThigh");
+		}
+		if (Debug.KeyState(KeyCode.KC_T))
+		{
+			Debug.ClearKey(KeyCode.KC_T);
+			AddParticularBleeding("LThigh");
+		}
+		if (Debug.KeyState(KeyCode.KC_K))
+		{
+			Debug.ClearKey(KeyCode.KC_K);
+			FullHeal();
 		}
 	}
 #endif

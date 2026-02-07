@@ -19,6 +19,8 @@ sealed class ProgressBarWidget: UIWidget
 	proto external void SetMax(float max);
 	proto external void SetCurrent(float curr);
 	proto external void SetDrawBackground(bool drawBackground);
+	proto external bool IsVertical();
+	proto external bool IsFlipped();
 }
 
 /*!

@@ -20,7 +20,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 	protected SCR_EditableEntityComponent m_Group;
 	protected SCR_EditableEntityComponent m_PrevWaypoint;
 
-	protected SCR_AIWaypoint m_AttachableWaypoint;
+	protected SCR_AIWaypoint m_AIWaypoint;
 	protected SCR_EditableEntityComponent m_AttachedTo;
 
 	[RplProp(onRplName: "OnAttachedToId")]
@@ -41,7 +41,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 
 		//++ Remove from the existing parent first
 		if (GetOwner().GetParent())
-			m_AttachableWaypoint.GetParent().RemoveChild(m_AttachableWaypoint, true);
+			m_AIWaypoint.GetParent().RemoveChild(m_AIWaypoint, true);
 
 		//++ Add to the new parent (when defined)
 		if (m_AttachedTo)
@@ -53,10 +53,10 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 				return;
 			}
 			
-			m_AttachableWaypoint.SetOrigin(vector.Zero);
-			m_AttachedTo.GetOwner().AddChild(m_AttachableWaypoint, -1);
+			m_AIWaypoint.SetOrigin(vector.Zero);
+			m_AttachedTo.GetOwner().AddChild(m_AIWaypoint, -1);
 
-			SCR_EntityWaypoint entityWaypoint = SCR_EntityWaypoint.Cast(m_AttachableWaypoint);
+			SCR_EntityWaypoint entityWaypoint = SCR_EntityWaypoint.Cast(m_AIWaypoint);
 			if (entityWaypoint)
 				entityWaypoint.SetEntity(m_AttachedTo.GetOwner());
 
@@ -64,7 +64,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 		}
 		else
 		{
-			SCR_EntityWaypoint entityWaypoint = SCR_EntityWaypoint.Cast(m_AttachableWaypoint);
+			SCR_EntityWaypoint entityWaypoint = SCR_EntityWaypoint.Cast(m_AIWaypoint);
 			if (entityWaypoint)
 				entityWaypoint.SetEntity(null);
 			if (m_AttachedTo)
@@ -160,7 +160,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 			return;
 		
 		
-		if (m_AttachableWaypoint && m_Group && m_Group != parentEntity)
+		if (m_AIWaypoint && m_Group && m_Group != parentEntity)
 		{
 			AttachTo(parentEntity);
 
@@ -206,7 +206,7 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 	//! Detach the waypoint from the target, runs both in client and server
 	protected void DetachFromTarget()
 	{
-		if (m_AttachableWaypoint)
+		if (m_AIWaypoint)
 			AttachTo(null);
 	}
 
@@ -287,11 +287,17 @@ class SCR_EditableWaypointComponent : SCR_EditableEntityComponent
 
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_AIWaypoint GetAIWaypoint()
+	{
+		return m_AIWaypoint;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_EditableWaypointComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		m_AttachableWaypoint = SCR_AIWaypoint.Cast(ent);
+		m_AIWaypoint = SCR_AIWaypoint.Cast(ent);
 	}
 
 }

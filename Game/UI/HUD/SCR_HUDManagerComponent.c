@@ -169,7 +169,7 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 			return;
 
 		// Curve based opacity interpolation
-		float opacity = Math3D.Curve(ECurveType.CurveProperty2D, sceneBrightness, m_AdaptiveOpacityCurve)[1];
+		float opacity = LegacyCurve.Curve(ECurveType.CurveProperty2D, sceneBrightness, m_AdaptiveOpacityCurve)[1];
 		opacity = Math.Clamp(Math.Round(opacity * 100) / 100, 0, 1);
 		
 		// Invoke the opacity update only if change is greater than n%

@@ -173,6 +173,82 @@ class SCR_DebugShapeHelperComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Adds debug box with specified min, max coordinates and color, transforming all points by owner transform.
+	//! \param[in] mins Minimum coordinates for the box in 3D space.
+	//! \param[in] maxs Maxs represents the maximum coordinates for the bounding box in 3D space.
+	//! \param[in] ownerTransform Transform matrix to apply to all points.
+	//! \param[in] color Color is an integer representing the RGB value for the box's color in debug mode.
+	static void AddBoxWithTransform(vector mins, vector maxs, vector ownerTransform[4], int color, ShapeFlags shapeFlags = DEFAULT_TRIS_FLAGS, string tag = "")
+	{
+		// First create the mesh array with local coordinates
+		vector mesh[] = {
+			// -Z Mins Tri 1
+			Vector(mins[0], mins[1], mins[2]),
+			Vector(maxs[0], mins[1], mins[2]),
+			Vector(mins[0], maxs[1], mins[2]),
+			// -Z Maxs Tri 2
+			Vector(maxs[0], maxs[1], mins[2]),
+			Vector(mins[0], maxs[1], mins[2]),
+			Vector(maxs[0], mins[1], mins[2]),
+			// +Z Mins Tri 3
+			Vector(mins[0], mins[1], maxs[2]),
+			Vector(maxs[0], mins[1], maxs[2]),
+			Vector(mins[0], maxs[1], maxs[2]),
+			// +Z Maxs Tri 4
+			Vector(maxs[0], maxs[1], maxs[2]),
+			Vector(mins[0], maxs[1], maxs[2]),
+			Vector(maxs[0], mins[1], maxs[2]),
+			// -X Mins Tri 5
+			Vector(mins[0], mins[1], mins[2]),
+			Vector(mins[0], mins[1], maxs[2]),
+			Vector(mins[0], maxs[1], mins[2]),
+			// -X Maxs Tri 6
+			Vector(mins[0], maxs[1], maxs[2]),
+			Vector(mins[0], maxs[1], mins[2]),
+			Vector(mins[0], mins[1], maxs[2]),
+			// +X Mins Tri 7
+			Vector(maxs[0], mins[1], mins[2]),
+			Vector(maxs[0], mins[1], maxs[2]),
+			Vector(maxs[0], maxs[1], mins[2]),
+			// +X Maxs Tri 8
+			Vector(maxs[0], maxs[1], maxs[2]),
+			Vector(maxs[0], maxs[1], mins[2]),
+			Vector(maxs[0], mins[1], maxs[2]),
+			// -Y Mins Tri 9
+			Vector(mins[0], mins[1], mins[2]),
+			Vector(maxs[0], mins[1], mins[2]),
+			Vector(mins[0], mins[1], maxs[2]),
+			// -Y Maxs Tri 10
+			Vector(maxs[0], mins[1], maxs[2]),
+			Vector(mins[0], mins[1], maxs[2]),
+			Vector(maxs[0], mins[1], mins[2]),
+			// +Y Mins Tri 11
+			Vector(mins[0], maxs[1], mins[2]),
+			Vector(maxs[0], maxs[1], mins[2]),
+			Vector(mins[0], maxs[1], maxs[2]),
+			// +Y Maxs Tri 12
+			Vector(maxs[0], maxs[1], maxs[2]),
+			Vector(mins[0], maxs[1], maxs[2]),
+			Vector(maxs[0], maxs[1], mins[2]),
+		};
+
+		// Then apply the transformation to each point
+		// We know there are 36 vertices in the mesh (12 triangles * 3 vertices)
+		for (int i = 0; i < 36; i++)
+		{
+			mesh[i] = mesh[i].Multiply4(ownerTransform);
+		}
+
+		Shape shape = Shape.CreateTris(
+			color,
+			shapeFlags,
+			mesh,
+			12
+		);
+		AddShape(shape, tag);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Adds debug text at specified origin with given text.
 	//! \param[in] origin Origin is the position in 3D space where debug text is added.
 	//! \param[in] text Adds debug text at specified origin with given text.

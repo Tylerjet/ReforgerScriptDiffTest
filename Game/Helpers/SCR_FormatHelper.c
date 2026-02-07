@@ -55,6 +55,27 @@ class SCR_FormatHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] totalSeconds
+	//! \param[in] precision 1 for deciseconds, 2 for centiseconds, 3 for milliseconds etc - 0 or below for automatic
+	//! \return time in format "hh:ii:ss.subSeconds"
+	static string FormatTimeMS(float totalSeconds, int precision = 0)
+	{
+		int hour, minute, second;
+		SCR_DateTimeHelper.GetHourMinuteSecondFromSeconds(totalSeconds, hour, minute, second);
+
+		if (precision < 1)
+			precision = -1;
+
+		string formattedSubSeconds = (totalSeconds - (int)totalSeconds).ToString(0, precision);
+		if (totalSeconds < 0)
+			formattedSubSeconds = formattedSubSeconds.Substring(3, formattedSubSeconds.Length() - 3); // removing -0.
+		else
+			formattedSubSeconds = formattedSubSeconds.Substring(2, formattedSubSeconds.Length() - 2); // removing 0.
+
+		return FormatTime(hour, minute, second) + "." + formattedSubSeconds;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] hour
 	//! \param[in] minute
 	//! \param[in] second

@@ -1,9 +1,6 @@
 class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 {
-	protected SCR_BaseDeployableInventoryItemComponent m_DeployableItemComp;
-	
-	protected RplComponent m_RplComp;
-	
+	protected SCR_BaseDeployableInventoryItemComponent m_DeployableItemComp;	
 	protected bool m_bActionStarted;
 	
 	//------------------------------------------------------------------------------------------------
@@ -37,7 +34,8 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	protected void ResetDeployingDelayed(IEntity pUserEntity)
 	{
-		m_DeployableItemComp.SetDeploying(false);
+		if (m_DeployableItemComp)
+			m_DeployableItemComp.SetDeploying(false);
 		
 		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
@@ -99,6 +97,5 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 			return;
 		
 		m_DeployableItemComp = SCR_BaseDeployableInventoryItemComponent.Cast(owner.FindComponent(SCR_BaseDeployableInventoryItemComponent));
-		m_RplComp = RplComponent.Cast(owner.FindComponent(RplComponent));
 	}
 }

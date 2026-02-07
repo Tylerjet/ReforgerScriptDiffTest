@@ -68,27 +68,23 @@ class SCR_Login2FADialogUI : SCR_LoginProcessDialogUI
 			ShowWarningMessage(true);
 			return;
 		}
-		
-		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME, m_sName);
-		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD, m_sCode);
-		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_2FA_TOKEN, code);
-		GetGame().GetBackendApi().VerifyCredentials(m_Callback, true);
+		BohemiaAccountApi.Link(m_Callback, m_sName, m_sCode, code);
 		
 		super.OnConfirm();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnTimeout(SCR_BackendCallback callback)
+	override void OnTimeout()
 	{
-		super.OnTimeout(callback);
+		super.OnTimeout();
 
 		Clear();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	override void OnFailDelayed(BackendCallback callback)
 	{
-		super.OnFailDelayed(callback, code, restCode, apiCode);
+		super.OnFailDelayed(callback);
 
 		Clear();
 	}

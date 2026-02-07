@@ -234,6 +234,12 @@ class SCR_FastTravelComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	WorldTimestamp GetNextTransportTimestamp()
+	{
+		return m_fNextTravelAvailableAt;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] timestamp
 	void SetNextTransportTimestamp(WorldTimestamp timestamp)
 	{

@@ -38,6 +38,6 @@ class SCR_WeaponBlastEffect : ScriptAndConfig
 	//! \param[in] dotAngle dot product from the direction of the blast to the hit direction (0-1)
 	float GetComputedDamage(float normDistance, float dotAngle)
 	{
-		return m_fDamageValue * Math3D.Curve(ECurveType.CurveProperty2D, normDistance, m_aDistanceDamageFalloff)[1] * Math3D.Curve(ECurveType.CurveProperty2D, dotAngle, m_aAngleDamageFalloff)[1];
+		return m_fDamageValue * LegacyCurve.Curve(ECurveType.CurveProperty2D, normDistance, m_aDistanceDamageFalloff)[1] * LegacyCurve.Curve(ECurveType.CurveProperty2D, dotAngle, m_aAngleDamageFalloff)[1];
 	}
 }

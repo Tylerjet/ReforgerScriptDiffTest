@@ -71,7 +71,7 @@ class SCR_WorldMapExportTool : WorldEditorTool
 	protected bool m_bSaveHills;
 
 	/*
-		Category: RASTERIZATION
+		Category: Rasterization
 	*/
 
 	[Attribute("1.0 1.0 1.0 1.0", UIWidgets.ColorPicker, "Land color Bright", category: "Rasterization")]
@@ -261,8 +261,17 @@ class WorldDataExport : WorkbenchPlugin // TODO: SCR_WorldDataExportPlugin
 		rb.GetCmdLine("-type", type);
 		string dir;
 		rb.GetCmdLine("-saveDir", dir);
+		
+		ExcludeGenerateFlags generateflags = ExcludeGenerateFlags.ExcludeGenerateNone;
+		ExcludeSaveFlags saveFlags = ExcludeSaveFlags.ExcludeSaveNone;
+		string tmp;
+		if (rb.GetCmdLine("-excludehills", tmp))
+		{
+			generateflags = generateflags | ExcludeGenerateFlags.ExcludeGenerateHills;
+			saveFlags = saveFlags  | ExcludeSaveFlags.ExcludeSaveHills;
+		}
 
-		if (ExportWorldData(path, type, dir))
+		if (ExportWorldData(path, type, dir, generateflags, saveFlags))
 			Workbench.Exit(0);
 		else
 			Workbench.Exit(-1);
@@ -270,7 +279,7 @@ class WorldDataExport : WorkbenchPlugin // TODO: SCR_WorldDataExportPlugin
 
 	//------------------------------------------------------------------------------------------------
 	// Export
-	protected bool ExportWorldData(string path, string type, string dir)
+	protected bool ExportWorldData(string path, string type, string dir, ExcludeGenerateFlags excludeFlags, ExcludeSaveFlags saveFlags)
 	{
 		Print("WorldDataExport: opening world " + path, LogLevel.VERBOSE);
 
@@ -314,7 +323,7 @@ class WorldDataExport : WorkbenchPlugin // TODO: SCR_WorldDataExportPlugin
 		if (exportMap)
 		{
 			Print("Exporting map 2D map data...", LogLevel.NORMAL);
-			DataExportErrorType result = mapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, true, ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags.ExcludeSaveNone);
+			DataExportErrorType result = mapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, true, excludeFlags, saveFlags);
 			if (result != DataExportErrorType.DataExportErrorNone)
 			{
 				string reason = SCR_WorldMapExportTool.GetReportMessage(result);

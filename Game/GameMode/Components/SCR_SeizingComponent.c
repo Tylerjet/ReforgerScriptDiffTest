@@ -43,6 +43,9 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 
 	[Attribute("0", desc: "Allow defending for playable factions only.")]
 	protected bool m_bIgnoreNonPlayableDefenders;
+	
+	[Attribute("0", desc: "If enabled, at least one player has to be present in the capture area to progress.")]
+	protected bool m_bCapturingRequiresPlayer;
 
 	[Attribute("1")]
 	protected bool m_bShowNotifications;
@@ -185,8 +188,8 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		m_bQueryFinished = true;
 
 		array<IEntity> presentEntities = {};
-		int presentEntitiesCnt = m_Trigger.GetEntitiesInside(presentEntities);
-		m_bCharacterPresent = presentEntitiesCnt != 0;
+		int presentEntitiesCount = m_Trigger.GetEntitiesInside(presentEntities);
+		m_bCharacterPresent = presentEntitiesCount != 0;
 
 		// Nobody is here, no need to evaluate
 		if (!m_bCharacterPresent)
@@ -202,12 +205,13 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		}
 
 		map<SCR_Faction, int> factionsPresence = new map<SCR_Faction, int>();
+		map<SCR_Faction, bool> factionsPlayerPresence = new map<SCR_Faction, bool>();
 		SCR_Faction evaluatedEntityFaction;
-
-		int factionCnt;
+		int factionCount;
+		PlayerManager playerManager = GetGame().GetPlayerManager();
 
 		// Go through all entities and check their factions
-		for (int i = 0; i < presentEntitiesCnt; i++)
+		for (int i = 0; i < presentEntitiesCount; i++)
 		{
 			IEntity entity = presentEntities[i];
 			
@@ -222,34 +226,40 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			if (!evaluatedEntityFaction)
 				continue;
 
-			factionCnt = factionsPresence.Get(evaluatedEntityFaction);
+			factionCount = factionsPresence.Get(evaluatedEntityFaction);
 
 			// If faction is not yet registered, do it now - otherwise just increase its presence counter
-			if (factionCnt == 0)
+			if (factionCount == 0)
 				factionsPresence.Insert(evaluatedEntityFaction, 1);
 			else
-				factionsPresence.Set(evaluatedEntityFaction, factionCnt + 1);
+				factionsPresence.Set(evaluatedEntityFaction, factionCount + 1);
+			
+			// Check if there are some players present in case they are required
+			if (m_bCapturingRequiresPlayer && playerManager.GetPlayerIdFromControlledEntity(entity) != 0)
+				factionsPlayerPresence.Set(evaluatedEntityFaction, true);
 		}
+		
 		m_bDeleteDisabledAIs = false;
 		SCR_Faction prevailingFaction;
 		int highestAttackingPresence;
 		int highestDefendingPresence;
 		int curSeizingCharacters;
-		int presence;
 
 		// Evaluate the highest attacking presence
-		for (int i = 0, cnt = factionsPresence.Count(); i < cnt; i++)
+		foreach (SCR_Faction faction, int presence : factionsPresence)
 		{
 			// Non-playable attackers are not allowed
-			if (m_bIgnoreNonPlayableAttackers && !factionsPresence.GetKey(i).IsPlayable())
+			if (m_bIgnoreNonPlayableAttackers && !faction.IsPlayable())
 				continue;
-
-			presence = factionsPresence.GetElement(i);
+			
+			// In case players are required but are not present, ignore this faction for attacking
+			if (m_bCapturingRequiresPlayer && !factionsPlayerPresence.Get(faction))
+				continue;
 
 			if (presence > highestAttackingPresence)
 			{
 				highestAttackingPresence = presence;
-				prevailingFaction = factionsPresence.GetKey(i);
+				prevailingFaction = faction;
 			}
 			else if (presence == highestAttackingPresence)	// When 2 or more factions have the same presence, none should prevail
 			{
@@ -260,17 +270,17 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 		// Evaluate the highest defending presence
 		if (prevailingFaction)
 		{
-			for (int i = 0, cnt = factionsPresence.Count(); i < cnt; i++)
+			foreach (SCR_Faction faction, int presence : factionsPresence)
 			{
 				// Non-playable defenders are not allowed
-				if (m_bIgnoreNonPlayableDefenders && !factionsPresence.GetKey(i).IsPlayable())
+				if (m_bIgnoreNonPlayableDefenders && !faction.IsPlayable())
 					continue;
 
 				// This faction is already considered attacking
-				if (factionsPresence.GetKey(i) == prevailingFaction)
+				if (faction == prevailingFaction)
 					continue;
 
-				highestDefendingPresence = Math.Max(factionsPresence.GetElement(i), highestDefendingPresence);
+				highestDefendingPresence = Math.Max(presence, highestDefendingPresence);
 			}
 
 			// Get net amount of players effectively seizing (clamp for max attackers attribute)

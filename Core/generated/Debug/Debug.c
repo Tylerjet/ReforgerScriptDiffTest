@@ -49,6 +49,19 @@ sealed class Debug
 	static proto void Error2(string title, string err);
 	//! Dialog box with error message.
 	static proto void Error(string err);
+	/*!
+	Constructs a string that when used in log represents a clickable link. When clicked on a camera moves to view the entity.
+	\param[in] entity used to generate the link
+	\return clickable link in format: ENTITY:id (['name'] 'className') at \<x y z\>
+	*/
+	static proto string GetEntityLinkString(IEntity entity);
+	/*!
+	Constructs a string that when used in log represents a clickable link. When clicked on a camera moves to view the location.
+	\param[in] position location in the world
+	\param[in] size represents bounding box around the location
+	\return clickable link in format: POSITION: \<x y z\> size
+	*/
+	static proto string GetPositionLinkString(vector position, float size);
 	//! Starts measuring time until EndTimeMeasure() is called.
 	static proto void BeginTimeMeasure();
 	//! Ends time measurement which began with last BeginTimeMeasure() call.

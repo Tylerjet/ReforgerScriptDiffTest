@@ -590,11 +590,13 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 
 		foreach (BaseCompartmentSlot comp : compartments)
 		{
-			if (comp.GetOwner())
-				m_aCollectedNearbyEntities.Insert(comp.GetOwner());
-
-			if (comp.GetOccupant())
-				m_aCollectedNearbyEntities.Insert(comp.GetOccupant());
+			IEntity compOwner = comp.GetOwner();
+			if (compOwner && !m_aCollectedNearbyEntities.Contains(compOwner))
+				m_aCollectedNearbyEntities.Insert(compOwner);
+			
+			IEntity compOccupant = comp.GetOwner();
+			if (compOccupant && !m_aCollectedNearbyEntities.Contains(compOccupant))
+				m_aCollectedNearbyEntities.Insert(compOccupant);
 		}
 
 		return true;

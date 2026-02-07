@@ -106,6 +106,9 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 			//Remove preview
 			if (weatherTransitionManager.IsPreviewingDateTime())
 				weatherManager.SetDateTimePreview(false);
+			
+			float timeofDay = weatherManager.GetTimeOfTheDay();
+			weatherManager.SetTimeOfTheDay(timeofDay, true);
 		}
 	}
 	

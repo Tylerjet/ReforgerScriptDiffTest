@@ -53,8 +53,8 @@ class SCR_AdjustShellTimeFuzeAction : SCR_AdjustSignalAction
 		}
 		else
 		{
-			string fuzeTime = SCR_StringHelper.Translate(UIConstants.VALUE_UNIT_SECONDS, m_ShellConfig.GetSavedTime().ToString(-1, 1));
-			outName = SCR_StringHelper.Translate(actionInfo.GetDescription(), fuzeTime);
+			string fuzeTime = WidgetManager.Translate(UIConstants.VALUE_UNIT_SECONDS, m_ShellConfig.GetSavedTime().ToString(-1, 1));
+			outName = WidgetManager.Translate(actionInfo.GetDescription(), fuzeTime);
 		}
 
 		return true;

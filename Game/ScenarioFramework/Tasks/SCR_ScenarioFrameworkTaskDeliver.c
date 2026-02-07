@@ -102,7 +102,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	//! \param[in] trigger Trigger activates when entities enter its area, checks if asset is inside, finishes task if found, else checks ch
 	void OnDeliveryTriggerActivated(notnull SCR_ScenarioFrameworkTriggerEntity trigger)
 	{
-		if (!m_SupportEntity || !m_Asset)
+		if (!m_Asset)
 			return;
 		
 		array<IEntity> entitiesInside = {};
@@ -113,7 +113,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			if (entity == m_Asset)
 			{
 				m_TriggerDeliver.GetOnActivate().Remove(OnDeliveryTriggerActivated);
-				m_SupportEntity.FinishTask(this);
+				m_LayerTask.ProcessLayerTaskState(SCR_ETaskState.COMPLETED);
 				return;
 			}
 
@@ -130,7 +130,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			if (inventoryComponent.Contains(m_Asset))
 			{
 				m_TriggerDeliver.GetOnActivate().Remove(OnDeliveryTriggerActivated);
-				m_SupportEntity.FinishTask(this);
+				m_LayerTask.ProcessLayerTaskState(SCR_ETaskState.COMPLETED);
 				break;
 			}
 		}
@@ -149,9 +149,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (!m_bDeliveryItemFound)
 		{
 			m_bDeliveryItemFound = true;
-			SetState(SCR_TaskState.PROGRESSED);
-			if (m_LayerTask)
-				m_LayerTask.SetLayerTaskState(SCR_TaskState.PROGRESSED);
+			m_LayerTask.ProcessLayerTaskState(SCR_ETaskState.PROGRESSED);
 		}
 	}
 	
@@ -164,9 +162,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if(!item || item != m_Asset)
 			return;
 
-		SetState(SCR_TaskState.UPDATED);
-		if (m_LayerTask)
-				m_LayerTask.SetLayerTaskState(SCR_TaskState.UPDATED);
+		m_LayerTask.ProcessLayerTaskState(SCR_ETaskState.PROGRESSED);
 		UpdateTaskTitleAndDescription(0);
 	}
 
@@ -191,7 +187,8 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			//delivery point still doesn't exist
 			if (iPossessed == 1)
 			{
-				m_iObjectState = 1;		
+				m_iObjectState = 1;	
+				SetTaskUIVisibility(SCR_ETaskUIVisibility.LIST_ONLY);	
 			}
 			else
 			{
@@ -206,7 +203,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			if (iPossessed == 1)
 			{
 				m_iObjectState = 5;			
-				m_SupportEntity.MoveTask(m_TriggerDeliver.GetOrigin(), this.GetTaskID());
+				m_LayerTask.m_TaskSystem.MoveTask(this, m_TriggerDeliver.GetOrigin());
 			}
 			else
 			{
@@ -224,11 +221,14 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (!subject)
 			return;
 		
-		if (GetTitle() != subject.GetTaskTitle(m_iObjectState))
-			m_SupportEntity.SetTaskTitle(this, subject.GetTaskTitle(m_iObjectState));
+		if (GetTaskName() != subject.GetTaskTitle(m_iObjectState))
+			SetTaskName(subject.GetTaskTitle(m_iObjectState));
 		
-		if (GetDescription() != subject.GetTaskDescription(m_iObjectState))
-			m_SupportEntity.SetTaskDescription(this, subject.GetTaskDescription(m_iObjectState));	
+		if (GetTaskDescription() != subject.GetTaskDescription(m_iObjectState))
+			SetTaskDescription(subject.GetTaskDescription(m_iObjectState));
+		
+		if (m_iObjectState != 1)
+			SetTaskUIVisibility(SCR_ETaskUIVisibility.ALL);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -253,29 +253,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	{
 		m_bTaskPositionUpdated = false;
 		if (m_Asset)
-			m_SupportEntity.MoveTask(m_Asset.GetOrigin(), this.GetTaskID());
+			m_LayerTask.m_TaskSystem.MoveTask(this, m_Asset.GetOrigin());
 		else
 			Print("ScenarioFramework: Task Deliver does not have m_Asset properly assigned for MoveTaskMarkerPosition", LogLevel.ERROR);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Updates map task icon visibility based on object state, sets opacity and visibility accordingly.
-	override void UpdateMapTaskIcon()
-	{
-		super.UpdateMapTaskIcon();
-		if (!GetTaskIconkWidget())
-			return;
-
-		if (m_iObjectState == 1)
-		{
-			GetTaskIconkWidget().SetOpacity(0);	//hide the icon on map until the delivery point isn't created
-			GetTaskIconkWidget().SetVisible(false);
-		}
-		else
-		{
-			GetTaskIconkWidget().SetOpacity(1);
-			GetTaskIconkWidget().SetVisible(true);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -468,29 +448,17 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (EventHandlerMgr)
 			EventHandlerMgr.RegisterScriptHandler("OnDestroyed", this, OnDestroyed);
 	}	
-		
-	//------------------------------------------------------------------------------------------------
-	//! Sets support entity for task delivery, returns true if found, logs error if not found.
-	//! \return true if support entity is found and set, false otherwise.
-	override bool SetSupportEntity()
-	{
-		m_SupportEntity = SCR_ScenarioFrameworkTaskDeliverSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDeliverSupportEntity));
-		
-		if (!m_SupportEntity)
-		{
-			Print("ScenarioFramework: Task Deliver support entity not found in the world, task won't be created!", LogLevel.ERROR);
-			return false;
-		}
-
-		return true;
-	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Initializes inventory component, registers players, and sets event handlers for player spawning and disconnecting.
-	override void Init()
+	//! Rehooks task asset, sets up damage state change listener, checks engine stop after 5 seconds if vehicle.
+	//! \param[in] object to be linked to this task.
+	override void HookTaskAsset(IEntity object)
 	{
-		super.Init();
-					
+		if (!object)
+			return;
+		
+		super.HookTaskAsset(object);
+		
 		if (!m_Asset)
 			return;
 			
@@ -516,6 +484,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		gameMode.GetOnPlayerSpawned().Insert(RegisterPlayer);
 		gameMode.GetOnPlayerDisconnected().Remove(OnDisconnected);
 		gameMode.GetOnPlayerDisconnected().Insert(OnDisconnected);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------

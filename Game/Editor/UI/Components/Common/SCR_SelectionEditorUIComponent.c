@@ -450,7 +450,7 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		float size;
 		vector cursorPos = m_CursorComponent.GetCursorPos();
-		float curveCoef = Math3D.Curve(ECurveType.CurveProperty2D, (m_fSelectionFrameDuration - FRAME_DURATION_MIN) / m_fGamepadSelectionDuration, m_GamepadSelectionCurve)[1];
+		float curveCoef = LegacyCurve.Curve(ECurveType.CurveProperty2D, (m_fSelectionFrameDuration - FRAME_DURATION_MIN) / m_fGamepadSelectionDuration, m_GamepadSelectionCurve)[1];
 
 		Widget widgetShow = m_GamepadSetSelectionWidget;
 		Widget widgetHide = m_GamepadToggleSelectionWidget;

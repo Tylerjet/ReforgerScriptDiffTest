@@ -147,7 +147,11 @@ class SCR_IdentityBioGroupConfig
 		//~ Refill available list if empty
 		if (m_aAvailableIdentityBioIndexList.IsEmpty())
 		{
-			m_aAvailableIdentityBioIndexList.Copy(m_aUnavailableIdentityBioIndexList);
+			foreach (int unavailableIndex : m_aUnavailableIdentityBioIndexList)
+			{
+				m_aAvailableIdentityBioIndexList.Insert(unavailableIndex);
+			}
+			
 			m_aUnavailableIdentityBioIndexList.Clear();
 		}
 		

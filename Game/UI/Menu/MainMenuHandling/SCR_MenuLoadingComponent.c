@@ -28,7 +28,7 @@ class SCR_MenuLoadingComponent
 
 		// Open last menu
 		string lastMenu = GameSessionStorage.s_Data[SAVE_LAST_MENU];
-		if (lastMenu.IsEmpty())
+		if (lastMenu.IsEmpty() || (GetGame().m_bIsMainMenuOpen && lastMenu.ToInt() == ChimeraMenuPreset.MainMenu))
 			return false;
 
 		GetGame().GetMenuManager().OpenMenu(lastMenu.ToInt());

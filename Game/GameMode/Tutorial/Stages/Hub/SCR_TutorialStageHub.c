@@ -20,7 +20,7 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 		else
 			OnPlayerSpawned();
 		
-		GetGame().GetCallqueue().CallLater(PlayLoudspeaker, Math.RandomInt(5000, 30000));
+		GetGame().GetCallqueue().CallLater(PlayLoudspeaker, Math.RandomInt(5, 30) * 1000);
 		
 		// Pilot in the hub should change his lines when heli course has been finished
 		if (SCR_Enum.HasFlag(m_TutorialComponent.GetFinishedCourses(), SCR_ETutorialCourses.HELICOPTERS))
@@ -95,12 +95,15 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskAssigned(SCR_BaseTask task)
+	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
 	{
-		SCR_TutorialCourseTask courseTask = SCR_TutorialCourseTask.Cast(task);
-		if (!courseTask)
-			return;
-		
+		if (vehicle == GetGame().GetWorld().FindEntityByName("SmallJeep"))
+			m_TutorialComponent.SetCourseConfig(SCR_ETutorialCourses.DRIVING);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnTaskAssigned(SCR_Task task, SCR_TaskExecutor executor, int requesterID)
+	{
 		SCR_WaypointDisplay display = m_TutorialComponent.GetWaypointDisplay();
 		if (!display)
 			return;
@@ -120,7 +123,7 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 			if (!wp)
 				continue;
 			
-			if (instructor.GetCourseType() == courseTask.m_eCourse)
+			if (instructor.GetCourseType() == task.GetTaskID().ToInt())
 				wp.m_iMaximumDrawDistance = -1;
 			else
 				wp.m_iMaximumDrawDistance = INSTRUCTOR_MAXIMUM_DISTANCE_SHORT;
@@ -128,7 +131,7 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnTaskUnassigned(SCR_BaseTask task)
+	void OnTaskUnassigned(SCR_Task task, SCR_TaskExecutor executor, int requesterID)
 	{
 		SCR_WaypointDisplay display = m_TutorialComponent.GetWaypointDisplay();
 		if (!display)
@@ -156,6 +159,9 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerSpawned()
 	{
+		if (!m_Player)
+			m_Player = m_TutorialComponent.GetPlayer();
+		
 		m_TutorialComponent.GetOnPlayerSpawned().Remove(OnPlayerSpawned);
 		
 		m_TutorialComponent.IncrementFreeRoamActivation();
@@ -231,8 +237,16 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 			m_VehicleWP.m_iMaximumDrawDistance = INSTRUCTOR_MAXIMUM_DISTANCE_SHORT;
 		}
 		
-		SCR_BaseTaskManager.s_OnTaskAssigned.Insert(OnTaskAssigned);
-		SCR_BaseTaskManager.s_OnTaskUnassigned.Insert(OnTaskUnassigned);
+		SCR_Task.GetOnTaskAssigneeAdded().Insert(OnTaskAssigned);
+		SCR_Task.GetOnTaskAssigneeRemoved().Insert(OnTaskUnassigned);
+		
+		if (m_Player)
+		{
+			SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
+			
+			if (accessComp)
+				accessComp.GetOnCompartmentEntered().Insert(OnVehicleEntered);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -248,7 +262,7 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 			SCR_VoiceoverSystem.GetInstance().PlaySequence(variant, loudspeaker, playImmediately: false);
 		}
 
-		GetGame().GetCallqueue().CallLater(PlayLoudspeaker, Math.RandomInt(30000, 60000));
+		GetGame().GetCallqueue().CallLater(PlayLoudspeaker, Math.RandomInt(30, 60) * 1000);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -283,7 +297,15 @@ class SCR_TutorialStageHub : SCR_BaseTutorialStage
 		GetGame().GetCallqueue().Remove(SCR_HintManagerComponent.ShowHint);
 		GetGame().GetCallqueue().Remove(PlayLoudspeaker);
 		
-		SCR_BaseTaskManager.s_OnTaskAssigned.Remove(OnTaskAssigned);
-		SCR_BaseTaskManager.s_OnTaskUnassigned.Remove(OnTaskUnassigned);
+		SCR_Task.GetOnTaskAssigneeAdded().Remove(OnTaskAssigned);
+		SCR_Task.GetOnTaskAssigneeRemoved().Remove(OnTaskUnassigned);
+		
+		if (m_Player)
+		{
+			SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
+			
+			if (accessComp)
+				accessComp.GetOnCompartmentEntered().Remove(OnVehicleEntered);
+		}
 	}
 };

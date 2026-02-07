@@ -1,7 +1,25 @@
 //------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Markers")]
 class SCR_MapMarkerSquadLeaderClass : SCR_MapMarkerEntityClass
-{}
+{
+	[Attribute(defvalue: "1", desc:"Can show other squad leaders to this squad leader")]
+	protected bool m_bCanLeaderSeeOtherLeaders;
+
+	[Attribute(defvalue: "1", desc:"Can show other squad leaders to this squad member, member will see only own leader")]
+	protected bool m_bCanMemberSeeOtherLeaders;
+
+	//------------------------------------------------------------------------------------------------
+	bool CanLeaderSeeOtherLeaders()
+	{
+		return m_bCanLeaderSeeOtherLeaders;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool CanMemberSeeOtherLeaders()
+	{
+		return m_bCanMemberSeeOtherLeaders;
+	}
+}
 
 //------------------------------------------------------------------------------------------------
 //! Dynamic map marker -> squad leader
@@ -9,30 +27,19 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 {
 	[RplProp(onRplName: "OnPlayerIdUpdate")]
 	protected int m_PlayerID;							// target ID, needed for visibility rules and fetching group
-	
-	const float SL_UPDATE_DELAY = 1; 					// seconds 
-	//const float ASPECT_RATIO_FLAG = 1.6;				// temp -> force aspect ratio of a military symbol
-		
+
 	bool m_bDoGroupTextUpdate;							// group text update flag
 	protected bool m_bDoGroupSymbolUpdate;				// group symbol update flag
 	protected SCR_AIGroup m_Group;
 	protected SCR_MapMarkerSquadLeaderComponent m_SquadLeaderWidgetComp;
+	protected bool m_bDoLocalVisibilityUpdate;
 		
 	//------------------------------------------------------------------------------------------------
 	// RPL EVENTS
 	//------------------------------------------------------------------------------------------------
 	void OnPlayerIdUpdate()
 	{
-		PlayerController pController = GetGame().GetPlayerController();
-		if (!pController)
-			return;
-		
-		if (m_PlayerID == pController.GetPlayerId())	// if this is us, dont display
-			SetLocalVisible(false); // set this true for markers testing
-		else
-		{
-			SetLocalVisible(true);
-		}
+		m_bDoLocalVisibilityUpdate = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -140,16 +147,8 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 			return;
 		}
 		
-		string customName = m_Group.GetCustomName();
-		if (customName != string.Empty)
-			SetText(customName);
-		else 
-		{
-			string company, platoon, squad, character, format;
-			m_Group.GetCallsigns(company, platoon, squad, character, format);
-				
-			SetText(WidgetManager.Translate(format, company, platoon, squad, character));
-		}
+		// This function can only be used in UI menu, where to change the language you need to close and open the shown menu, so it will be renewed.
+		SetText(SCR_GroupHelperUI.GetTranslatedGroupNameAndRoleName(m_Group));
 		
 		if (m_SquadLeaderWidgetComp)
 			m_SquadLeaderWidgetComp.SetText(m_sText);
@@ -170,6 +169,104 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 			m_SquadLeaderWidgetComp.SetGroupActive(false);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Check whether we are in a squad and if it should be visible on map
+	void UpdateLocalVisibility()
+	{
+		m_bDoLocalVisibilityUpdate = false;
+
+		PlayerController pController = GetGame().GetPlayerController();
+		if (!pController)
+			return;
+
+		if (m_PlayerID == pController.GetPlayerId())
+		{
+			// if this is us, dont display
+			SetLocalVisible(false);
+			return;
+		}
+
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+
+		SCR_AIGroup localPlayerGroup = groupManager.GetPlayerGroup(pController.GetPlayerId());
+		if (!localPlayerGroup)
+		{
+			SetLocalVisible(false);
+			return;
+		}
+
+		bool isLocalPlayerLeader = localPlayerGroup.IsPlayerLeader(pController.GetPlayerId());
+
+		if (isLocalPlayerLeader && CanLeaderSeeOtherLeaders())
+		{
+			SetLocalVisible(true);
+			return;
+		}
+
+		if (!isLocalPlayerLeader && (CanMemberSeeOtherLeaders() || localPlayerGroup.IsPlayerInGroup(m_PlayerID)))
+		{
+			SetLocalVisible(true);
+			return;
+		}
+
+		SetLocalVisible(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CanLeaderSeeOtherLeaders()
+	{
+		if (SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander())
+			return true;
+
+		SCR_MapMarkerSquadLeaderClass prefabData = SCR_MapMarkerSquadLeaderClass.Cast(GetPrefabData());
+		if (!prefabData)
+			return true;
+
+		return prefabData.CanLeaderSeeOtherLeaders();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CanMemberSeeOtherLeaders()
+	{
+		if (SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander())
+			return true;
+
+		SCR_MapMarkerSquadLeaderClass prefabData = SCR_MapMarkerSquadLeaderClass.Cast(GetPrefabData());
+		if (!prefabData)
+			return true;
+
+		return prefabData.CanMemberSeeOtherLeaders();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerLeaderChanged(int groupID, int playerId)
+	{
+		if (m_PlayerID <= 0)
+			return;
+
+		m_bDoLocalVisibilityUpdate = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerAdded(SCR_AIGroup group, int playerId)
+	{
+		if (m_PlayerID <= 0)
+			return;
+
+		m_bDoLocalVisibilityUpdate = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFactionCommanderChanged(SCR_Faction faction, int commanderPlayerId)
+	{
+		if (!faction || faction != SCR_FactionManager.SGetLocalPlayerFaction())
+			return;
+
+		m_bDoLocalVisibilityUpdate = true
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Update names when user settings are changed (f.e. xbox UGC)
 	protected void OnUserSettingsChanged()
@@ -235,6 +332,10 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 	//------------------------------------------------------------------------------------------------
 	override void OnUpdate()
 	{
+		// updates only if the marker is visible and when the map is open
+		if (m_bDoLocalVisibilityUpdate)
+			UpdateLocalVisibility();
+
 		if (!m_wRoot)
 			return;
 		
@@ -255,7 +356,15 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 	{
 		super.EOnInit(owner);
 		
-		m_fUpdateDelay = SL_UPDATE_DELAY;
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
+		SCR_AIGroup.GetOnPlayerAdded().Insert(OnPlayerAdded);
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(OnPlayerLeaderChanged);
+
+		SCR_FactionCommanderHandlerComponent factionCommanderHandler = SCR_FactionCommanderHandlerComponent.GetInstance();
+		if (factionCommanderHandler)
+			factionCommanderHandler.GetOnFactionCommanderChanged().Insert(OnFactionCommanderChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -263,5 +372,12 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 	{
 		if (m_ConfigEntry)
 			SCR_MapMarkerEntrySquadLeader.Cast(m_ConfigEntry).UnregisterMarker(m_Group);
+
+		SCR_AIGroup.GetOnPlayerAdded().Remove(OnPlayerAdded);
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Remove(OnPlayerLeaderChanged);
+
+		SCR_FactionCommanderHandlerComponent factionCommanderHandler = SCR_FactionCommanderHandlerComponent.GetInstance();
+		if (factionCommanderHandler)
+			factionCommanderHandler.GetOnFactionCommanderChanged().Remove(OnFactionCommanderChanged);
 	}
 }

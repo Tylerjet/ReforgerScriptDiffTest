@@ -60,8 +60,8 @@ class SCR_CampaignBuildingEditableEntityFilter : SCR_BaseEditableEntityFilter
 		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
 		if (!providerComponent)
 			return false;
-		
-		if (!providerComponent.IsCharacterFactionSame(char))
+
+		if (!providerComponent.IsEntityFactionSame(providerComponent.GetOwner(), char))
 			return false;
 		
 		if (!providerComponent.CanCommandAI())

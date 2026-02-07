@@ -38,7 +38,7 @@ class SCR_InventoryAttachmentStorageUI : SCR_InventoryStorageBaseUI
 	protected int GetRelevantItems(out notnull array<IEntity> items)
 	{
 		if (m_SearchPredicate)
-			return m_InventoryManager.FindItems(items, m_SearchPredicate);
+			return m_InventoryManager.FindItems(items, m_SearchPredicate, EStoragePurpose.PURPOSE_ANY);
 
 		return 0;
 	}

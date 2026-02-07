@@ -10,24 +10,18 @@ class SCR_CampaignRepairEntityUserAction : ScriptedUserAction
 	protected SCR_SiteSlotEntity m_Slot;
 	protected EEditableEntityLabel m_CompType;
 	protected const int SLOT_SEARCH_DISTANCE = 5;
-	protected IEntity m_Owner;
-	
-	//------------------------------------------------------------------------------------------------
-	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent) 
-	{
-		m_Owner = pOwnerEntity;
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	void CompositionInit()
 	{/*
-		m_ServiceEntityComp = SCR_CampaignServiceEntityComponent.Cast(m_Owner.FindComponent(SCR_CampaignServiceEntityComponent));
-		m_DestructionMultiphaseComp = SCR_DestructionMultiPhaseComponent.Cast(m_Owner.FindComponent(SCR_DestructionMultiPhaseComponent));
+		IEntity owner = GetOwner();
+		m_ServiceEntityComp = SCR_CampaignServiceEntityComponent.Cast(owner.FindComponent(SCR_CampaignServiceEntityComponent));
+		m_DestructionMultiphaseComp = SCR_DestructionMultiPhaseComponent.Cast(owner.FindComponent(SCR_DestructionMultiPhaseComponent));
 				
 		GetGame().GetWorld().QueryEntitiesBySphere(m_Owner.GetOrigin(), SLOT_SEARCH_DISTANCE, GetNearestSlot, null, EQueryEntitiesFlags.ALL);
 		if (!m_Slot)	
 		{
-			IEntity parent = m_Owner.GetParent();
+			IEntity parent = owner.GetParent();
 			if (!parent)
 				return;
 			

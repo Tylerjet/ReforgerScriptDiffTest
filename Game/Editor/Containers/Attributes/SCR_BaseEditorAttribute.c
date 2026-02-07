@@ -717,11 +717,11 @@ class SCR_EditorAttributeEntryStringArray : SCR_BaseEditorAttributeEntry
 
 class SCR_EditorAttributeEntryIntArray : SCR_BaseEditorAttributeEntry
 {
-	protected array<ref int> m_aValues;
+	protected array<int> m_aValues;
 	
 	//------------------------------------------------------------------------------------------------
 	// constructor
-	void SCR_EditorAttributeEntryIntArray(array<ref int> values)
+	void SCR_EditorAttributeEntryIntArray(array<int> values)
 	{
 		m_aValues = values;
 	}

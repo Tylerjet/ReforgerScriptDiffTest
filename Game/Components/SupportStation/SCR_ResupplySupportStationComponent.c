@@ -51,7 +51,11 @@ class SCR_ResupplySupportStationComponent : SCR_BaseItemSupportStationComponent
 			if (!OnConsumeSuppliesServer(GetSupplyAmountAction(actionOwner, actionUser, action)))
 				return;
 		}
-		
+
+		//~ Consume Military Supply Allocation if enabled
+		if (SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+			OnConsumeMilitarySupplyAllocationServer(actionUser, GetMilitarySupplyAllocationCostOfAction(action));
+
 		map<ResourceName, int> itemsToResupply = new map<ResourceName, int>;
 		itemsToResupply.Insert(resupplyAction.GetItemPrefab(), 1);
 		inventoryManager.ResupplyMagazines(itemsToResupply);
@@ -114,6 +118,63 @@ class SCR_ResupplySupportStationComponent : SCR_BaseItemSupportStationComponent
 					SCR_NotificationsComponent.SendLocal(resupplyAction.GetNotificationOnUse(), userId);
 				}
 			}
-		}				
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] actionUser
+	//! \param[in] amount
+	protected void OnConsumeMilitarySupplyAllocationServer(IEntity actionUser, int amount)
+	{
+		if (amount == 0)
+			return;
+
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		int playerId = playerManager.GetPlayerIdFromControlledEntity(actionUser);
+
+		// Do not consume Military Supply Allocation if resupplying on enemy support station
+		SCR_Faction playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(playerId));
+		if (playerFaction && playerFaction != GetFaction())
+			return;
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(playerManager.GetPlayerController(playerId));
+		if (!playerController)
+			return;
+
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(playerController.FindComponent(SCR_PlayerSupplyAllocationComponent));
+		if (!playerSupplyAllocationComponent)
+			return;
+
+		playerSupplyAllocationComponent.AddPlayerAvailableAllocatedSupplies(-1 * amount);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the Military Supply Allocation cost of action based on item supply cost
+	//! \param[in] action
+	protected int GetMilitarySupplyAllocationCostOfAction(SCR_BaseUseSupportStationAction action)
+	{
+		if (!SCR_ArsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+			return 0;
+
+		SCR_BaseItemHolderSupportStationAction itemHolder = SCR_BaseItemHolderSupportStationAction.Cast(action);
+		if (!itemHolder)
+			return 0;
+
+		SCR_EntityCatalogEntry catalogEntry = m_EntityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, itemHolder.GetItemPrefab(), GetFaction());
+		if (!catalogEntry)
+			return 0;
+
+		SCR_ArsenalItem arsenalData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!arsenalData)
+			return 0;
+
+		if (arsenalData.GetUseMilitarySupplyAllocation())
+			return Math.ClampInt(arsenalData.GetSupplyCost(m_eSupplyCostType) + m_iBaseSupplyCostOnUse, 0, int.MAX);
+
+		return 0;
 	}
 }

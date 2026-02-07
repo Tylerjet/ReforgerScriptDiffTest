@@ -119,6 +119,9 @@ class SCR_AddonLineBaseComponent : SCR_ListMenuEntryComponent
 		else if (tooltip.IsValid("MissingDependencies", m_Widgets.m_wFixButton))
 			OnDependenciesTooltipShow(tooltip);
 
+		else if (tooltip.IsValid("Corrupted", m_Widgets.m_wRepairButton))
+			OnDependenciesTooltipShow(tooltip);
+
 		else if (tooltip.IsValid("Disable", m_Widgets.m_wMoveLeftButton))
 			OnSideTooltipShow(tooltip);
 
@@ -169,6 +172,11 @@ class SCR_AddonLineBaseComponent : SCR_ListMenuEntryComponent
 
 		// Dependencies Button
 		m_Widgets.m_FixButtonComponent0.SetVisible(RequiresDownloadingDependencies());
+
+		// Repair Button
+		WorkshopItem item = m_Item.GetWorkshopItem();
+		Revision itemRevision = item.GetActiveRevision();
+		m_Widgets.m_RepairButtonComponent0.SetVisible(itemRevision.IsCorrupted());
 
 		// Continuous update
 		if (SCR_WorkshopUiCommon.IsDownloadingAddon(m_Item))

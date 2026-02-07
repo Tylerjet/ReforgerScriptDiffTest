@@ -79,7 +79,7 @@ class SCR_CompositionInfoHandlerComponent : ScriptComponent
 		Shape.CreateLines(Color.RED, ShapeFlags.NOZBUFFER, line, 1);
 		
 		SCR_EditableEntityAuthor author = editableEntity.GetAuthor();
-		if (author.m_sAuthorUID.IsEmpty())
+		if (!author || author.m_sAuthorUID.IsEmpty())
 		{
 			m_CurrentDetails = null;
 			return null;

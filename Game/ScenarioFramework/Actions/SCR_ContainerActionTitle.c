@@ -1,4 +1,3 @@
-[BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ContainerActionTitle : BaseContainerCustomTitle
 {
 	//------------------------------------------------------------------------------------------------
@@ -6,6 +5,7 @@ class SCR_ContainerActionTitle : BaseContainerCustomTitle
 	{
 		title = source.GetClassName();
 		title.Replace("SCR_ScenarioFrameworkAction", "");
+		title.Replace("SCR_ScenarioFramework", "");
 		string sOriginal = title;
 		SplitStringByUpperCase(sOriginal, title);
 		return true;

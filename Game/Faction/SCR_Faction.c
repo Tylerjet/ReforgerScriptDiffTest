@@ -8,6 +8,9 @@ class SCR_Faction : ScriptedFaction
 	[Attribute(defvalue: "0", desc: "Order in which the faction appears in the list. Lower values are first.")]
 	protected int m_iOrder;
 
+	[Attribute(defvalue: "-1", desc: "Player limit for the faction.\n-1 means that there is no limit.", params: "-1 inf")]
+	protected int m_iPlayerLimit;
+	
 	[Attribute("1 1 1", UIWidgets.ColorPicker, desc: "Outline faction color")]
 	protected ref Color m_OutlineFactionColor;
 	
@@ -44,14 +47,17 @@ class SCR_Faction : ScriptedFaction
 	[Attribute()]
 	protected ref SCR_FactionCallsignInfo m_CallsignInfo;
 
+	[Attribute(desc: "Group preset for predefined groups roles")]
+	protected ref array<ref SCR_GroupRolePresetConfig> m_aGroupRolePresetConfigs;
+
 	[Attribute(desc: "Group preset for predefined groups")]
 	protected ref array<ref SCR_GroupPreset> m_aPredefinedGroups;
 
 	[Attribute(desc: "Create only predefined groups")]
 	protected bool m_bCreateOnlyPredefinedGroups;
 
-	[Attribute()]
-	protected string m_sFactionRadioEncryptionKey;
+	[Attribute("1", desc: "Auto create default group when all groups are full")]
+	protected bool m_bEnableAutoGroupCreationWhenFull;
 
 	[Attribute("0")]
 	protected int m_iFactionRadioFrequency;
@@ -80,18 +86,27 @@ class SCR_Faction : ScriptedFaction
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Background imageset for this faction background", params:"imageset")]
 	protected ResourceName m_sFactionBackground;
 	
+	[Attribute("", desc:"Identity voice signal", params:"0 inf")]
+	protected int m_iIdentityVoiceSignal;
+
 	[Attribute()]
 	protected ref array<ref SCR_MilitaryBaseCallsign> m_aBaseCallsigns;
 
 	[Attribute(desc: "A list of places of birth for this faction, used in generating identities for character")]
 	protected ref SCR_FactionHomeTerritoryConfig m_FactionHomeTerritoryConfig;
 	
+	[Attribute("{B4F35F09884BF79A}Configs/FactionCommander/FactionCommanderMenuEntries.conf", desc: "", params: "conf class=SCR_FactionCommanderMenuHierarchy")]
+	protected ResourceName m_sCommanderMenuEntries;
+
 	//~ Catalog map for quicker obtaining the catalog using EEntityCatalogType
 	protected ref map<EEntityCatalogType, ref SCR_EntityCatalog> m_mEntityCatalogs = new map<EEntityCatalogType, ref SCR_EntityCatalog>();
 	
 	protected bool m_bCatalogInitDone;
-	
+	protected bool m_bIsPlayableDefault;
 	protected ref set<Faction> m_FriendlyFactions = new set<Faction>;
+	
+	static const int AI_COMMANDER_ID = 0;
+	protected int m_iCommanderId = AI_COMMANDER_ID;
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -120,6 +135,29 @@ class SCR_Faction : ScriptedFaction
 		{
 			groupArray.Insert(m_aPredefinedGroups[i]);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if is enabled auto group creation when all groups are full.
+	bool IsEnabledAutoGroupCreationWhenFull()
+	{
+		return m_bEnableAutoGroupCreationWhenFull;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param groupArray
+	void GetGroupRolePresetConfigs(notnull array<SCR_GroupRolePresetConfig> groupArray)
+	{
+		foreach (SCR_GroupRolePresetConfig preset : m_aGroupRolePresetConfigs)
+		{
+			groupArray.Insert(preset);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsGroupRolesConfigured()
+	{
+		return !m_aGroupRolePresetConfigs.IsEmpty();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -263,7 +301,10 @@ class SCR_Faction : ScriptedFaction
 	//! \param isPlayable
 	void InitFactionIsPlayable(bool isPlayable)
 	{
-		m_bIsPlayable = isPlayable;
+		if (m_iPlayerLimit == 0)
+			m_bIsPlayable = false;
+		else
+			m_bIsPlayable = isPlayable;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -295,6 +336,9 @@ class SCR_Faction : ScriptedFaction
 	//! \param killPlayersIfNotPlayable
 	void SetIsPlayable(bool isPlayable, bool killPlayersIfNotPlayable = false)
 	{
+		if (m_iPlayerLimit == 0 && isPlayable)
+			return;
+		
 		if (m_bIsPlayable == isPlayable)
 			return;
 
@@ -460,13 +504,6 @@ class SCR_Faction : ScriptedFaction
 		}
 
 		return players.Count();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetFactionRadioEncryptionKey()
-	{
-		return m_sFactionRadioEncryptionKey;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -697,6 +734,8 @@ class SCR_Faction : ScriptedFaction
 		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;
+        
+        m_bIsPlayableDefault = m_bIsPlayable;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -716,6 +755,13 @@ class SCR_Faction : ScriptedFaction
 		return faction;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return identity voice signal
+	int GetIndentityVoiceSignal()
+	{
+		return m_iIdentityVoiceSignal;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	array<int> GetBaseCallsignIndexes()
@@ -756,13 +802,77 @@ class SCR_Faction : ScriptedFaction
 		return m_sFactionBackground;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	bool IsMilitary()
 	{
 		return m_bIsMilitary;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool IsPlayerCommander(int playerId)
+	{
+		return m_iCommanderId == playerId;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsAICommander()
+	{
+		return m_iCommanderId == AI_COMMANDER_ID;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetCommanderId(int playerId)
+	{
+		m_iCommanderId = playerId;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetCommanderId()
+	{
+		return m_iCommanderId;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetCommanderMenuConfig()
+	{
+		return m_sCommanderMenuEntries;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetPlayerLimit()
+	{
+		return m_iPlayerLimit;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPlayerLimit(int playerLimit)
+	{
+		m_iPlayerLimit = playerLimit;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	array<FactionKey> GetDefaultFriendlyFactions()
+	{
+		array<FactionKey> result();
+		result.Reserve(m_aFriendlyFactionsIds.Count());
+		foreach (auto key : m_aFriendlyFactionsIds)	
+		{
+			result.Insert(key);
+		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsDefaultSelfFriendly()
+	{
+		return m_bFriendlyToSelf;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsDefaultPlayable()
+	{
+		return m_bIsPlayableDefault;
+	}
 }
 
 //------------------------------------------------------------------------------------------------

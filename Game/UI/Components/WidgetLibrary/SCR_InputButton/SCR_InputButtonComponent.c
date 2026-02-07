@@ -386,8 +386,6 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 			if (inputDevice != m_eCurrentInputDevice || m_sActionName != m_sOldActionName)
 				SetInputAction();
-			
-			SetEnabled(true);
 		}
 		else
 		{
@@ -487,7 +485,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			return;
 
 		int comboCount;
-		int filterIndex;
+		int filterIndex = 1;
 		Widget button;
 		SizeLayoutWidget comboIndicatorContainer;
 		ImageWidget comboIndicator;

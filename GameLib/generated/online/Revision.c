@@ -16,12 +16,18 @@ sealed class Revision: Managed
 
 	static const int INVALID_MAJOR_VERSION = -1;
 
-	//!Returns true if any local files are corrupted or missing. DownloadableItem::VerifyIntegrity() needs to be called first.
+	//!Returns true if any local files are corrupted or missing. WorkshopItem::VerifyIntegrity() needs to be called first.
 	proto external bool IsCorrupted();
+	//! Returns name of Backend Environment of Workshop from which this revision originates.
+	proto external string GetBackendEnv();
 	//! Returns true if this specific revision is already downloaded.
 	proto external bool IsDownloaded();
 	//! Returns version of asset as string.
 	proto external string GetVersion();
+	//! Return progress of current processing (delta patching) in range of <0.0. ... 1.0>.
+	proto external float GetProcessingProgress();
+	//! Returns true if addon is currently processing delta patches.
+	proto external bool IsProcessing();
 	/*!
 	Returns version of asset as array.
 	\param[out] version - output for array of 3 Integers which represents numbers between dots
@@ -44,7 +50,7 @@ sealed class Revision: Managed
 	Dependencies are available only if ELS_DEPENDENCIES data are loaded. See GetLoadFlags() for more.
 	\param[out] dependencies - output for array of dependencies
 	*/
-	proto external int GetDependencies(out notnull array<Dependency> dependencies);
+	proto external int GetDependencies(out notnull array<WorkshopItem> dependencies);
 	/*!
 	Request list of all scenarios for this Revision.
 	\param pCallback - Is script callback where you will receive result/error when request finishes

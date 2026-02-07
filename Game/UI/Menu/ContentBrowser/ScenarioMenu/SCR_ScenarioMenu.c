@@ -36,4 +36,20 @@ class SCR_ScenarioMenu : SCR_SuperMenuBase
 			}
 		}
 	}
+	
+	//-----------------------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		SCR_AnalyticsApplication.GetInstance().OpenScenarios();	
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();	
+		
+		SCR_AnalyticsApplication.GetInstance().CloseScenarios();
+	}
 };

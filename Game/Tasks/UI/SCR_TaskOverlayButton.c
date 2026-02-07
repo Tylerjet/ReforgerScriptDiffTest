@@ -1,5 +1,7 @@
+[Obsolete("Replaced with SCR_TaskMapUIComponent")]
 class SCR_TaskOverlayButton : ScriptedWidgetComponent
 {
+	/*
 	protected SCR_MapUITask m_MapUiTask;
 	
 	
@@ -47,4 +49,5 @@ class SCR_TaskOverlayButton : ScriptedWidgetComponent
 	{
 		m_MapUiTask = mapUiTask;
 	}
-};
+	*/
+}

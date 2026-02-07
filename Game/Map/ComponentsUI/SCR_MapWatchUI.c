@@ -101,7 +101,7 @@ class SCR_MapWatchUI : SCR_MapRTWBaseUI
 		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (toolMenu)
 		{
-			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 12); // add to menu
+			m_ToolMenuEntry = toolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 12, m_bIsExclusive); // add to menu
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
 			
 			GetGame().GetInputManager().AddActionListener("MapToolWatch", EActionTrigger.DOWN, OnInputQuickBind);

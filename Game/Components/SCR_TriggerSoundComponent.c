@@ -21,17 +21,17 @@ class SCR_TriggerSoundComponent : SoundComponent
 	[Attribute("0", UIWidgets.Slider, "Repetition count randomisation", "0 10 1")]
 	protected int m_iRepCountRnd;
 	
-	[Attribute("10000", UIWidgets.Slider, "Repetition time [ms]", "0 30000 1")]
-	protected int m_iRepTime;
+	[Attribute("10", UIWidgets.Slider, "Repetition time [seconds]", "0 30 0.001")]
+	protected float m_iRepTime;
 	
-	[Attribute("500", UIWidgets.Slider, "Repetition time randomization [ms]", "0 30000 1")]
-	protected int m_iRepTimeRnd;
+	[Attribute("10", UIWidgets.Slider, "Repetition time randomization [seconds]", "0 30 0.001")]
+	protected float m_iRepTimeRnd;
 	
-	[Attribute("10000", UIWidgets.Slider, "Sequence reprtition time [milliseconds]", "0 60000 1")]
-	protected int m_iSequenceRepTime;
+	[Attribute("20", UIWidgets.Slider, "Sequence reprtition time [seconds]", "0 60 0.001")]
+	protected float m_iSequenceRepTime;
 	
-	[Attribute("1000", UIWidgets.Slider, "Sequence repetition randomization [milliseconds]", "0 60000 1")]
-	protected int m_iSequenceRepTimeRnd;
+	[Attribute("20", UIWidgets.Slider, "Sequence repetition randomization [seconds]", "0 60 0.001")]
+	protected float m_iSequenceRepTimeRnd;
 	
 	protected float m_fTime;
 	protected float m_fTriggerTime;
@@ -45,15 +45,29 @@ class SCR_TriggerSoundComponent : SoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	private int GetRepTime()
+	private float GetRepTime()
 	{
-		return  Math.RandomIntInclusive(Math.Max(0, m_iRepTime - m_iRepTimeRnd), m_iRepTime + m_iRepTimeRnd);
+		if (m_iRepTimeRnd < 0.001)
+		{
+			return m_iRepTime;
+		}
+		else
+		{
+			return  Math.RandomFloatInclusive(Math.Max(0, m_iRepTime - m_iRepTimeRnd), m_iRepTime + m_iRepTimeRnd);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	private int GetSequenceRepTime()
+	private float GetSequenceRepTime()
 	{
-		return  Math.RandomIntInclusive(Math.Max(0, m_iSequenceRepTime - m_iSequenceRepTimeRnd), m_iSequenceRepTime + m_iSequenceRepTimeRnd);
+		if (m_iSequenceRepTimeRnd < 0.001)
+		{
+			return m_iSequenceRepTime;
+		}
+		else
+		{
+			return Math.RandomFloatInclusive(Math.Max(0, m_iSequenceRepTime - m_iSequenceRepTimeRnd), m_iSequenceRepTime + m_iSequenceRepTimeRnd);
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -72,7 +86,7 @@ class SCR_TriggerSoundComponent : SoundComponent
 	//------------------------------------------------------------------------------------------------	
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{			
-		m_fTime += 1000 * timeSlice;		
+		m_fTime += timeSlice;		
 		
 		if (m_fTime > m_fTriggerTime)
 		{

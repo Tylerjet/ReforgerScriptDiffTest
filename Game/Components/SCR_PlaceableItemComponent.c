@@ -4,8 +4,8 @@ class SCR_PlaceableItemComponentClass : ScriptComponentClass
 	[Attribute(uiwidget: UIWidgets.CheckBox, desc: "Can this entity be attached to dynamic objects.")]
 	protected bool m_bCanAttachToDynamicObject;
 
-	[Attribute(uiwidget: UIWidgets.CheckBox, desc: "Can this entity be attached even when it is not upright.")]
-	protected bool m_bCanAttachAngled;
+	[Attribute(defvalue: "0", desc: "Max Allowed Tilt\n0 = no tilt allowed\nvalue below 0 means that there will be no tilt validation", params: "-1 180 0.01")]
+	protected float m_fMaxAllowedTilt;
 
 	[Attribute(uiwidget: UIWidgets.Flags, desc: "Set of flags that will be used to ignore objects based on their physics layer.\nWARNING: To prevent players from attaching objects to weapons use Ignored Components list\nas checking weapon layer will make it impossible to attach the object to the armed vehicles!", enums: ParamEnumArray.FromEnum(EPhysicsLayerDefs))]
 	protected EPhysicsLayerDefs m_eIgnoredPhysicsLayers;
@@ -27,10 +27,10 @@ class SCR_PlaceableItemComponentClass : ScriptComponentClass
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns true if this object is meant to be attached no matter what will be it is rotation when it will be attached
-	bool CanBeAttachedWhileAngled()
+	//!
+	float GetMaxAllowedTilt()
 	{
-		return m_bCanAttachAngled;
+		return m_fMaxAllowedTilt;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -98,6 +98,15 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	
 	[Attribute(uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EPlacementType))]
 	protected SCR_EPlacementType m_ePlacementType;
+
+	[Attribute(defvalue: "0", desc: "Should forward vector be facing away from the player when item is placed.")]
+	protected bool m_bForwardAwayFromPlayer;
+
+	[Attribute(defvalue: "1", desc: "Should item be attached to the hierachy of the entity on which item is placed")]
+	protected bool m_bAttachPlacedItemToTheSurfaceEntity;
+
+	[Attribute(defvalue: "0", desc: "Determines if player should be able to force game to place the item.\nWhen force placment is used, then game does not care about having enough space, but tilt is still evaluated")]
+	protected bool m_bCanBeForcedPlaced;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -112,7 +121,77 @@ class SCR_PlaceableItemComponent : ScriptComponent
 	{
 		return m_fMaxPlacementDistance;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool GetForwardAwayFromPlayer()
+	{
+		return m_bForwardAwayFromPlayer;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool GetAttachPlacedItemToTheSurfaceEntity()
+	{
+		return m_bAttachPlacedItemToTheSurfaceEntity;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if item can be forced to be placed at specified position, despite not having enough space for it
+	bool GetCanBeForcedPlaced()
+	{
+		return m_bCanBeForcedPlaced;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	float GetMaxAllowedTilt()
+	{
+		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!data)
+			return -1;
+
+		return data.GetMaxAllowedTilt();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to execute custom space validation
+	//! \param[in] caller
+	//! \param[in,out] transform pointer containing rotation and position at which item will be placed. This position has already applied offset of 1% of its up vector (1cm)
+	//! \param[out] cantPlaceReason
+	//! \return true if custom space validation was performed, otherwise false
+	bool OverrideSpaceValidation(notnull SCR_ItemPlacementComponent caller, inout vector transform[4], out ENotification cantPlaceReason);
+
+	//------------------------------------------------------------------------------------------------
+	//! Method executed when player confirms item placement by pressing SCR_ItemPlacementComponent.ACTION_NAME_PLACEMENT
+	//! \param[in] caller
+	//! \param[out] skipItemUsage true if game should not try to player item usage animation and immidietly proceed to SCR_ItemPlacementComponent.OnPlacingEnded
+	//! \return true if result of this mehtod should be used
+	bool OverrideStartPlaceAction(notnull SCR_ItemPlacementComponent caller, out bool skipItemUsage = false);
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called after item placement was already requested, but depending on the client it may have not yet finished
+	//! \param[in] caller
+	//! \return false if placement should be finished by disabling the preview, if custom functionality is reqired then return true
+	bool OverrideOnPlacingEnded(notnull SCR_ItemPlacementComponent caller);
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called after item was succesfully removed from clients inventory
+	//! \param[in] caller
+	//! \param[in] item
+	//! \param[in] succes
+	//! \param[in] equipNext
+	void OverrideAfterItemPlaced(notnull SCR_ItemPlacementComponent caller, notnull IEntity item, bool success, bool equipNext);
+
+	//------------------------------------------------------------------------------------------------
+	//! Override this in order to add a custom callback that is going to be triggered after item is removed from this client inventory
+	//! \param[out] callBackHolder
+	//! \param[in] caller component which called this method
+	//! \param[in] placedItem 
+	//! \param[in] autoEquipNext bool value representing player settings for automatic equipping of next place
+	//! \return true if default mechanism should not be used, otherwise false
+	bool OverrideAutoEquipMechanism(out ScriptedInventoryOperationCallback callBackHolder, notnull SCR_ItemPlacementComponent caller, IEntity placedItem, bool autoEquipNext);
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	VObject GetPreviewVobject()
@@ -140,17 +219,6 @@ class SCR_PlaceableItemComponent : ScriptComponent
 			return false;
 
 		return data.CanAttachToDynamicObject();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns true if this object is meant to be attached no matter what will be it is rotation when it will be attached
-	bool CanBeAttachedWhileAngled()
-	{
-		SCR_PlaceableItemComponentClass data = SCR_PlaceableItemComponentClass.Cast(GetComponentData(GetOwner()));
-		if (!data)
-			return false;
-
-		return data.CanBeAttachedWhileAngled();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -202,6 +270,11 @@ class SCR_PlaceableItemComponent : ScriptComponent
 		return data.GetDistanceMeasurementMethod();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] char
+	//! \param[in] destination
+	//! \param[in] method
+	//! \return
 	static float GetDistanceFromCharacter(notnull ChimeraCharacter char, vector destination, SCR_ECharacterDistanceMeasurementMethod method = SCR_ECharacterDistanceMeasurementMethod.FROM_EYES)
 	{
 		vector pos;

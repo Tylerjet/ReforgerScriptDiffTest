@@ -22,7 +22,7 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	protected ref map<int, ref CareerBackendData> m_mPlayerProfiles = null;
 	protected ref array<int> m_aPlayerIDsToLoadProfile = {};
 	protected float m_fCurrentRefreshTime = 1;
-	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
+	protected ref BackendCallback m_Callback = new BackendCallback();
 	
 	//------------------------------------------------------------------------------------------------
 	protected Faction GetPlayerFaction(int playerID)
@@ -39,23 +39,6 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 			return m_mPlayerProfiles.Get(playerID);
 		
 		return null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! What happens when a player is assigned a faction
-	//! \param[in] playerID
-	//! \param[in] assignedFaction
-	override void HandleOnFactionAssigned(int playerID, Faction assignedFaction)
-	{
-		if (!assignedFaction)
-			return;
-		
-		CareerBackendData playerProfile = GetPlayerProfile(playerID);
-		
-		if (!playerProfile)
-			return;
-		
-		playerProfile.SetFaction(assignedFaction.GetFactionKey());
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -108,7 +108,7 @@ class CharacterCameraBase : ScriptedCameraItem
 				m_fShoulderLastActive = CharacterCameraBase.Cast(pPrevCamera).GetShoulderLastActive();
 			}
 		}
-		if (IsInherited(CharacterCamera3rdPersonBase))
+		if (IsInherited(CharacterCamera3rdPersonBase) || IsInherited(CharacterCamera3rdPersonVehicle))
 		{
 			m_CameraHandler.SetLensFlareSet(CameraLensFlareSetType.ThirdPerson, "");
 		}

@@ -145,7 +145,7 @@ class SCR_PlacedCommandInfoDisplay : SCR_InfoDisplayExtended
 			sizeScale = Math.Clamp(distanceLimit - m_fDistance, 0.2, distanceLimit) / distanceLimit;
 		
 		// Get the current Y value (size multiplier) based on the current distance from the curve
-		sizeScale = Math3D.Curve(ECurveType.CurveProperty2D, sizeScale, m_aScaleCurve)[1];
+		sizeScale = LegacyCurve.Curve(ECurveType.CurveProperty2D, sizeScale, m_aScaleCurve)[1];
 		
 		float iconSize;
 		if (m_wCommandIconWidget)

@@ -64,12 +64,26 @@ class ParametricMaterialInstanceComponent: GameComponent
 	//! Get the current alpha test value.
 	proto external int GetUserAlphaTestParam();
 	/*
-	Sets if custom wetness is enabled. Wetness value itself can be then set using SetUserParam3.
+	Sets if custom wetness is enabled. Wetness value itself can be then set using SetCustomWetnessParam1 and SetCustomWetnessParam2
 	\param val Use true to enable custom wetness, false otherwise.
 	*/
 	proto external void SetCustomWetnessEnabled(bool val);
 	//! Returns true if custom wetness is enabled.
 	proto external bool GetCustomWetnessEnabled();
+	/*
+	Sets primary custom wetness value
+	\param customWetness primary custom wetness value in <0, 255>
+	*/
+	proto external void SetCustomWetnessParam1(int customWetness);
+	//! Get the current primary custom wetness value.
+	proto external int GetCustomWetnessParam1();
+	/*
+	Sets secondary custom wetness value
+	\param customWetness secondary custom wetness value in <0, 255>
+	*/
+	proto external void SetCustomWetnessParam2(int customWetness);
+	//! Get the current primary custom wetness value.
+	proto external int GetCustomWetnessParam2();
 	/*
 	Sets if rain sliding drops are enabled.
 	\param val Use true to enable rain sliding drops, false otherwise.

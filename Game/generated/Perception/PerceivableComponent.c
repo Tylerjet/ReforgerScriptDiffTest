@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class PerceivableComponentClass: GameComponentClass
-{
-}
-
 class PerceivableComponent: GameComponent
 {
 	proto external EAIUnitType GetUnitType();

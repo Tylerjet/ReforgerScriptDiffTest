@@ -149,6 +149,10 @@ class SCR_ResourceGrid : AABGridMap
 	//! \param[in] useFrameBudget If the frame budgeting should be used.
 	void UpdateInteractor(notnull SCR_ResourceInteractor interactor, bool useFrameBudget = false)
 	{	
+		// This check is to prevent nested calls of UpdateInteractor function
+		if (!m_aQueriedContainers.IsEmpty())
+			return;
+		
 		const vector interactorOrigin = interactor.GetOwnerOrigin();
 		
 		if	(vector.DistanceSq(interactorOrigin, interactor.GetLastPosition()) <= SCR_ResourceComponent.UPDATE_DISTANCE_TRESHOLD_SQUARE 

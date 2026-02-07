@@ -12,6 +12,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 	protected const string CREATE_GROUP = "#AR_DeployMenu_AddNewGroup";
 	protected const string JOIN_GROUP = "#AR-DeployMenu_JoinGroup";
 	protected const string ACCEPT_INVITE = "#AR-DeployMenu_AcceptInvite";
+	protected const string REMOVE_GROUP = "#AR-DeployMenu_RemoveGroup";
 	
 	protected SCR_GroupsManagerComponent m_GroupManager;
 	
@@ -20,6 +21,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_JoinGroupButton;
 	protected SCR_InputButtonComponent m_AcceptInviteButton;
 	protected SCR_InputButtonComponent m_GroupSettingsButton;
+	protected SCR_InputButtonComponent m_RemoveGroupButton;
 	
 	//------------------------------------------------------------------------------------------------
  	protected void InitGroups(SCR_PlayerControllerGroupComponent playerGroupController)
@@ -60,7 +62,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 		// Group Settings Button
 		SetNavigationButtonVisibile(m_GroupSettingsButton, playerGroupController.IsPlayerLeaderOwnGroup() && groupManager.CanPlayersChangeAttributes());
 		
-		array<SCR_AIGroup> playableGroups = groupManager.GetPlayableGroupsByFaction(playerFaction);
+		array<SCR_AIGroup> playableGroups = groupManager.GetSortedPlayableGroupsByFaction(playerFaction);
 		if (!playableGroups)
 			return;
 		
@@ -91,6 +93,7 @@ class SCR_GroupSubMenuBase : SCR_SubMenuBase
 				buttonComponent.SetGroupID(playableGroups[i].GetGroupID());
 				buttonComponent.SetGroupFaction(playerFaction);
 				buttonComponent.SetJoinGroupButton(m_JoinGroupButton);
+				buttonComponent.SetRemoveGroupButton(m_RemoveGroupButton);
 				buttonComponent.InitiateGroupTile();				
 				if (playerGroupController.GetGroupID() == -1 && i == 0 && playerGroupController.GetSelectedGroupID() < 0)
 					GetGame().GetCallqueue().CallLater(buttonComponent.RefreshPlayers, 1, false);

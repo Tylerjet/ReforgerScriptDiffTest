@@ -162,9 +162,32 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	static SCR_PlacingEditorComponent serverPlacingEditorComponent;
 	static bool m_accumulatedBudgetChangesClearQueued = false;
 	
+	bool IsThereEnoughBudgetToSpawnVehicleOccupants(array<ResourceName> resources)
+	{
+		foreach (ResourceName prefab : resources)
+		{
+			Resource prefabResource = Resource.Load(prefab);
+		
+			if(!prefabResource)
+				return false;
+			
+			IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(prefabResource);
+			
+			if(!IsThereEnoughBudgetToSpawn(editableEntitySource))
+				return false;
+		}
+		
+		return true;
+	}
+	
 	void SetPlacingBlocked(bool blocked)
 	{
 		m_bBlockPlacing = blocked;
+	}
+	
+	bool IsPlacingBlocked()
+	{
+		return m_bBlockPlacing;
 	}
 	
 	/*
@@ -525,11 +548,15 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			if(hasBudget)
 				currentBudgetValue = budgetSettings.GetCurrentBudget();
 			
+			//We never take reserved budget into account, is this intentional?
+			//const int reservedBudget = budgetSettings.GetReservedBudget();
+			
 			//if same budget, we aggregate them
 			const int newAggregatedBudget = budget.GetBudgetValue() + accumulatedBudgetCost;
-
+			const int estimatedBudget = newAggregatedBudget + currentBudgetValue;
+			
 			//check if budget goes over max
-			if(newAggregatedBudget + currentBudgetValue > maxBudgetForType)
+			if(estimatedBudget > maxBudgetForType)
 			{	
 				EEditableEntityBudget blockingBudget;
 				bool canPlace = m_BudgetManager.CanPlaceEntitySource(entitySource, blockingBudget, false, false);

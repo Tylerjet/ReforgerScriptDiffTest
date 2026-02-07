@@ -1,4 +1,5 @@
 //------------------------------------------------------------------------------------------------
+[Obsolete()]
 enum SCR_TaskState
 {
 	OPENED,
@@ -9,6 +10,7 @@ enum SCR_TaskState
 	REMOVED
 };
 
+[Obsolete()]
 class SCR_TaskStateHelper
 {
 	protected static ref ParamEnumArray s_ParamEnumArray = SCR_AttributesHelper.ParamFromDescriptions(SCR_TaskState,

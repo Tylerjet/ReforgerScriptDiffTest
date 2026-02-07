@@ -13,7 +13,6 @@ class SCR_PlayerListEntry
 	int m_iSortFrequency;
 
 	SCR_ButtonBaseComponent m_Mute;
-	SCR_ButtonBaseComponent m_Friend;
 	SCR_ComboBoxComponent m_PlayerActionList;
 
 	TextWidget m_wName;
@@ -41,14 +40,12 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected SCR_InputButtonComponent m_Mute;
 	protected SCR_InputButtonComponent m_Block;
  	protected SCR_InputButtonComponent m_Unblock;
-	protected SCR_InputButtonComponent m_Friend;
 	protected SCR_InputButtonComponent m_Vote;
 	protected SCR_InputButtonComponent m_Invite;
 	protected SCR_InputButtonComponent m_ViewProfile;
 
 	protected SCR_VotingManagerComponent m_VotingManager;
 	protected SCR_VoterComponent m_VoterComponent;
-	//protected SCR_RespawnSystemComponent m_RespawnSystem;
 	protected SCR_BaseScoringSystemComponent m_ScoringSystem;
 	protected SCR_PlayerListEntry m_SelectedEntry;
 	protected SCR_PlayerControllerGroupComponent m_PlayerGroupController;
@@ -61,8 +58,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 	protected const float TIME_STEP = 1.0;
 
-	protected const string ADD_FRIEND = "#AR-PlayerList_AddFriend";
-	protected const string REMOVE_FRIEND = "#AR-PlayerList_RemoveFriend";
 	protected const string MUTE = "#AR-PlayerList_Mute";
 	protected const string UNMUTE = "#AR-PlayerList_Unmute";
 	protected const string BLOCK = "#AR-PlayerList_Block";
@@ -87,6 +82,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected const int DEFAULT_SORT_INDEX = 1;
 
 	protected string m_sGameMasterIndicatorName = "GameMasterIndicator";
+	protected string m_sCommanderIndicatorName = "CommanderIndicator";
 
 	protected static ref ScriptInvoker s_OnPlayerListMenu = new ScriptInvoker();
 
@@ -94,7 +90,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	
 	protected ref map<EVotingType, int> m_mVotingTypesOnCooldown = new map<EVotingType, int>();
 	
-	protected static ref PlayerlistBlockCallback m_BlockCallback;
+	protected ref BackendCallback m_BlockCallback = null;
 
 	/*!
 	Get event called when player list opens or closes.
@@ -154,8 +150,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		if (filterName == FILTER_NAME)
 			SortByName(sortUp);
-		else if (filterName == FILTER_FAV)
-			SortByFriends(sortUp);
 		else if (filterName == FILTER_FREQ)
 			SortByFrequency(sortUp);
 		else if (filterName == FILTER_KILL)
@@ -213,19 +207,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 					entry.m_wRow.SetZOrder(i * direction);
 				continue;
 			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SortByFriends(bool reverseSort = false)
-	{
-		int direction = 1;
-		if (reverseSort)
-			direction = -1;
-
-		foreach (SCR_PlayerListEntry entry : m_aEntries)
-		{
-			entry.m_wRow.SetZOrder(entry.m_Friend.IsToggled() * direction);
 		}
 	}
 
@@ -298,21 +279,27 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnBlock(SCR_InputButtonComponent comp, string actionName)
 	{
-		if (!m_SelectedEntry || !m_SocialComponent)
+		if (!m_SelectedEntry || m_BlockCallback)
 			return;
-		
-		m_BlockCallback = new PlayerlistBlockCallback(this, false);
-		m_SocialComponent.Block(m_BlockCallback, m_SelectedEntry.m_iID);
+
+		m_BlockCallback = new BackendCallback();
+		m_BlockCallback.SetOnError(OnBlockError);
+		m_BlockCallback.SetOnSuccess(OnBlockSuccess);
+		GameBlocklist blckList = GetGame().GetGameBlocklist();
+		blckList.Block(m_BlockCallback, m_SelectedEntry.m_iID);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void OnUnblock(SCR_InputButtonComponent comp, string actionName)
 	{
-		if (!m_SelectedEntry || !m_SocialComponent)
+		if (!m_SelectedEntry || m_BlockCallback)
 			return;
 		
-		m_BlockCallback = new PlayerlistBlockCallback(this, true);
-		m_SocialComponent.Unblock(m_BlockCallback, m_SelectedEntry.m_iID);
+		m_BlockCallback = new BackendCallback();
+		m_BlockCallback.SetOnError(OnBlockError);
+		m_BlockCallback.SetOnSuccess(OnBlockSuccess);
+		GameBlocklist blckList = GetGame().GetGameBlocklist();
+		blckList.Unblock(m_BlockCallback, m_SelectedEntry.m_iID);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -320,24 +307,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		if (!m_SelectedEntry)
 			return;
-
-		SCR_ButtonBaseComponent mute = m_SelectedEntry.m_Mute; // This is temporary, until mute and block are not the same
-		if (!mute)
-			return;
+		
+		SCR_ButtonBaseComponent mute = m_SelectedEntry.m_Mute;
 		mute.SetToggled(!mute.IsToggled());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnAddFriend()
-	{
-		if (!m_SelectedEntry)
-			return;
-
-		SCR_ButtonBaseComponent friend = m_SelectedEntry.m_Friend;
-		if (!friend)
-			return;
-
-		friend.SetToggled(!friend.IsToggled());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -376,15 +348,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnBack()
 	{
-		if (m_bFiltering)
-			OnFilter();
-		else
 			Close();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnFilter()
-	{
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -421,8 +385,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMuteClick(SCR_ButtonBaseComponent comp, bool selected)
-	{		
+	void OnMuteClick(SCR_ButtonBaseComponent comp, bool state)
+	{
+		if (!m_SocialComponent)
+			return;
+
 		int id = -1;
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
@@ -432,31 +399,17 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			id = entry.m_iID;
 			break;
 		}
-
-		m_PlayerController.SetPlayerMutedState(id, selected);
-
-		if (m_PlayerController.GetPlayerMutedState(id) == PermissionState.DISALLOWED)
-			m_Mute.SetLabel(UNMUTE);
-		else
-			m_Mute.SetLabel(MUTE);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnFriendClick(SCR_ButtonBaseComponent comp, bool selected)
-	{
-		// TODO: waiting for API
-		if (selected)
-			m_Friend.SetLabel(REMOVE_FRIEND);
-		else
-			m_Friend.SetLabel(ADD_FRIEND);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void OnEntryFocused(Widget w)
-	{		
-		if (!m_PlayerController)
+		
+		if (id < 0)
 			return;
 		
+		m_SocialComponent.SetMuted(id, state);
+		UpdateShownUIElements();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnEntryFocused(notnull Widget w)
+	{
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			if (!entry)
@@ -470,45 +423,20 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			break;
 		}
 
-		bool enableFriend;
-		bool enableMute;
 		bool enablePlayerOptionList = CanOpenPlayerActionList(m_SelectedEntry);
 
-		if (m_SelectedEntry)
-		{
-			if (m_SelectedEntry.m_Friend)
-				enableFriend = m_SelectedEntry.m_Friend.IsEnabled();
-			if (m_SelectedEntry.m_Mute)
-				enableMute = m_SelectedEntry.m_Mute.IsEnabled();
-			if (m_SelectedEntry.m_PlayerActionList)
-				m_SelectedEntry.m_PlayerActionList.SetEnabled(enablePlayerOptionList);
-		}
-
-		if (m_Friend)
-			m_Friend.SetEnabled(enableFriend);
-		
-		if (m_Block && m_Unblock && m_SelectedEntry)
-		{
-			UpdateBlockElements();
-		}
-		
-		if (m_Mute)
-		{
-			m_Mute.SetEnabled(enableMute);
-			if (m_PlayerController.GetPlayerMutedState(m_SelectedEntry.m_iID) == PermissionState.DISALLOWED)
-				m_Mute.SetLabel(UNMUTE);
-			else
-				m_Mute.SetLabel(MUTE);
-		}
+		if (m_SelectedEntry && m_SelectedEntry.m_PlayerActionList)
+			m_SelectedEntry.m_PlayerActionList.SetEnabled(enablePlayerOptionList);
 		
 		if (m_Vote)
 			m_Vote.SetEnabled(enablePlayerOptionList);
 		
 		if (m_Invite && m_PlayerGroupController)
 			m_Invite.SetEnabled(m_PlayerGroupController.CanInvitePlayer(m_SelectedEntry.m_iID));
-
+		
 		if (m_SelectedEntry)
 			UpdateViewProfileButton(m_SelectedEntry.m_iID);
+		UpdateShownUIElements();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -544,8 +472,11 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		if (!m_ViewProfile)
 			return;
+		
+		bool isLocal = IsLocalPlayer(playerId);
+		bool isProfileAvailable = GetGame().GetPlayerManager().IsUserProfileAvailable(playerId);
 
-		m_ViewProfile.SetVisible(!forceHidden && GetGame().GetPlayerManager().IsUserProfileAvailable(playerId), false);
+		m_ViewProfile.SetVisible(!forceHidden && !isLocal && isProfileAvailable, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -651,8 +582,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 		}
 		
+		bool isLocalPlayer = IsLocalPlayer(playerID);
+		
 		//~ Reporting action
-		if (playerID != SCR_PlayerController.GetLocalPlayerId())
+		if (!isLocalPlayer)
 			combo.AddItem("#AR-Report_Dialog_Title", false,
 		 		new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.REPORT,
 			 		SCR_EPlayerListComboAction.REPORT_PLAYER
@@ -661,20 +594,26 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		
 		//Blockin system action
 		//~ Reporting action
-		if (playerID != SCR_PlayerController.GetLocalPlayerId())
+		if (!isLocalPlayer)
 		{
 			if (!m_SocialComponent.IsBlocked(playerID))
+			{
 				combo.AddItem("#AR-PlayerList_Block", false,
-			 		new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.BLOCK,
+			 		new SCR_PlayerListComboEntryData(
+						SCR_EPlayerListComboType.BLOCK,
 				 		SCR_EPlayerListComboAction.BLOCK_PLAYER
 					)
 				);
-			else
+			}
+			else if (m_SocialComponent.CanUnblock(playerID))
+			{
 				combo.AddItem("#AR-PlayerList_Unblock", false,
-			 		new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.BLOCK,
+			 		new SCR_PlayerListComboEntryData(
+						SCR_EPlayerListComboType.BLOCK,
 				 		SCR_EPlayerListComboAction.UNBLOCK_PLAYER
 					)
 				);
+			}
 		}
 		
 		//~ Update any votes that have a cooldown
@@ -692,10 +631,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void UpdatePlayerActionList(SCR_ComboBoxComponent combo, bool isCallqueue)
+	protected void UpdatePlayerActionList(notnull SCR_ComboBoxComponent combo, bool isCallqueue)
 	{
 		//~ Check if there is a combo and any votes have a cooldown
-		if (!combo || m_mVotingTypesOnCooldown.IsEmpty())
+		if (m_mVotingTypesOnCooldown.IsEmpty())
 		{
 			if (isCallqueue)
 				GetGame().GetCallqueue().Remove(UpdatePlayerActionList);
@@ -978,6 +917,18 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 		}
 
+		SCR_Faction scrFaction = SCR_Faction.Cast(entry.m_Faction);
+		if (scrFaction)
+		{
+			SCR_FactionCommanderHandlerComponent commanderHandler = SCR_FactionCommanderHandlerComponent.GetInstance();
+
+			if (commanderHandler)
+			{
+				ToggleCommanderIndicator(entry, scrFaction.GetCommanderId() == entry.m_iID);
+				commanderHandler.GetOnFactionCommanderChanged().Insert(OnFactionCommanderChanged);
+			}
+		}
+
 		entry.m_wFreq = TextWidget.Cast(w.FindAnyWidget("Freq"));
 		entry.m_wKills = TextWidget.Cast(w.FindAnyWidget("Kills"));
 		entry.m_wDeaths = TextWidget.Cast(w.FindAnyWidget("Deaths"));
@@ -1007,19 +958,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				entry.m_wDeaths.SetText("");
 			if (entry.m_wScore)
 				entry.m_wScore.SetText("");
-			// Unfortunately the parent that must be hidden is two parents above the text widgets
-			/*
-			if (entry.m_wKills)
-				entry.m_wKills.GetParent().GetParent().SetVisible(false);
-			if (entry.m_wDeaths)
-				entry.m_wDeaths.GetParent().GetParent().SetVisible(false);
-			if (entry.m_wScore)
-				entry.m_wScore.GetParent().GetParent().SetVisible(false);
-			*/
 		}
 
 		entry.m_Mute = SCR_ButtonBaseComponent.GetButtonBase("Mute", w);
-		entry.m_Friend = SCR_ButtonBaseComponent.GetButtonBase("Friend", w);
 		entry.m_wTaskIcon = entry.m_wRow.FindAnyWidget("TaskIcon");
 		entry.m_wBlockedIcon = entry.m_wRow.FindAnyWidget("BlockedIcon");
 		entry.m_wLoadoutIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("LoadoutIcon"));
@@ -1032,13 +973,15 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		SCR_AIGroup group = groupManager.GetPlayerGroup(m_PlayerController.GetPlayerId());
 
+		// Saphyr TODO: temporary before definition from art dept.
 		if (group && group.HasRequesterID(id))
-			background.SetColor(m_PlayerNameSelfColor);		// Saphyr TODO: temporary before definition from art dept.
+			background.SetColor(m_PlayerNameSelfColor);
 
-		if (entry.m_wTaskIcon && GetTaskManager())
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (entry.m_wTaskIcon && taskSystem)
 		{
-			SCR_BaseTaskExecutor taskExecutor = SCR_BaseTaskExecutor.FindTaskExecutorByID(entry.m_iID);
-			if (taskExecutor.GetAssignedTask())
+			SCR_TaskExecutor taskExecutor = SCR_TaskExecutor.FromPlayerID(entry.m_iID);
+			if (taskSystem.GetTaskAssignedTo(taskExecutor))
 			{
 				entry.m_wTaskIcon.SetColor(entry.m_Faction.GetFactionColor());
 			}
@@ -1047,7 +990,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				entry.m_wTaskIcon.SetOpacity(0);
 			}
 		}
-
 
 		Faction playerFaction;		
 		Faction entryPlayerFaction;
@@ -1070,7 +1012,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (entry.m_wLoadoutIcon && (playerFaction != entryPlayerFaction))
 			entry.m_wLoadoutIcon.SetVisible(false);
 
-		//enable GM to see everyones loadout icon, temporary solution until we get improved ways to say who's GM
+		// Enable GM to see everyones loadout icon, temporary solution until we get improved ways to say who's GM
 		if (SCR_EditorManagerEntity.IsOpenedInstance())
 			entry.m_wLoadoutIcon.SetVisible(true);
 
@@ -1091,11 +1033,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			if (playerController)
 				playerController.SetPlatformImageTo(entry.m_iID, entry.m_wPlatformIcon, showOnPC: true, showOnXbox: true)
 		}
-		else
-		{
-			Print("No platform icon detected in players list. This is against MS Xbox Live rules.", LogLevel.WARNING);
-		}
-
 
 		badgeTop = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("BadgeTop"));
 		badgeMiddle = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("BadgeMiddle"));
@@ -1110,44 +1047,21 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			badgeBottom.SetColor(factionColor);
 		}
 
-		// If this is player, set all buttons invisible
-		if (IsLocalPlayer(entry.m_iID))
+		// Handle mute icon/action based on blocked state
+		if (m_SocialComponent && !IsLocalPlayer(entry.m_iID))
 		{
-			if (entry.m_Friend)
-				entry.m_Friend.SetEnabled(false);
-
-			if (entry.m_Mute)
+			// Fore "muted" for blocked players
+			if (m_SocialComponent.IsBlocked(entry.m_iID))
+			{
 				entry.m_Mute.SetEnabled(false);
-		}
-		else
-		{
-			if (entry.m_Mute)
-			{
-				// Find out if the person is aleady muted
-				//entry.m_Mute.SetEnabled(false);
-
-				if (m_PlayerController)
-				{
-					entry.m_Mute.SetEnabled(true);
-					if (m_PlayerController.GetPlayerMutedState(entry.m_iID) == PermissionState.DISALLOWED)
-						entry.m_Mute.SetToggled(true);
-
-					else if (m_PlayerController.GetPlayerMutedState(entry.m_iID) == PermissionState.ALLOWED)
-
-						entry.m_Mute.SetToggled(false);
-
-					if (m_PlayerController.GetPlayerMutedState(entry.m_iID) == PermissionState.DISABLED)
-							entry.m_Mute.SetEnabled(false);
-
-				}
-				entry.m_Mute.m_OnToggled.Insert(OnMuteClick);
+				entry.m_Mute.SetToggled(true);
 			}
-
-			if (entry.m_Friend)
+			else
 			{
-				entry.m_Friend.SetEnabled(false);
-				entry.m_Friend.m_OnToggled.Insert(OnFriendClick);
+				entry.m_Mute.SetEnabled(true);
+				entry.m_Mute.SetToggled(m_SocialComponent.IsMuted(entry.m_iID));
 			}
+			entry.m_Mute.m_OnToggled.Insert(OnMuteClick);
 		}
 
 		m_aEntries.Insert(entry);
@@ -1167,7 +1081,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateGameMasterIndicator(SCR_PlayerListEntry entry, bool editorIslimited)
+	protected void UpdateGameMasterIndicator(notnull SCR_PlayerListEntry entry, bool editorIslimited)
 	{
 		Widget gameMasterIndicator = entry.m_wRow.FindAnyWidget(m_sGameMasterIndicatorName);
 		if (gameMasterIndicator)
@@ -1204,13 +1118,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 
 		m_aEntries.RemoveItem(entry);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OpenPauseMenu()
-	{
-		GetGame().OpenPauseMenu();
-		Close();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1252,11 +1159,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		return validEntries > 0;
 	}
 	
-	protected bool CanOpenPlayerActionList(SCR_PlayerListEntry entry)
-	{
-		if (!entry)
-			return false;
-		
+	protected bool CanOpenPlayerActionList(notnull SCR_PlayerListEntry entry)
+	{		
 		if (m_VotingManager)
 		{
 			//~ Check if can vote, if yes return true
@@ -1292,7 +1196,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 		
 		//Check if reporting is available
-		if (entry.m_iID != SCR_PlayerController.GetLocalPlayerId())
+		if (!IsLocalPlayer(entry.m_iID))
 			return true;
 		
 		//~ None of the conditions met
@@ -1325,9 +1229,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
-
-		//if (!m_ChatPanel)
-		//	m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));		
+		
+		GameBlocklist blocklist = GetGame().GetGameBlocklist();
+		blocklist.OnBlockListUpdateInvoker.Insert(OnBlocklistUpdate);
 		
 		m_PlayerController = GetGame().GetPlayerController();
 		if (m_PlayerController)
@@ -1352,7 +1256,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_VotingManager.GetOnRemoveVote().Insert(OnVotingChanged);
 		}
 
-		//gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
 		gameMode.GetOnPlayerRegistered().Insert(OnPlayerConnected);
 
 		m_ScoringSystem = gameMode.GetScoringSystemComponent();
@@ -1386,34 +1289,44 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, footerBack);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
-
-		m_Friend = SCR_InputButtonComponent.GetInputButtonComponent("Friend", footer);
-		if (m_Friend)
-		{
-			m_Friend.SetEnabled(false);
-			m_Friend.m_OnActivated.Insert(OnAddFriend);
-		}
-
-
-		m_Block = SCR_InputButtonComponent.GetInputButtonComponent("Block", footer);
-		if (m_Block)
-			m_Block.m_OnActivated.Insert(OnBlock);
 		
-		m_Unblock = SCR_InputButtonComponent.GetInputButtonComponent("Unblock", footer);
-		if (m_Unblock)
-			m_Unblock.m_OnActivated.Insert(OnUnblock);
-
+		// Setup all buttons, throw error in case of misconfigured layout.
+		// Then do not check in other methods
 		m_Mute = SCR_InputButtonComponent.GetInputButtonComponent("Mute", footer);
 		if (m_Mute)
 		{
 			m_Mute.SetEnabled(false);
 			m_Mute.m_OnActivated.Insert(OnMute);
 		}
+		else
+		{
+			Print("'SCR_PlayerListMenu' missing 'Mute' 'SCR_InputButtonComponent'", LogLevel.ERROR); 
+		}
 
-		SCR_InputButtonComponent filter = SCR_InputButtonComponent.GetInputButtonComponent("Filter", footer);
-		if (filter)
-			filter.m_OnActivated.Insert(OnFilter);
-
+		m_Block = SCR_InputButtonComponent.GetInputButtonComponent("Block", footer);
+		if (m_Block)
+		{
+			m_Block.SetEnabled(false);
+			m_Block.m_OnActivated.Insert(OnBlock);
+		}
+		else
+		{
+			Print("'SCR_PlayerListMenu' missing 'Block' 'SCR_InputButtonComponent'", LogLevel.ERROR); 
+		}
+		
+		m_Unblock = SCR_InputButtonComponent.GetInputButtonComponent("Unblock", footer);
+		if (m_Unblock)
+		{
+			m_Unblock.m_OnActivated.Insert(OnUnblock);
+			// Create this button hidden and disabled
+			m_Unblock.SetVisible(false);
+			m_Unblock.SetEnabled(false);
+		}
+		else
+		{
+			Print("'SCR_PlayerListMenu' missing 'Unblock' 'SCR_InputButtonComponent'", LogLevel.ERROR); 
+		}
+		
 		m_Vote = SCR_InputButtonComponent.GetInputButtonComponent("Vote", footer);
 		if (m_Vote)
 		{
@@ -1421,8 +1334,13 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				m_Vote.m_OnActivated.Insert(OnVoting);
 			else
 				m_Vote.SetVisible(false,false);
+			m_Vote.SetEnabled(false);
 		}
-
+		else
+		{
+			Print("'SCR_PlayerListMenu' missing 'Vote' 'SCR_InputButtonComponent'", LogLevel.ERROR); 
+		}
+		
 		m_Invite = SCR_InputButtonComponent.GetInputButtonComponent("Invite", footer);
 		if (m_Invite)
 		{
@@ -1430,14 +1348,25 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				m_Invite.m_OnActivated.Insert(OnInvite);
 			else
 				m_Invite.SetVisible(false, false);
+			m_Invite.SetEnabled(false);
 		}
-
+		else
+		{
+			Print("'SCR_PlayerListMenu' missing 'Invite' 'SCR_InputButtonComponent'", LogLevel.ERROR); 
+		}
+		
 		m_ViewProfile = SCR_InputButtonComponent.GetInputButtonComponent("ViewProfile", footer);
 		if (m_ViewProfile)
 		{
 			UpdateViewProfileButton(0, true);
 			m_ViewProfile.m_OnActivated.Insert(OnViewProfile);
 		}
+		else
+		{
+			Print("'SCR_PlayerListMenu' missing 'ViewProfile' 'SCR_InputButtonComponent'", LogLevel.ERROR); 
+		}
+
+		SCR_InputButtonComponent filter = SCR_InputButtonComponent.GetInputButtonComponent("Filter", footer);
 
 		// Create table
 		if (!m_wTable || m_sScoreboardRow == string.Empty)
@@ -1503,6 +1432,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (m_Header)
 			m_Header.SetCurrentSortElement(DEFAULT_SORT_INDEX, ESortOrder.ASCENDING, useDefaultSortOrder: true);
 
+		// TODO: Consider not changing focus if it is already set e.g. dialog opened over
 		FocusFirstItem();
 	}
 
@@ -1512,13 +1442,16 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard",	EActionTrigger.DOWN, Close);
 
 		//--- Close when some other menu is opened on top
-		Close();
+		// Update: We do not want to close menu under the dialog
+		//Close();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		super.OnMenuClose();
+		
+		GetGame().GetGameBlocklist().OnBlockListUpdateInvoker.Insert(OnBlocklistUpdate);;
 
 		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
 		if (hudManager)
@@ -1565,6 +1498,15 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	void OnPlayerConnected(int id)
 	{
 		GetGame().GetCallqueue().CallLater(UpdatePlayerList, 1000, false, true, id);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFactionCommanderChanged(SCR_Faction faction, int commanderPlayerId)
+	{
+		foreach (SCR_PlayerListEntry entry : m_aEntries)
+		{
+			ToggleCommanderIndicator(entry, commanderPlayerId == entry.m_iID);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1644,50 +1586,63 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		GetGame().GetCallqueue().CallLater(UpdateFrequencies, 1000, false);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	void UpdateBlockElements()
-	{
+	//------------------------------------------------------------------------------------------------	
+	//! Updates selected player list entry and main actions/buttons
+	void UpdateShownUIElements()
+	{	
 		if (!m_SelectedEntry || !m_SocialComponent)
 			return;
 		
-		//no self block
-		if (m_SelectedEntry.m_iID == SCR_PlayerController.GetLocalPlayerId())
+		// Self player list record handling
+		if (IsLocalPlayer(m_SelectedEntry.m_iID))
 		{
-			if (m_Block)
-			{
-				m_Block.SetEnabled(false, false);
-				m_Block.SetVisible(false, false);
-			}
+			// Show disabled block button
+			m_Block.SetEnabled(false, false);
+			m_Block.SetVisible(true, false);
 			
-			if (m_Unblock)
-			{
-				m_Unblock.SetEnabled(false, false);
-				m_Unblock.SetVisible(false, false);
-			}
+			// Hide unblock button
+			m_Unblock.SetEnabled(false, false);
+			m_Unblock.SetVisible(false, false);
+			
+			// Disable mute
+			m_Mute.SetEnabled(false, false);
 			
 			GetRootWidget().Update();
 			
 			m_SelectedEntry.m_wBlockedIcon.SetOpacity(0);
+			m_SelectedEntry.m_Mute.SetEnabled(false);
 			return;
 		}
 		
-		bool isBlocked = m_SocialComponent.IsBlocked(m_SelectedEntry.m_iID);
+		bool isSelectedMuted = m_SocialComponent.IsMuted(m_SelectedEntry.m_iID);
+		bool isSelectedBlocked = m_SocialComponent.IsBlocked(m_SelectedEntry.m_iID);
 		
-		m_SelectedEntry.m_wBlockedIcon.SetOpacity(isBlocked);
+		// Update elements in selected entry
+		m_SelectedEntry.m_wBlockedIcon.SetOpacity(isSelectedBlocked);
+		// Force muted for blocked ones
+		m_SelectedEntry.m_Mute.SetToggled(isSelectedBlocked || isSelectedMuted, false, false, true);
+		m_SelectedEntry.m_Mute.SetEnabled(!isSelectedBlocked);
 		
-		if (m_Block)
-		{	
-			m_Block.SetEnabled(!isBlocked, false);
-			m_Block.SetVisible(!isBlocked, false);
+		// Update buttons
+		m_Block.SetEnabled(!isSelectedBlocked, false);
+		m_Block.SetVisible(!isSelectedBlocked, false);
+		// Unblock button is available only if not blocked outside of game
+		bool canBeUnblocked = m_SocialComponent.CanUnblock(m_SelectedEntry.m_iID);
+		m_Unblock.SetEnabled(isSelectedBlocked && canBeUnblocked, false);
+		m_Unblock.SetVisible(isSelectedBlocked, false);
+		// Enable muted only if not blocked
+		m_Mute.SetEnabled(!isSelectedBlocked, false);
+
+		if (isSelectedMuted || isSelectedBlocked)
+		{
+			m_Mute.SetLabel(UNMUTE);
 		}
-		if (m_Unblock)
-		{	
-			m_Unblock.SetEnabled(isBlocked, false);
-			m_Unblock.SetVisible(isBlocked, false);
+		else
+		{
+			m_Mute.SetLabel(MUTE);
 		}
 		
-		GetRootWidget().Update();
-		
+		GetRootWidget().Update();	
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1786,7 +1741,72 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		factionFlag.GetImageSize(0, x, y);
 		factionFlag.SetSize(x, y);
 		
-		playerCount.SetText(scriptedFaction.GetPlayerCount().ToString());
+		string playerCountText = scriptedFaction.GetPlayerCount().ToString();
+		int playerLimit = scriptedFaction.GetPlayerLimit();
+		if (playerLimit >= 0)
+			playerCount.SetTextFormat("#AR-SupportStation_ActionFormat_ItemAmount", playerCountText, playerLimit);
+		else
+			playerCount.SetText(playerCountText);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ToggleCommanderIndicator(SCR_PlayerListEntry entry, bool toggle)
+	{
+		ImageWidget commanderIndicator = ImageWidget.Cast(entry.m_wRow.FindAnyWidget(m_sCommanderIndicatorName));
+
+		if (!commanderIndicator)
+			return;
+
+		if (toggle && SCR_FactionManager.SGetLocalPlayerFaction() != SCR_FactionManager.SGetPlayerFaction(entry.m_iID))
+			toggle = false;
+
+		if (toggle)
+		{
+			commanderIndicator.LoadImageFromSet(0, "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", "emote_salute");
+			commanderIndicator.SetColor(SCR_FactionManager.SGetLocalPlayerFaction().GetFactionColor());
+		}
+
+		commanderIndicator.SetVisible(toggle);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	
+	//! Show game blocking error dialog with given tag
+	private void ShowBlockErrorDialog(string dialogTag)
+	{
+		SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, dialogTag, dialog);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	private void OnBlockSuccess(BackendCallback cb)
+	{
+		m_BlockCallback = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnBlockError(BackendCallback cb)
+	{
+		if (cb.GetBackendError() == EBackendError.EBERR_STORAGE_IS_FULL)
+			ShowBlockErrorDialog("block_failed_full");
+		else
+			ShowBlockErrorDialog("block_failed_general");
+		m_BlockCallback = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnBlocklistUpdate(bool success)
+	{
+		if (!success)
+		{
+			ShowBlockErrorDialog("block_failed_general");
+			return;
+		}
+		
+		// Possible risk/todo: We may get more information in the blocklist update
+		// thus we should iterate all the playerlist entries and update them properly
+		// we are now updating only focused item
+		UpdateShownUIElements();
 	}
 };
 
@@ -1846,44 +1866,8 @@ enum SCR_EPlayerListComboAction
 	
 	//Report
 	REPORT_PLAYER,
+	
+	//Blocking
 	BLOCK_PLAYER,
 	UNBLOCK_PLAYER
 };
-
-class PlayerlistBlockCallback : BlockListRequestCallback
-{
-	SCR_PlayerListMenu m_Menu;
-	bool m_bUnblocking;
-	
-	//------------------------------------------------------------------------------------------------
-	void PlayerlistBlockCallback(SCR_PlayerListMenu menu, bool unblocking)
-	{
-		m_Menu = menu;
-		m_bUnblocking = unblocking;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnSuccess(int code)
-	{
-		m_Menu.UpdateBlockElements();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnError(int code, int restCode, int apiCode)
-	{
-		string dialogTag = "block_failed_general";
-		if (!m_bUnblocking)
-		{
-			if ( apiCode == EApiCode.EACODE_ERROR_REQUEST_ERROR && code == EBackendError.EBERR_STORAGE_IS_FULL)
-				dialogTag = "block_failed_full";
-			
-			SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
-			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, dialogTag, dialog);
-		} else {
-			SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
-			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, dialogTag, dialog);
-		}
-		
-		m_Menu.UpdateBlockElements();
-	}
-}

@@ -11,6 +11,10 @@
 	awesomeFontCode: 0xF111)]
 class SCR_SelectionBrushTool : WorldEditorTool
 {
+	/*
+		Category: Brush
+	*/
+
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Brush radius", params: string.Format("%1 %2 %3", RADIUS_MIN, RADIUS_MAX, RADIUS_STEP), category: "Brush")]
 	protected float m_fRadius;
 
@@ -23,6 +27,10 @@ class SCR_SelectionBrushTool : WorldEditorTool
 	[Attribute(desc: "Find objects using world Trace instead of Entities with MeshObjects - 2-3× the performance cost", category: "Brush")]
 	protected bool m_bUseTraceDetection;
 
+	/*
+		Category: Selection
+	*/
+
 	[Attribute(defvalue: SCR_ESelectionBrushToolLayer.ALL_LAYERS.ToString(), uiwidget: UIWidgets.ComboBox, enumType: SCR_ESelectionBrushToolLayer, category: "Selection")]
 	SCR_ESelectionBrushToolLayer m_eLayerSelection;
 
@@ -31,6 +39,10 @@ class SCR_SelectionBrushTool : WorldEditorTool
 
 	[Attribute(defvalue: "2000", desc: "Performance-related selection limit - 0 for no limit", uiwidget: UIWidgets.Slider, params: "0 10000 100", category: "Selection")]
 	protected int m_iMaxSelectedEntities;
+
+	/*
+		Category: Filter
+	*/
 
 	[Attribute(desc: "Define a list of objects to select - can take a SCR_ObjectBrushArrayConfig .conf", category: "Filter")]
 	protected ref SCR_SelectionBrushConfig m_ObjectsFilter;

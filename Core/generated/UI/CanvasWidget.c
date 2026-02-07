@@ -23,7 +23,15 @@ sealed class CanvasWidget: CanvasWidgetBase
 	*/
 	proto external void SetDrawCommands(array<ref CanvasWidgetCommand> drawCommands);
 	//! Loads a texture which can be then used in draw commands
-	static proto SharedItemRef LoadTexture(ResourceName resource);
+	static proto ref SharedItemRef LoadTexture(ResourceName resource);
+	//! Loads imageset and setup ImageDrawCommand texture and UV
+	proto ref ImageDrawCommand CreateCommandFromImageSet(ResourceName resource, string imageName, vector size);
+	//! Tessellate an ellipse to prepare it for rendering. center and radius uses only x and y values
+	proto void TessellateEllipse(vector center, vector radius, int segmentCount, out notnull array<float> vertices);
+	//! Tessellate a circle to prepare it for rendering. center uses only x and y values
+	proto void TessellateCircle(vector center, float radius, int segmentCount, out notnull array<float> vertices);
+	//! Tessellate a rounded rectangle to prepare it for rendering
+	proto void TessellateRoundedRectangle(vector mins, vector maxs, float cornerRadius, int cornerSegments, RectangleCorner roundedCorners, out notnull array<float> vertices);
 }
 
 /*!

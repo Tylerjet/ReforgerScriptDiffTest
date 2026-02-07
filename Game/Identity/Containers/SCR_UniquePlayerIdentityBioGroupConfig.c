@@ -4,15 +4,11 @@
 [BaseContainerProps(configRoot: true), BaseContainerCustomDoubleTitleField("m_sBioGroupID", "m_iWeight")]
 class SCR_UniquePlayerIdentityBioGroupConfig : SCR_CharacterIdentityBioGroupConfig
 {
-	[Attribute(desc: "Unique Player UID which will be used for randomization. This is not the player ID but the the player UID obtained via BackendApi.GetPlayerIdentityId()", category: "Requirements")]
-	protected ref array<string> m_aValidUniquePlayerUIDs;
+	[Attribute(desc: "Unique Player UID which will be used for randomization. This is not the player ID but the the player UID obtained via BackendApi", category: "Requirements")]
+	protected ref array<UUID> m_aValidUniquePlayerUIDs;
 	
 	override bool IsValidForRandomization(IEntity entity, SCR_ExtendedIdentityComponent extendedIdentity)
 	{
-		BackendApi backendApi = GetGame().GetBackendApi();
-		if (!backendApi)
-			return false;
-		
 		SCR_ExtendedCharacterIdentityComponent extendedCharIdentity = SCR_ExtendedCharacterIdentityComponent.Cast(extendedIdentity);
 		if (!extendedCharIdentity)
 			return false;
@@ -21,9 +17,9 @@ class SCR_UniquePlayerIdentityBioGroupConfig : SCR_CharacterIdentityBioGroupConf
 			return false;
 		
 		//~ Check if the character is on the unique character list
-		if (!m_aValidUniquePlayerUIDs.Contains(backendApi.GetPlayerIdentityId(extendedCharIdentity.GetPlayerID())))
+		if (!m_aValidUniquePlayerUIDs.Contains(SCR_PlayerIdentityUtils.GetPlayerIdentityId(extendedCharIdentity.GetPlayerID())))
 			return false;
-			
+
 		return super.IsValidForRandomization(entity, extendedCharIdentity);
 		
 	}

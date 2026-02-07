@@ -52,8 +52,10 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	protected ref ScriptInvokerVoid m_OnBuilderSet;
 	protected ref ScriptInvokerBool m_OnCompositionSpawned;
 
-	protected static const int INVALID_PLAYER_ID = 0;
+	protected SCR_CampaignBuildingLayoutComponent m_CompositionLayout;
 
+	protected static const int INVALID_PLAYER_ID = 0;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
@@ -113,8 +115,8 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		if (!compositionLayout)
 			return;
 
-		SCR_CampaignBuildingLayoutComponent layoutComponent = SCR_CampaignBuildingLayoutComponent.Cast(compositionLayout.FindComponent(SCR_CampaignBuildingLayoutComponent));
-		if (!layoutComponent)
+		m_CompositionLayout = SCR_CampaignBuildingLayoutComponent.Cast(compositionLayout.FindComponent(SCR_CampaignBuildingLayoutComponent));
+		if (!m_CompositionLayout)
 			return;
 
 		SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entity.GetOwner().FindComponent(SCR_CampaignBuildingCompositionComponent));
@@ -126,7 +128,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		if (serviceComponent)
 			serviceComponent.SetServiceState(SCR_EServicePointStatus.UNDER_CONSTRUCTION);
 
-		layoutComponent.SetPrefabId(prefabId);
+		m_CompositionLayout.SetPrefabId(prefabId);
 		compositionComponent.SetPrefabId(prefabId);
 	}
 
@@ -150,11 +152,29 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_CampaignBuildingLayoutComponent GetCompositionLayout()
+	{
+		return m_CompositionLayout;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		// Check for play mode again in case init event was set from outside of this class
+		if (!GetGame().InPlayMode())
+			return;
+
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+
 		SCR_EditorLinkComponent linkComponent = SCR_EditorLinkComponent.Cast(owner.FindComponent(SCR_EditorLinkComponent));
 		if (!linkComponent)
+		{
+			// A composition that spawns but does not have SCR_EditorLinkComponent must be set to already spawned
+			SetIsCompositionSpawned();
 			return;
+		}
 
 		SCR_EditableEntityComponent editableEnt = SCR_EditableEntityComponent.Cast(GetOwner().FindComponent(SCR_EditableEntityComponent));
 		if (!editableEnt)
@@ -163,6 +183,12 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 		SetCompositionCost(editableEnt);
 
 		linkComponent.GetOnLinkedEntitiesSpawned().Insert(SetIsCompositionSpawned);
+
+		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+		if (!buildingManagerComponent)
+			return;
+
+		buildingManagerComponent.RegisterComposition(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -475,13 +501,8 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Play the sound when the composition is fully spawned.
 	void CompositionBuildSound()
-	{
-		if (!m_AudioSourceConfigurationSpawn || !m_AudioSourceConfigurationSpawn.IsValid())
-			return;
-
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (soundManagerEntity)
-			soundManagerEntity.CreateAndPlayAudioSource(GetOwner(), m_AudioSourceConfigurationSpawn);
+	{		
+		SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), m_AudioSourceConfigurationSpawn);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -575,11 +596,17 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnDelete(IEntity owner)
 	{
-		if (!owner || !m_bPlaySoundOnDeletion || !m_AudioSourceConfigurationDespawn || !m_AudioSourceConfigurationDespawn.IsValid())
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (gameMode)
+		{
+			SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(gameMode.FindComponent(SCR_CampaignBuildingManagerComponent));
+			if (buildingManagerComponent)
+				buildingManagerComponent.UnregisterComposition(this);
+		}
+
+		if (!owner || !m_bPlaySoundOnDeletion)
 			return;
 
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (soundManagerEntity)
-			soundManagerEntity.CreateAndPlayAudioSource(owner, m_AudioSourceConfigurationDespawn);
+		SCR_SoundManagerModule.CreateAndPlayAudioSource(owner, m_AudioSourceConfigurationDespawn);
 	}
 }

@@ -9,7 +9,7 @@ class SCR_MainMenuEntityClass: GenericEntityClass
 
 //------------------------------------------------------------------------------------------------
 class SCR_MainMenuEntity : GenericEntity
-{	
+{
 	[Attribute("ChimeraMenuPreset.MainMenu", UIWidgets.SearchComboBox, "Menu to launch at start of the world", "", ParamEnumArray.FromEnum(ChimeraMenuPreset) )]
 	ChimeraMenuPreset m_eMenu;
 	
@@ -79,9 +79,10 @@ class SCR_MainMenuEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	private void ShowMainMenu()
 	{
-		GetGame().GetMenuManager().OpenMenu(m_eMenu);
 		if (m_eMenu == ChimeraMenuPreset.MainMenu)
 			GetGame().m_bIsMainMenuOpen = true;
+		
+		GetGame().GetMenuManager().OpenMenu(m_eMenu);
 			
 		// Check hosting fail 
 		SCR_KickDialogs.CheckLastServerHost();

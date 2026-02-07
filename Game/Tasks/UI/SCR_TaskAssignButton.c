@@ -1,5 +1,7 @@
+[Obsolete("Replaced with SCR_TaskMapUIComponent")]
 class SCR_TaskAssignButton : ScriptedWidgetComponent
-{
+{	
+	/*
 	protected SCR_MapUITask m_MapUiTask;
 	protected ref ScriptInvoker m_OnMapIconClick;
 
@@ -64,4 +66,5 @@ class SCR_TaskAssignButton : ScriptedWidgetComponent
 	{
 		m_MapUiTask = mapUiTask;
 	}
+	*/
 }

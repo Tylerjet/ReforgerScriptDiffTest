@@ -11,6 +11,7 @@ Do not modify, this script is generated
 
 sealed class DialogueController: WorldController
 {
+	proto external BaseDialogueInterface GetInterface();
 }
 
 /*!

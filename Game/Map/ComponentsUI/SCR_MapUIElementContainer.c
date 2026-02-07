@@ -1,6 +1,6 @@
 class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 {
-	[Attribute("UIIconsContainer")];
+	[Attribute("UIIconsContainer")]
 	protected string m_sIconsContainer;
 
 	protected Widget m_wIconsContainer;
@@ -8,7 +8,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	[Attribute("{E78DE3FD19654C1B}UI/layouts/Campaign/SpawnPointElement.layout", params: "layout")]
 	protected ResourceName m_sSpawnPointElement;
 
-	[Attribute("{EAB5D9841F081D07}UI/layouts/Campaign/TaskElementNew.layout", params: "layout")]
+	[Attribute("{8CA518E4D3AE9F28}UI/layouts/Task/TaskMap.layout", params: "layout")]
 	protected ResourceName m_sTaskElement;
 
 	[Attribute("{C013EB43E812F9C1}UI/layouts/Menus/DeployMenu/WarningHintTemp.layout")]
@@ -25,6 +25,12 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	[Attribute("1")]
 	protected bool m_bShowTasks;
 
+	[Attribute("1", desc: "Show all task types")]
+	protected bool m_bShowAllTaskTypenames;
+
+	[Attribute("", UIWidgets.Auto, "Show only task typenames, which is in the list, only if m_bShowAllTaskType is false")]
+	protected ref array<string> m_aAllowedTaskTypenames;
+
 	protected bool m_bIsEditor; // Map opened in editor with gamemaster rights (!limited)
 	protected bool m_bIsDeployMap;
 
@@ -33,6 +39,8 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
 	protected SCR_PlayerControllerGroupComponent m_PlyGroupComp;
 	protected SCR_BaseGameMode m_GameMode;
+
+	protected SCR_TaskSystem m_TaskSystem;
 
 	protected ref ScriptInvoker<SCR_MapUIElement> m_OnElementSelected;
 	protected ref ScriptInvoker<RplId> m_OnSpawnPointSelected;
@@ -65,7 +73,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		HideSpawnPoint(pointId);
 		UpdateIcons();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnSpawnPointFactionChange(SCR_SpawnPoint spawnPoint)
 	{
@@ -75,7 +83,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			RemoveSpawnPoint(spawnPoint);
 	}
 
-	//------------------------------------------------------------------------------------------------	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateSpawnPointName(RplId id, string name)
 	{
 		foreach (Widget w, SCR_MapUIElement icon : m_mIcons)
@@ -107,7 +115,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		if (response)
 		{
 			RemoveAllIcons();
-			
+
 			if (m_bShowSpawnPoints)
 				InitSpawnPoints();
 
@@ -124,23 +132,23 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		{
 			m_PlyFactionAffilComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
 			if (m_PlyFactionAffilComp)
-				m_PlyFactionAffilComp.GetOnPlayerFactionResponseInvoker_O().Insert(OnPlayerFactionResponse);	
+				m_PlyFactionAffilComp.GetOnPlayerFactionResponseInvoker_O().Insert(OnPlayerFactionResponse);
 
 			m_PlyGroupComp = SCR_PlayerControllerGroupComponent.Cast(pc.FindComponent(SCR_PlayerControllerGroupComponent));
 			if (m_PlyGroupComp)
-				m_PlyGroupComp.GetOnGroupChanged().Insert(OnPlayerGroupChanged);		
+				m_PlyGroupComp.GetOnGroupChanged().Insert(OnPlayerGroupChanged);
 		}
-		
+
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionChange);
 		SCR_SpawnPoint.Event_SpawnPointAdded.Insert(AddSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPoint);
 
-		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTaskAdded);
-		SCR_BaseTaskManager.s_OnTaskFailed.Insert(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskRemoved.Insert(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskFinished.Insert(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskFactionAssigned.Insert(OnTaskAdded);
+		m_TaskSystem = SCR_TaskSystem.GetInstance();
+		if (m_TaskSystem)
+		{
+			m_TaskSystem.GetOnTaskAdded().Insert(OnTaskAdded);
+			m_TaskSystem.GetOnTaskRemoved().Insert(OnTaskRemoved);
+		}
 
 		m_bIsDeployMap = (config.MapEntityMode == EMapEntityMode.SPAWNSCREEN);
 
@@ -160,7 +168,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 		if (m_bShowTasks)
 			InitTaskMarkers();
-		
+
 		m_MapEntity.GetOnMapPan().Insert(OnMapPan);
 		SCR_SpawnPoint.OnSpawnPointNameChanged.Insert(UpdateSpawnPointName);
 	}
@@ -173,28 +181,27 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 		if (m_PlyGroupComp)
 			m_PlyGroupComp.GetOnGroupChanged().Remove(OnPlayerGroupChanged);
-		
+
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnPointFactionChange);
 		SCR_SpawnPoint.Event_SpawnPointAdded.Remove(AddSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPoint);
 
-		SCR_BaseTaskManager.s_OnTaskUpdate.Remove(OnTaskAdded);
-		SCR_BaseTaskManager.s_OnTaskFailed.Remove(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskRemoved.Remove(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskDeleted.Remove(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskFinished.Remove(OnTaskRemoved);
-		SCR_BaseTaskManager.s_OnTaskFactionAssigned.Remove(OnTaskAdded);
+		if (m_TaskSystem)
+		{
+			m_TaskSystem.GetOnTaskAdded().Remove(OnTaskAdded);
+			m_TaskSystem.GetOnTaskRemoved().Remove(OnTaskRemoved);
+		}
 
 		m_MapEntity.GetOnMapPan().Remove(OnMapPan);
 		SCR_SpawnPoint.OnSpawnPointNameChanged.Remove(UpdateSpawnPointName);
 
-		foreach(Widget w, SCR_MapUIElement e : m_mIcons)
+		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
 		{
 			if (!w)
 				continue;
 			w.RemoveFromHierarchy();
 		}
-		
+
 		m_mIcons.Clear();
 	}
 
@@ -204,12 +211,13 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	//! \param[in] adjustedPan
 	void OnMapPan(float panX, float panY, bool adjustedPan)
 	{
-		 UpdateIcons();
+		UpdateIcons();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateIcons()
 	{
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		foreach (Widget widget, SCR_MapUIElement icon : m_mIcons)
 		{
 			if (!icon || !widget)
@@ -228,10 +236,10 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 					m_wWarningWidget = GetGame().GetWorkspace().CreateWidgets(m_sWarningWidget, m_wIconsContainer);
 
 				// just a hint indicating icons outside of the view
-				float screenWidth = GetGame().GetWorkspace().GetWidth();
-				float screenHeight = GetGame().GetWorkspace().GetHeight();
-				float screenWUnscaled = GetGame().GetWorkspace().DPIUnscale(screenWidth);
-				float screenHUnscaled = GetGame().GetWorkspace().DPIUnscale(screenHeight);
+				float screenWidth = workspace.GetWidth();
+				float screenHeight = workspace.GetHeight();
+				float screenWUnscaled = workspace.DPIUnscale(screenWidth);
+				float screenHUnscaled = workspace.DPIUnscale(screenHeight);
 				float ctverecWidth, ctverecHeight;
 				m_wWarningWidget.GetScreenSize(ctverecWidth, ctverecHeight);
 
@@ -248,10 +256,17 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 				m_wWarningWidget.SetVisible(x < 0 || x > screenWUnscaled || y < 0 || y > screenHUnscaled);
 			}
 
-			FrameSlot.SetPos(widget, x, y);
+			UpdateIconPosition(widget, icon, x, y);
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateIconPosition(Widget widget, SCR_MapUIElement icon, float x, float y)
+	{
+		FrameSlot.SetPos(widget, x, y);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void InitSpawnPoints()
 	{
 		array<SCR_SpawnPoint> infos = {};
@@ -260,7 +275,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			Faction playerFaction = m_PlyFactionAffilComp.GetAffiliatedFaction();
 			if (!playerFaction)
 				return;
-			
+
 			infos = SCR_SpawnPoint.GetSpawnPointsForFaction(playerFaction.GetFactionKey());
 		}
 		else
@@ -276,6 +291,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		UpdateIcons();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void ShowSpawnPoint(notnull SCR_SpawnPoint spawnPoint)
 	{
 		if (!m_bIsDeployMap && spawnPoint.GetVisibleInDeployMapOnly())
@@ -298,87 +314,114 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Creates task icon for every task which is visible on map for player.
 	protected void InitTaskMarkers()
 	{
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		if (!m_TaskSystem)
 			return;
 
-		int taskCount;
-		array<SCR_BaseTask> availableTasks = {};
-		if (m_bIsEditor)
-		{
-			taskCount = taskManager.GetTasks(availableTasks);
-		}
-		else
-		{
-			taskCount = taskManager.GetFilteredTasks(availableTasks, SCR_FactionManager.SGetLocalPlayerFaction());
-		}
+		int playerID = SCR_PlayerController.GetLocalPlayerId();
+		SCR_TaskExecutor executor = SCR_TaskExecutor.FromPlayerID(playerID);
+		if (!executor)
+			return;
 
-		for (int i = 0; i < taskCount; ++i)
+		//## Get all tasks visible for player or all tasks if player is GM.
+		array<SCR_Task> availableTasks = {};
+		if (m_bIsEditor)
+			m_TaskSystem.GetTasks(availableTasks);
+		else
+			m_TaskSystem.GetTasksVisibleFor(availableTasks, executor);
+
+		foreach (SCR_Task task : availableTasks)
 		{
-			InitTaskIcon(availableTasks[i]);
+			if (!m_TaskSystem.IsTaskVisibleOnMap(task))
+				continue;
+
+			InitTaskIcon(task);
 		}
 
 		UpdateIcons();
 	}
 
-	protected void InitTaskIcon(SCR_BaseTask task)
+	//------------------------------------------------------------------------------------------------
+	//! Creates map icon for task.
+	//! \param[in] task to be initialized.
+	protected void InitTaskIcon(SCR_Task task)
 	{
-		if (task.GetTaskState() == SCR_TaskState.FINISHED || task.GetTaskState() == SCR_TaskState.CANCELLED)
+		// a task that is not allowed will not be shown
+		if (!m_bShowAllTaskTypenames)
+		{
+			if (!m_aAllowedTaskTypenames.Contains(task.Type().ToString()))
+				return;
+		}
+
+		//## Don't create icon for completed and cancelled tasks.
+		if (SCR_Enum.HasPartialFlag(SCR_ETaskState.COMPLETED | SCR_ETaskState.CANCELLED, m_TaskSystem.GetTaskState(task)))
 			return;
 
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sTaskElement, m_wIconsContainer);
 		if (!w)
 			return;
 
-		SCR_MapUITask handler = SCR_MapUITask.Cast(w.FindHandler(SCR_MapUITask));
+		SCR_TaskMapUIComponent handler = SCR_TaskMapUIComponent.Cast(w.FindHandler(SCR_TaskMapUIComponent));
 		if (!handler)
 			return;
 
 		handler.SetParent(this);
 		handler.InitTask(task);
+		
 		m_mIcons.Set(w, handler);
-		
-		SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(task.FindComponent(SCR_MapDescriptorComponent));
-		
-		if (mapDescriptor)
-			mapDescriptor.Item().SetVisible(true);
 
 		FrameSlot.SetSizeToContent(w, true);
 		FrameSlot.SetAlignment(w, 0.5, 0.5);
 	}
 
-	protected void OnTaskAdded(SCR_BaseTask task)
+	//------------------------------------------------------------------------------------------------
+	//! Creates task icon when task is added.
+	//! \param[in] task.
+	protected void OnTaskAdded(SCR_Task task)
 	{
-		if (!m_bShowTasks || !task)
+		if (!m_bShowTasks || !task || !m_TaskSystem)
+			return;
+		
+		string factionKey = SCR_FactionManager.SGetLocalPlayerFaction().GetFactionKey();
+		array<string> factions = m_TaskSystem.GetTaskFactions(task);
+		if (factions && !factions.IsEmpty() && !factions.Contains(factionKey))
 			return;
 
-		if (task.GetTargetFaction() != SCR_FactionManager.SGetLocalPlayerFaction())
-			return;
-
-		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
+		SCR_TaskMapUIComponent component;
+		foreach (Widget w, SCR_MapUIElement element : m_mIcons)
 		{
-			SCR_MapUITask t = SCR_MapUITask.Cast(e);
-			if (!t)
+			component = SCR_TaskMapUIComponent.Cast(element);
+			if (!component)
 				continue;
 
-			if (t.GetTask() == task)
+			if (component.GetTask() == task)
 				return;
 		}
-
+		
 		InitTaskIcon(task);
 		UpdateIcons();
 	}
-	
-	protected void OnTaskRemoved(SCR_BaseTask task)
+
+	//------------------------------------------------------------------------------------------------
+	//! Remove task icon from map when task is removed from system.
+	//! \param[in] task.
+	protected void OnTaskRemoved(notnull SCR_Task task)
 	{
-		MapDescriptorComponent mapDescriptor = MapDescriptorComponent.Cast(task.FindComponent(MapDescriptorComponent));
-		
-		if (mapDescriptor && mapDescriptor.Item())
-			mapDescriptor.Item().SetVisible(false);
+		SCR_TaskMapUIComponent component;
+		foreach (Widget w, SCR_MapUIElement element : m_mIcons)
+		{
+			component = SCR_TaskMapUIComponent.Cast(element);
+			if (!component)
+				continue;
+
+			if (component.GetTask() == task)
+				component.GetRootWidget().RemoveFromHierarchy();
+		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void RemoveAllIcons()
 	{
 		Widget child = m_wIconsContainer.GetChildren();
@@ -397,9 +440,10 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	//! \param[in] icon
 	void RemoveIcon(SCR_MapUIElement icon)
 	{
-		delete m_mIcons.GetKeyByValue(icon);
+		delete SCR_MapHelper<Widget, SCR_MapUIElement>.GetKeyByValue(m_mIcons, icon);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected SCR_MapUIElement FindSpawnPointIconById(RplId id)
 	{
 		foreach (Widget w, SCR_MapUIElement icon : m_mIcons)
@@ -434,7 +478,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 	{
 		GetOnSpawnPointSelected().Invoke(spId);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerGroupChanged(SCR_AIGroup group)
 	{
@@ -464,7 +508,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 				AddSpawnPoint(sp);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] id
@@ -502,5 +546,24 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 			m_OnElementSelected = new ScriptInvoker();
 
 		return m_OnElementSelected;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] taskID
+	//! \return ui component of task from provided ID
+	SCR_TaskMapUIComponent GetTaskFromID(string taskID)
+	{
+		SCR_TaskMapUIComponent taskComponent;
+		foreach (Widget w, SCR_MapUIElement element : m_mIcons)
+		{
+			taskComponent = SCR_TaskMapUIComponent.Cast(element);
+			if (!taskComponent)
+				continue;
+
+			if (taskComponent.GetTask().GetTaskID() == taskID)
+				return taskComponent;
+		}
+
+		return null;
 	}
 }

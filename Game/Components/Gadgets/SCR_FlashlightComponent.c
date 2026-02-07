@@ -53,15 +53,10 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{
 		m_bActivated = state;
 
-		// Play sound
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (soundManagerEntity)
-		{
-			if (m_bActivated)
-				soundManagerEntity.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_FLASHLIGHT_ON);
-			else
-				soundManagerEntity.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_FLASHLIGHT_OFF);
-		}
+		if (m_bActivated)
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_FLASHLIGHT_ON);
+		else
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_FLASHLIGHT_OFF);
 
 		UpdateLightState();
 	}

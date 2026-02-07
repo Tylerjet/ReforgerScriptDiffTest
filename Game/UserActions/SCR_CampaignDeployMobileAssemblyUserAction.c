@@ -112,7 +112,7 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 		bool isInRange = m_AssemblyComponent.IsInRadioRange();
 		
 		if (!isInRange)
-			SetCannotPerformReason("#AR-Campaign_Action_NoSignal-UC");
+			SetCannotPerformReason("#AR-Campaign_Action_NoSignal");
 		
 		IEntity truck = m_TruckBed.GetParent();
 		

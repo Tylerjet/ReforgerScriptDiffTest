@@ -20,4 +20,6 @@ enum EEditableEntityBudget
 	RANK_MAJOR = 160,
 	RANK_COLONEL = 170,
 	RANK_GENERAL = 180,
+
+	ESTABLISH_BASE = 190,
 };

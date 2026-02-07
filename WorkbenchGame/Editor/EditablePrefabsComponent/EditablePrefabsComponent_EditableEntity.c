@@ -379,18 +379,21 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 
 		//--- Register the file
 		Workbench.GetAbsolutePath(addonName + FilePath.StripFileName(targetPath) + sourceFile, absolutePath, false);
-		MetaFile metaContainer = resourceManager.RegisterResourceFile(absolutePath);
-		if (metaContainer)
+		if (resourceManager.RegisterResourceFile(absolutePath, false))
 		{
-			//--- Update meta file
-			targetPath = metaContainer.GetResourceID();
-			BaseContainerList configurations = metaContainer.GetObjectArray("Configurations");
-			if (configurations)
+			MetaFile metaContainer = resourceManager.GetMetaFile(absolutePath);
+			if (metaContainer)
 			{
-				configurations.Get(0).Set("ColorSpace", "ToSRGB"); //--- Assume PC is the first
-				metaContainer.Save();
-				Print(string.Format("Editable entity preview image ADDED: @\"%1\"", targetPath), LogLevel.DEBUG);
-				return;
+				//--- Update meta file
+				targetPath = metaContainer.GetResourceID();
+				BaseContainerList configurations = metaContainer.GetObjectArray("Configurations");
+				if (configurations)
+				{
+					configurations.Get(0).Set("ColorSpace", "ToSRGB"); //--- Assume PC is the first
+					metaContainer.Save();
+					Print(string.Format("Editable entity preview image ADDED: @\"%1\"", targetPath), LogLevel.DEBUG);
+					return;
+				}
 			}
 		}
 		

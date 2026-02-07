@@ -1,10 +1,10 @@
 class LoadedProjectsRequest : JsonApiStruct
 {
-	string fbxPath;
+	string path;
 
 	void LoadedProjectsRequest()
 	{
-		RegV("fbxPath");
+		RegV("path");
 	}
 }
 
@@ -26,7 +26,7 @@ class LoadedProjects : NetApiHandler
 		return new LoadedProjectsRequest();
 	}
 
-	static bool InLoadedProjects(string fbxPath)
+	static bool InLoadedProjects(string path)
 	{
 		array<string> addons = new array<string>;
 		//Get GUIDs of loaded addons
@@ -41,18 +41,18 @@ class LoadedProjects : NetApiHandler
 			Workbench.GetAbsolutePath("$" + addonName + ":", absPath, false);
 			//TotalCommander uses small letters for disks so the path would be in lowercase as well
 			absPath.ToLower();
-			fbxPath.ToLower();
+			path.ToLower();
 			if (absPath != "")
 			{
 				absPath = absPath.Substring(0, absPath.Length() - 1);
 			}
 			//If fbx path contains the gproj path
-			if (fbxPath.Contains(absPath) && absPath != "")
+			if (path.Contains(absPath) && absPath != "")
 			{
 				return(true);
 			}
 			absPath.Replace("/","\\");
-			if (fbxPath.Contains(absPath) && absPath != "")
+			if (path.Contains(absPath) && absPath != "")
 			{
 				return(true);
 			}
@@ -65,7 +65,7 @@ class LoadedProjects : NetApiHandler
 	{
 		LoadedProjectsRequest req = LoadedProjectsRequest.Cast(request);
 		LoadedProjectsResponse response = new LoadedProjectsResponse();
-		response.resourceInProject = InLoadedProjects(req.fbxPath);
+		response.resourceInProject = InLoadedProjects(req.path);
 		return response;
 	}
 

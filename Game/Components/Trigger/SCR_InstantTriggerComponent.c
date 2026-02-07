@@ -22,7 +22,7 @@ class SCR_InstantTriggerComponent : ScriptComponent
 			return;
 		
 		//~ Call init slightly later so Other systems can set the proper instigators
-		GetGame().GetCallqueue().CallLater(DelayedInit, param1: owner);
+		GetGame().GetCallqueue().CallLater(DelayedInit, 50, false,  owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------

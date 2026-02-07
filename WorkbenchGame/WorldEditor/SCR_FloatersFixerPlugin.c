@@ -141,9 +141,7 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 				if (alignToSurfaceNormal)
 				{
 					normalAngles = GetXYZAnglesFromNormal(entity, traceParam.TraceNorm);
-					worldEditorAPI.SetVariableValue(entitySource, null, "angleX", normalAngles[0].ToString());
-					worldEditorAPI.SetVariableValue(entitySource, null, "angleY", normalAngles[1].ToString());
-					worldEditorAPI.SetVariableValue(entitySource, null, "angleZ", normalAngles[2].ToString());
+					worldEditorAPI.SetVariableValue(entitySource, null, "angles", normalAngles.ToString(false));
 				}
 
 				if (m_bSetOnTerrainAndEntitiesSurface)

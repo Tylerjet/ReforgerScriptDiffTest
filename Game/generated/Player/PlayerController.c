@@ -53,35 +53,6 @@ class PlayerController: GenericController
 	proto external bool SetCharacterCameraRenderActive(bool active);
 	proto external int GetPlayerId();
 	proto external int GetRplIdentity();
-	/*!
-	Block specified player from any communication
-	for the time of one gameplay session.
-	It does not invoke blocking on the platform level (eg XBox Live)
-	*/
-	[Obsolete("Session blocking is no longer supported.")]
-	proto external void SetPlayerBlockedState(int playerId, bool blocked);
-	/*!
-	Block specified player from voice communication
-	for the time of one gameplay session.
-	It does not invoke blocking on the platform level (eg XBox Live)
-	*/
-	[Obsolete("Use SocialComponent.SetMuted(playerId, muted).")]
-	proto external void SetPlayerMutedState(int playerId, bool blocked);
-	/*!
-	Determine if the specified player is able to communicate with this PC in any means.
-	*/
-	[Obsolete("Session blocking is no longer supported.")]
-	proto external PermissionState GetPlayerBlockedState(int playerId);
-	/*!
-	Determine if the specified player is able to communicate with this PC using voice.
-	*/
-	[Obsolete("Use SocialComponent.IsMuted(playerId).")]
-	proto external PermissionState GetPlayerMutedState(int playerId);
-	/*!
-	Determine if this PC can view content created by specified player.
-	*/
-	[Obsolete("Use SocialComponent.IsRestricted(playerId, UserInteraction::UserGeneratedContent).")]
-	proto external bool CanViewContentCreatedBy(int playerId);
 	proto external GamepadIOHandlerComponent GetGamepadIOHandlerComponent();
 	proto external void ResetGamepadIOHandler();
 	proto external void ApplyGamepadEffectImmediate(GamepadEffect effect);

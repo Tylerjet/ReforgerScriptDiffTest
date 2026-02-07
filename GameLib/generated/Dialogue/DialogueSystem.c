@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class DialogueSystem: BaseSystem
+sealed class DialogueSystem: WorldSystem
 {
 }
 

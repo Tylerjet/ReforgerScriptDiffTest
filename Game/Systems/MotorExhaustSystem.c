@@ -9,9 +9,9 @@ class MotorExhaustSystem: GameSystem
 
 	protected ref array<SCR_MotorExhaustEffectGeneralComponent> m_MotorsComponents = {};
 	
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_MotorExhaustEffectGeneralComponent comp: m_MotorsComponents)
 		{

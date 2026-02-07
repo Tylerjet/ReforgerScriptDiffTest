@@ -83,11 +83,11 @@ class SCR_TreeDebrisSmallEntity : SCR_BaseDebrisSmallEntity
 	void PlaySound(vector pos, float dVelocity)
 	{	
 		// Get SoundManager
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(GetWorld());
+		if (!soundManager)
 			return;
 									
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(this, m_audioSourceConfigurationImpact);
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(this, m_audioSourceConfigurationImpact, pos);
 		if (!audioSource)
 			return;
 		
@@ -103,14 +103,9 @@ class SCR_TreeDebrisSmallEntity : SCR_BaseDebrisSmallEntity
 		// Set signals
 		audioSource.SetSignalValue(SCR_AudioSource.COLLISION_D_V_SIGNAL_NAME, dVelocity - m_fSoundThreshold);
 		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, GetPhysics().GetMass());
-		
-		// Get sound position
-		vector mat[4];
-		GetTransform(mat);				
-		mat[3] = pos;		
-		
+
 		// Play sound
-		soundManagerEntity.PlayAudioSource(audioSource, mat);		
+		soundManager.PlayAudioSource(audioSource);		
 		m_AudioHandleDebrisImpact = audioSource.m_AudioHandle;
 		
 		// Store position of the last played sound
@@ -150,16 +145,16 @@ class SCR_TreeDebrisSmallEntity : SCR_BaseDebrisSmallEntity
 		if (m_audioSourceConfigurationBreak && m_audioSourceConfigurationBreak.IsValid())
 		{
 			// Get SoundManager
-			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-			if (!soundManagerEntity)
+			SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
+			if (!soundManager)
 				return;			
 			
-			SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(this, m_audioSourceConfigurationBreak);
+			SCR_AudioSource audioSource = soundManager.CreateAudioSource(this, m_audioSourceConfigurationBreak);
 			if (!audioSource)
 				return;
 			
 			audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, GetPhysics().GetMass());
-			soundManagerEntity.PlayAudioSource(audioSource);		
+			soundManager.PlayAudioSource(audioSource);		
 			m_AudioHandleDebrisBreak = audioSource.m_AudioHandle;	
 		}		
 		

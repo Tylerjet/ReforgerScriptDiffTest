@@ -752,6 +752,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			control.ActivateAI();
 	}
 
+	/*
 	//------------------------------------------------------------------------------------------------
 	override bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
@@ -786,6 +787,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 		compartmentAccess.GetInVehicle(target.GetOwner(), compartments[targetValue], true, -1, ECloseDoorAfterActions.INVALID, true);
 	}
+	*/
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)

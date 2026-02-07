@@ -8,12 +8,6 @@ class SCR_PrefabEditingPluginBase : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected WBProgressDialog StartProgressResourceBrowser()
-	{
-		return new WBProgressDialog("Processing Prefabs...", Workbench.GetModule(ResourceManager));
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected WBProgressDialog StartProgress()
 	{
 		return StartProgressWorldEditor();

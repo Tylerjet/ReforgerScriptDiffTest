@@ -11,7 +11,7 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 		super.Init(root, preset, proxyMenu);
 		
 		// Fill config list - if the is currently some file selected
-		SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
+		/*SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
 		saveWorkshopManager.GetCurrentSave(m_SaveItem);
 		
 		if (m_SaveItem)
@@ -34,6 +34,7 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 				saveWorkshopManager.ClearEditedSaveManifest();
 			}
 		}
+		*/
 	}
 	
 	//---------------------------------------------------------------------------------------------	
@@ -49,6 +50,7 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 		if (m_ConfigList.GetInvalidEntry())
 			return;
 		
+		/*
 		SCR_SaveWorkshopManager saveWorshopManager = SCR_SaveWorkshopManager.GetInstance();
 		
 		// Check connection 
@@ -59,7 +61,7 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 		}
 		
 		// Check login 
-		if (!GetGame().GetBackendApi().IsBIAccountLinked())
+		if (!BohemiaAccountApi.IsLinked())
 		{
 			SCR_LoginProcessDialogUI.CreateLoginDialog();
 			return;
@@ -72,6 +74,7 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 		// Open capture image
 		SCR_SaveWorkshopManager.GetInstance().SetEditedSaveManifest(manifest, "thumbnail", string.Empty);
 		SCR_EditorManagerEntity.GetInstance().SetCurrentMode(EEditorMode.PHOTO_SAVE);
+		*/
 	}
 	
 	//---------------------------------------------------------------------------------------------
@@ -90,9 +93,12 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 		// Saves save manifest data
 		m_SaveItem.Save(manifest);
 		
-		SCR_SaveWorkshopManager saveWorshopManager = SCR_SaveWorkshopManager.GetInstance();
-		saveWorshopManager.GetUploadCallback().GetEventOnResponse().Insert(OnUploadSaveResponse);
-		saveWorshopManager.UploadSave(m_SaveItem, manifest, true);
+		/*
+		SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
+		saveWorkshopManager.GetUploadCallback().SetOnSuccess(OnUploadSaveResponse);
+		saveWorkshopManager.GetUploadCallback().SetOnError(OnUploadSaveError);
+		saveWorkshopManager.UploadSave(m_SaveItem, manifest, true);
+		*/
 		
 		m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
 		
@@ -113,22 +119,22 @@ class SCR_PublishSaveDialog: SCR_EditorSaveDialog
 	}
 	
 	//---------------------------------------------------------------------------------------------
-	protected void OnUploadSaveResponse(SCR_BackendCallback callback)
-	{
-		callback.GetEventOnResponse().Remove(OnUploadSaveResponse);
-		
+	protected void OnUploadSaveResponse()
+	{	
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.Close();
 		
-		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
-		{
-			SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SAVE_PUBLISH_SUCCESS);
-			Close();
-		}
-		else 
-		{
-			SCR_SaveWorkshopManagerUI.CreateDialog("publish_fail");
-		}
+		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SAVE_PUBLISH_SUCCESS);
+		Close();
+	}
+	
+	//---------------------------------------------------------------------------------------------
+	protected void OnUploadSaveError()
+	{	
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.Close();
+		
+		SCR_SaveWorkshopManagerUI.CreateDialog("publish_fail");
 	}
 	
 	//---------------------------------------------------------------------------------------------

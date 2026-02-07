@@ -299,10 +299,13 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	
 	[Attribute(defvalue: "{6B9E63C758849B7F}UI/layouts/Menus/DeployMenu/DebriefingScreenMissionObjective.layout")]
 	protected ResourceName m_sFinishedObjectivesLayout;
+
+	[Attribute(defvalue: "7", desc: "Max number of objectives that can be shown on a single page", params: "1 inf")]
+	protected int m_iMaxNumberOfObjectives;
 	
 	protected Widget m_wFinishedObjectivesWidget;
 	protected ButtonWidget m_wColumnButton;
-	protected ref array<SCR_BaseTask> m_aFinishedTasks = {};
+	protected ref array<SCR_Task> m_aCompletedTasks;
 	protected ref array<Widget> m_aFinishedObjectivesWidgets = {};
 	protected int m_iCurrentPage;
 	protected int m_iFinishedTasksCount;
@@ -334,7 +337,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 		
 		FillFinishedObjectivesWidget(finishedObjectivesContent);
 		InitPagination();
-		HandlePagination();
+		HandlePagination(m_iFinishedTasksCount > m_iMaxNumberOfObjectives);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -350,8 +353,8 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	//! TODO - Will be fixed in the future
 	void ProcessTasks()
 	{
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -362,54 +365,11 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 		if (!faction)
 			return;
 		
-		array<SCR_BaseTask> activeTasks = {};
-		taskManager.GetFilteredTasks(activeTasks, faction);
-		taskManager.GetFilteredFinishedTasks(m_aFinishedTasks, faction);
-		
-		m_iFinishedTasksCount = m_aFinishedTasks.Count();
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-		if (!campaign)
-			return;
-		
-		//TODO: Due to how Task system works, we need to process this task list
-		//Just for the Conflict so only the tasks for control points that are also under faction control are displayed
-		SCR_CampaignMilitaryBaseComponent baseComponent;
-		SCR_CampaignTask campaignTask;
-		map<SCR_CampaignMilitaryBaseComponent, SCR_BaseTask> finishedTasksMap = new map <SCR_CampaignMilitaryBaseComponent, SCR_BaseTask>();
-		
-		//We fetch all the finished tasks and fill the map with them using SCR_CampaignMilitaryBaseComponent as a key
-		foreach (SCR_BaseTask task : m_aFinishedTasks)
-		{
-			campaignTask = SCR_CampaignTask.Cast(task);
-			if (!campaignTask)
-				continue;
-			
-			baseComponent = campaignTask.GetTargetBase();
-			//We let through only control points that have signal to the HQ
-			if (baseComponent && !finishedTasksMap.Contains(baseComponent) && baseComponent.IsControlPoint() && baseComponent.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(faction), SCR_ERadioCoverageStatus.RECEIVE))
-				finishedTasksMap.Set(baseComponent, task);
-		}
-		
-		//We fetch all the active tasks and remove all the finished tasks that have the same SCR_CampaignMilitaryBaseComponent
-		//Because that means that this task is in fact not finished as the base was lost and task recreated
-		foreach(SCR_BaseTask activeTask : activeTasks)
-		{
-			campaignTask = SCR_CampaignTask.Cast(activeTask);
-			if (!campaignTask)
-				continue;
-		
-			baseComponent = campaignTask.GetTargetBase();
-			if (baseComponent)
-				finishedTasksMap.Remove(baseComponent);
-		}
-		
-		m_aFinishedTasks.Clear();
-		foreach (SCR_BaseTask task : finishedTasksMap)
-		{
-			m_aFinishedTasks.Insert(task);
-		}
+		if (!m_aCompletedTasks)
+			m_aCompletedTasks = {};
 
-		m_iFinishedTasksCount = m_aFinishedTasks.Count();
+		taskSystem.GetTasksByState(m_aCompletedTasks, SCR_ETaskState.COMPLETED, faction.GetFactionKey());
+		m_iFinishedTasksCount = m_aCompletedTasks.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -420,48 +380,14 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 		RichTextWidget titleText = RichTextWidget.Cast(m_wFinishedObjectivesWidget.FindAnyWidget("TitleText"));
 		if (titleText)
 			titleText.SetText(GetTitleText());
-		
-		ProcessTasks();
-		
-		int cycleCount;
-		if (m_iFinishedTasksCount < 7)
-			cycleCount = m_iFinishedTasksCount;
-		else
-			cycleCount = 6;
 
-		//Statistics are capped for 6 at the time
-		for (int i = 0; i < cycleCount; ++i)
-		{
-			Widget objective = GetGame().GetWorkspace().CreateWidgets(m_sFinishedObjectivesLayout, content);
-			m_aFinishedObjectivesWidgets.Insert(objective);
-			
-			RichTextWidget name = RichTextWidget.Cast(objective.FindAnyWidget("ObjectiveText"));
-			SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aFinishedTasks[i]);
-			SCR_CampaignTask campaignTask = SCR_CampaignTask.Cast(m_aFinishedTasks[i]);
-			if (editorTask)
-				name.SetTextFormat(editorTask.GetTitle(), editorTask.GetLocationName());
-			else if (campaignTask)
-				name.SetTextFormat(campaignTask.GetTitle(), campaignTask.GetBaseNameWithCallsign());
-			else
-				name.SetText(m_aFinishedTasks[i].GetTitle());
-		}
-		
-		if (m_iFinishedTasksCount < 7)
+		ProcessTasks();
+		FlipPage(0);
+
+		if (m_iFinishedTasksCount < m_iMaxNumberOfObjectives)
 		{
 			Widget paginationWidget = m_wFinishedObjectivesWidget.FindAnyWidget("BottomTitleSizeLayout");
-			paginationWidget.SetOpacity(0);
-		}
-		else
-		{
-			Widget pages = m_wFinishedObjectivesWidget.FindAnyWidget("Pages");
-			if (!pages)
-				return;
-			
-			SCR_SelectionHintComponent pagesVisualised = SCR_SelectionHintComponent.Cast(pages.FindHandler(SCR_SelectionHintComponent));
-			if (!pagesVisualised)
-				return;
-			
-			pagesVisualised.SetItemCount(m_iFinishedTasksCount/6);
+			paginationWidget.SetVisible(false);
 		}
 	}
 	
@@ -557,49 +483,46 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 	//! \param[in] currentPage
 	protected void FlipPage(int currentPage)
 	{
+		int taskId;
+		Widget entry;
+		SCR_Task task;
+		SCR_TaskUIInfo info;
 		RichTextWidget name;
-		for (int i = 0; i < 6; ++i)
+		Widget finishedObjectivesContentHolder;
+		for (int i = 0; i < m_iMaxNumberOfObjectives - 1; i++)
 		{
-			m_aFinishedObjectivesWidgets[i].SetOpacity(1);
-			if (currentPage == 0)
-			{
-				name = RichTextWidget.Cast(m_aFinishedObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
-				if (i < m_iFinishedTasksCount)
-				{
-					SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aFinishedTasks[i]);
-					SCR_CampaignTask campaignTask = SCR_CampaignTask.Cast(m_aFinishedTasks[i]);
-					if (editorTask)
-						name.SetTextFormat(editorTask.GetTitle(), editorTask.GetLocationName());
-					else if (campaignTask)
-						name.SetTextFormat(campaignTask.GetTitle(), campaignTask.GetBaseNameWithCallsign());
-					else
-						name.SetText(m_aFinishedTasks[i].GetTitle());
-				}
-				else
-				{
-					m_aFinishedObjectivesWidgets[i].SetOpacity(0);
-				}
-			}
+			taskId = currentPage * (m_iMaxNumberOfObjectives - 1) + i;
+			if (m_aFinishedObjectivesWidgets.IsIndexValid(i))
+				entry = m_aFinishedObjectivesWidgets[i];
 			else
+				entry = null;
+
+			if (taskId >= m_iFinishedTasksCount)
 			{
-				name = RichTextWidget.Cast(m_aFinishedObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
-				if ((currentPage * 6) + i < m_iFinishedTasksCount)
-				{
-					SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aFinishedTasks[(currentPage * 6) + i]);
-					SCR_CampaignTask campaignTask = SCR_CampaignTask.Cast(m_aFinishedTasks[(currentPage * 6) + i]);
-					if (editorTask)
-						name.SetTextFormat(editorTask.GetTitle(), editorTask.GetLocationName());
-					else if (campaignTask)
-						name.SetTextFormat(campaignTask.GetTitle(), campaignTask.GetBaseNameWithCallsign());
-					else
-						name.SetText(m_aFinishedTasks[(currentPage * 6) + i].GetTitle());
-				
-				}
-				else
-				{
-					m_aFinishedObjectivesWidgets[i].SetOpacity(0);
-				}
+				if (entry)
+					entry.SetVisible(false);
+
+				continue;
 			}
+
+			if (!entry)
+			{
+				if (!finishedObjectivesContentHolder)
+				{
+					finishedObjectivesContentHolder = m_wFinishedObjectivesWidget.FindAnyWidget("FinishedObjectivesLayout");
+					if (!finishedObjectivesContentHolder)
+						continue;
+				}
+
+				entry = GetGame().GetWorkspace().CreateWidgets(m_sFinishedObjectivesLayout, finishedObjectivesContentHolder);
+				m_aFinishedObjectivesWidgets.Insert(entry);
+			}
+
+			entry.SetVisible(true);
+			name = RichTextWidget.Cast(entry.FindAnyWidget("ObjectiveText"));
+			task = m_aCompletedTasks[taskId];
+			info = task.GetTaskUIInfo();
+			info.SetNameTo(name);
 		}
 		
 		SetCurrentPage(currentPage);

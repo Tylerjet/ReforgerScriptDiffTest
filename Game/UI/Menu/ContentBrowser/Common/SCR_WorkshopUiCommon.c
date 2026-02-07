@@ -34,6 +34,7 @@ class SCR_WorkshopUiCommon
 	static const string	MESSAGE_UPDATE_AVAILABLE = 		"#AR-Workshop_State_UpdateAvailable";
 	static const string MESSAGE_REPORTED = 				"#AR-Workshop_State_Reported";
 	static const string MESSAGE_BANNED =				"#AR-Workshop_State_Banned";
+	static const string MESSAGE_CORRUPTED =				"#AR-Workshop_State_Corrupted";
 	static const string MESSAGE_RESTRICTED =			"#AR-Workshop_State_Restricted";
 	static const string MESSAGE_RESTRICTED_GENERIC = 	"#AR-Workshop_Dialog_Error_ModIsBlocked";
 	static const string MESSAGE_FALLBACK = 				"#AR-CoreMenus_Tooltips_Unavailable";
@@ -583,9 +584,9 @@ class SCR_WorkshopUiCommon
 		if (alwaysShowWhenDownloaded)
 			show = item.GetOffline();
 		
-		WorldSaveItem save = WorldSaveItem.Cast(item.GetWorkshopItem());
+		/*WorldSaveItem save = WorldSaveItem.Cast(item.GetWorkshopItem());
 		if (save && show)
-			show = !SCR_SaveWorkshopManager.IsSaveLocalOnly(save);
+			show = !SCR_SaveWorkshopManager.IsSaveLocalOnly(save);*/
 		
 		button.SetVisible(show);
 		button.SetToggled(item.GetEnabled(), false);

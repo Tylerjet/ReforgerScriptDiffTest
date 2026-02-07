@@ -70,7 +70,7 @@ class SCR_ScenarioFrameworkActionAppendBriefingEntryTextBasedOnTask : SCR_Scenar
 			taskStrings.InsertAll(previousStrings);
 
 		taskStrings.Insert(task.GetTaskExecutionBriefing());
-		taskStrings.Insert(task.GetSpawnedEntityName());
+		taskStrings.Insert(task.GetSlotTask().GetSpawnedEntityDisplayName());
 
 		respawnBriefing.RewriteEntry_SA(m_sFactionKey, m_iEntryID, targetJournalEntry.GetEntryText(), taskStrings);
 	}

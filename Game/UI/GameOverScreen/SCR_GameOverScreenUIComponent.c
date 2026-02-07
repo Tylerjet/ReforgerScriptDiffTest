@@ -36,6 +36,9 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("0", desc: "Which tab will show the end screen content eg: Victory, Defeat, etc.")]
 	protected float m_iContentTabIndex;
 	
+	[Attribute("NextScenarioButton")]
+	protected string m_sNextScenarioButtonName;
+	
 	protected Widget m_wRoot;
 	protected Widget m_wEndscreenContent;
 	protected Widget m_wRestartTimerHolder;
@@ -118,12 +121,16 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		
 		if (m_ContentFadeComponent)
 			m_ContentFadeComponent.FadeIn();
+		
 		if (m_TabViewFadeComponent)
 			m_TabViewFadeComponent.FadeIn();
+		
 		if (m_ButtonHolderFadeComponent)
 			m_ButtonHolderFadeComponent.FadeIn();
+		
 		if (m_OverlayBackgroundColorFadeUIComponent)
 			m_OverlayBackgroundColorFadeUIComponent.FadeIn();
+		
 		if (m_RestartTimerFadeComponent)
 			m_RestartTimerFadeComponent.FadeIn();
 		
@@ -133,6 +140,31 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			SCR_InputButtonComponent returnToMenuButton = SCR_InputButtonComponent.Cast(returnToMenuBtn.FindHandler(SCR_InputButtonComponent));
 			if (returnToMenuButton)
 				returnToMenuButton.m_OnActivated.Insert(ReturnToMenu);
+		}
+		
+		Widget nextScenarioBtn = m_wRoot.FindAnyWidget(m_sNextScenarioButtonName);
+		if (nextScenarioBtn)
+		{
+			SCR_MissionHeaderSequence sequenceHeader = SCR_MissionHeaderSequence.Cast(GetGame().GetMissionHeader());
+
+			if (sequenceHeader)
+			{
+				if (sequenceHeader.m_sNextScenario.IsEmpty() || endScreenUIContent.m_GameOverInfo.GetInfoId() != EGameOverTypes.VICTORY)
+				{
+					nextScenarioBtn.SetEnabled(false);
+				}
+				else
+				{
+					sequenceHeader.UpdateProgress();
+					SCR_InputButtonComponent nextScenarioButtontn = SCR_InputButtonComponent.Cast(nextScenarioBtn.FindHandler(SCR_InputButtonComponent));
+					if (nextScenarioButtontn)
+						nextScenarioButtontn.m_OnActivated.Insert(NextScenario);
+				}
+			}
+			else
+			{
+				nextScenarioBtn.SetVisible(false);
+			}
 		}
 		
 		Widget debriefingWidgetButton = m_wRoot.FindAnyWidget(m_sDebriefingButtonName);
@@ -151,7 +183,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 					SCR_InputButtonComponent debriefingButton = SCR_InputButtonComponent.Cast(debriefingWidgetButton.FindHandler(SCR_InputButtonComponent));
 					if (debriefingButton)
 						debriefingButton.m_OnActivated.Insert(OpenDebriefingScreenMenu);
-					}
+				}
 				else
 				{
 					debriefingWidgetButton.SetVisible(false);
@@ -184,9 +216,21 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	protected void BackToMainMenuPopupConfirm()
 	{
 		OnGameEnd();
+		UnpauseTime();
 		GameStateTransitions.RequestGameplayEndTransition();
 	}
-	
+
+	//-----------------------------------------------------------------------------------------------
+	protected void UnpauseTime()
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+
+		if (!world || !world.IsGameTimePaused())
+			return;
+
+		world.PauseGameTime(false);
+	}
+
 	//~ Removes itself from hierargy on game end just in cause
 	protected void OnGameEnd()
 	{
@@ -290,6 +334,34 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		
 		if (m_wRestartTimerHolder)
 			m_RestartTimerComponent.StopTimer();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void NextScenario()
+	{
+		SCR_MissionHeaderSequence sequenceHeader = SCR_MissionHeaderSequence.Cast(GetGame().GetMissionHeader());
+		
+		if (!sequenceHeader || sequenceHeader.m_sNextScenario.IsEmpty())
+			return;
+		
+		string addonGUIDs;
+		
+		array<string> addons = {};
+		GameProject.GetLoadedAddons(addons);
+		
+		foreach (string GUID: addons)
+		{
+			if (!GameProject.IsVanillaAddon(GUID))
+			{
+				if (!addonGUIDs.IsEmpty())
+					addonGUIDs += ",";
+				
+				addonGUIDs += GUID;
+			}
+		}
+		
+		GetGame().GetSaveGameManager().StartPlaythrough(sequenceHeader.m_sNextScenario, transition: false);
+		GameStateTransitions.RequestScenarioChangeTransition(sequenceHeader.m_sNextScenario, MissionHeader.ReadMissionHeader(sequenceHeader.m_sNextScenario).GetWorldSystemsConfig(), addonGUIDs);
 	}
 };
 

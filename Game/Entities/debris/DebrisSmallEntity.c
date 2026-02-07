@@ -114,8 +114,8 @@ class SCR_DebrisSmallEntity : SCR_BaseDebrisSmallEntity
 	//------------------------------------------------------------------------------------------------
 	void PlaySound(vector pos, float dVelocity)
 	{		
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(GetWorld());
+		if (!soundManager)
 			return;
 		
 		SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
@@ -134,7 +134,8 @@ class SCR_DebrisSmallEntity : SCR_BaseDebrisSmallEntity
 		
 		
 		audioSourceConfiguration.m_sSoundEventName = SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(SCR_EMaterialSoundTypeDebris, m_eMaterialSoundType);					
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(this, audioSourceConfiguration);
+		
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(this, audioSourceConfiguration, pos);
 		if (!audioSource)
 			return;
 		
@@ -144,14 +145,9 @@ class SCR_DebrisSmallEntity : SCR_BaseDebrisSmallEntity
 		// Set signals
 		audioSource.SetSignalValue(SCR_AudioSource.COLLISION_D_V_SIGNAL_NAME, dVelocity - m_fSoundThreshold);
 		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, GetPhysics().GetMass());
-				
-		// Get sound position
-		vector mat[4];
-		GetTransform(mat);				
-		mat[3] = pos;		
-		
+							
 		// Play sound
-		soundManagerEntity.PlayAudioSource(audioSource, mat);		
+		soundManager.PlayAudioSource(audioSource);		
 		m_AudioHandle = audioSource.m_AudioHandle;	
 		
 		// Store position of the last played sound

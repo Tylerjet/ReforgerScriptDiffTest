@@ -17,7 +17,7 @@ sealed class WorldSystemInfo: pointer
 	property are following:
 	- `Abstract`: `true`
 	- `Unique`: `false`
-	- `Location`: ESystemLocation.Both
+	- `Location`: WorldSystemLocation.Both
 	- `Points`: empty set
 	- `Controllers`: empty set
 	- `ExecuteBefore`: empty set
@@ -26,18 +26,18 @@ sealed class WorldSystemInfo: pointer
 	proto external WorldSystemInfo RestoreDefaults();
 	proto external WorldSystemInfo SetAbstract(bool value);
 	proto external WorldSystemInfo SetUnique(bool value);
-	proto external WorldSystemInfo SetLocation(ESystemLocation value);
-	proto external WorldSystemInfo AddPoint(ESystemPoint point);
-	proto external WorldSystemInfo RemovePoint(ESystemPoint point);
+	proto external WorldSystemInfo SetLocation(WorldSystemLocation value);
+	proto external WorldSystemInfo AddPoint(WorldSystemPoint point);
+	proto external WorldSystemInfo RemovePoint(WorldSystemPoint point);
 	proto external WorldSystemInfo ClearPoints();
 	proto external WorldSystemInfo AddController(typename controller);
 	proto external WorldSystemInfo RemoveController(typename controller);
 	proto external WorldSystemInfo ClearControllers();
-	proto external WorldSystemInfo AddExecuteBefore(typename otherSystem, ESystemPoint point);
-	proto external WorldSystemInfo RemoveExecuteBefore(typename otherSystem, ESystemPoint point);
+	proto external WorldSystemInfo AddExecuteBefore(typename otherSystem, WorldSystemPoint point);
+	proto external WorldSystemInfo RemoveExecuteBefore(typename otherSystem, WorldSystemPoint point);
 	proto external WorldSystemInfo ClearExecuteBefore();
-	proto external WorldSystemInfo AddExecuteAfter(typename otherSystem, ESystemPoint point);
-	proto external WorldSystemInfo RemoveExecuteAfter(typename otherSystem, ESystemPoint point);
+	proto external WorldSystemInfo AddExecuteAfter(typename otherSystem, WorldSystemPoint point);
+	proto external WorldSystemInfo RemoveExecuteAfter(typename otherSystem, WorldSystemPoint point);
 	proto external WorldSystemInfo ClearExecuteAfter();
 }
 

@@ -493,6 +493,8 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	void OnContainerRegistered(notnull SCR_ResourceContainer container)
 	{
 		container.LinkInteractor(this);
+		OnResourcesChanged(GetAggregatedResourceValue() - container.GetResourceValue());
+		OnMaxResourcesChanged(GetAggregatedMaxResourceValue() - container.GetMaxResourceValue());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -500,6 +502,8 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	void OnContainerUnregistered(notnull SCR_ResourceContainer container)
 	{
 		container.UnlinkInteractor(this);
+		OnResourcesChanged(GetAggregatedResourceValue() + container.GetResourceValue());
+		OnMaxResourcesChanged(GetAggregatedMaxResourceValue() + container.GetMaxResourceValue());
 	}
 	
 	//------------------------------------------------------------------------------------------------

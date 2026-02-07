@@ -16,6 +16,9 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	protected string m_sContextButtonWidgetName;
 	
 	[Attribute()]
+	protected string m_sDismissButtonWidgetName;
+
+	[Attribute()]
 	protected string m_sTimeLeftWidgetName;
 	
 	[Attribute()]
@@ -35,7 +38,10 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	
 	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_ToggleButtonTextNext;
-	
+
+	[Attribute(uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_DismissButtonText;
+
 	[Attribute("1", desc: "When enabled, the widget will show currently shown hint opn init.\nWhen disabled, currently shown hint will be cleared upon init.")]
 	protected bool m_bPreserveCurrentHint;
 	
@@ -56,11 +62,13 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	protected ref array<Widget> m_aHighlightWidgets;
 	protected Widget m_ToggleButtonWidget;
 	protected Widget m_ContextButtonWidget;
+	protected Widget m_DismissButtonWidget;
 	protected TextWidget m_PageWidget;
 	protected SizeLayoutWidget m_TimeWidget;
 	protected LocalizedString m_sPageText;
 	protected ImageWidget m_BarColor;
 	protected SCR_InputButtonComponent m_ToggleButton;
+	protected SCR_InputButtonComponent m_DismissButton;
 	protected MenuBase m_Menu;
 	protected SCR_WLibProgressBarComponent m_ProgressBar;
 	protected bool m_bMenuScanned;
@@ -99,6 +107,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			m_DescriptionWidget.SetVisible(showDescription);
 			m_IconWidget.SetVisible(showIcon);
 			m_ContextButtonWidget.SetVisible(info.GetFieldManualLink() != EFieldManualEntryId.NONE);
+			m_DismissButtonWidget.SetVisible(info.GetIsDontShowAgainVisible());
 			
 			//--- Initialize pagination label
 			int sequencePage = info.GetSequencePage();
@@ -223,15 +232,24 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			if (hintManager)
 				hintManager.Toggle();
 		}
+		
 		if (SCR_WidgetTools.InHierarchy(w, m_ContextButtonWidget))
 		{
 			SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
 			if (hintManager)
 				hintManager.OpenContext();
 		}
+		
+		if (SCR_WidgetTools.InHierarchy(w, m_DismissButtonWidget))
+		{
+			SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
+			if (hintManager)
+				hintManager.DontShowAgainCurrent();
+		}
+
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//--- Refresh hint, as it sometimes uses device-specific lines
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
@@ -269,7 +287,12 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		
 		if (SCR_Global.IsEditMode())
 			return;
-		
+
+		m_DismissButtonWidget = m_Widget.FindAnyWidget(m_sDismissButtonWidgetName);
+		m_DismissButton = SCR_InputButtonComponent.Cast(m_DismissButtonWidget.FindHandler(SCR_InputButtonComponent));
+		if (m_DismissButton && !m_DismissButtonText.IsEmpty())
+			m_DismissButton.SetLabel(m_DismissButtonText);
+
 		m_Widget.SetOpacity(0);
 		m_Widget.SetVisible(false);
 		

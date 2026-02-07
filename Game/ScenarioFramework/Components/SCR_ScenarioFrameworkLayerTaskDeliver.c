@@ -66,32 +66,8 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	void UpdateTaskTitleAndDescription()
 	{
 		if (!m_sTaskTitleUpdated.IsEmpty()) 
-			m_Task.SetTitle(m_sTaskTitleUpdated);
+			m_Task.SetTaskName(m_sTaskTitleUpdated);
 		if (!m_sTaskDescriptionUpdated.IsEmpty()) 
-			m_Task.SetDescription(m_sTaskDescriptionUpdated);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Sets support entity.
-	//! \return true if support entity is found and set, false otherwise.
-	override bool SetSupportEntity()
-	{
-		if (!GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDeliverSupportEntity))
-		{
-			Print("ScenarioFramework: Task Deliver support entity not found in the world, task won't be created!", LogLevel.ERROR);
-			return false;
-		}
-		m_SupportEntity = SCR_ScenarioFrameworkTaskDeliverSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDeliverSupportEntity));
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	//! \param[in] src
-	//! \param[in] ent
-	//! \param[in] parent
-	void SCR_ScenarioFrameworkLayerTaskDeliver(IEntityComponentSource src, IEntity ent, IEntity parent)
-	{
-		m_eTypeOfTask = SCR_ESFTaskType.DELIVER;
+			m_Task.SetTaskDescription(m_sTaskDescriptionUpdated);
 	}
 }

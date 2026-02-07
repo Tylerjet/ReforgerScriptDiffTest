@@ -31,6 +31,6 @@ class SCR_DeployableInventoryItemPickUpAction : SCR_PickUpItemAction
 		if (deployableItemComponent.IsDeploying())
 			return false;
 		
-		return super.CanBeShownScript(user);
+		return super.CanBePerformedScript(user);
 	}
 }

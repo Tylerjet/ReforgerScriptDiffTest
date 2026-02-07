@@ -1,9 +1,9 @@
 class SCR_BaseAudioSupportStationAction : SCR_BaseUseSupportStationAction
 {
-	[Attribute("{9DD9C6279F4489B4}Sounds/SupportStations/SupportStations_Vehicles.acp", UIWidgets.ResourceNamePicker, desc: "Sound project (acp)", "acp")]
+	[Attribute(uiwidget: UIWidgets.ResourceNamePicker, desc: "Sound project (acp)", "acp")]
 	protected ResourceName m_sSoundProject;
 	
-	[Attribute("SOUND_VEHICLE_REFUEL", desc: "Sound Effect name")]
+	[Attribute(desc: "Sound Effect name")]
 	protected string m_sSoundEventName;
 	
 	//------------------------------------------------------------------------------------------------
@@ -19,5 +19,11 @@ class SCR_BaseAudioSupportStationAction : SCR_BaseUseSupportStationAction
 		soundEffectName = m_sSoundEventName;
 		
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	IEntity GetSoundSource()
+	{
+		return GetOwner();
 	}
 }

@@ -14,7 +14,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	[Attribute(defvalue: "0", desc: "Create Prefab's child from the provided one in the selected addon and use it instead of using the provided Prefab directly")]
 	protected bool m_bCopyPrefabsToAddon;
 
-	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "Addon in which the Prefabs will be copied (if copied)", enums: ParamEnumAddons.FromEnum(titleFormat: 2, hideCoreModules: 2))]
+	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "Addon in which the Prefabs will be copied (if copied)", enums: SCR_ParamEnumArray.FromAddons(titleFormat: 2, hideCoreModules: 2))]
 	protected int m_iAddon;
 
 	// temp work variables

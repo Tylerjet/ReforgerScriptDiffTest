@@ -22,9 +22,6 @@ class SCR_PhotoSaveModeEditorUIComponent : SCR_PhotoModeEditorUIComponent
 	
 	protected SCR_EventHandlerComponent m_CaptureButtonEvents;
 	protected SCR_ConfigurableDialogUi m_UseScreenshotDialog;
-	protected PixelRawData m_CapturedData;
-	
-	protected ref ScriptInvokerString m_OnUseScreenshot;
 	
 	protected static ref ImageWidget s_wDebugImage;
 	
@@ -82,8 +79,6 @@ class SCR_PhotoSaveModeEditorUIComponent : SCR_PhotoModeEditorUIComponent
 		//Workbench.SavePixelRawData(IMAGE_PATH_TEST, data, imageWidth, imageHeight, stride);
 		#endif
 		
-		m_CapturedData = data;
-		
 		// Create comfirm dialog
 		m_UseScreenshotDialog = SCR_SaveWorkshopManagerUI.CreateDialog(m_sConfirmScreenshotDialogTag);
 		m_UseScreenshotDialog.m_OnConfirm.Insert(OnScreenshotUseDialogConfirm);
@@ -91,17 +86,8 @@ class SCR_PhotoSaveModeEditorUIComponent : SCR_PhotoModeEditorUIComponent
 		
 		SCR_MenuEditorComponent editorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
 		
-		if (editorMenuManager)
-			editorMenuManager.SetVisible(true, true);
-	}	
-	
-	//---------------------------------------------------------------------------------------------
-	protected void OnScreenshotUseDialogConfirm()
-	{
+		/*
 		string screenshot = IMAGE_PATH_TEST;
-		
-		if (m_OnUseScreenshot)
-			m_OnUseScreenshot.Invoke(screenshot);
 		
 		SCR_SaveWorkshopManager manager = SCR_SaveWorkshopManager.GetInstance();
 		SCR_EditedSaveManifest editedManifest = manager.GetEditedSaveManifest();
@@ -111,7 +97,7 @@ class SCR_PhotoSaveModeEditorUIComponent : SCR_PhotoModeEditorUIComponent
 		
 		if (editedManifest.GetEditingValue() == "thumbnail")
 		{
-			save.SaveJPEG(m_CapturedData, RESOLUTION_X, RESOLUTION_Y, 50, 4, true);
+			save.SaveJPEG(data, RESOLUTION_X, RESOLUTION_Y, 50, 4, true);
 			//editedManifest.m_Manifest.m_sPreview = screenshot;
 		}
 		else if (editedManifest.GetEditingValue() == "gallery")
@@ -129,7 +115,15 @@ class SCR_PhotoSaveModeEditorUIComponent : SCR_PhotoModeEditorUIComponent
 		}
 		
 		manager.SetEditedSaveManifest(manifest, editedManifest.GetEditingValue(), "img");
+		*/
 		
+		if (editorMenuManager)
+			editorMenuManager.SetVisible(true, true);
+	}	
+	
+	//---------------------------------------------------------------------------------------------
+	protected void OnScreenshotUseDialogConfirm()
+	{
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 		SCR_EditorManagerEntity editorManager = core.GetEditorManager();
 		
@@ -139,7 +133,8 @@ class SCR_PhotoSaveModeEditorUIComponent : SCR_PhotoModeEditorUIComponent
 	//---------------------------------------------------------------------------------------------
 	protected void OnScreenshotUseDialogCancel()
 	{
-		m_CapturedData = null;
+		//SCR_SaveWorkshopManager manager = SCR_SaveWorkshopManager.GetInstance();
+		//manager.ClearEditedSaveManifest();
 	}
 	
 	//---------------------------------------------------------------------------------------------

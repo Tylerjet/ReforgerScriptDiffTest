@@ -44,7 +44,15 @@ class ContentBrowserUI : SCR_SuperMenuBase
 				newsButton.SetVisible(false);
 				newsButton.SetEnabled(false);
 			}
-		}
+		}		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+
+		SCR_AnalyticsApplication.GetInstance().OpenWorkshop();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -61,6 +69,14 @@ class ContentBrowserUI : SCR_SuperMenuBase
 				SCR_CommonDialogs.CreateServerHostingDialog();
 			}
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
+
+		SCR_AnalyticsApplication.GetInstance().CloseWorkshop();
 	}
 	
 	//------------------------------------------------------------------------------------------------

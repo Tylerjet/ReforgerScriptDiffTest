@@ -13,6 +13,12 @@ class SCR_InventoryStorageLBSUI : SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.CHARACTER_STORAGE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// ! 
 	protected override int CreateSlots( )
 	{

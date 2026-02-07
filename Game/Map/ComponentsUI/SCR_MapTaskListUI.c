@@ -1,57 +1,91 @@
 class SCR_MapTaskListUI : SCR_MapUIBaseComponent
-{
-	const string TASK_LIST_FRAME = "MapTaskList";
-	const string ICON_NAME = "faction";
-
-	protected Widget m_wUI;
-	protected Widget m_wTaskListFrame;
-	protected SCR_UITaskManagerComponent m_UITaskManager;
-	protected SCR_MapToolMenuUI m_ToolMenu;
-	protected SCR_MapToolEntry m_ToolMenuEntry;
-	protected SCR_BaseTask m_LastSelectedTask;
+{	
+	[Attribute("exclamationCircle", desc: "Map task list imageset quad name")]
+	protected string m_sTaskListToolMenuIconName;
 	
-	protected bool m_bTaskListInvoked;
-	protected bool m_bOpened;
-	protected bool m_bOnMapClose;
-	protected bool m_bMapContextAllowed = true;
-
-	[Attribute("JournalFrame", desc: "Journal frame widget name")]
-	protected string m_sJournalFrameName;
+	[Attribute("{ACCF501DD69CAF7B}UI/layouts/Tasks/TaskListWrapper.layout")]
+	protected ResourceName m_sTaskListLayout;
 
 	[Attribute("MapTaskList", desc: "Map task list root widget name")]
-	protected string m_sMapTaskListRootName;
+	protected string m_sMapTaskListFrame;
 	
-	[Attribute("MapTaskListFrame", desc: "Map task list root frame widget name")]
-	protected string m_sMapTaskListRootFrameName;
+	[Attribute("m_wTaskList", desc: "Task list widget name")]
+	protected string m_sTaskList;
+	
+	[Attribute("8", desc: "Offset substracted from total widget size.", params: "0 inf")]
+	protected int m_iOffset;
 
-	[Attribute("exclamationCircle", desc: "Journal Toolmenu imageset quad name")]
-	protected string m_sJournalToolMenuIconName;
+	[Attribute("0", desc: "Show assign group list")]
+	protected bool m_bShowAssignGroupList;
 
+	[Attribute("1", desc: "Show all task types")]
+	protected bool m_bShowAllTaskTypenames;
+
+	[Attribute("", UIWidgets.Auto, "Show only task typenames, which is in the list, only if m_bShowAllTaskType is false")]
+	protected ref array<string> m_aAllowedTaskTypenames;
+
+	protected const string ICON_NAME = "faction";
+	protected const float TASK_LIST_HUD_OFFSET = -0.25;
+	protected const string CONTEXT_ASSIGN_GROUP_LIST = "TaskAssignGroupListContext";
+	protected Widget m_wTaskList;
+	protected Widget m_wTaskListFrame;
+	protected SCR_TaskManagerUIComponent m_TaskUIManager;
+	protected SCR_MapToolMenuUI m_ToolMenu;
+	protected SCR_MapToolEntry m_ToolMenuEntry;
+
+	protected SCR_TaskListUIComponent m_TaskComponent;
+
+	protected bool m_bOpened;
+	protected bool m_bMapContextAllowed;
+	
+	protected const string ACTION_OPEN_TASK_LIST = "TasksOpen";
+	
 	//------------------------------------------------------------------------------------------------
+	//! Recreate task list on map open.
+	//! \param[in] config of the map.
 	override protected void OnMapOpen(MapConfiguration config)
 	{
-		m_bOnMapClose = false;
+		m_wTaskListFrame = m_RootWidget.FindAnyWidget(m_sMapTaskListFrame);
+		if (!m_wTaskListFrame)
+			return;
+		
+		CreateTaskList(m_wTaskListFrame);
+		
+		GetGame().GetCallqueue().Call(UpdateTaskListHeight);
+		GetGame().GetInputManager().AddActionListener(ACTION_OPEN_TASK_LIST, EActionTrigger.DOWN, ToggleTaskListListener);
+		ToggleTaskList(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Destroy task list on map close.
+	//! \param[in] config of the map.
 	override protected void OnMapClose(MapConfiguration config)
-	{
-		if (m_UITaskManager)
+	{	
+		SCR_MapCursorModule cursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
+		if (cursorModule)
+			cursorModule.SetJournalVisibility(false);
+		
+		GetGame().GetInputManager().RemoveActionListener(ACTION_OPEN_TASK_LIST, EActionTrigger.DOWN, ToggleTaskListListener);
+		if (!m_wTaskListFrame)
+			return;
+		
+		array<ref Widget> tasks = {};
+		SCR_WidgetHelper.GetAllChildren(m_wTaskListFrame, tasks);
+		
+		foreach (Widget w : tasks)
 		{
-			m_bOnMapClose = true;
-			m_UITaskManager.Action_TasksClose();
-			m_UITaskManager.ClearWidget();
-			m_UITaskManager.CreateTaskList();
+			w.RemoveFromHierarchy();
 		}
 		
 		m_ToolMenuEntry.SetActive(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Register task list button to the tools menu.
 	override void Init()
 	{
-		m_UITaskManager = SCR_UITaskManagerComponent.GetInstance();
-		if (!m_UITaskManager)
+		m_TaskUIManager = SCR_TaskManagerUIComponent.GetInstance();
+		if (!m_TaskUIManager)
 		{
 			SetActive(false); // deactivate component
 			return;
@@ -60,19 +94,91 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		m_ToolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (m_ToolMenu)
 		{
-			m_ToolMenuEntry = m_ToolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 2);
+			m_ToolMenuEntry = m_ToolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, ICON_NAME, 2, m_bIsExclusive);
 			m_ToolMenuEntry.m_OnClick.Insert(OnMapTaskListClicked);
-			m_ToolMenuEntry.SetButtonSoundsDisabled(true);
+			m_ToolMenuEntry.GetOnDisableMapUIInvoker().Insert(DisableMapUIComponent);
+			m_ToolMenuEntry.SetEnabled(true);
+		}
+		
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
+
+		//If there is a OverlayWidget like on the DeployMenu we use that instead of the default one
+		m_wTaskListFrame = m_RootWidget.FindAnyWidget(m_sMapTaskListFrame);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Create task list 
+	//! \param[in] parent of the task list.
+	protected void CreateTaskList(Widget parent = null)
+	{	
+		Widget widget;
+		if (parent)
+		{
+			widget = GetGame().GetWorkspace().CreateWidgets(m_sTaskListLayout, parent);
+		}
+		else
+		{
+			widget = GetGame().GetWorkspace().CreateWidgets(m_sTaskListLayout);
+			FrameSlot.SetAlignment(widget, 0, TASK_LIST_HUD_OFFSET);
+		}
+		
+		if (!widget)
+			return;
+		
+		m_wTaskList = widget.FindAnyWidget(m_sTaskList);
+		if (!m_wTaskList)
+			return;
+		
+		m_TaskComponent = SCR_TaskListUIComponent.Cast(m_wTaskList.FindHandler(SCR_TaskListUIComponent));
+		if (!m_TaskComponent)
+			return;
+		
+		if (!m_bShowAllTaskTypenames && m_TaskUIManager)
+		{
+			m_TaskComponent.AddAllowedTaskTypenames(m_aAllowedTaskTypenames);
 		}
 
-		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
+		m_TaskComponent.RefreshTaskList();
+		m_TaskComponent.GetOnButtonTaskListHide().Insert(OnButtonTaskListHide);
 		
-		//If there is a OverlayWidget like on the DeployMenu we use that instead of the default one
-		m_wTaskListFrame = m_RootWidget.FindAnyWidget(TASK_LIST_FRAME);
-		if (!m_wTaskListFrame)
+		m_TaskComponent.SetTaskListVisibility(false);
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_TASK_MENU_OPEN);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		if (!m_TaskComponent || !m_TaskComponent.GetTaskDescription())
 			return;
 
-		m_wUI = m_UITaskManager.CreateTaskList(m_wTaskListFrame);
+		if (m_TaskComponent.GetTaskDescription().IsAssignGroupListOpened())
+			GetGame().GetInputManager().ActivateContext(CONTEXT_ASSIGN_GROUP_LIST);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update task list height to match tools menu height.
+	protected void UpdateTaskListHeight()
+	{
+		Widget toolMenuBackground = m_ToolMenu.GetBackgroundWidget();
+		if (!toolMenuBackground)
+			return;
+		
+		toolMenuBackground.Update();
+		
+		float sizeW, sizeY;
+		toolMenuBackground.GetScreenSize(sizeW, sizeY);
+		
+		sizeY = GetGame().GetWorkspace().DPIUnscale(sizeY) - m_iOffset;
+		
+		m_TaskComponent.SetTaskListHeight(sizeY);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Toggle task list visibility.
+	protected void ToggleTaskListListener()
+	{
+		ToggleTaskList(!m_bOpened);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -81,122 +187,56 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	{
 		m_bMapContextAllowed = val;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//!
-	void ToggleTaskList(SCR_BaseTask taskToFocus = null)
-	{
-		if (!m_bOpened)
+	//! Toggle task list visibility.
+	//! \param[in] visibility new visibility of task list
+	void ToggleTaskList(bool visibility)
+	{	
+		m_wTaskListFrame.SetVisible(visibility);
+		if (m_TaskComponent)
 		{
-			m_UITaskManager.ClearWidget();
-			if (!m_wTaskListFrame)
-				m_wTaskListFrame = m_RootWidget.FindAnyWidget(TASK_LIST_FRAME);
-				
-			m_wUI = m_UITaskManager.CreateTaskList(m_wTaskListFrame);
-			if (m_wUI)
-			{
-				m_bOpened = true;
-				m_bTaskListInvoked = true;
-				m_UITaskManager.Action_ShowTasks(m_wUI, taskToFocus);
-				m_ToolMenuEntry.SetActive(true);
-				m_LastSelectedTask = taskToFocus;
-			}
-
-			SCR_MapJournalUI journal = SCR_MapJournalUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapJournalUI));
-			if (journal && journal.IsVisible())
-				journal.Disable();
+			m_TaskComponent.SetTaskListVisibility(visibility);
+			m_TaskComponent.FocusOnEntry();
 		}
-		else if (taskToFocus && taskToFocus != m_LastSelectedTask)
-		{
-			m_UITaskManager.Action_ShowTasks(m_wUI, taskToFocus);
-			m_LastSelectedTask = taskToFocus;
-		}
-		else
-		{
-			m_bOpened = false;
-			m_bTaskListInvoked = true;
-			m_UITaskManager.Action_TasksClose();
-			m_ToolMenuEntry.SetActive(false);
-		}
-
-		SCR_MapCursorModule cursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
-		if (cursorModule)
-			cursorModule.HandleDialog(m_bOpened);
-
-		m_bTaskListInvoked = false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	void RefreshTaskList()
-	{
-		if (!m_bOpened)
-			return;
 		
-		m_UITaskManager.ClearWidget();
-		if (!m_wTaskListFrame)
-			m_wTaskListFrame = OverlayWidget.Cast(m_RootWidget.FindAnyWidget(TASK_LIST_FRAME));
-			
-		m_wUI = m_UITaskManager.CreateTaskList(m_wTaskListFrame);
-		if (!m_wUI)
-			return;
-
-		m_bOpened = true;
-		m_bTaskListInvoked = true;
-		m_UITaskManager.Action_ShowTasks(m_wUI);
-		m_ToolMenuEntry.SetActive(true);
+		m_bOpened = visibility;
+		
+		if (m_ToolMenuEntry)
+			m_ToolMenuEntry.SetActive(visibility);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnMapTaskListClicked(SCR_ButtonBaseComponent comp)
-	{
-		HandleTaskList();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] isVisible
-	void HandleTaskList(bool isVisible = true, SCR_BaseTask taskToFocus = null)
-	{
-		if (!m_RootWidget)
-			return;
-
-		SCR_MapCursorModule cursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
-		if (cursorModule && cursorModule.GetCursorState() & SCR_MapCursorModule.STATE_POPUP_RESTRICTED)
-		{
-			if (m_bOpened)
-				ToggleTaskList();
-
-			return;
-		}
-
-		Widget taskListRoot = m_RootWidget.FindAnyWidget(m_sMapTaskListRootName);
-		if (!taskListRoot)
+	//! Triggered on task list button clicked on tools menu. Toggles off visuals of other buttons.
+	//! \param[in] comp button component
+	protected void OnMapTaskListClicked(notnull SCR_ButtonBaseComponent comp)
+	{	
+		if (!m_TaskComponent)
 			return;
 		
-		taskListRoot.SetVisible(isVisible);
-		Widget taskListRootFrame = m_RootWidget.FindAnyWidget(m_sMapTaskListRootFrameName);
-		if (!taskListRootFrame)
-		{
-			ToggleTaskList(taskToFocus);
-			return;
-		}
+		ToggleTaskList(!m_TaskComponent.GetTaskListVisibility());
 		
-		taskListRootFrame.SetVisible(isVisible);
-		foreach (SCR_MapToolEntry toolEntry : m_ToolMenu.GetMenuEntries())
+		array<ref SCR_MapToolEntry> menuEntries = {};
+		menuEntries = m_ToolMenu.GetMenuEntries();
+		if (!menuEntries || menuEntries.IsEmpty())
+			return;
+		
+		Widget mapTaskListFrame;
+		foreach (SCR_MapToolEntry toolEntry : menuEntries)
 		{
-			if (toolEntry.GetImageSet() != m_sJournalToolMenuIconName)
+			if (toolEntry.GetImageSet() != m_sTaskListToolMenuIconName)
 				continue;
-
-			Widget mapJournalFrame = m_RootWidget.FindAnyWidget(m_sJournalFrameName);
-			if (mapJournalFrame && mapJournalFrame.IsVisible())
-			{
-				mapJournalFrame.SetVisible(false);
-				toolEntry.SetActive(false);
-			}
+			
+			toolEntry.SetActive(false);
+				
+			break;
 		}
-
-		ToggleTaskList(taskToFocus);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnButtonTaskListHide()
+	{
+		DisableMapUIComponent();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -207,16 +247,41 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 			m_bMapContextAllowed = false;
 			return;
 		}
-		
+
 		m_bMapContextAllowed = true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
-		if (SCR_Global.IsEditMode()) 
+		if (SCR_Global.IsEditMode())
 			return;
 
+		if (m_ToolMenuEntry)
+			m_ToolMenuEntry.GetOnDisableMapUIInvoker().Remove(DisableMapUIComponent);
+
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsTaskListVisible()
+	{	
+		if (m_wTaskList)
+			return m_wTaskList.IsVisible();
+		
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisableMapUIComponent()
+	{
+		ToggleTaskList(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! return true if can show assign group list
+	bool CanShowAssignGroupList()
+	{
+		return m_bShowAssignGroupList;
 	}
 }

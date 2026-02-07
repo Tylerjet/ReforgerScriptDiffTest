@@ -32,6 +32,14 @@ class SCR_CharacterDamageManagerEvaluator : DamageEffectEvaluator
 	
 		CriticalThresholdTryCauseBleeding(effect, dmgManager);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandleEffectConsequences(SCR_CriticalExplosionDamageEffect effect, ExtendedDamageManagerComponent dmgManager)
+	{
+		super.HandleEffectConsequences(effect, dmgManager);
+	
+		CriticalThresholdTryCauseBleeding(effect, dmgManager);
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	override void HandleEffectConsequences(SCR_BarbedWireCuttingDamageEffect effect, ExtendedDamageManagerComponent dmgManager)

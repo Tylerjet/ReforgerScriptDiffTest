@@ -1,24 +1,22 @@
-class SCR_ScenarioFrameworkTaskClass : SCR_BaseTaskClass
+class SCR_ScenarioFrameworkTaskClass : SCR_ExtendedTaskClass
 {
 };
 
-class SCR_ScenarioFrameworkTask : SCR_BaseTask
+class SCR_ScenarioFrameworkTask : SCR_ExtendedTask
 {
 	protected IEntity 												m_Asset;
-	protected SCR_ScenarioFrameworkTaskSupportEntity		 		m_SupportEntity;
 	protected SCR_ScenarioFrameworkLayerTask						m_LayerTask;
 	protected SCR_ScenarioFrameworkSlotTask							m_SlotTask;
-	protected string 												m_sTaskExecutionBriefing;
-	string 															m_sTaskIntroVoiceline;
-	protected string 												m_sSpawnedEntityName;
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] state sets state of the task.
-	void SetTaskState(SCR_TaskState state)
+	SCR_ETaskNotificationSettings GetTaskNotificationSettings()
 	{
-		SetState(state);
+		if (m_LayerTask)
+			return m_LayerTask.m_eTaskNotificationSettings;
+		
+		return null;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] layer Sets the layer task for this task.
 	void SetLayerTask(SCR_ScenarioFrameworkLayerTask layer)
@@ -34,58 +32,9 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! An event called when the state of this task has been changed.
-	override void OnStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
-	{
-		if (!m_LayerTask)
-			return;
-		
-		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
-		if (!scenarioFrameworkSystem || !scenarioFrameworkSystem.IsMaster())
-			return;
-
-		if (m_SlotTask)
-		{
-			m_SlotTask.OnTaskStateChanged(newState);
-		}
-		else
-		{
-			SCR_ScenarioFrameworkSlotTask slotTask = m_LayerTask.GetSlotTask();
-			if (slotTask)
-				slotTask.OnTaskStateChanged(newState);
-			else
-				Print("ScenarioFramework: Task Subject not found for task", LogLevel.ERROR);
-		}
-		
-		m_LayerTask.OnTaskStateChanged(previousState, newState);
-				
-		if (newState == SCR_TaskState.FINISHED)
-			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC", m_TargetFaction.GetFactionKey());
-
-		if (newState == SCR_TaskState.CANCELLED)
-			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusObjectiveFailed-UC", m_TargetFaction.GetFactionKey());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Finishes mission based on player's faction, shows message if player's faction matches target faction.
-	//! \param[in] showMsg Determines if local player's faction matches target faction for message display.
-	override void Finish(bool showMsg = true)
-	{
-		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
-		super.Finish(showMsg);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] object Sets the asset for the task, represented by an entity object.
-	void SetTaskAsset(IEntity object)
-	{
-		m_Asset = object;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Updates linked entity for this task.
 	//! \param[in] object Updates blacklist for garbage system, sets task entity for support entity.
-	void RehookTaskAsset(IEntity object)
+	void HookTaskAsset(IEntity object)
 	{
 		if (!object)
 			return;
@@ -95,9 +44,6 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 		SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(m_Asset);
 		if (garbageSystem)
 			garbageSystem.UpdateBlacklist(m_Asset, true);
-		
-		if (m_SupportEntity)
-			m_SupportEntity.SetTaskEntity(m_Asset);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -122,138 +68,75 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return Support entity.
-	SCR_ScenarioFrameworkTaskSupportEntity GetSupportEntity()
-	{
-		return m_SupportEntity;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! \param[in] text Sets the briefing for task execution.
 	void SetTaskExecutionBriefing(string text)
 	{
-		m_sTaskExecutionBriefing = text;
+		Rpc_SetTaskExecutionBriefing(text);
+		Rpc(Rpc_SetTaskExecutionBriefing, text);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void Rpc_SetTaskExecutionBriefing(string text)
+	{
+		SCR_ScenarioFrameworkTaskData frameworkData = SCR_ScenarioFrameworkTaskData.Cast(m_TaskData);
+		if (!frameworkData)
+			return;
+		
+		frameworkData.m_bCustomBriefing = true;
+		frameworkData.m_sTaskExecutionBriefing = text;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \return Task execution briefing string.
 	string GetTaskExecutionBriefing()
 	{ 
-		return m_sTaskExecutionBriefing;
+		SCR_ScenarioFrameworkTaskData frameworkData = SCR_ScenarioFrameworkTaskData.Cast(m_TaskData);
+		if (!frameworkData)
+			return string.Empty;
+		
+		return frameworkData.m_sTaskExecutionBriefing;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] name Represents the name for the spawned entity in the game world.
-	void SetSpawnedEntityName(string name) 
-	{ 
-		m_sSpawnedEntityName = name;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return The name of the entity spawned by the method.
-	string GetSpawnedEntityName() 
-	{ 
-		return m_sSpawnedEntityName;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return formatted string with translated description and spawned entity name.
-	override string GetTaskListTaskText()
+	override bool RplSave(ScriptBitWriter writer)
 	{
-		return string.Format(WidgetManager.Translate(m_sDescription, m_sSpawnedEntityName));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Sets support entity for task.
-	//! \return true if a support entity is found, false otherwise.
-	protected bool SetSupportEntity()
-	{
-		m_SupportEntity = SCR_ScenarioFrameworkTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskSupportEntity));
-
-		if (!m_SupportEntity)
-		{
-			Print("ScenarioFramework: Default Task support entity not found in the world, task won't be created!", LogLevel.ERROR);
+		if (!super.RplSave(writer))
 			return false;
-		}
-
-		return m_SupportEntity != null;
+		
+		SCR_ScenarioFrameworkTaskData frameworkData = SCR_ScenarioFrameworkTaskData.Cast(m_TaskData);
+		if (!frameworkData)
+			return true;
+		
+		writer.WriteString(frameworkData.m_sTaskExecutionBriefing);
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Serializes task execution briefing and spawned entity name.
-	//! \param[in] writer Writer is used for serializing object data into a stream.
-	override void Serialize(ScriptBitWriter writer)
+	override bool RplLoad(ScriptBitReader reader)
 	{
-		super.Serialize(writer);
+		if (!m_TaskData)
+			m_TaskData = new SCR_ScenarioFrameworkTaskData();
 		
-		writer.WriteString(m_sTaskExecutionBriefing);
-		writer.WriteString(m_sSpawnedEntityName);
+		if (!super.RplLoad(reader))
+			return false;
+		
+		SCR_ScenarioFrameworkTaskData frameworkData = SCR_ScenarioFrameworkTaskData.Cast(m_TaskData);
+		if (!frameworkData)
+			return true;
+		
+		reader.ReadString(frameworkData.m_sTaskExecutionBriefing);
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Deserializes task execution briefing and spawned entity name from ScriptBitReader.
-	//! \param[in] reader Reads serialized data from the provided ScriptBitReader object, deserializing it into the object's fields.
-	override void Deserialize(ScriptBitReader reader)
+	override protected void InitializeData()
 	{
-		super.Deserialize(reader);
+		if (!m_TaskData)
+			m_TaskData = new SCR_ScenarioFrameworkTaskData();
 		
-		string taskExecutionBriefing;
-		//Reading task execution briefing
-		reader.ReadString(taskExecutionBriefing);
-		SetTaskExecutionBriefing(taskExecutionBriefing);
-		
-		string spawnedEntityName;
-		//Reading spawned entity name
-		reader.ReadString(spawnedEntityName);
-		SetSpawnedEntityName(spawnedEntityName);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Initializes support entity, sets task entity, updates blacklist if necessary.
-	void Init()
-	{
-		if (SCR_Global.IsEditMode(this))
-			return;
-
-		SetSupportEntity();
-		if (!m_SupportEntity)
-			return;
-
-		m_Asset = m_SupportEntity.GetTaskEntity();
-		if (!m_Asset)
-		{
-			if (m_SlotTask)
-				m_Asset = m_SlotTask.GetSpawnedEntity();
-			
-			if (m_Asset)
-				m_SupportEntity.SetTaskEntity(m_Asset);
-		}
-		else
-		{
-			SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(m_Asset);
-			if (garbageSystem)
-				garbageSystem.UpdateBlacklist(m_Asset, true);
-		}
-		
-		SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(FindComponent(SCR_MapDescriptorComponent));
-		if (!mapDescriptor)
-			return;
-		
-		MapItem item = mapDescriptor.Item();
-		if (item)
-			item.Recycle();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Initializes task manager if it exists, otherwise returns without action.
-	//! \param[in] owner The owner represents the entity that initializes this method, typically an object in the game world.
-	override void EOnInit(IEntity owner)
-	{
-		super.EOnInit(owner);
-
-		if (!GetTaskManager() || GetTaskManager().IsProxy())
-			return;
-
-		Init();
+		super.InitializeData();
 	}
 }

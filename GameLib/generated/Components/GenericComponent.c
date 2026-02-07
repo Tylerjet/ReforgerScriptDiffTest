@@ -15,16 +15,16 @@ class GenericComponent
 	private void GenericComponent(IEntityComponentSource src, IEntity ent, IEntity parent);
 	private void ~GenericComponent();
 
-	//!Gets GenericComponentClass descendant instance with the prefab data
+	//! Gets GenericComponentClass descendant instance with the prefab data
 	proto external EntityComponentPrefabData GetComponentData(notnull IEntity ent);
-	//!Gets config container with the prefab data
+	//! Gets config container with the prefab data
 	proto external BaseContainer GetComponentSource(notnull IEntity ent);
 	/*!
 	Attempts to run a remote procedure call (RPC) of this instance with parameters
 	specified in method RplRpc attribute.
 	\param      method  Member function to be invoked as an RPC.
 	*/
-	proto void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
+	proto protected void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 	/*!
 	* Gets current eventmask of the component.
 	* \return Returns bitmask of events the component accepts
@@ -126,6 +126,8 @@ class GenericComponent
 	event bool _WB_EnablePhysics(IEntity owner, IEntitySource src, bool physics);
 	//! Any property value has been changed. You can use editor API here and do some additional edit actions which will be part of the same "key changed" action.
 	event bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent);
+	//! Some "coords" or "angles" vector property is being to be edited. Entity can provide a world matrix which represents their local space and which is needed by editor to edit the key by a gizmo
+	event bool _WB_GetKeySpaceMatrixWorld(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent, out vector transformSpaceWorld[4]);
 	//! Called after updating world in Workbench. The entity must be selected. You can use editor API here and do some edit actions if needed.
 	event void _WB_AfterWorldUpdate(IEntity owner, float timeSlice);
 	//! Called after _WB_OnInit or also later when editor needs to know whether _WB_AfterWorldUpdate needs to be called and when. Return value can be either 0 (event will not be called at all) or any combination of EEntityFrameUpdateSpecs. Avoid CALL_ALWAYS flag whenever possible to prevent performance issues

@@ -159,12 +159,12 @@ class SCR_TutorialLogic_FreeRoam : SCR_BaseTutorialCourseLogic
 		if (!instructor || !car)
 			return;
 		
-		tutorial.ChangeVehicleLockState(car, true);	
+		/*tutorial.ChangeVehicleLockState(car, true);	
 		
 		SCR_VehicleSpawnProtectionComponent comp = SCR_VehicleSpawnProtectionComponent.Cast(car.FindComponent(SCR_VehicleSpawnProtectionComponent));
 			
 		if (comp)
-			comp.SetReasonText("#AR-Tutorial_Action_Instructor");
+			comp.SetReasonText("#AR-Tutorial_Action_Instructor");*/
 		
 		SCR_CompartmentAccessComponent compAccess = SCR_CompartmentAccessComponent.Cast(instructor.FindComponent(SCR_CompartmentAccessComponent));
 		if (compAccess)

@@ -6,38 +6,50 @@ class SCR_PlayInstrument : ScriptedUserAction
 	
 	[Attribute("0", UIWidgets.ComboBox, "Instrument type", "", ParamEnumArray.FromEnum(SCR_EInstrumentType) )]
 	protected SCR_EInstrumentType m_eInstrumentType;
-	
-	[Attribute("", UIWidgets.Coords)]
-	private vector m_vSoundOffset;
-	
+		
 	protected AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	
 	protected static ref ScriptInvokerInt2 s_onInstrumentPlayed;
+	protected SCR_DamageManagerComponent m_DamageComponent;
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
+		super.Init(pOwnerEntity, pManagerComponent);
+		
+		m_DamageComponent = SCR_DamageManagerComponent.GetDamageManager(pOwnerEntity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBeShownScript(IEntity user)
+	{
+		if( m_DamageComponent && m_DamageComponent.IsDestroyed() )
+			return false;
+		
+		return super.CanBeShownScript(user);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionStart(IEntity pUserEntity) 
 	{
 		if (s_onInstrumentPlayed)
 			s_onInstrumentPlayed.Invoke(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity), m_eInstrumentType);
-		
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
-			return;
-				
+
 		if (!m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
 			return;
 		
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(GetOwner(), m_AudioSourceConfiguration);
+		const IEntity owner = GetOwner();		
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
+		if (!soundManager)
+			return;
+				
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(owner, m_AudioSourceConfiguration);
 		if (!audioSource)
 			return;
 		
-		vector mat[4];
-		IEntity owner = GetOwner();
-		owner.GetTransform(mat);		
-		mat[3] = owner.CoordToParent(m_vSoundOffset);
-					
 		AudioSystem.TerminateSound(m_AudioHandle);
-		soundManagerEntity.PlayAudioSource(audioSource, mat);			
+		
+		soundManager.PlayAudioSource(audioSource);			
 		m_AudioHandle = audioSource.m_AudioHandle;
 	}
 	
@@ -46,27 +58,25 @@ class SCR_PlayInstrument : ScriptedUserAction
 	{		
 		AudioSystem.TerminateSound(m_AudioHandle);
 		
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(pOwnerEntity.GetWorld());
+		if (!soundManager)
 			return;
 				
 		if (!m_AudioSourceConfiguration || m_AudioSourceConfiguration.m_sSoundProject == string.Empty)
 			return;
 		
+		// Create stop sound audioSourceConfiguration
 		SCR_AudioSourceConfiguration audioSourceConfiguration = new SCR_AudioSourceConfiguration;
 		audioSourceConfiguration.m_sSoundProject = m_AudioSourceConfiguration.m_sSoundProject;
-		audioSourceConfiguration.m_eFlags = m_AudioSourceConfiguration.m_eFlags;
 		audioSourceConfiguration.m_sSoundEventName = SCR_SoundEvent.SOUND_STOP_PLAYING;
-				
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(pOwnerEntity, audioSourceConfiguration);
+		audioSourceConfiguration.m_eFlags = m_AudioSourceConfiguration.m_eFlags;
+		audioSourceConfiguration.m_vOffset = m_AudioSourceConfiguration.m_vOffset;
+						
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(pOwnerEntity, audioSourceConfiguration);
 		if (!audioSource)
 			return;
-		
-		vector mat[4];
-		pOwnerEntity.GetTransform(mat);
-		mat[3] = pOwnerEntity.CoordToParent(m_vSoundOffset);
-					
-		soundManagerEntity.PlayAudioSource(audioSource, mat);			
+							
+		soundManager.PlayAudioSource(audioSource);			
 		m_AudioHandle = audioSource.m_AudioHandle;
 	}
 		
@@ -89,5 +99,6 @@ class SCR_PlayInstrument : ScriptedUserAction
 enum SCR_EInstrumentType
 {
 	PIANO,
-	ORGAN
+	ORGAN,
+	GUITAR
 }

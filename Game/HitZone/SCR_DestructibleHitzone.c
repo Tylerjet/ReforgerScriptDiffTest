@@ -94,6 +94,9 @@ class SCR_DestructibleHitzone : SCR_HitZone
 		if (state == EDamageState.DESTROYED)
 			StartDestruction();
 
+		if(isJIP)
+			return;
+
 		PlayDestructionSound(state);
 		PlayDestructionParticle(state);
 	}
@@ -247,10 +250,6 @@ class SCR_DestructibleHitzone : SCR_HitZone
 		if (!owner)
 			return;
 
-		// Play destruction effects only if not streaming in
-		SCR_DamageManagerComponent hitZoneContainer = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-		if (IsProxy() && hitZoneContainer && !hitZoneContainer.IsRplReady())
-			return;
 
 		IEntity mainParent = SCR_EntityHelper.GetMainParent(owner);
 		if (mainParent)

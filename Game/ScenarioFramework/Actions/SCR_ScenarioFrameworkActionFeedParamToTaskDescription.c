@@ -30,7 +30,7 @@ class SCR_ScenarioFrameworkActionFeedParamToTaskDescription : SCR_ScenarioFramew
 		}
 
 		SCR_ScenarioFrameworkSlotTask slotTask = SCR_ScenarioFrameworkSlotTask.Cast(entity.FindComponent(SCR_ScenarioFrameworkSlotTask));
-		if (!slotTask)
+		if (!slotTask || !slotTask.m_TaskLayer)
 			return;
 
 		string descriptionExtension;
@@ -92,6 +92,9 @@ class SCR_ScenarioFrameworkActionFeedParamToTaskDescription : SCR_ScenarioFramew
 				descriptionExtension += ", " + count.ToString() + "x " + displayName;
 		}
 
-		slotTask.m_TaskLayer.m_SupportEntity.SetSpawnedEntityName(slotTask.m_TaskLayer.m_Task, descriptionExtension);
+		slotTask.SetOverriddenObjectDisplayName(descriptionExtension);
+		array<LocalizedString> descriptionParams = {};
+		descriptionParams.Insert(descriptionExtension);
+		slotTask.m_TaskLayer.m_Task.SetTaskDescription(slotTask.m_TaskLayer.m_Task.GetTaskDescription(), descriptionParams);
 	}
 }

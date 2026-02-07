@@ -14,8 +14,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	
 	
 	protected ResourceName m_sGamepadIcons = "{F7FD1672FECA05E8}UI/Textures/Icons/icons_gamepad_64.imageset";
-	//------------------------------------------- USER METHODS  -----------------------------------------------------
-	
+	//------------------------------------------- USER METHODS  -----------------------------------------------------	
 	
 	//------------------------------------------------------------------------------------------------
 	// ! 
@@ -373,6 +372,9 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	void UseSelectedQuickslot()
 	{
+		if (!m_Player)
+			return;
+
 		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 		if (!characterController)
 			return;

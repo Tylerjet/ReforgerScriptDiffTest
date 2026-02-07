@@ -18,6 +18,11 @@ enum ECampaignClientNotificationID
 void OnBaseCapturedDelegate(SCR_CampaignMilitaryBaseComponent base, int playerId);
 typedef func OnBaseCapturedDelegate;
 
+//~ Supplies transfer invoker
+void ScriptInvokerTransferSuppliesMethod(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue);
+typedef func ScriptInvokerTransferSuppliesMethod;
+typedef ScriptInvokerBase<ScriptInvokerTransferSuppliesMethod> ScriptInvokerTransferSupplies;
+
 //! Takes care of Campaign-specific server <> client communication and requests
 class SCR_CampaignNetworkComponent : ScriptComponent
 {
@@ -29,6 +34,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	protected vector m_vLastLoadedAt;
 	protected SCR_ResourceComponent m_LastLoadedComponent;
 	protected float m_fLoadedSupplyAmount;
+	protected bool m_bOrphanSuppliesLoaded;
 
 	protected float m_fNoRewardSupplies;
 
@@ -36,8 +42,9 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 
 	protected static ref ScriptInvokerInt3 s_OnSuppliesDelivered;
 	protected static ref ScriptInvokerBase<OnBaseCapturedDelegate> s_OnBaseCaptured; // <base, playerID>
+	protected static ref ScriptInvokerTransferSupplies s_OnSuppliesTransferred;
 
-	static const float FULL_SUPPLY_TRUCK_AMOUNT = 1500.0;
+	static const int SUPPLY_DELIVERY_XP_PERCENT = 100; // Decimal fraction used in formula to calculate XP reward
 	static const int SUPPLY_DELIVERY_THRESHOLD_SQ = 200 * 200;
 
 	//********************************//
@@ -101,6 +108,16 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			s_OnSuppliesDelivered = new ScriptInvokerInt3();
 
 		return s_OnSuppliesDelivered;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static ScriptInvokerTransferSupplies GetOnTransferSupplies()
+	{
+		if (!s_OnSuppliesTransferred)
+			s_OnSuppliesTransferred = new ScriptInvokerTransferSupplies();
+ 
+		return s_OnSuppliesTransferred;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1044,7 +1061,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 					msg = string.Format("%1, %2:%3", msg, strHours, strMinutes);
 				}
 				
-				msg2 = SCR_BaseTask.TASK_HINT_TEXT;
+				msg2 = SCR_TextsTaskManagerComponent.TASK_HINT_TEXT;
 				msg2param1 = SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT;
 				duration = 5;
 				prio = SCR_ECampaignPopupPriority.RESPAWN;
@@ -1099,19 +1116,24 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	//! \param[in] alive
 	void OnPlayerAliveStateChanged(bool alive)
 	{
-		Rpc(RpcDo_PlayerEnableShowingSpawnPosition, alive);	
-		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(GetOwner().FindComponent(SCR_CampaignFeedbackComponent));
-
-		if (!comp)
-			return;
-
 		IEntity player = m_PlayerController.GetControlledEntity();
-		
+		if (alive && player)
+		{
+			Rpc(RpcDo_UpdatePlayerSpawnHint, alive, player.GetOrigin());	
+		}
+		else
+		{
+			Rpc(RpcDo_UpdatePlayerSpawnHint, false, vector.Zero);	
+		}
+
 		if (!player)
 			return;
 
-		EventHandlerManagerComponent eventHandlerManagerComponent = EventHandlerManagerComponent.Cast(player.FindComponent(EventHandlerManagerComponent));
+		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.Cast(GetOwner().FindComponent(SCR_CampaignFeedbackComponent));
+		if (!comp)
+			return;
 
+		EventHandlerManagerComponent eventHandlerManagerComponent = EventHandlerManagerComponent.Cast(player.FindComponent(EventHandlerManagerComponent));
 		if (!eventHandlerManagerComponent)
 			return;
 
@@ -1127,19 +1149,13 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] enable
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	void RpcDo_PlayerEnableShowingSpawnPosition(bool enable)
+	void RpcDo_UpdatePlayerSpawnHint(bool show, vector position)
 	{
-		// Adds function to queue. Sometimes, game is not fast enough to spawn player entity
 		SCR_CampaignFeedbackComponent comp = SCR_CampaignFeedbackComponent.GetInstance();
-			GetGame().GetCallqueue().CallLater(comp.EnablePlayerSpawnHint, 100, true, enable);
-		
-		if (!enable)
-			comp.PauseHintQueue();
+		comp.UpdatePlayerSpawnHint(show, position);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void HandleRadioRespawnTimer(RplId spawnPointId)
 	{
@@ -1187,7 +1203,6 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		float suicidePenalty;
 		
 		SCR_CampaignClientData data = campaign.GetClientData(playerId);
-		
 		if (data)
 			suicidePenalty = data.GetRespawnPenalty();
 		
@@ -1269,6 +1284,22 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Callback
+	void OnBeforePlayerInteraction(EResourcePlayerInteractionType interactionType, PlayerController playerController, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
+	{
+		m_bOrphanSuppliesLoaded = false;
+		SCR_ResourceConsumer consumer = resourceComponentFrom.GetConsumer(EResourceGeneratorID.VEHICLE_LOAD, resourceType);
+		
+		if (!consumer && !resourceComponentFrom.GetConsumer(EResourceGeneratorID.DEFAULT, resourceType, consumer))
+			return;
+		
+		SCR_ResourceContainerQueue<SCR_ResourceConsumer> containerQueue = SCR_ResourceContainerQueue<SCR_ResourceConsumer>.Cast(consumer.GetContainerQueue());
+
+		if (containerQueue.GetStorageTypeCount(EResourceContainerStorageType.STORED) == 0)
+			m_bOrphanSuppliesLoaded = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] interactionType
 	//! \param[in] playerController
 	//! \param[in] resourceComponentFrom
@@ -1279,6 +1310,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	{
 		if (!playerController || !resourceComponentFrom || !resourceComponentTo)
 			return;
+		
+		GetOnTransferSupplies().Invoke(interactionType, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);
 
 		vector pos = resourceComponentFrom.GetOwner().GetOrigin();
 
@@ -1318,14 +1351,44 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnSuppliesLoaded(vector position, float amount, notnull SCR_ResourceComponent resourceComponentTo)
 	{
-		m_vLastLoadedAt = position;
+		// Allow XP for orphan supplies only when loaded in a base or supply depot
+		if (m_bOrphanSuppliesLoaded)
+		{
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+			if (campaign)
+			{
+				SCR_CampaignMilitaryBaseManager manager = campaign.GetBaseManager();
+			
+				if (manager)
+				{
+					SCR_CampaignMilitaryBaseComponent nearestBase = manager.FindClosestBase(position);
 
-		SCR_ResourceContainer container = resourceComponentTo.GetContainer(EResourceType.SUPPLIES);
+					if (!nearestBase || !nearestBase.IsInitialized() || vector.DistanceXZ(position, nearestBase.GetOwner().GetOrigin()) > nearestBase.GetRadius())
+					{
+						SCR_CampaignSuppliesComponent nearestDepot = manager.FindClosestSupplyDepot(position);
+						
+						if (!nearestDepot || vector.DistanceXZ(position, nearestDepot.GetOwner().GetOrigin()) > 100)
+						{
+							ResetSavedSupplies();
+							return;
+						}
+					}
+				}
+			}
+		}
+
+		m_bOrphanSuppliesLoaded = false;
+		SCR_ResourceContainer containerTo = resourceComponentTo.GetContainer(EResourceType.SUPPLIES);
 		
-		if (!container)
+		if (!containerTo)
+		{
+			ResetSavedSupplies();
 			return;
+		}
 		
-		m_fLoadedSupplyAmount = container.GetResourceValue();
+		m_vLastLoadedAt = position;
+		m_fLoadedSupplyAmount = containerTo.GetResourceValue();
 		m_LastLoadedComponent = resourceComponentTo;
 	}
 	
@@ -1365,6 +1428,22 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if (m_vLastLoadedAt == vector.Zero || amount > m_fLoadedSupplyAmount || vector.DistanceSqXZ(m_vLastLoadedAt, position) <= SUPPLY_DELIVERY_THRESHOLD_SQ)
 			return;
+		
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (!campaign)
+			return;
+
+		SCR_CampaignMilitaryBaseManager manager = campaign.GetBaseManager();
+		
+		if (!manager)
+			return;
+		
+		SCR_CampaignMilitaryBaseComponent nearestBase = manager.FindClosestBase(position);
+		
+		// Only award XP if supplies were unloaded in a base
+		if (!nearestBase || !nearestBase.IsInitialized() || vector.DistanceXZ(position, nearestBase.GetOwner().GetOrigin()) > nearestBase.GetRadius())
+			return;
 
 		m_fLoadedSupplyAmount -= amount;
 		m_iTotalSuppliesDelivered += amount;
@@ -1373,15 +1452,13 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			s_OnSuppliesDelivered.Invoke(playerId, (int)amount, m_iTotalSuppliesDelivered);
 
 		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
-
 		if (compXP)
 		{
-			compXP.AwardXP(playerId, SCR_EXPRewards.SUPPLIES_DELIVERED, amount / FULL_SUPPLY_TRUCK_AMOUNT);
-			
-			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-			
-			if (campaign && assistantId > 0)
-				compXP.AwardXP(assistantId, SCR_EXPRewards.SUPPLIES_DELIVERED, (amount / FULL_SUPPLY_TRUCK_AMOUNT) * campaign.GetSupplyOffloadAssistanceReward());
+			float suppliesXPmultiplier = amount / SUPPLY_DELIVERY_XP_PERCENT;
+			compXP.AwardXP(playerId, SCR_EXPRewards.SUPPLIES_DELIVERED, suppliesXPmultiplier);
+
+			if (assistantId > 0)
+				compXP.AwardXP(assistantId, SCR_EXPRewards.SUPPLIES_DELIVERED, suppliesXPmultiplier * campaign.GetSupplyOffloadAssistanceReward());
 		}
 	}
 
@@ -1417,7 +1494,10 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		SCR_ResourcePlayerControllerInventoryComponent comp = SCR_ResourcePlayerControllerInventoryComponent.Cast(m_PlayerController.FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
 
 		if (comp)
+		{
 			comp.GetOnPlayerInteraction().Insert(OnPlayerSuppliesInteraction);
+			comp.GetOnBeforePlayerInteraction().Insert(OnBeforePlayerInteraction);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

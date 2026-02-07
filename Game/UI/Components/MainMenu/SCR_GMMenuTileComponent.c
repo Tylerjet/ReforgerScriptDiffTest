@@ -41,11 +41,11 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool OnDoubleClick(Widget w, int x, int y, int button)
+	override bool OnClick(Widget w, int x, int y, int button)
 	{
 		OnPlay();
 
-		return super.OnDoubleClick(w, x, y, button);
+		return super.OnClick(w, x, y, button);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -119,10 +119,7 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 		if (!m_Item || !SCR_ScenarioUICommon.CanPlay(m_Item))
 			return;
 
-		GetGame().GetSaveManager().ResetFileNameToLoad();
-
 		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
-
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
 
@@ -146,9 +143,7 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnRestartConfirmed()
 	{
-		GetGame().GetSaveManager().ResetFileNameToLoad();
 		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
-
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
 

@@ -31,11 +31,7 @@ class SCR_DismantleInventoryItemBaseAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
-		IEntity owner = GetOwner();
-		if (!owner)
-			return;
-		
-		m_DeployableItemComp = SCR_BaseDeployableInventoryItemComponent.Cast(owner.FindComponent(SCR_BaseDeployableInventoryItemComponent));
-		m_RplComp = RplComponent.Cast(owner.FindComponent(RplComponent));
+		m_DeployableItemComp = SCR_BaseDeployableInventoryItemComponent.Cast(pOwnerEntity.FindComponent(SCR_BaseDeployableInventoryItemComponent));
+		m_RplComp = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
 	}
 }

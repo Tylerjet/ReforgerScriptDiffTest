@@ -21,17 +21,16 @@ sealed class AudioSystem
 	static const int Dialog = 3;
 	static const int UI = 4;
 
-	static const int DefaultOutputState = 0;
 	static const int BV_None = 0;
 	static const int BV_Sphere = 1;
 	static const int BV_Box = 2;
 	static const int BV_Cylinder = 3;
 
 	//! Play *.wav file.
-	static proto AudioHandle PlaySound(string path);
+	static proto AudioHandle PlaySound(string resourceName);
 	//! Preload audio file(*.acp).
-	static proto bool PlayEventInitialize(string filename);
-	static proto AudioHandle PlayEvent(string filename, string eventname, vector transf[], array<string> names = null, array<float> values = null);
+	static proto bool PlayEventInitialize(string resourceName);
+	static proto AudioHandle PlayEvent(string resourceName, string eventName, vector transf[], array<string> names = null, array<float> values = null);
 	static proto bool IsSoundPlayed(AudioHandle handle);
 	static proto void TerminateSound(AudioHandle handle);
 	//! Terminates a sound with specific a handle, where fade-out can be applied for a specific amount of time.
@@ -39,7 +38,7 @@ sealed class AudioSystem
 	//! Sets transformation for given audio handle, return FALSE if audio handle is not valid.
 	static proto bool SetSoundTransformation(AudioHandle handle, vector transf[]);
 	//! Returns -1.0 for the inaudible event, otherwise, it returns the distance from the passed position to the listener.
-	static proto float IsAudible(string filepath, string eventName, vector position);
+	static proto float IsAudible(string resourceName, string eventName, vector position);
 	//! Returns distance to the listener.
 	static proto float GetDistance(vector position);
 	/*
@@ -58,22 +57,28 @@ sealed class AudioSystem
 	//------------------------------------------------------------------------------------------------
 	static proto bool SetMasterVolume(int id, float volume);
 	static proto float GetMasterVolume(int id);
-	//------------------------------------------------------------------------------------------------
-	static proto bool CreateOutputState(string filename);
+	//! Returns index of OutputState instance, in case of error, returns -1. There is only one instance of OutputState for the given name.
+	static proto bool CreateOutputState(string resourceName);
+	//! Returns index of OutputState for given resource name. -1 in case no instance is found for the given name.
+	static proto int GetOutputStateIdx(string resourceName);
+	//! Returns a total number of instances.
+	static proto int GetOutputStateCount();
+	//! Returns the index of the given signal, -1 if the signal is not present.
 	static proto int GetOutpuStateSignalIdx(int outStateIdx, string signal);
+	//! Sets signal to the given value in specified OutputState.
 	static proto void SetOutputStateSignal(int outStateIdx, int idx, float value);
 	//! Returns ID of a variable by Name.
-	static proto int GetVariableIDByName(string varName, string filename);
+	static proto int GetVariableIDByName(string varName, string resourceName);
 	//! Returns Name of a variable by ID.
-	static proto string GetVariableNameByID(int ID, string filename);
+	static proto string GetVariableNameByID(int ID, string resourceName);
 	//! Returns current value of a variable by Name.
-	static proto float GetVariableValue(string varName, string filename);
+	static proto float GetVariableValue(string varName, string resourceName);
 	//! Returns current value of a variable by ID.
-	static proto float GetVariableByID(int ID, string filename);
+	static proto float GetVariableByID(int ID, string resourceName);
 	//! Returns false if variable does not exist.
-	static proto bool SetVariableByName(string varName, float value, string filename);
+	static proto bool SetVariableByName(string varName, float value, string resourceName);
 	//! Returns false if variable does not exist.
-	static proto bool SetVariableByID(int ID, float value, string filename);
+	static proto bool SetVariableByID(int ID, float value, string resourceName);
 	//! Resets all applicable values to 0 or default value
 	static proto void ResetVariables();
 }

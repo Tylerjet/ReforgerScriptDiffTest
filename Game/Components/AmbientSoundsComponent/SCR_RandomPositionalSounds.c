@@ -37,14 +37,10 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 	// Components
 	private GameSignalsManager m_GlobalSignalsManager;
 	private ChimeraWorld m_World;
-	private SoundWorld m_SoundWorld;
+	//private SoundWorld m_SoundWorld;
 	
 	// Constants
 	private const int INVALID = -1;
-	private const int TREE_LEAFY_HEIGHT_LIMIT = 10;
-	private const int TREE_CONIFER_HEIGHT_LIMIT = 12;
-	private const int LAKE_AREA_LIMIT = 100000;
-	private const int COAST_HIGHT_LIMIT = 3;	
 	private const int GLOBAL_MODIFIERS_UPDATE_TIME = 10000;	
 	private const string SUN_ANGLE_SIGNAL_NAME = "SunAngle";
 	private const string SOUND_NAME_SIGNAL_NAME = "SoundName";
@@ -72,6 +68,24 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 	
 	private ref array<ref SCR_SoundHandle> m_aSoundHandle = {};
 
+	//------------------------------------------------------------------------------------------------
+	ChimeraWorld GetWorld()
+	{
+		return m_World;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	ETerrainType GetTerrainType(int soundInfo)
+	{		
+		foreach(SCR_TerrainDef terrainDef : m_aTerrainDef)
+		{
+			if (soundInfo >= terrainDef.m_iRangeMin && soundInfo < terrainDef.m_iRangeMax)
+				return terrainDef.m_eTerrainType;
+		}
+		
+		return INVALID;		
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// Called by SCR_AmbientSoundComponent in UpdateSoundJob()
 	override void Update(float worldTime, vector cameraPos)
@@ -231,43 +245,9 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 		// Generate sound position		
 		vector vPos;								
 		int soundType = INVALID;
-		
-		ESpawnMethod spawhMethod = m_aSoundGroup[soundGroup].m_eSpawnMethod;
-			
-		if (spawhMethod == ESpawnMethod.ENTITY)
-		{				
-			// Choose dominant tree type
-			ETreeSoundTypes treeSoundType = m_AmbientSoundsComponent.GetDominantTree();					
-			if (treeSoundType == EQueryType.TreeConifer)
-			{					
-				IEntity tree = m_AmbientSoundsComponent.GetRandomTree(EQueryType.TreeConifer, TREE_CONIFER_HEIGHT_LIMIT);
-				if (!tree)
-					return;
-					
-				soundType = 0;
-				vPos = GetRandomPositionOnEntity(tree);			
-			}
-			else if  (treeSoundType == EQueryType.TreeLeafy)
-			{
-				IEntity tree = m_AmbientSoundsComponent.GetRandomTree(EQueryType.TreeLeafy, TREE_LEAFY_HEIGHT_LIMIT);
-				if (!tree)
-					return;
-					
-				soundType = 1;
-				vPos = GetRandomPositionOnEntity(tree);
-			}	
-		}
-		else if (spawhMethod == ESpawnMethod.TERRAIN)	
-		{										
-			vPos = GenerateRandomPosition(soundGroup, camPos);
-			soundType = GetTerrainTypeFromTerrain(vPos);
-		}	
-		else if (spawhMethod == ESpawnMethod.SOUNDMAP)
-		{			
-			vPos = GenerateRandomPosition(soundGroup, camPos);
-			soundType = GetSoundMapTypeFromTerrain(vPos);		
-		}
-			
+				
+		m_aSoundGroup[soundGroup].GetSoundTypeAndPosition(this, camPos, m_aSpawnDef[soundGroup].m_iSpawnDist, soundType, vPos);
+				
 		if (soundType == INVALID)
 			return;
 									
@@ -295,22 +275,6 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 		else
 			soundHandle.m_SoundDef.m_fCoolDownEnd = worldTime + soundHandle.m_SoundDef.m_iCoolDown * timeOfDayFactor;							
 	}
-
-	//------------------------------------------------------------------------------------------------								
-	private vector GenerateRandomPosition(int soundGroup, vector camPos)
-	{
-		// Angle for random position is rotated by 36 deg for each GenerateRandomPosition() call
-		float angle = m_aAngleOffset[soundGroup] * 36;
-		
-		m_aAngleOffset[soundGroup] = m_aAngleOffset[soundGroup] + 1;
-		if (m_aAngleOffset[soundGroup] > 9)
-			m_aAngleOffset[soundGroup] = 0;	
-				
-		float fDist = m_aSpawnDef[soundGroup].m_iSpawnDist;												
-		vector vPos = vector.FromYaw(angle) * fDist;
-			
-		return vPos + camPos;	
-	}
 	
 	//------------------------------------------------------------------------------------------------						
 	private int GetRandomSoundDef(SCR_SoundType soundType, float worldTime)
@@ -333,153 +297,7 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 		
 		return INVALID;
 	}
-	
-	//------------------------------------------------------------------------------------------------	
-	private ETerrainType GetTerrainType(int soundInfo)
-	{		
-		foreach(SCR_TerrainDef terrainDef : m_aTerrainDef)
-		{
-			if (soundInfo >= terrainDef.m_iRangeMin && soundInfo < terrainDef.m_iRangeMax)
-				return terrainDef.m_eTerrainType;
-		}
-		
-		return INVALID;		
-	}
-	
-	//------------------------------------------------------------------------------------------------		
-	private ESoundMapType GetSoundMapTypeFromTerrain(inout vector worldPos)
-	{
-		// Check for fresh water
-		float surfaceHeight = m_World.GetSurfaceY(worldPos[0], worldPos[2]);		
-		worldPos[1] = surfaceHeight;
-							
-		EWaterSurfaceType waterSurfaceType;
-		float lakeArea;
-		float waterSurfaceY = GetWaterSurfaceY(worldPos, waterSurfaceType, lakeArea);
-			
-		switch (waterSurfaceType)
-		{
-			case EWaterSurfaceType.WST_NONE:
-			{
-				m_SoundWorld = m_World.GetSoundWorld();
-				
-				if(!m_SoundWorld)
-					return INVALID;
-				
-				float sea, forest, city, meadow;
-				m_SoundWorld.GetMapValuesAtPos(worldPos, sea, forest, city, meadow);
-				
-				// Get maximum
-				float vals[] = { meadow, forest, city, sea };
-				float v = vals[0];
-				int idx;
-				for (int i = 1; i < 4; i++)
-				{
-					if (vals[i] > v)
-					{
-						v = vals[i];
-						idx = i;
-					}
-				}
-				
-				return idx;
-			}
-			case EWaterSurfaceType.WST_OCEAN:
-			{
-				worldPos[1] = 0;
-				return ESoundMapType.SEA;
-			}
-			case EWaterSurfaceType.WST_POND:
-			{
-				if (lakeArea > LAKE_AREA_LIMIT)
-				{
-					worldPos[1] = waterSurfaceY;
-					return ESoundMapType.POND;
-				}
-				else
-					return INVALID;
-			}
-		}
-		
-		return INVALID;			
-	}
-	
-	//------------------------------------------------------------------------------------------------		
-	private ETerrainType GetTerrainTypeFromTerrain(inout vector worldPos)
-	{	
-		// Get surface height
-		float surfaceHeight = m_World.GetSurfaceY(worldPos[0], worldPos[2]);		
-		worldPos[1] = surfaceHeight;
-		
-		// Ignore when near sea coast
-		if (Math.AbsFloat(worldPos[1]) < COAST_HIGHT_LIMIT)	
-			return INVALID;
-					
-		EWaterSurfaceType waterSurfaceType;
-		float lakeArea;
-		float waterSurfaceY = GetWaterSurfaceY(worldPos, waterSurfaceType, lakeArea);
-		
-		switch (waterSurfaceType)
-		{
-			case EWaterSurfaceType.WST_NONE:
-			{
-				// Trace and get soundInfo
-				int soundInfo = INVALID;
-				m_AmbientSoundsComponent.TracePointToTerrain(worldPos, soundInfo);
-						
-				// Get soundGroup				
-				return GetTerrainType(soundInfo);
-			}
-			case EWaterSurfaceType.WST_OCEAN:
-			{
-				worldPos[1] = 0;
-				return ETerrainType.OCEAN;
-			}
-			case EWaterSurfaceType.WST_POND:
-			{
-				if (lakeArea > LAKE_AREA_LIMIT)
-				{
-					worldPos[1] = waterSurfaceY;
-					return ETerrainType.POND;
-				}
-				else
-					return ETerrainType.POND_SMALL;
-			}
-		}
-				
-		return INVALID;
-	}
-	
-	//------------------------------------------------------------------------------------------------		
-	private float GetWaterSurfaceY(vector worldPos, out EWaterSurfaceType waterSurfaceType, out float lakeArea)
-	{		
-		vector waterSurfacePos;
-		vector transformWS[4];
-		vector obbExtents;
 
-		ChimeraWorldUtils.TryGetWaterSurface(m_World, worldPos, waterSurfacePos, waterSurfaceType, transformWS, obbExtents);
-		lakeArea = obbExtents[0] * obbExtents[2];
-		
-		return waterSurfacePos[1];
-	}
-
-	//------------------------------------------------------------------------------------------------		
-	private vector GetRandomPositionOnEntity(IEntity entity)
-	{
-		vector mins, maxs;
-		entity.GetWorldBounds(mins, maxs);				
-				
-		vector pos;							
-			
-		// Get position
-		pos = entity.GetOrigin();
-				
-		// Set random height
-		pos[1] = pos[1] + (maxs[1] - mins[1]) * Math.RandomFloatInclusive(0.5, 1);
-		
-		return pos;	
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	private void UpdateDensity()
 	{		
@@ -616,9 +434,12 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 		
 	//------------------------------------------------------------------------------------------------
 #ifdef ENABLE_DIAG
-	private const int STRING_LENGTH = 25;
+	private const int STRING_LENGTH = 20;
 	private const int PANEL_WIDTH = 20;
 	private const int PANEL_HEIGHT = 20;
+	
+	ref array<bool> m_soundGroupCheck;
+	ref array<ref array<bool>> m_soundTypeCheck;
 	
 	//------------------------------------------------------------------------------------------------	
 	//!
@@ -672,7 +493,26 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 		DbgUI.SameLine();
 		DbgUI.Panel("in", PANEL_WIDTH, PANEL_HEIGHT, inCooldownColor);
 		DbgUI.SameLine();
-		DbgUI.Text("InCooldown");	
+		DbgUI.Text("InCooldown");
+		
+		// Prepare arrays for check widgets
+		if (!m_soundGroupCheck)
+		{
+			m_soundGroupCheck = {};
+			m_soundGroupCheck.Resize(m_aSpawnDef.Count());
+		}
+		if (!m_soundTypeCheck)
+		{
+			m_soundTypeCheck = {};
+			m_soundTypeCheck.Resize(m_aSpawnDef.Count());
+			
+			for (int soundGroup = 0; soundGroup < m_aSpawnDef.Count(); soundGroup++)
+			{
+				m_soundTypeCheck[soundGroup] = {};
+				int soundTypeCount = m_aSoundGroup[soundGroup].m_aSoundType.Count();						
+				m_soundTypeCheck[soundGroup].Resize(soundTypeCount);
+			}
+		}
 				
 		for (int soundGroup = 0; soundGroup < m_aSpawnDef.Count(); soundGroup++)
 		{				
@@ -685,8 +525,9 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 			const int limitCount = 8; // TODO: check for good const usage
 			int playingCount = 0;
 			
-			bool bSoundTypeChecked = false;					
+			bool bSoundTypeChecked = m_soundGroupCheck[soundGroup];					
 			DbgUI.Check(name, bSoundTypeChecked);
+			m_soundGroupCheck[soundGroup] = bSoundTypeChecked;
 			
 			for (int i = 0; i < m_aSoundHandle.Count(); i++)
 			{
@@ -710,19 +551,20 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 			if (bSoundTypeChecked)
 			{					
 				int soundTypeCount = m_aSoundGroup[soundGroup].m_aSoundType.Count();
+								
 						
 				for (int soundType = 0; soundType < soundTypeCount; soundType++)
 				{									
 					// Get SoundType name
 					string soundTypeName;
-					if (m_aSoundGroup[soundGroup].m_eSpawnMethod == ESpawnMethod.ENTITY)
+					if (SCR_TreeSoundGroup.Cast(m_aSoundGroup[soundGroup]))
 					{
 						if (soundType == 0)
 							soundTypeName = "CONIFER";
 						else
 							soundTypeName = "LEAFY";	
 					}
-					else if (m_aSoundGroup[soundGroup].m_eSpawnMethod == ESpawnMethod.TERRAIN)
+					else if (SCR_TerrainSoundGroup.Cast(m_aSoundGroup[soundGroup]))
 						soundTypeName = typename.EnumToString(ETerrainType, soundType);
 					else
 						soundTypeName = typename.EnumToString(ESoundMapType, soundType);
@@ -731,8 +573,11 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 					
 					DbgUI.Panel(soundGroup.ToString() + soundType.ToString(), PANEL_WIDTH, PANEL_HEIGHT, blackColor);
 					DbgUI.SameLine();
-					bool bSoundGroupChecked = false;
+					
+					bool bSoundGroupChecked = m_soundTypeCheck[soundGroup][soundType];
 					DbgUI.Check(soundGroup.ToString() + "." + soundType.ToString() + ". " + soundTypeName, bSoundGroupChecked);
+					m_soundTypeCheck[soundGroup][soundType] = bSoundGroupChecked;
+					
 					DbgUI.SameLine();							
 					
 					int size = m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef.Count();					
@@ -771,13 +616,15 @@ class SCR_RandomPositionalSounds : SCR_AmbientSoundsEffect
 								
 								aditionalInfo = aditionalInfo + " | TFactor : " + timeOfDayFactor.ToString();							
 							}
+							
+							EDayTimeCurve m_eDayTimeCurve = m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef[soundDef].m_eDayTimeCurve;						
 													
 							// Tag sounds that can not play in given time of day
-							if (m_aDayTimeCurveValue[m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef[soundDef].m_eDayTimeCurve] <= 0)
+							if (m_aDayTimeCurveValue[m_eDayTimeCurve] <= 0)
 								color = wrongTimeColor;
 							
 							// Tag available
-							if (m_aDayTimeCurveValue[m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef[soundDef].m_eDayTimeCurve] > 0 && m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef[soundDef].m_fCoolDownEnd <= worldTime)
+							if (m_aDayTimeCurveValue[m_eDayTimeCurve] > 0 && m_aSoundGroup[soundGroup].m_aSoundType[soundType].m_aSoundDef[soundDef].m_fCoolDownEnd <= worldTime)
 								color = availableColor;
 							
 							DbgUI.Panel(soundGroup.ToString() + "." + soundType.ToString() + "." + soundDef.ToString(), PANEL_WIDTH * 2 + 5, PANEL_HEIGHT, color);

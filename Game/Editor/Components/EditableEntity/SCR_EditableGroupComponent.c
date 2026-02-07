@@ -47,6 +47,31 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	static ResourceName AI_WAYPOINT_CYCLE = "{35BD6541CBB8AC08}Prefabs/AI/Waypoints/AIWaypoint_Cycle.et";
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		super.OnDelete(owner);
+		
+		//Check how many AI's were queued to be spawned but never did
+		const int missingAgents = m_Group.GetSpawnQueueSize();
+		
+		//everything OK, all AI's got spawned
+		if(m_Group.GetSpawnQueueSize() == 0)
+			return;
+	
+		//Group got deleted before all of its members got spawned		
+		OnAfterAllMembersSpawned();
+		
+		//free the budget we reserved for the AI's we did not spawn
+		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
+		if (!budgetComponent)
+			return;
+	
+		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
+		if (aiBudget)
+			aiBudget.UnreserveBudget(missingAgents);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void EnableCycledWaypoints(bool enable)
 	{
 		if (enable == m_bAreWaypointsCycled || !IsServer())
@@ -125,6 +150,18 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		SCR_EditableEntityComponent editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetControlledEntity());
 		if (editableChild)
 			editableChild.SetParentEntity(this);
+		
+		//when the group gets created, we reserve budget for each of its agents
+		//when we spawn one agent, we inmediately free the budget.
+		//This is a bit sussy because if two groups merge, both of them will reserve budget
+		//but only one of them will be unreserving it.
+		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
+		if (!budgetComponent)
+			return;
+	
+		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
+		if (aiBudget)
+			aiBudget.UnreserveBudget(1);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -568,7 +605,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool Destroy()
+	override bool Destroy(int editorPlayerID)
 	{
 		if (!IsServer())
 			return false;
@@ -580,7 +617,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		foreach (SCR_EditableEntityComponent child : children)
 		{
-			isDestroyed &= child.Destroy();
+			isDestroyed &= child.Destroy(editorPlayerID);
 		}
 		
 		return isDestroyed;
@@ -674,14 +711,14 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 
 		m_Group.GetOnAllDelayedEntitySpawned().Insert(OnAllMembersSpawned);
 		m_PlacedEditorComponent.SetPlacingBlocked(true);
-
+		
 		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
 		if (!budgetComponent)
 			return;
-
+	
 		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
 		if (aiBudget)
-			aiBudget.ReserveBudget(numberOfMembersToSpawn + 1);
+			aiBudget.ReserveBudget(numberOfMembersToSpawn);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -691,19 +728,18 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		if (!m_PlacedEditorComponent || !m_Group)
 			return;
 
-		m_Group.GetOnAllDelayedEntitySpawned().Remove(OnAllMembersSpawned);
-
-		m_PlacedEditorComponent.SetPlacingBlocked(false);
-
-		SCR_BudgetEditorComponent budgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
-		if (!budgetComponent)
-			return;
-
-		SCR_EditableEntityCoreBudgetSetting aiBudget = budgetComponent.GetBudgetSetting(EEditableEntityBudget.AI);
-		if (aiBudget)
-			aiBudget.UnreserveBudget(m_Group.GetNumberOfMembersToSpawn() + 1);
+		OnAfterAllMembersSpawned();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void OnAfterAllMembersSpawned()
+	{
+		if (m_PlacedEditorComponent)
+			m_PlacedEditorComponent.SetPlacingBlocked(false);
+
+		m_Group.GetOnAllDelayedEntitySpawned().Remove(OnAllMembersSpawned);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnChildEntityChanged(SCR_EditableEntityComponent child, bool isAdded)
 	{

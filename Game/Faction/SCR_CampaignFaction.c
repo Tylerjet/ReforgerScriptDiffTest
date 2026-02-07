@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_CampaignFaction : SCR_Faction
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Defenders group prefab", "et")]
@@ -19,8 +18,13 @@ class SCR_CampaignFaction : SCR_Faction
 	[Attribute("", UIWidgets.ResourceNamePicker, "Supply stash composition", "et")]
 	private ResourceName m_BaseBuildingSupplyDepot;
 	
+	[Attribute("", UIWidgets.ResourceNamePicker, "Source Base Composition", "et")]
+	private ResourceName m_sBaseBuildingSourceBase;
+
+	[Attribute(desc: "Whitelist of allowed radio messages")]
+	protected ref SCR_CampaignRadioMsgWhitelistConfig m_RadioMsgWhitelistConfig;
+
 	protected SCR_CampaignMilitaryBaseComponent m_MainBase;
-	protected SCR_CampaignMilitaryBaseComponent m_PrimaryTarget;
 	
 	protected SCR_CampaignMobileAssemblyStandaloneComponent m_MobileAssembly;
 	
@@ -41,6 +45,9 @@ class SCR_CampaignFaction : SCR_Faction
 		if (msgType == SCR_ERadioMsg.NONE)
 			return;
 		
+		if (m_RadioMsgWhitelistConfig && !m_RadioMsgWhitelistConfig.CanSendRadioMessage(msgType))
+			return;
+
 		SCR_CampaignMilitaryBaseComponent HQ = GetMainBase();
 		
 		if (!HQ)
@@ -72,7 +79,7 @@ class SCR_CampaignFaction : SCR_Faction
 		if (called && !callsignManager.GetEntityCallsignIndexes(called, companyCallsignIndex, platoonCallsignIndex, squadCallsignIndex, characterCallsignIndex))
 	    	return;
 		
-		SCR_CampaignRadioMsg msg = new SCR_CampaignRadioMsg;
+		SCR_CampaignRadioMsg msg = new SCR_CampaignRadioMsg();
 		msg.SetRadioMsg(msgType);
 		msg.SetFactionId(GetGame().GetFactionManager().GetFactionIndex(this));
 		msg.SetBaseCallsign(baseCallsign);
@@ -102,54 +109,7 @@ class SCR_CampaignFaction : SCR_Faction
 	{
 		m_MainBase = mainBase;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent target)
-	{
-		m_PrimaryTarget = target;
-		
-		// Give tasks time to get created before refreshing the priorities
-		GetGame().GetCallqueue().CallLater(RefreshTaskPriorities, SCR_GameModeCampaign.DEFAULT_DELAY);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RefreshTaskPriorities()
-	{
-		SCR_BaseTaskManager taskManager = GetTaskManager();
 
-		if (!taskManager)
-			return;
-		
-		SCR_CampaignMilitaryBaseManager baseManager = SCR_GameModeCampaign.GetInstance().GetBaseManager();
-
-		if (!baseManager)
-			return;
-
-		array<SCR_BaseTask> tasks = {};
-		taskManager.GetFilteredTasks(tasks, this);
-
-		foreach (SCR_BaseTask task : tasks)
-		{
-			SCR_CampaignTask conflictTask = SCR_CampaignTask.Cast(task);
-
-			if (!conflictTask)
-				continue;
-
-			SCR_CampaignMilitaryBaseComponent base = conflictTask.GetTargetBase();
-
-			if (!base || base.GetFaction() == conflictTask.GetTargetFaction())
-				continue;
-			
-			conflictTask.SetIsPriority(m_PrimaryTarget == base);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_CampaignMilitaryBaseComponent GetPrimaryTarget()
-	{
-		return m_PrimaryTarget;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	void SetMobileAssembly(SCR_CampaignMobileAssemblyStandaloneComponent mobileAssembly)
 	{
@@ -179,8 +139,14 @@ class SCR_CampaignFaction : SCR_Faction
 	{
 		switch (type)
 		{
-			case EEditableEntityLabel.SERVICE_HQ: {return m_BaseBuildingHQ;};
-			case EEditableEntityLabel.SERVICE_SUPPLY_STORAGE: {return m_BaseBuildingSupplyDepot;};
+			case EEditableEntityLabel.SERVICE_HQ:
+				return m_BaseBuildingHQ;
+
+			case EEditableEntityLabel.SERVICE_SUPPLY_STORAGE:
+				return m_BaseBuildingSupplyDepot;
+
+			case EEditableEntityLabel.SERVICE_SOURCE_BASE:
+				return m_sBaseBuildingSourceBase;
 		}
 		
 		return ResourceName.Empty;

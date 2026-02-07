@@ -24,7 +24,7 @@ class AIActionBase: ScriptAndConfig
 	proto external void Complete();
 	proto external bool GetRemoveAction();
 	proto external void SetRemoveAction(bool val);
-	proto external ref AIActionBase GetRelatedGroupActivity();
+	proto external AIActionBase GetRelatedGroupActivity();
 	proto external void SetRelatedGroupActivity(AIActionBase related);
 
 	// callbacks

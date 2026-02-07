@@ -2,7 +2,7 @@
 class SCR_ResourceGeneratorActionBase
 {
 	//------------------------------------------------------------------------------------------------
-	//! Returns true if the action has constrainted generation of resources.
+	//! Returns true if the action has constrained generation of resources.
 	bool HasConstrainedGeneration()
 	{
 		return true;

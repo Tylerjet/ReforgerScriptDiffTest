@@ -177,8 +177,12 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 			if (!loaderRplComp)
 				return;
 
-			//Because AI is not broadcasting thei user action usage this has to be done manually for them
-			Rpc(SynchronizeLoaderData, loaderRplComp.Id(), fromLeftSide);
+			RplComponent shellRplComp = SCR_EntityHelper.GetEntityRplComponent(shellComp.GetOwner());
+			if (!shellRplComp)
+				return;
+
+			//Because AI is not broadcasting their user action usage this has to be done manually for them
+			Rpc(SynchronizeLoaderData, loaderRplComp.Id(), shellRplComp.Id(), shellComp.GetFuzeTime(), fromLeftSide);
 		}
 
 		m_ShellComponent = shellComp;
@@ -338,6 +342,18 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 			CharacterCommandHandlerComponent commandHandler = animationComponent.GetCommandHandler();
 			if (commandHandler)
 				commandHandler.FinishItemUse(false);
+			
+			if (m_CharController)
+			{
+				CameraHandlerComponent cameraHandler = m_CharController.GetCameraHandlerComponent();
+				if (cameraHandler)
+				{
+					//! Reset camera override so it does not follow animation
+					ScriptedCameraItem camera = cameraHandler.GetCurrentCamera();
+					if (camera && camera.GetOverrideDirectBoneMode() != 0)
+						camera.OverrideDirectBoneMode(0);
+				}
+			}
 
 			return;
 		}
@@ -348,10 +364,30 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 		if (animEventType != m_MortarFireReady)
 			return;
 
-		if (m_ShellComponent.SetLoadedState(true, this, m_sFireActionName, m_CharController.GetOwner()))
+		IEntity owner;
+		if (m_CharController)
+			owner = m_CharController.GetOwner();
+
+		if (m_ShellComponent.SetLoadedState(true, this, m_sFireActionName, owner))
 			m_ShellComponent.GetOnShellUsed().Insert(TransferShellToMortar);
 		else
 			TransferShellToMortar();
+		
+		//! Override camera to follow animation while firing
+		if (m_CharController && !m_CharController.IsInThirdPersonView())
+		{
+			CameraHandlerComponent cameraHandler = m_CharController.GetCameraHandlerComponent();
+			if (cameraHandler)
+			{
+				ScriptedCameraItem camera = cameraHandler.GetCurrentCamera();
+				if (camera && camera.GetOverrideDirectBoneMode() == 0)
+				{
+					vector aimingAngles = m_CharController.GetInputContext().GetAimingAngles();
+					m_CharController.GetInputContext().SetAimingAngles(Vector(aimingAngles[0], 0, 0));
+					camera.OverrideDirectBoneMode(EDirectBoneMode.RelativeTransform);
+				}
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -379,47 +415,8 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 
 		SCR_InvEquipAnyItemCB inventoryCallBack = new SCR_InvEquipAnyItemCB();
 		IEntity shellEntity = m_ShellComponent.GetOwner();
-		InventoryItemComponent shellInventoryItem = InventoryItemComponent.Cast(shellEntity.FindComponent(InventoryItemComponent));
-		if (shellInventoryItem && shellInventoryItem.GetAttributes())
-		{
-			SCR_CharacterInventoryStorageComponent characterInventoryStorage = playerInventory.GetCharacterStorage();
-			int slotId = -1;
-			if (characterInventoryStorage)
-				slotId = characterInventoryStorage.GetEntityIndexInQuickslots(shellEntity);
-
-			ECommonItemType equippedItemType = shellInventoryItem.GetAttributes().GetCommonType();
-			if (equippedItemType != ECommonItemType.NONE)
-			{
-				array<IEntity> ownedItems = {};
-				SCR_ResourceNamePredicate specificItemSearch = new SCR_ResourceNamePredicate();
-				specificItemSearch.prefab = shellEntity.GetPrefabData().GetPrefab();
-				if (playerInventory.FindItems(ownedItems, specificItemSearch) < 2 || ownedItems.IsEmpty())
-				{//if we were unable to find exact replacement for the shell that will be soon transfered then lets look for any shell in player inventory
-					ownedItems.Clear();
-					SCR_CommonItemTypeSearchPredicate itemSearch = new SCR_CommonItemTypeSearchPredicate(equippedItemType, shellEntity);
-					playerInventory.FindItems(ownedItems, itemSearch);
-				}
-				else
-				{
-					foreach (IEntity item : ownedItems)
-					{
-						if (shellEntity == item)
-							continue;
-
-						ownedItems.Clear();
-						ownedItems.Insert(item);
-						break;
-					}
-				}
-
-				if (ownedItems.Count() > 0)
-				{
-					inventoryCallBack.m_pItem = ownedItems[0];
-					inventoryCallBack.m_pStorageToPickUp = characterInventoryStorage;
-					inventoryCallBack.m_iSlotToFocus = slotId;
-				}
-			}
-		}
+		if (shellEntity)
+			playerInventory.TryAssigningNextItemToQuickSlot(shellEntity, equipCallback: inventoryCallBack, equipNewItem: true);
 
 		playerInventory.TryMoveItemToStorage(shellEntity, weaponAttachmentStorage, cb: inventoryCallBack);
 		m_ShellComponent = null;
@@ -447,6 +444,16 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 		m_CharController.GetOnAnimationEvent().Remove(OnAnimationEvent);
 		m_CharController.m_OnItemUseEndedInvoker.Remove(OnAnimationEnded);
 
+		CameraHandlerComponent cameraHandler = m_CharController.GetCameraHandlerComponent();
+		if (cameraHandler)
+		{
+			ScriptedCameraItem camera = cameraHandler.GetCurrentCamera();
+			if (camera && camera.GetOverrideDirectBoneMode() != 0)
+			{
+				camera.OverrideDirectBoneMode(0);
+			}
+		}
+		
 		if (!m_ShellComponent)
 			return;
 
@@ -459,20 +466,34 @@ class SCR_MortarMuzzleComponent : MortarMuzzleComponent
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void SynchronizeLoaderData(RplId loaderRplId, bool loadedFromLeftSide)
+	protected void SynchronizeLoaderData(RplId loaderRplId, RplId shellRplId, float fuseTime, bool loadedFromLeftSide)
 	{
 		RplComponent loaderRplComp = RplComponent.Cast(Replication.FindItem(loaderRplId));
 		if (!loaderRplComp)
+			return;
+
+		RplComponent shellRplComp = RplComponent.Cast(Replication.FindItem(shellRplId));
+		if (!shellRplComp)
 			return;
 
 		ChimeraCharacter loader = ChimeraCharacter.Cast(loaderRplComp.GetEntity());
 		if (!loader)
 			return;
 
+		IEntity shell = shellRplComp.GetEntity();
+		if (!shell)
+			return;
+
 		m_CharController = SCR_CharacterControllerComponent.Cast(loader.GetCharacterController());
 		if (!m_CharController)
 			return;
 
+		SCR_MortarShellGadgetComponent mortarShellComp = SCR_MortarShellGadgetComponent.Cast(shell.FindComponent(SCR_MortarShellGadgetComponent));
+		if (!mortarShellComp)
+			return;
+
+		mortarShellComp.SetFuzeTime(fuseTime);
+		mortarShellComp.SetLoadedState(true, this);
 		m_bBeingLoaded = true;
 		SetAnimationAttributes(m_CharController, loadedFromLeftSide);
 	}

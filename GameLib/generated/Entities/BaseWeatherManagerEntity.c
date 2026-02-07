@@ -167,7 +167,7 @@ class BaseWeatherManagerEntity: GenericEntity
 	Get weather state transition manager
 	\return Transition manager, null if client is not master.
 	*/
-	proto ref BaseWeatherStateTransitionManager GetTransitionManager();
+	proto BaseWeatherStateTransitionManager GetTransitionManager();
 	/*!
 	Gets moon phase for supplied date, geo location is not needed but timezone yes in order to calculate UTC correctly.
 
@@ -366,6 +366,54 @@ class BaseWeatherManagerEntity: GenericEntity
 	\return phase in <0...1> range. 0 = new moon, 1 = full moon
 	*/
 	proto external float GetMoonPhase(float timeOfTheDay24);
+	/*!
+	Sets if Sun irradiance override is enabled
+	\return true if command was succesful
+	*/
+	proto external bool SetOverrideSunIrradiance(bool doOverride);
+	/*! Gets if Sun irradience override is enabled */
+	proto external bool GetOverrideSunIrradiance();
+	/*!
+	Sets values for Sun Irradiance override (values are for min/max during the day)
+	\return true if command was succesful
+	*/
+	proto external bool SetSunIrradianceOverrideValues(float sunIrradianceMin, float sunIrradianceMax);
+	/*! Gets value for Sun Irradiance Min override. Value represents minimal Sun irradiance during the day */
+	proto external float GetSunIrradianceMinOverride();
+	/*! Gets value for Sun Irradiance Max override. Value represents maximal Sun irradiance during the day */
+	proto external float GetSunIrradianceMaxOverride();
+	/*!
+	Sets if temperature override is enabled
+	\return true if command was succesful
+	*/
+	proto external bool SetOverrideTemperature(bool doOverride);
+	/*! Gets if temperature override is enabled */
+	proto external bool GetOverrideTemperature();
+	/*!
+	Sets values for temperature override (in degrees Celsius). Values are for min/max during the day.
+	\return true if command was succesful
+	*/
+	proto external bool SetTemperatureOverrideValues(float temperatureAirMin, float temperatureAirMax,	float temperatureSkyMin, float temperatureSkyMax, float temperatureWaterMin, float temperatureWaterMax);
+	/*! Gets value for Temperature Air Min override (in degrees Celsius). Value represents minimal air temperature during the day */
+	proto external float GetTemperatureAirMinOverride();
+	/*! Gets value for Temperature Air Max override (in degrees Celsius). Value represents maximal air temperature during the day */
+	proto external float GetTemperatureAirMaxOverride();
+	/*! Gets value for Temperature Water Min override (in degrees Celsius). Value represents minimal water temperature during the day */
+	proto external float GetTemperatureWaterMinOverride();
+	/*! Gets value for Temperature Water Max override (in degrees Celsius). Value represents maximal water temperature during the day */
+	proto external float GetTemperatureWaterMaxOverride();
+	/*! Gets value for Temperature Sky Min override (in degrees Celsius). Value represents minimal sky temperature during the day */
+	proto external float GetTemperatureSkyMinOverride();
+	/*! Gets value for Temperature Sky Max override (in degrees Celsius). Value represents maximal sky temperature during the day */
+	proto external float GetTemperatureSkyMaxOverride();
+	/*!
+	* Forces complete recomputation of temperature table based on current min/max temperatures and sun irradiance.
+	* This needs to be called if you change some min/max temperature settings and want to immediately change
+	* temperatures of all objects based on these settings.
+	* Beware! This is performance heavy so use only when really needed (for example when changing temperature settings and
+	* you want to see immediate effect of the changes).
+	*/
+	proto external bool ForceTemperatureTableRecompute();
 	/*!
 	Checks if date is valid (checks for leap years and correct day of the month)
 

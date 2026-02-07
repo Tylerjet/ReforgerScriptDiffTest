@@ -1,5 +1,13 @@
 class SCR_GroupMenu : SCR_SuperMenuBase
-{			
+{
+	protected static ref ScriptInvoker s_OnGroupMenuShow = new ScriptInvoker();
+
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnGroupMenuShown()
+	{
+		return s_OnGroupMenuShow;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
@@ -17,8 +25,10 @@ class SCR_GroupMenu : SCR_SuperMenuBase
 	override void OnMenuShow()
 	{
 		super.OnMenuShow();
-		
-		UpdateTabs();		
+
+		s_OnGroupMenuShow.Invoke();
+
+		UpdateTabs();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -58,10 +68,12 @@ class SCR_GroupMenu : SCR_SuperMenuBase
 		if (requesters.IsEmpty())
 		{	
 			m_SuperMenuComponent.GetTabView().ShowIcon(1, false);
+			m_SuperMenuComponent.GetTabView().EnableTab(1, false, true);	
 		}
 		else
 		{
 			m_SuperMenuComponent.GetTabView().ShowIcon(1, true);	
+			m_SuperMenuComponent.GetTabView().EnableTab(1, true, true);	
 					
 			Widget notificationIcon = m_SuperMenuComponent.GetTabView().GetEntryIcon(1);
 			if (!notificationIcon)

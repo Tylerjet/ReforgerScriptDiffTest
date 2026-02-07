@@ -45,6 +45,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	vector m_Size;
 	ResourceName m_sRandomlySpawnedObject;
 	vector m_vPosition;
+	
+	// A fallback entity with the same prefab name as m_sObjectToSpawn (in case exact prefab matching fails)
+	IEntity m_fallbackEntityByName;
+	
+	// A fallback entity whose prefab is the ancestor of m_sObjectToSpawn (in case exact prefab matching fails)
+	IEntity m_fallbackEntityByAncestor;
 
 #ifdef WORKBENCH
 	protected IEntity m_PreviewEntity;
@@ -55,11 +61,26 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	//! \param[in] fRange Represents search radius for objects in range query.
 	protected void QueryObjectsInRange(float fRange = 2.5)
 	{
+		// We're searching by prefab name, so if this is empty, there's no point to continue
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
+			return;
+		
 		BaseWorld pWorld = GetGame().GetWorld();
 		if (!pWorld)
 			return;
 
+		m_fallbackEntityByName = null;
+		m_fallbackEntityByAncestor = null;
 		pWorld.QueryEntitiesBySphere(GetOwner().GetOrigin(), fRange, GetEntity, null, EQueryEntitiesFlags.ALL);
+		
+		// if no exact prefab match was found, use a fallback entity
+		if (!m_Entity)
+		{
+			if (m_fallbackEntityByAncestor)
+				m_Entity = m_fallbackEntityByAncestor;
+			else
+				m_Entity = m_fallbackEntityByName;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -73,15 +94,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 
-		if (m_bEnableRepeatedSpawn)
-		{
-			if (m_iRepeatedSpawnNumber != -1 && m_iRepeatedSpawnNumber <= 0)
-				SetIsTerminated(true);
-		}
-		else
-		{
+		if (!m_bEnableRepeatedSpawn || (m_iRepeatedSpawnNumber != -1 && m_iRepeatedSpawnNumber <= 0))
 			SetIsTerminated(true);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -127,10 +141,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	//! \return the display name of the spawned entity or overridden display name if provided, otherwise returns an empty string.
 	string GetSpawnedEntityDisplayName()
 	{
-		if (!m_Entity)
-			return string.Empty;
-
-		if (!m_sOverrideObjectDisplayName.IsEmpty())
+		if (!m_Entity || !m_sOverrideObjectDisplayName.IsEmpty())
 			return m_sOverrideObjectDisplayName;
 
 		SCR_EditableEntityComponent editableEntityComp = SCR_EditableEntityComponent.Cast(m_Entity.FindComponent(SCR_EditableEntityComponent));
@@ -151,54 +162,46 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		if (!prefabData)
 			return true;
 
-		ResourceName resource = prefabData.GetPrefabName();
-		if (resource.IsEmpty())
+		ResourceName resource = SCR_ResourceNameUtils.GetPrefabName(entity);
+		
+		if (resource == m_sObjectToSpawn)
 		{
-			resource = prefabData.GetPrefab().GetAncestor().GetName();
-			if (resource.IsEmpty())
+			m_Entity = entity;
+			return false;
+		}
+		
+		// this isn't the exact prefab we want; try fallback (only one fallback entity is enough)
+		if (!m_fallbackEntityByAncestor)
+		{
+			if (SCR_BaseContainerTools.IsKindOf(prefabData.GetPrefab(), m_sObjectToSpawn))
 			{
-				if (!m_sID.IsEmpty())
-				{
-					if (entity.GetName() != m_sID)
-						return true;
-				}
-				else
-				{
-					return true;
-				}
+				// Use this entity as fallback by ancestor
+				m_fallbackEntityByAncestor = entity;
 			}
-			else
+			else if (!m_fallbackEntityByName)
 			{
-				if (m_sObjectToSpawn.IsEmpty())
-					return true;
-
+				// Check if the prefab names match
+				
 				TStringArray strs = new TStringArray();
 				resource.Split("/", strs, true);
-				string resourceName = strs[strs.Count() - 1];
-
+				string resourceName;
+				if(strs.Count() > 0)
+					resourceName = strs[strs.Count() - 1];
+	
 				TStringArray strsObject = new TStringArray();
 				m_sObjectToSpawn.Split("/", strsObject, true);
-				string resourceObject = strsObject[strsObject.Count() - 1];
-
-				if (resourceName == resourceObject)
-				{
-					m_Entity = entity;
-					return false;
-				}
-				else
-				{
-					return true;
-				}
+				string resourceObject;
+				if(strsObject.Count() > 0)
+					resourceObject = strsObject[strsObject.Count() - 1];
+	
+				// if names match, use this entity as fallback by name
+				if (resourceName && resourceName == resourceObject)
+					m_fallbackEntityByName = entity;
 			}
 		}
-		else
-		{
-			if (resource != m_sObjectToSpawn)
-				return true;
-		}
-
-		m_Entity = entity;
-		return false;
+		
+		
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -247,14 +250,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 				if (factionObject.m_sFactionKey == m_sFactionKey)
 					return factionObject.m_sObjectToSpawn;
 			}
+			
 			if (m_sObjectToSpawn.IsEmpty())
 				Print(string.Format("ScenarioFramework [SCR_ScenarioFrameworkSlotBase] No faction switch object for \"%1\" FactionKey and no fallback m_sObjectToSpawn.", m_sFactionKey), LogLevel.WARNING);
 		}
-		// Try get manually specified object
-		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
-			return m_sObjectToSpawn;
 
-		return "";
+		return m_sObjectToSpawn;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -329,21 +330,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Checks if object already exists, disables repetition and logs error
-	//! \return true if the object can be respawned, false otherwise.
-	bool InitRepeatableSpawn()
-	{
-		if (m_Entity && !m_bEnableRepeatedSpawn && !m_ParentLayer.GetEnableRepeatedSpawn())
-		{
-			Print(string.Format("ScenarioFramework: Object %1 already exists and won't be spawned for %2, exiting...", m_Entity, GetName()), LogLevel.ERROR);
-			m_ParentLayer.CheckAllChildrenSpawned(this);
-			return false;
-		}
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Checks if entity is spawned, if not, waits for all children to spawn then checks again.
 	//! \return true if all children entities have been spawned, false otherwise.
 	bool InitEntitySpawnCheck()
@@ -385,13 +371,22 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	//! \return true if entity spawning is successful.
 	bool InitEntitySpawn()
 	{
+		if (m_Entity && !m_Entity.IsDeleted())
+			return true; // Savegame will have linked the entity to the slot before SF system init
+		
 		if (!m_bUseExistingWorldAsset)
 		{
 			m_Entity = SpawnAsset();
 		}
 		else
 		{
-			QueryObjectsInRange();	//sets the m_Entity in subsequent callback
+			if (!m_sID.IsEmpty())
+			{
+				m_Entity = GetGame().GetWorld().FindEntityByName(m_sID);
+			}
+			
+			if (!m_Entity)
+				QueryObjectsInRange();	//sets the m_Entity in subsequent callback
 		}
 
 		if (!InitEntitySpawnCheck())
@@ -407,9 +402,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	{
 		InitSelectedObjectToSpawn();
 
-		if (!InitRepeatableSpawn())
-			return false;
-
 		if (!InitEntitySpawn())
 			return false;
 
@@ -420,9 +412,10 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	//! Finishes initialization, assigns unique ID, sets up damage manager, event handlers, inventory, and garbage system if applicable
 	override void FinishInit()
 	{
-		if (!m_sID.IsEmpty())
+		if (!m_sID.IsEmpty() && m_Entity)
 		{
-			if (GetGame().GetWorld().FindEntityByName(m_sID))
+			IEntity ent = GetGame().GetWorld().FindEntityByName(m_sID);
+			if (ent != m_Entity)
 			{
 				string IDWithSuffix = m_sID;
 				int suffixNumber;
@@ -434,10 +427,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	            }
 
 				m_Entity.SetName(IDWithSuffix);
-			}
-			else
-			{
-				m_Entity.SetName(m_sID);
 			}
 		}
 
@@ -492,10 +481,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			plugin.Init(this);
 		}
 
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
-		{
-			activationAction.Init(GetOwner());
-		}
+		InitActivationActions();
 
 		if (m_ParentLayer)
 			m_ParentLayer.CheckAllChildrenSpawned(this);
@@ -596,17 +582,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		//If it fails anywhere, original m_sObjectToSpawn will be used.
 		if (m_bRandomizePerFaction)
 		{
-			ResourceName randomAsset;
-			if (SCR_StringHelper.IsEmptyOrWhiteSpace(GetRandomlySpawnedObject()))
-			{
+			ResourceName randomAsset = GetRandomlySpawnedObject();
+			if (SCR_StringHelper.IsEmptyOrWhiteSpace(randomAsset))
 				GetRandomAsset(randomAsset);
-				if (!SCR_StringHelper.IsEmptyOrWhiteSpace(randomAsset))
+
+			if (!SCR_StringHelper.IsEmptyOrWhiteSpace(randomAsset))
 					m_sObjectToSpawn = randomAsset;
-			}
-			else
-			{
-				randomAsset = GetRandomlySpawnedObject();
-			}
 		}
 
 		Resource resource = Resource.Load(m_sObjectToSpawn);

@@ -37,6 +37,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected bool												m_bEnabled				= false;			//if it is enabled for manipulation ( can be removed or an item can be moved into )
 	protected bool												m_bSelected				= false;
 	protected bool												m_bShown				= true;
+	protected bool												m_bIsArsenal;
 	protected ItemPreviewWidget									m_wItemStorage, m_wTraverseItemStorage;
 	protected RenderTargetWidget								m_wPreviewImage, m_wTraversePreviewImage;
 	
@@ -61,7 +62,24 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected Widget m_wProgressBar;
 	protected Widget m_wWarningOverlay;
 	protected static const ref Color m_WeightDefault = new Color(0.73, 0.73, 0.73, 1);
+	
+	protected static ref ScriptInvokerVoid s_OnArsenalEnter;	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerVoid GetOnArsenalEnter()
+	{
+		if (!s_OnArsenalEnter)
+			s_OnArsenalEnter = new ScriptInvokerVoid();
+		
+		return s_OnArsenalEnter;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.OTHER;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void Init()
@@ -196,6 +214,12 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			}
 			
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsArsenal()
+	{
+		return m_bIsArsenal;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -723,6 +747,18 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	// !
 	void Refresh()
 	{
+		ResourceName focusedItemName;
+		if (m_pFocusedSlot)
+		{
+			focusedItemName = m_pFocusedSlot.GetItemResource(); // remember the slot which was in focus
+		}
+		else
+		{
+			SCR_InventorySlotUI focusedSlot = m_MenuHandler.GetCurrentlyFocusedSlot();
+			if (focusedSlot && m_aSlots.Contains(focusedSlot))
+				focusedItemName = focusedSlot.GetItemResource(); //if for some reason menu was focused on slot from this storage, and it didnt know, lets focus that slot
+		}
+
 		if ( ValidateNavigationQueue() )
 		{
 			int traverseSize = m_aTraverseStorage.Count();
@@ -769,6 +805,21 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 		GetAllItems(itemsInStorage); // Needs a better solution. Very wasteful.
 		CheckIfAnyItemInStorageHasResources(itemsInStorage);
 		RefreshResources();
+
+		if (focusedItemName.IsEmpty())
+			return;
+
+		foreach (int i, SCR_InventorySlotUI uiSlot : m_aSlots)
+		{
+			if (uiSlot && uiSlot.GetItemResource() == focusedItemName)
+			{
+				m_MenuHandler.FocusOnSlotInStorage(this, i);
+				return;
+			}
+		}
+
+		if (!m_aSlots.IsEmpty()) // if this container had a slot which was in focus, then despite the fact that specific prefab is not present, lets focus on something in here, in order to prevent focus being shifted onto a random spot in the inventory
+			m_MenuHandler.FocusOnSlotInStorage(this, 0);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1329,6 +1380,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			
 			if (arsenalManagerComponent)
 			{
+				m_bIsArsenal = true;
 				if (!pStorage)
 					return;
 				
@@ -1347,6 +1399,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 				{
 					pItemsInStorage.Insert(itemPreviewManagerEntity.ResolvePreviewEntityForPrefab(resourceName));
 				}
+				
+				if (s_OnArsenalEnter)
+					s_OnArsenalEnter.Invoke();
 				
 				return;
 			}

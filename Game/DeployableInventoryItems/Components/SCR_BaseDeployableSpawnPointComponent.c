@@ -56,17 +56,13 @@ class SCR_BaseDeployableSpawnPointComponent : SCR_BaseDeployableInventoryItemCom
 	//------------------------------------------------------------------------------------------------
 	protected SCR_DeployableSpawnPoint CreateSpawnPoint()
 	{
-		if (m_sSpawnPointPrefab.IsEmpty())
-			return null;
-		
 		Resource resource = Resource.Load(m_sSpawnPointPrefab);
 		if (!resource.IsValid())
 			return null;
 
-		EntitySpawnParams params = new EntitySpawnParams();
+		EntitySpawnParams params();
 		params.Transform = m_aOriginalTransform;
 		params.TransformMode = ETransformMode.WORLD;
-		
 		return SCR_DeployableSpawnPoint.Cast(GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), params));
 	}
 

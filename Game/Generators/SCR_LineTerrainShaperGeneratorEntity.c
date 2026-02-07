@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Line Terrain Shaper", dynamicBox: true, visible: false)]
+[EntityEditorProps(category: "GameScripted/Generators", description: "Line Terrain Shaper", dynamicBox: true, visible: false)]
 class SCR_LineTerrainShaperGeneratorEntityClass : SCR_LineTerrainShaperGeneratorBaseEntityClass
 {
 }

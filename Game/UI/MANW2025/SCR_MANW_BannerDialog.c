@@ -27,7 +27,7 @@ class SCR_MANW_BannerDialog : SCR_ConfigurableDialogUi
 		title.SetText(popupItem.HeaderText());
 		imgText.SetText(popupItem.ImageText());
 		
-		imgBackground.LoadImageTexture(0, popupItem.BackgroundImagePath());
+		//imgBackground.LoadImageTexture(0, popupItem.BackgroundImagePath());
 		//imgForeground.LoadImageTexture(0, popupItem.ImagePath());
 		
 		if (!popupItem.FooterText().IsEmpty() || popupItem.FooterText() != " ")

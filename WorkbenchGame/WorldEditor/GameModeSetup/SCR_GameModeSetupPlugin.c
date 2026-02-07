@@ -2,7 +2,7 @@
 [WorkbenchPluginAttribute(name: "Game Mode Setup", description: "Set ups the world for a specific game mode", wbModules: { "WorldEditor" }, awesomeFontCode: 0xF6E8)]
 class SCR_GameModeSetupPlugin : WorkbenchPlugin
 {
-	[Attribute("{6389BA4D41B187DC}Configs/Workbench/GameModeSetups/GameMaster.conf", desc: "Game mode configuration rules.", params: "conf class=GameModeSetupConfig", category: "Game Mode Template")]
+	[Attribute("{6389BA4D41B187DC}Configs/Workbench/GameModeSetup/GameMaster.conf", desc: "Game mode configuration rules", params: "conf class=GameModeSetupConfig", category: "Game Mode Template")]
 	protected ResourceName m_sTemplate;
 
 	//[Attribute(category: "Game Mode Template")] //--- Used only for debugging, game crashes when recompiling Workbench scripts and running the plugin repeatedly.
@@ -45,6 +45,16 @@ class SCR_GameModeSetupPlugin : WorkbenchPlugin
 		if (!Workbench.ScriptDialog(CAPTION_INTRO, DESCRIPTION_INTRO, this))
 			return;
 
+		string error;
+		if (!LoadConfig(error))
+		{
+			Print(CAPTION_INTRO + ": " + error, LogLevel.WARNING);
+			if (Workbench.ScriptDialog(CAPTION_INTRO, error, new SCR_GameModeSetupPluginError()) != 0)
+				Run(); // not using ShowPage to prevent filling the history
+
+			return;
+		}
+
 		//--- Next
 		ShowPage(SCR_EGameModeSetupPage.VALIDATION);
 	}
@@ -52,18 +62,6 @@ class SCR_GameModeSetupPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void RunValidation()
 	{
-		if (!m_Config)
-		{
-			string error;
-			if (!LoadConfig(error))
-			{
-				Print(CAPTION_INTRO + ": " + error, LogLevel.WARNING);
-				SCR_GameModeSetupPluginError errorDialog = new SCR_GameModeSetupPluginError();
-				Workbench.ScriptDialog(CAPTION_INTRO, error, errorDialog);
-				return;
-			}
-		}
-
 		m_Config.Init();
 
 		SCR_GameModeSetupPluginValidation dialog = new SCR_GameModeSetupPluginValidation();
@@ -252,85 +250,58 @@ class SCR_GameModeSetupPlugin : WorkbenchPlugin
 
 		switch (page)
 		{
-			case SCR_EGameModeSetupPage.INTRO:
-				Run();
-				break;
-
-			case SCR_EGameModeSetupPage.VALIDATION:
-				RunValidation();
-				break;
-
-			case SCR_EGameModeSetupPage.VALIDATION_RESULTS:
-				RunValidationResults();
-				break;
-
-			case SCR_EGameModeSetupPage.GENERATION:
-				RunGeneration();
-				break;
-
-			case SCR_EGameModeSetupPage.GENERATION_RESULTS:
-				RunGenerationResults();
-				break;
-
-			case SCR_EGameModeSetupPage.MISSION_HEADER:
-				RunMissionHeader();
-				break;
-
-			case SCR_EGameModeSetupPage.MISSION_HEADER_RESULTS:
-				RunMissionHeaderResults();
-				break;
-
-			case SCR_EGameModeSetupPage.OUTRO:
-				RunOutro();
-				break;
+			case SCR_EGameModeSetupPage.INTRO:					Run(); break;
+			case SCR_EGameModeSetupPage.VALIDATION:				RunValidation(); break;
+			case SCR_EGameModeSetupPage.VALIDATION_RESULTS:		RunValidationResults(); break;
+			case SCR_EGameModeSetupPage.GENERATION:				RunGeneration(); break;
+			case SCR_EGameModeSetupPage.GENERATION_RESULTS:		RunGenerationResults(); break;
+			case SCR_EGameModeSetupPage.MISSION_HEADER:			RunMissionHeader(); break;
+			case SCR_EGameModeSetupPage.MISSION_HEADER_RESULTS:	RunMissionHeaderResults(); break;
+			case SCR_EGameModeSetupPage.OUTRO:					RunOutro(); break;
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void ShowPrevPage()
 	{
-		m_aPageHistory.Resize(m_aPageHistory.Count() - 1);
-		ShowPage(m_aPageHistory[m_aPageHistory.Count() - 1]);
+		int pageHistoryCountMinus1 = m_aPageHistory.Count() - 1;
+		m_aPageHistory.Resize(pageHistoryCountMinus1);
+		ShowPage(m_aPageHistory[pageHistoryCountMinus1 - 1]);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected bool LoadConfig(out string error)
 	{
-		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		WorldEditorAPI api = worldEditor.GetApi();
-
 		string worldPath;
-		api.GetWorldPath(worldPath);
+		SCR_WorldEditorToolHelper.GetWorldEditorAPI().GetWorldPath(worldPath);
 		if (worldPath.IsEmpty())
 		{
-			error = "No world is currently loaded, or the current world is not saved!";
+			error = "No world is currently loaded, or the current world is not saved.";
 			return false;
 		}
 
-		if (!m_sTemplate)
+		if (m_sTemplate.IsEmpty())
 		{
-			error = "No template defined!";
+			error = "No template defined! Please fill the Template field.";
 			return false;
 		}
 
 		Resource templateResource = Resource.Load(m_sTemplate);
 		if (!templateResource.IsValid())
 		{
-			error = "Template config is invalid!";
+			error = "Template config " + FilePath.StripPath(m_sTemplate) + " is invalid.";
 			return false;
 		}
 
 		BaseContainer templateContainer = templateResource.GetResource().ToBaseContainer();
 		m_Config = GameModeSetupConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(templateContainer));
-		if (m_Config)
+		if (!m_Config)
 		{
-			return true;
-		}
-		else
-		{
-			error = "Failed to open template config!";
+			error = "Failed to load the " + FilePath.StripPath(m_sTemplate) + " template config.";
 			return false;
 		}
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -539,13 +510,21 @@ class SCR_GameModeSetupPluginOutro
 class SCR_GameModeSetupPluginError
 {
 	//------------------------------------------------------------------------------------------------
-	[ButtonAttribute("Close", true)]
-	protected bool ButtonGenerate()
+	[ButtonAttribute("Back", true)]
+	protected int ButtonBack()
 	{
-		return false;
+		return 1;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("Close")]
+	protected bool ButtonClose()
+	{
+		return 0;
 	}
 }
 
+[EnumLinear()]
 enum SCR_EGameModeSetupPage
 {
 	INTRO,
@@ -555,15 +534,16 @@ enum SCR_EGameModeSetupPage
 	GENERATION_RESULTS,
 	MISSION_HEADER,
 	MISSION_HEADER_RESULTS,
-	OUTRO
+	OUTRO,
 }
 
+[EnumLinear()]
 enum SCR_EGameModeSetupButton
 {
 	CANCEL,
 	BACK,
 	NEXT,
 	SKIP,
-	VALIDATE
+	VALIDATE,
 }
 #endif // WORKBENCH

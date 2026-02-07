@@ -415,7 +415,7 @@ class SCR_DetonatorGadgetComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] deployed
-	protected void OnDeployedStateChanged(bool deployed)
+	protected void OnDeployedStateChanged(bool newState, SCR_BaseDeployableInventoryItemComponent component)
 	{
 		ShowConnectedWiresForChargesInRange();
 	}

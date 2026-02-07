@@ -28,18 +28,18 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 
 	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "0 inf", desc: "Radius of the trigger area", category: "Trigger")]
 	float m_fAreaRadius;
-	
+
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	bool m_bOnce;
-	
+
 	[Attribute(desc: "Actions that will be activated when Trigger gets activated", category: "OnActivation")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
-	
+
 	SCR_BaseTriggerEntity m_Trigger;
 	ref ScriptInvoker<SCR_ScenarioFrameworkArea, SCR_ScenarioFrameworkEActivationType>	m_OnTriggerActivated;
 	ref ScriptInvoker m_OnAreaInit = new ScriptInvoker();
 	bool m_bAreaSelected;
-	SCR_BaseTask m_Task;
+	SCR_Task m_Task;
 	string m_sItemDeliveryPointName;
 	SCR_ScenarioFrameworkLayerTask m_LayerTask;
 	SCR_ScenarioFrameworkSlotTask m_SlotTask; 				//storing this one in order to get the task title and description
@@ -49,11 +49,11 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 
 	//------------------------------------------------------------------------------------------------
 	//! \return the current task assigned to the area.
-	SCR_BaseTask GetTask()
+	SCR_Task GetTask()
 	{
 		return m_Task;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return slot task associated with this scenario framework area.
 	SCR_ScenarioFrameworkSlotTask GetSlotTask()
@@ -67,28 +67,28 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{
 		m_SlotTask = slotTask;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return the layer task associated with this scenario framework area.
 	override SCR_ScenarioFrameworkLayerTask GetLayerTask()
 	{
 		return m_LayerTask;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] layerTask associated with this scenario framework area.
 	void SetLayerTask(SCR_ScenarioFrameworkLayerTask layerTask)
 	{
 		m_LayerTask = layerTask;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return the name of the owner entity of the layer task.
 	string GetLayerTaskName()
 	{
 		return m_LayerTask.GetOwner().GetName();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return the task type associated with the layer task.
 	SCR_ESFTaskType GetLayerTaskType()
@@ -102,7 +102,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{
 		return m_sItemDeliveryPointName;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Sets delivery point name for task delivery and triggers it with given name.
 	//! \param[in] sDeliveryPointName Represents the name of the delivery point for an item in the mission.
@@ -118,7 +118,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	//------------------------------------------------------------------------------------------------
 	//! Store Task in area.
 	//! \param[in] task
-	void StoreTaskToArea(SCR_BaseTask task)
+	void StoreTaskToArea(SCR_Task task)
 	{
 		m_Task = task;
 	}
@@ -167,12 +167,12 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{
 		if (!layerTask)
 			return;
-		
+
 		m_LayerTask = layerTask;
 		m_LayerTask.AddRandomlySpawnedChild(slotTask);
 		m_LayerTask.Init(this, SCR_ScenarioFrameworkEActivationType.ON_TASKS_INIT);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return Represents the trigger entity associated with this area.
 	SCR_BaseTriggerEntity GetTrigger()
@@ -182,51 +182,39 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 
 	//------------------------------------------------------------------------------------------------
 	//! Spawns a trigger entity with specified resource, sets its radius, and attaches an activation event.
-	void SpawnTrigger()
+	protected void SetupTrigger()
 	{
-		Resource resource = Resource.Load(m_sTriggerResource);
-		if (!resource)
-			return;
+		if (!m_Trigger)
+		{
+			EntitySpawnParams spawnParams = new EntitySpawnParams();
+			spawnParams.TransformMode = ETransformMode.WORLD;
+			GetOwner().GetWorldTransform(spawnParams.Transform);
+			m_Trigger = SCR_BaseTriggerEntity.Cast(GetGame().SpawnEntityPrefabEx(m_sTriggerResource, false, params: spawnParams));
+		}
 
-		EntitySpawnParams spawnParams = new EntitySpawnParams();
-		spawnParams.TransformMode = ETransformMode.WORLD;
-		GetOwner().GetWorldTransform(spawnParams.Transform);
-
-		//--- Apply rotation
-		vector angles = Math3D.MatrixToAngles(spawnParams.Transform);
-		Math3D.AnglesToMatrix(angles, spawnParams.Transform);
-
-
-		//--- Spawn the prefab
-		BaseResourceObject resourceObject = resource.GetResource();
-		if (!resourceObject)
-			return;
-
-		string resourceName = resourceObject.GetResourceName();
-		m_Trigger = SCR_BaseTriggerEntity.Cast(GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), spawnParams));
 		if (!m_Trigger)
 			return;
 
 		m_Trigger.SetSphereRadius(m_fAreaRadius);
 		m_Trigger.GetOnActivate().Insert(OnAreaTriggerActivated);
-		
-		SCR_ScenarioFrameworkTriggerEntity characterTrigger = SCR_ScenarioFrameworkTriggerEntity.Cast(m_Trigger);
-		if (characterTrigger)
-			characterTrigger.SetOnce(m_bOnce);
-		
+
+		SCR_ScenarioFrameworkTriggerEntity sfTrigger = SCR_ScenarioFrameworkTriggerEntity.Cast(m_Trigger);
+		if (sfTrigger)
+			sfTrigger.SetOnce(m_bOnce);
+
 		if (m_Trigger)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase triggerAction : m_aTriggerActions)
 			{
 				triggerAction.Init(m_Trigger);
-	}
+			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Moves task icon to area position.
 	//! \param[in] task
-	void MoveTaskIconToArea(notnull SCR_BaseTask task)
+	void MoveTaskIconToArea(notnull SCR_Task task)
 	{
 		task.SetOrigin(GetOwner().GetOrigin());
 
@@ -313,7 +301,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			m_OnTriggerActivated.Clear();
 			if (!m_bOnce)
 				return;
-			
+
 			m_Trigger.EnablePeriodicQueries(false);
 		}
 	}
@@ -331,10 +319,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	//------------------------------------------------------------------------------------------------
 	//! \return the event handler for area initialization.
 	ScriptInvoker GetOnAreaInit()
-	{	
+	{
 		return m_OnAreaInit;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Restores default settings, deselects area, nullifies triggers, resets item delivery point, and calls base class
 	//! \param[in] includeChildren Restores default settings, optionally including children objects.
@@ -347,17 +335,17 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		m_sItemDeliveryPointName = "";
 		m_LayerTask = null;
 		m_SlotTask = null;
-		
+
 		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes dynamic reinitialization by calling Init() method.
 	override void DynamicReinit()
 	{
 		Init();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Removes all children layers from the scenario framework layer and despawns itself if not excluded from dynamic despawning.
 	//! \param[in] layer Removes layer from dynamic despawning, clears children layers.
@@ -365,7 +353,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	{
 		if (m_bExcludeFromDynamicDespawn)
 			return;
-		
+
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = true;
 		m_aChildren.RemoveItem(null);
@@ -375,10 +363,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			if (!child.m_bDynamicDespawn)
 				child.DynamicDespawn(this);
 		}
-		
+
 		m_aChildren.Clear();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Initializes parent layer with true value.
 	//! \return true if parent layer initialization is successful.
@@ -405,11 +393,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	//! Initializes Trigger
 	//! \param[in] layer for which this method is called.
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
-		{
+	{
 		super.AfterAllChildrenSpawned(layer);
-		
-		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sTriggerResource))
-			SpawnTrigger();
+
+		SetupTrigger();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -574,27 +561,29 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
 		if (scenarioFrameworkSystem)
 			scenarioFrameworkSystem.RegisterArea(this);
-		
+
 		array<SCR_ScenarioFrameworkLayerBase> children = {};
 		GetAllLayers(children);
-		
+
 		foreach (SCR_ScenarioFrameworkLayerBase child : children)
 		{
 			if (child.GetActivationType() == SCR_ScenarioFrameworkEActivationType.ON_INIT)
 			{
-			child.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
-			child.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
-		}
+				if (scenarioFrameworkSystem && scenarioFrameworkSystem.IsMaster())
+					child.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
+
+				child.SetActivationType(SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
+			}
 			
 			if (!child.GetDynamicDespawnEnabled())
 				continue;
 			
 			int despawnRange = child.GetDynamicDespawnRange();
 			m_aDespawnedLayers.Insert(new Tuple3<SCR_ScenarioFrameworkLayerBase, vector, int>(child, child.GetOwner().GetOrigin(), (despawnRange * despawnRange)));
+		}
 		
 		if (!m_aDespawnedLayers.IsEmpty())
 			PrepareDynamicDespawn();
-	}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -602,10 +591,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
-		
+
 		super.OnPostInit(owner);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Draws debug shapes for debugging
 	//! \param[in] draw debug shape for the object if draw parameter is true, otherwise does not draw anything.
@@ -621,10 +610,10 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 										GetOwner().GetOrigin(),
 										m_fDebugShapeRadius
 								);
-		
+
 		if (m_sTriggerResource.IsEmpty())
 			return;
-		
+
 		Shape triggerdbgShape = null;
 		triggerdbgShape = Shape.CreateSphere(
 										ARGB(100, 0x99, 0x10, 0xF2),
@@ -641,8 +630,8 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 	void SCR_ScenarioFrameworkArea(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_fDebugShapeRadius = m_iDynamicDespawnRange;
-#ifdef WORKBENCH	
+#ifdef WORKBENCH
 		m_iDebugShapeColor = ARGB(32, 0x99, 0xF3, 0x12);
-#endif		
+#endif
 	}
 }

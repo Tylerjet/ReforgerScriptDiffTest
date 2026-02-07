@@ -52,6 +52,9 @@ class SCR_CanOperateVehicleDoorCondition : SCR_AvailableActionCondition
 		if (doorType != m_eDoorType)
 			return GetReturnResult(false);
 
+		if (!m_bRequireOpenDoor && !compartmentAccessComp.CanAccessDoor(compartment.GetOwner(), compartmentManager, mainDoorId))
+			return GetReturnResult(false);
+
 		return GetReturnResult(compartmentManager.IsDoorOpen(mainDoorId) == m_bRequireOpenDoor);
 	}
 }

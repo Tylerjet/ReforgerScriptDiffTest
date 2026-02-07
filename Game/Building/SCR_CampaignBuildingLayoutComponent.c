@@ -459,7 +459,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 		float previewSize = vector.DistanceXZ(boundMin, boundMax) * 1.25;
 		
 		SCR_AIDangerEvent_UnsafeArea unsafeAreaEvent = new SCR_AIDangerEvent_UnsafeArea();
-		unsafeAreaEvent.SetDangerType(SCR_EAIDangerEventType.Danger_UnsafeArea);
+		unsafeAreaEvent.SetDangerType(EAIDangerEventType.Danger_UnsafeArea);
 		unsafeAreaEvent.SetPosition(GetOwner().GetOrigin());
 		unsafeAreaEvent.SetRadius(previewSize);
 		GetGame().GetAIWorld().RequestBroadcastDangerEvent(unsafeAreaEvent);	

@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "Floaters Finder", wbModules: { "WorldEditor" }, shortcut: "Ctrl+Alt+Page Up", awesomeFontCode: 0xF338)] // 0xF338 = ↨
+[WorkbenchPluginAttribute(name: "Floaters Finder", category: "Object Placement", wbModules: { "WorldEditor" }, shortcut: "Ctrl+Alt+Page Up", awesomeFontCode: 0xF338)] // 0xF338 = ↨
 class SCR_FloatersFinderPlugin : WorkbenchPlugin
 {
 	/*
@@ -94,7 +94,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		int firstTick;
 		WORLD_ENTITIES.Clear();
 
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		BaseWorld baseWorld = worldEditorAPI.GetWorld();
 		bool useSelectedEntities = worldEditorAPI.GetSelectedEntity() != null;
 		if (useSelectedEntities) // use selected entities
@@ -185,7 +185,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			return false;
 		}
 
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		if (!worldEditorAPI)
 		{
 			Print("Floaters Finder - Run method stopped because World Editor API was not found", LogLevel.WARNING);
@@ -229,7 +229,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected bool InsertEntity(notnull IEntity entity)
 	{
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		WORLD_ENTITIES.Insert(worldEditorAPI.EntityToSource(entity));
 		return true;
 	}
@@ -251,7 +251,6 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 
 		vector entityPos, bboxMin, bboxMax, tempPos;
 		vector bboxCorners[15]; // 8 vertices + 6 face centres + 1 centre
-		float entityAngleX, entityAngleZ;
 		float altitude, terrainY, tempTerrainY;
 
 		TraceParam traceParam = new TraceParam();
@@ -261,7 +260,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		float maxPitch = m_fMaxTreeAngle;
 		float maxRoll = m_fMaxTreeAngle;
 
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 
 		bool manyEntities = WORLD_ENTITIES.Count() > 10;
 		int currentLayerId = worldEditorAPI.GetCurrentEntityLayerId();
@@ -294,7 +293,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			maxRoll = m_fMaxTreeAngle;
 
 			editorData = entitySource.GetObjectArray("editorData");
-			if (editorData && editorData.Count() /* > 0 */)
+			if (editorData && editorData.Count() > 0)
 			{
 				firstEditorData = editorData.Get(0);
 
@@ -330,14 +329,15 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			// angles check - if out of angle, leave checks
 			if (!insertEntity && isVegetation && (m_bUsePrefabAngles || m_fMaxTreeAngle < 180))
 			{
-				entityAngleX = 0;
-				entityAngleZ = 0;
-				entitySource.Get("angleX", entityAngleX);
-				entitySource.Get("angleZ", entityAngleZ);
-				if (entityAngleX > maxRoll || entityAngleZ > maxPitch)
+				vector angles;
+				if (entitySource.Get("angles", angles)
+					&& (
+						angles[0] < -maxRoll || angles[2] < -maxPitch || angles[0] > maxRoll || angles[2] > maxPitch
+					)
+				)
 				{
 					if (!manyEntities)
-						Print(string.Format("ignoring pitch %1/%2 / roll %3/%4", entityAngleZ, maxPitch, entityAngleX, maxRoll), LogLevel.NORMAL);
+						Print(string.Format("ignoring pitch %1/%2 / roll %3/%4", angles[2], maxPitch, angles[0], maxRoll), LogLevel.NORMAL);
 
 					angleOffsetNb++;
 					continue;
@@ -480,7 +480,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void SelectEntities(notnull array<IEntitySource> entities)
 	{
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		worldEditorAPI.ClearEntitySelection();
 		for (int i, cnt = Math.Min(m_iMaxSelectedEntities, entities.Count()); i < cnt; i++)
 		{
@@ -492,18 +492,12 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void OutputEntitiesToFile(notnull array<IEntitySource> filteredEntities)
 	{
-		string link, worldName;
-		vector transformation[4];
-		vector bboxMin, bboxMax, centre;
-		float diagonal;
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 
-		transformation[0] = vector.Right;
-		transformation[1] = vector.Up;
-		transformation[2] = vector.Forward; // point North
-
-		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		string worldName;
 		worldEditorAPI.GetWorldPath(worldName);
 
+		string link;
 		if (filteredEntities.IsEmpty())
 			link = ".";
 		else
@@ -519,11 +513,16 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			fileHandle.WriteLine(string.Empty);
 
 		IEntity entity;
+		vector transformation[4];
+		transformation[0] = vector.Right;
+		transformation[1] = vector.Up;
+		transformation[2] = vector.Forward; // point North
+		vector bboxMin, bboxMax, centre;
 		foreach (IEntitySource entitySource : filteredEntities)
 		{
 			entity = worldEditorAPI.SourceToEntity(entitySource);
 			entity.GetBounds(bboxMin, bboxMax);
-			diagonal = (bboxMax - bboxMin).Length();
+			float diagonal = (bboxMax - bboxMin).Length();
 			if (diagonal < 5)
 				diagonal = 5;
 

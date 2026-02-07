@@ -9,7 +9,10 @@ enum SCR_EMapMarkerType
 	DYNAMIC_EXAMPLE,	// example entry of a dynamic marker
 	PLACED_CUSTOM,		// configurable placed static marker
 	PLACED_MILITARY,	// placed static marker - predefined military symbol
-	SQUAD_LEADER		// dynamic squad leader marker 
+	SQUAD_LEADER,		// dynamic squad leader marker
+	DOT_CIRCLE,			// dotted circle - used in SF scenarios
+	PLACED_RECON,		// placed static marker - predefined military and custom symbols
+	SQUAD_MEMBER,		// dynamic squad member marker
 }
 
 //------------------------------------------------------------------------------------------------
@@ -82,6 +85,10 @@ class SCR_MapMarkerEntryConfig
 			{
 				widgetComp.SetModeIcon(true, marker.GetMarkerID() != -1);
 				widgetComp.SetAuthorVisible(false);
+			}
+			else
+			{
+				widgetComp.SetAuthorVisible(true);
 			}
 			
 			widgetComp.SetAuthor(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(ownerID));

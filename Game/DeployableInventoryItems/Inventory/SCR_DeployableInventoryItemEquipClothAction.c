@@ -31,6 +31,6 @@ class SCR_DeployableInventoryItemEquipClothAction : SCR_EquipClothAction
 		if (deployableItemComponent.IsDeploying())
 			return false;
 		
-		return super.CanBeShownScript(user);
+		return super.CanBePerformedScript(user);
 	}
 }

@@ -13,7 +13,7 @@ class SCR_LoginDialogUI : SCR_LoginProcessDialogUI
 		super.OnMenuOpen(preset);
 
 		// Load credentials
-		string name = GetGame().GetBackendApi().GetCredentialsItem(EBackendCredentials.EBCRED_NAME);
+		string name = BohemiaAccountApi.GetEmail();
 		m_UserName = SCR_EditBoxComponent.GetEditBoxComponent(USERNAME_WIDGET, m_wRoot);
 		if (m_UserName)
 		{
@@ -45,24 +45,22 @@ class SCR_LoginDialogUI : SCR_LoginProcessDialogUI
 		}
 		
 		// Verify credentials
-		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_NAME, user);
-		GetGame().GetBackendApi().SetCredentialsItem(EBackendCredentials.EBCRED_PWD, m_Password.GetValue());
-		GetGame().GetBackendApi().VerifyCredentials(m_Callback, true);
+		BohemiaAccountApi.Link(m_Callback, user, m_Password.GetValue(), "");
 		
 		super.OnConfirm();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	override void OnFailDelayed(BackendCallback callback)
 	{
-		if (restCode == SCR_ELoginFailReason.TWO_FACTOR_AUTHENTICATION)
+		if (callback.GetHttpCode() == SCR_ELoginFailReason.TWO_FACTOR_AUTHENTICATION)
 		{
 			SCR_LoginProcessDialogUI.Create2FADialog(m_UserName.GetValue().Trim(), m_Password.GetValue());
 			Close();
 		}
 		else
 		{
-			super.OnFailDelayed(callback, code, restCode, apiCode);
+			super.OnFailDelayed(callback);
 		}
 	}
 	

@@ -202,6 +202,10 @@ class IEntity: Managed
 	//! See IEntity#GetTransform
 	proto external void GetLocalTransform(out vector mat[]);
 	/*!
+	Returns combined local transformation of parent's pivot attachment and local transform
+	*/
+	proto external void ComputeLocalTransform(out vector mat[]);
+	/*!
 	Transforms local vector to parent(world) space.
 	\code
 		Man player = g_Game.GetPlayer();

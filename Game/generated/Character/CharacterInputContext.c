@@ -81,6 +81,10 @@ class CharacterInputContext
 	proto external bool GetVehicleDoorToggle();
 	proto external void SetVehicleTurnOutToggle(bool toggle);
 	proto external bool GetVehicleTurnOutToggle();
+	proto external bool GetVehicleTurnOut();
+	proto external void SetVehicleTurnOut(bool val);
+	proto external bool GetVehicleTurnIn();
+	proto external void SetVehicleTurnIn(bool val);
 	proto external void SetVehicleDoorInfoIndex(int val);
 	proto external int GetVehicleDoorInfoIndex();
 	proto external void SetVehicleTeleportTarget(vector target[]);

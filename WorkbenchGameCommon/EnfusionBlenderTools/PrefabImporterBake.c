@@ -10,7 +10,7 @@ static BaseContainer GetContainerFromList(string containerName, BaseContainerLis
 	return null;
 }
 
-static const ref array<string> st = {"SCR_DestructibleBuildingEntity", "GenericEntity", "Building", "GameEntity"};
+static const ref array<string> st = {"SCR_DestructibleBuildingEntity", "GenericEntity", "Building", "GameEntity", "StaticModelEntity"};
 
 FBXItem PopulateFBXItem(BaseContainer prefab, FBXItem slotOwner)
 {
@@ -106,7 +106,7 @@ class PrefabImportErrorResponse : JsonApiStruct
 
 	void PrefabImportErrorResponse()
 	{
-		RegV(msg);
+		RegV("msg");
 	}
 }
 

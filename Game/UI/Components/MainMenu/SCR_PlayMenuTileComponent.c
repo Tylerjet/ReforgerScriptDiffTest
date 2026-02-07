@@ -48,11 +48,7 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		
 		m_wName = TextWidget.Cast(w.FindAnyWidget("Name"));
 		m_wDescription = TextWidget.Cast(w.FindAnyWidget("Description"));
-		m_wFeatured = w.FindAnyWidget("Featured");
 		m_wContentGroup = w.FindAnyWidget("ContentGroup");
-
-		m_wRecentlyPlayed = w.FindAnyWidget("RecentlyPlayed");
-		m_wRecentlyPlayedText = TextWidget.Cast(m_wRecentlyPlayed.FindAnyWidget("Label"));
 
 		m_wMouseInteractButtons = w.FindAnyWidget("MouseInteractButtons");
 		Widget wPlay = w.FindAnyWidget(SCR_ScenarioUICommon.BUTTON_PLAY);
@@ -149,27 +145,14 @@ class SCR_PlayMenuTileComponent : SCR_TileBaseComponent
 		{
 			ResourceName texture = GetTexture();
 
-			//PrintFormat("%1 | texture: %2", item.Name(), texture);
-
 			if (!texture.IsEmpty())
 				comp.SetImage(texture, item.GetOwner() != null);
 		}
-
-		//DEBUG
-//		string savefile_item = SCR_SaveLoadComponent.GetSaveFileName(item);
-//		Print(savefile_item, LogLevel.NORMAL);
-//		string savefile_header = SCR_SaveLoadComponent.GetSaveFileName(m_Header);
-//		Print(savefile_header, LogLevel.NORMAL);
-
-		m_wFeatured.SetVisible(contentType == EPlayMenuContentType.FEATURED);
-		m_wRecentlyPlayed.SetVisible(contentType == EPlayMenuContentType.RECENT);
 
 		if (contentType == EPlayMenuContentType.RECENT)
 		{
 			int timeSinceLastPlayedSeconds = m_Item.GetTimeSinceLastPlay();
 			string sLastPlayed = SCR_FormatHelper.GetTimeSinceEventImprecise(timeSinceLastPlayedSeconds);
-
-			m_wRecentlyPlayedText.SetText(sLastPlayed);
 		}
 		
 		if (m_wMouseInteractButtons)

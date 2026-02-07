@@ -39,13 +39,8 @@ class SCR_ResourceContainerVehicleUnloadAction : SCR_ScriptedUserAction
 		||	!m_ResourceConsumer		&& !m_ResourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, m_eResourceType, m_ResourceConsumer))
 			return;
 		
-		GetResourceValues(m_fCurrentResource, m_fMaxStoredResource, m_fCurrentTransferValue);
-		
-		m_ResourceConsumer.RequestConsumtion(m_fCurrentTransferValue);
-		m_ResourceGenerator.RequestGeneration(m_fCurrentTransferValue);
-		
-		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
-		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		const int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(pUserEntity);
+		const PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		
 		if (!playerController)
 			return;
@@ -55,6 +50,10 @@ class SCR_ResourceContainerVehicleUnloadAction : SCR_ScriptedUserAction
 		if (!resourcePlayerControllerComponent)
 			return;
 		
+		resourcePlayerControllerComponent.OnBeforePlayerInteraction(EResourcePlayerInteractionType.VEHICLE_UNLOAD, m_ResourceConsumer.GetComponent(), m_ResourceGenerator.GetComponent(), m_eResourceType, m_fCurrentTransferValue);
+		GetResourceValues(m_fCurrentResource, m_fMaxStoredResource, m_fCurrentTransferValue);
+		m_ResourceConsumer.RequestConsumtion(m_fCurrentTransferValue);
+		m_ResourceGenerator.RequestGeneration(m_fCurrentTransferValue);
 		resourcePlayerControllerComponent.OnPlayerInteraction(EResourcePlayerInteractionType.VEHICLE_UNLOAD, m_ResourceConsumer.GetComponent(), m_ResourceGenerator.GetComponent(), m_eResourceType, m_fCurrentTransferValue);
 	}
 	

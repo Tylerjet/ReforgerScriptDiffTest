@@ -14,19 +14,23 @@ class SCR_ScenarioFrameworkActionProcessVoicelineEnumAndString : SCR_ScenarioFra
 		if (!scenarioFrameworkSystem)
 			return;
 
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
-			return;
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+	    if (!taskSystem)
+	        return;
 
-		array<SCR_BaseTask> tasks = {};
-		taskManager.GetTasks(tasks);
-
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasks(tasks);
+		
 		typename targetEnum = m_sTargetEnum.ToType();
-		foreach (SCR_BaseTask task : tasks)
+		foreach (SCR_Task task : tasks)
 		{
 			SCR_ScenarioFrameworkTask frameworkTask = SCR_ScenarioFrameworkTask.Cast(task);
-			if (frameworkTask)
-				scenarioFrameworkSystem.ProcessVoicelineEnumAndString(targetEnum, frameworkTask.m_sTaskIntroVoiceline)
+			if (!frameworkTask)
+				return;
+			
+			SCR_ScenarioFrameworkSlotTask slotTask = frameworkTask.GetSlotTask();
+			if (slotTask)
+				scenarioFrameworkSystem.ProcessVoicelineEnumAndString(targetEnum, slotTask.m_sTaskIntroVoiceline);
 		}
 	}
 }

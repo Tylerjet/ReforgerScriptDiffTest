@@ -20,9 +20,9 @@ class SCR_AnimatedBeltSystem : GameSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnUpdate(ESystemPoint point)
+	override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		bool nullValuePresent;
 		
 		foreach (SCR_AnimatedBeltComponent comp : m_aComponents)

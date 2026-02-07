@@ -34,7 +34,8 @@ class ParticleEffectEntity: GenericEntity
 	//! Tells if we should be deleted when it is finished or when the emission is stopped.
 	proto external void SetDeleteWhenStopped(bool deleteWhenStopped);
 	proto external void SetUseParentAsVelocitySource(bool useParentAsVelocitySource);
-	proto external void SetFollowParent(IEntity parent, vector localTransform[4]);
+	//! Follow the parent, if pivotId != -1, local transform is local to the pivot otherwise local to the entity
+	proto external void SetFollowParent(IEntity parent, vector localTransform[4], int pivotId = -1);
 	//! Play the current particle. If paused, then it resumes it.
 	proto external void Play();
 	//! Stop the current particle.

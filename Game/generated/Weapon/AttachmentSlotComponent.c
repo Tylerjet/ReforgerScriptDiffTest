@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class AttachmentSlotComponentClass: BaseAttachmentSlotComponentClass
-{
-}
-
 class AttachmentSlotComponent: BaseAttachmentSlotComponent
 {
 	proto external void SetAttachment(IEntity attachmentEntity);

@@ -38,6 +38,14 @@ enum EBandagingAnimationBodyParts
 	LeftLeg = 7,
 	RightLeg = 8
 };
+
+enum SCR_EForcedWoundedSubmesh
+{
+	DISABLED = 0,
+	FORCED_WOUNDED = 1,
+	FORCED_NOT_WOUNDED = 2,
+};
+
 //---- REFACTOR NOTE END ----
 
 class SCR_BleedingHitZoneParameters : Managed
@@ -72,14 +80,16 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 		if (m_fFullRegenerationTime <= 0)
 			return 0;
 		
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
-		
-		if (considerRegenScale && damageMgr && damageMgr.s_HealthSettings)
+		if (considerRegenScale)
 		{
-			if (SCR_CharacterResilienceHitZone.Cast(this))
-				return ((GetMaxHealth() / m_fFullRegenerationTime) * damageMgr.s_HealthSettings.GetResilienceHzRegenScale());
+			SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+			if (damageMgr && damageMgr.s_HealthSettings)
+			{
+				if (SCR_CharacterResilienceHitZone.Cast(this))
+					return ((GetMaxHealth() / m_fFullRegenerationTime) * damageMgr.s_HealthSettings.GetResilienceHzRegenScale());
 			
-			return (GetMaxHealth() / m_fFullRegenerationTime) * damageMgr.GetRegenScale();
+				return (GetMaxHealth() / m_fFullRegenerationTime) * damageMgr.GetRegenScale();
+			}
 		}
 		
 		return GetMaxHealth() / m_fFullRegenerationTime;
@@ -94,6 +104,9 @@ class SCR_RegeneratingHitZone : SCR_HitZone
 		
 		// if damageManager is not cast, throw assert
 		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetHitZoneContainer());
+		if (damageMgr == null)
+			return 0;
+		
 		damageMgr.FindDamageEffectsOnHitZone(this, effects);
 		
 		// if wanted dps is physical hitZone passive regen, return the exact value. If the regen is still in delaytimer, return 0
@@ -167,27 +180,27 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	[Attribute("", UIWidgets.Object)]
 	protected ref array<ref LoadoutAreaType> m_aBleedingAreas;
 
-	[Attribute(ECharacterHitZoneGroup.VIRTUAL.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ECharacterHitZoneGroup))]
+	[Attribute(ECharacterHitZoneGroup.VIRTUAL.ToString(), UIWidgets.ComboBox, enumType: ECharacterHitZoneGroup)]
 	protected ECharacterHitZoneGroup m_eHitZoneGroup;	
 	
-	[Attribute(EBandagingAnimationBodyParts.Invalid.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EBandagingAnimationBodyParts))]
-	protected EBandagingAnimationBodyParts m_eBandageAnimationBodyPart;
+	[Attribute(EBandagingAnimationBodyParts.Invalid.ToString(), UIWidgets.ComboBox, enumType: EBandagingAnimationBodyParts)]
+	protected EBandagingAnimationBodyParts m_eBandageAnimationBodyPart;	
+	
+	[Attribute(SCR_EForcedWoundedSubmesh.DISABLED.ToString(), UIWidgets.ComboBox, enumType: SCR_EForcedWoundedSubmesh)]
+	protected SCR_EForcedWoundedSubmesh m_eForcedWoundedSubmesh;
 	
 	protected bool m_bIsWounded;
 	
 	//-----------------------------------------------------------------------------------------------------------
-	/*!
-	Called after damage multipliers and thresholds are applied to received impacts and damage is applied to hitzone.
-	This is also called when transmitting the damage to parent hitzones!
-	\param type Type of damage
-	\param damage Amount of damage received
-	\param struckHitZone Original hitzone that got dealt damage, as this might be transmitted damage.
-	\param instigator Damage source instigator (soldier, vehicle, ...)
-	\param hitTransform [hitPosition, hitDirection, hitNormal]
-	\param speed Projectile speed in time of impact
-	\param colliderID ID of the collider receiving damage
-	\param nodeID ID of the node of the collider receiving damage
-	*/
+	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
+		super.OnInit(pOwnerEntity, pManagerComponent);
+		
+		if (m_eForcedWoundedSubmesh != SCR_EForcedWoundedSubmesh.DISABLED)
+			GetGame().GetCallqueue().CallLater(UpdateSubmeshes);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
 	override void OnDamage(notnull BaseDamageContext damageContext)
 	{
 		super.OnDamage(damageContext);
@@ -215,22 +228,6 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
-	/*!
-	Calculates the amount of damage a hitzone will receive.
-	\param damageType - damage type
-	\param rawDamage - incoming damage, without any modifiers taken into account
-	\param hitEntity - damaged entity
-	\param struckHitZone - hitzone to damage
-	\param damageSource - projectile
-	\param damageSourceGunner - damage source instigator 
-	\param damageSourceParent - damage source parent entity (soldier, vehicle)
-	\param hitMaterial - hit surface physics material
-	\param colliderID - collider ID - if it exists
-	\param hitTransform - hit position, direction and normal
-	\param impactVelocity - projectile velocity in time of impact
-	\param nodeID - bone index in mesh obj
-	\param isDOT - true if this is a calculation for DamageOverTime 
-	*/
 	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
 	{
 		if (isDOT)
@@ -309,7 +306,22 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	//! Manage wounds submeshes
 	void UpdateSubmeshes()
 	{
-		bool isWounded = GetDamageStateThreshold(GetDamageState()) <= GetDamageStateThreshold(ECharacterDamageState.WOUNDED);
+		bool isWounded;
+		switch (m_eForcedWoundedSubmesh)
+		{
+			case SCR_EForcedWoundedSubmesh.DISABLED:
+				isWounded = GetDamageStateThreshold(GetDamageState()) <= GetDamageStateThreshold(ECharacterDamageState.WOUNDED);
+				break;
+			
+			case SCR_EForcedWoundedSubmesh.FORCED_WOUNDED:
+				isWounded = true;
+				break;
+			
+			case SCR_EForcedWoundedSubmesh.FORCED_NOT_WOUNDED:
+				isWounded = false;
+				break;
+		}
+		
 		if (m_bIsWounded != isWounded)
 			SetWoundedSubmesh(isWounded);
 	}

@@ -23,21 +23,28 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	[Attribute(defvalue: "1", category: "Generation", desc: "Allow entities generation by this generator - useful in order to adjust shape and settings without generating unwanted entities\nKeep it ticked before saving!\nNote: does not prevent terrain shaping and other generator features")]
 	protected bool m_bEnableGeneration;
 
-	[Attribute(defvalue: "42", category: "Generation", desc: "Randomisation Seed used by this generator")]
+	[Attribute(defvalue: DEFAULT_SEED.ToString(), category: "Generation", desc: "Randomisation Seed used by this generator", params: string.Format("%1 %2", MIN_RANDOM_SEED, MAX_RANDOM_SEED))]
 	protected int m_iSeed;
+
+	[Attribute(defvalue: "1", category: "Generation", desc: "Randomise the above seed every change")]
+	protected bool m_bRandomiseSeedOnUse;
+
+	// these consts must be above ifdef as they are used in attributes
+	protected static const int DEFAULT_SEED = 42;
+	protected static const int MIN_RANDOM_SEED = 0;
+	protected static const int MAX_RANDOM_SEED = 0x7FFF; // 32767
 
 #ifdef WORKBENCH
 
 	protected IEntitySource m_Source;				//!< the generator's entity source
 	protected IEntitySource m_ParentShapeSource;	//!< the parent shape's entity source, if any - must be managed ONLY by SCR_GeneratorBaseEntity
 	protected int m_iSourceLayerID;
-	
+
 	protected ref RandomGenerator m_RandomGenerator;
 
 	protected bool m_bIsChangingWorkbenchKey;
 
 	protected static const int BASE_GENERATOR_COLOUR = Color.WHITE;
-
 	//------------------------------------------------------------------------------------------------
 	override void _WB_OnParentChange(IEntitySource src, IEntitySource prevParentSrc)
 	{
@@ -47,7 +54,8 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
 			return;
 
-		m_ParentShapeSource = src.GetParent();
+		m_Source = src;
+		m_ParentShapeSource = m_Source.GetParent();
 		if (!m_ParentShapeSource
 			|| !m_ParentShapeSource.GetClassName().ToType()
 			|| !m_ParentShapeSource.GetClassName().ToType().IsInherited(ShapeEntity))
@@ -57,7 +65,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
-		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+		super._WB_OnKeyChanged(src, key, ownerContainers, parent); // true or false does not matter here
 
 		if (m_bIsChangingWorkbenchKey)
 			return false;
@@ -92,29 +100,25 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		}
 
 		// keep the angles at 0
-		array<string> angles = { "angleX", "angleY", "angleZ" };
-		foreach (string angle : angles)
+		if (key == "angles")
 		{
-			if (key == angle)
+			bool isSetDirectly = src.IsVariableSetDirectly("angles");
+
+			if (sameParentChange)
+				Print("Do not modify a generator entity itself! Change its parent shape instead", LogLevel.WARNING);
+
+			m_bIsChangingWorkbenchKey = true;
+			if (isSetDirectly)
 			{
-				bool isSetDirectly = src.IsVariableSetDirectly(angle);
-
-				if (sameParentChange)
-					Print("Do not modify a generator entity itself! Change its parent shape instead", LogLevel.WARNING);
-
-				m_bIsChangingWorkbenchKey = true;
-				if (isSetDirectly)
-				{
-					worldEditorAPI.ClearVariableValue(src, null, angle);
-				}
-				else // angleValue != 0
-				{
-					worldEditorAPI.SetVariableValue(src, null, angle, "0");
-					Print("Generator has angle " + angle + " set in Prefab! " + src.GetResourceName(), LogLevel.WARNING);
-				}
-
-				m_bIsChangingWorkbenchKey = false;
+				worldEditorAPI.ClearVariableValue(src, null, "angles");
 			}
+			else // angleValue != 0
+			{
+				worldEditorAPI.SetVariableValue(src, null, "angles", "0 0 0");
+				Print("Generator has angles set in Prefab! " + src.GetResourceName(), LogLevel.WARNING);
+			}
+
+			m_bIsChangingWorkbenchKey = false;
 		}
 
 		// keep the generator at (relative) 0 0 0 as long as it has a parent
@@ -183,7 +187,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	{
 		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
 		m_ParentShapeSource = shapeEntitySrc;
-		ResetGeneratorPosition(shapeEntity);
+		// no WorldEditorAPI operations here!
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -225,7 +229,19 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		{
 			entities.Insert(m_Source.GetChild(i));
 		}
+
 		worldEditorAPI.DeleteEntities(entities);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return World EditorAPI or null if error
+	protected static WorldEditorAPI GetWorldEditorAPI()
+	{
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		if (!worldEditor)
+			return null;
+
+		return worldEditor.GetApi();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -263,9 +279,9 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] shapeEntitySrc
 	//! \return 3D anchor points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
-	protected array<vector> GetWorldAnchorPoints(notnull IEntitySource shapeEntitySrc)
+	protected static array<vector> GetWorldAnchorPoints(notnull IEntitySource shapeEntitySrc)
 	{
-		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
 		if (!worldEditorAPI)
 			return null;
 
@@ -310,9 +326,9 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] shapeEntitySrc
 	//! \return 3D points in absolute (world) coordinates or null if WorldEditorAPI is not available / source is not a shape
-	protected array<vector> GetWorldTesselatedShapePoints(notnull IEntitySource shapeEntitySrc)
+	protected static array<vector> GetWorldTesselatedShapePoints(notnull IEntitySource shapeEntitySrc)
 	{
-		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
 		if (!worldEditorAPI)
 			return null;
 
@@ -405,6 +421,39 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		}
 
 		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// (Re)set the random generator's seed
+	protected void SetSeed()
+	{
+		int wantedSeed;
+		if (m_bRandomiseSeedOnUse)
+			wantedSeed = Math.RandomInt(MIN_RANDOM_SEED, MAX_RANDOM_SEED);
+		else
+			wantedSeed = m_iSeed;
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return;
+
+		IEntitySource source = worldEditorAPI.EntityToSource(this);
+		IEntitySource ancestor = source.GetAncestor();
+		int ancestorSeed;
+		if (!ancestor || !ancestor.Get("m_iSeed", ancestorSeed))
+			ancestorSeed = DEFAULT_SEED;
+
+		m_bIsChangingWorkbenchKey = true;
+
+		if (wantedSeed == ancestorSeed)
+			worldEditorAPI.ClearVariableValue(source, null, "m_iSeed");
+		else
+			worldEditorAPI.SetVariableValue(source, null, "m_iSeed", wantedSeed.ToString());
+
+		m_bIsChangingWorkbenchKey = false;
+
+		m_RandomGenerator.SetSeed(wantedSeed);
+		m_iSeed = wantedSeed;
 	}
 
 	//------------------------------------------------------------------------------------------------

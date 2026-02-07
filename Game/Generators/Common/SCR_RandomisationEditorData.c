@@ -24,9 +24,7 @@ class SCR_RandomisationEditorData
 			return false;
 
 		vector angles;
-		if (!entitySource.Get("angleX", angles[0])
-			|| !entitySource.Get("angleY", angles[1])
-			|| !entitySource.Get("angleZ", angles[2]))
+		if (!entitySource.Get("angles", angles))
 			return false;
 
 		vector coords;
@@ -39,17 +37,19 @@ class SCR_RandomisationEditorData
 
 		vector worldPos = entity.GetOrigin();
 
-		float ySurface = worldEditorAPI.GetWorld().GetSurfaceY(worldPos[0], worldPos[2]);
+		float ySurface = world.GetSurfaceY(worldPos[0], worldPos[2]);
 		vector surfacePos = { worldPos[0], ySurface, worldPos[2] };
 
 		if (m_bRandomYaw)
-			worldEditorAPI.SetVariableValue(entitySource, null, "angleY", Math.Repeat(randomGenerator.RandFloatXY(0, 360), 360).ToString());
+			angles[1] = Math.Repeat(randomGenerator.RandFloatXY(0, 360), 360);
 
 		if (m_fRandomPitchAngle > 0)
-			worldEditorAPI.SetVariableValue(entitySource, null, "angleX", Math.Repeat(randomGenerator.RandFloatXY(-m_fRandomPitchAngle, m_fRandomPitchAngle), 360).ToString());
+			angles[0] = Math.Repeat(randomGenerator.RandFloatXY(-m_fRandomPitchAngle, m_fRandomPitchAngle), 360);
 
 		if (m_fRandomRollAngle > 0)
-			worldEditorAPI.SetVariableValue(entitySource, null, "angleZ", Math.Repeat(randomGenerator.RandFloatXY(-m_fRandomRollAngle, m_fRandomRollAngle), 360).ToString());
+			angles[2] = Math.Repeat(randomGenerator.RandFloatXY(-m_fRandomRollAngle, m_fRandomRollAngle), 360);
+
+		worldEditorAPI.SetVariableValue(entitySource, null, "angles", angles.ToString(false));
 
 		if (m_bAlignToNormal)
 		{
@@ -64,7 +64,7 @@ class SCR_RandomisationEditorData
 
 			vector mat[4];
 			entity.GetTransform(mat);
-			entity.GetWorld().TraceMove(traceParam, null);
+			world.TraceMove(traceParam, null);
 
 			vector newUp = traceParam.TraceNorm.Normalized();
 			vector newRight = (newUp * mat[2]).Normalized();
@@ -75,9 +75,7 @@ class SCR_RandomisationEditorData
 			mat[2] = (mat[0] * mat[1]).Normalized();		// newForward
 
 			angles = Math3D.MatrixToAngles(mat);
-			worldEditorAPI.SetVariableValue(entitySource, null, "angleX", angles[1].ToString());
-			worldEditorAPI.SetVariableValue(entitySource, null, "angleY", angles[0].ToString());
-			worldEditorAPI.SetVariableValue(entitySource, null, "angleZ", angles[2].ToString());
+			worldEditorAPI.SetVariableValue(entitySource, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 		}
 
 		if (m_vRandomScale[0] != m_vRandomScale[1])

@@ -28,6 +28,11 @@ class SCR_VONController : ScriptComponent
 	
 	[Attribute("", UIWidgets.Object)]
 	protected ref SCR_VONMenu m_VONMenu;
+	
+	[Attribute()]
+	protected ref SCR_VONAutoTune m_VONAutoTune;
+
+	bool m_bIsEditorRadioAdded;	// True if editor radio transceivers are added to m_aEntries
 		
 	protected const string VON_CONTEXT              = "VONContext";
 	protected const string ACTION_DIRECT            = "VONDirect";
@@ -273,7 +278,7 @@ class SCR_VONController : ScriptComponent
 		foreach (SCR_VONEntry entry : m_aEntries)
 		{
 			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
-			if (!radioEntry)
+			if (!radioEntry || radioEntry.GetIsMuted())
 				continue;
 			
 			SetEntryActive(entry, true);
@@ -624,6 +629,24 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Executed on server, sets the active channel of client's VON Controller
+	//! \param[in] channelId
+	void SetActiveChannel(int channelId)
+	{
+		Rpc(RpcAsk_SetActiveChannel, channelId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RpcAsk_SetActiveChannel(int channelId)
+	{
+		if (!m_aEntries.IsIndexValid(channelId))
+			return;
+
+		SetEntryActive(m_aEntries.Get(channelId));
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Reset VON input states and stop transmission
 	protected void ResetVON()
 	{
@@ -642,7 +665,11 @@ class SCR_VONController : ScriptComponent
 		m_sLocalEncryptionKey = string.Empty;
 		
 		if (to)
-			SetVONComponent(SCR_VoNComponent.Cast(to.FindComponent(SCR_VoNComponent)));
+		{
+			// Only set new VONComponent if the player is not an active edtior, otherwise the SCR_EditorManagerEntity will take care of this.
+			if (!m_VONComp || !m_VONComp.IsLocalActiveEditor())
+				SetVONComponent(SCR_VoNComponent.Cast(to.FindComponent(SCR_VoNComponent)));		
+		}
 		else 
 			SetVONComponent(null);	
 		
@@ -816,6 +843,9 @@ class SCR_VONController : ScriptComponent
 		if (m_VONMenu)
 			m_VONMenu.Init(this);
 		
+		if (m_VONAutoTune)
+			m_VONAutoTune.Init(owner, this);
+
 		UpdateSystemState();
 	}
 	
@@ -945,6 +975,9 @@ class SCR_VONController : ScriptComponent
 		if (m_VONMenu)
 			m_VONMenu.Update(timeSlice);
 		
+		if (m_VONAutoTune)
+			m_VONAutoTune.Update(timeSlice);
+
 		#ifdef VON_DEBUG
 			UpdateDebug();
 		#endif
@@ -957,6 +990,15 @@ class SCR_VONController : ScriptComponent
 		Cleanup();
 		DisconnectFromHandleUpdateVONControllersSystem();
 		
+		if (m_VONAutoTune)
+			m_VONAutoTune.Deinit();
+
 		super.OnDelete(owner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VONAutoTune GetAutoTune()
+	{
+		return m_VONAutoTune;
 	}
 };

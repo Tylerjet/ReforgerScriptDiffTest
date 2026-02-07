@@ -9,7 +9,7 @@ class SCR_AISearchAndDestroyActivity : SCR_AIActivityBase
 	protected SCR_SearchAndDestroyWaypoint m_WP;
 	protected AIPathfindingComponent m_pathFindindingComp;
 	protected vector m_vGridOrigin;
-	protected ref array<ref vector> m_aTiles = {};
+	protected ref array<vector> m_aTiles = {};
 	protected bool m_bAllTilesLoaded;
 	
 	protected ref array<vector> m_aCorrectedPositions = {};

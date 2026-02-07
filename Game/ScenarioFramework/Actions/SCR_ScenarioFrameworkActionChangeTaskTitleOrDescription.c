@@ -40,21 +40,10 @@ class SCR_ScenarioFrameworkActionChangeTaskTitleOrDescription : SCR_ScenarioFram
 			return;
 		}
 
-		SCR_ScenarioFrameworkTaskSupportEntity supportEntity = task.GetSupportEntity();
-		if (!supportEntity)
-		{
-			if (object)
-					Print(string.Format("ScenarioFramework Action: Task support entity not found for Action %1 attached on %2.", this, object.GetName()), LogLevel.ERROR);
-				else
-					Print(string.Format("ScenarioFramework Action: Task not found for Action %1.", this), LogLevel.ERROR);
-
-			return;
-		}
-
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sTaskTitle))
-			supportEntity.SetTaskTitle(task, m_sTaskTitle);
+			task.SetTaskName(m_sTaskTitle);
 		
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sTaskDescription))
-			supportEntity.SetTaskDescription(task, m_sTaskDescription);
+			task.SetTaskDescription(m_sTaskDescription);
 	}
 }

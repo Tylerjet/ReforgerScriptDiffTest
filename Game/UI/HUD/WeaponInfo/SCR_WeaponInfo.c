@@ -449,6 +449,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			UpdateMagazineIndicator_Progress(m_WeaponState);
 		
 		UpdateBulletInChamberIndicator(m_WeaponState);
+		
+		if (ammoCount == 0 && weapon)
+			SCR_LogitechLEDManager.ActivateState(ELogitechLEDState.RELOAD);
 	}	
 	
 	//------------------------------------------------------------------------------------------------

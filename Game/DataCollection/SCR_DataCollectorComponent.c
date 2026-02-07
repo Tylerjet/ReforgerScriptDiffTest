@@ -33,6 +33,8 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 
 	protected ref map<int, ref SCR_PlayerData> m_mPlayerData = new map<int, ref SCR_PlayerData>();
 
+	protected ref SCR_SessionData m_SessionData;
+
 	protected IEntity m_Owner;
 
 	protected ref SCR_DataCollectorUI m_UiHandler;
@@ -106,6 +108,19 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 				continue;
 
 			communicationComponent.SendData(m_mPlayerData.Get(playerID), factionKeys, factionValues, valuesSize);
+		}
+
+		// Get Session data
+		SCR_SessionDataEvent dataEvent = m_SessionData.GetSessionDataEvent();
+
+		dataEvent.name_reason_end = SCR_Enum.GetEnumName(EGameOverTypes, data.GetEndReason());
+
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (factionManager)
+		{
+			Faction winFaction = factionManager.GetFactionByIndex(data.GetWinnerFactionId());
+			if (winFaction)
+				dataEvent.name_winner_faction = winFaction.GetFactionKey();
 		}
 	}
 
@@ -194,20 +209,27 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	Managed GetSessionDataStats()
+	{
+		if (!m_SessionData)
+			return null;
+
+		return m_SessionData.GetDataEventStats();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerID
 	//! \return
 	Managed GetPlayerDataStats(int playerID)
 	{
 		SCR_PlayerData playerData = GetPlayerData(playerID);
-		//Now this instance of playerData can be deleted from the array
-		//We need this callqueue because we can't remove the instance from this array before it's sent to TD through c++
-		GetGame().GetCallqueue().CallLater(RemovePlayer, 500, false, playerID);
 
 		return playerData.GetDataEventStats();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void RemovePlayer(int playerID)
+	//! \param[in] playerID
+	void RemovePlayer(int playerID)
 	{
 		m_mPlayerData.Remove(playerID);
 	}
@@ -241,6 +263,12 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		}
 
 		return m_mPlayerData.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_SessionData GetSessionData()
+	{
+		return m_SessionData;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -296,16 +324,15 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 		// DONE ADDING STATS TO THE FACTION
 		//We cannot remove this instance of data from the player collector because the event has not been sent yet to the Database for tracking purposes
 		//m_mPlayerData.Remove(playerId);
-
-		//As an alternative, in GetPlayerDataStats we put this instance to be removed after its used in C++
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	protected override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
+		int playerId = requestComponent.GetPlayerId();
 		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			module.OnPlayerSpawned(playerId, controlledEntity);
+			module.OnPlayerSpawned(playerId, entity);
 		}
 	}
 
@@ -414,6 +441,7 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	protected override void OnGameModeStart()
 	{
 		StartDataCollectorSession();
+		m_SessionData = new SCR_SessionData();
 	}
 	
 	//------------------------------------------------------------------------------------------------

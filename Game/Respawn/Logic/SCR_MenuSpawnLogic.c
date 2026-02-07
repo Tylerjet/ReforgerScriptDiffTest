@@ -3,9 +3,9 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 {
 	[Attribute("", uiwidget: UIWidgets.EditBox, category: "Respawn", desc: "Default faction for players to spawn with or empty if none.")]
 	protected FactionKey m_sForcedFaction;
-	
-	[Attribute("{A1CE9D1EC16DA9BE}UI/layouts/Menus/MainMenu/SplashScreen.layout", desc: "Layout shown before deploy menu opens on client")]
-	protected ResourceName m_sLoadingLayout;
+
+	[Attribute("4", desc: "Delay (in seconds) for opening deploy menu after death.")]
+	protected float m_fDeployMenuOpenDelay;
 
 	[Attribute("0", desc: "Delay opening deploy menu until player has a spawn point available")]
 	protected bool m_bWaitForSpawnPoints;
@@ -13,29 +13,16 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 	[Attribute("0", desc: "If true, use a fade effect when deploy map is open")]
 	protected bool m_bUseFadeEffect;
 
-	protected Widget m_wLoadingPlaceholder;
-	protected SCR_LoadingSpinner m_LoadingPlaceholder;
-
 	//------------------------------------------------------------------------------------------------
-	override void OnInit(SCR_RespawnSystemComponent owner)
+	override void OnPlayerAuditSuccess_S(int playerId)
 	{
-		if (!System.IsConsoleApp())
-			CreateLoadingPlaceholder();
+		super.OnPlayerAuditSuccess_S(playerId);
+		ExcuteInitialLoadOrSpawn_S(playerId);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerRegistered_S(int playerId)
+	override protected void DoSpawn_S(int playerId)
 	{
-		super.OnPlayerRegistered_S(playerId);
-
-		// Probe reconnection component first
-		IEntity returnedEntity;
-		if (ResolveReconnection(playerId, returnedEntity))
-		{
-			// User was reconnected, their entity was returned
-			return;
-		}
-
 		Faction forcedFaction;
 		if (GetForcedFaction(forcedFaction))
 		{
@@ -50,12 +37,11 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 		// otherwise the notification will be disregarded
 		GetPlayerRespawnComponent_S(playerId).NotifyReadyForSpawn_S();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerEntityLost_S(int playerId)
 	{
 		super.OnPlayerEntityLost_S(playerId);
-
 		GetPlayerRespawnComponent_S(playerId).NotifyReadyForSpawn_S();
 	}
 
@@ -64,10 +50,10 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 	{
 		if (m_sForcedFaction.IsEmpty())
 			return false;
-		
+
 		// Resolve Alias
 		SCR_FactionAliasComponent factionAliasComponent = SCR_FactionAliasComponent.Cast(GetGame().GetFactionManager().FindComponent(SCR_FactionAliasComponent));
-		if (factionAliasComponent) 
+		if (factionAliasComponent)
 			m_sForcedFaction = factionAliasComponent.ResolveFactionAlias(m_sForcedFaction);
 
 		faction = GetGame().GetFactionManager().GetFactionByKey(m_sForcedFaction);
@@ -81,38 +67,10 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CreateLoadingPlaceholder()
+	//! Delay in seconds
+	float GetDeployMenuOpenDelay()
 	{
-		m_wLoadingPlaceholder = GetGame().GetWorkspace().CreateWidgets(m_sLoadingLayout);
-		if (!m_wLoadingPlaceholder)
-			return;
-
-		Widget spinner = m_wLoadingPlaceholder.FindAnyWidget("Spinner");
-		if (!spinner)
-			return;
-
-		m_LoadingPlaceholder = SCR_LoadingSpinner.Cast(spinner.FindHandler(SCR_LoadingSpinner));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool UpdateLoadingPlaceholder(float dt)
-	{
-		if (!m_wLoadingPlaceholder || !m_LoadingPlaceholder)
-			return true;
-
-		m_LoadingPlaceholder.Update(dt);
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void DestroyLoadingPlaceholder()
-	{
-		if (!m_wLoadingPlaceholder)
-			return;
-
-		m_wLoadingPlaceholder.RemoveFromHierarchy();
-		m_wLoadingPlaceholder = null;
-		m_LoadingPlaceholder = null;
+		return m_fDeployMenuOpenDelay;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -126,10 +84,4 @@ class SCR_MenuSpawnLogic : SCR_SpawnLogic
 	{
 		return m_bUseFadeEffect;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_MenuSpawnLogic()
-	{
-		DestroyLoadingPlaceholder();
-	}
-};
+}

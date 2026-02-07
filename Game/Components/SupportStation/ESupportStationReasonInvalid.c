@@ -32,6 +32,7 @@ enum ESupportStationReasonInvalid
 	
 	IS_MOVING = 800,				//!< If not static and moving
 	RANK_TOO_LOW = 850, 			//!< If player ranks are enabled and player has too low of a rank
+	NOT_ENOUGH_AVAILABLE_ALLOCATED_SUPPLIES = 900,		//!< If Military Supply Allocation is enabled and player does not have enough Available Allocated Supplies
 	
 	IN_USE = 9999,					// !< The User action is being used by another player already
 }

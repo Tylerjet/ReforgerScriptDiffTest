@@ -36,7 +36,7 @@ class SCR_BaseAudioScriptedUserAction : SCR_ScriptedUserAction
 			}
 			else 
 			{
-				Print(string.Format("'SCR_BaseAudioScriptedUserAction': Trying to play sound for '%1' but sound either sound event '%2' or more likely sound file needed is not included on the SoundComponent! SCR_SoundManagerEntity is used instead (if any in the world) but that means position of sound is not updated if entity moves while sound is playing.", pOwnerEntity, m_sActionSoundEffectEventName, m_sActionSoundEffectFile), LogLevel.WARNING);
+				Print(string.Format("'SCR_BaseAudioScriptedUserAction': Trying to play sound for '%1' but sound either sound event '%2' or more likely sound file needed is not included on the SoundComponent! SCR_SoundManagerModule is used instead (if any in the world) but that means position of sound is not updated if entity moves while sound is playing.", pOwnerEntity, m_sActionSoundEffectEventName, m_sActionSoundEffectFile), LogLevel.WARNING);
 			}				
 		}
 		
@@ -44,15 +44,10 @@ class SCR_BaseAudioScriptedUserAction : SCR_ScriptedUserAction
 			return;
 		
 		//~ No sound manager
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(pOwnerEntity.GetWorld());
+		if (!soundManager)
 			return;
-		
-		vector transform[4];
-		vector mat[4];
-		pOwnerEntity.GetTransform(mat);
-		transform[3] = GetWorldPositionAction();
-		
+				
 		//~ Create new config
 		SCR_AudioSourceConfiguration audioConfig = new SCR_AudioSourceConfiguration();
 		audioConfig.m_sSoundProject = m_sActionSoundEffectFile;
@@ -60,6 +55,10 @@ class SCR_BaseAudioScriptedUserAction : SCR_ScriptedUserAction
 		audioConfig.m_eFlags = SCR_Enum.RemoveFlag(audioConfig.m_eFlags, EAudioSourceConfigurationFlag.Static);
 	
 		//~  Play sound
-		soundManagerEntity.CreateAndPlayAudioSource(pOwnerEntity, audioConfig, transform);
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(pOwnerEntity, audioConfig, GetWorldPositionAction());
+		if (!audioSource)
+			return;
+
+		soundManager.PlayAudioSource(audioSource);
 	}
 };

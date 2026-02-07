@@ -17,6 +17,8 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 	protected const string ACTION_MENU_BACK_KEYBIND = "MenuBackKeybind";
 	protected const string ACTION_DISPLAY_ROOT = "KeybindActionDisplayRow";
 	
+	protected bool m_WasCanceled = false;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
@@ -69,6 +71,9 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 		{
 			m_Binding.Save();
 
+			if (!m_WasCanceled)
+				SCR_AnalyticsApplication.GetInstance().ChangeKeybind(m_sActionName, m_Entry.m_sPreset);
+			
 			if (m_OnKeyCaptured)
 				m_OnKeyCaptured.Invoke(); //TODO: there is no "capturing cancelled" state nor check. This will be called upon closing the dialog as well. FIX
 			
@@ -111,6 +116,7 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 	{
 		GetGame().GetInputManager().RemoveActionListener(ACTION_MENU_BACK_KEYBIND, EActionTrigger.DOWN, CancelCapture);
 		m_Binding.CancelCapture(); //TODO: capture is started by the row component but ended by the dialog. FIX
+		m_WasCanceled = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

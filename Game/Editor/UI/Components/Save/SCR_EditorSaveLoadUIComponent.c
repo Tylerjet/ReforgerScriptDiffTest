@@ -6,59 +6,46 @@ class SCR_EditorSaveLoadUIComponent : SCR_SaveDialogUIComponent
 		// Save dialogs
 		if (!m_bIsLoad)
 		{
-			string customName = m_SaveNameInput.GetValue();
-			if (!GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName))
+			string customName = m_Widgets.m_SaveNameInputComponent0.GetValue();
+			/*if (!GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName))
 			{
 				//--- Creating a new file - save directly
 				OnConfirmPrompt();
 				return;
-			}
+			}*/
 
 			//--- Confirm prompt
 			m_ConfirmPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sConfirmPrompt);
 			m_ConfirmPrompt.m_OnConfirm.Insert(OnConfirmPrompt);
-
-			m_ConfirmPrompt.SetTitle(m_SaveNameInput.GetValue());
+			m_ConfirmPrompt.SetTitle(customName);
 			return;
 		}
 
 		//--- Loading a file leads to restart, ask first
-		string fileName;
-		Widget focusedEntry = GetGame().GetWorkspace().GetFocusedWidget();
 		
-		foreach (SCR_SaveDialogEntry entry : m_mEntries)
-		{
-			if (entry.m_wEntry == focusedEntry)
-			{
-				fileName = entry.m_sFileName;
-				break;
-			}
-		}
-
-		if (fileName.IsEmpty())
+		Widget focusedEntry = GetGame().GetWorkspace().GetFocusedWidget();
+		SCR_SaveLoadEntryComponent entry = m_mComponentEntries.Get(focusedEntry);
+		if (!entry)
 			return;
 
-		string displayName = m_mEntryNames[m_sSelectedFileName];
-		SCR_MetaStruct meta = GetGame().GetSaveManager().GetMeta(fileName);
-		if (meta)
+		SaveGame save = entry.GetSaveData();
+		const string displayName = GetSaveDisplayName(save);
+		if (!save.IsSavePointGameVersionCompatible())
 		{
-			if (!meta.IsVersionCompatible())
-			{
-				// Warning - incompatible version
-				m_LoadBadVersionPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadVersionPrompt);
-				m_LoadBadVersionPrompt.m_OnConfirm.Insert(LoadEntry);
-				m_LoadBadVersionPrompt.SetTitle(displayName);
-				return;
-			}
+			// Warning - incompatible version
+			m_LoadBadVersionPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadVersionPrompt);
+			m_LoadBadVersionPrompt.m_OnConfirm.Insert(LoadEntry);
+			m_LoadBadVersionPrompt.SetTitle(displayName);
+			return;
+		}
 
-			if (!meta.AreAddonsCompatible())
-			{
-				// Warning - incompatible addons
-				m_LoadBadAddonsPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadAddonsPrompt);
-				m_LoadBadAddonsPrompt.m_OnConfirm.Insert(LoadEntry);
-				m_LoadBadAddonsPrompt.SetTitle(displayName);
-				return;
-			}
+		if (!save.AreSavePointAddonsCompatible())
+		{
+			// Warning - incompatible addons
+			m_LoadBadAddonsPrompt = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, m_sLoadBadAddonsPrompt);
+			m_LoadBadAddonsPrompt.m_OnConfirm.Insert(LoadEntry);
+			m_LoadBadAddonsPrompt.SetTitle(displayName);
+			return;
 		}
 
 		//--- Confirm prompt
@@ -70,95 +57,93 @@ class SCR_EditorSaveLoadUIComponent : SCR_SaveDialogUIComponent
 	//------------------------------------------------------------------------------------------------
 	override protected void SaveEntry()
 	{
-		string customName = m_SaveNameInput.GetValue();
-		GetGame().GetSaveManager().Save(m_eWriteSaveType, customName);
+		const string customName = m_Widgets.m_SaveNameInputComponent0.GetValue();
+		
+		ESaveGameRequestFlags flags;
+		if (RplSession.Mode() == RplMode.None)
+			flags = ESaveGameRequestFlags.BLOCKING;
+
+		GetGame().GetSaveGameManager().RequestSavePoint(ESaveGameType.MANUAL, customName, flags);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void OnDeletePrompt()
 	{
-		SCR_SaveDialogEntry entry = m_mEntries[m_sSelectedFileName];
+		if (m_SelectedSave)
+			GetGame().GetSaveGameManager().Delete(m_SelectedSave, new SaveGameOperationCb(OnSaveDeleted, m_SelectedSave));
 		
-		//--- Delete the file
-		GetGame().GetSaveManager().Delete(m_sSelectedFileName, entry.m_bIsDownloaded);
-
-		//--- Update GUI
 		super.OnDeletePrompt();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnSaveDeleted(bool success, Managed context)
+	{
+		if (!success)
+			return;
+		
+		auto save = SaveGame.Cast(context);
+		if (save)
+			RemoveSaveEntry(save);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void LoadEntry()
 	{
-		SCR_SaveDialogEntry selectedEntry = GetEntryByWidget(m_wLastFocusedEntry);
-		if (!selectedEntry)
+		if (!m_SelectedSave)
 			return;
-		
-		string fileName = m_mEntries.GetKeyByValue(selectedEntry);
-		
-		if (!fileName.IsEmpty())
+
+		GetGame().GetSaveGameManager().Load(m_SelectedSave);
+
+		/*
+		SCR_ServerSaveRequestCallback uploadCallback = saveManager.GetUploadCallback();
+		if (uploadCallback)
 		{
-			SCR_SaveManagerCore saveManager = GetGame().GetSaveManager();
-
-			saveManager.RestartAndLoad(fileName);
-
-			SCR_ServerSaveRequestCallback uploadCallback = saveManager.GetUploadCallback();
-			if (uploadCallback)
-			{
-				uploadCallback.GetEventOnResponse().Insert(OnLoadEntryUploadResponse);
-				m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
-			}
+			uploadCallback.SetOnSuccess(OnLoadEntryUploadResponse);
+			uploadCallback.SetOnError(OnLoadEntryUploadError);
+			m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
 		}
+		*/
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override protected void SelectEntry(Widget w, string fileName)
+	override protected void SelectEntry(Widget w, SCR_SaveLoadEntryComponent entryComponent)
 	{
-		string customName = GetGame().GetSaveManager().GetCustomName(fileName);
-		m_SaveNameInput.SetValue(customName);
+		super.SelectEntry(w, entryComponent);
 
-		super.SelectEntry(w, fileName);
+		const string customName = GetSaveDisplayName(entryComponent);
+		m_Widgets.m_SaveNameInputComponent0.SetValue(customName);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void UpdateButtons()
 	{
-		string customName = m_SaveNameInput.GetValue();
+		if (m_mComponentEntries.IsEmpty())
+		{
+			m_Widgets.m_DeleteButtonComponent.SetVisible(false);
+			m_Widgets.m_OverrideButtonComponent.SetVisible(false);
+			m_Widgets.m_ConfirmButtonComponent.SetVisible(false);
+			return;
+		}
+
+		string customName = m_Widgets.m_SaveNameInputComponent0.GetValue();
 		bool isValid = !customName.IsEmpty();
-		bool isOverride = !m_bIsLoad && customName && GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName);
+		bool isOverride = false; //!m_bIsLoad && customName && GetGame().GetSaveManager().FileExists(m_eWriteSaveType, customName);
 
 		if (m_bIsLoad)
-			m_DeleteButton.SetEnabled(m_sSelectedFileName && GetGame().GetSaveManager().FileExists(m_sSelectedFileName));
+		{
+			m_Widgets.m_DeleteButtonComponent.SetVisible(m_SelectedSave != null);
+			m_Widgets.m_DeleteButtonComponent.SetEnabled(m_SelectedSave != null);
+		}
 		else
-			m_DeleteButton.SetEnabled(isOverride);
+		{
+			m_Widgets.m_DeleteButtonComponent.SetVisible(isOverride);
+			m_Widgets.m_DeleteButtonComponent.SetEnabled(isOverride);
+		}
 
-		m_OverrideButton.SetVisible(isOverride, false);
-		m_OverrideButton.SetEnabled(isOverride && isValid);
+		m_Widgets.m_OverrideButtonComponent.SetVisible(isOverride, false);
+		m_Widgets.m_OverrideButtonComponent.SetEnabled(isOverride && isValid);
 
-		m_ConfirmButton.SetVisible(!isOverride, false);
-		m_ConfirmButton.SetEnabled(!isOverride && isValid);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected int FileCount(array<string> fileNames)
-	{
-		return GetGame().GetSaveManager().GetLocalSaveFiles(fileNames, m_eReadSaveTypes, m_bCurrentMissionOnly);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected string EntryName(string fileName)
-	{
-		return GetGame().GetSaveManager().GetCustomName(fileName);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected SCR_MetaStruct EntryMeta(string fileName)
-	{
-		return GetGame().GetSaveManager().GetMeta(fileName);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected SCR_UIInfo EntryUIInfo(string fileName)
-	{
-		return GetGame().GetSaveManager().GetSaveTypeInfo(fileName);
+		m_Widgets.m_ConfirmButtonComponent.SetVisible(!isOverride, false);
+		m_Widgets.m_ConfirmButtonComponent.SetEnabled(!isOverride && isValid);
 	}
 }

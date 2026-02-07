@@ -70,13 +70,13 @@ class SCR_WorkshopItem
 	
 	// Backend callbacks
 	protected ref SCR_WorkshopItemCallback_AskDetails m_CallbackAskDetails;
-	protected ref SCR_BackendCallback m_CallbackLoadGallery;
-	protected ref SCR_BackendCallback m_CallbackLoadDependencies;
-	protected ref SCR_BackendCallback m_CallbackLoadScenarios;
-	protected ref SCR_BackendCallback m_CallbackLoadMyReport;
-	protected ref SCR_BackendCallback m_CallbackRequestFavourite;
-	protected ref SCR_BackendCallback m_CancelDownloadCallback = new SCR_BackendCallback();
-	protected ref SCR_BackendCallback m_ComputeCallback;
+	protected ref BackendCallback m_CallbackLoadGallery;
+	protected ref BackendCallback m_CallbackLoadDependencies;
+	protected ref BackendCallback m_CallbackLoadScenarios;
+	protected ref BackendCallback m_CallbackLoadMyReport;
+	protected ref BackendCallback m_CallbackRequestFavourite;
+	protected ref BackendCallback m_CancelDownloadCallback = new BackendCallback();
+	protected ref BackendCallback m_ComputeCallback;
 	
 	// Various state flags
 	protected bool m_bMyRating;
@@ -388,10 +388,9 @@ class SCR_WorkshopItem
 		if (m_bFavouriteRequesting)
 			return;
 		
-		m_CallbackRequestFavourite = new SCR_BackendCallback();
-		m_CallbackRequestFavourite.GetEventOnSuccess().Insert(OnFavouriteSuccess);
-		m_CallbackRequestFavourite.GetEventOnFail().Insert(OnFavouriteFail);
-		m_CallbackRequestFavourite.GetEventOnTimeOut().Insert(OnFavouriteFail);
+		m_CallbackRequestFavourite = new BackendCallback();
+		m_CallbackRequestFavourite.SetOnSuccess(OnFavouriteSuccess);
+		m_CallbackRequestFavourite.SetOnError(OnFavouriteFail);
 		
 		m_Item.SetFavorite(m_CallbackRequestFavourite, favourite);
 		
@@ -414,22 +413,14 @@ class SCR_WorkshopItem
 	
 	//-----------------------------------------------------------------------------------------------
 	void OnFavouriteSuccess()
-	{
-		m_CallbackRequestFavourite.GetEventOnSuccess().Remove(OnFavouriteSuccess);
-		m_CallbackRequestFavourite.GetEventOnFail().Remove(OnFavouriteFail);
-		m_CallbackRequestFavourite.GetEventOnTimeOut().Remove(OnFavouriteFail);
-		
+	{		
 		m_bFavouriteRequesting = false;
 		SetChanged();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	void OnFavouriteFail()
-	{
-		m_CallbackRequestFavourite.GetEventOnSuccess().Remove(OnFavouriteSuccess);
-		m_CallbackRequestFavourite.GetEventOnFail().Remove(OnFavouriteFail);
-		m_CallbackRequestFavourite.GetEventOnTimeOut().Remove(OnFavouriteFail);
-		
+	{	
 		m_bFavourite = !m_bFavourite;
 		m_bFavouriteRequesting = false;
 		SetChanged();
@@ -656,11 +647,10 @@ class SCR_WorkshopItem
 	bool GetOnline()
 	{
 		if (m_Item)
-			return m_Item.GetStateFlags() & EWorkshopItemState.EWSTATE_ONLINE;
-		else if (m_Dependency)
-			return true; // TODO Apparently, if it's a dependency, then it's online
-		else
-			return false;
+			return m_Item.GetLatestRevision() && m_Item.GetLatestRevision().GetBackendEnv() == GetGame().GetBackendApi().GetBackendEnv();
+		else if (m_Dependency)		// TODO Apparently, if it's a dependency, then it's online
+			return true;
+		return false;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -668,7 +658,7 @@ class SCR_WorkshopItem
 	bool GetOffline()
 	{
 		if (m_Item)
-			return m_Item.GetStateFlags() & EWorkshopItemState.EWSTATE_OFFLINE;
+			return m_Item.GetActiveRevision();
 		else if (m_Dependency)
 			return m_Dependency.IsOffline();
 		else
@@ -704,7 +694,7 @@ class SCR_WorkshopItem
 	bool GetCorrupted()
 	{
 		if (m_Item)
-			return (m_Item.GetStateFlags() & EWorkshopItemState.EWSTATE_CORRUPTED);
+			return m_Item.GetActiveRevision().IsCorrupted();
 		else if (m_Dependency)
 			return false; // TODO this is not valid for dependency object
 		else
@@ -783,9 +773,7 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	protected void OnPatchComputed()
 	{
-		m_ComputeCallback.GetEventOnSuccess().Remove(OnPatchComputed);
-		m_ComputeCallback.GetEventOnFail().Remove(OnPatchComputedFailed);
-		m_ComputeCallback.GetEventOnTimeOut().Remove(OnPatchComputedFailed);
+		m_ComputeCallback.SetOnError(OnPatchComputedFailed);
 		m_bSizeRequesting = false;
 		m_OnChanged.Invoke();
 	}
@@ -793,9 +781,6 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	protected void OnPatchComputedFailed()
 	{
-		m_ComputeCallback.GetEventOnSuccess().Remove(OnPatchComputed);
-		m_ComputeCallback.GetEventOnFail().Remove(OnPatchComputedFailed);
-		m_ComputeCallback.GetEventOnTimeOut().Remove(OnPatchComputedFailed);
 		m_bSizeRequesting = false;
 	}
 	
@@ -846,8 +831,14 @@ class SCR_WorkshopItem
 	bool GetUpdateAvailable()
 	{
 		bool rawUpdateAvailable = false;
-		if (m_Item)
-			rawUpdateAvailable = !m_Item.HasLatestVersion();
+		if (!m_Item)
+		{
+			Debug.Error("GetUpdateAvailable() was called on null item.");
+			return false;
+		}
+		
+		Revision rev = m_Item.GetLatestRevision();		
+		rawUpdateAvailable = rev && !rev.IsDownloaded();
 		
 		bool updateAvailableByVersions = Internal_GetUpdateAvailable();
 		
@@ -1164,10 +1155,9 @@ class SCR_WorkshopItem
 		
 		if (!m_CallbackLoadMyReport)
 		{
-			m_CallbackLoadMyReport = new SCR_BackendCallback();
-			m_CallbackLoadMyReport.GetEventOnSuccess().Insert(Callback_LoadMyReport_OnSuccess);
-			m_CallbackLoadMyReport.GetEventOnTimeOut().Insert(Callback_LoadMyReport_OnTimeout);
-			m_CallbackLoadMyReport.GetEventOnFail().Insert(Callback_LoadMyReport_OnError);
+			m_CallbackLoadMyReport = new BackendCallback();
+			m_CallbackLoadMyReport.SetOnSuccess(Callback_LoadMyReport_OnSuccess);
+			m_CallbackLoadMyReport.SetOnError(Callback_LoadMyReport_OnError);
 		}
 		
 		m_Item.LoadReport(m_CallbackLoadMyReport);
@@ -1270,7 +1260,7 @@ class SCR_WorkshopItem
 		
 
 		Revision rev = m_Item.GetLatestRevision();
-		if (!rev)
+		if (!rev && GetOnline() )
 			Debug.Error("SCR_WorkshopItem: Item is present but LatestRevision is null!");
 
 		return rev;
@@ -1314,18 +1304,16 @@ class SCR_WorkshopItem
 			
 			if (!m_CallbackLoadDependencies)
 			{
-				m_CallbackLoadDependencies = new SCR_BackendCallback;
-				m_CallbackLoadDependencies.GetEventOnSuccess().Insert(Callback_LoadDependencies_OnSuccess);
-				m_CallbackLoadDependencies.GetEventOnFail().Insert(Callback_LoadDependencies_OnError);
-				m_CallbackLoadDependencies.GetEventOnTimeOut().Insert(Callback_LoadDependencies_OnTimeout);
+				m_CallbackLoadDependencies = new BackendCallback;
+				m_CallbackLoadDependencies.SetOnSuccess(Callback_LoadDependencies_OnSuccess);
+				m_CallbackLoadDependencies.SetOnError(Callback_LoadDependencies_OnError);
 			}
 			
 			if (!m_CallbackLoadScenarios)
 			{
-				m_CallbackLoadScenarios = new SCR_BackendCallback;
-				m_CallbackLoadScenarios.GetEventOnSuccess().Insert(Callback_LoadScenarios_OnSuccess);
-				m_CallbackLoadScenarios.GetEventOnFail().Insert(Callback_LoadScenarios_OnError);
-				m_CallbackLoadScenarios.GetEventOnTimeOut().Insert(Callback_LoadScenarios_OnTimeout);
+				m_CallbackLoadScenarios = new BackendCallback;
+				m_CallbackLoadScenarios.SetOnSuccess(Callback_LoadScenarios_OnSuccess);
+				m_CallbackLoadScenarios.SetOnError(Callback_LoadScenarios_OnError);
 			}
 			
 			if (m_Item)
@@ -1352,24 +1340,21 @@ class SCR_WorkshopItem
 		m_bWaitingLoadDetails = false;
 	}
 	
-	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_AskDetails_OnTimeout()
+	protected void Callback_AskDetails_OnError(BackendCallback callback)
 	{
-		#ifdef WORKSHOP_DEBUG
-		_print("Callback_AskDetails_OnTimeout()");
-		#endif
-		
 		m_bWaitingLoadDetails = false;
+		if (callback.GetRestResult() == ERestResult.EREST_ERROR_TIMEOUT)
+		{
+			#ifdef WORKSHOP_DEBUG
+			_print("Callback_AskDetails_OnTimeout()");
+			#endif
+
+			m_OnTimeout.Invoke(this);
+			return;
+		}
 		
-		m_OnTimeout.Invoke(this);
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_AskDetails_OnError(SCR_BackendCallback callback, EBackendError code, int restCode, int apiCode )
-	{
 		m_bRequestFailed = true;
-		m_bWaitingLoadDetails = false;
 		
 		// We still have received a response, but with an error.
 		m_OnGetAsset.Invoke(this);
@@ -1391,25 +1376,22 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_LoadDependencies_OnError()
+	protected void Callback_LoadDependencies_OnError(BackendCallback cb)
 	{
 		#ifdef WORKSHOP_DEBUG
 		_print("Callback_LoadDependencies_OnError()");
 		#endif
 		
-		m_OnError.Invoke(this);
+		if (cb.GetRestResult() == ERestResult.EREST_ERROR_TIMEOUT)
+		{
+			m_OnTimeout.Invoke(this);
+		}
+		else
+		{
+			m_OnError.Invoke(this);
+		}
 
 		CustomDebugError("SCR_WorkshopItem failed to load dependencies");
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_LoadDependencies_OnTimeout()
-	{
-		#ifdef WORKSHOP_DEBUG
-		_print("Callback_LoadDependencies_OnTimeout()");
-		#endif
-		
-		m_OnTimeout.Invoke(this);
 	}
 	
 	
@@ -1424,27 +1406,23 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_LoadScenarios_OnError()
+	protected void Callback_LoadScenarios_OnError(BackendCallback cb)
 	{
 		#ifdef WORKSHOP_DEBUG
 		_print("Callback_LoadScenarios_OnError()");
 		#endif
 		
-		m_OnError.Invoke(this);
+		if (cb.GetRestResult() == ERestResult.EREST_ERROR_TIMEOUT)
+		{
+			m_OnTimeout.Invoke(this);
+		}
+		else
+		{
+			m_OnError.Invoke(this);
+		}
 		
 		CustomDebugError("SCR_WorkshopItem failed to load scenarios");
 	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_LoadScenarios_OnTimeout()
-	{
-		#ifdef WORKSHOP_DEBUG
-		_print("Callback_LoadScenarios_OnTimeout()");
-		#endif
-		
-		m_OnTimeout.Invoke(this);
-	}
-	
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_LoadMyReport_OnSuccess()
@@ -1454,12 +1432,6 @@ class SCR_WorkshopItem
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_LoadMyReport_OnError()
-	{
-		m_OnMyReportLoadError.Invoke(this);
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_LoadMyReport_OnTimeout()
 	{
 		m_OnMyReportLoadError.Invoke(this);
 	}
@@ -1529,7 +1501,7 @@ class SCR_WorkshopItem
 
 		// Get array of dependencies - TODO: differentiate between dependencies version to load
 		m_LatestRevision = GetLatestRevision();
-		array<Dependency> dependencies = new array<Dependency>;
+		array<WorkshopItem> dependencies = new array<WorkshopItem>;
 		
 		if (m_LatestRevision && !SCR_Enum.HasFlag(m_LatestRevision.GetLoadFlags(), EPendingLoadState.ELS_DEPENDENCIES))
 			m_LatestRevision.GetDependencies(dependencies);
@@ -1544,7 +1516,7 @@ class SCR_WorkshopItem
 		
 		m_aDependencies.Clear();
 		
-		foreach (Dependency dep : dependencies)
+		foreach (WorkshopItem dep : dependencies)
 		{
 			SCR_WorkshopItem registeredItem = SCR_AddonManager.GetInstance().Register(dep);
 			RegisterDependency(registeredItem);
@@ -1661,14 +1633,13 @@ class SCR_WorkshopItem
 				return false;
 			}
 			
-			m_Dependency.Download(callback);
 			m_Item = m_Dependency.GetCachedItem();
 			
-			
 			if (!m_Item)
-				Debug.Error("SCR_WorkshopItem: Item was not cached after download on Dependency!");
-			
-			return true;
+			{
+				Debug.Error("SCR_WorkshopItem: Cannot download because Item was not cached!");
+				return false;
+			}
 		}
 		
 		
@@ -1692,28 +1663,29 @@ class SCR_WorkshopItem
 			
 		
 		// Pause
-		m_CancelDownloadCallback.GetEventOnResponse().Insert(OnCancelDownloadResponse);
+		m_CancelDownloadCallback.SetOnSuccess(OnCancelDownloadResponse);
+		m_CancelDownloadCallback.SetOnError(OnCancelDownloadError);
 		m_Item.Cancel(m_CancelDownloadCallback);
 		return true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void OnCancelDownloadResponse(SCR_BackendCallback callback)
+	protected void OnCancelDownloadResponse(BackendCallback callback)
+	{		
+		m_OnCanceled.Invoke(this);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnCancelDownloadError(BackendCallback callback)
 	{
-		m_CancelDownloadCallback.GetEventOnResponse().Remove(OnCancelDownloadResponse);
-		
-		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
-		{
-			m_OnError.Invoke(this);
-		}
-		
+		m_OnError.Invoke(this);
 		m_OnCanceled.Invoke(this);
 	}
 	
 	/*
 	protected ref SCR_BackendCallback m_PauseDownloadCallback = new SCR_BackendCallback();
-	protected ref bool m_bRunningRequested;
-	protected ref bool m_bRunningProccessed;
+	protected bool m_bRunningRequested;
+	protected bool m_bRunningProccessed;
 	
 	//-----------------------------------------------------------------------------------------------
 	bool Internal_PauseDownload()
@@ -2132,7 +2104,11 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return false;
 		
-		return m_Item.IsProcessing();
+		Revision rev = m_Item.GetDownloadingRevision();
+		if (!rev)
+			return false;
+		
+		return rev.IsProcessing();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -2141,7 +2117,11 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return 0;
 		
-		return m_Item.GetProcessingProgress();
+		Revision rev = m_Item.GetDownloadingRevision();
+		if (!rev)
+			return 0;
+		
+		return rev.GetProcessingProgress();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -2151,9 +2131,8 @@ class SCR_WorkshopItem
 		if (!m_CallbackAskDetails)
 		{
 			m_CallbackAskDetails = new SCR_WorkshopItemCallback_AskDetails(m_Item);
-			m_CallbackAskDetails.GetEventOnSuccess().Insert(Callback_AskDetails_OnGetAsset);
-			m_CallbackAskDetails.GetEventOnTimeOut().Insert(Callback_AskDetails_OnTimeout);
-			m_CallbackAskDetails.GetEventOnFail().Insert(Callback_AskDetails_OnError);
+			m_CallbackAskDetails.SetOnSuccess(Callback_AskDetails_OnGetAsset);
+			m_CallbackAskDetails.SetOnError(Callback_AskDetails_OnError);
 		}
 		
 		//Restarts waiting for details? - TODO review logic
@@ -2161,7 +2140,7 @@ class SCR_WorkshopItem
 		{
 			if (m_Item)
 			{
-				if (m_Item.GetStateFlags() & EWorkshopItemState.EWSTATE_ONLINE)
+				if (m_Item.GetLatestRevision() && m_Item.GetLatestRevision().GetBackendEnv() == GetGame().GetBackendApi().GetBackendEnv())
 				{
 					m_bWaitingLoadDetails = true;
 					m_Item.AskDetail(m_CallbackAskDetails);			// Internally both methods perform the same request

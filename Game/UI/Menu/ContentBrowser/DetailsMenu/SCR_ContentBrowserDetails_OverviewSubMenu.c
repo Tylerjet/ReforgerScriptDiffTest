@@ -103,6 +103,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		
 		m_Widgets.m_EnableButtonComponent.m_OnToggled.Insert(OnEnableButtonToggled);
 		m_Widgets.m_FavoriteButtonComponent0.m_OnToggled.Insert(OnAddonFavouriteButtonToggled);
+		m_Widgets.m_RepairButtonComponent0.m_OnClicked.Insert(OnRepairActionButton);
 		m_Widgets.m_ReportButtonComponent0.m_OnClicked.Insert(OnReportButton);			
 		m_Widgets.m_PrimaryActionButtonComponent0.m_OnClicked.Insert(OnPrimaryActionButton);
 		m_Widgets.m_DeleteButtonComponent0.m_OnClicked.Insert(OnDeleteButton);
@@ -276,13 +277,13 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Play(MissionWorkshopItem scenario)
+	override bool Play(MissionWorkshopItem scenario)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
-			return;
+		if (!super.Play(scenario))
+			return false;
 
-		super.Play(scenario);
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -321,7 +322,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		
 		super.OnScenarioStateChanged(comp);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void InitWidgets()
 	{
@@ -353,6 +354,11 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		UpdatePrimaryActionButton();
 		UpdateDownloadProgressBar();
 		UpdateDeleteButton();
+		
+		WorkshopItem item = m_Item.GetWorkshopItem();
+		Revision itemRevision = item.GetActiveRevision();
+		
+		m_Widgets.m_wRepairButton.SetVisible(itemRevision && itemRevision.IsCorrupted());
 
 		// Continuous update
 		if (SCR_WorkshopUiCommon.IsDownloadingAddon(m_Item))
@@ -558,6 +564,17 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	protected void OnEnableButtonToggled(SCR_ModularButtonComponent comp)
 	{
 		SCR_WorkshopUiCommon.OnEnableAddonToggleButton(m_Item, comp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Start the repairing process of the addon
+	protected void OnRepairActionButton()
+	{
+		if (!m_Item || m_Item.GetRestricted())
+			return;
+
+		SCR_ValidateRepair_Dialog dialogValidator = SCR_CommonDialogs.CreateValidateRepairDialog();
+		dialogValidator.LoadAddon(m_Item);
 	}
 
 	//------------------------------------------------------------------------------------------------

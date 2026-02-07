@@ -63,7 +63,7 @@ class SCR_MortarShootAction : SCR_ScriptedUserAction
 			return false;
 
 		MagazineComponent shellMagazine = MagazineComponent.Cast(shell.FindComponent(MagazineComponent));
-		if (!shellMagazine || shellMagazine.GetMagazineWell().Type() != m_MortarMagWell.Type())
+		if (!shellMagazine || !shellMagazine.GetMagazineWell() || shellMagazine.GetMagazineWell().Type() != m_MortarMagWell.Type())
 		{
 			SetCannotPerformReason(WRONG_SHELL_TYPE);
 			return false;
@@ -150,12 +150,12 @@ class SCR_MortarShootAction : SCR_ScriptedUserAction
 		{
 			float elevation = m_MortarMuzzleComponent.GetMuzzleElevation();
 			float timeToDetonation = m_ShellComp.GetTimeToDetonation(elevation, false);
-			string fuzeTime = SCR_StringHelper.Translate(UIConstants.VALUE_UNIT_SECONDS, timeToDetonation.ToString(-1, 1));
+			string fuzeTime = WidgetManager.Translate(UIConstants.VALUE_UNIT_SECONDS, timeToDetonation.ToString(-1, 1));
 			outName = WidgetManager.Translate(FIRE_WITH_AUTOMATIC_FUZE, fuzeTime);
 		}
 		else
 		{
-			string fuzeTime = SCR_StringHelper.Translate(UIConstants.VALUE_UNIT_SECONDS, timeFuzeConfig.GetSavedTime().ToString(-1, 1));
+			string fuzeTime = WidgetManager.Translate(UIConstants.VALUE_UNIT_SECONDS, timeFuzeConfig.GetSavedTime().ToString(-1, 1));
 			outName = WidgetManager.Translate(FIRE_WITH_MANUAL_FUZE, fuzeTime);
 		}
 

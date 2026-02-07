@@ -401,7 +401,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] state
 	void SetStaticMarkerDisabled(notnull SCR_MapMarkerBase marker, bool state)
 	{
-		if (state)
+		if (state || marker.GetBlocked())
 		{
 			if (!m_aDisabledMarkers.Contains(marker))
 			{
@@ -411,7 +411,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			
 			marker.SetUpdateDisabled(true);
 		}
-		else 
+		else
 		{
 			if (!m_aStaticMarkers.Contains(marker))
 			{
@@ -475,6 +475,8 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		{
 			if (!m_aStaticMarkers[i].OnUpdate(m_vVisibleFrameMin, m_vVisibleFrameMax))
 				SetStaticMarkerDisabled(m_aStaticMarkers[i], true);
+			else
+				SetStaticMarkerDisabled(m_aStaticMarkers[i], false);
 		}
 				
 		foreach (SCR_MapMarkerEntity markerEnt : m_aDynamicMarkers)
@@ -702,6 +704,8 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnFilteredCallback(array<string> texts)
 	{
+		bool isPlatformXbox = GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX;
+		
 		int i;
 		foreach (SCR_MapMarkerBase marker: m_aStaticMarkers)
 		{
@@ -710,8 +714,18 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 
 			if (!texts.IsIndexValid(i))
 				break;
+			
 
-			marker.SetCustomText(texts[i]);
+			if (isPlatformXbox)
+			{
+				string resultText;
+				SCR_ProfaneFilter.ReplaceProfanities(texts[i], resultText);
+				marker.SetCustomText(resultText);
+			}
+			else
+			{
+				marker.SetCustomText(texts[i]);
+			}
 			i++;
 		}
 	}
@@ -737,13 +751,20 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	{
 		int count = 0;
 		
-		if (m_aStaticMarkers.IsEmpty())
+		// We want to replicate also the disabled markers to clients in the case of Listen server in coop missions
+		array<SCR_MapMarkerBase> markersSimple = GetStaticMarkers();
+		foreach(SCR_MapMarkerBase markerDis : GetDisabledMarkers())
+		{
+			markersSimple.Insert(markerDis);
+		}
+		
+		if (markersSimple.IsEmpty())
 		{
 			writer.WriteInt(count);
 			return true;
 		}
 		
-		foreach (SCR_MapMarkerBase marker : m_aStaticMarkers)
+		foreach (SCR_MapMarkerBase marker : markersSimple)
 		{
 			if (marker.GetMarkerID() == -1)
 				continue;
@@ -753,7 +774,9 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		
 		writer.WriteInt(count);
 		
-		foreach (SCR_MapMarkerBase marker : m_aStaticMarkers)
+		WorldTimestamp timestamp;
+
+		foreach (SCR_MapMarkerBase marker : markersSimple)
 		{
 			if (marker.GetMarkerID() == -1)
 				continue;
@@ -773,6 +796,12 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			writer.Write(marker.GetColorEntry(), 8);	// 1 byte is enough, no expected over 256 colors
 			writer.Write(marker.GetIconEntry(), 16);	// 1 byte should be enough, leaving the extra byte to not underestimate modders
 			writer.WriteString(marker.GetCustomText());
+			writer.WriteBool(marker.IsTimestampVisible());
+			if (marker.IsTimestampVisible())
+			{
+				timestamp = marker.GetTimestamp();
+				writer.Write(timestamp, 64); // added timestamp
+			}
 		}
 		
 		return true;
@@ -788,6 +817,8 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		
 		int posX, posY, markerID, markerOwnerID, flags, markerConfigID, factionFlags, markerType, colorID, iconID, rotation;
 		string customText;
+		bool isTimestampVisible;
+		WorldTimestamp timestamp;
 		SCR_MapMarkerBase marker;
 		array<string> textsToFilter = {};
 		
@@ -805,7 +836,10 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			reader.Read(markerType, 8);
 			reader.Read(colorID, 8);
 			reader.Read(iconID, 16);
-			reader.ReadString(customText);	
+			reader.ReadString(customText);
+			reader.ReadBool(isTimestampVisible);
+			if (isTimestampVisible)
+				reader.Read(timestamp, 64);
 			
 			marker = new SCR_MapMarkerBase();
 			marker.SetType(markerType);
@@ -819,6 +853,10 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 			marker.SetColorEntry(colorID);
 			marker.SetIconEntry(iconID);
 			marker.SetCustomText(customText);
+
+			marker.SetTimestampVisibility(isTimestampVisible);
+			if (isTimestampVisible)
+				marker.SetTimestamp(timestamp);
 						
 			m_aStaticMarkers.Insert(marker);
 			if (marker.GetMarkerOwnerID() > -1)

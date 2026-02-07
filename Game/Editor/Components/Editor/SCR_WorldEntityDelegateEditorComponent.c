@@ -28,21 +28,50 @@ class SCR_WorldEntityDelegateEditorComponent: SCR_BaseEditorComponent
 	void PerformFirstAction(IEntity owner)
 	{
 		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		RplId rplId = rplComponent.Id();
-		
-		Rpc(PerformFirstActionServer, rplId);
+		if (rplComponent)
+		{
+			RplId rplId = rplComponent.Id();
+			Rpc(PerformFirstActionServer, rplId);
+		}
+		else
+		{
+			// Could be a door. They are not necessarily replicated.
+			BaseDoorComponent doorComponent = BaseDoorComponent.Cast(owner.FindComponent(BaseDoorComponent));
+			if (doorComponent)
+				Rpc(PerformFirstActionServer_EntityID, owner.GetID());
+		}
 	}
+	
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void PerformFirstActionServer(RplId rplId)
 	{
 		PerformFirstActionBroadcast(rplId);
 		Rpc(PerformFirstActionBroadcast, rplId);
 	}
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void PerformFirstActionServer_EntityID(EntityID entId)
+	{
+		PerformFirstActionBroadcast_EntityID(entId);
+		Rpc(PerformFirstActionBroadcast_EntityID, entId);
+	}
+	
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void PerformFirstActionBroadcast(RplId rplId)
 	{
 		RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(rplId));
+		if (rplComponent == null)
+			return;
 		IEntity owner = rplComponent.GetEntity();
+		BaseActionsManagerComponent actionsManager = BaseActionsManagerComponent.Cast(owner.FindComponent(BaseActionsManagerComponent));
+		ScriptedUserAction action = ScriptedUserAction.Cast(actionsManager.GetFirstAction());
+		action.PerformAction(owner, GetOwner());
+	}
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void PerformFirstActionBroadcast_EntityID(EntityID entId)
+	{
+		IEntity owner = GetGame().GetWorld().FindEntityByID(entId);
+		if (owner == null)
+			return;
 		BaseActionsManagerComponent actionsManager = BaseActionsManagerComponent.Cast(owner.FindComponent(BaseActionsManagerComponent));
 		ScriptedUserAction action = ScriptedUserAction.Cast(actionsManager.GetFirstAction());
 		action.PerformAction(owner, GetOwner());

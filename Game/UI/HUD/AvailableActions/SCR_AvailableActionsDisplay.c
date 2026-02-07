@@ -246,6 +246,21 @@ class SCR_AvailableActionContext
 
 		return isOk;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! returns true if action display is currently counting down twords its delayed fade in or out
+	bool IsDelayed()
+	{
+		return m_fShowCountdown < m_iTimeToShow || m_fHideCountdown < m_iTimeForHide;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Reset fade in and fade out timers to their default values
+	void ResetTimers()
+	{
+		m_fShowCountdown = m_iTimeToShow;
+		m_fHideCountdown = m_iTimeForHide;
+	}
 }
 
 //------------------------------------------------------------------------------------------------
@@ -343,11 +358,19 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 			if (actionName == string.Empty)
 				continue;
 
-			if (inputManager.IsActionActive(actionName) && action.IsAvailable(data, timeSlice))
+			if (!inputManager.IsActionActive(actionName))
 			{
-				outActions.Insert(action);
-				count++;
+				if (action.IsDelayed())
+					action.ResetTimers();
+
+				continue;
 			}
+
+			if (!action.IsAvailable(data, timeSlice))
+				continue;
+			
+			outActions.Insert(action);
+			count++;
 		}
 
 		return count;

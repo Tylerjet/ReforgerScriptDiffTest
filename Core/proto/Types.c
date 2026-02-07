@@ -557,6 +557,7 @@ class map<Class TKey,Class TValue>: Managed
 	proto bool Insert(TKey key, TValue value);
 	proto int Copy(map<TKey,TValue> from);
 
+	[Obsolete("Use SCR_MapHelper.ReplaceKey")]
 	bool ReplaceKey(TKey old_key, TKey new_key)
 	{
 		if (Contains(old_key))
@@ -567,7 +568,8 @@ class map<Class TKey,Class TValue>: Managed
 		}
 		return false;
 	}
-
+	
+	[Obsolete("Use SCR_MapHelper.GetKeyByValue")]
 	TKey GetKeyByValue(TValue value)
 	{
 		TKey ret;

@@ -1,17 +1,29 @@
 class SCR_AnimatedBeltComponentClass : ScriptComponentClass
 {
-}
-
-class SCR_AnimatedBeltComponent : ScriptComponent
-{
 	[Attribute("9", params: "1 600 1", desc: "How many bullets are visible in one UV texture (including half bullets assuming they come in pairs)", uiwidget: UIWidgets.EditBox, category: "Bullet data")]
 	protected int m_iUVBulletCount;
 
 	[Attribute("600", desc: "Rounds the gun shoots per minute. Affects belt-speed", uiwidget: UIWidgets.EditBox, category: "Bullet data")]
 	protected int m_iRoundsPerMinute;
 
+	private float m_iUVBulletCountPerMinuteInvRPM;
+	private float m_iUVBulletCountInv;
+
+	void SCR_AnimatedBeltComponentClass(IEntityComponentSource componentSource, IEntitySource parentSource, IEntitySource prefabSource)
+	{
+		int iUVBulletCountPerMinute = m_iUVBulletCount * 60;
+		m_iUVBulletCountPerMinuteInvRPM = m_iRoundsPerMinute * (1 / iUVBulletCountPerMinute);
+		m_iUVBulletCountInv = 1 / m_iUVBulletCount;
+	}
+
+	float GetUVBulletCountPerMinuteInvRPM() { return m_iUVBulletCountPerMinuteInvRPM; }
+	float GetUVBulletCountInv() { return m_iUVBulletCountInv; }
+}
+
+class SCR_AnimatedBeltComponent : ScriptComponent
+{
 	protected static SCR_AnimatedBeltSystem s_system;
-	float m_fBeltProgress;
+	protected float m_fBeltProgress;
 	protected float m_fBeltTarget;
 	protected float m_fBeltStartPoint;
 
@@ -50,7 +62,9 @@ class SCR_AnimatedBeltComponent : ScriptComponent
 		if (s_system)
 			s_system.Register(this);
 
-		float newBeltTarget = Math.Mod(m_fBeltTarget - 1 / m_iUVBulletCount, 1);
+		auto prefabData = SCR_AnimatedBeltComponentClass.Cast(GetComponentData(GetOwner()));
+
+		float newBeltTarget = Math.Mod(m_fBeltTarget - prefabData.GetUVBulletCountInv(), 1);
 		if (newBeltTarget > m_fBeltTarget)
 		{
 			m_fBeltProgress += 1;
@@ -64,8 +78,9 @@ class SCR_AnimatedBeltComponent : ScriptComponent
 	//! Smoothly move the belt by exactly one bullet
 	void Update(float timeSlice)
 	{
-		m_fBeltProgress -= timeSlice * (m_iRoundsPerMinute / (m_iUVBulletCount * 60));
+		auto prefabData = SCR_AnimatedBeltComponentClass.Cast(GetComponentData(GetOwner()));
 
+		m_fBeltProgress -= timeSlice * prefabData.GetUVBulletCountPerMinuteInvRPM();
 		if (m_fBeltProgress < m_fBeltTarget)
 		{
 			m_fBeltProgress = m_fBeltTarget;

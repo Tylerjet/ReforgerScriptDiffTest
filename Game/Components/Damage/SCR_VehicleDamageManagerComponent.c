@@ -823,7 +823,6 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		float currentDistance;
 		float maxDistanceSq = maxDistance * maxDistance;
 		float minDistance;
-		int geomIndex;
 		HitZoneContainerComponent hitZoneContainer;
 		IEntity hitZoneParentEntity;
 		vector mins, maxs;
@@ -1383,7 +1382,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (!m_CurrentCollisions)
 		{
 			m_CurrentCollisions = new array<ref SCR_CollisionDamageContainer>();
-			GetGame().GetCallqueue().CallLater(Activate, param1: owner);
+			GetGame().GetCallqueue().CallLater(EnableDamageSystemOnFrame);
 		}
 
 		SCR_CollisionDamageContainer existingCollisionInstance;
@@ -1473,7 +1472,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			if (m_LastFrameCollisions && !m_LastFrameCollisions.IsEmpty())
 				m_LastFrameCollisions.Clear();
 
-			Deactivate(owner);
+			DisableDamageSystemOnFrame();
 			return;
 		}
 
@@ -1652,9 +1651,9 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Update buoyancy loss rate
-	override void OnDamageStateChanged(EDamageState state)
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged(state);
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 		
 		if (s_OnVehicleDamageStateChanged)
 			s_OnVehicleDamageStateChanged.Invoke(this);
@@ -1666,13 +1665,13 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		SCR_VehicleBuoyancyComponent vehicleBuoyancy = SCR_VehicleBuoyancyComponent.Cast(GetOwner().FindComponent(SCR_VehicleBuoyancyComponent));
 		if (vehicleBuoyancy)
 		{
-			vehicleBuoyancy.SetHealth(defaultHitZone.GetDamageStateThreshold(state));
+			vehicleBuoyancy.SetHealth(defaultHitZone.GetDamageStateThreshold(newState));
 			
-			if (state == EDamageState.DESTROYED)
+			if (newState == EDamageState.DESTROYED)
 				vehicleBuoyancy.GetOnWaterEnter().Remove(OnWaterEnter);
 		}
 		
-		if (s_OnVehicleDestroyed && state == EDamageState.DESTROYED)
+		if (s_OnVehicleDestroyed && newState == EDamageState.DESTROYED)
 		{
 			s_OnVehicleDestroyed.Invoke(GetInstigator().GetInstigatorPlayerID());
 
@@ -1745,7 +1744,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			// if a collision was capable of causing more than minCollisionEjectionDamageThreshold damage, try to eject passengers
 
  			if (damage > GetMinCollisionDamageEjectionThreshold())
-				m_CompartmentManager.EjectRandomOccupants(GetCollisionDamageEjectionChance(), true, ejectOnTheSpot: true);
+				m_CompartmentManager.EjectRandomOccupants(GetCollisionDamageEjectionChance(), true);
 			
 			return;
 		}
@@ -1754,7 +1753,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		{
 			// An explosion of minExplosionEjectionDamageThreshold or larger is capable of ejecting occupants.
 			if (damage > GetMinExplosionDamageEjectionThreshold())
-				m_CompartmentManager.EjectRandomOccupants(GetExplosionDamageEjectionChance(), true, ejectOnTheSpot: true);
+				m_CompartmentManager.EjectRandomOccupants(GetExplosionDamageEjectionChance(), true);
 			
 			return;
 		}

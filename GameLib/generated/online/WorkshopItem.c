@@ -10,7 +10,7 @@ Do not modify, this script is generated
 */
 
 //! Workshop Item instance
-sealed class WorkshopItem: DownloadableItem
+sealed class WorkshopItem: BaseWorkshopItem
 {
 	private void WorkshopItem();
 	void ~WorkshopItem();
@@ -18,12 +18,65 @@ sealed class WorkshopItem: DownloadableItem
 	//! Returns type of this item.
 	proto external EWorkshopItemType GetType();
 	/*!
+	Request download of this item.
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	\param pRevision - Is Revision which will be requested to download
+	*/
+	proto external void Download(BackendCallback pCallback, Revision pRevision);
+	/*!
+	Will resume download of this item.
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void ResumeDownload(BackendCallback pCallback);
+	/*!
+	Will pause download of this item.
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void PauseDownload(BackendCallback pCallback);
+	/*!
+	Will cancel download of this item. Data will be cleared.
+	param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void Cancel(BackendCallback pCallback);
+	//! Returns progress of current download in range of <0.0. ... 1.0>. Returns 1 if it is already downloaded
+	proto external float GetProgress();
+	//! Will delete progress from downloading of this item. Download must be first canceled.
+	proto external void DeleteDownloadProgress();
+	/*!
+	Request verification of files integrity. Sets flags of revision and each file accordingly.
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void VerifyIntegrity(BackendCallback pCallback);
+	/*!
+	Request repair of local files integrity in case of corruption. Corrupted files are deleted and downloaded as new.
+	\param pCallback  - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void RepairIntegrity(BackendCallback pCallback);
+	//!	Request cancellation of verification process.
+	proto external void CancelVerification();
+	//! Returns true if verification is currently in process
+	proto external bool IsVerificationRunning();
+	//! Returns progress of current verification process in range of <0.0. ... 1.0>
+	proto external float GetVerificationProgress();
+	/*!
 	Returns name of Backend Environment of Workshop from which item originates.
 	Can be used to validate origin of item to confirm that source and current environment are same.
 	*/
 	proto external string GetBackendEnv();
+	//! Will delete locally downloaded item
+	proto external void DeleteLocally();
+	/*!
+	Request to delete this item from the Workshop. Client must be owner of item for successful delete.
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void DeleteOnline(BackendCallback pCallback);
 	//! Returns true if item is currently loaded.
 	proto external bool IsLoaded();
+	/*!
+	Request details about this item from Workshop.
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void AskDetail(notnull BackendCallback pCallback);
 	/*!
 	Returns true if this item can be loaded.
 	When item or dependencies are not Offline and Revision is equal to selected.
@@ -57,6 +110,12 @@ sealed class WorkshopItem: DownloadableItem
 	proto external void Unsubscribe(BackendCallback callback);
 	//! Returns true if item is set as favorite
 	proto external bool IsFavorite();
+	//! Return progress of current processing (delta patching) in range of <0.0. ... 1.0>. Returns 1 if it is already downloaded
+	[Obsolete("Use Revision::GetProcessingProgress() instead!")]
+	proto external float GetProcessingProgress();
+	//! Returns true if addon is currently processing delta patches from already downloaded version.
+	[Obsolete("Use Revision::IsProcessing() instead!")]
+	proto external bool IsProcessing();
 	/*!
 	Request to set favorite state for this item.
 	\param pCallback - Is script callback where you will receive result/error when request finishes
@@ -107,18 +166,41 @@ sealed class WorkshopItem: DownloadableItem
 	*/
 	proto external void Rate(bool bUpvote, BackendCallback pCallback);
 	/*!
+	Request submit of user rating.
+	\param fRating - rating 0.0 ... 1.0
+	\param pCallback - Is script callback where you will receive result/error when request finishes
+	*/
+	proto external void RateFloat(float fRating, BackendCallback pCallback);
+	/*!
 	Request reset of user vote for rating.
 	\param pCallback - Is script callback where you will receive result/error when request finishes
 	*/
 	proto external void ResetRating (BackendCallback pCallback);
 	//! Returns true if user voted in rating for this item.
 	proto external bool IsRatingSet();
-	//! Returns what vote user chose for this item.
+	//! Returns rating in up vote and down vote boolean value.
 	proto external bool MyRating();
+	//! Returns rating as raw float value of 0.0 ... 1.0 or -1 if no rating was submitted.
+	proto external float MyRatingFloat();
 	//! Returns count of how many votes item has in rating.
 	proto external int RatingCount();
-	//! Returns average rating of this item.
+	//! Returns average rating of this item in between 0.0 ... 1.0.
 	proto external float AverageRating();
+	/*!
+	Returns random value between 0.0 ... 1000.0 representing trending score.
+	\warning Value is random generated when item is instantiated.
+	*/
+	proto external float GetTrendingScore();
+	/*!
+	Returns random value between 0.0 ... 1000.0 representing community choice score
+	\warning Value is random generated when item is instantiated.
+	*/
+	proto external float GetCommunityChoiceScore();
+	/*!
+	Returns random value between 0 ... 10000 representing total download count
+	\warning Value is random generated when item is instantiated.
+	*/
+	proto external float GetTotalDownloadCount();
 	/*!
 	Provides array of tags on this item.
 	\param items - array of tags

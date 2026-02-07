@@ -44,15 +44,9 @@ class SCR_ResourceGeneratorActionDropContainers : SCR_ResourceGeneratorActionBas
 			
 			return null;
 		}
-		
-		const RandomGenerator rng = new RandomGenerator();
-		vector position = generator.GetOwnerOrigin() + rng.GenerateRandomPointInRadius(0.0, m_fSpawnRadius, m_vSpawnOrigin);
-		TraceParam param = new TraceParam();
-		param.Start = position + vector.Up * m_fSpawnRadius;
-		param.End = position;
-		param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-		param.LayerMask = EPhysicsLayerDefs.Projectile;
-		position = position + (GetGame().GetWorld().TraceMove(param, null) - 1.0) * m_fSpawnRadius * vector.Up;
+
+		vector position = generator.GetOwnerOrigin();
+		SCR_ResourcePlayerControllerInventoryComponent.FindSuitablePosition(position, m_fSpawnRadius, m_fSpawnRadius);
 		
 		const EntitySpawnParams spawnParams = new EntitySpawnParams();
 		spawnParams.TransformMode = ETransformMode.WORLD;

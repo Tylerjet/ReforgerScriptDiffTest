@@ -62,26 +62,57 @@ class SCR_ScenarioUICommon
 		if (!mission)
 			return false;
 
-		SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(mission.Id()));
-		return header && GetGame().GetSaveManager().HasLatestSave(header);
+		array<SaveGame> outSaveGames();
+		return GetGame().GetSaveGameManager().GetSaves(outSaveGames, mission.Id()) > 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	static bool LoadSave(MissionWorkshopItem scenario, SCR_MissionHeader header, ChimeraMenuPreset startMenu)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
+		if (!SCR_ScenarioUICommon.CanPlay(scenario))
 			return false;
-		
-		MissionWorkshopItem mission = SCR_SaveWorkshopManager.GetScenarioMissionWorkshopItem(header);	
-		string scenarioName = SCR_SaveWorkshopManager.GetScenarioNameFile(mission);
-		
-		if (header && !scenarioName.IsEmpty())
-			GetGame().GetSaveManager().SetFileNameToLoad(header);
-		else
-			GetGame().GetSaveManager().ResetFileNameToLoad();
 
+		array<SaveGame> saves();		
+		if (GetGame().GetSaveGameManager().GetSaves(saves, scenario.Id()) == 0)
+			return false; // No saves available
+		
+		GetGame().GetSaveGameManager().Load(saves[saves.Count() - 1], false);
 		SCR_MenuLoadingComponent.SaveLastMenu(startMenu);
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool RestartScenario(MissionWorkshopItem scenario)
+	{
+		if (!SCR_ScenarioUICommon.CanPlay(scenario))
+			return false;
+
+		array<SaveGame> saves();		
+		GetGame().GetSaveGameManager().GetSaves(saves, scenario.Id());
+
+		Tuple2<int, MissionWorkshopItem> sharedCtx(saves.Count(), scenario);
+		SaveGameOperationCb callback(OnRestartScenarioCleanupComplete, sharedCtx);
+		foreach (SaveGame save : saves)
+		{
+			GetGame().GetSaveGameManager().Delete(save, callback);
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static void OnRestartScenarioCleanupComplete(bool success, Managed context)
+	{
+		auto sharedCtx = Tuple2<int, MissionWorkshopItem>.Cast(context);
+		if (!success || !sharedCtx.param2)
+		{
+			sharedCtx.param1 = -1; // Error, future invokes will never make it reach count 0
+			return;
+		}
+
+		// Last delete of old data complete
+		if (--sharedCtx.param1 == 0)
+			TryPlayScenario(sharedCtx.param2);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -122,7 +153,7 @@ class SCR_ScenarioUICommon
 			return false;
 
 		if (mission.GetOwner())
-			return mission.GetOwner().GetStateFlags() & EWorkshopItemState.EWSTATE_OFFLINE;
+			return mission.GetOwner().GetActiveRevision();
 
 		return true;
 	}
@@ -144,12 +175,12 @@ class SCR_ScenarioUICommon
 		if (!revision)
 			return true;
 		
-		array<Dependency> dependencies = {};
+		array<WorkshopItem> dependencies = {};
 		revision.GetDependencies(dependencies);
 		
-		foreach (Dependency dependency : dependencies)
+		foreach (WorkshopItem dependency : dependencies)
 		{	
-			if (!dependency.IsOffline())
+			if (!dependency.GetActiveRevision())
 				return true;
 		}
 		
@@ -170,12 +201,12 @@ class SCR_ScenarioUICommon
 		if (!revision)
 			return false;
 		
-		array<Dependency> dependencies = {};
+		array<WorkshopItem> dependencies = {};
 		revision.GetDependencies(dependencies);
 		
-		foreach (Dependency dependency : dependencies)
+		foreach (WorkshopItem dependency : dependencies)
 		{
-			revision = dependency.GetRevision();
+			revision = dependency.GetLatestRevision();
 			if (!revision || revision.GetAvailability() != ERevisionAvailability.ERA_AVAILABLE)
 				return false;
 		}
@@ -221,19 +252,19 @@ class SCR_ScenarioUICommon
 	//------------------------------------------------------------------------------------------------
 	static bool CanPlay(MissionWorkshopItem mission)
 	{
-		return GetPlayHighestPriorityIssue(mission) == SCR_EScenarioIssues.NONE;
+		return mission && GetPlayHighestPriorityIssue(mission) == SCR_EScenarioIssues.NONE;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool CanJoin(MissionWorkshopItem mission)
 	{
-		return GetJoinHighestPriorityIssue(mission) == SCR_EScenarioIssues.NONE;
+		return mission && GetJoinHighestPriorityIssue(mission) == SCR_EScenarioIssues.NONE;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool CanHost(MissionWorkshopItem mission)
 	{
-		return GetHostHighestPriorityIssue(mission) == SCR_EScenarioIssues.NONE;
+		return mission && GetHostHighestPriorityIssue(mission) == SCR_EScenarioIssues.NONE;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -425,22 +456,6 @@ class SCR_ScenarioUICommon
 			SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	static void UpdatePlaySaveMouseButton(SCR_ModularButtonComponent button, WorldSaveItem save, bool entryFocused, bool visible = true)
-	{
-		if (!button)
-			return;
-
-		visible = visible && entryFocused;
-
-		string id = save.Id();
-		string fileName = GetGame().GetSaveManager().FindFileNameById(id);
-		
-		button.SetVisible(visible);
-		if (visible)
-			SCR_ListEntryHelper.UpdateMouseButtonColor(button, !fileName.IsEmpty(), entryFocused);
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	static void UpdateContinueMouseButton(SCR_ModularButtonComponent button, MissionWorkshopItem mission, bool entryFocused, bool visible = true)
 	{

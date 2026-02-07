@@ -95,7 +95,7 @@ class SCR_BuildingDestructionSetupTool : WorldEditorTool
 
 		bool manageEditAction = SCR_WorldEditorToolHelper.BeginEntityAction();
 
-		array<ResourceName> allRuinPrefabs = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ PREFAB_EXTENSION }, { RUIN_FILTER });
+		array<ResourceName> allRuinPrefabs = SCR_WorkbenchHelper.SearchWorkbenchResources({ PREFAB_EXTENSION }, { RUIN_FILTER });
 		if (allRuinPrefabs.IsEmpty())
 		{
 			Print("No Ruins found - leaving", LogLevel.WARNING);

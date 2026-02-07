@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class BaseCompartmentManagerComponentClass: GameComponentClass
-{
-}
-
 class BaseCompartmentManagerComponent: GameComponent
 {
 	//! Returns true if doorIndex is valid and the assocciated door is open. False otherwise.
@@ -20,16 +16,10 @@ class BaseCompartmentManagerComponent: GameComponent
 	proto external bool IsDoorOpen(int doorIndex);
 	//! Returns true if doorIndex is valid and the assocciated door is fake. False otherwise.
 	proto external bool IsDoorFake(int doorIndex);
-	//! Returns true if doorIndex is valid and the assocciated door is open. False otherwise.
-	//! Fake door is always considered open.
-	[Obsolete("Use IsDoorOpen(doorIndex).")]
-	proto external bool AreDoorOpen(int doorIndex);
-	//! Returns true if doorIndex is valid and the assocciated door is fake. False otherwise.
-	[Obsolete("Use IsDoorFake(doorIndex).")]
-	proto external bool AreDoorFake(int doorIndex);
 	proto external IEntity GetDoorUser(int doorIndex);
 	proto external bool IsGetInAndOutBlockedByDoorUser(int doorIndex);
 	proto external IEntity GetOwner();
+	proto external BaseCompartmentSlot FindCompartmentByName(string compartmentName, bool bPreferUnique = true);
 	//! Searches for compartment by ID of slot and compartment manager.
 	proto external BaseCompartmentSlot FindCompartment(int compartmentID, int mgrId = -1);
 	//! Returns a list and count of all compartments

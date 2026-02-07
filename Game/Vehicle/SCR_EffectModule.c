@@ -9,10 +9,8 @@ class SCR_EffectModule
 	protected ref PointInfo		m_effectPosition;											//the position of the m_effectPosition
 	[Attribute(desc: "If not checked, the modul is activated and deactivated only with physics event. If checked, the effect is always active")]
 	protected bool m_bTickOnFrame;															//if false, effect is activate only with EOnPhysic
-#ifdef WORKBENCH
 	[Attribute("", desc: "Play the effect in Workbench", params: "Debug")]
 	protected bool m_bShowEffectInWB;
-#endif
 	protected IEntity m_owner;													
 	protected SCR_BaseEffectManagerComponent m_Manager;
 	protected ParticleEffectEntity m_sParticleEffect;

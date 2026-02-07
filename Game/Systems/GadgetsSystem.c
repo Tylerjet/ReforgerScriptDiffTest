@@ -12,9 +12,9 @@ class GadgetsSystem : GameSystem
 	protected ref array<SCR_GadgetComponent> m_DeletedComponents = {};
 	
 	//------------------------------------------------------------------------------------------------
-	protected override void OnUpdate(ESystemPoint point)
+	protected override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		m_bUpdating = true;
 		

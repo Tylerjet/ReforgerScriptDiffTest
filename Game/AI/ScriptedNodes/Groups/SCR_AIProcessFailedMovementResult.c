@@ -9,6 +9,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	protected SCR_AIGroup m_Group;
 	protected SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
 	protected bool m_bProducedError; // the node will not produce another error unless you run the tree with "always reinit" true 
+	protected bool m_bReturnRunning; // when returning running we dont want to produce another errors
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -22,12 +23,22 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnEnter(AIAgent owner)
+	{
+		m_bReturnRunning = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
 		int moveResult;
+		if (m_bReturnRunning)
+			return ENodeResult.RUNNING;
+		
 		if (!GetVariableIn(PORT_MOVE_RESULT, moveResult))
 		{
 			NodeErrorOnce(owner, "Missing move result for SCR_AIProcessFailedMovementResult node");
+			m_bReturnRunning = true;
 			return ENodeResult.RUNNING; 
 		}
 		
@@ -86,6 +97,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 				// If wp related and wp is the same we just return running
 				// As a result group will be stuck to allow us to debug it
 				NodeErrorOnce(owner, string.Format("Failed move from %1 to waypoint %2", startLocation, moveLocation));
+				m_bReturnRunning = true;
 				return ENodeResult.RUNNING;
 			}
 			
@@ -108,7 +120,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 			
 			// Fail action
 			FailAction();
-			
+			m_bReturnRunning = true;
 			return ENodeResult.RUNNING;
 		}
 #ifdef WORKBENCH

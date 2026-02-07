@@ -7,7 +7,12 @@ class SCR_InventoryWeaponSlotsUI : SCR_InventoryStorageBaseUI
 {	
 	protected ref array<WeaponSlotComponent> m_aWeaponSlots = new array<WeaponSlotComponent>(); ;
 	protected EquipedWeaponStorageComponent m_weaponStorage;
-	
+		
+	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.HORIZONTAL;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

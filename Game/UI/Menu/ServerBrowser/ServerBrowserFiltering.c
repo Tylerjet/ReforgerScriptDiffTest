@@ -54,7 +54,8 @@ class FilteredServerParams : RoomFilterBase
 	
 	// Tabs filter
 	protected bool m_bOfficialOn = false;
-	protected bool m_bOfficialDisplay = false;
+	protected bool m_bCommunityOn = false;
+	
 	protected bool m_bFavoriteFilterOn = false;
 	protected bool m_bRecentlyPlayedOn = false;
 	
@@ -63,8 +64,6 @@ class FilteredServerParams : RoomFilterBase
 	protected bool m_bCrossPlayFilterSelected;
 	
 	// Custom filter specific 
-	protected int m_iSelectedTab = 0;
-	protected int lockedBoth = 0;
 	protected bool m_bUsePlayerLimit = true;
 	
 	//--------------------------------------------
@@ -76,16 +75,10 @@ class FilteredServerParams : RoomFilterBase
 	{	
 		SCR_FilterEntryRoom official = FindFilterByInternalName(m_aDefaultFilters, FILTER_OFFICIAL);
 		SCR_FilterEntryRoom community = FindFilterByInternalName(m_aDefaultFilters, FILTER_COMMUNITY);
-		
-		official.SetSelected(false);
-		community.SetSelected(false);
-		
+
 		// Setup tab filters
-		if (m_bOfficialOn)
-		{
-			official.SetSelected(m_bOfficialDisplay);
-			community.SetSelected(!m_bOfficialDisplay);
-		}
+		official.SetSelected(m_bOfficialOn);
+		community.SetSelected(m_bCommunityOn);
 		 
 		SCR_FilterEntryRoom favorite = FindFilterByInternalName(m_aDefaultFilters, FILTER_FAVORITES);
 		favorite.SetSelected(m_bFavoriteFilterOn);
@@ -99,28 +92,30 @@ class FilteredServerParams : RoomFilterBase
 		
 		// Search bar
 		StoreString("text", text);
-		
+
 		// Handle players filters 
-		//int min, max, minCount, maxCount = -1;
-		int min = -1;
-		int max = -1;
-		int minCount = -1;
-		int maxCount = -1;
-		
 		if (m_bUsePlayerLimit)
+		{
+			//int min, max, minCount, maxCount = -1;
+			int min = -1;
+			int max = -1;
+			int minCount = -1;
+			int maxCount = -1;
+
 			FormatePlayersFilters(min, max, minCount, maxCount);
 		
-		if (min != -1)
-			StoreInteger(VALUE_PLAYERS_MIN, min);
-		if (max != -1)
-			StoreInteger(VALUE_PLAYERS_MAX, max);
-		if (minCount != -1)
-			StoreInteger(VALUE_PLAYERS_MIN_COUNT, minCount);
-		if (maxCount != -1)
-			StoreInteger(VALUE_PLAYERS_MAX_COUNT, maxCount);
+			if (min != -1)
+				StoreInteger(VALUE_PLAYERS_MIN, min);
+			if (max != -1)
+				StoreInteger(VALUE_PLAYERS_MAX, max);
+			if (minCount != -1)
+				StoreInteger(VALUE_PLAYERS_MIN_COUNT, minCount);
+			if (maxCount != -1)
+				StoreInteger(VALUE_PLAYERS_MAX_COUNT, maxCount);
+		}
 		
 		// Game version
-		// Works togheter with "versionMatch"
+		// Works together with "versionMatch"
 		SCR_FilterCategory version;
 		if (m_Filter)
 			version = m_Filter.FindFilterCategory(CATEGORY_VERSION);
@@ -193,7 +188,6 @@ class FilteredServerParams : RoomFilterBase
 		includePing = true;
 		
 		// Apply filter 
-		//RegV("lockedBoth");
 		RegV("directJoinCode");
 		
 		RegV("hostAddress");
@@ -397,7 +391,7 @@ class FilteredServerParams : RoomFilterBase
 	//--------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
-	//! Go thorught filters in categories and create uncatergorized filter list 
+	//! Go through filters in categories and create uncategorized filter list 
 	void SetFilters(SCR_FilterSet filterSet) 
 	{ 
 		// Filter list clear up
@@ -415,7 +409,7 @@ class FilteredServerParams : RoomFilterBase
 		if (!categories || categories.IsEmpty())
 			return;
 		
-		// Go thorugh filter set categories 
+		// Go through filter set categories 
 		foreach (SCR_FilterCategory category : categories)
 		{
 			// Add filters to uncategorized 
@@ -438,7 +432,7 @@ class FilteredServerParams : RoomFilterBase
 	
 	//------------------------------------------------------------------------------------------------
 	void SetFavoriteFilter(bool isAllowed)
-	{
+	{	
 		m_bFavoriteFilterOn = isAllowed;
 	}
 	
@@ -461,10 +455,15 @@ class FilteredServerParams : RoomFilterBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetOfficialFilter(bool activate, bool displayOfficial)
+	void SetOfficialFilter(bool displayOfficial)
 	{
-		m_bOfficialOn = activate;
-		m_bOfficialDisplay = displayOfficial;
+		m_bOfficialOn = displayOfficial;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCommunityFilter(bool displayCommunity)
+	{
+		m_bCommunityOn = displayCommunity;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -499,15 +498,8 @@ class FilteredServerParams : RoomFilterBase
 	
 	//------------------------------------------------------------------------------------------------
 	string GetSearchText() { return text; }
-	
-	//------------------------------------------------------------------------------------------------
-	void SetSelectedTab(int tabId) { m_iSelectedTab = tabId; }
-	
-	//------------------------------------------------------------------------------------------------
-	int GetSelectedTab() { return m_iSelectedTab; }
-	
+
 	// Scenario id 
-	
 	//------------------------------------------------------------------------------------------------
 	string GetScenarioId() { return scenarioId; }
 	
@@ -540,84 +532,11 @@ class FilteredServerParams : RoomFilterBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool IsCrossPlayFilterSelected()
-	{
-		
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void SetOwnedOnly(bool showOwned)
 	{
 		ownedOnly = showOwned;
 	}
-	
-	//--------------------------------------------
-	// Default filter setups 
-	//--------------------------------------------
-	
-	//------------------------------------------------------------------------------------------------
-	protected void DefaultFilter()
-	{
-		array<ref SCR_FilterEntryRoom> filters = {};
-		
-		// Clear filters 
-		foreach (SCR_FilterEntryRoom filter : m_aFiltersUncategorized)
-		{
-			filters.Insert(filter);
-			/*if (filter.GetSelected())
-				Print("count: " + filter.m_sInternalName);*/
-			
-			filter.SetSelected(false);
-		}
-		
-		// Clear search string 
-		SetSearch(string.Empty);
-		
-		// Set ascendecy 
-		SCR_FilterEntryRoom asc = FindFilterByInternalName(filters, SORT_ASCENDENT);
-		if (asc)
-			asc.SetSelected(true);
-	}
-	
-	//protected array<SCR_FilterEntryRoom> m_aFiltersStored;
-	
-	//------------------------------------------------------------------------------------------------
-	//! Setup default filters with favorites filtered only
-	void DefaulFilterFavorite()
-	{
-		m_bFavoriteFilterOn = true;
-		DefaultFilter();
-		
-		// Apply filter 
-		SCR_FilterEntryRoom favorite = FindFilterByInternalName(m_aDefaultFilters, FILTER_FAVORITES);
-		favorite.SetSelected(m_bFavoriteFilterOn);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Setup default filters with recently played filtered only
-	void DefaulFilterRecentlyPlayed()
-	{
-		m_bRecentlyPlayedOn = true;
-		DefaultFilter();
-		
-		// Apply filters 
-		SCR_FilterEntryRoom recentlyPlayed = FindFilterByInternalName(m_aDefaultFilters, FILTER_RECENT_SERVERS);
-		recentlyPlayed.SetSelected(m_bRecentlyPlayedOn);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RestoreFilters()
-	{
-		/*m_aFiltersUncategorized.Clear();
-		
-		foreach (SCR_FilterEntryRoom filter : m_aFiltersStored)
-		{
-			m_aFiltersUncategorized.Insert(filter);
-			if (filter.GetSelected())
-				Print("count: " + filter.m_sInternalName);
-		}*/
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetUsePlayerLimit(bool use)
 	{
@@ -625,20 +544,6 @@ class FilteredServerParams : RoomFilterBase
 	}
 };
 
-//------------------------------------------------------------------------------------------------
-class BoolFilter
-{
-	string m_sName = "";
-	bool m_bValue = false;
-	bool m_bIsUsed = false;
-	
-	void BoolFilter(string name, bool value, bool used = false)
-	{
-		m_sName = name;
-		m_bValue = value;
-		m_bIsUsed = used;
-	}
-};
 
 //------------------------------------------------------------------------------------------------
 // Filter entry class extended with value 

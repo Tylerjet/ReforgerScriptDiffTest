@@ -1,3 +1,14 @@
+class SCR_ResourceEncapsulatorActionTypeTitle : BaseContainerCustomTitle
+{
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		title = source.GetClassName();
+		title.Replace("SCR_ResourceEncapsulatorAction", "");
+
+		return true;
+	}
+}
+
 [BaseContainerProps()]
 class SCR_ResourceEncapsulatorActionBase
 {
@@ -7,25 +18,68 @@ class SCR_ResourceEncapsulatorActionBase
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionChangeResourceValue : SCR_ResourceEncapsulatorActionBase
 {
 	[Attribute(uiwidget: UIWidgets.SpinBox, params: string.Format("0.0 %1 1.0", float.MAX))]
 	protected float m_fResourceValueCurrent;
 	
+	[Attribute(uiwidget: UIWidgets.CheckBox)]
+	protected bool m_bShouldChangeMaximum;
+
+	[Attribute(uiwidget: UIWidgets.SpinBox, params: "0.0 inf 1.0")]
+	protected float m_fResourceValueMax;
+
 	override void PerformAction(SCR_ResourceContainer representativeContainer, SCR_ResourceContainer representedContainer)
 	{
 		if (!representedContainer)
 			return;
 		
-		float resourcesResult	= Math.Min(m_fResourceValueCurrent, representedContainer.GetMaxResourceValue());
-		m_fResourceValueCurrent	-= resourcesResult;
+		const SCR_ResourceEncapsulator encapsulator = representativeContainer.GetResourceEncapsulator();
+		const SCR_ResourceContainerQueueBase queue	= encapsulator.GetContainerQueue();
+		const int containerQueueCount = queue.GetContainerCount();
 		
-		representedContainer.SetResourceValue(resourcesResult, false);
+		if (containerQueueCount == 0)
+			return;
+
+		float resourcesCurrent = m_fResourceValueCurrent;
+		int resourcesResultMax = m_fResourceValueMax / containerQueueCount;
+		SCR_ResourceContainer container;
+
+		if (m_bShouldChangeMaximum)
+		{
+			for (int i = containerQueueCount - 1; i >= 0; --i)
+			{
+				container = queue.GetContainerAt(i);
+
+				if (i == 0)
+					container.SetMaxResourceValue(m_fResourceValueMax - encapsulator.GetAggregatedMaxResourceValue() + container.GetMaxResourceValue(), true);
+				else
+					container.SetMaxResourceValue(resourcesResultMax, true);
+			}
+		}
+
+		encapsulator.RequestConsumtion(encapsulator.GetAggregatedResourceValue());
+		encapsulator.RequestGeneration(m_fResourceValueCurrent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetValueCurrent()
+	{
+		return m_fResourceValueCurrent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetValueMax()
+	{
+		if (!m_bShouldChangeMaximum)
+			return -1.0;
+		
+		return m_fResourceValueMax;
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionDisableUserActions : SCR_ResourceEncapsulatorActionBase
 {
 	override void PerformAction(SCR_ResourceContainer representativeContainer, SCR_ResourceContainer representedContainer)
@@ -47,7 +101,7 @@ class SCR_ResourceEncapsulatorActionDisableUserActions : SCR_ResourceEncapsulato
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionDisableInventoryStorage : SCR_ResourceEncapsulatorActionBase
 {
 	override void PerformAction(SCR_ResourceContainer representativeContainer, SCR_ResourceContainer representedContainer)
@@ -70,7 +124,7 @@ class SCR_ResourceEncapsulatorActionDisableInventoryStorage : SCR_ResourceEncaps
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionChangeRights : SCR_ResourceEncapsulatorActionBase
 {
 	[Attribute(defvalue: EResourceRights.NONE.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Limits the taking of resources to a specific group", enums: ParamEnumArray.FromEnum(EResourceRights))]
@@ -85,7 +139,7 @@ class SCR_ResourceEncapsulatorActionChangeRights : SCR_ResourceEncapsulatorActio
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionChangeDecay : SCR_ResourceEncapsulatorActionBase
 {
 	[Attribute(uiwidget: UIWidgets.CheckBox)]
@@ -112,7 +166,7 @@ class SCR_ResourceEncapsulatorActionChangeDecay : SCR_ResourceEncapsulatorAction
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionChangeOnEmptyBehavior : SCR_ResourceEncapsulatorActionBase
 {
 	[Attribute(defvalue: EResourceContainerOnEmptyBehavior.NONE.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Sets the behavior of when the container resource value reaches 0.", enums: ParamEnumArray.FromEnum(EResourceContainerOnEmptyBehavior))]
@@ -127,7 +181,7 @@ class SCR_ResourceEncapsulatorActionChangeOnEmptyBehavior : SCR_ResourceEncapsul
 	}
 }
 
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_ResourceEncapsulatorActionTypeTitle()]
 class SCR_ResourceEncapsulatorActionChangeGain : SCR_ResourceEncapsulatorActionBase
 {
 	[Attribute(uiwidget: UIWidgets.CheckBox)]

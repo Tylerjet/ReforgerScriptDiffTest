@@ -66,6 +66,25 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		m_BaseRadioComp.SetPower( !m_BaseRadioComp.IsPowered() );
 		m_bIsPowered = m_BaseRadioComp.IsPowered();
 
+		PlayerController pc = GetGame().GetPlayerController();
+		if (pc)
+		{
+			SCR_VONController vonController = SCR_VONController.Cast(pc.FindComponent(SCR_VONController));
+			if (vonController)
+			{
+				array<ref SCR_VONEntry> entries = {};
+				vonController.GetVONEntries(entries);
+				
+				foreach (SCR_VONEntry entry : entries)
+				{
+					SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+					BaseRadioComponent radio = radioEntry.GetTransceiver().GetRadio();
+					if (radio == m_BaseRadioComp)
+						entry.SetUsable(radio.IsPowered());
+				}
+			}
+		}
+		
 		if (m_bIsPowered)
 		{
 			if ( m_iRadioType == ERadioType.ANPRC68 || ERadioType.ANPRC77 )
@@ -105,16 +124,9 @@ class SCR_RadioComponent : SCR_GadgetComponent
 				freq += tsv.GetFrequencyResolution();
 			else
 				freq -= tsv.GetFrequencyResolution();
-			
-			//FIXME: Do not even try to change frequency without PlayerController
-			PlayerController pc = GetGame().GetPlayerController();
-			if (pc)
-			{
-				RadioHandlerComponent rhc = RadioHandlerComponent.Cast(pc.FindComponent(RadioHandlerComponent));
-				if (rhc)
-					rhc.SetFrequency(tsv, freq);
-			}
 
+			tsv.SetFrequency(freq);
+			
 			float targetAngle;
 
 			// proc anims
@@ -381,6 +393,13 @@ class SCR_RadioComponent : SCR_GadgetComponent
 			return EGadgetType.RADIO;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return radio type
+	ERadioType GetRadioType()
+	{
+		return m_iRadioType;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool IsVisibleEquipped()
 	{

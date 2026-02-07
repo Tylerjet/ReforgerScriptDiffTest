@@ -78,11 +78,11 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 			if (!acceptWidget)
 				continue;
 			
-			SCR_ButtonComponent refuseButton = SCR_ButtonComponent.Cast(refuseWidget.FindHandler(SCR_ButtonComponent));
+			SCR_InputButtonComponent refuseButton = SCR_InputButtonComponent.Cast(refuseWidget.FindHandler(SCR_InputButtonComponent));
 			if (!refuseButton)
 				continue;
 			
-			SCR_ButtonComponent acceptButton = SCR_ButtonComponent.Cast(acceptWidget.FindHandler(SCR_ButtonComponent));
+			SCR_InputButtonComponent acceptButton = SCR_InputButtonComponent.Cast(acceptWidget.FindHandler(SCR_InputButtonComponent));
 			if (!acceptButton)
 				continue;
 			

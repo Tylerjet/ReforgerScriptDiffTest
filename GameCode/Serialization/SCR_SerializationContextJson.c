@@ -1,4 +1,3 @@
-
 // Convenience Save/Load contexts to work with json format
 
 /*-----------------------------------------------------------
@@ -6,66 +5,65 @@
 */
 class SCR_JsonSaveContext : ContainerSerializationSaveContext
 {
-	private ref JsonSaveContainer container;
+	protected ref BaseJsonSerializationSaveContainer m_Container;
 
 	void SCR_JsonSaveContext(bool skipEmptyObjects = true)
 	{
-		container = new JsonSaveContainer();
-		SetContainer(container);
+		CreateContainer();
+		SetContainer(m_Container);
 	}
 
-	void ~SCR_JsonSaveContext()
+	protected void CreateContainer()
 	{
+		m_Container = new JsonSaveContainer();
 	}
 	
 	void SetMaxDecimalPlaces(int maxDecimalPlaces)
 	{
-		container.SetMaxDecimalPlaces(maxDecimalPlaces);
+		m_Container.SetMaxDecimalPlaces(maxDecimalPlaces);
 	}
 
 	int GetMaxDecimalPlaces()
 	{
-		return container.GetMaxDecimalPlaces();
+		return m_Container.GetMaxDecimalPlaces();
 	}
 	
 	bool SaveToFile(string filePath)
 	{
-		return container.SaveToFile(filePath);
+		return m_Container.SaveToFile(filePath);
 	}
 	
 	string ExportToString()
 	{
-		return container.ExportToString();
+		return m_Container.ExportToString();
 	}
-
-};
-
+}
 
 /*-----------------------------------------------------------
  Context to load data from given serliazation container
 */
 class SCR_JsonLoadContext : ContainerSerializationLoadContext
 {
-	private ref JsonLoadContainer container;
+	protected ref JsonLoadContainer m_Container;
 	
 	void SCR_JsonLoadContext(bool skipEmptyObjects = true)
 	{
-		container = new JsonLoadContainer();
-		SetContainer(container);
+		CreateContainer();
+		SetContainer(m_Container);
 	}
 
-	void ~SCR_JsonLoadContext()
+	protected void CreateContainer()
 	{
+		m_Container = new JsonLoadContainer();
 	}
 	
 	bool ImportFromString(string jsonData)
 	{
-		return container.ImportFromString(jsonData);
+		return m_Container.ImportFromString(jsonData);
 	}
 	
 	bool LoadFromFile(string fileName)
 	{
-		return container.LoadFromFile(fileName);
+		return m_Container.LoadFromFile(fileName);
 	}
-	
-};
+}

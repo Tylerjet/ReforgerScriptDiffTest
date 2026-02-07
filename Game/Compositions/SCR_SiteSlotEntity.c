@@ -186,8 +186,9 @@ class SCR_SiteSlotEntity : GenericEntity
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		IEntitySource src = api.EntityToSource(this);
 		
-		api.SetVariableValue(src, null, "angleX", "0");
-		api.SetVariableValue(src, null, "angleZ", "0");
+		vector angles;
+		src.Get("angles", angles);
+		api.SetVariableValue(src, null, "angles", "0 " + angles[1] + " 0");
 		
 		vector transform[4];
 		GetWorldTransform(transform);
@@ -200,23 +201,23 @@ class SCR_SiteSlotEntity : GenericEntity
 		m_DebugShapes.Clear();
 #endif
 		
-		for (int i = 0, count = entitySource.GetNumChildren(); i < count; i++)
+		for (int i, count = entitySource.GetNumChildren(); i < count; i++)
 		{
 			IEntitySource childSrc = entitySource.GetChild(i);
 			child = api.SourceToEntity(childSrc);
 			child.GetBounds(min, max);
 			
 			float posY = -float.MAX;
-			float angleZ = _WB_GetAngle(api, pos + transform[0] * min[0], pos + transform[0] * max[0], posY);
-			float angleX = _WB_GetAngle(api, pos + transform[2] * min[2], pos + transform[2] * max[2], posY);
+			childSrc.Get("angles", angles);
+			angles[2] = _WB_GetAngle(api, pos + transform[0] * min[0], pos + transform[0] * max[0], posY);
+			angles[0] = -_WB_GetAngle(api, pos + transform[2] * min[2], pos + transform[2] * max[2], posY);
 			
 			posChild = pos;
 			posChild[1] = posY;
 			posChild = CoordToLocal(posChild);
 			
 			api.SetVariableValue(childSrc, null, "coords", posChild.ToString(false));
-			api.SetVariableValue(childSrc, null, "angleX", angleX.ToString());
-			api.SetVariableValue(childSrc, null, "angleZ", (-angleZ).ToString());
+			api.SetVariableValue(childSrc, null, "angles", string.Format("%1 %2 %3", angles[0], angles[1], angles[2]));
 		}
 	}
 	float _WB_GetAngle(WorldEditorAPI api, vector posA, vector posB, out float posY)

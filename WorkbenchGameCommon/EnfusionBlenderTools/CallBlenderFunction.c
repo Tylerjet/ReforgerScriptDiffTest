@@ -127,4 +127,24 @@ static void StartBlenderWithOperator(BlenderOperatorDescription operatorDescript
 	Workbench.RunProcess(cmd);
 }
 
+static void StartBlenderWithServer(bool runInBackground = true)
+{
+	if (!runInBackground)
+	{
+		BlenderOperatorDescription operatorDescription = new BlenderOperatorDescription("core");
+		operatorDescription.blIDName = "ebt.http_server";
+		
+		StartBlenderWithOperator(operatorDescription, false);
+		return;
+	}
+	
+	string pathToExecutable;
+	if (!EBTConfigPlugin.GetDefaultBlenderPath(pathToExecutable))
+		return;
+	
+	string cmd = string.Format("\"%1\" --background --python-expr \"import EnfusionBlenderTools.core.server as s; s.EBT_HTTP_Server.start(background_mode=True); s.EBT_HTTP_Server.background_loop()\"", pathToExecutable); 
+	Workbench.RunProcess(cmd);
+	
+}
+
 #endif

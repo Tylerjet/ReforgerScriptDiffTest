@@ -241,7 +241,7 @@ class SCR_AIStaticArtilleryActivity : SCR_AIActivityBase
 		{
 			// All assigned agents have failed their behaviors
 			Fail();
-			Print(string.Format("SCR_AIStaticArtilleryActivity: FAILED, noone can shoot at the target position: %1, or there is no ammo", m_vTargetPos), LogLevel.WARNING);
+			Print(string.Format("SCR_AIStaticArtilleryActivity: FAILED, noone can shoot at the target position: %1, or there is no ammo", m_vTargetPos), LogLevel.DEBUG);
 		}
 	}
 	

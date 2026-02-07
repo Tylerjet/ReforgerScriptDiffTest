@@ -16,7 +16,7 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 	{
 		SCR_SubMenuBase subMenu = super.OnTabCreate(comp, w, index);
 		
-		// Dependencies tab is created only on click
+		// Dependencies tab is created only on click		
 		if (index == SCR_EModDetailsMenuTabs.DEPENDENCY)
 			InitDependenciesTab();
 		
@@ -25,7 +25,23 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 		
 		return subMenu;
 	}
-	
+ 	
+	//------------------------------------------------------------------------------------------------
+	override SCR_SubMenuBase OnTabShow(SCR_TabViewComponent comp, Widget w)
+	{
+		SCR_SubMenuBase subMenu = super.OnTabShow(comp, w);
+		SCR_AnalyticsApplication.GetInstance().ModDetailsSetTab(subMenu.GetIndex());
+		return subMenu;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		SCR_AnalyticsApplication.GetInstance().OpenModDetails();	
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
@@ -33,6 +49,14 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 		
 		if (m_WorkshopItem)
 			m_WorkshopItem.m_OnDependenciesLoaded.Remove(OnDetailsLoaded);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
+		
+		SCR_AnalyticsApplication.GetInstance().CloseModDetails();	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -59,7 +83,7 @@ class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 		if (!m_WorkshopItem.GetDetailsLoaded())
 			m_WorkshopItem.LoadDetails();
 		
-		OnDetailsLoaded(m_WorkshopItem);
+		OnDetailsLoaded(m_WorkshopItem);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

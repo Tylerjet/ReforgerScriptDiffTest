@@ -29,6 +29,9 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 			return;
 
 		m_TurretController = TurretControllerComponent.Cast(compartment.GetController());
+		if (!m_TurretController)
+			m_TurretController = compartment.GetAttachedTurret();
+		
 		if (m_TurretController)
 			m_WeaponManager = m_TurretController.GetWeaponManager();
 
@@ -130,6 +133,13 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 	
 				vector cameraSlotMat[4];
 				cameraSlot.GetModelTransform(cameraSlotMat);
+				
+				vector zeroingLS[4];
+				if (m_WeaponManager.GetCurrentWeapon().GetCurrentSightsZeroingTransform(zeroingLS))
+				{
+					zeroingLS[3] = -zeroingLS[3];
+					Math3D.MatrixMultiply4(sightLSMat, zeroingLS, sightLSMat);
+				}
 	
 				pOutResult.m_CameraTM[3]            = (sightLSMat[3] - cameraSlotMat[3]).InvMultiply3(cameraSlotMat);
 				pOutResult.m_pWSAttachmentReference = cameraSlot;

@@ -116,11 +116,11 @@ class SCR_AddonManager : GenericEntity
 	
 	// Connected to WorkshopApi.OnItemsChecked, which automatically runs at start up.
 	protected bool m_bAddonsChecked			= false;
-	protected ref SCR_BackendCallback m_CallbackCheckAddons;
+	protected ref BackendCallback m_CallbackCheckAddons;
 	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 	protected bool m_bInitFinished 			= false;
 
-	protected ref SCR_BackendCallback m_AddonCheckCallback = new SCR_BackendCallback();
+	protected ref BackendCallback m_AddonCheckCallback = new BackendCallback();
 
 	protected SCR_LoadingOverlay m_LoadingOverlay;
 	
@@ -253,7 +253,7 @@ class SCR_AddonManager : GenericEntity
 	//! Returns immediate value of UserPrivilege.USER_GEN_CONTENT
 	bool GetUgcPrivilege()
 	{
-		return GetGame().GetPlatformService().GetPrivilege(UserPrivilege.USER_GEN_CONTENT);
+		return SocialComponent.IsPrivilegedTo(EUserInteraction.UserGeneratedContent);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------------
@@ -276,8 +276,8 @@ class SCR_AddonManager : GenericEntity
 			m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
 			m_CallbackGetPrivilege.m_OnResult.Insert(Callback_GetPrivilege_OnPrivilegeResult);
 		}
-
-		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.USER_GEN_CONTENT, m_CallbackGetPrivilege);
+		
+		SocialComponent.RequestSocialPrivilege(EUserInteraction.UserGeneratedContent, m_CallbackGetPrivilege);
 	}
 
 	// Handling of addons loaded through external configuration
@@ -587,13 +587,14 @@ class SCR_AddonManager : GenericEntity
 
 		
 		if (!m_AddonCheckCallback)
-			m_AddonCheckCallback = new SCR_BackendCallback();
+			m_AddonCheckCallback = new BackendCallback();
 		
 		WorkshopApi api = GetGame().GetBackendApi().GetWorkshop();
 
 		if (api)
 		{
-			m_AddonCheckCallback.GetEventOnResponse().Insert(AddonCheckResponse);
+			m_AddonCheckCallback.SetOnSuccess(AddonCheckResponse);
+			m_AddonCheckCallback.SetOnError(AddonCheckError);
 			api.OnItemsChecked(m_AddonCheckCallback);
 		}
 	}
@@ -755,18 +756,16 @@ class SCR_AddonManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void AddonCheckResponse(SCR_BackendCallback callback)
-	{
-		EBackendCallbackResponse type = callback.GetResponseType();
-		
-		if (type != EBackendCallbackResponse.SUCCESS)
-		{
-			// TODO: Notify error
-			return;
-		}
-		
+	protected void AddonCheckResponse(BackendCallback callback)
+	{		
 		// Success
 		Callback_CheckAddons_OnSuccess();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AddonCheckError(BackendCallback callback)
+	{
+		// TODO: Notify error!
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -978,7 +977,7 @@ class SCR_AddonManager : GenericEntity
 		foreach (SCR_WorkshopItem item : items)
 		{
 			auto wi = item.Internal_GetWorkshopItem();
-			if (!wi || !wi.HasLatestVersion())
+			if (!wi || (wi.GetLatestRevision() && !wi.GetLatestRevision().IsDownloaded()))
 				m_iAddonsOutdated++;
 		}
 	}

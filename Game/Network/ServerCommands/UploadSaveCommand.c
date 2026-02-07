@@ -6,7 +6,7 @@ enum EBackendCallbackState
 	EBCS_TIMEOUT
 }
 
-class StateBackendCallback : SCR_BackendCallback
+class StateBackendCallback : BackendCallback
 {
 	EBackendCallbackState m_eState = EBackendCallbackState.EBCS_PENDING;
 	EApiCode m_eLastError = EApiCode.EACODE_ERROR_OK;

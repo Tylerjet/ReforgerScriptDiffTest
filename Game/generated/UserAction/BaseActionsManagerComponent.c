@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class BaseActionsManagerComponentClass: GameComponentClass
-{
-}
-
 class BaseActionsManagerComponent: GameComponent
 {
 	//! Tries to find context with provided name in the actions manager.

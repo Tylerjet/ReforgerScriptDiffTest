@@ -42,24 +42,24 @@ class SCR_ModeInfoBarEditorUIComponent : ScriptedWidgetComponent
 		if (editedSaveWidget)
 			m_EditedSaveUI = SCR_EditedSaveUIComponent.Cast(editedSaveWidget.FindHandler(SCR_EditedSaveUIComponent));
 		
-		// Hide for PS
-		if (Replication.IsRunning() || System.GetPlatform() == EPlatform.PS5 || System.GetPlatform() == EPlatform.PS4 || System.GetPlatform() == EPlatform.PS5_PRO)
+		// Hide workshop sharing saves in MP and for PS
+		// TODO: Remove force hide once uploading is re-implemented for Xbox/Steam
+		if (true || Replication.IsRunning() || System.GetPlatform() == EPlatform.PS5 || System.GetPlatform() == EPlatform.PS4 || System.GetPlatform() == EPlatform.PS5_PRO)
 		{
 			if (m_EditedSaveUI)
 				m_EditedSaveUI.GetRootWidget().SetVisible(false);
 			
 			return;
 		}
-		
+
 		if (GetGame().InPlayMode())
 		{
-			bool show = GetGame().GetSaveManager().ScenarioCanBeSaved();
-			
+			bool show = GetGame().GetSaveGameManager().IsSavingAllowed();
+
 			SCR_EditorManagerEntity editorManagerEntity = SCR_EditorManagerEntity.GetInstance();
-			
 			if (show && editorManagerEntity)
 				show = editorManagerEntity.GetCurrentMode() == EEditorMode.EDIT;
-			
+
 			if (m_EditedSaveUI)
 				m_EditedSaveUI.GetRootWidget().SetVisible(show);
 		}

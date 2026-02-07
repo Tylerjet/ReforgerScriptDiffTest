@@ -30,7 +30,7 @@ class SCR_AttributesButtonEditorUIComponent: SCR_BaseEditorUIComponent
 				attributesManager.StartEditing(SCR_CameraEditorComponent.GetCameraInstance());
 				break;
 			case 2:
-				attributesManager.StartEditing(GetTaskManager());
+				attributesManager.StartEditing(SCR_TaskSystem.GetInstance());
 				break;
 		}
 		

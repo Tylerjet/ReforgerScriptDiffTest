@@ -24,6 +24,8 @@ class Faction: ScriptAndConfig
 	proto ref Color GetFactionColor();
 	//! Returns the UI info of this faction.
 	proto external UIInfo GetUIInfo();
+	//! Returns the encryption key used for radio transmissions.
+	proto external string GetFactionRadioEncryptionKey();
 }
 
 /*!

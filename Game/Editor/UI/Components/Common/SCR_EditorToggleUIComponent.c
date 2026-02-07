@@ -82,7 +82,7 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 			m_LoadingWidget.FadeIn();
 		}
 		
-		if (m_EditorManager.IsAutoInit())
+		if (m_InitLoadingWidget && m_EditorManager.IsAutoInit())
 			m_InitLoadingWidget.FadeIn();		
 	}
 

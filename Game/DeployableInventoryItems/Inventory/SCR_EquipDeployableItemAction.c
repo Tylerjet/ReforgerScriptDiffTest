@@ -7,6 +7,7 @@ class SCR_EquipDeployableItemAction : SCR_DeployableInventoryItemPickUpAction
 		inventoryCallBack.m_pItem = pOwnerEntity;
 		inventoryCallBack.m_pStorageToPickUp = manager.GetCharacterStorage();
 		inventoryCallBack.m_iSlotToFocus = -1;
+		inventoryCallBack.m_bShouldEquip = true;
 
 		manager.InsertItem(pOwnerEntity, cb: inventoryCallBack);
 	}

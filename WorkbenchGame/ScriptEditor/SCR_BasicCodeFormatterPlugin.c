@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-//
+
 //! \brief A Basic Code Formatter - use Ctrl+Shift+K to trigger.
 //! Ctrl+Alt+Shift+K can be used to force processing all the lines of the currently opened file.
 //! \see SCR_BasicCodeFormatterForcedPlugin
@@ -13,6 +13,8 @@
 // TODO: ref/notnull method (?? e.g ref notnull ScriptInvoker GetOnHealthChanged(bool createNew = true))
 // TODO: detect methods without separator (beware of comments / doxygen comments)
 // TODO: detect unused private/protected class variables / methods (method variables... later.)
+// TODO: detect pointer declaration in loops (for/foreach/while)
+// TODO: detect missing empty line after an if two-liner (or if-else)
 
 [WorkbenchPluginAttribute(
 	name: "Basic Code Formatter",
@@ -53,7 +55,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "0", desc: "Process all script files in the addon defined below (only process the currently opened file if unchecked)", category: "Batch Process")]
 	protected bool m_bBatchProcessAddon;
 
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Addon in which script files will be batch-formatted (if \"Batch Process Addon\" above is selected)", enums: ParamEnumAddons.FromEnum(titleFormat: 2, hideCoreModules: 2), category: "Batch Process")]
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Addon in which script files will be batch-formatted (if \"Batch Process Addon\" above is selected)", enums: SCR_ParamEnumArray.FromAddons(titleFormat: 2, hideCoreModules: 2), category: "Batch Process")]
 	protected int m_iAddon;
 
 	[Attribute(defvalue: "1", desc: "Only log reports where processing did something to the file", category: "Batch Process")]
@@ -334,13 +336,22 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		}
 
 		string addonName = SCR_AddonTool.GetAddonID(m_iAddon);
-		array<ResourceName> scriptFiles = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "c" }, null, SCR_AddonTool.ToFileSystem(addonName));
+		string addonFileSystem = SCR_AddonTool.ToFileSystem(addonName);
+		int addonFileSystemLength = addonFileSystem.Length();
+		int addonFileSystemLengthPlus3 = addonFileSystemLength + 3; // e.g "$FS:a.c"
+		array<string> scriptFiles = SCR_WorkbenchHelper.SearchWorkbenchFiles({ "c" }, null, addonFileSystem);
 
 		array<string> relativeFilePaths = {};
-		foreach (ResourceName scriptFile : scriptFiles)
+		foreach (string scriptFile : scriptFiles)
 		{
-			string scriptFilePath = scriptFile.GetPath();
-			relativeFilePaths.Insert(scriptFilePath);
+			if (!scriptFile) // .IsEmpty()
+				continue;
+
+			int scriptFileLength = scriptFile.Length();
+			if (scriptFileLength < addonFileSystemLengthPlus3) // .IsEmpty()
+				continue;
+
+			relativeFilePaths.Insert(scriptFile.Substring(addonFileSystemLength, scriptFileLength - scriptFileLength));
 		}
 
 		int editableScriptsCount = relativeFilePaths.Count();
@@ -442,7 +453,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 		bool reportFindings = !report.m_bIsPluginFile && m_bReportFindings;
 		bool doGeneralFormatting = !report.m_bIsPluginFile && m_bGeneralFormatting;
 
-		bool isPreviousLineEmptyLine;
+		bool isPreviousLineEmpty;
 		bool emptyLineGroupLogged;
 
 		bool isInRepository;
@@ -554,10 +565,10 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					report.m_iGeneralFormattingTotal += GeneralFormatting(indentation, pieces);
 			}
 
-			string finalContent = SCR_StringHelper.Join(string.Empty, pieces);
+			string currContent = SCR_StringHelper.Join(string.Empty, pieces);
 			if (reportFindings)
 			{
-				if (indentation != SCR_StringHelper.TAB && finalContent.StartsWith(SCR_StringHelper.DOUBLE_SLASH + "---") && finalContent.EndsWith("---"))
+				if (indentation != SCR_StringHelper.TAB && currContent.StartsWith(SCR_StringHelper.DOUBLE_SLASH + "---") && currContent.EndsWith("---"))
 					report.m_aBadSeparatorFound.Insert(lineNumberPlus1);
 
 				string fullLineLC = SCR_StringHelper.FormatValueNameToUserFriendly(fullLine);
@@ -579,9 +590,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					}
 				}
 
-				string findingsString = finalContent.Trim();
+				string findingsString = currContent.Trim();
 				bool isCurrentLineEmpty = !findingsString; // !IsEmpty for perf
-				if (isPreviousLineEmptyLine)
+				if (isPreviousLineEmpty)
 				{
 					if (isCurrentLineEmpty)
 					{
@@ -596,14 +607,29 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 						emptyLineGroupLogged = false;
 					}
 				}
-
-				isPreviousLineEmptyLine = isCurrentLineEmpty;
+				else // let's check for scope opening/endings
+				{
+					if (isCurrentLineEmpty)
+					{
+						if (prevContent.StartsWith("{")) // }
+							report.m_aSuperfluousEmptyLineFound.Insert(lineNumberPlus1);
+					}
+					else
+					{ // { {
+						if (prevFullLine.StartsWith("\t\t") && prevContent.StartsWith("}") && !currContent.StartsWith("}") && !currContent.StartsWith("else"))
+							report.m_aMissingEmptyLineFound.Insert(lineNumberPlus1);
+					}
+				}
 
 				findingsString = string.Empty;
+				array<string> splits = {};
 				foreach (string piece : pieces)
 				{
 					if (piece.StartsWith(SCR_StringHelper.DOUBLE_SLASH))
+					{
+						findingsString = SCR_StringHelper.TrimRight(findingsString);
 						break; // cheaper
+					}
 
 					if (!SCR_StringHelper.StartsWithAny(piece, FORMAT_IGNORE)) // don't check comments
 						findingsString += piece;
@@ -625,6 +651,13 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 					if (findingsString.Contains("autoptr "))
 						report.m_aAutoptrKeywordFound.Insert(lineNumberPlus1);
+
+					if (findingsString.StartsWith("for (")) // )
+					{
+						findingsString.Split(";", splits, true);
+						if (splits[1].Contains("(")) // )
+							report.m_aForCountCall.Insert(lineNumberPlus1);
+					}
 
 					foreach (string forbiddenDivision : m_aForbiddenDivisions)
 					{
@@ -649,7 +682,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 					if (SCR_StringHelper.StartsWithAny(findingsString, m_aIfForForEachWhileArray) && SCR_StringHelper.EndsWithAny(findingsString, m_aEndBracketSemicolonArray))
 						report.m_aOneLinerFound.Insert(lineNumberPlus1);
 
-					if (!prevContent.StartsWith("[Attribute(") && HasBadVariableNaming(indentation, findingsString)) // )] // do not suggest renaming existing attributes, they are most likely public by now
+					if ((!isInRepository || formatThisLine) && HasBadVariableNaming(indentation, findingsString)) // )] // do not suggest renaming existing attributes, they are most likely public by now
 						report.m_aBadVariableNamingFound.Insert(lineNumberPlus1);
 
 					if (SCR_StringHelper.ContainsAny(findingsString, m_aScriptInvokerArray))
@@ -661,6 +694,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 						{
 							if (!findingsString.Contains("LogLevel.") && !findingsString.Contains("logLevel)"))
 								report.m_aWildPrintFound.Insert(lineNumberPlus1);
+
+							if (findingsString.Contains("Print(string.Format(")) // ))
+								report.m_aPrintToPrintFormatFound.Insert(lineNumberPlus1);
 						}
 						else
 						if (findingsString.StartsWith("PrintFormat(")) // )
@@ -670,16 +706,21 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 						}
 					}
 
+					if (findingsString.Contains("enums: ParamEnumArray.FromEnum(")) // )
+						report.m_aEnumsToEnumTypeFound.Insert(lineNumberPlus1);
+
 					if (SCR_StringHelper.StartsWithAny(findingsString, m_aPrefixLineChecks) && !SCR_StringHelper.StartsWithAny(findingsString, m_aPrefixChecks))
 						report.m_aNonPrefixedClassOrEnumFound.Insert(lineNumberPlus1);
 				}
+
+				isPreviousLineEmpty = isCurrentLineEmpty;
 			}
 
-			string finalLine = indentation + finalContent;
-
 			prevFormatThisLine = formatThisLine;
+
+			string finalLine = indentation + currContent;
 			prevFullLine = finalLine;
-			prevContent = finalContent;
+			prevContent = currContent;
 
 			if (finalLine == fullLine)
 				continue;
@@ -703,7 +744,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			Finish
 		*/
 
-		if (!demoMode && m_bAddFinalLineReturn && lines[linesCount - 1] != string.Empty)
+		if (!demoMode && m_bAddFinalLineReturn && linesCount > 0 && lines[linesCount - 1] != string.Empty)
 		{
 			if (useFileIO)
 				lines.Insert(string.Empty);
@@ -852,11 +893,20 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			if (!report.m_aDoubleEmptyLineFound.IsEmpty())
 				PrintFinding("multiple consecutive empty lines", report.m_aDoubleEmptyLineFound, "leave only one");
 
+			if (!report.m_aSuperfluousEmptyLineFound.IsEmpty())
+				PrintFinding("superfluous empty line(s)", report.m_aSuperfluousEmptyLineFound, "an empty line is not welcome after the beginning of a scope");
+
+			if (!report.m_aMissingEmptyLineFound.IsEmpty())
+				PrintFinding("missing empty line(s)", report.m_aMissingEmptyLineFound, "have an empty line between the end of a scope (or an unscoped if/if-else) and code after that");
+
 			if (!report.m_aAutoKeywordFound.IsEmpty())
 				PrintFinding("'auto' keyword", report.m_aAutoKeywordFound, "use the direct type instead");
 
 			if (!report.m_aAutoptrKeywordFound.IsEmpty())
 				PrintFinding("'autoptr' keyword", report.m_aAutoptrKeywordFound, "remove if used on a standard variable, or replace with 'ref' if used for a member variable array");
+
+			if (!report.m_aForCountCall.IsEmpty())
+				PrintFinding("for-loop method call", report.m_aForCountCall, "a method is called every iteration; is it wanted? (usually arr.Count())");
 
 			if (!report.m_aDivideByXFound.IsEmpty())
 				PrintFinding("potentially avoidable division", report.m_aDivideByXFound, "use ' * 0.5' instead of ' / 2', ' * 0.1' instead of ' / 10' etc whenever possible");
@@ -875,6 +925,12 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			if (!report.m_aWildPrintFound.IsEmpty())
 				PrintFinding("wild Print()", report.m_aWildPrintFound, "use Print with LogLevel.XXX (or PrintFormat with level: LogLevel.XXX) to show this is not a temporary debug print");
+
+			if (!report.m_aPrintToPrintFormatFound.IsEmpty())
+				PrintFinding("string.Format Print", report.m_aPrintToPrintFormatFound, "Print(string.Format()) can be converted to PrintFormat()");
+
+			if (!report.m_aEnumsToEnumTypeFound.IsEmpty())
+				PrintFinding("enums using ParamEnumArray.FromEnum", report.m_aEnumsToEnumTypeFound, "\"enums:\" can be converted to \"enumType: EnumType\"");
 
 			if (!report.m_aNonPrefixedClassOrEnumFound.IsEmpty())
 			{
@@ -1029,7 +1085,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 			// "class abc : parent" and "foreach x : y" colon spacing
 			if (
-				(startPiece.StartsWith("class ") || startPiece.StartsWith("foreach (")) &&
+				(startPiece.StartsWith("class ") || startPiece.StartsWith("enum ") || startPiece.StartsWith("foreach (")) &&
 				startPiece.IndexOf(":") > -1
 			)
 			{
@@ -1459,7 +1515,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			|| pieces.Contains("event")
 			|| pieces.Contains("proto")
 			|| pieces.Contains("external")	// that's a method
-			|| pieces.Contains("new")
+//			|| pieces.Contains("new")		// e.g ref map<string, string> m_mMap = new map<string, string>()
 			|| pieces.Contains("return"))	// that's a global method's assignation
 			return false;
 
@@ -1560,8 +1616,26 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 		}
 
-		if (SCR_StringHelper.ContainsLowercase(varName[2])) // m_zSomething
+		string hungarianChar = varName[2];
+		if (SCR_StringHelper.ContainsLowercase(hungarianChar)) // m_zSomething
+		{
+			if (hungarianChar == "e")	// enum exception...
+			{
+				typename typeTypename = type.ToType();
+				if (!typeTypename)
+					return true;
+
+				for (int i; i < 8; ++i) // 1, 2, 4, 8 and that's it
+				{
+					if (typename.EnumToString(typeTypename, i) != "unknown")
+						return false;
+				}
+
+				return true;
+			}
+
 			return true;
+		}
 
 		// all good? return OK
 
@@ -1901,17 +1975,22 @@ class SCR_BasicCodeFormatterPluginFileReport
 	// reports
 	ref array<int> m_aBadSeparatorFound = {};
 	ref array<int> m_aDoubleEmptyLineFound = {};
+	ref array<int> m_aSuperfluousEmptyLineFound = {};
+	ref array<int> m_aMissingEmptyLineFound = {};
 	ref array<int> m_aNewWithoutParentheseFound = {};
 	ref array<int> m_aUselessRefFound = {};
 	ref array<int> m_aNewArrayFound = {};
 	ref array<int> m_aAutoKeywordFound = {};
 	ref array<int> m_aAutoptrKeywordFound = {};
+	ref array<int> m_aForCountCall = {};
 	ref array<int> m_aDivideByXFound = {};
 	ref array<int> m_aUnscopedLoopFound = {};
 	ref array<int> m_aOneLinerFound = {};
 	ref array<int> m_aBadVariableNamingFound = {};
 	ref array<int> m_aBadScriptInvokerFound = {};
 	ref array<int> m_aWildPrintFound = {};
+	ref array<int> m_aPrintToPrintFormatFound = {};
+	ref array<int> m_aEnumsToEnumTypeFound = {};
 	ref array<int> m_aNonPrefixedClassOrEnumFound = {};
 	ref map<string, ref array<int>> m_mForbiddenWordFound = new map<string, ref array<int>>();
 
@@ -1923,24 +2002,34 @@ class SCR_BasicCodeFormatterPluginFileReport
 		if (m_iLinesEdited != 0)
 			return false;
 
-		bool are15ElementsAllEmpty =
+		bool areAllElementsEmpty = // max 16 '&&' elements
 			m_aBadSeparatorFound.IsEmpty() &&
 			m_aDoubleEmptyLineFound.IsEmpty() &&
+			m_aSuperfluousEmptyLineFound.IsEmpty() &&
+			m_aMissingEmptyLineFound.IsEmpty() &&
 			m_aNewWithoutParentheseFound.IsEmpty() &&
 			m_aUselessRefFound.IsEmpty() &&
 			m_aNewArrayFound.IsEmpty() &&
 			m_aAutoKeywordFound.IsEmpty() &&
 			m_aAutoptrKeywordFound.IsEmpty() &&
+			m_aForCountCall.IsEmpty() &&
 			m_aDivideByXFound.IsEmpty() &&
 			m_aUnscopedLoopFound.IsEmpty() &&
 			m_aOneLinerFound.IsEmpty() &&
 			m_aBadVariableNamingFound.IsEmpty() &&
 			m_aBadScriptInvokerFound.IsEmpty() &&
-			m_aWildPrintFound.IsEmpty() &&
+			m_aWildPrintFound.IsEmpty();
+
+		if (!areAllElementsEmpty)
+			return false;
+
+		areAllElementsEmpty =
+			m_aPrintToPrintFormatFound.IsEmpty() &&
+			m_aEnumsToEnumTypeFound.IsEmpty() &&
 			m_aNonPrefixedClassOrEnumFound.IsEmpty() &&
 			m_mForbiddenWordFound.IsEmpty();
 
-		return are15ElementsAllEmpty;
+		return areAllElementsEmpty;
 	}
 
 	//------------------------------------------------------------------------------------------------

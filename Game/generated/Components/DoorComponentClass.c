@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class DoorComponentClass: GameComponentClass
+class DoorComponentClass: BaseDoorComponentClass
 {
 }
 

@@ -395,22 +395,24 @@ class ResourceProcessorPlugin: WorkbenchPlugin
 		platform.Set(varName, val);
 		ReportIssue(resource, "Property fixed: " + prefix + "." + varName);
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
 	static bool FixMeshObjectMetaFile(MetaFile meta, string absFileName)
 	{
-		bool anyAncestorModified = false;
-		
 		BaseContainerList configurations = meta.GetObjectArray("Configurations");
 		if(!configurations)
 			return false;
-			
+
+		bool metaModified = false;
+		int pcIdx = -1;
 		for(int c = 0; c < configurations.Count(); c++)
 		{
 			BaseContainer cfg = configurations.Get(c);
-			
+
 			string cfgName = cfg.GetName();
-			
+			if (cfgName == "PC")
+				pcIdx = c;
+
 			//ensure that object which we want set ancestor to does exist. Create new instance if it's missing
 			bool IsSet = cfg.IsVariableSetDirectly(MeshObjectCommon);
 			if( !IsSet )
@@ -420,17 +422,17 @@ class ResourceProcessorPlugin: WorkbenchPlugin
 				BaseContainer cont = root.ToBaseContainer();
 				cfg.SetObject(MeshObjectCommon, cont);
 			}
-			
+
 			//get an object which must be inherited from base configs
 			BaseContainer commonObj = cfg.GetObject(MeshObjectCommon);
 			if(!commonObj)
 			{
-				ReportIssue(absFileName, "Cannot set configuraction ancestor (" + cfgName + ")" );
+				ReportIssue(absFileName, "Cannot set configuration ancestor (" + cfgName + ")" );
 				continue;
 			}
-		
+
 			ResourceName ancestor = "";
-	
+
 			switch(cfgName)
 			{
 				case "PC":
@@ -452,17 +454,83 @@ class ResourceProcessorPlugin: WorkbenchPlugin
 					ancestor = "{3A5B3356978039E8}configs/ResourceTypes/HEADLESS/MeshObjectCommon.conf";
 					break;
 			}
-			
+
 			if(ancestor != "")
 			{
-				commonObj.SetAncestor(ancestor);						
-				anyAncestorModified = true;
+				commonObj.SetAncestor(ancestor);
+				metaModified = true;
 			}
 		}
-		
-		return anyAncestorModified;
+
+		if (pcIdx >= 0)
+		{
+			BaseContainer confPc_ = configurations[pcIdx];
+			BaseContainer commonPc = confPc_.GetObject(MeshObjectCommon);
+			for (int iConf = 0, countConf = configurations.Count(); iConf < countConf; iConf++)
+			{
+				if (iConf == pcIdx)
+					continue;
+
+				BaseContainer confDerived_ = configurations.Get(iConf);
+				BaseContainer commonDerived = confDerived_.GetObject(MeshObjectCommon);
+				if (!commonDerived)
+					continue;
+
+				for (int iVar = 0, countVar = commonPc.GetNumVars(); iVar < countVar; iVar++)
+				{
+					string namePc = commonPc.GetVarName(iVar);
+					string nameDerived = commonDerived.GetVarName(iVar);
+					if (namePc != nameDerived)
+						continue;
+
+					DataVarType varType = commonPc.GetDataVarType(iVar);
+					bool isSetDirectlyPc = commonPc.IsVariableSetDirectly(namePc);
+					bool isSetDirectlyDerived = commonDerived.IsVariableSetDirectly(nameDerived);
+					if (isSetDirectlyPc)
+					{
+						if (varType == DataVarType.SCALAR)
+						{
+							float propValPc, propValDerived;
+							if (!commonPc.Get(namePc, propValPc))
+								continue;
+
+							if (!commonDerived.Get(nameDerived, propValDerived))
+								continue;
+
+							if (propValPc != propValDerived)
+							{
+								metaModified = true;
+								commonDerived.Set(nameDerived, propValPc);
+							}
+						}
+						else
+						{
+							int propValPc, propValDerived;
+							if (!commonPc.Get(namePc, propValPc))
+								continue;
+
+							if (!commonDerived.Get(nameDerived, propValDerived))
+								continue;
+
+							if (propValPc != propValDerived)
+							{
+								metaModified = true;
+								commonDerived.Set(nameDerived, propValPc);
+							}
+						}
+					}
+					else if (isSetDirectlyDerived)
+					{
+						metaModified = true;
+						commonDerived.ClearVariable(nameDerived);
+					}
+				}
+			}
+		}
+
+		return metaModified;
 	}
-	
+
 	//----------------------------------------------------------------------------------------------
 	static bool FixSoundMetaFile(MetaFile meta, string absFileName)
 	{

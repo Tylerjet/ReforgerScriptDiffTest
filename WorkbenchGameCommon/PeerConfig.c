@@ -53,11 +53,16 @@ class PeerConfigViewTitle: BaseContainerCustomTitle
 {
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
-	{		
+	{
 		string titleVar;
 		source.Get("Title", titleVar);
 		title = titleVar;
-				
+
+		bool enabled;	
+		source.Get("Enabled", enabled);
+		if (enabled)
+			title += " (Enabled)";
+
 		return true;
 	}
 };

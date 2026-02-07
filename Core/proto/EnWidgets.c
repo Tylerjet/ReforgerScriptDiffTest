@@ -103,7 +103,7 @@ class PolygonDrawCommand : CanvasWidgetCommand
 	int m_iColor = 0xff000000;
 	ref array<float> m_Vertices; //!< 2D vertices such as [x0, y0, x1, y1, ... xn, yn]
 	float m_fUVScale;
-	SharedItemRef m_pTexture; //!< If null, only filled polygon is drawn
+	ref SharedItemRef m_pTexture; //!< If null, only filled polygon is drawn
 }
 
 class TriMeshDrawCommand : CanvasWidgetCommand
@@ -112,13 +112,14 @@ class TriMeshDrawCommand : CanvasWidgetCommand
 	ref array<float> m_Vertices; //!< 2D vertices such as [x0, y0, x1, y1, ... xn, yn]
 	ref array<int> m_Indices; //!< Indices to the m_Vertices array forming triangles
 	float m_fUVScale;
-	SharedItemRef m_pTexture; //!< If null, only filled mesh is drawn
+	ref SharedItemRef m_pTexture; //!< If null, only filled mesh is drawn
 }
 
 class ImageDrawCommand : CanvasWidgetCommand
 {
 	int m_iColor = 0xffffffff;
 	float m_fRotation;
+	float m_fUV[4] = {0, 0, 1, 1}; //!< TopLeft.U, TopLeft.V, BottomRight.U, BottomRight.V
 	vector m_Pivot;
 	ref SharedItemRef m_pTexture;
 	vector m_Position; //!< Only in XY, Z is ignored

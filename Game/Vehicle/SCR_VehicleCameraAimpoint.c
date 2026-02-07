@@ -68,7 +68,7 @@ class SCR_VehicleCameraAimpoint : Managed
 		else
 			key = Math.Clamp(asideSpeed / m_fAsideMaxAngularSpeed, 0.0, 1.0);
 		
-		float sample = Math3D.Curve(ECurveType.CatmullRom, key, m_pCurveData)[1] * m_fAsideTranslationScale;
+		float sample = LegacyCurve.Curve(ECurveType.CatmullRom, key, m_pCurveData)[1] * m_fAsideTranslationScale;
 		if (asideSpeed > 0)
 			return sample;
 		else
@@ -96,7 +96,7 @@ class SCR_VehicleCameraAimpoint : Managed
 		else
 			key = Math.Clamp(speed / m_fMaxSpeed, 0.0, 1.0);
 		
-		float sample = Math3D.Curve(ECurveType.CatmullRom, key, m_pCurveData)[1];
+		float sample = LegacyCurve.Curve(ECurveType.CatmullRom, key, m_pCurveData)[1];
 		return Vector(0, sample * upScale, sample * fwdScale);
 	}
 };

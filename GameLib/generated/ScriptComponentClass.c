@@ -8,11 +8,11 @@ class ScriptComponentClass: GenericComponentClass
 {
 	/*!
 	\brief Implement this if you need to enforce certain creation order of components
-	\param className - name of other ComponentClass class
+	\param className - name of other Component class
 	@code
 	static override bool DependsOn(string className)
 	{
-		if (className == "MyOtherComponentClass")
+		if (className.ToType() == MyOtherComponent)
 			return true;
 
 		return false;

@@ -414,6 +414,8 @@ class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 		
 		SetRichTextAction(device);
 		UpdateActionDisplayScrolling(false);
+		
+		SCR_AnalyticsApplication.GetInstance().ChangeKeybind(m_sActionName, m_sActionPreset);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -38,9 +38,7 @@ class SCR_SnapAndOrientToTerrainPlugin : WorkbenchPlugin
 				}
 
 				angles = Math3D.MatrixToAngles(transform);
-				worldEditorAPI.SetVariableValue(entitySource, null, "angleX", angles[1].ToString());
-				worldEditorAPI.SetVariableValue(entitySource, null, "angleY", angles[0].ToString());
-				worldEditorAPI.SetVariableValue(entitySource, null, "angleZ", angles[2].ToString());
+				worldEditorAPI.SetVariableValue(entitySource, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 
 				pos = transform[3];
 				//--- Y height relative to ground, use 0 instead of ASL height

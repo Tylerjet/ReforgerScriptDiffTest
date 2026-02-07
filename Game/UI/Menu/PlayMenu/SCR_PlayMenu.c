@@ -155,6 +155,14 @@ class SCR_PlayMenu : MenuRootBase
 		super.OnMenuClose();
 		
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuHide()
+	{
+		super.OnMenuHide();
+		
+		SCR_AnalyticsApplication.GetInstance().ClosePlayMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -164,6 +172,8 @@ class SCR_PlayMenu : MenuRootBase
 		
 		if (m_ActionsComponent)
 			m_ActionsComponent.ActivateActions();
+		
+		SCR_AnalyticsApplication.GetInstance().OpenPlayMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -469,9 +479,7 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnRestartConfirmed()
 	{
-		GetGame().GetSaveManager().ResetFileNameToLoad();
 		PlayCurrentScenario();
-
 		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.PlayMenu);
 	}
 

@@ -168,7 +168,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 				previousArea += area;
 				subareaRadius += radiusDividedByFallOffCount;
 
-				float densityFallOffMultiplier = Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(curvePoint, 0, 1), m_DensityFallOffCurve)[1];
+				float densityFallOffMultiplier = LegacyCurve.Curve(ECurveType.CurveProperty2D, Math.Clamp(curvePoint, 0, 1), m_DensityFallOffCurve)[1];
 
 				int objectGenerationAttemptsForSubarea = Math.Ceil(area * m_fStrength * densityFallOffMultiplier);
 				if (objectGenerationAttemptMaximumAmount < objectGenerationAttemptsForSubarea)
@@ -313,7 +313,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 
 				float distanceFromCenter = vector.DistanceXZ(traceEndManual, point);
 				float distanceFromCenterInPercent = distanceFromCenter / (m_fRadius * 0.01);
-				float scaleFallOffMultiplier = Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(distanceFromCenterInPercent * 0.01, 0, 1), m_ScaleFallOffCurve)[1];
+				float scaleFallOffMultiplier = LegacyCurve.Curve(ECurveType.CurveProperty2D, Math.Clamp(distanceFromCenterInPercent * 0.01, 0, 1), m_ScaleFallOffCurve)[1];
 
 				scale *= scaleFallOffMultiplier;
 
@@ -348,7 +348,13 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			{
 				// allow for random Yaw
 				if (obj.m_bOverrideRandomization && obj.m_fRandomYawAngle > 0)
-					m_API.SetVariableValue(entitySource, null, "angleY", m_RandomGenerator.RandFloatXY(-obj.m_fRandomYawAngle, obj.m_fRandomYawAngle).ToString());
+				{
+					if (entitySource.Get("angles", angles))
+					{
+						angles[1] = m_RandomGenerator.RandFloatXY(-obj.m_fRandomYawAngle, obj.m_fRandomYawAngle);
+						m_API.SetVariableValue(entitySource, null, "angles", string.Format("%1 %2 %3", angles[0], angles[1], angles[2]));
+					}
+				}
 
 				vector mat[4];
 				m_API.SourceToEntity(entitySource).GetWorldTransform(mat);
@@ -359,8 +365,10 @@ class SCR_ObjectBrushTool : WorldEditorTool
 			{
 				if (obj.m_fRandomPitchAngle > 0)
 					angles[1] = m_RandomGenerator.RandFloatXY(-obj.m_fRandomPitchAngle, obj.m_fRandomPitchAngle);
+
 				if (obj.m_fRandomYawAngle > 0)
 					angles[0] = m_RandomGenerator.RandFloatXY(-obj.m_fRandomYawAngle, obj.m_fRandomYawAngle);
+
 				if (obj.m_fRandomRollAngle > 0)
 					angles[2] = m_RandomGenerator.RandFloatXY(-obj.m_fRandomRollAngle, obj.m_fRandomRollAngle);
 			}
@@ -371,11 +379,7 @@ class SCR_ObjectBrushTool : WorldEditorTool
 				m_API.SetVariableValue(entitySource, null, "scale", scale.ToString());
 
 			if (angles != vector.Zero)
-			{
-				m_API.SetVariableValue(entitySource, null, "angleX", angles[1].ToString());
-				m_API.SetVariableValue(entitySource, null, "angleY", angles[0].ToString());
-				m_API.SetVariableValue(entitySource, null, "angleZ", angles[2].ToString());
-			}
+				m_API.SetVariableValue(entitySource, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 
 			entityID = m_API.SourceToEntity(entitySource).GetID();
 			m_mCreatedObjects.Insert(obj, entityID);

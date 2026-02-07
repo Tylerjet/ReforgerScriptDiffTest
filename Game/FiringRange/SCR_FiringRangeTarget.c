@@ -198,11 +198,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 			if (m_SignalManager)
 				m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_DOWN);
 			// Play sound
-			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-			if (soundManagerEntity)
-			{
-				soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_TARGET_DOWN); 
-			}			
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_TARGET_DOWN); 		
 			// Count the targets 
 			if (m_LineController)
 				m_LineController.CountPopUpTargets();	
@@ -217,11 +213,8 @@ class SCR_FiringRangeTarget : BaseBuilding
 			if (m_SignalManager)
 				m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_UP);
 			// Play sound
-			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-			if (soundManagerEntity)
-			{
-				soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_TARGET_UP); 
-			}			
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_TARGET_UP); 
+		
 			Replication.BumpMe();
 		}
 	}

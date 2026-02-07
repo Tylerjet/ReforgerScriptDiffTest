@@ -47,6 +47,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	[Attribute("Night")]
 	protected string m_sDTNight;
 	
+	[Attribute("#AR-Loadout_Free_Supply_Cost")]
+	protected string m_sFreeLoadout;
+	
 	protected ref array<string> m_sDayModifierStrings = { m_sDTDawn, m_sDTForenoon, m_sDTAfternoon, m_sDTDusk, m_sDTEvening, m_sDTNight };
 	
 	[Attribute("{39D815C843414C76}UI/layouts/Menus/DeployMenu/LoadoutButton.layout", desc: "Layout for loadout button, has to have SCR_LoadoutButton attached to it.")]
@@ -66,10 +69,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected SCR_LoadoutPreviewComponent m_PreviewComp;
 	protected SCR_ArsenalManagerComponent m_ArsenalManagerComp;
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
+	protected SCR_PlayerControllerGroupComponent m_PlayerControllerGroupComponent;
 	protected IEntity m_PreviewedEntity;
 
 	protected Widget m_wLoadouty;
 	protected Widget m_wSupplies;
+	protected Widget m_wSuppliesWrapper;
 	protected ResourceName m_sLoadoutImageSet;
 	protected RichTextWidget m_wSuppliesText;
 
@@ -148,17 +153,17 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				SetLoadoutPreview(GetPlayerLoadout());
 			}
 		}
-		
+
 		if (m_wLoadouty)
 			m_wSupplies = m_wLoadouty.FindAnyWidget("w_Supplies");
-		
-		if (m_wSupplies)
-		{			
+		if (m_wSupplies)		
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
-			m_wSupplies.SetVisible(!m_wSuppliesText.GetText().IsEmpty());
-		}
+
+		m_PlayerControllerGroupComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (m_PlayerControllerGroupComponent)
+			m_PlayerControllerGroupComponent.GetOnGroupChanged().Insert(OnGroupChanged);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
@@ -169,6 +174,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_ArsenalManagerComp.GetOnLoadoutUpdated().Remove(UpdateLoadouts);
 			m_ArsenalManagerComp.GetOnLoadoutSpawnSupplyCostMultiplierChanged().Remove(OnLoadoutSpawnCostMultiplierChanged);
 		}
+
+		if (m_PlayerControllerGroupComponent)
+			m_PlayerControllerGroupComponent.GetOnGroupChanged().Remove(OnGroupChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -215,6 +223,15 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnGroupChanged(int groupId)
+	{
+		if (!m_PlyFactionAffilComp)
+			return;
+
+		ShowAvailableLoadouts(m_PlyFactionAffilComp.GetAffiliatedFaction());
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Show available loadouts in the loadout selector.
 	void ShowAvailableLoadouts(Faction faction)
 	{
@@ -229,7 +246,26 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_LoadoutSelector.ClearAll();
 
 		array<ref SCR_BasePlayerLoadout> availableLoadouts = {};
-		m_LoadoutManager.GetPlayerLoadoutsByFaction(faction, availableLoadouts);
+
+		PlayerController pc = GetGame().GetPlayerController();
+		SCR_PlayerControllerGroupComponent pcGroupComponent = SCR_PlayerControllerGroupComponent.Cast(pc.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!pcGroupComponent)
+			return;
+
+		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+		if (!scrFaction)
+			return;
+
+		SCR_AIGroup group = pcGroupComponent.GetPlayersGroup();
+		if (group && scrFaction.IsGroupRolesConfigured())
+		{
+			m_LoadoutManager.GetPlayerLoadoutsByGroup(group, faction, availableLoadouts);
+		}
+		else
+		{
+			// default behavior
+			m_LoadoutManager.GetPlayerLoadoutsByFaction(faction, availableLoadouts);
+		}
 
 		SCR_PlayerArsenalLoadout arsenalLoadout = null;
 		foreach (SCR_BasePlayerLoadout loadout : availableLoadouts)
@@ -245,10 +281,24 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		
 		if (!availableLoadouts.IsEmpty())
 		{
-			if (arsenalLoadout && GetPlayerLoadout() != arsenalLoadout)
+			SCR_BasePlayerLoadout selectedLoadout = GetPlayerLoadout();
+
+			if (arsenalLoadout && selectedLoadout != arsenalLoadout)
+			{
 				m_PlyLoadoutComp.RequestLoadout(arsenalLoadout);
-			else if (!GetPlayerLoadout())
-				m_PlyLoadoutComp.RequestLoadout(availableLoadouts[0]);
+			}
+			else if (!selectedLoadout || !availableLoadouts.Contains(selectedLoadout))
+			{
+				// need request every time when group is changed
+				foreach (SCR_BasePlayerLoadout loadout : availableLoadouts)
+				{
+					if (loadout.IsLoadoutAvailableClient())
+					{
+						m_PlyLoadoutComp.RequestLoadout(loadout);
+						break;
+					}
+				}
+			}
 		}
 
 		GetGame().GetCallqueue().CallLater(RefreshLoadoutPreview, 0, false); // delayed refresh call helps with performance
@@ -301,7 +351,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected void CreatePlayerLoadoutButton(SCR_BasePlayerLoadout loadout, int pid, int order)
 	{
 		Widget name = GetGame().GetWorkspace().CreateWidgets(m_sLoadoutButton, m_wLoadoutList);
+		if (!name)
+			return;
+		
 		SCR_LoadoutButton buttonComp = SCR_LoadoutButton.Cast(name.FindHandler(SCR_LoadoutButton));
+		if (!buttonComp)
+			return;
 
 		buttonComp.SetLoadout(loadout);
 		buttonComp.SetPlayer(pid);
@@ -493,13 +548,27 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 			if (m_wSuppliesText)
 			{
-				float supplyCost = GetLoadoutCost();
-				m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));
-				m_wSupplies.SetVisible(supplyCost > 0);
+				int supplyCost = GetLoadoutCost();
+
+				if(supplyCost <= 0)
+				{
+					m_wSupplies.SetVisible(false);
+				}
+				else
+				{	
+					m_wSupplies.SetVisible(true);
+					m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));
+				}
 			}
 			
 			if (m_wExpandButtonName)
 				m_wExpandButtonName.SetText(loadout.GetLoadoutName());
+			
+			if (m_wExpandButtonIcon && loadout)
+			{
+				SCR_EditableEntityUIInfo entityUIInfo = GetUIInfo(loadout);
+				entityUIInfo.SetIconTo(m_wExpandButtonIcon);
+			}
 		}
 	}
 
@@ -533,8 +602,15 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		{
 			int supplyCost = GetLoadoutCost();
 			
-			m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));			
-			m_wSupplies.SetVisible(supplyCost > 0);
+			if(supplyCost <= 0)
+			{
+				m_wSupplies.SetVisible(false);
+			}
+			else
+			{
+				m_wSupplies.SetVisible(true);
+				m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));
+			}
 		}
 		
 		ImageWidget LoadoutBackground = ImageWidget.Cast((m_wLoadoutSelector.GetParent()).GetParent().FindAnyWidget("Background"));
@@ -658,9 +734,18 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 	[Attribute("PlatformIcon")]
 	protected string m_sPlatformIconName;
 	
+	[Attribute("Badge")]
+	protected string m_sBadgeWidgetName;
+	
+	[Attribute("SuppliesLoadoutText")]
+	protected string m_sSuppliesLoadoutText;
+
+	protected TextWidget m_wSuppliesLoadoutText;
+	
 	protected TextWidget m_wPlayerName;
 	protected Widget m_wLeaderText;
 	protected ImageWidget m_wPlatformIcon;
+	protected SizeLayoutWidget m_wBadge;
 
 	protected SCR_BasePlayerLoadout m_Loadout;
 	protected int m_iPlayerId = -1;
@@ -675,6 +760,8 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		m_wLeaderText = w.FindAnyWidget(m_sLeaderText);
 		m_wElements = w.FindAnyWidget(m_sElements);
 		m_wPlatformIcon = ImageWidget.Cast(w.FindAnyWidget(m_sPlatformIconName));
+		m_wBadge = SizeLayoutWidget.Cast(w.FindAnyWidget(m_sBadgeWidgetName));
+		m_wSuppliesLoadoutText = TextWidget.Cast(GetRootWidget().FindAnyWidget(m_sSuppliesLoadoutText));
 		
 		if (m_wLeaderText)
 			SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(OnLeaderChanged);
@@ -731,6 +818,12 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 				SetImage(entityUIInfo.GetImageSetPath(), entityUIInfo.GetIconSetName());
 			else
 				SetImage(iconPath);
+			
+			if (!m_wBadge)
+				return;
+			
+			m_wBadge.SetOpacity(1.00);
+			m_wBadge.SetColor(entityUIInfo.GetFaction().GetFactionColor());
 		}
 	}
 

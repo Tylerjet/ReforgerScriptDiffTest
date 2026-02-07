@@ -56,30 +56,13 @@ class SCR_TutorialLogic_ShootingRange : SCR_BaseTutorialCourseLogic
 		if (!storageManComp)
 			return;
 		
-		bool hasM249Ammo, hasM16Ammo;
-		
-		array <IEntity> items = {};
-		storageManComp.GetAllRootItems(items);
-		
-		if (items && !items.IsEmpty())
-		{
-			foreach (IEntity item : items)
-			{
-				if (!item)
-					continue;
-				
-				if (!hasM16Ammo && item.GetPrefabData().GetPrefabName() == m_sM16MagResource)
-					hasM16Ammo = true;
-				
-				if (!hasM249Ammo && item.GetPrefabData().GetPrefabName() == m_sM249MagResource)
-					hasM249Ammo = true;
-			}
-		}
-		
-		if (!hasM16Ammo)
+		int countM16 = storageManComp.CountItem(SCR_ResourceNamePredicate(m_sM16MagResource), EStoragePurpose.PURPOSE_ANY);
+		int countM249 = storageManComp.CountItem(SCR_ResourceNamePredicate(m_sM249MagResource), EStoragePurpose.PURPOSE_ANY);
+
+		if (countM16 == 0)
 			storageManComp.InsertItem(GetGame().SpawnEntityPrefab(Resource.Load(m_sM16MagResource)));
-		
-		if (!hasM249Ammo)
+
+		if (countM249 == 0)
 			storageManComp.InsertItem(GetGame().SpawnEntityPrefab(Resource.Load(m_sM249MagResource)));
 	}
 	

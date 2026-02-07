@@ -65,11 +65,11 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 	//! Refresh arsenal after m_fRefreshDelay delay
 	protected void RefreshUpdate()
 	{
-		RefreshArsenal(GetAssignedFaction());
+		RefreshArsenal(false, GetAssignedFaction());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void RefreshArsenal(SCR_Faction faction = null)
+	override void RefreshArsenal(bool init = false, SCR_Faction faction = null)
 	{
 		array<SCR_ArsenalItem> filteredArsenalItems = {};
 
@@ -164,7 +164,7 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (!rpl || (rpl && rpl.Role() == RplRole.Authority))
 		{
-			RefreshArsenal();
+			RefreshArsenal(true);
 
 			if (!SCR_Global.IsEditMode())
 				GetGame().GetCallqueue().CallLater(RefreshUpdate, m_fRefreshDelay * 1000, true);

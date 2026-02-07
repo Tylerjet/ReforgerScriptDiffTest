@@ -11,7 +11,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	[Attribute( defvalue: "3", desc: "Maximal number of tasks that can be generated", category: "Tasks" )];
 	int m_iMaxNumberOfTasks;
 	
-	[Attribute(UIWidgets.Auto, desc: "Actions that will be activated after tasks are initialized", category: "Tasks")];
+	[Attribute(UIWidgets.Auto, desc: "Actions that will be activated after tasks are initialized.", category: "Tasks")];
 	ref array<ref SCR_ScenarioFrameworkActionBase> m_aAfterTasksInitActions;
 	
 	[Attribute(desc: "List of Core Areas that are essential for the Scenario to spawn alongside Debug Areas", category: "Debug")];
@@ -19,6 +19,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	[Attribute(desc: "List of Areas that will be spawned (Optionally with desired Layer Task) as opposed to leaving it to random generation", category: "Debug")];
 	ref array<ref SCR_ScenarioFrameworkDebugArea> m_aDebugAreas;
+	
+	[Attribute(desc: "Debug actions accessible from Debug Menu.", category: "Debug")]
+	ref array<ref SCR_ScenarioFrameworkDebugAction> m_aDebugActions;
 	
 	[Attribute(desc: "Should the dynamic Spawn/Despawn based on distance from player characters be enabled for the whole GameMode?", category: "Dynamic Spawn/Despawn")];
 	bool m_bDynamicDespawn;

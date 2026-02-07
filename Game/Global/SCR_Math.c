@@ -7,6 +7,101 @@ class SCR_Math
 	static const float MILS_WP2DEG		= 0.06;
 	static const float MILS_STRECK2DEG	= 0.05714;
 
+	static const int MAX_RANDOM = 0x7FFF; // 32767
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns a random `float` number between `min` [inclusive] and `max` [exclusive].
+	//! Will run checks to make sure the values are valid for Math.RandomFloat, and fix them if not correct
+	//! \param[in] min Minimum Value
+	//! \param[in] max Maximum Value
+	//! \return Random float value
+	static float RandomFloat(float min, float max)
+	{
+		if (min == max)
+			return min;
+		else if (min < max)
+			return Math.RandomFloat(min, max);
+		else 
+			return Math.RandomFloat(max, min);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns a random `float` number between `min` [inclusive] and `max` [inclusive].
+	//! Will run checks to make sure the values are valid for Math.RandomFloatInclusive, and fix them if not correct
+	//! \param[in] min Minimum Value
+	//! \param[in] max Maximum Value
+	//! \return Random float value
+	static float RandomFloatInclusive(float min, float max)
+	{
+		if (min == max)
+			return min;
+		else if (min < max)
+			return Math.RandomFloatInclusive(min, max);
+		else 
+			return Math.RandomFloatInclusive(max, min);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns random number with Gauss/Normal distribution (https://en.wikipedia.org/wiki/Normal_distribution)
+	//! \param[in] min included
+	//! \param[in] mid can be outside min..max range
+	//! \param[in] max included
+	//! \return a float in min..max range
+	static float RandomGaussFloat(float min, float mid, float max)
+	{
+		if (min == max)
+			return min;
+
+		if (min > max)
+		{
+			float tmp = min;
+			min = max;
+			max = tmp;
+		}
+
+		float result = Math.RandomGaussFloat((max - min) / 6.0, mid); // ~99.73% cases covered
+
+		if (result < min)
+			return min;
+
+		if (result > max)
+			return max;
+
+		return result;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns a random `int` number between `min` [inclusive] and `max` [exclusive].
+	//! Will run checks to make sure the values are valid for Math.RandomInt, and fix them if not correct
+	//! \param[in] min Minimum Value
+	//! \param[in] max Maximum Value
+	//! \return Random int value
+	static int RandomInt(int min, int max)
+	{
+		if (min == max)
+			return min;
+		else if (min < max)
+			return Math.RandomInt(min, max);
+		else 
+			return Math.RandomInt(max, min);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns a random `int` number between `min` [inclusive] and `max` [inclusive].
+	//! Will run checks to make sure the values are valid for Math.RandomIntInclusive, and fix them if not correct
+	//! \param[in] min Minimum Value
+	//! \param[in] max Maximum Value
+	//! \return Random int value
+	static int RandomIntInclusive(int min, int max)
+	{
+		if (min == max)
+			return min;
+		else if (min < max)
+			return Math.RandomIntInclusive(min, max);
+		else 
+			return Math.RandomIntInclusive(max, min);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Takes two floats and returns the remainder after division
 	//! \param[in] dividend

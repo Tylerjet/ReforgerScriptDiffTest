@@ -81,6 +81,12 @@ sealed class LightHandle: pointer
 	*/
 	proto external void SetTexture(notnull BaseWorld world, ResourceName textureName);
 	/*!
+	Sets light projection texture blending parameters
+	\param mip0			LUP texture mipmap blend start in normalized <0..1> range
+	\param mipMax		LUP texture mipmap blend end in normalized <0..1> range
+	*/
+	proto external void SetProjectionTextureBlendParams(notnull BaseWorld world, float mip0, float mipMax);
+	/*!
 	Sets near plane of a light. It's meaningful for shadow casting LT_SPOT/LT_POINT lights only!
 	\param nearPlane	near plane when casting shadows
 	*/

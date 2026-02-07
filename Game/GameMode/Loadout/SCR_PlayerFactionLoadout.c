@@ -12,6 +12,12 @@ class SCR_FactionPlayerLoadout : SCR_PlayerLoadout
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	ResourceName GetDefaultLoadoutResource()
+	{
+		return m_sLoadoutResource;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnLoadoutSpawned(GenericEntity pOwner, int playerId)
 	{
 		if (pOwner)

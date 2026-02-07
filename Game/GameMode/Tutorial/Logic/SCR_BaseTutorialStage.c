@@ -536,29 +536,19 @@ class SCR_BaseTutorialStage : GenericEntity
 		if (!inventory)
 			return 0;
 		
-		array <IEntity> aRootItems = {};
-		inventory.GetAllRootItems(aRootItems);
-		if (!aRootItems || aRootItems.IsEmpty())
-			return 0;
-		
-		SCR_ResourceComponent resourceComp;
-		SCR_ResourceContainer container;
-		int supplies;
-		
-		foreach (IEntity ent : aRootItems)
+		int supplies = 0;
+
+		array<IEntity> foundItems = {};		
+		inventory.FindItemsWithComponents(foundItems, {SCR_ResourceComponent}, EStoragePurpose.PURPOSE_ANY);
+
+		foreach (IEntity item : foundItems)
 		{
-			if (!ent)
-				continue;
-			
-			resourceComp = SCR_ResourceComponent.Cast(ent.FindComponent(SCR_ResourceComponent));
-			if (!resourceComp)
-				continue;
-			
-			container = resourceComp.GetContainer(EResourceType.SUPPLIES);
+			const SCR_ResourceComponent resourceComp = SCR_ResourceComponent.Cast(item.FindComponent(SCR_ResourceComponent));
+			const SCR_ResourceContainer container = resourceComp.GetContainer(EResourceType.SUPPLIES);
 			if (container)
 				supplies += container.GetResourceValue();
 		}
-		
+
 		return supplies;
 	}
 

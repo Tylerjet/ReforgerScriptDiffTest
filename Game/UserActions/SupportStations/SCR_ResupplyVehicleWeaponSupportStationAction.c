@@ -2,31 +2,10 @@ class SCR_ResupplyVehicleWeaponSupportStationAction : SCR_BaseItemHolderSupportS
 {
 	[Attribute("1", desc: "If the action is hidden if the entity does not have a parent")]
 	protected bool m_bHideIfNoParent;
-	
-	[Attribute("{EEAE2427DD990D12}Sounds/Weapons/AircraftWeapons/RocketPods/Weapons_RocketPods_Generic_Handling.acp", UIWidgets.ResourceNamePicker, desc: "Sound project (acp)", "acp")]
-	protected ResourceName m_sSoundProject;
-	
-	[Attribute("SOUND_RELOAD", desc: "Sound Effect name")]
-	protected string m_sSoundEventName;
-	
+
 	protected const LocalizedString X_OUTOF_Y_FORMATTING = "#AR-SupportStation_ActionFormat_ItemAmount";
 	
 	protected const LocalizedString INVALID_FULL = "#AR-SupportStation_ActionInvalid_VehicleWeaponFullyReloaded";
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[out] soundProject acp sound project for sound
-	//! \param[out] soundEffectName Sound event name of sound
-	//! \return True if valid Audio files were found
-	bool GetSoundEffectProjectAndEvent(out ResourceName soundProject, out string soundEffectName)
-	{
-		if (!Resource.Load(m_sSoundProject).IsValid() || m_sSoundEventName.IsEmpty())
-			return false;
-		
-		soundProject = m_sSoundProject;
-		soundEffectName = m_sSoundEventName;
-		
-		return true;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)

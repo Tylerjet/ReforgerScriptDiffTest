@@ -15,20 +15,3 @@ class SCR_MapMenuCommandingEntry : SCR_SelectionMenuEntry
 		m_sIdentifier = identifier;
 	}
 };
-
-//------------------------------------------------------------------------------------------------
-class SCR_MapMenuRequestedTaskEntry : SCR_SelectionMenuEntry
-{
-	SCR_RequestedTaskSupportEntity m_SupportClass;
-	
-	//------------------------------------------------------------------------------------------------
-	void SetSupportClass(SCR_RequestedTaskSupportEntity supportClass)
-	{
-		m_SupportClass = supportClass;
-	}
-	
-	bool CanBeShownScript(IEntity user, BaseSelectionMenu sourceMenu)
-	{
-		return m_SupportClass.CanRequest();
-	}
-};

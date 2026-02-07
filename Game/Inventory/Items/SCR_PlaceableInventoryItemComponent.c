@@ -60,13 +60,8 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RPC_DoPlaceItem(RplId placingCharacterRplId)
 	{
-		IEntity item = GetOwner();
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
-		if (!itemComponent)
-			return;
-
-		itemComponent.EnablePhysics();
-		itemComponent.ActivateOwner(true);
+		EnablePhysics();
+		ActivateOwner(true);
 
 		m_ParentRplId = -1;
 		m_iParentNodeId = -1;
@@ -145,13 +140,6 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OverridePlacementTransform(IEntity caller, out vector computedTransform[4])
 	{
-		ActivateOwner(true);
-
-		// Enable physics to receive contact events
-		Physics physics = GetOwner().GetPhysics();
-		if (physics)
-			EnablePhysics();
-
 		if (m_bUseTransform)
 		{
 			m_bUseTransform = false;
@@ -171,12 +159,25 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnPlacedOnGround()
+	{
+		// To enable again some of the logics for an item after it is placed on the ground.
+		
+		ActivateOwner(true);
+		
+		// Enable physics to receive contact events
+		Physics physics = GetOwner().GetPhysics();
+		if (physics)
+			EnablePhysics();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] up
 	//! \param[in] position
-	protected void PlayPlacedSound(vector up, vector position)
+	protected void PlayPlacedSound(vector up, vector position, string overrideSoundEvent = SCR_SoundEvent.SOUND_PLACE_OBJECT)
 	{
 		SCR_SoundDataComponent soundData;
 		SoundComponent soundComp = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
@@ -202,25 +203,27 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (soundComp)
 		{
 			soundComp.SetSignalValueStr(SCR_AudioSource.SURFACE_SIGNAL_NAME, material.GetSoundInfo().GetSignalValue());
-			soundComp.SoundEvent(SCR_SoundEvent.SOUND_PLACE_OBJECT);
+			soundComp.SoundEvent(overrideSoundEvent);
 		}
 		else if (soundData)
 		{
-			SCR_SoundManagerEntity soundManager = GetGame().GetSoundManagerEntity();
+			const IEntity owner = GetOwner();
+			SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
 			if (!soundManager)
 				return;
-
-			SCR_AudioSource soundSrc = soundManager.CreateAudioSource(GetOwner(), SCR_SoundEvent.SOUND_PLACE_OBJECT);
-			if (!soundSrc)
+			
+			SCR_AudioSourceConfiguration audioSourceConfiguration = soundData.GetAudioSourceConfiguration(overrideSoundEvent);
+			if (!audioSourceConfiguration)
 				return;
 
-			soundSrc.SetSignalValue(SCR_AudioSource.SURFACE_SIGNAL_NAME, material.GetSoundInfo().GetSignalValue());
-			vector mat[4];	//due to the fact that item might still be in players inventory we need to override sound position
-			mat[0] = up.Perpend();
-			mat[1] = up;
-			mat[2] = mat[0] * up;
-			mat[3] = position;
-			soundManager.PlayAudioSource(soundSrc, mat);
+			SCR_AudioSource audioSource = soundManager.CreateAudioSource(owner, audioSourceConfiguration, position);
+			if (!audioSource)
+				return;
+
+			audioSource.SetSignalValue(SCR_AudioSource.SURFACE_SIGNAL_NAME, material.GetSoundInfo().GetSignalValue());
+						
+			// Play sound
+			soundManager.PlayAudioSource(audioSource);
 		}
 	}
 
@@ -239,19 +242,15 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RPC_DoPlaceItemWithParentChange(RplId newParentRplId, int nodeId, RplId placingCharacterRplId)
 	{
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
-		if (!itemComponent)
-			return;
-
-		itemComponent.EnablePhysics();
-		itemComponent.ActivateOwner(true);
+		EnablePhysics();
+		ActivateOwner(true);
 
 		if (newParentRplId.IsValid())
 		{
 			m_ParentRplId = newParentRplId;
 			m_iParentNodeId = nodeId;
-			if (itemComponent.IsLocked())
-				itemComponent.m_OnLockedStateChangedInvoker.Insert(AttachToNewParentWhenUnlocked);
+			if (IsLocked())
+				m_OnLockedStateChangedInvoker.Insert(AttachToNewParentWhenUnlocked);
 			else
 				AttachToNewParent();
 		}
@@ -297,9 +296,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (nowLocked)
 			return;
 
-		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
-		if (itemComponent)
-			itemComponent.m_OnLockedStateChangedInvoker.Remove(AttachToNewParentWhenUnlocked);
+		m_OnLockedStateChangedInvoker.Remove(AttachToNewParentWhenUnlocked);
 
 		AttachToNewParent();
 	}
@@ -349,11 +346,9 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 				hitZone.GetOnDamageStateChanged().Insert(OnParentDamageStateChanged);
 		}
 
-		InventoryItemComponent iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
-		if (iic)
-			iic.m_OnParentSlotChangedInvoker.Insert(StartWatchingParentSlots);
+		m_OnParentSlotChangedInvoker.Insert(StartWatchingParentSlots);
 
-		iic = InventoryItemComponent.Cast(m_Parent.FindComponent(InventoryItemComponent));
+		InventoryItemComponent iic = InventoryItemComponent.Cast(m_Parent.FindComponent(InventoryItemComponent));
 		if (iic)
 			iic.m_OnParentSlotChangedInvoker.Insert(DetachFromParent);
 
@@ -405,11 +400,9 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 				hitZone.GetOnDamageStateChanged().Remove(OnParentDamageStateChanged);
 		}
 
-		InventoryItemComponent iic = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
-		if (iic)
-			iic.m_OnParentSlotChangedInvoker.Remove(StopWatchingParentSlots);
+		m_OnParentSlotChangedInvoker.Remove(StopWatchingParentSlots);
 
-		iic = InventoryItemComponent.Cast(m_Parent.FindComponent(InventoryItemComponent));
+		InventoryItemComponent iic = InventoryItemComponent.Cast(m_Parent.FindComponent(InventoryItemComponent));
 		if (iic)
 			iic.m_OnParentSlotChangedInvoker.Remove(DetachFromParent);
 
@@ -428,12 +421,8 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//! Callback method triggered when item will finish its transfer to new parent when it is being attached to it
 	protected void StartWatchingParentSlots()
 	{
-		InventoryItemComponent iic = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
-		if (!iic)
-			return;
-
-		iic.m_OnParentSlotChangedInvoker.Remove(StartWatchingParentSlots);
-		iic.m_OnParentSlotChangedInvoker.Insert(StopWatchingParentSlots);
+		m_OnParentSlotChangedInvoker.Remove(StartWatchingParentSlots);
+		m_OnParentSlotChangedInvoker.Insert(StopWatchingParentSlots);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -443,9 +432,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (!GetOwner())
 			return;
 
-		InventoryItemComponent iic = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
-		if (iic)
-			iic.m_OnParentSlotChangedInvoker.Remove(StopWatchingParentSlots);
+		m_OnParentSlotChangedInvoker.Remove(StopWatchingParentSlots);
 
 		if (m_Parent)
 		{
@@ -457,7 +444,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 					hitZone.GetOnDamageStateChanged().Remove(OnParentDamageStateChanged);
 			}
 
-			iic = InventoryItemComponent.Cast(m_Parent.FindComponent(InventoryItemComponent));
+			InventoryItemComponent iic = InventoryItemComponent.Cast(m_Parent.FindComponent(InventoryItemComponent));
 			if (iic)
 				iic.m_OnParentSlotChangedInvoker.Remove(DetachFromParent);
 
@@ -467,7 +454,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		if (!m_RootParent)
 			return;
 
-		iic = InventoryItemComponent.Cast(m_RootParent.FindComponent(InventoryItemComponent));
+		InventoryItemComponent iic = InventoryItemComponent.Cast(m_RootParent.FindComponent(InventoryItemComponent));
 		if (iic)
 			iic.m_OnParentSlotChangedInvoker.Remove(DetachFromParent);
 

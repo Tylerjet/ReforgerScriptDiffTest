@@ -86,7 +86,10 @@ class InventoryItemComponent: GameComponent
 	event protected bool ShouldHideInVicinity();
 	//! Override final transformation of dropped item, return true in case transformation should be applied
 	event protected bool OverridePlacementTransform(IEntity caller, out vector computedTransform[4]);
-	event void OnDelete(IEntity owner);
+	//! Override this function if for example physics should be enabled or item's owner should be activated when an item is placed on ground.
+	event protected void OnPlacedOnGround ();
+	event protected void OnPostInit(IEntity owner);
+	event protected void OnDelete(IEntity owner);
 	event private void OnLockedStateChanged(bool nowLocked) { if (m_OnLockedStateChangedInvoker) m_OnLockedStateChangedInvoker.Invoke(nowLocked); };
 	event private void OnParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot) { if (m_OnParentSlotChangedInvoker) m_OnParentSlotChangedInvoker.Invoke(oldSlot, newSlot); };
 }

@@ -12,6 +12,24 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("1800", UIWidgets.EditBox, "If suicide is committed more than once in this time (seconds), a penalty is issued.", params: "0 inf 1")]
 	protected int m_iSuicidePenaltyCooldown;
+	
+	[Attribute("180", UIWidgets.EditBox, "Player cannot be awarded medical assistance xp reward until this many seconds pass since the previous medical assistance reward", params: "0 inf 1")]
+	protected int m_iMedicalAssistanceRewardCooldown;
+
+	[Attribute("0.1", UIWidgets.EditBox, "Fraction of the vehicle cost to be awarded as XP to player destroying it", params: "0 inf 1")]
+	protected float m_fEnemyVehicleDestroyXPMultiplier;
+
+	[Attribute("180", UIWidgets.EditBox, "Player is being rewarded xp for survival each time this amount of seconds pass since spawning", params: "0 inf 1")]
+	protected int m_iSurvivalRewardCooldown;
+
+	[Attribute("60", UIWidgets.EditBox, "Maximum amount of survival reward cycles with xp rewards being scaled", params: "0 inf 1")]
+	protected int m_iSurvivalScaleMaxCycleAmount;
+
+	[Attribute("1", UIWidgets.EditBox, "Ratio of XP awarded to supplies spent in repair action (ratio of 0.5: 10 supplies spent on repair rewards 5 XP", params: "0 inf 1")]
+	protected float m_fVehicleRepairXPMultiplier;
+
+	[Attribute(desc: "Seize XP reward config")]
+	protected ref SCR_SeizeXpRewardConfig m_mSeizeXPRewardConfig;
 
 	static protected bool s_bXpSystemEnabled;
 	
@@ -28,13 +46,55 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	protected ref map<int, float> m_mPlayerTransportPoints = new map<int, float>();
 
+	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBasesBeingSeized = {};
+	protected float m_fBaseSeizingCheckTimer;
+
 	protected float m_fXpMultiplier = 1;
+
+	protected const int BASE_SEIZING_CHECK_INTERVAL = 5;
+	protected const int RELAY_SEIZING_RADIUS = 50;
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns true when Xp handling system is operational
 	static bool IsXpSystemEnabled()
 	{
 		return s_bXpSystemEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetMedicalAssistanceRewardCooldown()
+	{
+		return m_iMedicalAssistanceRewardCooldown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSurvivalRewardCooldown()
+	{
+		return m_iSurvivalRewardCooldown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSurvivalScaleMaxCycleAmount()
+	{
+		return m_iSurvivalScaleMaxCycleAmount;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSeizeBaseProgressionRewardTimer()
+	{
+		if (!m_mSeizeXPRewardConfig)
+			return 0;
+
+		return m_mSeizeXPRewardConfig.GetSeizeProgressionTimer();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSeizeBaseProgressionXP(string baseFactionKey)
+	{
+		if (!m_mSeizeXPRewardConfig)
+			return 0;
+
+		return m_mSeizeXPRewardConfig.GetSeizeProgressionXpReward(baseFactionKey);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -54,14 +114,15 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		}
 
 		PlayerController pc = requestComponent.GetPlayerController();
-
 		if (!pc)
 			return;
 
 		SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-
 		if (compXP)
+		{
 			compXP.UpdatePlayerRank(false);
+			compXP.StartSurvivalRewardCycle();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -93,7 +154,10 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 			SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
 
 			if (compXP)
+			{
 				compXP.OnPlayerKilled();
+				compXP.StopSurvivalRewardCycle();
+			}
 		}
 
 		AwardTransportXP(playerID);
@@ -110,6 +174,72 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	{
 		super.OnControllableDestroyed(instigatorContextData);
 
+		IEntity victim = instigatorContextData.GetVictimEntity();
+		if (!victim)
+			return;
+
+		// Vehicle destroyed, award XP for enemy vehicle destroy
+		if (victim.IsInherited(Vehicle))
+			OnVehicleDestroyed(instigatorContextData);
+
+		// Character killed, award XP for killing a character
+		if (ChimeraCharacter.Cast(victim))
+			OnCharacterKilled(instigatorContextData);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleDestroyed(notnull SCR_InstigatorContextData instigatorContextData)
+	{
+		if (instigatorContextData.GetInstigator().GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+			return;
+
+		Vehicle vehicle = Vehicle.Cast(instigatorContextData.GetVictimEntity());
+		if (!vehicle)
+			return;
+
+		int playerID = instigatorContextData.GetInstigator().GetInstigatorPlayerID();
+		if (playerID == 0)
+			return;
+
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerID);
+		if (!playerFaction)
+			return;
+
+		Faction vehicleFaction = vehicle.GetFaction();
+
+		// If vehicle does not have any affiliated faction, use it's default faction
+		if (!vehicleFaction)
+			vehicleFaction = vehicle.GetDefaultFaction();
+
+		// Continue only if destroyed vehicle's faction is not friendly to player's faction
+		if (!vehicleFaction || playerFaction.IsFactionFriendly(vehicleFaction))
+			return;
+
+		SCR_EditableEntityComponent editableEntityComponent = SCR_EditableEntityComponent.GetEditableEntity(vehicle);
+		if (!editableEntityComponent)
+			return;
+
+		array<ref SCR_EntityBudgetValue> budgets = {};
+		editableEntityComponent.GetEntityBudgetCost(budgets, vehicle);
+
+		int xpToAward;
+		foreach (SCR_EntityBudgetValue budget : budgets)
+		{
+			// We only care about the supply cost in Conflict
+			if (budget.GetBudgetType() != EEditableEntityBudget.CAMPAIGN)
+				continue;
+
+			// XP Reward should be a fraction of the cost of the vehicle
+			xpToAward = budget.GetBudgetValue() * m_fEnemyVehicleDestroyXPMultiplier;
+			AwardXP(playerID, SCR_EXPRewards.ENEMY_VEHICLE_DESTRUCTION, xpToAward);
+
+			return;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCharacterKilled(notnull SCR_InstigatorContextData instigatorContextData)
+	{	
 		// Handle XP for kills of players
 		if (instigatorContextData.GetInstigator().GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
@@ -141,6 +271,15 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 			else if (instigatorContextData.IsEnemyKillPunished(SCR_EDisguisedKillingPunishment.XP_LOSS, true))
 			{
 				AwardXP(killerId, SCR_EXPRewards.KILLING_WHILE_DISGUISED);
+				return;
+			}
+			
+			//~ Killer gets bigger XP reward for killing enemy commander
+			int victimID = instigatorContextData.GetVictimPlayerID();
+			SCR_Faction victimFaction = SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(victimID));
+			if (victimFaction && victimFaction.GetCommanderId() == victimID)
+			{
+				AwardXP(killerId, SCR_EXPRewards.ENEMY_COMMANDER_KILL);
 				return;
 			}
 			
@@ -176,12 +315,18 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnStatPointsAdded(int playerId, SCR_EDataStats stat, float amount, bool temp)
 	{
-		//Print(temp);
-		//Print(SCR_Enum.GetEnumName(SCR_EDataStats, stat));
-
-		if (!temp || stat != SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS)
+		if (!temp)
 			return;
-		
+
+		if (stat == SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS)
+			OnDrivingStatPointsAdded(playerId, amount);
+		else if (IsHealingFriendlyStatPoint(stat))
+			OnHealingStatPointsAdded(playerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnDrivingStatPointsAdded(int playerId, float amount)
+	{
 		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId));
 		IEntity vehicle = CompartmentAccessComponent.GetVehicleIn(player);
 
@@ -197,10 +342,233 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		int newValue = m_mPlayerTransportPoints.Get(playerId) + amount;
 		m_mPlayerTransportPoints.Set(playerId, newValue);
 
-		//Print(newValue);
-
 		if (newValue * TRANSPORT_POINTS_TO_XP_RATIO >= TRANSPORT_XP_PAYOFF_THRESHOLD)
 			AwardTransportXP(playerId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnHealingStatPointsAdded(int playerId)
+	{
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!pc)
+			return;
+
+		SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+		if (!compXP)
+			return;
+
+		compXP.MedicalAssistanceReward();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if stat corresponds to healing of friendly characters by any medical item
+	//! \param[in] stat
+	protected bool IsHealingFriendlyStatPoint(SCR_EDataStats stat)
+	{
+		return stat == SCR_EDataStats.MORPHINE_FRIENDLIES
+			|| stat == SCR_EDataStats.BANDAGE_FRIENDLIES
+			|| stat == SCR_EDataStats.SALINE_FRIENDLIES;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Support station was executed
+	//! \param[in] supportStation
+	//! \param[in] supportStationType
+	//! \param[in] actionTarget
+	//! \param[in] actionUser
+	//! \param[in] action
+	protected void OnSupportStationExecuted(SCR_BaseSupportStationComponent supportStation, ESupportStationType supportStationType, IEntity actionTarget, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	{
+		// Vehicle repaired
+		if (supportStationType == ESupportStationType.REPAIR)
+			OnVehicleRepaired(supportStation, supportStationType, actionTarget, actionUser, action);
+
+		// Character healed
+		if (supportStationType == ESupportStationType.HEAL)
+			OnCharacterHealed(supportStation, supportStationType, actionTarget, actionUser, action);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Award XP when repair action is finished
+	//! \param[in] supportStation
+	//! \param[in] supportStationType
+	//! \param[in] actionTarget
+	//! \param[in] actionUser
+	//! \param[in] action
+	protected void OnVehicleRepaired(SCR_BaseSupportStationComponent supportStation, ESupportStationType supportStationType, IEntity actionTarget, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	{
+		// Only player as a user is counted
+		int userPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(actionUser);
+		if (userPlayerId == 0 || !action)
+			return;
+
+		// Amount of awarded XP depends on cost of the repair action
+		int xpToAward = action.GetSupportStationSuppliesOnUse() * m_fVehicleRepairXPMultiplier;
+		if (xpToAward == 0)
+			return;
+
+		AwardXP(userPlayerId, SCR_EXPRewards.SUPPORT_REPAIR_VEHICLE, xpToAward);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Award XP when heal action is finished
+	//! \param[in] supportStation
+	//! \param[in] supportStationType
+	//! \param[in] actionTarget
+	//! \param[in] actionUser
+	//! \param[in] action
+	protected void OnCharacterHealed(SCR_BaseSupportStationComponent supportStation, ESupportStationType supportStationType, IEntity actionTarget, IEntity actionUser, SCR_BaseUseSupportStationAction action)
+	{
+		// Only player as a user is counted
+		int userPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(actionUser);
+		if (userPlayerId == 0 || !action)
+			return;
+
+		// Only healing other characters is counted
+		int targetPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(actionTarget);
+		if (targetPlayerId == userPlayerId)
+			return;
+
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(userPlayerId);
+		if (!pc)
+			return;
+
+		SCR_PlayerXPHandlerComponent compXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+		if (!compXP)
+			return;
+
+		compXP.MedicalAssistanceReward();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnBaseSeized(SCR_CampaignMilitaryBaseComponent baseComponent)
+	{
+		SCR_ECampaignBaseType baseType = baseComponent.GetType();
+		SCR_ECampaignSeizingBaseType seizingBaseType;
+
+		if (baseComponent.IsControlPoint())
+			seizingBaseType = SCR_ECampaignSeizingBaseType.CONTROL_POINT;
+		else if (baseType == SCR_ECampaignBaseType.SOURCE_BASE)
+			seizingBaseType = SCR_ECampaignSeizingBaseType.SOURCE_BASE;
+		else if (baseType == SCR_ECampaignBaseType.BASE)
+			seizingBaseType = SCR_ECampaignSeizingBaseType.FOB;
+
+		int xpReward = m_mSeizeXPRewardConfig.GetSeizeCompletionXpReward(seizingBaseType);
+
+		int radius;
+		vector baseOrigin = baseComponent.GetOwner().GetOrigin();
+		Faction baseFaction = baseComponent.GetFaction();
+
+		if (baseType == SCR_ECampaignBaseType.RELAY)
+			radius = RELAY_SEIZING_RADIUS;
+		else
+			radius = baseComponent.GetRadius();
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		array<int> players = {};
+		playerManager.GetPlayers(players);
+		SCR_ChimeraCharacter playerEntity;
+
+		foreach (int playerId : players)
+		{
+			playerEntity = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId));
+
+			if (!playerEntity || playerEntity.GetFactionKey() != baseFaction.GetFactionKey())
+				continue;
+
+			if (vector.DistanceSq(playerEntity.GetOrigin(), baseOrigin) >= radius * radius)
+				continue;
+
+			if (baseType == SCR_ECampaignBaseType.RELAY)
+				AwardXP(playerId, SCR_EXPRewards.RELAY_RECONFIGURED, 1);
+			else
+				AwardXP(playerId, SCR_EXPRewards.BASE_SEIZED, 1, false, xpReward);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnBaseAttackStarted(notnull SCR_CampaignMilitaryBaseComponent base, Faction defendingFaction, Faction attackingFaction)
+	{
+		if (m_aBasesBeingSeized.Contains(base))
+			return;
+
+		m_aBasesBeingSeized.Insert(base);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnBaseAttackEnded(notnull SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (!m_aBasesBeingSeized.Contains(base))
+			return;
+
+		m_aBasesBeingSeized.RemoveItem(base);
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		array<int> players = {};
+		playerManager.GetPlayers(players);
+		PlayerController playerController;
+		SCR_PlayerXPHandlerComponent playerXpHandlerComponent;
+
+		foreach (int playerId : players)
+		{
+			playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+			if (!playerController)
+				continue;
+
+			playerXpHandlerComponent = SCR_PlayerXPHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerXPHandlerComponent));
+			if (!playerXpHandlerComponent)
+				continue;
+
+			playerXpHandlerComponent.StopSeizingProgressReward(base);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void EvaluateAllAttackedBasesAttackers()
+	{
+		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBasesBeingSeized)
+		{
+			EvaluateBaseAttackers(base);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void EvaluateBaseAttackers(SCR_CampaignMilitaryBaseComponent base)
+	{
+		Faction baseFaction = base.GetFaction();
+		if (!baseFaction)
+			return;
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		array<int> players = {};
+		playerManager.GetPlayers(players);
+		vector baseOrigin = base.GetOwner().GetOrigin();
+		int radius = base.GetRadius();
+
+		SCR_ChimeraCharacter playerEntity;
+		PlayerController playerController;
+		SCR_PlayerXPHandlerComponent playerXpHandlerComponent;
+
+		foreach (int playerId : players)
+		{
+			playerEntity = SCR_ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerId));
+
+			if (!playerEntity || playerEntity.GetFactionKey() == baseFaction.GetFactionKey())
+				continue;
+
+			playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+			if (!playerController)
+				continue;
+
+			playerXpHandlerComponent = SCR_PlayerXPHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerXPHandlerComponent));
+			if (!playerXpHandlerComponent)
+				continue;
+
+			if (vector.DistanceSq(playerEntity.GetOrigin(), baseOrigin) < radius * radius)
+				playerXpHandlerComponent.StartSeizingProgressReward(base);
+			else
+				playerXpHandlerComponent.StopSeizingProgressReward(base);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -212,25 +580,21 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		return;
 #endif
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
-
 		if (!pc)
 			return;
 
 		SCR_PlayerXPHandlerComponent compXPPlayer = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-
 		if (!compXPPlayer)
 			return;
 
 		SCR_FactionManager fm = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-
 		if (!fm)
 			return;
 
 		// Check for cooldown on the penalty
 		float curTime = GetGame().GetWorld().GetWorldTime();
 		float penaltyTimestamp = compXPPlayer.GetSuicidePenaltyTimestamp();
-		compXPPlayer.SetSuicidePenaltyTimestamp(curTime + ((float)m_iSuicidePenaltyCooldown * 1000));
-
+		compXPPlayer.SetSuicidePenaltyTimestamp(curTime + (m_iSuicidePenaltyCooldown * 1000.0));
 		if (curTime > penaltyTimestamp)
 			return;
 
@@ -238,7 +602,6 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		int penalty = GetXPRewardAmount(SCR_EXPRewards.SUICIDE);
 		int playerXPWithPenalty = compXPPlayer.GetPlayerXP() + penalty;
 		SCR_ECharacterRank newRank = fm.GetRankByXP(playerXPWithPenalty);
-
 		if (fm.IsRankRenegade(newRank))
 			return;
 
@@ -335,6 +698,18 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_XPRewardInfo GetXpRewardInfo(SCR_EXPRewards reward)
+	{
+		foreach (SCR_XPRewardInfo info : m_aXPRewardList)
+		{
+			if (info.GetRewardID() == reward)
+				return info;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Returns XP reward amount
 	//! \param[in] reward
 	//! \return
@@ -411,6 +786,18 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 //	}
 
 	//------------------------------------------------------------------------------------------------
+	protected override void EOnFrame(IEntity owner, float timeSlice)
+	{
+		m_fBaseSeizingCheckTimer += timeSlice;
+
+		if (m_fBaseSeizingCheckTimer > BASE_SEIZING_CHECK_INTERVAL)
+		{
+			m_fBaseSeizingCheckTimer = 0;
+			EvaluateAllAttackedBasesAttackers();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		//Parse & register XP reward list
@@ -425,12 +812,32 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 		SCR_PlayerData.s_OnStatAdded.Insert(OnStatPointsAdded);
 
+		SCR_SupportStationManagerComponent supportStationManager = SCR_SupportStationManagerComponent.GetInstance();
+		if (supportStationManager)
+		{
+			supportStationManager.GetOnSupportStationExecutedSuccessfully().Insert(OnSupportStationExecuted);
+		}
+
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseUnderAttack().Insert(OnBaseAttackStarted);
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseAttackEnd().Insert(OnBaseAttackEnded);
+
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+
 		s_bXpSystemEnabled = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_XPHandlerComponent()
 	{
+		SCR_SupportStationManagerComponent supportStationManager = SCR_SupportStationManagerComponent.GetInstance();
+		if (supportStationManager)
+		{
+			supportStationManager.GetOnSupportStationExecutedSuccessfully().Remove(OnSupportStationExecuted);
+		}
+
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseUnderAttack().Remove(OnBaseAttackStarted);
+		SCR_CampaignMilitaryBaseComponent.GetOnBaseAttackEnd().Remove(OnBaseAttackEnded);
+
 		s_bXpSystemEnabled = false;
 	}
 }
@@ -482,4 +889,24 @@ enum SCR_EXPRewards
 	VALUABLE_INTEL_HANDIN_LARGE,
 	KILLING_WHILE_DISGUISED,
 	WARCRIME,
+	SUPPORT_REPAIR_VEHICLE,
+	MEDICAL_ASSISTANCE,
+	ENEMY_COMMANDER_KILL,
+	ENEMY_VEHICLE_DESTRUCTION,
+	SURVIVAL,
+	GROUP_COHESION,
+
+	REARM_TASK_COMPLETED,
+	ATTACK_TASK_COMPLETED,
+	ATTACK_TASK_FAILED,
+	REPAIR_TASK_COMPLETED,
+	REINFORCE_TASK_COMPLETED,
+	ESTABLISH_BASE_COMPLETED,
+	DISMANTLE_BASE_COMPLETED,
+	SEIZE_TASK_COMPLETED,
+	COMMANDER_TASK_COMPLETED,
+	RECON_TASK_COMPLETED,
+	HOLD_TASK_COMPLETED,
+
+	STARTING_RANK,
 }

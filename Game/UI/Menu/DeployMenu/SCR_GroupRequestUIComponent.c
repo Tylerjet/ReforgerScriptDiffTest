@@ -18,11 +18,16 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	
 	protected SCR_GroupsManagerComponent m_GroupManager;
 	protected SCR_PlayerControllerGroupComponent m_PlyGroupComp;
+	protected ref SCR_GroupFlagImageComponent m_GroupFlagImage;
+	protected Widget m_wGroupFlagButton;
+	protected ScriptedWidgetEventHandler m_GroupFlagHandler;
 	protected Faction m_PlyFaction;
+	protected string m_sFlagName;
 	protected int m_iShownGroupId = -1;
 	
 	protected ref ScriptInvoker<SCR_GroupButton> m_OnPlayerGroupJoined;
 	protected ref ScriptInvoker<int> m_OnLocalPlayerGroupJoined;	
+	protected ImageWidget m_wGroupIcon;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -37,12 +42,16 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 
 		m_wExpandButtonName = TextWidget.Cast(w.FindAnyWidget(m_sExpandButtonName));
+		m_wExpandButtonNameFreq = TextWidget.Cast(w.FindAnyWidget("freq"));
 		m_wExpandButtonIcon = ImageWidget.Cast(w.FindAnyWidget(m_sExpandButtonIcon));
+		m_wGroupFlagButton = w.FindAnyWidget("GroupFlagImage");
 
 		m_PlyGroupComp = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!m_PlyGroupComp)
 			return;
-
+		
+		SetGroupFlags();
+		
 		m_GroupManager.GetOnPlayableGroupCreated().Insert(AddGroup);		
 		m_GroupManager.GetOnPlayableGroupRemoved().Insert(RemoveGroup);
 
@@ -106,6 +115,27 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_PlyGroupComp.GetOnGroupChanged().Remove(UpdateLocalPlayerGroup);
 	}
 	
+	// Function that manages group flags, setting the correct icon to player local group
+	protected void SetGroupFlags()
+	{
+		if (!m_wGroupFlagButton || !m_PlyGroupComp)
+			return;
+
+		SCR_AIGroup group = m_PlyGroupComp.GetPlayersGroup();
+		if (!group)
+			return;
+
+		ResourceName flag = group.GetGroupFlag();
+		if (!flag)
+			return;
+
+		m_GroupFlagImage = SCR_GroupFlagImageComponent.Cast(m_wGroupFlagButton.FindHandler(SCR_GroupFlagImageComponent));
+		if (!m_GroupFlagImage)
+			return;
+
+		m_GroupFlagImage.SetFlagButtonFromImageSet(flag);
+	}
+	
 	//! Update the group widget when player joins/leaves group.
 	protected void UpdateGroupPlayers(SCR_AIGroup group, int pid)
 	{
@@ -157,6 +187,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			}
 
 			UpdateNewGroupButton();
+			SetGroupFlags();
 			GetGame().GetCallqueue().CallLater(SetPlayerGroup, 100, false, group); // call later because of group name initialization
 		}
 	}
@@ -188,7 +219,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			{
 				groupBtn.UpdateGroupName();
 				if (m_wExpandButtonName && groupBtn.GetGroup() == GetPlayerGroup())
-					SCR_GroupButton.SGetGroupName(groupBtn.GetGroup(), m_wExpandButtonName); // update group name in map's group selector
+					SCR_GroupButton.SGetGroupName(groupBtn.GetGroup(), m_wExpandButtonName,m_wExpandButtonNameFreq); // update group name in map's group selector
 			}
 		}
 	}
@@ -219,7 +250,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	void SetPlayerGroup(SCR_AIGroup group)
 	{
 		if (m_wExpandButtonName && group)
-			SCR_GroupButton.SGetGroupName(group, m_wExpandButtonName);
+			SCR_GroupButton.SGetGroupName(group, m_wExpandButtonName, m_wExpandButtonNameFreq);
 	}
 
 	//! Show groups available for given faction.
@@ -234,7 +265,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		ClearGroupList();
 
-		array<SCR_AIGroup> playableGroups = m_GroupManager.GetPlayableGroupsByFaction(faction);
+		array<SCR_AIGroup> playableGroups = m_GroupManager.GetSortedPlayableGroupsByFaction(faction);
 		if (!playableGroups)
 			return;
 #ifdef DEPLOY_MENU_DEBUG
@@ -248,6 +279,12 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 		
 		CreateNewGroupButton();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ShowGroupSelector(bool show)
+	{
+		m_wRoot.SetVisible(show);
 	}
 
 	//! Joins an automatically selected group
@@ -304,7 +341,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		m_wNewGroupButton = GetGame().GetWorkspace().CreateWidgets(m_sNewGroupButton, m_wGroupList);
 		SCR_DeployButtonBase handler = SCR_DeployButtonBase.Cast(m_wNewGroupButton.FindAnyWidget("Button").FindHandler(SCR_DeployButtonBase));
-		handler.m_OnClicked.Insert(RequestNewGroup);
+		handler.m_OnClicked.Insert(OnNewGroupButtonClicked);
 		UpdateNewGroupButton();
 	}
 
@@ -358,7 +395,8 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		btnComp.SetGroup(group);
 		btnComp.SetSelected(m_PlyGroupComp.GetGroupID() == group.GetGroupID());
 		bool canJoinGroup = m_PlyGroupComp.CanPlayerJoinGroup(GetGame().GetPlayerController().GetPlayerId(), group);
-		btnComp.UpdateGroup(canJoinGroup);
+		// Have to use CallLater for group attributes to be correctly synced on client before updating the button
+		GetGame().GetCallqueue().CallLater(UpdateGroupButton, 1, false, btnComp, canJoinGroup);
 		btnComp.m_OnClicked.Insert(RequestJoinGroup);
 
 		btnComp.m_OnFocus.Insert(OnButtonFocused);
@@ -368,7 +406,13 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		m_aButtons.Insert(btnComp);
 		UpdateNewGroupButton();
-	}	
+	}
+
+	//------------------------------------------------------------------------------------------------
+	private void UpdateGroupButton(SCR_GroupButton groupButton, bool canJoinGroup)
+	{
+		groupButton.UpdateGroup(canJoinGroup);
+	}
 
 	//! Called when the group button is focused.
 	protected void OnButtonFocused(Widget w)
@@ -382,9 +426,31 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_OnButtonFocused.Invoke(group);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnNewGroupButtonClicked()
+	{
+		if (!m_PlyFaction)
+			return;
+
+		SCR_Faction scrFaction = SCR_Faction.Cast(m_PlyFaction);
+		if (!scrFaction)
+			return;
+
+		// checks if the group role config is set, if it's set it will open the CreateGroupSettingsDialog
+		// otherwise it will create a new group without a role
+		if (scrFaction.IsGroupRolesConfigured())
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.CreateGroupSettingsDialog);
+		else
+			RequestNewGroup();
+	}
+
 	//! Sends a request for joining a group.
 	protected void RequestJoinGroup(notnull SCR_GroupButton groupBtn)
 	{
+		// block joining to other group when player is commander
+		if (SCR_FactionCommanderPlayerComponent.IsLocalPlayerCommander())
+			return;
+
 		m_PlyGroupComp.SetSelectedGroupID(groupBtn.GetGroupId());
 		m_PlyGroupComp.RequestJoinGroup(m_PlyGroupComp.GetSelectedGroupID());
 
@@ -495,7 +561,12 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	protected string m_sPlayerCount;
 	protected TextWidget m_wPlayerCount;
 	
-	[Attribute("PrivateGroup")]
+	[Attribute("PlayerIcon")]
+	
+	protected string m_sPlayerIcon;
+	protected ImageWidget m_wPlayerIcon;
+	
+	[Attribute("PrivateGroupWrapper")]
 	protected string m_sPrivateGroup;
 	protected Widget m_wPrivateGroup;
 
@@ -507,9 +578,15 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	protected string m_sArrowIcon;
 	protected ImageWidget m_wArrowIcon;	
 	
+	[Attribute("GroupFlag")]
+	protected string m_sGroupFlag;
+	protected ButtonWidget m_wGroupFlag;
+	
 	protected int m_iGroupId;
 	protected SCR_AIGroup m_Group;
-
+	
+	protected ImageWidget m_wGroupIcon;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -518,10 +595,12 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		m_wGroupName = TextWidget.Cast(w.FindAnyWidget(m_sGroupName));
 		m_wFreq = TextWidget.Cast(w.FindAnyWidget(m_sFreq));
 		m_wPlayerCount = TextWidget.Cast(w.FindAnyWidget(m_sPlayerCount));
+		m_wPlayerIcon = ImageWidget.Cast(w.FindAnyWidget(m_sPlayerIcon));
 		m_wPrivateGroup = w.FindAnyWidget(m_sPrivateGroup);
 		m_wElements = w.FindAnyWidget(m_sElements);
 		m_wArrowIcon = ImageWidget.Cast(w.FindAnyWidget(m_sArrowIcon));
 		m_wFullGroup = w.FindAnyWidget(m_sFullGroup);
+		m_wGroupFlag = ButtonWidget.Cast(w.FindAnyWidget(m_sGroupFlag));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -539,8 +618,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 #ifdef DEPLOY_MENU_DEBUG
 		PrintFormat("UpdateGroup() name: %1, group id: %2", m_Group.GetCustomNameWithOriginal(), m_Group.GetGroupID());
 #endif
-		GetGame().GetCallqueue().CallLater(UpdateGroupName, 100, false); // fix for group names not being available on client right away
-
+		UpdateGroupName();
 		UpdateGroupFrequency();
 		UpdateGroupPrivacy(m_Group.IsPrivate());
 		UpdateGroupFlag();
@@ -558,16 +636,9 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroupName()
 	{
-		if (m_Group.GetCustomName().IsEmpty())
-		{
-			string company, platoon, squad, character, format;
-			m_Group.GetCallsigns(company, platoon, squad, character, format);
-			m_wGroupName.SetTextFormat(format, company, platoon, squad, character);
-		}
-		else
-		{
-			SetText(m_Group.GetCustomName());
-		}
+		// This function can only be used in UI menu, where to change the language you need to close and open the shown menu, so it will be renewed.
+		if (m_Group)
+			SetText(SCR_GroupHelperUI.GetTranslatedGroupNameAndRoleName(m_Group));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -577,18 +648,19 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	}
 
 	//! Set the group name into a TextWidget widget.
-	static void SGetGroupName(notnull SCR_AIGroup group, notnull TextWidget widget)
+	static void SGetGroupName(notnull SCR_AIGroup group, notnull TextWidget widget, notnull TextWidget freqWidget)
 	{
 		string freq = string.Format("%1 #AR-VON_FrequencyUnits_MHz", group.GetRadioFrequency() * 0.001);
 		if (group.GetCustomName().IsEmpty())
 		{
 			string company, platoon, squad, character, format;	
 			group.GetCallsigns(company, platoon, squad, character, format);
-			widget.SetTextFormat(format + " %5", company, platoon, squad, character, freq);
+			widget.SetTextFormat(format + " %5", company, platoon, squad, character);
+			freqWidget.SetTextFormat(format + freq);
 		}
 		else
 		{
-			widget.SetTextFormat("%1 %2", group.GetCustomName(), freq);
+			widget.SetTextFormat("%1 %2", group.GetCustomName());
 		}	
 	}
 	
@@ -634,15 +706,18 @@ class SCR_GroupButton : SCR_DeployButtonBase
 	
 	protected void SetGroupFull(bool full)
 	{
-		if (m_wFullGroup)
-			m_wFullGroup.SetVisible(full);
-
 		if (m_wPlayerCount)
 		{
 			if (full)
+			{
 				m_wPlayerCount.SetColor(m_ColorWarning);
+				m_wPlayerIcon.SetColor(m_ColorWarning);
+			}
 			else
+			{
 				m_wPlayerCount.SetColor(Color.FromInt(Color.WHITE));
+				m_wPlayerIcon.SetColor(Color.FromInt(Color.WHITE));
+			}
 		}
 	}
 
@@ -668,7 +743,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		if (!scrFaction)
 			return;
 		
-		array<ResourceName> textures = {};			
+		array<ResourceName> textures = {};		
 		array<string> names = {};		
 		ResourceName imageSet = scrFaction.GetGroupFlagImageSet();
 		
@@ -714,7 +789,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		
 		if (selected)
 			m_wArrowIcon.SetRotation(90);
-		else
+			else
 			m_wArrowIcon.SetRotation(270);
 	}	
 	//---- REFACTOR NOTE END ----

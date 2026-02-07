@@ -29,8 +29,10 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 		if (!pressureTriggerComponent)
 			return;
 		
+		SetInstigator(GetAuthorPlayerID());
 		pressureTriggerComponent.ActivateTrigger();
-		pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM());
+		if (pressureTriggerComponent.GetArmingTime() > 0)
+			pressureTriggerComponent.ResetTimeout();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -48,7 +50,7 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool Destroy()
+	override bool Destroy(int editorPlayerID)
 	{		
 		if (!IsServer())
 			return false;
@@ -56,11 +58,27 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
 		if (pressureTriggerComponent)
 		{
-			pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM());
+			SetInstigator(editorPlayerID);
 			pressureTriggerComponent.TriggerManuallyServer();
 			return true;
 		}
 
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetAuthor(int playerID)
+	{
+		super.SetAuthor(playerID);
+		
+		SetInstigator(GetAuthorPlayerID());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetInstigator(int playerID)
+	{
+		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
+		if (pressureTriggerComponent)
+			pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM(playerID));
 	}
 }

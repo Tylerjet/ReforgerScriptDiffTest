@@ -128,20 +128,10 @@ class SCR_BackendImageComponent : SCR_ScriptedWidgetComponent
 			return;
 		}
 			
-		// Discard the old callback
-		// We must unsubscribe from events of previous callback, because it still might get called when previous image is downloaded
-		if (m_DownloadImageCallback)
-		{
-			m_DownloadImageCallback.GetEventOnFail().Remove(Callback_DownloadImage_OnTimeoutError);
-			m_DownloadImageCallback.GetEventOnTimeOut().Remove(Callback_DownloadImage_OnTimeoutError);
-			m_DownloadImageCallback.GetEventOnSuccess().Remove(Callback_DownloadImage_OnSuccess);
-		}
-		
 		// Setup callback
 		m_DownloadImageCallback = new SCR_WorkshopItemCallback_DownloadImage();
-		m_DownloadImageCallback.GetEventOnFail().Insert(Callback_DownloadImage_OnTimeoutError);
-		m_DownloadImageCallback.GetEventOnTimeOut().Insert(Callback_DownloadImage_OnTimeoutError);
-		m_DownloadImageCallback.GetEventOnSuccess().Insert(Callback_DownloadImage_OnSuccess);
+		m_DownloadImageCallback.SetOnSuccess(Callback_DownloadImage_OnSuccess);
+		m_DownloadImageCallback.SetOnError(Callback_DownloadImage_OnTimeoutError);
 		
 		m_DownloadImageCallback.m_Scale = imageScale;
 

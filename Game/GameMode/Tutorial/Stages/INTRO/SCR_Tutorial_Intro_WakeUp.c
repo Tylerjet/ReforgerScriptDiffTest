@@ -34,18 +34,12 @@ class SCR_Tutorial_Intro_WakeUp : SCR_BaseTutorialStage
 		m_TutorialComponent.PlayBedAnimation(true);
 		
 		//Delete items from player inventory for intro reasons
-		array <IEntity> items = {};
-		m_TutorialComponent.GetPlayerInventory().GetAllRootItems(items);
+		const SCR_InventoryStorageManagerComponent inventory = m_TutorialComponent.GetPlayerInventory();
+		IEntity binoculars = inventory.FindItem(SCR_ResourceNamePredicate("{0CF54B9A85D8E0D4}Prefabs/Items/Equipment/Binoculars/Binoculars_M22/Binoculars_M22.et"), EStoragePurpose.PURPOSE_ANY);
+		SCR_EntityHelper.DeleteEntityAndChildren(binoculars);
 		
-		for (int i = items.Count()-1; i >= 0; i--)
-		{
-			if (!items[i])
-				continue;
-			
-			ResourceName prefabName = items[i].GetPrefabData().GetPrefabName();
-			if (prefabName == "{0CF54B9A85D8E0D4}Prefabs/Items/Equipment/Binoculars/Binoculars_M22/Binoculars_M22.et" || prefabName == "{D19C474FA0F42CC4}Prefabs/Characters/Handwear/Gloves_Pilot_US_01/Gloves_Pilot_US_01.et")
-				SCR_EntityHelper.DeleteEntityAndChildren(items[i]);
-		}
+		IEntity gloves = inventory.FindItem(SCR_ResourceNamePredicate("{D19C474FA0F42CC4}Prefabs/Characters/Handwear/Gloves_Pilot_US_01/Gloves_Pilot_US_01.et"), EStoragePurpose.PURPOSE_ANY);
+		SCR_EntityHelper.DeleteEntityAndChildren(gloves);
 
 		SCR_VoiceoverSystem.GetInstance().RegisterActor(GetGame().GetWorld().FindEntityByName("Soldier_DoorGuard"));
 

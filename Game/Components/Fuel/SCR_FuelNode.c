@@ -213,6 +213,12 @@ class SCR_FuelNode : BaseFuelNode
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	float GetInitialFuelTankState()
+	{
+		return m_fInitialFuelTankState;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	EFuelFlowCapacityIn GetMaxFlowCapacityIn()
 	{

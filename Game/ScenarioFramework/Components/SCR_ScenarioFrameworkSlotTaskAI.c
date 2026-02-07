@@ -26,12 +26,6 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 	[Attribute(defvalue: SCR_EAIGroupFormation.Wedge.ToString(), UIWidgets.ComboBox, "AI group formation", "", ParamEnumArray.FromEnum(SCR_EAIGroupFormation), category: "Common")]
 	SCR_EAIGroupFormation m_eAIGroupFormation;
 
-	//[Attribute(defvalue: ECharacterStance.STAND.ToString(), UIWidgets.ComboBox, "AI character stance", "", ParamEnumArray.FromEnum(ECharacterStance), category: "Common")]
-	//ECharacterStance m_eAICharacterStance;
-
-	//[Attribute(defvalue: EMovementType.WALK.ToString(), UIWidgets.ComboBox, "AI group formation", "", ParamEnumArray.FromEnum(EMovementType), category: "Common")]
-	//EMovementType m_eAIMovementType;
-
 	[Attribute(defvalue: EAISkill.REGULAR.ToString(), UIWidgets.ComboBox, "AI skill in combat", "", ParamEnumArray.FromEnum(EAISkill), category: "Common")]
 	EAISkill m_eAISkill;
 
@@ -205,10 +199,7 @@ class SCR_ScenarioFrameworkSlotTaskAI : SCR_ScenarioFrameworkSlotTask
 			plugin.Init(this);
 		}
 
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
-		{
-			activationAction.Init(GetOwner());
-		}
+		InitActivationActions();
 
 		if (m_ParentLayer)
 			m_ParentLayer.CheckAllChildrenSpawned(this);

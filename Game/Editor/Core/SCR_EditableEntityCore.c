@@ -29,7 +29,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 	[Attribute(desc: "Budget settings for every entity type.")]
 	private ref array<ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettings;
-
+	
 	private ref map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting> m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
 
 	[Attribute(desc: "Label Groups which will have labels displayed in content browser. Groups are needed for certain functionality. If GROUPLESS group exist then all labels not defined in the EditableEntityCore config will be automatically added to the the groupless list but never displayed as a filter")]
@@ -84,12 +84,7 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 	private ref map<EEditableEntityBudget, int> m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
 	bool budgetChangesAccumulated = false;
-	
-	//Basically conflict uses entity budgets for game logic. However they hacked their system into GM budgets.
-	//This means that when a server gets restarted we have to update our budgets WITHOUT sending conflicts any callbacks
-	//Otherwise they will be changing entity hierarchies (for some reason) and kicking clients during JIP.
-	bool conflictCompositionHackOnServerRestartCheck = false;
-	
+
 	// UGC Authors
 	// Authors = people who currently own entity in a world
 	private ref map<string, ref SCR_EditableEntityAuthor> m_mAuthors = new map<string, ref SCR_EditableEntityAuthor>; // Held by server, needs to be requested by client.
@@ -945,18 +940,10 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		//update current budget changes	
 		m_accumulatedBudgetChanges[budgetType] = m_accumulatedBudgetChanges[budgetType] + budgetChange;
 
-		//read variable description.
-		if(!conflictCompositionHackOnServerRestartCheck)
-		{
-			Event_OnEntityBudgetUpdatedPerEntity.Invoke(budgetType, adjustedCurrentBudget, budgetChange, updatedBudgetValue, entity);
-		}
-		
+		Event_OnEntityBudgetUpdatedPerEntity.Invoke(budgetType, adjustedCurrentBudget, budgetChange, updatedBudgetValue, entity);
+
 		if(!budgetChangesAccumulated)
 		{
-			//during restarts we dont queue any budget changes
-			if(conflictCompositionHackOnServerRestartCheck)
-				return;
-		
 			GetGame().GetCallqueue().CallLater(ApplyQueuedBudgetChanges);
 			budgetChangesAccumulated = true;
 		}
@@ -1155,6 +1142,12 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_EditableEntityAuthor FindAuthorByIdentity(UUID authorIdentity)
+	{
+		return m_mAuthors[authorIdentity];
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float timeSlice)
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL))
@@ -1177,27 +1170,11 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	override void OnGameStart()
 	{
-		//Read variable documentaion
-		conflictCompositionHackOnServerRestartCheck = false;
-		
 		const typename state = EEditableEntityState;
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES, "Editable Entities", "Editor");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL, "", "Log All", "Editable Entities");
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_TYPE, "", "Log Type", "Editable Entities", string.Format("-1 %1 -1 1", state.GetVariableCount() - 1));
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_DISABLE, "", "Disable entities", "Editable Entities");
-	
-		m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
-		
-		//overwrite the nulls with the actual values where valid
-		foreach(SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettings)
-		{
-			m_BudgetSettingsInternal.Insert(budgetSetting.GetBudgetType(), budgetSetting);
-		}	
-
-		//on server restarts, budget cleanups happen between OnGameEnd and OnGameStart, so we update our current budgets here.
-		ApplyQueuedBudgetChanges();
-		
-		m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1216,17 +1193,46 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES);
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL);
-		
-		//read variable comment
-		conflictCompositionHackOnServerRestartCheck = true;
-		
-		m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
-
+	
+		Restart();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// constructor
-	void SCR_EditableEntityCore()
+	//This class doesnt reset between server restarts, so we do a soft-reset of its contents here. 
+	void Restart()
+ 	{
+    	m_TypeSettingsMap = new map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting>;
+    	m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
+    	m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
+    	m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
+		m_BudgetSettingsInternal = new map<EEditableEntityBudget, ref SCR_EditableEntityCoreBudgetSetting>;
+		
+		m_Entities = null;
+		m_CurrentLayer = null;
+		
+		m_OrphanEntityIds = new map<RplId, ref array<RplId>>();
+		m_CurrentLayer = null;
+
+		m_accumulatedBudgetChanges = new map<EEditableEntityBudget, int>;
+		budgetChangesAccumulated = false;
+	
+		// UGC Authors
+		// Authors = people who currently own entity in a world
+		m_mAuthors = new map<string, ref SCR_EditableEntityAuthor>; // Held by server, needs to be requested by client.
+		m_bAuthorRequesting = false;  
+	
+		Init();
+		
+		//clear budget costs between restarts
+		foreach(SCR_EditableEntityCoreBudgetSetting setting : m_BudgetSettings)
+		{
+			setting.SetCurrentBudget(0);
+			setting.UnreserveBudget(setting.GetReservedBudget());
+		}
+	}
+  
+  	//------------------------------------------------------------------------------------------------
+	void Init()
 	{
 		foreach (SCR_EditableEntityCoreTypeSetting setting: m_TypeSettings)
 		{
@@ -1288,7 +1294,18 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		
 			m_LabelListMap.Insert(labelGroupType, groupLabels);
 		}
-
+		
+		//overwrite the nulls with the actual values where valid
+		foreach(SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettings)
+		{
+			m_BudgetSettingsInternal.Insert(budgetSetting.GetBudgetType(), budgetSetting);
+		}	
+	}
+	
+	// constructor
+	void SCR_EditableEntityCore()
+	{
+		Restart();
 		//--- Square the value
 		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;		
 	}

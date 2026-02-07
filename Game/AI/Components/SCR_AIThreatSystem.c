@@ -227,7 +227,7 @@ class SCR_AIThreatSystem
 					if (m_Config.PerformDangerReaction(m_Utility, dangerEvent, eventAggregationCount))
 					{
 #ifdef WORKBENCH
-						string message = typename.EnumToString(SCR_EAIDangerEventType, dangerEvent.GetDangerType());
+						string message = typename.EnumToString(EAIDangerEventType, dangerEvent.GetDangerType());
 						SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, message, EAIDebugCategory.DANGER, 2);	// Show message above AI's head
 #endif
 					}
@@ -330,6 +330,26 @@ class SCR_AIThreatSystem
 		m_fThreatSuppression = Math.Clamp(m_fThreatSuppression + count * SUPPRESSION_BULLET_INCREMENT, 0, 1);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Retrieve all threat values. primarily used for save/load logic
+	void GetThreatValues(out float suppression, out float shotsFired, out float injury, out float endangered)
+	{
+		suppression = m_fThreatSuppression;
+		shotsFired = m_fThreatShotsFired;
+		injury = m_fThreatInjury;
+		endangered = m_fThreatIsEndangered;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Apply threat values obtained through GetThreatValues. primarily used for save/load logic
+	void SetThreatValues(float suppression, float shotsFired, float injury, float endangered)
+	{
+		m_fThreatSuppression = suppression;
+		m_fThreatShotsFired = shotsFired;
+		m_fThreatInjury = injury;
+		m_fThreatIsEndangered = endangered;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] w

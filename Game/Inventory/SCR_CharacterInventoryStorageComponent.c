@@ -69,13 +69,16 @@ class SCR_InvEquipAnyItemCB : SCR_InvCallBack
 		if (!characterStorage || !m_pItem)
 			return;
 
-		characterStorage.UseItem(m_pItem, ESlotFunction.TYPE_GADGET, SCR_EUseContext.FROM_INVENTORY);
 		if (m_iSlotToFocus > -1)
 		{
 			characterStorage.RemoveItemFromQuickSlotAtIndex(m_iSlotToFocus);
 			characterStorage.StoreItemToQuickSlot(m_pItem, m_iSlotToFocus);
 			SCR_WeaponSwitchingBaseUI.HighlightQuickSlot(m_iSlotToFocus);
 		}
+
+		if (m_bShouldEquip)
+			// This must be delayed because inventory... Otherwise its possible that item will be permanently system locked, as host might still not know that item transfer was finished
+			GetGame().GetCallqueue().CallLater(characterStorage.UseItem, 250, false, m_pItem, ESlotFunction.TYPE_GENERIC, SCR_EUseContext.FROM_INVENTORY);
 
 		super.OnComplete();
 		m_pItem = null;
@@ -99,7 +102,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	protected ref array<ref SCR_QuickslotBaseContainer>	m_aQuickSlots = { null, null, null, null, null, null, null, null, null, null };
 	protected ref map<IEntity, int> 					m_mSlotHistory = new map<IEntity, int>();
 	protected ref array<IEntity>						m_aWeaponQuickSlotsStorage = {}; //Is used to store first four quickslots of turrets.
-	protected ref array< int >							m_aQuickSlotsHistory = {};	//here we'll be remembering the items stored
+	protected ref array<int>							m_aQuickSlotsHistory = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};	//here we'll be remembering the items stored
+	protected ref set<int>								m_aQuickSlotsInitalized = new set<int>();	
 //	protected ref array<EntityComponentPrefabData>		m_aPrefabsData = { null, null, null, null, null, null, null, null, null, null }; // todo: figure out the intentions
 	protected static const int							GADGET_OFFSET = 9999;	//EWeaponType && EGadgetType might be have the same number, offset it ( not nice (i agree) )
 	protected static const int							TURRET_WEAPON_SWITCH_SLOTS = 4; //How many slots can player cycle between using SelectNextWeapon method by default when in turret
@@ -319,6 +323,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	}
 
 	//------------------------------------------------------------------------------------------------
+	bool SetQuickSlotInitialized(int iSlotIndex)
+	{
+		return m_aQuickSlotsInitalized.Insert(iSlotIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] ent
 	//! \return
 	int GetLastQuickSlotId(IEntity ent)
@@ -380,25 +390,23 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				iSlotIndex = parentSlot.GetID();
 			}
 			else
-			{			
-				for (int iLoop, cnt = m_aQuickSlots.Count(); iLoop < cnt; iLoop++)	//go through the all quick slots
+			{
+				foreach (int i, SCR_QuickslotBaseContainer quickSlot : m_aQuickSlots)
 				{
-					if ( m_aQuickSlots[ iLoop ] ) //do it only for the empty slots
-						continue;
-					if ( iItemType == m_aQuickSlotsHistory[ iLoop ] ) // there was aready something in the slot with this index
+					if (quickSlot)
+						continue;//do it only for the empty slots
+
+					if (m_aQuickSlotsHistory.IsIndexValid(i) && iItemType == m_aQuickSlotsHistory[i])
 					{
-						iSlotIndex = iLoop;
+						iSlotIndex = i;
 						break;
-					}	
-					else
+					}
+
+					if (ItemBelongsToSlot(iItemType, i))
 					{
-						//there was nothing before, put the item into slot defined by the template ( DEFAULT_QUICK_SLOTS )
-						if ( ItemBelongsToSlot( iItemType, iLoop ) )
-						{
-							iSlotIndex = iLoop;
-							break;
-						}
-					}					
+						iSlotIndex = i;
+						break;
+					}
 				}
 			}
 		}
@@ -431,7 +439,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		SCR_QuickslotEntityContainer inventoryContainer = new SCR_QuickslotEntityContainer(pItem);
 		InsertContainerIntoQuickslot(inventoryContainer, iSlotIndex);
-		
+
 		m_aQuickSlotsHistory[ iSlotIndex ] = iItemType; // remember it
 		return iSlotIndex;
 	}
@@ -892,12 +900,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		// Autodetect slot function if not provided
 		if (slotFunction == ESlotFunction.TYPE_GENERIC)
 		{
-			if (item.FindComponent(MagazineComponent))
+			if (item.FindComponent(SCR_GadgetComponent))
+				slotFunction = ESlotFunction.TYPE_GADGET;
+			else if (item.FindComponent(MagazineComponent))
 				slotFunction = ESlotFunction.TYPE_MAGAZINE;
 			else if (item.FindComponent(BaseWeaponComponent))
 				slotFunction = ESlotFunction.TYPE_WEAPON;
-			else if (item.FindComponent(SCR_GadgetComponent))
-				slotFunction = ESlotFunction.TYPE_GADGET;
 		}
 		
 		switch (slotFunction)
@@ -957,6 +965,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			else if (item.FindComponent(BaseWeaponComponent))
 				slotFunction = ESlotFunction.TYPE_WEAPON;
 		}
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_VICINITY_EQUIP_CLICK);
 		
 		switch (slotFunction)
 		{
@@ -1050,15 +1060,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 					// TODO: Interrupt current equipping process now
 					if (GetWeaponStorage() && GetWeaponStorage().Contains(m_Callback.m_pItem))
 					{
-						controller.TryEquipRightHandItem(m_Callback.m_pItem, EEquipItemType.EEquipTypeWeapon, false);
+						bool result = controller.TryEquipRightHandItem(m_Callback.m_pItem, EEquipItemType.EEquipTypeWeapon, false);
 						m_Callback.m_pItem = null;
+						return result;
 					}
-					else
-					{
-						inventoryManager.EquipWeapon(m_Callback.m_pItem, m_Callback, false);
-					}
-					
-					return true;
+
+					return inventoryManager.EquipWeapon(m_Callback.m_pItem, m_Callback, false);
 				}
 				break;
 			}
@@ -1135,10 +1142,14 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			return false;
 		
 		MagazineComponent magazine = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-		if (!magazine || !magazine.GetMagazineWell())
+		if (!magazine)
 			return false;
 		
-		if (magazine.GetMagazineWell().Type() == currentMagWell.Type())
+		BaseMagazineWell magazineWell = magazine.GetMagazineWell();
+		if (!magazineWell)
+			return false;
+		
+		if (magazineWell.Type() == currentMagWell.Type())
 			return true;
 		
 		return false;
@@ -1341,41 +1352,25 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if ( !pInventoryManager )
 			return;
 			
-		if( pControlled )
+		if (pControlled)
 		{
-			int i = DEFAULT_QUICK_SLOTS.Count();
-			if ( m_aQuickSlotsHistory.Count() <  i )
+			array<IEntity> initSlotItems = {};
+			pInventoryManager.GetItems(initSlotItems);
+			foreach (IEntity item : initSlotItems)
 			{
-				for ( int m = 0; m < i; m++ )
-				{
-					m_aQuickSlotsHistory.Insert( 0 );	//default is none	
-				}
-			}
-			
-			//Insert weapons to quick slots as first, because they can't be equipped into hands directly from different storage than EquippedWeaponStorage
-			//TODO: optimise ( hotfix for ability to select grenades from quickslot )
-			
-			array<IEntity> outWeapons = {};
-			GetPlayersWeapons( outWeapons );
-			foreach ( IEntity weapon : outWeapons )
-			{
-				StoreItemToQuickSlot( weapon );
+				if (!item)
+					continue;
+
+				const int slotId = GetDefaultQuickSlot(item);
+				if (!SetQuickSlotInitialized(slotId))
+					continue; // Already inited by external logic (e.g. save-game)
+
+				if (GetEntityIndexInQuickslots(item) == slotId)
+					continue; // Already in default quick slot
+
+				StoreItemToQuickSlot(item);
 			}
 
-			// There may be unequipped grenades among default quick item slots as well
-			array<IEntity> outItems = {};
-			pInventoryManager.GetItems( outItems );
-			foreach ( IEntity pItem : outItems )
-			{
-				if (!pItem)
-					continue;
-				
-				if (IsInDefaultQuickSlot(pItem))
-					continue;
-				
-				StoreItemToQuickSlot( pItem );
-			}
-			
 			pInventoryManager.m_OnItemAddedInvoker.Insert( HandleOnItemAddedToInventory );
 			pInventoryManager.m_OnItemRemovedInvoker.Insert( HandleOnItemRemovedFromInventory );
 
@@ -1414,6 +1409,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	// Called when item is used by the player
 	protected void OnItemUsed(IEntity item, bool successful, ItemUseParameters animParams)
 	{
+		if (!item)
+			return;
+
 		// If the item isn't consumable, return
 		if (!SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent)))
 			return;
@@ -1632,6 +1630,34 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			entityContainer = SCR_QuickslotEntityContainer.Cast(container);
 			if (entityContainer && entityContainer.GetEntity() == entity)
 				index = i;
+		} 
+		
+		return index;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	int GetFirstSlotIndexOf(ECommonItemType type)
+	{
+		int index = -1;
+		SCR_QuickslotEntityContainer entityContainer;
+		IEntity testedEntity;
+		InventoryItemComponent itemComponent;
+		foreach (int i, SCR_QuickslotBaseContainer container : m_aQuickSlots)
+		{
+			entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+			if (entityContainer && entityContainer.GetEntity())
+			{
+				testedEntity = entityContainer.GetEntity();
+				itemComponent = InventoryItemComponent.Cast(testedEntity.FindComponent(InventoryItemComponent));
+				if (!itemComponent)
+					continue;;
+				
+				if (itemComponent.GetAttributes().GetCommonType() != type)
+					continue;
+				
+				index = i;
+			}
 		} 
 		
 		return index;

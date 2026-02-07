@@ -12,7 +12,17 @@ class SCR_VoNComponent : VoNComponent
 	
 	ref ScriptInvoker m_OnReceivedVON = new ScriptInvoker();
 	ref ScriptInvoker m_OnCaptureVON = new ScriptInvoker();
+	protected static ref ScriptInvokerInt m_OnVoNUsed;
 	
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvokerInt GetOnVoNUsed()
+	{
+		if (!m_OnVoNUsed)
+			m_OnVoNUsed = new ScriptInvokerInt();
+
+		return m_OnVoNUsed;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Get Display Info script
 	//! \return SCR_VonDisplay reference
@@ -65,13 +75,73 @@ class SCR_VoNComponent : VoNComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected event void OnReceive(int playerId, BaseTransceiver receiver, int frequency, float quality)
+	override protected event void OnReceive(int playerId, bool isSenderEditor, BaseTransceiver receiver, int frequency, float quality)
 	{
 		SCR_VonDisplay display = GetDisplay();
 		
 		if (display)
-			display.OnReceive(playerId, receiver, frequency, quality);
+			display.OnReceive(playerId, isSenderEditor, receiver, frequency, quality);
 
 		m_OnReceivedVON.Invoke(playerId, receiver, frequency, quality);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected event void OnVoNUsed(int senderId)
+	{
+		if (m_OnVoNUsed)
+			m_OnVoNUsed.Invoke(senderId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected event IEntity GetEditorEntity(int playerId)
+	{
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (!core)
+			return null;
+
+		return core.GetEditorManager(playerId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected event vector GetEditorWorldLocation(int playerId)
+	{	
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (!core)
+			return vector.Zero;
+		
+		SCR_EditorManagerEntity editorManager = core.GetEditorManager(playerId);
+		if (!editorManager)
+			return vector.Zero;
+		
+		vector mat[4];
+		editorManager.GetWorldTransform(mat);
+		return mat[3];
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsEntityActiveEditor(IEntity entity)
+	{
+		if (!entity)
+			return false;
+		
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.Cast(entity);
+		if (!editorManager)
+			return false;
+		
+		return editorManager.IsOpened();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsLocalActiveEditor()
+	{
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (!core)
+			return false;
+		
+		SCR_EditorManagerEntity editorManager = core.GetEditorManager();
+		if (!editorManager)
+			return false;
+		
+		return editorManager.IsOpened();
 	}
 };

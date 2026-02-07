@@ -5,27 +5,23 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 	[Attribute(defvalue: "{F636AAB9EE015E5F}Configs/Workbench/PrefabEditingPlugin/PrefabEditingPluginConfig.conf", params: "conf", desc: "Config with rules defining which worlds will be used for which folders.")]
 	protected ResourceName m_Config;
 
-	//------------------------------------------------------------------------------------------------
-	protected string GetFileName(ResourceName prefab)
-	{
-		string name = FilePath.StripPath(prefab);
-		return FilePath.StripExtension(name);
-	}
+	protected static const string WARNING_CAPTION = "Edit Selected Prefab plugin";
+	protected static const string WARNING_TEXT = "You are about to generate and load a world to edit selected Prefabs. Saving current World Editor changes will be offered if needed if you click OK.\n\nDo you want to proceed?";
 
 	//------------------------------------------------------------------------------------------------
 	protected IEntitySource CreateEntity(WorldEditorAPI api, ResourceName prefab, vector position, vector rotation)
 	{
 		string extension;
-		FilePath.StripExtension(prefab, extension);
+		string prefabName = FilePath.StripPath(FilePath.StripExtension(prefab.GetPath(), extension));
 		if (extension == "ct")
 		{
-			IEntitySource entity = api.CreateEntity("GenericEntity", GetFileName(prefab), api.GetCurrentEntityLayerId(), null, position, rotation);
+			IEntitySource entity = api.CreateEntity("GenericEntity", prefabName, api.GetCurrentEntityLayerId(), null, position, rotation);
 			api.CreateComponent(entity, prefab);
 			return entity;
 		}
 		else
 		{
-			return api.CreateEntity(prefab, GetFileName(prefab), api.GetCurrentEntityLayerId(), null, position, rotation);
+			return api.CreateEntity(prefab, prefabName, api.GetCurrentEntityLayerId(), null, position, rotation);
 		}
 	}
 
@@ -41,10 +37,14 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 			return false;
 		}
 
-		FileIO.MakeDirectory("$profile:worlds");
+		if (!FileIO.MakeDirectory("$profile:worlds"))
+			return false;
 
 		//--- World file
 		FileHandle file = FileIO.OpenFile(targetPath + ".ent", FileMode.WRITE);
+		if (!file)
+			return false;
+
 		file.WriteLine("SubScene {");
 		file.WriteLine(string.Format(" Parent \"%1\"", worldPrefab));
 		file.WriteLine("}");
@@ -53,8 +53,14 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		file.WriteLine("}");
 		file.Close();
 
+		if (!FileIO.MakeDirectory(targetPath + "_Layers"))
+			return false;
+
 		//--- Layer file
 		file = FileIO.OpenFile(targetPath + "_Layers/default.layer", FileMode.WRITE);
+		if (!file)
+			return false;
+
 		file.Close();
 
 		return true;
@@ -64,8 +70,8 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 	protected void SetCamera(WorldEditorAPI api, IEntity entity)
 	{
 		IEntitySource source = api.EntityToSource(entity);
-		vector boundsMin = Vector(float.MAX, float.MAX, float.MAX);
-		vector boundsMax = vector.Zero;
+		vector boundsMin = { float.MAX, float.MAX, float.MAX };
+		vector boundsMax;
 		GetEntitySourceBounds(api, source, boundsMin, boundsMax);
 
 		vector size = boundsMax - boundsMin;
@@ -76,8 +82,8 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 			distance = 100;
 		}
 
-		vector rotation = Vector(-135, -30, 0).AnglesToVector();
-		vector pivot = entity.GetOrigin() + Vector(0, size[1] / 2, 0);
+		vector rotation = ((vector){ -135, -30, 0 }).AnglesToVector();
+		vector pivot = entity.GetOrigin() + { 0, size[1] * 0.5, 0 };
 		api.SetCamera(pivot - rotation * distance, rotation);
 	}
 
@@ -116,7 +122,7 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		Resource configResource = Resource.Load(configPath);
 		if (!configResource.IsValid())
 		{
-			Print(string.Format("Cannot load config '%1'!", configPath), LogLevel.ERROR);
+			PrintFormat("Cannot load config '%1'!", configPath, level: LogLevel.ERROR);
 			return null;
 		}
 
@@ -128,19 +134,24 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		if (!configBase)
 			return null;
 
-		if (configBase.GetClassName() != "PrefabEditingPluginConfig")
+		PrefabEditingPluginConfig result = PrefabEditingPluginConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(configBase));
+		if (!result)
 		{
-			Print(string.Format("Config '%1' is of type '%2', must be 'PrefabEditingPluginConfig'!", configPath, configBase.GetClassName()), LogLevel.ERROR);
+			PrintFormat("Config '%1' is of type '%2', must be inheriting from 'PrefabEditingPluginConfig'!", configPath, configBase.GetClassName(), level: LogLevel.ERROR);
 			return null;
 		}
 
-		return PrefabEditingPluginConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(configBase));
+		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
 		if (!SCR_Global.IsEditMode() || !Workbench.OpenModule(WorldEditor))
+			return;
+
+		SCR_OKCancelWorkbenchDialog dialog = new SCR_OKCancelWorkbenchDialog();
+		if (Workbench.ScriptDialog(WARNING_CAPTION, WARNING_TEXT, dialog) == 0)
 			return;
 
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
@@ -171,7 +182,7 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 
 		if (!worldEditor.SetOpenedResource(targetPath + ".ent"))
 		{
-			Print(string.Format("Cannot load world '%1'!", folderSettings.GetWorld()), LogLevel.ERROR);
+			PrintFormat("Cannot load world '%1'!", folderSettings.GetWorld(), level: LogLevel.ERROR);
 			return;
 		}
 
@@ -183,7 +194,7 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		vector pos, rot, size, boundsMin, boundsMax, boundsSize;
 		pos = folderSettings.GetPosition();
 		rot = folderSettings.GetRotation();
-		size = vector.Zero;
+
 		bool usePrefabPosition = folderSettings.UsePrefabPosition();
 
 		Resource resource;
@@ -216,8 +227,8 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 			entities.Insert(source);
 
 			//--- Get bounding box
-			boundsMin = Vector(float.MAX, float.MAX, float.MAX);
-			boundsMax = -Vector(float.MAX, float.MAX, float.MAX);
+			boundsMin = { float.MAX, float.MAX, float.MAX };
+			boundsMax = -boundsMin;
 			GetEntitySourceBounds(api, source, boundsMin, boundsMax);
 			boundsSize = boundsMax - boundsMin;
 			for (int n = 0; n < 3; n++)
@@ -233,8 +244,8 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 		//--- Select entities (start from the back, because the last one has transformation gizmo on it)
 		int entitiesCount = entities.Count();
 		int length = Math.Ceil(Math.Sqrt(entitiesCount));
-		int row = 0;
-		int column = 0;
+		int row;
+		int column;
 		for (int i = entitiesCount; i--; i >= 0)
 		{
 			row = Math.Floor(i / length);
@@ -262,6 +273,7 @@ class SCR_PrefabEditingPlugin : SCR_PrefabEditingPluginBase
 	[ButtonAttribute("Close")]
 	protected bool ButtonClose()
 	{
+		return false;
 	}
 }
 

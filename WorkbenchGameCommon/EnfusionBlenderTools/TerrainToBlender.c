@@ -59,6 +59,8 @@ class TerrainExportTool : WorldEditorTool
 	[ButtonAttribute("Export To Blender")]
 	protected void Blender()
 	{
+		if (!EBTConfigPlugin.HasBlenderRegistered())
+			return;
 		WorldEditor we = Workbench.GetModule(WorldEditor);
 		auto api = we.GetApi();
 		array<float> heightMap = {};
@@ -68,7 +70,6 @@ class TerrainExportTool : WorldEditorTool
 		// creating temp bin file to pass the coords
 		Workbench.GetAbsolutePath("$profile:", path);
 		path = path + "/BlendTerrain.bin";
-		Print(path);
 		float tileResX = (m_API.GetTerrainResolutionX(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesX(0) / m_API.GetTerrainUnitScale();
 		float tileResY = (m_API.GetTerrainResolutionY(0) * m_API.GetTerrainUnitScale(0)) / m_API.GetTerrainTilesY(0) / m_API.GetTerrainUnitScale();
 
@@ -109,7 +110,7 @@ class TerrainExportTool : WorldEditorTool
 		m_API.GetWorldPath(worldpath);
 		
 		BlenderOperatorDescription operatorDescription = new BlenderOperatorDescription("terrain");
-		operatorDescription.blIDName = "scene.ebt_import_terrain";
+		operatorDescription.blIDName = "ebt.import_terrain";
 		operatorDescription.AddParam("binPath", path);
 		operatorDescription.AddParam("cellSize", m_API.GetTerrainUnitScale(0));
 		operatorDescription.AddParam("worldPath",worldpath);

@@ -6,9 +6,6 @@ class SCR_GameModeCampaignClass : SCR_BaseGameModeClass
 //------------------------------------------------------------------------------------------------
 class SCR_GameModeCampaign : SCR_BaseGameMode
 {
-	[Attribute("1", desc: "Run Conflict automatically at scenario start. If disabled, use RequestStart() method on server.", category: "Campaign")]
-	protected bool m_bAutostart;
-
 	[Attribute("1", desc: "Terminate the scenario when Conflict is finished.", category: "Campaign")]
 	protected bool m_bTerminateScenario;
 
@@ -50,7 +47,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 	[Attribute("25", desc: "The step by which randomized supplies will be added in randomization. Min and Max limits should be divisible by this.", params: "1 inf 1", category: "Campaign")]
 	protected int m_iStartingSuppliesInterval;
-	
+
 	[Attribute("0.5", desc: "Fraction of XP awarded to players unloading supplies which they have not loaded themselves.", params: "0 inf", category: "Campaign")]
 	protected float m_fSupplyOffloadAssistanceReward;
 
@@ -81,6 +78,36 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	[Attribute("600", UIWidgets.EditBox, "How often is the post-suicide deploy cooldown penalty deducted (seconds).", params: "0 inf 1", category: "Campaign")]
 	protected int m_iSuicideForgiveCooldown;
 
+	[Attribute("0", UIWidgets.CheckBox, "Player can volunteer for Commander role", category: "Campaign")]
+	protected bool m_bCommanderRoleEnabled;
+
+	[Attribute("2000", desc: "HQ candidates with greater distance than this are considered for selection", params: "0 inf 1", category: "Campaign")]
+	protected float m_fAcceptableDistanceBetweenFactionHQs;
+
+	[Attribute("3000", desc: "HQ candidates with greater distance than this are preferred for selection", params: "0 inf 1", category: "Campaign")]
+	protected float m_fPreferredDistanceBetweenFactionHQs;
+
+	[Attribute("0", UIWidgets.CheckBox, "Players can establish bases. If disabled, the game starts with existing FOBs", category: "Campaign")]
+	protected bool m_bEstablishingBasesEnabled;
+
+	[Attribute("0", UIWidgets.CheckBox, "When enabled, FOBs automatically regenerate supplies", category: "Campaign")]
+	protected bool m_bSuppliesAutoRegenerationEnabled;
+
+	[Attribute("300", desc: "How often are supplies replenished in source bases (seconds).", params: "1 inf 1", category: "Campaign")]
+	protected int m_iSuppliesArrivalIntervalSource;
+
+	[Attribute("2500", desc: "How many supplies are periodically replenished in source bases.", params: "0 inf 1", category: "Campaign")]
+	protected int m_iRegularSuppliesIncomeSource;
+
+	[Attribute("1", desc: "Priority of HQ spawn point in spawn point list. Spawn points are listed from highest priority to lowest.", params: "0 inf 1", category: "Campaign")]
+	protected int m_iHQSpawnPointPriority;
+
+	[Attribute(SCR_ECharacterRank.PRIVATE.ToString(), uiwidget: UIWidgets.ComboBox, desc: "All players will start the match at this rank.", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank), category: "Campaign")]
+	protected SCR_ECharacterRank m_eStartingRank;
+
+	[Attribute("-1", desc: "Maximum amount of bases that can be established per faction. The amount of Established bases is also limited by the amount of callsigns. If value of -1 is used, the amount of established bases is only limited by callsign amount.", params: "-1 inf 1", category: "Campaign")]
+	protected int m_iFactionEstablishBaseLimit;
+
 	static const int MINIMUM_DELAY = 100;
 	static const int UI_UPDATE_DELAY = 250;
 	static const int MEDIUM_DELAY = 1000;
@@ -91,8 +118,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	protected ref ScriptInvoker m_OnStarted;
 	protected ref ScriptInvoker m_OnMatchSituationChanged;
 	protected ref ScriptInvoker m_OnCallsignOffsetChanged;
-
-	protected ref map<int, Faction> m_mUnprocessedFactionAssignments = new map<int, Faction>();
+	protected ref ScriptInvokerEntity2 s_OnEntityRequested;
 
 	protected ref array<SCR_PlayerRadioSpawnPointCampaign> m_aRadioSpawnPoints = {};
 	protected ref array<ref SCR_CampaignClientData> m_aRegisteredClients = {};
@@ -100,13 +126,8 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	protected bool m_bIgnoreMinimumVehicleRank;
 	protected bool m_bIsTutorial;
 	protected bool m_bMatchOver;
-	protected bool m_bWorldPostProcessDone;
-	protected bool m_bRemnantsStateLoaded;
-	protected bool m_bIsSessionLoadInProgress;
 
 	protected ref SCR_CampaignMilitaryBaseManager m_BaseManager = new SCR_CampaignMilitaryBaseManager(this);
-
-	protected SCR_CampaignStruct m_LoadedData;
 
 	[RplProp(onRplName: "OnStarted")]
 	protected bool m_bStarted;
@@ -122,6 +143,60 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 	[RplProp(onRplName: "OnCallsignOffsetChanged")]
 	protected int m_iCallsignOffset = SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN;
+
+	//------------------------------------------------------------------------------------------------
+	bool GetEstablishingBasesEnabled()
+	{
+		return m_bEstablishingBasesEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetSuppliesAutoRegenerationEnabled()
+	{
+		return m_bSuppliesAutoRegenerationEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSuppliesArrivalIntervalSource()
+	{
+		return m_iSuppliesArrivalIntervalSource;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetRegularSuppliesIncomeSource()
+	{
+		return m_iRegularSuppliesIncomeSource;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetAcceptableDistanceBetweenFactionHQs()
+	{
+		return m_fAcceptableDistanceBetweenFactionHQs;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetPreferredDistanceBetweenFactionHQs()
+	{
+		return m_fPreferredDistanceBetweenFactionHQs;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetHQSpawnPointPriority()
+	{
+		return m_iHQSpawnPointPriority;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_ECharacterRank GetStartingRank()
+	{
+		return m_eStartingRank;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetFactionEstablishBaseLimit()
+	{
+		return m_iFactionEstablishBaseLimit;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Triggered when the local player picks a faction
@@ -160,6 +235,15 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			m_OnCallsignOffsetChanged = new ScriptInvoker();
 
 		return m_OnCallsignOffsetChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerEntity2 GetOnEntityRequested()
+	{
+		if (!s_OnEntityRequested)
+			s_OnEntityRequested = new ScriptInvokerEntity2();
+
+		return s_OnEntityRequested;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -245,7 +329,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	{
 		return m_iStartingSuppliesInterval;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	float GetSupplyOffloadAssistanceReward()
 	{
@@ -253,21 +337,15 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool WasRemnantsStateLoaded()
-	{
-		return m_bRemnantsStateLoaded;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool IsSessionLoadInProgress()
-	{
-		return m_bIsSessionLoadInProgress;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	ResourceName GetSeekDestroyWaypointPrefab()
 	{
 		return m_sSeekDestroyWaypointPrefab;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetCommanderRoleEnabled()
+	{
+		return m_bCommanderRoleEnabled;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -313,6 +391,19 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
+	[Friend(SCR_GameModeCampaignSerializer)]
+	protected void SetCallsignOffset(int offset)
+	{
+		if (m_iCallsignOffset == offset)
+			return;
+
+		m_iCallsignOffset = offset;
+
+		Replication.BumpMe();
+		OnCallsignOffsetChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void OnMatchSituationChanged()
 	{
 		if (m_OnMatchSituationChanged)
@@ -324,33 +415,21 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	{
 		// Sync respawn radios & control points amount
 		writer.WriteInt(m_BaseManager.GetTargetActiveBasesCount());
-		
+
 		int controlPointsHeldBLUFOR;
 		int controlPointsHeldOPFOR;
-		
-		RplId primaryTargetBLUFOR;
-		RplId primaryTargetOPFOR;
 
 		SCR_CampaignFaction factionBLUFOR = GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
 		SCR_CampaignFaction factionOPFOR = GetFactionByEnum(SCR_ECampaignFaction.OPFOR);
 
 		if (factionBLUFOR)
-		{
 			controlPointsHeldBLUFOR = factionBLUFOR.GetControlPointsHeld();
-			primaryTargetBLUFOR = Replication.FindId(factionBLUFOR.GetPrimaryTarget());
-		}
-		
+
 		if (factionOPFOR)
-		{
 			controlPointsHeldOPFOR = factionOPFOR.GetControlPointsHeld();
-			primaryTargetOPFOR = Replication.FindId(factionOPFOR.GetPrimaryTarget());
-		}
 
 		writer.WriteInt(controlPointsHeldBLUFOR);
 		writer.WriteInt(controlPointsHeldOPFOR);
-
-		writer.WriteInt(primaryTargetBLUFOR);
-		writer.WriteInt(primaryTargetOPFOR);
 
 		return true;
 	}
@@ -368,19 +447,13 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (m_BaseManager.GetActiveBasesCount() == activeBasesTotal)
 			m_BaseManager.OnAllBasesInitialized();
 
-		int controlPointsHeldBLUFOR, controlPointsHeldOPFOR, primaryTargetBLUFOR, primaryTargetOPFOR;
+		int controlPointsHeldBLUFOR, controlPointsHeldOPFOR
 
 		reader.ReadInt(controlPointsHeldBLUFOR);
 		reader.ReadInt(controlPointsHeldOPFOR);
 
-		reader.ReadInt(primaryTargetBLUFOR);
-		reader.ReadInt(primaryTargetOPFOR);
-
 		GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).SetControlPointsHeld(controlPointsHeldBLUFOR);
 		GetFactionByEnum(SCR_ECampaignFaction.OPFOR).SetControlPointsHeld(controlPointsHeldOPFOR);
-
-		GetFactionByEnum(SCR_ECampaignFaction.BLUFOR).SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent.Cast(Replication.FindItem(primaryTargetBLUFOR)));
-		GetFactionByEnum(SCR_ECampaignFaction.OPFOR).SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent.Cast(Replication.FindItem(primaryTargetOPFOR)));
 
 		return true;
 	}
@@ -389,6 +462,40 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	static SCR_GameModeCampaign GetInstance()
 	{
 		return SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get corresponding client data. Optionally: create new object if not found
+	//! \param[in] playerId
+	//! \param[in] create
+	SCR_CampaignClientData GetClientData(int playerId, bool create = false)
+	{
+		if (playerId == 0)
+			return null;
+
+		const UUID playerIdentity = SCR_PlayerIdentityUtils.GetPlayerIdentityId(playerId);
+		if (playerIdentity.IsNull())
+			return null;
+
+		SCR_CampaignClientData clientData;
+
+		for (int i = 0, clientsCount = m_aRegisteredClients.Count(); i < clientsCount; i++)
+		{
+			if (m_aRegisteredClients[i].GetID() == playerIdentity)
+			{
+				clientData = m_aRegisteredClients[i];
+				break;
+			}
+		}
+
+		if (!clientData && create)
+		{
+			clientData = new SCR_CampaignClientData();
+			clientData.SetID(playerIdentity);
+			m_aRegisteredClients.Insert(clientData);
+		}
+
+		return clientData;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -417,34 +524,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetPrimaryTarget(notnull SCR_CampaignFaction faction, SCR_CampaignMilitaryBaseComponent target)
-	{
-		if (faction.GetPrimaryTarget() == target)
-			return;
-
-		int index = GetGame().GetFactionManager().GetFactionIndex(faction);
-		RplId targetId = RplId.Invalid();
-
-		if (target)
-			targetId = Replication.FindId(target);
-
-		Rpc(RPC_DoSetPrimaryTarget, index, targetId);
-		RPC_DoSetPrimaryTarget(index, targetId)
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_DoSetPrimaryTarget(int factionIndex, int targetId)
-	{
-		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByIndex(factionIndex));
-
-		if (!faction)
-			return;
-
-		faction.SetPrimaryTarget(SCR_CampaignMilitaryBaseComponent.Cast(Replication.FindItem(targetId)));
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void BroadcastMHQFeedback(SCR_EMobileAssemblyStatus msgID, int playerID, int factionID)
 	{
 		Rpc(RpcDo_BroadcastMHQFeedback, msgID, playerID, factionID);
@@ -466,36 +545,41 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void RequestStart()
+	protected void Start()
 	{
-		if (IsProxy())
+		if (IsProxy() || m_bStarted)
 			return;
 
-		// Start the gamemode after OnWorldPostprocess so bases have time to init properly
-		if (m_bWorldPostProcessDone && !m_bStarted)
-			Start();
+		if (!SCR_PersistenceSystem.IsLoadInProgress())
+			InitalBaseSetup();
+
+		m_BaseManager.UpdateBases(true);
+
+		m_bStarted = true;
+		Replication.BumpMe();
+		m_BaseManager.OnAllBasesInitialized();
+		OnStarted();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void Start()
+	protected void InitalBaseSetup()
 	{
 		// Compose custom bases array from header
 		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
-
 		if (!baseManager)
 			return;
 
-		float customHQSupplies = m_iHQStartingSupplies;
+		float hQSupplies = m_iHQStartingSupplies;
 		bool whitelist = false;
 		array<string> customBaseList = {};
 
 		SCR_MissionHeaderCampaign header = SCR_MissionHeaderCampaign.Cast(GetGame().GetMissionHeader());
-
 		if (header)
 		{
-			whitelist = header.m_bCustomBaseWhitelist;
-			customHQSupplies = header.m_iStartingHQSupplies;
+			if (header.m_iStartingHQSupplies != -1)
+				hQSupplies = header.m_iStartingHQSupplies;
 
+			whitelist = header.m_bCustomBaseWhitelist;
 			foreach (SCR_CampaignCustomBase customBase : header.m_aCampaignCustomBaseList)
 			{
 				customBaseList.Insert(customBase.GetBaseName());
@@ -507,22 +591,17 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		array<SCR_MilitaryBaseComponent> bases = {};
 		baseManager.GetBases(bases);
 
-		string baseName;
-		SCR_CampaignMilitaryBaseComponent campaignBase;
-		int listIndex;
-
 		foreach (SCR_MilitaryBaseComponent base : bases)
 		{
-			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
-
+			SCR_CampaignMilitaryBaseComponent campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
 			if (!campaignBase)
 				continue;
 
 			// Ignore the base if it's disabled in mission header
 			if (header)
 			{
-				baseName = campaignBase.GetOwner().GetName();
-				listIndex = customBaseList.Find(baseName);
+				const string baseName = campaignBase.GetOwner().GetName();
+				const int listIndex = customBaseList.Find(baseName);
 
 				if (listIndex != -1)
 				{
@@ -538,11 +617,8 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 					campaignBase.ApplyHeaderSettings(header.m_aCampaignCustomBaseList[listIndex]);
 			}
 
-			if (!campaignBase.DisableWhenUnusedAsHQ() || !campaignBase.CanBeHQ())
-			{
+			if (!campaignBase.CanBeHQ())
 				campaignBase.Initialize();
-				m_BaseManager.AddTargetActiveBase();
-			}
 
 			if (campaignBase.CanBeHQ())
 				candidatesForHQ.Insert(campaignBase);
@@ -550,8 +626,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			if (campaignBase.IsControlPoint())
 				controlPoints.Insert(campaignBase);
 		}
-
-		m_BaseManager.UpdateBases();
 
 		if (candidatesForHQ.Count() < 2)
 		{
@@ -567,66 +641,101 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		foreach (SCR_CampaignMilitaryBaseComponent hq : selectedHQs)
 		{
 			hq.SetAsHQ(true);
-
-			if (customHQSupplies == -1)
-				hq.SetStartingSupplies(m_iHQStartingSupplies);
-			else
-				hq.SetStartingSupplies(customHQSupplies);
-
-			if (!hq.IsInitialized())
-			{
-				hq.Initialize();
-				m_BaseManager.AddTargetActiveBase();
-			}
+			hq.SetStartingSupplies(hQSupplies);
+			hq.Initialize();
 		}
+
+		foreach (SCR_CampaignMilitaryBaseComponent candidate : candidatesForHQ)
+		{
+			if (candidate.IsHQ())
+				continue;
+
+			if (!candidate.DisableWhenUnusedAsHQ())
+			{
+				candidate.Initialize();
+				continue;
+			}
+
+			RplComponent baseRplComponent = RplComponent.Cast(candidate.GetOwner().FindComponent(RplComponent));
+			if (!baseRplComponent)
+				continue;
+
+			baseManager.UnregisterBase(candidate);
+			baseRplComponent.DeleteRplEntity(candidate.GetOwner(), false);
+		}
+
+		m_BaseManager.UpdateBases();
 
 		m_BaseManager.InitializeBases(selectedHQs, m_bRandomizeSupplies);
 
 		if (m_iCallsignOffset == SCR_MilitaryBaseComponent.INVALID_BASE_CALLSIGN)
 		{
-			int basesCount = m_BaseManager.GetTargetActiveBasesCount();
-
-			m_iCallsignOffset = Math.RandomIntInclusive(0, Math.Ceil(basesCount * 0.5));
+			const int basesCount = baseManager.GetBasesCount();
+			const int basesHalf = Math.Ceil(basesCount * 0.5);
+			const int offset = Math.RandomIntInclusive(1, basesHalf);
+			SetCallsignOffset(offset);
 		}
-
-		Replication.BumpMe();
-
-		array<SCR_SpawnPoint> spawnpoints = SCR_SpawnPoint.GetSpawnPoints();
-
-		foreach (SCR_SpawnPoint spawnpoint : spawnpoints)
-		{
-			DisableExtraSpawnpoint(spawnpoint);
-		}
-
-		SCR_SpawnPoint.Event_SpawnPointAdded.Insert(DisableExtraSpawnpoint);
-
-		// Start periodical checks for winning faction
-		GetGame().GetCallqueue().CallLater(CheckForWinner, DEFAULT_DELAY, true);
-
-		SCR_CharacterRankComponent.s_OnRankChanged.Insert(OnRankChanged);
-		SCR_AmbientVehicleSystem vehiclesManager = SCR_AmbientVehicleSystem.GetInstance();
-
-		if (vehiclesManager)
-			vehiclesManager.GetOnVehicleSpawned().Insert(OnAmbientVehicleSpawned);
-
-		m_bStarted = true;
-		Replication.BumpMe();
-		m_BaseManager.OnAllBasesInitialized();
-		OnStarted();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnStarted()
+	protected void OnStarted()
 	{
 		SCR_RadioCoverageSystem coverageSystem = SCR_RadioCoverageSystem.GetInstance();
-
 		if (coverageSystem)
 			coverageSystem.TogglePeriodicUpdates(false);
+
+		if (IsMaster())
+		{
+			// Start periodical checks for winning faction
+			GetGame().GetCallqueue().CallLater(CheckForWinner, DEFAULT_DELAY, true);
+
+			SCR_CharacterRankComponent.s_OnRankChanged.Insert(OnRankChanged);
+
+			SCR_AmbientVehicleSystem vehiclesManager = SCR_AmbientVehicleSystem.GetInstance();
+			if (vehiclesManager)
+				vehiclesManager.GetOnVehicleSpawned().Insert(OnAmbientVehicleSpawned);
+
+			array<SCR_SpawnPoint> spawnpoints = SCR_SpawnPoint.GetSpawnPoints();
+			foreach (SCR_SpawnPoint spawnpoint : spawnpoints)
+			{
+				if (!spawnpoint)
+					continue;
+
+				DisableExtraSpawnpoint(spawnpoint);
+				SetPrioritySpawnpoint(spawnpoint);
+			}
+
+			SCR_SpawnPoint.Event_SpawnPointAdded.Insert(DisableExtraSpawnpoint);
+		}
 
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionAssigned);
 
 		if (m_OnStarted)
 			m_OnStarted.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerRegistered(int playerId)
+	{
+		super.OnPlayerRegistered(playerId);
+
+		const SCR_PlayerController localController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!localController)
+			return;
+
+		if (playerId != localController.GetPlayerId())
+			return; // Not about own local controller
+
+		const SCR_PlayerFactionAffiliationComponent playerFactionAff = SCR_PlayerFactionAffiliationComponent.Cast(localController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!playerFactionAff)
+			return;
+
+		// Listen for future changes
+		playerFactionAff.GetOnPlayerFactionChangedInvoker().Insert(OnLocalPlayerFactionAssigned);
+
+		const SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(playerFactionAff.GetAffiliatedFaction());
+		if (faction) // Faction known already so trigger event
+			OnLocalPlayerFactionAssigned(playerFactionAff, null, faction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -643,6 +752,20 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			return;
 
 		spawnpoint.SetFaction(null);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetPrioritySpawnpoint(SCR_SpawnPoint spawnpoint)
+	{
+		IEntity spawnpointParent = spawnpoint.GetRootParent();
+		if (!spawnpointParent)
+			return;
+
+		SCR_CampaignMilitaryBaseComponent baseComponent = SCR_CampaignMilitaryBaseComponent.Cast(spawnpointParent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		if (!baseComponent || !baseComponent.IsHQ())
+			return;
+
+		spawnpoint.SetPriority(m_iHQSpawnPointPriority);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -663,7 +786,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		{
 			SCR_CampaignFaction fCast = SCR_CampaignFaction.Cast(faction);
 
-			if (!fCast || !fCast.IsPlayable())
+			if (!fCast || !fCast.IsPlayable() || fCast == GetFactionByEnum(SCR_ECampaignFaction.INDFOR))
 				continue;
 
 			blockPauseTimestamp = fCast.GetPauseByBlockTimestamp();
@@ -745,7 +868,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		}
 
 		// Match is over, save it so if "Continue" is selected following this the game is not loaded at an end screen
-		GetGame().GetSaveManager().Save(ESaveType.AUTO);
+		//GetGame().GetSaveManager().Save(ESaveType.AUTO);
 
 		// For the server end the game, replicate to all clients.
 		// listening components can react to this by e.g. showing end screen
@@ -756,17 +879,12 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		}
 	}
 	//------------------------------------------------------------------------------------------------
-	override void OnWorldPostProcess(World world)
+	override void OnGameStart()
 	{
-		super.OnWorldPostProcess(world);
+		super.OnGameStart();
 
-		if (IsProxy() || !GetGame().InPlayMode())
-			return;
-
-		if (m_bAutostart)
+		if (GetGame().InPlayMode() && IsMaster())
 			Start();
-
-		m_bWorldPostProcessDone = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -819,137 +937,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Handle the loaded struct; we want to apply it after gamemode has initialized
-	void StoreLoadedData(notnull SCR_CampaignStruct struct)
-	{
-		m_LoadedData = struct;
-
-		if (m_BaseManager.IsBasesInitDone())
-			ApplyLoadedData();
-		else
-			m_BaseManager.GetOnAllBasesInitialized().Insert(ApplyLoadedData);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ApplyLoadedData()
-	{
-		m_BaseManager.GetOnAllBasesInitialized().Remove(ApplyLoadedData);
-
-		if (!m_LoadedData)
-			return;
-
-		// Game was saved after match was over, don't load
-		if (m_LoadedData.IsMatchOver())
-			return;
-
-		array<ref SCR_CampaignBaseStruct>basesStructs = m_LoadedData.GetBasesStructs();
-
-		// No bases data available for load, something is wrong - terminate
-		if (basesStructs.IsEmpty())
-			return;
-
-		m_bIsSessionLoadInProgress = true;
-		m_BaseManager.LoadBasesStates(basesStructs);
-
-		// We need to wait for all services to spawn before switching the progress bool to false so supplies are not deducted from bases
-		GetGame().GetCallqueue().CallLater(EndSessionLoadProgress, DEFAULT_DELAY * 2);
-
-		if (RplSession.Mode() != RplMode.Dedicated)
-		{
-			m_BaseManager.InitializeSupplyDepotIcons();
-			m_BaseManager.HideUnusedBaseIcons();
-		}
-
-		m_BaseManager.RecalculateRadioCoverage(GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
-		m_BaseManager.RecalculateRadioCoverage(GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
-
-		SCR_TimeAndWeatherHandlerComponent timeHandler = SCR_TimeAndWeatherHandlerComponent.GetInstance();
-
-		// Weather has to be changed after init
-		if (timeHandler)
-		{
-			GetGame().GetCallqueue().Remove(timeHandler.SetupDaytimeAndWeather);
-			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, DEFAULT_DELAY, false, m_LoadedData.GetHours(), m_LoadedData.GetMinutes(), m_LoadedData.GetSeconds(), m_LoadedData.GetWeatherState(), true);
-		}
-
-		m_iCallsignOffset = m_LoadedData.GetCallsignOffset();
-		Replication.BumpMe();
-
-		LoadRemnantsStates(m_LoadedData.GetRemnantsStructs());
-		LoadClientData(m_LoadedData.GetPlayersStructs());
-
-		SCR_CampaignFaction factionBLUFOR = GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);
-		SCR_CampaignFaction factionOPFOR = GetFactionByEnum(SCR_ECampaignFaction.OPFOR);
-
-		// Delayed spawns to avoid calling them during init
-		if (factionBLUFOR && m_LoadedData.GetMHQLocationBLUFOR() != vector.Zero)
-			GetGame().GetCallqueue().CallLater(SpawnMobileHQ, DEFAULT_DELAY, false, factionBLUFOR, m_LoadedData.GetMHQLocationBLUFOR(), m_LoadedData.GetMHQRotationBLUFOR());
-
-		if (factionOPFOR && m_LoadedData.GetMHQLocationOPFOR() != vector.Zero)
-			GetGame().GetCallqueue().CallLater(SpawnMobileHQ, DEFAULT_DELAY, false, factionOPFOR, m_LoadedData.GetMHQLocationOPFOR(), m_LoadedData.GetMHQRotationOPFOR());
-
-		m_LoadedData = null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void EndSessionLoadProgress()
-	{
-		m_bIsSessionLoadInProgress = false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void StoreRemnantsStates(out notnull array<ref SCR_CampaignRemnantInfoStruct> outEntries)
-	{
-		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
-
-		if (!manager)
-			return;
-
-		array<int> remnantsInfo = {};
-
-		for (int i = 0, count = manager.GetRemainingPatrolsInfo(remnantsInfo); i < count; i++)
-		{
-			SCR_CampaignRemnantInfoStruct struct = new SCR_CampaignRemnantInfoStruct();
-			struct.SetID(remnantsInfo[i]);
-			struct.SetMembersAlive(remnantsInfo[i + 1]);
-			struct.SetRespawnTimer(remnantsInfo[i + 2]);
-			outEntries.Insert(struct);
-			i += 2;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void LoadRemnantsStates(notnull array<ref SCR_CampaignRemnantInfoStruct> entries)
-	{
-		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
-
-		if (!manager)
-			return;
-
-		array<SCR_AmbientPatrolSpawnPointComponent> patrols = {};
-		manager.GetPatrols(patrols);
-		ChimeraWorld world = GetWorld();
-		WorldTimestamp curTime = world.GetServerTimestamp();
-
-		foreach (SCR_AmbientPatrolSpawnPointComponent presence : patrols)
-		{
-			if (!presence)
-				continue;
-
-			foreach (SCR_CampaignRemnantInfoStruct info : entries)
-			{
-				if (info.GetID() == presence.GetID())
-				{
-					presence.SetMembersAlive(info.GetMembersAlive());
-					presence.SetRespawnTimestamp(curTime.PlusMilliseconds(info.GetRespawnTimer()));
-				}
-			}
-		}
-
-		m_bRemnantsStateLoaded = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void SetIsTutorial(bool isTutorial)
 	{
 		m_bIsTutorial = isTutorial;
@@ -958,207 +945,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			SCR_PopUpNotification.SetFilter(SCR_EPopupMsgFilter.TUTORIAL);
 		else
 			SCR_PopUpNotification.SetFilter(SCR_EPopupMsgFilter.ALL);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void ApplyClientData(int playerId)
-	{
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
-
-		if (!pc)
-			return;
-
-		SCR_CampaignClientData clientData = GetClientData(playerId);
-
-		if (!clientData)
-			return;
-
-		bool allowFactionLoad = true;
-
-#ifdef ENABLE_DIAG
-		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
-			allowFactionLoad = false;
-#endif
-
-		// Automatically apply the client's previous faction
-		int forcedFaction = clientData.GetFactionIndex();
-
-		if (allowFactionLoad && forcedFaction != -1)
-		{
-			SCR_PlayerFactionAffiliationComponent fac = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
-
-			if (fac)
-			{
-				Faction faction = GetGame().GetFactionManager().GetFactionByIndex(forcedFaction);
-				fac.RequestFaction(faction);
-			}
-		}
-
-		int xp;
-		SCR_PlayerXPHandlerComponent handlerXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-
-		if (handlerXP)
-			xp = handlerXP.GetPlayerXP();
-
-		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(FindComponent(SCR_XPHandlerComponent));
-
-		if (comp)
-			comp.AwardXP(playerId, SCR_EXPRewards.UNDEFINED, 1, false, clientData.GetXP() - xp);
-
-		SCR_FastTravelComponent fastTravel = SCR_FastTravelComponent.Cast(pc.FindComponent(SCR_FastTravelComponent));
-
-		if (fastTravel)
-			fastTravel.SetNextTransportTimestamp(clientData.GetNextFastTravelTimestamp());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void LoadClientData(notnull array<ref SCR_CampaignPlayerStruct> data)
-	{
-		m_aRegisteredClients.Clear();
-
-		foreach (SCR_CampaignPlayerStruct playerData : data)
-		{
-			SCR_CampaignClientData clientData = new SCR_CampaignClientData();
-
-			clientData.SetID(playerData.GetID());
-			clientData.SetXP(playerData.GetXP());
-			clientData.SetFactionIndex(playerData.GetFactionIndex());
-
-			m_aRegisteredClients.Insert(clientData);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void WriteAllClientsData()
-	{
-		array<int> pcList = {};
-
-		for (int i = 0, playersCount = GetGame().GetPlayerManager().GetPlayers(pcList); i < playersCount; i++)
-		{
-			PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(pcList[i]);
-
-			if (!pc)
-				continue;
-
-			int ID = pc.GetPlayerId();
-			WriteClientData(ID, pc: pc);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Save object with player's current data
-	protected void WriteClientData(int playerID, bool disconnecting = false, PlayerController pc = null)
-	{
-		SCR_CampaignClientData clientData = GetClientData(playerID);
-
-		if (!clientData)
-			return;
-
-		if (!pc)
-			pc = GetGame().GetPlayerManager().GetPlayerController(playerID);
-
-		if (!pc)
-			return;
-
-		SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-
-		if (!comp)
-			return;
-
-		// Set data readable from PlayerController
-		clientData.SetXP(comp.GetPlayerXP());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SpawnMobileHQ(notnull SCR_CampaignFaction faction, vector pos, vector rot)
-	{
-		if (faction.GetMobileAssembly())
-			return;
-
-		EntitySpawnParams params = EntitySpawnParams();
-		GetWorldTransform(params.Transform);
-		params.TransformMode = ETransformMode.WORLD;
-		Math3D.AnglesToMatrix(rot, params.Transform);
-		params.Transform[3] = pos;
-
-		IEntity MHQ = GetGame().SpawnEntityPrefab(Resource.Load(faction.GetMobileHQPrefab()), null, params);
-
-		if (!MHQ)
-			return;
-
-		SlotManagerComponent slotManager = SlotManagerComponent.Cast(MHQ.FindComponent(SlotManagerComponent));
-
-		if (!slotManager)
-			return;
-
-		array<EntitySlotInfo> slots = {};
-		slotManager.GetSlotInfos(slots);
-
-		foreach (EntitySlotInfo slot : slots)
-		{
-			IEntity truckBed = slot.GetAttachedEntity();
-
-			if (!truckBed)
-				continue;
-
-			SCR_CampaignMobileAssemblyComponent mobileAssemblyComponent = SCR_CampaignMobileAssemblyComponent.Cast(truckBed.FindComponent(SCR_CampaignMobileAssemblyComponent));
-
-			if (mobileAssemblyComponent)
-			{
-				mobileAssemblyComponent.SetParentFactionID(GetGame().GetFactionManager().GetFactionIndex(faction));
-				mobileAssemblyComponent.UpdateRadioCoverage();
-				mobileAssemblyComponent.Deploy(SCR_EMobileAssemblyStatus.DEPLOYED);
-				break;
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetClientsData(notnull out array<ref SCR_CampaignClientData> dataArray)
-	{
-		int count;
-
-		foreach (SCR_CampaignClientData data : m_aRegisteredClients)
-		{
-			count++;
-			dataArray.Insert(data);
-		}
-
-		return count;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Get corresponding client data, create new object if not found
-	SCR_CampaignClientData GetClientData(int playerId)
-	{
-		if (playerId == 0)
-			return null;
-
-		string playerIdentity = SCR_CampaignPlayerStruct.GetPlayerIdentity(playerId);
-
-		if (playerIdentity == string.Empty)
-			return null;
-
-		SCR_CampaignClientData clientData;
-
-		// Check if the client is reconnecting
-		for (int i = 0, clientsCount = m_aRegisteredClients.Count(); i < clientsCount; i++)
-		{
-			if (m_aRegisteredClients[i].GetID() == playerIdentity)
-			{
-				clientData = m_aRegisteredClients[i];
-				break;
-			}
-		}
-
-		if (!clientData)
-		{
-			clientData = new SCR_CampaignClientData;
-			clientData.SetID(playerIdentity);
-			m_aRegisteredClients.Insert(clientData);
-		}
-
-		return clientData;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1186,10 +972,11 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 				continue;
 
 			damageManager = DamageManagerComponent.Cast(hitZone.GetHitZoneContainer());
+			if (!damageManager)
+				continue;
 
 			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, hitZone.GetMaxHealth() * 0.75, transform, damageManager.GetOwner(), hitZone, Instigator.CreateInstigator(null), null, -1, -1);
-			if (damageManager)
-				helicopterDamageManager.HandleDamage(damageContext);
+			helicopterDamageManager.HandleDamage(damageContext);
 		}
 
 		array<SCR_FuelManagerComponent> fuelManagers = {};
@@ -1217,22 +1004,18 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(owner);
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetPlayerFaction(playerId));
-
 		if (!faction)
 			return;
 
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-
 		if (!factionManager)
 			return;
 
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(factionManager.GetRankByID(newRank));
-
 		if (!rank)
 			return;
 
 		SCR_ERadioMsg radio;
-
 		if (newRank < oldRank && !rank.IsRankRenegade())
 			radio = SCR_ERadioMsg.DEMOTION;
 		else
@@ -1242,46 +1025,37 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerRegistered(int playerId)
+	protected void SetStartingRank(notnull PlayerController playerController)
 	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerId));
-
-		if (playerController)
-		{
-			SCR_PlayerFactionAffiliationComponent playerFactionAff = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
-
-			if (playerFactionAff)
-			{
-				playerFactionAff.GetOnPlayerFactionResponseInvoker_O().Insert(OnPlayerFactionResponse_O);
-				playerFactionAff.GetOnPlayerFactionResponseInvoker_S().Insert(OnPlayerFactionResponse_S);
-			}
-		}
-
-		super.OnPlayerRegistered(playerId);
-
-		if (!playerController)
+		if (m_eStartingRank == SCR_ECharacterRank.INVALID)
 			return;
 
-		// Normally this is done in OnPlayerAuditSuccess, but in SP the callback is not triggered
-		if (RplSession.Mode() == RplMode.None && !m_bIsTutorial)
-			ApplyClientData(playerId);
+		int xp;
+		SCR_PlayerXPHandlerComponent handlerXP = SCR_PlayerXPHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerXPHandlerComponent));
 
-		// See HandleOnFactionAssigned()
-		if (SCR_PlayerController.GetLocalPlayerId() == 0)
+		if (handlerXP)
+			xp = handlerXP.GetPlayerXP();
+
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(FindComponent(SCR_XPHandlerComponent));
+
+		if (!comp)
 			return;
 
-		int key;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 
-		for (int i = 0, count = m_mUnprocessedFactionAssignments.Count(); i < count; i++)
-		{
-			key = m_mUnprocessedFactionAssignments.GetKey(i);
+		if (!factionManager)
+			return;
 
-			if (key == SCR_PlayerController.GetLocalPlayerId())
-			{
-				ProcessFactionAssignment(m_mUnprocessedFactionAssignments.Get(key));
-				m_mUnprocessedFactionAssignments.Remove(key);
-			}
-		}
+		int requiredXp = factionManager.GetRequiredRankXP(m_eStartingRank) - xp;
+
+		if (requiredXp == 0)
+			return;
+
+		// Remove XP only for renegade ranks, also prevent going into negatives for Private rank
+		if (requiredXp < 0 && !factionManager.IsRankRenegade(m_eStartingRank))
+			return;
+
+		comp.AwardXP(playerController.GetPlayerId(), SCR_EXPRewards.STARTING_RANK, 1, false, requiredXp);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1290,32 +1064,30 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		super.OnPlayerAuditSuccess(iPlayerID);
 
 		// Apply data with a delay so client's game has time to initialize and register faction setting
-		if (RplSession.Mode() != RplMode.None)
-			GetGame().GetCallqueue().CallLater(ApplyClientData, MINIMUM_DELAY, false, iPlayerID);
+		GetGame().GetCallqueue().CallLater(ApplyClientData, MINIMUM_DELAY, false, iPlayerID);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
+		UpdateClientData(playerId); // Must be done before super call to know faction before it is cleared.
+		
 		super.OnPlayerDisconnected(playerId, cause, timeout);
-
-		GetTaskManager().OnPlayerDisconnected(playerId);
-		WriteClientData(playerId, true);
 		m_BaseManager.OnPlayerDisconnected(playerId)
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
+	override void OnPlayerEntityChanged_S(int playerId, IEntity previousEntity, IEntity newEntity)
 	{
-		super.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
+		super.OnPlayerEntityChanged_S(playerId, previousEntity, newEntity);
+		if (!newEntity)
+			return; // Not spawned
 
-		PlayerController pc = requestComponent.GetPlayerController();
-
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		if (!pc)
 			return;
 
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
-
 		if (campaignNetworkComponent)
 			campaignNetworkComponent.OnPlayerAliveStateChanged(true);
 	}
@@ -1410,12 +1182,10 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		int playerId = instigatorContextData.GetVictimPlayerID();
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
-
 		if (!pc)
 			return;
 
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
-
 		if (campaignNetworkComponent)
 		{
 			campaignNetworkComponent.OnPlayerAliveStateChanged(false);
@@ -1435,13 +1205,8 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (m_iSuicideRespawnDelay == 0 || m_iSuicideForgiveCooldown == 0)
 			return;
 
-		SCR_CampaignClientData clientData = GetClientData(playerId);
-
-		if (!clientData)
-			return;
-
+		SCR_CampaignClientData clientData = GetClientData(playerId, true);
 		float respawnPenalty = clientData.GetRespawnPenalty();
-
 		if (respawnPenalty == 0)
 			return;
 
@@ -1502,11 +1267,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 				return;
 		}
 
-		SCR_CampaignClientData clientData = GetClientData(playerId);
-
-		if (!clientData)
-			return;
-
+		SCR_CampaignClientData clientData = GetClientData(playerId, true);
 		float respawnPenalty = clientData.GetRespawnPenalty();
 		float lastSuicideTimestamp = clientData.GetLastSuicideTimestamp();
 		float curTime = GetGame().GetWorld().GetWorldTime();
@@ -1569,6 +1330,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		SCR_SpawnPoint spawnpoint = spawnpointSpawnData.GetSpawnPoint();
 		SCR_CampaignSpawnPointGroup spawnpointCampaign = SCR_CampaignSpawnPointGroup.Cast(spawnpoint);
 		SCR_CampaignMilitaryBaseComponent base;
+		PlayerController pc = requestComponent.GetPlayerController();
 
 		if (spawnpointCampaign)
 		{
@@ -1577,7 +1339,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			if (spawnpointParent)
 			{
 				base = SCR_CampaignMilitaryBaseComponent.Cast(spawnpointParent.FindComponent(SCR_CampaignMilitaryBaseComponent));
-				PlayerController pc = requestComponent.GetPlayerController();
 
 				if (base && pc && base.GetCapturingFaction() && base.GetCapturingFaction() != SCR_FactionManager.SGetPlayerFaction(pc.GetPlayerId()))
 				{
@@ -1592,8 +1353,22 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (!loadoutComp)
 			return true;
 
-		SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
+		// Check if player has the required rank for the picked loadout
+		if (pc)
+		{
+			SCR_PlayerXPHandlerComponent xpHandler = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+			if (xpHandler)
+			{
+				SCR_ECharacterRank rankRequirement = SCR_BasePlayerLoadout.GetLoadoutRequiredRank(loadoutComp.GetLoadout(), requestComponent.GetPlayerId());
+				if (xpHandler.GetPlayerRankByXP() < rankRequirement)
+				{
+					result = SCR_ESpawnResult.NOT_ALLOWED_RANK_TOO_LOW;
+					return false;
+				}
+			}
+		}
 
+		SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
 		if (!loadout || !spawnpoint)
 			return true;
 
@@ -1628,7 +1403,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		Instigator instigator = instigatorContextData.GetInstigator();
 
 		// Ignore AI or NONE instigators
- 		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
 
 		//~ Only handle cases were the player kills a character (No Suicide or friendly fire) and the player is not a possessed AI
@@ -1675,79 +1450,13 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerFactionResponse_S(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
+	protected void OnLocalPlayerFactionAssigned(SCR_PlayerFactionAffiliationComponent component, Faction previous, Faction current)
 	{
-		if (!response)
-			return;
-
-		FactionManager factionManager = GetGame().GetFactionManager();
-
-		if (!factionManager)
-			return;
-
-		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByIndex(factionIndex));
-
-		if (!faction)
-			return;
-
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(component.GetPlayerController());
-
-		if (!playerController)
-			return;
-
-		int playerID = playerController.GetPlayerId();
-
-		// Save faction selected in client's data
-		SCR_CampaignClientData clientData;
-		clientData = GetClientData(playerID);
-
-		if (clientData && faction)
-			clientData.SetFactionIndex(factionManager.GetFactionIndex(faction));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerFactionResponse_O(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
-	{
-		if (!response)
-			return;
-
-		FactionManager factionManager = GetGame().GetFactionManager();
-
-		if (!factionManager)
-			return;
-
-		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByIndex(factionIndex));
-
-		if (!faction)
-			return;
-
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(component.GetPlayerController());
-
-		if (!playerController)
-			return;
-
-		int playerID = playerController.GetPlayerId();
-
-		// When a faction is being assigned to the client automatically by server, playerId might not yet be registered
-		// In that case, this saves the connecting player's data and processes them later in local OnPlayerRegistered()
-		if (SCR_PlayerController.GetLocalPlayerId() == playerID)
-			ProcessFactionAssignment(faction);
-		else
-			m_mUnprocessedFactionAssignments.Set(playerID, faction);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! See HandleOnFactionAssigned
-	protected void ProcessFactionAssignment(Faction assignedFaction)
-	{
-		m_BaseManager.SetLocalPlayerFaction(SCR_CampaignFaction.Cast(assignedFaction));
+		const SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(current);
+		m_BaseManager.SetLocalPlayerFaction(faction);
 
 		if (m_OnFactionAssignedLocalPlayer)
-			m_OnFactionAssignedLocalPlayer.Invoke(assignedFaction);
-
-		// Delayed call so tasks are properly initialized
-		if (IsProxy())
-			GetGame().GetCallqueue().CallLater(m_BaseManager.UpdateTaskBases, DEFAULT_DELAY, false, assignedFaction);
+			m_OnFactionAssignedLocalPlayer.Invoke(faction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1756,6 +1465,9 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	{
 		if (IsProxy())
 			return;
+
+		if (s_OnEntityRequested)
+			s_OnEntityRequested.Invoke(user, spawnedEntity);
 
 		SCR_AIGroup aiGroup = SCR_AIGroup.Cast(spawnedEntity);
 		if (aiGroup)
@@ -1871,38 +1583,137 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Save object with player's current data
+	protected void UpdateClientData(int playerID)
+	{
+		const PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerID);
+		if (!pc)
+			return;
+
+		SCR_CampaignClientData clientData = GetClientData(playerID, true);
+		
+		SCR_PlayerFactionAffiliationComponent factionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (factionComp)
+			clientData.SetFactionIndex(GetGame().GetFactionManager().GetFactionIndex(factionComp.GetAffiliatedFaction()));
+
+		SCR_PlayerXPHandlerComponent xpComp = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+		if (xpComp)
+			clientData.SetXP(xpComp.GetPlayerXP());
+
+		SCR_FastTravelComponent fastTravel = SCR_FastTravelComponent.Cast(pc.FindComponent(SCR_FastTravelComponent));
+		if (fastTravel)
+			clientData.SetNextFastTravelTimestamp(fastTravel.GetNextTransportTimestamp());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ApplyClientData(int playerId)
+	{
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!pc)
+			return;
+
+		SCR_CampaignClientData clientData = GetClientData(playerId);
+		if (!clientData)
+		{
+			SetStartingRank(GetGame().GetPlayerManager().GetPlayerController(playerId));
+			return; // Not a reconnecting client so kick off defaults.
+		}
+
+		bool allowFactionLoad = true;
+
+#ifdef ENABLE_DIAG
+		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
+			allowFactionLoad = false;
+#endif
+
+		// Automatically apply the client's previous faction
+		int forcedFaction = clientData.GetFactionIndex();
+		if (allowFactionLoad && forcedFaction != -1)
+		{
+			SCR_PlayerFactionAffiliationComponent fac = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
+			if (fac)
+			{
+				Faction faction = GetGame().GetFactionManager().GetFactionByIndex(forcedFaction);
+				fac.RequestFaction(faction);
+			}
+		}
+
+		int xp;
+		SCR_PlayerXPHandlerComponent handlerXP = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+		if (handlerXP)
+			xp = handlerXP.GetPlayerXP();
+
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(FindComponent(SCR_XPHandlerComponent));
+		if (comp)
+			comp.AwardXP(playerId, SCR_EXPRewards.UNDEFINED, 1, false, clientData.GetXP() - xp);
+
+		SCR_FastTravelComponent fastTravel = SCR_FastTravelComponent.Cast(pc.FindComponent(SCR_FastTravelComponent));
+		if (fastTravel)
+			fastTravel.SetNextTransportTimestamp(clientData.GetNextFastTravelTimestamp());
+	}
+
 #ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	override void EOnDiag(IEntity owner, float timeSlice)
 	{
 		super.EOnDiag(owner, timeSlice);
 
-		// Cheat menu
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_RANK_UP))
 		{
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_RANK_UP, 0);
-			PlayerController pc = GetGame().GetPlayerController();
 
-			if (pc)
-			{
-				SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
-
-				if (comp)
-					comp.CheatRank();
-			}
+			SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerXPHandlerComponent));
+			if (comp)
+				comp.CheatRank();
 		}
 
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_RANK_DOWN))
 		{
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_RANK_DOWN, 0);
-			PlayerController pc = GetGame().GetPlayerController();
 
-			if (pc)
+			SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerXPHandlerComponent));
+			if (comp)
+				comp.CheatRank(true);
+		}
+
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_BECOME_COMMANDER_DEBUG))
+		{
+			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_BECOME_COMMANDER_DEBUG, 0);
+
+			SCR_CampaignFactionCommanderPlayerComponent comp = SCR_CampaignFactionCommanderPlayerComponent.Cast(playerController.FindComponent(SCR_CampaignFactionCommanderPlayerComponent));
+			if (comp)
+				comp.CheatCommander();
+		}
+
+		if (!IsProxy())
+		{
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_VICTORY_BLUFOR))
 			{
-				SCR_PlayerXPHandlerComponent comp = SCR_PlayerXPHandlerComponent.Cast(pc.FindComponent(SCR_PlayerXPHandlerComponent));
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_VICTORY_BLUFOR, 0);
+				FactionManager fManager = GetGame().GetFactionManager();
 
-				if (comp)
-					comp.CheatRank(true);
+				if (fManager)
+				{
+					Rpc(RPC_DoEndMatch, fManager.GetFactionIndex(GetFactionByEnum(SCR_ECampaignFaction.BLUFOR)));
+					RPC_DoEndMatch(fManager.GetFactionIndex(GetFactionByEnum(SCR_ECampaignFaction.BLUFOR)));
+				}
+			}
+
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_VICTORY_OPFOR))
+			{
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_VICTORY_OPFOR, 0);
+				FactionManager fManager = GetGame().GetFactionManager();
+
+				if (fManager)
+				{
+					Rpc(RPC_DoEndMatch, fManager.GetFactionIndex(GetFactionByEnum(SCR_ECampaignFaction.OPFOR)));
+					RPC_DoEndMatch(fManager.GetFactionIndex(GetFactionByEnum(SCR_ECampaignFaction.OPFOR)));
+				}
 			}
 		}
 	}
@@ -1930,13 +1741,14 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_INSTANT_BUILDING, "", "Instant composition spawning", "Conflict");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_RANK_UP, "", "Promotion", "Conflict");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_RANK_DOWN, "", "Demotion", "Conflict");
-		SetFlags(EntityFlags.ACTIVE, false);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_BECOME_COMMANDER_DEBUG, "", "Become Commander", "Conflict");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_VICTORY_BLUFOR, "", "Match victory: BLUFOR", "Conflict");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_VICTORY_OPFOR, "", "Match victory: OPFOR", "Conflict");
 		ConnectToDiagSystem();
 #endif
 
 		// Parameters override from header
 		SCR_MissionHeaderCampaign header = SCR_MissionHeaderCampaign.Cast(GetGame().GetMissionHeader());
-
 		if (header)
 		{
 			m_bIgnoreMinimumVehicleRank = header.m_bIgnoreMinimumVehicleRank;
@@ -1958,10 +1770,19 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 			if (victoryTimeout != -1)
 				m_fVictoryTimer = victoryTimeout;
-			
+
 			if (supplyAssistanceReward >= 0)
 				m_fSupplyOffloadAssistanceReward = supplyAssistanceReward;
+
+			m_bCommanderRoleEnabled = header.m_bCommanderRoleEnabled;
+			m_bEstablishingBasesEnabled = header.m_bEstablishingBasesEnabled;
+			m_bSuppliesAutoRegenerationEnabled = header.m_bSuppliesAutoRegenerationEnabled;
+			m_eStartingRank = header.m_eStartingRank;
 		}
+
+		// Establishing Bases can only be enabled when Commander Role is enabled
+		if (!m_bCommanderRoleEnabled)
+			m_bEstablishingBasesEnabled = false;
 	}
 
 	//------------------------------------------------------------------------------------------------

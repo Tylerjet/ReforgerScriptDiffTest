@@ -3,7 +3,7 @@ class SCR_VoiceoverSubtitles : SCR_InfoDisplayExtended
 {
 	protected RichTextWidget m_wSubtitle;
 
-	protected static float s_fLingerDuration;
+	protected static float s_fLingerDuration = 0.5;
 
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)

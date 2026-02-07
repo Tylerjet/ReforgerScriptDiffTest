@@ -21,7 +21,7 @@ sealed class Instigator: Managed
 	//!Will set the Instigator of type InstigatorType.Player
 	proto external void SetInstigatorByPlayerID(int playerID);
 	//!Sets the instigator type to GM. PlayerID will be 0 and entity will be null.
-	proto external void SetInstigatorTypeToGM();
+	proto external void SetInstigatorTypeToGM(int playerID = 0);
 	/*!
 	Get the instigator entity, player ID will be automatically converted to current entity. Can return null if the player is dead.
 	e.g.: Players can wait on the respawn screen, and this will return null, don't rely on IEntity, use PlayerID instead
@@ -34,7 +34,7 @@ sealed class Instigator: Managed
 	//! Proper way to create an instigator.
 	static proto ref Instigator CreateInstigator(IEntity instigator);
 	// Special case for create instigator. It creates an instigator with InstigatorType: INSTIGATOR_GM
-	static proto ref Instigator CreateInstigatorGM();
+	static proto ref Instigator CreateInstigatorGM(int playerID = 0);
 }
 
 /*!

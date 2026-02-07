@@ -13,7 +13,7 @@ class SCR_BaseContainerTools
 		if (!resource.IsValid())
 		{
 			if (printError)
-				Print(string.Format("'SCR_BaseContainerTools', method 'CreateInstanceFromPrefab': failed '%1' at the Resource.Load step!", prefab), LogLevel.ERROR);
+				PrintFormat("[SCR_BaseContainerTools.CreateInstanceFromPrefab] failed '%1' at the Resource.Load step!", prefab, level: LogLevel.ERROR);
 
 			return null;
 		}
@@ -22,7 +22,7 @@ class SCR_BaseContainerTools
 		if (!baseContainer)
 		{
 			if (printError)
-				Print(string.Format("'SCR_BaseContainerTools', method 'CreateInstanceFromPrefab': failed '%1' at the BaseContainer step!", prefab), LogLevel.ERROR);
+				PrintFormat("[SCR_BaseContainerTools.CreateInstanceFromPrefab] failed '%1' at the BaseContainer step!", prefab, level: LogLevel.ERROR);
 
 			return null;
 		}
@@ -31,12 +31,43 @@ class SCR_BaseContainerTools
 		if (!managed)
 		{
 			if (printError)
-				Print(string.Format("'SCR_BaseContainerTools', method 'CreateInstanceFromPrefab': failed '%1' create instance step!", prefab), LogLevel.ERROR);
+				PrintFormat("[SCR_BaseContainerTools.CreateInstanceFromPrefab] failed '%1' create instance step!", prefab, level: LogLevel.ERROR);
 
 			return null;
 		}
 
 		return managed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	static bool SaveInstanceToResourceName(notnull Managed instance, ResourceName resourceName, string filePath = "", bool printError = false)
+	{
+		if (!resourceName && !filePath) // .IsEmpty()
+		{
+			Print("[SCR_BaseContainerTools.SaveInstanceToPrefab] Provided resourceName is an empty ResourceName and filePath is an empty string", level: LogLevel.ERROR);
+			return false;
+		}
+
+		Resource resource = BaseContainerTools.CreateContainerFromInstance(instance);
+		if (!resource || !resource.IsValid())
+		{
+			if (printError)
+				Print("[SCR_BaseContainerTools.SaveInstanceToPrefab] Provided instance cannot be converted to container", LogLevel.ERROR);
+
+			return false;
+		}
+
+		if (!BaseContainerTools.SaveContainer(resource.GetResource().ToBaseContainer(), resourceName, filePath))
+		{
+			if (printError)
+				PrintFormat("[SCR_BaseContainerTools.SaveInstanceToPrefab] Cannot save instance to resourceName/filePath (%1/%2)", resourceName, filePath, level: LogLevel.ERROR);
+
+			return false;
+		}
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -137,6 +168,7 @@ class SCR_BaseContainerTools
 			if (componentSource.GetClassName() == componentClassName)
 				return i;
 		}
+
 		return -1;
 	}
 
@@ -155,10 +187,11 @@ class SCR_BaseContainerTools
 		for (int i; i < componentsCount; i++)
 		{
 			componentSource = entitySource.GetComponent(i);
-			if (componentSource.GetClassName().ToType() && 
+			if (componentSource.GetClassName().ToType() &&
 				componentSource.GetClassName().ToType().IsInherited(componentClass))
 				return i;
 		}
+
 		return -1;
 	}
 
@@ -197,7 +230,7 @@ class SCR_BaseContainerTools
 		for (int i, componentsCount = prefabEntity.GetComponentCount(); i < componentsCount; i++)
 		{
 			componentSource = prefabEntity.GetComponent(i);
-			if (componentSource.GetClassName().ToType() && 
+			if (componentSource.GetClassName().ToType() &&
 				componentSource.GetClassName().ToType().IsInherited(componentClass))
 				return componentSource;
 		}
@@ -267,7 +300,7 @@ class SCR_BaseContainerTools
 
 		return classNamesCount;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get all component sources of given class from entity source.
 	//! \param[in] prefabEntity Entity source
@@ -286,16 +319,16 @@ class SCR_BaseContainerTools
 		for (int i, componentsCount = prefabEntity.GetComponentCount(); i < componentsCount; i++)
 		{
 			componentSource = prefabEntity.GetComponent(i);
-			
+
 			if (componentSource.GetClassName().ToType().IsInherited(componentClass))
 				componentSources.Insert(componentSource);
-			
+
 			//~ Search children of components and the children of components children
 			if (GetChildComponentsOfComponents)
 			{
 				array<IEntityComponentSource> componentSourceChildren = {};
 				array<IEntityComponentSource> componentSourceChildChildren = {};
-				
+
 				//~ Search children of components
 				if (GetComponentSourceChildren(componentSource, componentSourceChildren) > 0)
 				{
@@ -303,7 +336,7 @@ class SCR_BaseContainerTools
 					{
 						if (componentSourceChild.GetClassName().ToType().IsInherited(componentClass))
 							componentSources.Insert(componentSourceChild);
-						
+
 						//~ Search children of components children
 						if (GetComponentSourceChildren(componentSourceChild, componentSourceChildChildren) > 0)
 						{
@@ -320,7 +353,7 @@ class SCR_BaseContainerTools
 
 		return componentSources.Count();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get all component sources children from given component source
 	//! \param[in] componentSource Component source
@@ -329,20 +362,20 @@ class SCR_BaseContainerTools
 	static int GetComponentSourceChildren(notnull IEntityComponentSource componentSource, notnull out array<IEntityComponentSource> componentSources)
 	{
 		componentSources.Clear();
-		
+
 		BaseContainerList containerList = componentSource.GetObjectArray("components");
 		if (!containerList)
 			return 0;
-		
-		for (int i = 0, count = containerList.Count(); i < count; i++)
+
+		for (int i, count = containerList.Count(); i < count; i++)
 		{
 			componentSource = containerList.Get(i);
 			if (!componentSource)
 				continue;
-			
+
 			componentSources.Insert(componentSource);
 		}
-		
+
 		return componentSources.Count();
 	}
 

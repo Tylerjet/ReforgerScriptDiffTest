@@ -1,5 +1,6 @@
 class SCR_TaskSelectButton : ScriptedWidgetComponent
-{
+{	
+	/*
 	protected SCR_MapUITask m_MapUiTask;
 	protected ref ScriptInvoker m_OnMapIconClick;
 
@@ -29,7 +30,7 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 		if (!taskListUI)
 			return false;
 
-		taskListUI.HandleTaskList(taskToFocus: m_MapUiTask.GetTask());
+		taskListUI.ToggleTaskList(!taskListUI.IsTaskListVisible());
 
 		return false;
 	}
@@ -80,8 +81,9 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 		if (!taskListUI)
 			return;
 		
-		taskListUI.HandleTaskList(taskToFocus: m_MapUiTask.GetTask());
+		taskListUI.ToggleTaskList(!taskListUI.IsTaskListVisible());
 	}
+	
 	//------------------------------------------------------------------------------
 	bool HasAssigneeBool()
 	{
@@ -113,4 +115,5 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 	{
 		m_MapUiTask = mapUiTask;
 	}
-};
+	*/
+}

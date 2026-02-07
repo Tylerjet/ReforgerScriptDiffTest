@@ -226,12 +226,12 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnDamageStateChanged(EDamageState state)
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged(state);
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		//! Disable collision damage calculations for wrecks
-		if (state != EDamageState.DESTROYED)
+		if (newState != EDamageState.DESTROYED)
 			SetEventMask(GetOwner(), EntityEvent.CONTACT);
 		else
 			ClearEventMask(GetOwner(), EntityEvent.CONTACT);

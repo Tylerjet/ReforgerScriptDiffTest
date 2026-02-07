@@ -6,7 +6,6 @@ Workshop sub menu for displaying page of saves
 class SCR_ContentBrowser_SavesSubMenu : SCR_ContentBrowser_AddonsSubMenu
 {
 	protected int m_iSavesPageCount;
-	protected ref SCR_BackendCallback m_SavePageLoadCallback = new SCR_BackendCallback();
 	
 	protected SCR_ContentBrowserDetails_SaveOverviewSubMenu m_OpenedSaveDetOverview;
 	
@@ -60,9 +59,9 @@ class SCR_ContentBrowser_SavesSubMenu : SCR_ContentBrowser_AddonsSubMenu
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void Callback_OnRequestPageGetAssets(SCR_WorkshopApiCallback_RequestPage callback)
+	override protected void Callback_OnRequestPageGetAssets()
 	{
-		super.Callback_OnRequestPageGetAssets(callback);
+		super.Callback_OnRequestPageGetAssets();
 		
 		if (m_iOnlineFilteredItems == 0)
 			SetPanelsMode(false, messagePresetTag: MESSAGE_TAG_NO_SAVES_FOUND, forceFiltersList: true);

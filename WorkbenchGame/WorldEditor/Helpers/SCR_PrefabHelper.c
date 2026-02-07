@@ -2,16 +2,23 @@
 // temporary entity/Source solutions as container creation might come soon™ (BaseContainerTools.CreatePrefabEntityContainer)
 class SCR_PrefabHelper
 {
+	static const string PREFAB_BASE_SUFFIX = "_base"; //<! used by SCR_PrefabManagementTool to strip it when creating a child
+
 	protected static const string MESHOBJECT_CLASSNAME = "MeshObject";
 	protected static const string DEFAULT_PARENT_PREFAB = "GenericEntity";
 	protected static const string PREFAB_DOTTED_EXTENSION = ".et";
-	static const string PREFAB_BASE_SUFFIX = "_base"; //<! used by SCR_PrefabManagementTool to strip it when creating a child
+
+	protected static const ref array<ResourceName> PREFAB_SEARCH_DIRECTORIES = {
+				"Prefabs/",				// 0
+				"PrefabLibrary/",		// 1
+				"PrefabsEditable/",		// 2
+	};
 
 	//------------------------------------------------------------------------------------------------
 	//! Create a clone of the provided prefab at the provided destination, overriding file if any
 	//! Destination directory is created if it does not exist
 	//! \param[in] absoluteFilePath the directory is automatically created if needed and a trailing '.et' is automatically added if missing
-	//! \return created clone's ResourceName
+	//! \return created clone's ResourceName or empty string on error
 	static ResourceName ClonePrefab(ResourceName sourcePrefab, string absoluteFilePath)
 	{
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(sourcePrefab))
@@ -41,7 +48,7 @@ class SCR_PrefabHelper
 		{
 			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
-				Print("Could not create the destination directory (" + absoluteDirPath + ")", LogLevel.ERROR);
+				Print("Cannot create the destination directory (" + absoluteDirPath + ")", LogLevel.ERROR);
 				return string.Empty;
 			}
 		}
@@ -49,7 +56,7 @@ class SCR_PrefabHelper
 		IEntitySource entitySource = CreateEntitySourceWithoutEntity(sourcePrefab);
 		if (!entitySource)
 		{
-			Print("Prefab's entity source could not be created", LogLevel.ERROR);
+			Print("Prefab's entity source cannot be created", LogLevel.ERROR);
 			return string.Empty;
 		}
 
@@ -62,14 +69,14 @@ class SCR_PrefabHelper
 
 		if (!worldEditorAPI.CreateEntityTemplate(actualPrefab, absoluteFilePath))
 		{
-			Print("Could not save Prefab", LogLevel.ERROR);
+			Print("Cannot save Prefab", LogLevel.ERROR);
 			return string.Empty;
 		}
 
 		MetaFile metaFile = SCR_WorldEditorToolHelper.GetResourceManager().GetMetaFile(absoluteFilePath);
 		if (!metaFile)
 		{
-			Print("Created Prefab's meta file could not be found", LogLevel.WARNING);
+			Print("Created Prefab's meta file cannot be found", LogLevel.WARNING);
 			return string.Empty;
 		}
 
@@ -110,7 +117,7 @@ class SCR_PrefabHelper
 		{
 			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
-				Print("Could not create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
+				Print("Cannot create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
 				return string.Empty;
 			}
 		}
@@ -118,20 +125,20 @@ class SCR_PrefabHelper
 		IEntitySource entitySource = CreateEntitySourceWithoutEntity(sourcePrefab);
 		if (!entitySource)
 		{
-			Print("Prefab's entity source could not be created", LogLevel.ERROR);
+			Print("Prefab's entity source cannot be created", LogLevel.ERROR);
 			return string.Empty;
 		}
 
 		if (!worldEditorAPI.CreateEntityTemplate(entitySource, absoluteFilePath))
 		{
-			Print("Could not create Prefab", LogLevel.ERROR);
+			Print("Cannot create Prefab", LogLevel.ERROR);
 			return string.Empty;
 		}
 
 		MetaFile metaFile = SCR_WorldEditorToolHelper.GetResourceManager().GetMetaFile(absoluteFilePath);
 		if (!metaFile)
 		{
-			Print("Created Prefab's meta file could not be found", LogLevel.WARNING);
+			Print("Created Prefab's meta file cannot be found", LogLevel.WARNING);
 			return string.Empty;
 		}
 
@@ -163,7 +170,7 @@ class SCR_PrefabHelper
 		{
 			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
-				Print("Could not create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
+				Print("Cannot create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
 				return null;
 			}
 		}
@@ -173,7 +180,7 @@ class SCR_PrefabHelper
 		IEntitySource entitySource = CreateEntitySourceWithoutEntity(parentPrefab);
 		if (!entitySource)
 		{
-			Print("Prefab's entity source could not be created", LogLevel.ERROR);
+			Print("Prefab's entity source cannot be created", LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -181,7 +188,7 @@ class SCR_PrefabHelper
 		// if the MeshObject component doesn't exist, create it
 		if (!CreateEntitySourceComponentIfNeeded(entitySource, MESHOBJECT_CLASSNAME))
 		{
-			Print("Could not add MeshObject component", LogLevel.ERROR);
+			Print("Cannot add MeshObject component", LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -202,14 +209,14 @@ class SCR_PrefabHelper
 			// apply XOB path to mesh
 			if (!worldEditorAPI.SetVariableValue(entitySource, meshObjectPath, "Object", xob))
 			{
-				Print("Could not apply XOB model to " + prefabFileName, LogLevel.ERROR);
+				Print("Cannot apply XOB model to " + prefabFileName, LogLevel.ERROR);
 				continue;
 			}
 
 			ResourceName resourceName = SaveEntitySourceAsPrefab(entitySource, absoluteDirPath, prefabFileName, createBasePrefab);
 			if (resourceName.IsEmpty())
 			{
-				Print("Could not save Prefab " + prefabFileName, LogLevel.WARNING);
+				Print("Cannot save Prefab " + prefabFileName, LogLevel.WARNING);
 				continue;
 			}
 
@@ -254,7 +261,7 @@ class SCR_PrefabHelper
 
 		if (!FileIO.MakeDirectory(absoluteDirPath))
 		{
-			Print("Could not create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
+			Print("Cannot create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
 			return string.Empty;
 		}
 
@@ -274,7 +281,7 @@ class SCR_PrefabHelper
 
 		if (!entitySource)
 		{
-			Print("Prefab's entity source could not be created", LogLevel.ERROR);
+			Print("Prefab's entity source cannot be created", LogLevel.ERROR);
 			return string.Empty;
 		}
 
@@ -326,7 +333,7 @@ class SCR_PrefabHelper
 	//! \return true on success, false on failure
 	protected static bool CreatePrefabStructureDirectory(string structureName, notnull SCR_PrefabHelper_StructureDirectory directory, string absoluteParentPath)
 	{
-		string absoluteDirectoryPath = FilePath.Concat(absoluteParentPath, directory.m_sRelativePath);
+		string absoluteDirectoryPath = string.Format(FilePath.Concat(absoluteParentPath, directory.m_sRelativePath), structureName);
 		if (!FileIO.MakeDirectory(absoluteDirectoryPath))
 		{
 			Print("Cannot create directory " + absoluteDirectoryPath, LogLevel.ERROR);
@@ -346,7 +353,7 @@ class SCR_PrefabHelper
 
 		foreach (SCR_PrefabHelper_StructureDirectory subDirectory : directory.m_aSubDirectories)
 		{
-			string absoluteSubDirectoryPath = string.Format(FilePath.Concat(absoluteParentPath, subDirectory.m_sRelativePath), structureName);
+			string absoluteSubDirectoryPath = string.Format(FilePath.Concat(absoluteDirectoryPath, subDirectory.m_sRelativePath), structureName);
 			if (!FileIO.MakeDirectory(absoluteSubDirectoryPath))
 			{
 				Print("Cannot create directory " + absoluteSubDirectoryPath, LogLevel.WARNING);
@@ -381,7 +388,7 @@ class SCR_PrefabHelper
 		IEntitySource entitySource = worldEditorAPI.CreateEntity(parentPrefab, "", worldEditorAPI.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
 		if (!entitySource)
 		{
-			Print("Entity could not be created (parent = " + parentPrefab + ")", LogLevel.ERROR);
+			Print("Entity cannot be created (parent = " + parentPrefab + ")", LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -438,7 +445,7 @@ class SCR_PrefabHelper
 		IEntitySource entitySource = CreateEntitySource(parentPrefab); // do NOT switch to CreateEntitySourceWithoutEntity!
 		if (!entitySource)
 		{
-			Print("Prefab's entity source could not be created for xob " + xobName, LogLevel.ERROR);
+			Print("Prefab's entity source cannot be created for xob " + xobName, LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -446,7 +453,7 @@ class SCR_PrefabHelper
 		// if the MeshObject component doesn't exist, create it
 		if (!CreateEntitySourceComponentIfNeeded(entitySource, MESHOBJECT_CLASSNAME))
 		{
-			Print("Could not add MeshObject component", LogLevel.ERROR);
+			Print("Cannot add MeshObject component", LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -454,7 +461,7 @@ class SCR_PrefabHelper
 		// apply XOB path to mesh
 		if (!worldEditorAPI.SetVariableValue(entitySource, { new ContainerIdPathEntry(MESHOBJECT_CLASSNAME) }, "Object", xob))
 		{
-			Print("Could not apply XOB model to IEntitySource for xob " + xobName, LogLevel.ERROR);
+			Print("Cannot apply XOB model to IEntitySource for xob " + xobName, LogLevel.ERROR);
 			EndEntityAction(manageEditAction);
 			return null;
 		}
@@ -487,9 +494,63 @@ class SCR_PrefabHelper
 
 		result = worldEditorAPI.CreateComponent(entitySource, componentClassname);
 		if (!result)
-			Print("Could not add the " + MESHOBJECT_CLASSNAME + " component to the Prefab", LogLevel.ERROR);
+			Print("Cannot add the " + MESHOBJECT_CLASSNAME + " component to the Prefab", LogLevel.ERROR);
 
 		EndEntityAction(manageEditAction);
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] addonIndex the addon index (e.g 0 = core, 1 = ArmaReforger, etc) -1 to get from all loaded addons
+	//! \param[in] getMode
+	//! - -1 to get all .et files (Prefabs, PrefabLibrary, PrefabsEditable)
+	//! - 0 for Prefabs
+	//! - 1 for PrefabLibrary
+	//! - 2 for PrefabsEditable
+	//! any other number reverts to -1 (get all .et files)
+	//! \return a map of addonIndex -> ResourceNames
+	static map<int, ref array<ResourceName>> GetPrefabs(int addonIndex = -1, int getMode = -1)
+	{
+		array<string> addonIDs;
+		if (addonIndex < 0)
+		{
+			addonIDs = SCR_AddonTool.GetAllAddonIDs();
+		}
+		else
+		{
+			string addonID = SCR_AddonTool.GetAddonID(addonIndex);
+			if (!addonID) // IsEmpty()
+			{
+				addonIndex = -1;
+				addonIDs = SCR_AddonTool.GetAllAddonIDs();
+			}
+			else
+			{
+				addonIDs = { addonID };
+			}
+		}
+
+		map<int, ref array<ResourceName>> result = new map<int, ref array<ResourceName>>();
+
+		SearchResourcesFilter searchFilter = new SearchResourcesFilter();
+		searchFilter.fileExtensions = { "et" };
+
+		array<ResourceName> resourceNames;
+		foreach (int index, string addonID : addonIDs)
+		{
+			if (addonIndex > -1)
+				index = addonIndex; // little one-loop cheat
+
+			if (PREFAB_SEARCH_DIRECTORIES.IsIndexValid(getMode))
+				searchFilter.rootPath = SCR_AddonTool.GetAddonFileSystem(index) + PREFAB_SEARCH_DIRECTORIES[getMode];
+			else
+				searchFilter.rootPath = SCR_AddonTool.GetAddonFileSystem(index);
+
+			resourceNames = {};
+			ResourceDatabase.SearchResources(searchFilter, resourceNames.Insert);
+			result.Insert(index, resourceNames);
+		}
 
 		return result;
 	}
@@ -511,12 +572,12 @@ class SCR_PrefabHelper
 	//------------------------------------------------------------------------------------------------
 	//! Gives the target's directory the source directory's hierarchy/path
 	//! Relative paths are expected, so separator must be slash (/)
-	//! @code
+	//! \code
 	//! string relativeSourceDirectory = "Assets/Rocks/Granite";
 	//! string relativeTargetDirectory = "Prefabs/Miniatures";
 	//! string result = GetRelativeParentDirectory(relativeSourceDirectory, relativeTargetDirectory);
 	//! Print(result); // Prefabs/Miniatures/Rocks/Granite
-	//! @endcode
+	//! \endcode
 	//! See SCR_PrefabHelper.FormatRelativePath
 	//! \param[in] relativeSourceDirectory the relative source directory, e.g Assets/Rocks/Granite
 	//! \param[in] relativeTargetDirectory the relative target directory, e.g Prefabs/Miniatures
@@ -581,7 +642,7 @@ class SCR_PrefabHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Update a Prefab from the provided BaseContainer (that must obviously originate from a Prefab)
-	//! \param entitySource a spawned Prefab IEntitySource's ancestor (BaseContainer)
+	//! \param[in] actualPrefab a spawned Prefab IEntitySource's ancestor (BaseContainer)
 	//! \return true in case of success, otherwise false
 	static bool UpdatePrefabFromEntitySourceAncestor(notnull BaseContainer actualPrefab)
 	{
@@ -632,7 +693,7 @@ class SCR_PrefabHelper
 
 		if (!FileIO.FileExists(absoluteDirPath) && !FileIO.MakeDirectory(absoluteDirPath))
 		{
-			Print("Could not create the destination directory (" + absoluteDirPath + ")", LogLevel.ERROR);
+			Print("Cannot create the destination directory (" + absoluteDirPath + ")", LogLevel.ERROR);
 			return string.Empty;
 		}
 
@@ -650,14 +711,14 @@ class SCR_PrefabHelper
 			// save base as Prefab
 			if (!worldEditorAPI.CreateEntityTemplate(entitySource, absoluteBaseFilePath))
 			{
-				Print("Could not save base prefab " + basePrefabFileName + " at " + absoluteBaseFilePath, LogLevel.WARNING);
+				Print("Cannot save base prefab " + basePrefabFileName + " at " + absoluteBaseFilePath, LogLevel.WARNING);
 				return string.Empty;
 			}
 
 			metaFile = SCR_WorldEditorToolHelper.GetResourceManager().GetMetaFile(absoluteBaseFilePath);
 			if (!metaFile)
 			{
-				Print("Created base Prefab's meta file could not be found", LogLevel.WARNING);
+				Print("Created base Prefab's meta file cannot be found", LogLevel.WARNING);
 				return string.Empty;
 			}
 
@@ -666,7 +727,7 @@ class SCR_PrefabHelper
 			entitySource = CreateEntitySourceWithoutEntity(metaFile.GetResourceID());
 			if (!entitySource)
 			{
-				Print("Prefab's child entity source could not be created", LogLevel.ERROR);
+				Print("Prefab's child entity source cannot be created", LogLevel.ERROR);
 				return string.Empty;
 			}
 		}
@@ -674,14 +735,14 @@ class SCR_PrefabHelper
 		// save as Prefab
 		if (!worldEditorAPI.CreateEntityTemplate(entitySource, absoluteFilePath))
 		{
-			Print("Could not save prefab " + prefabFileName + " at " + absoluteFilePath, LogLevel.WARNING);
+			Print("Cannot save prefab " + prefabFileName + " at " + absoluteFilePath, LogLevel.WARNING);
 			return string.Empty;
 		}
 
 		metaFile = SCR_WorldEditorToolHelper.GetResourceManager().GetMetaFile(absoluteFilePath);
 		if (!metaFile)
 		{
-			Print("Created Prefab's meta file could not be found", LogLevel.WARNING);
+			Print("Created Prefab's meta file cannot be found", LogLevel.WARNING);
 			return string.Empty;
 		}
 
@@ -729,7 +790,6 @@ class SCR_PrefabHelper
 		if (manageEditAction)
 			SCR_WorldEditorToolHelper.GetWorldEditorAPI().EndEntityAction();
 	}
-
 }
 
 [BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleField("m_sName")]

@@ -7,11 +7,31 @@ class SCR_BaseGameOverScreenInfo
 	[Attribute("", desc: "This is the actual game over layout that is shown within the gameover screen", params: "layout")]
 	protected ResourceName m_GameOverContentLayout;
 	
+	[Attribute("", desc: "Overwrite of base game over screen layout.", params: "layout")]
+	protected ResourceName m_sBaseGameOverScreenOverwrite;
+	
 	[Attribute(desc: "Optional parameters to be displayed in the game over screen. Note that many of these settings are set by the inherent class like faction flag and icon in FactionGameOverScreenInfo")]
 	protected ref SCR_BaseGameOverScreenInfoOptional m_OptionalParams;
 	
 	[Attribute(desc: "Params for if the end screen can be displayed in editor. Can be left null if cannot be called by GM")]
 	protected ref SCR_BaseGameOverScreenInfoEditor m_OptionalEditorParams;
+	
+	[Attribute(desc: "Pause Game with Game over screen. Singleplayer only")]
+	protected bool m_bPauseGameOnGameOverScreen;
+	
+	//------------------------------------------------------------------------------------------------
+	//!Returns whether game over layout should overwrite whole gameover screen
+	ResourceName GetBaseGameOverScreenOverwrite()
+	{
+		return m_sBaseGameOverScreenOverwrite;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!Returns whether game should be paused with Game over screen
+	bool PauseGameOnGameOverScreen()
+	{
+		return m_bPauseGameOnGameOverScreen;
+	}
 	
 	/*!
 	Returns the state id

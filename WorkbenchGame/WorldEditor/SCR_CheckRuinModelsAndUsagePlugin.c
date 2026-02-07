@@ -206,11 +206,11 @@ class SCR_CheckRuinModelsAndUsagePlugin : WorkbenchPlugin
 	protected array<ResourceName> GetRuinPrefabs()
 	{
 		if (m_bSearchInAllAddons)
-			return SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" });
+			return SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" });
 
 		array<ResourceName> result = {};
-		result.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" }, BASE_PREFIX + PREFABS_DIR));
-		result.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" }, ADDON_PREFIX + PREFABS_DIR));
+		result.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" }, BASE_PREFIX + PREFABS_DIR));
+		result.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" }, ADDON_PREFIX + PREFABS_DIR));
 		return result;
 	}
 
@@ -218,11 +218,11 @@ class SCR_CheckRuinModelsAndUsagePlugin : WorkbenchPlugin
 	protected array<ResourceName> GetRuinXOBs()
 	{
 		if (m_bSearchInAllAddons)
-			return SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" });
+			return SCR_WorkbenchHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" });
 
 		array<ResourceName> result = {};
-		result.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" }, BASE_PREFIX + XOBS_DIR));
-		result.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" }, ADDON_PREFIX + XOBS_DIR));
+		result.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" }, BASE_PREFIX + XOBS_DIR));
+		result.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" }, ADDON_PREFIX + XOBS_DIR));
 		return result;
 	}
 
@@ -230,11 +230,11 @@ class SCR_CheckRuinModelsAndUsagePlugin : WorkbenchPlugin
 	protected array<ResourceName> GetHouseBasePrefabs()
 	{
 		if (m_bSearchInAllAddons)
-			return SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_base" });
+			return SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_base" });
 
 		array<ResourceName> result = {};
-		result.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_base" }, BASE_PREFIX + PREFABS_DIR));
-		result.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_base" }, ADDON_PREFIX + PREFABS_DIR));
+		result.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_base" }, BASE_PREFIX + PREFABS_DIR));
+		result.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_base" }, ADDON_PREFIX + PREFABS_DIR));
 		return result;
 	}
 

@@ -214,8 +214,7 @@ class SCR_ScenarioFrameworkActionSpawnObjectBasedOnDistance : SCR_ScenarioFramew
 
 		if (m_SpawnObjects == SCR_EScenarioFrameworkSpawnChildrenType.RANDOM_ONE)
 		{
-			//We need to introduce slight delay for the randomization by time seed to occur
-			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(SpawnRandomObject, Math.RandomInt(1, 10), false, aObjectsNames);
+			SpawnRandomObject(aObjectsNames);
 			return;
 		}
 

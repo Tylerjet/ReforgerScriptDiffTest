@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class ParticleEffectEntitySpawnParams
+sealed class ParticleEffectEntitySpawnParams
 {
 	//! Entity type to be spawned if a .ptc file is given as an effect path. It must inherit from the ParticleEffectEntity type.
 	typename		Type;
@@ -55,6 +55,11 @@ class ParticleEffectEntitySpawnParams
 	*IMPORTANT* Not used if a prefab is passed as effectPath.
 	*/
 	bool			UseParentAsVelocitySource = true;
+
+	void ParticleEffectEntitySpawnParams()
+	{
+		Math3D.MatrixIdentity4(Transform);
+	}
 
 }
 

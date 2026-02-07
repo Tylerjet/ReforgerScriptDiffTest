@@ -118,6 +118,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	protected SCR_BaseGameMode m_GameMode;
 	protected SCR_RespawnComponent m_SpawnRequestManager;
 	protected RplId m_iSelectedSpawnPointId = RplId.Invalid();
+	protected SCR_PlayerDeployMenuHandlerComponent m_PlayerMenuHandler;
 
 	protected Widget m_wLoadingSpinner;
 	protected SCR_LoadingSpinner m_LoadingSpinner;
@@ -285,6 +286,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		}
 
 		m_SpawnRequestManager = SCR_RespawnComponent.Cast(pc.GetRespawnComponent());
+		m_PlayerMenuHandler = SCR_PlayerDeployMenuHandlerComponent.Cast(pc.FindComponent(SCR_PlayerDeployMenuHandlerComponent));
 
 		Widget chat = GetRootWidget().FindAnyWidget("ChatPanel");
 		if (chat)
@@ -617,7 +619,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		m_SpawnRequestManager.GetOnRespawnRequestInvoker_O().Insert(OnRespawnRequest);
 		m_SpawnRequestManager.GetOnRespawnResponseInvoker_O().Insert(OnRespawnResponse);
 		
-		m_SpawnPointRequestUIHandler.GetOnSpawnPointSelected().Insert(SetSpawnPoint);
+		m_SpawnPointRequestUIHandler.GetOnSpawnPointSelected().Insert(OnSpawnPointSelected);
 		m_GroupRequestUIHandler.GetOnLocalPlayerGroupJoined().Insert(OnLocalPlayerGroupJoined);
 		m_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 
@@ -629,16 +631,6 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	protected void OnMapOpen(MapConfiguration config)
 	{
 		m_MapEntity.SetZoom(1);
-
-		// note@lk: temporary hotfix for duplicite journal entries, better solution is on the way
-		Widget toolMenu = m_wMenuFrame.FindAnyWidget("ToolMenuVert");
-		Widget child = toolMenu.GetChildren();
-		while (child)
-		{
-			Widget sibling = child.GetSibling();
-			child.RemoveFromHierarchy();
-			child = sibling;
-		}		
 		
 		m_UIElementContainer = SCR_MapUIElementContainer.Cast(m_MapEntity.GetMapUIComponent(SCR_MapUIElementContainer));
 		if (m_UIElementContainer)
@@ -695,6 +687,11 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		SetSpawnPoint(spawnPointId, false);
 	}
 
+	protected void OnSpawnPointSelected(RplId id)
+	{
+		SetSpawnPoint(id); // Handle default args
+	}
+	
 	//! Sets the currently selected spawn point.
 	protected void SetSpawnPoint(RplId id, bool smoothPan = true)
 	{	
@@ -772,6 +769,8 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		m_fCurrentDeployTimeOut = DEPLOY_TIME_OUT;
 		
 		SCR_SpawnPointSpawnData rspData = new SCR_SpawnPointSpawnData(resourcePrefab, m_iSelectedSpawnPointId);
+		if (m_PlayerMenuHandler)
+			m_PlayerMenuHandler.SetLastUsedSpawnPointId(rspData.GetRplId());
 		m_SpawnRequestManager.RequestSpawn(rspData);
 	}
 
@@ -978,6 +977,8 @@ class SCR_DeployButton : SCR_InputButtonComponent
 	
 	protected Widget m_wLoadingSpinner;
 	protected Widget m_wSupplies;
+	protected Widget m_wMSARSuppliesText;
+	protected Widget m_wMSARSupplies;
 	protected Widget m_wBackgroundWidget;
 	protected RichTextWidget m_wSuppliesText;
 
@@ -1003,7 +1004,7 @@ class SCR_DeployButton : SCR_InputButtonComponent
 			GetOnUpdateEnableColor().Insert(UpdateBackground);
 		
 		if (m_wSupplies)
-			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
+			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesLoadoutText"));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1053,12 +1054,12 @@ class SCR_DeployButton : SCR_InputButtonComponent
 			}
 
 			m_wText.SetText(text);
+			
 			if (m_wSupplies)
-				m_wSupplies.SetVisible(m_bSuppliesEnabled);
+				m_wSupplies.SetVisible(m_iSupplyCost > 0 && m_bSuppliesEnabled);
 			
 			if (m_wSuppliesText)
 				m_wSuppliesText.SetText(string.ToString(m_iSupplyCost));
-			
 			return;
 		}
 		

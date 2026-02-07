@@ -1,39 +1,35 @@
 [EntityEditorProps(category: "GameScripted/Triggers", description: "")]
-class SCR_BaseFactionTriggerEntityClass: SCR_BaseTriggerEntityClass
+class SCR_BaseFactionTriggerEntityClass : SCR_BaseTriggerEntityClass
 {
-};
-class SCR_BaseFactionTriggerEntity: SCR_BaseTriggerEntity
+}
+
+class SCR_BaseFactionTriggerEntity : SCR_BaseTriggerEntity
 {
-	[Attribute(desc: "Faction which is used for area control calculation.", category: "Faction Trigger")]
-	protected FactionKey m_sOwnerFactionKey;
-	
-	protected Faction m_OwnerFaction;
-	
-	/*!
-	Set owner faction.
-	\param faction Owner faction
-	*/
-	void SetOwnerFaction(Faction faction)
+	[Attribute(desc: "Factions which are used for area control calculation.", category: "Faction Trigger")]
+	protected ref array<FactionKey> m_aOwnerFactionKeys;
+
+	//------------------------------------------------------------------------------------------------
+	void AddOwnerFaction(FactionKey factionKey)
 	{
-		m_OwnerFaction = faction;
+		if (!m_aOwnerFactionKeys)
+			m_aOwnerFactionKeys = {};
+		
+		m_aOwnerFactionKeys.Insert(factionKey);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool ScriptedEntityFilterForQuery(IEntity ent)
 	{
-		if (!m_OwnerFaction || !IsAlive(ent))
+		if (!m_aOwnerFactionKeys || m_aOwnerFactionKeys.IsEmpty() || !IsAlive(ent))
 			return false;
 		
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
-		return factionAffiliation && factionAffiliation.GetAffiliatedFaction() == m_OwnerFaction;
+		return factionAffiliation && m_aOwnerFactionKeys.Contains(factionAffiliation.GetAffiliatedFaction().GetFactionKey());
 	}
-	override protected void EOnInit(IEntity owner)
-	{
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (factionManager)
-			m_OwnerFaction = factionManager.GetFactionByKey(m_sOwnerFactionKey);
-	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_BaseFactionTriggerEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
 	}
-};
+}

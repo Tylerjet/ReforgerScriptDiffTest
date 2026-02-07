@@ -449,16 +449,14 @@ class Screenshot_Waypoint: GenericEntity
 			SetFlags(EntityFlags.ACTIVE, true);
 
 			vector position;
-			float angleX, angleY, angleZ;
+			vector angles;
 			vector rotation; // we cannot supply array as a out param, so we need the floats and then assign them to vector
 			src.Get("coords", position);
-			src.Get("angleX", angleX);
-			src.Get("angleY", angleY);
-			src.Get("angleZ", angleZ);
+			src.Get("angles", angles);
 
-			rotation[1] = angleX;
-			rotation[0] = angleY;
-			rotation[2] = angleZ;
+			rotation[1] = angles[0];
+			rotation[0] = angles[1];
+			rotation[2] = angles[2];
 
 			vector mat[4];
 			Math3D.AnglesToMatrix(rotation, mat);

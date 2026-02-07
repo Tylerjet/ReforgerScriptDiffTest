@@ -52,24 +52,24 @@ class SCR_ScenarioFrameworkActionSetBriefingEntryTextBasedOnGeneratedTasks : SCR
 			break;
 		}
 
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
-			return;
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+	    if (!taskSystem)
+	        return;
 
-		array<SCR_BaseTask> tasks = {};
-		taskManager.GetTasks(tasks);
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasks(tasks);
 
 		array<string> taskStrings = {};
-		foreach (SCR_BaseTask task : tasks)
+		foreach (SCR_Task task : tasks)
 		{
-			taskStrings.Insert(task.GetTitle());
+			taskStrings.Insert(task.GetTaskName());
 			taskStrings.Insert("");
 		}
 
 		string tasksToShow;
-		foreach (SCR_BaseTask task : tasks)
+		foreach (SCR_Task task : tasks)
 		{
-			tasksToShow = tasksToShow + "<br/>" + string.Format(task.GetTitle());
+			tasksToShow = tasksToShow + "<br/>" + string.Format(task.GetTaskName());
 		}
 
 		if (!targetJournalEntry)

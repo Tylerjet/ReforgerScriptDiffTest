@@ -1,6 +1,6 @@
-//! This class serves to unify commonly used methods in both 
+//! This class serves to unify commonly used methods in both
 //! SCR_DestructibleEntity and SCR_DestructionMultiPhaseComponent.
-//! Since one is a component and the other is an entity, 
+//! Since one is a component and the other is an entity,
 //! inheritance cannot be used to reuse code so all shared methods will be accessed here.
 class SCR_DestructionUtility
 {
@@ -34,7 +34,7 @@ class SCR_DestructionUtility
 	//------------------------------------------------------------------------------------------------
 	//! Spawns objects that are meant to be created when the object is destroyed (particles, debris, etc)
 	static void SpawnDestroyObjects(notnull IEntity owner, notnull array<ref SCR_BaseSpawnable> spawnList, notnull SCR_DestructionHitInfo destructionHitInfo)
-	{		
+	{
 		Physics physics = owner.GetPhysics();
 		if (!physics)
 			return;
@@ -53,8 +53,8 @@ class SCR_DestructionUtility
 	//! \param[in] damagePhaseIndex
 	static void PlaySound(notnull IEntity owner, SCR_EMaterialSoundTypeBreak materialSoundType, int numDamagePhases, int damagePhaseIndex)
 	{
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
+		if (!soundManager)
 			return;
 		
 		SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
@@ -68,26 +68,23 @@ class SCR_DestructionUtility
 		// Get AudioSource
 		audioSourceConfiguration.m_sSoundEventName = SCR_SoundEvent.SOUND_MPD_ + owner.Type().EnumToString(SCR_EMaterialSoundTypeBreak, materialSoundType);
 		
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(owner, audioSourceConfiguration);
+		// Get center of bounding box
+		vector mins;
+		vector maxs;
+		owner.GetWorldBounds(mins, maxs);
+		vector position = vector.Lerp(mins, maxs, 0.5);
+		
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(owner, audioSourceConfiguration, position);
 		if (!audioSource)
 			return;
 		
 		// Set signals
 		audioSource.SetSignalValue(SCR_AudioSource.PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME, numDamagePhases - damagePhaseIndex - 1);
 		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, GetDestructibleSize(owner));
+				
 		
-		// Set position
-		vector mat[4];
-		owner.GetTransform(mat);
-		
-		// Get center of bounding box
-		vector mins;
-		vector maxs;
-		owner.GetWorldBounds(mins, maxs);
-		mat[3] = vector.Lerp(mins, maxs, 0.5);
-			
 		// Play sound
-		soundManagerEntity.PlayAudioSource(audioSource, mat);
+		soundManager.PlayAudioSource(audioSource);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -104,6 +101,21 @@ class SCR_DestructionUtility
 		SetModel(owner, model);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the model of the object & also remap the materials
+	//! \param[in] owner
+	//! \param[in] modelName
+	//! \param[in] materialsOverride
+	static void SetModel(notnull IEntity owner, ResourceName modelName, string remap)
+	{
+		Resource resource;
+		VObject model = GetModel(modelName, resource);
+		if (!model)
+			return;
+
+		SetModel(owner, model, remap);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Sets the model of the object
 	//! \param[in] owner
@@ -122,6 +134,24 @@ class SCR_DestructionUtility
 			phys.Destroy(); // No geoms found, destroy physics
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the model of the object and its materials
+	//! \param[in] owner
+	//! \param[in] model
+	static void SetModel(notnull IEntity owner, notnull VObject model, string remap)
+	{
+		owner.SetObject(model, remap);
+		owner.Update();
+
+		Physics phys = owner.GetPhysics();
+		if (!phys)
+			return;
+
+		// Update physics geometries after mesh change
+		if (!phys.UpdateGeometries())
+			phys.Destroy(); // No geoms found, destroy physics
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] modelName
@@ -206,6 +236,73 @@ class SCR_DestructionUtility
 		// Pristine = 0, Destoyed > 0
 		signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal(DAMAGE_PHASE_SIGNAL_NAME), damagePhaseIndex);
 	}
+
+	//------------------------------------------------------------------------------------------------//------------------------------------------------------------------------------------------------
+	//! Takes two material remap strings and returns a sanitized version containing only valid entries
+	//! that exist in the original remap
+	//! \param[in] originalRemap The original material remap string to validate against
+	//! \param[in] newRemap The new material remap string to sanitize
+	//! \return Sanitized remap string containing only valid entries from newRemap that exist in originalRemap
+	static string SanitizeRemapString(string originalRemap, string newRemap)
+	{
+		array<string> sanitizedEntries = {};
+		array<string> originalEntries = {};
+		array<string> originalSlots = {};
+
+		// Split original remap into entries
+		originalRemap.Split(SCR_StringHelper.SEMICOLON, originalEntries, true);
+
+		// Extract slots from original remap
+		foreach (string entry : originalEntries)
+		{
+			int firstQuote = entry.IndexOf(SCR_StringHelper.SINGLE_QUOTE);
+			if (firstQuote == -1)
+				continue;
+
+			string remainingStr = entry.Substring(firstQuote + 1, entry.Length() - (firstQuote + 1));
+			int secondQuote = remainingStr.IndexOf(SCR_StringHelper.SINGLE_QUOTE);
+			if (secondQuote == -1)
+				continue;
+
+			string slot = entry.Substring(firstQuote + 1, secondQuote);
+			originalSlots.Insert(slot);
+		}
+
+		// Split new remap into entries
+		array<string> newEntries = {};
+		newRemap.Split(SCR_StringHelper.SEMICOLON, newEntries, true);
+
+		// Process new remap entries
+		foreach (string entry : newEntries)
+		{
+			int firstQuote = entry.IndexOf(SCR_StringHelper.SINGLE_QUOTE);
+			if (firstQuote == -1)
+				continue;
+
+			string remainingStr = entry.Substring(firstQuote + 1, entry.Length() - (firstQuote + 1));
+			int secondQuote = remainingStr.IndexOf(SCR_StringHelper.SINGLE_QUOTE);
+			if (secondQuote == -1)
+				continue;
+
+			string slot = entry.Substring(firstQuote + 1, secondQuote);
+
+			// Only keep entries where slot exists in original remap
+			if (originalSlots.Contains(slot))
+				sanitizedEntries.Insert(entry);
+		}
+
+		// Reconstruct sanitized remap string
+		string sanitizedRemap;
+		foreach (string entry : sanitizedEntries)
+		{
+			if (!sanitizedRemap.IsEmpty())
+				sanitizedRemap += SCR_StringHelper.SEMICOLON;
+
+			sanitizedRemap += entry;
+		}
+
+		return sanitizedRemap;
+	}
 }
 
 #define ENABLE_BASE_DESTRUCTION
@@ -218,9 +315,13 @@ enum SCR_EMaterialSoundTypeDebris
 	HAYBALE,
 	MATRESS,
 	METAL_HEAVY,
+	METAL_HUGE,
+	METAL_HUGE_LONG,
+	METAL_HUGE_SQUARE,
 	METAL_LIGHT,
-	METAL_NETFENCE,	
+	METAL_NETFENCE,
 	METAL_POLE,
+	MOIST,
 	MORTAR,
 	PLASTIC_HOLLOW,
 	PLASTIC_SOLID,
@@ -242,8 +343,10 @@ enum SCR_EMaterialSoundTypeBreak
 	BREAK_MATRESS,
 	BREAK_METAL,
 	BREAK_METAL_GENERATOR,
+	BREAK_METAL_HUGE,
 	BREAK_METAL_NETFENCE,
 	BREAK_METAL_POLE,
+	BREAK_MOIST,
 	BREAK_PIANO,
 	BREAK_PLASTIC,
 	BREAK_ROCK,

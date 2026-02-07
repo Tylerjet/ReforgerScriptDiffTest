@@ -27,32 +27,24 @@ class SCR_Tutorial_SW_DROP_M72 : SCR_BaseTutorialStage
 	{
 		SCR_InventoryStorageManagerComponent inventory = m_TutorialComponent.GetPlayerInventory();
 		if (!inventory)
-			return true;
+			return false;
 		
-		array <IEntity> entities = {};
-		inventory.GetAllRootItems(entities);
-		if (!entities.IsEmpty())
+		array<IEntity> foundItems = {};		
+		inventory.FindItemsWithComponents(foundItems, {BaseWeaponComponent}, EStoragePurpose.PURPOSE_ANY);
+		foreach (IEntity item : foundItems)
 		{
-			BaseWeaponComponent weaponComp;
-			BaseMuzzleComponent muzzle;
-			foreach (IEntity ent : entities)
-			{
-				weaponComp = BaseWeaponComponent.Cast(ent.FindComponent(BaseWeaponComponent));
-				if (!weaponComp)
-					continue;
-				
-				if (weaponComp.GetWeaponType() != EWeaponType.WT_ROCKETLAUNCHER)
-					continue;
-				
-				muzzle = weaponComp.GetCurrentMuzzle();
-				if (!muzzle)
-					continue;
-				
-				if (muzzle.GetAmmoCount() == 0)
-					return false;
-			}
+			const BaseWeaponComponent weapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
+			if (weapon.GetWeaponType() != EWeaponType.WT_ROCKETLAUNCHER)
+				continue;
+			
+			BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
+			if (!muzzle)
+				continue;
+			
+			if (muzzle.GetAmmoCount() == 0)
+				return false;
 		}
-		
+
 		return true;
 	}
 	

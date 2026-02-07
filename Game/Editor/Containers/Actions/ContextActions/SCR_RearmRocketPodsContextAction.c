@@ -36,8 +36,15 @@ class SCR_RearmRocketPodsContextAction : SCR_BaseRocketPodsContextAction
 	//------------------------------------------------------------------------------------------------
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
+		if (!selectedEntity)
+			return;
+
+		IEntity weaponRack = GetVehicleWeaponsRack(selectedEntity.GetOwner());
+		if (!weaponRack)
+			return;
+
 		array<IEntity> vehicleWeapons = {};
-		GetVehicleWeapons(GetVehicleWeaponsRack(selectedEntity.GetOwner()), vehicleWeapons);
+		GetVehicleWeapons(weaponRack, vehicleWeapons);
 		
 		SCR_RocketEjectorMuzzleComponent rocketMuzzle;
 		foreach (IEntity weapon : vehicleWeapons)

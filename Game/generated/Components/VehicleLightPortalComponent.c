@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class VehicleLightPortalComponentClass: WorldSubsceneComponentClass
-{
-}
-
 class VehicleLightPortalComponent: WorldSubsceneComponent
 {
 }

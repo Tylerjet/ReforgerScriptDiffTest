@@ -22,7 +22,9 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	protected PlayerManager m_PlayerManager;
 	
 	protected static ref SCR_NameTagConfig s_NametagCfg;
-			
+	
+	protected SCR_AdditionalGameModeSettingsComponent m_AdditionalSettings;
+	
 	//------------------------------------------------------------------------------------------------
 	// Getters
 	//------------------------------------------------------------------------------------------------
@@ -156,8 +158,40 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 				tagData.SetGroup(null);
 		}
 	}
-			
-		
+
+	//------------------------------------------------------------------------------------------------
+	// SCR_AIGroup event OnPlayerLeaderChanged
+	protected void OnGroupLeaderChanged(int groupID, int leaderID)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+
+		IEntity playerEntity;
+		SCR_NameTagData tagData;
+
+		array<int> playerIDs = group.GetPlayerIDs();
+
+		// Update tag data of other group members to rid previous leader of leader nametag
+		foreach (int playerID : playerIDs)
+		{
+			if (playerID == leaderID)
+				continue;
+
+			playerEntity = m_PlayerManager.GetPlayerControlledEntity(playerID);
+			if (!playerEntity)
+				continue;
+
+			tagData = m_aNameTagEntities.Get(playerEntity);
+			if (tagData)
+				tagData.SetGroup(group);
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Display methods
 	//------------------------------------------------------------------------------------------------
@@ -182,7 +216,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		
 		/*DbgUI.Begin("NameTag debug");
 		string dbg = "nametags: %1 | filtered: %2 | uninit tags: %3";
-		DbgUI.Text( string.Format( dbg, m_aNameTags.Count(), m_aFilteredEntities.Count(), m_aUninitializedTags.Count() ) );
+		DbgUI.Text(string.Format(dbg, m_aNameTags.Count(), m_aFilteredEntities.Count(), m_aUninitializedTags.Count()));
 		DbgUI.End();*/
 	}
 			
@@ -197,27 +231,108 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 										
 	//------------------------------------------------------------------------------------------------
 	//! Check if entity is faction friendly to current players faction
-	//! \param entity is a player entity
+	//! \param entityFaction Is a player entity
 	//! \return Returns true if checked entity is faction friendly
-	protected bool IsFactionFriendly(IEntity entity)
-	{
-		FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast( entity.FindComponent( FactionAffiliationComponent ) );			
-		
-		if (!factionComponent)
+	protected bool IsFactionFriendly(notnull Faction entityFaction)
+	{		
+		if (!m_CurrentFaction)
 			return false;
 		
-		if (m_CurrentFaction)
-		{
-			Faction faction = factionComponent.GetAffiliatedFaction();
-			if (!faction)
-				return false;
-			
-			//  Is friendly
-			if ( faction.IsFactionFriendly(m_CurrentFaction) )
-				return true;
-		}
+		SCR_Faction scrFaction = SCR_Faction.Cast(entityFaction);
+		
+		//  Is friendly
+		return (scrFaction && scrFaction.DoCheckIfFactionFriendly(m_CurrentFaction)) || (!scrFaction && entityFaction.IsFactionFriendly(m_CurrentFaction));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Checks if entity is a player OR AI
+	protected bool IsPlayerOrAI(notnull IEntity entity)
+	{
+		SCR_ECharacterControlType controlType = SCR_CharacterHelper.GetCharacterControlType(entity);
+		
+		// Control type is not a character
+		if (controlType == SCR_ECharacterControlType.UNKNOWN)
+			return false;
+		
+		if ((controlType == SCR_ECharacterControlType.AI || controlType == SCR_ECharacterControlType.POSSESSED_AI) && m_AdditionalSettings.HasNametagControllerFilter(SCR_ENametagControllerFilter.SHOW_AI))
+			return true;
+		
+		if ((controlType == SCR_ECharacterControlType.PLAYER || controlType == SCR_ECharacterControlType.UNLIMITED_EDITOR) && m_AdditionalSettings.HasNametagControllerFilter(SCR_ENametagControllerFilter.SHOW_PLAYERS))
+			return true;
 		
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Checks the nametag filters
+	protected bool CheckFilters(notnull IEntity entity)
+	{
+		
+		// Checks if entity is a group member
+		if (m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_GROUP_MEMBERS))
+		{
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (groupsManager)
+			{
+				SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+				if (playerGroup)
+				{					
+					if (playerGroup.IsAIControlledCharacterMember(SCR_ChimeraCharacter.Cast(entity)) || groupsManager.GetPlayerGroup(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity)) == playerGroup)
+						return true;
+				}
+			}
+		}
+		
+		// Checks if entity is same faction
+		if (!m_CurrentFaction)
+			return false;
+		
+		FactionAffiliationComponent factionComponent = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent));			
+		if (!factionComponent)
+			return false;
+			
+		Faction faction = factionComponent.GetAffiliatedFaction();
+		if (!faction)
+			return false;
+		
+		if (faction == m_CurrentFaction)
+			return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_SAME_FACTION);
+				
+		if (IsFactionFriendly(faction))
+		{
+			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+			
+			// Checks if entity is military ally or not
+			if (scrFaction && scrFaction.IsMilitary())
+				return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_MILITARY_ALLIES);
+			else 
+				return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_CIVILIAN_ALLIES);
+		}
+		else
+		{
+			// Entity is hostile if all other checks fail
+			return m_AdditionalSettings.HasNametagRelationFilters(SCR_ENametagRelationFilter.SHOW_HOSTILE);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Filters what name tags should be displayed
+	protected bool CanDisplayNameTag(notnull IEntity entity)
+	{
+		if (!m_AdditionalSettings)
+			return true;
+		
+		// Checks if players or AI is selected so it doesn't have to go through all the other filter checks
+		if (m_AdditionalSettings.GetNametagControllerFilters() == 0 || m_AdditionalSettings.GetNametagRelationFilters() == 0)
+			return false;
+		
+		if (!IsPlayerOrAI(entity))
+			return false;
+	
+		if (!CheckFilters(entity))
+			return false;
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -243,7 +358,17 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	protected void InitNameTags()
 	{										
 		// Spawn/death events
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast( GetGame().GetGameMode() );
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		
+		m_AdditionalSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		#ifndef DISABLE_NAMETAGS
+		if (m_AdditionalSettings)
+		{
+			m_AdditionalSettings.GetOnNametagRelationFilterUpdated().Insert(OnFilterTagsChanged);
+			m_AdditionalSettings.GetOnNametagControllerFilterUpdated().Insert(OnFilterTagsChanged);
+		}
+		#endif
+		
 		if (gameMode)
 		{
 			gameMode.GetOnControllableDestroyed().Insert(OnControllableDestroyed);
@@ -254,6 +379,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		
 		SCR_AIGroup.GetOnPlayerAdded().Insert(OnGroupJoined);
 		SCR_AIGroup.GetOnPlayerRemoved().Insert(OnGroupLeft);
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(OnGroupLeaderChanged);
 		
 		// init ruleset
 		m_bIsRulesetInit = s_NametagCfg.m_aVisibilityRuleset.Init(this, s_NametagCfg);
@@ -310,8 +436,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	//! Initialize name tag contex instance
 	//! \param entity is a character entity
-	//! \param friendlyOnly determines whether faction check is required for creation
-	protected void InitializeTag(IEntity entity, bool friendlyOnly = true)
+	protected void InitializeTag(IEntity entity)
 	{
 		if (!m_wRoot)
 			return;
@@ -343,11 +468,9 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			return;
 		}
 		
-		if (friendlyOnly)
-		{
-			if ( !IsFactionFriendly(entity) ) 	// Do not create tags for enemy factions
-				return;
-		}
+		// changed logic here for customized nametags
+		if (!CanDisplayNameTag(entity))
+			return;
 			
 		// init tag & insert into arrays			
 		if (m_aUninitializedTags.IsEmpty())
@@ -376,7 +499,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			m_aUninitializedTags.Insert(tagData);
 		}
 	}
-		
+	
 	//------------------------------------------------------------------------------------------------
 	// Cleanup methods
 	//------------------------------------------------------------------------------------------------
@@ -416,7 +539,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Unregister events of all tags and move to unitialized tag pool
+	//! Unregister events of all tags and move to uninitialized tag pool
 	void CleanupAllTags()
 	{
 		for (int i = 0; i < m_aNameTags.Count(); i++ )	// refresh count every iteration because cleanup of all tags from a vehicle will trigger its own cleanup and adjust the count
@@ -502,111 +625,136 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	}
 	
 	#ifndef DISABLE_NAMETAGS
-		//------------------------------------------------------------------------------------------------
-		// Overrides
-		//------------------------------------------------------------------------------------------------
-		override void DisplayUpdate(IEntity owner, float timeSlice)
-		{				
-			if (!m_bSleepDisplay)				
-				Update(timeSlice);
-		
-			#ifdef NAMETAG_DEBUG
-				UpdateDebug();
-			#endif
-		}
-		
-		//------------------------------------------------------------------------------------------------
-		override bool DisplayStartDrawInit(IEntity owner)
-		{
-			// owner not controller
-			PlayerController playerController = PlayerController.Cast(owner);
-			if (!playerController)
-				return false;
-			
-			m_iCurrentPlayerID = playerController.GetPlayerId();
-			
-			m_PlayerManager = GetGame().GetPlayerManager();
-			if (!m_PlayerManager)
-				return false;
-		
-			// Load config
-			BaseGameMode gameMode = GetGame().GetGameMode();
-			if (!gameMode)
-				return false;
-		
-			SCR_NametagConfigComponent configComp = SCR_NametagConfigComponent.Cast(gameMode.FindComponent(SCR_NametagConfigComponent));
-			if (!configComp)
-				return false;
-		
-			ResourceName path = configComp.GetConfigPath();
-			if (path.IsEmpty())
-				return false;
-			
-			Resource container = BaseContainerTools.LoadContainer(path);
-			if (!container)
-				return false;
-					
-			s_NametagCfg = SCR_NameTagConfig.Cast( BaseContainerTools.CreateInstanceFromContainer( container.GetResource().ToBaseContainer() ) );
-			if (s_NametagCfg.m_iZoneCount == 0 || s_NametagCfg.m_aZones[0].m_iElementsCount == 0)	// no zones or elements in primary zone
-				return false;
-			
-			if (s_NametagCfg.m_aSourceEntities)
-				s_NametagCfg.m_aSourceEntities.Init(s_NametagCfg, this);
-					
-			return true;
-		}
+	//------------------------------------------------------------------------------------------------
+	// Overrides
+	//------------------------------------------------------------------------------------------------
+	override void DisplayUpdate(IEntity owner, float timeSlice)
+	{				
+		if (!m_bSleepDisplay)				
+			Update(timeSlice);
 	
-		//------------------------------------------------------------------------------------------------
-		override void DisplayStartDraw(IEntity owner)
-		{
-			InitNameTags();
-		}
+		#ifdef NAMETAG_DEBUG
+			UpdateDebug();
+		#endif
+	}
 	
-		//------------------------------------------------------------------------------------------------
-		//! Reinit curent player tag after new entity is controlled
-		override void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	//------------------------------------------------------------------------------------------------
+	override bool DisplayStartDrawInit(IEntity owner)
+	{
+		// owner not controller
+		PlayerController playerController = PlayerController.Cast(owner);
+		if (!playerController)
+			return false;
+		
+		m_iCurrentPlayerID = playerController.GetPlayerId();
+		
+		m_PlayerManager = GetGame().GetPlayerManager();
+		if (!m_PlayerManager)
+			return false;
+	
+		// Load config
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return false;
+	
+		SCR_NametagConfigComponent configComp = SCR_NametagConfigComponent.Cast(gameMode.FindComponent(SCR_NametagConfigComponent));
+		if (!configComp)
+			return false;
+	
+		ResourceName path = configComp.GetConfigPath();
+		if (path.IsEmpty())
+			return false;
+		
+		Resource container = BaseContainerTools.LoadContainer(path);
+		if (!container)
+			return false;
+				
+		s_NametagCfg = SCR_NameTagConfig.Cast( BaseContainerTools.CreateInstanceFromContainer( container.GetResource().ToBaseContainer() ) );
+		if (s_NametagCfg.m_iZoneCount == 0 || s_NametagCfg.m_aZones[0].m_iElementsCount == 0)	// no zones or elements in primary zone
+			return false;
+		
+		if (s_NametagCfg.m_aSourceEntities)
+			s_NametagCfg.m_aSourceEntities.Init(s_NametagCfg, this);
+				
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void DisplayStartDraw(IEntity owner)
+	{
+		InitNameTags();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Reinit curent player tag after new entity is controlled
+	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
+	{
+		RefreshTags(to);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Refreshes the tags by clearning up all tags, then processing them
+	protected void RefreshTags(IEntity localPlayer)
+	{
+		CleanupAllTags();
+		m_CurrentPlayerTag = null;
+		
+		m_aFilteredEntities.Insert(localPlayer);
+		ProcessFiltered();
+		
+		if (localPlayer)
+			m_bSleepDisplay = false;
+		else 
+			m_bSleepDisplay = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! When the filters change from the game settings, this method makes sure the nametags get refreshed as well
+	//! \param[in] filters Scripts listens to two separate script invokers that send over enum filters. This method does not care about the actual settings those are checked in the init of the nametags
+	protected void OnFilterTagsChanged(int filters)
+	{
+		RefreshTags(m_PlayerController.GetControlledEntity());
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	override void DisplayStopDraw(IEntity owner)
+	{		
+		CleanupDisplay(true);
+	
+		// Spawn/death events
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
 		{
-			CleanupAllTags();
-			m_CurrentPlayerTag = null;
-			
-			m_aFilteredEntities.Insert(to);
-			ProcessFiltered();
-			
-			if (to)
-				m_bSleepDisplay = false;
-			else 
-				m_bSleepDisplay = true;
-		}	
-		
-		//------------------------------------------------------------------------------------------------
-		override void DisplayStopDraw(IEntity owner)
-		{		
-			CleanupDisplay(true);
-		
-			// Spawn/death events
-			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast( GetGame().GetGameMode() );
-			if (gameMode)
-			{
-				gameMode.GetOnControllableDestroyed().Remove(OnControllableDestroyed);
-				gameMode.GetOnControllableDeleted().Remove(OnControllableDeleted);
-			}
-			
-			SCR_2DOpticsComponent.s_OnSightsADSChanged.Remove(AdjustRange);
-		
-			if (SCR_AIGroup.GetOnPlayerAdded())
-				SCR_AIGroup.GetOnPlayerAdded().Remove(OnGroupJoined);
-		
-			if (SCR_AIGroup.GetOnPlayerRemoved())
-				SCR_AIGroup.GetOnPlayerRemoved().Remove(OnGroupLeft);
-		
-			m_bIsRulesetInit = false;
-			s_NametagCfg = null;
-		
-			m_aFilteredEntities.Clear();
-			m_aUninitializedTags.Clear();
-			m_aUninitializedVehTags.Clear();
-			m_aNameTags.Clear();
-			m_aNameTagEntities.Clear();
+			gameMode.GetOnControllableDestroyed().Remove(OnControllableDestroyed);
+			gameMode.GetOnControllableDeleted().Remove(OnControllableDeleted);
 		}
+		
+		#ifndef DISABLE_NAMETAGS
+		if (m_AdditionalSettings)
+		{
+			m_AdditionalSettings.GetOnNametagRelationFilterUpdated().Remove(OnFilterTagsChanged);
+			m_AdditionalSettings.GetOnNametagControllerFilterUpdated().Remove(OnFilterTagsChanged);
+		}
+		#endif
+		
+		SCR_2DOpticsComponent.s_OnSightsADSChanged.Remove(AdjustRange);
+	
+		if (SCR_AIGroup.GetOnPlayerAdded())
+			SCR_AIGroup.GetOnPlayerAdded().Remove(OnGroupJoined);
+	
+		if (SCR_AIGroup.GetOnPlayerRemoved())
+			SCR_AIGroup.GetOnPlayerRemoved().Remove(OnGroupLeft);
+		
+		SCR_AIGroup.GetOnPlayerLeaderChanged().Remove(OnGroupLeaderChanged);
+
+		m_bIsRulesetInit = false;
+		s_NametagCfg = null;
+	
+		m_aFilteredEntities.Clear();
+		m_aUninitializedTags.Clear();
+		m_aUninitializedVehTags.Clear();
+		m_aNameTags.Clear();
+		m_aNameTagEntities.Clear();
+	}
 	#endif
 };

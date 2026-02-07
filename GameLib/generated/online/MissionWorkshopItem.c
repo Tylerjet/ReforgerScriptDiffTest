@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class MissionWorkshopItem: BaseWorkshopItem
+sealed class MissionWorkshopItem: Managed
 {
 	private void MissionWorkshopItem();
 	void ~MissionWorkshopItem();
@@ -34,6 +34,10 @@ sealed class MissionWorkshopItem: BaseWorkshopItem
 	proto external int GetTimeSinceLastPlay();
 	//! Returns true if mission is set as favorite of current user.
 	proto external bool IsFavorite();
+	//! Get name of the item
+	proto external string Name();
+	//! Get description of the item
+	proto external string Description();
 	//! Set favorite state on mission for current user.
 	proto external void SetFavorite(bool isFavorite);
 	//! Returns player count defined for this mission.

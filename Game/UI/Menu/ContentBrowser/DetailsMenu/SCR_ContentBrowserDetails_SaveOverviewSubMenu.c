@@ -39,9 +39,10 @@ class SCR_ContentBrowserDetails_SaveOverviewSubMenu : SCR_ContentBrowserDetails_
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Play(MissionWorkshopItem scenario)
+	override bool Play(MissionWorkshopItem scenario)
 	{
 		string id = m_SaveItem.Id();
+		/*
 		string fileName = GetGame().GetSaveManager().FindFileNameById(id);
 		if (!fileName)
 		{
@@ -50,15 +51,17 @@ class SCR_ContentBrowserDetails_SaveOverviewSubMenu : SCR_ContentBrowserDetails_
 		}
 		
 		GetGame().GetSaveManager().SetFileNameToLoad(fileName);
-		super.Play(scenario);
+		super.Play(scenario);*/
+		
+		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void Continue(MissionWorkshopItem scenario)
+	override bool Continue(MissionWorkshopItem scenario)
 	{
-		Play(scenario);
+		return Play(scenario);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected void UpdateScenarioLines()
 	{
@@ -120,32 +123,33 @@ class SCR_ContentBrowserDetails_SaveOverviewSubMenu : SCR_ContentBrowserDetails_
 	//------------------------------------------------------------------------------------------------
 	void DeletePublished()
 	{
-		SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
-		saveWorkshopManager.GetDeletePublishedCallback().GetEventOnResponse().Insert(OnDeletePublishedResponse);
+		/*SCR_SaveWorkshopManager saveWorkshopManager = SCR_SaveWorkshopManager.GetInstance();
+		saveWorkshopManager.GetDeletePublishedCallback().SetOnSuccess(OnDeletePublishedResponse);
+		saveWorkshopManager.GetDeletePublishedCallback().SetOnError(OnDeletePublishedError);
 		saveWorkshopManager.DeletePublishedSave(m_SaveItem);
 		
-		m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
+		m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDeletePublishedResponse(SCR_BackendCallback callback)
-	{
-		SCR_SaveWorkshopManager.GetInstance().GetDeletePublishedCallback().GetEventOnResponse().Remove(OnDeletePublishedResponse);
-		
+	protected void OnDeletePublishedResponse()
+	{	
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.Close();
 		
-		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
-		{
-			if (m_OnItemDeleted)
-				m_OnItemDeleted.Invoke(m_Item.GetWorkshopItem());
-			
-			GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.ContentBrowserDetailsMenuSave);
-		}
-		else
-		{
-			SCR_CommonDialogs.CreateRequestErrorDialog();
-		}
+		if (m_OnItemDeleted)
+			m_OnItemDeleted.Invoke(m_Item.GetWorkshopItem());
+		
+		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.ContentBrowserDetailsMenuSave);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDeletePublishedError()
+	{
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.Close();
+
+		SCR_CommonDialogs.CreateRequestErrorDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------

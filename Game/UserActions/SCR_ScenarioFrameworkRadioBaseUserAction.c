@@ -9,9 +9,6 @@ class SCR_ScenarioFrameworkRadioBaseUserAction : SCR_RadioBaseUserAction
 	[Attribute("", UIWidgets.Auto)]
 	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
 
-	[Attribute("", UIWidgets.Coords)]
-	protected vector m_vSoundOffset;
-
 	protected AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	protected SCR_ScenarioFrameworkSystem m_ScenarioFrameworkSystem;
 
@@ -25,22 +22,18 @@ class SCR_ScenarioFrameworkRadioBaseUserAction : SCR_RadioBaseUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionStart(IEntity pUserEntity)
 	{
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(pUserEntity.GetWorld());
+		if (!soundManager)
 			return;
 
 		if (!m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
 			return;
 
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(GetOwner(), m_AudioSourceConfiguration);
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(GetOwner(), m_AudioSourceConfiguration);
 		if (!audioSource)
 			return;
 
-		vector mat[4];
-		GetOwner().GetTransform(mat);
-		mat[3] = GetOwner().CoordToParent(m_vSoundOffset);
-
-		soundManagerEntity.PlayAudioSource(audioSource, mat);
+		soundManager.PlayAudioSource(audioSource);
 
 		m_AudioHandle = audioSource.m_AudioHandle;
 
@@ -50,14 +43,14 @@ class SCR_ScenarioFrameworkRadioBaseUserAction : SCR_RadioBaseUserAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCanceled(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(pUserEntity.GetWorld());
+		if (!soundManager)
 			return;
 
 		if (!m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
 			return;
 
-		soundManagerEntity.TerminateAudioSource(pOwnerEntity);
+		soundManager.TerminateAudioSource(pOwnerEntity);
 
 		super.OnActionCanceled(pOwnerEntity, pUserEntity);
 	}

@@ -19,6 +19,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		"zh_cn",
 		"uk_ua"
 	};
+	protected static const string m_sUserInterfaceSettings = "UserInterfaceSettings";
 
 	static ref ScriptInvoker_GameplaySettingsSubMenuChanged m_OnLanguageChanged = new ScriptInvoker_GameplaySettingsSubMenuChanged();
 	
@@ -43,7 +44,9 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GamepadInvert", "GamepadY"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyADS", "StickyADS"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bPlatformIconNametag" , "ShowPlatformIcon" ));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bLogitechSupport" , "LogitechLED" ));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bAutoEquipNextPlaceableItem", "AutomaticEquipmentOfPlaceables"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bShowRadioProtocolText", "RadioProtocolSubtitles"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bMouseControlAircraft", "MouseControlAircraft"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bGamepadFreelookInAircraft", "GamepadFreelookInAircraft"));
@@ -55,6 +58,10 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFocusInADS", "FocusIntensityADS"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFocusInPIP", "FocusIntensityPIP"));
 
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eKeyboardCollective", "KeyboardCollective"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eGamepadCollective", "GamepadCollective"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eHotasCollective", "HotasCollective"));
+		
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fMouseSensitivity", "AimMouse"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fStickSensitivity", "AimGamepad"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fAimADS", "AimADS"));
@@ -98,8 +105,11 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 			HideMenuItem("AimMouse");
 			HideMenuItem("MouseControlAircraft");
 			HideMenuItem("FOVInputCurveMouse");
+			HideMenuItem("KeyboardCollective");
+			HideMenuItem("LogitechLED");	
 		}
 		
+		HideMenuItem("HotasCollective");
 		HideMenuItem("ShowPlatformIcon");
 #endif
 
@@ -133,7 +143,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void BindLanguage()
 	{
-		BaseContainer setting = GetGame().GetEngineUserSettings().GetModule("UserInterfaceSettings");
+		BaseContainer setting = GetGame().GetEngineUserSettings().GetModule(m_sUserInterfaceSettings);
 		if (!setting)
 			return;
 
@@ -174,7 +184,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnCrossplayChanged()
 	{
-		Widget w = m_wRoot.FindAnyWidget("AllowCrossplay");
+		const string settingName = "AllowCrossplay";
+		Widget w = m_wRoot.FindAnyWidget(settingName);
 		if (!w)
 			return;
 		
@@ -190,21 +201,26 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		}
 		
 		GetGame().UserSettingsChanged();
+		
+		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnLanguageChange(SCR_SpinBoxComponent comp, int i)
 	{
-		BaseContainer setting = GetGame().GetEngineUserSettings().GetModule("UserInterfaceSettings");
+		BaseContainer setting = GetGame().GetEngineUserSettings().GetModule(m_sUserInterfaceSettings);
 		if (!setting)
 			return;
 
 		if (!m_aLanguages.IsIndexValid(i))
 			return;
 
-		setting.Set("LanguageCode", m_aLanguages[i]);
+		const string settingName = "LanguageCode";
+		setting.Set(settingName, m_aLanguages[i]);
 		GetGame().UserSettingsChanged();
 		
 		m_OnLanguageChanged.Invoke(this);
+		
+		SCR_AnalyticsApplication.GetInstance().ChangeSetting(m_sUserInterfaceSettings, settingName);
 	}
 }

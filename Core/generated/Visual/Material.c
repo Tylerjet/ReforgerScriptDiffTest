@@ -26,18 +26,18 @@ sealed class Material: Managed
 	static proto ref Material GetOrLoadMaterial(ResourceName matName, int flags);
 	static proto ref Material Create(string name, string matClassName, map<string, string> params = null);
 	/*!
-	set parametr of material by string name
+	set param of material by string name
 	\param paramName	name of parameter
 	\param value		value
 	*/
 	proto bool SetParam(string paramName, void value);
 	/*!
-	reset parametr of material to default value
+	reset param of material to default value
 	\param paramName	name of parameter
 	*/
 	proto external void ResetParam(string paramName);
 	/*!
-	set parametr index for faster access to material properties
+	set param index for faster access to material properties
 	\param paramName	name of parameter
 	\return parameter index
 	*/

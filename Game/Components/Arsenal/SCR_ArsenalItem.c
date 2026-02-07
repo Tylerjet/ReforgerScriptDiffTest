@@ -22,6 +22,9 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	[Attribute(SCR_ECharacterRank.PRIVATE.ToString(), desc: "Player must meet or exceed this rank in order to purchase this item", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
 	protected SCR_ECharacterRank m_eRequiredRank;
 	
+	[Attribute("1", desc: "When true, buying the item consumes player's military allocated supplies. The cost is equal to supply cost of the item.")]
+	protected bool m_bUseMilitarySupplyAllocation;
+	
 	//~ Any attachements on the weapon or additional costs are saved for performance on cost calculation
 	protected ref array<SCR_ArsenalItem> m_aAdditionalCosts;
 	protected ref array<SCR_NonArsenalItemCostCatalogData> m_aNonArsenalAdditionalCosts;
@@ -90,7 +93,14 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 	{
 		return m_eRequiredRank;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Whether item uses Military Supply Allocation or not
+	bool GetUseMilitarySupplyAllocation()
+	{
+		return m_bUseMilitarySupplyAllocation;
+	}
+
 	//--------------------------------- Direct Getter general or any faction ---------------------------------\\
 
 	//------------------------------------------------------------------------------------------------
@@ -207,7 +217,7 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 			return;
 		
 		//~ Get attachemts only from weapons to save performance
-		if (m_eItemMode != SCR_EArsenalItemMode.WEAPON && m_eItemMode != SCR_EArsenalItemMode.WEAPON_VARIANTS)
+		if (m_eItemMode != SCR_EArsenalItemMode.WEAPON && m_eItemMode != SCR_EArsenalItemMode.WEAPON_VARIANTS && m_eItemMode != SCR_EArsenalItemMode.ATTACHMENT)
 			return;
 		
 		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(m_ItemResource);
@@ -215,19 +225,19 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 			return;
 		
 		array<IEntityComponentSource> componentSources = {};
+		SCR_EntityCatalog catalog = entry.GetCatalogParent();
+		array<SCR_BaseEntityCatalogData> entityDataList = {};
+
+		SCR_ArsenalItem arsenalData;
+		SCR_NonArsenalItemCostCatalogData nonArsenalData;
 		
 		//~ Get all attachments on the weapon
 		if (SCR_BaseContainerTools.FindComponentSourcesOfClass(entitySource, AttachmentSlotComponent, true, componentSources) > 0)
-		{	
-			SCR_EntityCatalog catalog = entry.GetCatalogParent();
+		{
 			SCR_EntityCatalogEntry attachmentEntry;
-			array<SCR_BaseEntityCatalogData> entityDataList = {};
 			ResourceName attachmentPrefab;
 			bool attachmentEnabled;
 			EntitySlotInfo slotInfo;
-			
-			SCR_ArsenalItem arsenalData;
-			SCR_NonArsenalItemCostCatalogData nonArsenalData;
 		
 			foreach (IEntityComponentSource attachmentSource : componentSources)
 			{
@@ -286,6 +296,53 @@ class SCR_ArsenalItem : SCR_BaseEntityCatalogData
 				
 				if (!foundData)
 					Print("Catalog Entry Arsenal Item: '" + WidgetManager.Translate(entry.GetEntityName()) + "' has an attachment which has no 'SCR_ArsenalItem' nor 'SCR_NonArsenalItemCostCatalogData' data in the catalog, thus it cannot get the supply cost from it. Attachment: '" + attachmentPrefab + "'", LogLevel.VERBOSE);
+			}
+		}
+		
+		//~ Get all ammunition in the weapon
+		if (SCR_BaseContainerTools.FindComponentSourcesOfClass(entitySource, BaseMuzzleComponent, true, componentSources) > 0)
+		{
+			SCR_EntityCatalogEntry ammoEntry;
+			ResourceName ammoPrefab;
+
+			foreach (IEntityComponentSource muzzleSource : componentSources)
+			{
+				muzzleSource.Get("MagazineTemplate", ammoPrefab);
+				if (ammoPrefab.IsEmpty())
+				{
+					muzzleSource.Get("AmmoTemplate", ammoPrefab);
+					if (ammoPrefab.IsEmpty())
+						continue;
+				}
+				
+				//~ Get the catalog entry with the given prefab
+				ammoEntry = catalog.GetEntryWithPrefab(ammoPrefab);
+				if (!ammoEntry)
+					continue;
+				
+				ammoEntry.GetEntityDataList(entityDataList);
+				foreach (SCR_BaseEntityCatalogData data : entityDataList)
+				{
+					arsenalData = SCR_ArsenalItem.Cast(data);
+					if (arsenalData)
+					{
+						if (!m_aAdditionalCosts)
+							m_aAdditionalCosts = {};
+						
+						m_aAdditionalCosts.Insert(arsenalData);
+						break;
+					}
+					
+					nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
+					if (nonArsenalData)
+					{
+						if (!m_aNonArsenalAdditionalCosts)
+							m_aNonArsenalAdditionalCosts = {};
+						
+						m_aNonArsenalAdditionalCosts.Insert(nonArsenalData);
+						break;
+					}
+				}
 			}
 		}
 	}

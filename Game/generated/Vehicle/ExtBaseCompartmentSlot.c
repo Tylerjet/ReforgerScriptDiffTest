@@ -38,6 +38,10 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external bool ShouldEjectUnconsciousDeadCharacters();
 	proto external void SetCharacterIsStrappedIn(bool val);
 	proto external bool ShouldCharactersFallOutWhenFlipped();
+	proto external bool GetCharacterHasCollision();
+	proto external void SetCharacterHasCollision(bool val);
+	//! Get the object name of the compartment in prefab or unique name if assigned on its properties and bPreferUnique == true.
+	proto external string GetCompartmentName(bool bPreferUnique = false);
 	//! Returns the manager ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID
 	proto external int GetCompartmentMgrID();
 	//! Returns the slot ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID

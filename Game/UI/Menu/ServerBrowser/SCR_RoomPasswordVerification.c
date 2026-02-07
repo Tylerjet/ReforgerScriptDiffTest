@@ -12,7 +12,7 @@ class SCR_RoomPasswordVerification
 	protected SCR_ConfigurableDialogUi m_Dialog;
 	protected SCR_LoadingOverlay m_LoadingOverlay;
 
-	protected ref SCR_BackendCallback m_Callback = new SCR_BackendCallback();
+	protected ref BackendCallback m_Callback = new BackendCallback();
 
 	protected ref ScriptInvokerVoid m_OnVerified = new ScriptInvokerVoid();
 	protected ref ScriptInvokerString m_OnFailVerification = new ScriptInvokerString();
@@ -55,8 +55,9 @@ class SCR_RoomPasswordVerification
 			m_LoadingOverlay.SetShown(true);
 		else
 			m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(GetGame().GetWorkspace(), string.Empty);
-		
-		m_Callback.GetEventOnResponse().Insert(OnPasswordCheckResponse);
+
+		m_Callback.SetOnSuccess(OnPasswordCheckResponse);
+		m_Callback.SetOnError(OnPasswordCheckError);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -97,7 +98,22 @@ class SCR_RoomPasswordVerification
 
 	//------------------------------------------------------------------------------------------------
 	//! Handle password check request response
-	protected void OnPasswordCheckResponse(SCR_BackendCallback callback)
+	protected void OnPasswordCheckResponse(BackendCallback callback)
+	{
+		// Hide loading
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.SetShown(false);
+
+		// Clear
+		ClearInvokers();
+
+		// Invoke verification with successful password struct
+		m_OnVerified.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle password check request response
+	protected void OnPasswordCheckError(BackendCallback callback)
 	{
 		// Hide loading
 		if (m_LoadingOverlay)
@@ -107,35 +123,19 @@ class SCR_RoomPasswordVerification
 		ClearInvokers();
 
 		// Reaction
-		switch (callback.GetResponseType())
+		if (callback.GetRestResult() == ERestResult.EREST_ERROR_TIMEOUT)
 		{
-			case EBackendCallbackResponse.SUCCESS:
-			{
-				// Invoke verification with successful password struct
-				m_OnVerified.Invoke();
-				break;
-			}
-
-			case EBackendCallbackResponse.ERROR:
-			{
-				//JoinProcess_PasswordDialogOpen(FALLBACK_ERROR);
-				m_OnFailVerification.Invoke(FALLBACK_ERROR);
-				break;
-			}
-
-			case EBackendCallbackResponse.TIMEOUT:
-			{
-				//JoinProcess_PasswordDialogOpen(FALLBACK_TIMEOUT);
-				m_OnFailVerification.Invoke(FALLBACK_TIMEOUT);
-				break;
-			}
+			m_OnFailVerification.Invoke(FALLBACK_TIMEOUT);
+		}
+		else
+		{
+			m_OnFailVerification.Invoke(FALLBACK_ERROR);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void ClearInvokers()
 	{
-		m_Callback.GetEventOnResponse().Remove(OnPasswordCheckResponse);
 		if(m_Dialog && m_Dialog.m_OnConfirm)
 			m_Dialog.m_OnConfirm.Remove(OnPasswordConfirm);
 	}

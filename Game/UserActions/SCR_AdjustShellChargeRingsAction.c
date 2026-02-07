@@ -46,9 +46,9 @@ class SCR_AdjustShellChargeRingsAction : SCR_AdjustSignalAction
 			return false;
 
 		if (!m_ShellConfig || m_ShellConfig.GetChargeRingConfigId() == -1 || m_ShellConfig.GetChargeRingConfigId() != m_ShellGadgetComp.GetCurentChargeRingConfigId() || m_ShellConfig.GetChargeRingConfigId() == m_iDefaultConfigId)
-			outName = SCR_StringHelper.Translate(actionInfo.GetName(), m_ShellGadgetComp.GetCurentChargeRingConfig()[0].ToString(0, 0));
+			outName = WidgetManager.Translate(actionInfo.GetName(), m_ShellGadgetComp.GetCurentChargeRingConfig()[0].ToString(0, 0));
 		else 
-			outName = SCR_StringHelper.Translate(actionInfo.GetDescription(), m_ShellGadgetComp.GetChargeRingConfig(m_ShellConfig.GetChargeRingConfigId())[0].ToString(0, 0));
+			outName = WidgetManager.Translate(actionInfo.GetDescription(), m_ShellGadgetComp.GetChargeRingConfig(m_ShellConfig.GetChargeRingConfigId())[0].ToString(0, 0));
 
 		return true;
 	}

@@ -31,6 +31,10 @@ sealed class InputManager: ActionManager
 	proto external bool SetLastUsedInputDevice(EInputDeviceType type);
 	//! Tells input manager, that is loading. IM than show hide cursor even without per frame updating
 	proto external void SetLoading(bool isLoading);
+	proto external bool IsJoystickConnected(int iSlotIndex);
+	proto external int GetJoystickVendorId(int iSlotIndex);
+	proto external int GetJoystickProductId(int iSlotIndex);
+	proto external string GetJoystickProductName(int iSlotIndex);
 	/*!
 	\brief Start to rumble a gamepad for specific user (if available). Intensty for low/high frequency is in range from 0 to 1
 	*/

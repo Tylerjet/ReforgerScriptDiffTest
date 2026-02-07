@@ -4,6 +4,8 @@ class SCR_FileIOHelper
 	protected static const string FORBIDDEN_FILENAME_CHARS_WINDOWS = "*/\\<>:|?\t\r\n\"";
 	protected static const string FORBIDDEN_FILENAME_CHARS_LINUX = SCR_StringHelper.SLASH;
 
+	protected static const ref array<ref SCR_FileInfo> FOUND_FILEINFOS = {};
+
 	//------------------------------------------------------------------------------------------------
 	//! OBSOLETE - use FileIO.MakeDirectory instead\n
 	//! Create sub-directories in the proper order, circumventing a FileIO.MakeDirectory limitation
@@ -52,11 +54,24 @@ class SCR_FileIOHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] directoryPath
+	//! \param[in] extension
+	//! \return
+	static array<string> FindFiles(string directoryPath, string extension)
+	{
+		array<string> result = {};
+		FileIO.FindFiles(result.Insert, directoryPath, extension);
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Copy source file to destination
 	//! \param[in] source file to copy
 	//! \param[in] destination copy destination
 	//! \param[in] overwrite set to false to prevent an accidental overwrite
 	//! \return true on success, false otherwise
+	[Obsolete("Use CopyFile instead")] // 2025-05-14
 	static bool Copy(string source, string destination, bool overwrite = true)
 	{
 		array<string> content = ReadFileContent(source);
@@ -68,13 +83,10 @@ class SCR_FileIOHelper
 
 #ifdef WORKBENCH
 		string absolutePath;
-		if (!FilePath.IsAbsolutePath(destination))
+		if (!FilePath.IsAbsolutePath(destination) && !Workbench.GetAbsolutePath(destination, absolutePath, false))
 		{
-			if (!Workbench.GetAbsolutePath(destination, absolutePath, false))
-			{
-				Print("Cannot get destination's absolute file path - " + destination, LogLevel.WARNING);
-				return false;
-			}
+			Print("Cannot get destination's absolute file path - " + destination, LogLevel.WARNING);
+			return false;
 		}
 #endif // WORKBENCH
 
@@ -91,6 +103,127 @@ class SCR_FileIOHelper
 		}
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Copy source file to destination - creating the destination directory if needed
+	//! \param[in] sourceFile
+	//! \param[in] destinationFile
+	//! \return true on success, false otherwise
+	static bool CopyFile(string sourceFile, string destinationFile)
+	{
+		if (!FileIO.FileExists(sourceFile))
+			return false;
+
+		if (FileIO.CopyFile(sourceFile, destinationFile))
+			return true;
+
+		if (!FileIO.MakeDirectory(FilePath.StripFileName(destinationFile)))
+			return false;
+
+		return FileIO.CopyFile(sourceFile, destinationFile);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Recursively copy a directory to another, existing or not. Overwrite is allowed so check before copying
+	//! \param[in] sourceDirectory can be relative or absolute
+	//! \param[in] destinationDirectory can be relative or absolute
+	//! \return true on success, false otherwise - it will (try to) copy all files, not halt on the first error
+	static bool CopyDirectory(string sourceDirectory, string destinationDirectory)
+	{
+#ifdef WORKBENCH
+		if (!Workbench.GetAbsolutePath(sourceDirectory, sourceDirectory, true))
+		{
+			Print("Wrong sourceDirectory provided", LogLevel.WARNING);
+			return false;
+		}
+
+		if (!Workbench.GetAbsolutePath(destinationDirectory, destinationDirectory, false))
+		{
+			Print("Wrong destinationDirectory provided", LogLevel.WARNING);
+			return false;
+		}
+#else // WORKBENCH
+		if (!FileIO.FileExists(sourceDirectory))
+		{
+			Print("Wrong sourceDirectory provided", LogLevel.WARNING);
+			return false;
+		}
+
+		if (!FileIO.FileExists(destinationDirectory))
+		{
+			Print("Wrong destinationDirectory provided", LogLevel.WARNING);
+			return false;
+		}
+#endif // WORKBENCH
+
+		array<ref SCR_FileInfo> directoryContent = GetDirectoryContent(sourceDirectory);
+		if (!directoryContent)
+		{
+			Print("Cannot get files from directory " + sourceDirectory, LogLevel.WARNING);
+			return false;
+		}
+
+		if (directoryContent.IsEmpty())
+		{
+			if (FileIO.FileExists(destinationDirectory))
+				return true;
+
+			return FileIO.MakeDirectory(destinationDirectory);
+		}
+
+		if (!FileIO.MakeDirectory(destinationDirectory))
+		{
+			Print("Cannot create " + destinationDirectory, LogLevel.ERROR);
+			return false;
+		}
+
+		bool result = true;
+
+		int sourceDirectoryLength = sourceDirectory.Length();
+		array<string> isDirCheck = {};
+		foreach (SCR_FileInfo fileInfo : directoryContent)
+		{
+			string newAbsPath = destinationDirectory + fileInfo.m_sFilePath.Substring(sourceDirectoryLength, fileInfo.m_sFilePath.Length() - sourceDirectoryLength);
+
+			if ((fileInfo.m_eAttributes | FileAttribute.DIRECTORY) == fileInfo.m_eAttributes)
+			{
+				if (!FileIO.MakeDirectory(fileInfo.m_sFilePath)) // returns true if the directory exists
+				{
+					PrintFormat("Cannot create directory %1", fileInfo.m_sFilePath, level: LogLevel.ERROR);
+					result = false;
+				}
+
+				continue;
+			}
+
+			// it is a file
+
+			string newAbsFileDir = FilePath.StripFileName(newAbsPath);
+			if (!FileIO.MakeDirectory(newAbsFileDir)) // returns true if the directory exists
+			{
+				PrintFormat("Cannot create directory %1", newAbsFileDir, level: LogLevel.ERROR);
+				result = false;
+			}
+
+			if (!FileIO.CopyFile(fileInfo.m_sFilePath, newAbsPath)) // CopyFile requires the directory to exist
+			{
+				PrintFormat("Cannot copy '%1' to '%2'", fileInfo.m_sFilePath, newAbsPath, level: LogLevel.ERROR);
+				result = false;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Fake a renaming by copying then deleting the source file
+	//! \param[in] sourceFile
+	//! \param[in] destinationFile
+	//! \return true on success, false on failure (no
+	static bool RenameFile(string sourceFile, string destinationFile)
+	{
+		return FileIO.CopyFile(sourceFile, destinationFile) && FileIO.DeleteFile(sourceFile);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -116,6 +249,20 @@ class SCR_FileIOHelper
 		return result;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] directory the directory to browse
+	//! \param[in] extension the extension of files for which to look
+	//! \return array of file information or null on error
+	static array<ref SCR_FileInfo> GetDirectoryContent(string directory, string extension = "")
+	{
+		if (!FileIO.FindFiles(FindFilesCallbackMethod, directory, extension))
+			return null;
+
+		array<ref SCR_FileInfo> result = SCR_ArrayHelperRefT<SCR_FileInfo>.GetCopy(FOUND_FILEINFOS);
+		FOUND_FILEINFOS.Clear();
+
+		return result;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get file content as array of lines
@@ -270,10 +417,7 @@ class SCR_FileIOHelper
 			forbiddenCharacters = FORBIDDEN_FILENAME_CHARS_LINUX;
 
 		fileName = FilePath.StripPath(fileName);
-		for (int i, len = forbiddenCharacters.Length(); i < len; i++)
-		{
-			fileName.Replace(forbiddenCharacters[i], string.Empty);
-		}
+		fileName = SCR_StringHelper.Filter(fileName, forbiddenCharacters, true);
 
 		fileName.TrimInPlace();
 		if (fileName.IsEmpty())
@@ -319,4 +463,26 @@ class SCR_FileIOHelper
 			|| platform == EPlatform.XBOX_SERIES_S
 			|| platform == EPlatform.XBOX_SERIES_X;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// FindFilesCallback
+	protected static void FindFilesCallbackMethod(string fileName, FileAttribute attributes = 0, string filesystem = string.Empty)
+	{
+		SCR_FileInfo fileInfo = new SCR_FileInfo();
+		fileInfo.m_sFilePath = fileName;
+		fileInfo.m_eAttributes = attributes;
+		fileInfo.m_sFileSystem = filesystem;
+		FOUND_FILEINFOS.Insert(fileInfo);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	protected void SCR_FileIOHelper();
+}
+
+class SCR_FileInfo
+{
+	string m_sFilePath;
+	FileAttribute m_eAttributes;
+	string m_sFileSystem;
 }

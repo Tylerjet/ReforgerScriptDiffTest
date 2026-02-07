@@ -73,7 +73,8 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 	
 	int AddItem(SCR_BasePlayerLoadout loadout, bool enabled = true)
 	{
-		Widget loadoutEntry = GetGame().GetWorkspace().CreateWidgets(m_sLoadoutButton);
+		Widget supplies = GetGame().GetWorkspace().FindAnyWidget("w_Supplies");
+		Widget loadoutEntry = GetGame().GetWorkspace().CreateWidgets(m_sLoadoutButton, supplies);
 		SCR_LoadoutButton loadoutBtn = SCR_LoadoutButton.Cast(loadoutEntry.FindHandler(SCR_LoadoutButton));
 		if (loadoutBtn)
 		{

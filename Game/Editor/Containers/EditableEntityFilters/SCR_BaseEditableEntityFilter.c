@@ -14,19 +14,19 @@ class SCR_BaseEditableEntityFilter
 {
 	[Attribute(desc: "Entity state this component manages.", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityState))]
 	protected EEditableEntityState m_State;
-	
+
 	[Attribute(desc: "Entity state which preceeds this component.\nOnly entities which are registered in the predecessor will be evaluated by this component.", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityState))]
 	protected EEditableEntityState m_PredecessorState;
-	
+
 	[Attribute(defvalue: "0", desc: "True if predecessors' entities should be automatically registered in this component as well.", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditableEntityFilterAutoAdd))]
 	protected EEditableEntityFilterAutoAdd m_bAutoAdd;
-	
+
 	[Attribute(desc: "When true, entities with IGNORE_LAYERS will not be evaluated when their parent changes state of this filter.")]
 	protected bool m_bSkipIgnored;
-	
+
 	[Attribute(desc: "When true, only entities without NON_INTERACTIVE flag will be allowed in.")]
 	protected bool m_bOnlyInteractive;
-	
+
 	protected SCR_EditableEntityCore m_Core;
 	protected SCR_EntitiesManagerEditorComponent m_Manager;
 	protected SCR_BaseEditableEntityFilter m_Predecessor;
@@ -34,7 +34,7 @@ class SCR_BaseEditableEntityFilter
 	protected int m_iEntitiesCount; //--- Cached value for faster access
 	protected string m_sStateName = "N/A";
 	protected ref ScriptInvokerBase<SCR_BaseEditableEntityFilter_OnChange> m_OnChange = new ScriptInvokerBase<SCR_BaseEditableEntityFilter_OnChange>();
-	
+
 #ifdef ENTITY_FILTER_DEBUG
 	protected EEditableEntityState m_DebugState = EEditableEntityState.FOCUSED;
 #endif
@@ -145,18 +145,15 @@ class SCR_BaseEditableEntityFilter
 		}
 		else
 		{
-			if (m_bAutoAdd == EEditableEntityFilterAutoAdd.NEVER) return 0;
-			
+			if (m_bAutoAdd == EEditableEntityFilterAutoAdd.NEVER)
+				return 0;
+
 			//--- Get entities filtered by the predecessor
 			if (m_Predecessor)
-			{
 				m_Predecessor.GetEntities(entities);
-			}
 			else if (GetCore())
-			{
 				GetCore().GetAllEntities(entities);
-			}
-			
+
 			//--- Remove incompatible entities
 			if (evaluate)
 			{
@@ -170,11 +167,11 @@ class SCR_BaseEditableEntityFilter
 				}
 			}
 		}
-			
+
 		//--- Add children of filtered entities
 		if (includeChildren)
 			InsertChildren(entities);
-		
+
 		return entities.Count();
 	}
 	/*!
@@ -187,6 +184,7 @@ class SCR_BaseEditableEntityFilter
 		//if (m_Entities) return m_Entities.Count();
 		//return 0;
 	}
+	
 	/*!
 	Check if the filter contains any entities.
 	\return True when empty
@@ -195,6 +193,7 @@ class SCR_BaseEditableEntityFilter
 	{
 		return m_iEntitiesCount == 0;
 	}
+	
 	/*!
 	Get the first cached entity.
 	\return Entity. When no entity is registered or no array is cached, null is returned.
@@ -204,6 +203,7 @@ class SCR_BaseEditableEntityFilter
 		if (m_Entities && !m_Entities.IsEmpty()) return m_Entities[0];
 		return null;
 	}
+	
 	/*!
 	Check if given entity is among cached entities.
 	\return True if registered
@@ -212,6 +212,7 @@ class SCR_BaseEditableEntityFilter
 	{
 		return m_Entities && m_Entities.Find(entity) != -1;
 	}
+	
 	/*!
 	Get script invoker which is triggered every time some entities are added or removed.
 	\return Script invoker
@@ -220,12 +221,13 @@ class SCR_BaseEditableEntityFilter
 	{
 		return m_OnChange;
 	}
-	
+
 	protected int GetEntitiesPointer(out set<SCR_EditableEntityComponent> entities)
 	{
 		entities = m_Entities; //--- Faster, but unsafe
 		return m_iEntitiesCount;
 	}
+
 	protected SCR_EditableEntityComponent GetParentBelowCurrentLayer(SCR_EditableEntityComponent entity)
 	{
 		SCR_LayersEditorComponent layersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
@@ -237,18 +239,21 @@ class SCR_BaseEditableEntityFilter
 		}
 		return entity;
 	}
+
 	protected sealed SCR_EntitiesManagerEditorComponent GetManager()
 	{
 		return m_Manager;
 	}
+
 	protected sealed SCR_EditableEntityCore GetCore()
 	{
 		return m_Core;
 	}
+
 	protected void InitEntities()
 	{
 		if (m_Entities) return;
-		
+
 		//--- Filter only compatible entities
 		if (m_bAutoAdd != EEditableEntityFilterAutoAdd.NEVER)
 		{
@@ -264,7 +269,7 @@ class SCR_BaseEditableEntityFilter
 			m_iEntitiesCount = 0;
 		}
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Array manipulation
 	protected void OnChanged(set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
@@ -272,15 +277,17 @@ class SCR_BaseEditableEntityFilter
 		m_OnChange.Invoke(m_State, entitiesInsert, entitiesRemove);
 		m_Manager.SetInSuccessors(m_State, entitiesInsert, entitiesRemove);
 	}
+
 	protected void OnChanged()
 	{
 		m_OnChange.Invoke(m_State, m_Entities, null);
 	}
+
 	/*! @name Array Manipulation Functions
 	Functions to add or remove entities to the cached array.
 	*/
 	///@{
-	
+
 	/*!
 	Register given entity.
 	\param entityInsert Entity to be registered
@@ -289,11 +296,15 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Add(SCR_EditableEntityComponent entityInsert, bool onlyDirect = false)
 	{
-		if (!entityInsert) return false;
+		if (!entityInsert)
+			return false;
+		
 		set<SCR_EditableEntityComponent> entitiesInsert = new set<SCR_EditableEntityComponent>;
 		entitiesInsert.Insert(entityInsert);
+		
 		return Add(entitiesInsert, onlyDirect);
 	}
+
 	/*!
 	Register multiple entities.
 	\param entitiesInsert Entities to be registered
@@ -302,20 +313,26 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Add(notnull set<SCR_EditableEntityComponent> entitiesInsert, bool onlyDirect = false)
 	{
-		if (!m_Entities) return false;
-		
+		if (!m_Entities)
+			return false;
+
 		bool isChange = false;
 		set<SCR_EditableEntityComponent> entitiesInsertProcessed = new set<SCR_EditableEntityComponent>;
-		if (!onlyDirect) InsertChildren(entitiesInsert);
-		foreach (SCR_EditableEntityComponent entity: entitiesInsert)
+		if (!onlyDirect)
+			InsertChildren(entitiesInsert);
+		
+		foreach (SCR_EditableEntityComponent entity : entitiesInsert)
 		{
 			if (AddToArray(entity, isChange))
 				entitiesInsertProcessed.Insert(entity);
 		}
-		if (isChange) OnChanged(entitiesInsertProcessed, null);
+		
+		if (isChange)
+			OnChanged(entitiesInsertProcessed, null);
+		
 		return isChange;
 	}
-	
+
 	/*!
 	Unregister given entity.
 	\param entityRemove Entity to be unregistered
@@ -324,11 +341,15 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Remove(SCR_EditableEntityComponent entityRemove, bool onlyDirect = false)
 	{
-		if (!entityRemove) return false;
+		if (!entityRemove)
+			return false;
+		
 		set<SCR_EditableEntityComponent> entitiesRemove = new set<SCR_EditableEntityComponent>;
 		entitiesRemove.Insert(entityRemove);
+		
 		return Remove(entitiesRemove, onlyDirect);
 	}
+
 	/*!
 	Unregister multiple entities.
 	\param entitiesRemove Entities to be unregistered
@@ -337,20 +358,25 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Remove(notnull set<SCR_EditableEntityComponent> entitiesRemove, bool onlyDirect = false)
 	{
-		if (!m_Entities) return false;
-		
+		if (!m_Entities)
+			return false;
+
 		bool isChange = false;
 		set<SCR_EditableEntityComponent> entitiesRemoveProcessed = new set<SCR_EditableEntityComponent>;
-		if (!onlyDirect) InsertChildren(entitiesRemove);
-		foreach (SCR_EditableEntityComponent entity: entitiesRemove)
+		if (!onlyDirect)
+			InsertChildren(entitiesRemove);
+
+		foreach (SCR_EditableEntityComponent entity : entitiesRemove)
 		{
 			if (RemoveFromArray(entity, isChange))
 				entitiesRemoveProcessed.Insert(entity);
 		}
-		if (isChange) OnChanged(null, entitiesRemoveProcessed);
+		if (isChange)
+			OnChanged(null, entitiesRemoveProcessed);
+
 		return isChange;
 	}
-	
+
 	/*!
 	Toggle state of given entity, i.e., register it if it's unregistered and unregister it if it's registered.
 	\param entity Affected entity
@@ -364,6 +390,7 @@ class SCR_BaseEditableEntityFilter
 		else
 			return Remove(entity, onlyDirect);
 	}
+
 	/*!
 	Toggle state of given entities, i.e., register them if they're unregistered and unregister them if they're registered.
 	\param entities Affected entities
@@ -372,20 +399,22 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Toggle(notnull set<SCR_EditableEntityComponent> entities, bool onlyDirect = false)
 	{
-		if (!m_Entities) return false;
-		
+		if (!m_Entities)
+			return false;
+
 		set<SCR_EditableEntityComponent> entitiesInsert = new set<SCR_EditableEntityComponent>;
 		set<SCR_EditableEntityComponent> entitiesRemove = new set<SCR_EditableEntityComponent>;
-		foreach (SCR_EditableEntityComponent entity: entities)
+		foreach (SCR_EditableEntityComponent entity : entities)
 		{
 			if (Contains(entity))
 				entitiesRemove.Insert(entity);
 			else
 				entitiesInsert.Insert(entity);
 		}
+
 		return Set(entitiesInsert, entitiesRemove, onlyDirect);
 	}
-	
+
 	/*!
 	Replace cached array with given entity. ALl currently registered entities will be removed.
 	\param entityInsert Entity to be registered
@@ -396,7 +425,7 @@ class SCR_BaseEditableEntityFilter
 	bool Replace(SCR_EditableEntityComponent entityInsert, bool onlyDirect = false, bool keepExisting = false)
 	{
 		if (!m_Entities) return false;
-		
+
 		if (entityInsert)
 		{
 			set<SCR_EditableEntityComponent> entitiesInsert = new set<SCR_EditableEntityComponent>;
@@ -417,8 +446,9 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Replace(set<SCR_EditableEntityComponent> entitiesInsert, bool onlyDirect = false, bool keepExisting = false)
 	{
-		if (!m_Entities) return false;
-		
+		if (!m_Entities)
+			return false;
+
 		/*
 		set<SCR_EditableEntityComponent> entitiesRemove = new set<SCR_EditableEntityComponent>;
 		entitiesRemove.Copy(m_Entities);
@@ -426,16 +456,16 @@ class SCR_BaseEditableEntityFilter
 		*/
 
 		if (!onlyDirect) InsertChildren(entitiesInsert);
-		
+
 		bool isChange = false;
 		set<SCR_EditableEntityComponent> entitiesInsertProcessed = new set<SCR_EditableEntityComponent>;
 		set<SCR_EditableEntityComponent> entitiesRemoveProcessed = new set<SCR_EditableEntityComponent>;
-		
+
 		//--- Process existing entities
 		if (keepExisting)
 		{
 			//--- Append all existing entities
-			foreach (SCR_EditableEntityComponent entity: m_Entities)
+			foreach (SCR_EditableEntityComponent entity : m_Entities)
 			{
 				entitiesInsert.Insert(entity);
 			}
@@ -456,10 +486,10 @@ class SCR_BaseEditableEntityFilter
 				}
 			}
 		}
-		
+
 		//--- Process new entities and make sure they are in the list
 		bool isChangeEntity;
-		foreach (SCR_EditableEntityComponent entityInsert: entitiesInsert)
+		foreach (SCR_EditableEntityComponent entityInsert : entitiesInsert)
 		{
 			isChangeEntity = false;
 			if (AddToArray(entityInsert, isChangeEntity, true))
@@ -514,31 +544,33 @@ class SCR_BaseEditableEntityFilter
 	bool Set(set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove, bool onlyDirect = false)
 	{
 		if (!m_Entities) return false;
-		
+
 		//--- When one fhe arrays is empty, use specialized function instead
 		bool entitiesInsertEmpty = !entitiesInsert || entitiesInsert.IsEmpty();
 		bool entitiesRemoveEmpty = !entitiesRemove || entitiesRemove.IsEmpty();
 		if (entitiesRemoveEmpty)
 		{
-			if (!entitiesInsertEmpty) return Add(entitiesInsert, onlyDirect);
+			if (!entitiesInsertEmpty)
+				return Add(entitiesInsert, onlyDirect);
 			return false; //--- Both Insert and Remove arrays are empty, terminate
 		}
 		else
 		{
-			if (entitiesInsertEmpty) return Remove(entitiesRemove, onlyDirect);
+			if (entitiesInsertEmpty)
+				return Remove(entitiesRemove, onlyDirect);
 		}
-		
+
 		//--- Add children entities
 		if (!onlyDirect)
 		{
 			InsertChildren(entitiesInsert);
 			InsertChildren(entitiesRemove);
 		}
-		
+
 		bool isChange = false;
 		set<SCR_EditableEntityComponent> entitiesInsertProcessed = new set<SCR_EditableEntityComponent>;
 		set<SCR_EditableEntityComponent> entitiesRemoveProcessed = new set<SCR_EditableEntityComponent>;
-		foreach (SCR_EditableEntityComponent entity: entitiesRemove)
+		foreach (SCR_EditableEntityComponent entity : entitiesRemove)
 		{
 			//--- Don't remove what's to be added anyway
 			int insertID = entitiesInsert.Find(entity);
@@ -547,11 +579,11 @@ class SCR_BaseEditableEntityFilter
 				entitiesInsert.Remove(insertID);
 				continue;
 			}
-			
+
 			if (RemoveFromArray(entity, isChange))
 				entitiesRemoveProcessed.Insert(entity);
 		}
-		foreach (SCR_EditableEntityComponent entity: entitiesInsert)
+		foreach (SCR_EditableEntityComponent entity : entitiesInsert)
 		{
 			if (AddToArray(entity, isChange))
 				entitiesInsertProcessed.Insert(entity);
@@ -585,11 +617,11 @@ class SCR_BaseEditableEntityFilter
 	{
 		if (!m_Entities)
 			return false;
-		
+
 		bool isChange = false;
 		set<SCR_EditableEntityComponent> entitiesInsertProcessed = new set<SCR_EditableEntityComponent>;
 		set<SCR_EditableEntityComponent> entitiesRemoveProcessed = new set<SCR_EditableEntityComponent>;
-		
+
 		if (AddToArray(entity, isChange, true))
 		{
 			if (isChange)
@@ -599,7 +631,7 @@ class SCR_BaseEditableEntityFilter
 		{
 			entitiesRemoveProcessed.Insert(entity);
 		}
-		
+
 		if (isChange) OnChanged(entitiesInsertProcessed, entitiesRemoveProcessed);
 		return isChange;
 	}
@@ -610,7 +642,7 @@ class SCR_BaseEditableEntityFilter
 	bool Clear()
 	{
 		if (!m_Entities) return false;
-		
+
 		set<SCR_EditableEntityComponent> entitiesRemove = new set<SCR_EditableEntityComponent>;
 		entitiesRemove.Copy(m_Entities);
 		return Remove(entitiesRemove, true);
@@ -629,11 +661,11 @@ class SCR_BaseEditableEntityFilter
 		return Replace(entities, onlyDirect);
 	}
 	///@}
-	
+
 	protected sealed void InsertChildren(out set<SCR_EditableEntityComponent> entities)
 	{
 		if (!entities || entities.IsEmpty()) return;
-		
+
 		//--- Copy the array first, so we don't modify it while processing it (set.Insert() doesn't add to the end)
 		set<SCR_EditableEntityComponent> entitiesCopy = new set<SCR_EditableEntityComponent>;
 		entitiesCopy.Copy(entities);
@@ -643,7 +675,7 @@ class SCR_BaseEditableEntityFilter
 			entitiesCopy[i].GetChildren(entities, false, m_bSkipIgnored);
 		}
 	}
-	
+
 	protected sealed bool AddToArray(SCR_EditableEntityComponent entity, out bool isChange, bool returnWhenExists = false)
 	{
 		if (
@@ -658,15 +690,15 @@ class SCR_BaseEditableEntityFilter
 				entity.Log(string.Format("Cannot set entity as %1, it's not registered!", GetStateName()), true, LogLevel.WARNING);
 				return false;
 			}
-			
+
 			//--- Add the entity. If it's already added, return straight away (but do not modify isChange)
 			if (!m_Entities.Insert(entity))
 				return returnWhenExists;
-			
+
 			m_iEntitiesCount++;
 			entity.SetEntityState(m_State, true);
 			isChange = true;
-			
+
 #ifdef ENTITY_FILTER_DEBUG
 			if ((m_DebugState & m_State) == m_State)
 				entity.Log(typename.EnumToString(EEditableEntityState, m_State), true);
@@ -684,7 +716,7 @@ class SCR_BaseEditableEntityFilter
 			m_iEntitiesCount--;
 			entity.SetEntityState(m_State, false);
 			isChange = true;
-			
+
 #ifdef ENTITY_FILTER_DEBUG
 			if ((m_DebugState & m_State) == m_State)
 				entity.Log(typename.EnumToString(EEditableEntityState, m_State), true, LogLevel.WARNING);
@@ -705,43 +737,45 @@ class SCR_BaseEditableEntityFilter
 		SCR_EditorModeEntity mode = SCR_EditorModeEntity.Cast(GetManager().GetOwner());
 		if (mode)
 			ownerName = typename.EnumToString(EEditorMode, mode.GetModeType()) + ": ";
-		
+
 		Print("--------------------------------------------------", LogLevel.DEBUG);
 		Print(string.Format("--- %1%2 (%3)", ownerName, m_sStateName, GetEntitiesCount()), LogLevel.DEBUG);
 		set<SCR_EditableEntityComponent> entities;
 		GetEntitiesPointer(entities);
-		foreach (SCR_EditableEntityComponent entity: entities)
+		foreach (SCR_EditableEntityComponent entity : entities)
 		{
 			if (entity) entity.Log("", true);
 		}
 		Print("--------------------------------------------------", LogLevel.DEBUG);
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Functions called from entities manager
 	void OnFrameBase(float timeSlice)
 	{
 		EOnEditorFrame(timeSlice);
 	}
+	
 	void OnActivateBase()//out set<SCR_EditableEntityComponent> entities)
 	{
 		m_Core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_sStateName = Type().EnumToString(EEditableEntityState, m_State);
-		
+
 		EOnEditorActivate();
 		InitEntities(); //--- Must be after EOnEditorActivate(), so the manager can initialize before entities are filled
 	}
+	
 	void OnDeactivateBase()
 	{
 		//--- Previously used to call state change handlers on entities
 		//if (m_Manager && !m_Manager.IsRemoved())
 		//	Clear();
-		
+
 		m_Entities = null;
 		m_iEntitiesCount = 0;
 		EOnEditorDeactivate();
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	/*! @name Override Functions
 	Functions to be overridden by child classes (all of them local to the editor owner).
@@ -763,4 +797,4 @@ class SCR_BaseEditableEntityFilter
 	//! Every frame while the editor is opened
 	protected void EOnEditorFrame(float timeSlice);
 	///@}
-};
+}

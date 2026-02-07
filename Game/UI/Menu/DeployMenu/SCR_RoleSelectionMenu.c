@@ -9,6 +9,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 	protected SCR_FactionManager m_FactionManager;
 	protected SCR_FactionPlayerList m_FactionPlayerList;
+	protected SCR_GroupPlayerList m_GroupPlayerList;
 
 	protected SCR_BaseGameMode m_GameMode;
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
@@ -242,9 +243,9 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		{
 			m_FactionPlayerList.SetFaction(faction);
 			m_FactionPlayerList.ShowPlayerList(true);
-		}
-		
+		}	
 		m_LoadoutRequestUIHandler.ShowLoadoutSelector(false);
+
 	}
 
 	//! Shows the loadout selector on the right side of role selection screen.
@@ -252,8 +253,25 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	{
 		if (m_FactionPlayerList)
 			m_FactionPlayerList.ShowPlayerList(false);
+		
+		SCR_PlayerControllerGroupComponent plyGroupComp = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!plyGroupComp)
+			return;
+
+		// can show after the player is added to the group
+		if (plyGroupComp.GetGroupID() < 0)
+			return;
 
 		m_LoadoutRequestUIHandler.ShowLoadoutSelector(true);
+	}
+	
+	//! Shows the Player List selector on the right side of role selection screen
+	protected void ShowGroupPlayerList()
+	{
+		if (m_FactionPlayerList)
+			m_FactionPlayerList.ShowPlayerList(false);
+		
+		m_LoadoutRequestUIHandler.ShowLoadoutSelector(false);
 	}
 
 	//! Updates the session's player count.
@@ -377,6 +395,10 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		OnPlayerGroupJoined(group);
 
 		m_ContinueButton.SetEnabled(CanContinue());
+
+		m_LoadoutRequestUIHandler.ShowAvailableLoadouts(group.GetFaction());
+
+		ShowLoadoutList();
 	}
 	
 	protected void OnPlayerLoadoutRequest(SCR_PlayerLoadoutComponent component, int loadoutIndex)

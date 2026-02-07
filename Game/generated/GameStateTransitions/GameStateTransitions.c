@@ -23,15 +23,13 @@ sealed class GameStateTransitions
 	static proto bool RequestPublicServerTransition(JsonApiStruct config);
 	//! Request transition from main menu to gameplay as client connected to server in multiplayer session.
 	static proto bool RequestConnectViaRoom(Room room);
-	//! Request change of mission
-	[Obsolete("Use RequestScenarioChangeTransition instead!")]
-	static proto bool RequestMissionChangeTransition(MissionHeader mission);
 	/*!
 	Request change of scenario.
-	\param resourceStr Uses string instead of ResourceName. ResourceName would be invalidated on addon reload
+	\param missionOrWorld MissionHeader or World resource to transition into.
+	\param worldSystemsConfig Config file for initializing world systems. Leave empty to use default.
 	\param addonList List of addons to load. Leave empty for vanilla.
 	*/
-	static proto bool RequestScenarioChangeTransition(string resourceStr, string addonList);
+	static proto bool RequestScenarioChangeTransition(ResourceName missionOrWorld, ResourceName worldSystemsConfig, string addonList);
 	/*!
 	Request restart of scenario in both SP and MP.
 	Must be called on server in case of MP game.

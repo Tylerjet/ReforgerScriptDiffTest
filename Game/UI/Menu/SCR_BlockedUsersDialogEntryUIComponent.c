@@ -48,7 +48,14 @@ class SCR_BlockedUsersDialogEntryUIComponent : SCR_ScriptedWidgetComponent
 		if (!m_wPlayerName)
 			return;
 		
+		m_sPlayerName = name;
 		m_wPlayerName.SetText(name);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetPlayerName()
+	{
+		return m_sPlayerName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -74,7 +81,7 @@ class SCR_BlockedUsersDialogEntryUIComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void SetButtonsVisibility(bool newVis)
 	{
-		m_ProfileButton.SetVisible(newVis);
+		//m_ProfileButton.SetVisible(newVis);
 		m_UnblockButton.SetVisible(newVis);
 	}
 	

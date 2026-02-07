@@ -366,7 +366,7 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 		string absolutePath;
 		foreach (string scriptDir : scriptDirectories)
 		{
-			foreach (ResourceName resourceName : SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "c" }, null, scriptDir, true))
+			foreach (ResourceName resourceName : SCR_WorkbenchHelper.SearchWorkbenchResources({ "c" }, null, scriptDir, true))
 			{
 
 				if (resourceName.GetPath() != __FILE__ && Workbench.GetAbsolutePath(resourceName.GetPath(), absolutePath, true))
@@ -387,7 +387,7 @@ class SCR_ClassRenamingPlugin : WorkbenchPlugin
 		string absolutePath;
 		foreach (string directory : directories)
 		{
-			foreach (ResourceName resourceName : SCR_WorldEditorToolHelper.SearchWorkbenchResources({ extension }, null, directory, true))
+			foreach (ResourceName resourceName : SCR_WorkbenchHelper.SearchWorkbenchResources({ extension }, null, directory, true))
 			{
 				if (Workbench.GetAbsolutePath(resourceName.GetPath(), absolutePath, true))
 					result.Insert(absolutePath);

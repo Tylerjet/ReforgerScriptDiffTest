@@ -12,6 +12,10 @@ class SCR_BaseDeployableInventoryItemComponentClass : ScriptComponentClass
 	}
 }
 
+void DeployableStateChanged(bool newState, SCR_BaseDeployableInventoryItemComponent component);
+typedef func DeployableStateChanged;
+typedef ScriptInvokerBase<DeployableStateChanged> SCR_DeployableItemState;
+
 //! Base class which all deployable inventory items inherit from
 class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 {
@@ -32,9 +36,9 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	protected bool m_bIsDeploying;
 
 	[RplProp()]
-	protected int m_iItemOwnerID = -1;
+	protected int m_iItemOwnerID;
 
-	protected ref ScriptInvokerBool m_OnDeployedStateChanged;
+	protected ref SCR_DeployableItemState m_OnDeployedStateChanged;
 	
 	protected bool m_bWasDeployed;
 	protected IEntity m_PreviousOwner;
@@ -52,10 +56,10 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvokerBool GetOnDeployedStateChanged()
+	SCR_DeployableItemState GetOnDeployedStateChanged()
 	{
 		if (!m_OnDeployedStateChanged)
-			m_OnDeployedStateChanged = new ScriptInvokerBool();
+			m_OnDeployedStateChanged = new SCR_DeployableItemState();
 
 		return m_OnDeployedStateChanged;
 	}
@@ -80,7 +84,9 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
 	protected void RPC_PlaySoundOnDeployBroadcast(bool deploy)
 	{
-		SoundComponent soundComp = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
+		const IEntity owner = GetOwner();
+		
+		SoundComponent soundComp = SoundComponent.Cast(owner.FindComponent(SoundComponent));
 		if (soundComp)
 		{
 			if (deploy)
@@ -91,14 +97,10 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 			return;
 		}
 
-		SCR_SoundManagerEntity soundMan = GetGame().GetSoundManagerEntity();
-		if (!soundMan)
-			return;
-
 		if (deploy)
-			soundMan.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_DEPLOY);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(owner, SCR_SoundEvent.SOUND_DEPLOY);
 		else
-			soundMan.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_UNDEPLOY);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(owner, SCR_SoundEvent.SOUND_UNDEPLOY);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -148,9 +150,7 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 		replacementComp.GetOnCompositionDestroyed().Insert(OnCompositionDestroyed);
 
 		m_bIsDeployed = true;
-		if (userEntity)
-			m_iItemOwnerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(userEntity);
-		
+		SetItemOwner(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(userEntity));
 		Replication.BumpMe();
 
 		if (m_bEnableSounds && !reload)
@@ -164,7 +164,7 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 			garbageSystem.Withdraw(owner);
 
 		if (m_OnDeployedStateChanged)
-			m_OnDeployedStateChanged.Invoke(m_bIsDeployed);
+			m_OnDeployedStateChanged.Invoke(m_bIsDeployed, this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 		Rpc(RPC_SetTransformBroadcast, m_aOriginalTransform);
 
 		m_bIsDeployed = false;
-		m_iItemOwnerID = -1;
+		m_iItemOwnerID = 0;
 		Replication.BumpMe();
 
 		if (m_bEnableSounds && !reload)
@@ -205,9 +205,15 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 			garbageSystem.Insert(GetOwner());
 
 		if (m_OnDeployedStateChanged)
-			m_OnDeployedStateChanged.Invoke(m_bIsDeployed);
+			m_OnDeployedStateChanged.Invoke(m_bIsDeployed, this);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	void SetItemOwner(int playerId)
+	{
+		m_iItemOwnerID = playerId;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Dismantle and redeploy to update settings
 	void Reload()
@@ -274,7 +280,7 @@ class SCR_BaseDeployableInventoryItemComponent : ScriptComponent
 		super.OnDelete(owner);
 
 		if (m_OnDeployedStateChanged)
-			m_OnDeployedStateChanged.Invoke(false);
+			m_OnDeployedStateChanged.Invoke(false, this);
 
 		if (!m_bIsDeployed || !m_RplComponent || m_RplComponent.IsProxy())
 			return;

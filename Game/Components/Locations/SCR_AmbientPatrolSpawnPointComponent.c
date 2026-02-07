@@ -29,6 +29,12 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	[Attribute("0")]
 	protected bool m_bPickRandomGroupType;
 
+	[Attribute("-1", desc: "Overrides the system’s spawn distance for this spawn point (in meters). Use -1 to inherit the default. Value is clamped by min/max spawn distances.")]
+	protected int m_iSpawnDistanceOverride;
+
+	[Attribute("-1", desc: "Overrides the system’s despawn distance for this spawn point (in meters). Use -1 to inherit the default. Value is clamped by min/max despawn distances.")]
+	protected int m_iDespawnDistanceOverride;
+
 	[Attribute("0", UIWidgets.EditBox, "How often will the group respawn. (seconds, 0 = no respawn)", "0 inf 1")]
 	protected int m_iRespawnPeriod;
 
@@ -36,35 +42,26 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	protected float m_fAILimitThreshold;
 
 	protected bool m_bSpawned;
-	protected bool m_bActive = false;
 	protected bool m_bPaused;
-
-	protected int m_iID;
-	protected int m_iMembersAlive = -1;
-
-	protected WorldTimestamp m_fRespawnTimestamp;
-	protected WorldTimestamp m_fDespawnTimer;
-
+	protected bool m_bGroupActive;
+	protected int m_iMembersAlive = -1; //How many were alive during despawn to respawn again later
 	protected AIWaypoint m_Waypoint;
-
 	protected ResourceName m_sPrefab;
-
 	protected SCR_AIGroup m_Group;
-
 	protected Faction m_SavedFaction;
+	protected WorldTimestamp m_RespawnTimestamp;
+	protected WorldTimestamp m_DespawnTimestamp;
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] ID
-	void SetID(int ID)
+	int GetSpawnDistanceOverride()
 	{
-		m_iID = ID;
+		return m_iSpawnDistanceOverride;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetID()
+	int GetDespawnDistanceOverride()
 	{
-		return m_iID;
+		return m_iDespawnDistanceOverride;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -119,30 +116,30 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] time
-	void SetDespawnTimer(WorldTimestamp time)
+	void SetDespawnTimestamp(WorldTimestamp time)
 	{
-		m_fDespawnTimer = time;
+		m_DespawnTimestamp = time;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	WorldTimestamp GetDespawnTimer()
+	WorldTimestamp GetDespawnTimestamp()
 	{
-		return m_fDespawnTimer;
+		return m_DespawnTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] timestamp
 	void SetRespawnTimestamp(WorldTimestamp timestamp)
 	{
-		m_fRespawnTimestamp = timestamp;
+		m_RespawnTimestamp = timestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	WorldTimestamp GetRespawnTimestamp()
 	{
-		return m_fRespawnTimestamp;
+		return m_RespawnTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -153,12 +150,27 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetspawnedGroup(SCR_AIGroup group)
+	{
+		m_Group = group;
+		
+		if (m_iRespawnPeriod != 0)
+			m_Group.GetOnAgentRemoved().Insert(OnAgentRemoved);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	AIWaypoint GetWaypoint()
 	{
 		return m_Waypoint;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void SetWaypoint(AIWaypoint wp)
+	{
+		m_Waypoint = wp;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected ResourceName GetRandomPrefabByProbability(notnull SCR_EntityCatalog entityCatalog, notnull array<SCR_EntityCatalogEntry> data)
 	{
@@ -216,12 +228,10 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 			PrepareWaypoints();
 
 		m_SavedFaction = faction;
-
 		if (!faction)
 			return;
 
 		SCR_EntityCatalog entityCatalog = faction.GetFactionEntityCatalogOfType(EEntityCatalogType.GROUP);
-
 		if (!entityCatalog)
 			return;
 
@@ -241,12 +251,10 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 		{
 			int catalogIndex = data[i].GetCatalogIndex();
 			catalogEntry = entityCatalog.GetCatalogEntry(catalogIndex);
-
 			if (!catalogEntry)
 				continue;
 
 			patrolData = SCR_EntityCatalogAmbientPatrolData.Cast(catalogEntry.GetEntityDataOfType(SCR_EntityCatalogAmbientPatrolData));
-
 			if (!patrolData)
 				continue;
 
@@ -296,22 +304,12 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 		}
 
 		SCR_AmbientPatrolSpawnPointComponentClass componentData = SCR_AmbientPatrolSpawnPointComponentClass.Cast(GetComponentData(GetOwner()));
-
 		if (!componentData)
 			return null;
 
-		Resource waypointResource = Resource.Load(componentData.GetCycleWaypointPrefab());
-
-		if (!waypointResource || !waypointResource.IsValid())
-			return null;
-
-		AIWaypointCycle wp = AIWaypointCycle.Cast(GetGame().SpawnEntityPrefab(waypointResource, null, params));
-
+		AIWaypointCycle wp = AIWaypointCycle.Cast(GetGame().SpawnEntityPrefabEx(componentData.GetCycleWaypointPrefab(), false, params: params));
 		if (!wp)
-		{
-			Print("SCR_AmbientPatrolSpawnPointComponent: AIWaypointCycle cast of m_sCycleWaypointPrefab has failed!", LogLevel.ERROR);
 			return null;
-		}
 
 		wp.SetWaypoints(waypoints);
 
@@ -327,7 +325,6 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 		params.Transform[3] = GetOwner().GetOrigin();
 
 		AIWaypointCycle predefinedWaypoint = SpawnCycleWaypoint(params);
-
 		if (predefinedWaypoint)
 		{
 			m_Waypoint = predefinedWaypoint;
@@ -339,17 +336,10 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 		}
 
 		SCR_AmbientPatrolSpawnPointComponentClass componentData = SCR_AmbientPatrolSpawnPointComponentClass.Cast(GetComponentData(GetOwner()));
-
 		if (!componentData)
 			return;
 
-		Resource waypointResource = Resource.Load(componentData.GetDefaultWaypointPrefab());
-
-		if (!waypointResource || !waypointResource.IsValid())
-			return;
-
-		AIWaypoint wp = AIWaypoint.Cast(GetGame().SpawnEntityPrefab(waypointResource, null, params));
-
+		AIWaypoint wp = AIWaypoint.Cast(GetGame().SpawnEntityPrefabEx(componentData.GetDefaultWaypointPrefab(), false, params: params));
 		if (!wp)
 			return;
 
@@ -361,12 +351,10 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	void SpawnPatrol()
 	{
 		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
-
 		if (!comp)
 			return;
 
 		SCR_Faction faction = SCR_Faction.Cast(comp.GetAffiliatedFaction());
-
 		if (!faction)
 			faction = SCR_Faction.Cast(comp.GetDefaultAffiliatedFaction());
 
@@ -374,24 +362,18 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 			Update(faction);
 
 		m_bSpawned = true;
-		m_bActive = true;
+		m_bGroupActive = true;
 
 		if (m_sPrefab.IsEmpty())
 			return;
 
-		Resource prefab = Resource.Load(m_sPrefab);
-
-		if (!prefab || !prefab.IsValid())
-			return;
-
-		EntitySpawnParams params = EntitySpawnParams();
+		EntitySpawnParams params();
 		params.TransformMode = ETransformMode.WORLD;
 		params.Transform[3] = GetOwner().GetOrigin();
 
 		if (m_iRespawnPeriod == 0 && m_Waypoint && Math.RandomFloat01() >= 0.5)
 		{
 			AIWaypointCycle cycleWP = AIWaypointCycle.Cast(m_Waypoint);
-
 			if (cycleWP)
 			{
 				array<AIWaypoint> waypoints = {};
@@ -400,11 +382,12 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 			}
 		}
 
-		m_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(prefab, null, params));
-
+		m_Group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefabEx(m_sPrefab, false, params: params));
 		if (!m_Group)
 			return;
 
+		SetspawnedGroup(m_Group);
+		
 		if (!m_Group.GetSpawnImmediately())
 		{
 			if (m_iMembersAlive > 0)
@@ -414,16 +397,13 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 		}
 
 		m_Group.AddWaypoint(m_Waypoint);
-
-		if (m_iRespawnPeriod != 0)
-			m_Group.GetOnAgentRemoved().Insert(OnAgentRemoved);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
 	void DespawnPatrol()
 	{
-		m_fDespawnTimer = null;
+		m_DespawnTimestamp = null;
 		m_bSpawned = false;
 
 		if (!m_Group)
@@ -445,7 +425,7 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	{
 		if (m_Group)
 		{
-			m_bActive = true;
+			m_bGroupActive = true;
 			m_Group.ActivateAllMembers();
 		}
 	}
@@ -455,7 +435,7 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	{
 		if (m_Group)
 		{
-			m_bActive = false;
+			m_bGroupActive = false;
 			m_Group.DeactivateAllMembers();
 		}
 	}
@@ -464,21 +444,21 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	//! \return
 	bool IsGroupActive()
 	{
-		return m_bActive;
+		return m_bGroupActive;
 	}
-	//------------------------------------------------------------------------------------------------
 
+	//------------------------------------------------------------------------------------------------
 	void OnAgentRemoved()
 	{
 		if (!m_Group || m_Group.GetAgentsCount() > 0)
 			return;
 
 		ChimeraWorld world = GetOwner().GetWorld();
-		if (m_fRespawnTimestamp.GreaterEqual(world.GetServerTimestamp()))
+		if (m_RespawnTimestamp.GreaterEqual(world.GetServerTimestamp()))
 			return;
 
 		// Set up respawn timestamp, convert s to ms, reset original group size
-		m_fRespawnTimestamp = world.GetServerTimestamp().PlusSeconds(m_iRespawnPeriod);
+		m_RespawnTimestamp = world.GetServerTimestamp().PlusSeconds(m_iRespawnPeriod);
 		m_iMembersAlive = -1;
 		m_bSpawned = false;
 	}
@@ -487,36 +467,22 @@ class SCR_AmbientPatrolSpawnPointComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
-
 		if (!factionComponent)
 		{
 			Print("SCR_AmbientPatrolSpawnPointComponent: SCR_FactionAffiliationComponent not found on owner entity. Patrol spawning will not be available.", LogLevel.WARNING);
 			return;
 		}
 
-		SetEventMask(owner, EntityEvent.INIT);
+		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
+		if (manager)
+			manager.RegisterPatrol(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
+	override void OnDelete(IEntity owner)
 	{
 		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
-
-		if (!manager)
-			return;
-
-		manager.RegisterPatrol(this);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// destructor
-	void ~SCR_AmbientPatrolSpawnPointComponent()
-	{
-		SCR_AmbientPatrolSystem manager = SCR_AmbientPatrolSystem.GetInstance();
-
-		if (!manager)
-			return;
-
-		manager.UnregisterPatrol(this);
+		if (manager)
+			manager.UnregisterPatrol(this);
 	}
 }

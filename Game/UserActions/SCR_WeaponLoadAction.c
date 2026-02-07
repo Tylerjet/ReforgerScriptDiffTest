@@ -63,8 +63,11 @@ class SCR_WeaponLoadAction : ScriptedUserAction
 		if (mortarMuzzleComponent && mortarMuzzleComponent.GetAmmoCount() < mortarMuzzleComponent.GetMaxAmmoCount())
 		{
 			IEntity shell = inventoryManager.OnGetMagazine(mortarMuzzleComponent.GetMagazineWell());
-			inventoryManager.Remove(shell, null, true);
-			mortarMuzzleComponent.LoadMortar(shell);
+			if (shell)
+			{
+				inventoryManager.Remove(shell, null, true);
+				mortarMuzzleComponent.LoadMortar(shell);
+			}
 		}
 		*/
 	}

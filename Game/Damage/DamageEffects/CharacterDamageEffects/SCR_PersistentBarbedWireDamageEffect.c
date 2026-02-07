@@ -44,7 +44,7 @@ class SCR_PersistentBarbedWireDamageEffect : SCR_SpecialCollisionDamageEffect
 			characterVelocity[1] = 1;
 
 		if (context && (context.IsMoving() || m_Controller.IsRoll() || characterVelocity[1] != 0))
-			newMovedDamage = timeSlice * Math3D.Curve(ECurveType.CurveProperty2D, characterVelocity.Length() / m_fMaxDamageSpeed, m_cSpeedDamageCurve)[1];
+			newMovedDamage = timeSlice * LegacyCurve.Curve(ECurveType.CurveProperty2D, characterVelocity.Length() / m_fMaxDamageSpeed, m_cSpeedDamageCurve)[1];
 		
 		m_fMovedDamage += newMovedDamage * 10;		
 

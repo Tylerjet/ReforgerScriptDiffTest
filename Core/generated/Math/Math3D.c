@@ -368,25 +368,15 @@ sealed class Math3D
 	//! Returns Angles vector (yaw, pitch, roll) from quaternion.
 	static proto vector QuatToAngles(float q[4]);
 	/*!
-	Computes curve. Knots array is used only for non-uniform curve types. For example,
-	CatmullRom and CurveProperty2D.
-	\code
-		auto points = new array<vector>();
-		points.Insert( Vector( 0, 0, 0) );
-			points.Insert( Vector( 5, 0, 0) );
-			points.Insert( Vector( 8, 3, 0) );
-			points.Insert( Vector( 6, 1, 0) );
-
-		float t = 0.5;
-		vector result = Math3D.Curve(ECurveType.CatmullRom, t, points);
-	\endcode
+	Obsolete, use CurveFloat/LegacyCurve.Curve
 	*/
+	[Obsolete("Use CurveFloat/LegacyCurve.Curve instead")]
 	static proto vector Curve(ECurveType type, float param, notnull array<vector> points, array<float> knots = null);
 	/*!
-	Evaluates a single curve from multicurve object.
-	\see Curve
+	Obsolete, use CurveVector/CurveColor/LegacyCurve.Curve3
 	*/
-	static proto vector Curve3(ECurveType type, float param, notnull Curve3 points, int curveIndex, array<float> knots = null);
+	[Obsolete("Use CurveVector/CurveColor/LegacyCurve.Curve3 instead")]
+	static proto vector Curve3(ECurveType type, float param, notnull array<float> points, int curveIndex, array<float> knots = null);
 	/*!
 	Generates tessellation of a cubic, C0 Bezier spline.
 	\code

@@ -38,7 +38,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	protected float m_fHeightElement;
 
 	// Transition speed in seconds between the icon and the button
-	[Attribute("0.3", UIWidgets.Slider, params: "0.1 10 0.1")]
+	[Attribute("0.3", UIWidgets.Slider, params: "0.3 10 0.2")]
 	protected float m_fButtonFadeInSpeed;
 
 	[Attribute("", desc: "each ID must be unique")]
@@ -95,6 +95,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 
 	protected const vector SCREEN_POS_MIN = "0.15 0.15 0";
 	protected const vector SCREEN_POS_MAX = "0.85 0.85 0";
+	
+	protected const string SETTING_HINT_ACTION = "m_bShowInteractionHint";
 
 	//------------------------------------------------------------------------------------------------
 	//! Creates and initializes root widget to be slotted with actions
@@ -248,13 +250,14 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 			else
 			{
 				bool shouldShowInteractionHint = true;
+				
 				//check if the hint is enabled in settings
 				SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
 				if (hudManager)
 				{
 					BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
 					if (interfaceSettings)
-						interfaceSettings.Get("m_bShowInteractionHint", shouldShowInteractionHint);
+						interfaceSettings.Get(SETTING_HINT_ACTION, shouldShowInteractionHint);
 				}
 				
 				//check setting value here
@@ -787,6 +790,7 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	override void ShowDisplay()
 	{
 		super.ShowDisplay();
+		
 		Show(true, UIConstants.FADE_RATE_DEFAULT);
 
 	}
@@ -795,15 +799,19 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	//! Called when display was open and is supposed to hide. Called after last ShowActionsDisplay call
 	override void HideDisplay()
 	{
-		m_LastData = null;
-		
 		if (m_SnackBar)
 			m_SnackBar.AnimateHide();
 
-		if (m_PrevAction)
+		m_LastData 		= null;
+		m_PrevAction 	= null;
+		m_PrevContext 	= null;
+		
+		if (m_Widgets)
 		{
-			m_PrevAction = null;
-			m_PrevContext = null;
+			m_Widgets.m_wOutlineProgress.SetMaskProgress(0);
+			m_Widgets.m_wOutlineProgressGlow.SetMaskProgress(0);
+			m_Widgets.m_ButtonOverlayComponent.OnButtonHold(0);
+			m_Widgets.m_wKeyBG.SetColor(m_Widgets.m_ButtonOverlayComponent.m_ActionDefault);
 		}
 
 		Show(false, UIConstants.FADE_RATE_FAST);

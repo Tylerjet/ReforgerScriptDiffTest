@@ -1,45 +1,34 @@
 // todo@lk: figure out what to call this, journal is probably not the best choice, idiot
 class SCR_MapJournalUI : SCR_MapUIBaseComponent
 {
-	protected SCR_JournalSetupConfig m_JournalConfig;
-
-	[Attribute("EntryList")]
-	protected string m_sEntryList;
-
-	protected Widget m_wEntryList;
-
-	[Attribute("EntryLayout")]
-	protected string m_sEntryLayout;
-
-	protected Widget m_wEntryLayout;
-
-	protected ref array<SCR_MapJournalUIButton> m_aEntries = {};
-	protected int m_iCurrentEntryId = -1;
-
 	[Attribute("JournalFrame", desc: "Root frame widget name")]
 	protected string m_sRootWidgetName;
-
-	protected Widget m_wJournalFrame;
-
-	[Attribute("exclamationCircle", desc: "Toolmenu imageset quad name")]
-	protected string m_sToolMenuIconName;
-
-	protected SCR_MapToolMenuUI m_ToolMenu;
-	protected SCR_MapToolEntry m_ToolMenuEntry;
-
-	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
-	
-	[Attribute("MapTaskList", desc: "Map task list frame widget name")]
-	protected string m_sMapTaskListFrame;
 	
 	[Attribute("faction", desc: "Map task list imageset quad name")]
 	protected string m_sTaskListToolMenuIconName;
+	
+	[Attribute("exclamationCircle", desc: "Toolmenu imageset quad name")]
+	protected string m_sToolMenuIconName;
+	
+	[Attribute("8", desc: "Offset substracted from total widget size.")]
+	protected int m_iOffset;
 
-	[Attribute("{7482F0B8A63C1159}UI/layouts/Menus/DeployMenu/Journal.layout", desc: "Journal layout path")]
-	protected ResourceName m_sJournalLayout;
+	protected SCR_MapToolMenuUI m_ToolMenu;
+	protected SCR_MapToolEntry m_ToolMenuEntry;
+	protected SCR_MapTaskListUI m_MapTaskList;
+	protected SCR_JournalSetupConfig m_JournalConfig;
+	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
+	protected SCR_MapJournalUIButton m_LastInteractedEntry;
+	
+	protected ref array<SCR_MapJournalUIButton> m_aEntries = {};
+	protected int m_iCurrentEntryId = -1;
+
+	protected Widget m_wJournalFrame;
 
 	//We'll store the bool in order to know if is it the first opening or not
 	protected bool m_bFirstOpening = true;
+	
+	protected ref SCR_JournalWidgets m_Widgets = new SCR_JournalWidgets();
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init()
@@ -47,7 +36,7 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		SCR_RespawnBriefingComponent briefingComp = SCR_RespawnBriefingComponent.GetInstance();
 		if (!briefingComp)
 			return;
-		
+
 		if (!briefingComp.LoadJournalConfig())
 			return;
 
@@ -58,10 +47,13 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		m_ToolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
 		if (m_ToolMenu)
 		{
-			m_ToolMenuEntry = m_ToolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 1);
+			m_ToolMenuEntry = m_ToolMenu.RegisterToolMenuEntry(SCR_MapToolMenuUI.s_sToolMenuIcons, m_sToolMenuIconName, 1, m_bIsExclusive);
 			m_ToolMenuEntry.m_OnClick.Insert(ToggleVisible);
+			m_ToolMenuEntry.GetOnDisableMapUIInvoker().Insert(DisableMapUIComponent);
 			m_ToolMenuEntry.SetEnabled(true);
 		}
+		
+		m_MapTaskList = SCR_MapTaskListUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapTaskListUI));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -78,28 +70,15 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		
 		if (!m_wJournalFrame.GetChildren())
 		{
-			Widget journal = GetGame().GetWorkspace().CreateWidgets(m_sJournalLayout, m_wJournalFrame);
+			Widget journal = GetGame().GetWorkspace().CreateWidgets(m_Widgets.GetLayout(), m_wJournalFrame);
 			if (!journal)
 				return;
+			
+			m_Widgets.Init(journal);
 		}
 
-		Widget focusBtn = m_wJournalFrame.FindAnyWidget("FocusButton");
-		if (focusBtn)
-		{
-			SCR_EventHandlerComponent focusHandler = SCR_EventHandlerComponent.Cast(focusBtn.FindHandler(SCR_EventHandlerComponent));
-			if (focusHandler)
-			{
-				focusHandler.GetOnFocus().Insert(FocusOnFirstEntry);
-			}
-		}
-
-		m_wEntryList = m_RootWidget.FindAnyWidget(m_sEntryList);
-		if (!m_wEntryList)
-			return;
-
-		m_wEntryLayout = m_RootWidget.FindAnyWidget(m_sEntryLayout);
-		if (!m_wEntryLayout)
-			return;
+		if (m_Widgets.m_wFocusButton)
+			m_Widgets.m_FocusButtonComponent.GetOnFocus().Insert(FocusOnFirstEntry);
 
 		PlayerController pc = GetGame().GetPlayerController();
 		if (!pc)
@@ -113,7 +92,10 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 
 		GetJournalForPlayer();		
 		
-		ToggleVisible();
+		SCR_RespawnBriefingComponent briefingComp = SCR_RespawnBriefingComponent.GetInstance();	
+
+		if (!m_bFirstOpening || !briefingComp || (briefingComp && !briefingComp.ShowJournalOnStart()))
+			ToggleVisible();
 		
 		if (m_bFirstOpening)
 		{
@@ -126,14 +108,32 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 			//if opened the second and other times, use the last opened one
 			ShowEntryByID(m_iCurrentEntryId);
 		}
+		
+		//## Need to be called in order to wait for widget initialization.
+		GetGame().GetCallqueue().Call(UpdateJournalPosition);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! Adjuts size of journal to match height of tool bar
+	protected void UpdateJournalPosition()
+	{
+		Widget toolMenuBackground = m_ToolMenu.GetBackgroundWidget();
+		toolMenuBackground.Update();
+		
+		float sizeW, sizeY;
+		toolMenuBackground.GetScreenSize(sizeW, sizeY);
+		
+		sizeY = GetGame().GetWorkspace().DPIUnscale(sizeY) - m_iOffset;
+		
+		m_Widgets.m_wSizeLayout.SetHeightOverride(sizeY);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerFactionResponse(SCR_PlayerFactionAffiliationComponent component, int factionIndex, bool response)
 	{
 		if (response)
 		{
-			m_wEntryLayout.SetVisible(false);
+			m_Widgets.m_wEntryLayout.SetVisible(false);
 			GetJournalForPlayer();
 		}
 	}
@@ -145,54 +145,33 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 		if (!m_wJournalFrame || !m_ToolMenu)
 			return;
 		
-		array<ref SCR_MapToolEntry> menuEntries = {};
-		menuEntries = m_ToolMenu.GetMenuEntries();
-		if (!menuEntries && menuEntries.IsEmpty())
-			return;
-		
-		foreach (SCR_MapToolEntry toolEntry : menuEntries)
-		{
-			if (toolEntry.GetImageSet() != m_sTaskListToolMenuIconName)
-				continue;
-			
-			Widget mapTaskListFrame = m_RootWidget.FindAnyWidget(m_sMapTaskListFrame);
-			if (mapTaskListFrame && mapTaskListFrame.IsVisible())
-			{
-				mapTaskListFrame.SetVisible(false);
-				toolEntry.SetActive(false);
-				
-				SCR_UITaskManagerComponent m_UITaskManager = SCR_UITaskManagerComponent.GetInstance();
-				if (m_UITaskManager)
-					m_UITaskManager.Action_TasksClose();
-				break;
-			}
-		}
-
 		bool visible = m_wJournalFrame.IsVisible();
 		m_wJournalFrame.SetVisible(!visible);
 		if (m_ToolMenuEntry)
 			m_ToolMenuEntry.SetActive(!visible);
+		
+		if (!visible)
+			FocusOnFirstEntry();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Disable()
+	//! \param[in] visibility of journal to be set.
+	void SetJournalVisibility(bool visibility)
 	{
-		m_ToolMenuEntry.SetActive(false);
-		m_wJournalFrame.SetVisible(false);
+		m_ToolMenuEntry.SetActive(visibility);
+		m_wJournalFrame.SetVisible(visibility);
+		
+		if (m_ToolMenuEntry)
+			m_ToolMenuEntry.SetActive(visibility);
+		
+		if (visibility)
+			FocusOnFirstEntry();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void GetJournalForPlayer()
 	{
 		m_aEntries.Clear();
-
-		Widget child = m_wEntryList.GetChildren();
-		while (child)
-		{
-			Widget sibling = child.GetSibling();
-			delete child;
-			child = sibling;
-		}
 
 		m_iCurrentEntryId = -1;
 
@@ -209,19 +188,26 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 			return;
 
 		array<ref SCR_JournalEntry> journalEntries = factionJournal.GetEntries();
-		SCR_JournalEntry entry;
-		Widget e;
-		SCR_MapJournalUIButton entryBtn;
+		if (!journalEntries)
+			return;
+		
+		Widget widget;
+		SCR_MapJournalUIButton component;
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		for (int entryId = 0; entryId < journalEntries.Count(); ++entryId)
-		{
+		foreach (int entryId, SCR_JournalEntry entry : journalEntries)
+		{	
 			entry = journalEntries[entryId];
-			e = workspace.CreateWidgets(entry.GetEntryButtonLayout(), m_wEntryList);
-			entryBtn = SCR_MapJournalUIButton.Cast(e.FindHandler(SCR_MapJournalUIButton));
-			entryBtn.SetContent(entry.GetEntryName());
-			entryBtn.SetEntry(entry, entryId);
-			entryBtn.m_OnClicked.Insert(ShowEntry);
-			m_aEntries.Insert(entryBtn);
+			
+			widget = workspace.CreateWidgets(entry.GetEntryButtonLayout(), m_Widgets.m_wEntriesWrapper);
+			component = SCR_MapJournalUIButton.Cast(widget.FindHandler(SCR_MapJournalUIButton));
+			if (!component)
+				continue;
+			
+			component.SetContent(entry.GetEntryName());
+			component.SetEntry(entry, entryId);
+			
+			component.GetOnToggled().Insert(ShowEntry);
+			m_aEntries.Insert(component);
 		}
 	}
 
@@ -232,8 +218,10 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 	{
 		if (id < 0)
 			return;
+		
 		SCR_MapJournalUIButton entryBtn;
-		Widget child = m_wEntryList.GetChildren();
+
+		Widget child = m_Widgets.m_wEntriesWrapper.GetChildren();
 		while (child)
 		{
 			entryBtn = SCR_MapJournalUIButton.Cast(child.FindHandler(SCR_MapJournalUIButton));
@@ -251,22 +239,34 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//!	Controls visuals of journal entries.
+	//! \param[in] journalBtn clicked button.
 	protected void ShowEntry(SCR_MapJournalUIButton journalBtn)
-	{
+	{	
 		if (journalBtn.GetId() == m_iCurrentEntryId)
-		{
-			m_wEntryLayout.SetVisible(!m_wEntryLayout.IsVisible());
+		{	
+			journalBtn.SetToggled(false);
+			m_Widgets.m_wEntryLayout.SetVisible(!m_Widgets.m_wEntryLayout.IsVisible());
+			m_iCurrentEntryId = -1;
 		}
 		else
 		{
-			Widget child = m_wEntryLayout.GetChildren();
+			Widget child = m_Widgets.m_wEntryLayout.GetChildren();
 			if (child)
 				delete child;
-
+			
+			// Toggle off last interacted button
+			if (m_LastInteractedEntry)
+				m_LastInteractedEntry.SetToggled(false);
+			
 			m_iCurrentEntryId = journalBtn.GetId();
-			journalBtn.ShowEntry(m_wEntryLayout);
-			m_wEntryLayout.SetVisible(true);
+			
+			journalBtn.SetToggled(true);
+			journalBtn.ShowEntry(m_Widgets.m_wEntryLayout);
+			m_Widgets.m_wEntryLayout.SetVisible(true);
 		}
+		
+		m_LastInteractedEntry = journalBtn;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -281,34 +281,17 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 	{
 		return m_wJournalFrame && m_wJournalFrame.IsVisible();
 	}
-}
-
-class SCR_MapJournalUIButton : SCR_ButtonComponent
-{
-	protected SCR_JournalEntry m_Entry;
-	protected int m_iEntryId;
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] entry
-	//! \param[in] id
-	void SetEntry(SCR_JournalEntry entry, int id)
+	void DisableMapUIComponent()
 	{
-		m_Entry = entry;
-		m_iEntryId = id;
+		SetJournalVisibility(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] target
-	void ShowEntry(Widget target)
+	override void HandlerDeattached(Widget w)
 	{
-		m_Entry.SetEntryLayoutTo(target);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetId()
-	{
-		return m_iEntryId;
+		if (m_ToolMenuEntry)
+			m_ToolMenuEntry.GetOnDisableMapUIInvoker().Remove(DisableMapUIComponent);
 	}
 }

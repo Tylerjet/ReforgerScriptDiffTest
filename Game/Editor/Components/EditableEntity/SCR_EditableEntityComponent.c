@@ -209,6 +209,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//! \param[out] targetIndex Further specification of the target, e.g., crew position index in a vehicle
 	//! \param[out] isDestroyed Variable to be set to true if the entity is destroyed
 	//! \return true if it can be serialized
+	[Obsolete("Only used for backwards compatiblity for GM saves. Will be removed entirely.")]
 	bool Serialize(out SCR_EditableEntityComponent outTarget = null, out int outTargetIndex = -1, out EEditableEntitySaveFlag outSaveFlags = 0)
 	{
 		if (IsDestroyed())
@@ -225,6 +226,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//! Deserialise the entity based on given params.
 	//! \param[in] target Entity to which this entity is attached to outside of hierarchy structure, e.g., character in a vehicle or waypoint on a target
 	//! \param[in] targetIndex Further specification of the target, e.g., crew position index in a vehicle
+	[Obsolete("Only used for backwards compatiblity for GM saves. Will be removed entirely.")]
 	void Deserialize(SCR_EditableEntityComponent target, int targetValue)
 	{
 		if (target)
@@ -366,10 +368,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	void SetAuthor(SCR_EditableEntityAuthor author)
 	{
 		m_Author = author;
-		
-		Rpc(OnAuthorChangedSaveServer, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, m_Author.m_sAuthorPlatformID, m_Author.m_ePlatform, m_iAuthorLastUpdated);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	SCR_EditableEntityAuthor GetAuthor()
 	{
@@ -758,15 +758,15 @@ class SCR_EditableEntityComponent : ScriptComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void OnAuthorChangedServer(string authorUID, int authorID, string authorPlatformID, int platform, int lastUpdated)
 	{
-		string oldAuthor = m_Author.m_sAuthorUID;
-		string newAuthor;
+		UUID oldAuthor = m_Author.m_sAuthorUID;
+		UUID newAuthor;
 		
 		SCR_EditableEntityCore entityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		
 		BackendApi backendApi = GetGame().GetBackendApi();
 		if (backendApi)
 		{
-			newAuthor = backendApi.GetPlayerIdentityId(authorID);
+			newAuthor = SCR_PlayerIdentityUtils.GetPlayerIdentityId(authorID);
 			
 			if (entityCore && newAuthor != m_Author.m_sAuthorUID && !m_Author.m_sAuthorUID.IsEmpty() && !newAuthor.IsEmpty())
 				entityCore.AuthorEntityRemovedServer(m_Author);
@@ -779,24 +779,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 		m_Author.m_sAuthorUID = newAuthor;
 		
 		if (entityCore && oldAuthor != m_Author.m_sAuthorUID)
-			entityCore.RegisterAuthorServer(m_Author);
-		
-		Rpc(OnAuthorChanged, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, m_Author.m_sAuthorPlatformID, m_Author.m_ePlatform, m_iAuthorLastUpdated);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void OnAuthorChangedSaveServer(string authorUID, int authorID, string authorPlatformID, int platform, int lastUpdated)
-	{
-		SCR_EditableEntityCore entityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-		
-		m_Author.m_sAuthorUID = authorUID;
-		m_Author.m_ePlatform = platform;
-		m_Author.m_sAuthorPlatformID = authorPlatformID;
-		m_Author.m_iAuthorID = authorID;
-		m_iAuthorLastUpdated = lastUpdated;
-		
-		if (entityCore)
 			entityCore.RegisterAuthorServer(m_Author);
 		
 		Rpc(OnAuthorChanged, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, m_Author.m_sAuthorPlatformID, m_Author.m_ePlatform, m_iAuthorLastUpdated);
@@ -816,14 +798,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Kill/destroy this editable entity.
 	//! \return true if destroyed
-	bool Destroy()
+	bool Destroy(int editorPlayerID = 0)
 	{
 		if (IsServer())
 		{			
 			if (!IsDestroyed() && CanDestroy())
 			{
 				DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
-				damageManager.SetInstigator(Instigator.CreateInstigatorGM());
+				damageManager.SetAndReplicateInstigator(Instigator.CreateInstigatorGM(editorPlayerID));
 				damageManager.SetHealthScaled(0);
 				return true;
 			}
@@ -2222,6 +2204,14 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Register to the system
 		if (IsServer())
 			SetParentEntityBroadcast(m_ParentEntity, m_ParentEntity, isAutoRegistration: true);
+		
+		// Register the various entities from catalog that we do not want to put persistence component on all the base prefabs manually.
+		if (!m_ParentEntity && HasEntityFlag(EEditableEntityFlag.PLACEABLE))
+		{
+			auto persistence = SCR_PersistenceSystem.GetByEntityWorld(owner);
+			if (persistence)
+				persistence.StartTracking(owner);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

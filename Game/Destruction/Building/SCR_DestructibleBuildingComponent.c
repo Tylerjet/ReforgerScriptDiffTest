@@ -4,31 +4,31 @@ class SCR_DestructibleBuildingComponentClass : SCR_DamageManagerComponentClass
 	[Attribute()]
 	ref array<ref SCR_TimedEffect> m_aEffects;
 
-	[Attribute("Useful for complex buildings. Leave empty to use entity's bounding box.")]
+	[Attribute(desc: "Useful for complex buildings. Leave empty to use entity's bounding box.")]
 	ref array<ref SCR_InteriorBoundingBox> m_aInteriorQueryBoundingBoxes;
 
-	[Attribute("0", "Delay in seconds between damage and the beginning of the building transition")]
+	[Attribute(defvalue: "0", desc: "Delay in seconds between damage and the beginning of the building transition")]
 	float m_fDelay;
 
-	[Attribute("1", "Meters per second")]
+	[Attribute(defvalue: "1", desc: "Meters per second")]
 	float m_fSinkingSpeed;
 
-	[Attribute("150", "This speeds up the sinking gradually % per second.", params: "0 10000 1")]
+	[Attribute(defvalue: "150", desc: "This speeds up the sinking gradually % per second.", params: "0 10000 1")]
 	float m_fSinkingSpeedGradualMultiplier;
 
-	[Attribute("0.1", "Degrees per second")]
+	[Attribute(defvalue: "0.1", desc: "Degrees per second")]
 	float m_fRotationSpeed;
 
-	[Attribute("0.8", "Time between rotation changes when building is collapsing in seconds")]
+	[Attribute(defvalue: "0.8", desc: "Time between rotation changes when building is collapsing in seconds")]
 	float m_fRotationTime;
 
-	[Attribute("50", "Rotation time randomizer in % - can both shorten/prolong the time", params: "0 10000 1")]
+	[Attribute(defvalue: "50", desc: "Rotation time randomizer in % - can both shorten/prolong the time", params: "0 10000 1")]
 	float m_fRotationTimeRandom;
 
-	[Attribute("1", "Max rotations count while sinking")]
+	[Attribute(defvalue: "1", desc: "Max rotations count while sinking")]
 	int m_iMaxRotations;
 
-	[Attribute(vector.Zero.ToString(), "This vector defines offset for the final position after destruction.")]
+	[Attribute(defvalue : vector.Zero.ToString(), desc: "This vector defines offset for the final position after destruction.")]
 	vector m_vSinkVector;
 
 	[Attribute("", UIWidgets.Auto, desc: "Slow down event audio source configuration")]
@@ -39,10 +39,10 @@ class SCR_DestructibleBuildingComponentClass : SCR_DamageManagerComponentClass
 
 	[Attribute(uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EDestructionRotationEnum))]
 	SCR_EDestructionRotationEnum m_eAllowedRotations;
-		
+
 	[Attribute()]
-	ref DestructionHeatmapEntry entryData;
-	
+	ref DestructionHeatmapEntry m_EntryData;
+
 };
 
 //------------------------------------------------------------------------------------------------
@@ -141,6 +141,14 @@ class SCR_InteriorBoundingBox : Managed
 		Shape.CreateLines(color, shapeFlags, p9, 2);
 		Shape.CreateLines(color, shapeFlags, p10, 2);
 		Shape.CreateLines(color, shapeFlags, p11, 2);
+
+		// Calculate min and max points for the box
+		vector mins = {center[0] - halfScale[0], center[1] - halfScale[1], center[2] - halfScale[2]};
+		vector maxs = {center[0] + halfScale[0], center[1] + halfScale[1], center[2] + halfScale[2]};
+
+		// Create a semi-transparent box using our new AddBoxWithTransform method that transforms all points by owner transform
+		color = Color(m_Color.R(), m_Color.G(), m_Color.B(), 0.25).PackToInt();
+		SCR_DebugShapeHelperComponent.AddBoxWithTransform(mins, maxs, ownerTransform, color, ShapeFlags.ONCE | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE);
 	}
 #endif
 }
@@ -178,7 +186,7 @@ class SCR_BuildingDestructionCameraShakeProgress : SCR_NoisyCameraShakeProgress
 
 		float distanceSq = vector.DistanceSqXZ(m_vStartOrigin, camera.GetOrigin());
 		float multiplier = 1 - Math.Clamp(distanceSq / (m_fMaxDistance * m_fMaxDistance * m_fSizeMultiplier), 0, 1);
-		float curveMultiplier = Math3D.Curve(ECurveType.CatmullRom, 1 - multiplier, m_CameraShakeCurve)[1];
+		float curveMultiplier = LegacyCurve.Curve(ECurveType.CatmullRom, 1 - multiplier, m_CameraShakeCurve)[1];
 
 		m_vTranslation *= Math.Min(multiplier * m_fSizeMultiplier * curveMultiplier, MAX_MULTIPLIER);
 		m_vRotation *= Math.Min(multiplier * m_fSizeMultiplier * curveMultiplier, MAX_MULTIPLIER);
@@ -349,25 +357,29 @@ class SCR_TimedSound : SCR_TimedEffect
 	protected ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
 
 	//------------------------------------------------------------------------------------------------
-	//! Plays sound
+	//! Plays effects
 	override void ExecuteEffect(IEntity owner, SCR_HitInfo hitInfo, inout notnull SCR_BuildingDestructionData data)
 	{
 		super.ExecuteEffect(owner, hitInfo, data);
 
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity || !m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
-			return;
+		if (!System.IsConsoleApp())
+		{
+			SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
+			if (!soundManager || !m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
+				return;
 
-		SCR_DestructibleBuildingComponent destructibleComponent = SCR_DestructibleBuildingComponent.Cast(owner.FindComponent(SCR_DestructibleBuildingComponent));
-		if (!destructibleComponent)
-			return;
+			SCR_DestructibleBuildingComponent destructibleComponent = SCR_DestructibleBuildingComponent.Cast(owner.FindComponent(SCR_DestructibleBuildingComponent));
+			if (!destructibleComponent)
+				return;
 
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(owner, m_AudioSourceConfiguration);
-		if (!audioSource)
-			return;
+			SCR_AudioSource audioSource = soundManager.CreateAudioSource(owner, m_AudioSourceConfiguration, data.m_vStartMatrix[3]);
+			if (!audioSource)
+				return;
 
-		destructibleComponent.SetAudioSource(audioSource);
-		soundManagerEntity.PlayAudioSource(audioSource, data.m_vStartMatrix);
+			destructibleComponent.SetAudioSource(audioSource);
+
+			soundManager.PlayAudioSource(audioSource);
+		}
 	}
 
 #ifdef WORKBENCH
@@ -423,9 +435,13 @@ class SCR_TimedPrefab : SCR_TimedEffect
 		IEntity spawnedEntity = GetGame().SpawnEntityPrefab(resource, owner.GetWorld(), params);
 		if (!spawnedEntity)
 		{
-			Debug.Error("Could not spawn prefab in SCR_TimedPrefab.ExecuteEffect()");
+			Debug.Error(string.Format("Could not spawn prefab %1 in SCR_TimedPrefab.ExecuteEffect()", m_sRuinsPrefab));
 			return;
 		}
+
+		auto persistence = PersistenceSystem.GetInstance();
+		if (persistence)
+			persistence.StartTracking(spawnedEntity);
 
 		data.m_aExcludeList.Insert(spawnedEntity);
 	}
@@ -438,14 +454,25 @@ class SCR_TimedParticle : SCR_TimedEffect
 	[Attribute()]
 	protected ref SCR_ParticleSpawnable m_Particle;
 
-	[Attribute("1")]
+	[Attribute("1", desc: "Overall multiplier for particle effect intensity. Higher values multiplies particle count (Birt Rate + Birth Rate RND), size (Size Multiplier and Size RND) , and velocity (Velocity and Velocity RND).")]
 	protected float m_fParticlesMultiplier;
+
+	void SCR_TimedParticle()
+	{
+		if (!m_Particle)
+		{
+			Print("No SCR_ParticleSpawnable defined on SCR_TimedParticle", LogLevel.WARNING);
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Plays particles
 	override void ExecuteEffect(IEntity owner, SCR_HitInfo hitInfo, inout notnull SCR_BuildingDestructionData data)
 	{
 		super.ExecuteEffect(owner, hitInfo, data);
+
+		if (m_Particle == null)
+			return;
 
 		ParticleEffectEntity emitter;
 		if (m_bAttachToParent)
@@ -506,6 +533,8 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	private int m_iDataIndex = -1;
 
 	protected bool m_bDestroyed = false;
+
+	protected ref array<vector> m_aPowerPolePositions = {};
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns centrally stored data from building destruction manager
@@ -640,9 +669,9 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		if (data.m_AudioSource)
 		{
 			// Kill previous sound
-			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-			if (soundManagerEntity)
-				soundManagerEntity.TerminateAudioSource(data.m_AudioSource);
+			SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(GetOwner().GetWorld());
+			if (soundManager)
+				soundManager.TerminateAudioSource(data.m_AudioSource);
 		}
 
 		data.m_AudioSource = audioSource;
@@ -673,9 +702,9 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Called when damage state is changed
-	protected override void OnDamageStateChanged(EDamageState state)
+	protected override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged(state);
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		if (IsProxy())
 			return;
@@ -685,7 +714,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 			return;
 
 		// Called only on the server
-		if (state == EDamageState.DESTROYED)
+		if (newState == EDamageState.DESTROYED)
 		{
 			int seed = Math.RandomInt(0, 10000);
 			StoreNavmeshData();
@@ -703,7 +732,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		DestroyInteriorInit(false);
 		CalculateAndStoreVolume();
 		SpawnEffects(0, GetOwner(), false);
-		GetGame().GetCallqueue().CallLater(GoToDestroyedState, 1000 * GetDelay(), param1: false);
+		GetGame().GetCallqueue().CallLater(GoToDestroyedState, 1000 * GetDelay(), param1: false, param2: true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -714,9 +743,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;
-		
-		SCR_DestructionManager destructionManager = SCR_DestructionManager.GetDestructionManagerInstance();
-		
+
 		SCR_BuildingDestructionManagerComponent manager = GetGame().GetBuildingDestructionManager();
 		if (!manager)
 			return;
@@ -729,33 +756,33 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		data.m_aQueriedEntities = {};
 
 		owner.GetWorldTransform(data.m_vStartMatrix);
-		
+
 		// We'll query for static and dynamic entities only.
 		// Proxies are also excluded so we don't even consider:
 		// - items attached to players
 		// - players attached to vehicles
 		// - anything (most likely buildings parts) using EntitySlots
 		EQueryEntitiesFlags queryFlags = EQueryEntitiesFlags.STATIC | EQueryEntitiesFlags.DYNAMIC | EQueryEntitiesFlags.NO_PROXIES;
-		
+
 		// Run the queries and fetch entities that we'll be interacting with.
 		// In theory, we could run two separate queries, one for static and and for dynamic entities.
 		// However, the logic for both is almost the same so there is little to no gain to doing that.
 		array<ref SCR_InteriorBoundingBox> boundingBoxes = GetInteriorBoundingBoxes();
 		if (!boundingBoxes || boundingBoxes.IsEmpty())
 		{
-				
+
 			owner.GetBounds(mins, maxs);
 			world.QueryEntitiesByOBB(mins, maxs, data.m_vStartMatrix, AddEntityCallback, QueryFilterCallback, queryFlags);
 			return;
 		}
-		
+
 		SCR_DestructionManager destrManager = SCR_DestructionManager.GetDestructionManagerInstance();
 		SCR_RegionalDestructionManager regionalManager;
 		if (destrManager)
 			regionalManager = SCR_RegionalDestructionManager.Cast(destrManager.GetOrCreateRegionalDestructionManager(GetOwner().GetOrigin()));
-		
-		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		
+
+		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+
 		ref array<ref vector> boxesPositions = new array<ref vector>;
 
 		foreach(SCR_InteriorBoundingBox boundingBox : boundingBoxes)
@@ -770,23 +797,23 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 			boundingBox.GetBounds(mins, maxs);
 			if (regionalManager && !rplComponent.IsProxy())
 				regionalManager.RegisterInteriorBoundingBox(data.m_vStartMatrix, mins, maxs, center);
-			
-			
+
+
 			//on clients set it handled. We dont check for destrManager because we obtain regionalManager from it
 			if (rplComponent.IsProxy() && regionalManager)
 			{
 				if (destrManager.m_RegionalManagerHandledBoxes.Find(regionalManager.GetRplID(), boxesPositions))
 				{
 					boxesPositions.Insert(data.m_vStartMatrix[3]+center);
-				} 
-				else 
+				}
+				else
 				{
 					boxesPositions = new array<ref vector>;
 					boxesPositions.Insert(data.m_vStartMatrix[3]+center);
 					destrManager.m_RegionalManagerHandledBoxes.Insert(regionalManager.GetRplID(), boxesPositions);
 				}
 			}
-			
+
 			world.QueryEntitiesByOBB(mins, maxs, data.m_vStartMatrix, AddEntityCallback, QueryFilterCallback, queryFlags);
 		}
 	}
@@ -884,17 +911,17 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 
 			data.m_aQueriedEntities.Remove(i);
 		}
-		
+
 		if(!IsProxy())
 		{
 			Rpc(FinishDestruction);
 			FinishDestruction();
 		}
-		
-		
+
+
 		DeleteBuilding();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Handles the destruction of building itself after interior is handled.
 	protected void DeleteBuilding()
@@ -911,9 +938,13 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		if (!data)
 			return;
 
-		//data.m_CameraShake.Stop();
-		data.m_CameraShake.SetParams(0.15, 0.15, 0.01, 0.3, 0.24);
-		data.m_CameraShake = null;
+		if (data.m_CameraShake != null)
+		{
+			//data.m_CameraShake.Stop();
+			data.m_CameraShake.SetParams(0.15, 0.15, 0.01, 0.3, 0.24);
+			data.m_CameraShake = null;
+		}
+
 		data.m_aQueriedEntities = null;
 		FreeData();
 	}
@@ -972,26 +1003,26 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		{
 			if (children.GetPhysics())
 				return true;
-			
+
 			children = children.GetSibling();
 		}
-		
+
 		return false;
 	}
-	
+
 	//! Used to filter out entities that are not meant to be handled in AddEntityCallback
 	protected bool QueryFilterCallback(notnull IEntity entity)
 	{
 		IEntity owner = GetOwner();
 		IEntity entityParent = entity.GetParent();
-		
+
 		// Exclude the owner && children of other objects
 		if (entity == owner || (entityParent && entityParent != owner))
 			return false;
-		
+
 		return true;
 	}
-	
+
 	//! Used by Query in DestroyInterior
 	protected bool AddEntityCallback(notnull IEntity e)
 	{
@@ -1003,16 +1034,16 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 			// Kill occupants after destruction starts determined by delay set in prefab data, so it appears as if they died from the building falling on top of them
 			GetGame().GetCallqueue().CallLater(DamageOccupantsDelayed, GetDelay() * 1000, param1: e);
 			return true;
-		} 
+		}
 		else if (Vehicle.Cast(e))
 		{
 			//destroy the vehicle after the destruction delay
 			GetGame().GetCallqueue().CallLater(HandleVehicle, GetDelay() * 1000, param1: e);
 			return true;
 		}
-		
+
 		SCR_BuildingDestructionData data = GetData();
-		
+
 		//write debug here to see where Villa_E_2I01_FIA_01.e is failing to get dragged down
 
 		// Exclude entity if already included.
@@ -1021,31 +1052,80 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		//       to query, checking against e.g. 200 of them might be an issue.
 		if (data.m_aQueriedEntities.Contains(e))
 			return true;
-		
+
 		// Exclude entities in exclude list
 		// Disabled for now, because it might not be necessary
 		// Keeping it for later if we decide to use it in some other way than originally planned
 		/*if (data.m_aExcludeList.Contains(e))
 			return true;*/
-		
-		// There shouldn't really be any physical hierchies created on buildings and alike,
-		// so more than anything, this check is just a precaution.
-		// I wish it was just a precaution - Mour
-		if (!e.GetPhysics() && !HasPhysicalChildren(e))
-			return true;
 
 		// Exclude static entities such as trees, rocks, ruins etc. and other destructible buildings
 		SCR_BuildingDestructionManagerComponent manager = GetGame().GetBuildingDestructionManager();
 		foreach (typename typeName : manager.GetExcludedQueryTypes())
 		{
 			if (e.IsInherited(typeName))
-				return true;
+			{
+				if (!e.Type().IsInherited(SCR_PowerPole) && !e.Type().IsInherited(SCR_JunctionPowerPole))
+					return true;
+
+				// Cast to SCR_PowerPole to access slot data
+				SCR_PowerPole powerPole = SCR_PowerPole.Cast(e);
+				if (!powerPole)
+				{
+					// Fallback to entity origin if cast fails
+					m_aPowerPolePositions.Insert(e.GetOrigin());
+					continue;
+				}
+
+				// Get prefab data to access cable slot groups
+				SCR_PowerPoleClass prefabData = SCR_PowerPoleClass.Cast(powerPole.GetPrefabData());
+				if (!prefabData || !prefabData.m_aCableSlotGroups)
+				{
+					// Fallback to entity origin if no cable slot groups
+					m_aPowerPolePositions.Insert(e.GetOrigin());
+					continue;
+				}
+
+				// Iterate through cable slot groups and average slot positions per group
+				foreach (SCR_PoleCableSlotGroup slotGroup : prefabData.m_aCableSlotGroups)
+				{
+					if (!slotGroup || !slotGroup.m_aSlots)
+						continue;
+
+					vector avgLocalPos = vector.Zero;
+					int validSlotCount = 0;
+
+					// Sum all slot positions in this group
+					foreach (SCR_PoleCableSlot slot : slotGroup.m_aSlots)
+					{
+						if (!slot)
+							continue;
+
+						avgLocalPos += slot.m_vPosition;
+						validSlotCount++;
+					}
+
+					// Calculate average and transform to world space
+					if (validSlotCount > 0)
+					{
+						avgLocalPos = avgLocalPos / validSlotCount;
+						vector avgWorldPos = powerPole.CoordToParent(avgLocalPos);
+						m_aPowerPolePositions.Insert(avgWorldPos);
+					}
+				}
+			}
 		}
-		
+
+		// There shouldn't really be any physical hierchies created on buildings and alike,
+		// so more than anything, this check is just a precaution.
+		// I wish it was just a precaution - Mour
+		if (!e.GetPhysics() && !HasPhysicalChildren(e))
+			return true;
+
 		SCR_EditorLinkComponent linkComp = SCR_EditorLinkComponent.Cast(e.FindComponent(SCR_EditorLinkComponent));
 		if (linkComp)
 			return true;
-		
+
 		// In order to sink entities within the building along with it when sinking, we need to make sure
 		// they are attached to the building.
 		// We already filtered out all entities that have a parent different than this building so it
@@ -1057,13 +1137,16 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		//       server-corrected.
 		IEntity owner = GetOwner();
 		if(e.GetParent() != owner)
+		{
+			//e.SetFlags(EntityFlags.USER3);
 			owner.AddChild(e, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
+		}
 
 		// If entity is editable, prevent game master interaction
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(e.FindComponent(SCR_EditableEntityComponent));
 		if (editableEntity)
 			editableEntity.SetEntityState(EEditableEntityState.INTERACTIVE, false);
-		
+
 		data.m_aQueriedEntities.Insert(e);
 		return true;
 	}
@@ -1083,28 +1166,48 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		if (headHitzone)
 			headHitzone.HandleDamage(1000, EDamageType.TRUE, null);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void HandleVehicle(IEntity targetEntity)
 	{
 		if (!IsInside(targetEntity))
 			return;
-		
+
 		SCR_VehicleDamageManagerComponent damageManager = SCR_VehicleDamageManagerComponent.Cast(targetEntity.FindComponent(DamageManagerComponent));
 		if (!damageManager)
 			return;
-		
+
 		HitZone defaultHitzone = damageManager.GetDefaultHitZone();
 		if (defaultHitzone)
 			defaultHitzone.HandleDamage(defaultHitzone.GetMaxHealth(), EDamageType.TRUE, null);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void HandleConnectedPowerlines()
+	{
+		BaseWorld world = GetGame().GetWorld();
+
+		foreach (vector polePosition : m_aPowerPolePositions)
+		{
+			world.QueryEntitiesBySphere(polePosition, 3, ProcessFoundPowerline);
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
-	void GoToDestroyedStateLoad()
+	protected bool ProcessFoundPowerline(notnull IEntity e)
+	{
+		if (e.Type() != PowerlineEntity)
+			return true;
+
+		delete e;
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void GoToDestroyedStateLoad(bool spawnEffects = true)
 	{
 		StoreNavmeshData();
-		GoToDestroyedState(true);
+		GoToDestroyedState(true, spawnEffects);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1132,16 +1235,23 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	//! Destroys interior
 	//! Starts position lerping (Enables frame, activates the entity)
 	//! Or moves the building to target position immediately if it's JIP
-	protected void GoToDestroyedState(bool immediate)
+	protected void GoToDestroyedState(bool immediate, bool spawnEffects = true)
 	{
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;
 
 		m_bDestroyed = true;
-		GetGame().GetBuildingDestructionManager().RegisterDestroyedBuilding(this);
+
+		if (IsMaster())
+			HandleConnectedPowerlines();
 
 		IEntity owner = GetOwner();
+
+		// Ensure registration of destroyed building as they are otherwise not tracked by default
+		auto persistence = PersistenceSystem.GetInstance();
+		if (persistence)
+			persistence.StartTracking(owner);
 
 		vector mins, maxs;
 		owner.GetBounds(mins, maxs);
@@ -1162,37 +1272,41 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		if (immediate)
 		{
 			DestroyInteriorInit(immediate);
-			FinishLerp(owner, immediate, true);
+			FinishLerp(owner, immediate, true, spawnEffects);
 		}
 		else // Animate sinking, play particles, sounds etc...
 		{
 			owner.GetPhysics().SetResponseIndex(NO_COLLISION_RESPONSE_INDEX);
-			data.m_CameraShake.SetParams(0.15, 0.15, 0.01, 400, 0.24);
-			data.m_CameraShake.SetCurve(GetCameraShakeCurve());
-			data.m_CameraShake.SetStartOrigin(data.m_vStartMatrix[3]);
-			data.m_CameraShake.SetSizeMultiplier(data.m_fSizeMultiplier);
-			
-			ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
-			if (character && character.IsInVehicle())
+
+			auto shake = data.m_CameraShake;
+			if (shake != null)
 			{
-				Vehicle vehicle = Vehicle.Cast(character.GetParent());
-				if (vehicle)
+				shake.SetParams(0.15, 0.15, 0.01, 400, 0.24);
+				shake.SetCurve(GetCameraShakeCurve());
+				shake.SetStartOrigin(data.m_vStartMatrix[3]);
+				shake.SetSizeMultiplier(data.m_fSizeMultiplier);
+
+				ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+				if (character && character.IsInVehicle())
 				{
-					VehicleBaseSimulation simulation = VehicleBaseSimulation.Cast(vehicle.FindComponent(VehicleBaseSimulation));
-					if (simulation && simulation.HasAnyGroundContact())
-						SCR_CameraShakeManagerComponent.AddCameraShake(data.m_CameraShake);
+					Vehicle vehicle = Vehicle.Cast(character.GetParent());
+					if (vehicle)
+					{
+						VehicleBaseSimulation simulation = VehicleBaseSimulation.Cast(vehicle.FindComponent(VehicleBaseSimulation));
+						if (simulation && simulation.HasAnyGroundContact())
+							SCR_CameraShakeManagerComponent.AddCameraShake(shake);
+					}
 				}
+				else
+				{
+					SCR_CameraShakeManagerComponent.AddCameraShake(shake);
+				}
+
+				//SCR_CameraShakeManagerComponent.AddCameraShake(shake);
 			}
-			else 
-			{
-				SCR_CameraShakeManagerComponent.AddCameraShake(data.m_CameraShake);
-			}
-			
-			//SCR_CameraShakeManagerComponent.AddCameraShake(data.m_CameraShake);
-			
-			
+
 			//SetEventMask(owner, EntityEvent.FRAME);
-			Activate(owner);
+			EnableDamageSystemOnFrame();
 		}
 	}
 
@@ -1246,20 +1360,21 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	//! Disables frame, deactivates the entity
 	//! Hides the mesh
 	//! Plays final effects
-	protected void FinishLerp(IEntity owner, bool immediate, bool updateEntity)
+	protected void FinishLerp(IEntity owner, bool immediate, bool updateEntity, bool spawnEffects = true)
 	{
 		owner.SetObject(null, ""); // Hide the building
 		//ClearEventMask(owner, EntityEvent.FRAME);
-		Deactivate(owner);
+		DisableDamageSystemOnFrame();
 
-		SpawnEffects(1, owner, immediate); // Ensure all effects get played
+		if (spawnEffects)
+			SpawnEffects(1, owner, immediate); // Ensure all effects get played
 
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;
 
 		owner.SetOrigin(data.m_vTargetOrigin);
-		
+
 		if (updateEntity)
 			owner.Update();
 		else
@@ -1279,7 +1394,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	{
 		if (Replication.IsClient())
 			return;
-		
+
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;
@@ -1336,7 +1451,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	{
 		if (!owner)
 			return;
-		
+
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;
@@ -1401,20 +1516,22 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	protected void PlaySlowDownSound()
 	{
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
+		const IEntity owner = GetOwner();
+		SCR_SoundManagerModule soundManager = SCR_SoundManagerModule.GetInstance(owner.GetWorld());
+		if (!soundManager)
 			return;
 
 		SCR_AudioSourceConfiguration audioSourceConfiguration = GetSlowDownAudioSourceConfiguration();
 		if (!audioSourceConfiguration || !audioSourceConfiguration.IsValid())
 			return;
 
-		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(GetOwner(), audioSourceConfiguration);
+		SCR_AudioSource audioSource = soundManager.CreateAudioSource(owner, audioSourceConfiguration, GetData().m_vStartMatrix[3]);
 		if (!audioSource)
 			return;
 
 		SetAudioSource(audioSource);
-		soundManagerEntity.PlayAudioSource(audioSource, GetData().m_vStartMatrix);
+
+		soundManager.PlayAudioSource(audioSource);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1444,7 +1561,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	{
 		if (!owner)
 			return;
-		
+
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;
@@ -1478,8 +1595,11 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		else
 		// Getting to the final state
 		{
-			owner.SetOrigin(newOrigin);
-			
+			vector worldMat[4];
+			owner.GetWorldTransform(worldMat);
+			worldMat[3] = newOrigin;
+			owner.SetWorldTransform(worldMat);
+
 			// Rather than updating entities one by one, let the damage system
 			// know it is supposed to perform a parallel update.
 			owner.SetFlags(EntityFlags.USER3);
@@ -1594,6 +1714,26 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	override array<ref WB_UIMenuItem> _WB_GetContextMenuItems(IEntity owner)
+	{
+		array<ref WB_UIMenuItem> items = { new WB_UIMenuItem("Toggle Interior Bounding Box Debug", 0) };
+
+		return items;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void _WB_OnContextMenu(IEntity owner, int id)
+	{
+		switch (id)
+		{
+			case 0:
+			{
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SHOW_INTERIOR_BOUNDING_BOX, !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SHOW_INTERIOR_BOUNDING_BOX));
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		super._WB_AfterWorldUpdate(owner, timeSlice);
@@ -1621,63 +1761,18 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	}
 #endif
 
-#ifdef BUILDING_DESTRUCTION_SAVING
-	//------------------------------------------------------------------------------------------------
-	override event void _WB_OnDelete(IEntity owner, IEntitySource src)
-	{
-		SCR_BuildingDestructionManagerComponent.UnregisterBuildingId(this);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override event void _WB_OnInit(IEntity owner, inout vector mat[4], IEntitySource src)
-	{
-		int id = GetBuildingId();
-		if (id != 0 && !SCR_BuildingDestructionManagerComponent.IsIdTaken(id, this))
-			return;
-
-		id = SCR_BuildingDestructionManagerComponent.GetNewId();
-		src.Set("m_iId", id);
-		SCR_BuildingDestructionManagerComponent.RegisterBuildingId(this, id);
-	}
-#endif
-	//------------------------------------------------------------------------------------------------
-	int GetBuildingId()
-	{
-		SCR_DestructibleBuildingEntity ent = SCR_DestructibleBuildingEntity.Cast(GetOwner());
-		if (ent)
-			return ent.GetBuildingId();
-
-		return 0;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SCR_DestructibleBuildingComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
-	{
-#ifdef BUILDING_DESTRUCTION_SAVING
-		if (!SCR_DestructibleBuildingEntity.Cast(ent))
-			Print("SCR_DestructibleBuildingComponent not attached to SCR_DestructibleBuildingEntity!", LogLevel.WARNING);
-		else
-		{
-			int id = GetBuildingId();
-			if (id != 0)
-				SCR_BuildingDestructionManagerComponent.RegisterBuildingId(this, id);
-		}
-#endif
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_DestructibleBuildingComponent()
-	{
-#ifdef BUILDING_DESTRUCTION_SAVING
-		SCR_BuildingDestructionManagerComponent.UnregisterBuildingId(this);
-#endif
-	}
-
 	//------------------------------------------------------------------------------------------------
 	//! Returns true if local instance is proxy (not the authority)
 	protected bool IsProxy()
 	{
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		return rplComponent && rplComponent.IsProxy();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool IsMaster()
+	{
+		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		return rplComponent && rplComponent.IsMaster();
 	}
 };

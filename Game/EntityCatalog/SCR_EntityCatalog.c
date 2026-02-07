@@ -607,9 +607,11 @@ class SCR_EntityCatalog
 			
 			//~ Call init
 			m_aEntityEntryList[i].InitEntry(this, i);
-			
-			//~ Add to quick access map after if it is enabled to allow the system to quickly obtain the index of a prefab within the catalog
-			m_mPrefabIndexes.Insert(m_aEntityEntryList[i].GetPrefab(), i);
+		}
+		
+		foreach (int idx, SCR_EntityCatalogEntry entry : m_aEntityEntryList)
+		{
+			m_mPrefabIndexes.Insert(entry.GetPrefab(), idx);
 		}
 		
 		//~ Call post init one frame later for all entries to allow all Catalogs to be initialized before the post init is called on entries
@@ -618,7 +620,7 @@ class SCR_EntityCatalog
 	
 	//------------------------------------------------------------------------------------------------
 	protected void PostInitCatalog()
-	{	
+	{
 		//~ Post Init data for entries	
 		foreach (SCR_EntityCatalogEntry entry : m_aEntityEntryList)
 		{

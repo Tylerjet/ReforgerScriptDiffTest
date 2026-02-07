@@ -27,6 +27,16 @@ class GeneralCinematicTrack : CinematicTrackBase
 		TStringArray strs = new TStringArray;
 		GetTrackName().Split("_", strs, true);
 		
+		if (strs.Get(0) == "player")
+		{
+			if(!GetGame().GetPlayerController())
+				return;
+			
+			m_GeneralEntity = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+			
+			return;	
+		}
+		
 		m_GeneralEntity = GenericEntity.Cast(world.FindEntityByName(strs.Get(0)));
 	}
 	

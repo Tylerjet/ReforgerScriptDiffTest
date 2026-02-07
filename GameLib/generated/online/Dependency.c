@@ -57,11 +57,6 @@ sealed class Dependency: Managed
 	Item can be cached by calling LoadItem(BackendCallback callback).
 	*/
 	proto external WorkshopItem GetCachedItem();
-	/*!
-	Will request to download of this item.
-	\param callback - Is script callback where you will receive result/error when request finishes
-	*/
-	proto external void Download(BackendCallback callback);
 }
 
 /*!

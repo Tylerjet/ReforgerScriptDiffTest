@@ -37,6 +37,6 @@ class SCR_ScenarioFrameworkActionKillEntity : SCR_ScenarioFrameworkActionBase
 			Math.RandomIntInclusive(1, 3)
 		};
 
-		animationComponent.AddRagdollEffectorDamage(vector.One, randomDir, Math.RandomFloatInclusive(0, 50), Math.RandomFloatInclusive(0, 10), Math.RandomFloatInclusive(0, 20));
+		animationComponent.AddRagdollEffectorDamage(vector.One, randomDir.Normalized(), Math.RandomFloatInclusive(0, 50), Math.RandomFloatInclusive(0, 10), Math.RandomFloatInclusive(0, 20));
 	}
 }

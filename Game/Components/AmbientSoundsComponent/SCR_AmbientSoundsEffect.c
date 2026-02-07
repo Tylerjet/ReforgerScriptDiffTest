@@ -6,6 +6,13 @@ class SCR_AmbientSoundsEffect
 	
 	//------------------------------------------------------------------------------------------------
 	//!
+	SCR_AmbientSoundsComponent GetAmbientSoundsComponent()
+	{
+		return m_AmbientSoundsComponent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
 	//! \param[in] worldTime
 	//! \param[in] cameraPos
 	// Called by SCR_AmbientSoundComponent in UpdateSoundJob()

@@ -28,7 +28,7 @@ class SCR_SpeedByHeightManualCameraComponent : SCR_BaseManualCameraComponent
 		float surfaceY = param.world.GetSurfaceY(pos[0], pos[2]);
 
 #ifdef CURVE_APPLIED
-		float height = Math3D.Curve(ECurveType.CurveProperty2D, (pos[1] - surfaceY) / m_fMaxHeight, m_fHeightCoef)[1];
+		float height = LegacyCurve.Curve(ECurveType.CurveProperty2D, (pos[1] - surfaceY) / m_fMaxHeight, m_fHeightCoef)[1];
 		param.multiplier *= Math.Max(height * m_fMaxHeight * m_fSpeedCoef, m_fMinSpeed);			
 #else
 		float height = Math.AbsFloat(pos[1] - surfaceY);

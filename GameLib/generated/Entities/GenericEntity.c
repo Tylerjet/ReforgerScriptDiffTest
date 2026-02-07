@@ -41,7 +41,7 @@ class GenericEntity: IEntity
 	specified in method RplRpc attribute.
 	\param      method  Member function to be invoked as an RPC.
 	*/
-	proto void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
+	proto protected void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 	//! This returns world editor API, which is safe to use from editor events bellow
 	proto external WorldEditorAPI _WB_GetEditorAPI();
 	static proto void GetMatrixFromSource(BaseWorld world, IEntitySource src, bool withScale, out vector mat[4]);
@@ -138,6 +138,8 @@ class GenericEntity: IEntity
 	event array<ref ParamEnum> _WB_GetUserEnums(string varName, IEntitySource src);
 	//! Any property value has been changed. You can use editor API here and do some additional edit actions which will be part of the same "key changed" action.
 	event bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent);
+	//! Some "coords" or "angles" vector property is being to be edited. Entity can provide a world matrix which represents their local space and which is needed by editor to edit the key by a gizmo
+	event bool _WB_GetKeySpaceMatrixWorld(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent, out vector transformSpaceWorld[4]);
 	//! Called after updating world in Workbench. The entity must be visible in frustum, selected or named. You can use editor API here and do some edit actions if needed.
 	event void _WB_AfterWorldUpdate(float timeSlice);
 	//! Called after _WB_OnInit or also later when editor needs to know whether _WB_AfterWorldUpdate needs to be called and when. Return value can be either 0 (event will not be called at all) or any combination of EEntityFrameUpdateSpecs. Avoid CALL_ALWAYS flag whenever possible to prevent performance issues

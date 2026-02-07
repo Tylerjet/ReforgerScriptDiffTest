@@ -48,6 +48,9 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		effect.ActivateEffect(m_Player, m_Player, gadget, effect.GetAnimationParameters(gadget, m_Player, m_pParentContainer.GetHitZoneGroup()));
 		
 		charCtrl.m_OnGadgetStateChangedInvoker.Remove(ApplyItem);
+		
+		if (comp.GetConsumableType() == SCR_EConsumableType.BANDAGE)
+			SCR_AnalyticsApplication.GetInstance().UseHealingFromInventory();		
 	}
 
 	//------------------------------------------------------------------------------------------------

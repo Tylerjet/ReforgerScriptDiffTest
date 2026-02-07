@@ -25,9 +25,18 @@ class SCR_HintUIInfo : SCR_BlockUIInfo
 	[Attribute("0", desc: "True will make hint visible across menues. E.g. hint opened in inventory will stay will be reopened in hud once player leave inventory.")]
 	protected bool m_bPersistent;
 	
+	[Attribute("0", desc: "Can this hint be set to don't show again?")]
+	protected bool m_bIsDontShowAgainVisible;
+	
 	protected int m_iSequencePage;
 	protected int m_iSequenceCount;
 	protected WorldTimestamp m_iTimeHintStarted;
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetIsDontShowAgainVisible()
+	{
+		return m_bIsDontShowAgainVisible;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get hint type. When defined, the hint will be persistently saved and not shown again.

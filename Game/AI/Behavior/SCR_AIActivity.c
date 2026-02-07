@@ -69,6 +69,19 @@ class SCR_AIActivityBase : SCR_AIActionBase
 		}
 	}
 	
+	//---------------------------------------------------------------------------------------------------------------------------------
+	//! This is an overload of basic Fail() method, since we need to pass extra information regarding related waypoint
+	//! \param[in] doNotCompleteWaypoint
+	void Fail(bool doNotCompleteWaypoint)
+	{
+		// If doNotCompleteWaypoint == true, the waypoint completed first and should not be completed for the second time
+		// we break the reference here deliberately and activity wont touch the waypoint from there on
+		if (doNotCompleteWaypoint)
+			m_RelatedWaypoint = null;
+		
+		Fail();
+	}
+	
 	//---------------------------------------------------------------------------------------------------------------------------------	
 	// Called from OnActionFailed and OnActionCompleted of the child behavior
 	void OnChildBehaviorFinished(SCR_AIBehaviorBase childBehavior);

@@ -9,9 +9,9 @@ class VehiclesDustSystem: GameSystem
 
 	protected ref array<SCR_VehicleDustPerWheel> m_Components = {};
 	
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_VehicleDustPerWheel comp: m_Components)
 		{

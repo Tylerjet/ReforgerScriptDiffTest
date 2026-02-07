@@ -44,16 +44,23 @@ class SCR_TextsTaskManagerComponentClass : ScriptComponentClass
 
 class SCR_TextsTaskManagerComponent : ScriptComponent
 {
+	protected static SCR_TextsTaskManagerComponent s_Instance;
+	
+	static const string TASK_AMOUNT_COMPLETED_TEXT = "#AR-Tasks_AmountCompleted";
+	static const string TASK_PROGRESS_TEXT = "#AR-Tasks_StatusProgress-UC";
+	static const string TASK_FINISHED_TEXT = "#AR-Tasks_StatusFinished-UC";
+	static const string TASK_AVAILABLE_TEXT = "#AR-Tasks_StatusNew-UC";
+	static const string TASK_HINT_TEXT = "#AR-Tasks_Hint";
+	static const string TASK_CANCELLED_TEXT = "#AR-Tasks_StatusCancelled-UC";
+	static const string TASK_COMPLETED_TEXT = "#AR-Tasks_StatusCompleted-UC";
+	static const string TASK_FAILED_TEXT = "#AR-Tasks_StatusFailed-UC";
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get instance of this class.
 	//! \return SCR_TextsTaskManagerComponent attached to SCR_BaseTaskManager
 	static SCR_TextsTaskManagerComponent GetInstance()
 	{
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (taskManager)
-			return SCR_TextsTaskManagerComponent.Cast(taskManager.FindComponent(SCR_TextsTaskManagerComponent));
-		else
-			return null;
+		return s_Instance;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -82,6 +89,19 @@ class SCR_TextsTaskManagerComponent : ScriptComponent
 			return prefabData.GetText(type, index);
 		else
 			return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_TextsTaskManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
+	{
+		if (!s_Instance)
+			s_Instance = this;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_TextsTaskManagerComponent()
+	{
+		s_Instance = null;
 	}
 }
 

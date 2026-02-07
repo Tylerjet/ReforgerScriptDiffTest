@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "NotificationTestGeneratorEntity", dynamicBox: true, visible: false)]
+[EntityEditorProps(category: "GameScripted/Generators", description: "NotificationTestGeneratorEntity", dynamicBox: true, visible: false)]
 class NotificationTestGeneratorEntityClass : SCR_GeneratorBaseEntityClass
 {
 }

@@ -10,6 +10,9 @@ class SCR_VehicleWeaponSupportStationComponent : SCR_BaseItemSupportStationCompo
 	//------------------------------------------------------------------------------------------------
 	protected override void DelayedInit(IEntity owner)
 	{
+		if (!owner)
+			return;
+
 		m_InventoryStorage = InventoryStorageManagerComponent.Cast(owner.FindComponent(InventoryStorageManagerComponent));
 		super.DelayedInit(owner);
 	}
@@ -203,8 +206,11 @@ class SCR_VehicleWeaponSupportStationComponent : SCR_BaseItemSupportStationCompo
 				//~ Consume supplies
 				if (!OnConsumeSuppliesServer(GetSupplyAmountAction(actionOwner, actionUser, action)))
 					return;
-				
-				IEntity spawnedWeapon = GetGame().SpawnEntityPrefab(resource);
+
+				const EntitySpawnParams params = new EntitySpawnParams();
+				weaponSlot.GetSlotInfo().GetWorldTransform(params.Transform);
+
+				IEntity spawnedWeapon = GetGame().SpawnEntityPrefab(resource, actionOwner.GetWorld(), params);
 				if (!spawnedWeapon)
 					return;
 
@@ -219,37 +225,28 @@ class SCR_VehicleWeaponSupportStationComponent : SCR_BaseItemSupportStationCompo
 		SCR_RefundPylonSupportStationAction refundPylonAction = SCR_RefundPylonSupportStationAction.Cast(action);
 		if (refundPylonAction)
 		{
-			if (actionOwner.GetParent())
-			{
-				TurretControllerComponent turrentController = TurretControllerComponent.Cast(actionOwner.GetParent().FindComponent(TurretControllerComponent));
-				
-				if (turrentController)
-				{
-					array<Managed> weaponSlots = {};
-					actionOwner.GetParent().FindComponents(WeaponSlotComponent, weaponSlots);
-					
-					WeaponSlotComponent weaponSlot;
-					foreach (Managed slot : weaponSlots)
-					{
-						weaponSlot = WeaponSlotComponent.Cast(slot);
-						if (!weaponSlot)
-							continue;
-						
-						if (weaponSlot.GetWeaponEntity() != actionOwner)
-							continue;
-						
-						turrentController.RemoveWeapon(null, weaponSlot.GetWeaponSlotIndex(), null);	
-						break;					
-					}
-				}				
-			}
-			
+			TurretControllerComponent turrentController = TurretControllerComponent.Cast(actionOwner.FindComponent(TurretControllerComponent));
+			if (!turrentController)
+				return;
+
+			const WeaponSlotComponent weaponSlot = refundPylonAction.GetManagedWeaponSlot();
+			if (!weaponSlot)
+				return;
+
+			const IEntity attachedWeapon = weaponSlot.GetWeaponEntity();
+			if (!attachedWeapon)
+				return;
+
+			const int weaponId = refundPylonAction.GetPylonIndex();
+			turrentController.RemoveWeapon(null, weaponId, null);
+
 			//~ Generate supplies
 			if (!OnGenerateSuppliesServer(GetSupplyAmountAction(actionOwner, actionUser, action)))
 				return;
-			
+
 			super.OnExecutedServer(actionOwner, actionUser, action);
-			delete actionOwner;
+
+			RplComponent.DeleteRplEntity(attachedWeapon, false);
 			
 			return;
 		}
@@ -259,59 +256,18 @@ class SCR_VehicleWeaponSupportStationComponent : SCR_BaseItemSupportStationCompo
 	//~ Called by OnExecuteBroadcast and is executed both on server and on client
 	//~ playerId can be -1 if the user was not a player
 	protected override void OnExecute(IEntity actionOwner, IEntity actionUser, int playerId, SCR_BaseUseSupportStationAction action)
-	{		
-		//~ If player is in vehicle we can add notification that player x added a pion or refunded it or the likes
-		
-		SCR_AudioSourceConfiguration audioConfig;
-		
+	{
+		super.OnExecute(actionOwner, actionUser, playerId, action);
+
 		ResourceName soundProject;
 		string soundEffectName;
 		
 		SCR_BaseAudioSupportStationAction baseAudioAction = SCR_BaseAudioSupportStationAction.Cast(action);
-		if (baseAudioAction)
-		{
-			if (baseAudioAction.GetSoundEffectProjectAndEvent(soundProject, soundEffectName))
-				audioConfig = CreateOnUseAudioConfig(soundProject, soundEffectName);
-			
-			if (!audioConfig)
-				return;
-				
-			SCR_RefundPylonSupportStationAction refundPylon = SCR_RefundPylonSupportStationAction.Cast(baseAudioAction);
-			if (refundPylon)
-			{
-				//~ Play audio via user as the pylon will be sold
-				PlaySoundEffect(audioConfig, actionUser, null);
-				return;
-			}
-		}
-		
-		if (!audioConfig)
-		{
-			SCR_AttachPylonSupportStationAction attachPylonAction = SCR_AttachPylonSupportStationAction.Cast(action);
-			if (attachPylonAction)
-			{
-				if (attachPylonAction.GetSoundEffectProjectAndEvent(soundProject, soundEffectName))
-					audioConfig = CreateOnUseAudioConfig(soundProject, soundEffectName);
-			
-				if (!audioConfig)
-					return;
-			}
-		}
-		
-		if (!audioConfig)
-		{
-			SCR_ResupplyVehicleWeaponSupportStationAction resupplyVehicleWeaponAction = SCR_ResupplyVehicleWeaponSupportStationAction.Cast(action);
-			if (resupplyVehicleWeaponAction)
-			{
-				if (resupplyVehicleWeaponAction.GetSoundEffectProjectAndEvent(soundProject, soundEffectName))
-					audioConfig = CreateOnUseAudioConfig(soundProject, soundEffectName);
-				
-				if (!audioConfig)
-					return;
-			}
-		}
-		
+		if (!baseAudioAction || !baseAudioAction.GetSoundEffectProjectAndEvent(soundProject, soundEffectName))
+			return;
+
+		SCR_AudioSourceConfiguration audioConfig = CreateOnUseAudioConfig(soundProject, soundEffectName);
 		if (audioConfig)
-			PlaySoundEffect(audioConfig, actionOwner, action);
+			PlaySoundEffect(audioConfig, baseAudioAction.GetSoundSource(), action);
 	}
 }

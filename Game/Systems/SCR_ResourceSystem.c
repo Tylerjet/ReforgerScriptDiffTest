@@ -25,9 +25,9 @@ class SCR_ResourceSystem : GameSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
-    override protected void OnUpdate(ESystemPoint point)
+    override protected void OnUpdatePoint(WorldUpdatePointArgs args)
     {
-		if (point != ESystemPoint.FixedFrame)
+		if (args.GetPoint() != ESystemPoint.FixedFrame)
 			return;
 		
 		// 1. Cleanup and setup.

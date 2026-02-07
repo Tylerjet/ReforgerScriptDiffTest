@@ -31,13 +31,13 @@ class DialogueData: DialogueBaseElement
 	// callbacks
 
 	// Invoked by DialogueGlobalData counterpart during initialization of data.
-	event void InitGlobalData(DialogueGlobalData globalData);
-	event void OnStart(IEntity pSpeaker, Dialogue dial);
-	event void OnStartAt(IEntity pSpeaker, Dialogue dial, float timeInNode) { OnStart(pSpeaker, dial); };
-	event void OnEnd(IEntity pSpeaker, Dialogue dial);
-	event void OnUpdate(IEntity pSpeaker, Dialogue dial, float timeSlice, float timeInNode);
-	event void OnInterrupt(IEntity pSpeaker, Dialogue dial) { OnEnd(pSpeaker, dial); };
-	event void OnSkip(IEntity pSpeaker, Dialogue dial) { OnEnd(pSpeaker, dial); };
+	event void InitGlobalData(notnull DialogueGlobalData globalData);
+	event void OnStart(IEntity pSpeaker);
+	event void OnStartAt(IEntity pSpeaker, float timeInNode) { OnStart(pSpeaker); };
+	event void OnEnd(IEntity pSpeaker);
+	event void OnUpdate(IEntity pSpeaker, float timeSlice, float timeInNode);
+	event void OnInterrupt(IEntity pSpeaker) { OnEnd(pSpeaker); };
+	event void OnSkip(IEntity pSpeaker) { OnEnd(pSpeaker); };
 }
 
 /*!

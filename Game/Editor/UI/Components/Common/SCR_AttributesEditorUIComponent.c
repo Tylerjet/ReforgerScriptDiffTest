@@ -719,8 +719,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			}
 				
 			//Factions only being edited
-			SCR_BaseTaskManager taskManager = SCR_BaseTaskManager.Cast(editedItems[0]);
-			if (taskManager)
+			SCR_TaskSystem taskSystem = SCR_TaskSystem.Cast(editedItems[0]);
+			if (taskSystem)
 			{
 				header.SetText(m_sFactionOnlyTitle);
 				return;

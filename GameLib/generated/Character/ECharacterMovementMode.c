@@ -14,6 +14,8 @@ enum ECharacterMovementMode
 	NONE,
 	GROUND_MOVEMENT,
 	FALLING,
+	FLYING,
+	SWIMMING,
 }
 
 /*!

@@ -30,23 +30,15 @@ class SCR_Tutorial_SW_RPG_DISPOSE : SCR_BaseTutorialStage
 	protected bool IsLauncherDropped()
 	{
 		if (!m_PlayerInventory)
-			return true;
+			return false;
 
-		array<IEntity> entities = {};
-		m_PlayerInventory.GetAllRootItems(entities);
-		if (!entities.IsEmpty())
+		array<IEntity> foundItems = {};		
+		m_PlayerInventory.FindItemsWithComponents(foundItems, {BaseWeaponComponent}, EStoragePurpose.PURPOSE_ANY);
+		foreach (IEntity item : foundItems)
 		{
-			BaseWeaponComponent weaponComp;
-			BaseMuzzleComponent muzzle;
-			foreach (IEntity ent : entities)
-			{
-				weaponComp = BaseWeaponComponent.Cast(ent.FindComponent(BaseWeaponComponent));
-				if (!weaponComp)
-					continue;
-
-				if (weaponComp.GetWeaponType() == EWeaponType.WT_ROCKETLAUNCHER)
-					return false;
-			}
+			const BaseWeaponComponent weapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
+			if (weapon.GetWeaponType() == EWeaponType.WT_ROCKETLAUNCHER)
+				return false;
 		}
 
 		return true;

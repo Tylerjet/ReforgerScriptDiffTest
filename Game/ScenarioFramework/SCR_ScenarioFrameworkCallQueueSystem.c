@@ -32,9 +32,9 @@ class SCR_ScenarioFrameworkCallQueueSystem : GameSystem
 
 
 	//------------------------------------------------------------------------------------------------
-	override event protected void OnUpdate(ESystemPoint point)
+	override event protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 
 		m_fTimer += timeSlice;
 
@@ -44,5 +44,13 @@ class SCR_ScenarioFrameworkCallQueueSystem : GameSystem
 		m_fTimer = 0;
 
 		s_CallQueueNonPausable.Tick(timeSlice);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Clears CallQueue after destruction of this system
+	void ~SCR_ScenarioFrameworkCallQueueSystem()
+	{
+		if (s_CallQueueNonPausable)
+			s_CallQueueNonPausable.Clear();
 	}
 }

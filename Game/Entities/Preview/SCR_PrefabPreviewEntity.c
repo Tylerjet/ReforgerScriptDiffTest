@@ -69,11 +69,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			//if (parentID == 0)
 			//	entryLocal.m_fScale *= entryLocal.m_fScale; //--- Compensate for parent scale (why though?)
 			
-			float angleX, angleY, angleZ;
-			entitySource.Get("angleX", angleX);
-			entitySource.Get("angleY", angleY);
-			entitySource.Get("angleZ", angleZ);
-			entryLocal.m_vAngles = Vector(angleX, angleY, angleZ);
+			entitySource.Get("angles", entryLocal.m_vAngles);
 
 		}
 		entryLocal.m_EntitySource = entitySource;

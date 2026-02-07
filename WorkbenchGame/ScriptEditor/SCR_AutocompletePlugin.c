@@ -17,16 +17,18 @@
 //! dtor → adds a destructor
 //! findcomp → adds SCR_ComponentClass component = SCR_ComponentClass.Cast(entity.FindComponent(SCR_ComponentClass));
 //! print → adds a Print with normal LogLevel
+//! Type something = new → Type something = new Type();
 //!
 //! nullcheck on cast (e.g "Class a = Class.Cast(b)") → adds an "if (!a) return;" check below if not present
 //! validity check on Resource.Load → adds an "if (!resource.IsValid())" check below (or fixes, in case of "if (!resource)") if not present
 //! potential attribute (e.g "ResourceName m_sResourceName;") → adds an [Attribute()] if not present
 //! adds missing or incorrect LogLevel to Print/PrintFormat
+//! adds missing () to incomplete instantiation
 [WorkbenchPluginAttribute(name: "Autocomplete", description: "Helps autocompleting keywords, adding [Attribute()] decorators, cast nullchecks etc.", shortcut: "Ctrl+Return" /* "Ctrl+Space" */, wbModules: { "ScriptEditor" }, awesomeFontCode: 0xE2CA)]
 class SCR_AutocompletePlugin : WorkbenchPlugin
 {
 	/*
-		General
+		Category: General
 	*/
 
 	[Attribute(defvalue: "1", desc: "Add class constructor on \"" + CONSTRUCTOR_KEYWORD + "\" keyword", category: "General")]
@@ -34,6 +36,21 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 
 	[Attribute(defvalue: "1", desc: "Add class destructor on \"" + DESTRUCTOR_KEYWORD + "\" keyword", category: "General")]
 	protected bool m_bAddDestructor;
+
+	[Attribute(defvalue: "1", desc: "Autocomplete \" = new\" statements, e.g:"
+		+ "\n- array<int> myArray = new → array<int> myArray = {};"
+		+ "\n- array<ref SCR_MyClass> myArray = new → array<ref SCR_MyClass> myArray = {};"
+		+ "\n- map<int, ref SCR_MySuperClass> myMap = new → map<int, ref SCR_MySuperClass> myMap = new map<int, ref SCR_MySuperClass>();"
+		+ "\n- bool m_bMyVar = new → bool m_bMyVar;", category: "General")]
+	protected bool m_bAddInstantiation;
+
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "On which line ending does instantion completion triggers", enums: SCR_ParamEnumArray.FromString("Both \"= new\" and \"=\";\"= new\";\"=\" only"), category: "General")]
+	protected int m_iInstantiationTrigger;
+
+	[Attribute(defvalue: "1", desc:"Fix \"new\" statements, e.g:"
+		+ "\n- SCR_MyClass instance = new SCR_MyClass; → SCR_MyClass instance = new SCR_MyClass();"
+		+ "\n- array<string> instance = new array<string>(); → array<string> instance = {};", category: "General")]
+	protected bool m_bFixInstantiation;
 
 	[Attribute(defvalue: "1", desc: "Add a nullcheck below a \"Class a = Class.Cast(b)\" statement if not present", category: "General")]
 	protected bool m_bAddCastNullcheck;
@@ -54,7 +71,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	protected bool m_bKeepCommentIndentation = true;
 
 	/*
-		Keywords
+		Category: Keywords
 	*/
 
 	[Attribute(defvalue: "1", desc: "Use the tool's keyword list below", category: "Keywords")]
@@ -70,7 +87,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	protected ref array<ref SCR_AutocompletePlugin_KeywordData> m_aUserKeywords;
 
 	/*
-		Attributes
+		Category: Attributes
 	*/
 
 	[Attribute(defvalue: "1", desc: "Use Tool Attributes", category: "Attribute Decorators")]
@@ -91,6 +108,12 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	protected static const string SEP_NL = SCR_StringHelper.DOUBLE_SLASH + "------------------------------------------------------------------------------------------------\n";
 	protected static const string CONSTRUCTOR_KEYWORD = "ctor";
 	protected static const string DESTRUCTOR_KEYWORD = "dtor";
+	protected static const string ENTITY_SUFFIX = "Entity"; // used to detect IEntity's ctor(IEntitySource src, IEntity parent)
+
+	protected static const ref array<string> NATIVE_TYPES = {
+		"bool", "float", "int", "string", "typename", "vector",
+		"FactionKey", "LocalizedString", "ResourceName",
+	};
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()
@@ -155,6 +178,22 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		if (!currentLine)
 			return;
 
+		if (m_bAddInstantiation)
+		{
+			if (((m_iInstantiationTrigger == 0 || m_iInstantiationTrigger == 2) && currentLine.EndsWith(" ="))
+				|| ((m_iInstantiationTrigger == 0 || m_iInstantiationTrigger == 1) && currentLine.EndsWith(" = new")))
+			{
+				if (AddNewType(scriptEditor, indentation, currentLine, indentedComment))
+					return;
+			}
+		}
+
+		if (m_bFixInstantiation)
+		{
+			if (FixInstantiation(scriptEditor, indentation, currentLine, indentedComment))
+				return;
+		}
+
 		if (m_bAddCastNullcheck && currentLine.Contains(".Cast(")) // )
 		{
 			if (AddCastCheck(scriptEditor, indentation, currentLine))
@@ -213,9 +252,191 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	//! \param[in] scriptEditor
 	//! \param[in] indentation
 	//! \param[in] currentLine
+	//! \param[in] comment
+	//! \return
+	protected bool AddNewType(notnull ScriptEditor scriptEditor, string indentation, string currentLine, string comment)
+	{
+		if (!currentLine.Contains(SCR_StringHelper.EQUALS))
+			return false;
+
+		array<string> tokens = {};
+		currentLine.Split(SCR_StringHelper.EQUALS, tokens, true);
+
+		int tokensCount = tokens.Count();
+		if (m_iInstantiationTrigger == 1) // "= new" only
+		{
+			if (tokensCount < 2)
+				return false;
+		}
+		else
+		{
+			if (tokensCount < 1)
+				return false;
+		}
+
+		tokens[0].Split(SCR_StringHelper.SPACE, tokens, true);
+		if (tokens.Count() < 2)
+			return false;
+
+		tokens.RemoveItemOrdered("auto");
+		tokens.RemoveItemOrdered("autoptr");
+		tokens.RemoveItemOrdered("protected");
+		tokens.RemoveItemOrdered("private");
+		tokens.RemoveItemOrdered("static");
+		if (tokens.IsEmpty())
+			return false;
+
+		if (tokens[0] == "ref")
+		{
+			tokens.RemoveOrdered(0);
+
+			if (indentation != SCR_StringHelper.TAB && currentLine.StartsWith("ref ") && currentLine != "ref ")
+			{
+				currentLine = currentLine.Substring(4, currentLine.Length() - 4);
+				currentLine.TrimInPlace();
+			}
+		}
+
+		tokensCount = tokens.Count();
+		if (tokensCount < 2)
+			return false;
+
+		string newVarType;
+		if (tokensCount == 2)
+		{
+			newVarType = tokens[0];
+		}
+		else
+		{
+			tokens.Remove(tokensCount - 1);
+			newVarType = SCR_StringHelper.Join(SCR_StringHelper.SPACE, tokens, false);
+		}
+
+		currentLine.Replace(" = new", " =");
+
+		if (NATIVE_TYPES.Contains(newVarType))
+		{
+			currentLine.Replace(" =", string.Empty);
+			currentLine.TrimInPlace();
+			currentLine += ";";
+
+			scriptEditor.SetLineText(string.Format("%1%2%3", indentation, currentLine, comment));
+			return true;
+		}
+
+		if (newVarType.StartsWith("array<"))
+			currentLine += " {};";
+		else
+			currentLine += " new " + newVarType + "();";
+
+		scriptEditor.SetLineText(string.Format("%1%2%3", indentation, currentLine, comment));
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] scriptEditor
+	//! \param[in] indentation
+	//! \param[in] currentLine
+	//! \return
+	protected bool FixInstantiation(notnull ScriptEditor scriptEditor, string indentation, string currentLine, string comment)
+	{
+		if (!currentLine.Contains(" = new "))
+			return false;
+
+		array<string> tokens = {};
+		currentLine.Split(SCR_StringHelper.EQUALS, tokens, true);
+
+		int tokensCount = tokens.Count();
+		if (m_iInstantiationTrigger == 1) // "= new" only
+		{
+			if (tokensCount < 2)
+				return false;
+		}
+		else
+		{
+			if (tokensCount < 1)
+				return false;
+		}
+
+		tokens[0].Split(SCR_StringHelper.SPACE, tokens, true);
+		if (tokens.Count() < 2)
+			return false;
+
+		array<string> keywords;
+		if (indentation == SCR_StringHelper.TAB) // member/static properties
+			keywords = {};
+
+		tokens.RemoveItemOrdered("auto");
+		tokens.RemoveItemOrdered("autoptr");
+		if (keywords)
+		{
+			if (tokens.RemoveItemOrdered("protected"))
+				keywords.Insert("protected");
+			else
+			if (tokens.RemoveItemOrdered("private"))
+				keywords.Insert("private");
+		}
+	
+		if (!tokens.IsEmpty() && tokens[0] == "ref")
+		{
+			tokens.RemoveOrdered(0);
+			if (keywords) // member/static property = keep ref
+				keywords.Insert("ref");
+		}
+
+		tokensCount = tokens.Count();
+		if (tokensCount < 2)
+			return false;
+
+		string varType, varName;
+		if (tokensCount == 2)
+		{
+			varType = tokens[0];
+			varName = tokens[1];
+		}
+		else
+		{
+			varName = tokens[tokensCount - 1];
+			tokens.Remove(tokensCount - 1);
+			varType = SCR_StringHelper.Join(SCR_StringHelper.SPACE, tokens, false);
+			
+		}
+
+		string newLine;
+		if (NATIVE_TYPES.Contains(varType))
+		{
+			newLine = string.Format("%1 %2;", varType, varName);
+			if (keywords)
+				keywords.RemoveItemOrdered("ref");
+		}
+		else
+		{
+			if (varType.StartsWith("array<"))
+				newLine = string.Format("%1 %2 = {};", varType, varName);
+			else
+				newLine = string.Format("%1 %2 = new %1();", varType, varName);
+		}
+
+		if (keywords && !keywords.IsEmpty())
+			newLine = SCR_StringHelper.Join(SCR_StringHelper.SPACE, keywords) + SCR_StringHelper.SPACE + newLine;
+
+		if (currentLine == newLine)
+			return false;
+
+		scriptEditor.SetLineText(string.Format("%1%2%3", indentation, newLine, comment));
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] scriptEditor
+	//! \param[in] indentation
+	//! \param[in] currentLine
+	//! \return
 	protected bool AddCastCheck(notnull ScriptEditor scriptEditor, string indentation, string currentLine)
 	{
 		array<string> tokens = {};
@@ -241,7 +462,6 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 		if (!scriptEditor.GetLineText(belowLine, currentLineNumber + 1))
 			return false;
 
-
 		belowLine.TrimInPlace();
 		if (belowLine.StartsWith("if (!" + varName + ")"))
 			return false;
@@ -258,6 +478,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	//! \param[in] scriptEditor
 	//! \param[in] indentation
 	//! \param[in] currentLine
+	//! \return
 	protected bool AddResourceLoadValidityCheck(notnull ScriptEditor scriptEditor, string indentation, string currentLine)
 	{
 		array<string> tokens = {};
@@ -312,6 +533,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	//! \param[in] indentation
 	//! \param[in] currentLine
 	//! \param[in] comment
+	//! \return
 	protected bool AddPrintLogLevel(notnull ScriptEditor scriptEditor, string indentation, string currentLine, string comment)
 	{
 		if (currentLine.StartsWith("Print(")) // )
@@ -353,6 +575,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	//! \param[in] scriptEditor
 	//! \param[in] indentation
 	//! \param[in] currentLine
+	//! \return
 	protected bool AddAttributeDecorator(notnull ScriptEditor scriptEditor, string indentation, string currentLine)
 	{
 		int currentLineNumber = scriptEditor.GetCurrentLine();
@@ -451,7 +674,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 					scriptEditor.InsertLine(indentation + string.Format(data.m_sValue, friendlyName, typeStr));
 				else
 					scriptEditor.InsertLine(indentation + string.Format("[Attribute(desc: \"%1\", uiwidget: UIWidgets.CheckBox, enumType: %2)]", friendlyName, typeStr));
-	
+
 				return true;
 			}
 		}
@@ -493,6 +716,7 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 	//! \param[in] isConstructor true for constructor, false for destructor
 	//! \param[in] indentation
 	//! \param[in] comment
+	//! \return
 	protected bool AddConstructorDestructor(notnull ScriptEditor scriptEditor, bool isConstructor, string indentation, string comment)
 	{
 		string className;
@@ -508,9 +732,16 @@ class SCR_AutocompletePlugin : WorkbenchPlugin
 
 		string text;
 		if (isConstructor)
-			text = string.Format(SEP_NL + SCR_StringHelper.DOUBLE_SLASH + " constructor\nvoid %1()%2\n{\n\t\n}", className, comment);
+		{
+			if (className.EndsWith(ENTITY_SUFFIX))
+				text = string.Format(SEP_NL + SCR_StringHelper.DOUBLE_SLASH + " constructor\nvoid %1(IEntitySource src, IEntity parent)%2\n{\n\t\n}", className, comment);
+			else
+				text = string.Format(SEP_NL + SCR_StringHelper.DOUBLE_SLASH + " constructor\nvoid %1()%2\n{\n\t\n}", className, comment);
+		}
 		else
+		{
 			text = string.Format(SEP_NL + SCR_StringHelper.DOUBLE_SLASH + " destructor\nvoid ~%1()%2\n{\n\t\n}", className, comment);
+		}
 
 		scriptEditor.SetLineText(AddIndentation(text, indentation));
 		return true;

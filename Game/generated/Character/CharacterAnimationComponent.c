@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class CharacterAnimationComponentClass: BaseAnimPhysComponentClass
-{
-}
-
 class CharacterAnimationComponent: BaseAnimPhysComponent
 {
 	//! Set animation layer for third person camera
@@ -34,6 +30,8 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external CharacterHeadingAnimComponent GetHeadingComponent();
 	//! Character Buoyancy - AnimPhysAgent component
 	proto external CharacterBuoyancyComponent GetKinematicBuoyancyComponent();
+	proto external bool IsWeaponRaisedTag();
+	proto external bool IsWeaponLoweredTag();
 	proto external bool IsWeaponADSTag();
 	proto external bool IsPrimaryTag(AnimationTagID tagID);
 	proto external bool IsSecondaryTag(AnimationTagID tagID);
@@ -54,9 +52,13 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external CharacterCommandHandlerComponent GetCommandHandler();
 	//! Returns if Character is currently ragdolling.
 	proto external bool IsRagdollActive();
-	//! Adds damage effectors that will be applied to ragdoll once it is enabled
-	//! Position and Direction in character's local space, force is in m/kg3, maxLifeTime is time in seconds as for how long this damage will be applicable (scales with decrease)
-	//! This should be only called on server, replication to the owner is done on gamecode side, remote proxy clients don't need to know this information as the ragdoll init state is replicated to them when entering ragdoll.
+	proto external bool GetRagdollBone(int index, out vector OutWorldTransform[4]);
+	//! Adds damage effectors that will be applied to ragdoll once it is enabled.
+	//! @param posLS Position in character's local space.
+	//! @param dirLS Normalized direction in character's local space.
+	//! @param force Force in m/kg3
+	//! @param maxLifeTime Duration in seconds during which this damage is applied (scales with reduction).
+	//! Call this only on the server. Replication to the owning client is handled in game code. Remote proxy clients do not need this information, as the ragdoll initialization state is replicated to them when they enter ragdoll.
 	proto external void AddRagdollEffectorDamage(vector posLS, vector dirLS, float force, float radius, float maxLifeTime);
 
 	// callbacks

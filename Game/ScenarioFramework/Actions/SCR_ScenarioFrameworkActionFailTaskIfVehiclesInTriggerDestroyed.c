@@ -112,13 +112,19 @@ class SCR_ScenarioFrameworkActionFailTaskIfVehiclesInTriggerDestroyed : SCR_Scen
 				return;
 		}
 
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 
 		m_bAlreadyDestroyed = true;
-		if (m_Task)
-			supportEntity.FailTask(m_Task);
+		if (!m_Task)
+			return;
+
+		SCR_ScenarioFrameworkLayerTask layerTask = m_Task.GetLayerTask();
+		if (!layerTask)
+			return;
+
+		layerTask.ProcessLayerTaskState(SCR_ETaskState.FAILED);
 	}
 
 	//------------------------------------------------------------------------------------------------

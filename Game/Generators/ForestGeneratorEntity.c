@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Forest Generator", dynamicBox: true, visible: false)]
+[EntityEditorProps(category: "GameScripted/Generators", description: "Forest Generator", dynamicBox: true, visible: false)]
 class ForestGeneratorEntityClass : SCR_AreaGeneratorBaseEntityClass
 {
 }
@@ -474,11 +474,12 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
-		bool parentResult = super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+		if (!super._WB_OnKeyChanged(src, key, ownerContainers, parent))
+			return false;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
-			return parentResult;
+			return true;
 
 		src = worldEditorAPI.EntityToSource(this); // src is not fresh enough
 
@@ -671,7 +672,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 		if (worldEditorAPI.UndoOrRedoIsRestoring())
 			return;
 
-		m_RandomGenerator.SetSeed(m_iSeed);
+		SetSeed();
 
 		// clear everything
 		m_aSmallOutlinePoints.Clear();
@@ -955,7 +956,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 				if (distanceFromShape <= m_fGlobalOutlineScaleCurveDistance)
 				{
 					// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
-					float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (m_fGlobalOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, m_aGlobalOutlineScaleCurve, curveKnots)[1];
+					float scaleFactor = LegacyCurve.Curve(ECurveType.CatmullRom, (m_fGlobalOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, m_aGlobalOutlineScaleCurve, curveKnots)[1];
 
 					if (scaleFactor < SCALE_CURVE_MIN_VALUE)
 						scaleFactor = SCALE_CURVE_MIN_VALUE;
@@ -1096,14 +1097,8 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 			{
 				worldEditorAPI.BeginEditSequence(entitySource);
 
-				if (angles[1] != 0)
-					worldEditorAPI.SetVariableValue(entitySource, null, "angleX", angles[1].ToString());
-
-				if (angles[0] != 0)
-				worldEditorAPI.SetVariableValue(entitySource, null, "angleY", angles[0].ToString());
-
-				if (angles[2] != 0)
-					worldEditorAPI.SetVariableValue(entitySource, null, "angleZ", angles[2].ToString());
+				if (angles != vector.Zero)
+					worldEditorAPI.SetVariableValue(entitySource, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 
 				if (scale != 1)
 					worldEditorAPI.SetVariableValue(entitySource, null, "scale", scale.ToString());
@@ -1864,7 +1859,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 					if (distanceFromShape <= outline.m_fOutlineScaleCurveDistance)
 					{
 						// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
-						float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (outline.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, outline.m_aOutlineScaleCurve, curveKnots)[1];
+						float scaleFactor = LegacyCurve.Curve(ECurveType.CatmullRom, (outline.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, outline.m_aOutlineScaleCurve, curveKnots)[1];
 						if (scaleFactor < ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE)
 							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE;
 						else
@@ -2094,7 +2089,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 					if (distanceFromShape <= bottomLevel.m_fOutlineScaleCurveDistance)
 					{
 						// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
-						float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (bottomLevel.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, bottomLevel.m_aOutlineScaleCurve, curveKnots)[1];
+						float scaleFactor = LegacyCurve.Curve(ECurveType.CatmullRom, (bottomLevel.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, bottomLevel.m_aOutlineScaleCurve, curveKnots)[1];
 						if (scaleFactor < ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE)
 							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE;
 						else
@@ -2235,7 +2230,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 					if (distanceFromShape <= topLevel.m_fOutlineScaleCurveDistance)
 					{
 						// (m_fOutlineScaleCurveDistance - distanceFromShape) because right-to-left curve reading
-						float scaleFactor = Math3D.Curve(ECurveType.CatmullRom, (topLevel.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, topLevel.m_aOutlineScaleCurve, curveKnots)[1];
+						float scaleFactor = LegacyCurve.Curve(ECurveType.CatmullRom, (topLevel.m_fOutlineScaleCurveDistance - distanceFromShape) * scaleCurveDistanceDivisor, topLevel.m_aOutlineScaleCurve, curveKnots)[1];
 						if (scaleFactor < ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE)
 							scaleFactor = ForestGeneratorLevel.SCALE_CURVE_MIN_VALUE;
 						else

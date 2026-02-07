@@ -422,7 +422,6 @@ static void BakeCreateEmat(string absPath, array<string> properties)
 	Resource res = BaseContainerTools.CreateContainer("MatPBRBasic");
 	BaseContainer cont = res.GetResource().ToBaseContainer();
 
-	RegisterResourceUtils utils = new RegisterResourceUtils();
 	ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 
 	// looping through properties from blender
@@ -448,9 +447,7 @@ static void BakeCreateEmat(string absPath, array<string> properties)
 
 	BaseContainerTools.SaveContainer(cont, "", absPath);
 
-	MetaFile meta = resourceManager.RegisterResourceFile(absPath);
-	meta.Save();
-	resourceManager.RebuildResourceFile(absPath, "PC", true);
+	resourceManager.RegisterResourceFile(absPath, true);
 	resourceManager.WaitForFile(absPath, 3000);
 
 }

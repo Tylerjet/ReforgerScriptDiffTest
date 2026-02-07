@@ -29,7 +29,7 @@ class SCR_ReconnectComponentClass : SCR_BaseGameModeComponentClass
 	//------------------------------------------------------------------------------------------------
 	static override bool DependsOn(string className)
 	{
-		if (className == "RplComponentClass")
+		if (className == "RplComponent")
 			return true;
 		
 		return false;
@@ -53,14 +53,12 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	protected ref ScriptInvoker m_OnPlayerReconnect;
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
 	static SCR_ReconnectComponent GetInstance() 
 	{ 
 		return s_Instance; 
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
-	//! \return
 	ScriptInvoker GetOnAddedToList()
 	{ 
 		if (!m_OnAddedToReconnectList)
@@ -68,9 +66,8 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 
 		return m_OnAddedToReconnectList; 
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! \return
 	ScriptInvoker GetOnReconnect() 
 	{ 
 		if (!m_OnPlayerReconnect)
@@ -78,14 +75,7 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 		
 		return m_OnPlayerReconnect; 
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return true if the reconnect list empty, false otherwise
-	bool IsReconnectListEmpty()
-	{
-		return m_ReconnectPlayerList.IsEmpty();
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return true if the reconnect functionality is enabled, false otherwise
 	bool IsReconnectEnabled() 
@@ -97,72 +87,41 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	//! Is subject playerID currently present in list of possible reconnects
 	//! \param[in] playerId the subject's ID
 	//! \return state of the reconnecting subject
-	SCR_EReconnectState IsInReconnectList(int playerId)
+	SCR_EReconnectState GetReconnectState(int playerId)
 	{
-		if (!m_bIsInit)
-		{
-			if (!Init())
-				return SCR_EReconnectState.NOT_RECONNECT;
-		}
-		
-		if (m_ReconnectPlayerList.IsEmpty())
+		if (!m_bIsInit && !Init())
 			return SCR_EReconnectState.NOT_RECONNECT;
-		
-		int count = m_ReconnectPlayerList.Count();
-		for (int i; i < count; i++)
+
+		foreach (SCR_ReconnectData data : m_ReconnectPlayerList)
 		{
-			if (m_ReconnectPlayerList[i].m_iPlayerId == playerId)
+			if (data.m_iPlayerId != playerId)
+				continue;
+
+			const ChimeraCharacter char = ChimeraCharacter.Cast(data.m_ReservedEntity);
+			if (!char || char.GetCharacterController().IsDead())
+				return SCR_EReconnectState.ENTITY_DISCARDED;
+
+			return SCR_EReconnectState.ENTITY_AVAILABLE;
+		}
+
+		return SCR_EReconnectState.NOT_RECONNECT;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void Forget(int playerId)
+	{
+		foreach (int idx, SCR_ReconnectData data : m_ReconnectPlayerList)
+		{
+			if (data.m_iPlayerId == playerId)
 			{
-				ChimeraCharacter char = ChimeraCharacter.Cast(m_ReconnectPlayerList[i].m_ReservedEntity);
-				if (!char || char.GetCharacterController().IsDead())	// entity could have died meanwhile
-				{
-					m_ReconnectPlayerList.Remove(i);
-					return SCR_EReconnectState.ENTITY_DISCARDED;
-				}
-				
-				return SCR_EReconnectState.ENTITY_AVAILABLE;
+				m_ReconnectPlayerList.Remove(idx);
+				return;
 			}
 		}
-		
-		return SCR_EReconnectState.NOT_RECONNECT;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Is subject entity is currently present in list of possible reconnects
-	//! \param[in] entity is the subject
-	//! \return state of the reconnecting subject
-	SCR_EReconnectState IsEntityReconnectList(IEntity entity)
-	{
-		if (!m_bIsInit)
-		{
-			if (!Init())
-				return SCR_EReconnectState.NOT_RECONNECT;
-		}
-		
-		if (m_ReconnectPlayerList.IsEmpty())
-			return SCR_EReconnectState.NOT_RECONNECT;
-		
-		int count = m_ReconnectPlayerList.Count();
-		for (int i; i < count; i++)
-		{
-			if (m_ReconnectPlayerList[i].m_ReservedEntity == entity)
-			{
-				ChimeraCharacter char = ChimeraCharacter.Cast(m_ReconnectPlayerList[i].m_ReservedEntity);
-				if (!char || char.GetCharacterController().IsDead())	// entity could have died meanwhile
-				{
-					m_ReconnectPlayerList.Remove(i);
-					return SCR_EReconnectState.ENTITY_DISCARDED;
-				}
-				
-				return SCR_EReconnectState.ENTITY_AVAILABLE;
-			}
-		}
-		
-		return SCR_EReconnectState.NOT_RECONNECT;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Return control of the entity subject controlled before disconnect
+	//! Return control of the entity subject controlled before disconnect and forget the data.
 	//! \param[in] playerId is the subject
 	//! \return
 	IEntity ReturnControlledEntity(int playerId)

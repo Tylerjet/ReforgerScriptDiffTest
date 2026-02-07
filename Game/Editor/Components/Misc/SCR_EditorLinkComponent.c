@@ -3,7 +3,7 @@ class SCR_EditorLinkComponentClass : ScriptComponentClass
 {
 	[Attribute(desc: "If true it will allow variant randomization of editable entities. The 'Update editable entity' tool will automatically set this value if any of the direct children have variants.")]
 	bool m_bRandomizeVariants;
-	
+
 	[Attribute()]
 	ref array<ref SCR_EditorLinkEntry> m_aEntries;
 }
@@ -18,7 +18,8 @@ class SCR_EditorLinkComponent : ScriptComponent
 {
 	protected static bool s_bIgnoreSpawning;
 	
-	protected bool m_bIsSpawned;
+	protected ref array<IEntity> m_aLinkedChildren;
+
 	protected ref ScriptInvoker m_OnLinkedEntitiesSpawned;
 
 	/*!
@@ -31,15 +32,15 @@ class SCR_EditorLinkComponent : ScriptComponent
 
 		return m_OnLinkedEntitiesSpawned;
 	}
-	
+
 	/*!
 	\return true if spawning is set to be ignored
 	*/
-	bool IsSpawningIgnored()
+	static bool IsSpawningIgnored()
 	{
 		return s_bIgnoreSpawning;
 	}
-	
+
 	/*!
 	Ignore spawning entity links in the next spawned prefab with this component.
 	Used when some other system handles spawning independently.
@@ -50,7 +51,7 @@ class SCR_EditorLinkComponent : ScriptComponent
 	{
 		s_bIgnoreSpawning = ignore;
 	}
-	
+
 	/*!
 	Check if linked children of editable entity were spawned.
 	\param entity Editable entity
@@ -61,13 +62,13 @@ class SCR_EditorLinkComponent : ScriptComponent
 		SCR_EditorLinkComponent linkComponent = SCR_EditorLinkComponent.Cast(entity.GetOwner().FindComponent(SCR_EditorLinkComponent));
 		return linkComponent && linkComponent.IsSpawned();
 	}
-	
+
 	/*!
 	\return True if all linked children were spawned
 	*/
 	bool IsSpawned()
 	{
-		return m_bIsSpawned;
+		return m_aLinkedChildren != null;
 	}
 
 	override void EOnInit(IEntity owner)
@@ -112,17 +113,32 @@ class SCR_EditorLinkComponent : ScriptComponent
 		spawnParams.TransformMode = ETransformMode.LOCAL;
 		spawnParams.Parent = GetOwner();
 
+		m_aLinkedChildren = {};
 		foreach (SCR_EditorLinkEntry entry : prefabData.m_aEntries)
 		{
 			entry.SetSpawnParams(spawnParams);
-			if (!game.SpawnEntityPrefabEx(entry.m_Prefab, prefabData.m_bRandomizeVariants, world, spawnParams))
+			const IEntity entity = game.SpawnEntityPrefabEx(entry.m_Prefab, prefabData.m_bRandomizeVariants, world, spawnParams);
+			if (!entity)
 				Print(string.Format("Unable to spawn linked entity @\"%1\"!", entry.m_Prefab.GetPath()), LogLevel.WARNING);
+
+			m_aLinkedChildren.Insert(entity);
 		}
-		
-		m_bIsSpawned = true;
 
 		if (m_OnLinkedEntitiesSpawned)
 			m_OnLinkedEntitiesSpawned.Invoke(this);
+	}
+	
+	array<IEntity> GetLinkedChildren()
+	{
+		return m_aLinkedChildren;
+	}
+	
+	bool HasChild(IEntity entity)
+	{
+		if (!m_aLinkedChildren)
+			return false;
+		
+		return m_aLinkedChildren.Contains(entity);
 	}
 }
 

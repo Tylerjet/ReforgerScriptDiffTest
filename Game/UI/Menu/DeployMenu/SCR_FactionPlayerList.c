@@ -223,7 +223,6 @@ class SCR_FactionPlayerList : SCR_PlayerList
 			m_wPlayerCount.SetText(players.Count().ToString());
 	}
 	
-	//------------------------------------------------------------------------------------------------
 	override event void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -302,15 +301,21 @@ class SCR_PlayerName : ScriptedWidgetComponent
 	[Attribute("Name")]
 	protected string m_sName;
 	protected TextWidget m_wName;
+	
+	[Attribute("BadgeWrapper")]
+	protected string m_sBadgeWrapper;
+	protected SizeLayoutWidget m_wBadgeWrapper;
 
 	protected ResourceName m_sIcons = "{D17288006833490F}UI/Textures/Icons/icons_wrapperUI-32.imageset";
 	protected int m_iPlayerId;
 
-	//------------------------------------------------------------------------------------------------
+
 	override void HandlerAttached(Widget w)
 	{
 		m_wIcon = ImageWidget.Cast(w.FindAnyWidget(m_sIcon));
 		m_wName = TextWidget.Cast(w.FindAnyWidget(m_sName));
+		m_wBadgeWrapper = SizeLayoutWidget.Cast(w.FindAnyWidget(m_sBadgeWrapper));
+		SetBadgeColor(m_wBadgeWrapper);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -324,6 +329,24 @@ class SCR_PlayerName : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] badgeWrapper Widget that holds the badge widget, used to set its color to the player's faction color.
+	void SetBadgeColor(SizeLayoutWidget badgeWrapper)
+	{
+		SCR_FactionManager m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		
+		if (!badgeWrapper || !m_FactionManager)
+			return;
+		
+		Faction faction = m_FactionManager.GetLocalPlayerFaction();
+		if (!faction)
+			return;
+
+		badgeWrapper.SetColor(faction.GetFactionColor());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] pid
 	void SetPlayer(int pid)
 	{
 		m_iPlayerId = pid;

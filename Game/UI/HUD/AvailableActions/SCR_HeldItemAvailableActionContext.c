@@ -7,16 +7,16 @@ class SCR_HeldItemAvailableActionContext : SCR_AvailableActionContext
 	//------------------------------------------------------------------------------------------------
 	override string GetUIName()
 	{
-		if (m_sItemName == string.Empty)
+		if (m_sItemName.IsEmpty())
 			return super.GetUIName();
 
-		return SCR_StringHelper.Translate(m_sName, m_sItemName);
+		return WidgetManager.Translate(m_sName, m_sItemName);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool IsAvailable(SCR_AvailableActionsConditionData data, float timeSlice)
 	{
-		IEntity heldItem = data.GetCurrentItemEntity();
+		IEntity heldItem = data.GetHeldGadget();
 		if (!heldItem)
 			heldItem = data.GetCurrentWeaponEntity();
 

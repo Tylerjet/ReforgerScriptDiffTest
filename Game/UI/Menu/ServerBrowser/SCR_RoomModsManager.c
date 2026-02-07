@@ -1,6 +1,6 @@
 // Mods callback
 //------------------------------------------------------------------------------------------------
-class SCR_BackendCallbackRoomMods : SCR_BackendCallback
+class SCR_BackendCallbackRoomMods : BackendCallback
 {
 	protected Room m_Room;
 	
@@ -123,7 +123,8 @@ class SCR_RoomModsManager
 		
 		// Load full list 
 		m_ModsCallback = new SCR_BackendCallbackRoomMods(room);
-		m_ModsCallback.GetEventOnResponse().Insert(OnRoomCallbackResponse);
+		m_ModsCallback.SetOnSuccess(OnRoomCallbackResponse);
+		m_ModsCallback.SetOnError(OnRoomCallbackError);
 		m_Room.LoadDownloadList(m_ModsCallback);
 	}
 	
@@ -253,18 +254,15 @@ class SCR_RoomModsManager
 	//------------------------------------------------------------------------------------------------
 	protected void OnRoomCallbackResponse(SCR_BackendCallbackRoomMods callback)
 	{
-		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
-		{
-			// Load list success
-			OnRoomFullList();
-		}
-		else
-		{
-			// Fail/timeout
-			OnLoadingModsFail(callback.GetRoom());
-		}
-		
-		callback.GetEventOnResponse().Remove(OnRoomCallbackResponse);
+		// Load list success
+		OnRoomFullList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRoomCallbackError(SCR_BackendCallbackRoomMods callback)
+	{
+		// Fail/timeout
+		OnLoadingModsFail(callback.GetRoom());
 	}
 	
 	//------------------------------------------------------------------------------------------------

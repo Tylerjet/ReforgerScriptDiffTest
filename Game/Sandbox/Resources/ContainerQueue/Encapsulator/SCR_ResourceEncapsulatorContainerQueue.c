@@ -28,16 +28,7 @@ class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_Re
 			
 			array<ref SCR_ResourceEncapsulatorActionBase> actions = m_Interactor.GetActions();
 			SCR_ResourceContainer containerRepresentative = m_Interactor.GetContainerRepresentative();
-			
-			if (actions)
-			{
-				foreach (SCR_ResourceEncapsulatorActionBase action: actions)
-				{
-					if (action)
-						action.PerformAction(containerRepresentative, container);
-				}
-			}
-			
+
 			m_fAggregatedResourceValue		+= container.GetResourceValue();
 			m_fAggregatedMaxResourceValue	+= container.GetMaxResourceValue();
 			

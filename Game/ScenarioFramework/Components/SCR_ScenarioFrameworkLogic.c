@@ -88,7 +88,13 @@ class SCR_ScenarioFrameworkLogic : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RestoreToDefault();
+	void RestoreToDefault()
+	{
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aActions)
+		{
+			action.RestoreToDefault();
+		}
+	}
 	
 #ifdef WORKBENCH	
 	//------------------------------------------------------------------------------------------------
@@ -200,7 +206,19 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 	//------------------------------------------------------------------------------------------------
 	override void RestoreToDefault()
 	{
+		super.RestoreToDefault();
+		
 		Reset();
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aOnIncreaseActions)
+		{
+			action.RestoreToDefault();
+		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase action : m_aOnDecreaseActions)
+		{
+			action.RestoreToDefault();
+		}
 	}
 }
 

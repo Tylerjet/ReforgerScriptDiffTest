@@ -31,7 +31,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void FixPhasesButton()
 	{
 		m_API.BeginEntityAction();
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS);
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS);
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -230,7 +230,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	[ButtonAttribute("2 PADRN")]
 	protected void PrintAllDestructibleResourceNamesButton()
 	{
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "$ArmaReforger:Prefabs");
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "$ArmaReforger:Prefabs");
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -313,7 +313,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void RevertToParentButton()
 	{
 		m_API.BeginEntityAction();
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 		//array<ResourceName> resourceNames = {};
 		//resourceNames.Insert("{AAAF45FD8D585128}Prefabs/Structures/Walls/Brick/BrickWall_02/BrickWall_02_8m.et");
 		//resourceNames.Insert("{F0F75F23D500A3F2}Prefabs/Props/Agriculture/Beehive_01/Dst/Beehive_01_dst_01_blue.et");
@@ -428,7 +428,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void UpdatePrefabsButton()
 	{
 		m_API.BeginEntityAction();
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -578,7 +578,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void RemovePhasesButton()
 	{
 		m_API.BeginEntityAction();
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		Resource resource;
 		BaseResourceObject baseResourceObject;
@@ -710,7 +710,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	[ButtonAttribute("6 FP")]
 	protected void FilterPrefabsButton()
 	{
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		array<string> componentClassNames = {};
 		componentClassNames.Insert("SCR_DestructionMultiPhaseComponent");
@@ -752,7 +752,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void ConvertPrefabsButton()
 	{
 		m_API.BeginEntityAction();
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS, rootPath: "Prefabs");
 
 		array<string> componentClassNames = {};
 		componentClassNames.Insert("SCR_DestructionMultiPhaseComponent");
@@ -1127,7 +1127,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	{
 		Debug.BeginTimeMeasure();
 
-		array<ResourceName> resourceNames = SCR_WorldEditorToolHelper.SearchWorkbenchResources(EXTENSIONS);
+		array<ResourceName> resourceNames = SCR_WorkbenchHelper.SearchWorkbenchResources(EXTENSIONS);
 
 		Resource resource;
 		BaseResourceObject baseResource;

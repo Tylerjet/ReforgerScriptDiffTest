@@ -3,6 +3,7 @@ enum ESupportStationType
 {
 	NONE = 0,
 	REPAIR = 100,
+	LOAD_WRECK = 110,
 	FUEL = 200,
 	HEAL = 300,
 	LOAD_CASUALTY = 310,

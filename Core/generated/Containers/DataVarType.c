@@ -29,8 +29,6 @@ enum DataVarType
 	VECTOR4,
 	//! Matrix44 type
 	MATRIX,
-	//! Matrix34 type
-	MATRIX34,
 	//! FColor type
 	COLOR,
 	//! Int type
@@ -43,7 +41,7 @@ enum DataVarType
 	STRING,
 	//! Pointer type.
 	POINTER,
-	//! Flag-set type. Used only for MaterialSource ATM
+	//! Flag-set type.
 	FLAGS,
 	//! Object, derived from BaseContainer
 	OBJECT,
@@ -54,14 +52,12 @@ enum DataVarType
 	VECTOR3_ARRAY,
 	VECTOR4_ARRAY,
 	MATRIX_ARRAY,
-	MATRIX34_ARRAY,
 	COLOR_ARRAY,
 	INTEGER_ARRAY,
 	TEXTURE_ARRAY,
 	BOOLEAN_ARRAY,
 	STRING_ARRAY,
 	POINTER_ARRAY,
-	FLAGS_ARRAY,
 	OBJECT_ARRAY,
 	RESOURCE_NAME_ARRAY,
 }

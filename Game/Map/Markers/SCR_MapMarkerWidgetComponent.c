@@ -7,11 +7,16 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	
 	protected const string AUTHOR_NAME_FORMAT = "[%1]";
 	
+	protected const int UPDATE_TIMESTAMP_INTERVAL = 10000; //! in milliseconds
+
 	protected bool m_bIsEventListening;	// whether this marker reacts to events
 	protected bool m_bIsSymbolMode;		// app-6 symbol visualization mode
 	protected bool m_bIsOwnerMode;		// player is the markers owner
 	protected int m_iLayerID;			// map layer ID
 	
+	protected WorldTimestamp m_Timestamp;
+	protected bool m_bIsTimestampVisible;
+
 	protected ImageWidget m_wMarkerIcon;
 	protected ImageWidget m_wMarkerGlowIcon;
 	protected ImageWidget m_wMarkerModeIcon;
@@ -27,6 +32,7 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	protected Widget m_wTypeOverlay1;
 	protected Widget m_wTypeOverlay2;
 	protected Widget m_wTypeOverlay3;
+	protected TextWidget m_wMarkerTimestamp;
 	
 	protected ref Color m_GlowDefault  = Color.FromSRGBA(21, 29, 32, 155);
 	protected ref Color m_GlowSelected = Color.FromSRGBA(226, 168, 79, 155);
@@ -141,8 +147,19 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnFilteredCallback(array<string> text)
 	{
-		if (!text.IsEmpty())
-			m_wMarkerText.SetText(text[0]);
+		string resultText;
+		
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.XBOX == PlatformKind.XBOX)
+		{
+			SCR_ProfaneFilter.ReplaceProfanities(text.Get(0), resultText);
+		}
+		else
+		{
+			resultText = text.Get(0);
+		}
+		
+		if (!resultText.IsEmpty())
+			m_wMarkerText.SetText(resultText);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -204,6 +221,8 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	{		
 		m_bIsOwnerMode = true;
 		
+		m_wMarkerModeIcon.SetVisible(m_MarkerObject.GetMarkerOwnerID() == SCR_PlayerController.GetLocalPlayerId());
+		
 		if (isPublic)
 			m_wMarkerModeIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, PUBLIC_QUAD);
 		else 
@@ -232,6 +251,46 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		return m_wAuthorPlatformIcon;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] timestamp
+	void SetTimestamp(WorldTimestamp timestamp)
+	{
+		if (!timestamp)
+			return;
+
+		m_Timestamp = timestamp;
+		GetGame().GetCallqueue().CallLater(UpdateCachedTimestamp, UPDATE_TIMESTAMP_INTERVAL, true);
+		UpdateTimestamp(timestamp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetTimestampVisibility(bool isVisible)
+	{
+		m_bIsTimestampVisible = isVisible;
+		m_wMarkerTimestamp.SetVisible(isVisible);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateCachedTimestamp()
+	{
+		UpdateTimestamp(m_Timestamp);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] timestamp
+	void UpdateTimestamp(WorldTimestamp timestamp)
+	{
+		if (!timestamp)
+			return;
+
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+
+		string text = SCR_FormatHelper.GetTimeSinceEventImprecise(world.GetServerTimestamp().DiffSeconds(timestamp));
+		m_wMarkerTimestamp.SetText(text);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
@@ -287,6 +346,13 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnMapClose(MapConfiguration config)
+	{
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);
+		GetGame().GetCallqueue().Remove(UpdateCachedTimestamp);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
@@ -308,5 +374,21 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		m_wTypeIcon3 = TextWidget.Cast(m_wTypeIconRoot.FindAnyWidget("TypeText3"));
 		
 		m_MapMarkerManager = SCR_MapMarkerManagerComponent.GetInstance();
+
+		m_wMarkerTimestamp = TextWidget.Cast(m_wRoot.FindAnyWidget("MarkerTimestamp"));
+		m_wMarkerTimestamp.SetText(string.Empty); // set empty
+
+		if (m_Timestamp)
+			GetGame().GetCallqueue().CallLater(UpdateCachedTimestamp, UPDATE_TIMESTAMP_INTERVAL, true);
+
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+
+		GetGame().GetCallqueue().Remove(UpdateCachedTimestamp);
 	}
 }

@@ -86,6 +86,12 @@ class SCR_BaseDamageHealSupportStationAction : SCR_BaseUseSupportStationAction
 	//! return the Health code color for nearby interactions
 	SCR_ENearbyInteractionContextColors GetHealthStatus()
 	{
+		// Hitzones to heal are cached but if the entity owning them
+		// gets deleted we'd get a VME inside GetValidIntensityType
+		// because all hitzones would be null.
+		if (!m_DamageManagerComponent)
+			return SCR_ENearbyInteractionContextColors.DEFAULT;
+		
 		int healthState = m_DamageIntensityHolder.GetValidIntensityType(m_aHitZonesToHeal);
 		
 		if (healthState == SCR_EDamageIntensityType.NO_DAMAGE)

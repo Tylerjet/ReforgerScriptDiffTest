@@ -2,6 +2,10 @@ class SCR_PlayerXPHandlerComponentClass : ScriptComponentClass
 {
 }
 
+void OnPlayerXPChangedMethod(int playerId, int currentXP, int XPToAdd, SCR_EXPRewards rewardId);
+typedef func OnPlayerXPChangedMethod;
+typedef ScriptInvokerBase<OnPlayerXPChangedMethod> OnPlayerXPChanged;
+
 //! Takes care of player-specific XP handling
 //! Should be hooked on PlayerController
 class SCR_PlayerXPHandlerComponent : ScriptComponent
@@ -12,8 +16,17 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	protected int m_iPlayerXPSinceLastSpawn;
 
 	protected float m_fSuicidePenaltyTimestamp;
+	
+	protected float m_fMedicalAssistanceXPRewardTimestamp;
+
+	protected int m_iSurvivalRewardCycle;
 
 	protected ref ScriptInvoker m_OnXPChanged;
+
+	protected ref OnPlayerXPChanged m_OnPlayerXPChanged;
+
+	protected bool m_bSeizingRewardCycleActive;
+	protected SCR_CampaignMilitaryBaseComponent m_SeizedBaseComponent;
 
 	//------------------------------------------------------------------------------------------------
 	//! Getter for player XP
@@ -52,6 +65,29 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetSurvivalRewardCycle(int cycle)
+	{
+		m_iSurvivalRewardCycle = cycle;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetSurvivalRewardCycle()
+	{
+		return m_iSurvivalRewardCycle;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return rank
+	SCR_ECharacterRank GetPlayerRankByXP()
+	{
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return SCR_ECharacterRank.PRIVATE;
+
+		return factionManager.GetRankByXP(m_iPlayerXP);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	ScriptInvoker GetOnXPChanged()
 	{
@@ -59,6 +95,16 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 			m_OnXPChanged = new ScriptInvoker();
 
 		return m_OnXPChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	OnPlayerXPChanged GetOnPlayerXPChanged()
+	{
+		if (!m_OnPlayerXPChanged)
+			m_OnPlayerXPChanged = new OnPlayerXPChanged();
+
+		return m_OnPlayerXPChanged;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -78,7 +124,7 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Set character rank based on player controller EXP
 	//! \param[in] notify
 	void UpdatePlayerRank(bool notify = true)
 	{
@@ -93,16 +139,14 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 			return;
 
 		SCR_CharacterRankComponent comp = SCR_CharacterRankComponent.Cast(player.FindComponent(SCR_CharacterRankComponent));
-
 		if (!comp)
 			return;
 
-		SCR_ECharacterRank curRank = comp.GetCharacterRank(player);
-		SCR_ECharacterRank newRank = SCR_FactionManager.Cast(GetGame().GetFactionManager()).GetRankByXP(m_iPlayerXP);
-
-		if (newRank == curRank)
+		auto factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
 			return;
 
+		const SCR_ECharacterRank newRank = factionManager.GetRankByXP(m_iPlayerXP);
 		comp.SetCharacterRank(newRank, !notify);
 	}
 
@@ -163,6 +207,181 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		if (m_OnXPChanged)
 			m_OnXPChanged.Invoke(currentXP, rewardID, XPToAdd, volunteer, profileUsed, skillLevel);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Reward the player for using medical items for healing characters other than self
+	//! Currently the reward is given even when AI character or enemy character is healed
+	//! After receiving XP award for medical assistance, there is a reward cooldown with duration based on parameter m_iMedicalAssistanceAwardCooldown
+	void MedicalAssistanceReward()
+	{
+		// Check if the cooldown period from previous medical assistance award passed
+		float curTime = GetGame().GetWorld().GetWorldTime();
+		if (curTime <= m_fMedicalAssistanceXPRewardTimestamp)
+			return;
+
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
+		if (!comp)
+			return;
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		if (!playerController)
+			return;
+
+		int playerID = playerController.GetPlayerId();
+
+		comp.AwardXP(playerID, SCR_EXPRewards.MEDICAL_ASSISTANCE);
+
+		// When XP awarded, add cooldown to next available medical xp reward
+		m_fMedicalAssistanceXPRewardTimestamp = curTime + comp.GetMedicalAssistanceRewardCooldown() * 1000;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void StartSurvivalRewardCycle()
+	{
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
+		if (!comp)
+			return;
+
+		// Call SurvivalReward periodically while the player is alive
+		const int survivalRewardCycleDuration = comp.GetSurvivalRewardCooldown();
+		if (survivalRewardCycleDuration > 0)
+			GetGame().GetCallqueue().CallLater(SurvivalReward, survivalRewardCycleDuration * 1000, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void StopSurvivalRewardCycle()
+	{
+		// Remove SurvivalReward from call queue on player death
+		GetGame().GetCallqueue().Remove(SurvivalReward);
+		m_iSurvivalRewardCycle = 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void SurvivalReward()
+	{
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
+		if (!comp)
+			return;
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		if (!playerController)
+			return;
+
+		int playerID = playerController.GetPlayerId();
+		if (playerID == 0)
+			return;
+
+		int baseXPReward = comp.GetXPRewardAmount(SCR_EXPRewards.SURVIVAL);
+		m_iSurvivalRewardCycle++;
+		// Reward XP gets scaled up more the more cycles player survives, the maximum amount of xp gained is limited by survival scale max cycle amount
+		int xpReward = Math.Min(m_iSurvivalRewardCycle * baseXPReward, baseXPReward * comp.GetSurvivalScaleMaxCycleAmount());
+
+		if (xpReward == 0)
+			return;
+
+		comp.AwardXP(playerID, SCR_EXPRewards.SURVIVAL, xpReward);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	void StartSeizingProgressReward(notnull SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (m_bSeizingRewardCycleActive)
+			return;
+
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+
+		SCR_XPHandlerComponent xpHandlerComponent = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
+		if (!xpHandlerComponent)
+			return;
+
+		int seizingRewardCycleDuration = xpHandlerComponent.GetSeizeBaseProgressionRewardTimer();
+		if (seizingRewardCycleDuration == 0)
+			return;
+
+		// Seizing progress reward is called periodically while the base is being seized
+		GetGame().GetCallqueue().CallLater(SeizingProgressReward, seizingRewardCycleDuration * 1000, true, xpHandlerComponent);
+
+		m_SeizedBaseComponent = base;
+		m_bSeizingRewardCycleActive = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] base
+	void StopSeizingProgressReward(notnull SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (!m_bSeizingRewardCycleActive)
+			return;
+
+		if (!m_SeizedBaseComponent || base != m_SeizedBaseComponent)
+			return;
+
+		// Base is no longer being seized, stop calling the seizing progress reward
+		GetGame().GetCallqueue().Remove(SeizingProgressReward);
+
+		m_SeizedBaseComponent = null;
+		m_bSeizingRewardCycleActive = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Rewards player for progression on seizing of base
+	//! Rewarded XP is dependant on the faction affiliation of the seized base
+	void SeizingProgressReward(SCR_XPHandlerComponent xpHandlerComponent)
+	{
+		if (!m_bSeizingRewardCycleActive || !m_SeizedBaseComponent)
+			return;
+
+		if (!xpHandlerComponent)
+			return;
+
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+		if (!playerController)
+			return;
+
+		// Only players are awarded XP
+		int playerID = playerController.GetPlayerId();
+		if (playerID == 0)
+			return;
+
+		Faction baseFaction = m_SeizedBaseComponent.GetFaction();
+		if (!baseFaction)
+			return;
+
+		Faction capturingFaction = m_SeizedBaseComponent.GetCapturingFaction();
+		if (!capturingFaction)
+		{
+			StopSeizingProgressReward(m_SeizedBaseComponent);
+			return;
+		}
+
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerID);
+		if (!playerFaction || playerFaction != capturingFaction)
+			return;
+
+		// XP reward is dependent on base Faction
+		int xpReward = xpHandlerComponent.GetSeizeBaseProgressionXP(baseFaction.GetFactionKey());
+		if (xpReward == 0)
+			return;
+
+		xpHandlerComponent.AwardXP(playerID, SCR_EXPRewards.BASE_SEIZED, 1, false, xpReward);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Addition to player XP
@@ -185,12 +404,18 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		if (!comp)
 			return;
 
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
+
 		if (addDirectly != 0)
 		{
 			m_iPlayerXP += (addDirectly);
+
+			if (playerController && m_OnPlayerXPChanged)
+				m_OnPlayerXPChanged.Invoke(playerController.GetPlayerId(), m_iPlayerXP, addDirectly, rewardID);
+
 			Replication.BumpMe();
 			UpdatePlayerRank(false);
-			Rpc(RpcDo_OnPlayerXPChanged, m_iPlayerXP, addDirectly, false, SCR_EXPRewards.UNDEFINED, false, 0);
+			Rpc(RpcDo_OnPlayerXPChanged, m_iPlayerXP, addDirectly, false, rewardID, false, 0);
 			return;
 		}
 
@@ -237,9 +462,50 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		if (rewardID != SCR_EXPRewards.VETERANCY)
 			m_iPlayerXPSinceLastSpawn += (XPToAdd + XPToAddBySkill);
 
+		if (playerController && m_OnPlayerXPChanged)
+			m_OnPlayerXPChanged.Invoke(playerController.GetPlayerId(), m_iPlayerXP, XPToAdd, rewardID);
+
 		Replication.BumpMe();
 		UpdatePlayerRank();
 
 		Rpc(RpcDo_OnPlayerXPChanged, m_iPlayerXP, XPToAdd + XPToAddBySkill, volunteer, rewardID, profileUsed, skillLevel);
+	}
+
+	#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnDiag(IEntity owner, float timeSlice)
+	{
+		super.EOnDiag(owner, timeSlice);
+
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_SHOW_XP))
+		{
+			int xp = GetPlayerXP();
+
+			DbgUI.Begin("Player XP Debug", 50, 50);
+			DbgUI.Text("Player XP: " + xp);
+			DbgUI.End();
+		}
+	}
+	#endif
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnPostInit(IEntity owner)
+	{
+		super.OnPostInit(owner);
+
+		#ifdef ENABLE_DIAG
+		ConnectToDiagSystem(owner);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_SHOW_XP, "", "Show Player XP", "Character");
+		#endif
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnDelete(IEntity owner)
+	{
+		#ifdef ENABLE_DIAG
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_CHARACTER_SHOW_XP);
+		#endif
+
+		super.OnDelete(owner);
 	}
 }

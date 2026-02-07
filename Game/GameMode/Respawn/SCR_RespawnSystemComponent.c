@@ -9,19 +9,19 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 {
 	[Attribute(category: "Respawn System")]
 	protected ref SCR_SpawnLogic m_SpawnLogic;
-	
+
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, category: "Respawn System")]
 	protected bool m_bEnableRespawn;
-	
+
 	[Attribute("1", desc: "Handles visibility of the Respawn button in Pause menu.", category: "Respawn System")]
 	protected bool m_bEnablePauseMenuRespawn;
-	
-	[Attribute("1.5", desc: "Delay (in seconds) for opening deploy menu after death.")]
-	protected float m_fDeployMenuOpenDelay;
-	
-	[Attribute("{A39BE59EB6F41125}Configs/Respawn/SpawnPointRequestResultInfoConfig.conf", desc: "Holds a config of all reasons why a specific spawnpoint can be disabled")]
+
+	[Attribute("{A1CE9D1EC16DA9BE}UI/layouts/Menus/MainMenu/SplashScreen.layout", desc: "Optional: Layout shown during world load completion and respawn menu opening or automatically completing.", category: "Respawn System")]
+	protected ResourceName m_sLoadingLayout;
+
+	[Attribute("{A39BE59EB6F41125}Configs/Respawn/SpawnPointRequestResultInfoConfig.conf", desc: "Holds a config of all reasons why a specific spawnpoint can be disabled", category: "Respawn System")]
 	protected ResourceName m_sSpawnPointRequestResultInfoHolder;
-	
+
 	protected ref SCR_SpawnPointRequestResultInfoConfig m_SpawnPointRequestResultInfoHolder;
 
 	// Instance of this component
@@ -29,16 +29,18 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 
 	// The parent of this entity which should be a gamemode
 	protected SCR_BaseGameMode m_pGameMode;
-	// Parent entity's rpl component
-	protected RplComponent m_pRplComponent;
 
-	//! Parent entity's rpl component
+	// Parent entity's rpl component
 	protected RplComponent m_RplComponent;
 
 	// Preload
 	protected ref SimplePreload m_Preload;
-
 	protected ref ScriptInvoker Event_OnRespawnEnabledChanged;
+
+	// Loading placeholder
+	protected bool m_bAudioMuted;
+	protected Widget m_wLoadingPlaceholder;
+	protected SCR_LoadingSpinner m_LoadingSpinner;
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] requestComponent
@@ -49,10 +51,10 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	{
 		if (!m_SpawnPointRequestResultInfoHolder)
 			return null;
-		
+
 		return m_SpawnPointRequestResultInfoHolder.GetFirstValidRequestResultInfo(requestComponent, response, data);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return an instance of RespawnSystemComponent
 	static SCR_RespawnSystemComponent GetInstance()
@@ -68,109 +70,10 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return either a valid Faction of local player character or null
-	[Obsolete("Use SCR_FactionManager.SGetLocalPlayerFaction instead")]
-	static Faction GetLocalPlayerFaction(IEntity player = null)
-	{
-		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(player);
-		if (character)
-			return character.GetFaction();
-
-		return SCR_FactionManager.SGetLocalPlayerFaction();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Access to replication component
 	RplComponent GetRplComponent()
 	{
 		return m_RplComponent;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_SpawnHandlerComponent instead.")]
-	protected override GenericEntity RequestSpawn(int playerId);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_RespawnComponent.RequestSpawn instead!")]
-	GenericEntity CustomRespawn(int playerId, string prefab, vector position, vector rotation = vector.Zero);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Utilize SCR_LoadoutManager instead!")]
-	bool CanSetLoadout(int playerId, int loadoutIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_PlayerLoadoutComponent instead!")]
-	void DoSetPlayerLoadout(int playerId, int loadoutIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_PlayerFactionAffiliationComponent instead")]
-	bool CanSetFaction(int playerId, int factionIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Spawn points are no longer assigned and are utilized directly through SCR_SpawnPointSpawnHandlerComponent")]
-	bool CanSetSpawnPoint(int playerId, RplId spawnPointId);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Spawn points are no longer assigned and are utilized directly through SCR_SpawnPointSpawnHandlerComponent")]
-	void DoSetPlayerSpawnPoint(int playerId, RplId spawnPointIdentity);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_FactionManager.SGetFactionPlayerCount instead.")]
-	int GetFactionPlayerCount(Faction faction)
-	{
-		return SCR_FactionManager.SGetFactionPlayerCount(faction);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] loadout
-	//! \return
-	[Obsolete("Use SCR_LoadoutManager.SGetLoadoutPlayerCount instead")]
-	int GetLoadoutPlayerCount(SCR_BasePlayerLoadout loadout)
-	{
-		return SCR_LoadoutManager.SGetLoadoutPlayerCount(loadout);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_PlayerLoadoutComponent.RequestLoadout instead")]
-	void SetPlayerLoadout(int playerId, int loadoutIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_PlayerFactionAffiliationComponent instead.")]
-	void SetPlayerFaction(int playerId, int factionIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_FactionManager instead.")]
-	Faction GetFactionByIndex(int factionIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_FactionManager instead.")]
-	int GetFactionIndex(Faction faction)
-	{
-		return -1;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Try to get player faction from PlayerRespawnInfo
-	//! If faction index is within valid bounds, return Faction otherwise null
-	[Obsolete("Use SCR_FactionManager.SGetPlayerFaction instead")]
-	Faction GetPlayerFaction(int playerId)
-	{
-		return SCR_FactionManager.SGetPlayerFaction(playerId);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_LoadoutManager instead!")]
-	SCR_BasePlayerLoadout GetLoadoutByIndex(int loadoutIndex);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_LoadoutManager.SGetPlayerLoadout instead")]
-	SCR_BasePlayerLoadout GetPlayerLoadout(int playerId);
-
-	//------------------------------------------------------------------------------------------------
-	[Obsolete("Use SCR_LoadoutManager instead!")]
-	int GetLoadoutIndex(SCR_BasePlayerLoadout loadout)
-	{
-		return -1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -195,29 +98,6 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 		MenuBase menu = pMenuManager.FindMenuByPreset(ChimeraMenuPreset.RespawnSuperMenu);
 		if (menu)
 			pMenuManager.CloseMenu(menu);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Simple getter for other
-	[Obsolete("...")]
-	static bool IsRespawnMenuOpened()
-	{
-		MenuManager pMenuManager = GetGame().GetMenuManager();
-		if (!pMenuManager)
-			return false;
-
-		return (pMenuManager.FindMenuByPreset(ChimeraMenuPreset.RespawnSuperMenu) != null);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Close all menus operated by Respawn System
-	[Obsolete("...")]
-	static void ToggleRespawnMenu()
-	{
-		if (IsRespawnMenuOpened())
-			CloseRespawnMenu();
-		else
-			OpenRespawnMenu();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -249,14 +129,14 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	{
 		return m_bEnableRespawn;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return true if respawn from pause menu is enabled, false otherwise
 	bool IsPauseMenuRespawnEnabled()
 	{
 		return m_bEnablePauseMenuRespawn;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return true if faction change is allowed by the game mode, false otherwise.
 	bool IsFactionChangeAllowed()
@@ -331,10 +211,16 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	//! \param[in] data The payload of the request.
 	void OnPlayerEntityChange_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, IEntity previousEntity, IEntity newEntity, SCR_SpawnData data)
 	{
-		m_pGameMode.OnPlayerEntityChanged_S(requestComponent.GetPlayerId(), previousEntity, newEntity);
-		m_SpawnLogic.OnPlayerEntityChanged_S(requestComponent.GetPlayerId(), previousEntity, newEntity);
+		EmitPlayerEntityChange_S(requestComponent.GetPlayerId(), previousEntity, newEntity)
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	void EmitPlayerEntityChange_S(int playerId, IEntity previousEntity, IEntity newEntity)
+	{
+		m_pGameMode.OnPlayerEntityChanged_S(playerId, previousEntity, newEntity);
+		m_SpawnLogic.OnPlayerEntityChanged_S(playerId, previousEntity, newEntity);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Authority only:
 	//! Whenever a request to spawn is denied by the authority, this callback is raised.
@@ -357,14 +243,21 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 		m_pGameMode.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
 		m_SpawnLogic.OnPlayerSpawned_S(requestComponent.GetPlayerId(), entity);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerId
 	void OnPlayerRegistered_S(int playerId)
 	{
 		m_SpawnLogic.OnPlayerRegistered_S(playerId);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] playerId
+	void OnPlayerAuditSuccess_S(int playerId)
+	{
+		m_SpawnLogic.OnPlayerAuditSuccess_S(playerId);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerId
 	//! \param[in] cause
@@ -373,7 +266,7 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	{
 		m_SpawnLogic.OnPlayerDisconnected_S(playerId, cause, timeout);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerId
 	//! \param[in] playerEntity
@@ -383,26 +276,13 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	{
 		m_SpawnLogic.OnPlayerKilled_S(playerId, playerEntity, killerEntity, killer);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerId
 	void OnPlayerDeleted_S(int playerId)
 	{
-		m_SpawnLogic.OnPlayerDeleted_S(playerId);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	float GetDeployMenuOpenDelay_ms()
-	{
-		return m_fDeployMenuOpenDelay * 1000;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	bool CanOpenDeployMenu()
-	{
-		return m_SpawnLogic && m_SpawnLogic.Type() == SCR_MenuSpawnLogic;
+		const bool isDisconnect = !GetGame().GetPlayerManager().IsPlayerConnected(playerId);
+		m_SpawnLogic.OnPlayerDeleted_S(playerId, isDisconnect);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -418,19 +298,19 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 		m_SpawnPointRequestResultInfoHolder = SCR_ConfigHelperT<SCR_SpawnPointRequestResultInfoConfig>.GetConfigObject(m_sSpawnPointRequestResultInfoHolder);
 		if (!m_SpawnPointRequestResultInfoHolder)
 			Print("'SCR_RespawnSystemComponent' has no valid m_SpawnPointRequestResultInfoHolder! This means the disabled reason cannot be disabled spawn point!", LogLevel.ERROR);
-		
+
 		m_pGameMode = SCR_BaseGameMode.Cast(owner);
 		if (!m_pGameMode)
 			Print("SCR_RespawnSystemComponent has to be attached to a SCR_BaseGameMode (or inherited) entity!", LogLevel.ERROR);
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		
+
 		if (!m_SpawnLogic)
 			Print("SCR_RespawnSystemComponent is missing SCR_SpawnLogic!", LogLevel.ERROR);
 
 		if (GetGame().InPlayMode())
 		{
 			m_SpawnLogic.OnInit(this);
-			
+
 			// Validate faction manager
 			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 			if (!factionManager)
@@ -448,6 +328,9 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 						SCR_LoadoutManager, SCR_RespawnSystemComponent);
 				Print(text, LogLevel.WARNING);
 			}
+
+			if (!System.IsConsoleApp())
+				CreateLoadingPlaceholder();
 		}
 	}
 
@@ -471,9 +354,75 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void CreateLoadingPlaceholder()
+	{
+		if (!UsesLoadingPlaceholder())
+			return;
+
+		m_wLoadingPlaceholder = GetGame().GetWorkspace().CreateWidgets(m_sLoadingLayout);
+		if (!m_wLoadingPlaceholder)
+			return;
+
+		AudioSystem.Pause(1 << AudioSystem.SFX);
+		m_bAudioMuted = true;
+
+		const Widget spinner = m_wLoadingPlaceholder.FindAnyWidget("Spinner");
+		if (spinner)
+			m_LoadingSpinner = SCR_LoadingSpinner.Cast(spinner.FindHandler(SCR_LoadingSpinner));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool UsesLoadingPlaceholder()
+	{
+		return !m_sLoadingLayout.IsEmpty();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateLoadingPlaceholder(float dt)
+	{
+		if (!m_wLoadingPlaceholder)
+			return;
+
+		const bool placeHolderVisible = !GetGame().IsPlayingCinematic();
+		m_wLoadingPlaceholder.SetVisible(placeHolderVisible);
+
+		if (placeHolderVisible && !m_bAudioMuted)
+		{
+			AudioSystem.Pause(1 << AudioSystem.SFX);
+			m_bAudioMuted = true;
+		}
+		else if (!placeHolderVisible && m_bAudioMuted)
+		{
+			AudioSystem.Resume(1 << AudioSystem.SFX);
+			m_bAudioMuted = false;
+		}
+
+		if (m_LoadingSpinner)
+			m_LoadingSpinner.Update(dt);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DestroyLoadingPlaceholder()
+	{
+		if (m_bAudioMuted) // Unmute audio regardless of widget in case it was implicitly destoryed early.
+		{
+			AudioSystem.Resume(1 << AudioSystem.SFX);
+			m_bAudioMuted = false;
+		}
+
+		if (!m_wLoadingPlaceholder)
+			return;
+
+		m_wLoadingPlaceholder.RemoveFromHierarchy();
+		m_wLoadingPlaceholder = null;
+		m_LoadingSpinner = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// destructor
 	void ~SCR_RespawnSystemComponent()
 	{
+		DestroyLoadingPlaceholder();
 		s_Instance = null;
 	}
 }

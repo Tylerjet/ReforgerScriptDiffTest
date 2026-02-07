@@ -157,6 +157,16 @@ class SCR_FieldManualUI : MenuRootBase
 		CreateCategoryMenuWidgets();
 		CloseReadingPanel();
 		OpenFirstSubCategory();
+
+		SCR_AnalyticsApplication.GetInstance().OpenFieldManual();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnMenuHide()
+	{	
+		super.OnMenuHide();
+			
+		SCR_AnalyticsApplication.GetInstance().CloseFieldManual();
 	}
 
 #ifdef WORKBENCH

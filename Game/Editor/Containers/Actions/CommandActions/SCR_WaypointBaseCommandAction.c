@@ -21,6 +21,7 @@ class SCR_WaypointBaseCommandAction : SCR_BaseCommandAction
 	//------------------------------------------------------------------------------------------------
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{
-		super.Perform(hoveredEntity, selectedEntities, cursorWorldPosition, EEditorCommandActionFlags.ATTACH, param);
+		flags |= EEditorCommandActionFlags.ATTACH;
+		super.Perform(hoveredEntity, selectedEntities, cursorWorldPosition, flags, param);
 	}
 };

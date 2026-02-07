@@ -2,13 +2,13 @@
 class SendToBlenderPlugin : WorkbenchPlugin
 {
 	//------------------------------------------------------------------------------------------------
+	[Attribute("true", UIWidgets.CheckBox, "Import the mesh with the Import Settings of gamemats and layer presets from engine, that were overwritten by the user. This will overwrite the previous FBX settings.")]
+	bool ImportColliderSettings;
+	
 	override void OnResourceContextMenu(notnull array<ResourceName> resources)
 	{
 		if (!EBTConfigPlugin.HasBlenderRegistered())
 			return;
-		
-		
-		
 		if (resources.IsEmpty())
 		{
 			Print("No selected resources", LogLevel.WARNING);
@@ -16,23 +16,22 @@ class SendToBlenderPlugin : WorkbenchPlugin
 		}
 		
 		BlenderOperatorDescription operatorDescription = new BlenderOperatorDescription("core");
-		
-		operatorDescription.blIDName = "scene.ebt_import_fbx";
+	
+		operatorDescription.blIDName = "ebt.import_fbx";
 		if (resources[0].EndsWith(".et"))
-			operatorDescription.blIDName = "scene.ebt_import_prefab";		
+			operatorDescription.blIDName = "ebt.import_prefab";		
 		
 		string absPath; 
-		
+	
 		if (GetPathToResource(resources[0], absPath))
 		{	
-			operatorDescription.AddParam("file_path_override", absPath); // ImportHelper is using self.file_path
+			operatorDescription.AddParam("filepath", absPath); // ImportHelper is using self.file_path
 			operatorDescription.AddParam("remove_all_objects", true);
-			
 			StartBlenderWithOperator(operatorDescription, false);
 			return;	
-		}
-		
+	
 		Print("Resource couldn't be imported to blender because requested resource file is missing or is locked", LogLevel.WARNING);
+		}
 		
 	}
 	

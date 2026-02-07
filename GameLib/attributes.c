@@ -19,3 +19,22 @@ class CinematicEventAttribute
 		m_Name = name;
 	}
 }
+
+
+class BTNodeAttribute
+{
+	bool m_bUpdateWhileRunning;
+	
+	void BTNodeAttribute(bool bUpdateWhileRunning = false)
+	{
+		m_bUpdateWhileRunning = bUpdateWhileRunning;
+	}
+}
+
+class BTNodeInAttribute: BTNodeAttribute
+{
+}
+
+class BTNodeOutAttribute: BTNodeAttribute
+{
+}

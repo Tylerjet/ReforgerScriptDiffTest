@@ -55,15 +55,15 @@ class SCR_ScenarioFrameworkActionSetExecutionEntryTextBasedOnGeneratedTasks : SC
 		if (!targetJournalEntry)
 			return;
 
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
-			return;
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+	    if (!taskSystem)
+	        return;
 
-		array<SCR_BaseTask> tasks = {};
-		taskManager.GetTasks(tasks);
+		array<SCR_Task> tasks = {};
+		taskSystem.GetTasks(tasks);
 
 		array<SCR_ScenarioFrameworkTask> frameworkTasks = {};
-		foreach (SCR_BaseTask task : tasks)
+		foreach (SCR_Task task : tasks)
 		{
 			if (SCR_ScenarioFrameworkTask.Cast(task))
 				frameworkTasks.Insert(SCR_ScenarioFrameworkTask.Cast(task));
@@ -73,7 +73,7 @@ class SCR_ScenarioFrameworkActionSetExecutionEntryTextBasedOnGeneratedTasks : SC
 		foreach (SCR_ScenarioFrameworkTask frameworkTask : frameworkTasks)
 		{
 			taskStrings.Insert(frameworkTask.GetTaskExecutionBriefing());
-			taskStrings.Insert(frameworkTask.GetSpawnedEntityName());
+			taskStrings.Insert(frameworkTask.GetSlotTask().GetSpawnedEntityDisplayName());
 		}
 
 		if (m_sTargetText.IsEmpty())

@@ -7,39 +7,14 @@ class SCR_ScenarioFrameworkTaskArea : SCR_ScenarioFrameworkTask
 	protected SCR_BaseTriggerEntity 		m_Trigger;
 	
 	//------------------------------------------------------------------------------------------------
-	//! Sets support entity for task extract.
-	//! \return true if support entity is found, false otherwise.
-	override bool SetSupportEntity()
-	{
-		m_SupportEntity = SCR_ScenarioFrameworkTaskExtractSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskExtractSupportEntity));
-		
-		if (!m_SupportEntity)
-		{
-			Print("ScenarioFramework: Task Extract support entity not found in the world, task won't be created!", LogLevel.ERROR);
-			return false;
-		}
-
-		return true;
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	//! Initializes Task and registers Trigger
-	override void Init()
-	{	
-		super.Init();
-		
-		RegisterTrigger();
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Registers trigger after rehooking task asset.
 	//! \param[in] object that should be a Trigger
-	override void RehookTaskAsset(IEntity object)
+	override void HookTaskAsset(IEntity object)
 	{
 		if (!object)
 			return;
 		
-		super.RehookTaskAsset(object);
+		super.HookTaskAsset(object);
 		
 		RegisterTrigger();
 	}
@@ -51,14 +26,7 @@ class SCR_ScenarioFrameworkTaskArea : SCR_ScenarioFrameworkTask
 		m_Trigger = SCR_BaseTriggerEntity.Cast(m_Asset);
 		if (!m_Trigger)
 		{
-			if (!m_SupportEntity)
-			{
-				Print("ScenarioFramework: Task Area support entity not found in the world, task won't work properly!", LogLevel.ERROR);
-				return;
-			}
-				
-			m_SupportEntity.CancelTask(this.GetTaskID());
-			Print("ScenarioFramework: Trigger not found! Make sure the IDs match in both task and Slot component", LogLevel.WARNING);
+			m_LayerTask.ProcessLayerTaskState(SCR_ETaskState.CANCELLED);
 	 		return;
 		}
 		m_Trigger.GetOnActivate().Remove(OnTriggerActivated);
@@ -70,6 +38,6 @@ class SCR_ScenarioFrameworkTaskArea : SCR_ScenarioFrameworkTask
 	void OnTriggerActivated()
 	{
 		m_Trigger.GetOnActivate().Remove(OnTriggerActivated);
-		m_SupportEntity.FinishTask(this);
+		m_LayerTask.ProcessLayerTaskState(SCR_ETaskState.COMPLETED);
 	}	
 }

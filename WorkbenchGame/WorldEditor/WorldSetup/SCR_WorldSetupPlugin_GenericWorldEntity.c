@@ -16,7 +16,7 @@ class SCR_WorldSetupPlugin_GenericWorldEntity : SCR_WorldSetupPluginBasePlugin
 	[Attribute(defvalue: "0", desc: "Create Prefab's child from the provided one in the selected addon and use it instead of using the provided Prefab directly")]
 	protected bool m_bCopyPrefabToAddon;
 
-	[Attribute(/* defvalue: ParamEnumAddons.FromEnum(titleFormat: 2, hideCoreModules: 2)[0].m_Value, */uiwidget: UIWidgets.ComboBox, desc: "Addon in which the Prefab will be copied (if copied)", enums: ParamEnumAddons.FromEnum(titleFormat: 2, hideCoreModules: 2))]
+	[Attribute(/* defvalue: SCR_ParamEnumArray.FromAddons(titleFormat: 2, hideCoreModules: 2)[0].m_Value, */uiwidget: UIWidgets.ComboBox, desc: "Addon in which the Prefab will be copied (if copied)", enums: SCR_ParamEnumArray.FromAddons(titleFormat: 2, hideCoreModules: 2))]
 	protected int m_iAddon;
 
 	protected static const string CHILD_PREFAB = "%1_%2"; // %1 = parent Prefab filename, %2 = world name

@@ -23,8 +23,6 @@ sealed class TextWidget: Widget
 	proto external float GetRotation();
 	//! Sets pivot around which the widget will rotate
 	proto external void SetPivot(float x, float y);
-	//! Sets text for the widget. String-table entries are translated.
-	proto external void SetText(string text);
 	/*!
 	Sets top-left corner where text begins in widget. For RALIGN the horizontal offset is from the right.
 	\param xoff Offset from left
@@ -44,6 +42,15 @@ sealed class TextWidget: Widget
 	//! Sets whether should the text wrap when it runs out of horizontal space
 	proto external void SetTextWrapping(bool isWrapping);
 	/*!
+	Sets text sharpness multiplier. Useful for sharper/smoother edges.
+	The underlying font implementation may not support it, if this is the case, it will do nothing.
+	*/
+	proto external void SetSharpness(float sharpness);
+	/*!
+	Gets current text sharpness
+	*/
+	proto external float GetSharpness();
+	/*!
 	Sets outline style.
 	The underlying font implementation may not support it, if this is the case, it will do nothing.
 	*/
@@ -53,6 +60,8 @@ sealed class TextWidget: Widget
 	/*!
 	Sets shadow style.
 	The underlying font implementation may not support it, if this is the case, it will do nothing.
+
+	\note Shadow opacity is redundant, it will just multiply the shadowARGB alpha
 	*/
 	proto external void SetShadow(int shadowSize, int shadowARGB = 0xFF000000, float shadowOpacity = 1, float shadowOffsetX = 0, float shadowOffsetY = 0);
 	proto external int GetShadowSize();
@@ -60,6 +69,10 @@ sealed class TextWidget: Widget
 	Returns shadow color encoded as ARGB
 	*/
 	proto external int GetShadowColor();
+	/*!
+	\deprecated Shadow opacity is redundant, it is just the ShadowColor alpha
+	*/
+	[Obsolete("Shadow opacity is redundant")]
 	proto external float GetShadowOpacity();
 	/*!
 	Sets italic style.
@@ -99,6 +112,8 @@ sealed class TextWidget: Widget
 	//! Returns text size in pixels in reference resolution
 	proto void GetTextSize(out float sx, out float sy);
 	proto void GetShadowOffset(out float sx, out float sy);
+	//! Sets text for the widget. String-table entries are translated.
+	proto external void SetText(string text);
 }
 
 /*!

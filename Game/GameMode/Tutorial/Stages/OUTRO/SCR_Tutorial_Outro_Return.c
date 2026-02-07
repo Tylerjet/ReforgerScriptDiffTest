@@ -33,13 +33,11 @@ class SCR_Tutorial_Outro_Return : SCR_BaseTutorialStage
 		SetPermanentNarrativeStage("Captain_Table", 3);
 		m_fStartTimestamp = float.MAX;
 		
-		SCR_TutorialCourseTask task = m_TutorialComponent.GetCourseTask(SCR_ETutorialCourses.OUTRO);
+		SCR_Task task = m_TutorialComponent.GetCourseTask(SCR_ETutorialCourses.OUTRO);
 		if (!task)
 			return;
 		
-		Faction faction = GetGame().GetFactionManager().GetFactionByKey("US");
-		if (faction)
-			task.SetTargetFaction(faction);
+		task.SetTaskVisibility(SCR_ETaskVisibility.EVERYONE);
 		
 		SCR_TutorialLogic_FreeRoam logic = SCR_TutorialLogic_FreeRoam.Cast(m_Logic);
 		if (logic)
@@ -66,7 +64,7 @@ class SCR_Tutorial_Outro_Return : SCR_BaseTutorialStage
 			return;
 		
 		//TODO nullchecks
-		SCR_TutorialCourseTask task = m_TutorialComponent.GetCourseTask(SCR_ETutorialCourses.OUTRO);
+		SCR_Task task = m_TutorialComponent.GetCourseTask(SCR_ETutorialCourses.OUTRO);
 		if (!task)
 			return;
 		
@@ -78,8 +76,6 @@ class SCR_Tutorial_Outro_Return : SCR_BaseTutorialStage
 		if (!factionMan)
 			return;
 		
-		Faction faction = factionMan.GetFactionByKey("USSR");
-		if (faction)
-			task.SetTargetFaction(faction);
+		task.SetTaskVisibility(SCR_ETaskVisibility.NONE);
 	}
 }

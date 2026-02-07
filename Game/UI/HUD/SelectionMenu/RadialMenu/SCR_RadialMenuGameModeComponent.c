@@ -12,10 +12,7 @@ class SCR_RadialMenuGameModeComponent : ScriptComponent
 	//!
 	//! \param[in] timeSlice
 	void Update(float timeSlice)
-	{
-		if (System.IsConsoleApp())
-			return;
-		
+	{		
 		if (!m_Menu)
 		{
 			Print("[SCR_RadialMenuGameModeComponent] - Radial menu not assigned! Can't update!", LogLevel.WARNING);

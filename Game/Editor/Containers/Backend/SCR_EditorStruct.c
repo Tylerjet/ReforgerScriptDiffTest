@@ -4,7 +4,8 @@
 Class which carries saved data for the editor.
 Managed by SCR_DSSessionCallback.
 */
-[BaseContainerProps()]
+/*
+[BaseContainerProps(), Obsolete("Only used for backwards compatiblity for GM saves. Will be removed entirely.")]
 class SCR_EditorStruct : SCR_JsonApiStruct
 {
 	[Attribute(desc: "Array of attributes evaluated during saving. Can include global as well as entity attributes.")]
@@ -25,9 +26,6 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 	protected ref array<ref SCR_EditableEntityStruct> m_aEntities = {};
 	protected ref array<ref SCR_EditorAttributeStruct> m_aAttributes = {};
 	
-	/*!
-	Print out contents of saved data.
-	*/
 	override void Log()
 	{
 		Print("--- SCR_EditorStruct ------------------------");
@@ -43,9 +41,7 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 		
 		Print("---------------------------------------------");
 	}
-	/*!
-	Write world data into the struct.
-	*/
+
 	override bool Serialize()
 	{
 		m_Meta.Serialize();
@@ -60,9 +56,7 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 		Print("SUCCESS: SCR_EditorStruct.SaveEditor()", LogLevel.VERBOSE);
 		return true;
 	}
-	/*!
-	Read data from the struct and apply them in the world.
-	*/
+
 	override bool Deserialize()
 	{
 		m_Meta.Deserialize();
@@ -77,9 +71,7 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 		Print("SUCCESS: SCR_EditorStruct.LoadEditor()", LogLevel.VERBOSE);
 		return true;
 	}
-	/*!
-	Clear cached data.
-	*/
+
 	override void ClearCache()
 	{
 		m_Meta.ClearCache();
@@ -91,13 +83,12 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 		if (m_bSaveMissionAttributes)
 			m_aAttributes.Clear();
 	}
-	/*!
-	Delete all entities saved in the struct. Used only for development!
-	*/
+
 	void ResetEditor()
 	{
 		SCR_EditableEntityStruct.ClearEntities(m_aEntities);
 	}
+
 	void SCR_EditorStruct()
 	{
 		RegV("m_Meta");
@@ -110,3 +101,4 @@ class SCR_EditorStruct : SCR_JsonApiStruct
 			RegV("m_aAttributes");
 	}
 };
+*/

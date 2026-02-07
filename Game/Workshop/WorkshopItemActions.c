@@ -125,7 +125,7 @@ class SCR_WorkshopItemActionDownloadDependenciesLatest : SCR_WorkshopItemActionC
 //! Action for reporting an item
 class SCR_WorkshopItemActionReportBase : SCR_WorkshopItemAction
 {
-	ref SCR_BackendCallback m_Callback;	
+	ref BackendCallback m_Callback;	
 	
 	//-----------------------------------------------------------------------------------------------
 	protected bool OnActivateInternal();
@@ -133,10 +133,9 @@ class SCR_WorkshopItemActionReportBase : SCR_WorkshopItemAction
 	//-----------------------------------------------------------------------------------------------
 	protected override bool OnActivate()
 	{
-		m_Callback = new SCR_BackendCallback();
-		m_Callback.GetEventOnTimeOut().Insert(Callback_OnTimeout);
-		m_Callback.GetEventOnFail().Insert(Callback_OnError);
-		m_Callback.GetEventOnSuccess().Insert(Callback_OnSuccess);
+		m_Callback = new BackendCallback();
+		m_Callback.SetOnSuccess(Callback_OnSuccess);
+		m_Callback.SetOnError(Callback_OnError);
 		
 		bool success = OnActivateInternal();	
 		return success;
@@ -150,17 +149,17 @@ class SCR_WorkshopItemActionReportBase : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnError()
+	protected void Callback_OnError(BackendCallback cb)
 	{
 		Fail();
-		SCR_CommonDialogs.CreateRequestErrorDialog();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnTimeout()
-	{
-		Fail();
-		SCR_CommonDialogs.CreateTimeoutOkDialog();
+		if (cb.GetRestResult() == ERestResult.EREST_ERROR_TIMEOUT)
+		{
+			SCR_CommonDialogs.CreateTimeoutOkDialog();
+		}
+		else
+		{
+			SCR_CommonDialogs.CreateRequestErrorDialog();
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------

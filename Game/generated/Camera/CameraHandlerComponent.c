@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class CameraHandlerComponentClass: ScriptComponentClass
-{
-}
-
 class CameraHandlerComponent: ScriptComponent
 {
 	proto external ScriptedCameraSet GetCameraSet();

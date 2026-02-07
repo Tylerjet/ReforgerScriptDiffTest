@@ -9,18 +9,16 @@ class SCR_WeightedArray<Class TValue>
 	//! \return
 	int GetRandomValue(out TValue outValue)
 	{
-		float weightedValue = Math.RandomFloat(0, m_fTotalWeight);
-		return GetWeightedValue(outValue, weightedValue);
+		return GetWeightedValue(outValue, Math.RandomFloat(0, m_fTotalWeight));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[out] outValue
 	//! \param[in] randomGenerator
 	//! \return
-	int GetRandomValue(out TValue outValue, RandomGenerator randomGenerator)
+	int GetRandomValue(out TValue outValue, notnull RandomGenerator randomGenerator)
 	{
-		float weightedValue = randomGenerator.RandFloatXY(0, m_fTotalWeight);
-		return GetWeightedValue(outValue, weightedValue);
+		return GetWeightedValue(outValue, randomGenerator.RandFloatXY(0, m_fTotalWeight));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -39,6 +37,7 @@ class SCR_WeightedArray<Class TValue>
 				return i;
 			}
 		}
+
 		return -1;
 	}
 
@@ -159,6 +158,9 @@ class SCR_WeightedArray<Class TValue>
 			m_aWeights.Insert(from.m_aWeights[i]);
 			m_aValues.Insert(from.m_aValues[i]);
 		}
+
+		m_fTotalWeight = from.m_fTotalWeight;
+
 		return count;
 	}
 
@@ -168,6 +170,7 @@ class SCR_WeightedArray<Class TValue>
 	{
 		m_aWeights.Clear();
 		m_aValues.Clear();
+		m_fTotalWeight = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -183,10 +186,10 @@ class SCR_WeightedArray<Class TValue>
 	//!
 	void Debug()
 	{
-		PrintFormat("H_WeightedArray count: %1, total weight: %2", Count(), GetTotalWeight(), level: LogLevel.NORMAL);
-		for (int i, count = Count(); i < count; i++)
+		PrintFormat("SCR_WeightedArray<%1> count: %2, total weight: %3", TValue, Count(), GetTotalWeight(), level: LogLevel.NORMAL);
+		foreach (int i, TValue value : m_aValues)
 		{
-			PrintFormat("[%1] => %2: %3", i, m_aWeights[i], m_aValues[i], level: LogLevel.NORMAL);
+			PrintFormat("[%1] => %2: %3", i, m_aWeights[i], value, level: LogLevel.NORMAL);
 		}
 	}
 }

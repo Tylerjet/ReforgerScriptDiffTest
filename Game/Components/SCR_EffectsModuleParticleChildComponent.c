@@ -70,8 +70,9 @@ class SCR_EffectsModuleParticleChildComponent : SCR_EffectsModuleChildComponent
 	override void OnDelete(IEntity owner)
 	{
 		if (m_ParticleEntity)
+		{
 			m_ParticleEntity.GetOnStateChanged().Remove(OnParticleStateChanged);
-
+		}
 		super.OnDelete(owner);
 	}
 }

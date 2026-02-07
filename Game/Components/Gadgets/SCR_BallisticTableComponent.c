@@ -206,15 +206,12 @@ class SCR_BallisticTableComponent : SCR_GadgetComponent
 		LoadBallisticData();
 		m_wRenderTargetTexture.SetEnabled(false);
 
-		SCR_SoundManagerEntity soundMan = GetGame().GetSoundManagerEntity();
-		if (soundMan)
-		{
-			SCR_BallisticTableComponentClass data = SCR_BallisticTableComponentClass.Cast(GetComponentData(GetOwner()));
-			if (data)
-				soundMan.CreateAndPlayAudioSource(GetOwner(), data.GetPageChangeSoundName());
-		}
+		const IEntity owner = GetOwner();
+		SCR_BallisticTableComponentClass data = SCR_BallisticTableComponentClass.Cast(GetComponentData(owner));
+		if (data)
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(owner, data.GetPageChangeSoundName());
 
-		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (!rpl || !rpl.IsOwner())
 			return;
 
@@ -272,7 +269,7 @@ class SCR_BallisticTableComponent : SCR_GadgetComponent
 		{
 			TextWidget dispersionValue = TextWidget.Cast(dispersionContainer.FindAnyWidget(CONTENT_LABEL_NAME));
 			if (dispersionValue)
-				dispersionValue.SetText(SCR_StringHelper.Translate(data.GetDispersionTextFormat(), pageData.GetStandardDispersion().ToString(0, 0)));
+				dispersionValue.SetTextFormat(data.GetDispersionTextFormat(), pageData.GetStandardDispersion().ToString(0, 0));
 		}
 
 		Widget contentHolder;

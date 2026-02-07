@@ -280,7 +280,7 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 	{
 		return hint > 0 //--- Is type defined (hints without type are never remembered)?
 				&& (
-					(m_Settings && m_Settings.GetCount(hint) >= limit //--- How many times was the hint shown across instances?
+					(m_Settings && (m_Settings.GetCount(hint) < 0 || m_Settings.GetCount(hint) >= limit) //--- Can the hint be shown again? How many times was the hint shown across instances?
 					|| m_aSessionShownHints.Contains(hint)) //--- Was the hint shown in this instance?
 				)
 				&& !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_HINT_IGNORE_SHOWN); //--- Is debug mode suppressing this check?
@@ -483,7 +483,21 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 		
 		Print(string.Format("Hint %1 = %2 saved persistently, count = %3.", typename.EnumToString(EHint, type), type, count), LogLevel.VERBOSE);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	void DontShowAgainCurrent()
+	{
+		if (!m_Settings || !m_LatestHint)
+			return;
+
+		EHint hintType = m_LatestHint.GetType();
+		if (hintType <= 0)
+			return;
+
+		m_Settings.DontShowAgain(hintType, m_SettingsContainer);
+		Hide();
+	}
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
 	////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -508,13 +522,13 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 		componentPrefab.InitConditionLists(owner);
 		
 		m_Settings = new SCR_HintSettings();
-		
-		// Call later so the HUDManager gets Initialized first and doesn't return null	
-		GetGame().GetCallqueue().Call(LoadSettings);	
+
+		GetGame().GetOnHUDManagerChanged().Insert(LoadSettings);
 		GetGame().OnUserSettingsChangedInvoker().Insert(LoadSettings);
 		
 		GetGame().GetInputManager().AddActionListener("HintToggle", EActionTrigger.DOWN, Toggle);
 		GetGame().GetInputManager().AddActionListener("HintContext", EActionTrigger.DOWN, OpenContext);
+		GetGame().GetInputManager().AddActionListener("HintDismiss", EActionTrigger.DOWN, DontShowAgainCurrent);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -527,10 +541,12 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 		
 		SCR_HintManagerComponentClass componentPrefab = SCR_HintManagerComponentClass.Cast(GetComponentData(owner));
 		componentPrefab.ExitConditionLists(owner);
-		
+
+		GetGame().GetOnHUDManagerChanged().Remove(LoadSettings);
 		GetGame().OnUserSettingsChangedInvoker().Remove(LoadSettings);
-		
+
 		GetGame().GetInputManager().RemoveActionListener("HintToggle", EActionTrigger.DOWN, Toggle);
 		GetGame().GetInputManager().RemoveActionListener("HintContext", EActionTrigger.DOWN, OpenContext);
+		GetGame().GetInputManager().RemoveActionListener("HintDismiss", EActionTrigger.DOWN, DontShowAgainCurrent);
 	}
 }

@@ -65,6 +65,49 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 			m_eSlotFunction = ESlotFunction.TYPE_STORAGE;			
 	}
 	
+	//------------------------------------------------------------------------------------------------	
+	override void UseItem(IEntity player, SCR_EUseContext context)
+	{
+		if (!m_pItem)
+			return;
+		
+		IEntity item = m_pItem.GetOwner();
+		if (!item)
+			return;
+		
+		SCR_CharacterInventoryStorageComponent storage = GetCharacterStorage(player);
+		if (!storage)
+			return;
+
+		ESlotFunction overrideSlotFunction = m_eSlotFunction;
+		if (item.FindComponent(SCR_GadgetComponent))
+			overrideSlotFunction = ESlotFunction.TYPE_GADGET;
+
+		if (storage.UseItem(item, overrideSlotFunction, context))
+			Refresh();
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	override bool CanUseItem(IEntity player)
+	{
+		if (!m_pItem)
+			return false;
+		
+		IEntity item = m_pItem.GetOwner();
+		if (!item)
+			return false;
+		
+		SCR_CharacterInventoryStorageComponent storage = GetCharacterStorage(player);
+		if (!storage)
+			return false;
+		
+		ESlotFunction overrideSlotFunction = m_eSlotFunction;
+		if (item.FindComponent(SCR_GadgetComponent))
+			overrideSlotFunction = ESlotFunction.TYPE_GADGET;
+
+		return storage.CanUseItem(item, overrideSlotFunction);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void SetSlotVisible(bool bVisible)
 	{

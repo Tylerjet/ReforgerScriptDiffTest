@@ -18,8 +18,8 @@ class SCR_RuinPrefabCreatorPlugin : WorkbenchPlugin
 			return;
 		}
 
-		array<ResourceName> ruinModels = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" });
-		array<ResourceName> ruinPrefabs = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" });
+		array<ResourceName> ruinModels = SCR_WorkbenchHelper.SearchWorkbenchResources({ "xob" }, { "_ruin" });
+		array<ResourceName> ruinPrefabs = SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, { "_Ruin" });
 		array<ResourceName> prefablessRuins = GetRuinModelsWithoutPrefabs(ruinModels, ruinPrefabs);
 
 		Resource resource;

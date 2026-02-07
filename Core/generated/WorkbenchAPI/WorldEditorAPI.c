@@ -15,7 +15,7 @@ sealed class WorldEditorAPI
 	private void ~WorldEditorAPI();
 
 	//! Beginning of logical edit action.
-	proto external bool BeginEntityAction(string historyPointName = string.Empty, string historyPointIcon = string.Empty);
+	proto external bool BeginEntityAction(string historyPointName = string.Empty, string historyPointIcon = string.Empty, void userData = NULL);
 	//! Ending of edit action.
 	proto external bool EndEntityAction(string historyPointName = string.Empty);
 	proto external bool IsDoingEditAction();
@@ -40,6 +40,20 @@ sealed class WorldEditorAPI
 	proto external int GetEditorEntityCount();
 	//! Returns an entity in the editor on given index. To obtain count, use GetEditorEntityCount().
 	proto external IEntitySource GetEditorEntity(int index);
+	proto external int GetEntityCount(int subScene);
+	proto external IEntitySource GetEntity(int subScene, int index);
+	//! Checks whether there previously were any entities copied
+	proto external bool HasCopiedEntities();
+	//! Copies selected entities. Returns true if any entity was succesfully copied
+	proto external bool CopySelectedEntities();
+	//! Pastes previously copied entities at the same position. Returns true if any entity was created
+	proto external bool PasteEntities();
+	//! Pastes previously copied entities at mouse cursor position. Returns true if any entity was created
+	proto external bool PasteEntitiesAtMouseCursorPos();
+	//! Duplicates selected entities and places them at the same position. Returns true if any entity was duplicated
+	proto external bool DuplicateSelectedEntities();
+	//! Copies selected entities and deletes them from map. Returns true if any entity was cutted out
+	proto external bool CutSelectedEntities();
 	//	virtual bool ModifyComponentTemplateKey(enf::EntitySource* entityTmplOwner, enf::EntityComponentSource* tmpl, enf::uint keyIndex, enf::CStr value)=0;
 	proto external bool ParentEntity(notnull IEntitySource parent, notnull IEntitySource child, bool transformChildToParentSpace);
 	proto external bool RemoveEntityFromParent(notnull IEntitySource child);
@@ -295,6 +309,7 @@ sealed class WorldEditorAPI
 	\return `true` if successful, `false` otherwise.
 	*/
 	proto external bool RemoveObjectArrayVariableMember(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string key, int memberIndex);
+	proto external bool ChangeObjectClass(notnull BaseContainer topLevel, array<ref ContainerIdPathEntry> containerIdPath, string baseClassName);
 	/*!
 	Shows a selection dialog with provided items where user can select one or multiple items.
 	\param title Title of the dialog window.
@@ -314,8 +329,9 @@ sealed class WorldEditorAPI
 	\param newParentInMap It's any entity of the prefab instance that exists in map (can be any child or sub-child). This it's only an optional parameter which ensures that transformations of the entitiesInMap after move to the prefab will be relative to the entity that exists in map. If this parameter is null then world transformations of the entitiesInMap will be stored into a prefab
 	\param newParentInPrefab It's a further parent entity in the prefab. It can be root or any sub-child entity stored in a prefab.
 	\param entitiesInMap Any entity instances that currently exist in a map. These entities will be deleted from map and added into a prefab as children of newParentInPrefab.
+	\param convertTransformations If true, it converts world entity transformations to local ones in prefab (modifies coords and angles props). If false, it just keeps values of coords and angles properties and puts them into a prefab
 	*/
-	proto external bool MoveEntitiesToPrefab(IEntitySource newParentInMap, IEntitySource newParentInPrefab, notnull array<IEntitySource> entitiesInMap);
+	proto external bool MoveEntitiesToPrefab(IEntitySource newParentInMap, IEntitySource newParentInPrefab, notnull array<IEntitySource> entitiesInMap, bool convertTransformations = true);
 	proto external string GetCurrentToolName();
 	proto external BaseWorld GetWorld();
 	proto external string CreateSubsceneLayer(int subScene, string name, string parentPath = string.Empty);
@@ -332,6 +348,12 @@ sealed class WorldEditorAPI
 	proto external string GetSubsceneLayerPath(int subscene, int layerId);
 	proto external bool IsSubsceneLayerVisible(int subscene, string layerPath);
 	proto external bool IsEntityLayerVisible(int subscene, int layerId);
+	//! Checks whether a layer is explicitly locked. If can return false also when any parent layer is locked! Consider whether you don't need to use IsEntityLayerLockedHierarchy instead
+	proto external bool IsEntityLayerLocked(int subscene, int layerId);
+	//! Returns true if a layer itself or any its parent layer is locked.
+	proto external bool IsEntityLayerLockedHierarchy(int subscene, int layerId);
+	proto external void LockEntityLayer(int subscene, int layerId);
+	proto external void UnlockEntityLayer(int subscene, int layerId);
 	proto external int GetCurrentEntityLayerId();
 }
 

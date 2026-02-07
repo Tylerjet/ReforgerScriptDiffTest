@@ -20,13 +20,19 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	protected bool m_bIsBeingAttachedToEntity;
 	protected vector m_vCurrentMat[4];
 	protected vector m_aCamDeploymentPosition[4];
-	protected IEntity m_EquippedItem;
+	protected IEntity m_PlacedItem;
 	protected ENotification m_eCantPlaceReason;
 	protected SCR_PlaceableItemComponent m_PlaceableItem;
 	protected IEntity m_PreviewEntity;
 	protected SCR_CompartmentAccessComponent m_CompartmnetAccessComponent;
 	protected RplId m_TargetId;
 	protected IEntity m_TargetEntity;
+
+	static const string ACTION_CONTEXT_PLACEMENT = "CharacterPlacementContext";
+	static const string ACTION_NAME_PLACEMENT = "CharacterPlaceItem";
+	static const string ACTION_NAME_FORCE_PLACEMENT = "CharacterForcePlaceItem";
+	static const string ACTION_NAME_CHANGE_ITEM = "ChangePlacedItem";
+	static const string ACTION_NAME_CHANGE_VARIANT = "ChangedPlacedVariant";
 
 	//------------------------------------------------------------------------------------------------
 	//! Client side method for informing the authority about where item should be placed upon removal from their inventory
@@ -161,13 +167,13 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
-		m_EquippedItem = null;
+		m_PlacedItem = null;
 		ChimeraCharacter characterTo = ChimeraCharacter.Cast(to);
 
 		if (characterTo)
 		{
 			m_CompartmnetAccessComponent = SCR_CompartmentAccessComponent.Cast(to.FindComponent(SCR_CompartmentAccessComponent));
-			m_EquippedItem = characterTo.GetCharacterController().GetRightHandItem();
+			m_PlacedItem = characterTo.GetCharacterController().GetRightHandItem();
 		}
 		else
 		{
@@ -182,6 +188,17 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Callback method triggered by button press
+	protected void ForcePlaceItem()
+	{
+		if (m_eCantPlaceReason == ENotification.PLACEABLE_ITEM_CANT_PLACE_NOT_ENOUGH_SPACE)
+			m_eCantPlaceReason = 0;
+
+		StartPlaceItem();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method triggered by button press
 	protected void StartPlaceItem()
 	{
 		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
@@ -192,6 +209,22 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		{
 			SCR_NotificationsComponent.SendLocal(m_eCantPlaceReason);
 			return;
+		}
+
+		bool skipItemUsage;
+		if (m_PlaceableItem.OverrideStartPlaceAction(this, skipItemUsage))
+		{
+			if (m_eCantPlaceReason != 0)
+			{
+				SCR_NotificationsComponent.SendLocal(m_eCantPlaceReason);
+				return;
+			}
+
+			if (skipItemUsage)
+			{
+				OnPlacingEnded(m_PlacedItem, true, null);
+				return;
+			}
 		}
 
 		SCR_CharacterControllerComponent characterController = GetCharacterController(controlledEntity);
@@ -216,7 +249,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		ptWS.Set(null, "", mat);
 
 		ItemUseParameters params = new ItemUseParameters();
-		params.SetEntity(m_EquippedItem);
+		params.SetEntity(m_PlacedItem);
 		params.SetAllowMovementDuringAction(false);
 		params.SetKeepInHandAfterSuccess(false);
 		params.SetCommandID(itemActionId);
@@ -236,7 +269,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlacingEnded(IEntity item, bool successful, ItemUseParameters animParams)
+	protected void OnPlacingEnded(IEntity item, bool successful, ItemUseParameters animParams)
 	{
 		GetGame().GetCallqueue().Remove(ValidateTargetEntityExistance);
 
@@ -263,19 +296,19 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			return;
 		}
 
-		InventoryStorageManagerComponent storageManager = InventoryStorageManagerComponent.Cast(controlledEntity.FindComponent(InventoryStorageManagerComponent));
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(characterController.GetInventoryStorageManager());
 		if (!storageManager)
 			return;
 
-		SCR_CharacterInventoryStorageComponent storage = SCR_CharacterInventoryStorageComponent.Cast(controlledEntity.FindComponent(SCR_CharacterInventoryStorageComponent));
+		SCR_CharacterInventoryStorageComponent storage = storageManager.GetCharacterStorage();
 		if (!storage)
 			return;
 
-		RplComponent rplComponent = RplComponent.Cast(m_EquippedItem.FindComponent(RplComponent));
+		RplComponent rplComponent = RplComponent.Cast(m_PlacedItem.FindComponent(RplComponent));
 		if (!rplComponent)
 			return;
 
-		SCR_PlaceableInventoryItemComponent placeableItem = SCR_PlaceableInventoryItemComponent.Cast(m_EquippedItem.FindComponent(SCR_PlaceableInventoryItemComponent));
+		SCR_PlaceableInventoryItemComponent placeableItem = SCR_PlaceableInventoryItemComponent.Cast(m_PlacedItem.FindComponent(SCR_PlaceableInventoryItemComponent));
 		if (placeableItem)
 		{
 			SCR_PlacementCallback cb = new SCR_PlacementCallback();
@@ -284,34 +317,22 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			cb.m_iNodeId = m_iTargetEntityNodeID;
 			cb.m_bIsBeingAttachedToEntity = m_bIsBeingAttachedToEntity;
 
-			Rpc(RPC_AskSetPlacementPosition, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id(), characterRplComp.Id());
-			if (storageManager.TryRemoveItemFromStorage(m_EquippedItem, storage.GetWeaponStorage(), cb))
+			BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
+			bool autoEquipNext;
+			if (gameplaySettings && gameplaySettings.Get("m_bAutoEquipNextPlaceableItem", autoEquipNext) && !m_PlaceableItem.OverrideAutoEquipMechanism(cb.m_ChainedCallback, this, m_PlacedItem, autoEquipNext))
 			{
-				InventoryItemComponent equippedItemIIC = InventoryItemComponent.Cast(m_EquippedItem.FindComponent(InventoryItemComponent));
-				if (equippedItemIIC && equippedItemIIC.GetAttributes())
-				{
-					InventoryStorageSlot parentSlot = equippedItemIIC.GetParentSlot();
-					int slotId = -1;
-					if (parentSlot && EquipedWeaponStorageComponent.Cast(parentSlot.GetStorage()))
-						slotId = parentSlot.GetID();
-
-					ECommonItemType equippedItemType = equippedItemIIC.GetAttributes().GetCommonType();
-					if (equippedItemType != ECommonItemType.NONE)
-					{
-						array<IEntity> ownedItems = {};
-						SCR_CommonItemTypeSearchPredicate itemSearch = new SCR_CommonItemTypeSearchPredicate(equippedItemType, m_EquippedItem);
-						storageManager.FindItems(ownedItems, itemSearch);
-						if (ownedItems.Count())
-						{
-							storage.RemoveItemFromQuickSlotAtIndex(slotId);
-							storage.StoreItemToQuickSlot(ownedItems[0], slotId);
-						}
-					}
-				}
+				SCR_InvEquipAnyItemCB equipmentCallback = new SCR_InvEquipAnyItemCB();
+				if (storageManager.TryAssigningNextItemToQuickSlot(m_PlacedItem, equipCallback: equipmentCallback, equipNewItem: autoEquipNext))
+					cb.m_ChainedCallback = equipmentCallback;
 			}
+			
+			Rpc(RPC_AskSetPlacementPosition, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id(), characterRplComp.Id());
+			if (storageManager.TryRemoveItemFromStorage(m_PlacedItem, placeableItem.GetParentSlot().GetStorage(), cb))
+				return;
 		}
 
-		DisablePreview();
+		if (!m_PlaceableItem.OverrideOnPlacingEnded(this))
+			DisablePreview();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -385,10 +406,66 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DisablePreview()
+	//!
+	//! \param[in] item
+	void SetPlacedItem(IEntity item)
 	{
-		GetGame().GetInputManager().RemoveActionListener("CharacterFire", EActionTrigger.DOWN, StartPlaceItem);
-		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		m_PlacedItem = item;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] preview
+	//! \param[in] deleteOldPreview true if previous preview should be deleted
+	void SetPreviewEntity(IEntity preview, bool deleteOldPreview = true)
+	{
+		if (deleteOldPreview && m_PreviewEntity)
+			delete m_PreviewEntity;
+
+		m_PreviewEntity = preview;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] placeableItemComp
+	void SetPlaceableItemComponent(SCR_PlaceableItemComponent placeableItemComp)
+	{
+		m_PlaceableItem = placeableItemComp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return currently used component for placing an item
+	SCR_PlaceableItemComponent GetPlaceableItemComponent()
+	{
+		return m_PlaceableItem;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Enable listening for actions and position validation
+	//! \param[in] enabled true when placement should be enabled, otherwise false
+	void EnablePlacement(bool enabled)
+	{
+		if (enabled)
+		{
+			GetGame().GetInputManager().AddActionListener(ACTION_NAME_PLACEMENT, EActionTrigger.DOWN, StartPlaceItem);
+			if (m_PlaceableItem && m_PlaceableItem.GetCanBeForcedPlaced())
+				GetGame().GetInputManager().AddActionListener(ACTION_NAME_FORCE_PLACEMENT, EActionTrigger.DOWN, ForcePlaceItem);
+
+			SetEventMask(GetOwner(), EntityEvent.FRAME);	
+		}
+		else
+		{
+			GetGame().GetInputManager().RemoveActionListener(ACTION_NAME_PLACEMENT, EActionTrigger.DOWN, StartPlaceItem);
+			GetGame().GetInputManager().RemoveActionListener(ACTION_NAME_FORCE_PLACEMENT, EActionTrigger.DOWN, ForcePlaceItem);
+			ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DisablePreview()
+	{
+		EnablePlacement(false);
 		delete m_PreviewEntity;
 	}
 
@@ -396,28 +473,15 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	protected void EnablePreview(IEntity weapon)
 	{
 		m_PlaceableItem = SCR_PlaceableItemComponent.Cast(weapon.FindComponent(SCR_PlaceableItemComponent));
-
-		EntityPrefabData prefabData = weapon.GetPrefabData();
-		if (!prefabData)
+		if (!m_PlaceableItem)
 			return;
 
-		GetGame().GetInputManager().AddActionListener("CharacterFire", EActionTrigger.DOWN, StartPlaceItem);
+		EnablePlacement(true);
 
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
 		if (!m_PreviewEntity)
 			m_PreviewEntity = GetGame().SpawnEntity(GenericEntity, GetOwner().GetWorld());
-			//m_PreviewEntity = SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(Resource.Load(prefabData.GetPrefabName()), "SCR_BasePreviewEntity");
-			// Use SCR_PrefabPreviewEntity API once we have api for hierarchi bbox
 
-		SCR_PlaceableItemComponent placeableItemComponent = SCR_PlaceableItemComponent.Cast(weapon.FindComponent(SCR_PlaceableItemComponent));
-		if (!placeableItemComponent)
-		{
-			Print("SCR_PlaceableItemComponent not found! SCR_ItemPlacementComponent.EnablePreview()");
-			return;
-		}
-
-		vector test = m_PreviewEntity.GetOrigin();
-		m_PreviewEntity.SetObject(placeableItemComponent.GetPreviewVobject(), "");
+		m_PreviewEntity.SetObject(m_PlaceableItem.GetPreviewVobject(), string.Empty);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -429,7 +493,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void GetOnCompartmentLeft()
 	{
-		TogglePreview(m_EquippedItem);
+		TogglePreview(m_PlacedItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -447,25 +511,25 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnWeaponChangeEnded(BaseWeaponComponent newWeaponSlot)
 	{
-		m_EquippedItem = GetWeaponFromWeaponComponent(newWeaponSlot);
-		TogglePreview(m_EquippedItem);
+		m_PlacedItem = GetWeaponFromWeaponComponent(newWeaponSlot);
+		TogglePreview(m_PlacedItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnWeaponChanged(BaseWeaponComponent newWeaponSlot)
 	{
 		DisablePreview(); // Automatically disable preview to handle cases where anim event could be missing
-		m_EquippedItem = GetWeaponFromWeaponComponent(newWeaponSlot);
+		m_PlacedItem = GetWeaponFromWeaponComponent(newWeaponSlot);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnCharacterDeath(SCR_CharacterControllerComponent characterController, IEntity killerEntity, notnull Instigator killer)
 	{
 		UnregisterEvents(killerEntity);
-		m_EquippedItem = null; // Reset this cached value
+		m_PlacedItem = null; // Reset this cached value
 		DisablePreview();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	// Reacts to weapon changes of local character
 	protected void TogglePreview(IEntity weapon)
@@ -482,7 +546,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			EnablePreview(weapon);
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
@@ -492,13 +556,14 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			return;
 		}
 
-		if (!m_EquippedItem)
+		if (!m_PlacedItem || !m_PreviewEntity)
 		{
 			// This handles situations where f. e. land mines explode in characters hands
 			DisablePreview();
 			return;
 		}
 
+		GetGame().GetInputManager().ActivateContext(ACTION_CONTEXT_PLACEMENT);
 		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (!cameraManager)
 			return;
@@ -629,14 +694,25 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		vector forward = up * right;
 		right.Normalize();
 		forward.Normalize();
-		m_vCurrentMat[0] = forward;
-		m_vCurrentMat[2] = right;
+		if (m_PlaceableItem.GetForwardAwayFromPlayer())
+		{
+			m_vCurrentMat[0] = -forward;
+			m_vCurrentMat[2] = -right;
+		}
+		else
+		{
+			m_vCurrentMat[0] = forward;
+			m_vCurrentMat[2] = right;
+		}
 
-#ifdef WORKBENCH
-		ShapeFlags shapeFlags = ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOOUTLINE;
-		Shape.CreateArrow(m_vCurrentMat[3], m_vCurrentMat[3] + up * 0.5, 0.1, Color.BLUE, shapeFlags);
-		Shape.CreateArrow(m_vCurrentMat[3], m_vCurrentMat[3] + right * 0.5, 0.1, Color.ORANGE, shapeFlags);
-		Shape.CreateArrow(m_vCurrentMat[3], m_vCurrentMat[3] + forward * 0.5, 0.1, Color.GREEN, shapeFlags);
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_ITEM_PLACEMENT_VISUALIZATION))
+		{
+			ShapeFlags shapeFlags = ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOOUTLINE;
+			Shape.CreateArrow(m_vCurrentMat[3], m_vCurrentMat[3] + up * 0.5, 0.1, Color.BLUE, shapeFlags);
+			Shape.CreateArrow(m_vCurrentMat[3], m_vCurrentMat[3] + right * 0.5, 0.1, Color.ORANGE, shapeFlags);
+			Shape.CreateArrow(m_vCurrentMat[3], m_vCurrentMat[3] + forward * 0.5, 0.1, Color.GREEN, shapeFlags);
+		}
 #endif
 
 		m_PreviewEntity.SetTransform(m_vCurrentMat);
@@ -652,7 +728,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		m_iTargetEntityNodeID = param.NodeIndex;
 		m_aCamDeploymentPosition = cameraMat;
 		m_aCamDeploymentPosition[3] = character.EyePosition();
-		ValidatePlacement(m_vCurrentMat[1], tracedEntity, world, SCR_PlayerController.GetLocalControlledEntity(), m_eCantPlaceReason);
+		ValidatePlacement(m_vCurrentMat[1], tracedEntity, world, character, m_eCantPlaceReason);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -709,11 +785,16 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//! \return
 	void ValidatePlacement(vector up, IEntity tracedEntity, BaseWorld world, IEntity character, out ENotification cantPlaceReason)
 	{
-		if (!m_PlaceableItem.CanBeAttachedWhileAngled() && vector.Dot(up, vector.Up) < 0.5) // Early reject based on the angle of placement (the maximum should be dictated by item settings)
+		float maxAllowedTilt = m_PlaceableItem.GetMaxAllowedTilt();
+		if (maxAllowedTilt >= 0) // Early reject based on the angle of placement
 		{
-			SCR_Global.SetMaterial(m_PreviewEntity, m_sCannotBuildMaterial);
-			cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_TOO_STEEP;//angle too steep
-			return;
+			float currentTilt = Math.Acos(vector.Dot(m_vCurrentMat[1], vector.Up)) * Math.RAD2DEG;
+			if (currentTilt > maxAllowedTilt)
+			{
+				SCR_Global.SetMaterial(m_PreviewEntity, m_sCannotBuildMaterial);
+				cantPlaceReason = ENotification.PLACEABLE_ITEM_CANT_PLACE_TOO_STEEP;//angle too steep
+				return;
+			}
 		}
 
 		if (tracedEntity != m_TargetEntity)
@@ -730,7 +811,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			}
 
 			Physics entPhys = tracedEntity.GetPhysics();
-			if (entPhys && !(entPhys.GetInteractionLayer() & EPhysicsLayerDefs.Terrain))
+			if (m_PlaceableItem.GetAttachPlacedItemToTheSurfaceEntity() && entPhys && !(entPhys.GetInteractionLayer() & EPhysicsLayerDefs.Terrain))
 				m_bIsBeingAttachedToEntity = true;
 		}
 
@@ -741,22 +822,34 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		// Reject based on bbox collision with surrounding objects - last check, as it's the most expensive one
 		// Check bbox
 		TraceOBB paramOBB = new TraceOBB();
-		Math3D.MatrixIdentity3(paramOBB.Mat);
-		paramOBB.Mat[0] = m_vCurrentMat[0];
-		paramOBB.Mat[1] = m_vCurrentMat[1];
-		paramOBB.Mat[2] = m_vCurrentMat[2];
-		paramOBB.Start = m_vCurrentMat[3] + 0.05 * paramOBB.Mat[1];
-		paramOBB.Flags = TraceFlags.ENTS;
-		paramOBB.ExcludeArray = excludeArray;
-		paramOBB.LayerMask = EPhysicsLayerPresets.Projectile;
-		m_PreviewEntity.GetBounds(paramOBB.Mins, paramOBB.Maxs);
-		world.TracePosition(paramOBB, TraceEntitiesCallback);
+		if (m_PlaceableItem.OverrideSpaceValidation(this, m_vCurrentMat, cantPlaceReason))
+		{
+			if (cantPlaceReason != 0)
+				return;
+		}
+		else
+		{
+			Math3D.MatrixIdentity3(paramOBB.Mat);
+			paramOBB.Mat[0] = m_vCurrentMat[0];
+			paramOBB.Mat[1] = m_vCurrentMat[1];
+			paramOBB.Mat[2] = m_vCurrentMat[2];
+			paramOBB.Start = m_vCurrentMat[3] + 0.05 * paramOBB.Mat[1];
+			paramOBB.Flags = TraceFlags.ENTS;
+			paramOBB.ExcludeArray = excludeArray;
+			paramOBB.LayerMask = EPhysicsLayerPresets.Projectile;
+			m_PreviewEntity.GetBounds(paramOBB.Mins, paramOBB.Maxs);
+			world.TracePosition(paramOBB, TraceEntitiesCallback);
+		}
 
-#ifdef WORKBENCH
-		ShapeFlags shapeFlags = ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOOUTLINE;
-		Shape.CreateArrow(paramOBB.Start, paramOBB.Start + paramOBB.Mat[1] * 0.5, 0.1, Color.WHITE, shapeFlags);
-		Shape.CreateArrow(paramOBB.Start, paramOBB.Start + paramOBB.Mat[2] * 0.5, 0.1, Color.PINK, shapeFlags);
-		Shape.CreateArrow(paramOBB.Start, paramOBB.Start + paramOBB.Mat[0] * 0.5, 0.1, Color.YELLOW, shapeFlags);
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_ITEM_PLACEMENT_VISUALIZATION))
+		{
+			vector pos = m_vCurrentMat[3] + 0.05 * paramOBB.Mat[1];
+			ShapeFlags shapeFlags = ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.DOUBLESIDE | ShapeFlags.NOOUTLINE;
+			Shape.CreateArrow(pos, pos + m_vCurrentMat[1] * 0.5, 0.1, Color.WHITE, shapeFlags);
+			Shape.CreateArrow(pos, pos + m_vCurrentMat[2] * 0.5, 0.1, Color.PINK, shapeFlags);
+			Shape.CreateArrow(pos, pos + m_vCurrentMat[0] * 0.5, 0.1, Color.YELLOW, shapeFlags);
+		}
 #endif
 
 		// collides with another entity
@@ -783,6 +876,12 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//! \return
 	bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0")
 	{
+		if (!e)
+			return false;
+
+		if (ChimeraCharacter.Cast(e.GetRootParent()))
+			return false;
+
 		return true;
 	}
 
@@ -797,7 +896,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	protected void OnEditorClosed()
 	{
 		m_bInEditor = false;
-		TogglePreview(m_EquippedItem);
+		TogglePreview(m_PlacedItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -853,5 +952,8 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	void SCR_ItemPlacementComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_iEquipComplete = GameAnimationUtils.RegisterAnimationEvent("EquipComplete");
+#ifdef ENABLE_DIAG
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_ITEM_PLACEMENT_VISUALIZATION, "", "Item placement debugs", "Character");
+#endif
 	}
 }

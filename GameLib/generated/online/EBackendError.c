@@ -22,10 +22,6 @@ enum EBackendError
 	EBERR_INVALID_STATE,
 	//! no request can be called - login/auth in process
 	EBERR_BUSY,
-	//! state is already active
-	EBERR_ALREADY_OFFLINE,
-	//! state is already active
-	EBERR_ALREADY_ONLINE,
 	//! state already requested once!
 	EBERR_ALREADY_REQUESTED,
 	//! failed to login

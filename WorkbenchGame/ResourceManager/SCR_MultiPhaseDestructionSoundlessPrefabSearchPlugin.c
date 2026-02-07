@@ -44,7 +44,7 @@ class SCR_MultiPhaseDestructionSoundlessPrefabSearchPlugin : WorkbenchPlugin
 		{
 			string addonID = GameProject.GetAddonID(addonGUID);
 			Print("Looking into " + addonID + "/Prefabs", LogLevel.NORMAL);
-			resourceNames.InsertAll(SCR_WorldEditorToolHelper.SearchWorkbenchResources({ "et" }, null, SCR_AddonTool.ToFileSystem(addonID) + "Prefabs/"));
+			resourceNames.InsertAll(SCR_WorkbenchHelper.SearchWorkbenchResources({ "et" }, null, SCR_AddonTool.ToFileSystem(addonID) + "Prefabs/"));
 		}
 
 //		resourceNames.Insert("{54CE51ABCAEF05C0}PrefabLibrary/Props/Civilian/TableOld_01/TableOld_01_white.et");	// GenericEntity w/ component

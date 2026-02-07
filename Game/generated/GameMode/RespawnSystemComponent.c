@@ -40,6 +40,7 @@ class RespawnSystemComponent: GameComponent
 	*/
 	event void OnInit(IEntity owner);
 	//! Called when some player controller requests respawn
+	[Obsolete()]
 	event GenericEntity RequestSpawn(int playerId) { return null; };
 }
 

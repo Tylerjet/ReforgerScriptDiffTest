@@ -1,7 +1,7 @@
 // *************************************************************************************
 // ! CharacterCameraADS - Aim down sights camera
 // *************************************************************************************
-class CharacterCameraADS extends CharacterCameraBase
+class CharacterCameraADS : CharacterCameraBase
 {
 	//------------------------------------------------------------------------------------------------
 	static const float 	CONST_UD_MIN	= -89.0;		//!< down limit
@@ -30,7 +30,8 @@ class CharacterCameraADS extends CharacterCameraBase
 		m_OffsetLS = "0.0 0.03 -0.07";
 
 		#ifdef ENABLE_DIAG
-		if (!s_bDebugRegistered) {
+		if (!s_bDebugRegistered)
+		{
 			DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADS_CAMERA, "", "ADS Camera", "Character", "0, 3, 0, 1");
 			s_bDebugRegistered = true;
 		}
@@ -202,6 +203,8 @@ class CharacterCameraADS extends CharacterCameraBase
 	*/
 	protected void SolveNewMethod(ADSCameraData cameraData, out ScriptedCameraItemResult pOutResult, float pDt, bool allowInterpolation)
 	{
+		float fUseHeading = 1.0;
+		
 		Animation anim = m_OwnerCharacter.GetAnimation();
 		
 		// Right hand prop is where weapon is attached to
@@ -224,11 +227,11 @@ class CharacterCameraADS extends CharacterCameraBase
 			muzzleType = currentWeapon.GetCurrentMuzzle().GetMuzzleType();
 			if (muzzleType == EMuzzleType.MT_UGLMuzzle || m_LastMuzzleType == EMuzzleType.MT_UGLMuzzle) // HACK: UGL isn't aligned in prone stance without this.
 				bUseProneADSMethod = false;
-			
+
 			vector zeroingLS[4];
 			if (m_WeaponManager.GetCurrentWeapon().GetCurrentSightsZeroingTransform(zeroingLS))
 				Math3D.MatrixMultiply4(cameraData.m_mSightsLocalMat, zeroingLS, cameraData.m_mSightsLocalMat);
-
+			
 			if (bUseProneADSMethod)
 			{
 				// Align camera vertically
@@ -245,8 +248,7 @@ class CharacterCameraADS extends CharacterCameraBase
 		// Get sights relative to right hand prop bone
 		vector sightsMS[4];
 		Math3D.MatrixInvMultiply4(propBoneMS, cameraData.m_mSightsLocalMat, sightsMS);
-		
-		
+
 		float targetFOV = cameraData.m_fFOV;
 		
 		// Sights interpolation
@@ -361,8 +363,9 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		vector aimingTranslationMS;
 		for (int i = 0; i < 3; i++)
+		{
 			aimingTranslationMS += aimingTranslationWeaponLS[i] * sightsMS[i];
-
+		}
 
 		// And add additional translation, this time desired amount of Z translation
 		//! Fetch desired portion of recoil
@@ -375,36 +378,20 @@ class CharacterCameraADS extends CharacterCameraBase
 		sightsMS[3] = sightsMS[3] - aimingTranslationMS - extraTranslation;
 		
 		// Now we will disregard any previous rotation... (LOL and use aiming or freelook angles directly)
-
-		// If character linked to object add local head yaw and disable UseHeading		
-		vector aimingAnglesMS;
-		float fUseHeading = 1.0;
+	
+		vector aimingAnglesMS = cameraData.m_vLookAngles;
+		aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		
 		if (m_CharacterAnimationComponent.PhysicsIsLinked())
 		{
-			aimingAnglesMS = cameraData.m_vLookAngles;
+			fUseHeading = 0;
 			aimingAnglesMS[0] = aimingAnglesMS[0] + m_OwnerCharacter.GetAimRotationModel()[0] * Math.RAD2DEG;
-		}
-		else
-		{
-			// Take look angles directly and correct those for character pitch
-			aimingAnglesMS = cameraData.m_vLookAngles;
-			aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
-		}
-
-		// Blend in the prone method
-		float fPositionModelSpace = 0.0;
-		if (bUseProneADSMethod)
-		{
-			m_fProneBlend = Math.Clamp(m_fProneBlend + pDt, 0.0, 1.0);
-			vector aimingAnglesProneMS = Math3D.MatrixToAngles(sightsMS);
-			aimingAnglesMS = vector.Lerp(aimingAnglesMS, aimingAnglesProneMS, m_fProneBlend);
 			
-			fUseHeading = 1.0 - m_fProneBlend;
-			fPositionModelSpace = 1.0;
-			
-			pOutResult.m_bInterpolateOrientation = false;
-			if (m_fProneBlend < 1.0)
-				pOutResult.m_bInterpolateOrientation = true;
+			if (IsProneStance())
+			{
+				aimingAnglesMS[1] = aimingAnglesMS[1] - m_OwnerCharacter.GetYawPitchRoll()[1];
+				aimingAnglesMS[2] = aimingAnglesMS[2] - m_OwnerCharacter.GetYawPitchRoll()[2];
+			}
 		}
 
 		// Blend ADS on pistol when prone (otherwise camera jumps around)
@@ -420,11 +407,7 @@ class CharacterCameraADS extends CharacterCameraBase
 				}
 			}
 		}
-	
-		if (m_CharacterAnimationComponent.PhysicsIsLinked())
-		{
-			fUseHeading = 0.0;
-		}
+
 		// Use as intended
 		Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
 
@@ -472,7 +455,6 @@ class CharacterCameraADS extends CharacterCameraBase
 				}
 			}
 		}
-
 
 		if (isUnstable)
 		{
@@ -528,12 +510,13 @@ class CharacterCameraADS extends CharacterCameraBase
 		
 		sightsMS[3] = resultPosition;
 
+		pOutResult.m_iDirectBone = m_iHandBoneIndex;
+		pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+		
 		// Get transformation to parent
 		if (!shouldStabilize)
 		{
 			Math3D.MatrixInvMultiply4(propBoneMS, sightsMS, pOutResult.m_CameraTM);
-			pOutResult.m_iDirectBone = m_iHandBoneIndex;
-			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
 		}
 		else
 		{
@@ -541,8 +524,6 @@ class CharacterCameraADS extends CharacterCameraBase
 			// works has forced my hand to recompute all of this into the prop bone (hand) space
 			// so we can ensure that we don't reparent the camera along the way, there still might
 			// be a tiny bit of grain, but this section has already caused enough of pain
-			pOutResult.m_iDirectBone = m_iHandBoneIndex;
-			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
 			pOutResult.m_CameraTM[3] = sightsMS[3];
 			Math3D.AnglesToMatrix(aimingAnglesMS, pOutResult.m_CameraTM);
 			vector directTM[4];
@@ -556,11 +537,9 @@ class CharacterCameraADS extends CharacterCameraBase
 		pOutResult.m_bAllowInterpolation = allowInterpolation;// && (shouldStabilize == m_bWasStabilizedLastFrame);
 		pOutResult.m_fUseHeading = fUseHeading;
 		pOutResult.m_bUpdateWhenBlendOut = true;
-		pOutResult.m_fPositionModelSpace = fPositionModelSpace;
+		pOutResult.m_fPositionModelSpace = 0;
 
 		m_bWasStabilizedLastFrame = shouldStabilize;
-
-		return;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -639,7 +618,6 @@ class CharacterCameraADS extends CharacterCameraBase
 		//! Get end position rel. to hand
 		resultPosition = resultPosition.Multiply4(headMatrix);
 		resultPosition = resultPosition.InvMultiply4(handMatrix);
-
 
 		//! Apply props
 		pOutResult.m_CameraTM[3] = resultPosition;
@@ -797,8 +775,8 @@ class CharacterCameraADS extends CharacterCameraBase
 			lookAngles[0] = m_CommandWeapons.GetAimAngleLR();
 			lookAngles[1] = m_CommandWeapons.GetAimAngleUD();
 		}
-		//! Prepare data
 
+		//! Prepare data
 		m_pCameraData.m_fDeltaTime = pDt;
 		m_pCameraData.m_vLookAngles = lookAngles;
 		m_pCameraData.m_fFOV = GetBaseFOV();
@@ -817,7 +795,7 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		//! Recalculate FOV
 		m_pCameraData.m_fFOV = Math.Min(GetBaseFOV(), m_pCameraData.m_fFOV);
-
+		
 		//! Fetch zeroing data
 		// Apparently in rare cases like bandaging, weapon can be missing
 		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrent();
@@ -917,6 +895,7 @@ class CharacterCameraADS extends CharacterCameraBase
 			animComponent.GetMovementState(charMovementState);
 			return charMovementState.m_iStanceIdx == ECharacterStance.PRONE;
 		}
+
 		return false;
 	}
 	
@@ -939,7 +918,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	protected bool m_bLastSightsBlend;						// whether sights are being blended, don't set manually
 	protected float m_fLastSightsBlendTime;					// current value of blend, don't set manually
 	protected float m_fLastSightsBlendDuration = 0.15;		// duration of blend in seconds, just a bit is good enough
-	ref ADSCameraData m_pCameraData = new ADSCameraData();
+	protected ref ADSCameraData m_pCameraData = new ADSCameraData();
 
 	protected	int 	m_iHandBoneIndex;	//!< hand bone
 	protected	int 	m_iHeadBoneIndex;	//!< head bone
@@ -949,10 +928,10 @@ class CharacterCameraADS extends CharacterCameraBase
 	protected	float	m_fFreelookFOV;
 	protected	vector	m_lastStablePos;
 
-	protected	float	m_fStabilizerAlpha = 0.0;
-	protected	float	m_fStabilizerAlphaVel = 0.0;
+	protected	float	m_fStabilizerAlpha;
+	protected	float	m_fStabilizerAlphaVel;
 
-	protected	bool	m_bWasStabilizedLastFrame = false;
+	protected	bool	m_bWasStabilizedLastFrame;
 
 	protected 	float	m_fFreelookBlendAlpha;
 
@@ -964,4 +943,4 @@ class CharacterCameraADS extends CharacterCameraBase
 	
 	protected const float CAMERA_INTERP = 0.6;
 	protected const float CAMERA_RECOIL_LIMIT = 0.25; //!< Maximum amount of recoil applied to camera from weapon in meters.
-};
+}

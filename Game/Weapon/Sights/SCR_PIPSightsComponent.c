@@ -112,7 +112,7 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 			m_wRenderTargetWidget.SetResolutionScale(m_fResolutionScale, m_fResolutionScale);
 
 			// Set RTT on parent
-			m_wRenderTargetTextureWidget.SetGUIWidget(m_pOwner, 0);
+			m_wRenderTargetTextureWidget.SetRenderTarget(m_pOwner);
 
 			m_bIsEnabled = true;
 			return;
@@ -223,6 +223,7 @@ class SCR_PIPSightsComponent : ScriptedSightsComponent
 	// Destroy everything this component created during its lifetime
 	protected void Destroy()
 	{
+		m_wRenderTargetTextureWidget.RemoveRenderTarget(m_pOwner);
 		DestroyCamera(m_PIPCamera);
 		DestroyUI(m_wRoot);
 	}

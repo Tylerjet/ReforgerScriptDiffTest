@@ -40,7 +40,7 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 	protected SCR_GroupRequestUIComponent m_GroupRequestHandler;
 	protected SCR_SpawnPointRequestUIComponent m_SpawnPointUIHandler;
 	protected SCR_FactionPlayerList m_FactionPlayerList;	
-	protected SCR_GroupPlayerList m_GroupPlayerLIst;
+	protected SCR_GroupPlayerList m_GroupPlayerList;
 	protected SCR_HUDMenuComponent m_HudMenuComponent;
 	
 	//------------------------------------------------------------------------------------------------

@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class BaseMagazineComponentClass: GameComponentClass
-{
-}
-
 class BaseMagazineComponent: GameComponent
 {
 	proto external IEntity GetOwner();

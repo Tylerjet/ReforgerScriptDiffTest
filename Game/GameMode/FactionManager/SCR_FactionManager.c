@@ -171,6 +171,19 @@ class SCR_FactionManager : FactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	static Faction SGetFaction(IEntity entity)
+	{
+		if (!entity)
+			return null;
+		
+		const FactionAffiliationComponent factionManager = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent));
+		if (!factionManager)
+			return null;
+
+		return factionManager.GetAffiliatedFaction();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Return affiliated faction of provided player by their id.
 	//! Static variant of SCR_FactionManager.GetLocalPlayerFaction that uses
 	//! registered FactionManager from the ArmaReforgerScripted game instance.
@@ -180,6 +193,9 @@ class SCR_FactionManager : FactionManager
 	static Faction SGetPlayerFaction(int playerId)
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return null;
+
 		return factionManager.GetPlayerFaction(playerId);
 	}
 	
@@ -232,6 +248,9 @@ class SCR_FactionManager : FactionManager
 	static int SGetFactionPlayerCount(Faction faction)
 	{
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return 0;
+		
 		return factionManager.GetFactionPlayerCount(faction);
 	}
 
@@ -395,16 +414,28 @@ class SCR_FactionManager : FactionManager
 	{
 		array<string> ancestors;
 		array<Faction> factions = {};
+		string scriptedFactionKey;
 		GetFactionsList(factions);
+		SCR_Faction scriptedFaction;
+		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
+		map<string, int> missionFactionLimitMap = new map<string, int>();
+
+		if (missionHeader)
+			missionFactionLimitMap = missionHeader.GetFactionLimitMap();
+		
 		for (int i = factions.Count() - 1; i >= 0; i--)
 		{
-			SCR_Faction scriptedFaction = SCR_Faction.Cast(factions[i]);
+			scriptedFaction = SCR_Faction.Cast(factions[i]);
 			if (scriptedFaction)
 			{
-				if (m_aAncestors.Find(scriptedFaction.GetFactionKey(), ancestors))
+				scriptedFactionKey = scriptedFaction.GetFactionKey();
+				if (m_aAncestors.Find(scriptedFactionKey, ancestors))
 					scriptedFaction.SetAncestors(ancestors);
 				
 				m_SortedFactions.Insert(scriptedFaction.GetOrder(), scriptedFaction);
+				
+				if (missionFactionLimitMap && missionFactionLimitMap.Contains(scriptedFactionKey))
+					scriptedFaction.SetPlayerLimit(missionFactionLimitMap.Get(scriptedFactionKey));
 				
 				scriptedFaction.InitializeFaction();
 			}

@@ -19,7 +19,7 @@ class GenericWorldEntity: GenericEntity
 	Get terrain
 	*/
 	proto external GenericTerrainEntity GetTerrain(float x, float z);
-	proto external Material GetSkyMaterial();
+	proto external ref Material GetSkyMaterial();
 }
 
 /*!

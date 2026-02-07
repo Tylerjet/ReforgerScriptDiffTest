@@ -1,5 +1,5 @@
 [BaseContainerProps(), BaseContainerCustomStringTitleField("USE INHERITED VERSION ONLY!")]
-class SCR_BaseItemHolderSupportStationAction : SCR_BaseUseSupportStationAction
+class SCR_BaseItemHolderSupportStationAction : SCR_BaseAudioSupportStationAction
 {
 	[Attribute(desc: "This decides what items will be resupplied when using the action")]
 	protected ref SCR_ResupplySupportStationData m_ResupplyData;
@@ -234,7 +234,35 @@ class SCR_ResupplyCatalogItemSupportStationData : SCR_ResupplySupportStationData
 
 		return requiredRank;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	int GetRequiredAvailableAllocatedSupplies(notnull IEntity actionOwner, SCR_SupportStationGadgetComponent supportStationGadget)
+	{
+		if (m_mFactionItems.IsEmpty())
+			return 0;
+
+		FactionAffiliationComponent factionAffiliationComponent = GetFactionAffiliationGadgetOrOwner(actionOwner, supportStationGadget);
+		if (!factionAffiliationComponent)
+			return 0;
+
+		if (m_bAlwaysTakeDefaultFaction)
+			return 0;
+
+		Faction faction = factionAffiliationComponent.GetAffiliatedFaction();
+		if (!faction)
+			return 0;
+
+		SCR_EntityCatalogEntry catalogEntry;
+		if (!m_mFactionItems.Find(faction.GetFactionKey(), catalogEntry) || !catalogEntry)
+			return 0;
+
+		SCR_ArsenalItem itemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (itemData && itemData.GetUseMilitarySupplyAllocation())
+			return itemData.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT);
+
+		return 0;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool GetResupplyItemOrMuzzle(notnull IEntity targetCharacter, notnull IEntity actionOwner, SCR_SupportStationGadgetComponent supportStationGadget, out ResourceName item, out BaseMuzzleComponent muzzle)
 	{
@@ -351,5 +379,26 @@ class SCR_ResupplyHeldWeaponSupportStationData : SCR_ResupplySupportStationData
 		}
 		
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetRequiredAvailableAllocatedSupplies(notnull IEntity actionOwner, ResourceName resourceName)
+	{
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return 0;
+
+		SCR_EntityCatalogEntry catalogEntry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resourceName);
+		if (!catalogEntry)
+			return 0;
+
+		SCR_ArsenalItem arsenalItemData = SCR_ArsenalItem.Cast(catalogEntry.GetEntityDataOfType(SCR_ArsenalItem));
+		if (!arsenalItemData)
+			return 0;
+
+		if (!arsenalItemData.GetUseMilitarySupplyAllocation())
+			return 0;
+
+		return arsenalItemData.GetSupplyCost(SCR_EArsenalSupplyCostType.GADGET_ARSENAL, false);
 	}
 }

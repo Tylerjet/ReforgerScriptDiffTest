@@ -25,8 +25,15 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 		if (base.GetOwner() == GetOwner())
 			return;
 
-		if (m_aBases.Count() == 1)
+		if (SCR_GameModeCampaign.Cast(GetGame().GetGameMode()))
+		{
+			if (SCR_CampaignMilitaryBaseComponent.Cast(base))
+				OnBaseFactionChanged(base.GetFaction());
+		}
+		else if (m_aBases.Count() == 1)
+		{
 			OnBaseFactionChanged(base.GetFaction());
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -54,6 +61,18 @@ class SCR_MilitaryBaseLogicComponent : ScriptComponent
 			return bases.Copy(m_aBases);
 		else
 			return m_aBases.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsControlledByFaction(notnull Faction faction)
+	{
+		foreach (SCR_MilitaryBaseComponent base : m_aBases)
+		{
+			if (base.GetFaction() == faction)
+				return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

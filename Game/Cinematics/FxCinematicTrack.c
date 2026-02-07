@@ -14,8 +14,20 @@ class FxCinematicTrack : CinematicTrackBase
 			m_ParticleEntity = ParticleEffectEntity.Cast(globalWorld.FindEntityByName(GetTrackName()));
 		
 		if (m_ParticleEntity)
+			m_ParticleEntity.Stop();
 			m_ParticleEntity.Play();
 	}
+	
+	[CinematicEventAttribute()]
+	void Stop()
+	{
+		if (globalWorld)
+			m_ParticleEntity = ParticleEffectEntity.Cast(globalWorld.FindEntityByName(GetTrackName()));
+		
+		if (m_ParticleEntity)
+			m_ParticleEntity.Stop();
+	}
+	
 	
 	[CinematicEventAttribute()]
 	void SetTime()

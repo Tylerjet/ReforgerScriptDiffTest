@@ -120,7 +120,8 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 		weatherManager.GetWeatherStatesList(weatherStates);
 		
 		int count = weatherStates.Count();
-		string weatherName, weatherIconPath;
+		string weatherName;
+		ResourceName weatherIconPath;
 		
 		//Create preset list
 		for (int i = 0; i < count; i++)

@@ -7,17 +7,24 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected FactionAffiliationComponent m_FactionComponent;
 	protected SCR_MilitaryBaseComponent m_BaseComponent;
 	protected ref array<SCR_EditableVehicleComponent> m_EditableVehicle = {};
+	protected SCR_CampaignBuildingProviderComponent m_MasterProviderComponent;
 	protected bool m_bCompositionSpawned;
 	protected bool m_bTurretCollected;
-	// Temporary solution how to prevent disassembly of HQ in Conflict.
-	protected bool m_DoNotDisassemble;
 	protected IEntity m_RootEntity;
 	protected IEntity m_User;
 	protected bool m_bDisassembleOnlyWhenCapturing = false;
 	protected bool m_bSameFactionDisassembleOnly = false;
+	protected bool m_bTemporarilyBlockedAccess;
+	protected bool m_bAccessCanBeBlocked;
+	protected WorldTimestamp m_ResetTemporaryBlockedAccessTimestamp;
 	SCR_CampaignBuildingBuildUserAction m_BuildAction;
+	SCR_FactionManager m_FactionManager;
 	
 	protected SCR_GadgetManagerComponent m_GadgetManager;
+
+	protected const string DISMANTLE_ALL_BUILDINGS = "#AR-FactionCommander_DismantleAllBuildings";
+	protected const string ENEMY_PRESENCE = "#AR-Campaign_Action_ShowBuildPreviewEnemyPresence";
+	protected const int TEMPORARY_BLOCKED_ACCESS_RESET_TIME = 2;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -27,6 +34,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		m_CompositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(m_RootEntity.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		m_EditableEntity = SCR_EditableEntityComponent.Cast(m_RootEntity.FindComponent(SCR_EditableEntityComponent));
 		m_LayoutComponent = SCR_CampaignBuildingLayoutComponent.Cast(pOwnerEntity.FindComponent(SCR_CampaignBuildingLayoutComponent));
+		m_FactionManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 					
 		GetBuildingAction();
 		SetEditorManager();
@@ -49,20 +57,6 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			if (m_bSameFactionDisassembleOnly || m_bDisassembleOnlyWhenCapturing)
 				m_CompositionComponent.GetOnBuilderSet().Insert(CacheFactionAffiliationComponent);
 		}
-			
-		// Temporary solution how to prevent disassembly of HQ in Conflict.
-		SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
-		if (!campaignGameMode || !m_EditableEntity)
-			return;
-		
-		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(m_EditableEntity.GetInfo(GetOwner()));
-		if (!editableEntityUIInfo)
-			return;
-		
-		array<EEditableEntityLabel> entityLabels = {};
-		editableEntityUIInfo.GetEntityLabels(entityLabels);
-		if (entityLabels.Contains(EEditableEntityLabel.SERVICE_HQ))
-			m_DoNotDisassemble = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -133,6 +127,10 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
 	{			
+		bool isHQService = IsHQService();
+		bool canBeBaseDisassembled = CanBeBaseDisassembled(pUserEntity);
+		SCR_CampaignMilitaryBaseComponent base = GetBase();
+
 		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
 		if (!networkComponent || !m_RootEntity)
 			return;
@@ -145,6 +143,13 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			buildingComponent.SetCanPlaySoundOnDeletion(true);
 		
 		networkComponent.DeleteCompositionByUserAction(m_RootEntity);
+
+		// deleting base if it is possible
+		if (!isHQService || !canBeBaseDisassembled)
+			return;
+
+		if (base)
+			networkComponent.DeleteBaseByUserAction(base.GetOwner());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -194,10 +199,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	// The user action is shown when the preview is visible - means player has a building tool.
 	override bool CanBeShownScript(IEntity user)
-	{									
-		if (m_DoNotDisassemble)
-			return false;
-		
+	{
 		if (m_bSameFactionDisassembleOnly && !IsPlayerFactionSame(user))
 			return false;
 				
@@ -213,6 +215,13 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		}
 					
 		if (!SCR_CampaignBuildingGadgetToolComponent.Cast(m_GadgetManager.GetHeldGadgetComponent()))
+			return false;
+
+		if (!CanBeDisassembled())
+			return false;
+
+		// checks only if it is HQ service
+		if (IsHQService() && !CanBeBaseDisassembled(user))
 			return false;
 		
 		// The user action is on entity with composition component, show it if the composition is spawned.
@@ -234,7 +243,18 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
-	{ 			
+	{ 					
+		if (m_FactionManager && m_FactionManager.IsRankRenegade(SCR_CharacterRankComponent.GetCharacterRank(user)))
+		{
+			IEntity playerEntity = SCR_PlayerController.GetLocalMainEntity();
+			if (!playerEntity)
+				return false;
+			
+			SCR_ECharacterRank playerRank = SCR_CharacterRankComponent.GetCharacterRank(playerEntity);						
+			SetCannotPerformReason(SCR_CharacterRankComponent.GetRankName(playerEntity, playerRank));
+			return false;
+		}
+		
 		if (m_bCompositionSpawned && !m_bTurretCollected)
 			GetAllTurretsInComposition();
 		
@@ -249,7 +269,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		
 		foreach (SCR_EditableVehicleComponent editableVehicle : m_EditableVehicle)
 		{
-			if (editableVehicle.GetCrew(crewCompartmentAccess, false) != 0)
+			if (editableVehicle && editableVehicle.GetCrew(crewCompartmentAccess, false) != 0)
 				return false;
 		}
 		
@@ -264,6 +284,34 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (gadgetComponent.GetMode() != EGadgetMode.IN_HAND)
 			return false;
 		
+		if (IsHQService())
+		{
+			if (CanBeBaseDisassembled(user))
+			{
+				if (HasBaseCompositionsAnyService())
+				{
+					SetCannotPerformReason(DISMANTLE_ALL_BUILDINGS);
+
+					return false;
+				}
+			}
+			else
+			{
+				return false;
+			}
+		}
+
+		if (m_bAccessCanBeBlocked)
+		{
+			SetTemporaryBlockedAccess();
+
+			if (m_bTemporarilyBlockedAccess)
+			{
+				SetCannotPerformReason(ENEMY_PRESENCE);
+				return false;
+			}
+		}
+
 		if (!m_bDisassembleOnlyWhenCapturing || IsPlayerFactionSame(user))
 			return true;
 		
@@ -333,6 +381,9 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	//! Check the hierarchy of the composition for any turret and make a list of them.
 	void GetAllTurretsInComposition()
 	{
+		if (!m_EditableEntity)
+			return;
+
 		m_bTurretCollected = true;
 		set<SCR_EditableEntityComponent> editableEntities = new set<SCR_EditableEntityComponent>();
 		m_EditableEntity.GetChildren(editableEntities);
@@ -400,6 +451,232 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		return SCR_CampaignBuildingNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignBuildingNetworkComponent));
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsHQService()
+	{
+		SCR_GameModeCampaign campaignGameMode = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+		if (!campaignGameMode || !m_EditableEntity)
+			return false;
+
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(m_EditableEntity.GetInfo(GetOwner()));
+		if (!editableEntityUIInfo)
+			return false;
+
+		array<EEditableEntityLabel> entityLabels = {};
+		editableEntityUIInfo.GetEntityLabels(entityLabels);
+		if (entityLabels.Contains(EEditableEntityLabel.SERVICE_HQ))
+			return true;
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_CampaignMilitaryBaseComponent GetBase()
+	{
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return null;
+
+		return campaign.GetBaseManager().FindClosestBase(GetOwner().GetOrigin());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CanBeDisassembled()
+	{
+		// is not headquarter building, can be disassembled
+		if (!IsHQService())
+			return true;
+
+		SCR_CampaignMilitaryBaseComponent campaignBase = GetBase();
+		if (!campaignBase)
+			return true;
+
+		if (campaignBase.IsHQ() || campaignBase.IsControlPoint())
+			return false;
+
+		SCR_ECampaignBaseType baseType = campaignBase.GetType();
+		if (baseType == SCR_ECampaignBaseType.RELAY || baseType == SCR_ECampaignBaseType.SOURCE_BASE)
+			return false;
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool CanBeBaseDisassembled(IEntity playerEntity)
+	{
+		if (!playerEntity)
+			return false;
+
+		SCR_CampaignMilitaryBaseComponent campaignBase = GetBase();
+		if (!campaignBase)
+			return true;
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(playerEntity);
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerId);
+		if (!playerFaction)
+			return false;
+
+		// check if is exists dismantle task on this base for player faction
+		SCR_DismantleCampaignMilitaryBaseTaskEntity task = SCR_DismantleCampaignMilitaryBaseTaskEntity.Cast(GetTaskOnBase(campaignBase, playerFaction, SCR_DismantleCampaignMilitaryBaseTaskEntity));
+		if (!task)
+			return false;
+
+		// check if the player is assigned to task
+		if (!task.IsTaskAssignedTo(SCR_TaskExecutor.FromPlayerID(playerId)))
+			return false;
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected SCR_Task GetTaskOnBase(notnull SCR_CampaignMilitaryBaseComponent campaignMilitaryBase, notnull Faction faction, typename taskClass)
+	{
+		array<SCR_Task> tasks = {};
+		SCR_TaskSystem.GetInstance().GetTasksByStateFiltered(
+			tasks,
+			SCR_ETaskState.CREATED | SCR_ETaskState.ASSIGNED,
+			faction.GetFactionKey(),
+			-1,
+			taskClass
+		);
+
+		SCR_CampaignMilitaryBaseTaskData data;
+		SCR_CampaignMilitaryBaseComponent base;
+		SCR_CampaignMilitaryBaseTaskEntity campaignMilitaryBaseTask;
+
+		foreach (SCR_Task task : tasks)
+		{
+			campaignMilitaryBaseTask = SCR_CampaignMilitaryBaseTaskEntity.Cast(task);
+			if (!campaignMilitaryBaseTask)
+				continue;
+
+			data = SCR_CampaignMilitaryBaseTaskData.Cast(task.GetTaskData());
+			if (!data)
+				continue;
+
+			base = campaignMilitaryBaseTask.GetMilitaryBase();
+			if (!base)
+				continue;
+
+			if (base == campaignMilitaryBase)
+				return task;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Check if the editable entity component has a service trait set.
+	protected bool HasCompositionService(SCR_CampaignBuildingCompositionComponent composition)
+	{
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(composition.GetOwner().FindComponent(SCR_EditableEntityComponent));
+		if (!editableEntity)
+			return false;
+
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(editableEntity.GetInfo());
+		return editableEntityUIInfo && editableEntityUIInfo.HasEntityLabel(EEditableEntityLabel.TRAIT_SERVICE);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected bool HasBaseCompositionsAnyService()
+	{
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		if (!campaign)
+			return false;
+
+		SCR_CampaignMilitaryBaseComponent campaignBase = GetBase();
+		if (!campaignBase)
+			return false;
+
+		SCR_CampaignBuildingManagerComponent buildingManagerComponent = SCR_CampaignBuildingManagerComponent.Cast(campaign.FindComponent(SCR_CampaignBuildingManagerComponent));
+		if (!buildingManagerComponent)
+			return false;
+
+		array<SCR_CampaignBuildingCompositionComponent> compositions = {};
+		int compositionCount = buildingManagerComponent.GetBuildingCompositions(campaignBase, compositions);
+		foreach (SCR_CampaignBuildingCompositionComponent composition : compositions)
+		{
+			if (composition && HasCompositionService(composition))
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set temporary blocked access.
+	void SetTemporaryBlockedAccess()
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
+
+		WorldTimestamp currentServerTimestamp = world.GetServerTimestamp();
+		if (!currentServerTimestamp.Greater(m_ResetTemporaryBlockedAccessTimestamp))
+			return;
+
+		m_bTemporarilyBlockedAccess = false;
+
+		// cache master provider component
+		if (!m_MasterProviderComponent)
+		{
+			SCR_CampaignMilitaryBaseComponent campaignBase = GetBase();
+			if (!campaignBase)
+				return;
+
+			array<SCR_CampaignBuildingProviderComponent> providers = {};
+			campaignBase.GetBuildingProviders(providers);
+
+			foreach (SCR_CampaignBuildingProviderComponent provider : providers)
+			{
+				if (!provider.IsMasterProvider())
+					continue;
+
+				m_MasterProviderComponent = provider;
+				break;
+			}
+		}
+
+		if (!m_MasterProviderComponent)
+			return;
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return;
+
+		array<int> outPlayers = {};
+		playerManager.GetPlayers(outPlayers);
+
+		float buildingRadiusSq = m_MasterProviderComponent.GetBuildingRadius() * m_MasterProviderComponent.GetBuildingRadius();
+
+		IEntity playerEntity;
+		SCR_CharacterDamageManagerComponent charDamageManager;
+		foreach (int playerID : outPlayers)
+		{
+			playerEntity = playerManager.GetPlayerControlledEntity(playerID);
+			if (!playerEntity)
+				continue;
+
+			SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(playerEntity);
+			if (!char)
+				continue;
+
+			charDamageManager = SCR_CharacterDamageManagerComponent.Cast(char.FindComponent(SCR_CharacterDamageManagerComponent));
+			if (!charDamageManager || charDamageManager.GetState() == EDamageState.DESTROYED)
+				continue;
+
+			if (!m_MasterProviderComponent.IsEnemyFaction(char))
+				continue;
+
+			if (vector.DistanceSqXZ(GetOwner().GetOrigin(), playerEntity.GetOrigin()) <= buildingRadiusSq)
+			{
+				m_bTemporarilyBlockedAccess = true;
+				m_ResetTemporaryBlockedAccessTimestamp = currentServerTimestamp.PlusSeconds(TEMPORARY_BLOCKED_ACCESS_RESET_TIME);
+				break;
+			}
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// Destructor
 	void ~SCR_CampaignBuildingDisassemblyUserAction()

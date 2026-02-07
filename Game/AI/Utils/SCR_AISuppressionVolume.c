@@ -567,4 +567,10 @@ class SCR_AISuppressionVolumeWaypoint : SCR_AISuppressionObjectVolumeBox
 		UpdateDebug();
 		#endif
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	AIWaypoint GetWaypoint()
+	{
+		return m_Waypoint;
+	}
 }

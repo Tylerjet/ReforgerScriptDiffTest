@@ -25,8 +25,8 @@ class SCR_FactionHintTooltipDetail : SCR_EntityTooltipDetail
 	{		
 		m_self = widget;
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager) 
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem) 
 			return false;
 			
 		m_Text = RichTextWidget.Cast(widget.FindAnyWidget(m_sTextWidgetName));

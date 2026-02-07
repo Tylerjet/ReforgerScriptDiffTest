@@ -181,11 +181,6 @@ sealed class System
 	*/
 	static proto float GetFrameTimeS();
 	/*!
-	Use FileIO.FindFiles instead
-	*/
-	[Obsolete("Use FileIO.FindFiles instead")]
-	static proto bool FindFiles(FindFilesCallback callback, string path, string ext);
-	/*!
 	Return current platform
 	*/
 	static proto EPlatform GetPlatform();
@@ -194,6 +189,25 @@ sealed class System
 	@return True if the app runs in console mode. False otherwise.
 	*/
 	static proto bool IsConsoleApp();
+	/*!
+	get final image contrast
+	*/
+	static proto float GetFinalImageContrast();
+	/*!
+	get final image brightness
+	*/
+	static proto float GetFinalImageBrightness();
+	/*!
+	get final image gamma
+	*/
+	static proto float GetFinalImageGamma();
+	/*!
+	set final image attributes
+	\param gamma			gamma of image
+	\param brightness	brightness of image
+	\param contrast		contrast of image
+	*/
+	static proto float SetFinalImageAttributes(float gamma, float brightness, float contrast);
 }
 
 /*!

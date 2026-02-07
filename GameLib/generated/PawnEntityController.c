@@ -16,7 +16,7 @@ class PawnEntityController: ScriptAndConfig
 	proto external void AddMovementInput(vector movementInput);
 	proto external vector GetCurrentMovementInput();
 	proto external vector GetLastMovementInput();
-	// rotations
+	// rotations in radians in world space
 	proto external void SetControlRotation(vector ypr);
 	proto external vector GetControlRotation();
 	proto external void SetAimRotation(vector ypr);

@@ -279,7 +279,13 @@ class SCR_AutoSpawnerTool : WorldEditorTool
 			}
 
 			m_API.SetVariableValue(ent, null, "coords", pos.ToString(false));
-			m_API.SetVariableValue(ent, null, "angleY", (m_fCumulativeRotation * (m_iRowSizeX * (k - 1) + j)).ToString(false));
+			vector angles;
+			if (ent.Get("angles", angles))
+			{
+				angles[1] = m_fCumulativeRotation * (m_iRowSizeX * (k - 1) + j);
+				m_API.SetVariableValue(ent, null, "angles", string.Format("%1 %2 %3", angles[0], angles[1], angles[2]));
+			}
+
 			if (isOnClick)
 				m_aPlacedEntityHistory.Insert(ent);
 

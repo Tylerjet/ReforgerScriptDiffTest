@@ -12,7 +12,8 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	
 	protected const int GARBAGE_DESPAWN_DISTANCE_SQ = 200*200;
 	protected const int PUNISHMENT_TIMEOUT = 5000;
-	protected const string FADEOUTLAYOUT = "{265245C299401BF6}UI/layouts/Menus/ContentBrowser/DownloadManager/ScrollBackground.layout";
+	protected const string FADEOUT_LAYOUT = "{265245C299401BF6}UI/layouts/Menus/ContentBrowser/DownloadManager/ScrollBackground.layout";
+	protected const string TASK_COMPLETED_SUFFIX = "#AR-Tutorial_TaskCompletedSuffix";
 	
 	protected ChimeraCharacter m_Player;
 	protected ref SCR_TutorialCoursesConfig m_CoursesConfig;
@@ -50,7 +51,6 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 
 	protected SCR_ETutorialCourses m_eFinishedCourses;
 	
-	protected ref array <SCR_TutorialCourseTask> m_aCourseTasks = {};
 	protected ref array <IEntity> m_aGarbage;
 	protected ref array <SCR_VehicleDamageManagerComponent> m_aDamagedVehicles;
 	protected ref array <SCR_NarrativeComponent> m_aNarratedCharacters;
@@ -301,34 +301,31 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		if (!weaponComp)
 			return 0;
 		
-		int ammoCount;
+		int ammoCount = 0;
 		BaseMuzzleComponent muzzle = weaponComp.GetCurrentMuzzle();
 		if (muzzle)
 			ammoCount = muzzle.GetAmmoCount();
 		
-		BaseMagazineComponent magComp;
-		
-		BaseMagazineWell well = weaponComp.GetCurrentMuzzle().GetMagazineWell();
-		
-		array <IEntity> items = {};
-		GetPlayerInventory().GetAllRootItems(items);
-		
-		//This is because alice, for some reasons returns duplicate items
-		array <IEntity> filteredItems = {};
-		foreach (IEntity item : items)
+		BaseMagazineWell magWell = muzzle.GetMagazineWell();
+		if (magWell)
 		{
-			if (!filteredItems.Contains(item))
-				filteredItems.Insert(item);
-		}
-		
-		foreach (IEntity item : filteredItems)
-		{
-			magComp = BaseMagazineComponent.Cast(item.FindComponent(BaseMagazineComponent));
-			if (!magComp)
-				continue;
+			const typename magazineType = magWell.Type();
 			
-			if (magComp.GetMagazineWell().Type() == well.Type())
-				ammoCount += magComp.GetAmmoCount();
+			array<IEntity> foundItems = {};
+			GetPlayerInventory().FindItemsWithComponents(foundItems, {BaseMagazineComponent}, EStoragePurpose.PURPOSE_ANY);
+			foreach (IEntity item : foundItems)
+			{
+				auto magazine = BaseMagazineComponent.Cast(item.FindComponent(BaseMagazineComponent));
+				if (!magazine)
+					continue;
+
+				auto magazineWell = magazine.GetMagazineWell();
+				if (!magazineWell)
+					continue;
+
+				if (magazineWell.Type() == magazineType)
+					ammoCount += magazine.GetAmmoCount();
+			}
 		}
 		
 		return ammoCount;
@@ -410,7 +407,10 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		
 		m_bCourseBreaking = true;
 		
-		m_bOutroBreak = m_ActiveConfig.GetCourseType() == SCR_ETutorialCourses.OUTRO;
+		SCR_ETutorialCourses course = m_ActiveConfig.GetCourseType();
+		SCR_AnalyticsApplication.GetInstance().TutorialCourseEnds(course, breakType);
+
+		m_bOutroBreak = course == SCR_ETutorialCourses.OUTRO;
 		
 		GetGame().GetMenuManager().CloseAllMenus();
 		
@@ -758,14 +758,24 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_TutorialCourseTask GetCourseTask(SCR_ETutorialCourses course)
+	SCR_Task GetCourseTask(SCR_ETutorialCourses course)
 	{
-		if (!m_aCourseTasks || m_aCourseTasks.IsEmpty())
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return null;
 		
-		foreach (SCR_TutorialCourseTask task : m_aCourseTasks)
+		array <SCR_Task> tasks = {};
+		taskSystem.GetTasks(tasks);
+		
+		string taskId;
+		
+		foreach (SCR_Task task : tasks)
 		{
-			if (task && task.m_eCourse == course)
+			if (!task)
+				continue;
+			
+			taskId = task.GetTaskID();
+			if (!SCR_StringHelper.IsEmptyOrWhiteSpace(taskId) && taskId.ToInt() == course)
 				return task;
 		}
 		
@@ -783,6 +793,10 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		
 		SCR_TutorialCourse course = m_CoursesConfig.GetCourse(courseType);
 		if (!course)
+			return;
+		
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
 		vector position;
@@ -804,20 +818,6 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			}
 		}
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
-			return;
-		
-		SCR_BaseTaskSupportEntity supportEntity = taskManager.FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
-			return;
-		
-		SCR_TutorialCourseTask task = SCR_TutorialCourseTask.Cast(supportEntity.CreateTask());
-		if (!task)
-			return;
-		
-		task.m_eCourse = courseType;
-		
 		if (position == vector.Zero)
 		{
 			IEntity positionEntity = course.GetFastTravelPosition();
@@ -825,19 +825,13 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 				position = positionEntity.GetOrigin();
 		}
 		
-		task.SetOrigin(position);
-		task.SetTitle(course.GetTaskTitle());
-		task.SetDescription(course.GetTaskDescription());
-		task.SetIconName(course.GetTaskIcon());
+		SCR_Task task = taskSystem.CreateTask("{1D0F815858EE24AD}Prefabs/Tasks/BaseTask.et", course.GetCourseType().ToString(), course.GetTaskTitle(), course.GetTaskDescription(), position);
+		if (!task)
+			return;
 		
-		Faction faction = GetGame().GetFactionManager().GetFactionByKey("USSR");
-		task.SetTargetFaction(faction);
-		
-		SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(task.FindComponent(SCR_MapDescriptorComponent));
-		if (mapDescriptor)
-			mapDescriptor.Item().Recycle();
-		
-		m_aCourseTasks.Insert(task);
+		task.SetTaskIconPath("{D43428C02A644C1B}UI/Imagesets/Tutorial-Courses/Tutorial-Courses.imageset");
+		task.SetTaskIconSetName(course.GetTaskIcon());
+		task.SetTaskVisibility(SCR_ETaskVisibility.NONE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -918,7 +912,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void RegisterInstructor(notnull SCR_TutorialInstructorComponent instructor)
 	{	
-		SCR_TutorialCourseTask task = GetCourseTask(instructor.GetCourseType());
+		SCR_Task task = GetCourseTask(instructor.GetCourseType());
 		if (task)
 			task.SetOrigin(instructor.GetOwner().GetOrigin());
 		
@@ -990,7 +984,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnFastTravelFadeoutCompleted()
-	{
+	{	
 		SCR_BaseGameMode gamemode = GetGameMode();
 		if (!gamemode)
 			return;
@@ -999,7 +993,13 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		{
 			CompartmentAccessComponent compartmentComp = m_Player.GetCompartmentAccessComponent();
 			if (compartmentComp)
+			{
 				compartmentComp.GetOutVehicle(EGetOutType.TELEPORT, -1, false, false);
+				
+				//Call later for repeated attempt to finalize Fast Travel, after player leaves the vehicle
+				GetGame().GetCallqueue().CallLater(OnFastTravelFadeoutCompleted, 1000);
+				return;
+			}
 		}
 		
 		gamemode.GetOnPreloadFinished().Insert(OnFastTravelPreloadFinished);
@@ -1273,7 +1273,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			if (!hudManager)
 				return null;
 			
-			m_wFadeOut = ImageWidget.Cast(hudManager.CreateLayout(FADEOUTLAYOUT, EHudLayers.OVERLAY));
+			m_wFadeOut = ImageWidget.Cast(hudManager.CreateLayout(FADEOUT_LAYOUT, EHudLayers.OVERLAY));
 			
 			if (!m_wFadeOut)
 				return null;
@@ -1531,8 +1531,8 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	void FinishStage()
 	{	
 		m_iActiveStage++;
-		SCR_ETutorialCourses finishedCourse = m_ActiveConfig.GetCourseType();
-		
+		SCR_ETutorialCourses finishedCourse = m_ActiveConfig.GetCourseType();		
+
 		if (!m_aStageInfos.IsIndexValid(m_iActiveStage))
 		{
 			array <SCR_ETutorialCourses> finishedCourses = {};
@@ -1579,8 +1579,12 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 				
 				if (manager)
 					manager.Play(SCR_SoundEvent.SOUND_ONBASECAPTURE);
-			}
 				
+			}
+			
+			if (m_ActiveConfig && m_ActiveConfig.GetCourseType() != SCR_ETutorialCourses.INTRO)
+				SCR_AnalyticsApplication.GetInstance().TutorialCourseEnds(finishedCourse, SCR_EAnalyticsCourseEndReason.COMPLETED);
+			
 			m_iActiveStage = 0;
 			
 			if (!SCR_Enum.HasFlag(m_eFinishedCourses, SCR_ETutorialCourses.OUTRO) && IsCourseAvailable(SCR_ETutorialCourses.OUTRO))
@@ -1608,7 +1612,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 					world.GetMusicManager().Play("SOUND_COURSE_DONE");
 			}
 			
-			GetGame().GetSaveManager().Save(ESaveType.AUTO);
+			GetGame().GetSaveGameManager().RequestSavePoint(ESaveGameType.AUTO);
 			return;
 		}
 			
@@ -1726,6 +1730,9 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			if (world)
 				world.GetMusicManager().Play("SOUND_COURSE_START");
 		}
+		
+		if (config != SCR_ETutorialCourses.INTRO && config != SCR_ETutorialCourses.FREE_ROAM)
+			SCR_AnalyticsApplication.GetInstance().TutorialCourseStarts(config);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1963,7 +1970,7 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
 		if (hudManager)
 		{
-			m_wFadeOut = ImageWidget.Cast(hudManager.CreateLayout(FADEOUTLAYOUT, EHudLayers.OVERLAY));
+			m_wFadeOut = ImageWidget.Cast(hudManager.CreateLayout(FADEOUT_LAYOUT, EHudLayers.OVERLAY));
 			if (m_wFadeOut)
 				m_wFadeOut.SetOpacity(1);
 		}
@@ -1978,9 +1985,13 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 				SpawnAsset("PlayerVehicle", m_sPlayerVehicleResourceName, position);
 		}
 		
-		SCR_EntityHelper.DeleteEntityAndChildren(GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_01"));
-		SCR_EntityHelper.DeleteEntityAndChildren(GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_02"));
-		SCR_EntityHelper.DeleteEntityAndChildren(GetGame().GetWorld().FindEntityByName("TUT_OFFICE_CHAIR_01"));
+		IEntity door = GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_01");
+		if (door)
+			door.SetOrigin("0 0 0");
+		
+		door = GetGame().GetWorld().FindEntityByName("TUT_BAR_DOOR_02");
+		if (door)
+			door.SetOrigin("0 0 0");
 		
 		if (SCR_Enum.HasFlag(m_eFinishedCourses, SCR_ETutorialCourses.INTRO))
 			SpawnPlayer("Respawn_Start_Load");
@@ -2007,28 +2018,31 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void HideTasks(bool hide)
 	{
-		FactionKey fKey;
-		if (hide)
-			fKey = "USSR";
-		else
-			fKey = "US";
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
+			return;
 		
-		Faction faction = GetGame().GetFactionManager().GetFactionByKey(fKey);
-		SCR_BaseTaskExecutor assigne;
+		array <SCR_Task> tasks = {};
+		taskSystem.GetTasks(tasks);
 		
-		foreach (SCR_TutorialCourseTask task : m_aCourseTasks)
+		string taskId;
+		
+		foreach (SCR_Task task : tasks)
 		{
-			if (task.m_eCourse == SCR_ETutorialCourses.OUTRO)
+			if (!task)
 				continue;
 			
-			assigne = task.GetAssignee();
-			if (assigne)
-				task.RemoveAssignee(assigne, SCR_EUnassignReason.GM_REASSIGN);
-			
-			if (!IsCourseAvailable(task.m_eCourse))
+			taskId = task.GetTaskID();
+			if (SCR_StringHelper.IsEmptyOrWhiteSpace(taskId) || task.GetTaskID().ToInt() == SCR_ETutorialCourses.OUTRO)
 				continue;
 			
-			task.SetTargetFaction(faction);
+			if (!IsCourseAvailable(taskId.ToInt()))
+				continue;
+			
+			if (hide)
+				task.SetTaskVisibility(SCR_ETaskVisibility.NONE);
+			else
+				task.SetTaskVisibility(SCR_ETaskVisibility.EVERYONE);
 		}
 	}
 	
@@ -2038,7 +2052,10 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 		array <ref SCR_TutorialCourse> courses = {};
 		m_CoursesConfig.GetConfigs(courses);
 		
-		SCR_ETutorialCourses courseType;
+		int courseType;
+		SCR_Task task;
+		string taskName;
+		
 		foreach (SCR_TutorialCourse course : courses)
 		{
 			if (!course)
@@ -2049,12 +2066,16 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			if (course.CanCreateTask())
 				CreateCourseTask(courseType);
 			
-			if (!SCR_Enum.HasFlag(m_eFinishedCourses, courseType))
-				continue;
-			
-			SCR_TutorialCourseTask task = GetCourseTask(courseType);
-			if (task)
-				task.CompleteCourseTask();
+			if (SCR_Enum.HasFlag(m_eFinishedCourses, courseType))
+			{
+				task = SCR_TaskSystem.GetTaskFromTaskID(courseType.ToString());
+				if (!task)
+					continue;
+				
+				taskName = task.GetTaskName();
+				if (!taskName.Contains(TASK_COMPLETED_SUFFIX))
+					task.SetTaskName(taskName + " " + TASK_COMPLETED_SUFFIX);
+			}
 		}
 	}
 
@@ -2100,6 +2121,13 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 			if (vector.DistanceSq(playerPos, m_AreaRestrictionCenter.GetOrigin()) > (Math.Pow(breakDist, 2)))
 			{
 				m_bProtectionWarning = false;
+				if (m_ActiveConfig.GetCourseType() == SCR_ETutorialCourses.INTRO)
+				{
+					m_eFinishedCourses = SCR_Enum.SetFlag(m_eFinishedCourses, SCR_ETutorialCourses.INTRO);
+					SetCourseConfig(SCR_ETutorialCourses.FREE_ROAM);
+					return;
+				}
+				
 				RequestBreakCourse(SCR_ETutorialBreakType.FORCED);
 				
 				ChimeraWorld world = GetGame().GetWorld();
@@ -2319,10 +2347,6 @@ class SCR_TutorialGamemodeComponent : SCR_BaseGameModeComponent
 	{
 		m_eFinishedCourses = SCR_Enum.SetFlag(m_eFinishedCourses, course);
 		GenerateTasks();
-		
-		SCR_TutorialCourseTask task = GetCourseTask(course);
-		if (task)
-			task.CompleteCourseTask();
 	}
 	
 	//------------------------------------------------------------------------------------------------

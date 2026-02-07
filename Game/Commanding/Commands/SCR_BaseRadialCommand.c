@@ -17,8 +17,11 @@ class SCR_BaseRadialCommand
 	protected SCR_ECharacterRank m_eRequiredRank;
 
 	protected LocalizedString m_sCannotPerformReason;
+	protected LocalizedString m_sCannotExecuteReason;
 
-	protected static const LocalizedString CANNOT_PERFORM_RANK_TOO_LOW = "#AR-Commanding_CannotPefrorm_RankTooLow";
+	protected static const LocalizedString CANNOT_PERFORM_RANK_TOO_LOW 	= "#AR-Commanding_CannotPefrorm_RankTooLow";
+	protected static const LocalizedString CANNOT_EXECUTE_SOLDIER_NA 	= "#AR-Commanding_CannotExecute_SoldierNotAvailable";
+
 	//------------------------------------------------------------------------------------------------
 	//! method that will be executed when the command is selected in the menu
 	//! This method is right now broadcaasted to all clients, so if the command 
@@ -92,7 +95,10 @@ class SCR_BaseRadialCommand
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	/*!
+	Returns true if user (player) of the command can issue the command
+	\param[in] user - the commander's chimera character
+	*/	
 	bool CanBePerformed(notnull SCR_ChimeraCharacter user)
 	{
 		if (m_eRequiredRank == SCR_ECharacterRank.INVALID)
@@ -110,19 +116,41 @@ class SCR_BaseRadialCommand
 
 			string requiredRankName = userFaction.GetRankName(m_eRequiredRank);
 			string currentRankName = userFaction.GetRankName(currentRank);
-			SetCannotPerformReason(SCR_StringHelper.Translate(CANNOT_PERFORM_RANK_TOO_LOW, requiredRankName, currentRankName));
+			SetCannotPerformReason(WidgetManager.Translate(CANNOT_PERFORM_RANK_TOO_LOW, requiredRankName, currentRankName));
 			return false;
 		}
 
 		return true;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Returns true if target of the command - typically cursortarget - can execute the command
+	\param[in] target entity, that should execute the command
+	*/	
+	bool CanBeExecuted(notnull IEntity target)
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetCannotExecuteReason(LocalizedString newReason)
+	{
+		m_sCannotExecuteReason = newReason;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SetCannotPerformReason(LocalizedString newReason)
 	{
 		m_sCannotPerformReason = newReason;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	LocalizedString GetCannotExecuteReason()
+	{
+		return m_sCannotExecuteReason;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	LocalizedString GetCannotPerformReason()
 	{

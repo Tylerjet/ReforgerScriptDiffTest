@@ -131,7 +131,6 @@ class SCR_VotingKick : SCR_VotingReferendum
 	//------------------------------------------------------------------------------------------------
 	override int GetWinner()
 	{
-		EVotingOutcome outcome;
 		if (super.GetWinner() != DEFAULT_VALUE)
 		{
 			PlayerManager playerMgr = GetGame().GetPlayerManager();

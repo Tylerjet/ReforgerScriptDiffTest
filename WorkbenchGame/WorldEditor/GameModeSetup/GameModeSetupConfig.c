@@ -258,7 +258,7 @@ class GameModeSetupConfig
 		//--- Open the config in Resource Manager, so the user can edit it straight away
 		string missionHeaderAbsPath;
 		Workbench.GetAbsolutePath(missionHeaderPath, missionHeaderAbsPath, false);
-		resourceManager.RegisterResourceFile(missionHeaderAbsPath);
+		resourceManager.RegisterResourceFile(missionHeaderAbsPath, false);
 		resourceManager.SetOpenedResource(missionHeaderPath);
 
 		dialogMessage = string.Format(DESCRIPTION_MISSION_HEADER_EXISTS, missionHeaderPath);

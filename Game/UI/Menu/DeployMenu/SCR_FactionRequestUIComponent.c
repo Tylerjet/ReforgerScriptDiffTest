@@ -42,6 +42,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		ShowAvailableFactions();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Display available playable factions in the list.
 	void ShowAvailableFactions()
 	{
@@ -67,7 +68,8 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		Faction playerFaction = m_PlyFactionAffilComp.GetAffiliatedFaction();
 		bool canChangeFaction = SCR_BaseGameMode.Cast(GetGame().GetGameMode()).IsFactionChangeAllowed();
 
-		int playableFactionCount = 0;
+		int playableFactionCount;
+		int factionPlayerLimit = -1;
 
 		for (int i = 0; i < factionCount; ++i)
 		{
@@ -96,7 +98,14 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				btnComp.SetShouldUnlock(playerFaction == scriptedFaction);
 				btnComp.SetEnabled(playerFaction == scriptedFaction);
 			}
-			
+
+			factionPlayerLimit = scriptedFaction.GetPlayerLimit();
+			if (factionPlayerLimit >= 0 && scriptedFaction.GetPlayerCount() >= factionPlayerLimit)
+			{
+				btnComp.SetShouldUnlock(playerFaction == scriptedFaction);
+				btnComp.SetEnabled(playerFaction == scriptedFaction);
+			}
+
 			btnComp.SetVisible(scriptedFaction.IsPlayable(), false);
 
 			if (scriptedFaction.IsPlayable())
@@ -109,6 +118,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wNoFactions.SetVisible(playableFactionCount == 0);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when local player's faction is assigned.
 	void OnPlayerFactionAssigned(Faction assignedFaction)
 	{
@@ -134,6 +144,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when playable factions are changed.
 	protected void OnPlayableFactionChanged(SCR_Faction faction, bool playable)
 	{
@@ -153,6 +164,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wNoFactions.SetVisible(playableFactionCount == 0);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Update all available faction buttons.
 	protected void UpdateFactionButtons(Faction faction, int newCount)
 	{
@@ -164,6 +176,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when button is focused.
 	protected void OnButtonFocused(Widget w)
 	{
@@ -176,6 +189,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_OnButtonFocused.Invoke(factionBtn.GetFaction());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Sends a request to assign a faction.
 	protected void RequestPlayerFaction(SCR_FactionButton factionBtn)
 	{
@@ -190,6 +204,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_PlyFactionAffilComp.RequestFaction(faction);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when player clicks the faction button.
 	protected void OnButtonClicked(SCR_FactionButton factionBtn)
 	{
@@ -205,6 +220,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Callback when player closes the persistent faction dialog.
 	protected void OnFactionDialogConfirm(SCR_PersistentFactionDialog dialog)
 	{
@@ -213,6 +229,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			RequestPlayerFaction(btn);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void RequestRandomFaction()
 	{
 		array<Faction> factions = {};
@@ -220,6 +237,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_PlyFactionAffilComp.RequestFaction(factions.GetRandomElement());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get the faction button associated with a faction index.
 	\return faction button
@@ -246,7 +264,6 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_FactionButton : SCR_DeployButtonBase
 {
 	[Attribute("FactionName")]
@@ -267,6 +284,7 @@ class SCR_FactionButton : SCR_DeployButtonBase
 
 	protected SCR_Faction m_Faction;
 	protected int m_iPlayerCount;
+	protected int m_iPlayerLimit;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -279,6 +297,7 @@ class SCR_FactionButton : SCR_DeployButtonBase
 		m_wArrowIcon = ImageWidget.Cast(w.FindAnyWidget(m_sArrowIcon));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Set this button's faction.
 	void SetFaction(SCR_Faction faction)
 	{
@@ -290,16 +309,25 @@ class SCR_FactionButton : SCR_DeployButtonBase
 		UpdatePlayerCount();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Get this button's faction.
 	SCR_Faction GetFaction()
 	{
 		return m_Faction;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Get the player count of the faction.
 	int GetPlayerCount()
 	{
 		return m_iPlayerCount;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the player limit of the faction.
+	int GetPlayerLimit()
+	{
+		return m_iPlayerLimit;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -309,10 +337,15 @@ class SCR_FactionButton : SCR_DeployButtonBase
 		if (m_Faction && m_wPlayerCount)
 		{
 			m_iPlayerCount = m_Faction.GetPlayerCount();
-			m_wPlayerCount.SetText(m_iPlayerCount.ToString());
+			m_iPlayerLimit = m_Faction.GetPlayerLimit();
+			if (m_iPlayerLimit >= 0)
+				m_wPlayerCount.SetTextFormat("#AR-SupportStation_ActionFormat_ItemAmount", m_iPlayerCount, m_iPlayerLimit);
+			else
+				m_wPlayerCount.SetText(m_iPlayerCount.ToString());
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Set faction name of this button.
 	void SetFactionName(string name)
 	{
@@ -320,6 +353,7 @@ class SCR_FactionButton : SCR_DeployButtonBase
 			m_wFactionName.SetText(name);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Visually set the button selected.
 	override void SetSelected(bool selected)
 	{

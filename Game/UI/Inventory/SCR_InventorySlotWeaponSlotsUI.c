@@ -15,6 +15,12 @@ class SCR_InventorySlotWeaponSlotsUI : SCR_InventorySlotUI
 	//------------------------------------------------------------------------ USER METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
+	override SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return SCR_EAnalyticalItemSlotType.HORIZONTAL;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
 		super.Init();
@@ -113,7 +119,14 @@ class SCR_InventorySlotWeaponSlotsUI : SCR_InventorySlotUI
 				return;
 
 			BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
-			if (!muzzle || !muzzle.GetMagazineWell())
+			if (!muzzle)
+			{
+				incompatible.SetVisible(true);
+				return;
+			}
+
+			BaseMagazineWell muzzleWell = muzzle.GetMagazineWell();
+			if (!muzzleWell)
 			{
 				incompatible.SetVisible(true);
 				return;
@@ -125,7 +138,7 @@ class SCR_InventorySlotWeaponSlotsUI : SCR_InventorySlotUI
 				return;
 			}
 
-			incompatible.SetVisible(!well.Type().IsInherited(muzzle.GetMagazineWell().Type()));
+			incompatible.SetVisible(!well.Type().IsInherited(muzzleWell.Type()));
 		}
 		else
 		{

@@ -83,4 +83,32 @@ class SCR_AIGroupVehicleManager : Managed
 		}
 		return false;
 	}
+	
+	//---------------------------------------------------------------------------------------------------
+	//! Called from SCR_AIGroupUtilityComponent
+	//! Removes vehicle of removed agent from group usage if there is no other member of group using the same vehicle
+	//! \param[in] agent
+	//! \param[in] groupUsingVehicle
+	void OnAgentRemoved(notnull AIAgent removedAgent, notnull SCR_AIGroup agentFormerGroup)
+	{
+		// Note: removedAgent is not the group member anymore
+		ChimeraCharacter agentEntity = ChimeraCharacter.Cast(removedAgent.GetControlledEntity());
+		if (!agentEntity || !agentEntity.IsInVehicle())
+			return;
+		
+		CompartmentAccessComponent compAcc = agentEntity.GetCompartmentAccessComponent();
+		if (!compAcc)
+			return;
+		
+		IEntity vehicleOfAgent = compAcc.GetVehicleIn(agentEntity);
+		if (!vehicleOfAgent)
+			return;
+		
+		SCR_AIVehicleUsageComponent usage = SCR_AIVehicleUsageComponent.Cast(vehicleOfAgent.FindComponent(SCR_AIVehicleUsageComponent));
+		if (!usage)
+			return;
+		
+		if (!usage.IsOccupiedByGroup(agentFormerGroup))
+			RemoveVehicle(usage);
+	}
 };

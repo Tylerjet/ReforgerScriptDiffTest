@@ -20,12 +20,16 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 		Physics otherPhysics = other.GetPhysics();
 		if (!otherPhysics)
 			return;
-		
+
 	 	float otherMass = otherPhysics.GetMass();
 
-		VehicleWheeledSimulation vehicleSimulation = VehicleWheeledSimulation.Cast(other.FindComponent(VehicleWheeledSimulation));
-		if (vehicleSimulation)
-			otherMass /= vehicleSimulation.WheelCount(); // assume it's a vehicle and assume min. weight it lays on the trigger is weight / wheels count
+		Vehicle vehicle = Vehicle.Cast(other);
+		if (vehicle)
+		{
+			VehicleWheeledSimulation vehicleSimulation = VehicleWheeledSimulation.Cast(vehicle.FindComponent(VehicleWheeledSimulation));
+			if (vehicleSimulation)
+				otherMass /= vehicleSimulation.WheelCount(); // assume it's a vehicle and assume min. weight it lays on the trigger is weight / wheels count
+		}
 		
 		m_fLastTryTime = GetGame().GetWorld().GetWorldTime();
 		
@@ -50,23 +54,73 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Only call this on the server
+	//! Only call this on the server
 	override void ActivateTrigger()
 	{
 		super.ActivateTrigger();
 		
-		GenericEntity owner = GenericEntity.Cast(GetOwner());
-		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		IEntity owner = GetOwner();
+		RplComponent rplComponent = SCR_EntityHelper.GetEntityRplComponent(owner);
 		if (!rplComponent || rplComponent.IsProxy())
 			return;
-		
+
+		const float armingDelay = GetArmingTime() * 1000.0; //in ms
+		if (armingDelay != 0)
+			m_fLastTryTime = GetGame().GetWorld().GetWorldTime() + armingDelay;
+
 		SetEventMask(owner, EntityEvent.CONTACT);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to reset the timeout, which is used to discard contacts when mine is arming
+	//! Use it only on the server as it controlls when mines are detonated
+	void ResetTimeout()
+	{
+		m_fLastTryTime = 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Only call this on the server to disable the trigger mechanism
+	override void DisarmTrigger()
+	{
+		HideFuse();
+		GetInstigator().SetInstigator(null);
+
+		IEntity owner = GetOwner();
+		RplComponent rplComponent = SCR_EntityHelper.GetEntityRplComponent(owner);
+		if (!rplComponent || rplComponent.IsProxy())
+			return;
+
+		ClearEventMask(owner, EntityEvent.CONTACT);
+		super.DisarmTrigger();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override event protected void EOnInit(IEntity owner)
+	//! Method called on the clients, the item should be outside inventory already
+	override void OnActivatedChanged()
+	{
+		super.OnActivatedChanged();
+
+		if (!m_bActivated)
+			HideFuse();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	void HideFuse()
+	{
+		IEntity owner = GetOwner();
+		int meshIndex = GameAnimationUtils.FindMeshIndex(owner, m_sFuzeMeshName);
+		if (meshIndex == -1)
+			return;
+		
+		GameAnimationUtils.ShowMesh(owner, meshIndex, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void EOnInit(IEntity owner)
 	{
 		if (m_bLive)
-			ActivateTrigger(); // Using call later to avoid accessing uninitialized components
+			ActivateTrigger();
 	}
 }

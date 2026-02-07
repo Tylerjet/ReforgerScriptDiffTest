@@ -56,6 +56,15 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 	protected const float FADEOUT_PANEL_DELAY = 6; 
 	//Time until zeroing fades out
 	protected const float FADEOUT_OPTICS_DELAY = 6;
+
+	private static ref array<EAmmoType> s_AmmoTypes = new array<EAmmoType>();
+	private static ref array<IEntity> s_LoadedRockets = new array<IEntity>();
+	
+	void SCR_WeaponInfo_MultiWeaponTurret()
+	{
+		if (s_AmmoTypes.Count() == 0)
+			SCR_Enum.GetEnumValues(EAmmoType, s_AmmoTypes);
+	}
 	
 	//######## CALLBACKS ########
 	//------------------------------------------------------------------------------------------------
@@ -351,9 +360,7 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 	
 	//------------------------------------------------------------------------------------------------
 	protected void FillAmmoTypes()
-	{		
-		array <EAmmoType> ammoTypes = {};
-		SCR_Enum.GetEnumValues(EAmmoType, ammoTypes);
+	{
 		EAmmoType equippedTypes = 0;
 		
 		foreach (WeaponSlotComponent weaponSlotComp : m_DataHolder.m_aWeaponslots)
@@ -368,7 +375,7 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		SCR_AmmoTypeIcon ammoIconComp;
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
-		foreach (EAmmoType type : ammoTypes)
+		foreach (EAmmoType type : s_AmmoTypes)
 		{
 			ammoIcon = workspace.CreateWidgets(m_sAmmoTypeIconLayout, m_Widgets.m_wAmmoType);
 			ammoIconComp = SCR_AmmoTypeIcon.Cast(ammoIcon.FindHandler(SCR_AmmoTypeIcon));
@@ -386,8 +393,6 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateAmmoTypes()
 	{
-		array <EAmmoType> ammoTypes = {};
-		SCR_Enum.GetEnumValues(EAmmoType, ammoTypes);
 		EAmmoType equippedTypes = 0;
 		
 		foreach (WeaponSlotComponent weaponSlotComp : m_DataHolder.m_aWeaponslots)
@@ -398,7 +403,7 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 				equippedTypes |= GetGenericAmmoTypes(weaponSlotComp);
 		}
 		
-		foreach (EAmmoType type : ammoTypes)
+		foreach (EAmmoType type : s_AmmoTypes)
 		{	
 			m_DataHolder.m_mAmmoTypeWidgets[type].SetVisibility(type & equippedTypes);
 		}
@@ -415,10 +420,8 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		MagazineComponent magComp;
 		MagazineUIInfo magInfo;
 
-		array <IEntity> loadedRockets = {};
-		muz.GetLoadedEntities(loadedRockets);
-		
-		foreach (IEntity rocket : loadedRockets)
+		muz.GetLoadedEntities(s_LoadedRockets);
+		foreach (IEntity rocket : s_LoadedRockets)
 		{
 			if (!rocket)
 				continue;
@@ -696,7 +699,6 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 			m_turretEventHandler.RegisterScriptHandler("OnFiremodeChange", this, OnFiremodeChanged);
 			m_turretEventHandler.RegisterScriptHandler("OnAmmoCountChanged", this, OnAmmoCountChanged);
 			m_turretEventHandler.RegisterScriptHandler("OnTurretReload", this, OnTurretReload);
-			m_turretEventHandler.RegisterScriptHandler("OnTurretReload", this, OnTurretReload);
 			m_turretEventHandler.RegisterScriptHandler("OnFireGroupChange", this, OnSelectedFiregroupChange);
 		}
 	}
@@ -709,6 +711,8 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		foreach (WeaponSlotComponent weaponSlot : m_DataHolder.m_aWeaponslots)
 		{
 			storageInfo = weaponSlot.GetSlotInfo();
+			if (!storageInfo)
+				continue;
 			storageInfo.GetAttachedEntityInvoker().Insert(OnNewWeaponAttached);
 			storageInfo.GetDetachedEntityInvoker().Insert(OnNewWeaponDetached);
 		}
@@ -722,6 +726,8 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		foreach (WeaponSlotComponent weaponSlot : m_DataHolder.m_aWeaponslots)
 		{
 			storageInfo = weaponSlot.GetSlotInfo();
+			if (!storageInfo)
+				continue;
 			storageInfo.GetAttachedEntityInvoker().Remove(OnNewWeaponAttached);
 			storageInfo.GetDetachedEntityInvoker().Remove(OnNewWeaponDetached);
 		}

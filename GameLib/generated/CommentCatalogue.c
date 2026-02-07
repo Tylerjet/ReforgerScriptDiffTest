@@ -9,12 +9,7 @@ class CommentCatalogue
 	//! Returns max possible size of page that is allowed to be set
 	proto external int MaxPageSize();
 	//! \brief Post comment
-	proto external void CreateComment(string sContent, BackendCallback pCallback, int iParentId = 0);
-	//! \brief Delete comment online
-	proto external void DeleteComment(int iId, BackendCallback pCallback);
-	//! \brief Update comment content
-	proto external void UpdateComment(int iId, string sContent, BackendCallback pCallback);
-	proto external void ReportComment(int iId, EWorkshopReportType eReport, string sDesc, BackendCallback pCallback);
+	proto external void CreateComment(string sContent, notnull BackendCallback pCallback, WorkshopComment pParentComment);
 	proto external void RequestPage(BackendCallback pCallback, notnull PageParams pParams, bool bClearCache);
 	//! \brief Get total item count on all pages
 	proto external int GetTotalItemCount();

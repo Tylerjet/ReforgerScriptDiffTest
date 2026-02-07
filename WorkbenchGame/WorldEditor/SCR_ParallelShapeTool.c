@@ -6,7 +6,7 @@
 class SCR_ParallelShapeTool : WorldEditorTool
 {
 	/*
-		Margins
+		Category: Margins
 	*/
 
 	[Attribute(defvalue: "1", desc: "[m] Offset safety for neater inner curves (Spline only)", params: "0 10 0.01", precision: 2, uiwidget: UIWidgets.Slider, category: "Margins")]
@@ -16,14 +16,14 @@ class SCR_ParallelShapeTool : WorldEditorTool
 	protected float m_fMinDistanceBetweenPoints;
 
 	/*
-		Debug
+		Category: Debug
 	*/
 
 	[Attribute(defvalue: "0", desc: "Show more logs", category: "Debug")]
 	protected bool m_bShowDebugLog;
 
 	/*
-		Shape Creation
+		Category: Shape Creation
 	*/
 
 	[Attribute(defvalue: "1", desc: "Snap the newly created shapes' points to the ground", category: "Shape Creation")]

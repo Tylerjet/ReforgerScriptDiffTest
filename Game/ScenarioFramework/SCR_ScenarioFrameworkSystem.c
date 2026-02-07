@@ -17,6 +17,9 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	[Attribute(UIWidgets.Auto, desc: "Actions that will be activated after tasks are initialized", category: "Tasks")]
 	ref array<ref SCR_ScenarioFrameworkActionBase> m_aAfterTasksInitActions;
 
+	[Attribute(desc: "Debug actions accessible from Debug Menu.", category: "Debug")]
+	ref array<ref SCR_ScenarioFrameworkDebugAction> m_aDebugActions;
+
 	[Attribute(desc: "List of Core Areas that are essential for the Scenario to spawn alongside Debug Areas", category: "Debug")]
 	ref array<string> m_aCoreAreas;
 
@@ -34,14 +37,17 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 
 	bool m_bMatchOver;
 	bool m_bDebugInit;
-	int m_iCurrentlySpawnedLayerTasks;
+	bool m_bIsWorldLoadInit;
+	bool m_bIsSaveGameLoad;
 
 	ref ScriptInvoker m_OnAllAreasInitiated;
 	ref ScriptInvoker m_OnTaskStateChanged;
 	static ref ScriptInvokerBase<ScriptInvokerScenarioFrameworkSlotAIMethod> m_OnSlotAISpawned;
+	protected FactionManager m_FactionManager;
+	protected SCR_TaskSystem m_TaskSystem;
 
 	SCR_ScenarioFrameworkLayerBase m_LastFinishedTaskLayer;
-	SCR_BaseTask m_LastFinishedTask;
+	SCR_Task m_LastFinishedTask;
 	EGameOverTypes m_eGameOverType = EGameOverTypes.COMBATPATROL_DRAW;
 
 	ref array<SCR_ScenarioFrameworkArea> m_aAreas = {};
@@ -185,6 +191,45 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Plays sound on entity by ID.
+	//! \param[in] pEntID Entity ID representing an object in the game world.
+	//! \param[in] sSndName Sound name for playing sound on entity.
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_PlayCommunicationSoundOnEntity(EntityID pEntID, string sSndName)
+	{
+		if (!pEntID)
+			return;
+
+		IEntity entity = GetGame().GetWorld().FindEntityByID(pEntID);
+		if (!entity)
+			return;
+
+		CommunicationSoundComponent pSndComp = CommunicationSoundComponent.Cast(entity.FindComponent(CommunicationSoundComponent));
+		if (!pSndComp)
+			return;
+
+		pSndComp.SoundEvent(sSndName);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Plays communication sound on entity or game mode if entity is null.
+	//! \param[in] entity Represents an in-game object or character.
+	//! \param[in] sSndName sSndName is the name of the sound file to play on the specified entity.
+	void PlayCommunicationSoundOnEntity(IEntity entity, string sSndName)
+	{
+		if (!entity)
+			entity = GetGame().GetGameMode();		//play it on game mode if any entity is passed
+
+		if (!entity)
+			return;
+
+		if (IsMaster())
+			Rpc(RpcDo_PlayCommunicationSoundOnEntity, entity.GetID(), sSndName);
+
+		RpcDo_PlayCommunicationSoundOnEntity(entity.GetID(), sSndName);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Plays intro voiceline for player with specified event name and entity ID.
 	//! \param[in] playerID Player ID represents the unique identifier for the player in the game.
 	//! \param[in] eventName Plays intro voiceline for event.
@@ -294,15 +339,12 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		if (!object)
 			return;
 
-		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
-		if (!soundManagerEntity)
-			return;
-
 		SCR_AudioSourceConfiguration audioConfig = new SCR_AudioSourceConfiguration();
 		audioConfig.m_sSoundProject = soundFile;
 		audioConfig.m_sSoundEventName = soundEventName;
 		audioConfig.m_eFlags = EAudioSourceConfigurationFlag.FinishWhenEntityDestroyed;
-		soundManagerEntity.CreateAndPlayAudioSource(object, audioConfig);
+
+		SCR_SoundManagerModule.CreateAndPlayAudioSource(object, audioConfig);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -330,7 +372,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 
 	//------------------------------------------------------------------------------------------------
 	//! \return Last finished task.
-	SCR_BaseTask GetLastFinishedTask()
+	SCR_Task GetLastFinishedTask()
 	{
 		return m_LastFinishedTask;
 	}
@@ -351,46 +393,118 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] task Displays a message when a new task is created, indicating if it's for a specific faction or not.
-	void OnTaskCreated(SCR_BaseTask task)
+	void OnTaskAdded(SCR_Task task)
 	{
-		Faction faction = task.GetTargetFaction();
-		if (faction)
-			PopUpMessage(task.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC", faction.GetFactionKey());
-		else
-			PopUpMessage(task.GetTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC");
+		s_CallQueuePausable.CallLater(OnTaskAddedCalledLater, 200, false, task)
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] task Displays a message when a new task is created, indicating if it's for a specific faction or not.
+	void OnTaskAddedCalledLater(SCR_Task task)
+	{
+		SCR_ScenarioFrameworkTask sfTask = SCR_ScenarioFrameworkTask.Cast(task);
+		if (!sfTask)
+			return;
+
+		if (!SCR_Enum.HasFlag(sfTask.GetTaskNotificationSettings(), SCR_ETaskNotificationSettings.ON_CREATED))
+			return;
+
+		if (!m_TaskSystem)
+		{
+			m_TaskSystem = SCR_TaskSystem.GetInstance();
+			if (!m_TaskSystem)
+				return;
+		}
+
+		array<string> factionKeys = {};
+		factionKeys = m_TaskSystem.GetTaskFactions(task);
+		if (!factionKeys)
+			return;
+		
+		SCR_ScenarioFrameworkLayerTask layerTask = sfTask.GetLayerTask();
+		if (!layerTask)
+			return;
+		
+		string titleParam = layerTask.GetOverridenObjectDisplayName();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(titleParam) && layerTask.m_SlotTask)
+			titleParam = layerTask.m_SlotTask.GetSpawnedEntityDisplayName();
+		
+		foreach (string factionKey : factionKeys)
+		{
+ 			PopUpMessage(layerTask.GetTaskTitle(), "#AR-CampaignTasks_NewObjectivesAvailable-UC", factionKey, titleParam1:titleParam);
+		}
+	}
+
 
 	//------------------------------------------------------------------------------------------------
 	//! Updates task properties, checks if task is finished, and triggers pop-up messages or slot task updates based on event
 	//! \param[in] task Updates task properties, checks for finished tasks, triggers pop-up messages, and invokes onTaskStateChanged event
-	//! \param[in] mask Task event mask representing changes in task properties, excluding creation, completion, or assignee changes.
-	void OnTaskUpdate(SCR_BaseTask task, SCR_ETaskEventMask mask)
+	//! \param[in] taskState representing changes in task properties, excluding creation, completion, or assignee changes.
+	void OnTaskUpdate(SCR_Task task, SCR_ETaskState taskState)
 	{
-		if (!SCR_ScenarioFrameworkTask.Cast(task))
+		if (!m_TaskSystem)
+		{
+			m_TaskSystem = SCR_TaskSystem.GetInstance();
+			if (!m_TaskSystem)
+				return;
+		}
+
+		SCR_ScenarioFrameworkTask frameworkTask = SCR_ScenarioFrameworkTask.Cast(task);
+		if (!frameworkTask)
 			return;
 
-		Faction faction = task.GetTargetFaction();
+		SCR_ScenarioFrameworkLayerTask layerTask = frameworkTask.GetLayerTask();
+		if (!layerTask)
+			return;
 
-		if (task.GetTaskState() == SCR_TaskState.FINISHED)
+		SCR_ScenarioFrameworkSlotTask slotTask = layerTask.GetSlotTask();
+		if (!slotTask)
 		{
-			m_LastFinishedTaskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask();
-			m_LastFinishedTask = task;
+			slotTask = frameworkTask.GetSlotTask();
+			if (!slotTask)
+				return;
 		}
 
-		if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
+		slotTask.OnTaskStateChanged(taskState);
+
+		array<string> factionKeys = {};
+		factionKeys = m_TaskSystem.GetTaskFactions(task);
+		if (!factionKeys)
+			return;
+
+		if (m_bIsSaveGameLoad)
+			return; // No notification on load of save game
+		
+		string titleParam = layerTask.GetOverridenObjectDisplayName();
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(titleParam))
+			titleParam = slotTask.GetSpawnedEntityDisplayName();
+		
+		foreach (string factionKey : factionKeys)
 		{
-			if (faction)
-				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate", faction.GetFactionKey());
-			else
-				PopUpMessage(task.GetTitle(), "#AR-Workshop_ButtonUpdate");
+			if (task.GetTaskState() == SCR_ETaskState.COMPLETED)
+			{
+				m_LastFinishedTaskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask();
+				m_LastFinishedTask = task;
 
-			SCR_ScenarioFrameworkLayerTask taskLayer = SCR_ScenarioFrameworkTask.Cast(task).GetLayerTask();
-			SCR_ScenarioFrameworkSlotTask subject = taskLayer.GetSlotTask();
-			if (subject)
-				subject.OnTaskStateChanged(SCR_TaskState.UPDATED);
+				if (SCR_Enum.HasFlag(frameworkTask.GetTaskNotificationSettings(), SCR_ETaskNotificationSettings.ON_FINISH))
+					PopUpMessage(layerTask.GetTaskTitle(), "#AR-Tasks_StatusFinished-UC", factionKey, titleParam1:titleParam);
+			}
+			else if (taskState == SCR_ETaskState.FAILED)
+			{
+				if (SCR_Enum.HasFlag(frameworkTask.GetTaskNotificationSettings(), SCR_ETaskNotificationSettings.ON_FAILED))
+					PopUpMessage(layerTask.GetTaskTitle(), "#AR-Tasks_StatusFailed-UC", factionKey, titleParam1:titleParam);
+			}
+			else if (taskState == SCR_ETaskState.CANCELLED)
+			{
+				if (SCR_Enum.HasFlag(frameworkTask.GetTaskNotificationSettings(), SCR_ETaskNotificationSettings.ON_CANCELLED))
+					PopUpMessage(layerTask.GetTaskTitle(), "#AR-Tasks_StatusCancelled-UC", factionKey, titleParam1:titleParam);
+			}
+			else if (taskState == SCR_ETaskState.PROGRESSED)
+			{
+				if (SCR_Enum.HasFlag(frameworkTask.GetTaskNotificationSettings(), SCR_ETaskNotificationSettings.ON_UPDATED))
+					PopUpMessage(layerTask.GetTaskTitle(), "#AR-Workshop_ButtonUpdate", factionKey, titleParam1:titleParam);
+			}
 		}
-
-		GetOnTaskStateChanged().Invoke(task, mask);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -426,16 +540,6 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			m_OnAllAreasInitiated = new ScriptInvoker();
 
 		return m_OnAllAreasInitiated;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return a ScriptInvoker object for handling task state changes.
-	ScriptInvoker GetOnTaskStateChanged()
-	{
-		if (!m_OnTaskStateChanged)
-			m_OnTaskStateChanged = new ScriptInvoker();
-
-		return m_OnTaskStateChanged;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -507,6 +611,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		m_aTaskTypesAvailable = sfManager.m_aTaskTypesAvailable;
 		m_iMaxNumberOfTasks = sfManager.m_iMaxNumberOfTasks;
 		m_aAfterTasksInitActions = sfManager.m_aAfterTasksInitActions;
+		m_aDebugActions = sfManager.m_aDebugActions;
 		m_aCoreAreas = sfManager.m_aCoreAreas;
 		m_aDebugAreas = sfManager.m_aDebugAreas;
 		m_bDynamicDespawn = sfManager.m_bDynamicDespawn;
@@ -574,8 +679,25 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_LOGIC_INSPECTOR, "", "Logic Inspector", "ScenarioFramework");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_PLUGIN_INSPECTOR, "", "Plugin Inspector", "ScenarioFramework");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_CONDITION_INSPECTOR, "", "Condition Inspector", "ScenarioFramework");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SCENARIO_FRAMEWORK_DEBUG_ACTIONS, "", "Debug Actions", "ScenarioFramework");
+
+		m_FactionManager = GetGame().GetFactionManager();
+		SCR_Task.GetOnTaskStateChanged().Remove(OnTaskUpdate);
+		SCR_Task.GetOnTaskStateChanged().Insert(OnTaskUpdate);
+
+		m_TaskSystem = SCR_TaskSystem.GetInstance();
+		if (m_TaskSystem)
+		{
+			m_TaskSystem.GetOnTaskAdded().Remove(OnTaskAdded);
+			m_TaskSystem.GetOnTaskAdded().Insert(OnTaskAdded);
+		}
+
+		m_bIsWorldLoadInit = true;
 
 		Init();
+
+		m_bIsWorldLoadInit = false;
+		m_bIsSaveGameLoad = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -657,11 +779,6 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			}
 		}
 
-		SCR_ScenarioFrameworkLayerTask.s_OnTaskSetup.Remove(OnTaskCreated);
-		SCR_ScenarioFrameworkLayerTask.s_OnTaskSetup.Insert(OnTaskCreated);
-		SCR_BaseTaskManager.s_OnTaskUpdate.Remove(OnTaskUpdate);
-		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTaskUpdate);
-
 		//if someone registered for the event, then call it
 		if (m_OnAllAreasInitiated)
 			m_OnAllAreasInitiated.Invoke();
@@ -700,7 +817,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		if (m_mVariableMap.IsEmpty())
 			return;
 
-		foreach(string key, string value : m_mVariableMap)
+		foreach (string key, string value : m_mVariableMap)
 		{
 			Rpc(RpcDo_CreateVariableValue, key, value, playerID);
 		}
@@ -805,7 +922,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 				GenerateSingleTask(i);
 			}
 
-			PrepareLayerTasksAfterInit();
+			AfterLayerTasksInit();
 			Print("ScenarioFramework: ---------------------- Generation of tasks completed -------------------", LogLevel.NORMAL);
 
 			//If counts are not the same, we want randomization to occur
@@ -914,7 +1031,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		if (m_aLayerTasksToBeInitialized.Count() < m_iMaxNumberOfTasks)
 			Print(string.Format("ScenarioFramework: Available areas do not have any other tasks to generate. Only %1 out of %2 was generated", m_aLayerTasksToBeInitialized, m_iMaxNumberOfTasks), LogLevel.NORMAL);
 
-		PrepareLayerTasksAfterInit();
+		AfterLayerTasksInit();
 		Print("ScenarioFramework: ---------------------- Generation of tasks completed -------------------", LogLevel.NORMAL);
 	}
 	//---- REFACTOR NOTE END ----
@@ -975,32 +1092,6 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Prepares Layer Tasks that were selected by ON_TASK_INIT activation for invoking AfterTasksInitActions
-	void PrepareLayerTasksAfterInit()
-	{
-		foreach (SCR_ScenarioFrameworkLayerTask layerTask : m_aLayerTasksToBeInitialized)
-		{
-			if (!layerTask)
-				continue;
-
-			layerTask.GetOnAllChildrenSpawned().Remove(CheckLayerTasksAfterInit);
-			layerTask.GetOnAllChildrenSpawned().Insert(CheckLayerTasksAfterInit);
-		}
-	}
-
-	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-	//------------------------------------------------------------------------------------------------
-	//! Checks if all Layer Tasks that were selected by ON_TASK_INIT activation for invoking AfterTasksInitActions are finished with spawning
-	void CheckLayerTasksAfterInit(SCR_ScenarioFrameworkLayerBase layer)
-	{
-		m_iCurrentlySpawnedLayerTasks++;
-		if (m_iCurrentlySpawnedLayerTasks == m_aLayerTasksToBeInitialized.Count())
-			//Due to how Task System sometimes works, not everything is initialized right after the Layer Task so we need to wait a bit
-			SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(AfterLayerTasksInit, 1000);
-	}
-	//---- REFACTOR NOTE END ----
-
-	//------------------------------------------------------------------------------------------------
 	//! Processes voice line enum and string, assigns index if match found.
 	//! \param[in] targetEnum TargetEnum is an enum type representing combat operations in the game, used for indexing voice lines based on the given string.
 	//! \param[in] targetString Represents a string value associated with an enum in the SCR_ECombatOps_Everon_Tasks enum
@@ -1024,11 +1115,10 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			if (!layerTask)
 				continue;
 
-			layerTask.GetOnAllChildrenSpawned().Remove(CheckLayerTasksAfterInit);
 			SCR_ScenarioFrameworkArea parentArea = layerTask.GetParentArea();
 			if (!parentArea)
 				continue;
-			
+
 			if (m_bDynamicDespawn && (layerTask.m_bDynamicDespawn || parentArea.m_bDynamicDespawn) && !layerTask.GetDynamicDespawnExcluded())
 				layerTask.DynamicDespawn(null);
 		}
@@ -1151,7 +1241,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	{
 		area.SetDynamicDespawnEnabled(true);
 		area.SetDynamicDespawnRange(despawnRange);
-		
+
 		//If this method is called with staySpawned = false, area will be added to m_aDespawnedAreas and gets despawned
 		if (!staySpawned)
 		{
@@ -1250,7 +1340,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			areaInfo = m_aDespawnedAreas[i];
 			if (!areaInfo.param1)
 				continue;
-			
+
 			foreach (vector observerPos : m_aObservers)
 			{
 				if (vector.DistanceSqXZ(observerPos, areaInfo.param2) < areaInfo.param3)
@@ -1274,7 +1364,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			areaInfo = m_aSpawnedAreas[i];
 			if (!areaInfo.param1)
 				continue;
-			
+
 			bool observerInRange;
 			foreach (vector observerPos : m_aObservers)
 			{
@@ -1317,6 +1407,9 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_ShowHint(string sTitle, string sSubtitle, int timeOut, FactionKey factionKey, int playerID)
 	{
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(factionKey))
 		{
 			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
@@ -1333,11 +1426,11 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 				return;
 		}
 
-		SCR_HintUIInfo info = SCR_HintUIInfo.CreateInfo(WidgetManager.Translate(sTitle), WidgetManager.Translate(sSubtitle), timeOut, 0, 0, true);
+		SCR_HintUIInfo info = SCR_HintUIInfo.CreateInfo(sTitle, sSubtitle, timeOut, 0, 0, true);
 		if (info)
 			SCR_HintManagerComponent.ShowHint(info);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Hide current hint
 	//! \param[in] factionKey represents the identifier for the faction in the game world.
@@ -1347,7 +1440,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		Rpc(RpcDo_HideHint, factionKey, playerID);
 		RpcDo_HideHint(factionKey, playerID);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Hide current hint.
 	//! \param[in] factionKey represents the identifier for the faction in the game, used to check if the local player is part of it
@@ -1357,7 +1450,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	{
 		if (RplSession.Mode() == RplMode.Dedicated)
 			return;
-		
+
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(factionKey))
 		{
 			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
@@ -1373,7 +1466,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			if (playerID != playerController.GetPlayerId())
 				return;
 		}
-		
+
 		SCR_HintManagerComponent.HideHint();
 	}
 
@@ -1383,10 +1476,10 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	//! \param[in] sSubtitle is the secondary message displayed in the pop-up message box.
 	//! \param[in] factionKey represents the identifier for the faction in the game, used to specify which faction's message is being
 	//! \param[in] playerID represents the unique identifier for the player receiving the pop-up message.
-	void PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey = "", int playerID = -1)
+	void PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey = "", int playerID = -1, string titleParam1 = "", string titleParam2 = "", string subtitleParam1 = "", string subtitleParam2 = "")
 	{
-		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle, factionKey, playerID);
-		RpcDo_PopUpMessage(sTitle, sSubtitle, factionKey, playerID);
+		Rpc(RpcDo_PopUpMessage, sTitle, sSubtitle, factionKey, playerID, titleParam1, titleParam2, subtitleParam1, subtitleParam2);
+		RpcDo_PopUpMessage(sTitle, sSubtitle, factionKey, playerID, titleParam1, titleParam2, subtitleParam1, subtitleParam2);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1396,11 +1489,15 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	//! \param[in] factionKey represents the identifier for a faction in the game, used to check if the local player is part of it
 	//! \param[in] playerID represents the unique identifier for a player in the game.
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey, int playerID)
+	void RpcDo_PopUpMessage(string sTitle, string sSubtitle, FactionKey factionKey, int playerID, string titleParam1, string titleParam2, string subtitleParam1, string subtitleParam2)
 	{
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
 		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(factionKey))
 		{
-			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
+			const FactionManager fm = GetGame().GetFactionManager();
+			if (!fm || SCR_FactionManager.SGetLocalPlayerFaction() != fm.GetFactionByKey(factionKey))
 				return;
 		}
 
@@ -1414,7 +1511,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 				return;
 		}
 
-		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
+		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle, param1: titleParam1, param2: titleParam2, text2param1: subtitleParam1, text2param2: subtitleParam2);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1455,6 +1552,9 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_ManageLayerDebugShape(int playerID, EntityID id, bool draw, float radius)
 	{
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
 		if (SCR_PlayerController.GetLocalPlayerId() != playerID)
 			return;
 
@@ -1501,6 +1601,9 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_ShowLayout(int playerID, EntityID actionOwnerEntId, int layoutId, float fadeIn, float fadeOut, float visibilityTime, float opacity)
 	{
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
 		if (playerID == -1)
 			return;
 
@@ -1531,7 +1634,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		if (!rootWidget)
 			return;
 
-		Widget imgWidget = Widget.Cast(rootWidget.FindAnyWidget("Image"));
+		Widget imgWidget = rootWidget.FindAnyWidget("Image");
 		if (!imgWidget)
 			imgWidget = ImageWidget.Cast(rootWidget);
 
@@ -1539,13 +1642,13 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			return;
 
 		imgWidget.SetOpacity(0);
-		
+
 		float animVal;
 		if (fadeIn == 0)
 			animVal = 1000;
 		else
 			animVal = 1 / fadeIn;
-		
+
 		AnimateWidget.Opacity(imgWidget, opacity, animVal);
 		SCR_ScenarioFrameworkCallQueueSystem.GetCallQueueNonPausable().CallLater(FadeOut, (fadeIn + visibilityTime) * 1000, false, imgWidget, fadeOut);
 	}
@@ -1558,7 +1661,7 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 			animVal = 1000;
 		else
 			animVal = 1 / fadeOut;
-		
+
 		AnimateWidget.Opacity(imgWidget, 0, animVal);
 	}
 
@@ -1566,9 +1669,9 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	SCR_ScenarioFrameworkActionShowLayout GetLayoutComponent(SCR_ScenarioFrameworkLayerBase layerBase, int layoutId)
 	{
 		SCR_ScenarioFrameworkActionShowLayout actionShowLayout;
-		array<ref SCR_ScenarioFrameworkActionBase> actions = layerBase.GetActions();
+		array<ref SCR_ScenarioFrameworkActionBase> activationActions = layerBase.GetActivationActions();
 
-		foreach (SCR_ScenarioFrameworkActionBase action : actions)
+		foreach (SCR_ScenarioFrameworkActionBase action : activationActions)
 		{
 			actionShowLayout = SCR_ScenarioFrameworkActionShowLayout.Cast(action);
 			if (actionShowLayout && actionShowLayout.m_iID == layoutId)
@@ -1619,9 +1722,23 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override event protected void OnUpdate(ESystemPoint point)
+	static bool IsSaveGameLoading()
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		auto instance = SCR_ScenarioFrameworkSystem.GetInstance();
+		return instance && instance.m_bIsSaveGameLoad;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static bool IsWorldLoadInit()
+	{
+		auto instance = SCR_ScenarioFrameworkSystem.GetInstance();
+		return instance && instance.m_bIsWorldLoadInit;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override event protected void OnUpdatePoint(WorldUpdatePointArgs args)
+	{
+		float timeSlice = args.GetTimeSliceSeconds();
 
 		m_fTimer += timeSlice;
 
@@ -1640,5 +1757,13 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		super.OnDiag(timeslice);
 
 		SCR_ScenarioFrameworkDebug.OnDiag();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Clears CallQueue after destruction of this system
+	void ~SCR_ScenarioFrameworkSystem()
+	{
+		if (s_CallQueuePausable)
+			s_CallQueuePausable.Clear();
 	}
 }

@@ -91,6 +91,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	protected void OnCustomMenuItemChanged(string widgetName)
 	{
 		OnMenuItemChanged(new SCR_SettingsBindingBase("", "", widgetName));
+		SCR_AnalyticsApplication.GetInstance().ChangeSetting("Video", widgetName);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -131,7 +132,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("ResourceManagerUserSettings", "GeometricDetail", "GeometricDetail"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("TerrainGenMaterialSettings", "GeometryLevel", "TerrainDetail"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("VideoUserSettings", "Vsynch", "VSync"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("VideoUserSettings", "Vsync", "VSync"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("GrassMaterialSettings", "Lod", "GrassLOD"));
 		// We are using game settings to be able to override distance of grass
@@ -171,6 +172,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		SetupHardwareAA();
 		SetupTextureDetail();
 		SetupMaxFPS();
+		
+		HandleDescription();
 
 		RemoveQualityPresetFocus();
 
@@ -255,6 +258,8 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		SetupShadowQuality(false);
 
 		m_bLoadingSettings = false;
+		
+		SCR_AnalyticsApplication.GetInstance().SetQualityPresetSetting(itemIndex);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -568,7 +573,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		if (isInit)
 			shadowDetail.m_OnChanged.Insert(OnShadowDetailChanged);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void SetupResolution()
 	{
@@ -696,5 +701,43 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		}
 
 		m_MaxFPS.m_OnChanged.Insert(OnMaxFPSChanged);
+	}
+	
+	protected void HandleDescription()
+	{
+		ButtonWidget drawDistance = ButtonWidget.Cast(m_wRoot.FindAnyWidget("DrawDistance"));
+		if (!drawDistance)
+			return;
+		
+		SCR_ModularButtonComponent buttonComp = SCR_ModularButtonComponent.Cast(drawDistance.FindHandler(SCR_ModularButtonComponent));
+		if (!buttonComp)
+			return;
+		
+		buttonComp.m_OnFocus.Insert(DescriptionOnFocus);
+		buttonComp.m_OnFocusLost.Insert(DescriptionOnFocusLost);
+	}
+	
+	protected void DescriptionOnFocus()
+	{
+		RichTextWidget title = RichTextWidget.Cast(m_wRoot.FindAnyWidget("DescriptionHeader"));
+		RichTextWidget body = RichTextWidget.Cast(m_wRoot.FindAnyWidget("DescriptionBody"));
+		
+		if (!title || !body)
+			return;
+		
+		title.SetText("#AR-Settings_DrawDistance");
+		body.SetText("#AR-Settings_Description_DrawDistance");
+	}
+	
+	protected void DescriptionOnFocusLost()
+	{
+		RichTextWidget title = RichTextWidget.Cast(m_wRoot.FindAnyWidget("DescriptionHeader"));
+		RichTextWidget body = RichTextWidget.Cast(m_wRoot.FindAnyWidget("DescriptionBody"));
+		
+		if (!title || !body)
+			return;
+		
+		title.SetText(string.Empty);
+		body.SetText(string.Empty);
 	}
 }

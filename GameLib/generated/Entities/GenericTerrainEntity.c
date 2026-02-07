@@ -16,55 +16,63 @@ class GenericTerrainEntityClass: GenericEntityClass
 class GenericTerrainEntity: GenericEntity
 {
 	/*!
-	create sphere
-	\param x		world X of touch with ground
-	\param z		world X of touch with ground
-	\param radius		radius
-	\param centerLerp01	lerp of values inside rasterization
-	\param timeDown01	relative speed of going down, 1 is usually 0.5secs
-	\param maxHeight01	maximum relative height of flattening, 0 = no flatten
+	Submit an ellipse obstacle in this frame
+	\param position				World coordinates of the obstacles bottom center
+	\param velocity				Obstacle velocity, world units / s
+	\param height					Obstacle height
+	\param sizeX					Size in the X direction
+	\param sizeZ					Size in the Z direction
+	\param maskOffset			Offset of the obstacle in the Z direction, [-1, 1]
+	\param angleRAD				Obstacle rotation around the Y axis, radians, clockwise
+	\param strength				Strength of the obstacle, [0, 1]
+	\param falloffOffset	Used to offset obstacle strength falloff, [0, 1]
+	\param flatten				Should flatten?
+	\param sway						Should sway?
 	*/
-	proto external void FlattenGrassSphere(float x, float z, float radius, float centerLerp01, float timeDown01, float maxHeight01);
+	proto external void AffectFoliageEllipse(vector position, vector velocity, float height, float sizeX, float sizeZ, float maskOffset, float angleRAD, float strength = 1.0, float falloffOffset = 0.5, bool flatten = true, bool sway = true);
 	/*!
-	create ellipse
-	\param x		world X of touch with ground
-	\param z		world X of touch with ground
-	\param sideX		radius in X coord before rotate
-	\param sideZ		radius in Z coord before rotate
-	\param offset		offset, 0 = default center, <-1, 1>
-	\param angleRAD		rotation
-	\param centerLerp01	lerp of values inside rasterization
-	\param timeDown01	relative speed of going down, 1 is usually 0.5secs
-	\param maxHeight01	maximum relative height of flattening, 0 = no flatten
+	Submit a circle obstacle in this frame
+	\param position				World coordinates of the obstacles bottom center
+	\param velocity				Obstacle velocity, world units / s
+	\param height					Obstacle height
+	\param diameter				Circle diameter
+	\param strength				Strength of the obstacle, [0, 1]
+	\param falloffOffset	Used to offset obstacle strength falloff, [0, 1]
+	\param flatten				Should flatten?
+	\param sway						Should sway?
 	*/
-	proto external void FlattenGrassEllipse(float x, float z, float sideX, float sideZ, float offset, float angleRAD, float centerLerp01, float timeDown01, float maxHeight01);
+	proto external void AffectFoliageCircle(vector position, vector velocity, float height, float diameter, float strength = 1.0, float falloffOffset = 0.5, bool flatten = true, bool sway = true);
 	/*!
-	create box
-	\param x		world X of touch with ground
-	\param z		world X of touch with ground
-	\param side		size of side
-	\param angleRAD		rotation
-	\param centerLerp01	lerp of values inside rasterization
-	\param timeDown01	relative speed of going down, 1 is usually 0.5secs
-	\param maxHeight01	maximum relative height of flattening, 0 = no flatten
+	Submit a rectangle obstacle in this frame
+	\param position				World coordinates of the obstacles bottom center
+	\param velocity				Obstacle velocity, world units / s
+	\param height					Obstacle height
+	\param sizeX					Size in the X direction
+	\param sizeZ					Size in the Z direction
+	\param maskOffset			Offset of the obstacle in the Z direction, [-1, 1]
+	\param angleRAD				Obstacle rotation around the Y axis, radians, clockwise
+	\param strength				Strength of the obstacle, [0, 1]
+	\param falloffOffset	Used to offset obstacle strength falloff, [0, 1]
+	\param flatten				Should flatten?
+	\param sway						Should sway?
 	*/
-	proto external void FlattenGrassBox(float x, float z, float side, float angleRAD, float centerLerp01, float timeDown01, float maxHeight01);
+	proto external void AffectFoliageRect(vector position, vector velocity, float height, float sizeX, float sizeZ, float maskOffset, float angleRAD, float strength = 1.0, float falloffOffset = 0.5, bool flatten = true, bool sway = true);
 	/*!
-	create rectangle
-	\param x		world X of touch with ground
-	\param z		world X of touch with ground
-	\param sideX	size of side in X
-	\param sideZ	size of side in Z
-	\param offset		offset, 0 = default center, <-1, 1>
-	\param angleRAD		rotation
-	\param centerLerp01	lerp of values inside rasterization
-	\param timeDown01	relative speed of going down, 1 is usually 0.5secs
-	\param maxHeight01	maximum relative height of flattening, 0 = no flatten
+	Submit a square obstacle in this frame
+	\param position				World coordinates of the obstacles bottom center
+	\param velocity				Obstacle velocity, world units / s
+	\param height					Obstacle height
+	\param size						Size of the box
+	\param angleRAD				Obstacle rotation around the Y axis, radians, clockwise
+	\param strength				Strength of the obstacle, [0, 1]
+	\param falloffOffset	Used to offset obstacle strength falloff, [0, 1]
+	\param flatten				Should flatten?
+	\param sway						Should sway?
 	*/
-	proto external void FlattenGrassRect(float x, float z, float sideX, float sideZ, float offset, float angleRAD, float centerLerp01, float timeDown01, float maxHeight01);
+	proto external void AffectFoliageSquare(vector position, vector velocity, float height, float size, float angleRAD, float strength = 1.0, float falloffOffset = 0.5, bool flatten = true, bool sway = true);
 	proto bool GetTileTextureResName(int tile, out ResourceName textureResName);
 	/*!
-	get linear tile number from texccords
+	get linear tile number from texcoords
 	\param terrx	x terrain coords
 	\param terry	y terrain coords
 	\return tile number in linear pos

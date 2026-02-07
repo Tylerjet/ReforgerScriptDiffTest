@@ -29,7 +29,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	protected bool m_bForceConfirmButtonDisabled;
 	protected bool m_bIsLoading;
 	
-	protected ref SCR_BackendCallback m_Callback;
+	protected ref BackendCallback m_Callback;
 	
 	protected const int ON_FAIL_DELAY = 2000;
 	
@@ -132,11 +132,10 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		UpdateButtons();
 		
 		// Callback events
-		m_Callback = new SCR_BackendCallback();
+		m_Callback = new BackendCallback();
 		
-		m_Callback.GetEventOnSuccess().Insert(OnSuccess);
-		m_Callback.GetEventOnFail().Insert(OnFail);
-		m_Callback.GetEventOnTimeOut().Insert(OnTimeout);
+		m_Callback.SetOnSuccess(OnSuccess);
+		m_Callback.SetOnError(OnFail);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -171,10 +170,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 
 		SCR_ConnectionUICommon.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || ! SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 	
-		string identity;
-		BackendApi backendAPI = GetGame().GetBackendApi();
-		if (backendAPI)
-			identity = backendAPI.GetLocalIdentityId();
+		string identity = BackendAuthenticatorApi.GetIdentityId();
 		
 		if (m_wPIDText)
 			m_wPIDText.SetText(identity);
@@ -241,25 +237,35 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSuccess(SCR_BackendCallback callback)
+	protected void OnSuccess(BackendCallback callback)
 	{
 		CreateLoginSuccessDialog();
 		Close();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnFail(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	protected void OnFail(BackendCallback callback)
 	{
 		GetGame().GetCallqueue().Remove(OnTimeoutScripted);
 		
-		// Add a delay to prevent the backend from being overwhelmed
-		// TODO: change this into a cooldown after the response has been received to make the UI as responsive as possible
-		GetGame().GetCallqueue().Remove(OnFailDelayed);
-		GetGame().GetCallqueue().CallLater(OnFailDelayed, ON_FAIL_DELAY, false, callback, code, restCode, apiCode);
+		if (callback.GetRestResult() != ERestResult.EREST_ERROR_TIMEOUT)
+		{
+			// Add a delay to prevent the backend from being overwhelmed
+			// TODO: change this into a cooldown after the response has been received to make the UI as responsive as possible
+			GetGame().GetCallqueue().Remove(OnFailDelayed);
+			GetGame().GetCallqueue().CallLater(OnFailDelayed, ON_FAIL_DELAY, false, callback);
+			return;
+		}
+		
+		// Timeout handling
+		ShowLoadingAnim(false);
+		ShowWarningMessage(false);
+		
+		CreateLoginTimeoutDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnTimeout(SCR_BackendCallback callback)
+	protected void OnTimeout()
 	{
 		GetGame().GetCallqueue().Remove(OnTimeoutScripted);
 		
@@ -270,7 +276,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnFailDelayed(SCR_BackendCallback callback, int code, int restCode, int apiCode)
+	protected void OnFailDelayed(BackendCallback callback)
 	{
 		GetGame().GetCallqueue().Remove(OnFailDelayed);
 
@@ -279,7 +285,7 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		
 		// Based on restCode
 		// wrong credentials: 401
-		if (restCode == SCR_ELoginFailReason.INVALID_CREDENTIALS)
+		if (callback.GetHttpCode() == SCR_ELoginFailReason.INVALID_CREDENTIALS)
 		{
 			ShowWarningMessage(true);
 			return;
@@ -287,11 +293,11 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 		
 		// bad request: 400
 		// user not found: EApiCode.EACODE_ERROR_USER_NOT_FOUND -> player wrote wrong credentials
-		if (apiCode == EApiCode.EACODE_ERROR_USER_NOT_FOUND)
+		if (callback.GetApiCode() == EApiCode.EACODE_ERROR_USER_NOT_FOUND)
 			ShowWarningMessage(true);
 		
 		// account locked: EApiCode.EACODE_ERROR_USER_LOCKED
-		else if (apiCode == EApiCode.EACODE_ERROR_USER_LOCKED)
+		else if (callback.GetApiCode() == EApiCode.EACODE_ERROR_USER_LOCKED)
 			CreateAccountLockedDialog();
 		
 		else
@@ -301,11 +307,11 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	protected void OnTimeoutScripted()
 	{
-		OnTimeout(m_Callback);
+		OnTimeout();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_BackendCallback GetCallback()
+	BackendCallback GetCallback()
 	{
 		return m_Callback;
 	}
@@ -351,7 +357,7 @@ class SCR_AccountLockedDialogUi : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateMessage()
 	{
-		int seconds = GetGame().GetBackendApi().RemainingAccountLockedTime();
+		int seconds = BohemiaAccountApi.GetSecondsUntilAccountUnlockTime();
 		int minutes = seconds / 60;
 		
 		string time = WidgetManager.Translate(MINUTES, minutes) + " " + WidgetManager.Translate(SECONDS, seconds - (60 * minutes));

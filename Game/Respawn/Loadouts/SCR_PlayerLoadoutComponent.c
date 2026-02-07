@@ -233,7 +233,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Print("Caught request on locked player!", LogLevel.WARNING);
+			Print("SCR_PlayerLoadoutComponent::RequestLoadout - Caught request on locked player!", LogLevel.DEBUG);
 			return false;
 		}
 
@@ -262,7 +262,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, true))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerLoadoutComponent::Rpc_RequestLoadout_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
 
@@ -373,7 +373,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerLoadoutComponent::CanRequestLoadout - Caught request on locked player!", LogLevel.DEBUG);
 			return false;
 		}
 		
@@ -404,7 +404,7 @@ class SCR_PlayerLoadoutComponent : ScriptComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, true))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerLoadoutComponent::Rpc_CanRequestLoadout_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
 

@@ -8,8 +8,8 @@ enum ENotification
 	//PLAYER
 	PLAYER_JOINED = 100, //!< A player joined - (param1 = PlayerID)
 	PLAYER_LEFT = 101, //!< A player left - (param1 = PlayerID)
-	PLAYER_KICKED = 102, //!< A player was kicked - (param1 = PlayerID, param2 = kickReason)
-	PLAYER_BANNED = 103, //!< A player was banned - (param1 = PlayerID, param2 = kickReason, param3 = Duration)
+	PLAYER_KICKED = 102, //!< A player was kicked - (param1 = PlayerID, param2 = kickCauseGroup, param3 = kickCauseReason)
+	PLAYER_BANNED = 103, //!< A player was banned - (param1 = PlayerID, param2 = kickCauseGroup, param3 = kickCauseReason, param4 = Duration)
 	PLAYER_JOINED_FACTION = 104, ///A player joined a faction - (param1 = PlayerID, param2 = factionIndex)
 	PLAYER_DIED = 105, //!< Player died - (param1 = PlayerID)
 	PLAYER_KILLED_PLAYER = 106, //!< Player killed a player - (param1 = (killer)PlayerID, param2 = (Killed Player)PlayerID)
@@ -20,7 +20,7 @@ enum ENotification
 	PLAYER_KILLED_POSSESSED_AI = 112, ///> Shown to GM only when player killed a possessed NPC 
 	AI_KILLED_POSSESSED_AI = 113, ///> Shown to GM only when player killed a possessed NPC 
 	POSSESSED_AI_KILLED_POSSESSED_AI = 114, ///> Shown to GM only when possessed NPC killed a player
-	PLAYER_BANNED_NO_DURATION = 115, //!< A player was banned for the session - (param1 = PlayerID, param2 = kickReason)
+	PLAYER_BANNED_NO_DURATION = 115, //!< A player was banned for the session - (param1 = PlayerID, param2 = kickCauseGroup, param3 = kickCauseReason)
 	PLAYER_LOADOUT_NOT_SAVED = 116, //!< Player tried to save their loadout but it failed (Prob because loadout did not change)
 	PLAYER_TELEPORTED_SELF = 117, //!< Player teleported to new location (param1 = PlayerID, param2 = distance)
 	PLAYER_LOADOUT_ITEM_FAILED_NOT_FACTION = 118, //!< Player failed to save loadout because given item is not part of the player's faction (param1 = inventoryItemRplId)
@@ -45,7 +45,9 @@ enum ENotification
 	POSSESSED_AI_KILLED_AI_IN_GROUP = 133, //!< AI in group has died. Unknown Killer - (param1 = (killer)AI RPL ID, param2 = (killed AI)AI RPL ID)
 	PLAYER_ON_BLOCKLIST_JOINED = 134, //!< Player who is on blocklist of local player has joined the server
 	
-	
+	//PLAYER
+	PLAYER_LOADOUT_NOT_SAVED_NOT_ENOUGH_MSA = 150, //!< Player loadout was not saved due to player not having enough Military Supply Allocation for loadout
+	PLAYER_LOADOUT_NOT_SAVED_INSUFFICIENT_RANK = 151, //!< Player loadout was not saved as player has insufficient rank for one or more weapons
 	
 	//RIGHTS
 	EDITOR_EDITOR_RIGHTS_ASSIGNED = 200, //!< Player got rights assigned - (param1 = GameMasterID, param2 = TargetPlayerID))
@@ -117,8 +119,10 @@ enum ENotification
 	EDITOR_AILIMIT = 535, //!< Max limit of spawned AI at base (Free Roam Building) has been reached.
 	EDITOR_ENEMY_IN_AREA = 536, //!< The enemy was detected in Free Roam Building mode area, mode is terminated.
 	EDITOR_PLACING_RANK_TOO_LOW = 537, //!< Rank is too low to be able to place this composition.
+	EDITOR_PLACING_BUDGET_ESTABLISH_BASE = 538, //!< New Command post can only be built within range of the establish base task
+	EDITOR_PLACING_ESTABLISH_BASE_LIMIT_REACHED = 539, //!< The faction reached a limit of Established bases and can not build a new Command post
+	EDITOR_PHOTOMODE_IS_LOCKED = 540, //!< Player in multiplayer is not allowed to use Armavision
 
-	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, //!< An AI group was eliminated - (param1 = EditableEntityID)
 	
@@ -193,21 +197,31 @@ enum ENotification
 	EDITOR_PERCEIVED_FACTION_TYPE_HIGHEST_VALUE = 763, //!< Called when the perceived faction logic is set to Highest value type (param1 = GM)
 	EDITOR_PERCEIVED_FACTION_TYPE_FULL_OUTFIT = 764, //!< Called when the perceived faction logic is set to full outfit type (param1 = GM)
 	
+	EDITOR_NAMETAG_RELATION_FILTER_CHANGED = 765, //!< (param1 = GM) Called when nametag relation filters change
+	EDITOR_NAMETAG_CONTROLLER_FILTER_CHANGED = 766, //!< (param1 = GM) Called when nametag controller filters change
+	
+	EDITOR_VEHICLE_SALVAGE_ENABLED = 767, //!< Called when the GM enables vehicle salvage
+	EDITOR_VEHICLE_SALVAGE_DISABLED = 768, //!< Called when the GM disables vehicle salvage
+
+	EDITOR_MORTAR_BALLISTIC_DATA_VISIBILITY_ENABLED = 769, //!< Called when the GM enables the in-scope ui element of mrotars that shows ballistic data for the shells
+	EDITOR_MORTAR_BALLISTIC_DATA_VISIBILITY_DISABLED = 770, //!< Called when the GM disables the in-scope ui element of mrotars that shows ballistic data for the shells
+	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, //!<Player become GM - (param1 = PlayerID)
 	EDITOR_GM_LEFT = 801, //!<Player become GM - (param1 = PlayerID)
 	EDITOR_PLAYER_NO_LONGER_GM = 802, //!<Player no longer GM - (param1 = PlayerID)
 	
 	//CAMPAIGN
-	BUILD_COST_MULTI_CHANGED = 900, //!<Cost multiplier to build compositions by players (not editor) 
-	BUILD_REFUND_MULTI_CHANGED = 901,//!<Refund multiplier for compositions by players (not editor)
-	SUPPLY_TRUCK_LOADING_PLAYER = 902, /// Shows to truck occupants when vehicle is being loaded - (param1 = player id, param2 = amount)
-	SUPPLY_TRUCK_UNLOADING_PLAYER = 903, /// Shows to truck occupants when vehicle is being unloaded - (param1 = player id, param2 = amount)
-	SUPPLY_TRUCK_LOADING_PLAYER_STOPPED = 904, /// Shows to truck occupants when unloading player cancels interaction - (param1 = player id)
-	SUPPLY_TRUCK_UNLOADING_PLAYER_STOPPED = 905, /// Shows to truck occupants when unloading player cancels interaction  - (param1 = player id)
-	SUPPLY_TRUCK_LOADING_PLAYER_FINISHED = 906, /// Shows to truck occupants when loading player finishes interaction - (param1 = player id)
-	SUPPLY_TRUCK_UNLOADING_PLAYER_FINISHED = 907, /// Shows to truck occupants when unloading player finishes interaction - (param1 = player id)
-	
+	BUILD_COST_MULTI_CHANGED = 900, //!< Cost multiplier to build compositions by players (not editor) 
+	BUILD_REFUND_MULTI_CHANGED = 901,//!< Refund multiplier for compositions by players (not editor)
+	SUPPLY_TRUCK_LOADING_PLAYER = 902, //!< Shows to truck occupants when vehicle is being loaded - (param1 = player id, param2 = amount)
+	SUPPLY_TRUCK_UNLOADING_PLAYER = 903, //!< Shows to truck occupants when vehicle is being unloaded - (param1 = player id, param2 = amount)
+	SUPPLY_TRUCK_LOADING_PLAYER_STOPPED = 904, //!< Shows to truck occupants when unloading player cancels interaction - (param1 = player id)
+	SUPPLY_TRUCK_UNLOADING_PLAYER_STOPPED = 905, //!< Shows to truck occupants when unloading player cancels interaction  - (param1 = player id)
+	SUPPLY_TRUCK_LOADING_PLAYER_FINISHED = 906, //!< Shows to truck occupants when loading player finishes interaction - (param1 = player id)
+	SUPPLY_TRUCK_UNLOADING_PLAYER_FINISHED = 907, //!< Shows to truck occupants when unloading player finishes interaction - (param1 = player id)
+	CAMPAIGN_TRANSPORT_GROUP_LOST = 908, //!< Shows to Commander when transport group is deleted (param1 = Transport group replication ID)
+
 	//VOTING
 	VOTING_EDITOR_IN_START = 1000, //!< Voting started to become GM (param1 = player id)
 	VOTING_EDITOR_IN_SUCCEED = 1001, //!< Voting succeeded to become GM (param1 = player id)
@@ -232,6 +246,8 @@ enum ENotification
 	VOTING_BAN_VOTE_CASTED = 1034, //!< Voting Cast locally to auto light/heavy ban player (param1 = player id)
 	VOTING_BAN_VOTE_ABSTAINED = 1035, //!< Voting Abstained localy to auto light/heavy ban player (param1 = player id)
 	VOTING_KICK_SUCCEED_SUBJECT_LEFT = 1036, //!< Voting notification shown when vote to kick ends when kicked player left the server
+	VOTING_COMMANDER_DONE = 1037, ///< Voting succeeded for a new faction commander (param1 = player id)
+	VOTING_COMMANDER_WITHDRAW = 1038, ///< Faction commander left their role (param1 = player id)
 	
 	//GROUPS 
 	GROUPS_PLAYER_JOINED = 1101, //!< Player joined the group (param1 = player id)
@@ -246,7 +262,6 @@ enum ENotification
 	GROUPS_REQUEST_DENIED = 1110, //!< player was accepted to private group
 	GROUPS_REQUEST_CANCELLED = 1111, //!< players join request was canceled by group leader change
 	
-	
 	//OTHERS
 	ACTION_ON_COOLDOWN = 1200, //!< Action is on cooldown and cannot be executed
 	AREA_SEIZING_DONE_FRIENDLIES = 1201, //!< Area captured by friendlies
@@ -255,6 +270,7 @@ enum ENotification
 	BASE_SEIZING_DONE_ENEMIES = 1204, //!< Base captured by enemies
 	TELEPORTED_PLAYER_BLOCKING_SPAWNER = 1205, //!< Player was teleported as it was blocking a spawner
 	GROUPS_REQUEST_SENT = 1206, //!< player sent join request (param1 = group id)
+	GROUP_RADIO_DISMANTLED_BY_FRIENDLY = 1207, //!< friendly player dismantled a radio beacon
 	
 	//COMMANDING
 	COMMANDING_NO_RIGHTS = 1300,
@@ -318,4 +334,30 @@ enum ENotification
 	//INVENTORY ITEMS
 	PLAYER_HAND_ITEM_DROPPED = 1900, //!< Player was forced to drop hand slot item
 	PLAYER_HAND_ITEM_PUT_IN_INVENTORY = 1901, //!< Player was forced to put hand item in inventory
+
+	//GROUP TASK
+	GROUP_TASK_GROUP_ASSIGNED_TO_SAME_TASK = 2200,
+	GROUP_TASK_GROUP_ASSIGNED_TO_SAME_REQUEST = 2201,
+	GROUP_TASK_GROUP_ASSIGNED_TO_YOUR_REQUEST = 2202,
+	GROUP_TASK_COMPLETED = 2203,
+	GROUP_TASK_CANCELED = 2204,
+	GROUP_TASK_FAILED = 2205,
+	GROUP_TASK_REQUEST_COMPLETED = 2206,
+	GROUP_TASK_REQUEST_CANCELED = 2207,
+	GROUP_TASK_REQUEST_FAILED = 2208,
+	GROUP_TASK_YOUR_REQUEST_COMPLETED = 2209,
+	GROUP_TASK_YOUR_REQUEST_CANCELED = 2210,
+	GROUP_TASK_YOUR_REQUEST_FAILED = 2211,
+	GROUP_TASK_CREATED = 2212,
+	GROUP_TASK_REINFORCE_ENTERED_AREA = 2213,
+	GROUP_TASK_REPAIR_ENTERED_AREA = 2214,
+	GROUP_TASK_REPAIR_LEAVED_AREA = 2215,
+	GROUP_TASK_REPAIR_TRUCK_IS_NOT_IN_RANGE = 2216,
+	GROUP_TASK_ESTABLISH_BASE_INVALID_AREA = 2217,
+	GROUP_TASK_ESTABLISH_BASE_ENABLED = 2218,
+	GROUP_TASK_ESTABLISH_BASE_DISABLED = 2219,
+	GROUP_TASK_ESTABLISH_BASE_OUTSIDE_RADIO_RANGE = 2220,
+	GROUP_TASK_ESTABLISH_BASE_TOO_CLOSE_ANOTHER_BASE = 2221,
+	GROUP_TASK_ESTABLISH_BASE_TOO_CLOSE_ANOTHER_OBJECTIVE = 2222,
+	GROUP_TASK_ESTABLISH_BASE_LIMIT_REACHED = 2223,
 };

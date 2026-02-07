@@ -108,8 +108,8 @@ class SCR_RegionalDestructionManager : RegionalDestructionManager
 		SCR_BuildingDestructionManagerComponent manager = GetGame().GetBuildingDestructionManager();
 		foreach (typename typeName : manager.GetExcludedQueryTypes())
 		{
-			if (e.IsInherited(typeName))
-				return true;
+			if (e.IsInherited(typeName) && e.Type() != SCR_PowerPole)
+					return true;
 		}
 
 		SCR_EditorLinkComponent linkComp = SCR_EditorLinkComponent.Cast(e.FindComponent(SCR_EditorLinkComponent));

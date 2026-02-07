@@ -56,6 +56,9 @@ class UIColors
 	//~ editor
 	static const ref Color EDITOR_ICON_COLOR_NEUTRAL	= Color.FromSRGBA(255, 255, 255, 255);	///< Colors for Editor Icons when an entity does not have an assigned faction and is not destroyed
 	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); 			///< Colors for Editor Icons when an entity is dead or destroyed
+	static const ref Color EDITOR_MODE_GM_MODE 			= Color.FromRGBA(235, 46, 9, 255);		// Color for GM mode and LOGISTICS
+	static const ref Color EDITOR_MODE_ADMIN_MODE 		= Color.FromRGBA(0, 55, 255, 255);		// Color for ADMIN mode and COMBAT SUPPORT
+	static const ref Color EDITOR_MODE_ARMAVISION		= Color.FromRGBA(1, 50, 12, 255);		// Color for ARMAVISION and OPERATIONS
 	
 	// Nearby Interactions
 	static const ref Color INTERACT_GENERIC_PRIMARY        			= Color.FromSRGBA(120, 120, 120, 180);
@@ -169,6 +172,7 @@ class UIConstants
 	static const LocalizedString VALUE_UNIT_DEGREES =		"#AR-ValueUnit_Degrees";
 	static const LocalizedString VALUE_UNIT_METERS =		"#AR-ValueUnit_Short_Meters";
 	static const LocalizedString VALUE_UNIT_SECONDS =		"#AR-ValueUnit_Short_Seconds";
+	static const LocalizedString VALUE_MUTLIPLIER_SHORT =	"#AR-ValueUnit_Short_Times";
 	
 	static const LocalizedString VALUE_OUT_OF =				"#AR-SupportStation_ActionFormat_ItemAmount";
 	static const LocalizedString VALUE_OUT_OF_SPACED =		"#AR-Filters_EntriesFound_Condensed";
@@ -184,6 +188,8 @@ class UIConstants
 
 	//! Rich text format used to add an icon to the rich text widget
 	static const string NAME_WITH_PLATFORM_ICON_FORMAT = "<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>%5";
+	static const string RICH_TEXT_LINE_BREAK = "<br/>";
+	static const string RICH_TEXT_LIST_POINT = "<ucs codepoints=\"u2022\"/>";
 	
 	// Platform Icons
 	static const string PLATFROM_PC_ICON_NAME = "platform-windows";
@@ -191,7 +197,7 @@ class UIConstants
 	static const string PLATFROM_PLAYSTATION_ICON_NAME = "platform-playstation";
 	static const string PLATFROM_GENERIC_ICON_NAME = "generic-platform";
 
-	static const string ICON_INTERACT_DEFAULT = 	"use";
+	static const string ICON_INTERACT_DEFAULT = 	"ingameInteraction";
 	static const string ICON_INTERACT_DISABLED = 	"disable";
 	static const string ICON_WARNING = 			"warning";
 	static const string ICON_OK = 				"okCircle";

@@ -24,7 +24,7 @@ class SCR_BuildingDestructionData
 	ref array<IEntity> m_aExcludeList;
 	ref array<ref Tuple2<vector, vector>> m_aNavmeshAreas;
 	ref array<bool> m_aRedoRoads;
-	ref SCR_BuildingDestructionCameraShakeProgress m_CameraShake = new SCR_BuildingDestructionCameraShakeProgress();
+	ref SCR_BuildingDestructionCameraShakeProgress m_CameraShake = InitCameraShake();
 	SCR_AudioSource m_AudioSource;
 	float m_fBuildingVolume;
 	float m_fSizeMultiplier;
@@ -51,9 +51,18 @@ class SCR_BuildingDestructionData
 		m_aExcludeList = null;
 		m_aNavmeshAreas = null;
 		m_aRedoRoads = null;
-		m_CameraShake = new SCR_BuildingDestructionCameraShakeProgress();
+		m_CameraShake = InitCameraShake();
 		m_AudioSource = null;
 		m_fBuildingVolume = 0;
+	}
+
+	static SCR_BuildingDestructionCameraShakeProgress InitCameraShake()
+	{
+		// No camera shake for headless
+		if (System.IsConsoleApp())
+			return null;
+		
+		return new SCR_BuildingDestructionCameraShakeProgress();
 	}
 }
 
@@ -119,96 +128,8 @@ class SCR_BuildingDestructionManagerComponent : ScriptComponent
 
 		return outArray;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] id
-	//! \param[in] building
-	//! \return true if id is taken by other building than "building"
-	static bool IsIdTaken(int id, SCR_DestructibleBuildingComponent building)
-	{
-		SCR_DestructibleBuildingComponent idBuilding = s_mBuildingIds.Get(id);
-		return idBuilding && building != idBuilding;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	static int GetNewId()
-	{
-		s_iHighestId++;
-		return s_iHighestId;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] id
-	//! \return
-	static SCR_DestructibleBuildingComponent GetDestructibleBuilding(int id)
-	{
-		return s_mBuildingIds.Get(id);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] component
-	static void UnregisterBuildingId(notnull SCR_DestructibleBuildingComponent component)
-	{
-		int id = s_mBuildingIds.GetKeyByValue(component);
-		if (id <= 0 || id > s_iHighestId)
-			return;
-		
-		s_mBuildingIds.Remove(id);
-		
-		if (id == s_iHighestId)
-		{
-			while (!s_mBuildingIds.Contains(s_iHighestId) && s_iHighestId > 0)
-			{
-				s_iHighestId--;
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] component
-	//! \param[in] id
-	static void RegisterBuildingId(notnull SCR_DestructibleBuildingComponent component, int id)
-	{
-		if (s_mBuildingIds.Contains(id))
-		{
-			Print("Id taken!", LogLevel.WARNING);
-			return;
-		}
-		
-		if (id >= s_iHighestId)
-			s_iHighestId = id;
-		
-		s_mBuildingIds.Insert(id, component);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] destroyedBuildings
-	//! \return
-	int GetDestroyedBuildings(notnull array<SCR_DestructibleBuildingComponent> destroyedBuildings)
-	{
-		return destroyedBuildings.Copy(m_aDestroyedBuildings);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] building
-	void RegisterDestroyedBuilding(SCR_DestructibleBuildingComponent building)
-	{
-		if (m_aDestroyedBuildings.Contains(building))
-			return;
-		
-		m_aDestroyedBuildings.Insert(building);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	//! \param[in] src
-	//! \param[in] ent
-	//! \param[in] parent
 	void SCR_BuildingDestructionManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		GetGame().RegisterBuildingDestructionManager(this);

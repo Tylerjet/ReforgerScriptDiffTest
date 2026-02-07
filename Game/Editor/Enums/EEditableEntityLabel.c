@@ -58,6 +58,7 @@ enum EEditableEntityLabel
 	GROUPTYPE_INFANTRY = 60,
 	GROUPTYPE_MOTORIZED = 61,
 	GROUPTYPE_AIRMOBILE = 62,
+	GROUPTYPE_ESSENTIAL = 63, //only these can be hired in small living quarters
 	
 	GROUPSIZE_SMALL = 70,
 	GROUPSIZE_MEDIUM = 71,
@@ -101,6 +102,7 @@ enum EEditableEntityLabel
 	
 	// Additional roles 
 	ROLE_SAPPER = 140,
+	ROLE_GUARD = 141,  //This trait is for AI groups that can not be hired
 	
 	//~ Traits continuation
 	TRAIT_SUPPLYSTORAGE_SMALL = 200,
@@ -131,6 +133,7 @@ enum EEditableEntityLabel
 	SERVICE_REPAIR = 911,
 	SERVICE_PLAYER_HUB = 912,
 	SERVICE_MORTAR = 913,
+	SERVICE_SOURCE_BASE = 914,
 	
 	TUTORIAL_VEHICLE_REQUESTING = 968,
 	TUTORIAL_GUNNEST_BUILDING = 969,

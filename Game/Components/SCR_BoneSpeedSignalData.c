@@ -1,4 +1,4 @@
-[BaseContainerProps()]
+[BaseContainerProps(configRoot: true)]
 class SCR_BoneSpeedSignalData : Managed
 {
 	[Attribute("", UIWidgets.EditBox, "Bone to be tracked")]

@@ -1,6 +1,18 @@
 class SCR_ToolMenuButtonComponent : SCR_ButtonImageComponent
 {
-	TextWidget m_wTextLimit;
+	protected TextWidget m_wTextLimit;
+	protected Widget m_wToolBackground;
+	
+	protected const string m_sTextLimitWidget = "TextLimit";
+	protected const string m_sBackgroundWidget = "BackgroundNew";
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		m_wTextLimit = TextWidget.Cast(w.FindAnyWidget(m_sTextLimitWidget));
+		m_wToolBackground = w.FindAnyWidget(m_sBackgroundWidget);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] text
@@ -17,9 +29,10 @@ class SCR_ToolMenuButtonComponent : SCR_ButtonImageComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
+	//! Sets color of the button background.
+	//! \param[in] color of the background.
+	void SetBackgroundColor(notnull Color color)
 	{
-		super.HandlerAttached(w);
-		m_wTextLimit = TextWidget.Cast(w.FindAnyWidget("TextLimit"));
+		m_wToolBackground.SetColor(color);
 	}
 }

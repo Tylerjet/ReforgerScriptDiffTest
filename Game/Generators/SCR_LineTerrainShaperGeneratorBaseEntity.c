@@ -68,7 +68,8 @@ class SCR_LineTerrainShaperGeneratorBaseEntity : SCR_LineGeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
-		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
+		if (!super._WB_OnKeyChanged(src, key, ownerContainers, parent))
+			return false;
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
 		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring()) // sorry Ctrl+Z, but you cannot act here

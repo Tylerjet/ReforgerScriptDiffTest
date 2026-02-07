@@ -21,20 +21,16 @@ class SCR_RadioTuningUserAction : SCR_InventoryAction
 		if (CanBePerformed(pUserEntity))
 			changeFreq = m_RadioComp.ChangeFrequencyStep(m_bTuneUp);
 
-		SCR_SoundManagerEntity soundMan = GetGame().GetSoundManagerEntity();
-		if (!soundMan)
-			return;
-
 		if (!changeFreq)
 		{
-			soundMan.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_ERROR);
+			SCR_SoundManagerModule.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_ERROR);
 		}
 		else
 		{
 			if (m_bTuneUp)
-				soundMan.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_UP);
+				SCR_SoundManagerModule.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_UP);
 			else
-				soundMan.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_DOWN);
+				SCR_SoundManagerModule.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_DOWN);
 		}
 	}
 

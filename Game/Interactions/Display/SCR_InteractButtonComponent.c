@@ -17,4 +17,8 @@ class SCR_ActionMenuInputButtonComponent : SCR_InputButtonComponent
 	{
 		m_ButtonDisplay.ActionPressed(state);
 	}
+	
+	override protected void CreateComboWidget()
+	{
+	}
 }

@@ -228,11 +228,37 @@ class UIWidgets
 	static const string	TopLevelObject = "topLevelObject";
 
 	/*!
-	Editor for splines which opens a dialog where the curve can be edited.
-	Type must be CurvePoints or CurvePointsMulti. rangescale in attribute may
-	specify "xScale yScale xOffset yOffset".
+	Property parameters for curve consists of:
+
+	"type = CurveType [fixed], ends = EndCondition [fixed], default = DefaultValue, paramRange = ParamMin ParamMax [fixed], valueRange = ValueMin ValueMax [fixed]"
+
+	- type: Default curve type selected
+	- ends: Default end type selected
+	- default: Default value when no knots are present, for example "1" or "(1, 1, 1)" for a 3D curve
+	- paramRange: Default parameter range limit, for example "0 1"
+	- valueRange: Default value range limit, computed values will be clamped to this range
+
+	Curve types:
+
+	- Akima          - Akima spline provides human- like interpolation (based on 6 people in the original paper)
+	- ModifiedAkima  - Snappier Akima spline which doesn't overshoot
+	- Linear         - C0-continuous spline (position)
+	- Catmull-Rom    - C1-continuous spline (position, tangents)
+	- Natural        - C2-continuous spline (position, tangents, acceleration)
+	- Custom         - Manual assignment of tangents
+	- Legacy         - Catmull-Rom-like spline, avoid it if possible
+
+	End condition:
+
+	- Open      - Free ends and extrapolation from the ends
+	- OpenFlat  - Free ends, derivative may be non-zero but value is fixed outside range
+	- Flat      - Zero tangent at the ends, fixed value outside range
+	- Closed    - Loop spline (needs a finite parameter range)
+
+	The parameters can be blocked from editing by the user with "fixed" and none are mandatory.
 	*/
 	static const string GraphDialog = "graphDialog";
+	static const string CurveDialog = "curveDialog";
 
 	/*!
 	Editor which displays min and max bounds, also allows using the
@@ -260,9 +286,13 @@ class Attribute
 	string m_DefValue;
 	string m_UiWidget; //!< use values from UIWidgets
 	/*!
-	Properties for UI in editor, depends on property type and used UI Widget.
-	- for numeric types use format:"MIN_VALUE MAX_VALUE STEP" eg. "1 100 0.5", for min/max values can be used also inf / -inf as infinite
-	- for file dialog use format "ext1;ext2"
+	Parameters that specify how the attribute behaves in editor, depends on property type and used UI widget (see detailed description of individual UIWidgets).
+	- for numeric types use format: "MIN_VALUE MAX_VALUE STEP" eg. "1 100 0.5", for min/max values can be used also inf / -inf as infinite
+	- for vector type that holds coordinates you can use "inf inf 0 purpose=coords space=entity anglesVar=anglesVariableName" where anglesVar parameter is only optional (sets gizmo rotation). Width these parameters the editor provides editing in scene though axis gizmo
+	- for vector type that holds euler angles you can use "inf inf 0 purpose=angles space=entity coordsVar=coordsVariableName" where coordsVar parameter is only optional (sets gizmo position). Width these parameters the editor provides editing in scene though rotation gizmo
+	- for vector type that holds normalized direction you can use "inf inf 0 purpose=direction space=entity". Width these parameters the editor provides editing in scene using rotation gizmo
+	- for vector type you can choose between parameter space=entity and space=world depending on which space the value is used for (entity/model space or world space)
+	- for example for file dialog (UIWidgets.ResourceNamePicker widget) use format "ext1 ext2 ext3"
 	*/
 	string m_Params;
 	string m_Desc;
@@ -278,8 +308,12 @@ class Attribute
 	*/
 	ref ParamEnumArray m_Enums;
 	typename m_EnumType;
+	
+	/*!
+	*/
+	bool m_Prefabbed;
 
-	void Attribute(string defvalue = "", string uiwidget = "auto"/*use UIWidgets*/, string desc = "", string params = "", ParamEnumArray enums = NULL, string category = "", int precision = 3, typename enumType = void)
+	void Attribute(string defvalue = "", string uiwidget = "auto"/*use UIWidgets*/, string desc = "", string params = "", ParamEnumArray enums = NULL, string category = "", int precision = 3, typename enumType = void, bool prefabbed = false)
 	{
 		m_DefValue = defvalue;
 		m_UiWidget = uiwidget;
@@ -289,6 +323,7 @@ class Attribute
 		m_Enums = enums;
 		m_Precision = precision;
 		m_EnumType = enumType;
+		m_Prefabbed = prefabbed;
 	}
 }
 
@@ -387,34 +422,6 @@ class BaseContainerProps: CommonEditorProps
 	{
 		m_NamingConvention = namingConvention;
 	}
-}
-
-/*!
-Base class for attribute for setting custom title in property grid
-(Workbench). Works only on classes defined by BaseContainerProps attribute.
-Inherit this attribute to set your own custom title.
-\code
-	class MyCustomTitle: BaseContainerCustomTitle
-	{
-		override bool _WB_GetCustomTitle(BaseContainer source, out string title)
-		{
-			title = "My Title";
-			return true;
-		}
-	}
-
-	[BaseContainerProps(), MyCustomTitle()]
-	class TestConfigClass
-	{
-		[Attribute()]
-		string m_ID;
-	};
-\endcode
-*/
-class BaseContainerCustomTitle
-{
-	bool _WB_GetCustomTitle(BaseContainer source, out string title);
-	bool _WB_GetCustomClassTitle(string className, out string title);
 }
 
 /*!

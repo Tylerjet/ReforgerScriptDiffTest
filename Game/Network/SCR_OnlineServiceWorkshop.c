@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------	
-class SCR_ScriptPlatformRequestCallback : ScriptPlatformRequestCallback
+class SCR_ScriptPlatformRequestCallback : PrivilegeCallback
 {
 	ref ScriptInvoker m_OnResult = new ScriptInvoker; // (UserPrivilege privilege, UserPrivilegeResult result)
 	
@@ -16,31 +16,8 @@ class SCR_ScriptPlatformRequestCallback : ScriptPlatformRequestCallback
 ////////////////////////////////////////////////////////////
 
 //-----------------------------------------------------------------------------------------------
-// WorkshopApi.RequestPage
-class SCR_WorkshopApiCallback_RequestPage : SCR_BackendCallback
-{
-	int m_iPageId;
-
-	void SCR_WorkshopApiCallback_RequestPage(int pageId)
-	{
-		m_iPageId = pageId;
-		
-		#ifdef WORKSHOP_DEBUG
-		Print(string.Format("%1 New: page: %2", this, this.m_iPageId), LogLevel.DEBUG);
-		#endif
-	}
-	
-	void ~SCR_WorkshopApiCallback_RequestPage(ContentBrowserUI contentBrowser, int tabId, int pageId)
-	{
-		#ifdef WORKSHOP_DEBUG
-		Print(string.Format("%1 Delete: page: %2", this, this.m_iPageId), LogLevel.DEBUG);
-		#endif
-	}
-};
-
-//-----------------------------------------------------------------------------------------------
 // WorkshopItem.AskDetails
-class SCR_WorkshopItemCallback_AskDetails : SCR_BackendCallback
+class SCR_WorkshopItemCallback_AskDetails : BackendCallback
 {
 	WorkshopItem m_Item;
 	
@@ -53,7 +30,7 @@ class SCR_WorkshopItemCallback_AskDetails : SCR_BackendCallback
 
 //-----------------------------------------------------------------------------------------------
 // ImageScale.Download
-class SCR_WorkshopItemCallback_DownloadImage : SCR_BackendCallback
+class SCR_WorkshopItemCallback_DownloadImage : BackendCallback
 {
 	ImageScale m_Scale;
 };

@@ -18,6 +18,7 @@ enum ESlotFunction
 	TYPE_CLOTHES
 };
 
+
 //------------------------------------------------------------------------------------------------
 //! UI Script
 //! Inventory Slot UI Layout
@@ -73,6 +74,12 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	#endif
 
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	SCR_EAnalyticalItemSlotType GetAnalyticalItemSlotType()
+	{
+		return m_pStorageUI.GetAnalyticalItemSlotType();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void UpdateReferencedComponent( InventoryItemComponent pComponent, SCR_ItemAttributeCollection attributes = null )
 	{
@@ -774,6 +781,11 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		
 		if (storage.UseItem(item, m_eSlotFunction, context))
 			Refresh();
+		
+		// if we are using a bandage from inventory, inform analytics.
+		SCR_ConsumableItemComponent consumableComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (consumableComp && consumableComp.GetConsumableType() == SCR_EConsumableType.BANDAGE && context == SCR_EUseContext.FROM_INVENTORY)
+			SCR_AnalyticsApplication.GetInstance().UseHealingFromInventory();
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -1112,7 +1124,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			if (!m_pItem)
 				return;
 
-			BaseWeaponComponent weapon = BaseWeaponComponent.Cast(m_pItem.GetOwner().FindComponent(BaseWeaponComponent));
+			IEntity owner = m_pItem.GetOwner();
+			BaseWeaponComponent weapon = BaseWeaponComponent.Cast(owner.FindComponent(BaseWeaponComponent));
 			if (!weapon)
 				return;
 
@@ -1129,16 +1142,20 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				return;
 
 			BaseMuzzleComponent muzzle = weapon.GetCurrentMuzzle();
-			if (!muzzle || !muzzle.GetMagazineWell())
+			if (!muzzle)
 				return;
 
-			if (!menu.IsWeaponEquipped(m_pItem.GetOwner()) || slot.IsInherited(SCR_ArsenalInventorySlotUI))
+			BaseMagazineWell muzzleWell = muzzle.GetMagazineWell();
+			if (!muzzleWell)
+				return;
+
+			if (!Turret.Cast(owner) && !menu.IsWeaponEquipped(owner) || slot.IsInherited(SCR_ArsenalInventorySlotUI))
 			{
 				incompatible.SetVisible(true);
 				return;
 			}
 
-			incompatible.SetVisible(!well.Type().IsInherited(muzzle.GetMagazineWell().Type()));
+			incompatible.SetVisible(!well.Type().IsInherited(muzzleWell.Type()));
 		}
 	}
 

@@ -8,7 +8,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 {
 	protected const string WIDGET_SCROLL = "ScrollSize";
 	protected const string WIDGET_ADDON_LIST = "AddonList";
-	protected const string WIDGET_LOADING = "Loading";
 
 	protected const string WIDGET_IPADDRESS_TEXT = "IPAddressText";
 	protected const string WIDGET_DISCORD_TEXT = "DiscordText";
@@ -36,7 +35,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 	protected Widget m_wScroll;
 	protected Widget m_wAddonList;
-	protected Widget m_wLoading;
 	protected Widget m_wModsSizeLayout;
 	protected Widget m_wDetailIconsLayout;
 	protected Widget m_wVersionAlertIcon;
@@ -83,7 +81,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 		m_wScroll = m_wRoot.FindAnyWidget(WIDGET_SCROLL);
 		m_wAddonList = m_wRoot.FindAnyWidget(WIDGET_ADDON_LIST);
-		m_wLoading = m_wRoot.FindAnyWidget(WIDGET_LOADING);
 		m_wModsSizeLayout = m_wRoot.FindAnyWidget(WIDGET_MODS_SIZE_LAYOUT);
 		m_wDetailIconsLayout = m_wRoot.FindAnyWidget(WIDGET_DETAIL_ICONS_LAYOUT);
 		m_wModsSizeToDownloadLayout = m_wRoot.FindAnyWidget(WIDGET_MODS_SIZE_TO_DOWNLOAD_LAYOUT);
@@ -136,7 +133,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	{
 		// Set visibility
 		m_wScroll.SetVisible(false);
-		m_wLoading.SetVisible(true);
 
 		m_wModsSizeLayout.SetVisible(false);
 		m_wModsSizeToDownloadLayout.SetVisible(false);
@@ -182,9 +178,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	void FillModList(array<ref SCR_WorkshopItem> items, SCR_RoomModsManager modsManager)
 	{
 		m_aItems = items;
-
-		// Set visibility
-		m_wLoading.SetVisible(false);
 
 		if (m_aItems.IsEmpty())
 			return;

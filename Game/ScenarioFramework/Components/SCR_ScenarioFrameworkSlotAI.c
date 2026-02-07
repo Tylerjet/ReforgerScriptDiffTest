@@ -31,12 +31,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	[Attribute(defvalue: SCR_EAIGroupFormation.Wedge.ToString(), UIWidgets.ComboBox, "AI group formation", "", ParamEnumArray.FromEnum(SCR_EAIGroupFormation), category: "Common")]
 	SCR_EAIGroupFormation m_eAIGroupFormation;
 
-	//[Attribute(defvalue: ECharacterStance.STAND.ToString(), UIWidgets.ComboBox, "AI character stance", "", ParamEnumArray.FromEnum(ECharacterStance), category: "Common")]
-	//ECharacterStance m_eAICharacterStance;
-
-	//[Attribute(defvalue: EMovementType.WALK.ToString(), UIWidgets.ComboBox, "AI group formation", "", ParamEnumArray.FromEnum(EMovementType), category: "Common")]
-	//EMovementType m_eAIMovementType;
-
 	[Attribute(defvalue: EAISkill.REGULAR.ToString(), UIWidgets.ComboBox, "AI skill in combat", "", ParamEnumArray.FromEnum(EAISkill), category: "Common")]
 	EAISkill m_eAISkill;
 
@@ -210,10 +204,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 			plugin.Init(this);
 		}
 
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
-		{
-			activationAction.Init(GetOwner());
-		}
+		InitActivationActions();
 
 		if (m_ParentLayer)
 			m_ParentLayer.CheckAllChildrenSpawned(this);
@@ -228,6 +219,12 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	//! Activates AI group, removes unwanted prefabs, balances units count, sets on agent remove and add events,
 	void ActivateAI()
 	{
+		if (m_AIGroup) // Group alraedy setup from e.g. save-game
+		{
+			AfterAllAgentsSpawned();
+			return;
+		}
+		
 		m_bGroupWasNull = false;
 		m_AIGroup = SCR_AIGroup.Cast(m_Entity);
 		if (!m_AIGroup)

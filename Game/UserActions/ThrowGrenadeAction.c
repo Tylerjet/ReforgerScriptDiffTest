@@ -1,16 +1,6 @@
 // Script File
 class ThrowGrenadeAction : ScriptedUserAction
 {
-
-	//------------------------------------------------------------------------------------------------
-	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent) 
-	{
-		if (!GetGame().GetWorldEntity())
-			return;
-		
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
 	{
 		GenericEntity user = GenericEntity.Cast(pUserEntity);

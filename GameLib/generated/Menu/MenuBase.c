@@ -28,7 +28,7 @@ closing:
 2) OnMenuHide
 3) OnMenuClose
 */
-class MenuBase
+class MenuBase: ScriptedWidgetEventHandler
 {
 	//! Returns user id uint, set on menu opening
 	proto external int GetUserData();

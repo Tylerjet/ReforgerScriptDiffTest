@@ -1,3 +1,5 @@
+/*
+[Obsolete("Only used for backwards compatiblity for GM saves. Will be removed entirely.")]
 class SCR_EditableFactionStruct: JsonApiStruct
 {
 	//--- Serialized (names shortened to save memory)
@@ -74,3 +76,4 @@ class SCR_EditableFactionStruct: JsonApiStruct
 		RegV("at");
 	}
 };
+*/

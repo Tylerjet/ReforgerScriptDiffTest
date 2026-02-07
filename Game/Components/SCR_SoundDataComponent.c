@@ -20,12 +20,17 @@ class SCR_SoundDataComponent : ScriptComponent
 		{
 			if (audioSourceConfiguration.m_sSoundEventName == eventName)
 			{
-				if (audioSourceConfiguration.m_sSoundProject)
+				if (audioSourceConfiguration.m_sSoundProject != string.Empty)
+				{
 					return audioSourceConfiguration;
+				}
 				else
+				{
 					return null;
+				}
 			}
-		}		
+		}
+				
 		return null;
 	}
 }

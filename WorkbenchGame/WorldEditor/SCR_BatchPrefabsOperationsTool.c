@@ -15,7 +15,7 @@ by pressing "Create" button or modify configuration of existing prefabs with "Mo
 [WorkbenchToolAttribute("Batch prefabs operations tool", "### Creating new prefabs ###\nTo create new prefabs you need to fill 'Prefab Config', 'Path To Save' and\n'Models To Process'\n\nIf Generate Names is checked, there is no need to fill in New Names array\nUse Prefab Config to store additional settings in new prefab.\n\nOnce everything is set, click on 'Create' button to create new prefabs\n\n### Modifying  existing prefabs ###\nTo modify prefabs you need to have at least one prefab in\n'Prefabs To Process' array selected & valid config selected in\n'Prefabs Config'\n\nWith those 2 parameters set, click on 'Modify' button to modify selected prefabs", "2", awesomeFontCode: 0xF085)]
 class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 {
-	[Attribute("1", UIWidgets.ComboBox, "File system where new prefabs will be created", "", ParamEnumAddons.FromEnum(), "General")]
+	[Attribute("1", UIWidgets.ComboBox, "File system where new prefabs will be created", "", SCR_ParamEnumArray.FromAddons(), "General")]
 	protected int m_iAddonToUse;
 
 	[Attribute("", UIWidgets.ResourceNamePicker, "Choose a base class of your prefabs.", "et", null, "Create")]
@@ -48,7 +48,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 	//! If component is not found, new one is created.
 	//! \param[in] entSrc Entity Source from which components should be read
 	//! \param[in] m_PrefabGeneratorConfig Handle to config file containing instructions for the tool
-	void ProcessComponents(IEntitySource entSrc, SCR_BatchPrefabTemplates prefabGeneratorConfig)
+	protected void ProcessComponents(IEntitySource entSrc, SCR_BatchPrefabTemplates prefabGeneratorConfig)
 	{
 		IEntityComponentSource component;
 		array<ref ContainerIdPathEntry> containerPath = {};
@@ -93,7 +93,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 	//! \param[in] entSrcAttribute Entity Source from which script should read values
 	//! \param[in] containerPath Path to container where values will be stored
 	//! \param[in] TemplateData Array of values to be processed
-	void ProcessAttributes(IEntitySource entSrc, IEntitySource entSrcAttribute, array<ref ContainerIdPathEntry> containerPath, array<ref SCR_BatchPrefabTemplatesAttributes> TemplateData)
+	protected void ProcessAttributes(IEntitySource entSrc, IEntitySource entSrcAttribute, array<ref ContainerIdPathEntry> containerPath, array<ref SCR_BatchPrefabTemplatesAttributes> TemplateData)
 	{
 		// Add atributes to currently processed component
 		foreach (int currentAtributeIndex, SCR_BatchPrefabTemplatesAttributes currentAttribute : TemplateData)
@@ -151,7 +151,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 	//!
 	//! If m_aNewNames array is used, number of entries in this array must match the number of models
 	[ButtonAttribute("Create")]
-	void Execute()
+	protected void Execute()
 	{
 		// Input parameters verification
 		if (!m_aModelsToProcess)
@@ -198,6 +198,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 		array<ref ContainerIdPathEntry> containerPath;
 		Resource holder;
 		SCR_BatchPrefabTemplates prefabGeneratorConfig;
+		int layerId = m_API.GetCurrentEntityLayerId();
 		foreach (int currentIndex, ResourceName currentElement : m_aModelsToProcess)
 		{
 			// Load metafile and get resource GUID
@@ -208,7 +209,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 			m_API.BeginEntityAction("Processing " + modelName);
 
 			// Create entity with selected base class
-			entitySource = m_API.CreateEntity(m_sBaseClass, string.Empty, m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+			entitySource = m_API.CreateEntity(m_sBaseClass, string.Empty, layerId, null, vector.Zero, vector.Zero);
 
 			containerPath = {};
 
@@ -259,7 +260,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 	//! After values are changed, function is also triggering saving of currently open scene
 	//! World Editor to store all changes on the user drive.
 	[ButtonAttribute("Modify")]
-	void ExecuteModify()
+	protected void ExecuteModify()
 	{
 		// Input parameters verification
 		if (!m_aPrefabsToProcess && !m_sDirectoryToProcess)
@@ -299,6 +300,7 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 		array<ref ContainerIdPathEntry> containerPath;
 		Resource holder;
 		SCR_BatchPrefabTemplates prefabGeneratorConfig;
+		int layerId = m_API.GetCurrentEntityLayerId();
 		foreach (int currentIndex, ResourceName currentElement : m_aPrefabsToProcess)
 		{
 			// Load metafile and get resource GUID
@@ -308,9 +310,8 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 			//m_API.BeginEntityAction("Processing - " + modelName);
 
 			// Create entity with selected base class
-			entitySource = m_API.CreateEntity(currentElement, "", m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+			entitySource = m_API.CreateEntity(currentElement, string.Empty, layerId, null, vector.Zero, vector.Zero);
 
-			
 			prefab = entitySource.GetAncestor();
 
 			containerPath = {};

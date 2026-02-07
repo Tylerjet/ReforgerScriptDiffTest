@@ -103,7 +103,7 @@ class SCR_CommandActionsEditorComponent : SCR_BaseActionsEditorComponent
 		
 		EEditorCommandActionFlags flags;
 		EEditableEntityType type;
-		bool isTaskManager = GetTaskManager() != null;
+		bool isTaskManager = SCR_TaskSystem.GetInstance() != null;
 		foreach (SCR_EditableEntityComponent entity: m_SelectedEntities)
 		{
 			type = entity.GetEntityType();

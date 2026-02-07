@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------------------------
 //! Config template for XP rewards
-[BaseContainerProps()]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(SCR_EXPRewards, "m_eRewardID")]
 class SCR_XPRewardInfo
 {	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "ID of this reward.", enums: ParamEnumArray.FromEnum(SCR_EXPRewards))]

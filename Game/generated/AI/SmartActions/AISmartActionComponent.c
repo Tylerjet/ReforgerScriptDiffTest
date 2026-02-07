@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class AISmartActionComponentClass: ScriptComponentClass
-{
-}
-
 class AISmartActionComponent: ScriptComponent
 {
 	GenericEntity m_Owner;

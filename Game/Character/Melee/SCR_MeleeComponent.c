@@ -118,7 +118,8 @@ class SCR_MeleeComponent : ScriptComponent
 		TraceSphere param = new TraceSphere();
 		param.LayerMask = EPhysicsLayerDefs.Projectile;
 		param.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
-		param.Exclude = character;
+		array<IEntity> ExcludeArray = {character};
+		param.ExcludeArray = ExcludeArray;
 		
 		param.Radius = m_fWeaponMeleeAccuracy;		
 		param.Start = character.EyePosition();

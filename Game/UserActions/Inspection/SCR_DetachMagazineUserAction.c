@@ -46,12 +46,8 @@ class SCR_DetachMagazineUserAction : SCR_InspectionUserAction
 			return; // Must be a WeaponAttachmentsStorageComponent
 		}
 		
-		BaseInventoryStorageComponent suitableStorage = m_InventoryManager.FindStorageForItem(currentMag);
-
-		if (suitableStorage)
-			m_InventoryManager.TryMoveItemToStorage(currentMag, suitableStorage);
-		else
-			m_InventoryManager.TryRemoveItemFromStorage(currentMag, magStorage);
+		auto charCtrl = CharacterControllerComponent.Cast(m_InventoryManager.GetOwner().FindComponent(CharacterControllerComponent));
+		charCtrl.DetachCurrentMagazine();
 		
 		m_InventoryManager.PlayItemSound(pOwnerEntity, "SOUND_UNEQUIP");		
 	}

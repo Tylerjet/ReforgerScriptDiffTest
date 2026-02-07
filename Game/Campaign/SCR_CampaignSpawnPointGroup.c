@@ -9,10 +9,14 @@ class SCR_CampaignSpawnPointGroup : SCR_SpawnPoint
 	//------------------------------------------------------------------------------------------------
 	override string GetSpawnPointName()
 	{
-		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(GetParent().FindComponent(SCR_CampaignMilitaryBaseComponent));
-		if (base)
-			return base.GetBaseName();
+		IEntity parent = GetParent();
+		if (parent)
+		{
+			SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+			if (base)
+				return base.GetBaseName();
+		}
 
-		return "BASED";
+		return super.GetSpawnPointName();
 	}
-};
+}

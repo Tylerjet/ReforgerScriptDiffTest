@@ -73,6 +73,9 @@ class SCR_OpenVehicleStorageAction : SCR_InventoryAction
 	//------------------------------------------------------------------------------------------------
 	protected void DelayedInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
+		if (!pOwnerEntity)
+			return;
+
 		if (!Vehicle.Cast(pOwnerEntity) && pOwnerEntity.GetParent())
 			m_Vehicle = pOwnerEntity.GetParent();
 		else

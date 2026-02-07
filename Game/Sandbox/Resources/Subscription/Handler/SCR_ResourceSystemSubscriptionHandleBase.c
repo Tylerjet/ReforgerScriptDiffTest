@@ -58,13 +58,13 @@ class SCR_ResourceSystemSubscriptionHandleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	EResourceType GetResourceIdentifier()
+	EResourceGeneratorID GetResourceIdentifier()
 	{
 		return m_eResourceIdentifier;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	EResourceGeneratorID GetResourceType()
+	EResourceType GetResourceType()
 	{
 		return m_eResourceType;
 	}

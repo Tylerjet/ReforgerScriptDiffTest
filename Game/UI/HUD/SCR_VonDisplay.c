@@ -17,6 +17,7 @@ class TransmissionData
 	float m_fFrequency;		// current frequency
 	float m_fQuality;
 	IEntity m_Entity;		// transmitting character
+	bool m_bIsSenderEditor;
 	Faction m_Faction;
 	BaseTransceiver m_RadioTransceiver;
 
@@ -50,13 +51,13 @@ class TransmissionData
 //! VON display of active outgoing and incoming transmissions
 class SCR_VonDisplay : SCR_InfoDisplayExtended
 {
-	[Attribute(UIConstants.ICONS_IMAGE_SET)];
+	[Attribute(UIConstants.ICONS_IMAGE_SET)]
 	protected string m_sImageSet;
 
-	[Attribute(UIConstants.ICONS_GLOW_IMAGE_SET)];
+	[Attribute(UIConstants.ICONS_GLOW_IMAGE_SET)]
 	protected string m_sImageSetGlow;
 
-	[Attribute("{25221F619214A722}UI/layouts/HUD/VON/VoNOverlay_Element.layout")];
+	[Attribute("{25221F619214A722}UI/layouts/HUD/VON/VoNOverlay_Element.layout")]
 	protected string m_sReceivingTransmissionLayout;
 	
 	[Attribute(defvalue: "1", desc: "Show enemy names in radio and direct talk?")]
@@ -65,6 +66,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	const string ICON_DIRECT_SPEECH = "VON_directspeech";
 	const string ICON_RADIO_HINT = "VON_radio";
 	const string ICON_RADIO = "VON_frequency";
+	const string ICON_RADIO_MUTED = "sound-off";
 	const string ICON_SERVER_DISABLE_HINT = "server-locked";
 
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
@@ -114,6 +116,8 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	protected Widget m_wTalkingAmountWidget;
 	protected Widget m_wAdditionalSpeakersWidget;
 	protected RichTextWidget m_wAdditionalSpeakersText;
+	
+	protected const string LABEL_ROLE_FORMAT = "(%1)";
 
 	//------------------------------------------------------------------------------------------------
 	//! Count of active incoming transmissions
@@ -174,14 +178,13 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! VONComponent event
-	event void OnReceive(int playerId, BaseTransceiver receiver, int frequency, float quality)
+	event void OnReceive(int playerId, bool isSenderEditor, BaseTransceiver receiver, int frequency, float quality)
 	{
 		if (!m_wRoot || m_bIsVONUIDisabled) // ignore receiving transmissions if VON UI is off
 			return;
 
 		// Check if there is an active transmission from given player
 		TransmissionData pTransmission = m_aTransmissionMap.Get(playerId);
-
 
 		// Active transmission from the player not found, create it
 		if (!pTransmission)
@@ -219,12 +222,14 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			|| (receiver && pTransmission.m_fFrequency != frequency)
 		)
 		{
+			pTransmission.m_bIsSenderEditor = isSenderEditor;
 			bool filtered = UpdateTransmission(pTransmission, receiver, frequency, true);
 			if (!filtered)
 			{
 				pTransmission.HideTransmission();
 				return;
 			}
+			SCR_LogitechLEDManager.ActivateState(ELogitechLEDState.COMMS);
 		}
 
 		pTransmission.m_bIsActive = true;
@@ -278,7 +283,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		data.m_Widgets.m_wIcon.SetVisible(true);
 		data.m_Widgets.m_wMicFrame.SetVisible(false);
 		data.m_Widgets.m_wChannelFrame.SetVisible(false);
-		data.m_Widgets.m_wFrequency.SetVisible(false);
 		data.m_Widgets.m_wSeparator.SetVisible(false);
 		data.m_Widgets.m_wPlatformImage.SetVisible(false);
 		data.m_Widgets.m_wPlatformImageGlow.SetVisible(false);
@@ -286,20 +290,28 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		// radio
 		if (radioTransceiver)
 		{
-			sDeviceIcon = ICON_RADIO;
+			if (radioTransceiver.IsMuted())
+			{
+				sDeviceIcon = ICON_RADIO_MUTED;
+			}
+			else
+			{
+				sDeviceIcon = ICON_RADIO;
+			}
 
 			float adjustedFreq;
 			data.m_fFrequency = frequency;
 			adjustedFreq = Math.Round(data.m_fFrequency * 0.1) / 100;
 			data.m_Widgets.m_wFrequency.SetText(adjustedFreq.ToString() + " " + LABEL_FREQUENCY_UNITS);
-			data.m_Widgets.m_wFrequency.SetVisible(true);
+			data.m_Widgets.m_wFrequency.SetVisible(!data.m_bIsSenderEditor || frequency != 0);
 			
-			if (adjustedFreq == 0) 
+			if (!data.m_bIsSenderEditor && adjustedFreq == 0) 
 				Print("SCR_VonDisplay: Incoming frequency 0 | base: " + frequency + " | adjusted: " + adjustedFreq, LogLevel.WARNING);
 		}
 		// direct speech
 		else
 		{
+			data.m_Widgets.m_wFrequency.SetVisible(false);
 			sDeviceIcon = ICON_DIRECT_SPEECH;
 		}
 
@@ -309,10 +321,13 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			data.m_Widgets.m_wIconBackground.LoadImageFromSet(0, m_sImageSetGlow, sDeviceIcon);
 		}
 
+		data.m_Widgets.m_wGameMaster.SetVisible(data.m_bIsSenderEditor);
+
 		// incoming
 		if (IsReceiving)
 		{
 			data.m_Widgets.m_wIcon.SetColor(COLOR_WHITE);
+			data.m_Widgets.m_wGameMaster.SetColor(COLOR_WHITE);
 
 			//always show the player name, keep the check if we need it again
 			if (!enemyTransmission || m_bShowEnemyNames)
@@ -335,31 +350,75 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 						if (charIdentity && charIdentity.GetIdentity())
 							data.m_Widgets.m_wName.SetText(charIdentity.GetIdentity().GetName());	 
 						else 
-							data.m_Widgets.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(data.m_iPlayerID));	
+							data.m_Widgets.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(data.m_iPlayerID));
 					}
 				}
 				else
-					data.m_Widgets.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(data.m_iPlayerID));		
+					data.m_Widgets.m_wName.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(data.m_iPlayerID));
 			}
 			else
+			{
 				data.m_Widgets.m_wName.SetText(LABEL_UNKNOWN_SOURCE);
+			}
 
 			data.m_Widgets.m_wName.SetVisible(true);
 
-			if (radioTransceiver)
-				data.m_Widgets.m_wSeparator.SetVisible(false);
-			
 			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			if (playerController)
 				playerController.SetPlatformImageTo(data.m_iPlayerID, data.m_Widgets.m_wPlatformImage, data.m_Widgets.m_wPlatformImageGlow);
+
+			bool sameFaction = playerFaction == data.m_Faction && !data.m_bIsSenderEditor;
+			if (!sameFaction)
+			{
+				data.m_Widgets.m_wRole.SetVisible(false);
+				data.m_Widgets.m_wSquadLeaderIcon.SetVisible(false);
+				return true; // if this isn't a member of your team then you shouldn't see their roles, but you should still see them
+			}
+
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!groupsManager)
+				return false; // this will completly hide this VoN entry, but if this is the case, then there are probably more problems at hand
+
+			bool isSquadLeader;
+			SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(data.m_iPlayerID);
+			if (playerGroup)
+			{
+				data.m_Widgets.m_wRole.SetTextFormat(LABEL_ROLE_FORMAT, playerGroup.GetGroupRoleName());
+
+				SCR_Faction faction = SCR_Faction.Cast(data.m_Faction);
+				isSquadLeader = data.m_iPlayerID == playerGroup.GetLeaderID();
+				
+				if (faction && data.m_iPlayerID == faction.GetCommanderId())
+				{
+					data.m_Widgets.m_wRole.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
+					data.m_Widgets.m_wSquadLeaderIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
+				}
+				else
+				{
+					data.m_Widgets.m_wRole.SetColor(COLOR_WHITE);
+					data.m_Widgets.m_wSquadLeaderIcon.SetColor(COLOR_WHITE);
+				}
+			}
+
+			data.m_Widgets.m_wRole.SetVisible(false);
+			data.m_Widgets.m_wSquadLeaderIcon.SetVisible(isSquadLeader);
 		}
 		else	// outgoing
 		{
-			data.m_Widgets.m_wIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
+			data.m_bIsSenderEditor = false;
+			SCR_EditorManagerCore editorCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+			if (editorCore)
+			{
+				SCR_EditorManagerEntity editor = editorCore.GetEditorManager();
+				if (editor)
+					data.m_bIsSenderEditor = editor.IsOpened();
+			}
+	
 			data.m_Widgets.m_wName.SetText(string.Empty);
 			data.m_Widgets.m_wName.SetVisible(false);
-			data.m_Widgets.m_wPlatformImage.SetVisible(false);
-			data.m_Widgets.m_wPlatformImageGlow.SetVisible(false);
+			data.m_Widgets.m_wRole.SetText(string.Empty);
+			data.m_Widgets.m_wRole.SetVisible(false);
+			data.m_Widgets.m_wSquadLeaderIcon.SetVisible(false);
 
 			if (radioTransceiver)	// direct vs radio
 			{
@@ -375,13 +434,35 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 					}
 				}
 
+				SCR_GroupTaskManagerComponent groupTaskManager = SCR_GroupTaskManagerComponent.GetInstance();
+				if (groupTaskManager && groupTaskManager.IsEnabledAssigningFrequencies() && playerFaction)
+				{
+					SCR_Task task = groupTaskManager.GetTaskByFrequency(playerFaction, frequency);
+					if (task)
+					{
+						data.m_Widgets.m_wChannelText.SetText(groupTaskManager.GetTaskTranslatedName(task));
+						data.m_Widgets.m_wChannelFrame.SetVisible(true);
+					}
+				}
+
+				if (radioTransceiver.IsMuted())
+				{
+					data.m_Widgets.m_wIcon.SetColor(Color.FromInt(GUIColors.RED.PackToInt()));
+				}
+				else
+				{
+					data.m_Widgets.m_wIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
+				}
+				
+				data.m_Widgets.m_wGameMaster.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
 			}
 			else
 			{
 				data.m_Widgets.m_wMicFrame.SetVisible(m_bIsDirectToggled);
+				data.m_Widgets.m_wIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
 			}
 		}
-
+		
 		return true;
 	}
 
@@ -660,7 +741,9 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 
 		// update incoming transmissions
 		if (m_aTransmissions.IsEmpty())
+		{
 			return;
+		}
 
 		TransmissionData pTransmission;
 		int count = m_aTransmissions.Count() - 1;
@@ -716,7 +799,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 					m_aTransmissionMap.Remove(m_aAdditionalSpeakers[0].m_iPlayerID);
 					m_aTransmissions.Remove(m_aTransmissions.Find(m_aAdditionalSpeakers[0]));
 
-					OnReceive(m_aAdditionalSpeakers[0].m_iPlayerID, m_aAdditionalSpeakers[0].m_RadioTransceiver, m_aAdditionalSpeakers[0].m_fFrequency, m_aAdditionalSpeakers[0].m_fQuality);
+					OnReceive(m_aAdditionalSpeakers[0].m_iPlayerID, m_aAdditionalSpeakers[0].m_bIsSenderEditor, m_aAdditionalSpeakers[0].m_RadioTransceiver, m_aAdditionalSpeakers[0].m_fFrequency, m_aAdditionalSpeakers[0].m_fQuality);
 
 					m_aAdditionalSpeakers.Remove(0);
 					m_wAdditionalSpeakersText.SetText("+" + m_aAdditionalSpeakers.Count().ToString());

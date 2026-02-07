@@ -36,6 +36,137 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override protected void OnQueryFinished(BaseGameTriggerEntity trigger)
+	{
+		m_bQueryFinished = true;
+
+		array<IEntity> presentEntities = {};
+		int presentEntitiesCount = m_Trigger.GetEntitiesInside(presentEntities);
+		m_bCharacterPresent = presentEntitiesCount != 0;
+
+		// Nobody is here, no need to evaluate
+		if (!m_bCharacterPresent)
+		{
+			if (m_PrevailingFaction)
+			{
+				m_PrevailingFactionPrevious = m_PrevailingFaction;
+				m_PrevailingFaction = null;
+				OnPrevailingFactionChanged();
+			}
+
+			return;
+		}
+
+		map<SCR_Faction, int> factionsPresence = new map<SCR_Faction, int>();
+		map<SCR_Faction, bool> factionsPlayerPresence = new map<SCR_Faction, bool>();
+		SCR_Faction evaluatedEntityFaction;
+		int factionCount;
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+
+		// Go through all entities and check their factions
+		for (int i = 0; i < presentEntitiesCount; i++)
+		{
+			IEntity entity = presentEntities[i];
+			
+			if (m_bDeleteDisabledAIs && IsDisabledAI(entity))
+			{
+				RplComponent.DeleteRplEntity(entity, false);	
+				continue;
+			}				
+			
+			evaluatedEntityFaction = EvaluateEntityFaction(presentEntities[i]);
+
+			if (!evaluatedEntityFaction)
+				continue;
+
+			factionCount = factionsPresence.Get(evaluatedEntityFaction);
+
+			// If faction is not yet registered, do it now - otherwise just increase its presence counter
+			if (factionCount == 0)
+				factionsPresence.Insert(evaluatedEntityFaction, 1);
+			else
+				factionsPresence.Set(evaluatedEntityFaction, factionCount + 1);
+			
+			// Check if there are some players present in case they are required
+			if (m_bCapturingRequiresPlayer && playerManager.GetPlayerIdFromControlledEntity(entity) != 0)
+				factionsPlayerPresence.Set(evaluatedEntityFaction, true);
+		}
+		
+		m_bDeleteDisabledAIs = false;
+		SCR_Faction prevailingFaction;
+		int highestAttackingPresence;
+		int highestDefendingPresence;
+		int curSeizingCharacters;
+
+		// Evaluate the highest attacking presence
+		foreach (SCR_Faction faction, int presence : factionsPresence)
+		{
+			// FIA is not allowed
+			if (faction == SCR_GameModeCampaign.GetInstance().GetFactionByEnum(SCR_ECampaignFaction.INDFOR))
+				continue;
+			
+			// Non-playable attackers are not allowed
+			if (m_bIgnoreNonPlayableAttackers && !faction.IsPlayable())
+				continue;
+			
+			// In case players are required but are not present, ignore this faction for attacking
+			if (m_bCapturingRequiresPlayer && !factionsPlayerPresence.Get(faction))
+				continue;
+
+			if (presence > highestAttackingPresence)
+			{
+				highestAttackingPresence = presence;
+				prevailingFaction = faction;
+			}
+			else if (presence == highestAttackingPresence)	// When 2 or more factions have the same presence, none should prevail
+			{
+				prevailingFaction = null;
+			}
+		}
+
+		// Evaluate the highest defending presence
+		if (prevailingFaction)
+		{
+			foreach (SCR_Faction faction, int presence : factionsPresence)
+			{
+				// Non-playable defenders are not allowed
+				if (m_bIgnoreNonPlayableDefenders && !faction.IsPlayable())
+					continue;
+
+				// This faction is already considered attacking
+				if (faction == prevailingFaction)
+					continue;
+
+				highestDefendingPresence = Math.Max(presence, highestDefendingPresence);
+			}
+
+			// Get net amount of players effectively seizing (clamp for max attackers attribute)
+			if (prevailingFaction && highestAttackingPresence > highestDefendingPresence)
+			{
+				curSeizingCharacters = Math.Min(highestAttackingPresence - highestDefendingPresence, m_iMaximumSeizingCharacters);
+			}
+			else
+			{
+				prevailingFaction = null;
+				curSeizingCharacters = 0;
+			}
+		}
+
+		if (prevailingFaction != m_PrevailingFaction)
+		{
+			m_iSeizingCharacters = curSeizingCharacters;
+			m_PrevailingFactionPrevious = m_PrevailingFaction;
+			m_PrevailingFaction = prevailingFaction;
+			OnPrevailingFactionChanged();
+		}
+		else if (prevailingFaction && curSeizingCharacters != m_iSeizingCharacters)
+		{
+			m_iSeizingCharacters = curSeizingCharacters;
+			RefreshSeizingTimer();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void RefreshSeizingTimer()
 	{
 		if (!m_fSeizingStartTimestamp)

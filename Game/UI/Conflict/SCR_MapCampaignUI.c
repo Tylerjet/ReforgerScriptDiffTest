@@ -1,3 +1,7 @@
+void BaseHovered(SCR_CampaignMilitaryBaseComponent base);
+typedef func BaseHovered;
+typedef ScriptInvokerBase<BaseHovered> BaseHoveredInvoker;
+
 //------------------------------------------------------------------------------
 class SCR_MapCampaignUI : SCR_MapUIElementContainer
 {
@@ -9,8 +13,13 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 
 	[Attribute("{FD71287E68006A26}UI/layouts/Campaign/CampaignPlayerMapIndicator.layout", params: "layout")]
 	protected ResourceName m_sSpawnPositionHint;
+	
+	protected static const int TASK_ICON_Y_OFFSET = 10;
 
 	protected Widget m_wMobileAssembly;
+	protected ref ScriptInvokerVoid m_OnBasesInited;
+	protected ref BaseHoveredInvoker m_OnBaseHovered;
+	protected SCR_CampaignMilitaryBaseComponent m_HoveredBase;
 	
 	//------------------------------------------------------------------------------
 	void InitMobileAssembly(string factionKey, bool deployed)
@@ -75,7 +84,8 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 			if (!base || !base.IsInitialized())
 				continue;
 			
-			if (base.IsHQ() && base.GetFaction() != faction)
+			// Don't display enemy HQs and established bases which are out of radio range
+			if (base.GetFaction() != faction && (base.IsHQ() || (base.GetBuiltByPlayers() && !base.IsHQRadioTrafficPossible(faction))))
 				continue;
 
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sBaseElement, m_wIconsContainer);
@@ -100,8 +110,41 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 		}
 		
 		UpdateIcons();
-	}
 
+		if (m_OnBasesInited)
+			m_OnBasesInited.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Offset task icon so it doesn't overlap with base icon
+	override void UpdateIconPosition(Widget widget, SCR_MapUIElement icon, float x, float y)
+	{	
+		SCR_TaskMapUIComponent taskComponent = SCR_TaskMapUIComponent.Cast(icon);
+		
+		if (taskComponent)
+		{
+			SCR_CampaignMilitaryBaseTaskEntity task = SCR_CampaignMilitaryBaseTaskEntity.Cast(taskComponent.GetTask());
+			
+			if (task)
+			{
+				SCR_CampaignMilitaryBaseComponent base = task.GetMilitaryBase();
+				
+				if (base)
+				{
+					SCR_CampaignMapUIBase baseIcon = base.GetMapUI();
+					
+					if (baseIcon)
+					{
+						FrameSlot.SetPos(widget, x + (baseIcon.GetBaseIconSize() * 0.5), y + TASK_ICON_Y_OFFSET);
+						return;
+					}
+				}
+			}
+		}
+
+		super.UpdateIconPosition(widget, icon, x, y);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void ShowSpawnPoint(notnull SCR_SpawnPoint spawnPoint)
 	{
@@ -250,6 +293,58 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 				w.SetVisible(true);
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all bases elements
+	int GetBases(out notnull array<SCR_CampaignMapUIBase> bases)
+	{
+		bases.Clear();
+		int count;
+		foreach (Widget w, SCR_MapUIElement e : m_mIcons)
+		{
+			SCR_CampaignMapUIBase base = SCR_CampaignMapUIBase.Cast(e);
+			if (!base)
+				continue;
+
+			bases.Insert(base);
+			count++;
+		}
+
+		return count;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sets provided base as hovered.
+	//! \param[in] base
+	void SetHoveredBase(SCR_CampaignMilitaryBaseComponent base)
+	{
+		if (m_HoveredBase == base)
+			return;
+
+		m_HoveredBase = base;
+		if (m_OnBaseHovered)
+			m_OnBaseHovered.Invoke(base);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	BaseHoveredInvoker GetOnBaseHovered()
+	{
+		if (!m_OnBaseHovered)
+			m_OnBaseHovered = new BaseHoveredInvoker();
+
+		return m_OnBaseHovered;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerVoid GetOnBasesInited()
+	{
+		if (!m_OnBasesInited)
+			m_OnBasesInited = new ScriptInvokerVoid();
+
+		return m_OnBasesInited;
 	}
 
 	//------------------------------------------------------------------------------------------------

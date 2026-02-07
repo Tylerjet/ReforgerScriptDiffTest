@@ -439,6 +439,9 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 	protected string m_sCharBlackList;
 	
 	[Attribute("0")]
+	protected bool m_bBlacklistIsWhiteList;
+	
+	[Attribute("0")]
 	protected bool m_bShowWriteIcon;
 	
 	[Attribute("-1", desc: "Height -1 keep editbox single line. Changing height will override current height")]
@@ -526,7 +529,16 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 			m_Filter.m_OnInvalidInput.Insert(OnInvalidInput);
 			m_Filter.m_OnTextTooLong.Insert(OnInvalidInput);
 			
-			m_Filter.SetCharBlacklist(m_sCharBlackList);
+			if (m_bBlacklistIsWhiteList)
+			{
+				m_Filter.SetNumbers(false);
+				m_Filter.SetPunctuation(false);
+				m_Filter.SetASCIIchars(false);
+				m_Filter.SetUTFMultibyte(false);
+				m_Filter.SetCharWhiteList(m_sCharBlackList);
+			}
+			else
+				m_Filter.SetCharBlacklist(m_sCharBlackList);
 		}
 	}
 	
@@ -540,7 +552,10 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 	//-------------------------------------------------------------------------------------------
 	protected void SetCharLists()
 	{
-		m_Filter.SetCharBlacklist(m_sCharBlackList);
+		if (m_bBlacklistIsWhiteList)
+			m_Filter.SetCharWhiteList(m_sCharBlackList);
+		else
+			m_Filter.SetCharBlacklist(m_sCharBlackList);
 	}
 	
 	//-------------------------------------------------------------------------------------------

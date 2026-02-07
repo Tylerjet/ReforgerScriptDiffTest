@@ -28,10 +28,22 @@ class DamageManagerComponent: HitZoneContainerComponent
 	proto external void EnableDamageHandling(bool enable);
 	//Returns true if this damage manager and its hitzones can take damage
 	proto external bool IsDamageHandlingEnabled();
-	proto external float GetMovementDamage();
-	proto external float GetAimingDamage();
+	//! Call to enable damage system's on frame
+	proto external void EnableDamageSystemOnFrame();
+	//! Call to disable damage system's on frame
+	proto external void DisableDamageSystemOnFrame();
+	//! Sets the movement damage modifier
+	//! \warning Only usable by ChimeraCharacters and Vehicles.
 	proto external void SetMovementDamage(float damage);
+	//! Returns the movement damage modifier
+	//! \warning Only usable by ChimeraCharacters and Vehicles.
+	proto external float GetMovementDamage();
+	//! Sets the aiming damage modifier.
+	//! \warning Only usable by ChimeraCharacters.
 	proto external void SetAimingDamage(float damage);
+	//! Returns aiming damage modifier.
+	//! \warning Only usable by ChimeraCharacters.
+	proto external float GetAimingDamage();
 	//Get default hitzone's health [0...1]
 	proto external float GetHealthScaled();
 	//sets the health scaled to the default HitZone [0, ..., 1]
@@ -47,6 +59,14 @@ class DamageManagerComponent: HitZoneContainerComponent
 	//Sets the given entity as the last instigator of damage.
 	proto external void SetInstigatorEntity(IEntity instigator);
 	proto external void SetInstigator(notnull Instigator instigator);
+	//! Sets the instigator and broadcasts the change to clients
+	//! DO NOT USE THIS METHOD UNLESS YOU KNOW EXACTLY WHEN TO USE IT
+	//! IF YOU ARE USING THIS YOU PROBABLY SHOULD BE DEALING DAMAGE TO THE PLAYER TO KILL THEM.
+	//! This method is currently only used to set the instigator of people neutralized through GM,
+	//! because GM uses SetHealth(0) instead of dealing damage. In this REALLY SPECIFIC case it makes sense,
+	//! because the player might have damage handling disabled and GM SHOULD be able to kill invulnerable people.
+	//! This will completely bypass ShouldOverrideInstigator, method won't even be called.
+	proto external void SetAndReplicateInstigator(notnull Instigator instigator);
 	//Returns last instigator
 	proto external notnull Instigator GetInstigator();
 	//! Fills colliderIDs with all the colliders attached to hitzones this dmg manager owns
@@ -67,6 +87,11 @@ class DamageManagerComponent: HitZoneContainerComponent
 
 	// callbacks
 
+	/*!
+	Use this to run diag for the character who is currently possessed by player controller
+	\param owner: owner entity
+	*/
+	event protected void DiagOnlyIfPossessedByPlayerController(notnull IEntity owner);
 	/*! Called when fall related damage is relevant */
 	event protected void OnHandleFallDamage(EFallDamageType fallDamageType, vector velocityVector);
 	//! Called when SetHealth() is used on default hitzone
@@ -95,7 +120,7 @@ class DamageManagerComponent: HitZoneContainerComponent
 	/*!
 	Called when the damagestate changes.
 	*/
-	event protected void OnDamageStateChanged(EDamageState state);
+	event protected void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP);
 	/*!
 	Called after all components are initialized.
 	\param owner Entity this component is attached to.

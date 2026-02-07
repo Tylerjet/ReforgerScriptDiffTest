@@ -64,6 +64,10 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		
 		ResourceName gameOverscreen = m_sGameOverScreenBasePrefab;
 		
+		SCR_BaseGameOverScreenInfo gameOverScreenInfo;
+		if (m_GameOverScreenConfig.GetGameOverScreenInfo(m_iEndGameType, gameOverScreenInfo))
+			m_sGameOverScreenOverwritePrefab = gameOverScreenInfo.GetBaseGameOverScreenOverwrite();
+		
 		if (!m_sGameOverScreenOverwritePrefab.IsEmpty())
 			gameOverscreen = m_sGameOverScreenOverwritePrefab;
 		
@@ -86,8 +90,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		if (m_bIsPlayingGameOverAudio)
 			return;
 
-		SCR_BaseGameOverScreenInfo gameOverScreenInfo;
-		if (!m_GameOverScreenConfig.GetGameOverScreenInfo(m_iEndGameType, gameOverScreenInfo))
+		if (!gameOverScreenInfo)
 		{
 			Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1, to play audio", typename.EnumToString(EGameOverTypes, m_iEndGameType)), LogLevel.WARNING);
 			return;
@@ -100,6 +103,13 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 			s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_FactionPlayer, m_aWinningFactions));
 		else
 			s_OnEndGame.Invoke(gameOverScreenInfo.GetOneShotAudio(m_iPlayerId, m_aWinningPlayers));
+		
+		if (gameOverScreenInfo.PauseGameOnGameOverScreen())
+		{
+			ChimeraWorld world = GetGame().GetWorld();
+			if (world)
+				world.PauseGameTime(true);
+		}
 		
 		m_bIsPlayingGameOverAudio = true;
 	}

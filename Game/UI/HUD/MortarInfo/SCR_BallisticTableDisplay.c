@@ -249,15 +249,15 @@ class SCR_BallisticTableDisplay : SCR_InfoDisplayExtended
 				continue;
 			}
 
-			rangeText = SCR_StringHelper.Translate(UIConstants.VALUE_UNIT_METERS, ballisticValues[0].ToString(4, 0));
+			rangeText = WidgetManager.Translate(UIConstants.VALUE_UNIT_METERS, ballisticValues[0].ToString(4, 0));
 			switch (config.GetUnitType())
 			{
 				case SCR_EOpticsAngleUnits.DEGREES:
-					elevationText = SCR_StringHelper.Translate(UIConstants.VALUE_UNIT_DEGREES, ballisticValues[1].ToString(4, 0));
+					elevationText = WidgetManager.Translate(UIConstants.VALUE_UNIT_DEGREES, ballisticValues[1].ToString(4, 0));
 					break;
 
 				default:
-					elevationText = SCR_StringHelper.Translate(UIConstants.VALUE_UNIT_MILS, ballisticValues[1].ToString(4, 0));
+					elevationText = WidgetManager.Translate(UIConstants.VALUE_UNIT_MILS, ballisticValues[1].ToString(4, 0));
 					break;
 			}
 

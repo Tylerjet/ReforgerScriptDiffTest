@@ -24,9 +24,9 @@ class SCR_NotificationPlayerKicked : SCR_NotificationPlayer
 	
 	override string GetText(SCR_NotificationData data)
 	{	
-		int playerID, duration;
-		KickCauseCode kickCode;
-		data.GetParams(playerID, kickCode, duration);
+		int playerID, kickCauseGroup, kickCauseReason, duration;
+		data.GetParams(playerID, kickCauseGroup, kickCauseReason, duration);
+		KickCauseCode kickCode = KickCauseCodeAPI.NewCode(kickCauseGroup, kickCauseReason);
 		
 		string playerName;
 		data.GetNotificationTextEntries(playerName);

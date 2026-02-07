@@ -2,9 +2,12 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 {
 	protected const ResourceName ENTRY_WIDGET_NAME = "{3B2D99949BCE0542}UI/layouts/Menus/Dialogs/BlockedUsersEntry.layout";
 	protected const string ENTRY_SCROLL_LIST = "Users";
+	protected const ResourceName BLOCKED_USER_DIALOG_CONFIG = "{12C2EC09520BE302}Configs/Blocking/BlockedUsersDialog.conf";
 	
 	protected const string UNLOCK_BUTTON = "unblock";
 	protected const string VIEW_GAMECARD_BUTTON = "viewGamecard";
+	
+	protected const string UNBLOCK_CONFIRM_MESSAGE = "#AR-Blocklist_Confirm";
 	
 	protected const string PLATFORM_
 	
@@ -18,7 +21,7 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 	
 	protected SocialComponent m_SocialComponent;
 	
-	protected ref SCR_BlocklistUnblockCallback m_BlocklistCallback;
+	protected ref BackendCallback m_BlocklistCallback;
 	
 	// Save the widget with the userID it belongs to, to get the correct ID from the focused widget
 	ref map<Widget, BlockListItem> m_mUserList = new map<Widget, BlockListItem>();
@@ -39,8 +42,8 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		m_UnblockButton = FindButton(UNLOCK_BUTTON);
 		if (m_UnblockButton)
 		{
-			m_UnblockButton.m_OnActivated.Insert(OnUserUnblock);
-			m_UnblockButton.SetEnabled(false);
+			m_UnblockButton.m_OnActivated.Insert(UnblockAskConfirmation);
+			m_UnblockButton.SetVisible(false, false);
 		}
 		
 		// Show "View Gamecard" only for ps users
@@ -53,33 +56,44 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 	}
 		
 	//----------------------------------------------------------------------------------------------
-	void OnInputTypeChanged(EInputDeviceType old, EInputDeviceType newDevice)
+	protected void OnInputTypeChanged(EInputDeviceType old, EInputDeviceType newDevice)
 	{
+		if(!m_wCurrentSelectedEntry)
+			return;
+		
+		SCR_BlockedUsersDialogEntryUIComponent selectedEntryComp = SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent));
+		if(!selectedEntryComp)
+			return;
+		
 		switch(newDevice){
 			case EInputDeviceType.GAMEPAD:
-				SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).SetButtonsVisibility(false);
+				selectedEntryComp.SetButtonsVisibility(false);
+				m_UnblockButton.SetVisible(true, false);
 				break;
 			
 			case EInputDeviceType.MOUSE:
-				SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).SetButtonsVisibility(true);
+				selectedEntryComp.SetButtonsVisibility(true);
+				m_UnblockButton.SetVisible(false, false);
 				break;
 			
 			case EInputDeviceType.KEYBOARD:
-				SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).SetButtonsVisibility(false);
+				selectedEntryComp.SetButtonsVisibility(false);
+				m_UnblockButton.SetVisible(true, false);
 				break;
 		}
 		
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ListBlockedUsers()
+	protected void ListBlockedUsers()
 	{
-		SocialComponent.s_OnBlockListUpdateInvoker.Insert(OnBlockedListUpdated);
-		SocialComponent.UpdateBlockList();
+		GameBlocklist blocklist = GetGame().GetGameBlocklist();
+		blocklist.OnBlockListUpdateInvoker.Insert(OnBlockedListUpdated);
+		blocklist.UpdateBlockList();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnBlockedListUpdated(bool success)
+	protected void OnBlockedListUpdated(bool success)
 	{
 		if (!success)
 			return;
@@ -87,7 +101,9 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		SCR_WidgetHelper.RemoveAllChildren(m_wUserListWidget);
 		
 		array<BlockListItem> outItems = {};
-		SocialComponent.GetBlockedPlayers(outItems);
+		
+		GameBlocklist blocklist = GetGame().GetGameBlocklist();
+		blocklist.GetBlockedPlayers(outItems);
 		
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		Widget entry;
@@ -113,8 +129,8 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 			entryComp.SetPlatfrom(item.GetPlatform());
 			entryComp.SetPlayerName(item.GetName());
 			entryComp.GetProfileButton().m_OnClicked.Insert(OnViewGamecard);
-			entryComp.GetUnblockButton().m_OnClicked.Insert(OnUserUnblock);
-
+			entryComp.GetUnblockButton().m_OnClicked.Insert(UnblockAskConfirmation);
+			
 			// Save the widget & player ID
 			m_mUserList.Insert(entry, item);
 			
@@ -132,17 +148,21 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 	{
 		m_wCurrentSelectedEntry = modularButton.GetRootWidget();
 		
-		if (m_UnblockButton)
-			m_UnblockButton.SetEnabled(true);
-		
 		SCR_BlockedUsersDialogEntryUIComponent comp = SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent));
 		if (!comp)
 			return;
 		
-		if(GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.GAMEPAD){
+		if(GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
+		{
 			comp.SetButtonsVisibility(true);
-		}else{
+			if (m_UnblockButton)
+				m_UnblockButton.SetVisible(false, false);
+		}
+		else
+		{
 			comp.SetButtonsVisibility(false);
+			if (m_UnblockButton)
+				m_UnblockButton.SetVisible(true, false);
 		}
 		
 	}
@@ -162,6 +182,21 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void UnblockAskConfirmation()
+	{
+		string playerName = SCR_BlockedUsersDialogEntryUIComponent.Cast(m_wCurrentSelectedEntry.FindHandler(SCR_BlockedUsersDialogEntryUIComponent)).GetPlayerName();
+		
+		SCR_ConfigurableDialogUi dialog = new SCR_ConfigurableDialogUi();
+		SCR_ConfigurableDialogUi.CreateFromPreset(BLOCKED_USER_DIALOG_CONFIG, "unblock_player_confirm", dialog);
+		
+		//dialog.SetMessage(string.Format(UNBLOCK_CONFIRM_MESSAGE, playerName));
+		TextWidget txtWidget = dialog.GetMessageWidget();
+		txtWidget.SetTextFormat(UNBLOCK_CONFIRM_MESSAGE, playerName);
+		
+		dialog.m_OnConfirm.Insert(OnUserUnblock);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnUserUnblock()
 	{	
 		BlockListItem userItem;
@@ -171,46 +206,41 @@ class SCR_BlockedUsersDialogUI : SCR_ConfigurableDialogUi
 		if (!userItem)
 			return;
 		
-		m_BlocklistCallback = new SCR_BlocklistUnblockCallback(this);
+		m_BlocklistCallback = new BackendCallback();
+		m_BlocklistCallback.SetOnSuccess(OnBlocklistRequestSuccess);
+		m_BlocklistCallback.SetOnError(OnBlocklistRequestError);
 		userItem.DeleteBlock(m_BlocklistCallback);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnViewGamecard()
-	{
-		// TODO:@brucknerjul Add functionality to view PSN profile when Button is clicked. API needed.		
+	{	
+		//TODO: Fill in with view profile functionality once it's all implemented.
+		//GetGame().GetPlayerManager().ShowUserProfile(m_wCurrentSelectedEntry.GetUserID());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
-		SCR_WidgetHelper.RemoveAllChildren(m_wUserListWidget);
+		if (m_wUserListWidget)
+		{
+			SCR_WidgetHelper.RemoveAllChildren(m_wUserListWidget);
+		}
 		GetGame().OnInputDeviceUserChangedInvoker().Remove(OnInputTypeChanged);
 	}
-}
-
-class SCR_BlocklistUnblockCallback : BackendCallback
-{
-	SCR_BlockedUsersDialogUI m_wDialogUI;
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_BlocklistUnblockCallback(SCR_BlockedUsersDialogUI dialogUI)
+	void OnBlocklistRequestSuccess()
 	{
-		m_wDialogUI = dialogUI;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnSuccess(int code)
-	{
-		m_wDialogUI.m_wCurrentSelectedEntry.RemoveFromHierarchy();
-		m_wDialogUI.m_mUserList.Remove(m_wDialogUI.m_wCurrentSelectedEntry);
-		m_wDialogUI.m_wCurrentSelectedEntry = null;
-		m_wDialogUI.m_UnblockButton.SetEnabled(false);
-		SocialComponent.UpdateBlockList();
+		m_wCurrentSelectedEntry.RemoveFromHierarchy();
+		m_mUserList.Remove(m_wCurrentSelectedEntry);
+		m_wCurrentSelectedEntry = null;
+		m_UnblockButton.SetEnabled(false);
+		GetGame().GetGameBlocklist().UpdateBlockList();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnError(int code, int restCode, int apiCode)
+	void OnBlocklistRequestError()
 	{
 		SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, "block_failed_general", dialog);

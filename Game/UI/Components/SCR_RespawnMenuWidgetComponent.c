@@ -24,6 +24,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 	protected Widget m_wDefaultFocusWidget;
 	protected Widget m_wDpadActionWidgetRightMenu;
 	protected Widget m_wDpadActionWidgetToolMenu;
+	protected Widget m_wDpadActionWidgetBackground;
 	protected Widget m_wMapToolWidget;
 	protected Widget m_wLoadoutSelector;
 	protected SCR_ButtonBaseComponent m_LoadoutSelectorBtnLeft, m_LoadoutSelectorBtnRight;
@@ -94,6 +95,9 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		
 		if (m_wDpadActionWidgetToolMenu)
 			m_wDpadActionWidgetToolMenu.SetVisible(show);
+		
+		if (m_wDpadActionWidgetBackground)
+			m_wDpadActionWidgetBackground.SetVisible(show);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -161,6 +165,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		m_wLoadoutSelector = widget.FindAnyWidget("Selector");
 		
 		m_wDpadActionWidgetToolMenu = m_wMapToolWidget.FindAnyWidget("Action");
+		m_wDpadActionWidgetBackground = m_wMapToolWidget.FindAnyWidget("ActionBG");
 		m_MapToolMenuUI = SCR_MapToolMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapToolMenuUI));
 		
 		widget = m_wRoot.FindAnyWidget("PagingLeft");
@@ -185,7 +190,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 
 		m_wOwner = w;
 		m_wRoot = SCR_WidgetHelper.GetRootWidget(m_wOwner);
-		m_wDpadActionWidgetRightMenu = w.FindAnyWidget("Action");
+		m_wDpadActionWidgetRightMenu = w.FindAnyWidget("Control-Hint-Loadout");
 		m_wDefaultFocusWidget = m_wOwner.FindAnyWidget(m_sDefaultButtonName);
 		
 		//Delayed caching of other widgets, as they are initialised later

@@ -11,6 +11,10 @@ void PlayerFactionResponseDelegate(SCR_PlayerFactionAffiliationComponent compone
 typedef func PlayerFactionResponseDelegate;
 typedef ScriptInvokerBase<PlayerFactionResponseDelegate> OnPlayerFactionResponseInvoker;
 
+void PlayerFactionChangedDelegate(SCR_PlayerFactionAffiliationComponent component, Faction previous, Faction current);
+typedef func PlayerFactionChangedDelegate;
+typedef ScriptInvokerBase<PlayerFactionChangedDelegate> OnPlayerFactionChangedInvoker;
+
 //! This component should be attached to a PlayerController.
 //! It manages player-specific faction and the communication between player and authority regarding so.
 class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
@@ -108,6 +112,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	{
 		return m_OnPlayerFactionResponseInvoker_O;
 	}
+	
 	protected ref OnPlayerFactionResponseInvoker m_OnPlayerFactionResponseInvoker_S = new OnPlayerFactionResponseInvoker();
 	//------------------------------------------------------------------------------------------------
 	//! \return an invoker that is invoked after this component receives a response from the authority regarding faction change.
@@ -116,6 +121,14 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		return m_OnPlayerFactionResponseInvoker_S;
 	}
 	
+	protected ref OnPlayerFactionChangedInvoker m_OnPlayerFactionChangedInvoker = new OnPlayerFactionChangedInvoker();
+	//------------------------------------------------------------------------------------------------
+	//! \return an invoker that is invoked after change of affliated faction on client and server.
+	OnPlayerFactionChangedInvoker GetOnPlayerFactionChangedInvoker()
+	{
+		return m_OnPlayerFactionChangedInvoker;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected bool IsOwner()
 	{
@@ -163,7 +176,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerFactionAffiliationComponent::RequestFaction - Caught request on locked player!", LogLevel.DEBUG);
 			return false;
 		}
 
@@ -192,13 +205,13 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, true))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerFactionAffiliationComponent::Rpc_RequestFaction_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
 		
 		// Notify server
-		GetOnPlayerFactionRequestInvoker_S().Invoke(this, factionIndex);
 
+		GetOnPlayerFactionRequestInvoker_S().Invoke(this, factionIndex);
 		Faction faction = GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
 		if (CanRequestFaction_S(faction))
 		{
@@ -219,7 +232,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	//! 	Handles request on the authority:
 	//! \param[in] faction
 	//! \return true if request was processed successfully.
-	protected bool SetFaction_S(Faction faction)
+	bool SetFaction_S(Faction faction)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
 		Print(string.Format("%1::RequestFaction_S(Faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
@@ -299,14 +312,14 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 	bool CanRequestFaction(Faction faction)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
-		Print(string.Format(Format("%1::CanRequestFaction(faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
+		Print(string.Format("%1::CanRequestFaction(faction: %2)", Type().ToString(), faction), LogLevel.NORMAL);
 		#endif
 		
 		// Lock this		
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, false))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerFactionAffiliationComponent::CanRequestFaction - Caught request on locked player!", LogLevel.DEBUG);
 			return false;
 		}
 
@@ -338,7 +351,7 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		SCR_SpawnLockComponent lock = GetLock();
 		if (lock && !lock.TryLock(this, true))
 		{
-			Debug.Error("Caught request on locked player!");
+			Print("SCR_PlayerFactionAffiliationComponent::Rpc_RequestFaction_S - Caught request on locked player!", LogLevel.DEBUG);
 			return;
 		}
 		
@@ -422,6 +435,15 @@ class SCR_PlayerFactionAffiliationComponent : SCR_FactionAffiliationComponent
 		// Notify owner
 		GetOnCanPlayerFactionResponseInvoker_O().Invoke(this, factionIndex, response);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnFactionChanged(Faction previous, Faction current)
+	{
+		super.OnFactionChanged(previous, current);
+		SCR_LogitechLEDManager.SetFactionColor(current);
+		GetOnPlayerFactionChangedInvoker().Invoke(this, previous, current);
+	}
+	
 
 	#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------

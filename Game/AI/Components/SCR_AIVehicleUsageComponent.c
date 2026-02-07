@@ -38,6 +38,7 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 	protected ref ScriptInvokerBase<SCR_AIOnVehicleDamageStateChanged> m_OnDamageStateChanged;
 	protected TurretCompartmentSlot m_TurretSlot;
 	protected PilotCompartmentSlot m_PilotSlot;
+	protected SCR_DamageManagerComponent m_DamageManager;
 
 	//------------------------------------------------------------------------------
 	ScriptInvokerBase<SCR_AIOnVehicleDeleted> GetOnDeleted()
@@ -86,6 +87,53 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 		return m_eVehicleType != EAIVehicleType.INVALID;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Determines whether the specified AI group is occupying this vehicle.
+	//! \param[in] aiGroup The AI group to check for occupancy.
+	//! \return Returns true if any member of the group is occupying the vehicle; otherwise, false.
+	bool IsOccupiedByGroup(notnull SCR_AIGroup aiGroup)
+	{
+		array<AIAgent> members = {};
+		aiGroup.GetAgents(members);
+		foreach (AIAgent agent : members)
+		{
+			if (IsOccupiedBy(agent.GetControlledEntity()))
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks whether the specified entity is occupying any compartment in this vehicle.
+	//! \param[in] entity The entity to check for occupancy.
+	//! \return Returns true if the entity is occupying a compartment; otherwise, false.
+	bool IsOccupiedBy(IEntity entity)
+	{
+		SCR_BaseCompartmentManagerComponent compartmentMananager = SCR_BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (!compartmentMananager)
+			return false;
+
+		array<BaseCompartmentSlot> compartmentSlots = {};
+		compartmentMananager.GetCompartments(compartmentSlots);
+		foreach (BaseCompartmentSlot slot : compartmentSlots)
+		{
+			if (slot.GetOccupant() == entity)
+				return true;
+		}
+
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	EDamageState GetDamageState()
+	{
+		if (!m_DamageManager)
+			return EDamageState.UNDAMAGED;
+
+		return m_DamageManager.GetState();
+	}
+
 	//---------------------------------------------------------------------------------------------------
 	//! Finds the component on nearest parent of that entity, including that entity.
 	//! This should help with vehicles which have benches as slots, or static weapons which are children of compositions.
@@ -118,6 +166,9 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 	//------------------------------------------------------------------------------
 	protected void ~SCR_AIVehicleUsageComponent()
 	{		
+		if (m_DamageManager)
+			m_DamageManager.GetOnDamageStateChanged().Remove(OnDamageStateChanged);
+
 		if (m_OnDeleted)
 			m_OnDeleted.Invoke(this);
 	}
@@ -134,9 +185,9 @@ class SCR_AIVehicleUsageComponent : ScriptComponent
 	//------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
 	{
-		SCR_DamageManagerComponent damageMgr = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
-		if (damageMgr)
-			damageMgr.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
+		m_DamageManager = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
+		if (m_DamageManager)
+			m_DamageManager.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
 
 		// find pilot & turret slots
 		SCR_BaseCompartmentManagerComponent compartmentMan = SCR_BaseCompartmentManagerComponent.Cast(owner.FindComponent(SCR_BaseCompartmentManagerComponent));

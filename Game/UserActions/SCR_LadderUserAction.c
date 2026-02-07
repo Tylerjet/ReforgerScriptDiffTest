@@ -3,7 +3,6 @@ class SCR_LadderUserAction : ScriptedUserAction
 {
 	static const float MAX_LADDER_TEST_DISTANCE = 5.0;
 	static const float MAX_LADDER_ENTRY_ANGLE = 75.0;
-	protected IEntity m_pLadderOwner;
 	
 	[Attribute("0", UIWidgets.EditBox, "Which ladder component to use", "0 inf")]
 	protected int m_iLadderComponentIndex;
@@ -17,8 +16,6 @@ class SCR_LadderUserAction : ScriptedUserAction
 			Print("m_iLadderComponentIndex : " + m_iLadderComponentIndex + " is not an index valid", LogLevel.ERROR);
 			return;
 		}
-		
-		m_pLadderOwner = pOwnerEntity;
 	}
 	
 	protected SCR_CharacterCommandHandlerComponent FindCommandHandler(IEntity pUser)
@@ -38,7 +35,7 @@ class SCR_LadderUserAction : ScriptedUserAction
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		CharacterControllerComponent controller = character.GetCharacterController();
-		controller.TryUseLadder(m_pLadderOwner, m_iLadderComponentIndex, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
+		controller.TryUseLadder(GetOwner(), m_iLadderComponentIndex, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
 	}	
 	
 	protected override bool CanBePerformedScript(IEntity user)
@@ -48,14 +45,11 @@ class SCR_LadderUserAction : ScriptedUserAction
 			return false;
 		
 		CharacterControllerComponent controller = character.GetCharacterController();
-		return controller && controller.CanUseLadder(m_pLadderOwner, m_iLadderComponentIndex, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
+		return controller && controller.CanUseLadder(GetOwner(), m_iLadderComponentIndex, MAX_LADDER_TEST_DISTANCE, MAX_LADDER_ENTRY_ANGLE);
 	}
 	
 	protected override bool CanBeShownScript(IEntity user)
-	{
-		if (!m_pLadderOwner)
-			return false;
-		
+	{		
 		// Already on a ladder
 		SCR_CharacterCommandHandlerComponent cmdHandler = FindCommandHandler(user);
 		return cmdHandler && !cmdHandler.GetCommandLadder();

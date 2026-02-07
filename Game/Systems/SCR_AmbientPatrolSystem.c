@@ -11,15 +11,33 @@ class SCR_AmbientPatrolSystem : GameSystem
 
 	protected static const int CHECK_INTERVAL = 3;					//s, how often should an individual patrol spawn be checked
 	protected static const int DESPAWN_TIMEOUT = 10000;				//ms
-	protected static const int SPAWN_RADIUS_MIN_SQ = 500 * 500;		// Square value for distance checks
-	protected static const int SPAWN_RADIUS_MAX_SQ = 1000 * 1000;	// Square value for distance checks
 	protected static const int SPAWN_RADIUS_BLOCK_SQ = 150 * 150;	// Square value for distance checks
-	protected static const int DESPAWN_RADIUS_DIFF_SQ = 200 * 200;	// Square value for distance checks
+
+	[Attribute("250", desc: "Minimum allowed spawn distance, in meters.")]
+	protected int m_iMinSpawnDistance;
+
+	[Attribute("1000", desc: "Maximum allowed spawn distance, in meters.")]
+	protected int m_iMaxSpawnDistance;
+
+	[Attribute("200", desc: "Buffer distance, in meters, added beyond spawn distance before entities are despawned.")]
+	protected int m_iDespawnBufferDistance;
+
+	[Attribute("250", desc: "Minimum allowed despawn distance, in meters.")]
+	protected int m_iMinDespawnDistance;
+
+	[Attribute("1000", desc: "Maximum allowed despawn distance, in meters.")]
+	protected int m_iMaxDespawnDistance;
+
+	protected int m_iMinSpawnDistanceSq = m_iMinSpawnDistance * m_iMinSpawnDistance;
+	protected int m_iMaxSpawnDistanceSq = m_iMaxSpawnDistance * m_iMaxSpawnDistance;
+
+	protected int m_iDespawnBufferDistanceSq = m_iDespawnBufferDistance * m_iDespawnBufferDistance;
+	protected int m_iMinDespawnDistanceSq = m_iMinDespawnDistance * m_iMinDespawnDistance;
+	protected int m_iMaxDespawnDistanceSq = m_iMaxDespawnDistance * m_iMaxDespawnDistance;
 
 	protected ref array<SCR_AmbientPatrolSpawnPointComponent> m_aPatrols = {};
 	protected ref array<IEntity> m_aPlayers = {};
 
-	protected int m_iLastAssignedIndex;
 	protected int m_iIndexToCheck;
 	protected int m_iSpawnDistanceSq;
 	protected int m_iDespawnDistanceSq;
@@ -38,13 +56,10 @@ class SCR_AmbientPatrolSystem : GameSystem
 
 		// Calculate (de)spawn distance based on view distance, have it squared for faster distance calculation
 		int fractionOfVD = GetGame().GetViewDistance() * 0.3;
-		m_iSpawnDistanceSq = fractionOfVD * fractionOfVD;
-		m_iSpawnDistanceSq = Math.Min(SPAWN_RADIUS_MAX_SQ, m_iSpawnDistanceSq);
-		m_iSpawnDistanceSq = Math.Max(SPAWN_RADIUS_MIN_SQ, m_iSpawnDistanceSq);
-		m_iDespawnDistanceSq = m_iSpawnDistanceSq + DESPAWN_RADIUS_DIFF_SQ;
+		m_iSpawnDistanceSq = ClampSpawnDistanceSq(fractionOfVD * fractionOfVD);
+		m_iDespawnDistanceSq = ClampDespawnDistanceSq(m_iSpawnDistanceSq + m_iDespawnBufferDistanceSq);
 
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-
 		if (!gameMode)
 			return;
 
@@ -58,7 +73,6 @@ class SCR_AmbientPatrolSystem : GameSystem
 	override event protected void OnCleanup()
 	{
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-
 		if (!gameMode)
 			return;
 
@@ -69,7 +83,7 @@ class SCR_AmbientPatrolSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override event protected void OnUpdate(ESystemPoint point)
+	override event protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
 		if (!GetGame().AreGameFlagsSet(EGameFlags.SpawnAI))
 		{
@@ -77,24 +91,18 @@ class SCR_AmbientPatrolSystem : GameSystem
 			return;
 		}
 
-		float timeSlice = GetWorld().GetFixedTimeSlice();
-
-		m_fTimer += timeSlice;
-
+		m_fTimer += args.GetTimeSliceSeconds();
 		if (m_fTimer < m_fCheckInterval)
 			return;
 
 		m_fTimer = 0;
 
-		// HOTFIX: Don't process spawning at the very start - wait for a save to be applied if it exists
+		// Don't process spawning at the very start - wait for a save to be applied if it exists
 		// Otherwise full-size groups get spawned even if they are marked as eliminated in the save file
-		// TODO: Come up with a better solution
-		if (GetGame().GetWorld().GetWorldTime() < SCR_GameModeCampaign.BACKEND_DELAY)
+		if (SCR_PersistenceSystem.IsLoadInProgress())
 			return;
 
-		ProcessSpawnpoint(m_iIndexToCheck);
-		m_iIndexToCheck++;
-
+		ProcessSpawnpoint(m_iIndexToCheck++);
 		if (!m_aPatrols.IsIndexValid(m_iIndexToCheck))
 			m_iIndexToCheck = 0;
 	}
@@ -114,6 +122,18 @@ class SCR_AmbientPatrolSystem : GameSystem
 			return null;
 
 		return SCR_AmbientPatrolSystem.Cast(world.FindSystem(SCR_AmbientPatrolSystem));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected int ClampSpawnDistanceSq(int spawnDistanceSq)
+	{
+		return Math.ClampInt(spawnDistanceSq, m_iMinSpawnDistanceSq, m_iMaxSpawnDistanceSq);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected int ClampDespawnDistanceSq(int despawnDistanceSq)
+	{
+		return Math.ClampInt(despawnDistanceSq, m_iMinDespawnDistanceSq, m_iMaxDespawnDistanceSq);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -153,54 +173,14 @@ class SCR_AmbientPatrolSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Composes an array of surviving ambient patrols which can be serialized
-	int GetRemainingPatrolsInfo(out notnull array<int> remnantsInfo)
-	{
-		int size;
-		ChimeraWorld world = GetWorld();
-		WorldTimestamp curTime = world.GetServerTimestamp();
-
-		foreach (SCR_AmbientPatrolSpawnPointComponent presence : m_aPatrols)
-		{
-			if (!presence)
-				continue;
-
-			SCR_AIGroup grp = presence.GetSpawnedGroup();
-
-			if (presence.GetMembersAlive() < 0 && !grp && !presence.GetIsSpawned())
-				continue;
-
-			remnantsInfo.Insert(presence.GetID());
-
-			if (grp)
-			{
-				size = remnantsInfo.Insert(grp.GetAgentsCount());
-			}
-			else
-			{
-				if (presence.GetIsSpawned())
-					size = remnantsInfo.Insert(0);
-				else
-					size = remnantsInfo.Insert(presence.GetMembersAlive());
-			}
-
-			// Subtract current time so when data is loaded at scenario start, the delay is correct
-			remnantsInfo.Insert(presence.GetRespawnTimestamp().DiffMilliseconds(curTime));
-		}
-
-		return size;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void ProcessSpawnpoint(int spawnpointIndex)
 	{
 		SCR_AmbientPatrolSpawnPointComponent spawnpoint = m_aPatrols[spawnpointIndex];
-
 		if (!spawnpoint || (spawnpoint.GetMembersAlive() == 0 && !spawnpoint.GetIsSpawned()))
 			return;
 
 		ChimeraWorld world = GetWorld();
-		WorldTimestamp currentTime = world.GetServerTimestamp();
+		const WorldTimestamp currentTime = world.GetServerTimestamp();
 		if (spawnpoint.GetRespawnTimestamp().Greater(currentTime))
 			return;
 
@@ -216,6 +196,16 @@ class SCR_AmbientPatrolSystem : GameSystem
 		vector location = spawnpoint.GetOwner().GetOrigin();
 		int distance;
 
+		int spawnDistanceSq = m_iSpawnDistanceSq;
+		int spawnPointSpawnDistance = spawnpoint.GetSpawnDistanceOverride();
+		if (spawnPointSpawnDistance >= 0)
+			spawnDistanceSq = ClampSpawnDistanceSq(spawnPointSpawnDistance * spawnPointSpawnDistance);
+
+		int despawnDistanceSq = m_iDespawnDistanceSq;
+		int spawnPointDespawnDistance = spawnpoint.GetDespawnDistanceOverride();
+		if (spawnPointDespawnDistance >= 0)
+			despawnDistanceSq = ClampDespawnDistanceSq(spawnPointDespawnDistance * spawnPointDespawnDistance);
+
 		// Define if any player is close enough to spawn or if all players are far enough to despawn
 		foreach (IEntity player : m_aPlayers)
 		{
@@ -224,12 +214,12 @@ class SCR_AmbientPatrolSystem : GameSystem
 
 			distance = vector.DistanceSq(player.GetOrigin(), location);
 
-			if (distance > m_iDespawnDistanceSq)
+			if (distance > despawnDistanceSq)
 				continue;
 
 			playersFar = false;
 
-			if (distance > m_iSpawnDistanceSq)
+			if (distance > spawnDistanceSq)
 				continue;
 
 			playersNear = true;
@@ -243,7 +233,6 @@ class SCR_AmbientPatrolSystem : GameSystem
 
 		bool isAIOverLimit;
 		AIWorld aiWorld = GetGame().GetAIWorld();
-
 		if (aiWorld)
 		{
 			int maxChars = aiWorld.GetLimitOfActiveAIs();
@@ -273,16 +262,19 @@ class SCR_AmbientPatrolSystem : GameSystem
 		// Delay is used so dying players don't see the despawn happen
 		if (spawnpoint.GetIsSpawned() && playersFar && spawnpoint.IsGroupActive())
 		{
-			WorldTimestamp despawnT = spawnpoint.GetDespawnTimer();
-
+			const WorldTimestamp despawnT = spawnpoint.GetDespawnTimestamp();
 			if (despawnT == 0)
-				spawnpoint.SetDespawnTimer(currentTime.PlusMilliseconds(DESPAWN_TIMEOUT));
+			{
+				spawnpoint.SetDespawnTimestamp(currentTime.PlusMilliseconds(DESPAWN_TIMEOUT));
+			}
 			else if (currentTime.Greater(despawnT))
+			{
 				spawnpoint.DeactivateGroup();
+			}
 		}
 		else
 		{
-			spawnpoint.SetDespawnTimer(null);
+			spawnpoint.SetDespawnTimestamp(null);
 		}
 	}
 
@@ -293,8 +285,6 @@ class SCR_AmbientPatrolSystem : GameSystem
 			Enable(true);
 
 		m_aPatrols.Insert(patrol);
-		patrol.SetID(m_iLastAssignedIndex);
-		m_iLastAssignedIndex++;
 		UpdateCheckInterval();
 	}
 
@@ -314,12 +304,9 @@ class SCR_AmbientPatrolSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetPatrols(out array<SCR_AmbientPatrolSpawnPointComponent> patrols)
+	int GetPatrols(notnull out array<SCR_AmbientPatrolSpawnPointComponent> patrols)
 	{
-		if (patrols)
-			return patrols.Copy(m_aPatrols);
-		else
-			return m_aPatrols.Count();
+		return patrols.Copy(m_aPatrols);
 	}
 
 	//------------------------------------------------------------------------------------------------

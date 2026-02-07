@@ -10,6 +10,12 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 
 	[Attribute(desc: "Description of the task", category: "Task")]
 	LocalizedString m_sTaskDescription;
+	
+	[Attribute(params: "edds imageset", uiwidget: UIWidgets.ResourcePickerThumbnail, desc: "Task icon set", category: "Task UI")]
+	ResourceName m_sTaskIconSet;
+	
+	[Attribute(desc: "Name of the specific icon from the icon set", category: "Task UI")]
+	string m_sTaskIconName;
 
 	[Attribute(desc: "Text for the Execution category in Briefing", category: "Task")]
 	LocalizedString m_sTaskExecutionBriefing;
@@ -23,50 +29,67 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Finish Conditions.", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Task")]
 	SCR_EScenarioFrameworkLogicOperators m_eFinishConditionLogic;
 
-	[Attribute(defvalue: "1", desc: "What to do once task is finished", UIWidgets.Auto, category: "OnTaskFinish")]
+	[Attribute(desc: "What to do once task is finished", UIWidgets.Auto, category: "Task State Changed Actions")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFinished;
 
-	[Attribute(defvalue: "1", desc: "What to do once task is created", UIWidgets.Auto, category: "OnTaskCreate")]
+	[Attribute(desc: "What to do once task is created", UIWidgets.Auto, category: "Task State Changed Actions")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnCreated;
 
-	[Attribute(defvalue: "1", desc: "What to do once task is created", UIWidgets.Auto, category: "OnTaskFailed")]
+	[Attribute(desc: "What to do once task is created", UIWidgets.Auto, category: "Task State Changed Actions")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFailed;
+	
+	[Attribute(desc: "What to do once task is cancelled", UIWidgets.Auto, category: "Task State Changed Actions")]
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnCancelled;
 
-	[Attribute(defvalue: "1", desc: "What to do once task progressed", UIWidgets.Auto, category: "OnTaskProgress")]
+	[Attribute(desc: "What to do once task progressed", UIWidgets.Auto, category: "Task State Changed Actions")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnProgress;
 
-	[Attribute(defvalue: "1", desc: "What to do once task is updated", UIWidgets.Auto, category: "OnTaskUpdated")]
-	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnUpdated;
+	[Attribute(desc: "What to do once task is updated", UIWidgets.Auto, category: "Task State Changed Actions")]
+	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnAssigned;
 
-	SCR_ScenarioFrameworkLayerTask	m_TaskLayer;		//parent layer where the task is defined
+	SCR_ScenarioFrameworkLayerTask	m_TaskLayer;
 	bool m_bTaskResolvedBeforeLoad;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] newState Task state change event, triggers actions based on state change.
-	void OnTaskStateChanged(SCR_TaskState newState)
+	void OnTaskStateChanged(SCR_ETaskState newState)
 	{
-		if (newState == SCR_TaskState.OPENED)
+		if (m_TaskLayer)
+		{
+			SCR_ScenarioFrameworkTask task = m_TaskLayer.GetTask();
+			if (task)
+				m_TaskLayer.OnTaskStateChanged(task.GetTaskState(), newState);
+		}
+		
+		if (newState == SCR_ETaskState.CREATED)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnCreated)
 			{
 				action.OnActivate(GetOwner());
 			}
 		}
-		else if (newState == SCR_TaskState.FINISHED && !m_bTaskResolvedBeforeLoad)
+		else if (newState == SCR_ETaskState.COMPLETED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnFinished)
 			{
 				action.OnActivate(GetOwner());
 			}
 		}
-		else if (newState == SCR_TaskState.CANCELLED && !m_bTaskResolvedBeforeLoad)
+		else if (newState == SCR_ETaskState.FAILED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnFailed)
 			{
 				action.OnActivate(GetOwner());
 			}
 		}
-		else if (newState == SCR_TaskState.PROGRESSED && !m_bTaskResolvedBeforeLoad)
+		else if (newState == SCR_ETaskState.CANCELLED && !m_bTaskResolvedBeforeLoad)
+		{
+			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnCancelled)
+			{
+				action.OnActivate(GetOwner());
+			}
+		}
+		else if (newState == SCR_ETaskState.PROGRESSED && !m_bTaskResolvedBeforeLoad)
 		{
 			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnProgress)
 			{
@@ -75,7 +98,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		}
 		else
 		{
-			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnUpdated)
+			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnAssigned)
 			{
 				action.OnActivate(GetOwner());
 			};
@@ -128,24 +151,24 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	//! \return the description string for the current task state.
 	string GetTaskDescription(int iState = 0)
 	{
-			return m_sTaskDescription;
+		return m_sTaskDescription;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return Represents the current state of the task or its parent task layer, if no parent layer exists, it returns OPENED
-	SCR_TaskState GetTaskState()
+	//! \return Represents the current state of the task or its parent task layer, if no parent layer exists, it returns CREATED
+	SCR_ETaskState GetTaskState()
 	{
 		if (!m_TaskLayer)
 		{
 			m_TaskLayer = GetParentTaskLayer();
 			if (!m_TaskLayer)
-				return SCR_TaskState.OPENED;
+				return SCR_ETaskState.CREATED;
 		}
 		
 		if (m_TaskLayer.m_Task)
 			return m_TaskLayer.m_Task.GetTaskState();
 		else
-			return SCR_TaskState.OPENED;
+			return SCR_ETaskState.CREATED;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -175,31 +198,36 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnFinished)
 		{
-			activationAction.m_iNumberOfActivations = 0;
+			activationAction.RestoreToDefault();
 		}
 		
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnCreated)
 		{
-			activationAction.m_iNumberOfActivations = 0;
+			activationAction.RestoreToDefault();
 		}
 		
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnFailed)
 		{
-			activationAction.m_iNumberOfActivations = 0;
+			activationAction.RestoreToDefault();
+		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnCancelled)
+		{
+			activationAction.RestoreToDefault();
 		}
 		
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnProgress)
 		{
-			activationAction.m_iNumberOfActivations = 0;
+			activationAction.RestoreToDefault();
 		}
 		
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnUpdated)
+		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnAssigned)
 		{
-			activationAction.m_iNumberOfActivations = 0;
+			activationAction.RestoreToDefault();
 		}
 		
-		if (m_TaskLayer && m_TaskLayer.m_SupportEntity && m_TaskLayer.m_Task)
-			m_TaskLayer.m_SupportEntity.CancelTask(m_TaskLayer.m_Task.GetTaskID());
+		if (m_TaskLayer)
+			m_TaskLayer.ProcessLayerTaskState(SCR_ETaskState.CANCELLED);
 		
 		m_TaskLayer = null;
 		m_bTaskResolvedBeforeLoad = false;
@@ -289,12 +317,10 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 		if (!m_TaskLayer)
 		{
 			m_TaskLayer = GetParentTaskLayer();
-			if (!m_TaskLayer || !m_TaskLayer.m_SupportEntity)
+			if (!m_TaskLayer)
 				return;
-			
-			SCR_ScenarioFrameworkTask task = m_TaskLayer.GetTask();
-			if (task)
-				m_TaskLayer.m_SupportEntity.CancelTask(task.GetTaskID());
+
+			m_TaskLayer.ProcessLayerTaskState(SCR_ETaskState.CANCELLED);
 		}
 	}
 }

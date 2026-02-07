@@ -28,6 +28,8 @@ class SCR_CampaignMapUIElement : SCR_MapUIElement
 	protected string m_sRelay;
 	[Attribute("Base")]
 	protected string m_sBase;
+	[Attribute("SourceBase")]
+	protected string m_sSourceBase;
 	[Attribute("Mobile")]
 	protected string m_sMobileAssembly;
 	[Attribute("Major")]

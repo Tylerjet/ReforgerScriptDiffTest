@@ -576,26 +576,55 @@ class TextureTypes
 			if (!confPc.IsVariableSetDirectly(name))
 				continue;
 
-			int propValPc, propValPcAncestor;
-			if (!confPc.Get(name, propValPc))
-				continue;
-			if (!confPcAncestor.Get(name, propValPcAncestor))
-				continue;
-
-			if (propValPc == propValPcAncestor)
+			DataVarType varType = confPc.GetDataVarType(iVar);
+			if (varType == DataVarType.SCALAR)
 			{
-				if (op & TextureIssueOp.Report)
-				{
-					PrintFormat(
-						"@\"%1\" : Configuration 'PC' has directly set value for property '%2', even though same value is inherited from ancestor.",
-						resourceName, name
-					);
-				}
+				float propValPc, propValPcAncestor;
+				if (!confPc.Get(name, propValPc))
+					continue;
+				if (!confPcAncestor.Get(name, propValPcAncestor))
+					continue;
 
-				if (op & TextureIssueOp.Fix)
+				if (propValPc == propValPcAncestor)
 				{
-					propertiesModified = true;
-					confPc.ClearVariable(name);
+					if (op & TextureIssueOp.Report)
+					{
+						PrintFormat(
+							"@\"%1\" : Configuration 'PC' has directly set value for property '%2', even though same value is inherited from ancestor.",
+							resourceName, name
+						);
+					}
+
+					if (op & TextureIssueOp.Fix)
+					{
+						propertiesModified = true;
+						confPc.ClearVariable(name);
+					}
+				}
+			}
+			else
+			{
+				int propValPc, propValPcAncestor;
+				if (!confPc.Get(name, propValPc))
+					continue;
+				if (!confPcAncestor.Get(name, propValPcAncestor))
+					continue;
+
+				if (propValPc == propValPcAncestor)
+				{
+					if (op & TextureIssueOp.Report)
+					{
+						PrintFormat(
+							"@\"%1\" : Configuration 'PC' has directly set value for property '%2', even though same value is inherited from ancestor.",
+							resourceName, name
+						);
+					}
+
+					if (op & TextureIssueOp.Fix)
+					{
+						propertiesModified = true;
+						confPc.ClearVariable(name);
+					}
 				}
 			}
 		}
@@ -635,37 +664,87 @@ class TextureTypes
 					continue;
 				}
 
+				DataVarType varType = confPc.GetDataVarType(iVar);
 				bool isSetDirectlyPc = confPc.IsVariableSetDirectly(namePc);
 				bool isSetDirectlyDerived = confDerived.IsVariableSetDirectly(nameDerived);
 				if (isSetDirectlyPc)
 				{
-					int propValPc, propValDerived;
-					if (!confPc.Get(namePc, propValPc))
-						continue;
-
-					if (!confDerived.Get(nameDerived, propValDerived))
-						continue;
-
-					if (propValPc != propValDerived)
+					if (varType == DataVarType.SCALAR)
 					{
+						float propValPc, propValDerived;
+						if (!confPc.Get(namePc, propValPc))
+							continue;
+
+						if (!confDerived.Get(nameDerived, propValDerived))
+							continue;
+
+						if (propValPc != propValDerived)
+						{
+							if (op & TextureIssueOp.Report)
+							{
+								PrintFormat(
+									"@\"%1\" : Configuration '%2' has wrong value in property '%3': expected '%4', found '%5'",
+									resourceName, confName, nameDerived, propValPc, propValDerived
+								);
+							}
+
+							if (op & TextureIssueOp.Fix)
+							{
+								propertiesModified = true;
+								confDerived.Set(nameDerived, propValPc);
+							}
+						}
+					}
+					else
+					{
+						int propValPc, propValDerived;
+						if (!confPc.Get(namePc, propValPc))
+							continue;
+
+						if (!confDerived.Get(nameDerived, propValDerived))
+							continue;
+
+						if (propValPc != propValDerived)
+						{
+							if (op & TextureIssueOp.Report)
+							{
+								PrintFormat(
+									"@\"%1\" : Configuration '%2' has wrong value in property '%3': expected '%4', found '%5'",
+									resourceName, confName, nameDerived, propValPc, propValDerived
+								);
+							}
+
+							if (op & TextureIssueOp.Fix)
+							{
+								propertiesModified = true;
+								confDerived.Set(nameDerived, propValPc);
+							}
+						}
+					}
+				}
+				else if (isSetDirectlyDerived)
+				{
+					if (varType == DataVarType.SCALAR)
+					{
+						float propValDerived;
+						if (!confDerived.Get(nameDerived, propValDerived))
+							continue;
+
 						if (op & TextureIssueOp.Report)
 						{
 							PrintFormat(
-								"@\"%1\" : Configuration '%2' has wrong value in property '%3': expected '%4', found '%5'",
-								resourceName, confName, nameDerived, propValPc, propValDerived
+								"@\"%1\" : Configuration '%2' has property '%3' set directly while 'PC' doesn't. value: '%4'",
+								resourceName, confName, nameDerived, propValDerived
 							);
 						}
 
 						if (op & TextureIssueOp.Fix)
 						{
 							propertiesModified = true;
-							confDerived.Set(nameDerived, propValPc);
+							confDerived.ClearVariable(nameDerived);
 						}
 					}
-				}
-				else
-				{
-					if (isSetDirectlyDerived)
+					else
 					{
 						int propValDerived;
 						if (!confDerived.Get(nameDerived, propValDerived))
@@ -824,7 +903,6 @@ class TextureImportPlugin: ResourceManagerPlugin
 			className == "TIFFResourceClass" ||
 			className == "PNGResourceClass" ||
 			className == "HDRResourceClass" ||
-			className == "PAAResourceClass" ||
 			className == "JPGResourceClass";
 	}
 
@@ -842,8 +920,6 @@ class TextureImportPlugin: ResourceManagerPlugin
 
 	override void OnRenameResource(string absFileNameOld, string absFileNameNew, BaseContainer metaFile)
 	{
-		Print(absFileNameOld);
-		Print(absFileNameNew);
 		BaseContainer conf = metaFile.GetObjectArray("Configurations")[0];
 		if (!Enabled || !IsImage(conf.GetClassName()))
 			return;

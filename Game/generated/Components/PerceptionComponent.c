@@ -21,6 +21,9 @@ class PerceptionComponent: AIComponentEntity
 	Returns count of targets of given category
 	*/
 	proto external int GetTargetCount(ETargetCategory category);
+	/*!
+	Returns target with lowest LastSeen value, but it must be below lastSeenMax
+	*/
 	proto external BaseTarget GetLastSeenTarget(ETargetCategory category, float timeSinceSeenMax);
 	proto external BaseTarget GetTargetPerceptionObject(IEntity entityToFind, ETargetCategory targetCategory);
 	//! Same as GetTargetPerceptionObject, but searches in all categories

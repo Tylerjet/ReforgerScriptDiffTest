@@ -93,17 +93,14 @@ class SCR_AIGetArtilleryAimDistanceCompensation : AITaskScripted
 		bool canHitTarget = false;
 		float aimOffsetVert = 0;
 		int initSpeedId = -1;
+		
+		// First try all variants with the proper ballistics algorithm, with vertical interval compensation
 		for (int i = 0; i < initSpeedCoeffs.Count(); i++)
 		{
 			float initialSpeedCoefficient = initSpeedCoeffs[i];
 			
 			float flightTime;
 			bool ballisticsGood = BallisticTable.GetAimHeightOfProjectileAltitudeFromSource(distToTgtHoriz, aimOffsetVert, flightTime, entitySrc, distToTgtVert, initialSpeedCoefficient);
-			if (!ballisticsGood)
-			{
-				aimOffsetVert = BallisticTable.GetHeightFromProjectileSource(distToTgtHoriz, flightTime, entitySrc, initSpeedCoef: initialSpeedCoefficient, bDirectFire: false);
-				ballisticsGood = flightTime > 0;
-			}
 			
 			// Can't hit it - try next one
 			if (!ballisticsGood)
@@ -117,6 +114,32 @@ class SCR_AIGetArtilleryAimDistanceCompensation : AITaskScripted
 			canHitTarget = true;
 			initSpeedId = i;
 			break;
+		}
+		
+		// If we still can't hit target with proper ballistics calculation, try the basic ballistic algorithm, without vertical interval compensation
+		if (!canHitTarget)
+		{			
+			for (int i = 0; i < initSpeedCoeffs.Count(); i++)
+			{
+				float initialSpeedCoefficient = initSpeedCoeffs[i];
+				
+				float flightTime;
+				aimOffsetVert = BallisticTable.GetHeightFromProjectileSource(distToTgtHoriz, flightTime, entitySrc, initSpeedCoef: initialSpeedCoefficient, bDirectFire: false);
+				bool ballisticsGood = flightTime > 0;
+				
+				// Can't hit it - try next one
+				if (!ballisticsGood)
+					continue;
+				
+				// Can hit it, but is aim angle within the aim limits?
+				float aimAngleTan = (aimOffsetVert + distToTgtVert) / distToTgtHoriz;
+				if (aimAngleTan > aimAngleTanMax || aimAngleTan < aimAngleTanMin)
+					continue;
+				
+				canHitTarget = true;
+				initSpeedId = i;
+				break;
+			}
 		}
 
 		outAimOffsetVert = aimOffsetVert;

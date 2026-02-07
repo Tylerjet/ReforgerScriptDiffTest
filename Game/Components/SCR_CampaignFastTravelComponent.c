@@ -73,24 +73,6 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 		return !m_bEnemiesNearby;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	override protected void RpcAsk_FastTravel(RplId destinationId)
-	{
-		super.RpcAsk_FastTravel(destinationId);
-
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-
-		if (!campaign)
-			return;
-
-		SCR_CampaignClientData clientData = campaign.GetClientData(m_PlayerController.GetPlayerId());
-
-		if (!clientData)
-			return;
-
-		clientData.SetNextFastTravelTimestamp(m_fNextTravelAvailableAt);
-	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
@@ -116,7 +98,7 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 		if (!spawnpoint)
 			return;
 
-		SCR_SelectionMenuEntry entry = m_mMenuEntries.GetKeyByValue(spawnpoint);
+		SCR_SelectionMenuEntry entry = SCR_MapHelper<SCR_SelectionMenuEntry, SCR_DeployableSpawnPoint>.GetKeyByValue(m_mMenuEntries,spawnpoint);
 		
 		if (!entry)
 			return;

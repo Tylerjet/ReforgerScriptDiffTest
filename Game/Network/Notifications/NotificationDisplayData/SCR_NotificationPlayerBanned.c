@@ -8,8 +8,9 @@ class SCR_NotificationPlayerBanned : SCR_NotificationPlayer
 {
 	override string GetText(SCR_NotificationData data)
 	{	
-		int playerID, duration;
-		data.GetParams(playerID, duration);
+		int playerID, kickCauseGroup, kickCauseReason, duration;
+		data.GetParams(playerID, kickCauseGroup, kickCauseReason, duration);
+		KickCauseCode cause = KickCauseCodeAPI.NewCode(kickCauseGroup, kickCauseReason);
 		
 		int days, hours, minutes, seconds;
 		SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(duration, days, hours, minutes, seconds);

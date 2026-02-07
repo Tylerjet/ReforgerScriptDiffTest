@@ -5,87 +5,62 @@ class SCR_MineWeaponComponentClass : WeaponComponentClass
 
 class SCR_MineWeaponComponent : WeaponComponent
 {
+	[RplProp(onRplName: "OnFlagEntitySync")]
+	protected RplId m_FlagEntityId = RplId.Invalid();
+
 	protected IEntity m_FlagEntity;
-	
+
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return
 	bool IsFlagged()
 	{
 		return m_FlagEntity != null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] action
-	void OnFlagRemoved(SCR_MineFlagPickUpAction action)
+	IEntity GetFlagEntity()
 	{
-		m_FlagEntity = null;
-		action.GetOnItemPickUp().Remove(OnFlagRemoved);
+		return m_FlagEntity;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	event protected bool RplLoad(ScriptBitReader reader)
-	{
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	event protected bool RplSave(ScriptBitWriter writer)
-	{
-		return true;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnFlagParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
-		if (newSlot != null) // slot is null when removed from inventory
-			m_FlagEntity = null;
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(m_FlagEntity.FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.m_OnParentSlotChangedInvoker.Remove(OnFlagParentSlotChanged);
+
+		m_FlagEntity = null;
+		m_FlagEntityId = RplId.Invalid();
+		Replication.BumpMe();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected void RegisterToFlag(IEntity flag)
+	//! Call only on server!
+	void SetFlag(IEntity flag)
 	{
-		SCR_MineFlagPickUpAction action = FindAction(flag);
-		if (action)
-			action.GetOnItemPickUp().Insert(OnFlagRemoved);
-		
+		if (m_FlagEntity || !flag)
+			return; // This should never happen!
+
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(flag.FindComponent(InventoryItemComponent));
 		if (itemComponent)
 			itemComponent.m_OnParentSlotChangedInvoker.Insert(OnFlagParentSlotChanged);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected SCR_MineFlagPickUpAction FindAction(IEntity flag)
-	{
-		BaseActionsManagerComponent actionManager = BaseActionsManagerComponent.Cast(flag.FindComponent(BaseActionsManagerComponent));
-		if (!actionManager)
-			return null;
-		
-		array<BaseUserAction> actions = {};
-		int count = actionManager.GetActionsList(actions);
-		SCR_MineFlagPickUpAction action;
-		
-		for (int i = 0; i < count; i++)
-		{
-			action = SCR_MineFlagPickUpAction.Cast(actions[i]);
-			if (action)
-				break;
-		}
-		
-		return action;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Call only on server!
-	//! \param[in] flag
-	void SetFlag(IEntity flag)
-	{
-		if (m_FlagEntity)
-			return; // This should never happen!
-		
+
 		m_FlagEntity = flag;
-		
-		if (flag)
-			RegisterToFlag(flag);
+
+		RplComponent rpl = RplComponent.Cast(flag.FindComponent(RplComponent));
+		if (rpl)
+			m_FlagEntityId = rpl.Id();
+
+		Replication.BumpMe();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFlagEntitySync()
+	{
+		const RplComponent rpl = RplComponent.Cast(Replication.FindItem(m_FlagEntityId));
+		if (rpl)
+			m_FlagEntity = rpl.GetEntity();
+		else
+			m_FlagEntity = null;
 	}
 }

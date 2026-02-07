@@ -109,12 +109,33 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 		
 		UpdateTotalResources(GetTotalResources());
 		
+		// Check if player has enough Military Allocated Supplies
+		CheckPersonalResources(GetPersonalResourceCost());
+		
 		SetItemRank();
 		
 		//Widget ammoTypeWidget = m_widget.FindAnyWidget(AMMOTYPE_WIDGET_NAME);
 		//if (ammoTypeWidget)
 		//	ammoTypeWidget.SetVisible(true);
 		
+		CheckRequiredRank();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Refresh()
+	{
+		super.Refresh();
+		
+		if (!m_pItem || !m_pItem.GetOwner())
+			return;
+		
+		UpdateTotalResources(GetTotalResources());
+		CheckPersonalResources(GetPersonalResourceCost());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CheckRequiredRank()
+	{
 		ImageWidget rankIcon = ImageWidget.Cast(m_widget.FindAnyWidget(RANK_ICON_WIDGET_NAME));
 		if (!rankIcon)
 			return;
@@ -132,10 +153,6 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 
 		SetItemAvailability(false);
 		rankIcon.SetVisible(true);
-		
-		//~ Hide ammo type
-		//if (ammoTypeWidget)
-		//	ammoTypeWidget.SetVisible(false);
 		
 		ResourceName rankIconImageSet = SCR_XPInfoDisplay.GetRankIconImageSet();
 		if (rankIconImageSet.IsEmpty())
@@ -158,14 +175,35 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Refresh()
+	protected void CheckPersonalResources(int cost)
 	{
-		super.Refresh();
-		
-		if (!m_pItem || !m_pItem.GetOwner())
+		if (cost == 0)
 			return;
-		
-		UpdateTotalResources(GetTotalResources());
+
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(playerController.FindComponent(SCR_PlayerSupplyAllocationComponent));
+		if (!playerSupplyAllocationComponent)
+			return;
+
+		SetItemAvailability(cost <= playerSupplyAllocationComponent.GetPlayerAvailableAllocatedSupplies() && m_bIsAvailable)
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected int GetPersonalResourceCost()
+	{
+		SCR_ArsenalManagerComponent arsenalManagerComponent;
+		SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManagerComponent);
+		if (!arsenalManagerComponent || !arsenalManagerComponent.IsMilitarySupplyAllocationEnabled())
+			return 0;
+
+		ResourceName resourceName = m_pItem.GetOwner().GetPrefabData().GetPrefabName();
+		if (resourceName.IsEmpty())
+			return 0;
+
+		return arsenalManagerComponent.GetItemMilitarySupplyAllocationCost(resourceName, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -347,13 +385,40 @@ class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerSupplyAllocationChanged(int amount)
+	{
+		UpdateTotalResources(GetTotalResources());
+		CheckPersonalResources(GetPersonalResourceCost());
+		CheckRequiredRank();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_ArsenalInventorySlotUI(InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null)
 	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(playerController.FindComponent(SCR_PlayerSupplyAllocationComponent));
+		if (!playerSupplyAllocationComponent)
+			return;
+
+		playerSupplyAllocationComponent.GetOnAvailableAllocatedSuppliesChanged().Insert(OnPlayerSupplyAllocationChanged);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_ArsenalInventorySlotUI()
 	{
 		SCR_InventoryStorageBaseUI.ARSENAL_SLOT_STORAGES.Remove(this);
+		
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+
+		SCR_PlayerSupplyAllocationComponent playerSupplyAllocationComponent = SCR_PlayerSupplyAllocationComponent.Cast(playerController.FindComponent(SCR_PlayerSupplyAllocationComponent));
+		if (!playerSupplyAllocationComponent)
+			return;
+
+		playerSupplyAllocationComponent.GetOnAvailableAllocatedSuppliesChanged().Remove(OnPlayerSupplyAllocationChanged);
 	}
 };

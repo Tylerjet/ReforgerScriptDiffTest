@@ -57,9 +57,8 @@ class SCR_AmmoTypeIcon : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetColor(WeaponInfoColorSet colorSet, bool animate)
-	{
-		
+	protected void SetColor(WeaponInfoColorSet colorSet, bool animate)
+	{		
 		AnimateWidget.StopAllAnimations(m_wIconWidget);
 		AnimateWidget.StopAllAnimations(m_wGlowWidget);
 		
@@ -78,8 +77,11 @@ class SCR_AmmoTypeIcon : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void SetNewState(SCR_EWeaponInfoIconState newState)
 	{
+		if (m_currentState == newState)
+			return;
+
 		m_currentState = newState;
-		switch (m_currentState)
+		switch (newState)
 		{
 			case SCR_EWeaponInfoIconState.IDLE:
 				SetColor(m_IdleColorSet, false);

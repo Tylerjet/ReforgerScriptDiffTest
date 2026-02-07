@@ -11,6 +11,14 @@ Do not modify, this script is generated
 
 sealed class BaseWorld: global_pointer
 {
+	/*!
+	Returns number of loaded entities in certain sub scene.
+	*/
+	proto external int GetNumEntities(int subScene);
+	/*!
+	returns loaded entity ID
+	*/
+	proto external EntityID GetEntity(int subScene, int entityIndex);
 	proto external float GetSurfaceY(float x, float z);
 	proto external void GetActiveEntities(notnull out array<IEntity> entities);
 	/*!
@@ -105,7 +113,7 @@ sealed class BaseWorld: global_pointer
 	proto external void SchedulePreload(vector pos, float radius);
 	proto external void GetBoundBox(out vector mins, out vector maxs);
 	/*!
-	Is ocean availabled
+	Is ocean available
 	*/
 	proto external bool IsOcean();
 	/*!
@@ -224,17 +232,25 @@ sealed class BaseWorld: global_pointer
 	[Obsolete("use TraceMove instead")]
 	proto external bool TraceLineToEntity(notnull IEntity ent, vector start, vector end, Class placeHolder = null);
 	/*!
-	traces shape collision at start position, return <0 if we hit something
-	//OUTPUT:
-	\returns	value 0 or negative number as penetration depth
+	Traces shape collision at start position, return <0 if we hit something. Results are filled in param object @see TraceParam
+	\param param object used for both input parameters and output parameters @see TraceParam
+	\param filterCallback callback called for each entity in trace path used to filter them
+	\returns value 0 or negative number as penetration depth
 	*/
-	proto external float TracePosition(inout TraceParam param, TraceEntitiesCallback filtercallback);
+	proto external float TracePosition(inout TraceParam param, TraceFilterCallback filterCallback = null);
 	/*!
-	traces shape movement along start->end, return 0..1 if trace was sucessfull.
-	//OUTPUT:
+	Traces shape movement along start->end, return 0..1 if trace was sucessfull. Results are filled in param object @see TraceParam
+	\param param object used for both input parameters and output parameters @see TraceParam
+	\param filterCallback callback called for each entity in trace path used to filter them
 	\returns	value 0...1, percentage of a path traveled
 	*/
-	proto external float TraceMove(inout TraceParam param, TraceEntitiesCallback filtercallback);
+	proto external float TraceMove(inout TraceParam param, TraceFilterCallback filterCallback = null);
+	/*!
+	Traces shape movement along start->end asynchronously, callbeck is called when finished. Framework is hodling reference to param until callback is called. Results are same as @see BaseWorld.TraceMove.
+	\param param object used for both input parameters and output parameters @see TraceParam
+	\param finishedCallback callback called when trace is finished
+	*/
+	proto external void AsyncTraceMove(inout TraceParam param, AsyncTraceFinishedCallback finishedCallback);
 	//! Returns current lifetime of the World in milliseconds
 	proto external float GetWorldTime();
 	//! Returns current timestamp of the World.

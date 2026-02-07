@@ -16,9 +16,9 @@ class FireDamageSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnUpdate(ESystemPoint point)
+	protected override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetFixedTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 
 		foreach (SCR_DamageManagerComponent component : m_aDamageManagers)
 		{

@@ -27,11 +27,17 @@ typedef ScriptInvokerBase<SpawnPointNameChangedInvoker> SCR_SpawnPointNameChange
 class SCR_SpawnPoint : SCR_Position
 {
 	protected RplComponent m_RplComponent;
+	protected float m_fSpawnRadius = 10;
+	protected float m_fPlayerCylinderRadius = 0.5;
+	protected float m_fPlayerCylinderHeight = 2;
+	protected float m_fColliderWidth = m_fPlayerCylinderRadius * 1.73205;
+	protected float m_fColliderHeight = m_fPlayerCylinderRadius * 2;
+	protected vector m_vCylinderVectorOffset = Vector(0, m_fPlayerCylinderHeight * 0.5, 0);
+	
+	[Attribute("0", UIWidgets.EditBox, "If bigger than 0, defines radius in which spawn will be randomized")]
+	float m_fRandomSpawnRadius;
 
-	[Attribute("0", desc: "Find empty position for spawning within given radius. When none is found, entity position will be used.")]
-	protected float m_fSpawnRadius;
-
-	[Attribute("Red", UIWidgets.EditBox, "Determines which faction can spawn on this spawn point."), RplProp(onRplName: "OnSetFactionKey")]
+	[Attribute("", UIWidgets.EditBox, "Determines which faction can spawn on this spawn point."), RplProp(onRplName: "OnSetFactionKey")]
 	protected string m_sFaction;
 
 	[Attribute("0")]
@@ -39,6 +45,9 @@ class SCR_SpawnPoint : SCR_Position
 
 	[Attribute("0", desc: "Use custom timer when deploying on this spawn point. Takes the remaining respawn time from SCR_TimedSpawnPointComponent")]
 	protected bool m_bTimedSpawnPoint;
+
+	[RplProp(), SortAttribute(), Attribute("0", desc: "Priority of spawn point to be selected as default in spawn menu")]
+	protected int m_iPriority;
 
 	protected SCR_UIInfo m_LinkedInfo;
 	protected SCR_FactionAffiliationComponent m_FactionAffiliationComponent;
@@ -54,6 +63,15 @@ class SCR_SpawnPoint : SCR_Position
 
 	[Attribute("0", desc: "Additional respawn time (in seconds) when spawning on this spawn point"), RplProp()]
 	protected float m_fRespawnTime;
+	
+	[Attribute("0", desc: "Spawn at a random place on the map")]
+	protected bool m_bRandomizedSpawn;
+	
+	[Attribute("500", desc: "Radius around enemy bases for the random spawn to avoid")]
+	protected float m_fRandomSpawnSafeRange;
+	
+	[Attribute("20", desc: "Random position attempt count")]
+	protected int m_iRandomSpawnMaxAttempts;
 
 	// List of all spawn points
 	private static ref array<SCR_SpawnPoint> m_aSpawnPoints = new array<SCR_SpawnPoint>();
@@ -143,7 +161,23 @@ class SCR_SpawnPoint : SCR_Position
 		m_fRespawnTime = time;
 		Replication.BumpMe();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	int GetPriority()
+	{
+		return m_iPriority;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetPriority(int priority)
+	{
+		if (priority == m_iPriority)
+			return;
+
+		m_iPriority = priority;
+		Replication.BumpMe();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Authority:
@@ -333,21 +367,28 @@ class SCR_SpawnPoint : SCR_Position
 	//------------------------------------------------------------------------------------------------
 	void GetPositionAndRotation(out vector pos, out vector rot)
 	{
+		if (m_bRandomizedSpawn && GetRandomPositionAndRotation(pos,rot))
+				return;
+
 		if (m_bUseNearbySpawnPositions)
 		{
 			if (GetEmptyPositionAndRotationInRange(pos, rot))
 				return;
 		}
 
+		vector rand = Vector(0, 0, 0);
+		if (m_fRandomSpawnRadius > 0)
+			rand = Vector(Math.RandomFloat01() * m_fRandomSpawnRadius, 0, Math.RandomFloat01() * m_fRandomSpawnRadius);
+		
 		if (m_aChildren.Count() > 1)
 		{
 			int id = m_aChildren.GetRandomIndex();
-			SCR_WorldTools.FindEmptyTerrainPosition(pos, m_aChildren[id].GetOrigin(), GetSpawnRadius());
+			SCR_WorldTools.FindEmptyTerrainPosition(pos, m_aChildren[id].GetOrigin() + rand, GetSpawnRadius());
 			rot = m_aChildren[id].GetAngles();
 		}
 		else
 		{
-			SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOrigin(), GetSpawnRadius());
+			SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOrigin() + rand, GetSpawnRadius());
 			rot = GetAngles();
 		}
 	}
@@ -793,4 +834,100 @@ class SCR_SpawnPoint : SCR_Position
 			m_FactionAffiliationComponent.GetOnFactionChanged().Remove(ApplyFactionChange);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool GetRandomPositionAndRotation(out vector vOutPosition, out vector vOutRotation)
+	{
+		BaseWorld world = GetGame().GetWorld();
+		if (!world) 
+			return false;
+
+		int zMin, zMax, zStep;
+		string spawnPointFaction;
+		float posX, posZ, traceCoef, distance;
+		vector vRandomSpawnCenter, vTestPosition;
+		
+		TraceFlags flags = TraceFlags.ENTS | TraceFlags.OCEAN;
+		TraceParam trace = new TraceParam();
+		trace.Flags = flags | TraceFlags.WORLD;
+		vector traceOffset = Vector(0, 10, 0);
+		bool bPointIsSafe = true;
+		
+		for (int i; i < m_iRandomSpawnMaxAttempts; i++)
+		{	
+			vRandomSpawnCenter = GetRandomWorldPosition();
+			bPointIsSafe = true;
+			
+			if (m_fRandomSpawnSafeRange > 0)
+			{
+				foreach (SCR_SpawnPoint spawnPoint : m_aSpawnPoints) 
+				{
+					if (!spawnPoint)
+						continue;
+					
+					spawnPointFaction = spawnPoint.GetFactionKey();
+					if (spawnPointFaction != m_sFaction)
+					{
+						distance = vector.DistanceXZ(vRandomSpawnCenter, spawnPoint.GetOrigin());
+	    				if (distance <= m_fRandomSpawnSafeRange)
+						{
+							bPointIsSafe = false;
+							break;
+						}
+					}
+				}
+			}
+			
+			if (!bPointIsSafe)
+				continue;
+			
+			for (int r; r <= m_fRandomSpawnRadius; r++)
+			{	
+				for (int x = -r; x <= r; x++)
+				{
+					posX = m_fColliderWidth * x;
+					posZ = m_fColliderHeight * (x - SCR_Math.fmod(x, 1)) * 0.5;
+					zMin = Math.Max(-r - x, -r);
+					zMax = Math.Min(r - x, r);
+					if (Math.AbsInt(x) == r)
+						zStep = 1;
+					else
+						zStep = zMax - zMin;
+
+					for (int z = zMin; z <= zMax; z += zStep)
+					{
+						vTestPosition = vRandomSpawnCenter + Vector(posX, 0, posZ + m_fColliderHeight * z);
+						trace.Start = vTestPosition;
+						trace.End = vTestPosition - traceOffset;
+						traceCoef = world.TraceMove(trace, null);
+						vTestPosition[1] = Math.Max(trace.Start[1] - traceCoef * traceOffset[1] + 0.01, world.GetSurfaceY(vTestPosition[0], vOutPosition[2]));
+		
+						if (!SCR_WorldTools.TraceCylinder(vTestPosition + m_vCylinderVectorOffset, m_fPlayerCylinderRadius, m_fPlayerCylinderHeight, flags, world))
+							continue;
+							
+						vOutRotation = GetAngles();
+						vOutPosition = vTestPosition;
+						return true;
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	vector GetRandomWorldPosition()
+	{
+		BaseWorld world = GetGame().GetWorld();
+		if (!world) 
+			return GetOrigin();
+		
+		vector mins, maxs;
+		world.GetBoundBox(mins, maxs);
+		vector vRandomizedValue = Vector(Math.RandomFloat(mins[0], maxs[0]), 0, Math.RandomFloat(mins[2], maxs[2]));
+		vRandomizedValue[1] = world.GetSurfaceY(vRandomizedValue[0], vRandomizedValue[2]);
+	    return vRandomizedValue;
+	}
+
 }

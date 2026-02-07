@@ -8,7 +8,7 @@ class SCR_EntityHelper
 	static Managed FindComponent(notnull IEntity entity, typename componentType, SCR_EComponentFinderQueryFlags queryFlags = SCR_EComponentFinderQueryFlags.ENTITY | SCR_EComponentFinderQueryFlags.SLOTS)
 	{
 		Managed foundComponent;
-		
+
 		//~ Find on entity itself
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.ENTITY))
 		{
@@ -16,7 +16,7 @@ class SCR_EntityHelper
 			if (foundComponent)
 				return foundComponent;
 		}
-		
+
 		//~ Find on slotted entities
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.SLOTS))
 		{
@@ -26,42 +26,42 @@ class SCR_EntityHelper
 				array<EntitySlotInfo> slotInfos = {};
 				slotManager.GetSlotInfos(slotInfos);
 				IEntity slotEntity;
-				
+
 				foreach (EntitySlotInfo slotInfo : slotInfos)
 				{
 					slotEntity = slotInfo.GetAttachedEntity();
 					if (!slotEntity)
 						continue;
-					
+
 					foundComponent = slotEntity.FindComponent(componentType);
 					if (foundComponent)
 						return foundComponent;
 				}
 			}
 		}
-		
+
 		//~ Find on children
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.CHILDREN))
 		{
 			IEntity child = entity.GetChildren();
-		
+
 			while (child)
 			{
 				foundComponent = child.FindComponent(componentType);
 				if (foundComponent)
 					return foundComponent;
-				
+
 				child = child.GetSibling();
 			}
 		}
-		
+
 		IEntity parent;
-		
+
 		//~ Find in parent
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT))
 		{
 			parent = entity.GetParent();
-			
+
 			if (parent)
 			{
 				foundComponent = parent.FindComponent(componentType);
@@ -69,13 +69,13 @@ class SCR_EntityHelper
 					return foundComponent;
 			}
 		}
-		
+
 		//~ Find on slotted entities of parent
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT_SLOTS))
-		{			
+		{
 			if (!parent)
 				parent = entity.GetParent();
-			
+
 			if (parent)
 			{
 				foundComponent = SCR_EntityHelper.FindComponent(parent, componentType, SCR_EComponentFinderQueryFlags.SLOTS);
@@ -83,14 +83,14 @@ class SCR_EntityHelper
 					return foundComponent;
 			}
 		}
-		
+
 		IEntity rootParent;
-		
+
 		//~ Find in root parent
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT))
 		{
 			rootParent = entity.GetRootParent();
-			
+
 			if (rootParent)
 			{
 				foundComponent = rootParent.FindComponent(componentType);
@@ -98,13 +98,13 @@ class SCR_EntityHelper
 					return foundComponent;
 			}
 		}
-		
+
 		//~ Find on slotted entities of root parent
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.PARENT_SLOTS))
-		{			
+		{
 			if (!rootParent)
 				rootParent = entity.GetRootParent();
-			
+
 			if (rootParent)
 			{
 				foundComponent = SCR_EntityHelper.FindComponent(rootParent, componentType, SCR_EComponentFinderQueryFlags.SLOTS);
@@ -112,18 +112,18 @@ class SCR_EntityHelper
 					return foundComponent;
 			}
 		}
-		
+
 		//~ Find in siblings
 		if (SCR_Enum.HasFlag(queryFlags, SCR_EComponentFinderQueryFlags.SIBLINGS))
 		{
 			if (!parent)
 				parent = entity.GetParent();
-			
+
 			if (parent)
 			{
 				//~ Get siblings from parent
 				IEntity child = parent.GetChildren();
-		
+
 				while (child)
 				{
 					//~ Ignore self
@@ -132,20 +132,20 @@ class SCR_EntityHelper
 						child = child.GetSibling();
 						continue;
 					}
-					
+
 					foundComponent = child.FindComponent(componentType);
 					if (foundComponent)
 						return foundComponent;
-					
+
 					child = child.GetSibling();
 				}
 			}
 		}
-		
+
 		//~ Not found
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Returns number of children the input entity has
 	//! \param[in] parent
@@ -176,8 +176,28 @@ class SCR_EntityHelper
 	//! \param[in] entity
 	static void DeleteEntityAndChildren(IEntity entity)
 	{
-		if (entity)
-			RplComponent.DeleteRplEntity(entity, false);
+		RplComponent.DeleteRplEntity(entity, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Deletes entity and in case of buildings handles removal of interior items too
+	//! \param[in] entity
+	static void DeleteBuilding(IEntity entity)
+	{
+		if (!entity)
+			return;
+
+		// Ensure deletion of interior for buildings
+		auto destructible = SCR_DestructibleBuildingEntity.Cast(entity);
+		if (destructible)
+		{
+			SCR_DestructibleBuildingComponent destructibleComp = SCR_DestructibleBuildingComponent.Cast(destructible.FindComponent(SCR_DestructibleBuildingComponent));
+			if (destructibleComp)
+				destructibleComp.GoToDestroyedStateLoad(false);
+		}
+
+		// TODO(@jokin): Why do we need the second delete call for reload save game, even though destruction should have taken care of it?
+		RplComponent.DeleteRplEntity(entity, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -237,13 +257,13 @@ class SCR_EntityHelper
 	static void SnapToGround(notnull IEntity entity, array<IEntity> excludeArray = null, float maxLength = 10, vector startOffset = "0 0 0", bool onlyStatic = false)
 	{
 		vector origin = entity.GetOrigin();
-		
+
 		// Trace against terrain and entities to detect nearest ground
 		TraceParam param = new TraceParam();
 		param.Start = origin + startOffset;
 		param.End = origin - vector.Up * maxLength;
 		param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-		
+
 		if (excludeArray)
 		{
 			excludeArray.Insert(entity);
@@ -257,18 +277,18 @@ class SCR_EntityHelper
 		param.LayerMask = EPhysicsLayerPresets.Projectile;
 		BaseWorld world = entity.GetWorld();
 		float traceDistance;
-		
+
 		if (onlyStatic)
 			traceDistance = world.TraceMove(param, OnlyStaticCallback);
 		else
 			traceDistance = world.TraceMove(param, null);
-		
+
 		if (float.AlmostEqual(traceDistance, 1.0))
 			return;
-		
+
 		entity.SetOrigin(traceDistance * (param.End - param.Start) + param.Start);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] newUp
 	//! \param[in,out] mat
@@ -277,7 +297,7 @@ class SCR_EntityHelper
 		vector origin = mat[3];
 		vector perpend = newUp.Perpend();
 		Math3D.DirectionAndUpMatrix(perpend, newUp, mat);
-		
+
 		vector basis[4];
 		Math3D.AnglesToMatrix(Vector(-perpend.VectorToAngles()[0], 0, 0), basis);
 		Math3D.MatrixMultiply3(mat, basis, mat);
@@ -293,10 +313,10 @@ class SCR_EntityHelper
 		Physics physics = entity.GetPhysics();
 		if (physics && physics.IsDynamic())
 			return false;
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Returns the main parent of the input entity
 	//! \param[in] entity Entity to get the main parent from
@@ -368,7 +388,7 @@ class SCR_EntityHelper
 			child = child.GetSibling();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get relative transform from member to owner local space.
 	//! \param[in] owner Starting entity.
@@ -380,7 +400,7 @@ class SCR_EntityHelper
 		// Temporarily added because notnull seems to be ignored when using ScriptInvoker
 		if (!owner || !member)
 			return false;
-		
+
 		// Use world transform if not members of same hierarchy
 		IEntity root = owner.GetRootParent();
 		if (root != member.GetRootParent())
@@ -464,7 +484,7 @@ class SCR_EntityHelper
 	//! \param[in] pos world space position to which distance will be measured
 	//! \param[in] low index from the array that will be used as a starting point for sorting
 	//! \param[in] high index from the array that will be used as the end point for sorting
-	//! \return 
+	//! \return
 	protected static int Partition(notnull inout array<IEntity> arr, vector pos, int low, int high)
 	{
 		float pivot = vector.DistanceSq(arr[high].GetOrigin(), pos);
@@ -508,9 +528,9 @@ class SCR_EntityHelperT<Class T>
 //! Used for component finding to know where it can search to get the given component
 enum SCR_EComponentFinderQueryFlags
 {
-	ENTITY =        		1 << 0, //!< Find on entity itself
+	ENTITY = 		1 << 0, //!< Find on entity itself
 	SLOTS = 				1 << 1, //!< Find in SlotManagerComponent
-	CHILDREN =      		1 << 2, //!< Find on children of entity
+	CHILDREN = 		1 << 2, //!< Find on children of entity
 	PARENT = 				1 << 3, //!< Find on parent of entity
 	PARENT_SLOTS =			1 << 4, //!< Find in SlotManagerComponent of parent
 	ROOT_PARENT = 			1 << 5, //!< Find on Root parent of entity

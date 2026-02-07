@@ -42,6 +42,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected const string ICON_SELECTOR = "IconSelector";
 	protected const string COLOR_SELECTOR = "ColorSelector";
 	protected const ResourceName SELECTOR_LINE = "{CF8EC7A0D310A8D9}UI/layouts/Map/MapColorSelectorLine.layout";
+	protected const int SPIN_BOX_YES = 1;
 	
 	protected ref Color BACKGROUND_DEFAULT = new Color(4,4,4,255);
 	protected ref Color BACKGROUND_SELECTED = new Color(16,16,16,255);
@@ -67,6 +68,8 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected TextWidget m_wDimensionSelectionText;
 	protected SCR_ComboBoxComponent m_ComboBoxComp1;
 	protected SCR_ComboBoxComponent m_ComboBoxComp2;
+	protected SCR_SelectionMenuCategoryEntry m_ReconCategoryEntry;
+	protected SCR_SpinBoxComponent m_TimestampSpinBox;
 	
 	// Placed marker attributes
 	protected int m_iWantedIconEntry;
@@ -76,6 +79,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected int m_iWantedDimensionEntry;
 	protected int m_iSelectedDimensionID;
 	protected float m_fRotation;
+	protected bool m_bIsTimestampVisible;
 	protected SCR_MarkerMilitaryType m_eMilitaryTypeA;
 	protected SCR_MarkerMilitaryType m_eMilitaryTypeB;
 	protected EMilitarySymbolIcon m_eMilitaryTypeAIcon;
@@ -267,6 +271,15 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		FocusWidget(m_SelectedFactionButton.GetRootWidget());
 		
 		m_CursorModule.HandleDialog(true);
+
+		Widget timestampWidget = m_MarkerEditRoot.FindAnyWidget("TimestampSpinBox");
+		if (timestampWidget)
+		{
+			m_TimestampSpinBox = SCR_SpinBoxComponent.Cast(timestampWidget.FindHandler(SCR_SpinBoxComponent));
+			m_TimestampSpinBox.m_OnChanged.Insert(OnTimestampSpinBoxChanged);
+			m_TimestampSpinBox.SetCurrentItem(SPIN_BOX_YES, false, false);
+			OnTimestampSpinBoxChanged(m_TimestampSpinBox, SPIN_BOX_YES);
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -314,7 +327,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		}
 		else
 		{
-			SCR_ButtonBaseComponent buttonComp = m_mFactionIDs.GetKeyByValue(selectedFactionEntry);
+			SCR_ButtonBaseComponent buttonComp = SCR_MapHelper<SCR_ButtonBaseComponent, int>.GetKeyByValue(m_mFactionIDs, selectedFactionEntry);
 			if (buttonComp)
 				OnFactionEntryClicked(buttonComp);
 			else 
@@ -377,7 +390,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		}
 		else
 		{
-			SCR_ButtonBaseComponent buttonComp = m_mDimensionIDs.GetKeyByValue(m_iWantedDimensionEntry);
+			SCR_ButtonBaseComponent buttonComp = SCR_MapHelper<SCR_ButtonBaseComponent, int>.GetKeyByValue(m_mDimensionIDs, m_iWantedDimensionEntry);
 			if (buttonComp)
 				OnDimensionEntryClicked(buttonComp);
 			else 
@@ -418,7 +431,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		}
 		else
 		{
-			SCR_ButtonBaseComponent buttonComp = m_mColorIDs.GetKeyByValue(selectedColorEntry);
+			SCR_ButtonBaseComponent buttonComp = SCR_MapHelper<SCR_ButtonBaseComponent, int>.GetKeyByValue(m_mColorIDs, selectedColorEntry);
 			if (buttonComp)
 				OnColorEntryClicked(buttonComp);
 			else 
@@ -482,7 +495,7 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		}
 		else
 		{
-			SCR_ButtonBaseComponent buttonComp = m_mIconIDs.GetKeyByValue(m_iWantedIconEntry);
+			SCR_ButtonBaseComponent buttonComp = SCR_MapHelper<SCR_ButtonBaseComponent, int>.GetKeyByValue(m_mIconIDs, m_iWantedIconEntry);
 			if (buttonComp)
 				OnIconEntryClicked(buttonComp);
 			else 
@@ -760,6 +773,13 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		m_MilSymbolPreview.SetIcons(m_eMilitaryTypeAIcon | m_eMilitaryTypeBIcon);
 		m_MarkerPreviewMilitaryComp.Update(m_MilSymbolPreview);	
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! SCR_SpinBoxComponent event
+	protected void OnTimestampSpinBoxChanged(SCR_SpinBoxComponent comp, int selectedItem)
+	{
+		m_bIsTimestampVisible = selectedItem == SPIN_BOX_YES;
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_ButtonTextComponent event
@@ -818,6 +838,11 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		
 		marker.SetCustomText(m_EditBoxComp.GetValue());
 		marker.SetWorldPos(wX, wY);
+		marker.SetTimestampVisibility(m_bIsTimestampVisible);
+
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+			marker.SetTimestamp(world.GetServerTimestamp());
 		
 		if (!isLocal)
 		{
@@ -876,6 +901,21 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 				menuEntry.SetIcon(entryPlaced.GetMenuImageset(), entryPlaced.GetMenuIcon());
 	
 				radialUI.InsertCustomRadialEntry(menuEntry, m_RootCategoryEntry);
+			}
+			else if (entry.GetMarkerType() == SCR_EMapMarkerType.PLACED_RECON)
+			{
+				SCR_MapMarkerEntryRecon entryRecon = SCR_MapMarkerEntryRecon.Cast(entry);
+				m_ReconCategoryEntry = radialUI.AddRadialCategory(entryRecon.GetMenuDescription(), m_RootCategoryEntry);
+				m_ReconCategoryEntry.SetName(entryRecon.GetMenuDescription());
+				m_ReconCategoryEntry.SetIcon(entryRecon.GetMenuImageset(), entryRecon.GetMenuIcon());
+
+				entryRecon.CreateEntries(radialUI, m_ReconCategoryEntry);
+
+				// radial category is deleted if nothing is added to the entry
+				if (m_ReconCategoryEntry.GetEntries().IsEmpty())
+				{
+					m_RootCategoryEntry.RemoveEntry(m_ReconCategoryEntry);
+				}
 			}
 		}		
 	}
@@ -969,8 +1009,22 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			return;
 		
 		mapRadial.GetRadialController().OnInputOpen();
-		mapRadial.GetRadialController().GetRadialMenu().PerformEntry(m_RootCategoryEntry);
+
+		// Callqueue fixes selecting in the radial
+		GetGame().GetCallqueue().Call(DelayedQuickMarkerMenu);
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void DelayedQuickMarkerMenu()
+	{
+		SCR_MapRadialUI mapRadial = SCR_MapRadialUI.GetInstance();
+		if (!mapRadial)
+			return;
+
+		if (m_ReconCategoryEntry && m_ReconCategoryEntry.IsEnabled())
+			mapRadial.GetRadialController().GetRadialMenu().PerformEntry(m_ReconCategoryEntry);
+		else
+			mapRadial.GetRadialController().GetRadialMenu().PerformEntry(m_RootCategoryEntry);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1075,6 +1129,13 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 								secondType = true;
 							}
 						}
+					}
+
+					if (m_TimestampSpinBox)
+					{
+						bool showTimestamp = marker.IsTimestampVisible();
+						m_TimestampSpinBox.SetCurrentItem(showTimestamp, false, false);
+						OnTimestampSpinBoxChanged(m_TimestampSpinBox, showTimestamp);
 					}
 				}
 				
@@ -1259,6 +1320,11 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			markerNew.SetWorldPos(wX, wY);
 			markerNew.SetCustomText(marker.GetCustomText());
 			markerNew.SetMarkerFactionFlags(marker.GetMarkerFactionFlags());
+			markerNew.SetTimestampVisibility(marker.IsTimestampVisible());
+
+			ChimeraWorld world = GetGame().GetWorld();
+			if (world)
+				markerNew.SetTimestamp(world.GetServerTimestamp());
 			
 			if (type == SCR_EMapMarkerType.PLACED_CUSTOM)
 			{

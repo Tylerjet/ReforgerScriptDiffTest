@@ -1,3 +1,8 @@
+sealed class BtVariableAISmartActionComponent: BtVariable
+{
+	SCR_AISmartActionComponent m_Value;
+}
+
 class SCR_AISetPosition : AITaskScripted
 {
 	protected static const string TARGET_INFO_PORT = "TargetInfo";
@@ -45,47 +50,52 @@ class SCR_AISetPosition : AITaskScripted
 		{
 			GetVariableIn(TARGET_PORT, positionToTeleport);
 		}
-		else if (GetVariableType(true,TARGET_PORT) == SCR_AISmartActionComponent)
+		else if (GetVariableType(true,TARGET_PORT).IsInherited(Managed))
 		{
-			SCR_AISmartActionComponent SAComponent;
-			vector originOfObject;
+			Managed obj;
+			GetVariableIn(TARGET_PORT, obj);
 			
-			GetVariableIn(TARGET_PORT, SAComponent);
-			originOfObject = SAComponent.GetOwner().GetOrigin();
-			positionToTeleport = originOfObject + SAComponent.GetActionOffset();
-		}
-		else if (GetVariableType(true,TARGET_PORT).IsInherited(BaseCompartmentSlot))
-		{
-			BaseCompartmentSlot compartmentSlot;
-			CompartmentAccessComponent CAComponent = CompartmentAccessComponent.Cast(entityToTeleport.FindComponent(CompartmentAccessComponent));
-			IEntity vehicle;
-			
-			GetVariableIn(TARGET_PORT, compartmentSlot);
-			vehicle = compartmentSlot.GetOwner();
-			if (!CAComponent || !vehicle)
-				return NodeError(this, owner, "Enity to teleport does not have CompartmentAccessComponent or target is not an Entity!");
-			if (!CAComponent.GetInVehicle(vehicle, compartmentSlot, true, -1, ECloseDoorAfterActions.INVALID, false))
+			SCR_AISmartActionComponent SAComponent = SCR_AISmartActionComponent.Cast(obj);
+			BaseCompartmentSlot compartmentSlot = BaseCompartmentSlot.Cast(obj);
+			if (SAComponent)
 			{
-#ifdef AI_DEBUG
-				Print("Teleport to vehicle was not successful!", LogLevel.VERBOSE);
-#endif
-				if (!m_charContr)
-				{
-					m_charContr = CharacterControllerComponent.Cast(entityToTeleport.FindComponent(CharacterControllerComponent));
-					if (!m_charContr)
-						return NodeError(this, owner, "Enity to teleport does not have CharacterControllerComponent!");
-				}
-				
-				if (m_charContr.IsSwimming())
-					return ENodeResult.FAIL;
-				else if (m_charContr.IsFalling())
-					return ENodeResult.RUNNING;
-				else
-					return ENodeResult.FAIL;
+				vector originOfObject;
+			
+				originOfObject = SAComponent.GetOwner().GetOrigin();
+				positionToTeleport = originOfObject + SAComponent.GetActionOffset();
 			}
-			return ENodeResult.SUCCESS;
+			else if (compartmentSlot)
+			{
+				CompartmentAccessComponent CAComponent = CompartmentAccessComponent.Cast(entityToTeleport.FindComponent(CompartmentAccessComponent));
+				IEntity vehicle;
+				
+				GetVariableIn(TARGET_PORT, compartmentSlot);
+				vehicle = compartmentSlot.GetOwner();
+				if (!CAComponent || !vehicle)
+					return NodeError(this, owner, "Enity to teleport does not have CompartmentAccessComponent or target is not an Entity!");
+				if (!CAComponent.GetInVehicle(vehicle, compartmentSlot, true, -1, ECloseDoorAfterActions.INVALID, false))
+				{
+	#ifdef AI_DEBUG
+					Print("Teleport to vehicle was not successful!", LogLevel.VERBOSE);
+	#endif
+					if (!m_charContr)
+					{
+						m_charContr = CharacterControllerComponent.Cast(entityToTeleport.FindComponent(CharacterControllerComponent));
+						if (!m_charContr)
+							return NodeError(this, owner, "Enity to teleport does not have CharacterControllerComponent!");
+					}
+					
+					if (m_charContr.IsSwimming())
+						return ENodeResult.FAIL;
+					else if (m_charContr.IsFalling())
+						return ENodeResult.RUNNING;
+					else
+						return ENodeResult.FAIL;
+				}
+				return ENodeResult.SUCCESS;
+			}
 		}
-		
+				
 		BaseGameEntity gEntity = BaseGameEntity.Cast(entityToTeleport);
 		vector mat[4];
 		Math3D.MatrixIdentity4(mat);

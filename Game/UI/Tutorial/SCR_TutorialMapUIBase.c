@@ -186,7 +186,7 @@ class SCR_TutorialMapUIBase : SCR_CampaignMapUIElement
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		SCR_UITaskManagerComponent tm = SCR_UITaskManagerComponent.GetInstance();
+		SCR_TaskManagerUIComponent tm = SCR_TaskManagerUIComponent.GetInstance();
 		if (tm && !tm.IsTaskListOpen())
 		{
 			GetGame().GetWorkspace().SetFocusedWidget(w);

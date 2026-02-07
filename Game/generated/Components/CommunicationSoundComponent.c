@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class CommunicationSoundComponentClass: SoundComponentClass
-{
-}
-
 class CommunicationSoundComponent: SoundComponent
 {
 	//! Get list of metadata. Last item in array is 'textFormat'.

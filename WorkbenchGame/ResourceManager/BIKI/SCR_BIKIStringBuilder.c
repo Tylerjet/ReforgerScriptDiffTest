@@ -51,13 +51,14 @@ class SCR_BIKIStringBuilder
 	void BeginTable(string style = string.Empty)
 	{
 		if (style == string.Empty)
-			m_sContent += "{| class=\"wikitable\"\n";
+			m_sContent += "{| class=\"wikitable\"\n"; // }
 		else
-			m_sContent += "{| class=\"wikitable\" style=\"" + style + "\"\n";
+			m_sContent += "{| class=\"wikitable\" style=\"" + style + "\"\n"; // }
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! This method allows empty headers
+	//! \param[in] titles list of titles to display on one line
 	void AddTableHeadersLine(notnull array<string> titles)
 	{
 		foreach (string title : titles)
@@ -173,6 +174,7 @@ class SCR_BIKIStringBuilder
 	//! \see BeginTable()
 	void EndTable()
 	{
+		// {
 		m_sContent += "|}\n";
 	}
 

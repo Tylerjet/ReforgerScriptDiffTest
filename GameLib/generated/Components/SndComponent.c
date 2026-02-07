@@ -19,13 +19,15 @@ class SndComponent: GenericComponent
 	proto external protected void SetDisableUpdate(bool forceUpdate);
 	/* Component owner. */
 	proto external IEntity GetOwner();
-	/* Deprecated - will be replaced. */
+	/* Plays sound for given name. */
 	proto external AudioHandle PlayStr(string name);
-	/* Returns the index of the given event name or -1 if not found */
+	/* Obsolete Returns the index of the given event name or -1 if not found */
 	proto external int GetEventIndex(string name);
 	/* Beginning of sound event scope. */
+	[Obsolete("Not supported, will be removed!")]
 	proto external int SoundEventBegin(string eventName);
 	/* Sets scope parameters and plays the event. */
+	[Obsolete("Not supported, will be removed!")]
 	proto external int SoundEventEnd(int eventBeginId);
 	/*! Returns the index of the given signal name or -1 if not found.*/
 	proto external int GetSignalIndex(string name);

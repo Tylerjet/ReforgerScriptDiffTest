@@ -65,7 +65,7 @@ class SCR_MovingSoundSourceEntity : GenericEntity
 		
 		SCR_MoveData moveData = new SCR_MoveData;
 		
-		// Get star and end point
+		// Get start and end point
 		int side = Math.RandomIntInclusive(0, 1);
 		if( side == 0)
 			side = -1;

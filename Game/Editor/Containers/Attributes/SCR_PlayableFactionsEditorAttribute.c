@@ -7,8 +7,8 @@ class SCR_PlayableFactionsEditorAttribute : SCR_BaseMultiSelectPresetsEditorAttr
 		//If opened in global attributes
 		if (!IsGameMode(item)) 
 		{
-			SCR_BaseTaskManager taskManager = SCR_BaseTaskManager.Cast(item);
-			if (!taskManager)
+			SCR_TaskSystem taskSystem = SCR_TaskSystem.Cast(item);
+			if (!taskSystem)
 				return null;
 		}
 		

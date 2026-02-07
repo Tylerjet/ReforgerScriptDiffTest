@@ -1,42 +1,44 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "Move task.", color: "0 0 255 255")]
 class SCR_MoveTaskClass: SCR_AttachableTaskClass
 {
-};
+}
+
 class SCR_MoveTask : SCR_AttachableTask
 {	
 	[Attribute("5")]
 	protected float m_fMaxDistance;
 	
+	//------------------------------------------------------------------------------------------------
 	void PeriodicalCheck()
 	{		
-		if (!GetTaskManager())
+		if (!SCR_TaskSystem.GetInstance())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
-		if (!supportEntity)
-			return;
+		array<ref SCR_TaskExecutor> assignees = GetTaskAssignees();		
 		
-		array<SCR_BaseTaskExecutor> assignees = new array<SCR_BaseTaskExecutor>();
-		GetAssignees(assignees);
-		
-		for (int x = assignees.Count() - 1; x >= 0; x--)
+		SCR_TaskExecutorPlayer playerExecutor;
+		IEntity controlledEntity;
+		foreach (SCR_TaskExecutor assignee : assignees)
 		{
-			int id = SCR_BaseTaskExecutor.GetTaskExecutorID(assignees[x]);
-			IEntity controlledEntity = SCR_PossessingManagerComponent.GetPlayerMainEntity(id);
+			playerExecutor = SCR_TaskExecutorPlayer.Cast(assignee);
+			if (!playerExecutor)
+				continue;
 			
+			int id = playerExecutor.GetPlayerID();
+			controlledEntity = SCR_PossessingManagerComponent.GetPlayerMainEntity(id);
 			if (!controlledEntity)
 				continue;
 			
-			float distance = vector.Distance(controlledEntity.GetOrigin(), GetOrigin());
-			
+			float distance = vector.Distance(controlledEntity.GetOrigin(), GetOrigin());			
 			if (distance < m_fMaxDistance)
 			{
-				supportEntity.FinishTask(this);
+				SetTaskState(SCR_ETaskState.COMPLETED);
 				return;
 			}
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void SetTaskCompletionType(EEditorTaskCompletionType newTaskCompletionType)
 	{
 		if (m_iTaskCompletionType == newTaskCompletionType)
@@ -44,30 +46,47 @@ class SCR_MoveTask : SCR_AttachableTask
 		
 		super.SetTaskCompletionType(newTaskCompletionType);
 		
-		if (GetTaskManager().IsProxy())
+		if (Replication.IsClient())
 			return;
 		
 		if (m_iTaskCompletionType == EEditorTaskCompletionType.AUTOMATIC)
-			SCR_BaseTaskManager.s_OnPeriodicalCheck2Second.Insert(PeriodicalCheck);
+			SetEventMask(EntityEvent.FRAME);
 		else 
-			SCR_BaseTaskManager.s_OnPeriodicalCheck2Second.Remove(PeriodicalCheck);
+			ClearEventMask(EntityEvent.FRAME);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		super.EOnInit(owner);
+		
+		PeriodicalCheck();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_MoveTask(IEntitySource src, IEntity parent)
 	{
 		if (SCR_Global.IsEditMode(this))
 			return;
 		
-		if (!GetTaskManager().IsProxy() && m_iTaskCompletionType == EEditorTaskCompletionType.AUTOMATIC)
-			SCR_BaseTaskManager.s_OnPeriodicalCheck2Second.Insert(PeriodicalCheck);
+		if (Replication.IsClient())
+			return;
+		
+		if (m_iTaskCompletionType == EEditorTaskCompletionType.AUTOMATIC)
+			SetEventMask(EntityEvent.FRAME);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_MoveTask()
 	{
 		if (SCR_Global.IsEditMode(this) || !GetGame().GetGameMode())
 			return;
 		
-		if (!GetTaskManager().IsProxy() && m_iTaskCompletionType == EEditorTaskCompletionType.AUTOMATIC)
-			SCR_BaseTaskManager.s_OnPeriodicalCheck2Second.Remove(PeriodicalCheck);
+		if (Replication.IsClient())
+			return;
+		
+		if (m_iTaskCompletionType == EEditorTaskCompletionType.AUTOMATIC)
+			ClearEventMask(EntityEvent.FRAME);
 	}
 
-};
+}

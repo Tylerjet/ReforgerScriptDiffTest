@@ -11,8 +11,9 @@ Do not modify, this script is generated
 
 class DialogueSpeaker: ScriptAndConfig
 {
-	private void DialogueSpeakerBase();
+	private void DialogueSpeaker();
 
+	event bool EntityMatchesInfo(notnull IEntity ent);
 }
 
 /*!

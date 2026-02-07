@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class EjectableProjectileClass: ProjectileClass
-{
-}
-
 class EjectableProjectile: Projectile
 {
 	proto external BaseEjectorInterface GetEjectorInterface();

@@ -26,10 +26,10 @@ class SCR_BloodOnClothesSystem : GameSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnUpdate(ESystemPoint point)
+	override void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
 		bool nullValuePresent;
-		m_fUpdateClothesTimer += GetWorld().GetTimeSlice();
+		m_fUpdateClothesTimer += args.GetTimeSliceSeconds();
 		if (m_fUpdateClothesTimer < UPDATE_CLOTHES_DELAY)
 			return;
 		

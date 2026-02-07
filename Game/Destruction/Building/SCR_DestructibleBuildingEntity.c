@@ -48,22 +48,7 @@ class SCR_DestructibleBuildingEntity : Building
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "The building configuration object to use for this building", "conf", category: "Destruction Building")]
 	protected ResourceName m_BuildingConfig;
-	
-	[Attribute(uiwidget: UIWidgets.Hidden)]
-	protected int m_iId;
-	
-	//-----------------------------------------------------------------------
-	int GetBuildingId()
-	{
-		return m_iId;
-	}
-	
-	//-----------------------------------------------------------------------
-	void SetBuildingId(int id)
-	{
-		m_iId = id;
-	}
-	
+
 	#ifdef ENABLE_BUILDING_DESTRUCTION
 		#ifdef WORKBENCH
 			[Attribute("0", UIWidgets.CheckBox, "Check to update various data in the config (must be defined)", category: "EDITOR: Destruction Building")]
@@ -123,24 +108,13 @@ class SCR_DestructibleBuildingEntity : Building
 		
 		// Uncomment to enable temporary debug shapes
 		//#define BUILDING_DEBUG_TEMP
-		
-		//! Whether the building is destroyed
-		protected bool m_bDestroyed = false;
-		
+				
 		//! Array of bitmasks containing whether each region is destroyed
 		protected ref SCR_BitMaskArray m_RegionMask = null;
 		
 		//! A map holding the damage of regions
-		protected ref map<int, float> m_RegionDamage = null;
-		
-		//! The world the building is in
-		protected BaseWorld m_World = null;
-		
-		//! Sound component attached to the building
-		protected BaseSoundComponent m_SoundComponent = null;
-	
-		protected RplComponent m_RplComponent;
-		
+		protected ref map<int, float> m_RegionDamage = null;				
+			
 		ref array<SCR_BuildingRegionEntity> m_RegionEntities = null;
 		
 		// List to hold queried props list
@@ -153,6 +127,9 @@ class SCR_DestructibleBuildingEntity : Building
 			// TODO: Remove once box trace bug is fixed
 			static ref array<ref Shape> debugShapes = new array<ref Shape>();
 		#endif
+		
+		//! Whether the building is destroyed
+		protected bool m_bDestroyed = false;
 		
 		//------------------------------------------------------------------------------------------------
 		[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
@@ -167,7 +144,7 @@ class SCR_DestructibleBuildingEntity : Building
 		//------------------------------------------------------------------------------------------------
 		//! Called when Item is initialized from replication stream. Carries the data from Master.
 		override bool RplLoad(ScriptBitReader reader)
-		{
+		{		
 			bool undamaged;
 			reader.Read(undamaged, 1);
 			
@@ -283,7 +260,7 @@ class SCR_DestructibleBuildingEntity : Building
 				int hitRegion = -1;
 				
 				// Trace the region
-				float traceDist = m_World.TraceMove(param, SCR_Global.FilterCallback_IgnoreNotInList);
+				float traceDist = GetWorld().TraceMove(param, SCR_Global.FilterCallback_IgnoreNotInList);
 				if (traceDist < 1)
 				{
 					SCR_BuildingRegionEntity regionEnt = SCR_BuildingRegionEntity.Cast(param.TraceEnt);
@@ -496,15 +473,20 @@ class SCR_DestructibleBuildingEntity : Building
 			
 			DestroyPropsForRegion(regionEnt, buildingDebris);
 			
-			if (m_SoundComponent)
+			// Rather than storing component pointer cached on a bulidng, we fetch it now.
+			// This is because the number of components on building is too small and also
+			// because this is a one-time operation. Therefore, it's not worth wasting memory
+			// on every building for something that won't even happen for most of them.
+			auto soundComponent = BaseSoundComponent.Cast(FindComponent(BaseSoundComponent));
+			if (soundComponent)
 			{
 				vector camMat[4], regionMat[4];
 				GetWorld().GetCurrentCamera(camMat);
 				regionEnt.GetTransform(regionMat);
 				
-				m_SoundComponent.SetSignalValueStr("partSoundID", region);
-				m_SoundComponent.SetSignalValueStr("Distance", vector.Distance(camMat[3], SCR_EntityHelper.GetEntityCenterWorld(regionEnt)));
-				m_SoundComponent.SoundEventTransform(SCR_SoundEvent.SOUND_BUILDING_CRACK, regionMat)
+				soundComponent.SetSignalValueStr("partSoundID", region);
+				soundComponent.SetSignalValueStr("Distance", vector.Distance(camMat[3], SCR_EntityHelper.GetEntityCenterWorld(regionEnt)));
+				soundComponent.SoundEventTransform(SCR_SoundEvent.SOUND_BUILDING_CRACK, regionMat)
 			}
 		}
 		
@@ -621,13 +603,6 @@ class SCR_DestructibleBuildingEntity : Building
 					toCheckRegionsList.Insert(r);
 				}
 			}
-		}
-	
-		//------------------------------------------------------------------------------------------------
-		//! Checks if this entity is locally owned
-		protected bool IsProxy()
-		{
-			return (m_RplComponent && m_RplComponent.IsProxy());
 		}
 		
 		//------------------------------------------------------------------------------------------------
@@ -1046,7 +1021,7 @@ class SCR_DestructibleBuildingEntity : Building
 			param.End = mat[3] - vector.Up * 1;
 			
 			SCR_Global.g_TraceFilterEnt = s_QueryBuildingRegion;
-			float traced = m_World.TraceMove(param, SCR_Global.FilterCallback_IgnoreAllButEntity);
+			float traced = GetWorld().TraceMove(param, SCR_Global.FilterCallback_IgnoreAllButEntity);
 			
 			// The prop is a child and is floating in mid-air somewhere or traced the building region we are interested in
 			//if ((propIsChild && traced == 1) || param.TraceEnt == s_QueryBuildingRegion)
@@ -1134,14 +1109,11 @@ class SCR_DestructibleBuildingEntity : Building
 				QueryRegionProp(prop, true);
 			}
 			
-			// Now go through objects within the bounding box of the region
-			if (!m_World)
-				return;
-			
+			// Now go through objects within the bounding box of the region			
 			vector regionMins, regionMaxs, regionMat[4];
 			s_QueryBuildingRegion.GetWorldBounds(regionMins, regionMaxs);
 			
-			m_World.QueryEntitiesByAABB(regionMins, regionMaxs, QueryRegionPropCallback);
+			GetWorld().QueryEntitiesByAABB(regionMins, regionMaxs, QueryRegionPropCallback);
 		}
 		
 		//------------------------------------------------------------------------------------------------
@@ -1453,12 +1425,7 @@ class SCR_DestructibleBuildingEntity : Building
 			// Insert building and children into replication
 			RplComponent rplComponent = RplComponent.Cast(FindComponent(RplComponent));
 			if (rplComponent)
-			{
 				rplComponent.InsertToReplication();
-				m_RplComponent = rplComponent;
-			}
-			
-			m_SoundComponent = BaseSoundComponent.Cast(FindComponent(BaseSoundComponent));
 		}
 		
 		//------------------------------------------------------------------------------------------------
@@ -1466,7 +1433,7 @@ class SCR_DestructibleBuildingEntity : Building
 		{
 			if (!GetGame().InPlayMode())
 				return;
-			m_World = GetWorld();
+		
 			
 			//SetFlags(EntityFlags.ACTIVE, false);
 			#ifdef BUILDING_DESTRUCTION_DEBUG

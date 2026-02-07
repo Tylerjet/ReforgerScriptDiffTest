@@ -96,4 +96,7 @@ class DamageEffectEvaluator : ScriptAndConfig
 
 	//------------------------------------------------------------------------------------------------
 	void HandleEffectConsequences(SCR_MuzzleBlastDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
+
+	//------------------------------------------------------------------------------------------------
+	void HandleEffectConsequences(SCR_CriticalExplosionDamageEffect effect, ExtendedDamageManagerComponent dmgManager);
 }

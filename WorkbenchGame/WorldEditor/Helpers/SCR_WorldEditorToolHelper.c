@@ -2,6 +2,7 @@
 class SCR_WorldEditorToolHelper
 {
 	protected static ref array<IEntity> s_aTempEntities;
+	protected static const string TERRAIN_ENTITY_CLASSNAME = "GenericTerrainEntity";
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the ResourceManager object
@@ -64,6 +65,83 @@ class SCR_WorldEditorToolHelper
 			return string.Empty;
 
 		return ancestor.GetResourceName();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the currently loaded world's name, or "Unknown" if empty
+	static string GetWorldName()
+	{
+		string result = FilePath.StripExtension(FilePath.StripPath(GetWorldPath()));
+		if (!result) // .IsEmpty()
+			return "Unknown";
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return empty string if World Editor API is unavailable or if the world is not saved to storage
+	static string GetWorldPath()
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+			return "";
+
+		string result;
+		worldEditorAPI.GetWorldPath(result);
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if a world is loaded, false otherwise
+	static bool IsWorldLoaded()
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+			return false;
+
+		string worldPath;
+		worldEditorAPI.GetWorldPath(worldPath);
+		return worldPath && worldEditorAPI.GetWorld() != null; // !.IsEmpty()
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return the currently opened terrain's GenericTerrainEntity source or null on error / no world
+	static IEntitySource GetTerrainEntitySource()
+	{
+		WorldEditor worldEditor = GetWorldEditor();
+		if (!worldEditor)
+			return null;
+
+		if (worldEditor.IsPrefabEditMode())
+			return null;
+
+		WorldEditorAPI worldEditorAPI = worldEditor.GetApi();
+		if (worldEditorAPI.GetEditorEntityCount() < 2) // world and Entity
+			return null;
+
+		IEntitySource entitySource;
+		for (int i, entitiesCount = worldEditorAPI.GetEditorEntityCount(); i < entitiesCount; ++i)
+		{
+			entitySource = worldEditorAPI.GetEditorEntity(i);
+			if (entitySource && entitySource.GetClassName() == TERRAIN_ENTITY_CLASSNAME)
+				return entitySource;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static vector GetTerrainDimensions()
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+			return vector.Zero;
+
+		float terrainUnitScale = worldEditorAPI.GetTerrainUnitScale();
+		float terrainX = terrainUnitScale * worldEditorAPI.GetTerrainResolutionX();
+		float terrainZ = terrainX;
+		return { terrainX, 0, terrainZ };
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -210,29 +288,15 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Search Workbench-available files by extension and filters inside a provided directory
-	//! \param[in] fileExtensions
-	//! \param[in] searchStrArray
-	//! \param[in] rootPath format $addon:Workbench/Directory
-	//! \param[in] recursive
-	//! \return found resources
-	// TODO: move to an eventual SCR_WorkbenchHelper
+	[Obsolete("Use SCR_WorkbenchHelper.SearchWorkbenchResources instead")] // obsolete since 2025-03-03
 	static array<ResourceName> SearchWorkbenchResources(array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = "", bool recursive = true)
 	{
-		SearchResourcesFilter filter = new SearchResourcesFilter();
-		filter.fileExtensions = fileExtensions;
-		filter.recursive = recursive;
-		filter.rootPath = rootPath;
-		filter.searchStr = searchStrArray;
-
-		array<ResourceName> result = {};
-		ResourceDatabase.SearchResources(filter, result.Insert);
-		return result;
+		return SCR_WorkbenchHelper.SearchWorkbenchResources(fileExtensions, searchStrArray, rootPath, recursive);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Delete the entitySource's entity IF it exists
-	//! \entitySource can be null
+	//! \param[in] entitySource can be null
 	static void DeleteEntityFromSource(IEntitySource entitySource)
 	{
 		if (!entitySource)
@@ -265,14 +329,9 @@ class SCR_WorldEditorToolHelper
 		}
 
 		if (worldEditorAPI.IsDoingEditAction())
-		{
 			return false;
-		}
-		else
-		{
-			worldEditorAPI.BeginEntityAction();
-			return true;
-		}
+
+		return worldEditorAPI.BeginEntityAction();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -363,9 +422,9 @@ class SCR_WorldEditorToolHelper
 		return result;
 	}
 
-	/*
-		Callbacks
-	*/
+	//
+	// Callbacks
+	//
 
 	//------------------------------------------------------------------------------------------------
 	//! QueryEntitiesCallback method used for Entity querying

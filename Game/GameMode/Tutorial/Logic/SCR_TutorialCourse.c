@@ -46,6 +46,27 @@ class SCR_TutorialCourse : Managed
 	[Attribute(category: "Entities")]
 	private ref array<ref SCR_TutorialCoursePrefabInfo> m_aCourseEntities;
 	
+	protected ref ScriptInvokerInt s_OnCourseStarted;
+	protected ref ScriptInvokerInt s_OnCourseFinished;
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerInt GetOnCourseStarted()
+	{
+		if (!s_OnCourseStarted)
+			s_OnCourseStarted = new ScriptInvokerInt();
+
+		return s_OnCourseStarted;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerInt GetOnCourseFinished()
+	{
+		if (!s_OnCourseFinished)
+			s_OnCourseFinished = new ScriptInvokerInt();
+
+		return s_OnCourseFinished;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	string GetCourseAreaCenterEntityName()
 	{
@@ -153,6 +174,9 @@ class SCR_TutorialCourse : Managed
 	{
 		if (m_CourseLogic)
 			m_CourseLogic.OnCourseStart();
+
+		if (s_OnCourseStarted)
+			s_OnCourseStarted.Invoke(m_eCourseType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -160,6 +184,9 @@ class SCR_TutorialCourse : Managed
 	{
 		if (m_CourseLogic)
 			m_CourseLogic.OnCourseEnd();
+
+		if (s_OnCourseFinished)
+			s_OnCourseFinished.Invoke(m_eCourseType);
 	}
 	
 	//------------------------------------------------------------------------------------------------

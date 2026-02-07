@@ -1,18 +1,19 @@
 //! Script entry for garbage system modding
 class SCR_GarbageSystem : GarbageSystem
 {
-	protected const float VEHICLE_RESOURCE_LIFETIME_PERCENTAGE = 0.25;
-	
+	protected const float RESOURCE_LIFETIME_PERCENTAGE = 0.25;
+
 	//------------------------------------------------------------------------------------------------
 	override protected float OnInsertRequested(IEntity entity, float lifetime)
 	{
-		// If a vehicle has at least 25% of its supply capacity double the lifetime.
-		if (Vehicle.Cast(entity))
+		// If a something has at least 25% of its supply capacity double the lifetime.
+		const SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.FindResourceComponent(entity);
+		if (resourceComponent)
 		{
-			SCR_ResourceContainer container = FindVehicleResourceContainer(entity, EResourceType.SUPPLIES);
+			const SCR_ResourceContainer container = resourceComponent.GetContainer(EResourceType.SUPPLIES);
 			if (container && (container.GetMaxResourceValue() > 0))
 			{
-				if ((container.GetResourceValue() / container.GetMaxResourceValue()) > VEHICLE_RESOURCE_LIFETIME_PERCENTAGE)
+				if ((container.GetResourceValue() / container.GetMaxResourceValue()) > RESOURCE_LIFETIME_PERCENTAGE)
 				{
 					lifetime *= 2;
 				}
@@ -29,11 +30,11 @@ class SCR_GarbageSystem : GarbageSystem
 	//------------------------------------------------------------------------------------------------
 	protected void HandleVehicleResourcesChanged(SCR_ResourceContainer container)
 	{
-		float max = container.GetMaxResourceValue();
-		if ((max > 0) && ((container.GetResourceValue() / max) > VEHICLE_RESOURCE_LIFETIME_PERCENTAGE))
+		const float max = container.GetMaxResourceValue();
+		if ((max > 0) && ((container.GetResourceValue() / max) > RESOURCE_LIFETIME_PERCENTAGE))
 		{
 			container.GetOnResourcesChanged().Remove(HandleVehicleResourcesChanged);
-			IEntity vehicle = container.GetOwner().GetRootParent();
+			const IEntity vehicle = container.GetOwner().GetRootParent();
 			Bump(vehicle, GetLifetime(vehicle));
 		}
 	}

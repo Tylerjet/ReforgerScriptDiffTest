@@ -278,7 +278,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	protected Widget m_wFinishedObjectivesWidget;
 	protected Widget m_wPaginationWidget;
 	protected ButtonWidget m_wColumnButton;
-	protected ref array<SCR_BaseTask> m_aObjectivesToDisplay = {};
+	protected ref array<SCR_Task> m_aObjectivesToDisplay = {};
 	protected ref array<Widget> m_aDynamicObjectivesWidgets = {};
 	protected int m_iCurrentPage;
 	protected int m_iDynamicObjectivesCount;
@@ -324,8 +324,8 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 		RichTextWidget titleText = RichTextWidget.Cast(m_wFinishedObjectivesWidget.FindAnyWidget("TitleText"));
 		titleText.SetText(GetTitleText());
 		
-		SCR_BaseTaskManager taskManager = GetTaskManager();
-		if (!taskManager)
+		SCR_TaskSystem taskSystem = SCR_TaskSystem.GetInstance();
+		if (!taskSystem)
 			return;
 		
 		m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
@@ -333,15 +333,16 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 			return;
 
 		m_aObjectivesToDisplay.Clear();
-		taskManager.GetTasks(m_aObjectivesToDisplay);
+		taskSystem.GetTasks(m_aObjectivesToDisplay);
 		m_iDynamicObjectivesCount = m_aObjectivesToDisplay.Count();
 		
 		foreach (SCR_WelcomeScreenDynamicTaskFaction faction : m_aFactions)
 		{
-			foreach (SCR_BaseTask task : m_aObjectivesToDisplay)
+			string factionKey = faction.GetFactionKey();
+			foreach (SCR_Task task : m_aObjectivesToDisplay)
 			{
-				if (task.GetTargetFaction() != m_FactionManager.GetFactionByKey(faction.GetFactionKey()))
-				continue;
+				if (!task.GetOwnerFactionKeys().Contains(factionKey))
+					continue;
 			
 				faction.AddFactionTask(task);
 			}
@@ -355,11 +356,11 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 			m_aDynamicObjectivesWidgets.Insert(objective);
 		}
 		
-		SCR_BaseTaskManager.s_OnTaskCreated.Insert(AddTask);
+		//SCR_BaseTaskManager.s_OnTaskCreated.Insert(AddTask);
 		
-		SCR_BaseTaskManager.s_OnTaskFinished.Insert(RemoveTask);		
-		SCR_BaseTaskManager.s_OnTaskCancelled.Insert(RemoveTask);
-		SCR_BaseTaskManager.s_OnTaskFailed.Insert(RemoveTask);
+		//SCR_BaseTaskManager.s_OnTaskFinished.Insert(RemoveTask);		
+		//SCR_BaseTaskManager.s_OnTaskCancelled.Insert(RemoveTask);
+		//SCR_BaseTaskManager.s_OnTaskFailed.Insert(RemoveTask);
 		
 		FlipPage(GetCurrentPage());
 		
@@ -388,7 +389,7 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	//------------------------------------------------------------------------------------------------
 	//! Calls method with delay to add a task to the array of objectives to be displayed.
 	//! \param[in] task
-	protected void AddTask(SCR_BaseTask task)
+	protected void AddTask(notnull SCR_Task task)
 	{
 		//Since this is called right after task creation, the task itself might not have the 
 		//Title, faction or other properties set just yet. By introducing slight delay, we mitigate it in most cases
@@ -398,11 +399,11 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	//------------------------------------------------------------------------------------------------
 	//! Adds task to the array of objectives to be displayed.
 	//! \param[in] task
-	protected void AddTaskCalledLater(SCR_BaseTask task)
+	protected void AddTaskCalledLater(notnull SCR_Task task)
 	{
 		foreach (SCR_WelcomeScreenDynamicTaskFaction faction : m_aFactions)
 		{
-			if (task.GetTargetFaction() != m_FactionManager.GetFactionByKey(faction.GetFactionKey()))
+			if (!task.GetOwnerFactionKeys().Contains(faction.GetFactionKey()))
 				continue;
 			
 			faction.AddFactionTask(task);
@@ -423,11 +424,11 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 	//------------------------------------------------------------------------------------------------
 	//! Removes task from the array of objectives to be displayed.
 	//! \param[in] task
-	protected void RemoveTask(SCR_BaseTask task)
+	protected void RemoveTask(notnull SCR_Task task)
 	{
 		foreach (SCR_WelcomeScreenDynamicTaskFaction faction : m_aFactions)
 		{
-			if (task.GetTargetFaction() != m_FactionManager.GetFactionByKey(faction.GetFactionKey()))
+			if (!task.GetOwnerFactionKeys().Contains(faction.GetFactionKey()))
 				continue;
 			
 			faction.RemoveFactionTask(task);
@@ -546,16 +547,16 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 				{
 					RichTextWidget name = RichTextWidget.Cast(m_aDynamicObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
 					SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aObjectivesToDisplay[i]);
-					SCR_CampaignTask campaignTask = SCR_CampaignTask.Cast(m_aObjectivesToDisplay[i]);
+					SCR_CampaignMilitaryBaseTaskEntity campaignTask = SCR_CampaignMilitaryBaseTaskEntity.Cast(m_aObjectivesToDisplay[i]);
 					if (editorTask)
-						name.SetTextFormat(editorTask.GetTitle(), editorTask.GetLocationName());
+						name.SetTextFormat(editorTask.GetTaskName(), editorTask.GetLocationName());
 					else if (campaignTask)
-						name.SetTextFormat(campaignTask.GetTitle(), campaignTask.GetBaseNameWithCallsign());
+						name.SetTextFormat(campaignTask.GetTaskName(), campaignTask.GetMilitaryBase().GetCallsign());
 					else
-						name.SetText(m_aObjectivesToDisplay[i].GetTitle());
+						name.SetText(m_aObjectivesToDisplay[i].GetTaskName());
 				
 					ImageWidget image = ImageWidget.Cast(m_aDynamicObjectivesWidgets[i].FindAnyWidget("Background"));
-					image.SetColor(m_aObjectivesToDisplay[i].GetTargetFaction().GetFactionColor());
+					image.SetColor(m_FactionManager.GetFactionByKey(m_aObjectivesToDisplay[i].GetOwnerFactionKeys()[0]).GetFactionColor());
 				}
 				else
 				{
@@ -568,16 +569,16 @@ class SCR_WelcomeScreenDynamicObjectivesContent : SCR_WelcomeScreenBaseContent
 				{
 					RichTextWidget name = RichTextWidget.Cast(m_aDynamicObjectivesWidgets[i].FindAnyWidget("ObjectiveText"));
 					SCR_EditorTask editorTask = SCR_EditorTask.Cast(m_aObjectivesToDisplay[(currentPage * 10) + i]);
-					SCR_CampaignTask campaignTask = SCR_CampaignTask.Cast(m_aObjectivesToDisplay[(currentPage * 10) + i]);
+					SCR_CampaignMilitaryBaseTaskEntity campaignTask = SCR_CampaignMilitaryBaseTaskEntity.Cast(m_aObjectivesToDisplay[(currentPage * 10) + i]);
 					if (editorTask)
-						name.SetTextFormat(editorTask.GetTitle(), editorTask.GetLocationName());
+						name.SetTextFormat(editorTask.GetTaskName(), editorTask.GetLocationName());
 					else if (campaignTask)
-						name.SetTextFormat(campaignTask.GetTitle(), campaignTask.GetBaseNameWithCallsign());
+						name.SetTextFormat(campaignTask.GetTaskName(), campaignTask.GetMilitaryBase().GetCallsign());
 					else
-						name.SetText(m_aObjectivesToDisplay[(currentPage * 10) + i].GetTitle());
+						name.SetText(m_aObjectivesToDisplay[(currentPage * 10) + i].GetTaskName());
 					
 					ImageWidget image = ImageWidget.Cast(m_aDynamicObjectivesWidgets[i].FindAnyWidget("Background"));
-					image.SetColor(m_aObjectivesToDisplay[(currentPage * 10) + i].GetTargetFaction().GetFactionColor());
+					image.SetColor(m_FactionManager.GetFactionByKey(m_aObjectivesToDisplay[(currentPage * 10) + i].GetOwnerFactionKeys()[0]).GetFactionColor());
 				}
 				else
 				{
@@ -640,11 +641,11 @@ class SCR_WelcomeScreenDynamicTaskFaction
 	protected string m_sFactionKey;
 
 	[Attribute()]
-	protected ref array<SCR_BaseTask> m_aFactionTasks = {};
+	protected ref array<SCR_Task> m_aFactionTasks = {};
 
 	//------------------------------------------------------------------------------------------------
 	//! \return array of faction tasks
-	array<SCR_BaseTask> GetFactionTasks()
+	array<SCR_Task> GetFactionTasks()
 	{
 		return m_aFactionTasks;
 	}
@@ -659,7 +660,7 @@ class SCR_WelcomeScreenDynamicTaskFaction
 	//------------------------------------------------------------------------------------------------
 	//! Adds task to this faction class
 	//! \param[in] task
-	void AddFactionTask(SCR_BaseTask task)
+	void AddFactionTask(notnull SCR_Task task)
 	{
 		if (!m_aFactionTasks.Contains(task))
 			m_aFactionTasks.Insert(task);
@@ -668,7 +669,7 @@ class SCR_WelcomeScreenDynamicTaskFaction
 	//------------------------------------------------------------------------------------------------
 	//! Adds task from this faction class
 	//! \param[in] task
-	void RemoveFactionTask(SCR_BaseTask task)
+	void RemoveFactionTask(notnull SCR_Task task)
 	{
 		m_aFactionTasks.RemoveItem(task);
 	}
@@ -983,6 +984,24 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 
 	[Attribute(defvalue: "{68CCF1BD8F7AF86C}UI/layouts/Menus/DeployMenu/WelcomeScreenFaction.layout")]
 	protected ResourceName m_sFactionLayout;
+	
+	[Attribute(defvalue: "{1228936E5DB30403}UI/Textures/GroupManagement/FlagIcons/GroupFlagsBlufor.imageset")]
+	protected ResourceName m_sBluforLayout;
+	
+	[Attribute(defvalue: "{7CD99D22C7AE8195}UI/Textures/GroupManagement/FlagIcons/GroupFlagsOpfor.imageset")]
+	protected ResourceName m_sOpforLayout;
+		
+	[Attribute(defvalue: "{301FC1A2A46D3E0D}UI/Textures/GroupManagement/FlagIcons/GroupFlagsIndfor.imageset")]
+	protected ResourceName m_sIndforLayout;
+	
+	[Attribute("US")]
+	protected string m_sUSFaction;
+	
+	[Attribute("USSR")]
+	protected string m_sUSSRFaction;
+	
+	[Attribute("FIA")]
+	protected string m_sFIAFaction;
 
 	protected Widget m_wFactionContentWidget;
 	protected ref array<Widget> m_aFactionWidgets = {};
@@ -1081,7 +1100,28 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 
 		ImageWidget side = ImageWidget.Cast(factionWidget.FindAnyWidget("SideImage"));
 		if (side)
-			side.SetColor(color);
+		{
+			ResourceName ImageSetResource;
+			
+			if (faction.GetFactionKey() ==  m_sUSFaction)
+				ImageSetResource = m_sBluforLayout;
+			
+			else if (faction.GetFactionKey() ==  m_sUSSRFaction)
+				ImageSetResource = m_sOpforLayout;
+			
+			else if (faction.GetFactionKey() ==  m_sFIAFaction)
+				ImageSetResource = m_sIndforLayout;
+			
+			else 
+			{
+				side.SetEnabled(false);
+				side.SetVisible(false);
+				return;
+			}
+			
+			side.LoadImageFromSet(0, ImageSetResource, "undefined");
+			side.SetColor(faction.GetFactionColor());
+		}	
 
 		RichTextWidget name = RichTextWidget.Cast(factionWidget.FindAnyWidget("FactionNameText"));
 		if (name)
@@ -1095,10 +1135,14 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 		if (!playerCount)
 			return;
 		
+		int playerLimit = faction.GetPlayerLimit();
 		ImageWidget playerIcon = ImageWidget.Cast(factionWidget.FindAnyWidget("PlayerIcon"));
-		if (faction.IsPlayable())
+		if (playerLimit != 0 && faction.IsPlayable())
 		{
-			playerCount.SetText((faction.GetPlayerCount()).ToString());
+			if (playerLimit > 0)
+				playerCount.SetTextFormat("#AR-SupportStation_ActionFormat_ItemAmount", faction.GetPlayerCount(), playerLimit);
+			else
+				playerCount.SetText(faction.GetPlayerCount().ToString());
 		}
 		else
 		{
@@ -1127,7 +1171,11 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 		if (!playerCount)
 			return;
 		
-		playerCount.SetText((playerCountParam).ToString());
+		int playerLimit = factionScripted.GetPlayerLimit();
+		if (playerLimit > 0)
+			playerCount.SetTextFormat("#AR-SupportStation_ActionFormat_ItemAmount", playerCountParam, playerLimit);
+		else
+			playerCount.SetText(playerCountParam.ToString());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1149,12 +1197,16 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 			return;
 		
 		ImageWidget playerIcon = ImageWidget.Cast(factionWidget.FindAnyWidget("PlayerIcon"));
+		int playerLimit = factionScripted.GetPlayerLimit();
 		if (factionScripted.IsPlayable())
 		{
 			if (playerIcon)
 				playerIcon.SetVisible(true);
 			
-			playerCount.SetText((factionScripted.GetPlayerCount()).ToString());
+			if (playerLimit >= 0)
+				playerCount.SetTextFormat("#AR-SupportStation_ActionFormat_ItemAmount", factionScripted.GetPlayerCount(), playerLimit);
+			else
+				playerCount.SetText((factionScripted.GetPlayerCount()).ToString());
 		}
 		else
 		{

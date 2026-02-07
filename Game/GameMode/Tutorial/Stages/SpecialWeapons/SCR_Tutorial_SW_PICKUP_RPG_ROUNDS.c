@@ -30,7 +30,7 @@ class SCR_Tutorial_SW_PICKUP_RPG_ROUNDS : SCR_BaseTutorialStage
 		
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void CheckRoundCount()
 	{
@@ -38,24 +38,12 @@ class SCR_Tutorial_SW_PICKUP_RPG_ROUNDS : SCR_BaseTutorialStage
 		if (!inventory)
 			return;
 		
-		array <IEntity> entities = {};
-		inventory.GetAllRootItems(entities);
-		if (entities.IsEmpty())
-			return;
-		
-		int count;
-		foreach (IEntity ent : entities)
-		{
-			if (!ent || ent.GetPrefabData().GetPrefabName() != "{32E12D322E107F1C}Prefabs/Weapons/Ammo/Ammo_Rocket_PG7VM.et")
-				continue;
-			
-			count++;
-		}
-	
+		SCR_ResourceNamePredicate predicate("{32E12D322E107F1C}Prefabs/Weapons/Ammo/Ammo_Rocket_PG7VM.et");
+		int count = inventory.CountItem(predicate, EStoragePurpose.PURPOSE_ANY);
 		if (count >= 2)
 			m_bFinished = true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool GetIsFinished()
 	{

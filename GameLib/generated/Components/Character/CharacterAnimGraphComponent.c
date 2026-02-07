@@ -21,8 +21,9 @@ sealed class CharacterAnimGraphComponent: GenericComponent
 	//! \param	bindingName								binding name recognized by the main graph (where to attach)
 	//! \param resNameAttachedGraph				resource name of the attached graph
 	//! \param resNameAttachedInst				resource name of the anim set instance used for the attached graph
-	//! \param attachedNodeName						name of the starting node in the attached graph
-	proto external bool SetAttachment(string bindingName, ResourceName resNameAttachedGraph, ResourceName resNameAttachedInst, string attachedNodeName);
+	//! \param attachedNodeIndex					index of the starting node in the attached graph
+	//! \param attachAsManaged						create a separate animation control for the graph (requires setting animation controls directly on the attachment, instead of the main graph)
+	proto external bool SetAttachment(string bindingName, ResourceName resNameAttachedGraph, ResourceName resNameAttachedInst, int attachedNodeIndex, bool attachAsManaged);
 	//! Remove graph attachment. Returns false when there is no attachment bound under given name.
 	proto external bool RemoveAttachment(string bindingName);
 	proto external void SetExternalIKPose(ResourceName ikPoseResource);
@@ -63,6 +64,26 @@ sealed class CharacterAnimGraphComponent: GenericComponent
 	proto void GetRootMotionRotation(out float rotation[4]);
 	proto void OverrideRootMotionRotation(float rotation[4]);
 	proto external void SetForceEvaluateMotion(bool state);
+	//! Play an animation on top of the animation graph.
+	//! \param resNameAnimation		An animation to be played.
+	//!														If the animation is already playing, it is restarted without any blending time.
+	//! \param boneMaskName				Bone mask name to filter out the sampled pose, pass empty string to use no bone mask.
+	//!														Unknown bone mask causes error and does not enqueue the animation.
+	//!														Each animation graph can have its own masks, list of available masks can be found
+	//!														in Animation Editor in the Controls tab.
+	//! \param blendIn			time in seconds to fully blend in, negative number truncated to zero
+	//! \param blendOut			time in seconds to fully blend out, negative number truncated to zero
+	//!	\return							true on success, false if the animation could not be started.
+	proto external bool PlayPostGraphAnimation(ResourceName resNameAnimation, string boneMaskName, float blendIn, float blendOut);
+	//! Stop matching animation currently playing on top of the animation graph.
+	//! \param resNameAnimation		an animation to be stopped
+	//! \param blendOut						time in seconds to fully blend out, negative number keeps previously entered blending time
+	//! \return										false if no such animation exists
+	proto external bool StopPostGraphAnimation(ResourceName resNameAnimation, float blendOut);
+	//! Get remaining time of an animation currently playing on top of the animation graph.
+	//! \param resNameAnimation		queried animation
+	//! \return										remaining time in seconds, zero if the animation has already finished playing or is not present at all
+	proto external float GetPostGraphAnimationRemainingTime(ResourceName resNameAnimation);
 }
 
 /*!

@@ -12,6 +12,7 @@ Do not modify, this script is generated
 class VisualIdentity: ScriptAndConfig
 {
 	proto external ResourceName GetHead();
+	proto external ResourceName GetHeadCamo(int index);
 	proto external void SetHead(ResourceName res);
 	proto external ResourceName GetBody();
 	proto external void SetBody(ResourceName res);

@@ -7,6 +7,9 @@ class WeatherCinematicTrack : CinematicTrackBase
 	[Attribute("0", params:"0 3")]
 	int m_iWeatherType;
 	
+	[Attribute("false")]
+	bool setSpecifics;
+	
 	[Attribute("0.0", params:"0.0 20.0")]
 	float m_fWindSpeed;
 	
@@ -70,10 +73,26 @@ class WeatherCinematicTrack : CinematicTrackBase
 			
 			WeatherState weatherState = weatherManager.GetCurrentWeatherState();
 			
-			weatherManager.SetFogAmountOverride(true, m_fFog);
-			weatherManager.SetFogHeightDensityOverride(true, m_fFogHeight);
-			weatherManager.SetCurrentWetness(m_fWetness);
-			weatherManager.SetCurrentWaterAccumulation(0,m_fPuddles);
+			if (setSpecifics)
+			{
+				weatherManager.SetFogAmountOverride(true, m_fFog);
+				weatherManager.SetFogHeightDensityOverride(true, m_fFogHeight);
+				weatherManager.SetCurrentWetness(m_fWetness);
+				weatherManager.SetCurrentWaterAccumulation(0,m_fPuddles);
+				
+				//Wind speed and direction
+				if (m_fWindSpeed != m_fActualWindSpeed)
+				{
+					weatherManager.SetWindSpeedOverride(true, m_fWindSpeed);
+					m_fActualWindSpeed = m_fWindSpeed;
+				}
+				
+				if (m_fWindDirection != m_fActualWindDirection)
+				{
+					weatherManager.SetWindDirectionOverride(true, m_fWindDirection);
+					 m_fActualWindDirection = m_fWindDirection;
+				}
+			}
 			
 			//Time of day
 			if (m_fTimeOfDay != m_fActualTimeOfDay)
@@ -85,19 +104,6 @@ class WeatherCinematicTrack : CinematicTrackBase
 					weatherManager.SetDate(m_iYear, m_iMonth, m_iDay);
 				}
 				m_fActualTimeOfDay = m_fTimeOfDay;
-			}
-			
-			//Wind speed and direction
-			if (m_fWindSpeed != m_fActualWindSpeed)
-			{
-				weatherManager.SetWindSpeedOverride(true, m_fWindSpeed);
-				m_fActualWindSpeed = m_fWindSpeed;
-			}
-			
-			if (m_fWindDirection != m_fActualWindDirection)
-			{
-				weatherManager.SetWindDirectionOverride(true, m_fWindDirection);
-				 m_fActualWindDirection = m_fWindDirection;
 			}
 			
 			

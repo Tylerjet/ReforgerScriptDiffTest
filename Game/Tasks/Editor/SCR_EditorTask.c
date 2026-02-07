@@ -1,10 +1,9 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "Move task.", color: "0 0 255 255")]
-class SCR_EditorTaskClass: SCR_BaseTaskClass
+class SCR_EditorTaskClass: SCR_ExtendedTaskClass
 {
-};
+}
 
-//------------------------------------------------------------------------------------------------
-class SCR_EditorTask : SCR_BaseTask
+class SCR_EditorTask : SCR_ExtendedTask
 {	
 	[Attribute(SCR_Enum.GetDefault(ETaskTextType.NONE), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ETaskTextType))]
 	protected ETaskTextType m_TextType;
@@ -17,6 +16,10 @@ class SCR_EditorTask : SCR_BaseTask
 	
 	protected LocalizedString m_sLocationName;
 	
+	protected static int s_iNextAutomatedTaskID = 0;
+	protected const string GENERATED_TASK_PREFIX = "$EDITOR_TASK_";
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set name of location to which this task relates to.
 	\param locationName Name of the location
@@ -26,6 +29,7 @@ class SCR_EditorTask : SCR_BaseTask
 		m_sLocationName = locationName;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get name of location to which this task relates to.
 	\return string locationName Name of the location
@@ -34,6 +38,8 @@ class SCR_EditorTask : SCR_BaseTask
 	{
 		return m_sLocationName;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get type of custom texts this task should use.
 	\return Type of texts
@@ -42,6 +48,8 @@ class SCR_EditorTask : SCR_BaseTask
 	{
 		return m_TextType;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get index of custom text from SCR_TextsTaskManagerComponent.
 	\return Index from the array of texts
@@ -50,6 +58,8 @@ class SCR_EditorTask : SCR_BaseTask
 	{
 		return m_iTextIndex;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set index of custom text from SCR_TextsTaskManagerComponent.
 	\param index Index from the array of texts
@@ -58,6 +68,8 @@ class SCR_EditorTask : SCR_BaseTask
 	{
 		m_iTextIndex = index;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get the task completion type
 	\return MANUAL and ALWAYS_MENUAL means only the GM can complete the task. AUTOMATIC means that the task can auto complete and/or fail depending on the task
@@ -66,6 +78,8 @@ class SCR_EditorTask : SCR_BaseTask
 	{
 		return m_iTaskCompletionType;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set the task completion type
 	\param newTaskCompletionType MANUAL and ALWAYS_MENUAL means only the GM can complete the task. AUTOMATIC means that the task can auto complete and/or fail depending on the task
@@ -77,66 +91,78 @@ class SCR_EditorTask : SCR_BaseTask
 		
 		m_iTaskCompletionType = newTaskCompletionType;
 	}
-	/*!
-	Get UI info of custom text for this task.
-	\return UI info
-	*/
-	SCR_UIDescription GetInfo()
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetTaskState(SCR_ETaskState state)
 	{
-		SCR_TextsTaskManagerComponent textsComponent = SCR_TextsTaskManagerComponent.GetInstance();
-		if (textsComponent)
-			return textsComponent.GetText(m_TextType, m_iTextIndex);
-		else
-			return null;
-	}
-	override string GetTitle()
-	{
-		SCR_UIName info = GetInfo();
-		if (info)
-			return info.GetName();
-		else
-			return m_sName;
-	}
-	override void SetTitleWidgetText(notnull TextWidget textWidget, string taskText)
-	{
-		SCR_UIName info = GetInfo();
-		if (info)
-			textWidget.SetTextFormat(info.GetName(), m_sLocationName);
-		else
-			textWidget.SetTextFormat(taskText, m_sLocationName);
-	}
-	override void SetDescriptionWidgetText(notnull TextWidget textWidget, string taskText)
-	{
-		SCR_UIDescription info = GetInfo();
-		if (info)
-			textWidget.SetTextFormat(info.GetDescription(), m_sLocationName);
-		else
-			textWidget.SetTextFormat(taskText);
+		if (state == GetTaskState())
+			return;
+		
+		super.SetTaskState(state);
+		
+		string text;
+		ENotification notification;
+		switch (state)
+		{
+			case SCR_ETaskState.CREATED:
+				text = SCR_TextsTaskManagerComponent.TASK_AVAILABLE_TEXT;
+				notification = ENotification.EDITOR_TASK_PLACED;
+				break;
+			case SCR_ETaskState.COMPLETED:
+				text = SCR_TextsTaskManagerComponent.TASK_COMPLETED_TEXT;
+				notification = ENotification.EDITOR_TASK_COMPLETED;
+				break;
+			case SCR_ETaskState.FAILED:
+				text = SCR_TextsTaskManagerComponent.TASK_FAILED_TEXT;
+				notification = ENotification.EDITOR_TASK_FAILED;
+				break;
+			case SCR_ETaskState.CANCELLED:
+				text = SCR_TextsTaskManagerComponent.TASK_CANCELLED_TEXT;
+				notification = ENotification.EDITOR_TASK_CANCELED;
+				break;
+			
+			default:
+				return;
+		}
+		
+		Rpc_PopUpNotification(text, true);
+		Rpc(Rpc_PopUpNotification, text, true);
+		
+		ShowTaskNotification(notification);
 	}
 	
-	protected void PopUpNotification(string prefix, bool alwaysInEditor)
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void Rpc_PopUpNotification(string prefix, bool alwaysInEditor)
 	{
 		//--- Get player faction (prioritize respawn faction, because it's defined even when player is waiting for respawn)
 		Faction playerFaction;
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
-			playerFaction = factionManager.GetLocalPlayerFaction();		
+			playerFaction = factionManager.GetLocalPlayerFaction();
 				
 		if (!playerFaction)
 			playerFaction = SCR_PlayerController.GetLocalMainEntityFaction();
 		
+		string playerFactionKey;
+		if (playerFaction)
+			playerFactionKey = playerFaction.GetFactionKey();
+		
 		//--- Show notification when player is assigned, of the same faction, or has unlimited editor (i.e., is Game Master)
-		if (IsAssignedToLocalPlayer() || playerFaction == GetTargetFaction() || (alwaysInEditor && !SCR_EditorManagerEntity.IsLimitedInstance()))
+		if (IsTaskAssignedTo(SCR_TaskExecutor.FromLocalPlayer()) || GetOwnerFactionKeys().Contains(playerFactionKey) || (alwaysInEditor && !SCR_EditorManagerEntity.IsLimitedInstance()))
 		{
 			//--- SCR_PopUpNotification.GetInstance() is never null, as it creates the instance if it doesn't exist yet
-			SCR_PopUpNotification.GetInstance().PopupMsg(prefix + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_sLocationName, sound: SCR_SoundEvent.TASK_SUCCEED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(prefix + " " + GetTaskName(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_sLocationName, sound: SCR_SoundEvent.TASK_SUCCEED);
 		}
 	}
-	override protected void ShowPopUpNotification(string subtitle)
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShowPopUpNotification(string subtitle)
 	{
-		SCR_PopUpNotification.GetInstance().PopupMsg(GetTitle(), text2: subtitle, param1: m_sLocationName);
+		SCR_PopUpNotification.GetInstance().PopupMsg(GetTaskName(), text2: subtitle, param1: m_sLocationName);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Show notification related to the task state. Delete notification is called by SCR_EditableTaskComponent
 	\param taskNotification notification to show
@@ -149,16 +175,15 @@ class SCR_EditorTask : SCR_BaseTask
 	
 		int taskID = Replication.FindId(editableTask);
 		
-		Faction faction = GetTargetFaction();
-		if (!faction)
-			return;
-		
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
 			return;
 		
-		vector position;
-	 	editableTask.GetPos(position);
+		Faction faction = factionManager.GetFactionByKey(GetOwnerFactionKeys()[0]);
+		if (!faction)
+			return;
+		
+		vector position = GetTaskPosition();
 		
 		int factionIndex = factionManager.GetFactionIndex(faction);
 		
@@ -176,73 +201,27 @@ class SCR_EditorTask : SCR_BaseTask
 		}
 	}
 	
-	protected override void OnStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
-	{
-		//--- Delete the task once it's finished (ToDo: Keep it, but hide it in the editor once completed tasks can be shown in the task list)
-		RplComponent rplComponent = RplComponent.Cast(FindComponent(RplComponent));
-		if ((!rplComponent || rplComponent.Role() == RplRole.Authority) && (newState == SCR_TaskState.FINISHED || newState == SCR_TaskState.CANCELLED))
-		{
-			if (GetTaskManager())
-				GetTaskManager().DeleteTask(this);
-		}
-	}
-	
+	//------------------------------------------------------------------------------------------------
 	protected void DelayedPlacedNotification(vector position, int taskID, int factionIndex)
 	{
 		SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_TASK_PLACED, position, taskID, factionIndex);
 	}
 	
-	
-	override void Create(bool showMsg = true)
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
 	{
-		super.Create(showMsg);
+		super.EOnInit(owner);
 		
-		if (showMsg)
-			PopUpNotification(TASK_AVAILABLE_TEXT, false);
-			
-		ShowTaskNotification(ENotification.EDITOR_TASK_PLACED);	
-	}
-	override void Finish(bool showMsg = true)
-	{
-		super.Finish(showMsg);
-		
-		if (showMsg)
-			PopUpNotification(TASK_COMPLETED_TEXT, true);
-			
-		ShowTaskNotification(ENotification.EDITOR_TASK_COMPLETED);
-			
-	}
-	override void Fail(bool showMsg = true)
-	{
-		super.Fail(showMsg);
-		
-		if (showMsg)
-			PopUpNotification(TASK_FAILED_TEXT, true);
-			
-		ShowTaskNotification(ENotification.EDITOR_TASK_FAILED);
-			
-	}
-	override void Cancel(bool showMsg = true)
-	{
-		super.Cancel(showMsg);
-		
-		if (showMsg)
-			PopUpNotification(TASK_CANCELLED_TEXT, true);
-		
-		ShowTaskNotification(ENotification.EDITOR_TASK_CANCELED);	
+		if (Replication.IsClient())
+			return;
+
+		SetTaskID(GENERATED_TASK_PREFIX + s_iNextAutomatedTaskID);
+		s_iNextAutomatedTaskID++;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool RplLoad(ScriptBitReader reader)
+	void ~SCR_EditorTask()
 	{
-		Deserialize(reader);
-		return true;
+		s_iNextAutomatedTaskID--;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override bool RplSave(ScriptBitWriter writer)
-	{
-		Serialize(writer);
-		return true;
-	}
-};
+}

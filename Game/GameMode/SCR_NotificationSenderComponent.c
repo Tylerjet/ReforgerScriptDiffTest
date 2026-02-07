@@ -400,13 +400,13 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			
 			//~ Player kicked 
 			if (timeout == 0)
-				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId, cause, timeout);	
+				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId, KickCauseCodeAPI.GetGroup(cause), KickCauseCodeAPI.GetReason(cause), timeout);
 			//~ Player perminent ban
 			else if (timeout < 0)
-				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId, cause, timeout);
+				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId, KickCauseCodeAPI.GetGroup(cause), KickCauseCodeAPI.GetReason(cause), timeout);
 			//~ Player temp ban
 			else
-				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerId, cause, timeout);
+				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerId, KickCauseCodeAPI.GetGroup(cause), KickCauseCodeAPI.GetReason(cause), timeout);
 		}		
 		//~ Is Not kicked/banned, is player and should send on leave notification. 
 		else if (m_bShowPlayerLeftNotification && !hasUnlimitedEditor)
@@ -416,11 +416,12 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
 		//Check if faction changed and send notification if diffrent
-		if (m_FactionManager) 
+		if (m_FactionManager)
 		{
+			int playerId = requestComponent.GetPlayerId();
 			//Get factions using ID
 			Faction playerFaction = m_FactionManager.GetPlayerFaction(playerId);
 		

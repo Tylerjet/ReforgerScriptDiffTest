@@ -4,14 +4,16 @@ class RadialMenuSystem: GameSystem
 	{
 		outInfo
 			.SetAbstract(false)
+			.SetUnique(true)
+			.SetLocation(WorldSystemLocation.Client)
 			.AddPoint(ESystemPoint.Frame);
 	}
 
 	protected ref array<SCR_RadialMenuGameModeComponent> m_Components = {};
 
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		foreach (SCR_RadialMenuGameModeComponent comp: m_Components)
 		{

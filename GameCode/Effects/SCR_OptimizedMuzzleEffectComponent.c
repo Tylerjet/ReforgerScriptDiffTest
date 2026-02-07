@@ -1,14 +1,12 @@
 class SCR_OptimizedMuzzleEffectComponentClass : MuzzleEffectComponentClass
 {
-};
+}
 
 class SCR_OptimizedMuzzleEffectComponent : MuzzleEffectComponent
 {
+	protected bool m_bInScope;
 	protected ref ScriptInvokerVoid m_OnWeaponFired;
-	
-	protected const string	PREFIX_EMITOR_TO_DISABLE = "noscope";
-	
-	bool inScope = false;
+	protected const string PREFIX_EMITOR_TO_DISABLE = "noscope";
 	
 	//------------------------------------------------------------------------------------------------
 	static void OptimizeMuzzleEffect(bool inScope, TurretControllerComponent m_TurretController)
@@ -41,7 +39,7 @@ class SCR_OptimizedMuzzleEffectComponent : MuzzleEffectComponent
 				if (!muzzleEffect)
 					continue;
 				
-				muzzleEffect.inScope = inScope;
+				muzzleEffect.m_bInScope = inScope;
 			}
 		}
 	}
@@ -74,10 +72,15 @@ class SCR_OptimizedMuzzleEffectComponent : MuzzleEffectComponent
 		array<string> names = {};
 		particles.GetEmitterNames(names);
 		
-		foreach(int idx, string name : names)
+		foreach (int idx, string name : names)
 		{
 			if (name.Contains(PREFIX_EMITOR_TO_DISABLE))
-				particles.MultParam(idx, EmitterParam.BIRTH_RATE, 1 - inScope);
+			{
+				if (m_bInScope)
+					particles.MultParam(idx, EmitterParam.BIRTH_RATE, 0);
+				else
+					particles.MultParam(idx, EmitterParam.BIRTH_RATE, 1);
+			}
 		}
 	}
-};
+}

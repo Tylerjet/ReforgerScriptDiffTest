@@ -616,6 +616,20 @@ class SCR_ResourceContainerQueue<Class ResourceInteractorType> : SCR_ResourceCon
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param storageType The container storage type to return number of containers of.
+	//! \return Returns the number of containers of a specified storageType.
+	int GetStorageTypeCount(EResourceContainerStorageType storageType)
+	{
+		foreach (SCR_ResourceStoragePolicyBase<ResourceInteractorType> policy : m_StoragePolicies)
+		{
+			if (policy.IsStorageTypeValid(storageType))
+				return policy.GetStorageQueue().GetContainerCount();
+		}
+		
+		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Registers a container into the queue.
 	//! \param container The container to be registered into the queue.
 	//! \return Returns the position of the container in the queue.

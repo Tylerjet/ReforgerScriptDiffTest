@@ -263,12 +263,11 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 		if (m_bIsStandaloneDepot && GetGame().InPlayMode())
 		{
 			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-			
 			if (campaign)
 				campaign.GetBaseManager().RegisterRemnantSupplyDepot(this);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{

@@ -9,15 +9,13 @@ Do not modify, this script is generated
 \{
 */
 
-class PawnRelatedEntityClass: GenericEntityClass
-{
-}
-
 class PawnRelatedEntity: GenericEntity
 {
-	event protected void SimPhaseMainLogic(float timeSlice);
-	event protected void SimPhasePreAnim(float timeSlice);
-	event protected void SimPhasePostAnim(float timeSlice);
+	event protected void OnAddedToPawn(PawnEntity pawnOwner);
+	event protected void OnRemovedFromPawn(PawnEntity pawnOwner);
+	event protected void OnFramePhaseMainLogic(PawnEntity pawnOwner, float timeSlice);
+	event protected void OnFramePhasePreAnim(PawnEntity pawnOwner, float timeSlice);
+	event protected void OnFramePhasePostAnim(PawnEntity pawnOwner, float timeSlice);
 }
 
 /*!

@@ -1,3 +1,11 @@
+enum ECollectiveModeForSettings
+{
+	Default,
+	Manual,
+	Sticky,
+	Direct
+}
+
 class SCR_GameplaySettings : ModuleGameSettings
 {
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Allow controls hints on screen.")]
@@ -8,6 +16,9 @@ class SCR_GameplaySettings : ModuleGameSettings
 	
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Show nametag platform icon.")]
 	bool m_bPlatformIconNametag;
+	
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Enable Logitech LED support.")]
+	bool m_bLogitechSupport;
 
 	[Attribute(defvalue: "127.0.0.1", uiwidget: UIWidgets.EditBox, desc: "Last IP used for server connection.")]
 	string m_sLastIP;
@@ -27,12 +38,24 @@ class SCR_GameplaySettings : ModuleGameSettings
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Preserve aim down sights after performing actions like sprinting.")]
 	bool m_bStickyADS;
 
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Whether or not the game should automatically equip next placeable item when previous one was placed")]
+	bool m_bAutoEquipNextPlaceableItem;
+
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook when piloting aircrafts.")]
 	bool m_bMouseControlAircraft;
 
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use gamepad input for freelook instead of for steering when piloting aircrafts.")]
 	bool m_bGamepadFreelookInAircraft;
-
+	
+	[Attribute(defvalue: SCR_Enum.GetDefault(ECollectiveModeForSettings.Default), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ECollectiveModeForSettings), desc: ".")]
+	ECollectiveModeForSettings m_eKeyboardCollective;
+	
+	[Attribute(defvalue: SCR_Enum.GetDefault(ECollectiveModeForSettings.Direct), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ECollectiveModeForSettings), desc: ".")]
+	ECollectiveModeForSettings m_eGamepadCollective;
+	
+	[Attribute(defvalue: SCR_Enum.GetDefault(ECollectiveModeForSettings.Direct), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ECollectiveModeForSettings), desc: ".")]
+	ECollectiveModeForSettings m_eHotasCollective;
+	
 	[Attribute(defvalue: SCR_Enum.GetDefault(EVehicleDrivingAssistanceMode.FULL), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleDrivingAssistanceMode), desc: "Player's vehicle driving assistance mode. Controls gearbox, engine and persistent handbrake automation.")]
 	EVehicleDrivingAssistanceMode m_eDrivingAssistance;
 };
@@ -65,6 +88,9 @@ class SCR_AudioSettings : ModuleGameSettings
 
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Enable/Disable Tinnitus Sound Playback")]
 	bool m_bGTinnitus;
+	
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Enable/Disable HQ Announcer")]
+	bool m_bHQAnnouncer;
 };
 
 class SCR_VideoSettings : ModuleGameSettings
@@ -147,8 +173,25 @@ class SCR_HintSettings : ModuleGameSettings
 		{
 			m_aShownHintCounts[index] = m_aShownHintCounts[index] + 1;
 		}
+		
 		return m_aShownHintCounts[index];
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void DontShowAgain(EHint type, BaseContainer container)
+	{
+		if (!m_aShownHints)
+			return;
+
+		int index = m_aShownHints.Find(type);
+		if (!m_aShownHintCounts.IsIndexValid(index))
+			return;
+
+		m_aShownHintCounts[index] = -1;
+
+		SaveShownHints(container);
+	}
+
 	/*!
 	Load shown hints to this settings class and validate if existing values are correct. If not, reset them.
 	\param container Settings container

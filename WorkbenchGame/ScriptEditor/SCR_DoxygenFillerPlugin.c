@@ -9,6 +9,10 @@
 // TODO: addon-wide file process
 class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 {
+	/*
+		Doxygen
+	*/
+
 	[Attribute("1", category: "Doxygen", desc: "Add Doxygen skeleton to public methods (neither protected nor private)")]
 	protected bool m_bDoxygenPublicMethods;
 
@@ -30,6 +34,10 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 	[Attribute("MethodPrefix", category: "Doxygen", desc: "Only document params and return value (without description) for methods starting with these prefixes (e.g Set*, Get*, On*, Is* etc, case-sensitive)")]
 	protected ref array<string> m_aPartialDoxygenPrefixes;
 
+	/*
+		Other
+	*/
+
 	[Attribute("1", category: "Other", desc: "Replace Doxygen blocks with multiple one line comments (" + DOXYGEN_LINE_START + ")")]
 	protected bool m_bConvertDoxygenFormatting;
 
@@ -41,6 +49,13 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 
 	[Attribute("1", category: "Other", desc: "Add \"" + DESTRUCTOR_COMMENT + "\" comment to destructor")]
 	protected bool m_bAddDestructorNormalComment;
+
+	/*
+		Debug
+	*/
+
+	[Attribute(defvalue: "0", category: "Debug", desc: "Output method parsing errors in the log console")]
+	protected bool m_bOutputMethodParsingErrors;
 
 	protected static const string METHOD_SEPARATOR = SCR_StringHelper.DOUBLE_SLASH + "------------------------------------------------------------------------------------------------";
 	protected static const string DOXYGEN_LINE_START = SCR_StringHelper.DOUBLE_SLASH + "!"; // the space is optional... unfortunately
@@ -454,6 +469,9 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 		if (!line)
 			return null;
 
+		if (line.StartsWith("\treturn"))
+			return null;
+
 		if (line.Contains(" = new ")) // safety against ref ScriptInvoker m_Invoker = new ScriptInvoker();
 			return null;
 
@@ -527,7 +545,9 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 
 		if (protectionReturnValueAndName.Count() != 2)
 		{
-			Print("Too many remaining method keywords line " + (lineNumber + 1) + ": " + SCR_StringHelper.Join(" | ", protectionReturnValueAndName), LogLevel.WARNING);
+			if (m_bOutputMethodParsingErrors)
+				Print("Too many remaining method keywords line " + (lineNumber + 1) + ": " + SCR_StringHelper.Join(" | ", protectionReturnValueAndName), LogLevel.WARNING);
+
 			return null;
 		}
 
@@ -570,7 +590,9 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 			int count = modifiersTypeAndParamName.Count();
 			if (count != 2 && count != 4)
 			{
-				Print("Cannot process parameter: " + SCR_StringHelper.Join(" | ", modifiersTypeAndParamName), LogLevel.WARNING);
+				if (m_bOutputMethodParsingErrors)
+					Print("Cannot process parameter: " + SCR_StringHelper.Join(" | ", modifiersTypeAndParamName), LogLevel.WARNING);
+
 				continue;
 			}
 
@@ -582,6 +604,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 				if (modifiersTypeAndParamName[2] == "=") // "=" "defValue"
 					parameter.m_sDefaultValue = modifiersTypeAndParamName[3];
 				else
+				if (m_bOutputMethodParsingErrors)
 					Print("Cannot process parameter: " + SCR_StringHelper.Join(" | ", modifiersTypeAndParamName), LogLevel.WARNING);
 			}
 

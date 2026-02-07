@@ -22,6 +22,8 @@ class BoneMask: Managed
 //! Node global id is a hash of name of the node.
 typedef int TNodeId;
 
+typedef int TMeshIndex;
+
 /*!
 \}
 */

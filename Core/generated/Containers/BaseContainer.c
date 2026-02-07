@@ -35,6 +35,11 @@ sealed class BaseContainer: BaseResourceObject
 	proto external int GetLimits(int varIndex, out float min, out float max, out float step);
 	proto external void GetEnumValues(int varIndex, out array<string> names, out array<int> values);
 	proto external bool Get(string varName, out void val);
+	/*!
+	Return object property base class name. Can be used for both DataVarType.OBJECT and DataVarType.OBJECT_ARRAY properties.
+	\note Property class name specify just base class accepted by a property not actual class of assigned object in the property
+	*/
+	proto external string GetObjectBaseClass(int varIndex);
 	proto external bool GetDefaultAsString(string varName, out string val);
 	proto external BaseContainer GetObject(string varName);
 	proto external bool SetObject(string varName, BaseContainer val);

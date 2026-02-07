@@ -65,6 +65,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	private ref array<SCR_BaseEditorComponent> m_aEventComponentsActivate;
 	private ref array<SCR_BaseEditorComponent> m_aEventComponentsDeactivate;
 	private ref array<EEditorEvent> m_aEvents;
+	private ref array<SCR_VONEntryRadio> editorRadioEntries;
 
 	private ref ScriptInvoker Event_OnInit = new ScriptInvoker();
 	private ref ScriptInvoker Event_OnRequest = new ScriptInvoker();
@@ -128,13 +129,72 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 			return;
 		}
-		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(GetPlayerID());
+		
+		int playerId = GetPlayerID();
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		
+		// Unscope when going into game master to avoid issues with ADS camera
+		IEntity player = playerManager.GetPlayerControlledEntity(playerId);
 		if (player)
 		{
-			// Unscope when going into game master to avoid issues with ADS camera
-			CharacterControllerComponent cont = CharacterControllerComponent.Cast(player.FindComponent(CharacterControllerComponent));
-			if (cont)
-				cont.SetWeaponADS(false);
+			CharacterControllerComponent characterCont = CharacterControllerComponent.Cast(player.FindComponent(CharacterControllerComponent));
+			if (characterCont)
+				characterCont.SetWeaponADS(false); 
+		}
+
+		// VON
+		PlayerController playerController = playerManager.GetPlayerController(playerId);
+		if (playerController)
+		{
+			SCR_VONController vonCont = SCR_VONController.Cast(playerController.FindComponent(SCR_VONController));
+			SCR_VoNComponent editorVonComponent = SCR_VoNComponent.Cast(FindComponent(SCR_VoNComponent));
+			
+			// Connect the VON component used by the editor.
+			editorVonComponent.ConnectEditorToVoNSystem(m_iPlayerID);
+			
+			// Tell SCR_VONController to use the SCR_VoNComponent attached to this editor manager.
+			vonCont.SetVONComponent(editorVonComponent);
+			
+			// Give editor radio transceivers
+			if (!vonCont.m_bIsEditorRadioAdded)
+			{
+				vonCont.m_bIsEditorRadioAdded = true;
+				
+				SCR_RadioComponent radioGadget = SCR_RadioComponent.Cast(FindComponent(SCR_RadioComponent));
+				radioGadget.OnPostInit(this);
+				BaseRadioComponent radioComp = radioGadget.GetRadioComponent();
+				
+				// This could be a good place to set the power of the radioComp. But this is not possible because, the SetPower() function needs
+				// to check if the owner of the radio is a active game master for it to work. That is not the case at this time.
+							
+				int transceiversCount = radioComp.TransceiversCount();
+				editorRadioEntries = new array<SCR_VONEntryRadio>();
+				editorRadioEntries.Resize(transceiversCount);
+				for (int i = 0; i < transceiversCount; i++)
+				{
+					BaseTransceiver transceiver = radioComp.GetTransceiver(i);
+					EditorFactionTransceiver editorFactionTransceiver = EditorFactionTransceiver.Cast(transceiver);
+					if (editorFactionTransceiver)
+					{
+						SCR_VONEntryRadio editorRadioEntry = new SCR_VONEntryRadio();
+						editorRadioEntry.SetRadioEntry(transceiver, i + 1, radioGadget);	
+						editorRadioEntry.SetChannelTextOverwrite("GM " + editorFactionTransceiver.GetEditorFaction());
+						vonCont.AddEntry(editorRadioEntry);
+						
+						editorRadioEntries[i] = editorRadioEntry;
+					}
+					else
+					{
+						SCR_VONEntryRadio editorRadioEntry = new SCR_VONEntryRadio();
+						editorRadioEntry.SetRadioEntry(transceiver, i + 1, radioGadget);	
+						editorRadioEntry.SetChannelTextOverwrite("GM");
+						editorRadioEntry.SetFrequencyTextOverwrite("     GM");
+						vonCont.AddEntry(editorRadioEntry);
+						
+						editorRadioEntries[i] = editorRadioEntry;
+					}
+				}
+			}			
 		}
 		
 		StartEvents(EEditorEventOperation.REQUEST_OPEN);
@@ -158,6 +218,42 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 			return;
 		}
+		
+		// VON
+		int playerId = GetPlayerID();
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		PlayerController playerController = playerManager.GetPlayerController(playerId);
+		if (playerController)
+		{
+			SCR_VONController vonCont = SCR_VONController.Cast(playerController.FindComponent(SCR_VONController));
+			SCR_VoNComponent editorVonComponent = SCR_VoNComponent.Cast(FindComponent(SCR_VoNComponent));
+			
+			// Disconnect the VON component used by editor.
+			editorVonComponent.DisconnectEditorFromVoNSystem();
+			
+			IEntity player = playerManager.GetPlayerControlledEntity(playerId);
+			if (player)
+			{
+				SCR_VoNComponent charVonComponent =  SCR_VoNComponent.Cast(player.FindComponent(SCR_VoNComponent));
+				
+				// Tell SCR_VONController to use the SCR_VoNComponent attached to the player character.
+				vonCont.SetVONComponent(charVonComponent);
+				
+				// Remove editor radio transceivers
+				if (editorRadioEntries)
+				{
+					foreach (SCR_VONEntryRadio entry : editorRadioEntries)
+					{
+						if (entry)
+							vonCont.RemoveEntry(entry);
+					}
+					editorRadioEntries.Clear();
+				}
+				
+				vonCont.m_bIsEditorRadioAdded = false;
+			}
+		}
+		
 		StartEvents(EEditorEventOperation.REQUEST_CLOSE);
 		//Event_OnRequest.Invoke(false);
 		Rpc(ToggleServer, false);
@@ -494,6 +590,15 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 		if (m_bIsLimited != limitedPrev)
 			Event_OnLimitedChange.Invoke(m_bIsLimited);
+	}
+
+	void EnableCameraNwkSimulation(bool enable)
+	{
+		NwkMovementComponent nwkComponent = NwkMovementComponent.Cast(FindComponent(NwkMovementComponent));
+		if(nwkComponent)
+		{
+			nwkComponent.EnableSimulation(enable);
+		}
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1685,6 +1790,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 					}
 					case EEditorEventOperation.CLOSE:
 					{
+						//--- Save stored user camera locations when leaving GM
+						GetGame().UserSettingsChanged();
+						GetGame().SaveUserSettings();
 						Event_OnAsyncLoad.Invoke(1);
 						Event_OnClosed.Invoke();
 						Rpc(ToggleOwnerServerCallback, false);

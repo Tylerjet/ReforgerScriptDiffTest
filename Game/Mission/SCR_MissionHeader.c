@@ -30,18 +30,18 @@ class SCR_MissionHeader : MissionHeader
 	[Attribute("1", UIWidgets.EditBox, "The count of players for this mission")]
 	int m_iPlayerCount;
 
+	[Attribute("7", UIWidgets.Flags, "If all save types are disabled, the entire persistence system is disabled", enumType: ESaveGameType)]
+	ESaveGameType m_eSaveTypes;
+
 	[Attribute("0", uiwidget: UIWidgets.Flags, "Editable Game Flags", "", ParamEnumArray.FromEnum(EGameFlags))]
 	EGameFlags m_eEditableGameFlags;
 
 	[Attribute("0", uiwidget: UIWidgets.Flags, "Default Game Flags", "", ParamEnumArray.FromEnum(EGameFlags))]
 	EGameFlags m_eDefaultGameFlags;
-
-	[Attribute(desc: "When true, saving mission state is enabled.")]
-	bool m_bIsSavingEnabled;
-
-	[Attribute("", UIWidgets.EditBox, "Name of save file for this mission.\nWhen undefined, the name of associated world file will be used.")]
-	string m_sSaveFileName;
 	
+	[Attribute("1", desc: "When true, this scenario will be listed in the scenario menu")]
+	bool m_bShowInScenarioMenu;
+
 	[Attribute("", UIWidgets.ResourceNamePicker, "Configuration file for briefing screen.", "conf")]
 	ResourceName m_sBriefingConfig;
 	
@@ -78,6 +78,12 @@ class SCR_MissionHeader : MissionHeader
 	[Attribute("10", desc: "How many map markers per player can exist at a time")];
 	int m_iMapMarkerLimitPerPlayer;
 	
+	[Attribute("", UIWidgets.Object, "Player limits per faction")]
+	ref array<ref SCR_FactionLimit> m_aFactionLimits;
+	
+	[Attribute("0", desc: "Armavision is allowed for players without elevated rights in multiplayer")];
+	bool m_bIsArmavisionAllowedInMP;
+	
 	bool m_bLoadOnStart;
 	string m_sOwner;
 
@@ -86,18 +92,6 @@ class SCR_MissionHeader : MissionHeader
 	bool IsMultiplayer()
 	{
 		return m_iPlayerCount > 1;
-	}
-
-	/*!
-	Get name of the save file for this mission.
-	\return File name
-	*/
-	string GetSaveFileName()
-	{
-		if (m_sSaveFileName)
-			return m_sSaveFileName;
-		else
-			return FilePath.StripPath(FilePath.StripExtension(GetWorldPath()));
 	}
 	
 	/*!
@@ -113,4 +107,21 @@ class SCR_MissionHeader : MissionHeader
 		
 		return SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(item.Id()));
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns map of player limits per faction.
+	map<string, int> GetFactionLimitMap()
+	{
+		map<string, int> missionFactionLimitMap = new map<string, int>();
+		if (!m_aFactionLimits.IsEmpty())
+		{
+			foreach (SCR_FactionLimit factionLimit : m_aFactionLimits)
+			{
+				Print(factionLimit.m_sFactionKey);
+				if (factionLimit && !factionLimit.m_sFactionKey.IsEmpty())
+					missionFactionLimitMap.Insert(factionLimit.m_sFactionKey, factionLimit.m_iFactionLimit);
+			}
+		}
+		return missionFactionLimitMap;
+	}
 };

@@ -70,7 +70,7 @@ class SCR_JournalEntry
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EJournalEntryType))]
 	protected SCR_EJournalEntryType m_eJournalEntryType;
 
-	[Attribute("{1AB2FA99C5CD3919}UI/layouts/Menus/DeployMenu/JournalButton.layout")]
+	[Attribute("{3EAF5389D3D89EE5}UI/layouts/Menus/DeployMenu/JournalButton.layout")]
 	protected ResourceName m_sEntryButtonLayout;
 
 	[Attribute("Custom", desc: "Custom name when using SCR_EJournalEntryType.Custom")]
@@ -85,7 +85,7 @@ class SCR_JournalEntry
 	[Attribute("")]
 	protected ResourceName m_sEntryLayoutCustom;
 
-	protected ResourceName m_sEntryLayoutDefault = "{9BA70BE88082F251}UI/layouts/Menus/DeployMenu/JournalEntryDefault.layout";
+	protected ResourceName m_sEntryLayoutDefault = "{2EA47B4CAB62482C}UI/layouts/Menus/DeployMenu/JournalEntryDefault.layout";
 	
 	protected string m_sEntryTextParam1;
 	protected Widget m_Widget;
@@ -173,37 +173,36 @@ class SCR_JournalEntry
 	
 	//------------------------------------------------------------------------------------------------
 	Widget GetWidget()
-	{
+	{	
 		return m_Widget;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	Widget SetEntryLayoutTo(out notnull Widget target)
+	//! Creates journal entry description and sets title and content.
+	//! \param[in] parent widget to which entry will be parented
+	Widget SetEntryLayoutTo(out notnull Widget parent)
 	{
-		if (m_bUseCustomLayout)
+		if (!m_Widget)
 		{
-			if (!m_Widget)
-				m_Widget = GetGame().GetWorkspace().CreateWidgets(m_sEntryLayoutCustom, target);
-			
-			TextWidget text = TextWidget.Cast(m_Widget.FindAnyWidget("Text"));
-			if (text)
-				text.SetTextFormat(m_sEntryText, m_sEntryTextParam1);
+			if (m_bUseCustomLayout)
+				m_Widget = GetGame().GetWorkspace().CreateWidgets(m_sEntryLayoutCustom, parent);
+			else
+				m_Widget = GetGame().GetWorkspace().CreateWidgets(m_sEntryLayoutDefault, parent);
 		}
-		else
+					
+		TextWidget text = TextWidget.Cast(m_Widget.FindAnyWidget("Text"));
+		if (text)
 		{
-			if (!m_Widget)
-				m_Widget = GetGame().GetWorkspace().CreateWidgets(m_sEntryLayoutDefault, target);
-			
-			TextWidget text = TextWidget.Cast(m_Widget.FindAnyWidget("Text"));
-			if (text)
-			{
-				string hack = WidgetManager.Translate(m_sEntryText, "H4CK_STR");//it seems like any form of translation fails when it needs to replace %X with long already localized string
+			string hack = WidgetManager.Translate(m_sEntryText, "H4CK_STR");//it seems like any form of translation fails when it needs to replace %X with long already localized string
 
-				hack.Replace("H4CK_STR", m_sEntryTextParam1);//thus more of a manual replacement is required
-				text.SetTextFormat(hack);
-			}
+			hack.Replace("H4CK_STR", m_sEntryTextParam1);//thus more of a manual replacement is required
+			text.SetTextFormat(hack);
 		}
 		
+		TextWidget title = TextWidget.Cast(m_Widget.FindAnyWidget("Title"));
+		if (title)
+			title.SetTextFormat(GetEntryName());
+
 		return m_Widget;
 	}
 
@@ -212,5 +211,4 @@ class SCR_JournalEntry
 	{
 		return m_sEntryButtonLayout;
 	}
-
-};
+}

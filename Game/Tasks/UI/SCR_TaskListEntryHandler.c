@@ -1,6 +1,7 @@
-//------------------------------------------------------------------------------------------------
+[Obsolete("Replaced with SCR_TaskListEntryUIComponent")]
 class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
-{
+{	
+	/*
 	protected SCR_CollapseWidgetComponent m_CollapseHandler;
 
 	protected SCR_InputButtonComponent m_AssignButton;
@@ -66,7 +67,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	{
 		SCR_BaseTask m_LocalTask = SCR_BaseTaskExecutor.GetLocalExecutor().GetAssignedTask();
 		ImageWidget m_wOutline = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Outline"));
-		ImageWidget m_wSymbol = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Symbol"));
+		ImageWidget m_wSymbol = ImageWidget.Cast(m_wRoot.FindAnyWidget("m_wTaskIcon"));
 		ImageWidget m_wLocalBackground = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Background"));
 		Color m_Orange = Color.FromSRGBA(226,167,80,255);
 
@@ -127,7 +128,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	void UpdateTask(SCR_BaseTask task)
 	{
 		ImageWidget outline = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Outline"));
-		ImageWidget symbol = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Symbol"));
+		ImageWidget symbol = ImageWidget.Cast(m_wRoot.FindAnyWidget("m_wTaskIcon"));
 		ImageWidget background = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Background"));
 	
 		if (!outline || !symbol || !background || !m_Task)
@@ -386,4 +387,5 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 
 		SCR_BaseTaskManager.s_OnTaskUpdate.Remove(UpdateTask);
 	}
-};
+	*/
+}

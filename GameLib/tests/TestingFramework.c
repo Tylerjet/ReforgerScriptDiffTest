@@ -209,6 +209,10 @@ class TestResultBase : Managed
 	// ----------------- ^^^ ----------------- 
 }
 
+class TestResultTimeout: TestResultBase
+{
+}
+
 /*!
  * @}
  */

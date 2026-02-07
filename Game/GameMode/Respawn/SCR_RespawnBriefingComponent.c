@@ -22,6 +22,9 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	[Attribute()]
 	protected ref array<ref SCR_BriefingVictoryCondition> m_aWinConditions;
 	
+	[Attribute()]
+	protected bool m_bShowJournalOnStart;
+	
 	protected bool m_bWasShown = false;
 	protected ref map<int, ref array<string>> m_BriefingInfo = new map<int, ref array<string>>();
 	
@@ -335,6 +338,12 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	bool GetWasBriefingShown()
 	{
 		return m_bWasShown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool ShowJournalOnStart()
+	{
+		return m_bShowJournalOnStart;
 	}
 }
 

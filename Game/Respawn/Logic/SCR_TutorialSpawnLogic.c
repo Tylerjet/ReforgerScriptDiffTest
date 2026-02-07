@@ -14,4 +14,4 @@ class SCR_TutorialSpawnLogic : SCR_SpawnLogic
 				identityComp.SetIdentity(m_PlayerIdentity);
 		}
 	}	
-};
+}

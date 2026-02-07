@@ -20,15 +20,18 @@ class SCR_TourniquetMovedCallback : ScriptedInventoryOperationCallback
 		SCR_InventoryMenuUI menu = SCR_InventoryMenuUI.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu));
 		if (menu)
 		{
-			InventoryItemComponent itemComp = InventoryItemComponent.Cast(m_Tourniquet.FindComponent(InventoryItemComponent));
-			if (itemComp && itemComp.GetParentSlot())
+			if (m_Tourniquet)
 			{
-				BaseInventoryStorageComponent tqStorage = itemComp.GetParentSlot().GetStorage();
-				if (tqStorage)
+				InventoryItemComponent itemComp = InventoryItemComponent.Cast(m_Tourniquet.FindComponent(InventoryItemComponent));
+				if (itemComp && itemComp.GetParentSlot())
 				{
-					SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(tqStorage);
-					if (storageUI)
-						storageUI.Refresh();
+					BaseInventoryStorageComponent tqStorage = itemComp.GetParentSlot().GetStorage();
+					if (tqStorage)
+					{
+						SCR_InventoryStorageBaseUI storageUI = menu.GetStorageUIByBaseStorageComponent(tqStorage);
+						if (storageUI)
+							storageUI.Refresh();
+					}
 				}
 			}
 
@@ -164,6 +167,9 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		BaseInventoryStorageComponent targetStorage = storageMan.FindStorageForItem(targetTourniquet, EStoragePurpose.PURPOSE_DEPOSIT);
 		m_TourniquetMovedCallback.m_Storage = targetStorage;
 		m_TourniquetMovedCallback.m_bRemove = false;
+
+		if (!targetTourniquet)
+			return false;
 		
 		bool success = false;
 		

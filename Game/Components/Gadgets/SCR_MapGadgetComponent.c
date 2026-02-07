@@ -79,6 +79,9 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	{			
 		if (state)
 		{
+			if (m_MapEntity.IsOpen())
+				return;
+			
 			SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 			SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
 			

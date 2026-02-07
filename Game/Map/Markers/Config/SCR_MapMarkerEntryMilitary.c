@@ -132,7 +132,7 @@ class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 		int factionID = marker.GetMarkerConfigID() % FACTION_DETERMINATOR;
 		int dimensionID = marker.GetMarkerConfigID() * DIMENSION_DETERMINATOR;
 		
-		if (!milFactionEntries.IsIndexValid(factionID) || !milDimensions.IsIndexValid(dimensionID))
+		if (!milFactionEntries || !milDimensions || !milFactionEntries.IsIndexValid(factionID) || !milDimensions.IsIndexValid(dimensionID))
 			return;
 		
 		SCR_MilitarySymbol milSymbol = new SCR_MilitarySymbol();
@@ -145,6 +145,9 @@ class SCR_MapMarkerEntryMilitary : SCR_MapMarkerEntryConfig
 		widgetComp.SetColor(factionEntry.GetColor());
 		widgetComp.SetText(marker.GetCustomText());
 		
+		widgetComp.SetTimestampVisibility(marker.IsTimestampVisible());
+		if (marker.IsTimestampVisible())
+			widgetComp.SetTimestamp(marker.GetTimestamp());
 		
 		widgetComp.SetTypeIcon(1, milDimensions[dimensionID].GetTranslation());
 		

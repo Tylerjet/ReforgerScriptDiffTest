@@ -198,6 +198,12 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	EAISkill GetAISkillDefault()
+	{
+		return m_eAISkillDefault;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Use this to change AIskill dynamically
 	//! \param[in] skill
 	void SetAISkill(EAISkill skill)
@@ -221,6 +227,12 @@ class SCR_AICombatComponent : ScriptComponent
 			value = 0;
 		m_fPerceptionFactor = value;
 		UpdatePerceptionFactor(m_Perception, m_Utility.m_ThreatSystem);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetPerceptionFactor()
+	{
+		return m_fPerceptionFactor;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1089,27 +1101,27 @@ class SCR_AICombatComponent : ScriptComponent
 		if (character)
 		{	
 			m_CharacterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-		if (m_CharacterController)
-		{
-			m_CharacterController.m_OnGadgetStateChangedInvoker.Insert(Event_OnGadgetStateChanged);
-			m_CharacterController.m_OnGadgetFocusStateChangedInvoker.Insert(Event_OnGadgetFocusStateChanged);
-		}
-		
-			m_WpnManager = m_CharacterController.GetWeaponManagerComponent();
-			
-			m_InventoryManager = SCR_InventoryStorageManagerComponent.Cast(m_CharacterController.GetInventoryStorageManager());
-			if (m_InventoryManager)
+			if (m_CharacterController)
 			{
-				m_InventoryManager.m_OnItemAddedInvoker.Insert(Event_OnInventoryChanged);
-				m_InventoryManager.m_OnItemRemovedInvoker.Insert(Event_OnInventoryChanged);
+				m_CharacterController.m_OnGadgetStateChangedInvoker.Insert(Event_OnGadgetStateChanged);
+				m_CharacterController.m_OnGadgetFocusStateChangedInvoker.Insert(Event_OnGadgetFocusStateChanged);
+				
+				m_WpnManager = m_CharacterController.GetWeaponManagerComponent();
+			
+				m_InventoryManager = SCR_InventoryStorageManagerComponent.Cast(m_CharacterController.GetInventoryStorageManager());
+				if (m_InventoryManager)
+				{
+					m_InventoryManager.m_OnItemAddedInvoker.Insert(Event_OnInventoryChanged);
+					m_InventoryManager.m_OnItemRemovedInvoker.Insert(Event_OnInventoryChanged);
+				}
 			}
 			
 			m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
-		if (m_CompartmentAccess)
-		{
-			m_CompartmentAccess.GetOnCompartmentEntered().Insert(Event_OnCompartmentEntered);
-			m_CompartmentAccess.GetOnCompartmentLeft().Insert(Event_OnCompartmentLeft);
-		}
+			if (m_CompartmentAccess)
+			{
+				m_CompartmentAccess.GetOnCompartmentEntered().Insert(Event_OnCompartmentEntered);
+				m_CompartmentAccess.GetOnCompartmentLeft().Insert(Event_OnCompartmentLeft);
+			}
 		}	
 			
 		m_Perception = PerceptionComponent.Cast(owner.FindComponent(PerceptionComponent));

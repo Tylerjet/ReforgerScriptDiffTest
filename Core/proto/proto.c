@@ -82,6 +82,12 @@ proto int ARGB(int a, int r, int g, int b);
 proto int ARGBF(float fa, float fr, float fg, float fb);
 
 //-----------------------------------------------------------------
+proto int ABGR(int a, int r, int g, int b);
+
+//-----------------------------------------------------------------
+proto int ABGRF(float fa, float fr, float fg, float fb);
+
+//-----------------------------------------------------------------
 int AWHITE(int a)
 {
 	return a << 24 | 0xffffff;

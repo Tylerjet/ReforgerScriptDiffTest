@@ -94,11 +94,9 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	void OnParentFactionIDSet()
 	{
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-		
 		if (!campaign)
 			return;
 		
-		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
 		SCR_CampaignFactionManager fManager = SCR_CampaignFactionManager.Cast(GetGame().GetFactionManager());
 		m_ParentFaction = SCR_CampaignFaction.Cast(fManager.GetFactionByIndex(m_iParentFaction));
 	}
@@ -144,7 +142,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//! \param[in] status
 	//! \param[in] playerId
 	//! \return
-	bool Deploy(SCR_EMobileAssemblyStatus status, int playerId = 0)
+	bool Deploy(SCR_EMobileAssemblyStatus status, int playerId = 0, bool silent = false)
 	{
 		if (!m_bIsInRadioRange && status == SCR_EMobileAssemblyStatus.DEPLOYED)
 			return false;
@@ -153,7 +151,6 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			return false;
 		
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
-		
 		if (!campaign)
 			return false;
 		
@@ -175,7 +172,9 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		
 		OnDeployChanged();
 		Replication.BumpMe();
-		campaign.BroadcastMHQFeedback(status, playerId, GetGame().GetFactionManager().GetFactionIndex(m_ParentFaction));
+		
+		if (!silent)
+			campaign.BroadcastMHQFeedback(status, playerId, GetGame().GetFactionManager().GetFactionIndex(m_ParentFaction));
 
 		return true;
 	}
@@ -302,10 +301,8 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	{
 		if (!m_ParentFaction)
 			return;
-		
-		bool inRangeNow = SCR_GameModeCampaign.GetInstance().GetBaseManager().IsEntityInFactionRadioSignal(GetOwner(), m_ParentFaction);
-		bool refreshLinks = inRangeNow != m_bIsInRadioRange;
-		m_bIsInRadioRange = inRangeNow;
+
+		m_bIsInRadioRange = SCR_GameModeCampaign.GetInstance().GetBaseManager().IsEntityInFactionRadioSignal(GetOwner(), m_ParentFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------

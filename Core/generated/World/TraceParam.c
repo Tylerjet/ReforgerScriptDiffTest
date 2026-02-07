@@ -39,6 +39,7 @@ class TraceParam: Managed
 	owned string TraceMaterial; ///<[out] traced surface material (usualy only on terrain)
 	owned string ColliderName; ///<[out] traced collider name
 
+	proto external bool IsRunning();
 }
 
 /*!

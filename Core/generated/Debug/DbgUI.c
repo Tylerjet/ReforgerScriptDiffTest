@@ -72,6 +72,9 @@ sealed class DbgUI
 	static proto void Text(string label);
 	static proto void SameLine();
 	static proto void SameSpot();
+	static proto void AlignLeft(int width);
+	static proto void AlignCenter(int width);
+	static proto void AlignRight(int width);
 	static proto void PlotLive(string label, int sizeX, int sizeY, float val, int timeStep = 100, int historySize = 30, int color = 0xFFFFFFFF);
 	static proto void PlotLiveClamped(string label, int sizeX, int sizeY, float val, float yMin, float yMax, int timeStep = 100, int historySize = 30, int color = 0xFFFFFFFF);
 	static proto void Check(string label, out bool checked);

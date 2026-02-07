@@ -148,6 +148,8 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		
 		m_iSelectedKeybind = 0;
 		ReselectRow();
+		
+		SCR_AnalyticsApplication.GetInstance().ChangeKeybind(m_sActionName, m_sActionPreset);
 	}
 	
 	//-----------------------------------------------------------------------------------------------

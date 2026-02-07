@@ -5,7 +5,7 @@
 //---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 {
-	protected IEntity m_OwnerVehicle;
+	IEntity m_OwnerVehicle;
 	protected float m_fAngleFirstPerson;
 	protected float m_fAngleFirstPersonScale;
 
@@ -19,15 +19,6 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
-		
-		CharacterCamera3rdPersonVehicle characterCamera3rdPersonVehicle  = CharacterCamera3rdPersonVehicle.Cast(pPrevCamera);
-		if (characterCamera3rdPersonVehicle)
-		{
-			m_fRollSmooth = characterCamera3rdPersonVehicle.m_fRollSmooth;
-			m_fRollSmoothVel = characterCamera3rdPersonVehicle.m_fRollSmoothVel;
-			m_fPitchSmooth = characterCamera3rdPersonVehicle.m_fPitchSmooth;
-			m_fPitchSmoothVel = characterCamera3rdPersonVehicle.m_fPitchSmoothVel;
-		}
 
 		if (m_pCompartmentAccess)
 		{
@@ -50,6 +41,28 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 						m_fAngleFirstPersonScale = 0;
 					else
 						m_fAngleFirstPersonScale = 1;
+				}
+			}
+		}
+		
+		CharacterCamera3rdPersonVehicle characterCamera3rdPersonVehicle  = CharacterCamera3rdPersonVehicle.Cast(pPrevCamera);
+		if (characterCamera3rdPersonVehicle)
+		{
+			m_fRollSmooth = characterCamera3rdPersonVehicle.m_fRollSmooth;
+			m_fRollSmoothVel = characterCamera3rdPersonVehicle.m_fRollSmoothVel;
+			m_fPitchSmooth = characterCamera3rdPersonVehicle.m_fPitchSmooth;
+			m_fPitchSmoothVel = characterCamera3rdPersonVehicle.m_fPitchSmoothVel;
+			
+			if (m_OwnerVehicle && m_OwnerCharacter)
+			{
+				// Offset rotation of 3rd person camera if player is sitting sideways in vehicle
+				float thirdPersonCameraOffset = (m_OwnerVehicle.GetYawPitchRoll()[0] - m_OwnerCharacter.GetYawPitchRoll()[0]) * Math.DEG2RAD;
+		
+				if (!float.AlmostEqual(thirdPersonCameraOffset, 0))
+				{	
+					vector angles = m_Input.GetLookAtAngles();
+					angles[0] = angles[0] - thirdPersonCameraOffset;
+					m_Input.SetLookAtAngles(angles);
 				}
 			}
 		}

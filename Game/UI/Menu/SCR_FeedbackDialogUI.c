@@ -247,7 +247,7 @@ class FeedbackData extends JsonApiStruct
 
 }
 
-class SCR_FeedbackDialogUI : SCR_ConfigurableDialogUi
+sealed class SCR_FeedbackDialogUI : SCR_ConfigurableDialogUi
 {
 	//! Available types of feedback
 	static const int TYPE_NAMES_COUNT = 2;
@@ -413,8 +413,7 @@ class SCR_FeedbackDialogUI : SCR_ConfigurableDialogUi
 			m_Widgets.m_FeedbackTypeComponent0.SetCurrentItem(0);
 		}
 
-		//if (m_Widgets.m_ConsoleFeedbackTopicComponent0 && System.GetPlatform() == EPlatform.WINDOWS)
-		if (true)
+		if (m_Widgets.m_ConsoleFeedbackTopicComponent0 && System.GetPlatform() == EPlatform.WINDOWS)
 			m_Widgets.m_ConsoleFeedbackTopicComponent0.SetVisible(false);
 		else if (m_Widgets.m_ConsoleFeedbackTopicComponent0)
 			m_Widgets.m_ConsoleFeedbackTopicComponent0.SetCurrentItem(0);
@@ -448,10 +447,9 @@ class SCR_FeedbackDialogUI : SCR_ConfigurableDialogUi
 			m_Widgets.m_AttachFileButtonComponent.m_OnClicked.Insert(OnAttachFile);
 
 		// AttachLogs button should not be visible on consoles
-		//if (m_Widgets.m_AttachLogsButtonComponent && System.GetPlatform() != EPlatform.WINDOWS)
-		//disabled until it functions
-		if (true)
+		if (m_Widgets.m_AttachLogsButtonComponent && System.GetPlatform() != EPlatform.WINDOWS)
 		{
+			m_Widgets.m_wAttachFileVertialLayout.SetVisible(false);
 			m_Widgets.m_AttachLogsButtonComponent.SetVisible(false);
 			m_Widgets.m_AttachLogsButtonComponent.SetEnabled(false);
 			m_Widgets.m_AttachFileButtonComponent.SetVisible(false);

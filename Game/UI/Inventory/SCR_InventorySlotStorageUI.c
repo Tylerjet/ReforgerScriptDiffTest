@@ -18,7 +18,6 @@ class SCR_InventorySlotStorageUI : SCR_InventorySlotUI
 		else
 			m_wShownIcon = null;
 	}
-	
 		
 	//------------------------------------------------------------------------------------------------	
 	void ToggleShownIconVisible()

@@ -28,11 +28,8 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 	[Attribute(defvalue: "0", desc: "Avoid lakes", category: "Obstacles")]
 	protected bool m_bAvoidLakes;
 
-//	[Attribute(defvalue: "0", desc: "Avoid land", category: "Obstacles")]
-//	protected bool m_bAvoidLand;
-
-//	[Attribute(defvalue: "0", desc: "Avoid ocean", category: "Obstacles")]
-//	protected bool m_bAvoidOcean;
+	[Attribute(defvalue: "0", desc: "Avoid above or below ocean level", category: "Obstacles", uiwidget: UIWidgets.ComboBox, enums: SCR_ParamEnumArray.FromString("None;Avoid land;Avoid ocean"))]
+	protected int m_iAvoidLandOrOcean;
 
 //	[Attribute(defvalue: "0", desc: "Land/Ocean separation offset", category: "Obstacles")]
 //	protected float m_fAvoidLandOceanOffset;
@@ -74,8 +71,8 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		s_ObstacleDetector.SetAvoidPowerLines(m_bAvoidPowerLines);
 		s_ObstacleDetector.SetAvoidTracks(m_bAvoidTracks);
 		s_ObstacleDetector.SetAvoidLakes(m_bAvoidLakes);
-//		s_ObstacleDetector.SetAvoidLand(m_bAvoidLand);
-//		s_ObstacleDetector.SetAvoidOcean(m_bAvoidOcean);
+		s_ObstacleDetector.SetAvoidLand(m_iAvoidLandOrOcean == 1);
+		s_ObstacleDetector.SetAvoidOcean(m_iAvoidLandOrOcean == 2);
 //		s_ObstacleDetector.SetAvoidLandOceanOffset(m_fAvoidLandOceanOffset);
 	}
 

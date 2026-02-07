@@ -1,5 +1,5 @@
 #ifdef WORKBENCH
-[WorkbenchToolAttribute(name: "Prefab Bone-Snapping Tool", description: "", shortcut: "", awesomeFontCode: 0xF6BE)]
+[WorkbenchToolAttribute(name: "Prefab Bone-Snapping Tool", description: "Drag & drop Prefabs from the Resource Browser\ninto the viewport to snap them to the nearest bone", awesomeFontCode: 0xF4C4)]
 class SCR_PrefabBoneSnappingTool : WorldEditorTool
 {
 	[Attribute(defvalue: "1", desc: "Debug shapes (bone locations and names) are drawn as debug shapes")]
@@ -273,9 +273,7 @@ class SCR_PrefabBoneSnappingTool : WorldEditorTool
 
 		m_API.BeginEntityAction();
 		m_API.SetVariableValue(newEntitySource, null, "coords", selectedMatrix[3].ToString(false));
-		m_API.SetVariableValue(newEntitySource, null, "angleX", angles[1].ToString());
-		m_API.SetVariableValue(newEntitySource, null, "angleY", angles[0].ToString());
-		m_API.SetVariableValue(newEntitySource, null, "angleZ", angles[2].ToString());
+		m_API.SetVariableValue(newEntitySource, null, "angles", string.Format("%1 %2 %3", angles[1], angles[0], angles[2]));
 		m_API.MoveEntitiesToPrefab(m_EditedEntitySource, m_EditedEntitySource.GetAncestor(), { newEntitySource });
 		m_API.EndEntityAction();
 

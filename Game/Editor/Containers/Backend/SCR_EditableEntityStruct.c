@@ -3,6 +3,8 @@
 
 Saved data for editable entity.
 */
+/*
+[Obsolete("Only used for backwards compatiblity GM saves. Will be removed entirely.")]
 class SCR_EditableEntityStruct: JsonApiStruct
 {
 	//--- Constants
@@ -35,12 +37,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	protected SCR_EditableEntityComponent m_Target;
 	protected static SCR_CompositionSlotManagerComponent m_SlotManager;
 	protected static IEntity m_PlayerEntity;
-	
-	/*!
-	Save all editable entities.
-	\param[out] outEntries Array to be filled with save entries
-	\param attributeList List of attributes which will be evaluated for each entity
-	*/
+
 	static void SerializeEntities(out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList, EEditableEntityFlag requiredFlags)
 	{
 		//--- Clear existing array
@@ -152,11 +149,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			}
 		}
 	}
-	/*!
-	Load all editable entities.
-	\param entries Entries to be converted into editable entities.
-	\param attributeList List of attributes which will be evaluated for each entity
-	*/
+
 	static void DeserializeEntities(notnull array<ref SCR_EditableEntityStruct> entries, SCR_EditorAttributeList attributeList = null)
 	{
 		SCR_CompositionSlotManagerComponent slotManager = SCR_CompositionSlotManagerComponent.GetInstance();
@@ -291,10 +284,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				gameMode.GetOnPlayerRegistered().Insert(RequestLocalPlayerSpawn);
 		}
 	}
-	/*!
-	Delete all saved editable entities.
-	\param entries All entities saved in these entries will be deleted
-	*/
+
 	static void ClearEntities(notnull array<ref SCR_EditableEntityStruct> entries)
 	{
 		for (int i = 0, count = entries.Count(); i < count; i++)
@@ -303,11 +293,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				entries[i].m_Entity.Delete();
 		}
 	}
-	/*!
-	Print out all saved editable entities.
-	\param entries Entries to be logged
-	\param attributeList List of attributes
-	*/
+
 	static void LogEntities(notnull array<ref SCR_EditableEntityStruct> entries, SCR_EditorAttributeList attributeList = null)
 	{
 		Print("  SCR_EditableEntityStruct: " + entries.Count());
@@ -340,13 +326,6 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			resource = Resource.Load(entry.pf);
 			resourceName = resource.GetResource().GetResourceName();
 			
-			/*
-			if (entry.ti != TARGET_NONE)
-				PrintFormat(textTarget, id, entry.pi, FilePath.StripPath(resourceName), Vector(entry.px, entry.py, entry.pz), angles, entry.sc, entry.ti, entry.tv, entry.hy);
-			else
-				PrintFormat(textDefault, id, entry.pi, FilePath.StripPath(resourceName), Vector(entry.px, entry.py, entry.pz), angles, entry.sc, entry.ti, entry.tv, entry.hy);
-			*/
-			
 			string result = "    " + id + ": " + entry.pi;
 			result += " | " + FilePath.StripPath(resourceName);
 			result += " | pos: " + Vector(entry.px, entry.py, entry.pz);
@@ -367,24 +346,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			SCR_EditorAttributeStruct.LogAttributes(entry.at, attributeList, "    ");
 		}
 	}
-	/*
-	override void OnExpand()
-	{
-		Print("OnExpand()");
-	}
-	override void OnPack()
-	{
-		Print("OnPack()");
-	}
-	override void OnSuccess(int errorCode)
-	{
-		Print("OnSuccess() = " + errorCode);
-	}
-	override void OnError(int errorCode)
-	{
-		Print("OnError() = " + errorCode);
-	}
-	*/
+
 	void SCR_EditableEntityStruct()
 	{
 		RegV("pf");
@@ -408,3 +370,4 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		RegV("ut");
 	}
 };
+*/

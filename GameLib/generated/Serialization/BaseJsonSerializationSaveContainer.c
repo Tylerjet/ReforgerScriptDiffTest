@@ -26,7 +26,7 @@ class BaseJsonSerializationSaveContainer: BaseSerializationSaveContainer
 	JsonSaveContainer container();
 	container.SetMaxDecimalPlaces(3);
 	container.StartObject("aa");
-	container.WriteValue("value", 0.12345);                 // "0.123"
+	container.WriteValue("value", 0.12345); // "0.123"
 	container.EndObject();
 	@endcode
 	*/

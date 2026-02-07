@@ -12,6 +12,12 @@ Do not modify, this script is generated
 //! Scripted save container for custom handling of storage
 class ScriptedSerializationSaveContainer: BaseSerializationSaveContainer
 {
+	//! Reset the container to re-use for new data.
+	event protected void Reset();
+	//! Data extension of the serialized format (e.g. txt, csv, yml) if stored in a filesystem.
+	event protected string GetDataExtension() {return ".txt";};
+	//! Export the data as string to be written to disk etc.
+	event protected string ExportToString() {return "";};
 	/*!
 	Objects are serialized as sequence of:
 	StartObject()

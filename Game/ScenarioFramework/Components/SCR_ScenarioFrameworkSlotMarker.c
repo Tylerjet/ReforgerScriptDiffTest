@@ -7,33 +7,45 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 {
 	[Attribute(desc: "Marker Type", category: "Map Marker")]
 	protected ref SCR_ScenarioFrameworkMarkerType m_MapMarkerType;
-	
+
 	[Attribute(desc: "When enabled, map marker can by removed by owner on map.", category: "Map Marker")]
 	protected bool m_bCanBeRemovedByOwner;
-	
+
 	protected ref SCR_MapMarkerBase m_MapMarker;
-	
+	protected SCR_MapMarkerDotCircle m_MarkerDotCircleEntity;
+
 	//------------------------------------------------------------------------------------------------
 	//! \return Represents the type of map marker in the scenario.
 	SCR_ScenarioFrameworkMarkerType GetMapMarkerType()
 	{
 		return m_MapMarkerType;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] type Sets map marker type for scenario framework marker.
 	void SetMapMarkerType(SCR_ScenarioFrameworkMarkerType type)
 	{
 		m_MapMarkerType = type;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return Represents the map marker object used by the method.
 	SCR_MapMarkerBase GetMapMarker()
 	{
 		return m_MapMarker;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Spawns map marker after all children spawned in scenario layer.
+	//! \param[in] layer for which this is called.
+	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
+	{
+		super.AfterAllChildrenSpawned(this);
+
+		if (!GetIsTerminated())
+			CreateMapMarker();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Restores default state, removes map marker, nullifies it, calls base method.
 	//! \param[in] includeChildren Includes children objects in default restoration process.
@@ -41,54 +53,41 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] affectRandomization Affects randomization during default restoration.
 	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
-		RemoveMapMarker();
-		m_MapMarker = null;
-		
 		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
+		RemoveMapMarker();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Spawns map marker after all children spawned in scenario layer.
-	//! \param[in] layer for which this is called.
-	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
-	{
-		if (!m_MapMarker)
-			CreateMapMarker();
-		
-		super.AfterAllChildrenSpawned(this);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Removes map marker by ID from map marker manager.
-	void RemoveMapMarker()
-	{
-		if (!m_MapMarker)
-			return;
-		
-		SCR_MapMarkerManagerComponent markerMgr = SCR_MapMarkerManagerComponent.GetInstance();
-		if (!markerMgr)
-			return;
-		
-		int markerID = m_MapMarker.GetMarkerID();
-		
-		SCR_MapMarkerBase marker = markerMgr.GetStaticMarkerByID(markerID);
-		if (!marker)
-			return;
-		
-		markerMgr.RemoveStaticMarker(marker);
-		m_MapMarker = null;
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Creates a map marker based on provided type, sets its position, custom text, and adds it to map marker manager if possible
 	protected void CreateMapMarker()
 	{
+		if (m_MarkerDotCircleEntity || m_MapMarker)
+			return;
+
+		SCR_ScenarioFrameworkMarkerDotCircle mapMarkerDotCircle = SCR_ScenarioFrameworkMarkerDotCircle.Cast(m_MapMarkerType);
+		if (mapMarkerDotCircle)
+		{
+			if (m_MarkerDotCircleEntity)
+				return;
+
+			EntitySpawnParams params();
+			params.TransformMode = ETransformMode.WORLD;
+			GetOwner().GetTransform(params.Transform);
+			m_MarkerDotCircleEntity = SCR_MapMarkerDotCircle.Cast(GetGame().SpawnEntityPrefabEx(mapMarkerDotCircle.m_sMarkerPrefab, false, params: params));
+			if (!m_MarkerDotCircleEntity)
+				return;
+
+			m_MarkerDotCircleEntity.m_DotColor = mapMarkerDotCircle.m_DotColor;
+			m_MarkerDotCircleEntity.m_fDotDensity = mapMarkerDotCircle.m_fDotDensity;
+			m_MarkerDotCircleEntity.m_fRadius = mapMarkerDotCircle.m_fRadius;
+		}
+
 		SCR_MapMarkerManagerComponent mapMarkerMgr = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
 		if (!mapMarkerMgr)
 			return;
-		
+
 		m_MapMarker = new SCR_MapMarkerBase();
-		
+
 		SCR_ScenarioFrameworkMarkerCustom mapMarkerCustom = SCR_ScenarioFrameworkMarkerCustom.Cast(m_MapMarkerType);
 		if (mapMarkerCustom)
 		{
@@ -102,15 +101,15 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 			SCR_ScenarioFrameworkMarkerMilitary mapMarkerMilitary = SCR_ScenarioFrameworkMarkerMilitary.Cast(m_MapMarkerType);
 			if (!mapMarkerMilitary)
 				return;
-			
+
 			m_MapMarker = mapMarkerMgr.PrepareMilitaryMarker(mapMarkerMilitary.m_eMapMarkerFactionIcon, mapMarkerMilitary.m_eMapMarkerDimension, mapMarkerMilitary.m_eMapMarkerType1Modifier | mapMarkerMilitary.m_eMapMarkerType2Modifier);
 		}
-		
+
 		vector worldPos = GetOwner().GetOrigin();
 		m_MapMarker.SetWorldPos(worldPos[0], worldPos[2]);
 		m_MapMarker.SetCustomText(m_MapMarkerType.m_sMapMarkerText);
 		m_MapMarker.SetCanBeRemovedByOwner(m_bCanBeRemovedByOwner);
-		
+
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (factionManager)
 		{
@@ -118,17 +117,47 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 			if (faction)
 				m_MapMarker.AddMarkerFactionFlags(factionManager.GetFactionIndex(faction));
 		}
-		
+
 		mapMarkerMgr.InsertStaticMarker(m_MapMarker, false, true);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Removes map marker by ID from map marker manager.
+	void RemoveMapMarker()
+	{
+		if (m_MarkerDotCircleEntity)
+			SCR_EntityHelper.DeleteEntityAndChildren(m_MarkerDotCircleEntity);
+
+		if (!m_MapMarker)
+			return;
+
+		SCR_MapMarkerManagerComponent markerMgr = SCR_MapMarkerManagerComponent.GetInstance();
+		if (!markerMgr)
+			return;
+		
+		const int markerID = m_MapMarker.GetMarkerID();
+		SCR_MapMarkerBase marker = markerMgr.GetStaticMarkerByID(markerID);
+		if (marker)
+			markerMgr.RemoveStaticMarker(marker);
+
+		m_MapMarker = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void SetIsTerminated(bool state)
+	{
+		super.SetIsTerminated(state);
+		if (state)
+			RemoveMapMarker();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Removes map marker when not in edit mode, despawns object if in edit mode.
 	void ~SCR_ScenarioFrameworkSlotMarker()
 	{
 		if (SCR_Global.IsEditMode())
 			return;
-		
+
 		DynamicDespawn(this);
 		RemoveMapMarker();
 	}
@@ -137,7 +166,7 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkMarkerType : ScriptAndConfig
 {
-	[Attribute(desc: "Text which will be displayed for the Map Marker", category: "Map Marker")];
+	[Attribute(desc: "Text which will be displayed for the Map Marker", category: "Map Marker")]
 	LocalizedString m_sMapMarkerText;
 }
 
@@ -146,10 +175,10 @@ class SCR_ScenarioFrameworkMarkerCustom : SCR_ScenarioFrameworkMarkerType
 {
 	[Attribute("0", UIWidgets.ComboBox, "Marker Icon", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkMarkerCustom), category: "Map Marker")]
 	SCR_EScenarioFrameworkMarkerCustom m_eMapMarkerIcon;
-	
+
 	[Attribute("0", UIWidgets.ComboBox, "Marker Color", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkMarkerCustomColor), category: "Map Marker")]
 	SCR_EScenarioFrameworkMarkerCustomColor m_eMapMarkerColor;
-	
+
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "Rotation of the Map Marker", params: "-180 180 1", category: "Map Marker")]
 	int m_iMapMarkerRotation;
 }
@@ -159,15 +188,31 @@ class SCR_ScenarioFrameworkMarkerMilitary : SCR_ScenarioFrameworkMarkerType
 {
 	[Attribute(defvalue: EMilitarySymbolIdentity.BLUFOR.ToString(), UIWidgets.ComboBox, "Marker Faction Icon. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolIdentity), category: "Map Marker")]
 	EMilitarySymbolIdentity m_eMapMarkerFactionIcon;
-	
+
 	[Attribute(defvalue: EMilitarySymbolDimension.LAND.ToString(), UIWidgets.ComboBox, "Marker Dimension. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolDimension), category: "Map Marker")]
 	EMilitarySymbolDimension m_eMapMarkerDimension;
-	
+
 	[Attribute(defvalue: EMilitarySymbolIcon.INFANTRY.ToString(), UIWidgets.ComboBox, "Marker Type 1 modifier. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolIcon), category: "Map Marker")]
 	EMilitarySymbolIcon m_eMapMarkerType1Modifier;
-	
+
 	[Attribute(defvalue: EMilitarySymbolIcon.INFANTRY.ToString(), UIWidgets.ComboBox, "Marker Type 2 modifier. Not all of these combinations will work as they have to be properly defined in MapMarkerConfig.conf", "", ParamEnumArray.FromEnum(EMilitarySymbolIcon), category: "Map Marker")]
 	EMilitarySymbolIcon m_eMapMarkerType2Modifier;
+}
+
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkMarkerDotCircle : SCR_ScenarioFrameworkMarkerType
+{
+	[Attribute(defvalue: "1000", desc: "Meter Radius", params: "0 inf 0.01")]
+	float m_fRadius;
+
+	[Attribute(defvalue: "1 0 0 1", desc: "Dot Color")]
+	ref Color m_DotColor;
+
+	[Attribute(defvalue: "0.02", desc: "Dot Density", params: "0 inf 0.01")]
+	float m_fDotDensity;
+
+	[Attribute(defvalue: "{EC95FBEA75AE409B}Prefabs/Markers/MapMarkerDotCircle.et", desc: "Marker Prefab", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
+	ResourceName m_sMarkerPrefab;
 }
 
 enum SCR_EScenarioFrameworkMarkerCustom

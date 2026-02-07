@@ -27,7 +27,6 @@ class SCR_AmbientVehicleSystem : GameSystem
 
 	protected ref OnAmbientVehicleSpawnedInvoker m_OnVehicleSpawned;
 
-	protected int m_iLastAssignedIndex;
 	protected int m_iIndexToCheck;
 	protected int m_iSpawnDistanceSq;
 	protected int m_iDespawnDistanceSq;
@@ -52,7 +51,6 @@ class SCR_AmbientVehicleSystem : GameSystem
 		m_iDespawnDistanceSq = m_iSpawnDistanceSq + DESPAWN_RADIUS_DIFF_SQ;
 
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-
 		if (!gameMode)
 			return;
 
@@ -66,7 +64,6 @@ class SCR_AmbientVehicleSystem : GameSystem
 	override event protected void OnCleanup()
 	{
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-
 		if (!gameMode)
 			return;
 
@@ -77,7 +74,7 @@ class SCR_AmbientVehicleSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override event protected void OnUpdate(ESystemPoint point)
+	override event protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
 		if (!GetGame().AreGameFlagsSet(EGameFlags.SpawnVehicles))
 		{
@@ -85,18 +82,13 @@ class SCR_AmbientVehicleSystem : GameSystem
 			return;
 		}
 
-		float timeSlice = GetWorld().GetFixedTimeSlice();
-
-		m_fTimer += timeSlice;
-
+		m_fTimer += args.GetTimeSliceSeconds();
 		if (m_fTimer < m_fCheckInterval)
 			return;
 
 		m_fTimer = 0;
 
-		ProcessSpawnpoint(m_iIndexToCheck);
-		m_iIndexToCheck++;
-
+		ProcessSpawnpoint(m_iIndexToCheck++);
 		if (!m_aSpawnpoints.IsIndexValid(m_iIndexToCheck))
 			m_iIndexToCheck = 0;
 	}
@@ -111,7 +103,6 @@ class SCR_AmbientVehicleSystem : GameSystem
 	static SCR_AmbientVehicleSystem GetInstance()
 	{
 		World world = GetGame().GetWorld();
-
 		if (!world)
 			return null;
 
@@ -170,7 +161,6 @@ class SCR_AmbientVehicleSystem : GameSystem
 			return;
 
 		SCR_AmbientVehicleSpawnPointComponent spawnpoint = m_aSpawnpoints[spawnpointIndex];
-
 		if (!spawnpoint || spawnpoint.GetIsDepleted())
 			return;
 
@@ -257,16 +247,19 @@ class SCR_AmbientVehicleSystem : GameSystem
 		// Delay is used so dying players don't see the despawn happen
 		if (spawnedVeh && playersFar && spawnpoint.IsDespawnAllowed())
 		{
-			WorldTimestamp despawnT = spawnpoint.GetDespawnTimer();
-
+			const WorldTimestamp despawnT = spawnpoint.GetDespawnTimestamp();
 			if (despawnT == 0)
-				spawnpoint.SetDespawnTimer(currentTime.PlusMilliseconds(DESPAWN_TIMEOUT));
+			{
+				spawnpoint.SetDespawnTimestamp(currentTime.PlusMilliseconds(DESPAWN_TIMEOUT));
+			}
 			else if (currentTime.Greater(despawnT))
+			{
 				spawnpoint.DespawnVehicle();
+			}
 		}
 		else
 		{
-			spawnpoint.SetDespawnTimer(null);
+			spawnpoint.SetDespawnTimestamp(null);
 		}
 	}
 
@@ -277,8 +270,6 @@ class SCR_AmbientVehicleSystem : GameSystem
 			Enable(true);
 
 		m_aSpawnpoints.Insert(spawnpoint);
-		spawnpoint.SetID(m_iLastAssignedIndex);
-		m_iLastAssignedIndex++;
 		UpdateCheckInterval();
 	}
 
@@ -298,12 +289,9 @@ class SCR_AmbientVehicleSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	int GetSpawnpoints(out array<SCR_AmbientVehicleSpawnPointComponent> spawnpoints)
+	int GetSpawnpoints(out notnull array<SCR_AmbientVehicleSpawnPointComponent> spawnpoints)
 	{
-		if (spawnpoints)
-			return spawnpoints.Copy(m_aSpawnpoints);
-		else
-			return m_aSpawnpoints.Count();
+		return spawnpoints.Copy(m_aSpawnpoints);
 	}
 
 	//------------------------------------------------------------------------------------------------

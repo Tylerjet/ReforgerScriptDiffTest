@@ -58,7 +58,7 @@ class SCR_PlayerData : JsonApiStruct
 	/*!
 	Backend callbacks necessary to make the request to load and store the characterdata from the player's profile
 	*/
-	protected ref SCR_BackendCallback m_CharacterDataCallback = new SCR_BackendCallback();
+	protected ref BackendCallback m_CharacterDataCallback = new BackendCallback();
 	protected ref BackendCallback m_StoringCallback = new BackendCallback();
 
 	//------------------------------------------------------------------------------------------------
@@ -126,7 +126,13 @@ class SCR_PlayerData : JsonApiStruct
 		UpdateTrackingController(device, device);
 		GetGame().OnInputDeviceUserChangedInvoker().Insert(UpdateTrackingController);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	static SCR_PlayerData GetPlayerData(int playerID)
+	{
+		return GetGame().GetDataCollector().GetPlayerData(playerID);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Called manually from the SCR_DataCollectorCrimesModule
 	void SetTimeOut(int time)
@@ -215,12 +221,11 @@ class SCR_PlayerData : JsonApiStruct
 
 		if (ba.IsAuthenticated())
 		{
-				Print("Making menuCallback request for PlayerData", LogLevel.VERBOSE);
-				m_CharacterDataCallback.GetEventOnSuccess().Insert(BackendDataReady);
-				m_CharacterDataCallback.GetEventOnFail().Insert(LoadEmptyProfile);
-				m_CharacterDataCallback.GetEventOnTimeOut().Insert(LoadEmptyProfile);
-				ba.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_CharacterDataCallback, this, m_iPlayerID); //ID 0 refers to the local player
-				//The callback has a reference to this instance so it will automatically call the BackendDataReady or the LoadEmptyProfile methods
+			Print("Making menuCallback request for PlayerData", LogLevel.VERBOSE);
+			m_CharacterDataCallback.SetOnSuccess(BackendDataReady);
+			m_CharacterDataCallback.SetOnError(LoadEmptyProfile);
+			ba.PlayerRequest(EBackendRequest.EBREQ_GAME_CharacterGet, m_CharacterDataCallback, this, m_iPlayerID); //ID 0 refers to the local player
+			//The callback has a reference to this instance so it will automatically call the BackendDataReady or the LoadEmptyProfile methods
 		}
 		else
 		{
@@ -373,7 +378,7 @@ class SCR_PlayerData : JsonApiStruct
 		dataEvent.gt_global_points = (m_aStatsGained[SCR_EDataStats.SPPOINTS0] + m_aStatsGained[SCR_EDataStats.SPPOINTS1] + m_aStatsGained[SCR_EDataStats.SPPOINTS2]);
 		dataEvent.seconds_as_controller = m_iSecondsAsController;
 		dataEvent.seconds_as_keyboard = m_iSecondsAsKeyboard;
-		
+
 		return dataEvent;
 	}
 

@@ -38,6 +38,7 @@ enum ECommonItemType
 	MG_AMMO = 11,
 	AMMO_MORTAR = 12,
 	FOOD = 20,
+	FLARE = 30,
 	BINOCULARS = 50,
 	COMPASS = 51,
 	FLASHLIGHT = 52,

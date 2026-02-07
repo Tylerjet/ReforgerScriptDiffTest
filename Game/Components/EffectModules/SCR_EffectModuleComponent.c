@@ -191,7 +191,20 @@ class SCR_EffectsModuleComponent : ScriptComponent
 			Print("'SCR_EffectsModuleComponent' failed to spawn entity", LogLevel.ERROR);
 			return;
 		}
-		
+
+		if (spawnParams.Parent && m_EffectConfig.GetType() != EEffectsModuleType.PROJECTILE)
+		{
+			RplComponent spawnedRplComp = SCR_EntityHelper.GetEntityRplComponent(spawnedEntity);
+			RplComponent parentRplComp = SCR_EntityHelper.GetEntityRplComponent(spawnParams.Parent);
+			if (spawnedRplComp && parentRplComp)
+			{
+				RplNode spawnedNode = spawnedRplComp.GetNode();
+				RplNode parentNode = parentRplComp.GetNode();
+				if (spawnedNode && parentNode && spawnedNode.GetParent() != parentNode)
+					spawnedNode.SetParent(parentNode);
+			}
+		}
+
 		SCR_EffectsModuleChildComponent effectModuleChild = SCR_EffectsModuleChildComponent.Cast(spawnedEntity.FindComponent(SCR_EffectsModuleChildComponent));
 		if (!effectModuleChild)
 		{
@@ -264,7 +277,14 @@ class SCR_EffectsModuleComponent : ScriptComponent
 		CancelModuleServer();
 		
 		IEntity owner = GetOwner();
-		
+		if(owner != null && !owner.IsDeleted())
+		{
+			SCR_EditableEffectsModuleComponent editableEffectsModule = SCR_EditableEffectsModuleComponent.Cast(owner.FindComponent(SCR_EditableEffectsModuleComponent));
+			if(editableEffectsModule != null)
+			{
+				editableEffectsModule.Delete();
+			}
+		}
 		if (owner && !owner.IsDeleted())
 			delete owner;
 	}
@@ -420,7 +440,9 @@ class SCR_EffectsModuleComponent : ScriptComponent
 		
 		//~ If editable Effect module then ignore as OnOwnerDeleted will already be executed
 		if (owner.FindComponent(SCR_EditableEffectsModuleComponent))
+		{
 			return;
+		}
 		
 		//~ Execution is Server only
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());

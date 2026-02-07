@@ -11,6 +11,8 @@ class SCR_VehicleDebug : GenericEntity
 	ECompartmentType m_CompartmentType;
 	[Attribute("0", UIWidgets.CheckBox, "Engine will be started (if possible)")]
 	bool m_StartEngine;
+	[Attribute("", UIWidgets.ResourceNamePicker, "Overrides surface material of wheel/track casts", params: "gamemat")]
+	ResourceName m_SurfaceMaterialOverride;
 	
 	void SCR_VehicleDebug(IEntitySource src, IEntity parent)
 	{
@@ -19,6 +21,9 @@ class SCR_VehicleDebug : GenericEntity
 	
 	void DelayedInit()
 	{
+		if (!m_SurfaceMaterialOverride.IsEmpty())		
+			VehicleBaseSimulation.SetSurfaceOverride(m_SurfaceMaterialOverride);
+		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;

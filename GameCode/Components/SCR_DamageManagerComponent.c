@@ -60,75 +60,6 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 	protected int m_iDamageManagerDataIndex = -1;
 
-	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-	protected bool m_bRplReady;
-
-	//------------------------------------------------------------------------------------------------
-	//! Check if replication loading is completed. Important for join in progress and when streaming entities in.
-	bool IsRplReady()
-	{
-		return m_bRplReady;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected event bool OnRplSave(ScriptBitWriter writer)
-	{
-		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
-		SCR_FlammableHitZone flammableHitZone;
-		foreach (HitZone hitZone : hitZones)
-		{
-			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
-			if (flammableHitZone)
-				writer.WriteInt(flammableHitZone.GetFireState());
-		}
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override protected event bool OnRplLoad(ScriptBitReader reader)
-	{
-		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
-		SCR_FlammableHitZone flammableHitZone;
-		SCR_EBurningState fireState;
-		foreach (HitZone hitZone : hitZones)
-		{
-			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
-			if (flammableHitZone)
-			{
-				reader.ReadInt(fireState);
-				flammableHitZone.SetFireState(fireState);
-			}
-		}
-
-		m_bRplReady = true;
-
-		return true;
-	}
-	//---- REFACTOR NOTE END ----
-
-	//------------------------------------------------------------------------------------------------
-	/*! Get the HitZone that matches the provided name. Case sensitivity is optional.
-	\param hitZoneName String name of hitzone
-	\param caseSensitive Case sensitivity
-	\return hitZone HitZone matching the provided name
-	*/
-	HitZone GetHitZoneByName(string hitZoneName, bool caseSensitive = false)
-	{
-		if (hitZoneName.IsEmpty())
-			return null;
-
-		array<HitZone> hitZones = {};
-		GetAllHitZonesInHierarchy(hitZones);
-		foreach (HitZone hitZone : hitZones)
-		{
-			if (hitZone && hitZoneName.Compare(hitZone.GetName(), caseSensitive) == 0)
-				return hitZone;
-		}
-		return null;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return hit zones with colliders assigned
@@ -148,7 +79,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 			// Ignore own default hit zone
 			container = hitZone.GetHitZoneContainer();
-			if (container == this)
+			if (container == null || container == this)
 				continue;
 
 			// Allow subordinate default hit zone
@@ -164,7 +95,6 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		array<HitZone> hitZones = {};
 		GetAllHitZonesInHierarchy(hitZones);
 
-		HitZoneContainerComponent container;
 		foreach (HitZone hitZone : hitZones)
 		{
 			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
@@ -181,13 +111,17 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	\param fireRate Rate of fire to be applied
 	*/
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_SetFireState(int hitZoneIndex, SCR_EBurningState fireState)
+	protected void RpcDo_SetFireState_(int hitZoneIndex, SCR_EBurningState fireState)
 	{
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
 		SCR_FlammableHitZone flammableHitZone = SCR_FlammableHitZone.Cast(hitZones.Get(hitZoneIndex));
 		if (flammableHitZone)
 			flammableHitZone.SetFireState(fireState);
+	}
+	void RpcDo_SetFireState(int hitZoneIndex, SCR_EBurningState fireState)
+	{
+		Rpc(RpcDo_SetFireState_, hitZoneIndex, fireState);
 	}
 	//---- REFACTOR NOTE END ----
 
@@ -1300,19 +1234,19 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//!	Invoked when damage state changes.
-	protected override void OnDamageStateChanged(EDamageState state)
+	protected override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged(state);
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		if (m_iDamageManagerDataIndex != -1)
 		{
 			ScriptInvoker invoker = s_aDamageManagerData[m_iDamageManagerDataIndex].GetOnDamageStateChanged(false);
 			if (invoker)
-				invoker.Invoke(state);
+				invoker.Invoke(newState);
 		}
 
 		// Only main hitzone can explode supplies
-		if (state == EDamageState.DESTROYED)
+		if (newState == EDamageState.DESTROYED)
 		{
 			Instigator instigator = GetInstigator();
 			SupplySecondaryExplosion(instigator);

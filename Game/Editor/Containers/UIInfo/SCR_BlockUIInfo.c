@@ -12,6 +12,9 @@ class SCR_BlockUIInfo : SCR_UIInfo
 	override LocalizedString GetDescription()
 	{
 		LocalizedString description = super.GetDescription();
+		if (!description.IsEmpty())
+			description += "<br/>";
+		
 		if (m_aDescriptionBlocks)
 		{
 			for (int i, count = m_aDescriptionBlocks.Count(); i < count; i++)

@@ -51,6 +51,7 @@ class SCR_EquipItemAction: SCR_InventoryAction
 		inventoryCallBack.m_pItem = pOwnerEntity;
 		inventoryCallBack.m_pStorageToPickUp = manager.GetCharacterStorage();
 		inventoryCallBack.m_iSlotToFocus = m_iEquipmentSlotIdOverride;
+		inventoryCallBack.m_bShouldEquip = true;
 
 		manager.InsertItem(pOwnerEntity, cb: inventoryCallBack);
 	}
@@ -69,7 +70,7 @@ class SCR_EquipItemAction: SCR_InventoryAction
 		if (m_iEquipmentSlotIdOverride < 0)
 			return true;
 
-		outName = string.Format(FORMAT, outName, SCR_StringHelper.Translate(TEXT_SLOT_ID, (m_iEquipmentSlotIdOverride + 1).ToString()));
+		outName = string.Format(FORMAT, outName, WidgetManager.Translate(TEXT_SLOT_ID, m_iEquipmentSlotIdOverride + 1));
 		return true;
 	}
 }

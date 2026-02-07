@@ -62,10 +62,10 @@ class TurretControllerComponent: CompartmentControllerComponent
 	\param weapons An array of weapon slots to use (corresponding to the indices defined in WeaponSlotComponents)
 	\param mode One of EWeaponGroupFireMode, WGFM_SALVO, WGFM_RIPPLE or WGFM_SEQUENTIAL
 	\param rippleQuantity (optional) How many weapons to fire in ripple mode (default 1)
-	\param timeBtween (optional) time between ripples (in ms, default 100) or sequential firing (if WGFM_SEQUENTIAL)
+	\param timeBetween (optional) time between ripples (in ms, default 100) or sequential firing (if WGFM_SEQUENTIAL)
 	Note that calling SelectWeapon or passing in an empty array will return to normal firing of single weapons
 	*/
-	proto external bool SetWeaponGroup(array<int> weapons, EWeaponGroupFireMode mode, int rippleQuantity = 1, float timeBetween = 100.0);
+	proto external void SetWeaponGroup(array<int> weapons, EWeaponGroupFireMode mode, int rippleQuantity = 1, float timeBetween = 100.0);
 	// Returns the reload duration in seconds.
 	proto external float GetReloadDuration();
 	// Returns the current reloading time, it goes from reload duration to 0.
@@ -80,6 +80,8 @@ class TurretControllerComponent: CompartmentControllerComponent
 	*/
 	proto external void SetAimingAngles(float yaw, float pitch);
 	proto external bool GetIsOverridden();
+	//! Returns the context indices that are used when this turret is connected to another compartment slot.
+	proto external ETurretContextID GetContextIDs();
 	proto external string GetUniqueName();
 	proto external bool GetUseVehicleCamera();
 	/*!

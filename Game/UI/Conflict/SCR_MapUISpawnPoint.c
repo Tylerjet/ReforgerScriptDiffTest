@@ -239,9 +239,6 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 
 		if (!m_bIsSelected)
 			AnimExpand();
-		
-		if (m_ResourceConsumer)
-			m_wSupplies.SetVisible(true);
 
 		return false;
 	}
@@ -261,9 +258,6 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		
 		if (RenderTargetWidget.Cast(enterW) && m_wButton.IsEnabled())
 			m_wButton.SetEnabled(false);
-		
-		if (m_ResourceConsumer)
-			m_wSupplies.SetVisible(false);
 
 		return false;
 	}

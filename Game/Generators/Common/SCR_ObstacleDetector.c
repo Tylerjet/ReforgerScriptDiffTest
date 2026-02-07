@@ -574,7 +574,7 @@ class SCR_ObstacleDetectorSplineInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get shape's 2D and/or 3D points in relative coordinates
+	//! Get shape's 2D and/or 3D points in WORLD coordinates
 	//! \param[in] shapeEntity
 	//! \param[out] pos2D can be null and won't be filled
 	//! \param[out] pos3D can be null and won't be filled
@@ -588,17 +588,23 @@ class SCR_ObstacleDetectorSplineInfo
 		shapeEntity.GetPointsPositions(points3D);
 
 		if (pos2D)
-		{
 			pos2D.Clear();
-			foreach (vector point : points3D)
+
+		if (pos3D)
+			pos3D.Clear();
+
+		foreach (vector point : points3D)
+		{
+			point = shapeEntity.CoordToParent(point);
+			if (pos2D)
 			{
 				pos2D.Insert(point[0]);
 				pos2D.Insert(point[2]);
 			}
-		}
 
-		if (pos3D)
-			pos3D.Copy(points3D);
+			if (pos3D)
+				pos3D.Insert(point);
+		}
 
 		return points3D.Count();
 	}

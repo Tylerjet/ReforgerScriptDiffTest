@@ -3,9 +3,7 @@
 	name: " Ruin Prefab Assigner",
 	category: "Building Destruction",
 	description: "Assign Ruin Prefab to building Prefabs with a Ruin in the same directory",
-	shortcut: "Ctrl+Shift+S",
-//	wbModules: { "WorldEditor" },
-	wbModules: { "ScriptEditor" },
+	wbModules: { "WorldEditor" },
 	awesomeFontCode: 0xF6BE)]
 class SCR_RuinPrefabAssignerPlugin : WorkbenchPlugin
 {
@@ -32,7 +30,7 @@ class SCR_RuinPrefabAssignerPlugin : WorkbenchPlugin
 		array<ref ContainerIdPathEntry> weApiPath = {};
 		array<string> ruinPrefabEndings = { "_ruin", "_Ruin", "_ruins", "_Ruins" };
 		array<string> basePrefabEndings = { "_base", "_Base" };
-		array<ResourceName> ruinPrefabs = SCR_WorldEditorToolHelper.SearchWorkbenchResources({ PREFAB_EXTENSION }, { "_Ruin" }); // covers both _ruin and _ruins
+		array<ResourceName> ruinPrefabs = SCR_WorkbenchHelper.SearchWorkbenchResources({ PREFAB_EXTENSION }, { "_Ruin" }); // covers both _ruin and _ruins
 		foreach (ResourceName ruinPrefab : ruinPrefabs)
 		{
 			string ruinRelativeFilePath = ruinPrefab.GetPath();

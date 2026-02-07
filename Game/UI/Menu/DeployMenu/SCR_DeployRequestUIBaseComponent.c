@@ -8,6 +8,10 @@ class SCR_DeployRequestUIBaseComponent : ScriptedWidgetComponent
 	[Attribute("ExpandButtonText")]
 	protected string m_sExpandButtonName;
 	protected TextWidget m_wExpandButtonName;
+	
+	[Attribute("Freq")]
+	protected string m_sExpandButtonNameFreq;
+	protected TextWidget m_wExpandButtonNameFreq;
 
 	[Attribute("ExpandButtonIcon")]
 	protected string m_sExpandButtonIcon;

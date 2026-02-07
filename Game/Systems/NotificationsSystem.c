@@ -12,9 +12,9 @@ class NotificationsSystem: GameSystem
 	protected ref array<SCR_NotificationsComponent> m_Components = {};
 	protected ref array<SCR_NotificationsComponent> m_DeletedComponents = {};
 	
-	override protected void OnUpdate(ESystemPoint point)
+	override protected void OnUpdatePoint(WorldUpdatePointArgs args)
 	{
-		float timeSlice = GetWorld().GetTimeSlice();
+		float timeSlice = args.GetTimeSliceSeconds();
 		
 		m_bUpdating = true;
 		

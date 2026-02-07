@@ -64,7 +64,15 @@ class SCR_VONMenu
 				return WidgetManager.Translate(format, company, platoon, squad, character);
 			}
 		}
-	
+
+		SCR_GroupTaskManagerComponent groupTaskManager = SCR_GroupTaskManagerComponent.GetInstance();
+		if (!groupTaskManager || !groupTaskManager.IsEnabledAssigningFrequencies())
+			return string.Empty;
+
+		SCR_Task foundTask = groupTaskManager.GetTaskByFrequency(milFaction, frequency);
+		if (foundTask)
+			return groupTaskManager.GetTaskTranslatedName(foundTask);
+
 		return string.Empty;
 	}
 			
@@ -227,6 +235,7 @@ class SCR_VONMenu
 		inputMgr.AddActionListener("VONMenuTuneFrequency", EActionTrigger.VALUE, ActionTuneFrequency);
 		inputMgr.AddActionListener("VONMenuCycleChannel", EActionTrigger.VALUE, ActionCycleChannel);
 		inputMgr.AddActionListener("VONMenuAction", EActionTrigger.DOWN, OnMenuToggle);
+		inputMgr.AddActionListener("VONMenuMuteAction", EActionTrigger.DOWN, OnMenuMuteToggle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -237,6 +246,7 @@ class SCR_VONMenu
 		inputMgr.RemoveActionListener("VONMenuTuneFrequency", EActionTrigger.VALUE, ActionTuneFrequency);
 		inputMgr.RemoveActionListener("VONMenuCycleChannel", EActionTrigger.VALUE, ActionCycleChannel);
 		inputMgr.RemoveActionListener("VONMenuAction", EActionTrigger.DOWN, OnMenuToggle);
+		inputMgr.RemoveActionListener("VONMenuMuteAction", EActionTrigger.DOWN, OnMenuMuteToggle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -368,6 +378,42 @@ class SCR_VONMenu
 		{
 			//entry.Update(); // currently toggle will turn the entire radio off so just update the grouped transceiver here
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Entry toggle callback
+	protected void OnMenuMuteToggle(float value, EActionTrigger reason)
+	{		
+		SCR_SelectionMenuEntry selectedMenuEntry = m_RadialMenu.GetSelectionEntry();
+		if (!selectedMenuEntry)
+			return;
+								
+		SCR_VONEntryRadio selectedRadioEntry = SCR_VONEntryRadio.Cast(selectedMenuEntry);
+		if (!selectedRadioEntry)
+			return;
+		
+		bool isMuted = selectedRadioEntry.ToggleMuteEntry();
+		SCR_VONEntry vonEntry = SCR_VONEntry.Cast(m_RadialMenu.GetSelectionEntry());
+		if (isMuted)
+		{		
+			// Select another entry that is not muted
+			array<ref SCR_SelectionMenuEntry> entries = m_RadialMenu.GetEntries();
+			SCR_VONEntryRadio radioEntry;
+			foreach (SCR_SelectionMenuEntry entry : entries)
+			{
+				if (entry == selectedMenuEntry)
+					continue;
+				
+				radioEntry = SCR_VONEntryRadio.Cast(entry);
+				if (!radioEntry || radioEntry.GetIsMuted())
+					continue;
+				
+				m_VONController.SetEntryActive(SCR_VONEntry.Cast(entry), true);
+				break;
+			}
+		}
+
+		UpdateEntries();
 	}
 	
 	//------------------------------------------------------------------------------------------------

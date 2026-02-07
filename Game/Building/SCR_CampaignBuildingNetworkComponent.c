@@ -59,6 +59,18 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Delete base by a tool
+	//! \param[in] IEntity base
+	void DeleteBaseByUserAction(notnull IEntity base)
+	{
+		RplComponent comp = RplComponent.Cast(base.FindComponent(RplComponent));
+		if (!comp)
+			return;
+
+		Rpc(RpcAsk_DeleteBaseByUserAction, comp.Id());
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Send a notification about deleted composition
 	//! \param[in] composition
 	//! \param[in] playerId
@@ -182,7 +194,31 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 		if (editableEntity)
 			editableEntity.Delete(true, true);
 		else
+		{
+			SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
+			if (aiWorld)
+			{
+				array<ref Tuple2<vector, vector>> areas = {}; // min, max
+				array<bool> redoAreas = {};
+				aiWorld.GetNavmeshRebuildAreas(composition.GetRootParent(), areas, redoAreas);
+				GetGame().GetCallqueue().CallLater(aiWorld.RequestNavmeshRebuildAreas, 1000, false, areas, redoAreas); //--- Called *before* the entity is deleted with a delay, ensures the regeneration doesn't accidentally get anything from the entity prior to full destruction
+			}
+			
 			RplComponent.DeleteRplEntity(composition, false);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Delete base, executed from user action
+	//! \param[in] RplId rplBaseId
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RpcAsk_DeleteBaseByUserAction(RplId rplBaseId)
+	{
+		IEntity base = GetProviderFormRplId(rplBaseId);
+		if (!base)
+			return;
+
+		RplComponent.DeleteRplEntity(base, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -220,7 +256,7 @@ class SCR_CampaignBuildingNetworkComponent : ScriptComponent
 		
 		compXP.AwardXP(playerId, SCR_EXPRewards.FREE_ROAM_BUILDING_BUILT);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] playerId

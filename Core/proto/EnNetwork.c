@@ -36,28 +36,47 @@ class ScriptCtx : Managed
 {
 }
 
+//! Property groups that allow for replication of only part of the object.
+//! \deprecated Will be removed in the future (as-if all uses were RplGroup.Mandatory).
+[Obsolete()]
+enum RplGroup
+{
+	Mandatory,
+	Group_1,
+	Group_2,
+	Group_3,
+	Group_4,
+	Group_5,
+	Group_6,
+}
+
 /*!
 Property annotation attribute. Use to enable property replication on Entities and components.
 */
 class RplProp
 {
-	RplGroup		 m_Group;
+	RplGroup     m_Group;
 	RplCondition m_Condition;
-	string			 m_CustomCondName;
-	string			 m_OnRplName;
-	ScriptCtx		 m_pCtx;
+	string       m_CustomCondName;
+	string       m_OnRplName;
+	ScriptCtx    m_pCtx;
 
-	void RplProp(RplGroup			group = RplGroup.Mandatory,
-							 string				onRplName = "",
-							 ScriptCtx		ctx = NULL,
-							 RplCondition condition = RplCondition.None,
-							 string				customConditionName = "")
+	void RplProp(RplGroup     group = RplGroup.Mandatory,
+	             string       onRplName = "",
+	             ScriptCtx    ctx = NULL,
+	             RplCondition condition = RplCondition.None,
+	             string       customConditionName = "")
 	{
 		m_Group = group;
 		m_OnRplName = onRplName;
 		m_pCtx = ctx;
 		m_Condition = condition;
 		m_CustomCondName = customConditionName;
+		if (m_Group != RplGroup.Mandatory)
+		{
+			Print("Specifying 'group' in RplProp is deprecated and will be removed, along with RplGroup enum.", level: LogLevel.WARNING);
+			m_Group = RplGroup.Mandatory;
+		}
 	}
 }
 
@@ -257,56 +276,64 @@ class SSnapSerializerBase: Managed
 	void SerializeVector(inout vector val) { SerializeBytes(val, 12); }
 	proto void SerializeString(inout string val);
 
-	void EncodeBool(ScriptBitSerializer packet)
+	bool EncodeBool(ScriptBitSerializer packet)
 	{
 		bool val;
 		this.SerializeBytes(val, 4);
 		packet.Serialize(val, 1);
+		return val;
 	}
-	void DecodeBool(ScriptBitSerializer packet)
+	bool DecodeBool(ScriptBitSerializer packet)
 	{
 		bool val;
 		packet.Serialize(val, 1);
 		this.SerializeBytes(val, 4);
+		return val;
 	}
 
-	void EncodeInt(ScriptBitSerializer packet)
+	int EncodeInt(ScriptBitSerializer packet)
 	{
 		int val;
 		this.SerializeBytes(val, 4);
 		packet.Serialize(val, 32);
+		return val;
 	}
-	void DecodeInt(ScriptBitSerializer packet)
+	int DecodeInt(ScriptBitSerializer packet)
 	{
 		int val;
 		packet.Serialize(val, 32);
 		this.SerializeBytes(val, 4);
+		return val;
 	}
 
-	void EncodeFloat(ScriptBitSerializer packet)
+	float EncodeFloat(ScriptBitSerializer packet)
 	{
 		float val;
 		this.SerializeBytes(val, 4);
 		packet.Serialize(val, 32);
+		return val;
 	}
-	void DecodeFloat(ScriptBitSerializer packet)
+	float DecodeFloat(ScriptBitSerializer packet)
 	{
 		float val;
 		packet.Serialize(val, 32);
 		this.SerializeBytes(val, 4);
+		return val;
 	}
 
-	void EncodeVector(ScriptBitSerializer packet)
+	vector EncodeVector(ScriptBitSerializer packet)
 	{
 		vector val;
 		this.SerializeBytes(val, 12);
 		packet.Serialize(val, 96);
+		return val;
 	}
-	void DecodeVector(ScriptBitSerializer packet)
+	vector DecodeVector(ScriptBitSerializer packet)
 	{
 		vector val;
 		packet.Serialize(val, 96);
 		this.SerializeBytes(val, 12);
+		return val;
 	}
 
 	proto void EncodeString(ScriptBitSerializer packet);

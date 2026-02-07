@@ -20,15 +20,18 @@ class SCR_MusicEditorComponent: SCR_BaseEditorComponent
 			return;
 		
 		m_bMusicWasMutedByEditor = true;
-		m_MusicManager.MuteCategory(MusicCategory.Ambient, true, true);
-		m_MusicManager.MuteCategory(MusicCategory.Menu, true, true);
-		m_MusicManager.MuteCategory(MusicCategory.Misc, true, true);
+		if (m_MusicManager)
+		{
+			m_MusicManager.MuteCategory(MusicCategory.Ambient, true, true);
+			m_MusicManager.MuteCategory(MusicCategory.Menu, true, true);
+			m_MusicManager.MuteCategory(MusicCategory.Misc, true, true);
+		}
 	}
 	
 	protected void OnEditorClosed()
 	{
 		//Checks this in cause the limited mode changed
-		if (m_bMusicWasMutedByEditor)
+		if (m_bMusicWasMutedByEditor && m_MusicManager)
 		{
 			m_MusicManager.MuteCategory(MusicCategory.Ambient, false, false);
 			m_MusicManager.MuteCategory(MusicCategory.Menu, false, false);

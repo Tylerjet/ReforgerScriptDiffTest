@@ -5,8 +5,10 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
 	
 	protected int m_iFrequency;			
+	protected string m_sFrequencyTextOverwrite;
 	protected int m_iTransceiverNumber;
 	protected string m_sChannelText;
+	protected string m_sChannelTextOverwrite;
 	
 	protected BaseTransceiver m_RadioTransceiver;
 	protected SCR_GadgetComponent m_GadgetComp; 
@@ -71,6 +73,18 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetFrequencyTextOverwrite(string text)
+	{
+		m_sFrequencyTextOverwrite = text;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetChannelTextOverwrite(string text)
+	{
+		m_sChannelTextOverwrite = text;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void InitEntry()
 	{
 		SetCustomLayout("{033302D7C8158EF8}UI/layouts/HUD/VON/VONEntry.layout");
@@ -79,7 +93,14 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		
 		AdjustEntryModif(0);
 				
-		SetChannelText(SCR_VONMenu.GetKnownChannel(m_RadioTransceiver.GetFrequency()));
+		if (m_sChannelTextOverwrite.IsEmpty())
+		{
+			SetChannelText(SCR_VONMenu.GetKnownChannel(m_RadioTransceiver.GetFrequency()));
+		}
+		else
+		{
+			SetChannelText(m_sChannelTextOverwrite);
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------ 
@@ -104,12 +125,8 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		
 		m_iFrequency = m_iFrequency + (modifier * m_RadioTransceiver.GetFrequencyResolution());
 		m_iFrequency = Math.ClampInt(m_iFrequency, minFreq, maxFreq);
-		
-		RadioHandlerComponent rhc = RadioHandlerComponent.Cast(GetGame().GetPlayerController().FindComponent(RadioHandlerComponent));
-		if (rhc)
-			rhc.SetFrequency(m_RadioTransceiver, m_iFrequency); // Set new frequency
-		else 
-			return;
+
+		m_RadioTransceiver.SetFrequency(m_iFrequency);
 		
 		float fFrequency = Math.Round(m_iFrequency * 0.1) * 0.01; 	// Format the frequency text: round and convert to 2 digits with one possible decimal place (39500 -> 39.5)
 		m_sText = fFrequency.ToString(3, 1) + " " + LABEL_FREQUENCY_UNITS;		
@@ -183,13 +200,8 @@ class SCR_VONEntryRadio : SCR_VONEntry
 			}
 		}
 
-		m_iFrequency = newFreq;
-		
-		RadioHandlerComponent rhc = RadioHandlerComponent.Cast(GetGame().GetPlayerController().FindComponent(RadioHandlerComponent));
-		if (rhc)
-			rhc.SetFrequency(m_RadioTransceiver, m_iFrequency); // Set new frequency
-		else 
-			return;
+		m_iFrequency = newFreq;		
+		m_RadioTransceiver.SetFrequency(m_iFrequency);
 		
 		float fFrequency = Math.Round(m_iFrequency / 10); // Format the frequency text
 		fFrequency = fFrequency / 100;			
@@ -216,6 +228,35 @@ class SCR_VONEntryRadio : SCR_VONEntry
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_TURN_OFF);
 		else
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_TURN_ON);
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	bool ToggleMuteEntry()
+	{
+		// Constructor allows the entry to not have m_RadioTransceiver assigned
+		if (!m_RadioTransceiver)
+			return false;
+		
+		bool state = !m_RadioTransceiver.IsMuted();
+		m_RadioTransceiver.SetMuteState(state);
+		SetMuted(state);
+		
+		return state;
+	}
+	
+	//------------------------------------------------------------------------------------------------ 
+	bool GetIsMuted()
+	{
+		// Constructor allows the entry to not have m_RadioTransceiver assigned
+		if (!m_RadioTransceiver)
+			return true;
+		
+		// m_RadioTransceiver can't be used directly if this is called on a entry that is not the active entry.
+		BaseTransceiver transceiver = m_RadioTransceiver.GetRadio().GetTransceiver(m_iTransceiverNumber - 1);
+		if (!transceiver)
+			return true;
+		
+		return transceiver.IsMuted();
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -269,9 +310,17 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		}
 		
 		entryComp.SetTransceiverText("CH" + m_iTransceiverNumber.ToString());
-		entryComp.SetFrequencyText(m_sText);
+		if (m_sFrequencyTextOverwrite.IsEmpty())
+		{
+			entryComp.SetFrequencyText(m_sText);
+		}
+		else
+		{
+			entryComp.SetFrequencyText(m_sFrequencyTextOverwrite);
+		}
 		entryComp.SetChannelText(m_sChannelText);
 		entryComp.SetActiveIcon(m_bIsActive);
+		entryComp.SetMuteIcon(m_bIsMuted);
 		
 		BaseRadioComponent radio = m_RadioTransceiver.GetRadio();
 		SetUsable(radio.IsPowered());	

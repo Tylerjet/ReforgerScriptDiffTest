@@ -260,6 +260,15 @@ class SCR_ResourceEncapsulator : SCR_ResourceInteractor
 		if (!m_ContainerRepresentative)
 			return;
 		
+		if (m_aActions)
+		{
+			foreach (SCR_ResourceEncapsulatorActionBase action : m_aActions)
+			{
+				if (action)
+					action.PerformAction(m_ContainerRepresentative, container);
+			}
+		}
+
 		m_ContainerRepresentative.SetMaxResourceValue(GetAggregatedMaxResourceValue());
 		m_ContainerRepresentative.SetResourceValueUnsafe(GetAggregatedResourceValue());
 	}

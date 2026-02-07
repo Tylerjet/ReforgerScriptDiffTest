@@ -346,8 +346,8 @@ class EditablePrefabsConfig
 		Print(string.Format("Editable entity MOVED:\n      Old: '%1'\n      New: '%2'", prevPath, newPath), LogLevel.WARNING);
 
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		MetaFile meta = resourceManager.RegisterResourceFile(absPath);
-		return meta.GetResourceID();
+		resourceManager.RegisterResourceFile(absPath, false);
+		return Workbench.GetResourceName(absPath);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -561,16 +561,14 @@ class EditablePrefabsConfig
 					vector position;
 					child.Get("coords", position);
 
-					float angleX, angleY, angleZ;
-					child.Get("angleX", angleX);
-					child.Get("angleY", angleY);
-					child.Get("angleZ", angleZ);
+					vector angles;
+					child.Get("angles", angles);
 
 					float scale;
 					child.Get("scale", scale);
 
 					//--- Add to the list of links
-					links.Insert(new SCR_EditorLinkEntry(prefabEditable, position, Vector(angleX, angleY, angleZ), scale));
+					links.Insert(new SCR_EditorLinkEntry(prefabEditable, position, angles, scale));
 
 					//--- Mark the original entity as not-editable (override existing flags)
 					api.SetVariableValue(child, null, "Flags", EntityFlags.EDITOR_ONLY.ToString());

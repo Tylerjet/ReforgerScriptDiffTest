@@ -147,6 +147,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			if (compartment)
 			{
 				BaseControllerComponent controller = compartment.GetController();
+				if (!controller)
+				{
+					controller = compartment.GetAttachedTurret();
+					if (!controller || compartment.GetAttachedTurret().GetContextIDs() != ETurretContextID.TURRET_OPSCONTEXT || compartment.IsOccupantTurnedOut())
+						return false;
+				}
+				
 				if (controller)
 				{
 					TurretControllerComponent turretController = TurretControllerComponent.Cast(controller);
@@ -154,7 +161,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 					{
 						isInAds = turretController.IsWeaponADS();
 						
-						if (!turretController.GetUseVehicleCamera() || isInAds)
+						if (!turretController.GetUseVehicleCamera() || isInAds || IsInThirdPerson())
 						{
 							return true;
 						}
@@ -233,7 +240,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				bool inTurret = CheckIsInTurret(isTurretAds);
 				if (inTurret)
 				{
-					if (isTurretAds)
+					if (isTurretAds && !m_ControllerComponent.GetFreeLookInput())
 						return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
 
 					return CharacterCameraSet.CHARACTERCAMERA_3RD_TURRET;
@@ -295,8 +302,14 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			bool inTurret = CheckIsInTurret(isTurretAds);
 			if (inTurret)
 			{
-				if (isTurretAds)
+				if (isTurretAds && !m_ControllerComponent.GetFreeLookInput())
 					return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
+				
+				BaseCompartmentSlot compartment = compartmentAccess.GetCompartment();
+				if (compartment && compartment.GetAttachedTurret())
+				{	
+					return CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE;
+				}
 
 				return CharacterCameraSet.CHARACTERCAMERA_1ST_TURRET;
 			}
@@ -458,8 +471,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 
 		bool isADSAllowed = m_CmdHandler && m_CmdHandler.IsWeaponADSAllowed(false);
 		bool isWeaponADS = isADSAllowed && m_ControllerComponent.GetWeaponADSInput() && !m_ControllerComponent.IsReloading();
+		bool resetFocus = false;
 		if (!isWeaponADS)
-			CheckIsInTurret(isWeaponADS);
+		{
+			if (CheckIsInTurret(isWeaponADS) && m_ControllerComponent.GetFreeLookInput())
+				resetFocus = true;
+		}
 
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 
@@ -509,6 +526,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		if (IsInThirdPerson() && m_ControllerComponent && m_ControllerComponent.GetInputContext().GetDie())
 			OnAlphatestChange(0);
 		
+		if (resetFocus)
+		{
+			m_fFocusValue = 0;
+			SetFocusMode(m_fFocusValue);
+			return;
+		}
+		
 		if (!m_bDoInterpolateFocus)
 			return;
 		
@@ -546,17 +570,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4], inout vector transformWS[4])
 	{
-		if (m_pAttachmentReference)
-			UpdateHeadVisibility(transformMS[3]);
-		else
-			UpdateHeadVisibility(transformWS[3]);
+		UpdateHeadVisibility(transformWS[3]);
 		
 		if (m_ControllerComponent.IsDead())
 			return;
-		
-		//! aiming update
-		if( pIsKeyframe )
-			UpdateAiming(transformMS);
 		
 		if (GetCurrentCamera())
 			GetCurrentCamera().OnAfterCameraUpdate(pDt, pIsKeyframe, transformMS);
@@ -570,12 +587,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	{
 		vector headBoneMat[4];
 		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneMat);
+		
 		vector charMat[4];
 		m_OwnerCharacter.GetWorldTransform(charMat);
 		Math3D.MatrixMultiply4(charMat, headBoneMat, headBoneMat);
 		
 		// Set alpha based on distance from camera
-		OnAlphatestChange(255 - Math.Clamp((vector.Distance(cameraPositionWS, headBoneMat[3]) - 0.2) / 0.15, 0.0, 1.0)*255);
+		OnAlphatestChange(255 - Math.Clamp((vector.Distance(cameraPositionWS, headBoneMat[3]) - 0.3) / 0.15, 0.0, 1.0)*255);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -749,11 +767,13 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			param.LayerMask = TRACE_LAYER_CAMERA;
 			
 			// 1. Sideways collision (translating the camera to left/right from character).
-			vector headBoneTM[4];
-			m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHeadBoneIndex, headBoneTM);
+			vector sideVector;
+			if (m_ControllerComponent.IsFreeLookEnabled())
+				sideVector = resultWorldTransform[0];
+			else
+				sideVector = camTransformWS[0];
 			
-			float headBoneHeight = headBoneTM[3][1];
-			vector sideTraceStart = camTransformWS[3] - camTransformWS[0] * pOutResult.m_fShoulderDist; // start trace at head position on the camera plane
+			vector sideTraceStart = camTransformWS[3] - sideVector * pOutResult.m_fShoulderDist; // start trace at head position on the camera plane
 			vector sideTraceEnd = camTransformWS[3];
 			
 			vector sideTraceDiff = sideTraceEnd - sideTraceStart;
@@ -761,8 +781,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			// Set up the side trace
 			param.Start = sideTraceStart;
 			param.End = sideTraceStart + SIDE_TRACE_MARGIN_MULTIPLIER * sideTraceDiff; 
-	
-			float rightTrace = world.TraceMove(param, null);
+			
+			float rightTrace;
+			if (!m_bTraceCharacters)
+				rightTrace = ChimeraCharacter.TraceMoveWithoutCharacters(world, param);
+			else
+				rightTrace = world.TraceMove(param, null);
 			
 			// The slide we apply is not divided by the margin multiplier, since we want slide to move
 			// in anticipation of hitting something. We still pass the multiplier here though,
@@ -798,7 +822,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			if (pOutResult.m_fPositionModelSpace <= 2.0 && pOutResult.m_fDistance > MIN_TRACE_DISTANCE)
 			{
 				TraceParam rayParam = new TraceParam();
-				rayParam.ExcludeArray = excludeArray;
+				if (m_CharMovementState.m_iStanceIdx != ECharacterStance.PRONE || !m_ControllerComponent.IsFreeLookEnabled())
+					rayParam.ExcludeArray = excludeArray;
 				rayParam.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
 				rayParam.LayerMask = TRACE_LAYER_CAMERA;
 
@@ -808,7 +833,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 					rayParam.Start = backTraceStart + traceOffsets[i];
 					rayParam.End = backTraceEnd + traceOffsets[i];
 
-					rayBackTrace[i] = world.TraceMove(rayParam, null);
+					if (!m_bTraceCharacters)
+						rayBackTrace[i] = ChimeraCharacter.TraceMoveWithoutCharacters(world, rayParam);
+					else
+						rayBackTrace[i] = world.TraceMove(rayParam, null);
 					backTrace = Math.Min(backTrace, rayBackTrace[i]);
 				}
 
@@ -950,47 +978,6 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		pOutTransform[2] = endBobmat[2];
 		
 		return m_fBob_ScaleFast;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	private void UpdateAiming(vector transformMS[4])
-	{
-		return;
-
-//		vector characterMat[4];
-//		m_OwnerCharacter.GetWorldTransform(characterMat);
-//
-//		if( Is3rdPersonView() )
-//		{
-//			vector dirLS = transformMS[2];
-//			vector dirWS = dirLS.Multiply3(characterMat);
-//			vector aimposLS = transformMS[3];
-//			vector aimposWS = aimposLS.Multiply4(characterMat);
-//
-//			// Trace aiming for 3rd person
-//			autoptr TraceParam param = new TraceParam;
-//			param.Start = aimposWS + dirWS * 3;
-//			param.End = param.Start + dirWS * 100;
-//			param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
-//			param.Exclude = m_OwnerCharacter;
-//			param.LayerMask = TRACE_LAYER_CAMERA;
-//			vector aimpos = param.End;
-//
-//			float traced = m_OwnerCharacter.GetWorld().TraceMove(param, null);
-//			if (traced < 1)
-//				aimpos = (param.End - param.Start) * traced + param.Start;
-//
-//			m_ControllerComponent.SetLookAtPosition(aimpos);
-//			if (m_ControllerComponent.IsFreeLookEnabled() || m_ControllerComponent.IsWeaponObstructed())
-//				m_ControllerComponent.SetAimPosition(vector.Zero);
-//			else
-//				m_ControllerComponent.SetAimPosition(aimpos);
-//		}
-//		else
-//		{
-//			m_ControllerComponent.SetAimPosition(vector.Zero);
-//			m_ControllerComponent.SetLookAtPosition(vector.Zero);
-//		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1171,4 +1158,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	{
 		return m_bCameraActive;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] bTraceCharacters
+	void SetTraceCharacters(bool bTraceCharacters)
+	{
+		m_bTraceCharacters = bTraceCharacters;
+	}
+
 }

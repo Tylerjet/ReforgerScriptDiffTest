@@ -49,9 +49,7 @@ class EntityOrientationTool: WorkbenchPlugin
 		
 		api.BeginEntityAction("Set entity to view orientation script");
 		api.SetVariableValue(src, null, "coords", pos.ToString(false));
-		api.SetVariableValue(src, null, "angleX", yawPitchRoll[1].ToString());
-		api.SetVariableValue(src, null, "angleY", yawPitchRoll[0].ToString());
-		api.SetVariableValue(src, null, "angleZ", yawPitchRoll[2].ToString());
+		api.SetVariableValue(src, null, "angles", string.Format("%1 %2 %3", yawPitchRoll[1], yawPitchRoll[0], yawPitchRoll[2]));
 		api.EndEntityAction();
 	}
 

@@ -255,6 +255,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Request weapon reload. If true, request was sucessful
 	proto external bool ReloadWeapon();
 	// mag or projectile
+	proto external bool DetachCurrentMagazine();
 	proto external bool ReloadWeaponWith(IEntity ammunitionEntity, bool bForceDetach = false);
 	/*!
 	Returns the current controller state.
@@ -268,8 +269,25 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	// Returns true if there is nothing blocking starting unconscious - it does not check whether unconsciousness should actually start.
 	proto external bool CanEnterUnconsciousness();
 	proto external void EnableReviveCharacter(bool enabled);
-	//! Dying
-	proto external void Ragdoll(bool broadcast = true);
+	/*!
+	Starts ragdoll on the character.
+	This should be called only on owner.
+	Replication is handled in gamecode.
+	This ragdoll is handled the same way as the unconscious ragdoll, where it ends after some delay
+		and when the bones stop moving and then its blended into animated pose(ideally prone one).
+	During this ragdoll, the character stance is changed to prone.
+	To better control ragdoll time, use RefreshRagdoll method.
+	*/
+	proto external void Ragdoll();
+	/*!
+	Refreshes ragdoll, so it doesn't get turned off for fWarmupTime seconds. This doesn't work if the character is already transitioning into animation from ragdoll.
+	This should be called only on owner.
+	This can also be used to shorten time to end ragdoll.
+	If you want ragdoll to be "controlled" from script. You can call SCR_Ragdoll, then SCR_RefreshRagdoll(10000.0) to start "endless" ragdoll
+		and then SCR_RefreshRagdoll(0.0) when you want the ragdoll to start to blend into animated pose.
+	If you'll call this when the ragdoll hasn't started, it will be applied to the next ragdoll.
+	*/
+	proto external void RefreshRagdoll(float fWarmupTime);
 	//! Kills the character. Skips invincibility checks.
 	proto external void ForceDeath();
 	/* @NOTE(Leo): Temp solution, eventually will be solved by setting respective gadget graph attachments,
@@ -462,7 +480,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Override to handle whether character can eject from vehicle via JumpOut input action
 	event bool CanJumpOutVehicleScript() { return true; };
 	//! Will be called when the life state of the character changes.
-	event protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState);
+	event protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState, bool isJIP);
 	//! Will be called when the consciousness of the character changes.
 	event protected void OnConsciousnessChanged(bool conscious);
 	//! Handling of death. If instigatorEntity is null, you can use instigator.GetInstigatorEntity() if appropiate.
@@ -475,6 +493,14 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event protected void OnItemUseBegan(ItemUseParameters itemUseParams);
 	//! Will be called when item use action is complete
 	event protected void OnItemUseEnded(ItemUseParameters itemUseParams, bool successful);
+	//! Will be called when weapon raising started
+	event protected void OnWeaponRaisingStarted();
+	//! Will be called when weapon raising finished
+	event protected void OnWeaponRaisingFinished();
+	//! Will be called when weapon lowering started
+	event protected void OnWeaponLoweringStarted();
+	//! Will be called when weapon lowering finished
+	event protected void OnWeaponLoweringFinished();
 	event protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd);
 	/*!
 	Output target angles vector is used during inspection to adjust look at.

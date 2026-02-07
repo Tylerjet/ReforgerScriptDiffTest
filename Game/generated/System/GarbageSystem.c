@@ -54,8 +54,8 @@ class GarbageSystem: GameSystem
 	\return True if blacklist update was successful, false otherwise.
 	*/
 	proto external bool UpdateBlacklist(notnull IEntity entity, bool blacklisted);
-	//! Get all entities tracked by the garbage system. Expensive operation. Use with care!
-	proto external int GetTrackedEntities(notnull array<IEntity> entities);
+	//! Fetch all entities tracked by the garbage system. Expensive operation. Use with care!
+	proto external int FetchTrackedEntities(notnull array<IEntity> entities);
 
 	// callbacks
 

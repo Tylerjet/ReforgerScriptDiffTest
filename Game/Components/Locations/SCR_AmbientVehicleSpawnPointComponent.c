@@ -27,12 +27,10 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	protected bool m_bSpawnProcessed;
 	protected bool m_bAllowDespawn = true;
 
-	protected int m_iID;
-
 	protected float m_fSpawnTimestamp;
 
 	protected WorldTimestamp m_fRespawnTimestamp;
-	protected WorldTimestamp m_fDespawnTimer;
+	protected WorldTimestamp m_fDespawnTimestamp;
 
 	protected ResourceName m_sPrefab;
 
@@ -45,20 +43,6 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	int GetRespawnPeriod()
 	{
 		return m_iRespawnPeriod;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] ID
-	void SetID(int ID)
-	{
-		m_iID = ID;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetID()
-	{
-		return m_iID;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -81,32 +65,38 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	{
 		return m_bFirstSpawnDone;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	bool GetIsSpawnProcessed()
 	{
 		return m_bSpawnProcessed;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	bool IsDespawnAllowed()
 	{
 		return m_bAllowDespawn;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetAllowDespawn(bool allow)
+	{
+		m_bAllowDespawn = allow;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] time
-	void SetDespawnTimer(WorldTimestamp time)
+	void SetDespawnTimestamp(WorldTimestamp time)
 	{
-		m_fDespawnTimer = time;
+		m_fDespawnTimestamp = time;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	WorldTimestamp GetDespawnTimer()
+	WorldTimestamp GetDespawnTimestamp()
 	{
-		return m_fDespawnTimer;
+		return m_fDespawnTimestamp;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -131,17 +121,23 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void SetSpawnedVehicle(Vehicle vehicle)
+	{
+		m_Vehicle = vehicle;
+		m_bSpawnProcessed = true;
+		m_bFirstSpawnDone = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//!
 	//! \return the created vehicle
 	Vehicle SpawnVehicle()
 	{
 		SCR_FactionAffiliationComponent comp = SCR_FactionAffiliationComponent.Cast(GetOwner().FindComponent(SCR_FactionAffiliationComponent));
-
 		if (!comp)
 			return null;
 
 		SCR_Faction faction = SCR_Faction.Cast(comp.GetAffiliatedFaction());
-
 		if (!faction)
 			faction = SCR_Faction.Cast(comp.GetDefaultAffiliatedFaction());
 
@@ -151,14 +147,8 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		if (m_sPrefab.IsEmpty())
 			return null;
 
-		Resource prefab = Resource.Load(m_sPrefab);
-
-		if (!prefab || !prefab.IsValid())
-			return null;
-
 		vector pos;
-		bool spawnEmpty = SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOwner().GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS);
-
+		const bool spawnEmpty = SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOwner().GetOrigin(), SPAWNING_RADIUS, SPAWNING_RADIUS);
 		if (!spawnEmpty)
 		{
 #ifdef WORKBENCH
@@ -173,14 +163,14 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 			return null;
 		}
 
-		EntitySpawnParams params = EntitySpawnParams();
+		EntitySpawnParams params();
 		params.TransformMode = ETransformMode.WORLD;
 		GetOwner().GetTransform(params.Transform);
 
 		if (m_Vehicle)
 			RemoveInteractionHandlers(m_Vehicle);
 
-		m_Vehicle = Vehicle.Cast(GetGame().SpawnEntityPrefab(prefab, null, params));
+		m_Vehicle = Vehicle.Cast(GetGame().SpawnEntityPrefabEx(m_sPrefab, false, params: params));
 		m_fRespawnTimestamp = null;
 		m_bFirstSpawnDone = true;
 		m_bSpawnProcessed = true;
@@ -190,20 +180,17 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 
 		m_fSpawnTimestamp = GetGame().GetWorld().GetWorldTime();
 
-		CarControllerComponent carController = CarControllerComponent.Cast(m_Vehicle.FindComponent(CarControllerComponent));
-
 		// Activate handbrake so the vehicles don't go downhill on their own when spawned
+		CarControllerComponent carController = CarControllerComponent.Cast(m_Vehicle.FindComponent(CarControllerComponent));		
 		if (carController)
 			carController.SetPersistentHandBrake(true);
 
-		Physics physicsComponent = m_Vehicle.GetPhysics();
-
 		// Snap to terrain
+		Physics physicsComponent = m_Vehicle.GetPhysics();
 		if (physicsComponent)
 			physicsComponent.SetVelocity("0 -1 0");
 
 		EventHandlerManagerComponent handler = EventHandlerManagerComponent.Cast(m_Vehicle.FindComponent(EventHandlerManagerComponent));
-
 		if (handler)
 			handler.RegisterScriptHandler("OnDestroyed", this, OnVehicleDestroyed);
 
@@ -261,7 +248,6 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	void RemoveInteractionHandlers(notnull IEntity vehicle)
 	{
 		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.GetDamageManager(vehicle);
-
 		if (damageManager)
 		{
 			array<HitZone> hitZones = {};
@@ -280,7 +266,6 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		}
 
 		SCR_FuelManagerComponent fuelManager = SCR_FuelManagerComponent.Cast(vehicle.FindComponent(SCR_FuelManagerComponent));
-
 		if (fuelManager)
 			fuelManager.GetOnFuelChanged().Remove(OnFuelChanged);
 	}
@@ -289,12 +274,8 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 	//!
 	void DespawnVehicle()
 	{
-		m_fDespawnTimer = null;
+		m_fDespawnTimestamp = null;
 		m_bSpawnProcessed = false;
-
-		if (!m_Vehicle)
-			return;
-
 		RplComponent.DeleteRplEntity(m_Vehicle, false);
 	}
 
@@ -367,28 +348,17 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 			return;
 		}
 
-		SetEventMask(owner, EntityEvent.INIT);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
-	{
 		SCR_AmbientVehicleSystem manager = SCR_AmbientVehicleSystem.GetInstance();
-
-		if (!manager)
-			return;
-
-		manager.RegisterSpawnpoint(this);
+		if (manager)
+			manager.RegisterSpawnpoint(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// destructor
-	void ~SCR_AmbientVehicleSpawnPointComponent()
+	override void OnDelete(IEntity owner)
 	{
 		if (m_Vehicle)
 		{
 			EventHandlerManagerComponent handler = EventHandlerManagerComponent.Cast(m_Vehicle.FindComponent(EventHandlerManagerComponent));
-
 			if (handler)
 				handler.RemoveScriptHandler("OnDestroyed", this, OnVehicleDestroyed);
 
@@ -397,10 +367,7 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		}
 
 		SCR_AmbientVehicleSystem manager = SCR_AmbientVehicleSystem.GetInstance();
-
-		if (!manager)
-			return;
-
-		manager.UnregisterSpawnpoint(this);
+		if (manager)
+			manager.UnregisterSpawnpoint(this);
 	}
 }

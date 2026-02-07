@@ -14,7 +14,7 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 	/*!
 		The target value at which "shake" is considered to be at its peak.
 	*/
-	[Attribute("0.0375", UIWidgets.Slider, params: "0.0 1.0 0.001", precision: 3, category: "Camera Shake", desc: "Distance of translation at which recoil is deemed at maximum scale.")]
+	[Attribute("0.0375", UIWidgets.Slider, params: "0.0 1.0 0.001", precision: 4, category: "Camera Shake", desc: "Distance of translation at which recoil is deemed at maximum scale.")]
 	float m_fRecoilTarget; //!< The maximum z translation that recoil is scaled against.
 	[Attribute("1.25", UIWidgets.Slider, params: "0.0 3.0 0.001", precision: 3, category: "Camera Shake", desc: "Maximum percentage of recoil applied based on current vs target recoil translation.")]
 	float m_fMaximumPercentage; //!< The final allowed scale of the recoil. Clamps recoil after scaled by m_fRecoilTarget.
@@ -25,14 +25,14 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 		This is the raw value per axis (+right, +up, +forward in meters).
 		Keep positive only, sign is generated randomly.
 	 */
-	[Attribute("0.0005 0.00050.0", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "Minimum range to pick translation values from. +right +up +forward in meters.")]
+	[Attribute("0.0005 0.0005 0", UIWidgets.EditBox, precision: 4, category: "Camera Shake", desc: "Minimum range to pick translation values from. +right +up +forward in meters.")]
 	protected vector m_vTranslationMin;
 	/* 
 		The maximum translation range to pick a random value from.
 		This is the raw value per axis (+right, +up, +forward in meters).
 		Keep positive only, sign is generated randomly.
 	 */
-	[Attribute("0.006 0.006 0.0", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "Maximum range to pick translation values from. +right +up +forward in meters.")]
+	[Attribute("0.006 0.006 0", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "Maximum range to pick translation values from. +right +up +forward in meters.")]
 	protected vector m_vTranslationMax;
 	
 	/*!
@@ -46,7 +46,7 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 		for the entirety or most of the underlying shake duration. This value defines the minimum
 		rotation range of this impulse.
 	 */
-	[Attribute("0.005 0.005 1.0", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "On top of the continuous shake there is an impulse which is stronger and has single direction for the entirety or most of the underlying shake duration. This value defines the minimum rotation range of this impulse. +pitch +yaw +roll in in degrees.")]
+	[Attribute("0.005 0.005 1", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "On top of the continuous shake there is an impulse which is stronger and has single direction for the entirety or most of the underlying shake duration. This value defines the minimum rotation range of this impulse. +pitch +yaw +roll in in degrees.")]
 	protected vector m_vRotationImpulseMin;
 	
 	/* 
@@ -64,9 +64,9 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 	float m_fMinImpulseThreshold;
 	
 	/* 
-		The minimum rate at which impulses can be added. (0.1 == up to 0.1 impulses per second, 1.0 == up to 1 impulses per second)
+		The minimum rate at which impulses can be added. (0.1 == up to 0.1 impulses per second, 1 == up to 1 impulses per second)
 	*/
-	[Attribute("0.333", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "The minimum rate at which impulses can be added. (0.1 == up to 0.1 impulses per second, 1.0 == up to 1 impulses per second.")]
+	[Attribute("0.333", UIWidgets.EditBox, precision: 3, category: "Camera Shake", desc: "The minimum rate at which impulses can be added. (0.1 == up to 0.1 impulses per second, 1 == up to 1 impulses per second.")]
 	float m_fMinImpulseRate;
 	
 	/* 
@@ -100,20 +100,20 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 	
 	/*!
 		Returns impulse magnitude for dynamic character stance.
-		\param dynamicStance Dynamic stance value of character (0=prone, 0.5=crouch, 1.0=erect)
+		\param dynamicStance Dynamic stance value of character (0=prone, 0.5=crouch, 1=erect)
 	*/	
 	float GetStanceImpulseMagnitude(float dynamicStance)
 	{
-		return GetMagnitude(dynamicStance, m_fImpulseCrouchMagnitudeModifier, m_fImpulseProneMagnitudeModifier, 1.0);
+		return GetMagnitude(dynamicStance, m_fImpulseCrouchMagnitudeModifier, m_fImpulseProneMagnitudeModifier, 1);
 	}
 	
 	/*!
 		Returns continuous magnitude for dynamic character stance.
-		\param dynamicStance Dynamic stance value of character (0=prone, 0.5=crouch, 1.0=erect)
+		\param dynamicStance Dynamic stance value of character (0=prone, 0.5=crouch, 1=erect)
 	*/	
 	float GetStanceMagnitude(float dynamicStance)
 	{
-		return GetMagnitude(dynamicStance, m_fCrouchMagnitudeModifier, m_fProneMagnitudeModifier, 1.0);
+		return GetMagnitude(dynamicStance, m_fCrouchMagnitudeModifier, m_fProneMagnitudeModifier, 1);
 	}
 	
 	protected float GetMagnitude(float stance, float crouch, float prone, float erect)
@@ -121,7 +121,7 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 		// Interpolate between crouch and erect
 		if (stance >= 0.5)
 		{
-			float t = (stance * 2) - 1.0;
+			float t = (stance * 2) - 1;
 			return Math.Lerp(crouch, erect, t);			
 		}
 		
@@ -136,7 +136,7 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 	protected float RandomFloat(float min, float max)
 	{
 		if (min < 0.00001 || max < 0.00001)
-			return 0.0;
+			return 0;
 		
 		float sign = m_pRandomGenerator.RandFloatXY(-1337, 1337).Sign();
 		return sign * m_pRandomGenerator.RandFloatXY(min, max);
@@ -172,8 +172,8 @@ class SCR_RecoilCameraShakeParams : BaseItemAttributeData
 	*/
 	float GetFovScale(float progress01)
 	{
-		progress01 = Math.Clamp(progress01, 0.0, 1.0);
-		return Math.Lerp(1.0, m_fFOVModifier, progress01);
+		progress01 = Math.Clamp(progress01, 0, 1);
+		return Math.Lerp(1, m_fFOVModifier, progress01);
 	}
 	
 	/*!

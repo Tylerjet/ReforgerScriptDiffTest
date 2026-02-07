@@ -56,6 +56,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	protected bool m_bCharacterIsDrowning;
 	protected float m_fDrowningTime;
 	protected ref SCR_ScriptedCharacterInputContext m_pScrInputContext;
+	protected CharacterSoundComponent m_CharacterSoundComponent;
 
 	//! Contains information about for which shell player saved some information for future use
 	protected ref array<ref SCR_ShellConfig> m_aSavedShellConfigs;
@@ -78,12 +79,17 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	// called when all listeners reacted on ItemUseEnded invoker - may delete the item now thus listerners to ItemUseFinished may get first parameter null! 
 	ref OnItemUseFinishedInvoker m_OnItemUseFinishedInvoker = new OnItemUseFinishedInvoker();
 	protected ref ScriptInvoker<AnimationEventID, AnimationEventID, int, float, float, SCR_CharacterControllerComponent> m_OnAnimationEvent;
-
+	
+	// Weapon raising/lowering event invokers
+	ref ScriptInvokerVoid m_OnWeaponRaisingStartedInvoker = new ScriptInvokerVoid();
+	ref ScriptInvokerVoid m_OnWeaponRaisingFinishedInvoker = new ScriptInvokerVoid();
+	ref ScriptInvokerVoid m_OnWeaponLoweringStartedInvoker = new ScriptInvokerVoid();
+	ref ScriptInvokerVoid m_OnWeaponLoweringFinishedInvoker = new ScriptInvokerVoid();
+	
 	// Diagnostics, debugging
 	#ifdef ENABLE_DIAG
 	private static bool s_bDiagRegistered;
 	private static bool m_bEnableDebugUI;
-	private CharacterAnimationComponent m_AnimComponent;
 	private Widget m_wDebugRootWidget;
 	private ECharacterStance m_bDebugLastStance = ECharacterStance.STAND;
 	#endif
@@ -197,6 +203,58 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerVoid GetOnWeaponRaisingStarted()
+	{
+		return m_OnWeaponRaisingStartedInvoker;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerVoid GetOnWeaponRaisingFinished()
+	{
+		return m_OnWeaponRaisingFinishedInvoker;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerVoid GetOnWeaponLoweringStarted()
+	{
+		return m_OnWeaponLoweringStartedInvoker;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerVoid GetOnWeaponLoweringFinished()
+	{
+		return m_OnWeaponLoweringFinishedInvoker;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnWeaponRaisingStarted()
+	{
+		m_OnWeaponRaisingStartedInvoker.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnWeaponRaisingFinished()
+	{
+		m_OnWeaponRaisingFinishedInvoker.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnWeaponLoweringStarted()
+	{
+		m_OnWeaponLoweringStartedInvoker.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnWeaponLoweringFinished()
+	{
+		m_OnWeaponLoweringFinishedInvoker.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnItemUseBegan(ItemUseParameters itemUseParams) 
 	{
 		m_OnItemUseBeganInvoker.Invoke(itemUseParams.GetEntity(), itemUseParams);
@@ -278,15 +336,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	override void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState, bool isJIP)
 	{
-		m_OnLifeStateChanged.Invoke(previousLifeState, newLifeState);
-		
-		ChimeraCharacter char = GetCharacter();
-		if (!char)
-			return;
-		
-		IEntity vehicle = CompartmentAccessComponent.GetVehicleIn(char);
+		m_OnLifeStateChanged.Invoke(previousLifeState, newLifeState, isJIP);
+				
+		IEntity vehicle = CompartmentAccessComponent.GetVehicleIn(GetCharacter());
 		if (!vehicle)
 			return;
 		
@@ -530,20 +584,15 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	override void OnInit(IEntity owner)
 	{
 		ChimeraCharacter character = GetCharacter();
-		if (!character)
-			return;
 
 		if (!m_MeleeComponent)
 			m_MeleeComponent = SCR_MeleeComponent.Cast(character.FindComponent(SCR_MeleeComponent));
 		if (!m_CameraHandler)
 			m_CameraHandler = SCR_CharacterCameraHandlerComponent.Cast(character.FindComponent(SCR_CharacterCameraHandlerComponent));
-
-		#ifdef ENABLE_DIAG
-		if (!m_AnimComponent)
-			m_AnimComponent = CharacterAnimationComponent.Cast(character.FindComponent(CharacterAnimationComponent));
-		#endif
 		
 		m_pScrInputContext = new SCR_ScriptedCharacterInputContext();
+		
+		m_CharacterSoundComponent = CharacterSoundComponent.Cast(character.FindComponent(CharacterSoundComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -573,8 +622,6 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return;
 
 		ChimeraCharacter char = GetCharacter();
-		if (!char)
-			return;
 		
 		CompartmentAccessComponent accesComp = char.GetCompartmentAccessComponent();
 		bool isInWatertightCompartment = accesComp && accesComp.GetCompartment() && accesComp.GetCompartment().GetIsWaterTight();
@@ -705,7 +752,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		override void OnDiag(IEntity owner, float timeslice)
 		{
 			ChimeraCharacter character = GetCharacter();
-			if (!character || IsDead())
+			if (IsDead())
 				return;
 			
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_NOBANKING))
@@ -771,7 +818,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		//------------------------------------------------------------------------------------------------
 		private void UpdateInputCircles()
 		{
-			if (!m_wDebugRootWidget || !m_AnimComponent)
+			if (!m_wDebugRootWidget)
+				return;
+
+			CharacterAnimationComponent animComponent = GetAnimationComponent();
+			if (!animComponent)
 				return;
 
 			Widget wInput = m_wDebugRootWidget.FindAnyWidget("Input");
@@ -779,8 +830,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				return;
 
 			WorkspaceWidget workspaceWidget = GetGame().GetWorkspace();
-
-			float topSpeed = m_AnimComponent.GetTopSpeed(-1, false);
+			
+			float topSpeed = animComponent.GetTopSpeed(-1, false);
 
 			TextWidget wMaxSpeed = TextWidget.Cast(wInput.FindAnyWidget("MaxSpeed"));
 			if (wMaxSpeed)
@@ -820,7 +871,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 					float inputForward = velInput[2];
 					float inputRight = velInput[0];
 
-					float degSize = m_AnimComponent.GetMaxSpeed(inputForward, inputRight, spdType) / degSizeDivider;
+					float degSize = animComponent.GetMaxSpeed(inputForward, inputRight, spdType) / degSizeDivider;
 					if (spdType == EMovementType.SPRINT && !IsSprinting())
 						degSize = 0;
 
@@ -891,8 +942,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			}
 
 			float topSpeed = 0;
-			if (m_AnimComponent)
-				topSpeed = m_AnimComponent.GetTopSpeed(-1, false);
+			CharacterAnimationComponent animComponent = GetAnimationComponent();
+			topSpeed = animComponent.GetTopSpeed(-1, false);
 
 			Widget wCenter = m_wDebugRootWidget.FindAnyWidget("Center");
 			Widget wCenter2 = m_wDebugRootWidget.FindAnyWidget("Center2");
@@ -910,14 +961,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			{
 				float inputForward = movementInput[0];
 				float inputRight = movementInput[2];
-				float maxSpeed = m_AnimComponent.GetMaxSpeed(inputForward, inputRight, GetCurrentMovementPhase());
+				float maxSpeed = animComponent.GetMaxSpeed(inputForward, inputRight, GetCurrentMovementPhase());
 				float moveScale = maxSpeed / topSpeed;
 				float x = movementInput[0] * moveScale * 0.5 + 0.5;
 				float y = -movementInput[2] * moveScale * 0.5 + 0.5;
 				FrameSlot.SetAnchorMin(wCenter, x, y);
 				FrameSlot.SetAnchorMax(wCenter, x, y);
 
-				vector moveLocal = m_AnimComponent.GetInertiaSpeed();
+				vector moveLocal = animComponent.GetInertiaSpeed();
 				x = (moveLocal[0] / topSpeed) * 0.5 + 0.5;
 				y = (-moveLocal[2] / topSpeed) * 0.5 + 0.5;
 				FrameSlot.SetAnchorMin(wCenter2, x, y);
@@ -934,7 +985,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			TextWidget wSpeed2 = TextWidget.Cast(m_wDebugRootWidget.FindAnyWidget("Speed2"));
 			if (wSpeed && wSpeed2)
 			{
-				float speed = Math.Ceil(m_AnimComponent.GetInertiaSpeed().Length() * 10) * 0.1;
+				float speed = Math.Ceil(animComponent.GetInertiaSpeed().Length() * 10) * 0.1;
 				wSpeed.SetText(speed.ToString() + "m/s");
 
 				speed = Math.Ceil(GetVelocity().Length() * 10) * 0.1;
@@ -957,7 +1008,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			UpdateDebugBoolWidget("InFreeLook", IsFreeLookEnabled());
 
 			TextWidget wMovementAngle = TextWidget.Cast(m_wDebugRootWidget.FindAnyWidget("MovementAngle"));
-			CharacterCommandHandlerComponent handler = m_AnimComponent.GetCommandHandler();
+			CharacterCommandHandlerComponent handler = animComponent.GetCommandHandler();
 			if (!wMovementAngle || !handler)
 				return;
 
@@ -1151,6 +1202,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			weaponComponent.SwitchNextSights();
 		else
 			weaponComponent.SwitchPrevSights();
+		
+		if (m_CharacterSoundComponent)
+			m_CharacterSoundComponent.SoundEvent(SCR_SoundEvent.SOUND_CHAR_MOVEMENT_WEAPON_SIGHT_TOGGLE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1364,6 +1418,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!handler)
 			return 0;
 
+		ChimeraCharacter character = GetCharacter();
+
 		// Update target
 		array<UserActionContext> contexts = {};
 		vector tmp;
@@ -1390,7 +1446,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				int actionsCount = ctx.GetActionsList(actions);
 				foreach (BaseUserAction action : actions)
 				{
-					if (action.CanBeShown(GetCharacter()))
+					if (action.CanBeShown(character))
 					{
 						contexts.Insert(ctx);
 						break;
@@ -1409,8 +1465,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		vector contextPos = ctx.GetOrigin();
 
 		vector localAimDirection = GetHeadAimingComponent().GetAimingDirection();
-		vector targetDirection = contextPos - GetCharacter().EyePosition();
-		vector localTargetDirection = GetCharacter().VectorToLocal( targetDirection );
+		vector targetDirection = contextPos - character.EyePosition();
+		vector localTargetDirection = character.VectorToLocal( targetDirection );
 		localTargetDirection.Normalize();
 
 		float lookYaw = Math.Sin(localTargetDirection[0]) * Math.RAD2DEG;
@@ -1449,10 +1505,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return;
 		}
 
-		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
+		ChimeraCharacter character = GetCharacter();
+		RplComponent rplComp = character.GetRplComponent();
+		if (rplComp && !rplComp.IsOwner())
 			return;
 		
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(character.GetAnimationComponent().GetCommandHandler());
 		if (!scrCmdHandler)
 			return;
 
@@ -1479,11 +1537,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool AlignToPositionFromCurrentPosition(vector targetPosition[4], float toleranceXZ = 0.01, float toleranceY = 0.01)
 	{
-		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
+		ChimeraCharacter character = GetCharacter();
+		RplComponent rplComponent = character.GetRplComponent();
+		if (rplComponent && !rplComponent.IsOwner())
 			return false;
 		
 		vector currentTransform[4];
-		GetCharacter().GetWorldTransform(currentTransform);
+		character.GetWorldTransform(currentTransform);
 		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
 		if (headingComponent)
 			headingComponent.AlignPosDirWS(currentTransform[3], currentTransform[2], targetPosition[3], targetPosition[2]); 
@@ -1551,11 +1611,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 					return false;
 			}
 		}
-		
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+
+		ChimeraCharacter character = GetCharacter();
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(character.GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StartCommandLoitering(m_pScrInputContext.m_CustomAnimData);
 		
-		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
+		RplComponent rplComponent = character.GetRplComponent();
+		if (rplComponent && rplComponent.IsProxy())
 			Rpc(Rpc_StartLoitering_S,
 				m_pScrInputContext.m_iLoiteringType,
 				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
@@ -1563,7 +1625,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
 				m_pScrInputContext.m_mLoiteringPosition,
 				m_pScrInputContext.m_CustomAnimData);
-			else
+		else
 			Rpc(Rpc_StartLoitering_BCNO,
 				m_pScrInputContext.m_iLoiteringType,
 				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
@@ -1581,7 +1643,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_StopLoitering_S(bool terminateFast)
 	{
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StopLoitering(terminateFast);
 	}
 	
@@ -1591,13 +1653,15 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//terminateFast should be true when we are going into alerted or combat state.
 	void StopLoitering(bool terminateFast)
 	{
-		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
+		ChimeraCharacter character = GetCharacter();
+		RplComponent rplComponent = character.GetRplComponent();
+		if (rplComponent && !rplComponent.IsOwner())
 			return;
 		
-		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StopLoitering(terminateFast);
 		
-		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
+		if (rplComponent && rplComponent.IsProxy())
 			Rpc(RPC_StopLoitering_S, terminateFast);
 	}
 	
@@ -1615,5 +1679,11 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 enum ECharacterGestures // TODO: SCR_
 {
 	NONE = 0,
-	POINT_WITH_FINGER = 1
+	POINT_WITH_FINGER = 1,
+	COMMAND_STOP = 2,
+	COMMAND_FOLLOW = 3,
+	COMMAND_MOVE = 4,
+	COMMAND_GET_IN_THAT_VEHICLE = 5,
+	COMMAND_GET_IN = 6,
+	SALUTE = 15
 }
