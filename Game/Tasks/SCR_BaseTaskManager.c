@@ -15,9 +15,10 @@ enum SCR_ETaskEventMask
 	TASK_CREATED = 1,
 	TASK_CANCELED = 2,
 	TASK_PROPERTY_CHANGED = 4,
-	TASK_FINISHED = 8,
-	TASK_FAILED = 16,
-	TASK_REMOVED = 32,
+	TASK_ASSIGNEE_CHANGED = 8,
+	TASK_FINISHED = 16,
+	TASK_FAILED = 32,
+	TASK_REMOVED = 64,
 };
 
 //------------------------------------------------------------------------------------------------

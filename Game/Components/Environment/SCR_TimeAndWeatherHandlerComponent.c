@@ -33,7 +33,7 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	const int DAY_DURATION = 24 * 60 * 60;
 	
 	protected bool m_bDaytimeAcceleration = true;
-	protected bool m_bScenarioResumed;
+	protected bool m_bSavedSettingApplied = false;
 	
 	protected static SCR_TimeAndWeatherHandlerComponent s_Instance;
 	
@@ -44,8 +44,13 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetupDaytimeAndWeather(int hours, int minutes, int seconds = 0)
+	void SetupDaytimeAndWeather(int hours, int minutes, int seconds = 0, string loadedWeatherState = "", bool loadDone = false)
 	{
+		if (m_bSavedSettingApplied)
+			return;
+		
+		m_bSavedSettingApplied = loadDone;
+		
 		TimeAndWeatherManagerEntity manager = GetGame().GetTimeAndWeatherManager();
 		
 		if (!manager)
@@ -64,10 +69,9 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			sunset = DEFAULT_DAYTIME_END;
 		}
 		
-		// Compile a list of presets based on the sunrise and sunset times of current world if we're randomizing
-		if (m_bRandomStartingDaytime && !m_bScenarioResumed)
-		{	
-			// Calculate preset values, pick one at random
+		if (m_bRandomStartingDaytime && !loadDone)
+		{
+			// Compile a list of presets based on the sunrise and sunset times of current world if we're randomizing
 			morning = sunrise + 0.25;	// Just so it's not still completely dark at the start
 			float noon = (sunrise + sunset) / 2;
 			float afternoon = (noon + sunset) / 2;
@@ -92,18 +96,7 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			manager.TimeToHoursMinutesSeconds(startingTime, hours, minutes, seconds);
 		}
 		
-		manager.SetHoursMinutesSeconds(hours, minutes, seconds);
-		
-		// Periodically check if the acceleration is correct, based on time of day
-		// SetTimeEvent is not usable since it requires changing Periodicity attribute directly in the manager entity in the world layer
-		if (m_fDayTimeAcceleration != 1 || m_fNightTimeAcceleration != 1)
-		{
-			HandleDaytimeAcceleration(true);
-			GetGame().GetCallqueue().Remove(HandleDaytimeAcceleration);
-			GetGame().GetCallqueue().CallLater(HandleDaytimeAcceleration, DAYTIME_CHECK_PERIOD, true, false);
-		}
-		
-		if (m_bRandomStartingWeather)
+		if (m_bRandomStartingWeather && !loadDone)
 		{
 			array<ref WeatherState> weatherStates = {};
 			manager.GetWeatherStatesList(weatherStates);
@@ -113,6 +106,20 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 				Math.Randomize(-1);
 				manager.ForceWeatherTo(false, weatherStates.GetRandomElement().GetStateName());
 			}
+		}
+		
+		if (!loadedWeatherState.IsEmpty())
+			manager.ForceWeatherTo(false, loadedWeatherState);
+		
+		manager.SetHoursMinutesSeconds(hours, minutes, seconds);
+		
+		// Periodically check if the acceleration is correct, based on time of day
+		// SetTimeEvent is not usable since it requires changing Periodicity attribute directly in the manager entity in the world layer
+		if (m_fDayTimeAcceleration != 1 || m_fNightTimeAcceleration != 1)
+		{
+			HandleDaytimeAcceleration(true);
+			GetGame().GetCallqueue().Remove(HandleDaytimeAcceleration);
+			GetGame().GetCallqueue().CallLater(HandleDaytimeAcceleration, DAYTIME_CHECK_PERIOD, true, false);
 		}
 	}
 	
@@ -156,10 +163,6 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			return;
 		}
 		
-		// Let gamemode deal with serialization
-		if (m_bScenarioResumed)
-			return;
-		
 		SetupDaytimeAndWeather(m_iStartingHours, m_iStartingMinutes);
 	}
 	
@@ -176,7 +179,6 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			return;
 		
 		SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
-		m_bScenarioResumed = SCR_SaveLoadComponent.IsLoadOnStart(header);
 		
 		if (m_bAllowHeaderSettings && header && header.m_bOverrideScenarioTimeAndWeather)
 		{

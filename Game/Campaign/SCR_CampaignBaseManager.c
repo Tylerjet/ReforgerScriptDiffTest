@@ -10,6 +10,7 @@ class SCR_CampaignBaseManager : GenericEntity
 	static const float COMPONENTS_UPDATE_TIME = 5; //In seconds
 	protected float m_fComponentUpdateTime = 0;
 	protected int m_iCurrentBaseComponentUpdateIndex = 0;
+	static int s_iValidBasesCount;
 	
 	// This array is always emptied upon creation of SCR_CampaignBaseManager -> See constructor
 	static ref array<SCR_CampaignBase> s_aBases = new ref array<SCR_CampaignBase>();
@@ -109,19 +110,18 @@ class SCR_CampaignBaseManager : GenericEntity
 			bases[i].SetSignalRange(relaysRange);
 		}
 		
-		bases = GetBases();
-		count = bases.Count();
+		count = s_aBases.Count();
 		
 		for (int i = 0; i < count; i++)
 		{
-			bases[i].ClearLinks();
+			s_aBases[i].ClearLinks();
 		}
 		
 		for (int i = 0; i < count; i++)
 		{
-			bases[i].LinkBases();
-			bases[i].MapSetup();
-			bases[i].HandleMapLinks(true);
+			s_aBases[i].LinkBases();
+			s_aBases[i].MapSetup();
+			s_aBases[i].HandleMapLinks(true);
 		}
 	}
 #endif
@@ -129,15 +129,14 @@ class SCR_CampaignBaseManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	static SCR_CampaignBase FindClosestBase(vector position)
 	{
-		array<SCR_CampaignBase> bases = SCR_CampaignBaseManager.GetInstance().GetBases();
-		if (!bases)
+		if (!s_aBases)
 			return null;
 		
 		int closestBaseIndex = -1;
 		float closestBaseDistance = float.MAX;
-		for (int i = bases.Count() - 1; i >= 0; i--)
+		for (int i = s_aBases.Count() - 1; i >= 0; i--)
 		{
-			float distance = vector.DistanceSq(bases[i].GetOrigin(), position);
+			float distance = vector.DistanceSq(s_aBases[i].GetOrigin(), position);
 			if (distance < closestBaseDistance)
 			{
 				closestBaseDistance = distance;
@@ -146,7 +145,7 @@ class SCR_CampaignBaseManager : GenericEntity
 		}
 		
 		if (closestBaseIndex != -1)
-			return bases[closestBaseIndex];
+			return s_aBases[closestBaseIndex];
 		return null;
 	}
 	
@@ -519,7 +518,7 @@ class SCR_CampaignBaseManager : GenericEntity
 		m_bIsHQSetupDone = true;
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		
-		if (campaign && campaign.GetApplyPresetOwners() && !SCR_GameModeCampaignMP.IsScenarioResumed())
+		if (campaign && campaign.GetApplyPresetOwners())
 		{
 			SCR_CampaignBase westHQ;
 			SCR_CampaignBase eastHQ;
@@ -693,6 +692,7 @@ class SCR_CampaignBaseManager : GenericEntity
 			return;
 		
 		s_aBases.Remove(index);
+		s_iValidBasesCount--;
 		ClearNulls();
 		SCR_CampaignBaseManager baseManager = GetInstance();
 		
@@ -708,12 +708,29 @@ class SCR_CampaignBaseManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	static void DisableBase(notnull SCR_CampaignBase base)
+	{
+		s_iValidBasesCount--;
+		
+		SCR_CampaignBaseManager baseManager = GetInstance();
+		
+		if (GetGame().InPlayMode() && baseManager)
+			baseManager.CheckBasesInitialized();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void EnableBase(notnull SCR_CampaignBase base)
+	{
+		s_iValidBasesCount++;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void CheckBasesInitialized()
 	{
 		if (m_bBasesInitialized)
 			return;
 		
-		if (m_iInitializedBasesCount != 0 && m_iInitializedBasesCount == s_aBases.Count())
+		if (m_iInitializedBasesCount != 0 && m_iInitializedBasesCount == s_iValidBasesCount)
 		{
 			m_bBasesInitialized = true;
 			
@@ -791,11 +808,10 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		s_aBases.Insert(base);
 		baseManager.UpdatePrefilteredBases(base);
+		s_iValidBasesCount++;
 		
-		int count = s_aBases.Count();
-		
-		if (count != 0)
-			s_fTickTime = ITERATION_TIME / count;
+		if (s_iValidBasesCount != 0)
+			s_fTickTime = ITERATION_TIME / s_iValidBasesCount;
 		else
 			s_fTickTime = ITERATION_TIME;
 	}
@@ -827,6 +843,9 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		for (int i = s_aBases.Count() - 1; i >= 0; i--)
 		{
+			if (!s_aBases[i].GetIsEnabled())
+				continue;
+			
 			SCR_CampaignBaseStruct struct = new SCR_CampaignBaseStruct();
 			s_aBases[i].StoreState(struct);
 			outEntries.Insert(struct);
@@ -838,6 +857,11 @@ class SCR_CampaignBaseManager : GenericEntity
 	{
 		if (!s_aBases)
 			return;
+		
+		m_WestHQ = null;
+		m_EastHQ = null;
+		m_bBasesInitialized = false;
+		m_iInitializedBasesCount = 0;
 		
 		int infoCnt = entries.Count();
 		array<SCR_CampaignBase> unprocessedBases = {};
@@ -888,13 +912,19 @@ class SCR_CampaignBaseManager : GenericEntity
 			if (!base)
 				continue;
 			
+			if (!base.GetIsEnabled())
+				base.EnableBase();
+			
 			base.InitializeBase();
 			base.LoadState(baseInfo);
 			unprocessedBases.RemoveItem(base);
 		}
 		
 		foreach (SCR_CampaignBase base : unprocessedBases)
-			base.DisableBase();
+		{
+			if (base.GetIsEnabled())
+				base.DisableBase();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -975,6 +1005,8 @@ class SCR_CampaignBaseManager : GenericEntity
 			s_aBases = new ref array<SCR_CampaignBase>();
 		else
 			s_aBases.Clear();
+		
+		s_iValidBasesCount = 0;
 		
 		if (!s_Instance)
 			s_Instance = this;

@@ -74,8 +74,17 @@ class SCR_CampaignServiceComponent : ScriptComponent
 	{
 		SCR_CampaignBase base = SCR_CampaignBase.Cast(SCR_EntityHelper.GetMainParent(GetOwner()));
 		
-		if (base)
+		if (base && base.GetIsEnabled())
+		{
 			base.RegisterAsParentBase(this, true);
+		}
+		else
+		{
+			MapDescriptorComponent comp = MapDescriptorComponent.Cast(GetOwner().FindComponent(MapDescriptorComponent));
+			
+			if (comp)
+				comp.Item().SetVisible(false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

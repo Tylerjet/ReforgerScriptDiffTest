@@ -231,17 +231,6 @@ class SCR_CampaignBase : GenericEntity
 	//**************//
 	
 	//------------------------------------------------------------------------------------------------
-	static SCR_CampaignBase GetRandomBase()
-	{
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-		
-		array<SCR_CampaignBase> bases = baseManager.GetBases();
-		
-		int randomIndex = Math.RandomInt(0, bases.Count());
-		return bases[randomIndex];
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	static SCR_CampaignBase FindBaseByEntityID(EntityID baseID)
 	{
 		if (!GetGame())
@@ -289,8 +278,11 @@ class SCR_CampaignBase : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void AfterAllBasesInitialized()
 	{
-		if (RplSession.Mode() != RplMode.Dedicated)
-			HandleMapLinks();
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+		
+		HandleMapLinks();
+		HideMapLocationLabel();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -427,6 +419,9 @@ class SCR_CampaignBase : GenericEntity
 			if (this == bases[i])
 				continue;
 			
+			if (!bases[i].GetIsEnabled())
+				continue;
+			
 			// Measure the distance between this base and the other base in the world
 			float distanceSq = vector.DistanceSq(GetOrigin(), bases[i].GetOrigin());
 		
@@ -532,18 +527,12 @@ class SCR_CampaignBase : GenericEntity
 			m_fRespawnAvailableSince = Replication.Time() + RESPAWN_DELAY_AFTER_CAPTURE;
 			m_bRespawnBecameAvailable = false;
 			
-			if (RplSession.Mode() == RplMode.Dedicated)
-			{
-				BackendApi bApi = GetGame().GetBackendApi();
-				
-				if (bApi)
-				{				
-					if ( SCR_GameModeCampaignMP.GetBackendFilename() != string.Empty)
-						bApi.GetStorage().RequestSave(SCR_GameModeCampaignMP.GetBackendFilename());
-				}
-			}
-			
 			HandleSpawnPointFaction();
+			
+			SCR_SaveLoadComponent saveComp = SCR_SaveLoadComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_SaveLoadComponent));
+			
+			if (saveComp)
+				saveComp.Save();
 		}
 		else
 		{
@@ -1012,6 +1001,12 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool GetIsEnabled()
+	{
+		return m_bEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool GetIsHQ()
 	{
 		return m_bIsHQ;
@@ -1143,7 +1138,7 @@ class SCR_CampaignBase : GenericEntity
 		if (!IsProxy())
 		{
 			// Update signal coverage only if the base was seized during normal play, not at the start
-			if (GetGame().GetWorld().GetWorldTime() != 0 || SCR_GameModeCampaignMP.IsScenarioResumed())
+			if (GetGame().GetWorld().GetWorldTime() != 0)
 			{
 				SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 				
@@ -2307,7 +2302,8 @@ class SCR_CampaignBase : GenericEntity
 	void SpawnBuildings(SCR_CampaignBaseStruct loadedData = null)
 	{
 		// These compositions need to be built everywhere
-		SpawnComposition(ECampaignCompositionType.HQ);
+		if (GetType() != CampaignBaseType.RELAY)
+			SpawnComposition(ECampaignCompositionType.HQ);
 		
 		if (loadedData)
 		{
@@ -2373,7 +2369,7 @@ class SCR_CampaignBase : GenericEntity
 			SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA, !m_bPrebuilt);
 		}
 		
-		if (m_bIsHQ && !SCR_GameModeCampaignMP.GetInstance().IsTutorial() && !SCR_GameModeCampaignMP.IsScenarioResumed())
+		if (m_bIsHQ && !SCR_GameModeCampaignMP.GetInstance().IsTutorial())
 			SpawnStartingVehicles();
 	}
 	
@@ -2652,44 +2648,6 @@ class SCR_CampaignBase : GenericEntity
 		}
 		
 		return count;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns a random base in range that suits the filter. Filter = allowed types.
-	SCR_CampaignBase GetRandomBaseInRange(CampaignBaseType filter, array<SCR_CampaignBase> excludeBases = null)
-	{
-		if (!m_aInRangeOf)
-			return null;
-		
-		array<SCR_CampaignBase> filteredBases = new array<SCR_CampaignBase>();
-		
-		foreach (SCR_CampaignBase base: m_aInRangeOf)
-		{
-			if (filter & base.GetType() || filter == base.GetType())
-			{
-				if (!excludeBases)
-					filteredBases.Insert(base);
-				else
-				{
-					bool exclude = false;
-					foreach (SCR_CampaignBase excludeBase: excludeBases)
-					{
-						if (base == excludeBase)
-						{
-							exclude = true;
-							break;
-						}
-					}
-					if (!exclude)
-						filteredBases.Insert(base);
-				}
-			}
-		}
-		
-		if (filteredBases.Count() <= 0)
-			return null;
-		
-		return filteredBases[Math.RandomInt(0, filteredBases.Count())];
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3061,19 +3019,52 @@ class SCR_CampaignBase : GenericEntity
 	void DisableBase()
 	{
 		m_bEnabled = false;
-		SCR_CampaignBaseManager.UnregisterBase(this);
+		SCR_CampaignBaseManager.DisableBase(this);
 		ClearEventMask(EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.DIAG);
 		ClearFlags(EntityFlags.ACTIVE, true);
 		
+		if (!IsProxy())
+		{
+			ChangeOwner(null, true);
+			GetGame().GetCallqueue().Remove(ReinforcementsTimer);
+		}
+		
 		IEntity ent = this;
+		MapDescriptorComponent mapDesc;
 		
 		// Hide all map descriptors
+		while (ent)
+		{
+			mapDesc = MapDescriptorComponent.Cast(ent.FindComponent(MapDescriptorComponent));
+			
+			if (mapDesc && mapDesc.Item())
+				mapDesc.Item().SetVisible(false);
+			
+			IEntity sibling = ent.GetSibling();
+			
+			if (sibling)
+				ent = sibling;
+			else
+				ent = ent.GetChildren();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void EnableBase()
+	{
+		m_bEnabled = true;
+		SCR_CampaignBaseManager.EnableBase(this);
+		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.DIAG);
+		SetFlags(EntityFlags.ACTIVE, true);
+		
+		IEntity ent = this;
+		
 		while (ent)
 		{
 			MapDescriptorComponent mapDesc = MapDescriptorComponent.Cast(ent.FindComponent(MapDescriptorComponent));
 			
 			if (mapDesc && mapDesc.Item())
-				mapDesc.Item().SetVisible(false);
+				mapDesc.Item().SetVisible(true);
 			
 			IEntity sibling = ent.GetSibling();
 			
@@ -3236,7 +3227,10 @@ class SCR_CampaignBase : GenericEntity
 			}
 		
 			if (GetType() == CampaignBaseType.MAIN)
+			{
+				GetGame().GetCallqueue().Remove(ReinforcementsTimer);
 				GetGame().GetCallqueue().CallLater(ReinforcementsTimer, SCR_GameModeCampaignMP.REINFORCEMENTS_CHECK_PERIOD, true, false);
+			}
 		}
 		else if (m_bIsHQ)
 		{
@@ -3419,6 +3413,9 @@ class SCR_CampaignBase : GenericEntity
 		if (faction && GetType() == CampaignBaseType.MAIN)
 			faction.SetMainBase(this);
 		
+		if (!baseStruct.GetIsHQ())
+			m_bIsHQ = false;
+		
 		SetCallsignIndex(baseStruct.GetCallsignIndex());
 		AddSupplies(baseStruct.GetSupplies() - GetSupplies());
 		
@@ -3516,12 +3513,6 @@ class SCR_CampaignBase : GenericEntity
 		m_RplComponent = RplComponent.Cast(FindComponent(RplComponent));
 		m_FactionControl = SCR_FactionAffiliationComponent.Cast(FindComponent(SCR_FactionAffiliationComponent));
 		
-		if (!m_bEnabled)
-		{
-			DisableBase();
-			return;
-		}
-		
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		
 		if (!campaign)
@@ -3536,8 +3527,7 @@ class SCR_CampaignBase : GenericEntity
 		if (m_SuppliesComponent)
 			m_SuppliesComponent.m_OnSuppliesChanged.Insert(OnSuppliesChanged);
 		
-		// Process HQ selection and base inits only if the state has not been loaded
-		if (!IsProxy() && !SCR_GameModeCampaignMP.IsScenarioResumed())
+		if (!IsProxy())
 		{
 			SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 			
@@ -3545,8 +3535,11 @@ class SCR_CampaignBase : GenericEntity
 				baseManager.SetHQs();
 			
 			if (m_bDisableWhenUnusedAsHQ && m_bCanBeHQ && !m_bIsHQ)
-				DisableBase();
-			else
+			{
+				if (m_bEnabled)
+					DisableBase();
+			}
+			else if (m_bEnabled)
 				InitializeBase();
 		}
 	}
@@ -3680,7 +3673,7 @@ class SCR_CampaignBase : GenericEntity
 				
 				if (m_bEnabled)
 				{
-					if (!SCR_SaveLoadComponent.IsLoadOnStart(headerCampaign) && (m_bCanBeHQ || m_bIsControlPoint))
+					if (m_bCanBeHQ || m_bIsControlPoint)
 						baseManager.SelectHQs();	
 				}
 				else
@@ -3691,7 +3684,7 @@ class SCR_CampaignBase : GenericEntity
 			}
 			else
 			{
-				if (!SCR_SaveLoadComponent.IsLoadOnStart(header) && (m_bCanBeHQ || m_bIsControlPoint))
+				if (m_bCanBeHQ || m_bIsControlPoint)
 					baseManager.SelectHQs();
 			}
 		}

@@ -237,6 +237,9 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 			if (!base)
 				continue;
 			
+			if (!base.GetIsEnabled())
+				continue;
+			
 			baseNearby = vector.DistanceSqXZ(vehPos, base.GetOrigin()) <= baseDistanceSq;
 			
 			if (baseNearby)

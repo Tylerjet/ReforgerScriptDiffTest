@@ -53,31 +53,31 @@ class WorldMapExportTool: WorldEditorTool
 	[Attribute("1", UIWidgets.CheckBox, "2D Geometry: Save Hills' data to exported file", category: "Geometry 2D")]
 	bool saveHills;
 
-	[Attribute("0.933 0.933 0.894 1", UIWidgets.ColorPicker, "Rasterization: Land color", category: "Rasterization")]
+	[Attribute("1.0 1.0 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Land color", category: "Rasterization")]
 	ref Color landColor;
-	[Attribute("0.463 0.709 0.773 1", UIWidgets.ColorPicker, "Rasterization: Ocean color", category: "Rasterization")]
+	[Attribute("0.737 0.945 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Ocean color", category: "Rasterization")]
 	ref Color oceanColor;
-	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Land scale factor", "0 10 0.1", category: "Rasterization")]
+	[Attribute("3.0", UIWidgets.Slider, "Rasterization: Land scale factor", "0 10 0.1", category: "Rasterization")]
 	float scaleLand;
 	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Ocean scale factor", "0 10 0.1", category: "Rasterization")]
 	float scaleOcean;
-	[Attribute("360.0", UIWidgets.Slider, "Rasterization: Height scale factor", "-1000 1000 1.0", category: "Rasterization")]
+	[Attribute("400.0", UIWidgets.Slider, "Rasterization: Height scale factor", "-1000 1000 1.0", category: "Rasterization")]
 	float heightScale;
-	[Attribute("30.0", UIWidgets.Slider, "Rasterization: Depth scale factor", "-1000 1000 1.0", category: "Rasterization")]
+	[Attribute("60.0", UIWidgets.Slider, "Rasterization: Depth scale factor", "-1000 1000 1.0", category: "Rasterization")]
 	float depthScale;
-	[Attribute("-10.0", UIWidgets.Slider, "Rasterization: Depth Lerp meters", "-1000 1000 1.0", category: "Rasterization")]
+	[Attribute("-50.0", UIWidgets.Slider, "Rasterization: Depth Lerp meters", "-1000 1000 1.0", category: "Rasterization")]
 	float depthLerpMeters;
-	[Attribute("1.33", UIWidgets.Slider, "Rasterization: Shade intensity factor", "0.5 15 0.01", category: "Rasterization")]
+	[Attribute("0.5", UIWidgets.Slider, "Rasterization: Shade intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float shadeIntensity;
-	[Attribute("1.5", UIWidgets.Slider, "Rasterization: Height intensity factor", "0.5 15 0.01", category: "Rasterization")]
+	[Attribute("2.0", UIWidgets.Slider, "Rasterization: Height intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float heightIntensity;
 	[Attribute("1", UIWidgets.CheckBox, "Rasterization: Include Areas defined by Generators into Rasterization", category: "Rasterization")]
 	bool includeGeneratorAreas;
-	[Attribute("0.592 0.709 0.435 1", UIWidgets.ColorPicker, "Rasterization: Forest area color", category: "Rasterization")]
+	[Attribute("0.333 0.564 0.231 1.0", UIWidgets.ColorPicker, "Rasterization: Forest area color", category: "Rasterization")]
 	ref Color forestAreaColor;
-	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Forest area intensity factor", "0.5 15 0.01", category: "Rasterization")]
+	[Attribute("1.25", UIWidgets.Slider, "Rasterization: Forest area intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float forestAreaIntensity;
-	[Attribute("0.5 0.5 0.5 1", UIWidgets.ColorPicker, "Rasterization: Other area color", category: "Rasterization")]
+	[Attribute("0.5 0.5 0.5 1.0", UIWidgets.ColorPicker, "Rasterization: Other area color", category: "Rasterization")]
 	ref Color otherAreaColor;
 	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Other area intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float otherAreaIntensity;
@@ -286,18 +286,18 @@ class WorldDataExport: WorkbenchPlugin
 			if (exportRasterization)
 			{
 				//TODO: change to user defined values (along with WorldMapExportTool)
-				Color landColor = new Color(0.933, 0.933, 0.894, 1);
-				Color oceanColor = new Color(0.463, 0.709, 0.773, 1.0);
-				float scaleLand = 1.0;
+				Color landColor = new Color(1.0, 1.0, 1.0, 1.0);
+				Color oceanColor = new Color(0.737, 0.945, 1.0, 1.0);
+				float scaleLand = 3.0;
 				float scaleOcean = 1.0;
-				float heightScale = 360.0;
-				float depthScale = 30.0;
-				float depthLerpMeters = -10.0;
-				float shadeIntensity = 1.33;
-				float heightIntensity = 1.5;
+				float heightScale = 400.0;
+				float depthScale = 60.0;
+				float depthLerpMeters = -50.0;
+				float shadeIntensity = 0.5;
+				float heightIntensity = 2.0;
 				bool includeGeneratorAreas = true;
-				Color forestAreaColor = new Color(0.592, 0.709, 0.435, 1.0);
-				float forestAreaIntensity = 1.0;
+				Color forestAreaColor = new Color(0.333, 0.564, 0.231, 1.0);
+				float forestAreaIntensity = 1.25;
 				Color otherAreaColor = new Color(0.5, 0.5, 0.5, 1.0);
 				float otherAreaIntensity = 1.0;
 

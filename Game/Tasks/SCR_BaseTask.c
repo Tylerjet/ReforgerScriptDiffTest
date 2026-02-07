@@ -723,7 +723,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskUnassigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -766,7 +766,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskUnassigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -810,7 +810,7 @@ class SCR_BaseTask : GenericEntity
 		
 		SCR_BaseTaskManager.s_OnTaskAssigned.Invoke(this);
 		
-		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED);
 	}
 
 	//------------------------------------------------------------------------------------------------

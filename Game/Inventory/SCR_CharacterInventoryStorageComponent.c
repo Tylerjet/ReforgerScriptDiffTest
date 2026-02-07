@@ -929,7 +929,13 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			RemoveItemsFromWeaponQuickSlots();
 			
 			foreach (int i, WeaponSlotComponent weaponSlot: turretWeaponSlots)
-				StoreItemToQuickSlot(weaponSlot.GetWeaponEntity(), i, true);
+			{
+				IEntity weaponSlotEntity = weaponSlot.GetWeaponEntity();
+				if (!weaponSlotEntity)
+					continue;
+
+				StoreItemToQuickSlot(weaponSlotEntity, i, true);
+			}
 		}
 		
 		SCR_WeaponSwitchingBaseUI.RefreshQuickSlots();

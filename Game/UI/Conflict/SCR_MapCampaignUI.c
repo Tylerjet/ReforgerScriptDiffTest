@@ -279,6 +279,9 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 		{
 			SCR_CampaignBase base = bases[i];
 			
+			if (!base.GetIsEnabled())
+				continue;
+			
 			if (base.GetIsHQ() && base.GetOwningFaction() != faction)
 			{
 				IEntity ent = base;
@@ -324,6 +327,7 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sBaseElement, m_ConflictUIRoot);
 			SCR_CampaignMapUIBase handler = SCR_CampaignMapUIBase.Cast(w.FindHandler(SCR_CampaignMapUIBase));
+			
 			if (!handler)
 				return;
 

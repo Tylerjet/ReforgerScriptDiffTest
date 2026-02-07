@@ -5,16 +5,16 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 	protected int m_iHours = -1;
 	protected int m_iMinutes = -1;
 	protected int m_iSeconds = -1;
-	protected int m_iPlayerXP;	// TODO: Manage properly in MP environment
-	protected int m_iPlayerFaction = -1;	// TODO: Manage properly in MP environment
 	protected vector m_vMHQLocationBLUFOR;
 	protected vector m_vMHQRotationBLUFOR;
 	protected vector m_vMHQLocationOPFOR;
 	protected vector m_vMHQRotationOPFOR;
 	protected ref array<ref SCR_CampaignBaseStruct> m_aBasesStructs = {};
 	protected ref array<ref SCR_CampaignRemnantInfoStruct> m_aRemnantsStructs = {};
+	protected ref array<ref SCR_CampaignPlayerStruct> m_aPlayerStructs = {};
 	protected int m_iTutorialStage = -1;
 	protected bool m_bMatchOver;
+	protected string m_sWeatherState;
 	
 	//------------------------------------------------------------------------------------------------
 	override bool Serialize()
@@ -32,7 +32,13 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
 		
 		if (timeManager)
+		{
 			timeManager.GetHoursMinutesSeconds(m_iHours, m_iMinutes, m_iSeconds);
+			WeatherStateTransitionManager transitionManager = timeManager.GetTransitionManager();
+			
+			if (transitionManager)
+				m_sWeatherState = transitionManager.GetCurrentState().GetStateName();
+		}
 		
 		baseManager.StoreBasesStates(m_aBasesStructs);
 		
@@ -61,23 +67,17 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 			m_vMHQRotationOPFOR = factionOPFOR.GetDeployedMobileAssembly().GetYawPitchRoll();
 		}
 		
-		// TODO: Manage properly in MP environment
-		if (RplSession.Mode() == RplMode.None)
+		campaign.WriteAllClientsData();
+		array<ref SCR_CampaignClientData> clients = campaign.GetClientsData();
+		
+		foreach (SCR_CampaignClientData data : clients)
 		{
-			Faction faction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+			SCR_CampaignPlayerStruct struct = new SCR_CampaignPlayerStruct();
+			struct.SetID(data.GetID());
+			struct.SetXP(data.GetXP());
+			struct.SetFactionIndex(data.GetFactionIndex());
 			
-			if (faction)
-				m_iPlayerFaction = GetGame().GetFactionManager().GetFactionIndex(faction);
-			
-			PlayerController pc = GetGame().GetPlayerController();
-			
-			if (pc)
-			{
-				SCR_CampaignNetworkComponent comp = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
-				
-				if (comp)
-					m_iPlayerXP = comp.GetPlayerXP();
-			}
+			m_aPlayerStructs.Insert(struct);
 		}
 		
 		return true;
@@ -100,7 +100,10 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		
 		// Weather has to be changed after init
 		if (timeHandler && m_iHours >= 0 && m_iMinutes >= 0)
-			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds);
+		{
+			GetGame().GetCallqueue().Remove(timeHandler.SetupDaytimeAndWeather);
+			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds, m_sWeatherState, true);
+		}
 		
 		baseManager.LoadBasesStates(m_aBasesStructs);
 		
@@ -113,6 +116,7 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		}
 		
 		campaign.LoadRemnantsStates(m_aRemnantsStructs);
+		campaign.LoadClientData(m_aPlayerStructs);
 		
 		SCR_CampaignFaction factionBLUFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_BLUFOR));
 		SCR_CampaignFaction factionOPFOR = SCR_CampaignFaction.Cast(GetGame().GetFactionManager().GetFactionByKey(SCR_GameModeCampaignMP.FACTION_OPFOR));
@@ -123,13 +127,6 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		if (factionOPFOR && m_vMHQLocationOPFOR != vector.Zero)
 			GetGame().GetCallqueue().CallLater(campaign.SpawnMobileHQ, 500, false, factionOPFOR, m_vMHQLocationOPFOR, m_vMHQRotationOPFOR);
 		
-		// TODO: Manage properly in MP environment
-		if (RplSession.Mode() == RplMode.None)
-		{
-			campaign.RegisterSavedPlayerFaction(m_iPlayerFaction);
-			campaign.RegisterSavedPlayerXP(m_iPlayerXP);
-		}
-		
 		return true;
 	}
 	
@@ -138,6 +135,7 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 	{
 		m_aBasesStructs.Clear();
 		m_aRemnantsStructs.Clear();
+		m_aPlayerStructs.Clear();
 		m_vMHQLocationBLUFOR = vector.Zero;
 		m_vMHQRotationBLUFOR = vector.Zero;
 		m_vMHQLocationOPFOR = vector.Zero;
@@ -150,16 +148,16 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		RegV("m_iHours");
 		RegV("m_iMinutes");
 		RegV("m_iSeconds");
-		RegV("m_iPlayerXP");
-		RegV("m_iPlayerFaction");
 		RegV("m_vMHQLocationBLUFOR");
 		RegV("m_vMHQRotationBLUFOR");
 		RegV("m_vMHQLocationOPFOR");
 		RegV("m_vMHQRotationOPFOR");
 		RegV("m_aBasesStructs");
 		RegV("m_aRemnantsStructs");
+		RegV("m_aPlayerStructs");
 		RegV("m_iTutorialStage");
 		RegV("m_bMatchOver");
+		RegV("m_sWeatherState");
 	}
 };
 
@@ -568,5 +566,61 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignRemnantInfoStruct()
 	{
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_CampaignPlayerStruct : SCR_JsonApiStruct
+{
+	protected int m_iID;
+	protected int m_iFaction = -1;
+	protected int m_iXP;
+	
+	//------------------------------------------------------------------------------------------------
+	int GetID()
+	{
+		return m_iID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetFactionIndex()
+	{
+		return m_iFaction;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetXP()
+	{
+		return m_iXP;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetID(int ID)
+	{
+		m_iID = ID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetFactionIndex(int index)
+	{
+		m_iFaction = index;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetXP(int xp)
+	{
+		m_iXP = xp;
+	}
+	
+	//************************//
+	//CONSTRUCTOR & DESTRUCTOR//
+	//************************//
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_CampaignPlayerStruct()
+	{
+		RegV("m_iID");
+		RegV("m_iFaction");
+		RegV("m_iXP");
 	}
 };

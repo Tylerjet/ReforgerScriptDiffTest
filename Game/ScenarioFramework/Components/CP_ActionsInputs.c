@@ -50,9 +50,10 @@ class CP_ActionInputOnTaskEventIncreaseCounter : CP_ActionInputBase
 			} 
 			if ( m_sTaskLayerName.IsEmpty() ||  m_sTaskLayerName == sTaskLayerName )
 			{
-				m_pInput.OnActivate( 1 );
+				if (!(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
+					m_pInput.OnActivate( 1 );
 				
-				if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED))
+				if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
 				{	
 					CP_SlotTask pSubject = pTaskLayer.GetTaskSubject();
 					if (pSubject)

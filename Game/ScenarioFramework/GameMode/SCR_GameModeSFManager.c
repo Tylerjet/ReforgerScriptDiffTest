@@ -135,7 +135,7 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 			m_pLastFinishedTask = pTask;
 		}
 		
-		if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED))
+		if (mask & SCR_ETaskEventMask.TASK_PROPERTY_CHANGED && !(mask & SCR_ETaskEventMask.TASK_CREATED) && !(mask & SCR_ETaskEventMask.TASK_FINISHED) && !(mask & SCR_ETaskEventMask.TASK_ASSIGNEE_CHANGED))
 		{
 			PopUpMessage(pTask.GetTitle(), "#AR-Workshop_ButtonUpdate");
 			

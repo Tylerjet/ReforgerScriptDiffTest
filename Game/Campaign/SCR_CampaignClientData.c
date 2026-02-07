@@ -6,7 +6,7 @@ class SCR_CampaignClientData
 	private int m_iXP;
 	private vector m_vPos;
 	private bool m_bApplied = true;
-	private SCR_CampaignFaction m_Faction;
+	private int m_iFaction = -1;
 	private ref array<string> m_aInventory = new array<string>();
 	
 	//------------------------------------------------------------------------------------------------
@@ -67,16 +67,16 @@ class SCR_CampaignClientData
 	
 	//------------------------------------------------------------------------------------------------
 	//! Setter for player's faction
-	void SetFaction(SCR_CampaignFaction faction)
+	void SetFactionIndex(int faction)
 	{
-		m_Faction = faction;
+		m_iFaction = faction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Getter for player's faction
-	SCR_CampaignFaction GetFaction()
+	int GetFactionIndex()
 	{
-		return m_Faction;
+		return m_iFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------

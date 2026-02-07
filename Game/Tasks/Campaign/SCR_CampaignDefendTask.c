@@ -98,6 +98,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 	static SCR_CampaignBase FindClosestFriendlyBase(notnull IEntity controlledEntity, notnull Faction faction)
 	{
 		array<SCR_CampaignBase> bases = SCR_CampaignBaseManager.GetInstance().GetBases();
+		
 		if (!bases)
 			return null;
 		
@@ -105,12 +106,17 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		float closestBaseDistance = float.MAX;
 		float minAllyDistanceSq = Math.Pow(GetMinAllyDistance(), 2);
 		vector controlledEntityOrigin = controlledEntity.GetOrigin();
+		
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{
+			if (!bases[i].GetIsEnabled())
+				continue;
+			
 			if (bases[i].GetOwningFaction() != faction)
 				continue;
 			
 			float distance = vector.DistanceSq(bases[i].GetOrigin(), controlledEntityOrigin);
+			
 			if (distance < minAllyDistanceSq && distance < closestBaseDistance)
 			{
 				closestBaseDistance = distance;

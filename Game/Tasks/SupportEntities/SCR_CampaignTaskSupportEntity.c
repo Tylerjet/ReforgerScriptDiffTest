@@ -167,6 +167,9 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		//Create start tasks for each base
 		for (int i = bases.Count() - 1; i >= 0; i--)
 		{
+			if (!bases[i].GetIsEnabled())
+				continue;
+			
 			// Create tasks for this base
 			if (bases[i].GetOwningFaction())
 				GenerateNewTask(bases[i]);

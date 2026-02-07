@@ -106,7 +106,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected static int STARTING_SUPPLIES_MAX = 500;
 	static const int SUPPLY_DEPOT_CAPACITY = 4500;
 	protected static const int STARTING_SUPPLIES_INTERVAL = 25;
-	protected static bool m_bScenarioResumed = false;
 	protected static const int HQ_NO_REMNANTS_RADIUS = 300;
 	protected static const int HQ_NO_REMNANTS_PATROL_RADIUS = 600;
 	static const int GARAGE_VEHICLE_SPAWN_INTERVAL = 60000;
@@ -175,8 +174,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected ref TimeContainer m_SpawnTime;
 	protected bool m_bIsTutorial;
 	protected bool m_bIsShowingXPBar;
-	protected int m_iRegisteredPlayerFaction = -1;
-	protected int m_iRegisteredPlayerXP;
 	protected bool m_bMatchOver;
 	protected SCR_CampaignSuppliesComponent m_SupplyDepotWithPlayer;
 	protected int m_iHideHud;
@@ -276,12 +273,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static bool IsScenarioResumed()
-	{
-		return m_bScenarioResumed;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Check if we're not actually playing (and halt the code in proper places)
 	static bool NotPlaying()
 	{
@@ -370,19 +361,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		return m_DefendWaypointPrefab;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	Faction GetPlayerForcedFaction(int playerID)
-	{
-		Faction faction = null;
-		SCR_CampaignClientData clientData;
-		clientData = GetClientData(playerID);
-		
-		if (clientData)
-			faction = clientData.GetFaction();
-		
-		return faction;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	bool IsMobileAssemblyDeployed(notnull SCR_CampaignFaction faction)
 	{
@@ -1144,6 +1122,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (!base)
 				continue;
 			
+			if (!base.GetIsEnabled())
+				continue;
+			
 			float dist = vector.DistanceSq(mobileHQPos, base.GetOrigin());
 			
 			if (dist < mobileHQRadioRangeSq)
@@ -1689,6 +1670,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (base.GetType() == CampaignBaseType.RELAY)
 				continue;
 			
+			if (!base.GetIsEnabled())
+				continue;
+			
 			float dist = vector.DistanceSqXZ(locationCenter, base.GetOrigin());
 			
 			if (dist > distLimit || dist > minDistance)
@@ -1812,6 +1796,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		foreach (SCR_CampaignBase base: SCR_CampaignBaseManager.GetBases())
 		{
 			if (!base)
+				continue;
+			
+			if (!base.GetIsEnabled())
 				continue;
 			
 			foreach (ECampaignCompositionType type : types)
@@ -3088,12 +3075,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	
 	//------------------------------------------------------------------------------------------------
 	protected void ApplyClientData(int ID)
-	{		
-		ChimeraGame g = GetGame();
-		
-		if (!g)
-			return;
-		
+	{
 		SCR_CampaignClientData clientData = GetClientData(ID);
 		
 		if (!clientData)
@@ -3102,27 +3084,50 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (clientData.GetApplied())
 			return;
 		
-		clientData.SetApplied(true);	// Data was applied, don't do it again until another reconnection
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(ID);
 		
 		if (!pc)
 			return;
 		
-		/*vector pos = clientData.GetStartingPosition();
+		// Data was applied, don't do it again until another reconnection
+		clientData.SetApplied(true);	
 		
-		if (pos.LengthSq() != 0)
-			controlledEntity.SetOrigin(pos);	// Place on last position*/
+		SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.Cast(GetRespawnSystemComponent());
+		
+		if (respawnSystem)
+		{
+			int forcedFaction = clientData.GetFactionIndex();
+			
+			if (forcedFaction != -1)
+				respawnSystem.DoSetPlayerFaction(ID, forcedFaction);
+		}
 		
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
-	
-		if (!campaignNetworkComponent)
-			return;
 		
-		campaignNetworkComponent.AddPlayerXP(CampaignXPRewards.UNDEFINED, addDirectly: clientData.GetXP() - campaignNetworkComponent.GetPlayerXP());	// Reapply XP
+		if (campaignNetworkComponent)
+			campaignNetworkComponent.AddPlayerXP(CampaignXPRewards.UNDEFINED, addDirectly: clientData.GetXP() - campaignNetworkComponent.GetPlayerXP());
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void WriteAllClientsData()
+	void LoadClientData(notnull array<ref SCR_CampaignPlayerStruct> data)
+	{
+		m_aRegisteredClients.Clear();
+		
+		foreach (SCR_CampaignPlayerStruct playerData : data)
+		{
+			SCR_CampaignClientData clientData = new SCR_CampaignClientData();
+			
+			clientData.SetID(playerData.GetID());
+			clientData.SetXP(playerData.GetXP());
+			clientData.SetFactionIndex(playerData.GetFactionIndex());
+			clientData.SetApplied(false);
+			
+			m_aRegisteredClients.Insert(clientData);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void WriteAllClientsData()
 	{
 		array<int> pcList = {};
 		int playersCnt = GetGame().GetPlayerManager().GetPlayers(pcList);
@@ -3169,18 +3174,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		// Set data from player's entity
 		if (player)
 			clientData.SetStartingPosition(player.GetOrigin());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RegisterSavedPlayerFaction(int factionIndex)
-	{
-		m_iRegisteredPlayerFaction = factionIndex;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RegisterSavedPlayerXP(int XP)
-	{
-		m_iRegisteredPlayerXP = XP;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3448,12 +3441,21 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (!base)
 				continue;
 			
+			if (!base.GetIsEnabled())
+				continue;
+			
 			if (base.GetDefendersGroup() == grp)
 			{
 				base.NotifyAboutEnemyAttack(detectedFaction);
 				return;
 			}
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_CampaignClientData> GetClientsData()
+	{
+		return m_aRegisteredClients;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3566,6 +3568,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	void AfterAllBasesInitialized()
 	{
+		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Remove(AfterAllBasesInitialized);
+		
 		SCR_CampaignFactionManager campaignFactionManager = SCR_CampaignFactionManager.GetInstance();
 		SCR_CampaignFaction west = SCR_CampaignFaction.Cast(campaignFactionManager.GetFactionByKey(FACTION_BLUFOR));
 		SCR_CampaignFaction east = SCR_CampaignFaction.Cast(campaignFactionManager.GetFactionByKey(FACTION_OPFOR));
@@ -3590,6 +3594,12 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		{
 			foreach (SCR_CampaignBase base: bases)
 			{
+				if (!base)
+					continue;
+				
+				if (!base.GetIsEnabled())
+					continue;
+				
 				bool done = false;
 				float distanceToHQ = vector.DistanceSqXZ(HQWest.GetOrigin(), base.GetOrigin());
 				
@@ -3633,17 +3643,17 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			if (!base)
 				continue;
 			
+			if (!base.GetIsEnabled())
+				continue;
+			
 			Math.Randomize(-1);
 			baseIndex = allIndexes.GetRandomIndex();
 			
-			if (!IsProxy() && base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT && !IsScenarioResumed())
+			if (!IsProxy() && base.GetType() != CampaignBaseType.RELAY && baseIndex < BASE_CALLSIGNS_COUNT)
 			{
 				base.SetCallsignIndex(allIndexes[baseIndex]);
 				allIndexes.Remove(baseIndex);
 			}
-			
-			if (RplSession.Mode() != RplMode.Dedicated)
-				base.HideMapLocationLabel();
 
 			if (!IsProxy() && HQWest && HQEast)
 			{
@@ -3664,7 +3674,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 							setFaction = HQEast.GetOwningFaction();
 						
 						// Add random starting supplies to small bases
-						if (m_bRandomizeSupplies && setFaction && !IsScenarioResumed())
+						if (m_bRandomizeSupplies && setFaction)
 						{
 							int amount;
 							FactionKey fKey = setFaction.GetFactionKey();
@@ -3758,6 +3768,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		foreach (SCR_CampaignBase base: bases)
 		{
+			if (!base.GetIsEnabled())
+				continue;
+			
 			BaseRadioComponent comp = BaseRadioComponent.Cast(base.FindComponent(BaseRadioComponent));
 			
 			if (!comp)
@@ -3857,7 +3870,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_EXECUTE_GAMEMODE))
 			return;
 #endif
-		ApplyClientData(playerId);
 		super.OnPlayerConnected(playerId);
 	}
 	
@@ -3867,18 +3879,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		super.OnPlayerRegistered(playerId);
 		
 		if (!IsProxy())
-		{
-			// Apply forced faction (saved in previous connection to this match)
-			SCR_RespawnSystemComponent rsc = SCR_RespawnSystemComponent.Cast(GetRespawnSystemComponent());
-			
-			if (!rsc)
-				return;
-			
-			Faction forcedFaction = GetPlayerForcedFaction(playerId);
-			
-			if (forcedFaction)
-				rsc.DoSetPlayerFaction(playerId, rsc.GetFactionIndex(forcedFaction));
-		}
+			ApplyClientData(playerId);
 		
 		// See HandleOnFactionAssigned()
 		if (SCR_PlayerController.GetLocalPlayerId() != 0 && !GetLastPlayerFaction())
@@ -3888,31 +3889,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (m_aUnprocessedFactionAssignments.GetKey(i) == SCR_PlayerController.GetLocalPlayerId())
 					ProcessFactionAssignment(m_aUnprocessedFactionAssignments.GetElement(i));
 			}			
-		}
-		
-		// TODO: Manage properly in MP environment
-		if (!Replication.IsRunning())
-		{
-			if (m_iRegisteredPlayerFaction != -1)
-			{
-				SCR_RespawnSystemComponent respawnSystem = GetRespawnSystemComponent();
-				
-				if (respawnSystem)
-					respawnSystem.DoSetPlayerFaction(playerId, m_iRegisteredPlayerFaction);
-			}
-			
-			if (m_iRegisteredPlayerXP != 0)
-			{
-				PlayerController pc = GetGame().GetPlayerController();
-				
-				if (pc)
-				{
-					SCR_CampaignNetworkComponent comp = SCR_CampaignNetworkComponent.Cast(pc.FindComponent(SCR_CampaignNetworkComponent));
-
-					if (comp)
-						comp.AddPlayerXP(CampaignXPRewards.UNDEFINED, addDirectly: m_iRegisteredPlayerXP - comp.GetPlayerXP());
-				}
-			}
 		}
 	}
 	
@@ -3952,6 +3928,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		foreach (SCR_CampaignBase base: SCR_CampaignBaseManager.GetBases())
 		{
 			if (!base)
+				continue;
+			
+			if (!base.GetIsEnabled())
 				continue;
 			
 			if (base.GetCapturingFaction() && base.GetReconfiguredByID() == playerId)
@@ -4369,7 +4348,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			clientData = GetClientData(playerID);
 			
 			if (clientData && assignedFaction)
-				clientData.SetFaction(SCR_CampaignFaction.Cast(assignedFaction));
+				clientData.SetFactionIndex(GetRespawnSystemComponent().GetFactionIndex(assignedFaction));
 		}
 		
 		// When a faction is being assigned to the client automatically by server, playerId might not yet be registered
@@ -4387,7 +4366,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
-	{		
+	{
 		if (NotPlaying())
 			return;
 		
@@ -4633,7 +4612,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (playersLimitHeader > m_iTotalPlayersLimit)
 					Print("Header value of max players is higher than gamemode entity setting. Using entity setting...", LogLevel.WARNING);
 				
-				m_bScenarioResumed = SCR_SaveLoadComponent.IsLoadOnStart(header);
 				SCR_MissionHeaderCampaign campaignHeader = SCR_MissionHeaderCampaign.Cast(header);
 	
 				if (campaignHeader)
