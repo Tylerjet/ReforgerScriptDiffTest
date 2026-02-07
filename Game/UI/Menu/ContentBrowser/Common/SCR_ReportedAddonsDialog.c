@@ -67,6 +67,13 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 		SetupReports();
 		
 		FocusTopLine();
+		
+		SCR_NavigationButtonComponent button = FindButton(BUTTON_CANCEL_REPORT);
+		if (button)
+		{
+			button.m_OnActivated.Clear();
+			button.m_OnActivated.Insert(OnCancelReport);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -249,6 +256,19 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 		
 		// Show confirm list 
 		AuthorBlockCancelDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancelReport()
+	{
+	 	if (m_mButtonsItems.Contains(m_LineFocused))
+		{
+			OnAddonEntrySelected(m_LineFocused);
+		}
+		else
+		{
+			OnAuthorEntrySelected(m_LineFocused);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

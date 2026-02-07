@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights", description: "", color: "0 0 255 255")]
-class SCR_2DSightsComponentClass : ScriptedSightsComponentClass
+class SCR_2DSightsComponentClass : SCR_2DOpticsComponentClass
 {
 }
 

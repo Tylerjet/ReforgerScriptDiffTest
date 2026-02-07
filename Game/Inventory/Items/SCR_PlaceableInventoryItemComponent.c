@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/Components", description: "ScriptWizard generated script file.")]
-class SCR_PlaceableInventoryItemComponentClass : InventoryItemComponentClass
+class SCR_PlaceableInventoryItemComponentClass : SCR_BaseInventoryItemComponentClass
 {
 	
 };

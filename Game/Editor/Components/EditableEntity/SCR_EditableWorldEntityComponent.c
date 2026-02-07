@@ -1,5 +1,5 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_EditableWorldEntityComponentClass: SCR_EditableEntityComponentClass
+class SCR_EditableWorldEntityComponentClass: SCR_EditableDescriptorComponentClass
 {
 };
 
