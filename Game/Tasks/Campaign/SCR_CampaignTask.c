@@ -152,7 +152,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 				{
 					if (DoneByAssignee())
 					{
-						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED);
+						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 					}
 					else
 					{
@@ -173,11 +173,11 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 						SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: par1, param2: par2, param3: par3, param4: par4, param5: par5, sound: UISounds.TASK_SUCCEED);
 					}
 					else
-						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED);
+						SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 				}
 			}
 			else
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 		}
 	}
 	
@@ -188,7 +188,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		showMsg = SCR_RespawnSystemComponent.GetLocalPlayerFaction() == m_TargetFaction;
 		super.Fail(showMsg);
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		/*SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		if (campaign && showMsg)
 		{
 			string baseName;
@@ -197,7 +197,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 				baseName = GetBaseNameWithCallsign();
 			
 			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_FAILED);
-		}
+		}*/
 	}
 	
 	//------------------------------------------------------------------------------------------------

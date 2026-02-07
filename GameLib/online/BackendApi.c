@@ -620,7 +620,11 @@ class BackendApi
 	*/
 	proto native void RefreshCommStatus();
 	/**
-	\brief Read service response time in milliseconds - if value is subzero - test was not executed yet, call RefreshCommStatus()
+	\brief Get comm test status, 0==not executed, 1==running, 2==finished, 3==failed
+	*/
+	proto native int GetCommTestStatus();
+	/**
+	\brief Read service response time in milliseconds, call RefreshCommStatus() to update results
 	*/
 	proto native float GetCommResponseTime();
 	/**

@@ -919,6 +919,18 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override float GetOverlayCameraFOVScalarWeight()
+	{
+		if (!m_ControllerComponent)
+			return 0.0;
+		
+		if (m_ControllerComponent.IsFreeLookEnabled())
+			return 0.0;
+		
+		return 1.0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	SCR_RecoilCameraShakeParams GetRecoilShakeParams()
 	{
 		return m_pRecoilShakeParams;

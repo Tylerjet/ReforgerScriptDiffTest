@@ -47,8 +47,6 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 	protected float m_fAveragedRadius = 1; // Stores the averaged radius of the model
 	protected float m_fSmallObjectScale = 0; // Stores a scale (0 - 1) value for small object physics application
 	
-	protected SCR_WaterZoneEntity m_pWaterZone;
-	
 	// Stores last height of waves (for underwater current simulation), set from the water zone
 	float m_fLastWaveHeight;
 	
@@ -139,8 +137,6 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 		float mass = physics.GetMass();
 		
 		float density = DENSITY;
-		if (m_pWaterZone)
-			density = m_pWaterZone.m_Density;
 		
 		float objAreaInDir = SCR_Global.GetSurfaceAreaInDir(owner, direction); // vector.Down
 		float maxForce = speed * mass * density;
@@ -151,19 +147,6 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnExitWater()
 	{
-		SetWaterZone(null);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetWaterZone(SCR_WaterZoneEntity waterZone)
-	{
-		if (m_pWaterZone == waterZone)
-			return;
-		
-		if (m_pWaterZone)
-			m_pWaterZone.UnregisterEntity(GetOwner());
-		
-		m_pWaterZone = waterZone;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -327,9 +310,7 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 		angularVelocity = physics.GetAngularVelocity();
 		
 		float density = DENSITY;
-		if (m_pWaterZone)
-			density = m_pWaterZone.m_Density;
-			
+		
 		vector forceVec = -velocity * mass * density * termVelDepthScale;
 		vector forceAngVec = angularVelocity * density * timeSlice;
 		
@@ -340,9 +321,9 @@ class SCR_WaterPhysicsComponent : ScriptComponent
 		}
 		
 		// Get water current forces
-		if (ENABLE_WATERCURRENT && m_pWaterZone)
+		if (ENABLE_WATERCURRENT)
 		{
-			vector currentVec = m_pWaterZone.GetWaterCurrentSpeed(owner, this, timeSlice);
+			vector currentVec = vector.Zero; // needs new direction source
 			forceVec = forceVec + currentVec;
 		}
 		

@@ -152,9 +152,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_iFocusedWidgetState = ESBWidgetFocus.SERVER_LIST;
 		
 		RoomHandlingButtonsEnabling(false, false);
-
-		// Generator button
-		SetupGenerateButton();
 		
 		// Setup list and message 
 		Messages_ShowMessage(TAG_MESSAGE_SEARCHING, true);
@@ -191,9 +188,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		// Store filter pamarameters
 		m_Lobby.StoreParams();
-		
-		// Clear generated servers 
-		KillServers();
 		
 		// Remove callbacks 
 		m_Lobby.SetRefreshCallback(null);
@@ -348,6 +342,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		}
 		
 		ClearConnectionTimeoutWaiting();
+		m_ScrollableList.ShowScrollbar(true);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -502,6 +497,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		{
 			m_ScrollableList.MoveToTop();
 			m_ScrollableList.ShowEmptyRooms();
+			m_ScrollableList.ShowScrollbar(false);
 		}
 		
 		// Setup connection attempt timeout 
@@ -523,15 +519,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.SetDefaultScenario(TAG_DETAILS_FALLBACK_SEACHING);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Bind action for generating testing dummy servers 
-	//! This action is hidden for common user
-	[MenuBindAttribute()]
-	void  OnActionGenServers()
-	{
-		m_Lobby.GenerateRooms();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -663,13 +650,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Kill generated dummy servers 
-	void KillServers()
-	{
-		m_Lobby.KillGeneratedRooms();
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Restore filtering parameters in UI
 	void SetupParams(ClientLobbyApi lobby)
 	{	
@@ -777,30 +757,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Button for generating dummy servers - show only for specific parameter - TODO@wernerjak - possibly remove in future
-	protected void SetupGenerateButton()
-	{
-		Widget genButton = GetRootWidget().FindAnyWidget("GenerateButton");
-		if (!genButton)
-			return;
-		
-		
-		#ifdef SB_DEBUG
-		
-		genButton.SetVisible(false);
-		
-		SCR_ButtonBaseComponent button = SCR_ButtonBaseComponent.Cast(genButton.FindHandler(SCR_ButtonBaseComponent));
-		if (button)
-			button.m_OnClicked.Insert(OnActionGenServers);
-		
-		#else
-			
-		genButton.SetVisible(false);
-		
-		#endif
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! Call this when focusing on server 
 	protected void OnServerEntryFocusEnter(SCR_ServerBrowserEntryComponent serverEntry)
 	{
@@ -842,13 +798,16 @@ class ServerBrowserMenuUI: MenuRootBase
 		RoomHandlingFavoriteEnable(true);
 		
 		m_LastFocusedRoom = room;
-		ReceiveRoomContent(m_LastFocusedRoom, true);
+		ReceiveRoomContent(m_LastFocusedRoom, true, serverEntry);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void ReceiveRoomContent(Room room,  bool receiveMods)
+	protected void ReceiveRoomContent(Room room,  bool receiveMods, SCR_ServerBrowserEntryComponent roomEntry)
 	{
 		// Check room
+		if (!room && roomEntry && roomEntry.GetRoomInfo())
+			room = roomEntry.GetRoomInfo();
+		
 		if (!room)
 			return;
 		
@@ -932,8 +891,13 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Call this later to prevent too many request 
 	protected void ReceiveRoomContent_Mods(Room room)
 	{
+		//Print("Room: " + room.Name() + " gets mods: " + room);
+		
 		if (!m_ModsManager || !room || m_LastFocusedRoom != room)
 			return;
+		
+		// Check cached dependencies 
+		//if (m_ModsManager.AllItemsLoaded)
 		
 		m_ModsManager.m_OnGettingAllDependecies.Insert(OnLoadingDependencyList);
 		m_ModsManager.ReceiveRoomMods(room);
@@ -954,7 +918,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Join to the room on double click on server entry
 	protected void OnServerEntryDoubleClick(SCR_ServerBrowserEntryComponent entry)
 	{
-		//QuickJoinRoom();
+		// Join 
 		JoinActions_Join();
 	}
 	
@@ -968,7 +932,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			if (!entry.GetRoomInfo())
 				return;
 			
-			ReceiveRoomContent(entry.GetRoomInfo(), false);
+			ReceiveRoomContent(entry.GetRoomInfo(), false, entry);
 		}
 	}
 	
@@ -979,7 +943,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		if (entry != m_ServerEntryFocused && m_LastFocusedRoom)
 		{
-			ReceiveRoomContent(m_LastFocusedRoom, true);
+			ReceiveRoomContent(m_LastFocusedRoom, true, entry);
 		}
 	}
 	
@@ -1031,6 +995,9 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_ScrollableList = SCR_PooledServerListComponent.Cast(m_Widgets.FindHandlerReference(
 			null, m_Widgets.WIDGET_SCROLLABLE_LIST, SCR_PooledServerListComponent
 		));
+		
+		if (m_ScrollableList)
+			m_Lobby.SetViewSize(m_ScrollableList.GetPageEntriesCount() * 2);
 	
 		// Add callbacks 
 		array<SCR_ServerBrowserEntryComponent> entries = m_ScrollableList.GetRoomEntries(); 
@@ -1269,7 +1236,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void CallOnServerListSetPage(int page)
 	{
 		GetGame().GetCallqueue().Remove(OnServerListSetPage);
-		GetGame().GetCallqueue().CallLater(OnServerListSetPage, ROOM_REFRESH_WAIT_DELAY, false, page);
+		GetGame().GetCallqueue().CallLater(OnServerListSetPage, ROOM_CONTENT_LOAD_DELAY, false, page);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1283,24 +1250,39 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Get entries count
 		int entriesC = m_ScrollableList.GetPageEntriesCount();
 		int pos = entriesC * page;
-		
+
 		// Setup scroll callback 
 		m_CallbackScroll.m_OnSuccess.Insert(OnScrollSuccess);
 
 		if (!m_bFirstRoomLoad)
+		{
+			array<Room> rooms = {};
+			m_Lobby.Rooms(rooms);
 			m_Lobby.Scroll(pos, m_CallbackScroll);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnScrollSuccess(ServerBrowserCallback callback)
 	{
-		PrintDebug("Rooms count: " + m_Lobby.TotalRoomCount(), "OnScrollSuccess");
+		// Check if loaded room should display details
+		bool loadedRoomFocused = false;
+		if (m_ServerEntryFocused && !m_ScrollableList.IsRoomLoaded(m_ServerEntryFocused))
+			loadedRoomFocused = true;
+		
+		// Update rooms
 		m_Lobby.Rooms(m_aRooms);
+		m_ScrollableList.UpdateLoadedPage();
 		
 		DisplayRooms(m_aRooms);
-		
+		 
 		// Clear callback 
 		m_CallbackScroll.m_OnSuccess.Remove(OnScrollSuccess);
+		
+		
+		// Focus on new room 
+		if (loadedRoomFocused)
+			ReceiveRoomContent(m_LastFocusedRoom, true, m_ServerEntryFocused);
 	}
 	
 	protected ref array<ref SCR_FilterEntry> m_aFiltersToSelect = new array<ref SCR_FilterEntry>;
@@ -1876,18 +1858,27 @@ class ServerBrowserMenuUI: MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	// Room joining process
 	//------------------------------------------------------------------------------------------------
-	// TODO@wernerjak - place this more conviniently once joining tweaks are done 
+
 	
 	//------------------------------------------------------------------------------------------------
 	//! Action for joining to selected server 
 	protected void JoinActions_Join()
 	{
+		// Prevent join if no entry selected 
 		if (!m_EntryInteractible)
 		{
 			PrintDebug("Quick join is not possible because there is no selected server", "JoinActions_Join");
 			return;
 		}
 		
+		// Loaded mods if interactible is hovered 
+		if (m_EntryInteractible != m_ServerEntryFocused)
+		{
+			GetGame().GetWorkspace().SetFocusedWidget(m_EntryInteractible.GetRootWidget());
+			ReceiveRoomContent(m_EntryInteractible.GetRoomInfo(), false, m_EntryInteractible);
+		}
+		
+		// Join
 		Room roomToJoin = m_EntryInteractible.GetRoomInfo();
 		if (roomToJoin)
 			JoinProcess_Init(roomToJoin);

@@ -15,23 +15,25 @@ class SCR_LenseColor
 	
 	[Attribute("5.0", UIWidgets.Slider, desc: "Light Value", "-8.0 20 1", category: "Flashlight")]
 	float m_fLightValue;
-	
-	[Attribute("", UIWidgets.GraphDialog, desc: "Light EV during the day, abscissa is the day time and ordinate is the EV. EV is subtracted by 10 so the EV value is between [-10,10] instead of [0,20]", params: "24 20 0 0", category: "Flashlight")]
-	ref Curve m_LightEVCurve;
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_FlashlightComponent : SCR_GadgetComponent
-{	
-	const float SHADOW_NP_HAND = 0.5;
-	const float SHADOW_NP_STRAPPED = 1;
-	const float SHADOW_NP_VEHICLE = 0.1;
-	
+{		
 	[Attribute("50", UIWidgets.EditBox, desc: "Intensity of the emmissive texture", params: "0 1000", category: "Flashlight")]
 	protected float m_fEmissiveIntensity;
 			
 	[Attribute("", UIWidgets.Object, desc: "Array of lense colors", category: "Flashlight")]
 	protected ref array<ref SCR_LenseColor> m_LenseArray; 
+	
+	[Attribute("0.5", UIWidgets.EditBox, desc: "In meters, light ignores objects up to set distance to avoid unwanted shadows", params: "0.1 5", category: "Light near plane")]
+	protected float m_fLightNearPlaneHand;
+	
+	[Attribute("1.2", UIWidgets.EditBox, desc: "In meters, light ignores objects up to set distance to avoid unwanted shadows", params: "0.1 5", category: "Light near plane")]
+	protected float m_fLightNearPlaneStrapped;
+	
+	[Attribute("0.1", UIWidgets.EditBox, desc: "In meters, light ignores objects up to set distance to avoid unwanted shadows", params: "0.1 5", category: "Light near plane")]
+	protected float m_fLightNearPlaneVehicle;
 	
 	[Attribute("SOUND_FLASHLIGHT_ON", UIWidgets.EditBox, desc: "Activation sound", category: "Sound")]
 	protected string m_sSoundActivation;
@@ -40,11 +42,16 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	protected string m_sSoundDeactivation;
 	
 	protected bool m_bLastLightState;	// remember the last light state for cases where you put your flashlight into storage but there is no slot available -> true = active
-	protected int m_iCurrentLenseColor = 0;	
+	protected bool m_bIsSlottedVehicle;	// char owner is in vehicle while flashlight is slotted
+	protected int m_iCurrentLenseColor;	
+	protected vector m_vAnglesCurrent;	// current local angles
+	protected vector m_vAnglesTarget;	// target local angles used to align flashlight with aiming angles while strapped
+	protected vector m_ItemMat[4];		// owner transformation matrix
 	protected LightEntity m_Light;
 	protected SoundComponent m_SoundComp;
-	ParametricMaterialInstanceComponent m_EmissiveMaterial;
+	protected ParametricMaterialInstanceComponent m_EmissiveMaterial;
 	protected SCR_CompartmentAccessComponent m_CompartmentComp;
+	protected CharacterControllerComponent m_CharController;
 					
 	//------------------------------------------------------------------------------------------------
 	override void OnToggleActive(bool state)
@@ -58,12 +65,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 			else 
 				m_SoundComp.SoundEvent(m_sSoundDeactivation);
 		}
-		
-		if (state)
-			SetEventMask(GetOwner(), EntityEvent.FRAME);
-		else
-			ClearEventMask(GetOwner(), EntityEvent.FRAME);
-		
+				
 		UpdateLightState();
 	}
 			
@@ -79,20 +81,11 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switch flashlight lenses
-	void SwitchLenses(int filter)
+	protected void SwitchLenses(int filter)
 	{
-		// Change color on activation
-		if (m_iCurrentLenseColor == filter)
-			return;
-		
 		m_iCurrentLenseColor = filter;
 		
-		// Switch only
-		if ( !m_Light.IsEnabled() )
-			return;
-		
-		// Switch and toggle
-		UpdateLightValue();
+		m_Light.SetColor(Color.FromVector(m_LenseArray[m_iCurrentLenseColor].m_vLenseColor), m_LenseArray[m_iCurrentLenseColor].m_fLightValue);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -122,37 +115,46 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		
 		if (m_EmissiveMaterial)
 			m_EmissiveMaterial.SetEmissiveMultiplier(0);
+		
+		DeactivateGadget();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set near plane of light shadow to avoid blocking the light with arm/weapon
-	//! \param state determines mode: true - in hand / false - strapped
+	//! \param state determines mode: false - in hand / true - strapped
 	//! \param isLeavingVehicle is signal for removing vehicle near plane mode
 	protected void SetShadowNearPlane(bool state, bool isLeavingVehicle = false)
 	{				
 		float nearPlane;
+		m_bIsSlottedVehicle = false;
 		
 		if (state)	// strapped mode
 		{
-			nearPlane = SHADOW_NP_STRAPPED;
+			nearPlane = m_fLightNearPlaneStrapped;
 			if (m_CompartmentComp && m_CompartmentComp.IsInCompartment() && !isLeavingVehicle)
 			{
 				if (m_CompartmentComp.IsInCompartment())
-					nearPlane = SHADOW_NP_VEHICLE;
+				{
+					nearPlane = m_fLightNearPlaneVehicle;
+					m_bIsSlottedVehicle = true;
+				}
 			}
+			
+			if (m_bActivated)
+				ActivateGadget();
 		}
 		else		// in hand mode
-			nearPlane = SHADOW_NP_HAND;
+			nearPlane = m_fLightNearPlaneHand;
 		
 		if (m_Light)
 		{
 			m_Light.SetNearPlane(nearPlane);
 		}
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
-	void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (!m_bActivated)
 			return;
@@ -165,7 +167,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
-	void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	protected void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (!m_bActivated)
 			return;
@@ -177,9 +179,14 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 			
 	//------------------------------------------------------------------------------------------------
-	override void ModeSwitch(EGadgetMode mode, IEntity charOwner)
+	override protected void ModeSwitch(EGadgetMode mode, IEntity charOwner)
 	{		
 		super.ModeSwitch(mode, charOwner);
+
+		if (mode == EGadgetMode.ON_GROUND)
+			m_CharController = null;
+		else
+			m_CharController = CharacterControllerComponent.Cast( m_CharacterOwner.FindComponent(CharacterControllerComponent) );
 		
 		if (mode == EGadgetMode.ON_GROUND || mode == EGadgetMode.IN_STORAGE)
 		{
@@ -213,7 +220,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void ModeClear(EGadgetMode mode)
+	override protected void ModeClear(EGadgetMode mode)
 	{
 		if (mode == EGadgetMode.IN_SLOT)
 		{					
@@ -230,7 +237,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 			
 	//------------------------------------------------------------------------------------------------
-	override void ToggleActive(bool state)
+	override protected void ToggleActive(bool state)
 	{
 		if (m_iMode == EGadgetMode.IN_STORAGE && !m_bActivated)	// trying to activate flashlight hidden in inventory
 			return;	
@@ -239,7 +246,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void ActivateAction()
+	override protected void ActivateAction()
 	{
 		ToggleActive(!m_bActivated);
 	}
@@ -286,23 +293,41 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
         return true;
     }
 	
-	protected void UpdateLightValue()
-	{
-		if (m_LenseArray.Count() == 0)
-			return;
-		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
-		if (!timeManager)
-			return;
-		
-		m_Light.SetColor(Color.FromVector(m_LenseArray[m_iCurrentLenseColor].m_vLenseColor), m_LenseArray[m_iCurrentLenseColor].m_fLightValue);
-		float lightEV = GetPoint(timeManager.GetTimeOfTheDay(), m_LenseArray[m_iCurrentLenseColor].m_LightEVCurve);
-		m_Light.SetIntensityEVClip(lightEV - 10.0);
-	}
+	//------------------------------------------------------------------------------------------------
+	override bool OnTicksOnRemoteProxy() 
+	{ 
+		return true; // proxies will only tick on owners without this
+	};
 	
-	protected override void EOnFrame(IEntity owner, float timeSlice)
-	{
-		UpdateLightValue();
+	//------------------------------------------------------------------------------------------------
+	override void EOnFrame(IEntity owner, float timeSlice)
+	{		
+		if (m_iMode != EGadgetMode.IN_SLOT)
+			return;
+		
+		if (m_bIsSlottedVehicle || !m_CharController)
+		{
+			GetOwner().SetYawPitchRoll(vector.Zero); // vehicle aim angles are inconsistent, leave the local angles in default state
+			return;
+		}
+		
+		if (m_CharController.IsDead())	// deactivate frame on death without turning the light off
+		{
+			DeactivateGadget();
+			return;
+		}
+				
+		// ajdust angle of the flashlight to provide usable angle within various poses
+		GetOwner().GetTransform(m_ItemMat);
+		m_vAnglesCurrent = GetOwner().GetLocalYawPitchRoll();
+		m_vAnglesTarget = ( m_CharController.GetAimingAngles() - Math3D.MatrixToAngles(m_ItemMat) ) + m_vAnglesCurrent;	 // diff between WS aiming and item angles, add local to the result
+		m_vAnglesTarget[0] = fixAngle_180_180(m_vAnglesTarget[0]);		
+		m_vAnglesTarget[1] = Math.Clamp(m_vAnglesTarget[1], 0, 30);	// only need too offset upwards, also avoid glitches with some stances
+		m_vAnglesTarget[2] = 0;	// no roll		
+		
+		m_vAnglesTarget[0] = Math.Lerp(m_vAnglesCurrent[0], m_vAnglesTarget[0], timeSlice*4);
+		m_vAnglesTarget[1] = Math.Lerp(m_vAnglesCurrent[1], m_vAnglesTarget[1], timeSlice*4);
+		GetOwner().SetYawPitchRoll(m_vAnglesTarget); // sets local angles
 	}
 					
 	//------------------------------------------------------------------------------------------------
@@ -319,31 +344,5 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 			defColor.m_sDescription = "CONFIGURE ME";
 			m_LenseArray.Insert(defColor);
 		}
-	}
-	
-	protected float GetPoint(float time, Curve curve)
-	{		
-		time = Math.Clamp(time, 0.0, 24.0);
-		
-		int size = curve.Count();
-		if (size == 0)
-			return 0.0;
-		
-		if (size == 1)
-			return curve[0][1];
-		
-		if (time < curve[0][0])
-			return curve[0][1];
-		
-		int i;
-		for (i = 0; i < size - 1; i++)
-		{
-			float timeMin = curve[i][0];
-			float timeMax = curve[i+1][0];
-			if (time >= timeMin && time <= timeMax)
-				return Math.Lerp(curve[i][1], curve[i+1][1], (time - timeMin) / (timeMax - timeMin));
-		}
-		
-		return curve[i][1];
 	}
 };

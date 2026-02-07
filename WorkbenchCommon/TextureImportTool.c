@@ -320,6 +320,14 @@ class TextureType
 		uiType.AddBaseConfig("PS4", "{A752014F057BCE60}configs/ResourceTypes/PS4/TextureUI.conf");
 		uiType.AddBaseConfig("HEADLESS", "{E604D15366D985DF}configs/ResourceTypes/HEADLESS/TextureUI.conf");
 		
+		// UI textures uncompressed
+		ref TextureType uiTypeUncompressed = new TextureType(container, "_uiuc.");
+		uiTypeUncompressed.AddBaseConfig("PC", "{D256EAFDC1226362}configs/ResourceTypes/PC/TextureUIUncompressed.conf");
+		uiTypeUncompressed.AddBaseConfig("XBOX_ONE", "{712BC6681ADE741A}configs/ResourceTypes/XBOX_ONE/TextureUIUncompressed.conf");
+		uiTypeUncompressed.AddBaseConfig("XBOX_SERIES", "{B613AECC9D415504}configs/ResourceTypes/XBOX_SERIES/TextureUIUncompressed.conf");
+		uiTypeUncompressed.AddBaseConfig("PS4", "{9A726D592B629239}configs/ResourceTypes/PS4/TextureUIUncompressed.conf");
+		uiTypeUncompressed.AddBaseConfig("HEADLESS", "{A677FEF8099B272E}configs/ResourceTypes/HEADLESS/TextureUIUncompressed.conf");
+		
 		// Env. map (Generate env map from panorama, HDR compression enabled by default)
 		ref TextureType environmentMapType = new TextureType(container, "_env.");
 		environmentMapType.AddBaseConfig("PC", "{009B945B41B128FC}configs/ResourceTypes/PC/TextureEnvMap.conf");

@@ -5,6 +5,9 @@
 */
 class SCR_VisibleEditableEntityFilter : SCR_BaseEditableEntityFilter
 {
+	[Attribute(defvalue: "1", desc: "Hide entities when editor GUI is hidden by user.")]
+	protected bool m_bHideWithUI;
+	
 	protected bool m_bCanShow = true;
 	
 	protected void OnEntityVisibilityChanged(SCR_EditableEntityComponent entity)
@@ -32,11 +35,14 @@ class SCR_VisibleEditableEntityFilter : SCR_BaseEditableEntityFilter
 		
 		GetCore().Event_OnEntityVisibilityChanged.Insert(OnEntityVisibilityChanged);
 		
-		SCR_MenuEditorComponent editorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
-		if (editorMenuManager)
+		if (m_bHideWithUI)
 		{
-			editorMenuManager.GetOnVisibilityChange().Insert(OnVisiblityChange);
-			m_bCanShow = editorMenuManager.IsVisible();
+			SCR_MenuEditorComponent editorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
+			if (editorMenuManager)
+			{
+				editorMenuManager.GetOnVisibilityChange().Insert(OnVisiblityChange);
+				m_bCanShow = editorMenuManager.IsVisible();
+			}
 		}
 	}
 	override void EOnEditorDeactivate()
@@ -46,10 +52,13 @@ class SCR_VisibleEditableEntityFilter : SCR_BaseEditableEntityFilter
 		
 		GetCore().Event_OnEntityVisibilityChanged.Remove(OnEntityVisibilityChanged);
 		
-		SCR_MenuEditorComponent editorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
-		if (editorMenuManager)
+		if (m_bHideWithUI)
 		{
-			editorMenuManager.GetOnVisibilityChange().Remove(OnVisiblityChange);
+			SCR_MenuEditorComponent editorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
+			if (editorMenuManager)
+			{
+				editorMenuManager.GetOnVisibilityChange().Remove(OnVisiblityChange);
+			}
 		}
 	}
 };

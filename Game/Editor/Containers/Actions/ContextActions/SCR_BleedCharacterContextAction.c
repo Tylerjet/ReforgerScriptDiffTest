@@ -25,6 +25,6 @@ class SCR_BleedCharacterContextAction : SCR_SelectedEntitiesContextAction
 		if (!characterDamageManager)
 			return;
 				
-		characterDamageManager.AddRandomBleeding();	
+		characterDamageManager.AddParticularBleeding();	
 	}
 };

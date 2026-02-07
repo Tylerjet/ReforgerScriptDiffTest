@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/Gadgets", description: "Gadget base", color: "0 0 255 255")]
-class SCR_GadgetComponentClass: ScriptComponentClass
+class SCR_GadgetComponentClass: ScriptGameComponentClass
 {
 };
 
@@ -49,7 +49,7 @@ enum EGadgetAnimVariable
 //------------------------------------------------------------------------------------------------
 //! Gadget base class
 //------------------------------------------------------------------------------------------------
-class SCR_GadgetComponent : ScriptComponent
+class SCR_GadgetComponent : ScriptGameComponent
 {			
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EGadgetAnimVariable), desc: "Gadget anim variable", category: "Gadget")]
 	protected EGadgetAnimVariable m_eAnimVariable;
@@ -162,7 +162,7 @@ class SCR_GadgetComponent : ScriptComponent
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
 		if (itemComponent)
 			itemComponent.ActivateOwner(true);
-		
+
 		SetEventMask(owner, EntityEvent.FRAME);
 	}
 	

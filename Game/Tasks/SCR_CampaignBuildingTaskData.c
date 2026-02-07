@@ -57,7 +57,7 @@ class SCR_CampaignBuildingTaskData : SCR_BaseTaskData
 		buildingTask.SetTargetBase(base);
 		buildingTask.SetTargetFaction(faction);
 		
-		NotifyAboutTask(buildingTask);
+		//NotifyAboutTask(buildingTask);
 	}
 	
 	//------------------------------------------------------------------------------------------------

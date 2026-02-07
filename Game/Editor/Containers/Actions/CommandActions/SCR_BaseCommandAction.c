@@ -29,6 +29,9 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 	//--- Called from radial menu, places the command instantly
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{
+		if (cursorWorldPosition == vector.Zero)
+			return;
+		
 		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
 		if (!placingManager)
 			return;

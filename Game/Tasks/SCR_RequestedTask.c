@@ -148,7 +148,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		{
 			SCR_BaseTaskExecutor localExecutor = SCR_BaseTaskExecutor.GetLocalExecutor();
 			if (localExecutor && (localExecutor == GetRequester() || localExecutor == assignee))
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_SUCCEED);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + m_sName, prio: SCR_ECampaignPopupPriority.TASK_DONE, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 			return;
 		}
 		

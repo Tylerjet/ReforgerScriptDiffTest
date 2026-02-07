@@ -60,13 +60,13 @@ class SCR_CampaignBuildingTask : SCR_CampaignBaseTask
 			return;
 		
 		// TODO make this nicer
-		if (m_bIndividualTask)
+		/*if (m_bIndividualTask)
 		{
 			if (IsAssignedToLocalPlayer())
 			{
 				if (DoneByAssignee())
 				{
-					SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED);
+					SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT)
 				}
 				else
 				{
@@ -75,11 +75,11 @@ class SCR_CampaignBuildingTask : SCR_CampaignBaseTask
 			}
 			else
 			{
-				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED);
+				SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 			}
 		}
 		else
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -97,7 +97,7 @@ class SCR_CampaignBuildingTask : SCR_CampaignBaseTask
 			if (m_TargetBase)
 				baseName = GetBaseNameWithCallsign();
 			
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_FAILED);
+			//SCR_PopUpNotification.GetInstance().PopupMsg(TASK_FAILED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: baseName, sound: UISounds.TASK_FAILED);
 		}
 	}
 	

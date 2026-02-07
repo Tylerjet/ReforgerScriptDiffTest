@@ -73,7 +73,7 @@ class SCR_PopUpNotification: GenericEntity
 {
 	protected static SCR_PopUpNotification s_Instance = null;
 	static const float DEFAULT_DURATION = 4;
-	static const string TASKS_KEY_IMAGE_FORMAT = "<color rgba='226,168,79,255'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name='TasksOpen'/></shadow></color>";
+	static const string TASKS_KEY_IMAGE_FORMAT = "<color rgba='226,168,79,200'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name='TasksOpen'/></shadow></color>";
 	protected static SCR_EPopupMsgFilter m_sFilter = SCR_EPopupMsgFilter.ALL;
 	
 	protected ref array<string> m_aPopupMsgTextsQueue = new ref array<string>();

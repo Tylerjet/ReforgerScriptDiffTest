@@ -128,15 +128,6 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		
 		switch (m_eStage)
 		{
-			case SCR_ECampaignTutorialStage.WIREMESH:
-			{
-				if (switchedToKeyboard)
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Crawling" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterStandCrouchToggle"), duration: -1);
-				else
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Crawling" + CreateString("#AR-Keybind_Prone", "CharacterProne", "MenuBack"), duration: -1);
-				break;
-			}
-			
 			case SCR_ECampaignTutorialStage.LADDER_DOWN:
 			{
 				if (switchedToKeyboard)
@@ -173,32 +164,14 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Leaning" + custommsg, duration: -1, isSilent: true);
 				break;
 			}
-			
-			case SCR_ECampaignTutorialStage.SHOOTING_PRONE:
-			{
-				if (switchedToKeyboard)
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringProne" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterStandCrouchToggle"), duration: -1);
-				else
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringProne" + CreateString("#AR-Keybind_Prone", "CharacterProne", "MenuBack"), duration: -1);
-				break;
-			}
-			
-			case SCR_ECampaignTutorialStage.FIREPOZ_2:
-			{
-				if (switchedToKeyboard)
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringPosition2" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterStandCrouchToggle"), duration: -1);
-				else
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringPosition2" + CreateString("#AR-Keybind_Prone", "CharacterProne", "MenuBack"), duration: -1);
-				break;
-			}
-			
+
 			case SCR_ECampaignTutorialStage.DRIVING_1:
 			{
 				string custommsg;
 				if(GetGame().GetInputManager().IsUsingMouseAndKeyboard())
 					custommsg = CreateString("#AR-Keybind_Freelook","Freelook");
 				else
-					custommsg = CreateString("#AR-Keybind_Freelook","MenuEnable");
+					custommsg = CreateString("#AR-Keybind_Freelook","ManualCameraAttach");
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_SwitchingSeats" + custommsg, duration: -1);
 				break;
 			}
@@ -239,6 +212,18 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 					custommsg = CreateString("#AR-ControlsHint_OpenQuickSlot","Inventory_WeaponSwitching") + CreateString("#AR-Keybind_Compass","SpawnPointNext");
 				
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Compass" + custommsg, duration: -1, isSilent: true);
+				break;
+			}
+			
+			case SCR_ECampaignTutorialStage.CONFLICT_TASKS_INFO:
+			{
+				string custommsg;
+				
+				if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+					custommsg = CreateString("#AR-Tutorial_ExpandTask", "MouseLeft");
+				else
+					custommsg = CreateString("#AR-Tutorial_ExpandTask", "CharacterAction");
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_ObjectivesListInfo" + custommsg, duration: 12, isTimerVisible: true);
 				break;
 			}
 			
@@ -731,7 +716,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	protected string CreateString(string description, string keybind, string keybind2 = "")
 	{
 		string returnString;
-		string startColor = "<br/><color rgba='226,168,79,255'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'>";
+		string startColor = "<br/><color rgba='226,168,79,200'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'>";
 		string endAction = "\"/>";
 		string startAction = "<action name=\"";
 		string endColor = "</shadow></color>"; 
@@ -757,6 +742,34 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		super.OnPlayerRegistered(playerId);
 		
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		
+		
+		SCR_CampaignFactionManager campaignFactionManager = SCR_CampaignFactionManager.GetInstance();
+		SCR_CampaignFaction west = SCR_CampaignFaction.Cast(campaignFactionManager.GetFactionByIndex(0));
+		
+		if (!west)
+			return;
+		
+		SCR_CampaignBase HQWest = west.GetMainBase();
+		
+		array<SCR_CampaignBase> bases = SCR_CampaignBaseManager.GetBases();
+		
+		if (HQWest)
+		{
+			foreach (SCR_CampaignBase base: bases)
+			{
+				if(base.GetBaseName().Contains("Levie"))
+					base.SetCallsignIndex(3);
+				if(base.GetBaseName().Contains("Chotain"))
+					base.SetCallsignIndex(1);
+				if(base.GetBaseName().Contains("Laruns"))
+					base.SetCallsignIndex(2);
+				if(base == HQWest)
+					base.SetCallsignIndex(0);
+				if(base.GetBaseName().Contains("Enemy"))
+					base.SetCallsignIndex(4);
+			}
+		}
 		
 		// Attempt to spawn the player automatically, cease after spawn is successful in OnPlayerSpawned
 		TryPlayerSpawn(playerController);
@@ -1247,10 +1260,8 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			
 			case SCR_ECampaignTutorialStage.WIREMESH:
 			{
-				if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Crawling" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterStandCrouchToggle"), duration: -1);
-				else
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Crawling" + CreateString("#AR-Keybind_Prone", "CharacterProne", "MenuBack"), duration: -1);
+
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Crawling" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterJump"), duration: -1);
 				StartStageEvaluation(waypointHeight: 0.2);
 				break;
 			}
@@ -1285,7 +1296,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			case SCR_ECampaignTutorialStage.WALL:
 			{
 				if (!m_bUsed3PV)
-					GetGame().GetCallqueue().CallLater(DelayedPopup, 2000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_Camera", 7, "", "", "<color rgba='226,168,79,255'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name = 'SwitchCameraType'/></shadow></color>", "");
+					GetGame().GetCallqueue().CallLater(DelayedPopup, 2000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_Camera", 7, "", "", "<color rgba='226,168,79,200'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name = 'SwitchCameraType'/></shadow></color>", "");
 				
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Walls" + CreateString("#AR-Keybind_JumpVaultClimb","CharacterJump"), duration: -1);
 				StartStageEvaluation(5, waypointHeight: 0.3);
@@ -1301,7 +1312,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			
 			case SCR_ECampaignTutorialStage.LADDER_UP:
 			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_LadderUp", duration: -1);
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_LadderUp" + CreateString("#AR-UserAction_ClimbLadder", "CharacterAction"), duration: -1);
 				StartStageEvaluation(3, waypointHeight: 0);
 				break;
 			}
@@ -1446,20 +1457,14 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 					}
 				}
 				
-				if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringProne" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterStandCrouchToggle"), duration: -1);
-				else
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringProne" + CreateString("#AR-Keybind_Prone", "CharacterProne", "MenuBack"), duration: -1);
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringProne" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterJump"), duration: -1);
 				StartStageEvaluation(20, waypointHeight: 0, checkWaypointReached: false, delay: 1);
 				break;	
 			}
 			
 			case SCR_ECampaignTutorialStage.FIREPOZ_2:
 			{
-				if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringPosition2" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterStandCrouchToggle"), duration: -1);
-				else
-					SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringPosition2" + CreateString("#AR-Keybind_Prone", "CharacterProne", "MenuBack"), duration: -1);
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_FiringPosition2" + CreateString("#AR-Keybind_Prone", "CharacterProne", "CharacterJump"), duration: -1);
 				StartStageEvaluation(2, waypointHeight: 0);
 				break;
 			}
@@ -1495,7 +1500,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			{
 				m_Jeep = Vehicle.Cast(GetGame().GetWorld().FindEntityByName("Jeep"));
 				m_CurrentWaypoint.SetOrigin(m_Jeep.GetOrigin());
-				GetGame().GetCallqueue().CallLater(DelayedPopup, 1000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_WeaponLowering", 12, "", "", "<color rgba='226,168,79,255'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name = 'CharacterRaiseWeapon'/></shadow></color>", "");
+				GetGame().GetCallqueue().CallLater(DelayedPopup, 1000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_WeaponLowering", 12, "", "", "<color rgba='226,168,79,200'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name = 'CharacterRaiseWeapon'/></shadow></color>", "");
 				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Boarding" + CreateString("#AR-Editor_CommandAction_AIWaypoint_GetInNearest_Name","CharacterAction"), duration: -1);
 				StartStageEvaluation(checkWaypointReached: false);
 				break;
@@ -1556,7 +1561,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			
 			case SCR_ECampaignTutorialStage.DRIVING_3:
 			{
-				GetGame().GetCallqueue().CallLater(DelayedPopup, 1000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_HintToggle", 12, "", "", "<color rgba='226,168,79,255'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name = 'HintToggle'/></shadow></color>", "");
+				GetGame().GetCallqueue().CallLater(DelayedPopup, 1000, false, "#AR-Tutorial_Popup_Title-UC", "#AR-Tutorial_Popup_HintToggle", 12, "", "", "<color rgba='226,168,79,200'><shadow mode='image' color='0,0,0' size='1' offset='1,1' opacity = '0.5'><action name = 'HintToggle'/></shadow></color>", "");
 				StartStageEvaluation(20, waypointHeight: 0);
 				break;
 			}
@@ -1704,7 +1709,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			case SCR_ECampaignTutorialStage.CONFLICT_REQUESTING_TRUCK:
 			{
 				m_HQUS.AlterReinforcementsTimer(-float.MAX);
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_RequestingVehicle", duration: -1);
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_RequestingVehicle" + CreateString("#AR-KeybindEditor_MultiSelection","SelectAction"), duration: -1);
 				StartStageEvaluation(checkPeriod: 1, checkWaypointReached: false, waypointHeight: 1.3);
 				break;
 			}
@@ -1891,7 +1896,13 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			
 			case SCR_ECampaignTutorialStage.CONFLICT_TASKS_INFO:
 			{
-				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_ObjectivesListInfo", duration: 12, isTimerVisible: true);
+				string custommsg;
+				
+				if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+					custommsg = CreateString("#AR-Tutorial_ExpandTask", "MouseLeft");
+				else
+					custommsg = CreateString("#AR-Tutorial_ExpandTask", "CharacterAction");
+				SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_ObjectivesListInfo" + custommsg, duration: 12, isTimerVisible: true);
 				StartStageEvaluation(duration: 12);
 				break;
 			}

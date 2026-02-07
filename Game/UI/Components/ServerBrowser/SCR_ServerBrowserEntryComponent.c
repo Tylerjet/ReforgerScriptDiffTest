@@ -15,6 +15,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	const string WIDGET_BACKGROUND = "Background";
 	const string WIDGET_BACKGROUND_EMPTY = "BackgroundEmpty";
 	const string WIDGET_HORIZONTAL_CONTENT = "HorizontalLayout";
+	const string WIDGET_LOADING = "Loading";
 	
 	// Strings 
 	const string STRING_COUNT_UNLIMITED = "#AR-ServerBrowser_CountUnlimited";
@@ -54,6 +55,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	protected Widget m_wBackground;
 	protected Widget m_wBackgroundEmpty;
 	protected Widget m_wHorizontalContent;
+	protected Widget m_wLoading;
 	
 	// Favorite widges and behavior 
 	protected bool m_bFavoritingEnabled;
@@ -101,6 +103,7 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		m_wBackground = m_wRoot.FindAnyWidget(WIDGET_BACKGROUND);
 		m_wBackgroundEmpty = m_wRoot.FindAnyWidget(WIDGET_BACKGROUND_EMPTY);
 		m_wHorizontalContent = m_wRoot.FindAnyWidget(WIDGET_HORIZONTAL_CONTENT);
+		m_wLoading = m_wRoot.FindAnyWidget(WIDGET_LOADING);
 		
 		// Call init 
 		Init(w);
@@ -133,6 +136,8 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		
 		// Setup scroll animations 
 		EnableTextAnimations(false);
+		
+		m_wLoading.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -378,8 +383,12 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		// Set ping text 
 		string strPing = Math.Floor(ping).ToString();
 		
+		// Over limit 
 		if (ping > PING_LIMIT || ping < 0)
+		{
 			strPing = PING_LIMIT.ToString() + "#ENF-ComboModifier";
+			displayState = m_aPingStates[m_aPingStates.Count() - 1];
+		}
 		
 		SetCellText("Ping", strPing);
 			
@@ -394,14 +403,15 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set button visuals and behavior 
-	protected void EmptyVisuals(bool enable)
+	void EmptyVisuals(bool enable)
 	{
-		m_wRoot.SetEnabled(!enable);
+		//m_wRoot.SetEnabled(!enable);
 		
 		// Set widgets 
-		m_wBackground.SetVisible(!enable);
-		m_wBackgroundEmpty.SetVisible(enable);
+		//m_wBackground.SetVisible(!enable);
+		//m_wBackgroundEmpty.SetVisible(enable);
 		m_wHorizontalContent.SetVisible(!enable);
+		m_wLoading.SetVisible(enable);
 	}
 	
 	//------------------------------------------------------------------------------------------------

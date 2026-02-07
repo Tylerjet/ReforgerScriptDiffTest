@@ -101,6 +101,9 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("12", UIWidgets.EditBox, desc: "Optic misalignment scale in horizontal axis", params: "0 1000 0.1", category: "Effects")]
 	protected float m_fOpticMisalignmentScaleVertical;
 	
+	[Attribute("0", UIWidgets.EditBox, desc: "Optic misalignment damping speed - intended for binoculars, the higher, the faster the misalignment gets zeroed", params: "0 60 0.1", category: "Effects")]
+	protected float m_fMisalignmentDampingSpeed;
+	
 	[Attribute("1", UIWidgets.EditBox, desc: "Vignette adjustment speed - the faster, the less inertia there is", params: "0 60 0.1", category: "Effects")]
 	protected float m_fVignetteMoveSpeed;
 	
@@ -182,6 +185,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	// Overall movement 
 	protected vector m_vObjectiveOffset; // Objective and reticle offset
 	protected vector m_vVignetteOffset; // Vignette offset
+	protected vector m_vMisalignmentOffset;
 	
 	// Rotation movement 
 	[Attribute("0.001", UIWidgets.EditBox, "Lower limit for movement rotation effect", params: "0.001 0.5 0.0001", category: "Effects")]
@@ -624,6 +628,14 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	{
 		// Update vignette and reticle direction
 		vector misalignment = GetMisalignment() * -m_fMagnification;
+		
+		// Stabilize binocular reticle over time
+		if (m_fMisalignmentDampingSpeed > 0)
+		{
+			m_vMisalignmentOffset = vector.Lerp(m_vMisalignmentOffset, misalignment, timeSlice * m_fMisalignmentDampingSpeed);
+			misalignment = misalignment - m_vMisalignmentOffset;
+		}
+		
 		misalignment[0] = misalignment[0] * m_fOpticMisalignmentScaleHorizontal;
 		misalignment[1] = misalignment[1] * m_fOpticMisalignmentScaleVertical;
 		

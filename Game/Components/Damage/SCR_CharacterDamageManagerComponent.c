@@ -401,11 +401,32 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
+	//! Add bleeding to a particular physical hitzone
+	void AddParticularBleeding(string hitZoneName = "Chest")
+	{
+		SCR_CharacterHitZone targetHitZone = SCR_CharacterHitZone.Cast( GetHitZoneByName(hitZoneName));
+		
+		if (!targetHitZone)
+			return;
+		
+		array<HitZone> hitZones = {};
+		GetAllHitZones(hitZones);
+				
+		int hitZoneIndex = hitZones.Find(targetHitZone);
+		if (hitZoneIndex >= 0)
+		{
+			int colliderDescriptorIndex = Math.RandomInt(0, targetHitZone.GetNumColliderDescriptors() - 1);
+			RpcDo_AddBleedingHitZone(hitZoneIndex, colliderDescriptorIndex);
+			Rpc(RpcDo_AddBleedingHitZone, hitZoneIndex, colliderDescriptorIndex);
+		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
 	//! Add bleeding to a random physical hitzone
 	void AddRandomBleeding()
 	{
 		array<HitZone> hitZones = {};
-		array<SCR_CharacterHitZone> validHitZones = {};
+		array<HitZone> validHitZones = {};
 		GetPhysicalHitZones(hitZones);
 		
 		foreach (HitZone hitZone: hitZones)
@@ -423,9 +444,10 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		if (validHitZones.IsEmpty())
 			return;
 		
-		SCR_CharacterHitZone randomHitZone = validHitZones.GetRandomElement();
-		if (!randomHitZone)
-			return;
+		HitZone randomHitZone = validHitZones.GetRandomElement();
+		
+		hitZones.Clear();
+		GetAllHitZones(hitZones);
 		
 		int hitZoneIndex = hitZones.Find(randomHitZone);
 		if (hitZoneIndex >= 0)
@@ -435,7 +457,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			Rpc(RpcDo_AddBleedingHitZone, hitZoneIndex, colliderDescriptorIndex);
 		}
 	}
-	
+
 	//-----------------------------------------------------------------------------------------------------------
 	void ~SCR_CharacterDamageManagerComponent()
 	{

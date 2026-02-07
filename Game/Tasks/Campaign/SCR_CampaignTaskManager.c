@@ -93,7 +93,7 @@ class SCR_CampaignTaskManager : SCR_BaseTaskManager
 		task.SetTargetFaction(faction);
 		task.SetType(type);
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		/*SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		if (campaign && newTask && SCR_RespawnSystemComponent.GetLocalPlayerFaction() == faction)
 		{
 			string text = task.TASK_AVAILABLE_TEXT + " " + task.GetTitle();
@@ -103,7 +103,7 @@ class SCR_CampaignTaskManager : SCR_BaseTaskManager
 				baseName = task.GetTargetBase().GetBaseNameUpperCase();
 
 			SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, param1: baseName, text2: task.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: UISounds.TASK_CREATED);
-		}
+		}*/
 		
 		if (!IsProxy())
 		{
@@ -268,7 +268,7 @@ class SCR_CampaignTaskManager : SCR_BaseTaskManager
 		task.SetTargetBase(base);
 		task.SetTargetFaction(faction);
 		
-		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		/*SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		if (campaign && SCR_RespawnSystemComponent.GetLocalPlayerFaction() == faction)
 		{
 			string text = task.TASK_AVAILABLE_TEXT + " " + task.GetTitle();
@@ -278,7 +278,7 @@ class SCR_CampaignTaskManager : SCR_BaseTaskManager
 				baseName = task.GetTargetBase().GetBaseNameUpperCase();
 
 			SCR_PopUpNotification.GetInstance().PopupMsg(text, prio: SCR_ECampaignPopupPriority.TASK_AVAILABLE, param1: baseName, text2: task.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT, sound: UISounds.TASK_CREATED);
-		}
+		}*/
 		
 		if (!IsProxy())
 		{

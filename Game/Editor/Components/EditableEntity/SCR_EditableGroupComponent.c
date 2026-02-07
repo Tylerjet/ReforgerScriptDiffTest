@@ -350,10 +350,18 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 				
 				set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>;
 				GetChildren(children, true);
-				foreach (SCR_EditableEntityComponent child: children)
+				if (children.IsEmpty() && !parentEntityPrev)
 				{
-					if (child.GetEntityType() == EEditableEntityType.CHARACTER)
-						child.SetParentEntity(parentEntity);
+					//--- Group is still empty after placing. Wait a bit before attempting to move soldiers under another parent (to prevent endless loop, do it only once by overriding parentEntityPrev)
+					GetGame().GetCallqueue().CallLater(OnParentEntityChanged, 1, false, parentEntity, parentEntity);
+				}
+				else
+				{
+					foreach (SCR_EditableEntityComponent child: children)
+					{
+						if (child.GetEntityType() == EEditableEntityType.CHARACTER)
+							child.SetParentEntity(parentEntity);
+					}
 				}
 				break;
 			}

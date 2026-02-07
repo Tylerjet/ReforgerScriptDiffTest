@@ -307,7 +307,7 @@ class SCR_CampaignDefendTask : SCR_CampaignBaseTask
 		
 		if (showMsg)
 		{
-			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: UISounds.TASK_SUCCEED);
+			SCR_PopUpNotification.GetInstance().PopupMsg(TASK_COMPLETED_TEXT + " " + GetTitle(), prio: SCR_ECampaignPopupPriority.TASK_DONE, param1: m_TargetBase.GetBaseNameUpperCase(), sound: UISounds.TASK_SUCCEED, text2: SCR_BaseTask.TASK_HINT_TEXT, text2param1: SCR_PopUpNotification.TASKS_KEY_IMAGE_FORMAT);
 		}
 		
 		// Reward XP for reconfiguring a relay

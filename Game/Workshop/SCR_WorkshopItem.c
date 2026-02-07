@@ -690,23 +690,13 @@ class SCR_WorkshopItem
 	//! Returns true when we have an old version offline, and the new version
 	bool GetUpdateAvailable()
 	{
-		string currentLocalVersion = GetCurrentLocalVersion();
-		array<string> versions = GetVersions(); // Latest version is always last in the array
+		bool rawUpdateAvailable = false;
+		if (m_Item)
+			rawUpdateAvailable = !m_Item.HasLatestVersion();
 		
-		if (currentLocalVersion.IsEmpty() || versions.IsEmpty())
-			return false;
+		bool updateAvailableByVersions = Internal_GetUpdateAvailable();
 		
-		int id = versions.Find(currentLocalVersion);
-		
-		if (id == -1)	// Our local version was not found in the array - why??
-			return false;
-		
-		int versionCount = versions.Count();
-		
-		if (id == versionCount - 1) // We are at latest version
-			return false;
-		else
-			return true; // Our version is not latest
+		return rawUpdateAvailable || updateAvailableByVersions;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1928,6 +1918,28 @@ class SCR_WorkshopItem
 	void Internal_OnAddonsChecked()
 	{
 		UpdateStateFromWorkshopItem();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected bool Internal_GetUpdateAvailable()
+	{
+		string currentLocalVersion = GetCurrentLocalVersion();
+		array<string> versions = GetVersions(); // Latest version is always last in the array
+		
+		if (currentLocalVersion.IsEmpty() || versions.IsEmpty())
+			return false;
+		
+		int id = versions.Find(currentLocalVersion);
+		
+		if (id == -1)	// Our local version was not found in the array - why??
+			return false;
+		
+		int versionCount = versions.Count();
+		
+		if (id == versionCount - 1) // We are at latest version
+			return false;
+		else
+			return true; // Our version is not latest
 	}
 	
 	//-----------------------------------------------------------------------------------------------

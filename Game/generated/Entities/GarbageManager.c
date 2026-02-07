@@ -60,6 +60,10 @@ class GarbageManager: GenericEntity
 	\return Remaining lifetime in seconds or -1 if none.
 	*/
 	proto external float GetLifetime(IEntity ent);
+	/*!
+	Forcefully disposes of all enqueued garbage instances in a single pass.
+	*/
+	proto external void Flush();
 	
 	// callbacks
 	

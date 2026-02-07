@@ -116,7 +116,10 @@ class SCR_PlacingEditorComponentClass: SCR_BaseEditorComponentClass
 /** @ingroup Editor_Components
 */
 class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
-{	
+{
+	[Attribute(defvalue: "10", category: "Placing", desc: "Spacing between entities placed for multiple recipients")]
+	protected float m_fSpacing;
+	
 	private ResourceName m_SelectedPrefab;
 	private SCR_StatesEditorComponent m_StatesManager;
 	private SCR_PreviewEntityEditorComponent m_PreviewManager;
@@ -575,7 +578,6 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			return result;
 		}
 		
-		float m_fSpacing = 5; //--- ToDo: Member var
 		int rowCount = Math.Round(Math.Sqrt(count));
 		int columnCount = Math.Ceil(Math.Sqrt(count));
 		vector offset = -Vector((rowCount - 1) * m_fSpacing / 2, 0, (columnCount - 1) * m_fSpacing / 2);

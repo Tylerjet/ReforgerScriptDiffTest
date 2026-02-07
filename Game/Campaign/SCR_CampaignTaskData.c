@@ -87,7 +87,7 @@ class SCR_CampaignTaskData : SCR_BaseTaskData
 		campaignTask.SetTargetFaction(faction);
 		campaignTask.SetType(m_eType);
 		
-		NotifyAboutTask(campaignTask);
+		//NotifyAboutTask(campaignTask);
 	}
 
 	//------------------------------------------------------------------------------------------------

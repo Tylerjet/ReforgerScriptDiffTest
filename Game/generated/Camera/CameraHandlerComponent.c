@@ -62,6 +62,11 @@ class CameraHandlerComponent: ScriptComponent
 	event void OnThirdPersonSwitch(bool isInThirdPerson);
 	//! get how long should transition between given cameras be
 	event float GetCameraTransitionTime(int pFrom, int pTo);
+	/*!
+	Weight in the <0, 1> range of how much input sensitivity should be
+	modulated if an overlay camera is active. (0 = main camera, 1 = overlay camera).
+	*/
+	event float GetOverlayCameraFOVScalarWeight();
 };
 
 /** @}*/
