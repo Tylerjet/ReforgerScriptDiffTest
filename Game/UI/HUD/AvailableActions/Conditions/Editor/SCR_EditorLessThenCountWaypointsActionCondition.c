@@ -19,7 +19,7 @@ class SCR_EditorLessThenCountWaypointsActionCondition: SCR_AvailableActionCondit
 		SCR_EditableGroupComponent group;
 		set <SCR_EditableEntityComponent> groupChildren = new set <SCR_EditableEntityComponent>;
 		
-		foreach(SCR_EditableEntityComponent entity: entities)
+		foreach (SCR_EditableEntityComponent entity: entities)
 		{
 			group = SCR_EditableGroupComponent.Cast(entity);
 			

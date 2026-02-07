@@ -1,4 +1,4 @@
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_BlockUIInfo: SCR_UIInfo
 {
 	[Attribute()]
@@ -27,7 +27,7 @@ class SCR_BlockUIInfo: SCR_UIInfo
 		return description;
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_SubBlockUIName: SCR_UIName
 {
 	[Attribute()]
@@ -38,7 +38,7 @@ class SCR_SubBlockUIName: SCR_UIName
 		return m_bInline;
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_BulletPointBlockUIName: SCR_SubBlockUIName
 {	
 	override LocalizedString GetName()
@@ -46,7 +46,7 @@ class SCR_BulletPointBlockUIName: SCR_SubBlockUIName
 		return "<image set='{73BAE6966DBC17CB}UI/Imagesets/Hint/Hint.imageset' name='Bullet' scale='1'/>" + super.GetName(); //--- ToDo: Don't hard-code
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_TipBlockUIName: SCR_SubBlockUIName
 {
 	override LocalizedString GetName()
@@ -54,7 +54,7 @@ class SCR_TipBlockUIName: SCR_SubBlockUIName
 		return "<color rgba='255,255,255,160'><image set='{73BAE6966DBC17CB}UI/Imagesets/Hint/Hint.imageset' name='Tip' scale='1'/> <i>" + super.GetName() + "</i></color>"; //--- ToDo: Don't hard-code
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_DeviceBlockUIName: SCR_SubBlockUIName
 {
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, enums: { ParamEnum("Any", "0"), ParamEnum("Mouse & Keyboard", "1"), ParamEnum("Gamepad", "2")})]
@@ -71,7 +71,7 @@ class SCR_DeviceBlockUIName: SCR_SubBlockUIName
 		return isInputMatch;
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 {
 	[Attribute()]
@@ -96,7 +96,7 @@ class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 		return string.Format("<color rgba='%2,%3,%4,%5'><action name='%1' scale='1.25'/></color>", m_sActionName, colorR, colorG, colorB, colorA) + m_sDelimiter + super.GetName();
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 {
 	[Attribute()]
@@ -139,13 +139,12 @@ class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 				case 1: keys += m_sHoldModifier; break;
 				case 2: keys += m_sDoubleModifier; break;
 			}
-			keys += string.Format("<key name='%1' scale='1.25'/>", entry.m_sKey);
+			keys += string.Format("<%2 name='%1' scale='1.25'/>", entry.m_sKey, entry.m_Tag);
 		}
-		
 		return string.Format("<color rgba='%2,%3,%4,%5'>%1</color>", keys, colorR, colorG, colorB, colorA) + m_sDelimiter + super.GetName();
 	}
 };
-[BaseContainerProps(), BaseContainerCustomTitleField("m_sKey")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sKey")]
 class SCR_KeyBlockEntry
 {
 	[Attribute()]
@@ -156,9 +155,12 @@ class SCR_KeyBlockEntry
 	
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, enums: { ParamEnum("None", "0"), ParamEnum("Hold", "1"), ParamEnum("Double", "2")})]
 	int m_iModifier;
+	
+	[Attribute("key", uiwidget: UIWidgets.ComboBox, enums: { ParamEnum("key", "key"), ParamEnum("action", "action")})]
+	string m_Tag;
 };
 
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_SimpleTagBlockUIName: SCR_SubBlockUIName
 {
 	[Attribute("0", uiwidget: UIWidgets.Flags, enums: { ParamEnum("<p>", "1"), ParamEnum("<b>", "2"), ParamEnum("<i>", "4"), ParamEnum("<h1>", "8"), ParamEnum("<h2>", "16") })]
@@ -190,7 +192,7 @@ class SCR_SimpleTagBlockUIName: SCR_SubBlockUIName
 	}
 };
 /*
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_TagBlockUIName: SCR_SubBlockUIName
 {
 	[Attribute()]

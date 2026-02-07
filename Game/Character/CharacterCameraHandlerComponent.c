@@ -12,6 +12,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	ref SCR_RecoilCameraShakeProgress m_pRecoilShake = new SCR_RecoilCameraShakeProgress();
 	
 	protected ref ScriptInvoker m_OnThirdPersonSwitch = new ScriptInvoker();
+	static protected float s_fOverlayCameraFOV;
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_CharacterCameraHandlerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
@@ -58,8 +59,6 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			OnThirdPersonSwitch(IsInThirdPerson());
 		}
 		
-		if (m_InputManager)
-			m_InputManager.AddActionListener("SwitchCameraType", EActionTrigger.PRESSED, OnCameraSwitchPressed);	
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (playerController)
@@ -85,12 +84,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		
 		if (m_LoadoutManager)
 		{
-			auto ent = m_LoadoutManager.GetClothByArea(ELoadoutArea.ELA_HeadCover);
+			auto ent = m_LoadoutManager.GetClothByArea(LoadoutHeadCoverArea);
 			if (ent)
 			{
-				auto par = ParametricMaterialInstanceComponent.Cast(ent.FindComponent(ParametricMaterialInstanceComponent));
-				if (par)
-					par.SetUserAlphaTestParam(a);
+				auto cloth = BaseLoadoutClothComponent.Cast(ent.FindComponent(BaseLoadoutClothComponent));
+				if (cloth)
+					cloth.SetAlpha(a);
 			}
 		}
 	}
@@ -101,8 +100,6 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		if (m_OwnerCharacter)
 			OnAlphatestChange(0);
 		
-		if (m_InputManager)
-			m_InputManager.RemoveActionListener("SwitchCameraType", EActionTrigger.PRESSED, OnCameraSwitchPressed);
 		m_fFocusTargetValue = 0.0;
 		m_fFocusValue = 0.0;
 		SetFocusMode(m_fFocusValue);
@@ -183,11 +180,23 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			return CharacterCameraSet.CHARACTERCAMERA_1ST;
 
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
+		
+		if (m_ControllerComponent.GetInspect())
+		{
+			return CharacterCameraSet.CHARACTERCAMERA_1ST;
+		}
+		
+		bool isRolling = false;
+		if (m_ControllerComponent.IsRoll() && m_CmdHandler)
+		{
+			CharacterCommandMove moveCmd = m_CmdHandler.GetCommandMove();
+			//! we need to stabilize camera before roll action is complete, so by that time player is ready to aim at target
+			if (moveCmd && !moveCmd.IsBlendingOutRoll())
+				isRolling = true;
+		}
+		
 		if (IsInThirdPerson())
 		{
-			if (m_ControllerComponent.GetInspect())
-				return CharacterCameraSet.CHARACTERCAMERA_1ST;
-			
 			if( m_OwnerCharacter.IsInVehicle() && compartmentAccess && !compartmentAccess.IsGettingOut() )
 			{
 				bool isTurretAds = false;
@@ -208,9 +217,27 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_CLIMB;
 			
 			if( m_CharMovementState.m_iStanceIdx == ECharacterStance.PRONE )
+			{
+				if (ShouldForceFirstPersonInThirdPerson(m_ControllerComponent))
+				{
+					if (isRolling)
+						return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
+					
+					return CharacterCameraSet.CHARACTERCAMERA_1ST;
+				}
+				
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_PRO;
+			}
 			else if( m_CharMovementState.m_iStanceIdx == ECharacterStance.CROUCH )
+			{
+				if (ShouldForceFirstPersonInThirdPerson(m_ControllerComponent))
+					return CharacterCameraSet.CHARACTERCAMERA_1ST;
+				
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_CRO;
+			}
+			
+			if (ShouldForceFirstPersonInThirdPerson(m_ControllerComponent))
+					return CharacterCameraSet.CHARACTERCAMERA_1ST;
 			
 			return CharacterCameraSet.CHARACTERCAMERA_3RD_ERC;
 		}
@@ -237,14 +264,22 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		}
 		//! Setup here all conditions where we want to use camera transformation from bone directly
 		//! Roll case
-		else if (m_ControllerComponent.IsRoll() && m_CmdHandler)
+		else if (isRolling)
 		{
-			CharacterCommandMove moveCmd = m_CmdHandler.GetCommandMove();
-			//! we need to stabilize camera before roll action is complete, so by that time player is ready to aim at target
-			if (moveCmd && !moveCmd.IsBlendingOutRoll())
-				return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
+			return CharacterCameraSet.CHARACTERCAMERA_1ST_BONE_TRANSFORM;
 		}
 		return CharacterCameraSet.CHARACTERCAMERA_1ST;
+	}
+	
+	protected bool ShouldForceFirstPersonInThirdPerson(CharacterControllerComponent controller)
+	{
+		if (!m_ControllerComponent.GetWeaponADSInput())
+			return false;
+		
+		if (m_ControllerComponent.IsSprinting() || m_ControllerComponent.IsSwimming())
+			return false;
+		
+		return true;
 	}
 	
 	protected float m_fADSProgress;
@@ -469,7 +504,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnCameraSwitchPressed()
+	void OnCameraSwitchPressed()
 	{
 		bool current = IsInThirdPerson();
 		SetThirdPerson(!current);
@@ -909,12 +944,28 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected bool CanUseOverlayCameraFOV()
+	{
+		if (m_ControllerComponent)
+		{
+			EWeaponObstructedState obstructedState = m_ControllerComponent.GetWeaponObstructedState();
+			if (obstructedState >= EWeaponObstructedState.SLIGHTLY_OBSTRUCTED_CAN_FIRE)
+				return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override float GetOverlayCameraFOVScalarWeight()
 	{
 		if (!m_ControllerComponent)
 			return 0.0;
 		
 		if (m_ControllerComponent.IsFreeLookEnabled())
+			return 0.0;
+		
+		if (!CanUseOverlayCameraFOV())
 			return 0.0;
 		
 		return 1.0;
@@ -924,5 +975,21 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	SCR_RecoilCameraShakeParams GetRecoilShakeParams()
 	{
 		return m_pRecoilShakeParams;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void SetOverlayCameraFOV(float fov)
+	{
+		s_fOverlayCameraFOV = fov;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override event float CalculateFovScalar(notnull CameraBase mainCamera, CameraBase overlayCamera)
+	{
+		float fov = mainCamera.GetVerticalFOV();
+		if (overlayCamera && s_fOverlayCameraFOV > 0)
+			fov = Math.Lerp(fov, s_fOverlayCameraFOV, GetOverlayCameraFOVScalarWeight());
+		
+		return fov / 90;
 	}
 };

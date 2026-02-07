@@ -492,6 +492,14 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	{
 		return Event_OnClosedServerCallback;
 	}
+	override ScriptInvoker GetOnActivateServer()
+	{
+		return Event_OnOpenedServer;
+	}
+	override ScriptInvoker GetOnDeactivateServer()
+	{
+		return Event_OnClosedServer;
+	}
 	override ScriptInvoker GetOnRequest()
 	{
 		return Event_OnRequest;
@@ -952,7 +960,12 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		{
 			int playerID = GetPlayerID();
 			if (playerID > 0)
-				SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, modeEntity.GetOnAddNotification(), playerID);
+			{
+				if (!modeEntity.SendNotificationLocalOnly())
+					SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, modeEntity.GetOnAddNotification(), playerID);
+				else if (SCR_PlayerController.GetLocalPlayerId() == playerID)
+					SCR_NotificationsComponent.SendLocal(modeEntity.GetOnAddNotification(), playerID);
+			}	
 		}
 		
 		
@@ -979,8 +992,15 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		if (!OnDisconnnect)
 		{
 			int playerID = GetPlayerID();
-		if (playerID > 0)
-			SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, modeEntity.GetOnRemoveNotification(), playerID);
+		
+			if (playerID > 0)
+			{
+				if (!modeEntity.SendNotificationLocalOnly())
+					SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, modeEntity.GetOnRemoveNotification(), playerID);
+				else if (SCR_PlayerController.GetLocalPlayerId() == playerID)
+					SCR_NotificationsComponent.SendLocal(modeEntity.GetOnRemoveNotification(), playerID);
+			}
+				
 		}
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
@@ -1037,9 +1057,16 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				return;
 			}
 		}
+		
+		if (m_CurrentModeEntity)
+			m_CurrentModeEntity.DeactivateModeServer();
+		
 		Rpc(SetCurrentModeOwner, mode);
 		m_CurrentMode = mode;
 		m_CurrentModeEntity = modeEntity;
+		
+		if (m_CurrentModeEntity)
+			m_CurrentModeEntity.ActivateModeServer();
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void SetCurrentModeOwner(EEditorMode mode)

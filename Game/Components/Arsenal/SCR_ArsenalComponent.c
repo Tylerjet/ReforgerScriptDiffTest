@@ -18,7 +18,7 @@ class SCR_ArsenalComponent : ScriptComponent
 	protected UniversalInventoryStorageComponent m_StorageComponent;
 	
 	protected FactionManager m_FactionManager;
-	protected SCR_FactionControlComponent m_FactionComponent;
+	protected SCR_FactionAffiliationComponent m_FactionComponent;
 	
 	protected bool m_bIsClearingInventory;
 	
@@ -72,7 +72,7 @@ class SCR_ArsenalComponent : ScriptComponent
 	{
 		if (m_FactionComponent)
 		{
-			faction = SCR_Faction.Cast(m_FactionComponent.GetFaction());
+			faction = SCR_Faction.Cast(m_FactionComponent.GetAffiliatedFaction());
 		}
 		return faction != null;
 	}
@@ -152,17 +152,23 @@ class SCR_ArsenalComponent : ScriptComponent
 	
 	protected void InsertItem(Resource itemPrefab)
 	{
-		if (!m_InventoryComponent || !itemPrefab.IsValid() || m_bIsClearingInventory)
+		if (!m_InventoryComponent || !itemPrefab || !itemPrefab.IsValid() || m_bIsClearingInventory)
 		{
 			return;
 		}
 		
 		IEntity itemEntity = GetGame().SpawnEntityPrefab(itemPrefab);
-		// Insert into specific root storage component, will otherwise add attchments to weapons, put items in backpack etc.
-		if (!itemEntity || !m_InventoryComponent.TryInsertItemInStorage(itemEntity, m_StorageComponent))
+		if (!itemEntity)
+		{
+			Print(string.Format("Could not spawn to Arsenal/storage %1 Item: %2 Storage: %3", this, itemPrefab, m_StorageComponent), LogLevel.WARNING);
+			return;
+		}
+		// Insert into specific root storage component, will otherwise add attachments to weapons, put items in backpack etc.
+		if (!m_InventoryComponent.TryInsertItemInStorage(itemEntity, m_StorageComponent))
 		{
 			RplComponent.DeleteRplEntity(itemEntity, false);
-			Print(string.Format("DEBUG LINE | SCR_ArsenalComponent.c: 79 | Could not add item to Arsenal/storage %1 Item: %2 Storage: %3", this, itemPrefab, m_StorageComponent), LogLevel.WARNING);
+			Print(string.Format("Could not add item to Arsenal/storage %1 Item: %2 Storage: %3", this, itemPrefab, m_StorageComponent), LogLevel.WARNING);
+			return;
 		}
 	}
 	
@@ -193,7 +199,7 @@ class SCR_ArsenalComponent : ScriptComponent
 		owner.SetFlags(EntityFlags.ACTIVE, true);
 		
 		m_FactionManager = GetGame().GetFactionManager();
-		m_FactionComponent = SCR_FactionControlComponent.Cast(owner.FindComponent(SCR_FactionControlComponent));
+		m_FactionComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 		
 		// Initialize inventory of arsenal, if applicable (Display racks without additional inventory will return here)
 		m_InventoryComponent = SCR_ArsenalInventoryStorageManagerComponent.Cast(owner.FindComponent(SCR_ArsenalInventoryStorageManagerComponent));
@@ -211,7 +217,7 @@ class SCR_ArsenalComponent : ScriptComponent
 			if (m_InventoryComponent)
 				m_InventoryComponent.m_OnItemRemovedInvoker.Insert(OnItemRemoved);
 			if (m_FactionComponent)
-				m_FactionComponent.GetOnFactionChanged().Insert(OnFactionChanged);
+				m_FactionComponent.GetOnFactionUpdate().Insert(OnFactionChanged);
 		}
 	}
 	
@@ -228,7 +234,7 @@ class SCR_ArsenalComponent : ScriptComponent
 			if (m_InventoryComponent)
 				m_InventoryComponent.m_OnItemRemovedInvoker.Remove(OnItemRemoved);
 			if (m_FactionComponent)
-				m_FactionComponent.GetOnFactionChanged().Remove(OnFactionChanged);
+				m_FactionComponent.GetOnFactionUpdate().Remove(OnFactionChanged);
 		}
 	}
 };

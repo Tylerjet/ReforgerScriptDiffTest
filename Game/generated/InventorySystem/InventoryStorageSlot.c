@@ -13,6 +13,7 @@ class InventoryStorageSlot: EntitySlotInfo
 {
 	proto external bool ScriptOnRplSave(ScriptBitWriter writer);
 	proto external bool ScriptOnRplLoad(ScriptBitReader reader);
+	proto external vector GetInspectionWidgetOffset();
 	//! Either current slot is locked
 	proto external bool IsLocked();
 	//! Get slot id

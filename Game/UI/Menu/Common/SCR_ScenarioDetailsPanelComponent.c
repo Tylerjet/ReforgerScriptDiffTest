@@ -72,7 +72,7 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		}
 		
 		// Type
-		if (m_Header)
+		/*if (m_Header)
 		{
 			string gameModeText = m_Header.m_sGameMode;
 			m_Widgets.m_TypeText.SetText(m_Header.m_sGameMode);
@@ -83,6 +83,13 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			m_Widgets.m_TypeOverlay.SetVisible(false);
 			m_Widgets.m_TypeText.SetText(string.Empty);
 		}
+		
+		m_Widgets.m_TypeOverlay.SetVisible(GetGame().IsDev());
+		
+		if (GetGame().IsDev())
+			m_Widgets.m_TypeText.SetText(m_Scenario.Id());
+		
+		*/
 		
 		// Description
 		if (m_Header)

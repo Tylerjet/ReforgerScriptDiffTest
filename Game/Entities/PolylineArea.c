@@ -104,7 +104,7 @@ class PolylineArea: GenericEntity
 		m_fBBoxMinY = m_PositionsWorld[0][2];
 		m_fBBoxMaxY = m_PositionsWorld[0][2];
 		// convert array of vectors into array of points, build debug lines and calculate bbox
-		foreach(int i, vector pos: m_PositionsWorld)
+		foreach (int i, vector pos: m_PositionsWorld)
 		{
 			m_PosWorldDbg[i] = pos;
 			m_PointsWorld.Insert(pos[0]);

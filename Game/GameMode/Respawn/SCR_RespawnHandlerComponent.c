@@ -112,12 +112,8 @@ class SCR_RespawnHandlerComponent : SCR_BaseGameModeComponent
 		m_sEnqueuedPlayers.Remove(index);
 		OnPlayerDequeued(playerId);
 
-		if (playerId == SCR_PlayerController.GetLocalPlayerId())
-		{
-			SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerId));
-			if (respawnComponent)
-				respawnComponent.AcknowledgePlayerDequeued();		
-		}
+		SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerId));
+		respawnComponent.AcknowledgePlayerDequeued();
 
 		return true;
 	}

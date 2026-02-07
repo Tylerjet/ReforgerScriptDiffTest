@@ -1,16 +1,17 @@
-//#define DEBUG_CAREER
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_DataCollectorModule : Managed
 {
-	protected ref map<int, TextWidget> StatsVisualization;
+	protected ref map<int, TextWidget> m_StatsVisualization;
+	
+	protected float m_fTimeSinceUpdate = 0;
+	protected float m_fTimeToUpdate = 1;
 	
 	//***************************//
 	/* OVERRIDDEN BY ALL MODULES */
 	//***************************//
 	
 	//------------------------------------------------------------------------------------------------
-	void Execute(IEntity owner, float timeTick)
+	void Update(IEntity owner, float timeTick)
 	{}
 	
 	//***********************************************************//
@@ -28,29 +29,12 @@ class SCR_DataCollectorModule : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected protected void AddInvokers(IEntity player)
-	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player)));
-		
-		if (!playerController)
-			return;
-		
-		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-	}
+	protected void AddInvokers(IEntity player)
+	{}
 	
 	//------------------------------------------------------------------------------------------------
-	protected protected void RemoveInvokers(IEntity player)
-	{
-		if (!player)
-			return;
-		
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(player)));
-		
-		if (!playerController)
-			return;
-		
-		playerController.m_OnControlledEntityChanged.Remove(OnControlledEntityChanged);
-	}
+	protected void RemoveInvokers(IEntity player)
+	{}
 	
 	//------------------------------------------------------------------------------------------------
 	void OnPlayerSpawned(int playerID, IEntity controlledEntity)
@@ -72,20 +56,22 @@ class SCR_DataCollectorModule : Managed
 	//*****************//
 	
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerConnected(int playerID)
+	sealed void OnPlayerAuditSuccess(int playerID)
 	{}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnControlledEntityChanged(IEntity from, IEntity to)
+	sealed void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
-		//The entity changed. If there's no entity now we can assume the player disconnected or it hasn't spawned yet.
+		//The entity changed. 
+		
+		//The previous entity, if it still exists we remove the invokers from it
+		if (from)
+			RemoveInvokers(from);
+		
+		//The new entity. If there's no entity yet we can assume the player disconnected or it hasn't spawned.
 		//In this case we do nothing and keep listening to the spawn invoker. Otherwise we add the invokers
 		if (to)
 			AddInvokers(to);
-		
-		//Now for the previous entity, if it still exists we remove the invokers from it
-		if (from)
-			RemoveInvokers(from);
 	}
 	
 	//************************************************************************//
@@ -97,9 +83,9 @@ class SCR_DataCollectorModule : Managed
 	//------------------------------------------------------------------------------------------------
 	void CreateVisualization()
 	{
-#ifdef DEBUG_CAREER
-		StatsVisualization = new map<int, TextWidget>();
-#endif
+		#ifdef DEBUG_CAREER
+			m_StatsVisualization = new map<int, TextWidget>();
+		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -116,6 +102,6 @@ class SCR_DataCollectorModule : Managed
 			return;
 		
 		StatName.SetText(text); StatValue.SetText(value.ToString());
-		StatsVisualization.Insert(id, StatValue);
+		m_StatsVisualization.Insert(id, StatValue);
 	}
 };

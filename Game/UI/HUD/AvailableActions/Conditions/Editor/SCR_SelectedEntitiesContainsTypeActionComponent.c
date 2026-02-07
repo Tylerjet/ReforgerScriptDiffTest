@@ -14,7 +14,7 @@ class SCR_SelectedEntitiesContainsTypeActionComponent: SCR_AvailableActionCondit
 		set <SCR_EditableEntityComponent> entities = new set <SCR_EditableEntityComponent>;
 		SCR_BaseEditableEntityFilter.GetEnititiesStatic(entities, EEditableEntityState.SELECTED);
 		
-		foreach(SCR_EditableEntityComponent entity: entities)
+		foreach (SCR_EditableEntityComponent entity: entities)
 		{
 			if (entity.GetEntityType() == m_EnityType)
 				return GetReturnResult(true));

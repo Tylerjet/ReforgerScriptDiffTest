@@ -53,6 +53,9 @@ class SCR_DescriptorDefaultsBase
 	[Attribute("0", UIWidgets.ComboBox, "Descriptor type", "", ParamEnumArray.FromEnum(EMapDescriptorType))]
 	int m_iDescriptorType;
 	
+	[Attribute("0", UIWidgets.EditBox, desc: "Priority in displaying the Descriptor", "0 inf 1")]
+	int m_iPriority;
+	
 	[Attribute("0", UIWidgets.EditBox, desc: "imageset Index, determines to which imageset should be referred for its image", "0 100 1")]
 	int m_iImageSetIndex;
 	
@@ -62,7 +65,7 @@ class SCR_DescriptorDefaultsBase
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "This descriptor is configured but not visible without being activated by something else")]
 	bool m_bIsDefaultInvisible;
 
-	[Attribute("1", UIWidgets.ComboBox, "Descriptor group type", "", ParamEnumArray.FromEnum(EMapDescriptorGroup))]
+	[Attribute("0", UIWidgets.ComboBox, "Descriptor group type", "", ParamEnumArray.FromEnum(EMapDescriptorGroup))]
 	int m_iDescriptorGroupType;
 
 	[Attribute("1.0", UIWidgets.EditBox, desc: "Group scale factor", "0.1 10.0 0.01")]
@@ -85,6 +88,7 @@ class SCR_DescriptorDefaultsBase
 	{
 		props.SetGroupType(m_iDescriptorGroupType);
 		props.SetGroupScale(m_fGroupScale);
+		props.SetPriority(m_iPriority);
 		
 		if (m_bIsDefaultInvisible)
 			props.SetVisible(false);

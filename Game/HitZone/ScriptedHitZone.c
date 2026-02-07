@@ -95,7 +95,7 @@ class ScriptedHitZone : HitZone
 	protected void OnDamageStateChanged()
 	{
 		if (Event_EOnDamageStateChanged)
-			Event_EOnDamageStateChanged.Invoke();
+			Event_EOnDamageStateChanged.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -147,5 +147,37 @@ class ScriptedHitZone : HitZone
 			effectiveDamage = 0;
 
 		return effectiveDamage;
+	}
+	
+	//	TODO@FAC. To be implemented in gamecode in future also add regen scale multiplier!!!
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Give any particular hitzone a regeneration over time
+	*/
+	void CustomRegeneration(IEntity target, float itemRegenerationDuration, float itemRegenerationSpeed = 0, float itemAbsoluteRegenerationAmount = 0)
+	{
+		if (itemRegenerationSpeed)	// If a regeneration time is set, regen will occur for given amount of time at the itemRegenerationSpeed
+		{
+			GetGame().GetCallqueue().CallLater(RemoveCustomRegeneration, itemRegenerationDuration * 1000, false, target, itemRegenerationSpeed);
+		}
+		else if (itemAbsoluteRegenerationAmount)	// If an absolute regen amount is set instead of a duration, the regen will last until the amount of points has been distributed at the itemRegenerationSpeed
+		{
+			itemRegenerationSpeed = itemAbsoluteRegenerationAmount / itemRegenerationDuration;
+			GetGame().GetCallqueue().CallLater(RemoveCustomRegeneration, itemRegenerationDuration * 1000, false, target, itemRegenerationSpeed);
+		}
+		else	// If regenerating value is 0, quit.
+		{
+			Print("Consumable with regenerating abilities was used but no duration or amount was defined", LogLevel.WARNING);
+			return;
+		}
+		
+		float currentRegen = GetDamageOverTime(EDamageType.FIRE);
+		SetDamageOverTime(EDamageType.FIRE, currentRegen + itemRegenerationSpeed * -1);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	void RemoveCustomRegeneration(IEntity target, float itemRegenerationSpeed)
+	{
+		SetDamageOverTime(EDamageType.FIRE, (GetDamageOverTime(EDamageType.FIRE) + itemRegenerationSpeed) );
 	}
 };

@@ -365,6 +365,19 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void ShowTabByIdentifier(string identifier, bool callAction = true, bool playSound = true)
+	{		
+		for(int i = 0; i < m_aElements.Count(); i++)
+		{
+			if (m_aElements[i].m_sTabIdentifier == identifier)
+			{
+				ShowTab(i, callAction, playSound);
+				return;		
+			}	
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	int GetShownTab()
 	{
 		return m_iSelectedTab;
@@ -377,7 +390,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AddTab(ResourceName layout, string content, bool enabled = true, ResourceName tabImage = string.Empty, ResourceName iconLayout = string.Empty, float width = 32, float height = 32, string contentParam1 = string.Empty, string contentParam2 = string.Empty)
+	void AddTab(ResourceName layout, string content, bool enabled = true, ResourceName tabImage = string.Empty, ResourceName iconLayout = string.Empty, float width = 32, float height = 32, string contentParam1 = string.Empty, string contentParam2 = string.Empty, string identifier = string.Empty)
 	{
 		SCR_TabViewContent tabContent = new SCR_TabViewContent;
 		tabContent.m_ElementLayout = layout;
@@ -385,6 +398,7 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		tabContent.m_sTabButtonContent = content;
 		tabContent.m_sTabButtonContentParam1 = contentParam1;
 		tabContent.m_sTabButtonContentParam2 = contentParam2;
+		tabContent.m_sTabIdentifier = identifier;
 		
 		if (iconLayout != string.Empty)
 		{
@@ -450,6 +464,19 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 			ShowTab(newIndex, true);
 		
 		UpdatePagingButtons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveTabByIdentifier(string identifier)
+	{
+		for(int i = 0; i < m_aElements.Count(); i++)
+		{
+			if (m_aElements[i].m_sTabIdentifier == identifier)
+			{
+				RemoveTab(i);
+				return;		
+			}	
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -674,6 +701,22 @@ class SCR_TabViewComponent : ScriptedWidgetComponent
 		tab.m_bEnabled = tab.m_ButtonComponent.IsVisible() && tab.m_ButtonComponent.IsEnabled();
 		
 		UpdatePagingButtons();
+		
+		//~ If active tab is set invisible try to set new active tab. If fails it will keep the current tab active
+		if (!visible && tabIndex == GetShownTab())
+		{
+			for (int i = 0; i < m_aElements.Count(); i++)
+			{
+				if (!m_aElements[i].m_ButtonComponent)
+					continue;
+				
+				if (m_aElements[i].m_ButtonComponent.IsVisible() && m_aElements[i].m_ButtonComponent.IsEnabled())
+				{
+					ShowTab(i, true, animate);
+					break;
+				}
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -764,6 +807,9 @@ class SCR_TabViewContent
 	
 	[Attribute("Button", UIWidgets.EditBox, "Content of the button: It can contain either name or image resource")]
 	string m_sTabButtonContent;
+	
+	[Attribute("", UIWidgets.EditBox, "Unique identifier of tab used in script to look for this one - optional for now")]
+	string m_sTabIdentifier;
 	
 	[Attribute(desc: "Param if m_sTabButtonContent is name rather then image resource")]
 	LocalizedString m_sTabButtonContentParam1;

@@ -10,10 +10,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AIGroup m_Owner;
 	SCR_AIConfigComponent m_ConfigComponent;
 	SCR_AIGroupInfoComponent m_GroupInfo;
-	ref array<IEntity> m_aListOfKnownEnemies = new ref array<IEntity>;
+	ref array<IEntity> m_aTargetEntities = new ref array<IEntity>;
+	ref array<ref SCR_AITargetInfo> m_aTargetInfos = new ref array<ref SCR_AITargetInfo>;
 	ref array<SCR_AIInfoComponent> m_aListOfAIInfo = new ref array<SCR_AIInfoComponent>;
-	ref array<EFireTeams> m_aFireteamsForKnownEnemies = new ref array<EFireTeams>; // maps list of known enemies to fireteams - MUST keep the same order!
-	ref array<vector> m_aPositionsForKnownEnemies = new ref array<vector>; // maps list of known enemies to last known positions - MUST keep the same order!
 	
 	protected bool m_bFireteamsInitialized; 
 	protected bool m_bRestartActivity;
@@ -125,86 +124,56 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		if (!m_Owner)
 			return;
 		
-		bool anyEnemyRemoved = false;
-		for (int i = m_aListOfKnownEnemies.Count() - 1; i >= 0; i--)
-		{
-			IEntity enemyEnt = m_aListOfKnownEnemies[i];
+		bool anyEnemyRemoved = ClearInvalidTargets(true);
 			
-			if (SCR_AIIsAlive.IsAlive(enemyEnt))
-				continue;
-			
-			RemoveKnownEnemy(enemyEnt);
-			anyEnemyRemoved = true;
-		}
-		
-		if (anyEnemyRemoved)
+		if (anyEnemyRemoved && m_aTargetEntities.Count() == 0)
 		{
-			if (!IsSomeEnemyKnown())
-				SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.COMPLETED);
+			SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.COMPLETED);
 		}
-		
-		
-		/*
-		// Temporary disabled the code below beccause it could flood the group inbox
-		AICommunicationComponent mailbox = m_Owner.GetCommunicationComponent();
-		if (mailbox)
-		{
-			foreach (IEntity e : m_aListOfKnownEnemies)
-			{
-				if (!SCR_AIIsAlive.IsAlive(e))
-				{
-					SCR_AIMessage_TargetEliminated msg = new SCR_AIMessage_TargetEliminated;
-					msg.m_MessageType = EMessageType_Info.TARGET_ELIMINATED;
-					msg.SetText("Temporal remove from group util");
-					msg.SetReceiver(m_Owner);
-					msg.m_Target = e;
-					mailbox.RequestBroadcast(msg, AIAgent.Cast(e));
-				}
-			}
-		}
-		*/
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	bool AddKnownEnemy(IEntity enemy)
+	bool AddOrUpdateTarget(SCR_AITargetInfo enemyTargetInfo)
 	{
-		if (!enemy)
+		if (!enemyTargetInfo || !enemyTargetInfo.m_TargetEntity)
 			return false;
+		IEntity enemy = enemyTargetInfo.m_TargetEntity;
 		
 		if ( AIAgent.Cast(enemy) ) 
 			enemy = AIAgent.Cast(enemy).GetControlledEntity();
 		
-		if (m_aListOfKnownEnemies.IsEmpty())
+		int id = m_aTargetEntities.Find(enemy);
+		if (id > -1 && m_aTargetInfos[id].m_fLastSeenTime < enemyTargetInfo.m_fLastSeenTime)
 		{
-			Faction enemyFaction;
-			FactionAffiliationComponent fComp = FactionAffiliationComponent.Cast(enemy.FindComponent(FactionAffiliationComponent));
-		
-			if (fComp)
-				enemyFaction = fComp.GetAffiliatedFaction();
-			
-			Event_OnEnemyDetected.Invoke(m_Owner, enemyFaction);
-		}
-		else if (m_aListOfKnownEnemies.Find(enemy) >= 0)
+			// old enemy, new information
+			m_aTargetInfos[id].m_vLastSeenPosition = enemyTargetInfo.m_vLastSeenPosition;
+			m_aTargetInfos[id].m_fLastSeenTime = enemyTargetInfo.m_fLastSeenTime;
 			return false;
-		
-		m_aListOfKnownEnemies.Insert(enemy);
-		m_aFireteamsForKnownEnemies.Insert(EFireTeams.NONE);
-		m_aPositionsForKnownEnemies.Insert(vector.Zero);
+		}		
+		// new enemy found
+		SCR_AITargetInfo targetInfo = new SCR_AITargetInfo(enemy, enemyTargetInfo.m_vLastSeenPosition, enemyTargetInfo.m_fLastSeenTime);
+		m_aTargetEntities.Insert(enemy);
+		m_aTargetInfos.Insert(targetInfo);
+		Faction enemyFaction;
+		FactionAffiliationComponent fComp = FactionAffiliationComponent.Cast(enemy.FindComponent(FactionAffiliationComponent));
+		if (fComp)
+			enemyFaction = fComp.GetAffiliatedFaction();
+		Event_OnEnemyDetected.Invoke(m_Owner, enemyFaction);
 		return true;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	void RemoveKnownEnemy(IEntity enemy)
+	void RemoveTarget(IEntity enemy, int index = -1)
 	{
-		if ( AIAgent.Cast(enemy) ) 
-			enemy = AIAgent.Cast(enemy).GetControlledEntity();
-		int index = m_aListOfKnownEnemies.Find(enemy);
+		if (index == -1)
+		{
+			index = m_aTargetEntities.Find(enemy);
+		}
 		if (index > -1)
 		{
-			m_aFireteamsForKnownEnemies.RemoveOrdered(index);
-			m_aPositionsForKnownEnemies.RemoveOrdered(index);
-			m_aListOfKnownEnemies.RemoveItemOrdered(enemy);
-			if (m_aListOfKnownEnemies.IsEmpty())
+			m_aTargetEntities.Remove(index);
+			m_aTargetInfos.Remove(index);
+			if (m_aTargetEntities.IsEmpty())
 				Event_OnNoEnemy.Invoke(m_Owner);
 		}
 		
@@ -242,25 +211,12 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		return false;
 	}
 	
-	//---------------------------------------------------------------------------------------------------	
-	void ~SCR_AIGroupUtilityComponent()
-	{
-		if ( m_aListOfKnownEnemies )
-		{ 
-			m_aListOfKnownEnemies.Clear();
-			m_aListOfKnownEnemies = null;
-		}	
-		m_CurrentActivity = null;
-		m_aFireteamsForKnownEnemies = null;	
-		m_aPositionsForKnownEnemies = null;	
-	}
-	
 	//---------------------------------------------------------------------------------------------------
 	// returns desired number of fireteams depending on number of units in the group
 	int GetNumberOfFireTeams()
 	{
 		//there should always be at leas one fireteam
-		return Math.Min(1 + Math.Floor(m_aListOfAIInfo.Count() / MAX_FIRE_TEAMS_COUNT), MAX_FIRE_TEAMS_COUNT);	
+		return Math.Min(1 + Math.Floor(m_aListOfAIInfo.Count() / MAX_FIRE_TEAMS_COUNT), MAX_FIRE_TEAMS_COUNT);
 	}
 	
 	//---------------------------------------------------------------------------------------------------
@@ -288,29 +244,30 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//---------------------------------------------------------------------------------------------------	
 	bool IsSomeEnemyKnown()
 	{
-		if (m_aListOfKnownEnemies.Count() == 0)
-			return false;
-		
 		// there can be NULLs inside known enemies so we remove them
-		for (int i = m_aListOfKnownEnemies.Count() - 1; i >= 0; i--)
-		{
-			if (m_aListOfKnownEnemies[i] == null)
-			{
-				m_aFireteamsForKnownEnemies.RemoveOrdered(i);
-				m_aPositionsForKnownEnemies.RemoveOrdered(i);
-				m_aListOfKnownEnemies.RemoveOrdered(i);
-			}
-			else
-			{
-				return true;
-			}
-		}
+		ClearInvalidTargets();
 		
 		// if array was filled just with NULLs now will be empty
-		if (m_aListOfKnownEnemies.Count() == 0)
+		if (m_aTargetEntities.Count() == 0)
 			return false;
 		
 		return true;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	//! there can be NULLs inside known enemies so we remove them
+	bool ClearInvalidTargets(bool includeDeadBodies = false)
+	{
+		bool removed = false;
+		for (int index = m_aTargetEntities.Count() - 1; index >=0; index--)
+		{
+			if (!m_aTargetEntities[index] || (includeDeadBodies && !SCR_AIIsAlive.IsAlive(m_aTargetEntities[index])))
+			{
+				RemoveTarget(null,index);
+				removed = true;
+			}
+		}
+		return removed;	
 	}
 	
 	//---------------------------------------------------------------------------------------------------	
@@ -348,7 +305,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		if (m_GroupInfo)
 		{
-			if (currentActivity.m_bIsWaypointRelated)
+			if (currentActivity.m_bIsWaypointRelated.m_Value)
 				m_GroupInfo.SetGroupControlMode(EGroupControlMode.FOLLOWING_WAYPOINT);
 			else if (currentActivity.m_eType == EAIActionType.IDLE)
 				m_GroupInfo.SetGroupControlMode(EGroupControlMode.IDLE);
@@ -367,5 +324,5 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	ScriptInvoker GetOnNoEnemy()
 	{
 		return Event_OnNoEnemy;
-	}	
+	}
 };

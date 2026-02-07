@@ -22,7 +22,7 @@ class SCR_RadioOperatorRoleCallsign: SCR_BaseRoleCallsign
 		if (!loadout)
 			return false;
 		
-		IEntity backpack = loadout.GetClothByArea(ELoadoutArea.ELA_Backpack);
+		IEntity backpack = loadout.GetClothByArea(LoadoutBackpackArea);
 		return (backpack && backpack.FindComponent(SCR_RadioComponent));
 	}
 	

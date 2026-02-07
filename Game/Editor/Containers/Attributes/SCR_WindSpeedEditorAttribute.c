@@ -1,6 +1,3 @@
-/**
-Respawn attribute to enable/disable respawn and respawn time, for getting and setting varriables in Editor Attribute window
-*/
 // Script File 
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
@@ -41,11 +38,11 @@ class SCR_WindSpeedEditorAttribute : SCR_BaseValueListEditorAttribute
 			array<ref WeatherVariant> variants = {};
 			float newMax;
 			
-			foreach(WeatherState state: weatherStates)
+			foreach (WeatherState state: weatherStates)
 			{
 				state.GetVariantsList(variants);
 				
-				foreach(WeatherVariant variant: variants)
+				foreach (WeatherVariant variant: variants)
 				{
 					WeatherWindPattern windPattern = variant.GetWindPattern();
 					

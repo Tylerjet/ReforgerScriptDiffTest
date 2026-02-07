@@ -12,17 +12,34 @@ class SCR_BaseFactionEditableAttribute : SCR_BasePresetsEditorAttribute
 
 		if (!ValidEntity(editableEntity.GetOwner()))
 			return null;
-
-		FactionManager factionManager = GetGame().GetFactionManager();
+		
+			FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
 			return null;
-
+		
 		Faction faction = GetFaction(editableEntity.GetOwner());
-
 		if (!faction)
 			return null;
+		
+		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
+		if (!delegateFactionManager)
+			return null;
+		
+		SCR_SortedArray<SCR_EditableFactionComponent> factionDelegates = new SCR_SortedArray<SCR_EditableFactionComponent>;
+		int count = delegateFactionManager.GetSortedFactionDelegates(factionDelegates);
+		
+		if (factionDelegates.IsEmpty())
+			return null;
+		
+		int factionIndex = factionManager.GetFactionIndex(faction);
+		
+		for (int i = 0; i < count; i++)
+		{
+			if (factionDelegates.GetValue(i).GetFactionIndex() == factionIndex)
+				return SCR_BaseEditorAttributeVar.CreateInt(i);
+		}
 
-		return SCR_BaseEditorAttributeVar.CreateInt(factionManager.GetFactionIndex(faction));
+		return null;
 	}
 
 	//~ Check if entity is valid to set faction
@@ -69,7 +86,7 @@ class SCR_BaseFactionEditableAttribute : SCR_BasePresetsEditorAttribute
 				continue;
 
 			SCR_EditorAttributeFloatStringValueHolder value = new SCR_EditorAttributeFloatStringValueHolder();
-			value.SetWithUIInfo(scrFaction.GetUIInfo(), factionManager.GetFactionIndex(factionDelegates.Get(i).GetFaction()));
+			value.SetWithUIInfo(scrFaction.GetUIInfo(), factionDelegates.GetValue(i).GetFactionIndex());
 			m_aValues.Insert(value);
 		}
 	}
@@ -86,8 +103,19 @@ class SCR_BaseFactionEditableAttribute : SCR_BasePresetsEditorAttribute
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
 		if (!editableEntity)
 			return;
-
-		Faction faction = factionManager.GetFactionByIndex(var.GetInt());
+		
+		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
+		if (!delegateFactionManager)
+			return;
+		
+		SCR_SortedArray<SCR_EditableFactionComponent> factionDelegates = new SCR_SortedArray<SCR_EditableFactionComponent>;
+		delegateFactionManager.GetSortedFactionDelegates(factionDelegates);
+		
+		if (factionDelegates.IsEmpty())
+			return;
+		
+		//Faction faction = factionManager.GetFactionByIndex(var.GetInt());
+		Faction faction = factionManager.GetFactionByIndex(factionDelegates.GetValue(var.GetInt()).GetFactionIndex());
 		if (!faction)
 			return;
 

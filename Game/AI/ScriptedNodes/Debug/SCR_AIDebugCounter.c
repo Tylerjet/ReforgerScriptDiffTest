@@ -10,6 +10,9 @@ class SCR_AIDebugCounter : AITaskScripted
 	[Attribute("0", UIWidgets.CheckBox, "Increment OnAbort")]
 	protected bool m_bIncrementOnAbort;
 	
+	[Attribute("", UIWidgets.Auto, "Echo when increased")]
+	protected string m_sDebugMessage;
+	
 	static const string PORT_VAR_IN = "Counter";
 	static const string PORT_VAR_OUT= "Out"; 
 	
@@ -39,7 +42,9 @@ class SCR_AIDebugCounter : AITaskScripted
 			int count;
 			GetVariableIn(PORT_VAR_IN, count);
 			count++;
-			SetVariableOut(PORT_VAR_OUT, count);	
+			if (m_sDebugMessage != string.Empty)
+				Print("DebugCounter: " + m_sDebugMessage);
+			SetVariableOut(PORT_VAR_OUT, count);
 		}
 	}
 
@@ -52,7 +57,9 @@ class SCR_AIDebugCounter : AITaskScripted
 		int count;
 		GetVariableIn(PORT_VAR_IN, count);
 		count++;
-		SetVariableOut(PORT_VAR_OUT, count);		
+		if (m_sDebugMessage != string.Empty)
+			Print("DebugCounter: " + m_sDebugMessage);
+		SetVariableOut(PORT_VAR_OUT, count);
 		
 		if (m_bFailAfter)
 			return ENodeResult.FAIL;

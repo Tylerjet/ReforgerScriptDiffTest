@@ -37,7 +37,10 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 	protected bool SetUIInfo(EditablePrefabsConfig config, WorldEditorAPI api, ResourceName prefab, string targetPath, IEntitySource entitySource, IEntitySource instanceEntitySource, IEntityComponentSource componentSource, IEntityComponentSource componentCurrent)
 	{
 		BaseContainer info = componentSource.GetObject("m_UIInfo");
-		if (!info) return false;
+		if (!info)
+			return false;
+		
+		typename infoType = info.GetClassName().ToType();
 		
 		array<ref ContainerIdPathEntry> path = {ContainerIdPathEntry(componentSource.GetClassName()), ContainerIdPathEntry("m_UIInfo")};
 
@@ -73,7 +76,7 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		if (componentCurrent)
 		{
 			BaseContainer infoCurrent = componentCurrent.GetObject("m_UIInfo");
-			if (infoCurrent && infoCurrent.Get("Icon", entityIcon) && !entityIcon.IsEmpty())
+			if (infoCurrent && infoCurrent.IsVariableSetDirectly("Icon") && infoCurrent.Get("Icon", entityIcon) && !entityIcon.IsEmpty())
 			{
 				api.SetVariableValue(entitySource, path, "Icon", entityIcon);
 			}
@@ -126,52 +129,45 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		array<EEditableEntityLabel> authoredLabels = {};
 		if (GetLabelsFromSource(api, config, prefab, targetPath, instanceEntitySource, componentSource, componentCurrent, autoLabels, authoredLabels))
 		{
-			// Format auto labels gathered from source and save on entitySource
-			string autoLabelArrayFormatted;
-			for (int i = 0, count = autoLabels.Count(); i < count; i++)
-			{
-				autoLabelArrayFormatted += autoLabels[i].ToString();
-				if (i != count - 1)
-				{
-					autoLabelArrayFormatted += ",";
-				}
-			}
-			api.SetVariableValue(entitySource, path, "m_aAutoLabels", autoLabelArrayFormatted);
-			
-			// Format authored labels gathered from source and save on entitySource
-			string authoredLabelArrayFormatted;
-			for (int i = 0, count = authoredLabels.Count(); i < count; i++)
-			{
-				authoredLabelArrayFormatted += authoredLabels[i].ToString();
-				if (i != count - 1)
-				{
-					authoredLabelArrayFormatted += ",";
-				}
-			}
-			
-			api.SetVariableValue(entitySource, path, "m_aAuthoredLabels", authoredLabelArrayFormatted);
+			api.SetVariableValue(entitySource, path, "m_aAutoLabels", SCR_BaseContainerTools.GetArrayValue(autoLabels));
+			api.SetVariableValue(entitySource, path, "m_aAuthoredLabels", SCR_BaseContainerTools.GetArrayValue(authoredLabels));
 		}
 		
 		if (m_bUpdateBudgets)
-		{		
-			//--- Calculate combined children budget costs
+		{
+			array<ref ContainerIdPathEntry> budgetPath = {ContainerIdPathEntry(componentSource.GetClassName()), ContainerIdPathEntry("m_UIInfo"), null};
+			
+			BaseContainer infoAncestor;
+			IEntityComponentSource componentAncestor;
+			if (componentCurrent)
+			{
+				componentAncestor = componentCurrent.GetAncestor();
+				if (componentAncestor)
+					infoAncestor = componentAncestor.GetObject("m_UIInfo");
+			}
+			
+			//--- Update vehicle occupant budgets
+			if (infoType.IsInherited(SCR_EditableVehicleUIInfo))
+			{
+				array<ref SCR_EntityBudgetValue> crewBudgetCosts = {}, passengerBudgetCosts = {};
+				array<ECompartmentType> vehicleCompartmentTypes = {};
+				
+				GetEntityBudgetCostsFromVehicle(entitySource, crewBudgetCosts, passengerBudgetCosts, vehicleCompartmentTypes);
+				
+				string vehicleCompartmentTypesValue = SCR_BaseContainerTools.GetArrayValue(vehicleCompartmentTypes);
+				api.SetVariableValue(entitySource, path, "m_aOccupantFillCompartmentTypes", vehicleCompartmentTypesValue);
+				
+				SetBudgets(api, entitySource, infoAncestor, path, "m_aCrewEntityBudgetCost", crewBudgetCosts);
+				SetBudgets(api, entitySource, infoAncestor, path, "m_aPassengerEntityBudgetCost", passengerBudgetCosts);
+			}
+			
+			//=== Calculate combined children budget costs
 			array<ref SCR_EntityBudgetValue> entityChildrenBudgetCosts = {};
 			GetEntityChildrenBudgetCostsFromSource(entitySource, entityChildrenBudgetCosts);
 			
-			// Reset children budget costs
-			api.SetVariableValue(entitySource, path ,"m_EntityChildrenBudgetCost", "");
-			
-			// Set newly calculated children budget costs on parent entity
-			foreach (int i, SCR_EntityBudgetValue entityBudgetCost: entityChildrenBudgetCosts)
-			{
-				if (api.CreateObjectArrayVariableMember(entitySource, path, "m_EntityChildrenBudgetCost", "SCR_EntityBudgetValue", i))
-				{
-					array<ref ContainerIdPathEntry> budgetCostEntryPath =  {ContainerIdPathEntry(componentSource.GetClassName()), ContainerIdPathEntry("m_UIInfo"), ContainerIdPathEntry("m_EntityChildrenBudgetCost", i)};
-					api.SetVariableValue(entitySource, budgetCostEntryPath , "m_BudgetType", typename.EnumToString(EEditableEntityBudget, entityBudgetCost.GetBudgetType()));
-					api.SetVariableValue(entitySource, budgetCostEntryPath , "m_Value", entityBudgetCost.GetBudgetValue().ToString());
-				}
-			}
+			SetBudgets(api, entitySource, infoAncestor, path, "m_EntityChildrenBudgetCost", entityChildrenBudgetCosts);
 		}
+		
 		//--- Custom slot prefab
 		IEntityComponentSource slotCompositionComponent = SCR_BaseContainerTools.FindComponentSource(entitySource, SCR_SlotCompositionComponent);
 		if (slotCompositionComponent)
@@ -182,7 +178,7 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		}
 		
 		//--- Copy group identity
-		if (info.GetClassName().ToType().IsInherited(SCR_EditableGroupUIInfo))
+		if (infoType.IsInherited(SCR_EditableGroupUIInfo))
 		{
 			IEntityComponentSource groupIdentitySource = SCR_BaseContainerTools.FindComponentSource(entitySource, SCR_GroupIdentityComponent);
 			if (groupIdentitySource)
@@ -197,6 +193,68 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 			}
 		}
 		return true;
+	}
+	protected void SetBudgets(WorldEditorAPI api, IEntitySource entitySource, BaseContainer info, array<ref ContainerIdPathEntry> path, string varName, array<ref SCR_EntityBudgetValue> budgets)
+	{	
+		api.ClearVariableValue(entitySource, path, varName);
+		
+		//--- Copy path and add an entry to be set in the loop
+		array<ref ContainerIdPathEntry> budgetPath = {};
+		foreach (ContainerIdPathEntry entry: path)
+		{
+			budgetPath.Insert(ContainerIdPathEntry(entry.PropertyName, entry.Index));
+		}
+		budgetPath.Insert(null);
+		
+		EEditableEntityBudget listBudgetType;
+		int listBudgetValue;
+		
+		BaseContainerList budgetList;
+		int budgetListCount;
+		if (info)
+		{
+			budgetList = info.GetObjectArray(varName);
+			if (budgetList)
+				budgetListCount = budgetList.Count();
+		}
+		
+		foreach (int i, SCR_EntityBudgetValue entry: budgets)
+		{
+			EEditableEntityBudget budgetType = entry.GetBudgetType();
+			int budgetValue = entry.GetBudgetValue();
+			
+			//--- Scan existing array to determine whether to override existing entry or create a new one
+			int index = -1;
+			for (int l = 0; l < budgetListCount; l++)
+			{
+				if (budgetList.Get(l).Get("m_BudgetType", listBudgetType) && listBudgetType == budgetType)
+				{
+					if (budgetList.Get(l).Get("m_Value", listBudgetValue) && listBudgetValue == budgetValue)
+						index = -2; //--- Value found and is the same - don't save new value
+					else
+						index = l; //--- Value found and is different - override the existing one
+					
+					break;
+				}
+			}
+			
+			if (index == -2)
+			{
+				continue;
+			}
+			if (index == -1)
+			{
+				//--- Value not found, add a new one
+				index = budgetListCount;
+				//budgetListCount++;
+				api.CreateObjectArrayVariableMember(entitySource, path, varName, "SCR_EntityBudgetValue", index);
+			}
+			
+			//--- Set values
+			budgetPath.Set(budgetPath.Count() - 1, ContainerIdPathEntry(varName, index));
+			api.SetVariableValue(entitySource, budgetPath , "m_BudgetType", typename.EnumToString(EEditableEntityBudget, budgetType));
+			api.SetVariableValue(entitySource, budgetPath , "m_Value", budgetValue.ToString());
+		}
 	}
 	protected void CreatePreviewImage(EditablePrefabsConfig config, WorldEditorAPI api, out string targetPath, IEntitySource entitySource, string addonName)
 	{
@@ -365,6 +423,84 @@ class EditablePrefabsComponent_EditableEntity: EditablePrefabsComponent_Base
 		else if (compositionLinkComponent)
 		{
 			GetEntityBudgetCostsFromLinkComponent(entitySource, compositionLinkComponent, entityBudgetCosts);
+		}
+	}
+	
+	protected void GetEntityBudgetCostsFromVehicle(IEntitySource entitySource, out notnull array<ref SCR_EntityBudgetValue> crewBudgetCosts, out notnull array<ref SCR_EntityBudgetValue> passengerBudgetCosts, out notnull array<ECompartmentType> vehicleCompartmentTypes)
+	{
+		IEntityComponentSource componentSource;
+		typename componentType;
+		BaseContainerList slots;
+		BaseContainer slot, occupantData;
+		ResourceName prefab;
+		IEntitySource slotEntity;
+		
+		array<IEntitySource> queue = {entitySource};
+		while (!queue.IsEmpty())
+		{
+			IEntitySource source = queue[0];
+			queue.Remove(0);
+			
+			for (int c = 0, componentCount = source.GetComponentCount(); c < componentCount; c++)
+			{
+				componentSource = source.GetComponent(c);
+				componentType = componentSource.GetClassName().ToType();
+				
+				if (componentType.IsInherited(BaseCompartmentManagerComponent))
+				{
+					//--- Find compartments and get budgets of their default occupants
+					slots = componentSource.GetObjectArray("CompartmentSlots");
+					for (int s = 0, slotCount = slots.Count(); s < slotCount; s++)
+					{
+						slot = slots[s];
+						
+						occupantData = slot.GetObject("m_DefaultOccupantData");
+						if (!occupantData)
+							continue;
+						
+						if (!occupantData.Get("m_sDefaultOccupantPrefab", prefab))
+							continue;
+						
+						slotEntity = SCR_BaseContainerTools.FindEntitySource(Resource.Load(prefab));
+						if (!slotEntity)
+							continue;
+						
+						//--- Check for slot type (any type apart from cargo counts as crew)
+						typename slotType = slot.GetClassName().ToType();
+						ECompartmentType compartmentType;
+						if (slotType.IsInherited(CargoCompartmentSlot))
+						{
+							AddBudgetCostsFromEntity(slotEntity, passengerBudgetCosts);
+							compartmentType = ECompartmentType.Cargo;
+						}
+						else
+						{
+							AddBudgetCostsFromEntity(slotEntity, crewBudgetCosts);
+							
+							if (slotType.IsInherited(PilotCompartmentSlot))
+								compartmentType = ECompartmentType.Pilot;
+							else
+								compartmentType = ECompartmentType.Turret;
+						}
+						if (!vehicleCompartmentTypes.Contains(compartmentType))
+							vehicleCompartmentTypes.Insert(compartmentType);
+					}
+				}
+				else if (componentType.IsInherited(SlotManagerComponent))
+				{
+					//--- Go deeper into base slots
+					slots = componentSource.GetObjectArray("Slots");
+					for (int s = 0, slotCount = slots.Count(); s < slotCount; s++)
+					{
+						if (!slots[s].Get("Prefab", prefab))
+							continue;
+						
+						slotEntity = SCR_BaseContainerTools.FindEntitySource(Resource.Load(prefab));
+						if (slotEntity)
+							queue.Insert(slotEntity);
+					}
+				}
+			}
 		}
 	}
 	

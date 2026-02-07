@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameScripted/UI/Inventory", description: "[MOD] Inventory Slot UI class")]
-class SCR_InventoryStorageManagerComponentClass: InventoryStorageManagerComponentClass
+class SCR_InventoryStorageManagerComponentClass: ScriptedInventoryStorageManagerComponentClass
 {
 };
 
@@ -44,7 +44,79 @@ class SCR_BandagePredicate: InventorySearchPredicate
 
 	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
 	{		
-		return (SCR_ConsumableItemComponent.Cast(queriedComponents[0])).GetConsumableType() == EConsumableType.Bandage;
+		return (SCR_ConsumableItemComponent.Cast(queriedComponents[0])).GetConsumableType() == EConsumableType.Bandage);
+	}
+};
+
+class SCR_ApplicableMedicalItemPredicate : InventorySearchPredicate
+{
+	IEntity characterEntity;
+	ECharacterHitZoneGroup hitZoneGroup;
+
+	void SCR_ApplicableMedicalItemPredicate()
+	{
+		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
+	}
+
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		EConsumableType type = SCR_ConsumableItemComponent.Cast(queriedComponents[0]).GetConsumableType();
+		bool isMatch = (type == EConsumableType.Bandage)
+			|| (type == EConsumableType.Health)
+			|| (type == EConsumableType.Tourniquet)
+			|| (type == EConsumableType.Saline)
+			|| (type == EConsumableType.Morphine);
+
+		if (!isMatch)
+			return false;
+
+		SCR_ConsumableItemComponent medicalItem = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(medicalItem.GetConsumableEffect());
+		if (!effect)
+			return false;
+
+		return effect.CanApplyEffectToHZ(characterEntity, characterEntity, hitZoneGroup);
+	}
+};
+
+// Searches for attachments of the defined atttachmentType
+class SCR_CompatibleAttachmentPredicate: InventorySearchPredicate
+{
+	typename attachmentType;
+
+	void SCR_CompatibleAttachmentPredicate()
+	{
+		QueryComponentTypes.Insert(InventoryItemComponent);
+	}
+
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(queriedComponents[0]);
+
+		if (!itemComp)
+			return false;
+
+		ItemAttributeCollection itemAttributes = itemComp.GetAttributes();
+
+		if (!itemAttributes)
+			return false;
+
+		WeaponAttachmentAttributes itemAttribute = WeaponAttachmentAttributes.Cast(itemAttributes.FindAttribute(WeaponAttachmentAttributes));
+
+		if (!itemAttribute)
+			return false;
+
+		BaseAttachmentType itemAttachmentType = itemAttribute.GetAttachmentType();
+
+		if (!itemAttachmentType)
+			return false;
+
+		typename itemAttachmentTypename = itemAttachmentType.Type();
+
+		if (!itemAttachmentTypename)
+			return false;
+
+		return (itemAttachmentTypename.IsInherited(attachmentType)); // Check if attachment types match
 	}
 };
 
@@ -105,6 +177,7 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 	SCR_InventoryStorageManagerComponent m_Manager;
 	SCR_InvCallBack m_FinalCB;
 	bool m_bIstakenFromArsenal;
+	bool m_bDeleteItemIfEmpty;
 	ref array<IEntity> m_aItemsToMove = {};
 	ECallbackState m_ECurrentState = 0; // 0 - drop, 1 - insert, 2 - move, 3 - delete, 4 - final
 	
@@ -183,8 +256,18 @@ class DropAndMoveOperationCallback: ScriptedInventoryOperationCallback
 		}
 		*/
 		
-		m_ECurrentState++;
-		OnDeleteComplete();
+		
+		if (m_bDeleteItemIfEmpty)
+		{
+			m_ECurrentState++;
+			OnDeleteComplete();
+		}
+		else
+		{		
+			m_ECurrentState = ECallbackState.FINAL;
+			OnFinalState();
+		}
+			
 		return;
 	}
 	
@@ -262,7 +345,7 @@ class SCR_ResupplyMagazinesCallback: ScriptedInventoryOperationCallback
 	}
 };
 
-class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
+class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
 	private SCR_CharacterInventoryStorageComponent				m_pStorage;
 	private CharacterControllerComponent						m_pCharacterController;
@@ -281,9 +364,13 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	ref ScriptInvoker<bool> 									m_OnInventoryOpenInvoker	= new ref ScriptInvoker<bool>();
 	ref ScriptInvoker<bool> 									m_OnQuickBarOpenInvoker		= new ref ScriptInvoker<bool>();
 	
+	protected EventHandlerManagerComponent m_pEventHandlerManager;
+
 	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{		
+		super.OnItemAdded(storageOwner, item);
+		
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == EConsumableType.Bandage )
 			m_iHealthEquipment++;	//store count of the health components
@@ -303,13 +390,15 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
 	override protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
+		super.OnItemRemoved(storageOwner, item);
+		
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == EConsumableType.Bandage )
 			m_iHealthEquipment--;	//store count of the health components
 		
 		if ( m_OnItemRemovedInvoker )
 			m_OnItemRemovedInvoker.Invoke( item, storageOwner );
-		
+
 		// Insert item into gc collection
 		GarbageManager garbageManager = GetGame().GetGarbageManager();
 		if (garbageManager)
@@ -329,6 +418,9 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	void PlayItemSound(IEntity entity, string soundEvent)
 	{	
+		if (!entity)
+			return;
+
 		RplComponent rplComp = RplComponent.Cast(entity.FindComponent(RplComponent));
 		if (rplComp)
 			Rpc(RpcAsk_PlaySound, rplComp.Id(), soundEvent);
@@ -338,37 +430,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 			if (!soundComp)
 				return;
 			
-			// Activate entity, if not active		
-			if (entity.GetFlags() & EntityFlags.ACTIVE)
-			{
-				// Play sound event				
-				soundComp.SoundEvent(soundEvent);
-			}
-			else
-			{	
-				GenericEntity genEntity = GenericEntity.Cast(entity);
-				if (genEntity)
-					genEntity.Activate();
-									
-				// Play sound event				
-				soundComp.SoundEvent(soundEvent);
-				
-				// Deactivate after sound finishes
-				GetGame().GetCallqueue().CallLater(DeactivateSoundComponent, 2000, false, entity, soundComp);			
-			}
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	private void DeactivateSoundComponent(IEntity entity, SoundComponent soundComp)
-	{
-		if (soundComp.IsPlaying())
-			GetGame().GetCallqueue().CallLater(DeactivateSoundComponent, 2000, false, entity, soundComp);
-		else
-		{
-			GenericEntity genEntity = GenericEntity.Cast(entity);
-			if (genEntity)
-				genEntity.Deactivate();
+			soundComp.SoundEvent(soundEvent);
 		}
 	}
 	
@@ -395,26 +457,8 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
 		if (!soundComp)
 			return;
-							
-		// Activate entity, if not active		
-		if (entity.GetFlags() & EntityFlags.ACTIVE)
-		{
-			// Play sound event				
-			soundComp.SoundEvent(soundAction);
-		}
-		else
-		{	
-			// Activate entity so SoundComponent is active
-			GenericEntity genEntity = GenericEntity.Cast(entity);
-			if (genEntity)
-				genEntity.Activate();
-								
-			// Play sound event				
-			soundComp.SoundEvent(soundAction);
-			
-			// Deactivate after sound finishes
-			GetGame().GetCallqueue().CallLater(DeactivateSoundComponent, 2000, false, entity, soundComp);			
-		}				
+		
+		soundComp.SoundEvent(soundAction);
 	}
 	
 #ifndef DISABLE_INVENTORY
@@ -474,7 +518,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		storages.Insert( m_pStorage.GetWeaponStorage() );
 		storages.Insert( m_pStorage );
 				
-		foreach( BaseInventoryStorageComponent storage: storages )
+		foreach ( BaseInventoryStorageComponent storage: storages )
 		{
 			fTotalWeight += storage.GetTotalWeight();
 		}
@@ -546,8 +590,6 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		
 		if (!canInsert)
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
-		else
-			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
 		
 		if (m_pCharacterController && canInsert)
 		{
@@ -653,7 +695,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		if (!EquipAny( m_pStorage.GetWeaponStorage(), pOwnerEntity, prefered, cb ))
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_DROP_ERROR);
 		
-		if (cb.m_pStorageFrom != cb.m_pStorageTo)
+		if (cb && cb.m_pStorageFrom != cb.m_pStorageTo)
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_DIFR_DROP);
 			else
 				SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_CONTAINER_SAME_DROP);
@@ -710,6 +752,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		// Play sound
 		PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_EQUIP);
 	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! try equip the item into the storage at provided slot
 	bool EquipAny(BaseInventoryStorageComponent storage, IEntity item, int prefered = -1, SCR_InvCallBack cb = null)
@@ -787,6 +830,7 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 			chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
 			chainedCallback.m_TargetSlot = m_TargetSlot;
 			chainedCallback.m_FinalCB = cb;
+			chainedCallback.m_bDeleteItemIfEmpty = true;
 			chainedCallback.m_bIstakenFromArsenal = istakenFromArsenal;
 	
 			return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
@@ -795,6 +839,62 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		// we return the result of swap opoeration were item from slotA will be transfered to slotB and item from slotB to slotA
 		return TrySwapItemStorages(item, m_TargetSlot.GetAttachedEntity(), cb);
 	} 
+	
+	//------------------------------------------------------------------------------------------------
+	//! try to drop the original item and replace it by itemToReplace at the slot specified by slotID
+	bool TryReplaceAndDropItemAtSlot(BaseInventoryStorageComponent storage, IEntity item, int slotID, SCR_InvCallBack cb = null, bool isTakenFromArsenal = false, bool deleteOriginalItemIfEmpty = false)
+	{
+		if (!storage || !item)
+			return false;
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!itemComp)
+			return false;
+		
+		InventoryStorageSlot m_TargetSlot = storage.GetSlot(slotID);
+		// Storage doesn't have suitable slot for item (therefore any future opearation would fail)
+		if (!m_TargetSlot)
+			return false;		
+
+		InventoryStorageSlot sourceSlot = itemComp.GetParentSlot();
+		// Item is on the ground as it does not belong to any storage (eg is not in the slot)
+		if (!sourceSlot || !sourceSlot.GetStorage())
+		{
+			// we are picking up item from ground
+			// if target slot is not empty return the result of replace operation
+			if (m_TargetSlot.GetAttachedEntity())
+				return TryReplaceItem(item, storage, slotID, cb);
+			// we are picking up item from ground into empty slot, simply return result of the insert operation
+			return TryInsertItemInStorage(item, storage, slotID, cb);
+		}
+
+		// our target slot is empty and we moving item from another storage
+		// simply return the result of move operation
+		if (!m_TargetSlot.GetAttachedEntity())
+			return TryMoveItemToStorage(item, storage, slotID, cb);
+
+
+		// if we want to drop originally equipped item
+		// here sequence would be as follows:
+		// 1 - drop original item
+		// 2 - insert item to target storage
+		// 3 - try move as many items as possible from dropped item back to inventory
+		// 4 - delete dropped item
+
+		// At first - let's validate if this is even possible
+		if (!CanSwapItemStorages(item, m_TargetSlot.GetAttachedEntity()))
+			return false;
+
+		DropAndMoveOperationCallback chainedCallback = new DropAndMoveOperationCallback();
+		chainedCallback.m_Manager = this;
+		chainedCallback.m_ItemAfter = itemComp;
+		chainedCallback.m_ItemBefore = InventoryItemComponent.Cast(m_TargetSlot.GetAttachedEntity().FindComponent(InventoryItemComponent));
+		chainedCallback.m_TargetSlot = m_TargetSlot;
+		chainedCallback.m_bDeleteItemIfEmpty = deleteOriginalItemIfEmpty; 
+		chainedCallback.m_bIstakenFromArsenal = isTakenFromArsenal;
+		chainedCallback.m_FinalCB = cb;
+		
+		return TryRemoveItemFromStorage(m_TargetSlot.GetAttachedEntity(), m_TargetSlot.GetStorage(), chainedCallback);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! try replace at prefered slot
@@ -929,6 +1029,15 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		m_bWasRaised = m_pCharacterController.IsWeaponRaised();
 		m_pCharacterController.SetWeaponRaised(false);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void CloseInventory()
+	{
+		auto menuManager = GetGame().GetMenuManager();
+		auto inventoryMenu = menuManager.FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu);
+		if (inventoryMenu)
+			menuManager.CloseMenu(inventoryMenu);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	IEntity GetStorageToOpen()
@@ -1051,21 +1160,12 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		return FindItem(m_bandagePredicate, EStoragePurpose.PURPOSE_DEPOSIT);
 	}
 	
-	//------------------------------------------------------------------------------------------------	
-	//!
-	bool GetIsWeaponEquipped( IEntity pEnt )
-	{
-		BaseInventoryStorageComponent pWeaponStorage = m_pStorage.GetWeaponStorage();
-		if ( !pWeaponStorage )
-			return false;
-
-		return pWeaponStorage.Contains( pEnt );		
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_InventoryStorageManagerComponent()
 	{
 		m_ERetCode = EInventoryRetCode.RETCODE_DEFAULT_STATE;
+		if (m_pEventHandlerManager)
+			m_pEventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1189,6 +1289,35 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		return null;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnConsciousnessChanged(bool conscious)
+	{
+		if (!conscious)
+		{
+			CloseInventory();
+
+			ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+			if (!character)
+				return;
+
+			AIControlComponent aiControl = AIControlComponent.Cast(GetOwner().FindComponent(AIControlComponent));
+			if (!aiControl || !aiControl.IsAIActivated())
+				return;
+
+			CharacterControllerComponent charCtrl = character.GetCharacterController();
+			if (!charCtrl)
+				return;
+
+			IEntity currentWeapon;
+			BaseWeaponManagerComponent wpnMan = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
+			if (wpnMan && wpnMan.GetCurrentWeapon())
+				currentWeapon = wpnMan.GetCurrentWeapon().GetOwner();
+
+			if (currentWeapon)
+				charCtrl.TryEquipRightHandItem(currentWeapon, EEquipItemType.EEquipTypeSlinged, true);
+		}
+	}
+
 #else
 	void SetReturnCode( EInventoryRetCode ERetCode ) ;
 	void SetReturnCodeDefault() ;
@@ -1210,7 +1339,6 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 	
 #endif	
 	
-	
 	void SCR_InventoryStorageManagerComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		#ifndef DISABLE_INVENTORY
@@ -1220,6 +1348,11 @@ class SCR_InventoryStorageManagerComponent : InventoryStorageManagerComponent
 		
 		m_pStorage = SCR_CharacterInventoryStorageComponent.Cast( ent.FindComponent( CharacterInventoryStorageComponent ) );
 		m_pCharacterController = CharacterControllerComponent.Cast(ent.FindComponent(CharacterControllerComponent));
+		m_pEventHandlerManager = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
+		if (m_pEventHandlerManager)
+		{
+			m_pEventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		}
 		#endif
 	}
 };

@@ -1,13 +1,15 @@
 [EntityEditorProps(category: "GameScripted/UI/Inventory")]
-class SCR_VehicleInventoryStorageManagerComponentClass : InventoryStorageManagerComponentClass
+class SCR_VehicleInventoryStorageManagerComponentClass : ScriptedInventoryStorageManagerComponentClass
 {
 };
 
-class SCR_VehicleInventoryStorageManagerComponent : InventoryStorageManagerComponent
+class SCR_VehicleInventoryStorageManagerComponent : ScriptedInventoryStorageManagerComponent
 {
 	//------------------------------------------------------------------------------------------------
 	protected override void FillInitialStorages(out array<BaseInventoryStorageComponent> storagesToAdd)
 	{
+		super.FillInitialStorages(storagesToAdd);
+		
 		if (!GetGame().InPlayMode())
 			return;
 
@@ -34,17 +36,28 @@ class SCR_VehicleInventoryStorageManagerComponent : InventoryStorageManagerCompo
 	//------------------------------------------------------------------------------------------------
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
+		super.OnItemAdded(storageOwner, item);
+		
+		InventoryItemComponent pItemComponent = InventoryItemComponent.Cast( item.FindComponent( InventoryItemComponent ) );
+		if (!pItemComponent)
+			return;
+		
 		GarbageManager garbageManager = GetGame().GetGarbageManager();
 		if (garbageManager)
 		{
-			if (item.FindComponent(InventoryItemComponent))
-				garbageManager.Withdraw(item);
+			garbageManager.Withdraw(item);
 		}
+		
+		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
+		if (gadgetComp)
+			SCR_GadgetManagerComponent.SetGadgetModeStashed(gadgetComp, EGadgetMode.IN_STORAGE);	
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
+		super.OnItemRemoved(storageOwner, item);
+		
 		GarbageManager garbageManager = GetGame().GetGarbageManager();
 		if (garbageManager)
 		{

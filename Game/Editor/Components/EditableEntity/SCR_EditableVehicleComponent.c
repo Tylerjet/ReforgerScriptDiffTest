@@ -11,12 +11,6 @@ Special configuration for editable wehicle.
 */
 class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 {	
-	//~ Todo: T
-	// SCR_EditableVehicleUIInfo should fill types that can be placed when the tool is used
-	// Calculate budget when setting crew/passangers placing flags
-	// Calculate budget when using context action to add crew
-	// Save budget of entities using editable tool and a way to get said budgets (Both when placing and when using context action)
-	
 	protected SCR_BaseCompartmentManagerComponent m_ComparmentManager;
 	protected SCR_VehicleFactionAffiliationComponent m_VehicleFactionAffiliation;
 	protected ref ScriptInvoker m_OnUIRefresh = new ScriptInvoker();
@@ -91,7 +85,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		compartmentManager.GetOccupants(occupants);
 		CompartmentAccessComponent compartmentAccess;
 		
-		foreach(IEntity occupant: occupants)
+		foreach (IEntity occupant: occupants)
 		{
 			if (ignorePlayers && playerManager.GetPlayerIdFromControlledEntity(occupant) > 0)
 				continue;
@@ -116,7 +110,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		SCR_EditableCharacterComponent editableCharacter;
 		compartmentManager.GetOccupants(occupants);
 		
-		foreach(IEntity occupant: occupants)
+		foreach (IEntity occupant: occupants)
 		{
 			editableCharacter = SCR_EditableCharacterComponent.Cast(occupant.FindComponent(SCR_EditableCharacterComponent));
 			if (editableCharacter)
@@ -131,25 +125,6 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		
 		//~ Add feedback to players that they are teleported when inside of the vehicle
 		PlayerTeleportedFeedback();
-	}
-	
-		//~ Check if there is enough budget to spawn default occupants
-	protected bool HasEnoughBudgetForDefaultOccupants(array<ECompartmentType> compartmentTypes)
-	{
-		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
-		
-		//~ Get all free compartments of given types
-		foreach (ECompartmentType compartmentType: compartmentTypes)
-		{
-			m_ComparmentManager.GetFreeCompartmentsOfType(compartments, compartmentType);
-		}
-		
-		foreach(BaseCompartmentSlot compartment: compartments)
-		{
-			//~ TODO: T Calculate budget using prefab
-		}
-		
-		return true;
 	}
 	
 	//--------------------------------------------------- Spawn occupants ---------------------------------------------------\\
@@ -181,6 +156,34 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		return m_ComparmentManager.CanOccupy(compartmentTypes, checkHasDefaultOccupantsData, factionKey, checkOccupyingFaction, checkForFreeCompartments);
 	}
 	
+	//~ Check if there is enough budget to spawn default occupants
+	protected bool HasEnoughBudgetForDefaultOccupants(array<ECompartmentType> compartmentTypes)
+	{
+		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
+		
+		//~ Get all free compartments of given types
+		foreach (ECompartmentType compartmentType: compartmentTypes)
+			m_ComparmentManager.GetFreeCompartmentsOfType(compartments, compartmentType);
+		
+		array<ResourceName> occupantsToSpawn = {};
+		ResourceName occupant;
+		
+		foreach (BaseCompartmentSlot compartment: compartments)
+		{
+			occupant = compartment.GetDefaultOccupantPrefab();
+			if (!occupant.IsEmpty())
+				occupantsToSpawn.Insert(occupant);
+		}
+		
+		//~ Is empty so simply return true. Will not show notification that there is not enough budget
+		if (occupantsToSpawn.IsEmpty())
+			return true;
+		
+		
+		SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
+		return !contentBrowser || contentBrowser.CanPlace(occupantsToSpawn, EEditableEntityType.CHARACTER);
+	}
+	
 	/*!
 	Spawn characters (Of vehicle Faction) within the Vehicle (Server only)
 	\param compartmentTypes Given compartment types that need to be filled with characters
@@ -208,68 +211,32 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		//~ Todo: Check if EEditorPlacingFlags.CHARACTER_PLAYER and spawn the first character as player. If Only EEditorPlacingFlags.CHARACTER_PLAYER add itself as pilot (or any other availible slots)
 		
 
-		SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(GetInfo());
-		if (!uiInfo)
-			return this;
-		
+		SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(GetInfo());		
 		array<ECompartmentType> compartmentsToFill = new array<ECompartmentType>;
 		
-		//~ Place all as one group
-		if (uiInfo.GetEditorPlaceAsOneGroup())
+		//~ Check crew budget
+		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_CREWED) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES))
 		{
-			array<ECompartmentType> compartmentTypeGetter = new array<ECompartmentType>;
-			
-			//~ Add crew
-			if (flags & EEditorPlacingFlags.VEHICLE_CREWED)	
-				//~ Gets types from config to make sure that even when more ECompartmentType they only need one place to be included
-				compartmentsToFill.InsertAll(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES);
-			
-			//~ Add passengers
-			if (flags & EEditorPlacingFlags.VEHICLE_PASSENGER)
-				//~ Gets types from config to make sure that even when more ECompartmentType they only need one place to be included
-				compartmentsToFill.InsertAll(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES);
-			
-			//~ Check if can spawn, then spawn. If true spawn the characters
-			if (HasEnoughBudgetForDefaultOccupants(compartmentsToFill))
-			{
-				OccupyVehicleWithDefaultCharacters(compartmentsToFill);
-				return this;
-			}
-			//~ Not enough budget to spawn all characters. Check if both crew and passengers where spawned at the same time. If false return function else continue the function and try to spawn them separately
-			else if (!(flags & EEditorPlacingFlags.VEHICLE_CREWED) || !(flags & EEditorPlacingFlags.VEHICLE_PASSENGER))
-			{
-				//~ Show notification
-				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);
-				return this;
-			}
-		}
-		
-		bool enoughBudget = true;
-		
-		//~ Place in seperate groups
-		//~ Spawn crew
-		if (flags & EEditorPlacingFlags.VEHICLE_CREWED)
-		{		
-			//~ Check if enough budget
-			if (HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES))
+			//~ Occupy with Crew
+			if (!uiInfo || !uiInfo.GetEditorPlaceAsOneGroup())
 				OccupyVehicleWithDefaultCharacters(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES);
 			else 
-				enoughBudget = false;
-		}
-	
-		//~ Spawn passengers, It makes sure passengers are a diffrent group from crew
-		if (flags & EEditorPlacingFlags.VEHICLE_PASSENGER)
-		{			
-			//~ Check if enough budget
-			if (HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES))
+				compartmentsToFill.InsertAll(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES);
+		}	
+		
+		//~ Check passenger budget
+		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_PASSENGER) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES))
+		{
+			//~ Occupy with Passengers
+			if (!uiInfo || !uiInfo.GetEditorPlaceAsOneGroup())
 				OccupyVehicleWithDefaultCharacters(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES);
 			else 
-				enoughBudget = false;
-		}
+				compartmentsToFill.InsertAll(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES);
+		}	
 		
-		//~ Not enough budget for one or more of the place flags. So Send notification
-		if (!enoughBudget)
-			SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);
+		//~ Occupy vehicle with both Crew and Passengers in one group (If both placing flags where selected)
+		if (!compartmentsToFill.IsEmpty())
+			OccupyVehicleWithDefaultCharacters(compartmentsToFill);
 		
 		return this;
 	}

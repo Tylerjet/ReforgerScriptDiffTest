@@ -88,7 +88,7 @@ class SCR_RadialMenuVisuals : SCR_InfoDisplayExtended
 	protected string m_sSelectCurrent;
 	
 	[Attribute("cancel", UIWidgets.CheckBox, "Default empty icon name")]
-	protected string m_sEmtpyIconName;
+	protected string m_sEmptyIconName;
 	
 	// Sizes and numbers 
 	[Attribute("750", UIWidgets.CheckBox, "Size of radial menu right")]
@@ -435,7 +435,7 @@ class SCR_RadialMenuVisuals : SCR_InfoDisplayExtended
 	{
 		int id = 0;
 		
-		foreach(ImageWidget line : m_aBorderLines)
+		foreach (ImageWidget line : m_aBorderLines)
 		{
 			float rot = id * m_fEntryAngleDistance - m_fEntryAngleDistance/2;
 			
@@ -516,7 +516,7 @@ class SCR_RadialMenuVisuals : SCR_InfoDisplayExtended
 	//! Set icon names by type of the entry  
 	protected string SetEmptyIconByType(ScriptedSelectionMenuEntry entry)
 	{
-		return m_sEmtpyIconName;
+		return m_sEmptyIconName;
 	}
 	
 	//------------------------------------------------------------------------------------------------

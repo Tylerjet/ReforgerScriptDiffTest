@@ -14,6 +14,7 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
         m_eType = EAIActionType.MEDIC_HEAL;
 		m_sBehaviorTree = "{990FE3889BBA5839}AI/BehaviorTrees/Chimera/Soldier/MedicHeal.bt";
 		m_fPriority = priority;
+		m_bAllowLook = false;
 	}
 	
 	override void OnActionSelected()

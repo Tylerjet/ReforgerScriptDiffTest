@@ -282,6 +282,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		if (!comp)
 			return;
 		
+		comp.SetVisible(buttonPreset.m_bShowButton, false);
 		comp.SetLabel(buttonPreset.m_sLabel);
 		comp.SetAction(buttonPreset.m_sActionName);
 		
@@ -536,6 +537,9 @@ class SCR_ConfigurableDialogUiButtonPreset
 
 	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox, "")]
 	string m_sSoundClicked;
+	
+	[Attribute("1")]
+	bool m_bShowButton;
 };
 
 

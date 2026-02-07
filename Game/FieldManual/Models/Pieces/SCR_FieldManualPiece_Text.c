@@ -1,4 +1,4 @@
-[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sText", "Text: %1")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sText", "Text: %1")]
 class SCR_FieldManualPiece_Text : SCR_FieldManualPiece
 {
 	[Attribute(uiwidget: UIWidgets.EditBoxWithButton)]

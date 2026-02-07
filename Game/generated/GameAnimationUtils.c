@@ -19,4 +19,9 @@ sealed class GameAnimationUtils
 	static proto string GetTagString(AnimationTagID tagID);
 	//! Animate entities colliders from current state of mesh object bones transformation
 	static proto void AnimateColliders(IEntity entity);
+	//! Searches for index of sub mesh with provided meshName
+	//! return -1 in case failed
+	static proto int FindMeshIndex(IEntity ent, string meshName);
+	//! Set visibility of sub mesh at specified index
+	static proto void ShowMesh(IEntity ent, int meshIndex, bool visible);
 };

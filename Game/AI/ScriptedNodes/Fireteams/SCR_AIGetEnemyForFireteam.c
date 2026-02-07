@@ -44,19 +44,19 @@ class SCR_AIGetEnemyToFireteam: AITaskScripted
 		int teamSelection;
 		GetVariableIn(PORT_FIRETEAM_IN, teamSelection);
 		
-		for (int i = 0, length = m_GroupUtilityComponent.m_aFireteamsForKnownEnemies.Count(); i< length; i++)
+		for (int i = 0, length = m_GroupUtilityComponent.m_aTargetInfos.Count(); i< length; i++)
 		{
-			if (m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[i] == teamSelection)
+			if (m_GroupUtilityComponent.m_aTargetInfos[i].m_eFireTeamAssigned == teamSelection)
 			{
-				if (SCR_AIIsAlive.IsAlive(m_GroupUtilityComponent.m_aListOfKnownEnemies[i]))
+				if (SCR_AIIsAlive.IsAlive(m_GroupUtilityComponent.m_aTargetInfos[i].m_TargetEntity))
 				{
-					SetVariableOut(PORT_TARGET_OUT, m_GroupUtilityComponent.m_aListOfKnownEnemies[i]);
-					SetVariableOut(PORT_POSITION_OUT, m_GroupUtilityComponent.m_aPositionsForKnownEnemies[i]);
-					return ENodeResult.SUCCESS;					
-				}				
-			}		
-		}		
-		return ENodeResult.FAIL;		
+					SetVariableOut(PORT_TARGET_OUT, m_GroupUtilityComponent.m_aTargetInfos[i].m_TargetEntity);
+					SetVariableOut(PORT_POSITION_OUT, m_GroupUtilityComponent.m_aTargetInfos[i].m_vLastSeenPosition);
+					return ENodeResult.SUCCESS;
+				}
+			}
+		}
+		return ENodeResult.FAIL;
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -18,9 +18,12 @@ class SCR_RadialMenuComponent : ScriptComponent
 	[Attribute("1", UIWidgets.Object, "Set handler id - hadnler and visual class needs to match to function together", category:"Behavior")]
 	protected int m_iHandlerId;
 	
+	[Attribute("1", UIWidgets.CheckBox, "Should the radial menu use categories extension", category:"Behavior")]
+	protected bool m_bUseCategories;
+	
 	//------------------------------------------------------------------------------------------------
 	// Interaction modification
-	[Attribute("CharacterSwitchWeaponRadial", UIWidgets.CheckBox, "Opening / closing input reference", category:"Interaction")]
+	[Attribute("", UIWidgets.CheckBox, "Opening / closing input reference", category:"Interaction")]
 	string m_sInput_Toggle;
 	
 	[Attribute("1", UIWidgets.CheckBox, "Using thumb stick for navigation - True = left | False = right", category:"Interaction")]
@@ -31,12 +34,6 @@ class SCR_RadialMenuComponent : ScriptComponent
 	
 	[Attribute("1", UIWidgets.ComboBox, "The way the entry is performed", category: "Interaction", ParamEnumArray.FromEnum(ERadialMenuPerformType))]
 	protected ERadialMenuPerformType m_iEntryPerformType; 
-	
-	[Attribute(SCR_RadialMenuInteractions.INPUT_PAGE_NEXT, UIWidgets.ComboBox, "Input to switch next page.", category: "Interaction", ParamEnumArray.FromEnum(ERadialMenuPerformType))]
-	protected string m_sInputPageNext; 
-	
-	[Attribute(SCR_RadialMenuInteractions.INPUT_PAGE_PREVIOUS, UIWidgets.ComboBox, "Input to switch previous page.", category: "Interaction", ParamEnumArray.FromEnum(ERadialMenuPerformType))]
-	protected string m_sInputPagePrevious; 
 	
 	//------------------------------------------------------------------------------------------------
 	// Entries modification
@@ -119,6 +116,7 @@ class SCR_RadialMenuComponent : ScriptComponent
 		m_pRadialMenu.SetEntryDistance(m_fEntryDistance);
 		m_pRadialMenu.SetEntryOffset(m_fEntryInitialOffset, m_fEntryOffset);
 		m_pRadialMenu.SetShowEmptyEntries(m_bShowEmptyEntries);
+		m_pRadialMenu.SetUseCategories(m_bUseCategories);
 		
 		// Selector
 		m_pRadialMenu.SetRadialMenuSelectionBehavior(m_iSelectionBehavior);
@@ -141,16 +139,4 @@ class SCR_RadialMenuComponent : ScriptComponent
 		//m_HUDManager.RegisterHUDElement(m_RadialMenuVisuals);
 		//m_HUDManager.CreateLayout();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-    void SCR_RadialMenuComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
-    {
-		
-    }
-      
-    //------------------------------------------------------------------------------------------------
-    void ~SCR_RadialMenuComponent()
-    {
-		
-    }
 };

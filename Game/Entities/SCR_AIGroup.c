@@ -85,7 +85,7 @@ class SCR_AIGroup: ChimeraAIGroup
 	ref array<IEntity> m_aSceneGroupUnitInstances;
 	ref array<IEntity> m_aSceneWaypointInstances;
 	ref array<IEntity> m_aListOfKnownVehicles;
-
+	
 	protected int m_iMaxUnitsToSpawn = int.MAX;
 	protected ref ScriptInvoker Event_OnInit = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnEmpty = new ScriptInvoker;
@@ -122,10 +122,15 @@ class SCR_AIGroup: ChimeraAIGroup
 	protected ref array<int> m_aDisconnectedPlayerIDs;
 	protected static ref ScriptInvoker s_OnPlayerAdded = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnPlayerRemoved = new ScriptInvoker();
-	protected static ref ScriptInvoker s_OnPlayerLeaderChanged = new ScriptInvoker();
+	protected static ref ScriptInvoker<int, int> s_OnPlayerLeaderChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnPrivateGroupChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnCustomNameChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnCustomDescChanged = new ScriptInvoker();
+	
+	//commanding variables
+	protected SCR_AIGroup m_SlaveGroup;
+	protected SCR_AIGroup m_MasterGroup;
+	protected ref array<SCR_ChimeraCharacter> m_aAIMembers = {};
 
 	//------------------------------------------------------------------------------------------------
 	bool IsPlayerInGroup(int playerID)
@@ -169,7 +174,9 @@ class SCR_AIGroup: ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	bool IsSlave()
 	{
-		return false;
+		if (!m_MasterGroup)
+			return false;
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -319,8 +326,13 @@ class SCR_AIGroup: ChimeraAIGroup
 		AIAgent agent = aiControlComponent.GetAIAgent();
 		if (!agent)
 			return;
-
+	
 		AddAgent(agent);
+		
+		//we send notification to master group players
+		if (IsSlave())
+			NotificateGroupAIChange(controlledEntity, ENotification.GROUPS_AI_JOINED);
+		
 		OnGroupMemberStateChange();
 	}
 
@@ -335,7 +347,24 @@ class SCR_AIGroup: ChimeraAIGroup
 		if (!agent)
 			return;
 		RemoveAgent(agent);
+		
+		//we send notification to master group players
+		if (IsSlave())
+			NotificateGroupAIChange(controlledEntity, ENotification.GROUPS_AI_LEFT);
+		
 		OnGroupMemberStateChange();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void NotificateGroupAIChange(IEntity controlledEntity, ENotification notificationType)
+	{
+		RplId rplId = -1;
+		SCR_EditableEntityComponent editableEntityComp = SCR_EditableEntityComponent.Cast(controlledEntity.FindComponent(SCR_EditableEntityComponent));
+		if (editableEntityComp)
+			rplId = Replication.FindId(editableEntityComp);
+		
+		if (rplId.IsValid())
+			SCR_NotificationsComponent.SendToGroup(GetMaster().GetGroupID(), notificationType, rplId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -413,10 +442,27 @@ class SCR_AIGroup: ChimeraAIGroup
 
 		characterController.m_OnPlayerDeathWithParam.Insert(OnMemberDeath);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddOnGadgetsLoadedListener(int playerID, notnull IEntity controlledEntity)
+	{
+		SCR_GadgetManagerComponent.GetOnGadgetInitDoneInvoker().Insert(OnControllableEntitySpawned);
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.GetOnPlayerSpawned().Remove(AddOnGadgetsLoadedListener);
+	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnControllableEntitySpawned(int playerID, notnull IEntity controlledEntity)
+	void OnControllableEntitySpawned(IEntity controlledEntity, notnull SCR_GadgetManagerComponent gadgetManager)
 	{
+		if (!controlledEntity)
+			return; 
+		
+		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(controlledEntity);
+		if (playerID == 0)
+			return;
+				
 		int index = m_aAgentIDQueue.Find(playerID);
 		if (index < 0)
 			return;
@@ -428,9 +474,7 @@ class SCR_AIGroup: ChimeraAIGroup
 		if (!m_aAgentIDQueue.IsEmpty())
 			return;
 
-		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (gameMode)
-			gameMode.GetOnPlayerSpawned().Remove(OnControllableEntitySpawned);
+		SCR_GadgetManagerComponent.GetOnGadgetInitDoneInvoker().Remove(OnControllableEntitySpawned);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -445,8 +489,8 @@ class SCR_AIGroup: ChimeraAIGroup
 		if (!gameMode)
 			return;
 
-		// Waiting for spawn of a controllable entity with correct ID
-		gameMode.GetOnPlayerSpawned().Insert(OnControllableEntitySpawned);
+		// Waiting for spawn of a controllable entity with correct ID		
+		gameMode.GetOnPlayerSpawned().Insert(AddOnGadgetsLoadedListener);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -496,7 +540,7 @@ class SCR_AIGroup: ChimeraAIGroup
 		if (playerID == m_iLeaderID)
 			return;
 		m_iLeaderID = playerID;
-		s_OnPlayerLeaderChanged.Invoke();
+		s_OnPlayerLeaderChanged.Invoke(m_iGroupID, playerID);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -665,19 +709,21 @@ class SCR_AIGroup: ChimeraAIGroup
 		for (int i = 0; i < m_iNumOfMembersToSpawn; i++)
 		{
 			bool isLast = i == (m_iNumOfMembersToSpawn - 1);
-			if (!game.InPlayMode())
-				SpawnGroupMember(snapToTerrain, i, entityResourceNames[i], editMode, isLast);
-			else if (m_bSpawnImmediately)
-				//--- Delay is set to 0 to spawn them ASAP
-				GetGame().GetCallqueue().CallLater(SpawnGroupMember, 0, false, snapToTerrain, i, entityResourceNames[i], editMode, isLast);
-			else
-				//--- Delay is defined and sequential spawning is used to preserve performance
+			if (!editMode && (m_fMemberSpawnDelay > 0 || IsLoaded()))
+			{
+				// Delay is defined and sequential spawning is used to preserve performance.
+				// Also used when the delay is 0, but the group is placed in the world, to prevent replication issues.
 				GetGame().GetCallqueue().CallLater(SpawnGroupMember, m_fMemberSpawnDelay * i, false, snapToTerrain, i, entityResourceNames[i], editMode, isLast);
+			}
+			else
+			{
+				SpawnGroupMember(snapToTerrain, i, entityResourceNames[i], editMode, isLast);
+			}
 		}
 
 		//--- Call group init if it cannot be called by the last spawned entity
 		if (m_iNumOfMembersToSpawn == 0)
-			Event_OnInit.Invoke();
+			Event_OnInit.Invoke(this);
 	}
 
 	protected void SpawnGroupMember(bool snapToTerrain, int index, ResourceName res, bool editMode, bool isLast)
@@ -685,7 +731,10 @@ class SCR_AIGroup: ChimeraAIGroup
 		if (!GetGame().GetAIWorld().CanAICharacterBeAdded())
 		{
 			if (isLast)
-				Event_OnInit.Invoke();
+				Event_OnInit.Invoke(this);
+			
+			//Event_OnLastGroupMemberSpawned.Invoke(this);
+			
 			return;
 		}
 		BaseWorld world = GetWorld();
@@ -717,13 +766,13 @@ class SCR_AIGroup: ChimeraAIGroup
 			if (pos[1] < groundHeight)
 				pos[1] = groundHeight;
 		}
-
+		
 		spawnParams.Transform[3] = pos;
+		
 		IEntity member = GetGame().SpawnEntityPrefab(Resource.Load(res), world, spawnParams);
-
 		if (!member)
 			return;
-
+		
 		if (editMode)
 			m_aSceneGroupUnitInstances.Insert(member);
 
@@ -732,11 +781,11 @@ class SCR_AIGroup: ChimeraAIGroup
 
 		if (factionAffiliation)
 			factionAffiliation.SetAffiliatedFactionByKey(m_faction);
-
+	
 		if (isLast)
-			Event_OnInit.Invoke();
+			Event_OnInit.Invoke(this);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void SetWaypointParams(out AIWaypoint wp, SCR_WaypointPrefabLocation prefabParams)
 	{
@@ -1001,7 +1050,7 @@ class SCR_AIGroup: ChimeraAIGroup
 		IEntity vehicle;
 		IEntity charEntity;
 
-		foreach(AIAgent agent: agents)
+		foreach (AIAgent agent: agents)
 		{
 			charEntity = agent.GetControlledEntity();
 
@@ -1097,13 +1146,14 @@ class SCR_AIGroup: ChimeraAIGroup
 	/*!
 	Get event called when all initial group members were spawned.
 	Called only on server.
-	No invoker params are passed.
+	Param is this aiGroup
 	\return Script invoker
 	*/
 	ScriptInvoker GetOnInit()
 	{
 		return Event_OnInit;
 	}
+	
 	/*!
 	Get event called when the group becomes empty.
 	Called only on server.
@@ -1315,7 +1365,7 @@ class SCR_AIGroup: ChimeraAIGroup
 		if (s_bIgnoreSpawning)
 		{
 			//--- Instantly mark as initialized if no team members are to be spawned
-			Event_OnInit.Invoke();
+			Event_OnInit.Invoke(this);
 		}
 		else if (m_bSpawnImmediately)
 		{
@@ -1329,6 +1379,17 @@ class SCR_AIGroup: ChimeraAIGroup
 	void SetMaxUnitsToSpawn(int cnt)
 	{
 		m_iMaxUnitsToSpawn = cnt;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set delay (ms) between spawning of individual group members.
+	Can be used only before they are spawned.
+	\param memberSpawnDelay Delay
+	*/
+	void SetMemberSpawnDelay(int memberSpawnDelay)
+	{
+		m_fMemberSpawnDelay = memberSpawnDelay;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1349,6 +1410,63 @@ class SCR_AIGroup: ChimeraAIGroup
 			AddWaypointsStatic(m_aStaticWaypoints);
 			AddWaypointsDynamic(null, m_aSpawnedWaypoints);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get slave subgroup that is used for AI characters when invited by players into this playable SCR_AIGroup.
+	*/
+	SCR_AIGroup GetSlave()
+	{
+		return m_SlaveGroup;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set slave subgroup that is used for AI characters when invited by players into this playable SCR_AIGroup.
+	*/
+	void SetSlave(SCR_AIGroup group)
+	{
+		m_SlaveGroup = group;
+		group.SetMaster(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get master group that gives orders to this slave subgroup
+	*/
+	SCR_AIGroup GetMaster()
+	{
+		return m_MasterGroup;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Set master group that gives orders to this slave subgroup
+	*/
+	void SetMaster(SCR_AIGroup group)
+	{
+		m_MasterGroup = group;
+	}
+	
+		//------------------------------------------------------------------------------------------------
+	array<SCR_ChimeraCharacter> GetAIMembers()
+	{
+		return m_aAIMembers;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*
+	returns true if SCR_ChimeraCharacter is a member of slave subgroup that is linked to this playable SCR_AIGroup
+	*/
+	bool IsAIControlledCharacterMember(SCR_ChimeraCharacter character)
+	{
+		if (!character)
+			return false;
+		//if group doesnt have slave group for AIs, AI is automatically not a member
+		if (!m_SlaveGroup)
+			return false;
+		return m_SlaveGroup.m_aAIMembers.Find(character) != -1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1374,6 +1492,12 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		writer.WriteString(m_sCustomDescription);
 		writer.WriteString(m_sCustomName);
+		
+		RplId groupID;
+		groupID = Replication.FindId(m_MasterGroup);
+		writer.WriteRplId(groupID);
+		groupID = Replication.FindId(m_SlaveGroup);
+		writer.WriteRplId(groupID);
 
 		//do rpcs for players join/leave
 		//add invokers for players join/leave
@@ -1416,6 +1540,12 @@ class SCR_AIGroup: ChimeraAIGroup
 		
 		reader.ReadString(m_sCustomDescription);
 		reader.ReadString(m_sCustomName);
+		
+		RplId groupID;
+		reader.ReadRplId(groupID);
+		m_MasterGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
+		reader.ReadRplId(groupID);
+		m_SlaveGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
 
 
 		return true;

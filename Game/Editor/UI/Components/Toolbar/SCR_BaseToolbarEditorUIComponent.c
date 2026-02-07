@@ -25,7 +25,12 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 	protected int m_iFocusedIndex;
 	protected int m_iItemsCount;
 	protected int m_iPage;
+	protected bool m_bIsUnderCursor;
 	
+	bool IsUnderCursor()
+	{
+		return m_bIsUnderCursor || !GetGame().GetInputManager().IsUsingMouseAndKeyboard();
+	}
 	protected bool CreateItem(out Widget itemWidget, out SCR_BaseToolbarItemEditorUIComponent toolbarItem)
 	{
 		if (m_ItemsWidget)
@@ -157,6 +162,18 @@ class SCR_BaseToolbarEditorUIComponent: SCR_DialogEditorUIComponent
 		//if (!m_bIsInDialog) Refresh();
 	}
 	*/
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		m_bIsUnderCursor = true;
+		super.OnMouseEnter(w, x, y);
+		return false;
+	}
+	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
+	{
+		m_bIsUnderCursor = false;
+		super.OnMouseLeave(w, enterW, x, y);
+		return false;
+	}
 	override void HandlerAttachedScripted(Widget w)
 	{
 		super.HandlerAttachedScripted(w);

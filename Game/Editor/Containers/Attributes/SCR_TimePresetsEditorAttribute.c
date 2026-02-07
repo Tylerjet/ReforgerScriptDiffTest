@@ -87,7 +87,7 @@ class SCR_TimePresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 		SCR_EditorAttributeFloatStringValueHolder value
 		float time;
 		
-		foreach(SCR_DayTimeInfoBase dayTime: daytimeInfo)
+		foreach (SCR_DayTimeInfoBase dayTime: daytimeInfo)
 		{
 			value = new SCR_EditorAttributeFloatStringValueHolder();
 			

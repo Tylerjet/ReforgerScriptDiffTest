@@ -73,7 +73,8 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	AddonPresetDialog,
 	AddonExportDialog,
 	GroupSettingsDialog,
-	CareerProfileMenu
+	CareerProfileMenu,
+	CampaignBuildingPlacingMenuDialog
 };
 
 //------------------------------------------------------------------------------------------------

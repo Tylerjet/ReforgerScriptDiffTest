@@ -64,7 +64,7 @@ class ScriptComponent: GenericComponent
 	*/
 	event protected void EOnFrame(IEntity owner, float timeSlice);
 	/*!
-	Even after physics update
+	Event after physics update
 	\param owner The owner entity
 	\param frameNumber Time passed since last frame
 	*/
@@ -124,7 +124,7 @@ class ScriptComponent: GenericComponent
 	*/
 	event protected void EOnFixedFrame(IEntity owner, float timeSlice);
 	/*!
-	Even after physics update on every fixed frame
+	Event after physics update on every fixed frame
 	\param owner The owner entity
 	\param frameNumber Fixed time step
 	*/

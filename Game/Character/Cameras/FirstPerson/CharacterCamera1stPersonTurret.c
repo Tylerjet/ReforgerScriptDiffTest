@@ -13,6 +13,8 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 	private vector m_vPrevEyePosition;
 	private IEntity m_OwnerVehicle;
 
+	private vector m_vLastCameraAngles; //< Does not update in freelook
+
 	//-----------------------------------------------------------------------------
 	void CharacterCamera1stPersonTurret(CameraHandlerComponent pCameraHandler)
 	{
@@ -91,37 +93,33 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
 		pOutResult.m_iDirectBone 			= -1;
 
-		vector aimingAngles = m_pControlledTurret.GetAimingRotation();
+		// character matrix
+		vector charMat[4];
+		m_OwnerCharacter.GetWorldTransform(charMat);
+
 		vector offset = m_OffsetLS;
 		if (m_pCompartment && m_pCompartment.IsDirectAimMode() && m_pTurretController.GetCanAimOnlyInADS())
 		{
 			offset = "0 0 0";
 		}
-		vector aimChange = m_Input.GetAimChange();
-		bool freeLook = m_bForceFreeLook || m_pTurretController.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled();
 
-		float lrAngle = 0.0;
-		float udAngle = 0.0;
+		vector charAngles = Math3D.MatrixToAngles(charMat);
+		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
+
+		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 		
-		// Freelook is using specific angles and is not very compatible with the UpdateAngleWithTarget method
-		if (freeLook)
+		//! apply to rotation matrix
+		if (charController.IsInFreeLook() || m_pTurretController.GetCanAimOnlyInADS())
 		{
-			lrAngle = UpdateLRAngle(m_fLeftRightAngle, CONST_LR_MIN, CONST_LR_MAX, pDt);
-			udAngle = UpdateUDAngle(m_fUpDownAngle, CONST_UD_MIN, CONST_UD_MAX, pDt);
+			m_vLastCameraAngles[0] = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles()[0];
+			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles + lookAngles, pOutResult.m_CameraTM);
 		}
 		else
 		{
-			lrAngle = UpdateAngleWithTarget(m_fLeftRightAngle, m_fLRAngleAdd, m_fLRAngleVel, m_vHorAimLimits, pDt, aimingAngles[0], aimChange[0], freeLook);
-			udAngle = UpdateAngleWithTarget(m_fUpDownAngle, m_fUpDownAngleAdd, m_fUDAngleVel, m_vVertAimLimits, pDt, aimingAngles[1], aimChange[1], freeLook);
+			m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
+			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
 		}
-
-		if(m_pTurretController.GetCanAimOnlyInADS() || freeLook)
-		{
-			aimingAngles[0] = lrAngle;
-			aimingAngles[1] = udAngle;
-		}
-		//! apply to rotation matrix
-		Math3D.AnglesToMatrix(aimingAngles, pOutResult.m_CameraTM);
+		
 		//! lerp eye position to prevent nosiating shake when character walks around deployed turret
 		m_vPrevEyePosition = vector.Lerp(m_vPrevEyePosition, m_OwnerCharacter.EyePositionModel(), 0.25);
 		pOutResult.m_CameraTM[3] = m_vPrevEyePosition + offset;
@@ -140,6 +138,10 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 	//-----------------------------------------------------------------------------	
 	override float GetBaseFOV()
 	{
-		return GetGame().GetCameraManager().GetVehicleFOV();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+		
+		return cameraManager.GetVehicleFOV();
 	}
 };

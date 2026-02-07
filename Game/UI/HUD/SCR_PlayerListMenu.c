@@ -574,7 +574,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		
 		int playerID = GetVotingPlayerID(combo);
 		SCR_VotingUIInfo info;
-		for (int i, count = m_VotingManager.GetAvailableVotingsAboutPlayer(playerID, m_aVotingTypes); i < count; i++)
+		for (int i, count = m_VotingManager.GetVotingsAboutPlayer(playerID, m_aVotingTypes, true, true); i < count; i++)
 		{
 			EVotingType votingType = m_aVotingTypes[i];
 			info = m_VotingManager.GetVotingInfo(votingType);
@@ -643,7 +643,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	void CreateEntry(int id, SCR_PlayerDelegateEditorComponent editorDelegateManager)
 	{
 		//check for existing entry, return if it exists already
-		foreach(SCR_PlayerListEntry entry : m_aEntries )
+		foreach (SCR_PlayerListEntry entry : m_aEntries )
 		{
 			if (entry.m_iID == id)
 				return;
@@ -995,7 +995,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			return false;
 		
 		array<EVotingType> votingTypes = {};
-		int count = m_VotingManager.GetAvailableVotingsAboutPlayer(entry.m_iID, votingTypes);
+		int count = m_VotingManager.GetVotingsAboutPlayer(entry.m_iID, votingTypes, true, true);
 		return count > 0;
 	}
 	//------------------------------------------------------------------------------------------------
@@ -1237,7 +1237,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		//Remove the subscriptions to player right changed
 		if (editorDelegateManager)
 		{
-			foreach(SCR_PlayerListEntry entry: m_aEntries)
+			foreach (SCR_PlayerListEntry entry: m_aEntries)
 			{
 				if (entry)
 				{

@@ -38,7 +38,7 @@ class SCR_PlaceEntityContextAction: SCR_DoubleClickAction
 		if (DidCursorMoveDuringDoubleClick())
 			return;
 		
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (!placingManager || placingManager.IsPlacing() || GetGame().GetMenuManager().IsAnyDialogOpen())
 			return;
 		

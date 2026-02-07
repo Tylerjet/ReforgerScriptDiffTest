@@ -271,17 +271,6 @@ class CareerBackendData : JsonApiStruct
 class CampaignCallback : BackendCallback
 {
 	/**
-	\brief Called when data were recieved, you can ignore it when using callback to JsonApiStruct object with expand feature
-	\param data Contain received data, may be JSON, plain text, XML or image
-	\param size 
-	*/
-	override void OnDataReceive( string data, int size )
-	{
-		Print("[BackendCallback] Data received, size=",size);
-		Print(data);
-	}
-
-	/**
 	\brief Request finished with error result
 	\param code Error code is type of EBackendError
 	*/

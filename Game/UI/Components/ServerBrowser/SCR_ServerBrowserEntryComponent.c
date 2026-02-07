@@ -290,10 +290,8 @@ class SCR_ServerBrowserEntryComponent : ScriptedWidgetComponent
 		// Favorite 
 		SetFavorite(m_RoomInfo.IsFavorite(), false);
 		
-		// Check mods 
-		array<Dependency> dependencies = {};
-		m_RoomInfo.AllItems(dependencies);
-		m_bIsModded = !dependencies.IsEmpty();
+		// Check mods
+		m_bIsModded = room.IsModded();
 		
 		// Setup room properties 
 		CheckRoomProperties();

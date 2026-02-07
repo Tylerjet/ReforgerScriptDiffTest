@@ -17,8 +17,12 @@ class ServerBrowserMenuUI: MenuRootBase
 	const int ROOM_REFRESH_RATE = 10 * 1000;
 	const int ROOM_REFRESH_WAIT_DELAY = 100;
 	const int BACKEND_CHECK_TIMEOUT = 30 * 1000;
+	protected const float PASSWORD_CHECK_TIMEOUT = 5000;
+	
+	protected const int REJOIN_DELAY = 10;
 	
 	protected bool m_bWaitForRefresh = false;
+	protected bool m_bHostedServers;
 	
 	// Widget class reference
 	protected ref ServerBrowserMenuWidgets m_Widgets = new ref ServerBrowserMenuWidgets;
@@ -39,6 +43,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected SCR_FilterPanelComponent m_FilterPanel;
 	protected SCR_PooledServerListComponent m_ScrollableList;
 	protected SCR_ServerScenarioDetailsPanelComponent m_ServerScenarioDetails;
+	protected SCR_LoadingOverlay m_LoadingOverlay;
 	
 	protected SCR_NavigationButtonComponent m_BtnJoin;
 	protected SCR_NavigationButtonComponent m_BtnDetails;
@@ -62,7 +67,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected ref ServerDetailsMenuUI m_DetailsDialog = null;
 		
 	// Search callbacks
-	//ref OnSearchServers m_SearchCallback = new OnSearchServers;
 	protected ref array<ref ServerBrowserCallback> m_aSearchCallbacks = {};
 	protected ref ServerBrowserCallback m_CallbackLastSearch = null;
 	protected ref SCR_BackendCallback m_CallbackScroll = new SCR_BackendCallback();
@@ -79,8 +83,8 @@ class ServerBrowserMenuUI: MenuRootBase
 	// Joining 
 	protected ref ServerBrowserCallback m_CallbackJoin = new ref ServerBrowserCallback();
 	protected ref SCR_ServerBrowserDialogManager m_Dialogs = new SCR_ServerBrowserDialogManager();
-	
-	protected ref OnJoinRoomSB m_CallbackPasswordCheck = new OnJoinRoomSB();
+
+	protected ref SCR_BackendCallback m_CallbackPassword = new SCR_BackendCallback();
 	protected ref RoomPasswordJoinParam m_passwordStruct = new RoomPasswordJoinParam();
 
 	// Filter parameters 
@@ -160,7 +164,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		RoomHandlingButtonsEnabling(false, false);
 		
 		// Setup list and message 
-		Messages_ShowMessage(TAG_MESSAGE_SEARCHING, true);
+		Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
 		
 		if (m_ScrollableList)
 		{
@@ -170,7 +174,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Setup debug menu 
 		
 		// Setup connection attempt timeout 
-		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
+		//GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -179,6 +183,25 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Show last server
 		if (!m_sErrorMessage.IsEmpty())
 			DisplayKick();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		ClearConnectionTimeoutWaiting();
+		
+		if (!GetGame().GetBackendApi().IsActive())
+			GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
+		
+		// Focus back on the host button 
+		if (m_bHostedServers)
+			GetGame().GetCallqueue().CallLater(FocusWidget, 0, false, m_Widgets.m_wHostNewServerButton);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusLost()
+	{
+		ClearConnectionTimeoutWaiting();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -243,8 +266,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (!backendActive)
 			return;
 		
-		ClearConnectionTimeoutWaiting();
-		
 		// Call room search or find last server 
 		string lastId = m_Lobby.GetPreviousRoomId();
 		
@@ -254,6 +275,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (!m_Lobby.IsPingAvailable())
 			return;
 		
+		ClearConnectionTimeoutWaiting();
 		OnActionRefresh();
 		
 		// Join to invited server 
@@ -272,7 +294,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Fail wating for backend if takes too long 
 	protected void ConnectionTimeout()
 	{
-		Messages_ShowMessage("NO_CONNECTION", true);
+		Messages_ShowMessage("NO_CONNECTION");
 		
 		if (m_Dialogs)
 		{
@@ -290,7 +312,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void OnConnectionTimeoutDialogConfirm()
 	{
 		m_Dialogs.m_OnConfirm.Remove(OnConnectionTimeoutDialogConfirm);
-		Messages_ShowMessage(TAG_MESSAGE_SEARCHING, true);
+		Messages_ShowMessage(TAG_MESSAGE_SEARCHING);
 		m_bIsWaitingForBackend = false;
 		
 		GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
@@ -398,7 +420,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Cross play filter when Cross play privilege is not enabled 
 		/*if (m_ParamsFilter.IsModdedFilterSelected() && !GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY))
 		{
-			//Messages_ShowMessage("MISSING_PRIVILEGE_MP", true);
+			//Messages_ShowMessage("MISSING_PRIVILEGE_MP");
 			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
 			
 			//return;
@@ -480,7 +502,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	[MenuBindAttribute()]
 	void OnActionServerDetails(SCR_NavigationButtonComponent navButton = null, string action = "")
 	{		
-		Room room = null;
+		Room room;
 		
 		if (m_EntryInteractible)
 			room = m_EntryInteractible.GetRoomInfo();
@@ -488,8 +510,55 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (!room)
 			return;
 		
-		// Open connecting screen
-		m_DetailsDialog = OpenServerDetailsDialog(m_EntryInteractible.GetRoomInfo());
+		// Focus server to gain data 
+		if (m_EntryInteractible != m_LastFocusedRoom)
+			GetGame().GetWorkspace().SetFocusedWidget(m_EntryInteractible.GetRootWidget());
+		
+		// Create details dialog 
+		array<ref SCR_WorkshopItem> items = {};
+		array<Dependency> dependencies = {};
+		room.AllItems(dependencies);
+		
+		if (m_ModsManager.GetRoomItemsScripted().Count() == dependencies.Count())
+			items = m_ModsManager.GetRoomItemsScripted();
+		
+		SCR_ServerDetailsDialog serverDetails = m_Dialogs.CreateRoomDetails(room, items);
+		serverDetails.SetCanJoin(CanJoinRoom(room));
+		
+		bool loaded = m_ModsManager.GetModsLoaded();
+		
+		if (!dependencies.IsEmpty())
+		{
+			//Fill with last loaded mod list
+			if (!m_ModsManager.GetModsLoaded())
+				m_ModsManager.m_OnGettingAllDependecies.Insert(OnServerDetailModsLoaded);
+			else
+				OnServerDetailModsLoaded();
+		}
+		else
+		{
+			// Fill with emtpy data 
+			m_Dialogs.FillRoomDetailsMods({});
+		}
+		
+		//SCR_DownloadConfirmationDialog dialog = SCR_DownloadConfirmationDialog.CreateForAddons(toUpdateMods, false);
+		
+		m_Dialogs.GetCurrentDialog().m_OnConfirm.Insert(JoinActions_Join);
+		m_Dialogs.GetCurrentDialog().m_OnClose.Insert(OnServerDetailsClosed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this to fill details mods list 
+	protected void OnServerDetailModsLoaded()
+	{
+		m_Dialogs.FillRoomDetailsMods(m_ModsManager.GetRoomItemsScripted());
+		m_ModsManager.m_OnGettingAllDependecies.Remove(OnServerDetailModsLoaded);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnServerDetailsClosed()
+	{
+		m_ModsManager.m_OnGettingAllDependecies.Remove(OnServerDetailModsLoaded);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -513,10 +582,12 @@ class ServerBrowserMenuUI: MenuRootBase
 	[MenuBindAttribute()]
 	void OnActionRefresh()
 	{	
+		PrintDebug("m_RejoinRoom: " + m_RejoinRoom, "OnActionRefresh");
+		
 		// Try negotiate missing MP privilege
 		if (!GetGame().GetPlatformService().GetPrivilege(UserPrivilege.MULTIPLAYER_GAMEPLAY))
 		{
-			Messages_ShowMessage("MISSING_PRIVILEGE_MP", true);
+			Messages_ShowMessage("MISSING_PRIVILEGE_MP");
 			//NegotiateMPPrivilegeAsync();
 			NegotiatePrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY);
 			return;
@@ -649,6 +720,8 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Display rooms
 		OnRoomsFound();
 		m_CallbackLastSearch = null;
+		
+		PrintDebug("AFTER - m_RejoinRoom: " + m_RejoinRoom, "OnSearchRoomsSuccess");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -670,7 +743,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			return;
 		}
 		
-		Messages_ShowMessage("BACKEND_SERVICE_FAIL", true);
+		Messages_ShowMessage("BACKEND_SERVICE_FAIL");
 		m_CallbackLastSearch = null;
 	}
 	
@@ -769,11 +842,13 @@ class ServerBrowserMenuUI: MenuRootBase
 
 		if (hasLastServer && reconnectEnabled)
 		{
-			m_Dialogs.m_OnConfirm.Insert(OnLastRoomReconnectConfirm);
-			m_Dialogs.m_OnDialogClose.Remove(OnRejoinCancel);
-			m_Dialogs.m_OnDialogClose.Insert(OnRejoinCancel);
+			m_Dialogs.GetEventOnRejoinTimerOver().Insert(OnLastRoomReconnectConfirm);
 			
-			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom, m_sErrorMessageDetail);
+			m_Dialogs.m_OnConfirm.Insert(OnLastRoomReconnectConfirm);
+			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
+			m_Dialogs.m_OnCancel.Insert(OnRejoinCancel);
+			
+			m_Dialogs.DisplayReconnectDialog(m_RejoinRoom, REJOIN_DELAY, m_sErrorMessageDetail);
 		}
 		
 		// Clear messages and backend check 
@@ -879,6 +954,10 @@ class ServerBrowserMenuUI: MenuRootBase
 		{
 			ReceiveRoomContent_Scenario(room);
 		}
+		
+		// Allow check only if client is authorized to join server 
+		if (!room.IsAuthorized())
+			return;
 			
 		// Check room mods count 
 		array<Dependency> roomMod = {};
@@ -1006,6 +1085,9 @@ class ServerBrowserMenuUI: MenuRootBase
 		{
 			m_TabView.m_OnChanged.Insert(OnTabViewSwitch);
 			OnTabViewSwitch(null, null, m_TabView.GetShownTab());
+			
+			if (!GetGame().IsPlatformGameConsole())
+				m_TabView.AddTab("", "#AR-Workshop_ButtonHost");
 		}
 		
 		// Filter panel 
@@ -1252,7 +1334,11 @@ class ServerBrowserMenuUI: MenuRootBase
 	{	
 		// Default setup 
 		m_ParamsFilter.SetFavoriteFilter(false);
-		m_ParamsFilter.SetRecentlyPlayedFilter(false); 
+		m_ParamsFilter.SetRecentlyPlayedFilter(false);
+		m_ParamsFilter.SetOwnedOnly(false);
+		m_bHostedServers = false;
+		
+		m_Widgets.m_wHostNewServerButton.SetVisible(false); 
 		
 		switch (id)
 		{
@@ -1292,6 +1378,22 @@ class ServerBrowserMenuUI: MenuRootBase
 				m_ParamsFilter.SetOfficialFilter(false, false);
 				break;
 			}
+			
+			// Hostest
+			case 5:
+			{
+				// Widgets
+				m_Widgets.m_wHostNewServerButton.SetVisible(true);
+				// Call focus later to prevent override from auto widget focus
+				GetGame().GetCallqueue().CallLater(FocusWidget, 0, false, m_Widgets.m_wHostNewServerButton);
+				
+				// Filters
+				m_ParamsFilter.SetOfficialFilter(false, false);
+				m_ParamsFilter.SetOwnedOnly(true);
+				m_bHostedServers = true;
+				
+				break;
+			}
 		}
 		
 		// Set tab filter json
@@ -1301,6 +1403,14 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (!m_bFirstRoomLoad)
 			OnActionRefresh();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Separated focus function for later call
+	protected void FocusWidget(Widget w)
+	{
+		GetGame().GetWorkspace().SetFocusedWidget(w);
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnFilterPanelToggle(bool show)
@@ -1949,7 +2059,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this on rejoin dialog confirm 
-	protected void OnRejoinConfirm(SCR_NavigationButtonComponent btn)
+	/*protected void OnRejoinConfirm(SCR_NavigationButtonComponent btn)
 	{
 		if (m_RejoinRoom)
 			JoinProcess_Init(m_RejoinRoom);
@@ -1959,7 +2069,7 @@ class ServerBrowserMenuUI: MenuRootBase
 			m_Dialogs.m_OnConfirm.Remove(OnRejoinConfirm);
 			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
 		}
-	}
+	}*/
 	
 	//------------------------------------------------------------------------------------------------
 	//!  Call this on rejoin dialog cancel 
@@ -1970,8 +2080,10 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (m_Dialogs.GetCurrentKickDialog())
 		{
 			m_Dialogs.m_OnConfirm.Remove(OnLastRoomReconnectConfirm);
-			m_Dialogs.m_OnDialogClose.Remove(OnRejoinCancel);
+			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
 		}
+		
+		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1979,8 +2091,8 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! This should be pnly called if dialog is still open 
 	protected void OnDialogsHandlerDownloadComplete(Room room)
 	{
-		//JoinRoom(room);
-		JoinProcess_CheckRoomPasswordProtected(room);
+		JoinProcess_Join(room);
+		//JoinProcess_CheckRoomPasswordProtected(room);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2139,23 +2251,34 @@ class ServerBrowserMenuUI: MenuRootBase
 		Room roomToJoin = m_EntryInteractible.GetRoomInfo();
 		if (roomToJoin)
 			JoinProcess_Init(roomToJoin);
+		
+		GameSessionStorage.s_Data["m_iRejoinAttempt"] = "0";
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Action for finding server on direct join 
 	protected void JoinActions_DirectJoin(string params, EDirectJoinFormats format, bool publicNetwork)
 	{
-		JoinProcess_FindRoom(params, format, publicNetwork)
+		JoinProcess_FindRoom(params, format, publicNetwork);
+		GameSessionStorage.s_Data["m_iRejoinAttempt"] = "0";
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Confirm action to find new server 
 	protected void OnLastRoomReconnectConfirm()
 	{
+		// Clearup
+		if (m_Dialogs.GetCurrentKickDialog())
+		{
+			m_Dialogs.m_OnConfirm.Remove(OnLastRoomReconnectConfirm);
+			m_Dialogs.m_OnCancel.Remove(OnRejoinCancel);
+		}
+		
+		GetGame().GetCallqueue().Remove(OnLastRoomReconnectConfirm);
+		
+		// Find
 		string lastId = m_Lobby.GetPreviousRoomId();
 		JoinProcess_FindRoomById(lastId, m_CallbackSearchPreviousRoom);
-		
-		m_Dialogs.m_OnConfirm.Remove(OnLastRoomReconnectConfirm);
 	}
 	
 	protected Room m_RoomToJoin;
@@ -2194,6 +2317,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		}
 		
 		// Set room search
+		m_DirectJoinParams.SetUsePlayerLimit(false);
 		m_Lobby.SearchTarget(m_DirectJoinParams, m_CallbackSearchTarget);
 		
 		// Setup join dialog 
@@ -2273,8 +2397,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		m_CallbackSearchTarget.m_OnSuccess.Remove(JoinProcess_OnFindRoomSuccess);
 		m_CallbackSearchTarget.m_OnFail.Remove(JoinProcess_OnFindRoomFail);
 		m_CallbackSearchTarget.m_OnTimeOut.Remove(JoinProcess_OnFindRoomTimeout);
-		
-	 	//m_Dialogs.m_OnDialogClose.Remove(OnRejoinCancel);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2443,9 +2565,8 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		#endif
 		
-		// Check room password protection - TODO@wernerjak - add password validation before content check
-		//JoinProcess_CheckRoomPasswordProtected(roomToJoin);
-		JoinProcess_LoadModContent(roomToJoin);
+		// Check room password protection
+		JoinProcess_CheckRoomPasswordProtected(roomToJoin);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2457,12 +2578,14 @@ class ServerBrowserMenuUI: MenuRootBase
 		bool skipPassword = false;
 		
 		if (m_Lobby.GetInviteRoom() == m_RoomToJoin || m_RejoinRoom)
-			skipPassword = true;
+			skipPassword = m_RoomToJoin.IsAuthorized();
 		
 		// Next step if no password protection
 		if (!m_RoomToJoin.PasswordProtected() || skipPassword)
 		{
-			JoinProcess_Join(roomToJoin);
+			//JoinProcess_Join(roomToJoin);
+			//JoinProcess_CheckModContent();
+			JoinProcess_LoadModContent(roomToJoin);
 			return;
 		}
 		
@@ -2473,25 +2596,21 @@ class ServerBrowserMenuUI: MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_PasswordDialogOpen(string errorMessage = "")
 	{
+		if (!m_RoomToJoin)
+			return;
+		
+		m_Dialogs.CloseCurrentDialog();
+		
 		m_Dialogs.DisplayDialog(EJoinDialogState.PASSWORD_REQUIRED);
 		
 		// Input invoker actions 
 		m_Dialogs.m_OnConfirm.Insert(JoinProcess_OnPasswordConfirm);
-		//m_Dialogs.m_OnConfirm.Insert(JoinProcess_OnJoinSuccess);
 		m_Dialogs.m_OnCancel.Insert(JoinProcess_PasswordClearInvokers);
-		
-		// Result invoker actions 
-		m_CallbackPasswordCheck.m_OnSuccess.Insert(JoinProcess_OnPasswordCorrect);
- 		m_CallbackPasswordCheck.m_OnFail.Insert(JoinProcess_OnPasswordWrong);
-		m_CallbackPasswordCheck.m_OnTimeOut.Insert(JoinProcess_OnPasswordTimeout);
 		
 		// Display dialog message 
 		SCR_EditboxDialogUi editDialog = SCR_EditboxDialogUi.Cast(m_Dialogs.GetCurrentDialog());
 		if (editDialog)
 		{
-			//bool display = !errorMessage.IsEmpty();
-			//editDialog.DisplayWarningMessage(display);
-			
 			editDialog.SetWarningMessage(errorMessage);
 		}
 	}
@@ -2499,7 +2618,11 @@ class ServerBrowserMenuUI: MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_OnPasswordConfirm()
 	{
+		if (!m_RoomToJoin)
+			return;
+		
 		SCR_EditboxDialogUi editboxDialog = SCR_EditboxDialogUi.Cast(m_Dialogs.GetCurrentDialog());
+		PrintDebug("m_Dialogs.GetCurrentDialog: " + m_Dialogs.GetCurrentDialog(), "JoinProcess_OnPasswordConfirm");
 		
 		// Check editbox dialog
 		if (!editboxDialog)
@@ -2511,27 +2634,72 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Get edit box value 
 		string value = editboxDialog.GetEditbox().GetValue();
 		
+		// Show loading
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.SetShown(true);
+		else
+			m_LoadingOverlay = SCR_LoadingOverlay.ShowForWidget(GetGame().GetWorkspace(), string.Empty);
+		
 		// Try join with password 
 		m_passwordStruct.SetPassword(value);
-		JoinProcess_Join(m_RoomToJoin);
-		//m_RoomToJoin.Join(m_CallbackPasswordCheck, m_passwordStruct);
+
+		m_CallbackPassword.GetEventOnResponse().Insert(OnPasswordCheckResponse);
+		m_RoomToJoin.VerifyPassword(value, m_CallbackPassword);
+		
+		// Call this after timeout to lost response 
+		GetGame().GetCallqueue().CallLater(PasswordCheckTimeout, PASSWORD_CHECK_TIMEOUT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle password check request response
+	protected void OnPasswordCheckResponse(SCR_BackendCallback callback)
+	{
+		// Hide loading
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.SetShown(false);
+		
+		// Clear 
+		JoinProcess_PasswordClearInvokers();
+		GetGame().GetCallqueue().Remove(PasswordCheckTimeout);
+		
+		// Reaction
+		switch (callback.GetResponseType())
+		{
+			case EBackendCallbackResponse.SUCCESS:
+			{
+				JoinProcess_LoadModContent(m_RoomToJoin);
+				break;
+			}
+			
+			case EBackendCallbackResponse.ERROR:
+			{
+				JoinProcess_PasswordDialogOpen("#AR-Password_FailMessage");
+				break;
+			}
+			
+			case EBackendCallbackResponse.TIMEOUT:
+			{
+				JoinProcess_PasswordDialogOpen("#AR-Password_TimeoutMessage");
+				break;
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void PasswordCheckTimeout()
+	{
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.SetShown(false);
+		
+		JoinProcess_PasswordDialogOpen("#AR-Password_FailMessage");
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_PasswordClearInvokers()
 	{	
+		m_CallbackPassword.GetEventOnResponse().Remove(OnPasswordCheckResponse);
 		m_Dialogs.m_OnConfirm.Clear();
 		m_Dialogs.m_OnCancel.Clear();
-		
-		m_CallbackPasswordCheck.m_OnSuccess.Clear();
-		m_CallbackPasswordCheck.m_OnFail.Clear();
-		m_CallbackPasswordCheck.m_OnTimeOut.Clear();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_OnPasswordCorrect(ServerBrowserCallback callback)
-	{
-		JoinProcess_PasswordClearInvokers();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2539,13 +2707,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	{
 		JoinProcess_PasswordClearInvokers();
 		JoinProcess_PasswordDialogOpen("#AR-Password_FailMessage");
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_OnPasswordTimeout(ServerBrowserCallback callback)
-	{
-		JoinProcess_PasswordClearInvokers();
-		JoinProcess_PasswordDialogOpen("#AR-Password_TimeoutMessage");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2637,8 +2798,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Join if room content is matching 
 		if (outdated.IsEmpty())
 		{
-			//JoinProcess_Join(roomToJoin);
-			JoinProcess_CheckRoomPasswordProtected(roomToJoin);
+			JoinProcess_Join(roomToJoin);
 			return;	
 		}	
 		
@@ -2653,7 +2813,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	{
 		// Join server 
 		SetJoiningRoom(roomToJoin);
-		//roomToJoin.Join(m_CallbackJoin, null);
 		roomToJoin.Join(m_CallbackJoin, m_passwordStruct);
 		
 		// Add join callbacks 
@@ -2742,9 +2901,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	//! Call this if joining to room has timeout
 	protected void JoinProcess_OnJoinTimeout(ServerBrowserCallback callback)
 	{
-		/*if (m_Dialogs)
-			m_Dialogs.DisplayJoinFail();*/
-		
 		// TODO@wernerjak - add proper time out feedback dialog
 		PrintDebug("join timeout in ServerBrowserMenuUI", "JoinProcess_OnJoinTimeout");
 		
@@ -2810,19 +2966,6 @@ class ServerBrowserMenuUI: MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Attempt to allow Cross play privilege
-	/*protected void NegotiateCrossPlayPrivilegeAsync()
-	{
-		if (!m_CallbackGetPrivilege)
-		{
-			m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
-			m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResult);
-		}
-		
-		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY, m_CallbackGetPrivilege);
-	}*/
-	
-	//------------------------------------------------------------------------------------------------
 	//! Attempt to enable selected privilege 
 	protected void NegotiatePrivilegeAsync(UserPrivilege privilege)
 	{
@@ -2866,9 +3009,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResult);
 	}
-	
-	
-	
 	
 	//------------------------------------------------------------------------------------------------
 	// Custom debuging

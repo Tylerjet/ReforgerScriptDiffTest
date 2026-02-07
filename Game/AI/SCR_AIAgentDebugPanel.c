@@ -59,6 +59,8 @@ class SCR_AIAgentDebugPanel : Managed
 				perception = PerceptionComponent.Cast(m_ControlledEnt.FindComponent(PerceptionComponent));
 			}
 			
+			DbgUI.Text(string.Format("LOD: %1", m_Agent.GetLOD()));
+			
 			if (infoComp)
 			{
 				string strUnitState = string.Format("Unit State: %1", EnumFlagsToString(EUnitState, infoComp.GetUnitStates()));

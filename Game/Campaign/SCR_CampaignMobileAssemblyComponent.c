@@ -10,6 +10,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	static ref ScriptInvoker s_OnUpdateRespawnCooldown = new ScriptInvoker();
 	
 	static const int RESPAWN_COOLDOWN = 60000;
+	static const float MAX_WATER_DEPTH = 2.5;
 	
 	protected RplComponent m_RplComponent;
 	protected MapItem m_MapItem;

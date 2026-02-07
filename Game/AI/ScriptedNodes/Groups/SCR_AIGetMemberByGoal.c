@@ -67,6 +67,8 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 				continue;
 			if(agentsExclude.Contains(agent))
 				continue;
+			if (aIInfoComponent.HasUnitState(EUnitState.UNCONSCIOUS))
+				continue;
 			
 						
 			switch (m_goalToAchieve)

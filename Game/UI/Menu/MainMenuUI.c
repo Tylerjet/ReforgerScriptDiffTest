@@ -11,17 +11,12 @@ class MainMenuUI : ChimeraMenuBase
 	protected static bool s_bDidCheckNetwork;
 	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
 
-	protected static const int DEFAULT_XBOX_SERIES_S_PRESET = 5;
-	protected static const int DEFAULT_XBOX_SERIES_X_PRESET = 4;
+
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
-
-#ifdef PLATFORM_CONSOLE
-		SetupXboxDefaultVideoSettings();
-#endif
 
 		// Init common Workshop UI
 		SCR_WorkshopUiCommon.OnGameStart();
@@ -100,7 +95,7 @@ class MainMenuUI : ChimeraMenuBase
 	{
 		// Opening Last menu
 		SCR_MenuLoadingComponent.LoadLastMenu();
-		SCR_MenuLoadingComponent.ClearLastMenu();
+		//SCR_MenuLoadingComponent.ClearLastMenu();
 
 		// Check playing for the first time, do not show to devs
 		if (Game.IsDev())
@@ -312,43 +307,5 @@ class MainMenuUI : ChimeraMenuBase
 			return;
 
 		SCR_ServicesStatusDialogUI.OpenIfServicesAreNotOK();
-	}
-
-	//---------------------------------------------------------------------------------------------
-	//solution to different presets for series X and S, since we don't have different defaults for them in WB so far
-	protected static void SetupXboxDefaultVideoSettings()
-	{
-		int maxFPS = 30;	// this is defined in method because it's just a temporary solution before we have different configurations for S and X
-							// so it's better to keep all the hotfixes together rather than make a mess in mainmenu
-
-		BaseContainer display = GetGame().GetEngineUserSettings().GetModule("DisplayUserSettings");
-		UserSettings video = GetGame().GetEngineUserSettings().GetModule("VideoUserSettings");
-		BaseContainer videoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
-
-		if (!display || !video || !videoSettings)
-			return;
-
-		if (System.GetPlatform() == EPlatform.XBOX_SERIES_S)
-		{
-			display.Set("OverallQuality", DEFAULT_XBOX_SERIES_S_PRESET);
-			video.Set("ResolutionScale", 0.6);
-			videoSettings.Set("m_bNearDofEffect", false);
-			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
-			video.Set("MaxFps", maxFPS);
-			video.Set("Vsynch", true);
-		}
-
-		if (System.GetPlatform() == EPlatform.XBOX_SERIES_X)
-		{
-			display.Set("OverallQuality", DEFAULT_XBOX_SERIES_X_PRESET);
-			video.Set("ResolutionScale", 0.9);
-			videoSettings.Set("m_bNearDofEffect", false);
-			videoSettings.Set("m_iDofType", DepthOfFieldTypes.BOKEH);
-			video.Set("MaxFps", maxFPS);
-			video.Set("Vsynch", true);
-		}
-
-		GetGame().ApplySettingsPreset();
-		GetGame().UserSettingsChanged();
 	}
 };

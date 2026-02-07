@@ -34,6 +34,23 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnLoad;
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnOverride;
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnDelete;
+	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnButtonClick;
+
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeEventOnButtonClick()
+	{
+		if (Event_OnButtonClick)
+			Event_OnButtonClick.Invoke(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnButtonClick()
+	{
+		if (!Event_OnButtonClick)
+			Event_OnButtonClick = new ScriptInvoker();
+
+		return Event_OnButtonClick;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeEventOnNameChanged(string arg0)
@@ -56,6 +73,8 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	{
 		if (Event_OnNameEditStart)
 			Event_OnNameEditStart.Invoke(this);
+		
+		InvokeEventOnButtonClick();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -120,6 +139,8 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	{
 		if (Event_OnLoad)
 			Event_OnLoad.Invoke(this);
+		
+		InvokeEventOnButtonClick();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -136,6 +157,8 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	{
 		if (Event_OnOverride)
 			Event_OnOverride.Invoke(this);
+		
+		InvokeEventOnButtonClick();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -152,6 +175,8 @@ class SCR_AddonLinePresetComponent : ScriptedWidgetComponent
 	{
 		if (Event_OnDelete)
 			Event_OnDelete.Invoke(this);
+		
+		InvokeEventOnButtonClick();
 	}
 
 	//------------------------------------------------------------------------------------------------

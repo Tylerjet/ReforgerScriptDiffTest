@@ -38,7 +38,7 @@ class IEntity: Managed
 	*/
 	event protected void EOnFrame(IEntity owner, float timeSlice);
 	/*!
-	Even after physics update
+	Event after physics update
 	\param owner The owner entity
 	\param timeSlice Time passed since last frame
 	*/

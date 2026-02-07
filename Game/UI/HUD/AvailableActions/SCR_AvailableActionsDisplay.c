@@ -310,7 +310,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 				if (character)
 				{
 					CharacterControllerComponent controller = CharacterControllerComponent.Cast(character.FindComponent(CharacterControllerComponent));
-					if (!controller || controller.IsDead())
+					if (!controller || controller.IsUnconscious() || controller.IsDead())
 						shouldShow = false;
 				}
 			}
@@ -450,14 +450,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		// Set layout position 
 		ApplyOffsets();
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetAdditionalOffsetY(float offset)
-	{
-		m_fAdditionalOffsetY = offset;
-		ApplyOffsets();
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void ApplyOffsets()
 	{
@@ -530,7 +523,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 				}
 				
 				// Select this behavior if it has bigger priority
-				if (selectedBehavior.m_iPriority >= beh.m_iPriority)
+				if (selectedBehavior.m_iPriority < beh.m_iPriority)
 					selectedBehavior = beh;
 			}
 		}
@@ -573,6 +566,14 @@ class AvailableActionLayoutBehavior : AvailableActionLayoutBehaviorBase
 	[Attribute("", UIWidgets.ResourceNamePicker, "Layout", "layout")]
 	ResourceName m_sCheckHUD;
 	
+	[Attribute("0")]
+	protected bool m_bOffsetFromDisplay;
+	
+	[Attribute("0")]
+	protected float m_fAddOffset;
+	
+	protected float m_fAutoOffset;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool ConditionsChecked(SCR_AvailableActionsDisplay display)
 	{
@@ -583,8 +584,33 @@ class AvailableActionLayoutBehavior : AvailableActionLayoutBehaviorBase
 		Widget hud = HUDManager.FindLayoutByResourceName(m_sCheckHUD);
 		if (!hud)
 			return false;
-				
+		
+		// Callculate auto offset
+		if (m_bOffsetFromDisplay)
+		{
+			float w;
+			
+			SCR_InfoDisplay hudCmp = HUDManager.FindInfoDisplayByResourceName(m_sCheckHUD);
+			if (hudCmp)
+				hudCmp.GetDimensions(w, m_fAutoOffset);
+		}
+		
 		return (!SCR_EditorManagerEntity.IsOpenedInstance() && hud && hud.IsEnabled());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
+	override void ApplyBehavior(notnull SCR_AvailableActionsDisplay display)
+	{
+		// Manual offset
+		if (!m_bOffsetFromDisplay)
+		{
+			super.ApplyBehavior(display);
+			return;
+		}
+		
+		// Auto offset from check HUD
+		display.SetOffsetY(m_fAutoOffset + m_fAddOffset);
 	}
 };
 
@@ -604,7 +630,7 @@ class AvailableActionMenuLayoutBehavior : AvailableActionLayoutBehaviorBase
 
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
-class AvailableActionEditorLayoutBehavior : AvailableActionLayoutBehavior
+class AvailableActionEditorLayoutBehavior : AvailableActionLayoutBehaviorBase
 {
 	[Attribute("1", UIWidgets.ComboBox, "In which mode should be this behavior applied", "", ParamEnumArray.FromEnum(EEditorMode))]
 	EEditorMode m_eEditorMode;

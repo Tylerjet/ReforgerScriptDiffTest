@@ -11,8 +11,8 @@ Do not modify, this script is generated
 
 class BaseInventorySearchPredicate: Managed
 {
-	event protected ref array<typename> GetQueryComponents();
-	event protected ref array<typename> GetQueryAttributes();
+	event protected array<typename> GetQueryComponents();
+	event protected array<typename> GetQueryAttributes();
 	/*
 	will be called when serach query was satisfied, if you need to perform additional check on item - override this method
 	queriedComponents and queriedAttributes arrays are guaranteed to contain provided types in Query arrays.

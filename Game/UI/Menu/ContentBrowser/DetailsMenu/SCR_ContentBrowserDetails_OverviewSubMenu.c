@@ -467,7 +467,26 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		if (!scenario || !m_WorkshopItem.GetOffline())
 			return;
 		
+		// Interupt when server config is being edited
+		// just temporary solution to prevent endless opening of menus
+		if (ServerHostingUI.GetTemporaryConfig())
+		{
+			SCR_MenuToolsLib.GetEventOnAllMenuClosed().Insert(OnAllMenuCloseJoin);
+			SCR_MenuToolsLib.CloseAllMenus( {MainMenuUI, ServerBrowserMenuUI} );
+			return;
+		} 
+		
 		ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAllMenuCloseJoin()
+	{
+		SCR_MenuToolsLib.GetEventOnAllMenuClosed().Remove(OnAllMenuCloseJoin);
+		
+		//GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ServerBrowserMenu);
+		if (!GetGame().IsPlatformGameConsole())
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog);
 	}
 	
 	

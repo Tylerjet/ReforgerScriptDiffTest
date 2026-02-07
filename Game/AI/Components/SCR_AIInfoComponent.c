@@ -19,6 +19,7 @@ enum EUnitState
 	WOUNDED 		= 1,
 	IN_TURRET		= 2,
 	IN_VEHICLE		= 4,
+	UNCONSCIOUS		= 8
 };
 
 enum EFireTeams
@@ -50,6 +51,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	private SCR_AIThreatSystem m_ThreatSystem;
 	private ScriptedDamageManagerComponent m_DamageManager;
 	private SCR_AICombatComponent m_CombatComponent;
+	private EventHandlerManagerComponent m_EventHandlerManagerComponent;
 	
 	private ECharacterStance m_eStance;
 	private EMovementType m_eMovementType;
@@ -114,6 +116,14 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			m_CompartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(ent.FindComponent(SCR_CompartmentAccessComponent));
 			m_DamageManager = ScriptedDamageManagerComponent.Cast(ent.FindComponent(ScriptedDamageManagerComponent));
 			m_CombatComponent = SCR_AICombatComponent.Cast(ent.FindComponent(SCR_AICombatComponent));
+			m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
+			
+			if (m_EventHandlerManagerComponent)
+				m_EventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
+			
+			CharacterControllerComponent characterController = CharacterControllerComponent.Cast(ent.FindComponent(CharacterControllerComponent));
+			if (characterController)
+				OnConsciousnessChanged(!characterController.IsUnconscious());
 		}
 		
 		if (m_CompartmentAccessComponent)
@@ -128,6 +138,12 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
 			EvaluateWoundedState();
 		}
+	}
+	
+	void ~SCR_AIInfoComponent()
+	{
+		if (m_EventHandlerManagerComponent)
+			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
 	}
 	
 	override protected void OnDelete(IEntity owner)
@@ -283,12 +299,8 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//! Returns true when state has changed and we must invoke an event
 	protected void EvaluateWoundedState()
 	{
-		bool oldWounded = m_iUnitStates & EUnitState.WOUNDED;
-		bool newWounded = m_DamageManager.IsDamagedOverTime(EDamageType.BLEEDING);
-				
-		// Here we can have custom logic to decide if soldier is considered wounded or not
-		
-		if (newWounded)
+		bool wounded = m_DamageManager.IsDamagedOverTime(EDamageType.BLEEDING);
+		if (wounded)
 			AddUnitState(EUnitState.WOUNDED);
 		else
 			RemoveUnitState(EUnitState.WOUNDED);
@@ -308,6 +320,15 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			return;
 		
 		EvaluateWoundedState();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnConsciousnessChanged(bool conscious)
+	{
+		if (conscious)
+			RemoveUnitState(EUnitState.UNCONSCIOUS);
+		else
+			AddUnitState(EUnitState.UNCONSCIOUS);
 	}
 	
 //-------- Debugging

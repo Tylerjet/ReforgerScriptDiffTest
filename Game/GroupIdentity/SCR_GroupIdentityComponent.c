@@ -87,7 +87,7 @@ class SCR_GroupIdentityComponent: ScriptComponent
 		m_OnIdentityChange.Invoke(m_MilitarySymbol, m_sName);
 	}
 	
-	protected void OnGroupInit()
+	protected void OnGroupInit(SCR_AIGroup aiGroup)
 	{
 		UpdateIdentity();
 		m_Group.GetOnAgentAdded().Insert(OnAgentAdded);

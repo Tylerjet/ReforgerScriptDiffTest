@@ -43,6 +43,10 @@ class CharacterModifierAttributes: BaseItemAttributeData
 	Returns true if character can roll and reload weapon at the same time
 	*/
 	proto external bool IsAllowedReloadingWithRoll();
+	/*!
+	Returns true if character can jump when item is equipped
+	*/
+	proto external bool IsJumpingAllowed();
 };
 
 /** @}*/

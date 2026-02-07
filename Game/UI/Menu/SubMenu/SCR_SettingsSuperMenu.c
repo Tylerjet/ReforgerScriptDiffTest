@@ -27,26 +27,32 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 				blur.SetSmoothBorder(0, 0, w * 0.8, 0);
 			}
 		}
-
-// Remove video settings and keybinds for consoles, if not in settings debug mode
-
-#ifdef PLATFORM_CONSOLE
-		bool isDebug = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, false);
-		if (isDebug)
-			return;
-
+		
 		Widget w = GetRootWidget().FindAnyWidget("TabViewRoot0");
 		if (!w)
 			return;
-
+		
+		bool isDebug = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, false);
+		
 		SCR_TabViewComponent tab = SCR_TabViewComponent.Cast(w.FindHandler(SCR_TabViewComponent));
 		if (!tab)
 			return;
+		
+		if (!isDebug && System.GetPlatform() == EPlatform.WINDOWS)
+		{
+			tab.RemoveTabByIdentifier("SettingsVideoConsole");
+			tab.ShowTabByIdentifier("SettingsVideoPC");
+		}
 
-		//TODO: remake this to still work in case of switching tab order or adding/removing tabs from settings
-		tab.RemoveTab(0); // remove Video
-		// remain Audio, Gameplay and Game Master
-		tab.ShowTab(0);		// select Audio
+// Remove video settings and keybinds for consoles, if not in settings debug mode
+		
+#ifdef PLATFORM_CONSOLE
+		if (isDebug)
+			return;
+		
+		tab.RemoveTabByIdentifier("SettingsVideoPC");
+		tab.ShowTabByIdentifier("SettingsVideoConsole");
+		
 #endif
 	}
 

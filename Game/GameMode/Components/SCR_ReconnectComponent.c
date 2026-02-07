@@ -3,23 +3,13 @@
 class SCR_ReconnectData
 {
 	int m_iPlayerId;	
-	float m_fCounter;			// counter until this instance is deleted
 	IEntity m_ReservedEntity;	// entity of the returning player
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_ReconnectData(int playerId, IEntity entity, float time)
+	void SCR_ReconnectData(int playerId, IEntity entity)
 	{
 		m_iPlayerId = playerId;
 		m_ReservedEntity = entity;
-		m_fCounter = time;
-		
-		// TODO lock server slot
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_ReconnectData()
-	{
-		// TODO unlock server slot
 	}
 };
 
@@ -45,11 +35,9 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enable reconnect functionality for this gamemode")]
 	bool m_bEnableReconnect;
 	
-	[Attribute(defvalue: "120", uiwidget: UIWidgets.EditBox, desc: "How long is the entity held within the world until it is deleted")]
-	float m_fReconnectTime;
-	
 	static SCR_ReconnectComponent s_Instance;
 	
+	protected bool m_bIsInit;			// whether check for connection to backend happenned 
 	protected bool m_bIsReconEnabled;	
 	protected ref array<ref SCR_ReconnectData> m_ReconnectPlayerList = new array<ref SCR_ReconnectData>();
 	
@@ -86,6 +74,19 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	//! \param playerId is the subject
 	bool IsInReconnectList(int playerId)
 	{
+		if (!m_bIsInit)
+		{
+			m_bIsInit = true;
+			
+			BackendApi backendApi = GetGame().GetBackendApi();
+			if (!backendApi || !backendApi.IsActive() || (!backendApi.IsInitializing() && !backendApi.IsRunning()))
+			{
+				m_bIsReconEnabled = false;	// not connected to backend
+				Deactivate(GetOwner());
+				return false;
+			}
+		}
+		
 		if (m_ReconnectPlayerList.IsEmpty())
 			return false;
 		
@@ -123,7 +124,6 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 				m_OnPlayerReconnect.Invoke(m_ReconnectPlayerList[i]);
 				
 				m_ReconnectPlayerList.Remove(i);
-				
 				return ent;
 			}
 		}
@@ -141,10 +141,8 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 				
 		if (groupInt != RplKickCauseGroup.REPLICATION)
 			return false;
-		#ifndef RECONNECT_DEBUG
 		else if (reasonInt == RplError.SHUTDOWN)
 			return false;
-		#endif
 				
 		bool addEntry = true;
 		
@@ -167,7 +165,7 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 			if (!ent)
 				return false;
 			
-			SCR_ReconnectData newEntry = new SCR_ReconnectData(playerId, ent, m_fReconnectTime);
+			SCR_ReconnectData newEntry = new SCR_ReconnectData(playerId, ent);
 			m_ReconnectPlayerList.Insert(newEntry);
 			m_OnAddedToReconnectList.Invoke(newEntry);
 		}
@@ -176,24 +174,24 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
-	{		
+	//! SCR_BaseGameMode event
+	protected void OnPlayerAuditTimeouted(int playerID)
+	{
 		if (m_ReconnectPlayerList.IsEmpty())
 			return;
 		
 		int count = m_ReconnectPlayerList.Count();
 		for (int i; i < count; i++)
 		{
-			m_ReconnectPlayerList[i].m_fCounter -= timeSlice;
-			if (m_ReconnectPlayerList[i].m_fCounter < 0)
+			if (m_ReconnectPlayerList[i].m_iPlayerId == playerID)
 			{
 				RplComponent.DeleteRplEntity(m_ReconnectPlayerList[i].m_ReservedEntity, false);
 				m_ReconnectPlayerList.Remove(i);
-				count--;
+				return;
 			}
 		}
 	}
-
+		
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{		
@@ -207,18 +205,20 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		#ifdef RECONNECT_DEBUG
-		
 		s_Instance = this;
 		m_bIsReconEnabled = true;
-		SetEventMask(owner, EntityEvent.FRAME);
 		
-		#endif
+		SCR_BaseGameMode.Cast(GetGame().GetGameMode()).GetOnPlayerAuditTimeouted().Insert(OnPlayerAuditTimeouted);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_ReconnectComponent()
 	{
+		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()))
+		{
+			SCR_BaseGameMode.Cast(GetGame().GetGameMode()).GetOnPlayerAuditTimeouted().Remove(OnPlayerAuditTimeouted);
+		}
+			
 		s_Instance = null;
 	}
 };

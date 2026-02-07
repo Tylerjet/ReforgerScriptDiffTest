@@ -41,7 +41,10 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 					continue;
 				}
 				
-				item.SetInfoText(GetUnitName(ent));
+				string name;
+				array<string> nameParams = {};
+				GetUnitName(ent, name, nameParams);
+				item.SetInfoText(name, nameParams);
 				
 				FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
 				if (factionComp && factionComp.GetAffiliatedFaction())
@@ -88,28 +91,36 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	//! Get/update name
 	//! \param ent is the subject
-	string GetUnitName(IEntity ent)
-	{		
+	//! \param[out] name Name or formatting of name
+	//! \param[out] nameParams If uses formating: Firstname, Alias and Surname (Alias can be an empty string)
+	void GetUnitName(IEntity ent, out string name, out notnull array<string> nameParams)
+	{				
 		PlayerManager playerMgr = GetGame().GetPlayerManager();
 		if (!playerMgr)
-			return "";
-		
-		string name;
-		
+			return;
+
 		int id = playerMgr.GetPlayerIdFromControlledEntity(ent);
 		if (id != 0)
 			name = playerMgr.GetPlayerName(id);
 		else 
 		{
-			CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(ent.FindComponent(CharacterIdentityComponent));
-			if (charIdentity)
-				name = charIdentity.GetCharacterFullName();
-			else 
-				name = "No identity";
+			SCR_CharacterIdentityComponent scrCharIdentity = SCR_CharacterIdentityComponent.Cast(ent.FindComponent(SCR_CharacterIdentityComponent));
+			if (scrCharIdentity)
+			{
+				scrCharIdentity.GetFormattedFullName(name, nameParams);
+			}
+			else
+			{
+				CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(ent.FindComponent(CharacterIdentityComponent));
+				if (charIdentity)
+					name = charIdentity.GetCharacterFullName();
+				else 
+					name = "No identity";
+			}
+				
 		}
 		
-		
-		return name;
+		return;
 	}
 	
 	//------------------------------------------------------------------------------------------------

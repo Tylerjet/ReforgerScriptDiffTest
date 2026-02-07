@@ -56,7 +56,7 @@ class SCR_WindDirectionEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		timeManager.GetOrderedWindDirectionInfoArray(orderedWindDirectionInfo);
 		SCR_EditorAttributeFloatStringValueHolder value;
 		
-		foreach(SCR_WindDirectionInfo windDirectionInfo: orderedWindDirectionInfo)
+		foreach (SCR_WindDirectionInfo windDirectionInfo: orderedWindDirectionInfo)
 		{
 			value = new SCR_EditorAttributeFloatStringValueHolder();
 			value.SetName(windDirectionInfo.GetUIInfo().GetName());

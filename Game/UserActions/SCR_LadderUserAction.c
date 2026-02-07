@@ -58,10 +58,7 @@ class SCR_LadderUserAction : ScriptedUserAction
 		
 		// Already on a ladder
 		SCR_CharacterCommandHandlerComponent cmdHandler = FindCommandHandler(user);
-		if (cmdHandler && cmdHandler.GetCommandLadder())
-			return false;
-		
-		return true;
+		return cmdHandler && !cmdHandler.GetCommandLadder();
 	}
 	
 	//! Action is performed through input actions of CharacterController, 

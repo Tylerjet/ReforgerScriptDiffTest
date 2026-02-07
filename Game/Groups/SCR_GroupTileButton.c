@@ -193,11 +193,11 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		
 		m_aPlayerComponentsList.Clear();
 		
-		VerticalLayoutWidget playerList = VerticalLayoutWidget.Cast( m_ParentSubMenu.GetRootWidget().FindAnyWidget("PlayerList"));
+		VerticalLayoutWidget playerList = VerticalLayoutWidget.Cast(m_ParentSubMenu.GetRootWidget().FindAnyWidget("PlayerList"));
 		if (!playerList)
 			return;
 		
-		VerticalLayoutWidget leaderList = VerticalLayoutWidget.Cast( m_ParentSubMenu.GetRootWidget().FindAnyWidget("Leader"));
+		VerticalLayoutWidget leaderList = VerticalLayoutWidget.Cast(m_ParentSubMenu.GetRootWidget().FindAnyWidget("Leader"));
 		if (!leaderList)
 			return;
 		
@@ -297,6 +297,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			playerTile = Widget.Cast(GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList));
 			SetupPlayerTile(playerTile, playerID);
 		}
+		
+		ShowAIsInGroup();
 		
 		GetGame().GetWorkspace().SetFocusedWidget(GetRootWidget());
 	}
@@ -508,8 +510,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			return;
 		
 		m_PlayerTileComponent.SetOptionsComboBoxComponent(playerOptionsCombo);
+			
 		int playerID = GetGame().GetPlayerController().GetPlayerId();
-		
 		SCR_AIGroup group = m_GroupManager.GetPlayerGroup(playerID);
 		
 		if (group && m_iGroupID != group.GetGroupID() && m_PlayerTileComponent.GetTilePlayerID() != -1)
@@ -674,5 +676,51 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		badgeTop.SetColor(color);
 		badgeMiddle.SetColor(color);
 		badgeBottom.SetColor(color);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ShowAIsInGroup()
+	{
+		SCR_AIGroup group = m_GroupManager.FindGroup(m_iGroupID);
+		if (!group)
+			return;
+		
+		VerticalLayoutWidget playerList = VerticalLayoutWidget.Cast(m_ParentSubMenu.GetRootWidget().FindAnyWidget("PlayerList"));
+		if (!playerList)
+			return;
+		
+		Widget playerTile;
+		TextWidget playerName;
+		ButtonWidget playerButton;
+		
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		if (!slaveGroup)
+			return;
+		
+		array<SCR_ChimeraCharacter> aiMembers = slaveGroup.GetAIMembers();
+		CharacterIdentityComponent identityComponent;
+		
+		foreach(SCR_ChimeraCharacter AIcharacter : aiMembers)
+		{
+			playerTile = Widget.Cast(GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList));
+			playerName = TextWidget.Cast(playerTile.FindAnyWidget("PlayerName"));
+			
+			identityComponent = CharacterIdentityComponent.Cast(AIcharacter.FindComponent(CharacterIdentityComponent));
+			if (!identityComponent)
+				return;
+			
+			playerName.SetText(identityComponent.GetCharacterFullName());
+			
+			playerButton = ButtonWidget.Cast(playerTile.FindAnyWidget("PlayerButton"));
+			if (!playerButton)
+				return; 
+			
+			SCR_PlayerTileButtonComponent playerTileComponent = SCR_PlayerTileButtonComponent.Cast(playerButton.FindHandler(SCR_PlayerTileButtonComponent));
+			playerTileComponent.SetTilePlayerID(-1);
+			
+			playerTileComponent.SetCharacter(AIcharacter);
+			
+			SetupOptionsCombo(playerTile);
+		}
 	}
 };

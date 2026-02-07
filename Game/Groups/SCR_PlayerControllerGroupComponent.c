@@ -499,6 +499,177 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		group.SetCustomName(name);
 	}
 	
+		//------------------------------------------------------------------------------------------------
+	void RequestCreateSlaveGroup(RplId rplCompID)
+	{
+		Rpc(RPC_AskCreateSlaveGroup, rplCompID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskCreateSlaveGroup(RplId rplCompID)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (!commandingManager)
+			return;
+		
+		IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(commandingManager.GetGroupPrefab()));
+		if (!groupEntity)
+			return;
+		
+		
+		SCR_AIGroup group = SCR_AIGroup.Cast(groupEntity);
+		if (!group)
+			return;
+		
+		RplComponent slaveRplComp = RplComponent.Cast(group.FindComponent(RplComponent));
+		if (!slaveRplComp)
+			return;
+		
+		groupManager.RequestSetGroupSlave(rplCompID, slaveRplComp.Id());
+		return;
+	}
+	
+		
+	//------------------------------------------------------------------------------------------------
+	bool IsAICharacterInAnyGroup(SCR_ChimeraCharacter character, SCR_Faction faction)
+	{
+		//TODO: kuceramar: come up with better solution that doesnt include going through all groups
+		//possible JIP problems due ot using SCR_CHimeraCharacter
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return false;
+		array<SCR_AIGroup> groups = groupManager.GetPlayableGroupsByFaction(faction);
+		
+		bool isMember = false;
+		foreach(SCR_AIGroup group : groups)
+		{
+			isMember = group.IsAIControlledCharacterMember(character);
+			if (isMember)
+				return isMember;
+		}
+		
+		return isMember;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	void RequestAddAIAgent(SCR_ChimeraCharacter character, int playerID)
+	{
+		RplComponent rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+		
+		Rpc(RPC_AskAddAIAgent, rplComp.Id(), playerID);
+	} 
+	
+		//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskAddAIAgent(RplId characterID, int playerID)
+	{
+		SCR_GroupsManagerComponent groupsManager;
+		SCR_PlayerControllerGroupComponent playerGroupController;
+		SCR_AIGroup group;
+		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
+			return;
+		
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(characterID));
+		if (!rplComp)
+			return;
+		
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(rplComp.GetEntity());
+		
+		if (!character)
+			return;		
+		if (!group.IsPlayerLeader(playerID))
+			return;
+		
+		AddAIToSlaveGroup(character, group);
+	}
+	
+			
+	//------------------------------------------------------------------------------------------------
+	//! Should be only called on the server
+	void AddAIToSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!group.GetSlave() || !groupManager)
+			return;
+		
+		group.GetSlave().AddAgentFromControlledEntity(controlledEntity);
+		
+		RplId groupCompID, characterCompID;
+		RplComponent rplComp = RplComponent.Cast(group.GetSlave().FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+		
+		groupCompID = rplComp.Id();
+		rplComp = RplComponent.Cast(controlledEntity.FindComponent(RplComponent)); 
+		characterCompID = rplComp.Id();
+		
+		groupManager.AskAddAiMemberToGroup(groupCompID, characterCompID);
+	}
+	
+		
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskRemoveAIAgent(RplId characterID, int playerID)
+	{
+		SCR_GroupsManagerComponent groupsManager;
+		SCR_PlayerControllerGroupComponent playerGroupController;
+		SCR_AIGroup group;
+		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
+			return;
+		
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(characterID));
+		if (!rplComp)
+			return;
+		
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(rplComp.GetEntity());
+		
+		if (!character)
+			return;		
+		
+		if (!group.IsPlayerLeader(playerID))
+			return;
+		
+		RemoveAiFromSlaveGroup(character, group);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Should be only called on the server
+	void RemoveAiFromSlaveGroup(notnull IEntity controlledEntity, SCR_AIGroup group)
+	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!group.GetSlave() || !groupManager)
+			return;
+		
+		group.GetSlave().RemoveAgentFromControlledEntity(controlledEntity);
+		
+		RplId groupCompID, characterCompID;
+		RplComponent rplComp = RplComponent.Cast(group.GetSlave().FindComponent(RplComponent));
+		groupCompID = rplComp.Id();
+		rplComp = RplComponent.Cast(controlledEntity.FindComponent(RplComponent)); 
+		if (!rplComp)
+			return;
+		
+		characterCompID = rplComp.Id();
+		
+		groupManager.AskRemoveAiMemberFromGroup(groupCompID, characterCompID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestRemoveAgent(SCR_ChimeraCharacter character, int playerID)
+	{
+		RplComponent rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+		
+		Rpc(RPC_AskRemoveAIAgent, rplComp.Id(), playerID);
+	}	
 		
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)

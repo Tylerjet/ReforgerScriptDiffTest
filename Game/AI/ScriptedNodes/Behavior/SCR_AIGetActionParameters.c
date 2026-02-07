@@ -79,7 +79,7 @@ class SCR_AIGetGetOutActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetAttackActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIAttackActivity(null, false, false)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIAttackActivity(null, false, false, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -92,9 +92,6 @@ class SCR_AIGetAttackActivityParameters : SCR_AIGetActionParameters
 			return ENodeResult.FAIL;
 		
 		SCR_AIAttackActivity attackActivity = SCR_AIAttackActivity.Cast(action);
-		if (attackActivity)
-			attackActivity.m_vPosition.m_AssignedOut = attackActivity.m_vPosition.m_Value != vector.Zero;
-		
 		action.SetParametersToBTVariables(this);
 		return ENodeResult.SUCCESS;
 	}

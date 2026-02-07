@@ -9,13 +9,13 @@ Do not modify, this script is generated
 * @{
 */
 
-class EquipedLoadoutStorageComponentClass: BaseInventoryStorageComponentClass
+class EquipedLoadoutStorageComponentClass: ScriptedBaseInventoryStorageComponentClass
 {
 };
 
-class EquipedLoadoutStorageComponent: BaseInventoryStorageComponent
+class EquipedLoadoutStorageComponent: ScriptedBaseInventoryStorageComponent
 {
-	proto external InventoryStorageSlot GetSlotForArea(ELoadoutArea area);
+	proto external InventoryStorageSlot GetSlotForArea(typename areaType);
 };
 
 /** @}*/

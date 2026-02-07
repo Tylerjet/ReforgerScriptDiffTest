@@ -10,6 +10,9 @@ class SCR_CampaignTutorialStage41 : SCR_BaseCampaignTutorialStage
 	{
 		RegisterWaypoint("WP_CONFLICT_TOUR_BARRACKS");
 		m_fWaypointCompletionRadius = 5;
-		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Armory", "", -1);
+		
+		string hintString = "#AR-Tutorial_Hint_Armory <h1 align='center' scale='4'><color rgba='34,196,244,255'><image set='{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset' name='Slot_Armory'/></color></h1>";
+	
+		SCR_HintManagerComponent.ShowCustomHint(hintString, "", -1);
 	}
 };

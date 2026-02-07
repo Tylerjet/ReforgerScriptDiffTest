@@ -33,6 +33,9 @@ class SCR_CampaignArmoryStorageComponent : UniversalInventoryStorageComponent
 	//------------------------------------------------------------------------------------------------
 	protected override bool CanStoreItem(IEntity item, int slotID)
 	{
+		if (!super.CanStoreItem(item, slotID))
+			return false;
+		
 		if (!m_bCanStoreItems)
 			return false;
 		

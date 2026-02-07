@@ -11,7 +11,8 @@ Do not modify, this script is generated
 
 class BaseLoadoutClothComponent: GameComponent
 {
-	proto external ELoadoutArea GetArea();
+	proto external bool SetAlpha(int alpha);
+	proto external LoadoutAreaType GetAreaType();
 };
 
 /** @}*/

@@ -2,7 +2,7 @@
 [BaseContainerProps()]
 class SCR_PowerPoleSlot : SCR_PowerPoleSlotBase
 {
-	[Attribute(desc: "Visualised by red sphere.", params: "inf inf 0 purposeCoords spaceEntity")]
+	[Attribute(desc: "Visualised by red sphere.", params: "inf inf 0 purpose=coords space=entity")]
 	vector m_vSlotB;
 	
 	bool m_bOccupied = false;
@@ -36,7 +36,7 @@ class SCR_PowerPoleSlot : SCR_PowerPoleSlotBase
 [BaseContainerProps()]
 class SCR_PowerPoleSlotBase : Managed
 {
-	[Attribute(desc: "Visualised by green sphere.", params: "inf inf 0 purposeCoords spaceEntity")]
+	[Attribute(desc: "Visualised by green sphere.", params: "inf inf 0 purpose=coords space=entity")]
 	vector m_vSlotA;
 	
 	//------------------------------------------------------------------------------------------------

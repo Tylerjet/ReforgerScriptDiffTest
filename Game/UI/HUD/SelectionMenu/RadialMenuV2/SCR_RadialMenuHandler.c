@@ -41,8 +41,11 @@ class SCR_MenuPage : ScriptedSelectionMenu
 //! Base class for radial menu
 class SCR_RadialMenuHandler : ScriptedSelectionMenu
 {		
-	[Attribute("0.45", UIWidgets.EditBox, "Minimal amout to point in direction to select item. Anything less will reuslt in null selectiom.")]
+	[Attribute("0.45", UIWidgets.EditBox, "Minimal amount to point in direction to select item. Anything less will result in null selection.")]
 	protected float m_fSelectInputRadiusMin;
+	
+	[Attribute("RadialBack", UIWidgets.EditBox, "Back input action. Ignored if empty.")]
+	protected string m_sBackAction;
 	
 	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox)]
 	protected string m_sSoundOnOpen;
@@ -64,10 +67,17 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	
 	protected ref BaseSelectionMenuEntry m_pLastSelected;
 	
+	protected ref BaseSelectionMenuCategory m_RootCategory = new BaseSelectionMenuCategory();
+	
+	protected ref BaseSelectionMenuCategory m_ActualCategory;
+	
+	protected ref array<ref BaseSelectionMenuCategory> m_CategoriesList = {};
+	
 	protected ref SCR_RadialMenuFilter m_pFilter = new SCR_RadialMenuFilter();
 
-	protected ref array<ref SCR_MenuPage> m_aSCR_MenuPages = new ref array<ref SCR_MenuPage>;
+	protected ref array<ref SCR_MenuPage> m_aMenuPages = new ref array<ref SCR_MenuPage>;
 
+	protected bool m_bUseCategories = false;
 	protected int m_iActivePage;
 	protected ref ScriptedSelectionMenuEntry m_ActiveGroupEntry;
 	
@@ -222,7 +232,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_MenuPage> GetSCR_MenuPages() { return m_aSCR_MenuPages; }
+	array<ref SCR_MenuPage> GetSCR_MenuPages() { return m_aMenuPages; }
 	
 	//------------------------------------------------------------------------------------------------
 	protected float GetClampedAngle(float x, float y, int elementCount)
@@ -289,10 +299,10 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	protected void PageSetup()
 	{
 		// Add initial group 
-		m_aSCR_MenuPages.Clear();
+		m_aMenuPages.Clear();
 		
 		ref SCR_MenuPage pageInital = new ref SCR_MenuPage();
-		m_aSCR_MenuPages.Insert(pageInital);
+		m_aMenuPages.Insert(pageInital);
 		m_iActivePage = 0;	
 		SetPage(0);
 	}
@@ -308,9 +318,42 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		
 		UpdateEntries();
 		
+		if (GetUseCategories())
+		{
+			m_ActualCategory = m_RootCategory;
+			ShowElementsFromCategory(m_RootCategory);
+		}
+		
+		if (!m_sBackAction.IsEmpty())
+			GetGame().GetInputManager().AddActionListener(m_sBackAction, EActionTrigger.DOWN, OnBack);
+		
 		// Reseting free selection delay 
 		m_bFreeDelayRelease = false;
 		m_fFreeDelayTimer = 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Add element to the map of the elements, if no parent is specified, element is added to root
+	void AddElementToMenuMap(BaseSelectionMenuEntry element, BaseSelectionMenuCategory parent = null)
+	{
+		if (!element)
+			return;
+		
+		if (!parent)
+		{
+			if (!m_RootCategory)
+				m_RootCategory = new BaseSelectionMenuCategory();
+			parent = m_RootCategory;
+		}
+		
+		parent.AddElementToCategory(element);
+		
+		BaseSelectionMenuCategory category = BaseSelectionMenuCategory.Cast(element);
+		if (category)
+		{
+			GetCategoriesList().Insert(category);
+			category.SetParentCategory(parent);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -320,9 +363,9 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		if (page < 0)
 			return;
 		
-		if (m_aSCR_MenuPages.Count() > page)
+		if (m_aMenuPages.Count() > page)
 		{
-			m_aSCR_MenuPages[page].AddEntry(entry);
+			m_aMenuPages[page].AddEntry(entry);
 		}
 		else
 		{
@@ -337,9 +380,9 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		if (page < 0)
 			return;
 		
-		if (m_aSCR_MenuPages.Count() > page)
+		if (m_aMenuPages.Count() > page)
 		{
-			m_aSCR_MenuPages[page].ClearEntries();
+			m_aMenuPages[page].ClearEntries();
 		}
 	}
 	
@@ -349,8 +392,8 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	{
 		ref array<BaseSelectionMenuEntry> enabledEntries = new ref array<BaseSelectionMenuEntry>;
 		
-		if (m_aSCR_MenuPages.Count() > 0)
-			m_aSCR_MenuPages[m_iActivePage].GetEntryList(enabledEntries);	
+		if (m_aMenuPages.Count() > 0)
+			m_aMenuPages[m_iActivePage].GetEntryList(enabledEntries);	
 		
 		// Register currently active entries as menu official entries 
 		ClearEntries();
@@ -369,11 +412,11 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	protected void SetEntriesToDisplay(IEntity owner)
 	{	
 		// Fitler currently selected menu entries
-		if (m_aSCR_MenuPages.Count() < 1)
+		if (m_aMenuPages.Count() < 1)
 			return;
 	
 		array<BaseSelectionMenuEntry> entriesCurrent = new array<BaseSelectionMenuEntry>;
-		m_aSCR_MenuPages[m_iActivePage].GetEntryList(entriesCurrent);
+		m_aMenuPages[m_iActivePage].GetEntryList(entriesCurrent);
 
 		if (m_pFilter)
 			m_pFilter.DoFilter(owner, this);
@@ -387,6 +430,9 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		
 		m_bShowSelector = false;
 		m_pCurrentSelection = null;
+		
+		if (!m_sBackAction.IsEmpty())
+			GetGame().GetInputManager().RemoveActionListener(m_sBackAction, EActionTrigger.DOWN, OnBack);
 		
 		super.OnClose(owner);
 	}
@@ -424,8 +470,8 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 
 		// Send entries update 
 		array<BaseSelectionMenuEntry> entriesCurrent = new array<BaseSelectionMenuEntry>;
-		if (m_aSCR_MenuPages.Count() > m_iActivePage)
-			m_aSCR_MenuPages[m_iActivePage].GetEntryList(entriesCurrent);		
+		if (m_aMenuPages.Count() > m_iActivePage)
+			m_aMenuPages[m_iActivePage].GetEntryList(entriesCurrent);		
 		
 		OnEntriesUpdate(entriesCurrent, m_pFilter.m_aDisabledEntries);
 	}
@@ -445,6 +491,8 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		
 		if(!isOpen)
 		{
+			m_RootCategory = null;
+			m_CategoriesList.Clear();
 			Close(owner);
 		}
 		else
@@ -466,7 +514,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	//! Handle page data update 
 	protected void UpdatePage(int pageId, array<BaseSelectionMenuEntry> entries)
 	{
-		SCR_MenuPage page = m_aSCR_MenuPages[pageId];
+		SCR_MenuPage page = m_aMenuPages[pageId];
 		int entriesCount = entries.Count();
 		
 		// Clear page entry and fill them again 
@@ -481,7 +529,15 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	//------------------------------------------------------------------------------------------------
 	//! Call for performing entry
 	protected void TryPerformEntry(IEntity owner)
-	{
+	{		
+		BaseSelectionMenuCategory category = BaseSelectionMenuCategory.Cast(m_pCurrentSelection);
+		
+		if (GetUseCategories() && category && !category.GetCategoryElements().IsEmpty())
+		{
+			ShowElementsFromCategory(category);
+			return;
+		}
+		
 		if (m_pCurrentSelection && m_pCurrentSelection.CanBePerformed(m_pOwner, this))
 		{
 			// Perform entry and set as last selected 
@@ -491,11 +547,15 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 			array<BaseSelectionMenuEntry> entries = {};
 			GetEntryList(entries);
 			
+		
+			
 			int i = entries.Find(m_pCurrentSelection);
 			m_OnActionPerformed.Invoke(m_pCurrentSelection, i);
 			
 			// Audio
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_CONFIRMED);
+			//called a bit later because otherwise input manager will still register the mouse click and do appropriate action after closing the menu
+			GetGame().GetCallqueue().CallLater(m_pRadialMenuInteractions.Close, 150, false);
 		}
 	}
 	
@@ -503,12 +563,12 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	//! Set selection id in selected menu page 
 	protected void SetLastSelection(BaseSelectionMenuEntry entrySelected, int page)
 	{
-		if (m_aSCR_MenuPages.Count() < page)
+		if (m_aMenuPages.Count() < page)
 			return;
 		
 		// Get page entries 
 		array<BaseSelectionMenuEntry> entries = new array<BaseSelectionMenuEntry>;
-		 m_aSCR_MenuPages[page].GetEntryList(entries);
+		 m_aMenuPages[page].GetEntryList(entries);
 	
 		// Find id of given entry
 		int id = -1;
@@ -518,12 +578,12 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 			if (entries[i] == entrySelected)
 			{
 				id = i;
-				m_aSCR_MenuPages[page].SetLastSelected(id);
+				m_aMenuPages[page].SetLastSelected(id);
 				return;
 			}
 		}
 		
-		m_aSCR_MenuPages[page].SetLastSelected(id);
+		m_aMenuPages[page].SetLastSelected(id);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -535,7 +595,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		array<BaseSelectionMenuEntry> entries = new array<BaseSelectionMenuEntry>;
 		GetEntryList(entries);
 		
-		foreach(BaseSelectionMenuEntry entry : entries)
+		foreach (BaseSelectionMenuEntry entry : entries)
 		{
 			if(checkEntry == entry)
 				return id;
@@ -566,12 +626,11 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	//! Direction for center check, angle for selection 
 	protected void SelectEntry(IEntity owner, vector direction, float angle, bool isMouseInput)
 	{
-		//int elementsCount = m_aEnabledEntries.Count();
-		int elementsCount = GetEntriesCount();
-		
 		array<BaseSelectionMenuEntry> entriesCurrent = new array<BaseSelectionMenuEntry>;
-		if (m_aSCR_MenuPages.Count() > m_iActivePage)
-			m_aSCR_MenuPages[m_iActivePage].GetEntryList(entriesCurrent);	
+		if (m_aMenuPages.Count() > m_iActivePage)
+			m_aMenuPages[m_iActivePage].GetEntryList(entriesCurrent);	
+		
+		int elementsCount = entriesCurrent.Count();
 		
 		// Get selection index
 		int selection = GetSelectedElementIndex(angle, elementsCount);
@@ -588,7 +647,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		if (selection == -1)
 			selectedElement = null;
 		else if (selection < elementsCount)
-			selectedElement = entriesCurrent[selection];
+			selectedElement = entriesCurrent.Get(selection);
 		
 		// Update selction by selection behavior
 		if(!IsSelectorInCenter(direction))
@@ -804,9 +863,9 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	protected void SetPage(int pageId)
 	{
 		m_iActivePage = pageId;
-		int lastSelect = m_aSCR_MenuPages[pageId].GetLastSelected();
+		int lastSelect = m_aMenuPages[pageId].GetLastSelected();
 		
-		int elementsCount = m_aSCR_MenuPages[pageId].GetEntriesCount();
+		int elementsCount = m_aMenuPages[pageId].GetEntriesCount();
 		if (elementsCount > 0) 
 			m_fEntryDistance = 360 / elementsCount;
 		
@@ -819,7 +878,7 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 	protected void SwitchPage(int pageMove)
 	{
 		// Fail if move is out of bounds 
-		if (m_iActivePage + pageMove < 0 || m_iActivePage + pageMove > m_aSCR_MenuPages.Count() - 1)
+		if (m_iActivePage + pageMove < 0 || m_iActivePage + pageMove > m_aMenuPages.Count() - 1)
 			return;
 		
 		// Switch and update for next page 
@@ -827,6 +886,85 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		UpdateEntries();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	BaseSelectionMenuCategory GetRootCategory()
+	{
+		if (!m_RootCategory)
+			m_RootCategory = new BaseSelectionMenuCategory();
+		return m_RootCategory;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref BaseSelectionMenuCategory> GetCategoriesList()
+	{
+		return m_CategoriesList;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ShowElementsFromCategory(BaseSelectionMenuCategory category)
+	{
+		if (!category)
+			return;
+		
+		m_ActualCategory = category;	
+		
+		ClearEntries(0);
+		
+		array<ref BaseSelectionMenuEntry> elements = category.GetCategoryElements();
+		if (elements.IsEmpty())
+			return;
+		
+		foreach (BaseSelectionMenuEntry element : elements)
+			AddEntry(element, 0);
+		
+		UpdateEntries();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnBack()
+	{
+		if (m_ActualCategory == m_RootCategory)
+		{
+			m_pRadialMenuInteractions.Close();
+			return;
+		}
+		
+		BaseSelectionMenuCategory category = m_ActualCategory.GetParentCategory();
+		
+		if (!category)
+			return;
+		
+		ShowElementsFromCategory(category)
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetUseCategories(bool useCategories)
+	{
+		m_bUseCategories = useCategories;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetUseCategories()
+	{
+		return m_bUseCategories;
+		return m_bUseCategories;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	BaseSelectionMenuCategory GetCategoryFromList(string categoryName)
+	{
+		if (categoryName.IsEmpty())
+			return null;
+		
+		foreach(BaseSelectionMenuCategory category : m_CategoriesList)
+		{
+			if (category.GetCategoryName() == categoryName)
+				return category;
+		}
+		
+		return null;
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	void SCR_RadialMenuHandler()
 	{
@@ -898,8 +1036,9 @@ class SCR_RadialMenuFilter
 //------------------------------------------------------------------------------------------------
 enum ERadialMenuPerformType
 {
-	OnClose,
-	OnPressPerformInput
+	OnClose = 0,
+	OnPressPerformInput,
+	OnCloseOrPress
 };
 
 //------------------------------------------------------------------------------------------------

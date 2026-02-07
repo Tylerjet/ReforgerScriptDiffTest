@@ -20,11 +20,11 @@ class EntitySlotInfo: PointInfo
 		// Check slot managers																			  
 		array<Managed> slotManagers = {}; parent.FindComponents(SlotManagerComponent, slotManagers);	  
 		SlotManagerComponent slotManager;																  
-		foreach(Managed managed : slotManagers)															  
+		foreach (Managed managed : slotManagers)														  
 		{																								  
 			slotManager = SlotManagerComponent.Cast(managed);											  
 			array<EntitySlotInfo> managerSlotInfos = {}; slotManager.GetSlotInfos(managerSlotInfos);	  
-			foreach(EntitySlotInfo slotInfo : managerSlotInfos)											  
+			foreach (EntitySlotInfo slotInfo : managerSlotInfos)										  
 			{																							  
 				if (slotInfo && slotInfo.GetAttachedEntity() == entity)									  
 					return slotInfo;																	  
@@ -35,7 +35,7 @@ class EntitySlotInfo: PointInfo
 		array<Managed> slots = {}; parent.FindComponents(BaseSlotComponent, slots);						  
 		BaseSlotComponent slot;																			  
 		EntitySlotInfo slotInfo;																		  
-		foreach(Managed managed : slots)																  
+		foreach (Managed managed : slots)																  
 		{																								  
 			slot = BaseSlotComponent.Cast(managed);														  
 			slotInfo = slot.GetSlotInfo();																  
@@ -57,12 +57,12 @@ class EntitySlotInfo: PointInfo
 		array<Managed> slotManagers = {}; entity.FindComponents(SlotManagerComponent, slotManagers);	  
 		SlotManagerComponent slotManager;																  
 		array<EntitySlotInfo> managerSlotInfos = {};													  
-		foreach(Managed managed : slotManagers)															  
+		foreach (Managed managed : slotManagers)														  
 		{																								  
 			managerSlotInfos.Clear();																	  
 			slotManager = SlotManagerComponent.Cast(managed);											  
 			slotManager.GetSlotInfos(managerSlotInfos);													  
-			foreach(EntitySlotInfo slotInfo : managerSlotInfos)											  
+			foreach (EntitySlotInfo slotInfo : managerSlotInfos)										  
 			{																							  
 				if (slotInfo)																			  
 					slotInfos.Insert(slotInfo);															  
@@ -73,7 +73,7 @@ class EntitySlotInfo: PointInfo
 		array<Managed> slotComponents = {}; entity.FindComponents(BaseSlotComponent, slotComponents);	  
 		BaseSlotComponent slot;																			  
 		EntitySlotInfo slotInfo;																		  
-		foreach(Managed managed : slotComponents)														  
+		foreach (Managed managed : slotComponents)														  
 		{																								  
 			slot = BaseSlotComponent.Cast(managed);														  
 			slotInfo = slot.GetSlotInfo();																  

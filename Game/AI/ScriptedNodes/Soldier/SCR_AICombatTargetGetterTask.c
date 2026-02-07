@@ -5,6 +5,7 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 	
 	protected static const string ENEMY_ENTITY_PORT = "EntityOut";
 	protected static const string ENEMY_LAST_SEEN_POS_PORT = "EntityLastSeenPos";
+	protected static const string ENEMY_LAST_SEEN_TIME_PORT = "EntityLastSeenTime";
 	
 	//-------------------------------------------------------------------------------------------
 	protected override void OnInit(AIAgent owner)
@@ -34,8 +35,11 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 			return Fail();
 		
 		vector lastSeenPos = targetEnemy.GetLastSeenPosition();
+		float lastSeenTime = targetEnemy.GetTimeLastSeen();
+		
 		SetVariableOut(ENEMY_ENTITY_PORT, entEnemy);
 		SetVariableOut(ENEMY_LAST_SEEN_POS_PORT, lastSeenPos);
+		SetVariableOut(ENEMY_LAST_SEEN_TIME_PORT, lastSeenTime);
 		return ENodeResult.SUCCESS;
 	}
 	
@@ -44,6 +48,7 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 	{
 		ClearVariable(ENEMY_ENTITY_PORT);
 		ClearVariable(ENEMY_LAST_SEEN_POS_PORT);
+		ClearVariable(ENEMY_LAST_SEEN_TIME_PORT);
 		return ENodeResult.FAIL;
 	}
 	
@@ -51,7 +56,8 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 	static ref TStringArray s_aVarsOut =
 	{
 		ENEMY_ENTITY_PORT,
-		ENEMY_LAST_SEEN_POS_PORT
+		ENEMY_LAST_SEEN_POS_PORT,
+		ENEMY_LAST_SEEN_TIME_PORT
 	};
 	protected override TStringArray GetVariablesOut()
 	{

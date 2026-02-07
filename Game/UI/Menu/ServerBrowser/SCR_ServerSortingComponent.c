@@ -47,7 +47,7 @@ class SCR_ServerSortingComponent : SCR_SelectionWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void AddWidgetCells()
 	{
-		foreach(string str : m_aElementNames)
+		foreach (string str : m_aElementNames)
 		{
 			Widget w = m_wRoot.FindAnyWidget(str);
 			if(!w)

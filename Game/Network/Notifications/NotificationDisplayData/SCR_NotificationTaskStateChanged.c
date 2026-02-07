@@ -8,20 +8,19 @@ class SCR_NotificationTaskStateChanged : SCR_NotificationDisplayData
 		
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(taskID));
 		if (!entity)
-			return string.Empty;
+			return m_info.GetName();
 		
 		SCR_EditorTask task = SCR_EditorTask.Cast(entity.GetOwner());
 		if (!task)
-			return string.Empty;
+			return m_info.GetName();
 		
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
-			return string.Empty;
+			return m_info.GetName();
 		
 		Faction faction = factionManager.GetFactionByIndex(factionID);
 		if (!faction)
-			return string.Empty;
-	
+			return m_info.GetName();
 		
 		data.SetNotificationTextEntries(task.GetLocationName(), entity.GetDisplayName(), faction.GetUIInfo().GetName());		
 		return super.GetText(data);
@@ -29,9 +28,17 @@ class SCR_NotificationTaskStateChanged : SCR_NotificationDisplayData
 	
 	override void SetPosition(SCR_NotificationData data)
 	{
+		if (!CanSetPosition(data))
+			return;
+		
 		int taskID, factionID;
 		data.GetParams(taskID, factionID);
 		
 		SetPositionDataEditableEntity(taskID, data);
+	}
+	
+	override bool MergeParam1With2()
+	{
+		return true;
 	}
 };

@@ -37,6 +37,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 
 	[Attribute(category: "Settings", defvalue: typename.EnumToString(EEditorTransformVertical, EEditorTransformVertical.TERRAIN), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
 	private EEditorTransformVertical m_VerticalMode;
+
+	[Attribute(category: "Settings", defvalue: SCR_Enum.GetFlagValues(EEditorTransformVertical).ToString(), uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EEditorTransformVertical))]
+	private EEditorTransformVertical m_AllowedVerticalModes;
 	
 	[Attribute(category: "Settings", defvalue: typename.EnumToString(EEditorTransformSnap, EEditorTransformSnap.TERRAIN), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EEditorTransformSnap))]
 	private EEditorTransformSnap m_VerticalSnap;
@@ -46,6 +49,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	
 	[Attribute(category: "Settings", desc: "When true, interaction between entities passes when at least one edited entity meets the criteria.\nWhen false, all edited entities must be compatible.")]
 	private bool m_bORInteraction;
+	
+	[Attribute(category: "Settings", defvalue: "EditorPreviewContext", desc: "Action context activated all the time.")]
+	protected string m_sActionContext;
 	
 	private vector m_vTransform[4] = {vector.Right, vector.Up, vector.Forward, vector.Zero};
 	//private vector m_vTransformBackup[4];
@@ -260,12 +266,19 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		return m_fHeightGeometry;
 	}
 	/*!
+	\return Offset of pivot on which the preview is centered (e.g., when dragging entity by its mesh, not by icon)
+	*/
+	vector GetLocalOffset()
+	{
+		return m_vLocalOffset;
+	}
+	/*!
 	Set mode which defines which height the preview maintains.
 	\param Mode
 	*/
 	void SetVerticalMode(EEditorTransformVertical mode)
 	{
-		if (mode == m_VerticalMode)
+		if (mode == m_VerticalMode || !SCR_Enum.HasFlag(m_AllowedVerticalModes, mode))
 			return;
 		
 		m_VerticalMode = mode;
@@ -574,6 +587,14 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	SCR_BasePreviewEntity GetPreviewEntity()
 	{
 		return m_PreviewEntity;
+	}
+	/*!
+	Get action context activated every frame.
+	\return Action context name
+	*/
+	string GetActionContext()
+	{
+		return m_sActionContext;
 	}
 	/*!
 	Check if editing is currently on.

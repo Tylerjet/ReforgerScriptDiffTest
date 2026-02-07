@@ -188,4 +188,23 @@ class SCR_WidgetTools
 		}
 		return log;
 	}
+	
+	/*!
+	Find widget handler in widget by name inside given widget 
+	\param root Widget
+	\param widgetName string
+	\param type typename 
+	\return ScriptedWidgetEventHandler handler 
+	*/
+	static ScriptedWidgetEventHandler FindHandlerOnWidget(Widget root, string widgetName, typename type)
+	{
+		if (!root)
+			return null;
+		
+		Widget w = root.FindAnyWidget(widgetName);
+		if (!w)
+			return null;
+		
+		return w.FindHandler(type);
+	}
 };

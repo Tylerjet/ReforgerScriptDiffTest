@@ -48,6 +48,7 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*!
 	Show hint based on existing configuration.
+	
 	\param info Hint UI info
 	\param isSilent True to show the hint without any sound effect
 	\param ignoreShown When true, the hint will be shown even if it was shown previously
@@ -64,6 +65,13 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 		{
 			if (info.GetPriority() < m_LatestHint.GetPriority())
 				return false;
+		}
+		
+		//--- Check if timer is visible, if yes, set the timestamp of start.
+		
+		if (info.IsTimerVisible())
+		{
+			info.SetTimeStamp();
 		}
 		
 		//--- Always silent when refreshing the same hint
@@ -114,6 +122,16 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	}
 	/*!
 	Show hint made of custom texts.
+	
+	*************************************************************************************************
+	## WARNING! ##
+	
+	Use only for quick debugging.
+	For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
+	That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
+	
+	*************************************************************************************************
+	
 	\param description Hint text
 	\param name Hint title
 	\param duration For how long should the hint be shown (in seconds)
@@ -124,7 +142,7 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	bool ShowCustom(string description, string name = string.Empty, float duration = 0, bool isSilent = false, EHint type = EHint.UNDEFINED, EFieldManualEntryId fieldManualEntry = EFieldManualEntryId.NONE, bool isTimerVisible = false)
 	{
 		m_CustomHint = SCR_HintUIInfo.CreateInfo(description, name, duration, type, fieldManualEntry, isTimerVisible);
-		return Show(m_CustomHint);
+		return Show(m_CustomHint, isSilent);
 	}
 	/*!
 	Repeat previously shown hint.
@@ -314,6 +332,16 @@ class SCR_HintManagerComponent: SCR_BaseGameModeComponent
 	}
 	/*!
 	Show hint made of custom texts.
+	
+	*************************************************************************************************
+	## WARNING! ##
+	
+	Use only for quick debugging.
+	For legit use, please configure the hint as SCR_UIInfo attribute on your entity/component/config!
+	That will allow you to set all hint properties, as well as to localize it using LocParserPlugin.
+	
+	*************************************************************************************************
+	
 	\param description Hint text
 	\param name Hint title
 	\param duration For how long should the hint be shown (in seconds)

@@ -80,7 +80,7 @@ class SCR_PlayerListButtonNotificationUIComponent: ScriptedWidgetComponent
 		{
 			//Set visible at start
 			array<EVotingType> validActiveVotingTypes = new array<EVotingType>;
-			int activeVotingCount = m_VotingManagerComponent.GetVotingsAboutPlayer(validActiveVotingTypes);
+			int activeVotingCount = m_VotingManagerComponent.GetAllVotingsAboutPlayer(true, validActiveVotingTypes);
 			
 			if (activeVotingCount > 0)
 			{

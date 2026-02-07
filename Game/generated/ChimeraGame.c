@@ -16,6 +16,8 @@ class ChimeraGame: Game
 	proto external PlayerController GetPlayerController();
 	//! PlayerManager holding info about players who joined MP. It always returns a valid instance.
 	proto external PlayerManager GetPlayerManager();
+	// returns the Perception Manager
+	proto external PerceptionManager GetPerceptionManager();
 	//! returns entity holding info about factions
 	proto external FactionManager GetFactionManager();
 	//! Returns the chat entity

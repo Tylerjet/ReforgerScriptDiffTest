@@ -13,6 +13,7 @@ class SCR_MapEntity: MapEntity
 	// generic
 	protected bool m_bIsOpen;								// is open flag
 	protected bool m_bDoReload;								// mark whether map config changed in order to reload modules/components
+	protected bool m_bDoUpdate;								// mark whether user setting changed, update zoom & position
 	protected bool m_bIsDebugMode;							// variable debug mode
 	protected int m_iMapSize[2];							// map size in meters/units
 	protected EMapEntityMode m_eLastMapMode;				// cached mode of last map for reload check
@@ -258,6 +259,12 @@ class SCR_MapEntity: MapEntity
 		UpdateZoomBounds();
 		AssignViewLayer();
 		
+		if (m_bDoUpdate)	// when resolution changes, zoom to the same PPU to update zoom and pos
+		{
+			ZoomSmooth(m_fZoomPPU);
+			m_bDoUpdate = false;
+		}
+		
 		// activate modules & components
 		ActivateModules(config.Modules);
 		ActivateComponents(config.Components);
@@ -305,9 +312,13 @@ class SCR_MapEntity: MapEntity
 		{
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_MAP_CLOSE);
 			
-			ChimeraCharacter char = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
-			if (char)
-				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Remove(OnPlayerDeath);
+			PlayerController controller = GetGame().GetPlayerController();
+			if (controller)
+			{
+				ChimeraCharacter char = ChimeraCharacter.Cast(controller.GetControlledEntity());
+				if (char)
+					SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Remove(OnPlayerDeath);
+			}
 		}
 		
 		if ( m_ActiveMapCfg.OtherComponents & EMapOtherComponents.LEGEND_SCALE)
@@ -333,6 +344,13 @@ class SCR_MapEntity: MapEntity
 		
 		SCR_MapGadgetComponent mapComp = SCR_MapGadgetComponent.Cast(mapGadget.FindComponent(SCR_MapGadgetComponent));
 		mapComp.SetMapMode(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Game event
+	protected void OnUserSettingsChanged()
+	{
+		m_bDoUpdate = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1475,6 +1493,8 @@ class SCR_MapEntity: MapEntity
 		}
 		
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, "", "Enable map debug menu", "UI");
+		
+		GetGame().OnUserSettingsChangedInvoker().Insert(OnUserSettingsChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------

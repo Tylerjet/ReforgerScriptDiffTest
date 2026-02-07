@@ -15,7 +15,7 @@ class SCR_DuplicateContextAction : SCR_BaseContextAction
 			return false;
 		}
 		
-		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, false, true));
 		return m_PlacingManager != null;
 	}
 	

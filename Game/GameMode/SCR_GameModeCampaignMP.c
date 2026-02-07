@@ -30,18 +30,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	[Attribute("40", desc: "How much supplies it cost to spawn at base by default?")]
 	protected int m_iSpawnCost;
 	
-	[Attribute("8", UIWidgets.Slider, "Starting time of day (hours)", "0 23 1")]
-	protected int m_iStartingHours;
-	
-	[Attribute("0", UIWidgets.Slider, "Starting time of day (minutes)", "0 59 1")]
-	protected int m_iStartingMinutes;
-	
-	[Attribute("1", UIWidgets.Slider, "Time acceleration during the day (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
-	protected float m_fDaytimeAcceleration;
-	
-	[Attribute("1", UIWidgets.Slider, "Time acceleration during the night (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
-	protected float m_fNighttimeAcceleration;
-	
 	[Attribute("40", UIWidgets.EditBox, "Total maximum of all player and allied AI units.")]
 	int m_iTotalPlayersLimit;
 	
@@ -92,6 +80,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	//*****************************//
 	
 	static ref ScriptInvoker s_OnBaseCaptured = new ref ScriptInvoker();
+	static ref ScriptInvoker s_OnSignalChanged = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnEnterEnemyBase = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnFactionAssigned = new ref ScriptInvoker();
 	static ref ScriptInvoker s_OnFactionAssignedLocalPlayer = new ref ScriptInvoker();
@@ -121,9 +110,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected static const int HQ_NO_REMNANTS_RADIUS = 300;
 	protected static const int HQ_NO_REMNANTS_PATROL_RADIUS = 600;
 	static const int GARAGE_VEHICLE_SPAWN_INTERVAL = 60000;
-	static const int DAY_IN_SECONDS = 24 * 60 * 60;
-	static const float DAYTIME_START = 5.0;
-	static const float DAYTIME_END = 20.0;
 	static const int REINFORCEMENTS_SUPPLIES = 10;
 	static const int REINFORCEMENTS_CHECK_PERIOD = 1000;			//ms: how often we should check for reinforcements arrival
 	static const float SUPPLY_TRUCK_UNLOAD_RADIUS = 25;				//m: maximum distance from a supply depot a player can still (un)load their truck
@@ -167,7 +153,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	protected int m_iBaseSeizingHintsShown;
 	protected int m_iSuppliesHintsShown;
 	protected SCR_CampaignBase m_FirstBaseWithPlayer;
-	protected bool m_bDaytimeAcceleration = true;
 	protected bool m_bStartupHintsShown = false;
 	protected bool m_bRespawnHintShown = false;
 	protected bool m_bReinforcementsHintShown = false;
@@ -870,6 +855,19 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				break;
 			}
 			
+			case SCR_ERadioMsg.BUILT_FIELD_HOSPITAL:
+			{
+				if (!base)
+					return;
+				
+				msgName = SCR_SoundEvent.SOUND_HQ_HCB;
+				text = "#AR-Campaign_Building_Available-UC";
+				text2 = base.GetBaseName();
+				param1 = "#AR-Campaign_Building_FieldHospital-UC";
+				duration = 5;
+				break;
+			}
+			
 			case SCR_ERadioMsg.DESTROYED_ARMORY:
 			{
 				if (!base)
@@ -1470,46 +1468,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetupDaytime(int hours, int minutes, int seconds = 0)
-	{
-		TimeAndWeatherManagerEntity manager = GetGame().GetTimeAndWeatherManager();
-		
-		if (!manager)
-			return;
-			
-		manager.SetHoursMinutesSeconds(hours, minutes, seconds);
-		manager.SetDayDuration(DAY_IN_SECONDS / m_fDaytimeAcceleration);
-		GetGame().GetCallqueue().Remove(HandleDaytimeAcceleration);
-		GetGame().GetCallqueue().CallLater(HandleDaytimeAcceleration, 10000, true, manager);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	bool GetIsMatchOver()
 	{
 		return m_bMatchOver;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void HandleDaytimeAcceleration(notnull TimeAndWeatherManagerEntity manager)
-	{
-		float timeOfDay = manager.GetTimeOfTheDay();
-		
-		if (timeOfDay > DAYTIME_END || timeOfDay < DAYTIME_START)
-		{
-			if (m_bDaytimeAcceleration)
-			{
-				m_bDaytimeAcceleration = false;
-				manager.SetDayDuration(DAY_IN_SECONDS / m_fNighttimeAcceleration);
-			}
-		}
-		else
-		{
-			if (!m_bDaytimeAcceleration)
-			{
-				m_bDaytimeAcceleration = true;
-				manager.SetDayDuration(DAY_IN_SECONDS / m_fDaytimeAcceleration);
-			}
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1784,6 +1745,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				else
 					size = remnantsInfo.Insert(presence.GetMembersAlive());
 			}
+			
+			remnantsInfo.Insert(presence.GetRespawnTimestamp());
 		}
 		
 		return size;
@@ -1800,8 +1763,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			SCR_CampaignRemnantInfoStruct struct = new SCR_CampaignRemnantInfoStruct();
 			struct.SetID(remnantsInfo[i]);
 			struct.SetMembersAlive(remnantsInfo[i + 1]);
+			struct.SetRespawnTimer(remnantsInfo[i + 2]);
 			outEntries.Insert(struct);
-			i++;
+			i += 2;
 		}
 	}
 	
@@ -1816,7 +1780,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			foreach (SCR_CampaignRemnantInfoStruct info: entries)
 			{
 				if (info.GetID() == presence.GetID())
+				{
 					presence.SetMembersAlive(info.GetMembersAlive());
+					presence.SetRespawnTimestamp(info.GetRespawnTimer());
+				}
 			}
 		}
 	}
@@ -1828,10 +1795,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// ToDo: Remove once the old CampaignBuilding mode (old one) is removed
 	void OnBuildingInterfaceClosed()
 	{
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	// Triggered each time player build a composition. Slot is the slot he used.
 	void OnStructureBuilt(SCR_SiteSlotEntity slot, SCR_CampaignNetworkComponent networkComponent)
@@ -1869,8 +1837,28 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		
 		SCR_CampaignServiceComponent comp = SCR_CampaignServiceComponent.Cast(structure.FindComponent(SCR_CampaignServiceComponent));
 		
-		foundBase.RegisterAsParentBase(comp);
+		foundBase.RegisterAsParentBase(comp, true);
 		s_OnServiceBuild.Invoke(foundBase, networkComponent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Triggered each time player build a composition. Slot is the slot he used. SARGES TESTING METHOD
+	void OnStructureBuilt(SCR_CampaignBase base, SCR_EditableEntityComponent entity, bool add)
+	{	
+		if (IsTutorial())
+		{
+			SCR_CampaignTutorialComponent tutorial = SCR_CampaignTutorialComponent.Cast(FindComponent(SCR_CampaignTutorialComponent));
+			
+			if (tutorial)
+				tutorial.OnStructureBuilt(base, entity.GetOwner());
+		}
+		
+		SCR_CampaignServiceComponent comp = SCR_CampaignServiceComponent.Cast(entity.GetOwner().FindComponent(SCR_CampaignServiceComponent));
+		if (!comp)
+			return;
+		
+		base.RegisterAsParentBase(comp, add);
+		s_OnServiceBuild.Invoke(base);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1894,7 +1882,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				case ECampaignCompositionType.LIGHT_VEHICLE_DEPOT: {serviceType = ECampaignServicePointType.LIGHT_VEHICLE_DEPOT; break;}
 				case ECampaignCompositionType.HEAVY_VEHICLE_DEPOT: {serviceType = ECampaignServicePointType.HEAVY_VEHICLE_DEPOT; break;}
 				case ECampaignCompositionType.ARMORY: {serviceType = ECampaignServicePointType.ARMORY; break;}
-				case ECampaignCompositionType.HOSPITAL: {serviceType = ECampaignServicePointType.FIELD_HOSPITAL; break;}
+				//case ECampaignCompositionType.HOSPITAL: {serviceType = ECampaignServicePointType.FIELD_HOSPITAL; break;}
 				case ECampaignCompositionType.BARRACKS: {serviceType = ECampaignServicePointType.BARRACKS; break;}
 			};
 		}
@@ -2044,7 +2032,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				if (!loadoutManager)
 					continue;
 				
-				IEntity backpack = loadoutManager.GetClothByArea(ELoadoutArea.ELA_Backpack);
+				IEntity backpack = loadoutManager.GetClothByArea(LoadoutBackpackArea);
 				
 				if (!backpack || !backpack.FindComponent(SCR_RadioComponent))
 					continue;
@@ -2056,7 +2044,7 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				
 				BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(backpack.FindComponent(BaseLoadoutClothComponent));
 				
-				if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack)
+				if (loadoutCloth && loadoutCloth.GetAreaType().IsInherited(LoadoutBackpackArea))
 				{
 					campaignSpawnpoint.ActivateSpawnPointPublic();
 					
@@ -2693,6 +2681,10 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				m_wLeftScoreMap.SetDesiredFontSize(20);
 				m_wRightScoreMap.SetDesiredFontSize(20);
 				m_wRightScore.SetDesiredFontSize(20);
+				m_wWinScoreSideRightMap.SetColor(white);
+				m_wWinScoreSideLeftMap.SetColor(white);
+				m_wWinScoreSideRight.SetColor(white);
+				m_wWinScoreSideLeft.SetColor(white);
 			}
 			else
 			{
@@ -2970,7 +2962,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		if (!fManager)
 			return;
 		
-		if (fManager.GetFactionIndex(SCR_RespawnSystemComponent.GetLocalPlayerFaction()) != factionID)
+		Faction localPlayerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
+		
+		if (fManager.GetFactionIndex(localPlayerFaction) != factionID)
 			return;
 		
 		int duration = 6;
@@ -2990,6 +2984,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			{
 				text = "#AR-Campaign_MobileAssemblyDismantled-UC";
 				text2 = "#AR-Campaign_MobileAssemblyPlayerName";
+				Faction reconfigurerFaction = GetPlayerFaction(playerID);
+		
+				if (reconfigurerFaction && localPlayerFaction != reconfigurerFaction)
+					playerName = reconfigurerFaction.GetFactionName();
+				
 				break;
 			}
 			case ECampaignClientNotificationID.ASSEMBLY_DESTROYED:
@@ -3700,8 +3699,9 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 				}
 				
 				// Spawn pre-built structures only on server
+				// Delay so we don't spawn stuff during init
 				if (base.GetBuildingsFaction())
-					GetGame().GetCallqueue().CallLater(base.SpawnBuildings, 500);
+					GetGame().GetCallqueue().CallLater(base.SpawnBuildings, 500, false, null);
 			}
 			
 			// Prepare a list of dedicated Slots
@@ -3821,8 +3821,23 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnWorldPostProcess(World world)
-	{
+	{	
 		super.OnWorldPostProcess(world);
+
+		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
+
+		if(!baseManager)
+			return;
+
+		baseManager.UpdateBasesSignalCoverage();	
+			
+#ifdef CONFLICT_SPAWN_ALL_AI
+		foreach (SCR_CampaignRemnantsPresence presence : m_aRemnantsPresence)
+		{
+			if (presence)
+				SpawnRemnants(presence);
+		}
+#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3922,13 +3937,13 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 	
 	//------------------------------------------------------------------------------------------------
 	//! What happens when a player disconnects.
-	override void OnPlayerDisconnected(int playerId, KickCauseCode cause)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_EXECUTE_GAMEMODE))
 			return;
 #endif
-		super.OnPlayerDisconnected(playerId, cause);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 		
 		GetTaskManager().OnPlayerDisconnected(playerId);
 		WriteClientData(playerId, true);
@@ -4299,7 +4314,8 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 		TextWidget skill = TextWidget.Cast(m_wXPInfo.FindWidget("Skill"));
 			
 		rank.SetTextFormat(rankText);
-		rankIcon.LoadImageTexture(0, rankIconName);
+		if (!rankIconName.IsEmpty())
+			rankIcon.LoadImageTexture(0, rankIconName);
 		rankIcon.SetColor(Color.FromRGBA(226,168,79,255));
 		rankIcon.SetVisible(true);
 		rankNoIcon.SetTextFormat("");
@@ -4418,7 +4434,6 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 			
 			m_rRemnants = Resource.Load(m_RemnantsGroupPrefab);
 			
-			GetGame().GetCallqueue().CallLater(SetupDaytime, 500, false, m_iStartingHours, m_iStartingMinutes, 0);		// TODO: Move to init when possible
 			GetGame().GetCallqueue().CallLater(CheckMobileAssemblies, 500, true);
 			GetGame().GetCallqueue().CallLater(CheckForWinner, 1000, true);
 			
@@ -4541,12 +4556,11 @@ class SCR_GameModeCampaignMP : SCR_BaseGameMode
 
 		if (RplSession.Mode() != RplMode.Dedicated)
 			ProcessUI(timeSlice);
-		
-		if (!IsProxy())
-		{
-			if (GetGame().AreGameFlagsSet( EGameFlags.SpawnAI ))
-				HandleRemnantForces(timeSlice);
-		}
+
+#ifndef CONFLICT_SPAWN_ALL_AI	
+		if (!IsProxy() && GetGame().AreGameFlagsSet( EGameFlags.SpawnAI ))
+			HandleRemnantForces(timeSlice);
+#endif
 		
 		// End session
 		if (m_fGameEnd != -1 && Replication.Time() >= m_fGameEnd)

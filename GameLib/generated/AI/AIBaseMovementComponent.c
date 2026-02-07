@@ -15,9 +15,8 @@ class AIBaseMovementComponentClass: AIComponentEntityClass
 
 class AIBaseMovementComponent: AIComponentEntity
 {
-	// Script functions
-	proto external void RequestMove(Managed user, string callbackFncName, vector pos, float precision);
-	proto external void RequestMoveAndOrient(Managed user, string callbackFncName, vector pos, vector orientPos, float precision);
+	proto external bool HasCompletedRequest(bool bTakeTimeIntoAccount);
+	proto external bool ForceFollowPathOfEntity(IEntity other);
 };
 
 /** @}*/

@@ -16,35 +16,33 @@ class SCR_AIRemoveWaypointVehicle : AITaskScripted
 			return ENodeResult.FAIL;
 		}
 		
-		IEntity leaderEntity = group.GetLeaderEntity();
+		ref array<AIAgent> agents = {};
+		group.GetAgents(agents);
+		CompartmentAccessComponent compartmentAccess;
+		BaseCompartmentSlot compartment;
+		IEntity agentEntity, vehicleEntity;
 		
-		// I use this method of geting actual vehicle instead of 
-		// group.GetUsableVehicles(); because it could lead in removing all group vehicles when the node is used wrongly  
-		
-		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(leaderEntity.FindComponent(CompartmentAccessComponent));
-		if (!compartmentAccess)
+		foreach (AIAgent agent : agents)
 		{
-			// When this error ocure waypoints was most probably used incorrectly or you are traying to use this node when there is no vehicle.
-			return NodeError(this, owner, "Can't find CompartmentAccessComponent.");
+			agentEntity = agent.GetControlledEntity();
+			if (!agentEntity)
+				continue;
+			compartmentAccess = CompartmentAccessComponent.Cast(agentEntity.FindComponent(CompartmentAccessComponent));
+			if (!compartmentAccess)
+				continue;
+			compartment = compartmentAccess.GetCompartment();
+			if (!compartment)
+				continue;
+			vehicleEntity = compartment.GetOwner();
+			if (vehicleEntity)
+			{
+				group.RemoveUsableVehicle(vehicleEntity);
+				return ENodeResult.SUCCESS;	
+			}	
 		}
+		// noone of the group is inside a vehicle, wrong use of the node?
+		return ENodeResult.FAIL;
 		
-		auto compartment = compartmentAccess.GetCompartment();
-		if (!compartment)
-		{
-			// Something went wrong. In code can be caused because there is no vehicle assigned to CompartmentAccessComponent
-			return NodeError(this, owner, "Can't find CompartmentSlot.");
-		}
-		
-		auto own = compartment.GetOwner();
-		
-		if (!own)
-		{
-			return ENodeResult.FAIL;
-		}
-		
-		group.RemoveUsableVehicle(own);
-
-		return ENodeResult.SUCCESS;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -9,11 +9,11 @@ Do not modify, this script is generated
 * @{
 */
 
-class BaseEquipedWeaponStorageComponentClass: BaseInventoryStorageComponentClass
+class BaseEquipedWeaponStorageComponentClass: ScriptedBaseInventoryStorageComponentClass
 {
 };
 
-class BaseEquipedWeaponStorageComponent: BaseInventoryStorageComponent
+class BaseEquipedWeaponStorageComponent: ScriptedBaseInventoryStorageComponent
 {
 };
 

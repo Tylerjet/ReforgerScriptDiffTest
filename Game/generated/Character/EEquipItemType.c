@@ -15,6 +15,7 @@ enum EEquipItemType
 	EEquipTypeGeneric,
 	EEquipTypeWeapon,
 	EEquipTypeUnarmed,
+	EEquipTypeSlinged,
 	Max
 };
 

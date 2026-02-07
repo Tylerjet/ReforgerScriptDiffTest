@@ -26,6 +26,9 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	[Attribute(desc: "Anti-exploit restriction will be in effect when all available modes are marked as limited.", category: "Editor Mode")]
 	private bool m_bIsLimited;
 	
+	[Attribute(desc: "When enabled, removing this mode when it's current will close the editor instead of switching to the next available mode.", category: "Editor Mode")]
+	private bool m_bCloseAfterRemoval;
+	
 	[Attribute(desc: "GUI representation of the mode.", category: "Editor Mode")]
 	private ref SCR_UIInfo m_UIInfo;
 	
@@ -34,6 +37,9 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	[Attribute("0", UIWidgets.ComboBox, "Mode remove notification", "", ParamEnumArray.FromEnum(ENotification), category: "Notification")]
 	protected ENotification m_ModeRemovedNotification;
 	
+	[Attribute("0", desc: "If true will only notify the local player when the mode is added or removed, if false it sends to to all Game Masters and the local player", category: "Notification")]
+	protected bool m_bSendNotificationLocalOnly;
+	
 	private SCR_EditorManagerEntity m_EditorManager;
 	
 	private ref ScriptInvoker Event_OnInit = new ScriptInvoker();
@@ -41,6 +47,9 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	private ref ScriptInvoker Event_OnActivate = new ScriptInvoker();
 	private ref ScriptInvoker Event_OnPostActivate = new ScriptInvoker();
 	private ref ScriptInvoker Event_OnDeactivate = new ScriptInvoker();
+	
+	private ref ScriptInvoker Event_OnActivateServer = new ScriptInvoker();
+	private ref ScriptInvoker Event_OnDeactivateServer = new ScriptInvoker();
 
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//--- Getters
@@ -75,6 +84,13 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	bool IsLimited()
 	{
 		return m_bIsLimited;
+	}
+	/*!
+	\return When true, removing this mode when it's current will close the editor instead of switching to the next available mode.
+	*/
+	bool ShouldCloseAfterRemoval()
+	{
+		return m_bCloseAfterRemoval;
 	}
 	/*!
 	Check if the mode is currently active.
@@ -128,8 +144,24 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 		Event_OnDeactivate.Invoke();
 		ClearFlags(EntityFlags.ACTIVE, true);
 	}
+	void ActivateModeServer()
+	{
+		Event_OnActivateServer.Invoke();
+	}
+	void DeactivateModeServer()
+	{
+		Event_OnDeactivateServer.Invoke();
+	}
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//--- Notification
+	/*!
+	If true will only notify the local player when the mode is added or removed else it sends it to all GMs and local player
+	\return If should send locally
+	*/
+	bool SendNotificationLocalOnly()
+	{
+		return m_bSendNotificationLocalOnly;
+	}
 	/*!
 	Returns enum for on Add notification
 	\return ENotification on Add
@@ -212,6 +244,14 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 		if (!GetManager()) return null;
 		ScriptInvoker invoker = GetManager().GetOnClosedServerCallback();
 		return invoker;
+	}
+	override ScriptInvoker GetOnActivateServer()
+	{
+		return Event_OnActivateServer;
+	}
+	override ScriptInvoker GetOnDeactivateServer()
+	{
+		return Event_OnDeactivateServer;
 	}
 	override ScriptInvoker GetOnDebug()
 	{

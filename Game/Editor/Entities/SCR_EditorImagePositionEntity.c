@@ -113,6 +113,9 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	}
 	bool ActivatePosition(ResourceName prefab)
 	{
+		//--- Prevent AI groups from creating members themselves, do it manually here
+		SCR_AIGroup.IgnoreSpawning(true);
+		
 		//--- Create prefab
 		EntitySpawnParams spawnParams = new EntitySpawnParams();
 		GetTransform(spawnParams.Transform);
@@ -160,9 +163,13 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		}
 			
 		//--- Move group members to sub-positions
-		AIGroup group = AIGroup.Cast(m_Entity);
+		SCR_AIGroup group = SCR_AIGroup.Cast(m_Entity);
 		if (group)
 		{
+			//--- Make sure group AI members are spawned instantly, not asynchronously
+			group.SetMemberSpawnDelay(0);
+			group.SpawnUnits();
+			
 			array<AIAgent> agents = {};
 			int agentCount = group.GetAgents(agents);
 			if (agentCount <= m_aSubPositions.Count())
@@ -316,7 +323,11 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		}
 		
 		if (camera)
-			GetGame().GetCameraManager().SetCamera(camera);
+		{
+			CameraManager cameraManager = GetGame().GetCameraManager();
+			if (cameraManager)
+				cameraManager.SetCamera(camera);
+		}
 		else
 			Debug.Error2(Type().ToString(), string.Format("No camera which would fit '%1' found on position '%2'!", prefab, GetPositionName()));
 		

@@ -10,6 +10,17 @@ SCR_BaseTaskManager GetTaskManager()
 };
 
 //------------------------------------------------------------------------------------------------
+enum SCR_ETaskEventMask
+{
+	TASK_CREATED = 1,
+	TASK_CANCELED = 2,
+	TASK_PROPERTY_CHANGED = 4,
+	TASK_FINISHED = 8,
+	TASK_FAILED = 16,
+	TASK_REMOVED = 32,
+};
+
+//------------------------------------------------------------------------------------------------
 class SCR_BaseTaskManager : GenericEntity
 {
 
@@ -47,6 +58,10 @@ class SCR_BaseTaskManager : GenericEntity
 	protected bool m_bInitialized = false;
 	
 	protected RplComponent m_RplComponent;
+	
+	protected ref map<SCR_BaseTask, SCR_ETaskEventMask> m_mTaskEventMaskMap = new map<SCR_BaseTask, SCR_ETaskEventMask>();
+	
+	protected ref array<SCR_BaseTask> m_aTasksToDelete = {};
 	
 	//*****************************//
 	//PUBLIC STATIC SCRIPT INVOKERS//
@@ -122,9 +137,19 @@ class SCR_BaseTaskManager : GenericEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//! An event called whenever any task has been changed, updated, created.
-	void OnTaskUpdate(SCR_BaseTask task)
+	void OnTaskUpdate(SCR_BaseTask task, SCR_ETaskEventMask mask)
 	{
-		s_OnTaskUpdate.Invoke(task);
+		if (m_mTaskEventMaskMap.Contains(task))
+		{
+			SCR_ETaskEventMask tempMask;
+			tempMask = m_mTaskEventMaskMap.Get(task); // returns mask for the task
+			tempMask = tempMask | mask;
+			m_mTaskEventMaskMap.Set(task, tempMask);
+		}
+		else
+		{
+			m_mTaskEventMaskMap.Insert(task, mask);
+		}
 	}
 	
 	//************************//
@@ -204,6 +229,12 @@ class SCR_BaseTaskManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void UnregisterSupportEntity(SCR_BaseTaskSupportEntity supportEntity)
+	{
+		m_aSupportedTaskTypes.RemoveItem(supportEntity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void RegisterSupportEntity(SCR_BaseTaskSupportEntity supportEntity)
 	{
 		m_aSupportedTaskTypes.Insert(supportEntity);
@@ -261,9 +292,8 @@ class SCR_BaseTaskManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void DeleteTask(SCR_BaseTask task)
 	{
-		m_aTaskList.RemoveItem(task);
+		m_aTasksToDelete.Insert(task);
 		task.OnDelete();
-		delete task;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -523,11 +553,35 @@ class SCR_BaseTaskManager : GenericEntity
 		
 		m_RplComponent = RplComponent.Cast(FindComponent(RplComponent));
 		
+		// This is for individual tasks, so they don't have to tick their own timers, but it's centralized on the task manager.
+		// This could be further improved for more custom timers, but for now it is sufficient as is.
 		GetGame().GetCallqueue().CallLater(PeriodicalCheck2Second, 2000, true);
 		GetGame().GetCallqueue().CallLater(PeriodicalCheck5Second, 5000, true);
 		GetGame().GetCallqueue().CallLater(PeriodicalCheck60Second, 60000, true);
 	}
-	
+	//------------------------------------------------------------------------------------------------
+	void UpdateTasks()
+	{
+		SCR_BaseTask task;
+		SCR_ETaskEventMask mask;
+		
+		for (int i = m_mTaskEventMaskMap.Count() - 1; i >= 0; i--)
+		{
+			task = m_mTaskEventMaskMap.GetKey(i);
+			mask = m_mTaskEventMaskMap.Get(task);
+			s_OnTaskUpdate.Invoke(task, mask);
+		}
+		
+		m_mTaskEventMaskMap.Clear();
+			
+		for (int i = m_aTasksToDelete.Count() - 1; i >= 0; i--)
+		{
+			task = m_aTasksToDelete[i];
+			m_aTaskList.RemoveItem(task);
+			m_aTasksToDelete.RemoveItem(task);
+			delete task;
+		}
+	}
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
@@ -536,6 +590,9 @@ class SCR_BaseTaskManager : GenericEntity
 			delete this;
 			return;
 		}
+		
+		if (!m_mTaskEventMaskMap.IsEmpty())
+			UpdateTasks();
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SHOW_ALL_TASKS))
 		{
@@ -663,13 +720,6 @@ class SCR_BaseTaskManager : GenericEntity
 		SetFlags(EntityFlags.NO_LINK, false);
 		
 		//Register to Script Invokers
-		s_OnTaskCancelled.Insert(OnTaskUpdate);
-		s_OnTaskAssigned.Insert(OnTaskUpdate);
-		s_OnTaskUnassigned.Insert(OnTaskUpdate);
-		s_OnTaskFactionAssigned.Insert(OnTaskUpdate);
-		s_OnTaskFinished.Insert(OnTaskUpdate);
-		s_OnTaskFailed.Insert(OnTaskUpdate);
-		s_OnTaskCreated.Insert(OnTaskUpdate);
 		s_OnTaskCreated.Insert(OnTaskCreated);
 		s_OnTaskDeleted.Insert(OnTaskDeleted);
 	}

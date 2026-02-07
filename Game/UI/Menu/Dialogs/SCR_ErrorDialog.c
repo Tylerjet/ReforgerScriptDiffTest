@@ -8,6 +8,8 @@ class SCR_ErrorDialog : ScriptedWidgetComponent
 	// Widgets 
 	protected TextWidget m_wTxtDetail;
 	protected ImageWidget m_wImgLine;
+	
+	protected string m_sErrorMessage;
 
 	//------------------------------------------------------------------------------------------------
 	// Dialog override functions 
@@ -34,6 +36,18 @@ class SCR_ErrorDialog : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
+	void SetErrorMessage(string message)
+	{
+		m_sErrorMessage = message;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetErrorMessage()
+	{
+		return m_sErrorMessage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetErrorDetail(string strDetail)
 	{	
 		// Setup text 
@@ -48,7 +62,6 @@ class SCR_ErrorDialog : ScriptedWidgetComponent
 		if (m_wImgLine)
 			m_wImgLine.SetVisible(true);
 	}
-	
 };
 
 

@@ -168,3 +168,22 @@ class SCR_EntityHelper
 		}
 	}
 };
+
+class SCR_EntityHelperT<Class T>
+{
+	//------------------------------------------------------------------------------------------------
+	//! Search for an entity of given type in hierarchy of provided parent 
+	static T GetEntityInHierarchy(notnull IEntity parent)
+	{
+		IEntity child = parent.GetChildren();
+		while (child)
+		{
+			if (T.Cast(child))
+				return T.Cast(child);
+			
+			child = child.GetSibling();
+		}
+		
+		return null;
+	}
+};

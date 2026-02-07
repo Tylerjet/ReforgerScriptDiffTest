@@ -1,6 +1,6 @@
 class SCR_ToolbarContextBrowserEditorUIComponent: ScriptedWidgetComponent
 {
-	[Attribute("OpenContentBrowserButton")]
+	[Attribute("BrowserButton")]
 	protected string m_sOpenContentBrowserButtonName;
 	
 	protected void OpenAssetBrowserButton(Widget widget, float value, EActionTrigger actionTrigger)

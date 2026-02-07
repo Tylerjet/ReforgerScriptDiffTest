@@ -34,11 +34,10 @@ enum ELocalAmbientSignal
 	EntitySize,
 	AboveTerrain,
 	AboveSea,
-	SeaAngle,
-	DistanceToCoast,
 	SunAngle,
 	EnvironmentType,
 	Seed,
+	Distance
 };
 
 enum EOutputStateSignal
@@ -96,10 +95,8 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	private const int QUERY_MINIMUM_MOVE_DISTANCE_SQ = 2;
 	private const int TREE_LEAFY_HEIGHT_LIMIT = 10;
 	private const int TREE_LEAFYDOMESTIC_HEIGHT_LIMIT = 6;
-	private const int TREE_CONIFER_HEIGHT_LIMIT = 12;
-	private const int NO_SPAWN_DIST = 15;
-	private const int SPAWN_DISTANCE_OFFSET = 15;		
-    private const int TRIGGERED_SOUND_PROCESSING_INTERVAL = 2000;
+	private const int TREE_CONIFER_HEIGHT_LIMIT = 12;		
+    private const int TRIGGERED_SOUND_PROCESSING_INTERVAL = 1000;
     const int WINDSPEED_MIN = 2;
     const int WINDSPEED_MAX = 12;
     private const int UPDATE_POSITION_THRESHOLD = 5;
@@ -131,8 +128,9 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	protected ref array<int> m_aGlobalSignalIndex = new array<int>;	
 	protected ref array<int> m_aLocalAmbientSignalIndex = new array<int>;	
 	protected ref array<int> m_aOutputStateSignalIndex = new array<int>;
-		
-	protected float m_fDensityModifier;
+
+	protected float m_aDensityModifier[SOUND_TYPE_COUNT];
+	
 	protected float m_fAboveSeaSignalValue;
 
 	vector m_vCameraPosFrame;
@@ -273,7 +271,9 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		if (bushLoopSoundLimit < 4)
 			bushLoopSoundLimit = 4;
 		
-		//Get closest entities	
+		//Get closest entities
+		//TO DO: Change GetClosestEntities() in C++ so it can search through multiple EQueryTypes at once
+		//TreeLeafyDomestic type is not used in data at this moment
 		GetClosestEntities(EQueryType.TreeBush, bushLoopSoundLimit, m_aClosestEntityID);
 		GetClosestEntities(EQueryType.TreeLeafy, LOOP_SOUND_COUNT, m_aClosestEntityID);	
 		GetClosestEntities(EQueryType.TreeLeafyDomestic, LOOP_SOUND_COUNT, m_aClosestEntityID);
@@ -411,8 +411,6 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 				// Set sound position							
 				SetTransformation(mat);
 				
-				
-
 				// Play sound					
 				treeFoliage.m_AudioHandle = SoundEvent(eventName);
 				m_aTreeFoliage.Insert(treeFoliage);
@@ -483,12 +481,10 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	
 	private void TriggeredSoundHandler(float timeSlice)
 	{
-		// Handle Timer
-		m_fTriggeredSoundTimer += timeSlice;
-		
-		if (m_fTriggeredSoundTimer < TRIGGERED_SOUND_PROCESSING_INTERVAL)
-			return;
-		
+		// Process every TRIGGERED_SOUND_PROCESSING_INTERVAL		
+		if (m_fWorldTime < m_fTriggeredSoundTimer)
+			return; 
+				
 		RemoveOutOfRangeEvent();
 		
 		// Get TimeOfDay signal
@@ -502,21 +498,29 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		if (m_iHandleSoundGroupIdx == SOUND_TYPE_COUNT)
 		{
 			m_iHandleSoundGroupIdx = 0;
-			m_fTriggeredSoundTimer = 0;
+			m_fTriggeredSoundTimer = m_fWorldTime + TRIGGERED_SOUND_PROCESSING_INTERVAL;
 			
 			GetDensity();
 						
 			// Get Density Modifier			
-			float timeModifier = GetPoint(m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_TimeModifier);
-			float rainModifier = GetPoint(m_GlobalSignalsManager.GetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.RainIntensity]), m_AmbientSoundsEventsConfig.m_RainModifier);
-			float windModifier = GetPoint(Interpolate01(m_GlobalSignalsManager.GetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.WindSpeed]), WINDSPEED_MIN, WINDSPEED_MAX), m_AmbientSoundsEventsConfig.m_WindModifier);
-
-			m_fDensityModifier = timeModifier * rainModifier * windModifier;
+			float modifier = GetPoint(m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_TimeModifier);
+			modifier = modifier * GetPoint(m_GlobalSignalsManager.GetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.RainIntensity]), m_AmbientSoundsEventsConfig.m_RainModifier);
+			
+			//Update values of wind modifiers curves
+			float windSpeedScaled = Interpolate01(m_GlobalSignalsManager.GetSignalValue(m_aGlobalSignalIndex[EGlobalSignal.WindSpeed]), WINDSPEED_MIN, WINDSPEED_MAX);			
+			for (int i = 0; i < SOUND_WIND_CURVE_COUNT; i++)
+			{
+				m_AmbientSoundsEventsConfig.m_aWindModifier[i].m_fValue = GetPoint(windSpeedScaled, m_AmbientSoundsEventsConfig.m_aWindModifier[i].m_Curve);
+			}
 						
-			/*Print(timeModifier);
-			Print(rainModifier);
-			Print(windModifier);
-			Print(m_fDensityModifier);*/
+			// Get modifiers for all sound types			
+			for (int i = 0; i < SOUND_TYPE_COUNT; i++)
+			{
+				m_aDensityModifier[i] = modifier * m_AmbientSoundsEventsConfig.m_aWindModifier[m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[i].m_eWindModifier].m_fValue;
+			}
+			
+			// Update values of day time curves
+			m_AmbientSoundsEventsConfig.UpdateDayTimeCurveValue(m_fTimeOfDay);								
 		}	
 	}
 	
@@ -582,14 +586,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		GetRepTime(soundHandle.m_aRepTime, sequenceLenght, m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_SequenceDefinition, m_fWorldTime);
 		
 		soundHandle.m_fDensity = GetSequenceDensity(soundHandle.m_aRepTime, sequenceLenght, m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent]);
-		
-		/*Print("------");
-		Print( m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_eSoundName);
-		Print(soundHandle.m_aRepTime.Count());
-		Print(sequenceLenght);
-		Print(m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_iSampleLength);		
-		Print(soundHandle.m_fDensity);*/
-		
+				
 		m_aSoundHandle.Insert(soundHandle);
 	}
 	
@@ -605,16 +602,16 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 				{
 					SetTransformation(m_aSoundHandle[i].m_aMat);
 					
+					// Set SoundName signal
 					if (m_aLocalAmbientSignalIndex[ELocalAmbientSignal.SoundName] != -1)
 						m_LocalSignalsManager.SetSignalValue(m_aLocalAmbientSignalIndex[ELocalAmbientSignal.SoundName],m_AmbientSoundsEventsConfig.m_aSoundType[m_aSoundHandle[i].m_aSoundID[0]].m_aSoundEventGroup[m_aSoundHandle[i].m_aSoundID[1]].m_aSoundEventDefinition[m_aSoundHandle[i].m_aSoundID[2]].m_eSoundName);
 										
+					// Set Distance signal
+					if (m_aLocalAmbientSignalIndex[ELocalAmbientSignal.Distance] != -1)
+						m_LocalSignalsManager.SetSignalValue(ELocalAmbientSignal.Distance, vector.Distance(m_vCameraPosFrame, m_aSoundHandle[i].m_aMat[3]));
+					
 					SoundEvent(m_AmbientSoundsEventsConfig.m_aSoundType[m_aSoundHandle[i].m_aSoundID[0]].m_sSoundEvent);
-					
-					/*Print("----------");					
-					Print("Sound Event :" + m_AmbientSoundsEventsConfig.m_aSoundType[m_aSoundHandle[i].m_aSoundID[0]].m_sSoundEvent);
-					Print("Sound Group :" + m_AmbientSoundsEventsConfig.m_aSoundType[m_aSoundHandle[i].m_aSoundID[0]].m_aSoundEventGroup[m_aSoundHandle[i].m_aSoundID[1]].m_sSoundEventGroupName);
-					Print("Sound Type  :" + typename.EnumToString(ESoundName, m_AmbientSoundsEventsConfig.m_aSoundType[m_aSoundHandle[i].m_aSoundID[0]].m_aSoundEventGroup[m_aSoundHandle[i].m_aSoundID[1]].m_aSoundEventDefinition[m_aSoundHandle[i].m_aSoundID[2]].m_eSoundName));*/			
-					
+						
 					if (m_aSoundHandle[i].m_aRepTime.Count() > 1)
 					{
 						m_aSoundHandle[i].m_aRepTime.RemoveOrdered(0);
@@ -637,16 +634,13 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 
 		if (size > 0)
 		{		
-			for (int i = 0; i < size; i++)
+			for (int i = size - 1; i >= 0; i--)
 			{
 				float fDistance = vector.Distance(m_vCameraPosFrame, m_aSoundHandle[i].m_aMat[3]);
 
-				if (m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[m_aSoundHandle[i].m_aSoundID[0]].m_iSpawnDistMin - SPAWN_DISTANCE_OFFSET > fDistance || NO_SPAWN_DIST > fDistance || m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[m_aSoundHandle[i].m_aSoundID[0]].m_iSpawnDistMax + SPAWN_DISTANCE_OFFSET < fDistance)
+				if (m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[m_aSoundHandle[i].m_aSoundID[0]].m_iPlayDistMin > fDistance || m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[m_aSoundHandle[i].m_aSoundID[0]].m_iPlayDistMax < fDistance)
 				{							
-					m_aSoundHandle.RemoveOrdered(i);
-												
-					size--;
-					i--;				
+					m_aSoundHandle.Remove(i);			
 				}					
 			}
 		}		
@@ -654,124 +648,126 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 
 	private void HandleSoundGroup(int soundType)
 	{
-		if (m_aDensity[soundType] < m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iDensityLimit * m_fDensityModifier)
-		{
-			// Generate sound position		
-			vector vPos;								
-			int soundGroup = -1;
+		// Return, if density was reached
+		// Config density modified by time, wind and rain modifiers
+		if (m_aDensity[soundType] >= m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iDensityLimit * m_aDensityModifier[soundType])
+			return;
+		
+		// Generate sound position		
+		vector vPos;								
+		int soundGroup = -1;
 			
-			if (soundType == 0)
-			{	
-				IEntity tree;
+		if (soundType == 0)
+		{	
+			IEntity tree;
 							
-				if (m_iTreeCount != 0)
-				{				
-					// Choose dominant tree type
+			if (m_iTreeCount != 0)
+			{				
+				// Choose dominant tree type
 					
-					if (m_aQueryTypeCount[3] >= m_aQueryTypeCount[1] && m_aQueryTypeCount[3] >=  m_aQueryTypeCount[2])
-					{
-						soundGroup = 0;		
-					}
-					else if (m_aQueryTypeCount[1] > m_aQueryTypeCount[3] && m_aQueryTypeCount[1] > m_aQueryTypeCount[2])
-					{
-						soundGroup = 1;
-					}
-					else
-					{
-						soundGroup = 2;
-					}
+				if (m_aQueryTypeCount[3] >= m_aQueryTypeCount[1] && m_aQueryTypeCount[3] >=  m_aQueryTypeCount[2])
+				{
+					soundGroup = 0;		
+				}
+				else if (m_aQueryTypeCount[1] > m_aQueryTypeCount[3] && m_aQueryTypeCount[1] > m_aQueryTypeCount[2])
+				{
+					soundGroup = 1;
+				}
+				else
+				{
+					soundGroup = 2;
+				}
 
-					// Get random tree entity
+				// Get random tree entity
 																			
-					switch (soundGroup)
+				switch (soundGroup)
+				{
+					// Conifer
+					case 0:
 					{
-						// Conifer
-						case 0:
-						{
-							tree = GetRandomTree(EQueryType.TreeConifer, TREE_CONIFER_HEIGHT_LIMIT);					
-							break;
-						};
-						// Leafy
-						case 1:
-						{
-							tree = GetRandomTree(EQueryType.TreeLeafy, TREE_LEAFY_HEIGHT_LIMIT);					
-							break;
-						};
-						// Leafy Domestic
-						case 2:
-						{
-							tree = GetRandomTree(EQueryType.TreeLeafyDomestic, TREE_LEAFYDOMESTIC_HEIGHT_LIMIT);					
-							break;
-						};
-					}
+						tree = GetRandomTree(EQueryType.TreeConifer, TREE_CONIFER_HEIGHT_LIMIT);					
+						break;
+					};
+					// Leafy
+					case 1:
+					{
+						tree = GetRandomTree(EQueryType.TreeLeafy, TREE_LEAFY_HEIGHT_LIMIT);					
+						break;
+					};
+					// Leafy Domestic
+					case 2:
+					{
+						tree = GetRandomTree(EQueryType.TreeLeafyDomestic, TREE_LEAFYDOMESTIC_HEIGHT_LIMIT);					
+						break;
+					};
+				}
 
-					if (tree)
-					{
-						vPos = GetRandomSoundPositionOnEntity(tree);
-					}
-					else
-					{
-						soundGroup = -1;
-					}
+				if (tree)
+				{
+					vPos = GetRandomSoundPositionOnEntity(tree);
+				}
+				else
+				{
+					soundGroup = -1;
+				}
 
-				}		
-			}
-			else
-			{
-				// Generate position based on random region
+			}		
+		}
+		else
+		{
+			// Generate position based on random region
 			
-				int iRandomRegion = Math.RandomIntInclusive(0, 11);
-				float fDist = Math.RandomFloatInclusive(m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iSpawnDistMin, m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iSpawnDistMax);			
+			int iRandomRegion = Math.RandomIntInclusive(0, 11);
+			//float fDist = Math.RandomFloatInclusive(m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iPlayDistMin, m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iPlayDistMax);			
+			float fDist = m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[soundType].m_iSpawnDist;			
 				
-				vPos = GetVectorFromRegion(iRandomRegion, REGION_ANGLE) * fDist;
+			vPos = GetVectorFromRegion(iRandomRegion, REGION_ANGLE) * fDist;
 				
-				vPos[0] = vPos[0] + m_vCameraPosFrame[0];
-				vPos[1] = m_vCameraPosFrame[1];
-				vPos[2] = vPos[2] + m_vCameraPosFrame[2];
+			vPos[0] = vPos[0] + m_vCameraPosFrame[0];
+			vPos[1] = m_vCameraPosFrame[1];
+			vPos[2] = vPos[2] + m_vCameraPosFrame[2];
 							
-				// Trace for terrain material and get coresponding soundGroup index		
-				float fSoundHeight = -1;	
+			// Trace for terrain material and get coresponding soundGroup index		
+			float fSoundHeight = -1;	
 							
-				soundGroup = GetESoundGroupFromTerrain(vPos, fSoundHeight);
+			soundGroup = GetESoundGroupFromTerrain(vPos, fSoundHeight);
 
-				vPos[1] = fSoundHeight;		
-			}
+			vPos[1] = fSoundHeight;		
+		}
 			
-			if (soundGroup != -1)
-			{											
-				// UpdateAvailableEvents
-				m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].GetAvailableEvents(m_fWorldTime, m_fTimeOfDay);
+		if (soundGroup != -1)
+		{											
+			// UpdateAvailableEvents
+			m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].GetAvailableEvents(m_fWorldTime, m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_aDayTimeCurveValue);
+			
+			// Get Sound definition						
+			int soundEvent = m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].GetRandomEventIdx();
 
-				// Get Sound definition						
-				int soundEvent = m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].GetRandomEventIdx();
-
-				if (soundEvent != -1)
-				{			
-					// Play SoundEventSequence
+			if (soundEvent != -1)
+			{			
+				// Play SoundEventSequence					
+				vector mat[4];
+				mat[3] = vPos;					
+				float sequenceLenght;
 					
-					vector mat[4];
-					mat[3] = vPos;					
-					float sequenceLenght;
-					
-					SoundEventSequence(soundType, soundGroup, soundEvent, mat, sequenceLenght);
+				SoundEventSequence(soundType, soundGroup, soundEvent, mat, sequenceLenght);
 													
-					// Set CoolDownEnd
-					float timeOfDayFactor = GetPoint(m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_DayTimeFactor);
+				// Set CoolDownEnd
+				float timeOfDayFactor = m_AmbientSoundsEventsConfig.m_aDayTimeCurveValue[m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_eDayTimeCurve];
 										
-					timeOfDayFactor = (1 - Math.Clamp(timeOfDayFactor, 0, 1));
-					timeOfDayFactor = Math.Pow(timeOfDayFactor, 3) * 4 + 1;
+				timeOfDayFactor = (1 - Math.Clamp(timeOfDayFactor, 0, 1));
+				timeOfDayFactor = Math.Pow(timeOfDayFactor, 3) * 4 + 1;
 											
-					if (m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_bAddSequenceLength)
-					{	
-						m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_fCoolDownEnd = m_fWorldTime + sequenceLenght + m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_iCoolDown * timeOfDayFactor;
-					}
-					else
-					{
-						m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_fCoolDownEnd = m_fWorldTime + m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_iCoolDown * timeOfDayFactor;
-					}					
-				}			
-			}
-		}	
+				if (m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_bAddSequenceLength)
+				{	
+					m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_fCoolDownEnd = m_fWorldTime + sequenceLenght + m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_iCoolDown * timeOfDayFactor;
+				}
+				else
+				{
+					m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_fCoolDownEnd = m_fWorldTime + m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundEvent].m_iCoolDown * timeOfDayFactor;
+				}					
+			}			
+		}
 	}
 				
 	private vector GetVectorFromRegion(int region, int regionAngle)
@@ -867,7 +863,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		return waterSurfacePos[1];
 	}
 	
-	protected float GetPoint(float time, Curve curve)
+	static float GetPoint(float time, Curve curve)
 	{		
 		time = Math.Clamp(time, 0, 1);
 		
@@ -879,7 +875,8 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			if (curve[i][0] > time)
 				break; 
 		}
-				
+		
+		// One point defined or value befor first point	
 		if (i == 0)
 		{
 			return curve[i][1];
@@ -901,7 +898,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		}
 	}
 	
-	private float Interpolate(float in, float Xmin, float Xmax, float Ymin, float Ymax)
+	static float Interpolate(float in, float Xmin, float Xmax, float Ymin, float Ymax)
 	{
 		if (in <= Xmin)
 			return Ymin;
@@ -1025,6 +1022,16 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		DbgUI.End();
 	}
 	
+	private void DensityDebug()
+	{	
+		DbgUI.Begin("Density");
+				
+		for (int i = 0; i < SOUND_TYPE_COUNT; i++)
+			DbgUI.Text(typename.EnumToString(ESoundType, i) + ": " + m_aDensity[i].ToString() + " / " + (m_AmbientSoundsEventsConfig.m_aSoundSpawnDefinitionGroup[m_iSoundSpawnPresetIdx].m_aSoundSpawnDefinition[i].m_iDensityLimit * m_aDensityModifier[i]).ToString());
+
+		DbgUI.End();
+	}
+	
 	private void OutputStateSignalsDebug()
 	{	
 		DbgUI.Begin("Output State Signals");
@@ -1108,7 +1115,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 						
 				for (int soundGroup = 0; soundGroup < soundGroupCount; soundGroup++)
 				{				
-					m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].GetAvailableEvents(m_fWorldTime, m_fTimeOfDay);
+					m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].GetAvailableEvents(m_fWorldTime, m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_aDayTimeCurveValue);
 					
 					string soundGroupName = m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_sSoundEventGroupName;
 					soundGroupName = NormalizeLength(soundGroupName);
@@ -1140,7 +1147,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 								color = inCooldownColor;
 								aditionalInfo = " | Coldown ends in : " + Math.Round((m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_fCoolDownEnd - m_fWorldTime) * 0.001).ToString();
 								
-								float timeOfDayFactor = GetPoint(m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_DayTimeFactor);
+								float timeOfDayFactor = m_AmbientSoundsEventsConfig.m_aDayTimeCurveValue[m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_eDayTimeCurve];
 								timeOfDayFactor = (1 - Math.Clamp(timeOfDayFactor, 0, 1));
 								timeOfDayFactor = Math.Pow(timeOfDayFactor, 3) * 4 + 1;
 								timeOfDayFactor = Math.Round(timeOfDayFactor * 100) * 0.01;
@@ -1149,13 +1156,13 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 							}
 													
 							// Tag sounds that can not play in given time of day
-							if (GetPoint(m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_DayTimeFactor) <= 0)
+							if (m_AmbientSoundsEventsConfig.m_aDayTimeCurveValue[m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_eDayTimeCurve] <= 0)
 							{
 								color = wrongTimeColor;
 							}
 							
 							// Tag available
-							if (GetPoint(m_fTimeOfDay, m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_DayTimeFactor) > 0 && m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_fCoolDownEnd <= m_fWorldTime)
+							if (m_AmbientSoundsEventsConfig.m_aDayTimeCurveValue[m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_eDayTimeCurve] > 0 && m_AmbientSoundsEventsConfig.m_aSoundType[soundType].m_aSoundEventGroup[soundGroup].m_aSoundEventDefinition[soundDefinition].m_fCoolDownEnd <= m_fWorldTime)
 							{
 								color = availableColor;
 							}
@@ -1346,6 +1353,7 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 		{
 			AmbientSignalsDebug();
 			RandomPositionalSoundDebug();
+			DensityDebug();
 			//Handle_DBG_Shere();
 		}	
 		#endif		

@@ -40,7 +40,7 @@ class SCR_InventoryStorageWeaponsUI : SCR_InventoryStorageBaseUI
 		if( !pItemsInStorage )
 			return -1;
 		
-		foreach( IEntity pItem: pItemsInStorage )
+		foreach ( IEntity pItem: pItemsInStorage )
 		{
 			InventoryItemComponent pComponent = GetItemComponentFromEntity( pItem );
 			if( pComponent )
@@ -62,10 +62,10 @@ class SCR_InventoryStorageWeaponsUI : SCR_InventoryStorageBaseUI
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStorageWeaponsUI( BaseInventoryStorageComponent storage, ELoadoutArea slotID = ELoadoutArea.ELA_None, SCR_InventoryMenuUI menuManager = null, int iPage = 0,array<BaseInventoryStorageComponent> aTraverseStorage = null )
+	void SCR_InventoryStorageWeaponsUI( BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0,array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
 		//TODO: make consistent the visibility of variable ( SetSlotID vs m_iMaxRows )
-		SetSlotAreaID( slotID );
+		SetSlotAreaType( slotID );
 		m_iMaxRows 		= 3;
 		m_iMaxColumns 	= 4;
 		m_iMatrix = new SCR_Matrix( m_iMaxColumns, m_iMaxRows );

@@ -11,7 +11,7 @@ class SCR_WeaponRackEntity : GenericEntity
 	float m_fPeriodTime;
 	
 	protected SCR_ArsenalDisplayComponent m_ArsenalDisplayComponent;
-	protected SCR_FactionControlComponent m_FactionControlComponent;
+	protected SCR_FactionAffiliationComponent m_FactionAffiliationComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	float GetPeriodTime()
@@ -30,12 +30,12 @@ class SCR_WeaponRackEntity : GenericEntity
 	void PeriodicalSpawn(notnull SCR_Faction faction)
 	{
 		Faction assignedFaction;
-		if (m_FactionControlComponent)
+		if (m_FactionAffiliationComponent)
 		{
-			assignedFaction = m_FactionControlComponent.GetFaction();
+			assignedFaction = m_FactionAffiliationComponent.GetAffiliatedFaction();
 			if (!assignedFaction || (assignedFaction && assignedFaction.GetFactionKey() != faction.GetFactionKey()))
 			{
-				m_FactionControlComponent.SetFaction(faction.GetFactionKey());
+				m_FactionAffiliationComponent.SetAffiliatedFaction(faction);
 				// Set new faction on component,FactionChanged callback refreshes items in ArsenalDisplayComponent
 				return;
 			}

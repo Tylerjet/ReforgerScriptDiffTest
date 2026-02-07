@@ -65,6 +65,22 @@ class ContentBrowserUI : SCR_SuperMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		
+		// Restore server hosting 
+		if (!GetGame().IsPlatformGameConsole())
+		{		
+			if (ServerHostingUI.GetTemporaryConfig())
+			{
+				GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ServerBrowserMenu);
+				GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
 		super.OnMenuUpdate(tDelta);

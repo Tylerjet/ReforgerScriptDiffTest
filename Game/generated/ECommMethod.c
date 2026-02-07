@@ -15,10 +15,6 @@ enum ECommMethod
 	*/
 	SQUAD_RADIO,
 	/*!
-	Unsupported for now
-	*/
-	INTERCOM,
-	/*!
 	Radio protocol
 	*/
 	DIRECT_AI

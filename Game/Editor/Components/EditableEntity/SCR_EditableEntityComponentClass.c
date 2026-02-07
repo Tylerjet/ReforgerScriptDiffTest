@@ -75,12 +75,14 @@ class SCR_EditableEntityComponentClass: ScriptComponentClass
 	\param componentSource Component source
 	\return UI info
 	*/
-	static SCR_UIInfo GetInfo(IEntityComponentSource componentSource)
+	static SCR_EditableEntityUIInfo GetInfo(IEntityComponentSource componentSource)
 	{		
 		BaseContainer infoSource = componentSource.GetObject("m_UIInfo");
 		if (!infoSource) return null;
 		
-		return SCR_UIInfo.Cast(BaseContainerTools.CreateInstanceFromContainer(infoSource));
+		SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(BaseContainerTools.CreateInstanceFromContainer(infoSource));
+		info.InitFromSource(componentSource);
+		return info;
 	}
 	/*!
 	Get entity system type

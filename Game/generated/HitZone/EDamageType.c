@@ -21,7 +21,8 @@ enum EDamageType
 	INCENDIARY,
 	FIRE,
 	REGENERATION,
-	BLEEDING
+	BLEEDING,
+	HEALING
 };
 
 /** @}*/

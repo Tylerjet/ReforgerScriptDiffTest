@@ -24,6 +24,8 @@ class AttachmentSlotComponent: BaseAttachmentSlotComponent
 	are not obstructed by mounting an optic, while most M4-type rifles are.
 	*/
 	proto external bool IsObstructing();
+	//! Is this slot should show during inspection
+	proto external bool ShouldShowInInspection();
 };
 
 /** @}*/

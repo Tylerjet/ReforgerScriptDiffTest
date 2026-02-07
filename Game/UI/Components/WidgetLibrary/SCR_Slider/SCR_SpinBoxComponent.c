@@ -191,7 +191,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		if (m_bShowHints)
 			UpdateHintBar(i, lastIndex);
 
-		if (m_ButtonLeft && m_ButtonRight)
+		/*if (m_ButtonLeft && m_ButtonRight)
 		{
 			if (m_bCycleMode)
 			{
@@ -204,12 +204,34 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 				m_ButtonLeft.SetEnabled(i != 0, animate);
 				m_ButtonRight.SetEnabled(i != (m_aElementNames.Count() - 1), animate);
 			}
-		}
+		}*/
+		
+		EnableArrows(i, animate);
 
 		m_OnChanged.Invoke(this, m_iSelectedItem);
 		return true;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Based on cycle mode set which arrow should be enabled at given selection
+	protected void EnableArrows(int selected, bool animate)
+	{
+		if (!m_ButtonLeft || !m_ButtonRight)
+			return;
+		
+		if (m_bCycleMode)
+		{
+			bool enabled = m_aElementNames.Count() > 1;
+			m_ButtonLeft.SetEnabled(enabled, animate);
+			m_ButtonRight.SetEnabled(enabled, animate);
+		}
+		else
+		{
+			m_ButtonLeft.SetEnabled(selected != 0, animate);
+			m_ButtonRight.SetEnabled(selected != (m_aElementNames.Count() - 1), animate);
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnLeftArrowClick()
 	{
@@ -315,5 +337,16 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	static SCR_SpinBoxComponent GetSpinBoxComponent(string name, Widget parent, bool searchAllChildren = true)
 	{
 		return SCR_SpinBoxComponent.Cast(SCR_ScriptedWidgetComponent.GetComponent(SCR_SpinBoxComponent, name, parent, searchAllChildren));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// API
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCycleMode(bool cycle)
+	{
+		m_bCycleMode = cycle;
+		EnableArrows(m_iSelectedItem, false);
 	}
 };

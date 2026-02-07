@@ -29,7 +29,14 @@ class SCR_DebugShootComponent : DebugShootComponent
 		Resource prefab = Resource.Load(m_rocketResource);
 		
 		ChimeraGame game = GetGame();
-		CameraBase camera = game.GetCameraManager().CurrentCamera();
+
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return;
+
+		CameraBase camera = cameraManager.CurrentCamera();
+		if (!camera)
+			return;
 		
 		IEntity rocket = GetGame().SpawnEntityPrefab(prefab, game.GetWorld());
 		

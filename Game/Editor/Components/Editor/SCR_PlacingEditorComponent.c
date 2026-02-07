@@ -122,9 +122,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	
 	private ResourceName m_SelectedPrefab;
 	private SCR_StatesEditorComponent m_StatesManager;
-	private SCR_PreviewEntityEditorComponent m_PreviewManager;
-	private SCR_BudgetEditorComponent m_BudgetManager;
-	private SCR_PlacingEditorComponentClass m_PrefabData;
+	protected SCR_PreviewEntityEditorComponent m_PreviewManager;
+	protected SCR_BudgetEditorComponent m_BudgetManager;
+
 	private SCR_SiteSlotEntity m_Slot;
 	private int m_iEntityIndex;
 	private ref map<int, IEntity> m_WaitingPreviews = new map<int, IEntity>;
@@ -141,6 +141,25 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	
 	private ref ScriptInvoker Event_OnRequestEntity = new ScriptInvoker;
 	private ref ScriptInvoker Event_OnPlaceEntity = new ScriptInvoker;
+	
+	private ref ScriptInvoker Event_OnPlaceEntityServer = new ScriptInvoker;
+	
+	/*
+	Get registered prefab with given index.
+	\param index Prefab index from the registry
+	\return Prefab path (empty when the index is invalid)
+	*/
+	int GetPrefabID(ResourceName prefab)
+	{
+		if (prefab.IsEmpty())
+			return -1;
+		
+		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
+		if (!prefabData)
+			return -1;
+		
+		return prefabData.GetPrefabID(prefab);
+	}
 	
 	/*!
 	Create entity exactly where the preview entity is.
@@ -191,6 +210,18 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				return false;
 			}
 			playerID = GetManager().GetPlayerID();
+		}
+		
+		//~ If placing with crew or passengers. Send notification if not enough budget
+		if (SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_CREWED) ||SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_PASSENGER))
+		{
+			array<ref SCR_EntityBudgetValue> budgetCosts = {};
+			IEntityComponentSource source = SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(m_SelectedPrefab).GetResource().ToEntitySource());
+			m_BudgetManager.GetVehicleOccupiedBudgetCosts(source, m_PlacingFlags, budgetCosts, false);
+			EEditableEntityBudget blockingBudget;
+			
+			if (!m_BudgetManager.CanPlace(budgetCosts, blockingBudget))
+				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);				
 		}
 		
 		//--- Create packet
@@ -299,16 +330,19 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			return;
 		}
 		EEditableEntityBudget blockingBudget;
-		if (!CanPlaceEntityServer(editableEntitySource, blockingBudget))
+		if (!CanPlaceEntityServer(editableEntitySource, blockingBudget, false, false))
 		{
 			Print(string.Format("Entity budget exceeded for player!"), LogLevel.ERROR);
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex);
 			return;
 		}
 		
+		OnBeforeEntityCreatedServer(prefab);
+		
 		SCR_EditableEntityComponent entity;
 		bool hasRecipients = false;
 		RplId currentLayerID;
+		array<SCR_EditableEntityComponent> entities = {};
 		if (recipientIds && !recipientIds.IsEmpty())
 		{
 			//--- Spawn entity for selected entities (e.g., waypoints for groups)
@@ -344,6 +378,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			{
 				params.m_Offset = offsets[permutation[i]];
 				entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, recipient);
+				entities.Insert(entity);
 				entityIds.Insert(Replication.FindId(entity));
 			}
 			hasRecipients = true;
@@ -353,14 +388,30 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		{
 			//--- Spawn stand-alone entity
 			entity = SpawnEntityResource(params, prefabResource, playerID, isQueue);
+			entities.Insert(entity);
 			entityIds.Insert(Replication.FindId(entity));
 			currentLayerID = Replication.FindId(params.m_CurrentLayer);
 		}
+		
+		OnEntityCreatedServer(entities);
+		
 		Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, isQueue, hasRecipients, currentLayerID, 0);
+		Event_OnPlaceEntityServer.Invoke(prefabID, entity);
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CreateEntityOwner(int prefabID, array<RplId> entityIds, int entityIndex, int isQueue, bool hasRecipients, RplId currentLayerID, int attempt)
-	{		
+	{				
+		//~ Remove placing flag player
+		if (HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER))
+			SetPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER, false);
+		
+		//~ Todo: Make sure crew and Passenger que placing and placing again budget is updated correctly. 
+		//~ Now if placing flag is active on start placing the budget is not correct. Same goes for queing
+		if (HasPlacingFlag(EEditorPlacingFlags.VEHICLE_CREWED))
+			SetPlacingFlag(EEditorPlacingFlags.VEHICLE_CREWED, false);
+		if (HasPlacingFlag(EEditorPlacingFlags.VEHICLE_PASSENGER))
+			SetPlacingFlag(EEditorPlacingFlags.VEHICLE_PASSENGER, false);
+		
 		//--- Delete the ghost preview which was waiting for server callback
 		IEntity waitingPreview;
 		if (m_WaitingPreviews.Find(entityIndex, waitingPreview))
@@ -444,20 +495,33 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	{
 		return true;
 	}
+	/*!
+	Function called right before entities are created on server.
+	To be overloaded by inherited classes.
+	\param prefab Prefab that entities to be created will use
+	*/
+	protected void OnBeforeEntityCreatedServer(ResourceName prefab);
+	/*!
+	Function called when entities are created on server.
+	To be overloaded by inherited classes.
+	\param entities Array of created entities
+	*/
+	protected void OnEntityCreatedServer(array<SCR_EditableEntityComponent> entities);
 	
 	protected void CheckBudgetOwner()
 	{
-		// Check if prefab can still be placed, will invoke Event_OnBudgetMaxReached and cancel placing, see OnBudgetMaxReached
 		EEditableEntityBudget blockingBudget;
 		if (!CanSelectEntityPrefab(m_SelectedPrefab, blockingBudget, true))
 		{
 			m_BudgetManager.ResetPreviewCost();
+			SetSelectedPrefab(ResourceName.Empty, true);
 		}
 	}
 	
-	protected void OnBudgetMaxReached()
+	protected void OnBudgetMaxReached(EEditableEntityBudget entityBudget, bool maxReached)
 	{
-		SetSelectedPrefab(ResourceName.Empty, true);
+		if (maxReached)
+			SetSelectedPrefab(ResourceName.Empty, true);
 	}
 	
 	/*!
@@ -479,7 +543,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	\return Editable entity
 	*/
 	static SCR_EditableEntityComponent SpawnEntityResource(SCR_EditorPreviewParams params, Resource prefabResource, int playerID = 0, bool isQueue = false, SCR_EditableEntityComponent recipient = null)
-	{
+	{		
 		if (Replication.IsClient() || !prefabResource|| !prefabResource.IsValid())
 			return null;
 		
@@ -533,14 +597,28 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		
 		//--- Assign faction when placed for a recipient
 		if (recipient)
-			SCR_FactionControlComponent.SetFaction(entity.GetOwner(), recipient.GetFaction());
+			SCR_FactionAffiliationComponent.SetFaction(entity.GetOwner(), recipient.GetFaction());
 		
 		//--- Call custom event
 		SCR_EditableEntityComponent childEntity = entity.EOnEditorPlace(params.m_Parent, recipient, params.m_PlacingFlags, isQueue);
 		
 		//--- Set parent to current layer
 		if (params.m_Parent)
-			childEntity.SetParentEntity(params.m_Parent);
+		{		
+			//~ Force entity as passenger
+			if (params.m_TargetInteraction == EEditableEntityInteraction.PASSENGER)
+			{
+				//~ Forces entities to be spawned into passenger positions
+				SCR_EditableVehicleComponent vehicle = SCR_EditableVehicleComponent.Cast(params.m_Parent);
+				if (vehicle)
+					entity.ForceVehicleCompartments(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES);
+			}
+			//~ Not forced passenger set parent
+			else 
+			{
+				childEntity.SetParentEntity(params.m_Parent);
+			}
+		}
 		
 		//--- New parent was created in EOnEditorPlace, reflect that
 		if (childEntity != entity)
@@ -570,7 +648,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		else if (prefabResource)
 			Print(string.Format("@\"%1\" placed at %2", prefabResource.GetResource().GetResourceName().GetPath(), logTransform), LogLevel.VERBOSE);
 		else 
-			Print(string.Format("@\"%1\" placed at %2", "Entity", logTransform), LogLevel.VERBOSE);
+			Print(string.Format("@\"%1\" placed at %2", "Entity", logTransform), LogLevel.VERBOSE);	
 		
 		return entity;
 	}	
@@ -597,8 +675,8 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				if (uiInfo.CanFillWithCrew())
 					vehiclePlacingFlags |= EEditorPlacingFlags.VEHICLE_CREWED;
 				
-				//~ Check if can spawn with passangers
-				if (uiInfo.CanFillWithPassangers())
+				//~ Check if can spawn with passengers
+				if (uiInfo.CanFillWithPassengers())
 					vehiclePlacingFlags |= EEditorPlacingFlags.VEHICLE_PASSENGER;
 				
 				return vehiclePlacingFlags;
@@ -610,30 +688,25 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		return 0;
 	}
 	
-	protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget)
+	protected bool CanPlaceEntityServer(IEntityComponentSource editableEntitySource, out EEditableEntityBudget blockingBudget, bool updatePreview, bool showNotification)
 	{
-		SCR_BudgetEditorComponent budgetManagerOwner = SCR_BudgetEditorComponent.Cast(GetManager().FindComponent(SCR_BudgetEditorComponent));
-		if (!budgetManagerOwner) return true;
+		if (!m_BudgetManager) return true;
 		
-		return budgetManagerOwner.CanPlaceEntitySource(editableEntitySource, blockingBudget, HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER), false);
+		return m_BudgetManager.CanPlaceEntitySource(editableEntitySource, blockingBudget, HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER), updatePreview, showNotification);
 	}
 	
-	protected bool CanSelectEntityPrefab(ResourceName prefab, out EEditableEntityBudget blockingBudget, bool showBudgetMaxNotification = true)
+ 	protected bool CanSelectEntityPrefab(ResourceName prefab, out EEditableEntityBudget blockingBudget, bool updatePreview = true, bool showBudgetMaxNotification = true)
 	{
-		if (!m_BudgetManager || prefab.IsEmpty()) return true;
+		if (!m_BudgetManager || prefab.IsEmpty()) 
+			return false;
 		
 		// Load prefab to check entity budgets or entity type
 		Resource entityPrefab = Resource.Load(prefab);
 		// Get entity source
 		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(entityPrefab);
+		IEntityComponentSource editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(entitySource);
 		
-		if (!entitySource)
-		{
-			Print("Could not determine budget cost for prefab: " +  prefab, LogLevel.WARNING);
-			return false;
-		}
-		
-		return m_BudgetManager.CanPlaceEntitySource(SCR_EditableEntityComponentClass.GetEditableEntitySource(entitySource), blockingBudget, HasPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER), true, showBudgetMaxNotification);
+		return CanPlaceEntityServer(editableEntitySource, blockingBudget, updatePreview, showBudgetMaxNotification);
 	}
 	
 	protected array<vector> GetOffsets(int count)
@@ -829,48 +902,48 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		}
 		
 		//--- Set the state
-		EEditorPlacingFlags flagsBefore = m_PlacingFlags;
+		EEditorPlacingFlags prevPlacingFlag = m_PlacingFlags;
 		if (toAdd)
 			m_PlacingFlags |= flag;
 		else
 			m_PlacingFlags &= ~flag;
 		
 		//--- If there was a change, call event
-		if (m_PlacingFlags != flagsBefore)
+		if (m_PlacingFlags != prevPlacingFlag)
 			Event_OnPlacingFlagsChange.Invoke(flag, toAdd);
 		
-		//--- Exception - update budget preview when placing player changes
-		if (m_SelectedPrefab && flag == EEditorPlacingFlags.CHARACTER_PLAYER)
-		{
-			bool isPlacingPlayer = SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.CHARACTER_PLAYER);
-			EEditableEntityBudget blockingBudget;
-			m_BudgetManager.CanPlaceEntitySource(SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(m_SelectedPrefab).GetResource().ToEntitySource()), blockingBudget, isPlacingPlayer);
-		}
-		
-		if (m_SelectedPrefab && (flag & EEditorPlacingFlags.VEHICLE_CREWED || flag & EEditorPlacingFlags.VEHICLE_PASSENGER))
-		{
-			if (flag & EEditorPlacingFlags.VEHICLE_CREWED)
-			{
-				bool placeCrew = SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_CREWED);
-				
-				//~ Todo: T Need some way to get the budgets to place and set them in the budgets
-				//Get UI info to get GetTotalCrewBudget()
-				
-				//Print("Update Vehicle Crew Budget: " + placeCrew);
-			}
-			
-			if (flag & EEditorPlacingFlags.VEHICLE_PASSENGER)
-			{
-				bool placePassengers = SCR_Enum.HasFlag(m_PlacingFlags, EEditorPlacingFlags.VEHICLE_PASSENGER);
-				
-				//~ Todo: T Need some way to get the budgets to place and set them in the budgets
-				//Get UI info to get GetTotalPassengerBudget()
-				
-				//Print("Update Vehicle Passengers Budget: " + placePassengers);
-			}
-		}
-		
+		//~ Exception - update budget preview when placing as player or placing occupied vehicle
+		UpdatePlacingFlagBudget(m_SelectedPrefab, flag, m_PlacingFlags, prevPlacingFlag);
 	}
+	
+	/*!
+	Update budget with given placing flags
+	\param selectedPrefab Current selected prefab resource
+	\param flagChanged Flag that was changed
+	\param currentPlacingFlag Current placing flags
+	\param prevPlacingFlag The placing flags that where active before new flags are set
+	*/
+	protected void UpdatePlacingFlagBudget(ResourceName selectedPrefab, EEditorPlacingFlags flagChanged, EEditorPlacingFlags currentPlacingFlag, EEditorPlacingFlags prevPlacingFlag)
+	{		
+		if (m_SelectedPrefab.IsEmpty())
+			return;
+		
+		if (flagChanged == EEditorPlacingFlags.CHARACTER_PLAYER)
+		{
+			bool isPlacingPlayer = SCR_Enum.HasFlag(currentPlacingFlag, EEditorPlacingFlags.CHARACTER_PLAYER);
+			EEditableEntityBudget blockingBudget;
+			m_BudgetManager.CanPlaceEntitySource(SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(selectedPrefab).GetResource().ToEntitySource()), blockingBudget, isPlacingPlayer);
+		}
+		
+		if ((currentPlacingFlag & EEditorPlacingFlags.VEHICLE_CREWED || currentPlacingFlag & EEditorPlacingFlags.VEHICLE_PASSENGER) || (prevPlacingFlag & EEditorPlacingFlags.VEHICLE_CREWED || prevPlacingFlag & EEditorPlacingFlags.VEHICLE_PASSENGER))
+		{
+			array<ref SCR_EntityBudgetValue> budgetCosts = {};
+			IEntityComponentSource source = SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(selectedPrefab).GetResource().ToEntitySource());
+			m_BudgetManager.GetVehicleOccupiedBudgetCosts(source, currentPlacingFlag, budgetCosts);
+			m_BudgetManager.UpdatePreviewCost(budgetCosts);		
+		}
+	}
+	
 	/*!
 	Toggle value of placing flag.
 	\param flag Placing flag
@@ -910,7 +983,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	/*!
 	Get invoker called when selected prefab changes.
 	\return Script invoker
-	*/	
+	*/
 	ScriptInvoker GetOnSelectedPrefabChange()
 	{
 		return Event_OnSelectedPrefabChange;
@@ -943,6 +1016,11 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		return Event_OnPlaceEntity;
 	}
 	
+	ScriptInvoker GetOnPlaceEntityServer()
+	{
+		return Event_OnPlaceEntityServer;
+	}
+	
 	override void EOnEditorDebug(array<string> debugTexts)
 	{
 		if (!IsActive()) return;
@@ -958,16 +1036,15 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	}
 	override void EOnEditorActivate()
 	{
-		m_StatesManager = SCR_StatesEditorComponent.Cast(SCR_StatesEditorComponent.GetInstance(SCR_StatesEditorComponent));
-		m_PreviewManager = SCR_PreviewEntityEditorComponent.Cast(SCR_PreviewEntityEditorComponent.GetInstance(SCR_PreviewEntityEditorComponent, true));
-		m_BudgetManager = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent));
+		m_StatesManager = SCR_StatesEditorComponent.Cast(FindEditorComponent(SCR_StatesEditorComponent));
+		m_PreviewManager = SCR_PreviewEntityEditorComponent.Cast(FindEditorComponent(SCR_PreviewEntityEditorComponent, true));
+		m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, false, true));
 		if (m_BudgetManager)
 		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Insert(OnBudgetMaxReached);
 		}
 		
 		SCR_PlacingEditorComponentClass prefabData = SCR_PlacingEditorComponentClass.Cast(GetEditorComponentData());
-		
 	}
 	
 	override void EOnEditorDeactivate()

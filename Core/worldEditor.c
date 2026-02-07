@@ -107,8 +107,8 @@ class WorldEditorAPI
 	proto native external bool DeleteEntity(notnull IEntity ent);
 	proto native external bool DeleteEntities(notnull array<IEntity> ents);
 	proto native IEntity GetEntityUnderCursor();
-
-	proto native external bool TraceWorldPos(int x, int y, TraceFlags traceFlags, out vector traceStart, out vector traceEnd, out vector traceDir);
+	//! Trace inside WorldEditor window, x and y coords are window coordinates
+	proto external bool TraceWorldPos(int x, int y, TraceFlags traceFlags, out vector traceStart, out vector traceEnd, out vector traceDir, out IEntity hitEntity = null);
 	//! Returns terrain height (world space) in given point x,z (world space). Very fast method.
 	proto native float GetTerrainSurfaceY(float x, float z);
 	//! Fills `y` with GetTerrainSurfaceY and returns true if on x, z position is terrain, returns false otherwise

@@ -119,6 +119,9 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		vector lightDirection;
 		vector pos;
 		
+		if (!m_aLights)
+			m_aLights = {};
+		
 		for (int i = 0, count = componentData.GetLightData().Count(); i < count; i++)
 		{			
 			if (!componentData.GetLightData()[i])
@@ -134,10 +137,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			light = CreateLight(componentData.GetLightData()[i], pos, lightDirection, LIGHT_EMISSIVITY_START);
 			if (!light)
 				continue;
-			
-			if (!m_aLights)
-				m_aLights = {};
-			
+						
 			m_aLights.Insert(light);
 			light = null;
 		}
@@ -173,23 +173,23 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	//------------------------------------------------------------------------------------------------
 	protected void TurnOff(notnull SCR_BaseInteractiveLightComponentClass componentData, bool playSound)
 	{
+		if (!System.IsConsoleApp() && playSound && m_SoundComponent)
+		{
+			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_OFF);
+			if (m_SignalsManagerComponent)
+				m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), 0);
+		}
+		
 		if (!componentData.GetLightData().IsEmpty())
-			{
-				if (!System.IsConsoleApp() && playSound && m_SoundComponent)
-				{
-					m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_OFF);
-					if (m_SignalsManagerComponent)
-						m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), 0);
-				}
+		{				
+			RemoveLights();
 				
-				RemoveLights();
-				
-				if (m_EmissiveMaterialComponent)
-					m_EmissiveMaterialComponent.SetEmissiveMultiplier(LIGHT_EMISSIVITY_OFF);
-			}
+			if (m_EmissiveMaterialComponent)
+				m_EmissiveMaterialComponent.SetEmissiveMultiplier(LIGHT_EMISSIVITY_OFF);
+		}
 			
-			ClearCallLater();
-			m_bIsOn = false;
+		ClearCallLater();
+		m_bIsOn = false;
 	}	
 	
 	//------------------------------------------------------------------------------------------------

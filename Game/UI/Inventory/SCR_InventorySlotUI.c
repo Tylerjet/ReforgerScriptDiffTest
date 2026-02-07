@@ -21,18 +21,6 @@ enum ESlotFunction
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_InvEquipCB : SCR_InvCallBack
-{
-	CharacterControllerComponent m_pCharCtrl;
-	IEntity m_pEnt;
-
-	protected override void OnComplete()
-	{
-		m_pCharCtrl.TryEquipRightHandItem( m_pEnt, EEquipItemType.EEquipTypeWeapon, false );
-	}
-};
-
-//------------------------------------------------------------------------------------------------
 //! UI Script
 //! Inventory Slot UI Layout
 class SCR_InventorySlotUI : ScriptedWidgetComponent
@@ -83,8 +71,6 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		protected TextWidget							m_wDbgClassText3;
 	#endif
 
-	protected ref SCR_InvEquipCB 						m_pCallback = new SCR_InvEquipCB();
-
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
 	void UpdateReferencedComponent( InventoryItemComponent pComponent )
@@ -93,7 +79,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			Destroy();
 		m_pItem = pComponent;
 		
-		if( m_pItem )
+		if (m_pItem && m_pItem.GetAttributes())
 			m_Attributes = SCR_ItemAttributeCollection.Cast( m_pItem.GetAttributes() );			//set the slot attributes (size) based on the information stored in the item 
 		if(! m_Attributes)
 			return;
@@ -154,18 +140,13 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		
 		//m_widget = w;
 		SetSlotVisible( m_bVisible );
-		SetItemFunctionality();	
-		if ( m_pStorageUI && m_pItem )
-		{
-			//if is  it storage, register it to the array for the future use
-			if ( BaseInventoryStorageComponent.Cast( m_pItem ) )
-				if( m_pStorageUI.GetInventoryMenuHandler() )
-					m_pStorageUI.GetInventoryMenuHandler().RegisterUIStorage( this );
-			
-			if ( WeaponAttachmentsStorageComponent.Cast( m_pItem ) )
-				if( m_pStorageUI.GetInventoryMenuHandler() )
-					m_pStorageUI.GetInventoryMenuHandler().RegisterUIStorage( this );
-		}
+		SetItemFunctionality();
+		// If is it storage or attachment, register it to the array for the future use
+		if (!BaseInventoryStorageComponent.Cast(m_pItem) && !WeaponAttachmentsStorageComponent.Cast(m_pItem))
+			return;
+		
+		if (m_pStorageUI && m_pStorageUI.GetInventoryMenuHandler())
+			m_pStorageUI.GetInventoryMenuHandler().RegisterUIStorage(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -173,15 +154,15 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	BaseInventoryStorageComponent GetStorageComponent() { return BaseInventoryStorageComponent.Cast(m_pItem); }
 	
 	//------------------------------------------------------------------------------------------------
-	ELoadoutArea GetLoadoutArea()
+	LoadoutAreaType GetLoadoutArea()
 	{
 		if ( !m_pItem )
-			return -1;
+			return null;
 		auto pClothComponent = BaseLoadoutClothComponent.Cast( m_pItem.GetOwner().FindComponent( BaseLoadoutClothComponent ) );
 		if ( !pClothComponent )
-			return -1;
+			return null;
 		
-		return pClothComponent.GetArea();
+		return pClothComponent.GetAreaType();
 	}
 	
 	
@@ -213,7 +194,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//! should be the slot visible?
 	void SetSlotVisible( bool bVisible )
 	{
-		m_bVisible = m_bVisible;
+		m_bVisible = bVisible;
 		m_widget.SetEnabled( bVisible );
 		m_widget.SetVisible( bVisible );
 		
@@ -420,6 +401,11 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		m_widget.SetEnabled( enable );
 	}
 	
+	bool OnDrop(SCR_InventorySlotUI slot)
+	{
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// ! 0 - Disable for move
 	// ! 1 - Enable for move
@@ -553,27 +539,27 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------	
 	//! stores the type of the functionality of the item in the slot
 	void SetItemFunctionality()
-	{		
+	{
 		if( !m_pItem )
 			return;
-		GenericEntity pGenericEnt = GenericEntity.Cast( m_pItem.GetOwner() );
-		if ( !pGenericEnt )
+		IEntity item = m_pItem.GetOwner();
+		if (!item)
 			return;
 		
-		if ( MagazineComponent.Cast( pGenericEnt.FindComponent( MagazineComponent ) ) )
+		if ( MagazineComponent.Cast( item.FindComponent( MagazineComponent ) ) )
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_MAGAZINE;
 			SetAmmoCount();
 			return;
 		} 
 		
-		if ( WeaponComponent.Cast( pGenericEnt.FindComponent( WeaponComponent ) ) )
+		if ( WeaponComponent.Cast( item.FindComponent( WeaponComponent ) ) )
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_WEAPON;
 			return;
 		}
 		
-		if ( SCR_GadgetComponent.Cast( pGenericEnt.FindComponent( SCR_GadgetComponent ) ) )
+		if ( SCR_GadgetComponent.Cast( item.FindComponent( SCR_GadgetComponent ) ) )
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_GADGET;
 			return;
@@ -581,289 +567,56 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	protected void ReloadCurrentWeapon( IEntity player )
+	SCR_CharacterInventoryStorageComponent GetCharacterStorage(IEntity entity)
 	{
-		if ( !m_pItem )
-			return;
-		ChimeraCharacter pCharacter = ChimeraCharacter.Cast( player );
-		if ( !pCharacter )
-			return;
-		CharacterControllerComponent pController = pCharacter.GetCharacterController();	
-		if ( !pController )
-			return;
-		pController.ReloadWeaponWith( m_pItem.GetOwner() );		
+		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
+		if (!character)
+			return null;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return null;
+		
+		SCR_InventoryStorageManagerComponent storageManager = GetInventoryManager();
+		if (!storageManager)
+			return null;
+		
+		return storageManager.GetCharacterStorage();
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	protected bool CanReloadCurrentWeapon(IEntity player)
+	void UseItem(IEntity player)
 	{
-		ChimeraCharacter pCharacter = ChimeraCharacter.Cast(player);
-		if (!pCharacter)
-			return false;
+		if (!m_pItem)
+			return;
+		
+		IEntity item = m_pItem.GetOwner();
+		if (!item)
+			return;
+		
+		SCR_CharacterInventoryStorageComponent storage = GetCharacterStorage(player);
+		if (!storage)
+			return;
+		
+		if (storage.UseItem(item, m_eSlotFunction))
+			Refresh();
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	bool CanUseItem(IEntity player)
+	{
 		if (!m_pItem)
 			return false;
-			
+		
 		IEntity item = m_pItem.GetOwner();
 		if (!item)
 			return false;
 		
-		MagazineComponent magComp = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
-		if (!magComp)
+		SCR_CharacterInventoryStorageComponent storage = GetCharacterStorage(player);
+		if (!storage)
 			return false;
 		
-		CharacterControllerComponent pController = pCharacter.GetCharacterController();	
-		if (!pController)
-			return false;
-		
-		BaseWeaponManagerComponent weaponManager = pController.GetWeaponManagerComponent();
-		if (!weaponManager)
-			return false;
-		
-		BaseWeaponComponent currentWeapon = weaponManager.GetCurrent();
-		if (!currentWeapon)
-			return false;
-		
-		BaseMuzzleComponent currentMuzzle = currentWeapon.GetCurrentMuzzle();
-		if (!currentMuzzle)
-			return false;
-		
-		BaseMagazineWell currentMagWell = currentMuzzle.GetMagazineWell();
-		
-		if (currentWeapon.IsReloadPossible() && currentMagWell && magComp.GetMagazineWell().Type() == currentMagWell.Type())
-			return true;
-		
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------	
-	void Use( IEntity player )
-	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(player);
-		if (!character)
-			return;
-		if (!m_pItem)
-			return;
-		IEntity itemEnt = m_pItem.GetOwner();
-		if (!itemEnt)
-			return;
-		
-		switch (m_eSlotFunction)
-		{
-			case ESlotFunction.TYPE_MAGAZINE:
-			{
-				ReloadCurrentWeapon(player);
-				break;
-			}
-			case ESlotFunction.TYPE_WEAPON:
-			{
-				CharacterControllerComponent controller = character.GetCharacterController();
-				if (!controller)
-					break;
-				
-				m_pCallback.m_pEnt = itemEnt;
-				m_pCallback.m_pCharCtrl = controller;
-				
-				if (!IsCharacterInTurretCompartment(character))
-				{
-					BaseWeaponComponent currentWeapon;
-					BaseWeaponManagerComponent manager = controller.GetWeaponManagerComponent();
-					if (manager)
-						currentWeapon = manager.GetCurrentWeapon();
-					
-					SCR_InventoryStorageManagerComponent pInvManager = GetInventoryManager();
-					if (!pInvManager)
-						break;
-					
-					// Swap grenade type only if reselecting the same grenade slot
-					BaseWeaponComponent itemWeapon = BaseWeaponComponent.Cast(itemEnt.FindComponent(BaseWeaponComponent));
-					array<EWeaponType> grenadeTypes = {EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE};
-					if (currentWeapon && itemWeapon && currentWeapon.GetWeaponType() == itemWeapon.GetWeaponType() && grenadeTypes.Contains(itemWeapon.GetWeaponType()))
-					{
-						// Equip different type of grenade
-						IEntity nextGrenade = pInvManager.FindNextWeaponOfType(itemWeapon.GetWeaponType(), currentWeapon.GetOwner());
-						if (nextGrenade)
-							m_pCallback.m_pEnt = nextGrenade;
-					}
-					// Currently selected weapon can have alternative muzzle
-					else if (currentWeapon && currentWeapon.GetOwner() == itemEnt && !controller.IsGadgetInHands())
-					{
-						// Select next muzzle of a selected weapon
-						int nextMuzzleID = SCR_WeaponLib.GetNextMuzzleID(currentWeapon); 
-						if (nextMuzzleID != -1)
-						{
-							controller.SetMuzzle(nextMuzzleID);
-							Refresh();
-						}
-						
-						break;
-					}
-					
-					// TODO: Interrupt current equipping process
-					if (!pInvManager.GetIsWeaponEquipped(m_pCallback.m_pEnt))
-						pInvManager.EquipWeapon(m_pCallback.m_pEnt, m_pCallback, false);
-					else
-						controller.TryEquipRightHandItem(m_pCallback.m_pEnt, EEquipItemType.EEquipTypeWeapon, false);
-				}
-				else
-				{	
-					TurretControllerComponent turretController;
-					array<WeaponSlotComponent> turretWeaponSlots = {};		
-					int result = GetTurretWeapons(character, turretWeaponSlots, turretController);
-					if (result <= 0)
-						break;
-					
-					WeaponSlotComponent highlightedWeaponsSlot;
-					foreach (WeaponSlotComponent weaponSlot: turretWeaponSlots)
-					{
-						IEntity weaponEntity = weaponSlot.GetWeaponEntity();
-						if (weaponEntity && weaponEntity == itemEnt)
-							highlightedWeaponsSlot = weaponSlot;
-					}
-
-					if (turretController && highlightedWeaponsSlot)
-						turretController.SelectWeapon(player, highlightedWeaponsSlot);
-				}
-				break;
-			}
-			case ESlotFunction.TYPE_GADGET:
-			{
-				if (character.IsInVehicleADS())
-					break;
-				
-				// need to run through manager	TODO kamil: this doesnt call setmode when switching to other item from gadget (no direct call to scripted togglefocused for example, possibly other issues?)
-				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(player);
-				gadgetMgr.SetGadgetMode(itemEnt, EGadgetMode.IN_HAND);
-								
-				break;
-			}
-			case ESlotFunction.TYPE_HEALTH:
-			case ESlotFunction.TYPE_CONSUMABLE:
-			
-			default:
-			{
-			};
-		} 
-		return;
-	}
-	
-	//------------------------------------------------------------------------------------------------	
-	bool CanUse(IEntity player)
-	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(player);
-		if (!character)
-			return false;
-		if (!m_pItem)
-			return false;
-		IEntity itemEnt = m_pItem.GetOwner();
-		if (!itemEnt)
-			return false;
-		CharacterControllerComponent controller = character.GetCharacterController();
-		if (!controller)
-			return false;
-		
-		switch (m_eSlotFunction)
-		{
-			case ESlotFunction.TYPE_MAGAZINE:
-			{
-				if (character.IsInVehicle())
-					return false;	
-				
-				return CanReloadCurrentWeapon(player);			
-			} break;
-			case ESlotFunction.TYPE_WEAPON:
-			{
-				if (!IsCharacterInTurretCompartment(character))
-				{
-					if (!controller.GetCanFireWeapon())
-						return false;
-				}
-				else
-				{
-					BaseWeaponComponent currentWeapon = GetCurrentTurretWeapon(character);
-
-					if (currentWeapon && itemEnt && currentWeapon.GetOwner() == itemEnt)
-						return false;
-				}
-				
-				return true;
-			} break;
-			case ESlotFunction.TYPE_GADGET:
-			{
-				if (character.IsInVehicleADS())
-					return false;
-				
-				return controller.CanEquipGadget(itemEnt);
-			}
-			case ESlotFunction.TYPE_HEALTH:
-			case ESlotFunction.TYPE_CONSUMABLE:
-			
-			default:
-			{
-			};
-		}
-		
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected int GetTurretWeapons(ChimeraCharacter character, out array<WeaponSlotComponent> turretWeaponSlots, out TurretControllerComponent turretController)
-	{
-		BaseWeaponManagerComponent weaponManager;
-		CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
-		if (!compAccess || !compAccess.IsInCompartment())
-			return -1;
-		
-		BaseCompartmentSlot compartment = compAccess.GetCompartment();
-		if (!compartment)
-			return -1;
-		
-		turretController = TurretControllerComponent.Cast(compartment.GetController());
-		if (!turretController)
-			return -1;
-		
-		weaponManager = turretController.GetWeaponManager();
-		if (weaponManager)
-			return weaponManager.GetWeaponsSlots(turretWeaponSlots);
-		
-		return -1;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected bool IsCharacterInTurretCompartment(notnull ChimeraCharacter character)
-	{
-		CompartmentAccessComponent compAccessComponent = character.GetCompartmentAccessComponent();
-		if (!compAccessComponent)
-			return false;
-		
-		TurretCompartmentSlot turretCompartment = TurretCompartmentSlot.Cast(compAccessComponent.GetCompartment());
-		if (!turretCompartment)
-			return false;
-		
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected BaseWeaponComponent GetCurrentTurretWeapon(ChimeraCharacter character)
-	{
-		TurretControllerComponent turretController;
-		BaseWeaponManagerComponent weaponManager;
-		CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
-		if (!compAccess || !compAccess.IsInCompartment())
-			return null;
-		
-		BaseCompartmentSlot compartment = compAccess.GetCompartment();
-		if (!compartment)
-			return null;
-		
-		turretController = TurretControllerComponent.Cast(compartment.GetController());
-		if (!turretController)
-			return null;
-		
-		weaponManager = turretController.GetWeaponManager();
-		if (!weaponManager)
-			return null;
-		
-		return weaponManager.GetCurrentWeapon();
+		return storage.CanUseItem(item, m_eSlotFunction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -886,15 +639,11 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			vehicle = vehicle.GetParent();
 
 		FactionAffiliationComponent vehicleFaction = FactionAffiliationComponent.Cast(vehicle.FindComponent(FactionAffiliationComponent));
-		FactionAffiliationComponent playerFaction = FactionAffiliationComponent.Cast(player.FindComponent(FactionAffiliationComponent));
-
-		if (!vehicleFaction || !playerFaction)
-			return false;
-
-		if (!vehicleFaction.GetAffiliatedFaction())
+		if (!vehicleFaction || !vehicleFaction.GetAffiliatedFaction())
 			return true;
 
-		if (!playerFaction.GetAffiliatedFaction())
+		FactionAffiliationComponent playerFaction = FactionAffiliationComponent.Cast(player.FindComponent(FactionAffiliationComponent));
+		if (!playerFaction || !playerFaction.GetAffiliatedFaction())
 			return false;
 
 		return (playerFaction.GetAffiliatedFaction() == vehicleFaction.GetAffiliatedFaction());

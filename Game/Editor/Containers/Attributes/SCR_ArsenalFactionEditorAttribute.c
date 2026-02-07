@@ -10,7 +10,7 @@ class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 		if (!arsenalComponent)
 			return false;
 		
-		SCR_FactionControlComponent factionComponent = SCR_FactionControlComponent.Cast(entity.FindComponent(SCR_FactionControlComponent));
+		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent));
 		if (!factionComponent)
 			return false;
 		
@@ -19,15 +19,15 @@ class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 	
 	protected override Faction GetFaction(GenericEntity entity)
 	{
-		return SCR_FactionControlComponent.Cast(entity.FindComponent(SCR_FactionControlComponent)).GetFaction();
+		return SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent)).GetAffiliatedFaction();
 	}
 	
 	protected override void SetFaction(GenericEntity entity, Faction faction)
 	{
-		SCR_FactionControlComponent factionComponent = SCR_FactionControlComponent.Cast(entity.FindComponent(SCR_FactionControlComponent));
+		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent));
 		if (!factionComponent)
 			return;
 		
-		factionComponent.SetFaction(faction);
+		factionComponent.SetAffiliatedFaction(faction);
 	}
 };

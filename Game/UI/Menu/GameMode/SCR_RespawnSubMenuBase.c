@@ -247,7 +247,9 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 		if (rc)
 			rc.RequestQuickRespawn();
 
-		SCR_GroupsManagerComponent.GetInstance().SetConfirmedByPlayer(true);
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (groupsManager)
+			groupsManager.SetConfirmedByPlayer(true);
 		m_bDeployRequestSent = true;
 	}
 
@@ -295,8 +297,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	{
 		if (m_bIsLastAvailableTab && GetPlayerRemainingRespawnTime(m_iPlayerId) > 0)
 			return;
-		bool assignResult = ConfirmSelection();
-		m_bDeployRequestSent = false;
+		ConfirmSelection();
 	}
 
 	//------------------------------------------------------------------------------------------------

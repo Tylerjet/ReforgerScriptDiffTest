@@ -16,11 +16,8 @@ class BaseSightsComponentClass: GameComponentClass
 class BaseSightsComponent: GameComponent
 {
 	proto external IEntity GetOwner();
-	//! Allow to override Zeroing via aim modifier (only works in Workbench)
-	proto external void ForceSightsZeroValue(vector offset, vector angles, vector turnOffset);
-	//! Disable forced zeroing data
-	proto external void ForceSightsZeroValueEnablel(bool bOnOff);
 	proto external bool IsSightADSActive();
+	proto external bool AreSightsValid(bool front = true, bool rear = true);
 	/*!
 	Returns additional sights position used for calculating zeroing
 	A vector is calculated from start position to end position and used as direction for calculating zeroing offsets

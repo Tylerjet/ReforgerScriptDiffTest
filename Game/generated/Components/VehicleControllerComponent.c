@@ -16,6 +16,10 @@ class VehicleControllerComponentClass: CompartmentControllerComponentClass
 class VehicleControllerComponent: CompartmentControllerComponent
 {
 	proto external bool CanSwitchSeat();
+	//! Returns the global driving assistance mode.
+	static proto EVehicleDrivingAssistanceMode GetDrivingAssistanceMode();
+	//! Sets the global driving assistance mode.
+	static proto void SetDrivingAssistanceMode(EVehicleDrivingAssistanceMode mode);
 	//! Try to start the engine with the chance of getting the engine not started based on engine startup chance.
 	proto external void TryStartEngine();
 	/*!

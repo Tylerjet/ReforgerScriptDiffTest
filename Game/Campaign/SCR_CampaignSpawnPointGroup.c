@@ -29,7 +29,7 @@ class SCR_CampaignSpawnPointGroup : SCR_SpawnPoint
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! callback for IsChildEmpty query. Returns true, if position is empty
+	//! callback for IsChildEmpty query. Returns false, if position is empty
 	protected bool IsChildrenPositionEmptyCallback(IEntity ent)
 	{
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(ent);
@@ -46,7 +46,7 @@ class SCR_CampaignSpawnPointGroup : SCR_SpawnPoint
 	//------------------------------------------------------------------------------------------------
  	protected bool IsChildEmpty(SCR_Position position)
 	{
-		if (GetGame().GetWorld().QueryEntitiesBySphere(position.GetOrigin(), m_fChildrenRadius, IsChildrenPositionEmptyCallback, null, EQueryEntitiesFlags.ALL))
+		if (!GetGame().GetWorld().QueryEntitiesBySphere(position.GetOrigin(), m_fChildrenRadius, IsChildrenPositionEmptyCallback, null, EQueryEntitiesFlags.ALL))
 			return true;
 		
 		return false;
@@ -66,7 +66,6 @@ class SCR_CampaignSpawnPointGroup : SCR_SpawnPoint
 		{
 			if (startIndex + i < count)
 				currentIndex = startIndex + 1;
-			
 			else
         		currentIndex = count - i;
     

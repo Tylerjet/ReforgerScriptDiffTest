@@ -75,7 +75,7 @@ class SCR_RestrictionZoneWarningHUDComponent : SCR_InfoDisplay
 		
 		if (m_iCurrentDisplayedWarning != warningType)
 		{
-			foreach(SCR_RestrictionZoneWarningInfo warningInfo: m_aWarningUIInfos)
+			foreach (SCR_RestrictionZoneWarningInfo warningInfo: m_aWarningUIInfos)
 			{
 				if (warningInfo.m_iWarningType == warningType)
 				{
@@ -108,13 +108,21 @@ class SCR_RestrictionZoneWarningHUDComponent : SCR_InfoDisplay
 		float opacityCalc = ((vector.DistanceSqXZ(playerPosition, m_vZoneCenter) - m_fWarningRadiusSq) / m_fZoneMinusWarningSq) + m_fMinWarningDistanceVisualsOpacity;
 		float opacity = Math.Clamp(opacityCalc, m_fMinWarningDistanceVisualsOpacity, m_fMaxWarningDistanceVisualsOpacity);
 		
-		//~ Calculate opacity multiplier depending on where the player is looking (Looking towards center == less opacity)
-		vector cameraTransform[4];
-		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
-		camera.GetWorldTransform(cameraTransform);
-		
-		//~ Grab the ratio between zone and center. Looking at zone == 1 and looking fully away from zone == -1
-		float ratio = vector.DotXZ((m_vZoneCenter - playerPosition).Normalized(), cameraTransform[2]);
+		float ratio = 0;
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (cameraManager)
+		{
+			CameraBase camera = cameraManager.CurrentCamera();
+			if (camera)
+			{
+				//~ Calculate opacity multiplier depending on where the player is looking (Looking towards center == less opacity)
+				vector cameraTransform[4];
+				camera.GetWorldTransform(cameraTransform);
+				
+				//~ Grab the ratio between zone and center. Looking at zone == 1 and looking fully away from zone == -1
+				ratio = vector.DotXZ((m_vZoneCenter - playerPosition).Normalized(), cameraTransform[2]);
+			}
+		}
 		
 		//~ If looking less the 180 degrees towards the center start reducing the opacity using a multiplier
 		float opacityLookDirectionMultiplier = 1;

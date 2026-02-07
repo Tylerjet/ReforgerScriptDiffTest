@@ -22,7 +22,7 @@ class SCR_NotificationPlayerKicked : SCR_NotificationPlayer
 		
 		if (m_PlayerKickReasonsConfig)
 		{
-			foreach(string group: m_sKickReasonGroups)
+			foreach (string group: m_sKickReasonGroups)
 			{
 				//~ Combines the m_sKickReasonGroups and the kick reason converted to string
 				preset = m_PlayerKickReasonsConfig.FindPreset(group + typename.EnumToString(SCR_PlayerManagerKickReason, reason));

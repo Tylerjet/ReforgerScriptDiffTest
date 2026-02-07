@@ -29,7 +29,7 @@ class SCR_NotificationOnKillfeedChanged : SCR_NotificationPlayer
 			array<ref SCR_NotificationKillfeedTypeName> killFeedTypeNames = new array<ref SCR_NotificationKillfeedTypeName>;
 			notificationSender.GetKillFeedTypeNames(killFeedTypeNames);
 			
-			foreach(SCR_NotificationKillfeedTypeName killfeed: killFeedTypeNames)
+			foreach (SCR_NotificationKillfeedTypeName killfeed: killFeedTypeNames)
 			{
 				if (killfeed.GetKillfeedType() == killfeedType)
 				{
@@ -44,7 +44,7 @@ class SCR_NotificationOnKillfeedChanged : SCR_NotificationPlayer
 			array<ref SCR_NotificationKillfeedreceiveTypeName> killFeedReceiveTypeNames = new array<ref SCR_NotificationKillfeedreceiveTypeName>;
 			notificationSender.GetKillFeedReceiveTypeNames(killFeedReceiveTypeNames);
 			
-			foreach(SCR_NotificationKillfeedreceiveTypeName killfeed: killFeedReceiveTypeNames)
+			foreach (SCR_NotificationKillfeedreceiveTypeName killfeed: killFeedReceiveTypeNames)
 			{
 				if (killfeed.GetKillfeedReceiveType() == killfeedType)
 				{

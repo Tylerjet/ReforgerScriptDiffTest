@@ -34,7 +34,8 @@ class SCR_BasePlayerBudgetEditorAttribute: SCR_BaseValueListEditorAttribute
 		if (!budgetComponent) 
 			return null;
 		
-		int maxBudget = budgetComponent.GetMaxBudgetValue(GetBudgetType());
+		int maxBudget;
+		budgetComponent.GetMaxBudgetValue(GetBudgetType(), maxBudget);
 
 		return SCR_BaseEditorAttributeVar.CreateFloat(maxBudget));
 	}

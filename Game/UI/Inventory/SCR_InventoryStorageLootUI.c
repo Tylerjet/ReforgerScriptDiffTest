@@ -102,7 +102,7 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	void SCR_InventoryStorageLootUI(
 		BaseInventoryStorageComponent storage,
-		ELoadoutArea slotID = ELoadoutArea.ELA_None,
+		LoadoutAreaType slotID = null,
 		SCR_InventoryMenuUI menuManager = null,
 		int iPage = 0,
 		array<BaseInventoryStorageComponent> aTraverseStorage = null,
@@ -113,7 +113,7 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 		m_iMaxRows = rows;
 		m_iMaxColumns = cols;
 		m_iMatrix = new SCR_Matrix( m_iMaxColumns, m_iMaxRows );
-		SetSlotAreaID( slotID );
+		SetSlotAreaType( slotID );
 		m_Character = character;
 		m_bEnabled = true;
 	}

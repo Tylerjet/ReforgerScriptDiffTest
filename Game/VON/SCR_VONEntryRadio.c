@@ -5,6 +5,7 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	const string LABEL_FREQUENCY_UNITS = "#AR-VON_FrequencyUnits_MHz";
 	const string LABEL_DEACTIVATED = "#AR-Radio_TurnedOff";
 	
+	bool m_bIsLongRange;			// whether this is personal or backpack radio
 	protected int m_iFrequency;		// current frequency
 	
 	//------------------------------------------------------------------------------------------------
@@ -16,6 +17,9 @@ class SCR_VONEntryRadio : SCR_VONEntry
 			AdjustEntry(0);
 		else 
 			m_sText = LABEL_DEACTIVATED;
+		
+		if (m_GadgetComp.GetType() == EGadgetType.RADIO_BACKPACK)
+			m_bIsLongRange = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------ 

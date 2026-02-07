@@ -9,16 +9,18 @@ class SCR_SoundEventGroup
 	
 	ref array<int> m_aAvailableEvents = new array<int>;
 	
-	void GetAvailableEvents(float gameTime, float timeOfDay)
+	void GetAvailableEvents(float gameTime, float timeOfDay, float timeOfDayCurveValue[])
 	{
 		m_aAvailableEvents.Clear();
 
 		int size = m_aSoundEventDefinition.Count();
 
 		for (int i = 0; i < size; i++)
-		{			
-			if (Math3D.Curve(ECurveType.CurveProperty2D, timeOfDay, m_aSoundEventDefinition[i].m_DayTimeFactor)[1] > 0)
+		{
+			// Check for correct time of the day			
+			if (timeOfDayCurveValue[m_aSoundEventDefinition[i].m_eDayTimeCurve] > 0)
 			{
+				// Check if sound is not in cooldown
 				if (m_aSoundEventDefinition[i].m_fCoolDownEnd < gameTime)
 				{
 					m_aAvailableEvents.Insert(i);

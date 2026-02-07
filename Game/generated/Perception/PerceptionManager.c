@@ -15,6 +15,7 @@ class PerceptionManagerClass: GenericEntityClass
 
 class PerceptionManager: GenericEntity
 {
+	proto external float GetTime();
 };
 
 /** @}*/

@@ -20,6 +20,9 @@ class SCR_NotificationPlayerTargetPlayer : SCR_NotificationDisplayData
 	
 	override void SetPosition(SCR_NotificationData data)
 	{
+		if (!CanSetPosition(data))
+			return;
+		
 		int playerID, playerTargetID;
 		data.GetParams(playerID, playerTargetID);
 		

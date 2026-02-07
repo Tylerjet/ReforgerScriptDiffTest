@@ -4,12 +4,20 @@ class SCR_WeaponAttachmentsStorageComponentClass: WeaponAttachmentsStorageCompon
 
 class SCR_WeaponAttachmentsStorageComponent : WeaponAttachmentsStorageComponent
 {
-    protected sealed override BaseInventoryTask RemoveItem(IEntity item);
-	protected sealed override BaseInventoryTask InsertItem(IEntity item, int slotID);
-	protected sealed override void OnManagerChanged(InventoryStorageManagerComponent manager);
-	sealed override ref InventoryStorageSlot GetSlotScr(int slotID);
-	sealed override ref InventoryStorageSlot GetEmptySlotForItem(IEntity item);
-	sealed override bool CanStoreItem(IEntity item, int slotID);
-	sealed override bool CanRemoveItem(IEntity item);
-	sealed override bool CanReplaceItem(IEntity nextItem, int slotID);
+	ref ScriptInvoker m_OnItemAddedToSlotInvoker = new ScriptInvoker();
+	ref ScriptInvoker m_OnItemRemovedFromSlotInvoker = new ScriptInvoker();
+	
+	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
+	override protected void OnAddedToSlot(IEntity item, int slotID)
+	{
+		if (m_OnItemAddedToSlotInvoker)
+			m_OnItemAddedToSlotInvoker.Invoke(item, slotID);
+	}
+	
+	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
+	override protected void OnRemovedFromSlot(IEntity item, int slotID)
+	{
+		if (m_OnItemRemovedFromSlotInvoker && !item.IsDeleted())
+			m_OnItemRemovedFromSlotInvoker.Invoke(item, slotID);
+	}
 };

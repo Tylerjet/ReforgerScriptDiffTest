@@ -3,6 +3,9 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 	[Attribute("StickyNotificationMessage")]
 	protected string m_sTextName;
 	
+	[Attribute("OptionalMessageLayout")]
+	protected string m_sOptionalMessageLayoutName;
+	
 	//Reference
 	protected SCR_NotificationsLogComponent m_NotificationsLog;
 	protected Widget m_Root;
@@ -14,6 +17,7 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 	protected bool m_bStickyNotificationActive = false;
 	
 	protected TextWidget m_Text;
+	protected Widget m_OptionalMessageLayout;
 	
 	protected ref ScriptInvoker Event_OnStickyActiveChanged = new ref ScriptInvoker;
 	
@@ -146,6 +150,8 @@ class SCR_StickyNotificationUIComponent: ScriptedWidgetComponent
 		m_Text = TextWidget.Cast(w.FindAnyWidget(m_sTextName));
 		if (!m_Text)
 			Print("SCR_NotificationVotingInProgressUIComponent could not find m_Text!", LogLevel.ERROR);
+		
+		m_OptionalMessageLayout = w.FindAnyWidget(m_sOptionalMessageLayoutName);
 		
 		ScriptInvoker onPressed = ButtonActionComponent.GetOnAction(w);
 		if (onPressed) 

@@ -33,7 +33,6 @@ class SCR_HealEntitiesContextAction : SCR_SelectedEntitiesContextAction
 		
 		SCR_CharacterDamageManagerComponent characterDamageComponent = SCR_CharacterDamageManagerComponent.Cast(damageComponent);
 		if (characterDamageComponent)
-			characterDamageComponent.RemoveBleeding();
-		
+			characterDamageComponent.RemoveAllBleedings();
 	}
 };

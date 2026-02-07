@@ -19,6 +19,7 @@ class SCR_BasePreviewEntity: GenericEntity
 	protected vector m_vLocalTransform[4];
 	protected vector m_vTerrainTransform[4];
 	protected ref array<SCR_BasePreviewEntity> m_aChildren;
+	protected vector m_vBounds[2];
 	
 	/*!
 	Spawn preview entity from entries.
@@ -87,6 +88,9 @@ class SCR_BasePreviewEntity: GenericEntity
 		Math3D.MatrixCopy(spawnParamsLocal.Transform, rootTransform);
 		
 		rootEntity.m_Flags = flags;
+		
+		vector rootBoundMin = vector.One * float.MAX;
+		vector rootBoundMax = -rootBoundMin;
 		
 		array<SCR_BasePreviewEntity> children = {};
 		SCR_BasePreviewEntity entity, parent;
@@ -168,6 +172,20 @@ class SCR_BasePreviewEntity: GenericEntity
 			}
 			children.Insert(entity);
 			
+			//--- Update root bounding box
+			vector boundMin, boundMax;
+			entity.GetBounds(boundMin, boundMax);
+			boundMin += entry.m_vPosition;
+			boundMax += entry.m_vPosition;
+			
+			rootBoundMin[0] = Math.Min(rootBoundMin[0], boundMin[0]);
+			rootBoundMin[1] = Math.Min(rootBoundMin[1], boundMin[1]);
+			rootBoundMin[2] = Math.Min(rootBoundMin[2], boundMin[2]);
+			
+			rootBoundMax[0] = Math.Max(rootBoundMax[0], boundMax[0]);
+			rootBoundMax[1] = Math.Max(rootBoundMax[1], boundMax[1]);
+			rootBoundMax[2] = Math.Max(rootBoundMax[2], boundMax[2]);
+			
 			//--- Add to parent (spawn params won't do that on their own)
 			int pivot = -1;
 			if (!entry.m_iPivotID.IsEmpty())
@@ -192,6 +210,9 @@ class SCR_BasePreviewEntity: GenericEntity
 			
 			entity.EOnPreviewInit(entry, rootEntity);
 		}
+		rootEntity.m_vBounds[0] = rootBoundMin;
+		rootEntity.m_vBounds[1] = rootBoundMax;
+		
 		Print(string.Format("Preview entity created from %1 entries, at %2, using '%3' with material '%4'", entries.Count(), rootTransform, previewPrefab, material), LogLevel.VERBOSE);
 		
 		return rootEntity;
@@ -330,6 +351,16 @@ class SCR_BasePreviewEntity: GenericEntity
 		return m_Entity;
 	}
 	/*!
+	Get local bounding box of the preview entity (including all children)
+	\param[out] outBoundMin Lower corner
+	\param[out] outBoundMax Upper corner
+	*/
+	void GetPreviewBounds(out vector outBoundMin, out vector outBoundMax)
+	{
+		outBoundMin = m_vBounds[0];
+		outBoundMax = m_vBounds[1]
+	}
+	/*!
 	Init event called when the preview is created.
 	To be overriden by child classes
 	*/
@@ -356,7 +387,7 @@ class SCR_BasePreviewEntity: GenericEntity
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		//--- Show mesh name for easier World Editor debugging
-		if (_WB_GetEditorAPI().IsEntitySelectedAsMain(this))
+		if (_WB_GetEditorAPI() && _WB_GetEditorAPI().IsEntitySelectedAsMain(this))
 		{
 			string text = "<No Mesh>";
 			if (GetVObject())

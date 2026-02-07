@@ -35,7 +35,7 @@ class SCR_RadialMenuManagerEditorComponent : SCR_BaseEditorComponent
 	
 	bool IsRadialMenuOpen()
 	{
-		 foreach(EEditorRadialMenuType type, SCR_RadialMenuHandler menu : m_RadialMenuHandlers)
+		 foreach (EEditorRadialMenuType type, SCR_RadialMenuHandler menu : m_RadialMenuHandlers)
 		 {
 		      if (menu && menu.IsOpen())
 				return true;

@@ -1,0 +1,195 @@
+/*!
+Scripted DS config to store server config from script
+*/
+
+class SCR_DSConfig : DSConfig
+{
+	protected const string DEFAULT_FILE_NAME = "GeneratedServerConfig";
+	//protected string m_sConfigName = "Server config";
+	
+	protected ref array<ref SCR_WidgetListEntry> m_aDSConfigEntries = {};
+	//protected ref SCR_DSGameProperties m_gameProperties = new SCR_DSGameProperties();
+	
+	//------------------------------------------------------------------------------------------------
+	// API
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_DSConfig()
+	{
+		game = new DSGameConfig();
+		game.gameProperties = new SCR_DSGameProperties();
+		game.mods = {};
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Store all json values by groups 
+	void StoreFullJson(array<ref SCR_WidgetListEntry> entries, array<ref DSMod> modList, WorkshopItem scenarioMod)
+	{
+		m_aDSConfigEntries = entries;
+		
+		// Config 
+		gameHostBindAddress = FindValue("gameHostBindAddress");
+		gameHostBindPort = StringToNumber(FindValue("gameHostBindPort"));
+		gameHostRegisterBindAddress = FindValue("gameHostRegisterBindAddress");
+		gameHostRegisterPort = StringToNumber(FindValue("gameHostRegisterPort"));
+		adminPassword = FindValue("adminPassword");
+		crossPlatform = SCR_JsonApiStructHandler.StringToBool(FindValue("crossPlatform"));
+		
+		// Game
+		game.name = FindValue("name");
+		game.playerCountLimit = StringToNumber(FindValue("playerCountLimit"));
+		game.password = FindValue("password");
+		game.visible = SCR_JsonApiStructHandler.StringToBool(FindValue("visible"));
+		
+		// Game properties 
+		SCR_DSGameProperties gamePropertiesSCr = SCR_DSGameProperties.Cast(game.gameProperties);
+		
+		if (gamePropertiesSCr)
+		{
+			gamePropertiesSCr.battlEye = SCR_JsonApiStructHandler.StringToBool(FindValue("battlEye"));
+			gamePropertiesSCr.disableThirdPerson = SCR_JsonApiStructHandler.StringToBool(FindValue("disableThirdPerson"));
+			gamePropertiesSCr.VONDisableUI = SCR_JsonApiStructHandler.StringToBool(FindValue("VONDisableUI"));
+			gamePropertiesSCr.VONDisableDirectSpeechUI = SCR_JsonApiStructHandler.StringToBool(FindValue("VONDisableDirectSpeechUI"));
+			gamePropertiesSCr.serverMaxViewDistance = StringToNumber(FindValue("serverMaxViewDistance"));
+			gamePropertiesSCr.networkViewDistance = StringToNumber(FindValue("networkViewDistance"));
+			gamePropertiesSCr.serverMinGrassDistance = StringToNumber(FindValue("serverMinGrassDistance"));
+		}
+		
+		// Scenario 
+		game.scenarioId = FindValue("scenarioId");
+		
+		// Mods
+		game.mods = modList;
+		
+		/*if (!game.name.IsEmpty())
+			m_sConfigName = game.name;*/
+		
+		// Scenario mod
+		if (scenarioMod)
+		{
+			game.hostedScenarioModId = scenarioMod.Id();
+			
+			// Check mod in list 
+			bool inList = false;
+			
+			for (int i = 0, count = game.mods.Count(); i < count; i++)
+			{
+				if (game.mods[i].modId == scenarioMod.Id())
+				{
+					inList = true;
+					break;
+				}
+			}
+			
+			// Add to the list
+			if (!inList)
+			{
+				DSMod scenarioDSMod = new DSMod();
+				scenarioDSMod.modId = scenarioMod.Id();
+				scenarioDSMod.name = scenarioMod.Name();
+				scenarioDSMod.version = scenarioMod.GetActiveRevision().GetVersion(); 
+				
+				
+				game.mods.Insert(scenarioDSMod);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetConfigName()
+	{
+		string name = FindValue("fileName");
+		if (name != "")
+			return name;
+		
+		name = FindValue("name");
+		if (name != "")
+			return name;
+		
+		return DEFAULT_FILE_NAME;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Protected
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return value as string by property name
+	protected string FindValue(string propertyName, string groupTag = "")
+	{
+		string nameTrimmed = "";
+		
+		for (int i = 0, count = m_aDSConfigEntries.Count(); i < count; i++)
+		{
+			nameTrimmed = m_aDSConfigEntries[i].GetPropertyName();
+			nameTrimmed = nameTrimmed.Trim();
+			
+			if (groupTag == "")
+			{
+				// Has given property name
+				if (nameTrimmed == propertyName)
+					return m_aDSConfigEntries[i].ValueAsString();
+			}
+			else 
+			{
+				// Has propery and group
+				if (nameTrimmed == propertyName && m_aDSConfigEntries[i].GetGroupTag() == groupTag)
+					return m_aDSConfigEntries[i].ValueAsString();
+			}
+		}
+		
+		return "";
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected float StringToNumber(string str)
+	{
+		if (str.IsEmpty())
+			return 0;
+		
+		return str.ToFloat();
+	}
+}
+
+//------------------------------------------------------------------------------------------------
+class SCR_DSGameProperties : DSGameProperties
+{
+	bool fastValidation = true;
+	bool disableThirdPerson = false;
+	bool VONDisableUI = false;
+	bool VONDisableDirectSpeechUI = false;
+	float serverMaxViewDistance = 0.0;
+	int networkViewDistance = 0;
+	int serverMinGrassDistance = 0;
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_DSGameProperties()
+	{
+		RegV("fastValidation");
+		RegV("serverMaxViewDistance");
+		RegV("networkViewDistance");
+		RegV("serverMinGrassDistance");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPack()
+	{
+		super.OnPack();
+		
+		UnregV("disableThirdPerson");
+		StoreBoolean("disableThirdPerson", disableThirdPerson);
+		UnregV("VONDisableUI");
+		StoreBoolean("VONDisableUI", VONDisableUI);
+		UnregV("VONDisableDirectSpeechUI");
+		StoreBoolean("VONDisableDirectSpeechUI", VONDisableDirectSpeechUI);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnExpand()
+	{
+		RegV("disableThirdPerson");
+		RegV("VONDisableUI");
+		RegV("VONDisableDirectSpeechUI");
+	}
+}

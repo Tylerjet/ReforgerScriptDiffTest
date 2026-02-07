@@ -72,7 +72,7 @@ class SCR_MenuOverlaysEditorComponent : SCR_BaseEditorComponent
 		
 		foreach (SCR_EditorMenuOverlayLayer layer: m_aLayers)
 		{
-			layer.PostActivateLayer(menu, workspace);
+			layer.PostActivateLayer(menuEditor, workspace);
 		}
 	}
 	override void EOnEditorDeactivate()
@@ -87,7 +87,7 @@ class SCR_MenuOverlaysEditorComponent : SCR_BaseEditorComponent
 		
 		foreach (SCR_EditorMenuOverlayLayer layer: m_aLayers)
 		{
-			layer.ExitLayer(menu);
+			layer.ExitLayer(menuEditor);
 		}
 	}
 };
@@ -238,16 +238,17 @@ class SCR_EditorMenuOverlayLayer
 	\param menu Menu in which the overlay is screated
 	\param workspace GUI workspace
 	*/
-	void PostActivateLayer(EditorMenuBase menu, WorkspaceWidget workspace)
+	void PostActivateLayer(SCR_MenuEditorComponent menu, WorkspaceWidget workspace)
 	{
-		if (!menu) return;
+		if (!menu)
+			return;
 		
-		m_RootWidgetDefault = menu.GetRootWidget();
+		m_RootWidgetDefault = menu.GetMenu().GetRootWidget();
 		if (m_CustomRoot != 0)
 		{
 			if (m_bCanHide)
 			{
-				SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetRootComponent().FindComponent(SCR_HideEditorUIComponent));
+				SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetMenuComponent().GetHideableWidget().FindHandler(SCR_HideEditorUIComponent));
 				if (hideComponent) hideComponent.GetOnOpacityChange().Insert(OnHide);
 			}
 		}
@@ -256,7 +257,7 @@ class SCR_EditorMenuOverlayLayer
 			if (m_bCanHide)
 			{
 				//--- Hidden on key press, create in 'Hide' layer
-				SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetRootComponent().FindComponent(SCR_HideEditorUIComponent));
+				SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetMenuComponent().GetHideableWidget().FindHandler(SCR_HideEditorUIComponent));
 				if (hideComponent) m_RootWidget = hideComponent.GetWidget();
 			}
 			if (!m_RootWidget) m_RootWidget = m_RootWidgetDefault;
@@ -267,13 +268,13 @@ class SCR_EditorMenuOverlayLayer
 	/*!
 	Delete all overlays within the layer.
 	*/
-	void ExitLayer(EditorMenuBase menu)
+	void ExitLayer(SCR_MenuEditorComponent menu)
 	{
 		if (!m_aOverlays || m_aOverlays.IsEmpty()) return;
 		
 		m_aOverlays[m_iCurrentOverlay].DeleteWidget();
 		
-		SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetRootComponent().FindComponent(SCR_HideEditorUIComponent));
+		SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetMenuComponent().GetHideableWidget().FindHandler(SCR_HideEditorUIComponent));
 		if (hideComponent) hideComponent.GetOnOpacityChange().Remove(OnHide);
 	}
 	/*!

@@ -17,6 +17,8 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 	private float m_fHeight;
 	private float m_fDist_Min;
 	private IEntity m_OwnerVehicle;
+
+	private vector m_vLastCameraAngles; //< Does not update in freelook
 	//-----------------------------------------------------------------------------
 	void CharacterCamera3rdPersonTurret(CameraHandlerComponent pCameraHandler)
 	{
@@ -26,13 +28,6 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
-		
-		if (pPrevCamera)
-		{
-			vector f = pPrevCamera.GetBaseAngles();
-			m_fUpDownAngle		= f[0]; 
-			m_fLeftRightAngle	= f[1]; 
-		}
 		
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
@@ -94,37 +89,22 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 
 		parentEntity.GetWorldTransform(turretMat);
 		
-		// TODO@AS:
-		// TODO@ZGUBA:
-		// For now this seems to handle most of our typical cases,
-		// but some unification, generalization and refactor (there is new api that can help)
-		// would be advised
-		vector aiming = m_pControlledTurret.GetAimingRotation();
-		vector aimChange = m_Input.GetAimChange();
-		bool freeLook = m_bForceFreeLook || m_pTurretController.IsFreeLookEnabled() || m_ControllerComponent.IsTrackIREnabled();
+		vector charAngles = Math3D.MatrixToAngles(charMat);
+		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
 		
-		// Freelook is using specific angles and is not very compatible with the UpdateAngleWithTarget method
-		if (freeLook)
+		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
+		
+		//! apply to rotation matrix
+		if (charController.IsInFreeLook() || m_pTurretController.GetCanAimOnlyInADS())
 		{
-			m_fLeftRightAngle = UpdateLRAngle(m_fLeftRightAngle, m_vHorAimLimits[0], m_vHorAimLimits[1], pDt);
-			m_fUpDownAngle = UpdateUDAngle(m_fUpDownAngle, m_vVertAimLimits[0], m_vVertAimLimits[1], pDt);
+			m_vLastCameraAngles[0] = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles()[0];
+			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles + lookAngles, pOutResult.m_CameraTM);
 		}
 		else
 		{
-			m_fLeftRightAngle = CharacterCamera1stPersonTurret.UpdateAngleWithTarget(m_fLeftRightAngle, m_fLRAngleAdd, m_fLRAngleVel, m_vHorAimLimits, pDt, aiming[0], aimChange[0], freeLook);
-			m_fUpDownAngle = CharacterCamera1stPersonTurret.UpdateAngleWithTarget(m_fUpDownAngle, m_fUpDownAngleAdd, m_fUDAngleVel, m_vVertAimLimits, pDt, aiming[1], aimChange[1], freeLook);
+			m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
+			Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);
 		}
-		
-		pOutResult.m_vBaseAngles = GetBaseAngles();
-		
-		//! yaw pitch roll vector
-		vector lookAngles;
-		lookAngles[0] = m_fLeftRightAngle;
-		lookAngles[1] = m_fUpDownAngle;
-		lookAngles[2] = 0;
-		
-		//! apply to rotation matrix
-		Math3D.AnglesToMatrix(lookAngles, pOutResult.m_CameraTM);
 
 		// position
 		vector cameraPositionLS = turretMat[3].InvMultiply4(turretMat) + Vector(0, m_vCameraCenter[1], 0);
@@ -149,6 +129,7 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		pOutResult.m_bAllowInterpolation 	= true;
 		pOutResult.m_pWSAttachmentReference = null;
 		pOutResult.m_pOwner 				= m_OwnerCharacter;
+		pOutResult.m_bUpdateWhenBlendOut   = false;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)

@@ -23,7 +23,7 @@ class SCR_LoadoutBaseEditorAttribute : SCR_BaseMultiSelectPresetsEditorAttribute
 		
 		m_aValues.Clear();
 		SCR_EditorAttributeFloatStringValueHolder value;
-		foreach(SCR_ArsenalItemTypeUI item: ArsenalUIInfo)
+		foreach (SCR_ArsenalItemTypeUI item: ArsenalUIInfo)
 		{
 			if (m_eInventoryItemTypes & item.GetItemType())
 			{

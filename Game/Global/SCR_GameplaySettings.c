@@ -23,6 +23,9 @@ class SCR_GameplaySettings : ModuleGameSettings
 
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Preserve aim down sights after performing actions like sprinting.")]
 	bool m_bStickyADS;
+	
+	[Attribute(defvalue: SCR_Enum.GetDefault(EVehicleDrivingAssistanceMode.FULL), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleDrivingAssistanceMode), desc: "Player's vehicle driving assistance mode. Controls gearbox, engine and persistent handbrake automation.")]
+	EVehicleDrivingAssistanceMode m_eDrivingAssistance;
 };
 
 class SCR_FieldOfViewSettings : ModuleGameSettings
@@ -61,6 +64,9 @@ class SCR_VideoSettings : ModuleGameSettings
 	
 	[Attribute("2500")]
 	int m_iViewDistance;
+	
+	[Attribute("-1")]
+	int m_iLastUsedPreset;
 };
 
 class SCR_HintSettings : ModuleGameSettings

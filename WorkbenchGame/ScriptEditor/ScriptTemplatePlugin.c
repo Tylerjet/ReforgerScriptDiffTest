@@ -4,7 +4,9 @@ enum EScriptTemplateType
 	Entity,
 	Component,
 	WidgetComponent,
-	ScriptInvoker
+	ScriptInvoker,
+	WorkbenchPlugin,
+	WorldEditorTool,
 };
 
 [WorkbenchPluginAttribute("Fill from Template", "", "Ctrl+T", "", {"ScriptEditor"},"", 0xf1c9)]

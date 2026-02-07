@@ -20,6 +20,8 @@ class SCR_SoundEvent
 	static const string SOUND_REPORTS_ACTIONSTATUS_MOVE = "SOUND_REPORTS_ACTIONSTATUS_MOVE";
 	static const string SOUND_REPORTS_ACTIONSTATUS_COVER = "SOUND_REPORTS_ACTIONSTATUS_COVER";
 	static const string SOUND_CP_DEFEND_POSITION = "SOUND_CP_DEFEND_POSITION";
+	static const string SOUND_CP_FOLLOW_LEADER = "SOUND_CP_FOLLOW_LEADER";
+	static const string SOUND_CP_POSITIVEFEEDBACK = "SOUND_CP_POSITIVEFEEDBACK";
 	
 	//Communication protocol - Campaign
 	static const string SOUND_HQ_MOB = "SOUND_HQ_MOB";
@@ -69,6 +71,29 @@ class SCR_SoundEvent
 	static const string SOUND_HQ_PMD = "SOUND_HQ_PMD"; 
 	static const string SOUND_HQ_PMC = "SOUND_HQ_PMC"; 
 	static const string SOUND_HQ_PML = "SOUND_HQ_PML"; 
+	static const string SOUND_HQ_HCB = "SOUND_HQ_HCB";
+	
+	//Combat Ops
+	static const string	SOUND_CP_IPL_1 = "SOUND_CP_IPL_1";				//Insertion plan
+	static const string	SOUND_CP_IPl_2 = "SOUND_CP_IPL_2";				//Insertion plan
+	static const string	SOUND_CP_IPL_3 = "SOUND_CP_IPL_3";				//Insertion plan
+	static const string	SOUND_CP_TD_PCL = "SOUND_CP_TD_PCL";			//Task Destroy
+	static const string	SOUND_CP_TD_VCL = "SOUND_CP_TD_VCL";			//Task Destroy
+	static const string	SOUND_CP_TD_SCL = "SOUND_CP_TD_SCL";			//Task Destroy
+	static const string	SOUND_CP_TD_CCL = "SOUND_CP_TD_CCL";			//Task Destroy
+	static const string	SOUND_CP_TD_PC = "SOUND_CP_TD_PC";				//Task Destroy
+	static const string	SOUND_CP_TD_VC = "SOUND_CP_TD_VC";				//Task Destroy
+	static const string	SOUND_CP_TD_SC = "SOUND_CP_TD_SC";				//Task Destroy
+	static const string	SOUND_CP_TD_CC = "SOUND_CP_TD_CC";				//Task Destroy
+	static const string	SOUND_CP_TIF = "SOUND_CP_TIF";					//Task Intel Found
+	static const string	SOUND_CP_TACC = "SOUND_CP_TACC";				//Task Clear Area
+	static const string	SOUND_CP_TETL = "SOUND_CP_TETL";				//Task Extraction
+	static const string	SOUND_CP_TETW = "SOUND_CP_TETW";				//Task Extraction
+	static const string	SOUND_CP_TETN = "SOUND_CP_TETN";				//Task Extraction
+	static const string	SOUND_CP_TEC = "SOUND_CP_TEC";					//Task Extraction
+	static const string	SOUND_CP_TEF_1 = "SOUND_CP_TEF_1";				//Task Extraction Failed
+	static const string	SOUND_CP_TEF_2 = "SOUND_CP_TEF_2";				//Task Extraction Failed
+	
 
 	//UI sounds
 	static const string SOUND_LOADSUPPLIES = "SOUND_LOADSUPPLIES";
@@ -86,6 +111,8 @@ class SCR_SoundEvent
 	static const string ERROR = "SOUND_FE_ERROR";
 	static const string TAB_CLICK = "SOUND_FE_TAB_CONFIRM";
 	static const string TAB_SWITCH = "SOUND_FE_TAB_SWITCH";
+	
+	static const string TURN_PAGE = "SOUND_FE_TURN_PAGE";
 	
 	static const string TOGGLE_ON = "SOUND_FE_BUTTON_FILTER_ON";
 	static const string TOGGLE_OFF = "SOUND_FE_BUTTON_FILTER_OFF";
@@ -105,6 +132,8 @@ class SCR_SoundEvent
 	static const string POINTS_REMOVED ="SOUND_HUD_CAMPAIGN_POINTS_SUBSTRACT";
 
 	static const string ACTION_FAILED = "SOUND_HUD_ACTION_CANTPERFORM";
+	
+	static const string SOUND_MAP_CLICK_POINT_ON = "SOUND_MAP_CLICK_POINT_ON";
 	
 	// UI sounds - HUD
 	static const string SOUND_HUD_MAP_OPEN = "SOUND_HUD_MAP_OPEN";
@@ -176,6 +205,10 @@ class SCR_SoundEvent
 	// Gadgets
 	static const string SOUND_FLASHLIGHT_ON = "SOUND_FLASHLIGHT_ON";
 	static const string SOUND_FLASHLIGHT_OFF = "SOUND_FLASHLIGHT_OFF";
+	static const string SOUND_ITEM_RADIO_TUNE_UP = "SOUND_ITEM_RADIO_TUNE_UP";
+	static const string SOUND_ITEM_RADIO_TUNE_DOWN = "SOUND_ITEM_RADIO_TUNE_DOWN";
+	static const string SOUND_ITEM_RADIO_TUNE_ERROR = "SOUND_ITEM_RADIO_TUNE_ERROR";
+
 	
 	//BellSoundComponent
 	static const string SOUND_BELL_END = "SOUND_BELL_END";

@@ -153,14 +153,14 @@ class EditablePrefabsLabel_CharacterRole : EditablePrefabsLabel_Base
 		for (int i = 0; i < slotList.Count() ; i++)
 		{
 			BaseContainer slot = slotList.Get(i);
-			ELoadoutArea slotArea;
-			if (!slot.Get("Area", slotArea))
+			LoadoutAreaType slotArea;
+			if (!slot.Get("AreaType", slotArea))
 			{
 				continue;
 			}
 			
 			ResourceName slotPrefab;
-			if (slotArea == ELoadoutArea.ELA_Backpack && slot.Get("Prefab", slotPrefab))
+			if (slotArea.IsInherited(LoadoutBackpackArea) && slot.Get("Prefab", slotPrefab))
 			{
 				Resource slotResource = Resource.Load(slotPrefab);
 				IEntityComponentSource radioComponentSource = SCR_BaseContainerTools.FindComponentSource(slotResource, SCR_RadioComponent);

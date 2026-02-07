@@ -10,11 +10,13 @@ class SCR_AIActionTask : AITaskScripted
 	static const string NOVEHICLES_PORT = "noVehicles";
 	static const string DESIREDDISTANCE_PORT = "DesiredDistance";
 	static const string TARGET_PORT = "Target";
+	static const string TARGETINFO_PORT = "TargetInfo";
 	static const string TARGETPOSITION_PORT = "TargetPosition";
 	static const string NEXTCOVERPOSITION_PORT = "NextCoverPosition";
 	static const string SMARTACTION_PORT = "SmartActionComponent";
 	static const string MAGAZINE_WELL_PORT = "MagazineWell";
 	static const string PRIORITIZE_PORT = "Prioritize";	
+	static const string WAYPOINT_RELATED_PORT = "WaypointRelated";
 	static const string IS_DANGEROUS_PORT = "isDangerous";
 	static const string REINIT_PORT = "Reinit";
 	static const string RADIUS_PORT = "Radius";

@@ -36,6 +36,13 @@ class SCR_FuelTooltipDetail: SCR_EntityTooltipDetail
 			m_Bar = SCR_WLibProgressBarComponent.Cast(barWidget.FindHandler(SCR_WLibProgressBarComponent));
 		
 		m_FuelManager = FuelManagerComponent.Cast(entity.GetOwner().FindComponent(FuelManagerComponent));
-		return m_FuelManager && (m_Value || m_Bar);
+		if (!m_FuelManager)
+			return false;
+		
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(entity.GetOwner().FindComponent(DamageManagerComponent));
+		if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
+			return false;
+		
+		return m_Value || m_Bar;
 	}
 };

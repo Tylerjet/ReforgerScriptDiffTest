@@ -39,6 +39,8 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	const float NEAR_PLANE_DEFAULT = 0.05;
 	const float NEAR_PLANE_ZOOMED = 0.05;
 	
+	protected static float s_fReferenceFOV;
+	
 	// Optics setup
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Layout used for 2D sights HUD", params: "layout", category: "Resources")]
 	protected ResourceName m_sLayoutResource;
@@ -61,7 +63,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("10", UIWidgets.EditBox, desc: "Optic magnification. Increase of magnification reduces optic field of view proportionally", params: "0.1 50", category: "2DSights")]
 	protected float m_fMagnification;
 	
-	[Attribute("1", UIWidgets.EditBox, desc: "Real reticle texture size in px within transparent background", params: "1 2000", category: "2DSights")]
+	[Attribute("1", UIWidgets.EditBox, desc: "Real reticle texture size in px within transparent background", params: "1 2048", category: "2DSights")]
 	protected int m_iReticleTextureWidth;
 	
 	[Attribute("100", UIWidgets.EditBox, desc: "Expected reticle range when looking at 1000m", params: "0.1 1000", category: "2DSights")]
@@ -129,10 +131,10 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0", UIWidgets.ComboBox, "Type of zeroing for this sights.", "", ParamEnumArray.FromEnum(SCR_EPIPZeroingType), category: "Sights" )]
 	protected SCR_EPIPZeroingType m_eZeroingType;
 	
-	[Attribute("0.0", UIWidgets.Slider, "Reticle Offset of scope center in X", params: "-1 1 0.001", category: "Sights")]
+	[Attribute("0.0", UIWidgets.Slider, "Reticle Offset of scope center in X", params: "-1 1 0.0001", precision: 5, category: "Sights")]
 	protected float m_fReticleOffsetX;
 	
-	[Attribute("0.0", UIWidgets.Slider, "Reticle Offset of scope center in Y", params: "-1 1 0.001", category: "Sights")]
+	[Attribute("0.0", UIWidgets.Slider, "Reticle Offset of scope center in Y", params: "-1 1 0.0001", precision: 5, category: "Sights")]
 	protected float m_fReticleOffsetY;
 	
 	[Attribute("25.0", UIWidgets.Slider, "Interpolation speed for zeroing interpolation", params: "1 100.0 0.1", category: "Sights")]
@@ -223,8 +225,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	protected IEntity m_Owner = null;	
 	protected ChimeraCharacter m_ParentCharacter = null;
 	
-	protected WeaponSoundComponent m_WeaponSoundComp;
-	
 	static ref ScriptInvoker<bool, m_fFovZoomed> s_OnSightsADSChanged = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
@@ -253,14 +253,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 			if (m_wRootWidget)
 			{
-				float referenceFOV;
-				PlayerController pc = GetGame().GetPlayerController();
-				if (pc && pc.GetPlayerCamera())
-					referenceFOV = pc.GetPlayerCamera().GetFocusFOV();
-				else
-					referenceFOV = REFERENCE_FOV;
-				
-				m_fFovZoomed = CalculateZoomFov(referenceFOV, m_fMagnification);
+				m_fFovZoomed = CalculateZoomFOV(m_fMagnification);
 				
 				// HUD and widgets setup
 				m_wRootWidget.SetZOrder(-1);
@@ -331,10 +324,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		m_fCurrentReticleOffsetY = Math.Lerp(m_fCurrentReticleOffsetY, reticleTarget, interp);		
 		float pitchTarget = GetCameraPitchTarget();
 		m_fCurrentCameraPitch = Math.Lerp(m_fCurrentCameraPitch, pitchTarget, interp);
-		
-		// Set sound comp
-		if (!m_WeaponSoundComp)
-			m_WeaponSoundComp = WeaponSoundComponent.Cast(m_Owner.GetParent().FindComponent(WeaponSoundComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -489,11 +478,24 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 	
 	//-----------------------------------------------------------------------------
-	//! Return real fov from given magnification 
+	//! Return camera fov for given magnification
 	//! fovBase - player current/original fov, maginicaition - power of zoom
-	protected float CalculateZoomFov(float fovBase, float magnification)
+	protected float CalculateZoomFOV(float magnification)
 	{
-		return Math.RAD2DEG * 2 * Math.Atan2(Math.Tan(Math.DEG2RAD * (fovBase / 2)), magnification); 
+		if (s_fReferenceFOV == 0)
+		{
+			PlayerController controller = GetGame().GetPlayerController();
+			if (controller)
+			{
+				PlayerCamera camera = controller.GetPlayerCamera();
+				if (camera)
+					s_fReferenceFOV = camera.GetFocusFOV();
+			}
+		}
+		if (s_fReferenceFOV == 0)
+			s_fReferenceFOV = 38;
+		
+		return Math.RAD2DEG * 2 * Math.Atan2(Math.Tan(Math.DEG2RAD * (s_fReferenceFOV / 2)), magnification); 
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -589,46 +591,18 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		return (float.AlmostEqual(x, 0, limitMin) && float.AlmostEqual(y, 0, limitMin));
 	}
 	
-#ifdef ENABLE_DEBUG
-	[Attribute("0", UIWidgets.CheckBox, desc: "Debug 2D Reticles", category: "Debug")]
-	static bool m_bDebug2DSights;
-	static private ref array<Shape> s_aDebugShapes;
-#endif
-	
 	//------------------------------------------------------------------------------------------------
 	vector GetMisalignment()
 	{
-		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return vector.Zero;
+
+		CameraBase camera = cameraManager.CurrentCamera();
 		if (!camera)
 			return vector.Zero;
 		
 		vector opticDir = GetSightsDirection(false, false);
-		
-#ifdef ENABLE_DEBUG
-		if (m_bDebug2DSights)
-		{
-			vector opticPos = GetSightsRearPosition();
-			
-			if (!s_aDebugShapes)
-				s_aDebugShapes = {};
-			
-			foreach (Shape shape: s_aDebugShapes)
-				shape = null;
-			
-			s_aDebugShapes.Clear();
-			
-			
-			vector aimpoint = opticPos + opticDir * 1000;
-			vector vertical[2];
-			vertical[0] = aimpoint;
-			vertical[1] = aimpoint + opticDir;
-			
-			s_aDebugShapes.Insert(Shape.CreateLines(COLOR_YELLOW, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, vertical, 2));
-			s_aDebugShapes.Insert(Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, aimpoint, 0.5));
-			s_aDebugShapes.Insert(Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, aimpoint, 1));
-			s_aDebugShapes.Insert(Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, aimpoint, m_fReticleWidthRange * 0.5));
-		}
-#endif
 		vector misalignment = camera.VectorToLocal(opticDir);
 		return misalignment;
 	}

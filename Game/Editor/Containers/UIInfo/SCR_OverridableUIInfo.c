@@ -2,7 +2,7 @@
 UI info class with setter functions.
 Use at own risk!
 */
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_OverridableUIInfo: SCR_UIInfo
 {
 	/*!

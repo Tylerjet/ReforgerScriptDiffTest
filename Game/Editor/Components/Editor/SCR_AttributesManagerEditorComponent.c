@@ -76,10 +76,19 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	\return item Edited item
 	*/
 	void StartEditing(Managed item)
-	{		
-		if (item.IsInherited(array) || item.IsInherited(set) || item.IsInherited(map)) //--- Lists themselves are Managed
+	{				
+		if (!item || item.IsInherited(array) || item.IsInherited(set) || item.IsInherited(map)) //--- Lists themselves are Managed
 		{
-			Print(string.Format("Cannot edit attributes of %1, must be explicitly array<Managed> (even when the array element itself inherits from Managed)!", item.Type()), LogLevel.ERROR);
+			if (!item)
+			{
+				array<Managed> items = {};
+				StartEditing(items);
+				Print("Opening attributes with NULL entity!", LogLevel.WARNING);
+				return;
+			}
+			
+			if (item)
+				Print(string.Format("Cannot edit attributes of %1, must be explicitly array<Managed> (even when the array element itself inherits from Managed)!", item.Type()), LogLevel.ERROR);
 			return;
 		}
 		

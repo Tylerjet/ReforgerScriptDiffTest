@@ -26,8 +26,8 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 	[Attribute()]
 	protected ref Color m_cPlayerColor;
 	
-	[Attribute()]
-	protected ref array<ref SCR_EntityTooltipDetailType> m_aDetailTypes;
+	[Attribute("{96EFE81470EF9AA5}Configs/Editor/Tooltips/EntityTooltips.conf", desc: "Holds all entity tooltip data")]
+	protected ref SCR_EntityTooltipConfig m_EntityTooltipConfig;
 	
 	protected SCR_EntityTooltipDetailType m_DetailType;
 	
@@ -48,11 +48,20 @@ class SCR_EntityTooltipEditorUIComponent: SCR_BaseTooltipEditorUIComponent
 		int playerID = entity.GetPlayerID();
 		bool showImage = true;
 		
+		if (!m_EntityTooltipConfig)
+		{
+			Print("'SCR_EntityTooltipEditorUIComponent' is missing m_EntityTooltipConfig! meaning tooltips cannot be displayed!", LogLevel.ERROR);
+			return false;
+		}
+		
 		//--- Entity details
 		Widget detailsWidget = widget.FindAnyWidget(m_sDetailsNameWidgetName);
 		if (detailsWidget)
 		{
-			foreach (SCR_EntityTooltipDetailType detailType: m_aDetailTypes)
+			array<ref SCR_EntityTooltipDetailType> detailTypes = {};
+			m_EntityTooltipConfig.GetTooltipData(detailTypes);
+			
+			foreach (SCR_EntityTooltipDetailType detailType: detailTypes)
 			{
 				if (detailType.CreateDetailType(entityType, detailsWidget, entity, showImage))
 				{

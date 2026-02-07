@@ -31,23 +31,30 @@ class SCR_DebrisSmallEntity : GenericEntity
 	private float m_fMaxDistance = 0.0;
 	//! The physics attached to this debris.
 	private Physics m_RigidBody = null;
-	//! Triggering threshold for sound
-	private float m_fSoundTriggerThreshold;
 	//! Material type of item for sound
 	private EMaterialSoundType m_eMaterialSoundType
-	//! Position of newly registered sound contact
-	private vector m_vSoundPosition;
-	//! Impulse of newly registered sound contact
-	private float m_fSoundImpulse;
 	//! Position of last played sound
 	private vector m_vSoundPositionLast;
 	//! Minimal distance from last played sound
-	private static const float MINIMAL_DISTANCE_SQ = 0.2;
+	private static const float MINIMAL_DISTANCE_SQ = 0.25;
 	//! Minimum entity lifetime to play sound
-	private static const float MINIMAL_AGE = 0.3;
+	private static const float MINIMAL_AGE = 0.25;
 	//! Stores last sound
 	private AudioHandle m_AudioHandle;
-	
+	//! Sound threshold
+	private float m_fSoundThreshold;
+	//! Kinetic energy delta needed to trigger impact sound
+	private static const int KINETIC_ENERGY_THRESHOLD = 12;
+	#ifdef ENABLE_DIAG
+	//! Cash contact velocity change
+	private float m_fdVelocity;
+	//!
+	private ref DebugTextWorldSpace m_Text;
+	//! Peak value
+	private float m_fTextMax;
+	//! Peak value age
+	private float m_fTextAgeTime;
+	#endif
 	
 	//! Count of debris spawned this frame
 	static private int m_iSpawnedThisFrame = 0;
@@ -118,31 +125,23 @@ class SCR_DebrisSmallEntity : GenericEntity
 		return vector.Distance(cameraMat[3], position);
 	}
 	
-	//------------------------------------------------------------------------------------------------			
+	//------------------------------------------------------------------------------------------------				
 	override void EOnContact(IEntity owner, IEntity other, Contact contact)
 	{
 		if (m_bDelete)
 			return;
-			
+									
+		float spdDiff = contact.GetRelativeNormalVelocityAfter() - contact.GetRelativeNormalVelocityBefore();
+		
+		// Play sound
+		if (spdDiff > m_fSoundThreshold && vector.DistanceSq(m_vSoundPositionLast, contact.Position) >= MINIMAL_DISTANCE_SQ && m_eMaterialSoundType != 0 && m_fAgeTime > MINIMAL_AGE)
+			PlaySound(contact.Position, spdDiff);
+		
 		// Sound debug
 		#ifdef ENABLE_DIAG 
-			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
-			{
-				if (contact.Impulse > (0.5 * m_fSoundTriggerThreshold))
-				{
-					Print(owner.ToString() + ", Impulse = " + (Math.Round(contact.Impulse * 100) * 0.01).ToString() + " / " + (Math.Round(m_fSoundTriggerThreshold * 100) * 0.01).ToString());
-				}	
-			}
+		m_fdVelocity = spdDiff;
 		#endif
 		
-		// Cash highest impulse and contact position
-		if (m_eMaterialSoundType != 0 && m_fAgeTime > MINIMAL_AGE && contact.Impulse > m_fSoundTriggerThreshold)
-		{
-			m_fSoundImpulse = Math.Max(m_fSoundImpulse, contact.Impulse);
-			m_vSoundPosition = contact.Position;
-		}
-				
-		float spdDiff = contact.GetRelativeNormalVelocityAfter() - contact.GetRelativeNormalVelocityBefore();
 		if (spdDiff < 20)
 			return;
 		
@@ -155,8 +154,8 @@ class SCR_DebrisSmallEntity : GenericEntity
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	private void PlaySound()
-	{
+	private void PlaySound(vector pos, float dVelocity)
+	{		
 		SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
 		if (!destructionManager)
 			return;
@@ -170,15 +169,29 @@ class SCR_DebrisSmallEntity : GenericEntity
 			soundComponent.Terminate(m_AudioHandle);
 		}
 		
-		soundComponent.SetSignalValue(destructionManager.GetImpulseSignalID(), m_fSoundImpulse - m_fSoundTriggerThreshold);
-
-		vector mat[4];
-		mat[3] = m_vSoundPosition;
+		// Set signals
+		soundComponent.SetSignalValue(destructionManager.GetCollisionDVSignalID(), dVelocity - m_fSoundThreshold);
+		soundComponent.SetSignalValue(destructionManager.GetEntitySizeSignalID(), m_RigidBody.GetMass()); 
+		
+		// Set sound position
+		vector mat[4];		
+		mat[3] = pos;		
 		soundComponent.SetTransformation(mat);
 		m_AudioHandle = soundComponent.PlayStr(SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType));
+		
+		m_vSoundPositionLast = pos;
+		
+		// Sound Debug
+		#ifdef ENABLE_DIAG 
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
+		{
+			m_Text = DebugTextWorldSpace.Create(GetWorld(), dVelocity.ToString(1, 2) + "/" + m_fSoundThreshold.ToString(1, 2) + "/" + m_RigidBody.GetMass().ToString(), DebugTextFlags.FACE_CAMERA, pos[0], pos[1], pos[2], 20, COLOR_BLUE);
+			m_fTextAgeTime = m_fAgeTime + 1;
+		}
+		#endif
 	}
 	
-	//------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------	
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		// Get debris age
@@ -210,25 +223,29 @@ class SCR_DebrisSmallEntity : GenericEntity
 			delete this;
 		}
 		
-		if (m_fSoundImpulse > 0)
-		{			
-			// Filter sounds based on distance from previously played sound position		
-			if (vector.DistanceSq(m_vSoundPosition, m_vSoundPositionLast) > MINIMAL_DISTANCE_SQ)
+		//Sound debug
+		#ifdef ENABLE_DIAG 
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
+		{
+			// Get center of entity
+			vector minsDebug;
+			vector maxsDebug;
+			owner.GetWorldBounds(minsDebug, maxsDebug);			
+			vector centerDebug;
+			for (int i = 0; i < 3; i++)
 			{
-			 	PlaySound();
-				
-				m_fSoundImpulse = 0;
-				m_vSoundPositionLast = m_vSoundPosition;
-
-				// Sound debug
-				#ifdef ENABLE_DIAG 
-				if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES))
-				{	
-					Print("Playing sound " + SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType) + " on " + owner.ToString() + ", impulse of " + (Math.Round(m_fSoundImpulse * 100) * 0.01).ToString())
-				}
-				#endif
-			}	
-		}		
+				centerDebug[i] = minsDebug[i] + Math.AbsFloat(((maxsDebug[i] - minsDebug[i]) * 0.5));
+			}
+			
+			// Hold peak velue for 1s
+			if (m_fAgeTime - m_fTextAgeTime > 1 || m_fdVelocity > m_fTextMax)
+			{
+				m_Text = DebugTextWorldSpace.Create(GetWorld(), m_fdVelocity.ToString(1, 2) + "/" + m_fSoundThreshold.ToString(1, 2) + "/" + m_RigidBody.GetMass().ToString(), DebugTextFlags.FACE_CAMERA, centerDebug[0], centerDebug[1], centerDebug[2], 20);
+				m_fTextMax = m_fdVelocity;
+				m_fTextAgeTime = m_fAgeTime;
+			}
+		}
+		#endif	
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -241,8 +258,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//! \param linearVelocity Linear velocity of the debris (in m/s)
 	//! \param angularVelocity Angular velocity of the debris (in deg/s)
 	//! \param remap The materials to be remapped to, see SetObject() for more info
-	//! \param soundTriggerThreshold Sound is triggered if contact.Impulse is bigger
-	static SCR_DebrisSmallEntity SpawnDebris(BaseWorld world, vector mat[4], ResourceName model, float mass = 10, float lifeTime = 10.0, float maxDistance = 256.0, int priority = 1, vector linearVelocity = "0 0 0", vector angularVelocity = "0 0 0", string remap = "", bool isStatic = false, float soundTriggerThreshold = 20, EMaterialSoundType materialSoundType = 0)
+	static SCR_DebrisSmallEntity SpawnDebris(BaseWorld world, vector mat[4], ResourceName model, float mass = 10, float lifeTime = 10.0, float maxDistance = 256.0, int priority = 1, vector linearVelocity = "0 0 0", vector angularVelocity = "0 0 0", string remap = "", bool isStatic = false, EMaterialSoundType materialSoundType = 0)
 	{
 		if (m_iSpawnedThisFrame >= m_iDebrisPerFrameLimit)
 			return null;
@@ -317,8 +333,10 @@ class SCR_DebrisSmallEntity : GenericEntity
 		entity.m_fLifeTime = lifeTime;
 		entity.m_iPriority = priority;
 		entity.m_fMaxDistance = maxDistance;
-		entity.m_fSoundTriggerThreshold = soundTriggerThreshold;
 		entity.m_eMaterialSoundType = materialSoundType;
+		
+		// Get sound threshold	
+		entity.m_fSoundThreshold =  Math.Sqrt(2 * KINETIC_ENERGY_THRESHOLD / mass);
 		
 		// Set debris init position	for sound	
 		vector mins;

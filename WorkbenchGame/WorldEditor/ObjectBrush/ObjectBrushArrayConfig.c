@@ -3,10 +3,11 @@ class SCR_ObjectBrushArrayConfig
 {
 	[Attribute()]
 	ref array<ref ObjectBrushObjectBase> m_aObjectArray;
-	
+
 	//-----------------------------------------------------------------------
-	void InitArray()
+	void SCR_ObjectBrushArrayConfig()
 	{
-		m_aObjectArray = new array<ref ObjectBrushObjectBase>();
+		if (!m_aObjectArray)
+			m_aObjectArray = {};
 	}
 };

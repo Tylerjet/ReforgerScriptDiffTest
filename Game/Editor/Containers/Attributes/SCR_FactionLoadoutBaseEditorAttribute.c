@@ -27,7 +27,7 @@ class SCR_FactionLoadoutBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 		
 		int newArsenalflags = var.GetInt();
 		
-		foreach(SCR_EditorAttributeFloatStringValueHolder value: m_aValues)
+		foreach (SCR_EditorAttributeFloatStringValueHolder value: m_aValues)
 		{
 			//Check if flag is true or not
 			if (newArsenalflags & (int)value.GetFloatValue())

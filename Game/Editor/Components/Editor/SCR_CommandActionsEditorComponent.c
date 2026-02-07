@@ -124,6 +124,10 @@ class SCR_CommandActionsEditorComponent : SCR_BaseActionsEditorComponent
 		
 		return flags;
 	}
+	override protected TraceFlags GetInstantActionTraceFlags()
+	{
+		return TraceFlags.WORLD | TraceFlags.OCEAN;
+	}
 	
 	override bool ActionCanBeShown(SCR_BaseEditorAction action, vector cursorWorldPosition, int flags)
 	{

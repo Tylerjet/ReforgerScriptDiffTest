@@ -15,9 +15,6 @@ class BaseInventoryStorageComponentClass: InventoryItemComponentClass
 
 class BaseInventoryStorageComponent: InventoryItemComponent
 {
-	protected ESlotID m_eSlotID = ESlotID.SLOT_ANY;
-	ESlotID GetSlotID()	{ return m_eSlotID; };
-	
 	/*!
 	*IMPORTANT* Should be called upon initialization of slot instance
 	provide newly created slot and desired slot ID
@@ -87,29 +84,53 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	
 	// callbacks
 	
-	// Will be called when item is added to slot
+	/*!
+	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
+	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
+	*/
+	event bool OnOverrideCanStoreItem();
+	/*!
+	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
+	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
+	*/
+	event bool OnOverrideCanRemoveItem();
+	/*!
+	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
+	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
+	*/
+	event bool OnOverrideCanReplaceItem();
+	/*!
+	Will be called when item is added to slot.
+	*IMPORTANT* This is called after the C++ event.
+	*/
 	event protected void OnAddedToSlot(IEntity item, int slotID);
-	// Will be called when item is removed from slot
+	/*!
+	Will be called when item is removed from slot
+	*IMPORTANT* This is called after the C++ event.
+	*/
 	event protected void OnRemovedFromSlot(IEntity item, int slotID);
-	// Usually any slot that item can be inserted to
+	//! Usually any slot that item can be inserted to
 	event protected InventoryStorageSlot GetEmptySlotForItem(IEntity item);
-	// Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
+	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
 	event bool CanStoreItem(IEntity item, int slotID);
-	// Implemented logics for can remove here,
+	//! Implemented logics for can remove here,
 	event bool CanRemoveItem(IEntity item);
-	// Implemented logics for can replace to nextItem at slotID,
+	//! Implemented logics for can replace to nextItem at slotID,
 	event bool CanReplaceItem(IEntity nextItem, int slotID);
-	// Should Return slots count
+	//! Should Return slots count
 	event protected int GetSlotsCountScr();
-	// Should Return slot for specified id
+	//! Should Return slot for specified id
 	event protected InventoryStorageSlot GetSlotScr(int slotID);
-	// Called locally per instance, implement remove logics here
+	//! Called locally per instance, implement remove logics here
 	event protected ref BaseInventoryTask RemoveItem(IEntity item);
-	// Called locally per instance, implement insertion logics here, Manager will provide slotID of -1 in case slot is irrelevant.
+	//! Called locally per instance, implement insertion logics here, Manager will provide slotID of -1 in case slot is irrelevant.
 	event protected ref BaseInventoryTask InsertItem(IEntity item, int slotID);
-	// Will be called to estimate if storage children has to be included in preview
+	//! Will be called to estimate if storage children has to be included in preview
 	event protected bool ShouldPreviewAttachedItems();
-	// will be called when manager is changed, manager can be null if there is no manager in hierarchy (item drop in world)
+	/*!
+	Will be called when manager is changed, manager can be null if there is no manager in hierarchy (item drop in world).
+	*IMPORTANT* This is called after the C++ event.
+	*/
 	event protected void OnManagerChanged(InventoryStorageManagerComponent manager);
 };
 

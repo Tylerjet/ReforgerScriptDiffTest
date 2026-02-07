@@ -26,10 +26,10 @@ class SCR_InventoryStorageVestUI : SCR_InventoryStorageBaseUI
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStorageVestUI( BaseInventoryStorageComponent storage, ELoadoutArea slotID = ELoadoutArea.ELA_None, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
+	void SCR_InventoryStorageVestUI( BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
 		//TODO: make consistent the visibility of variable ( SetSlotID vs m_iMaxRows )
-		SetSlotAreaID( slotID );
+		SetSlotAreaType( slotID );
 	}
 	
 	//------------------------------------------------------------------------------------------------

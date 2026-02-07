@@ -287,7 +287,12 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 			return true;
 		
 		if (!HasFreeSlot(vehicle))
+		{
+#ifdef RESPAWN_COMPONENT_VERBOSE
+			Print(LOG_HEAD+"Trying to spawn in an occupied vehicle!", LogLevel.ERROR);
+#endif
 			return false;
+		}
 		
 		return true;
 	}

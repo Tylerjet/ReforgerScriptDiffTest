@@ -37,6 +37,8 @@ enum ENotification
 	EDITOR_DISABLE_VEHICLE_BUDGET = 211,
 	EDITOR_ENABLE_SYSTEM_BUDGET = 212,
 	EDITOR_DISABLE_SYSTEM_BUDGET = 213,
+	EDITOR_BUILDING_RIGHTS_ASSIGNED = 214,
+	EDITOR_BUILDING_RIGHTS_REMOVED = 215,
 	
 	//PING
 	EDITOR_PING_GM = 400, ///< GM pings - (Param1 = GameMasterID, Param2 = -1, Param3 positionX, Param4 positionY, Param4 positionZ)
@@ -75,6 +77,10 @@ enum ENotification
 	EDITOR_TASK_CANCELED = 520, ///< Objective was Canceled (Param1 = Task Replication ID, FactionIndex)
 	EDITOR_GM_TELEPORTED_PLAYER = 521, ///< When the player gets teleported a notification will be send to that player (Param1 = GM teleported the player, player that was teleported (for GM to go to position))
 	EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS = 522,///< Max budget reached when trying to place occupants in vehicle
+	EDITOR_PLACING_OUT_OF_CAMPAIGN_BUILDING_ZONE = 523,///< Trying to place a composition outside of building perimeter
+	EDITOR_PLACING_NO_MORE_INSTANCES = 524,///< Trying to place a composition (service) which already exists in target base.
+	EDITOR_PLACING_NO_ENOUGH_SUPPLIES = 525,///< Not enough supplies to build a composition.
+	EDITOR_PLACING_BLOCKED = 526,///< Area is blocked by another entity.
 	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, ///< An AI group was eliminated - (Param1 = EditableEntityID)
@@ -100,6 +106,8 @@ enum ENotification
 	EDITOR_ATTRIBUTES_FACTION_CHANGED_NO_GM = 721, //Called when GM places a spawnpoint but the faction was not enabled
 	EDITOR_ATTRIBUTES_ENABLED_AMBIENT_MUSIC = 724, ///< When the GM enables server wide ambient music (Param1 = GM that enables it)
 	EDITOR_ATTRIBUTES_DISABLED_AMBIENT_MUSIC = 725, ///< When the GM disables server wide ambient music (Param1 = GM that disables it)	EDITOR_GM_ENABLED_AMBIENT_MUSIC = 522, ///< When the GM enables server wide ambient music (Param1 = GM that enables it)
+	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_ENABLED = 731, ///< GM enabled unconsciousness - (Param1 = GameMasterID)
+	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_DISABLED = 732, ///< GM disabled unconsciousness - (Param1 = GameMasterID)
 	//NOT IN GAME \/
 	EDITOR_ATTRIBUTES_SERVER_NAME_CHANGED = 716, ///< GM change the server name
 	EDITOR_ATTRIBUTES_SERVER_PASSWORD_CHANGED = 717, ///< GM change the server password
@@ -137,11 +145,16 @@ enum ENotification
 	VOTING_KICK_FAIL = 1008, ///< Voting failed to kick player (Param1 = player id)
 	
 	//GROUPS 
-	GROUPS_PLAYER_JOINED = 1101, ///< Player joined the group
-	GROUPS_PLAYER_LEFT = 1102, ///< Player has left the group
-	GROUPS_PLAYER_PROMOTED_LEADER = 1103, ///< Player has been promoted to group leader
+	GROUPS_PLAYER_JOINED = 1101, ///< Player joined the group (Param1 = player id)
+	GROUPS_PLAYER_LEFT = 1102, ///< Player has left the group (Param1 = player id)
+	GROUPS_PLAYER_PROMOTED_LEADER = 1103, ///< Player has been promoted to group leader (Param1 = player id)
+	GROUPS_AI_JOINED = 1104, ///< AI joined the group (Param1 = entityID)
+	GROUPS_AI_LEFT = 1105, ///< AI has left the group (Param1 = entityID)
 	
 	//OTHERS
 	ACTION_ON_COOLDOWN = 1200, ///< Action is on cooldown and cannot be executed
+	
+	//COMMANDING
+	COMMANDING_NO_RIGHTS = 1300,
 };
 

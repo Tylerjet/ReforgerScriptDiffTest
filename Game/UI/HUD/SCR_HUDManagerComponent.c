@@ -185,6 +185,19 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Find layout by resorce name 
+	SCR_InfoDisplay FindInfoDisplayByResourceName(ResourceName path)
+	{
+		foreach (SCR_InfoDisplay display : m_aHUDElements)
+		{
+			if (display.m_LayoutPath == path)
+				return display;
+		}
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find layout by resorce name 
 	Widget FindLayoutByResourceName(ResourceName path)
 	{
 		foreach (SCR_InfoDisplay display : m_aHUDElements)

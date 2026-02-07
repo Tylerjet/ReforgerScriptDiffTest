@@ -41,7 +41,7 @@ class SCR_VehicleTagData : SCR_NameTagData
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override string GetName()
+	override void GetName(out string name, out notnull array<string> nameParams)
 	{
 		int count = m_aPassengers.Count();
 		if (count > 1)
@@ -51,7 +51,8 @@ class SCR_VehicleTagData : SCR_NameTagData
 		else 
 			m_sName = string.Empty;
 		
-		return m_sName;
+		name = m_sName;
+		nameParams.Copy(m_aNameParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -145,6 +145,13 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 			}
 		}
 		
+		SCR_AIMessage_NeedMoreHeal msgNeedMoreHeal = SCR_AIMessage_NeedMoreHeal.Cast(msg);
+		if (msgNeedMoreHeal)
+		{
+			// The wounded soldier needs more bandage, run again
+			SetSuspended(false);
+		}
+		
 		return false;
 	}
 };

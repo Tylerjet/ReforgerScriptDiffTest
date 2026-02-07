@@ -16,9 +16,6 @@ class DedicatedServerPlugin: WorldEditorPlugin
 	[Attribute("0", desc: "Suppresses all sorts of errors (like asserts), so the game continues without stalling and disconnecting clients.", category: "Server")]
 	protected bool m_bNoThrow;
 	
-	[Attribute("0", desc: "Logs connection information to output.", category: "Server")]
-	protected bool m_bLogRPL;
-	
 	[Attribute("", desc: "Basic backend logging. Can have one of following values:\n  \"Http\" - turn on logging of Http Response & Requests\n  <filename> - save data to profile\.backend folder", category: "Server")]
 	protected string m_sLogBackend;
 	
@@ -104,9 +101,6 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		if (m_bNoThrow)
 			process += " -nothrow";
 		
-		if (m_bLogRPL)
-			process += " -rpl-log-con";
-		
 		if (m_sLogBackend)
 			process += string.Format(" -backendLog %1", m_sLogBackend);
 
@@ -125,7 +119,7 @@ class DedicatedServerPlugin: WorldEditorPlugin
 		{
 			int profileIndex = 0;
 			
-			foreach(PeerConfig conf : m_PeersConfig)
+			foreach (PeerConfig conf : m_PeersConfig)
 			{
 				if (!conf.Enabled)
 					continue;
@@ -185,7 +179,7 @@ class DedicatedServerPlugin: WorldEditorPlugin
 	override void OnGameModeEnded()
 	{
 		// Close any connected peers
-		foreach(PeerConfig conf : m_PeersConfig)
+		foreach (PeerConfig conf : m_PeersConfig)
 		{			
 			if (!conf.Handle) // what if the game mode wasn't the PeerTool?
 				continue;

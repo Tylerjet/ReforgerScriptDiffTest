@@ -56,11 +56,12 @@ enum EWorkshopItemQuery
 	NO_PROBLEMS		= 1<<13,
 
 	DEPENDENCY_MISSING				= 1<<14,
-	ENABLED_AND_DEPENDENCY_DISABLED	= 1<<15,
+	DEPENDENCY_NOT_MISSING			= 1<<15,
+	ENABLED_AND_DEPENDENCY_DISABLED	= 1<<16,
 
-	FAVOURITE		= 1<<16,
+	FAVOURITE		= 1<<17,
 	
-	AUTHOR_BLOCKED	= 1<<17
+	AUTHOR_BLOCKED	= 1<<18
 };
 
 [EntityEditorProps(category: "", description: "A centralized system which lets many users perform actions on addons. Most likely only needed in the main menu world.")]
@@ -598,6 +599,7 @@ class SCR_AddonManager : GenericEntity
 			case EWorkshopItemQuery.DEPENDENCY_UPDATE_AVAILABLE:		return item.GetAnyDependencyUpdateAvailable();
 			case EWorkshopItemQuery.NO_PROBLEMS:						return item.GetHighestPriorityProblem() == EWorkshopItemProblem.NO_PROBLEM;
 			case EWorkshopItemQuery.DEPENDENCY_MISSING:					return item.GetAnyDependencyMissing();
+			case EWorkshopItemQuery.DEPENDENCY_NOT_MISSING:				return !item.GetAnyDependencyMissing();
 			case EWorkshopItemQuery.ENABLED_AND_DEPENDENCY_DISABLED:	return item.GetEnabledAndAnyDependencyDisabled();
 			case EWorkshopItemQuery.FAVOURITE:							return item.GetFavourite();
 			case EWorkshopItemQuery.AUTHOR_BLOCKED:						return item.GetModAuthorReportedByMe();

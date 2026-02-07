@@ -2,7 +2,7 @@ const int SOUND_CHANNEL_COUNT = 6;
 
 enum ESoundName
 {
-	// Conifer
+	// Conifer 0
 	BIRD_CONIFER_CLOSE_JAY1 = 0,
 	BIRD_CONIFER2_CLOSE_UNKNOWN8,
 	BIRD_CONIFER_CLOSE_TOWHEE2,
@@ -17,6 +17,12 @@ enum ESoundName
 	BIRD_CONIFER2_CLOSE_UNKNOWN13,
 	BIRD_CONIFER2_CLOSE_UNKNOWN14,
 	BIRD_CONIFER2_CLOSE_UNKNOWN15,
+	BIRD_CONIFER_CLOSE_COMMONRAVEN,
+	BIRD_CONIFER_CLOSE_UNKNOWN16,
+	BIRD_CONIFER_CLOSE_UNKNOWN17,
+	BIRD_CONIFER_CLOSE_UNKNOWN19,
+	BIRD_CONIFER_CLOSE_UNKNOWN21,
+	BIRD_CONIFER_CLOSE_UNKNOWN23,
 	BIRD_CONIFER_MID_CROW = 30,
 	BIRD_CONIFER_MID_JAY2,
 	BIRD_CONIFER_MID_RAVEN1,
@@ -24,6 +30,13 @@ enum ESoundName
 	BIRD_CONIFER2_MID_UNKNOWN1,
 	BIRD_CONIFER2_MID_UNKNOWN6,
 	BIRD_CONIFER2_MID_UNKNOWN7,
+	BIRD_CONIFER_MID_COMMONRAVEN_CLICKING,
+	BIRD_CONIFER_MID_GREASPOTTEDWOODPECKER,
+	BIRD_CONIFER_MID_UNKNOWN18,
+	BIRD_CONIFER_MID_UNKNOWN22,
+	BIRD_CONIFER_MID_UNKNOWN25,
+	BIRD_CONIFER_MID_UNKNOWN27,
+	BIRD_CONIFER_MID_UNKNOWN30,
 	SQUIRREL_CONIFER_MID_1 = 50,
 	SQUIRREL_CONIFER_MID_2,
 	BIRD_CONIFER_DIST_RAVEN1 = 60,
@@ -34,6 +47,16 @@ enum ESoundName
 	BIRD_CONIFER2_DIST_UNKNOWN5,
 	BIRD_CONIFER2_DIST_UNKNOWN6,
 	BIRD_CONIFER2_DIST_WOODPECKER,
+	BIRD_CONIFER_DIST_COMMONRAVEN,
+	BIRD_CONIFER_DIST_COMMONRAVEN_DEEPNOISE,
+	BIRD_CONIFER_DIST_EURASIANOYSTERCATCHER,
+	BIRD_CONIFER_DIST_GREASPOTTEDWOODPECKER_DRUMMING1,
+	BIRD_CONIFER_DIST_GREASPOTTEDWOODPECKER_DRUMMING2,
+	BIRD_CONIFER_DIST_UNKNOWN20,
+	BIRD_CONIFER_DIST_UNKNOWN24,
+	BIRD_CONIFER_DIST_UNKNOWN32,
+	BIRD_CONIFER_DIST_UNKNOWN33,
+	BIRD_CONIFER_DIST_WHITEBACKEDWOODPECKER,
 	
 	// Night Close 80
 	// Night Mid 85
@@ -49,8 +72,10 @@ enum ESoundName
 	BIRD_CONIFER_DIST_OWLSHRIEK1,
 	BIRD_CONIFER_DIST_OWLSHRIEK2,
 	BIRD_CONIFER_DIST_OWLSHRIEK3,
+	BIRD_CONIFER_DIST_TAWNYOWL1,
+	BIRD_CONIFER_DIST_TAWNYOWL2,
 	
-	// Leafy
+	// Leafy 100
 	BIRD_LEAFY_CLOSE_GROSBEAK = 100,
 	BIRD_LEAFY_CLOSE_QUAIL,
 	BIRD_LEAFY_CLOSE_SPARROW,
@@ -59,6 +84,10 @@ enum ESoundName
 	BIRD_LEAFY_CLOSE_TIT1,
 	BIRD_LEAFY_CLOSE_UNKNOWN1,
 	BIRD_LEAFY_CLOSE_UNKNOWN8,
+	BIRD_LEAFY_CLOSE_MAGPIE,
+	BIRD_LEAFY_CLOSE_UNKNOWN26,
+	BIRD_LEAFY_CLOSE_UNKNOWN28,
+	BIRD_LEAFY_CLOSE_UNKNOWN31,
 	BIRD_LEAFY_MID_UNKNOWN2 = 130,
 	BIRD_LEAFY_MID_UNKNOWN5,
 	BIRD_LEAFY_MID_UNKNOWN6,
@@ -67,7 +96,8 @@ enum ESoundName
 	BIRD_LEAFY_DIST_UNKNOWN4,
 	BIRD_LEAFY_DIST_UNKNOWN7,
 	BIRD_LEAFY_DIST_UNKNOWN8,
-	
+	BIRD_LEAFY_DIST_WOODPACKER_DRUMMING1,
+	BIRD_LEAFY_DIST_WOODPACKER_DRUMMING2,	
 	// Night Close 180
 	// Night Mid 185
 	BIRD_LEAFY_MID_NIGHTINGALE1 = 185,
@@ -111,6 +141,7 @@ enum ESoundName
 	BIRD_OCEAN_MID_SEAGULL1 = 530,
 	// Dist 560
 	BIRD_OCEAN_DIST_SEAGULL1 = 560,
+	BIRD_OCEAN_DIST_BLACKHEADEDGULL,
 	
 	// Grass Short Insect 600
 	// 600 PL Morning
@@ -214,6 +245,12 @@ enum ESoundName
 	// Mid 1230
 	WIND_CONCRETE = 1230,
 	// Dist 1260
+
+	// --- MEADOW ---
+	// Close 1300
+	// Mid 1330
+	// Dist 1360
+	BIRD_MEADOW_DIST_COMMONBUZZARD = 1360,
 };
 
 enum ESoundEntityGroup
@@ -267,6 +304,26 @@ enum ESoundGroup
 	POND
 };
 
+const int SOUND_WIND_CURVE_COUNT = 2;
+
+enum ESoundWindCurve
+{
+	ALWAYS,
+	DEFAULT,
+};
+
+const int SOUND_DAY_TIME_CURVE_COUNT = 6;
+
+enum ESoundDayTimeCurve
+{
+	ALWAYS,
+	DAY,
+	NIGHT,
+	MORNING,
+	NOON,
+	AFTEROON,
+};
+
 [BaseContainerProps(configRoot: true)]
 class SCR_AmbientSoundsEventsConfig
 {
@@ -278,13 +335,49 @@ class SCR_AmbientSoundsEventsConfig
 	
 	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
 	ref Curve m_TimeModifier;
-	
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
-	ref Curve m_WindModifier;
-	
+		
 	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
 	ref Curve m_RainModifier;
 		
 	[Attribute("", UIWidgets.Object, "Always changing signal definition")]
 	ref array<ref SCR_AlwaysChangingSignal> m_aAlwaysChangingSignal;
+	
+	[Attribute("", UIWidgets.Object, "Day time factor curve definition")]
+	ref array<ref SCR_AmbientSoundsDayTimeCurveDefinition> m_aDayTimeCurve;
+	
+	[Attribute("", UIWidgets.Object, "Wind modifier curve definition")]
+	ref array<ref SCR_AmbientSoundsWindCurveDefinition> m_aWindModifier;
+	
+	float m_aDayTimeCurveValue[SOUND_DAY_TIME_CURVE_COUNT];
+	
+	void UpdateDayTimeCurveValue(float time)
+	{
+		for (int i = 0; i < SOUND_DAY_TIME_CURVE_COUNT; i++)
+		{
+			m_aDayTimeCurveValue[i] = SCR_AmbientSoundsComponent.GetPoint(time, m_aDayTimeCurve[i].m_Curve);
+		}
+	}
+	
 };
+
+[BaseContainerProps()]
+class SCR_AmbientSoundsWindCurveDefinition
+{
+	[Attribute("0", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(ESoundWindCurve))]
+	ESoundType m_eWindCurveType;
+	
+	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	ref Curve m_Curve;
+	
+	float m_fValue;
+}
+
+[BaseContainerProps()]
+class SCR_AmbientSoundsDayTimeCurveDefinition
+{
+	[Attribute("0", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(ESoundDayTimeCurve))]
+	ESoundType m_eDayTimeCurve;
+	
+	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
+	ref Curve m_Curve;
+}

@@ -68,7 +68,7 @@ class SCR_RadialMenuVisualsWeapons : SCR_RadialMenuVisuals
 	override protected string SetEmptyIconByType(ScriptedSelectionMenuEntry entry)
 	{
 		if (!entry)
-			return m_sEmtpyIconName;
+			return m_sEmptyIconName;
 		
 		//protected string m 
 		
@@ -101,7 +101,7 @@ class SCR_RadialMenuVisualsWeapons : SCR_RadialMenuVisuals
 				return "weapon_grenade";
 			}
 			
-			return m_sEmtpyIconName;
+			return m_sEmptyIconName;
 		}
 			
 		// Bandage 
@@ -110,6 +110,6 @@ class SCR_RadialMenuVisualsWeapons : SCR_RadialMenuVisuals
 			return "gadget_bandage";
 		}
 		
-		return m_sEmtpyIconName;
+		return m_sEmptyIconName;
 	}
 };

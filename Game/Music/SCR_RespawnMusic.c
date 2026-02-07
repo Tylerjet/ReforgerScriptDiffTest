@@ -4,12 +4,11 @@ class SCR_RespawnMusic : ScriptedMusic
 	
 	protected void OnRespawnMenuOpen()
 	{		
-		GetGame().GetCallqueue().CallLater(m_MusicManager.Play, 300, false, SCR_SoundEvent.SOUND_RESPAWNMENU);
+		m_MusicManager.Play(SCR_SoundEvent.SOUND_RESPAWNMENU);
 	}
 		
 	protected void OnRespawnMenuClosed()
 	{
-		GetGame().GetCallqueue().Remove(m_MusicManager.Play);
 		m_MusicManager.Stop(SCR_SoundEvent.SOUND_RESPAWNMENU);
 	}
 	

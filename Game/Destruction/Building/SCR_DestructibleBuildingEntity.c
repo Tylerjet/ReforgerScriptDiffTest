@@ -1,6 +1,34 @@
 [EntityEditorProps(category: "GameScripted/Buildings", description: "The main entity for a destructible building.", visible: false, dynamicBox: true)]
 class SCR_DestructibleBuildingEntityClass: BuildingClass
 {
+	/*[Attribute("", UIWidgets.ResourceNamePicker, "The building configuration object to use for this building", "conf", category: "Destruction Building")]
+	protected ResourceName m_sBuildingConfig;*/
+	[Attribute("1", UIWidgets.EditBox, "Minimum damage above which the building switches to damaged state from the undamaged state", "0 1000000 0.5", category: "Destruction Building")]
+	protected float m_fMinUndamagedThreshold;
+	
+#ifdef WORKBENCH
+	[Attribute("0", UIWidgets.CheckBox, "Check to update various data in the config (must be defined)", category: "EDITOR: Destruction Building")]
+	bool m_bUpdateConfigData;
+	
+	//------------------------------------------------------------------------------------------------
+	bool UpdateConfigData()
+	{
+		return m_bUpdateConfigData;
+	}
+#endif
+	
+	//------------------------------------------------------------------------------------------------
+	/*ResourceName GetBuildingConfig()
+	{
+		return m_sBuildingConfig;
+	}*/
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMinUndamagedThreshold()
+	{
+		return m_fMinUndamagedThreshold;
+	}
+	
 };
 
 enum BuildingDamageState
@@ -20,10 +48,8 @@ class SCR_DestructibleBuildingEntity : Building
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "The building configuration object to use for this building", "conf", category: "Destruction Building")]
 	protected ResourceName m_BuildingConfig;
-	[Attribute("1", UIWidgets.EditBox, "Minimum damage above which the building switches to damaged state from the undamaged state", "0 1000000 0.5", category: "Destruction Building")]
-	protected float m_fMinUndamagedThreshold;
 	
-	#ifdef ENABLE_DESTRUCTION
+	#ifdef ENABLE_BUILDING_DESTRUCTION
 		#ifdef WORKBENCH
 			[Attribute("0", UIWidgets.CheckBox, "Check to update various data in the config (must be defined)", category: "EDITOR: Destruction Building")]
 			bool UpdateConfigData;
@@ -202,7 +228,7 @@ class SCR_DestructibleBuildingEntity : Building
 		}
 		
 		//------------------------------------------------------------------------------------------------
-		override void OnDamage(float damage, EDamageType type, HitZone pHitZone, IEntity instigator, inout vector outMat[3], float speed, int colliderID, int nodeID)
+		override void OnDamage(float damage, EDamageType type, IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, IEntity damageSourceParent, int colliderID, float speed)
 		{
 			if (!m_BuildingSetup)
 				return;
@@ -213,12 +239,16 @@ class SCR_DestructibleBuildingEntity : Building
 			if (RplSession.Mode() == RplMode.Client)
 	 			return;
 			
+			SCR_DestructibleBuildingEntityClass prefabData = SCR_DestructibleBuildingEntityClass.Cast(GetPrefabData());
+			if (!prefabData)
+				return;
+			
 			damage = SCR_Global.GetScaledStructuralDamage(damage, type);
 			
 			// Special case if the building is undamaged
 			if (GetUndamaged())
 			{
-				if (damage < m_fMinUndamagedThreshold)
+				if (damage < prefabData.GetMinUndamagedThreshold())
 					return;
 				
 				// Force the building into the damaged state so we can find which region we hit and apply the damage
@@ -451,7 +481,7 @@ class SCR_DestructibleBuildingEntity : Building
 				regionEnt.GetTransform(regionMat);
 				
 				m_SoundComponent.SetSignalValueStr("partSoundID", region);
-				m_SoundComponent.SetSignalValueStr("Distance", vector.Distance(camMat[3], SCR_Global.GetEntityCenterWorld(regionEnt)));
+				m_SoundComponent.SetSignalValueStr("Distance", vector.Distance(camMat[3], SCR_EntityHelper.GetEntityCenterWorld(regionEnt)));
 				m_SoundComponent.SetTransformation(regionMat);
 				m_SoundComponent.PlayStr(SCR_SoundEvent.SOUND_BUILDING_CRACK);
 			}
@@ -886,7 +916,11 @@ class SCR_DestructibleBuildingEntity : Building
 			vector buildingMat[4];
 			GetTransform(buildingMat);
 			
-			regionEnt = SCR_BuildingRegionEntity.Cast(GetGame().SpawnEntity(SCR_BuildingRegionEntity));
+			//regionEnt = SCR_BuildingRegionEntity.Cast(GetGame().SpawnEntityPrefab(Resource.Load("{944DD356E5175140}Prefabs/Test/BuildingRegion.et")));
+		
+			if (!regionEnt)
+				return null;
+		
 			regionEnt.SetBuildingAndIndex(this, regionNumber);
 			regionEnt.LoadRegionModel();
 			
@@ -1150,14 +1184,18 @@ class SCR_DestructibleBuildingEntity : Building
 				{
 					SCR_DestructionBaseComponent destructible = SCR_DestructionBaseComponent.Cast(genProp.FindComponent(SCR_DestructionBaseComponent));
 					if (destructible)
-						destructible.AddDamage(destructible.GetMaxHealth(), EDamageType.EXPLOSIVE);
+					{
+						vector mat[3];
+						Math3D.MatrixIdentity3(mat);
+						destructible.HandleDamage(EDamageType.EXPLOSIVE, destructible.GetMaxHealth(), mat, destructible.GetOwner(), null, this, null, -1, -1);
+					}
 				}
 				
 				if (buildingDebris)
 					CopyPropToBuildingDebris(buildingDebris, prop, debrisMat);
 				
 				// TODO: Hide prop and disable physics instead of deleting? To allow repair
-				SCR_Global.DeleteEntityAndChildren(prop);
+				SCR_EntityHelper.DeleteEntityAndChildren(prop);
 				//prop.ClearFlags(EntityFlags.VISIBLE | EntityFlags.ACTIVE, true);
 				//Physics phys = prop.GetPhysics();
 				//if (phys)
@@ -1331,6 +1369,9 @@ class SCR_DestructibleBuildingEntity : Building
 				}
 				
 				SCR_BuildingRegionEntity regionEnt = SpawnRegionEntity(i);
+			
+				if (!regionEnt)
+					return;
 				
 				// Create/destroy each region intersection debris
 				for (int n = 0; n < regionNum; n++)

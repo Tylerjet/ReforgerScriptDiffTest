@@ -196,7 +196,7 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 	//-------------------------- Cleanup --------------------------\\
 	protected void CleanupHighlightedMap()
 	{
-  	  	foreach(SCR_EditableEntityComponent entity, EEditableEntityHighlight highlight: m_HighlightedEntities)
+  	  	foreach (SCR_EditableEntityComponent entity, EEditableEntityHighlight highlight: m_HighlightedEntities)
     	{
        	 	if (entity == null)
 			{
@@ -293,7 +293,7 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 		map<Faction, SCR_EditableFactionComponent> factionMap = new map<Faction, SCR_EditableFactionComponent>;
 		m_DelegateFactionManager.GetFactionDelegates(factionMap);
 		
-		foreach(Faction faction, SCR_EditableFactionComponent editableFaction: factionMap)
+		foreach (Faction faction, SCR_EditableFactionComponent editableFaction: factionMap)
     	{	
 			if (editableFaction.GetFactionSpawnPointCount() == 0)
 				AddHighlight(editableFaction, EEditableEntityHighlight.NO_FACTION_SPAWNPOINTS);				
@@ -395,7 +395,7 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 			map<Faction, SCR_EditableFactionComponent> factionMap = new map<Faction, SCR_EditableFactionComponent>;
 			m_DelegateFactionManager.GetFactionDelegates(factionMap);
 			
-			foreach(Faction faction, SCR_EditableFactionComponent editableFaction: factionMap)
+			foreach (Faction faction, SCR_EditableFactionComponent editableFaction: factionMap)
     		{	
 				editableFaction.GetOnSpawnPointCountChanged().Insert(OnFactionSpawnPointsUpdated);	
 				editableFaction.GetOnTaskCountChanged().Insert(OnFactionTasksUpdated);	
@@ -410,7 +410,7 @@ class SCR_HighlightedEditorComponent : SCR_BaseEditorComponent
 			map<Faction, SCR_EditableFactionComponent> factionMap = new map<Faction, SCR_EditableFactionComponent>;
 			m_DelegateFactionManager.GetFactionDelegates(factionMap);
 			
-			foreach(Faction faction, SCR_EditableFactionComponent editableFaction: factionMap)
+			foreach (Faction faction, SCR_EditableFactionComponent editableFaction: factionMap)
     		{	
 				editableFaction.GetOnSpawnPointCountChanged().Remove(OnFactionSpawnPointsUpdated);	
 				editableFaction.GetOnTaskCountChanged().Remove(OnFactionTasksUpdated);	

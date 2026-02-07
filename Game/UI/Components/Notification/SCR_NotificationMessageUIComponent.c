@@ -79,7 +79,15 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		else 
 			notificationMessage = typename.EnumToString(ENotification, data.GetID());
 		
-		notificationText.SetTextFormat(notificationMessage, param1, param2, param3, param4, param5);
+		if (!displayData.MergeParam1With2())
+		{
+			notificationText.SetTextFormat(notificationMessage, param1, param2, param3, param4, param5);
+		}
+		else 
+		{
+			string mergeParams = WidgetManager.Translate(param2, param1);
+			notificationText.SetTextFormat(notificationMessage, param1, mergeParams, param3, param4, param5);
+		}
 		
 		SCR_UINotificationInfo uiInfo;
 		ENotificationColor notificationColorEnum;
@@ -170,7 +178,7 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 		
 		Color color;
 		
-		foreach(string widgetName: m_aColoredWidgets)
+		foreach (string widgetName: m_aColoredWidgets)
 		{
 			Widget widget = m_wRoot.FindAnyWidget(widgetName);
 			if (widget)

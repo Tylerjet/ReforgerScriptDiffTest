@@ -30,7 +30,7 @@ class SCR_SpawnPoint : SCR_Position
 	protected bool m_bShowInDeployMapOnly;
 
 	protected SCR_UIInfo m_LinkedInfo;
-	protected SCR_FactionControlComponent m_FactionControl;
+	protected SCR_FactionAffiliationComponent m_FactionAffiliationComponent;
 
 	[Attribute()]
 	protected ref SCR_UIInfo m_Info;
@@ -99,7 +99,7 @@ class SCR_SpawnPoint : SCR_Position
 		if (m_aChildren.Count() > 1)
 		{
 			int id = m_aChildren.GetRandomIndex();
-			pos = m_aChildren[id].GetOrigin();
+			SCR_WorldTools.FindEmptyTerrainPosition(pos, m_aChildren[id].GetOrigin(), GetSpawnRadius());
 			rot = m_aChildren[id].GetAngles();
 		}
 		else
@@ -475,11 +475,11 @@ class SCR_SpawnPoint : SCR_Position
 			child = child.GetSibling();
 		}
 		
-		m_FactionControl = SCR_FactionControlComponent.Cast(owner.FindComponent(SCR_FactionControlComponent));
-		if (m_FactionControl)
+		m_FactionAffiliationComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
+		if (m_FactionAffiliationComponent)
 		{
-			m_FactionControl.GetOnFactionChanged().Insert(SetFaction);
-			Faction faction = m_FactionControl.GetFaction();
+			m_FactionAffiliationComponent.GetOnFactionUpdate().Insert(SetFaction);
+			Faction faction = m_FactionAffiliationComponent.GetAffiliatedFaction();
 			if (faction)
 			{
 				m_sFaction = faction.GetFactionKey();
@@ -517,9 +517,9 @@ class SCR_SpawnPoint : SCR_Position
 				s_LastUsed = RplId.Invalid();
 			s_mSpawnPoints.Remove(this);
 		}
-		if (m_FactionControl)
+		if (m_FactionAffiliationComponent)
 		{
-			m_FactionControl.GetOnFactionChanged().Remove(SetFaction);
+			m_FactionAffiliationComponent.GetOnFactionUpdate().Remove(SetFaction);
 		}
 	}
 };

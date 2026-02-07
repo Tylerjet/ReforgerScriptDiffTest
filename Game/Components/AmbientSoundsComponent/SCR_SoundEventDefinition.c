@@ -15,9 +15,9 @@ class SCR_SoundEventDefinition
 	
 	[Attribute("1", UIWidgets.Object)]
 	ref SCR_SequenceDefinition m_SequenceDefinition;
-	
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, "",  params: "1 1 0 0")]
-	ref Curve m_DayTimeFactor;
+		
+	[Attribute("1", UIWidgets.ComboBox, "", "", ParamEnumArray.FromEnum(ESoundDayTimeCurve))]
+	ESoundDayTimeCurve m_eDayTimeCurve;
 	
 	float m_fCoolDownEnd;
 };

@@ -7,7 +7,7 @@ class SCR_BaseAnalogGaugeData
 	string m_sRingMarkSection = "GaugeMarkSection";
 	string m_sRingMarkSubsection = "GaugeMarkSubsection";
 	string m_sDefaultLayout = "{00F28F3165DB7C83}UI/layouts/HUD/VehicleInfo/VehicleGauge_Default.layout";
-
+	
 	// Custom attributes	
 	string m_sOverlay = "";
 	string m_sCustomNeedle = "";	
@@ -33,7 +33,7 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 	[Attribute("0.5", UIWidgets.Slider, "Units text anchor X-coordinate %-base of widget width.", "0 1 0.05")]
 	protected float m_fInfoPosX;	
 	
-	[Attribute("0.9", UIWidgets.Slider, "Units text anchor Y-coordinate %-base of widget height.", "0 1 0.05")]
+	[Attribute("0.2", UIWidgets.Slider, "Units text anchor Y-coordinate %-base of widget height.", "0 1 0.05")]
 	protected float m_fInfoPosY;	
 
 	
@@ -178,11 +178,7 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 
 		if (sCustomNeedle)
 		{
-			//wNeedle.LoadImageTexture(0, sCustomNeedle);
-			//wNeedle.SetImage(0);
 			wNeedle.LoadImageFromSet(0, m_pGaugeData.m_AnalogGauge, sCustomNeedle);
-			//wNeedleShadow.LoadImageTexture(0, sCustomNeedle);
-			//wNeedleShadow.SetImage(0);			
 			wNeedleShadow.LoadImageFromSet(0, m_pGaugeData.m_AnalogGauge, sCustomNeedle);
 		}			
 		Scale(wNeedle, m_fWidgetScale);
@@ -206,8 +202,6 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 			return true;
 		}
 
-		//wOverlay.LoadImageTexture(0, sOverlayTexture);
-		//wOverlay.SetImage(0);
 		wOverlay.LoadImageFromSet(0, m_pGaugeData.m_AnalogGauge, sOverlayTexture);
 		wOverlay.SetVisible(bVisible);
 		Scale(wOverlay, m_fWidgetScale);		
@@ -392,7 +386,6 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 			return;
 
 		float sizeY = FrameSlot.GetSizeY(widget);
-		
 		FrameSlot.SetSizeY(widget, sizeY * scale);
 	}	
 
@@ -434,7 +427,7 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 		TextWidget wText = TextWidget.Cast(w);		
 		
 		wText.SetText(value.ToString());
-		wText.SetFont("{3E7733BAC8C831F6}UI/Fonts/RobotoCondensed/RobotoCondensed_Regular.fnt");
+		wText.SetFont("{EABA4FE9D014CCEF}UI/Fonts/RobotoCondensed/RobotoCondensed_Bold.fnt");
 		wText.SetExactFontSize(m_pGaugeData.m_fRingLabelFontSize * m_fWidgetScale);
 
 		float alignx = xcoef / 2 + 0.5;
@@ -453,8 +446,6 @@ class SCR_BaseAnalogGauge : SCR_InfoDisplayExtended
 		Widget w = workspace.CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.INHERIT_CLIPPING | WidgetFlags.VISIBLE | WidgetFlags.ADDITIVE | WidgetFlags.STRETCH,  null, 0, m_wRingMarks);
 		ImageWidget wImage = ImageWidget.Cast(w);
 
-		//wImage.LoadImageTexture(0, texture); 
-		//wImage.SetImage(0);			
 		wImage.LoadImageFromSet(0, m_pGaugeData.m_AnalogGauge, texture);
 		FrameSlot.SetAlignment(wImage, 0.5, 0);
 		FrameSlot.SetAnchorMin(wImage, 0.5, 0.5);

@@ -54,11 +54,17 @@ class SCR_DelegateFactionManagerComponent : SCR_BaseFactionManagerComponent
 	int GetSortedFactionDelegates(notnull out SCR_SortedArray<SCR_EditableFactionComponent> outDelegates)
 	{
 		int count = m_FactionDelegates.Count();
+		SCR_Faction faction;
 		SCR_EditableFactionComponent factionDelegate;
 		for (int i = 0; i < count; i++)
 		{
 			factionDelegate = m_FactionDelegates.GetElement(i);
-			outDelegates.Insert(factionDelegate.GetFactionIndex(), factionDelegate);
+			int order = 0;
+			faction = SCR_Faction.Cast(factionDelegate.GetFaction());
+			if (faction)
+				order = faction.GetOrder();
+			
+			outDelegates.Insert(order, factionDelegate);
 		}
 		return count;
 	}
@@ -76,7 +82,7 @@ class SCR_DelegateFactionManagerComponent : SCR_BaseFactionManagerComponent
 	*/
 	int GetPlayableFactionDelegates(notnull out map<Faction, SCR_EditableFactionComponent> outDelegates)
 	{		
-		foreach(Faction faction, SCR_EditableFactionComponent delegate: m_FactionDelegates) 
+		foreach (Faction faction, SCR_EditableFactionComponent delegate: m_FactionDelegates) 
    		{
 			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
         	if (scrFaction && scrFaction.IsPlayable())
@@ -95,7 +101,7 @@ class SCR_DelegateFactionManagerComponent : SCR_BaseFactionManagerComponent
 	{
 		int count = 0;
 		
-		foreach(Faction faction, SCR_EditableFactionComponent delegate: m_FactionDelegates) 
+		foreach (Faction faction, SCR_EditableFactionComponent delegate: m_FactionDelegates) 
    		{
 			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
         	if (scrFaction && scrFaction.IsPlayable())

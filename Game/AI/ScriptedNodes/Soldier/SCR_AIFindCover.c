@@ -20,7 +20,7 @@ class SCR_AIFindCover : AITaskScripted
 		
 
 #ifdef WORKBENCH
-	private ref array<Shape> m_DebugShapes;
+	private ref array<ref Shape> m_DebugShapes = {};
 	
 	private static const ShapeFlags m_SphereFlags = ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP;
 	private static const ShapeFlags m_LineFlags = ShapeFlags.NOOUTLINE|ShapeFlags.TRANSP;
@@ -81,13 +81,6 @@ class SCR_AIFindCover : AITaskScripted
 			
 			m_DebugShapes.Insert(Shape.CreateLines(COLOR_RED, m_LineFlags, p, 2));
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void OnInit(AIAgent owner)
-	{
-		if (!m_DebugShapes)
-			m_DebugShapes = new array<Shape>();
 	}
 	
 	//------------------------------------------------------------------------------------------------

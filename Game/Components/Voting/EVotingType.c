@@ -4,6 +4,7 @@ enum EVotingType
 	ADMIN, ///< Give a player admin rights, value is player ID
 	EDITOR_IN, ///< Give a player Game Master rights, value is player ID
 	EDITOR_OUT, ///< Give a player Game Master rights, value is player ID
+	EDITOR_WITHDRAW, ///< As a GM, withdraw your rights, value is player ID
 	RESTART, ///< Restart the world, no value
 	WORLD, ///< Choose the next world, value TBD
 };

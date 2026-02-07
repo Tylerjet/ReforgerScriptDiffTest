@@ -441,6 +441,10 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!comp)
 			return;
 		
+		float depth;
+		if (SCR_WorldTools.IsObjectUnderwater(comp.GetOwner(), vector.Zero, -1, depth) && depth > SCR_CampaignMobileAssemblyComponent.MAX_WATER_DEPTH)
+			return;
+		
 		bool deployedSuccessfully = false;
 		
 		if (comp.IsDeployed() != deploy)
@@ -868,7 +872,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if(occupants.IsEmpty())
 			return;
 		
-		foreach(IEntity occupant : occupants)
+		foreach (IEntity occupant : occupants)
 		{
 			int occupantID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(occupant);
 			if(number != 0)

@@ -208,7 +208,9 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 #endif
 		
 		m_aCheckedBases.Clear();
-		GenerateNewTask(capturedBase);
+		
+		if (!GetTaskManager().IsProxy())
+			GenerateNewTask(capturedBase);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -219,6 +221,9 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 			return null;
 		
 		if (!base || !faction)
+			return null;
+		
+		if (type == SCR_CampaignTaskType.CAPTURE && (base.GetIsHQ() || (base.GetCanBeHQ() && base.GetDisableWhenUnusedAsHQ())))
 			return null;
 		
 		if (base.GetOwningFaction() == faction && type == SCR_CampaignTaskType.CAPTURE)
@@ -290,6 +295,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		//Register to script invokers
 		SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
 		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Insert(OnAllBasesInitialized);
+		SCR_GameModeCampaignMP.s_OnSignalChanged.Insert(OnBaseCaptured);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -298,5 +304,6 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 		//Unregister from script invokers
 		SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
 		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Remove(OnAllBasesInitialized);
+		SCR_GameModeCampaignMP.s_OnSignalChanged.Remove(OnBaseCaptured);
 	}
 };

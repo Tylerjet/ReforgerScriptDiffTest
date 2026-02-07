@@ -4,8 +4,8 @@ class SCR_LoadoutArea
 	[Attribute("Name", desc: "")]
 	protected string m_sName;
 	
-	[Attribute( defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Area", enums: ParamEnumArray.FromEnum( ELoadoutArea ) )]
-	ELoadoutArea m_eLoadoutArea;
+	[Attribute( defvalue: "", uiwidget: UIWidgets.Object, desc: "Area type" )]
+	ref LoadoutAreaType m_LoadoutArea;
 	
 	[Attribute( defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Area", enums: ParamEnumArray.FromEnum( ECommonItemType ) )]
 	ECommonItemType m_eCommonType;
@@ -24,10 +24,13 @@ class SCR_InventoryConfig
 	[Attribute( desc: "Loadout Areas" )]
 	private ref array<ref SCR_LoadoutArea> m_aLoadoutAreas;
 	
-	int GetRowByArea( ELoadoutArea pArea )
+	int GetRowByArea( LoadoutAreaType pArea )
 	{ 
+		if (!pArea)
+			return -1;
+		
 		foreach ( int iIndex , SCR_LoadoutArea pAreaEntry : m_aLoadoutAreas )
-			if ( pAreaEntry.m_eLoadoutArea == pArea )
+			if ( pAreaEntry.m_LoadoutArea && pAreaEntry.m_LoadoutArea.IsInherited(pArea.Type()) )
 				return iIndex; 
 		return -1;
 	}
@@ -40,10 +43,13 @@ class SCR_InventoryConfig
 		return -1;
 	}
 	
-	ResourceName GetIcon( ELoadoutArea pArea )
+	ResourceName GetIcon( LoadoutAreaType pArea )
 	{
+		if (!pArea)
+			return ResourceName.Empty;
+		
 		foreach ( int iIndex , SCR_LoadoutArea pAreaEntry : m_aLoadoutAreas )
-			if ( pAreaEntry.m_eLoadoutArea == pArea )
+			if ( pAreaEntry.m_LoadoutArea && pAreaEntry.m_LoadoutArea.IsInherited(pArea.Type()) )
 				return pAreaEntry.m_sIcon;
 		return ResourceName.Empty;
 	}

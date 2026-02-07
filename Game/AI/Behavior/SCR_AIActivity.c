@@ -1,10 +1,10 @@
 class SCR_AIActivityBase : SCR_AIActionBase
 {
-	bool m_bIsWaypointRelated;
+	ref SCR_BTParam<bool> m_bIsWaypointRelated = new SCR_BTParam<bool>(SCR_AIActionTask.WAYPOINT_RELATED_PORT);	
 	
 	void SCR_AIActivityBase(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated)
 	{
-		m_bIsWaypointRelated = isWaypointRelated;
+		m_bIsWaypointRelated.Init(this, isWaypointRelated);
 	}
 };
 

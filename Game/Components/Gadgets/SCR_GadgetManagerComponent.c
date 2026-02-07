@@ -129,8 +129,10 @@ class SCR_GadgetManagerComponentClass: ScriptGameComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_GadgetManagerComponent : ScriptGameComponent
 {			
-	ref ScriptInvoker m_OnGadgetAdded = new ref ScriptInvoker();			// called when gadget is added to inventory
-	ref ScriptInvoker m_OnGadgetRemoved = new ref ScriptInvoker();			// called when gadget is removed from inventory
+	ref ScriptInvoker<SCR_GadgetComponent> m_OnGadgetAdded = new ScriptInvoker();			// called when gadget is added to inventory
+	ref ScriptInvoker<SCR_GadgetComponent> m_OnGadgetRemoved = new ScriptInvoker();			// called when gadget is removed from inventory
+	
+	protected static ref ScriptInvoker<IEntity, SCR_GadgetManagerComponent> s_OnGadgetInitDone = new ScriptInvoker();	// invoked after gadget init is done on a newly spawned character
 	
 	protected bool m_bIsGadgetADS = false;		// is gadget currently in raised state
 	protected IEntity m_HeldGadget = null;
@@ -148,6 +150,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 	//------------------------------------------------------------------------------------------------
 	// GET/SET METHODS
+	//------------------------------------------------------------------------------------------------
+	static ScriptInvoker GetOnGadgetInitDoneInvoker() { return s_OnGadgetInitDone; }
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get gadget manager of entity
 	//! \return gadget manager
@@ -206,6 +211,18 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 		// switch mode rules
 		CanChangeGadgetMode(gadget, gadgetComp, targetMode, doFocus);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Static method for setting gadgets to ground/storage modes for containers such as vehicles which do not have gadget manager
+	//! \param gadgetComp is the subject component
+	//! \param targetMode is the mode being switched into
+	static void SetGadgetModeStashed(SCR_GadgetComponent gadgetComp, EGadgetMode targetMode)
+	{
+		if (targetMode != EGadgetMode.ON_GROUND && targetMode != EGadgetMode.IN_STORAGE)
+			return;
+		
+		gadgetComp.OnModeChanged(targetMode, null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -318,7 +335,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 				CharacterModifierAttributes charModifData = CharacterModifierAttributes.Cast(invItemComponent.FindAttribute(CharacterModifierAttributes));
 				if (charModifData)
 				{
-					if (!charModifData.CanBeEquippedInVehicle())
+					if (targetMode == EGadgetMode.IN_HAND && !charModifData.CanBeEquippedInVehicle())
 						return;
 				}	
 			}
@@ -443,8 +460,15 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
 		if (!gadgetComp)
 			return;
+		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!invComp)
+			return;
 				
-		SetGadgetMode(item, EGadgetMode.ON_GROUND);			// TODO chck if this could create issues within modes (MODEX->GROUND->MODEX) when swapping slots inside inventory?
+		if (invComp.GetParentSlot())
+			SetGadgetMode(item, EGadgetMode.IN_STORAGE);	
+		else
+			SetGadgetMode(item, EGadgetMode.ON_GROUND);
 		
 		int gadgetArrayID = m_aGadgetArrayMap.Get(gadgetComp.GetType());
 		if (gadgetArrayID == -1)
@@ -532,33 +556,26 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	//! CharacterControllerComponent event, used only for local character
 	protected void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused)
 	{
-		if (!gadget)	// when gadget is switched, this gets called after gadget state change with null TODO preferably this shouldnt happen :(
+		SCR_GadgetComponent gadgetComponent;
+		if (gadget)
 		{
-			if (!isFocused && m_LastHeldGadgetComponent)	// handle unfocus
-			{
-				m_LastHeldGadgetComponent.ToggleFocused(false);
-				m_bIsGadgetADS = false;
-				
-				if (m_LastHeldGadgetComponent.IsCombinedFocus() || m_Controller.GetMaxZoomInADS())
-				{
-					SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-					if (controller)
-						controller.SetGadgetFocus(false);
-				}
-			}
-			
-			return;
+			gadgetComponent = m_HeldGadgetComponent;
+		}
+		else
+		{
+			// when gadget is switched, this gets called after gadget state change with null TODO preferably this shouldnt happen :(
+			gadgetComponent = m_LastHeldGadgetComponent;
+			isFocused = false;
 		}
 		
 		m_bIsGadgetADS = isFocused;
-		m_HeldGadgetComponent.ToggleFocused(isFocused);
-				
-		if (m_HeldGadgetComponent.IsCombinedFocus() || m_Controller.GetMaxZoomInADS())	// combined focus with ADS or MaxZoomInSights setting enabled
-		{
-			SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-			if (controller)
-				controller.SetGadgetFocus(isFocused);
-		}
+		
+		if (gadgetComponent)
+			gadgetComponent.ToggleFocused(isFocused);
+		
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (controller)
+			controller.SetGadgetFocus(isFocused);
 	}
 			
 	//------------------------------------------------------------------------------------------------
@@ -673,6 +690,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			else 	// initial gadget for client can/will already have set mode members by replication, set the entire mode process properly here
 				SetGadgetMode(foundItems[i], gadgetComp.GetMode());
 		}
+		
+		s_OnGadgetInitDone.Invoke(character, this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -693,6 +712,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_InputManager.AddActionListener("GadgetADS", EActionTrigger.DOWN, OnGadgetADS);
 		m_InputManager.AddActionListener("GadgetADSHold", EActionTrigger.DOWN, OnGadgetADSHold);
 		m_InputManager.AddActionListener("GadgetADSHold", EActionTrigger.UP, OnGadgetADSHold);
+		m_InputManager.AddActionListener("GadgetCancel", EActionTrigger.DOWN, RemoveHeldGadget);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -712,26 +732,27 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		m_InputManager.RemoveActionListener("GadgetADS", EActionTrigger.DOWN, OnGadgetADS);
 		m_InputManager.RemoveActionListener("GadgetADSHold", EActionTrigger.DOWN, OnGadgetADSHold);
 		m_InputManager.RemoveActionListener("GadgetADSHold", EActionTrigger.UP, OnGadgetADSHold);
+		m_InputManager.RemoveActionListener("GadgetCancel", EActionTrigger.DOWN, RemoveHeldGadget);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Convert invoked input to gadget type
 	//! \return gadget type
 	protected EGadgetType GetGadgetInputAction()
-	{		
-		if ( m_InputManager.GetActionValue("GadgetMap") )			
+	{
+		if ( m_InputManager.GetActionTriggered("GadgetMap") )			
 			return EGadgetType.MAP;
 		
-		if ( m_InputManager.GetActionValue("GadgetCompass") )
+		if ( m_InputManager.GetActionTriggered("GadgetCompass") )
 			return EGadgetType.COMPASS;
 		
-		if ( m_InputManager.GetActionValue("GadgetBinoculars") )
+		if ( m_InputManager.GetActionTriggered("GadgetBinoculars") )
 			return EGadgetType.BINOCULARS;
 		
-		if ( m_InputManager.GetActionValue("GadgetFlashlight") )
+		if ( m_InputManager.GetActionTriggered("GadgetFlashlight") )
 			return EGadgetType.FLASHLIGHT;
 		
-		if ( m_InputManager.GetActionValue("GadgetWatch") )
+		if ( m_InputManager.GetActionTriggered("GadgetWatch") )
 			return EGadgetType.WRISTWATCH;
 		
 		return 0;
@@ -830,6 +851,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			if (m_InputManager && m_HeldGadgetComponent)	
 			{
 				m_InputManager.ActivateContext("GadgetContext");
+			
+				if (m_HeldGadgetComponent.CanBeToggled())
+					m_InputManager.ActivateContext("GadgetContextToggleable");
 			
 				if (m_HeldGadgetComponent.IsUsingADSControls())
 					m_InputManager.ActivateContext("GadgetContextRaisable");

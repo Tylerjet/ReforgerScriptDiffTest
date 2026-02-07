@@ -21,15 +21,15 @@ class SCR_AnalogGauge : SCR_BaseAnalogGauge
 	
 	// Attributes: signal
 	[Attribute("speed", UIWidgets.EditBox, "Name of the signal to listen to.")]
-	protected string  m_sSignalName;
+	protected string m_sSignalName;
 
 	
 	// Attributes: custom data
 	[Attribute("", UIWidgets.EditBox, "Gauge overlay texture.")]
-	ResourceName m_sOverlay;	
+	protected string m_sOverlay;	
 
 	[Attribute("", UIWidgets.EditBox, "Gauge custom needle texture. If not selected, default is used.")]
-	ResourceName m_sCustomNeedle;	
+	protected string m_sCustomNeedle;	
 	
 	
 	protected SignalsManagerComponent m_SignalsManagerComponent;

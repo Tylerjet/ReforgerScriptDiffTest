@@ -10,6 +10,10 @@ class SCR_CampaignTutorialStage42 : SCR_BaseCampaignTutorialStage
 	{
 		RegisterWaypoint("WP_CONFLICT_TOUR_ANTENNA");
 		m_fWaypointCompletionRadius = 5;
-		SCR_HintManagerComponent.ShowCustomHint("#AR-Tutorial_Hint_Barracks", "", -1);
+		
+		//string hintString = "#AR-Tutorial_Hint_Barracks_Alternative <h1 align='center' scale='4'><color rgba='34,196,244,255'><image set='{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset' name='Slot_Barracks'/></color></h1>";
+		string hintString = "#AR-Tutorial_Hint_Barracks <h1 align='center' scale='4'><color rgba='34,196,244,255'><image set='{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset' name='Slot_Barracks'/></color></h1>";
+	
+		SCR_HintManagerComponent.ShowCustomHint(hintString, "", -1);
 	}
 };

@@ -155,6 +155,7 @@ sealed class System
 	static proto int GetTickCount(int prev = 0);
 	static proto string GetAdapterName();
 	static proto void GetNativeResolution(out int width, out int height);
+	static proto void GetRenderingResolution(out int width, out int height);
 	static proto void GetSupportedResolutions(out notnull array<int> widths, out notnull array<int> heights);
 	/*!
 	Takes screenshot and stores it in a BMP format at specified path.

@@ -36,6 +36,7 @@ class GameOverScreenInput: ChimeraMenuBase
 			hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~(EHudLayers.HIGH | EHudLayers.ALWAYS_TOP));
 		
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
+		GetGame().GetInputManager().AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 	}
 	
 	override void OnMenuClose()
@@ -51,6 +52,7 @@ class GameOverScreenInput: ChimeraMenuBase
 				hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() | EHudLayers.HIGH | EHudLayers.ALWAYS_TOP);
 		}
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
+		GetGame().GetInputManager().RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 	}
 	
 	override void OnMenuUpdate(float tDelta)

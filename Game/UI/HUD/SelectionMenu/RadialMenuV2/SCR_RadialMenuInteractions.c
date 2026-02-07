@@ -8,7 +8,7 @@ class SCR_RadialMenuInteractions
 	const static string INPUT_RADIAL_Y = "RadialY";
 	const static string INPUT_RADIAL_X2 = "RadialX2";
 	const static string INPUT_RADIAL_Y2 = "RadialY2";
-	const static string INPUT_TOGGLE = "CharacterSwitchWeaponRadial";
+	const static string INPUT_TOGGLE = "";
 	const static string INPUT_TRIGGER_ACTION = "RadialTrigger";
 	const static string INPUT_PAGE_NEXT = "RadialNext";
 	const static string INPUT_PAGE_PREVIOUS = "RadialPrevious";
@@ -23,8 +23,6 @@ class SCR_RadialMenuInteractions
 	
 	//! Filter used for filtering active/inactive actions
 	protected ref SCR_RadialMenuFilter m_pFilter = new SCR_RadialMenuFilter();
-	
-	protected InputManager m_InputManager;
 	
 	protected bool m_bCanOpenMenu = true;
 	protected bool m_bIsMenuOpen = false;
@@ -47,27 +45,65 @@ class SCR_RadialMenuInteractions
 	//! Script invokers
 	ref ScriptInvoker<IEntity, bool> onMenuToggleInvoker;
 	ref ScriptInvoker<IEntity> onPerformInputCallInvoker;
+	ref ScriptInvoker<IEntity> onMenuOpenFailed = new ScriptInvoker();
 	ref ScriptInvoker<IEntity, vector, float, bool> onThumbstickMoveInvoker;
 	ref ScriptInvoker m_OnPageSwitch = new ref ScriptInvoker;
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnMenuToggle()
+	void Open()
 	{
-		if (!m_bCanOpenMenu)
+		if (m_bIsMenuOpen)
 			return;
 		
-		m_bIsMenuOpen = !m_bIsMenuOpen;
+		if (!m_bCanOpenMenu)
+		{
+			onMenuOpenFailed.Invoke(m_Owner);
+			return;
+		}
 		
-		if (!m_bIsMenuOpen && m_iEntryPerformType == ERadialMenuPerformType.OnClose)
-			onPerformInputCallInvoker.Invoke(m_Owner);
-		
-		onMenuToggleInvoker.Invoke(m_Owner, m_bIsMenuOpen);
+		m_bIsMenuOpen = true;
+		onMenuToggleInvoker.Invoke(m_Owner, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnPerformInputCall()
+	void Close()
 	{
-		if (m_iEntryPerformType == ERadialMenuPerformType.OnPressPerformInput)
+		if (!m_bIsMenuOpen)
+			return;
+		
+		m_bIsMenuOpen = false;
+		onMenuToggleInvoker.Invoke(m_Owner, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnToggleInput(float value, EActionTrigger reason)
+	{
+		if (!m_bCanOpenMenu && !m_bIsMenuOpen)
+		{
+			onMenuOpenFailed.Invoke(m_Owner);
+			return;
+		}
+		
+		bool open;
+		
+		if (m_bHoldToOpen)
+			open = reason == EActionTrigger.DOWN;
+		else
+			open = !open;
+		
+		if (m_bCanOpenMenu && !open && (m_iEntryPerformType == ERadialMenuPerformType.OnClose || m_iEntryPerformType == ERadialMenuPerformType.OnCloseOrPress))
+			onPerformInputCallInvoker.Invoke(m_Owner);
+		
+		if (open)
+			Open();
+		else
+			Close();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPerformInput(float value, EActionTrigger reason)
+	{
+		if (m_bCanOpenMenu && (m_iEntryPerformType == ERadialMenuPerformType.OnPressPerformInput || m_iEntryPerformType == ERadialMenuPerformType.OnCloseOrPress))
 			onPerformInputCallInvoker.Invoke(m_Owner);
 	}
 	
@@ -83,10 +119,9 @@ class SCR_RadialMenuInteractions
 	{
 		m_Owner = owner;
 		m_sHandlingContext = conxtext;
-		m_sInputToggle = toggle;
-		m_sInputPerform = trigger;
 		
 		// Stick use
+		// TODO - separate context when using left stick isntead of letting CharacterForward and CharacterRight through
 		m_bUsingLeftStick = leftStick;
 		if (leftStick)
 		{
@@ -99,28 +134,38 @@ class SCR_RadialMenuInteractions
 			m_sInput_RadialY = INPUT_RADIAL_Y2;
 		}
 		
-		if (!m_InputManager)
-			return;
-		
-		m_InputManager.AddActionListener(m_sInputToggle, EActionTrigger.DOWN, OnMenuToggle);
-		if (m_bHoldToOpen)
-			m_InputManager.AddActionListener(m_sInputToggle, EActionTrigger.UP, OnMenuToggle);
-		
-		m_InputManager.AddActionListener(m_sInputPerform, EActionTrigger.DOWN, OnPerformInputCall);
+		SetInputToggle(toggle);
+		SetInputPerform(trigger);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetHandlingContext()
+	{
+		return m_sHandlingContext;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Unput references for paging 
 	void SetHandlingPaging(string pageNext = INPUT_PAGE_NEXT, string pagePrev = INPUT_PAGE_PREVIOUS)
 	{
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
+			return;
+		
+		if (!m_sInputPageNext.IsEmpty())
+			inputManager.RemoveActionListener(m_sInputPageNext, EActionTrigger.DOWN, OnPageNext);
+		
+		if (!m_sInputPagePrev.IsEmpty())
+			inputManager.RemoveActionListener(m_sInputPagePrev, EActionTrigger.DOWN, OnPagePrev);
+		
 		m_sInputPageNext = pageNext;
 		m_sInputPagePrev = pagePrev;
 		
-		if (!m_InputManager)
-			return;
+		if (!m_sInputPageNext.IsEmpty())
+			inputManager.AddActionListener(m_sInputPageNext, EActionTrigger.DOWN, OnPageNext);
 		
-		m_InputManager.AddActionListener(m_sInputPageNext, EActionTrigger.DOWN, OnPageNext);
-		m_InputManager.AddActionListener(m_sInputPagePrev, EActionTrigger.DOWN, OnPagePrev);
+		if (!m_sInputPagePrev.IsEmpty())
+			inputManager.AddActionListener(m_sInputPagePrev, EActionTrigger.DOWN, OnPagePrev);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -147,7 +192,19 @@ class SCR_RadialMenuInteractions
 	//! Calls for entry performing
 	void PerformInteractions(IEntity owner)
 	{
-		m_InputManager.ActivateContext(m_sHandlingContext);
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
+			return;
+		
+		inputManager.ActivateContext(m_sHandlingContext);
+		
+		// Force quit when context is missing
+		if (m_bHoldToOpen && !m_sInputToggle.IsEmpty() && inputManager.GetActionValue(m_sInputToggle) < 0.5)
+		{
+			Close();
+			return;
+		}
+		
 		PointingAngle(owner);
 	}
 	
@@ -155,11 +212,12 @@ class SCR_RadialMenuInteractions
 	//! Handle pointing direciton of INPUT_AXIS
 	void PointingAngle(IEntity owner)
 	{
-		if (!m_InputManager)
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
 			return;
 		
 		string actionX, actionY;
-		bool usingMouse = m_InputManager.IsUsingMouseAndKeyboard();
+		bool usingMouse = inputManager.IsUsingMouseAndKeyboard();
 		if (usingMouse)
 		{
 			actionX = "RadialMouseX";
@@ -172,8 +230,8 @@ class SCR_RadialMenuInteractions
 		}
 
 		vector v;
-		v[0] = m_InputManager.GetActionValue(actionX);
-		v[1] = m_InputManager.GetActionValue(actionY);
+		v[0] = inputManager.GetActionValue(actionX);
+		v[1] = inputManager.GetActionValue(actionY);
 
 		if (usingMouse)
 			v.Normalize();
@@ -197,9 +255,25 @@ class SCR_RadialMenuInteractions
 	//------------------------------------------------------------------------------------------------
 	void SetInputToggle(string inputStr)
 	{
-		m_InputManager.RemoveActionListener(m_sInputToggle, EActionTrigger.DOWN, OnMenuToggle);
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
+			return;
+		
+		if (!m_sInputToggle.IsEmpty())
+		{
+			inputManager.RemoveActionListener(m_sInputToggle, EActionTrigger.DOWN, OnToggleInput);
+			if (m_bHoldToOpen)
+				inputManager.RemoveActionListener(m_sInputToggle, EActionTrigger.UP, OnToggleInput);
+		}
+		
 		m_sInputToggle = inputStr;
-		m_InputManager.AddActionListener(m_sInputToggle, EActionTrigger.DOWN, OnMenuToggle);
+		
+		if (!m_sInputToggle.IsEmpty())
+		{
+			inputManager.AddActionListener(m_sInputToggle, EActionTrigger.DOWN, OnToggleInput);
+			if (m_bHoldToOpen)
+				inputManager.AddActionListener(m_sInputToggle, EActionTrigger.UP, OnToggleInput);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -217,7 +291,17 @@ class SCR_RadialMenuInteractions
 	//------------------------------------------------------------------------------------------------
 	void SetInputPerform(string inputStr)
 	{
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
+			return;
+		
+		if (!m_sInputPerform.IsEmpty())
+			inputManager.RemoveActionListener(m_sInputPerform, EActionTrigger.DOWN, OnPerformInput);
+		
 		m_sInputPerform = inputStr;
+		
+		if (!m_sInputPerform.IsEmpty())
+			inputManager.AddActionListener(m_sInputPerform, EActionTrigger.DOWN, OnPerformInput);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -236,6 +320,9 @@ class SCR_RadialMenuInteractions
 	void SetCanOpenMenu(bool canOpen)
 	{
 		m_bCanOpenMenu = canOpen;
+		
+		if (m_bIsMenuOpen && !m_bCanOpenMenu)
+			Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -243,12 +330,16 @@ class SCR_RadialMenuInteractions
 	{
 		return m_bCanOpenMenu;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnMenuOpenFailed()
+	{
+		return onMenuOpenFailed;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_RadialMenuInteractions()
 	{
-		m_InputManager = GetGame().GetInputManager();
-		
 		// Define invokers
 		onMenuToggleInvoker = new ref ScriptInvoker<int, IEntity, bool>();
 		onPerformInputCallInvoker = new ref ScriptInvoker<int, IEntity, float>();
@@ -260,12 +351,15 @@ class SCR_RadialMenuInteractions
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_RadialMenuInteractions()
 	{
-		if (!m_InputManager)
+		InputManager inputManager = GetGame().GetInputManager();
+		if (!inputManager)
 			return;
 		
-		m_InputManager.RemoveActionListener(m_sInputPageNext, EActionTrigger.DOWN, OnPageNext);
-		m_InputManager.RemoveActionListener(m_sInputPagePrev, EActionTrigger.DOWN, OnPagePrev);
-		m_InputManager.RemoveActionListener(m_sInputToggle, EActionTrigger.UP, OnMenuToggle);
-		m_InputManager.RemoveActionListener(m_sInputPerform, EActionTrigger.DOWN, OnPerformInputCall);
+		inputManager.RemoveActionListener(m_sInputPageNext, EActionTrigger.DOWN, OnPageNext);
+		inputManager.RemoveActionListener(m_sInputPagePrev, EActionTrigger.DOWN, OnPagePrev);
+		inputManager.RemoveActionListener(m_sInputPerform, EActionTrigger.DOWN, OnPerformInput);
+		inputManager.RemoveActionListener(m_sInputToggle, EActionTrigger.DOWN, OnToggleInput);
+		if (m_bHoldToOpen)
+			inputManager.RemoveActionListener(m_sInputToggle, EActionTrigger.UP, OnToggleInput);
 	}
 };

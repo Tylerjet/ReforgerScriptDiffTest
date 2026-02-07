@@ -19,6 +19,13 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	[Attribute(desc: "Material mapped on outside and inside of the mesh. Inside mapping is mirrored.", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "emat", category: "Virtual Area")]
 	protected ResourceName m_Material;
 	
+	[Attribute(desc: "When enabled, the mesh will update itself when owner entity position or direction changes.", category: "Virtual Area")]
+	protected bool m_bUpdateEveryFrame;
+	
+	protected bool m_bInit;
+	protected vector m_vLastPos;
+	protected vector m_vLastDir;
+	
 	/*!
 	Get radius of the area.
 	To be overloaded by inherited classes.
@@ -32,12 +39,20 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	*/
 	void GenerateAreaMesh()
 	{
+		IEntity owner = GetOwner();
+		
 		float radius = GetRadius();
 		if (radius <= 0)
 		{
-			GetOwner().SetObject(null, "");
+			owner.SetObject(null, "");
 			return;
 		}
+		
+		//--- Reset orientation, as the mesh is created in local space
+		vector transform[4];
+		Math3D.MatrixIdentity3(transform);
+		transform[3] = owner.GetOrigin();
+		owner.SetWorldTransform(transform);
 		
 		float dirStep = Math.PI2 / m_vResolution;
 		array<vector> positions = {};
@@ -53,27 +68,38 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		//--- Snap all positions to ground
 		if (m_bFollowTerrain)
 		{
-			vector transform[4];
-			float entitySurfaceY;
-			GetOwner().GetTransform(transform);
-			BaseWorld world = GetOwner().GetWorld();
-			entitySurfaceY = Math.Max(world.GetSurfaceY(transform[3][0], transform[3][2]), 0);
+			BaseWorld world = owner.GetWorld();
+			vector worldPos;
 			foreach (int i, vector pos: positions)
 			{
-				vector worldPos = transform[3] + transform[0] * pos[0] + transform[2] * pos[2];
-				pos[1] = Math.Max(world.GetSurfaceY(worldPos[0], worldPos[2]), 0) - entitySurfaceY;
-				positions[i] = pos;
+				worldPos = owner.CoordToParent(pos);
+				worldPos[1] = Math.Max(world.GetSurfaceY(worldPos[0], worldPos[2]), 0);
+				positions[i] = owner.CoordToLocal(worldPos);
 			}
 		}
 		
 		MeshObject meshObject = SCR_Shape.CreateAreaMesh(positions, m_fHeight * 2, m_Material, m_bStretchMaterial);
 		if (meshObject)
-			GetOwner().SetObject(meshObject, "");
+		{
+			owner.SetObject(meshObject, "");
+			
+			if (m_bUpdateEveryFrame)
+			{
+				owner.SetFlags(EntityFlags.ACTIVE, true);
+				SetEventMask(owner, EntityEvent.FRAME);
+				m_vLastPos = owner.GetOrigin();
+				m_vLastDir = owner.GetAngles();
+			}
+		}
+		
+	}
+	override void EOnFrame(IEntity owner, float timeSlice)
+	{
+		if (vector.DistanceSq(m_vLastPos, owner.GetOrigin()) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
+			GenerateAreaMesh();
 	}
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
-
 };

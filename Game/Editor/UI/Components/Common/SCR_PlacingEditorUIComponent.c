@@ -158,6 +158,8 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	}
 	protected void OnMenuUpdate(float tDelta)
 	{
+		ActivatePreviewContext();
+		
 		if (m_StatesManager && m_StatesManager.GetState() != EEditorState.PLACING) return;
 		
 		if (m_InputManager && m_PlacingManager)
@@ -190,7 +192,7 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		}
 		if (!m_CursorComponent) Print("SCR_PlacingEditorUIComponent requires SCR_CursorEditorUIComponent!", LogLevel.ERROR);
 		
-		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (!m_PlacingManager) return;
 		
 		m_PlacingManager.GetOnSelectedPrefabChange().Insert(OnSelectedPrefabChange);

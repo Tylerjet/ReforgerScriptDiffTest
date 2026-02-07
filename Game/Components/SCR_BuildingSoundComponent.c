@@ -6,10 +6,10 @@ class SCR_BuildingSoundComponentClass: SoundComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_BuildingSoundComponent : SoundComponent
 {	
-	[Attribute("10", UIWidgets.Slider, "Time interval when maximum WindSpeed [s]", "0 60 1")]
+	[Attribute("8", UIWidgets.Slider, "Time interval when maximum WindSpeed [s]", "0 60 1")]
 	int m_iTimeIntervalMin;
 	
-	[Attribute("30", UIWidgets.Slider, "Time interval when minimum WindSpeed [s]", "0 60 1")]
+	[Attribute("20", UIWidgets.Slider, "Time interval when minimum WindSpeed [s]", "0 60 1")]
 	int m_iTimeIntervalMax;
 				
 	[Attribute("0 0 0", UIWidgets.Coords, "Mins OOB Point")]

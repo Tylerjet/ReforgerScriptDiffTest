@@ -42,6 +42,12 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	[Attribute(params: "layout")]
 	protected ResourceName m_HighlightLayout;
 	
+	[Attribute(defvalue: "0.76078 0.39216 0.07843 1.0", UIWidgets.ColorPicker, desc: "Reforger default color")]
+	protected ref Color m_cReforgerColor;
+	
+	[Attribute(defvalue: "1.0 1.0 1.0 1.0", UIWidgets.ColorPicker, desc: "Color of the time bar")]
+	protected ref Color m_cTimerColor;
+	
 	protected Widget m_Widget;
 	protected TextWidget m_NameWidget;
 	protected TextWidget m_DescriptionWidget;
@@ -70,6 +76,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		}
 		
 		m_Widget.SetVisible(true);
+
 		if (m_Widget.IsVisibleInHierarchy() && info && info.HasDescription() && (!m_Menu || m_Menu.IsFocused()))
 		{
 			bool showName = info.SetNameTo(m_NameWidget);
@@ -103,22 +110,37 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			else
 				m_ToggleButton.SetLabel(m_ToggleButtonTextHide);
 			
-			if(info.IsTimerVisible())
+			float startvalue;
+			int duration;
+			int timeDifferenceFromStart = Replication.Time() - info.GetTimeStarted();
+			
+			if (info.GetTimeStarted() == -1 || Replication.Time() == info.GetTimeStarted() || info.GetDuration() == -1 || !info.IsTimerVisible())
 			{
-				m_BarColor.SetColor(Color.White);
-				m_ProgressBar.SetValue(1, false);
-				m_ProgressBar.SetAnimationTime(info.GetDuration());
+				startvalue = 1;
+				duration = info.GetDuration();
+			}
+			else	
+			{
+ 				startvalue = 1 - timeDifferenceFromStart / info.GetDuration() / 1000;
+				duration = info.GetDuration() - timeDifferenceFromStart / 1000;
+			}
+			
+			if (info.IsTimerVisible())
+			{
+				m_BarColor.SetColor(m_cTimerColor);
+				m_ProgressBar.SetValue(startvalue, false);
+				m_ProgressBar.SetAnimationTime(duration);
 				m_ProgressBar.SetValue(0);
 			}
 			
-			if(!info.GetName())
+			if (!info.GetName())
 				m_VisibilitySelector.SetVisible(false);
 			else
 				m_VisibilitySelector.SetVisible(true);
 			
-			if(info.GetDuration() == -1 || !info.IsTimerVisible())
+			if (info.GetDuration() == -1 || !info.IsTimerVisible())
 			{
-				m_BarColor.SetColor(Color.FromRGBA(194, 100, 20, 255));
+				m_BarColor.SetColor(m_cReforgerColor);
 				m_ProgressBar.SetValue(1, false);
 			}
 				

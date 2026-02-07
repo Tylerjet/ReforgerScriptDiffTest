@@ -1,6 +1,14 @@
 [ComponentEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_ArsenalManagerComponentClass: SCR_BaseGameModeComponentClass
 {
+	static override array<typename> Requires(IEntityComponentSource src)
+	{
+		array<typename> requires = new array<typename>;
+		
+		requires.Insert(SerializerInventoryStorageManagerComponent);
+		
+		return requires;
+	}
 };
 class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 {

@@ -25,15 +25,20 @@ class SCR_CareerProfileHUD: ScriptedWidgetComponent
 	[Attribute("10000", "auto", "Max progress bar value")]
 	protected int m_iMaxBarValue;
 	
+	[Attribute("{9F18C476AB860F3B}Prefabs/World/Game/ItemPreviewManager.et")]
+	protected ResourceName previewManagerResource;
+	
+	[Attribute("{5B1996C05B1E51A4}Prefabs/Characters/Factions/BLUFOR/US_Army/Character_US_AR.et")]
+	protected ResourceName loadoutResource;
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void HandlerAttached(Widget w)
 	{
 		m_wRootWidget = w;
-		PrepareHUD("", "RankTitleText", "BackgroundUserPicture", "LevelProgress", "PlayerLevel", "ProgressBar0", "");
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PrepareHUD(string rankImageName, string rankLevelName, string backgroundUserPictureName, string LevelProgressName, string PlayerLevelName, string ProgressBarName, string EditAppearanceButtonName)
+	void PrepareHUD(string rankImageName, string rankLevelName, string backgroundUserPictureName, string CharacterLoadoutName, string LevelProgressName, string PlayerLevelName, string ProgressBarName, string EditAppearanceButtonName)
 	{
 		if (!m_wRootWidget)
 			return;
@@ -46,6 +51,38 @@ class SCR_CareerProfileHUD: ScriptedWidgetComponent
 		
 		if (backgroundUserPictureName != "")
 			m_BackgroundUserPictureImageWidget = ImageWidget.Cast(m_wRootWidget.FindAnyWidget(backgroundUserPictureName));
+		
+		if (CharacterLoadoutName != "")
+		{
+			Widget characterLoadout = m_wRootWidget.FindAnyWidget(CharacterLoadoutName);
+			if (characterLoadout)
+			{
+				SCR_LoadoutPreviewComponent characterLoadoutHandler = SCR_LoadoutPreviewComponent.Cast(characterLoadout.FindHandler(SCR_LoadoutPreviewComponent));
+				if (characterLoadoutHandler)
+				{
+					ItemPreviewManagerEntity previewManager = characterLoadoutHandler.GetPreviewManagerEntity();
+					
+					if (!previewManager)
+					{
+						Resource res = Resource.Load(previewManagerResource);
+						if (res.IsValid())
+							GetGame().SpawnEntityPrefabLocal(res);
+						previewManager = GetGame().GetItemPreviewManager();
+					}
+					
+					ItemPreviewWidget previewWidget = characterLoadoutHandler.GetItemPreviewWidget();
+					
+					if (previewManager && previewWidget)
+					{
+						characterLoadoutHandler.SetPreviewManagerEntity(previewManager);
+						characterLoadoutHandler.SetItemPreviewWidget(previewWidget);
+						
+						previewManager.SetPreviewItemFromPrefab(previewWidget, loadoutResource);
+						characterLoadoutHandler.SetReloadLoadout(false);
+					}
+				}
+			}
+		}
 		
 		if (ProgressBarName != "")
 		{
@@ -81,6 +118,26 @@ class SCR_CareerProfileHUD: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetLevelProgressGain(float f)
+	{
+		RichTextWidget levelProgressGain = RichTextWidget.Cast(m_wRootWidget.FindAnyWidget("LevelGained"));
+		if (!levelProgressGain)
+			return;
+		
+		if (f != 0)
+		{
+			levelProgressGain.SetText("+"+f);
+			levelProgressGain.SetEnabled(true);
+			levelProgressGain.SetVisible(true);
+			return;
+		}
+		
+		levelProgressGain.SetText("");
+		levelProgressGain.SetEnabled(false);
+		levelProgressGain.SetVisible(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetPlayerRank(int rank)
 	{
 		if (rank < 0) 
@@ -89,7 +146,7 @@ class SCR_CareerProfileHUD: ScriptedWidgetComponent
 			rank = 1;
 		
 		if (m_RankLevel)
-			m_RankLevel.SetText("#AR-CareerProfile_RankTitle"+" "+" "+rank);
+			m_RankLevel.SetTextFormat("#AR-CareerProfile_RankTitle",rank);
 		
 		if (m_RankImageWidget && m_aRankImages && m_aRankImages.Count() >= rank)
 			SCR_WLibComponentBase.SetTexture(m_RankImageWidget, m_aRankImages[rank-1], string.Empty);
@@ -99,14 +156,18 @@ class SCR_CareerProfileHUD: ScriptedWidgetComponent
 	void SetRandomBackgroundPicture()
 	{
 		if (m_BackgroundUserPictureImageWidget && m_aBackgroundImages.Count()>0)
+		{
+			m_BackgroundUserPictureImageWidget.SetColor(Color.FromSRGBA(255,255,255,204)); //60% opacity
 			SCR_WLibComponentBase.SetTexture(m_BackgroundUserPictureImageWidget, m_aBackgroundImages[Math.RandomInt(0,m_aBackgroundImages.Count())], string.Empty);
+		}
+			
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetPlayerLevel(int n)
 	{
 		if (m_PlayerLevel)
-			m_PlayerLevel.SetText("#AR-CareerProfile_PlayerLv"+" "+n);
+			m_PlayerLevel.SetTextFormat("#AR-CareerProfile_PlayerLv",n);
 	}
 	
 	//------------------------------------------------------------------------------------------------

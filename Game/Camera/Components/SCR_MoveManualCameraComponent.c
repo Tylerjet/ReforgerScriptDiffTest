@@ -8,7 +8,9 @@ Camera movement above sea level.
 class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	[Attribute(defvalue: "27", desc: "Speed coefficient.")]
-	private float m_fSpeed;	
+	private float m_fSpeed;
+	
+	protected bool m_bBlockedByRadialMenu;
 	
 	override void EOnCameraSave(SCR_ManualCameraComponentSave data)
 	{
@@ -36,10 +38,24 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 	{
 		if (!param.isManualInputEnabled) return;
 		
-		float lateral = GetInputManager().GetActionValue("ManualCameraMoveLateral");
-		float vertical = GetInputManager().GetActionValue("ManualCameraMoveVertical");
-		float longitudinal = GetInputManager().GetActionValue("ManualCameraMoveLongitudinal");
-		if (lateral == 0 && vertical == 0 && longitudinal == 0) return;
+		bool radialMenu = !m_InputManager.IsUsingMouseAndKeyboard() && (m_InputManager.GetActionValue("RadialX") || m_InputManager.GetActionValue("RadialY"));
+		if (radialMenu)
+			m_bBlockedByRadialMenu = true;
+		
+		float lateral = m_InputManager.GetActionValue("ManualCameraMoveLateral");
+		float vertical = m_InputManager.GetActionValue("ManualCameraMoveVertical");
+		float longitudinal = m_InputManager.GetActionValue("ManualCameraMoveLongitudinal");
+		if (lateral == 0 && vertical == 0 && longitudinal == 0)
+		{
+			if (!radialMenu)
+				m_bBlockedByRadialMenu = false;
+			
+			return;
+		}
+		
+		//--- Radial menu was just closed - block the input until player releases left stick
+		if (m_bBlockedByRadialMenu)
+			return;
 		
 		//--- Get horizontal vector
 		vector dir = param.transform[2];

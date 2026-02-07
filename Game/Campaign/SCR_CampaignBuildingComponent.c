@@ -813,33 +813,7 @@ class SCR_CampaignBuildingComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	SCR_CampaignSuppliesComponent GetTruckSuppliesComponent(notnull IEntity truck)
 	{
-		SlotManagerComponent slotManager = SlotManagerComponent.Cast(truck.FindComponent(SlotManagerComponent));
-				
-		// It's a supply truck
-		if (!slotManager)
-			return null;
-	
-		array<EntitySlotInfo> slots = {};
-		slotManager.GetSlotInfos(slots);
-		IEntity truckBed;
-		SCR_CampaignSuppliesComponent suppliesComp;
-		
-		foreach (EntitySlotInfo slot: slots)
-		{
-			if (!slot)
-				continue;
-			
-			truckBed = slot.GetAttachedEntity();
-			
-			if (!truckBed)
-				continue;
-			
-			suppliesComp = SCR_CampaignSuppliesComponent.Cast(truckBed.FindComponent(SCR_CampaignSuppliesComponent));
-			if (suppliesComp)
-				return suppliesComp;
-		}
-		
-		return null;
+		return SCR_CampaignSuppliesComponent.GetSuppliesComponent(truck);
 	}
 		
 	//------------------------------------------------------------------------------------------------

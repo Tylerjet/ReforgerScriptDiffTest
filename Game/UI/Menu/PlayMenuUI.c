@@ -231,6 +231,8 @@ class PlayMenuUI: ChimeraMenuBase
 			SCR_SaveLoadComponent.LoadOnStart();
 			TryPlayScenario(tile.m_Item);
 		}
+		
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.PlayMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -243,6 +245,8 @@ class PlayMenuUI: ChimeraMenuBase
 			SCR_SaveLoadComponent.LoadOnStart();
 		
 		TryPlayScenario(tile.m_Item);
+		
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.PlayMenu);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -252,6 +256,8 @@ class PlayMenuUI: ChimeraMenuBase
 		Print("[PlayMenuUI] Restarting scenario");
 		SCR_SaveLoadComponent.LoadOnStart();
 		SCR_WorkshopUiCommon.TryPlayScenario(tile.m_Item);
+		
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.PlayMenu);
 	}
 	
 	//------------------------------------------------------------------------------------------------

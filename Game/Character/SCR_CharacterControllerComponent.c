@@ -1,3 +1,10 @@
+enum ECharacterLifeState
+{
+	ALIVE = 0,
+	INCAPACITATED = 1,
+	DEAD = 10
+}
+
 [ComponentEditorProps(category: "GameScripted/Character", description: "Scripted character controller", icon: HYBRID_COMPONENT_ICON)]
 class SCR_CharacterControllerComponentClass : CharacterControllerComponentClass
 {
@@ -10,6 +17,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	private SCR_CharacterCameraHandlerComponent m_CameraHandler; // Set from the camera handler itself
 	private SCR_MeleeComponent m_MeleeComponent;
 	private bool m_bOverrideActions = true;
+	protected bool m_bInspectionFocus;
 
 	// Character event invokers
 	ref ScriptInvoker m_OnPlayerDeath = new ScriptInvoker();
@@ -22,8 +30,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	
 	// Item even invokers
 	ref ScriptInvoker<IEntity> m_OnItemUseBeganInvoker = new ref ScriptInvoker<IEntity>();
-	ref ScriptInvoker<IEntity, SCR_ConsumableEffectAnimationParameters> m_OnItemUseCompleteInvoker = new ref ScriptInvoker<IEntity, SCR_ConsumableEffectAnimationParameters>();
-
+	ref ScriptInvoker<IEntity, bool, SCR_ConsumableEffectAnimationParameters> m_OnItemUseEndedInvoker = new ref ScriptInvoker<IEntity, bool, SCR_ConsumableEffectAnimationParameters>();
+	protected ref ScriptInvoker<AnimationEventID, AnimationEventID, int, float, float> m_OnAnimationEvent;
+	
 	// Diagnostics, debugging
 	#ifdef ENABLE_DIAG
 	private static bool s_bDiagRegistered;
@@ -34,6 +43,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	#endif
 
 	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnAnimationEvent()
+	{
+		if (!m_OnAnimationEvent)
+			m_OnAnimationEvent = new ScriptInvoker();
+		return m_OnAnimationEvent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Will be called when gadget taken/removed from hand
 	override void OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround) { m_OnGadgetStateChangedInvoker.Invoke(gadget, isInHand, isOnGround); };
 	//! Will be called when gadget fully transitioned to or canceled focus mode
@@ -43,18 +60,44 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//! Will be called when item use action is started
 	override void OnItemUseBegan(IEntity item) { m_OnItemUseBeganInvoker.Invoke(item); };
 	//! Will be called when item use action is complete
-	override void OnItemUseComplete(IEntity item, int actionType, int intParam, float floatParam, bool boolParam)
+	override void OnItemUseEnded(IEntity item, bool successful, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam)
 	{
 		// Animation duration is not returned.
-		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(actionType, -1.0, intParam, floatParam, boolParam);
-		m_OnItemUseCompleteInvoker.Invoke(item, animParams);
+		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(cmdID, cmdIntArg, cmdFloatArg, -1.0, intParam, floatParam, boolParam);
+		m_OnItemUseEndedInvoker.Invoke(item, successful, animParams);
 	};
 
+	//------------------------------------------------------------------------------------------------
+	protected override void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd)
+	{
+		if (!m_OnAnimationEvent)
+			return;
+		
+		m_OnAnimationEvent.Invoke(animEventType, animUserString, intParam, timeFromStart, timeToEnd);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// handling of melee events. Sends true if melee started, false, when melee ends
 	override void OnMeleeDamage(bool started)
 	{
 		m_MeleeComponent.SetMeleeAttackStarted(started);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------
+	// Get life state of character, including scripted states
+	ECharacterLifeState GetLifeState()
+	{
+		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
+		if (char)
+		{
+			if (char.GetDamageManager().GetState() == EDamageState.DESTROYED)
+				return ECharacterLifeState.DEAD;
+		}
+		
+		if (IsUnconscious())
+			return ECharacterLifeState.INCAPACITATED;
+		
+		return ECharacterLifeState.ALIVE;		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -476,7 +519,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_RECOIL_CAMERASHAKE_DISABLE, "", "Disable recoil cam shake", "Character");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADDITIONAL_CAMERASHAKE_DISABLE, "", "Disable additional cam shake", "Character");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_CAMERASHAKE_TEST_WINDOW, "", "Show shake diag", "Character");
-
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_ALLOW_INSPECTION_LOOKAT, "", "Inspection LookAt", "Character");
 			s_bDiagRegistered = true;
 		}
 		#endif
@@ -564,6 +607,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	protected override void OnControlledByPlayer(IEntity owner, bool controlled)
 	{
 		// Do initialization/deinitialization of character that was given/lost control by plyer here
+		
+		if (m_CameraHandler) // fix for 37576
+		{
+			if (controlled)
+				GetGame().GetInputManager().AddActionListener("SwitchCameraType", EActionTrigger.PRESSED, m_CameraHandler.OnCameraSwitchPressed);
+			else
+				GetGame().GetInputManager().RemoveActionListener("SwitchCameraType", EActionTrigger.PRESSED, m_CameraHandler.OnCameraSwitchPressed);
+		}
 
 		m_OnControlledByPlayer.Invoke(owner, controlled);
 		
@@ -571,6 +622,116 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		auto pCharInvComponent = SCR_CharacterInventoryStorageComponent.Cast( owner.FindComponent( SCR_CharacterInventoryStorageComponent ) );
 		if ( pCharInvComponent )
 			pCharInvComponent.InitAsPlayer(owner, controlled);
+	}
+	
+	protected override void OnInspectionModeChanged(bool newState)
+	{
+		if (newState)
+			m_bInspectionFocus = true;
+		else
+			m_bInspectionFocus = false;
+	}
+
+	protected int m_iTargetContext;
+	
+	protected override float GetInspectTargetLookAt(out vector targetAngles)
+	{
+		#ifdef ENABLE_DIAG
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_ALLOW_INSPECTION_LOOKAT))
+			return 0;
+		#else
+			return 0; // Disabled for now
+		#endif
+		
+		// Just for testing
+		if (Debug.KeyState(KeyCode.KC_ADD))
+		{
+			++m_iTargetContext;
+			Debug.ClearKey(KeyCode.KC_ADD);
+			m_bInspectionFocus = true;
+		}
+		if (Debug.KeyState(KeyCode.KC_SUBTRACT))
+		{
+			--m_iTargetContext;
+			Debug.ClearKey(KeyCode.KC_SUBTRACT);
+			m_bInspectionFocus = true;
+		}
+
+		if (!m_bInspectionFocus)
+			return 0;
+
+		vector aimChange = GetInputContext().GetAimChange();
+		const float threshold = 0.001;
+		if (Math.AbsFloat(aimChange[0]) > threshold ||  Math.AbsFloat(aimChange[1]) > threshold)
+		{
+			m_bInspectionFocus = false;
+			return 0;
+		} // not now
+
+		IEntity ent = GetInspectEntity();
+		if (!ent)
+			return 0;
+
+
+		SCR_InteractionHandlerComponent handler = SCR_InteractionHandlerComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_InteractionHandlerComponent));
+
+		// Update target
+		array<UserActionContext> contexts = {};
+		vector _;
+		array<IEntity> ents = handler.GetManualOverrideList(null, _);
+		foreach (IEntity e : ents)
+		{
+			ActionsManagerComponent ac = ActionsManagerComponent.Cast(e.FindComponent(ActionsManagerComponent));
+			if (!ac)
+				continue;
+			
+			array<UserActionContext> buff = {};
+			int bc = ac.GetContextList(buff);
+			for (int i = 0; i < bc; ++i)
+			{
+				UserActionContext ctx = buff[i];
+				if (ctx.GetActionsCount() == 0)
+					continue;
+
+				array<BaseUserAction> actions = {};
+				int actionsCount = ctx.GetActionsList(actions);
+				foreach (BaseUserAction action : actions)
+				{
+					if (action.CanBeShown(GetCharacter()))
+					{
+						contexts.Insert(ctx);
+						break;
+					}
+				}
+			}
+		}
+
+		int nonEmptyCount = contexts.Count();
+		m_iTargetContext = (int)Math.Repeat(m_iTargetContext, nonEmptyCount);
+
+
+		if (nonEmptyCount == 0)
+			return 0.0;
+
+		UserActionContext ctx = contexts[m_iTargetContext];
+		vector contextPos = ctx.GetOrigin();
+
+		vector localAimDirection = GetHeadAimingComponent().GetAimingDirection();
+		vector targetDirection = contextPos - GetCharacter().EyePosition();
+		vector localTargetDirection = GetCharacter().VectorToLocal( targetDirection );
+		localTargetDirection.Normalize();
+
+
+		float lookYaw = Math.Sin(localTargetDirection[0]);
+		float lookPitch = Math.Sin(localTargetDirection[1]);
+
+
+		//Shape shape = Shape.CreateSphere(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, contextPos, 0.01);
+
+		lookPitch -= GetAimingComponent().GetAimingDirection()[1];
+		targetAngles = Vector(lookYaw, lookPitch, 0) * Math.RAD2DEG;
+
+		return 4.30; // speed
 	}
 };
 

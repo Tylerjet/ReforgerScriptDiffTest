@@ -1,7 +1,7 @@
 /*!
 UIInfo used by editor attribute system
 */
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_EditorAttributeUIInfo : SCR_UIInfo
 {
 	[Attribute("1 1 1 1", UIWidgets.ColorPicker, desc: "Description Icon Color")]

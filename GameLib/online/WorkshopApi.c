@@ -218,18 +218,12 @@ class Revision
 
 class WorkshopCatalogue
 {
-	proto native void RequestPage(BackendCallback callback, notnull JsonApiStruct params, bool clearCache);
+	proto native void RequestPage(BackendCallback callback, notnull PageParams params, bool clearCache);
 	
 	/**
 	\brief Get current page number
 	*/
 	proto native int GetPage();
-
-	/**
-	\brief Get page content, returns current count of items on active page
-	\param item items Array of Workshop Items
-	*/
-	proto native int GetPageItems( out array<WorkshopItem> items );
 
 	/**
 	\brief Get total item count on all pages
@@ -251,6 +245,17 @@ class WorkshopCatalogue
 	\brief Set number of items per page
 	*/
 	proto native void SetPageItems( int count );
+}
+
+class DownloadableCatalogue extends WorkshopCatalogue
+{	
+	proto native void ScanOfflineItems();
+	/**
+	\brief Destroy items.
+	*/
+	proto native void Cleanup();
+	
+	proto native int GetBannedItems(out notnull array<string> items);
 }
 
 class Dependency
@@ -296,6 +301,12 @@ class WorkshopAuthor extends WorkshopCatalogue
 	proto native bool IsBlocked();
 	proto native void AddBlock(BackendCallback callback);
 	proto native void RemoveBlock(BackendCallback callback);
+	
+	/**
+	\brief Get page content, returns current count of items on active page
+	\param item items Array of Workshop Items
+	*/
+	proto native int GetPageItems( out array<WorkshopItem> items );
 }
 
 
@@ -304,6 +315,53 @@ class BaseWorkshopItem
 	proto native string Name();
 	proto native string Description();
 }
+
+class DownloadableItem extends BaseWorkshopItem
+{
+	proto native string Id();
+	/**
+	\brief Request download of this item
+	*/
+	proto native void Download(BackendCallback callback, Revision revision);
+	
+	/**
+	\brief Request detail info
+	*/
+	proto native void AskDetail(BackendCallback callback);
+	
+	/**
+	\brief Get Download/ Upload progress in range <0.0. .. 1.0>
+	*/
+	proto native float GetProgress();
+	
+	/**
+	\brief Get thumbnail image
+	*/
+	proto native BackendImage Thumbnail();
+	
+	/**
+	\brief Is the local version the latest one?
+	*/
+	proto native bool HasLatestVersion();
+	
+	
+	proto native int GetRevisions(out notnull array<Revision> revisions);
+	
+	/**
+	\brief Returns currently used revision or null if no revision is downloaded
+	*/
+	proto native Revision GetActiveRevision();
+	/**
+	\brief Cancel upload or download
+	*/
+	proto native void Cancel();
+	
+	/**
+	\brief Delete local copy of an asset
+	*/
+	proto native void DeleteLocally();
+}
+
 
 
 class MissionWorkshopItem extends BaseWorkshopItem
@@ -323,14 +381,14 @@ class MissionWorkshopItem extends BaseWorkshopItem
 	
 	proto native void Play();
 	
-	proto native void Host();
+	proto native void Host(DSConfig config);
 	
 	proto ResourceName Id();
 }
 
 // -------------------------------------------------------------------------
 // Workshop item
-class WorkshopItem extends BaseWorkshopItem
+class WorkshopItem extends DownloadableItem
 {
 
 	private void WorkshopItem()
@@ -357,30 +415,8 @@ class WorkshopItem extends BaseWorkshopItem
 	\brief Is this item subscribed? 
 	*/
 	proto native bool IsSubscribed();
-	/**
-	\brief Request download of this item
-	*/
-	proto native void Download(BackendCallback callback, Revision revision);
-	/**
-	\brief Delete local copy of an asset
-	*/
-	proto native void DeleteLocally();
-	/**
-	\brief Request upload of this item
-	*/
-	proto native void Upload();
-	/**
-	\brief Request delete of this item from the backend storage
-	*/
-	proto native void DeleteFromBackend(BackendCallback callback);
-	/**
-	\brief Cancel upload or download
-	*/
-	proto native void Cancel();
-	/**
-	\brief Request detail info
-	*/
-	proto native void AskDetail(BackendCallback callback);	
+
+
 	/**
 	\brief Load revision's dependency list
 	*/
@@ -414,10 +450,6 @@ class WorkshopItem extends BaseWorkshopItem
 	*/
 	proto native int GetReportType();
 
-	/**
-	\brief Get Download/ Upload progress in range <0.0. .. 1.0>
-	*/
-	proto native float GetProgress();
 
 	/**
 	\brief Get current state flags (EWorkshopItemState)
@@ -468,20 +500,9 @@ class WorkshopItem extends BaseWorkshopItem
 	*/
 	proto native bool IsProcessed();
 	
-	/**
-	\brief Get thumbnail image
-	*/
-	proto native BackendImage Thumbnail();
-	
-	
 	proto native void Enable(bool enable);
 	proto native bool IsEnabled();
 
-	/**
-	\brief Is the local version the latest one?
-	*/
-	proto native bool HasLatestVersion();
-	
 	/**
 	\brief Get summary
 	*/
@@ -503,8 +524,6 @@ class WorkshopItem extends BaseWorkshopItem
 	
 	proto native void ResumeDownload(BackendCallback callback);
 	
-	proto native string Id();
-	
 	/**
 	\brief Is there enough space on the local storage
 	*/
@@ -513,14 +532,7 @@ class WorkshopItem extends BaseWorkshopItem
 	\brief True if not only enabled, but actually loaded
 	*/
 	proto native bool IsLoaded();
-	
-	proto native int GetRevisions(out notnull array<Revision> revisions);
-	
-	/**
-	\brief Returns currently used revision or null if no revision is downloaded
-	*/
-	proto native Revision GetActiveRevision();
-	
+		
 	proto native bool HasAnyTag(notnull array<WorkshopTag> tags);
 	
 	/**
@@ -548,8 +560,7 @@ class WorkshopItem extends BaseWorkshopItem
 	proto native string GetBackendEnv();
 	
 	proto native string GetPath();
-
-	proto native EWorkshopItemType GetType();
+	
 };
 
 
@@ -629,7 +640,7 @@ class WorkshopCallback : Managed
 
 // -------------------------------------------------------------------------
 // Workshop API access
-class WorkshopApi extends WorkshopCatalogue
+class WorkshopApi extends DownloadableCatalogue
 {
 
 	private void WorkshopApi()
@@ -694,14 +705,6 @@ class WorkshopApi extends WorkshopCatalogue
 	
 	proto native MissionWorkshopItem GetInGameScenario(ResourceName sResource);
 	
-	proto native int GetTotalOfflineItemsCount();
-	
-	proto native void ScanOfflineItems();
-	
-	proto native int GetOfflineItems(out notnull array<WorkshopItem> items);
-	
-	proto native bool NeedScan();
-	
 	proto native bool ReloadWithAddons();
 	
 	/**
@@ -713,23 +716,29 @@ class WorkshopApi extends WorkshopCatalogue
 	
 	proto native int GetPageScenarios(out array<MissionWorkshopItem> items, int page, int pageSize);
 	
-	/**
-	\brief Destroy items.
-	*/
-	proto native void Cleanup();
-	
-	proto native int GetBannedItems(out notnull array<string> items);
 	
 	/**
 	\brief Triggers OnSuccess when check for banned/up-to-date downloaded addons has finished
 	*/
 	proto native void OnItemsChecked(BackendCallback callback);
 	
+	proto native int GetOfflineItems(out notnull array<WorkshopItem> items);
+	
+	proto native bool NeedScan();
 	/**
-	\brief Create a workshop item. DEBUG API
+	\brief Get page content, returns current count of items on active page
+	\param item items Array of Workshop Items
 	*/
-	proto native ref WorkshopItem GetWorkshopItem(string id);
-
+	proto native int GetPageItems( out array<WorkshopItem> items );
+	
+	/**
+	\brief Searches for a WorkshopItem
+	\param item output object - user is responsible for the ownership -> should hold it by a strong ref
+	\param id WorkshopItem id to SearchFunctor
+	\param callback callback for backend requests
+	\return true if all data are ready, false if data are being loaded from the backend -> wait for the callback
+	*/
+	proto bool FindItemOnline(out WorkshopItem item, string id, BackendCallback callback);
 };
 
 // -------------------------------------------------------------------------

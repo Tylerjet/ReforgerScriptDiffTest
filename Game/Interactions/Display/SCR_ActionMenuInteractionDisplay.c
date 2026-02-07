@@ -529,25 +529,29 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		
 		// Bold assumption that can be done is that if this display is shown,
 		// the main camera is used for collecting the actions
-		CameraBase currentCamera = GetGame().GetCameraManager().CurrentCamera();
-		if (currentCamera)
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (cameraManager)
 		{
-			vector camTM[4];
-			currentCamera.GetWorldCameraTransform(camTM);
-			vector toActionDir = (worldPosition - camTM[3]).Normalized();	
-			float d = vector.Dot(toActionDir, camTM[2]);
-			const float threshold = 0.5;
-			const float invThreshold = 1.0 / 0.5;
-			// Action is "behind view"
-			if (d < threshold)
+			CameraBase currentCamera = cameraManager.CurrentCamera();
+			if (currentCamera)
 			{
-				float stickiness = 1.0;
-				// Use this to blend towards "full backwards" smoothly
-				if (d > 0.0)
-					stickiness = Math.Clamp(1.0 - (d * invThreshold), 0.0, 1.0);
-				
-				clampedPosition[1] = Math.Lerp(clampedPosition[1], max[1], stickiness);
-				clamped = true;
+				vector camTM[4];
+				currentCamera.GetWorldCameraTransform(camTM);
+				vector toActionDir = (worldPosition - camTM[3]).Normalized();	
+				float d = vector.Dot(toActionDir, camTM[2]);
+				const float threshold = 0.5;
+				const float invThreshold = 1.0 / 0.5;
+				// Action is "behind view"
+				if (d < threshold)
+				{
+					float stickiness = 1.0;
+					// Use this to blend towards "full backwards" smoothly
+					if (d > 0.0)
+						stickiness = Math.Clamp(1.0 - (d * invThreshold), 0.0, 1.0);
+					
+					clampedPosition[1] = Math.Lerp(clampedPosition[1], max[1], stickiness);
+					clamped = true;
+				}
 			}
 		}
 		

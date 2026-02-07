@@ -74,7 +74,7 @@ class SCR_FlagComponent: ScriptComponent
 		
 			slotManager.GetSlotInfos(slots);
 		
-			foreach(EntitySlotInfo slot : slots)
+			foreach (EntitySlotInfo slot : slots)
 			{
 				IEntity flag = slot.GetAttachedEntity();
 				if (flag)

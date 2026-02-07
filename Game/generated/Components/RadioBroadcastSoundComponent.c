@@ -9,11 +9,11 @@ Do not modify, this script is generated
 * @{
 */
 
-class RadioBroadcastSoundComponentClass: SimpleSoundComponentClass
+class RadioBroadcastSoundComponentClass: SoundComponentClass
 {
 };
 
-class RadioBroadcastSoundComponent: SimpleSoundComponent
+class RadioBroadcastSoundComponent: SoundComponent
 {
 };
 

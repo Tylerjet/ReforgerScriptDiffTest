@@ -638,6 +638,132 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void RequestSetGroupSlave(RplId compID, RplId slaveID)
+	{
+		RPC_DoSetGroupSlave(compID, slaveID);
+		//Call next method later to be sure that SCR_AIGroup was replicated to the client succesfully (temporary solution)
+		GetGame().GetCallqueue().CallLater(RpcWrapper, 2000, false, compID, slaveID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RpcWrapper(RplId compID, RplId slaveID)
+	{
+		Rpc(RPC_DoSetGroupSlave, compID, slaveID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoSetGroupSlave(RplId masterGroupID, RplId slaveGroupID)
+	{
+		SCR_AIGroup masterGroup, group;
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(masterGroupID));
+		if (!rplComp)
+			return;
+		
+		masterGroup = SCR_AIGroup.Cast(rplComp.GetEntity());
+		if (!masterGroup)
+			return;
+		
+		rplComp = RplComponent.Cast(Replication.FindItem(slaveGroupID));
+		if (!rplComp)
+			return;
+		
+		group = SCR_AIGroup.Cast(rplComp.GetEntity());
+		if (!group)
+			return;
+		
+		masterGroup.SetSlave(group);
+		group.GetOnAgentRemoved().Insert(OnAIMemberRemoved);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoRemoveAIMemberFromGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
+	{		
+		SCR_ChimeraCharacter AIMember;
+		array<SCR_ChimeraCharacter> AIMembers;
+		GetAIMembers(groupRplCompID, aiCharacterComponentID, AIMembers, AIMember);
+		if (!AIMembers || !AIMember)
+			return;
+		
+		AIMembers.RemoveItem(AIMember);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void GetAIMembers(RplId groupRplCompID, RplId aiCharacterComponentID, out array<SCR_ChimeraCharacter> members, out SCR_ChimeraCharacter AIMember)
+	{
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(aiCharacterComponentID));
+		if (!rplComp)
+			return;
+
+		AIMember = SCR_ChimeraCharacter.Cast(rplComp.GetEntity());
+		if (!AIMember)
+			return;
+		
+		rplComp = RplComponent.Cast(Replication.FindItem(groupRplCompID));
+		if (!rplComp)
+			return;
+		
+		SCR_AIGroup group = SCR_AIGroup.Cast(rplComp.GetEntity());
+		if (!group)
+			return;
+		
+		members = group.GetAIMembers();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AskRemoveAiMemberFromGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
+	{
+		RPC_DoRemoveAIMemberFromGroup(groupRplCompID, aiCharacterComponentID);
+		Rpc(RPC_DoRemoveAIMemberFromGroup, groupRplCompID, aiCharacterComponentID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AskAddAiMemberToGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
+	{
+		RPC_DoAddAIMemberToGroup(groupRplCompID, aiCharacterComponentID);
+		Rpc(RPC_DoAddAIMemberToGroup, groupRplCompID, aiCharacterComponentID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoAddAIMemberToGroup(RplId groupRplCompID, RplId aiCharacterComponentID)
+	{
+		SCR_ChimeraCharacter AIMember;
+		array<SCR_ChimeraCharacter> AIMembers;
+		GetAIMembers(groupRplCompID, aiCharacterComponentID, AIMembers, AIMember);
+		if (!AIMembers || !AIMember)
+			return;
+		
+		AIMembers.Insert(AIMember);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnAIMemberRemoved(SCR_AIGroup group, AIAgent agent)
+	{
+		if (!group || !agent)
+			return;
+		
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(agent.GetControlledEntity());
+		if (!character)
+			return;
+		
+		RplId groupCompRplID, characterCompRplID;
+		RplComponent rplComp = RplComponent.Cast(group.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+		
+		groupCompRplID = rplComp.Id();
+		
+		rplComp = RplComponent.Cast(character.FindComponent(RplComponent));
+		if (!rplComp)
+			return;
+
+		characterCompRplID = rplComp.Id();
+		AskRemoveAiMemberFromGroup(groupCompRplID, characterCompRplID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool GetConfirmedByPlayer()
 	{
 		return m_bConfirmedByPlayer;

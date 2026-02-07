@@ -40,7 +40,11 @@ class ScriptedCameraItem : BaseScriptedCameraItem
 	
 	float GetBaseFOV()
 	{
-		return GetGame().GetCameraManager().GetFirstPersonFOV();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+
+		return cameraManager.GetFirstPersonFOV();
 	}
 			
 	//! data 

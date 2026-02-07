@@ -46,6 +46,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	protected bool m_fDelayedControlSchemeChangeRunning = false;
 	protected bool m_bIsUsingGamepad;
 	protected SCR_ETutorialSupplyTruckWaypointMode m_eWaypointTruckPosition = SCR_ETutorialSupplyTruckWaypointMode.NONE;
+	protected float m_fStageTimestamp;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
@@ -242,8 +243,8 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		m_SupplyTruckComponent.AddSupplies(500);
 		SCR_CampaignBase baseChotain = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
 		
-		if (baseChotain && baseChotain.GetSupplies() < 800)
-			baseChotain.AddSupplies(800 - baseChotain.GetSupplies());
+		if (baseChotain && baseChotain.GetSupplies() < 950)
+			baseChotain.AddSupplies(950 - baseChotain.GetSupplies());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -730,6 +731,13 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void OnStructureBuilt(SCR_CampaignBase base, IEntity structure)
+	{
+		if (m_Stage)
+			m_Stage.OnStructureBuilt(base, structure);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
 	{
 		m_bPlayerSpawned = true;
@@ -758,6 +766,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 			
 			SCR_CampaignBase chotain = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
 			chotain.SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA);
+			//chotain.SpawnComposition(ECampaignCompositionType.HOSPITAL);
 			chotain.SpawnComposition(ECampaignCompositionType.ARMORY);
 			chotain.SpawnComposition(ECampaignCompositionType.SUPPLIES);
 			
@@ -831,6 +840,12 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	float GetStageDuration()
+	{
+		return Replication.Time() - m_fStageTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void FinishStage(SCR_BaseCampaignTutorialStage stage, SCR_ECampaignTutorialStage nextStage = -1)
 	{
 		if (m_wWaypoint)
@@ -883,6 +898,7 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		{
 			if (stageInfo.GetIndex() == m_eStage)
 			{
+				m_fStageTimestamp = Replication.Time();
 				m_Stage = SCR_BaseCampaignTutorialStage.Cast(GetGame().SpawnEntity(stageInfo.GetClassName().ToType()));
 				break;
 			}
@@ -1189,6 +1205,7 @@ enum SCR_ECampaignTutorialStage
 	DISMOUNTING,
 	CONFLICT_TOUR_ARMORY,
 	CONFLICT_TOUR_BARRACKS,
+	//CONFLICT_TOUR_FIELDHOSPITAL,
 	CONFLICT_TOUR_ANTENNA,
 	CONFLICT_TOUR_HQ,
 	CONFLICT_HQ_INFO,

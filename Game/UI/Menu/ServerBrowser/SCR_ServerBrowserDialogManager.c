@@ -24,6 +24,8 @@ class SCR_ServerBrowserDialogManager
 	const string TAG_BACKEND_TIMEOUT			= "BACKEND_TIMEOUT"; 
 	const string TAG_KICK_DEFAULT 				= "DEFAULT_ERROR";
 	
+	protected const int MAX_AUTO_REJOINS = 3;
+	
 	// References 
 	protected Room m_JoinRoom;
 	protected SCR_RoomModsManager m_ModManager;
@@ -188,7 +190,7 @@ class SCR_ServerBrowserDialogManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void DisplayReconnectDialog(Room roomToJoin, string strDetail = "")
+	void DisplayReconnectDialog(Room roomToJoin, int time, string strDetail = "")
 	{
 		// Check dialog 
 		if (!m_CurrentKickDialog)
@@ -222,10 +224,40 @@ class SCR_ServerBrowserDialogManager
 		// Set Messages 
 		dialog.SetMessage(kickPreset.m_sMessage);
 		
-		SCR_ErrorDialog errorDialog = SCR_ErrorDialog.Cast(m_CurrentKickDialog.GetRootWidget().FindHandler(SCR_ErrorDialog));
-		if (errorDialog)
+		SCR_RejoinDialog rejoinDialog = SCR_RejoinDialog.Cast(m_CurrentKickDialog.GetRootWidget().FindHandler(SCR_RejoinDialog));
+		if (rejoinDialog)
 		{
-			errorDialog.SetErrorDetail(strDetail); 
+			rejoinDialog.SetErrorDetail(strDetail);
+			
+			string errorStr = kickPreset.m_sMessage;
+			rejoinDialog.SetErrorMessage(errorStr);
+			
+			// Check rejoin attempt
+			string strAttempt = GameSessionStorage.s_Data["m_iRejoinAttempt"];
+			int attempt = strAttempt.ToInt();
+			
+			if (attempt <= MAX_AUTO_REJOINS)
+			{
+				errorStr += "\n" + "#AR-ServerBrowser_JoinMessageDefault";
+				rejoinDialog.SetErrorMessage(errorStr);
+				
+				dialog.SetMessage(errorStr + " " + rejoinDialog.GetTimer());
+				
+				// Setup timer
+				rejoinDialog.GetEventOnTimerChanged().Insert(OnDialogTimerChange);
+				
+				rejoinDialog.ShowLoading(true);
+				rejoinDialog.SetTimer(time);
+				rejoinDialog.RunTimer(true);
+			}
+			else
+			{
+				dialog.SetMessage(errorStr);
+				
+				// Block rejoin 
+				rejoinDialog.ShowLoading(false);
+				m_CurrentKickDialog.FindButton("confirm").SetEnabled(false);
+			}
 		}
 		
 		
@@ -234,16 +266,41 @@ class SCR_ServerBrowserDialogManager
 		{	
 			// Title 
 			dialog.SetTitle(kickPreset.m_sTitle);
-			
-			// Message  
-			string errorStr = kickPreset.m_sMessage;
-
-			dialog.SetMessage(errorStr +  "\n" + "#AR-ServerBrowser_RejoinLastServer");
 
 			// Reconnect button 
 			dialog.m_OnConfirm.Insert(OnDialogConfirm);
 			dialog.m_OnCancel.Insert(OnDialogCancel);
 			dialog.m_OnClose.Insert(OnDialogClose);
+		}
+	}
+	
+	protected ref ScriptInvoker<> Event_OnRejoinTimerOver;
+
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeEventOnRejoinTimerOver()
+	{
+		if (Event_OnRejoinTimerOver)
+			Event_OnRejoinTimerOver.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnRejoinTimerOver()
+	{
+		if (!Event_OnRejoinTimerOver)
+			Event_OnRejoinTimerOver = new ScriptInvoker();
+
+		return Event_OnRejoinTimerOver;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDialogTimerChange(SCR_RejoinDialog dialog, int time)
+	{
+		m_CurrentKickDialog.SetMessage(dialog.GetErrorMessage() +  " " + time);
+		
+		if (time == 0)
+		{
+			InvokeEventOnRejoinTimerOver();
+			m_CurrentKickDialog.Close();
 		}
 	}
 	
@@ -627,6 +684,27 @@ class SCR_ServerBrowserDialogManager
 			bool enable = limit - count > 0;
 			btnConfirm.SetEnabled(enable);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ServerDetailsDialog CreateRoomDetails(Room room, array<ref SCR_WorkshopItem> items)
+	{
+		//SCR_AddonListDialog dialog = SCR_AddonListDialog.CreateItemsList(items, "SERVER_DETAILS", CONFIG_DIALOGS);
+		SCR_ServerDetailsDialog dialog = SCR_ServerDetailsDialog.CreateServerDetails(room, items, "SERVER_DETAILS", CONFIG_DIALOGS); 
+		m_CurrentDialog = dialog;
+		
+		dialog.SetTitle(room.Name());
+		dialog.SetMessage("#AR-ServerBrowser_IP: " + room.HostAddress());
+		
+		return dialog;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void FillRoomDetailsMods(array<ref SCR_WorkshopItem> items)
+	{
+		SCR_ServerDetailsDialog dialog = SCR_ServerDetailsDialog.Cast(m_CurrentDialog);
+		dialog.m_aItems = items;
+		dialog.FillModList();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -46,6 +46,10 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 		if (compartments.IsEmpty())
 			return false;
 		
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(entity.GetOwner().FindComponent(DamageManagerComponent));
+		if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
+			return false;
+		
 		return true;
 	}
 };

@@ -22,6 +22,7 @@ class SCR_CampaignBase : GenericEntity
 	static ref ScriptInvoker s_OnBaseCapture = new ScriptInvoker();
 	static ref ScriptInvoker s_OnSpawnPointOwnerChanged = new ScriptInvoker();
 	static ref ScriptInvoker s_OnMapItemInfoChanged = new ScriptInvoker();
+	static ref ScriptInvoker s_OnServiceRegistered = new ScriptInvoker();
 		
 	//**********//
 	//ATTRIBUTES//
@@ -160,7 +161,7 @@ class SCR_CampaignBase : GenericEntity
 	protected bool m_bLoadStateBarracksBuilt;
 	protected float m_fLastEnemyContactTimestamp;
 	protected bool m_bBuildingsSpawned;
-	protected SCR_FactionControlComponent m_FactionControl;
+	protected SCR_FactionAffiliationComponent m_FactionControl;
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected SCR_CampaignBarracksComponent m_BarrackComponent;
 	protected SCR_ArmoryComponent m_ArmoryComponent;
@@ -334,7 +335,7 @@ class SCR_CampaignBase : GenericEntity
 			return -1;
 		
 		//reduce spawning cost if barracks are built
-		if (m_SlotBarracks && m_SlotBarracks.IsOccupied())
+		if (m_aServices.Get(ECampaignServicePointType.BARRACKS))
 			return campaign.GetSpawnCost() / 2;
 		else 
 			return campaign.GetSpawnCost();
@@ -451,6 +452,7 @@ class SCR_CampaignBase : GenericEntity
 			if (supportClass)
 				supportClass.GenerateCaptureTasks(this);
 		}
+		SCR_GameModeCampaignMP.s_OnSignalChanged.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -519,8 +521,6 @@ class SCR_CampaignBase : GenericEntity
 		
 		SCR_CampaignFaction prevOwningFaction = GetOwningFaction();
 		
-		m_OwningFactionPrevious = GetOwningFaction();
-		
 		if (retakenByRemnants)
 			SetOwningFaction(null);
 		else
@@ -579,7 +579,7 @@ class SCR_CampaignBase : GenericEntity
 		// Change barrack group according to owner's faction, if it was built
 		if (m_BarrackComponent && m_FactionControl)
 		{
-			SCR_CampaignFaction owningFaction = SCR_CampaignFaction.Cast(m_FactionControl.GetFaction());
+			SCR_CampaignFaction owningFaction = SCR_CampaignFaction.Cast(m_FactionControl.GetAffiliatedFaction());
 			
 			if (!owningFaction)
 				m_BarrackComponent.StopHandler();
@@ -768,6 +768,12 @@ class SCR_CampaignBase : GenericEntity
 	bool GetCanBeHQ()
 	{
 		return m_bCanBeHQ;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetDisableWhenUnusedAsHQ()
+	{
+		return m_bDisableWhenUnusedAsHQ;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1012,12 +1018,12 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void RegisterAsParentBase(notnull SCR_CampaignServiceComponent comp)
+	void RegisterAsParentBase(notnull SCR_CampaignServiceComponent comp, bool add)
 	{
 		if (IsProxy())
 			return;
 		
-		comp.SetParentBaseID(m_RplComponent.Id());
+		comp.SetParentBaseID(m_RplComponent.Id(), add);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1117,6 +1123,12 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void UpdatePreviousFaction()
+	{
+		m_OwningFactionPrevious = GetOwningFaction();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Event which is triggered when the owning faction changes
 	protected void OnOwningFactionChanged(Faction newFaction)
 	{
@@ -1124,10 +1136,7 @@ class SCR_CampaignBase : GenericEntity
 		m_aDebugShapes.Clear();
 #endif
 		
-		if (newFaction != GetOwningFaction())
-		{
-			m_OwningFactionPrevious = GetOwningFaction();
-		}
+		GetGame().GetCallqueue().CallLater(UpdatePreviousFaction, 1000, false);
 		
 		RefreshVehicleSpawners();
 		
@@ -1139,13 +1148,7 @@ class SCR_CampaignBase : GenericEntity
 				SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 				
 				if (baseManager)
-				{
-					// If the base was neutral before, update signal just for the capturing faction
-					if (m_OwningFactionPrevious)
-						baseManager.UpdateBasesSignalCoverage();
-					else
-						baseManager.UpdateBasesSignalCoverage(GetOwningFaction());
-				}
+					baseManager.UpdateBasesSignalCoverage();
 			}
 			
 			// Reset timer for reinforcements
@@ -1993,18 +1996,42 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnServiceBuilt(notnull SCR_CampaignServiceComponent service)
+	void OnServiceBuilt(notnull SCR_CampaignServiceComponent service, bool add)
 	{
 		ECampaignServicePointType serviceType = service.GetType();
-		m_aServices.Insert(serviceType, service);
+		
+		if (add)
+			m_aServices.Insert(serviceType, service);
+		else
+			m_aServices.Remove(serviceType);
+		
 		IEntity structure = service.GetOwner();
+		
+		s_OnServiceRegistered.Invoke(this);
 		
 		if (structure)
 		{
 			SCR_CampaignServiceMapDescriptorComponent comp = SCR_CampaignServiceMapDescriptorComponent.Cast(structure.FindComponent(SCR_CampaignServiceMapDescriptorComponent));
 		
-			if (comp)
+			if (comp && add)
 				comp.SetParentBase(this);
+			else
+				comp.SetParentBase(null);
+		}
+		
+		//Has to be done also on clients
+		if (serviceType == ECampaignServicePointType.LIGHT_VEHICLE_DEPOT || serviceType == ECampaignServicePointType.HEAVY_VEHICLE_DEPOT)
+		{
+			SCR_CampaignEntitySpawnerComponent spawnerComponent = SCR_CampaignEntitySpawnerComponent.Cast(service.GetOwner().FindComponent(SCR_CampaignEntitySpawnerComponent)); //AssignBase
+			if (!spawnerComponent)
+				return;
+				
+			if (add)
+				spawnerComponent.AssignBase(this);
+			else
+				m_aVehicleSpawners.RemoveItem(spawnerComponent);
+				
+			RefreshVehicleSpawners();
 		}
 		
 		if (IsProxy())
@@ -2016,33 +2043,49 @@ class SCR_CampaignBase : GenericEntity
 		{
 			case ECampaignServicePointType.SUPPLY_DEPOT:
 			{
-				SetSuppliesMax(GetSuppliesMax() + SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY);
+				if (add)
+					SetSuppliesMax(GetSuppliesMax() + SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY);
+				else
+					SetSuppliesMax(GetSuppliesMax() - SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY);
 				break;
+				
 			}
 			
 			case ECampaignServicePointType.ARMORY:
 			{
-				m_ArmoryComponent = SCR_ArmoryComponent.Cast(service.GetOwner().FindComponent(SCR_ArmoryComponent));
-				break;
-			}
-			
-			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
-			{
-				RefreshVehicleSpawners();
-				break;
-			}
-			
-			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
-			{
-				RefreshVehicleSpawners();
+				if (add)
+					m_ArmoryComponent = SCR_ArmoryComponent.Cast(service.GetOwner().FindComponent(SCR_ArmoryComponent));
+				else
+					m_ArmoryComponent = null;
 				break;
 			}
 			
 			case ECampaignServicePointType.RADIO_ANTENNA:
 			{
-				m_bAntennaBuilt = true;
-				OnAntennaBuilt();
+				if (add)
+				{
+					m_bAntennaBuilt = true;
+					OnAntennaBuilt();
+				}
+				else
+				{
+					m_bAntennaBuilt = false;
+					OnAntennaBuilt();
+				}
 				break;
+			}
+			
+			case ECampaignServicePointType.BARRACKS:
+			{
+				SCR_CampaignBarracksComponent barrackComp = SCR_CampaignBarracksComponent.Cast(service.GetOwner().FindComponent(SCR_CampaignBarracksComponent));
+					if (!barrackComp)
+						return;
+				
+				if (add)
+				{
+					AssignBarracks(barrackComp);
+					barrackComp.SetBase(this);
+				}
 			}
 		}
 		
@@ -2052,43 +2095,57 @@ class SCR_CampaignBase : GenericEntity
 			{
 				case ECampaignServicePointType.SUPPLY_DEPOT:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_SUPPLY, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_SUPPLY, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
 				/*case ECampaignServicePointType.FUEL_DEPOT:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_FUEL, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_FUEL, m_iCallsign, param: m_iBaseID);
 					break;
 				}*/
 				
 				case ECampaignServicePointType.ARMORY:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_ARMORY, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_ARMORY, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
 				case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_VEHICLES_LIGHT, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_VEHICLES_LIGHT, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
 				case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_VEHICLES_HEAVY, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_VEHICLES_HEAVY, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
 				case ECampaignServicePointType.RADIO_ANTENNA:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_ANTENNA, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_ANTENNA, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
 				case ECampaignServicePointType.BARRACKS:
 				{
-					owner.SendHQMessage(SCR_ERadioMsg.BUILT_BARRACKS, param: m_iBaseID);
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_BARRACKS, m_iCallsign, param: m_iBaseID);
+					break;
+				}
+				
+				case ECampaignServicePointType.FIELD_HOSPITAL:
+				{
+					if (add)
+						owner.SendHQMessage(SCR_ERadioMsg.BUILT_FIELD_HOSPITAL, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 			}
@@ -2179,7 +2236,7 @@ class SCR_CampaignBase : GenericEntity
 		if (!service)
 			return;
 		
-		RegisterAsParentBase(service);
+		RegisterAsParentBase(service, true);
 	};
 	
 	//*********************//
@@ -2247,53 +2304,77 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SpawnBuildings()
+	void SpawnBuildings(SCR_CampaignBaseStruct loadedData = null)
 	{
-		m_bBuildingsSpawned = true;
-		
 		// These compositions need to be built everywhere
 		SpawnComposition(ECampaignCompositionType.HQ);
+		
+		if (loadedData)
+		{
+			array<ECampaignServicePointType> types = {};
+			SCR_Enum.GetEnumValues(ECampaignServicePointType, types);
+			
+			ResourceName prefab;
+			vector position;
+			vector rotation;
+			IEntity service;
+			SCR_CampaignServiceComponent serviceComponent;
+			EntitySpawnParams params;
+			
+			foreach (ECampaignServicePointType type : types)
+			{
+				if (GetBaseService(type))
+					continue;
+					
+				prefab = loadedData.GetServicePrefab(type);
 				
+				if (!prefab)
+					continue;
+				
+				position = loadedData.GetServicePosition(type);
+				
+				if (position == vector.Zero)
+					continue;
+				
+				rotation = loadedData.GetServiceRotation(type);
+				
+				params = EntitySpawnParams();
+				GetWorldTransform(params.Transform);
+				params.TransformMode = ETransformMode.WORLD;
+				Math3D.AnglesToMatrix(rotation, params.Transform);
+				params.Transform[3] = position;
+				
+				service = GetGame().SpawnEntityPrefab(Resource.Load(prefab), null, params);
+				
+				if (!service)
+					continue;
+				
+				serviceComponent = SCR_CampaignServiceComponent.Cast(service.FindComponent(SCR_CampaignServiceComponent));
+		
+				if (!serviceComponent)
+					continue;
+				
+				RegisterAsParentBase(serviceComponent, true);
+			}
+			
+			return;
+		}
+		
 		if (GetType() != CampaignBaseType.RELAY)
 		{
 			// Build services automatically when prebuilt attribute is checked or no-slot composition is used
-			
-				SpawnComposition(ECampaignCompositionType.FUEL, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.LIGHT_VEHICLE_DEPOT, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.HEAVY_VEHICLE_DEPOT, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.ARMORY, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.HOSPITAL, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.BARRACKS, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.SUPPLIES, !m_bPrebuilt);
-				SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA, !m_bPrebuilt);
-			
-				SpawnBuildingsAfterResume();
+			SpawnComposition(ECampaignCompositionType.FUEL, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.LIGHT_VEHICLE_DEPOT, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.HEAVY_VEHICLE_DEPOT, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.ARMORY, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.HOSPITAL, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.BARRACKS, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.SUPPLIES, !m_bPrebuilt);
+			SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA, !m_bPrebuilt);
 		}
 		
-		if (m_bIsHQ && !SCR_GameModeCampaignMP.GetInstance().IsTutorial())
+		if (m_bIsHQ && !SCR_GameModeCampaignMP.GetInstance().IsTutorial() && !SCR_GameModeCampaignMP.IsScenarioResumed())
 			SpawnStartingVehicles();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SpawnBuildingsAfterResume()
-	{
-		if (m_bLoadStateVehicleDepotBuilt)
-			SpawnComposition(ECampaignCompositionType.LIGHT_VEHICLE_DEPOT);
-		
-		if (m_bLoadStateArmoryBuilt)
-			SpawnComposition(ECampaignCompositionType.ARMORY);
-		
-		if (m_bLoadStateHeavyVehicleDepotBuilt)
-			SpawnComposition(ECampaignCompositionType.HEAVY_VEHICLE_DEPOT);
-		
-		if (m_bLoadStateSupplyDepotBuilt)
-			SpawnComposition(ECampaignCompositionType.SUPPLIES);
-		
-		if (m_bLoadStateAntennaBuilt)
-			SpawnComposition(ECampaignCompositionType.RADIO_ANTENNA);
-		
-		if (m_bLoadStateBarracksBuilt)
-			SpawnComposition(ECampaignCompositionType.BARRACKS);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2629,22 +2710,15 @@ class SCR_CampaignBase : GenericEntity
 	protected void SetOwningFaction(SCR_CampaignFaction faction)
 	{
 		if (m_FactionControl)
-			m_FactionControl.SetFaction(faction);
+			m_FactionControl.SetAffiliatedFaction(faction);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void SetOwningFaction(int factionId)
-	{
-		if (m_FactionControl)
-			m_FactionControl.SetFaction(factionId);
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! Returns the owning faction
 	SCR_CampaignFaction GetOwningFaction()
 	{
 		if (m_FactionControl)
-			return SCR_CampaignFaction.Cast(m_FactionControl.GetFaction());
+			return SCR_CampaignFaction.Cast(m_FactionControl.GetAffiliatedFaction());
 		else return null;
 	}
 	
@@ -2759,9 +2833,10 @@ class SCR_CampaignBase : GenericEntity
 			if (m_bAntennaBuilt)
 				SetSignalRange(GetSignalRange() + m_iAntennaSignalBoost);
 			else
-				SetSignalRange(0);
+				SetSignalRange(GetSignalRange() - m_iAntennaSignalBoost);
 			
 			LinkBases(true);
+			
 		}
 		else
 		{
@@ -2975,9 +3050,10 @@ class SCR_CampaignBase : GenericEntity
 		
 		SCR_EntityAssetList assetList = GetOwningFaction().GetVehicleList();
 		
-		foreach(SCR_CampaignEntitySpawnerComponent spawner : m_aVehicleSpawners)
+		foreach (SCR_CampaignEntitySpawnerComponent spawner : m_aVehicleSpawners)
 		{
-			spawner.ChangeAssetList(assetList);
+			if (spawner)
+				spawner.ChangeAssetList(assetList);
 		}
 	}
 	//------------------------------------------------------------------------------------------------
@@ -3012,6 +3088,13 @@ class SCR_CampaignBase : GenericEntity
 	void InitializeBase()
 	{
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		SCR_MapDescriptorComponent mapDescriptorComponent = SCR_MapDescriptorComponent.Cast(FindComponent(SCR_MapDescriptorComponent));
+		
+		if (mapDescriptorComponent)
+		{
+			m_MapItem = mapDescriptorComponent.Item();
+		}
 		
 		// HQ overriden from header, update base type
 		if (GetType() == CampaignBaseType.MAIN && !m_bIsHQ)
@@ -3304,7 +3387,6 @@ class SCR_CampaignBase : GenericEntity
 		}
 	}
 	
-	
 	//****************//
 	//OVERRIDE METHODS//
 	//****************//
@@ -3319,7 +3401,17 @@ class SCR_CampaignBase : GenericEntity
 			return;
 		
 		if (GetGame().GetFactionManager().GetFactionIndex(GetOwningFaction()) != baseStruct.GetOwningFaction())
-			SetOwningFaction(baseStruct.GetOwningFaction());
+		{
+			FactionManager manager = GetGame().GetFactionManager();
+			if (!manager)
+				return;
+			
+			SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(manager.GetFactionByIndex(baseStruct.GetOwningFaction()));
+			if (!faction)
+				return;
+			
+			SetOwningFaction(faction);
+		}
 		
 		SCR_CampaignFaction faction = GetOwningFaction();
 		m_BuildingsFaction = SCR_CampaignFactionManager.GetInstance().GetCampaignFactionByIndex(baseStruct.GetBuildingsFaction());
@@ -3330,17 +3422,8 @@ class SCR_CampaignBase : GenericEntity
 		SetCallsignIndex(baseStruct.GetCallsignIndex());
 		AddSupplies(baseStruct.GetSupplies() - GetSupplies());
 		
-		// Inform the base that it has some services saved so it can spawn them along with other buildings
-		m_bLoadStateVehicleDepotBuilt = baseStruct.GetVehicleDepotBuilt();
-		m_bLoadStateArmoryBuilt = baseStruct.GetArmoryBuilt();
-		m_bLoadStateHeavyVehicleDepotBuilt = baseStruct.GetHeavyVehicleDepotBuilt();
-		m_bLoadStateSupplyDepotBuilt = baseStruct.GetSupplyDepotBuilt();
-		m_bLoadStateAntennaBuilt = baseStruct.GetAntennaBuilt();
-		m_bLoadStateBarracksBuilt = baseStruct.GetBarracksBuilt();
-		
-		// Building spawning has already been processed, take care of saved structures here instead
-		if (m_bBuildingsSpawned)
-			SpawnBuildingsAfterResume();
+		// Delay so we don't spawn stuff during init, and make sure prebuilt structures are already in the scene
+		GetGame().GetCallqueue().CallLater(SpawnBuildings, 1000, false, baseStruct);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3357,19 +3440,16 @@ class SCR_CampaignBase : GenericEntity
 		baseStruct.SetOwningFaction(GetGame().GetFactionManager().GetFactionIndex(GetOwningFaction()));
 		baseStruct.SetBuildingsFaction(fManager.GetFactionIndex(GetBuildingsFaction()));
 		baseStruct.SetSupplies(GetSupplies());
-		baseStruct.SetVehicleDepotBuilt(GetBaseService(ECampaignServicePointType.LIGHT_VEHICLE_DEPOT) != null);
-		baseStruct.SetArmoryBuilt(GetBaseService(ECampaignServicePointType.ARMORY) != null);
-		baseStruct.SetHeavyVehicleDepotBuilt(GetBaseService(ECampaignServicePointType.HEAVY_VEHICLE_DEPOT) != null);
-		baseStruct.SetSupplyDepotBuilt(GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT) != null);
-		baseStruct.SetAntennaBuilt(GetBaseService(ECampaignServicePointType.RADIO_ANTENNA) != null);
-		baseStruct.SetBarracksBuilt(GetBaseService(ECampaignServicePointType.BARRACKS) != null);
+		
+		if (!m_bPrebuilt)
+			baseStruct.SetBuildingsData(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		if (m_FactionControl)
-			writer.WriteInt(GetGame().GetFactionManager().GetFactionIndex(m_FactionControl.GetFaction()));
+			writer.WriteInt(GetGame().GetFactionManager().GetFactionIndex(m_FactionControl.GetAffiliatedFaction()));
 		else
 			writer.WriteInt(INVALID_FACTION_INDEX);
 		
@@ -3434,7 +3514,7 @@ class SCR_CampaignBase : GenericEntity
 		}
 		
 		m_RplComponent = RplComponent.Cast(FindComponent(RplComponent));
-		m_FactionControl = SCR_FactionControlComponent.Cast(FindComponent(SCR_FactionControlComponent));
+		m_FactionControl = SCR_FactionAffiliationComponent.Cast(FindComponent(SCR_FactionAffiliationComponent));
 		
 		if (!m_bEnabled)
 		{
@@ -3448,7 +3528,7 @@ class SCR_CampaignBase : GenericEntity
 			return;
 		
 		if (m_FactionControl)
-			m_FactionControl.GetOnFactionChanged().Insert(OnOwningFactionChanged);
+			m_FactionControl.GetOnFactionUpdate().Insert(OnOwningFactionChanged);
 		
 		//Not all bases will have supply component
 		m_SuppliesComponent = SCR_CampaignSuppliesComponent.Cast(FindComponent(SCR_CampaignSuppliesComponent));
@@ -3627,6 +3707,7 @@ class SCR_CampaignBase : GenericEntity
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_SHOW_RELAYS, "", "Show relay position", "Conflict");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_INSTANT_CAPTURE, "", "Instant base capture", "Conflict");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_BASES_DIAG, "", "Enable bases diag", "Conflict");
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_NEW_BUILDING, "", "Enable free form building", "Conflict");
 #endif
 		if (!GetGame().GetWorldEntity())
 			return;

@@ -34,7 +34,7 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 
 		if ( !m_Owner || !m_wRoot )
 			return;
-		
+
 		m_pInventoryManager = InventoryStorageManagerComponent.Cast( owner.FindComponent( InventoryStorageManagerComponent ) );
 
 		//instantiate the preview manager
@@ -78,6 +78,10 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		if (m_bOpened)
 			return;
 
+		ChimeraCharacter character = ChimeraCharacter.Cast(m_Owner);
+		if (character && character.GetCharacterController() && character.GetCharacterController().IsUnconscious())
+			return;		
+		
     	GetGame().GetInputManager().AddActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
     	GetGame().GetInputManager().AddActionListener("CharacterDropItem", EActionTrigger.DOWN, Action_DropItem );
     	m_bOpened = true;
@@ -93,10 +97,10 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		s_wQuickSlotStorage =  GetGame().GetWorkspace().CreateWidgets( m_sQuickSlotGridLayout, parent );
 		if( !s_wQuickSlotStorage )
 			return;
-		s_pQuickSlotStorage = new SCR_InventoryStorageQuickSlotsUI( null, -1, null );
+		s_pQuickSlotStorage = new SCR_InventoryStorageQuickSlotsUI( null, null, null );
 		s_wQuickSlotStorage.AddHandler( s_pQuickSlotStorage );
-		s_pQuickSlotStorage.HighlightLastSelectedSlot();
 		s_pQuickSlotStorage.SetInitialQuickSlot();
+		s_pQuickSlotStorage.HighlightLastSelectedSlot();
 		
 		Show( true, UIConstants.FADE_RATE_DEFAULT, true );
 		BlurWidget wBlur = BlurWidget.Cast( m_wRoot.FindAnyWidget( "wBlur" ) );
@@ -138,7 +142,8 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	// called when the quickbar is closed by letting go the tab key
 	protected void QuickBarClosedOnly()
 	{
-		s_pQuickSlotStorage.SetQuickBarClosed();
+		if (s_pQuickSlotStorage)
+			s_pQuickSlotStorage.SetQuickBarClosed();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -180,12 +185,13 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
 	void Action_DropItem()
 	{
-		InventoryItemComponent selectedItem = s_pQuickSlotStorage.GetCurrentSlotItem();
-		if (selectedItem)
-		{
-			SCR_QuickSlotRefreshCB cb = new SCR_QuickSlotRefreshCB();
-			m_pInventoryManager.TryRemoveItemFromStorage(selectedItem.GetOwner(), selectedItem.GetParentSlot().GetStorage(), cb);
-		}
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
+		if (!storageManager)
+			return;
+		
+		SCR_CharacterInventoryStorageComponent storage = storageManager.GetCharacterStorage();
+		if (storage)
+			storage.DropCurrentItem();
 	}
 
 	//------------------------------------------------------------------------------------------------

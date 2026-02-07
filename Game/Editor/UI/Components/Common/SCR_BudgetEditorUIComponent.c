@@ -11,74 +11,78 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 	const string WIDGET_ICON_AREA = "IconArea";
 	const string WIDGET_LOCK_VISUALS = "LockVisuals";
 	
-	protected SCR_BudgetEditorComponent m_BudgetComponent;
+	protected SCR_BudgetEditorComponent m_BudgetManager;
 	protected ResourceName m_BudgetEntryPrefab;
 	
 	protected Widget m_Layout;
 	
-	protected bool m_bIsEnabled = true;
-	
 	private ref map<EEditableEntityBudget, Widget> m_BudgetWidgets = new map<EEditableEntityBudget, Widget>;
 	
-	protected void OnBudgetUpdate(EEditableEntityBudget budgetType, float updatedBudget, float maxBudget)
+	protected void OnBudgetMaxUpdate(EEditableEntityBudget budgetType, int currentBudgetValue, int maxBudgetValue)
 	{
 		TextWidget budgetWidget;
 		if (m_BudgetWidgets.Find(budgetType, budgetWidget))
 		{
-			SetWidgetData(budgetWidget, updatedBudget, maxBudget);
+			SetBudgetData(budgetWidget, currentBudgetValue, maxBudgetValue);
+			SetBudgetPreviewData(budgetWidget, 0, 0);
 		}
 	}
 	
-	protected void OnBudgetPreviewUpdate(EEditableEntityBudget budgetType, float previewBudgetValue, float budgetChange)
+	protected void OnBudgetUpdate(EEditableEntityBudget budgetType, int originalBudgetValue, int updatedBudgetValue, int maxBudgetValue)
 	{
-		Widget budgetWidget = m_BudgetWidgets.Get(budgetType);
-		if (budgetWidget)
+		TextWidget budgetWidget;
+		if (m_BudgetWidgets.Find(budgetType, budgetWidget))
 		{
-			SetWidgetPreviewData(budgetWidget, previewBudgetValue, budgetChange);
+			SetBudgetData(budgetWidget, updatedBudgetValue, maxBudgetValue);
+			SetBudgetPreviewData(budgetWidget, 0, 0);
 		}
 	}
 	
 	protected void OnBudgetAdd(SCR_EditableEntityCoreBudgetSetting budget, int maxBudget)
 	{
-		if (!budget || !m_Layout || m_BudgetEntryPrefab.IsEmpty() || m_BudgetWidgets.Contains(budget.GetBudgetType())) return;
-		
-		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
-
-		WorkspaceWidget workspace = game.GetWorkspace();
-		if (!workspace) return;
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		if (!workspace || !m_Layout || m_BudgetEntryPrefab.IsEmpty())
+			return;
 		
 		EEditableEntityBudget budgetType = budget.GetBudgetType();
+		if (m_BudgetWidgets.Contains(budgetType))
+			return;
 		
 		Widget budgetWidget = workspace.CreateWidgets(m_BudgetEntryPrefab, m_Layout);
-		
- 		int currentBudget = m_BudgetComponent.GetCurrentBudget(budgetType);
-		
-		SetWidgetData(budgetWidget, currentBudget, maxBudget, budget.GetInfo());
-		
-		m_Layout.SetVisible(m_BudgetWidgets.Count() > 0);
+		SetBudgetData(budgetWidget, budget.GetCurrentBudget(), maxBudget, budget.GetInfo());
 		
 		m_BudgetWidgets.Insert(budgetType, budgetWidget);
+	}
+	
+	protected void OnBudgetPreviewUpdate(EEditableEntityBudget budgetType, float previewBudgetValue, float budgetChange)
+	{
+		Widget budgetWidget;
+		if (m_BudgetWidgets.Find(budgetType, budgetWidget))
+		{
+			SetBudgetPreviewData(budgetWidget, previewBudgetValue, budgetChange);
+		}
 	}
 	
 	protected void InitializeBudgets()
 	{
 		array<ref SCR_EditableEntityCoreBudgetSetting> budgets = {};
-		m_BudgetComponent.GetBudgets(budgets);
+		m_BudgetManager.GetBudgets(budgets);
 		
 		foreach (SCR_EditableEntityCoreBudgetSetting budget : budgets)
 		{
-			int maxBudget = m_BudgetComponent.GetMaxBudgetValue(budget.GetBudgetType());
+			int maxBudget;
+			m_BudgetManager.GetMaxBudgetValue(budget.GetBudgetType(), maxBudget);
+			
 			OnBudgetAdd(budget, maxBudget);
-		}	
+		}
 	}
 	
-	private void SetWidgetData(Widget budgetWidget, float budgetValue, int maxBudgetValue, SCR_UIInfo info = null)
+	private void SetBudgetData(Widget budgetWidget, int budgetValue, int maxBudgetValue, SCR_UIInfo info = null)
 	{
 		float budgetProgress;
 		if (maxBudgetValue > 0)
 		{
-			budgetProgress = budgetValue / maxBudgetValue;
+			budgetProgress = budgetValue / (float) maxBudgetValue;
 		}
 		else
 		{
@@ -91,26 +95,23 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 			budgetValueText.SetTextFormat("#AR-ValueUnit_Percentage", (budgetProgress * 100).ToString(-1, 0));
 		}
 		
-		if ((maxBudgetValue <= 0 && m_bIsEnabled) || (maxBudgetValue > 0 && !m_bIsEnabled))
+		bool isBudgetEnabled = maxBudgetValue > 0;
+		
+		//~ TODO: Currently budget percentage is hidden. This should still show the server percentage
+		if (budgetValueText)
+			budgetValueText.SetVisible(isBudgetEnabled);
+		
+		Widget lockVisuals = budgetWidget.FindAnyWidget(WIDGET_LOCK_VISUALS);
+		if (lockVisuals)
+			lockVisuals.SetVisible(!isBudgetEnabled);
+		
+		Widget iconVisuals = budgetWidget.FindAnyWidget(WIDGET_ICON_AREA);
+		if (iconVisuals)
 		{
-			m_bIsEnabled = (maxBudgetValue > 0);
-			
-			//~ TODO: Current;y budget percentage is hidden. This should still show the server percentage
-			if (budgetValueText)
-				budgetValueText.SetVisible(m_bIsEnabled);
-			
-			Widget lockVisuals = budgetWidget.FindAnyWidget(WIDGET_LOCK_VISUALS);
-			if (lockVisuals)
-				lockVisuals.SetVisible(!m_bIsEnabled);
-			
-			Widget iconVisuals = budgetWidget.FindAnyWidget(WIDGET_ICON_AREA);
-			if (iconVisuals)
-			{
-				if (!m_bIsEnabled)
-					iconVisuals.SetOpacity(m_fDisabledOpacity);
-				else 
-					iconVisuals.SetOpacity(1);
-			}
+			if (!isBudgetEnabled)
+				iconVisuals.SetOpacity(m_fDisabledOpacity);
+			else 
+				iconVisuals.SetOpacity(1);
 		}
 		
 		if (info)
@@ -124,25 +125,27 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!progressBarWidget)
 			return;
 		
-		SCR_RadialProgressBarUIComponent radialProgressBar = SCR_RadialProgressBarUIComponent.Cast(progressBarWidget.FindHandler(SCR_RadialProgressBarUIComponent));
-		if (!radialProgressBar)
+		SCR_RadialProgressBarUIComponent progressBar = SCR_RadialProgressBarUIComponent.Cast(progressBarWidget.FindHandler(SCR_RadialProgressBarUIComponent));
+		if (!progressBar)
 			return;
 		
-		if (m_bIsEnabled)
-			radialProgressBar.SetProgress(budgetProgress);
+		if (isBudgetEnabled)
+			progressBar.SetProgress(budgetProgress);
 		else 
-			radialProgressBar.SetProgress(0);
+			progressBar.SetProgress(0);
 	}
 	
-	private void SetWidgetPreviewData(Widget w, float previewBudgetValue, float budgetChange)
+	private void SetBudgetPreviewData(Widget w, float previewBudgetValue, float budgetChange)
 	{		
 		TextWidget previewText = TextWidget.Cast(w.FindAnyWidget(WIDGET_BUDGETPREVIEW_TEXT));
+		
 		Widget progressBarWidget = w.FindAnyWidget(WIDGET_BUDGET_PROGRESSBAR);
-		SCR_RadialProgressBarUIComponent radialProgressBar;
-		if (progressBarWidget)
-		{
-			radialProgressBar = SCR_RadialProgressBarUIComponent.Cast(progressBarWidget.FindHandler(SCR_RadialProgressBarUIComponent));
-		}
+		if (!progressBarWidget)
+			return;
+		
+		SCR_RadialProgressBarUIComponent progressBar = SCR_RadialProgressBarUIComponent.Cast(progressBarWidget.FindHandler(SCR_RadialProgressBarUIComponent));
+		if (!progressBar)
+			return;
 		
 		if (previewText && budgetChange != 0)
 		{
@@ -166,15 +169,15 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 			else 
 				previewText.SetTextFormat("#AR-ValueUnit_Percentage_AddLessThen", amount);
 			
-			if (radialProgressBar)
-				radialProgressBar.SetPreviewProgress(previewBudgetValue / 100);
+			if (progressBar)
+				progressBar.SetPreviewProgress(previewBudgetValue / 100);
 		}
 		else if (previewText)
 		{
 			previewText.SetVisible(false);
 			
-			if(radialProgressBar)
-				radialProgressBar.SetPreviewProgress(0);
+			if(progressBar)
+				progressBar.SetPreviewProgress(0);			
 		}
 	}
 	
@@ -183,8 +186,8 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 		Widget budgetWidget = m_Layout.GetChildren();
 		int i = 0;
 		while (budgetWidget && i++ < 100)
-		{
-			SetWidgetPreviewData(budgetWidget, 0, 0);
+		{ 
+			SetBudgetPreviewData(budgetWidget, 0, 0);
 			budgetWidget = budgetWidget.GetSibling();
 		}
 	}
@@ -206,14 +209,14 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 			debugBudgetWidget = debugFilterSibling;
 		}
 		
-		m_BudgetComponent = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent, true));
-		
-		if (m_BudgetComponent)
+		m_BudgetManager = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent, false, true));
+		if (m_BudgetManager)
 		{
 			InitializeBudgets();
-			m_BudgetComponent.GetOnBudgetUpdatedEvent().Insert(OnBudgetUpdate);
-			m_BudgetComponent.GetOnBudgetPreviewUpdatedEvent().Insert(OnBudgetPreviewUpdate);
-			m_BudgetComponent.GetOnBudgetPreviewResetEvent().Insert(ResetWidgetPreviewData);
+			m_BudgetManager.Event_OnBudgetUpdated.Insert(OnBudgetUpdate);
+			m_BudgetManager.Event_OnBudgetMaxUpdated.Insert(OnBudgetMaxUpdate);
+			m_BudgetManager.Event_OnBudgetPreviewUpdated.Insert(OnBudgetPreviewUpdate);
+			m_BudgetManager.Event_OnBudgetPreviewReset.Insert(ResetWidgetPreviewData);
 		}
 	}
 	
@@ -221,11 +224,11 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 	{
 		m_BudgetWidgets.Clear();
 		
-		if (m_BudgetComponent)
+		if (m_BudgetManager)
 		{
-			m_BudgetComponent.GetOnBudgetUpdatedEvent().Remove(OnBudgetUpdate);
-			m_BudgetComponent.GetOnBudgetPreviewUpdatedEvent().Remove(OnBudgetPreviewUpdate);
-			m_BudgetComponent.GetOnBudgetPreviewResetEvent().Remove(ResetWidgetPreviewData);
+			m_BudgetManager.Event_OnBudgetUpdated.Remove(OnBudgetUpdate);
+			m_BudgetManager.Event_OnBudgetPreviewUpdated.Remove(OnBudgetPreviewUpdate);
+			m_BudgetManager.Event_OnBudgetPreviewReset.Remove(ResetWidgetPreviewData);
 		}
 	}
 	

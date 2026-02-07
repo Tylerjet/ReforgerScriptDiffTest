@@ -4,8 +4,9 @@ class SCR_SaveArsenalLoadout : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override protected bool CanBeShownScript(IEntity user)
 	{
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		SCR_ArsenalManagerComponent arsenalManager;
-		return SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager);
+		return (!playerController || !playerController.IsPossessing()) && SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager);
 	}
 	
 	//------------------------------------------------------------------------------------------------

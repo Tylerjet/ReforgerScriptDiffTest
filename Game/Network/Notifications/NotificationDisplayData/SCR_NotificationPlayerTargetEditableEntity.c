@@ -20,6 +20,9 @@ class SCR_NotificationPlayerTargetEditableEntity : SCR_NotificationDisplayData
 	
 	override void SetPosition(SCR_NotificationData data)
 	{
+		if (!CanSetPosition(data))
+			return;
+		
 		int playerID, targetID;
 		data.GetParams(playerID, targetID);
 		SetPositionDataEditableEntity(targetID, data);

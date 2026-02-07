@@ -1,10 +1,9 @@
 class SCR_AISetEnemyToFireteam: AITaskScripted
 {
-	static const string PORT_TARGET_IN				= "TargetIn";
-	static const string PORT_POSITION_IN			= "PositionIn";
+	static const string PORT_TARGET_INFO_IN			= "TargetInfoIn";
 	static const string PORT_FIRETEAM_OUT			= "FireteamOut";
 	static const string PORT_ACT_INDIVIDUALLY_OUT	= "ActIndividuallyOut";
-	static const int NUMBER_OF_FIRE_TEAMS_PER_GROUP	= 4;
+	static const int NUMBER_OF_FIRE_TEAMS_PER_GROUP	= 5;
 	
 	
 	SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
@@ -27,21 +26,20 @@ class SCR_AISetEnemyToFireteam: AITaskScripted
 		if (!m_GroupUtilityComponent)
 			return ENodeResult.FAIL;
 		
-		int numberOfEnemies = m_GroupUtilityComponent.m_aListOfKnownEnemies.Count();
+		array<IEntity> targetEntities = m_GroupUtilityComponent.m_aTargetEntities;
+		array<ref SCR_AITargetInfo> targetInfos = m_GroupUtilityComponent.m_aTargetInfos;
+		int numberOfEnemies = targetInfos.Count();
 		int numberOfGroupMembers = m_GroupUtilityComponent.m_aListOfAIInfo.Count();
 		int enemyCountPerFireTeam[NUMBER_OF_FIRE_TEAMS_PER_GROUP];
 		int indexOfFireTeam;
-		IEntity targetEntity;
+		SCR_AITargetInfo targetInfo;
 		
-		if (!GetVariableIn(PORT_TARGET_IN,targetEntity))
+		if (!GetVariableIn(PORT_TARGET_INFO_IN,targetInfo))
 			return ENodeResult.FAIL;
 		
-		int targetIndex = m_GroupUtilityComponent.m_aListOfKnownEnemies.Find(targetEntity);
+		int targetIndex = targetEntities.Find(targetInfo.m_TargetEntity);
 		if (targetIndex < 0)
 			return ENodeResult.FAIL;
-		vector lastSeenPos;
-		GetVariableIn(PORT_POSITION_IN,lastSeenPos); // using perception info from contact message
-		m_GroupUtilityComponent.m_aPositionsForKnownEnemies[targetIndex] = lastSeenPos;
 		
 		if (numberOfEnemies >= numberOfGroupMembers) 
 		{
@@ -52,9 +50,9 @@ class SCR_AISetEnemyToFireteam: AITaskScripted
 		// how many enemies are assigned in each fireteam?
 		for (int i = 0; i< numberOfEnemies; i++)
 		{
-			enemyCountPerFireTeam[m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[i]] = enemyCountPerFireTeam[m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[i]] + 1;			
+			enemyCountPerFireTeam[targetInfos[i].m_eFireTeamAssigned] = enemyCountPerFireTeam[targetInfos[i].m_eFireTeamAssigned] + 1;			
 		}
-		// unused fireteams dont have a count
+		// unused fireteams dont have a count, first index 0 is NO fireteam
 		for (int i = m_GroupUtilityComponent.GetNumberOfFireTeams() + 1; i < NUMBER_OF_FIRE_TEAMS_PER_GROUP; i++)
 		{	
 			enemyCountPerFireTeam[i] = -1;
@@ -63,23 +61,23 @@ class SCR_AISetEnemyToFireteam: AITaskScripted
 		
 		for (int i = 0; i< numberOfEnemies; i++)
 		{
-			if (m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[i] == EFireTeams.NONE)
+			if (targetInfos[i].m_eFireTeamAssigned == EFireTeams.NONE)
 			{
-				FindLeastUsedFireTeam(enemyCountPerFireTeam,indexOfFireTeam);
-				m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[i]=indexOfFireTeam;
+				indexOfFireTeam = FindLeastUsedFireTeam(enemyCountPerFireTeam);
+				targetInfos[i].m_eFireTeamAssigned = indexOfFireTeam;
 				enemyCountPerFireTeam[EFireTeams.NONE] = enemyCountPerFireTeam[EFireTeams.NONE] - 1;
 				enemyCountPerFireTeam[indexOfFireTeam] = enemyCountPerFireTeam[indexOfFireTeam] + 1;
 			}	
 		}	 
-		SetVariableOut(PORT_FIRETEAM_OUT,m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[targetIndex]);
-		SetVariableOut(PORT_ACT_INDIVIDUALLY_OUT,false);		
+		SetVariableOut(PORT_FIRETEAM_OUT, targetInfos[targetIndex].m_eFireTeamAssigned);
+		SetVariableOut(PORT_ACT_INDIVIDUALLY_OUT, false);
 		return ENodeResult.SUCCESS;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void FindLeastUsedFireTeam(int fireTeamsCount[NUMBER_OF_FIRE_TEAMS_PER_GROUP],out int fireTeamIndex)
+	int FindLeastUsedFireTeam(int fireTeamsCount[NUMBER_OF_FIRE_TEAMS_PER_GROUP])
 	{
-		int minValue = int.MAX;
+		int minValue = int.MAX, fireTeamIndex;
 		
 		for (int i = 1; i< NUMBER_OF_FIRE_TEAMS_PER_GROUP; i++)
 		{
@@ -89,6 +87,7 @@ class SCR_AISetEnemyToFireteam: AITaskScripted
 				fireTeamIndex = i;
 			} 		
 		}
+		return fireTeamIndex;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -103,8 +102,7 @@ class SCR_AISetEnemyToFireteam: AITaskScripted
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
-		PORT_TARGET_IN,
-		PORT_POSITION_IN
+		PORT_TARGET_INFO_IN
 	};
 	override TStringArray GetVariablesIn()
     {
@@ -121,12 +119,13 @@ class SCR_AISetEnemyToFireteam: AITaskScripted
 		
 		string strGroupMemberCount = string.Format("Group members: %1\n", m_GroupUtilityComponent.m_aListOfAIInfo.Count());
 		
-		string strEnemiesCount = string.Format("Enemies: %1\n", m_GroupUtilityComponent.m_aListOfKnownEnemies.Count());
+		string strEnemiesCount = string.Format("Enemies: %1\n", m_GroupUtilityComponent.m_aTargetInfos.Count());
 		
 		string strEnemiesToFireteams = "Enemies -> Fireteams:\n";
-		foreach (EFireTeams f, int i : m_GroupUtilityComponent.m_aFireteamsForKnownEnemies)
-			strEnemiesToFireteams = strEnemiesToFireteams + string.Format("  %1: %2 %3\n", i, f, typename.EnumToString(EFireTeams, f));
+		foreach (int index, SCR_AITargetInfo info : m_GroupUtilityComponent.m_aTargetInfos)
+			strEnemiesToFireteams = strEnemiesToFireteams + string.Format("  %1: %2 %3\n", index, info.m_eFireTeamAssigned, typename.EnumToString(EFireTeams, info.m_eFireTeamAssigned));
 		
 		return strGroupMemberCount + strEnemiesCount + strEnemiesToFireteams;
+		return strGroupMemberCount + strEnemiesCount;
 	}
 };

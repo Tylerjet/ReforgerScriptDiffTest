@@ -157,6 +157,18 @@ class SCR_BaseEditorComponent : ScriptComponent
 	protected void EOnEditorCloseServer();
 	//! When the editor is closed (called on server after async loading finished on client)
 	protected void EOnEditorCloseServerCallback();
+	/*!
+	When the component is activated (called on server)
+	- When attached on SCR_EditorManagerEntity, this is executed together with EOnEditorOpen()
+	- When attached on SCR_EditorModeEntity, it's executed when the mode is activated
+	*/
+	protected void EOnEditorActivateServer();
+	/*!
+	When the component is deactivated (called on server)
+	- When attached on SCR_EditorManagerEntity, this is executed together with EOnEditorClose()
+	- When attached on SCR_EditorModeEntity, it's executed when the mode is deactivated
+	*/
+	protected void EOnEditorDeactivateServer();
 	
 	/*!
 	Before the component is activated.
@@ -281,9 +293,10 @@ class SCR_BaseEditorComponent : ScriptComponent
 	When not found on editor manager, it will be searched for in current editor mode (SCR_EditorModeEntity).
 	\param type Requested component type
 	\param showError True to log a warning message when the component was not found
+	\param modeFirst When true, search the component first on editor mode and then on editor manager. By default it's false, the other way around.
 	\return Component
 	*/
-	static Managed GetInstance(typename type, bool showError = false)
+	static Managed GetInstance(typename type, bool showError = false, bool modeFirst = false)
 	{
 		//--- Find the component in Editor Manager entity
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -295,25 +308,27 @@ class SCR_BaseEditorComponent : ScriptComponent
 		}
 		
 		Managed component = editorManager.FindComponent(type);
-		if (component) return component;
+		if (component && !modeFirst)
+			return component;
 		
 		//--- Find the component in Editor Mode entity
 		SCR_EditorModeEntity editorMode = SCR_EditorModeEntity.GetInstance();
-		if (!editorMode)
+		if (editorMode)
 		{
-			if (showError)
-				Print(string.Format("Cannot find editor component '%1' on local instance of editor manager, and no current editor mode exists!", type), LogLevel.ERROR);
-			return null;
-		}
-		
-		component = editorMode.FindComponent(type);
-		if (!component)
-		{
-			if (showError)
+			Managed componentMode = editorMode.FindComponent(type);
+			if (componentMode)
+			{
+				return componentMode;
+			}
+			else if (showError)
+			{
 				Print(string.Format("Cannot find editor component '%1' on local instance of editor manager or on the curent editor mode!", type), LogLevel.ERROR);
-			return null;
+			}
 		}
-		
+		else if (showError)
+		{
+			Print(string.Format("Cannot find editor component '%1' on local instance of editor manager, and no current editor mode exists!", type), LogLevel.ERROR);
+		}
 		return component;
 	}
 	/*!
@@ -371,9 +386,50 @@ class SCR_BaseEditorComponent : ScriptComponent
 	{
 		if (!m_Owner) return null;
 		SCR_EditorManagerEntity manager = SCR_EditorManagerEntity.Cast(m_Owner);
-		if (!manager) manager = m_Owner.GetManager();	
+		if (!manager) manager = m_Owner.GetManager();
 		return manager;
 	}
+	
+		/*!
+	Get editor manager this component belongs to.
+	\return Editor manager
+	*/
+	SCR_BaseEditorComponent FindEditorComponent(typename type, bool showError = false, bool modeFirst = false)
+	{
+		//--- Find the component in Editor Manager entity
+		SCR_EditorManagerEntity editorManager = GetManager();
+		if (!editorManager)
+		{
+			if (showError)
+				Print(string.Format("Cannot find editor component '%1', local instance of editor manager not found!", type), LogLevel.ERROR);
+			return null;
+		}
+		
+		SCR_BaseEditorComponent component = SCR_BaseEditorComponent.Cast(editorManager.FindComponent(type));
+		if (component && !modeFirst)
+			return component;
+		
+		//--- Find the component in Editor Mode entity
+		SCR_EditorModeEntity editorMode = editorManager.GetCurrentModeEntity();
+		if (editorMode)
+		{
+			SCR_BaseEditorComponent componentMode = SCR_BaseEditorComponent.Cast(editorMode.FindComponent(type));
+			if (componentMode)
+			{
+				component = componentMode;
+			}
+			else if (showError && !component)
+			{
+				Print(string.Format("Cannot find editor component '%1' on local instance of editor manager or on the curent editor mode!", type), LogLevel.ERROR);
+			}
+		}
+		else if (showError && !component)
+		{
+			Print(string.Format("Cannot find editor component '%1' on local instance of editor manager, and no current editor mode exists!", type), LogLevel.ERROR);
+		}
+		return component;
+	}
+	
 	/*!
 	Get prefab data of this component.
 	\return Prefab data
@@ -413,19 +469,28 @@ class SCR_BaseEditorComponent : ScriptComponent
 	{
 		return m_Owner && m_Owner.IsInherited(SCR_EditorManagerEntity);
 	}
+	
 	protected bool IsOwner()
 	{
 		return m_RplComponent && m_RplComponent.IsOwner();
 	}
+	
 	protected bool IsProxy()
 	{
 		return m_RplComponent && m_RplComponent.IsProxy();
 	}
+	
+	protected bool IsMaster()
+	{
+		return m_RplComponent && m_RplComponent.IsMaster();
+	}
+	
 	protected bool IsAdmin()
 	{
 		//--- ToDo: Proper admin detection once admin feature is implemented
 		return SCR_Global.IsAdmin(GetManager().GetPlayerID()) && Replication.IsRunning();
 	}
+	
 	protected SCR_BaseEditorComponent GetParentComponent()
 	{
 		return m_Parent;
@@ -436,7 +501,7 @@ class SCR_BaseEditorComponent : ScriptComponent
 		m_Parent = parent;
 	}
 	
-	//If target Entity is given then location is upted to target position unless: m_bSetLocationOnce is true in the data found in m_aNotificationDisplayInfos (SCR_NotificationManagerEditorComponent on the EditorManager)
+	//If target Entity is given then location is used to target position unless: m_bSetLocationOnce is true in the data found in m_aNotificationDisplayInfos (SCR_NotificationManagerEditorComponent on the EditorManager)
 	protected void SendNotification(ENotification notificationID, int selfID = 0, int targetID = 0, vector position = vector.Zero)
 	{
 		//Send notification
@@ -449,6 +514,8 @@ class SCR_BaseEditorComponent : ScriptComponent
 		
 		if (m_Owner.GetOnOpenedServer()) m_Owner.GetOnOpenedServer().Insert(EOnEditorOpenServer);
 		if (m_Owner.GetOnOpenedServer()) m_Owner.GetOnOpenedServerCallback().Insert(EOnEditorOpenServerCallback);
+		if (m_Owner.GetOnActivateServer()) m_Owner.GetOnActivateServer().Insert(EOnEditorActivateServer);
+		if (m_Owner.GetOnDeactivateServer()) m_Owner.GetOnDeactivateServer().Insert(EOnEditorDeactivateServer);
 		if (m_Owner.GetOnClosedServer()) m_Owner.GetOnClosedServer().Insert(EOnEditorCloseServer);
 		if (m_Owner.GetOnClosedServer()) m_Owner.GetOnClosedServerCallback().Insert(EOnEditorCloseServerCallback);
 		

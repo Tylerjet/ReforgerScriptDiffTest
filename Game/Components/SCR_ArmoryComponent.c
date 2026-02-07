@@ -5,7 +5,7 @@ class SCR_ArmoryComponentClass: ScriptComponentClass
 
 class SCR_ArmoryComponent: ScriptComponent
 {
-	protected ref array <SCR_FactionControlComponent> m_aFactionControlComponents = {};
+	protected ref array <SCR_FactionAffiliationComponent> m_aFactionAffiliationComponents = {};
 	protected RplComponent m_RplComponent;
 	
 	//------------------------------------------------------------------------------------------------
@@ -22,9 +22,9 @@ class SCR_ArmoryComponent: ScriptComponent
 		
 		FactionKey key = faction.GetFactionKey();
 		
-		foreach (SCR_FactionControlComponent factionComp : m_aFactionControlComponents)
+		foreach (SCR_FactionAffiliationComponent factionComp : m_aFactionAffiliationComponents)
 		{
-			factionComp.SetFaction(key);
+			factionComp.SetAffiliatedFactionByKey(key);
 		}
 	}
 	
@@ -33,16 +33,16 @@ class SCR_ArmoryComponent: ScriptComponent
 	protected void FindFactionComponentsInHiearchy(IEntity entity)
 	{
 		IEntity child = entity.GetChildren();
-		SCR_FactionControlComponent factionComp;
+		SCR_FactionAffiliationComponent factionComp;
 		
 		while (child)
 		{
 			if (child.GetChildren())
 				FindFactionComponentsInHiearchy(child);
 			
-			factionComp = SCR_FactionControlComponent.Cast(child.FindComponent(SCR_FactionControlComponent));
+			factionComp = SCR_FactionAffiliationComponent.Cast(child.FindComponent(SCR_FactionAffiliationComponent));
 			if (factionComp)
-				m_aFactionControlComponents.Insert(factionComp);
+				m_aFactionAffiliationComponents.Insert(factionComp);
 			
 			child = child.GetSibling();
 		}

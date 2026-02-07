@@ -96,10 +96,11 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		if (m_bMatchOver)
 			return false;
 		
-		TimeAndWeatherManagerEntity timeManager = GetGame().GetTimeAndWeatherManager();
+		SCR_TimeAndWeatherHandlerComponent timeHandler = SCR_TimeAndWeatherHandlerComponent.GetInstance();
 		
-		if (timeManager && m_iHours >= 0 && m_iMinutes >= 0)
-			GetGame().GetCallqueue().CallLater(campaign.SetupDaytime, 500, false, m_iHours, m_iMinutes, m_iSeconds);
+		// Weather has to be changed after init
+		if (timeHandler && m_iHours >= 0 && m_iMinutes >= 0)
+			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds);
 		
 		baseManager.LoadBasesStates(m_aBasesStructs);
 		
@@ -171,12 +172,30 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	protected int m_iOwningFaction;
 	protected int m_iBuildingsFaction;
 	protected int m_iSupplies;
-	protected bool m_bVehicleDepotBuilt;
-	protected bool m_bArmoryBuilt;
-	protected bool m_bHeavyVehicleDepotBuilt;
-	protected bool m_bSupplyDepotBuilt;
-	protected bool m_bAntennaBuilt;
-	protected bool m_bBarracksBuilt;
+	protected string m_sVehicleDepotPrefab;
+	protected vector m_vVehicleDepotPosition;
+	protected vector m_vVehicleDepotRotation;
+	protected string m_sArmoryPrefab;
+	protected vector m_vArmoryPosition;
+	protected vector m_vArmoryRotation;
+	protected string m_sHeavyVehicleDepotPrefab;
+	protected vector m_vHeavyVehicleDepotPosition;
+	protected vector m_vHeavyVehicleDepotRotation;
+	protected string m_sSupplyDepotPrefab;
+	protected vector m_vSupplyDepotPosition;
+	protected vector m_vSupplyDepotRotation;
+	protected string m_sAntennaPrefab;
+	protected vector m_vAntennaPosition;
+	protected vector m_vAntennaRotation;	
+	protected string m_sFieldHospitalPrefab;
+	protected vector m_vFieldHospitalPosition;
+	protected vector m_vFieldHospitalRotation;
+	protected string m_sBarracksPrefab;
+	protected vector m_vBarracksPosition;
+	protected vector m_vBarracksRotation;
+	protected string m_sHospitalPrefab;
+	protected vector m_vHospitalPosition;
+	protected vector m_vHospitalRotation;
 	
 	//------------------------------------------------------------------------------------------------
 	int GetBaseID()
@@ -215,39 +234,57 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool GetVehicleDepotBuilt()
+	string GetServicePrefab(ECampaignServicePointType type)
 	{
-		return m_bVehicleDepotBuilt;
+		switch (type)
+		{
+			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_sVehicleDepotPrefab;};
+			case ECampaignServicePointType.ARMORY: {return m_sArmoryPrefab;};
+			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_sHeavyVehicleDepotPrefab;};
+			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_sSupplyDepotPrefab;};
+			case ECampaignServicePointType.RADIO_ANTENNA: {return m_sAntennaPrefab;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_sFieldHospitalPrefab;};
+			case ECampaignServicePointType.BARRACKS: {return m_sBarracksPrefab;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_sHospitalPrefab;};
+		}
+		
+		return string.Empty;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool GetArmoryBuilt()
+	vector GetServicePosition(ECampaignServicePointType type)
 	{
-		return m_bArmoryBuilt;
+		switch (type)
+		{
+			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotPosition;};
+			case ECampaignServicePointType.ARMORY: {return m_vArmoryPosition;};
+			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotPosition;};
+			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotPosition;};
+			case ECampaignServicePointType.RADIO_ANTENNA: {return m_vAntennaPosition;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalPosition;};
+			case ECampaignServicePointType.BARRACKS: {return m_vBarracksPosition;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vHospitalPosition;};
+		}
+		
+		return vector.Zero;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool GetHeavyVehicleDepotBuilt()
+	vector GetServiceRotation(ECampaignServicePointType type)
 	{
-		return m_bHeavyVehicleDepotBuilt;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetSupplyDepotBuilt()
-	{
-		return m_bSupplyDepotBuilt;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetAntennaBuilt()
-	{
-		return m_bAntennaBuilt;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetBarracksBuilt()
-	{
-		return m_bBarracksBuilt;
+		switch (type)
+		{
+			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotRotation;};
+			case ECampaignServicePointType.ARMORY: {return m_vArmoryRotation;};
+			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotRotation;};
+			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotRotation;};
+			case ECampaignServicePointType.RADIO_ANTENNA: {return m_vAntennaRotation;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalRotation;};
+			case ECampaignServicePointType.BARRACKS: {return m_vBarracksRotation;};
+			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vHospitalRotation;};
+		}
+		
+		return vector.Zero;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -287,39 +324,98 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetVehicleDepotBuilt(bool built)
+	void SetBuildingsData(notnull SCR_CampaignBase base)
 	{
-		m_bVehicleDepotBuilt = built;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetArmoryBuilt(bool built)
-	{
-		m_bArmoryBuilt = built;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetHeavyVehicleDepotBuilt(bool built)
-	{
-		m_bHeavyVehicleDepotBuilt = built;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetSupplyDepotBuilt(bool built)
-	{
-		m_bSupplyDepotBuilt = built;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetAntennaBuilt(bool built)
-	{
-		m_bAntennaBuilt = built;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetBarracksBuilt(bool built)
-	{
-		m_bBarracksBuilt = built;
+		array<SCR_CampaignServiceComponent> services = {};
+		base.GetAllBaseServices(services);
+		IEntity composition;
+		EntityPrefabData data;
+		ResourceName prefab;
+		
+		foreach (SCR_CampaignServiceComponent service : services)
+		{
+			composition = service.GetOwner();
+			
+			if (!composition)
+				continue;
+			
+			data = composition.GetPrefabData();
+			
+			if (!data)
+				continue;
+			
+			prefab = data.GetPrefabName();
+			
+			if (prefab.IsEmpty())
+				continue;
+			
+			switch (service.GetType())
+			{
+				case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
+				{
+					m_sVehicleDepotPrefab = prefab;
+					m_vVehicleDepotPosition = composition.GetOrigin();
+					m_vVehicleDepotRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.ARMORY:
+				{
+					m_sArmoryPrefab = prefab;
+					m_vArmoryPosition = composition.GetOrigin();
+					m_vArmoryRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
+				{
+					m_sHeavyVehicleDepotPrefab = prefab;
+					m_vHeavyVehicleDepotPosition = composition.GetOrigin();
+					m_vHeavyVehicleDepotRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.SUPPLY_DEPOT:
+				{
+					m_sSupplyDepotPrefab = prefab;
+					m_vSupplyDepotPosition = composition.GetOrigin();
+					m_vSupplyDepotRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.RADIO_ANTENNA:
+				{
+					m_sAntennaPrefab = prefab;
+					m_vAntennaPosition = composition.GetOrigin();
+					m_vAntennaRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.FIELD_HOSPITAL:
+				{
+					m_sFieldHospitalPrefab = prefab;
+					m_vFieldHospitalPosition = composition.GetOrigin();
+					m_vFieldHospitalRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.BARRACKS:
+				{
+					m_sBarracksPrefab = prefab;
+					m_vBarracksPosition = composition.GetOrigin();
+					m_vBarracksRotation = composition.GetYawPitchRoll();
+					break;
+				}
+				
+				case ECampaignServicePointType.FIELD_HOSPITAL:
+				{
+					m_sHospitalPrefab = prefab;
+					m_vHospitalPosition = composition.GetOrigin();
+					m_vHospitalRotation = composition.GetYawPitchRoll();
+					break;
+				}
+			}
+		}
 	}
 	
 	//****************//
@@ -381,12 +477,30 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 		RegV("m_iOwningFaction");
 		RegV("m_iBuildingsFaction");
 		RegV("m_iSupplies");
-		RegV("m_bVehicleDepotBuilt");
-		RegV("m_bArmoryBuilt");
-		RegV("m_bHeavyVehicleDepotBuilt");
-		RegV("m_bSupplyDepotBuilt");
-		RegV("m_bAntennaBuilt");
-		RegV("m_bBarracksBuilt");
+		RegV("m_sVehicleDepotPrefab");
+		RegV("m_vVehicleDepotPosition");
+		RegV("m_vVehicleDepotRotation");
+		RegV("m_sArmoryPrefab");
+		RegV("m_vArmoryPosition");
+		RegV("m_vArmoryRotation");
+		RegV("m_sHeavyVehicleDepotPrefab");
+		RegV("m_vHeavyVehicleDepotPosition");
+		RegV("m_vHeavyVehicleDepotRotation");
+		RegV("m_sSupplyDepotPrefab");
+		RegV("m_vSupplyDepotPosition");
+		RegV("m_vSupplyDepotRotation");
+		RegV("m_sAntennaPrefab");
+		RegV("m_vAntennaPosition");
+		RegV("m_vAntennaRotation");
+		RegV("m_sFieldHospitalPrefab");
+		RegV("m_vFieldHospitalPosition");
+		RegV("m_vFieldHospitalRotation");
+		RegV("m_sBarracksPrefab");
+		RegV("m_vBarracksPosition");
+		RegV("m_vBarracksRotation");
+		RegV("m_sHospitalPrefab");
+		RegV("m_vHospitalPosition");
+		RegV("m_vHospitalRotation");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -401,6 +515,7 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 {
 	protected int m_iID;
 	protected int m_iMembersAlive;
+	protected float m_fRespawnTimer;
 	
 	//------------------------------------------------------------------------------------------------
 	int GetID()
@@ -415,6 +530,12 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	float GetRespawnTimer()
+	{
+		return m_fRespawnTimer;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetID(int ID)
 	{
 		m_iID = ID;
@@ -426,6 +547,12 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 		m_iMembersAlive = count;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void SetRespawnTimer(float timer)
+	{
+		m_fRespawnTimer = timer;
+	}
+	
 	//************************//
 	//CONSTRUCTOR & DESTRUCTOR//
 	//************************//
@@ -435,6 +562,7 @@ class SCR_CampaignRemnantInfoStruct : SCR_JsonApiStruct
 	{
 		RegV("m_iID");
 		RegV("m_iMembersAlive");
+		RegV("m_fRespawnTimer");
 	}
 	
 	//------------------------------------------------------------------------------------------------

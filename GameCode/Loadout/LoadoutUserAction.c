@@ -32,7 +32,7 @@ class SCR_WearClothUserAction : LoadoutUserAction
 		if (!loadout)
 			return false;
 		
-		if (!loadout.IsAreaAvailable(cloth.GetArea()))
+		if (!loadout.IsAreaAvailable(cloth.GetAreaType().Type()))
 			return false;
 		
 		return true;

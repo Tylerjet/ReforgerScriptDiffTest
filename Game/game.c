@@ -43,6 +43,7 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ScriptedChatEntity			m_ChatEntity;
 	protected ref SCR_GameCoresManager		m_CoresManager;
 	protected Widget 						m_wWatermark;
+	protected ref SCR_SettingsManager		m_SettingsManager;
 
 
 	//! Object responsible for managing and providing game modes with list of available loadouts.
@@ -100,6 +101,15 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		return m_pLoadoutManager;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_SettingsManager GetSettingsManager()
+	{
+		if (!m_SettingsManager)
+			m_SettingsManager = new SCR_SettingsManager();
+		
+		return m_SettingsManager;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	ScriptCallQueue GetCallqueue()
@@ -140,6 +150,8 @@ class ArmaReforgerScripted : ChimeraGame
 		SCR_MissionHeader pHeader = SCR_MissionHeader.Cast(mission);
 		if (pHeader)
 			SetGameFlags(pHeader.m_eDefaultGameFlags, false);
+		
+		GameSessionStorage.s_Data["m_iRejoinAttempt"] = "0";
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -164,6 +176,7 @@ class ArmaReforgerScripted : ChimeraGame
 					case RplError.SERVICE_FAILURE: reason = "SERVICE_FAILURE"; break;
 					case RplError.JIP_ERROR: reason = "JIP_ERROR"; break;
 					case RplError.SHUTDOWN: reason = "SHUTDOWN"; break;
+					case RplError.CREATION_FAILURE: reason = "CREATION_FAILURE"; break;
 				}
 			break;
 
@@ -256,8 +269,33 @@ class ArmaReforgerScripted : ChimeraGame
 
 		// Set msg
 		ServerBrowserMenuUI.SetErrorMessage(dialogTag, group, strDetail);
+		
+		// Add rejoin attempt
+		AddRejoinAttempt();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void AddRejoinAttempt()
+	{
+		// Get count
+		string strAttempt = GameSessionStorage.s_Data["m_iRejoinAttempt"];
+		int attempt = 0;
+		
+		// Setup number
+		if (strAttempt.IsEmpty())
+		{
+			GameSessionStorage.s_Data["m_iRejoinAttempt"] = "0";
+		}	
+		else 
+		{
+			attempt = strAttempt.ToInt();
+		}
+
+		// Add
+		attempt++;
+		GameSessionStorage.s_Data["m_iRejoinAttempt"] = attempt.ToString();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Event called once loading of all entities of the world have been finished. (still within the loading)
 	protected override void OnWorldPostProcess(World world)
@@ -383,11 +421,10 @@ class ArmaReforgerScripted : ChimeraGame
 	override bool OnGameStart()
 	{
 		m_bGameStarted = true;
-
-		DiagMenu.RegisterItem(SCR_DebugMenuID.DEBUGUI_INPUT_MANAGER, "", "Show input manager", "GameCode", "disabled,active,all");
-
+		
 		#ifdef ENABLE_DIAG
 		// Game
+		DiagMenu.RegisterItem(SCR_DebugMenuID.DEBUGUI_INPUT_MANAGER, "", "Show input manager", "GameCode", "disabled,active,all");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_COPY_ENF_VIEW_LINK, "lctrl+lshift+l", "Copy view link", "Game");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CURSOR_TARGET_PREFAB_DIAG, "", "Show cursor target info", "Game");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_BOUNDS_OVERLAP_PREFAB_DIAG, "", "Show bounds overlap target info", "Game");
@@ -406,6 +443,7 @@ class ArmaReforgerScripted : ChimeraGame
 
 		InputManager inputManager = GetInputManager();
 		inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
+		inputManager.AddActionListener("InstantVote", EActionTrigger.DOWN, OnInstantVote);
 		inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
 		#ifdef WORKBENCH
 			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OnMenuOpen);
@@ -423,7 +461,28 @@ class ArmaReforgerScripted : ChimeraGame
 		if (System.IsCLIParam("listScenarios"))
 			SCR_GameLogHelper.LogScenariosConfPaths();
 #endif
-
+		
+#ifdef PLATFORM_CONSOLE
+		//setup default quality settings for series S and series X xbox
+		SCR_SettingsManager settingsManager = GetSettingsManager();
+		if (settingsManager)
+		{
+			int lastUsedPresetID = -1;
+			BaseContainer videoSettings = GetGame().GetGameUserSettings().GetModule("SCR_VideoSettings");
+			if (videoSettings)
+			{
+				videoSettings.Get("m_iLastUsedPreset", lastUsedPresetID);
+				if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_S)
+					settingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
+				else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_X)
+					settingsManager.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
+				
+				if (lastUsedPresetID != -1)
+					settingsManager.SetConsolePreset(lastUsedPresetID);
+			}
+		}
+#endif
+		
 		return true;
 	}
 
@@ -445,6 +504,12 @@ class ArmaReforgerScripted : ChimeraGame
 			return;
 
 		OpenPlayerList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void OnInstantVote()
+	{
+		SCR_VoterComponent.InstantVote();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -592,9 +657,10 @@ class ArmaReforgerScripted : ChimeraGame
 
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CURSOR_TARGET_PREFAB_DIAG))
 		{
-			if (GetGame().GetCameraManager())
+			CameraManager cameraManager = GetGame().GetCameraManager();
+			if (cameraManager)
 			{
-				CameraBase current = GetGame().GetCameraManager().CurrentCamera();
+				CameraBase current = cameraManager.CurrentCamera();
 				if (current)
 				{
 					DbgUI.Begin("Cursor target info");
@@ -636,9 +702,10 @@ class ArmaReforgerScripted : ChimeraGame
 
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_BOUNDS_OVERLAP_PREFAB_DIAG))
 		{
-			if (GetGame().GetCameraManager())
+			CameraManager cameraManager = GetGame().GetCameraManager();
+			if (cameraManager)
 			{
-				CameraBase current = GetGame().GetCameraManager().CurrentCamera();
+				CameraBase current = cameraManager.CurrentCamera();
 				if (current)
 				{
 					DbgUI.Begin("Bounds overlap target info");
@@ -860,10 +927,16 @@ class ArmaReforgerScripted : ChimeraGame
 
 
 	//------------------------------------------------------------------------------------------------
-	override void HostGameConfig(ResourceName sResource)
+	override void HostGameConfig()
 	{
-		ref SCR_MissionHeader header = SCR_MissionHeader.Cast(SCR_MissionHeader.ReadMissionHeader(sResource));
-		HostMission(header);
+		bool success = GameStateTransitions.RequestPublicServerTransition(null);
+		
+		if (success)
+			GetGame().GetMenuManager().CloseAllMenus();
+		else
+		{
+			Print("Failed to host config", LogLevel.ERROR);
+		}		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -871,29 +944,13 @@ class ArmaReforgerScripted : ChimeraGame
 	{
 		return MissionHeader.ReadMissionHeader(sResource);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	void HostMission(SCR_MissionHeader header)
-	{
-		if (!header)
-			return;
-
-		bool success = GameStateTransitions.RequestPublicServerTransition(header, new ArmaReforgerServerParams(header));
-
-		if (success)
-			GetGame().GetMenuManager().CloseAllMenus();
-		else
-			Print(string.Format("Failed to host mission: %1", header.m_sName), LogLevel.ERROR);
-
-		// TODO: Show invalid mission dialog
-	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get a list of all missions, featured, tutorial, recommended ones
 	//! \return mission resources list
 	override array<ResourceName> GetDefaultGameConfigs()
 	{
-		ResourceName config = "{6409EA8EA4BFF7E6}Configs/PlayMenu/PlayMenuEntries.conf";
+		ResourceName config = "{CB4130E7FBE99D74}Configs/Workshop/DefaultScenarios.conf";
 		Resource resource = BaseContainerTools.LoadContainer(config);
 		if (!resource)
 			return null;
@@ -902,24 +959,24 @@ class ArmaReforgerScripted : ChimeraGame
 		if (!entries)
 			return null;
 
-		ResourceName featured;
-		ResourceName tutorial;
-		array<ResourceName> recommended = {};
-
-		entries.Get("m_FeaturedMission", featured);
-		entries.Get("m_TutorialMission", tutorial);
-		entries.Get("m_aRecommendedMissions", recommended);
-
 		array<ResourceName> resources = {};
-		resources.Insert(tutorial);
-		resources.Insert(featured);
 
-		foreach(ResourceName r : recommended)
-		{
-			if (r != tutorial && r != featured)
-				resources.Insert(r);
-		}
+		entries.Get("m_aDefaultScenarios", resources);
+		
 		return resources;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check that scenario isn't in list when adding new scenario
+	protected void InsertNewScenario(ResourceName scenario, out array<ResourceName> resources)
+	{
+		foreach (ResourceName r : resources)
+		{
+			if (scenario == r)
+				return;
+		}
+		
+		resources.Insert(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -986,8 +1043,17 @@ class ArmaReforgerScripted : ChimeraGame
 
 		return sightsComponent.IsScreenPositionInSights(screenPosition);
 	}
+	//-------------------------------------------------------------------------------------------
+	//! Return true if current client platform is console
+	bool IsPlatformGameConsole()
+	{
+		#ifdef PLATFORM_CONSOLE
+			return true;
+		#else
+			return false;
+		#endif
+	}
 };
-
 //------------------------------------------------------------------------------------------------
 ArmaReforgerScripted g_ARGame;
 

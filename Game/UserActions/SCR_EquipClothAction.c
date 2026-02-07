@@ -35,16 +35,16 @@ class SCR_EquipClothAction: SCR_InventoryAction
 		if ( !m_LoadoutCloth )
 			return false;	
 	
-		ELoadoutArea targetArea = m_LoadoutCloth.GetArea();
+		LoadoutAreaType targetArea = m_LoadoutCloth.GetAreaType();
 		
 		// Checks if the desired area is occupied. If it's occupied it will save the UI info related to the replaced item is saved.
-		if ( m_LoadoutManager && !m_LoadoutManager.IsAreaAvailable( targetArea ) )
+		if ( m_LoadoutManager && !m_LoadoutManager.IsAreaAvailable( targetArea.Type() ) )
 		{
-			IEntity itemToSwap = m_LoadoutManager.GetClothByArea( targetArea );
+			IEntity itemToSwap = m_LoadoutManager.GetClothByArea( targetArea.Type() );
 			InventoryItemComponent itemComp = InventoryItemComponent.Cast( itemToSwap.FindComponent( InventoryItemComponent ) );
 			
 			// If the component is missing configuration we can fall back on the target area name.
-			if ( !itemComp && !itemComp.GetAttributes().GetUIInfo().GetName() )
+			if ( !itemComp || !itemComp.GetAttributes().GetUIInfo().GetName() )
 			{
 				m_sItemToSwapName =	targetArea.ToString();
 				m_bIsSwappingItems = false;

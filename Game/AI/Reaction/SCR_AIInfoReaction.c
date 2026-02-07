@@ -26,12 +26,12 @@ class SCR_AIInfoReaction_Contact : SCR_AIInfoReaction
 		if (!msg)
 			return;
 		
-		if (!SCR_AIIsAlive.IsAlive(msg.m_Target))
+		if (!SCR_AIIsAlive.IsAlive(msg.m_TargetInfo.m_TargetEntity))
 			return;
 		
-		if (utility.AddKnownEnemy(msg.m_Target))
+		if (utility.AddOrUpdateTarget(msg.m_TargetInfo))
 		{
-			auto activity = new SCR_AIAttackActivity(utility, false, false, msg.m_Target, msg.m_LastSeenPosition, msg.GetSender());
+			auto activity = new SCR_AIAttackActivity(utility, false, false, msg.m_TargetInfo, msg.GetSender());
 			utility.AddAction(activity);
 		}	
 	}
@@ -47,7 +47,7 @@ class SCR_AIInfoReaction_TargetLost : SCR_AIInfoReaction_Contact
 		if(!msg)
 			return;
 		
-		utility.RemoveKnownEnemy(msg.m_Target);
+		utility.RemoveTarget(msg.m_TargetInfo.m_TargetEntity);
 		if (!utility.IsSomeEnemyKnown())
 		{
 			utility.SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.FAILED);
@@ -61,7 +61,7 @@ class SCR_AIInfoReaction_TargetLost : SCR_AIInfoReaction_Contact
 		if (!msg)
 			return;
 		
-		vector targetPos = msg.m_LastSeenPosition;
+		vector targetPos = msg.m_TargetInfo.m_vLastSeenPosition;
 		
 		// We either investigate or find a fire position at this target, depending on our weapons
 		
@@ -95,7 +95,7 @@ class SCR_AIInfoReaction_TargetEliminated : SCR_AIInfoReaction_Contact
 		auto msg = SCR_AIMessage_TargetEliminated.Cast(message);
 		if(!msg)
 			return;
-		utility.RemoveKnownEnemy(msg.m_Target);
+		utility.RemoveTarget(msg.m_TargetInfo.m_TargetEntity);
 		if (!utility.IsSomeEnemyKnown())
 		{
 			utility.SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.COMPLETED);

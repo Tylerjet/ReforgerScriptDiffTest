@@ -234,12 +234,6 @@ class CareerCallback : BackendCallback
 		if (CareerMenuUI.m_sInstance)
 			CareerMenuUI.m_sInstance.UpdateCareerData();
 	}
-	
-	override void OnDataReceive( string data, int size )
-	{
-		Print("[BackendCallback] Data received, size=",size);
-		Print(data);
-	}
 	override void OnError( int code, int restCode, int apiCode )
 	{
 		Print("[BackendCallback] OnError: "+ GetGame().GetBackendApi().GetErrorCode(code));

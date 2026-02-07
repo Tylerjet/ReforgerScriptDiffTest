@@ -89,7 +89,7 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 			hasPlayableFactions = (delegateFactionManager.GetPlayableFactionDelegateCount() > 0);
 		}
 		
-		foreach(SCR_BaseGameOverScreenInfo screen: gameOverScreens)
+		foreach (SCR_BaseGameOverScreenInfo screen: gameOverScreens)
 		{
 			editorOptional = screen.GetEditorOptionalParams();
 			
@@ -144,7 +144,7 @@ class SCR_GameOverTypeEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		SCR_EditorAttributeFloatStringValueHolder value;	
 		SCR_BaseGameOverScreenInfoEditor editorOptional = null;
 		
-		foreach(SCR_BaseGameOverScreenInfo screen: editorGameOverScreens)
+		foreach (SCR_BaseGameOverScreenInfo screen: editorGameOverScreens)
 		{
 			editorOptional = screen.GetEditorOptionalParams();
 			

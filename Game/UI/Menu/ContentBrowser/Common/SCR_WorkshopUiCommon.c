@@ -183,8 +183,33 @@ class SCR_WorkshopUiCommon
 		
 		if (nTotal > 0)
 			new SCR_StartScenarioWhileDownloadingDialog(scenario, true);
-		else
-			scenario.Host();
+		else	
+		{
+			ref DSConfig config = new DSConfig;
+			ref DSGameConfig game = new DSGameConfig;
+			config.game = game;
+			game.scenarioId = scenario.Id();
+			game.playerCountLimit = scenario.GetPlayerCount();
+			game.name = scenario.Name() + System.GetMachineName();
+			WorkshopItem hostedMod = scenario.GetOwner();
+			if (hostedMod)
+				game.hostedScenarioModId = hostedMod.Id();
+			
+			ref array<WorkshopItem> offlineMods = new array<WorkshopItem>;
+			ref array<ref DSMod> modIds = new array<ref DSMod>;
+			GetGame().GetBackendApi().GetWorkshop().GetOfflineItems(offlineMods);
+			foreach(auto mod : offlineMods)
+			{
+				ref DSMod modData = new DSMod;
+				modData.modId = mod.Id();
+				modData.name = mod.Name();
+				modData.version = mod.GetActiveRevision().GetVersion();
+				modIds.Insert(modData);
+			}
+			config.game.mods = modIds;
+			
+			scenario.Host(config);
+		}
 	}
 	
 	

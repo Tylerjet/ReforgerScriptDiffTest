@@ -38,6 +38,12 @@ class CameraHandlerComponent: ScriptComponent
 	
 	// callbacks
 	
+	/*!
+	Calculate and return desired fov scalar. 1.0 = normal
+	\param mainCamera Main camera used, usually player camera
+	\param overlayCamera Overlay camera, usually PiP camera or null
+	*/
+	event protected float CalculateFovScalar(notnull CameraBase mainCamera, CameraBase overlayCamera) { return 1.0; };
 	//! initialization
 	event void Init();
 	//! activation

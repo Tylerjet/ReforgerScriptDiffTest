@@ -8,9 +8,8 @@ Framework for sending notifications to players.
 */
 class SCR_NotificationsComponent : ScriptComponent
 {
-	//Vizualization
-	[Attribute(desc: "Any notifications that only need basic text no references")]
-	protected ref array<ref SCR_NotificationDisplayData> m_aNotificationDisplayData;
+	[Attribute("{7134157CA6B1FA8E}Configs/Notifications/Notifications.conf", desc: "Link to config that holds all notification data")]
+	protected ref SCR_NotificationConfig m_NotificationConfig;
 	
 	protected ref array<ref SCR_NotificationData> m_aHistory = new array<ref SCR_NotificationData>;
 	protected ref ScriptInvoker Event_OnNotification = new ScriptInvoker;
@@ -564,14 +563,26 @@ class SCR_NotificationsComponent : ScriptComponent
 	}
 	
 	//======================== BUILD NOTIFICATION INFO MAP ========================\\
-	protected void GenerateNotificationDisplayDataMap()
+	/*!
+	Generate new notifications map
+	\param notificationConfig SCR_NotificationConfig Config which contains all notification display data
+	*/
+	void GenerateNotificationDisplayDataMap(notnull SCR_NotificationConfig notificationConfig)
 	{
-		for(int i = 0; i < m_aNotificationDisplayData.Count(); i++)
+		//~ Clear current map
+		m_NotificationDisplayDataMap.Clear();
+		
+		//~ Get data
+		array<ref SCR_NotificationDisplayData> data = {};
+		int count = notificationConfig.GetNotificationData(data);
+		
+		//~ Gegenerate
+		for(int i = 0; i < count; i++)
         {
-			if (!m_NotificationDisplayDataMap.Contains(m_aNotificationDisplayData[i].m_NotificationKey))
-            	m_NotificationDisplayDataMap.Set(m_aNotificationDisplayData[i].m_NotificationKey, m_aNotificationDisplayData[i]);
+			if (!m_NotificationDisplayDataMap.Contains(data[i].m_NotificationKey))
+            	m_NotificationDisplayDataMap.Set(data[i].m_NotificationKey, data[i]);
 			else
-				Print("Notification data in 'SCR_NotificationsLogComponent' has duplicate notification info key: '" + typename.EnumToString(ENotification, m_aNotificationDisplayData[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
+				Print("Notification data in 'SCR_NotificationsLogComponent' has duplicate notification info key: '" + typename.EnumToString(ENotification, data[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
         }
 	}
 	
@@ -645,7 +656,11 @@ class SCR_NotificationsComponent : ScriptComponent
 			return;
 		}
 		
-		GenerateNotificationDisplayDataMap();
+		//~ Generate notification map
+		if (m_NotificationConfig)
+			GenerateNotificationDisplayDataMap(m_NotificationConfig);
+		else 
+			Print("'SCR_NotificationsComponent' No Notification config was assigned which means no notification can ever be displayed!", LogLevel.ERROR);
 		
 		if (!m_aHistory.IsEmpty())
 			UpdateNotificationData(true, owner);

@@ -569,6 +569,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		
 		EnableOnFrame(false);
 		SpawnDestroyObjects();
+		PlaySound();
 		HandleDestruction();
 	}
 	
@@ -692,6 +693,84 @@ class SCR_BaseSpawnable
 	[Attribute("0 0 0", UIWidgets.Coords, desc: "Rotational offset (in local space to the destructible)")]
 	protected vector m_vOffsetRotation;
 	
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	void SetVariables(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		if (source.GetResourceName().Contains("BrickWall_01/BrickWall_01_white_2m.et"))
+			Print("BROKEN");
+		
+		// Set all variables of the spawn object
+		api.SetVariableValue(source, path, "m_vOffsetPosition", string.Format("%1 %2 %3", m_vOffsetPosition[0], m_vOffsetPosition[1], m_vOffsetPosition[2]));
+		api.SetVariableValue(source, path, "m_vOffsetRotation", string.Format("%1 %2 %3", m_vOffsetRotation[0], m_vOffsetRotation[1], m_vOffsetRotation[2]));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when attributes are the same
+	//! Returns false otherwise
+	bool CompareAttributes(SCR_BaseSpawnable other)
+	{
+		if (other.m_vOffsetPosition != m_vOffsetPosition)
+			return false;
+		
+		if (other.m_vOffsetRotation != m_vOffsetRotation)
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool AlreadyExists(WorldEditorAPI api, IEntitySource source, int index)
+	{
+		array<ref BaseDestructionPhase> phases = {};
+		source.Get("DamagePhases", phases);
+		
+		if (phases && phases.IsIndexValid(index))
+		{
+			SCR_BaseDestructionPhase phase = SCR_BaseDestructionPhase.Cast(phases[index]);
+			for (int i = phase.m_aPhaseDestroySpawnObjects.Count() - 1; i >= 0; i--)
+			{
+				if (phase.m_aPhaseDestroySpawnObjects[i].Type() == Type())
+				{
+					if (CompareAttributes(phase.m_aPhaseDestroySpawnObjects[i]))
+						return true;
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CreateObject(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		if (!AlreadyExists(api, source, index))
+		{
+			api.CreateObjectArrayVariableMember(source, path, "m_aPhaseDestroySpawnObjects", "SCR_BaseSpawnable", index);
+			return true;
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CopyToSource(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index, string currentObjectName)
+	{
+		if (source.GetResourceName().Contains("BrickWall_01/BrickWall_01_white_2m.et"))
+			Print("testing");
+		
+		if (!CreateObject(api, source, path, index))
+			return;
+		
+		// Change the path to the current spawn object
+		int last = path.Insert(new ContainerIdPathEntry(currentObjectName, index));
+		
+		SetVariables(api, source, path, index);
+		
+		path.Remove(last);
+	}
+#endif
+	
 	//------------------------------------------------------------------------------------------------
 	//! Calculates the spawn tranformation matrix for the object
 	void GetSpawnTransform(IEntity owner, out vector outMat[4], bool localCoords = false)
@@ -749,8 +828,92 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 	float m_fRandomVelocityAngular;
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for debris sound", "", ParamEnumArray.FromEnum(EMaterialSoundType))]
 	EMaterialSoundType m_eMaterialSoundType;
-	[Attribute("20", UIWidgets.Slider, "Sound is triggered if impulse is bigger", "0 50 1")]
-	float m_fSoundTriggerThreshold;
+	
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when attributes are the same
+	//! Returns false otherwise
+	override bool CompareAttributes(SCR_BaseSpawnable other)
+	{
+		SCR_DebrisSpawnable otherDebris = SCR_DebrisSpawnable.Cast(other);
+		
+		if (!super.CompareAttributes(other))
+			return false;
+		
+		if (otherDebris.m_ModelPrefabs != m_ModelPrefabs)
+			return false;
+		
+		if (otherDebris.m_fLifetimeMin != m_fLifetimeMin)
+			return false;
+		
+		if (otherDebris.m_fLifetimeMax != m_fLifetimeMax)
+			return false;
+		
+		if (otherDebris.m_fDistanceMax != m_fDistanceMax)
+			return false;
+		
+		if (otherDebris.m_fPriority != m_fPriority)
+			return false;
+		
+		if (otherDebris.m_fDamageToImpulse != m_fDamageToImpulse)
+			return false;
+		
+		if (otherDebris.m_fMaxDamageToSpeedMultiplier != m_fMaxDamageToSpeedMultiplier)
+			return false;
+		
+		if (otherDebris.m_fRandomVelocityLinear != m_fRandomVelocityLinear)
+			return false;
+		
+		if (otherDebris.m_fRandomVelocityAngular != m_fRandomVelocityAngular)
+			return false;
+		
+		if (otherDebris.m_eMaterialSoundType != m_eMaterialSoundType)
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetVariables(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		super.SetVariables(api, source, path, index);
+		
+		string prefabsArray = "";
+		// Set all variables of the spawn object
+		for (int i = 0, count = m_ModelPrefabs.Count(); i < count; i++)
+		{
+			prefabsArray += m_ModelPrefabs[i];
+			
+			if (i != count - 1) // Not last item
+				prefabsArray += ",";
+		}
+		
+		api.SetVariableValue(source, path, "m_ModelPrefabs", prefabsArray);
+		
+		api.SetVariableValue(source, path, "m_fMass", m_fMass.ToString());
+		api.SetVariableValue(source, path, "m_fLifetimeMin", m_fLifetimeMin.ToString());
+		api.SetVariableValue(source, path, "m_fLifetimeMax", m_fLifetimeMax.ToString());
+		api.SetVariableValue(source, path, "m_fDistanceMax", m_fDistanceMax.ToString());
+		api.SetVariableValue(source, path, "m_fPriority", m_fPriority.ToString());
+		api.SetVariableValue(source, path, "m_fDamageToImpulse", m_fDamageToImpulse.ToString());
+		api.SetVariableValue(source, path, "m_fMaxDamageToSpeedMultiplier", m_fMaxDamageToSpeedMultiplier.ToString());
+		api.SetVariableValue(source, path, "m_fRandomVelocityLinear", m_fRandomVelocityLinear.ToString());
+		api.SetVariableValue(source, path, "m_fRandomVelocityAngular", m_fRandomVelocityAngular.ToString());
+		api.SetVariableValue(source, path, "m_eMaterialSoundType", m_eMaterialSoundType.ToString());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CreateObject(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		if (!AlreadyExists(api, source, index))
+		{
+			api.CreateObjectArrayVariableMember(source, path, "m_aPhaseDestroySpawnObjects", "SCR_DebrisSpawnable", index);
+			return true;
+		}
+		
+		return false;
+	}
+#endif
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
@@ -793,7 +956,7 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 				angularVelocity += parentPhysics.GetAngularVelocity();
 			}
 #ifdef ENABLE_BASE_DESTRUCTION
-			SCR_DebrisSmallEntity.SpawnDebris(owner.GetWorld(), spawnMat, modelPath, m_fMass, Math.RandomFloat(m_fLifetimeMin, m_fLifetimeMax), m_fDistanceMax, m_fPriority, linearVelocity, angularVelocity, remap, false, m_fSoundTriggerThreshold, m_eMaterialSoundType);
+			SCR_DebrisSmallEntity.SpawnDebris(owner.GetWorld(), spawnMat, modelPath, m_fMass, Math.RandomFloat(m_fLifetimeMin, m_fLifetimeMax), m_fDistanceMax, m_fPriority, linearVelocity, angularVelocity, remap, false, m_eMaterialSoundType);
 #endif
 		}
 	}
@@ -813,6 +976,78 @@ class SCR_PrefabSpawnable : SCR_BaseSpawnable
 	float m_fRandomVelocityAngular;
 	[Attribute("0", UIWidgets.CheckBox, "Whether the spawned prefabs should be set as children (sets auto-transform)")]
 	bool m_bSpawnAsChildren;
+	
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when attributes are the same
+	//! Returns false otherwise
+	override bool CompareAttributes(SCR_BaseSpawnable other)
+	{
+		SCR_PrefabSpawnable otherPrefab = SCR_PrefabSpawnable.Cast(other);
+		
+		if (!super.CompareAttributes(other))
+			return false;
+		
+		int count = m_Prefabs.Count();
+		if (otherPrefab.m_Prefabs.Count() != count)
+			return false;
+		
+		for (int i = count - 1; i >= 0; i--)
+		{
+			if (otherPrefab.m_Prefabs[i] != m_Prefabs[i])
+				return false;
+		}
+		
+		if (otherPrefab.m_fDamageToImpulse != m_fDamageToImpulse)
+			return false;
+		
+		if (otherPrefab.m_fRandomVelocityLinear != m_fRandomVelocityLinear)
+			return false;
+		
+		if (otherPrefab.m_fRandomVelocityAngular != m_fRandomVelocityAngular)
+			return false;
+		
+		if (otherPrefab.m_bSpawnAsChildren != m_bSpawnAsChildren)
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetVariables(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		super.SetVariables(api, source, path, index);
+		
+		string prefabsArray = "";
+		// Set all variables of the spawn object
+		for (int i = 0, count = m_Prefabs.Count(); i < count; i++)
+		{
+			prefabsArray += m_Prefabs[i];
+			
+			if (i != count - 1) // Not last item
+				prefabsArray += ",";
+		}
+		
+		api.SetVariableValue(source, path, "m_Prefabs", prefabsArray);
+		
+		api.SetVariableValue(source, path, "m_fDamageToImpulse", m_fDamageToImpulse.ToString());
+		api.SetVariableValue(source, path, "m_fRandomVelocityLinear", m_fRandomVelocityLinear.ToString());
+		api.SetVariableValue(source, path, "m_fRandomVelocityAngular", m_fRandomVelocityAngular.ToString());
+		api.SetVariableValue(source, path, "m_bSpawnAsChildren", m_bSpawnAsChildren.ToString(true));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CreateObject(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		if (!AlreadyExists(api, source, index))
+		{
+			api.CreateObjectArrayVariableMember(source, path, "m_aPhaseDestroySpawnObjects", "SCR_PrefabSpawnable", index);
+			return true;
+		}
+		
+		return false;
+	}
+#endif
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
@@ -886,6 +1121,52 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 	
 	[Attribute("1", desc: "If true, the particle effect will play rotated in the hit direction.")]
 	bool m_bDirectional;
+	
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	//! Returns true when attributes are the same
+	//! Returns false otherwise
+	override bool CompareAttributes(SCR_BaseSpawnable other)
+	{
+		SCR_ParticleSpawnable otherParticle = SCR_ParticleSpawnable.Cast(other);
+		
+		if (!super.CompareAttributes(other))
+			return false;
+		
+		if (otherParticle.m_Particle != m_Particle)
+			return false;
+		
+		if (otherParticle.m_bAtCenter != m_bAtCenter)
+			return false;
+		
+		if (otherParticle.m_bDirectional != m_bDirectional)
+			return false;
+		
+		return true;
+	}
+	//------------------------------------------------------------------------------------------------
+	override void SetVariables(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		super.SetVariables(api, source, path, index);
+		
+		// Set all variables of the spawn object
+		api.SetVariableValue(source, path, "m_Particle", m_Particle);
+		api.SetVariableValue(source, path, "m_bAtCenter", m_bAtCenter.ToString(true));
+		api.SetVariableValue(source, path, "m_bDirectional", m_bDirectional.ToString(true));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CreateObject(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index)
+	{
+		if (!AlreadyExists(api, source, index))
+		{
+			api.CreateObjectArrayVariableMember(source, path, "m_aPhaseDestroySpawnObjects", "SCR_ParticleSpawnable", index);
+			return true;
+		}
+		
+		return false;
+	}
+#endif
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object

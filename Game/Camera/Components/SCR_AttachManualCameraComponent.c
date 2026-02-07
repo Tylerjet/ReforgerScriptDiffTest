@@ -128,6 +128,15 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 				}
 				break;
 			}
+			
+			case EAttachManualCameraType.ENTITY:
+			{
+				if (!m_AttachHelper)
+				{
+					AttachTo(SCR_PlayerController.GetLocalMainEntity());
+				}
+				break;
+			}
 		}
 		
 		//--- Convert camera coordinates to local space
@@ -206,5 +215,6 @@ enum EAttachManualCameraType
 {
 	NONE,
 	INPUT,
-	PLAYER
+	PLAYER,
+	ENTITY
 };

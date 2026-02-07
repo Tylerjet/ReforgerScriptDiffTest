@@ -181,7 +181,7 @@ class Game
 	\brief Called after reload to host a modded scenario.
 	@param sResource ResourceName of a mission config
 	*/
-	event void HostGameConfig(ResourceName sResource);
+	event void HostGameConfig();
 	event void PlayGameConfig(ResourceName sResource);
 	event ref array<ResourceName> GetDefaultGameConfigs();
 	event Managed ReadGameConfig(string sResource);

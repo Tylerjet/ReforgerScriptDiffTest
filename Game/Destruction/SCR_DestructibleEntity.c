@@ -83,6 +83,7 @@ class SCR_DestructibleEntity: DestructibleEntity
 	protected static const int MIN_MOMENTUM_RESPONSE_INDEX = 1;
 	protected static const int MAX_MOMENTUM_RESPONSE_INDEX = 5;
 	protected static const int MIN_DESTRUCTION_RESPONSE_INDEX = 6;
+	protected static const string DAMAGE_PHASE_SIGNAL_NAME = "DamagePhase";
 	static const int MAX_DESTRUCTION_RESPONSE_INDEX = 10;
 	static const string MAX_DESTRUCTION_RESPONSE_INDEX_NAME = "HugeDestructible";
 	static const int TOTAL_DESTRUCTION_MAX_HEALTH_MULTIPLIER = 10;
@@ -221,15 +222,17 @@ class SCR_DestructibleEntity: DestructibleEntity
 		{
 			// When streamed, we don't care about sounds or effects, we just change the model and quit
 			SetModel(phase.m_sPhaseModel);
+			SetDamagePhaseSignal(damagePhaseIndex);
 			return;
 		}
 		
-		bool DestroyAtNoHealth;
-		prefabData.GetPrefab().Get("DestroyAtNoHealth", DestroyAtNoHealth);
+		bool destroyAtNoHealth;
+		prefabData.GetPrefab().Get("DestroyAtNoHealth", destroyAtNoHealth);
 		PlaySound(damagePhaseIndex);
+		SetDamagePhaseSignal(damagePhaseIndex);
 		SetModel(phase.m_sPhaseModel);
 		
-		if (damagePhaseIndex == prefabData.GetNumDestructionPhases() - 1 && phase.m_sPhaseModel.IsEmpty()) // is last phase and doesn't have model
+		if (damagePhaseIndex == prefabData.GetNumDestructionPhases() - 1 && destroyAtNoHealth) // is last phase and gets deleted
 		{
 			SetModel(phase.m_sPhaseModel);
 			SpawnPhaseObjects(phase, destructionData);
@@ -252,9 +255,7 @@ class SCR_DestructibleEntity: DestructibleEntity
 	{
 		vector mins, maxs
 		GetBounds(mins, maxs);
-		maxs = maxs - mins;
-		
-		return Math.Max(maxs[2], Math.Max(maxs[0], maxs[1]));
+		return (maxs[0] - mins[0]) * (maxs[1] - mins[1]);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -274,10 +275,8 @@ class SCR_DestructibleEntity: DestructibleEntity
 		
 		// Set signals
 	    soundComponent.SetSignalValue(destructionManager.GetEntitySizeSignalID(), GetDestructibleSize());
-		soundComponent.SetSignalValue(destructionManager.GetDamagePhaseSignalID(), prefabData.GetNumDestructionPhases() - damagePhaseIndex);
-		// Set Impulse signal to very heigh value (choosen in relationship with audio project setup), so audio system uses sound with heighest intensity
-		soundComponent.SetSignalValue(destructionManager.GetImpulseSignalID(), 100);
-		
+		soundComponent.SetSignalValue(destructionManager.GetPhasesToDestroyedSignalID(), prefabData.GetNumDestructionPhases() - damagePhaseIndex - 1);
+
 		// Set position
 		vector mat[4];
 		mat[3] = GetOrigin();
@@ -285,6 +284,19 @@ class SCR_DestructibleEntity: DestructibleEntity
 		
 		// Play sound
 		soundComponent.PlayStr("SOUND_MPD_" + typename.EnumToString(EMaterialSoundType, prefabData.m_eMaterialSoundType));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Update DamagePhase signal on entity that has SignalsManagerComponent
+	// Used for triggering looped sounds
+	protected void SetDamagePhaseSignal(int damagePhaseIndex = 0)
+	{
+		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(FindComponent(SignalsManagerComponent));
+		if (!signalsManagerComponent)
+			return;
+		
+		// Pristine = 0, Destoyed > 0
+		signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal(DAMAGE_PHASE_SIGNAL_NAME), damagePhaseIndex);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -323,6 +335,9 @@ class SCR_DestructibleEntity: DestructibleEntity
 	void UpdateResponseIndex(float currentHealth)
 	{
 		Physics physics = GetPhysics();
+		if (!physics)
+			return;
+		
 		int responseIndex = physics.GetResponseIndex();
 		if (responseIndex <= MIN_DESTRUCTION_RESPONSE_INDEX)
 			return; // Cannot go lower

@@ -37,6 +37,8 @@ class SCR_PlayerController : PlayerController
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! TODO: Unhack please, perhaps run the setters directly in SCR_GameplaySettings
+	//! All these settings could be set with static methods in CharacterControllerComponent
 	void SetGameUserSettings() 
 	{
 		IEntity controlledEntity = GetControlledEntity();
@@ -73,12 +75,16 @@ class SCR_PlayerController : PlayerController
 		if (gameplaySettings)
 		{
 			bool stickyADS = true;
-			bool stickyGadgets = true;
-			if (gameplaySettings.Get("m_bStickyADS", stickyADS) && gameplaySettings.Get("m_bStickyGadgets", stickyGadgets) )
-			{
-				m_CharacterController.SetStickyGadget(stickyGadgets);
+			if (gameplaySettings.Get("m_bStickyADS", stickyADS))
 				m_CharacterController.SetStickyADS(stickyADS);
-			}
+			
+			bool stickyGadgets = true;
+			if (gameplaySettings.Get("m_bStickyGadgets", stickyGadgets))
+				m_CharacterController.SetStickyGadget(stickyGadgets);
+			
+			EVehicleDrivingAssistanceMode drivingAssistance;
+			if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
+				VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
 		}
 		
 		//TODO: we might want to set default focusInADS to 100 on XBOX and PSN ( default for mouse control should be 70 - see SCR_GameplaySettings )

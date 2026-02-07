@@ -77,6 +77,10 @@ class SCR_WorldTools
 		vector cylinderVectorOffset = Vector(0, cylinderHeight / 2, 0);
 		int rMax = Math.Ceil(areaRadius / cylinderRadius / Math.Sqrt(3));
 		
+		TraceParam trace = new TraceParam();
+		trace.Flags = flags | TraceFlags.WORLD;
+		vector traceOffset = Vector(0, 10, 0);
+		
 		float posX, posY;
 		int yMin, yMax, yStep;
 		for (int r; r < rMax; r++)
@@ -99,7 +103,12 @@ class SCR_WorldTools
 					if (vector.DistanceXZ(outPosition, areaCenter) > areaRadius - cylinderRadius)
 						continue;
 					
-					outPosition[1] = world.GetSurfaceY(outPosition[0], outPosition[2]);
+					//--- Find nearest surface below (make sure it's not underground)
+					trace.Start = outPosition;
+					trace.End = outPosition - traceOffset;
+					float traceCoef = world.TraceMove(trace, null);
+					outPosition[1] = Math.Max(trace.Start[1] - traceCoef * traceOffset[1] + 0.01, world.GetSurfaceY(outPosition[0], outPosition[2]));
+					
 					if (TraceCylinder(outPosition + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
 						return true;
 				}
@@ -136,6 +145,10 @@ class SCR_WorldTools
 		vector cylinderVectorOffset = Vector(0, cylinderHeight / 2, 0);
 		int rMax = Math.Ceil(areaRadius / cylinderRadius / Math.Sqrt(3));
 		
+		TraceParam trace = new TraceParam();
+		trace.Flags = flags | TraceFlags.WORLD;
+		vector traceOffset = Vector(0, 10, 0);
+		
 		vector position;
 		float posX, posY;
 		int yMin, yMax, yStep;
@@ -159,7 +172,12 @@ class SCR_WorldTools
 					if (vector.DistanceXZ(position, areaCenter) > areaRadius - cylinderRadius)
 						continue;
 					
-					position[1] = world.GetSurfaceY(position[0], position[2]);
+					//--- Find nearest surface below (make sure it's not underground)
+					trace.Start = position;
+					trace.End = position - traceOffset;
+					float traceCoef = world.TraceMove(trace, null);
+					position[1] = Math.Max(trace.Start[1] - traceCoef * traceOffset[1] + 0.01, world.GetSurfaceY(position[0], position[2]));
+					
 					if (TraceCylinder(position + cylinderVectorOffset, cylinderRadius, cylinderHeight, flags, world))
 						outPositions.Insert(position);
 				}

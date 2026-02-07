@@ -67,6 +67,11 @@ class SCR_BaseCampaignTutorialStage : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void OnStructureBuilt(SCR_CampaignBase base, IEntity structure)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	string CreateString(string description, string keybind, string keybind2 = "")
 	{
 		string returnString = "<br/>";
@@ -83,6 +88,27 @@ class SCR_BaseCampaignTutorialStage : GenericEntity
 		returnString = returnString + endColor + "<b> " + description + " </b>";
 		
 		return returnString;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsBuildingModeOpen()
+	{
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		
+		if (!core)
+			return false;
+		
+		SCR_EditorManagerEntity editorManager = core.GetEditorManager();
+		
+		if (!editorManager)
+		    return false;
+		
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
+		
+		if (!modeEntity)
+		    return false;
+		
+		return modeEntity.IsOpened();
 	}
 	
 	//------------------------------------------------------------------------------------------------

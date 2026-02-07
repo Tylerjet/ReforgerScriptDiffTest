@@ -243,7 +243,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		m_Group.GetAgents(agents);
 		
 		//Go over each character to check if role can be reassigned to another character
-		foreach(AIAgent agent: agents)
+		foreach (AIAgent agent: agents)
 		{
 			characterCallsignComponent = SCR_CallsignCharacterComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
 			
@@ -348,7 +348,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		}
 		
 		//Assign callsigns for each character in group
-		foreach(AIAgent agent: agents)
+		foreach (AIAgent agent: agents)
 		{
 			characterCallsignComponent = SCR_CallsignCharacterComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
 			characterCallsignComponent.ClearCallsigns();
@@ -388,7 +388,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		if (m_Group)
 			m_Group.GetAgents(agents);
 		
-		foreach(AIAgent agent: agents)
+		foreach (AIAgent agent: agents)
 		{
 			characterCallsignComponent = SCR_CallsignCharacterComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
 			

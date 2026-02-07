@@ -32,6 +32,8 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 	
 	private int m_iCharacterCount;
 	
+	protected bool m_bLastInputValid = true;
+	
 	ref ScriptInvoker m_OnInvalidInput = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnTextTooLong = new ref ScriptInvoker();
 	ref ScriptInvoker m_OnValidInput = new ref ScriptInvoker();
@@ -196,7 +198,8 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 		{
 			string char = text[i];
 			
-			if (!FilterSymbol(char))
+			m_bLastInputValid = FilterSymbol(char);
+			if (!m_bLastInputValid)
 				continue;
 			
 			newText += char;
@@ -205,4 +208,62 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 		return newText;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	// API
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCharacterLimit(int limit)
+	{
+		m_iCharacterLimit = limit;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPunctuation(bool enabled)
+	{
+		m_bPunctuation = enabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetNumbers(bool enabled)
+	{
+		m_bNumbers = enabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetASCIIchars(bool enabled)
+	{
+		m_bASCIIchars = enabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetUTFMultibyte(bool enabled)
+	{
+		m_bUTFMultibyte = enabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCharBlacklist(string list)
+	{
+		m_aBlacklist.Clear();
+		
+		int blacklistSize = list.Length();
+		for (int i = 0; i < blacklistSize; i++)
+		{
+			int char = list.Get(i).ToAscii();
+			m_aBlacklist.Insert(char);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetCharacterLimit(string list)
+	{
+		m_sCharWhitelist = list;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsLastInputValid()
+	{
+		return m_bLastInputValid;
+	}
 };

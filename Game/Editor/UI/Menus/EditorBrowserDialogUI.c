@@ -6,7 +6,7 @@ class EditorBrowserDialogUI: EditorMenuBase
 	
 	protected void CloseWithoutPlacing()
 	{
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingManager)
 		{
 			placingManager.SetPlacingFlag(EEditorPlacingFlags.CHARACTER_PLAYER, false);
@@ -30,11 +30,12 @@ class EditorBrowserDialogUI: EditorMenuBase
 		ScriptInvoker onClose = ButtonActionComponent.GetOnAction(rootWidget, WIDGET_BUTTON_CLOSE);
 		if (onClose) onClose.Insert(CloseWithoutPlacing);
 		
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingManager)
 		{
-			SCR_EditorBaseEntity editorManager = SCR_EditorBaseEntity.Cast(placingManager.GetOwner());
-			if (editorManager) editorManager.GetOnDeactivate().Insert(CloseWithoutPlacing);
+			SCR_EditorManagerEntity editorManager = placingManager.GetManager();
+			if (editorManager)
+				editorManager.GetOnDeactivate().Insert(CloseWithoutPlacing);
 		}
 		
 		InputManager inputManager = GetGame().GetInputManager();
@@ -43,11 +44,12 @@ class EditorBrowserDialogUI: EditorMenuBase
 	}
 	override void OnMenuClose()
 	{
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingManager)
 		{			
-			SCR_EditorBaseEntity editorManager = SCR_EditorBaseEntity.Cast(placingManager.GetOwner());
-			if (editorManager) editorManager.GetOnDeactivate().Remove(CloseWithoutPlacing);
+			SCR_EditorManagerEntity editorManager = placingManager.GetManager();
+			if (editorManager)
+				editorManager.GetOnDeactivate().Remove(CloseWithoutPlacing);
 		}
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)

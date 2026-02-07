@@ -34,6 +34,11 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 
 	protected ref SimplePreload m_Preload;
 
+	[Attribute("{C925ADF957A9670A}UI/layouts/Menus/MainMenu/PreloadScreen.layout")];
+	protected ResourceName m_sPreloadPath;
+	protected Widget m_wPreload;
+	protected SCR_LoadingSpinner m_Spinner;
+
 	protected ref set<int> m_aSpawnQueue = new set<int>();
 	protected ref set<int> m_aProcessingQueue = new set<int>();
 
@@ -84,7 +89,11 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 		// and this whole thing can be nuked as well		
 		PlayerController pc = GetGame().GetPlayerController();
 		if (!pc)
+		{
+			if (!m_wPreload)
+				CreatePreloadPlaceholder();
 			return false;
+		}
 
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(pc);
 
@@ -100,6 +109,9 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	*/
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
+		if (m_Spinner)
+			m_Spinner.Update(timeSlice);
+
 		if (m_Preload)
 		{
 			bool finished = m_Preload.Update(timeSlice);
@@ -113,23 +125,28 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 		if (m_pGameMode.IsMaster() && !m_aSpawnQueue.IsEmpty())
 		{
 			PlayerManager pm = GetGame().GetPlayerManager();
-			int count = m_aSpawnQueue.Count();
+			PlayerController pc;
 			int pid;
-			for (int index = 0; index < count; ++index)
+			for (int index = 0; index < m_aSpawnQueue.Count(); )
 			{
 				pid = m_aSpawnQueue[index];
-				if (m_pGameMode.CanPlayerRespawn(pid))
+				if (!m_pGameMode.CanPlayerRespawn(pid))
 				{
-					m_aProcessingQueue.Insert(pid);
-					pm.GetPlayerController(pid).RequestRespawn();
-					m_aSpawnQueue.Remove(index);
+					++index;
+					continue;
 				}
+
+				m_aProcessingQueue.Insert(pid);
+				pc = pm.GetPlayerController(pid);
+				if (pc)
+					pc.RequestRespawn();
+				m_aSpawnQueue.Remove(index);
 			}
 		}
 
 		// Make sure that we open menu only when we can
 		bool isOpen = SCR_RespawnSystemComponent.IsRespawnMenuOpened();
-		if (m_bLocalPlayerEnqueued && CanOpenRespawnMenu())
+		if (CanOpenRespawnMenu() && m_bLocalPlayerEnqueued)
 		{
 			if (m_fMenuOpenDelayCounter > 0)
 				m_fMenuOpenDelayCounter -= timeSlice;
@@ -220,6 +237,17 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 		if (menu)
 		{
 			menu.HandleOnPlayerDisconnected(playerId);
+		}
+
+		if (m_pGameMode.IsMaster())
+		{
+			int index = m_aProcessingQueue.Find(playerId);
+			if (m_aProcessingQueue.Contains(playerId))
+				m_aProcessingQueue.Remove(index);
+
+			index = m_aSpawnQueue.Find(playerId);
+			if (m_aSpawnQueue.Contains(playerId))
+				m_aSpawnQueue.Remove(index);
 		}
 	}
 
@@ -337,5 +365,34 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	LocalizedString GetFactionMenuMessage()
 	{
 		return m_sFactionMenuMessage;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void CreatePreloadPlaceholder()
+	{
+		m_wPreload = GetGame().GetWorkspace().CreateWidgets(m_sPreloadPath);
+		if (m_wPreload)
+		{
+			Widget spinner = m_wPreload.FindAnyWidget("Spinner");
+			if (spinner)
+				m_Spinner = SCR_LoadingSpinner.Cast(spinner.FindHandler(SCR_LoadingSpinner));
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DestroyPreloadPlaceholder()
+	{
+		if (m_wPreload)
+		{
+			m_wPreload.RemoveFromHierarchy();
+			m_wPreload = null;
+			m_Spinner = null;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------		
+	void ~SCR_RespawnMenuHandlerComponent()
+	{
+		DestroyPreloadPlaceholder();
 	}
 };

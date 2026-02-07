@@ -60,9 +60,9 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 		if (m_News)
 			m_News.m_OnClicked.Insert(OnNews);
 		
-		/*m_Career = SCR_ButtonImageComponent.GetButtonImage("Career", w);
+		m_Career = SCR_ButtonImageComponent.GetButtonImage("Career", w);
 		if (m_Career)
-			m_Career.m_OnClicked.Insert(OnCareer);*/
+			m_Career.m_OnClicked.Insert(OnCareer);
 
 		m_Profile = SCR_ButtonImageComponent.GetButtonImage("Profile", w);
 		if (m_Profile)
@@ -168,14 +168,13 @@ class SCR_AccountWidgetComponent : ScriptedWidgetComponent
 	protected void OnNews()
 	{
 		OpenProfileMenu(0);
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCareer()
 	{
 		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.CareerProfileMenu);
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCommunity()

@@ -1,4 +1,4 @@
-class SCR_BoardingWaypointClass: SCR_AIWaypointClass
+class SCR_BoardingWaypointClass: SCR_TimedWaypointClass
 {
 };
 
@@ -9,7 +9,7 @@ class SCR_AIBoardingWaypointParameters
 	bool m_bIsCargoAllowed;
 };
 
-class SCR_BoardingWaypoint : SCR_AIWaypoint
+class SCR_BoardingWaypoint : SCR_TimedWaypoint
 {
 	[Attribute("", UIWidgets.CheckBox, "Occupy driver")]
 	private bool m_bDriverAllowed;

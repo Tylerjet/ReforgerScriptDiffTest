@@ -31,7 +31,7 @@ class SCR_CreateLayerWithSelectionContextAction : SCR_BaseContextAction
 		
 		SCR_EditableEntityComponent parent;
 		
-		foreach(SCR_EditableEntityComponent entity: selectedEntities)
+		foreach (SCR_EditableEntityComponent entity: selectedEntities)
 		{
 			if (entity)
 			{

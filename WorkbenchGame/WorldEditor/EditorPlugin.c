@@ -1,6 +1,9 @@
-[WorkbenchPluginAttribute(name: "Settings", category: "In-game Editor", wbModules: {"WorldEditor"})]
+[WorkbenchPluginAttribute(name: "Game Master Settings", icon: "WBData/EntityEditorProps/entityEditor.png", wbModules: {"WorldEditor"})]
 class EditorPlugin : WorldEditorPlugin
 {
+	[Attribute(desc: "When enabled, Game Master camera will start on the position of World Editor camera.", category: "Game Master")]
+	protected bool m_bStartOnWorldEditorCamera;
+	
 	override void OnGameModeStarted(string worldName, string gameMode, bool playFromCameraPos, vector cameraPosition, vector cameraAngles)
 	{
 		//--- Player is spawned at camera position; initialize, but don't open the editor
@@ -9,32 +12,24 @@ class EditorPlugin : WorldEditorPlugin
 		{
 #ifdef WORKBENCH
 			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-			if (core) core.OnPlayFromCameraPos();
+			if (core)
+				core.OnPlayFromCameraPos();
 #endif
 		}
 		
-		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		if (!editorManager) return;
+		if (!m_bStartOnWorldEditorCamera)
+			return;
 		
-		ArmaReforgerScripted game = GetGame();
-		if (!game) return;
+		SCR_CameraEditorComponent cameraComponent = SCR_CameraEditorComponent.Cast(SCR_CameraEditorComponent.GetInstance(SCR_CameraEditorComponent));
+		if (!cameraComponent)
+			return;
 		
-		BaseWorld world = game.GetWorld();
-		if (!world) return;
+		//--- Set initial camera position and rotation
+		vector transform[4];
+		Math3D.AnglesToMatrix(Vector(cameraAngles[1], cameraAngles[0], cameraAngles[2]), transform);
+		transform[3] = cameraPosition;
 		
-		//--- Exit when the editor is already opened, a player is present or a camera is already initalized
-		vector matrix[4];
-		world.GetCurrentCamera(matrix);
-		if (editorManager.IsOpened() || game.GetPlayerController() || matrix[3] != vector.Zero) return;
-		
-		//--- Open the editor
-		editorManager.Open();
-		if (!editorManager.IsOpened()) return; //--- Failed to open for some reason, exit
-		Print("No player present in the world, starting Editor instead.", LogLevel.DEBUG);
-		
-		//--- Move editor camera to World Editor camera position
-		vector angles = Vector(cameraAngles[1], cameraAngles[0], cameraAngles[2]);
-		world.SetCamera(world.GetCurrentCameraId(), cameraPosition, angles);
+		cameraComponent.SetInitTransform(transform);
 	}
 	
 	//--- Play the editor directly
@@ -48,4 +43,12 @@ class EditorPlugin : WorldEditorPlugin
 		we.SetOpenedResource("{25E6D4AEC3F45872}worlds/Editor/Test/TestGameMaster.ent");
 		we.SwitchToGameMode();
 	}
+	
+	override void Configure()
+	{
+		Workbench.ScriptDialog("Game Master Settings", "Configuration of Game Master when running in World Editor.", this);
+	}
+	
+	[ButtonAttribute("Close")]
+	void ButtonClose();
 };

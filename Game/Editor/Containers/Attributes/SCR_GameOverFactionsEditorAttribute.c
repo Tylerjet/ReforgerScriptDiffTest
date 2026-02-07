@@ -94,7 +94,7 @@ class SCR_GameOverFactionsEditorAttribute: SCR_BaseMultiSelectPresetsEditorAttri
 	{
 		SCR_BaseGameOverScreenInfoEditor editorOptional;
 		
-		foreach(SCR_BaseGameOverScreenInfo screen: gameOverScreens)
+		foreach (SCR_BaseGameOverScreenInfo screen: gameOverScreens)
 		{
 			editorOptional = screen.GetEditorOptionalParams();
 			

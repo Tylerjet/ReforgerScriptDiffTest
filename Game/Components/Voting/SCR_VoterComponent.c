@@ -19,6 +19,25 @@ class SCR_VoterComponent: ScriptComponent
 		else
 			return null;
 	}
+	/*!
+	Instantly cast vote to the only ongoing voting.
+	Ignored if number of votings is not exactly 1.
+	*/
+	static void InstantVote()
+	{
+		SCR_VotingManagerComponent manager = SCR_VotingManagerComponent.GetInstance();
+		if (!manager)
+			return;
+		
+		SCR_VoterComponent voterComponent = GetInstance();
+		if (!voterComponent)
+			return;
+		
+		array<EVotingType> votingTypes = {};
+		array<int> votingValues = {};
+		if (manager.GetAllVotingsWithValue(votingTypes, votingValues, false, true) == 1)
+			voterComponent.Vote(votingTypes[0], votingValues[0]);
+	}
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, owner

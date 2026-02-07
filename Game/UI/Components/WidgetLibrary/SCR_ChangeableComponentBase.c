@@ -21,6 +21,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	[Attribute("{829BC1189A899017}UI/layouts/WidgetLibrary/WLibRefined/WLib_Label.layout", UIWidgets.EditBox, "")]
 	protected ResourceName m_sLabelLayout;
 	
+	[Attribute("SizeLayout", UIWidgets.EditBox, "Name of size layout if you want to find size that is not root child")]
+	protected string m_sSizeLayout;
+	
 	protected Widget m_wBorder;
 	protected Widget m_wBackground;
 	protected Widget m_wLabelRoot;
@@ -59,8 +62,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
-		
+		if (m_wBorder)
 		AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate);
+		
 		AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_HOVERED, m_fAnimationRate);
 		return false;
 	}
@@ -70,7 +74,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	{
 		super.OnFocusLost(w, x, y);
 
-		AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate);
+		if (m_wBorder)
+			AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate);
+	
 		Widget mouseOver = WidgetManager.GetWidgetUnderCursor();
 		if (w != mouseOver && !IsChildWidget(w, mouseOver))
 			AnimateWidget.Color(m_wBackground, UIColors.BACKGROUND_DEFAULT, m_fAnimationRate);
@@ -103,6 +109,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 			return;
 		
 		SizeLayoutWidget size = SizeLayoutWidget.Cast(m_wRoot.GetChildren());
+		if (!size && !m_sSizeLayout.IsEmpty())
+			size = SizeLayoutWidget.Cast(m_wRoot.FindAnyWidget(m_sSizeLayout));
+		
 		if (size)
 		{
 			size.EnableHeightOverride(m_bForceSize);

@@ -18,6 +18,13 @@ class SCR_RadialMenuEditorBase: SCR_RadialMenuHandler
 	{
 
 	}
+	override protected void OnUpdate(IEntity owner, float timeSlice)
+	{
+		if (m_MenuManager.IsAnyDialogOpen())
+			Close(owner);
+		else
+			super.OnUpdate(owner, timeSlice);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected void Init(IEntity owner)

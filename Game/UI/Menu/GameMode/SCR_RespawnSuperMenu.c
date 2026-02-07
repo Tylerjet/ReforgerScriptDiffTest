@@ -115,7 +115,7 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 		else
 			MuteSounds();
 		
-		//GetGame().GetCallqueue().CallLater(MuteSounds, 100);
+		GetGame().GetCallqueue().CallLater(m_RespawnMenuHandler.DestroyPreloadPlaceholder, 0, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -205,6 +205,7 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 			editorManager.AutoInit();
 		
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
+		GetGame().GetInputManager().AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -213,6 +214,7 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 		super.OnMenuFocusLost();
 		GetRootWidget().SetEnabled(false);
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, ShowPlayerList);
+		GetGame().GetInputManager().RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -2,6 +2,8 @@
 [BaseContainerProps()]
 class NavigationButtonEntry
 {
+	[Attribute(uiwidget: UIWidgets.LocaleEditBox, desc: "Display name of input action")]
+	LocalizedString m_sDisplayName;
 	[Attribute(desc: "Name of input action")]
 	string m_sAction;
 	[Attribute(desc: "Name of the button - ID")]
@@ -17,8 +19,6 @@ class NavigationButtonEntry
 class SCR_NavigationBarUI : ScriptedWidgetComponent
 {
 	//#define BUTTON_LAYOUT				"{19A9CC7487AAD442}UI/layouts/Common/Buttons/NavigationButton.layout"
-	
-	const string LOCALIZATION_PREFIX = "#AR-";
 	
 	[Attribute("{08CF3B69CB1ACBC4}UI/layouts/WidgetLibrary/WLib_NavigationButton.layout", UIWidgets.ResourceNamePicker, "Layout", "layout")]
 	protected ResourceName m_Layout;
@@ -36,7 +36,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected SCR_NavigationButtonComponent GetButton( string name )
 	{
-		foreach( NavigationButtonEntry entry : m_aEntries )
+		foreach ( NavigationButtonEntry entry : m_aEntries )
 		{
 			SCR_NavigationButtonComponent comp = entry.m_Component;
 			if (entry.m_sButtonID == name && comp)
@@ -62,7 +62,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 		pActionButton.GetRootWidget().SetVisible( bEnable );
 		
 		if( !sName.IsEmpty() )
-			pActionButton.SetLabel( LOCALIZATION_PREFIX + sName );
+			pActionButton.SetLabel(sName);
 	}		
 	
 	//------------------------------------------------------------------------------------------------
@@ -71,13 +71,13 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 		SCR_NavigationButtonComponent pActionButton = GetButton( sButtonName );
 		if( !pActionButton )
 			return;
-		pActionButton.SetLabel( LOCALIZATION_PREFIX + sName );
+		pActionButton.SetLabel(sName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetAllButtonEnabled( bool bEnable = true )
 	{
-		foreach( NavigationButtonEntry entry: m_aEntries )
+		foreach ( NavigationButtonEntry entry: m_aEntries )
 		{
 			SCR_NavigationButtonComponent comp = entry.m_Component;
 			if (!comp)
@@ -110,7 +110,7 @@ class SCR_NavigationBarUI : ScriptedWidgetComponent
 			
 			entry.m_Component = comp;
 			comp.SetAction(entry.m_sAction);
-			comp.SetLabel(LOCALIZATION_PREFIX + entry.m_sAction);
+			comp.SetLabel(entry.m_sDisplayName);
 			comp.m_OnActivated.Insert(OnNavigation);
 			comp.SetClickedSound("");
 		}

@@ -11,7 +11,7 @@ Editable entity which can contain location description.
 */
 class SCR_EditableSystemComponent: SCR_EditableEntityComponent
 {	
-	protected SCR_FactionControlComponent m_FactionControlComponent;
+	protected SCR_FactionAffiliationComponent m_FactionAffiliationComponent;
 	protected ref ScriptInvoker Event_OnUIRefresh = new ref ScriptInvoker;
 	
 	protected void OnFactionChanged()
@@ -25,9 +25,9 @@ class SCR_EditableSystemComponent: SCR_EditableEntityComponent
 	*/
 	override Faction GetFaction()
 	{
-		if (m_FactionControlComponent)
+		if (m_FactionAffiliationComponent)
 		{
-			return m_FactionControlComponent.GetFaction();
+			return m_FactionAffiliationComponent.GetAffiliatedFaction();
 		}
 		return null;
 	}
@@ -44,18 +44,18 @@ class SCR_EditableSystemComponent: SCR_EditableEntityComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		m_FactionControlComponent = SCR_FactionControlComponent.Cast(owner.FindComponent(SCR_FactionControlComponent));
-		if (m_FactionControlComponent)
+		m_FactionAffiliationComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
+		if (m_FactionAffiliationComponent)
 		{
-			m_FactionControlComponent.GetOnFactionChanged().Insert(OnFactionChanged);
+			m_FactionAffiliationComponent.GetOnFactionUpdate().Insert(OnFactionChanged);
 		}
 	}
 	
 	void ~SCR_EditableSystemComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		if (m_FactionControlComponent)
+		if (m_FactionAffiliationComponent)
 		{
-			m_FactionControlComponent.GetOnFactionChanged().Insert(OnFactionChanged);
+			m_FactionAffiliationComponent.GetOnFactionUpdate().Insert(OnFactionChanged);
 		}
 	}
 };

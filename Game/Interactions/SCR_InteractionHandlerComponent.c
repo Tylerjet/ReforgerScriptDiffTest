@@ -204,7 +204,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			return false;
 		
 		CharacterControllerComponent pController = CharacterControllerComponent.Cast(pCharacter.FindComponent(CharacterControllerComponent));
-		if (pController && (pController.IsDead() || pController.IsClimbing()))
+		if (pController && (pController.IsUnconscious() || pController.IsDead() || pController.IsClimbing()))
 			return false;
 		
 		// Disable in vehicle 3pp
@@ -416,30 +416,36 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint)
 	{
-		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
-		vector rayDir = camera.GetWorldTransformAxis(2);
-		vector rayStart = camera.GetOrigin();
-		referencePoint = rayStart + rayDir;
-		
-		// Inspection correction
-		ChimeraCharacter character = ChimeraCharacter.Cast(m_pControlledEntity);
-		if (character)
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (cameraManager)
 		{
-			// During inspection (of a weapon)
-			CharacterControllerComponent controller = character.GetCharacterController();
-			if (controller.GetInspect() && controller.GetInspectCurrentWeapon())
+			CameraBase camera = cameraManager.CurrentCamera();
+			vector rayDir = camera.GetWorldTransformAxis(2);
+			vector rayStart = camera.GetOrigin();
+			referencePoint = rayStart + rayDir;
+			
+			// Inspection correction
+			ChimeraCharacter character = ChimeraCharacter.Cast(m_pControlledEntity);
+			if (character)
 			{
-				// Assume that while in inspection, weapon is tilted and its
-				// left side is pointed towards the player camera
-				IEntity inspectedEntity = controller.GetInspectEntity();
-				
-				vector origin = inspectedEntity.GetOrigin();
-				vector normal = -inspectedEntity.GetWorldTransformAxis(0);
-				
-				referencePoint = SCR_Math3D.IntersectPlane(rayStart, rayDir, origin, normal);
-				// Shape.CreateSphere(COLOR_RED, ShapeFlags.ONCE, referencePoint, 0.01);
+				// During inspection (of a weapon)
+				CharacterControllerComponent controller = character.GetCharacterController();
+				if (controller.GetInspect() && controller.GetInspectCurrentWeapon())
+				{
+					// Assume that while in inspection, weapon is tilted and its
+					// left side is pointed towards the player camera
+					IEntity inspectedEntity = controller.GetInspectEntity();
+					
+					vector origin = inspectedEntity.GetOrigin();
+					vector normal = -inspectedEntity.GetWorldTransformAxis(0);
+					
+					referencePoint = SCR_Math3D.IntersectPlane(rayStart, rayDir, origin, normal);
+					// Shape.CreateSphere(COLOR_RED, ShapeFlags.ONCE, referencePoint, 0.01);
+				}
 			}
 		}
+		else
+			referencePoint = vector.Zero;
 
 		return m_aInspectedEntities;
 	}
@@ -468,7 +474,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 						array<AttachmentSlotComponent> attachments = {};
 						weapon.GetAttachments(attachments);
 						
-						foreach(AttachmentSlotComponent attachment : attachments)
+						foreach (AttachmentSlotComponent attachment : attachments)
 						{
 							IEntity attachedEntity = attachment.GetAttachedEntity();
 							if (attachedEntity)
@@ -531,59 +537,13 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			if (count > 0)
 				CollectInputs(bPerform, fScroll);
 			
-			/*!
-				This is a long-living hack that filters
-				actions with same name. It's awful, but it'll stay for now.
-			*/
-			map<string, bool> mActionFilter = new map<string, bool>();
-			for (int i = count-1; i >= 0; i--)
+			foreach (BaseUserAction action : actions)
 			{
-				BaseUserAction pCurrentAction = actions[i];
-				if (!pCurrentAction)
-					continue;
-				
 				if (m_pDisplay)
-					m_pDisplay.OnActionProgress( character, pCurrentAction, pCurrentAction.GetActionProgress(), pCurrentAction.GetActionDuration() );
-				
-				if (pCurrentAction.CanAggregate())
-				{
-					
-					// Filter out actions with duplicite names
-					// This is not a good long term solution
-					string sActionName = pCurrentAction.GetActionName();
-					if (sActionName == "")
-						continue;
-					
-					
-					// Register the action name within the map,
-					// with invalid state
-					if (!mActionFilter.Contains(sActionName))
-					{
-						mActionFilter[sActionName] = false;
-					}
-					
-					
-					// It was registered already, but it did
-					// not return true in CanBePerformed
-					if (!mActionFilter[sActionName])
-					{
-						// If this action is the first we can perform,
-						// prefer it.
-						// If we didn't have any that could be performed
-						// prior to now, so let's use it
-						if (canPerform[i] || (i == 0 && !mActionFilter[sActionName]))
-						{
-							mActionFilter[sActionName] = true;
-							continue;
-						}
-					}
-					
-					// An action of this kind was already available,
-					// lets remove current one from the list
-					actions.Remove(i);
-					canPerform.Remove(i);
-				}
+					m_pDisplay.OnActionProgress( character, action, action.GetActionProgress(), action.GetActionDuration() );
 			}
+			
+			AggregateActions(actions, canPerform);
 			
 			// First of all, prior to doing any destructive changes,
 			// find the previous selected action (if any) and 
@@ -675,5 +635,87 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 		m_bLastInput = bPerform;
 		// Update last context
 		m_pLastContext = currentContext;
+	}
+	
+	private ref array<BaseUserAction> m_ActionsBuffer = {};
+	private ref array<bool> m_PerformBuffer = {};
+	private ref map<string, ref array<int>> m_IndicesBuffer = new map<string, ref array<int>>();
+	
+	/*!
+		Modifies the input lists (which need to be 1:1 in length and logical sense) so
+		each action which can be aggregated (BaseUserAction.CanAggregate() returns true)
+		only displays the first available (or any first if none is available to perform)
+		action, filtered by BaseUserAction.GetActionName(). 
+	*/
+	protected void AggregateActions(array<BaseUserAction> actionsList, array<bool> canPerformList)
+	{
+		m_ActionsBuffer.Copy(actionsList);
+		m_PerformBuffer.Copy(canPerformList);
+		m_IndicesBuffer.Clear();
+		actionsList.Clear();
+		canPerformList.Clear();
+		
+		// First pass, filter&gather
+		for (int i = 0; i < m_ActionsBuffer.Count(); i++)
+		{
+			BaseUserAction action = m_ActionsBuffer[i];
+			if (!action)
+				continue;
+			
+			// For non-aggregated actions, skip this process
+			bool canPerform = m_PerformBuffer[i];
+			if (!action.CanAggregate())
+				continue;
+			
+			// Group actions of same name for aggregation
+			string actionName = action.GetActionName();
+			if (!m_IndicesBuffer.Contains(actionName))
+				m_IndicesBuffer.Insert(actionName, new array<int>());
+			
+			m_IndicesBuffer[actionName].Insert(i);
+		}
+		
+		// Second pass, resolve&output
+		for (int i = 0; i < m_ActionsBuffer.Count(); i++)
+		{
+			BaseUserAction action = m_ActionsBuffer[i];
+			if (!action)
+				continue;
+			
+			// For non-aggregated actions, append the action straight away
+			bool canPerform = m_PerformBuffer[i];
+			if (!action.CanAggregate())
+			{
+				actionsList.Insert(action);
+				canPerformList.Insert(canPerform);
+				continue;
+			}
+			
+			// For aggregated actions, find group of given actions
+			string actionName = action.GetActionName();
+			// If group was sorted, it will be removed from the map,
+			// and no longer present, therefore we can ommit rechecking
+			if (!m_IndicesBuffer.Contains(actionName))
+				continue;
+			
+			// If not resolved yet, resolve by finding available action
+			int availableIndex = m_IndicesBuffer[actionName][0]; // By default the first action
+			foreach (int index : m_IndicesBuffer[actionName])
+			{
+				// First performable hit
+				if (m_PerformBuffer[index])
+				{
+					availableIndex = index;
+					break;
+				}
+			}
+			
+			BaseUserAction aggregatedAction = m_ActionsBuffer[availableIndex];
+			bool aggregatedState = m_PerformBuffer[availableIndex];
+			actionsList.Insert(aggregatedAction);
+			canPerformList.Insert(aggregatedState);
+			// And remove the action from the group map
+			m_IndicesBuffer.Remove(actionName);
+		}
 	}
 };

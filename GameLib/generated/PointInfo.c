@@ -7,7 +7,7 @@ Do not modify, this script is generated
 //! PointInfo - declare object, allows to define position (before named ComponentPositionInfo)
 class PointInfo: ScriptAndConfig
 {
-	private void PointInfo();
+	void PointInfo();
 	
 	proto external void Init(IEntity owner);
 	proto external IEntity GetOwner();
@@ -23,4 +23,5 @@ class PointInfo: ScriptAndConfig
 	proto external void GetTransformNode(out vector outMat[4]);
 	proto external string GetBoneName();
 	proto external int GetNodeId();
+	proto external void Set(IEntity owner, string boneName, vector matInOwnerSpace[4]);
 };

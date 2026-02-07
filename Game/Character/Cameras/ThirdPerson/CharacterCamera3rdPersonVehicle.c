@@ -10,6 +10,11 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	static const float 	CONST_LR_MIN	= -180.0;		//!< left limit
 	static const float 	CONST_LR_MAX	= 180.0;		//!< right limit
 
+	static const float STEERING_DEGREES	= 5;
+	static const float ANGULAR_INERTIA	= 5;
+	protected float m_fSteeringAngle;
+	protected float m_fInertiaAngle;
+
 	//-----------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
 	{
@@ -103,6 +108,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		vector localAngVelocity = vector.Zero;
 		vector vehMat[4];
 		
+		float steeringAngle;
 		if (m_OwnerVehicle)
 		{
 			vector charMat[4];
@@ -116,17 +122,34 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 				localVelocity = physics.GetVelocity().InvMultiply3(vehMat);
 				localAngVelocity = physics.GetAngularVelocity().InvMultiply3(vehMat);
 			}
+			
+			CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
+			if (compartmentAccess && PilotCompartmentSlot.Cast(compartmentAccess.GetCompartment()))
+			{
+				VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_OwnerVehicle.FindComponent(VehicleWheeledSimulation));
+				if (simulation)
+					steeringAngle = simulation.GetSteering();
+			}
 		}
 		else
 		{
 			Math3D.MatrixIdentity4(vehMat);
 		}
 		
+		// To smoothen out jittering a bit
+		vector smoothVelocity = vector.Lerp(m_vLastVel, localVelocity, pDt);
+		m_fInertiaAngle = Math.Lerp(m_fInertiaAngle, localAngVelocity[1] * ANGULAR_INERTIA, pDt);
+		m_fSteeringAngle = Math.Lerp(m_fSteeringAngle, steeringAngle * STEERING_DEGREES, pDt);
+		
+		// store phx values
+		m_vLastVel = localVelocity;
+		m_vLastAngVel = localAngVelocity;
+		
 		vector yawPitchRoll = Math3D.MatrixToAngles(vehMat);
 		
 		//! yaw pitch roll vector
 		vector lookAngles;
-		lookAngles[0] = m_fLeftRightAngle;
+		lookAngles[0] = m_fLeftRightAngle + m_fInertiaAngle + m_fSteeringAngle;
 		lookAngles[1] = udAngle - yawPitchRoll[1] * m_fPitchFactor;
 		lookAngles[2] = 0.0;
 		
@@ -151,12 +174,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		
 		// viewbob update
 		UpdateViewBob(pDt, localVelocity, localAngVelocity);
-		
-		// To smoothen out jittering a bit
-		vector smoothVelocity = vector.Lerp(m_vLastVel, localVelocity, pDt);
-		// store phx values
-		m_vLastVel = localVelocity;
-		m_vLastAngVel = localAngVelocity;
 		
 		// offset based on speed
 		float speed = localVelocity.Length();
@@ -284,7 +301,11 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	//-----------------------------------------------------------------------------
 	override float GetBaseFOV()
 	{
-		return GetGame().GetCameraManager().GetThirdPersonFOV();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+		
+		return cameraManager.GetVehicleFOV();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -49,7 +49,7 @@ class SCR_RadialMenuWeapons: SCR_RadialMenuHandler
 	protected void PageSetupWeapon()
 	{
 		// Edit name 
-		SCR_MenuPage pageWeapons = m_aSCR_MenuPages[ERadialMenuWeaponsPages.WEAPONS];
+		SCR_MenuPage pageWeapons = m_aMenuPages[ERadialMenuWeaponsPages.WEAPONS];
 		pageWeapons.SetName(PAGENAME_WEAPONS);
 		
 		// Receive wepon slots 
@@ -139,7 +139,7 @@ class SCR_RadialMenuWeapons: SCR_RadialMenuHandler
 		int id = -1; 
 		
 		// Find last selected slot 
-		foreach(WeaponSlotComponent slot : m_aWeaponSlotsUnsorted)
+		foreach (WeaponSlotComponent slot : m_aWeaponSlotsUnsorted)
 		{
 			id++;
 			if(slot.GetWeaponEntity() == m_pCurrentWeaponEntity) 

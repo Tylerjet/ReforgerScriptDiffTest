@@ -113,20 +113,22 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 	}
 	protected static string GetPivotName(IEntity entity)
 	{
-		int pivotIndex = entity.GetPivot();
-		if (pivotIndex < 0)
-		{
+		IEntity parent = entity.GetParent();
+		if (!parent)
 			return string.Empty;
-		}
-		else
+		
+		TNodeId pivotIndex = entity.GetPivot();
+		if (pivotIndex == -1)
+			return string.Empty;
+		
+		array<string> boneNames = {};
+		parent.GetBoneNames(boneNames);
+		for (int i = 0, count = boneNames.Count(); i < count; i++)
 		{
-			array<string> boneNames = {};
-			entity.GetBoneNames(boneNames);
-			if (pivotIndex < boneNames.Count())
-				return boneNames[pivotIndex];
-			else
-				return string.Empty;
+			if (parent.GetBoneIndex(boneNames[i]) == pivotIndex)
+				return boneNames[i];
 		}
+		return string.Empty;
 	}
 	protected static bool GetMesh(IEntity entity, EPreviewEntityFlag flags, SCR_BasePreviewEntry entry, out notnull array<ref SCR_BasePreviewEntry> outEntries)
 	{

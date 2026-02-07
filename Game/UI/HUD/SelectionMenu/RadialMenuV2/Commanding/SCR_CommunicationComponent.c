@@ -157,8 +157,12 @@ class SCR_CommunicationComponent : SCR_MailboxComponent
 		vector pos;
 		vector mat[4];
 		vector direction;
+
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return;
 		
-		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
+		CameraBase camera = cameraManager.CurrentCamera();
 		if (!camera)
 			return;
 		

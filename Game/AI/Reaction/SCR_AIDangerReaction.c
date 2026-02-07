@@ -167,7 +167,7 @@ class SCR_AIDangerReaction_Vehicle : SCR_AIDangerReaction
 [BaseContainerProps()]
 class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 {
-	static const float GRENADE_AVOIDANCE_RADIUS_SQ = 625;
+	static const float GRENADE_AVOIDANCE_RADIUS_SQ = 13*13; // Must be same as in behavior tree!
 	
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{

@@ -17,6 +17,7 @@ class TurretComponent: AimingComponent
 {
 	proto external bool HasMoveableBase();
 	proto external PointInfo GetCameraAttachmentSlot();
+	proto external bool IsVehicleMounted();
 };
 
 /** @}*/

@@ -58,14 +58,14 @@ class SCR_CampaignBuildingTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignBuildingTaskSupportEntity(IEntitySource src, IEntity parent)
 	{
-		//Register to script invokers
-		SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
+		//Register to script invokers TASK DISSABLED FOR NOW
+		//SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignBuildingTaskSupportEntity()
 	{
 		//Unregister from script invokers
-		SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
+		//SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
 	}
 }

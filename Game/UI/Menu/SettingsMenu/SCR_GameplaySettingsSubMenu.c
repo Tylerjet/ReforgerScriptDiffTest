@@ -41,6 +41,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyADS", "StickyADS"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bShowRadioProtocolText", "RadioProtocolSubtitles"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eDrivingAssistance", "DrivingAssistance"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFirstPersonFOV", "1PP"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fThirdPersonFOV", "3PP"));

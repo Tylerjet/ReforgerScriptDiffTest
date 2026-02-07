@@ -15,6 +15,7 @@ class BaseWeaponComponent: GameComponent
 	proto external string GetWeaponSlotType();
 	proto external EWeaponType GetWeaponType();
 	proto external int GetMuzzlesList(out notnull array<BaseMuzzleComponent> outMuzzles);
+	proto external ECanBeEquippedResult CanBeEquipped(CharacterControllerComponent charController);
 	proto external BaseMuzzleComponent GetCurrentMuzzle();
 	//! Returns whether current weapon is able to be reloaded or not.
 	proto external bool IsReloadPossible();

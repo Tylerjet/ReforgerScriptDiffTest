@@ -285,11 +285,7 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 		m_aMessages.Clear();
 		
 		m_ChatEntity = ScriptedChatEntity.Cast(GetGame().GetChat());
-		if (!m_ChatEntity)
-		{
-			Print("[Chat] ScriptedChatEntity is not present in the world. Sending messages will not work.", LogLevel.ERROR);
-		}
-		
+
 		// OnGameStart runs several time for same object,
 		// but this code must be run only once
 		if (!m_bInitDone)

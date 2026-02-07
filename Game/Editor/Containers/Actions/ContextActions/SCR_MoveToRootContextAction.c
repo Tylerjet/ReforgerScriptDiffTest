@@ -63,7 +63,7 @@ class SCR_MoveToRootContextAction : SCR_BaseContextAction
 		
 		set<SCR_EditableEntityComponent> entitiesToMove = new set<SCR_EditableEntityComponent>();
 		
-		foreach(SCR_EditableEntityComponent entity: selectedEntities)
+		foreach (SCR_EditableEntityComponent entity: selectedEntities)
 		{
 			if (!core.CanSetParent(entity.GetEntityType(), null) && entity.GetEntityType() != EEditableEntityType.CHARACTER)
 				continue;

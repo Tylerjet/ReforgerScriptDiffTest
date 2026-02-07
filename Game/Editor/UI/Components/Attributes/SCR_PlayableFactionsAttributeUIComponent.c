@@ -103,7 +103,7 @@ class SCR_PlayableFactionsAttributeUIComponent: SCR_ButtonBoxMultiSelectAttribut
 			SCR_EditablePlayerDelegateComponent playerEditorDelegate;
 	
 			
-			foreach(int playerId: players)
+			foreach (int playerId: players)
 			{
 				//If has player entity
 				if(!SCR_PossessingManagerComponent.GetPlayerMainEntity(playerId))

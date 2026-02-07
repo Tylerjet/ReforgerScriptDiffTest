@@ -33,13 +33,14 @@ class SCR_AIGoalReaction_Attack : SCR_AIGoalReaction
         if (!msg)
 			return;
 		
-		if (!SCR_AIIsAlive.IsAlive(msg.m_Target))
+		if (!SCR_AIIsAlive.IsAlive(msg.m_TargetInfo.m_TargetEntity))
 		{
-			SCR_AISendLostMsg(utility, msg.m_Target);
+			SCR_AISendLostMsg(utility, msg.m_TargetInfo.m_TargetEntity);
 			return;
 		}
 		
-		utility.m_CombatComponent.SetAssignedTargets({msg.m_Target});
+		UpdateLastSeenPosition(utility.m_CombatComponent.FindTargetByEntity(msg.m_TargetInfo.m_TargetEntity), msg.m_TargetInfo);
+		utility.m_CombatComponent.SetAssignedTargets({msg.m_TargetInfo.m_TargetEntity});
 	}
 	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
@@ -48,14 +49,14 @@ class SCR_AIGoalReaction_Attack : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		if (!SCR_AIIsAlive.IsAlive(msg.m_Target))
+		if (!SCR_AIIsAlive.IsAlive(msg.m_TargetInfo.m_TargetEntity))
 		{
-			utility.RemoveKnownEnemy(msg.m_Target);
+			utility.RemoveTarget(msg.m_TargetInfo.m_TargetEntity);
 			return;
 		}
 		
-		auto activity = new SCR_AIAttackActivity(utility, false, msg.m_bIsWaypointRelated, msg.m_Target, msg.m_LastSeenPosition, msg.GetSender());
-		utility.AddKnownEnemy(msg.m_Target);	
+		auto activity = new SCR_AIAttackActivity(utility, false, msg.m_bIsWaypointRelated, msg.m_TargetInfo, msg.GetSender());
+		utility.AddOrUpdateTarget(msg.m_TargetInfo);
 		utility.AddAction(activity);
 	}
 };
@@ -80,7 +81,7 @@ class SCR_AIGoalReaction_GroupAttack : SCR_AIGoalReaction
 		
 		if (!utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
 		{
-			IEntity eTarget = msg.m_Target;
+			IEntity eTarget = msg.m_TargetInfo.m_TargetEntity;
 			SCR_AICombatComponent combatComp = utility.m_CombatComponent;
 			
 			if (!eTarget || !combatComp)
@@ -89,22 +90,23 @@ class SCR_AIGoalReaction_GroupAttack : SCR_AIGoalReaction
 			// Check if this enemy is known to combat component
 			if (combatComp.IsEnemyKnown(eTarget))
 			{
+				UpdateLastSeenPosition(utility.m_CombatComponent.FindTargetByEntity(eTarget), msg.m_TargetInfo);
 				combatComp.SetAssignedTargets({eTarget});
 			}
 			else
 			{
 				// Ignore if we must defend a waypoint
-				if (!utility.IsInvestigationAllowed(msg.m_LastSeenPosition))
+				if (!utility.IsInvestigationAllowed(msg.m_TargetInfo.m_vLastSeenPosition))
 					return;
 				
 				float searchRadius = 10.0;
-				if (!utility.IsInvestigationRelevant(msg.m_LastSeenPosition))
+				if (!utility.IsInvestigationRelevant(msg.m_TargetInfo.m_vLastSeenPosition))
 					return;
 				// Correction to surface
-				msg.m_LastSeenPosition[1] = GetGame().GetWorld().GetSurfaceY(msg.m_LastSeenPosition[0],msg.m_LastSeenPosition[2]);
+				msg.m_TargetInfo.m_vLastSeenPosition[1] = GetGame().GetWorld().GetSurfaceY(msg.m_TargetInfo.m_vLastSeenPosition[0],msg.m_TargetInfo.m_vLastSeenPosition[2]);
 				// Enemy was never seen by this soldier
 				// Add investigate behavior
-				SCR_AIMoveAndInvestigateBehavior behavior = new SCR_AIMoveAndInvestigateBehavior(utility, false, msg.m_RelatedGroupActivity, msg.m_LastSeenPosition, isDangerous: true, radius: searchRadius);
+				SCR_AIMoveAndInvestigateBehavior behavior = new SCR_AIMoveAndInvestigateBehavior(utility, false, msg.m_RelatedGroupActivity, msg.m_TargetInfo.m_vLastSeenPosition, isDangerous: true, radius: searchRadius);
 				
 				utility.WrapBehaviorOutsideOfVehicle(behavior);
 				utility.AddAction(behavior);
@@ -132,11 +134,12 @@ class SCR_AIGoalReaction_AttackStatic : SCR_AIGoalReaction_Attack
         if (!msg)
 			return;
 		
-		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(msg.m_Target);
+		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(msg.m_TargetInfo.m_TargetEntity);
 		if (!baseTarget)
 			return;
 		
-		auto behavior = new SCR_AIAttackStaticBehavior(utility, false, msg.m_RelatedGroupActivity, baseTarget, msg.m_LastSeenPosition);
+		UpdateLastSeenPosition(baseTarget, msg.m_TargetInfo);
+		auto behavior = new SCR_AIAttackStaticBehavior(utility, false, msg.m_RelatedGroupActivity, baseTarget, msg.m_TargetInfo.m_vLastSeenPosition);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
@@ -165,7 +168,7 @@ class SCR_AIGoalReaction_CoverAdvance : SCR_AIGoalReaction
 		SCR_AIMessage_CoverAdvance msg = SCR_AIMessage_CoverAdvance.Cast(message);
 		if (!msg)
 			return;
-		SCR_AICombatMoveGroupBehavior behavior = new SCR_AICombatMoveGroupBehavior(utility, false, msg.m_RelatedGroupActivity, msg.m_LastSeenPosition, target: msg.m_Target);
+		SCR_AICombatMoveGroupBehavior behavior = new SCR_AICombatMoveGroupBehavior(utility, false, msg.m_RelatedGroupActivity, msg.m_TargetInfo.m_vLastSeenPosition, target: msg.m_TargetInfo.m_TargetEntity);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 		
@@ -215,7 +218,6 @@ class SCR_AIGoalReaction_Follow : SCR_AIGoalReaction
 		
 		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_bIsPriority, msg.m_RelatedGroupActivity, vector.Zero, Prioritize(SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_IN_FORMATION, msg.m_bIsPriority));
 
-		//utility.WrapBehaviorOutsideOfVehicle(behavior); Zeli: should not be here, formation can be inside the vehicle as well. Copy+paste?
 		utility.AddAction(behavior);
 	}
 	
@@ -252,7 +254,6 @@ class SCR_AIGoalReaction_Investigate : SCR_AIGoalReaction
 			Prioritize(SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, msg.m_bIsPriority),
 			msg.m_bIsDangerous, targetUnitType: msg.m_eTargetUnitType);
 
-		//utility.WrapBehaviorOutsideOfVehicle(behavior); Zeli: should not be here, formation can be inside the vehicle as well. Copy+paste?
 		utility.AddAction(behavior);
 	}
 };
@@ -266,7 +267,6 @@ class SCR_AIGoalReaction_MoveInFormation : SCR_AIGoalReaction
 			
 		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_bIsPriority, msg.m_RelatedGroupActivity, vector.Zero, Prioritize(SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_IN_FORMATION, msg.m_bIsPriority));
 
-		//utility.WrapBehaviorOutsideOfVehicle(behavior); Zeli: should not be here, formation can be inside the vehicle as well. Copy+paste?
 		utility.AddAction(behavior);
 	}
 };
@@ -284,7 +284,6 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
-		//utility.WrapBehaviorOutsideOfVehicle(behavior); Zeli: should not be here, probably copy+paste?
 		utility.AddAction(behavior);
 	}
 	
@@ -549,7 +548,7 @@ static void SCR_AISendLostMsg(SCR_AIUtilityComponent utility, IEntity target)
 		auto group = agent.GetParentGroup();
 	
 		SCR_AIMessage_TargetLost msg = new SCR_AIMessage_TargetLost;
-		msg.m_Target = target;
+		msg.m_TargetInfo = new SCR_AITargetInfo(target, vector.Zero, 0);
 		msg.SetText("Target lost from reaction");
 		msg.SetReceiver(group);
 		mailbox.RequestBroadcast(msg, group);
@@ -570,3 +569,9 @@ static void SCR_AISendCancelMsg(SCR_AIGroupUtilityComponent utility, SCR_AIActiv
 		mailbox.RequestBroadcast(msg, receiver);
 	}	
 };
+
+static void UpdateLastSeenPosition(BaseTarget baseTarget, SCR_AITargetInfo newTargetInfo)
+{
+	if (baseTarget && baseTarget.GetTargetEntity() == newTargetInfo.m_TargetEntity)
+		baseTarget.UpdateLastSeenPosition(newTargetInfo.m_vLastSeenPosition, newTargetInfo.m_fLastSeenTime);
+}

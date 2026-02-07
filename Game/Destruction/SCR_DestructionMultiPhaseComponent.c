@@ -2,30 +2,34 @@
 //------------------------------------------------------------------------------------------------
 enum EMaterialSoundType
 {
-	NONE = 0,
-	GLASS = 1,
-	WOOD_SOLID = 2,
-	WOOD_PLANK_SMALL = 3,
-	WOOD_PLANK_LARGE = 4,
-	METAL_POLE = 5,
-	PLASTIC_HOLLOW = 6,
-	ROCK = 7,
-	METAL_LIGHT = 8,
-	ROCK_SMALL = 9,
-	NETFENCE = 10,
-	METAL_HEAVY = 11,
-	METAL_GENERATOR = 12,
-	PLASTIC_SOLID = 13,
-	PIANO = 14,
-	MATRESS = 15,
-	BREAK_WOOD_SMALL = 16,
-	//BREAK_WOOD_LARGE = 17,
-	//BREAK_METAL_TINNY = 18,
-	BREAK_METAL_REGULAR = 19,
-	BREAK_PLASTIC = 20,
-	BREAK_GLASSBOTTLE = 21,
-	//BREAK_METAL_CRUNCHY = 22
-	BELL_SMALL = 23
+	NONE,
+	// Debris sounds
+	WOOD_PLANK_SMALL,
+	WOOD_PLANK_LARGE,	
+	METAL_LIGHT,
+	METAL_HEAVY,
+	METAL_POLE,
+	METAL_NETFENCE,	
+	METAL_GENERATOR,
+	PLASTIC_SOLID,
+	PLASTIC_HOLLOW,
+	GLASS,
+	ROCK,
+	ROCK_SMALL,
+	MATRESS,
+	BELL_SMALL,
+	// Break sounds
+	BREAK_WOOD_SOLID,
+	BREAK_METAL,
+	BREAK_METAL_POLE,
+	BREAK_METAL_NETFENCE,
+	BREAK_PLASTIC,
+	BREAK_GLASS,
+	BREAK_GLASS_PANE,
+	BREAK_PIANO,
+	BREAK_ROCK,
+	BREAK_TENT,
+	BREAK_GROUNDRADAR
 };
 
 //------------------------------------------------------------------------------------------------
@@ -52,6 +56,8 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 	private int m_iDestructionMultiPhaseDataIndex = -1;
 	
 	protected int m_iOriginalHealth;
+	
+	static const string DAMAGE_PHASE_SIGNAL_NAME = "DamagePhase";
 	
 	//------------------------------------------------------------------------------------------------
 	protected notnull SCR_DestructionMultiPhaseData GetDestructionMultiPhaseData()
@@ -160,20 +166,19 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 	{
 		vector mins, maxs
 		GetOwner().GetBounds(mins, maxs);
-		maxs = maxs - mins;
-		
-		return Math.Max(maxs[2], Math.Max(maxs[0], maxs[1]));
+		return (maxs[0] - mins[0]) * (maxs[1] - mins[1]);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateSoundSignal()
+	// Update DamagePhase signal on entity that has SignalsManagerComponent
+	// Used for triggering looped sounds
+	protected void SetDamagePhaseSignal()
 	{
-		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
-		if (!soundComponent)
+		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
+		if (!signalsManagerComponent)
 			return;
 		
-		// Use inverse value for cases when Multiphase component is not on entity
-		soundComponent.SetSignalValueStr(SCR_MPDestructionManager.DAMAGE_PHASE_SIGNAL_NAME, GetNumDamagePhases() - GetDamagePhase());
+		signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal(DAMAGE_PHASE_SIGNAL_NAME), GetDamagePhase());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -211,7 +216,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 	{
 		GetDestructionMultiPhaseData().SetDamagePhase(damagePhase);
 		
-		UpdateSoundSignal();
+		SetDamagePhaseSignal();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -222,10 +227,6 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 		{
 			s_OnDestructibleDestroyed.Invoke(this);
 			
-			//Play sound
-			if (!s_bReadingInit)
-				PlaySound();
-
 			DeleteSelf();
 			return;
 		}
@@ -245,11 +246,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 		
 		SetDamagePhase(damagePhase);
 		SetTargetDamagePhase(damagePhase);
-		
-		// Play sound before we change m_iDamagePhase, because we want to play the current phase sound
-		if (!s_bReadingInit)
-			PlaySound();
-		
+				
 		ApplyDamagePhaseData(GetDamagePhaseData(GetDamagePhase()));
 	}
 	
@@ -286,9 +283,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 		
 		// Set signals
 	    soundComponent.SetSignalValue(destructionManager.GetEntitySizeSignalID(), GetDestructibleSize());
-		soundComponent.SetSignalValue(destructionManager.GetDamagePhaseSignalID(), GetNumDamagePhases() - GetDamagePhase());
-		// Set Impulse signal to very heigh value (choosen in relationship with audio project setup), so audio system uses sound with heighest intensity
-		soundComponent.SetSignalValue(destructionManager.GetImpulseSignalID(), 100);
+		soundComponent.SetSignalValue(destructionManager.GetPhasesToDestroyedSignalID(), GetNumDamagePhases() - GetDamagePhase() - 1);
 		
 		// Set position
 		vector mat[4];
@@ -469,8 +464,6 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionBaseComponent
 		super.OnPostInit(owner);
 		
 		m_iOriginalHealth = GetHealth();
-		
-		UpdateSoundSignal();
 	}
 #endif
 };

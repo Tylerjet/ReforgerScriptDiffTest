@@ -15,30 +15,34 @@ const int TRACE_LAYER_CAMERA = EPhysicsLayerDefs.Camera;
 
 class UIColors
 {
-	static const ref Color DARK_SAGE        		= Color.FromSRGBA(86, 92, 84, 255);
-	static const ref Color DARK_GREY        		= Color.FromSRGBA(85, 85, 85, 255);
-	static const ref Color CONTRAST_COLOR	 		= Color.FromSRGBA(226, 167, 79, 255);
-	static const ref Color TRANSPARENT      		= Color.FromSRGBA(0, 0, 0, 0);
+	static const ref Color DARK_SAGE        			= Color.FromSRGBA(86, 92, 84, 255);
+	static const ref Color DARK_GREY        			= Color.FromSRGBA(85, 85, 85, 255);
+	static const ref Color CONTRAST_COLOR	 			= Color.FromSRGBA(226, 167, 79, 255);
+	static const ref Color TRANSPARENT      			= Color.FromSRGBA(0, 0, 0, 0);
 
 	// Refined UI colors
-	static const ref Color CONTRAST_DISABLED		= Color.FromSRGBA(0, 0, 0, 38);
-	static const ref Color CONTRAST_DEFAULT   		= Color.FromSRGBA(226, 167, 79, 76);
-	static const ref Color CONTRAST_HOVERED			= Color.FromSRGBA(239, 199, 139, 102);
-	static const ref Color CONTRAST_CLICKED  		= Color.FromSRGBA(226, 167, 79, 255);
-	static const ref Color CONTRAST_CLICKED_HOVERED	= Color.FromSRGBA(226, 167, 79, 255);
+	static const ref Color CONTRAST_DISABLED			= Color.FromSRGBA(0, 0, 0, 38);
+	static const ref Color CONTRAST_DEFAULT   			= Color.FromSRGBA(226, 167, 79, 76);
+	static const ref Color CONTRAST_HOVERED				= Color.FromSRGBA(239, 199, 139, 102);
+	static const ref Color CONTRAST_CLICKED  			= Color.FromSRGBA(226, 167, 79, 255);
+	static const ref Color CONTRAST_CLICKED_HOVERED		= Color.FromSRGBA(226, 167, 79, 255);
 	
-	static const ref Color WHITE_DISABLED			= Color.FromSRGBA(255, 255, 255, 38);
-	static const ref Color WHITE_DEFAULT			= Color.FromSRGBA(255, 255, 255, 25);
-	static const ref Color WHITE_HOVERED			= Color.FromSRGBA(255, 255, 255, 102);
+	static const ref Color WHITE_DISABLED				= Color.FromSRGBA(255, 255, 255, 38);
+	static const ref Color WHITE_DEFAULT				= Color.FromSRGBA(255, 255, 255, 25);
+	static const ref Color WHITE_HOVERED				= Color.FromSRGBA(255, 255, 255, 102);
 	
-	static const ref Color BACKGROUND_DISABLED		= Color.FromSRGBA(0, 0, 0, 38);
-	static const ref Color BACKGROUND_DEFAULT		= Color.FromSRGBA(0, 0, 0, 102);
-	static const ref Color BACKGROUND_HOVERED		= Color.FromSRGBA(0, 0, 0, 153);
+	static const ref Color BACKGROUND_DISABLED			= Color.FromSRGBA(0, 0, 0, 38);
+	static const ref Color BACKGROUND_DEFAULT			= Color.FromSRGBA(0, 0, 0, 102);
+	static const ref Color BACKGROUND_HOVERED			= Color.FromSRGBA(0, 0, 0, 153);
 	
-	static const ref Color WARNING_FOCUSED			= Color.FromSRGBA(249, 67, 67, 107);
-	static const ref Color WARNING					= Color.FromSRGBA(249, 67, 67, 255);
-	static const ref Color CONFIRM					= Color.FromSRGBA(67, 194, 93, 255);
-	static const ref Color INFO						= Color.FromSRGBA(0, 128, 255, 255);
+	static const ref Color WARNING_FOCUSED				= Color.FromSRGBA(249, 67, 67, 107);
+	static const ref Color WARNING						= Color.FromSRGBA(249, 67, 67, 255);
+	static const ref Color CONFIRM						= Color.FromSRGBA(67, 194, 93, 255);
+	static const ref Color INFO							= Color.FromSRGBA(0, 128, 255, 255);
+	
+	//~ editor
+	static const ref Color EDITOR_ICON_COLOR_NEUTRAL	= Color.FromSRGBA(255, 255, 255, 255); ///< Colors for Editor Icons when an entity does not have an assigned faction and is not destroyed
+	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); ///< Colors for Editor Icons when an entity is dead or destroyed
 };
 
 class UIConstants

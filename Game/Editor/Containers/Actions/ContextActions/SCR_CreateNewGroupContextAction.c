@@ -49,7 +49,7 @@ class SCR_CreateNewGroupContextAction : SCR_BaseContextAction
 		SCR_EditableEntityComponent group;
 		SCR_EditableCharacterComponent newLeader;
 		
-		foreach(SCR_EditableEntityComponent entity: selectedEntities)
+		foreach (SCR_EditableEntityComponent entity: selectedEntities)
 		{
 			if (entity.GetEntityType() != EEditableEntityType.CHARACTER || SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(entity.GetOwner()) > 0)
 				continue;

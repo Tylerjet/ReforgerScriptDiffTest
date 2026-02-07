@@ -120,7 +120,7 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			SCR_EditableEntityComponent newParent;
 			bool changeParent = false;
 			
-			if (param.m_Target && param.m_TargetInteraction == EEditableEntityInteraction.LAYER)
+			if (param.m_Target && (param.m_TargetInteraction == EEditableEntityInteraction.LAYER || param.m_TargetInteraction == EEditableEntityInteraction.PASSENGER))
 			{
 				//--- Hovering over target layer
 				newParent = param.m_Target;

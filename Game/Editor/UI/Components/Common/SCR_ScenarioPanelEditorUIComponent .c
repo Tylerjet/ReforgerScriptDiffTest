@@ -70,7 +70,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 			delegateFactionManager.GetFactionDelegates(delegates);
 			SCR_Faction scrFaction;
 			
-			foreach(Faction f, SCR_EditableFactionComponent d : delegates)
+			foreach (Faction f, SCR_EditableFactionComponent d : delegates)
 			{
 				scrFaction = SCR_Faction.Cast(f);
 				
@@ -122,7 +122,7 @@ class SCR_ScenarioPanelEditorUIComponent: ScriptedWidgetComponent
 		delegateFactionManager.GetFactionDelegates(delegates);
 		SCR_Faction scrFaction;
 		
-		foreach(Faction f, SCR_EditableFactionComponent d : delegates)
+		foreach (Faction f, SCR_EditableFactionComponent d : delegates)
 		{
 			scrFaction = SCR_Faction.Cast(f);
 			

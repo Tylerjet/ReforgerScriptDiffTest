@@ -1,5 +1,5 @@
 //#define DISABLE_HUD
-//#define DEBUG_INFODISPLAY_CALLS
+//#define DEBUG_INFO_DISPLAY_EXT
 
 enum EShowGUI
 {
@@ -30,7 +30,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	protected bool m_bInThirdPerson;
 	protected bool m_bInADS;
 	protected bool m_bInPauseMenu;
-	protected bool m_bShowGlobal;						// Global GUI visibility flag
+	protected bool m_bShowGlobal;							// Global GUI visibility flag, is not meant to be fiddled with outside this class
 	protected bool m_bShowLocal = true;					// Local/custom "per-GUI-handling" flag
 	protected bool m_bShowInAllCameras = true;
 	
@@ -73,8 +73,8 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	//------------------------------------------------------------------------------------------------
 	private override event void OnStartDraw(IEntity owner)
 	{
-		#ifdef DEBUG_INFODISPLAY_CALLS
-		PrintFormat(">> OnStartDraw: %1 | %2", this, owner);
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		PrintFormat("%1 [OnStartDraw] owner:%2", this, owner);
 		#endif
 		
 		#ifdef DISABLE_HUD
@@ -181,8 +181,8 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			
 	private void UpdateVisibility()
 	{
-		#ifdef DEBUG_INFODISPLAY_CALLS
-		PrintFormat(">> UpdateVisibility: %1 | m_CameraHandler: %2", this, m_CameraHandler);
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		PrintFormat("%1 [UpdateVisibility] m_CameraHandler:%2", this, m_CameraHandler);
 		#endif
 
 		bool menuPassed = !m_bInPauseMenu || (m_bInPauseMenu && m_eShow & EShowGUI.IN_PAUSE_MENU);		
@@ -200,15 +200,14 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		}
 			
 		m_bShowGlobal = cameraPassed && menuPassed;
-			
-		if (m_wRoot)
-			m_wRoot.SetVisible(m_bShowGlobal && m_bShowLocal);
+		
+		SetVisible(m_bShowGlobal && m_bShowLocal);
 	}
 	
 	private override event void OnStopDraw(IEntity owner)
 	{
-		#ifdef DEBUG_INFODISPLAY_CALLS
-		PrintFormat(">> OnStopDraw: %1", this);
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		PrintFormat("%1 [OnStopDraw]", this);
 		#endif
 		
 		#ifdef DISABLE_HUD
@@ -240,8 +239,8 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	
 	private override event void OnInit(IEntity owner)
 	{
-		#ifdef DEBUG_INFODISPLAY_CALLS
-		PrintFormat(">> OnInit: %1", this);
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		PrintFormat("%1 [OnInit]", this);
 		#endif
 		
 		#ifdef DISABLE_HUD
@@ -270,8 +269,8 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	
 	private void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
-		#ifdef DEBUG_INFODISPLAY_CALLS
-		PrintFormat(">> OnControlledEntityChanged: %1 | %2 -> %3", this, from, to);
+		#ifdef DEBUG_INFO_DISPLAY_EXT
+		PrintFormat("%1 [OnControlledEntityChanged] %2 -> %3", this, from, to);
 		#endif
 		
 		// Unregister old & potentionally obsolete callback

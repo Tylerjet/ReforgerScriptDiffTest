@@ -121,22 +121,6 @@ class SBServerInfo
 	string			JsonMetadata;
 };
 
-// class SBServerParams
-// {
-// 	SBServerFlag		Flags;
-// 	string				Name;
-// 	string				Description;
-// 	string				ClientVersion;
-// 	int					GameType;
-// 	string				GameVersion;
-// 	int					GameMode;
-// 	int					HostPort;
-// 	string				HostIp;
-// 	SBRegion			Region; //cannot be ANY
-// 	SBPlatform			Platform; //cannot be ANY
-// 	int					MaxPlayers;
-// 	string				JsonMetadata; //set to empty string, not sure if it is working properly
-// };
 
 typedef array<ref SBServerInfo> SBServerInfoList;
 
@@ -154,52 +138,6 @@ class SBServerListCallback
 	}
 }
 
-// //callback interface, must be kept alive until OnServerShutdown is called
-// class SBServerCallbacks
-// {
-// 	void OnServerConnected() { /*override and implement*/ }
-// 	void OnServerDisconnected(OnlineError error) { /*override and implement*/ }
-// 	void OnServerConnectFailed(OnlineError error) { /*override and implement*/ }
-// 	void OnServerShutdown(OnlineError error) { /*override and implement*/ }
-// }
-
-// class SBServer
-// {
-// 	//tasync request, OnServerShutdown will be called, after that the SBServer deletes itself
-// 	proto native void Shutdown();
-// 	//call this at regular intervals
-// 	proto native void Update();
-// }
-
-
-// -------------------------------------------------------------------------
-//used only for demonstration
-class ServerSearchParams extends JsonApiStruct
-{
-	string order;
-	string text;
-	bool ascendent;
-
-	void ServerSearchParams()
-	{
-		RegV("order");
-	}
-	
-	void SetTestValues()
-	{
-		order = "SessionName";
-		ascendent = false;		
-	}
-	
-	override void OnPack()
-	{
-		if (text && !text.IsEmpty())
-			StoreString("text", text);
-		StoreBoolean("ascendent", ascendent);
-	}
-
-};
-
 class GetRoomsIds extends JsonApiStruct
 {
 	ref array<string> ids;
@@ -214,6 +152,18 @@ class GetRoomsIds extends JsonApiStruct
 class RoomFilterBase : JsonApiStruct
 {
 	bool includePing = false;
+	bool ownedOnly = false;
+}
+
+class RCONCallback : Managed
+{
+	void OnSuccess(int iReqType, string data)
+	{
+	}
+	
+	void OnError(int iReqType, string data)
+	{
+	}
 }
 
 class Room: Managed
@@ -223,7 +173,9 @@ class Room: Managed
 	
 	proto native bool Official();
 	proto native bool PasswordProtected();
+	proto native bool IsAuthorized();
 	proto native bool Joinable();
+	proto native bool IsModded();
 	proto native bool IsFavorite();
 	proto native int PlayerLimit();
 	proto native int PlayerCount();
@@ -268,6 +220,11 @@ class Room: Managed
 	proto native bool Connect();
 	
 	proto native bool HasBattlEye();
+	
+	proto native void RemoteControl(string ip, int port, string password, RCONCallback callback);
+	proto native void RemoteCommand(string message, RCONCallback callback);
+	
+	proto native void VerifyPassword(string password, BackendCallback callback);
 };
 
 class ClientLobbyApi
@@ -353,14 +310,4 @@ class ClientLobbyApi
 	proto native void MeasureLatency(BackendCallback callback);
 	proto native bool IsPingAvailable();
 };
-
-class ServerBrowser
-{
-	//does not take ownership of params, callback must be kept alive. Only 1 request at a time.
-	proto native static bool 		GetServers(SBGetServersParams params, SBServerListCallback callback);
-	// //does not take ownership of params, callbacks must be kept alive, can return NULL on fail
-	// proto native static SBServer	StartServer(SBServerParams params, SBServerCallbacks callbacks);
-};
-
-
 

@@ -4,26 +4,18 @@ enum EConsumableType
 {
 	None,
 	Bandage,
-	Health
-};
-
-enum EBandagingAnimationBodyParts
-{
-	Invalid = 0,
-	UpperHead = 1,
-	LowerHead = 2,
-	UpperTorso = 3,
-	LowerTorso = 4,
-	LeftHand = 5,
-	RightHand = 6,
-	LeftLeg = 7,
-	RightLeg = 8
+	Health,
+	Tourniquet,
+	Saline,
+	Morphine
 };
 
 class SCR_ConsumableEffectAnimationParameters : Managed
 {
 	void SCR_ConsumableEffectAnimationParameters(
 		int itemUseCommandId,
+		int itemCmdIntArg,
+		float itemCmdFloatArg,
 		float animDuration,
 		int intParam,
 		float floatParam,
@@ -31,14 +23,18 @@ class SCR_ConsumableEffectAnimationParameters : Managed
 	)
 	{
 		m_itemUseCommandId = itemUseCommandId;
-		m_animDuration = animDuration;
+		m_itemCmdIntArg = itemCmdIntArg;
+		m_itemCmdFloatArg = itemCmdFloatArg;
+		m_fAnimDuration = animDuration;
 		m_intParam = intParam;
 		m_floatParam = floatParam;
 		m_boolParam = boolParam;
 	}
 	
 	TAnimGraphCommand m_itemUseCommandId;
-	float m_animDuration;
+	int m_itemCmdIntArg;
+	float m_itemCmdFloatArg;
+	float m_fAnimDuration;
 	int m_intParam;
 	float m_floatParam;
 	bool m_boolParam;
@@ -48,85 +44,91 @@ class SCR_ConsumableEffectAnimationParameters : Managed
 //! Effect assigned to the consumable gadget
 [BaseContainerProps()]
 class SCR_ConsumableEffectBase : Managed
-{		
+{
+	protected TAnimGraphCommand m_iPlayerApplyToSelfCmdId = -1;
+	protected TAnimGraphCommand m_iPlayerApplyToOtherCmdId = -1;
+	protected TAnimGraphCommand m_iPlayerReviveCmdId = -1;
+	
+	[Attribute("true", UIWidgets.CheckBox, "Whether consumable should be deleted directly after completing use", category: "General")]
+	protected bool m_bDeleteOnUse;
+	
+	[Attribute("1", UIWidgets.EditBox, "Duration of the animation for using consumable on self", category: "General")]
+	protected float m_fApplyToSelfDuration;	
+	
+	[Attribute("1", UIWidgets.EditBox, "Duration of the animation for using consumable on other", category: "General")]
+	protected float m_fApplyToOtherDuration;
+
 	EConsumableType m_eConsumableType;
+	
+	bool ActivateEffect(IEntity target, IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams = null)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+		
+		bool activatedAction;
+		SCR_ConsumableEffectAnimationParameters localAnimParams;
+		if (animParams)
+			localAnimParams = animParams;
+
+		if (localAnimParams)
+			activatedAction = controller.TryUseItemOverrideParams(item, false, localAnimParams.m_itemUseCommandId, localAnimParams.m_itemCmdIntArg, localAnimParams.m_itemCmdFloatArg, localAnimParams.m_fAnimDuration, localAnimParams.m_intParam, localAnimParams.m_floatParam, localAnimParams.m_boolParam, null);
+		else
+			activatedAction = controller.TryUseItem(item);
+		
+		return activatedAction;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
 	//! /param target is the character who is having the effect applied
-	//! /param animParams is a copy of the arguments with which the animation was started, EXCEPT for the anim duration variable.
-	void ApplyEffect(IEntity target, SCR_ConsumableEffectAnimationParameters animParams)
+	void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
 	{}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Condition whther this effect can be applied
 	//! /param target is the character who is having the effect applied
-	bool CanApplyEffect(IEntity target)
+	bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
 	{}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ConsumableEffectAnimationParameters GetAnimationParameters(IEntity target)
-	{
-		return null;
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-//! Bandage effect
-[BaseContainerProps()]
-class SCR_ConsumableBandage : SCR_ConsumableEffectBase
-{
-
+	//! Update the animCommands for all animations related to consumable
+	bool UpdateAnimationCommands(IEntity user)
+	{}
+	
 	//------------------------------------------------------------------------------------------------
-	override void ApplyEffect(IEntity target, SCR_ConsumableEffectAnimationParameters animParams)
+	SCR_ConsumableEffectAnimationParameters GetAnimationParameters(IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(target.FindComponent(SCR_CharacterDamageManagerComponent));
-		if (damageMgr)
-			damageMgr.RemoveBleeding();
+		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0, m_fApplyToSelfDuration, 0, 0, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanApplyEffect(IEntity target)
+	bool GetDeleteOnUse()
 	{
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(target.FindComponent(SCR_CharacterDamageManagerComponent));
-		if (damageMgr)
-			return damageMgr.IsDamagedOverTime(EDamageType.BLEEDING);
-		
-		return false;
-	}
-	//------------------------------------------------------------------------------------------------
-	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(IEntity target)
-	{
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(target.FindComponent(SCR_CharacterDamageManagerComponent));
-		if (damageMgr)
-		{
-			array<HitZone> bleedingHitzones = new array<HitZone>();
-			damageMgr.GetBleedingHitZones(bleedingHitzones);
-			
-			EBandagingAnimationBodyParts bodyPartToBandage = EBandagingAnimationBodyParts.Invalid;
-			float maxFoundBleedingSpeed = -1;
-			for (int i; i < bleedingHitzones.Count(); i++)
-			{
-				SCR_CharacterHitZone chHZ = SCR_CharacterHitZone.Cast(bleedingHitzones[i]);
-				if (!chHZ)
-					continue; // Not sure if needed.
-				
-				float bleedingSpeed = chHZ.GetMaxBleedingRate();
-				if (maxFoundBleedingSpeed < bleedingSpeed && chHZ.m_aBleedingAreas.Count() > 0)
-				{
-					maxFoundBleedingSpeed = bleedingSpeed;
-					bodyPartToBandage = chHZ.m_aBleedingAreas[0];
-				}
-			}
-			
-			return new SCR_ConsumableEffectAnimationParameters(damageMgr.GetPlayerBandageSelfCmdId(), 4.0, bodyPartToBandage, 0.0, false);	
-		}
-		return null;
+		return m_bDeleteOnUse;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_ConsumableBandage()
+	float GetApplyToOtherDuraction()
 	{
-		m_eConsumableType = EConsumableType.Bandage;
+		return m_fApplyToOtherDuration;
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	TAnimGraphCommand GetApplyToSelfAnimCmnd(IEntity user)
+	{
+		UpdateAnimationCommands(user);
+		return m_iPlayerApplyToSelfCmdId;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	TAnimGraphCommand GetApplyToOtherAnimCmnd(IEntity user)
+	{
+		UpdateAnimationCommands(user);
+		return m_iPlayerApplyToOtherCmdId;
 	}
 };

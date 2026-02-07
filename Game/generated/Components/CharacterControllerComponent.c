@@ -15,16 +15,19 @@ class CharacterControllerComponentClass: PrimaryControllerComponentClass
 
 class CharacterControllerComponent: PrimaryControllerComponent
 {
+	proto external CharacterAimingComponent GetAimingComponent();
 	proto external CharacterHeadAimingComponent GetHeadAimingComponent();
 	proto external CharacterAnimationComponent GetAnimationComponent();
 	proto external BaseWeaponManagerComponent GetWeaponManagerComponent();
 	proto external CameraHandlerComponent GetCameraHandlerComponent();
 	proto external InventoryStorageManagerComponent GetInventoryStorageManager();
 	proto external VoNComponent GetVONComponent();
+	proto external EntitySlotInfo GetRightHandPointInfo();
+	proto external EntitySlotInfo GetLeftHandPointInfo();
 	proto external CharacterInputContext GetInputContext();
-	proto external float GetMovementType();
+	proto external float GetMovementSpeed();
 	//! Update animation about state of movement, define speed and direction in local space of character
-	proto external void SetMovement(float type, vector movementDirLocal);
+	proto external void SetMovement(float movementSpeed, vector movementDirModel);
 	//! set heading angle in radians
 	proto external void SetHeadingAngle(float newHeadingAngle, bool adjustAimingYaw = false);
 	proto external float GetHeadingAngle();
@@ -45,8 +48,6 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external void SetWeaponRaised(bool val);
 	//! Set the current weapon ADS state.
 	proto external void SetWeaponADS(bool val);
-	//! Set the current play gesture state.
-	proto external void SetPlayGesture(bool val);
 	proto external void SetFreeLook(bool val);
 	//! Force character to stay in freelook
 	proto external void SetForcedFreeLook(bool enabled);
@@ -143,7 +144,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool IsLeaning();
 	proto external float GetADSTime();
 	proto external bool IsWeaponRaised();
-	proto external bool IsWeaponObstructed();
+	proto external EWeaponObstructedState GetWeaponObstructedState();
 	proto external float GetObstructionAlpha();
 	proto external bool IsClimbing();
 	proto external bool IsSwimming();
@@ -164,6 +165,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool IsUsingItem();
 	proto external bool IsMeleeAttack();
 	proto external bool CanEngageChangeItem();
+	proto external bool TryDeployWeapon();
 	//! Set weapon on character with switching animations. If true, the request was successful
 	proto external bool SelectWeapon(BaseWeaponComponent newWeapon);
 	proto external bool SetMuzzle(int index);
@@ -186,6 +188,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//------------------------------------------------------------------------
 	proto external void SetUnconscious(bool enabled);
 	proto external bool IsUnconscious();
+	proto external bool CanReviveCharacter();
+	proto external void EnableReviveCharacter(bool enabled);
 	//! Dying
 	proto external void Ragdoll();
 	//! Kills the character. Skips invincibility checks.
@@ -228,14 +232,19 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	Try to use equipped item.
 	\return Returns true if the equipped item has been used.
 	*/
-	proto external bool TryUseEquippedItem();
-	proto external bool TryUseEquippedItemOverrideParams(int cmdId, float animLength, int intParam, float floatParam, bool boolParam);
+	proto external bool TryUseItem(IEntity item, bool allowMovementDuringAction = false);
 	/*!
-	Try to use the specified item.
-	\param item The item which should be used.
-	\return Returns true if the item has been used.
+	Try to use equipped item with custom command and variables.
+	\param item - the item which we want to use. Must be either the current gadget, or the current weapon.
+	\param allowMovementDuringAction - if true, any movement input will be disabled during the item use.
+	\param cmdId - Id of the command to be called - use AnimationComponent.BindCommand(commandName) to receive it.
+	\param cmdIntArg, cmdFloatArg - parameters with which the command will be called.
+	\param intParam, floatParam, boolParam - Currently, BodyPart variable will be set to the intParam value, other two are yet not in use.
+	\param animLength - maximum length of the animation - if the animation graph will finish sooner (TagRItemAction or TagLItemAction tags will not be active), the animation can end before this time is out.
+	\param alignmentPoint - point of the item to which the ItemUsePrediction predictioned bone of the character will keep being aligned during the animation.
+	\return Returns true if the equipped item has been used.
 	*/
-	proto external bool TryUseItem(IEntity item);
+	proto external bool TryUseItemOverrideParams(IEntity item, bool allowMovementDuringAction, int cmdId, int cmdIntArg, float cmdFloatArg, float animLength, int intParam, float floatParam, bool boolParam, PointInfo alignmentPoint);
 	//! Returns true if the character can use an item.
 	proto external bool CanUseItem();
 	//! Starts character gesture with specified duration in milliseconds (if duration <= 0, it will be played until StopCharacterGesture is called)
@@ -259,6 +268,10 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Start climbing provided ladder.
 	//! Returns true if request was successful.
 	proto external bool TryUseLadder(IEntity pLadderOwner, int ladderComponentIndex = 0, float maxTestDistance = -1.0, float maxEntryAngle = -1.0);
+	//! Makes character drop weapon from the weapon slot given by parameter.
+	proto external void DropWeapon(WeaponSlotComponent weaponSlot);
+	//! Makes character drop item from left hand.
+	proto external void DropItemFromLeftHand();
 	// Script
 	proto external void RequestActionByID(int actionID, float value);
 	//! Returns true if the character is partially lowered.
@@ -347,6 +360,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	
 	// callbacks
 	
+	event void OnInspectionModeChanged(bool newState);
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -377,8 +391,18 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Will be called when item use action is started
 	event protected void OnItemUseBegan(IEntity item);
 	//! Will be called when item use action is complete
-	event protected void OnItemUseComplete(IEntity item, int actionType, int intParam, float floatParam, bool boolParam);
+	event protected void OnItemUseEnded(IEntity item, bool successful, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam);
 	event protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd);
+	/*!
+	Output target angles vector is used during inspection to adjust look at.
+	Returned value is speed at which the look angles are adjusted,
+	or 0 if no adjustment is to be made.
+	*/
+	event float GetInspectTargetLookAt(out vector targetAngles);
+	//! Runs after a weapon is dropped from hands. Returns dropped weapon entity and slot that the weapon was dropped from.
+	event protected void OnWeaponDropped(IEntity pWeaponEntity, WeaponSlotComponent pWeaponSlot);
+	//! Runs after the left hand item is dropped. Returns dropped item entity.
+	event protected void OnItemDroppedFromLeftHand(IEntity pItemEntity);
 	//! Called when a player has been assigned to this controller
 	event protected void OnControlledByPlayer(IEntity owner, bool controlled);
 };

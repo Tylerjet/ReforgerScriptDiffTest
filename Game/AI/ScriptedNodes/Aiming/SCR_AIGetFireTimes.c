@@ -76,7 +76,7 @@ class SCR_AIGetFireTimes: AITaskScripted
 			case EWeaponType.WT_HANDGUN:
 			{
 				ClearVariable(PORT_FIRE_BURST);
-				SetVariableOut(PORT_STABILIZATION,3.0);
+				SetVariableOut(PORT_STABILIZATION,1.0);
 				ClearVariable(PORT_SUPPRESSION);
 				SetVariableOut(PORT_REJECT_TIME,5.0);
 				break;

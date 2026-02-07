@@ -695,7 +695,7 @@ class AAB : Managed
 	static AAB MakeFromPoints(array<vector> points)
 	{
 		AAB bb = new AAB();
-		foreach(vector v : points)
+		foreach (vector v : points)
 		{
 			bb.Add(v);
 		}
@@ -1611,14 +1611,10 @@ class ForestGeneratorEntity : SCR_GeneratorBaseEntity
 			
 			bool alignToNormal = false;
 			bool randomYaw = false;
-			if (bc)
+			if (bc && bc.Count() > 0)
 			{
-				int cnt = bc.Count();
-				if (cnt > 0)
-				{
-					bc.Get(0).Get("alignToNormal", alignToNormal);
-					bc.Get(0).Get("randomYaw", randomYaw);
-				}
+				bc.Get(0).Get("alignToNormal", alignToNormal);
+				bc.Get(0).Get("randomYaw", randomYaw);
 			}
 			
 			if (fallenTree)

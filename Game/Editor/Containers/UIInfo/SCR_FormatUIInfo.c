@@ -1,4 +1,4 @@
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_FormatUIInfo: SCR_BlockUIInfo
 {
 	[Attribute()]

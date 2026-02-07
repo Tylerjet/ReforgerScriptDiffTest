@@ -14,9 +14,6 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 	[Attribute("25", UIWidgets.Auto, "How much it cost to spawn one soldier?", category: "Campaign")]
 	protected int m_iUnitCost;
 	
-	[Attribute("50", desc: "Range in which should component search for base.", category: "Campaign")]
-	protected float m_fBaseSearchDistance;
-	
 	bool IsInitialized()
 	{
 		return m_bInitialized;
@@ -124,16 +121,9 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool BaseSearchCB(IEntity ent)
+	void SetBase(SCR_CampaignBase base)
 	{
-		m_Base = SCR_CampaignBase.Cast(ent);
-		if (m_Base && m_Base.GetType() != CampaignBaseType.RELAY)
-		{
-			m_Base.AssignBarracks(this);
-			return false;
-		}
-		
-		return true;
+		m_Base = base;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -147,10 +137,6 @@ class SCR_CampaignBarracksComponent: SCR_BarracksComponent
 			return;
 		
 		if (IsProxy())
-			return;
-		
-		// returns if query was finished without finding base
-		if (GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), m_fBaseSearchDistance, BaseSearchCB, null, EQueryEntitiesFlags.ALL))
 			return;
 	}
 }

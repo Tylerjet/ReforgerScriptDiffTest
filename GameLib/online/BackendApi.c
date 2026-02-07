@@ -38,6 +38,23 @@
 //		#endif
 
 		EBREQ_GAME_CharacterUpdateS2S,
+	
+			// client lobby
+		EBREQ_LOBBY_RoomsJoin,
+		EBREQ_LOBBY_RoomsSearch,
+		EBREQ_LOBBY_TargetSearch,
+		EBREQ_LOBBY_RoomsGetByIds,
+		EBREQ_LOBBY_RoomsGetByHostIds,
+		EBREQ_LOBBY_AddFavoriteServer,
+		EBREQ_LOBBY_RemoveFavoriteServer,
+		EBREQ_LOBBY_ClientRoomsRegister,
+		EBREQ_LOBBY_RoomsHeartBeat,
+		EBREQ_LOBBY_RoomListUpdate,
+		EBREQ_LOBBY_UpdateRooms,
+		EBREQ_LOBBY_GetPingSites,
+		EBREQ_LOBBY_GetInviteRoom,
+		EBREQ_LOBBY_CreateServerOwnerToken,
+		EBREQ_LOBBY_VerifyPassword,
 
 		EBREQ_WORKSHOP_GetAssetList,
 		EBREQ_WORKSHOP_CheckAssets,
@@ -121,14 +138,6 @@ enum EWorkshopItemType
 	EWTYPE_UNKNOWN,
 	EWTYPE_ADDON,
 	EWTYPE_WORLD_SAVE
-}
-
-class WorldSaveManifest
-{
-	ref array<string> m_aFiles;	//list of files to upload
-	string m_sName;				
-	string m_sSummary;
-	string m_sPreview;			//name of the file with preview image - its full path has to be among other files in m_aFiles
 }
 
 // -------------------------------------------------------------------------
@@ -255,7 +264,14 @@ class DSSessionCallback : Managed
 	}
 
 };
-
+// -------------------------------------------------------------------------
+class RCONCommander: Managed
+{	
+	void ProcessCommand(string sCommand, int iRequestId)
+	{
+		Print("RCONCommander.ProcessCommand not implemented!");		
+	}
+}
 
 // -------------------------------------------------------------------------
 // Save & Load handler
@@ -313,6 +329,10 @@ class SessionStorage
 	\param pDataObject Represents "master" object as source of outcoming data
 	*/
 	proto native void ProcessSave( JsonApiStruct pDataObject, string fileName );
+	/**
+	\brief Check if online storage privileges are granted (if not - all is stored locally with session)
+	*/
+	proto native bool GetOnlineWritePrivilege();
 
 };
 
@@ -370,7 +390,8 @@ class DSSession
 	\brief ID of Scenario hosted on server
 	*/
 	proto native string ScenarioID();
-
+	
+	proto native void SetRCONCommander(RCONCommander commander);
 };
 
 
@@ -378,17 +399,6 @@ class DSSession
 // Callback interface for backend - must exist for the duration of request!
 class BackendCallback : Managed
 {
-	/**
-	\brief Called when data were recieved, you can ignore it when using callback to JsonStruct object with expand feature
-	\param data Contain received data, may be JSON, plain text, XML or image
-	\param size 
-	*/
-	void OnDataReceive( string data, int size )
-	{
-//		Print("[BackendCallback] Data received, size=" + size);
-//		Print(data);
-	}
-
 	/**
 	\brief Request finished with error result
 	\param code Error code is type of EBackendError
@@ -548,6 +558,8 @@ class BackendApi
 	\brief Get Workshop Api
 	*/
 	proto native WorkshopApi GetWorkshop();
+
+	proto native WorldSaveApi GetWorldSaveApi();
 
 	/**
 	\brief Get Lobby Api
@@ -837,8 +849,9 @@ class BackendApi
 	proto native bool LoadDSConfig(DSConfig config, string fileName);
 	proto native bool SaveDSConfig(DSConfig config, string fileName);
 	proto native void SetDefaultIpPort(DSConfig config);
-	
-	proto native void UploadWorldSave(WorldSaveManifest manifest, BackendCallback callback);
+	proto native int GetAvailableConfigs(out notnull array<string> configs);
+	proto native int GetAvailableConfigPaths(out notnull array<string> configs);
+	proto native ServerConfigApi GetServerConfigApi();
 };
 
 // -------------------------------------------------------------------------

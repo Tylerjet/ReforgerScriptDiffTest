@@ -15,9 +15,13 @@ class SCR_MenuLayoutEditorComponentClass: SCR_BaseEditorComponentClass
 class SCR_MenuLayoutEditorComponent : SCR_BaseEditorComponent
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "", "layout")]
-	protected ResourceName m_Layout;
+	protected ResourceName m_AlwaysShownLayout;
 	
-	protected Widget m_Widget;
+	[Attribute("", UIWidgets.ResourceNamePicker, "", "layout")]
+	protected ResourceName m_HideableLayout;
+	
+	protected Widget m_AlwaysShownWidget;
+	protected Widget m_HideableWidget;
 	protected SCR_CursorEditorUIComponent m_CursorComponent;
 	
 	/*!
@@ -36,12 +40,13 @@ class SCR_MenuLayoutEditorComponent : SCR_BaseEditorComponent
 	/*!
 	Get world position below cursor.
 	\param[out] worldPos Vector to be filled with world position
+	\param flags Trace flags to be used (send -1 for default flags)
 	\return True if the cursor is above world position (e.g., not pointing at sky)
 	*/
-	bool GetCursorWorldPos(out vector worldPos)
+	bool GetCursorWorldPos(out vector worldPos, TraceFlags flags = -1)
 	{
 		if (m_CursorComponent)
-			return m_CursorComponent.GetCursorWorldPos(worldPos);
+			return m_CursorComponent.GetCursorWorldPos(worldPos, flags: flags);
 		else
 			return false;
 	}
@@ -74,16 +79,15 @@ class SCR_MenuLayoutEditorComponent : SCR_BaseEditorComponent
 		if (!workspace) return;
 		
 		//--- Find widget which is parent for hiding - layout will be created under it, so it's hidden as well
-		SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetRootComponent().FindComponent(SCR_HideEditorUIComponent));
-		if (!hideComponent || !hideComponent.GetWidget()) return;
+		m_AlwaysShownWidget = workspace.CreateWidgets(m_AlwaysShownLayout, menuEditor.GetMenuComponent().GetAlwaysShownWidget());
+		FrameSlot.SetAnchorMin(m_AlwaysShownWidget, 0, 0);
+		FrameSlot.SetAnchorMax(m_AlwaysShownWidget, 1, 1);
+		FrameSlot.SetOffsets(m_AlwaysShownWidget, 0, 0, 0, 0);
 		
-		Widget parent = hideComponent.GetWidget();
-		if (!parent) return;
-		
-		m_Widget = workspace.CreateWidgets(m_Layout, parent);
-		FrameSlot.SetAnchorMin(m_Widget, 0, 0);
-		FrameSlot.SetAnchorMax(m_Widget, 1, 1);
-		FrameSlot.SetOffsets(m_Widget, 0, 0, 0, 0);
+		m_HideableWidget = workspace.CreateWidgets(m_HideableLayout, menuEditor.GetMenuComponent().GetHideableWidget());
+		FrameSlot.SetAnchorMin(m_HideableWidget, 0, 0);
+		FrameSlot.SetAnchorMax(m_HideableWidget, 1, 1);
+		FrameSlot.SetOffsets(m_HideableWidget, 0, 0, 0, 0);
 		
 		//--- Get cursor component
 		m_CursorComponent = SCR_CursorEditorUIComponent.Cast(menu.GetRootComponent().FindComponent(SCR_CursorEditorUIComponent));
@@ -95,10 +99,15 @@ class SCR_MenuLayoutEditorComponent : SCR_BaseEditorComponent
 	
 	override void EOnEditorPostDeactivate()
 	{
-		if (m_Widget)
+		if (m_AlwaysShownWidget)
 		{
-			m_Widget.RemoveFromHierarchy();
-			m_Widget = null;
+			m_AlwaysShownWidget.RemoveFromHierarchy();
+			m_AlwaysShownWidget = null;
+		}
+		if (m_HideableWidget)
+		{
+			m_HideableWidget.RemoveFromHierarchy();
+			m_HideableWidget = null;
 		}
 	}
 };

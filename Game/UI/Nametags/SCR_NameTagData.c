@@ -84,7 +84,8 @@ class SCR_NameTagData : Managed
 	vector m_vTagWorldPosLast;		// previous tag world pos for lerping 
 	vector m_vEntHeadPos;			// ent head pos, for LOS checks and head placement
 	vector m_vEntWorldPos;			// ent world pos, for visibility angle checks and body placement
-	string m_sName;					// entity name
+	string m_sName;					// entity name or name formatting
+	ref array<string> m_aNameParams;// Params for name formatting eg: Firstname, Alias (can be an empty string), Surname
 	
 	IEntity m_Entity;			
 	Widget m_NameTagWidget;										// tag visiblity setting is done on this level because setting it on root with negative values conflicts with render ZOrder
@@ -215,7 +216,9 @@ class SCR_NameTagData : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get/update nametag name
-	string GetName()
+	//! \param[out] name Name or formatting of name
+	//! \param[out] names If uses formating: Firstname, Alias and Surname (Alias can be an empty string)
+	void GetName(out string name, out notnull array<string> nameParams)
 	{		
 		if (m_eType == ENameTagEntityType.PLAYER)
 		{
@@ -227,14 +230,23 @@ class SCR_NameTagData : Managed
 		}
 		else if (m_eType == ENameTagEntityType.AI)
 		{
-			CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(m_Entity.FindComponent(CharacterIdentityComponent));
-			if (charIdentity)
-				m_sName = charIdentity.GetCharacterFullName();
-			else 
-				m_sName = "No character identity!";
+			SCR_CharacterIdentityComponent scrCharIdentity = SCR_CharacterIdentityComponent.Cast(m_Entity.FindComponent(SCR_CharacterIdentityComponent));
+			if (scrCharIdentity)
+			{
+				scrCharIdentity.GetFormattedFullName(m_sName, m_aNameParams);
+			}
+			else
+			{
+				CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(m_Entity.FindComponent(CharacterIdentityComponent));
+				if (charIdentity)
+					m_sName = charIdentity.GetCharacterFullName();
+				else 
+					m_sName = "No character identity!";
+			}
 		}
 		
-		return m_sName;
+		name = m_sName;
+		nameParams.Copy(m_aNameParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -441,6 +453,7 @@ class SCR_NameTagData : Managed
 		m_fDistance = 0;
 		m_fOpacityFade = 1;
 		m_sName = string.Empty;
+		m_aNameParams = {};
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -504,7 +517,8 @@ class SCR_NameTagData : Managed
 			m_iSpineBone = m_Entity.GetBoneIndex(SPINE_BONE);
 			m_iHeadBone = m_Entity.GetBoneIndex(HEAD_BONE);
 		}
-		GetName();
+		
+		GetName(m_sName, m_aNameParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------

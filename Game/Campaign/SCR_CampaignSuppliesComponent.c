@@ -104,7 +104,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	void OnSuppliesChanged()
 	{
 		// script invoker executed when ammout of supplies in vehicle changed. m_iSupplies is ammout of currently loaded supplies.
-		m_OnSuppliesChanged.Invoke(m_iSupplies);
+		m_OnSuppliesChanged.Invoke(m_iSupplies, m_iSuppliesMax);
 		
 		SCR_CampaignBase base = SCR_CampaignBase.Cast(GetOwner().GetParent());
 		
@@ -131,7 +131,11 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	void SetSuppliesMax(int suppliesMax)
 	{
 		m_iSuppliesMax = suppliesMax;
+		if (m_iSupplies > suppliesMax)
+			m_iSupplies = m_iSuppliesMax;
+		
 		Replication.BumpMe();
+		OnSuppliesChanged();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -183,11 +187,14 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	{
 		return m_bAwardUnloadXP;
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	void AddSupplies(int supplies)
 	{
 		m_iSupplies += supplies;
+		if (m_iSupplies > m_iSuppliesMax)
+			m_iSupplies = m_iSuppliesMax;
+		
 		Replication.BumpMe();
 		OnSuppliesChanged();
 	}
@@ -219,6 +226,42 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//~  Get supplies component on given entity. Returns null if no supplies can be found
+	static SCR_CampaignSuppliesComponent GetSuppliesComponent(notnull IEntity ent)
+	{
+		SCR_CampaignSuppliesComponent suppliesComponent;
+		
+		suppliesComponent = SCR_CampaignSuppliesComponent.Cast(ent.FindComponent(SCR_CampaignSuppliesComponent));
+		if (suppliesComponent)
+			return suppliesComponent;
+		
+		SlotManagerComponent slotManager = SlotManagerComponent.Cast(ent.FindComponent(SlotManagerComponent));	
+		if (!slotManager)
+			return null;
+	
+		array<EntitySlotInfo> slots = {};
+		slotManager.GetSlotInfos(slots);
+		IEntity truckBed;
+		
+		foreach (EntitySlotInfo slot: slots)
+		{
+			if (!slot)
+				continue;
+			
+			truckBed = slot.GetAttachedEntity();
+			
+			if (!truckBed)
+				continue;
+			
+			suppliesComponent = SCR_CampaignSuppliesComponent.Cast(truckBed.FindComponent(SCR_CampaignSuppliesComponent));
+			if (suppliesComponent)
+				return suppliesComponent;
+		}
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// Constructor
 	void SCR_CampaignSuppliesComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
@@ -228,6 +271,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	// Destructor
 	void ~SCR_CampaignSuppliesComponent()
 	{
-		m_OnSuppliesTruckDeleted.Invoke();
+		if (m_OnSuppliesTruckDeleted)
+			m_OnSuppliesTruckDeleted.Invoke(GetOwner());
 	}
 };

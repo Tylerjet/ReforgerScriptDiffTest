@@ -95,7 +95,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		if (m_bMouseOverToFocus)
 			return false;
 		
-		if (m_bShowBorderOnHover)
+		if (m_bShowBorderOnHover && m_wBorder)
 		{
 			if (m_bNoBorderAnimation)
 				m_wBorder.SetOpacity(1);
@@ -133,7 +133,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 				AnimateWidget.Color(m_wBackground, m_BackgroundDefault, m_fAnimationRate);
 		}
 		
-		if (!m_bShowBorderOnHover || (m_bShowBorderOnFocus && GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot))
+		if (!m_wBorder || !m_bShowBorderOnHover || (m_bShowBorderOnFocus && GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot))
 			return false;
 		
 		if (m_bNoBorderAnimation)
@@ -147,7 +147,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
-		if (m_bShowBorderOnFocus)
+		if (m_bShowBorderOnFocus && m_wBorder)
 		{
 			if (m_bNoBorderAnimation)
 				m_wBorder.SetOpacity(1);
@@ -167,7 +167,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		
 		m_OnFocusLost.Invoke(w);
 		
-		if (!m_bShowBorderOnFocus || (m_bShowBorderOnHover && WidgetManager.GetWidgetUnderCursor() == m_wRoot))
+		if (!m_bShowBorderOnFocus || !m_wBorder || (m_bShowBorderOnHover && WidgetManager.GetWidgetUnderCursor() == m_wRoot))
 			return false;
 		
 		if (m_bNoBorderAnimation)
@@ -187,7 +187,7 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		{
 			SetToggled(!m_bIsToggled);
 		}
-		else if (m_bUseColorization)
+		else if (m_bUseColorization && m_wBackground)
 		{
 			AnimateWidget.Color(m_wBackground, m_BackgroundClicked, m_fAnimationRate);
 			GetGame().GetCallqueue().CallLater(ColorizeBackground, m_fAnimationTime * 500 + 1, false, true);
@@ -230,10 +230,13 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	//------------------------------------------------------------------------------------------------
 	void ShowBorder(bool show, bool animate = true)
 	{		
-		if (animate)
-			AnimateWidget.Opacity(m_wBorder, show, m_fAnimationRate, true);
-		else if (m_wBorder)
-			m_wBorder.SetOpacity(show);
+		if (m_wBorder)
+		{
+			if (animate)
+				AnimateWidget.Opacity(m_wBorder, show, m_fAnimationRate, true);
+			else if (m_wBorder)
+				m_wBorder.SetOpacity(show);
+		}
 		
 		m_OnShowBorder.Invoke(this, show);
 	}

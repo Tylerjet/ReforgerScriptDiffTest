@@ -45,7 +45,7 @@ class StatsApi
 	/**
 	\brief Allow sending of generic mod related event with custom data
 	*/
-	proto native int ModEvent();
+	proto native int ModEvent(Managed params);
 
 	/**
 	\brief Allow sending of generic player event with custom data

@@ -36,6 +36,8 @@ class WorldMapExportTool: WorldEditorTool
 	
 	[Attribute("1", UIWidgets.CheckBox, "2D Geometry: Generation of Areas' data", category: "Geometry 2D")]
 	bool generateAreas;
+	[Attribute("1", UIWidgets.CheckBox, "2D Geometry: Ignore Generator entities during generation", category: "Geometry 2D")]
+	bool ignoreGeneratorAreas;
 	[Attribute("1", UIWidgets.CheckBox, "2D Geometry: Save Areas' data to exported file", category: "Geometry 2D")]
 	bool saveAreas;
 	
@@ -69,6 +71,16 @@ class WorldMapExportTool: WorldEditorTool
 	float shadeIntensity;
 	[Attribute("1.5", UIWidgets.Slider, "Rasterization: Height intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float heightIntensity;
+	[Attribute("1", UIWidgets.CheckBox, "Rasterization: Include Areas defined by Generators into Rasterization", category: "Rasterization")]
+	bool includeGeneratorAreas;
+	[Attribute("0.592 0.709 0.435 1", UIWidgets.ColorPicker, "Rasterization: Forest area color", category: "Rasterization")]
+	ref Color forestAreaColor;
+	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Forest area intensity factor", "0.5 15 0.01", category: "Rasterization")]
+	float forestAreaIntensity;
+	[Attribute("0.5 0.5 0.5 1", UIWidgets.ColorPicker, "Rasterization: Other area color", category: "Rasterization")]
+	ref Color otherAreaColor;
+	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Other area intensity factor", "0.5 15 0.01", category: "Rasterization")]
+	float otherAreaIntensity;
 
 	[ButtonAttribute("Export")]
 	void Execute()
@@ -106,7 +118,7 @@ class WorldMapExportTool: WorldEditorTool
 			if(!saveWaterBodies) saveFlags = saveFlags | ExcludeSaveFlags.ExcludeSaveWaterBodies;
 			if(!saveHills) saveFlags = saveFlags | ExcludeSaveFlags.ExcludeSaveHills;
 
-			DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, exportPath, worldPath, hillMinimumHeight, generateFlags, saveFlags);
+			DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, exportPath, worldPath, hillMinimumHeight, ignoreGeneratorAreas, generateFlags, saveFlags);
 			if(result != DataExportErrorType.DataExportErrorNone)
 			{
 				string reason = "";
@@ -148,7 +160,7 @@ class WorldMapExportTool: WorldEditorTool
 		}
 		else if (type == EMapDataExportType.Rasterization)
 		{
-			DataExportErrorType result = MapDataExporter.ExportRasterization(exportPath, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity);
+			DataExportErrorType result = MapDataExporter.ExportRasterization(exportPath, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity, includeGeneratorAreas, forestAreaColor, forestAreaIntensity, otherAreaColor, otherAreaIntensity);
 			if(result != DataExportErrorType.DataExportErrorNone)
 			{
 				string reason = "";
@@ -231,7 +243,7 @@ class WorldDataExport: WorkbenchPlugin
 			success = true;
 			if (exportMap)
 			{
-				DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags.ExcludeSaveNone);
+				DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, true, ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags.ExcludeSaveNone);
 				if(result != DataExportErrorType.DataExportErrorNone)
 				{
 					string reason = "";
@@ -283,8 +295,13 @@ class WorldDataExport: WorkbenchPlugin
 				float depthLerpMeters = -10.0;
 				float shadeIntensity = 1.33;
 				float heightIntensity = 1.5;
+				bool includeGeneratorAreas = true;
+				Color forestAreaColor = new Color(0.592, 0.709, 0.435, 1.0);
+				float forestAreaIntensity = 1.0;
+				Color otherAreaColor = new Color(0.5, 0.5, 0.5, 1.0);
+				float otherAreaIntensity = 1.0;
 
-				DataExportErrorType result = MapDataExporter.ExportRasterization(dir, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity);
+				DataExportErrorType result = MapDataExporter.ExportRasterization(dir, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity, includeGeneratorAreas, forestAreaColor, forestAreaIntensity, otherAreaColor, otherAreaIntensity);
 				if(result != DataExportErrorType.DataExportErrorNone)
 				{
 					string reason = "";

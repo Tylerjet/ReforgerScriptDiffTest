@@ -93,6 +93,7 @@ class SCR_PopUpNotification: GenericEntity
 	protected bool m_bStatusMsgRefresh = false;
 	protected bool m_bStatusMsgActive = false;
 	protected bool m_bPopupQueueRefresh = true;
+	protected bool m_bInventoryOpen = false;
 	
 	protected float m_fCurPopupMsgFadeInStart = -1;
 	protected float m_fCurPopupMsgDurationStart;
@@ -109,6 +110,8 @@ class SCR_PopUpNotification: GenericEntity
 	
 	protected int m_iLastQueueSize = 0;
 	protected int m_iHighestPrioIndex = 0;
+	
+	protected IEntity m_Player;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns an instance of this manager.
@@ -132,6 +135,36 @@ class SCR_PopUpNotification: GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void RefreshPlayer()
+	{
+		IEntity player = GetGame().GetPlayerController().GetControlledEntity();
+		
+		if (player == m_Player)
+			return;
+		
+		if (m_Player)
+		{
+			SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(m_Player.FindComponent(SCR_InventoryStorageManagerComponent));
+		
+			if (inventory)
+				inventory.m_OnInventoryOpenInvoker.Remove(OnInventoryToggle);
+		}
+		
+		m_Player = player;
+		
+		if (!m_Player)
+			return;
+		
+		SCR_InventoryStorageManagerComponent inventory = SCR_InventoryStorageManagerComponent.Cast(m_Player.FindComponent(SCR_InventoryStorageManagerComponent));
+		
+		if (!inventory)
+			return;
+		
+		inventory.m_OnInventoryOpenInvoker.Remove(OnInventoryToggle);
+		inventory.m_OnInventoryOpenInvoker.Insert(OnInventoryToggle);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether the pop up notification is being shown or not.
 	bool IsShowing()
 	{
@@ -143,6 +176,12 @@ class SCR_PopUpNotification: GenericEntity
 		}
 		
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnInventoryToggle(bool open)
+	{
+		m_bInventoryOpen = open;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -162,6 +201,8 @@ class SCR_PopUpNotification: GenericEntity
 		
 		if ((text.IsEmpty() && text2.IsEmpty()) || !GetWorld())
 			return;
+		
+		RefreshPlayer();
 		
 		m_aPopupMsgTextsQueue.Insert(text);
 		m_aPopupMsgTextsSmallQueue.Insert(text2);
@@ -282,6 +323,9 @@ class SCR_PopUpNotification: GenericEntity
 		SetEventMask(EntityEvent.FRAME);
 		SetFlags(EntityFlags.ACTIVE, true);
 		
+		GetGame().GetCallqueue().Remove(RefreshPlayer);
+		GetGame().GetCallqueue().CallLater(RefreshPlayer, 250, true);
+		
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		
 		if (mapEntity)
@@ -331,6 +375,14 @@ class SCR_PopUpNotification: GenericEntity
 		
 		float curTime = world.GetWorldTime();
 		int queueCnt = m_aPopupMsgTextsQueue.Count();
+		
+		if (m_bInventoryOpen)
+		{
+			m_wPopupMsg.SetVisible(false);
+			m_wPopupMsgSmall.SetVisible(false);
+			m_wStatusProgress.SetVisible(false);
+			return;
+		}
 		
 		// Popup msg queue
 		if (queueCnt != 0)
@@ -440,6 +492,9 @@ class SCR_PopUpNotification: GenericEntity
 					}
 					else
 					{
+						m_wPopupMsg.SetVisible(true);
+						m_wPopupMsgSmall.SetVisible(true);
+						
 						if (curTime < m_fCurPopupMsgDurationStart)
 						{
 							AlphaLerp(m_wPopupMsg, m_fCurPopupMsgFadeInStart, curTime, fade, m_fPopupMsgDefaultAlpha);
@@ -516,6 +571,8 @@ class SCR_PopUpNotification: GenericEntity
 		// Process status msg 
 		if (m_wPopupMsg && m_bStatusMsgActive)
 		{
+			m_wPopupMsg.SetVisible(true);
+			
 			if (m_fCurStatusMsgFadeOutEnd >= curTime)
 			{
 				AlphaLerp(m_wPopupMsg, m_fCurStatusMsgFadeOutStart, curTime, 500, m_fPopupMsgDefaultAlpha, false);

@@ -36,6 +36,7 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 	private float m_fTargetAlpha = 1;
 	private float m_fTargetAlphaStrength;
 	private SCR_MouseAreaEditorUIComponent m_MouseArea;
+	protected TraceFlags m_DefaultWorldTraceFlags = TraceFlags.WORLD | TraceFlags.OCEAN | TraceFlags.ENTS;
 	
 	/*!
 	Set cursor position.
@@ -109,12 +110,13 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 	/*!
 	Get world position below cursor.
 	\param[out] worldPos Vector to be filled with world position
+	\param flags Trace flags to be used (send -1 for default flags)
 	\return True if the cursor is above world position (e.g., not pointing at sky)
 	*/
-	bool GetCursorWorldPos(out vector worldPos, bool isNormalized = false)
+	bool GetCursorWorldPos(out vector worldPos, bool isNormalized = false, TraceFlags flags = -1)
 	{
 		//--- Get cached position
-		if (m_iFrameUpdateWorld == m_iFrameIndex)
+		if (m_iFrameUpdateWorld == m_iFrameIndex && flags == m_DefaultWorldTraceFlags)
 		{
 			if (isNormalized)
 				worldPos = m_vCursorPosWorldNormalized;
@@ -148,16 +150,24 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 			return true;
 		}
 		
+		
 		vector cursorPos = GetCursorPos();
 		vector outDir;
 		vector startPos = workspace.ProjScreenToWorld(cursorPos[0], cursorPos[1], outDir, world, -1);
 		outDir *= 10000;
+		
+		//--- Use default flags
+		if (flags < 0)
+			flags = m_DefaultWorldTraceFlags;
+		
+		//--- Camera below ocean surface, don't trace ocean
+		if (startPos[1] < world.GetOceanBaseHeight())
+			flags = flags & ~TraceFlags.OCEAN;
 	
 		autoptr TraceParam trace = new TraceParam();
 		trace.Start = startPos;
 		trace.End = startPos + outDir;
-		trace.Flags = TraceFlags.WORLD | TraceFlags.OCEAN | TraceFlags.ENTS;
-		trace.LayerMask = TRACE_LAYER_CAMERA;
+		trace.Flags = flags;
 		
 		float traceDis = world.TraceMove(trace, null);
 		if (traceDis == 1)
@@ -172,8 +182,12 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		}
 
 		worldPos = startPos + outDir * traceDis;
-		m_vCursorPosWorld = worldPos;
-		m_vCursorPosWorldNormalized = worldPos;
+		if (flags == m_DefaultWorldTraceFlags)
+		{
+			//--- Cache only when default flags were used
+			m_vCursorPosWorld = worldPos;
+			m_vCursorPosWorldNormalized = worldPos;
+		}
 		return true;
 	}
 	IEntity GetTraceEntity()
@@ -226,11 +240,14 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 	}
 	protected void UpdateCursor()
 	{
+		//--- Map is using its own custom cursors, don't overwrite them
+		if (m_MapEntity && m_MapEntity.IsOpen())
+			return;
+		
 		EEditorState editorState;
 		if (m_StatesManager) editorState = m_StatesManager.GetState();
 		
 		bool isEditing = m_PreviewManager && m_PreviewManager.IsEditing();
-		bool isMapOpen = m_MapEntity && m_MapEntity.IsOpen();
 		
 		switch (true)
 		{
@@ -242,34 +259,34 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				SetCursorType(EEditorCursor.WAITING);
 				break;
 			
-			case (isEditing && !m_PreviewManager.IsChange() && !isMapOpen):
+			case (isEditing && !m_PreviewManager.IsChange()):
 				SetCursorType(EEditorCursor.TRANSFORM_DISABLED);
 				break;
 
-			case (isEditing && m_PreviewManager.IsRotating() && !isMapOpen):
+			case (isEditing && m_PreviewManager.IsRotating()):
 				SetCursorType(EEditorCursor.ROTATE);
 				break;
 
-			case (isEditing && (m_PreviewManager.GetTarget() || m_PreviewManager.IsFixedPosition()) && !isMapOpen):
+			case (isEditing && (m_PreviewManager.GetTarget() || m_PreviewManager.IsFixedPosition())):
 				if (m_PreviewManager.GetTargetInteraction() == EEditableEntityInteraction.NONE)
 					SetCursorType(EEditorCursor.TRANSFORM_SNAP_DISABLED);
 				else
 					SetCursorType(EEditorCursor.TRANSFORM_SNAP);
 				break;
 
-			case (editorState == EEditorState.TRANSFORMING && !isMapOpen):
+			case (editorState == EEditorState.TRANSFORMING):
 				SetCursorType(EEditorCursor.TRANSFORM);
 				break;
 
-			case (editorState == EEditorState.PLACING && !isMapOpen):
+			case (editorState == EEditorState.PLACING):
 				SetCursorType(EEditorCursor.PLACE);
 				break;
 
-			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.WAYPOINT && !isMapOpen):
+			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.WAYPOINT):
 				SetCursorType(EEditorCursor.WAYPOINT);
 				break;
 
-			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.OBJECTIVE && !isMapOpen):
+			case (m_CommandManager && m_CommandManager.GetCommandState() & EEditorCommandActionFlags.OBJECTIVE):
 				SetCursorType(EEditorCursor.OBJECTIVE);
 				break;
 

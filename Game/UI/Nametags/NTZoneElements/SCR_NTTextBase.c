@@ -15,18 +15,33 @@ class SCR_NTTextBase : SCR_NTElementBase
 	//------------------------------------------------------------------------------------------------
 	//!  Get text from this element
 	//! \param data is nametag struct
-	//! \return current text
-	protected string GetText(SCR_NameTagData data)
+	//! \param[out] name Name or formatting of name
+	//! \param[out] names If uses formating: Firstname, Alias and Surname (Alias can be an empty string)
+	protected void GetText(SCR_NameTagData data, out string name, out notnull array<string> nameParams)
 	{				
-		return string.Empty;
+		return;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set text for this element
 	//! \param data is nametag struct
-	protected void SetText(SCR_NameTagData data, string text, int index)
+	protected void SetText(SCR_NameTagData data, string text, notnull array<string> nameParams, int index)
 	{
-		TextWidget.Cast( data.m_aNametagElements[index] ).SetText(text);
+		if (!data.m_aNametagElements[index])
+			return;
+		
+		int paramsCount = nameParams.Count();
+		
+		if (paramsCount == 0)
+			TextWidget.Cast( data.m_aNametagElements[index] ).SetText(text);
+		else if (paramsCount == 3)
+			TextWidget.Cast( data.m_aNametagElements[index] ).SetTextFormat(text, nameParams[0], nameParams[1], nameParams[2]);
+		else 
+		{
+			Print(string.Format("'SCR_NTTextBase' does not support nameParams of count '%1'!", paramsCount), LogLevel.ERROR);
+			TextWidget.Cast( data.m_aNametagElements[index] ).SetText(text);
+		}
+			
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,9 +105,9 @@ class SCR_NTTextBase : SCR_NTElementBase
 class SCR_NTName : SCR_NTTextBase
 {		
 	//------------------------------------------------------------------------------------------------
- 	override string GetText(SCR_NameTagData data)
+ 	override void GetText(SCR_NameTagData data, out string name, out notnull array<string> nameParams)
 	{	
-		return data.GetName();
+		data.GetName(name, nameParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -102,13 +117,16 @@ class SCR_NTName : SCR_NTTextBase
 		
 		if (data.m_Flags & ENameTagFlags.NAME_UPDATE)
 		{
-			string name = GetText(data);
+			string name;
+			array<string> nameParams = {};
+			
+			GetText(data, name, nameParams);
 			
 			if (name == string.Empty)
-				SetText(data, "GETNAME_ERROR", index);
+				SetText(data, "GETNAME_ERROR", nameParams, index);
 			else
 			{
-				SetText(data, name, index);
+				SetText(data, name, nameParams, index);
 				data.m_Flags &= ~ENameTagFlags.NAME_UPDATE;
 			}
 		}
@@ -121,9 +139,9 @@ class SCR_NTName : SCR_NTTextBase
 class SCR_NTTextDebug : SCR_NTTextBase
 {	
 	//------------------------------------------------------------------------------------------------
- 	override string GetText(SCR_NameTagData data)
+ 	override void GetText(SCR_NameTagData data, out string name, out notnull array<string> nameParams)
 	{
-		return Math.Round(Math.Sqrt(data.m_fDistance)).ToString();
+		name = Math.Round(Math.Sqrt(data.m_fDistance)).ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -131,6 +149,10 @@ class SCR_NTTextDebug : SCR_NTTextBase
 	{		
 		super.UpdateElement(data, index);
 		
-		SetText(data, GetText(data), index);	
+		string name;
+		array<string> nameParams = {};
+			
+		GetText(data, name, nameParams);
+		SetText(data, name, nameParams, index);	
 	}
 };

@@ -31,7 +31,7 @@ class SCR_CustomArrayEditableEntityUIComponent: SCR_BaseEditableEntityUIComponen
 				if (colorInfo)
 					GetWidget().SetColor(colorInfo.GetColor());
 				else 
-					Print("'SCR_CustomArrayEditableEntityUIComponent' tried to set the UI color but the EditableEntity is not using SCR_ColorUIInfo");
+					Print("'SCR_CustomArrayEditableEntityUIComponent' tried to set the UI color but the EditableEntity is not using SCR_ColorUIInfo", LogLevel.WARNING);
 			}
 		}
 	}

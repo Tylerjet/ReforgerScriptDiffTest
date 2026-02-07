@@ -66,7 +66,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Radio on/off toggle
-	private void RadioToggle()
+	void RadioToggle()
 	{
 		m_BaseRadioComp.TogglePower( !m_BaseRadioComp.IsPowered() );
 		m_bIsPowered = m_BaseRadioComp.IsPowered();
@@ -87,10 +87,10 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! Change frequency by a single step, init proc anims
 	//! \param direction decides whether the frequency is increased (true) / decreased (false)
-	private void ChangeFrequencyStep(bool direction)
+	bool ChangeFrequencyStep(bool direction)
 	{
 		if (!m_BaseRadioComp.IsPowered())
-			return;
+			return false;
 
 		string strUp = "UP";
 		string strDown = "DOWN";
@@ -99,9 +99,9 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		int freqMin = m_BaseRadioComp.GetMinFrequency();
 
 		if ( ( freq + m_BaseRadioComp.GetFrequencyResolution() ) > freqMax && direction)
-			return;
+			return false;
 		else if ( ( freq - m_BaseRadioComp.GetFrequencyResolution() ) < freqMin && !direction)
-			return;
+			return false;
 		else
 		{
 			if (direction)
@@ -123,6 +123,8 @@ class SCR_RadioComponent : SCR_GadgetComponent
 			targetAngle = GetKnobAngle(EFreqUnit.KHZ);
 			SetKnobAnim(m_iSignalChannelKhz, targetAngle, 0.3, false);
 		}
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -337,7 +339,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeHeld()
 	{
-		return false;
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -349,6 +351,12 @@ class SCR_RadioComponent : SCR_GadgetComponent
 			return false;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	BaseRadioComponent GetRadioComponent()
+	{
+		return m_BaseRadioComp;
+	}	
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{

@@ -148,6 +148,12 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 		if ( !super.CanBePerformedScript( user ) )
 			return false;
 		CharacterControllerComponent controller = CharacterControllerComponent.Cast(user.FindComponent(CharacterControllerComponent));
+		if (m_pWeaponOnGroundComponent.CanBeEquipped(controller) == ECanBeEquippedResult.STANCE_TOO_LOW)
+		{
+			SetCannotPerformReason("#AR-KeybindSeparator_CharacterStance"); //@TODO (ivanickyjak) Use AR-Inventory_StanceTooLow when translated.
+			return false;
+		}
+		
 		return CanEquipOrReplaceWeapon( user ) && !controller.IsReloading() && controller.CanPlayItemGesture();
 
  	}

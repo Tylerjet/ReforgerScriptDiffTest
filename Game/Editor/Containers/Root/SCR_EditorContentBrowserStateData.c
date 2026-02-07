@@ -40,7 +40,7 @@ class SCR_EditorContentBrowserSaveStateData
 		if (checkForInvalid)
 			SCR_Enum.GetEnumValues(EEditableEntityLabel, validLabels);
 		
-		foreach(EEditableEntityLabel label: savedLabels)
+		foreach (EEditableEntityLabel label: savedLabels)
 		{
 			//~ Check if invalid in cause the enums changed or a mod was changed
 			if (checkForInvalid && !validLabels.Contains(label))
@@ -48,6 +48,36 @@ class SCR_EditorContentBrowserSaveStateData
 
 			m_iSavedLabels.Insert(label);
 		}
+	}
+	
+	/*!
+	Add or remove the given label
+	\param label Label to add or remove
+	\param addLabel If true will add the label. Else will remove
+	*/
+	void AddRemoveLabel(EEditableEntityLabel label, bool addLabel)
+	{
+		if (addLabel)
+		{
+			if (m_iSavedLabels.Contains(label))
+				return;
+			
+			m_iSavedLabels.Insert(label);
+		}
+		else 
+		{
+			int count = m_iSavedLabels.Count();
+			
+			for(int i = 0; i < count; i++)
+			{
+				if (m_iSavedLabels[i] == label)
+				{
+					m_iSavedLabels.RemoveOrdered(i);
+					return;
+				}
+			}
+		}
+		
 	}
 	
 	/*!

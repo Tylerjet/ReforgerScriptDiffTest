@@ -44,7 +44,7 @@ class SCR_ArsenalBaseEditorAttribute : SCR_LoadoutBaseEditorAttribute
 		SCR_EArsenalItemType arsenalFlags = arsenalComponent.GetSupportedArsenalItemTypes();
 		int newArsenalflags = var.GetInt();
 
-		foreach(SCR_EditorAttributeFloatStringValueHolder value: m_aValues)
+		foreach (SCR_EditorAttributeFloatStringValueHolder value: m_aValues)
 		{
 			//Check if flag is true or not
 			if (newArsenalflags & (int)value.GetFloatValue())

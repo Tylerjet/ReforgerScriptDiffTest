@@ -16,15 +16,17 @@ class BaseTarget: ScriptAndConfig
 	*/
 	proto external IEntity GetTargetEntity();
 	proto external ETargetCategory GetTargetCategory();
-	// Last time the target was detected
+	// Time passed since target was detected
 	proto external float GetTimeSinceDetected();
-	// Last time the target has been seen (direct LoS)
+	// Time passed since the target was seen (direct LoS)
 	proto external float GetTimeSinceSeen();
-	// Last time the target's type was recognized
+	// Time (from perception manager) when the target was seen (direct LoS)
+	proto external float GetTimeLastSeen();
+	// Time passed since the target's type was recognized
 	proto external float GetTimeSinceTypeRecognized();
-	// Last time the target's side was recognized
+	// Time passed since the target's side was recognized
 	proto external float GetTimeSinceSideRecognized();
-	// Last time the target endangered us
+	// Time passed since the target endangered us
 	proto external float GetTimeSinceEndangered();
 	// Position where the target was seen last
 	proto external vector GetLastSeenPosition();
@@ -36,6 +38,8 @@ class BaseTarget: ScriptAndConfig
 	proto external EAIUnitType GetUnitType();
 	// Returns perceivable component of target
 	proto external PerceivableComponent GetPerceivableComponent();
+	// Sets the last seen position to provided value if the timestamp is newer than existing last seen time
+	proto external void UpdateLastSeenPosition(vector pos, float perceptionMgrTimestamp);
 };
 
 /** @}*/

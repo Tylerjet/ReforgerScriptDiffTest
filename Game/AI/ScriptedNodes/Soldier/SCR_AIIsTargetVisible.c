@@ -4,7 +4,7 @@ class SCR_AIIsTargetVisible : DecoratorScripted
 	static const string BASE_TARGET_PORT = "BaseTargetIn";
 	static const string LAST_POSITION_PORT = "LastPositionOut";
 	
-	[Attribute("1", UIWidgets.EditBox, "How long in past target becomes invisibile", "")]
+	[Attribute("0.5", UIWidgets.EditBox, "How long in past target becomes invisibile", "")]
 	float m_lastSeenMax;
 	
 	//-----------------------------------------------------------------------------------------------------

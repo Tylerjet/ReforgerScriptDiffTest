@@ -151,12 +151,14 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 	{
 		ClearAllFilterWidgets();
 		
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		
 		int count = m_aActiveFilters.Count();
 		
 		//~ No active filters
 		if (count <= 0)
 		{
-			GetGame().GetWorkspace().CreateWidgets(m_NoActiveFiltersPrefab, m_FiltersHolder);
+			workspace.CreateWidgets(m_NoActiveFiltersPrefab, m_FiltersHolder);
 			return;
 		}
 		
@@ -185,7 +187,7 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 				continue;
 			}
 			
-			filterWidget = GetGame().GetWorkspace().CreateWidgets(m_sActiveFilterPrefab, m_FiltersHolder);
+			filterWidget = workspace.CreateWidgets(m_sActiveFilterPrefab, m_FiltersHolder);
 			activeFilterComponent = SCR_ContentBrowserActiveFilterEditorUIComponent.Cast(filterWidget.FindHandler(SCR_ContentBrowserActiveFilterEditorUIComponent));
 			button = SCR_ButtonBaseComponent.Cast(filterWidget.FindHandler(SCR_ButtonBaseComponent));
 			
@@ -203,14 +205,14 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		//~ No active filters visible
 		if ((count - ignoredFilters) <= 0)
 		{
-			GetGame().GetWorkspace().CreateWidgets(m_NoActiveFiltersPrefab, m_FiltersHolder);
+			workspace.CreateWidgets(m_NoActiveFiltersPrefab, m_FiltersHolder);
 			return;
 		}
 		
 		//~ Set overflow indicator
 		if ((overflow - ignoredFilters) > 0)
 		{
-			filterWidget = GetGame().GetWorkspace().CreateWidgets(m_sMoreActiveFiltersPrefab, m_FiltersHolder);
+			filterWidget = workspace.CreateWidgets(m_sMoreActiveFiltersPrefab, m_FiltersHolder);
 			TextWidget text = TextWidget.Cast(filterWidget.FindAnyWidget("Count"));
 			if (text)
 				text.SetTextFormat(m_sOverflowTextFormat, overflow.ToString());
@@ -260,13 +262,14 @@ class SCR_ContentBrowserActiveFiltersEditorUIComponent: ScriptedWidgetComponent
 		array<ref SCR_EditableEntityCoreLabelGroupSetting> labelGroups = {};
 		m_ContentBrowserComponent.GetLabelGroups(labelGroups);
 		
-		foreach(SCR_EditableEntityCoreLabelGroupSetting groupSetting: labelGroups)
+		foreach (SCR_EditableEntityCoreLabelGroupSetting groupSetting: labelGroups)
 			m_mGroupLabelOrder.Insert(groupSetting.GetLabelGroupType(), groupSetting.GetOrder());
 		
 		m_ContentBrowserComponent.GetOnLabelChanged().Insert(OnFilterLabelChanged);
 		m_ContentBrowserComponent.GetOnBrowserStateCleared().Insert(OnFiltersReset);
 		
-		CreateFilters();	
+		m_ContentBrowserComponent.GetActiveLabels(m_aActiveFilters);
+		CreateFilters();
 	}
 	
 	override void HandlerAttached(Widget w)

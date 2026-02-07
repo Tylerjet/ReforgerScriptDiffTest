@@ -37,6 +37,13 @@ class LocExportPlugin: LocalizationEditorPlugin
 {
 	override string GetExportColumn(BaseContainer item, string languageCode)
 	{
+#ifndef LOCALIZATION_BUILD_HIDDEN		
+		bool hidden = false;
+		item.Get("Hidden", hidden);
+		
+		if (hidden)
+			return ""; // do not export this item
+#endif		
 		if (languageCode == "en_us")
 		{
 			string edited;

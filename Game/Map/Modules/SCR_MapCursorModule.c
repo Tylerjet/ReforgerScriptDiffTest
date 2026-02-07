@@ -46,6 +46,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Enables panning by moving cursor to the screen edges")]
 	bool m_bEnableCursorEdgePan;
+	
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Center KBM cursor on map open")]
+	bool m_bIsCursorCenteredOnOpen;
 				
 	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.EditBox, desc: "Time it takes to perform zooming of a single step", params: "0.01 10")]
 	float m_fZoomAnimTime;
@@ -1278,7 +1281,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		InitInputs();
 
 		SetCursorType(m_CursorState);
-		ForceCenterCursor();
+		
+		if (m_bIsCursorCenteredOnOpen || m_CursorInfo.isGamepad)
+			ForceCenterCursor();
 	}
 
 	//------------------------------------------------------------------------------------------------

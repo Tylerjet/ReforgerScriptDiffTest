@@ -137,7 +137,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 		if (!m_CharacterOwner || m_CharacterOwner != SCR_PlayerController.GetLocalControlledEntity())
 			return;
 
-		GetGame().GetInputManager().AddActionListener("GadgetActivate", EActionTrigger.DOWN, ActivateAction); // TODO if not type restricted, move to gadget manager
+		if (CanBeToggled())
+			GetGame().GetInputManager().AddActionListener("GadgetActivate", EActionTrigger.DOWN, ActivateAction); // TODO if not type restricted, move to gadget manager
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -148,7 +149,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 		if (!m_CharacterOwner || m_CharacterOwner != SCR_PlayerController.GetLocalControlledEntity())
 			return;
 		
-		GetGame().GetInputManager().RemoveActionListener("GadgetActivate", EActionTrigger.DOWN, ActivateAction);		
+		if (CanBeToggled())
+			GetGame().GetInputManager().RemoveActionListener("GadgetActivate", EActionTrigger.DOWN, ActivateAction);		
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -277,6 +279,14 @@ class SCR_GadgetComponent : ScriptGameComponent
 			
 		return prefabData.GetPrefabName();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get IEntity in possession of this Gadget
+	//! \return returns entity m_CharacterOwner
+	IEntity GetCharacterOwner()
+	{
+		return m_CharacterOwner;
+	}
 				
 	//------------------------------------------------------------------------------------------------
 	//! Get gadget type
@@ -330,14 +340,6 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//! Visible when attached to character gear, further condition may determine visibility, such as if the equipment slot is obstructed by something else
 	//! \return Returns true if visible in equipment slot
 	bool IsVisibleEquipped()
-	{
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Combines gadget focus with player focus when the gadget is focused
-	//! \return Returns true if combined focus enabled
-	bool IsCombinedFocus()
 	{
 		return false;
 	}

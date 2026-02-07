@@ -9,8 +9,10 @@ Do not modify, this script is generated
 * @{
 */
 
-class BaseContainerList: Managed
+sealed class BaseContainerList: Managed
 {
+	private void BaseContainerList();
+	
 	proto external BaseContainer Get(int index);
 	proto external bool Set(int index, BaseContainer cont);
 	proto external bool Insert(BaseContainer cont, int index = -1);

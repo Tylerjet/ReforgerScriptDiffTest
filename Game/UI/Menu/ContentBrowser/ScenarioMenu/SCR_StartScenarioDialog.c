@@ -97,7 +97,29 @@ class SCR_StartScenarioDialog : DialogUI
 		if (!m_Scenario)
 			return;
 		
-		m_Scenario.Host();
+		ref DSConfig config = new DSConfig;
+		ref DSGameConfig game = new DSGameConfig;
+		config.game = game;
+		game.scenarioId = m_Scenario.Id();
+		game.playerCountLimit = m_Scenario.GetPlayerCount();
+		game.name = m_Scenario.Name() + " - " + System.GetMachineName();
+		WorkshopItem hostedMod = m_Scenario.GetOwner();
+		if (hostedMod)
+			game.hostedScenarioModId = hostedMod.Id();
+		
+		ref array<WorkshopItem> offlineMods = new array<WorkshopItem>;
+		ref array<ref DSMod> modIds = new array<ref DSMod>;
+		GetGame().GetBackendApi().GetWorkshop().GetOfflineItems(offlineMods);
+		foreach(auto mod : offlineMods)
+		{
+			ref DSMod modData = new DSMod;
+			modData.modId = mod.Id();
+			modData.name = mod.Name();
+			modData.version = mod.GetActiveRevision().GetVersion();
+			modIds.Insert(modData);
+		}
+		config.game.mods = modIds;
+		m_Scenario.Host(config);
 	}
 	
 	

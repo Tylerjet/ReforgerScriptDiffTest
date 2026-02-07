@@ -34,6 +34,8 @@ class CharacterCameraADS extends CharacterCameraBase
 			s_bDebugRegistered = true;
 		}
 		#endif
+		
+		m_iJumpAnimTagId = GameAnimationUtils.RegisterAnimationTag("TagFall");
 	}
 	
 
@@ -60,7 +62,10 @@ class CharacterCameraADS extends CharacterCameraBase
 				m_LastWeaponComponent.SightADSDeactivated();
 		}
 		
-		GetGame().GetCameraManager().SetOverlayCamera(null);
+		CameraManager cameraMgr = GetGame().GetCameraManager();
+		if (cameraMgr)
+			cameraMgr.SetOverlayCamera(null);
+			
 		m_bIsFullyBlend = false;
 	}
 	
@@ -255,6 +260,16 @@ class CharacterCameraADS extends CharacterCameraBase
 						 m_CmdHandler.IsProneStanceTransition() && m_ControllerComponent.GetMovementVelocity().LengthSq() > 0.0 ||
 						 (!m_WeaponManager || !m_WeaponManager.GetCurrentSights());
 		}
+		
+		// Jump context is reset, so instead check for animation tag presence
+		// and make camera unstable during this period as hand movement is unpredictable
+		if (m_iJumpAnimTagId != -1)
+		{
+			CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
+			if (animComponent && animComponent.IsPrimaryTag(m_iJumpAnimTagId))
+				isUnstable = true;
+		}
+		
 
 		if (isUnstable)
 		{
@@ -288,7 +303,10 @@ class CharacterCameraADS extends CharacterCameraBase
 			float blendAlpha = 1.0 - ( vector.Dot( weaponAimingDir, lookAimingDir ) + 1.0) * 0.5;
 			const float blendOutSpeed = 3.0; // Higher values reduce the radius range of blend alpha, lower values extend further
 			
-			m_fFreelookBlendAlpha =  Math.Clamp( Math.Sqrt( blendAlpha * blendOutSpeed ), 0.0, 1.0 );
+			if (cameraData.m_bFreeLook)
+				m_fFreelookBlendAlpha =  Math.Clamp( Math.Sqrt( blendAlpha * blendOutSpeed ), 0.0, 1.0 );
+			else m_fFreelookBlendAlpha -= pDt * 5.0; // if out of freelook, make sure to blend out, in certain cases the epsilon can never be logically hit
+			
 			if ( m_fFreelookBlendAlpha <= alphaEpsilon )
 				m_fFreelookBlendAlpha = 0.0;
 			vector freeLookMat[4];
@@ -441,9 +459,18 @@ class CharacterCameraADS extends CharacterCameraBase
 			zeroingPitch = pipSights.GetCurrentCameraPitchOffset();
 		}
 		
+		vector adjustedLookAngles = cameraData.m_vLookAngles;
+		if (m_ControllerComponent.GetIsWeaponDeployed())
+		{
+			adjustedLookAngles[1] = m_ControllerComponent.GetAimingComponent().GetAimingRotation()[1];
+			float yaw = m_ControllerComponent.GetCharacter().GetYawPitchRoll()[0];
+			float heading = m_ControllerComponent.GetHeadingAngle() * Math.RAD2DEG;
+			adjustedLookAngles[0] = (360.0-heading)-yaw;
+		}
+		
 		// we start clean
 		vector lookRot[4];
-		vector adjustedLookAngles = cameraData.m_vLookAngles;
+		
 		adjustedLookAngles[1] = adjustedLookAngles[1] + zeroingPitch; // Add extra zeroing pitch for sights that allow such functionality
 		Math3D.AnglesToMatrix(adjustedLookAngles, lookRot);
 		
@@ -598,17 +625,20 @@ class CharacterCameraADS extends CharacterCameraBase
 		else // :-)
 			SolveNewMethod(cameraData, pOutResult, pDt, true);
 		
-		
-		// Update overlay camera
-		if (cameraData.m_bFreeLook)
+		CameraManager cameraMgr = GetGame().GetCameraManager();
+		if (cameraMgr != null)
 		{
-			// Supress overlay cam
-			GetGame().GetCameraManager().SetOverlayCamera(null);
-		}
-		else if (overlayCamera)
-		{
-			// Override overlay comera if any is used
-			GetGame().GetCameraManager().SetOverlayCamera(overlayCamera);
+			// Update overlay camera
+			if (cameraData.m_bFreeLook)
+			{
+				// Supress overlay cam				
+				cameraMgr.SetOverlayCamera(null);
+			}
+			else if (overlayCamera)
+			{
+				// Override overlay comera if any is used
+				cameraMgr.SetOverlayCamera(overlayCamera);
+			}
 		}
 		
 		pOutResult.m_pOwner 				= m_OwnerCharacter;
@@ -629,6 +659,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	protected	bool	m_bIsFullyBlend = false;
 	protected	int 	m_iHandBoneIndex;	//!< hand bone
 	protected	int 	m_iHeadBoneIndex;	//!< head bone
+	protected	AnimationTagID m_iJumpAnimTagId;
 	protected	vector	m_OffsetLS;			//!< position offset 
 	protected	float	m_fADSToFPSDeg;		//!< freelook degrees for transitioning into fps pos
 	protected	float	m_fFreelookFOV;

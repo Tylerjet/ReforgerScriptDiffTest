@@ -167,10 +167,7 @@ class SCR_GamepadScrollComponent : ScriptedWidgetComponent
 		}
 
 		if (widgetsInFrame.IsEmpty())
-		{
-			GetGame().GetWorkspace().SetFocusedWidget(null);
 			return;
-		}
 
 		vector refPos = GetReferencePoint(wScroll);
 

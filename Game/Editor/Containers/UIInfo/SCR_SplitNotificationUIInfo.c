@@ -1,4 +1,4 @@
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_SplitNotificationUIInfo : SCR_UINotificationInfo
 {
 	[Attribute(desc: "The right part of the split notification message. Only valid if m_bIsSplitNotification is true")]

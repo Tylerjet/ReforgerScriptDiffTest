@@ -1,4 +1,4 @@
-[BaseContainerProps(configRoot: true), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(configRoot: true), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_HintUIInfo: SCR_BlockUIInfo
 {
 	[Attribute(SCR_Enum.GetDefault(EHint.UNDEFINED), UIWidgets.SearchComboBox, "When defined, the hint can be shown only certain amount of times (defined by Show Limit attribute).\nAfter that, calls to show the hint will be ignored.", enums: ParamEnumArray.FromEnum(EHint))]
@@ -16,12 +16,15 @@ class SCR_HintUIInfo: SCR_BlockUIInfo
 	[Attribute()]
 	protected ref array<string> m_aHighlightWidgetsNames;
 	
+	[Attribute("0", desc: "Should the hint duration be animated.\nWhen false, the duration will not be visualised.")]
+	protected bool m_bIsTimerVisible;
+	
 	[Attribute(SCR_Enum.GetDefault(EFieldManualEntryId.NONE), UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EFieldManualEntryId))]
 	protected EFieldManualEntryId m_FieldManualLink;
 	
 	protected int m_iSequencePage;
 	protected int m_iSequenceCount;
-	protected bool m_bIsTimerVisible;
+	protected int m_iTimeHintStarted;
 	
 	/*!
 	Get hint type. When defined, the hint will be persistently saved and not shown again.
@@ -63,6 +66,20 @@ class SCR_HintUIInfo: SCR_BlockUIInfo
 	float GetDuration()
 	{
 		return m_fDuration;
+	}
+	/*!
+	Get the time of Hint start, needed for proper Map implementation. Returns Replication.Time() of hint creation;
+	*/
+	int GetTimeStarted()
+	{
+		return m_iTimeHintStarted;
+	}
+	/*!
+	Set the time stamp of Hint start. Needed for hint timer timekeeping.;
+	*/
+	void SetTimeStamp()
+	{
+		m_iTimeHintStarted = Replication.Time();
 	}
 	/*!
 	Get names of widgets that should be highlighted.

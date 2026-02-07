@@ -19,6 +19,9 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	[Attribute("0.4", "0 1")]
 	protected float m_fOpacityFocused;
 	
+	[Attribute("", UIWidgets.EditBox, "Text that should appear next to error warning on invalid input")]
+	protected string m_sWarningText;
+	
 	Widget m_wEditBox;
 	Widget m_wColorOverlay;
 	Widget m_wEditBackground;
@@ -27,6 +30,8 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	
 	Widget m_wWriteIconScale;
 	ImageWidget m_wImgWriteIcon;
+	
+	protected SCR_WidgetHintComponent m_Hint;
 	
 	protected bool m_bValidInput = true;
 	protected bool m_bIsTyping;
@@ -51,12 +56,21 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		m_wWriteIconScale = w.FindAnyWidget("WriteIconScale");
 		m_wImgWriteIcon = ImageWidget.Cast(w.FindAnyWidget("WriteIcon"));
 		
-		if (m_wWarningIcon)
+		m_Hint = SCR_WidgetHintComponent.Cast(SCR_WidgetTools.FindHandlerOnWidget(w, "Hint", SCR_WidgetHintComponent));
+		
+		// Setup warning 
+		if (GetGame().InPlayMode() && m_wWarningIcon)
 		{
 			if (m_bUseLabel)
 				m_wWarningIcon.SetOpacity(0);
 			else
 				m_wWarningIcon.SetOpacity(0); // Without label, warning icon not shown at all
+		}
+
+		if (m_Hint)
+		{
+			m_Hint.SetMessage(m_sWarningText);
+			m_Hint.SetVisible(0);
 		}
 		
 		// Setup for label-less edit boxes
@@ -113,12 +127,16 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	//------------------------------------------------------------------------------------------------
 	void OnValueChanged()
 	{
+		if (m_Hint)
+			m_Hint.SetVisible(false);
+		
 		m_OnChanged.Invoke(this, GetEditBoxText());
 
 		if (m_bValidInput)
 			return;
 		
 		AnimateWidget.Opacity(m_wWarningIcon, 0, m_fColorsAnimationTime, true);
+		
 		AnimateWidget.Color(m_wColorOverlay, COLOR_VALID_INPUT, m_fColorsAnimationTime);
 		m_bValidInput = true;
 	}
@@ -128,7 +146,7 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	{
 		// Call focus event on parent class
 		super.OnFocus(m_wRoot, 0, 0);
-		AnimateWidget.Opacity(m_wBackground, m_fOpacityFocused, m_fAnimationRate);
+		//AnimateWidget.Opacity(m_wBackground, m_fOpacityFocused, m_fAnimationRate);
 
 		m_bIsTyping = true;
 		
@@ -142,7 +160,7 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	{
 		// Call focusLost event on parent class
 		super.OnFocusLost(m_wRoot, 0, 0);
-		AnimateWidget.Opacity(m_wBackground, m_fOpacityDefault, m_fAnimationRate, true);
+		//AnimateWidget.Opacity(m_wBackground, m_fOpacityDefault, m_fAnimationRate, true);
 		m_bIsTyping = false;
 		
 		// Make focusable again
@@ -154,8 +172,24 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	//------------------------------------------------------------------------------------------------
 	void OnInvalidInput()
 	{
-		AnimateWidget.Opacity(m_wWarningIcon, 1, m_fColorsAnimationTime, true);
+		// Show simple icon next to text when no message 
+		if (!m_Hint || m_Hint && m_Hint.GetMessage().IsEmpty())
+			AnimateWidget.Opacity(m_wWarningIcon, 1, m_fColorsAnimationTime, true);
+		else if (m_Hint && !m_Hint.GetMessage().IsEmpty()) 
+			m_Hint.SetVisible(true);
+			
 		AnimateWidget.Color(m_wColorOverlay, COLOR_INVALID_INPUT, m_fColorsAnimationTime);
+		m_bValidInput = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearInvalidInput()
+	{
+		AnimateWidget.Opacity(m_wWarningIcon, 0, m_fColorsAnimationTime, true);
+		if (m_Hint) 
+			m_Hint.SetVisible(false);
+		
+		AnimateWidget.Color(m_wColorOverlay, COLOR_VALID_INPUT, m_fColorsAnimationTime);
 		m_bValidInput = false;
 	}
 	
@@ -209,6 +243,14 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			return editBox.GetPlaceholderText();
 		return string.Empty;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPlaceholderText(string str)
+	{
+		EditBoxWidget editBox = EditBoxWidget.Cast(m_wEditBox);
+		if (editBox)
+			editBox.SetPlaceholderText(str);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Static method to easily find component by providing name and parent.
@@ -240,9 +282,18 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			editBox.ActivateWriteMode();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void ShowHint(bool show)
+	{
+		if (m_Hint)
+			m_Hint.SetVisible(show);
+	}
+	
 	// User API
 	void SetValue(string value) { SetEditBoxText(value); }
 	string GetValue() { return GetEditBoxText(); }
 	string GetPlaceHolderText() { return GetPlaceholderText(); }
 	Widget GetEditBoxWidget() { return m_wEditBox; }
+	bool IsValidInput() { return m_bValidInput; }
+	SCR_WidgetHintComponent GetHint() { return m_Hint; }
 };

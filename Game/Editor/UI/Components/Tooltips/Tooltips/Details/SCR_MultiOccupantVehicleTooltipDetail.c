@@ -72,6 +72,10 @@ class SCR_MultiOccupantVehcileTooltipDetail: SCR_EntityTooltipDetail
 		if (compartments.IsEmpty())
 			return false;
 		
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(entity.GetOwner().FindComponent(DamageManagerComponent));
+		if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
+			return false;
+		
 		m_PlayerManager = GetGame().GetPlayerManager();
 
 		return true;

@@ -23,11 +23,8 @@ class SCR_UIEditorEffect: SCR_BaseEditorEffect
 		
 			WorkspaceWidget workspace = GetGame().GetWorkspace();
 			if (!workspace) return false;
-
-			SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(menu.GetRootComponent().FindComponent(SCR_HideEditorUIComponent));
-			if (!hideComponent || !hideComponent.GetWidget()) return false; //--- ToDo: Add function to return hide widget to SCR_MenuEditorComponent
 			
-			Widget parent = hideComponent.GetWidget();
+			Widget parent = menuManager.GetMenuComponent().GetHideableWidget();
 			if (!parent) return false;
 			
 			if (m_Widget) m_Widget.RemoveFromHierarchy();

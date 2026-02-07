@@ -135,6 +135,18 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	bool CanSaveOnExit()
 	{
 		return m_SaveOnExit;
+	}	
+	void UploadToWorkshop()
+	{
+		Print(m_sFileName);
+		
+		WorldSaveManifest manifest = new WorldSaveManifest();
+		manifest.m_sName = "Test";
+		manifest.m_sSummary = "Test save";
+		manifest.m_sPreview = "pattern_900x900.jpg";
+		manifest.m_aFiles = {m_sFileName, "UI/Textures/ScalingTest/Sources/pattern_900x900.jpg"};
+		
+		GetGame().GetBackendApi().GetWorldSaveApi().UploadWorldSave(manifest, null, null);
 	}
 	/*!
 	Log the most recently saved structs.
@@ -166,6 +178,11 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 			{
 				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_RESTART_AND_LOAD, false);
 				RestartAndLoad();
+			}
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_UPLOAD))
+			{
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_UPLOAD, false);
+				UploadToWorkshop();
 			}
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG))
 			{
@@ -207,7 +224,10 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 				m_Callback = new SCR_DSSessionCallback(m_Struct);
 				
 				if (IsLoadOnStart(missionHeader))
+				{
 					m_Callback.LoadSession(m_sFileName);
+					LoadOnStart(); //--- Unmark for load so restarting from pause menu won't load it again
+				}
 			}
 		}
 	}
@@ -231,6 +251,7 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_SAVE, "", "Save Session", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOAD, "", "Load Session", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_RESTART_AND_LOAD, "", "Restart and Load Session", "Save/Load");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_UPLOAD, "", "Upload Save", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG, "", "Log Session Save", "Save/Load");
 		}
 	}

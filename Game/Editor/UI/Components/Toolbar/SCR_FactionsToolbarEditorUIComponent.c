@@ -73,7 +73,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>;
 		delegatesManager.GetFactionDelegates(delegates);
 		
-		foreach(Faction faction, SCR_EditableFactionComponent delegate: delegates)
+		foreach (Faction faction, SCR_EditableFactionComponent delegate: delegates)
 		{
 			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
 			
@@ -135,7 +135,7 @@ class SCR_FactionsToolbarEditorUIComponent: SCR_EntitiesToolbarEditorUIComponent
 		map<Faction, SCR_EditableFactionComponent> delegates = new map<Faction, SCR_EditableFactionComponent>;
 		delegatesManager.GetFactionDelegates(delegates);
 		
-		foreach(Faction faction, SCR_EditableFactionComponent delegate: delegates)
+		foreach (Faction faction, SCR_EditableFactionComponent delegate: delegates)
 		{
 			SCR_Faction scrFaction = SCR_Faction.Cast(faction);
 			

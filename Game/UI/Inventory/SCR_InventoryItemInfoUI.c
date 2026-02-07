@@ -11,6 +11,7 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 	private TextWidget						m_wTextDescription;
 	private TextWidget						m_wTextWeight;
 	private TextWidget						m_wTextWeightUnit;
+	private ImageWidget 					m_wItemIcon;
 	protected SCR_SlotUIComponent			m_pFrameSlotUI;
 	protected Widget 						m_wWidgetUnderCursor;
 	protected bool 							m_bForceShow;
@@ -51,11 +52,22 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		}
 	}
 	
+	void SetIcon(ResourceName iconPath, Color color = null)
+	{
+		if (iconPath.IsEmpty())
+			return;
+		
+		m_wItemIcon.SetVisible(m_wItemIcon.LoadImageTexture(0, iconPath));
+		if (color)
+			m_wItemIcon.SetColor(color);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void Hide( float fDelay = 1.0 )
 	{
 		m_infoWidget.SetVisible( false );
 		m_infoWidget.SetEnabled( false );
+		m_wItemIcon.SetVisible(false);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -118,7 +130,7 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		else
 			SetWeight( fWeight.ToString() );
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached( Widget w )
 	{
@@ -129,6 +141,7 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 		m_wTextDescription 	= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_description" ) );
 		m_wTextWeight 		= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_weight" ) );
 		m_wTextWeightUnit	= TextWidget.Cast( w.FindAnyWidget( "ItemInfo_weightUnit" ) );
+		m_wItemIcon 		= ImageWidget.Cast(w.FindAnyWidget("ItemInfo_icon"));
 		Widget wItemInfo	= m_infoWidget.FindAnyWidget( "ItemInfo" );
 		if ( !wItemInfo )
 			return;

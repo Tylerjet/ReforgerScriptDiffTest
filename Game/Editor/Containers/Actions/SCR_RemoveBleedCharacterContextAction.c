@@ -25,6 +25,6 @@ class SCR_RemoveBleedCharacterContextAction : SCR_SelectedEntitiesContextAction
 		if (!characterDamageManager)
 			return;
 		
-		characterDamageManager.RemoveBleeding();
+		characterDamageManager.RemoveAllBleedings();
 	}
 };

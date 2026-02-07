@@ -386,6 +386,9 @@ class SCR_BaseTask : GenericEntity
 	{
 		m_TargetFaction = targetFaction;
 		SCR_BaseTaskManager.s_OnTaskFactionAssigned.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
+		
 		SetHUDIcon();
 	}
 	
@@ -579,8 +582,7 @@ class SCR_BaseTask : GenericEntity
 	void SetTitle(string title)
 	{
 		m_sName = title;
-		if (GetTaskManager())
-			GetTaskManager().OnTaskUpdate(this);
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -594,8 +596,7 @@ class SCR_BaseTask : GenericEntity
 	void SetDescription(string description)
 	{
 		m_sDescription = description;
-		if (GetTaskManager())
-			GetTaskManager().OnTaskUpdate(this);
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -634,6 +635,8 @@ class SCR_BaseTask : GenericEntity
 		SetState(SCR_TaskState.CANCELLED);
 		
 		SCR_BaseTaskManager.s_OnTaskCancelled.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_CANCELED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -649,6 +652,8 @@ class SCR_BaseTask : GenericEntity
 		}
 		
 		SCR_BaseTaskManager.s_OnTaskRemoved.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_REMOVED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -670,6 +675,8 @@ class SCR_BaseTask : GenericEntity
 		}
 		
 		SCR_BaseTaskManager.s_OnTaskFinished.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_FINISHED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -685,6 +692,8 @@ class SCR_BaseTask : GenericEntity
 		}
 		
 		SCR_BaseTaskManager.s_OnTaskFailed.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_FAILED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -713,6 +722,8 @@ class SCR_BaseTask : GenericEntity
 		}
 		
 		SCR_BaseTaskManager.s_OnTaskUnassigned.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -754,6 +765,8 @@ class SCR_BaseTask : GenericEntity
 		}
 		
 		SCR_BaseTaskManager.s_OnTaskUnassigned.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -796,6 +809,8 @@ class SCR_BaseTask : GenericEntity
 		OnAssigneeAdded(assignee);
 		
 		SCR_BaseTaskManager.s_OnTaskAssigned.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_PROPERTY_CHANGED);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -958,6 +973,14 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Adds task event mask for OnTaskUpdate
+	void AddTaskToInvoker(SCR_ETaskEventMask TaskEventMask)
+	{
+		if (GetTaskManager())
+			GetTaskManager().OnTaskUpdate(this, TaskEventMask);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void Serialize(ScriptBitWriter writer)
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
@@ -1047,6 +1070,8 @@ class SCR_BaseTask : GenericEntity
 		}
 		
 		SCR_BaseTaskManager.s_OnTaskCreated.Invoke(this);
+		
+		AddTaskToInvoker(SCR_ETaskEventMask.TASK_CREATED);
 		
 		ClearFlags(EntityFlags.ACTIVE, false);
 		

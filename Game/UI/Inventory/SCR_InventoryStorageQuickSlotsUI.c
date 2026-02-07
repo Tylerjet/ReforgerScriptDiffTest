@@ -5,10 +5,9 @@
 
 class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 {
-	protected ChimeraCharacter							m_pPlayerCharacter;
 	protected SCR_InventorySlotUI						m_pLastSelectedSlot;
-	protected static int 								s_iLastSelectedSlotIndex = 0;
-	protected static int 								s_iInitSelectedSlotIndex = 0;
+	protected static int 								s_iLastSelectedSlotIndex;
+	protected static int 								s_iInitSelectedSlotIndex;
 	protected static bool 								s_bQuickBarClosed;
 	
 	protected ResourceName m_sGamepadIcons = "{F7FD1672FECA05E8}UI/Textures/Icons/icons_gamepad_64.imageset";
@@ -116,6 +115,9 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	override protected void UpdateOwnedSlots(notnull array<IEntity> pItemsInStorage)
 	{
 		int count = pItemsInStorage.Count();
+		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && !m_MenuHandler)
+			count = 4; // todo: get this from radial menu input
+		
 		if (count < m_aSlots.Count())
 		{
 			for (int i = m_aSlots.Count() - count; i > 0; i--)
@@ -126,6 +128,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 			}
 			
 		}
+		
 		m_aSlots.Resize(count);
 		for (int i = 0; i < count; i++)
 		{
@@ -142,7 +145,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	// ! 
 	override protected void GetAllItems( out notnull array<IEntity> pItemsInStorage, BaseInventoryStorageComponent pStorage = null )
 	{
-		if (!m_pPlayerCharacter)
+		if (!m_Player)
 			return;
 		
 		if ( m_InventoryStorage && m_InventoryStorage.GetQuickSlotItems() )
@@ -153,10 +156,9 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	// ! 
 	override protected int CreateSlots()
 	{
-		ref array<IEntity> pItemsInStorage = new ref array<IEntity>();
-		m_pPlayerCharacter = ChimeraCharacter.Cast(m_Player);
-		GetAllItems(pItemsInStorage);
-		UpdateOwnedSlots(pItemsInStorage);
+		array<IEntity> itemsInStorage = {};
+		GetAllItems(itemsInStorage);
+		UpdateOwnedSlots(itemsInStorage);
 		CheckIfQuickSlotActionsAvailable(m_Player);
 		return 0;
 	}
@@ -173,7 +175,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		//reset all elements to 0 - free it
 		m_iMatrix.Reset(); 		
 									
-		foreach( SCR_InventorySlotUI pSlot: m_aSlots )
+		foreach ( SCR_InventorySlotUI pSlot: m_aSlots )
 		{
 			if( !pSlot )
 				continue;
@@ -202,7 +204,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	protected void CheckIfQuickSlotActionsAvailable(IEntity player)
 	{
-		foreach(int iIndex, SCR_InventorySlotUI pSlot: m_aSlots)
+		foreach (int iIndex, SCR_InventorySlotUI pSlot: m_aSlots)
 		{
 			if(!pSlot)
 				continue;
@@ -214,7 +216,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 			if (!pSlot.GetInventoryItemComponent())
 				w.SetOpacity(0.35);
 			
-			if (!pSlot.CanUse(m_Player))
+			if (!pSlot.CanUseItem(m_Player))
 				w.SetOpacity(0.35);
 			else
 				w.SetOpacity(1);
@@ -228,8 +230,9 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		int iWidgetColumnSize, iWidgetRowSize;
 		int iPageCounter = 0;				
 		int iRelativeOffset = 0; 				//if there's an item taking more than one slot, offset the following items to the right
-
-		foreach( int iIndex, SCR_InventorySlotUI pSlot: m_aSlots )
+		int i = 0;
+		
+		foreach ( int iIndex, SCR_InventorySlotUI pSlot: m_aSlots )
 		{
 			if( !pSlot )			//if pSlot doesn't exist it means no assigned item in this slot and we create the "empty" slot
 			{
@@ -252,13 +255,22 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 			iWidgetColumnSize = pSlot.GetColumnSize();
 			iWidgetRowSize = pSlot.GetRowSize();
 		
-			int iCol = pSlot.GetSlotIndex() + iRelativeOffset;
+			int iCol = i + iRelativeOffset;
 			m_iMatrix.ReservePlace( iWidgetColumnSize, iWidgetRowSize, iCol, 0 );	
 			GridSlot.SetColumn( w, iCol );
-			iRelativeOffset += ( iWidgetColumnSize - 1 );
 			GridSlot.SetRow( w, 0 );
-			pSlot.SetPage( iPageCounter );
-		
+			
+			if (GetInventoryMenuHandler() && iIndex < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT)
+			{
+				pSlot.SetSlotVisible(false);
+				i = 0;
+			}
+			else
+			{
+				iRelativeOffset += iWidgetColumnSize - 1;
+				i++;
+			}
+			
 			GridSlot.SetColumnSpan( w, iWidgetColumnSize );
 			GridSlot.SetRowSpan( w, iWidgetRowSize );	
 		}
@@ -298,20 +310,33 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		}
 
 		if (useItem)
-			m_pSelectedSlot.Use(m_Player);
+			m_pSelectedSlot.UseItem(m_Player);
 
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static void SetInitialQuickSlot()
+	void SetInitialQuickSlot()
 	{
-		s_iInitSelectedSlotIndex = s_iLastSelectedSlotIndex;
+		IEntity currentItem = m_InventoryStorage.GetSelectedItem();
+		if (!currentItem)
+			s_iInitSelectedSlotIndex = -1;
+		
+		array<IEntity> items = m_InventoryStorage.GetQuickSlotItems();
+		foreach (int i, IEntity item : items)
+		{
+			if (item != currentItem)
+				continue;
+			
+			s_iInitSelectedSlotIndex = i;
+			SelectSlot(s_iInitSelectedSlotIndex);
+			return;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static void SetQuickBarClosed()
+	void SetQuickBarClosed()
 	{
 		s_bQuickBarClosed = true;
 	}
@@ -346,6 +371,9 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		SCR_InventorySlotUI slot;
 		for (int id = 0; id < slotCount; ++id)
 		{
+			if (GetInventoryMenuHandler() && id < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT)
+				continue;
+
 			slot = m_aSlots[id];
 			if (slot)
 			{
@@ -422,11 +450,11 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStorageQuickSlotsUI( BaseInventoryStorageComponent storage, ELoadoutArea slotID = ESlotID.SLOT_ANY, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
+	void SCR_InventoryStorageQuickSlotsUI( BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
 		m_Storage = null;					// quick slots don't use any storage. They will get m_aQuickSlotItems from CharacterInventoryStorageManager
 		//m_MenuHandler 	= menuManager;
-		m_eSlotAreaID 	= ELoadoutArea.ELA_None;
+		m_eSlotAreaType = null;
 		m_iMaxRows 		= 1;
 		m_iMaxColumns	= 0;
 		m_iLastShownPage = iPage;

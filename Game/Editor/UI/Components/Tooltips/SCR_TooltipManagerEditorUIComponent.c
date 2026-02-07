@@ -91,9 +91,14 @@ class SCR_TooltipManagerEditorUIComponent: SCR_BaseEditorUIComponent
 	}
 	/*!
 	Hide currently shown tooltip.
+	\param info When not null, it will reset tooltip if this one is the current one
 	*/
-	void ResetInfo()
+	void ResetInfo(SCR_UIInfo info = null)
 	{
+		//--- Only reset if given info is currently shown
+		if (info && info != m_Info)
+			return;
+		
 		if (m_Tooltip)
 		{
 			m_Tooltip.GetWidget().RemoveFromHierarchy();

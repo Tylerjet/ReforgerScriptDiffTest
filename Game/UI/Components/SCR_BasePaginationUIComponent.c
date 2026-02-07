@@ -51,17 +51,17 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	[Attribute("1", desc: "When true it will hide the arrows instead of disabling them if the button is disabled.")]
 	protected bool m_bHideArrowsIfDisabled;
 	
-	[Attribute("0", desc: "When true always ignore gamepad input. Set this true if the widget is always on the screen and there is a seperate dialog version of it for the gamepad.")]
+	[Attribute("0", desc: "When true always ignore gamepad input. Set this true if the widget is always on the screen and there is a seperate dialog version of it for the gamepad. Setting this true will make sure the next and prev focus buttons will have 'No Focus' enabled")]
 	protected bool m_bIgnoreGamePadInput;
 	
 	[Attribute("1", desc: "If true it will play the next and prev page audio on page change")]
 	protected bool m_bPlayAudioOnPageChange;
 	
-	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox)]
-	protected string m_sOneNextPageSfx;
+	[Attribute(SCR_SoundEvent.TURN_PAGE, UIWidgets.EditBox)]
+	protected string m_sOnNextPageSfx;
 	
-	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox)]
-	protected string m_sOnePrevPageSfx;
+	[Attribute(SCR_SoundEvent.TURN_PAGE, UIWidgets.EditBox)]
+	protected string m_sOnPrevPageSfx;
 	
 	protected int m_iCurrentPage;
 	protected bool m_bUnderCursor;
@@ -155,9 +155,9 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		if (m_bPlayAudioOnPageChange && !isRefresh && m_iCurrentPage != page)
 		{
 			if (page > m_iCurrentPage)
-				SCR_UISoundEntity.SoundEvent(m_sOneNextPageSfx, true);
+				SCR_UISoundEntity.SoundEvent(m_sOnNextPageSfx, true);
 			else 
-				SCR_UISoundEntity.SoundEvent(m_sOnePrevPageSfx, true);
+				SCR_UISoundEntity.SoundEvent(m_sOnPrevPageSfx, true);
 		}
 		
 		m_iCurrentPage = page;
@@ -430,6 +430,24 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		
 		m_FocusPrevWidget = w.FindAnyWidget(m_sFocusPrevName);
 		m_FocusNextWidget = w.FindAnyWidget(m_sFocusNextName);
+		
+		if (m_bIgnoreGamePadInput)
+		{
+			if (m_FocusPrevWidget)
+				m_FocusPrevWidget.SetFlags(WidgetFlags.NOFOCUS);
+			if (m_FocusNextWidget)
+				m_FocusNextWidget.SetFlags(WidgetFlags.NOFOCUS); 
+			
+			if (m_ButtonPrevWidget)
+				m_ButtonPrevWidget.SetFlags(WidgetFlags.NOFOCUS);
+			if (m_ButtonNextWidget)
+				m_ButtonNextWidget.SetFlags(WidgetFlags.NOFOCUS); 
+			
+			if (m_ButtonPrevNoScrollWidget)
+				m_ButtonPrevNoScrollWidget.SetFlags(WidgetFlags.NOFOCUS);
+			if (m_ButtonNextNoScrollWidget)
+				m_ButtonNextNoScrollWidget.SetFlags(WidgetFlags.NOFOCUS); 
+		}
 		
 		SCR_NavigationButtonComponent prevButtonComponent = SCR_NavigationButtonComponent.Cast(m_ButtonPrevWidget.FindHandler(SCR_NavigationButtonComponent));
 		if (prevButtonComponent)

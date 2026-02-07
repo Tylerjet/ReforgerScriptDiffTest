@@ -5,6 +5,7 @@
 
 class EntityID: pointer
 {
+	static EntityID INVALID;
 	static proto native EntityID FromInt(int hiBits, int loBits);
 };
 

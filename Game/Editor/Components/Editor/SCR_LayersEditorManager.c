@@ -278,7 +278,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 		
 		selectParentAfterMove = (selectParentAfterMove && layer != null);
 		
-		foreach(SCR_EditableEntityComponent entity: entities)
+		foreach (SCR_EditableEntityComponent entity: entities)
 		{
 			m_EntitiesToSelectAfterMove.Insert(entity);
 		}
@@ -303,7 +303,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 		m_Core.Event_OnParentEntityChanged.Insert(OnEditableParentChanged);
 		m_SelectionFilter.GetOnChanged().Insert(OnSelectionChanged);
 		
-		foreach(SCR_EditableEntityComponent entity: entities)
+		foreach (SCR_EditableEntityComponent entity: entities)
 		{
 			m_EntitiesToSelectAfterMove.Insert(entity);
 		}
@@ -360,7 +360,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 	{
 		if (entitiesSelected && !entitiesSelected.IsEmpty())
 		{
-			foreach(SCR_EditableEntityComponent entity: entitiesSelected)
+			foreach (SCR_EditableEntityComponent entity: entitiesSelected)
 			{
 				if (!entity)
 					continue;
@@ -374,7 +374,7 @@ class SCR_LayersEditorComponent : SCR_BaseEditorComponent
 		}	
 		if (entitiesDeselected && !entitiesDeselected.IsEmpty())
 		{			
-			foreach(SCR_EditableEntityComponent entity: entitiesDeselected)
+			foreach (SCR_EditableEntityComponent entity: entitiesDeselected)
 			{
 				if (!entity)
 					continue;

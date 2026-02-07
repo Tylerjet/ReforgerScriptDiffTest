@@ -65,7 +65,11 @@ class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 	//-----------------------------------------------------------------------------	
 	override float GetBaseFOV()
 	{
-		return GetGame().GetCameraManager().GetVehicleFOV();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+		
+		return cameraManager.GetVehicleFOV();
 	}
 	
 	private IEntity m_OwnerVehicle;

@@ -14,24 +14,38 @@ class SCR_AITryUseEquipedItem : AITaskScripted
 
 		CharacterControllerComponent controller = CharacterControllerComponent.Cast(controlledEntity.FindComponent(CharacterControllerComponent));
 		if (!controller)
-			return false;
-
-		if (controller.CanUseItem() || m_bIsConsumable)
-		{
-			if (controller.TryUseEquippedItem())
-				return ENodeResult.SUCCESS;
-		}
-
-		// If consumable is true but tryUse failed, The node has failed
-		if (m_bIsConsumable)
 			return ENodeResult.FAIL;
-			
-		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(controlledEntity);
-		if (gadgetManager)
+
+		if (!controller.CanUseItem())
+			return ENodeResult.FAIL;
+
+		IEntity gadget = controller.GetAttachedGadgetAtLeftHandSlot();
+
+		// If the equiped item is not consumable, execute right away		
+		if (!m_bIsConsumable)
 		{
-			gadgetManager.ToggleHeldGadget(true);
-			return ENodeResult.SUCCESS;
+			if (controller.TryUseItem(gadget))
+				return ENodeResult.SUCCESS;
+			else
+				return ENodeResult.FAIL;
 		}
+
+		if (!gadget)
+			return ENodeResult.FAIL;
+		
+		SCR_ConsumableItemComponent consumableItemComp = SCR_ConsumableItemComponent.Cast(gadget.FindComponent(SCR_ConsumableItemComponent));
+		if (!consumableItemComp)
+			return ENodeResult.FAIL;
+		
+		SCR_ConsumableEffectBase consumableEffect = consumableItemComp.GetConsumableEffect();
+		if (!consumableEffect)
+			return ENodeResult.FAIL;
+		
+		if (!consumableEffect.CanApplyEffect(controlledEntity, owner))
+			return ENodeResult.FAIL;
+	
+		if (consumableEffect.ActivateEffect(controlledEntity, controlledEntity, gadget))
+			return ENodeResult.SUCCESS;
 
 		return ENodeResult.FAIL;
 	}

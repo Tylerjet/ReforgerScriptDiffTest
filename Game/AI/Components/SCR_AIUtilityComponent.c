@@ -11,6 +11,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AIConfigComponent m_ConfigComponent;
 	SCR_AIInfoComponent m_AIInfo;
 	SCR_AICombatComponent m_CombatComponent;
+	protected EventHandlerManagerComponent	m_EventHandlerManagerComponent;
 	
 	ref SCR_AIThreatSystem m_ThreatSystem;
 	ref SCR_AILookAction m_LookAction;
@@ -86,7 +87,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 			#ifdef AI_DEBUG
 			AddDebugMessage(string.Format("PerformReaction: Unknown Target: %1", unknownTarget));
 			#endif
-			m_ConfigComponent.m_Reaction_UnknownTarget.PerformReaction(this, m_ThreatSystem, unknownTarget.m_Target, unknownTarget.m_LastSeenPosition);
+			m_ConfigComponent.m_Reaction_UnknownTarget.PerformReaction(this, m_ThreatSystem, unknownTarget.m_TargetEntity, unknownTarget.m_vLastSeenPosition);
 		}
 		m_UnknownTarget = unknownTarget;
 		
@@ -231,6 +232,17 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		m_AIInfo.InitThreatSystem(m_ThreatSystem); // let the AIInfo know about the threat system - move along with creating threat system instance!
 		m_LookAction = new ref SCR_AILookAction(this, false); // LookAction is not regular behavior and is evaluated separately
 		m_ConfigComponent.AddDefaultBehaviors(this);
+		
+		m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(m_OwnerEntity.FindComponent(EventHandlerManagerComponent));
+		if (m_EventHandlerManagerComponent)
+			m_EventHandlerManagerComponent.RegisterScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_AIUtilityComponent()
+	{
+		if (m_EventHandlerManagerComponent)
+			m_EventHandlerManagerComponent.RemoveScriptHandler("OnConsciousnessChanged", this, this.OnConsciousnessChanged, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -394,6 +406,31 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		};
 		
 		return returnValue;
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	void OnConsciousnessChanged(bool conscious)
+	{
+		if (!conscious)
+		{
+			// Send a message to group that we are wounded
+			
+			AIAgent agent = AIAgent.Cast(GetOwner());
+			if (!agent)
+				return;
+			AIGroup myGroup = agent.GetParentGroup();
+			if (!myGroup)
+				return;
+			
+			AICommunicationComponent comms = agent.GetCommunicationComponent();
+			if (!comms)
+				return;
+			
+			SCR_AIMessage_Wounded msg = SCR_AIMessage_Wounded.Create(agent.GetControlledEntity());
+			msg.SetReceiver(myGroup);
+			comms.RequestBroadcast(msg, myGroup);
+		}
 	}
 };
 

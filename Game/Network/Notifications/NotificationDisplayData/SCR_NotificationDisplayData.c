@@ -105,6 +105,16 @@ class SCR_NotificationDisplayData
 		
 		return m_info.GetName();
 	}
+		
+	/*!
+	If true it will merge param1 with param2 using param2 as format (eg: Translate(param2, param1)) before constructing the full notification formatted string. Param2 will need %1 to in the localization. 
+	Mainly used by TaskStateChanged as the objective name (param2) includes the location name (param1) which need to be formatted before formatting the entire string.
+	\return bool True if must merge
+	*/
+	bool MergeParam1With2()
+	{
+		return false;
+	}
 	
 	/*!
 	Get UI info
@@ -145,6 +155,21 @@ class SCR_NotificationDisplayData
    			return string.Empty;
 	}
 	
+	protected bool GetCharacterName(int enditableEntityID, out string format, out string firstname, out string alias, out string surname)
+	{
+		//Get target Entity
+		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(enditableEntityID));
+		if (!entity)
+    		return false;
+
+		SCR_CharacterIdentityComponent charIdentity = SCR_CharacterIdentityComponent.Cast(entity.GetOwner().FindComponent(SCR_CharacterIdentityComponent));
+		if (!charIdentity)
+    		return false;
+		
+		charIdentity.GetFormattedFullName(format, firstname, alias, surname);
+		return true;
+	}
+	
 	/*!
 	Gives a position vector that is linked to the notification. 
 	This is for editor functionality so the GM can teleport to the notification positions
@@ -173,6 +198,14 @@ class SCR_NotificationDisplayData
 	void SetPosition(SCR_NotificationData data)
 	{
 	
+	}
+	
+	protected bool CanSetPosition(SCR_NotificationData data)
+	{
+		vector position;
+		data.GetPosition(position);
+		
+		return !((m_info.GetEditorSetPositionData() == ENotificationSetPositionData.AUTO_SET_POSITION_ONCE && position != vector.Zero) || m_info.GetEditorSetPositionData() == ENotificationSetPositionData.NEVER_AUTO_SET_POSITION);
 	}
 	
 	//Set position data using Player ID

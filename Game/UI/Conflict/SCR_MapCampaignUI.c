@@ -614,7 +614,7 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 	void RemoveSpawnPositionHint()
 	{
 		SCR_CampaignMapUIPlayerHighlight highlightHandler;
-		foreach(Widget w, SCR_MapUIElement handler: m_mIcons)
+		foreach (Widget w, SCR_MapUIElement handler: m_mIcons)
 		{
 			highlightHandler = SCR_CampaignMapUIPlayerHighlight.Cast(handler);
 			if(highlightHandler)
@@ -630,7 +630,7 @@ class SCR_MapCampaignUI : SCR_MapUIBaseComponent
 	protected void HideSpawnPositionHint(float layer)
 	{
 		SCR_CampaignMapUIPlayerHighlight highlightHandler;
-		foreach(Widget w, SCR_MapUIElement handler: m_mIcons)
+		foreach (Widget w, SCR_MapUIElement handler: m_mIcons)
 		{
 			highlightHandler = SCR_CampaignMapUIPlayerHighlight.Cast(handler);
 			if(highlightHandler)

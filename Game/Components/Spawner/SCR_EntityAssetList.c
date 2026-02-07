@@ -58,7 +58,7 @@ class SCR_EntityAssetList
 	*/
 	int GetAssetList(out notnull array<SCR_EntityInfo> assetList, bool checkIfEnabled = true)
 	{
-		foreach(SCR_EntityInfo entityInfo : m_aAssetList)
+		foreach (SCR_EntityInfo entityInfo : m_aAssetList)
 		{
 			if (!entityInfo || (checkIfEnabled && !entityInfo.GetEnabled()))
 				continue;

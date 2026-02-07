@@ -7,6 +7,4 @@ class EquipmentStorageComponentClass: BaseEquipmentStorageComponentClass
 //! dynamic scaling of slots is not supported, which means that available storage slots should be configured ahead on target prefab
 class EquipmentStorageComponent : BaseEquipmentStorageComponent
 {
-	protected sealed override bool CanStoreItem(IEntity item, int slotID);
-	protected sealed override bool CanRemoveItem(IEntity item);
 };

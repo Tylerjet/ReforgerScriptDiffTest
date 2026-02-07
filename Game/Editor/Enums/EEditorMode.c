@@ -8,5 +8,6 @@ enum EEditorMode
 	STRATEGY = 2, ///< Commanding AI and players
 	SPECTATE = 4, ///< Observing players
 	PHOTO = 8, ///< Photo mode
-	ADMIN = 16 ///< Server administration
+	ADMIN = 16, ///< Server administration
+	BUILDING = 32 ///< Building mode
 };

@@ -212,6 +212,14 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		if (m_MapEntity)
 			m_MapEntity.CloseMap();
 	}
+	
+	override void OnMenuClose(SCR_SuperMenuBase parentMenu)
+	{
+		super.OnMenuClose(parentMenu);
+
+		if (m_MapEntity)
+			m_MapEntity.CloseMap();	
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void SelectPrevSpawnPoint()
@@ -263,7 +271,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		if (!m_SelectedSpawnPointId.IsValid())
 			return false;
 
-		string name = m_mSpawnPoints.Get(m_SelectedSpawnPointId);
+		string name = m_mSpawnPoints.Get(SCR_SpawnPoint.s_LastUsed);
 		int id = m_SelectionSpinBox.m_aElementNames.Find(name);
 		if (id == -1)
 			m_SelectedSpawnPointId = m_DefaultSpawnPointId;
@@ -273,6 +281,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		FocusOnSelectedSpawnPoint();
 		Event_OnSpawnPointChanged.Invoke(SCR_SpawnPoint.GetSpawnPointByRplId(m_SelectedSpawnPointId));
 		m_wSpawnPointName.SetText(name);
+		SelectSpawnPoint();
 
 		return true;
 	}
@@ -298,6 +307,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 
 	void UpdateTimedSpawnPoint()
 	{
+		SelectSpawnPoint();
 		SCR_SpawnPoint selectedSpawnPoint = SCR_SpawnPoint.GetSpawnPointByRplId(m_SelectedSpawnPointId);
 		if (selectedSpawnPoint)
 			m_bTimedSpawnPoint = (selectedSpawnPoint.Type() == SCR_PlayerRadioSpawnPointCampaign);
@@ -392,6 +402,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		string name = m_SelectionSpinBox.GetCurrentItem();
 		m_SelectedSpawnPointId = m_mSpawnPoints.GetKeyByValue(name);
 		FocusOnSelectedSpawnPoint();
+		UpdateTimedSpawnPoint();
 		UntoggleConfirm();
 	}
 
@@ -472,11 +483,6 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 				m_mSpawnPoints.Remove(id);
 			}
 		}
-
-		if (!m_RespawnSystemComponent.CanSetSpawnPoint(m_iPlayerId, SCR_SpawnPoint.s_LastUsed))
-			m_SelectedSpawnPointId = m_DefaultSpawnPointId;
-		else
-			m_SelectedSpawnPointId = SCR_SpawnPoint.s_LastUsed;
 
 		SetDeployAvailable();
 		UpdateTimedSpawnPoint();

@@ -17,8 +17,8 @@ class SCR_CampaignTutorialStage58 : SCR_BaseCampaignTutorialStage
 		
 		m_Base = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
 		
-		if (m_Base && m_Base.GetSupplies() < 350)
-			m_Base.AddSupplies(350 - m_Base.GetSupplies());
+		if (m_Base && m_Base.GetSupplies() < 450)
+			m_Base.AddSupplies(450 - m_Base.GetSupplies());
 		
 		SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
 		
@@ -30,7 +30,7 @@ class SCR_CampaignTutorialStage58 : SCR_BaseCampaignTutorialStage
 	override protected bool GetIsFinished()
 	{
 		if (m_Base)
-			return (m_Base.GetSupplies() >= 850);
+			return (m_Base.GetSupplies() >= 950);
 		else
 			return true;
 	}

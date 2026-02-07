@@ -27,6 +27,8 @@ class FilteredServerParams : RoomFilterBase
 	// Filter values 
 	const string VALUE_PLAYERS_MIN = "minPlayersPercent";
 	const string VALUE_PLAYERS_MAX = "maxPlayersPercent";
+	const string VALUE_PLAYERS_MIN_COUNT = "minPlayersCount";
+	const string VALUE_PLAYERS_MAX_COUNT = "maxPlayersCount";
 	
 	// Filters	
 	protected ref SCR_FilterSet m_Filter;
@@ -57,6 +59,7 @@ class FilteredServerParams : RoomFilterBase
 	// Custom filter specific 
 	protected int m_iSelectedTab = 0;
 	protected int lockedBoth = 0;
+	protected bool m_bUsePlayerLimit = true;
 	
 	//--------------------------------------------
 	// Overrided filter functions 
@@ -89,12 +92,24 @@ class FilteredServerParams : RoomFilterBase
 		m_bCrossPlayFilterSelected = false;
 		
 		// Handle players filters 
-		int min, max = -1;
-		FormatePlayersFilters(min, max);
+		//int min, max, minCount, maxCount = -1;
+		
+		int min = -1;
+		int max = -1;
+		int minCount = -1;
+		int maxCount = -1;
+		
+		if (m_bUsePlayerLimit)
+			FormatePlayersFilters(min, max, minCount, maxCount);
+		
 		if (min != -1)
 			StoreInteger(VALUE_PLAYERS_MIN, min);
 		if (max != -1)
 			StoreInteger(VALUE_PLAYERS_MAX, max);
+		if (minCount != -1)
+			StoreInteger(VALUE_PLAYERS_MIN_COUNT, minCount);
+		if (maxCount != -1)
+			StoreInteger(VALUE_PLAYERS_MAX_COUNT, maxCount);
 		
 		// Register filters 
 		foreach (SCR_FilterEntryRoom filter : m_aFiltersUncategorized)
@@ -301,7 +316,7 @@ class FilteredServerParams : RoomFilterBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Agregate combination of player filter to gain player count range 
-	protected void FormatePlayersFilters(out int min, out int max)
+	protected void FormatePlayersFilters(out int min, out int max, out int minCount, out int maxCount)
 	{
 		if (!m_Filter)
 			return;
@@ -319,6 +334,8 @@ class FilteredServerParams : RoomFilterBase
 		// Default range values 
 		min = -1;
 		max = -1;
+		minCount = -1;
+		maxCount = -1;
 		
 		for (int i = 0, count = filters.Count(); i < count; i++)
 		{
@@ -329,6 +346,22 @@ class FilteredServerParams : RoomFilterBase
 			SCR_FilterEntryRoom roomFilter = SCR_FilterEntryRoom.Cast(filters[i]);
 			if (!roomFilter)
 				return;
+			
+			// Min count - smallest min 
+			SCR_FilterEntryRoomValue valueMinCount = roomFilter.FindValue(VALUE_PLAYERS_MIN_COUNT);
+			if (valueMinCount)
+			{
+				if (minCount == -1 || valueMinCount.GetIntNumberValue() < minCount)
+					minCount = valueMinCount.GetIntNumberValue();
+			}
+			
+			// Max count - biggest max 
+			SCR_FilterEntryRoomValue valueMaxCount = roomFilter.FindValue(VALUE_PLAYERS_MAX_COUNT);
+			if (valueMaxCount)
+			{
+				if (maxCount == -1 || valueMaxCount.GetIntNumberValue() < maxCount)
+					maxCount = valueMaxCount.GetIntNumberValue();
+			}
 			
 			// Min range - smallest min 
 			SCR_FilterEntryRoomValue valueMin = roomFilter.FindValue(VALUE_PLAYERS_MIN);
@@ -496,7 +529,11 @@ class FilteredServerParams : RoomFilterBase
 		
 	}
 
-	
+	//------------------------------------------------------------------------------------------------
+	void SetOwnedOnly(bool showOwned)
+	{
+		ownedOnly = showOwned;
+	}
 	
 	//--------------------------------------------
 	// Default filter setups 
@@ -563,6 +600,12 @@ class FilteredServerParams : RoomFilterBase
 			if (filter.GetSelected())
 				Print("count: " + filter.m_sInternalName);
 		}*/
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetUsePlayerLimit(bool use)
+	{
+		m_bUsePlayerLimit = use;
 	}
 };
 

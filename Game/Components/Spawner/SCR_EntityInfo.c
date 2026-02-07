@@ -133,10 +133,6 @@ class SCR_EntityInfo
 		if (!info)
 			return "INVALID";
 		
-		info.InitFromSource(editableEntitySource);	
-		if (!info)
-			return "INVALID";
-		
 		return info.GetName();
 	}
 	

@@ -17,8 +17,8 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 	private SignalsManagerComponent m_SignalsManagerComponent;
 	
 	// Audio Handles
-	private AudioHandle m_LoopedSound;
-	private AudioHandle m_RainSound;
+	private AudioHandle m_LoopedSound = AudioHandle.Invalid;
+	private AudioHandle m_RainSound = AudioHandle.Invalid;
 	
 	private const static float OBB_CROP_FACTOR = 0.7;
 	private vector m_vMins;
@@ -62,7 +62,7 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 		
 		if (m_SignalsManagerComponent)
 		{
-			foreach(SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
+			foreach (SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
 			{
 				m_SignalsManagerComponent.SetSignalValue(signalDefinition.m_iSignalIdx, signalDefinition.GetSignalValue(worldTime));
 			}
@@ -105,7 +105,7 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 		
 		if (m_SignalsManagerComponent)
 		{
-			foreach(SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
+			foreach (SCR_SignalDefinition signalDefinition : m_aSignalDefinition)
 			{
 				signalDefinition.m_iSignalIdx = m_SignalsManagerComponent.AddOrFindSignal(signalDefinition.m_sSignalName);
 				signalDefinition.UpdateSignalPoint(owner.GetWorld().GetWorldTime());

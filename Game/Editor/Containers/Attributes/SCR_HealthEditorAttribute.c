@@ -6,6 +6,10 @@ class SCR_HealthEditorAttribute : SCR_ValidTypeBaseValueListEditorAttribute
 {
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
+		//~ With the new health system health can no longer be set with just a slider.
+		//~ Todo: Create health system for individual parts that can be damaged
+		return null;
+		
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
 		if (!editableEntity) 
 			return null;

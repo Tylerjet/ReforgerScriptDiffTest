@@ -1210,7 +1210,11 @@ class SCR_StatisticsDrawerEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void FocusCamera(vector mins, vector maxs, float height = 100.0)
 	{
-		CameraBase camera = GetGame().GetCameraManager().CurrentCamera();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return;
+
+		CameraBase camera = cameraManager.CurrentCamera();
 		if (!camera)
 			return;
 

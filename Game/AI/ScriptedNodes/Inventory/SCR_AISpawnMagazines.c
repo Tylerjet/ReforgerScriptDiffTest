@@ -27,6 +27,12 @@ class SCR_AISpawnMagazines : AITaskScripted
 		m_mTypenameToResourceName.Insert("MagazineWellStanag556","{A9A385FE1F7BF4BD}Prefabs/Weapons/Magazines/Magazine_556x45_STANAG_30rnd_Tracer.et");
 		m_mTypenameToResourceName.Insert("MagazineWellPKM","{BEEA49E27174B224}Prefabs/Weapons/Magazines/Box_762x54_PK_100rnd_Tracer.et");
 		m_mTypenameToResourceName.Insert("MagazineWellM60","{AD8AB93729348C3E}Prefabs/Weapons/Magazines/Box_762x51_M60_100rnd_Tracer.et");
+		m_mTypenameToResourceName.Insert("MagazineWellM14","{6D18CC33708EE712}Prefabs/Weapons/Magazines/Magazine_762x51_M14_20rnd_Base.et");
+		m_mTypenameToResourceName.Insert("MagazineWellSVD","{9CCB46C6EE632C1A}Prefabs/Weapons/Magazines/Magazine_762x54_SVD_10rnd_Sniper.et");
+		m_mTypenameToResourceName.Insert("MagazineWellVZ58_762","{FAFA0D71E75CEBE2}Prefabs/Weapons/Magazines/Vz58/Magazine_762x39_Vz58_30rnd_Tracer.et");
+		m_mTypenameToResourceName.Insert("MagazineWellM9Beretta","{9C05543A503DB80E}Prefabs/Weapons/Magazines/Magazine_9x19_M9_15rnd_Ball.et");
+		m_mTypenameToResourceName.Insert("MagazineWellMakarovPM","{8B853CDD11BA916E}Prefabs/Weapons/Magazines/Magazine_9x18_PM_8rnd_Ball.et");
+		m_mTypenameToResourceName.Insert("MagazineWellM249","{06D722FC2666EB83}Prefabs/Weapons/Magazines/Box_556x45_M249_200rnd_4Ball_1Tracer.et");
 	}	
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)

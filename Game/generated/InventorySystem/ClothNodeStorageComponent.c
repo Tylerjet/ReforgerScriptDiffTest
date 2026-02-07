@@ -9,11 +9,11 @@ Do not modify, this script is generated
 * @{
 */
 
-class ClothNodeStorageComponentClass: BaseInventoryStorageComponentClass
+class ClothNodeStorageComponentClass: ScriptedBaseInventoryStorageComponentClass
 {
 };
 
-class ClothNodeStorageComponent: BaseInventoryStorageComponent
+class ClothNodeStorageComponent: ScriptedBaseInventoryStorageComponent
 {
 };
 

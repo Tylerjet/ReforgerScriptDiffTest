@@ -1,6 +1,9 @@
 //------------------------------------------------------------------------------------------------
 class SCR_Faction : ScriptedFaction
 {
+	[Attribute(defvalue: "0", desc: "Order in which the faction appears in the list. Lower values are first.")]
+	protected int m_iOrder;
+	
 	[Attribute("1 1 1", UIWidgets.ColorPicker, desc: "Outline faction color")]
 	private ref Color m_OutlineFactionColor;
 	
@@ -9,6 +12,9 @@ class SCR_Faction : ScriptedFaction
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag icon of this particular faction.", params: "edds")]
 	private ResourceName m_sFactionFlag;
+	
+	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	protected EEditableEntityLabel m_FactionLabel;
 		
 	[Attribute()]
 	protected ref SCR_FactionCallsignInfo m_CallsignInfo;
@@ -25,9 +31,24 @@ class SCR_Faction : ScriptedFaction
 	protected ref map<SCR_EArsenalItemType, ref array<SCR_ArsenalItem>> m_mArsenalItemsByType = new map<SCR_EArsenalItemType, ref array<SCR_ArsenalItem>>();
 	
 	//------------------------------------------------------------------------------------------------
+	/*!
+	\return Order in which the faction appears in the list. Lower values are first.
+	*/
+	int GetOrder()
+	{
+		return m_iOrder;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetFactionFlag()
 	{
 		return m_sFactionFlag;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	EEditableEntityLabel GetFactionLabel()
+	{
+		return m_FactionLabel;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -117,7 +138,7 @@ class SCR_Faction : ScriptedFaction
 			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 			IEntity playerEntity;
 			
-			foreach(int playerId: playerList)
+			foreach (int playerId: playerList)
 			{
 				Faction playerFaction = respawnSystemComponent.GetPlayerFaction(playerId);
 				if (!playerFaction)

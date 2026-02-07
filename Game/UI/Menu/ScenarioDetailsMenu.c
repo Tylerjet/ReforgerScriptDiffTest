@@ -168,7 +168,8 @@ class ScenarioDetailsMenu: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void Host()
 	{
-		if (m_Header)
+		//TODO
+		/*if (m_Header)
 		{
 			GetGame().SetGameFlags(m_eFocusedGameflags, false);
 
@@ -180,7 +181,7 @@ class ScenarioDetailsMenu: ChimeraMenuBase
 			
 			if (res)
 				GetGame().GetMenuManager().CloseAllMenus();
-		}
+		}*/
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -15,6 +15,7 @@ sealed class float
 	private void ~float();
 	
 	const float MAX = FLT_MAX;
+	const float INFINITY = FLT_INF;
 	
 	/**
 	\brief Float to string with fixed length, padded with zeroes

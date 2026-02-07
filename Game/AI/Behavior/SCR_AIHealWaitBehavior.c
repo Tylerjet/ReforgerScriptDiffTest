@@ -95,9 +95,15 @@ class SCR_AIHealWaitBehavior : SCR_AIBehaviorBase
 	{
 		if (m_DamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
 		{
-			// Still bleeding, something is wrong
-			Fail();
-			ReportWoundedToGroup();
+			// Still bleeding, it might mean that we need more bandages.
+			// Report to group again.
+			AICommunicationComponent communicationComp = m_Utility.m_OwnerAgent.GetCommunicationComponent();
+			AIGroup group = m_Utility.m_OwnerAgent.GetParentGroup();
+			SCR_AIMessage_NeedMoreHeal msgNeedMoreHeal = new SCR_AIMessage_NeedMoreHeal();
+			msgNeedMoreHeal.SetReceiver(group);
+			communicationComp.RequestBroadcast(msgNeedMoreHeal, group);
+			
+			Complete();
 		}
 		else
 		{

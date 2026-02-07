@@ -376,7 +376,10 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 			return;
 		
 		if (!GetTaskManager().IsProxy())
+		{
 			SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnCampaignBaseCaptured);
+			SCR_GameModeCampaignMP.s_OnSignalChanged.Insert(OnCampaignBaseCaptured);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -386,6 +389,9 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 			return;
 		
 		if (!GetTaskManager().IsProxy())
+		{
 			SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnCampaignBaseCaptured);
+			SCR_GameModeCampaignMP.s_OnSignalChanged.Remove(OnCampaignBaseCaptured);
+		}
 	}
 };

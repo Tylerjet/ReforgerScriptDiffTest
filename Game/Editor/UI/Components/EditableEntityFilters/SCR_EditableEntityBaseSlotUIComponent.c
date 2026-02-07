@@ -6,7 +6,7 @@ One exists for every visible editable entity.
 Attached to Frame widget inside of which icon widgets are created (one for each active SCR_EntitiesEditorUIRule).
 */
 class SCR_EditableEntityBaseSlotUIComponent: ScriptedWidgetComponent
-{	
+{		
 	protected Widget m_Widget;
 	protected SCR_EditableEntityComponent m_Entity;
 	protected ref map<SCR_EntitiesEditorUIRule, SCR_BaseEditableEntityUIComponent> m_EntityWidgets = new map<SCR_EntitiesEditorUIRule, SCR_BaseEditableEntityUIComponent>;
@@ -114,9 +114,9 @@ class SCR_EditableEntityBaseSlotUIComponent: ScriptedWidgetComponent
 		if (faction)
 			GetWidget().SetColor(faction.GetFactionColor());
 		else if (m_Entity.HasEntityState(EEditableEntityState.DESTROYED))
-			GetWidget().SetColor(Color.Gray25); //--- ToDo: Don't hardcode
+			GetWidget().SetColor(UIColors.EDITOR_ICON_COLOR_DESTROYED);
 		else
-			GetWidget().SetColor(Color.White); //--- ToDo: Don't hardcode
+			GetWidget().SetColor(UIColors.EDITOR_ICON_COLOR_NEUTRAL);
 			
 	}
 	protected void RefreshSlot()

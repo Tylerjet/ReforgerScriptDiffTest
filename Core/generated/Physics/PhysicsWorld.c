@@ -37,16 +37,21 @@ sealed class PhysicsWorld
 	*/
 	static proto void SetGravity(notnull IEntity worldEntity, vector g);
 	/*!
-	Returns current fixed time-slice.
+	Returns current fixed time step of the physics simulation
 	\param worldEntity Entity used to obtain world in which entities exist
 	*/
 	static proto float GetTimeSlice(notnull IEntity worldEntity);
 	/*!
-	Changes fixed time-slice. Default value is set to 1/60s per simulation frame.
+	Returns current update rate of the physics simulation
 	\param worldEntity Entity used to obtain world in which entities exist
-	\param timeSlice New value of fixed simulation step
 	*/
-	static proto void SetTimeSlice(notnull IEntity worldEntity, float timeSlice);
+	static proto int GetUpdateRate(notnull IEntity worldEntity);
+	/*!
+	Sets update rate to change fixed time step of the physics simulation
+	\param worldEntity Entity used to obtain world in which entities exist
+	\param updateRate Update rate of the physics simulation. Between 20 and 1000
+	*/
+	static proto void SetUpdateRate(notnull IEntity worldEntity, int updateRate);
 	/*!
 	Returns number of dynamic bodies
 	\param worldEntity Entity used to obtain world in which entities exist

@@ -15,6 +15,9 @@ class BaseWeaponManagerComponentClass: GameComponentClass
 
 class BaseWeaponManagerComponent: GameComponent
 {
+	ref ScriptInvoker<BaseWeaponComponent> m_OnWeaponChangeCompleteInvoker = new ref ScriptInvoker<BaseWeaponComponent>();
+	ref ScriptInvoker<BaseWeaponComponent> m_OnWeaponChangeStartedInvoker = new ref ScriptInvoker<BaseWeaponComponent>();
+	
 	//! performs throwing
 	proto external void Throw(vector vDirection, float fSpeedScale);
 	//! Returns currently selected weapon or null if none. (This can either be a weapon component directly or a slot component.)
@@ -47,6 +50,11 @@ class BaseWeaponManagerComponent: GameComponent
 	proto bool GetCurrentSightsTransform(out vector outWorldMatrix[4], out vector outLocalMatrix[4], out float fov);
 	//! Returns true if current weapon is valid and has some sights data, outputs local sights transformation with adjusted roll angle and fov
 	proto bool GetCurrentSightsCameraTransform(out vector outLocalMatrix[4], out float fov);
+	
+	// callbacks
+	
+	event protected void OnWeaponChangeComplete(BaseWeaponComponent newWeaponSlot) { m_OnWeaponChangeCompleteInvoker.Invoke(newWeaponSlot); };
+	event protected void OnWeaponChangeStarted(BaseWeaponComponent newWeaponSlot) { m_OnWeaponChangeStartedInvoker.Invoke(newWeaponSlot); };
 };
 
 /** @}*/

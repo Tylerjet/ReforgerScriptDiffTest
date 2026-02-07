@@ -16,7 +16,7 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 	override void Init()
 	{
 		super.Init();
-		GetGame().GetGame().OnInputDeviceIsGamepadInvoker().Insert(UpdateHints);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(UpdateHints);
 		// preparation for the icon
 		//if ( m_iQuickSlotIndex < 2 )				//Primary or secondary weapon
 		//	SetIcon( "{E6BDE9DF9368C48C}UI/Textures/WeaponIcons/weapon_AK74.edds" );

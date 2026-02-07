@@ -353,4 +353,13 @@ class SCR_BaseTaskSupportEntity : GenericEntity
 		
 		rplComponent.InsertItem(this);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_BaseTaskSupportEntity()
+	{
+		if (!GetTaskManager())
+			return;
+		
+		GetTaskManager().UnregisterSupportEntity(this);
+	}
 };

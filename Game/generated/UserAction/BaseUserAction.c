@@ -67,6 +67,16 @@ class BaseUserAction: ScriptAndConfig
 	proto external bool CanAggregate();
 	//! Returns the ID with which this action is registered in its parent ActionsManagerComponent.
 	proto external int GetActionID();
+	
+	// callbacks
+	
+	//! Before performing the action the caller can store some data in it which is delivered to others.
+	//! Only available for actions for which HasLocalEffectOnly returns false.
+	event protected bool OnSaveActionData(ScriptBitWriter writer) { return true; };
+	//! If the one performing the action packed some data in it everybody receiving the action.
+	//! Only available for actions for which HasLocalEffectOnly returns false.
+	//! Only triggered if the sender wrote anyting to the buffer.
+	event protected bool OnLoadActionData(ScriptBitReader reader) { return true; };
 };
 
 /** @}*/

@@ -54,7 +54,7 @@ class SCR_RemoveWeaponContextAction : SCR_SelectedEntitiesContextAction
 		array<IEntity> weapons = {};
 		wpnManager.GetWeaponsList(weapons);
 		
-		foreach(IEntity weapon: weapons)
+		foreach (IEntity weapon: weapons)
 		{
 			InventoryItemComponent pInvComp = InventoryItemComponent.Cast( weapon.FindComponent( InventoryItemComponent ) );
 			if (!pInvComp)

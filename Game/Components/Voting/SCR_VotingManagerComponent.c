@@ -125,14 +125,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		//-- Find the voting; cannot use returned value, StartVotingBroadcast is replicated and such functions cannot return anything
 		SCR_VotingBase voting = FindVoting(type, value);
-		if (!voting)
-			return false;
-		
-		//--- First voting, start updating countdown
-		if (m_aVotingInstances.Count() == 1)
-			SetEventMask(GetOwner(), EntityEvent.FRAME);
-		
-		return true;
+		return voting != null;
 	}
 	/*!
 	End voting.
@@ -266,14 +259,25 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	e.g., vote to KICK a player is a referendum, but vote to make him/her an ADMIN is election in which multiple players can compete, therefore it's not a vote about the player)
 	\param playerID Player ID
 	\param[out] outVotingTypes Array to be filled with vote types
+	\param onlyTemplates True to scan all voting templates, not only active votings
+	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable()
 	\return Number of votings
 	*/
-	int GetVotingsAboutPlayer(int playerID, out notnull array<EVotingType> outVotingTypes)
+	int GetVotingsAboutPlayer(int playerID, out notnull array<EVotingType> outVotingTypes, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
+		array<ref SCR_VotingBase> votings;
+		if (onlyTemplates)
+			votings = m_aVotingTemplates;
+		else
+			votings = m_aVotingInstances;
+		
 		outVotingTypes.Clear();
-		foreach (SCR_VotingBase voting: m_aVotingInstances)
+		foreach (SCR_VotingBase voting: votings)
 		{
-			if (voting.IsValuePlayerID() && voting.GetValue() == playerID)
+			//if (template.IsAvailable(playerID, IsVoting(template.GetType(), playerID)) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL))
+			bool isMatchingValue = onlyTemplates || voting.GetValue() == playerID;
+			bool isAvailable = !onlyAvailable || voting.IsAvailable(playerID, IsVoting(voting.GetType(), playerID)) || (onlyTemplates && DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL));
+			if (voting.IsValuePlayerID() && isMatchingValue && isAvailable)
 				outVotingTypes.Insert(voting.GetType());
 		}
 		return outVotingTypes.Count();
@@ -282,73 +286,81 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	/*!
 	Get all active player vote types (not caring which player is the target) 
 	Does not care what player the target is or if it is a  referendum or election
+	\param about Player True to return votings that are about players, false to return those which are *not* about players
 	\param[out] outVotingTypes Array to be filled with vote types
+	\param onlyTemplates True to scan all voting templates, not only active votings
+	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable()
 	\return Number of votings
 	*/
-	int GetVotingsAboutPlayer(out notnull array<EVotingType> outVotingTypes)
+	int GetAllVotingsAboutPlayer(bool aboutPlayer, out notnull array<EVotingType> outVotingTypes, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
+		array<ref SCR_VotingBase> votings;
+		if (onlyTemplates)
+			votings = m_aVotingTemplates;
+		else
+			votings = m_aVotingInstances;
+		
 		outVotingTypes.Clear();
-		foreach (SCR_VotingBase voting: m_aVotingInstances)
+		foreach (SCR_VotingBase voting: votings)
 		{
-			if (voting.IsValuePlayerID())
+			if (aboutPlayer == voting.IsValuePlayerID() && (!onlyAvailable || voting.IsAvailable(voting.GetValue(), true)))
 				outVotingTypes.Insert(voting.GetType());
 		}
 		return outVotingTypes.Count();
 	}
+	
 	/*!
-	Get all active NON-PLAYER vote types
-	Does not care what player the target is or if it is a  referendum or election
+	Get all votings with value defined.
+	Returns only referendums, not elections
 	\param[out] outVotingTypes Array to be filled with vote types
+	\param[out] outValues Array to be filled with vote values
+	\param onlyTemplates True to scan all voting templates, not only active votings
+	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable()
 	\return Number of votings
 	*/
-	int GetVotingsNotAboutPlayer(out notnull array<EVotingType> outVotingTypes)
+	int GetAllVotingsWithValue(out notnull array<EVotingType> outVotingTypes, array<EVotingType> outValues, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
+		array<ref SCR_VotingBase> votings;
+		if (onlyTemplates)
+			votings = m_aVotingTemplates;
+		else
+			votings = m_aVotingInstances;
+		
 		outVotingTypes.Clear();
-		foreach (SCR_VotingBase voting: m_aVotingInstances)
+		foreach (SCR_VotingBase voting: votings)
 		{
-			if (!voting.IsValuePlayerID())
+			if (voting.GetValue() != SCR_VotingBase.DEFAULT_VALUE && (!onlyAvailable || voting.IsAvailable(voting.GetValue(), true)))
+			{
 				outVotingTypes.Insert(voting.GetType());
+				outValues.Insert(voting.GetValue());
+			}
 		}
 		return outVotingTypes.Count();
-	}	
+	}
+	
 	/*!
 	Get a array of all active votes with the specific voteType
 	\param type The type of active vote that needs to be searched
 	\param[out] outValues list of all active vote values of the given type
+	\param onlyTemplates True to scan all voting templates, not only active votings
+	\param onlyAvailable True to scan only votings which can be available in current situation, evaluated by SCR_VotingBase.IsAvailable()
 	\return count of active vote values
 	*/
-	int GetAllVotingValues(EVotingType type, out notnull array<int> outValues)
+	int GetAllVotingValues(EVotingType type, out notnull array<int> outValues, bool onlyTemplates = false, bool onlyAvailable = false)
 	{
-		outValues.Clear();
+		array<ref SCR_VotingBase> votings;
+		if (onlyTemplates)
+			votings = m_aVotingTemplates;
+		else
+			votings = m_aVotingInstances;
 		
-		foreach (SCR_VotingBase voting: m_aVotingInstances)
+		outValues.Clear();
+		foreach (SCR_VotingBase voting: votings)
 		{
-			if (voting.GetType() == type)
+			if (voting.GetType() == type && (!onlyAvailable || voting.IsAvailable(voting.GetValue(), true)))
 				outValues.Insert(voting.GetValue());
 		}
 		return outValues.Count();
-	}
-	
-	
-	/*!
-	Get all possible voting types about given player
-	A voting does not need to be ongoing in order to be returned, this returns possibilities.
-	\param playerID Player ID
-	\param[out] outVotingTypes Array to be filled with voting types
-	\return Number of votings
-	*/
-	int GetAvailableVotingsAboutPlayer(int playerID, out notnull array<EVotingType> outVotingTypes)
-	{
-		outVotingTypes.Clear();
-		foreach (SCR_VotingBase template: m_aVotingTemplates)
-		{
-			if (template.IsValuePlayerID())
-			{
-				if (template.IsAvailable(playerID, IsVoting(template.GetType(), playerID)) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL))
-					outVotingTypes.Insert(template.GetType());
-			}
-		}
-		return outVotingTypes.Count();
 	}
 	
 	/*!
@@ -477,9 +489,6 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		EndVotingBroadcast(type, value, winner);
 		Rpc(EndVotingBroadcast, type, value, winner);
-		
-		if (m_aVotingInstances.IsEmpty())
-			ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	protected SCR_VotingBase FindVoting(EVotingType type, int value)
 	{		
@@ -504,7 +513,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected, anywhere
-	protected SCR_VotingBase CreateVotingInstance(EVotingType type, int value)
+	protected SCR_VotingBase CreateVotingInstance(EVotingType type, int value, float remainingDuration = -1)
 	{
 		if (FindVoting(type, value))
 			return null;
@@ -526,7 +535,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		//--- Start new voting
 		SCR_VotingBase voting = SCR_VotingBase.Cast(template.Type().Spawn());
-		voting.InitFromTemplate(template, value);
+		voting.InitFromTemplate(template, value, remainingDuration);
 		m_aVotingInstances.Insert(voting);
 		
 		m_OnVotingStart.Invoke(type, value);
@@ -541,6 +550,10 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 			}
 		}
 		
+		//--- First voting, start updating countdown
+		if (m_aVotingInstances.Count() == 1)
+			SetEventMask(GetOwner(), EntityEvent.FRAME);
+		
 		return voting;
 	}
 	protected void DeleteVotingInstance(EVotingType type, int value, int winner)
@@ -553,7 +566,6 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		m_OnVotingEnd.Invoke(type, value, winner);
 		Print(string.Format("Voting %1 ended, the winner is %2.", typename.EnumToString(EVotingType, type), voting.GetValueName(winner)), LogLevel.VERBOSE);
-		
 		
 		SCR_VotingBase template = FindTemplate(type);
 		
@@ -570,6 +582,9 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 					SCR_NotificationsComponent.SendLocal(template.GetInfo().GetVotingFailNotification(), value);
 			}
 		}
+		
+		if (m_aVotingInstances.IsEmpty())
+			ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void StartVotingBroadcast(EVotingType type, int value)
@@ -632,6 +647,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		{
 			writer.WriteIntRange(m_aVotingInstances[i].GetType(), votingTypeMin, votingTypeMax);
 			writer.WriteInt(m_aVotingInstances[i].GetValue());
+			writer.WriteFloat(m_aVotingInstances[i].GetRemainingDuration());
 		}
 		
 		return true;
@@ -648,11 +664,13 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		
 		EVotingType type;
 		int value;
+		float remainingDuration;
 		for (int i; i < count; i++)
 		{
 			reader.ReadIntRange(type, votingTypeMin, votingTypeMax);
 			reader.ReadInt(value);
-			CreateVotingInstance(type, value);
+			reader.ReadFloat(remainingDuration);
+			CreateVotingInstance(type, value, remainingDuration);
 		}
 		
 		return true;
@@ -662,17 +680,31 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		m_fUpdateLength += timeSlice;
 		if (m_fUpdateLength >= m_fUpdateStep)
 		{
-			//--- Update countdowns (only if some players are present)
-			if (GetGame().GetPlayerManager().GetPlayerCount() > 0)
+			if (Replication.IsServer())
 			{
+				//--- Server, manager all votings
+				if (GetGame().GetPlayerManager().GetPlayerCount() > 0)
+				{
+					//--- Update countdowns (only if some players are present; otherwise votings are paused)
+					for (int i = m_aVotingInstances.Count() - 1; i >= 0; i--)
+					{
+						m_aVotingInstances[i].Update(m_fUpdateLength);
+						
+						//--- End voting when time expired
+						EVotingOutcome outcome = EVotingOutcome.EVALUATE;
+						if (m_aVotingInstances[i].Evaluate(outcome))
+						{
+							EndVoting(m_aVotingInstances[i], outcome);
+						}
+					}
+				}
+			}
+			else
+			{
+				//--- Client, merely update countdowns
 				for (int i = m_aVotingInstances.Count() - 1; i >= 0; i--)
 				{
 					m_aVotingInstances[i].Update(m_fUpdateLength);
-					EVotingOutcome outcome = EVotingOutcome.EVALUATE;
-					if (m_aVotingInstances[i].Evaluate(outcome))
-					{
-						EndVoting(m_aVotingInstances[i], outcome); //--- End voting when time expired
-					}
 				}
 			}
 			

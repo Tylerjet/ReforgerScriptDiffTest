@@ -131,7 +131,11 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 	//-----------------------------------------------------------------------------
 	override float GetBaseFOV()
 	{
-		return GetGame().GetCameraManager().GetThirdPersonFOV();
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+		
+		return cameraManager.GetThirdPersonFOV();
 	}
 	
 	//-----------------------------------------------------------------------------

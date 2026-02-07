@@ -14,6 +14,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	const string WIDGET_MODS_COUNT = "m_TxtModsCount";
 	const string WIDGET_MODS_LOADING = "LoadingMods";
 	const string WIDGET_MODS_ICON = "AddonSizeIcon";
+	protected string WIDGET_MODS_LOCKED_ICON = "AddonsLockedIcon";
 	
 	const string WIDGET_BACKEND_IMAGE = "m_BackendImage";
 	
@@ -34,6 +35,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	
 	// Mods Widgets 
 	protected ImageWidget m_wImgModsIcon = null;
+	protected ImageWidget m_wImgModsLocked;
 	protected ImageWidget m_wImgName = null;
 	protected TextWidget m_wTxtModsCount = null;
 	protected SCR_LoadingOverlay m_ModsLoading = null;
@@ -63,6 +65,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Get additional 
 		m_wTxtModsCount = TextWidget.Cast(w.FindAnyWidget(WIDGET_MODS_COUNT));
 		m_wImgModsIcon = ImageWidget.Cast(w.FindAnyWidget(WIDGET_MODS_ICON));
+		m_wImgModsLocked = ImageWidget.Cast(w.FindAnyWidget(WIDGET_MODS_LOCKED_ICON));
 		
 		Widget wModsLoading = w.FindAnyWidget(WIDGET_MODS_LOADING);
 		if (wModsLoading)
@@ -191,7 +194,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_Widgets.m_TypeOverlay.SetVisible(false);
 		HideModsWidgets();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void DisplayRoomData(Room room, bool showMods = true)
 	{
@@ -201,11 +204,30 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Display mods loading 
 		HideModsWidgets();
 		
-		array<Dependency> dependecy = {};
-		room.AllItems(dependecy);
+		bool show = room.IsModded() && showMods;
 		
-		bool show = !dependecy.IsEmpty() && showMods;
 		m_ModsLoading.SetShown(show);
+		m_wImgModsLocked.SetVisible(false);
+		
+		if (!room.IsModded())
+			return;
+		
+		// Loading for public modded server
+		if (!room.PasswordProtected())
+		{
+			m_ModsLoading.SetShown(show);
+		}
+		else
+		{
+			// Warning for protected modded server
+			if (!room.IsAuthorized())
+			{
+				m_ModsLoading.SetShown(false);
+		
+				m_wImgModsIcon.SetVisible(true);
+				m_wImgModsLocked.SetVisible(true);
+			}
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------

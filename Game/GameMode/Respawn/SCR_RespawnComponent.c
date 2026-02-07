@@ -431,7 +431,7 @@ class SCR_RespawnComponent : RespawnComponent
 	//------------------------------------------------------------------------------------------------
 	void NotifyOnPlayerSpawned(int playerID)
 	{
-		if (playerID == m_PlayerController.GetPlayerId())
+		if (m_PlayerController && playerID == m_PlayerController.GetPlayerId())
 			Rpc(RpcAsk_NotifyOnPlayerSpawned);
 	}
 

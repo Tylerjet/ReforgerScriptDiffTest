@@ -19,11 +19,13 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	protected float qz; //--- Quaternion Z
 	protected float qw; //--- Quaternion W
 	protected float sc; //--- Scale
-	protected ref array<ref SCR_EditorAttributeStruct> at = {};
+	protected ref array<ref SCR_EditorAttributeStruct> at = {}; //--- Attributes
 	
 	//--- Non-serialized
 	protected SCR_EditableEntityComponent m_Entity;
 	protected SCR_EditableEntityComponent m_Target;
+	
+	protected static const string TAG_DESTROYED = "D";
 	
 	/*!
 	Save all editable entities.
@@ -73,7 +75,8 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	{
 		SCR_EditableEntityComponent target;
 		int targetValue = -1;
-		if (!entity.Serialize(target, targetValue))
+		bool isDestroyed;
+		if (!entity.Serialize(target, targetValue, isDestroyed))
 			return;
 		
 		//--- Only placeable entities can have dirty hierarchy, artifically created ones (e.g., custom layer) are exempted
@@ -85,6 +88,9 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		parentID = outEntries.Insert(entry);
 		
 		entry.pf = entity.GetPrefab(true);
+		if (isDestroyed)
+			entry.pf += TAG_DESTROYED;
+		
 		entry.sc = entity.GetOwner().GetScale();
 		entry.hy = isParentDirty || entity.HasEntityFlag(EEditableEntityFlag.INDIVIDUAL_CHILDREN) || entity.HasEntityFlag(EEditableEntityFlag.DIRTY_HIERARCHY);
 		
@@ -158,7 +164,18 @@ class SCR_EditableEntityStruct: JsonApiStruct
 			SCR_EditorLinkComponent.IgnoreSpawning(entry.hy);
 			SCR_AIGroup.IgnoreSpawning(true);
 			
-			IEntity rawEntity = GetGame().SpawnEntityPrefab(Resource.Load(entry.pf), GetGame().GetWorld(), spawnParams);
+			//--- Extract optional params (encoded in prefab name, so they don't need a variable in every struct)
+			ResourceName prefab = entry.pf;
+			string prefabParams = string.Empty;
+			int guidIndex = prefab.LastIndexOf("}") + 1;
+			int prefabParamsCount = prefab.Length() - guidIndex;
+			if (prefabParamsCount > 0)
+			{
+				prefabParams = prefab.Substring(guidIndex, prefabParamsCount);
+				prefab = prefab.Substring(0, guidIndex);
+			}		
+			
+			IEntity rawEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefab), GetGame().GetWorld(), spawnParams);
 			entry.m_Entity = SCR_EditableEntityComponent.GetEditableEntity(rawEntity);
 			if (entry.m_Entity)
 			{
@@ -174,6 +191,9 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				
 				if (entry.ti != -1)
 					entriesWithTarget.Insert(id);
+			
+				if (prefabParams.Contains(TAG_DESTROYED))
+					entry.m_Entity.Destroy();
 				
 				Print(string.Format("SCR_EditableEntityStruct: Entity @\"%1\" spawned at %2 as a child of %3", entry.pf, spawnParams.Transform, parent), LogLevel.VERBOSE);
 			}

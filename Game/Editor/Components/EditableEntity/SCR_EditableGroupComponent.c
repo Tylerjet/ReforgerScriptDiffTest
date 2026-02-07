@@ -23,6 +23,9 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	protected SCR_EditableEntityComponent m_Leader;
 	protected ref SCR_EditableGroupUIInfo m_GroupInfo;
 	protected ref ScriptInvoker Event_OnUIRefresh = new ref ScriptInvoker;
+	
+	//~ Authority only, Forces spawned characters to be added to a specific vehicle position and will delete it if failed
+	protected ref array<ECompartmentType> m_aForceSpawnVehicleCompartments;
 
 	/*
 	protected void OnEmpty()
@@ -162,7 +165,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		//Call on faction changed of group children
 		if (m_Entities)
 		{
-			foreach(SCR_EditableEntityComponent entity: m_Entities)
+			foreach (SCR_EditableEntityComponent entity: m_Entities)
 			{
 				SCR_EditableCharacterComponent editableCharacter = SCR_EditableCharacterComponent.Cast(entity);
 				if (editableCharacter)
@@ -247,7 +250,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		if (m_Entities)
 		{
-			foreach(SCR_EditableEntityComponent child: m_Entities)
+			foreach (SCR_EditableEntityComponent child: m_Entities)
 			{
 				if (child.GetEntityType() == EEditableEntityType.WAYPOINT)
 					count++;
@@ -324,6 +327,19 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		return super.CanSetParent(parentEntity) || type == EEditableEntityType.CHARACTER || type == EEditableEntityType.GROUP || type == EEditableEntityType.VEHICLE;             
 	}
 	*/
+	
+	//~ Authority Only. When spawned will force characters of group into vehicle position
+	override void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments)
+	{
+		if (forceVehicleCompartments.IsEmpty())
+			return;
+		
+		m_aForceSpawnVehicleCompartments = {};
+		
+		foreach (ECompartmentType compartment: forceVehicleCompartments)
+			m_aForceSpawnVehicleCompartments.Insert(compartment);
+	}
+	
 	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
 		EEditableEntityType parentType;
@@ -335,8 +351,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 			case EEditableEntityType.CHARACTER:
 			case EEditableEntityType.VEHICLE:
 			{
-				if (!IsServer()) break;
-				
+				if (!IsServer()) 
+					break;
 				
 				set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>;
 				GetChildren(children, true);
@@ -350,8 +366,18 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 					foreach (SCR_EditableEntityComponent child: children)
 					{
 						if (child.GetEntityType() == EEditableEntityType.CHARACTER)
+						{
+							//~ Force children in vehicle position if any are assigned
+							if (m_aForceSpawnVehicleCompartments)
+								child.ForceVehicleCompartments(m_aForceSpawnVehicleCompartments);
+							
 							child.SetParentEntity(parentEntity);
+						}
 					}
+					
+					//~ Clear force positions
+					if (m_aForceSpawnVehicleCompartments)
+						m_aForceSpawnVehicleCompartments = null;
 				}
 				break;
 			}

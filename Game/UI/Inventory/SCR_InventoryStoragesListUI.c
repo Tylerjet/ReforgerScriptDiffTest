@@ -55,6 +55,9 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	// ! creates the slot
 	protected SCR_InventorySlotUI CreateStorageSlotUI( InventoryItemComponent pItemComponent )
 	{
+		if (pItemComponent.GetParentSlot().Type() == SCR_TourniquetStorageSlot)
+			return null;
+
 		if ( pItemComponent.Type() == ClothNodeStorageComponent )
 		{
 			return new SCR_InventorySlotLBSUI( pItemComponent, this );		
@@ -108,7 +111,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 		m_iMatrix.Reset();
 				
 		
-		foreach( SCR_InventorySlotUI pSlot: m_aSlots )
+		foreach ( SCR_InventorySlotUI pSlot: m_aSlots )
 		{
 			if( pSlot )
 			{
@@ -222,7 +225,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	}
 			
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStoragesListUI(BaseInventoryStorageComponent storage, ESlotID slotID = ESlotID.SLOT_ANY, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
+	void SCR_InventoryStoragesListUI(BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
 		m_MenuHandler = menuManager;
 		m_iMaxRows 		= 9;

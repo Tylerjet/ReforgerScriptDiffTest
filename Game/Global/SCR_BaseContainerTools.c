@@ -167,7 +167,6 @@ class SCR_BaseContainerTools
 						componentSources.Set(j, components);
 					}
 					components.Insert(componentSource);
-					PrintFormat("%1, %2", componentSource, components.Count());
 					break;
 				}
 			}
@@ -274,5 +273,21 @@ class SCR_BaseContainerTools
 			entitySource = entitySource.GetParent();
 		}
 		return coords;
+	}
+	/*!
+	Convert integer array to string in format acceptable by WorldEditorAPI.SetVariableValue
+	\param values Input array
+	\return Array converted to string
+	*/
+	static string GetArrayValue(notnull array<int> values)
+	{
+		string result;
+		for (int i = 0, count = values.Count(); i < count; i++)
+		{
+			if (i > 0)
+				result += ",";
+			result += values[i].ToString();
+		}
+		return result;
 	}
 };

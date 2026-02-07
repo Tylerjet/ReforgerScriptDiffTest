@@ -73,7 +73,7 @@ class SCR_DisembarkContextAction : SCR_SelectedEntitiesContextAction
 			character.RemoveUsableVehicle(character.GetVehicle().GetOwner());
 			
 			//Get out
-			foreach(CompartmentAccessComponent compartmentAccess: crewCompartmentAccess)
+			foreach (CompartmentAccessComponent compartmentAccess: crewCompartmentAccess)
 			{
 				if (compartmentAccess.CanGetOutVehicleViaDoor(-1))				
 					compartmentAccess.GetOutVehicle(-1);
@@ -87,7 +87,7 @@ class SCR_DisembarkContextAction : SCR_SelectedEntitiesContextAction
 		if (vehicle)
 		{
 			selectedEntity.GetCrew(crewCompartmentAccess, false);
-			foreach(CompartmentAccessComponent compartmentAccess: crewCompartmentAccess)
+			foreach (CompartmentAccessComponent compartmentAccess: crewCompartmentAccess)
 			{
 				character = SCR_EditableCharacterComponent.Cast(compartmentAccess.GetOwner().FindComponent(SCR_EditableCharacterComponent));
 				

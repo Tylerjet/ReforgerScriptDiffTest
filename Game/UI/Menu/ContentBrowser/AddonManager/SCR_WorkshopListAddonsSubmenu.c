@@ -445,7 +445,15 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 			m_NavOpenDetails.SetEnabled(true);
 		
 		if (m_NavEnableAll)
+		{
 			m_NavEnableAll.SetEnabled(true);
+			
+			
+			if (m_bIsFocusedEnabled)
+				m_NavEnableAll.SetLabel("#AR-Workshop_DisableAll");
+			else
+				m_NavEnableAll.SetLabel("#AR-ServerHosting_EnableAll");
+		}
 		
 		if (m_NavUpdate)
 		{
@@ -565,6 +573,9 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	protected void EnableAll(bool enable)
 	{
 		array<ref SCR_WorkshopItem> addons = SCR_AddonManager.GetInstance().GetOfflineAddons();
+		
+		// Remove mods with issues 
+		addons = SCR_AddonManager.SelectItemsBasic(addons, EWorkshopItemQuery.DEPENDENCY_NOT_MISSING);
 		
 		SCR_AddonManager addonsManager = SCR_AddonManager.GetInstance();
 		

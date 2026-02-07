@@ -13,7 +13,8 @@ enum EMessageType_Info
 	SIT_REP,
 	ACTION_FAILED, // Reaction is not implemented
 	HEAL_FAILED,
-	I_WAS_HEALED
+	I_WAS_HEALED,
+	NEED_MORE_HEAL
 };
 
 enum EMessageType_Goal
@@ -107,19 +108,23 @@ class SCR_AIMessageInfo : SCR_AIMessageBase
 
 class SCR_AIMessage_Target : SCR_AIMessageInfo
 {
-	IEntity m_Target;
-	vector m_LastSeenPosition;	
-	
+	ref SCR_AITargetInfo m_TargetInfo;
 	
 	override void SetMessageParameters(SCR_AISendMessageBase node)
 	{
 		super.SetMessageParameters(node);
-	
+		
 		SCR_AISendMessageGeneric genericNode = SCR_AISendMessageGeneric.Cast(node);
+		
+		IEntity targetEntity;
+		vector pos;
+		float time;
 					
-		genericNode.GetVariableIn(genericNode.PORT_ENTITY, m_Target);
-		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, m_LastSeenPosition))
-			m_LastSeenPosition = genericNode.m_vector;
+		genericNode.GetVariableIn(genericNode.PORT_ENTITY, targetEntity);
+		if (!genericNode.GetVariableIn(genericNode.PORT_VECTOR, pos))
+			pos = genericNode.m_vector;
+		genericNode.GetVariableIn(genericNode.PORT_FLOAT, time);
+		m_TargetInfo = new SCR_AITargetInfo(targetEntity, pos, time);
 	}
 };
 
@@ -284,6 +289,14 @@ class SCR_AIMessage_IWasHealed : SCR_AIMessageInfo
 	}
 };
 
+class SCR_AIMessage_NeedMoreHeal : SCR_AIMessageInfo
+{
+	void SCR_AIMessage_NeedMoreHeal()
+	{
+		m_MessageType = EMessageType_Info.NEED_MORE_HEAL;
+	}
+}
+
 //----------------- EXPAND MESSAGE SUBTYPES - goal type for issuing commands
 
 class SCR_AIMessage_Cancel : SCR_AIMessageGoal 
@@ -296,8 +309,7 @@ class SCR_AIMessage_Cancel : SCR_AIMessageGoal
 
 class SCR_AIMessage_Attack : SCR_AIMessageGoal
 {
-	IEntity m_Target;
-	vector m_LastSeenPosition;	
+	ref SCR_AITargetInfo m_TargetInfo;
 	
 	void SCR_AIMessage_Attack() 
 	{
@@ -308,9 +320,15 @@ class SCR_AIMessage_Attack : SCR_AIMessageGoal
 	{	
 		super.SetMessageParameters(node,relatedActivity);
 		
-		node.GetVariableIn(node.PORT_ENTITY, m_Target);
-		if (!node.GetVariableIn(node.PORT_VECTOR, m_LastSeenPosition))
-			m_LastSeenPosition = node.m_vector;
+		IEntity targetEntity;
+		vector pos;
+		float time;
+		
+		node.GetVariableIn(node.PORT_ENTITY, targetEntity);
+		if (!node.GetVariableIn(node.PORT_VECTOR, pos))
+			pos = node.m_vector;
+		node.GetVariableIn(node.PORT_FLOAT, time);
+		m_TargetInfo = new SCR_AITargetInfo(targetEntity, pos, time);		
 	}		
 };
 

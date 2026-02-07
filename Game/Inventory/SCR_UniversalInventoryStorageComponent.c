@@ -12,11 +12,16 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	[Attribute( "0", UIWidgets.EditBox, "How much weight it can carry")]
 	protected float m_fMaxWeight;
 	
+	[Attribute( "0", UIWidgets.EditBox, "The ID of slots the inserted items will be visible in")]
+	protected ref array<int> 										m_aSlotsToShow;
+	
 	#ifndef DISABLE_INVENTORY
 	private SCR_ItemAttributeCollection 							pAttributes;
 	protected float 												m_fWeight;
 	protected float 												m_fVolume;
 	protected SCR_InventoryStorageManagerComponent					pInventoryManager;
+	protected const int												MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT = 200000;	//cm^3
+	
 	
 	//protected float										m_fWeightSum			= 0.0;
 	//protected float										m_fVolumeSum			= 0.0;
@@ -24,6 +29,9 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
+	
+	//! Returns how much weight the component can carry
+	float GetMaxLoad() { return m_fMaxWeight; }
 	
 	//------------------------------------------------------------------------------------------------
 	private SCR_ItemAttributeCollection GetAttributeCollection( IEntity item )
@@ -54,6 +62,8 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	override bool CanStoreItem(IEntity item, int slotID)
 	{
+		if (!super.CanStoreItem(item, slotID))
+			return false;
 		
 		InventoryItemComponent pItemComp = GetItemComponent( item );
 		if( !pItemComp )
@@ -75,17 +85,11 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanRemoveItem(IEntity item)
-	{
-		//TODO: Define conditions for removing the item
-		if( item )
-			return true;
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
  	override bool CanReplaceItem(IEntity nextItem, int slotID)
 	{
+		if (!super.CanReplaceItem(nextItem, slotID))
+			return false;
+		
 		// nextItem  == The item that is being replaced
 		// slotID == slotID is the slot ID for the item that replaces nextItem
 		
@@ -105,11 +109,8 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		if(!itemComp)
 			return false;
 		
-		SCR_ItemAttributeCollection nextItemAttributes = SCR_ItemAttributeCollection.Cast(nextItemComp.GetAttributes());
-		SCR_ItemAttributeCollection itemAttributes = SCR_ItemAttributeCollection.Cast(itemComp.GetAttributes());
-		
-		float nextItemVolume = nextItemAttributes.GetVolume();
-		float itemVolume = itemAttributes.GetVolume();
+		float nextItemVolume = nextItemComp.GetTotalVolume();
+		float itemVolume = itemComp.GetTotalVolume();
 		float occupiedVolumeWithoutItem = GetOccupiedSpace() - itemVolume;
 		
 		bool bVolumeOK = occupiedVolumeWithoutItem + nextItemVolume <= GetMaxVolumeCapacity();
@@ -130,36 +131,42 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	override void OnRemovedFromSlot(IEntity item, int slotID)
 	{
+		super.OnRemovedFromSlot(item, slotID);
+		
 		GenericEntity pGenComp = GenericEntity.Cast( item );
 		auto pItemComponent = InventoryItemComponent.Cast( pGenComp.FindComponent( InventoryItemComponent ) );
 		pItemComponent.ShowOwner();
 		pItemComponent.EnablePhysics();
 		
-		SCR_ItemAttributeCollection itemAttributeCollection = GetAttributeCollection( item );
-		if( !itemAttributeCollection )
-			return;
-		
 		m_fWeight -= pItemComponent.GetTotalWeight();
-		m_fVolume -= itemAttributeCollection.GetVolume();
+		m_fVolume -= pItemComponent.GetTotalVolume();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnAddedToSlot(IEntity item, int slotID)
 	{
+		super.OnAddedToSlot(item, slotID);
+		
 		GenericEntity pGenComp = GenericEntity.Cast( item );
 		auto pItemComponent = InventoryItemComponent.Cast( pGenComp.FindComponent( InventoryItemComponent ) );
 		if( !pItemComponent )
-			return;
-		pItemComponent.HideOwner();
+			return;	
+	
+		float fVol = pItemComponent.GetTotalVolume();
+		if ( m_aSlotsToShow.Find( slotID ) != -1 )
+		{
+				pItemComponent.ShowOwner();
+		}
+		else
+		{
+			if ( fVol >= MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT )
+				pItemComponent.ShowOwner();
+		}
 		pItemComponent.DisablePhysics();
 		pItemComponent.ActivateOwner(false);
 				
-		SCR_ItemAttributeCollection itemAttributeCollection = GetAttributeCollection( item );
-		if( !itemAttributeCollection )
-			return;
-		
 		m_fWeight += pItemComponent.GetTotalWeight();
-		m_fVolume += itemAttributeCollection.GetVolume();
+		m_fVolume += fVol;
 		
 	}
 	
@@ -169,6 +176,8 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	override void OnManagerChanged(InventoryStorageManagerComponent manager)
 	{
+		super.OnManagerChanged(manager);
+		
 		pInventoryManager = SCR_InventoryStorageManagerComponent.Cast( manager );
 	}
 	

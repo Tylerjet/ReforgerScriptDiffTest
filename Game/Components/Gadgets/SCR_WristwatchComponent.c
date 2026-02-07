@@ -64,6 +64,9 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		if (m_iHours >= 12)
 			m_iHours -= 12;
 		
+		m_iHours *= 10;
+		m_iHours += (m_iMinutes/6);
+		
 		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalHour, m_iHours);
 		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalMinute, m_iMinutes);
 		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalSecond, m_iSeconds);

@@ -9,7 +9,19 @@ class SCR_FactionManager : FactionManager
 	[Attribute(defvalue: "1", desc: "Whether  or not the isPlayable state of a faction can be changed on run time")]
 	protected bool m_bCanChangeFactionsPlayable;
 	
+	protected ref SCR_SortedArray<SCR_Faction> m_SortedFactions = new SCR_SortedArray<SCR_Faction>();
 	protected ref map<string, ref array<string>> m_aAncestors = new map<string, ref array<string>>();
+	
+	//------------------------------------------------------------------------------------------------
+	/*
+	Get factions sorted according to their own custom order.
+	\param[out] outFactions Array to be filled with factions
+	\return Number of factions
+	*/
+	int GetSortedFactionsList(out notnull SCR_SortedArray<SCR_Faction> outFactions)
+	{
+		return outFactions.CopyFrom(m_SortedFactions);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -24,6 +36,8 @@ class SCR_FactionManager : FactionManager
 			{
 				if (m_aAncestors.Find(scriptedFaction.GetFactionKey(), ancestors))
 					scriptedFaction.SetAncestors(ancestors);
+				
+				m_SortedFactions.Insert(scriptedFaction.GetOrder(), scriptedFaction);
 				
 				scriptedFaction.InitializeFaction();
 			}

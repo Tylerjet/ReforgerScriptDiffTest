@@ -103,8 +103,9 @@ class SCR_StartScenarioWhileDownloadingDialog : SCR_ConfigurableDialogUi
 			mgr.EndAllDownloads();
 		
 		// Start scenario
+		//TODO
 		if (m_bHostScenario)
-			m_Scenario.Host();
+			m_Scenario.Host(null);
 		else
 			m_Scenario.Play();
 	}

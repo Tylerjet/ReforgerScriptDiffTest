@@ -63,6 +63,9 @@ class SCR_MapDescriptorManualCameraComponent : SCR_BaseManualCameraComponent
 		if (!m_MapCanvas && m_MapEntity.GetMapMenuRoot())
 			m_MapCanvas = CanvasWidget.Cast(m_MapEntity.GetMapMenuRoot().FindWidget(m_sMapCanvasWidgetName));
 		
+		if (!m_MapCanvas)
+			return;
+		
 		//--- Trace left and right side of the screen
 		int widthLeft = 0;
 		int widthRight = m_Workspace.GetWidth();

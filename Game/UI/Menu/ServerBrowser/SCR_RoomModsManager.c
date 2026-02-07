@@ -102,37 +102,13 @@ class SCR_RoomModsManager
 		
 		// array cleanups
 		ClearModArrays();
-		
-		LoadMissionHeaders();
+
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void ClearModArrays()
 	{
 		m_aRoomDependecies.Clear();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// Load mission headers - TODO@ernerjak - this will be removed once we are able to load specific in game scenarios
-	protected void LoadMissionHeaders()
-	{
-		m_aMissionFolderPaths = {"Missions"};
-		
-		if (m_WorkshopApi.NeedScan())
-			m_WorkshopApi.ScanOfflineItems();
-
-		m_aMissionHeaders.Clear();
-		LoadMissionFolder(m_aMissionFolderPaths[0]);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void LoadMissionFolder(string folderPath)
-	{
-		array<string> files = {};
-		HeaderFileCallback callback = new HeaderFileCallback;
-		callback.m_aHeaders = m_aMissionHeaders;
-		callback.api = GetGame().GetBackendApi().GetWorkshop();
-		System.FindFiles(callback.FindFilesCallback, folderPath, m_sWorldHeadersPattern);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -151,14 +127,8 @@ class SCR_RoomModsManager
 	//------------------------------------------------------------------------------------------------
 	protected void AllItemsLoaded()
 	{
-		//m_ModsCallback.m_OnItem.Remove(OnLoadingModItem);
-		
 		if (!m_Room)
 			return;
-
-		//UpdatedDependencies(m_aRoomItemsScripted);
-		/*if (!updatedCheckPass)
-			return;*/
 		
 		array<Dependency> deps = new array<Dependency>;
 		m_Room.AllItems(deps);
@@ -255,10 +225,12 @@ class SCR_RoomModsManager
 			m_Room = room;
 		
 		// Skip if room mods data is loaded 
-		if (room == m_RoomLoaded)
+		if (room == m_RoomLoaded || AllModsLoaded(room))
 		{
+			AddonsFullList();
 			UpdatedDependencies(m_aRoomItemsScripted);
 			
+			m_bModsLoaded = true;
 			m_OnGettingAllDependecies.Invoke();
 			return;
 		}
@@ -269,6 +241,24 @@ class SCR_RoomModsManager
 		// Load full list 
 		m_ModsCallback.m_OnFullList.Insert(AddonsFullList);
 		m_Room.LoadDownloadList(m_ModsCallback);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool AllModsLoaded(notnull Room room)
+	{
+		array<Dependency> items = {};
+		room.AllItems(items);
+		
+		if (items.IsEmpty())
+			return false;
+		
+		for (int i = 0, count = items.Count(); i < count; i++)
+		{
+			if (!items[i].GetCachedItem())
+				return false;
+		}
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -408,10 +398,6 @@ class SCR_RoomModsManager
 		foreach (Dependency dep : deps)
 		{
 			m_aRoomDependecies.Insert(dep);
-			
-			// Register items 
-			//SCR_WorkshopItem item = SCR_AddonManager.GetInstance().Register(dep);
-			//m_aRoomItemsScripted.Insert(item);
 		}
 		
 		// Clear mod callbacks 

@@ -1,7 +1,13 @@
 class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 {
-	[Attribute("0", "If true it will never save any state changes and will updated when another system saves the state")]
+	[Attribute("0", desc: "If true will always show tabview even if loaded with a config")]
+	protected bool m_bAlwaysShowTabview;
+	
+	[Attribute("0", desc: "If true it will never save any state changes and will updated when another system saves the state")]
 	protected bool m_bDisplayContentOnly;
+	
+	[Attribute("0", desc: "If true it will never update the tab with active icons. But instead use the tab name")]
+	protected bool m_bStaticTabName;
 	
 	[Attribute(defvalue: "BrowserStateTab")]
 	protected string m_sBrowserStateTabViewName;
@@ -36,13 +42,15 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 	//~ When tabview changes Browser State
 	protected void OnBrowserStateChanged(SCR_TabViewComponent tabView, Widget tabRoot, int stateIndex)
 	{
-		m_ContentBrowserManager.SetBrowserState(stateIndex, !m_bDisplayContentOnly);
+		m_ContentBrowserManager.SetBrowserState(stateIndex, true, false);
 	}
 	
 	protected void OnBrowserEntriesFiltered()
 	{
 		//~ Update tabs
-		if (!m_ContentBrowserManager || m_ContentBrowserManager.GetContentBrowserDisplayConfig())
+		if (!m_ContentBrowserManager)
+			return;
+		if (m_ContentBrowserManager.GetContentBrowserDisplayConfig() && !m_ContentBrowserManager.GetContentBrowserDisplayConfig().GetSaveContentBrowserState())
 			return;
 		
 		array<EEditableEntityLabel> activeLabels = {};
@@ -52,12 +60,17 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		
 		//~ Set the saved index as tab
 		m_BrowserStateTabView.ShowTab(browserStateIndex, false, false);
-	}	
+	}
 	
 	//~ Enable/Disable all tabs
 	protected void EnableAllTabs(bool enable)
 	{
 		m_BrowserStateTabView.EnableAllTabs(enable);
+	}
+	
+	protected void SetTabVisible(int tabIndex, bool visible)
+	{
+		m_BrowserStateTabView.SetTabVisible(tabIndex, visible, false);
 	}
 	
 	//~ Creates state tabs if config is not used
@@ -67,7 +80,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 			return;
 		
 		//~ Has display config so hide the tab
-		if (m_ContentBrowserManager.GetContentBrowserDisplayConfig())
+		if (!m_bAlwaysShowTabview && m_ContentBrowserManager.GetContentBrowserDisplayConfig())
 		{
 			m_BrowserStateTabView.m_wRoot.SetVisible(false);
 			return;
@@ -103,6 +116,11 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 			contentBrowserStates[i].GetLabels(savedLabels);
 			UpdateStateTab(i, contentBrowserStates[i].GetSearchString(), savedLabels);
 		}
+		
+		array<int> hiddenStateTabs = {};
+		m_ContentBrowserManager.GetHiddenStateTabs(hiddenStateTabs);
+		foreach (int hiddenTabIndex: hiddenStateTabs)
+			SetTabVisible(hiddenTabIndex, false);
 	}
 	
 	//~ Update the state tabs if search or filters changed
@@ -112,6 +130,20 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		
 		if (!tab || !tab.m_ButtonComponent)
 			return;
+		
+		//~ Simply display the name on the tab
+		if (m_bStaticTabName)
+		{
+			TextWidget labelAmountWidget = TextWidget.Cast(tab.m_ButtonComponent.GetRootWidget().FindAnyWidget(m_sStateTabLabelAmountName));
+			if (labelAmountWidget)
+				labelAmountWidget.SetVisible(false);
+			
+			Widget searchIcon = tab.m_ButtonComponent.GetRootWidget().FindAnyWidget(m_sStateTabSearchIconName);
+			if (searchIcon)
+				searchIcon.SetVisible(false);
+			
+			return;
+		}
 		
 		bool searchIconActive = false;
 		
@@ -167,7 +199,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		//~ Order Labels
 		m_ContentBrowserManager.OrderLabels(activeLabels);
 		
-		foreach(EEditableEntityLabel label: activeLabels)
+		foreach (EEditableEntityLabel label: activeLabels)
 		{
 			m_ContentBrowserManager.GetLabelUIInfo(label, labelUiInfo);
 			
@@ -215,6 +247,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		}
 		
 		m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Insert(OnBrowserEntriesFiltered);
+		m_ContentBrowserManager.GetOnStateTabVisibilityChanged().Insert(SetTabVisible);
 		
 		//~ Create state tabs
 		CreateBrowserStateTabs();
@@ -227,6 +260,7 @@ class SCR_ContentBrowserStateManagerEditorUIComponent : ScriptedWidgetComponent
 		if (m_ContentBrowserManager)
 		{
 			m_ContentBrowserManager.GetOnBrowserEntriesFiltered().Remove(OnBrowserEntriesFiltered);
+			m_ContentBrowserManager.GetOnStateTabVisibilityChanged().Remove(SetTabVisible);
 			
 			if (!m_bDisplayContentOnly)
 			{

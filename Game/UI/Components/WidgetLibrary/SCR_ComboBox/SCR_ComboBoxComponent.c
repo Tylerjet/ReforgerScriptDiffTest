@@ -21,11 +21,27 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 	[Attribute("0", UIWidgets.EditBox, "Extra pixels to the right from the center of the widget")]
 	float m_fExtraPaddingRight;
 	
+	[Attribute("0", UIWidgets.EditBox, "Starting angle of arrow icon to coordinate texture rotation")]
+	protected float m_fArrowDefaultAngle;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Allow manual drop down list width enforcing")]
+	protected bool m_bForceListWidth;
+	
+	[Attribute("200", UIWidgets.EditBox, "How wide should drop down list be")]
+	protected float m_fListForcedWidth;
+	
+	[Attribute("0", UIWidgets.EditBox, "How wide should drop down list be")]
+	protected float m_fListXOffset;
+	
 	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox, "")]
 	protected string m_sSoundClosed;
+	
+	[Attribute("OverlayArrow")]
+	protected string m_sButton;
 
 	protected InputManager m_InputManager;
 	protected ref array<Widget> m_aElementWidgets = new ref array<Widget>();
+	protected Widget m_wButton;
 	protected ImageWidget m_wArrowImage;
 	protected TextWidget m_wText;
 	protected VerticalLayoutWidget m_wContent;
@@ -59,10 +75,13 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 				comp.GetOnFocusLost().Insert(OnHandlerFocusLost);
 			}
 		}
+		
+		// Find arrow button
+		m_wButton = w.FindAnyWidget(m_sButton);
 
 		m_wArrowImage = ImageWidget.Cast(w.FindAnyWidget("ImageArrow"));
 		if (m_wArrowImage)
-			m_wArrowImage.SetRotation(90);
+			m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
 
 		UpdateName();
 	}
@@ -119,6 +138,24 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		// Make focusable again
 		m_wRoot.ClearFlags(WidgetFlags.NOFOCUS);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void OnEnabled(bool animate)
+	{
+		super.OnEnabled(animate);
+		
+		if (m_wButton)
+			m_wButton.SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnDisabled(bool animate)
+	{
+		super.OnDisabled(animate);
+		
+		if (m_wButton)
+			m_wButton.SetVisible(false);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateName()
@@ -156,10 +193,13 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		m_aElementWidgets.Clear();
 
 		foreach (int i, string name : m_aElementNames)
-		{
+		{		
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sElementLayout, m_wContent);
 			if (!w)
 				continue;
+			
+			if (m_wElementsRoot && !m_wElementsRoot.IsVisible())
+				m_wElementsRoot.SetVisible(true);
 
 			m_aElementWidgets.Insert(w);
 			OnCreateElement(w, i);
@@ -216,6 +256,9 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		w -= m_fExtraPaddingLeft + m_fExtraPaddingRight;
 
 		m_wElementsRoot = GetGame().GetWorkspace().CreateWidgets(m_sListRootLayout, GetGame().GetWorkspace());
+		if (m_aElementData.IsEmpty())
+			m_wElementsRoot.SetVisible(false);
+		
 		if (!m_wElementsRoot)
 			return;
 
@@ -236,12 +279,17 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 				separator.SetZOrder(-1);
 		}
 
-		FrameSlot.SetPos(m_wElementsRoot, x, y);
+		FrameSlot.SetPos(m_wElementsRoot, x + m_fListXOffset, y);
 		SizeLayoutWidget size = SizeLayoutWidget.Cast(m_wElementsRoot.FindAnyWidget("SizeLayout"));
 		if (size)
 		{
 			size.EnableWidthOverride(true);
-			size.SetWidthOverride(w);
+			
+			if (m_bForceListWidth)
+				size.SetWidthOverride(m_fListForcedWidth);
+			else
+				size.SetWidthOverride(w);
+			
 			if (m_fMaxListHeight > 0)
 			{
 				size.SetMaxDesiredHeight(m_fMaxListHeight);
@@ -261,7 +309,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		// Set arrow image angle
 		if (m_wArrowImage)
-			m_wArrowImage.SetRotation(270);
+			m_wArrowImage.SetRotation(m_fArrowDefaultAngle + 180);
 
 		m_OnOpened.Invoke(this);
 	}
@@ -307,7 +355,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 
 		// Set arrow image angle
 		if (m_wArrowImage)
-			m_wArrowImage.SetRotation(90);
+			m_wArrowImage.SetRotation(m_fArrowDefaultAngle);
 
 		PlaySound(m_sSoundClosed);
 		m_OnClosed.Invoke(this);

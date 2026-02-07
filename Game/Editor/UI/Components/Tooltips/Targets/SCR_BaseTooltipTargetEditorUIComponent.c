@@ -27,9 +27,12 @@ class SCR_BaseTooltipTargetEditorUIComponent: SCR_BaseEditorUIComponent
 	}
 	protected void HideTooltip()
 	{
-		SCR_TooltipManagerEditorUIComponent tooltipManager = SCR_TooltipManagerEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_TooltipManagerEditorUIComponent, true));
+		if (!GetInfo())
+			return;
+		
+		SCR_TooltipManagerEditorUIComponent tooltipManager = SCR_TooltipManagerEditorUIComponent.Cast(GetRootComponent().FindComponent(SCR_TooltipManagerEditorUIComponent));
 		if (tooltipManager)
-			tooltipManager.ResetInfo();
+			tooltipManager.ResetInfo(GetInfo());
 	}
 	protected void RefreshTooltip()
 	{
@@ -59,5 +62,12 @@ class SCR_BaseTooltipTargetEditorUIComponent: SCR_BaseEditorUIComponent
 	override bool IsUnique()
 	{
 		return false;
+	}
+	override void HandlerDeattached(Widget w)
+	{
+		if (GetRootComponent())
+			HideTooltip();
+		
+		super.HandlerDeattached(w);
 	}
 };

@@ -7,6 +7,7 @@ class SCR_RadialMenuEditorCommands : SCR_RadialMenuEditorBase
 	override protected int ValidateSelection()
 	{
 		// Check which input opened radial menu, EditorAddCommandMenu will queue the task, EditorSetCommandMenu will clear exising tasks
+		m_ActionFlags = 0;
 		if (m_InputManager.GetActionValue("EditorAddCommandMenu"))
 		{
 			m_ActionFlags |= EEditorCommandActionFlags.IS_QUEUE;

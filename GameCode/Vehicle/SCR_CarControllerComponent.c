@@ -18,9 +18,9 @@ class SCR_CarControllerComponent : CarControllerComponent
 	private bool m_bIsStarting;
 	
 	//sound
-	private AudioHandle m_EngineStarterHandle;
-	private AudioHandle m_EngineStartHandle;
-	private AudioHandle m_EngineStopHandle;
+	private AudioHandle m_EngineStarterHandle = AudioHandle.Invalid;
+	private AudioHandle m_EngineStartHandle = AudioHandle.Invalid;
+	private AudioHandle m_EngineStopHandle = AudioHandle.Invalid;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Get engine hitzone
@@ -96,8 +96,8 @@ class SCR_CarControllerComponent : CarControllerComponent
 		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			if (!soundComponent.IsFinishedPlaying(m_EngineStopHandle))
-				soundComponent.Terminate(m_EngineStopHandle);
+			soundComponent.Terminate(m_EngineStopHandle);
+			m_EngineStopHandle = AudioHandle.Invalid;
 			
 			m_EngineStarterHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STARTER_LP);
 		}
@@ -129,10 +129,10 @@ class SCR_CarControllerComponent : CarControllerComponent
 		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			if (!soundComponent.IsFinishedPlaying(m_EngineStarterHandle))
-				soundComponent.Terminate(m_EngineStarterHandle);
-			if (!soundComponent.IsFinishedPlaying(m_EngineStartHandle))
-				soundComponent.Terminate(m_EngineStartHandle);
+			soundComponent.Terminate(m_EngineStarterHandle);
+			m_EngineStarterHandle = AudioHandle.Invalid;
+			soundComponent.Terminate(m_EngineStartHandle);
+			m_EngineStartHandle = AudioHandle.Invalid;
 		}
 	}
 
@@ -145,11 +145,9 @@ class SCR_CarControllerComponent : CarControllerComponent
 		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			if (!soundComponent.IsFinishedPlaying(m_EngineStarterHandle))
-				soundComponent.Terminate(m_EngineStarterHandle);
-			if (!soundComponent.IsFinishedPlaying(m_EngineStartHandle))
-				soundComponent.Terminate(m_EngineStartHandle);
-
+			soundComponent.Terminate(m_EngineStarterHandle);
+			m_EngineStarterHandle = AudioHandle.Invalid;
+			soundComponent.Terminate(m_EngineStartHandle);
 			m_EngineStartHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_START);
 		}
 	}
@@ -170,10 +168,10 @@ class SCR_CarControllerComponent : CarControllerComponent
 		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			if (!soundComponent.IsFinishedPlaying(m_EngineStarterHandle))
-				soundComponent.Terminate(m_EngineStarterHandle);
-			if (!soundComponent.IsFinishedPlaying(m_EngineStartHandle))
-				soundComponent.Terminate(m_EngineStartHandle);
+			soundComponent.Terminate(m_EngineStarterHandle);			
+			m_EngineStarterHandle = AudioHandle.Invalid;
+			soundComponent.Terminate(m_EngineStartHandle);
+			m_EngineStartHandle = AudioHandle.Invalid;
 			
 			if (reason != EVehicleEngineStartFailedReason.NO_FUEL)
 				return;
@@ -225,10 +223,10 @@ class SCR_CarControllerComponent : CarControllerComponent
 		SoundComponent soundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
 		if (soundComponent)
 		{
-			if (!soundComponent.IsFinishedPlaying(m_EngineStarterHandle))
-				soundComponent.Terminate(m_EngineStarterHandle);
-			if (!soundComponent.IsFinishedPlaying(m_EngineStartHandle))
-				soundComponent.Terminate(m_EngineStartHandle);
+			soundComponent.Terminate(m_EngineStarterHandle);
+			m_EngineStarterHandle = AudioHandle.Invalid;
+			soundComponent.Terminate(m_EngineStartHandle);
+			m_EngineStartHandle = AudioHandle.Invalid;
 			
 			m_EngineStopHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_ENGINE_STOP);
 		}

@@ -198,7 +198,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 				{
 					Faction factionVictor;
 					
-					foreach(int id: winningFactionIds)
+					foreach (int id: winningFactionIds)
 					{
 						factionVictor = factionManager.GetFactionByIndex(id);
 						if (factionVictor)

@@ -87,7 +87,7 @@ class SCR_PlayableFactionAttributeUIComponent : SCR_CheckboxEditorAttributeUICom
 		GetGame().GetPlayerManager().GetPlayers(players);
 		SCR_EditablePlayerDelegateComponent playerEditorDelegate;
 		
-		foreach(int playerId: players)
+		foreach (int playerId: players)
 		{
 			//If has player entity
 			if(!SCR_PossessingManagerComponent.GetPlayerMainEntity(playerId))

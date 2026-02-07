@@ -175,6 +175,34 @@ class SCR_SpinBoxPagingComponent : SCR_WLibComponentBase
 		if (m_ButtonRight)
 			m_ButtonRight.SetEnabled(enable);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetButtonsVisible(bool visible)
+	{
+		if (m_ButtonLeft)
+			m_ButtonLeft.SetVisible(visible);
+
+		if (m_ButtonRight)
+			m_ButtonRight.SetVisible(visible);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetButtonsActive(bool active)
+	{
+		if (m_ButtonLeft)
+		{
+			m_ButtonLeft.m_OnClicked.Remove(OnButtonLeft);
+			if (active)
+				m_ButtonLeft.m_OnClicked.Insert(OnButtonLeft);
+		}
+
+		if (m_ButtonRight)
+		{
+			m_ButtonRight.m_OnClicked.Remove(OnButtonRight);
+			if (active)
+				m_ButtonRight.m_OnClicked.Insert(OnButtonRight);
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Static method to easily find component by providing name and parent.

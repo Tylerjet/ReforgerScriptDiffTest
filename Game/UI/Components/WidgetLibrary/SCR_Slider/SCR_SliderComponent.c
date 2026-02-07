@@ -24,6 +24,7 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 
 	protected TextWidget m_wText;
 	protected SliderWidget m_wSlider;
+	protected float m_fOldValue;
 
 	protected ref SCR_EventHandlerComponent m_Handler;
 	protected ref ScriptInvoker m_OnChangedFinal;
@@ -71,21 +72,22 @@ class SCR_SliderComponent : SCR_ChangeableComponentBase
 		// Do not call super.OnFocusLost, it will be called by OnSliderFocusLost
 		return false;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	void OnValueChanged(Widget w)
 	{
 		float value;
 		if (m_wSlider)
 			value = m_wSlider.GetCurrent();
-
+		
 		if (m_wText && m_wText.IsVisible())
 			m_wText.SetTextFormat(m_sFormatText, value * m_fShownValueMultiplier);
 
-		if (m_sChangeSound != string.Empty)
+		if (m_sChangeSound != string.Empty && m_fOldValue != value)
 			PlaySound(m_sChangeSound);
 
-
+		m_fOldValue = value;
+		
 		m_OnChanged.Invoke(this, value);
 	}
 

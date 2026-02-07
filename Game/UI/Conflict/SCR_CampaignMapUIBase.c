@@ -50,6 +50,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	
 	bool m_bHighlighted;
 	bool m_bIsAnyElementHovered;
+	bool m_bIsAnyElementClicked;
 	protected bool m_bServicesShown;
 	protected bool m_bCanRespawn;
 	protected bool m_bIsRespawnMenu;
@@ -86,8 +87,11 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		
 		if (!m_bIsAnyElementHovered && m_bCanRespawn && m_bIsRespawnMenu)
 		{
+			m_bIsAnyElementClicked = true;
 			SelectIcon();
+			m_bIsAnyElementClicked = false;
 			m_wHighlightImg.SetVisible(false);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_MAP_CLICK_POINT_ON);
 		}
 		return false;
 	}
@@ -195,7 +199,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 				case EIconType.BASE:
 				{
-					PlayHoverSound(m_sSoundBase);
+					if (!m_bIsAnyElementClicked)
+						PlayHoverSound(m_sSoundBase);
 				} break;
 
 				case EIconType.ENEMY_BASE:
@@ -872,6 +877,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				baseIcon.SetIcons(EMilitarySymbolIcon.RESPAWN);
 		}
 		m_SymbolUI.Update(baseIcon);
+		
 	}
 	
 	//------------------------------------------------------------------------------	

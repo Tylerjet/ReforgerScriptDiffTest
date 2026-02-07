@@ -7,15 +7,21 @@ class SCR_ConsumableItemComponentClass : SCR_GadgetComponentClass
 // Consumable gadget component
 class SCR_ConsumableItemComponent : SCR_GadgetComponent
 {
-		
+
 	[Attribute("", UIWidgets.Object, category: "Consumable" )]
 	protected ref SCR_ConsumableEffectBase m_ConsumableEffect;
-	
+
 	[Attribute("0", UIWidgets.CheckBox, "Switch model on use, f.e. from packaged version", category: "Consumable")]
-	protected bool m_bAlternativeModelOnAction;
+	protected bool m_bAlternativeModelOnAction;	
 	
+	[Attribute("0", UIWidgets.CheckBox, "Item has dedicated SCR_EquipmentStorageSlot configured on prefab", category: "Consumable")]
+	protected bool m_bMoveToEquipmentStorage;
+
 	protected SCR_CharacterControllerComponent m_CharController;
 	
+	//Target character is the target set when it's not m_CharacterOwner
+	protected IEntity m_TargetCharacter;
+
 	//------------------------------------------------------------------------------------------------
 	//! Get consumable type
 	//! \return consumable type
@@ -23,35 +29,56 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	{
 		if (m_ConsumableEffect)
 			return m_ConsumableEffect.m_eConsumableType;
-		
+
 		return EConsumableType.None;
 	}
-		
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get consumable effect
+	//! \return consumable effect
+	SCR_ConsumableEffectBase GetConsumableEffect()
+	{
+		return m_ConsumableEffect;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
 	//! \param target is the target entity
-	void ApplyItemEffect(IEntity target, SCR_ConsumableEffectAnimationParameters animParams)
+	void ApplyItemEffect(IEntity target, SCR_ConsumableEffectAnimationParameters animParams, IEntity item, bool deleteItem = true)
 	{
 		if (!m_ConsumableEffect)
 			return;
+
+		m_ConsumableEffect.ApplyEffect(target, target, item, animParams);
+
+		ModeClear(EGadgetMode.IN_HAND);
 		
-		m_ConsumableEffect.ApplyEffect(target, animParams);
-		
-		InventoryStorageManagerComponent invManager = InventoryStorageManagerComponent.Cast(m_CharacterOwner.FindComponent(InventoryStorageManagerComponent));
-		if (invManager)
-		{
-			ModeClear(EGadgetMode.IN_HAND);
+		if (deleteItem)
 			RplComponent.DeleteRplEntity(GetOwner(), false);
-		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! OnItemUseComplete event from SCR_CharacterControllerComponent
-	protected void OnApplyToSelf(IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	protected void OnApplyToCharacter(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams)
 	{
-		ApplyItemEffect(m_CharacterOwner, animParams);
+		if (!successful)
+			return;
+		
+		bool deleteItem = true;
+		if (GetConsumableEffect())
+		{
+			deleteItem = GetConsumableEffect().GetDeleteOnUse();
+		}
+		
+		IEntity target = GetTargetCharacter();
+		if (!target)
+			target = m_CharacterOwner;
+		if (!target)
+			return;
+
+		ApplyItemEffect(target, animParams, item, deleteItem);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! OnItemUseBegan event from SCR_CharacterControllerComponent
 	protected void OnUseBegan()
@@ -59,12 +86,12 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (m_bAlternativeModelOnAction)
 			SetAlternativeModel(true);
 	}
-		
+
 	//-----------------------------------------------------------------------------
 	//! Switch item model
 	//! \param useAlternative determines whether alternative or base model is used
 	void SetAlternativeModel(bool useAlternative)
-	{		
+	{
 		InventoryItemComponent inventoryItemComp = InventoryItemComponent.Cast( GetOwner().FindComponent(InventoryItemComponent));
 		if (!inventoryItemComp)
 			return;
@@ -72,7 +99,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		ItemAttributeCollection attributeCollection = inventoryItemComp.GetAttributes();
 		if (!attributeCollection)
 			return;
-		
+
 		SCR_AlternativeModel additionalModels = SCR_AlternativeModel.Cast( attributeCollection.FindAttribute(SCR_AlternativeModel));
 		if (!additionalModels)
 			return;
@@ -95,72 +122,66 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 				GetOwner().SetObject(asset, "");
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void ModeSwitch(EGadgetMode mode, IEntity charOwner)
 	{
 		super.ModeSwitch(mode, charOwner);
-					
+
 		if (mode == EGadgetMode.IN_HAND)
-		{			
+		{
 			m_CharController = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent));
-			m_CharController.m_OnItemUseCompleteInvoker.Insert(OnApplyToSelf);
+			m_CharController.m_OnItemUseEndedInvoker.Insert(OnApplyToCharacter);
 			m_CharController.m_OnItemUseBeganInvoker.Insert(OnUseBegan);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void ModeClear(EGadgetMode mode)
-	{			
+	{
 		if (mode == EGadgetMode.IN_HAND)
 		{
 			if (m_CharController)
 			{
-				m_CharController.m_OnItemUseCompleteInvoker.Remove(OnApplyToSelf);
+				m_CharController.m_OnItemUseEndedInvoker.Remove(OnApplyToCharacter);
 				m_CharController.m_OnItemUseBeganInvoker.Remove(OnUseBegan);
 				m_CharController = null;
 			}
 		}
-		
+
 		super.ModeClear(mode);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void ActivateAction()
 	{
-		if (!m_ConsumableEffect || !m_ConsumableEffect.CanApplyEffect(m_CharacterOwner))
+		if (!m_ConsumableEffect || !m_ConsumableEffect.CanApplyEffect(m_CharacterOwner, GetOwner()))
 			return;
 		
-		SCR_ConsumableEffectAnimationParameters animParams = m_ConsumableEffect.GetAnimationParameters(m_CharacterOwner);
-		
-		if (m_CharController)
-		{
-			bool activatedAction = false;
-			if (animParams)
-				activatedAction = m_CharController.TryUseEquippedItemOverrideParams(animParams.m_itemUseCommandId, animParams.m_animDuration, animParams.m_intParam, animParams.m_floatParam, animParams.m_boolParam);
-			else
-				activatedAction = m_CharController.TryUseEquippedItem();
-			
-			if (animParams
-				&& SCR_ConsumableBandage.Cast(m_ConsumableEffect)
-				&& (animParams.m_intParam == EBandagingAnimationBodyParts.LeftLeg || animParams.m_intParam == EBandagingAnimationBodyParts.RightLeg)
-				&& activatedAction
-				&& m_CharController.GetStance() == ECharacterStance.STAND)
-			{
-				m_CharController.SetStanceChange(ECharacterStanceChange.STANCECHANGE_TOCROUCH);
-			}
-		}	
+		m_ConsumableEffect.ActivateEffect(m_CharacterOwner, m_CharacterOwner, GetOwner());
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
 		return EGadgetType.CONSUMABLE;
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeToggled()
 	{
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTargetCharacter(IEntity target)
+	{
+		m_TargetCharacter = target;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	IEntity GetTargetCharacter()
+	{
+		return m_TargetCharacter;
 	}
 };

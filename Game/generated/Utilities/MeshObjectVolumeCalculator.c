@@ -9,7 +9,7 @@ Do not modify, this script is generated
 * @{
 */
 
-class MeshObjectVolumeCalculator: ScriptAndConfig
+sealed class MeshObjectVolumeCalculator: ScriptAndConfig
 {
 	/**
 	* \brief Calculate volume of given mesh of meshObject using colliders with given interaction layer.

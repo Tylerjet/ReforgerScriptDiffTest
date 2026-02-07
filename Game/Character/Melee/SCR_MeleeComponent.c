@@ -13,6 +13,8 @@ class SCR_MeleeHitDataClass
 	float m_fDamage = 0;
 	int m_iColliderIndex = -1;
 	vector m_vHitPosition = vector.Zero;
+	vector m_vHitDirection = vector.Zero;
+	vector m_vHitNormal = vector.Zero;
 };
 
 //------------------------------------------------------------------------------------------------
@@ -85,9 +87,13 @@ class SCR_MeleeComponent : ScriptComponent
 		if (!param.TraceEnt)
 			return false;
 		
+		vector dir = (param.End - param.Start);
+		
 		pHitData.m_Entity = param.TraceEnt;
 		pHitData.m_iColliderIndex = param.ColliderIndex;
-		pHitData.m_vHitPosition = (param.End - param.Start) * hit + param.Start;
+		pHitData.m_vHitPosition = dir * hit + param.Start;
+		pHitData.m_vHitDirection = dir.Normalized();
+		pHitData.m_vHitNormal = param.TraceNorm;
 		pHitData.m_SurfaceProps = param.SurfaceProps;
 		pHitData.m_iNodeIndex = param.NodeIndex;
 		
@@ -227,6 +233,8 @@ class SCR_MeleeComponent : ScriptComponent
 		
 		vector hitPosDirNorm[3];
 		hitPosDirNorm[0] = m_MeleeHitData.m_vHitPosition;
+		hitPosDirNorm[1] = m_MeleeHitData.m_vHitDirection;
+		hitPosDirNorm[2] = m_MeleeHitData.m_vHitNormal;
 		
 		//! check if the entity has the damage manager component
 		HitZone hitzone;

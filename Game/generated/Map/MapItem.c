@@ -84,6 +84,22 @@ class MapItem
 	\brief Adds a new link between the caller and item (parameter), returns the link created.
 	*/
 	proto external MapLink LinkTo( MapItem item );
+	/**
+	\brief Determine group type (EMapDescriptorGroup) of item
+	*/
+	proto external int GetGroupType();
+	/**
+	\brief Assign different group type (EMapDescriptorGroup) of item
+	*/
+	proto external void SetGroupType( int type );
+	/**
+	\brief Retrieve priority of item
+	*/
+	proto external int GetPriority();
+	/**
+	\brief Assign different priority to item
+	*/
+	proto external void SetPriority( int iPriority );
 	//! Remove link (or all links if pItem==nullptr)
 	proto external void UnLink( MapItem item );
 	/**

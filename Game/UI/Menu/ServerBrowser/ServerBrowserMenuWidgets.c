@@ -24,6 +24,7 @@ class ServerBrowserMenuWidgets
 	const string WIDGET_BUTTON_JOIN = "BtnQuickJoin";
 	const string WIDGET_BUTTON_DETAILS = "BtnDetails";
 	const string WIDGET_BUTTON_FAVORITE = "BtnFavorite";
+	const string WIDGET_BUTTON_HOST = "HostNewServerButton";
 	
 	// Messages widgets
 	static string WIDGET_PANEL_EMPTY = "MenuPanelEmpty";
@@ -43,6 +44,8 @@ class ServerBrowserMenuWidgets
 	TextWidget m_wTxtVersion;
 	Widget m_wSortSessionName;
 	
+	Widget m_wHostNewServerButton;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Will find all required widgets
 	void FindAllWidgets(Widget root)
@@ -60,6 +63,8 @@ class ServerBrowserMenuWidgets
 		m_wLoadingServers = m_wRoot.FindAnyWidget(WIDGET_LOADING_SERVERS);
 		
 		m_wSortSessionName = m_wRoot.FindAnyWidget(WIDGET_SORT_SESSION_NAME);
+		
+		m_wHostNewServerButton = m_wRoot.FindAnyWidget(WIDGET_BUTTON_HOST);
 		
 		SetupVersionText();
 	}

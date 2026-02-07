@@ -13,7 +13,7 @@ class SCR_PlacingFlagToolbarAction : SCR_BaseToggleToolbarAction
 	
 	override void Track()
 	{
-		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingComponent)
 		{
 			placingComponent.GetOnPlacingFlagsChange().Insert(OnPlacingFlagsChange);
@@ -22,7 +22,7 @@ class SCR_PlacingFlagToolbarAction : SCR_BaseToggleToolbarAction
 	}
 	override void Untrack()
 	{
-		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingComponent)
 		{
 			placingComponent.GetOnPlacingFlagsChange().Remove(OnPlacingFlagsChange);
@@ -34,7 +34,7 @@ class SCR_PlacingFlagToolbarAction : SCR_BaseToggleToolbarAction
 	}
 	override bool CanBeShown(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
-		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, false, true));
 		return placingComponent && placingComponent.IsPlacing() && placingComponent.IsPlacingFlagCompatible(m_PlacingFlag);
 	}
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
@@ -43,7 +43,7 @@ class SCR_PlacingFlagToolbarAction : SCR_BaseToggleToolbarAction
 	}
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition,int flags, int param = -1)
 	{
-		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingComponent = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingComponent)
 			placingComponent.TogglePlacingFlag(m_PlacingFlag);
 	}

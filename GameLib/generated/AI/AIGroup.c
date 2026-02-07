@@ -22,6 +22,9 @@ class AIGroup: AIAgent
 	proto external AIAgent GetLeaderAgent();
 	proto external IEntity GetLeaderEntity();
 	proto external AIFormationDefinition GetFormation();
+	//Sets a displacement in the formation so that the used offset positions start at the given value
+	proto external void SetFormationDisplacement(int iValue);
+	proto external int GetFormationDisplacement();
 	
 	// callbacks
 	

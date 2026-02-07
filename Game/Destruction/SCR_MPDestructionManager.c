@@ -8,7 +8,7 @@ class SCR_MPDestructionManagerClass: GenericEntityClass
 //------------------------------------------------------------------------------------------------
 class SCR_DestructibleIdentificator
 {
-	protected EntityID m_EntityID = EntityID.FromInt(-1, -1);
+	protected EntityID m_EntityID = EntityID.INVALID;
 	protected RplId m_RplId = RplId.Invalid();
 	protected int m_iIndex = -1;
 	
@@ -40,7 +40,7 @@ class SCR_DestructibleIdentificator
 	//------------------------------------------------------------------------------------------------
 	IEntity GetEntity()
 	{
-		if (m_EntityID != EntityID.FromInt(-1, -1))
+		if (m_EntityID != EntityID.INVALID)
 		{
 			BaseWorld world = GetGame().GetWorld();
 			if (world)
@@ -103,9 +103,9 @@ class SCR_DestructibleIdentificator
 class SCR_MPDestructionManager : GenericEntity
 {
 #ifdef ENABLE_BASE_DESTRUCTION
-	static const string ENTITY_SIZE_SIGNAL_NAME = "entitySize";
-	static const string DAMAGE_PHASE_SIGNAL_NAME = "damagePhase";
-	static const string IMPULSE_SIGNAL_NAME = "impulse";
+	static const string ENTITY_SIZE_SIGNAL_NAME = "EntitySize";
+	static const string PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME = "PhasesToDestroyed";
+	static const string COLLISIONDV_SIGNAL_NAME = "CollisionDV";
 	static const ResourceName DESTRUCTION_MANAGER_PREFAB = "{9BB369F2803C6F71}Prefabs/MP/MPDestructionManager.et";
 	static private SCR_MPDestructionManager s_Instance = null;
 	static bool s_bInitialized = false;
@@ -118,8 +118,8 @@ class SCR_MPDestructionManager : GenericEntity
 	protected ref map<SCR_DestructionBaseHandler, bool> m_mDestroyInFrame = new ref map<SCR_DestructionBaseHandler, bool>();
 	private SimpleSoundComponent m_SoundComponent;
 	private int m_iEntitySizeSignalID;
-	private int m_iImpulseSignalID;
-	private int m_iDamagePhaseSignalID;
+	private int m_iPhasesToDestroyedSignalID;
+	private int m_iCollisionDVSignalID;
 	protected RplComponent m_RplComponent;
 	
 	//------------------------------------------------------------------------------------------------
@@ -274,17 +274,17 @@ class SCR_MPDestructionManager : GenericEntity
 
 	//------------------------------------------------------------------------------------------------
 	// TODO Common?
-	int GetDamagePhaseSignalID()
+	int GetPhasesToDestroyedSignalID()
 	{
-		return m_iDamagePhaseSignalID;
+		return m_iPhasesToDestroyedSignalID;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetImpulseSignalID()
+	int GetCollisionDVSignalID()
 	{
-		return m_iImpulseSignalID;
+		return m_iCollisionDVSignalID;
 	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
@@ -301,8 +301,8 @@ class SCR_MPDestructionManager : GenericEntity
 		if (m_SoundComponent)
 		{
 			m_iEntitySizeSignalID = m_SoundComponent.GetSignalIndex(ENTITY_SIZE_SIGNAL_NAME);
-			m_iDamagePhaseSignalID = m_SoundComponent.GetSignalIndex(DAMAGE_PHASE_SIGNAL_NAME);
-			m_iImpulseSignalID = m_SoundComponent.GetSignalIndex(IMPULSE_SIGNAL_NAME);
+			m_iPhasesToDestroyedSignalID = m_SoundComponent.GetSignalIndex(PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME);
+			m_iCollisionDVSignalID = m_SoundComponent.GetSignalIndex(COLLISIONDV_SIGNAL_NAME);
 		}
 	}
 	

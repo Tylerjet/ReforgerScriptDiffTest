@@ -37,9 +37,6 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 			return;
 		
 		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
-		
-		if (playerPenaltyData)
-			playerPenaltyData.SetWasKicked(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -201,19 +198,10 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 			if (playerId == SCR_PlayerController.GetLocalPlayerId())
 				continue;
 			
-			float bannedUntil = playerPenaltyData.GetBannedUntil();
-			
-			// If a player reconnected within ban duration, kick them immediately
-			if (bannedUntil > Replication.Time())
-			{
-				KickPlayer(playerId, playerPenaltyData.GetKickReason());
-				continue;
-			}
-			
 			// Check penalty limit for kick / ban
 			if (m_iKickPenaltyLimit > 0 && playerPenaltyData.GetPenaltyScore() >= m_iKickPenaltyLimit)
 			{
-				BanPlayer(playerId, m_iBanDuration, SCR_PlayerManagerKickReason.FRIENDLY_FIRE);
+				KickPlayer(playerId, m_iBanDuration, SCR_PlayerManagerKickReason.FRIENDLY_FIRE);
 				continue;
 			}
 		}
@@ -231,85 +219,27 @@ class SCR_PlayerPenaltyComponent: SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void KickPlayer(int playerId, SCR_PlayerManagerKickReason reason, bool showNotification = true)
+	void KickPlayer(int playerId, int duration, SCR_PlayerManagerKickReason reason)
 	{
-		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
-		
-		if (playerPenaltyData)
-		{
-			playerPenaltyData.SetWasKicked(true);
-			playerPenaltyData.SetKickReason(reason);
-		}
-		
-		GetGame().GetPlayerManager().KickPlayer(playerId, reason);
-		
-		if (showNotification)
+		if (duration == 0)
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId, reason);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void BanPlayer(int playerId, int duration, SCR_PlayerManagerKickReason reason)
-	{
-		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
-		
-		if (!playerPenaltyData)
-			return;
-		
-		// Refresh ban timer only for players not yet banned
-		if (playerPenaltyData.GetBannedUntil() < Replication.Time() && playerPenaltyData.GetBannedUntil() >= 0)
-		{
-			if (duration < 0)
-				playerPenaltyData.SetBannedUntil(-1);
-			else
-				playerPenaltyData.SetBannedUntil(Replication.Time() + (duration * 1000));	// Converting s to ms
-		}
-		
-		// Don't kick the player again
-		if (playerPenaltyData.GetWasKicked())
-			return;
-		
-		if (duration < 0)
+		else if (duration < 0)
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId);
 		else 
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerId, duration);
 		
-		KickPlayer(playerId, reason, false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void UnbanPlayer(int playerId)
-	{
+		GetGame().GetPlayerManager().KickPlayer(playerId, reason, duration);
+		
 		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
 		
-		if (!playerPenaltyData)
-			return;
-		
-		playerPenaltyData.SetBannedUntil(0);
+		if (playerPenaltyData)
+			playerPenaltyData.AddPenaltyScore(-playerPenaltyData.GetPenaltyScore());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	int GetPenaltySubstractionPeriod()
 	{
 		return m_iPenaltySubstractionPeriod * 1000;	// Converting s to ms
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	float GetRemainingBanDuration(int playerId)
-	{
-		SCR_PlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(playerId);
-		
-		if (!playerPenaltyData)
-			return 0;
-		
-		float bannedUntil = playerPenaltyData.GetBannedUntil();
-		
-		if (bannedUntil == -1)
-			return -1;
-		
-		float banDuration = bannedUntil - Replication.Time();
-		banDuration = Math.Max(0, banDuration);
-		
-		return banDuration / 1000;	// Converting ms to ms
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -369,18 +299,6 @@ class SCR_PlayerPenaltyData
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetBannedUntil(float timestamp)
-	{
-		m_fBannedUntil = timestamp;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	float GetBannedUntil()
-	{
-		return m_fBannedUntil;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	void AddPenaltyScore(int points)
 	{
 		m_iPenaltyScore += points;
@@ -406,29 +324,5 @@ class SCR_PlayerPenaltyData
 	float GetNextPenaltySubstractionTimestamp()
 	{
 		return m_fNextPenaltySubstractionTimestamp;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetWasKicked(bool kicked)
-	{
-		m_bWasKicked = kicked;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetWasKicked()
-	{
-		return m_bWasKicked;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetKickReason(SCR_PlayerManagerKickReason reason)
-	{
-		m_eKickReason = reason;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_PlayerManagerKickReason GetKickReason()
-	{
-		return m_eKickReason;
 	}
 };

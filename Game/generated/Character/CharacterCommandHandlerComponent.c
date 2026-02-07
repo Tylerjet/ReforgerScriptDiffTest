@@ -23,8 +23,10 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external CharacterControllerComponent GetControllerComponent();
 	//! gets some basic info about movement
 	proto external void GetMovementState(out notnull CharacterMovementState pMovementState);
+	proto external void AlignNewTurns();
 	proto external bool IsWeaponADSAllowed(bool allowSprint);
 	proto external bool IsProneStanceTransition();
+	proto external vector GetRelativeWaterLevel();
 	proto external bool WasMovement();
 	proto external bool WasRotation();
 	proto external CharacterCommandFall		StartCommand_Fall(float pYVelocity);

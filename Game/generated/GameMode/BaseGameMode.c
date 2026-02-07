@@ -33,6 +33,18 @@ class BaseGameMode: GenericEntity
 	\param iPlayerID is index of player in game, equal to the one assigned at PlayerController
 	*/
 	event protected void OnPlayerAuditFail( int iPlayerID) {};
+	/*
+	Event is called when player connected to Session was kicked and did not reconnected in time
+	This mean that slot reservation can be canceled.
+	\param iPlayerID is index of player in game, equal to the one assigned at PlayerController
+	*/
+	event protected void OnPlayerAuditTimeouted( int iPlayerID) {};
+	/*
+	Event is called when player reconnected successfully back to Session after kick
+	This mean that slot reservation need to be finished (closed).
+	\param iPlayerID is index of player in game, equal to the one assigned at PlayerController
+	*/
+	event protected void OnPlayerAuditRevived( int iPlayerID) {};
 	/*!
 	Called after a player is connected. Server-only.
 	\param playerId PlayerId of connected player.
@@ -46,8 +58,10 @@ class BaseGameMode: GenericEntity
 	/*!
 	Called after a player is disconnected.
 	\param playerId PlayerId of disconnected player.
+	\param cause Cause code
+	\param timeout Kick timeout in seconds (-1 is infinity)
 	*/
-	event protected void OnPlayerDisconnected(int playerId, KickCauseCode cause);
+	event protected void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout);
 	/*!
 	Called after a player is spawned.
 	\param playerId PlayerId of spawned player.

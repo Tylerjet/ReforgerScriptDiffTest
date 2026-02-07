@@ -32,7 +32,7 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 		if (cursorWorldPosition == vector.Zero)
 			return;
 		
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (!placingManager)
 			return;
 		

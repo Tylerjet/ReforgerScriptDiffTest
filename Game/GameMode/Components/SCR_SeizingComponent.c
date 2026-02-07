@@ -46,7 +46,7 @@ class SCR_SeizingComponent : ScriptComponent
 	protected BaseGameTriggerEntity m_Trigger;
 	protected RplComponent m_RplComponent;
 	protected bool m_bCharacterPresent;
-	protected SCR_FactionControlComponent m_FactionControl;
+	protected SCR_FactionAffiliationComponent m_FactionControl;
 	protected float m_fTimer = Math.RandomFloat(-TRIGGER_CHECK_PERIOD_IDLE / 5, TRIGGER_CHECK_PERIOD_IDLE / 5);
 	protected int m_iSeizingCharacters;
 	protected ref map<int, float> m_mSpawnTimers = new map<int, float>();
@@ -204,7 +204,7 @@ class SCR_SeizingComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnPrevailingFactionChanged()
 	{
-		if (m_FactionControl.GetFaction() == m_PrevailingFaction || !m_PrevailingFaction)
+		if (m_FactionControl.GetAffiliatedFaction() == m_PrevailingFaction || !m_PrevailingFaction)
 		{
 			if (m_fSeizingEndTimestamp != 0)
 			{
@@ -313,11 +313,11 @@ class SCR_SeizingComponent : ScriptComponent
 		if (!componentData)
 			return;
 
-		m_FactionControl = SCR_FactionControlComponent.Cast(owner.FindComponent(SCR_FactionControlComponent));
+		m_FactionControl = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 
 		if (!m_FactionControl)
 		{
-			Print("SCR_SeizingComponent: Owner is missing SCR_FactionControlComponent! Terminating...", LogLevel.ERROR);
+			Print("SCR_SeizingComponent: Owner is missing SCR_FactionAffiliationComponent! Terminating...", LogLevel.ERROR);
 			return;
 		}
 
@@ -364,7 +364,7 @@ class SCR_SeizingComponent : ScriptComponent
 			m_fSeizingEndTimestamp = 0;
 			m_fSeizingStartTimestamp = 0;
 
-			if (m_FactionControl.GetFaction() != m_PrevailingFaction)
+			if (m_FactionControl.GetAffiliatedFaction() != m_PrevailingFaction)
 				OnCaptureFinish();
 			else
 				OnCaptureInterrupt();

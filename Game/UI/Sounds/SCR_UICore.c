@@ -26,10 +26,7 @@ class SCR_UICore: SCR_GameCoreBase
 		if (!SCR_TooltipManagerEntity.GetInstance())
 			GetGame().SpawnEntity(SCR_TooltipManagerEntity);
 		
-#ifdef PLATFORM_CONSOLE
-		// Console-only debug option to show video settings
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, "", "Show all settings", "UI");
-#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------

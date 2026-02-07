@@ -46,7 +46,7 @@ class SearchFunctor
 		int count = m_files.Count();
 		int updateMask = SCR_Math.IntegerMask(count / 10);
 		
-		foreach(int i, ResourceName file : m_files)
+		foreach (int i, ResourceName file : m_files)
 		{
 			ProcessFile(file);
 			

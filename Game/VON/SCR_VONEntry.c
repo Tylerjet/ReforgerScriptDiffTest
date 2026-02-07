@@ -7,6 +7,7 @@ class SCR_VONEntry : Managed
 	protected SCR_VONController m_VONController;	// von controller
 	protected SCR_VoNComponent m_VONComp;			// controlled entity von component
 	BaseRadioComponent m_RadioComp;					// this entry's subject radio component, if there is one
+	protected SCR_GadgetComponent m_GadgetComp;		// this entry's subject gadget component, if there is one
 	
 	bool m_bIsSuspended; // TODO temporary hack
 		
@@ -81,10 +82,11 @@ class SCR_VONEntry : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_VONEntry(SCR_VONController VONController, SCR_VoNComponent vonComp, BaseRadioComponent radioComp = null)
+	void SCR_VONEntry(SCR_VONController VONController, SCR_VoNComponent vonComp, BaseRadioComponent radioComp = null, SCR_GadgetComponent gadgetComp = null)
 	{
 		m_VONController = VONController;
 		m_VONComp = vonComp;
 		m_RadioComp = radioComp;
+		m_GadgetComp = gadgetComp;
 	}	
 };

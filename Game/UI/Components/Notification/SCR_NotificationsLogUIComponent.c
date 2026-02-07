@@ -308,7 +308,7 @@ class SCR_NotificationsLogComponent: MenuRootSubComponent
 		Widget stickyNotificationWidget;
 		SCR_StickyNotificationUIComponent stickyNotificationComponent;
 		
-		foreach(string s: m_aStickyNotificationNames)
+		foreach (string s: m_aStickyNotificationNames)
 		{
 			stickyNotificationWidget = w.FindAnyWidget(s);
 			if (!stickyNotificationWidget)

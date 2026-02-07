@@ -1,3 +1,19 @@
+//#define DEBUG_ADAPTIVE_OPACITY
+//#define DEBUG_INFO_DISPLAY
+
+enum EWidgetAnchor
+{
+	TOPLEFT,
+	TOP,
+	TOPRIGHT,
+	LEFT,
+	CENTER,
+	RIGHT,
+	BOTTOMLEFT,
+	BOTTOM,
+	BOTTOMRIGHT
+};
+
 //------------------------------------------------------------------------------------------------
 class SCR_InfoDisplay : GroupInfoDisplay
 {
@@ -11,11 +27,22 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	[Attribute("", UIWidgets.EditBox, "Name of slot in parent widget, the UI element is going to be placed in. Used when InfoDisplay is nested under another InfoDisplay.")]
 	protected string  m_sParentSlot;
 	
+	// Dimensions and safezone
+	//m_WeaponInfoPanel
+	[Attribute("", UIWidgets.EditBox, "Name of widget containing the GUI element content. Uses the root widget, if empty.")]
+	protected string  m_sContentWidget;	
+	[Attribute("0", UIWidgets.Slider, "Adjustment to the content widget width. Can be used to provide a widget-specific padding.", "-200 200 1")]
+	protected int m_iContentWidthAdjustment;
+	[Attribute("0", UIWidgets.Slider, "Adjustment to the content height width. Can be used to provide a widget-specific padding.", "-200 200 1")]
+	protected int m_iContentHeightAdjustment;
+		
 	// Attributes for dynamic opacity feature
 	[Attribute("0", UIWidgets.CheckBox, "Adjusts opacity of the widget based on level of ambient light.")]
 	protected bool m_bAdaptiveOpacity;		
 	
 	protected Widget m_wRoot;
+	protected Widget m_wContent;
+	protected Widget m_wSlot;
 	protected bool m_bShown = false;
 	protected bool m_bForceShowState = false;
 	protected SCR_HUDManagerComponent m_HUDManager;
@@ -81,7 +108,122 @@ class SCR_InfoDisplay : GroupInfoDisplay
 	{
 		return m_wRoot;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetVisible(bool visible = true)
+	{
+		if (m_wRoot)
+			m_wRoot.SetVisible(visible);
+		
+		if (m_wSlot)
+			m_wSlot.SetVisible(visible);
+	}	
 
+	//------------------------------------------------------------------------------------------------
+	//! Return width and height of the InfoDisplay element, optionally with safezones adjustments
+	bool GetDimensions(out float width, out float height, bool addSafezones = true)
+	{
+		if (!m_wContent)
+		{
+			width = 0;
+			height = 0;
+			return false;
+		}
+			
+		m_wContent.GetScreenSize(width, height);
+
+		WorkspaceWidget workspace = m_wContent.GetWorkspace();
+		width = workspace.DPIUnscale(width);
+		height = workspace.DPIUnscale(height);		
+
+		if (addSafezones)
+		{
+			width += m_iContentWidthAdjustment;
+			height += m_iContentHeightAdjustment;
+		}
+		
+		return true;
+	}		
+
+	//------------------------------------------------------------------------------------------------
+	//! Return width and height of the InfoDisplay element, optionally with safezones adjustments
+	bool GetAnchorPosition(out float x, out float y, EWidgetAnchor anchor = EWidgetAnchor.TOPLEFT, bool addSafezones = true)
+	{
+		if (!m_wContent)
+		{
+			x = 0;
+			y = 0;
+			return false;
+		}
+		
+		float width, height;
+		
+		GetDimensions(width, height, addSafezones);
+		
+		m_wContent.GetScreenPos(x, y);
+		
+		WorkspaceWidget workspace = m_wContent.GetWorkspace();
+		x = workspace.DPIUnscale(x) - m_iContentWidthAdjustment * 0.5 * addSafezones;
+		y = workspace.DPIUnscale(y) - m_iContentHeightAdjustment * 0.5 * addSafezones;			
+
+	    switch(anchor)
+	    {
+	        case EWidgetAnchor.TOPLEFT:
+
+	            break;
+	  
+	        case EWidgetAnchor.TOP:
+
+				x += width / 2;
+	            break;
+	  
+	        case EWidgetAnchor.TOPRIGHT:
+	            
+				x += width;
+	            break;
+			
+	        case EWidgetAnchor.LEFT:
+
+				y += height / 2;
+				break;
+	  
+	        case EWidgetAnchor.CENTER:
+
+				y += height / 2;
+				x += width / 2;
+	            break;
+	  
+	        case EWidgetAnchor.RIGHT:
+	            
+				y += height / 2;
+				x += width;
+	            break;
+			
+	        case EWidgetAnchor.BOTTOMLEFT:
+
+				y += height;			
+	            break;
+	  
+	        case EWidgetAnchor.BOTTOM:
+
+				y += height;
+				x += width / 2;
+	            break;
+	  
+	        case EWidgetAnchor.BOTTOMRIGHT:
+	            
+				y += height;
+				x += width;
+	            break;
+			
+			default:
+				
+				break;									
+	    }	
+		
+		return true;	
+	}		
+			
 	//------------------------------------------------------------------------------------------------
 	override event void OnStartDraw(IEntity owner)
 	{
@@ -95,11 +237,11 @@ class SCR_InfoDisplay : GroupInfoDisplay
 			
 			if (wParentRoot)
 			{
-				Widget wParentSlot = wParentRoot.FindAnyWidget(m_sParentSlot);
+				m_wSlot = wParentRoot.FindAnyWidget(m_sParentSlot);
 				WorkspaceWidget wWorkspace = GetGame().GetWorkspace();
 			
-				if (wParentSlot && wWorkspace)
-					m_wRoot = wWorkspace.CreateWidgets(m_LayoutPath, wParentSlot);
+				if (m_wSlot && wWorkspace)
+					m_wRoot = wWorkspace.CreateWidgets(m_LayoutPath, m_wSlot);
 			}
 		}
 		
@@ -120,7 +262,14 @@ class SCR_InfoDisplay : GroupInfoDisplay
 			m_bRegistered = true;
 			m_wRoot = m_HUDManager.CreateLayout(m_LayoutPath, m_eLayer, m_iOverrideZOrder);
 		}
+
+		// Detect 'content widget'
+		if (m_sContentWidget != string.Empty)
+			m_wContent = m_wRoot.FindAnyWidget(m_sContentWidget);
 		
+		if (!m_wContent)
+			m_wContent = m_wRoot;		
+				
 		// Adaptive opacity initialization
 		if (m_wRoot && m_HUDManager && m_bAdaptiveOpacity)
 		{
@@ -128,12 +277,18 @@ class SCR_InfoDisplay : GroupInfoDisplay
 			
 			UpdateOpacity(m_HUDManager.GetAdaptiveOpacity(), m_HUDManager.GetSceneBrightness(), m_HUDManager.GetSceneBrightnessRaw())
 		}
+		
+		#ifdef DEBUG_INFO_DISPLAY
+		PrintFormat("%1 [OnStartDraw] m_wRoot: %2", this, m_wRoot);
+		#endif		
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
 	{
-		//PrintFormat("<Adaptive Opacity> %1 | Updating opacity %2 -> %3", this, m_wRoot.GetOpacity(), opacity);
+		#ifdef DEBUG_ADAPTIVE_OPACITY
+		PrintFormat("%1 [UpdateOpacity] %2 -> %3", this, m_wRoot.GetOpacity(), opacity);
+		#endif
 		
 		#ifdef WORKBENCH
 		float currentOpacity = m_wRoot.GetOpacity();
@@ -159,8 +314,17 @@ class SCR_InfoDisplay : GroupInfoDisplay
 
 		if (m_HUDManager && m_bRegistered)
 			m_HUDManager.UnregisterHUDElement(this);
+		
+		#ifdef DEBUG_INFO_DISPLAY
+		PrintFormat("%1 [OnStopDraw] m_wRoot: %2", this, m_wRoot);
+		#endif
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override event void UpdateValues(IEntity owner, float timeSlice)
+	{
+	}	
+	
 	//------------------------------------------------------------------------------------------------
 	override event void OnInit(IEntity owner)
 	{

@@ -71,4 +71,7 @@ class CustomStringTableItem: ScriptStringTableItem
 	
 	[Attribute(category:"Custom", desc: "Online link to image showing context of the text.")]
 	string ImageLink;
+	
+	[Attribute(category:"Custom", defvalue: "false", desc: "Hidden items will not be present in public releases")]
+	bool Hidden;
 };

@@ -9,7 +9,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 {
 	// Pointer for getting SCR_ScreenEffects
 	private static SCR_ScreenEffects s_pScreenEffects;
-		
+
 	// PP constants
 	//DOFBokeh AddDOFBokehEffect()
 	private const int FOCUSDISTANCE_MULTIPIER 							= 15;
@@ -45,7 +45,9 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	protected const float DEATHEFFECT_FADEIN_OPACITY_DURATION 			= 0.8;
 	protected const float DEATHEFFECT_FADEIN_PROGRESSION_DURACTION		= 0.5;
 	protected const float DEATHEFFECT_FADEIN_OPACITY_TARGET				= 1;
-	protected const float DEATHEFFECT_FADEIN_PROGRESSION_TARGET 		= 1;
+	protected const float DEATHEFFECT_FADEIN_PROGRESSION_TARGET 		= 1;	
+	protected const float UNCONSCIOUS_FADEIN_OPACITY_TARGET				= 0.98;
+	protected const float UNCONSCIOUS_FADEIN_PROGRESSION_TARGET 		= 0.5;
 
 	// Play Animation of InstaDeathEffect()
 	protected const float INSTADEATHEFFECT_START_OPACITY				= 0.4;
@@ -83,6 +85,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 	//GaussBlurriness
 	private const float MOMENTARY_DAMAGE_BLUR_DURATION					= 0.5;	// MomentaryDamageEffect() duration in seconds
+	private const float GAUSSBLUR_MIN_DAMAGE							= 5;
 	private float m_fMomentaryDamage;
 	private static float s_fGaussBlurriness;
 	private static bool s_bRemoveGaussBlur 								= true;
@@ -112,21 +115,20 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	private int m_iEffectNo 						= 1;
 
 	// Adaptive opacity widgets 
-	protected Widget 							m_wAdaptiveOpacitySupression;
-	protected Widget								m_wAdaptiveOpacityBlood;	
+	protected Widget 								m_wAdaptiveOpacitySupression;
+	protected Widget								m_wAdaptiveOpacityBlood;
 	
 	// Owner data
 	protected ChimeraCharacter 						m_pCharacterEntity;
 	protected SignalsManagerComponent 				m_pSignalsManager;
 
 	// Character
-	protected EDamageState			 				m_eLifeState;
 	protected ScriptedHitZone 						m_pHealthHitZone;
 	protected ScriptedHitZone 						m_pHeadHitZone;
-	protected HitZone 								m_pBloodHZ;
+	protected SCR_CharacterBloodHitZone				m_pBloodHZ;
 	protected SCR_CharacterDamageManagerComponent	m_pDamageManager;
 
-	protected bool m_bPlayerOutsideCharacter;
+	protected bool m_bPlayerOutsideCharacter		= true;
 	protected bool m_bBleedingEffect;
 	protected bool m_bIsBleeding;
 
@@ -237,11 +239,16 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		
 		m_pDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
 		if (!m_pDamageManager)
-			Debug.Error("Null pointer to SCR_CharacterDamageManagerComponent");
+			return;
 
 		// define hitzones for later getting
 		m_pHealthHitZone = ScriptedHitZone.Cast(m_pDamageManager.GetDefaultHitZone());
 		m_pHeadHitZone = ScriptedHitZone.Cast(m_pDamageManager.GetHeadHitZone());
+		m_pBloodHZ = SCR_CharacterBloodHitZone.Cast(m_pDamageManager.GetBloodHitZone());
+
+		m_EventHandlerManager = EventHandlerManagerComponent.Cast(m_pCharacterEntity.FindComponent(EventHandlerManagerComponent));
+		if (m_EventHandlerManager)
+			m_EventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 
 		// Invoker for momentary damage events and DOT damage events
 		m_pDamageManager.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
@@ -251,16 +258,13 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		if (m_pHeadHitZone)
 			m_pHeadHitZone.GetOnDamageStateChanged().Insert(InstaDeathEffect);
 
-		// Establish essential pointers to simplify getting them in the future
-		m_eLifeState = m_pDamageManager.GetState();
-		m_pBloodHZ = m_pDamageManager.GetBloodHitZone();
-		
-		if (!m_pBloodHZ)
-			Debug.Error("No BloodHZ inside damagemanager!");
-
 		// In case player started bleeding before invokers were established, check if already bleeding
 		if (m_pDamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
 			OnDamageOverTimeAdded(EDamageType.BLEEDING, m_pDamageManager.GetDamageOverTime(EDamageType.BLEEDING));
+		
+		// In case of unconsciousness starting outside of character, apply effect now
+		if (m_pCharacterEntity.GetCharacterController() && m_pCharacterEntity.GetCharacterController().IsUnconscious())
+			UnconsciousnessEffect(false);
 
 		// Audio components for damage-related audio effects
 		m_pSignalsManager = SignalsManagerComponent.Cast(m_pCharacterEntity.FindComponent(SignalsManagerComponent));
@@ -283,18 +287,22 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		PlayerCamera playerCamera = GetGame().GetPlayerController().GetPlayerCamera();
 		if (!playerCamera || currentCamera != playerCamera)
 		{
-			m_wRoot.SetVisible(false);
 			m_bPlayerOutsideCharacter = true;
+			LowPassFilterEffect();
+			m_wRoot.SetVisible(false);
 			s_bEnableDOFBokeh = false;
 			s_bEnableDOF = false;
 			s_bEnableGaussBlur = false;
 			s_bEnableSaturation = false;
 			return;
 		}
-
-		m_bPlayerOutsideCharacter = false;
+		
 		m_wRoot.SetVisible(true);
-
+		
+		m_bPlayerOutsideCharacter = false;
+		
+		LowPassFilterEffect();
+		
 		if (m_pSignalsManager)
 			FindStaminaValues();
 
@@ -313,6 +321,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//TODO@FAC CHeck this out
 	override void UpdateOpacity(float opacity, float sceneBrightness, float sceneBrightnessRaw)
 	{
 		if (!m_wAdaptiveOpacityBlood)
@@ -390,13 +399,14 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 				  int colliderID,
 				  int nodeID)
 	{
-		m_fGaussBlurReduction = Math.Clamp(++m_fGaussBlurReduction, 0, 2);
+		if (damage > GAUSSBLUR_MIN_DAMAGE)
+			m_fGaussBlurReduction = Math.Clamp(++m_fGaussBlurReduction, 0, 2);
 	}
 
 	void OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz = null)
 	{
 		m_bIsBleeding = m_pDamageManager.IsDamagedOverTime(EDamageType.BLEEDING);
-		if (!m_bBleedingEffect && m_bIsBleeding && m_eLifeState != EDamageState.DESTROYED)
+		if (!m_bBleedingEffect && m_bIsBleeding && m_pDamageManager.GetState() != EDamageState.DESTROYED)
 			CreateEffectOverTime(true);
 
 		m_bBleedingEffect = m_bIsBleeding;
@@ -413,6 +423,26 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		GetGame().GetCallqueue().Remove(ClearEffectOverTime);
 
 		m_bBleedingEffect = false;
+	}
+	
+	void OnDamageStateChanged()
+	{
+		LowPassFilterEffect();
+		
+		if (m_pDamageManager.GetState() == EDamageState.DESTROYED)
+		{
+			if (!m_pHeadHitZone.GetDamageState() != EDamageState.DESTROYED)
+				DeathEffect();
+
+			GetGame().GetCallqueue().Remove(CreateEffectOverTime);
+			GetGame().GetCallqueue().Remove(ClearEffectOverTime);
+			ClearEffectOverTime(false);
+		}
+	}
+	
+	void OnConsciousnessChanged(bool conscious)
+	{
+		UnconsciousnessEffect(conscious);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -490,7 +520,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		BlackoutEffect(1);
 
 		// Play heartbeat sound
-		if (!m_bPlayerOutsideCharacter)
+		if (!m_bPlayerOutsideCharacter && !m_pDamageManager.GetDefaultHitZone().GetDamageState() == EDamageState.DESTROYED)
 		{
 			SCR_UISoundEntity.SetSignalValueStr("BloodLoss", 1 - m_pBloodHZ.GetHealthScaled());
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INJURED_PLAYERCHARACTER);
@@ -498,7 +528,6 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 		GetGame().GetCallqueue().CallLater(ClearEffectOverTime, 1000, false, repeat, m_iEffectNo);
 	}
-	
 
 	//------------------------------------------------------------------------------------------------
 	void ClearEffectOverTime(bool repeat)
@@ -550,6 +579,8 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	{
 		if (m_wDeath.GetOpacity() > 0.1)
 			s_fFocalLength = s_fFocalLengthNear + (FOCALLENGTH_MAX * (m_wDeath.GetOpacity() - DEATHEFFECT_START_OPACITY) / (DEATHEFFECT_FADEIN_OPACITY_TARGET - DEATHEFFECT_START_OPACITY));
+		else
+			s_fFocalLength = 0.1; //If no death/unconsciousness blur is desired, set focallength to defaultvalue
 		
 		s_fFocusDistance = FOCUSDISTANCE_MULTIPIER;
 
@@ -565,7 +596,6 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 	void AddDOFEffect(float timeslice, bool nearDofAllowed)
 	{
-		
 		s_fFocalDistance = FOCALDISTANCE_INTENSITY;
 
 		// if s_bNearDofEffect is allowed, simpleDOF always must be enabled. If not, it must be disabled when inactive (i.e. focalchange > max)
@@ -584,36 +614,55 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		else
 			s_bEnableDOF = false;
 
-		if (m_eLifeState == EDamageState.DESTROYED)
+		if (m_pDamageManager.GetState() == EDamageState.DESTROYED)
 			s_fFocalChange = 100 - 100 * (m_wDeath.GetOpacity() - DEATHEFFECT_START_OPACITY) / (DEATHEFFECT_FADEIN_OPACITY_TARGET - DEATHEFFECT_START_OPACITY);
 		else
 			s_fFocalChange = SIMPLEDOF_FOCALCHANGE_MAX;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	void OnDamageStateChanged()
+	private void LowPassFilterEffect()
 	{
-		m_eLifeState = m_pDamageManager.GetState();
-		if (m_eLifeState == EDamageState.DESTROYED)
+		ECharacterLifeState state = ECharacterLifeState.ALIVE;
+		
+		if (!m_bPlayerOutsideCharacter)
 		{
-			if (!m_pHeadHitZone.GetDamageState() != EDamageState.DESTROYED)
-				DeathEffect();
-
-			GetGame().GetCallqueue().Remove(CreateEffectOverTime);
-			GetGame().GetCallqueue().Remove(ClearEffectOverTime);
-			ClearEffectOverTime(false);
+			SCR_CharacterControllerComponent scrCharController = SCR_CharacterControllerComponent.Cast(m_pCharacterEntity.GetCharacterController());
+			state = scrCharController.GetLifeState();
 		}
-	} 
-
+			
+		AudioSystem.SetOutputStateSignal(
+			AudioSystem.DefaultOutputState,
+			AudioSystem.GetOutpuStateSignalIdx(AudioSystem.DefaultOutputState, "CharacterLifeState"),
+			state);
+	}
+	
 	//------------------------------------------------------------------------------------------------
+	//TODO@FAC scale durations based on progression of existing death effect
+	void UnconsciousnessEffect(bool conscious)
+	{
+		if (!m_wDeath)
+			return;
+		
+		if (!conscious)
+		{
+			m_wDeath.SetOpacity(m_wDeath.GetOpacity());
+			m_wDeath.SetMaskProgress(0);
+			AnimateWidget.Opacity(m_wDeath, UNCONSCIOUS_FADEIN_OPACITY_TARGET, DEATHEFFECT_FADEIN_OPACITY_DURATION);
+			AnimateWidget.AlphaMask(m_wDeath, UNCONSCIOUS_FADEIN_PROGRESSION_TARGET, DEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
+		}
+		else
+		{
+			AnimateWidget.Opacity(m_wDeath, 0, DEATHEFFECT_FADEIN_OPACITY_DURATION);
+			AnimateWidget.AlphaMask(m_wDeath, 0, DEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
+		}
+	}
+	
 	void DeathEffect()
 	{
-		if (!m_wDeath || (m_wDeath.GetOpacity() > 0))
+		if (!m_wDeath)
 			return;
 
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_DEATH_SLOW);
-		m_wDeath.SetOpacity(DEATHEFFECT_START_OPACITY);
-		m_wDeath.SetMaskProgress(0);
 		AnimateWidget.Opacity(m_wDeath, DEATHEFFECT_FADEIN_OPACITY_TARGET, DEATHEFFECT_FADEIN_OPACITY_DURATION);
 		AnimateWidget.AlphaMask(m_wDeath, DEATHEFFECT_FADEIN_PROGRESSION_TARGET, DEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
 	}
@@ -622,10 +671,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	{
 		if (m_wDeath.GetOpacity() >= 0.99 || m_pHeadHitZone.GetDamageState() != EDamageState.DESTROYED || m_pHealthHitZone.GetDamageState() != EDamageState.DESTROYED)
 			return;
-
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_DEATH_FAST);
-		m_wDeath.SetMaskProgress(INSTADEATHEFFECT_START_PROGRESSION);
-		m_wDeath.SetOpacity(INSTADEATHEFFECT_START_OPACITY);
+		
 		AnimateWidget.Opacity(m_wDeath, INSTADEATHEFFECT_FADEIN_OPACITY_TARGET, INSTADEATHEFFECT_FADEIN_OPACITY_DURATION);
 		AnimateWidget.AlphaMask(m_wDeath, INSTADEATHEFFECT_FADEIN_PROGRESSION_TARGET, INSTADEATHEFFECT_FADEIN_PROGRESSION_DURACTION);
 	}
@@ -678,6 +724,9 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 		m_bBleedingEffect 					= 0;
 		s_fGaussBlurriness					= 0;
 		s_fFocalLength 						= 0.1;
+		s_fSaturation						= 1;
+		s_bEnableDOF						= false;
+		s_bEnableDOFBokeh					= false;
 
 		if (m_wBloodEffect1)
 		{
@@ -804,7 +853,10 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 	{
 		if (!m_pDamageManager)
 			return;
-
+	
+		if (m_EventHandlerManager)
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+	
 		m_pDamageManager.GetOnDamageStateChanged().Remove(OnDamageStateChanged);
 		m_pDamageManager.GetOnDamageOverTimeAdded().Remove(OnDamageOverTimeAdded);
 		m_pDamageManager.GetOnDamageOverTimeRemoved().Remove(OnDamageOverTimeRemoved);
@@ -815,6 +867,7 @@ class SCR_ScreenEffects : SCR_InfoDisplayExtended
 
 		m_pHealthHitZone = null;
 		m_pHeadHitZone = null;
+		m_pBloodHZ = null;
 		m_pCharacterEntity = null;
 		m_pDamageManager = null;
 	}

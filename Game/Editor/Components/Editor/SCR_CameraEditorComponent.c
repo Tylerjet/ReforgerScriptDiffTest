@@ -70,6 +70,15 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 	{
 		return Event_OnCameraCreate;
 	}
+	/*!
+	Set initial camera transformation.
+	To be used before camera is created.
+	\param transform Tranaformation matrix
+	*/
+	void SetInitTransform(vector transform[4])
+	{
+		m_vInitCameraTransform = transform;
+	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Protected Functions
@@ -179,6 +188,9 @@ class SCR_CameraEditorComponent : SCR_BaseEditorComponent
 				SCR_TeleportToCursorManualCameraComponent teleportComponent = SCR_TeleportToCursorManualCameraComponent.Cast(m_Camera.FindCameraComponent(SCR_TeleportToCursorManualCameraComponent));
 				if (teleportComponent)
 				{
+					if (m_vPreActivateCameraTransform[3] == vector.Zero)
+						m_Camera.GetWorldTransform(m_vPreActivateCameraTransform);
+					
 					//--- Reset roll
 					vector angles = Math3D.MatrixToAngles(m_vPreActivateCameraTransform);
 					angles[2] = 0;

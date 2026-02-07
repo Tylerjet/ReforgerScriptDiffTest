@@ -23,6 +23,10 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	protected float m_FrameProgress = 1;
 	protected float m_fPlayerDrawDistance;
 	protected ref ScriptInvoker m_OnUIRefresh = new ScriptInvoker();
+	protected ref ScriptInvoker Event_OnCharacterMovedInVehicle = new ScriptInvoker(); //~ Authority Only, Returns this character and vehicle character is placed in. Is NULL if placing failed
+	
+	//~ Authority only, Allows character to be forced into a specific vehicle position and will delete it if failed
+	protected ref array<ECompartmentType> m_aForceVehicleCompartments;
 	
 	/*!
 	Get AI agent of the character.
@@ -31,6 +35,17 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	AIAgent GetAgent()
 	{
 		return m_Agent;
+	}
+	
+	/*!
+	Get event called when character is moved in the vehicle by GM and systems
+	Called only on server.
+	Invoker params are: this character, IEntity vehicle. This is null if moving in vehicle failed
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnCharacterMovedInVehicle()
+	{
+		return Event_OnCharacterMovedInVehicle;
 	}
 	
 	/*!
@@ -48,7 +63,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		SCR_EditableCharacterComponentClass prefabData = SCR_EditableCharacterComponentClass.Cast(GetEditableEntityData());
 		if (!prefabData) return null;
 		
-		IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefabData.GetPrefabGroup()), owner.GetWorld());
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.Transform[3] = m_Agent.GetControlledEntity().GetOrigin();
+		IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(prefabData.GetPrefabGroup()), owner.GetWorld(), params);
 		if (!groupEntity) return null;
 		
 		AIGroup group = AIGroup.Cast(groupEntity);
@@ -81,6 +98,8 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		
 		//--- Add the entity to the group
 		group.AddAgent(m_Agent);
+//		
+		//group.SetWorldTransform(matrix);
 		
 		return groupEditableEntity;
 	}
@@ -113,7 +132,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	
 	/*!
 	Check if character is Player or Possessed by a player
-	Return true if controlled by player
+	\return true if controlled by player
 	*/
 	bool IsPlayerOrPossesed() 
 	{
@@ -221,6 +240,18 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		return super.SetParentEntity(parentEntity);
 	}
 	
+	//~ Authority Only. When spawned will force characters into vehicle position
+	override void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments)
+	{
+		if (forceVehicleCompartments.IsEmpty())
+			return;
+		
+		m_aForceVehicleCompartments = {};
+		
+		foreach (ECompartmentType compartment: forceVehicleCompartments)
+			m_aForceVehicleCompartments.Insert(compartment);
+	}
+	
 	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{					
 		EEditableEntityType parentType;
@@ -237,6 +268,15 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				//--- Execute on server, MoveInVehicle handles distribution to clients
 				if (Replication.IsServer())
 				{
+					Faction characterFaction = GetFaction();
+					Faction vehicleFaction = parentEntity.GetFaction();
+					//Is vehicle hostile? -> if so, do nothing
+					if (vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
+					{
+						Event_OnCharacterMovedInVehicle.Invoke(this, null);
+						break;
+					};
+					
 					SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 					if (compartmentAccess)
 					{
@@ -245,12 +285,55 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 						
 						//Add vehicle to group
 						if (isAi)
-							AddUsableVehicle(parentEntity.GetOwner());
+							AddUsableVehicle(parentOwner);
 						
-						//~ Todo: Post 0.9.6 fix
-						if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) break;
-						if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) break;
-						if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo)) break;
+						//~ Try placing character into vehicle
+						if (!m_aForceVehicleCompartments || m_aForceVehicleCompartments.IsEmpty())
+						{
+							//~ Try to add character to any free vehicle slot
+							if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) 
+							{
+								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
+								break;
+							}
+							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) 
+							{
+								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
+								break;
+							}
+							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo))
+							{
+								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
+								break;
+							}
+						}
+						
+						//~ Force character into vehicle. Will delete the character if it fails to find a valid empty compartment
+						else 
+						{
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Pilot) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot)) 
+							{
+								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
+								break;
+							}
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Turret) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret)) 
+							{
+								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
+								break;
+							}
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Cargo) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo))
+							{
+								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
+								break;
+							}
+							
+							//~ Failed to move in vehicle means delete character
+							Event_OnCharacterMovedInVehicle.Invoke(this, null);
+							Destroy();
+						}
+						
+						//~ Failed to move in vehicle
+						Event_OnCharacterMovedInVehicle.Invoke(this, null);
 					}
 				}
 				
@@ -272,6 +355,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				super.OnParentEntityChanged(null, parentEntityPrev, changedByUser);
 			}
 		}
+		
+		if (m_aForceVehicleCompartments)
+			m_aForceVehicleCompartments = null;
 
 		//--- Create a new group (ToDo: Solve together with entity<->entity interaction)
 		//SCR_EditableEntityComponent newGroup = CreateGroupForCharacter();
@@ -296,6 +382,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			
 			return;
 		}
+		
+		//--- Make sure characters don't fall through ground
+		transform[3][1] = Math.Max(transform[3][1], GetOwner().GetWorld().GetSurfaceY(transform[3][0], transform[3][2]));
 		
 		super.SetTransform(transform, changedByUser);
 	}	
@@ -433,7 +522,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 				array<CompartmentAccessComponent> crewCompartmentAccess = new array<CompartmentAccessComponent>;
 				editableVehicle.GetCrew(crewCompartmentAccess, true);
 				
-				foreach(CompartmentAccessComponent compartment: crewCompartmentAccess)
+				foreach (CompartmentAccessComponent compartment: crewCompartmentAccess)
 				{
 					crew = SCR_EditableEntityComponent.Cast(compartment.GetOwner().FindComponent(SCR_EditableEntityComponent));
 
@@ -462,7 +551,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		array<IEntity> usableVehicles = new array<IEntity>;
 		m_Group.GetUsableVehicles(usableVehicles);
 		
-		foreach(IEntity vehicle: usableVehicles)
+		foreach (IEntity vehicle: usableVehicles)
 			m_Group.RemoveUsableVehicle(vehicle);
 	}*/
 	
@@ -517,9 +606,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		if (control)
 			control.ActivateAI();
 	}
-	override bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1)
+	override bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1, out bool isDestroyed = false)
 	{
-		if (super.Serialize() && !IsPlayer())
+		if (super.Serialize(target, targetIndex, isDestroyed) && !IsPlayer())
 		{
 			SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
 			if (compartmentAccess)
@@ -543,15 +632,6 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));	
 		compartmentAccess.MoveInVehicle(target.GetOwner(), compartments[targetValue]);
-	}
-	override bool GetEntityBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
-	{
-		//--- Players do no affect budgets, true returns empty cost array, avoid fallback entityType cost
-		if (IsPlayer(owner))
-			return true;
-		
-		//--- AI characters do affect budgets as usual
-		return super.GetEntityBudgetCost(outBudgets, owner);
 	}
 	
 	override void OnPostInit(IEntity owner)

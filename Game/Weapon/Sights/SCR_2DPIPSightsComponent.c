@@ -21,9 +21,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	// PIP -----------------------------
 	[Attribute("{EF091399D840192D}UI/layouts/Sights/PictureInPictureSightsLayout.layout", UIWidgets.ResourcePickerThumbnail, "The layout used for the PIP component", params: "layout", category: "PiPSights")]
 	protected ResourceName m_sPIPLayoutResource;
-	
-	[Attribute("0.0", UIWidgets.Slider, "Field of view offset for PIP component", params: "-89.9 89.9 0.1", category: "PiPSights")]
-	protected float m_fPIPFOVOffset;
 
 	[Attribute("RTTexture0", UIWidgets.EditBox, "Name of RTTexture widget within provided layout", category: "PiPSights")]
 	protected string m_sRTTextureWidgetName;
@@ -37,8 +34,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("2", UIWidgets.Slider, "TODO: fill", category: "PiPSights")]
 	protected int m_iGuiIndex;
 
-	// TODO@AS: Handle this along with other things via FovSightsInfo?
-	[Attribute("40.0", UIWidgets.Slider, "Camera field of view used by this PIP component", params: "0 89.9 0.1", category: "PiPSights")]
+	[Attribute("28.0", UIWidgets.Slider, "Camera field of view used by this PIP component. Set to 0 to use Focus FOV", params: "0 89.99 0.01", category: "PiPSights")]
 	protected float m_fMainCameraFOV;
 
 	[Attribute("0.2", UIWidgets.Slider, "Camera near clipping plane", params: "0 1000 0.01", category: "PiPSights")]
@@ -48,8 +44,17 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected float m_fFarPlane;
 
 	// Point info?
-	[Attribute("1.0", UIWidgets.EditBox, "Scale of resolution used by the PIP", params: "0.1 1 0.1", category: "PiPSights")]
+	[Attribute("1.0", UIWidgets.Slider, "Scale of resolution used by the PIP", params: "0.1 1 0.1", category: "PiPSights")]
 	protected float m_fResolutionScale;
+	
+	[Attribute("0", UIWidgets.Slider, "Angular size of reticle texture in degrees. Set to zero to use default from reticle material", params: "0 89.999 0.001", category: "PiPSights", precision: 3)]
+	protected float m_fReticleAngularSize;
+	
+	[Attribute("1", UIWidgets.Slider, "Portion of reticle that contains symbology with desired angular size", params: "0 1 0.001", category: "PiPSights", precision: 5)]
+	protected float m_fReticlePortion;
+	
+	[Attribute("0", UIWidgets.Slider, "Zoom at which the optic marking is valid. Set to 0 for front focal plane reticle scaling with zoom. Set to negative to enforce specific base FOV that would otherwise be computed automatically.", params: "0 200 0.001", category: "PiPSights", precision: 5)]
+	protected float m_fReticleBaseZoom;
 
 	[Attribute("{972DF18CB9BFCBD4}Common/Postprocess/HDR_ScopePiP.emat", UIWidgets.EditBox, "", params: "emat", category: "PiPSights")]
 	protected ResourceName m_rScopeHDRMatrial;
@@ -86,7 +91,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("0.0", UIWidgets.Slider, "Offset of scope center in Y", params: "-1 1 0.001", category: "PiPSights-Parallax")]
 	protected float m_fCenterOffsetY;
 	
-	[Attribute("0.0", UIWidgets.Slider, "Radius of PIP scope from the center", category: "PiPSights", precision: 5)]
+	[Attribute("0.01", UIWidgets.Slider, "Radius of PIP scope ocular", params: "0.001 1 0.0001", category: "PiPSights", precision: 5)]
 	protected float m_fScopeRadius;
 	
 	[Attribute("{5366CEDE2A151631}Terrains/Common/Water/UnderWater/oceanUnderwater.emat", UIWidgets.ResourcePickerThumbnail, "Underwater PP material", params: "emat", category: "PiPSights")]
@@ -96,7 +101,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected vector m_vScreenScopeCenter;
 	protected float m_fScreenScopeRadiusSq;
 	
-	protected IEntity m_CurrentPlayable;
+	protected IEntity m_eCurrentPlayable;
 	
 	//! Current PIP reticle color
 	protected ref Color m_cReticleColor = Color.Black;
@@ -151,23 +156,24 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected RenderTargetWidget m_wRenderTargetWidget;
 
 	//! The camera to be used by this pip component
-	protected CameraBase m_PIPCamera;
+	protected SCR_PIPCamera m_PIPCamera;
 	
-	IEntity 	m_pOwner;	
+	IEntity 	m_pOwner;
 	Material 	m_pMaterial;
-	int				m_iVignetteCenterXIndex;
-	int 			m_iVignetteCenterYIndex;
-	int   			m_iVignettePowerIndex;
-	int 			m_iLensDistortIndex;
-	int				m_iReticleOffsetXIndex;
-	int 			m_iReticleOffsetYIndex;
-	int				m_iReticleColorIndex;
+	int			m_iVignetteCenterXIndex	= -1;
+	int			m_iVignetteCenterYIndex	= -1;
+	int			m_iVignettePowerIndex	= -1;
+	int			m_iLensDistortIndex		= -1;
+	int			m_iReticleOffsetXIndex	= -1;
+	int			m_iReticleOffsetYIndex	= -1;
+	int			m_iReticleColorIndex	= -1;
+	int			m_iReticleScaleIndex	= -1;
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
 		Returns the camera used for picture in picture mode or null if none.
 	*/
-	CameraBase GetPIPCamera()
+	SCR_PIPCamera GetPIPCamera()
 	{
 		return m_PIPCamera;
 	}
@@ -217,10 +223,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//------------------------------------------------------------------------------------------------
 	float GetMainCameraFOV()
 	{
-		if (!SCR_Global.IsScope2DEnabled())
+		if (SCR_Global.IsScope2DEnabled())
+			return GetFOV();
+		
+		if (m_fMainCameraFOV > 0)
 			return m_fMainCameraFOV;
 		
-		return GetFOV();
+		m_fMainCameraFOV = CalculateZoomFOV(1);
+		return m_fMainCameraFOV;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -251,14 +261,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			return false;
 		
 		// Check up in hierarchy?
-		m_CurrentPlayable = pEntity.GetParent();
+		m_eCurrentPlayable = pEntity.GetParent();
 
-		while (m_CurrentPlayable)
+		while (m_eCurrentPlayable)
 		{
-			if (pControlledEntity == m_CurrentPlayable)
+			if (pControlledEntity == m_eCurrentPlayable)
 				return true;
 			
-			m_CurrentPlayable = m_CurrentPlayable.GetParent();
+			m_eCurrentPlayable = m_eCurrentPlayable.GetParent();
 		}
 		
 		return false;
@@ -300,7 +310,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			
 			// If using a pivot, we need to apply the pivot transformation
 			TNodeId pivotIndex = lastNode.GetPivot();
-			if (pivotIndex > 0)
+			if (pivotIndex != -1)
 			{
 				// Multiply pivot * local TM = model TM
 				IEntity parentNode = lastNode.GetParent();
@@ -414,7 +424,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	
 			// Create PIP camera
 			if (!m_PIPCamera)
-				m_PIPCamera = CreateCamera(m_Owner, m_vCameraPoint, m_vCameraAngles, m_iCameraIndex, GetFOV(), m_fNearPlane, m_fFarPlane);
+				m_PIPCamera = SCR_PIPCamera.Cast(CreateCamera(m_Owner, m_vCameraPoint, m_vCameraAngles, m_iCameraIndex, GetFOV(), m_fNearPlane, m_fFarPlane));
 			
 			if (!m_PIPCamera)
 			{
@@ -492,11 +502,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//! Toggle between illumination modes 
 	protected override void EnableReticleIllumination(bool enable)
 	{
+		super.EnableReticleIllumination(enable);
+		
 		if (m_b2DIsEnabled)
-		{
-			super.EnableReticleIllumination(enable);
 			return;
-		}
 		
 		if (enable)
 		{
@@ -574,7 +583,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (!m_Owner)
 			return;
 		
-		if (!m_CurrentPlayable)
+		if (!m_eCurrentPlayable)
 		{
 			if (IsPIPEnabled())
 			{
@@ -582,7 +591,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 				if (m_PIPCamera)
 				{
 					auto camMgr = GetGame().GetCameraManager();
-					if (camMgr.GetOverlayCamera() == m_PIPCamera)
+					if (camMgr && camMgr.GetOverlayCamera() == m_PIPCamera)
 						camMgr.SetOverlayCamera(null);
 				}
 				
@@ -612,29 +621,70 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
 	void UpdateCamera(float timeSlice)
 	{
-		SCR_PIPCamera pipCamera = SCR_PIPCamera.Cast(m_PIPCamera);
-		if (pipCamera)
+		if (!m_PIPCamera)
+			return;
+		
+		if (m_fScopeRadius <= 0)
+			return;
+		
+		// Compute FOV scale based on radius of the scope
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return;
+		
+		CameraBase mainCamera = cameraManager.CurrentCamera();
+		if (!mainCamera)
+			return;
+		
+		float distance = mainCamera.CoordToLocal(GetSightsRearPosition()).Length();
+		if (distance == 0)
+			return;
+		
+		// Get base FOV for camera, zoom levels can vary
+		float fov;
+		SightsFOVInfo fovInfo = GetFOVInfo();
+		if (fovInfo)
 		{
-			// Set proper FOV for camera, zoom levels can vary
-			SightsFOVInfo fovInfo = GetFOVInfo();
-			if (fovInfo)
-				pipCamera.SetVerticalFOV(fovInfo.GetFOV());
-			
-			// Get local tm in relation to actual parent
-			vector mat[4];
-			vector angles = m_vCameraAngles + Vector(m_fCurrentCameraPitch, 0.0, 0.0);
-			GetPIPCameraLocalTransform(m_pOwner, m_vCameraPoint, angles, mat);
-			
-			// Apply zero angles to default rot
-			pipCamera.SetLocalTransform(mat);
-			
-			// Finally update camera props
-			pipCamera.UpdatePIPCamera(timeSlice, m_iCameraIndex);
+			fov = fovInfo.GetFOV();
+			SCR_CharacterCameraHandlerComponent.SetOverlayCameraFOV(fov);
 		}
+		
+		// Account for distance of camera to scope and its diameter
+		float uvScale = 2 * Math.Atan2(m_fScopeRadius * 2, distance);
+		float currentFOV = m_PIPCamera.GetVerticalFOV();
+		bool fovChanged = !float.AlmostEqual(fov * uvScale, currentFOV, currentFOV * 0.01);
+		if (fovChanged)
+			m_PIPCamera.SetVerticalFOV(fov * uvScale);
+		
+		if (fovChanged && m_pMaterial && m_fReticleAngularSize != 0)
+		{
+			// Compute reticle base FOV once to be scaled with uvScale
+			if (m_fReticleBaseZoom > 0)
+				m_fReticleBaseZoom = -CalculateZoomFOV(m_fReticleBaseZoom);
+			
+			float fovReticle;
+			if (m_fReticleBaseZoom == 0)
+				fovReticle = fov;
+			else if (m_fReticleBaseZoom < 0)
+				fovReticle = -m_fReticleBaseZoom;
+			
+			if (fovReticle > 0)
+				m_pMaterial.SetParamByIndex(m_iReticleScaleIndex, fovReticle * uvScale * m_fReticlePortion / m_fReticleAngularSize);
+		}
+		
+		// Get local tm in relation to actual parent
+		vector mat[4];
+		vector angles = m_vCameraAngles + Vector(m_fCurrentCameraPitch, 0.0, 0.0);
+		GetPIPCameraLocalTransform(m_pOwner, m_vCameraPoint, angles, mat);
+		
+		// Apply zero angles to default rot
+		m_PIPCamera.SetLocalTransform(mat);
+		
+		// Finally update camera props
+		m_PIPCamera.UpdatePIPCamera(timeSlice, m_iCameraIndex);
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -667,15 +717,19 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			return;
 		}
 		
-		IEntity character = GetGame().GetPlayerController().GetControlledEntity();
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 		if (!character)
 			return;
-				
-		BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(character.FindComponent(BaseWeaponManagerComponent));
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
 		if (!weaponManager)
 			return;
 		
-		auto cameraManager = GetGame().GetCameraManager();
+		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (!cameraManager)
 			return;
 		
@@ -686,7 +740,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		//main camera matrix in local coordinates
 		vector mainCam[4];
 		mainCamera.GetLocalTransform(mainCam);
-
 		
 		//sights matrix in local coordinates
 		vector sightsLSCam[4];
@@ -835,6 +888,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			m_iReticleOffsetXIndex = m_pMaterial.GetParamIndex("ReticleOffsetX");
 			m_iReticleOffsetYIndex = m_pMaterial.GetParamIndex("ReticleOffsetY");
 			m_iReticleColorIndex = m_pMaterial.GetParamIndex("ReticleColor");
+			m_iReticleScaleIndex = m_pMaterial.GetParamIndex("ReticleScale");
 		}
 		else
 		{
@@ -879,8 +933,19 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		ref auto fwdArrow = Shape.CreateArrow(origin, fwd, 0.01, ARGB(240,0,0,255), ShapeFlags.ONCE);
 		
 		vector scopeCenter = GetSightsRearPosition();
-		vector scopeExtent = scopeCenter + owner.GetTransformAxis(0) * m_fScopeRadius;
-		Shape.CreateArrow(scopeCenter, scopeExtent, 0.01, ARGB(255,255,128,128), ShapeFlags.ONCE);
+		vector scopeSide = owner.GetTransformAxis(0) * m_fScopeRadius;
+		vector scopeUp = owner.GetTransformAxis(1) * m_fScopeRadius;
+		
+		vector ocular[6];
+		ocular[0] = scopeCenter + scopeSide;
+		ocular[1] = scopeCenter - scopeSide;
+		ocular[2] = scopeCenter - scopeUp;
+		ocular[3] = scopeCenter + scopeSide;
+		ocular[4] = scopeCenter + scopeUp;
+		ocular[5] = scopeCenter - scopeSide;
+		
+		Shape.CreateLines(ARGB(128,255,128,128), ShapeFlags.ONCE, ocular, 6);
+		Shape.CreateArrow(scopeCenter - scopeUp, scopeCenter, m_fScopeRadius*0.3, ARGB(255,255,0,0), ShapeFlags.ONCE);
 	}
 	#endif	
 	
@@ -909,8 +974,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			InputFloatClamped(m_fCenterOffsetY, "m_fCenterOffsetY", -1.0, 1.0);
 			InputFloatClamped(m_fReticleOffsetX, "m_fReticleOffsetX", -1.0, 1.0);
 			InputFloatClamped(m_fReticleOffsetY, "m_fReticleOffsetY", -1.0, 1.0);
+			InputFloatClamped(m_fReticleAngularSize, "m_fReticleAngularSize", 0, 90.0);
+			InputFloatClamped(m_fReticlePortion, "m_fReticlePortion", 0, 100.0);
 			InputFloatClamped(m_fCurrentCameraPitch, "m_fCurrentCameraPitch", -90.0, 90.0);
-			
 		}
 		DbgUI.End();
 	}

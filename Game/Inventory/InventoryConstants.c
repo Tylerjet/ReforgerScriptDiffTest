@@ -24,6 +24,9 @@ enum ECommonItemType
 {
 	NONE = 0,
    	BANDAGE = 1,
+	MORPHINE = 2,
+	SALINE = 3,
+	TOURNIQUET = 4,
    	AMMO = 10,
 	MG_AMMO = 11,
 	FOOD = 20,

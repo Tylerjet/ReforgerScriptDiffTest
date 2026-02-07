@@ -188,8 +188,9 @@ class SCR_EditableEntitySceneSlotUIComponent: SCR_EditableEntityBaseSlotUICompon
 	
 	override Widget CreateWidgetForEntity(SCR_EditableEntityComponent entity, SCR_EntitiesEditorUIRule rule, ResourceName layout)
 	{
+		Widget widget = super.CreateWidgetForEntity(entity, rule, layout);
 		UpdateShowOffScreen();
-		return super.CreateWidgetForEntity(entity, rule, layout);
+		return widget;
 	}
 	override void DeleteWidget(SCR_EntitiesEditorUIRule rule)
 	{

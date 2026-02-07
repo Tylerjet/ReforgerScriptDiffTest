@@ -18,6 +18,7 @@ class SCR_MenuEditorComponent : SCR_BaseEditorComponent
 	
 	private bool m_bVisibleDefault;
 	private EditorMenuBase m_EditorMenu;
+	protected SCR_MenuEditorUIComponent m_EditorMenuComponent;
 	private InputManager m_InputManager;
 	
 	private ref ScriptInvoker Event_OnVisibilityChange = new ScriptInvoker;
@@ -32,11 +33,13 @@ class SCR_MenuEditorComponent : SCR_BaseEditorComponent
 		if (visible == m_bVisible) return;
 		m_bVisible = visible;
 		
-		SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(m_EditorMenu.GetRootComponent().FindComponent(SCR_HideEditorUIComponent));
-		if (hideComponent) hideComponent.SetVisible(m_bVisible, instant);
+		SCR_HideEditorUIComponent hideComponent = SCR_HideEditorUIComponent.Cast(m_EditorMenuComponent.GetHideableWidget().FindHandler(SCR_HideEditorUIComponent));
+		if (hideComponent)
+			hideComponent.SetVisible(m_bVisible, instant);
 		
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
-		if (hudManager) hudManager.SetVisible(m_bVisible);
+		if (hudManager)
+			hudManager.SetVisible(m_bVisible);
 		
 		Event_OnVisibilityChange.Invoke(m_bVisible);
 	}
@@ -62,6 +65,14 @@ class SCR_MenuEditorComponent : SCR_BaseEditorComponent
 	EditorMenuBase GetMenu()
 	{
 		return m_EditorMenu;
+	}
+	/*!
+	Get component with menu configuration.
+	\return Menu config component
+	*/
+	SCR_MenuEditorUIComponent GetMenuComponent()
+	{
+		return m_EditorMenuComponent;
 	}
 	/*!
 	Get ebent called when editor menu visibility changes.
@@ -93,6 +104,13 @@ class SCR_MenuEditorComponent : SCR_BaseEditorComponent
 		{
 			GetGame().GetMenuManager().CloseMenu(baseMenu);
 			Print("Editor menu is not type EditorMenuBase!", LogLevel.ERROR);
+		}
+		
+		m_EditorMenuComponent = SCR_MenuEditorUIComponent.Cast(m_EditorMenu.GetRootWidget().FindHandler(SCR_MenuEditorUIComponent));
+		if (!m_EditorMenu)
+		{
+			GetGame().GetMenuManager().CloseMenu(baseMenu);
+			Print("Editor menu root widget is missing SCR_MenuEditorUIComponent!", LogLevel.ERROR);
 		}
 		
 		//--- Reveal GUI when switching modes

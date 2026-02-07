@@ -40,6 +40,10 @@ class SCR_CampaignDeployMobileAssemblyUserAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		float depth;
+		if (SCR_WorldTools.IsObjectUnderwater(GetOwner(), vector.Zero, -1, depth) && depth > SCR_CampaignMobileAssemblyComponent.MAX_WATER_DEPTH)
+			return false;
+		
 		if (!m_AssemblyComponent)
 			return false;
 

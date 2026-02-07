@@ -743,4 +743,10 @@ class SCR_PooledListComponent : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsListFocused() { return m_bIsListFocused; }
+	
+	//------------------------------------------------------------------------------------------------
+	Widget GetScrollWidget()
+	{
+		return m_wScroll;
+	}
 };

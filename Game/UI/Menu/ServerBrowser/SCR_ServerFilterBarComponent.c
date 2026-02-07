@@ -53,7 +53,7 @@ class SCR_ServerFilterBarComponent : ScriptedWidgetComponent
 		
 		// Create all buttons array 
 		array<Widget> wButtons = new array<Widget>();
-		foreach(ServerFilterGroup group : m_aFilterGroups)
+		foreach (ServerFilterGroup group : m_aFilterGroups)
 		{
 			array<Widget> inGroupButs = new array<Widget>();
 			inGroupButs = group.GetEntryWidgetsArray();
@@ -103,7 +103,7 @@ class SCR_ServerFilterBarComponent : ScriptedWidgetComponent
 	//! Make query from activated data
 	protected void CreateQuery()
 	{
-		/*foreach()
+		/*foreach ()
 		{
 			
 		}*/
@@ -132,7 +132,7 @@ class SCR_ServerFilterBarComponent : ScriptedWidgetComponent
 		Widget w = button.GetRootWidget();
 		//int pos = 0;
 		
-		foreach(ServerFilterGroup group : m_aFilterGroups)
+		foreach (ServerFilterGroup group : m_aFilterGroups)
 		{
 			if(group.WasFilterCheck(id, w))
 			{

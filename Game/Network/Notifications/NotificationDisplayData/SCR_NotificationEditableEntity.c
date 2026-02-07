@@ -16,6 +16,9 @@ class SCR_NotificationEditableEntity : SCR_NotificationDisplayData
 	
 	override void SetPosition(SCR_NotificationData data)
 	{
+		if (!CanSetPosition(data))
+			return;
+		
 		int entityID;
 		data.GetParams(entityID);
 		

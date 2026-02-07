@@ -7,9 +7,6 @@ Component that has a list of entities which it can spawn in the world
 */
 class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 {	
-	[Attribute("150", desc: "Range in which should component search for base.", category: "Entity Spawner")]
-	protected float m_fBaseSearchDistance;
-	
 	protected SCR_CampaignBase m_Base;
 	
 	//------------------------------------------------------------------------------------------------
@@ -258,28 +255,16 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool BaseSearchCB(IEntity ent)
+	void AssignBase(notnull SCR_CampaignBase base)
 	{
-		SCR_CampaignBase base = SCR_CampaignBase.Cast(ent);
-		if (base && base.GetType() != CampaignBaseType.RELAY)
-		{
-			m_Base = base;
-			m_Base.RegisterVehicleSpawner(this);
-			return false;
-		}
-		
-		return true;
+		m_Base = base;
+		m_Base.RegisterVehicleSpawner(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
-		
-		// returns if query was finished without finding base
-		if (GetGame().GetWorld().QueryEntitiesBySphere(GetOwner().GetOrigin(), m_fBaseSearchDistance, BaseSearchCB, null, EQueryEntitiesFlags.ALL))
-			return;
-		
 	}
 }
 

@@ -1,11 +1,3 @@
-class SCR_AITargetInfo
-{
-	IEntity m_Target
-	vector m_LastSeenPosition
-	float m_LastSeenTime
-};
-
-
 class SCR_AIGetTarget: AITaskScripted
 {
 	[Attribute("100", UIWidgets.EditBox, "Filter target by distance", "")]
@@ -58,7 +50,7 @@ class SCR_AIGetTarget: AITaskScripted
 		
 		confComp = SCR_AIConfigComponent.Cast(owner.FindComponent(SCR_AIConfigComponent));	
 		
-		m_targetInfo = new ref SCR_AITargetInfo;
+		m_targetInfo = new ref SCR_AITargetInfo();
 	}
 		
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
@@ -77,30 +69,25 @@ class SCR_AIGetTarget: AITaskScripted
 			BaseTarget target = perceptComp.GetClosestTarget(m_targetType, m_lastSeenMax);
 			if (target)
 			{
-				m_targetInfo.m_Target = target.GetTargetEntity();
-				m_targetInfo.m_LastSeenPosition = target.GetLastSeenPosition();
-				m_targetInfo.m_LastSeenTime = target.GetTimeSinceSeen();
+				m_targetInfo.m_TargetEntity = target.GetTargetEntity();
+				m_targetInfo.m_vLastSeenPosition = target.GetLastSeenPosition();
+				m_targetInfo.m_fLastSeenTime = target.GetTimeSinceSeen();
 			}
 			else
 			{
-				m_targetInfo.m_Target = null;
+				m_targetInfo.m_TargetEntity = null;
 			}
 			
-			if ( m_targetInfo.m_Target )
+			if ( m_targetInfo.m_TargetEntity )
 			{
 #ifdef WORKBENCH
 				if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_LASTSEEN))
-					m_Shape = Shape.CreateSphere(COLOR_BLUE_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, m_targetInfo.m_LastSeenPosition, 0.1);
+					m_Shape = Shape.CreateSphere(COLOR_BLUE_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, m_targetInfo.m_vLastSeenPosition, 0.1);
 #endif		
-				if(!m_targetOut || m_targetOut.m_Target != m_targetInfo.m_Target)
-				{ 
-					m_targetOut = new SCR_AITargetInfo;
-					m_targetOut.m_Target = m_targetInfo.m_Target;
-					m_targetOut.m_LastSeenPosition = m_targetInfo.m_LastSeenPosition;
-					m_targetOut.m_LastSeenTime = m_targetInfo.m_LastSeenTime;
-				}
-				SetVariableOut("EntityOut",m_targetOut.m_Target);
-				SetVariableOut("EntityPos",m_targetOut.m_LastSeenPosition);
+				if(!m_targetOut || m_targetOut.m_TargetEntity != m_targetInfo.m_TargetEntity)
+					m_targetOut = new SCR_AITargetInfo(m_targetInfo.m_TargetEntity, m_targetInfo.m_vLastSeenPosition, m_targetInfo.m_fLastSeenTime);
+				SetVariableOut("EntityOut",m_targetOut.m_TargetEntity);
+				SetVariableOut("EntityPos",m_targetOut.m_vLastSeenPosition);
 				SetVariableOut("TargetInfo",m_targetOut);
 				return ENodeResult.SUCCESS;
 			}

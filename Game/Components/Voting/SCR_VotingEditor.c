@@ -45,6 +45,9 @@ class SCR_VotingEditorIn: SCR_VotingReferendum
 	}
 	override bool CanSendNotification(int value)
 	{
+		if (!Replication.IsRunning())
+			return false;
+		
 		SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
 		SCR_GameModeEditor gameMode = SCR_GameModeEditor.Cast(GetGame().GetGameMode());
 		return (votingManager && votingManager.GetHostPlayerID() != value) || (gameMode && gameMode.GetGameMasterTarget() != EGameModeEditorTarget.EVERYBODY);
@@ -58,9 +61,9 @@ class SCR_VotingEditorIn: SCR_VotingReferendum
 		SCR_EditorManagerEntity editorManager = core.GetEditorManager(winner);
 		editorManager.AddEditorModes(EEditorModeAccess.BASE, m_EditorModes, false);
 	}
-	override void InitFromTemplate(SCR_VotingBase template, int value)
+	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
 	{
-		super.InitFromTemplate(template, value);
+		super.InitFromTemplate(template, value, remainingDuration);
 		
 		SCR_VotingEditorIn templateEditor = SCR_VotingEditorIn.Cast(template);
 		m_EditorModes = templateEditor.m_EditorModes;
@@ -116,3 +119,33 @@ class SCR_VotingEditorOut: SCR_VotingEditorIn
 		editorManager.RemoveEditorModes(EEditorModeAccess.BASE, m_EditorModes);
 	}
 };
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EVotingType, "m_Type")]
+class SCR_VotingEditorWithdraw: SCR_VotingEditorIn
+{
+	override bool Evaluate(out EVotingOutcome outcome)
+	{
+		return true;
+	}
+	override bool IsAvailable(int value, bool isOngoing)
+	{
+		//--- Can apply only for self
+		if (SCR_PlayerController.GetLocalPlayerId() != value)
+			return false;
+		
+		//--- Cannot apply when a host or an admin
+		SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
+		if (!votingManager || votingManager.GetHostPlayerID() == value || GetGame().GetPlayerManager().HasPlayerRole(value, EPlayerRole.ADMINISTRATOR))
+			return false;
+		
+		return true;
+	}
+	override void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE)
+	{
+		if (winner == DEFAULT_VALUE)
+			return;
+		
+		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		SCR_EditorManagerEntity editorManager = core.GetEditorManager(winner);
+		editorManager.RemoveEditorModes(EEditorModeAccess.BASE, m_EditorModes);
+	}
+}

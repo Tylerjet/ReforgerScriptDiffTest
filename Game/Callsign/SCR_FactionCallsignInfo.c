@@ -61,7 +61,7 @@ class SCR_FactionCallsignInfo
 	{
 		companyArray.Clear();
 		
-		foreach(SCR_CallsignInfo info: m_aCompanyNames)
+		foreach (SCR_CallsignInfo info: m_aCompanyNames)
 			companyArray.Insert(info);
 	}
 	
@@ -73,7 +73,7 @@ class SCR_FactionCallsignInfo
 	{
 		platoonArray.Clear();
 		
-		foreach(SCR_CallsignInfo info: m_aPlatoonNames)
+		foreach (SCR_CallsignInfo info: m_aPlatoonNames)
 			platoonArray.Insert(info);
 	}
 	
@@ -85,7 +85,7 @@ class SCR_FactionCallsignInfo
 	{
 		squadArray.Clear();
 		
-		foreach(SCR_CallsignInfo info: m_aSquadNames)
+		foreach (SCR_CallsignInfo info: m_aSquadNames)
 			squadArray.Insert(info);
 	}
 	
@@ -146,7 +146,7 @@ class SCR_FactionCallsignInfo
 	{
 		if (!m_aCharacterRoleCallsigns.IsEmpty())
 		{
-			foreach(SCR_BaseRoleCallsign callsign: m_aCharacterRoleCallsigns)
+			foreach (SCR_BaseRoleCallsign callsign: m_aCharacterRoleCallsigns)
 			{
 				if (callsign.GetRoleIndex() == index)
 					return callsign.GetRoleName();

@@ -12,7 +12,7 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 	override protected void OnFactionChanged()
 	{
 		if (m_OnFactionUpdate)
-			m_OnFactionUpdate.Invoke();
+			m_OnFactionUpdate.Invoke(GetAffiliatedFaction());
 	}
 	
 	// may return to DefaultAffiliatedFaction in some cases - override this
@@ -20,6 +20,22 @@ class SCR_FactionAffiliationComponent: FactionAffiliationComponent
 	void ClearAffiliatedFaction()
 	{
 		SetAffiliatedFaction(null); 
+	}
+	
+	//--------------------------------------------------------------------------------------------------------------------------
+	/*
+	Set faction.
+	\param IEntity Owner
+	\param faction Desired faction
+	*/
+	static void SetFaction(IEntity owner, Faction faction)
+	{
+		if (!owner || !faction )
+			return;
+
+		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
+		if (factionComponent)
+			factionComponent.SetAffiliatedFaction(faction);
 	}
 	
 	//--------------------------------------------------------------------------------------------------------------------------

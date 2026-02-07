@@ -3,6 +3,11 @@ class SCR_ContentBrowserEditorComponentClass : SCR_BaseEditorComponentClass
 {
 };
 
+
+void ScriptInvoker_BrowserBudgetPreviewRefresh(array<ref SCR_EntityBudgetValue> previewCosts);
+typedef func ScriptInvoker_BrowserBudgetPreviewRefresh;
+typedef ScriptInvokerBase<ScriptInvoker_BrowserBudgetPreviewRefresh> ScriptInvoker_BrowserBudgetPreviewRefreshEvent;
+
 /** @ingroup Editor_Components
 */
 /*!
@@ -18,9 +23,12 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	[Attribute(desc: "Content browser menu preset.", defvalue: "-1", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(ChimeraMenuPreset))]
 	private ChimeraMenuPreset m_MenuPreset;
 
+	[Attribute("1", desc: "If true it makes sure that the content browser states are loaded from user settings. Else keeps the keeps the sates as defined in m_aContentBrowserTabStates")]
+	protected bool m_bUsePersistentBrowserStates;
+	
 	[Attribute(desc: "A list of saved states of the content browser such as labels and pagination. Index 0 is the saved hand filters.")]
 	protected ref array<ref SCR_EditorContentBrowserSaveStateDataUI> m_aContentBrowserTabStates;
-
+	
 	//~ Saved content browser state when content browser is opened with config
 	protected ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData> m_mContentBrowserConfigStates = new ref map<ref SCR_EditorContentBrowserDisplayConfig, ref SCR_EditorContentBrowserSaveStateData>;
 	
@@ -30,12 +38,16 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	
 	protected ref array<ref SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroups = {};
 	
+	//~ An array of all the hidden state tabs
+	protected ref array<int> m_aHiddenStateTabs = {};
+	
 	protected ref array<int> m_aFilteredPrefabIDs = {};
 	protected ref array<string> m_aLocalizationKeys = {};
 	protected int m_iFilteredPrefabIDsCount;
 	
 	protected SCR_MenuEditorComponent m_EditorMenuManager;
 	protected SCR_PlacingEditorComponent m_PlacingManager;
+	protected SCR_PlacingEditorComponentClass m_PlacingManagerData;
 	protected SCR_BudgetEditorComponent m_BudgetManager;
 	protected SCR_PrefabsCacheEditorComponent m_PrefabsCache;
 	protected ref array<ref SCR_EditableEntityUIInfo> m_aInfos;
@@ -47,6 +59,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	protected int m_iPageEntryCount = 15;
 	protected string m_sCurrentSearchText;
 	protected string m_sLastSearchText;
+	protected bool m_bShowEntityBudgetCost;
 	
 	protected SCR_EditableEntityComponent m_ExtendedEntity;
 	protected SCR_EditableEntityCore m_EntityCore;
@@ -59,7 +72,20 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	protected ref ScriptInvoker Event_OnBrowserEntriesFiltered = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnBrowserStateCleared = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnEnableSaveStateTabs = new ScriptInvoker; //~ Sends enable bool
+	protected ref ScriptInvoker Event_OnStateTabVisibilityChanged = new ScriptInvoker; //~ Sends index and if visible or not
 	
+	/*!
+	Get prefab Resourcename of item with prefabID
+	\param PrefabID of item
+	\return ResourceName prefab of given ID
+	*/
+	ResourceName GetResourceNamePrefabID(int prefabID)
+	{
+		if (m_PlacingManagerData)
+			return m_PlacingManagerData.GetPrefab(prefabID);
+		else
+			return ResourceName.Empty;
+	}
 	
 	/*!
 	Get prefab ID of item at given index
@@ -90,17 +116,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	\return bool True when provided labels match active labels
 	*/
 	void FilterEntries()
-	{
-		SCR_EditableEntityComponent extendedEntity = GetExtendedEntity();
-		bool isExtending = extendedEntity != null;
-		ResourceName extendedPrefab;
-		bool isInheritedSlot;
-		if (isExtending)
-		{
-			extendedPrefab = extendedEntity.GetPrefab();
-			isInheritedSlot = extendedEntity.HasEntityFlag(EEditableEntityFlag.SLOT);
-		}
-		
+	{		
 		// Filter labels
 		m_aFilteredPrefabIDs.Clear();
 		m_aLocalizationKeys.Clear();
@@ -116,26 +132,6 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			if (!info)
 			{
 				continue;
-			}
-			
-			if (isExtending)
-			{
-				if (m_PrefabsCache && isInheritedSlot)
-				{
-					if (!m_PrefabsCache.IsPrefabInherited(info.GetSlotPrefab(), extendedPrefab))
-						continue;
-				}
-				else
-				{
-					if (info.GetSlotPrefab() != extendedPrefab)
-						continue;
-				}
-			}
-			else
-			{
-				//--- Browser opened generically - ignore assets on fixed position
-				if (info.HasEntityFlag(EEditableEntityFlag.STATIC_POSITION) && extendedPrefab != extendedPrefab)
-					continue;
 			}
 			
 			info.GetEntityLabels(entityLabels);
@@ -423,6 +419,35 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		return m_iBrowserStateIndex;
 	}
 	
+
+	
+	/*!
+	Get an array of all currently hidden state tabs
+	\param[out] hiddenStateTabs Array of hidden state tabs
+	*/
+	void GetHiddenStateTabs(out notnull array<int> hiddenStateTabs)
+	{
+		hiddenStateTabs.Copy(m_aHiddenStateTabs);
+	}
+	
+	/*!
+	Makes sure that certain state tabs are shown or hidden
+	\param tabIndex index of state tab
+	\param setVisible If should be hidden or not
+	*/
+	void SetStateTabVisible(int tabIndex, bool setVisible)
+	{
+		if (!setVisible && !m_aHiddenStateTabs.Contains(tabIndex))
+			m_aHiddenStateTabs.Insert(tabIndex);
+		else if (setVisible && m_aHiddenStateTabs.Contains(tabIndex))
+			m_aHiddenStateTabs.RemoveItem(tabIndex);
+		//~ Already hidden or shown
+		else 
+			return;
+	
+		Event_OnStateTabVisibilityChanged.Invoke(tabIndex, setVisible);
+	}
+	
 	/*!
 	Get list of all Browser content browser states
 	\param[out] List of all states
@@ -574,6 +599,15 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	ScriptInvoker GetOnSearchConfirm()
 	{
 		return Event_OnSearchConfirm;
+	}	
+	
+	/*!
+	Called when state tab visibility is changed
+	\return Script invoker
+	*/
+	ScriptInvoker GetOnStateTabVisibilityChanged()
+	{
+		return Event_OnStateTabVisibilityChanged;
 	}
 	
 	/*!
@@ -626,24 +660,6 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	}
 	
 	/*!
-	Get info for placeaable prefab with given index.
-	Infos are store dint he same order as prefabs from SCR_PlacingEditorComponentClass.
-	\param Prefab index
-	\return UI info
-	*/
-	SCR_EditableEntityUIInfo GetInfoAtIndex(int index)
-	{
-		if (m_aInfos)
-		{
-			return m_aInfos[index];	
-		}
-		else
-		{
-			return null;
-		}
-	}
-	
-	/*!
 	Find index of given editable entity (info), used for find in content browser
 	\param info EditableEntityInfo of the entity
 	\return int index of editable entity in content browser, -1 if not found
@@ -661,6 +677,90 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			}
 		}
 		return -1;
+	}
+	
+	bool GetFirstAvailabeBudgetCost(int prefabID, out SCR_EntityBudgetValue budgetCost)
+	{
+		SCR_EditableEntityUIInfo prefabInfo = GetInfo(prefabID);
+		if (!prefabInfo)
+			return false;
+		
+		array<ref SCR_EntityBudgetValue> budgetCosts = {};
+		m_BudgetManager.GetEntityPreviewBudgetCosts(prefabInfo, budgetCosts);
+		
+		if (!budgetCosts.IsEmpty())
+			budgetCost = budgetCosts.Get(0);
+		return budgetCost != null;
+	}
+	
+	bool CanPlace(int prefabID, out notnull array<ref SCR_EntityBudgetValue> budgetCosts, out SCR_UIInfo blockingBudgetInfo, bool showNotification = false)
+	{
+		if (!m_BudgetManager)
+			return true;
+		
+		SCR_EditableEntityUIInfo prefabInfo = GetInfo(prefabID);
+		if (!prefabInfo)
+			return false;
+		
+		EEditableEntityBudget blockingBudget;
+		if (m_BudgetManager.CanPlaceEntityInfo(prefabInfo, budgetCosts, blockingBudget, showNotification))
+		{
+			return true;
+		}
+		else
+		{
+			m_BudgetManager.GetCurrentBudgetInfo(blockingBudget, blockingBudgetInfo);
+			return false;
+		}
+	}
+	
+	/*!
+	If there is enough budget for the given list or Prefabs to spawn
+	\param prefabs Prefabs to get budget of
+	\param fallbackBudgetType If the system fails to get the budget then if fallbackBudgetType is not -1 it will fall back and get the default budget of the given type
+	\return Returns true if can place, else returns false
+	*/
+	bool CanPlace(notnull array<ResourceName> prefabs, EEditableEntityType fallbackBudgetType = -1)
+	{
+		if (!m_PlacingManager || !m_BudgetManager)
+			return false;
+		
+		int prefabId;
+		Resource resource;
+		IEntitySource source;
+		array<ref SCR_EntityBudgetValue> fullBudgetCosts = {};
+		array<ref SCR_EntityBudgetValue> budgetCosts = {};
+		
+		foreach (ResourceName prefab: prefabs)
+		{
+			prefabId = m_PlacingManager.GetPrefabID(prefab);
+			
+			//~ Grab budget from content browser
+			if (!m_BudgetManager.GetEntityPreviewBudgetCosts(GetInfo(prefabId), budgetCosts))
+			{
+				//~ Grab budget from entity if not registered in content browser
+				if (!m_BudgetManager.GetEntitySourcePreviewBudgetCosts(SCR_EditableEntityComponentClass.GetEditableEntitySource(Resource.Load(prefab)), budgetCosts))
+				{
+					//~ Grab default budget for type if has fall back  and no budget was assigned to entity
+					if (fallbackBudgetType != -1)
+						m_BudgetManager.GetEntityTypeBudgetCost(fallbackBudgetType, budgetCosts);
+				}								
+			}
+			
+			//~ Add found budgets to full list
+			foreach (SCR_EntityBudgetValue budget: budgetCosts)
+				fullBudgetCosts.Insert(new SCR_EntityBudgetValue(budget.GetBudgetType(), budget.GetBudgetValue()));
+			
+			budgetCosts.Clear();
+		}
+
+		//~ Merge Budgets
+		SCR_EntityBudgetValue.MergeBudgetCosts(budgetCosts, fullBudgetCosts);
+		
+		EEditableEntityBudget blockingBudget;
+		
+		//~ Check if can place
+		return m_BudgetManager.CanPlace(budgetCosts, blockingBudget);
 	}
 	
 	bool RefreshPreviewCost(int prefabID = -1)
@@ -683,6 +783,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			m_BudgetManager.UpdatePreviewCost(budgetCosts);
 			return true;
 		}
+		
 		return false;
 	}
 	
@@ -755,8 +856,24 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			vector transform[4];
 			extendedEntity.GetTransform(transform);
 			SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(transform, verticalMode: verticalMode);
-			params.SetTarget(extendedEntity);
-			params.m_TargetInteraction = EEditableEntityInteraction.SLOT;
+			
+			//~ Extened with slot
+			if (extendedEntity.GetEntityType() == EEditableEntityType.SLOT)
+			{
+				params.m_TargetInteraction = EEditableEntityInteraction.SLOT;
+			}
+			//~ If ever passengers picking can be chosen then this logic needs to change
+			else if (extendedEntity.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent))
+			{
+				transform[3] = vector.Zero; //~ Set at 0,0,0 after Getting transform else characters are not always added to the vehicle
+				params.m_TargetInteraction = EEditableEntityInteraction.PASSENGER;
+				params.m_Parent = extendedEntity;
+				params.m_ParentID = Replication.FindId(extendedEntity);
+			}
+			
+			
+			params.m_vTransform = transform;
+ 			params.SetTarget(extendedEntity);
 			m_PlacingManager.SetInstantPlacing(params);
 			return true;
 		}
@@ -796,10 +913,13 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 			return false;
 		
 		//~ Clear config as browser is opened without it
-		m_ContentBrowserConfig = displayConfig;
+		if (displayConfig)
+			m_ContentBrowserConfig = displayConfig;
+		else
+			m_ContentBrowserConfig = null;
 		
 		LoadBrowserState(saveState, false);
-		SaveBrowserState(false);
+		SaveBrowserState();
 		
 		//~ Open context browser
 		OpenBrowserMenu();
@@ -834,18 +954,23 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	\param browserStateIndex index of state to set
 	\param saveCurrentState wether or not the current state should be saved
 	*/
-	void SetBrowserState(int browserStateIndex = -1, bool saveCurrentState = false)
+	void SetBrowserState(int browserStateIndex = -1, bool saveCurrentState = false, bool clearConfigData = true)
 	{
 		if (saveCurrentState)
-		 	SaveBrowserState(false);
+		 	SaveBrowserState();
 		
 		if (browserStateIndex < 0)
-			LoadBrowserState(m_iBrowserStateIndex, true);
+			LoadBrowserState(m_iBrowserStateIndex, clearConfigData);
 		else 
 		{
 			SetBrowserStateIndex(browserStateIndex);
-			LoadBrowserState(browserStateIndex, true);
+			LoadBrowserState(browserStateIndex, clearConfigData);
 		}
+	}
+	
+	void SetCustomBrowserState(SCR_EditorContentBrowserSaveStateData state, bool clearConfigData = true)
+	{
+		LoadBrowserState(state, false);
 	}
 	
 	/*!
@@ -868,7 +993,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	\param clearBrowserState if should also clear the browser for when the browser stays open and a new state is given
 	\return True if succesfully saved
 	*/
-	bool SaveBrowserState(bool clearBrowserState)
+	bool SaveBrowserState()
 	{
 		SCR_EditorContentBrowserSaveStateData state;
 		
@@ -882,7 +1007,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 				return false;
 		}
 		//~ Uses config and allows for content browser state saving
-		else if (!GetConfigState(m_ContentBrowserConfig, state) || !m_ContentBrowserConfig.GetSaveContentBrowserState())
+		else if (!m_ContentBrowserConfig.GetSaveContentBrowserState() || !GetConfigState(m_ContentBrowserConfig, state))
 		{
 			//~ Do not save state
 			return false;
@@ -894,12 +1019,31 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 
 		Event_OnBrowserStatesSaved.Invoke();
 		
-		//Clear browser state
-		if (clearBrowserState)
-			ClearBrowserState(false);
-		
 		//~ Saved state successfully
 		return true;
+	}
+	
+	/*!
+	Add or remove the given label
+	\param label Label to add or remove
+	\param addLabel If true will add the label. Else will remove
+	\param stateIndex Index of state to add/remove label off. Set to -1 to add/remove label of all states
+	*/
+	void AddRemoveLabelOfPersistentBrowserState(EEditableEntityLabel label, bool addLabel, int stateIndex = -1)
+	{
+		if (stateIndex >= m_aContentBrowserTabStates.Count())
+			return;
+		
+		//~ Only change it on one state
+		if (stateIndex > -1)
+		{
+			m_aContentBrowserTabStates[stateIndex].AddRemoveLabel(label, addLabel);
+			return;
+		}
+		
+		//~ Add to all states
+		foreach (SCR_EditorContentBrowserSaveStateData state: m_aContentBrowserTabStates)
+			state.AddRemoveLabel(label, addLabel);
 	}
 	
 	void ResetBrowserState(bool clearConfigData)
@@ -908,9 +1052,15 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		FilterEntries();
 	}
 	
+	void OnPlaceEntityServer(int prefabID, SCR_EditableEntityComponent entity)
+	{
+		//m_BudgetManager.CheckMaxBudgetReached(
+	}
+	
 	void OnMenuClosed()
 	{
-		SetBrowserState(-1, true);
+		bool isBuilding = GetManager().GetCurrentMode() == EEditorMode.BUILDING;
+		SetBrowserState(-1, true, !isBuilding);
 		
 		//~ Save the persistent state
 		if (CanSavePersistentBrowserStates())
@@ -918,7 +1068,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	}
 	
 	protected bool OpenBrowserMenu()
-	{
+	{		
 		if (m_EditorMenuManager)
 		{
 			return m_EditorMenuManager.GetMenu().OpenDialog(m_MenuPreset);
@@ -974,10 +1124,14 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		//~ Search String
 		SetCurrentSearch(state.GetSearchString());
 		
+		if (!clearConfigData)
+			SetConfigLabels();
+		
 		//~ Load Event
 		Event_OnBrowserStateLoaded.Invoke(state);
 		
-		FilterEntries();
+		if (m_aInfos && m_aAsyncPrefabs == null)
+			FilterEntries();
 	}
 	
 	protected bool GetConfigState(SCR_EditorContentBrowserDisplayConfig browserConfig, out SCR_EditorContentBrowserSaveStateData state)
@@ -1018,6 +1172,9 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	//~ Save all tab states into settings. So it can be loaded when a diffrent scenario is loaded or the game is booted up again
 	void SaveAllPersistentBrowserState()
 	{
+		if (!m_bUsePersistentBrowserStates)
+			return;
+		
 		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorPersistentData");
 		if (!editorSettings) 
 			return;
@@ -1025,7 +1182,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		array<ref SCR_EditorContentBrowserSaveStateData> settingBrowserStates = {};
 		
 		//~ Get the SCR_EditorContentBrowserStateDataUI data
-		foreach(SCR_EditorContentBrowserSaveStateData state: m_aContentBrowserTabStates)
+		foreach (SCR_EditorContentBrowserSaveStateData state: m_aContentBrowserTabStates)
 			settingBrowserStates.Insert(state);
 		
 		//~ Save the Data
@@ -1037,6 +1194,9 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 	//~ Load Persistent browser state from where the player left off last time
 	protected void LoadAllPersistentBrowserState()
 	{
+		if (!m_bUsePersistentBrowserStates)
+			return;
+		
 		BaseContainer editorSettings = GetGame().GetGameUserSettings().GetModule("SCR_EditorPersistentData");
 		if (!editorSettings) 
 			return;
@@ -1070,7 +1230,6 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 		m_EntityCore.GetLabelGroups(m_LabelGroups);
 		
-		m_PrefabsCache = SCR_PrefabsCacheEditorComponent.Cast(SCR_PrefabsCacheEditorComponent.GetInstance(SCR_PrefabsCacheEditorComponent));
 		//~ Load Persistent browser state from where the player left off last time
 		LoadAllPersistentBrowserState();
 		
@@ -1078,11 +1237,29 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 		SetBrowserState(0);
 	}
 	
+	override void EOnEditorActivateServer()
+	{		
+		m_PrefabsCache = SCR_PrefabsCacheEditorComponent.Cast(FindEditorComponent(SCR_PrefabsCacheEditorComponent, true, false));
+		m_PlacingManager = SCR_PlacingEditorComponent.Cast(FindEditorComponent(SCR_PlacingEditorComponent, true, true));
+		
+		if (m_PlacingManager)
+			m_PlacingManager.GetOnPlaceEntityServer().Insert(OnPlaceEntityServer);
+	}
+	
+	override void EOnEditorDeactivateServer()
+	{
+		if (m_PlacingManager)
+			m_PlacingManager.GetOnPlaceEntityServer().Remove(OnPlaceEntityServer);
+	}
+	
 	override void EOnEditorActivate()
 	{
-		m_EditorMenuManager = SCR_MenuEditorComponent.Cast(SCR_MenuEditorComponent.GetInstance(SCR_MenuEditorComponent));
-		m_PlacingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true));
-		m_BudgetManager = SCR_BudgetEditorComponent.Cast(SCR_BudgetEditorComponent.GetInstance(SCR_BudgetEditorComponent, true));
+		m_EditorMenuManager = SCR_MenuEditorComponent.Cast(FindEditorComponent(SCR_MenuEditorComponent, true, false));
+		m_BudgetManager = SCR_BudgetEditorComponent.Cast(FindEditorComponent(SCR_BudgetEditorComponent, true, true));
+		
+		m_PlacingManager = SCR_PlacingEditorComponent.Cast(FindEditorComponent(SCR_PlacingEditorComponent, true, true));
+		if (m_PlacingManager)
+			m_PlacingManagerData = SCR_PlacingEditorComponentClass.Cast(m_PlacingManager.GetEditorComponentData());
 	}
 	
 	override bool EOnEditorActivateAsync(int attempt)
@@ -1132,11 +1309,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 					if (editableEntitySource)
 					{
 						info = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
-						if (info)
-						{
-							info.InitFromSource(editableEntitySource);
-						}
-						else
+						if (!info)
 						{
 							Print(string.Format("Prefab '%1' is missing UI info in SCR_EditableEntityComponent!", m_aAsyncPrefabs[m_iAsyncIndex]), LogLevel.ERROR);
 						}

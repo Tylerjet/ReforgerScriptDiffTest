@@ -266,6 +266,9 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 	//------------------------------------------------------------------------------------------------ 
 	void UpdatePosition(IEntity effectEntity, int index, IEntity owner)
 	{
+		if (!effectEntity)
+			return;
+		
 		vector position;
 		if (m_pRplComponent && m_pRplComponent.IsRemoteProxy())
 		{

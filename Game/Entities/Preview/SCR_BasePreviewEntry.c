@@ -50,7 +50,7 @@ class SCR_BasePreviewEntry
 		if (m_fQuat[0] != 0 || m_fQuat[1] != 0 || m_fQuat[2] != 0 || m_fQuat[3] != 0)
 			Math3D.QuatToMatrix(m_fQuat, outTransform);
 		else
-			Math3D.AnglesToMatrix(m_vAngles, outTransform);
+			Math3D.AnglesToMatrix(Vector(m_vAngles[1], m_vAngles[0], m_vAngles[2]), outTransform); //--- Convert XYZ to XZY
 		
 		outTransform[3] = m_vPosition;
 	}

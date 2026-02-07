@@ -240,7 +240,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		
 		vector cursorWorldPosition;
 		if (m_MenuLayoutManager)
-			m_MenuLayoutManager.GetCursorWorldPos(cursorWorldPosition); //--- ToDo: Handle in UI scripts?
+			m_MenuLayoutManager.GetCursorWorldPos(cursorWorldPosition, GetInstantActionTraceFlags()); //--- ToDo: Handle in UI scripts?
 
 		if (ActionCanBePerformed(action, cursorWorldPosition, flags))
 			ActionPerformInstantlyNoDialog(action, cursorWorldPosition, flags);
@@ -256,6 +256,10 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 			GetGame().GetCallqueue().CallLater(ActionPerformInstantlyNoDialog, 1, false, action, cursorWorldPosition, flags);
 		else
 			ActionPerform(action, cursorWorldPosition, flags);
+	}
+	protected TraceFlags GetInstantActionTraceFlags()
+	{
+		return -1;
 	}
 	
 	/*!

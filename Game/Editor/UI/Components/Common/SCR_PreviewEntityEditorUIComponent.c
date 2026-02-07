@@ -27,6 +27,9 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	[Attribute(defvalue: "1", desc: "When adjusting entity height, camera will move together with the entity when above this vertical offset.\nWhen below, the camera will rotate towards the entity instead.")]
 	protected float m_fMinCameraVerticalOffset;
 	
+	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
+	protected ResourceName m_DirIndicatorPrefab;
+	
 	protected InputManager m_InputManagerBase;
 	protected SCR_PreviewEntityEditorComponent m_PreviewEntityManager;
 	protected SCR_CameraEditorComponent m_CameraManagerBase;
@@ -44,9 +47,12 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	protected vector m_vTransformOrigin[4];
 	protected vector m_vAnglesOrigin;
 	protected vector m_vAnimatedTransform[4];
+	protected vector m_vRotationPivot;
 	protected bool m_bIsAnimated;
 	protected vector m_vTerrainNormal;
 	protected EPreviewEntityEditorOperation m_Operation;
+	protected IEntity m_DirIndicator;
+	protected float m_fDirIndicatorScale;
 	
 	protected void OnHoverChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
@@ -59,6 +65,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 				m_bIsAnimated = m_PreviewEntityManager.SetTarget(null);
 			}
 			m_Target = null;
+			m_PreviewEntityManager.GetPreviewTransform(m_vAnimatedTransform);
 		}
 		if (entitiesInsert && entitiesInsert.Count() == 1)
 		{
@@ -92,6 +99,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 	protected void OnPreviewDelete()
 	{
 		m_bIsRotatingTowardsCursor = false;
+		delete m_DirIndicator;
 	}
 	protected void OnEditorTransformRotationModifierDown(float value, EActionTrigger reason)
 	{
@@ -187,6 +195,41 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		trace.LayerMask = TRACE_LAYER_CAMERA;
 		
 		return m_World.TraceMove(trace, null);
+	}
+	protected void UpdateDirIndicator(vector previewTransform[4])
+	{
+		if (m_Operation == EPreviewEntityEditorOperation.ROTATE)
+		{
+			//--- Show dir indicator
+			if (!m_DirIndicator && m_DirIndicatorPrefab && m_PreviewEntityManager.GetPreviewEntity())
+			{
+				//--- Create object
+				EntitySpawnParams spawnParams = new EntitySpawnParams();
+				spawnParams.Parent = m_PreviewEntityManager.GetPreviewEntity();
+				m_DirIndicator = GetGame().SpawnEntityPrefab(Resource.Load(m_DirIndicatorPrefab), spawnParams.Parent.GetWorld(), spawnParams);
+				
+				//--- Get object size
+				vector previewBoundMin, previewBoundMax;
+				m_PreviewEntityManager.GetPreviewEntity().GetPreviewBounds(previewBoundMin, previewBoundMax);
+				float previewSize = vector.DistanceXZ(previewBoundMin, previewBoundMax);
+				float offsetSize = vector.DistanceXZ(vector.Zero, previewBoundMin + previewBoundMax);
+				float localOffsetSize = vector.DistanceXZ(vector.Zero, m_PreviewEntityManager.GetLocalOffset());
+				m_fDirIndicatorScale = (previewSize + offsetSize + localOffsetSize) / 2;
+			}
+			if (m_DirIndicator)
+			{
+				vector orientedTransform[4];
+				Math3D.MatrixCopy(previewTransform, orientedTransform);
+				orientedTransform[3] = m_vRotationPivot;
+				SCR_TerrainHelper.OrientToTerrain(orientedTransform);
+				m_DirIndicator.SetWorldTransform(orientedTransform);
+				m_DirIndicator.SetScale(m_fDirIndicatorScale);
+			}
+		}
+		else if (m_DirIndicator)
+		{
+			delete m_DirIndicator;
+		}
 	}
 	/*!
 	\return True if the preview should be shpown as disabled, false if it should be shown in normal state. To be overriden by inherited classes.
@@ -302,6 +345,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		vector basis[4];
 		Math3D.AnglesToMatrix(angles, basis);
 		Math3D.MatrixMultiply3(basis, m_vTransformOrigin, transform);
+		m_vRotationPivot = transform[3];
 	}
 	protected bool RotateInSlot(SCR_EditableEntityComponent slot, float rotationValue, out vector angles, out bool freeRotation)
 	{
@@ -331,22 +375,34 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			return;
 		}
 		
-		//--- Attached to a target - use its center instead of relative click position
+		vector pivotPos;
 		SCR_EditableEntityComponent target = m_PreviewEntityManager.GetTarget();
-		vector pivotTransform[4] = m_vClickTransformBase;
-		if (target) target.GetTransform(pivotTransform);
+		if (target)
+		{
+			//--- Attached to a target - use its center instead of relative click position
+			vector targetTransform[4];
+			target.GetTransform(targetTransform);
+			pivotPos = targetTransform[3];
+		}
+		else
+		{
+			pivotPos = m_vClickTransformBase[3];
+			pivotPos[1] = pivotPos[1] - m_PreviewEntityManager.GetLocalOffset()[1];
+		}
 		
 		//--- Get intersection with terrain plane
 		vector cameraPos, cursorDir;
 		GetCursorPos(cameraPos, cursorDir);
-		vector worldPos = SCR_Math3D.IntersectPlane(cameraPos, cursorDir * TRACE_DIS, m_vClickTransformBase[3], m_vTerrainNormal);
-		float dir = (worldPos - pivotTransform[3]).VectorToAngles()[0] - m_vAnglesOrigin[0];
+		vector worldPos = SCR_Math3D.IntersectPlane(cameraPos, cursorDir * TRACE_DIS, pivotPos, m_vTerrainNormal);
+		float dir = (worldPos - pivotPos).VectorToAngles()[0] - m_vAnglesOrigin[0];
 		
 		vector basis[4];
 		Math3D.AnglesToMatrix(Vector(dir, 0, 0), basis);
 		Math3D.MatrixMultiply3(basis, m_vTransformOrigin, transform);
 		
+		m_vRotationPivot = pivotPos;
 		m_PreviewEntityManager.SetIsRotating(true);
+		m_Operation = EPreviewEntityEditorOperation.ROTATE;
 		
 		//--- Debug
 		//Shape.CreateSphere(Color.White.PackToInt(), ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, m_vClickTransformBase[3], 1);
@@ -422,6 +478,7 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		vector previewTransform[4];
 		m_PreviewEntityManager.GetPreviewTransform(previewTransform);
 		EEditorTransformVertical verticalMode = m_PreviewEntityManager.GetVerticalMode();
+		m_Operation = EPreviewEntityEditorOperation.MOVE_HORIZONTAL;
 		
 		m_PreviewEntityManager.ShowAsDisabled(CanShowAsDisabled());
 		
@@ -433,7 +490,6 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 			previewTransform[2] = m_vAnimatedTransform[2];
 		}
 		
-		m_InputManagerBase.ActivateContext("EditorPreviewContext");
 		float moveVertical = m_InputManagerBase.GetActionValue("EditorTransformMoveVertical") * tDelta;
 		float rotateYaw = m_InputManagerBase.GetActionValue("EditorTransformRotateYaw") * tDelta;
 		
@@ -475,14 +531,19 @@ class SCR_PreviewEntityEditorUIComponent: SCR_BaseEditorUIComponent
 		{
 			//--- Horizontal movement towards cursor
 			MoveHorizontalTowardsCursor(tDelta, previewTransform, canTransform, verticalMode);
-			m_Operation = EPreviewEntityEditorOperation.MOVE_HORIZONTAL;
 		}
+		
+		UpdateDirIndicator(previewTransform);
 		
 		//--- Apply
 		if (canTransform)
 			m_PreviewEntityManager.SetPreviewTransform(previewTransform, tDelta, instant, verticalMode);
 		else
 			m_PreviewEntityManager.ResetPreviewTransform();
+	}
+	protected void ActivatePreviewContext()
+	{
+		m_InputManagerBase.ActivateContext(m_PreviewEntityManager.GetActionContext());
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////

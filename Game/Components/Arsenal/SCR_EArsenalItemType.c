@@ -1,3 +1,4 @@
+//~Update config: ArsenalItemTypeUIConfig.conf if Enum changes as well as any Editor related Attributes!
 enum SCR_EArsenalItemType
 {
 	RIFLE = 2,
@@ -17,4 +18,5 @@ enum SCR_EArsenalItemType
 	RADIO_BACKPACK = 32768,
 	EQUIPMENT = 65536,
 	WEAPON_ATTACHMENT = 131072,
+	EXPLOSIVES = 262144
 };

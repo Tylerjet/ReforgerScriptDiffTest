@@ -303,7 +303,7 @@ class SCR_WorkshopItemActionDownloadDependenciesLatest : SCR_WorkshopItemActionC
 			_print("New() Creating actions:");
 			#endif
 			m_aActions.Clear();
-			foreach(SCR_WorkshopItem dep : m_aProvidedDependencies)
+			foreach (SCR_WorkshopItem dep : m_aProvidedDependencies)
 			{
 				if (!dep.GetOffline() || dep.GetUpdateAvailable())
 				{

@@ -7,13 +7,13 @@ class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
 	protected void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
-		if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && item.FindComponent(SCR_RadioComponent))
+		if (loadoutCloth && loadoutCloth.GetAreaType() && loadoutCloth.GetAreaType().IsInherited(LoadoutBackpackArea) && item.FindComponent(SCR_RadioComponent))
 			super.ActivateSpawnPoint();
 	}
 	protected void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
-		if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && item.FindComponent(SCR_RadioComponent))
+		if (loadoutCloth && loadoutCloth.GetAreaType() && loadoutCloth.GetAreaType().IsInherited(LoadoutBackpackArea) && item.FindComponent(SCR_RadioComponent))
 			super.DeactivateSpawnPoint();
 	}
 	
@@ -31,7 +31,7 @@ class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
 		BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(m_TargetPlayer.FindComponent(BaseLoadoutManagerComponent));
 		if (loadoutManager)
 		{
-			IEntity backpack = loadoutManager.GetClothByArea(ELoadoutArea.ELA_Backpack);
+			IEntity backpack = loadoutManager.GetClothByArea(LoadoutBackpackArea);
 			if (backpack)
 				OnItemAdded(backpack, null);
 		}

@@ -521,7 +521,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			
 			//Add multiple players
 			
-			foreach(Managed item: editedItems)
+			foreach (Managed item: editedItems)
 			{
 				editableEntity = SCR_EditableEntityComponent.Cast(item);
 				
@@ -788,7 +788,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		}
 		else 	
 		{
-			foreach(SCR_EntityAttributeTitleType titleType: m_aEntityTypeNames)
+			foreach (SCR_EntityAttributeTitleType titleType: m_aEntityTypeNames)
 			{
 				if (titleType.GetType() == type)
 					return titleType.GetTypeName();

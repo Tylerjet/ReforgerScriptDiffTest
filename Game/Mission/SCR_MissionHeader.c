@@ -41,12 +41,33 @@ class SCR_MissionHeader : MissionHeader
 
 	[Attribute("", UIWidgets.EditBox, "Name of save file for this mission.\nWhen undefined, the name of associated world file will be used.")]
 	protected string m_sSaveFileName;
+	
+	[Attribute("", UIWidgets.ResourceNamePicker, "Configuration file for briefing screen.", "conf")]
+	ResourceName m_sBriefingConfig;
+	
+	[Attribute("0", desc: "If the scenario allows it, its daytime and weather will use values from this header. Requires SCR_TimeAndWeatherHandlerComponent on gamemode entity.")];
+	bool m_bOverrideScenarioTimeAndWeather;
+	
+	[Attribute("8", UIWidgets.Slider, "Starting time of day (hours)", "0 23 1")]
+	int m_iStartingHours;
+	
+	[Attribute("0", UIWidgets.Slider, "Starting time of day (minutes)", "0 59 1")]
+	int m_iStartingMinutes;
+	
+	[Attribute("0")]
+	bool m_bRandomStartingDaytime;
+	
+	[Attribute("1", UIWidgets.Slider, "Time acceleration during the day (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
+	float m_fDayTimeAcceleration;
+	
+	[Attribute("1", UIWidgets.Slider, "Time acceleration during the night (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
+	float m_fNightTimeAcceleration;
+	
+	[Attribute("0")]
+	bool m_bRandomStartingWeather;
 
 	protected bool m_bLoadOnStart;
 	string m_sOwner;
-
-	[Attribute("", UIWidgets.ResourceNamePicker, "Configuration file for briefing screen.", "conf")]
-	ResourceName m_sBriefingConfig;
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns whether mission can be played in multiplayer or not.

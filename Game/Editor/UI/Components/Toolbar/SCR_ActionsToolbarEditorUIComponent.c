@@ -156,7 +156,7 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 			return;
 		
 		//--- ToDo: Don't hardcode, but allow each action to set its refresh event
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, true, true));
 		if (placingManager)
 			placingManager.GetOnSelectedPrefabChange().Insert(Refresh);
 		
@@ -174,7 +174,7 @@ class SCR_ActionsToolbarEditorUIComponent: SCR_BaseToolbarEditorUIComponent
 	{
 		super.HandlerDeattached(w);
 		
-		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent));
+		SCR_PlacingEditorComponent placingManager = SCR_PlacingEditorComponent.Cast(SCR_PlacingEditorComponent.GetInstance(SCR_PlacingEditorComponent, false, true));
 		if (placingManager)
 			placingManager.GetOnSelectedPrefabChange().Remove(Refresh);
 		

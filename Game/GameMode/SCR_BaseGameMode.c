@@ -116,6 +116,8 @@ class SCR_BaseGameMode : BaseGameMode
 	protected ref ScriptInvoker Event_OnGameEnd = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerAuditSuccess = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerAuditFail = new ScriptInvoker();
+	protected ref ScriptInvoker<int> Event_OnPlayerAuditTimeouted = new ScriptInvoker();
+	protected ref ScriptInvoker<int> Event_OnPlayerAuditRevived = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerConnected = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerRegistered = new ScriptInvoker();
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> Event_OnPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>();
@@ -138,8 +140,6 @@ class SCR_BaseGameMode : BaseGameMode
 
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, "When false, then Game mode need to handle its very own spawning. If true, then simple default logic is used to spawn and respawn automatically.", category: WB_GAME_MODE_CATEGORY)]
 	protected bool m_bAutoPlayerRespawn;
-	[Attribute("1", UIWidgets.Auto, desc: "Character bleeding rate multiplier", category: WB_GAME_MODE_CATEGORY)]
-	private float m_fBleedingRateScale;	
 	
 	[Attribute("0", UIWidgets.Slider, params: "0 300 0.1", desc: "Time in seconds after which session is restarted upon completion or 0 if none.", category: WB_GAME_MODE_CATEGORY)]
 	private float m_fAutoReloadTime;
@@ -182,6 +182,7 @@ class SCR_BaseGameMode : BaseGameMode
 	// Required components
 	//
 	protected RplComponent m_RplComponent;
+	protected SCR_GameModeHealthSettings m_pGameModeHealthSettings;
 	protected SCR_RespawnSystemComponent m_pRespawnSystemComponent;
 	protected SCR_RespawnHandlerComponent m_pRespawnHandlerComponent;
 	protected SCR_BaseScoringSystemComponent m_ScoringSystemComponent;
@@ -305,6 +306,11 @@ class SCR_BaseGameMode : BaseGameMode
 	SCR_RespawnSystemComponent GetRespawnSystemComponent()
 	{
 		return m_pRespawnSystemComponent;
+	}
+	
+	SCR_GameModeHealthSettings GetGameModeHealthSettings()
+	{
+		return m_pGameModeHealthSettings;
 	}
 
 	/*!
@@ -432,6 +438,14 @@ class SCR_BaseGameMode : BaseGameMode
 	ScriptInvoker GetOnPlayerAuditFail()
 	{
 		return Event_OnPlayerAuditFail;
+	}
+	ScriptInvoker GetOnPlayerAuditTimeouted()
+	{
+		return Event_OnPlayerAuditTimeouted;
+	}
+	ScriptInvoker GetOnPlayerAuditRevived()
+	{
+		return Event_OnPlayerAuditRevived;
 	}
 	ScriptInvoker GetOnPlayerConnected()
 	{
@@ -622,6 +636,20 @@ class SCR_BaseGameMode : BaseGameMode
 			m_pRespawnSystemComponent.OnPlayerConnected(iPlayerID);
 
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerAuditTimeouted( int iPlayerID) 
+	{
+		super.OnPlayerAuditTimeouted(iPlayerID);
+		Event_OnPlayerAuditTimeouted.Invoke(iPlayerID);
+	};
+
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerAuditRevived( int iPlayerID) 
+	{
+		super.OnPlayerAuditRevived(iPlayerID);
+		Event_OnPlayerAuditRevived.Invoke(iPlayerID);
+	};
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -665,9 +693,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Called after a player is disconnected.
 		\param playerId PlayerId of disconnected player.
 	*/
-	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause)
+	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId, cause);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 		Event_OnPlayerDisconnected.Invoke(playerId, cause);
 
 		if (m_pRespawnSystemComponent)
@@ -684,7 +712,30 @@ class SCR_BaseGameMode : BaseGameMode
 				if (SCR_ReconnectComponent.GetInstance() && SCR_ReconnectComponent.GetInstance().IsReconnectEnabled())
 				{
 					if (SCR_ReconnectComponent.GetInstance().OnPlayerDC(playerId, cause))	// if conditions to allow reconnect pass, skip the entity delete  
+					{
+						CharacterControllerComponent charController = CharacterControllerComponent.Cast(controlledEntity.FindComponent(CharacterControllerComponent));
+						if (charController)
+						{
+							charController.SetMovement(0, vector.Forward);
+						}
+						
+						CompartmentAccessComponent compAccess = CompartmentAccessComponent.Cast(controlledEntity.FindComponent(CompartmentAccessComponent)); // TODO nullcheck
+						if (compAccess)
+						{
+							BaseCompartmentSlot compartment = compAccess.GetCompartment();
+							if (compartment)
+							{
+								CarControllerComponent carController = CarControllerComponent.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent));
+								if (carController)
+								{
+									carController.Shutdown();
+									carController.StopEngine(false);
+								}
+							}
+						}
+						
 						return;
+					}
 				}
 				
 				RplComponent.DeleteRplEntity(controlledEntity, false);
@@ -1388,6 +1439,7 @@ class SCR_BaseGameMode : BaseGameMode
 		m_pRespawnHandlerComponent = SCR_RespawnHandlerComponent.Cast(owner.FindComponent(SCR_RespawnHandlerComponent));
 		m_RespawnTimerComponent = SCR_RespawnTimerComponent.Cast(owner.FindComponent(SCR_RespawnTimerComponent));
 		m_ScoringSystemComponent = SCR_BaseScoringSystemComponent.Cast(owner.FindComponent(SCR_BaseScoringSystemComponent));
+		m_pGameModeHealthSettings = SCR_GameModeHealthSettings.Cast(owner.FindComponent(SCR_GameModeHealthSettings));
 
 		if (!m_RplComponent)
 			Print("SCR_BaseGameMode is missing RplComponent! Game functionality might be broken!", LogLevel.ERROR);
@@ -1432,18 +1484,6 @@ class SCR_BaseGameMode : BaseGameMode
 
 			m_mStateComponents.Insert(state, stateComponent);
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	float GetBleedingRate()
-	{
-		return m_fBleedingRateScale;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetBleedingRate(float rate)
-	{
-		m_fBleedingRateScale = rate;
 	}
 
 	//------------------------------------------------------------------------------------------------

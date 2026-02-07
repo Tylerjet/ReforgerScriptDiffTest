@@ -1,4 +1,4 @@
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_PlayerUIInfo: SCR_UIInfo
 {
 	[Attribute()]

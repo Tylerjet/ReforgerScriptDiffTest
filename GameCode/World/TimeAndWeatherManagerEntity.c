@@ -290,10 +290,10 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	
 	protected void CreateDayTimeInfoArray(int year = -1, int month = -1, int day = -1)
 	{
-		foreach(SCR_DayTimeInfoBase dayTimeInfo: m_aOrderedDaytimeInfo)
+		foreach (SCR_DayTimeInfoBase dayTimeInfo: m_aOrderedDaytimeInfo)
 			dayTimeInfo.Clear();
 		
-		foreach(SCR_DayTimeInfoBase dayTimeInfo: m_aOrderedDaytimeInfo)
+		foreach (SCR_DayTimeInfoBase dayTimeInfo: m_aOrderedDaytimeInfo)
 			dayTimeInfo.SetDayTime(m_aOrderedDaytimeInfo, this, year, month, day);
 	}
 	
@@ -851,7 +851,7 @@ class SCR_DayTimeInfoBetween: SCR_DayTimeInfoBase
 		bool dayTimeAfterSet = false;
 		bool dayTimeBeforeSet = false;
 		
-		foreach(SCR_DayTimeInfoBase daytime: daytimeInfo)
+		foreach (SCR_DayTimeInfoBase daytime: daytimeInfo)
 		{
 			if (daytime.GetDaytimeEnum() == m_DaytimeAfter)
 			{

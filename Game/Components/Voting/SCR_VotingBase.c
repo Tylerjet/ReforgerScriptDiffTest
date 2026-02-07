@@ -86,14 +86,6 @@ class SCR_VotingBase
 	void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE)
 	{
 	}
-	/*!
-	Periodically update the voting.
-	\param timeSlice Time since the last update
-	*/
-	void Update(float timeSlice)
-	{
-		m_fDuration -= timeSlice;
-	}
 	int GetPlayerVote(int playerID)
 	{
 		return DEFAULT_VALUE;
@@ -155,6 +147,13 @@ class SCR_VotingBase
 		return m_Info;
 	}
 	/*!
+	\return Remaining time of the voting in seconds
+	*/
+	float GetRemainingDuration()
+	{
+		return m_fDuration;
+	}
+	/*!
 	Check if the voting is about player IDs.
 	\return True when it's about player IDs
 	*/
@@ -190,18 +189,31 @@ class SCR_VotingBase
 		return m_iLocalValue;
 	}
 	/*!
+	Periodically update the voting.
+	\param timeSlice Time since the last update
+	*/
+	void Update(float timeSlice)
+	{
+		m_fDuration = Math.Max(m_fDuration - timeSlice, 0);
+	}
+	/*!
 	Initialize voting from given template.
 	\param template Source template
 	\param value Target value
+	\param remainingDuration Remaining time until the voting ends in seconds (-1 to use default)
 	*/
-	void InitFromTemplate(SCR_VotingBase template, int value)
+	void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
 	{
 		m_Type = template.m_Type;
 		m_fThreshold = template.m_fThreshold;
-		m_fDuration = template.m_fDuration;
 		m_bIsValuePlayerID = template.m_bIsValuePlayerID;
 		m_iMinParticipation = Math.Min(template.m_iMinParticipation, template.m_fThreshold); //--- Min participation cannot be stricter than threshold
 		m_iMinVotes = template.m_iMinVotes;
+		
+		if (remainingDuration == -1)
+			m_fDuration = template.m_fDuration;
+		else
+			m_fDuration = remainingDuration;
 	}
 		
 	////////////////////////////////////////////////////////////////////////////////////////////////
@@ -315,10 +327,10 @@ class SCR_VotingReferendum: SCR_VotingBase
 			PrintFormat("    '%1'", GetGame().GetPlayerManager().GetPlayerName(playerID));
 		}
 	}
-	override void InitFromTemplate(SCR_VotingBase template, int value)
+	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
 	{
 		m_iValue = value;
-		super.InitFromTemplate(template, value);
+		super.InitFromTemplate(template, value, remainingDuration);
 	}
 };
 

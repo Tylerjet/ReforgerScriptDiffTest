@@ -7,7 +7,7 @@ class EditablePrefabsLabel_Faction : EditablePrefabsLabel_Base
 	override bool GetLabelValid(WorldEditorAPI api, IEntitySource entitySource, IEntityComponentSource componentSource, string targetPath, EEditableEntityType entityType, notnull array<EEditableEntityLabel> authoredLabels, out EEditableEntityLabel label)
 	{
 		IEntityComponentSource factionComponentSource = SCR_BaseContainerTools.FindComponentSource(entitySource, FactionAffiliationComponent);
-		IEntityComponentSource factionControlComponentSource = SCR_BaseContainerTools.FindComponentSource(entitySource, SCR_FactionControlComponent);
+		IEntityComponentSource factionControlComponentSource = SCR_BaseContainerTools.FindComponentSource(entitySource, SCR_FactionAffiliationComponent);
 		FactionKey factionKey = string.Empty;
 		if (factionComponentSource)
 		{

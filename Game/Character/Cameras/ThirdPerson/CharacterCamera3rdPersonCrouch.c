@@ -20,7 +20,7 @@ class CharacterCamera3rdPersonCrouch extends CharacterCamera3rdPersonBase
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{		
 		//! movement height 
-		float movement = m_ControllerComponent.GetMovementType();
+		float movement = m_ControllerComponent.GetMovementSpeed();
 		movement = (Math.Clamp(movement, 1, 3) - 1.0) * 0.5;
 		movement *= CONST_CAMERAMOVEMENTHEIGH;
 		

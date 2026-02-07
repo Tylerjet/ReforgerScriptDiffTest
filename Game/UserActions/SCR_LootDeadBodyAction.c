@@ -1,7 +1,5 @@
 class SCR_LootDeadBodyAction : SCR_LootAction
 {
-	private DamageManagerComponent m_pDamageComponent;
-	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
@@ -11,15 +9,25 @@ class SCR_LootDeadBodyAction : SCR_LootAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
-		if (m_pDamageComponent && m_pDamageComponent.GetState() != EDamageState.DESTROYED)
+		ChimeraCharacter char = ChimeraCharacter.Cast(GetOwner());
+		if (!char)
+			return false;
+		
+		// Interacting with unconscious characters' inventory is forbidden due to AI, for now.
+	/*	CharacterControllerComponent charControllerComp = char.GetCharacterController();
+		if (!charControllerComp)
+			return false;
+		
+		if (charControllerComp.IsUnconscious())
+			return super.CanBePerformedScript(user);*/
+		
+		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
+		if (!damageMan)
+			return false;
+		
+		if (damageMan.GetState() != EDamageState.DESTROYED)
 			return false;
 		
 		return super.CanBePerformedScript(user);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
-	{
-		m_pDamageComponent = DamageManagerComponent.Cast(pOwnerEntity.FindComponent(DamageManagerComponent));
 	}
 };

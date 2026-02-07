@@ -6,9 +6,28 @@ class SCR_CharacterInventoryStorageComponentClass: CharacterInventoryStorageComp
 //------------------------------------------------------------------------------------------------
 //! default scritped storage for the character
 
+const ref array<EWeaponType>		WEAPON_TYPES_THROWABLE	= {EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE};
+
 enum EItemType
 {
 	IT_NONE = 16385
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_InvEquipCB : SCR_InvCallBack
+{
+	CharacterControllerComponent m_Controller;
+
+	protected override void OnComplete()
+	{
+		m_Controller.TryEquipRightHandItem(m_pItem, EEquipItemType.EEquipTypeWeapon, false);
+		m_pItem = null;
+	}
+	
+	protected override void OnFailed()
+	{
+		m_pItem = null;
+	}
 };
 
 class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponent
@@ -30,7 +49,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	protected ref array< int >							m_aQuickSlotsHistory = new array< int >();	//here we'll be remembering the items stored
 	// protected ref array<EntityComponentPrefabData>		m_aPrefabsData = { null, null, null, null, null, null, null, null, null, null }; // todo: figure out the intentions
 	protected string				 					m_pLoadout;
-	private const int									GADGET_OFFSET = 9999;	//EWeaponType && EGadgetType might be have the same number, offset it ( not nice (i agree) )
+	protected static const int							GADGET_OFFSET = 9999;	//EWeaponType && EGadgetType might be have the same number, offset it ( not nice (i agree) )
 	/*
 	protected ref array<ref array<int>>					m_aDefaultRiflemanQuickSlots = 	{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_HANDGUN, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, ( EGadgetType.BINOCULARS ) + GADGET_OFFSET  },
@@ -40,12 +59,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 																							{ ( EGadgetType.COMPASS ) + GADGET_OFFSET } 
 																						};
 	*/
-	protected ref array<ref array<int>>					m_aDefaultQuickSlots = 			{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
+	protected static ref array<ref array<int>>			DEFAULT_QUICK_SLOTS =			{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_RIFLE, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_HANDGUN },
 																							{ EWeaponType.WT_FRAGGRENADE },
 																							{ EWeaponType.WT_SMOKEGRENADE },
-																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET },
+																							{ EGadgetType.CONSUMABLE + GADGET_OFFSET + EConsumableType.Bandage }, // i guess config would be nice eventually
 																							{ EGadgetType.BINOCULARS + GADGET_OFFSET },
 																							{ EGadgetType.MAP + GADGET_OFFSET },
 																							{ EGadgetType.COMPASS + GADGET_OFFSET },
@@ -54,6 +73,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 
 	protected ref array<BaseInventoryStorageComponent> m_aStoragesInStorageList = {};		//here we remember the opened storages in the Inventory menu ( in the Storages list area )
 	protected SCR_CompartmentAccessComponent m_CompartmentAcessComp;
+	protected BaseInventoryStorageComponent m_WeaponStorage;
+	
+	protected ref SCR_InvEquipCB m_Callback = new SCR_InvEquipCB();
 	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
@@ -65,33 +87,32 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	// !
 	BaseInventoryStorageComponent GetWeaponStorage()
 	{
-		auto genericComponent = GetOwner().FindComponent( EquipedWeaponStorageComponent );
-		if (!genericComponent)
-			return null;
-		return BaseInventoryStorageComponent.Cast( genericComponent );
+		if (!m_WeaponStorage)
+			m_WeaponStorage = BaseInventoryStorageComponent.Cast(GetOwner().FindComponent(EquipedWeaponStorageComponent));
+		
+		return m_WeaponStorage;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// !
-	InventoryItemComponent GetItemFromLoadoutSlot( ELoadoutArea eSlot )
+	InventoryItemComponent GetItemFromLoadoutSlot( LoadoutAreaType eSlot )
 	{
 		// Not all attached Entities to slots are storages.
 		// For instance boots - even though attached to character storage slot by themselves represent item, not storage
 		// However if entity attached to slot it is guaranteed to have InventoryItemComponent
-		InventoryStorageSlot slot = GetSlotForArea(eSlot);
+		InventoryStorageSlot slot = GetSlotForArea(eSlot.Type());
 		if (!slot)
 			return null;
-		auto entity = slot.GetAttachedEntity();
+		
+		IEntity entity = slot.GetAttachedEntity();
 		if (!entity)
 			return null;
-		auto genericComponent = entity.FindComponent( InventoryItemComponent );
-		if (!genericComponent)
-			return null;
-		return InventoryItemComponent.Cast( genericComponent );
+		
+		return InventoryItemComponent.Cast(entity.FindComponent(InventoryItemComponent));
 	}
 	//------------------------------------------------------------------------------------------------
 	// !
-	BaseInventoryStorageComponent GetStorageFromLoadoutSlot( ELoadoutArea eSlot )
+	BaseInventoryStorageComponent GetStorageFromLoadoutSlot( LoadoutAreaType eSlot )
 	{
 		return BaseInventoryStorageComponent.Cast( GetItemFromLoadoutSlot(eSlot) );
 	}
@@ -111,7 +132,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		array<IEntity> pEntities = new array<IEntity>();
 		int iNrOfStorages = GetAll( pEntities );
 		
-		foreach( IEntity pEntity: pEntities )
+		foreach ( IEntity pEntity: pEntities )
 		{
 			SCR_UniversalInventoryStorageComponent pUniComp = GetStorageComponentFromEntity( pEntity );
 			if( pUniComp )
@@ -186,7 +207,15 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			SCR_GadgetComponent gadgetComponent = SCR_GadgetComponent.Cast( pItem.FindComponent( SCR_GadgetComponent ) );
 			if ( gadgetComponent )
 			{
-				iItemType = gadgetComponent.GetType() + GADGET_OFFSET;
+				EGadgetType gadgetType = gadgetComponent.GetType();
+				int consumableOffset = 0;
+				if (gadgetType == EGadgetType.CONSUMABLE)
+				{
+					SCR_ConsumableItemComponent consumable = SCR_ConsumableItemComponent.Cast(gadgetComponent);
+					if (consumable)
+						consumableOffset = consumable.GetConsumableType();
+				}
+				iItemType = gadgetComponent.GetType() + GADGET_OFFSET + consumableOffset;
 			}
 		}
 				
@@ -197,7 +226,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	// !
 	bool ItemBelongsToSlot( int iItemType, int iSlotIndex )
 	{
-		return m_aDefaultQuickSlots[ iSlotIndex ].Find( iItemType ) != -1;
+		return DEFAULT_QUICK_SLOTS[iSlotIndex].Contains(iItemType);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -212,18 +241,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	int GetEntityQuickSlot(IEntity item)
 	{
 		int itemType = GetItemType(item);
-		int quickSlotCnt = m_aDefaultQuickSlots.Count();
-		int quickSlotItemCnt;
-		for (int i = 0; i < quickSlotCnt; ++i)
+		foreach (int i, ref array<int> allowedTypes: DEFAULT_QUICK_SLOTS)
 		{
-			quickSlotItemCnt = m_aDefaultQuickSlots[i].Count();
-			for (int j = 0; j < quickSlotItemCnt; ++j)
-			{
-				if (m_aDefaultQuickSlots[i][j] == itemType)
-				{
-					return i;
-				}
-			}
+			if (allowedTypes.Contains(itemType))
+				return i;
 		}
 
 		return -1;
@@ -248,24 +269,36 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		int iItemType = GetItemType( pItem );
 		if ( iSlotIndex == -1 ) //we don't know what slot we put the item into. Check first if we remember the type of the item
 		{	
-			for ( int iLoop = 0; iLoop < m_aQuickSlots.Count(); iLoop ++ )	//go through the all quick slots
+			InventoryItemComponent itemComp = InventoryItemComponent.Cast(pItem.FindComponent(InventoryItemComponent));
+			InventoryStorageSlot parentSlot;
+			if (itemComp)
+				parentSlot = itemComp.GetParentSlot();
+			
+			if (parentSlot && EquipedWeaponStorageComponent.Cast(parentSlot.GetStorage()))
 			{
-				if ( m_aQuickSlots[ iLoop ] ) //do it only for the empty slots
-					continue;
-				if ( iItemType == m_aQuickSlotsHistory[ iLoop ] ) // there was aready something in the slot with this index
+				iSlotIndex = parentSlot.GetID();
+			}
+			else
+			{			
+				for (int iLoop, cnt = m_aQuickSlots.Count(); iLoop < cnt; iLoop++)	//go through the all quick slots
 				{
-					iSlotIndex = iLoop;
-					break;
-				}	
-				else
-				{
-					//there was nothing before, put the item into slot defined by the template ( m_aDefaultQuickSlots )
-					if ( ItemBelongsToSlot( iItemType, iLoop ) )
+					if ( m_aQuickSlots[ iLoop ] ) //do it only for the empty slots
+						continue;
+					if ( iItemType == m_aQuickSlotsHistory[ iLoop ] ) // there was aready something in the slot with this index
 					{
 						iSlotIndex = iLoop;
 						break;
-					}
-				}					
+					}	
+					else
+					{
+						//there was nothing before, put the item into slot defined by the template ( DEFAULT_QUICK_SLOTS )
+						if ( ItemBelongsToSlot( iItemType, iLoop ) )
+						{
+							iSlotIndex = iLoop;
+							break;
+						}
+					}					
+				}
 			}
 		}
 				
@@ -274,22 +307,14 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		if (!isForced)
 		{
-			ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
-			if (!character)
-				return;
-			
-			CompartmentAccessComponent compAccessComponent = character.GetCompartmentAccessComponent();
-			if (!compAccessComponent)
-				return;
-			
-			TurretCompartmentSlot turretCompartment = TurretCompartmentSlot.Cast(compAccessComponent.GetCompartment());
+			TurretCompartmentSlot turretCompartment = TurretCompartmentSlot.Cast(GetCurrentCompartment());
 			if (turretCompartment)
 			{
-				if (iSlotIndex < 4)
+				if (iSlotIndex < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT)
 					return;
 				
 				array<IEntity> turretWeapons = {};
-				GetTurretWeaponsList(turretWeapons, turretCompartment);
+				GetTurretWeaponsList(turretCompartment, turretWeapons);
 				if (turretWeapons.Contains(pItem))
 					return;
 			}
@@ -336,16 +361,106 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		return m_aQuickSlots; 
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Get currently held item. If character holds gadget, gadget is returned, otherwise current weapon.
+	IEntity GetCurrentItem()
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return null;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return null;
+		
+		IEntity gadget = controller.GetAttachedGadgetAtLeftHandSlot();
+		if (gadget)
+			return gadget;
+		
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
+		if (!weaponManager)
+			return null;
+		
+		BaseWeaponComponent weapon = weaponManager.GetCurrentWeapon();
+		if (weapon)
+			return weapon.GetOwner();
+		
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get selected item. If there is no active switching, currently held item is returned instead.
+	IEntity GetSelectedItem()
+	{
+		// Selection is in progress
+		if (m_Callback.m_pItem)
+			return m_Callback.m_pItem;
+	
+		return GetCurrentItem();	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Drop currently held item. Not allowed while switching to another item.
+	void DropCurrentItem()
+	{
+		// Not allowed while switching to another item
+		if (m_Callback.m_pItem)
+			return;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		IEntity gadget = controller.GetAttachedGadgetAtLeftHandSlot();
+		if (gadget)
+		{
+			// TODO: Equip another gadget or consumable of same type
+			controller.DropItemFromLeftHand();
+			return;
+		}
+		
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
+		if (!weaponManager)
+			return;
+		
+		WeaponSlotComponent currentSlot = weaponManager.GetCurrentSlot();
+		if (!currentSlot)
+			return;
+		
+		EWeaponType type = currentSlot.GetWeaponType();
+		controller.SetThrow(false, true);
+		controller.DropWeapon(currentSlot);
+		
+		if (!WEAPON_TYPES_THROWABLE.Contains(type))
+			return;
+			
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
+		if (!storageManager)
+			return;
+		
+		IEntity nextGrenade = storageManager.FindNextWeaponOfType(type);
+		if (nextGrenade)
+		{
+			m_Callback.m_pItem = nextGrenade;
+			storageManager.EquipWeapon(nextGrenade, m_Callback, false);
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// ! 
+	#ifdef DEBUG_INVENTORY20
 	protected override void OnAddedToSlot(IEntity item, int slotID)
 	{
+		super.OnAddedToSlot(item, slotID);
+		
 		// Loadout manager is taking care of this since there are some items that shouldn't be visible when attached to slot, some have different meshes for different states.
 		// Consider glasses in first person view - they deffinitely should be disabled
 		// it is slightly more complex then this
 			
-		
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast( item .FindComponent( InventoryItemComponent ) );
 		if ( itemComponent == null ) 
 			return;
@@ -361,11 +476,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		UIInfo UIinfoItem = attr.GetUIInfo();
 		if( !UIinfoItem )
 			return;
-		#ifdef DEBUG_INVENTORY20
-			PrintFormat( "INV: item %1 was added. It's weight is: %2, and total weight of item/storage is: %3", UIinfoItem.GetName(), attr.GetWeight(), storageComponent.GetTotalWeight() );
-		#endif
 		
+		PrintFormat( "INV: item %1 was added. It's weight is: %2, and total weight of item/storage is: %3", UIinfoItem.GetName(), attr.GetWeight(), storageComponent.GetTotalWeight() );
 	}
+	#endif
 
 	//------------------------------------------------------------------------------------------------
 	// !
@@ -383,25 +497,303 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		RemoveItemFromQuickSlot( item );
 	}
 	
-	protected void GetPlayersWeapons( inout array<IEntity> outWeapons )
+	//------------------------------------------------------------------------------------------------	
+	bool CanUseItem(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
 	{
-		BaseWeaponManagerComponent pWeaponManager = BaseWeaponManagerComponent.Cast( GetOwner().FindComponent( BaseWeaponManagerComponent ) );
-		if ( !pWeaponManager )
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+		
+		// Autodetect slot function if not provided
+		if (slotFunction == ESlotFunction.TYPE_GENERIC)
+		{
+			if (item.FindComponent(MagazineComponent))
+				slotFunction = ESlotFunction.TYPE_MAGAZINE;
+			else if (item.FindComponent(BaseWeaponComponent))
+				slotFunction = ESlotFunction.TYPE_WEAPON;
+			else if (item.FindComponent(SCR_GadgetComponent))
+				slotFunction = ESlotFunction.TYPE_GADGET;
+		}
+		
+		switch (slotFunction)
+		{
+			case ESlotFunction.TYPE_MAGAZINE:
+			{
+				if (!character.IsInVehicle())
+					return CanReloadCurrentWeapon(item);
+				
+				return false;
+			}
+			
+			case ESlotFunction.TYPE_WEAPON:
+			{
+				if (TurretCompartmentSlot.Cast(GetCurrentCompartment()))
+				{
+					BaseWeaponComponent currentWeapon = GetCurrentTurretWeapon();
+					return currentWeapon && currentWeapon.GetOwner(); // TODO: != item
+				}
+				else
+				{
+					return controller.GetCanFireWeapon(); // TODO: Has multiple muzzles or has next grenade type
+				}
+				
+				return false;
+			}
+			
+			case ESlotFunction.TYPE_GADGET:
+			{
+				if (character.IsInVehicleADS())
+					return false;
+				
+				return controller.CanEquipGadget(item);
+			}
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	bool UseItem(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+		
+		// Autodetect slot function
+		if (slotFunction == ESlotFunction.TYPE_GENERIC)
+		{
+			if (item.FindComponent(MagazineComponent))
+				slotFunction = ESlotFunction.TYPE_MAGAZINE;
+			else if (item.FindComponent(BaseWeaponComponent))
+				slotFunction = ESlotFunction.TYPE_WEAPON;
+			else if (item.FindComponent(SCR_GadgetComponent))
+				slotFunction = ESlotFunction.TYPE_GADGET;
+		}
+		
+		switch (slotFunction)
+		{
+			case ESlotFunction.TYPE_MAGAZINE:
+			{
+				return ReloadCurrentWeapon(item);
+			}
+			
+			case ESlotFunction.TYPE_WEAPON:
+			{
+				CharacterControllerComponent controller = character.GetCharacterController();
+				if (!controller)
+					return false;
+				
+				m_Callback.m_pItem = item;
+				m_Callback.m_Controller = controller;
+				
+				TurretCompartmentSlot turretCompartment = TurretCompartmentSlot.Cast(GetCurrentCompartment());
+				if (turretCompartment)
+				{	
+					TurretControllerComponent turretController = TurretControllerComponent.Cast(turretCompartment.GetController());
+					if (!turretController)
+						return false;
+					
+					array<WeaponSlotComponent> turretWeaponSlots = {};		
+					GetTurretWeaponSlots(turretCompartment, turretWeaponSlots);
+					foreach (WeaponSlotComponent weaponSlot: turretWeaponSlots)
+					{
+						if (weaponSlot.GetWeaponEntity() == item)
+							return turretController.SelectWeapon(character, weaponSlot);
+					}
+				}
+				else
+				{
+					SCR_InventoryStorageManagerComponent inventoryManager = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
+					if (!inventoryManager)
+						return false;
+					
+					BaseWeaponComponent currentWeapon;
+					BaseWeaponManagerComponent manager = controller.GetWeaponManagerComponent();
+					if (manager)
+						currentWeapon = manager.GetCurrentWeapon();
+					
+					// Swap grenade type only if reselecting the same grenade slot
+					BaseWeaponComponent itemWeapon = BaseWeaponComponent.Cast(item.FindComponent(BaseWeaponComponent));
+					if (itemWeapon && itemWeapon.CanBeEquipped(controller) != ECanBeEquippedResult.OK)
+					{
+						return false;
+					}
+					else if (currentWeapon && itemWeapon && currentWeapon.GetWeaponType() == itemWeapon.GetWeaponType() && WEAPON_TYPES_THROWABLE.Contains(itemWeapon.GetWeaponType()))
+					{
+						// Equip different type of grenade
+						IEntity nextGrenade = inventoryManager.FindNextWeaponOfType(itemWeapon.GetWeaponType(), currentWeapon.GetOwner());
+						if (nextGrenade)
+							m_Callback.m_pItem = nextGrenade;
+					}
+					// Currently selected weapon can have alternative muzzle
+					else if (currentWeapon && currentWeapon.GetOwner() == item && !controller.IsGadgetInHands())
+					{
+						// Select next muzzle of a selected weapon
+						int nextMuzzleID = SCR_WeaponLib.GetNextMuzzleID(currentWeapon); 
+						if (nextMuzzleID != -1)
+							return controller.SetMuzzle(nextMuzzleID);
+						
+						return false;
+					}
+					
+					// TODO: Interrupt current equipping process now
+					if (GetWeaponStorage() && GetWeaponStorage().Contains(m_Callback.m_pItem))
+					{
+						controller.TryEquipRightHandItem(m_Callback.m_pItem, EEquipItemType.EEquipTypeWeapon, false);
+						m_Callback.m_pItem = null;
+					}
+					else
+					{
+						inventoryManager.EquipWeapon(m_Callback.m_pItem, m_Callback, false);
+					}
+					
+					return true;
+				}
+				break;
+			}
+			
+			case ESlotFunction.TYPE_GADGET:
+			{
+				if (character.IsInVehicleADS())
+					return false;
+				
+				// need to run through manager
+				// TODO kamil: this doesnt call setmode when switching to other item from gadget (no direct call to scripted togglefocused for example, possibly other issues?)
+				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(character);
+				gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
+				return true;
+			}
+		} 
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	protected bool CanReloadCurrentWeapon(notnull IEntity item)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();	
+		if (!controller)
+			return false;
+		
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
+		if (!weaponManager)
+			return false;
+		
+		BaseWeaponComponent currentWeapon = weaponManager.GetCurrent();
+		if (!currentWeapon)
+			return false;
+		
+		if (!currentWeapon.IsReloadPossible())
+			return false;
+		
+		BaseMuzzleComponent currentMuzzle = currentWeapon.GetCurrentMuzzle();
+		if (!currentMuzzle)
+			return false;
+		
+		BaseMagazineWell currentMagWell = currentMuzzle.GetMagazineWell();
+		if (!currentMagWell)
+			return false;
+		
+		MagazineComponent magazine = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
+		if (!magazine)
+			return false;
+		
+		if (magazine.GetMagazineWell().Type() == currentMagWell.Type())
+			return true;
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	protected bool ReloadCurrentWeapon(IEntity item)
+	{
+		if (!item)
+			return false;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return false;
+		
+		return controller.ReloadWeaponWith(item);
+	}
+	
+	protected void GetPlayersWeapons( notnull inout array<IEntity> outWeapons )
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
 			return;
-		pWeaponManager.GetWeaponsList( outWeapons );
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
+		if (weaponManager)
+			weaponManager.GetWeaponsList(outWeapons);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected BaseCompartmentSlot GetCurrentCompartment()
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return null;
+		
+		CompartmentAccessComponent compAccess = character.GetCompartmentAccessComponent();
+		if (!compAccess || !compAccess.IsInCompartment())
+			return null;
+		
+		return compAccess.GetCompartment();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected BaseWeaponComponent GetCurrentTurretWeapon()
+	{
+		BaseCompartmentSlot compartment = GetCurrentCompartment();
+		if (!compartment)
+			return null;
+		
+		TurretControllerComponent controller = TurretControllerComponent.Cast(compartment.GetController());
+		if (!controller)
+			return null;
+		
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManager();
+		if (!weaponManager)
+			return null;
+		
+		return weaponManager.GetCurrentWeapon();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// !
 	void InitAsPlayer(IEntity pOwner, bool pControlled)
 	{
-		auto pInventoryManager = SCR_InventoryStorageManagerComponent.Cast( GetOwner().FindComponent( SCR_InventoryStorageManagerComponent ) );
+		ChimeraCharacter character = ChimeraCharacter.Cast(pOwner);
+		if (!character)
+			return;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller)
+			return;
+		
+		SCR_InventoryStorageManagerComponent pInventoryManager = SCR_InventoryStorageManagerComponent.Cast(controller.GetInventoryStorageManager());
 		if ( !pInventoryManager )
 			return;
 			
 		if( pControlled )
 		{
-			int i = m_aDefaultQuickSlots.Count();	
+			int i = DEFAULT_QUICK_SLOTS.Count();
 			if ( m_aQuickSlotsHistory.Count() <  i )
 			{
 				for ( int m = 0; m < i; m++ )
@@ -414,34 +806,28 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			array<IEntity> outWeapons = {};
 			GetPlayersWeapons( outWeapons );
 			foreach ( IEntity weapon : outWeapons )
-			{
 				StoreItemToQuickSlot( weapon );
-			}
-			
+
 			// There may be unequipped grenades among default quick item slots as well
-			array<EWeaponType> grenadeTypes = {EWeaponType.WT_FRAGGRENADE, EWeaponType.WT_SMOKEGRENADE};
 			array<IEntity> outItems = {};
 			pInventoryManager.GetItems( outItems );
-			foreach ( auto pItem : outItems )
+			foreach ( IEntity pItem : outItems )
 			{
-				BaseWeaponComponent pWeaponSlotComp = BaseWeaponComponent.Cast( pItem.FindComponent( BaseWeaponComponent ) );
-				if ( pWeaponSlotComp && !grenadeTypes.Contains(pWeaponSlotComp.GetWeaponType()) )
+				if (!pItem)
 					continue;
+				
+				if (IsItemAlreadyInQuickSlot(pItem))
+					continue;
+				
 				StoreItemToQuickSlot( pItem );
 			}
 			
-			
-			
 			pInventoryManager.m_OnItemAddedInvoker.Insert( HandleOnItemAddedToInventory );
 			pInventoryManager.m_OnItemRemovedInvoker.Insert( HandleOnItemRemovedFromInventory );
-			
-			ChimeraCharacter character = ChimeraCharacter.Cast(pOwner);
-			if (!character)
-				return;
 
-			SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+			SCR_CharacterControllerComponent charController = SCR_CharacterControllerComponent.Cast(controller);
 			if (charController)
-				charController.m_OnItemUseCompleteInvoker.Insert(OnItemUsed);
+				charController.m_OnItemUseEndedInvoker.Insert(OnItemUsed);
 			
 			m_CompartmentAcessComp = SCR_CompartmentAccessComponent.Cast(character.GetCompartmentAccessComponent());
 			if (!m_CompartmentAcessComp)
@@ -493,6 +879,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				}
 			}
 		}
+		else if (consumable && consumable.GetConsumableType() == EConsumableType.Tourniquet)
+		{
+			RemoveItemFromQuickSlot(item);	
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -504,10 +894,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (m_CompartmentAcessComp && m_CompartmentAcessComp.IsGettingIn())
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
-			for (int i = 0; i < 4; i++)
-			{
+			for (int i = 0; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT; i++)
 				m_aWeaponQuickSlotsStorage.Insert(m_aQuickSlots[i]);
-			}
 		}
 		
 		if (!TurretCompartmentSlot.Cast(compartment) && !m_aWeaponQuickSlotsStorage.IsEmpty())
@@ -517,7 +905,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			IEntity quickSlotEntity;
 			SCR_InventoryStorageManagerComponent pInventoryManager = SCR_InventoryStorageManagerComponent.Cast(GetOwner().FindComponent( SCR_InventoryStorageManagerComponent));
 			
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT; i++)
 			{
 				quickSlotEntity = m_aWeaponQuickSlotsStorage[i];
 				
@@ -535,25 +923,18 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			return;
 		}
 
-		array<IEntity> temporaryWeaponsList = {};
-		int result = GetTurretWeaponsList(temporaryWeaponsList, compartment);
-		
-		if (result > 0)
+		array<WeaponSlotComponent> turretWeaponSlots = {};
+		if (GetTurretWeaponSlots(compartment, turretWeaponSlots) > 0)
 		{
 			RemoveItemsFromWeaponQuickSlots();
 			
-			foreach (IEntity weapon: temporaryWeaponsList)
-			{
-				if (!weapon)
-					continue;
-				
-				StoreItemToQuickSlot(weapon, -1, true);
-			}
+			foreach (int i, WeaponSlotComponent weaponSlot: turretWeaponSlots)
+				StoreItemToQuickSlot(weaponSlot.GetWeaponEntity(), i, true);
 		}
 		
 		SCR_WeaponSwitchingBaseUI.RefreshQuickSlots();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! SCR_CompartmentAccessComponent event
 	protected void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
@@ -563,7 +944,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (!TurretCompartmentSlot.Cast(compartment))
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT; i++)
 				m_aWeaponQuickSlotsStorage.Insert(m_aQuickSlots[i]);
 		}
 		
@@ -574,7 +955,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			IEntity quickSlotEntity;
 			SCR_InventoryStorageManagerComponent pInventoryManager = SCR_InventoryStorageManagerComponent.Cast(GetOwner().FindComponent( SCR_InventoryStorageManagerComponent));
 			
-			for (int i = 0; i < 4; i++)
+			for (int i = 0; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT; i++)
 			{
 				quickSlotEntity = m_aWeaponQuickSlotsStorage[i];
 				
@@ -596,26 +977,37 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	protected void RemoveItemsFromWeaponQuickSlots()
 	{
-		for (int i = 0; i < 4; i++)
+		for (int i = 0; i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT; i++)
 			RemoveItemFromQuickSlotAtIndex(i);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected int GetTurretWeaponsList(out array<IEntity> turretWeaponsList, BaseCompartmentSlot compartment)
+	protected int GetTurretWeaponsList(BaseCompartmentSlot compartment, out array<IEntity> weaponsList)
 	{
-		TurretCompartmentSlot turretCompartment = TurretCompartmentSlot.Cast(compartment);
-		if (!turretCompartment)
-			return -1;
-		
-		TurretControllerComponent turretController = TurretControllerComponent.Cast(turretCompartment.GetController());
+		TurretControllerComponent turretController = TurretControllerComponent.Cast(compartment.GetController());
 		if (!turretController)
 			return -1;
 		
 		BaseWeaponManagerComponent weaponManager = turretController.GetWeaponManager();
-		if (!weaponManager)
+		if (weaponManager)
+			return weaponManager.GetWeaponsList(weaponsList);
+		
+		return -1;
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	protected int GetTurretWeaponSlots(BaseCompartmentSlot compartment, out array<WeaponSlotComponent> weaponSlots)
+	{
+		TurretControllerComponent turretController = TurretControllerComponent.Cast(compartment.GetController());
+		if (!turretController)
 			return -1;
 		
-		return weaponManager.GetWeaponsList(turretWeaponsList);
+		BaseWeaponManagerComponent weaponManager = turretController.GetWeaponManager();
+		if (weaponManager)
+			return weaponManager.GetWeaponsSlots(weaponSlots);
+		
+		return -1;
 	}
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------

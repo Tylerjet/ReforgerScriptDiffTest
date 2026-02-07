@@ -74,6 +74,7 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 		}
 
 		// Show subtitles
+		// Subtitles printed to the chat - old way
 		string localizedText = WidgetManager.Translate(metadata[textIdx], param[0], param[1], param[2], param[3], param[4], param[5], param[6], param[7], param[8]);
 
 		SCR_ChatComponent.RadioProtocolMessage(localizedText);
@@ -113,8 +114,17 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	//------------------------------------------------------------------------------------------------
 	override void HandleMetadata(array<string> metadata, int priority, float distance)
 	{
+		// Hotfix: Disabled "subtitles"
+		/*
 		if (m_bShowSubtitles && distance < SUBTITLES_MAX_DISTANCE)
 			ShowSubtitles(metadata);
+		*/
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnSoundEventFinished(string eventName, AudioHandle handle, int priority, bool terminated)
+	{
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -13,6 +13,9 @@ class SCR_DamageDisabledTooltipDetail: SCR_EntityTooltipDetail
 		if (!m_Text)
 			return false;
 		
+		if (entity.Type() == SCR_EditablePlayerDelegateComponent)
+			return false;
+		
 		DamageManagerComponent damageManager = DamageManagerComponent.Cast(entity.GetOwner().FindComponent(DamageManagerComponent));
 		if (damageManager && (damageManager.IsDamageHandlingEnabled() || damageManager.GetState() == EDamageState.DESTROYED))
 			return false;

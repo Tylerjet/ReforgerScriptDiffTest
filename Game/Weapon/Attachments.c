@@ -27,6 +27,13 @@ class AttachmentOpticsM21 : AttachmentOptics
 {
 };
 
+class AttachmentOpticsCarryHandleClass {}
+AttachmentOpticsCarryHandleClass AttachmentOpticsCarryHandleSource;
+
+class AttachmentOpticsCarryHandle : AttachmentOptics
+{
+};
+
 ///////////////////// UNDER BARREL ///////////////////
 class AttachmentUnderBarrelClass {}
 AttachmentUnderBarrelClass AttachmentUnderBarrelSource;

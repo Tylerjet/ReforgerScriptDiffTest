@@ -52,6 +52,21 @@ class SCR_EditableEntityUIInfo: SCR_UIInfo
 		entityLabels.InsertAll(m_aAuthoredLabels);
 		return entityLabels.Count();
 	}
+	
+	/*!
+	Check if entity has label in either Auto or Authored labels
+	\param label Label to search
+	\return true if entity has the label
+	*/
+	bool HasEntityLabel(EEditableEntityLabel label)
+	{
+		if (m_aAutoLabels.Contains(label))
+			return true;
+		if (m_aAuthoredLabels.Contains(label))
+			return true;
+		
+		return false;
+	}
 		
 	/*!
 	Get Entity budget costs

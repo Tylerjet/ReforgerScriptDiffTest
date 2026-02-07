@@ -44,9 +44,9 @@ class SCR_AIFireteamWatch: AITaskScripted
 		IEntity targetEntity = null;
 		GetVariableIn(PORT_ENEMEY, targetEntity);
 		//return enemy and fail otherwise
-		int targetIndex = m_GroupUtilityComponent.m_aListOfKnownEnemies.Find(targetEntity);
+		int targetIndex = m_GroupUtilityComponent.m_aTargetEntities.Find(targetEntity);
 		if (targetIndex > -1)
-			m_GroupUtilityComponent.m_aFireteamsForKnownEnemies[targetIndex] = 0;
+			m_GroupUtilityComponent.m_aTargetInfos[targetIndex].m_eFireTeamAssigned = EFireTeams.NONE;
 
 		return ENodeResult.FAIL;
 		
@@ -56,7 +56,7 @@ class SCR_AIFireteamWatch: AITaskScripted
 	protected override string GetOnHoverDescription()
 	{
 		return "Fails when there is no member of fireteam alive. Otherwise is running.";
-	}		
+	}
 
 	
 	//------------------------------------------------------------------------------------------------

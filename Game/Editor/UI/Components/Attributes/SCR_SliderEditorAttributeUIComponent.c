@@ -29,13 +29,7 @@ class SCR_SliderEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 				if (data)
 				{
 					m_SliderData = data;
-					
-					float min, step;
-					m_SliderData.GetSliderMinMaxStep(min, m_fMaxSliderValue, step);
-					m_SliderWidgetComponent.SetSliderSettings(min, m_fMaxSliderValue, step, m_SliderData.GetSliderValueFormating());
-					
-					if (m_fDefaultValue == float.MAX)
-						m_fDefaultValue = m_fMaxSliderValue;
+					SetSliderSettings(var, m_SliderData);
 					continue;
 				}
 				
@@ -48,6 +42,19 @@ class SCR_SliderEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 		}
 				
 		super.Init(w, attribute);
+	}
+	
+	//~ Is overriden in SCR_VectorSliderEditorAttributeUIComponent
+	protected void SetSliderSettings(SCR_BaseEditorAttributeVar var, SCR_BaseEditorAttributeEntrySlider sliderData)
+	{
+		m_SliderData = sliderData;
+		
+		float min, step;
+		m_SliderData.GetSliderMinMaxStep(min, m_fMaxSliderValue, step);
+		m_SliderWidgetComponent.SetSliderSettings(min, m_fMaxSliderValue, step, m_SliderData.GetSliderValueFormating());
+		
+		if (m_fDefaultValue == float.MAX)
+			m_fDefaultValue = m_fMaxSliderValue;
 	}
 	
 	//Sets a default state for the UI and var value if conflicting attribute

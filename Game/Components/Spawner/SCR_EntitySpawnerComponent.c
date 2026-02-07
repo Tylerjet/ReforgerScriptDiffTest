@@ -12,10 +12,10 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	[Attribute("2", desc: "Range to check if a spawned entity is occupying the spawner", params: "0 inf 1", category: "Entity Spawner")]
 	protected int m_iEntitySpawnRange;
 	
-	[Attribute(defvalue: "0 0 0", uiwidget: UIWidgets.Coords, desc: "Local spawn position offset coords from owner", params: "inf inf purposeCoords spaceEntity", category: "Entity Spawner")]
+	[Attribute(defvalue: "0 0 0", uiwidget: UIWidgets.Coords, desc: "Local spawn position offset coords from owner", params: "inf inf purpose=coords space=entity anglesVar=m_vSpawnOffsetRotation", category: "Entity Spawner")]
 	protected vector m_vSpawnOffsetPosition;
 	
-	[Attribute("0 0 0", UIWidgets.Coords, desc: "Rotational offset", params: "inf inf purposeAngles spaceEntity", category: "Entity Spawner")]
+	[Attribute("0 0 0", UIWidgets.Coords, desc: "Rotational offset", params: "inf inf purpose=angles space=entity coordsVar=m_vSpawnOffsetPosition", category: "Entity Spawner")]
 	protected vector m_vSpawnOffsetRotation;
 	
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, desc: "Should spawner check Triggers in hierarchy for additional spawn positions?", category: "Entity Spawner")]
@@ -41,9 +41,12 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	
 	protected IEntity m_SpawnedEntity;
 	protected RplComponent m_RplComponent;
+	protected ref array<IEntity> m_aEntitiesOnSpawnPosition = {};
 
 	protected ref ScriptInvoker Event_OnEntitySpawned = new ScriptInvoker(); //~ Sends Spawned IEntity
 	protected ref ScriptInvoker Event_OnSpawnerSuppliesChanged = new ScriptInvoker(); //~ Sends Spawned prev and new spawn supplies
+	
+	static const vector m_vHeightOffset = "0 0.03 0";
 	
 	//------------------------------------------------------------------------------------------------
 	bool IsProxy()
@@ -176,6 +179,8 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 		if (IsProxy())
 			return;
 		
+		m_SpawnedEntity = null;
+		
 		SCR_EntityInfo spawnInfo;
 		array<SCR_EntityInfo> assetList = {};
 		
@@ -210,7 +215,7 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 		params.TransformMode = ETransformMode.WORLD;
 		
 		//Check spawn position if it is clean
-		if (!IsSpawnPositionClean())
+		if (!IsSpawnPositionClean(resource))
 		{			
 			if (m_bUseTriggers)
 			{
@@ -255,14 +260,6 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get spawn position for index / user
-	\param index of entity
-	\param entity initiating the spawn
-	\return vector Entity spawn position
-	*/
-	
-	//------------------------------------------------------------------------------------------------
 	//! Calculates the spawn tranformation matrix for the object
 	protected void GetSpawnTransform(out vector outMat[4])
 	{
@@ -275,43 +272,82 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Used for QueryEntitiesBySphere in IsSpawnPositionClean
-	protected bool ObstructionCheckCB(IEntity ent)
+	//! Returns true, if spawn position is empty
+	bool IsSpawnPositionClean(Resource resource)
 	{
-		if (ent.Type() != Vehicle)
+		if (!resource || !resource.IsValid())
+			return false;
+		
+		ref EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		GetSpawnTransform(params.Transform);
+		
+		//Currently, material is still used for preview, even thought it shouldn't be seen, as function doesn't work correctly without it
+		SCR_PrefabPreviewEntity previewEntity = SCR_PrefabPreviewEntity.Cast(SCR_PrefabPreviewEntity.SpawnPreviewFromPrefab(resource, "SCR_PrefabPreviewEntity", GetOwner().GetWorld(), params, "{56EBF5038622AC95}Assets/Conflict/CanBuild.emat"));
+		if (!previewEntity)
+			return false;
+		
+		TraceOBB paramOBB = new TraceOBB();
+		Math3D.MatrixIdentity3(paramOBB.Mat);
+		vector currentMat[4];
+		previewEntity.GetTransform(currentMat);
+		paramOBB.Mat[0] = currentMat[0];
+		paramOBB.Mat[1] = currentMat[1];
+		paramOBB.Mat[2] = currentMat[2];
+		paramOBB.Start = currentMat[3] + m_vHeightOffset;
+		paramOBB.Flags = TraceFlags.ENTS;
+		paramOBB.Exclude = previewEntity;
+		paramOBB.LayerMask = EPhysicsLayerPresets.Projectile;
+		previewEntity.GetPreviewBounds(paramOBB.Mins, paramOBB.Maxs);
+		
+		GetGame().GetWorld().TracePosition(paramOBB, null);
+		SCR_EntityHelper.DeleteEntityAndChildren(previewEntity);
+		
+		//If tracePosition found colliding entity, further checks will be done to determine whether can be actually something spawned
+		if (!paramOBB.TraceEnt)
 			return true;
 		
-		if (m_bDeleteWrecks)
+		m_aEntitiesOnSpawnPosition.Clear();
+		GetGame().GetWorld().QueryEntitiesByOBB(paramOBB.Mins, paramOBB.Maxs, currentMat, EntitySearchCallback);
+			
+		DamageManagerComponent comp;
+		GarbageManager garbageMan = GetGame().GetGarbageManager();
+			
+		//Goes through all entities found through query. While dead bodies are ignored, vehicle wrecks are removed, if m_bDeleteWrecks is enabled
+		for (int i = m_aEntitiesOnSpawnPosition.Count()-1; i >= 0; i--)
 		{
-			GarbageManager garbageMan = GetGame().GetGarbageManager();
-			DamageManagerComponent comp = DamageManagerComponent.Cast(ent.FindComponent(DamageManagerComponent));
-			if (!comp || !comp.IsDestroyed())
-				return false;
+			comp = DamageManagerComponent.Cast(m_aEntitiesOnSpawnPosition[i].FindComponent(DamageManagerComponent));
+			
+			if (ChimeraCharacter.Cast(m_aEntitiesOnSpawnPosition[i]) && comp.IsDestroyed())
+			{
+				m_aEntitiesOnSpawnPosition.Remove(i);
+				continue;
+			}
+			
+			if (m_aEntitiesOnSpawnPosition[i].IsInherited(Vehicle) && comp.IsDestroyed() && m_bDeleteWrecks)
+			{
+				if (garbageMan && garbageMan.IsInserted(m_aEntitiesOnSpawnPosition[i]))
+					garbageMan.Withdraw(m_aEntitiesOnSpawnPosition[i]);
 				
-			if (garbageMan && garbageMan.IsInserted(ent))
-				garbageMan.Withdraw(ent);
-				
-			SCR_EntityHelper.DeleteEntityAndChildren(ent);
-			return true;
+				SCR_EntityHelper.DeleteEntityAndChildren(m_aEntitiesOnSpawnPosition[i]);
+				m_aEntitiesOnSpawnPosition.Remove(i);
+			}	
 		}
-		else
-		{
+			
+		if (!m_aEntitiesOnSpawnPosition.IsEmpty())
 			return false;
-		}
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns true, if spawn position is empty
-	bool IsSpawnPositionClean()
-	{
-		ref EntitySpawnParams params = new EntitySpawnParams();
-		params.TransformMode = ETransformMode.WORLD;
-		GetSpawnTransform(params.Transform);
-		
-		if (!GetGame().GetWorld().QueryEntitiesBySphere(params.Transform[3], m_iEntitySpawnRange, ObstructionCheckCB))
-			return false;
+	//! Used to get all characters and vehicles obstructing spawn position
+	protected bool EntitySearchCallback(IEntity ent)
+	{	
+		if (!ent.FindComponent(DamageManagerComponent))
+			return true;
+			
+		m_aEntitiesOnSpawnPosition.Insert(ent);
 		
 		return true;
 	}

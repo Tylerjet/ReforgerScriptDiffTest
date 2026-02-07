@@ -56,4 +56,5 @@ enum EEditableEntityState
 	HIGHLIGHTED				= 1 << 17, ///< Entity requires player's attention
 	CURRENT_LAYER_CHILDREN	= 1 << 18, ///< Only direct children of current layer
 	AUTONOMOUS				= 1 << 19, ///< AI is behaving autonomously and may ignore orders
+	BASE_BUILDING			= 1 << 20, ///< Entities part of current base building mode
 };

@@ -10,10 +10,17 @@ class SCR_SlotLabelsComponent : ScriptedWidgetComponent
 				return;
 			
 	        Widget child = w.GetChildren();
+		
 	        while (child)
 	        {
-	            TextWidget text = TextWidget.Cast(GetGame().GetWorkspace().CreateWidget(WidgetType.TextWidgetTypeID, WidgetFlags.VISIBLE, new Color(1,0,1,1), 0, child));
-	            text.SetText(child.GetName());
+				if (OverlayWidget.Cast(child))
+				{
+					TextWidget text = TextWidget.Cast(GetGame().GetWorkspace().CreateWidget(WidgetType.TextWidgetTypeID, WidgetFlags.VISIBLE, new Color(1,1,1,1), 0, child));
+		            text.SetText(child.GetName());
+					text.SetFont("{3E7733BAC8C831F6}UI/Fonts/RobotoCondensed/RobotoCondensed_Regular.fnt");
+					text.SetExactFontSize(18);	
+				}
+					
 	            child = child.GetSibling();
 	        }
         #endif

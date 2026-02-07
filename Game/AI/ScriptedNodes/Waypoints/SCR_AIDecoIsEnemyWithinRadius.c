@@ -18,7 +18,7 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 		DamageManagerComponent damageManager;
 		float waypointRadiusSq = waypoint.GetCompletionRadius() * waypoint.GetCompletionRadius();
 		
-		foreach (IEntity enemy : groupUtility.m_aListOfKnownEnemies)
+		foreach (IEntity enemy : groupUtility.m_aTargetEntities)
 		{
 			if (!enemy)
 				continue;
@@ -35,7 +35,7 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 			if (vector.DistanceSq(enemy.GetOrigin(),waypoint.GetOrigin()) < waypointRadiusSq)
 				return true;
 		}
-		return false;	
+		return false;
 	}	
 
 	//---------------------------------------------------------------------------------------------------	
@@ -45,8 +45,8 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 		SCR_AIGroupUtilityComponent guc;
 		
 		if ( !GetVariableIn(WAYPOINT_PORT,waypoint) )
-			waypoint = owner.GetCurrentWaypoint();		
-		if (! waypoint )	
+			waypoint = owner.GetCurrentWaypoint();
+		if (! waypoint )
 		{
 			Print("Node IsEnemyWithinRadius executed without valid waypoint!");
 			return false;
@@ -69,5 +69,5 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 	protected override string GetOnHoverDescription()
 	{
 		return "Decorator that test that at least one detected enemy is within completion radius of waypoint, current waypoint is used if none is provided";
-	}	
+	}
 };

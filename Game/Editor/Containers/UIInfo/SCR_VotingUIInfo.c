@@ -1,4 +1,4 @@
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_VotingUIInfo: SCR_UIInfo
 {
 	[Attribute(desc: "Text used when starting a vote about something.")]

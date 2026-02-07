@@ -480,9 +480,9 @@ class SCR_GameModeCleanSweep : SCR_BaseGameMode
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId, KickCauseCode cause)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId, cause);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 		
 		Replication.BumpMe();
 		if (areaID != INVALID_AREA_INDEX || m_iGameMasterID != playerId)

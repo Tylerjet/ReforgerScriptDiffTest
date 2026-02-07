@@ -418,7 +418,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	{
 		if (!m_WeaponState)
 			return;
-		
+
 		#ifdef WEAPON_INFO_DEBUG
 		_print("OnAmmoCountChanged");
 		_print(string.Format("    weapon:            %1", weapon));
@@ -937,18 +937,22 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 
 		m_Widgets.m_FiremodeIcon.SetVisible(false);
 		m_Widgets.m_FiremodeGlow.SetVisible(false);
-
+		
 		if (state.m_Muzzle && state.m_MuzzleUI && state.m_MuzzleUI.ShowFiremodeIcon())
 		{
 			auto fm = state.m_FireModeType;
+			string icon = state.m_MuzzleUI.GetFiremodeIconName(fm);
 			
-			SetWidgetImage(m_Widgets.m_FiremodeIcon, state.m_MuzzleUI.GetFiremodeIconImageset(), state.m_MuzzleUI.GetFiremodeIconName(fm), SCALE_FIREMODE);
-			SetWidgetImage(m_Widgets.m_FiremodeGlow, state.m_MuzzleUI.GetFiremodeGlowImageset(), state.m_MuzzleUI.GetFiremodeIconName(fm), SCALE_FIREMODE);
-		
-			m_Widgets.m_FiremodeIcon.SetVisible(true);
-			m_Widgets.m_FiremodeGlow.SetVisible(true);
+			if (icon != string.Empty)
+			{
+				SetWidgetImage(m_Widgets.m_FiremodeIcon, state.m_MuzzleUI.GetFiremodeIconImageset(), icon, SCALE_FIREMODE);
+				SetWidgetImage(m_Widgets.m_FiremodeGlow, state.m_MuzzleUI.GetFiremodeGlowImageset(), icon, SCALE_FIREMODE);
 			
-			AnimateWidget_ColorFlash(m_Widgets.m_FiremodeIcon, EWeaponFeature.FIREMODE);
+				m_Widgets.m_FiremodeIcon.SetVisible(true);
+				m_Widgets.m_FiremodeGlow.SetVisible(true);
+				
+				AnimateWidget_ColorFlash(m_Widgets.m_FiremodeIcon, EWeaponFeature.FIREMODE);
+			}
 		}		
 	}
 

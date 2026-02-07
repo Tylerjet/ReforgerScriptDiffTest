@@ -16,10 +16,10 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	[Attribute("0", UIWidgets.CheckBox, "Should reticle be scaled with current zoom", category: "2DSights")]
 	protected bool m_bDynamicReticle;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset when looking through scope", category: "PiPSights", params: "inf inf 0 purposeCoords spaceEntity")]
+	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset when looking through scope", category: "PiPSights", params: "inf inf 0 purpose=coords space=entity anglesVar=m_vCameraAngles")]
 	protected vector m_vCameraPoint;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "PiPSights", params: "inf inf 0 purposeAngles spaceEntity")]
+	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "PiPSights", params: "inf inf 0 purpose=angles space=entity coordsVar=m_vCameraPoint")]
 	protected vector m_vCameraAngles;
 	
 	[Attribute("1.4", UIWidgets.Slider, "Scale mult. of scope when target recoil is applied.", category: "2DSights", params: "1 3 0.01")]
@@ -48,6 +48,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	
 	// 
 	protected SCR_SightsZoomFOVInfo m_SightsFovInfo;
+	
+	protected WeaponSoundComponent m_WeaponSoundComp;
 	
 	//------------------------------------------------------------------------------------------------
 	override protected vector GetSightsRelPosition()
@@ -306,14 +308,6 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		if (!m_SightsFovInfo)
 			return;
 		
-		// Get reference 1x FOV
-		float referenceFOV;
-		PlayerController pc = GetGame().GetPlayerController();
-		if (pc && pc.GetPlayerCamera())
-			referenceFOV = pc.GetPlayerCamera().GetFocusFOV();
-		else
-			referenceFOV = REFERENCE_FOV;
-		
 		// Set zooms 
 		//m_SightsFovInfo.SetupZooms();
 		array<float> zooms = m_SightsFovInfo.ZoomsToArray();
@@ -326,7 +320,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		{
 			// Calculate fov for each zoom
 			float zoom = zooms[i];
-			float fov = CalculateZoomFov(referenceFOV, zoom);
+			float fov = CalculateZoomFOV(zoom);
 			m_SightsFovInfo.InsertFov(fov);	
 			
 			// Reticle sizes
@@ -346,6 +340,36 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 				m_aReticleSizes.Insert(size);
 			}
 		}
+	}
+	
+	protected void UpdateWeaponSoundComponent()
+	{
+		m_WeaponSoundComp = WeaponSoundComponent.Cast(m_Owner.GetParent().FindComponent(WeaponSoundComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Using RPC here because it is only for sound, so we don't care when weapon is streamed in.
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_SetNewZoomLevel_BC(int zoomLevel, bool increased)
+	{
+		UpdateWeaponSoundComponent();
+		
+		// Play toggle sound
+		if (m_WeaponSoundComp)
+		{
+			if (increased)
+				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_IN");
+			else 
+				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_OUT");
+		}
+	}
+	
+	
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_SetNewZoomLevel_S(int zoomLevel, bool increased)
+	{
+		//Broadcast to everybody
+		Rpc(RPC_SetNewZoomLevel_BC, zoomLevel, increased);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -385,9 +409,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			m_iSelectedZoomLevel++;
 			SelectZoomLevel(m_iSelectedZoomLevel);
 			
-			// Play zoom change sound
-			if (m_WeaponSoundComp)
-				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_IN");
+			//Ask the server to broadcast to everybody.
+			Rpc(RPC_SetNewZoomLevel_S, m_iSelectedZoomLevel, true);
 		}
 		
 		// Up 
@@ -396,10 +419,34 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			m_iSelectedZoomLevel--;
 			SelectZoomLevel(m_iSelectedZoomLevel);
 			
-			// Play zoom change sound
-			if (m_WeaponSoundComp)
-				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_OUT");
+			//Ask the server to broadcast to everybody.
+			Rpc(RPC_SetNewZoomLevel_S, m_iSelectedZoomLevel, false);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Using RPC here because it is only for sound, so we don't care when weapon is streamed in.
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_SetIllumination_BC(bool state)
+	{
+		UpdateWeaponSoundComponent();
+		
+		// Play toggle sound
+		if (m_WeaponSoundComp)
+		{
+			if (state)
+				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_ON");
+			else 
+				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_OFF");
+		}
+	}
+	
+	
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_SetIllumination_S(bool state)
+	{
+		//Broadcast to everybody
+		Rpc(RPC_SetIllumination_BC, state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -409,15 +456,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		m_bIsIlluminationOn = !m_bIsIlluminationOn;
 		EnableReticleIllumination(m_bIsIlluminationOn);
 		
-		// Play toggle sound
-		if (!m_WeaponSoundComp)
-			return;
-		
-		if (m_bIsIlluminationOn)
-			m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_ON");
-		else 
-			m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_OFF");
-		
+		//Ask the server to broadcast to everybody.
+		Rpc(RPC_SetIllumination_S, m_bIsIlluminationOn);
 	}
 	
 	//------------------------------------------------------------------------------------------------

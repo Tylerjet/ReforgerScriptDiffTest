@@ -1,12 +1,15 @@
-
 /// @ingroup Editor_Core GameCore Editable_Entities
+
+void ScriptInvoker_EntityCoreBudgetUpdated(EEditableEntityBudget type, int originalBudgetValue, int budgetChange, int updatedBudgetValue, SCR_EditableEntityComponent entity);
+typedef func ScriptInvoker_EntityCoreBudgetUpdated;
+typedef ScriptInvokerBase<ScriptInvoker_EntityCoreBudgetUpdated> ScriptInvoker_EntityCoreBudgetUpdatedEvent;
 
 /*!
 Core component to manage SCR_EditableEntityComponent.
 */
 [BaseContainerProps(configRoot: true)]
 class SCR_EditableEntityCore: SCR_GameCoreBase
-{	
+{
 	[Attribute(desc: "Settings for every entity type.")]
 	private ref array<ref SCR_EditableEntityCoreTypeSetting> m_TypeSettings;
 	
@@ -23,7 +26,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	private ref array<ref SCR_EditableEntityCoreLabelSetting> m_EntityLabels;
 	
 	private ref map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting> m_TypeSettingsMap = new map<EEditableEntityType, SCR_EditableEntityCoreTypeSetting>;
-	private ref map<EEditableEntityBudget, SCR_EditableEntityCoreBudgetSetting> m_BudgetSettingsMap = new map<EEditableEntityBudget, SCR_EditableEntityCoreBudgetSetting>;
 	
 	private ref map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>> m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
 	private ref map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
@@ -32,7 +34,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	private ref set<SCR_EditableEntityComponent> m_Entities;
 	ref map<RplId, ref array<RplId>> m_OrphanEntityIds = new map<RplId, ref array<RplId>>();
 	private SCR_EditableEntityComponent m_CurrentLayer;
-	private bool m_UpdateBudgets;
 	
 	/*! Called when an entity is made editable */
 	ref ScriptInvoker Event_OnEntityRegistered = new ScriptInvoker;
@@ -51,7 +52,8 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	/*! Called when entity transformation is changed by the editor only server only. Sends EditableEntity and Prev Transform*/
 	ref ScriptInvoker Event_OnEntityTransformChangedServer = new ScriptInvoker;
 	/*! Called when entity budget is updated */
-	ref ScriptInvoker Event_OnEntityBudgetChanged = new ScriptInvoker;
+	ref ScriptInvoker_EntityCoreBudgetUpdatedEvent Event_OnEntityBudgetUpdated = new ScriptInvoker_EntityCoreBudgetUpdatedEvent();
+	
 	/*! Called when entity is extended or cease to be extended */
 	ref ScriptInvoker Event_OnEntityExtendedChange = new ScriptInvoker;
 	
@@ -69,7 +71,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	}
 	void RegisterEntity(SCR_EditableEntityComponent entity)
 	{
-		bool delayBudgetUpdate = false;
 		//--- Get settings for the entity based on its type
 		SCR_EditableEntityCoreTypeSetting setting = null;
 		if (m_TypeSettingsMap.Find(entity.GetEntityType(), setting))
@@ -77,19 +78,18 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 			//--- Set default max draw distance
 			if (entity.GetMaxDrawDistanceSq() <= 0)
 				entity.SetMaxDrawDistance(setting.GetMaxDrawDistance());
-			delayBudgetUpdate = setting.GetCanBePlayer();	
 		}
 		else
 		{
 			Print(string.Format("Default type settings not found for '%1'!", Type().EnumToString(EEditableEntityType, entity.GetEntityType())), LogLevel.ERROR);
 		}
 		
-		UpdateBudgets(entity, true, delayBudgetUpdate);	
-		Event_OnEntityRegistered.Invoke(entity);		
+		Event_OnEntityRegistered.Invoke(entity);
+		UpdateBudgets(entity, true);	
 	}
 	void UnRegisterEntity(SCR_EditableEntityComponent entity, IEntity owner = null)
 	{
-		UpdateBudgets(entity, false, false, owner);
+		UpdateBudgets(entity, false, owner);
 		Event_OnEntityUnregistered.Invoke(entity);
 	}
 	
@@ -276,7 +276,50 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		else
 			return false;
 	}
+	/*!
+	Check if entity can be controlled by player, used for delaying budget update/AI check
+	\param EEditableEntityType type of the entity to check
+	\return bool if given entity can be controlled by player
+	*/
+	bool GetEntityCanBeControlled(EEditableEntityType type)
+	{
+		SCR_EditableEntityCoreTypeSetting setting;
+		return m_TypeSettingsMap.Find(type, setting) && setting.GetCanBePlayer());
+	}
 	
+	EEditableEntityBudget GetBudgetForEntityType(EEditableEntityType entityType)
+	{
+		EEditableEntityBudget budget;
+		switch (entityType)
+		{
+			case EEditableEntityType.GENERIC:
+			case EEditableEntityType.ITEM:
+				budget = EEditableEntityBudget.PROPS;
+				break;
+			case EEditableEntityType.CHARACTER:
+			case EEditableEntityType.GROUP:
+				budget = EEditableEntityBudget.AI;
+				break;
+			case EEditableEntityType.VEHICLE:
+				budget = EEditableEntityBudget.VEHICLES;
+				break;
+			case EEditableEntityType.WAYPOINT:
+			case EEditableEntityType.COMMENT:
+			case EEditableEntityType.SYSTEM:
+			case EEditableEntityType.TASK:
+				budget = EEditableEntityBudget.SYSTEMS;
+				break;
+			default:
+				budget = EEditableEntityBudget.PROPS;
+				break;
+		}
+		return budget;
+	}
+	
+	/*!
+	Get all entity budget settings
+	\param[out] Array with entity budget settings
+	*/
 	void GetBudgets(out notnull array<ref SCR_EditableEntityCoreBudgetSetting> budgets)
 	{
 		foreach (SCR_EditableEntityCoreBudgetSetting budget : m_BudgetSettings)
@@ -285,6 +328,27 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		}
 	}
 	
+	/*!
+	Get current budget settings of given type
+	\param[out] SCR_EditableEntityCoreBudgetSetting
+	*/
+	bool GetBudget(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
+	{
+		foreach (SCR_EditableEntityCoreBudgetSetting budget : m_BudgetSettings)
+		{
+			if (budget.GetBudgetType() == budgetType)
+			{
+				budgetSettings = budget;
+				return true;
+			}
+		}
+		return false;
+	}
+	
+	/*!
+	Get all entity label group settings
+	\param[out] Array with current entity label groups
+	*/
 	void GetLabelGroups(out notnull array<ref SCR_EditableEntityCoreLabelGroupSetting> labelGroups)
 	{
 		foreach ( SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
@@ -320,6 +384,12 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		return -1;
 	}
 	
+	/*!
+	Get group enum value of passed entity label
+	\param EEditableEntityLabel enum value
+	\param[out] Label group enum value this entity label belongs to.
+	\return True when label is part of a group and found valid result.
+	*/
 	bool GetLabelGroupType(EEditableEntityLabel label, out EEditableEntityLabelGroup labelGroup)
 	{
 		SCR_EditableEntityCoreLabelSetting labelSettings;
@@ -327,14 +397,26 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 			return false;
 		
 		labelGroup = labelSettings.GetLabelGroupType();
-		return true;
+		return labelGroup != EEditableEntityLabelGroup.NONE;
 	}
 	
+	/*!
+	Get all label settings of the passed label group
+	\param EEditableEntityLabelGroup enum value of group
+	\param[out] Array with all label settings of labels in this group
+	\return True if group has labels defined
+	*/
 	bool GetLabelsOfGroup(EEditableEntityLabelGroup groupType, out notnull array<SCR_EditableEntityCoreLabelSetting> labels)
 	{
 		return m_LabelListMap.Find(groupType, labels);
 	}
 	
+	/*!
+	Get UI info of passed entity label
+	\param EEditableEntityLabel enum value
+	\param[out] SCR_UIInfo matching the passed label enum value
+	\return True if UI Info was found and is valid
+	*/
 	bool GetLabelUIInfo(EEditableEntityLabel entityLabel, out SCR_UIInfo uiInfo)
 	{
 		SCR_EditableEntityCoreLabelSetting labelSetting = m_LabelSettingsMap.Get(entityLabel);
@@ -344,7 +426,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		}
 		return uiInfo != null;
 	}
-	
 	
 	/*!
 	Get specific label order. Returns -1 if label not found
@@ -388,7 +469,7 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		EEditableEntityLabelGroup groupLabel;
 
 		//~ Get label groups of the given label and get order of the group
-		foreach(EEditableEntityLabel label: labels)
+		foreach (EEditableEntityLabel label: labels)
 		{
 			GetLabelGroupType(label, groupLabel);
 			
@@ -438,13 +519,13 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		array<EEditableEntityLabel> labelsTest = {};
 		
 		//~ For each ordered group get the labels and order those as well
-		foreach(EEditableEntityLabelGroup group: orderedGroups)
+		foreach (EEditableEntityLabelGroup group: orderedGroups)
 		{			
 			orderedLabelCount = 0;
 			orderedLabels.Clear();
 			
 			//~ Go over each label in the group and order them from highest to lowest
-			foreach(EEditableEntityLabel label: groupsWithLabels[group])
+			foreach (EEditableEntityLabel label: groupsWithLabels[group])
 			{
 				//~ New list so add it and continue
 				if (orderedLabels.IsEmpty())
@@ -541,52 +622,22 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		Print("--------------------------------------------------", LogLevel.DEBUG);
 	}
 	
-	bool GetBudgetSettingsForBudgetType(EEditableEntityBudget budgetType, out SCR_EditableEntityCoreBudgetSetting budgetSettings)
+	void UpdateBudgets(SCR_EditableEntityComponent entity, bool added, IEntity owner = null)
 	{
-		return m_BudgetSettingsMap.Find(budgetType, budgetSettings);
-	}
-	
-	EEditableEntityBudget GetBudgetForEntityType(EEditableEntityType entityType)
-	{
-		EEditableEntityBudget budget;
-		switch (entityType)
-		{
-			case EEditableEntityType.GENERIC:
-			case EEditableEntityType.ITEM:
-				budget = EEditableEntityBudget.PROPS;
-				break;
-			case EEditableEntityType.CHARACTER:
-			case EEditableEntityType.GROUP:
-				budget = EEditableEntityBudget.AI;
-				break;
-			case EEditableEntityType.VEHICLE:
-				budget = EEditableEntityBudget.VEHICLES;
-				break;
-			case EEditableEntityType.WAYPOINT:
-			case EEditableEntityType.COMMENT:
-			case EEditableEntityType.SYSTEM:
-			case EEditableEntityType.TASK:
-				budget = EEditableEntityBudget.SYSTEMS;
-				break;
-			default:
-				budget = EEditableEntityBudget.PROPS;
-				break;
-		}
-		return budget;
-	}
-	
-	protected void UpdateBudgets(SCR_EditableEntityComponent entity, bool added, bool delayUpdate, IEntity owner = null)
-	{
-		if (!m_UpdateBudgets || !entity)
+		if (!entity)
 			return;
 		
 		EEditableEntityType entityType = entity.GetEntityType();
 		if (entity.HasEntityFlag(EEditableEntityFlag.LOCAL) || entity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
 			return;
 		
-		if (delayUpdate)
+		if (!owner)
+			owner = entity.GetOwner();
+		
+		if (added && GetEntityCanBeControlled(entityType))
 		{
-			// TODO explain
+			// Budget update is delayed by one frame since AI-control can not be determined directly on spawn
+			// Update is delayed for these and potentionally other entities
 			GetGame().GetCallqueue().CallLater(UpdateBudgetForEntity, 1, false, entity, added, owner);
 		}
 		else
@@ -595,52 +646,59 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		}
 	}
 	
-	protected void UpdateBudgetForEntity(SCR_EditableEntityComponent entity, bool added, IEntity owner = null)
+	protected void UpdateBudgetForEntity(SCR_EditableEntityComponent entity, bool added, IEntity owner)
 	{
+		// Entity was deleted before delayed update could run, ignore entity.
+		// Will be ignored for both delayed Register and Unregister so shouldn't affect total budget
 		if (!entity)
-		{
-			// Entity was deleted before delayed update could run, ignore entity. Will be ignored for both delayed Register and Unregister, so shouldn't affect total budget
 			return;
-		}
 		
-		array<ref SCR_EntityBudgetValue> entityBudgetCosts = new array<ref SCR_EntityBudgetValue>;
+		// Ignore non-ai characters
+		AIControlComponent aiControl = AIControlComponent.Cast(entity.GetOwner().FindComponent(AIControlComponent));
+		if (aiControl && !aiControl.IsAIActivated())
+			return;
+		
+		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
 		if (entity.GetEntityBudgetCost(entityBudgetCosts, owner))
 		{
 			foreach	(SCR_EntityBudgetValue budgetCost : entityBudgetCosts)
 			{
-				UpdateBudget(budgetCost.GetBudgetType(), added, budgetCost);
+				UpdateBudget(budgetCost.GetBudgetType(), added, entity, budgetCost);
 			}
 		}
 		else
 		{
-			// Ignore non-ai characters
-			AIControlComponent aiControl = AIControlComponent.Cast(entity.GetOwner().FindComponent(AIControlComponent));
-			if (aiControl && !aiControl.IsAIActivated())
-			{
-				return;
-			}
-			
-			UpdateBudget(GetBudgetForEntityType(entity.GetEntityType(owner)), added);
+			UpdateBudget(GetBudgetForEntityType(entity.GetEntityType(owner)), added, entity);
 		}
 	}
 	
-	protected void UpdateBudget(EEditableEntityBudget budgetType, bool added, SCR_EntityBudgetValue budgetCost = null)
+	protected void UpdateBudget(EEditableEntityBudget budgetType, bool added, SCR_EditableEntityComponent entity, SCR_EntityBudgetValue budgetCost = null)
 	{
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
-		if (!GetBudgetSettingsForBudgetType(budgetType, budgetSettings))
+		if (!GetBudget(budgetType, budgetSettings))
 		{
 			return;
 		}
 		
+		int originalBudgetValue = budgetSettings.GetCurrentBudget();	
+		int budgetChange = 0;
 		if (added)
 		{
-			budgetSettings.AddToBudget(budgetCost);
+			budgetChange = budgetSettings.AddToBudget(budgetCost);
 		}
 		else
 		{
-			budgetSettings.SubtractFromBudget(budgetCost);
+			budgetChange = budgetSettings.SubtractFromBudget(budgetCost);
 		}
-		Event_OnEntityBudgetChanged.Invoke(budgetSettings);
+		
+		int updatedBudgetValue = originalBudgetValue + budgetChange;
+		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES))
+		{
+			PrintFormat("New budget for type %1: %2", budgetType, updatedBudgetValue);
+		}
+		
+		Event_OnEntityBudgetUpdated.Invoke(budgetType, originalBudgetValue, budgetChange, updatedBudgetValue, entity);
 	}
 	
 	override void OnUpdate(float timeSlice)
@@ -679,8 +737,8 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		Event_OnParentEntityChanged = new ScriptInvoker;
 		Event_OnEntityAccessKeyChanged = new ScriptInvoker;
 		Event_OnEntityVisibilityChanged = new ScriptInvoker;
-		Event_OnEntityBudgetChanged = new ScriptInvoker;
 		Event_OnEntityExtendedChange = new ScriptInvoker;
+		Event_OnEntityBudgetUpdated = new ScriptInvoker_EntityCoreBudgetUpdatedEvent();
 		
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES);
 		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_ALL);
@@ -691,11 +749,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		foreach (SCR_EditableEntityCoreTypeSetting setting: m_TypeSettings)
 		{
 			m_TypeSettingsMap.Insert(setting.GetType(), setting)
-		}
-		
-		foreach (SCR_EditableEntityCoreBudgetSetting budget : m_BudgetSettings)
-		{
-			m_BudgetSettingsMap.Insert(budget.GetBudgetType(), budget);
 		}
 		
 		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : m_LabelGroupSettings)
@@ -718,8 +771,6 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		{
 			m_LabelSettingsMap.Insert(labelSetting.GetLabelType(), labelSetting);
 		}
-		
-		m_UpdateBudgets = RplSession.Mode() != RplMode.Client;
 		
 		//--- Square the value
 		m_fPlayerDrawDistance = m_fPlayerDrawDistance * m_fPlayerDrawDistance;

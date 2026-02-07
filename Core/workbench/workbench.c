@@ -56,6 +56,8 @@ class Workbench
 	static proto bool GetAbsolutePath(string relativePath, out string absPath, bool mustExist = true);
 	//! Return absolute path to game project settings
 	static proto native string GetCurrentGameProjectFile();
+	//! Return game project settings
+	static proto native BaseContainer GetGameProjectSettings();
 	static proto string GenerateGloballyUniqueID64();
 	static proto native void Exit(int exitCode);
 	static proto native DateTimeUtcAsInt GetPackedUtcTime();
@@ -121,8 +123,35 @@ class ScriptEditor: WBModuleDef
 class ResourceManager: WBModuleDef
 {
 	proto native external MetaFile GetMetaFile(string absFilePath);
+	/**
+	\brief Register register resource (create meta file)
+	\n usage :
+	@code
+	// register resource
+	ResourceManager rm = Workbench.GetModule(ResourceManager);
+	MetaFile meta = rm.RegisterResourceFile("c:\\DATA\\UI\\Imagesets\\Test\\Test.tga");
+	meta.Save();
+
+	// build resource
+	rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
+	@endcode
+	*/
 	proto native external MetaFile RegisterResourceFile(string absFilePath);
+	/**
+	\brief Rebuild already registered resoruce
+	\n usage :
+	@code
+	rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
+	@endcode
+	*/
 	proto native external void RebuildResourceFile(string filePath, string configuration, bool selectFiles);
+	/**
+	\brief Rebuild already registered resorucees
+	\n usage :
+	@code
+	rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
+	@endcode
+	*/
 	proto native external void RebuildResourceFiles(notnull array<string> filePaths, string configuration);
 	proto native external void WaitForFile(string filePath, int maxTimeMs = 1000);
 

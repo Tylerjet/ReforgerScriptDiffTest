@@ -66,12 +66,38 @@ class MapDescriptorProps
 	\brief Set image def
 	*/
 	proto external void SetImageDef( string name );
+	/**
+	\brief Set text angle
+	*/
 	proto external void SetTextAngle(float angle);
+	/**
+	\brief Get text angle
+	*/
 	proto external float GetTextAngle();
+	/**
+	\brief Set group type
+	*/
 	proto external void SetGroupType(int type);
+	/**
+	\brief Get group type
+	*/
 	proto external int GetGroupType();
+	/**
+	\brief Set group scale
+	*/
 	proto external void SetGroupScale(float scale);
+	/**
+	\brief Get group scale
+	*/
 	proto external float GetGroupScale();
+	/**
+	\brief Set display priority
+	*/
+	proto external void SetPriority(int priority);
+	/**
+	\brief Get display priority
+	*/
+	proto external float GetPriority();
 	/**
 	\brief Set Front color
 	*/

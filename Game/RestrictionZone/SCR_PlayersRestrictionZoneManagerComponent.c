@@ -76,7 +76,6 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		
 		bool inZone;
 		bool inWarningZone;	
-		bool warningZoneChecked;
 		bool inRemovedZone;
 		
 		int startCheckingIndex = 0;
@@ -107,15 +106,18 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		ERestrictionZoneWarningType warningType = 0;
 		
 		vector zoneCenter;
+		
 		float warningRadiusSq;
 		float zoneRadiusSq;
+		float prevDistanceSqrXZ;
 		
 		//Checks a batch of players
 		for (int i = startCheckingIndex; i < endCheckingIndex; i++)
 		{			
 			inZone = false;
+			zoneCenter = vector.Zero;
 			inWarningZone = false;
-			warningZoneChecked = false;
+			prevDistanceSqrXZ = -1;
 			
 			playerEntity = m_PlayerManager.GetPlayerControlledEntity(players[i]);
 				
@@ -145,12 +147,13 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			playerEntityPosition = playerEntity.GetOrigin();
 			
 			//Go over each zone and check if player is in the zone and if it is in the warning zone
-			foreach(SCR_EditorRestrictionZoneEntity zone: m_aRestrictionZones)
+			foreach (SCR_EditorRestrictionZoneEntity zone: m_aRestrictionZones)
 			{
 				if (!zone)
 					continue;
 				
 				restrictionZonePosition = zone.GetOrigin();
+				prevDistanceSqrXZ = distanceSqrXZ;
 				distanceSqrXZ = vector.DistanceSqXZ(playerEntityPosition, restrictionZonePosition);
 				
 				if (distanceSqrXZ <= zone.GetRestrictionZoneRadiusSq())
@@ -162,24 +165,28 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 						continue;
 					}
 					
+					//~ Player is in zone
 					inZone = true;
-					warningType = zone.GetWarningType();
-					zoneCenter = zone.GetOrigin();
-					warningRadiusSq = zone.GetWarningZoneRadiusSq();
-					zoneRadiusSq = zone.GetRestrictionZoneRadiusSq();
-					
-					if (!warningZoneChecked)
+									
+					//~ Player is in warning zone so show warning UI (Unless the player is safe in any of the other zones)
+					if (distanceSqrXZ > zone.GetWarningZoneRadiusSq() && zone.GetWarningZoneRadius() != zone.GetRestrictionZoneRadius())
 					{
-						if (!inWarningZone && distanceSqrXZ > warningRadiusSq && zone.GetWarningZoneRadius() != zone.GetRestrictionZoneRadius())
+						inWarningZone = true;
+						
+						//~ If no zone set or the center of the zone is closer then the prev set zone then set the zone the player will be guided towards
+						if (zoneCenter == vector.Zero || distanceSqrXZ < prevDistanceSqrXZ)
 						{
-							inWarningZone = true;
-						}	
-						//In a zone but not in warning part so never show warning as player is safe
-						else if (inWarningZone && distanceSqrXZ <= warningRadiusSq)
-						{
-							inWarningZone = false;
-							warningZoneChecked = true;
+							warningType = zone.GetWarningType();	
+							zoneCenter = zone.GetOrigin();
+							warningRadiusSq = zone.GetWarningZoneRadiusSq();
+							zoneRadiusSq = zone.GetRestrictionZoneRadiusSq();
 						}
+					}	
+					//In a zone but not in warning part so never show warning as player is safe
+					else if (distanceSqrXZ <= zone.GetWarningZoneRadiusSq())
+					{
+						inWarningZone = false;
+						break;
 					}
 				}
 				//If zone was moved and player in it before but no longer is. 
@@ -308,7 +315,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		//Only one zone so just clear data
 		if (m_aRestrictionZones.Count() == 1)
 		{
-			foreach(int playerID: players)
+			foreach (int playerID: players)
 			{
 				SetPlayerZoneData(playerID, null, false, false, -1);
 			}
@@ -344,7 +351,7 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 			m_PlayerManager.GetPlayers(players);
 			IEntity playerEntity;
 			
-			foreach(int player: players)
+			foreach (int player: players)
 			{
 				playerEntity = m_PlayerManager.GetPlayerControlledEntity(player);
 				if (!playerEntity)

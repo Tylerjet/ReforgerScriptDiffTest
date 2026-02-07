@@ -121,13 +121,13 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 		if (!loadoutManager)
 			return false;
 		
-		IEntity backpack = loadoutManager.GetClothByArea(ELoadoutArea.ELA_Backpack);
+		IEntity backpack = loadoutManager.GetClothByArea(LoadoutBackpackArea);
 		
 		if (backpack)
 		{
 			BaseLoadoutClothComponent loadoutCloth = BaseLoadoutClothComponent.Cast(backpack.FindComponent(BaseLoadoutClothComponent));
 				
-			if (loadoutCloth && loadoutCloth.GetArea() == ELoadoutArea.ELA_Backpack && backpack.FindComponent(SCR_RadioComponent))
+			if (loadoutCloth && loadoutCloth.GetAreaType().IsInherited(LoadoutBackpackArea) && backpack.FindComponent(SCR_RadioComponent))
 				SetCannotPerformReason("#AR-Campaign_Action_RespawnRadioEquipped-UC");
 			else
 				SetCannotPerformReason("#AR-Campaign_Action_BackpackEquipped-UC");

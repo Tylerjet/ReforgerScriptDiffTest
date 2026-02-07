@@ -29,6 +29,28 @@ class SCR_InventoryStorageLBSUI : SCR_InventoryStorageBaseUI
 	{
 		array<BaseInventoryStorageComponent> pStorages = new array<BaseInventoryStorageComponent>();
 		array<IEntity> pItems = new array<IEntity>();
+		
+		if (pStorage)
+		{
+			if (ClothNodeStorageComponent.Cast(pStorage))
+			{
+				pStorage.GetOwnedStorages(pStorages, 1, false);
+				
+				foreach (BaseInventoryStorageComponent pStor : pStorages)
+				{
+					if (!pStor)
+						continue;
+					pStor.GetAll(pItems);
+					pItemsInStorage.Copy(pItems);
+				}
+				return;
+			}
+			
+			pStorage.GetAll(pItemsInStorage);
+			return;
+		}
+		
+
 		m_Storage.GetOwnedStorages( pStorages, 1, false );
 		foreach ( BaseInventoryStorageComponent pStor : pStorages )
 		{
@@ -57,9 +79,9 @@ class SCR_InventoryStorageLBSUI : SCR_InventoryStorageBaseUI
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStorageLBSUI( BaseInventoryStorageComponent storage, ELoadoutArea slotID = ELoadoutArea.ELA_None, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
+	void SCR_InventoryStorageLBSUI( BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
-		SetSlotAreaID( slotID );
+		SetSlotAreaType( slotID );
 	}
 	
 	//------------------------------------------------------------------------------------------------

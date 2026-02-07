@@ -22,7 +22,7 @@ class SCR_BarracksComponent: ScriptComponent
 	[Attribute("5", UIWidgets.Auto, "Offset from spawn position")]
 	protected float m_fSpawnOffset;
 	
-	[Attribute(defvalue: "0 0 0", uiwidget: UIWidgets.Coords, desc: "Local spawn position offset coords from owner", params: "inf inf purposeCoords spaceEntity")]
+	[Attribute(defvalue: "0 0 0", uiwidget: UIWidgets.Coords, desc: "Local spawn position offset coords from owner", params: "inf inf purpose=coords space=entity")]
 	protected vector m_vSpawnPosition;
 	
 	protected RplComponent m_RplComponent;
@@ -355,6 +355,14 @@ class SCR_BarracksComponent: ScriptComponent
 	{
 		GetGame().GetCallqueue().Remove(HandleGroups);
 		GetGame().GetCallqueue().Remove(GroupRefillRequest);
+		
+		SCR_AIGroup aiGroup;
+		foreach(SCR_AIBarracksGroup grp : m_aAIgroups)
+		{
+			aiGroup = grp.GetGroup();
+			if (aiGroup)
+				SCR_EntityHelper.DeleteEntityAndChildren(grp.GetGroup());
+		}
 	}
 };
 

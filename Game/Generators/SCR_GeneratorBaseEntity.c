@@ -11,23 +11,23 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 {
 
 #ifdef WORKBENCH
-	static const ref Color BASE_GENERATOR_COLOR = Color.FromRGBA(255, 255, 255, 255);
-	static const string VARNAME_LINE_COLOR = "LineColor";
-	IEntitySource m_Source;
-	
+	protected static const ref Color BASE_GENERATOR_COLOR = Color.FromRGBA(255, 255, 255, 255);
+	protected static const string VARNAME_LINE_COLOR = "LineColor";
+	protected IEntitySource m_Source;
+
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_CanSelect(IEntitySource src)
 	{
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		if (!api || api.UndoOrRedoIsRestoring())
 			return;
-		
+
 		if (!api.IsDoingEditAction())
 		{
 			api.BeginEntityAction();
@@ -37,8 +37,8 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		else
 			api.SetVariableValue(m_Source, null, "coords", "0 0 0");
 	}
-	
-	//-----------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	static array<vector> GetPoints(IEntitySource shapeEntitySrc)
 	{
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
@@ -56,7 +56,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 
 		return result;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	Color GetColor()
 	{
@@ -66,7 +66,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		else
 			return prefabData.m_Color;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void _WB_OnCreate(IEntitySource src)
 	{
@@ -76,7 +76,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		if (!api || api.UndoOrRedoIsRestoring())
 			return;
-		
+
 		//re-generate content only if it's created with a parent
 		IEntitySource shapeEntitySrc = src.GetParent();
 		if (shapeEntitySrc)
@@ -85,7 +85,7 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			if (shapeEntity)
 				OnShapeInit(shapeEntitySrc, shapeEntity);
 		}
-		
+
 		EntityFlags flags;
 		src.Get("Flags", flags);
 		if (api.IsDoingEditAction())
@@ -97,31 +97,31 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			api.EndEntityAction();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void ColorShape()
 	{
 		if (!m_Source)
 			return;
-		
+
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		if (!api || api.UndoOrRedoIsRestoring())
 			return;
-		
+
 		IEntitySource parentSource = m_Source.GetParent();
 		if (!parentSource)
 			return;
-		
+
 		auto containerPath = new array<ref ContainerIdPathEntry>();
-		
+
 		Color color = GetColor();
-		
+
 		string colorString = "";
 		colorString += color.R().ToString() + " ";
 		colorString += color.G().ToString() + " ";
 		colorString += color.B().ToString() + " ";
 		colorString += color.A().ToString();
-		
+
 		if (api.IsDoingEditAction())
 			api.SetVariableValue(parentSource, containerPath, VARNAME_LINE_COLOR, colorString);
 		else

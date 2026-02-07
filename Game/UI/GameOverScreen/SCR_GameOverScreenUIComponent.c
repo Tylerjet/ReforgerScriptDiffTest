@@ -73,7 +73,11 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	\param endScreenUIContent contains the layout and any neccessary information for the endscreen content widget
 	*/
 	void InitGameOverScreen(SCR_GameOverScreenUIContentData endScreenUIContent)
-	{		
+	{	
+		//~ Already has end screen
+		if (m_wEndscreenContent)
+			return;
+		
 		Widget contentHolder = m_wRoot.FindAnyWidget(m_sContentHolderName);
 		if (!contentHolder)
 			return;
@@ -101,8 +105,8 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		
 		if (m_ContentFadeComponent)
 			m_ContentFadeComponent.FadeIn();
-		//if (m_TabViewFadeComponent) //~ Todo: Post 0.9.6 fix
-		//	m_TabViewFadeComponent.FadeIn();
+		if (m_TabViewFadeComponent)
+			m_TabViewFadeComponent.FadeIn();
 		if (m_BackButtonFadeComponent)
 			m_BackButtonFadeComponent.FadeIn();
 		if (m_ChatButtonFadeComponent)

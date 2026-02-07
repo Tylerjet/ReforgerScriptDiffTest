@@ -1,4 +1,4 @@
-[BaseContainerProps(), BaseContainerCustomTitleField("Name")]
+[BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_ColoredTextNotificationUIInfo : SCR_UINotificationInfo
 {
 	[Attribute("0", UIWidgets.ComboBox, "Notification Text Color", "", ParamEnumArray.FromEnum(ENotificationColor) )]

@@ -9,8 +9,8 @@ class SCR_AIFollowEntityPath : SCR_AIActionTask
 	//------------------------------------------------------------------------------------------------
 	ChimeraCharacter m_pCharacter;
 	GenericEntity m_pFollowedEntity;
-	AIBaseSteeringComponent m_pGroupSteeringComponent;
-	AIBaseSteeringComponent m_pMySteeringComponent;
+	bool setupResult;
+	AIBaseMovementComponent m_pMyMovementComponent;
 	
 	override bool VisibleInPalette()
     {
@@ -19,32 +19,25 @@ class SCR_AIFollowEntityPath : SCR_AIActionTask
 	
 	override void OnEnter(AIAgent owner)
 	{
-		m_pCharacter = ChimeraCharacter.Cast(owner.GetControlledEntity());
 		GetVariableIn(PORT_ENTITY_IN, m_pFollowedEntity);
 		if (!m_pFollowedEntity)
 		{
 			m_pFollowedEntity = owner.GetParentGroup();
 		}
-		
-		m_pGroupSteeringComponent = AIBaseSteeringComponent.Cast(m_pFollowedEntity.FindComponent(AIBaseSteeringComponent));
-		if (!m_pGroupSteeringComponent)
+
+		m_pMyMovementComponent = owner.GetMovementComponent();
+		if (!m_pMyMovementComponent)
 			return;
-		
-		if (m_pCharacter.GetCompartmentAccessComponent().IsInCompartment())
-			m_pMySteeringComponent = AIBaseSteeringComponent.Cast(CompartmentAccessComponent.GetVehicleIn(m_pCharacter).FindComponent(AIBaseSteeringComponent));
-		else 
-			m_pMySteeringComponent = AIBaseSteeringComponent.Cast(m_pCharacter.FindComponent(AIBaseSteeringComponent));
-		if (!m_pMySteeringComponent)
-			return;
-		m_pMySteeringComponent.SetPathFromSteeringComponent(m_pGroupSteeringComponent);
+
+		setupResult = m_pMyMovementComponent.ForceFollowPathOfEntity(m_pFollowedEntity);
 	}
 
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_pGroupSteeringComponent || !m_pMySteeringComponent)
+		if (!m_pMyMovementComponent || !setupResult)
 			return ENodeResult.FAIL;
 		
-		if (m_pMySteeringComponent.HasCompletedRequest())
+		if (m_pMyMovementComponent.HasCompletedRequest(true))
 			return ENodeResult.SUCCESS;
 		return ENodeResult.RUNNING;
 	}

@@ -4,7 +4,7 @@
 //! Vertical transformation mode
 enum EEditorTransformVertical
 {
-	SEA, ///< Above sea level
-	TERRAIN, ///< Above terrain level
-	GEOMETRY ///< Above geometry level
+	SEA			= 1 << 0, ///< Above sea level
+	TERRAIN		= 1 << 1, ///< Above terrain level
+	GEOMETRY	= 1 << 2, ///< Above geometry level
 };

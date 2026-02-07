@@ -15,7 +15,8 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	static const float CLOSE_RANGE_THRESHOLD = 15.0;
 	static const float LONG_RANGE_THRESHOLD = 200.0;
 	static const float AIMING_ERROR_SCALE = 1.0; // TODO: game master and server option
-	static const float AIMING_ERROR_FACTOR_MIN = 0.25; 
+	static const float AIMING_ERROR_FACTOR_MIN = 0.4; 
+	static const float AIMING_ERROR_FACTOR_MAX = 1.4; 
 	
 	protected SCR_AICombatComponent m_CombatComponent;
 	// private SCR_AIInfoComponent m_InfoComponent;		temporary removed (adding threat effect later)
@@ -180,7 +181,7 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		}
 		
 		float distanceCl = Math.Clamp((distance - CLOSE_RANGE_THRESHOLD) / LONG_RANGE_THRESHOLD, 0, 1);
-		return Math.Lerp(AIMING_ERROR_FACTOR_MIN, 1.0, distanceCl);
+		return Math.Lerp(AIMING_ERROR_FACTOR_MIN, AIMING_ERROR_FACTOR_MAX, distanceCl);
 	}
 	
 	//------------------------------------------------------------------------------------------------

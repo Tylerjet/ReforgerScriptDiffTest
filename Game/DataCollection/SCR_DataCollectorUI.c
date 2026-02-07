@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/DataCollection/", description: "Display component used for DEBUG reasons. Activate its behaviour on DataCollectorComponent.")]
 class SCR_DataCollectorUIClass : ScriptComponentClass
 {
 	// prefab properties here
@@ -35,6 +35,7 @@ class SCR_DataCollectorUI : ScriptComponent
 		return GetGame().GetWorkspace().CreateWidgets(m_sEntryLayout, entriesWidget);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	Widget GetParentWidget()
 	{
 		return m_wParentWidget;
@@ -43,8 +44,7 @@ class SCR_DataCollectorUI : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
+		SetEventMask(owner, EntityEvent.INIT);
 	}
 
 	//------------------------------------------------------------------------------------------------

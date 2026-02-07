@@ -6,25 +6,26 @@ class SCR_BleedCharacterContextAction : SCR_SelectedEntitiesContextAction
 	{
 		return selectedEntity.GetEntityType() == EEditableEntityType.CHARACTER;
 	}
-	
+
 	override bool CanBePerformed(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
 	{
 		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(selectedEntity.GetOwner().FindComponent(SCR_CharacterDamageManagerComponent));
 		if (!characterDamageManager)
 			return false;
-		
+
 		if (characterDamageManager.GetState() == EDamageState.DESTROYED || characterDamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
 			return false;
-		
+
 		return true;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
 	{
 		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(selectedEntity.GetOwner().FindComponent(SCR_CharacterDamageManagerComponent));
 		if (!characterDamageManager)
 			return;
-				
-		characterDamageManager.AddParticularBleeding();	
+
+		characterDamageManager.AddParticularBleeding();
 	}
 };

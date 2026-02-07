@@ -30,9 +30,9 @@ class SCR_InventoryStorageBackpackUI : SCR_InventoryStorageBaseUI
 	
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_InventoryStorageBackpackUI( BaseInventoryStorageComponent storage, ELoadoutArea slotID = ELoadoutArea.ELA_None, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
+	void SCR_InventoryStorageBackpackUI( BaseInventoryStorageComponent storage, LoadoutAreaType slotID = null, SCR_InventoryMenuUI menuManager = null, int iPage = 0, array<BaseInventoryStorageComponent> aTraverseStorage = null )
 	{
-		SetSlotAreaID( slotID );
+		SetSlotAreaType( slotID );
 	}
 	
 	//------------------------------------------------------------------------------------------------

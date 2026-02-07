@@ -78,7 +78,7 @@ class SCR_InventoryOpenedStorageUI : SCR_InventoryStorageBaseUI
 
 	void SCR_InventoryOpenedStorageUI(
 		BaseInventoryStorageComponent storage,
-		ELoadoutArea slotID = ELoadoutArea.ELA_None,
+		LoadoutAreaType slotID = null,
 		SCR_InventoryMenuUI menuManager = null,
 		int iPage = 0,
 		array<BaseInventoryStorageComponent> aTraverseStorage = null,
@@ -93,6 +93,6 @@ class SCR_InventoryOpenedStorageUI : SCR_InventoryStorageBaseUI
 		m_iMatrix = new SCR_Matrix(m_iMaxColumns, m_iMaxRows);
 		if (aTraverseStorage)
 			m_aTraverseStorage.Copy(aTraverseStorage);
-		SetSlotAreaID(slotID);
+		SetSlotAreaType(slotID);
 	}
 };

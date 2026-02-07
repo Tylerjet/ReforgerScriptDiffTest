@@ -65,7 +65,7 @@ class SCR_WorldEntityDelegateEditorComponent: SCR_BaseEditorComponent
 					if (actionsManager && actionsManager.GetActionsCount() == 1)
 					{
 						ScriptedUserAction action = ScriptedUserAction.Cast(actionsManager.GetFirstAction());
-						m_bHasDelegate = action && action.CanBeShownScript(GetManager());
+						m_bHasDelegate = action && action.CanBePerformed(GetManager());
 						
 						if (m_bHasDelegate)
 						{

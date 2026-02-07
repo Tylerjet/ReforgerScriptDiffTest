@@ -48,7 +48,7 @@ class SCR_DownloadManager : GenericEntity
 	{
 		downloads.Clear();
 		
-		foreach(auto dl : m_aDownloadActions)
+		foreach (auto dl : m_aDownloadActions)
 			downloads.Insert(dl);
 	}
 	

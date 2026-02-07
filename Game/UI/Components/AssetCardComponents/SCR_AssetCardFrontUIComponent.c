@@ -28,6 +28,12 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	[Attribute("BudgetIcon")]
 	protected string m_sExceedBudgetIconName;
 	
+	[Attribute("CompositionCost")]
+	protected string m_sBudgetCostLayoutName;
+	
+	[Attribute("CostValue")]
+	protected string m_sBudgetCostTextName;
+	
 	[Attribute("ImageOverlay")]
 	protected string m_sImageOverlayName;
 	
@@ -49,7 +55,12 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	[Attribute(params: "edds")]
 	protected ref array<ResourceName> m_ImageOverlayTextures;
 	
-	//ImageWidget entityImageWidget;
+	protected ref ImageWidget m_EntityImageWidget;
+	
+	protected Widget m_BudgetCostLayout;
+	protected Widget m_ExceedBudgetLayout;
+	protected bool m_bEvaluateBlockingBudget = true;
+	protected ref ScriptInvoker Event_OnCardInit = new ScriptInvoker();
 	
 	//Widgets
 	private Widget m_Widget;
@@ -64,17 +75,62 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	//Info Ref
 	private ref SCR_UIInfo m_Info;
 	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnCardInit()
+	{		
+		return Event_OnCardInit;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetEvaluateBlockingBudget(bool val)
+	{
+		m_bEvaluateBlockingBudget = val;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateBudgetCost(SCR_EntityBudgetValue entityBudgetCost = null)
+	{
+		m_BudgetCostLayout = m_Widget.FindAnyWidget(m_sBudgetCostLayoutName);
+		if (!m_BudgetCostLayout)
+			return;
+		
+		if (!entityBudgetCost)
+			m_BudgetCostLayout.SetVisible(false);
+		else
+		{
+			m_BudgetCostLayout.SetVisible(true);
+			TextWidget budgetCostTextWidget = TextWidget.Cast(m_BudgetCostLayout.FindAnyWidget(m_sBudgetCostTextName));
+			if (budgetCostTextWidget)
+				budgetCostTextWidget.SetText(entityBudgetCost.GetBudgetValue().ToString());
+		}
+	}
+	
+	void UpdateBlockingBudget(SCR_UIInfo blockingBudgetInfo = null)
+	{
+		if (!m_ExceedBudgetLayout)
+			return;
+		
+		bool canPlace = blockingBudgetInfo == null;
+		
+		m_EntityImageWidget.SetSaturation(canPlace);
+		m_ExceedBudgetLayout.SetVisible(!canPlace);
+		
+		ImageWidget exceedBudgetIcon = ImageWidget.Cast(m_ExceedBudgetLayout.FindWidget(m_sExceedBudgetIconName));
+		if (blockingBudgetInfo)
+			blockingBudgetInfo.SetIconTo(exceedBudgetIcon);
+	}
+	
 	/*!
 	Init card
 	\param info
 	\param prefab
 	*/
-	void InitCard(int prefabID, SCR_UIInfo info, ResourceName prefab, SCR_EditableEntityCoreBudgetSetting blockingBudget = null)
+	void InitCard(int prefabID, SCR_UIInfo info, ResourceName prefab, SCR_UIInfo blockingBudgetInfo = null)
 	{
 		if (!m_Widget)
 			return;
 		
-		bool canPlace = blockingBudget == null;
+		m_iPrefabIndex = prefabID;
 		
 		TextWidget entityNameWidget = TextWidget.Cast(m_Widget.FindAnyWidget(m_sEntityNameWidgetName));
 		//m_Background = m_Widget.FindAnyWidget(m_sBackgroundsName);
@@ -124,31 +180,23 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 				}
 				
 				//--- Set entity image
-				ImageWidget entityImageWidget = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sEnityImageWidgetName));
-				if (entityImageWidget) 
-				{
-					infoCard.SetAssetImageTo(entityImageWidget);
-					entityImageWidget.SetSaturation(canPlace);
-				}
+				m_EntityImageWidget = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sEnityImageWidgetName));
+				if (m_EntityImageWidget) 
+					infoCard.SetAssetImageTo(m_EntityImageWidget);
 				
 				ImageWidget imageOverlayWidget = ImageWidget.Cast(m_Widget.FindAnyWidget(m_sImageOverlayName));
 				if (imageOverlayWidget && !m_ImageOverlayTextures.IsEmpty()) 
 				{
-					int textureIndex = prefabID % m_ImageOverlayTextures.Count();
+					int textureIndex = m_iPrefabIndex % m_ImageOverlayTextures.Count();
 					imageOverlayWidget.LoadImageTexture(0, m_ImageOverlayTextures[textureIndex]);
 				}
 				
-				Widget exceedBudgetLayout = m_Widget.FindAnyWidget(m_sExceedBudgetLayoutName);
-				if (exceedBudgetLayout)
-				{
-					exceedBudgetLayout.SetVisible(!canPlace);
-					
-					ImageWidget exceedBudgetIcon = ImageWidget.Cast(exceedBudgetLayout.FindWidget(m_sExceedBudgetIconName));
-					if (blockingBudget)
-					{
-						blockingBudget.GetInfo().SetIconTo(exceedBudgetIcon);
-					}
-				}
+				m_ExceedBudgetLayout = m_Widget.FindAnyWidget(m_sExceedBudgetLayoutName);
+				
+				UpdateBudgetCost();
+				
+				if (m_bEvaluateBlockingBudget)
+					UpdateBlockingBudget(blockingBudgetInfo);
 				
 				//--- Set faction flag
 				int traitIndex;
@@ -224,6 +272,8 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 			
 			//~todo: Get Addon Icon. Use m_sModIndicatorIconName to get the ImageWidget
 		}
+		
+		Event_OnCardInit.Invoke(m_iPrefabIndex);
 	}
 	protected bool FindTraitIcon(out int outIndex, out Widget traitWidget, out ImageWidget traitIcon)
 	{
@@ -240,7 +290,6 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 		outIndex = int.MAX;
 		return false;
 	}
-	
 	/*!
 	Get Card info
 	\return SCR_UIInfo
@@ -317,14 +366,6 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	{
 		return m_OnFocus;
 	}
-	
-	/*!
-	Set PrefabIndex to check if card was focused when filters is opened
-	*/
-	void SetPrefabIndex(int index)
-	{
-		m_iPrefabIndex = index;
-	}	
 	
 	/*!
 	\return Prefab index from the list of placeable prefabs.

@@ -1,9 +1,9 @@
-class SCR_CampaignGarbageManagerClass: GarbageManagerClass
+class SCR_CampaignGarbageManagerClass: SCR_GarbageManagerClass
 {
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_CampaignGarbageManager: GarbageManager
+class SCR_CampaignGarbageManager: SCR_GarbageManager
 {
 	static const int PARKED_SUPPLY_TRUCK_LIFETIME = 3600;	// Lifetime of supply trucks parked near a base
 	static const int MAX_BASE_DISTANCE = 300;				// Maximum distance of a base to be consider near

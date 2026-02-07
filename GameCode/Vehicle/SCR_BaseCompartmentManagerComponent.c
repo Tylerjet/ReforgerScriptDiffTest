@@ -5,7 +5,7 @@ class SCR_BaseCompartmentManagerComponentClass: BaseCompartmentManagerComponentC
 class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 {
 	//Compartment slots associated with crew
-	static const ref array<ECompartmentType> CREW_COMPARTMENT_TYPES = {ECompartmentType.Pilot, ECompartmentType.Turret};
+	static const ref array<ECompartmentType> CREW_COMPARTMENT_TYPES = {ECompartmentType.Turret};//{ECompartmentType.Pilot, ECompartmentType.Turret}; //~ Enable again once AI driving is in the game
 	
 	//Compartment slots associated with passengers
 	static const ref array<ECompartmentType> PASSENGER_COMPARTMENT_TYPES = {ECompartmentType.Cargo};
@@ -13,9 +13,10 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	//~ Default Occupant spawning
 	protected ref array<BaseCompartmentSlot> m_aCompartmentsToSpawnDefaultOccupant;
 	protected ref array<IEntity> m_aSpawnedDefaultOccupants;
-	protected bool m_bIsSpawningDefaultOccupants;
 	protected AIGroup m_SpawnedOccupantsAIGroup;
+	protected bool m_bIsSpawningDefaultOccupants;
 	protected ref ScriptInvoker Event_OnDoneSpawningDefaultOccupants; //~ Send over SCR_BaseCompartmentManagerComponent, array of spawned characters (IEntity) as well as bool WasCanceled
+	protected ref array<ref array<ECompartmentType>> m_aDefaultOccupantsCompartmentTypesToSpawn = {}; //~ Keeps track of the default occupants types that need to be spawned. The types grouped together will be spawned in the same group
 	
 	/*!
 	Get compartments of specific type
@@ -30,10 +31,24 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 		}
 	}
 	
+	void GetCompartmentsOfTypes(inout array<BaseCompartmentSlot> outCompartments, notnull array<ECompartmentType> compartmentTypes)
+	{
+		outCompartments.Clear();
+		array<BaseCompartmentSlot> compartments = {}; 
+		GetCompartments(compartments);
+		
+		foreach (BaseCompartmentSlot compartment: compartments)
+		{
+			if (compartment && compartmentTypes.Contains(SCR_CompartmentAccessComponent.GetCompartmentType(compartment)))
+				outCompartments.Insert(compartment);
+		}
+	}
+	
 	/*!
 	Get all free compartment slots of the given type
 	\param[out] outCompartments array of all free compartments of type
 	\param compartmentType The compartment type to check
+	\param checkHasValidOccupantPrefab if true checks if compartment has valid default occupant prefab
 	*/
 	void GetFreeCompartmentsOfType(inout array<BaseCompartmentSlot> outCompartments, ECompartmentType compartmentType, bool checkHasValidOccupantPrefab = false)
 	{
@@ -46,6 +61,24 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	}
 	
 	/*!
+	Get first free compartment slots of the given type
+	\param compartmentType The compartment type to check
+	\param checkHasValidOccupantPrefab if true checks if compartment has valid default occupant prefab
+	\return first found compartment. Will return null if none found.
+	*/
+	BaseCompartmentSlot GetFirstFreeCompartmentsOfType(ECompartmentType compartmentType, bool checkHasValidOccupantPrefab = false)
+	{
+		array<BaseCompartmentSlot> compartments = {}; GetCompartments(compartments);
+		foreach (BaseCompartmentSlot compartment: compartments)
+		{
+			if (compartment && SCR_CompartmentAccessComponent.GetCompartmentType(compartment) == compartmentType && !compartment.IsOccupied() && compartment.IsCompartmentAccessible() && (!checkHasValidOccupantPrefab || (checkHasValidOccupantPrefab && !compartment.GetDefaultOccupantPrefab().IsEmpty())))
+				return compartment;
+		}
+		
+		return null;
+	}
+	
+	/*!
 	Go over all compartments of given type and checks if at least one compartment is free
 	\return true if at least one compartment of given types is free
 	*/
@@ -53,12 +86,12 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	{
 		array<BaseCompartmentSlot> compartments = {}; 
 		
-		foreach(ECompartmentType type: compartmentTypes)
+		foreach (ECompartmentType type: compartmentTypes)
 		{
 			compartments.Clear();
 			GetCompartmentsOfType(compartments, type);
 			
-			foreach(BaseCompartmentSlot compartment: compartments)
+			foreach (BaseCompartmentSlot compartment: compartments)
 			{
 				if (!compartment.IsOccupied() && compartment.IsCompartmentAccessible())
 					return true;
@@ -152,6 +185,22 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 		return Event_OnDoneSpawningDefaultOccupants;
 	}
 	
+	/*!
+	Lock/Unlock all compartment slots of given types for AI
+	\param compartmentTypes Types to lock
+	\param setAccessible If true sets locked else set unlocked
+	*/
+	void SetAllCompartmentsAccessibleOfTypes(notnull array<ECompartmentType> compartmentTypes, bool setAccessible)
+	{
+		array<BaseCompartmentSlot> compartments = {};
+		GetCompartmentsOfTypes(compartments, compartmentTypes);
+		
+		foreach(BaseCompartmentSlot compartment: compartments)
+		{			
+			compartment.SetCompartmentAccessible(setAccessible);
+		}
+	}
+	
 	//--------------------------------------------------- Check can occupy with characters ---------------------------------------------------\\
 	/*!
 	Check if can spawn characters in the vehicle.
@@ -163,6 +212,9 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	*/
 	bool CanOccupy(array<ECompartmentType> compartmentTypes, bool checkHasDefaultOccupantsData = true, FactionKey friendlyFaction = string.Empty, bool checkOccupyingFaction = true, bool checkForFreeCompartments = true)
 	{
+		if (m_bIsSpawningDefaultOccupants)
+			return false;
+		
 		//~ Check if default character data is defined
 		if (checkHasDefaultOccupantsData && !HasDefaultOccupantsDataForTypes(compartmentTypes))
 			return false;
@@ -182,11 +234,13 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	/*!
 	Spawns default characters as defined in BaseComparmentSlots inside the vehicle of given compartment types (Server only)
 	Places all spawned characters in the same group
+	Note that it can only spawn the same compartment type once and will fail if you try to do it twice.
+	If the system is already spawning default characters and you call it again for other department types it will send them to a queue and execute them after the current compartment types are filled.
 	\param compartmentTypes Given compartment types that need to be filled with characters
 	\return True if start spawning occupants
 	*/
 	bool SpawnDefaultOccupants(notnull array<ECompartmentType> compartmentTypes)
-	{	
+	{
 		//~ No compartment types given to spawn
 		if (compartmentTypes.IsEmpty())
 		{
@@ -195,41 +249,79 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 			
 			return false;
 		}
-			
-		//~ Is already spawning
-		if (m_bIsSpawningDefaultOccupants)
+		
+		//~ Check if is already spawning
+		for(int i = 0; i < m_aDefaultOccupantsCompartmentTypesToSpawn.Count(); i++)
 		{
-			Print("'SCR_BaseCompartmentManagerComponent' is already spawning default occupants. Wait until spawning is done", LogLevel.WARNING);
-			return false; 
+			if (!m_aDefaultOccupantsCompartmentTypesToSpawn[i] || m_aDefaultOccupantsCompartmentTypesToSpawn[i].IsEmpty())
+			{
+				m_aDefaultOccupantsCompartmentTypesToSpawn.RemoveOrdered(i);
+				i--;
+				continue;
+			}
+			
+			foreach(ECompartmentType type: compartmentTypes)
+			{
+				//~ Is already spawning the same type
+				if (m_aDefaultOccupantsCompartmentTypesToSpawn[i].Contains(type))
+				{
+					Print(string.Format("'SCR_BaseCompartmentManagerComponent' is already spawning default occupants of type %1!", typename.EnumToString(ECompartmentType, type)), LogLevel.WARNING);
+					return false; 
+				}
+			}
 		}
 		
+		//~ Add to spawn list
+		m_aDefaultOccupantsCompartmentTypesToSpawn.Insert(compartmentTypes);
+		
+		//~ Directly spawn in vehicle as not currently spawning anything
+		if (!m_bIsSpawningDefaultOccupants)
+		{
+			return InitiateSpawnDefaultOccupants(compartmentTypes);
+		}
+		//~ Already spawning so wait until done
+		else 
+		{
+			m_aCompartmentsToSpawnDefaultOccupant = {};
+			foreach (ECompartmentType compartmentType: compartmentTypes)
+			{
+				GetFreeCompartmentsOfType(m_aCompartmentsToSpawnDefaultOccupant, compartmentType, true);
+			}
+			
+			//~ Nothing to spawn in so cancel
+			if (m_aCompartmentsToSpawnDefaultOccupant.IsEmpty())
+				return false;
+		}
+		
+		return true; 
+	}
+	
+	//~ Actually initia
+	protected bool InitiateSpawnDefaultOccupants(notnull array<ECompartmentType> compartmentTypes)
+	{	
+		m_bIsSpawningDefaultOccupants = true;
 		m_aCompartmentsToSpawnDefaultOccupant = {};
 		
-		foreach(ECompartmentType compartmentType: compartmentTypes)
+		foreach (ECompartmentType compartmentType: compartmentTypes)
 		{
 			GetFreeCompartmentsOfType(m_aCompartmentsToSpawnDefaultOccupant, compartmentType, true);
 		}
 		
-		//~ Nothing to spawn so cancel
+		//~ Nothing to spawn in so cancel
 		if (m_aCompartmentsToSpawnDefaultOccupant.IsEmpty())
 		{
-			m_aCompartmentsToSpawnDefaultOccupant = null;
-			
-			if (Event_OnDoneSpawningDefaultOccupants)
-				Event_OnDoneSpawningDefaultOccupants.Invoke(this, null, true);
-			
+			FinishedSpawningDefaultOccupants(true);			
 			return false;
 		}
 			
 		m_aSpawnedDefaultOccupants = {};
-		m_bIsSpawningDefaultOccupants = true;
 		m_SpawnedOccupantsAIGroup = null;
 		
 		GetGame().GetCallqueue().CallLater(SpawnDefaultOccupantEachFrame, 0, true);
 		return true;
 	}
 	
-	
+	//~ Spawns a character each frame to take the load of the server
 	protected void SpawnDefaultOccupantEachFrame()
 	{
 		BaseCompartmentSlot compartmentToFill = null;
@@ -272,20 +364,42 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	*/
 	void CancelSpawningCharacters()
 	{
-		if (!m_bIsSpawningDefaultOccupants)
-			return;
-		
-		FinishedSpawningDefaultOccupants(true);
+		if (!m_aDefaultOccupantsCompartmentTypesToSpawn.IsEmpty() || m_bIsSpawningDefaultOccupants)
+			FinishedSpawningDefaultOccupants(true);
+	}
+	/*!
+	\return True if asynchronous operation of spawning default occupants is underway.
+	*/
+	bool IsSpawningDefaultOccupants()
+	{
+		return m_bIsSpawningDefaultOccupants;
 	}
 	
+	//~ Called when finished spawning. Note that it will spawn more passengers if it has a queue
 	protected void FinishedSpawningDefaultOccupants(bool wasCanceled)
 	{
 		m_bIsSpawningDefaultOccupants = false;
+		
 		if (Event_OnDoneSpawningDefaultOccupants)
 			Event_OnDoneSpawningDefaultOccupants.Invoke(this, m_aSpawnedDefaultOccupants, wasCanceled);
 		m_aSpawnedDefaultOccupants = null;
 		m_aCompartmentsToSpawnDefaultOccupant = null;
 		GetGame().GetCallqueue().Remove(SpawnDefaultOccupantEachFrame);
+		
+		//~ Clear queue
+		if (wasCanceled)
+		{
+			m_aDefaultOccupantsCompartmentTypesToSpawn.Clear();
+		}
+		//~ next in queue
+		else 
+		{		
+			//~ Delete the one just spawned		
+			m_aDefaultOccupantsCompartmentTypesToSpawn.RemoveOrdered(m_aDefaultOccupantsCompartmentTypesToSpawn.Count() -1);
+			//~ Spawn the entities that where waiting to be spawned
+			if (!m_aDefaultOccupantsCompartmentTypesToSpawn.IsEmpty())
+				InitiateSpawnDefaultOccupants(m_aDefaultOccupantsCompartmentTypesToSpawn[0]);
+		}
 	}
 	
 	//--------------------------------------------------- Vehicle occupied by friendly ---------------------------------------------------\\
@@ -383,7 +497,7 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 			compartments.Clear();
 			GetCompartmentsOfType(compartments, compartmentType);
 			
-			foreach(BaseCompartmentSlot compartment: compartments)
+			foreach (BaseCompartmentSlot compartment: compartments)
 			{
 				defaultOccupantData = compartment.GetDefaultOccupantData();
 				

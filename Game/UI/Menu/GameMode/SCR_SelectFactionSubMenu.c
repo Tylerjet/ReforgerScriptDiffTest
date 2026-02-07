@@ -175,11 +175,14 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 		if (!m_FactionManager)
 			return;
 
-		// todo(koudelkaluk): move into deploy tile
 		foreach (SCR_FactionMenuTile tile, Faction faction : m_mAvailableFactions)
 		{
 			if (!tile)
 				continue;
+
+			SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+			if (scriptedFaction)
+				tile.SetPlayerCount(scriptedFaction.GetPlayerCount());
 
 			Widget list = tile.GetPlayerList();
 			Widget widget = list.GetChildren();
@@ -197,7 +200,6 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 			foreach (int playerId : players)
 			{
 				Faction playerFaction = m_RespawnSystemComponent.GetPlayerFaction(playerId);
-				tile.SetPlayerCount(m_RespawnSystemComponent.GetFactionPlayerCount(faction));
 
 				if (playerFaction != faction)
 					continue;

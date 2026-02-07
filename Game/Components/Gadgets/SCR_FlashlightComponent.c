@@ -183,7 +183,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{		
 		super.ModeSwitch(mode, charOwner);
 
-		if (mode == EGadgetMode.ON_GROUND)
+		if (mode == EGadgetMode.ON_GROUND || !charOwner)
 			m_CharController = null;
 		else
 			m_CharController = CharacterControllerComponent.Cast( m_CharacterOwner.FindComponent(CharacterControllerComponent) );

@@ -35,9 +35,14 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 	protected ref SCR_ContentBrowser_ScenarioSubMenuWidgets m_Widgets = new SCR_ContentBrowser_ScenarioSubMenuWidgets;
 	protected SCR_ContentBrowser_ScenarioLineComponent m_LastSelectedLine;
 	protected Widget m_wBeforeSort;
+	protected MissionWorkshopItem m_SelectedScenario;
+	protected ref SCR_MissionHeader m_Header;
 	
 	// Nav buttons
 	protected SCR_NavigationButtonComponent m_NavPlay;
+	protected SCR_NavigationButtonComponent m_NavContinue;
+	protected SCR_NavigationButtonComponent m_NavRestart;
+	
 	protected SCR_NavigationButtonComponent m_NavJoin;
 	protected SCR_NavigationButtonComponent m_NavHost;
 	protected SCR_NavigationButtonComponent m_NavFilter;
@@ -65,20 +70,26 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		// Create nav buttons
 		SCR_ScenarioMenu scenarioMenu = SCR_ScenarioMenu.Cast(parentMenu);
 		m_NavPlay = CreateNavigationButton("MenuSelect", "#AR-Workshop_ButtonPlay", true);
+		m_NavContinue = CreateNavigationButton("MenuSelect", "#AR-PauseMenu_Continue", true);
+		m_NavRestart = CreateNavigationButton("MenuRestart", "#AR-PauseMenu_Restart", true);
 		m_NavJoin = CreateNavigationButton("MenuJoin", "#AR-Workshop_ButtonJoin", true);
-		if (GetHostingAllowed())
-			m_NavHost = CreateNavigationButton("MenuHost", "#AR-Workshop_ButtonHost", true);
 		//m_NavFilter = CreateNavigationButton("MenuFilter", "#AR-Workshop_Filter", false);
 		m_NavSorting = CreateNavigationButton("MenuFilter", "#AR-ScenarioBrowser_ButtonSorting", false);
 		m_NavFavourite = CreateNavigationButton("MenuFavourite", "#AR-Workshop_ButtonAddToFavourites", true);
 		
 		m_NavPlay.m_OnActivated.Insert(OnPlayButton);
+		m_NavContinue.m_OnActivated.Insert(OnContinueButton);
+		m_NavRestart.m_OnActivated.Insert(OnRestartButton);
 		m_NavJoin.m_OnActivated.Insert(OnJoinButton);
-		if (m_NavHost)
-			m_NavHost.m_OnActivated.Insert(OnHostButton);
 		//m_NavFilter.m_OnActivated.Insert(OnFilterButton);
 		m_NavSorting.m_OnActivated.Insert(OnSortingButton);
 		m_NavFavourite.m_OnActivated.Insert(OnFavouriteButton);
+		
+		if (!GetGame().IsPlatformGameConsole())
+		{
+			m_NavHost = CreateNavigationButton("MenuHost", "#AR-Workshop_ButtonHost", true);
+			m_NavHost.m_OnActivated.Insert(OnHostButton);
+		}
 	}
 	
 	
@@ -165,8 +176,28 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 				favLabel = "#AR-Workshop_ButtonRemoveFavourites";
 			m_NavFavourite.SetLabel(favLabel);
 		}
+		
+		// Update selected scenario
+		if (selectedMission && m_SelectedScenario != selectedMission)
+		{
+			m_SelectedScenario = selectedMission;
+			m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(selectedMission.Id()));
+			bool canBeLoaded = m_Header && SCR_SaveLoadComponent.HasSaveFile(m_Header);
+			ShowScenarioPlayButtons(canBeLoaded);
+		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Show proper play nav buttons 
+	//! Scenario not played -> display only Play
+	//! Scenario played -> display Continue and Restart
+	protected void ShowScenarioPlayButtons(bool played)
+	{
+		m_NavPlay.SetVisible(!played, false);
+		
+		m_NavContinue.SetVisible(played, false);
+		m_NavRestart.SetVisible(played, false)
+	}
 	
 	
 	//------------------------------------------------------------------------------------------------
@@ -493,23 +524,6 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		m_Widgets.m_ScenarioScroll.SetSliderPos(0, 0, true);
 	}
 	
-	
-	
-	//------------------------------------------------------------------------------------------------
-	//! Called from OnMenuOpen
-	protected array<ref SCR_MissionHeader> LoadMissionHeadersFromFolder(string folderPath)
-	{
-		array<ref SCR_MissionHeader> missionHeaders = new array<ref SCR_MissionHeader>;
-		HeaderFileCallback callback = new HeaderFileCallback;
-		callback.m_aHeaders = missionHeaders;
-		callback.api = GetGame().GetBackendApi().GetWorkshop();
-		System.FindFiles(callback.FindFilesCallback, folderPath, ".conf");
-		
-		return callback.m_aHeaders;
-	}
-
-	
-	
 	//------------------------------------------------------------------------------------------------
 	protected MissionWorkshopItem GetSelectedScenario()
 	{
@@ -613,6 +627,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 			return;
 		
 		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
 	}
 	
 	
@@ -641,7 +656,31 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		TryFocusLineUnderCursor();
 		
 		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnContinueButton()
+	{
+		if (m_Header && !m_Header.GetSaveFileName().IsEmpty())
+			SCR_SaveLoadComponent.LoadOnStart(m_Header);
+		else
+			SCR_SaveLoadComponent.LoadOnStart();
+		
+		SCR_WorkshopUiCommon.TryPlayScenario(m_SelectedScenario);
+		
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnRestartButton()
+	{
+		SCR_SaveLoadComponent.LoadOnStart();
+		SCR_WorkshopUiCommon.TryPlayScenario(m_SelectedScenario);
+		
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ScenarioMenu);
+	}
+	
 	
 	
 	//------------------------------------------------------------------------------------------------
@@ -654,7 +693,11 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		
 		TryFocusLineUnderCursor();
 		
-		SCR_WorkshopUiCommon.TryHostScenario(scenario);
+		// Open server hosting dialog 
+		ServerHostingUI dialog = ServerHostingUI.Cast(
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ServerHostingDialog));
+		
+		dialog.SelectScenario(scenario);
 	}
 	
 	
@@ -727,6 +770,21 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_SubMenuBase
 		line.NotifyScenarioUpdate(); // Update the widgets
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCopyIdButton()
+	{
+		SCR_ContentBrowser_ScenarioLineComponent line = GetSelectedLine();
+		
+		if (!line)
+			return;
+		
+		TryFocusLineUnderCursor();
+		
+		MissionWorkshopItem scenario = line.GetScenario();
+		
+		if (scenario)
+			System.ExportToClipboard(scenario.Id());
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when user confirms the value in the seacrh string

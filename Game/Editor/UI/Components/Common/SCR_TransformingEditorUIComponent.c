@@ -2,18 +2,19 @@
 */
 class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 {
-	private InputManager m_InputManager;
-	private SCR_TransformingEditorComponent m_TransformingManager;
-	private SCR_StatesEditorComponent m_StatesManager;
-	private SCR_CursorEditorUIComponent m_CursorComponent;
-	//private SCR_HoverEditableEntityFilter m_HoverFilter;
-	private SCR_BaseEditableEntityFilter m_SelectedFilter;
-	private SCR_BaseEditableEntityFilter m_FocusedFilter;
-	private SCR_EditableEntityComponent m_HoverEntity;
-	private SCR_EditableEntityComponent m_ActiveHoverEntity;
-	private SCR_LayersEditorComponent m_LayersManager;
-	private vector m_vClickTransform[4];
-	private bool m_bClicked;
+	protected InputManager m_InputManager;
+	protected SCR_TransformingEditorComponent m_TransformingManager;
+	protected SCR_StatesEditorComponent m_StatesManager;
+	protected SCR_CursorEditorUIComponent m_CursorComponent;
+	//protected SCR_HoverEditableEntityFilter m_HoverFilter;
+	protected SCR_BaseEditableEntityFilter m_SelectedFilter;
+	protected SCR_BaseEditableEntityFilter m_FocusedFilter;
+	protected SCR_EditableEntityComponent m_HoverEntity;
+	protected SCR_EditableEntityComponent m_ActiveHoverEntity;
+	protected SCR_LayersEditorComponent m_LayersManager;
+	protected SCR_EntitiesToolbarEditorUIComponent m_EntityToolbar;
+	protected vector m_vClickTransform[4];
+	protected bool m_bClicked;
 	
 	override void OnHoverChange(EEditableEntityState state, set<SCR_EditableEntityComponent> entitiesInsert, set<SCR_EditableEntityComponent> entitiesRemove)
 	{
@@ -40,6 +41,10 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	protected void OnEditorTransformDown(float value, EActionTrigger reason)
 	{
 		if (!m_InputManager || !m_SelectedFilter || !m_TransformingManager || !m_CursorComponent) return;
+		
+		//--- Can't rotate from the entity toolbar
+		if (m_EntityToolbar && m_EntityToolbar.IsUnderCursor() && m_InputManager.GetActionTriggered("EditorTransformRotateYawModifier"))
+			return;
 		
 		//--- Ignore when not hovering over an entity
 		bool isDelegate;
@@ -143,6 +148,8 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	//--- Update
 	protected void OnMenuUpdate(float tDelta)
 	{
+		ActivatePreviewContext();
+		
 		bool mapShown = SCR_MapEntity.GetMapInstance() && SCR_MapEntity.GetMapInstance().IsOpen();
 		if (!m_InputManager || !m_StatesManager || !m_CursorComponent || mapShown) return;
 		
@@ -192,6 +199,8 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			m_SelectedFilter = entitiesManager.GetFilter(EEditableEntityState.SELECTED);
 			m_FocusedFilter = entitiesManager.GetFilter(EEditableEntityState.FOCUSED);
 		}
+		
+		m_EntityToolbar = SCR_EntitiesToolbarEditorUIComponent.Cast(root.FindComponent(SCR_EntitiesToolbarEditorUIComponent));
 		
 		m_LayersManager = SCR_LayersEditorComponent.Cast(SCR_LayersEditorComponent.GetInstance(SCR_LayersEditorComponent));
 		

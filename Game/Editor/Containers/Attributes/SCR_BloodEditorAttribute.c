@@ -26,11 +26,15 @@ class SCR_BloodEditorAttribute : SCR_BaseValueListEditorAttribute
 			return null;
 		
 		//~Todo: Once an unconscious character can be revived, just use raw GetHealthScaled
-		float bloodLevelLoseConsciousness = bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS);
-		float bloodLevel = Math.InverseLerp(bloodLevelLoseConsciousness, 1, bloodHitzone.GetHealthScaled());
+		float bloodLevelLoseDeath = bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.DESTROYED);
+		float bloodLevelContiousness = bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS);
+		float bloodLevel = Math.InverseLerp(bloodLevelLoseDeath, 1, bloodHitzone.GetHealthScaled());
+		
+		//~Safty Clamp
 		bloodLevel = Math.Clamp(bloodLevel, 0, 1);
 		
-		return SCR_BaseEditorAttributeVar.CreateFloat(Math.Round(bloodLevel * 100)));
+		//~ Sends over current blood level, % needed to fall Unconscious and if Unconsciousness is premitted
+		return SCR_BaseEditorAttributeVar.CreateVector(Vector(Math.Round(bloodLevel * 100), bloodLevelContiousness, characterDamageManager.GetPermitUnconsciousness()));
 	}
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
@@ -57,8 +61,8 @@ class SCR_BloodEditorAttribute : SCR_BaseValueListEditorAttribute
 			return;
 		
 		//~Todo: Once an unconscious character can be revived, just use raw SetHealthScaled
-		float bloodLevelLoseConsciousness = bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS);
-		float bloodLevel = Math.Lerp(bloodLevelLoseConsciousness, 1, var.GetFloat() * 0.01);
+		float bloodLevelLoseDeath = bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.DESTROYED);
+		float bloodLevel = Math.Lerp(bloodLevelLoseDeath, 1, var.GetFloat() * 0.01);
 		bloodLevel = Math.Clamp(bloodLevel, 0, 1);
 		bloodHitzone.SetHealthScaled(bloodLevel);
 	}

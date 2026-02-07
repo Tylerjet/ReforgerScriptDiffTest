@@ -35,7 +35,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	protected SCR_UIInfo m_UIInfoInstance;
 	protected ref set<SCR_EditableEntityComponent> m_Entities;
 	protected vector m_vStaticPos;
-	protected int m_iIconBoneIndex;
+	protected int m_iIconBoneIndex = -1;
 
 	/*!
 	Get entity name from info component.
@@ -63,7 +63,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	\param shorten True to include only GUID, not file path
 	\return Prefab path
 	*/
-	ResourceName GetPrefab(bool shorten = true)
+	ResourceName GetPrefab(bool shorten = false)
 	{
 		if (!m_Owner)
 			return ResourceName.Empty;
@@ -73,7 +73,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 			return ResourceName.Empty;
 		
 		ResourceName prefab = prefabData.GetPrefabName();
-		if (shorten)
+		if (!prefab)
+			prefab = SCR_BaseContainerTools.GetPrefabResourceName(prefabData.GetPrefab()); //--- Modified instance, find prefab in ancestors
+		
+		if (shorten && prefab)
 		{
 			int guidIndex = prefab.LastIndexOf("}");
 			if (guidIndex >= 0)
@@ -141,7 +144,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 	{
 		m_UIInfoInstance = info;
 	}
-	
 	/*!
 	Check component's replication. Show an error when it's not registered for replication (e.g., RplComponent is missing)
 	\param[out] replicationID ID used by Replication.FindItem()
@@ -165,11 +167,13 @@ class SCR_EditableEntityComponent : ScriptComponent
 	Check if the entity can be serialized during session saving managed by SCR_EditableEntityStruct.
 	\param[out] target Entity to which this entity is attached to outside of hierarchy structure, e.g., character in a vehicle or waypoint on a target
 	\param[out] targetIndex Further specification of the target, e.g., crew position index in a vehicle
+	\param[out] isDestroyed Variable to be set to true if the entity is destroyed
 	\return True if it can be serialized
 	*/
-	bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1)
+	bool Serialize(out SCR_EditableEntityComponent target = null, out int targetIndex = -1, out bool isDestroyed = false)
 	{
-		return !HasEntityFlag(EEditableEntityFlag.LOCAL) && !HasEntityFlag(EEditableEntityFlag.NON_SERIALIZABLE) && !IsDestroyed();
+		isDestroyed = IsDestroyed();
+		return !HasEntityFlag(EEditableEntityFlag.LOCAL) && !HasEntityFlag(EEditableEntityFlag.NON_SERIALIZABLE);
 	}
 	/*!
 	Deserialize the entity based on given params.
@@ -372,7 +376,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 	{
 		if (!m_Owner)
 			return true;
-		
 		DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
 		if (damageManager)
 			return damageManager.GetState() == EDamageState.DESTROYED;
@@ -531,6 +534,23 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 
 	/*!
+	Kill/destroy this editable entity.
+	\return True if destroyed
+	*/
+	bool Destroy()
+	{
+		if (IsServer())
+		{
+			DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
+			if (damageManager && damageManager.IsDamageHandlingEnabled())
+			{
+				damageManager.SetHealthScaled(0);
+				return true;
+			}
+		}
+		return false;
+	}
+	/*!
 	Delete this editable entity.
 	\param changedByUser True when the change was initiated by user
 	\param updateNavmesh True to update navmesh after the entity is deleted (set to false when deleting children of already deleted entity)
@@ -572,6 +592,15 @@ class SCR_EditableEntityComponent : ScriptComponent
 		return true;
 	}
 	
+	RplId GetOwnerRplId()
+	{
+		RplComponent rpl = GetRplComponent();
+		if (rpl)
+			return rpl.Id();
+		else
+			return RplId.Invalid();
+	}
+
 	/*!
 	Get squared maximum distance in which this entity is drawn in editor (e.g., with an icon).
 	\return Squared distance in metres
@@ -622,7 +651,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	*/
 	bool GetEntityChildrenBudgetCost(out notnull array<ref SCR_EntityBudgetValue> outBudgets, IEntity owner = null)
 	{
-		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(GetInfo());
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(GetInfo(owner));
 		if (editableEntityUIInfo)
 		{
 			editableEntityUIInfo.GetEntityChildrenBudgetCost(outBudgets);
@@ -640,10 +669,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
 			return false;
 		
-		SCR_FactionControlComponent factionControl = SCR_FactionControlComponent.Cast(m_Owner.FindComponent(SCR_FactionControlComponent));
-		if (factionControl)
+		SCR_FactionAffiliationComponent factionAffiliationComponent = SCR_FactionAffiliationComponent.Cast(m_Owner.FindComponent(SCR_FactionAffiliationComponent));
+		if (factionAffiliationComponent)
 		{
-			Faction faction = factionControl.GetFaction();
+			Faction faction = factionAffiliationComponent.GetAffiliatedFaction();
 			SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
 			if (delegateFactionManager)
 			{
@@ -931,6 +960,15 @@ class SCR_EditableEntityComponent : ScriptComponent
 		return m_bAutoRegister == -1;
 	}
 	///@}
+
+	/*!
+	Authority Only, forces entities such as Character and Group to place characters into a specific vehicle position
+	\param forceVehicleCompartments compartment types to force for entity
+	*/
+	void ForceVehicleCompartments(notnull array<ECompartmentType> forceVehicleCompartments)
+	{
+	
+	}
 	
 	protected void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
 	{
@@ -1471,13 +1509,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (core)
 			core.Event_OnEntityRefreshed.Invoke(this);
 	}
-	protected RplId GetOwnerRplId()
+	protected RplComponent GetRplComponent()
 	{
-		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
-		if (rpl)
-			return rpl.Id();
-		else
-			return RplId.Invalid();
+		return RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 	}
 	protected bool ValidateType()
 	{
@@ -1486,8 +1520,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 			case EEditableEntityType.CHARACTER:
 				return m_Owner.IsInherited(ChimeraCharacter) || m_Owner.FindComponent(SCR_EditablePlayerDelegateComponent) != null;
 			
-			case EEditableEntityType.VEHICLE:
-				return m_Owner.IsInherited(Vehicle);
+			//--- No longer valid, tripods are considered vehicles even when not inheriting from class Vehicle
+			//case EEditableEntityType.VEHICLE:
+			//	return m_Owner.IsInherited(Vehicle);
 			
 			case EEditableEntityType.GROUP:
 				return m_Owner.IsInherited(AIGroup);
@@ -1617,7 +1652,6 @@ class SCR_EditableEntityComponent : ScriptComponent
 	void EOnEditorSessionLoad(SCR_EditableEntityComponent parent)
 	{
 	}
-	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default functions
 	
@@ -1732,7 +1766,12 @@ class SCR_EditableEntityComponent : ScriptComponent
 		
 		//--- Get bone index on which the icon will be rendered
 		SCR_EditableEntityComponentClass prefabData = GetEditableEntityData();
-		if (prefabData) m_iIconBoneIndex = m_Owner.GetBoneIndex(prefabData.GetIconBoneName());
+		if (prefabData)
+		{
+			string boneName = prefabData.GetIconBoneName();
+			if (!boneName.IsEmpty())
+				m_iIconBoneIndex = m_Owner.GetBoneIndex(boneName);
+		}
 
 		//--- Get parent entity
 		if (parent)

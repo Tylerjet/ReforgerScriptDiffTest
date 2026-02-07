@@ -199,27 +199,27 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		}
 	}
 	
-	//~ Just before Browser state is loaded
+	//~ Before Browser state is loaded
 	protected void OnBrowserStatePreloaded(SCR_EditorContentBrowserSaveStateData state)
 	{
 		array<EEditableEntityLabel> savedLabels = new array<EEditableEntityLabel>;
 		m_ContentBrowserEditorComponent.GetActiveLabels(savedLabels);
 		
 		//~ Reset labels
-		foreach(EEditableEntityLabel label: savedLabels)
+		foreach (EEditableEntityLabel label: savedLabels)
 		{
 			SetFilterToggled(label, false, false);
 		}
 	}
 	
-	//~ Just before Browser state is loaded
+	//~ After Browser state is loaded
 	protected void OnBrowserStateLoaded(SCR_EditorContentBrowserSaveStateData state)
 	{
 		array<EEditableEntityLabel> savedLabels = new array<EEditableEntityLabel>;
 		state.GetLabels(savedLabels);
 		
 		//~ Set saved Labels
-		foreach(EEditableEntityLabel label: savedLabels)
+		foreach (EEditableEntityLabel label: savedLabels)
 		{
 			SetFilterToggled(label, true, false);
 		}
@@ -325,19 +325,18 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			{
 				labelGroupWidget.SetVisible(m_ContentBrowserEditorComponent.IsLabelActive(conditionalLabel));
 				
-				TextWidget conditionalSubheader = TextWidget.Cast(labelGroupWidget.FindAnyWidget(m_ConditionalSubHeaderName));
-				Widget filterOptionSpace = labelGroupWidget.FindAnyWidget(m_sFilterOptionSpaceName);
-				
 				SCR_UIInfo conditionalEntityTypeUiInfo;
 				m_ContentBrowserEditorComponent.GetLabelUIInfo(conditionalLabel, conditionalEntityTypeUiInfo);
 				
 				if (conditionalEntityTypeUiInfo)
 				{
+					TextWidget conditionalSubheader = TextWidget.Cast(labelGroupWidget.FindAnyWidget(m_ConditionalSubHeaderName));
 					if (conditionalSubheader)
 					{
 						conditionalSubheader.SetTextFormat(m_ConditionalSubHeaderFormat, conditionalEntityTypeUiInfo.GetName());
 						conditionalSubheader.SetVisible(true);
 						
+						Widget filterOptionSpace = labelGroupWidget.FindAnyWidget(m_sFilterOptionSpaceName);
 						if (filterOptionSpace)
 							filterOptionSpace.SetVisible(false);
 					}

@@ -29,7 +29,7 @@ class SCR_GameOverScreenConfig
 	*/
 	int GetGameOverInfoArray(notnull out array <SCR_BaseGameOverScreenInfo> gameOverScreens)
 	{
-		foreach(SCR_BaseGameOverScreenInfo screen: m_aGameOverScreens)
+		foreach (SCR_BaseGameOverScreenInfo screen: m_aGameOverScreens)
 			gameOverScreens.Insert(screen);
 
 		return gameOverScreens.Count();

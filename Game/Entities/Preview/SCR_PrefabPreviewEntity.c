@@ -69,7 +69,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			entitySource.Get("angleX", angleX);
 			entitySource.Get("angleY", angleY);
 			entitySource.Get("angleZ", angleZ);
-			entryLocal.m_vAngles = Vector(angleY, angleX, angleZ); //--- Convert attribute's YXZ to XYZ
+			entryLocal.m_vAngles = Vector(angleX, angleY, angleZ);
 
 		}
 		entryLocal.m_EntitySource = entitySource;
@@ -156,14 +156,18 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			componentType = componentClassName.ToType();
 			switch (true)
 			{
+				case (componentClassName == "Hierarchy" && !entryLocal.m_iPivotID):
+				{
+					componentSource.Get("PivotID", entryLocal.m_iPivotID);
+					break;
+				}
 				case (componentClassName == "MeshObject"):
 				{
-					ResourceName meshPath;
 					componentSource.Get("Object", entryLocal.m_Mesh);
 					entryLocal.m_Shape = EPreviewEntityShape.MESH;
 					break;
 				}
-				case (componentClassName == "SlotManagerComponent"):
+				case (componentType.IsInherited(SlotManagerComponent)):
 				{
 					BaseContainerList slots = componentSource.GetObjectArray("Slots");
 					for (int s = 0, slotCount = slots.Count(); s < slotCount; s++)
@@ -172,7 +176,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 					}
 					break;
 				}
-				case (componentClassName == "BaseSlotComponent" || componentClassName == "WeaponSlotComponent"):
+				case (componentType.IsInherited(BaseSlotComponent) || componentType.IsInherited(WeaponSlotComponent)):
 				{
 					BaseContainer attachType = componentSource.GetObject("AttachType");
 					if (!attachType)
@@ -182,9 +186,6 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 					componentSource.Get("EntityPrefab", slotPrefab);
 					if (!slotPrefab)
 						componentSource.Get("WeaponTemplate", slotPrefab);
-					
-					if (!slotPrefab)
-						break;
 					
 					GetPreviewEntriesFromSlot(attachType, outEntries, parentID, slotPrefab);
 					break;
@@ -293,6 +294,9 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		if (!slotPrefab)
 			slotSource.Get("Prefab", slotPrefab);
 		
+		if (!slotPrefab)
+			return;
+		
 		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(Resource.Load(slotPrefab));
 		if (!entitySource)
 			return;
@@ -312,7 +316,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		
 		SCR_BasePreviewEntry entry = new SCR_BasePreviewEntry(true);
 		entry.m_vPosition = link.m_vPosition;
-		entry.m_vAngles = Vector(link.m_vAngles[1], link.m_vAngles[0], link.m_vAngles[2]); //--- Convert attribute's YXZ to XYZ
+		entry.m_vAngles = link.m_vAngles;
 		entry.m_fScale = link.m_fScale;// * link.m_fScale;//parentScale;
 		
 		GetPreviewEntries(entitySource, outEntries, parentID, entry);
@@ -345,7 +349,7 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 			else
 				parent = children[entry.m_iParentID];
 			
-			child = api.EntityToSource(api.CreateEntity(className, "", 0, parent, entry.m_vPosition, Vector(entry.m_vAngles[1], entry.m_vAngles[0], entry.m_vAngles[2])));
+			child = api.EntityToSource(api.CreateEntity(className, "", 0, parent, entry.m_vPosition, entry.m_vAngles));
 			children.Insert(child);
 			
 			child.Set("scale", entry.m_fScale);

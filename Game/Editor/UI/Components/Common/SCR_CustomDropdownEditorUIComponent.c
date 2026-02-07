@@ -210,6 +210,16 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		
 		m_bIsOpened = false;
 		Event_OnDropdownClosed.Invoke(this);
+		
+		SCR_FadeUIComponent fadeComponent;
+		foreach (SCR_ButtonImageComponent button: m_aItemButtons)
+		{
+			fadeComponent = SCR_FadeUIComponent.Cast(button.GetRootWidget().FindHandler(SCR_FadeUIComponent));
+			if (fadeComponent)
+				fadeComponent.CancelFade(false);
+		}
+		if (m_ListWidgetStripeFadeComponent)
+			m_ListWidgetStripeFadeComponent.CancelFade(false);
 	}
 	
 	protected void OnLMB()

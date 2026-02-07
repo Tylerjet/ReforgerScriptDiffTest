@@ -151,7 +151,9 @@ class SCR_EntitiesEditorUIComponent: SCR_EditableEntitySlotManagerUIComponent
 	void OnMenuUpdate(float tDelta)
 	{
 		//--- No scene interaction when the map is opened
-		if (m_MapEntity && m_MapEntity.IsOpen())
+		bool isMapOpen = m_MapEntity && m_MapEntity.IsOpen();
+		GetWidget().SetVisible(!isMapOpen);
+		if (isMapOpen)
 			return;
 		
 		int screenW = m_Workspace.GetWidth();

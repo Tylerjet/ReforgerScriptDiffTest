@@ -127,6 +127,22 @@ class SCR_EditorBaseEntity : GenericEntity
 	{
 		return null;
 	}
+	/*!
+	Get event which is called when the entity is activated.
+	\return script invoker
+	*/
+	ScriptInvoker GetOnActivateServer()
+	{
+		return null;
+	}
+	/*!
+	Get event which is called when the entity is deactivated.
+	\return script invoker
+	*/
+	ScriptInvoker GetOnDeactivateServer()
+	{
+		return null;
+	}
 	///@}
 	
 	/*!

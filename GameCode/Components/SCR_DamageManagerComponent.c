@@ -75,7 +75,7 @@ class SCR_DamageManagerComponent: DamageManagerComponent
 			return;
 		
 		if (!instigator)
-			instigator = owner;
+			instigator = GetInstigatorEntity();
 		
 		HitZone hitZone = GetDefaultHitZone();
 		if (!hitZone)

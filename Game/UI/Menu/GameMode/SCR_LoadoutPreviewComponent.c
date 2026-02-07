@@ -8,16 +8,22 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 
 	protected ItemPreviewManagerEntity m_PreviewManager;
 	protected ItemPreviewWidget m_wPreview;
+	
+	protected bool m_bReloadLoadout;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wPreview = ItemPreviewWidget.Cast(w.FindAnyWidget(m_sPreviewWidgetName));
+		m_bReloadLoadout = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	IEntity SetPreviewedLoadout(notnull SCR_BasePlayerLoadout loadout)
 	{
+		if (!m_bReloadLoadout)
+			return null;
+		
 		m_PreviewManager = GetGame().GetItemPreviewManager();
 
 		if (!m_PreviewManager)
@@ -36,5 +42,35 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 		m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName);
 
 		return m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ItemPreviewManagerEntity GetPreviewManagerEntity()
+	{
+		return m_PreviewManager;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPreviewManagerEntity (ItemPreviewManagerEntity instance)
+	{
+		m_PreviewManager = instance;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ItemPreviewWidget GetItemPreviewWidget()
+	{
+		return m_wPreview;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetItemPreviewWidget(ItemPreviewWidget instance)
+	{
+		m_wPreview = instance;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetReloadLoadout(bool flag)
+	{
+		m_bReloadLoadout = flag;
 	}
 };

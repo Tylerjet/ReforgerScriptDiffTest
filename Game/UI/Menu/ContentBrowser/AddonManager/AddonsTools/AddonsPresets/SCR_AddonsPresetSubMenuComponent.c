@@ -11,7 +11,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	protected ref array<ref SCR_WorkshopAddonPreset> m_aPresets = {};
 	protected ref array<ref SCR_AddonLinePresetComponent> m_aPresetLines = {};
 	
-	protected SCR_WorkshopAddonPreset m_InteractivePreset;
+	protected ref SCR_WorkshopAddonPreset m_InteractivePreset;
 	
 	// New temptorary preset 
 	protected SCR_ListBoxElementComponent m_CreatedElement;
@@ -140,6 +140,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			line.GetEventOnDelete().Insert(DeletePreset);
 			line.GetEventOnFocus().Insert(OnLineFocus);
 			line.GetEventOnFocusLost().Insert(OnLineFocusLost);
+			line.GetEventOnButtonClick().Insert(OnLineButtonClick);
 			
 			line.ShowWarning(!HasAllPresetAddons(line));
 			
@@ -390,21 +391,15 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	//---------------------------------------------------------------------------------------------------
 	protected void Callback_OnConfirmOverride(SCR_WorkshopPresetConfirmDialog dlg)
 	{
-		SCR_WorkshopAddonPreset preset = m_InteractivePreset;
 		string prevName = "";
+		if (m_InteractivePreset)
+			prevName = m_InteractivePreset.GetName();
 		
-		if (preset)
-			prevName = preset.GetName();
-		
-		if (!preset)
-			preset = SCR_AddonManager.GetInstance().CreatePresetFromEnabledAddons(dlg.m_Preset.GetName());
-		
+		SCR_WorkshopAddonPreset preset = SCR_AddonManager.GetInstance().CreatePresetFromEnabledAddons(dlg.m_Preset.GetName());
 		if (!preset)
 			return;
-		
-		//SCR_AddonManager.GetInstance().GetPresetStorage().DeletePreset(dlg.m_Preset.GetName());
-		//SCR_AddonManager.GetInstance().GetPresetStorage().DeletePreset(preset.GetName());
-		
+
+		// Change name
 		if (!m_sNameOverride.IsEmpty())
 		{
 			SCR_AddonManager.GetInstance().GetPresetStorage().DeletePreset(m_sNameOverride);
@@ -503,6 +498,13 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 	{
 		InvokeEventOnRename(true);
 		OnRename(true);
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	//! Call this when any inner buttons is clicked
+	protected void OnLineButtonClick(SCR_AddonLinePresetComponent line)
+	{
+		m_InteractivePreset = line.GetPreset();
 	}
 	
 	//---------------------------------------------------------------------------------------------------

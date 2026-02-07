@@ -37,7 +37,27 @@ sealed class BaseContainer: BaseResourceObject
 	proto external bool GetDefaultAsString(string varName, out string val);
 	proto external BaseContainer GetObject(string varName);
 	proto external bool SetObject(string varName, BaseContainer val);
+	/**
+	\brief Get wrapper for array of objects (the list is read only)
+	@code
+	BaseContainerList points = src.GetObjectArray("Points");
+	
+	for (int i = 0; i < points.Count(); i++)
+	{
+	...
+	}
+	@endcode
+	*/
 	proto external ref BaseContainerList GetObjectArray(string varName);
+	/**
+	\brief Set array of objects. Return wrapper for object array where objects can be added/removed.
+	@code
+	BaseContainerList points = src.SetObjectArray("Points");
+	points.Insert(...);
+	points.Insert(...);
+	points.Insert(...);
+	@endcode
+	*/
 	proto external ref BaseContainerList SetObjectArray(string varName);
 	proto external bool Set(string varName, void val);
 	//! Get list of addons where resource is defined or modified
