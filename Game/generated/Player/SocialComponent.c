@@ -89,7 +89,7 @@ class SocialComponent: GameComponent
 	Requests to check blokced players in a room.
 	Invokes OnCheckedBlockedPlayersInRoom when finished.
 	*/
-	static proto void CheckBlockedPlayersInRoom(Room room);
+	static proto void CheckBlockedPlayersInRoom(notnull Room room);
 	/*!
 	Determines if otherPlayer is muted by this player for the duration of
 	the game session. Only VoiceChat UserInteraction is affected. Returns

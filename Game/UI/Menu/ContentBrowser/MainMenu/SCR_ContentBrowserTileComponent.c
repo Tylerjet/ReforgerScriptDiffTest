@@ -492,8 +492,14 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 	protected void ContinuousUpdate()
 	{
 		if (!m_Item || m_ePrimaryActionState != SCR_EAddonPrimaryActionState.DOWNLOADING)
+		{
 			StopContinuousUpdate();
+			return;
+		}
 
+		if (!m_Item.GetWorkshopItem().GetDownloadingRevision())
+			return;
+		
 		UpdateDownloadProgressBar();
 		UpdateHeader();
 	}

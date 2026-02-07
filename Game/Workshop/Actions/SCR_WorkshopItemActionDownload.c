@@ -64,6 +64,10 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		m_StartVersion = wrapper.GetCurrentLocalRevision();
 
 		m_fSizeBytes = m_Wrapper.GetTargetRevisionPatchSize();
+		if (m_fSizeBytes <= 0)
+		{
+			revision.GetPatchSize(m_fSizeBytes);
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -219,10 +223,17 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		{
 			m_bRunningImmediate = true;
 			
-			//m_PauseDownloadCallback.GetEventOnResponse().Insert(OnResumeResponse);
+			m_Callback = new SCR_BackendCallback();
+			m_Callback.GetEventOnFail().Insert(Callback_OnError);
+			m_Callback.GetEventOnTimeOut().Insert(Callback_OnTimeout);
 			
 			m_bRunningAsync = true;
-			item.ResumeDownload(null);
+			item.ResumeDownload(m_Callback);
+			
+			// resume failed immediately - state changed in callback
+			if (m_State == STATE_FAILED)
+				return false;
+			
 			InvokeOnChanged();
 			
 			return true;
@@ -230,25 +241,6 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		
 		// If download didn't actually start, we must not resume but start a download
 		return StartDownloadOrLoadDetails();
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void OnResumeResponse(SCR_BackendCallback callback)
-	{
-		callback.GetEventOnResponse().Remove(OnResumeResponse);
-		
-		// Fail
-		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
-		{
-			// Get back to previsius reqeusted state 
-			m_bRunningImmediate = false;
-			return;
-		}
-		
-		// Success
-		m_bRunningAsync = true;
-		
-		InvokeOnChanged();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -319,16 +311,18 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		// Complete the action when the addon is at the target revisioon and is downloaded
 		if (m_State == STATE_ACTIVE)
 		{
+			bool offline = m_Wrapper.GetOffline();
+			Revision currentVersion = m_Wrapper.GetCurrentLocalRevision();
+			
 			if (m_bWaitingForRevisions)
 			{
 				// Try to start the download again if we have loaded the details
 				if (m_Wrapper.GetRevisionsLoaded())
 					StartDownloadOrLoadDetails();
 			}
-			else
+			else if (m_Wrapper.GetWorkshopItem().GetPendingDownload())
 			{
-				bool offline = m_Wrapper.GetOffline();
-				Revision currentVersion = m_Wrapper.GetCurrentLocalRevision();
+				
 				
 				//#ifdef WORKSHOP_DEBUG
 				//_print(string.Format("Internal_Update: Offline: %1, CurrentVersion: '%2', TargetVersion: '%3'", offline, currentVersion, m_sTargetVersion));
@@ -357,11 +351,10 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 					m_fProcessingProgress = processingProgress;
 					InvokeOnChanged();
 				}
-				
-				if (offline && Revision.AreEqual(currentVersion, m_TargetRevision))
-				{
-					Complete();
-				}
+			}
+			else if (offline && Revision.AreEqual(currentVersion, m_TargetRevision))
+			{
+				Complete();
 			}
 		}
 	}

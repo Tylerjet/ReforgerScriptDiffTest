@@ -2165,14 +2165,14 @@ class SCR_WorkshopItem
 			{
 				if (m_Item.GetStateFlags() & EWorkshopItemState.EWSTATE_ONLINE)
 				{
-					m_Item.AskDetail(m_CallbackAskDetails);			// Internally both methods perform the same request
 					m_bWaitingLoadDetails = true;
+					m_Item.AskDetail(m_CallbackAskDetails);			// Internally both methods perform the same request
 				}
 			}
 			else if (m_Dependency)
 			{
-				m_Dependency.LoadItem(m_CallbackAskDetails);
 				m_bWaitingLoadDetails = true;
+				m_Dependency.LoadItem(m_CallbackAskDetails);
 			}
 		}
 	}
@@ -2342,6 +2342,10 @@ class SCR_WorkshopItem
 			m_bMyRating = m_Item.MyRating();
 			m_bMyRatingSet = m_Item.IsRatingSet();
 			m_bFavourite = m_Item.IsFavorite();
+			
+			Revision pendingDownload = m_Item.GetPendingDownload();
+			if (pendingDownload)
+				SetItemTargetRevision(pendingDownload);
 			
 			if (m_Item.IsEnabled())
 				m_Item.NotifyPlay();

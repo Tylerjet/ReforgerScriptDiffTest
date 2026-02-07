@@ -736,17 +736,8 @@ class SCR_AddonManager : GenericEntity
 		WorkshopApi api = GetGame().GetBackendApi().GetWorkshop();
 		if (api)
 		{
-			api.ScanOfflineItems();
-
-			// Get all offline addons and register them
-			array<WorkshopItem> items = {};
-			api.GetOfflineItems(items);
-			
-			// Prepare items to registration
-			foreach (WorkshopItem item : items)
-			{
-				m_aAddonsToRegister.Insert(item);
-			}
+			Internal_CheckAddons(); // sets callback for finished scan
+			api.ScanOfflineItems(); // request scan of already downloaded addons
 		}
 
 		// If user's UGC privilege is disabled, disable all addons
@@ -757,7 +748,7 @@ class SCR_AddonManager : GenericEntity
 				item.SetEnabled(false);
 		}
 		
-		Internal_CheckAddons();
+		
 		
 		if(GetGame().InPlayMode())
 			m_Storage = new SCR_WorkshopAddonManagerPresetStorage();
@@ -782,8 +773,19 @@ class SCR_AddonManager : GenericEntity
 	protected void Callback_CheckAddons_OnSuccess()
 	{
 		m_bAddonsChecked = true;
-
 		_print("Callback_CheckAddons_OnSuccess()", LogLevel.NORMAL);
+		
+		WorkshopApi api = GetGame().GetBackendApi().GetWorkshop();
+		
+		// Get all offline addons and register them
+		array<WorkshopItem> items = {};
+		api.GetOfflineItems(items);
+		
+		// Prepare items to registration
+		foreach (WorkshopItem item : items)
+		{
+			m_aAddonsToRegister.Insert(item);
+		}
 
 		array<ref SCR_WorkshopItem> pendingDownloads = {};
 		
@@ -795,14 +797,19 @@ class SCR_AddonManager : GenericEntity
 			scrItem.Internal_OnAddonsChecked();
 			array<ref SCR_WorkshopItem> dependencies = scrItem.GetLoadedDependencies();
 			
-			if (scrItem.GetOffline())
+			if (m_aAddonsToRegister[i].GetPendingDownload())
 				pendingDownloads.Insert(scrItem);
 		}
 		
 		m_aAddonsToRegister.Clear();
 		
 		FinalizeInitAfterAsyncChecks();
-		//SCR_DownloadManager.GetInstance().DownloadAddons(pendingDownloads);
+		SCR_DownloadManager.GetInstance().DownloadItems(pendingDownloads);
+		
+		// do not automatically start download without users knowledge
+		// addons will be added to download dialog as paused download
+		foreach (SCR_WorkshopItem download : pendingDownloads)
+			download.PauseDownload();
 		
 		m_OnAddonsChecked.Invoke();
 		
