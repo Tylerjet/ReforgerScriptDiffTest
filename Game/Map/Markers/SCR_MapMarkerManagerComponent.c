@@ -16,12 +16,14 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	protected ref array<ref SCR_MapMarkerBase> m_aDisabledMarkers = {};		// disabled static markers
 	protected ref array<SCR_MapMarkerEntity> m_aDynamicMarkers = {};		// dynamically replicated markers
 	
+	protected ref array<ref SCR_ScriptProfanityFilterRequestCallback> m_aProfanityCallbacks = {};		// profanity callbacks of markers
+	
 	protected int m_iID;					// server side only, unique id created for markers
 	protected vector m_vVisibleFrameMin;	// screen coords of the visible frame in map - min point
 	protected vector m_vVisibleFrameMax;	// screen coords of the visible frame in map - max point
 	protected SCR_MapEntity m_MapEntity;
 	protected SCR_MapMarkerSyncComponent m_MarkerSyncComp;
-	protected ref SCR_MapMarkerConfig m_MarkerCfg; 
+	protected ref SCR_MapMarkerConfig m_MarkerCfg;
 		
 	//------------------------------------------------------------------------------------------------
 	//! GETTERS
@@ -375,13 +377,23 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	{
 		if (state)
 		{
-			m_aDisabledMarkers.Insert(marker);
-			m_aStaticMarkers.RemoveItem(marker);
+			if (!m_aDisabledMarkers.Contains(marker))
+			{
+				m_aDisabledMarkers.Insert(marker);
+				m_aStaticMarkers.RemoveItem(marker);
+			}
+			
+			marker.SetUpdateDisabled(true);
 		}
 		else 
 		{
-			m_aStaticMarkers.Insert(marker);
-			m_aDisabledMarkers.RemoveItem(marker);
+			if (!m_aStaticMarkers.Contains(marker))
+			{
+				m_aStaticMarkers.Insert(marker);
+				m_aDisabledMarkers.RemoveItem(marker);
+			}
+			
+			marker.SetUpdateDisabled(false);
 			
 			if (!marker.GetRootWidget())	// happens when map is closed and widget ref is lost
 				marker.OnCreateMarker();
@@ -433,15 +445,10 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	{
 		m_MapEntity.GetMapVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax);
 		
-		int count = m_aStaticMarkers.Count();
-		for (int i = 0; i < count; i++)
+		for (int i = m_aStaticMarkers.Count() - 1; i >= 0; i--)
 		{
 			if (!m_aStaticMarkers[i].OnUpdate(m_vVisibleFrameMin, m_vVisibleFrameMax))
-			{
 				SetStaticMarkerDisabled(m_aStaticMarkers[i], true);
-				i--;
-				count--;
-			}
 		}
 				
 		foreach (SCR_MapMarkerEntity markerEnt : m_aDynamicMarkers)
@@ -509,6 +516,8 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		SCR_MapEntity mapEnt = SCR_MapEntity.GetMapInstance();
 		if (mapEnt.IsOpen() && mapEnt.GetMapUIComponent(SCR_MapMarkersUI))		
 			marker.OnCreateMarker();
+		
+		CheckMarkersUserRestrictions();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -565,22 +574,79 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnMapPanEnd(float  x, float y)
+	protected void OnMapPanEnd(float x, float y)
 	{
 		m_MapEntity.GetMapVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax);
 		
-		int count = m_aDisabledMarkers.Count();
-		for (int i = 0; i < count; i++)
+		for (int i = m_aDisabledMarkers.Count() - 1; i >= 0; i--)
 		{
 			if (m_aDisabledMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax))
-			{
 				SetStaticMarkerDisabled(m_aDisabledMarkers[i], false);
-				i--;
-				count--;
-			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CheckMarkersUserRestrictions()
+	{
+		SocialComponent sc = GetSocialComponent();
+		if (!sc || System.IsConsoleApp())
+			return;
+		
+		for (int i = m_aStaticMarkers.Count() - 1; i >= 0; i--)
+		{
+			m_aStaticMarkers[i].SetBlocked(!sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent) || sc.IsRestricted(m_aStaticMarkers[i].GetMarkerOwnerID(), EUserInteraction.UserGeneratedContent));
+			SetStaticMarkerDisabled(m_aStaticMarkers[i], !m_aStaticMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax));
+		}
+		
+		for (int i = m_aDisabledMarkers.Count() - 1; i >= 0; i--)
+		{
+			m_aDisabledMarkers[i].SetBlocked(!sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent) || sc.IsRestricted(m_aDisabledMarkers[i].GetMarkerOwnerID(), EUserInteraction.UserGeneratedContent));
+			SetStaticMarkerDisabled(m_aDisabledMarkers[i], !m_aDisabledMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax));
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMapOpen(MapConfiguration mapConfig)
+	{
+		for (int i = m_aDisabledMarkers.Count() - 1; i >= 0; i--)
+		{
+			SetStaticMarkerDisabled(m_aDisabledMarkers[i], !m_aDisabledMarkers[i].TestVisibleFrame(m_vVisibleFrameMin, m_vVisibleFrameMax));
+		}
+		
+		CheckMarkersUserRestrictions();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected SocialComponent GetSocialComponent()
+	{
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return null;
+		
+		return SocialComponent.Cast(pc.FindComponent(SocialComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//	UTILITIES
+	//------------------------------------------------------------------------------------------------
 
+	//------------------------------------------------------------------------------------------------
+	SCR_ScriptProfanityFilterRequestCallback RequestProfanityFilter(string text)
+	{
+		SCR_ScriptProfanityFilterRequestCallback profanityFilter = new SCR_ScriptProfanityFilterRequestCallback();
+		
+		array<string> textToFilter = {};
+		
+		textToFilter.Insert(text);
+		
+		if (!GetGame().GetPlatformService().FilterProfanityAsync(textToFilter, profanityFilter))
+			return null;
+		
+		m_aProfanityCallbacks.Insert(profanityFilter);
+		
+		return profanityFilter;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
 	//------------------------------------------------------------------------------------------------
@@ -722,6 +788,7 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 		s_Instance = this;
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
 		m_MapEntity.GetOnMapPanEnd().Insert(OnMapPanEnd);
+		m_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 		
 		Resource container = BaseContainerTools.LoadContainer(m_sMarkerCfgPath);
 		if (container)

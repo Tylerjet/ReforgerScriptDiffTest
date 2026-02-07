@@ -135,6 +135,9 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		if (!m_wEditBox)
 			return;
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// This component needs to operate with two different classes that duplicate most of their functionality, but not all of it's functionalities actually support both! EditBoxFilterComponent	does not work on MultilineEditBoxWidget
+
 		EditBoxFilterComponent filter = EditBoxFilterComponent.Cast(m_wEditBox.FindHandler(EditBoxFilterComponent));
 		if (filter)
 		{
@@ -181,10 +184,12 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		
 		if (m_WriteIconButton)
 			m_WriteIconButton.m_OnClicked.Insert(OnInternalButtonClicked);
-		
+			
 		//Type of edit box. Why aren't these derived from a common parent :(
 		m_wMultilineEditBoxWidget = MultilineEditBoxWidget.Cast(m_wEditBox);
 		m_wEditBoxWidget = EditBoxWidget.Cast(m_wEditBox);
+
+//---- REFACTOR NOTE END ----
 		
 		if (m_wMultilineEditBoxWidget)
 			m_bIsInWriteMode = m_wMultilineEditBoxWidget.IsInWriteMode();
@@ -426,6 +431,9 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			m_wWriteIconScale.SetVisible(show);
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Callqueue workaround due to lack of proper events for write mode
+	
 	//------------------------------------------------------------------------------------------------
 	void UpdateInteractionState(bool forceDisabled)
 	{
@@ -471,6 +479,8 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			m_OnTextChange.Invoke(m_sTextPrevious);
 		}
 	}
+	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	void ClearInteractionState()

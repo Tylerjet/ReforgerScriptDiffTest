@@ -6,19 +6,33 @@ class SCR_AvailableActionsWidget
 	
 	protected ButtonWidget m_wButtonWidget;
 	protected SCR_InputButtonComponent m_NavigationButton;
+
+	protected bool m_bMustUpdate;
 	
 	protected const string BUTTON_WIDGET_NAME = "NavigationButton1";
 
 	//------------------------------------------------------------------------------------------------
-	void SetText(string text, string name)
+	//! Method used to inform this hint that it should update its content
+	void SetForcedUpdate()
+	{
+		m_bMustUpdate = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetText(string text, string name, EInputDeviceType currentInputDevice = EInputDeviceType.KEYBOARD)
 	{
 		if (!m_NavigationButton)
 			return;
-		
-		m_NavigationButton.SetAction(text);
-		m_NavigationButton.SetLabel(name);
+
+		if (m_NavigationButton.SetAction(text, currentInputDevice, m_bMustUpdate))
+			m_NavigationButton.SetLabel(name);
+		else
+			SetVisible(false);
+
+		if (m_bMustUpdate)
+			m_bMustUpdate = false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetSize(int size)
 	{
@@ -200,7 +214,7 @@ class SCR_AvailableActionContext
 				if (m_bActivated)
 					m_bActivated = false;
 
-				GetGame().GetCallqueue().Remove(CountHideTime);
+				GetGame().GetCallqueue().Remove(HideHint);
 				m_bHideTimeOver = true;
 
 				isOk = false;
@@ -211,8 +225,8 @@ class SCR_AvailableActionContext
 			if (m_iTimeForHide > 0 && m_bHideTimeOver && !m_bActivated)
 			{
 				m_bHideTimeOver = false;
-				GetGame().GetCallqueue().Remove(CountHideTime);
-				GetGame().GetCallqueue().CallLater(CountHideTime, m_iTimeForHide, false);
+				GetGame().GetCallqueue().Remove(HideHint);
+				GetGame().GetCallqueue().CallLater(HideHint, m_iTimeForHide, false);
 			}
 
 			if (!m_bActivated)
@@ -227,7 +241,7 @@ class SCR_AvailableActionContext
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CountHideTime()
+	protected void HideHint()
 	{
 		m_bHideTimeOver = true;
 	}
@@ -276,6 +290,12 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	//! Game settings
 	protected bool m_bIsEnabledSettings;
 
+	//! If user changed keybing then it should force update of hints
+	protected bool m_bForceUpdate;
+
+	//!
+	protected EInputDeviceType m_eCurrentInputDevice;
+
 	//!
 	protected ref SCR_AvailableActionsConditionData m_data;
 	protected SCR_InfoDisplaySlotHandler m_slotHandler;
@@ -317,7 +337,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		int count = 0;
 		foreach (auto action : inActions)
 		{
-			auto actionName = action.GetActionName();
+			string actionName = action.GetActionName();
 			
 			if (actionName == string.Empty)
 				continue;
@@ -417,54 +437,58 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		// Enable additional ones
 		if (actionsCount > m_iLastCount)
 		{
-			for (int i = m_iLastCount; i < actionsCount; i++)
+			foreach (int i, SCR_AvailableActionsWidget widget : m_aWidgets)
 			{
-				// OOR
-				if (i >= m_aWidgets.Count())
+				if (i >= actionsCount)
 					break;
 
-				if (m_aWidgets[i])
-					DisplayHint(m_aWidgets[i].GetRootWidget(), UIConstants.FADE_RATE_SUPER_FAST, UIConstants.FADE_RATE_SUPER_FAST);
+				if (i < m_iLastCount)
+					continue;
+
+				if (!widget)
+					continue;
+
+				DisplayHint(widget.GetRootWidget(), UIConstants.FADE_RATE_SUPER_FAST, UIConstants.FADE_RATE_SUPER_FAST);
 			}
 		}
 		// Or hide previously shown
-		else
+		else if (actionsCount != m_iLastCount)
 		{
-			for (int i = actionsCount; i < m_iLastCount; i++)
+			foreach (int i, SCR_AvailableActionsWidget widget : m_aWidgets)
 			{
-				// OOR
-				if (i >= m_aWidgets.Count())
+				if (i >= m_iLastCount)
 					break;
 
-				/*if (m_aWidgets[i])
-					m_aWidgets[i].SetVisible(false);*/
-				if (m_aWidgets[i])
-					HintFadeOut(m_aWidgets[i].GetRootWidget(), UIConstants.FADE_RATE_DEFAULT, UIConstants.FADE_RATE_FAST);
+				if (i < actionsCount)
+					continue;
+
+				if (!widget)
+					continue;
+
+				HintFadeOut(widget.GetRootWidget(), UIConstants.FADE_RATE_DEFAULT, UIConstants.FADE_RATE_FAST);
 			}
 		}
 
-		for (int i = 0; i < actionsCount; i++)
+		foreach (int i, SCR_AvailableActionsWidget widget : m_aWidgets)
 		{
-			// OOR
-			if (i >= m_aWidgets.Count())
-				break;
+			if (!widget)
+				continue;
 
-			if (m_aWidgets[i] && availableActions[i])
-				m_aWidgets[i].SetText(availableActions[i].GetActionName(), availableActions[i].GetUIName());
-			
+			if (m_bForceUpdate)
+				widget.SetForcedUpdate();
+
+			if (availableActions.IsIndexValid(i) && availableActions[i])
+				widget.SetText(availableActions[i].GetActionName(), availableActions[i].GetUIName(), m_eCurrentInputDevice);
+
 			if (actionsCount > m_iMaxActionsMedium)
-			{
-				m_aWidgets[i].SetSize(m_iButtonSizeSmall);
-			} 
+				widget.SetSize(m_iButtonSizeSmall);
 			else if (actionsCount > m_iMaxActionsBig)
-			{
-				m_aWidgets[i].SetSize(m_iButtonSizeMedium);
-			} 
+				widget.SetSize(m_iButtonSizeMedium);
 			else
-			{
-				m_aWidgets[i].SetSize(m_iButtonSizeLarge);
-			}
+				widget.SetSize(m_iButtonSizeLarge);
 		}
+
+		m_bForceUpdate = false;
 
 		// Acknowledge new count
 		m_iLastCount = actionsCount;
@@ -605,8 +629,38 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 			Print("SCR_AvailableActionsDisplay is not an object in HUDManagerComponent attached onto a PlayerController entity! May result in undefined behaviour.", LogLevel.WARNING);
 		}
 
+		InputManager inputMgr = GetGame().GetInputManager();
+		if (!inputMgr)
+			return;
+
+		OnGamepadDeviceChanged(!inputMgr.IsUsingMouseAndKeyboard());
+
 		UpdateIsEnabled();
 		GetGame().OnUserSettingsChangedInvoker().Insert(UpdateIsEnabled);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnGamepadDeviceChanged);
+		SCR_MenuHelper.GetOnMenuClose().Insert(OnSettingsMenuClosed);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method that is triggered when some menu is closed
+	//! \param[in] menu that was closed
+	protected void OnSettingsMenuClosed(ChimeraMenuBase menu)
+	{
+		if (SCR_SettingsSuperMenu.Cast(menu))
+			m_bForceUpdate = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method that is triggered when player switches to or from using gamepad as his input device
+	//! \param[in] isUsingGamepad
+	protected void OnGamepadDeviceChanged(bool isUsingGamepad)
+	{
+		if (isUsingGamepad)
+			m_eCurrentInputDevice = EInputDeviceType.GAMEPAD;
+		else
+			m_eCurrentInputDevice = EInputDeviceType.KEYBOARD;
+
+		m_bForceUpdate = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

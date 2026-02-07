@@ -6,6 +6,8 @@ class SCR_ScenarioFrameworkLayerTaskClearAreaClass : SCR_ScenarioFrameworkLayerT
 class SCR_ScenarioFrameworkLayerTaskClearArea : SCR_ScenarioFrameworkLayerTask
 {	
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for scenario framework task clear area if found in world
+	//! \return true if support entity is found and set, false otherwise.
 	override bool SetSupportEntity()
 	{
 		if (!GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskClearAreaSupportEntity))

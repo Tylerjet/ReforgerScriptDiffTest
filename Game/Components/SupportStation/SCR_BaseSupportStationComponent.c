@@ -92,6 +92,9 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 
 	[Attribute("7", desc: "In meters, Range in which the entity which the player interacts is needs to be. If -1 it will not add itself to the Support Station Manager and can only be used by the action manager that is also a component of the entity this component is part of, note that the action manager will also never check if any are around it only the component on the entity.", category: "General Settings")]
 	protected float m_fRange;
+	
+	[Attribute("0", desc: "If using range and this is set to true it will use the bounding box of the entity on which the support station action is to check if in range. Otherwise will use the Action position.", category: "General Settings")]
+	protected bool m_bUseRangeBoundingBox;
 
 	[Attribute("1", desc: "Enable/disable the supply Station.", category: "General Settings")]
 	protected bool m_bIsEnabled;
@@ -334,14 +337,10 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		}
 
 		//~ If uses range check if the station is in range
-		if (UsesRange())
+		if (UsesRange() && !IsInRange(actionOwner, actionPosition))
 		{
-			//~ Check if in range
-			if (vector.DistanceSq(actionPosition, GetPosition()) > GetRange())
-			{
-				reasonInvalid = ESupportStationReasonInvalid.NOT_IN_RANGE;
-				return false;
-			}
+			reasonInvalid = ESupportStationReasonInvalid.NOT_IN_RANGE;
+			return false;
 		}
 		
 		//~ Check if Station is destroyed
@@ -668,10 +667,32 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 	//---------------------------------------- Range ----------------------------------------\\
 	//------------------------------------------------------------------------------------------------
 	//! Returns range. If range is disabled it will be -1
-	//! \return Range power of 2 for cheap distance calc
+	//! \return Range Of support station
 	float GetRange()
 	{
 		return m_fRange;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! param[in] actionOwner Owner of the support station action to check range of
+	//! param[in] actionPosition Action position if the bounding box is not used or in valid to check range
+	//! \return Range if support station is in range
+	bool IsInRange(notnull IEntity actionOwner, vector actionPosition)
+	{
+		vector mins, maxs;
+		actionOwner.GetBounds(mins, maxs);
+		
+		//~ Does not use bounding box or no bounding box found
+		if (!m_bUseRangeBoundingBox || (mins == vector.Zero && maxs == vector.Zero))
+		{
+			//~ Check if action is in range
+			if (vector.DistanceSq(actionPosition, GetPosition()) > Math.Pow(GetRange(), 2))
+				return false;
+			else 
+				return true;
+		}
+
+		return Math3D.IntersectionSphereAABB(GetOwner().GetOrigin() - actionOwner.GetOrigin(), GetRange(), mins, maxs);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -970,10 +991,6 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			else 
 				resourceComponent.TEMP_GetOnInteractorReplicated().Insert(TEMP_OnInteractorReplicated);
 		}
-		else
-		{
-			Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies  but it has no SCR_ResourceComponent", LogLevel.ERROR);
-		}
 
 		//~ Subscribe to on damage state changed
 		AddRemoveOnDamageStateChanged(owner, true);
@@ -1045,10 +1062,6 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 			return;
 
 		SetEventMask(owner, EntityEvent.INIT);
-
-		//~ Make sure to use distanceSq
-		if (m_fRange > 0)
-			m_fRange = Math.Pow(m_fRange, 2);
 	}
 
 	//======================================== DESTROY ========================================\\

@@ -58,6 +58,18 @@ class ChimeraGame: Game
 	proto external AIWorld GetAIWorld();
 	//! Returns analytics Api
 	proto external GameStatsApi GetStatsApi();
+	//! Returns game ServerInfo or null if not available
+	proto external ServerInfo GetServerInfo();
+	//! Tells if the cross-play is enabled based on curent platform and user settings.
+	proto external bool IsCrossPlayEnabled();
+	/*!
+	Sets the cross-play option with respect to the platform specific requirements.
+	E.g., if the Xbox user does not possess cross-play privilege and this method
+	is called with enabled = true, the function returns false while the Xbox system
+	UI will be shown in order to try obtain the cross-play privilege.
+	\return True if the option was successfully set to desired value.
+	*/
+	proto external bool SetCrossPlay(bool enabled);
 	/*!
 	Enable or disable the logging of FPS.
 	\param msec gap in milliseconds at which time the log/calculate FPS is calculated. <= 0 to disable it.
@@ -74,6 +86,9 @@ class ChimeraGame: Game
 
 	// callbacks
 
+	event void OnCrossPlayChanged();
+	//! Called whenever user is signed out while being in main menu game state
+	event void OnUserSignedOut();
 	event void OnCinematicStart();
 	event void OnCinematicEnd();
 	event void OnCinematicBlending(float blendFactor, vector cameraPosition);

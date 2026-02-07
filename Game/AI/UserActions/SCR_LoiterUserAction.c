@@ -6,7 +6,8 @@ enum ELoiteringType
 	LEAN_RIGHT,
 	SMOKING,
 	LOITERING,
-	PUSHUPS
+	PUSHUPS,
+	CUSTOM
 }
 
 class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
@@ -14,6 +15,7 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 	[Attribute( defvalue: "0", uiwidget: UIWidgets.EditBox, desc: "Provide index of related SmartActionSentinel" )]
 	protected int m_iSmartActionId;
 	
+	protected bool m_bHolsterWeapon;
 	protected ELoiteringType m_eLoiteringType;
 	
 	//-------------------------------------------------------------------------
@@ -25,7 +27,7 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 		array<Managed> aComponents = {};
 		owner.FindComponents(SCR_AISmartActionSentinelComponent, aComponents);
 		
-		if (aComponents.IsIndexValid(m_iSmartActionId))
+		if (!aComponents.IsIndexValid(m_iSmartActionId))
 			Print("Invalid SmartAction id!",LogLevel.ERROR);
 		
 		SCR_AISmartActionSentinelComponent smartAction = SCR_AISmartActionSentinelComponent.Cast(aComponents[m_iSmartActionId]);
@@ -53,7 +55,8 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 			//--- Standing at desired desiredPos
 			loiteringPosition[3] = desiredPos;
 				
-			m_eLoiteringType = LeaningTypeToLoiteringType(smartAction.GetLeaningType());
+			m_eLoiteringType = smartAction.GetLoiterAnimation();
+			m_bHolsterWeapon = smartAction.GetHolsterWeapon();
 		}
 	}
 	
@@ -78,12 +81,13 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 		vector actionTransform[4];
 		GetLoiteringPosition(actionTransform);
 		
-		controller.StartLoitering(m_eLoiteringType, false, true, true, actionTransform);
+		controller.StartLoitering(m_eLoiteringType, m_bHolsterWeapon, true, true, actionTransform);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void StopAction(IEntity pUserEntity)
 	{
+		bool stopFast = false;
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(pUserEntity);
 		if (!character)
 			return;
@@ -92,7 +96,15 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 		if (!controller)
 			return;
 		
-		controller.StopLoitering(false);	
+		AIControlComponent aiController = controller.GetAIControlComponent();
+		if (aiController)
+		{
+			SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(aiController.GetAIAgent());
+			if (!agent)
+				return;
+			stopFast = agent.ShouldAbortLoiterFast();
+		}
+		controller.StopLoitering(stopFast);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -118,26 +130,5 @@ class SCR_LoiterUserAction: SCR_UserActionWithOccupancy
 	override bool HasLocalEffectOnlyScript()
 	{
 		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ELoiteringType LeaningTypeToLoiteringType (ELeaningType leaning)
-	{
-		switch (leaning)
-		{
-			case ELeaningType.NONE:
-			{
-				return ELoiteringType.SIT;
-			};
-			case ELeaningType.LEFT:
-			{
-				return ELoiteringType.LEAN_LEFT;
-			}; 
-			case ELeaningType.RIGHT:
-			{
-				return ELoiteringType.LEAN_RIGHT;
-			};
-		}
-		return ELoiteringType.NONE;	
 	}
 }

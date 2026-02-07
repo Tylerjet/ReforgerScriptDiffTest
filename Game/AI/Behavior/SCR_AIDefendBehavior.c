@@ -24,6 +24,6 @@ class SCR_AIDefendBehavior : SCR_AIBehaviorBase
 	//------------------------------------------------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " defending " + m_RelatedWaypoint.ValueToString();
+		return this.ToString() + " defending " + m_RelatedWaypoint.m_Value.ToString();
 	}
 };

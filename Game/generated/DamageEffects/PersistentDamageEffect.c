@@ -9,10 +9,11 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class PersistentDamageEffect: SCR_DamageEffect
+class PersistentDamageEffect: SCR_DamageEffect
 {
 	/*!
 	Terminates this DamageEffect. It will be removed from the list of persistent effects on it´s containing damage manager.
+	Only works on server.
 	*/
 	proto external void Terminate();
 	/*!

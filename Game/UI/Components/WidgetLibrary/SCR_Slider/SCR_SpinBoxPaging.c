@@ -7,8 +7,13 @@ class SCR_SpinBoxPagingComponent : SCR_WLibComponentBase
 	[Attribute("MenuTabLeft")]
 	protected string m_sRightAction;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Why is this even an attribute? Why is this string not localized?
+	
 	[Attribute("%1 / %2", UIWidgets.Auto, "Text which will be visualized. %1 contains the actual page and %2 total pages")]
 	protected string m_sText;
+	
+//---- REFACTOR NOTE END ----
 	
 	[Attribute()]
 	ref array<string> m_aElementNames;
@@ -22,8 +27,14 @@ class SCR_SpinBoxPagingComponent : SCR_WLibComponentBase
 	[Attribute()]
 	bool m_bCycleMode;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Unused
+	
 	protected bool m_bEnabled = true;
 	protected bool m_bCanNavigate = true;
+
+//---- REFACTOR NOTE END ----
+	
 	protected TextWidget m_wText;
 	
 	protected SCR_PagingButtonComponent m_ButtonLeft;

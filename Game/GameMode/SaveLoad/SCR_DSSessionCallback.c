@@ -49,22 +49,27 @@ class SCR_DSSessionCallback: DSSessionCallback
 	}
 	
 	//----------------------------------------------------------------------------------------
+	string GetExtension()
+	{
+		return m_sExtension;
+	}
+	
+	//----------------------------------------------------------------------------------------
 	/*!
 	Save current session to a file.
 	\param fileName Mission save file name
 	\param customName Custom addition to file name (optional; applicable only to some save types)
 	\return True if saving operation was requested
 	*/
-	bool SaveSession(string missionFileName, string customName = string.Empty)
+	bool SaveSession(string fileName, WorldSaveManifest manifest = null, WorldSaveItem usedSave = null)
 	{
-		string fileName = GetFileName(missionFileName, customName);
-		
 		if (!IsCompatible(fileName))
 			return false;
 		
 		SessionStorage storage = GetGame().GetBackendApi().GetStorage();
 		storage.AssignFileIDCallback(fileName, this);
 		
+		// Handle save 
 		if (!m_bAlwaysLocal && GetGame().GetSaveManager().CanSaveToCloud())
 		{
 			Print(string.Format("SCR_DSSessionCallback: RequestSave: %1", fileName), LogLevel.VERBOSE);
@@ -74,7 +79,25 @@ class SCR_DSSessionCallback: DSSessionCallback
 		{
 			Print(string.Format("SCR_DSSessionCallback: LocalSave: %1", fileName), LogLevel.VERBOSE);
 			storage.LocalSave(fileName);
+			
+			// Create local world save 
+			// Store user (manual) save as editing file
+			if (m_eType == ESaveType.USER)
+			{
+				if (manifest)
+				{
+					manifest.m_aFileNames = {fileName};
+					
+					if (usedSave)
+						usedSave.Save(manifest);
+					else
+						usedSave = WorldSaveItem.CreateLocalWorldSave(manifest);
+					
+					SCR_SaveWorkshopManager.GetInstance().SetCurrentSave(fileName, usedSave);
+				}
+			}
 		}
+		
 		return true;
 	}
 	
@@ -138,6 +161,7 @@ class SCR_DSSessionCallback: DSSessionCallback
 		
 		GetGame().GetSaveManager().GetOnDeleted().Invoke(m_eType, fileName); //--- Call before the file is actually deleted
 		GetGame().GetBackendApi().GetStorage().LocalDelete(fileName);
+		SCR_SaveWorkshopManager.GetInstance().DeleteOfflineSaveByName(fileName);
 		Print(string.Format("SCR_DSSessionCallback: LocalDelete: '%1'", fileName), LogLevel.VERBOSE);
 		return true;
 	}
@@ -226,7 +250,13 @@ class SCR_DSSessionCallback: DSSessionCallback
 		//--- Cannot just use EndsWith(), because downloaded files have a GUID added at the end, e.g., "MissionName-CustomName.save_5D82C234B9132BBC"
 		string ext;
 		FilePath.StripExtension(fileName, ext);
-		return ext.StartsWith(m_sExtension);
+		bool compatible = ext.StartsWith(m_sExtension);
+		
+		// Check for saves from workshop 
+		if (!compatible)
+			compatible = fileName.Contains(string.Format(".%1_", m_sExtension));
+
+		return compatible;
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -292,7 +322,7 @@ class SCR_DSSessionCallback: DSSessionCallback
 	{
 		if (m_sCustomNameDelimiter)
 		{
-			customName = SCR_StringHelper.Filter(customName, SCR_StringHelper.LETTERS + SCR_StringHelper.DIGITS + "_");
+			customName = SCR_StringHelper.Filter(customName, SCR_StringHelper.LETTERS + SCR_StringHelper.DIGITS + "_");		
 			missionFileName += m_sCustomNameDelimiter + customName;
 		}
 		
@@ -323,6 +353,14 @@ class SCR_DSSessionCallback: DSSessionCallback
 	protected void InvokeOnSaved()
 	{
 		GetGame().GetSaveManager().GetOnSaved().Invoke(m_eType, m_sCurrentFileName);
+		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SESSION_SAVE_SUCCESS);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void InvokeOnSaveFailed()
+	{
+		GetGame().GetSaveManager().GetOnSaveFailed().Invoke(m_eType, m_sCurrentFileName);
+		SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_SESSION_SAVE_FAIL);
 	}
 	
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -345,10 +383,8 @@ class SCR_DSSessionCallback: DSSessionCallback
 			GetGame().GetSaveManager().GetOnLatestSave().Insert(OnLatestSave);
 			GetGame().GetCallqueue().CallLater(GetGame().GetSaveManager().SetCurrentMissionLatestSave, 0, false, fileName);
 		}
-		else
-		{
-			InvokeOnSaved();
-		}
+		
+		InvokeOnSaved();
 		
 		Print(string.Format("SCR_DSSessionCallback: Saving save file of type %1 in '%2' succeeded!", typename.EnumToString(ESaveType, m_eType), fileName), LogLevel.VERBOSE);
 	}
@@ -356,6 +392,8 @@ class SCR_DSSessionCallback: DSSessionCallback
 	//----------------------------------------------------------------------------------------
 	override void OnSaveFailed(string fileName)
 	{
+		InvokeOnSaveFailed();
+		
 		Print(string.Format("SCR_DSSessionCallback: Saving save file of type %1 in '%2' failed!", typename.EnumToString(ESaveType, m_eType), fileName), LogLevel.WARNING);
 	}
 	

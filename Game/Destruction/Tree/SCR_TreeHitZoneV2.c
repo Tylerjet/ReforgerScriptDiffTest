@@ -1,3 +1,5 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Data redundancy is very high, variables are private and replication handling is invalid
 class SCR_TreeHitZoneV2 : SCR_HitZone
 {
 	[Attribute("0", UIWidgets.EditBox, "Enter the tree part number.")]
@@ -74,3 +76,4 @@ class SCR_TreeHitZoneV2 : SCR_HitZone
 	}
 #endif
 }
+//---- REFACTOR NOTE END ----

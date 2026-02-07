@@ -23,7 +23,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	// TODO: unify with the value set in filters
 	static const int HIGH_PING_SERVER_THRESHOLD = 200;
 	
-	protected bool m_bWaitForRefresh;
 	protected bool m_bHostedServers;
 
 	// Widget class reference
@@ -50,6 +49,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	// Lobby Rooms handling
 	protected Room m_RoomToJoin;
+	protected MissionWorkshopItem m_SelectedRoomScenario;
 	protected ref array<Room> m_aRooms = {};
 	protected ref array<Room> m_aDirectFoundRooms = {};
 
@@ -74,12 +74,13 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected int m_iTotalNumberOfRooms;
 
 	// Joining
-	protected ref ServerBrowserCallback m_CallbackJoin = new ServerBrowserCallback();
+	protected ref ServerBrowserCallback m_CallbackJoin;
+	protected ref ServerBrowserCallback m_CallbackQueue;
 	protected ref SCR_ServerBrowserDialogManager m_Dialogs = new SCR_ServerBrowserDialogManager();
 
 	protected ref RoomJoinData m_JoinData = new RoomJoinData();
 	protected ref SCR_RoomPasswordVerification m_PasswordVerification = new SCR_RoomPasswordVerification();
-
+	
 	// Filter parameters
 	protected ref FilteredServerParams m_ParamsFilter = new FilteredServerParams();
 	protected ref FilteredServerParams m_DirectJoinParams;
@@ -105,8 +106,6 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	// Script invokers
 	ref ScriptInvoker m_OnAutoRefresh = new ScriptInvoker();
-	ref ScriptInvoker m_OnScenarioLoad = new ScriptInvoker();
-	
 	protected ref ScriptInvokerVoid m_OnFavoritesResponse = new ScriptInvokerVoid();
 
 	// Entry Actions
@@ -114,6 +113,9 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected bool m_bWasEntrySelected;
 	protected SCR_ServerBrowserEntryComponent m_ClickedEntry; // Cache last clicked entry to trigger the correct dialog after the double click window
 	protected SCR_MenuActionsComponent m_ActionsComponent;
+	
+	protected static ref SCR_ScriptPlatformRequestCallback m_CallbackGetMPPrivilege;
+	protected static MissionWorkshopItem m_MissionToFilter;
 	
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
@@ -157,6 +159,21 @@ class ServerBrowserMenuUI : MenuRootBase
 		UpdateNavigationButtons();
 
 		SwitchFocus(SCR_EListMenuWidgetFocus.SORTING);
+		
+		GetGame().OnUserSettingsChangedInvoker().Insert(FilterCrossplayCheck);
+		
+		SocialComponent.UpdateBlockList();
+		
+		// Hide news menu button (top right corner) on PS
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			Widget newsButton = GetRootWidget().FindAnyWidget("NewsButton");
+			if (newsButton)
+			{
+				newsButton.SetVisible(false);
+				newsButton.SetEnabled(false);
+			}
+		}
 		
 		super.OnMenuOpen();
 	}
@@ -217,6 +234,8 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		// Save filter
 		m_FilterPanel.Save();
+		
+		GetGame().OnUserSettingsChangedInvoker().Remove(FilterCrossplayCheck);
 		
 		super.OnMenuClose();
 	}
@@ -322,11 +341,10 @@ class ServerBrowserMenuUI : MenuRootBase
 		PrintDebug("m_RejoinRoom: " + m_RejoinRoom, "OnActionRefresh");
 
 		// Try negotiate missing MP privilege
-		if (!GetGame().GetPlatformService().GetPrivilege(UserPrivilege.MULTIPLAYER_GAMEPLAY))
+		// kuceramar: I dont think this needs to be there anymore as the check is happening before this is opened but lets check later-
+		if (!SocialComponent.IsMultiplayerAllowed())
 		{
 			Messages_ShowMessage("MISSING_PRIVILEGE_MP");
-			//NegotiateMPPrivilegeAsync();
-			NegotiatePrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY);
 			return;
 		}
 
@@ -604,9 +622,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			//TODO: [BUG] On trunk, switching to Community Tab returns an empty rooms array even if there are rooms?!
 
 			if (m_aRooms.IsEmpty())
-			{
 				PrintDebug("No room found", "OnRoomsFound");
-			}
 		}
 		
 		// Setup room data refresh
@@ -616,13 +632,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		DisplayRooms(m_aRooms);
 
 		// Move to top in list
-		if (m_ScrollableList)
-		{
-			if (m_ScrollableList.IsListFocused() || m_bFirstRoomLoad)
-			{
-				m_ScrollableList.FocusFirstAvailableEntry();
-			}
-		}
+		if (m_ScrollableList && (m_ScrollableList.IsListFocused() || m_bFirstRoomLoad))
+			m_ScrollableList.FocusFirstAvailableEntry();
 
 		if (m_bFirstRoomLoad)
 		{
@@ -645,10 +656,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void DisplayRooms(array<Room> rooms = null)
 	{
 		// Don't display if missing MP privilege
-		if (!GetGame().GetPlatformService().GetPrivilege(UserPrivilege.MULTIPLAYER_GAMEPLAY))
-		{
+		if (!SocialComponent.IsMultiplayerAllowed())
 			return;
-		}
 
 		// Check list
 		if (!m_ScrollableList || !m_ServerScenarioDetails)
@@ -724,12 +733,9 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Call this once new room data are fetched
 	protected void OnRoomAutoRefresh(ServerBrowserCallback callback)
 	{
-		m_Lobby.SetRefreshRate(ROOM_REFRESH_RATE);
 		DisplayRooms(m_aRooms);
-
-		m_bWaitForRefresh = false;
-
-		m_OnAutoRefresh.Invoke();
+		
+		m_Dialogs.UpdateServerFullDialog();
 	}
 
 	// ---- SEARCH ROOMS ----
@@ -746,7 +752,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Remove callbacks
 		m_Lobby.SetRefreshCallback(null);
 
-		if (!m_bFirstRoomLoad && !m_bForceUnfilteredRequest)
+		if (!m_bForceUnfilteredRequest)
 		{
 			SearchRoomsFiltered();
 			return;
@@ -1110,40 +1116,60 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	//------------------------------------------------------------------------------------------------
 	//!	Init behavior when filter panel script is attached
+	//! If crossplay is enabled we show all servers so both filters are by default disabled
+	//! If crossplay is disabled we show only servers with crossplay disabled by force
 	protected void FilterCrossplayCheck()
 	{
 		if (!m_FilterPanel)
 			return;
-
-		bool hasCrossplay = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
-		//hasCrossplay = false;
-
+		
+		SCR_FilterSet filterSet = m_FilterPanel.GetFilter();
+		if (!filterSet)
+			return;
+		
+		SCR_FilterCategory crossPlay = filterSet.FindFilterCategory("Crossplay");
+		if (!crossPlay)
+			return;
+		
 		// Cross play privilege missing
-		if (!hasCrossplay)
+		bool isCrossEnabled = GetGame().IsCrossPlayEnabled();
+		
+		if (crossPlay.m_wCategoryTitleWidget)
+			crossPlay.m_wCategoryTitleWidget.SetVisible(isCrossEnabled);
+				
+		SCR_FilterEntry enabled = crossPlay.FindFilter("CrossplayEnabled");
+		if (enabled)
 		{
-			SCR_FilterSet filterSet = m_FilterPanel.GetFilter();
-			if (filterSet)
+			//This sets an actual filter value for filtering servers
+			enabled.SetSelected(false);
+			
+			if (enabled.m_FilterComponent)
 			{
-				SCR_FilterCategory crossPlay = filterSet.FindFilterCategory("Crossplay");
-
-				if (crossPlay)
-				{
-					SCR_FilterEntry enabled = crossPlay.FindFilter("CrossplayEnabled");
-					if (enabled)
-					{
-						enabled.SetSelected(false);
-						m_FilterPanel.SelectFilter(enabled, false, false);
-					}
-
-					SCR_FilterEntry disabled = crossPlay.FindFilter("CrossPlayDisabled");
-					if (disabled)
-					{
-						disabled.SetSelected(true);
-						m_FilterPanel.SelectFilter(disabled, true, false);
-					}
-				}
+				enabled.m_FilterComponent.SetVisible(isCrossEnabled);
+				enabled.m_FilterComponent.SetEnabled(isCrossEnabled);
 			}
+			
+			//This sets only visualisation of widget
+			m_FilterPanel.SelectFilter(enabled, false, false);
 		}
+
+		SCR_FilterEntry disabled = crossPlay.FindFilter("CrossPlayDisabled");
+		if (disabled)
+		{
+			//This sets an actual filter value for filtering servers
+			disabled.SetSelected(!isCrossEnabled);
+			
+			if (disabled.m_FilterComponent)
+			{
+				disabled.m_FilterComponent.SetVisible(isCrossEnabled);
+				disabled.m_FilterComponent.SetEnabled(isCrossEnabled);
+			} 
+			
+			//This sets only visualisation of widget
+			m_FilterPanel.SelectFilter(disabled, !isCrossEnabled, false);
+		}
+		
+		Refresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1471,36 +1497,15 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
 		Refresh();
 
-		// Prevent using cross play filter
-		bool hasCrossplay = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
-		//hasCrossplay = false;
-
-		if (!hasCrossplay)
+		if (GetGame().IsCrossPlayEnabled())
+			return;
+		
+		// Is crossplay filter
+		if (filter.GetCategory().m_sInternalName == "Crossplay" && !GetGame().IsCrossPlayEnabled())
 		{
-			// Is crossplay filter
-			if (filter.GetCategory().m_sInternalName == "Crossplay")
-
-			if (!m_CallbackGetPrivilege)
-				m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
-
-			m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResultFilter);
-			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
+			FilterCrossplayCheck();
+			Refresh();
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnCrossPlayPrivilegeResultFilter(UserPrivilege privilege, UserPrivilegeResult result)
-	{
-		if (privilege == UserPrivilege.CROSS_PLAY)
-		{
-			if (result != UserPrivilegeResult.ALLOWED)
-			{
-				FilterCrossplayCheck();
-				Refresh();
-			}
-		}
-
-		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResultFilter);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1678,20 +1683,21 @@ class ServerBrowserMenuUI : MenuRootBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Setting server details
-	//! Call this when room receive scenrio data
+	//! Call this when room receive scenario data
 	protected void OnLoadingScenario(Dependency scenario)
 	{
 		// Remove action
 		m_ModsManager.GetOnGetScenario().Remove(OnLoadingScenario);
 
 		// Set server details
-		Room roomInfo = null;
+		Room roomInfo;
 
 		if (m_ServerEntry)
 			roomInfo = m_ServerEntry.GetRoomInfo();
 
 		if (!roomInfo)
 			return;
+		
 		// Get scenario item
 		MissionWorkshopItem scenarioItem = roomInfo.HostScenario();
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
@@ -1707,18 +1713,19 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_ServerScenarioDetails.SetHideScenarioImg(hideScenario);
 
 			if (scenarioItem)
-			{
 				m_ServerScenarioDetails.SetScenario(scenarioItem);
-			}
 			else
 				m_ServerScenarioDetails.DisplayDefaultScenarioImage();
 		}
 
 		//! Update Details Dialog
 		if (m_Dialogs)
+		{
 			m_Dialogs.UpdateRoomDetailsScenarioImage(scenarioItem);
-
-		m_OnScenarioLoad.Invoke(scenarioItem);
+			m_Dialogs.UpdateServerFullScenarioImage(scenarioItem);
+		}
+		
+		m_SelectedRoomScenario = scenarioItem;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1891,7 +1898,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		sb.SetMenuHeader(mission.Name());
 		sb.SetFilteredScenario(mission);
-		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ServerBrowserMenu);
+		//SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.ServerBrowserMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2121,28 +2128,19 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Initialize joining process to specific room
 	void JoinProcess_Init(Room roomToJoin)
 	{
-		// Set immidiate refresh to receive player count
-		m_bWaitForRefresh = true;
-
+		JoinProcess_Clear();
+		
 		// Setup join dialog
 		SetupJoinDialogs();
 
 		// Setup room
 		m_RoomToJoin = roomToJoin;
 
-		// Check cross play
-		bool hasPrivilege = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
-
-		if (roomToJoin.IsCrossPlatform() && !hasPrivilege)
+		//this case shouldnt happen as filter cannot be changed when crossplay is disabled
+		if (roomToJoin.IsCrossPlatform() && !GetGame().IsCrossPlayEnabled())
 		{
+			//i dont think we have different dialog?
 			//m_Dialogs.DisplayDialog(EJoinDialogState.MOD_UGC_PRIVILEGE_MISSING);
-
-			// Negotatiate cross play privilege
-			if (!m_CallbackGetPrivilege)
-				m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
-
-			m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResultJoin);
-			NegotiatePrivilegeAsync(UserPrivilege.CROSS_PLAY);
 			return;
 		}
 
@@ -2153,19 +2151,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		else
 			JoinProcess_CheckRoomPasswordProtected(m_RoomToJoin);
 	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnCrossPlayPrivilegeResultJoin(UserPrivilege privilege, UserPrivilegeResult result)
-	{
-		if (privilege == UserPrivilege.CROSS_PLAY)
-		{
-			if (result == UserPrivilegeResult.ALLOWED)
-				JoinProcess_CheckVersion(m_RoomToJoin);
-		}
-
-		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResultJoin);
-	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Check if client and room versions match
 	//! Progress only if versions are matching, otherwise show error and stop progress
@@ -2225,7 +2211,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Next step if no password protection
 		if (!m_RoomToJoin.PasswordProtected() || skipPassword)
 		{
-			JoinProcess_ShowJoinDetailsDialog(roomToJoin);
+			JoinProcess_CheckBlockedPlayers(roomToJoin);
 			return;
 		}
 		
@@ -2272,7 +2258,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 		
 		m_RoomToJoin = room;
-		JoinProcess_ShowJoinDetailsDialog(m_RoomToJoin);
+		JoinProcess_CheckBlockedPlayers(m_RoomToJoin);
 		
 		ReceiveRoomContent(m_RoomToJoin, true);
 	}
@@ -2304,6 +2290,37 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 
 		CreateServerDetailsDialog(roomToJoin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_CheckBlockedPlayers(Room roomToJoin)
+	{
+		SocialComponent.s_OnCheckedBlockedPlayersInRoomInvoker.Insert(JoinProcess_OnCheckedBlockedPlayers);
+		SocialComponent.CheckBlockedPlayersInRoom(roomToJoin);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_OnCheckedBlockedPlayers(Room roomToJoin, array<BlockedRoomPlayer> blockedPlayers)
+	{
+		SocialComponent.s_OnCheckedBlockedPlayersInRoomInvoker.Remove(JoinProcess_OnCheckedBlockedPlayers);
+		
+		if (!blockedPlayers || blockedPlayers.Count() == 0)
+			JoinProcess_ShowJoinDetailsDialog(roomToJoin);
+		else
+		{
+			string blockedPlayersNames;
+			foreach(BlockedRoomPlayer player : blockedPlayers)
+			{
+				if (!blockedPlayersNames.IsEmpty())
+					blockedPlayersNames += ",";
+				
+				blockedPlayersNames += player.GetName();
+			}
+			
+			SCR_BlockedPlayerPresentDialog dialog = new SCR_BlockedPlayerPresentDialog(blockedPlayersNames, roomToJoin);
+			dialog.Init();
+			dialog.m_OnConfirmJoinRoom.Insert(JoinProcess_ShowJoinDetailsDialog);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2548,7 +2565,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		
 		m_Dialogs.DisplayJoinDownloadsWarning(SCR_DownloadManager.GetInstance().GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.REQUIRED);
 		
-		m_Dialogs.GetOnDownloadComplete().Insert(JoinProcess_OnJoinRoomDemand);
+		m_Dialogs.GetOnDownloadComplete().Insert(JoinProcess_PrepareFinalJoinRequest);
 		m_Dialogs.GetOnCancel().Insert(OnDownloadRequiredModsCancel);
 	}
 	
@@ -2562,9 +2579,9 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_OnJoinRoomDemand(Room roomToJoin)
+	protected void JoinProcess_PrepareFinalJoinRequest(Room roomToJoin)
 	{
-		m_Dialogs.GetOnDownloadComplete().Remove(JoinProcess_OnJoinRoomDemand);
+		m_Dialogs.GetOnDownloadComplete().Remove(JoinProcess_PrepareFinalJoinRequest);
 		
 		m_RoomToJoin = roomToJoin;
 		JoinProcess_WaitToCheckRunningDownloads();
@@ -2581,6 +2598,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_CheckRunningDownloads()
 	{
+		m_Dialogs.CloseCurrentDialog();
+		
 		int nCompleted, nTotal;
 		SCR_DownloadManager.GetInstance().GetDownloadQueueState(nCompleted, nTotal);
 
@@ -2589,7 +2608,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			JoinProcess_Join();
 			return;
 		}
-		
+	
 		m_Dialogs.DisplayJoinDownloadsWarning(SCR_DownloadManager.GetInstance().GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.ALL);
 		m_Dialogs.GetOnConfirm().Insert(OnInterruptDownloadConfirm);
 	}
@@ -2597,6 +2616,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnInterruptDownloadConfirm()
 	{
+		m_Dialogs.GetOnConfirm().Remove(OnInterruptDownloadConfirm);
+		
 		if (!m_RoomToJoin)
 		{
 			PrintDebug("Missing m_RoomToJoin!", "OnInteruptDownloadConfirm");
@@ -2614,18 +2635,17 @@ class ServerBrowserMenuUI : MenuRootBase
 	// Join ...Finally!
 	protected void JoinProcess_Join()
 	{
+		m_Dialogs.CloseCurrentDialog();
+		m_Dialogs.DisplayDialog(EJoinDialogState.JOIN);
+		
 		// Add join callbacks
-		if (!m_CallbackJoin)
-			m_CallbackJoin = new ServerBrowserCallback;
+		m_CallbackJoin = new ServerBrowserCallback;
 		m_CallbackJoin.m_OnSuccess.Insert(JoinProcess_OnJoinSuccess);
 		m_CallbackJoin.m_OnFail.Insert(JoinProcess_OnJoinFail);
 		m_CallbackJoin.m_OnTimeOut.Insert(JoinProcess_OnJoinTimeout);
 		
 		// Join server
 		m_RoomToJoin.Join(m_CallbackJoin, m_JoinData);
-		
-		if (m_Dialogs)
-			m_Dialogs.DisplayDialog(EJoinDialogState.JOIN);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2649,34 +2669,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_OnJoinFail(ServerBrowserCallback callback, int code, int restCode, int apiCode)
-	{
-		JoinProcess_Clear();
-		
-		if (!m_Dialogs)
-			return;
-		
-		// Server is full
-		if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_IS_FULL)
-		{
-			m_Dialogs.SetJoinRoom(m_RoomToJoin);
-			m_Dialogs.GetOnJoinRoomDemand().Insert(JoinProcess_OnJoinRoomDemand);
-				
-			m_Dialogs.DisplayDialog(EJoinDialogState.QUEUE_WAITING);
-			GetGame().GetBackendApi().GetClientLobby().SetRefreshCallback(m_CallbackAutoRefresh);
-			
-			return;
-		}
-		
-		// Banned
-		if (!m_JoinData.scope.IsEmpty())
-			m_Dialogs.DisplayJoinBan(m_JoinData);
-		// Generic
-		else
-			m_Dialogs.DisplayJoinFail(apiCode);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Call this if joining to room has timeout
 	protected void JoinProcess_OnJoinTimeout(ServerBrowserCallback callback)
 	{
@@ -2684,15 +2676,139 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Dialogs.CloseCurrentDialog();
 		SCR_CommonDialogs.CreateTimeoutOkDialog();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	// This also includes being placed in joining queue
+	protected void JoinProcess_OnJoinFail(ServerBrowserCallback callback, int code, int restCode, int apiCode)
+	{	
+		// TODO: Backend - callback on Queue is called twice and apiCode is 0 - ignore such callback
+		if (!apiCode)
+			return;
+		
+		m_Dialogs.CloseCurrentDialog();
+		
+		SCR_EJoinFailUI result = SCR_EJoinFailUI.GENERIC;
+		
+		if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_QUEUE_JOIN)
+			result = SCR_EJoinFailUI.ENQUEUED;
+		else if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_QUEUE_FULL)
+			result = SCR_EJoinFailUI.SERVER_FULL_QUEUE_FULL;
+		else if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_IS_FULL)
+			result = SCR_EJoinFailUI.SERVER_FULL_QUEUE_DISABLED;
+		else if (!m_JoinData.scope.IsEmpty())
+			result = SCR_EJoinFailUI.BANNED;
+		
+		switch (result)
+		{
+			// QUEUE: provide a dialog with queue info and setup callbacks for queue results
+			case SCR_EJoinFailUI.ENQUEUED:
+			{
+				Room joinRoom = m_Lobby.GetJoinRoom();
+				if (!joinRoom)
+					break;
+				
+				SCR_ServerFullDialog dialog = m_Dialogs.CreateServerFullDialog();
+				if (!dialog)
+					break;
+				
+				JoinProcess_Clear();
+				
+				dialog.Init(joinRoom, result, m_SelectedRoomScenario);
+				dialog.GetOnLeaveQueueRequest().Insert(JoinProcess_LeaveJoinQueue);
+				
+				// Callback
+				m_CallbackQueue = new ServerBrowserCallback();
+				m_CallbackQueue.m_OnSuccess.Insert(JoinProcess_OnJoinSuccess);
+				m_CallbackQueue.m_OnTimeOut.Insert(JoinProcess_OnJoinTimeout);
+				m_CallbackQueue.m_OnFail.Insert(JoinProcess_OnQueueJoinFail);
+				
+				joinRoom.SetQueueBackendCallback(m_CallbackQueue);
+				
+				// Remove auto refresh callback, as it is not needed while in queue
+				m_Lobby.SetRefreshCallback(null);
+				break;
+			}
+			
+			// Provide a warning dialog that allows to reattempt joining
+			case SCR_EJoinFailUI.SERVER_FULL_QUEUE_FULL:
+			case SCR_EJoinFailUI.SERVER_FULL_QUEUE_DISABLED:
+			{
+				SCR_ServerFullDialog dialog = m_Dialogs.CreateServerFullDialog();
+				if (dialog)
+				{
+					dialog.Init(m_RoomToJoin, result, m_SelectedRoomScenario, m_OnFavoritesResponse);
+					
+					dialog.GetOnRetryFullServerJoin().Insert(JoinProcess_Init);
+					dialog.GetOnFavorite().Insert(OnActionFavorite);
+				}
+			
+				m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+				JoinProcess_Clear();
+				break;
+			}
+			
+			// Provide an error dialog with ban info
+			case SCR_EJoinFailUI.BANNED:
+			{
+				m_Dialogs.DisplayJoinBan(m_JoinData);
+				m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+				JoinProcess_Clear();
+				break;
+			}
+			
+			// Provide a generic error dialog
+			default:
+			{
+				m_Dialogs.DisplayJoinFail(apiCode);
+				m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+				JoinProcess_Clear();
+				break;
+			}
+		}
+	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_LeaveJoinQueue(Room room)
+	{
+		if (room)
+			room.LeaveJoinQueue();
+		
+		m_Dialogs.CloseCurrentDialog();
+		
+		JoinProcess_Clear();		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_OnQueueJoinFail(ServerBrowserCallback callback, int code, int restCode, int apiCode)
+	{
+		// TODO: Backend - callback on Queue is called twice and apiCode is 0 - ignore such callback
+		if (!apiCode)
+			return;
+		
+		// Still waiting in queue, update the dialog
+		if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_QUEUE_WAIT)
+		{
+			m_Dialogs.UpdateServerFullDialog();
+			return;
+		}
+		
+		// Out of queue, joining failed
+		m_Dialogs.CloseCurrentDialog();
+		m_Dialogs.DisplayJoinFail(apiCode);
+		JoinProcess_Clear();
+		
+		// Restore auto refresh callback
+		m_Lobby.SetRefreshCallback(m_CallbackAutoRefresh);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Call this to kill joining process at any stage
 	protected void JoinProcess_Clear()
 	{
 		m_CallbackJoin = null;
+		m_CallbackQueue = null;
 		
-		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
-		lobby.ClearInviteRoom();
+		m_Lobby.ClearInviteRoom();
 
 		// Clear mods manager callbacks
 		m_ModsManager.GetOnGetAllDependencies().Clear();
@@ -2704,10 +2820,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Dialogs.GetOnConfirm().Clear();
 		m_Dialogs.GetOnCancel().Clear();
 		m_Dialogs.GetOnJoinProcessCancel().Clear();
-		m_Dialogs.GetOnDialogClose().Clear();
 		m_Dialogs.GetOnDownloadComplete().Clear();
-		m_Dialogs.GetOnDownloadCancelDialogClose().Clear();
-		m_Dialogs.GetOnJoinRoomDemand().Clear();
 		
 		// TODO: remove specific subscriptions instead of clearing!
 	}
@@ -2721,7 +2834,6 @@ class ServerBrowserMenuUI : MenuRootBase
 			return;
 
 		// Setup basics
-		m_Dialogs.SetServerBrowser(this);
 		m_Dialogs.SetModManager(m_ModsManager);
 
 		// Invokers
@@ -2748,31 +2860,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Attempt to enable selected privilege
-	protected void NegotiatePrivilegeAsync(UserPrivilege privilege)
-	{
-		if (!m_CallbackGetPrivilege)
-			m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
-
-		switch (privilege)
-		{
-			case UserPrivilege.MULTIPLAYER_GAMEPLAY:
-			{
-				m_CallbackGetPrivilege.m_OnResult.Insert(OnMPPrivilegeResult);
-				break;
-			}
-
-			case UserPrivilege.CROSS_PLAY:
-			{
-				m_CallbackGetPrivilege.m_OnResult.Insert(OnCrossPlayPrivilegeResult);
-				break;
-			}
-		}
-
-		GetGame().GetPlatformService().GetPrivilegeAsync(privilege, m_CallbackGetPrivilege);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void OnMPPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result)
 	{
 		// Sucessful
@@ -2790,6 +2877,41 @@ class ServerBrowserMenuUI : MenuRootBase
 			Refresh();
 
 		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResult);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void TryOpenServerBrowser()
+	{
+		if (!m_CallbackGetMPPrivilege)
+			m_CallbackGetMPPrivilege = new SCR_ScriptPlatformRequestCallback();
+		
+		m_CallbackGetMPPrivilege.m_OnResult.Insert(ServerBrowserOnPrivilegeResult);
+		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY, m_CallbackGetMPPrivilege);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected static void ServerBrowserOnPrivilegeResult(UserPrivilege privilege, UserPrivilegeResult result)
+	{
+		if (privilege == UserPrivilege.MULTIPLAYER_GAMEPLAY && result != UserPrivilegeResult.ALLOWED)
+			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "mp_you_dont_have_the_right");
+		else if (m_MissionToFilter)
+			OpenWithScenarioFilter(m_MissionToFilter);
+		else
+			GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ServerBrowserMenu);
+		
+		m_MissionToFilter = null;
+		m_CallbackGetMPPrivilege.m_OnResult.Remove(ServerBrowserOnPrivilegeResult);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void TryOpenServerBrowserWithScenarioFilter(MissionWorkshopItem mission)
+	{
+		if (!m_CallbackGetMPPrivilege)
+			m_CallbackGetMPPrivilege = new SCR_ScriptPlatformRequestCallback();
+		
+		m_MissionToFilter = mission;
+		m_CallbackGetMPPrivilege.m_OnResult.Insert(ServerBrowserOnPrivilegeResult);
+		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.MULTIPLAYER_GAMEPLAY, m_CallbackGetMPPrivilege);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2829,4 +2951,13 @@ class SCR_GetRoomsIds extends GetRoomsIds
 	{
 		roomIds.Clear();
 	}
+}
+
+enum SCR_EJoinFailUI
+{
+	GENERIC,
+	ENQUEUED,
+	SERVER_FULL_QUEUE_FULL,
+	SERVER_FULL_QUEUE_DISABLED,
+	BANNED
 }

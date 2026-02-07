@@ -147,9 +147,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "Sights", params: "inf inf 0 purpose=angles space=entity anglesVar=m_vCameraAngles")]
 	protected vector m_vCameraAngles;
 
-	[Attribute("1 1 1", UIWidgets.EditBox, "Camera misalignment scale for 2D optics", category: "Sights")]
-	protected vector m_vCameraMisalignmentScale;
-
 	protected float m_fCurrentReticleOffsetY;
 	protected float m_fCurrentCameraPitch;
 
@@ -549,25 +546,17 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	*/
 	vector GetMisalignmentAngles(notnull CameraBase camera)
 	{
-
-		// Get camera parent to sight matrix
-		vector parentToSightMat[4];
-		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), camera.GetParent(), parentToSightMat);
-
-		// Camera in parent space
-		vector cameraMat[4];
-		camera.GetLocalTransform(cameraMat);
+		// Get camera to sight matrix
+		vector cameraToSightMat[4];
+		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), camera, cameraToSightMat);
 
 		// Sight camera angles offset
 		vector sightMat[3];
 		vector sightAngles = {-m_vCameraAngles[1], - m_vCameraAngles[0] - m_fCurrentCameraPitch, 0};
 		Math3D.AnglesToMatrix(sightAngles, sightMat);
 
-		// Sight camera angles mat in parent space
-		Math3D.MatrixMultiply3(sightMat, parentToSightMat, sightMat);
-
-		// Sight and camera in parent space
-		Math3D.MatrixMultiply3(sightMat, cameraMat, sightMat);
+		// Sight camera angles mat in sight space
+		Math3D.MatrixMultiply3(sightMat, cameraToSightMat, sightMat);
 
 		// Sight transform which is important for turrets
 		vector turretMat[4];
@@ -580,14 +569,8 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		// Account for additional optic camera roll
 		angles[2] = angles[2] + m_vCameraAngles[2];
 
-		// Scale misalignment for off-axis scopes
-		angles[0] = angles[0] * m_vCameraMisalignmentScale[0];
-		angles[1] = angles[1] * m_vCameraMisalignmentScale[1];
-		angles[2] = angles[2] * m_vCameraMisalignmentScale[2];
-
 		// Misalignment should not exceed 180 degrees
-		angles[0] = fixAngle_180_180(angles[0]);
-		angles[1] = fixAngle_180_180(angles[1]);
+		angles = SCR_Math3D.FixEulerVector180(angles);
 
 		return angles;
 	}
@@ -640,7 +623,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		vector currentPos = camera.GetWorldTransformAxis(3);
 
-		float threshold = 0.0001;
+		const float threshold = 0.0001;
 		float distance = vector.Distance(currentPos, previousPos);
 
 		if (distance > threshold)

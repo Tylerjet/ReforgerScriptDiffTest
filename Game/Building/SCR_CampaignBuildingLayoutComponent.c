@@ -17,7 +17,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 
 	protected SCR_BasePreviewEntity m_PreviewEntity;
 
-	protected const static int EMPTY_BUILDING_VALUE = 0;
+	protected static const int EMPTY_BUILDING_VALUE = 0;
 	protected static const int INVALID_PREFAB_ID = -1;
 	protected ref ScriptInvokerInt m_OnAddBuildingValueInt;
 	protected ref ScriptInvokerVoid m_OnAddBuildingValueVoid;
@@ -134,7 +134,9 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 			return;
 		}
 #endif
-
+		if (currentBuildValue > m_iToBuildValue * 0.5)
+			CreateUnsafeAreaEvent();
+		
 		if (currentBuildValue < m_iToBuildValue)
 			return;
 
@@ -435,6 +437,21 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 			SnapEntityToTerrain(child);
 		else
 			GetGame().GetCallqueue().CallLater(SnapEntityToTerrain, 0, false, child);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Create a danger event for AI to clear the area where the composition is about to spawn.
+	protected void CreateUnsafeAreaEvent()
+	{
+		vector boundMin, boundMax;
+		GetOwner().GetWorldBounds(boundMin, boundMax);
+		float previewSize = vector.DistanceXZ(boundMin, boundMax) * 1.25;
+		
+		SCR_AIDangerEvent_UnsafeArea unsafeAreaEvent = new SCR_AIDangerEvent_UnsafeArea();
+		unsafeAreaEvent.SetDangerType(SCR_EAIDangerEventType.Danger_UnsafeArea);
+		unsafeAreaEvent.SetPosition(GetOwner().GetOrigin());
+		unsafeAreaEvent.SetRadius(previewSize);
+		GetGame().GetAIWorld().RequestBroadcastDangerEvent(unsafeAreaEvent);	
 	}
 
 	//------------------------------------------------------------------------------------------------

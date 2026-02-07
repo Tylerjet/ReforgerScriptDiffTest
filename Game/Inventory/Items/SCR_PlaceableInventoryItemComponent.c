@@ -3,14 +3,21 @@ class SCR_PlaceableInventoryItemComponentClass : SCR_BaseInventoryItemComponentC
 {
 }
 
+void ScriptInvokerItemPlacedMethod(ChimeraCharacter placingCharacter, SCR_PlaceableInventoryItemComponent placedItemIIC);
+typedef func ScriptInvokerItemPlacedMethod;
+typedef ScriptInvokerBase<ScriptInvokerItemPlacedMethod> ScriptInvokerItemPlaced;
+
 class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 {
 	protected vector m_vMat[4];
 	protected bool m_bUseTransform = false;
 	protected RplId m_ParentRplId = RplId.Invalid();
+	protected RplId m_PlacingCharacterRplId = RplId.Invalid();
 	protected int m_iParentNodeId;
 	protected IEntity m_Parent;
 	protected IEntity m_RootParent;
+
+	protected static ref ScriptInvokerItemPlaced s_OnPlacementDoneInvoker;
 
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -29,15 +36,29 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	static ScriptInvokerItemPlaced GetOnPlacementDoneInvoker()
+	{
+		if (!s_OnPlacementDoneInvoker)
+			s_OnPlacementDoneInvoker = new ScriptInvokerItemPlaced();
+
+		return s_OnPlacementDoneInvoker;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] user
+	//! \param[in] user that placed this item
 	// To be overridden, called when placement is done in SCR_ItemPlacementComponent
-	void PlacementDone(notnull IEntity user);
+	protected void PlacementDone(notnull ChimeraCharacter user)
+	{
+		if (s_OnPlacementDoneInvoker)
+			s_OnPlacementDoneInvoker.Invoke(user, this);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_DoPlaceItem()
+	protected void RPC_DoPlaceItem(RplId placingCharacterRplId)
 	{
 		IEntity item = GetOwner();
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
@@ -51,14 +72,24 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		m_iParentNodeId = -1;
 
 		PlayPlacedSound(m_vMat[1], m_vMat[3]);
+
+		RplComponent characterRplComp = RplComponent.Cast(Replication.FindItem(placingCharacterRplId));
+		if (!characterRplComp)
+			return;
+
+		ChimeraCharacter placingCharacter = ChimeraCharacter.Cast(characterRplComp.GetEntity());
+		if (!placingCharacter)
+			return;
+
+		PlacementDone(placingCharacter);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
 	void PlaceItem()
 	{
-		Rpc(RPC_DoPlaceItem);
-		RPC_DoPlaceItem();
+		Rpc(RPC_DoPlaceItem, m_PlacingCharacterRplId);
+		RPC_DoPlaceItem(m_PlacingCharacterRplId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -101,13 +132,14 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Authority method used to change the position at which item will placed when removed from the inventory
-	void SetPlacementPosition(vector right, vector up, vector forward, vector position)
+	void SetPlacementPosition(vector right, vector up, vector forward, vector position, RplId characterRplId)
 	{
 		m_vMat[0] = right;
 		m_vMat[1] = up;
 		m_vMat[2] = forward;
 		m_vMat[3] = position;
 		m_bUseTransform = true;
+		m_PlacingCharacterRplId = characterRplId;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -135,6 +167,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 
 		m_ParentRplId = -1;
 		m_iParentNodeId = -1;
+		m_PlacingCharacterRplId = RplId.Invalid();
 
 		return false;
 	}
@@ -195,8 +228,8 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//! Same as PlaceItem but with params that allow attaching the object to new parent entity
 	void PlaceItemWithParentChange(RplId newParentRplId, int nodeId = -1)
 	{
-		Rpc(RPC_DoPlaceItemWithParentChange, newParentRplId, nodeId);
-		RPC_DoPlaceItemWithParentChange(newParentRplId, nodeId);
+		Rpc(RPC_DoPlaceItemWithParentChange, newParentRplId, nodeId, m_PlacingCharacterRplId);
+		RPC_DoPlaceItemWithParentChange(newParentRplId, nodeId, m_PlacingCharacterRplId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -204,7 +237,7 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 	//! \param[in] newParentRplId
 	//! \param[in] nodeId
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_DoPlaceItemWithParentChange(RplId newParentRplId, int nodeId)
+	protected void RPC_DoPlaceItemWithParentChange(RplId newParentRplId, int nodeId, RplId placingCharacterRplId)
 	{
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
 		if (!itemComponent)
@@ -229,6 +262,16 @@ class SCR_PlaceableInventoryItemComponent : SCR_BaseInventoryItemComponent
 		}
 
 		PlayPlacedSound(m_vMat[1], m_vMat[3]);
+
+		RplComponent characterRplComp = RplComponent.Cast(Replication.FindItem(placingCharacterRplId));
+		if (!characterRplComp)
+			return;
+
+		ChimeraCharacter placingCharacter = ChimeraCharacter.Cast(characterRplComp.GetEntity());
+		if (!placingCharacter)
+			return;
+
+		PlacementDone(placingCharacter);
 	}
 
 	//------------------------------------------------------------------------------------------------

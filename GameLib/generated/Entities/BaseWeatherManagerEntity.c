@@ -377,7 +377,13 @@ class BaseWeatherManagerEntity: GenericEntity
 	\return Returns true when date is valid, false otherwise.
 	*/
 	proto external bool CheckValidDate(int year, int month, int day);
-	proto external void UpdateWeather(float timeSlice);
+	/*!
+	update weather by selected timeSlice
+
+	\param timeSlice					timeslice
+	\param advanceSimulation	advance simulation time by the timeslice value, if false, only weather is updated
+	*/
+	proto external void UpdateWeather(float timeSlice, bool advanceSimulation = true);
 }
 
 /*!

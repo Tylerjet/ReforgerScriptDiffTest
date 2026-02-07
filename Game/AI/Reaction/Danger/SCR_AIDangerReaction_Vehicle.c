@@ -6,7 +6,7 @@ class SCR_AIDangerReaction_Vehicle : SCR_AIDangerReaction
 	#endif
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------------------
-	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
+	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
 				

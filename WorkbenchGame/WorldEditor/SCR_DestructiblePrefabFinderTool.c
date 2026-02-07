@@ -107,10 +107,8 @@ class SCR_DestructiblePrefabFinderTool : WorldEditorTool
 
 		Debug.BeginTimeMeasure();
 
-		SCR_WorkbenchSearchResourcesCallbackArray callback = new SCR_WorkbenchSearchResourcesCallbackArray(m_aSelection);
-
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		worldEditor.GetResourceBrowserSelection(callback.Insert, true);
+		worldEditor.GetResourceBrowserSelection(m_aSelection.Insert, true);
 
 		foreach (string resourceName : m_aSelection)
 		{

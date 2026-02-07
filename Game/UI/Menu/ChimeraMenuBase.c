@@ -29,6 +29,7 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	ReportItemDialog,
 	ContentBrowser,
 	ContentBrowserDetailsMenu,
+	ContentBrowserDetailsMenuSave,
 	RespawnSuperMenu,
 	WelcomeScreenMenu,
 	DebriefingScreenMenu,
@@ -47,6 +48,7 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	LoadingOverlay,
 	CreditsMenu,
 	CreditsLicensesMenu,
+	PrivacyPolicyMenu,
 	WelcomeDialog,
 	GroupSettingsDialog,
 	CareerProfileMenu,
@@ -54,7 +56,8 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 	GroupMenu,
 	GroupFlagDialog,
 	RoleSelectionDialog,
-	GamepadRemovalDialog
+	GamepadRemovalDialog,
+	TutorialFastTravel
 };
 
 //------------------------------------------------------------------------------------------------
@@ -64,12 +67,27 @@ enum ChimeraMenuPreset : ScriptMenuPresetEnum
 //------------------------------------------------------------------------------------------------
 class ChimeraMenuBase : MenuBase
 {
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// The base scripted menu class should not give a crap about edit boxes
+	
 	// Editbox type check
 	protected const string INPUT_CONTEXT_EDIT = "MenuTextEditContext";
 	protected bool m_bTextEditActive = false;
 	ref ScriptInvoker m_OnTextEditContextChange = new ScriptInvoker;
+
+//---- REFACTOR NOTE END ----
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Components not ticking is an important architecture decision and should be respected as such or changed at the engine level: this is a hacky workaround. Also, all invokers for other important events are missing
+	
 	ref ScriptInvoker m_OnUpdate = new ScriptInvoker; // (float tDelta)
 
+//---- REFACTOR NOTE END ----
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Did people get confused and thought it was another menu xD?
+	
 	protected static ChimeraMenuBase m_ThisMenu;
 
 	//------------------------------------------------------------------------------------------------
@@ -77,7 +95,9 @@ class ChimeraMenuBase : MenuBase
 	{
 		return m_ThisMenu;
 	}
-
+	
+//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuInit()
 	{
@@ -96,6 +116,9 @@ class ChimeraMenuBase : MenuBase
 		// Invoke OnUpdate
 		m_OnUpdate.Invoke(tDelta);
 	}
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Wouldn't it make more sense for a scripted MenuManager to provide the generic events now handled by SCR_MenuHelper?
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -145,6 +168,8 @@ class ChimeraMenuBase : MenuBase
 		super.OnMenuHide();
 		SCR_MenuHelper.OnMenuHide(this);
 	}
+
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns parent menu of a widget

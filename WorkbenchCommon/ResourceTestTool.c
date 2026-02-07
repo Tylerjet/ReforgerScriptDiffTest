@@ -116,7 +116,6 @@ class ResourceTestPlugin: WorkbenchPlugin
 	
 	private void MakeScreenshotMetafile(string filename, ResourceName resourceName)
 	{
-		string content;
 		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
 		
 		if(descrFile)

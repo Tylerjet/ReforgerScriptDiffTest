@@ -67,7 +67,7 @@ class SCR_GlobalUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 				continue;
 
 			if (lifeState == ECharacterLifeState.INCAPACITATED)
-				characterDamageManager.Kill(Instigator.CreateInstigator(null));
+				characterDamageManager.Kill(Instigator.CreateInstigatorGM());
 		}
 	}
 };

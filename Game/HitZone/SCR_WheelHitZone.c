@@ -1,7 +1,10 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Separate file
 enum SCR_EWheelDamageState : EDamageState
 {
 	PUNCTURED = 3
 }
+//---- REFACTOR NOTE END ----
 
 class SCR_WheelHitZone : SCR_VehicleHitZone
 {
@@ -213,6 +216,8 @@ class SCR_WheelHitZone : SCR_VehicleHitZone
 		}
 	}
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Move as static to SCR_PhysicsHelper
 	//------------------------------------------------------------------------------------------------
 	//! Wake physics up
 	void WakeUpPhysics()
@@ -233,6 +238,7 @@ class SCR_WheelHitZone : SCR_VehicleHitZone
 		physics.ApplyImpulseAt(centerOfMass, vector.Up * force);
 		physics.ApplyImpulseAt(centerOfMass, vector.Up * -force);
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//! \return

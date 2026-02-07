@@ -58,4 +58,10 @@ class SCR_ScenarioFrameworkActionLoopOverNotRandomlySelectedLayers : SCR_Scenari
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
+	}
 }

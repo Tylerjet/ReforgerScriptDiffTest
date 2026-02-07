@@ -31,6 +31,8 @@ class SCR_ScenarioFrameworkPluginSpawnPoint : SCR_ScenarioFrameworkPlugin
 	IEntity m_Asset;
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes spawn point with given parameters.
+	//! \param[in] object of layer base from which entity is further retrieved
 	override void Init(SCR_ScenarioFrameworkLayerBase object)
 	{
 		if (!object)
@@ -64,8 +66,17 @@ class SCR_ScenarioFrameworkPluginSpawnPoint : SCR_ScenarioFrameworkPlugin
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Spawns an entity at a specific spawn point, activates actions associated with the spawn point on entity spawn.
+	//! \param[in] requestComponent RequestComponent represents the spawn request component for the scenario framework plugin spawn point.
+	//! \param[in] data Spawn data represents the parameters for spawning an entity at a specific location in the scenario.
+	//! \param[in] entity Spawned entity representing an object in the game world.
 	void OnFinalizeSpawnDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
+		// Here you can debug specific Plugin instance.
+		// This can be also adjusted during runtime via Debug Menu > ScenarioFramework > Plugin Inspector
+		if (m_bDebug)
+			Print("[SCR_ScenarioFrameworkPluginSpawnPoint.OnFinalizeSpawnDone_S] debug line (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+		
 		if (!data || !m_Asset)
 			return;
 		

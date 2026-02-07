@@ -540,11 +540,11 @@ class SCR_NameTagRulesetBase : Managed
 	protected void UpdateDebug()
 	{
 		DbgUI.Begin("NameTag debug");
-		string dbg = "queried tags: %1 | candidate tags: %2";
+		const string dbg = "queried tags: %1 | candidate tags: %2";
 		DbgUI.Text( string.Format( dbg, m_aNameTags.Count(), m_aCandidateTags.Count() ) );
-		string dbg2 = "primary: %1";
+		const string dbg2 = "primary: %1";
 		DbgUI.Text( string.Format( dbg2, m_PrimaryTag ) );
-		string dbg3 = "focusAngle: %1 | sq distance: %2";
+		const string dbg3 = "focusAngle: %1 | sq distance: %2";
 		float distance = 0;
 		if (m_PrimaryTag) distance = m_PrimaryTag.m_fDistance;
 		DbgUI.Text( string.Format( dbg3, m_fFocusPrioAngle, distance ) );

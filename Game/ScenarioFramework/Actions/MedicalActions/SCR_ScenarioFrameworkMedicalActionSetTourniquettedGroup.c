@@ -13,6 +13,8 @@ class SCR_ScenarioFrameworkMedicalActionSetTourniquettedGroup : SCR_ScenarioFram
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		if (!m_bTourniquetted)
 		{
 			SCR_TourniquetStorageComponent tourniquetStorage = SCR_TourniquetStorageComponent.Cast(m_DamageManager.GetOwner().FindComponent(SCR_TourniquetStorageComponent));

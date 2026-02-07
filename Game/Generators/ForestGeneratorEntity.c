@@ -583,7 +583,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected int GetColorForTree(int index, SCR_ETreeType type)
 	{
-		int colCount = 11;
+		const int colCount = 11;
 		int colIdx = (5 * index + (int)type) % colCount; // 5 because 5 SCR_ETreeType types
 		int color;
 		switch (colIdx)
@@ -1301,7 +1301,7 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	protected bool GetPointOutsideOutlines(notnull array<float> polygon2D, SCR_AABB bbox, out vector clusterCenter, float additionalDistance = 0)
 	{
 		bool isInOutline = true;
-		int maxTriesToFindCenter = 10; // TODO replace with proper parameter.
+		const int maxTriesToFindCenter = 10; // TODO replace with proper parameter
 		int currentTriesCount = 0;
 
 		array<SCR_ForestGeneratorRectangle> rectangles;

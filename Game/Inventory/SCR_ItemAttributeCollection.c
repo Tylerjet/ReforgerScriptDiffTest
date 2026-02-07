@@ -18,6 +18,9 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	
 	[Attribute("1", UIWidgets.CheckBox, "Sets item stackable in inventory")]
 	protected bool m_bStackable;
+	
+	[Attribute("1", UIWidgets.CheckBox, "Allows for the item to be refunded in arsenals (set to false for mission critical items)")]
+	protected bool m_bRefundable;
 
 	private ItemPhysicalAttributes m_PhysAttributes;
 	
@@ -59,6 +62,12 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	{
 		return m_bStackable;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsRefundable()
+	{
+		return m_bRefundable;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SetSlotSize( ESlotSize slotSize ) 	
@@ -70,6 +79,12 @@ class SCR_ItemAttributeCollection: ItemAttributeCollection
 	void SetDraggable(bool isDraggable)
 	{
 		m_bDraggable = isDraggable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetRefundable(bool isRefundable)
+	{
+		m_bRefundable = isRefundable;
 	}
 	
 	//------------------------------------------------------------------------------------------------

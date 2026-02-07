@@ -25,6 +25,8 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	protected SCR_InventoryStorageManagerComponent					pInventoryManager;
 	protected static const int										MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT = 200000;	//!< in cm^3
 	
+	protected int													m_iNrOfNonRefundableItems = 0;		//used for keeping track of all non refundable items inside of a storage
+	
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
@@ -170,6 +172,10 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		pItemComponent.EnablePhysics();
 		
 		m_fWeight -= pItemComponent.GetTotalWeight();
+		
+		SCR_ItemAttributeCollection refundItemAttributes = SCR_ItemAttributeCollection.Cast(pItemComponent.GetAttributes());
+		if (refundItemAttributes && !refundItemAttributes.IsRefundable())
+			m_iNrOfNonRefundableItems--;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -195,8 +201,12 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 
 		pItemComponent.DisablePhysics();
 		pItemComponent.ActivateOwner(false);
-				
+		
 		m_fWeight += pItemComponent.GetTotalWeight();
+		
+		SCR_ItemAttributeCollection refundItemAttributes = SCR_ItemAttributeCollection.Cast(pItemComponent.GetAttributes());
+		if (refundItemAttributes && !refundItemAttributes.IsRefundable())
+			m_iNrOfNonRefundableItems++;
 	}
 	
 	//------------------------------------------------------------------------ LINKED STORAGES ----------------------------------------------------------------------
@@ -241,6 +251,18 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		return m_aLinkedStorages.Contains(storage);
 	}
 		
+	//------------------------------------------------------------------------------------------------
+	int GetNonRefundableItemCount()
+	{
+		return m_iNrOfNonRefundableItems;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetNonRefundableItemCount(int refundableItemCount)
+	{
+		m_iNrOfNonRefundableItems = refundableItemCount;
+	}
+	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------

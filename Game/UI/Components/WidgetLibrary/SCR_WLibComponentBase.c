@@ -1,4 +1,8 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Many interactable elements do not use this as their base! It is not generic enough: sounds, opacity and animation settings would ideally be handled in a more centralized way (stylesheets?) together with other data like color, because having them on each component makes mantaining a project wide consistent look impossible. In the end, most layouts using children of this ended up with a SCR_ModularButtonComponent on them anyways. It is missing key features like caching of interaction states and events, and handling of enabled state is very limited (it should keep track of multiple stacking state change requests)
+
 //! Base class for all final Reforger interactive elements
+
 
 //------------------------------------------------------------------------------------------------
 class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
@@ -210,3 +214,6 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 		m_fDisabledOpacity = newDisabledOpacity;
 	}
 };
+
+
+//---- REFACTOR NOTE END ----

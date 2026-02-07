@@ -91,7 +91,7 @@ class SCR_AIGetInVehicle : SCR_AIVehicleBehavior
 	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " moving to " + m_Vehicle.ValueToString() + " inside " + m_CompartmentToGetIn.ValueToString();
+		return this.ToString() + " moving to " + m_Vehicle.m_Value.ToString() + " inside " + m_CompartmentToGetIn.m_Value.ToString();
 	}
 };
 
@@ -111,6 +111,6 @@ class SCR_AIGetOutVehicle : SCR_AIVehicleBehavior
 	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " leaving " + m_Vehicle.ValueToString();
+		return this.ToString() + " leaving " + m_Vehicle.m_Value.ToString();
 	}
 };

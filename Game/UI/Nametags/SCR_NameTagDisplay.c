@@ -50,19 +50,19 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		
 	//------------------------------------------------------------------------------------------------
 	//! SCR_GameModeBase event
-	protected void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		if (!m_CurrentPlayerTag)
 			return;
 		
-		if (entity == m_CurrentPlayerTag.m_Entity)	// cleanup after death
+		if (instigatorContextData.GetVictimEntity() == m_CurrentPlayerTag.m_Entity)	// cleanup after death
 		{
 			CleanupAllTags();
 			m_CurrentPlayerTag = null;
 			StopUpdate();
 		}
 			
-		SCR_NameTagData data = m_aNameTagEntities.Get(entity);
+		SCR_NameTagData data = m_aNameTagEntities.Get(instigatorContextData.GetVictimEntity());
 		if (data)
 		{
 			data.ActivateEntityState(ENameTagEntityState.DEAD);
@@ -485,14 +485,14 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 	protected void UpdateDebug()
 	{
 		DbgUI.Begin("NameTag debug");
-		string dbg = "nametags: %1 | filtered: %2 | sleep: %3 | uninit veh: %4 | range: %5 ";
+		const string dbg = "nametags: %1 | filtered: %2 | sleep: %3 | uninit veh: %4 | range: %5 ";
 		DbgUI.Text( string.Format( dbg, m_aNameTags.Count(), m_aFilteredEntities.Count(), m_bSleepDisplay.ToString(), m_aUninitializedVehTags.Count(), s_NametagCfg.m_fFarthestZoneRange ) );
 		if (m_CurrentPlayerTag)
 		{
 			DbgUI.Text("groupID: " + m_CurrentPlayerTag.m_iGroupID.ToString());
 		}
 		
-		string line =  "name: %1 | distance: %2 | opacity base: %3 | opacity fade: %4 | %5";
+		const string line =  "name: %1 | distance: %2 | opacity base: %3 | opacity fade: %4 | %5";
 		foreach ( SCR_NameTagData tag : m_aNameTags )
 		{
 			DbgUI.Text( string.Format( line, tag.m_sName, (int)tag.m_fDistance, tag.m_fVisibleOpacity, tag.m_fOpacityFade, tag.m_NameTagWidget.GetOpacity() ));

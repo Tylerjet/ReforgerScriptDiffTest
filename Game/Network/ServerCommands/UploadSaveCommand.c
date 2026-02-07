@@ -62,7 +62,7 @@ class UploadSaveCommand: ScrServerCommand
 		
 		
 		//TODO pass the callback
-		GetGame().GetSaveManager().UploadToWorkshop(argv[1]);	
+		//GetGame().GetSaveManager().UploadToWorkshop(argv[1]);	
 		return m_result;
 	}
 	

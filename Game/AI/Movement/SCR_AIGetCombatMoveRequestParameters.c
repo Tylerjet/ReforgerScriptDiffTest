@@ -28,6 +28,7 @@ class SCR_AIGetCombatMoveRequestParameters_Move : SCR_AIGetCombatMoveRequestPara
 	protected static const string PORT_MOVEMENT_TYPE = "MovementType";
 	protected static const string PORT_DIRECTION = "CombatMoveDirection";
 	protected static const string PORT_AIM_AT_TARGET = "AimAtTarget";
+	protected static const string PORT_MOVE_DURATION_S = "MoveDuration_s";
 		
 	//---------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
@@ -47,6 +48,7 @@ class SCR_AIGetCombatMoveRequestParameters_Move : SCR_AIGetCombatMoveRequestPara
 		SetVariableOut(PORT_MOVEMENT_TYPE, rq.m_eMovementType);
 		SetVariableOut(PORT_DIRECTION, rq.m_eDirection);
 		SetVariableOut(PORT_AIM_AT_TARGET, rq.m_bAimAtTarget);
+		SetVariableOut(PORT_MOVE_DURATION_S, rq.m_fMoveDuration_s);
 		
 		return ENodeResult.SUCCESS;
 	}
@@ -60,7 +62,8 @@ class SCR_AIGetCombatMoveRequestParameters_Move : SCR_AIGetCombatMoveRequestPara
 		PORT_STANCE_END,
 		PORT_MOVEMENT_TYPE,
 		PORT_DIRECTION,
-		PORT_AIM_AT_TARGET
+		PORT_AIM_AT_TARGET,
+		PORT_MOVE_DURATION_S
 	};
 	override TStringArray GetVariablesOut()
 	{

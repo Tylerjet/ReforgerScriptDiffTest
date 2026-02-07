@@ -9,6 +9,9 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	protected static int 								s_iLastSelectedSlotIndex;
 	protected static int 								s_iInitSelectedSlotIndex;
 	protected static bool 								s_bQuickBarClosed;
+	protected static const float						s_fEnabledOpacity = 1;
+	protected static const float						s_fDisabledOpacity = 0.35;
+	
 	
 	protected ResourceName m_sGamepadIcons = "{F7FD1672FECA05E8}UI/Textures/Icons/icons_gamepad_64.imageset";
 	//------------------------------------------- USER METHODS  -----------------------------------------------------
@@ -120,7 +123,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	{
 		int count = pItemsInStorage.Count();
 		if (SCR_WeaponSwitchingBaseUI.s_bRadial && !m_MenuHandler)
-			count = Math.Min(count, 4); // todo: get this from radial menu config
+			count = Math.Min(count, 3); // todo: get this from radial menu config
 		
 		if (count < m_aSlots.Count())
 		{
@@ -226,6 +229,14 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	protected void CheckIfQuickSlotActionsAvailable(IEntity player)
 	{
+		if (!player)
+			return;
+		SCR_CharacterInventoryStorageComponent storageComponent = SCR_CharacterInventoryStorageComponent.Cast(player.FindComponent(SCR_CharacterInventoryStorageComponent));
+		if (!storageComponent)
+			return;
+		
+		SCR_QuickslotBaseContainer quickslotContainer;
+		
 		foreach (int iIndex, SCR_InventorySlotUI pSlot: m_aSlots)
 		{
 			if(!pSlot)
@@ -235,13 +246,30 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 			if(!w)
 				continue;
 			
-			if (!pSlot.GetInventoryItemComponent())
-				w.SetOpacity(0.35);
+			//yes this sadly has to be there as long as the first four quickslots are not the same as the rest of them
+			if (pSlot.GetSlotIndex() > 3)
+			{
+				quickslotContainer = storageComponent.GetContainerFromQuickslot(pSlot.GetSlotIndex());
+				if (!quickslotContainer)
+				{
+					continue;
+				}
+				
+				if (!quickslotContainer.IsQuickslotActionAvailable())
+					w.SetOpacity(s_fDisabledOpacity);
+				else
+					w.SetOpacity(s_fEnabledOpacity);
+			} 
+			else 
+			{
+				if (!pSlot.GetInventoryItemComponent())
+					w.SetOpacity(s_fDisabledOpacity);
 			
-			if (!pSlot.CanUseItem(m_Player))
-				w.SetOpacity(0.35);
-			else
-				w.SetOpacity(1);
+				if (!pSlot.CanUseItem(m_Player))
+					w.SetOpacity(s_fDisabledOpacity);
+				else
+					w.SetOpacity(s_fEnabledOpacity);
+			}
 		}
 	}
 	

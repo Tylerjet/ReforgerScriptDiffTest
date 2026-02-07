@@ -18,6 +18,8 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 	protected const string LAYOUT_CONTENT =		"HorizontalLayout";
 	protected const string LAYOUT_LOADING =		"Loading";
 	
+	protected const string TEXT_WIDGET_QUEUE =	"Queue";
+	
 	protected const string BUTTON_JOIN = 		"JoinButton";
 	protected const string BUTTON_PASSWORD = 	"PasswordButton";
 	
@@ -28,8 +30,6 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 	
 	protected const string FRAME_NAME = 		"FrameName";
 	protected const string FRAME_SCENARIO = 	"FrameScenario";
-	
-	protected const string TEXT_CELL = 			"Content";
 	
 	protected const string TOOLTIP_JOIN = 				"Join";
 	protected const string TOOLTIP_VERSION_MISMATCH = 	"VersionMismatch";
@@ -44,6 +44,7 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 	protected int m_iHighestPing;
 	
 	// Widgets
+	protected TextWidget m_wQueue;
 	protected Widget m_wHorizontalContent;
 	protected Widget m_wLoading;
 	protected Widget m_wUnjoinableIcon;
@@ -127,6 +128,9 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 				m_iHighestPing = ping;
 		}
 
+		// Queue
+		m_wQueue = TextWidget.Cast(w.FindAnyWidget(TEXT_WIDGET_QUEUE));
+		
 		super.HandlerAttached(w);
 	}
 
@@ -172,15 +176,29 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		bool result = super.OnFocus(w, x, y);
+		
+		DisplayQueue();
+		
+		return result;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
+		bool result = super.OnFocusLost(w, x, y);
+		
 		if (m_ModsManager)
 		{
 			m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
 			m_bIsPatchSizeLoaded = false;
 		}
 		
-		return super.OnFocusLost(w, x, y);
+		DisplayQueue();
+		
+		return result;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -198,13 +216,13 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 	//! Set text in cell by it's widget name
 	//! \param[in] cellName
 	//! \param[in] str
-	protected void SetCellText(string cellName, string str)
+	protected void SetCellText(string cellName, string str, string widgetName = "Content")
 	{
 		Widget wCell = m_wRoot.FindAnyWidget(cellName);
 		if (!wCell)
 			return;
 
-		TextWidget wText = TextWidget.Cast(wCell.FindAnyWidget(TEXT_CELL));
+		TextWidget wText = TextWidget.Cast(wCell.FindAnyWidget(widgetName));
 		if (wText)
 			wText.SetText(str);
 	}
@@ -262,6 +280,51 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void DisplayQueue()
+	{
+		if (!m_wQueue || !m_RoomInfo)
+			return;
+
+		// Text
+		string queue;		
+		int queueSize = m_RoomInfo.GetQueueSize();
+		if (queueSize > 0)
+			queue = string.Format("(%1)", UIConstants.FormatUnitShortPlus(queueSize));
+		
+		m_wQueue.SetText(queue);
+	
+		// Color
+		bool maxed = m_RoomInfo.GetQueueSize() >= m_RoomInfo.GetQueueMaxSize();
+		Color color;
+		
+		if (m_bFocused)
+		{
+			if (maxed)
+				color = UIColors.CopyColor(UIColors.WARNING);
+			else
+				color = UIColors.CopyColor(UIColors.NEUTRAL_INFORMATION);
+		}
+		
+		else if (m_bUnavailable)
+		{
+			if (maxed)
+				color = UIColors.CopyColor(UIColors.WARNING_DISABLED);
+			else
+				color = UIColors.CopyColor(UIColors.IDLE_DISABLED);
+		}
+			
+		else
+		{
+			if (maxed)
+				color = UIColors.CopyColor(UIColors.WARNING_DISABLED);
+			else
+				color = UIColors.CopyColor(UIColors.NEUTRAL_ACTIVE_STANDBY);
+		}
+			
+		m_wQueue.SetColor(color);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Check properties and assign state of room
 	protected void CheckRoomProperties()
@@ -388,11 +451,11 @@ class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 		SetCellText("Scenario", m_RoomInfo.ScenarioName());
 
 		// Player count
-		string playerCount = m_RoomInfo.PlayerCount().ToString();
-		string playerCountMax = m_RoomInfo.PlayerLimit().ToString();
-
-		SetCellText("Players", playerCount + "/" + playerCountMax);
-
+		SetCellText("Players", UIConstants.FormatValueOutOf(m_RoomInfo.PlayerCount(), m_RoomInfo.PlayerLimit()));
+		
+		// Queue
+		DisplayQueue();
+		
 		// Favorite
 		if (m_FavoriteButton)
 			SetFavorite(m_RoomInfo.IsFavorite());

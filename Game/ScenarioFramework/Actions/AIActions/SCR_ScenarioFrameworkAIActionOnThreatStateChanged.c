@@ -26,6 +26,8 @@ class SCR_ScenarioFrameworkAIActionOnThreatStateChanged : SCR_ScenarioFrameworkA
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		array<AIAgent> agents = {};
 		m_AIGroup.GetAgents(agents);
 		
@@ -67,5 +69,11 @@ class SCR_ScenarioFrameworkAIActionOnThreatStateChanged : SCR_ScenarioFrameworkA
 		{
 			action.Init(m_AISlotEntity);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActionsOnThreatStateChanged;
 	}
 }

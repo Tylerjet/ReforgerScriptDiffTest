@@ -125,8 +125,7 @@ class SCR_PrefabValidatorPlugin : WorkbenchPlugin
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 
 		array<ResourceName> selection = {};
-		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
-		resourceManager.GetResourceBrowserSelection(context.Insert, true);
+		resourceManager.GetResourceBrowserSelection(selection.Insert, true);
 
 		ValidatePrefabs(selection);
 	}

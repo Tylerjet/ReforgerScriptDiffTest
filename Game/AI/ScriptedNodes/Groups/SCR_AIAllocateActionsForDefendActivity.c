@@ -58,7 +58,12 @@ class SCR_AIAllocateActionsForDefendActivity: AITaskScripted
 		m_RelatedWaypoint = SCR_DefendWaypoint.Cast(waypointEnt);
 		if (!m_RelatedWaypoint)
 			return NodeError(this, owner, "Defend Waypoint not provided to the node!");
-		bool useTurrets = m_RelatedWaypoint.GetUseTurrets();
+		
+		SCR_DefendWaypointPreset defendPreset = m_RelatedWaypoint.GetCurrentDefendPreset();
+		if (!defendPreset)
+			return SCR_AIErrorMessages.NodeErrorDefendPreset(this, owner);
+		
+		bool useTurrets = defendPreset.GetUseTurrets();
 		bool teleport = m_RelatedWaypoint.GetFastInit();
 		
 		ref array<BaseCompartmentSlot> compartments = {};
@@ -74,7 +79,7 @@ class SCR_AIAllocateActionsForDefendActivity: AITaskScripted
 			}	
 		}
 		
-		float fraction = m_RelatedWaypoint.GetFractionOfSA();
+		float fraction = defendPreset.GetFractionOfSA();
 		if (fraction > 0)
 		{
 			m_groupOwner.GetAllocatedSmartActions(smartActions);

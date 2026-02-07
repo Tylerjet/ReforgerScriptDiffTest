@@ -19,34 +19,16 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	protected const string STATE_DOWNLOADING = "#AR-Workshop_TabName_Downloaded";
 	protected const string STATE_ALL_PAUSE = "#AR-DownloadManager_State_AllDownloadsPaused";
 	protected const string STATE_NO_ACTIVE_DOWNLOADS = "#AR-DownloadManager_State_NoActiveDownloads";
-	protected const string STR_AFFECTED_MODS = "#AR-Workshop_FailedModsDownload";
 
 	protected const ResourceName DOWNLOAD_LINE_LAYOUT = "{FB196DBC0ABA6AE4}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManagerEntry.layout";
 	protected const string DOWNLOAD_SUMMARY_FORMAT = "%1 / %2";
 	protected const string DOWNLOAD_SUMMARY_COLORED_FORMAT = "<color rgba=%1>%2</color>";
 	
-	protected const string FAILED_ADDON_FORMAT = "- %1 \n"; 
-	protected const string FAILED_ADDON_LIST_DIALOG = "failed_dialogs_list";
-	
 	protected ref SCR_DownloadManagerDialogWidgets m_Widgets = new SCR_DownloadManagerDialogWidgets();
-	
-	// Fail dialogs 
-	protected SCR_ConfigurableDialogUi m_DownloadFailDialog;
-	protected SCR_MessageDialogContent m_DownloadFailDialogContent;
-	protected SCR_NotEnoughStorageDialog m_StorageLimitDialog;
-	protected float m_fStorageLimitErrorSize = 0;
 	
 	// Tabs
 	protected ref SCR_DownloadManagerListComponent m_ActiveDownloads;
 	protected ref SCR_DownloadManagerListComponent m_HistoryDownloads;
-	
-	protected static bool m_bOpened = false;
-	
-	//-----------------------------------------------------------------------------------------------
-	static bool IsOpened()
-	{
-		return m_bOpened;
-	}
 	
 	//-----------------------------------------------------------------------------------------------
 	static SCR_DownloadManager_Dialog Create()
@@ -84,10 +66,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		downloadManager.m_OnNewDownload.Insert(OnNewDownload);
 		downloadManager.m_OnDownloadComplete.Insert(OnDownloadComplete);
 		downloadManager.m_OnDownloadFailed.Insert(OnDownloadFailed);
-		downloadManager.GetOnFullStorageError().Insert(OnFullStorageError);
 		downloadManager.m_OnDownloadCanceled.Insert(OnDownloadCanceled);
-			
-		m_bOpened = true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -99,8 +78,6 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		
 		// Clear all recent failed downloads
 		SCR_DownloadManager.GetInstance().ClearFailedDownloads();
-		
-		m_bOpened = false;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -340,86 +317,6 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		
 		// Open active and scroll up 
 		m_SuperMenuComponent.GetTabView().ShowTab(SCR_EDownloadManagerTabs.ACTIVE, false);
-		
-		// Show error dialog 
-		ShowFailedModsDialog(action, reason);
-	}
-	
-	//------------------------------------------------------------------------------------------
-	protected void ShowFailedModsDialog(SCR_WorkshopItemActionDownload action, int reason)
-	{
-		// Add failed addons to dialog 
-		if (m_DownloadFailDialog)
-		{
-			if (m_DownloadFailDialogContent)
-				m_DownloadFailDialogContent.SetMessage(m_DownloadFailDialogContent.GetMessage() + string.Format(FAILED_ADDON_FORMAT, action.GetAddonName()));
-			
-			return;
-		}
-
-		string message = "";
-		
-		// Choose message dialog
-		switch (reason)
-		{
-			// Connection failed
-			case 1: message = SCR_ConnectionUICommon.MESSAGE_VERBOSE_TIMEOUT; break;
-		}
-		
-		if (!message.IsEmpty())
-			message += "\n";
-		
-		// Create dialog
-		m_DownloadFailDialog = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopDialogs.DIALOGS_CONFIG, FAILED_ADDON_LIST_DIALOG);
-		m_DownloadFailDialog.SetMessage(message);
-		m_DownloadFailDialog.m_OnClose.Insert(OnDownloadFailDialogClose);
-		
-		// Setup message 
-		Widget contentWidget = m_DownloadFailDialog.GetContentLayoutRoot();
-		m_DownloadFailDialogContent = SCR_MessageDialogContent.Cast(contentWidget.FindHandler(SCR_MessageDialogContent));
-		m_DownloadFailDialogContent.SetMessage(STR_AFFECTED_MODS + "\n\n" + string.Format(FAILED_ADDON_FORMAT, action.GetAddonName()));
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	//! Call on full addons storage reached to display storage limit reached error 
-	protected void OnFullStorageError(SCR_WorkshopItemActionDownload action, float size)
-	{
-		// Create dialog
-		if (m_fStorageLimitErrorSize == 0)
-		{
-			m_fStorageLimitErrorSize = size;
-			CreateStoraLimitError();
-			return;
-		}
-		
-		// Add to dialog
-		m_fStorageLimitErrorSize += size;
-			
-		if (m_StorageLimitDialog)
-			m_StorageLimitDialog.AddToSize(size);
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void CreateStoraLimitError()
-	{
-		// Display dialog 
-		m_StorageLimitDialog = SCR_NotEnoughStorageDialog.Create(m_fStorageLimitErrorSize);
-		m_StorageLimitDialog.m_OnClose.Insert(OnStorageLimitDialogClosed);
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected void OnStorageLimitDialogClosed()
-	{
-		m_fStorageLimitErrorSize = 0;
-		m_StorageLimitDialog = null;
-	}
-	
-	//------------------------------------------------------------------------------------------
-	protected void OnDownloadFailDialogClose()
-	{
-		m_DownloadFailDialog.m_OnClose.Remove(OnDownloadFailDialogClose);
-		m_DownloadFailDialog = null;
-		m_DownloadFailDialogContent = null
 	}
 	
 	//------------------------------------------------------------------------------------------
@@ -453,7 +350,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	//-----------------------------------------------------------------------------------------------
 	protected void OnPauseButton()
 	{
-		auto action = this.GetSelectedAction();
+		SCR_WorkshopItemActionDownload action = GetSelectedAction();
 		
 		if (!action)
 			return;
@@ -469,7 +366,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	//-----------------------------------------------------------------------------------------------
 	protected void OnCancelButton()
 	{
-		auto action = this.GetSelectedAction();
+		SCR_WorkshopItemActionDownload action = GetSelectedAction();
 		
 		if (!action)
 			return;
@@ -481,97 +378,6 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	protected void OnAutoenableButton()
 	{
 		SCR_WorkshopSettings settings = SCR_WorkshopSettings.Get();
-		//settings.m_bAutoEnableDownloadedAddons = m_Widgets.m_AutoenableAddonsButtonComponent.GetToggled();
 		SCR_WorkshopSettings.Save(settings);
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	void SCR_DownloadManager_Dialog()
-	{
-		m_bOpened = false;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	void ~SCR_DownloadManager_Dialog()
-	{
-		
-	}
-}
-
-/*!
-A mini download manager dialog. It only has a few actions and a basic download progress indicator.
-*/
-//------------------------------------------------------------------------------------------
-class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
-{
-	SCR_InputButtonComponent m_PauseResumeButton;
-	SCR_InputButtonComponent m_CancelButton;
-	
-	//------------------------------------------------------------------------------------------
-	static SCR_DownloadManager_MiniDialog Create()
-	{
-		SCR_DownloadManager_MiniDialog dlg = new SCR_DownloadManager_MiniDialog();
-		SCR_DownloadManager_MiniDialog.CreateFromPreset(SCR_WorkshopDialogs.DIALOGS_CONFIG, "download_manager_mini", dlg);
-		return dlg;
-	}
-	
-	//------------------------------------------------------------------------------------------
-	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
-	{
-		m_PauseResumeButton = this.FindButton("download_pause_resume");
-		m_CancelButton = this.FindButton("download_cancel");
-		
-		m_PauseResumeButton.m_OnActivated.Insert(OnPauseResumeButton);
-		m_CancelButton.m_OnActivated.Insert(OnCancelButton);
-	}
-	
-	//------------------------------------------------------------------------------------------
-	override void OnMenuUpdate(float tDelta)
-	{
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
-		if (!mgr)
-			return;
-		int nCompleted, nTotal;
-		mgr.GetDownloadQueueState(nCompleted, nTotal);
-		
-		// Pause / Resume button label
-		bool paused = mgr.GetDownloadsPaused();
-		string pauseButtonLabel = "#AR-DownloadManager_ButtonPause";
-		if (paused)
-			pauseButtonLabel = "#AR-DownloadManager_ButtonResume";
-		m_PauseResumeButton.SetLabel(pauseButtonLabel);
-		
-		// Cancel button
-		m_CancelButton.SetEnabled(nTotal > 0);
-	}
-	
-	//------------------------------------------------------------------------------------------
-	protected void OnPauseResumeButton()
-	{
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
-		
-		if (!mgr)
-			return;
-		
-		bool paused = mgr.GetDownloadsPaused();
-		mgr.SetDownloadsPaused(!paused);
-	}
-	
-	//------------------------------------------------------------------------------------------
-	protected void OnCancelButton()
-	{
-		// todo: confirmation dialog
-		
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
-		
-		if (!mgr)
-			return;
-		
-		array<ref SCR_WorkshopItemActionDownload> actions = mgr.GetDownloadQueue();
-		
-		foreach (SCR_WorkshopItemActionDownload action : actions)
-		{
-			action.Cancel();
-		}
 	}
 }

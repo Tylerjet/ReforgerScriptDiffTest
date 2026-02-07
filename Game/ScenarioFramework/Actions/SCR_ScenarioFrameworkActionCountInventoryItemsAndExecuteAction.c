@@ -113,4 +113,10 @@ class SCR_ScenarioFrameworkActionCountInventoryItemsAndExecuteAction : SCR_Scena
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActionsToExecute;
+	}
 }

@@ -1,3 +1,6 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Incomplete: lacks support for custom curves (workbench even has an editor to visualize them), looping, flip flop, stop & resume/revert from reached value
+
 //------------------------------------------------------------------------------------------------
 enum EAnimationCurve
 {
@@ -308,3 +311,5 @@ class WidgetAnimationBase
 		m_fSpeed = speed;
 	}
 };
+
+//---- REFACTOR NOTE END ----

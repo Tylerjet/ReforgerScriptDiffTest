@@ -55,13 +55,15 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	//! \param[in] itemLayout
 	//! \return
 	// -----------------------------------------------------------------------------------------
-	int AddItemAndIcon(string item, ResourceName imageOrImageset, string iconName, Managed data = null, ResourceName itemLayout = string.Empty)
+	int AddItemAndIcon(string item, ResourceName imageOrImageset, string iconName, out SCR_ListBoxElementComponent outComp, Managed data = null, ResourceName itemLayout = string.Empty)
 	{
 		SCR_ListBoxElementComponent comp;
 		
 		int id = _AddItem(item, data, comp, itemLayout);
 		
 		comp.SetImage(imageOrImageset, iconName);
+		
+		outComp = comp;
 		
 		return id;
 	}
@@ -171,7 +173,7 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] text
-	void AddSeparator(string text)
+	Widget AddSeparator(string text)
 	{
 		// Create widget for this item
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sSeparatorLayout, m_wList);
@@ -179,6 +181,8 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		TextWidget tw = TextWidget.Cast(w.FindAnyWidget("Text"));
 		if (tw)
 			tw.SetText(text);
+		
+		return w;
 	}
 	
 	//------------------------------------------------------------------------------------------------

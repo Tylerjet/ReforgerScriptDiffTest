@@ -49,7 +49,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	void StartCommandLoitering()
+	void StartCommandLoitering(SCR_LoiterCustomAnimData customAnimData)
 	{
 		if (IsLoitering())
 			return;
@@ -58,7 +58,7 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 		if (!scrCharCtrl)
 			return;
 
-		m_CmdLoiter = new SCR_CharacterCommandLoiter(m_CharacterAnimComp, m_OwnerEntity, GetControllerComponent().GetInputContext(), scrCharCtrl.GetScrInputContext(), m_ScrStaticTable, this);
+		m_CmdLoiter = new SCR_CharacterCommandLoiter(m_CharacterAnimComp, m_OwnerEntity, GetControllerComponent().GetInputContext(), scrCharCtrl.GetScrInputContext(), m_ScrStaticTable, this, customAnimData);
 		m_CharacterAnimComp.SetCurrentCommand(m_CmdLoiter);
 	}
 

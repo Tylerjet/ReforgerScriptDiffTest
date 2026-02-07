@@ -22,6 +22,9 @@ class SCR_HintUIInfo : SCR_BlockUIInfo
 	[Attribute(SCR_Enum.GetDefault(EFieldManualEntryId.NONE), UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EFieldManualEntryId))]
 	protected EFieldManualEntryId m_FieldManualLink;
 	
+	[Attribute("0", desc: "True will make hint visible across menues. E.g. hint opened in inventory will stay will be reopened in hud once player leave inventory.")]
+	protected bool m_bPersistent;
+	
 	protected int m_iSequencePage;
 	protected int m_iSequenceCount;
 	protected WorldTimestamp m_iTimeHintStarted;
@@ -134,6 +137,18 @@ class SCR_HintUIInfo : SCR_BlockUIInfo
 		return m_iSequenceCount != 0;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	bool IsPersistent()
+	{
+		return m_bPersistent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPersistent(bool persistent)
+	{
+		m_bPersistent = persistent;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! 
 	//! \param description

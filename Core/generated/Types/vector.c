@@ -112,8 +112,9 @@ sealed class vector
 	*/
 	proto external vector Perpend();
 	/*!
-	\brief Returns direction vector from point p1 to point p2
-			\param p1 \p vector point from
+	\brief Returns direction vector from point p1 to point p2.
+		\warning Output vector is NOT normalized.
+		\param p1 \p vector point from
 		\param p2 \p vector point to
 		\return \p vector direction vector
 	*/

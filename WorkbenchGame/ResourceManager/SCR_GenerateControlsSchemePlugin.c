@@ -35,13 +35,13 @@ class SCR_GenerateControlsSchemePlugin : WorkbenchPlugin
 			return false;
 		}
 
-		float tL1 = 280;
-		float lL1 = 290;
-		float lL2 = 370;
+		const float tL1 = 280;
+		const float lL1 = 290;
+		const float lL2 = 370;
 
-		float tR1 = 800;
-		float lR1 = 790;
-		float lR2 = 710;
+		const float tR1 = 800;
+		const float lR1 = 790;
+		const float lR2 = 710;
 
 		map<string, ref SCR_GenerateControlsSchemeGamepadLabel> labels = new map<string, ref SCR_GenerateControlsSchemeGamepadLabel>();
 		labels.Insert("gamepad0:view", 						new SCR_GenerateControlsSchemeGamepadLabel("end", 	500, 040, 510, 510, 035, 510, 245));

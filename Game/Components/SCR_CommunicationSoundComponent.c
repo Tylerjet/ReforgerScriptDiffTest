@@ -49,6 +49,14 @@ enum SCR_ECommunicationSoundEventPriority
 	SOUND_KNOCKOUT = 99
 }
 
+void OnSoundEventStartedDelegate(SCR_CommunicationSoundComponent component, string eventName, AudioHandle handle, int priority);
+typedef func OnSoundEventStartedDelegate;
+typedef ScriptInvokerBase<OnSoundEventStartedDelegate> OnSoundEventStartedInvoker;
+
+void OnSoundEventFinishedDelegate(SCR_CommunicationSoundComponent component, string eventName, AudioHandle handle, int priority, bool terminated);
+typedef func OnSoundEventFinishedDelegate;
+typedef ScriptInvokerBase<OnSoundEventFinishedDelegate> OnSoundEventFinishedInvoker;
+
 class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 {
 	protected SignalsManagerComponent m_SignalsManagerComponent;
@@ -61,6 +69,8 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	protected SCR_ECommunicationSoundEventPriority m_eDelayedSoundEventPriority;
 	protected EDamageType m_eEDamageType;
 	protected int m_iHitScreamIntensity;
+	protected ref OnSoundEventStartedInvoker m_OnSoundEventStarted;
+	protected ref OnSoundEventFinishedInvoker m_OnSoundEventFinished;
 	
 	protected int m_iDamageTypeSignalIdx;
 	protected int m_iHitScreamIntensitySignalIdx;
@@ -223,6 +233,24 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	OnSoundEventStartedInvoker GetOnSoundEventStarted()
+	{
+		if (!m_OnSoundEventStarted)
+			m_OnSoundEventStarted = new OnSoundEventStartedInvoker();
+
+		return m_OnSoundEventStarted;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	OnSoundEventFinishedInvoker GetOnSoundEventFinished()
+	{
+		if (!m_OnSoundEventFinished)
+			m_OnSoundEventFinished = new OnSoundEventFinishedInvoker();
+
+		return m_OnSoundEventFinished;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SCR_CallsignBaseComponent callsignBaseComponent = SCR_CallsignBaseComponent.Cast(owner.FindComponent(SCR_CallsignBaseComponent));
@@ -248,9 +276,17 @@ class SCR_CommunicationSoundComponent : CommunicationSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnSoundEventStarted(string eventName, AudioHandle handle, int priority)
+	{
+		if (m_OnSoundEventStarted)
+			m_OnSoundEventStarted.Invoke(this, eventName, handle, priority);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnSoundEventFinished(string eventName, AudioHandle handle, int priority, bool terminated)
 	{
-		// do nothing
+		if (m_OnSoundEventFinished)
+			m_OnSoundEventFinished.Invoke(this, eventName, handle, priority, terminated);
 	}
 	
 	//------------------------------------------------------------------------------------------------

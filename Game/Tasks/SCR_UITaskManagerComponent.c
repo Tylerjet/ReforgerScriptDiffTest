@@ -598,6 +598,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 			return;
 
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		if (mapEntity && mapEntity.IsOpen())
+			return;
+		
 		if (mapEntity && !mapEntity.IsOpen())
 			GetGame().GetInputManager().AddActionListener("TasksClose", EActionTrigger.DOWN, Action_TasksClose);
 
@@ -669,6 +672,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		{
 			PanMapToTask(task: m_SelectedTask);
 		}
+		
+		Action_TasksClose();
 	}
 
 	//------------------------------------------------------------------------------------------------

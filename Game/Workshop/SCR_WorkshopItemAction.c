@@ -15,6 +15,9 @@ From this class other classes are derived which represent specific operation typ
 
 class SCR_WorkshopItemAction
 {	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old untyped script invokers, const ints instead of an enum, and a code architecture issue with m_Wrapper, as SCR_WorkshopItem and SCR_WorkshopItemAction include each other and are supposed to be tigtly coupled, but they can also end up holding unrelated instances: add actions persisting after failing/canceling for UI display purposes, and states often updating the next frame at the earliest, and it gets rather hard to ensure what data is available at what time
+	
 	ref ScriptInvoker m_OnActivated = new ScriptInvoker;
 	ref ScriptInvoker m_OnCompleted = new ScriptInvoker;
 	ref ScriptInvoker m_OnCanceled = new ScriptInvoker;
@@ -31,10 +34,13 @@ class SCR_WorkshopItemAction
 	protected const int STATE_CANCELED = 4;
 	protected const int STATE_PAUSED = 5;
 	
-	
 	// ---- Protected ----
 	protected int m_State;
+
 	SCR_WorkshopItem m_Wrapper;
+	
+//---- REFACTOR NOTE END ----
+	
 	protected bool m_bAttached;
 	protected ref Managed m_UserData; // Arbitrary user data, use GetUserData() SetUserData().
 
@@ -373,7 +379,9 @@ class SCR_WorkshopItemAction
 		m_OnChanged.Invoke(this);
 	}
 	
-	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Just a formatting note: as far as I know we don't want inline return
+		
 	//------------------------------------------------------------------------------------------------
 	//! These methods must be overridden in derived classes to implement the functionality.
 	//! If the specific action can't be paused, canceled, or resumed, the methods must return false.
@@ -384,6 +392,8 @@ class SCR_WorkshopItemAction
 	protected bool OnReactivate() { return false; }
 	protected void OnFail(int reason = -1);
 	protected void OnComplete();
+	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called on each frame by the SCR_WorkshopItem which owns it.
@@ -403,6 +413,8 @@ class SCR_WorkshopItemAction
 	}
 };
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// auto
 
 //! Composite action which includes multiple subactions
 class SCR_WorkshopItemActionComposite : SCR_WorkshopItemAction
@@ -489,4 +501,6 @@ class SCR_WorkshopItemActionComposite : SCR_WorkshopItemAction
 		foreach (auto a : m_aActions)
 			a.Activate();
 	}
+	
+	//---- REFACTOR NOTE END ----
 };

@@ -3,7 +3,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 {
 	static const string PORT_MOVE_RESULT = "MoveResult";
 	static const string PORT_HANDLER_ID = "FailedHandlerId";
-	static const string PORT_IS_WAYPOINT_RELEATED = "IsWaypointReleated";
+	static const string PORT_IS_WAYPOINT_RELATED = "IsWaypointRelated";
 	static const string PORT_MOVE_LOCATION = "MoveLocation";
 
 	SCR_AIGroup m_Group;
@@ -44,8 +44,8 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 		int failedHandlerId;
 		GetVariableIn(PORT_HANDLER_ID, failedHandlerId);
 		
-		bool isWaypointReleated;
-		GetVariableIn(PORT_IS_WAYPOINT_RELEATED, isWaypointReleated);
+		bool isWaypointRelated;
+		GetVariableIn(PORT_IS_WAYPOINT_RELATED, isWaypointRelated);
 		
 		vector moveLocation;
 		GetVariableIn(PORT_MOVE_LOCATION, moveLocation);
@@ -66,12 +66,12 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 		}
 		
 		// Ivoke event about failed movement
-		m_GroupUtilityComponent.OnMoveFailed(moveResult, vehicleUsed, isWaypointReleated, moveLocation);
+		m_GroupUtilityComponent.OnMoveFailed(moveResult, vehicleUsed, isWaypointRelated, moveLocation);
 		
 		// Failed movement
 		if (moveResult == EMoveRequestResult.Failed)
 		{
-			if (isWaypointReleated)
+			if (isWaypointRelated)
 			{
 				SCR_AIActivityBase activity = SCR_AIActivityBase.Cast(m_GroupUtilityComponent.GetCurrentAction());
 				
@@ -105,7 +105,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 #ifdef WORKBENCH
 			PrintDebug(owner, string.Format("Move failed with result %1 to location %2, failing action.", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult), moveLocation));
 #endif
-			if (isWaypointReleated)
+			if (isWaypointRelated)
 				CompleteWaypoint();
 			
 			// Fail action
@@ -122,7 +122,8 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 			// If failed because the driver is dead, we dont need to leave vehicle
 			if (moveResult != EMoveRequestResult.EntityCantMove) 
 			{
-				SCR_AIGetOutActivity getOut = new SCR_AIGetOutActivity(m_GroupUtilityComponent, null, vehicleUsed);
+				// higher priority to overwrite conflicting forced move priorities
+				SCR_AIGetOutActivity getOut = new SCR_AIGetOutActivity(m_GroupUtilityComponent, null, vehicleUsed, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY, priorityLevel: SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
 				m_GroupUtilityComponent.AddAction(getOut);
 			}
 			
@@ -174,7 +175,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 
 	//------------------------------------------------------------------------------------------------
-	protected static ref TStringArray s_aVarsIn = {PORT_MOVE_RESULT, PORT_HANDLER_ID, PORT_IS_WAYPOINT_RELEATED, PORT_MOVE_LOCATION};
+	protected static ref TStringArray s_aVarsIn = {PORT_MOVE_RESULT, PORT_HANDLER_ID, PORT_IS_WAYPOINT_RELATED, PORT_MOVE_LOCATION};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
 	//------------------------------------------------------------------------------------------------

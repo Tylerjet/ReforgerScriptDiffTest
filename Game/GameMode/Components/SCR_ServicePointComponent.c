@@ -19,6 +19,8 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 
 	protected SCR_FactionAffiliationComponent m_FactionControl;
 	protected static bool s_bSpawnAsOffline;
+	protected ref ScriptInvoker<SCR_ServicePointComponent, SCR_MilitaryBaseComponent> m_OnBaseRegistered;
+	protected ref ScriptInvoker<SCR_ServicePointComponent, SCR_MilitaryBaseComponent> m_OnBaseUnregistered;
 	protected ref ScriptInvoker m_OnServiceStateChanged;
 	protected SCR_ServicePointDelegateComponent m_Delegate;
 
@@ -42,7 +44,27 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	{
 		return m_sDelegatePrefab;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Invoker that gets called when a base gets registered.
+	ScriptInvoker<SCR_ServicePointComponent, SCR_MilitaryBaseComponent> GetOnBaseRegistered()
+	{
+		if (!m_OnBaseRegistered)
+			m_OnBaseRegistered = new ScriptInvoker<SCR_ServicePointComponent, SCR_MilitaryBaseComponent>();
 
+		return m_OnBaseRegistered;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Invoker that gets called when a base gets unregistered.
+	ScriptInvoker<SCR_ServicePointComponent, SCR_MilitaryBaseComponent> GetOnBaseUnregistered()
+	{
+		if (!m_OnBaseUnregistered)
+			m_OnBaseUnregistered = new ScriptInvoker<SCR_ServicePointComponent, SCR_MilitaryBaseComponent>();
+
+		return m_OnBaseUnregistered;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	ScriptInvoker GetOnServiceStateChanged()
@@ -101,10 +123,22 @@ class SCR_ServicePointComponent : SCR_MilitaryBaseLogicComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override void OnBaseRegistered(notnull SCR_MilitaryBaseComponent base)
+	{
+		super.OnBaseRegistered(base);
+		
+		if (m_OnBaseRegistered)
+			m_OnBaseRegistered.Invoke(this, base);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnBaseUnregistered(notnull SCR_MilitaryBaseComponent base)
 	{
 		if (m_OnServiceStateChanged)
 			m_OnServiceStateChanged.Invoke(SCR_EServicePointStatus.DELETED, this);
+		
+		if (m_OnBaseUnregistered)
+			m_OnBaseUnregistered.Invoke(this, base);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -24,12 +24,10 @@ class TextureUtils
 {
 	array<string> GetEdds(ResourceName path, bool guidFormat)
 	{
-		string textureType;
 		string colorSpace;
 		bool containsMips;
 		string conversion;
-		BaseContainer eddsCont;
-
+		
 		if (!(FilePath.IsAbsolutePath(path)))
 		{
 			Workbench.GetAbsolutePath(path.GetPath(), path, true);
@@ -48,12 +46,12 @@ class TextureUtils
 			return {};
 		}
 
-		BaseContainerList configurations = meta.GetObjectArray(EBTConfig.conf);
+		BaseContainerList configurations = meta.GetObjectArray(EBTContainerFields.conf);
 		BaseContainer cfg = configurations.Get(0);
 		// getting info
-		cfg.Get(EBTConfig.conversion, conversion);
-		cfg.Get(EBTConfig.colorSpace, colorSpace);
-		cfg.Get(EBTConfig.mips, containsMips);
+		cfg.Get(EBTContainerFields.conversion, conversion);
+		cfg.Get(EBTContainerFields.colorSpace, colorSpace);
+		cfg.Get(EBTContainerFields.mips, containsMips);
 
 		string resourceType = cfg.GetClassName();
 
@@ -61,21 +59,21 @@ class TextureUtils
 		// don't need anything else than TosRGB and ToLinear
 		if (colorSpace == "1")
 		{
-			colorSpace = EBTConfig.tosRGB;
+			colorSpace = EBTContainerFields.tosRGB;
 		}
 		else
 		{
-			colorSpace = EBTConfig.toLinear;
+			colorSpace = EBTContainerFields.toLinear;
 		}
 		
 		// translating int conversion to string
 		switch (conversion)
 		{
 			case "3":
-				conversion = EBTConfig.rgHQCompression;
+				conversion = EBTContainerFields.rgHQCompression;
 				break;
 			case "8":
-				conversion = EBTConfig.colorHQCompression;
+				conversion = EBTContainerFields.colorHQCompression;
 				break;
 			default:
 				conversion = "*"; // If needed add more types of Compression
@@ -121,13 +119,13 @@ class TextureInfo : NetApiHandler
 		}
 		
 		// convert Color space for Blender
-		if (response.textureInfo[0] == EBTConfig.toLinear)
+		if (response.textureInfo[0] == EBTContainerFields.toLinear)
 		{
-			response.textureInfo[0] = EBTConfig.raw;
+			response.textureInfo[0] = EBTContainerFields.raw;
 		}
 		else
 		{
-			response.textureInfo[0] = EBTConfig.sRGB;
+			response.textureInfo[0] = EBTContainerFields.sRGB;
 		}
 		
 		// Strip path and extension from ResourceName, only Name and suffix needed

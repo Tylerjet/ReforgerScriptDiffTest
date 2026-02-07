@@ -11,7 +11,7 @@ class SCR_EditableEntityMaintenancePlugin : WorkbenchPlugin
 	//[Attribute("MeshObject RigidBody RplComponent Hierarchy SCR_DestructionMultiPhaseComponent")]
 	//private ref array<string> m_aCheckedComponents;
 
-	protected const ref array<string> UNIQUE_COMPONENTS = { "MeshObject", "RigidBody", "RplComponent", "Hierarchy", "SCR_DestructionMultiPhaseComponent" };
+	protected static const ref array<string> UNIQUE_COMPONENTS = { "MeshObject", "RigidBody", "RplComponent", "Hierarchy", "SCR_DestructionMultiPhaseComponent" };
 
 	//------------------------------------------------------------------------------------------------
 	override void Run()

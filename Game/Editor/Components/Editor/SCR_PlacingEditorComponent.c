@@ -427,6 +427,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			{
 				params.m_Offset = offsets[permutation[i]];
 				entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, recipient, canBePlayer);
+				
+				entity.SetAuthor(playerID);
+				
 				entities.Insert(entity);
 				entityIds.Insert(Replication.FindId(entity));
 			}
@@ -437,6 +440,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		{
 			//--- Spawn stand-alone entity
 			entity = SpawnEntityResource(params, prefabResource, playerID, isQueue, null, canBePlayer);
+			
+			entity.SetAuthor(playerID);
+			
 			entities.Insert(entity);
 			entityIds.Insert(Replication.FindId(entity));
 			currentLayerID = Replication.FindId(params.m_CurrentLayer);
@@ -735,7 +741,6 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			owner.GetWorldTransform(logTransform);
 		else
 			params.GetWorldTransform(logTransform);
-		
 		
 		if (recipient)
 			Print(string.Format("@\"%1\" placed for %3 at %2", prefabResource.GetResource().GetResourceName().GetPath(), logTransform, recipient.GetDisplayName()), LogLevel.VERBOSE);

@@ -60,7 +60,7 @@ class SCR_AICombatMoveLogic_MoveFromIncomingVehicle : AITaskScripted
 			rq.m_eMovementType = EMovementType.SPRINT;
 			rq.m_fCoverSearchDistMax = 9;
 			rq.m_fCoverSearchDistMin = 0;
-			rq.m_fMoveDistance = rq.m_fCoverSearchDistMax;
+			rq.m_fMoveDuration_s = rq.m_fCoverSearchDistMax / SCR_AICombatMoveUtils.CHARACTER_SPEED_STAND_SPRINT;
 			rq.m_eDirection = CalculateVehicleAvoidDirection(vehicleEntity);
 			rq.m_fCoverSearchSectorHalfAngleRad = -Math.PI; // Full circle
 			

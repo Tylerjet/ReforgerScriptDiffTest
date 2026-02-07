@@ -1,0 +1,22 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Components
+\{
+*/
+
+class LongRangeSoundComponentClass: GameComponentClass
+{
+}
+
+class LongRangeSoundComponent: GameComponent
+{
+}
+
+/*!
+\}
+*/

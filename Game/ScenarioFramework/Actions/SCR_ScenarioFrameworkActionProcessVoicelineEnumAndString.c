@@ -10,8 +10,8 @@ class SCR_ScenarioFrameworkActionProcessVoicelineEnumAndString : SCR_ScenarioFra
 		if (!CanActivate())
 			return;
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
 		SCR_BaseTaskManager taskManager = GetTaskManager();
@@ -26,7 +26,7 @@ class SCR_ScenarioFrameworkActionProcessVoicelineEnumAndString : SCR_ScenarioFra
 		{
 			SCR_ScenarioFrameworkTask frameworkTask = SCR_ScenarioFrameworkTask.Cast(task);
 			if (frameworkTask)
-				manager.ProcessVoicelineEnumAndString(targetEnum, frameworkTask.m_sTaskIntroVoiceline)
+				scenarioFrameworkSystem.ProcessVoicelineEnumAndString(targetEnum, frameworkTask.m_sTaskIntroVoiceline)
 		}
 	}
 }

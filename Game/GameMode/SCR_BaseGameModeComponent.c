@@ -117,18 +117,15 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! See SCR_BaseGameMode.HandlePlayerKilled.
-	bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator)
 	{
 		return true; // by default, handle automatically
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Called after a player gets killed.
-	//! \param[in] playerId PlayerId of victim player.
-	//! \param[in] playerEntity entity of victim player if any.
-	//! \param[in] killerEntity Entity of killer instigator if any.
-	//! \param[in] killer Instigator of the kill
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer);
+	//! \param[in] instigatorContextData Holds the data of the victim and killer
+	void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called after player gets killed in cases where the kill was handled by the game mode,
@@ -136,8 +133,8 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	//! \param[in] playerId PlayerId of victim player.
 	//! \param[in] playerEntity Entity of victim player if any.
 	//! \param[in] killerEntity Entity of killer instigator if any.
-	//! \param[in] killer Instigator of the kill
-	void OnPlayerKilledHandled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer);
+	//! \param[in] instigator Instigator of the kill
+	void OnPlayerKilledHandled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator);
 
 	//------------------------------------------------------------------------------------------------
 	//! Called after a player gets deleted.
@@ -178,11 +175,8 @@ class SCR_BaseGameModeComponent : ScriptComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! When a controllable entity is destroyed, this event is raised.
-	//! Entity is destroyed when DamageManager.OnStateChanged -> EDamageState.Destroyed
-	//! \param[in] entity Destroyed entity that raised this event
-	//! \param[in] killerEntity Instigator entity that destroyed our victim
-	//! \param[in] killer Instigator of the kill
-	void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer);
+	//! \param[in] instigatorContextData Holds the data of the victim and killer
+	void OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Prior to a controllable entity being DELETED, this event is raised.

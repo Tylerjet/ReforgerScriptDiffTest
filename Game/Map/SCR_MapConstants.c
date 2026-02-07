@@ -31,7 +31,8 @@ enum EMapEntityMode
 	EDITOR,
 	SPAWNSCREEN,
 	MINIMAP,
-	PLAIN
+	PLAIN,
+	TUTORIALFASTTRAVEL
 };
 
 //------------------------------------------------------------------------------------------------

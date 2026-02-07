@@ -629,9 +629,18 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		else
 			Math3D.MatrixIdentity4(resultWorldTransform);
 		
+		if (pOutResult.m_bNoParent)
+		{
+			vector ypr = {Math3D.MatrixToAngles(resultWorldTransform)[0], 0.0, 0.0};
+			Math3D.AnglesToMatrix(ypr, resultWorldTransform);
+		}
+		
 		vector hipBoneWS[4];
 		m_OwnerCharacter.GetAnimation().GetBoneMatrix(m_iHipsBoneIndex, hipBoneWS); 
-		Math3D.MatrixMultiply4(resultWorldTransform, hipBoneWS, hipBoneWS);
+		if (pOutResult.m_bNoParent)
+			Math3D.MatrixMultiply4(ownerTransformWS, hipBoneWS, hipBoneWS);
+		else
+			Math3D.MatrixMultiply4(resultWorldTransform, hipBoneWS, hipBoneWS);
 
 		#ifdef ENABLE_DIAG // These things are only useful for showing the debug spheres.
 		vector camPos = pOutResult.m_CameraTM[3];
@@ -1102,7 +1111,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override float GetOverlayCameraFOVScalarWeight()
 	{
-		return m_fADSProgress;
+		return m_fADSProgress * m_fFocusValue;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1138,7 +1147,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		if (m_fADSProgress > 0)
 			sensitivity = Math.Lerp(1.0, s_fADSSensitivity, m_fADSProgress);
 
-		return sensitivity * fov / 90;
+		float referenceFOV = 28;
+		PlayerCamera playerCamera = PlayerCamera.Cast(mainCamera);
+		if (playerCamera)
+			referenceFOV = playerCamera.GetFocusFOV();
+
+		return sensitivity * fov / referenceFOV;
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -8,6 +8,8 @@ class SCR_ScenarioFrameworkLayerTaskKill : SCR_ScenarioFrameworkLayerTask
 	protected ref EntitySpawnParams m_SpawnParams = new EntitySpawnParams();
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity.
+	//! \return true if support entity is found and set, false otherwise.
 	override bool SetSupportEntity()
 	{
 		if (!GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskKillSupportEntity))

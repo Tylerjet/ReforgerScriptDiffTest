@@ -17,6 +17,7 @@ class CharacterMovementComponent: PawnMovementComponent
 {
 	proto external bool HasRootMotion();
 	proto external bool SetRootMotion(bool rootMotion);
+	proto external vector GetAccelerationWS();
 	proto external vector GetVelocityWS();
 	proto external vector GetVelocityMS();
 	proto external vector GetAngularVelocity();
@@ -31,6 +32,8 @@ class CharacterMovementComponent: PawnMovementComponent
 	proto external void SetJumpInput(bool state);
 	proto external bool IsMovingOnGround();
 	proto external bool IsFalling();
+	proto external bool CanChangeCollisionShape(string shapeName);
+	proto external void ChangeCollisionShape(string shapeName);
 }
 
 /*!

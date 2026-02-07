@@ -256,6 +256,12 @@ class SCR_ListMenuEntryComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool IsAvailable()
+	{
+		return !m_bUnavailable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvokerString GetOnMouseInteractionButtonClicked()
 	{
 		if (!m_OnMouseInteractionButtonClicked)

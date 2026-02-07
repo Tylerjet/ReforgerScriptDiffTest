@@ -508,7 +508,9 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 		componentPrefab.InitConditionLists(owner);
 		
 		m_Settings = new SCR_HintSettings();
-		LoadSettings();		
+		
+		// Call later so the HUDManager gets Initialized first and doesn't return null	
+		GetGame().GetCallqueue().Call(LoadSettings);	
 		GetGame().OnUserSettingsChangedInvoker().Insert(LoadSettings);
 		
 		GetGame().GetInputManager().AddActionListener("HintToggle", EActionTrigger.DOWN, Toggle);

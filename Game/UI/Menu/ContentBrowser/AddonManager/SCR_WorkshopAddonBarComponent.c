@@ -93,7 +93,7 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		// Mod count text
-		int nAddonsEnabled = SCR_AddonManager.CountItemsBasic(SCR_AddonManager.GetInstance().GetOfflineAddons(), EWorkshopItemQuery.ENABLED);
+		int nAddonsEnabled = SCR_AddonManager.CountItemsAnd(SCR_AddonManager.GetInstance().GetOfflineAddons(), EWorkshopItemQuery.ENABLED | EWorkshopItemQuery.ONLY_WORKSHOP_ITEM);
 		m_Widgets.m_PresetsButtonComponent.SetCountText(nAddonsEnabled.ToString());
 	}
 

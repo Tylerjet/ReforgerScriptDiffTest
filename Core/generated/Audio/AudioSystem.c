@@ -34,10 +34,12 @@ sealed class AudioSystem
 	static proto AudioHandle PlayEvent(string filename, string eventname, vector transf[], array<string> names = null, array<float> values = null);
 	static proto bool IsSoundPlayed(AudioHandle handle);
 	static proto void TerminateSound(AudioHandle handle);
-	//! Set transformation for given audio handle, return FALSE if audio handle is not valid.
+	//! Sets transformation for given audio handle, return FALSE if audio handle is not valid.
 	static proto bool SetSoundTransformation(AudioHandle handle, vector transf[]);
-	//! Return -1.0 for the inaudible event, otherwise return distance from passed position to listener.
+	//! Returns -1.0 for the inaudible event, otherwise, it returns the distance from the passed position to the listener.
 	static proto float IsAudible(string filepath, string eventName, vector position);
+	//! Returns distance to the listener.
+	static proto float GetDistance(vector position);
 	/*
 	Allow update bounding volume for existing audio source.
 		BV_Sphere	: param0 = radius

@@ -14,7 +14,7 @@ class SCR_AIPerformActionBehavior : SCR_AIBehaviorBase
 	//------------------------------------------------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " using smart action " + m_SmartActionComponent.ValueToString();
+		return this.ToString() + " using smart action " + m_SmartActionComponent.m_Value.ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------------------------

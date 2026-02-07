@@ -255,7 +255,7 @@ class SCR_SoundManagerEntity : GenericEntity
 			SCR_AudioSource audioSource = m_aAudioSource[i];
 			
 			if (audioSource.m_Owner == entity)
-				audioSource.Ternimate();
+				audioSource.Terminate();
 		}
 	}
 	
@@ -271,7 +271,7 @@ class SCR_SoundManagerEntity : GenericEntity
 			return;	
 		
 		// Terminate sound
-		audioSource.Ternimate();
+		audioSource.Terminate();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -282,7 +282,7 @@ class SCR_SoundManagerEntity : GenericEntity
 	{		
 		foreach (SCR_AudioSource audioSource : m_aAudioSource)
 		{
-			audioSource.Ternimate();
+			audioSource.Terminate();
 		}
 	}
 		
@@ -314,7 +314,7 @@ class SCR_SoundManagerEntity : GenericEntity
 				// Remove audio source if parent entity was deleted
 				if (!SCR_Enum.HasFlag(audioSource.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.FinishWhenEntityDestroyed) && !audioSource.m_InteriorRequestCallback)
 				{
-					audioSource.Ternimate();
+					audioSource.Terminate();
 					m_aAudioSource.Remove(i);
 				}
 			}

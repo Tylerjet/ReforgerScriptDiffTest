@@ -16,6 +16,9 @@ class PauseMenuUI: ChimeraMenuBase
 	protected SCR_ButtonTextComponent m_EditorPhotoCloseButton;
 	
 	protected SCR_SaveLoadComponent m_SavingComponent;
+	protected ref SCR_SaveManagerCore m_SaveManager;
+	
+	protected ref SCR_ConfigurableDialogUi m_ExitDialog;
 	
 	const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
 	const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
@@ -31,6 +34,9 @@ class PauseMenuUI: ChimeraMenuBase
 	const string LOAD_MESSAGE = "#AR-PauseMenu_LoadText";
 	const string LOAD_TITLE = "#AR-PauseMenu_Load";
 	const string LOAD_IMAGE = "up";
+	
+	const string DIALOG_SCENARIO_EXIT = "scenario_exit";
+	const string DIALOG_SAVE_FAILED = "pause_menu_save_failed";
 		
 	static ref ScriptInvoker m_OnPauseMenuOpened = new ScriptInvoker();
 	static ref ScriptInvoker m_OnPauseMenuClosed = new ScriptInvoker();
@@ -65,6 +71,7 @@ class PauseMenuUI: ChimeraMenuBase
 		s_Instance = this;
 		
 		m_SavingComponent = SCR_SaveLoadComponent.GetInstance();
+		m_SaveManager = GetGame().GetSaveManager();
 
 		m_wRoot = GetRootWidget();
 		m_wFade = m_wRoot.FindAnyWidget("BackgroundFade");
@@ -72,6 +79,11 @@ class PauseMenuUI: ChimeraMenuBase
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		SCR_ButtonTextComponent comp;
 
+		// Pause game
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.PauseGame(true, SCR_EPauseReason.MENU);
+		
 		// Continue
 		comp = SCR_ButtonTextComponent.GetButtonText("Continue", m_wRoot);
 		if (comp)
@@ -90,19 +102,18 @@ class PauseMenuUI: ChimeraMenuBase
 		}
 
 		// Respawn
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+		SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
 		
 		comp = SCR_ButtonTextComponent.GetButtonText("Respawn", m_wRoot);
 		if (comp)
 		{			
-			if (campaign && campaign.IsTutorial())
+			if (respawnComponent && !respawnComponent.IsPauseMenuRespawnEnabled())
 			{
 				comp.SetVisible(false);
 			}
 			else
 			{
 				bool canRespawn;
-				BaseGameMode gameMode = GetGame().GetGameMode();
 				if (gameMode)
 				{
 					RespawnSystemComponent respawn = RespawnSystemComponent.Cast(gameMode.FindComponent(RespawnSystemComponent));
@@ -175,19 +186,23 @@ class PauseMenuUI: ChimeraMenuBase
 		}
 		
 		// Tutorial HUB
+		//TODO> Rename
 		comp = SCR_ButtonTextComponent.GetButtonText("ReturnHUB", m_wRoot);
 		
 		if (comp)
-			if (!campaign)
+		{
+			SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
+		
+			if (tutorial && tutorial.CanBreakCourse())
+			{
+				comp.SetVisible(true);
+				comp.m_OnClicked.Insert(OnCourseBreak);
+			}
+			else
+			{
 				comp.SetVisible(false);
-			else 
-				if (campaign.IsTutorial())
-				{
-					comp.SetVisible(true);
-					comp.m_OnClicked.Insert(OnReturnToHub);
-				}
-				else
-					comp.SetVisible(false);
+			}
+		}
 
 		// Camera
 		comp = SCR_ButtonTextComponent.GetButtonText("Camera", m_wRoot);
@@ -208,6 +223,25 @@ class PauseMenuUI: ChimeraMenuBase
 		if (comp)
 		{
 			comp.m_OnClicked.Insert(OnFieldManual);
+		}
+		
+		// Group menu
+		comp = SCR_ButtonTextComponent.GetButtonText("GroupMenu", m_wRoot);
+		if (comp)
+		{
+			SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!groupManager || !groupManager.IsGroupMenuAllowed() || System.GetPlatform() == EPlatform.WINDOWS || System.GetPlatform() == EPlatform.LINUX)
+				comp.GetRootWidget().SetVisible(false);
+			
+			comp.m_OnClicked.Insert(OnGroupMenu);
+			
+		}
+		
+		// Block list
+		comp = SCR_ButtonTextComponent.GetButtonText("BlockList", m_wRoot);
+		if (comp)
+		{
+			comp.m_OnClicked.Insert(OnBlockList);
 		}
 
 		// Players
@@ -272,6 +306,16 @@ class PauseMenuUI: ChimeraMenuBase
 		
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_OPEN);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnCourseBreak()
+	{
+		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
+		if (!tutorial)
+			return;
+		
+		tutorial.RequestBreakCourse(SCR_ETutorialBreakType.FORCED);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuShow()
@@ -303,6 +347,11 @@ class PauseMenuUI: ChimeraMenuBase
 	override void OnMenuClose()
 	{
 		s_Instance = null;
+		
+		// Unpause
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameMode.PauseGame(false, SCR_EPauseReason.MENU);
 		
 		SCR_HUDManagerComponent hud = GetGame().GetHUDManager();
 		if (hud)
@@ -360,32 +409,33 @@ class PauseMenuUI: ChimeraMenuBase
 	{
 		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.FieldManualDialog);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	private void OnReturnToHub()
+	private void OnGroupMenu()
 	{
-		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
-		
-		if (!campaign)
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager || !groupManager.IsGroupMenuAllowed())
 			return;
 		
-		SCR_CampaignTutorialArlandComponent component = SCR_CampaignTutorialArlandComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialArlandComponent));
-		
-		component.SetActiveConfig(0);
-		
-		GetGame().GetMenuManager().CloseAllMenus();
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.GroupMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	private void OnBlockList()
+	{
+		SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, "blocked_list", dialog);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	private void OnExit()
 	{
 		// Create exit dialog
-		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_exit");
-		if (!dialog)
+		m_ExitDialog = SCR_CommonDialogs.CreateDialog(DIALOG_SCENARIO_EXIT);
+		if (!m_ExitDialog)
 			return;
 		
-		dialog.m_OnConfirm.Insert(OnExitConfirm);
-		
+		m_ExitDialog.m_OnConfirm.Insert(OnExitConfirm);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -397,28 +447,62 @@ class PauseMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	private void OnExitConfirm()
 	{
-		if (IsSavingOnExit())
+		m_ExitDialog.m_OnConfirm.Remove(OnExitConfirm);
+		
+		if (m_SaveManager && IsSavingOnExit())
 		{
 			//--- Close only after the save file was created
-			GetGame().GetSaveManager().GetOnSaved().Insert(OnSaved);
-			GetGame().GetSaveManager().Save(ESaveType.AUTO);
+			m_SaveManager.GetOnSaveFailed().Insert(OnSaveFailed);
+			m_SaveManager.GetOnSaved().Insert(OnSaved);
+			m_SaveManager.Save(ESaveType.AUTO);
 		}
 		else
 		{
 			//--- Close instantly
-			Close();
-			GameStateTransitions.RequestGameplayEndTransition();
+			CloseToMainMenu();
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnSaved(ESaveType type, string fileName)
 	{
-		GetGame().GetSaveManager().GetOnSaved().Remove(OnSaved);
+		if (m_SaveManager)
+		{
+			m_SaveManager.GetOnSaved().Remove(OnSaved);
+			m_SaveManager.GetOnSaveFailed().Remove(OnSaveFailed);
+		}
+		
+		CloseToMainMenu();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSaveFailed(ESaveType type, string fileName)
+	{
+		m_ExitDialog.Close();
+		
+		if (m_SaveManager)
+		{
+			m_SaveManager.GetOnSaved().Remove(OnSaved);
+			m_SaveManager.GetOnSaveFailed().Remove(OnSaveFailed);
+		}
+		
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(DIALOG_SAVE_FAILED);
+		if (!dialog)
+			return;
+		
+		dialog.m_OnConfirm.Insert(CloseToMainMenu);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CloseToMainMenu()
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		world.PauseGameTime(false);
+		
 		Close();
 		GameStateTransitions.RequestGameplayEndTransition();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	private void OnEditorUnlimited()
 	{
@@ -666,7 +750,7 @@ class PauseMenuUI: ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected bool IsSavingOnExit()
 	{
-		return !Replication.IsRunning() && GetGame().GetSaveManager().CanSave(ESaveType.AUTO) && m_SavingComponent && m_SavingComponent.CanSaveOnExit();
+		return !Replication.IsRunning() && m_SaveManager.CanSave(ESaveType.AUTO) && m_SavingComponent && m_SavingComponent.CanSaveOnExit();
 	}
 };
 

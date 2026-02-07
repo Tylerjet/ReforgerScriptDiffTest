@@ -136,6 +136,17 @@ class SCR_PlayMenu : MenuRootBase
 		// Set starting focused tile
 		if (m_aEntriesRecommended.Count() > 0)
 			m_Recommended.SetFocusedItem(0);
+		
+		// Hide news menu button (top right corner) on PS
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			Widget newsButton = GetRootWidget().FindAnyWidget("NewsButton");
+			if (newsButton)
+			{
+				newsButton.SetVisible(false);
+				newsButton.SetEnabled(false);
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -438,20 +449,9 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Continue(MissionWorkshopItem scenario)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
-			return;
-		
+	 	SCR_ScenarioUICommon.LoadSave(scenario, m_CurrentTile.m_Header, ChimeraMenuPreset.PlayMenu);
 		m_SelectedScenario = scenario;
-		
-		SCR_MissionHeader header = m_CurrentTile.m_Header;
-		if (header && !header.GetSaveFileName().IsEmpty())
-			GetGame().GetSaveManager().SetFileNameToLoad(header);
-		else
-			GetGame().GetSaveManager().ResetFileNameToLoad();
-
 		PlayCurrentScenario();
-
-		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.PlayMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -539,7 +539,7 @@ class SCR_PlayMenu : MenuRootBase
 	protected void FindCurrentScenarioServers()
 	{
 		if (m_SelectedScenario)
-			ServerBrowserMenuUI.OpenWithScenarioFilter(m_SelectedScenario);
+			ServerBrowserMenuUI.TryOpenServerBrowserWithScenarioFilter(m_SelectedScenario);
 	}
 
 	//------------------------------------------------------------------------------------------------

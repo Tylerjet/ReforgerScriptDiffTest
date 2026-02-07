@@ -1,4 +1,5 @@
-//------------------------------------------------------------------------------------------------
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Separate file
 //! Exploding material type
 enum SCR_ESecondaryExplosionType
 {
@@ -10,7 +11,6 @@ enum SCR_ESecondaryExplosionType
 	RESOURCE
 }
 
-//------------------------------------------------------------------------------------------------
 //! Fire state definitions
 enum SCR_ESecondaryExplosionScale
 {
@@ -20,8 +20,8 @@ enum SCR_ESecondaryExplosionScale
 	LARGE,
 	MASSIVE
 }
+//---- REFACTOR NOTE END ----
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true)]
 class SCR_SecondaryExplosions
 {
@@ -95,7 +95,6 @@ class SCR_SecondaryExplosions
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_SecondaryExplosionTypeContainerTitle()]
 class SCR_SecondaryExplosionType
 {
@@ -196,7 +195,6 @@ class SCR_SecondaryExplosionType
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_SecondaryExplosionTypeContainerTitle : BaseContainerCustomTitle
 {
 	//------------------------------------------------------------------------------------------------
@@ -211,7 +209,6 @@ class SCR_SecondaryExplosionTypeContainerTitle : BaseContainerCustomTitle
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps(), SCR_SecondaryExplosionContainerTitle()]
 class SCR_SecondaryExplosion
 {
@@ -228,7 +225,6 @@ class SCR_SecondaryExplosion
 	ResourceName m_sSecondaryFireParticles;
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_SecondaryExplosionContainerTitle : BaseContainerCustomTitle
 {
 	//------------------------------------------------------------------------------------------------

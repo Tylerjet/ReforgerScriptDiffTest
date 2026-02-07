@@ -231,7 +231,7 @@ class SCR_PositionEditorAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	
 	protected string CapValueToString(float value)
 	{
-		int decimals = 2;
+		const int decimals = 2;
 		
 		float coef = Math.Pow(10, decimals);
 		value = Math.Round(value * coef);

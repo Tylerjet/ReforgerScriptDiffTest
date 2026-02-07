@@ -21,14 +21,16 @@ class MaterialPreviewGetMapping : JsonApiStruct
 	string source_mat;
 	string emat_rel_path;
 	string mat_class;
-	string issue;
+	bool xobMissing;
+	ref array<string> matMissing = new array<string>;
 
 	void MaterialPreviewGetMapping()
 	{
 		RegV("source_mat");
 		RegV("emat_rel_path");
 		RegV("mat_class");
-		RegV("issue");
+		RegV("xobMissing");
+		RegV("matMissing");
 	}
 }
 
@@ -46,9 +48,10 @@ class MaterialPreviewUtils
 		bool meta = ematUtils.GetMaterials(xob, materials);
 		if(!meta)
 		{
-			mapping.issue = "Missing XOB";
+			mapping.xobMissing = true;
 			return;
 		}
+		
 		
 		for (int i = 0; i < materials.Count(); i++)
 		{
@@ -68,9 +71,10 @@ class MaterialPreviewUtils
 			Workbench.GetAbsolutePath(ematPath.GetPath(), absPathEmat);
 			if(!absPathEmat)
 			{
-				mapping.issue = "Emat file " + ematPath + " couldn't be found!";
+				mapping.matMissing.Insert(matName);
 			}
 			// set response values
+			
 			mapping.source_mat += matName + ";";
 			mapping.emat_rel_path += ematPath + ";";
 			mapping.mat_class += GetEmatClass(ematPath) + ";";
@@ -114,6 +118,9 @@ class MaterialMapping : NetApiHandler
 			mapping.mat_class = matutils.GetEmatClass(req.name);
 		}
 
+		Print(mapping.source_mat);
+		Print(mapping.mat_class);
+		Print(mapping.emat_rel_path);
 		return mapping;
 	}
 }

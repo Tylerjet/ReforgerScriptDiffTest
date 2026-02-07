@@ -13,6 +13,9 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, category: "Respawn System")]
 	protected bool m_bEnableRespawn;
 	
+	[Attribute("1", desc: "Handles visibility of the Respawn button in Pause menu.", category: "Respawn System")]
+	protected bool m_bEnablePauseMenuRespawn;
+	
 	[Attribute("1.5", desc: "Delay (in seconds) for opening deploy menu after death.")]
 	protected float m_fDeployMenuOpenDelay;
 	
@@ -245,6 +248,13 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	bool IsRespawnEnabled()
 	{
 		return m_bEnableRespawn;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return true if respawn from pause menu is enabled, false otherwise
+	bool IsPauseMenuRespawnEnabled()
+	{
+		return m_bEnablePauseMenuRespawn;
 	}
 	
 	//------------------------------------------------------------------------------------------------

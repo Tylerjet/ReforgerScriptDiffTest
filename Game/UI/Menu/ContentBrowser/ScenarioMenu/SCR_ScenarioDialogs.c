@@ -39,9 +39,6 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 
 	protected ref ScriptInvokerMissionWorkshopItem m_OnFavorite;
 
-	//This should probably be a setting in SCR_HorizontalScrollAnimationComponent, as this is a bandaid solution to the title flickering
-	protected const int MAX_TITLE_LENGTH = 55;
-
 	//------------------------------------------------------------------------------------------------
 	void SCR_ScenarioConfirmationDialogUi(MissionWorkshopItem scenario, ScriptInvokerBool onFavoritesResponse = null)
 	{
@@ -165,25 +162,6 @@ class SCR_ScenarioConfirmationDialogUi : SCR_ConfigurableDialogUi
 		
 		if (close)
 			Close();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void SetTitle(string text)
-	{
-		super.SetTitle(text);
-
-		Widget titleFrame = m_wRoot.FindAnyWidget("TitleFrame");
-		if (!titleFrame)
-			return;
-
-		SCR_HorizontalScrollAnimationComponent scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(titleFrame.FindHandler(SCR_HorizontalScrollAnimationComponent));
-		if (!scrollComp)
-			return;
-
-		if (text.Length() < MAX_TITLE_LENGTH)
-			scrollComp.AnimationStop();
-		else
-			scrollComp.AnimationStart();
 	}
 
 	//------------------------------------------------------------------------------------------------

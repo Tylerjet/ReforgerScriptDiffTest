@@ -20,8 +20,6 @@ class SCR_ScenarioFrameworkWaypointDefend : SCR_ScenarioFrameworkWaypointTimedDe
 	[Attribute("0", UIWidgets.Object, "Fast init - units will be spawned on their defensive locations")]
 	bool m_bFastInit;
 
-	//TODO: Add Array of SCR_DefendWaypointPreset once we can also pre-prepare it for World Editor attribute.
-
 	//------------------------------------------------------------------------------------------------
 	override void SetFastInit(bool enabled)
 	{

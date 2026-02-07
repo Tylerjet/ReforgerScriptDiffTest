@@ -100,7 +100,7 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 	
 	//-----------------------------------------------------------------------------------------------------
 	// Adds grenade instigator position to group perception for potentatial investigation later
-	void AddToGroupPerception(SCR_AIUtilityComponent utility, IEntity shooter, vector observePosition)
+	void AddToGroupPerception(SCR_AIUtilityComponent utility, IEntity shooter, vector observePosition, Faction faction)
 	{		
 		AIGroup group = utility.GetOwner().GetParentGroup();
 		if (!group)
@@ -114,11 +114,11 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 		if (!perceptionMan)
 			return;
 
-		groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, observePosition, perceptionMan.GetTime(), true);
+		groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, observePosition, faction, perceptionMan.GetTime(), true);
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
+	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		IEntity grenadeObject = dangerEvent.GetObject();
 		if (grenadeObject)
@@ -131,10 +131,11 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 				vector observePosition = vector.Zero;
 				SCR_ChimeraCharacter shooter = GetShooterCharacter(grenadeObject);
 				Faction ownerFaction = GetOwnerFaction(utility);
+				Faction shooterFaction = shooter.GetFaction();
 				
 				// Filter out friendlies
-				if (ownerFaction && shooter && !ownerFaction.IsFactionFriendly(shooter.GetFaction()))
-					AddToGroupPerception(utility, shooter, shooter.GetOrigin());
+				if (ownerFaction && shooter && !ownerFaction.IsFactionFriendly(shooterFaction))
+					AddToGroupPerception(utility, shooter, shooter.GetOrigin(), shooterFaction);
 
 				float reactionDelay = GRENADE_AVOID_REACT_MIN_TIME_MS;
 				

@@ -17,16 +17,19 @@ class SCR_GameplaySettings : ModuleGameSettings
 
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Show radio protocol subtitles in chat.")]
 	bool m_bShowRadioProtocolText;
-
+	
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Preserve selected gadget after performing actions like sprinting.")]
 	bool m_bStickyGadgets;
 
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Preserve aim down sights after performing actions like sprinting.")]
 	bool m_bStickyADS;
-	
-	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook when piloting aircrafts.")]
+
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use mouse input for steering instead of for freelook when piloting aircrafts.")]
 	bool m_bMouseControlAircraft;
-	
+
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use gamepad input for freelook instead of for steering when piloting aircrafts.")]
+	bool m_bGamepadFreelookInAircraft;
+
 	[Attribute(defvalue: SCR_Enum.GetDefault(EVehicleDrivingAssistanceMode.FULL), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleDrivingAssistanceMode), desc: "Player's vehicle driving assistance mode. Controls gearbox, engine and persistent handbrake automation.")]
 	EVehicleDrivingAssistanceMode m_eDrivingAssistance;
 };
@@ -44,6 +47,9 @@ class SCR_FieldOfViewSettings : ModuleGameSettings
 
 	[Attribute(defvalue: "0.5", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Aiming down sights focus intensity.")]
 	float m_fFocusInADS;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Scale of aiming down sight focus intensity for PIP scopes.")]
+	float m_fFocusInPIP;
 
 	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Use focus mode by holding right mouse button.")]
 	bool m_bEnableFocus;
@@ -188,7 +194,43 @@ class SCR_AimSensitivitySettings : ModuleGameSettings
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0.1 2 0.01", desc: "Additional aim sensitivity multiplier for ADS")]
 	float m_fAimADS;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "FOV input curve for mouse")]
+	float m_fFOVInputCurveMouse;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "FOV input curve for stick")]
+	float m_fFOVInputCurveStick;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "FOV input curve for gyro")]
+	float m_fFOVInputCurveGyro;
 };
+
+class SCR_ControllerSettings : ModuleGameSettings
+{
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.CheckBox, "Enable gyro always")]
+	bool m_bGyroAlways;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, "Enable gyro while freelooking")]
+	bool m_bGyroFreelook;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, "Enable gyro while aiming down sights")]
+	bool m_bGyroADS;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 20 0.1", desc: "Gyro sensitivity")]
+	float m_fGyroSensitivity;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, params: "0 2 0.01", desc: "Gyro vertical horizontal ratio")]
+	float m_fGyroVerticalHorizontalRatio;
+
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.SpinBox, desc: "Gyro yaw direction")]
+	float m_fGyroDirectionYaw;
+
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.SpinBox, desc: "Gyro pitch direction")]
+	float m_fGyroDirectionPitch;
+
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Gyro roll direction")]
+	float m_fGyroDirectionRoll;
+}
 
 class SCR_RecentGames : ModuleGameSettings
 {

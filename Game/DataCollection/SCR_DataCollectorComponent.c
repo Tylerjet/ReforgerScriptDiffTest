@@ -310,34 +310,41 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
+		int playerId = instigatorContextData.GetVictimPlayerID();
+		IEntity playerEntity = instigatorContextData.GetVictimEntity();
+		IEntity killerEntity = instigatorContextData.GetKillerEntity();
+		Instigator instigator = instigatorContextData.GetInstigator();
+		
 		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			module.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+			module.OnPlayerKilled(playerId, playerEntity, killerEntity, instigator, instigatorContextData);
 		}
 		
 		if (m_bOptionalKicking)
-			m_OptionalKicking.OnControllableDestroyed(playerEntity, killerEntity, killer);
+			m_OptionalKicking.OnControllableDestroyed(playerEntity, killerEntity, instigator, instigatorContextData);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		foreach (SCR_DataCollectorModule module : m_aModules)
 		{
-			module.OnAIKilled(AIEntity, killerEntity, killer);
+			module.OnAIKilled(AIEntity, killerEntity, instigator, instigatorContextData);
 		}
 		
 		if (m_bOptionalKicking)
-			m_OptionalKicking.OnControllableDestroyed(AIEntity, killerEntity, killer);
+			m_OptionalKicking.OnControllableDestroyed(AIEntity, killerEntity, instigator, instigatorContextData);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// This method is a hack to process killings when the dead entity is an AI
 	// Because there is no "OnAiKilled" method
-	protected override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
+	protected override void OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData)
 	{
+		IEntity entity = instigatorContextData.GetVictimEntity();
+		
 		if (!SCR_ChimeraCharacter.Cast(entity))
 		{
 			// Spoiler - it was a vehicle, not an error
@@ -348,14 +355,13 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 			return;
 		}
 
-		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
 		//If playerId is not 0 it means that the entity killed was a player
 		//Therefore it will be handled by the OnPlayerKilled event
 		//so we don't need to do anything else
-		if (playerId > 0)
+		if (instigatorContextData.GetVictimPlayerID() > 0)
 			return;
 
-		OnAIKilled(entity, killerEntity, killer);
+		OnAIKilled(entity, instigatorContextData.GetKillerEntity(), instigatorContextData.GetInstigator(), instigatorContextData);
 	}
 
 #ifdef ENABLE_DIAG

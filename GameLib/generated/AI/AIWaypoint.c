@@ -19,6 +19,8 @@ class AIWaypointClass: GenericEntityClass
 */
 class AIWaypoint: GenericEntity
 {
+	proto external float GetCompletionYPrecision();
+	proto external void SetCompletionYPrecision(float fPrecision);
 	proto external float GetCompletionRadius();
 	proto external void SetCompletionRadius(float r);
 	proto external EAIWaypointCompletionType GetCompletionType();

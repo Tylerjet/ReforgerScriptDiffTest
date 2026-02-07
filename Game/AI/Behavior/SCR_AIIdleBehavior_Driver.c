@@ -11,12 +11,11 @@ class SCR_AIIdleBehavior_Driver : SCR_AIIdleBehavior
 	protected IEntity m_Vehicle;
 	protected BaseLightManagerComponent m_VehicleLightManager;
 	
-	protected bool m_bCheckLights;
 	protected float m_fNextLightsCheck;
 	
 	protected float m_fHiBeamIgnoreTime;
 	
-	void SCR_AIIdleBehavior_Driver(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity)
+	void SCR_AIIdleBehavior_Driver(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, notnull IEntity vehicleEntity)
 	{
 		if (!utility)
 			return;
@@ -25,25 +24,9 @@ class SCR_AIIdleBehavior_Driver : SCR_AIIdleBehavior
 		SetPriority(PRIORITY_BEHAVIOR_IDLE_DRIVER);
 		m_bUseCombatMove = true;
 		
-		m_Info = utility.m_AIInfo;
-		if (!m_Info)
-			return;
-		
-		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
-		IEntity entity = agent.GetControlledEntity();
-		if (!entity)
-			return;
-		
-		SCR_CompartmentAccessComponent compAccess = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
-		m_Vehicle = compAccess.GetVehicle();
-		if (!m_Vehicle)
-			return;
-		
+		m_Vehicle = vehicleEntity;
 		m_VehicleLightManager = BaseLightManagerComponent.Cast(m_Vehicle.FindComponent(BaseLightManagerComponent));
-		if (!m_VehicleLightManager)
-			return;
-		
-		m_bCheckLights = true;
+		m_Info = utility.m_AIInfo;
 	}
 
 	//------------------------------------------------------------------------------------------------	
@@ -157,7 +140,7 @@ class SCR_AIIdleBehavior_Driver : SCR_AIIdleBehavior
 	//------------------------------------------------------------------------------------------------
 	override float CustomEvaluate()
 	{
-		if (m_bCheckLights)
+		if (m_VehicleLightManager)
 			EvaluateLightsUsage();
 		
 		return GetPriority();

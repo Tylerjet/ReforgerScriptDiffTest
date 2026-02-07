@@ -24,6 +24,10 @@ class SCR_NotificationDisplayData
 	//! String used to indicate friendly entities together with the name eg: (Friendly) [PlayerName]. Used only if m_bAddFriendlyIndicator is true
 	protected const LocalizedString FRIENDLY_INDICATOR = "#AR-Notification_FriendlyIndicator";
 	
+	protected const LocalizedString LOCAL_PLAYER_INDICATOR = "#AR-Notification_LocalPlayerIndicator";
+	
+	protected static const float PLATFORM_ICON_SIZE = 2;
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Sets the initial display data such as initial notification position and faction related color of notification
@@ -179,7 +183,20 @@ class SCR_NotificationDisplayData
 			playerName = trimedName + "...";
 		}
 		
-		if (!playerName.IsEmpty() && m_bAddFriendlyIndicator && IsPlayerFriendlyToLocalPlayer(playerID))
+		PlatformKind playerPlatform = playerManager.GetPlatformKind(SCR_PlayerController.GetLocalPlayerId());
+		
+		//! If the local player is on PSN, show a platform Icon in front of the name.
+		if (!playerName.IsEmpty() && playerPlatform == PlatformKind.PSN)
+		{
+			if (playerManager.GetPlatformKind(playerID) == PlatformKind.PSN)
+				playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
+			else
+				playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
+		}
+		
+		if (SCR_PlayerController.GetLocalPlayerId() == playerID)
+			playerName = WidgetManager.Translate(LOCAL_PLAYER_INDICATOR, playerName);
+		else if (!playerName.IsEmpty() && m_bAddFriendlyIndicator && IsPlayerFriendlyToLocalPlayer(playerID))
 			playerName = WidgetManager.Translate(FRIENDLY_INDICATOR, playerName);
 			
 		return !playerName.IsEmpty();

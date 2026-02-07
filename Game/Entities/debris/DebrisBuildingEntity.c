@@ -159,10 +159,10 @@ class SCR_DebrisBuildingEntity : GenericEntity
 		if (m_fRandomBumpDelay <= 0 && heightAboveImpact > RANDOM_BUMP_HEIGHT_MAX)
 		{
 			m_fRandomBumpDelay = Math.RandomFloat(RANDOM_BUMP_DELAY_MIN, RANDOM_BUMP_DELAY_MAX);
-			float rndPosXZ = 1;
-			float rndPosYPctMin = 0.3;
-			float rndPosYPctMax = 0.9;
-			float rndAng = 2;
+			const float rndPosXZ = 1;
+			const float rndPosYPctMin = 0.3;
+			const float rndPosYPctMax = 0.9;
+			const float rndAng = 2;
 			m_vLinearVelocity += Vector(Math.RandomFloat(-rndPosXZ, rndPosXZ), Math.RandomFloat(rndPosYPctMin, rndPosYPctMax) * -m_vLinearVelocity[1], Math.RandomFloat(-rndPosXZ, rndPosXZ));
 			m_vAngularVelocity += Vector(Math.RandomFloat(-rndAng, rndAng), Math.RandomFloat(-rndAng, rndAng), Math.RandomFloat(-rndAng, rndAng));
 		}

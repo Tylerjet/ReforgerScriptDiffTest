@@ -38,4 +38,8 @@ class SCR_VehicleCameraDataComponent : ScriptComponent
 	ref SCR_VehicleCameraAimpoint m_pCameraAimpointData;
 	[Attribute(uiwidget: UIWidgets.Object)]
 	ref SCR_VehicleCameraAlignment m_pCameraAlignData;
+	[Attribute(desc: "Camera pivot point. Vehicle's COM is used if this isn't present")]
+	ref PointInfo m_pPivot;
+	[Attribute("true", UIWidgets.CheckBox, "Use NoParent camera\n")]
+	bool m_bNoParent;
 };

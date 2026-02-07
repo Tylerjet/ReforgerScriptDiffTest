@@ -97,6 +97,16 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		string sName;
 		GetCasualtyName(sName, m_Target);
 	
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			PlayerManager playerMgr = GetGame().GetPlayerManager();
+			
+			if (playerMgr && playerMgr.GetPlatformKind(playerMgr.GetPlayerIdFromControlledEntity(m_Target)) == PlatformKind.PSN)
+				sName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, 2) + sName;
+			else
+				sName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, 2) + sName;
+		}
+
 		float bleedingRate;
 		int groupDamageIntensity;
 		bool regenerating, isTourniquetted, isSalineBagged, isMorphined;

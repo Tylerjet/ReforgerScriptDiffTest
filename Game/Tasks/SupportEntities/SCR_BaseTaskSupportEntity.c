@@ -276,6 +276,29 @@ class SCR_BaseTaskSupportEntity : GenericEntity
 	
 	//------------------------------------------------------------------------------------------------
 	//This should only be called on the server!
+	void SetTaskState(notnull SCR_BaseTask task, SCR_TaskState state)
+	{
+		int taskID = task.GetTaskID();
+		RPC_SetTaskState(taskID, state);
+		Rpc(RPC_SetTaskState, taskID, state);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_SetTaskState(int taskID, SCR_TaskState state)
+	{
+		if (!GetTaskManager())
+			return;
+		
+		SCR_BaseTask task = GetTaskManager().GetTask(taskID);
+		if (!task)
+			return;
+		
+		task.SetState(state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//This should only be called on the server!
 	void SetTaskDescription(notnull SCR_BaseTask task, string description)
 	{
 		int taskID = task.GetTaskID();

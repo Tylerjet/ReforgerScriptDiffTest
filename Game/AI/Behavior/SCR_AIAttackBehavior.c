@@ -7,6 +7,9 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	// Be careful, here we want to store a ref to BaseTarget
 	ref SCR_BTParamRef<BaseTarget> m_Target = new SCR_BTParamRef<BaseTarget>(SCR_AIActionTask.TARGET_PORT);
 	
+	// Direction to target which is calculated when the behavior is created. This is used to calculate flanking path.
+	ref SCR_BTParam<vector> m_vInitialDirToTgt = new SCR_BTParam<vector>("InitialDirToTgt");
+	
 	// Wait time before we start shooting
 	ref SCR_BTParam<float> m_fWaitTime = new SCR_BTParam<float>("WaitTime");
 	
@@ -25,6 +28,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	{
 		m_Target.Init(this, target);
 		m_fWaitTime.Init(this, waitTime);
+		m_vInitialDirToTgt.Init(this, vector.Zero);
 	}
 	
 	//----------------------------------------------------------------------------------
@@ -67,7 +71,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	//----------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " attacking " + m_Target.ValueToString();
+		return this.ToString() + " attacking " + m_Target.m_Value.ToString();
 	}
 	
 	//----------------------------------------------------------------------------------	
@@ -93,6 +97,11 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 			InitWaitTime(utility);
 		else
 			m_fWaitTime.m_Value = 0;
+		
+		// Init initial direction to target, used for flanking
+		vector dirToTgt = target.GetLastSeenPosition() - utility.m_OwnerEntity.GetOrigin();
+		dirToTgt.Normalize();
+		m_vInitialDirToTgt.m_Value = dirToTgt;
 	}
 	
 	//----------------------------------------------------------------------------------

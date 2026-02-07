@@ -41,6 +41,9 @@ class SCR_UIName
 		return !GetName().IsEmpty();
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----	
+// This class is meant to hold data, not manipulate widgets! Such methods should be in SCR_WidgetTools or SCR_WidgetHelper. In this case, I would expect whatever component is handling the layout to make sure the text widget exists, so this method is not needed
+	
 	//------------------------------------------------------------------------------------------------
 	//! Set name to given text widget.
 	//! When possible, use this function instead of retrieving the name using GetName() and setting it manually.
@@ -56,6 +59,8 @@ class SCR_UIName
 		return true;
 	}
 
+//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	//! Print out contents of this UI info
 	//! \param prefix

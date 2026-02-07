@@ -55,6 +55,14 @@ class BaseCollimatorSightsComponent: SightsComponent
 	proto external float GetNormalizedLightIntensity();
 	//! Set reticle color by index. Return true if successful
 	proto external bool SetReticleColorByIndex(int iIndex);
+	//! Set the angular correction (vertical) (in mils)
+	proto external void SetVerticalAngularCorrection(float fAngle);
+	//! Get the angular correction (vertical) in mils
+	proto external float GetVerticalAngularCorrection();
+	//!Set the angular correction (widage) (in mils)
+	proto external void SetHorizontalAngularCorrection(float fAngle);
+	//! Get the angular correction (windage) in mils
+	proto external float GetHorizontalAngularCorrection();
 
 	// callbacks
 

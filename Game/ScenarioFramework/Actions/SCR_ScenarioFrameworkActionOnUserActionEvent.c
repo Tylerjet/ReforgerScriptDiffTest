@@ -82,4 +82,10 @@ class SCR_ScenarioFrameworkActionOnUserActionEvent : SCR_ScenarioFrameworkAction
 		
 		actionsManager.AddUserActionEventListener(scriptedUserAction, OnInvoked);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
+	}
 }

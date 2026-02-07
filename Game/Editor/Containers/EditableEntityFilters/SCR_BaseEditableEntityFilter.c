@@ -210,7 +210,7 @@ class SCR_BaseEditableEntityFilter
 	*/
 	bool Contains(SCR_EditableEntityComponent entity)
 	{
-		return m_Entities.Find(entity) != -1;
+		return m_Entities && m_Entities.Find(entity) != -1;
 	}
 	/*!
 	Get script invoker which is triggered every time some entities are added or removed.

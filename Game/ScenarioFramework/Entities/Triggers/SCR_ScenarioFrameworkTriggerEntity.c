@@ -25,7 +25,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 
 	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
 	protected ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
-
+	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "If you set some vehicle to be detected by the trigger, it will also search the inventory for vehicle prefabs/classes that are set", category: "Trigger")]
 	protected bool m_bSearchVehicleInventory;
 
@@ -52,6 +52,15 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 
 	[Attribute("", UIWidgets.EditBox, desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
 	protected string m_sCountdownAudio;
+	
+	[Attribute(desc: "Actions that will be activated when entity that went through the filter entered the trigger and is inside (Be carefull as Framework Triggers activate this periodically if you don't disable the Once attribute)", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aEntityEnteredActions;
+	
+	[Attribute(desc: "Actions that will be activated when entity that went through the filter left the trigger", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aEntityLeftActions;
+	
+	[Attribute(desc: "Actions that will be activated when all conditions are met and Trigger finishes", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aFinishedActions;
 
 	protected ref set<BaseContainer> m_aPrefabContainerSet = new set<BaseContainer>();
 
@@ -76,7 +85,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	{
 		m_eActivationPresence = EActivationPresence;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Sets specific classnames to be searched in the trigger
 	void SetSpecificClassName(notnull array<string> aClassName)
@@ -128,7 +137,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	{
 		m_bTriggerConditionsStatus = status;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Sets if audio features from this trigger are enabled
 	void SetEnableAudio(bool enableAudio)
@@ -168,9 +177,40 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	//! Sets custom trigger conditions
 	void SetCustomTriggerConditions(array<ref SCR_CustomTriggerConditions> triggerConditions)
 	{
+		m_aCustomTriggerConditions = triggerConditions;
 		foreach (SCR_CustomTriggerConditions condition : triggerConditions)
 		{
 			condition.Init(this);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityEnteredActions Array of actions triggered when an entity entered the trigger.
+	void SetEntityEnteredActions(array<ref SCR_ScenarioFrameworkActionBase> entityEnteredActions)
+	{
+		foreach (SCR_ScenarioFrameworkActionBase entityEnteredAction : entityEnteredActions)
+		{
+			m_aEntityEnteredActions.Insert(entityEnteredAction);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityEnteredActions Array of actions triggered when an entity left the trigger.
+	void SetEntityLefActions(array<ref SCR_ScenarioFrameworkActionBase> entityLefActions)
+	{
+		foreach (SCR_ScenarioFrameworkActionBase entityLefAction : entityLefActions)
+		{
+			m_aEntityLeftActions.Insert(entityLefAction);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entityEnteredActions Array of actions triggered when trigger is finished.
+	void SetFinishedActions(array<ref SCR_ScenarioFrameworkActionBase> finishedActions)
+	{
+		foreach (SCR_ScenarioFrameworkActionBase finishedAction : finishedActions)
+		{
+			m_aFinishedActions.Insert(finishedAction);
 		}
 	}
 
@@ -572,10 +612,15 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 			StopMusic(m_sCountdownAudio);
 
 		if (m_bOnce)
-			Deactivate();
+			EnablePeriodicQueries(false);
 
 		m_OnActivate.Invoke(ent);
 		OnChange(ent);
+		
+		foreach (SCR_ScenarioFrameworkActionBase finishedActions : m_aFinishedActions)
+		{
+			finishedActions.OnActivate(this);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -649,7 +694,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 			m_bTimerActive = true;
 			m_fTempWaitTime = m_fActivationCountdownTimer;
 			// Call later in this case will be more efficient than handling it via EOnFrame
-			GetGame().GetCallqueue().CallLater(UpdateTimer, 1000, true);
+			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(UpdateTimer, 1000, true);
 		}
 
 		if (GetCountInsideTrigger() == 0)
@@ -676,11 +721,17 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent Entity reference for the object being activated.
 	override protected event void OnActivate(IEntity ent)
 	{
+		foreach (SCR_ScenarioFrameworkActionBase enteredActions : m_aEntityEnteredActions)
+		{
+			enteredActions.OnActivate(this);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] bIsEmpty Checks if query is empty, if true, returns without further action processing the trigger.
 	override event protected void OnQueryFinished(bool bIsEmpty)
 	{
 		super.OnQueryFinished(bIsEmpty);
@@ -706,14 +757,16 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent Entity reference representing the object being deactivated.
 	override protected event void OnDeactivate(IEntity ent)
 	{
 		//This method is triggered when the trigger is deactivated but the said entity is still inside.
 		//We need to perform this method after the entity leaves the trigger.
-		GetGame().GetCallqueue().CallLater(OnDeactivateCalledLater, 100, false, ent);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(OnDeactivateCalledLater, 100, false, ent);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent The ent represents an entity inside the method, which is removed from the list of players inside when the method is called.
 	void OnDeactivateCalledLater(IEntity ent)
 	{
 		if (!m_bInitSequenceDone)
@@ -733,9 +786,15 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 
 		m_OnDeactivate.Invoke();
 		OnChange(ent);
+		
+		foreach (SCR_ScenarioFrameworkActionBase leftActions : m_aEntityLeftActions)
+		{
+			leftActions.OnActivate(this);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Checks if trigger conditions are met, plays countdown music if true, stops if false.
 	void HandleAudio()
 	{
 		if (m_bTriggerConditionsStatus)
@@ -750,6 +809,8 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Plays specified audio track, sets countdown music playing flag, and calls RPC.
+	//! \param[in] sAudio is the name of the music file to play.
 	void PlayMusic(string sAudio)
 	{
 
@@ -770,6 +831,8 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Plays specified audio in music manager if available.
+	//! \param[in] sAudio is the name of the music file to play.
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RpcDo_PlayMusic(string sAudio)
 	{
@@ -788,6 +851,8 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Stops music with given audio name, also stops countdown music if playing.
+	//! \param[in] sAudio is the name of the music track to stop playing.
 	void StopMusic(string sAudio)
 	{
 		if (!m_MusicManager)
@@ -807,6 +872,8 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Stops music with given audio name.
+	//! \param[in] sAudio is the name of the music track to stop playing.
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void RpcDo_StopMusic(string sAudio)
 	{
@@ -825,6 +892,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ent Entity ent is an input parameter representing an entity in the game world that triggers the method's action when its state changes
 	void OnChange(IEntity ent)
 	{
 		if (m_OnChange)
@@ -835,6 +903,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return a ScriptInvoker object for handling changes in the script.
 	ScriptInvoker GetOnChange()
 	{
 		if (!m_OnChange)

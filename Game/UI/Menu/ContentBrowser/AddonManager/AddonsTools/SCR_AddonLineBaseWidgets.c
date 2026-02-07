@@ -11,12 +11,8 @@ class SCR_AddonLineBaseWidgets
 	SCR_DynamicIconComponent m_MoveLeftButtonComponent1;
 
 	SizeLayoutWidget m_wLeftSeparator;
+	ImageWidget m_wItemTypeImage;
 	TextWidget m_wNameText;
-
-	ButtonWidget m_wDeleteButton;
-	SCR_ModularButtonComponent m_DeleteButtonComponent0;
-	SCR_DynamicIconComponent m_DeleteButtonComponent1;
-
 	HorizontalLayoutWidget m_wHorizontalState;
 	TextWidget m_wStateText;
 
@@ -33,6 +29,11 @@ class SCR_AddonLineBaseWidgets
 	ButtonWidget m_wUpdateButton;
 	SCR_ModularButtonComponent m_UpdateButtonComponent0;
 	SCR_DynamicIconComponent m_UpdateButtonComponent1;
+
+
+	ButtonWidget m_wDeleteButton;
+	SCR_ModularButtonComponent m_DeleteButtonComponent0;
+	SCR_DynamicIconComponent m_DeleteButtonComponent1;
 
 	SizeLayoutWidget m_wSizeMoveRight;
 
@@ -52,12 +53,8 @@ class SCR_AddonLineBaseWidgets
 		m_MoveLeftButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wMoveLeftButton.FindHandler(SCR_DynamicIconComponent));
 
 		m_wLeftSeparator = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.m_LeftSeparator"));
+		m_wItemTypeImage = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.HorizontalLayoutName.m_ItemTypeImage"));
 		m_wNameText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.HorizontalLayoutName.FrameName.ContentWrapper.m_NameText"));
-
-		m_wDeleteButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.SizeLayoutDeleteButton.m_DeleteButton"));
-		m_DeleteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wDeleteButton.FindHandler(SCR_ModularButtonComponent));
-		m_DeleteButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wDeleteButton.FindHandler(SCR_DynamicIconComponent));
-
 		m_wHorizontalState = HorizontalLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.SizeLayoutState.m_HorizontalState"));
 		m_wStateText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.SizeLayoutState.m_HorizontalState.m_StateText"));
 
@@ -74,6 +71,11 @@ class SCR_AddonLineBaseWidgets
 		m_wUpdateButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.SizeLayoutWarnings.HorizontalLayoutWarnings.m_UpdateButton"));
 		m_UpdateButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wUpdateButton.FindHandler(SCR_ModularButtonComponent));
 		m_UpdateButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wUpdateButton.FindHandler(SCR_DynamicIconComponent));
+
+
+		m_wDeleteButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.SizeLayoutDeleteButton.m_DeleteButton"));
+		m_DeleteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wDeleteButton.FindHandler(SCR_ModularButtonComponent));
+		m_DeleteButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wDeleteButton.FindHandler(SCR_DynamicIconComponent));
 
 		m_wSizeMoveRight = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.m_SizeMoveRight"));
 

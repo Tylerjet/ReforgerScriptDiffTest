@@ -67,8 +67,7 @@ class SCR_SVNLogResourceManagerPlugin : SCR_SVNLogScriptEditorPlugin
 			return;
 
 		array<ResourceName> selection = {};
-		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
-		resourceManager.GetResourceBrowserSelection(context.Insert, true);
+		resourceManager.GetResourceBrowserSelection(selection.Insert, true);
 
 		foreach (ResourceName resource : selection)
 		{

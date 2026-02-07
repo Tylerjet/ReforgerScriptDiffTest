@@ -1,12 +1,11 @@
-//------------------------------------------------------------------------------------------------
 class SCR_TaskDefendClass: SCR_ScenarioFrameworkTaskClass
 {
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_TaskDefend : SCR_ScenarioFrameworkTask
 {	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state Checks if object is destroyed, removes damage state change listener, removes engine stop listener, and fails support entity task
 	void OnObjectDamage(EDamageState state)
 	{
 		if (state != EDamageState.DESTROYED || !m_Asset || !m_SupportEntity)
@@ -27,6 +26,7 @@ class SCR_TaskDefend : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Checks if engine is downed, removes related event handlers, and fails support entity task if engine is downed
 	void CheckEngineDrowned()
 	{
 		if (!m_Asset || !m_SupportEntity)
@@ -47,6 +47,8 @@ class SCR_TaskDefend : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Rehooks task asset, sets up damage state change listener, checks engine stop after 5 seconds if vehicle.
+	//! \param[in] object to be linked to this task.
 	override void RehookTaskAsset(IEntity object)
 	{
 		if (!object)
@@ -64,13 +66,19 @@ class SCR_TaskDefend : SCR_ScenarioFrameworkTask
 			if (vehicleController)
 				vehicleController.GetOnEngineStop().Insert(CheckEngineDrowned);
 			
+			//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+			
 			// Since there is no invoker and no reliable way how to tackle drowned vehicles, in order to make it reliable,
 			// We cannot solely rely on GetOnEngineStop because vehicle could have been pushed/moved into the water without started engine.
-			GetGame().GetCallqueue().CallLater(CheckEngineDrowned, 5000, true);
+			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(CheckEngineDrowned, 5000, true);
+			
+			//---- REFACTOR NOTE END ----
 		}
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for task defend.
+	//! \return true if support entity is found, false otherwise.
 	override bool SetSupportEntity()
 	{
 		m_SupportEntity = SCR_ScenarioFrameworkTaskDefendSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDefendSupportEntity));
@@ -85,6 +93,7 @@ class SCR_TaskDefend : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes damage manager, sets up damage state change event, checks for vehicle controller, and schedules engine drowning checks
 	override void Init()
 	{
 		super.Init();
@@ -101,10 +110,13 @@ class SCR_TaskDefend : SCR_ScenarioFrameworkTask
 			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
 			if (vehicleController)
 				vehicleController.GetOnEngineStop().Insert(CheckEngineDrowned);
+			//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 			
 			// Since there is no invoker and no reliable way how to tackle drowned vehicles, in order to make it reliable,
 			// We cannot solely rely on GetOnEngineStop because vehicle could have been pushed/moved into the water without started engine.
-			GetGame().GetCallqueue().CallLater(CheckEngineDrowned, 5000, true);
+			SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(CheckEngineDrowned, 5000, true);
+			
+			//---- REFACTOR NOTE END ----
 		}
 	}
 }

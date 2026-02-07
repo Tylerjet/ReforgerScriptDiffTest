@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionSetPermitUnconsciousness : SCR_ScenarioF
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.SetPermitUnconsciousness(m_bPermitUnconsciousness, true);
 	}
 }

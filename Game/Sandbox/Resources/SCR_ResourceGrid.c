@@ -677,10 +677,8 @@ class SCR_ResourceGrid
 				interactor.UnregisterContainer(container);
 		}
 		
-		interactor.SetGridUpdateId(m_iGridUpdateId);
-		interactor.UpdateLastPosition();
+		interactor.OnResourceGridUpdated(this);
 		m_aQueriedContainers.Clear();
-		interactor.Replicate();
 	}
 	
 	//------------------------------------------------------------------------------------------------

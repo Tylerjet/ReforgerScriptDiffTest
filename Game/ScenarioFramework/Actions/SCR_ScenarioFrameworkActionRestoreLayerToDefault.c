@@ -9,6 +9,9 @@ class SCR_ScenarioFrameworkActionRestoreLayerToDefault : SCR_ScenarioFrameworkAc
 	
 	[Attribute(desc: "If checked, it will reinit the layer after the restoration")]
 	bool m_bReinitAfterRestoration;
+	
+	[Attribute(defvalue: "true", desc: "If checked, it will also clear randomization and re-randomize it again instead of using cached elements from initial randomization")]
+	bool m_bAffectRandomization;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate(IEntity object)
@@ -27,6 +30,6 @@ class SCR_ScenarioFrameworkActionRestoreLayerToDefault : SCR_ScenarioFrameworkAc
 			return;
 		}
 
-		layer.RestoreToDefault(m_bIncludeChildren, m_bReinitAfterRestoration);
+		layer.RestoreToDefault(m_bIncludeChildren, m_bReinitAfterRestoration, m_bAffectRandomization);
 	}
 }

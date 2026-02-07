@@ -198,7 +198,8 @@ class ReportDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	protected void OnTos()
 	{
-		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PrivacyPolicyMenu);
+		//GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
 	}
 	
 	//------------------------------------------------------------------------------------------------

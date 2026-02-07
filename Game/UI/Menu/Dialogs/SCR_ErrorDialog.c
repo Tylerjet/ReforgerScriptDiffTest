@@ -53,7 +53,6 @@ class SCR_ErrorDialog : ScriptedWidgetComponent
 		// Setup text 
 		if (m_wTxtDetail)
 		{
-			strDetail += "\n#AR-ServerBrowser_JoinErrorDetailLog";
 			m_wTxtDetail.SetText(strDetail);
 			m_wTxtDetail.SetVisible(true);
 		}

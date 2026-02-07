@@ -3,27 +3,27 @@ enum EActionMenuScroll
 	HIDDEN = 0,
 	DISABLED = 1,
 	ENABLED = 2,
-};
+}
 
 enum EActionMenu
 {
 	UNDEFINED = 0,
 	COLLAPSED = 1,
 	EXPANDED = 2,
-};
+}
 
 class ActionMenuColor
 {
-	const ref Color ENABLED = Color.FromSRGBA(255, 255, 255, 255);
-	const ref Color DISABLED = Color.FromSRGBA(128, 128, 128, 255);
-	const ref Color ENABLED_CONTEXT = Color.FromSRGBA(255, 182, 95, 255);
-};
+	static const ref Color ENABLED = Color.FromSRGBA(255, 255, 255, 255);
+	static const ref Color DISABLED = Color.FromSRGBA(128, 128, 128, 255);
+	static const ref Color ENABLED_CONTEXT = Color.FromSRGBA(255, 182, 95, 255);
+}
 
 //! Temp class until localization is done
 class ActionMenuFailReason
 {
 	const static string DEFAULT = "#AR-UserActionUnavailable";
-};
+}
 
 class ActionMenuElementContext
 {
@@ -45,7 +45,7 @@ class ActionMenuElementContext
 	static float s_fHeightNonSelected = 20;	
 	static int s_iTextSizeNonSelected = 18;
 	static float s_fAlphaNonSelected = 0.8;
-};
+}
 
 class ActionMenuElement
 {
@@ -280,6 +280,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	protected ref map<BaseUserAction,ActionMenuElement> m_mActionWidget = new map<BaseUserAction,ActionMenuElement>;
 	protected ref array<ref ActionMenuElement> m_aActionMenuElements = new array<ref ActionMenuElement>;	
 	
+	protected InteractionHandlerComponent m_InteractionHandlerComponent;
+	
 	protected int m_iCurrentScroll = 0;
 	protected float m_fCurrentScrollAnimation = 0.0;
 
@@ -491,12 +493,13 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		int screenh = workspace.DPIUnscale(workspace.GetHeight());
 		
 		
-		float padding = 15.0;
+		const float padding = 15.0;
 		
-		vector min = Vector(
+		vector min = {
 			screenw * min01[0] + padding,
 			screenh * min01[1] + padding,
-			0.0);
+			0.0
+		};
 		
 		float menuw, menuh;
 		m_wActionMenu.GetScreenSize(menuw, menuh);
@@ -504,10 +507,11 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		menuh = workspace.DPIUnscale(menuh);
 		
 		// Maxs are offset by the menu width, so the menu never overflows
-		vector max = Vector(
+		vector max = {
 			screenw * max01[0] - menuw - padding,
 			screenh * max01[1] - menuh + padding,
-			0.0);
+			0.0
+		};
 		
 		
 		bool clamped = false;
@@ -782,8 +786,13 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		UserActionContext lastContext = m_pLastData.pCurrentContext;
 		if (lastContext)
 		{
-			vector worldPosition = lastContext.GetOrigin();
-			SetPosition(worldPosition);
+			vector position = lastContext.GetOrigin(); // Context's world position
+			if (lastContext.ShouldDisplayAtReferencePoint())
+			{
+				if (m_InteractionHandlerComponent)
+					position = m_InteractionHandlerComponent.GetLastReferencePoint(timeSlice);//GetGame().GetWorld().GetTimestamp()); // Interaction reference point
+			}
+			SetPosition(position);
 		}
 		
 		// Clear last data
@@ -804,6 +813,8 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 	{
 		super.DisplayStartDraw(owner);
 		Create();
+		
+		m_InteractionHandlerComponent = InteractionHandlerComponent.Cast(owner.FindComponent(InteractionHandlerComponent));
 		
 		Show(false);
 	}

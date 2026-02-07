@@ -3,6 +3,11 @@ class SCR_ScenarioFrameworkSlotAIClass : SCR_ScenarioFrameworkSlotBaseClass
 {
 }
 
+// SCR_ScenarioFrameworkSlotAI Spawned Invoker
+void ScriptInvokerScenarioFrameworkSlotAIMethod(SCR_ScenarioFrameworkLayerBase layer, IEntity entity);
+typedef func ScriptInvokerScenarioFrameworkSlotAIMethod;
+typedef ScriptInvokerBase<ScriptInvokerScenarioFrameworkSlotAIMethod> ScriptInvokerScenarioFrameworkSlotAI;
+
 class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 {
 	[Attribute(desc: "Waypoint Groups if applicable", category: "Waypoints")]
@@ -19,6 +24,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 	[Attribute(defvalue: "1", desc: "Least amount of AIs in the group after balancing occurs. Will not exceed maximum number of units defined in the group prefab.", category: "Balance")]
 	int m_iMinUnitsInGroup;
+	
+	[Attribute(defvalue: "1", desc: "When enabled and AI enters a vehicle, whole AI group won't be despawned by the Dynamic Despawn feature until the whole group is outside the vehicle", category: "Activation")]
+	bool m_bExcludeFromDynamicDespawnOnVehicleEntered;
 
 	[Attribute(defvalue: SCR_EAIGroupFormation.Wedge.ToString(), UIWidgets.ComboBox, "AI group formation", "", ParamEnumArray.FromEnum(SCR_EAIGroupFormation), category: "Common")]
 	SCR_EAIGroupFormation m_eAIGroupFormation;
@@ -52,22 +60,25 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	bool m_bWaypointsInitialized;
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] arrayForRemoval
+	//! \param[in] arrayForRemoval Array of resource names for AI prefab removal.
 	void SetAIPrefabsForRemoval(array<ResourceName> arrayForRemoval)
 	{
 		m_aAIPrefabsForRemoval = arrayForRemoval;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Array of AI prefab names for removal.
 	array<ResourceName> GetAIPrefabsForRemoval()
 	{
 		return m_aAIPrefabsForRemoval;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default settings, clears waypoints, AI group, prefabs, slots, and initializes randomization.
+	//! \param[in] includeChildren Includes restoring default settings for child objects as well.
+	//! \param[in] reinitAfterRestoration Resets object state after restoration, allowing for fresh initialization.
+	//! \param[in] affectRandomization Affects whether randomization is reset during default restoration.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		m_aWaypoints.Clear();
 		m_AIGroup = null;
@@ -76,11 +87,12 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Dynamically despawns this layer.
+	//! \param[in] layer Layer represents the scenario framework layer for dynamic despawning entities in the method.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
@@ -113,9 +125,50 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		m_aSpawnedEntities.Clear();
 		m_aWaypoints.Clear();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	protected void OnAgentCompartmentEntered(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		if (m_bExcludeFromDynamicDespawn)
+			return;
+		
+		if (!agent || !Vehicle.Cast(targetEntity))
+			return;
+		
+		m_bExcludeFromDynamicDespawn = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAgentCompartmentLeft(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		if (!m_bExcludeFromDynamicDespawn)
+			return;
+		
+		if (!agent || !Vehicle.Cast(targetEntity))
+			return;
+		
+		array<AIAgent> agents = {};
+		m_AIGroup.GetAgents(agents);
+		
+		bool isInVehicle;
+		foreach (AIAgent groupAgent : agents)
+		{
+			ChimeraCharacter character = ChimeraCharacter.Cast(groupAgent.GetControlledEntity());
+			if (character && character.IsInVehicle())
+			{
+				isInVehicle = true;
+				break;
+			}
+		}
+		
+		if (!isInVehicle)
+			m_bExcludeFromDynamicDespawn = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Clears cached values and handles Waypoint Sets
+	//! \return true if all initialization steps succeed, false otherwise.
+	override bool InitOtherThings()
 	{
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
@@ -124,11 +177,12 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		if (m_eActivationType == SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT && m_WaypointSet && !m_WaypointSet.m_aLayerName.IsEmpty())
 			InitWaypoints();
 		
-		super.Init(area, activation);
+		return super.InitOtherThings();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes AI after all children spawned, removes event handler.
+	//! \param[in] layer for which this is called
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
@@ -142,9 +196,12 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes plugins, actions, and checks for parent layer spawn completion, then sets waypoints for AI if not initialized.
 	void AfterAllAgentsSpawned()
 	{
+		if (!m_bInitiated)
+			return;
+		
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
 		{
 			plugin.Init(this);
@@ -160,10 +217,12 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 		if (!m_bWaypointsInitialized)
 			SetWaypointToAI(this);
+		
+		SCR_ScenarioFrameworkSystem.InvokeSlotAISpawned(this, m_Entity);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Activates AI group, removes unwanted prefabs, balances units count, sets on agent remove and add events,
 	void ActivateAI()
 	{
 		bool groupWasNull;
@@ -212,14 +271,20 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		}
 
 		m_AIGroup.SetMemberSpawnDelay(200);
-		m_AIGroup.SpawnUnits();
 		m_AIGroup.GetOnAgentAdded().Insert(OnAgentAdded);
+		m_AIGroup.SpawnUnits();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! \param[in] child Child is an AI Agent added to the group, triggers group component initialization and waypoint setting if necessary.
 	void OnAgentAdded(AIAgent child)
 	{
+		if (!m_AIGroup)
+		{
+			AfterAllAgentsSpawned();
+			return;
+		}
+		
 		if (m_AIGroup.GetNumberOfMembersToSpawn() != m_AIGroup.GetAgentsCount())
 			return;
 
@@ -234,7 +299,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes AI group components, sets formation, and combat parameters for agents in the group.
 	protected void InitGroupComponents()
 	{
 		array<AIAgent> agents = {};
@@ -254,10 +319,27 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 					if (!agentEntity)
 						continue;
 
-					if (m_vPosition != vector.Zero)
-						agentEntity.SetOrigin(m_vPosition + formDef.GetOffsetPosition(i));
-					else 
-						agentEntity.SetOrigin(m_AIGroup.GetOrigin() + formDef.GetOffsetPosition(i));
+					vector basePosition = m_vPosition;
+					if (basePosition == vector.Zero)
+					{
+						basePosition = m_AIGroup.GetOrigin();
+						// Set the Y-Level to the Slot height to allow mission makers to tune the spawn height.
+						basePosition[1] = GetOwner().GetOrigin()[1];
+					}
+					vector formationPosition = basePosition + formDef.GetOffsetPosition(i);
+					
+					World world = agentEntity.GetWorld();
+					if (world)
+					{
+						float surfaceY = world.GetSurfaceY(formationPosition[0], formationPosition[2]);
+						float oceanY = world.GetOceanHeight(formationPosition[0], formationPosition[2]);
+						formationPosition[1] = Math.Max(Math.Max(oceanY, surfaceY), formationPosition[1]);
+						vector floorPosition;
+						if (SCR_EmptyPositionHelper.TryFindNearbyFloorPositionForEntity(world, agentEntity, formationPosition, floorPosition))
+							formationPosition = floorPosition;
+					}
+					agentEntity.SetOrigin(formationPosition);
+					agentEntity.Update();
 					
 					SCR_AICombatComponent combatComponent = SCR_AICombatComponent.Cast(agentEntity.FindComponent(SCR_AICombatComponent));
 					if (combatComponent)
@@ -266,6 +348,20 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 						combatComponent.SetCombatType(m_eAICombatType);
 						combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 					}
+					
+					if (!m_bExcludeFromDynamicDespawnOnVehicleEntered)
+						continue;
+					
+					SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
+					if (!chimeraAgent)
+						continue;
+					
+					SCR_AIInfoComponent info = chimeraAgent.m_InfoComponent;
+					if (!info)
+						continue;
+					
+					info.m_OnCompartmentEntered.Insert(OnAgentCompartmentEntered);
+					info.m_OnCompartmentLeft.Insert(OnAgentCompartmentLeft);
 				}
 			}
 		}
@@ -284,12 +380,26 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 					combatComponent.SetCombatType(m_eAICombatType);
 					combatComponent.SetPerceptionFactor(m_fPerceptionFactor);
 				}
+				
+				if (!m_bExcludeFromDynamicDespawnOnVehicleEntered)
+					continue;
+				
+				SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
+				if (!chimeraAgent)
+					continue;
+					
+				SCR_AIInfoComponent info = chimeraAgent.m_InfoComponent;
+				if (!info)
+					continue;
+					
+				info.m_OnCompartmentEntered.Insert(OnAgentCompartmentEntered);
+				info.m_OnCompartmentLeft.Insert(OnAgentCompartmentLeft);
 			}
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes waypoints by finding them in specified layers, adding them to list, and processing them after initialization.
 	protected void InitWaypoints()
 	{
 		array<string> WaypointSetLayers = {};
@@ -298,10 +408,14 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		array<SCR_ScenarioFrameworkLayerBase> layerChildren = {};
 		SCR_ScenarioFrameworkLayerBase layerBase;
 		SCR_ScenarioFrameworkSlotWaypoint slotWaypoint;
+		
+		BaseWorld world = GetGame().GetWorld();
+		if (!world)
+			return;
 
 		foreach (string waypointSetLayer : WaypointSetLayers)
 		{
-			IEntity layerEntity = GetGame().GetWorld().FindEntityByName(waypointSetLayer);
+			IEntity layerEntity = world.FindEntityByName(waypointSetLayer);
 			if (!layerEntity)
 				continue;
 
@@ -341,7 +455,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Checks waypoints after init, adds/removes event handler for all waypoints spawned, increments spawned way
+	//! \param[in] layer for which this is called
 	protected void CheckWaypointsAfterInit(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		SCR_ScenarioFrameworkSlotWaypoint slotWaypoint = SCR_ScenarioFrameworkSlotWaypoint.Cast(layer);
@@ -370,7 +485,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes waypoints for AI if scenario is initiated, otherwise waits for all children to spawn before setting waypoints.
+	//! \param[in] layer for which this is called
 	protected void ProcessWaypoints(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		if (m_bInitiated)
@@ -380,7 +496,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! \param[in] layer Initializes waypoints for AI group in scenario framework layer.
 	protected void SetWaypointToAI(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(SetWaypointToAI);
@@ -456,7 +572,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Creates default waypoint for AI entity, spawns it in world space, adds it to list.
+	//! \return an AIWaypoint object if successful, otherwise null.
 	protected AIWaypoint CreateDefaultWaypoint()
 	{
 		if (!m_Entity)
@@ -479,9 +596,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] group
-	//! \param[in] agent
+	//! Decreases AI group member count, handles termination if group empty, adds removed AI entity prefab to removal list.
+	//! \param[in] group Decreases AI group member count, checks for termination conditions, adds removed AI entity prefab to removal list.
+	//! \param[in] agent Agent represents an AI entity in the game world, controlled by AI group, which is decreased from the group count in this
 	void DecreaseAIGroupMemberCount(SCR_AIGroup group, AIAgent agent)
 	{
 		if (group.GetAgentsCount() == 0)
@@ -517,7 +634,8 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Creates an AI group, sets its faction, adds entity to group, and optionally sets entity's position.
+	//! \return true if AI group creation is successful, false otherwise.
 	protected bool CreateAIGroup()
 	{
 		EntitySpawnParams paramsPatrol = new EntitySpawnParams();

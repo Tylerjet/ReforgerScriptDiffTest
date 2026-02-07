@@ -1,4 +1,6 @@
-enum SCR_EBurningState // Rename to SCR_EBurningState - we have conflict with gamecode
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Move enum to separate file
+enum SCR_EBurningState
 {
 	NONE = 0,
 	SMOKING_LIGHT = 10,
@@ -6,7 +8,10 @@ enum SCR_EBurningState // Rename to SCR_EBurningState - we have conflict with ga
 	SMOKING_IGNITING = 30,
 	BURNING = 40
 }
+//---- REFACTOR NOTE END ----
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Too specific and bloated to be a hitzone, Replace with damage effects, potentially handle visuals via separate component
 class SCR_FlammableHitZone : SCR_VehicleHitZone
 {
 	protected static const float		FIRE_TERRAIN_HEIGHT_TOLERANCE = 2.2; // Prevents spawning of ground fire effect if the vehicle is too high (in meters)
@@ -779,3 +784,4 @@ class SCR_FlammableHitZone : SCR_VehicleHitZone
 			SCR_ParticleHelper.StopParticleEmissionAndLights(m_BurningGroundParticle);
 	}
 }
+//---- REFACTOR NOTE END ----

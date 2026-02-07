@@ -5,6 +5,8 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	protected const string PRIVATE_QUAD = "private";
 	protected const string PUBLIC_QUAD = "public";
 	
+	protected const string AUTHOR_NAME_FORMAT = "[%1]";
+	
 	protected bool m_bIsEventListening;	// whether this marker reacts to events
 	protected bool m_bIsSymbolMode;		// app-6 symbol visualization mode
 	protected bool m_bIsOwnerMode;		// player is the markers owner
@@ -13,6 +15,7 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	protected ImageWidget m_wMarkerIcon;
 	protected ImageWidget m_wMarkerGlowIcon;
 	protected ImageWidget m_wMarkerModeIcon;
+	protected ImageWidget m_wAuthorPlatformIcon;
 	protected TextWidget m_wMarkerText;
 	protected TextWidget m_wMarkerAuthor;
 	protected TextWidget m_wTypeIcon1;
@@ -31,6 +34,8 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	protected ref Color m_TextColor = new Color(0.0, 0.0, 0.0, 1.0);
 	protected ref Color m_CurrentImageColor = new Color(0.0, 0.0, 0.0, 1.0);
 	protected SCR_MapMarkerBase m_MarkerObject;
+	
+	protected SCR_MapMarkerManagerComponent m_MapMarkerManager;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] marker
@@ -112,7 +117,31 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	//! \param[in] text
 	void SetText(string text)
 	{
-		m_wMarkerText.SetText(text);
+		if (text.IsEmpty() || !m_MarkerObject.GetMarkerOwnerID() <= -1)
+		{
+			OnFilteredCallback({text});
+			return;
+		}
+		
+		if (!m_MapMarkerManager)
+			return;
+		
+		SCR_ScriptProfanityFilterRequestCallback profanityCallback = m_MapMarkerManager.RequestProfanityFilter(text);
+		
+		if (!profanityCallback)
+		{
+			OnFilteredCallback({text});
+			return;
+		}
+		
+		profanityCallback.m_OnResult.Insert(OnFilteredCallback);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFilteredCallback(array<string> text)
+	{
+		if (!text.IsEmpty())
+			m_wMarkerText.SetText(text[0]);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -156,17 +185,15 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	{
 		m_bIsOwnerMode = false;
 		
-		m_wMarkerAuthor.SetText(text);
+		m_wMarkerAuthor.SetTextFormat(AUTHOR_NAME_FORMAT, text);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] state
 	void SetAuthorVisible(bool state)
 	{
-		if (m_bIsOwnerMode)
-			m_wMarkerModeIcon.SetVisible(state);
-		else 
-			m_wMarkerAuthor.SetVisible(state);
+		m_wMarkerAuthor.SetVisible(state);
+		m_wAuthorPlatformIcon.SetVisible(state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -180,13 +207,6 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 			m_wMarkerModeIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, PUBLIC_QUAD);
 		else 
 			m_wMarkerModeIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, PRIVATE_QUAD);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] state
-	void SetModeIconVisible(bool state)
-	{
-		m_wMarkerModeIcon.SetVisible(state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -205,6 +225,13 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	ImageWidget GetAuthorPlatformIcon()
+	{
+		return m_wAuthorPlatformIcon;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		if (!m_bIsEventListening || !m_MarkerObject)
@@ -212,7 +239,6 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 				
 		m_MarkerObject.LayerChangeLogic(0);
 		
-		SetAuthorVisible(true);
 		SetTypeIconsVisible(true);
 		
 		if (!SCR_MapMarkersUI.IsOwnedMarker(m_MarkerObject))
@@ -234,7 +260,6 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 			
 		m_MarkerObject.LayerChangeLogic(m_iLayerID);
 
-		SetAuthorVisible(false);
 		SetTypeIconsVisible(false);
 		
 		if (!SCR_MapMarkersUI.IsOwnedMarker(m_MarkerObject))
@@ -247,6 +272,18 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		
 		return true;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		return OnMouseEnter(w, x, y);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		return OnMouseLeave(w, null, x, y);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -258,6 +295,7 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		m_wMarkerText = TextWidget.Cast(m_wRoot.FindAnyWidget("MarkerText"));
 		m_wMarkerAuthor = TextWidget.Cast(m_wRoot.FindAnyWidget("MarkerAuthor"));
 		m_wMarkerModeIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("MarkerModeIcon"));
+		m_wAuthorPlatformIcon = ImageWidget.Cast(m_wRoot.FindAnyWidget("PlatformIcon"));
 		m_wSymbolRoot = m_wRoot.FindAnyWidget("SymbolWidget");
 		m_wSymbolOverlay = m_wSymbolRoot.FindAnyWidget("SymbolOverlay");
 		m_wTypeIconRoot = m_wRoot.FindAnyWidget("TypeIconHLayout");
@@ -267,5 +305,7 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		m_wTypeIcon1 = TextWidget.Cast(m_wTypeIconRoot.FindAnyWidget("TypeText1"));
 		m_wTypeIcon2 = TextWidget.Cast(m_wTypeIconRoot.FindAnyWidget("TypeText2"));
 		m_wTypeIcon3 = TextWidget.Cast(m_wTypeIconRoot.FindAnyWidget("TypeText3"));
+		
+		m_MapMarkerManager = SCR_MapMarkerManagerComponent.GetInstance();
 	}
 }

@@ -10,10 +10,11 @@ class SCR_ScenarioFrameworkActionPlaySound : SCR_ScenarioFrameworkActionBase
 		if (!CanActivate())
 			return;
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
-		GetGame().GetCallqueue().CallLater(manager.PlaySoundOnEntity, 2000, false, null, m_sSound);
+		//After activation of this action, we want to play it with slight delay
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(scenarioFrameworkSystem.PlaySoundOnEntity, 2000, false, null, m_sSound);
 	}
 }

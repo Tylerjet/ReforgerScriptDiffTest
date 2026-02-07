@@ -130,7 +130,6 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	[Attribute("0.898 0.541 0.184 1", UIWidgets.ColorPicker)]
 	protected ref Color m_GroupFullColor;
 
-	protected ResourceName m_sIconsImageSet = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	protected RichTextWidget wGroupTaskName;
 
 	protected const string OPTIONS_COMBO_INVITE = "#AR-PlayerList_Invite";
@@ -182,6 +181,10 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController)
 			return;
+		
+		SocialComponent  socialComp = SocialComponent.Cast(playerController.FindComponent(SocialComponent));
+		if (!socialComp)
+			return;
 
 
 		SCR_AIGroup group = m_GroupManager.FindGroup(m_iGroupID);
@@ -208,7 +211,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			string company, platoon, squad, character, format;
 			group.GetCallsigns(company, platoon, squad, character, format);
 
-			if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()))
+			if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && socialComp.IsRestricted(group.GetNameAuthorID(), EUserInteraction.UserGeneratedContent))
 			{
 				squadName.SetTextFormat(format, company, platoon, squad, character);
 			}
@@ -402,7 +405,11 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		SCR_PlayerControllerGroupComponent s_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!s_PlayerGroupController)
 			return;
-
+		
+		SocialComponent socialComp = SocialComponent.Cast(playerController.FindComponent(SocialComponent));
+		if (!socialComp)
+			return;
+		
 		if (!s_PlayerGroupController.CanPlayerJoinGroup(playerController.GetPlayerId(), m_GroupManager.FindGroup(m_iGroupID)))
 			m_JoinGroupButton.SetEnabled(false);
 		else
@@ -412,7 +419,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		string company, platoon, squad, character, format;
 		group.GetCallsigns(company, platoon, squad, character, format);
 		
-		if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && !playerController.CanViewContentCreatedBy(group.GetNameAuthorID()))
+		if (groupName.IsEmpty() || group.GetNameAuthorID() != 0 && socialComp.IsRestricted(group.GetNameAuthorID(), EUserInteraction.UserGeneratedContent))
 		{
 			squadName.SetTextFormat(format, company, platoon, squad, character);
 		}
@@ -560,6 +567,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		background = ImageWidget.Cast(playerTile.FindAnyWidget("Background"));
 		loadoutIcon = ImageWidget.Cast(playerTile.FindAnyWidget("LoadoutIcon"));
 		ImageWidget m_wIconSymbol = ImageWidget.Cast(playerTile.FindAnyWidget("TaskIconSymbol")); 
+		ImageWidget platformIcon = ImageWidget.Cast(playerTile.FindAnyWidget("PlatformIcon"));
 
 		playerButton = ButtonWidget.Cast(playerTile.FindAnyWidget("PlayerButton"));
 		if (!playerButton)
@@ -571,6 +579,10 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		SetupOptionsCombo(playerTile);
 
 		playerName.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+		
+		SCR_PlayerController playerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (playerCtrl)
+			playerCtrl.SetPlatformImageTo(playerID, platformIcon);
 
 		ChimeraCharacter controlledEntity = ChimeraCharacter.Cast(playerManager.GetPlayerControlledEntity(playerID));
 		if (controlledEntity)
@@ -659,7 +671,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (muteIcon && GetGame().GetPlayerController().GetPlayerMutedState(playerID) == PermissionState.DISALLOWED)
 		{
 			muteIcon.SetColor(m_PlayerNameSelfColor);
-			muteIcon.LoadImageFromSet(0, m_sIconsImageSet, "sound-off");
+			muteIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, "sound-off");
 		}
 
 		//look for loadout and set the appropriate icon

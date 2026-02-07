@@ -1,7 +1,12 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Confusing naming: SCR_AddonManager is a system handling addons, these dialogs are not related to it however, they are part of the Mod Presets menu
+
 class SCR_WorkshopAddonManagerDialogs
 {
 	const string DIALOGS_CONFIG = "{F96E0133AC81125A}UI/Dialogs.conf";
 }
+
+//---- REFACTOR NOTE END ----
 
 class SCR_WorkshopDialogCopyToClipboard : SCR_ConfigurableDialogUi
 {

@@ -3,6 +3,7 @@ enum EAudioSourceConfigurationFlag
 	Static = 1,
 	EnvironmentSignals = 2,
 	FinishWhenEntityDestroyed = 4,
+	BoundingVolume = 8,
 }
 
 [BaseContainerProps()]

@@ -265,14 +265,15 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 		
 		Event_OnPossessed.Invoke(playerID, entity, isPossessing);
 	}
-	protected void OnDeathServer(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnDeathServer(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(playerEntity);
-		if (!entity) return;
+		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.GetEditableEntity(instigatorContextData.GetVictimEntity());
+		if (!entity) 
+			return;
 		
-		SCR_EditableEntityComponent killerEditableEntity = SCR_EditableEntityComponent.GetEditableEntity(killerEntity);
+		SCR_EditableEntityComponent killerEditableEntity = SCR_EditableEntityComponent.GetEditableEntity(instigatorContextData.GetKillerEntity());
 		
-		Rpc(OnDeathOwner, playerId, Replication.FindId(entity), Replication.FindId(killerEditableEntity));
+		Rpc(OnDeathOwner, instigatorContextData.GetVictimPlayerID(), Replication.FindId(entity), Replication.FindId(killerEditableEntity));
 	}
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void OnDeathOwner(int playerID, int entityID, int killerID)

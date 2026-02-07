@@ -1,3 +1,6 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Does not inherit from wlib base classes, duplicates code instead.
+
 //! Minimalist progress bar
 //------------------------------------------------------------------------------------------------
 class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
@@ -213,3 +216,5 @@ class SCR_WLibProgressBarComponent : ScriptedWidgetComponent
 		return SCR_WLibProgressBarComponent.Cast(w.FindHandler(SCR_WLibProgressBarComponent));
 	}
 };
+
+//---- REFACTOR NOTE END ----

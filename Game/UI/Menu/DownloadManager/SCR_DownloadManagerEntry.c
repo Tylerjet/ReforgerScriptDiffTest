@@ -126,6 +126,9 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		m_Widgets.m_VersionText.SetText(m_Action.GetTargetRevision().GetVersion());
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Unlocalized fallback visuals
+
 	//------------------------------------------------------------------------------------------------
 	// Display placeholder values if action failed to be loaded
 	protected void FallbackVisuals()
@@ -154,6 +157,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 			m_BackendImage.SetImage(null);
 	}
 	
+//---- REFACTOR NOTE END ----	
+
 	//------------------------------------------------------------------------------------------------
 	//! Update all text displaying progress
 	protected void UpdateProgressWidgets(bool force = false)

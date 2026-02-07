@@ -41,7 +41,7 @@ class CommentEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	private void DrawComment()
 	{
-		float textWidthScale = 0.7;
+		const float textWidthScale = 0.7;
 
 		vector textMat[4];
 		GetWorld().GetCurrentCamera(textMat);

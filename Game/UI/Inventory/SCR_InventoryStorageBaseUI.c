@@ -60,7 +60,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	protected SCR_InventoryProgressBar m_ProgressBar;
 	protected Widget m_wProgressBar;
 	protected Widget m_wWarningOverlay;
-	protected const ref Color m_WeightDefault = new Color(0.73, 0.73, 0.73, 1);
+	protected static const ref Color m_WeightDefault = new Color(0.73, 0.73, 0.73, 1);
 	//------------------------------------------------------------------------ USER METHODS ------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
@@ -437,6 +437,8 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 	bool IsStorageSelected() { return m_bSelected; }
 	//------------------------------------------------------------------------------------------------
 	bool GetLastShownPage() { return m_iLastShownPage; }
+	//------------------------------------------------------------------------------------------------
+	int GetPageCount() { return m_iNrOfPages; }
 	
 	//------------------------------------------------------------------------------------------------
 	BaseInventoryStorageComponent GetStorage() { return m_Storage; }
@@ -1005,7 +1007,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 				MagazineComponent pMagazineActual = MagazineComponent.Cast( pEnt.FindComponent( MagazineComponent ) );
 				if ( pMagazineActual ) //TODO: we actually don't have the ammo in magazines physically. So comparing weight won't help here. We need to count the bullets. Later to remove and use the weight.
 				{
-					if ( m_aSlots[ i ].GetAmmoCount() != pMagazine.GetAmmoCount() )
+					if (pMagazineActual.GetAmmoCount() != pMagazine.GetAmmoCount())
 						continue;
 				}
 				return i;

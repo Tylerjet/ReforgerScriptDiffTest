@@ -7,13 +7,29 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	protected ref InputBinding m_Binding;
 	
 	protected ref SCR_KeyBindingMenuConfig m_KeybindConfig;
+	protected ref SCR_ControllerPresetsConfig m_ControllerPresetsConfig;
 	
 	protected static const string KEY_BINDING_CONFIG = "{4EE7794C9A3F11EF}Configs/System/keyBindingMenu.conf";
+	
+	protected static const string CONTROLLER_PRESETS_CONFIG = "{27780DD27C5E97CF}Configs/System/ControlSchemes/Gamepad/ControllerPresets.conf";
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_SettingsManagerKeybindModule()
 	{
-		//load keybinding confis
+		LoadKeybindConfig();
+		LoadControllerPresetsConfig();
+		
+		SetModuleType(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING);
+		m_Binding = GetGame().GetInputManager().CreateUserBinding();
+		if (!m_Binding)
+		{
+			Print("SCR_SettingsManagerKeybindModule: InputBindings were not created!", LogLevel.WARNING);
+			return;
+		}
+	}
+	
+	void LoadKeybindConfig()
+	{
 		Resource holder = BaseContainerTools.LoadContainer(KEY_BINDING_CONFIG);
 		if (!holder)
 		{
@@ -34,13 +50,30 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 			Print("SCR_SettingsManagerKeybindModule: Loading of keybinding config failed!", LogLevel.WARNING);
 			return;		
 		}
-		
-		SetModuleType(ESettingManagerModuleType.SETTINGS_MANAGER_KEYBINDING);
-		m_Binding = GetGame().GetInputManager().CreateUserBinding();
-		if (!m_Binding)
+	}
+	
+	void LoadControllerPresetsConfig()
+	{
+		Resource holder = BaseContainerTools.LoadContainer(CONTROLLER_PRESETS_CONFIG);
+		if (!holder || !holder.IsValid())
 		{
-			Print("SCR_SettingsManagerKeybindModule: InputBindings were not created!", LogLevel.WARNING);
-			return;
+			Print("SCR_SettingsManagerKeybindModule: Loading of controller presets config failed!", LogLevel.WARNING);
+			return;		
+		}
+		
+		BaseContainer container = holder.GetResource().ToBaseContainer();
+		if (!container)
+		{
+			Print("SCR_SettingsManagerKeybindModule: Loading of controller presets config failed!", LogLevel.WARNING);
+			return;		
+		}
+		
+		//if we only had pointers :(
+		m_ControllerPresetsConfig = SCR_ControllerPresetsConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		if (!m_ControllerPresetsConfig)
+		{
+			Print("SCR_SettingsManagerKeybindModule: Loading of controller presets config failed!", LogLevel.WARNING);
+			return;		
 		}
 	}
 	
@@ -281,6 +314,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		m_Binding.GetContexts(contexts);
 		string finalPreset;
 		string devicePrefix;
+		string actionName;
 		
 		foreach (SCR_KeyBindingCategory category: m_KeybindConfig.m_KeyBindingCategories)
 		{
@@ -291,10 +325,17 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 				else 
 					devicePrefix = GetPrimaryPresetPrefix();
 				
-				if (!entry.m_sPreset.IsEmpty())
+				if (device == EInputDeviceType.GAMEPAD && !entry.m_sPresetGamepadOptional.IsEmpty())
+					finalPreset = devicePrefix + entry.m_sPresetGamepadOptional;
+				else if (!entry.m_sPreset.IsEmpty())
 					finalPreset = devicePrefix + entry.m_sPreset;
 				
-				ResetAction(entry.m_sActionName, finalPreset, device);
+				if (device == EInputDeviceType.GAMEPAD && !entry.m_sActionNameGamepadOptional.IsEmpty())
+					actionName = entry.m_sActionNameGamepadOptional;
+				else
+					actionName = entry.m_sActionName;
+
+				ResetAction(actionName, finalPreset, device);
 			}
 		}
 		m_Binding.Save();
@@ -310,5 +351,57 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	string GetPrimaryPresetPrefix()
 	{
 		return PRIMARY_PRESET_PREFIX;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_ControllerPreset> GetControllerPresets()
+	{
+		if (m_ControllerPresetsConfig)
+			return m_ControllerPresetsConfig.GetPresets();
+		
+		Print("SCR_SettingsManagerKeybindModule: Controller preset not present, check init process!", LogLevel.ERROR);
+		return null;	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetControllerPreset(int presetIndex)
+	{
+		if (!m_Binding)
+			return;
+		
+		array<ref SCR_ControllerPreset> presets = GetControllerPresets();
+		if (!presets || presets.IsEmpty() || presets.Count() <= presetIndex)
+			return;
+		
+		array<ResourceName> presetToSet = {};
+		
+		//empty preset config means we set it to default
+		if (!presets.Get(presetIndex).GetResourceName().IsEmpty())
+			presetToSet.Insert(presets.Get(presetIndex).GetResourceName());
+		
+		m_Binding.SetCustomConfigs(presetToSet);
+		m_Binding.Save();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetActivePresetIndex()
+	{
+		if (!m_Binding)
+			return -1;
+		
+		array<ResourceName> setPresets = {};
+		m_Binding.GetCustomConfigs(setPresets);
+		if (setPresets.IsEmpty())
+			return 0;
+		
+		array<ref SCR_ControllerPreset> presets = GetControllerPresets();
+		
+		foreach (int i, SCR_ControllerPreset preset : presets)
+		{
+			if (preset.GetResourceName() == setPresets.Get(0))
+				return i;
+		}
+		
+		return -1;
 	}
 }

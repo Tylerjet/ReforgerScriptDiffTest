@@ -26,6 +26,9 @@ class SCR_ContentBrowser_ScenarioSubMenuWidgets
 
 	OverlayWidget m_ScenarioDetailsPanel;
 	SCR_ScenarioDetailsPanelComponent m_ScenarioDetailsPanelComponent;
+	
+	OverlayWidget m_AddonDetailsPanel;
+	SCR_AddonDetailsPanelComponent m_AddonDetailsPanelComponent;
 
 	SizeLayoutWidget m_EmptyPanel;
 
@@ -55,6 +58,9 @@ class SCR_ContentBrowser_ScenarioSubMenuWidgets
 		m_ScenarioDetailsPanel = OverlayWidget.Cast(root.FindWidget("Panels.m_FilterPanel.MenuPanel0.VerticalLayout0.Content.m_MainContent.m_ScenarioDetailsPanel"));
 		m_ScenarioDetailsPanelComponent = SCR_ScenarioDetailsPanelComponent.Cast(m_ScenarioDetailsPanel.FindHandler(SCR_ScenarioDetailsPanelComponent));
 
+		m_AddonDetailsPanel = OverlayWidget.Cast(root.FindWidget("Panels.m_FilterPanel.MenuPanel0.VerticalLayout0.Content.m_MainContent.m_AddonDetailsPanel"));
+		m_AddonDetailsPanelComponent = SCR_AddonDetailsPanelComponent.Cast(m_AddonDetailsPanel.FindHandler(SCR_AddonDetailsPanelComponent));
+		
 		m_EmptyPanel = SizeLayoutWidget.Cast(root.FindWidget("Panels.m_EmptyPanel"));
 
 		m_EmptyPanelMessage = OverlayWidget.Cast(root.FindWidget("Panels.m_EmptyPanel.VerticalLayout0.Content.m_EmptyPanelMessage"));

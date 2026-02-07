@@ -29,21 +29,24 @@ class SCR_VONController : ScriptComponent
 	[Attribute("", UIWidgets.Object)]
 	protected ref SCR_VONMenu m_VONMenu;
 		
-	protected const string VON_DIRECT_HOLD = "VONDirect";
-	protected const string VON_CHANNEL_HOLD = "VONChannel";
-	protected const string VON_LONG_RANGE_HOLD = "VONLongRange";
+	protected const string VON_CONTEXT              = "VONContext";
+	protected const string ACTION_DIRECT            = "VONDirect";
+	protected const string ACTION_DIRECT_TOGGLE     = "VONDirectToggle";
+	protected const string ACTION_CHANNEL           = "VONChannel";
+	protected const string ACTION_TRANSCEIVER_CYCLE = "VONTransceiverCycle";
+	protected const string ACTION_LONG_RANGE_TOGGLE = "VONLongRangeToggle";
+
 	protected const float TOGGLE_OFF_DELAY = 0.5;		// seconds, delay before toggle state can get canceled, to avoid collision of double click and press
 	
-	static bool s_bIsInit;					// component init done, static so its only done once
+	protected static bool s_bUnconsciousVONPermitted = true;
+	protected static bool s_bIsInit;		// component init done, static so its only done once
 	protected bool m_bIsDisabled; 			// VON control is disabled
 	protected bool m_bIsPauseDisabled;		// disabled by pause menu
 	protected bool m_bIsUnconscious; 		// Character is unconscious --> VON control is disabled
+	protected ECharacterLifeState m_eLifeState;	// Life state of controlled character
 	protected bool m_bIsActive;				// VON is active
 	protected bool m_bIsToggledDirect;		// VON direct speech toggle is active
-	protected bool m_bIsToggledChannel;		// VON channel speech toggle is active
-	protected bool m_bIsUsingGamepad;		// is using gamepad / KBM
-	protected bool m_bIsActiveModeDirect;	// used for controller, switch between direct VON = true / channel VON = false
-	protected bool m_bIsActiveModeLong;		// used for controller, switch between long range VON = true / channel VON = false
+	protected bool m_bIsLongRangeToggled;	// VON long range radio is selected
 	protected float m_fToggleOffDelay;		// used to track delay before toggle can be cancelled
 	protected string m_sActiveHoldAction;	// tracker for ending the hold action VON 
 	protected string m_sLocalEncryptionKey;	// local players faction encryption key
@@ -202,17 +205,14 @@ class SCR_VONController : ScriptComponent
 		m_OnEntriesActiveChanged.Invoke(entry, true);
 		
 		if (m_ActiveEntry && !m_ActiveEntry.IsUsable())	// turn off toggle when switching to disabled entry
-			OnVONToggle(0,0);
+			DeactivateVON();
 		
 		if (m_VONDisplay)
 			m_VONDisplay.ShowSelectedVONHint(m_ActiveEntry);
 		
-		if (m_bIsUsingGamepad && setFromMenu)	// cancel long range state if switching to personal radio
-		{
-			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
-			if (radioEntry && !radioEntry.IsLongRange())
-				SetGamepadLRRMode(false, true);			
-		}
+		SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
+		if (radioEntry)
+			SetVONLongRange(radioEntry.IsLongRange(), false);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -244,10 +244,7 @@ class SCR_VONController : ScriptComponent
 		//Deactivate if the entry being removed is active
 		if (entry == m_ActiveEntry)
 		{
-			if (m_bIsToggledChannel)
-				OnVONToggle(2, 0);
-			else 
-				DeactivateVON();
+			DeactivateVON();
 			
 			m_ActiveEntry = null;
 		}
@@ -266,176 +263,17 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Sets long rang radio mode for gamepad input scheme
-	protected void SetGamepadLRRMode(bool state, bool isSwitch = false)
-	{
-		m_bIsActiveModeLong = state;
-		
-		if (m_SavedEntry && !isSwitch)	// restore last saved entry if there is one
-			SetActiveTransmit(m_SavedEntry);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON direct speech listener callback
-	protected void OnVONDirect(float value, EActionTrigger reason)
-	{		
-		if (reason == EActionTrigger.DOWN)
-			VONDirect(true);
-		else
-			VONDirect(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON channel speech listener callback
- 	protected void OnVONChannel(float value, EActionTrigger reason)
-	{
-		if (reason == EActionTrigger.DOWN)
-			VONChannel(true);
-		else
-			VONChannel(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON channel speech listener callback for long range radios
- 	protected void OnVONLongRange(float value, EActionTrigger reason)
-	{
-		if (reason == EActionTrigger.DOWN)
-			VONLongRange(true);
-		else
-			VONLongRange(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON channel speech listener callback
- 	protected void OnVONGamepad(float value, EActionTrigger reason)
-	{				
-		if (m_bIsActiveModeLong && !m_bIsActiveModeDirect)
-		{
-			if (reason == EActionTrigger.PRESSED && m_eVONType == EVONTransmitType.LONG_RANGE)
-				return;
-		
-			if (reason == EActionTrigger.PRESSED)
-				VONLongRange(true);
-			else 
-				VONLongRange(false);
-		}
-		else if (m_bIsActiveModeDirect)
-		{
-			if (reason == EActionTrigger.PRESSED && m_eVONType == EVONTransmitType.DIRECT)
-				return;
-			
-			if (reason == EActionTrigger.PRESSED)
-				VONDirect(true);
-			else 
-				VONDirect(false);
-		}
-		else
-		{
-			if (reason == EActionTrigger.PRESSED && m_eVONType == EVONTransmitType.CHANNEL)
-				return;
-			
-			if (reason == EActionTrigger.PRESSED)
-				VONChannel(true);
-			else 
-				VONChannel(false);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
- 	protected void OnVONLongRangeGamepadToggle(float value, EActionTrigger reason)
-	{				
-		if (!m_bIsActiveModeLong && m_LongRangeEntry && m_LongRangeEntry.IsUsable())
-			SetGamepadLRRMode(true);
-		else
-			SetGamepadLRRMode(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON toggle   val 0 = off / 1 = direct / 2 = channel
- 	protected void OnVONToggle(float value, EActionTrigger reason)
+	protected void SetVONProximity(bool activate)
 	{
 		if (!m_VONComp)
 			return;
-		
-		if (value == 0)
-		{
-			m_fToggleOffDelay = 0;
-			m_bIsToggledDirect = false;
-			m_bIsToggledChannel = false;
-			DeactivateVON();
-		}
-		else if (value == 1)
-		{
-			m_fToggleOffDelay = TOGGLE_OFF_DELAY;
-			m_bIsToggledDirect = !m_bIsToggledDirect;
-			m_bIsToggledChannel = false;
-			
-			if (m_bIsToggledDirect)
-				ActivateVON(EVONTransmitType.DIRECT);
-			else
-				DeactivateVON();
-		}
-		else 
-		{
-			SetGamepadLRRMode(false);
-			
-			if (!m_ActiveEntry || !m_ActiveEntry.IsUsable())
-				return;
-			
-			m_fToggleOffDelay = TOGGLE_OFF_DELAY;
-			m_bIsToggledDirect = false;
-			m_bIsToggledChannel = !m_bIsToggledChannel;
-			
-			if (m_bIsToggledChannel)
-				ActivateVON(EVONTransmitType.CHANNEL);
-			else 
-				DeactivateVON();
-		}
-						
-		m_OnVONActiveToggled.Invoke(m_bIsToggledDirect, m_bIsToggledChannel);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON toggle controller
- 	protected void OnVONToggleGamepad(float value, EActionTrigger reason)
-	{
-		if (m_bIsActiveModeDirect)
-			OnVONToggle(1, EActionTrigger.DOWN);	// direct toggle
-		else 
-			OnVONToggle(2, EActionTrigger.DOWN);	// channel toggle
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! VON switch between direct/channel mode
- 	protected void OnVONSwitch(float value, EActionTrigger reason)
-	{
-		m_bIsActiveModeDirect = !m_bIsActiveModeDirect;
-		
-		if (m_bIsToggledDirect || m_bIsToggledChannel)
-			OnVONToggleGamepad(0, EActionTrigger.UP);
-		else if (m_VONDisplay)
-		{
-			if (m_bIsActiveModeDirect)
-				m_VONDisplay.ShowSelectedVONHint(m_DirectSpeechEntry);
-			else if (m_ActiveEntry)
-				m_VONDisplay.ShowSelectedVONHint(m_ActiveEntry);
-		}
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	protected void VONDirect(bool activate)
-	{
-		if (!m_VONComp)
-			return;
-		
-		if (m_bIsToggledDirect && m_fToggleOffDelay <= 0)	// direct speech toggle is active, cancel it
-			OnVONToggle(0,0);
-		
+
 		if (!m_DirectSpeechEntry.IsUsable())
 			return;
-		
-		m_sActiveHoldAction = VON_DIRECT_HOLD;
-		
+
+		if (activate && m_eVONType == EVONTransmitType.DIRECT)
+			return;
+
 		if (activate)
 			ActivateVON(EVONTransmitType.DIRECT);
 		else
@@ -443,68 +281,206 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void VONChannel(bool activate)
+	protected void SetVONProximityToggle(bool activate)
 	{
 		if (!m_VONComp)
 			return;
-			
-		if (m_bIsToggledChannel && m_fToggleOffDelay <= 0) // channel speech toggle is active, cancel it
-			OnVONToggle(0,0);
-		
-		if (!m_ActiveEntry || !m_ActiveEntry.IsUsable())	// if active entry disabled, use direct instead
-		{
-			VONDirect(activate);
-			m_VONDisplay.ShowSelectedVONDisabledHint();
+
+		if (!m_DirectSpeechEntry.IsUsable())
 			return;
-		}
-		
-		m_sActiveHoldAction = VON_CHANNEL_HOLD;
-		
+
+		if (m_bIsToggledDirect == activate)
+			return;
+
+		m_bIsToggledDirect = activate;
+
 		if (activate)
-			ActivateVON(EVONTransmitType.CHANNEL);
+			ActivateVON(EVONTransmitType.DIRECT);
 		else
-			DeactivateVON(EVONTransmitType.CHANNEL);
+			DeactivateVON(EVONTransmitType.DIRECT);
+
+		m_OnVONActiveToggled.Invoke(m_bIsToggledDirect, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void VONLongRange(bool activate)
+	protected void SetVONBroadcast(bool activate, EVONTransmitType transmitType = EVONTransmitType.CHANNEL)
 	{
 		if (!m_VONComp)
 			return;
-		
-		if ((m_bIsToggledChannel || m_bIsToggledDirect) && m_fToggleOffDelay <= 0) 
-			OnVONToggle(0,0);
-		
-		if (!m_LongRangeEntry || !m_LongRangeEntry.IsUsable())	// if active entry disabled, use direct instead
+
+		// if active entry disabled or character is incapacitated, use direct instead
+		if (m_eLifeState != ECharacterLifeState.ALIVE || !m_ActiveEntry || !m_ActiveEntry.IsUsable())
 		{
-			VONDirect(activate);
-			m_VONDisplay.ShowSelectedVONDisabledHint();
+			SetVONProximity(activate && !m_bIsUnconscious);
+
+			if (m_VONDisplay)
+				m_VONDisplay.ShowSelectedVONDisabledHint();
+
 			return;
 		}
-		
-		m_sActiveHoldAction = VON_LONG_RANGE_HOLD;
-		
+
 		if (activate)
+			ActivateVON(transmitType);
+		else
+			DeactivateVON(transmitType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetVONLongRange(bool longRange, bool restorePrevious = true)
+	{
+		if (m_bIsLongRangeToggled == longRange)
+			return;
+
+		if (!m_LongRangeEntry || !m_LongRangeEntry.IsUsable())
+			return;
+
+		m_bIsLongRangeToggled = longRange;
+
+		if (longRange)
 		{
-			if (!m_SavedEntry)	// saved entry to switch back to after using long range mode
+			// saved entry to switch back to after using long range mode
+			if (!m_SavedEntry && m_ActiveEntry != m_LongRangeEntry)
 				m_SavedEntry = m_ActiveEntry;
-			
-			m_bIsActiveModeDirect = false;
-			
-			ActivateVON(EVONTransmitType.LONG_RANGE);
+
+			SetActiveTransmit(m_LongRangeEntry);
+
+			if (m_VONDisplay)
+				m_VONDisplay.ShowSelectedVONHint(m_LongRangeEntry);
 		}
 		else
 		{
-			DeactivateVON(EVONTransmitType.LONG_RANGE);	
-			
-			if (m_SavedEntry && !m_bIsUsingGamepad)	// restore last saved entry if there is one
+			DeactivateVON(EVONTransmitType.LONG_RANGE);
+
+			// restore last saved entry
+			if (restorePrevious)
+			{
+				if (!m_SavedEntry)
+				{
+					// Select first non-longrange entry
+					SCR_VONEntryRadio radioEntry;
+					foreach (SCR_VONEntry entry : m_aEntries)
+					{
+						radioEntry = SCR_VONEntryRadio.Cast(entry);
+						if (radioEntry && !radioEntry.IsLongRange())
+						{
+							m_SavedEntry = entry;
+							break;
+						}
+					}
+				}
+
+				if (m_VONDisplay)
+					m_VONDisplay.ShowSelectedVONHint(m_SavedEntry);
+
 				SetActiveTransmit(m_SavedEntry);
+			}
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ActionVONProximity(float value, EActionTrigger reason = EActionTrigger.UP)
+	{
+		if (!m_VONComp)
+			return;
+
+		bool activate = reason != EActionTrigger.UP;
+
+		// Cancel toggle
+		if (activate && m_bIsToggledDirect && m_fToggleOffDelay <= 0)
+			SetVONProximityToggle(false);
+
+		SetVONProximity(reason != EActionTrigger.UP);
+
+		if (reason != EActionTrigger.UP)
+			m_sActiveHoldAction = ACTION_DIRECT;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ActionVONProximityToggle(float value, EActionTrigger reason = EActionTrigger.UP)
+	{
+		if (!m_VONComp)
+			return;
+
+		SetVONProximityToggle(!m_bIsToggledDirect);
+
+		if (m_bIsToggledDirect)
+			m_fToggleOffDelay = TOGGLE_OFF_DELAY;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ActionVONBroadcast(float value, EActionTrigger reason = EActionTrigger.UP)
+	{
+		if (!m_VONComp)
+			return;
+
+		EVONTransmitType transmitType;
+
+		if (m_bIsLongRangeToggled)
+			transmitType = EVONTransmitType.LONG_RANGE;
+		else
+			transmitType = EVONTransmitType.CHANNEL;
+
+		if (reason != EActionTrigger.UP && m_eVONType == transmitType)
+			return;
+
+		SetVONBroadcast(reason != EActionTrigger.UP, transmitType);
+
+		if (reason != EActionTrigger.UP)
+			m_sActiveHoldAction = ACTION_CHANNEL;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ActionVONTransceiverCycle(float value, EActionTrigger reason = EActionTrigger.UP)
+	{
+		TransceiverCycle();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void TransceiverCycle()
+	{
+		SCR_VONEntryRadio activeRadioEntry = SCR_VONEntryRadio.Cast(m_ActiveEntry);
+		if (!activeRadioEntry)
+			return;
+
+		bool isLongRange = activeRadioEntry.IsLongRange();
+
+		BaseRadioComponent radio = activeRadioEntry.GetTransceiver().GetRadio();
+		array<SCR_VONEntry> entries = {};
+
+		SCR_VONEntryRadio radioEntry;
+		foreach (SCR_VONEntry entry : m_aEntries)
+		{
+			radioEntry = SCR_VONEntryRadio.Cast(entry);
+			if (radioEntry && radioEntry.GetTransceiver().GetRadio() == radio)
+				entries.Insert(entry);
+		}
+
+		SCR_VONEntry newEntry = m_ActiveEntry;
+
+		if (!entries.IsEmpty())
+		{
+			int nextEntryID = (entries.Find(m_ActiveEntry) + 1) % entries.Count();
+			newEntry = entries[nextEntryID];
+			
+			if (newEntry != m_ActiveEntry && m_eVONType != EVONTransmitType.DIRECT)
+				DeactivateVON(m_eVONType);
+		}
+
+		SetActiveTransmit(newEntry);
+
+		if (m_VONDisplay)
+			m_VONDisplay.ShowSelectedVONHint(newEntry);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ActionVONLongRangeToggle(float value, EActionTrigger reason = EActionTrigger.UP)
+	{
+		SetVONLongRange(!m_bIsLongRangeToggled);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! VON activation
-	//! \param entry is the subject VON entry
+	//! \param transmitType type of entry to be activated
  	protected void ActivateVON(EVONTransmitType transmitType)
 	{				
 		if (!m_VONComp)
@@ -521,7 +497,10 @@ class SCR_VONController : ScriptComponent
 			SCR_VONEntryRadio radioEntry = SCR_VONEntryRadio.Cast(entry);
 			if (radioEntry && m_sLocalEncryptionKey != string.Empty && radioEntry.GetTransceiver().GetRadio().GetEncryptionKey() != m_sLocalEncryptionKey)
 			{
-				m_VONDisplay.ShowSelectedVONDisabledHint(true);
+				SetVONProximity(true);
+				if (m_VONDisplay)
+					m_VONDisplay.ShowSelectedVONDisabledHint(true);
+
 				return;
 			}
 		}
@@ -546,10 +525,9 @@ class SCR_VONController : ScriptComponent
 		m_VONComp.SetCapture(false);
 		m_sActiveHoldAction = string.Empty;
 					
-		if (m_bIsToggledDirect) 		// direct toggle is active so ending VON should not end capture
+		// direct toggle is active so ending VON should not end capture
+		if (m_bIsToggledDirect)
 			ActivateVON(EVONTransmitType.DIRECT);
-		else if (m_bIsToggledChannel)	// channel toggle is active so ending VON should not end capture
-			ActivateVON(EVONTransmitType.CHANNEL);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -591,9 +569,11 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! VON hold timeout, stops active von transmission in case of specific condition which would prevent for it to end normally
-	protected void TimeoutVON()
+	// Reset VON input states and stop transmission
+	protected void ResetVON()
 	{
+		SetVONProximityToggle(false);
+		SetVONLongRange(false, false);
 		DeactivateVON();
 	}
 	
@@ -602,8 +582,7 @@ class SCR_VONController : ScriptComponent
 	//! Used to reinit VON when new entity is controlled
 	protected void OnControlledEntityChanged(IEntity from, IEntity to)
 	{				
-		if (m_bIsToggledDirect || m_bIsToggledChannel)
-			OnVONToggle(0,0);
+		ResetVON();
 		
 		m_sLocalEncryptionKey = string.Empty;
 		
@@ -612,53 +591,27 @@ class SCR_VONController : ScriptComponent
 		else 
 			SetVONComponent(null);	
 		
-		if (from)
+		ChimeraCharacter previous = ChimeraCharacter.Cast(from);
+		if (previous)
 		{
-			ChimeraCharacter character = ChimeraCharacter.Cast(from);
-			if (character)
-			{	
-				SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
-				if (controller)
-					controller.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
-			}
+			SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(previous.GetCharacterController());
+			if (controller)
+				controller.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
 		}
 		
-		bool unconsciousVONEnabled;
-		SCR_BaseGameMode baseGameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		if (!baseGameMode)
-			return;
-		
-		SCR_GameModeHealthSettings healthSettingsComp = baseGameMode.GetGameModeHealthSettings();
-		if (healthSettingsComp)
-			unconsciousVONEnabled = healthSettingsComp.IsUnconsciousVONPermitted();
-		
-		if (unconsciousVONEnabled)
-			return;
-		
-		if (to)		
+		ChimeraCharacter character = ChimeraCharacter.Cast(to);
+		if (character)
 		{
-			ChimeraCharacter character = ChimeraCharacter.Cast(to);
-			if (!character)
-				return;
-			
 			SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 			if (controller)
 			{
-				m_bIsUnconscious = controller.IsUnconscious();
+				ECharacterLifeState lifeState = controller.GetLifeState();
+				OnLifeStateChanged(lifeState, lifeState);
 				controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 			}
-			
-			UpdateSystemState();
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! SCR_PlayerController Event
-	//! Used to deactivate VON for dead players
-	protected void OnDestroyed(Instigator killer, IEntity killerEntity)
-	{		
-		if (m_bIsToggledDirect || m_bIsToggledChannel)
-			OnVONToggle(0,0);
+
+		UpdateSystemState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -669,26 +622,12 @@ class SCR_VONController : ScriptComponent
 		if (playerId != GetGame().GetPlayerController().GetPlayerId())
 			return;
 		
-		if (m_bIsToggledDirect || m_bIsToggledChannel)
-			OnVONToggle(0,0);
+		ResetVON();
 		
 		m_ActiveEntry = null;
 		m_LongRangeEntry = null;
 		
 		m_aEntries.Clear();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Game Event
-	protected void OnInputDeviceIsGamepad(bool isGamepad)
-	{
-		m_bIsUsingGamepad = isGamepad;
-		
-		if (!isGamepad)
-		{
-			m_bIsActiveModeDirect = false;
-			m_bIsActiveModeLong = false;
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -724,19 +663,43 @@ class SCR_VONController : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
+	protected void OnLifeStateChanged(ECharacterLifeState previousLifeState, ECharacterLifeState newLifeState)
 	{
-		m_bIsUnconscious = newLifeState == ECharacterLifeState.INCAPACITATED;
-		
+		UpdateUnconsciousVONPermitted();
+
+		m_eLifeState = newLifeState;
+
+		if (s_bUnconsciousVONPermitted)
+			m_bIsUnconscious = m_eLifeState == ECharacterLifeState.DEAD;
+		else
+			m_bIsUnconscious = m_eLifeState != ECharacterLifeState.ALIVE;
+
+		if (m_bIsUnconscious)
+		{
+			// Who has died, does not live. - Franz
+			SetVONProximityToggle(false);
+			DeactivateVON();
+		}
+		else if (m_eLifeState == ECharacterLifeState.INCAPACITATED)
+		{
+			// allow proximity voice chat if incapacitated
+			if (m_eVONType != EVONTransmitType.DIRECT)
+				DeactivateVON();
+		}
+
 		UpdateSystemState();
-		
-		if (newLifeState == ECharacterLifeState.ALIVE)
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static void UpdateUnconsciousVONPermitted()
+	{
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
 			return;
-		
-		if (m_bIsToggledDirect || m_bIsToggledChannel)
-			OnVONToggle(0,0);
-			
-		TimeoutVON();
+
+		SCR_GameModeHealthSettings healthSettings = gameMode.GetGameModeHealthSettings();
+		if (healthSettings)
+			s_bUnconsciousVONPermitted = healthSettings.IsUnconsciousVONPermitted();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -761,30 +724,29 @@ class SCR_VONController : ScriptComponent
 			return;
 		}
 		
+		UpdateUnconsciousVONPermitted();
+
 		m_InputManager = GetGame().GetInputManager();
-		if (!m_InputManager)
-			return;
-		
-		m_InputManager.AddActionListener(VON_DIRECT_HOLD, EActionTrigger.DOWN, OnVONDirect);
-		m_InputManager.AddActionListener(VON_DIRECT_HOLD, EActionTrigger.UP, OnVONDirect);
-		m_InputManager.AddActionListener(VON_CHANNEL_HOLD, EActionTrigger.DOWN, OnVONChannel);
-		m_InputManager.AddActionListener(VON_CHANNEL_HOLD, EActionTrigger.UP, OnVONChannel);
-		m_InputManager.AddActionListener(VON_LONG_RANGE_HOLD, EActionTrigger.DOWN, OnVONLongRange);
-		m_InputManager.AddActionListener(VON_LONG_RANGE_HOLD, EActionTrigger.UP, OnVONLongRange);
-		m_InputManager.AddActionListener("VONGamepad", EActionTrigger.PRESSED, OnVONGamepad);
-		m_InputManager.AddActionListener("VONGamepad", EActionTrigger.UP, OnVONGamepad);
-		m_InputManager.AddActionListener("VONGamepadLongRange", EActionTrigger.DOWN, OnVONLongRangeGamepadToggle);
-		m_InputManager.AddActionListener("VONDirectToggle", EActionTrigger.DOWN, OnVONToggle);
-		m_InputManager.AddActionListener("VONChannelToggle", EActionTrigger.DOWN, OnVONToggle);
-		m_InputManager.AddActionListener("VONToggleGamepad", EActionTrigger.DOWN, OnVONToggleGamepad);
-		m_InputManager.AddActionListener("VONSwitch", EActionTrigger.DOWN, OnVONSwitch);
-		
+		if (m_InputManager)
+		{
+			m_InputManager.AddActionListener(ACTION_DIRECT, EActionTrigger.DOWN, ActionVONProximity);
+			m_InputManager.AddActionListener(ACTION_DIRECT, EActionTrigger.UP, ActionVONProximity);
+			m_InputManager.AddActionListener(ACTION_DIRECT_TOGGLE, EActionTrigger.DOWN, ActionVONProximityToggle);
+			m_InputManager.AddActionListener(ACTION_CHANNEL, EActionTrigger.DOWN, ActionVONBroadcast);
+			m_InputManager.AddActionListener(ACTION_CHANNEL, EActionTrigger.UP, ActionVONBroadcast);
+			m_InputManager.AddActionListener(ACTION_TRANSCEIVER_CYCLE, EActionTrigger.DOWN, ActionVONTransceiverCycle);
+			m_InputManager.AddActionListener(ACTION_LONG_RANGE_TOGGLE, EActionTrigger.DOWN, ActionVONLongRangeToggle);
+		}
+
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetOwner());
-		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
-		playerController.m_OnDestroyed.Insert(OnDestroyed);
+		if (playerController)
+		{
+			OnControlledEntityChanged(null, playerController.GetControlledEntity());
+			playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
+		}
+
 		PauseMenuUI.m_OnPauseMenuOpened.Insert(OnPauseMenuOpened);
 		PauseMenuUI.m_OnPauseMenuClosed.Insert(OnPauseMenuClosed);
-		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
@@ -811,22 +773,16 @@ class SCR_VONController : ScriptComponent
 		UpdateSystemState();
 		
 		m_InputManager = GetGame().GetInputManager();
-		if (!m_InputManager)
-			return;
-		
-		m_InputManager.RemoveActionListener(VON_DIRECT_HOLD, EActionTrigger.DOWN, OnVONDirect);
-		m_InputManager.RemoveActionListener(VON_DIRECT_HOLD, EActionTrigger.UP, OnVONDirect);
-		m_InputManager.RemoveActionListener(VON_CHANNEL_HOLD, EActionTrigger.DOWN, OnVONChannel);
-		m_InputManager.RemoveActionListener(VON_CHANNEL_HOLD, EActionTrigger.UP, OnVONChannel);
-		m_InputManager.RemoveActionListener(VON_LONG_RANGE_HOLD, EActionTrigger.DOWN, OnVONLongRange);
-		m_InputManager.RemoveActionListener(VON_LONG_RANGE_HOLD, EActionTrigger.UP, OnVONLongRange);
-		m_InputManager.RemoveActionListener("VONGamepad", EActionTrigger.PRESSED, OnVONGamepad);
-		m_InputManager.RemoveActionListener("VONGamepad", EActionTrigger.UP, OnVONGamepad);
-		m_InputManager.RemoveActionListener("VONGamepadLongRange", EActionTrigger.DOWN, OnVONLongRangeGamepadToggle);
-		m_InputManager.RemoveActionListener("VONDirectToggle", EActionTrigger.DOWN, OnVONToggle);
-		m_InputManager.RemoveActionListener("VONDChannelToggle", EActionTrigger.DOWN, OnVONToggle);
-		m_InputManager.RemoveActionListener("VONToggleGamepad", EActionTrigger.DOWN, OnVONToggleGamepad);
-		m_InputManager.RemoveActionListener("VONSwitch", EActionTrigger.DOWN, OnVONSwitch);
+		if (m_InputManager)
+		{
+			m_InputManager.RemoveActionListener(ACTION_DIRECT, EActionTrigger.DOWN, ActionVONProximity);
+			m_InputManager.RemoveActionListener(ACTION_DIRECT, EActionTrigger.UP, ActionVONProximity);
+			m_InputManager.RemoveActionListener(ACTION_DIRECT_TOGGLE, EActionTrigger.DOWN, ActionVONProximityToggle);
+			m_InputManager.RemoveActionListener(ACTION_CHANNEL, EActionTrigger.DOWN, ActionVONBroadcast);
+			m_InputManager.RemoveActionListener(ACTION_CHANNEL, EActionTrigger.UP, ActionVONBroadcast);
+			m_InputManager.RemoveActionListener(ACTION_TRANSCEIVER_CYCLE, EActionTrigger.DOWN, ActionVONTransceiverCycle);
+			m_InputManager.RemoveActionListener(ACTION_LONG_RANGE_TOGGLE, EActionTrigger.DOWN, ActionVONLongRangeToggle);
+		}
 	
 		IEntity ent = PlayerController.Cast(GetOwner()).GetControlledEntity();
 		if (ent)
@@ -850,18 +806,18 @@ class SCR_VONController : ScriptComponent
 	protected void UpdateDebug()
 	{
 		DbgUI.Begin("VON debug");
-		string dbg = "VONcomp: %1 | entries: %2";
+		const string dbg = "VONcomp: %1 | entries: %2";
 		DbgUI.Text( string.Format( dbg, m_VONComp, m_aEntries.Count() ) );
-		string dbg2 = "Gpad Direct mode: %1 | Gpad LRR mode: %2";
-		DbgUI.Text( string.Format( dbg2, m_bIsActiveModeDirect, m_bIsActiveModeLong ) );
-		string dbg3 = "Activ: %1";
+		const string dbg2 = "Direct mode: %1 | LRR mode: %2";
+		DbgUI.Text( string.Format( dbg2, m_bIsToggledDirect, m_bIsLongRangeToggled ) );
+		const string dbg3 = "Activ: %1";
 		DbgUI.Text( string.Format( dbg3, m_ActiveEntry ) );
-		string dbg4 = "LRRad: %1";
+		const string dbg4 = "LRRad: %1";
 		DbgUI.Text( string.Format( dbg4, m_LongRangeEntry ) );
-		string dbg5 = "Saved: %1";
+		const string dbg5 = "Saved: %1";
 		DbgUI.Text( string.Format( dbg5, m_SavedEntry ) );
 		
-		string line =  "freq: %2 | active: %3 | class: %4 | type: %1 ";
+		const string line =  "freq: %2 | active: %3 | class: %4 | type: %1 ";
 		foreach ( SCR_VONEntry entry : m_aEntries )
 		{
 			SCR_VONEntryRadio radio = SCR_VONEntryRadio.Cast(entry);
@@ -919,7 +875,7 @@ class SCR_VONController : ScriptComponent
 	{
 		if (!m_bIsDisabled && !m_bIsUnconscious)
 		{
-			m_InputManager.ActivateContext("VONContext");
+			m_InputManager.ActivateContext(VON_CONTEXT);
 			m_InputManager.ActivateContext(VON_MENU_OPENING_CONTEXT);
 			
 			if (m_fToggleOffDelay > 0)
@@ -927,11 +883,8 @@ class SCR_VONController : ScriptComponent
 			
 			/* 	When non overlaying context such as chat is activated during hold action, we will no longer receive the EActionTrigger.UP callback from the previous context, which is currently intended
 				This timeouts it in such case so the VON will not be stuck in an active state	*/
-			if (m_sActiveHoldAction != string.Empty)
-			{
-				if (!m_InputManager.IsActionActive(m_sActiveHoldAction))
-					TimeoutVON();
-			}
+			if (!m_sActiveHoldAction.IsEmpty() && !m_InputManager.IsActionActive(m_sActiveHoldAction))
+				DeactivateVON();
 		}
 		
 		if (m_VONMenu)

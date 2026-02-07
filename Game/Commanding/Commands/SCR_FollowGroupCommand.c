@@ -35,6 +35,12 @@ class SCR_FollowGroupCommand : SCR_WaypointGroupCommand
 	
 		CheckPreviousWaypoints(slaveGroup);
 		
+		// Hotfix: teleport group to leader, otherwise if group is very split up, bots will try to regroup somewhere in the middle, far away
+		vector targetTransform[4];
+		controlledEntity.GetTransform(targetTransform);
+		slaveGroup.SetTransform(targetTransform);
+		slaveGroup.Update();
+
 		// Crucial part about follow waypoint: we must set entity so it knows who to follow
 		// Also it is of SCR_EntityWaypoint class, not SCR_AIWaypoint.
 		SCR_EntityWaypoint wp = SCR_EntityWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(waypointPrefab, null, params));

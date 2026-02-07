@@ -37,7 +37,7 @@ class SCR_AIFollowActivity : SCR_AIActivityBase
 	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " following entity " + m_Entity.ValueToString();
+		return this.ToString() + " following entity " + m_Entity.m_Value.ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------

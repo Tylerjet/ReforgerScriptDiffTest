@@ -119,17 +119,12 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Called after a player gets killed.
-	//! \param playerId PlayerId of victim player.
-	//! \param player Entity of victim player if any.
-	//! \param killerEntity Entity of killer instigator if any.
-	//! \param killer Instigator of the kill
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
-		if (!m_aWaitingPlayers.Contains(playerId))
+		super.OnPlayerKilled(instigatorContextData);
+		if (!m_aWaitingPlayers.Contains(instigatorContextData.GetVictimPlayerID()))
 		{
-			m_aWaitingPlayers.Insert(playerId);
+			m_aWaitingPlayers.Insert(instigatorContextData.GetVictimPlayerID());
 			Replication.BumpMe();
 		}
 	}
@@ -137,7 +132,7 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerDeleted(int playerId, IEntity player)
 	{
-		OnPlayerKilled(playerId, player, null, Instigator.CreateInstigator(null));
+		OnPlayerKilled(new SCR_InstigatorContextData(playerId, player, null, Instigator.CreateInstigator(null), true));
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -2,7 +2,6 @@
 class SCR_ProfaneFilter
 {
 	// TODO@mour:speedrun solution, look into performance!!!
-	// TODO: replace 4 -> a, 3 -> e, 7 -> t, $ -> s etc to cover 13375p34k? (1 = l or i...)
 	
 	//------------------------------------------------------------------------------------------------
 	//! Replace profanities with a same-sized repetition of replaceText char

@@ -3,6 +3,8 @@ class SCR_BandageDamageEffect: SCR_InstantDamageEffect
 	//------------------------------------------------------------------------------------------------
 	override void OnEffectAdded(SCR_ExtendedDamageManagerComponent dmgManager)			
 	{
+		super.OnEffectAdded(dmgManager);
+		
 		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
 		if (!damageMgr)
 			return;

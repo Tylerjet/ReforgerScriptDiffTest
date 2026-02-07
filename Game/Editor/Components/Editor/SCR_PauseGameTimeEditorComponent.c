@@ -12,6 +12,7 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 	
 	protected ChimeraWorld m_World;
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Toggle pause mode, e.g., pause the game when it's not paused.
 	*/
@@ -19,6 +20,8 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 	{
 		SetPause(!m_World.IsGameTimePaused());
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set pause mode.
 	\param pause True to pause the game, false to unpause it
@@ -33,16 +36,13 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 				rewindManager.CreateRewindPoint();
 		}
 		
-		m_World.PauseGameTime(pause);
-	}
-	/*!
-	\return True if the game is paused
-	*/
-	bool IsPaused()
-	{
-		return m_World.IsGameTimePaused();
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		
+		if (gameMode)
+			gameMode.PauseGame(pause, SCR_EPauseReason.EDITOR);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Set if the game should be paused when the editor is opened.
 	\param pause True to pause the game whent he editor is opened
@@ -51,6 +51,8 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 	{
 		m_bPauseOnOpen = pause;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	\return True if the game is set to be paused when the editor is opened
 	*/
@@ -65,6 +67,7 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 			SetPause(true);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorOpen()
 	{
 		GetGame().GetSaveManager().GetOnSaved().Insert(OnSaved);
@@ -77,6 +80,8 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 				GetGame().GetCallqueue().CallLater(SetPause, 1, false, true);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorClose()
 	{
 		GetGame().GetSaveManager().GetOnSaved().Remove(OnSaved);
@@ -84,6 +89,8 @@ class SCR_PauseGameTimeEditorComponent : SCR_BaseEditorComponent
 		//--- Always unpause the game when leaving the editor
 		SetPause(false);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnEditorInit()
 	{
 		m_World = GetGame().GetWorld();

@@ -110,6 +110,9 @@ class SCR_MilitaryBaseSystem : GameSystem
 		{
 			processedEntity = queue[0];
 			queue.Remove(0);
+			
+			if (!processedEntity)
+				continue;
 
 			if (!checkeEditableEntityComponent || !SCR_EditableEntityComponent.Cast(processedEntity.FindComponent(SCR_EditableEntityComponent)))
 			{

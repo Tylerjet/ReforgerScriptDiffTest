@@ -1,6 +1,9 @@
 //! Component for handling common events other scripts need to listen
 //! Feel free to add any event in the list 
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old, unmantained and barely used. Should be merged with SCR_ScriptedWidgetComponent as the base of the widget library, given the need for such events on all UI components
+
 //------------------------------------------------------------------------------------------------
 class SCR_EventHandlerComponent : ScriptedWidgetComponent 
 {
@@ -202,4 +205,6 @@ class SCR_EventHandlerComponent : ScriptedWidgetComponent
 			m_OnDoubleClick = new ScriptInvoker();
 		return m_OnDoubleClick;
 	}
+	
+	//---- REFACTOR NOTE END ----
 };

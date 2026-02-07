@@ -3,10 +3,22 @@ Scripted menu base class.
 
 Manages functionality of class MenuRootComponent.
 */
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// This class should be merged with ChimeraMenuBase
+
 class MenuRootBase : ChimeraMenuBase
 {
+	
+//---- REFACTOR NOTE END ----
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// This gives components access to their menu's events (they will register to the MenuRootComponent) through tight couplings: it is debatable if this is the right approach
+	
 	protected MenuRootComponent m_MenuRootComponent;
 
+//---- REFACTOR NOTE END ----
+	
 	protected ref ScriptInvoker m_EventOnMenuFocusGained;
 	protected ref ScriptInvoker m_EventOnMenuFocusLost;
 	protected ref ScriptInvoker m_EventOnMenuShow;
@@ -17,7 +29,13 @@ class MenuRootBase : ChimeraMenuBase
 	protected ref ScriptInvoker m_EventOnMenuInit;
 	protected ref ScriptInvoker m_EventOnMenuClose;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old implementation, now we have HUD manager for this stuff
+	
 	protected SCR_ChatPanel m_ChatPanel;
+
+//---- REFACTOR NOTE END ----
+	
 	protected SCR_DynamicFooterComponent m_DynamicFooter;
 	
 	//------------------------------------------------------------------------------------------------

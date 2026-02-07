@@ -16,6 +16,12 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 
 	[Attribute(desc: "StringID for the Intro Voiceline action to be processed. Processing must be setup after tasks are initialized.", category: "Task")]
 	string m_sTaskIntroVoiceline;
+	
+	[Attribute(desc: "Conditions that will be checked upon trying to finish a task", category: "Task")]
+	ref array<ref SCR_ScenarioFrameworkActivationConditionBase> m_aFinishConditions;
+	
+	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Finish Conditions.", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Task")]
+	SCR_EScenarioFrameworkLogicOperators m_eFinishConditionLogic;
 
 	[Attribute(defvalue: "1", desc: "What to do once task is finished", UIWidgets.Auto, category: "OnTaskFinish")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActionsOnFinished;
@@ -37,7 +43,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	bool m_bTempIsTerminated;
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] newState
+	//! \param[in] newState Task state change event, triggers actions based on state change.
 	void OnTaskStateChanged(SCR_TaskState newState)
 	{
 		if (newState == SCR_TaskState.OPENED)
@@ -78,13 +84,14 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] state
+	//! \param[in] state Indicates whether the task is resolved before loading.
 	void SetTaskResolvedBeforeLoad(bool state)
 	{
 		m_bTaskResolvedBeforeLoad = state;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Binds current task to parent task layer if available, else logs error.
 	protected void StoreTaskSubjectToParentTaskLayer()
 	{
 		m_TaskLayer = GetParentTaskLayer();
@@ -101,30 +108,49 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] iState
-	//! \return
+	//! Returns localized string for task title based on current state.
+	//! \param[in] iState iState represents the current state of the task title.
+	//! \return the localized string representing the title of the task with index iState.
 	LocalizedString GetTaskTitle(int iState = 0)
 	{
 		return m_sTaskTitle;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Task execution briefing string.
 	LocalizedString GetTaskExecutionBriefing()
 	{
 		return m_sTaskExecutionBriefing;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] iState
-	//! \return
+	//! Returns the description of the current task based on its state.
+	//! \param[in] iState iState represents the current state of the task.
+	//! \return the description string for the current task state.
 	string GetTaskDescription(int iState = 0)
 	{
 			return m_sTaskDescription;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Represents the current state of the task or its parent task layer, if no parent layer exists, it returns OPENED
+	SCR_TaskState GetTaskState()
+	{
+		if (!m_TaskLayer)
+		{
+			m_TaskLayer = GetParentTaskLayer();
+			if (!m_TaskLayer)
+				return SCR_TaskState.OPENED;
+		}
+		
+		if (m_TaskLayer.m_Task)
+			return m_TaskLayer.m_Task.GetTaskState();
+		else
+			return SCR_TaskState.OPENED;
+	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get the Layer Task which is parent of this Slot
+	//! \return parent ScenarioFrameworkLayerTask of the entity owning this task.
 	SCR_ScenarioFrameworkLayerTask GetParentTaskLayer()
 	{
 		SCR_ScenarioFrameworkLayerTask layer;
@@ -142,8 +168,11 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Resets all action activations, cancels task, and restores default settings.
+	//! \param[in] includeChildren Resets actions' activation count, cancels task if TaskLayer exists, resets TaskLayer, and restores default
+	//! \param[in] reinitAfterRestoration Resets all action counts after restoring default state, also cancels current task if TaskLayer is present.
+	//! \param[in] affectRandomization Affects randomization state during restoration process.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActionsOnFinished)
 		{
@@ -170,19 +199,25 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 			activationAction.m_iNumberOfActivations = 0;
 		}
 		
+		if (m_TaskLayer && m_TaskLayer.m_SupportEntity && m_TaskLayer.m_Task)
+			m_TaskLayer.m_SupportEntity.CancelTask(m_TaskLayer.m_Task.GetTaskID());
+		
 		m_TaskLayer = null;
 		m_bTaskResolvedBeforeLoad = false;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario with same activation type as parent.
 	override void DynamicReinit()
 	{
 		Init(null, SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Removes self from dynamic despawn list, if not already spawned, initiates despawn, removes inventory change event
+	//! \param[in] layer Layer represents the scenario framework layer where dynamic despawning occurs.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
@@ -209,6 +244,19 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! Checks if layer is not terminated, spawns children if parent exists, returns false if terminated or children not spawnned
+	//! \return true if not terminated, otherwise false.
+	override bool InitNotTerminated()
+	{
+		m_bTempIsTerminated = m_bIsTerminated;
+		m_bIsTerminated = false;
+		
+		return super.InitNotTerminated();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Spawn check for entity initiation, handles termination if no entity, returns true if entity exists, false otherwise.
+	//! \return whether entity is successfully spawned or not.
 	override bool InitEntitySpawnCheck()
 	{
 		if (!m_Entity)
@@ -225,8 +273,8 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 			return false;
 	}
 	
-	
 	//------------------------------------------------------------------------------------------------
+	//! Finishes initialization, sets termination flag, and calls base class FinishInit.
 	override void FinishInit()
 	{
 		StoreTaskSubjectToParentTaskLayer();
@@ -236,16 +284,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
-	{
-		m_bTempIsTerminated = m_bIsTerminated;
-		m_bIsTerminated = false;
-		
-		super.Init(area, activation);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// destructor
+	//! Removes current task from support entity if in scenario mode, otherwise despawns self.
 	void ~SCR_ScenarioFrameworkSlotTask()
 	{
 		if (SCR_Global.IsEditMode())

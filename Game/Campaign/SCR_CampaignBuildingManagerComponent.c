@@ -28,6 +28,9 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 	//! Note: Provider is saved to composition only when it's built from base.
 	[Attribute("0", UIWidgets.CheckBox, "If checked, only players of faction that match the owning faction of provider can disassemble composition")]
 	protected bool m_bSameFactionDisassembleOnly;
+	
+	[Attribute("1", UIWidgets.CheckBox, "If checked, players from the opposing faction will only be able to disassemble composition when the base it belongs is being captured")]
+	protected bool m_bDisassembleOnlyWhenCapturing;
 
 	[Attribute()]
 	protected ref SCR_CampaignBuildingCompositionOutlineManager m_OutlineManager;
@@ -119,6 +122,13 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		return m_bSameFactionDisassembleOnly;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! \return Can the enemy faction disassemble base structures ONLY while capturing. 
+	bool CanDisassembleOnlyWhenCapturing()
+	{
+		return m_bDisassembleOnlyWhenCapturing;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get supply component of the provider entity.
 	[Obsolete("SCR_CampaignBuildingManagerComponent.GetResourceComponent() should be used instead.")]

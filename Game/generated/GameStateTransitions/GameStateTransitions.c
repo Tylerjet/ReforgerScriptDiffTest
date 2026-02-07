@@ -21,25 +21,17 @@ sealed class GameStateTransitions
 	static proto bool IsTransitionRequestedOrInProgress();
 	//! Request transition from main menu to hosted multiplayer session (registered in server browser).
 	static proto bool RequestPublicServerTransition(JsonApiStruct config);
-	[Obsolete("Not supported!")]
-	static proto bool RequestConnectViaIP(string IPAddr);
 	//! Request transition from main menu to gameplay as client connected to server in multiplayer session.
 	static proto bool RequestConnectViaRoom(Room room);
 	//! Request change of mission
 	[Obsolete("Use RequestScenarioChangeTransition instead!")]
 	static proto bool RequestMissionChangeTransition(MissionHeader mission);
-	//! Request change of world, keeping other properties of the game session.
-	[Obsolete("Use RequestScenarioChangeTransition instead!")]
-	static proto bool RequestWorldChangeTransition(string worldPath);
 	/*!
 	Request change of scenario.
 	\param resourceStr Uses string instead of ResourceName. ResourceName would be invalidated on addon reload
 	\param addonList List of addons to load. Leave empty for vanilla.
 	*/
 	static proto bool RequestScenarioChangeTransition(string resourceStr, string addonList);
-	//! Request reload of ongoing multiplayer game.
-	[Obsolete("Use RequestScenarioRestart instead!")]
-	static proto bool RequestServerReload();
 	/*!
 	Request restart of scenario in both SP and MP.
 	Must be called on server in case of MP game.
@@ -52,6 +44,10 @@ sealed class GameStateTransitions
 	//! Request graceful shut down of the game from whatever is current game state (eg. online vs. offline).
 	static proto void RequestGameTerminateTransition();
 	static proto bool RequestStartEditorTransition(string resourceStr, string addonList, bool createSubScene = false);
+	//! Used when you are inside the editor, and you want to load a world
+	static proto bool RequestLoadEditorWorld(string resourceStr, bool createSubScene = false);
+	//! Used when you are inside the editor, and you want to create a subscene
+	static proto bool RequestNewSubscene();
 	//! Return true if in main menu is loaded for the first time
 	static proto bool IsInsideMainMenu();
 	//! Return true if in main menu is loaded for the first time

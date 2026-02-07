@@ -88,6 +88,11 @@ class SCR_BaseTaskExecutor : GenericEntity
 	//PUBLIC MEMBER METHODS//
 	//*********************//
 	
+	int GetExecutorID()
+	{
+		return GetTaskExecutorID(this);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	IEntity GetControlledEntity()
 	{

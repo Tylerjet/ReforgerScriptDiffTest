@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 class SCR_TaskDeliverClass: SCR_ScenarioFrameworkTaskClass
 {
 };
@@ -30,7 +29,6 @@ enum SCR_EScenarioFrameworkItemGCState
 	EXCLUDED
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 {	
 	protected string							m_sDeliveryTriggerName;
@@ -42,13 +40,14 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	SCR_EScenarioFrameworkItemGCState m_eGarbageCollectionStatus = SCR_EScenarioFrameworkItemGCState.UNDEFINED;
 		
 	//------------------------------------------------------------------------------------------------
-	// return 0 if item is not possesed and 1 if possesed (someone has it in his possesion)
+	//! \return Represents current state of task delivery object. 0 if item is not possesed and 1 if possesed (someone has it in his possesion)
 	int GetTaskDeliverState()
 	{
 		return m_iObjectState;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets delivery trigger by name if it exists in the world.
 	void SetDeliveryTrigger()
 	{
 		if (!GetGame().GetWorld())
@@ -68,16 +67,19 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] trigger Trigger entity for delivery activation.
 	void SetDeliveryTrigger(SCR_BaseTriggerEntity trigger)
 	{
 		if (!trigger)
 			return;
 
 		m_TriggerDeliver = trigger;
-		trigger.GetOnActivate().Insert(OnDeliveryTriggerActivated);
+		m_TriggerDeliver.GetOnActivate().Remove(OnDeliveryTriggerActivated);
+		m_TriggerDeliver.GetOnActivate().Insert(OnDeliveryTriggerActivated);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] triggerName Represents the name of the trigger for delivering an object in the scenario.
 	void SetTriggerNameToDeliver(string triggerName)
 	{
 		if (triggerName.IsEmpty())
@@ -90,12 +92,14 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return the name of trigger for delivery.
 	string GetTriggerNameToDeliver()
 	{
 		return m_sDeliveryTriggerName;
 	}
 	
-	//------------------------------------------------------------------------------------------------	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] trigger Trigger activates when entities enter its area, checks if asset is inside, finishes task if found, else checks ch
 	void OnDeliveryTriggerActivated(notnull SCR_ScenarioFrameworkTriggerEntity trigger)
 	{
 		if (!m_SupportEntity || !m_Asset)
@@ -108,6 +112,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		{
 			if (entity == m_Asset)
 			{
+				m_TriggerDeliver.GetOnActivate().Remove(OnDeliveryTriggerActivated);
 				m_SupportEntity.FinishTask(this);
 				return;
 			}
@@ -124,6 +129,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 			
 			if (inventoryComponent.Contains(m_Asset))
 			{
+				m_TriggerDeliver.GetOnActivate().Remove(OnDeliveryTriggerActivated);
 				m_SupportEntity.FinishTask(this);
 				break;
 			}
@@ -131,6 +137,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates task title and description if possessed item matches asset, sets delivery item found flag if not, and progresses state if
+	//! \param[in] item Checks if possessed item matches task asset, updates title and description if so, sets state to PROGRESSED if delivery
+	//! \param[in] pStorageOwner Represents inventory storage component for item possession tracking.
 	void OnObjectPossessed(IEntity item, BaseInventoryStorageComponent pStorageOwner)
 	{
 		if(!item || item != m_Asset)
@@ -145,6 +154,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates task state and title/description when an item is dropped into inventory.
+	//! \param[in] item Item dropped event, checks if dropped item matches assigned asset, updates task state if match found.
+	//! \param[in] pStorageOwner Represents inventory storage component of an entity in the method.
 	void OnObjectDropped(IEntity item, BaseInventoryStorageComponent pStorageOwner)
 	{
 		if(!item || item != m_Asset)
@@ -155,6 +167,8 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Updates task title and description based on object state, triggers delivery, and sets task title and description for the support entity
+	//! \param[in] iPossessed iPossessed represents the possession state of the task, either 0 (not possessed) or 1 (possessed
 	void UpdateTaskTitleAndDescription(int iPossessed = -1)
 	{
 		if (iPossessed == -1)
@@ -214,6 +228,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates dropped task marker position, checks if it's a deliver task, schedules marker position update if it is.
 	protected void UpdateDroppedTaskMarker()
 	{
 		m_bTaskPositionUpdated = true;
@@ -225,10 +240,11 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		}
 					
 		//We want to delay position movement of the Task marker on the map by given time
-		GetGame().GetCallqueue().CallLater(MoveTaskMarkerPosition, 1000 * layerTaskDeliver.GetIntelMapMarkerUpdateDelay(), false);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(MoveTaskMarkerPosition, 1000 * layerTaskDeliver.GetIntelMapMarkerUpdateDelay(), false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates task position, moves marker if asset exists, logs error if asset not assigned.
 	protected void MoveTaskMarkerPosition()
 	{
 		m_bTaskPositionUpdated = false;
@@ -239,6 +255,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates map task icon visibility based on object state, sets opacity and visibility accordingly.
 	override void UpdateMapTaskIcon()
 	{
 		super.UpdateMapTaskIcon();
@@ -258,6 +275,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Handles item carrier changes, removes/adds event handlers, and updates garbage collection status.
+	//! \param[in] oldSlot Represents the previous inventory storage slot of an item before it was moved or changed.
+	//! \param[in] newSlot New slot represents the new location where an item is moved in the inventory system.
 	protected void OnItemCarrierChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
 		EventHandlerManagerComponent eventHandlerMgr;
@@ -413,6 +433,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] iPlayerID iPlayerID represents the unique identifier for the player being disconnected from the server.
 	protected void OnDisconnected(int iPlayerID)
 	{
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(iPlayerID);
@@ -423,6 +444,9 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! Registers player with inventory and event handlers.
+	//! \param[in] iPlayerID Player ID representing the controlled entity in the game.
+	//! \param[in] playerEntity Player entity represents an in-game player controlled by a human player.
 	protected void RegisterPlayer(int iPlayerID, IEntity playerEntity)
 	{
 		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(iPlayerID);
@@ -442,6 +466,8 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}	
 		
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for task delivery, returns true if found, logs error if not found.
+	//! \return true if support entity is found and set, false otherwise.
 	override bool SetSupportEntity()
 	{
 		m_SupportEntity = SCR_ScenarioFrameworkTaskDeliverSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDeliverSupportEntity));
@@ -456,6 +482,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes inventory component, registers players, and sets event handlers for player spawning and disconnecting.
 	override void Init()
 	{
 		super.Init();
@@ -481,11 +508,14 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (!gameMode)
 			return;
 		
+		gameMode.GetOnPlayerSpawned().Remove(RegisterPlayer);
 		gameMode.GetOnPlayerSpawned().Insert(RegisterPlayer);
+		gameMode.GetOnPlayerDisconnected().Remove(OnDisconnected);
 		gameMode.GetOnPlayerDisconnected().Insert(OnDisconnected);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets delivery trigger for an event.
 	protected void InvokedSetDeliveryTrigger()
 	{
 		SetDeliveryTrigger();

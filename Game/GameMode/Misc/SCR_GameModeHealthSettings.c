@@ -10,6 +10,9 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Character regeneration rate multiplier", params: "0 5 0.001", precision: 3, category: "Game Mode")]
 	protected float m_fRegenScale;
 	
+	[Attribute(defvalue: "false", uiwidget: UIWidgets.CheckBox, desc: "Whether to allow unconsciousness even when waking up automatically is not guaranteed", category: "Game Mode")]
+	protected bool m_bKillIndefinitelyUnconsciousPlayers;
+	
 	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Whether unconsciousness is allowed", category: "Game Mode")]
 	protected bool m_bPermitUnconsciousness;
 
@@ -84,6 +87,14 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	bool IsUnconsciousnessPermitted()
 	{
 		return m_bPermitUnconsciousness;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return Return if unconscious persons with no guaranteed wake up time will die upon going unconscious.
+	bool GetIfKillIndefiniteUnconscious()
+	{
+		return m_bKillIndefinitelyUnconsciousPlayers;
 	}
 
 	//------------------------------------------------------------------------------------------------

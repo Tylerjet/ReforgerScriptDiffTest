@@ -95,15 +95,15 @@ class SCR_PlayerDelegateEditorComponent : SCR_BaseEditorComponent
 		if (m_PlayerDelegate && m_iPlayerID == playerID) 
 			m_PlayerDelegate.SetControlledEntity(controlledEntity);
 	}
-	protected void OnDeathServer(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnDeathServer(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		if (m_PlayerDelegate && m_iPlayerID == playerId) 
+		if (m_PlayerDelegate && m_iPlayerID == instigatorContextData.GetVictimPlayerID()) 
 			m_PlayerDelegate.SetControlledEntity(null);
 	}
 	
 	protected void OnPlayerDeletedServer(int playerID, IEntity controlledEntity)
 	{
-		OnDeathServer(playerID, controlledEntity, null, Instigator.CreateInstigator(null));
+		OnDeathServer(new SCR_InstigatorContextData(playerID, controlledEntity, null, Instigator.CreateInstigatorGM(), true));
 	}
 	
 	override void EOnEditorInitServer()

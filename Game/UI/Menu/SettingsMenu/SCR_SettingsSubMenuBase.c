@@ -51,4 +51,12 @@ class SCR_SettingsSubMenuBase: SCR_SubMenuBase
 	{
 		GetGame().UserSettingsChanged();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void HideMenuItem(string widgetName)
+	{
+		Widget w = GetRootWidget().FindAnyWidget(widgetName);
+		if (w)
+			w.SetVisible(false);
+	}
 };

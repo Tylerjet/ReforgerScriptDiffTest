@@ -49,10 +49,10 @@ class ValidateMaterialPlugin: WorkbenchPlugin
 	string GetCommand(int matCount)
 	{
 		string toolPath;
-		string toolName = "/ValidateResource.exe";
+		const string TOOL_NAME = "/ValidateResource.exe";
 		string rootPath;
 		Workbench.GetCwd(rootPath);
-		toolPath = rootPath + toolName; 
+		toolPath = rootPath + TOOL_NAME; 
 		string command = toolPath;
 		
 		command += " --matCount " + matCount.ToString();

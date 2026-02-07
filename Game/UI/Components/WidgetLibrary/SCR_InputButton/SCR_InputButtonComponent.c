@@ -1,5 +1,9 @@
 class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 {
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Very bloated class, with a lot of functionality mixed with looks, and too many useless methods and attributes inherited from the parent.
+	
 	[Attribute("MenuTabLeft", desc: "Name of action from chimeraInputCommon")]
 	protected string m_sActionName;
 
@@ -24,6 +28,12 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	[Attribute(UIColors.GetColorAttribute(UIColors.IDLE_DISABLED), UIWidgets.ColorPicker)]
 	ref Color m_ActionDisabled;
 
+	[Attribute(UIColors.GetColorAttribute(GUIColors.DEFAULT_GLOW), UIWidgets.ColorPicker)]
+	protected ref Color m_ActionUnbound;
+	
+	[Attribute("not-available")]
+	protected string m_sActionUnboundIcon;
+	
 	[Attribute(UIColors.GetColorAttribute(Color.White), UIWidgets.ColorPicker)]
 	ref Color m_LabelDefault;
 
@@ -109,6 +119,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	protected bool m_bForceDisabled;
 	protected bool m_bShouldBeEnabled;
 	protected bool m_bIsInteractionActive;
+	
+	//! If user changed keybing then it should force update of hints
+	protected bool m_bForceUpdate;
 
 	protected string m_sOldActionName;
 
@@ -129,7 +142,15 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	protected ref ScriptInvokerVoid m_OnHoldAnimComplete;
 
 	ref ScriptInvoker m_OnActivated = new ScriptInvoker();
+	
+//---- REFACTOR NOTE END ----	
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Quick and dirty way of disabling the buttons when they're not in a top dialog. Can definitely be done better, as the buttons have no business knowing all displayed dialogs
+	
 	protected ref array<DialogUI> m_aDialogs = {};
+	
+//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -172,13 +193,18 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			SCR_MenuHelper.GetOnDialogClose().Insert(OnDialogClose);
 			SCR_MenuHelper.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
 			SCR_MenuHelper.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
+			SCR_MenuHelper.GetOnMenuClose().Insert(OnSettingsMenuClosed);
 		}
 
 		m_bShouldBeEnabled = IsEnabled();
 
 		m_ButtonDisplay.Init(m_wRoot);
 
-		ChangeInputDevice(m_InputManager.GetLastUsedInputDevice(), false);
+		EInputDeviceType currentDevice = EInputDeviceType.KEYBOARD;
+		if (!m_InputManager.IsUsingMouseAndKeyboard())
+			currentDevice = EInputDeviceType.GAMEPAD;
+
+		ChangeInputDevice(currentDevice, false);
 
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceUserChanged);
 
@@ -202,6 +228,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			SCR_MenuHelper.GetOnDialogClose().Remove(OnDialogClose);
 			SCR_MenuHelper.GetOnMenuFocusGained().Remove(OnMenuFocusGained);
 			SCR_MenuHelper.GetOnMenuFocusLost().Remove(OnMenuFocusLost);
+			SCR_MenuHelper.GetOnMenuClose().Remove(OnSettingsMenuClosed);
 		}
 	}
 
@@ -250,10 +277,12 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	//! \param[in] EInputDeviceType type of InputDevice
 	//! \param[in] bool is the realted button focused by mouse
 	//! \param[in] bool reset Button override if it was enabled (false by default)
-	protected void ChangeInputDevice(EInputDeviceType inputDevice, bool hasFocus, bool resetOverride = false)
+	protected bool ChangeInputDevice(EInputDeviceType inputDevice, bool hasFocus, bool resetOverride = false)
 	{
-		if (inputDevice == m_eCurrentInputDevice && m_sActionName == m_sOldActionName && !resetOverride)
-			return;
+		if (inputDevice == m_eCurrentInputDevice && m_sActionName == m_sOldActionName && !resetOverride && !m_bForceUpdate)
+			return true;
+		
+		m_bForceUpdate = false;
 
 		if (inputDevice == EInputDeviceType.MOUSE && hasFocus && m_bIsMouseInput)
 		{
@@ -270,7 +299,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		DeleteComboWidget();
 
 		if (inputDevice == EInputDeviceType.INVALID)
-			return;
+			return false;
 
 		array<string> keyStack = {};
 		//! Get keybind for selected input action and input device
@@ -280,16 +309,19 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			m_aKeyStackArray.Clear();
 			int index = keyStack.Count() - 1;
 			ProcessKeybindStack(index, keyStack);
+
+			if (keyStack.IsEmpty() || !m_aKeyStackArray || m_aKeyStackArray.IsEmpty())
+				return false;
+
 			string keyCode = m_aKeyStackArray[0];
+			BaseContainer data;
+			if (m_InputManager.GetKeyUIMapping(keyCode))
+				data = m_InputManager.GetKeyUIMapping(keyCode).GetObject("Data");
 
-			if (!m_InputManager || !keyCode || !m_InputManager.GetKeyUIMapping(keyCode))
-				return;
-
-			BaseContainer data = m_InputManager.GetKeyUIMapping(keyCode).GetObject("Data");
 			if (!data)
 			{
 				Print(string.Format("No data found for %1 !! Check 'chimeraMapping.conf' and add data if necessary! Provided Actioname: %2.", keyCode, m_sActionName), LogLevel.ERROR);
-				return;
+				return false;
 			}
 
 			//Check is there is a valid filter applied
@@ -313,19 +345,36 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 			if (inputDevice != m_eCurrentInputDevice || m_sActionName != m_sOldActionName)
 				SetInputAction();
+			
+			SetEnabled(true);
 		}
+		else
+		{
+			if (m_ButtonDisplay)
+				m_ButtonDisplay.OverrideTexture(UIConstants.ICONS_IMAGE_SET, m_sActionUnboundIcon, m_ActionUnbound, SCR_EButtonSize.KEYBOARD_SQUARE, false);
+			
+			return false;
+		}
+
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Check which filter is applied to the action to change the buttons behavior
 	protected bool GetInputFilterSettings(BaseContainer filter)
 	{
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Flags
+		
 		m_bIsHoldAction = false;
 		m_bIsDoubleTapAction = false;
 		m_bPressedInput = false;
 		m_bCanBeToggled = false;
 		m_bIsContinuous = false;
 
+//---- REFACTOR NOTE END ----
+		
 		if (!filter)
 			return false;
 
@@ -397,7 +446,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			return;
 
 		int count = m_aKeyStackArray.Count();
-		for (int i = 1, filterIndex, comboAmount; i < count; i++)
+		for (int i = 1, filterIndex = 1, comboAmount; i < count; i++)
 		{
 			if (!m_aKeyStackArray[i])
 				continue;
@@ -866,14 +915,30 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Override action. This changes the visuals of the button based on the new action.
-	//! \param action name defined in chimeraInputCommon.conf
-	void SetAction(string action)
+	//! \param[in] action name defined in chimeraInputCommon.conf
+	//! \param[in] currentInputDevice for what input device type this hint should load the data
+	//! \param[in] forceUpdate if this hint should ignore if it is already configured for the same action and try to fetch that data again in order to refresh it
+	bool SetAction(string action, EInputDeviceType currentInputDevice = -1, bool forceUpdate = false)
 	{
-		if (m_sActionName == action)
-			return;
+		if (forceUpdate)
+			m_sOldActionName = string.Empty;
+		else if (m_sActionName == action)
+			return true;
 
 		m_sActionName = action;
-		ChangeInputDevice(m_InputManager.GetLastUsedInputDevice(), false);
+		if (currentInputDevice < 0)
+		{
+			if (m_InputManager.IsUsingMouseAndKeyboard())
+				currentInputDevice = EInputDeviceType.KEYBOARD;
+			else
+				currentInputDevice = EInputDeviceType.GAMEPAD;
+		}
+
+		if (ChangeInputDevice(currentInputDevice, false))
+			return true;
+
+		m_sActionName = string.Empty;
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -923,13 +988,13 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	//! \param ImagePath
 	//! \param Image name if using ImageSet. Default: null
 	//! \param Color of the Image
-	void SetTexture(string imagePath, string image = string.Empty, Color color = Color.FromInt(Color.WHITE))
+	void SetTexture(string imagePath, string image = string.Empty, Color color = Color.FromInt(Color.WHITE), SCR_EButtonSize buttonType = SCR_EButtonSize.KEYBOARD_MEDIUM)
 	{
 		if (!m_ButtonDisplay)
 			return;
 
 		DeleteComboWidget();
-		m_ButtonDisplay.OverrideTexture(imagePath, image, color);
+		m_ButtonDisplay.OverrideTexture(imagePath, image, color, buttonType);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -942,7 +1007,11 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		m_ButtonDisplay.SetIsOverwritten(false);
 
-		ChangeInputDevice(m_InputManager.GetLastUsedInputDevice(), false, true);
+		EInputDeviceType currentDevice = EInputDeviceType.KEYBOARD;
+		if (!m_InputManager.IsUsingMouseAndKeyboard())
+			currentDevice = EInputDeviceType.GAMEPAD;
+
+		ChangeInputDevice(currentDevice, false, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1029,6 +1098,23 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	{
 		if (menu == ChimeraMenuBase.GetOwnerMenu(m_wRoot))
 			SetForceDisabled(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Callback method that is triggered when some menu is closed
+	//! \param[in] menu that was closed
+	protected void OnSettingsMenuClosed(ChimeraMenuBase menu)
+	{
+		if (!SCR_SettingsSuperMenu.Cast(menu))
+			return;
+		
+		EInputDeviceType currentDevice = EInputDeviceType.KEYBOARD;
+		if (!m_InputManager.IsUsingMouseAndKeyboard())
+			currentDevice = EInputDeviceType.GAMEPAD;
+
+		m_bForceUpdate = true;
+		
+		ChangeInputDevice(currentDevice, false);
 	}
 
 	//------------------------------------------------------------------------------------------------

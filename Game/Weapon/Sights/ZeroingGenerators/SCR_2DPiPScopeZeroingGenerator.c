@@ -17,7 +17,7 @@ class SCR_2DPiPScopeZeroingGenerator : ScriptedBaseZeroingGenerator
 		if (m_SightsComponent)
 		{
 			float magnification = m_SightsComponent.GetMagnification();
-			float s_fReferenceFOV = 38; // Hardcoded, depends on player settings but this should work here
+			const float s_fReferenceFOV = 38; // Hardcoded, depends on player settings but this should work here
 			m_fFovZoomed = Math.RAD2DEG * 2 * Math.Atan2(Math.Tan(Math.DEG2RAD * (s_fReferenceFOV / 2)), magnification);
 			return true;
 		}

@@ -15,75 +15,53 @@ class SCR_MeleeWeaponProperties : ScriptComponent
 	[Attribute("0.3", "Accuracy of melee attacks, smaller values are more accurate", category: "Global")]
 	protected float m_fAccuracy;
 	
-	protected SCR_BayonetComponent m_Bayonet;
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns instance of attached bayonet
-	SCR_BayonetComponent GetBayonet()
-	{
-		return m_Bayonet;
-	}
-	
+	protected BaseWeaponStatsManagerComponent m_statsManager;
+
 	//------------------------------------------------------------------------------------------------	
 	//! Value of damage dealt to the target
 	float GetWeaponDamage()
 	{
-		if (m_Bayonet)
-			return m_Bayonet.GetDamage();
-		else
+		if (!m_statsManager)
 			return m_fDamage;
+		
+		float fDamageFactor;
+		if (!m_statsManager.GetMeleeDamageFactor(fDamageFactor))
+			return m_fDamage;
+		
+		return fDamageFactor * m_fDamage;
 	}
 
 	//------------------------------------------------------------------------------------------------	
 	//! Range in meters that is used as max raycast length
 	float GetWeaponRange()
 	{
-		if (m_Bayonet)
-			return m_Bayonet.GetRange();
-		else
+		if (!m_statsManager)
 			return m_fRange;
+		
+		float fRangeFactor;
+		if (!m_statsManager.GetMeleeRangeFactor(fRangeFactor))
+			return m_fRange;
+		
+		return fRangeFactor * m_fRange;
 	}
 	
 	//------------------------------------------------------------------------------------------------	
 	//! Size of the raysphere used to trace the target
 	float GetWeaponMeleeAccuracy()
 	{
-		if (m_Bayonet)
-			return m_Bayonet.GetAccuracy();
-		else
+		if (!m_statsManager)
 			return m_fAccuracy;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnAttachmentAdded(IEntity item, int slotID)
-	{
-		SCR_BayonetComponent bayonetComponent = SCR_BayonetComponent.Cast(item.FindComponent(SCR_BayonetComponent));
-		if (bayonetComponent)
-			m_Bayonet = bayonetComponent;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnAttachmentRemoved(IEntity item, int slotID)
-	{
-		SCR_BayonetComponent bayonetComponent = SCR_BayonetComponent.Cast(item.FindComponent(SCR_BayonetComponent));
-		if (bayonetComponent)
-			m_Bayonet = null;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
-	{
-		SCR_WeaponAttachmentsStorageComponent attachmentStorage = SCR_WeaponAttachmentsStorageComponent.Cast(GetOwner().FindComponent(SCR_WeaponAttachmentsStorageComponent));
-		if (!attachmentStorage)
-			return;
 		
-		attachmentStorage.m_OnItemAddedToSlotInvoker.Insert(OnAttachmentAdded);
-		attachmentStorage.m_OnItemRemovedFromSlotInvoker.Insert(OnAttachmentRemoved);	
+		float fAccuracyFactor;
+		if (!m_statsManager.GetMeleeAccuracyFactor(fAccuracyFactor))
+			return m_fAccuracy;
+		
+		return fAccuracyFactor * m_fAccuracy;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		SetEventMask(owner, EntityEvent.INIT);
+		m_statsManager = BaseWeaponStatsManagerComponent.Cast(owner.FindComponent(BaseWeaponStatsManagerComponent));
 	}
 };

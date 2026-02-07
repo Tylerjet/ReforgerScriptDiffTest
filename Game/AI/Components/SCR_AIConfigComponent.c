@@ -41,7 +41,7 @@ class SCR_AIConfigComponent : ScriptComponent
 
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIDangerReaction> m_aDangerReactions;	
-	ref map<EAIDangerEventType, ref SCR_AIDangerReaction> m_mDangerReactions = new map<EAIDangerEventType, ref SCR_AIDangerReaction>();
+	ref map<SCR_EAIDangerEventType, ref SCR_AIDangerReaction> m_mDangerReactions = new map<SCR_EAIDangerEventType, ref SCR_AIDangerReaction>();
 	
 	[Attribute("", UIWidgets.Object)]
 	ref array<ref SCR_AIGoalReaction> m_aGoalReactions;	
@@ -231,12 +231,12 @@ class SCR_AIConfigComponent : ScriptComponent
 	//! \param[in] utility
 	//! \param[in] dangerEvent
 	//! \return
-	bool PerformDangerReaction(SCR_AIUtilityComponent utility, AIDangerEvent dangerEvent)
+	bool PerformDangerReaction(SCR_AIUtilityComponent utility, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		SCR_AIDangerReaction reaction = m_mDangerReactions[dangerEvent.GetDangerType()];
 		if (reaction)
 		{
-			return reaction.PerformReaction(utility, utility.m_ThreatSystem, dangerEvent);
+			return reaction.PerformReaction(utility, utility.m_ThreatSystem, dangerEvent, dangerEventCount);
 		}
 		return false;
 	}

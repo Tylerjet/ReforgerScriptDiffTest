@@ -49,6 +49,7 @@ sealed class Workbench
 	static proto void GetCwd(out string currentDir);
 	static proto void GetUserName(out string userName);
 	static proto bool GetAbsolutePath(string relativePath, out string absPath, bool mustExist = true);
+	static proto void GetExecutableFilePath(out string filePath);
 	//! Returns absolute path to game project settings.
 	static proto string GetCurrentGameProjectFile();
 	//! Returns game project settings.
@@ -58,6 +59,17 @@ sealed class Workbench
 	static proto DateTimeUtcAsInt GetPackedUtcTime();
 	static proto ResourceName GetResourceName(string path);
 	static proto bool OpenResource(string filename);
+	static proto ref ScriptModule GetWBScriptModule();
+	static proto ref ScriptModule GetWBGameScriptModule();
+	/*!
+	Saves PixelRawData into specified path in PNG format
+	\param file			Name where to save data
+	\param data			which data to save
+	\param with			width of data
+	\param height		height of data
+	\param stride		byte size between two rows of data
+	*/
+	static proto bool SavePixelRawData(string fileName, PixelRawData data, int width, int height, int stride);
 }
 
 /*!

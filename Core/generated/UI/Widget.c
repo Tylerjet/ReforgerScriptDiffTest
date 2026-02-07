@@ -20,8 +20,6 @@ sealed class Widget: Managed
 	proto external Widget GetChildren();
 	//!Returns next sibling in hierarchy, or NULL
 	proto external Widget GetSibling();
-	//! Adds given widget as a child. Possible only if this widget accepts more children.
-	proto external void AddChild(notnull Widget child);
 	proto external void RemoveChild(notnull Widget child);
 	proto external void SetName(string name);
 	proto external string GetName();
@@ -36,6 +34,8 @@ sealed class Widget: Managed
 	*/
 	proto external int GetUserID();
 	proto external bool IsFocusable();
+	//! Adds given widget as a child. Possible only if this widget accepts more children.
+	proto external void AddChild(notnull Widget child);
 	//! Add (hook) handler to widget. Adds reference to the handler.
 	proto external void AddHandler(ScriptedWidgetEventHandler eventHandler);
 	//! Unhook handler from widget. Release reference to the handler.

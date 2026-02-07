@@ -13,11 +13,12 @@ class SCR_ScenarioFrameworkActionInputOnTaskEventIncreaseCounter : SCR_ScenarioF
 	override void Init(SCR_ScenarioFrameworkLogicInput input)
 	{	
 		super.Init(input);
-		SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeComp) 
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 			
-		gameModeComp.GetOnTaskStateChanged().Insert(OnActivate);
+		scenarioFrameworkSystem.GetOnTaskStateChanged().Remove(OnActivate);
+		scenarioFrameworkSystem.GetOnTaskStateChanged().Insert(OnActivate);
 	}
 	
 	//------------------------------------------------------------------------------------------------

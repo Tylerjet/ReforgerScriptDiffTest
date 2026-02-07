@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 {
@@ -11,13 +10,15 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	protected ref array<ref SCR_ScenarioFrameworkAreaStruct> m_aAreasStructs = {};
 	
 	//------------------------------------------------------------------------------------------------
+	//! Serializes scenario state
+	//! \return true if serialization is successful.
 	override bool Serialize()
 	{
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return false;
 		
-		m_bMatchOver = manager.GetIsMatchOver();
+		m_bMatchOver = scenarioFrameworkSystem.GetIsMatchOver();
 		
 		m_aAreasStructs.Clear();
 		
@@ -33,21 +34,23 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 				m_sWeatherState = transitionManager.GetCurrentState().GetStateName();
 		}
 		
-		m_eGameOverType = manager.m_eGameOverType;
-		StoreAreaStates(manager, m_aAreasStructs);
+		m_eGameOverType = scenarioFrameworkSystem.m_eGameOverType;
+		StoreAreaStates(scenarioFrameworkSystem, m_aAreasStructs);
 		ClearEmptyAreaStructs(m_aAreasStructs);
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets up daytime, weather, and game over type, then loads area states for scenario framework system.
+	//! \return true if deserialization is successful, false otherwise.
 	override bool Deserialize()
 	{
 		if (m_aAreasStructs.IsEmpty())
 			return false;
 		
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return false;
 		
 		// Game was saved after match was over, don't load
@@ -63,33 +66,57 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, 500, false, m_iHours, m_iMinutes, m_iSeconds, m_sWeatherState, true);
 		}
 		
-		manager.m_eGameOverType = m_eGameOverType;
-		LoadAreaStates(manager, m_aAreasStructs);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().Clear();
+		scenarioFrameworkSystem.m_bDebugInit = true;
+		scenarioFrameworkSystem.m_iCurrentlySpawnedLayerTasks = 0;
+
+		scenarioFrameworkSystem.m_aSelectedAreas.Clear();
+		scenarioFrameworkSystem.m_aLayerTasksToBeInitialized.Clear();
+		scenarioFrameworkSystem.m_aLayerTasksForRandomization.Clear();
+		scenarioFrameworkSystem.m_aAreasTasksToSpawn.Clear();
+		scenarioFrameworkSystem.m_aLayersTaskToSpawn.Clear();
+		scenarioFrameworkSystem.m_aSlotsTaskToSpawn.Clear();
+		scenarioFrameworkSystem.m_aESFTaskTypesAvailable.Clear();
+		scenarioFrameworkSystem.m_aESFTaskTypeForRandomization.Clear();
+		scenarioFrameworkSystem.m_aSpawnedAreas.Clear();
+		scenarioFrameworkSystem.m_aDespawnedAreas.Clear();
+		scenarioFrameworkSystem.m_VariableMap.Clear();
+
+		foreach (SCR_ScenarioFrameworkArea registeredArea : scenarioFrameworkSystem.m_aAreas)
+		{
+			registeredArea.RestoreToDefault(true, false, false);
+		}
+		
+		scenarioFrameworkSystem.m_eGameOverType = m_eGameOverType;
+		LoadAreaStates(scenarioFrameworkSystem, m_aAreasStructs);
+		scenarioFrameworkSystem.Init();
 		
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[out] outEntries
-	void StoreAreaStates(notnull SCR_GameModeSFManager manager, out notnull array<ref SCR_ScenarioFrameworkAreaStruct> outEntries)
+	//! Stores states of all areas in scenario framework system into an array.
+	//! \param[in] scenarioFrameworkSystem Represents the scenario's area system, containing area data for storing states.
+	//! \param[out] outEntries Array of stored area states.
+	void StoreAreaStates(notnull SCR_ScenarioFrameworkSystem scenarioFrameworkSystem, out notnull array<ref SCR_ScenarioFrameworkAreaStruct> outEntries)
 	{
-		if (!manager.m_aAreas)
+		if (!scenarioFrameworkSystem.m_aAreas)
 			return;
 		
 		SCR_ScenarioFrameworkAreaStruct struct;
-		for (int i = manager.m_aAreas.Count() - 1; i >= 0; i--)
+		for (int i = scenarioFrameworkSystem.m_aAreas.Count() - 1; i >= 0; i--)
 		{
 			struct = new SCR_ScenarioFrameworkAreaStruct();
-			struct.StoreState(manager.m_aAreas[i], struct);
+			struct.StoreState(scenarioFrameworkSystem.m_aAreas[i], struct);
 			outEntries.Insert(struct);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] loadedAreaStruct
-	void LoadAreaStates(notnull SCR_GameModeSFManager manager, notnull array<ref SCR_ScenarioFrameworkAreaStruct> loadedAreaStruct)
+	//! Loads area states from loadedAreaStruct array into scenarioFrameworkSystem, handling nested areas.
+	//! \param[in] scenarioFrameworkSystem Represents the scenario framework system for managing areas in the game.
+	//! \param[in] loadedAreaStruct Array of loaded area structures representing areas in the scenario.
+	void LoadAreaStates(notnull SCR_ScenarioFrameworkSystem scenarioFrameworkSystem, notnull array<ref SCR_ScenarioFrameworkAreaStruct> loadedAreaStruct)
 	{
 		IEntity entity;
 		SCR_ScenarioFrameworkArea area;
@@ -103,18 +130,22 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 			if (!area)
 				continue;
 			
-			LoadAreaStructs(manager, area, areaStruct);
+			LoadAreaStructs(scenarioFrameworkSystem, area, areaStruct);
 			LoadNestedAreaStructs(areaStruct);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void LoadAreaStructs(notnull SCR_GameModeSFManager manager, notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
+	//! Loads area structures, adds tasks to spawn, sets delivery points, sets randomly spawned children, and loads repeated spawn area
+	//! \param[in] scenarioFrameworkSystem Represents scenario framework system for managing area tasks, layers, and spawning structures.
+	//! \param[in] area Loads area structures, sets spawn tasks, delivery points, and randomly spawned children for an area.
+	//! \param[in] areaStruct Represents an area structure with spawning tasks, delivery points, and randomly spawned children for an area in the scenario framework
+	protected void LoadAreaStructs(notnull SCR_ScenarioFrameworkSystem scenarioFrameworkSystem, notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (areaStruct.GetAreaSelected())
 		{
-			manager.m_aAreasTasksToSpawn.Insert(areaStruct.GetName());
-			manager.m_aLayersTaskToSpawn.Insert(areaStruct.GetLayerTaskname());
+			scenarioFrameworkSystem.m_aAreasTasksToSpawn.Insert(areaStruct.GetName());
+			scenarioFrameworkSystem.m_aLayersTaskToSpawn.Insert(areaStruct.GetLayerTaskname());
 		}
 		
 		if (areaStruct.GetDeliveryPointNameForItem())
@@ -128,6 +159,9 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads repeated spawn settings from area struct to area.
+	//! \param[in] area Loads repeated spawn settings from area struct into scenario area.
+	//! \param[in] areaStruct Represents spawn area structure with repeatable spawn settings for scenario framework area.
 	protected void LoadRepeatedSpawnAreaStructs(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (areaStruct.GetEnableRepeatedSpawn())
@@ -139,6 +173,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads nested area layer and logic structs for given area struct.
+	//! \param[in] areaStruct Represents an area structure containing nested layer and logic structures in the scenario framework.
 	protected void LoadNestedAreaStructs(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (areaStruct.GetLayerStructs())
@@ -149,6 +185,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads layers from an array of structures, finds entities, casts them to layers, and loads their structures.
+	//! \param[in] loadedLayerStruct Loads an array of layer structures, representing individual layers in the scenario.
 	protected void LoadLayer(notnull array<ref SCR_ScenarioFrameworkLayerStruct> loadedLayerStruct)
 	{
 		IEntity entity;
@@ -170,6 +208,9 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads layer structures, sets activation type, termination status, layer task state, randomly spawned children, and nested layer
+	//! \param[in] layer Loads layer structs, sets activation type, termination, spawn layer structs, layer task state, randomly spawned
+	//! \param[in] layerStruct Represents layer's configuration data for the scenario framework layer.
 	protected void LoadLayerStructs(notnull SCR_ScenarioFrameworkLayerBase layer, notnull  SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layerStruct.GetActivationType() != -1)
@@ -196,6 +237,9 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Enables repeated spawn for a scenario layer based on provided layer struct.
+	//! \param[in] layer Enables repeated spawning for the layer based on provided layer struct.
+	//! \param[in] layerStruct Represents spawning configuration for repeating layer in scenario.
 	protected void LoadRepeatedSpawnLayerStructs(notnull SCR_ScenarioFrameworkLayerBase layer, notnull  SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (!layerStruct.GetEnableRepeatedSpawn())
@@ -206,6 +250,9 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads layer slots with AI prefab removal and random spawned object settings from layer struct.
+	//! \param[in] layer Loads layer's slots with AI prefab removal and randomly spawned object data from layer struct.
+	//! \param[in] layerStruct Represents layer's struct configuration for AI prefab removal and randomly spawned objects.
 	protected void LoadLayerStructSlots(notnull SCR_ScenarioFrameworkLayerBase layer, notnull  SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		SCR_ScenarioFrameworkSlotBase slot;
@@ -226,6 +273,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads nested layer and logic structs from provided layer struct.
+	//! \param[in] layerStruct Loads nested layer structures and logic structures from provided layerStruct object.
 	protected void LoadNestedLayerStructs(notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layerStruct.GetLayerStructs())
@@ -236,6 +285,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Loads scenario logic entries, sets termination status, and updates counters for each logic entity in the scenario.
+	//! \param[in] entries The entries represent an array of scenario logic structures, which contain information about scenario logic entities, their states, and counter values.
 	protected void LoadLogic(notnull array<ref SCR_ScenarioFrameworkLogicStruct> entries)
 	{
 		IEntity entity;
@@ -267,6 +318,8 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Removes empty area structs from array.
+	//! \param[in] areaStructsToClear Clears empty area structs from areaStructsToClear array.
 	protected void ClearEmptyAreaStructs(notnull array<ref SCR_ScenarioFrameworkAreaStruct> areaStructsToClear)
 	{
 		array<ref SCR_ScenarioFrameworkAreaStruct> areasStructsCopy = {};
@@ -285,6 +338,7 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Registers variables for scenario framework structure.
 	void SCR_ScenarioFrameworkStruct()
 	{
 		RegV("m_iHours");
@@ -297,7 +351,6 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 {
 	protected bool m_bAreaSelected;
@@ -305,8 +358,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	protected string m_sLayerTaskName;
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[out] areaStruct
+	//! Stores scenario area data into struct, cleans empty layers and logic, and stores children areas.
+	//! \param[in] area Stores scenario area data into struct for further processing.
+	//! \param[out] areaStruct Represents stored scenario area data structure for further processing.
 	void StoreState(notnull SCR_ScenarioFrameworkArea area, out notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		//Checks if area is named. If it is not, we cannot use it for serialization
@@ -335,7 +389,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Handles area selection
+	//! Selects or deselects area in scenario framework area structure based on its selection status.
+	//! \param[in] area Selects area for struct if it's selected, increments struct var count otherwise unregisters selection.
+	//! \param[in] areaStruct Represents selected area state in scenario framework structure.
 	protected void StoreSelectedArea(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (area.m_bAreaSelected)
@@ -350,7 +406,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Delivery point handling
+	//! Sets delivery point for an item in scenario area structure based on area's delivery point name.
+	//! \param[in] area Sets delivery point name for item in scenario framework area structure based on area's delivery point name.
+	//! \param[in] areaStruct Represents an area's structure in the scenario, used for item delivery point management.
 	protected void StoreDeliveryPoint(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (!area.m_sItemDeliveryPointName.IsEmpty())
@@ -365,7 +423,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Stores the Activation type
+	//! Updates area activation type in scenario framework area structure if it differs from default, otherwise removes it from structure.
+	//! \param[in] area Updates area's activation type in scenario framework area structure, adjusting count if necessary.
+	//! \param[in] areaStruct Represents scenario framework area structure with activation type status.
 	void StoreActivationTypeStatus(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (area.m_eActivationTypeDefault != area.m_eActivationType)
@@ -380,7 +440,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Marks if this was terminated - either by death or deletion
+	//! Updates termination status in scenario framework area structure based on current termination status of area.
+	//! \param[in] area Updates area termination status in scenario framework area structure.
+	//! \param[in] areaStruct Represents scenario framework area's state data structure.
 	protected void StoreTerminationStatus(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (area.GetIsTerminated())
@@ -395,7 +457,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Repeated spawn handling
+	//! Updates area struct with repeated spawn settings from area.
+	//! \param[in] area Stores repeated spawn settings from area to area struct.
+	//! \param[in] areaStruct Represents area's repeated spawn configuration data in scenario framework.
 	protected void StoreRepeatedSpawn(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (area.GetEnableRepeatedSpawn())
@@ -420,7 +484,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Layer Task handling
+	//! Sets layer task name in area struct if layer task exists in area, otherwise removes it from area struct.
+	//! \param[in] area Sets layer task name in area struct if layer task exists in area, otherwise removes it from area struct.
+	//! \param[in] areaStruct Represents area's layer task structure in scenario framework.
 	protected void StoreLayerTask(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (area.m_LayerTask)
@@ -435,7 +501,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Children handling
+	//! Stores children layers and their states in area struct, handles randomly spawned children if applicable.
+	//! \param[in] area Stores children layers and their states in area structure.
+	//! \param[in] areaStruct Represents a structure containing information about scenario layers in an area for storing and retrieving layer states.
 	protected void StoreChildren(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		array<SCR_ScenarioFrameworkLayerBase> children = {};
@@ -478,7 +546,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Logics handling
+	//! Stores logic states for scenario area and updates struct count if necessary.
+	//! \param[in] area Stores logic states for scenario areas in an array, updates struct variables count if necessary.
+	//! \param[in] areaStruct Stores logic states for area in scenario framework structure.
 	protected void StoreLogic(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		array<SCR_ScenarioFrameworkLogic> logics = {};
@@ -501,7 +571,8 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty layers
+	//! Removes empty layer structs from area struct.
+	//! \param[in] areaStruct AreaStruct represents an area in the scenario with its own layer structures, which can be cleaned up if empty or non-ex
 	protected void CleanEmptyStoredLayers(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (areaStruct.GetLayerStructs())
@@ -516,7 +587,8 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty layers
+	//! Removes empty logic structs from area struct.
+	//! \param[in] areaStruct AreaStruct represents an area in the scenario with its own logic structures.
 	protected void CleanEmptyStoredLogic(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		if (areaStruct.GetLogicStructs())
@@ -531,7 +603,8 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty structs that are unnecessary to be saved and removing other variables that are there due to inheritance
+	//! Clears empty layer and logic structs, removes AI prefab references, and resets random spawned object and layer
+	//! \param[in] areaStruct Clears empty layer and logic structures, removes AI prefabs, random objects, and layer task state from area struct.
 	protected void CleanAreaStructs(notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
 		areaStruct.ClearEmptyLayerStructs(areaStruct.GetLayerStructs());
@@ -543,42 +616,49 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return whether an area is selected or not.
 	bool GetAreaSelected()
 	{
 		return m_bAreaSelected;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return the name of the delivery point.
 	string GetDeliveryPointNameForItem()
 	{
 		return m_sItemDeliveryPointName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Represents the name of the layer task.
 	string GetLayerTaskname()
 	{
 		return m_sLayerTaskName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] selected Sets whether an area is selected or not.
 	void SetAreaSelected(bool selected)
 	{
 		m_bAreaSelected = selected;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name Sets item delivery point name.
 	void SetDeliveryPointNameForItem(string name)
 	{
 		m_sItemDeliveryPointName = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] layerTaskName Sets the name for the layer task.
 	void SetLayerTaskName(string layerTaskName)
 	{
 		m_sLayerTaskName = layerTaskName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Registers variables for area.
 	void SCR_ScenarioFrameworkAreaStruct()
 	{
 		RegV("m_bAreaSelected");
@@ -587,7 +667,6 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 {
 	protected string											m_sName;
@@ -606,6 +685,8 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	protected int												m_iStructVarCount;
 	
 	//------------------------------------------------------------------------------------------------
+	//! Stores layer state data into structs, cleans empty structs, and inserts non-empty ones into list.
+	//! \param[in] layer Stores layer state data for further processing in the scenario framework.
 	void StoreLayerState(notnull SCR_ScenarioFrameworkLayerBase layer)
 	{
 		SCR_ScenarioFrameworkLayerStruct layerStruct = new SCR_ScenarioFrameworkLayerStruct();
@@ -640,7 +721,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Marks if this was terminated - either by death or deletion
+	//! Updates layer's activation type in scenario structure if it differs from default, otherwise removes it from structure.
+	//! \param[in] layer Represents scenario layer's activation type status in the scenario framework.
+	//! \param[in] layerStruct Represents the scenario framework layer structure where activation type changes are stored.
 	void StoreActivationTypeStatus(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layer.m_eActivationTypeDefault != layer.m_eActivationType)
@@ -655,7 +738,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Marks if this was terminated - either by death or deletion
+	//! Updates termination status in scenario layer structure based on current termination status in scenario layer.
+	//! \param[in] layer Represents scenario layer's termination status in the method, updates termination flag in layer struct.
+	//! \param[in] layerStruct Represents scenario termination status data structure.
 	void StoreTerminationStatus(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layer.GetIsTerminated())
@@ -670,7 +755,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Repeated spawn handling
+	//! Updates scenario layer's repeated spawn settings from layer struct.
+	//! \param[in] layer Stores repeated spawn settings from layer to layer struct.
+	//! \param[in] layerStruct Represents scenario layer structure with repeated spawn settings.
 	void StoreRepeatedSpawn(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layer.GetEnableRepeatedSpawn())
@@ -695,7 +782,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Layer Task handling
+	//! Updates layer task state in scenario layer structure if it exists, otherwise removes it.
+	//! \param[in] layer Updates layer state in scenario framework layer structure.
+	//! \param[in] layerStruct Represents layer's state data structure in scenario framework.
 	void StoreLayerTask(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		SCR_ScenarioFrameworkLayerTask layerTask = SCR_ScenarioFrameworkLayerTask.Cast(layer);
@@ -711,7 +800,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Children handling
+	//! Stores children layers, handles random spawning, and updates layer states in scenario framework layer structure.
+	//! \param[in] layer Stores children layers and their states, updates struct variables count based on conditions.
+	//! \param[in] layerStruct Stores layer's children and their states, updates struct variables count based on conditions.
 	void StoreChildren(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		layer.GetChildren(m_aChildren);
@@ -753,7 +844,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Logics handling
+	//! Stores logic states for scenario framework layer.
+	//! \param[in] layer Stores logic data for scenario layer.
+	//! \param[in] layerStruct Stores logic state for scenario framework layer structures.
 	void StoreLogic(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		layer.GetLogics(m_aLogic);
@@ -774,7 +867,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Logics handling
+	//! Stores AI prefab removal list and random object from scenario layer to scenario layer struct.
+	//! \param[in] layer Stores AI prefab removal list and random object for scenario layer.
+	//! \param[in] layerStruct Stores AI prefab removal list and random object for scenario layer.
 	void StoreSlotAndRandomObject(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		SCR_ScenarioFrameworkSlotBase slot = SCR_ScenarioFrameworkSlotBase.Cast(layer);
@@ -809,7 +904,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty layers
+	//! Removes empty layer structs from scenario layer.
+	//! \param[in] layer Removes empty layer structs from scenario framework layer.
+	//! \param[in] layerStruct Represents a container for storing layers in scenario framework.
 	void CleanEmptyStoredLayers(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layerStruct.GetLayerStructs())
@@ -824,7 +921,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! //Cleaning empty Logic
+	//! Clears empty logic structs from scenario layer.
+	//! \param[in] layer Clears empty logic structs from scenario layer.
+	//! \param[in] layerStruct Represents scenario framework layer structure with logic structs.
 	void CleanEmptyStoredLogic(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
 		if (layerStruct.GetLogicStructs())
@@ -839,6 +938,7 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Clears empty layer and logic structs in the object.
 	void CleanEmptyStructs()
 	{
 		//Clears empty layer structs which are unnecessary to be saved
@@ -850,6 +950,8 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Stores scenario logic state, handles counter and struct variables, and adds to list if struct count is more than 1.
+	//! \param[in] logic Stores scenario framework logic state, handles counter values, names, and adds to list if multiple variables exist.
 	void StoreLogicState(notnull SCR_ScenarioFrameworkLogic logic)
 	{
 		SCR_ScenarioFrameworkLogicStruct logicStruct = new SCR_ScenarioFrameworkLogicStruct();
@@ -883,7 +985,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Handling logic counter value
+	//! Updates logic struct with counter value if non-zero, otherwise unregisters it.
+	//! \param[in] logicCounter Represents a counter value in the scenario logic.
+	//! \param[in] logicStruct Represents a struct containing variables and counter value for scenario logic.
 	void StoreLogicCounterValue(notnull SCR_ScenarioFrameworkLogicCounter logicCounter, notnull SCR_ScenarioFrameworkLogicStruct logicStruct)
 	{
 		if (logicCounter.GetCounterValue() == 0)
@@ -898,7 +1002,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Marks if this was terminated - either by death or deletion
+	//! Checks if counter is terminated, increments struct var count if terminated, sets termination flag in struct if not
+	//! \param[in] logicCounter represents a scenario counter with termination status, used for incrementing struct's termination count if it's terminated
+	//! \param[in] logicStruct Represents scenario framework logic structure, tracks termination state.
 	void StoreLogicCounterTermination(notnull SCR_ScenarioFrameworkLogicCounter logicCounter, notnull SCR_ScenarioFrameworkLogicStruct logicStruct)
 	{
 		if (logicCounter.GetIsTerminated())
@@ -913,6 +1019,8 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Removes empty layer structs from an array by recursively checking their contents.
+	//! \param[in] layerStructsToClear Array of layer structs to clear empty structures from.
 	void ClearEmptyLayerStructs(notnull array<ref SCR_ScenarioFrameworkLayerStruct> layerStructsToClear)
 	{
 		array<ref SCR_ScenarioFrameworkLayerStruct> layersStructsCopy = {};
@@ -931,6 +1039,8 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Clears empty logic structs from an array by copying them into another array, then removing those with less than 2
+	//! \param[in] logicStructsToClear Array of scenario framework logic structures to clear empty ones from.
 	void ClearEmptyLogicStructs(notnull array<ref SCR_ScenarioFrameworkLogicStruct> logicStructsToClear)
 	{
 		array<ref SCR_ScenarioFrameworkLogicStruct> logicsStructsCopy = {};
@@ -947,84 +1057,98 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Increases struct variable count by 1.
 	void IncreaseStructVarCount()
 	{
 		m_iStructVarCount += 1;
 	} 
 	
 	//------------------------------------------------------------------------------------------------
+	//! Decreases struct variable count by 1.
 	void DecreaseStructVarCount()
 	{
 		m_iStructVarCount -= 1;
 	} 
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Array of layer structure references.
 	array<ref SCR_ScenarioFrameworkLayerStruct> GetLayerStructs()
 	{
 		return m_aLayersStructs;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Array of logic structs for scenario framework logic.
 	array<ref SCR_ScenarioFrameworkLogicStruct> GetLogicStructs()
 	{
 		return m_aLogicStructs;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Randomly spawned children array.
 	array<string> GetRandomlySpawnedChildren()
 	{
 		return m_aRandomlySpawnedChildren;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return The number of structure variables in the class.
 	int GetStructVarCount()
 	{
 		return m_iStructVarCount;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Represents the activation type for the scenario event action.
 	SCR_ScenarioFrameworkEActivationType GetActivationType()
 	{
 		return m_eActivationType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return whether the object is terminated or not.
 	bool GetIsTerminated()
 	{
 		return m_bIsTerminated;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Array of AI prefab resources marked for removal.
 	ref array<ResourceName> GetAIPrefabsForRemoval()
 	{
 		return m_aAIPrefabsForRemoval;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return the name stored in the variable m_sName.
 	string GetName()
 	{
 		return m_sName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Represents current layer task state.
 	int GetLayerTaskState()
 	{
 		return m_iLayerTaskState;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Randomly spawned object ResourceName.
 	ResourceName GetRandomlySpawnedObject()
 	{
 		return m_sRandomlySpawnedObject;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Repetition count for spawning an object.
 	int GetRepeatedSpawnNumber()
 	{
 		return m_iRepeatedSpawnNumber;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Represents whether repeated spawning is enabled or not.
 	bool GetEnableRepeatedSpawn()
 	{
 		return m_bEnableRepeatedSpawn;
@@ -1033,60 +1157,71 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	//--------------------- Setters:
 	
 	//------------------------------------------------------------------------------------------------
+	//! Adds child to randomly spawned children list.
+	//! \param[in] child Randomly spawned child entity added to list.
 	void InsertRandomlySpawnedChildren(string child)
 	{
 		m_aRandomlySpawnedChildren.Insert(child);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] type Sets the activation type for the scenario event action.
 	void SetActivationType(SCR_ScenarioFrameworkEActivationType type)
 	{
 		m_eActivationType = type;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state  indicating termination status.
 	void SetIsTerminated(bool state)
 	{
 		m_bIsTerminated = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name Sets layer name.
 	void SetName(string name)
 	{
 		m_sName = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state Sets layer task state, controls layer visibility and functionality.
 	void SetLayerTaskState(int state)
 	{
 		m_iLayerTaskState = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] arrayForRemoval Array of resource names for AI prefab removal.
 	void SetAIPrefabsForRemoval(array<ResourceName> arrayForRemoval)
 	{
 		m_aAIPrefabsForRemoval = arrayForRemoval;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name Represents an object to spawn randomly in the world.
 	void SetRandomlySpawnedObject(ResourceName name)
 	{
 		m_sRandomlySpawnedObject = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] number Represents the number of repeated spawns for an entity in the game.
 	void SetRepeatedSpawnNumber(int number)
 	{
 		m_iRepeatedSpawnNumber = number;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value Enables or disables repeated spawning of units in the mission.
 	void SetEnableRepeatedSpawn(bool value)
 	{
 		m_bEnableRepeatedSpawn = value;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Registers variables for scenario framework layer structure.
 	void SCR_ScenarioFrameworkLayerStruct()
 	{
 		RegV("m_sName");
@@ -1103,7 +1238,6 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkLogicStruct : SCR_JsonApiStruct
 {
 	protected string m_sName;
@@ -1113,30 +1247,35 @@ class SCR_ScenarioFrameworkLogicStruct : SCR_JsonApiStruct
 	protected int m_iStructVarCount;
 	
 	//------------------------------------------------------------------------------------------------
+	//! Increases struct variable count by 1.
 	void IncreaseStructVarCount()
 	{
 		m_iStructVarCount += 1;
 	} 
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return The number of structure variables in the class.
 	int GetStructVarCount()
 	{
 		return m_iStructVarCount;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return whether the object is terminated or not.
 	bool GetIsTerminated()
 	{
 		return m_bIsTerminated;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return the name stored in the variable m_sName.
 	string GetName()
 	{
 		return m_sName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return The return value represents the current count value stored in m_iCounterValue variable.
 	int GetCounterValue()
 	{
 		return m_iCounterValue;
@@ -1145,24 +1284,28 @@ class SCR_ScenarioFrameworkLogicStruct : SCR_JsonApiStruct
 	//--------------------- Setters:
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state indicating termination status.
 	void SetIsTerminated(bool state)
 	{
 		m_bIsTerminated = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name Sets layer name.
 	void SetName(string name)
 	{
 		m_sName = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] value Sets the counter value for further use in the script.
 	void SetCounterValue(int value)
 	{
 		m_iCounterValue = value;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Registers scenario framework variables: name, termination status, counter value.
 	void SCR_ScenarioFrameworkLogicStruct()
 	{
 		RegV("m_sName");

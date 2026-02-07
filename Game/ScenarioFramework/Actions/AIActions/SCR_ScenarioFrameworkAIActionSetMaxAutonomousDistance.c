@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkAIActionSetMaxAutonomousDistance : SCR_ScenarioFramew
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		SCR_AIGroupUtilityComponent utility = SCR_AIGroupUtilityComponent.Cast(m_AIGroup.FindComponent(SCR_AIGroupUtilityComponent));
 		if (!utility)
 			return;

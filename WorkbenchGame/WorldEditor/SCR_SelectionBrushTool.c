@@ -440,21 +440,16 @@ class SCR_SelectionBrushTool : WorldEditorTool
 		}
 		else // AABB detection
 		{
-			array<IEntity> entities = {};
-			SCR_WorkbenchIEntityQueryCallbackArray helper = new SCR_WorkbenchIEntityQueryCallbackArray(entities);
-			
 			if (m_bDetectBySphere)
 			{
-				m_API.GetWorld().QueryEntitiesBySphere(cursorWorldPos, m_fRadius, helper.Insert);
+				return SCR_WorldEditorToolHelper.QueryEntitiesBySphere(m_API.GetWorld(), cursorWorldPos, m_fRadius);
 			}
 			else
 			{
 				vector minAABB = cursorWorldPos - { m_fRadius, BRUSH_2D_Y_SEARCH * 0.5, m_fRadius };
 				vector maxAABB = cursorWorldPos + { m_fRadius, BRUSH_2D_Y_SEARCH * 0.5, m_fRadius };
-				m_API.GetWorld().QueryEntitiesByAABB(minAABB, maxAABB, helper.Insert);
+				return SCR_WorldEditorToolHelper.QueryEntitiesByAABB(m_API.GetWorld(), minAABB, maxAABB);
 			}
-
-			return entities;
 		}
 	}
 

@@ -11,7 +11,7 @@ class SCR_ScenarioFrameworkActionRemoveItemFromInventory : SCR_ScenarioFramework
 	override void OnActivate(IEntity object)
 	{
 		//Due to how invokers are setup, deletion is sometimes triggered before said item is actually in said inventory
-		GetGame().GetCallqueue().CallLater(OnActivateCalledLater, 1000, false, object);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(OnActivateCalledLater, 1000, false, object);
 	}
 
 	//------------------------------------------------------------------------------------------------

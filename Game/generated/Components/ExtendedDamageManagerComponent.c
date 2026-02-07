@@ -13,13 +13,13 @@ class ExtendedDamageManagerComponentClass: SCR_DamageManagerComponentClass
 {
 }
 
-sealed class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
+class ExtendedDamageManagerComponent: SCR_DamageManagerComponent
 {
 	/*!
 	Adds A CLONE of a DamageEffect to this DamageManager
 	\param BaseDamageEffect damageEffect: A CLONE of this damage effect will be added.
 	*/
-	proto external void AddDamageEffect(BaseDamageEffect damageEffect);
+	proto external void AddDamageEffect(notnull BaseDamageEffect damageEffect);
 	/*!
 	If this persistent effect is contained on the damage manger, it will be removed.
 	\param PersistentDamageEffect dmgEffect: The damage effect to terminate.

@@ -51,6 +51,8 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 	[Attribute("1", desc: "Only valid if m_aDoTTypesHealed includes FIRE. The supply cost each time fire rate is reduced (no matter the reduction amount as fire rate is not replicated)", category: "Heal/Repair Support Station")]
 	protected float m_iSupplyCostPerFireRateReduction;
 	
+	protected static ref ScriptInvokerEntity s_OnFireExtinguished;
+
 	//------------------------------------------------------------------------------------------------
 	override ESupportStationType GetSupportStationType()
 	{
@@ -225,6 +227,8 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 				{
 					PlaySoundEffect(classData.GetOnExtinguishDoneAudioConfig(), actionOwner, action);
 					isFireStateHealed = true;
+					if (s_OnFireExtinguished)
+						s_OnFireExtinguished.Invoke(actionUser);
 					break;
 				}
 			}
@@ -320,6 +324,18 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		
 		//~ Send in vehicle notification if player is in vehicle
 		SCR_NotificationsComponent.SendLocal(inVehicleNotification, userRplId, notificationHitZoneGroup, healthScaled * 1000);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when player extinguish fire.
+	//! Invoker params are: Entity playerEntity
+	//! \return ScriptInvokerEntity
+	static ScriptInvokerEntity GetOnFireExtinguished()
+	{
+		if (!s_OnFireExtinguished)
+			s_OnFireExtinguished = new ScriptInvokerEntity();
+
+		return s_OnFireExtinguished;
 	}
 }
 	

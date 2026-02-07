@@ -104,10 +104,10 @@ class Game
 	*/
 	proto external bool InPlayMode();
 	proto external int ReloadFailureAddons(out notnull array<string> addons);
-	proto external ScriptModule GetScriptModule();
 	proto external PlatformService GetPlatformService();
 	//! Return true if executable is developer build.
 	static proto bool IsDev();
+	proto external ref ScriptModule GetScriptModule();
 	/*!
 	\brief Setting request flag for the engine to reinitialize the game
 	* Doesn't do anything in Workbench

@@ -78,6 +78,9 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	[Attribute(defvalue: "0.05", uiwidget: UIWidgets.Slider, desc: "Affects how much the bleeding is reduced", params: "0 1 0.001", precision: 3, category: "Tourniquets")]
 	protected float m_fTourniquetStrengthMultiplier;
 	
+	[Attribute(defvalue: "true", uiwidget: UIWidgets.CheckBox, desc: "Allow this character to show bleeding effects on any clothing items when damaged or bleeding", category: "Bleeding")]
+	protected bool m_bAllowBloodyClothes;
+	
 	//-----------------------------------------------------------------------------------------------------------
 	event override void OnInit(IEntity owner)
 	{
@@ -156,10 +159,18 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		
 		// If unconsciousness is not allowed, kill character
 		// Also kill the character if the blood state is not high enough for being unconsciousness
-		if (unconscious && (!GetPermitUnconsciousness() || (m_pBloodHitZone && m_pBloodHitZone.GetDamageState() == ECharacterBloodState.DESTROYED)))
+		if (unconscious)
 		{
-			Kill(GetInstigator());
-			return;
+			if (!GetPermitUnconsciousness() || (m_pBloodHitZone && m_pBloodHitZone.GetDamageState() == ECharacterBloodState.DESTROYED))
+			{
+				Kill(GetInstigator());
+				return;
+			}
+			else if (s_HealthSettings && s_HealthSettings.GetIfKillIndefiniteUnconscious() && IsIndefinitelyUnconscious())
+			{
+				Kill(GetInstigator());
+				return;
+			}
 		}
 		
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -471,7 +482,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 	//-----------------------------------------------------------------------------------------------------------
 	void AddBloodToClothes(notnull SCR_CharacterHitZone hitZone, float immediateBloodEffect)
 	{
-		if (immediateBloodEffect < 1)
+		if (!m_bAllowBloodyClothes || immediateBloodEffect < 1)
 			return;
 		
 		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(GetOwner().FindComponent(EquipedLoadoutStorageComponent));
@@ -508,7 +519,7 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 		GetAllHitZonesInHierarchy(hitZones);
 		foreach (HitZone hitZone : hitZones)
 		{
-			if (hitZone && hitZone.GetDamageState() == EDamageState.UNDAMAGED)
+			if (hitZone && hitZone.GetDamageState() != EDamageState.UNDAMAGED)
 				return true;
 		}
 		
@@ -642,6 +653,37 @@ class SCR_CharacterDamageManagerComponent : SCR_ExtendedDamageManagerComponent
 			return m_bPermitUnconsciousness;
 		
 		return s_HealthSettings.IsUnconsciousnessPermitted();
+ 	}		
+	
+	//-----------------------------------------------------------------------------------------------------------
+	//! Returns whether this character will remain unconscious with no chance to wake up without intervention
+	protected bool IsIndefinitelyUnconscious(bool onlyPlayers = true)
+ 	{
+		if (onlyPlayers && !EntityUtils.IsPlayer(GetOwner()))
+			return false;
+		
+		if (!m_pBloodHitZone || !m_pResilienceHitZone)
+			return false;
+		
+		// if bloodHitZone is below unconscious threshold you will not wake up without a medic
+		if (m_pBloodHitZone.GetDamageState() >= ECharacterBloodState.UNCONSCIOUS)
+			return true;
+		
+		// if unconscious and bleeding, you will not wake if your blood reaches below the ECharacterBloodState.UNCONSCIOUS treshold.
+		if (IsBleeding())
+		{
+			float timeToWake;
+			float timeToUnconscious = (m_pBloodHitZone.GetHealth() - (m_pBloodHitZone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS) * m_pBloodHitZone.GetMaxHealth())) / m_pBloodHitZone.GetTotalBleedingAmount();
+			
+			DotDamageEffect regenEffect = DotDamageEffect.Cast(FindDamageEffectOnHitZone(SCR_PassiveHitZoneRegenDamageEffect, GetResilienceHitZone()));
+			if (regenEffect)
+				timeToWake = ((m_pResilienceHitZone.GetDamageStateThreshold(ECharacterResilienceState.WEAKENED) * m_pResilienceHitZone.GetMaxHealth()) - m_pResilienceHitZone.GetHealth()) / -regenEffect.GetDPS();
+
+			if (timeToUnconscious < timeToWake)
+				return true;
+		}
+		
+		return false;
  	}	
  	
 	//-----------------------------------------------------------------------------------------------------------

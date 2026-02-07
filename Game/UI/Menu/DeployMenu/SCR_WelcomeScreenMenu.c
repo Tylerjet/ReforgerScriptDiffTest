@@ -77,6 +77,9 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		baseLayout.InitContent(this);
 
 		InitMap();
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		gameMode.PauseGame(true, SCR_EPauseReason.MENU);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -88,7 +91,21 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		if (ArmaReforgerLoadingAnim.IsOpen())
 			ArmaReforgerLoadingAnim.m_onExitLoadingScreen.Insert(MuteSounds);
 		else
-			MuteSounds();		
+			MuteSounds();	
+
+		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Insert(OnLanguageChanged);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+		
+		gameMode.PauseGame(false, SCR_EPauseReason.MENU);
 	}
 
 	//------------------------------------------------------------------------------------------------

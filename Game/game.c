@@ -90,7 +90,7 @@ class ArmaReforgerScripted : ChimeraGame
 	//! \param[in] world
 	//! \param[in] params Entity spawn params
 	//! \return Spawned Entity
-	IEntity SpawnEntityPrefab(ResourceName prefab, bool randomizeEditableVariant, BaseWorld world = null, EntitySpawnParams params = null)
+	IEntity SpawnEntityPrefabEx(ResourceName prefab, bool randomizeEditableVariant, BaseWorld world = null, EntitySpawnParams params = null)
 	{
 		Resource prefabResource = Resource.Load(prefab);
 		if (!prefabResource.IsValid())
@@ -330,7 +330,7 @@ class ArmaReforgerScripted : ChimeraGame
 		GetFullKickReason(kickCode, groupInt, reasonInt, group, reason);
 
 		// Detail
-		string format = "Kick cause code: group=%1 '%2', reason=%3 '%4'";
+		const string format = "Kick cause code: group=%1 '%2', reason=%3 '%4'";
 		string strDetail = string.Format(format , groupInt, group, reasonInt, reason);
 		Print(string.Format(format, groupInt, group, reasonInt, reason), LogLevel.NORMAL);
 
@@ -429,6 +429,7 @@ class ArmaReforgerScripted : ChimeraGame
 					case DataError.WORLD_LOAD_ERROR: reason = "WORLD_LOAD_ERROR"; return true;
 					case DataError.WORLD_LOAD_INCONSISTENCY: reason = "WORLD_LOAD_INCONSISTENCY"; return true;
 					case DataError.ADDON_LOAD_ERROR: reason = "ADDON_LOAD_ERROR"; return true;
+					case DataError.IS_DEV_BINARY_MISMATCH: reason = "IS_DEV_BINARY_MISMATCH"; return true;
 				}
 			break;
 
@@ -439,6 +440,7 @@ class ArmaReforgerScripted : ChimeraGame
 					case PlatformKickReason.ACTIVE_USER_LOST: reason = "ACTIVE_USER_LOST"; return true;
 					case PlatformKickReason.NO_MP_PRIVILEGE: reason = "NO_MP_PRIVILEGE"; return true;
 					case PlatformKickReason.NO_CROSSPLAY_PRIVILEGE: reason = "NO_CROSSPLAY_PRIVILEGE"; return true;
+					case PlatformKickReason.USER_SIGNED_OUT: reason = "USER_SIGNED_OUT"; return true;
 				}
 			break;
 
@@ -700,6 +702,10 @@ class ArmaReforgerScripted : ChimeraGame
 						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_S_PRESET_QUALITY);
 					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.XBOX_SERIES_X)
 						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
+					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.PS5)
+						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_QUALITY);
+					else if (lastUsedPresetID == -1 && System.GetPlatform() == EPlatform.PS5_PRO)
+						settingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PRO_QUALITY);
 					
 					if (lastUsedPresetID != -1)
 						settingsVideoModule.SetConsolePreset(lastUsedPresetID);
@@ -775,6 +781,10 @@ class ArmaReforgerScripted : ChimeraGame
 	//! \return
 	static SCR_GroupMenu OpenGroupMenu()
 	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager || !groupManager.IsGroupMenuAllowed())
+			return null;
+		
 		SCR_Faction playerFaction;
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (factionManager)
@@ -1307,7 +1317,7 @@ class ArmaReforgerScripted : ChimeraGame
 	//! \return mission resources list
 	override array<ResourceName> GetDefaultGameConfigs()
 	{
-		ResourceName config = "{CB4130E7FBE99D74}Configs/Workshop/DefaultScenarios.conf";
+		const ResourceName config = "{CB4130E7FBE99D74}Configs/Workshop/DefaultScenarios.conf";
 		Resource resource = BaseContainerTools.LoadContainer(config);
 		if (!resource)
 			return null;
@@ -1421,6 +1431,11 @@ class ArmaReforgerScripted : ChimeraGame
 		if (!isConnected && IsPlatformGameConsole())
 			SCR_GamepadRemovalUI.OpenGamepadRemovalDialog();
 		#endif
+	}
+	
+	override void OnUserSignedOut()
+	{
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.MainMenu);
 	}
 }
 

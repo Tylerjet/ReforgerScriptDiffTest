@@ -43,10 +43,15 @@ class SCR_KickDialogs
 
 		// --- Setup Kick dialog ---
 		SCR_ConfigurableDialogUi dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(KICK_DIALOGS_CONFIG, s_sErrorMessage);
-
+		if (dialogUi && s_sErrorMessage == "PLATFORM_USER_SIGNED_OUT")
+		{
+			dialogUi.m_OnCancel.Insert(ForceMainMenu);
+		}
+		
 		// Use group as fallback if no dialog found
 		if (!dialogUi)
 			dialogUi = SCR_ConfigurableDialogUi.CreateFromPreset(KICK_DIALOGS_CONFIG, s_sErrorMessageGroup);
+
 
 		// Show default error if tag is not found
 		if (!dialogUi)
@@ -231,5 +236,11 @@ class SCR_KickDialogs
 	{
 		if (s_OnCancel)
 			s_OnCancel.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void ForceMainMenu()
+	{
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.MainMenu);
 	}
 }

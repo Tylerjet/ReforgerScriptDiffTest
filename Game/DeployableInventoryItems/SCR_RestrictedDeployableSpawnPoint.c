@@ -106,18 +106,18 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 		{
 			IEntity playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 			if (!playerController)
-				return true;
+				return false;
 			
 			SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(playerController.FindComponent(SCR_PlayerLoadoutComponent));
 			if (!loadoutComp)
-				return true;
+				return false;
 			
 			SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
-			if (!loadout)
-				return true;
-						
-			result = SCR_ESpawnResult.NOT_ALLOWED_NO_ARSENAL;
-			return false;	
+			if (loadout)
+			{
+				result = SCR_ESpawnResult.NOT_ALLOWED_CUSTOM_LOADOUT;
+				return false;
+			}	
 		}	
 		
 		// Deny spawning when enemies are near spawnpoint

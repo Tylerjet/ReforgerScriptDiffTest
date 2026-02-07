@@ -40,7 +40,8 @@ enum EMessageType_Goal
 	PROVIDE_AMMO,
 	PICKUP_INVENTORY_ITEMS,
 	OPEN_NAVLINK_DOOR,
-	FIRE_ILLUM_FLARE
+	FIRE_ILLUM_FLARE,
+	ANIMATE,
 };
 
 //----------------- EXPAND MESSAGE TYPES
@@ -718,3 +719,24 @@ class SCR_AIMessage_Suppress : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGo
 		return msg;
 	}
 };
+
+class SCR_AIMessage_Animate : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Animate)
+{
+	IEntity m_RootEntity;						// VARIABLE(NodePort, RootEntity)
+	ref SCR_AIAnimationScript m_AgentScript; 	// VARIABLE(NodePort, AgentScript)
+	
+	void SCR_AIMessage_Animate()
+	{
+		m_MessageType = EMessageType_Goal.ANIMATE;
+	}
+
+	static SCR_AIMessage_Animate Create(notnull IEntity entity, SCR_AIAnimationScript script, SCR_AIActivityBase relatedActivity)
+	{
+		SCR_AIMessage_Animate msg = new SCR_AIMessage_Animate();
+		msg.m_RelatedGroupActivity = relatedActivity;
+		msg.m_RootEntity = entity;
+		msg.m_AgentScript = script;
+		
+		return msg;
+	}
+}

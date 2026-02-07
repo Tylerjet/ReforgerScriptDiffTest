@@ -491,13 +491,13 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 
 			// Get all actions
 			InputManager mgr = GetGame().GetInputManager();
-			array<string> actions = new array<string>();
+			array<string> actions = {};
 			if (mgr)
 			{
 				int cnt = mgr.GetActionCount();
 				for (int i = 0; i < cnt; i++)
 				{
-					auto act = mgr.GetActionName(i);
+					string act = mgr.GetActionName(i);
 					actions.Insert(act);
 				}
 			}

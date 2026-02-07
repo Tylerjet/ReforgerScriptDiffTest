@@ -28,9 +28,6 @@ class SCR_AIDecoTimeSinceTargetDetected : DecoratorScripted
 		// Therefore we must prevent the threshold from being smaller than update interval of perception component.
 		float timeMax = Math.Max(m_TimeThreshold_S, m_PerceptionComp.GetUpdateInterval()) + 0.02;
 		
-		float timeSinceDetected = ;
-		bool returnValue = timeSinceDetected < timeMax;
-		
 		return target.GetTimeSinceDetected() < timeMax;
 	}
 	

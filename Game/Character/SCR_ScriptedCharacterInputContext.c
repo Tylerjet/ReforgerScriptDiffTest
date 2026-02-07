@@ -6,4 +6,5 @@ class SCR_ScriptedCharacterInputContext
 	bool m_bLoiteringRootMotion = false;
 	bool m_bLoiteringDisablePlayerInput = false;
 	vector m_mLoiteringPosition[4] = { vector.Zero, vector.Zero, vector.Zero, vector.Zero };
+	ref SCR_LoiterCustomAnimData m_CustomAnimData;
 }

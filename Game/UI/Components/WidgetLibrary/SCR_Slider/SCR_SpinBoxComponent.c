@@ -9,7 +9,7 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	protected Widget m_wContent;
 	protected Widget m_wCountBar;
 	protected ref array<Widget> m_aHintElements = new array<Widget>();
-
+	
 	[Attribute("false", UIWidgets.CheckBox, "use light grey arrows instead of big yellow ones")]
 	protected bool m_bUseLightArrows;
 
@@ -42,9 +42,14 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 	
 	[Attribute("HintBarElement", UIWidgets.EditBox, "Name for generated Hint bar widgets")]
 	protected string m_sHintBarElementName;
-
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old untyped invokers
+	
 	protected ref ScriptInvoker m_OnLeftArrowClick;
 	protected ref ScriptInvoker m_OnRightArrowClick;
+
+//---- REFACTOR NOTE END ----
 	
 	protected bool m_bHasActionListeners;
 	protected bool m_bAllowSwitchingWithoutFocus;
@@ -296,6 +301,9 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 			m_OnRightArrowClick.Invoke();
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Directly calling OnClick, even if it's public, feels rather hacky, as it is triggered by the C++ widget classes, and here we do not even provide proper data in params
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMenuLeft()
 	{
@@ -315,6 +323,8 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		if (m_ButtonRight && m_ButtonRight.IsEnabled())
 			m_ButtonRight.OnClick(m_ButtonRight.m_wRoot, 0, 0, 0); // TODO: Replace with other function, which accepts more params (turn of anims and sounds separately)
 	}
+	
+//---- REFACTOR NOTE END ----
 
 	// --- Public ---
 	//------------------------------------------------------------------------------------------------

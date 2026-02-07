@@ -90,6 +90,8 @@ class SCR_AvailableActionsConditionData
 	protected SignalsManagerComponent m_CurrentVehicleSignals;
 	//! Current vehicle weapon
 	protected BaseWeaponComponent m_CurrentVehicleWeapon;
+	//! Current turret controller
+	protected TurretControllerComponent m_CurrentTurretController;
 	
 	// Character health state
 	protected SCR_CharacterDamageManagerComponent m_CharacterDamageComponent;
@@ -178,6 +180,7 @@ class SCR_AvailableActionsConditionData
 		m_CurrentMuzzle = null;
 		m_CurrentMagazine = null;
 		m_CurrentVehicleWeapon = null;
+		m_CurrentTurretController = null;
 		
 		// Health
 		m_CharacterDamageComponent = null;
@@ -199,6 +202,12 @@ class SCR_AvailableActionsConditionData
 	ChimeraCharacter GetCharacter()
 	{
 		return m_Character;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	CharacterControllerComponent GetCharacterController()
+	{
+		return m_CharacterController;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -315,7 +324,7 @@ class SCR_AvailableActionsConditionData
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns whether character is aiming down sights or not
+	//! Returns whether character is in a vehicle or not
 	bool GetIsCharacterInVehicle()
 	{
 		return m_bIsCharacterInVehicle;
@@ -508,6 +517,13 @@ class SCR_AvailableActionsConditionData
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Returns controller of currently controlled turret
+	TurretControllerComponent GetCurrentTurretController()
+	{
+		return m_CurrentTurretController;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Returns for how long is vehicle using turbo
 	float GetCurrentVehicleTurboTime()
 	{
@@ -696,10 +712,10 @@ class SCR_AvailableActionsConditionData
 
 				// Turret controls
 				m_CurrentVehicleController = slot.GetController();
-				TurretControllerComponent turretController = TurretControllerComponent.Cast(m_CurrentVehicleController);
-				if (turretController)
+				m_CurrentTurretController = TurretControllerComponent.Cast(m_CurrentVehicleController);
+				if (m_CurrentTurretController)
 				{
-					BaseWeaponManagerComponent weaponManager = turretController.GetWeaponManager();
+					BaseWeaponManagerComponent weaponManager = m_CurrentTurretController.GetWeaponManager();
 					if (weaponManager)
 						m_CurrentVehicleWeapon = weaponManager.GetCurrentWeapon();
 				}

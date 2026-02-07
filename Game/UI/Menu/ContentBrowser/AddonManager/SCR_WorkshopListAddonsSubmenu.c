@@ -147,28 +147,41 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		// Get offline items from API
 		array<WorkshopItem> rawWorkshopItems = {};
 		GetGame().GetBackendApi().GetWorkshop().GetOfflineItems(rawWorkshopItems);
-		
+
 		// Register items in Addon Manager
-		array<ref SCR_WorkshopItem> itemsRegistered = {};
+		array<SCR_WorkshopItem> itemsRegistered = {};
+		array<SCR_WorkshopItem> saves = {};
+		
 		foreach (WorkshopItem i : rawWorkshopItems)
 		{
 			SCR_WorkshopItem itemRegistered = SCR_AddonManager.GetInstance().Register(i);
+			
+			// Separeta save
+			if (itemRegistered.IsWorldSave())
+			{
+				if (!itemRegistered.GetWorkshopItem().GetActiveRevision())
+					continue;
+				
+				saves.Insert(itemRegistered);
+				continue;
+			}
+			
+			// Addons
 			itemsRegistered.Insert(itemRegistered);
 		}
-
-		// Convert to basic array for sorting...
-		array<SCR_WorkshopItem> itemsWeakPtrs = {};
-		foreach (SCR_WorkshopItem i : itemsRegistered)
-		{
-			itemsWeakPtrs.Insert(i);
-		}
-
+		
 		// Sort by name...
-		SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemName>.HeapSort(itemsWeakPtrs);
-
+		SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemName>.HeapSort(itemsRegistered);
+		SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemName>.HeapSort(saves);
+		
 		// Convert back to array<ref ...>
 		array<ref SCR_WorkshopItem> itemsSorted = {};
-		foreach (SCR_WorkshopItem i : itemsWeakPtrs)
+		foreach (SCR_WorkshopItem i : itemsRegistered)
+		{
+			itemsSorted.Insert(i);
+		}
+		
+		foreach (SCR_WorkshopItem i : saves)
 		{
 			itemsSorted.Insert(i);
 		}

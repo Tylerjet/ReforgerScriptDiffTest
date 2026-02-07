@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionSetResilience : SCR_ScenarioFrameworkMed
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		HitZone resilienceHitZone = m_DamageManager.GetResilienceHitZone();
 		if (!resilienceHitZone)
 		{

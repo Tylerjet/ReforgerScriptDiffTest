@@ -12,6 +12,13 @@ class SCR_SuppressWaypoint : SCR_TimedWaypoint
 		return m_fSuppressionHeight;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] height of suppression volume above waypoint center
+	void SetSuppressionHeight(float height)
+	{
+		m_fSuppressionHeight = height;
+	}
+	
 	override SCR_AIWaypointState CreateWaypointState(SCR_AIGroupUtilityComponent groupUtilityComp)
 	{
 		return new SCR_SuppressWaypointState(groupUtilityComp, this);

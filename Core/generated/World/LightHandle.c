@@ -128,6 +128,13 @@ sealed class LightHandle: pointer
 	\param transform Transform matrix of light
 	*/
 	proto external void SetTransform(notnull BaseWorld world, vector[] transform);
+	/*!
+	Set mask for light vs camera visibility. By default, all bits are set
+	what means the light will be visible in all cameras
+	\param mask Bit-mask of cameras where is light visible
+	\return Returns previous mask
+	*/
+	proto external int SetCameraMask(int mask);
 }
 
 /*!

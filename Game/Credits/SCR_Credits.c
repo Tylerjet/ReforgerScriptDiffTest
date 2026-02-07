@@ -6,7 +6,7 @@ class SCR_Credits: ChimeraMenuBase
 	protected const float NAME_ANIMATION_TIME = 0.5; //How long will fadeout animation 
 	protected const float NAME_ANIMATION_CREDITS = 0.6;
 	protected const int BACKGROUND_CHANGE_INTERVAL = 10000;
-	protected const ref array<ref int> PAGE_NAME_SIZE = {14, 12, 10, 9, 8, 7, 7};
+	protected static const ref array<int> PAGE_NAME_SIZE = { 14, 12, 10, 9, 8, 7, 7 };
 	
 	protected ResourceName m_sNamesLists = "{3D0DE92D54AEA7D9}Configs/Credits/credits.conf";
 	protected ResourceName m_sMusicFile = "{27FAA69A3BD0473C}Sounds/Music/Ingame/Samples/MU_MilitaryBasePositive_BEYOND THE VEIL v2.wav";

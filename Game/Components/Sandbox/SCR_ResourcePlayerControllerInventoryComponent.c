@@ -209,9 +209,9 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 
 		SCR_ResourceInteractor interactor;
 				
-		if (interactorType == "SCR_ResourceGenerator")
+		if (interactorType.ToType().IsInherited(SCR_ResourceGenerator))
 			interactor = resourceComponent.GetGenerator(resourceIdentifier, resourceType);
-		else if (interactorType == "SCR_ResourceConsumer")
+		else if (interactorType.ToType().IsInherited(SCR_ResourceConsumer))
 			interactor = resourceComponent.GetConsumer(resourceIdentifier, resourceType);
 		else
 			return;
@@ -273,7 +273,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		
 		SCR_ResourceComponent resourceComponentTo = SCR_ResourceComponent.Cast(Replication.FindItem(rplIdResourceComponentTo));
 		
-		OnPlayerInteraction(interactionType, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);	
+		OnPlayerInteraction(interactionType, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue, false);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -655,7 +655,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 	//! \param[in] resourceComponentTo
 	//! \param[in] resourceType
 	//! \param[in] resourceValue
-	void OnPlayerInteraction(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue)
+	void OnPlayerInteraction(EResourcePlayerInteractionType interactionType, SCR_ResourceComponent resourceComponentFrom, SCR_ResourceComponent resourceComponentTo, EResourceType resourceType, float resourceValue, bool shouldBroadcast = true)
 	{
 		IEntity owner = GetOwner();
 		PlayerController playerController = PlayerController.Cast(owner);
@@ -663,15 +663,20 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!playerController)
 			return;
 		
-		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-		
-		if (!playerController)
-			return;
-		
-		if (rplComponent && !rplComponent.IsProxy() && !rplComponent.IsOwner())
-			Rpc(RpcAsk_OnPlayerInteraction, interactionType, Replication.FindId(resourceComponentFrom), Replication.FindId(resourceComponentTo), resourceType, resourceValue);
-		
-		GetOnPlayerInteraction().Invoke(interactionType, owner, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);
+		if (shouldBroadcast)
+		{
+			RplComponent replicationComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+			
+			if (replicationComponent && !replicationComponent.IsProxy() && !replicationComponent.IsOwner())
+				Rpc(RpcAsk_OnPlayerInteraction, interactionType, Replication.FindId(resourceComponentFrom), Replication.FindId(resourceComponentTo), resourceType, resourceValue);
+			
+			ChimeraWorld world = GetGame().GetWorld();
+			SCR_SupplySystem system = SCR_SupplySystem.Cast(world.FindSystem(SCR_SupplySystem));
+			if (system)
+				system.ActivateEffects(interactionType, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);		
+		}
+
+			GetOnPlayerInteraction().Invoke(interactionType, owner, resourceComponentFrom, resourceComponentTo, resourceType, resourceValue);
 	}
 	
 	//------------------------------------------------------------------------------------------------

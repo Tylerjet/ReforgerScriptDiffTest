@@ -1,12 +1,10 @@
 class SCR_EntityHelper
 {
-	/*!
-	Function to find specific component on given entity or entity parent/slottedEntities/siblings/rootparents etc
-	\param entity Entity to use to find the component on
-	\param componentType Component Class to find
-	\param queryFlags Where to find the component on. It can have multiple flags and is checked in order of lowest to highest flag value
-	\return Component is any is found
-	*/
+	//! Function to find specific component on given entity or entity parent/slottedEntities/siblings/rootparents etc
+	//! \param[in] entity Entity to use to find the component on
+	//! \param[in] componentType Component Class to find
+	//! \param[in] queryFlags Where to find the component on. It can have multiple flags and is checked in order of lowest to highest flag value
+	//! \return Component is any is found
 	static Managed FindComponent(notnull IEntity entity, typename componentType, SCR_EComponentFinderQueryFlags queryFlags = SCR_EComponentFinderQueryFlags.ENTITY | SCR_EComponentFinderQueryFlags.SLOTS)
 	{
 		Managed foundComponent;
@@ -319,34 +317,6 @@ class SCR_EntityHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Return the player-controlled entity
-	//! See EntityUtils.GetPlayer()
-	static IEntity GetPlayer()
-	{
-		return EntityUtils.GetPlayer();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Check if the provided entity is the local player
-	//! See EntityUtils.GetPlayer()
-	//! \param entity
-	// unused
-	static bool IsPlayer(IEntity entity)
-	{
-		return entity && entity == EntityUtils.GetPlayer();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Check if the provided entity is -a- player - a human-controlled entity
-	//! See EntityUtils.IsPlayer()
-	//! \param entity
-	// unused
-	static bool IsAPlayer(IEntity entity)
-	{
-		return entity && EntityUtils.IsPlayer(entity);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Set transform for the whole hierarchy
 	//! \param entity
 	//! \param newTransform
@@ -398,23 +368,31 @@ class SCR_EntityHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*! Get relative local transform from member to owner. Currently supports single hierarchy only.
-		\param[in] owner Starting entity. Read as IEntity for convenience, but it has to be BaseGameEntity.
-		\param[in] member Ending entity. Has to be BaseGameEntity if it's not parent of owner. Must be in the same hierarchy as owner.
-		\param[out] relativeTransform transformation from member to owner local space
-		\return whether the result is reliable
-	*/
+	//! Get relative transform from member to owner local space.
+	//! \param[in] owner Starting entity.
+	//! \param[in] member Ending entity.
+	//! \param[out] relativeTransform transformation from member to owner local space
+	//! \return whether the result is reliable
 	static bool GetRelativeLocalTransform(notnull IEntity owner, notnull IEntity member, out vector relativeTransform[4])
 	{
-		// Currently they have to be members of same hierarchy
+		// Use world transform if not members of same hierarchy
 		IEntity root = owner.GetRootParent();
-		if (member.GetRootParent() != root)
-			return false;
+		if (root != member.GetRootParent())
+		{
+			vector ownerTransform[4];
+			owner.GetWorldTransform(ownerTransform);
+
+			vector memberTransform[4];
+			member.GetWorldTransform(memberTransform);
+
+			Math3D.MatrixInvMultiply4(ownerTransform, memberTransform, relativeTransform);
+
+			return true;
+		}
 
 		Math3D.MatrixIdentity4(relativeTransform);
 
 		// Simple check if member is parent of owner
-		bool isParent;
 		IEntity parent = owner;
 		while (parent)
 		{
@@ -440,6 +418,22 @@ class SCR_EntityHelper
 
 		return ownerToRoot && rootToMember;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Atempts to find RplComponent in the fastest possible way
+	//! \param[in] entity from which RplComponent should be retrived
+	static RplComponent GetEntityRplComponent(notnull IEntity entity)
+	{
+		RplComponent rplComp;
+		BaseGameEntity gameEntity = BaseGameEntity.Cast(entity);
+		if (gameEntity)
+			rplComp = gameEntity.GetRplComponent();
+
+		if (!rplComp)
+			rplComp = RplComponent.Cast(entity.FindComponent(RplComponent));
+
+		return rplComp;
+	}
 }
 
 class SCR_EntityHelperT<Class T>
@@ -463,16 +457,15 @@ class SCR_EntityHelperT<Class T>
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 //! Used for component finding to know where it can search to get the given component
 enum SCR_EComponentFinderQueryFlags
 {
-	ENTITY =        		1 << 0, ///< Find on entity itself
-	SLOTS = 				1 << 1, ///< Find in SlotManagerComponent
-	CHILDREN =      		1 << 2, ///< Find on children of entity
-	PARENT = 				1 << 3, ///< Find on parent of entity
-	PARENT_SLOTS =			1 << 4, ///< Find in SlotManagerComponent of parent
-	ROOT_PARENT = 			1 << 5, ///< Find on Root parent of entity
-	ROOT_PARENT_SLOTS =		1 << 6, ///< Find in SlotManagerComponent of root parent
-	SIBLINGS = 				1 << 7, ///< Find on Siblings in hierarchy
-};
+	ENTITY =        		1 << 0, //!< Find on entity itself
+	SLOTS = 				1 << 1, //!< Find in SlotManagerComponent
+	CHILDREN =      		1 << 2, //!< Find on children of entity
+	PARENT = 				1 << 3, //!< Find on parent of entity
+	PARENT_SLOTS =			1 << 4, //!< Find in SlotManagerComponent of parent
+	ROOT_PARENT = 			1 << 5, //!< Find on Root parent of entity
+	ROOT_PARENT_SLOTS =		1 << 6, //!< Find in SlotManagerComponent of root parent
+	SIBLINGS = 				1 << 7, //!< Find on Siblings in hierarchy
+}

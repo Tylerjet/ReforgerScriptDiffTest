@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionSetRegenerationRate : SCR_ScenarioFramew
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.SetRegenScale(m_fRegeneration, true);
 	}
 }

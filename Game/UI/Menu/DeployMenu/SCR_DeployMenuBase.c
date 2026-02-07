@@ -43,6 +43,16 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 			ArmaReforgerLoadingAnim.m_onExitLoadingScreen.Insert(MuteSounds);
 		else
 			MuteSounds();		
+
+		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Insert(OnLanguageChanged);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Hack used to refresh the map after language is changed in order to force reload fonts used by location descriptors
+	protected void OnLanguageChanged(SCR_GameplaySettingsSubMenu menu)
+	{
+		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.PauseMenu);//fore close it or it may become impossible to open it later
+		GetGame().GetMenuManager().CloseMenu(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -51,7 +61,9 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 		MuteSounds(false);
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
-		
+
+		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Remove(OnLanguageChanged);
+
 		super.OnMenuClose();
 	}
 
@@ -304,6 +316,13 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		
 		HookEvents();
 		InitMapDeploy();
+
+		bool pause = m_ActiveRespawnTimer == null;
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+		
+		gameMode.PauseGame(pause, SCR_EPauseReason.MENU);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -382,6 +401,13 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 			m_MapEntity.CloseMap();
 		
 		m_fCurrentDeployTimeOut = 0;
+		
+		// Unpause
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+		
+		gameMode.PauseGame(false, SCR_EPauseReason.MENU);
 	}
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
@@ -865,6 +891,10 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 
 	protected void OpenGroupMenu()
 	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager || !groupManager.IsGroupMenuAllowed())
+			return;
+		
 		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.GroupMenu);
 	}	
 

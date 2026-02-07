@@ -6,7 +6,6 @@ class SCR_ResourceContainerVehicleUnloadAction : SCR_ScriptedUserAction
 	[Attribute("-1", "Amount of resources transfered on each action execute, -1 means max is transfer", params: "-1 inf")]
 	protected float m_fTransferAmount;
 	
-	protected SCR_ResourcePlayerControllerInventoryComponent m_ResourceInventoryPlayerComponent;
 	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleConsumer;
 	protected SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandleGenerator;
 	protected SCR_ResourceComponent m_ResourceComponent;
@@ -86,19 +85,31 @@ class SCR_ResourceContainerVehicleUnloadAction : SCR_ScriptedUserAction
 		
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	/*override bool CanBeShownScript(IEntity user)
+	override bool CanBeShownScript(IEntity user)
 	{	
 		if (!super.CanBeShownScript(user))
 			return false;
-		
-		if (!m_ResourceComponent || !m_ResourceComponent.AreSuppliesEnabled())
+
+		if (!m_ResourceComponent || !m_ResourceComponent.IsResourceTypeEnabled(m_eResourceType))
 			return false;
-		
+
+		Vehicle vehicle = Vehicle.Cast(GetOwner());
+		if (!vehicle)
+		{
+			vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+			if (!vehicle)
+				return false;
+		}
+
+		SCR_DamageManagerComponent damageMgr = vehicle.GetDamageManager();
+		if (!damageMgr || damageMgr.GetState() == EDamageState.DESTROYED)
+			return false;
+
 		return true;
-	}*/
-	
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override event bool CanBePerformedScript(IEntity user)
 	{

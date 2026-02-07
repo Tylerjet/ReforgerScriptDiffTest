@@ -254,8 +254,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 							
 			if (targetMode == EGadgetMode.IN_HAND)	// Gadget to hand
 			{
-				if (m_Controller.GetWeaponADSInput())
-					m_Controller.SetWeaponADSInput(false);
+				CancelADSInput();
 
 				if (gadgetComp.CanBeRaised())
 					m_Controller.TakeGadgetInLeftHand(gadget, gadgetComp.GetAnimVariable(), doFocus);
@@ -504,9 +503,16 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			return;
 		
 		if (inputVal != 1 && (gadgetComp.GetUseMask() & SCR_EUseContext.FROM_ACTION) != 0)
+		{
 			gadgetComp.ToggleActive(!gadgetComp.IsToggledOn(), SCR_EUseContext.FROM_ACTION);
+		}
 		else
-			SetGadgetMode(gadget, targetMode, doFocus);
+		{
+			if (m_HeldGadgetComponent && m_HeldGadgetComponent.GetType() == gadgetComp.GetType())
+				SetGadgetMode(m_HeldGadget, EGadgetMode.IN_STORAGE);
+			else
+				SetGadgetMode(gadget, targetMode, doFocus);
+		}
 	} 
 	
 	//------------------------------------------------------------------------------------------------
@@ -816,7 +822,11 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	{
 		if (!m_Controller)
 			return;
-				
+
+		// Cancel character and turret ADS
+		if (gadgetADS)
+			CancelADSInput();
+
 		if (m_HeldGadgetComponent && m_HeldGadgetComponent.CanBeRaised())
 		{
 			m_Controller.SetGadgetRaisedModeWanted(gadgetADS);
@@ -828,6 +838,34 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 			m_Controller.SetGadgetRaisedModeWanted(gadgetADS);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Cancel weapon and turret ADS input state
+	void CancelADSInput()
+	{
+		if (!m_Controller)
+			return;
+
+		m_Controller.SetWeaponADSInput(false);
+
+		ChimeraCharacter character = m_Controller.GetCharacter();
+		if (!character)
+			return;
+
+		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
+		if (!access || !access.IsInCompartment())
+			return;
+
+		BaseCompartmentSlot compartment = access.GetCompartment();
+		if (!compartment)
+			return;
+
+		TurretControllerComponent turretController = TurretControllerComponent.Cast(compartment.GetController());
+		if (!turretController)
+			return;
+
+		turretController.SetWeaponADSInput(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -451,8 +451,8 @@ class SCR_AIAgentDebugPanel : Managed
 					DbgUI.Text(string.Format("%1   Exp: %2, Rec: Detect: %3 Identify: %4",
 						targetId, baseTarget.GetExposure().ToString(3, 2), recognitionDetect.ToString(3, 2), recognitionIdentify.ToString(3, 2)));
 					
-					int plotWidth = 200;
-					int plotHeight = 150;
+					const int plotWidth = 200;
+					const int plotHeight = 150;
 					// int plotHistory = 800;
 					DbgUI.PlotLive(string.Format("%1 Detection", targetId), plotWidth, plotHeight, recognitionDetect, 300);
 					DbgUI.PlotLive(string.Format("%1 Identification", targetId), plotWidth, plotHeight, recognitionIdentify, 300);

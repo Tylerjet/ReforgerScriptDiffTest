@@ -136,42 +136,57 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Handle and dispatch scoring logic for this event.
-	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		super.OnPlayerKilled(instigatorContextData);
 		
 		// Add death no matter what
-		AddDeath(playerId);
+		AddDeath(instigatorContextData.GetVictimPlayerID());
 		
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		Instigator instigator = instigatorContextData.GetInstigator();
+		
+		//~ Killed by AI
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
 		
-		int killerId = killer.GetInstigatorPlayerID();
+		SCR_ECharacterControlType victimControlType = instigatorContextData.GetVictimCharacterControlType();
+		SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
 		
-		// Suicide?
-		if (playerId == killerId)
+		//~ Score for killing self, killing enemy player and killing friendly player
+		//~ Player killed self
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.SUICIDE))
 		{
-			AddSuicide(playerId);
+			//~ Possessed AI do not count the suicide
+			if (victimControlType == SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			AddSuicide(instigatorContextData.GetVictimPlayerID());
 			return;
 		}
-		
-		SCR_ChimeraCharacter playerEntityChar = SCR_ChimeraCharacter.Cast(playerEntity);
-		if (!playerEntityChar)
+		//~ Killed by enemy player. 
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+		{
+			//~ If killer is a possessed player it is not counted
+			if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			AddKill(instigator.GetInstigatorPlayerID());
 			return;
-		
-		// We have to resolve who and what faction they belong to
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
+		}
+		//~ Killed by friendly player. Score will still be deducted from friendly kills of admin and GMs
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
+		{
+			//~ If killer is a possessed player it is not counted
+			if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			//~ Only add teamkill score if team kill is punished
+			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+			if (!additionalGameModeSettings || additionalGameModeSettings.IsTeamKillingPunished())
+				AddTeamKill(instigator.GetInstigatorPlayerID());
+			
 			return;
-		
-		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
-		if (!factionKiller)
-			return;
-		
-		if (factionKiller.IsFactionFriendly(playerEntityChar.GetFaction()))
-			AddTeamKill(killerId);
-		else
-			AddKill(killerId);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

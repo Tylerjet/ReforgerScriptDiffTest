@@ -23,34 +23,19 @@ class WorldSaveItem extends WorkshopItem
 	
 	proto native int CreatedAt();	//time in DateTimeUtcAsInt format
 	
-	proto native void DeleteOffline();
-	
 	proto native void Save(notnull WorldSaveManifest manifest);
 	
 	proto native WorldSaveItem UploadWorldSave(notnull WorldSaveManifest manifest, BackendCallback callback);
 	
 	static proto native WorldSaveItem CreateLocalWorldSave(notnull WorldSaveManifest manifest);
-}
-
-class WorldSaveApi extends DownloadableCatalogue
-{
-	[Obsolete("use WorkshopApi.GetCurrentSave")] proto native WorldSaveItem GetCurrentSave();
 	
-	[Obsolete("use WorkshopApi.SetCurrentSave")] proto native void SetCurrentSave(WorldSaveItem item);
-	
-	[Obsolete("use WorldSaveItem.UploadWorldSave")] proto native WorldSaveItem UploadWorldSave(notnull WorldSaveManifest manifest, BackendCallback callback, WorldSaveItem itemToUpdate);
-
-	[Obsolete("use WorkshopApi.GetOfflineSaves")] proto native int GetOfflineItems(out notnull array<WorldSaveItem> items);
-
-	[Obsolete("use WorkshopApi.FindItem")] proto native WorldSaveItem FindItem(string id);
-	
-	[Obsolete("use WorldSaveItem.CreateLocalWorldSave")] proto native WorldSaveItem CreateLocalWorldSave(notnull WorldSaveManifest manifest);
-	
-	/*!
-	Get page content, returns current count of items on active page.
-	\param items Array of Workshop Items
+	/**
+	\brief Creates JPEG data from PixelRawData based on given parameters
+	\param data Raw data of the image
+	\param quality Between 1-100, the higher quality results in a bigger image
+	\param channels How many channels to use (4 usually as RGBA)
+	\param preview True if the screenshot should be uploaded as preview, false if it should be added to gallery instead
+	\return 0 on failure, non-0 on success
 	*/
-	[Obsolete("use WorkshopApi.GetPageItems")] proto native int GetPageItems( out array<WorldSaveItem> items );
+	proto native int SaveJPEG(PixelRawData data, int width, int height, int quality, int channels, bool preview);
 }
-
-

@@ -9,7 +9,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	protected const string WIDGET_SCROLL = "ScrollSize";
 	protected const string WIDGET_ADDON_LIST = "AddonList";
 	protected const string WIDGET_LOADING = "Loading";
-	protected const string WIDGET_TITLEFRAME = "TitleFrame";
 
 	protected const string WIDGET_IPADDRESS_TEXT = "IPAddressText";
 	protected const string WIDGET_DISCORD_TEXT = "DiscordText";
@@ -72,9 +71,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	
 	protected const string STR_HIGH_PING = "#AR-ServerBrowser_HighPingWarning_Title";
 	protected const string STR_HIGH_PING_ICON = "ping-low";
-	
-	//This should probably be a setting in SCR_HorizontalScrollAnimationComponent, as this is a bandaid solution to the title flickering
-	protected const int MAX_TITLE_LENGTH = 55;
 
 	//------------------------------------------------------------------------------------------------
 	// Override
@@ -153,25 +149,6 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetTitle(string text)
-	{
-		super.SetTitle(text);
-
-		Widget titleFrame = m_wRoot.FindAnyWidget(WIDGET_TITLEFRAME);
-		if (!titleFrame)
-			return;
-
-		SCR_HorizontalScrollAnimationComponent scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(titleFrame.FindHandler(SCR_HorizontalScrollAnimationComponent));
-		if (!scrollComp)
-			return;
-
-		if (text.Length() < MAX_TITLE_LENGTH)
-			scrollComp.AnimationStop();
-		else
-			scrollComp.AnimationStart();
-	}
-
-	//------------------------------------------------------------------------------------------------
 	// Public
 	//------------------------------------------------------------------------------------------------
 
@@ -187,7 +164,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		SCR_ConfigurableDialogUi.CreateFromPreset(dialogsConfig, preset, dialog);
 
 		dialog.SetTitle(room.Name());
-		dialog.SetIPAddressText("#AR-ServerBrowser_IP: " + room.HostAddress());
+		dialog.SetIPAddressText(SCR_WorkshopUiCommon.LABEL_IP_ADDRESS + " " + room.HostAddress());
 		//dialog.SetDiscordText();
 
 		//! Favorites button

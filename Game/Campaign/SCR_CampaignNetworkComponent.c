@@ -15,6 +15,9 @@ enum ECampaignClientNotificationID
 	RESPAWN
 }
 
+void OnBaseCapturedDelegate(SCR_CampaignMilitaryBaseComponent base, int playerId);
+typedef func OnBaseCapturedDelegate;
+
 //! Takes care of Campaign-specific server <> client communication and requests
 class SCR_CampaignNetworkComponent : ScriptComponent
 {
@@ -25,12 +28,14 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 
 	protected vector m_vLastLoadedAt;
 	protected vector m_vLastUnloadedAt;
+	protected float m_fLoadedSupplyAmount;
 
 	protected float m_fNoRewardSupplies;
 
 	protected int m_iTotalSuppliesDelivered;
 
 	protected static ref ScriptInvokerInt3 s_OnSuppliesDelivered;
+	protected static ref ScriptInvokerBase<OnBaseCapturedDelegate> s_OnBaseCaptured; // <base, playerID>
 
 	static const float FULL_SUPPLY_TRUCK_AMOUNT = 600.0;
 	static const int SUPPLY_DELIVERY_THRESHOLD_SQ = 200 * 200;
@@ -90,6 +95,18 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			s_OnSuppliesDelivered = new ScriptInvokerInt3();
 
 		return s_OnSuppliesDelivered;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get event called when the player captures a base.
+	//! Invoker params are: SCR_CampaignMilitaryBaseComponent base, int playerId
+	//! \return ScriptInvokerBase<OnBaseCapturedDelegate>
+	static ScriptInvokerBase<OnBaseCapturedDelegate> GetOnBaseCaptured()
+	{
+		if (!s_OnBaseCaptured)
+			s_OnBaseCaptured = new ScriptInvokerBase<OnBaseCapturedDelegate>();
+
+		return s_OnBaseCaptured;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -887,6 +904,9 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if (base.GetType() == SCR_ECampaignBaseType.RELAY && playerID != SCR_CampaignMilitaryBaseComponent.INVALID_PLAYER_INDEX)
 			SendPlayerMessage(SCR_ERadioMsg.RELAY);
+
+		if (s_OnBaseCaptured)
+			s_OnBaseCaptured.Invoke(base, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1026,7 +1046,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 				if (m_bFirstSpawn)
 				{
 					m_bFirstSpawn = false;
-					duration = 120;
+					duration = 15;
 				}
 				
 				break;
@@ -1260,7 +1280,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		{
 			case EResourcePlayerInteractionType.VEHICLE_LOAD:
 			{
-				OnSuppliesLoaded(pos, resourceValue);
+				OnSuppliesLoaded(pos, resourceValue, resourceComponentTo);
 				break;
 			}
 			
@@ -1282,7 +1302,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 				if (vehicleFrom)
 					OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId());
 				else
-					OnSuppliesLoaded(pos, resourceValue);
+					OnSuppliesLoaded(pos, resourceValue, resourceComponentTo);
 				
 				break;
 			}
@@ -1290,17 +1310,25 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSuppliesLoaded(vector position, float amount)
+	protected void OnSuppliesLoaded(vector position, float amount, notnull SCR_ResourceComponent resourceComponentTo)
 	{
 		m_vLastLoadedAt = position;
+
+		SCR_ResourceContainer container = resourceComponentTo.GetContainer(EResourceType.SUPPLIES);
+		
+		if (!container)
+			return;
+		
+		m_fLoadedSupplyAmount = container.GetResourceValue();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnSuppliesUnloaded(vector position, float amount, int playerId)
 	{
-		if (m_vLastLoadedAt == vector.Zero || vector.DistanceSqXZ(m_vLastLoadedAt, position) <= SUPPLY_DELIVERY_THRESHOLD_SQ)
+		if (m_vLastLoadedAt == vector.Zero || amount > m_fLoadedSupplyAmount || vector.DistanceSqXZ(m_vLastLoadedAt, position) <= SUPPLY_DELIVERY_THRESHOLD_SQ)
 			return;
 
+		m_fLoadedSupplyAmount -= amount;
 		m_iTotalSuppliesDelivered += amount;
 
 		if (s_OnSuppliesDelivered)

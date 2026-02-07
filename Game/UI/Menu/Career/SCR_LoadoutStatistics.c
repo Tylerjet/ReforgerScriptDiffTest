@@ -144,7 +144,7 @@ class SCR_LoadoutStatisticsComponent : ScriptedWidgetComponent
 		if(!wEntry)
 			return;
 		
-		string sLabelName = "txtLabel";
+		const string sLabelName = "txtLabel";
 		TextWidget wLabel = TextWidget.Cast(wEntry.FindAnyWidget(sLabelName));
 		if(wLabel)
 			wLabel.SetText(sLabel);
@@ -156,7 +156,7 @@ class SCR_LoadoutStatisticsComponent : ScriptedWidgetComponent
 		if(!wEntry)
 			return;
 		
-		string sValueName = "txtValue";
+		const string sValueName = "txtValue";
 		TextWidget wValue = TextWidget.Cast(wEntry.FindAnyWidget(sValueName));
 		if(wValue)
 			wValue.SetText(sValue);

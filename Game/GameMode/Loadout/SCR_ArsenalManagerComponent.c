@@ -576,6 +576,10 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		
 		if (spawnTarget)
 		{
+			//~ Check if spawn target is an MHQ
+			if (spawnTarget.FindComponent(SCR_CampaignMobileAssemblyStandaloneComponent))
+				return 0;
+			
 			IEntity parent = spawnTarget;
 			
 			//~ Check if spawn target is a base
@@ -1111,7 +1115,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			return;
 		
 		ResourceName prefab;
-		if (!context.ReadValue("prefabGUID", prefab))
+		if (!context.ReadValue("prefab", prefab))
 			return;
 		
 		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();

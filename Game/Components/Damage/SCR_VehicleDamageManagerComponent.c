@@ -49,10 +49,16 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 	protected float m_fOccupantsDamageSpeedThreshold;
 
 	[Attribute("100", "Speed in km/h over which will occupants die in collision", category: "Collision Damage")]
-	protected float m_fOccupantsSpeedDeath;
+	protected float m_fOccupantsSpeedDeath;	
 
 	[Attribute("0 0 0", "Position for frontal impact calculation", category: "Collision Damage", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vFrontalImpact")]
 	protected vector m_vFrontalImpact;
+	
+	[Attribute("1000", "Explosion damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
+	protected int m_iMinExplosionEjectionDamageThreshold;
+	
+	[Attribute("50", "Collision damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
+	protected int m_iMinCollisionEjectionDamageThreshold;
 
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -123,6 +129,20 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 	{
 		return m_vFrontalImpact;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetMinExplosionEjectionDamageThreshold()
+	{
+		return m_iMinExplosionEjectionDamageThreshold;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetMinCollisionEjectionDamageThreshold()
+	{
+		return m_iMinCollisionEjectionDamageThreshold;
+	}
 }
 
 enum SCR_EPhysicsResponseIndex
@@ -190,6 +210,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
 
 	protected static ref ScriptInvokerInt s_OnVehicleDestroyed;
+	protected static ref ScriptInvoker s_OnVehicleDamageStateChanged;
 
 	//! Common vehicle features that will influence its simulation
 	protected ref array<HitZone> m_aVehicleHitZones = {};
@@ -358,6 +379,28 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			return 80;
 
 		return prefabData.GetOccupantsSpeedDeath();
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetMinCollisionDamageEjectionThreshold()
+	{
+		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
+		if (!prefabData)
+			return 50;
+
+		return prefabData.GetMinCollisionEjectionDamageThreshold();
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetMinExplosionDamageEjectionThreshold()
+	{
+		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
+		if (!prefabData)
+			return 1000;
+
+		return prefabData.GetMinExplosionEjectionDamageThreshold();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1074,7 +1117,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	override void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
 	{
 		if (m_ImpactEffectComponent && other)
-			m_ImpactEffectComponent.OnImpact(other, contact.Impulse, contact.Position, contact.Normal, contact.Material2);
+			m_ImpactEffectComponent.OnImpact(other, contact.Impulse, contact.Position, contact.Normal, contact.Material2, contact.VelocityBefore1, contact.VelocityAfter1);
 		
 		if (contact.Impulse > m_fMinImpulse)
 			CollisionDamage(other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, contact.Position, contact.Normal);
@@ -1106,6 +1149,8 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		}
 
 		Physics otherPhysics = other.GetPhysics();
+		if (!otherPhysics)
+			return;
 
 		// Now get the relative force, which is the impulse divided by the mass of the dynamic object
 		float relativeForce = impulse / ownerPhysics.GetMass();
@@ -1114,7 +1159,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		// We hit a destructible that will break, static object -> deal no damage to vehicle or occupants
 		int ownerResponseIndex = ownerPhysics.GetResponseIndex();
 		int otherResponseIndex = otherPhysics.GetResponseIndex();
-		if (otherPhysics && !otherPhysics.IsDynamic() && other.FindComponent(SCR_DestructionDamageManagerComponent) && otherResponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX <= ownerResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX)
+		if (!otherPhysics.IsDynamic() && other.FindComponent(SCR_DestructionDamageManagerComponent) && otherResponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX <= ownerResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX)
 			return;
 
 		float ownerMass = GetOwner().GetPhysics().GetMass();
@@ -1197,12 +1242,16 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 					}
 				}
 
-				// If there was no other pilot to blame, blame own pilot
-				if (!instigatorEntity && Vehicle.Cast(GetOwner()))
-					instigatorEntity = Vehicle.Cast(GetOwner()).GetPilot();
-
-				//Implement instigator's logic
-				m_CompartmentManager.DamageOccupants(momentumOverOccupantsThreshold * damageScaleToCharacter, EDamageType.COLLISION, Instigator.CreateInstigator(instigatorEntity), true, true);
+				// If there was no other pilot to blame, Blame last person to damage the vehicle, if there is nobody, blame the pilot.
+				if (!instigatorEntity)
+				{
+					instigatorEntity = GetInstigator().GetInstigatorEntity();
+					if (!instigatorEntity && Vehicle.Cast(GetOwner()))
+						instigatorEntity = Vehicle.Cast(GetOwner()).GetPilot();
+				}
+				
+				// Apply damage to passengers in vehicle
+				HandlePassengerDamage(EDamageType.COLLISION, momentumOverOccupantsThreshold * damageScaleToCharacter, Instigator.CreateInstigator(instigatorEntity));
 			}
 		}
 
@@ -1237,6 +1286,16 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			s_OnVehicleDestroyed = new ScriptInvokerInt();
 
 		return s_OnVehicleDestroyed;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	static ScriptInvoker GetOnVehicleDamageStateChanged()
+	{
+		if (!s_OnVehicleDamageStateChanged)
+			s_OnVehicleDamageStateChanged = new ScriptInvoker();
+
+		return s_OnVehicleDamageStateChanged;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1244,6 +1303,10 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	override void OnDamageStateChanged(EDamageState state)
 	{
 		super.OnDamageStateChanged(state);
+		
+		if (s_OnVehicleDamageStateChanged)
+			s_OnVehicleDamageStateChanged.Invoke(this);
+		
 		HitZone defaultHitZone = GetDefaultHitZone();
 		if (!defaultHitZone)
 			return;
@@ -1259,6 +1322,14 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		
 		if (s_OnVehicleDestroyed && state == EDamageState.DESTROYED)
 			s_OnVehicleDestroyed.Invoke(GetInstigator().GetInstigatorPlayerID());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! On Vehicle being blown up, there is a chance the passengers are ejected
+	override protected void OnDamage(notnull BaseDamageContext damageContext)
+	{
+		if (damageContext.damageType == EDamageType.EXPLOSIVE)
+			HandlePassengerDamage(EDamageType.EXPLOSIVE, damageContext.damageValue, damageContext.instigator);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1294,7 +1365,32 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		// Repair everything else that can be repaired
 		super.FullHeal(ignoreHealingDOT);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! Damage and eject passengers based on vehicle taking damage
+	void HandlePassengerDamage(EDamageType damageType, float damage, notnull Instigator instigator)
+	{
+		if (damageType == EDamageType.COLLISION)
+		{
+			// Damage occupants of the car that experienced a collision
+			m_CompartmentManager.DamageOccupants(damage, EDamageType.COLLISION, instigator);
+			// if a collision was capable of causing more than minCollisionEjectionDamageThreshold damage, try to eject passengers
+			if (damage > GetMinCollisionDamageEjectionThreshold())
+				m_CompartmentManager.EjectRandomOccupants(-1, true);
+			
+			return;
+		}
+		
+		if (damageType == EDamageType.EXPLOSIVE)
+		{
+			// An explosion of minExplosionEjectionDamageThreshold or larger is capable of ejecting occupants.
+			if (damage < GetMinExplosionDamageEjectionThreshold())
+				m_CompartmentManager.EjectRandomOccupants(-1, true);
+			
+			return;
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	// Takes care of updating the reponse index
@@ -1377,6 +1473,8 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		}
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Flammability should become damage effect
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] hitZone
@@ -1399,7 +1497,10 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (m_aFlammableHitZones.IsEmpty())
 			m_aFlammableHitZones = null;
 	}
+	//---- REFACTOR NOTE END ----
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: It should be possible to work without explicit flammable hitzones, perhaps supply crates could have this ability though simplified
 	//------------------------------------------------------------------------------------------------
 	override void UpdateFireDamage(float timeSlice)
 	{
@@ -1649,6 +1750,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 				container.DecreaseResourceValue(suppliesDamage);
 		}
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//! \return

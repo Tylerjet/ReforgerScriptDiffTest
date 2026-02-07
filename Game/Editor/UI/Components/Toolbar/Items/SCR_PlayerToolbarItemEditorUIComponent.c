@@ -3,7 +3,11 @@ class SCR_PlayerToolbarItemEditorUIComponent : SCR_EntityToolbarItemEditorUIComp
 	[Attribute()]
 	protected string m_sPlayerNameWidgetName;
 	
+	[Attribute()]
+	protected string m_sPlayerPlatformIconName;
+
 	protected TextWidget m_wPlayerName;
+	protected ImageWidget m_wPlatformIconWidget;
 	
 	//------------------------------------------------------------------------------------------------
 	override void SetEntity(SCR_EditableEntityComponent entity, Widget widget, SCR_EditableEntitySlotManagerUIComponent slotManager)
@@ -15,10 +19,21 @@ class SCR_PlayerToolbarItemEditorUIComponent : SCR_EntityToolbarItemEditorUIComp
 			return;
 				
 		int playerID = delegate.GetPlayerID();
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		if (!playerManager)
+			return;
 		
 		m_wPlayerName = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
 		if (m_wPlayerName)
-			m_wPlayerName.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+			m_wPlayerName.SetText(playerManager.GetPlayerName(playerID));
+
+		m_wPlatformIconWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sPlayerPlatformIconName));
+		if (m_wPlatformIconWidget)
+		{
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+			if (playerController)
+				playerController.SetPlatformImageToKind(playerManager.GetPlatformKind(playerID), m_wPlatformIconWidget, showOnPC: true, showOnXbox: true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

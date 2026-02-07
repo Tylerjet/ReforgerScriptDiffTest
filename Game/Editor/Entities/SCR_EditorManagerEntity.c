@@ -91,10 +91,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Opening
-	/*!
-	Check if the editor is currently opened.
-	\return True if opened
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor is currently opened.
+	//! \return True if opened
 	override bool IsOpened()
 	{
 		if (m_bIsInTransition)
@@ -102,10 +102,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		else
 			return m_bIsOpened;
 	}
-	/*!
-	Toggle the editor. If it's closed it will be opened, and vice versa.
-	Nothing will happen if the desired action is disabled.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Toggle the editor. If it's closed it will be opened, and vice versa.
+	//! Nothing will happen if the desired action is disabled.
 	void Toggle()
 	{
 		if (m_bIsOpened)
@@ -113,11 +113,11 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		else
 			Open();
 	}
-	/*!
-	Open the editor.
-	Nothing will happen if the editor is not allowed to be opened.
-	\param showErrorNotification Set to false to prevent sending notification to player when the editor cannot be opened
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Open the editor.
+	//! Nothing will happen if the editor is not allowed to be opened.
+	//! \param showErrorNotification Set to false to prevent sending notification to player when the editor cannot be opened
 	void Open(bool showErrorNotification = true)
 	{
 		if (m_bIsOpened || !IsAuthority()) return; //--- Exit when already opened or attempting to edit non-local editor
@@ -131,13 +131,16 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		StartEvents(EEditorEventOperation.REQUEST_OPEN);
 		Rpc(ToggleServer, true);
 	}
-	/*!
-	Close the editor.
-	Nothing will happen if the editor is not allowed to be closed.
-	\param showErrorNotification Set to false to prevent sending notification to player when the editor cannot be closed
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Close the editor.
+	//! Nothing will happen if the editor is not allowed to be closed.
+	//! \param showErrorNotification Set to false to prevent sending notification to player when the editor cannot be closed
 	void Close(bool showErrorNotification = true)
 	{
+		if (m_CurrentModeEntity.GetPreventClose())
+			return;
+		
 		if (!m_bIsOpened || !IsAuthority()) return; //--- Exit when already closed or attempting to edit non-local editor
 		if (!CanClose())
 		{
@@ -150,6 +153,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		//Event_OnRequest.Invoke(false);
 		Rpc(ToggleServer, false);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void ToggleServer(bool open)
 	{
@@ -186,6 +191,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			Event_OnClosedServer.Invoke();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ToggleOwner(bool open)
 	{
@@ -197,6 +204,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_IS_OPENED, m_bIsOpened);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void ToggleOwnerServerCallback(bool open)
 	{
@@ -206,6 +215,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			Event_OnClosedServerCallback.Invoke();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected int GetEnumSum(typename enumType)
 	{
 		int enumCount = enumType.GetVariableCount();
@@ -223,10 +233,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Access
-	/*!
-	Check if the editor can be toggled.
-	\return True when it can
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor can be toggled.
+	//! \return True when it can
 	bool CanToggle()
 	{
 		if (m_bIsOpened)
@@ -234,10 +244,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		else
 			return CanOpen();
 	}
-	/*!
-	Check if the editor can be opened.
-	\return True when it can
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor can be opened.
+	//! \return True when it can
 	bool CanOpen()
 	{
 		//--- No modes available
@@ -249,20 +259,20 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		else
 			return m_CanOpen | EEditorCanOpen.ALIVE == m_CanOpenSum;
 	}
-	/*!
-	Check if specific opening type is enabled.
-	\param accessType Access type
-	\return True when it can
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if specific opening type is enabled.
+	//! \param accessType Access type
+	//! \return True when it can
 	bool CanOpen(EEditorCanOpen accessType)
 	{
 		return m_CanOpen & accessType;
 	}
-	/*!
-	Set if the editor can be opened.
-	\param canOpen true if it can be opened
-	\param accessType Access type. Editor can be opened only if all access types are active.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set if the editor can be opened.
+	//! \param canOpen true if it can be opened
+	//! \param accessType Access type. Editor can be opened only if all access types are active.
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void SetCanOpen(bool canOpen, EEditorCanOpen accessType)
 	{
@@ -278,6 +288,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		//--- Opening disabled, close the editor if it's 
 		if (!CanOpen() && IsOpened()) ToggleServer(false);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void SetCanOpenOwner(EEditorCanOpen canOpen)
 	{
@@ -285,35 +297,36 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		Event_OnCanOpen.Invoke(m_CanOpen);
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_CAN_OPEN, CanOpen(EEditorCanOpen.SCRIPT));
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetCanOpenDebug(bool canOpen, EEditorCanOpen accessType = EEditorCanOpen.SCRIPT)
 	{
 		if (canOpen == CanOpen(accessType)) return;
 		Rpc(SetCanOpen, canOpen, accessType);
 	}
 	
-	/*!
-	Check if the editor can be closed.
-	\return True when it can
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor can be closed.
+	//! \return True when it can
 	bool CanClose()
 	{
 		return
 			m_CanClose == m_CanCloseSum;
 	}
-	/*!
-	Check if specific closing type is enabled.
-	\param accessType Access type
-	\return True when it can
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if specific closing type is enabled.
+	//! \param accessType Access type
+	//! \return True when it can
 	bool CanClose(EEditorCanClose accessType)
 	{
 		return m_CanClose & accessType;
 	}
-	/*!
-	Set if the editor can be closed.
-	\param canOpen true if it can be closed
-	\param accessType Access type. Editor can be closed only if all access types are active.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set if the editor can be closed.
+	//! \param canOpen true if it can be closed
+	//! \param accessType Access type. Editor can be closed only if all access types are active.
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void SetCanClose(bool canClose, EEditorCanClose accessType)
 	{
@@ -326,6 +339,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		
 		Rpc(SetCanCloseOwner, m_CanClose);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void SetCanCloseOwner(EEditorCanClose canClose)
 	{
@@ -333,6 +348,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		Event_OnCanClose.Invoke(m_CanClose);
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_CAN_CLOSE, CanClose(EEditorCanClose.SCRIPT));
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetCanCloseDebug(bool canClose, EEditorCanClose accessType = EEditorCanClose.SCRIPT)
 	{
 		if (canClose == CanClose(accessType)) return;
@@ -341,69 +358,73 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//---  Setters & Getters
-	/*!
-	Set if the editor to be opened right when the editor manager is created. Can be used only in Event_OnEditorManagerCreated handler of SCR_EditorManagerEntityEntity
-	\param isAutoInit True to start the editor automatically
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set if the editor to be opened right when the editor manager is created. Can be used only in Event_OnEditorManagerCreated handler of SCR_EditorManagerEntityEntity
+	//! \param isAutoInit True to start the editor automatically
 	void SetAutoInit(bool isAutoInit = false)
 	{
 		m_bIsAutoInit = isAutoInit;
 	}
-	/*!
-	\return True if the editor should open upon game start.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return True if the editor should open upon game start.
 	bool IsAutoInit()
 	{
 		return m_bIsAutoInit;
 	}
-	/*!
-	Set if editor modes should be created automatically.
-	By default it's true, turn it off if you plan to manage modes manually.
-	\param isAutoModes True to automatically create default editor modes.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set if editor modes should be created automatically.
+	//! By default it's true, turn it off if you plan to manage modes manually.
+	//! \param isAutoModes True to automatically create default editor modes.
 	void SetAutoModes(bool isAutoModes = false)
 	{
 		m_bIsAutoModes = isAutoModes;
 	}
-	/*!
-	Get ID of the player to whom the editor manager belongs to
-	\return ID
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get ID of the player to whom the editor manager belongs to
+	//! \return ID
 	int GetPlayerID()
 	{
 		return m_iPlayerID;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected bool IsAuthority()
 	{
 		return this == GetInstance() || RplSession.Mode() != RplMode.Client;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool IsOwner()
 	{
 		//--- Ignore when not initialized, e.g., when setting up the entity by a game mode before its ownership is transferred to client
 		return m_bInit && m_RplComponent && m_RplComponent.IsOwner();
 	}
-	/*!
-	Check if the editor is currently opening or closing.
-	\return True if in transition
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor is currently opening or closing.
+	//! \return True if in transition
 	bool IsInTransition()
 	{
 		return m_bIsInTransition;
 	}
-	/*!
-	Check if the editor is limited, i.e., none of available modes give the user full Game Master powers.
-	For example, photo mode is limited, and having only means the editor is limited.
-	\return True when limited
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor is limited, i.e., none of available modes give the user full Game Master powers.
+	//! For example, photo mode is limited, and having only means the editor is limited.
+	//! \return True when limited
 	bool IsLimited()
 	{
 		return m_bIsLimited || DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_EDITOR_FORCE_LIMITED);
 	}
-	/*!
-	Check if the local editor instance is limited, i.e., none of available modes give the user full Game Master powers.
-	For example, photo mode is limited, and having only means the editor is limited.
-	\return True when limited
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the local editor instance is limited, i.e., none of available modes give the user full Game Master powers.
+	//! For example, photo mode is limited, and having only means the editor is limited.
+	//! \return True when limited
 	static bool IsLimitedInstance()
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
@@ -414,14 +435,13 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		return this;
 	}
 	
-	/*!
-	Show notification.
-	Doesn't actually show a notification, it only triggers an event which other systems can react to.
-	\param notificationID
-	\param selfID
-	\param targetID
-	\param position
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Show notification.
+	//! Doesn't actually show a notification, it only triggers an event which other systems can react to.
+	//! \param notificationID
+	//! \param selfID
+	//! \param targetID
+	//! \param position
 	void SendNotification(ENotification notificationID, int selfID = 0, int targetID = 0, vector position = vector.Zero)
 	{
 		//Send notification
@@ -434,6 +454,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	{	
 		SendNotificationImpl(notificationType);
 	}*/
+	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateLimited()
 	{
 		//--- Check if the editor is in limited mode
@@ -463,98 +485,146 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//--- Events
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnInit()
 	{
 		return Event_OnInit;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnOpened()
 	{
 		return Event_OnOpened;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnPreActivate()
 	{
 		return Event_OnPreActivate;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnActivate()
 	{
 		return Event_OnActivate;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnPostActivate()
 	{
 		return Event_OnPostActivate;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnDeactivate()
 	{
 		return Event_OnDeactivate;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnClosed()
 	{
 		return Event_OnClosed;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnDebug()
 	{
 		return Event_OnDebug;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnOpenedServer()
 	{
 		return Event_OnOpenedServer;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnOpenedServerCallback()
 	{
 		return Event_OnOpenedServerCallback;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnClosedServer()
 	{
 		return Event_OnClosedServer;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnClosedServerCallback()
 	{
 		return Event_OnClosedServerCallback;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnActivateServer()
 	{
 		return Event_OnOpenedServer;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnDeactivateServer()
 	{
 		return Event_OnClosedServer;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override ScriptInvoker GetOnRequest()
 	{
 		return Event_OnRequest;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnCanOpen()
 	{
 		return Event_OnCanOpen;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnCanClose()
 	{
 		return Event_OnCanClose;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnModeAdd()
 	{
 		return Event_OnModeAdd;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnModeRemove()
 	{
 		return Event_OnModeRemove;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnModeChangeRequest()
 	{
 		return Event_OnModeChangeRequest;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnModeChange()
 	{
 		return Event_OnModeChange;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnLimitedChange()
 	{
 		return Event_OnLimitedChange;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnAsyncLoad()
 	{
 		return Event_OnAsyncLoad;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnCanEndGameChanged()
 	{
 		return Event_OnCanEndGameChanged;
@@ -562,10 +632,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//-- Static 
-	/*!
-	Toggle the local instance of the editor. If it's closed it will be opened, and vice versa.
-	Nothing will happen if the desired action is disabled.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Toggle the local instance of the editor. If it's closed it will be opened, and vice versa.
+	//! Nothing will happen if the desired action is disabled.
 	static bool ToggleInstance()
 	{
 		SCR_EditorManagerEntity instance = GetInstance();
@@ -573,10 +643,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		instance.Toggle();
 		return true;
 	}
-	/*!
-	Open the local instance of the editor.
-	Nothing will happen if the editor is not allowed to be opened.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Open the local instance of the editor.
+	//! Nothing will happen if the editor is not allowed to be opened.
 	static bool OpenInstance()
 	{
 		SCR_EditorManagerEntity instance = GetInstance();
@@ -584,10 +654,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		instance.Open();
 		return true;
 	}
-	/*!
-	Close the local instance of the editor.
-	Nothing will happen if the editor is not allowed to be closed.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Close the local instance of the editor.
+	//! Nothing will happen if the editor is not allowed to be closed.
 	static bool CloseInstance()
 	{
 		SCR_EditorManagerEntity instance = GetInstance();
@@ -595,11 +665,11 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		instance.Close();
 		return true;
 	}
-	/*!
-	Check if the local editor is currently opened.
-	\param includeLimited True includes limited open editor, pass false to check for open unlimited editor only
-	\return True if opened (and matches includeLimited)
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the local editor is currently opened.
+	//! \param includeLimited True includes limited open editor, pass false to check for open unlimited editor only
+	//! \return True if opened (and matches includeLimited)
 	static bool IsOpenedInstance(bool includeLimited = true)
 	{
 		SCR_EditorManagerEntity instance = GetInstance();
@@ -607,30 +677,30 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			&& instance.IsOpened()
 			&& (includeLimited || !instance.IsLimited());
 	}
-	/*!
-	Check if the local editor can be opened.
-	\return True when it can
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the local editor can be opened.
+	//! \return True when it can
 	static bool CanOpenInstance()
 	{
 		SCR_EditorManagerEntity instance = GetInstance();
 		if (!instance) return false;
 		return instance.CanOpen();
 	}
-	/*!
-	Check if the local editor can be closed.
-	\return True when it can
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the local editor can be closed.
+	//! \return True when it can
 	static bool CanCloseInstance()
 	{
 		SCR_EditorManagerEntity instance = GetInstance();
 		if (!instance) return false;
 		return instance.CanClose();
 	}
-	/*!
-	Get the local instance of the editor manager
-	\return Editor manager
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get the local instance of the editor manager
+	//! \return Editor manager
 	static SCR_EditorManagerEntity GetInstance()
 	{
 		ArmaReforgerScripted game = GetGame();
@@ -644,18 +714,16 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Editor modes
-	/*! @name Editor Modes
-	Management of editor modes.
-	*/
-	///@{
-	/*!
-	Create editor mode.
-	Must be executed on server!
-	No mode will be created when one of given type already exists.
-	\param mode Mode type
-	\param prefab SCR_EditorModeEntity prefab from which the mode entity will be spawned. When undefined, default will be used (recommended)
-	\return Editor mode
-	*/
+	//--- @name Editor Modes
+	//--- Management of editor modes.
+	
+	//------------------------------------------------------------------------------------------------
+	//! Create editor mode.
+	//! Must be executed on server!
+	//! No mode will be created when one of given type already exists.
+	//! \param mode Mode type
+	//! \param prefab SCR_EditorModeEntity prefab from which the mode entity will be spawned. When undefined, default will be used (recommended)
+	//! \return Editor mode
 	SCR_EditorModeEntity CreateEditorMode(EEditorMode mode, bool isInit, ResourceName prefab = "")
 	{
 		if (RplSession.Mode() == RplMode.Client)
@@ -745,29 +813,28 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		return modeEntity;
 	}
 	
-	/*!
-	Add editor modes of given type(s).
-	\param access Access layer to which modes are added. Editor will receive modes from all its access layers.
-	\param modes Flags of added modes
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Add editor modes of given type(s).
+	//! \param access Access layer to which modes are added. Editor will receive modes from all its access layers.
+	//! \param modes Flags of added modes
 	void AddEditorModes(EEditorModeAccess access, EEditorMode modes, bool isInit = false)
 	{
 		SetEditorModes(access, GetEditorModes() | modes, isInit);
 	}
-	/*!
-	Removes editor modes of given type(s).
-	\param access Access layer to which modes are added. Editor will receive modes from all its access layers.
-	\param modes Flags of removes modes
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Removes editor modes of given type(s).
+	//! \param access Access layer to which modes are added. Editor will receive modes from all its access layers.
+	//! \param modes Flags of removes modes
 	void RemoveEditorModes(EEditorModeAccess access, EEditorMode modes)
 	{
 		SetEditorModes(access, GetEditorModes() & ~modes, false);
 	}
-	/*!
-	Set editor modes of given type(s), replacing all previous modes.
-	\param access Access layer to which modes are added. Editor will receive modes from all its access layers.
-	\param modes Flags of set modes
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set editor modes of given type(s), replacing all previous modes.
+	//! \param access Access layer to which modes are added. Editor will receive modes from all its access layers.
+	//! \param modes Flags of set modes
 	void SetEditorModes(EEditorModeAccess access, EEditorMode modes, bool isInit = false)
 	{
 		EEditorMode preActiveModes = GetEditorModes();
@@ -782,9 +849,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		RepairEditorModes(isInit);
 	}
-	/*!
-	Go thrugh current editor modes and make sure they all have a mode entity.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Go thrugh current editor modes and make sure they all have a mode entity.
 	void RepairEditorModes(bool isInit)
 	{
 		array<EEditorMode> flags = {};
@@ -806,11 +873,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return modes;
 	}
-
-	/*!
-	Get the first enabled mode from the list.
-	\return Editor mode
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get the first enabled mode from the list.
+	//! \return Editor mode
 	EEditorMode GetDefaultMode()
 	{
 		foreach (SCR_EditorModeEntity modeEntity: m_Modes)
@@ -820,18 +886,18 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return -1;
 	}
-	/*!
-	Set editor mode to the previously selected one.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set editor mode to the previously selected one.
 	void RestorePreviousMode()
 	{
 		SetCurrentMode(m_PrevMode);
 	}
-	/*!
-	Set current (un)limited mode.
-	\param IsLimited True to select the first available limited mode, false to selected unlimited mode
-	\return True if suitable mode was found
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set current (un)limited mode.
+	//! \param IsLimited True to select the first available limited mode, false to selected unlimited mode
+	//! \return True if suitable mode was found
 	bool SetCurrentMode(bool isLimited)
 	{
 		foreach (SCR_EditorModeEntity modeEntity: m_Modes)
@@ -844,10 +910,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return false;
 	}
-	/*!
-	Set current editor mode.
-	\param mode New mode. Use -1 to choose first enabled mode from the list.
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set current editor mode.
+	//! \param mode New mode. Use -1 to choose first enabled mode from the list.
 	void SetCurrentMode(EEditorMode mode)
 	{
 		//--- Check also if existing entity exists, so it can be reset after all modes were removed and a previosuly current mode was added again.
@@ -858,10 +924,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		Event_OnModeChangeRequest.Invoke(FindModeEntity(mode), m_CurrentModeEntity);
 		Rpc(SetCurrentModeServer, mode);
 	}
-	/*!
-	Get current editor mode.
-	\return Editor mode
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get current editor mode.
+	//! \return Editor mode
 	EEditorMode GetCurrentMode()
 	{
 		if (m_bIsModeChangeRequested && m_CurrentMode == m_ProcessedMode)
@@ -869,18 +935,18 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		else
 			return m_CurrentMode;
 	}
-	/*!
-	Get current editor mode entity.
-	\return Editor mode entity
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get current editor mode entity.
+	//! \return Editor mode entity
 	SCR_EditorModeEntity GetCurrentModeEntity()
 	{
 		return m_CurrentModeEntity;
 	}
-	/*!
-	Check if the editor has given mode.
-	\return True when the mode is available
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the editor has given mode.
+	//! \return True when the mode is available
 	bool HasMode(EEditorMode mode)
 	{
 		foreach (SCR_EditorModeEntity modeEntity: m_Modes)
@@ -890,10 +956,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return false;
 	}
-	/*!
-	Find editor mode entity for given mode.
-	\return Editor mode entity (or null if no such mode exists)
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find editor mode entity for given mode.
+	//! \return Editor mode entity (or null if no such mode exists)
 	SCR_EditorModeEntity FindModeEntity(EEditorMode mode)
 	{
 		foreach (SCR_EditorModeEntity modeEntity: m_Modes)
@@ -902,21 +968,21 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return null;
 	}
-	/*!
-	Get all mode entities registered in this manager.
-	\param[out] modeEntities Array to be filled with mode entities
-	\return Number of mode entities
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all mode entities registered in this manager.
+	//! \param[out] modeEntities Array to be filled with mode entities
+	//! \return Number of mode entities
 	int GetModeEntities(out notnull array<SCR_EditorModeEntity> modeEntities)
 	{
 		modeEntities.Copy(m_Modes);
 		return modeEntities.Count();
 	}
-	/*!
-	Get all modes registered in this manager.
-	\param[out] modes Array to be filled with modes
-	\return Number of modes
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all modes registered in this manager.
+	//! \param[out] modes Array to be filled with modes
+	//! \return Number of modes
 	int GetModes(out notnull array<EEditorMode> modes)
 	{
 		modes.Clear();
@@ -926,10 +992,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return modes.Count();
 	}
-	/*!
-	Get all modes registered in this manager as a bit mask.
-	\return Modes flag
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all modes registered in this manager as a bit mask.
+	//! \return Modes flag
 	EEditorMode GetModes()
 	{
 		EEditorMode modes;
@@ -939,16 +1005,16 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return modes;
 	}
-	/*!
-	Check if the owner is waiting for mode change from server.
-	\return True if mode change was requested
-	*/
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the owner is waiting for mode change from server.
+	//! \return True if mode change was requested
 	bool IsModeChangeRequested()
 	{
 		return m_bIsModeChangeRequested;
 	}
-	///@}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void AddMode(notnull SCR_EditorModeEntity modeEntity, bool isInit)
 	{
 		//--- Mode already registered, ignore
@@ -993,6 +1059,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		UpdateLimited();
 		Event_OnModeAdd.Invoke(modeEntity);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void RemoveMode(notnull SCR_EditorModeEntity modeEntity, bool OnDisconnnect)
 	{
 		if (!m_Modes.Contains(modeEntity))
@@ -1024,6 +1092,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void RemoveModeServer(EEditorMode mode)
 	{
@@ -1044,6 +1114,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				SetCanOpen(false, EEditorCanOpen.MODES);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void CreateEditorModeOwner(EEditorMode mode, int modeEntityId, bool isInit)
 	{
@@ -1056,6 +1128,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		m_ProcessedMode = mode;
 		StartEvents(EEditorEventOperation.MODE_CREATE);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void SetCurrentModeServer(EEditorMode mode)
 	{
@@ -1089,6 +1163,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		if (m_CurrentModeEntity && m_bIsOpened)
 			m_CurrentModeEntity.ActivateModeServer();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void SetCurrentModeOwner(EEditorMode mode)
 	{
@@ -1108,7 +1184,56 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	//--- Authors logic (UGC)
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RequestAllAuthorsServer()
+	{
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+			return;
+		
+		set<SCR_EditableEntityAuthor> authors = core.GetAllAuthorsServer();
+		
+		foreach(SCR_EditableEntityAuthor author : authors)
+		{
+			Rpc(RegisterAuthorOwner, author);
+		}
+		
+		Rpc(FinishAuthorsRequestOwner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void FinishAuthorsRequestOwner()
+	{
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+			return;
+		
+		core.OnAuthorRequestFinished();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void RegisterAuthorOwner(notnull SCR_EditableEntityAuthor author)
+	{
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (core)
+			core.AddAuthorOnRequest(author);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestAllAuthors()
+	{
+		Rpc(RequestAllAuthorsServer);
+	}
+	
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//--- Component events
+	//------------------------------------------------------------------------------------------------
 	protected void StartEvents(EEditorEventOperation type = EEditorEventOperation.NONE)
 	{
 		//--- New operation requested when another one is being processed - close the editor to prevent conflicts!
@@ -1324,7 +1449,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 	}	
 	
-	//--- This would be so much nicer as a flow chart
+	//------------------------------------------------------------------------------------------------
+	//! This would be so much nicer as a flow chart
 	protected void ProcessEvent()
 	{
 		m_iEvent = m_aEvents[0];
@@ -1558,6 +1684,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		if (!m_aEvents.IsEmpty())
 			ProcessEvent();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected bool ProcessAsyncEvent(bool toActivate, out bool instantContinue)
 	{
 		//--- Get components to be processed
@@ -1624,6 +1752,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void GetAllComponents(out array<SCR_BaseEditorComponent> outComponents)
 	{
 		FindEditorComponents(outComponents);
@@ -1636,11 +1766,13 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//--- Actions
+	//------------------------------------------------------------------------------------------------
 	protected void Action_EditorToggle(float value, EActionTrigger reason)
 	{
 		Toggle();
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void Action_GoToLatestNotification(float value, EActionTrigger reason)
 	{
 		if (!m_NotificationsComponent)
@@ -1677,6 +1809,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		debugTexts.Insert(string.Format("Current Mode: %1", currentModeName));
 		debugTexts.Insert(string.Format("Available Modes: %1", m_Modes.Count()));
 		debugTexts.Insert(string.Format("Limited: %1", m_bIsLimited));
+		debugTexts.Insert(string.Format("Entity Author name: %1", GetEntityAuthor()));
+		debugTexts.Insert(string.Format("Entity Author UID: %1", GetEntityAuthorUID()));
 		GetOnDebug().Invoke(debugTexts);
 		
 		DbgUI.Begin("SCR_EditorManagerEntity", 0, 0);
@@ -1685,6 +1819,26 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			DbgUI.Text(text);
 		}
 		DbgUI.End();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_EditableEntityAuthor GetEntityAuthor()
+	{
+		SCR_EditableEntityComponent entity = SCR_BaseEditableEntityFilter.GetFirstEntity(EEditableEntityState.HOVER);
+		if (!entity)
+			return null;
+		
+		return entity.GetAuthor();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected int GetEntityAuthorUID()
+	{
+		SCR_EditableEntityComponent entity = SCR_BaseEditableEntityFilter.GetFirstEntity(EEditableEntityState.HOVER);
+		if (!entity)
+			return "";
+		
+		return entity.GetAuthorUID();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1731,6 +1885,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Init
+	
+	//------------------------------------------------------------------------------------------------
 	void InitServer(int playerID)
 	{
 		if (m_bInit)
@@ -1751,6 +1907,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			child = child.GetSibling();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void InitOwner(int playerID)
 	{
@@ -1800,6 +1958,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_EDITOR_MODE, "", "Mode", "Editor", string.Format("0 %1 0 1", enumCount - 1));
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_MODE, Math.Max(m_CurrentMode, 0));
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void PostInitServer()
 	{
 		if (m_CurrentMode < 0)
@@ -1807,6 +1967,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			SetCurrentModeServer(-1);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void AutoInit()
 	{
 		if (m_bIsAutoInit && !m_bIsLimited)
@@ -1818,6 +1980,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
 	//--- Default functions
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
@@ -1828,6 +1992,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice) //--- Active only when the entity is local (see InitOwner())
 	{
 		if (m_iEvent == EEditorEvent.NONE)
@@ -1835,6 +2001,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		else
 			ProcessEvent();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_EditorManagerEntity(IEntitySource src, IEntity parent)
 	{
 		m_CanOpenSum = GetEnumSum(EEditorCanOpen);
@@ -1842,6 +2010,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		
 		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_EditorManagerEntity()
 	{
 		while (!m_Modes.IsEmpty())
@@ -1896,19 +2066,25 @@ class SCR_EditorModePrefab
 	[Attribute()]
 	protected ref SCR_EditorModeUIInfo m_ModeUIInfo;
 	
+	//------------------------------------------------------------------------------------------------
 	EEditorMode GetMode()
 	{
 		return m_Mode;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	ResourceName GetPrefab()
 	{
 		return m_Prefab;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	EEditorModeFlag GetFlags()
 	{
 		return m_Flags;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	SCR_EditorModeUIInfo GetInfo()
 	{
 		return m_ModeUIInfo;

@@ -11,6 +11,9 @@ class MainMenuUI : ChimeraMenuBase
 	protected static bool s_bDidCheckNetwork;
 	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
 	protected bool m_bFirstLoad;
+	
+	// Privileges callback
+	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
@@ -88,6 +91,17 @@ class MainMenuUI : ChimeraMenuBase
 			SCR_ModularButtonComponent logo = SCR_ModularButtonComponent.FindComponent(logoWidget);
 		if (logo)
 			logo.m_OnClicked.Insert(OnLogoClicked);
+		}
+		
+		// Hide news menu button (top right corner) on PS
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			Widget newsButton = w.FindAnyWidget("NewsButton");
+			if (newsButton)
+			{
+				newsButton.SetVisible(false);
+				newsButton.SetEnabled(false);
+			}
 		}
 		
 		// Check ping sites 
@@ -170,16 +184,32 @@ class MainMenuUI : ChimeraMenuBase
 	{
 		if (!IsFocused())
 			return;
-
-		ChimeraMenuPreset preset = comp.m_eMenuPreset;
-		if (preset == ChimeraMenuPreset.FeedbackDialog)
-			GetGame().GetMenuManager().OpenDialog(preset);
-		else if (preset == ChimeraMenuPreset.ContentBrowser)
-			SCR_WorkshopUiCommon.TryOpenWorkshop();
-		else
-			GetGame().GetMenuManager().OpenMenu(preset);
-	}
-
+		
+		switch (comp.m_eMenuPreset)
+		{
+			case ChimeraMenuPreset.FeedbackDialog:
+			{
+				GetGame().GetMenuManager().OpenDialog(comp.m_eMenuPreset);
+				break;
+			}
+			case ChimeraMenuPreset.ContentBrowser:
+			{
+				SCR_WorkshopUiCommon.TryOpenWorkshop();
+				break;
+			}
+			case ChimeraMenuPreset.ServerBrowserMenu:
+			{
+				ServerBrowserMenuUI.TryOpenServerBrowser();
+				break;
+			}
+			default:
+			{
+				GetGame().GetMenuManager().OpenMenu(comp.m_eMenuPreset);
+				break;
+			}
+		}
+	}	
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnTileFocus(SCR_MenuTileComponent comp)
 	{

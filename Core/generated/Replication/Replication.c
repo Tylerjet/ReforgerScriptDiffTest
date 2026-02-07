@@ -16,22 +16,33 @@ sealed class Replication
 	private void ~Replication();
 
 	const RplId INVALID_ID = 0xFFFFFFFF;
+	//! \deprecated Use RplIdentity.Invalid() instead.
 	const RplIdentity INVALID_IDENTITY = 0xFFFFFFFF;
+	//! \deprecated Use Replication.FindItemId() instead.
+	static RplId FindId(Managed item) { return FindItemId(item); }
 
 	/*!
-	Looks for RplId assigned by the Replication layer.
-	\warning It is a lookup! Don't use in tight loops!
-	\returns id or INVALID_ID if entity is not part of the replication process.
+	Looks for item ID assigned by the Replication to given item.
+	\warning    This function performs lookup! Don't use in tight loops!
+	\return     Item ID or RplId.Invalid() if given item is not inserted in Replication.
 	*/
-	static proto RplId FindId(Managed entity);
+	static proto RplId FindItemId(Managed item);
 	/*!
-	Looks for Item of the provided id.
-	\returns Item or null when no item with provided id exists.
+	Looks for item using provided item ID.
+	\return     Item or null when item with provided item ID does not exist or
+	            cannot be used in script.
 	*/
 	static proto Managed FindItem(RplId itemId);
 	/*!
-	Tries to look for the owner of provided replication id. When successful
-	returns its identity. Failure returns INVALID_ID constant.
+	Looks for node among whose items is one identified by provided item ID.
+	\return     Node or null when item with provided item ID does not exist.
+	*/
+	static proto RplNode FindNode(RplId itemId);
+	/*!
+	Tries to look for the owner of provided item ID.
+	\return     Identity of owner, or RplIdentity.Invalid() when current owner
+	            cannot be identified through RplIdentity (eg. because this
+	            instance does not have connection to them).
 	*/
 	static proto RplIdentity FindOwner(RplId itemId);
 	//! Tells whenever the replication is active.

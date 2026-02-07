@@ -38,12 +38,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	SCR_CoreMenuHeaderComponent m_PrimaryActionButtonComponent2;
 
 
-	ButtonWidget m_wDeleteButton;
-	SCR_ModularButtonComponent m_DeleteButtonComponent0;
-	SCR_DynamicIconComponent m_DeleteButtonComponent1;
-	SCR_CoreMenuHeaderComponent m_DeleteButtonComponent2;
-
-
 	ButtonWidget m_wFavoriteButton;
 	SCR_ModularButtonComponent m_FavoriteButtonComponent0;
 	SCR_DynamicIconComponent m_FavoriteButtonComponent1;
@@ -74,21 +68,27 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	SCR_CoreMenuHeaderComponent m_LicensesComponent2;
 
 
-	ButtonWidget m_wDependent;
-	SCR_ModularButtonComponent m_DependentComponent0;
-	SCR_DynamicIconComponent m_DependentComponent1;
-	SCR_CoreMenuHeaderComponent m_DependentComponent2;
-
-
 	ButtonWidget m_wDependencies;
 	SCR_ModularButtonComponent m_DependenciesComponent0;
 	SCR_DynamicIconComponent m_DependenciesComponent1;
 	SCR_CoreMenuHeaderComponent m_DependenciesComponent2;
 
 
+	ButtonWidget m_wDependent;
+	SCR_ModularButtonComponent m_DependentComponent0;
+	SCR_DynamicIconComponent m_DependentComponent1;
+	SCR_CoreMenuHeaderComponent m_DependentComponent2;
+
+
 	ButtonWidget m_wVersionComboBox;
 	SCR_ComboBoxComponent m_VersionComboBoxComponent0;
 	SCR_ModularButtonComponent m_VersionComboBoxComponent1;
+
+
+	ButtonWidget m_wDeleteButton;
+	SCR_ModularButtonComponent m_DeleteButtonComponent0;
+	SCR_DynamicIconComponent m_DeleteButtonComponent1;
+	SCR_CoreMenuHeaderComponent m_DeleteButtonComponent2;
 
 
 	OverlayWidget m_wAddonSize;
@@ -164,12 +164,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_PrimaryActionButtonComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wPrimaryActionButton.FindHandler(SCR_CoreMenuHeaderComponent));
 
 
-		m_wDeleteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Buttons.m_DeleteButton"));
-		m_DeleteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wDeleteButton.FindHandler(SCR_ModularButtonComponent));
-		m_DeleteButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wDeleteButton.FindHandler(SCR_DynamicIconComponent));
-		m_DeleteButtonComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wDeleteButton.FindHandler(SCR_CoreMenuHeaderComponent));
-
-
 		m_wFavoriteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Buttons.m_FavoriteButton"));
 		m_FavoriteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wFavoriteButton.FindHandler(SCR_ModularButtonComponent));
 		m_FavoriteButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wFavoriteButton.FindHandler(SCR_DynamicIconComponent));
@@ -200,21 +194,27 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_LicensesComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wLicenses.FindHandler(SCR_CoreMenuHeaderComponent));
 
 
-		m_wDependent = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Buttons.m_wDependent"));
-		m_DependentComponent0 = SCR_ModularButtonComponent.Cast(m_wDependent.FindHandler(SCR_ModularButtonComponent));
-		m_DependentComponent1 = SCR_DynamicIconComponent.Cast(m_wDependent.FindHandler(SCR_DynamicIconComponent));
-		m_DependentComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wDependent.FindHandler(SCR_CoreMenuHeaderComponent));
-
-
 		m_wDependencies = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Buttons.m_wDependencies"));
 		m_DependenciesComponent0 = SCR_ModularButtonComponent.Cast(m_wDependencies.FindHandler(SCR_ModularButtonComponent));
 		m_DependenciesComponent1 = SCR_DynamicIconComponent.Cast(m_wDependencies.FindHandler(SCR_DynamicIconComponent));
 		m_DependenciesComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wDependencies.FindHandler(SCR_CoreMenuHeaderComponent));
 
 
+		m_wDependent = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Buttons.m_wDependent"));
+		m_DependentComponent0 = SCR_ModularButtonComponent.Cast(m_wDependent.FindHandler(SCR_ModularButtonComponent));
+		m_DependentComponent1 = SCR_DynamicIconComponent.Cast(m_wDependent.FindHandler(SCR_DynamicIconComponent));
+		m_DependentComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wDependent.FindHandler(SCR_CoreMenuHeaderComponent));
+
+
 		m_wVersionComboBox = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Buttons.m_VersionComboBox"));
 		m_VersionComboBoxComponent0 = SCR_ComboBoxComponent.Cast(m_wVersionComboBox.FindHandler(SCR_ComboBoxComponent));
 		m_VersionComboBoxComponent1 = SCR_ModularButtonComponent.Cast(m_wVersionComboBox.FindHandler(SCR_ModularButtonComponent));
+
+
+		m_wDeleteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Info.m_DeleteButton"));
+		m_DeleteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wDeleteButton.FindHandler(SCR_ModularButtonComponent));
+		m_DeleteButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wDeleteButton.FindHandler(SCR_DynamicIconComponent));
+		m_DeleteButtonComponent2 = SCR_CoreMenuHeaderComponent.Cast(m_wDeleteButton.FindHandler(SCR_CoreMenuHeaderComponent));
 
 
 		m_wAddonSize = OverlayWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.ButtonsArea.ButtonsMainHorizontalLayout.Info.m_wAddonSize"));

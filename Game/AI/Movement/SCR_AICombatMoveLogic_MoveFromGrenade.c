@@ -61,7 +61,7 @@ class SCR_AICombatMoveLogic_MoveFromGrenade : AITaskScripted
 			rq.m_eMovementType = EMovementType.SPRINT;
 			rq.m_fCoverSearchDistMax = 15;
 			rq.m_fCoverSearchDistMin = 4;
-			rq.m_fMoveDistance = rq.m_fCoverSearchDistMax;
+			rq.m_fMoveDuration_s = rq.m_fCoverSearchDistMax / SCR_AICombatMoveUtils.CHARACTER_SPEED_STAND_SPRINT;
 			rq.m_eDirection = SCR_EAICombatMoveDirection.BACKWARD;
 			rq.m_fCoverSearchSectorHalfAngleRad = Math.PI_HALF; // 90 deg
 			

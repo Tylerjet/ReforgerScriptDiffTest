@@ -145,7 +145,7 @@ class SCR_ServicesStatusDialogUI : SCR_ConfigurableDialogUi
 		EServiceStatus status;
 		foreach (SCR_BackendServiceDisplay serviceInfo : m_ServicesStatusDialogComponent.GetAllServices())
 		{
-			if (SCR_ServicesStatusHelper.SkipConsoleService(serviceInfo))
+			if (!SCR_ServicesStatusHelper.DisplayServiceOnCurrentPlatform(serviceInfo))
 				continue;
 			
 			status = GetEnumStatus(serviceInfo.m_sServiceId);

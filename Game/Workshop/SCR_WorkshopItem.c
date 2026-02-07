@@ -21,6 +21,9 @@ enum EWorkshopItemProblem
 	DEPENDENCY_OUTDATED
 };
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Confusing architecture: this class adds a huge layer of complexity on top of the backend API: it's a wrapper of multiple API (WorkshopItem, Dependency, Revision, MissionWorkshopItem), it's thigtly coupled with other script classes (SCR_AddonManager, SCR_WorkshopItemAction), acted upon by even more (SCR_DownloadManager, a plethora of UIs), and apparently it's cached data is not guaranteed to be up to date with backend's. Also, old untyped scrip invokers and auto keyword
+
 class SCR_WorkshopItem
 {
 	// friend class SCR_WorkshopItemAction
@@ -389,7 +392,10 @@ class SCR_WorkshopItem
 	
 	//-----------------------------------------------------------------------------------------------
 	bool GetFavourite()
-	{
+	{	
+		if (m_Item)
+			return m_Item.IsFavorite();
+		
 		return m_bFavourite;
 	}
 	
@@ -521,6 +527,15 @@ class SCR_WorkshopItem
 		}
 		
 		return false;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool IsWorldSave()
+	{
+		if (!m_Item)
+			return false;
+		
+		return WorldSaveItem.Cast(m_Item);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -954,7 +969,7 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	void RetryDownload(Revision targetRevision)
+	SCR_WorkshopItemActionDownload RetryDownload(Revision targetRevision)
 	{
 		if (!m_ActionDownload)
 			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetRevision);
@@ -962,6 +977,8 @@ class SCR_WorkshopItem
 		SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
 		
 		m_ActionDownload.Activate();
+		
+		return m_ActionDownload;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -2276,3 +2293,5 @@ class SCR_WorkshopItem
 		//Debug.Error(string.Format("Addon: %1 [id: %2, from: %3] - %4 [current env: %5]", GetName(), GetId(), addonEnv, message, CurrentEnv));
 	}
 };
+
+//---- REFACTOR NOTE END ----

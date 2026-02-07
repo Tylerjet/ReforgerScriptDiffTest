@@ -24,6 +24,8 @@ class SCR_BaseTask : GenericEntity
 	static const float DEFAULT_ASSIGNEE_TIMEOUT_TIME = 60;
 	static const int INVALID_TIMESTAMP = -1;
 	static const int INVALID_TASK_ID = -1;
+	protected static const float PLATFORM_ICON_SIZE = 2;
+	
 	static int s_iCurrentTaskID = 0;
 	
 	//*****************//
@@ -45,7 +47,10 @@ class SCR_BaseTask : GenericEntity
 	[Attribute("Task_Seize")]
 	protected string m_sMapIconName;
 	
-	[Attribute("Icon_Seize")]
+	[Attribute("Icon_")]
+	protected string m_sTaskListIconNamePrefix;
+	
+	[Attribute("Seize")]
 	protected string m_sTaskListIconName;
 	
 	[Attribute("M_")]
@@ -179,9 +184,21 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	string GetFullTaskIconName()
+	{
+		return string.Format(GetTaskListIconNamePrefix() + GetTaskListIconName() + GetIconSuffix());
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	string GetTaskMapIconName()
 	{
 		return m_sMapIconName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetTaskListIconNamePrefix()
+	{
+		return m_sTaskListIconNamePrefix;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -231,9 +248,11 @@ class SCR_BaseTask : GenericEntity
 	{
 		if (!image || !m_wMapTaskIcon)
 			return;
-		image.LoadImageFromSet(0, m_sIconImageset, GetTaskListIconName() + GetIconSuffix());
+		//Setting the regular task icon
+		image.LoadImageFromSet(0, m_sIconImageset, string.Format(GetTaskListIconNamePrefix() + GetTaskListIconName() + GetIconSuffix()));
 		UpdateMapTaskIcon();
-		image.LoadImageFromSet(0, m_sIconImageset, GetMajorModifier() + GetTaskListIconName() + GetIconSuffix());
+		//Setting the priority task icon
+		image.LoadImageFromSet(0, m_sIconImageset, string.Format(GetTaskListIconNamePrefix() + GetMajorModifier() + GetTaskListIconName() + GetIconSuffix()));
 		UpdatePriorityMapTaskIcon();
 	}
 	
@@ -443,10 +462,18 @@ class SCR_BaseTask : GenericEntity
 			return;
 		
 		string assigneeNames = "";
-		if (IsAssigned())
-			assigneeNames = "#AR-DeployMenu_AssignedPlayers \n" + GetAllAssigneeNamesString();
 		
-		textWidget.SetTextFormat(assigneeNames);
+		//Names of assignees are disabled temporarily to be fixed later
+		/*if (IsAssigned())
+		{
+			textWidget.SetTextFormat("%1", GetAllAssigneeNamesString());
+		} 
+		else 
+		{
+			textWidget.SetTextFormat(assigneeNames);
+		}*/
+		
+		textWidget.SetTextFormat(assigneeNames);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -505,13 +532,24 @@ class SCR_BaseTask : GenericEntity
 		if (!IsAssigned())
 			return names;
 		
+		string playerName;
 		for (int i = 0, count = m_aAssignees.Count(); i < count; i++)
 		{
-			names += m_aAssignees[i].GetPlayerName();
+			playerName = m_aAssignees[i].GetPlayerName();
+			//if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+			if (true)
+			{
+				if (GetGame().GetPlayerManager().GetPlatformKind(m_aAssignees[i].GetExecutorID()) == PlatformKind.PSN)
+					playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
+				else
+					playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
+			}
+			
+			names += playerName;
 			if (i < count - 1)
 				names += ", ";
 		}
-		
+		Print(names);
 		return names;
 	}
 	

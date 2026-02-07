@@ -184,6 +184,13 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void AddLineEntry(SCR_WorkshopItem item, int id)
 	{
+		WorkshopItem workshopItem = item.GetWorkshopItem();
+		if (workshopItem)
+		{
+			if (WorldSaveItem.Cast(workshopItem))
+				return;
+		}
+		
 		// Line setup
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_EntryLayout, m_Widgets.m_wDisabledAddonsList);
 		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(
@@ -305,7 +312,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		if (m_NavEnable)
 		{
-			bool issues = line && !line.CanBeEnabled();
+			bool issues = line && (!line.CanBeEnabled() && !enabled);
 			
 			m_NavEnable.SetEnabled(!m_OrderedLine && !issues && !forceDisabled, false);
 			

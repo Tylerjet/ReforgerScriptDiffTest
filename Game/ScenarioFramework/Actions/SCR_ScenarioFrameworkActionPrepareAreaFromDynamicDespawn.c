@@ -22,8 +22,8 @@ class SCR_ScenarioFrameworkActionPrepareAreaFromDynamicDespawn : SCR_ScenarioFra
 			return;
 		}
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
 		SCR_ScenarioFrameworkParam<IEntity> entityWrapper = SCR_ScenarioFrameworkParam<IEntity>.Cast(m_Getter.Get());
@@ -48,6 +48,6 @@ class SCR_ScenarioFrameworkActionPrepareAreaFromDynamicDespawn : SCR_ScenarioFra
 		}
 
 		area.SetDynamicDespawnRange(m_iDynamicDespawnRange);
-		manager.PrepareAreaSpecificDynamicDespawn(area, m_bStaySpawned);
+		scenarioFrameworkSystem.PrepareAreaSpecificDynamicDespawn(area, m_bStaySpawned);
 	}
 }

@@ -103,10 +103,17 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 
 		int factions = m_mFactionScores.Count();
         writer.WriteInt(factions);
+		
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+		{
+			Print("Score serialization fail, no FactionManager present in the world!", LogLevel.WARNING);
+			return false;
+		}
 
 		foreach (Faction faction, SCR_ScoreInfo scoreInfo : m_mFactionScores)
 		{
-			int factionId = GetGame().GetFactionManager().GetFactionIndex(faction);
+			int factionId = factionManager.GetFactionIndex(faction);
 			writer.WriteInt(factionId);
 			scoreInfo.RplSave(writer);
 		}
@@ -551,7 +558,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 			DbgUI.Begin(title);
 			{
 				DbgUI.Text("--Faction Scoring--");
-				string factionFormat = "[%1] Score=%2 || Kills=%3 | Deaths=%4 | TeamKills=%5 | Suicides=%6 | Objectives=%7";
+				const string factionFormat = "[%1] Score=%2 || Kills=%3 | Deaths=%4 | TeamKills=%5 | Suicides=%6 | Objectives=%7";
 				foreach (Faction faction, SCR_ScoreInfo scoreInfo : m_mFactionScores)
 				{
 					int score = CalculateScore(scoreInfo);
@@ -560,7 +567,7 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 				}
 
 				DbgUI.Text("--Player Scoring--");
-				string playerFormat = "pId=%1: \"%2\" Score=%3 || Kills=%4 | Deaths=%5 | TeamKills=%6 | Suicides=%7 | Objectives=%8";
+				const string playerFormat = "pId=%1: \"%2\" Score=%3 || Kills=%4 | Deaths=%5 | TeamKills=%6 | Suicides=%7 | Objectives=%8";
 				foreach (int playerId, SCR_ScoreInfo scoreInfo : m_mPlayerScores)
 				{
 					string name = GetGame().GetPlayerManager().GetPlayerName(playerId);

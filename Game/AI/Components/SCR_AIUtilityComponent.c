@@ -294,7 +294,10 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		BaseCompartmentSlot slot = manager.FindCompartment(slotID, mgrID);
 		if (PilotCompartmentSlot.Cast(slot))
 		{
-			auto behavior = new SCR_AIIdleBehavior_Driver(this, null);
+			IEntity vehicle = slot.GetVehicle();
+			if (!vehicle)
+				return;
+			auto behavior = new SCR_AIIdleBehavior_Driver(this, null, vehicle);
 			AddAction(behavior);
 		}
 	}

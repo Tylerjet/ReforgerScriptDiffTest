@@ -11,6 +11,9 @@ class SCR_AddonLinePresetComponent : SCR_WLibComponentBase
 	protected ref SCR_AddonLinePresetWidgets m_Widgets = new SCR_AddonLinePresetWidgets();
 	protected SCR_WorkshopAddonPreset m_Preset;
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old untyped invokers. Lots of duplicate code that should be in a common parent class of UI components, both the events and the common interaction states caching
+	
 	protected bool m_bSelected;
 	protected bool m_bIsEdit;
 	protected bool m_bIsFocused;
@@ -24,7 +27,7 @@ class SCR_AddonLinePresetComponent : SCR_WLibComponentBase
 	//------------------------------------------------------------------------------------------------
 	// Invokers
 	//------------------------------------------------------------------------------------------------
-
+	
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent, string> Event_OnNameChanged;
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnNameEditStart;
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnNameEditLeave;
@@ -34,6 +37,8 @@ class SCR_AddonLinePresetComponent : SCR_WLibComponentBase
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnOverride;
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnDelete;
 	protected ref ScriptInvoker<SCR_AddonLinePresetComponent> Event_OnButtonClick;
+	
+//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeEventOnButtonClick()

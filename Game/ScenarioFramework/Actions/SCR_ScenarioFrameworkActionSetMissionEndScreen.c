@@ -2,9 +2,9 @@
 class SCR_ScenarioFrameworkActionSetMissionEndScreen : SCR_ScenarioFrameworkActionBase
 {
 	[Attribute("1", UIWidgets.ComboBox, "Game Over Type", "", ParamEnumArray.FromEnum(EGameOverTypes))]
-	EGameOverTypes			m_eGameOverType;
+	EGameOverTypes m_eGameOverType;
 
-	[Attribute()]
+	[Attribute(desc: "Leave empty when a default value set in SCR_GameOverScreenManagerComponent should be used.")]
 	LocalizedString m_sSubtitle;
 
 	//------------------------------------------------------------------------------------------------
@@ -17,11 +17,11 @@ class SCR_ScenarioFrameworkActionSetMissionEndScreen : SCR_ScenarioFrameworkActi
 		if (!gamemode)
 			return;
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(gamemode.FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
-		manager.SetMissionEndScreen(m_eGameOverType);
+		scenarioFrameworkSystem.SetMissionEndScreen(m_eGameOverType);
 
 		SCR_GameOverScreenManagerComponent gameOverScreenMgr = SCR_GameOverScreenManagerComponent.Cast(gamemode.FindComponent(SCR_GameOverScreenManagerComponent));
 		if (!gameOverScreenMgr)
@@ -38,6 +38,9 @@ class SCR_ScenarioFrameworkActionSetMissionEndScreen : SCR_ScenarioFrameworkActi
 
 		SCR_BaseGameOverScreenInfoOptional optionalParams = targetScreenInfo.GetOptionalParams();
 		if (!optionalParams)
+			return;
+
+		if (m_sSubtitle.IsEmpty())
 			return;
 
 		optionalParams.m_sSubtitle = m_sSubtitle;

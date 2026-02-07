@@ -31,12 +31,13 @@ class SCR_PlayerController : PlayerController
 {
 	static PlayerController s_pLocalPlayerController;
 	protected static const float WALK_SPEED = 0.5;
-	protected static const float FOCUS_ACTIVATION = 0.5;
-	protected static const float FOCUS_DEACTIVATION = 0.2;
+	protected static const float FOCUS_ACTIVATION = 0.1;
+	protected static const float FOCUS_DEACTIVATION = 0.05;
 	protected static const float FOCUS_TIMEOUT = 0.3;
 	protected static const float FOCUS_TOLERANCE = 0.005;
 	protected static const float FOCUS_ANALOGUE_SCALE = 3.0;
-	protected static float s_fADSFocus = 0.7;
+	protected static float s_fADSFocus = 0.5;
+	protected static float s_fPIPFocus = 1;
 	protected static float s_fFocusTimeout;
 	protected static float s_fFocusAnalogue;
 	protected static bool s_bWasADS;
@@ -78,31 +79,146 @@ class SCR_PlayerController : PlayerController
 	protected override void OnOwnershipChanged(bool changing, bool becameOwner)
 	{
 		super.OnOwnershipChanged(changing, becameOwner);
+		
+		if (becameOwner)
+		{
+			SocialComponent socialComp = SocialComponent.Cast(FindComponent(SocialComponent));
+			if (socialComp)
+				socialComp.m_OnBlockedPlayerJoinedInvoker.Insert(OnBlockedPlayerJoined);
+			
+			if (!changing)
+			{
+				SCR_EditorManagerCore managerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+				managerCore.Event_OnEditorManagerInitOwner.Insert(OnPlayerRegistered);
+			}
+		}			
+		
 		m_OnOwnershipChangedInvoker.Invoke(changing, becameOwner);
 	}
 
-	override void OnControlledEntityChanged(IEntity from, IEntity to)
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerRegistered(SCR_EditorManagerEntity managerEntity)
 	{
-		// todo: react to change, inform fe. VONController
-		m_OnControlledEntityChanged.Invoke(from, to);
+		SCR_EditorManagerCore managerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		managerCore.Event_OnEditorManagerInitOwner.Remove(OnPlayerRegistered);
+
+		// Wait for blocklist to be updated by SocialComponent.
+		// Reinitiate blocklist update (if possible)
+		SocialComponent.s_OnBlockListUpdateInvoker.Insert(OnBlockedListUpdated);
+		SocialComponent.UpdateBlockList();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! TODO: Unhack please, perhaps run the setters directly in SCR_GameplaySettings
-	//! All these settings could be set with static methods in CharacterControllerComponent
-	void SetGameUserSettings()
+	void OnBlockedListUpdated(bool success)
 	{
-		IEntity controlledEntity = GetControlledEntity();
-		if (!controlledEntity)
+		if (!success)
 		{
-			return;
-		}
-		m_CharacterController = CharacterControllerComponent.Cast(controlledEntity.FindComponent(CharacterControllerComponent));
-		if (!m_CharacterController)
-		{
+			// Some logging would be nice
 			return;
 		}
 
+		// Remove only when it succeeds
+		SocialComponent.s_OnBlockListUpdateInvoker.Remove(OnBlockedListUpdated);
+
+		// Request all the authors
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+			return;
+		
+		core.Event_OnAuthorsRegisteredFinished.Insert(OnAuthorsRequestFinished);
+		core.RequestAllAuthors();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnAuthorsRequestFinished(set<SCR_EditableEntityAuthor> activeUGCAuthors)
+	{	
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+			return;
+		
+		core.Event_OnAuthorsRegisteredFinished.Remove(OnAuthorsRequestFinished);
+		
+		PrintFormat("SCR_PlayerController::OnAuthorsRequestFinished - Number of UGC Authors: %1", activeUGCAuthors.Count(), level: LogLevel.VERBOSE);
+
+		SocialComponent socialComp = SocialComponent.Cast(FindComponent(SocialComponent));
+		if (!socialComp)
+		{
+			PrintFormat("SCR_PlayerController::OnAuthorsRequestFinished - Missing SocialComponent", level: LogLevel.VERBOSE);
+			return;
+		}
+		
+		array<string> identityIDs = {};
+		foreach (SCR_EditableEntityAuthor author : activeUGCAuthors)
+		{
+			identityIDs.Insert(author.m_sAuthorUID);
+		}
+		PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Insert(OnPlayerNameCacheUpdate);
+		PlayerManager.RequestPlayerNameCacheUpdate(identityIDs);
+		
+		bool isBlockedAuthorPresent;
+		foreach (SCR_EditableEntityAuthor author : activeUGCAuthors)
+		{
+			const bool isBlocked = socialComp.IsBlockedIdentity(author.m_sAuthorUID, author.m_ePlatform, author.m_sAuthorPlatformID);
+			if (isBlocked)
+			{
+				PrintFormat(
+					"Blocked user left UGC in this world {identity: %1; account: %2; platform: %3}",
+					author.m_sAuthorUID,
+					author.m_sAuthorPlatformID,
+					author.m_ePlatform,
+					level: LogLevel.VERBOSE
+				);
+				isBlockedAuthorPresent = true;
+				break;
+			}
+		}
+		
+		if (isBlockedAuthorPresent)
+		{					
+			SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "blocked_ugc_present");
+			dialog.m_OnCancel.Insert(DisconnectFromGame);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnPlayerNameCacheUpdate(bool success)
+	{
+		Print("SCR_PlayerController - Name Cache Updated!", LogLevel.VERBOSE);
+		PlayerManager.s_OnPlayerNameCacheUpdateInvoker.Remove(OnPlayerNameCacheUpdate);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DisconnectFromGame()
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		world.PauseGameTime(false);
+		
+		GameStateTransitions.RequestGameplayEndTransition();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnBlockedPlayerJoined(int playerID)
+	{
+		SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_ON_BLOCKLIST_JOINED, playerID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnControlledEntityChanged(IEntity from, IEntity to)
+	{
+		m_OnControlledEntityChanged.Invoke(from, to);
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(to);
+		if (character)
+			m_CharacterController = character.GetCharacterController();
+		else
+			m_CharacterController = null;
+
+		SetGameUserSettings();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	static void SetGameUserSettings()
+	{
 		BaseContainer aimSensitivitySettings = GetGame().GetGameUserSettings().GetModule("SCR_AimSensitivitySettings");
 
 		if (aimSensitivitySettings)
@@ -115,41 +231,102 @@ class SCR_PlayerController : PlayerController
 				aimSensitivitySettings.Get("m_fStickSensitivity", aimSensitivityGamepad) &&
 				aimSensitivitySettings.Get("m_fAimADS", aimMultipADS))
 			{
-				m_CharacterController.SetAimingSensitivity(aimSensitivityMouse, aimSensitivityGamepad, aimMultipADS);
+				CharacterControllerComponent.SetAimingSensitivity(aimSensitivityMouse, aimSensitivityGamepad, aimMultipADS);
 				SCR_CharacterCameraHandlerComponent.SetADSSensitivity(aimMultipADS);
 			}
 
+			// Input curve: 0 = constant, 1 = linear
+			float inputCurveMouse;
+			float inputCurveStick;
+			float inputCurveGyro;
 
+			if (aimSensitivitySettings.Get("m_fFOVInputCurveMouse", inputCurveMouse) &&
+				aimSensitivitySettings.Get("m_fFOVInputCurveStick", inputCurveStick) &&
+				aimSensitivitySettings.Get("m_fFOVInputCurveGyro", inputCurveGyro))
+			{
+				CharacterControllerComponent.SetFOVInputCurve(inputCurveMouse, inputCurveStick, inputCurveGyro);
+			}
 		}
 
 		BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
 
 		if (gameplaySettings)
 		{
-			bool stickyADS = true;
+			bool stickyADS;
 			if (gameplaySettings.Get("m_bStickyADS", stickyADS))
-				m_CharacterController.SetStickyADS(stickyADS);
+				CharacterControllerComponent.SetStickyADS(stickyADS);
 
-			bool stickyGadgets = true;
+			bool stickyGadgets;
 			if (gameplaySettings.Get("m_bStickyGadgets", stickyGadgets))
-				m_CharacterController.SetStickyGadget(stickyGadgets);
+				CharacterControllerComponent.SetStickyGadget(stickyGadgets);
 
-			bool mouseControlAircraft = true;
+			bool mouseControlAircraft;
 			if (gameplaySettings.Get("m_bMouseControlAircraft", mouseControlAircraft))
-				m_CharacterController.SetMouseControlAircraft(mouseControlAircraft);
+				CharacterControllerComponent.SetMouseControlAircraft(mouseControlAircraft);
+
+			bool gamepadFreelookInAircraft;
+			if (gameplaySettings.Get("m_bGamepadFreelookInAircraft", gamepadFreelookInAircraft))
+				CharacterControllerComponent.SetGamepadControlAircraft(!gamepadFreelookInAircraft);
 
 			EVehicleDrivingAssistanceMode drivingAssistance;
 			if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
 				VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
 		}
 
-		//TODO: we might want to set default focusInADS to 100 on XBOX and PSN ( default for mouse control should be 70 - see SCR_GameplaySettings )
+		BaseContainer controllerSettings = GetGame().GetGameUserSettings().GetModule("SCR_ControllerSettings");
+		if (controllerSettings)
+		{
+			bool gyroAlways;
+			bool gyroFreelook;
+			bool gyroADS;
+			if (controllerSettings.Get("m_bGyroAlways", gyroAlways)
+				&& controllerSettings.Get("m_bGyroFreelook", gyroFreelook)
+				&& controllerSettings.Get("m_bGyroADS", gyroADS))
+			{
+				CharacterControllerComponent.SetGyroControl(gyroAlways, gyroFreelook, gyroADS);
+			}
+
+			float gyroSensitivity;
+			float gyroVerticalHorizontalRatio;
+
+			float gyroDirectionYaw;
+			float gyroDirectionPitch;
+			float gyroDirectionRoll;
+
+			if (controllerSettings.Get("m_fGyroSensitivity", gyroSensitivity)
+				&& controllerSettings.Get("m_fGyroVerticalHorizontalRatio", gyroVerticalHorizontalRatio)
+				&& controllerSettings.Get("m_fGyroDirectionYaw", gyroDirectionYaw)
+				&& controllerSettings.Get("m_fGyroDirectionPitch", gyroDirectionPitch)
+				&& controllerSettings.Get("m_fGyroDirectionRoll", gyroDirectionRoll))
+			{
+				float sensitivityYaw   = gyroSensitivity * (1 - gyroDirectionYaw);
+				float sensitivityPitch = gyroSensitivity * (1 - gyroDirectionPitch);
+				float sensitivityRoll  = gyroSensitivity * (1 - gyroDirectionRoll);
+
+				if (gyroVerticalHorizontalRatio > 1)
+				{
+					sensitivityYaw  *= 2 - gyroVerticalHorizontalRatio;
+					sensitivityRoll *= 2 - gyroVerticalHorizontalRatio;
+				}
+				else
+				{
+					sensitivityPitch *= gyroVerticalHorizontalRatio;
+				}
+
+				CharacterControllerComponent.SetGyroSensitivity(sensitivityYaw, sensitivityPitch, sensitivityRoll);
+			}
+		}
+
 		BaseContainer fovSettings = GetGame().GetGameUserSettings().GetModule("SCR_FieldOfViewSettings");
 		if (fovSettings)
 		{
-			float focusInADS = 0.5;
+			float focusInADS;
 			if (fovSettings.Get("m_fFocusInADS", focusInADS))
 				s_fADSFocus = focusInADS;
+
+			float focusInPIP;
+			if (fovSettings.Get("m_fFocusInPIP", focusInPIP))
+				s_fPIPFocus = focusInPIP;
 		}
 	}
 
@@ -285,6 +462,7 @@ class SCR_PlayerController : PlayerController
 	{
 		return m_bIsPossessing;
 	}
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get player's main entity.
@@ -299,6 +477,7 @@ class SCR_PlayerController : PlayerController
 		else
 			return GetControlledEntity();
 	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnRplMainEntityFromID()
 	{
@@ -307,6 +486,7 @@ class SCR_PlayerController : PlayerController
 		if (rpl)
 			m_MainEntity = rpl.GetEntity();
 	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void SetAIActivation(IEntity entity, bool activate)
 	{
@@ -347,6 +527,8 @@ class SCR_PlayerController : PlayerController
 
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get player's main entity on this machine.
 	When not possessing, this will be the same as GetControlledEntity()
@@ -362,6 +544,8 @@ class SCR_PlayerController : PlayerController
 			return null;
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Use getter for faction affiliation component
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get faction of currently controlled local player entity.
@@ -383,6 +567,8 @@ class SCR_PlayerController : PlayerController
 		else
 			return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get faction of local player's main entity.
 	When not possessing, the entity will be the same as GetControlledEntity()
@@ -405,6 +591,7 @@ class SCR_PlayerController : PlayerController
 		else
 			return null;
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	override void OnDestroyed(notnull Instigator killer)
@@ -427,6 +614,7 @@ class SCR_PlayerController : PlayerController
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Find if this is local player controller. We assume that this never changes during scenario.
 	protected void UpdateLocalPlayerController()
 	{
@@ -452,6 +640,7 @@ class SCR_PlayerController : PlayerController
 		inputManager.AddActionListener("WeaponSwitchOptics", EActionTrigger.UP, ChangeWeaponOptics);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Update disabling of character controls in menus
 	protected void UpdateControls()
 	{
@@ -463,6 +652,9 @@ class SCR_PlayerController : PlayerController
 		}
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: This is obsolete
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateUI()
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(GetControlledEntity());
@@ -485,7 +677,9 @@ class SCR_PlayerController : PlayerController
 			Print("Can exit left");
 		}
 	}
+	//---- REFACTOR NOTE END ----
 
+	//------------------------------------------------------------------------------------------------
 	protected void ChangeMagnification(float value)
 	{
 		SCR_CharacterControllerComponent characterController = GetCharacterController();
@@ -493,6 +687,7 @@ class SCR_PlayerController : PlayerController
 			characterController.SetNextSightsFOVInfo(value);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void ChangeWeaponOptics()
 	{
 		SCR_CharacterControllerComponent characterController = GetCharacterController();
@@ -500,6 +695,7 @@ class SCR_PlayerController : PlayerController
 			characterController.SetNextSights();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected SCR_CharacterControllerComponent GetCharacterController()
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(GetControlledEntity());
@@ -509,6 +705,7 @@ class SCR_PlayerController : PlayerController
 		return SCR_CharacterControllerComponent.Cast(char.GetCharacterController());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	// Parameter value:
 	// TRUE:  Disables the controls
 	// FALSE: Enables the controls
@@ -532,13 +729,33 @@ class SCR_PlayerController : PlayerController
 	float GetFocusValue(float adsProgress = 0, float dt = -1)
 	{
 		if (!m_CharacterController)
-			return 0;
 
+			return 0;
 		float focus;
 
 		// Autofocus
 		if (adsProgress > 0)
-			focus = s_fADSFocus * Math.Min(adsProgress, 1);
+		{
+			// PIPCQB Separate slider
+			if (SCR_2DPIPSightsComponent.IsPIPActive())
+				focus = Math.Lerp(s_fADSFocus, 1, s_fPIPFocus);
+			else
+				focus = s_fADSFocus;
+
+			focus *= Math.Min(adsProgress, 1);
+
+			if (m_CharacterController.IsFreeLookEnabled())
+			{
+				// Freelook angle effect on ADS focus
+				CharacterHeadAimingComponent headAiming = m_CharacterController.GetHeadAimingComponent();
+				if (headAiming)
+				{
+					float freelookAngle = headAiming.GetAimingRotation().Length();
+					float freelookFocus = 1 - Math.InverseLerp(1, 6, freelookAngle);
+					focus *= Math.Clamp(freelookFocus, 0, 1);
+				}
+			}
+		}
 
 		InputManager inputManager = GetGame().GetInputManager();
 
@@ -666,6 +883,8 @@ class SCR_PlayerController : PlayerController
 		return m_bGadgetFocus;
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	//! TODO: Action listener methods should be protected
 	//------------------------------------------------------------------------------------------------
 	void ActionFocusToggle(float value = 0.0, EActionTrigger reason = 0)
 	{
@@ -792,17 +1011,180 @@ class SCR_PlayerController : PlayerController
 			m_CharacterController.StopCharacterGesture();
 		}
 	}
-
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
-	override void EOnInit(IEntity owner)
+	// Set the correct platfrom icon to the provided Image Widget
+	//! \param playerID
+	//! \param image
+	//! \param glowImage
+	//! \param set image Visible
+	//! \param show on PC
+	//! \param show on Xbox
+	bool SetPlatformImageTo(int playerID, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true, bool showOnPC = false, bool showOnXbox = false)
+	{		
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		if (!playerMgr)
+			return false;
+		
+		PlatformKind targetPlatformKind = playerMgr.GetPlatformKind(playerID);
+		PlatformKind ownPlatformKind = playerMgr.GetPlatformKind(GetLocalPlayerId());
+		
+		// Always show on PSN
+		if (ownPlatformKind == PlatformKind.PSN	)
+			SetPlatformImagePSN(targetPlatformKind, image, glow, setVisible);
+		
+		if (!showOnPC && !showOnXbox)
+			return true;
+		
+		switch (ownPlatformKind)
+		{
+			case PlatformKind.STEAM:
+				if (showOnPC)
+					SetPlatformImagePC(targetPlatformKind, image, glow, setVisible);
+			break;
+			
+			case PlatformKind.XBOX:
+				if (showOnXbox)
+					SetPlatformImageXbox(targetPlatformKind, image, glow, setVisible);
+			break;
+			
+			case PlatformKind.NONE:
+				if (showOnPC)
+					SetPlatformImagePC(targetPlatformKind, image, glow, setVisible);
+			break;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Set the correct platfrom icon to the provided Image Widget based on PlatformKind
+	//! \param platform
+	//! \param image
+	//! \param glowImage
+	//! \param set image Visible
+	//! \param show on PC
+	//! \param show on Xbox
+	bool SetPlatformImageToKind(PlatformKind targetPlatform, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true, bool showOnPC = false, bool showOnXbox = false)
 	{
-		super.EOnInit(owner);
-
-		//HACK: SCR_PlayerController must insert SCR_InteractionHandlerComponent OnControlledEntityChanged into script invoker due to fact that the latter calls its OnInit only for the host
-		SCR_InteractionHandlerComponent handler = SCR_InteractionHandlerComponent.Cast(owner.FindComponent(SCR_InteractionHandlerComponent));
-		if (!handler)
+		PlatformKind ownPlatformKind = GetGame().GetPlayerManager().GetPlatformKind(GetLocalPlayerId());
+		
+		// Always show on PSN
+		if (ownPlatformKind == PlatformKind.PSN)
+			SetPlatformImagePSN(targetPlatform, image, glow, setVisible);
+		
+		if (!showOnPC && !showOnXbox)
+			return true;
+		
+		switch (ownPlatformKind)
+		{
+			case PlatformKind.STEAM:
+				if (showOnPC)
+					SetPlatformImagePC(targetPlatform, image, glow, setVisible);
+			break;
+			
+			case PlatformKind.XBOX:
+				if (showOnXbox)
+					SetPlatformImageXbox(targetPlatform, image, glow, setVisible);
+			break;
+			
+			case PlatformKind.NONE:
+				if (showOnPC)
+					SetPlatformImagePC(targetPlatform, image, glow, setVisible);
+			break;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetPlatformImagePSN(PlatformKind targetPlatformKind, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true)
+	{
+		if (targetPlatformKind == PlatformKind.PSN)
+		{
+			image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME);
+			
+			if (glow)
+				glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME);
+		}
+		else
+		{
+			image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME);
+			
+			if (glow)
+				glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME);
+		}
+		
+		if (!setVisible)
 			return;
-
-		m_OnControlledEntityChanged.Insert(handler.OnControlledEntityChanged);
+		
+		image.SetVisible(true);
+		if (glow)
+			glow.SetVisible(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetPlatformImagePC(PlatformKind targetPlatformKind, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true)
+	{
+		string icon;
+		switch (targetPlatformKind)
+		{
+			case PlatformKind.STEAM:
+				icon = UIConstants.PLATFROM_PC_ICON_NAME;
+			break;
+			case PlatformKind.XBOX:
+				icon = UIConstants.PLATFROM_XBOX_ICON_NAME;
+			break;
+			case PlatformKind.PSN:
+				icon = UIConstants.PLATFROM_PLAYSTATION_ICON_NAME;
+			break;
+			case PlatformKind.NONE:
+				icon = UIConstants.PLATFROM_PC_ICON_NAME;
+			break;
+		}
+		
+		image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
+		if (glow)
+			glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, icon);
+		
+		if (!setVisible)
+			return;
+		
+		image.SetVisible(true);
+		if (glow)
+			glow.SetVisible(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetPlatformImageXbox(PlatformKind targetPlatformKind, notnull ImageWidget image, ImageWidget glow = null, bool setVisible = true)
+	{
+		string icon;
+		switch (targetPlatformKind)
+		{
+			case PlatformKind.STEAM:
+				icon = UIConstants.PLATFROM_PC_ICON_NAME;
+			break;
+			case PlatformKind.XBOX:
+				icon = UIConstants.PLATFROM_XBOX_ICON_NAME;
+			break;
+			case PlatformKind.PSN:
+				icon = UIConstants.PLATFROM_PLAYSTATION_ICON_NAME;
+			break;
+			case PlatformKind.NONE:
+				icon = UIConstants.PLATFROM_PC_ICON_NAME;
+			break;
+		}
+		
+		image.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
+		if (glow)
+			glow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, icon);
+		
+		if (!setVisible)
+			return;
+		
+		image.SetVisible(true);
+		if (glow)
+			glow.SetVisible(true);
 	}
 }

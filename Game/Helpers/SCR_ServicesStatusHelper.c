@@ -333,9 +333,36 @@ class SCR_ServicesStatusHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	static bool SkipConsoleService(SCR_BackendServiceDisplay service)
+	static bool DisplayServiceOnCurrentPlatform(SCR_BackendServiceDisplay service)
 	{
-		return !GetGame().IsPlatformGameConsole() && service.m_bConsoleExclusive;
+		switch (System.GetPlatform())
+		{
+			case EPlatform.UNKNOWN:
+			{
+				return false;
+			}
+			case EPlatform.WINDOWS:
+			case EPlatform.LINUX:
+			{
+				return SCR_Enum.HasFlag(service.m_ePlatforms, SCR_EBackendServicePlatforms.PC);
+			}
+			case EPlatform.XBOX_ONE:
+			case EPlatform.XBOX_ONE_S:
+			case EPlatform.XBOX_ONE_X:
+			case EPlatform.XBOX_SERIES_S:
+			case EPlatform.XBOX_SERIES_X:
+			{
+				return SCR_Enum.HasFlag(service.m_ePlatforms, SCR_EBackendServicePlatforms.XBOX);
+			}
+			case EPlatform.PS4:
+			case EPlatform.PS5:
+			case EPlatform.PS5_PRO:
+			{
+				return SCR_Enum.HasFlag(service.m_ePlatforms, SCR_EBackendServicePlatforms.PS);
+			}
+		}
+		
+		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -446,6 +473,14 @@ class SCR_BackendServiceDisplay
 	[Attribute(desc: "displayed name")]
 	string m_sTitle;
 	
-	[Attribute("0", desc: "set true if this service should be ignored when on PC")]
-	bool m_bConsoleExclusive;
-};
+	[Attribute(typename.EnumToString(SCR_EBackendServicePlatforms, SCR_EBackendServicePlatforms.PC), UIWidgets.Flags, "", "Platforms this service should be displayed on", ParamEnumArray.FromEnum(SCR_EBackendServicePlatforms))]
+	SCR_EBackendServicePlatforms m_ePlatforms;
+}
+
+//------------------------------------------------------------------------------------------------
+enum SCR_EBackendServicePlatforms
+{
+	PC		= 1 << 0,
+	XBOX	= 1 << 1,
+	PS		= 1 << 2
+}

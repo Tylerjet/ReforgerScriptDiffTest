@@ -38,7 +38,7 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 	protected bool m_bRandomStartingWeather;
 	
 	[Attribute("0", desc: "Use predefine sets of weather and time.")]
-	protected bool m_bUsePredefineStartingTimeAndWeatehr;
+	protected bool m_bUsePredefineStartingTimeAndWeather;
 	
 	[Attribute(desc: "List of predefine time and weather settings.")]
 	protected ref array<ref SCR_TimeAndWeatherState> m_aStartingWeatherAndTime;
@@ -157,9 +157,10 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 				manager.ForceWeatherTo(!m_bRandomWeatherChanges, weatherStates.GetRandomElement().GetStateName());
 		}
 		
-		if (m_bUsePredefineStartingTimeAndWeatehr && !m_aStartingWeatherAndTime.IsEmpty())
+		if (m_bUsePredefineStartingTimeAndWeather && !m_aStartingWeatherAndTime.IsEmpty())
 		{
-			SCR_TimeAndWeatherState timeAndWEatherState = m_aStartingWeatherAndTime.GetRandomElement();
+			Math.Randomize(-1);
+			SCR_TimeAndWeatherState timeAndWEatherState = m_aStartingWeatherAndTime.GetRandomElement();			
 			manager.ForceWeatherTo(!m_bRandomWeatherChanges, timeAndWEatherState.GetWeatherPresetName());
 			hours = timeAndWEatherState.GetStartingHour();
 			minutes = timeAndWEatherState.GetStartingMinutes();

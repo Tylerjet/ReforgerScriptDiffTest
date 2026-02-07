@@ -6,6 +6,7 @@ class SCR_ScenarioFrameworkSlotClearAreaClass : SCR_ScenarioFrameworkSlotTaskCla
 class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 {
 	//------------------------------------------------------------------------------------------------
+	//! Initializes trigger entities, disables periodic queries, and sets init sequence done to false.
 	override void FinishInit()
 	{
 		BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(m_Entity);
@@ -22,6 +23,8 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario layer, checks parent layer, sets area, and removes self from onAllChildrenSpawned list.
+	//! \param[in] layer for which this is called.
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
@@ -42,6 +45,8 @@ class SCR_ScenarioFrameworkSlotClearArea : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes plugins, actions, and triggers after parent area children spawned.
+	//! \param[in] layer for which this is called.
 	protected void AfterParentAreaChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)

@@ -32,4 +32,10 @@ class SCR_AIWaypointState : Managed
 	{
 		m_Utility.CancelActivitiesRelatedToWaypoint(m_Waypoint, SCR_AIMoveActivity);
 	}
+	
+	//! Getter for the related waypoint
+	AIWaypoint GetWaypoint()
+	{
+		return m_Waypoint;
+	}
 }

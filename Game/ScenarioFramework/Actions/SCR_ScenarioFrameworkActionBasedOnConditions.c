@@ -3,8 +3,11 @@ class SCR_ScenarioFrameworkActionBasedOnConditions : SCR_ScenarioFrameworkAction
 {
 	[Attribute(desc: "Action activation conditions")]
 	protected ref array<ref SCR_ScenarioFrameworkActivationConditionBase> m_aActivationConditions;
-	
-	[Attribute(desc: "Which actions will be executed once set time passes")]
+
+	[Attribute(defvalue: SCR_EScenarioFrameworkLogicOperators.AND.ToString(), UIWidgets.ComboBox, "Which Boolean Logic will be used for Activation Conditions", "", enums: SCR_EScenarioFrameworkLogicOperatorHelper.GetParamInfo(), category: "Activation")]
+	SCR_EScenarioFrameworkLogicOperators m_eActivationConditionLogic;
+
+	[Attribute(desc: "Actions to be executed if conditions' evaluation is successful.")]
 	ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActions;
 
 	//------------------------------------------------------------------------------------------------
@@ -12,17 +15,19 @@ class SCR_ScenarioFrameworkActionBasedOnConditions : SCR_ScenarioFrameworkAction
 	{
 		if (!CanActivate())
 			return;
-
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(object))
-				return;
-		}
 		
+		if (!SCR_ScenarioFrameworkActivationConditionBase.EvaluateEmptyOrConditions(m_eActivationConditionLogic, m_aActivationConditions, object))
+			return;
+
 		foreach (SCR_ScenarioFrameworkActionBase actions : m_aActions)
 		{
 			actions.OnActivate(object);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
 	}
 }

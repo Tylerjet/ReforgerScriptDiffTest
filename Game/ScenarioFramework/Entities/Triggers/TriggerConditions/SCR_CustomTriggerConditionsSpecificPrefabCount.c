@@ -5,6 +5,8 @@ class SCR_CustomTriggerConditionsSpecificPrefabCount : SCR_CustomTriggerConditio
 	ref array<ref SCR_ScenarioFrameworkPrefabFilterCount> m_aPrefabFilter;
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario trigger entity with prefab filters based on prefab filter count data.
+	//! \param[in] trigger Trigger entity representing prefab filter conditions for scenario event activation.
 	override void Init(SCR_ScenarioFrameworkTriggerEntity trigger)
 	{
 		Resource resource;

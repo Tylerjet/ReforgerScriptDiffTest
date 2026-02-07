@@ -70,8 +70,6 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 		Widget hudMenu = m_wRoot.FindAnyWidget(m_sHudLayoutUIHandler);
 		if (hudMenu)
 			m_HudMenuComponent = SCR_HUDMenuComponent.Cast(hudMenu.FindHandler(SCR_HUDMenuComponent));
-		
-		ForceHUDLayout();
 	}
 	
 	//------------------------------------------------------------------------------------------------

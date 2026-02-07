@@ -17,6 +17,7 @@ sealed class RplId
 
 	static proto RplId Invalid();
 	proto external bool IsValid();
+	proto external string AsString();
 }
 
 /*!

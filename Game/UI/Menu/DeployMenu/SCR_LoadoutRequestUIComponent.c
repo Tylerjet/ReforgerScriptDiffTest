@@ -128,7 +128,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		if (m_LoadoutSelector)
 		{
-			m_LoadoutSelector.GetOnLoadoutClicked().Insert(RequestPlayerLoadout);
+			m_LoadoutSelector.GetOnLoadoutClicked().Insert(OnRequestPlayerLoadout);
 			m_LoadoutSelector.GetOnLoadoutHovered().Insert(SetLoadoutPreview);
 		}
 
@@ -348,13 +348,19 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Send a loadout request when clicking on a loadout button.
-	protected void RequestPlayerLoadout(SCR_LoadoutButton loadoutBtn)
+	protected void OnRequestPlayerLoadout(SCR_LoadoutButton loadoutBtn)
 	{
 		SCR_BasePlayerLoadout loadout = loadoutBtn.GetLoadout();
 		if (!loadout)
 			return;
 
 		Lock(loadoutBtn);
+		RequestPlayerLoadout(loadout);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RequestPlayerLoadout(SCR_BasePlayerLoadout loadout)
+	{
 		SetLoadoutPreview(loadout);
 		
 		if (m_wExpandButtonName)
@@ -473,6 +479,11 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	//! Set a loadout shown in the preview widget.
 	protected void SetLoadoutPreview(SCR_BasePlayerLoadout loadout)
 	{
+		InputManager inputManager = GetGame().GetInputManager();
+		
+		if (inputManager && inputManager.GetLastUsedInputDevice() == EInputDeviceType.KEYBOARD)
+			return;
+		
 		if (m_PreviewComp && loadout)
 		{
 			if (m_wLoadoutName)
@@ -486,6 +497,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));
 				m_wSupplies.SetVisible(supplyCost > 0);
 			}
+			
+			if (m_wExpandButtonName)
+				m_wExpandButtonName.SetText(loadout.GetLoadoutName());
 		}
 	}
 
@@ -633,11 +647,16 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 {
 	[Attribute("PlayerName")]
 	protected string m_sPlayerName;
-	protected TextWidget m_wPlayerName;
-
+	
 	[Attribute("Leader")]
 	protected string m_sLeaderText;
+	
+	[Attribute("PlatformIcon")]
+	protected string m_sPlatformIconName;
+	
+	protected TextWidget m_wPlayerName;
 	protected Widget m_wLeaderText;
+	protected ImageWidget m_wPlatformIcon;
 
 	protected SCR_BasePlayerLoadout m_Loadout;
 	protected int m_iPlayerId = -1;
@@ -651,6 +670,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		m_wPlayerName = TextWidget.Cast(w.FindAnyWidget(m_sPlayerName));
 		m_wLeaderText = w.FindAnyWidget(m_sLeaderText);
 		m_wElements = w.FindAnyWidget(m_sElements);
+		m_wPlatformIcon = ImageWidget.Cast(w.FindAnyWidget(m_sPlatformIconName));
 		
 		if (m_wLeaderText)
 			SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(OnLeaderChanged);
@@ -708,6 +728,9 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 	{
 		m_iPlayerId = pid;
 		SetPlayerName(GetGame().GetPlayerManager().GetPlayerName(pid));
+		
+		if (m_wPlatformIcon)
+			SCR_PlayerController.Cast(GetGame().GetPlayerController()).SetPlatformImageTo(m_iPlayerId, m_wPlatformIcon);
 
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)

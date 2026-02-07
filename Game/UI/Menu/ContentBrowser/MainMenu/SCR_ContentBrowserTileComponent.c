@@ -403,6 +403,21 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		UpdateDependencyCountWidgets();
 		
 		UpdateEnableButtonTooltip();
+		
+		// Show type 
+		bool isSave = m_Item.IsWorldSave();
+		
+		m_Widgets.m_wItemTypeImage.SetVisible(isSave);
+		m_Widgets.m_wItemTypeShadow.SetVisible(isSave);
+		
+		if (isSave)
+		{
+			string imageType = "save-published";
+		
+			m_Widgets.m_wItemTypeImage.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, imageType);
+			m_Widgets.m_wItemTypeShadow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, imageType);
+		}
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -422,6 +437,9 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		m_OnChange.Invoke(this);
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Each tile does it's own callqueue, so there's going to be many! Desyncronized with other UIs that might show download progress, like the top right button
+		
 	//------------------------------------------------------------------------------------------------
 	protected void StartContinuousUpdate()
 	{
@@ -452,6 +470,8 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		UpdateHeader();
 	}
 
+//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEnableButtonToggled(SCR_ModularButtonComponent comp)
 	{
@@ -505,6 +525,9 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		HandleDownloadChanges();
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Overreliance on hardcoded strings and static methods in tooltips
+	
 	// ---- Tooltips ----
 	//------------------------------------------------------------------------------------------------
 	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
@@ -515,7 +538,7 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		UpdateHeaderTooltip();
 		UpdateEnableButtonTooltip();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateDependenciesTooltip()
 	{
@@ -552,7 +575,9 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 		else
 			m_Tooltip.GetContent().SetMessage(SCR_WorkshopUiCommon.LABEL_ENABLE);
 	}
-	
+
+//---- REFACTOR NOTE END ----	
+
 	// ---- Public ----
 	//------------------------------------------------------------------------------------------------
 	//! If a null pointer is passed, tile becomes hidden

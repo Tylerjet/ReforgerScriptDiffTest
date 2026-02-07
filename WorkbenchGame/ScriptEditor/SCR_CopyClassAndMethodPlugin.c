@@ -10,10 +10,10 @@ class SCR_CopyClassAndMethodPlugin : WorkbenchPlugin
 		string fileName;
 		scriptEditor.GetCurrentFile(fileName);
 
-		string bracketOpen = "{";
-		string bracketClose = "}";
-		string commentOpen = "/*";
-		string commentClose = "*/";
+		const string bracketOpen = "{";
+		const string bracketClose = "}";
+		const string commentOpen = "/" + "*";
+		const string commentClose = "*" + "/";
 
 		//--- Get scope hierarchy
 		string text;

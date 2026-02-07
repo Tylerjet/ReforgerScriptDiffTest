@@ -114,6 +114,9 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		if (m_PauseButton)
 			m_PauseButton.m_OnActivated.Insert(OnPauseMenu);
 		InitMapPlain();
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		gameMode.PauseGame(true, SCR_EPauseReason.MENU);
 	}
 	
 	override void OnMenuOpened()
@@ -283,6 +286,10 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 	protected void OpenGroupMenu()
 	{
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager || !groupManager.IsGroupMenuAllowed())
+			return;
+		
 		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.GroupMenu);
 	}
 	
@@ -415,6 +422,9 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		gameMode.PauseGame(false, SCR_EPauseReason.MENU);
 	}
 	
 	//------------------------------------------------------------------------------------------------

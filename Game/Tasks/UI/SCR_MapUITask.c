@@ -59,7 +59,7 @@ class SCR_MapUITask : SCR_MapUIElement
 	void SetTask(notnull SCR_BaseTask task)
 	{
 		m_Task = task;
-		SetImage(task.GetTaskMapIconName() + task.GetIconSuffix());
+		SetImage(task.GetFullTaskIconName());
 
 		if (m_wTaskTitle)
 			m_Task.SetTitleWidgetText(m_wTaskTitle, m_Task.GetTaskListTaskTitle());

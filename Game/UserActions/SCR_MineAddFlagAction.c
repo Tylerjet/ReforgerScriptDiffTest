@@ -37,14 +37,22 @@ class SCR_MineAddFlagAction : ScriptedUserAction
 			return;
 		
 		SCR_PlaceableInventoryItemComponent itemComponent = SCR_PlaceableInventoryItemComponent.Cast(flag.FindComponent(SCR_PlaceableInventoryItemComponent));
-		
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character)
+			return;
+
+		RplComponent characterRplComp = character.GetRplComponent();
+		if (!characterRplComp)
+			return;
+
 		RplComponent rplComponent = RplComponent.Cast(flag.FindComponent(RplComponent));
 		if (rplComponent && !rplComponent.IsProxy())
 		{
 			vector mat[4];
 			owner.GetTransform(mat);
 			mat[3] = mat[3] + m_vFlagOffset;
-			itemComponent.SetPlacementPosition(mat[0], mat[1], mat[2], mat[3]);
+			itemComponent.SetPlacementPosition(mat[0], mat[1], mat[2], mat[3], characterRplComp.Id());
 		}
 		
 		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();

@@ -23,7 +23,7 @@ class SCR_ViewProfileButtonComponent : SCR_ScriptedWidgetComponent
 			return;
 
 		string label = PROFILE_BUTTON_TEXT;
-		if (GetGame().IsPlatformGameConsole())
+		if (GetGame().IsPlatformGameConsole() && !SCR_PlatformHelper.IsPlaystation())
 			label = PROFILE_BUTTON_TEXT_CONSOLE;
 
 		m_ViewProfile.SetLabel(label);

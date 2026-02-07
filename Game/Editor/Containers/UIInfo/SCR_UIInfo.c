@@ -63,6 +63,9 @@ class SCR_UIInfo : SCR_UIDescription
 		return true;
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----	
+// This class is meant to hold data, not manipulate widgets! Such methods should be in SCR_WidgetTools or SCR_WidgetHelper
+	
 	//------------------------------------------------------------------------------------------------
 	//! Set icon to given image widget.
 	//! Use this function instead of retrieving the texture using GetIconPath() and setting it manually!
@@ -83,6 +86,8 @@ class SCR_UIInfo : SCR_UIDescription
 
 		return true;
 	}
+
+//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//!

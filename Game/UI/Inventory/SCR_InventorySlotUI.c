@@ -225,6 +225,9 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	//!
 	protected void SetAmmoCount()
 	{
+		if (!m_pItem)
+			return;
+		
 		MagazineComponent magComp = MagazineComponent.Cast(m_pItem.GetOwner().FindComponent(MagazineComponent));
 		if (!magComp)
 			return;

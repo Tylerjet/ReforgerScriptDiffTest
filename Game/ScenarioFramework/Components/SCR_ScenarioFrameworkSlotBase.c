@@ -8,6 +8,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	[Attribute(params: "et", desc: "Resource name of the object to be spawned", category: "Asset")]
 	ResourceName m_sObjectToSpawn;
 
+	[Attribute(desc: "Selects which object to spawn based on the selected Faction Key", category: "Asset")]
+	ref array<ref SCR_ScenarioFrameworkFactionSwitchedObject> m_aFactionSwitchedObjects;
+	
 	[Attribute(desc: "Name of the entity used for identification", category: "Asset")]
 	string m_sID;
 
@@ -38,7 +41,6 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	[Attribute(defvalue: "0", category: "Composition", desc: "When disabled orientation to terrain will be skipped for the next composition")]
 	bool m_bIgnoreOrientChildrenToTerrain;
 
-	bool m_bSelected = false;
 	ref EntitySpawnParams m_SpawnParams = new EntitySpawnParams();
 	vector m_Size;
 	ResourceName m_sRandomlySpawnedObject;
@@ -52,7 +54,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	//! Get objects of type defined in m_sObjectToSpawn in the range
+	//! Queries nearby objects within range for the owner entity.
+	//! \param[in] fRange Represents search radius for objects in range query.
 	protected void QueryObjectsInRange(float fRange = 2.5)
 	{
 		BaseWorld pWorld = GetGame().GetWorld();
@@ -63,7 +66,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] state
+	//! \param[in] state Checks if object is destroyed, removes damage state change listener, and terminates object if repeated spawn is not enabled and run out of numbers
 	void OnObjectDamage(EDamageState state)
 	{
 		if (state != EDamageState.DESTROYED || !m_Entity)
@@ -85,8 +88,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] oldSlot
-	//! \param[in] newSlot
+	//! Method changes inventory parent slot and sets dynamic despawn exclusion for an entity.
+	//! \param[in] oldSlot Represents previous inventory slot where item was before being moved.
+	//! \param[in] newSlot Represents new inventory slot for item transfer.
 	void OnInventoryParentChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
 		InventoryItemComponent invComp = InventoryItemComponent.Cast(m_Entity.FindComponent(InventoryItemComponent));
@@ -97,34 +101,33 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] vehicle
-	//! \param[in] mgr
-	//! \param[in] occupant
-	//! \param[in] managerId
-	//! \param[in] slotID
+	//! Excludes vehicle from dynamic despawning when entering a component.
+	//! \param[in] vehicle Excludes vehicle from dynamic despawning when entering a component.
+	//! \param[in] mgr BaseCompartmentManagerComponent represents an entity component managing cargo, passengers, and other objects in a vehicle.
+	//! \param[in] occupant Occupant represents the entity currently inside the vehicle when the method is called.
+	//! \param[in] managerId ManagerId represents the unique identifier for the comparment manager in the vehicle.
+	//! \param[in] slotID SlotID represents the specific seat.
 	void OnCompartmentEntered(IEntity vehicle, BaseCompartmentManagerComponent mgr, IEntity occupant, int managerId, int slotID)
 	{
 		m_bExcludeFromDynamicDespawn = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	// TODO: overridd*en
-	string GetOverridenObjectDisplayName()
+	//! \return the display name for an overridden object.
+	string GetOverriddenObjectDisplayName()
 	{
 		return m_sOverrideObjectDisplayName;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] name
-	// TODO: overridd*en
-	void SetOverridenObjectDisplayName(string name)
+	//! \param[in] name Sets object display name override.
+	void SetOverriddenObjectDisplayName(string name)
 	{
 		m_sOverrideObjectDisplayName = name;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return the display name of the spawned entity or overridden display name if provided, otherwise returns an empty string.
 	string GetSpawnedEntityDisplayName()
 	{
 		if (!m_Entity)
@@ -141,7 +144,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get object of type defined in m_sObjectToSpawn
+	//! Checks if entity matches prefab data, if not, checks if it matches object to spawn, if not, returns true
+	//! \param[in] entity to be outed
+	//! \return whether the provided entity matches the expected entity based on prefab data or object name.
 	protected bool GetEntity(notnull IEntity entity)
 	{
 		IEntity pParent = SCR_EntityHelper.GetMainParent(entity, true);
@@ -200,7 +205,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Get the Layer Task which is parent of this Slot
+	//! \return the ScenarioFrameworkArea component from the parent entity or owner, or null if not found.
 	SCR_ScenarioFrameworkArea GetAreaWB()
 	{
 		SCR_ScenarioFrameworkArea area;
@@ -218,44 +223,73 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return The spawned object's unique identifier as a string.
 	string GetSpawnedObjectName()
 	{
 		return m_sID;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return spawned object ResourceName.
 	ResourceName GetObjectToSpawn()
 	{
 		return m_sObjectToSpawn;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! First attempts to get get teh Fction Switched Object for the provided faciton key, then falls back to m_sObjectToSpawn.
+	//! Init does not include Catalog entities as the catalog manager has not been initialised yet.
+	//! If m_bRandomizePerFaction, then catalog system will ignore m_sObjectToSpawn if it has a catalog match. Otherwise it falls back to m_sObjectToSpawn.
+	ResourceName GetSelectedObjectToSpawn()
+	{
+		if (!m_aFactionSwitchedObjects.IsEmpty())
+		{
+			// Try get faction switched object
+			foreach (SCR_ScenarioFrameworkFactionSwitchedObject factionObject : m_aFactionSwitchedObjects)
+			{
+				if (factionObject.m_sFactionKey == m_sFactionKey)
+					return factionObject.m_sObjectToSpawn;
+			}
+			if (m_sObjectToSpawn.IsEmpty())
+				Print(string.Format("ScenarioFramework [SCR_ScenarioFrameworkSlotBase] No faction switch object for \"%1\" FactionKey and no fallback m_sObjectToSpawn.", m_sFactionKey), LogLevel.WARNING);
+		}
+		// Try get manually specified object
+		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
+			return m_sObjectToSpawn;
+		
+		return "";
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Randomly spawned object ResourceName.
 	ResourceName GetRandomlySpawnedObject()
 	{
 		return m_sRandomlySpawnedObject;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] name
+	//! \param[in] name Represents an object to spawn randomly in the world.
 	void SetRandomlySpawnedObject(ResourceName name)
 	{
 		m_sRandomlySpawnedObject = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default settings, clears random object, resets position, calls superclass method.
+	//! \param[in] includeChildren Includes children objects in default restoration process.
+	//! \param[in] reinitAfterRestoration Restores object state after restoration, resetting internal variables.
+	//! \param[in] affectRandomization Affects randomization during object restoration.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		m_sRandomlySpawnedObject = string.Empty;
 		m_vPosition = vector.Zero;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! //! Dynamically despawns this layer.
+	//! \param[in] layer Layer represents the scenario framework layer where dynamic despawning occurs.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
@@ -289,6 +323,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes whether an init has already happened, but for slots it always returns false.
+	//! \return false, indicating that the init has not yet occurred.
 	override bool InitAlreadyHappened()
 	{
 		// We do not want to check this condition for Slots
@@ -296,7 +332,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Checks if object already exists, disables repetition and logs error
+	//! \return true if the object can be respawned, false otherwise.
 	bool InitRepeatableSpawn()
 	{
 		if (m_Entity && !m_bEnableRepeatedSpawn && !m_ParentLayer.GetEnableRepeatedSpawn())
@@ -310,7 +347,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Checks if entity is spawned, if not, waits for all children to spawn then checks again.
+	//! \return true if all children entities have been spawned, false otherwise.
 	bool InitEntitySpawnCheck()
 	{
 		if (!m_Entity)
@@ -322,9 +360,32 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		
 		return true;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! If m_bRandomizePerFaction, then catalog system will ignore m_sObjectToSpawn if it has a catalog match. Otherwise it falls back to m_sObjectToSpawn.
+	protected void InitSelectedObjectToSpawn()
+	{
+		m_sObjectToSpawn = GetSelectedObjectToSpawn();
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! If m_bRandomizePerFaction, then it will set m_sObjectToSpawn to empty because the the catalog system has not been initialised.
+	//! It would be incorect to show the manually set object or the faction switched object because the catalog will take preference at runtime.
+	protected void InitSelectedObjectToPreview()
+	{
+		// Manually get the faction key from parents because attribute inheritance doesn't run in Workbench.
+		m_sFactionKey = GetParentFactionKeyRecursive();
+		if (m_bRandomizePerFaction)
+		{
+			m_sObjectToSpawn = "";  // Maybe put a preview object here that is a mesh of a word saying "Catalog Result" or something.
+			return;
+		}
+		InitSelectedObjectToSpawn();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Spawns entity if not existing or queries objects in range, checks initiation success.
+	//! \return true if entity spawning is successful.
 	bool InitEntitySpawn()
 	{
 		if (!m_bUseExistingWorldAsset)
@@ -343,8 +404,12 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes selected object, repeatable spawn, and entity spawn.
+	//! \return true if all initialization steps succeed, false otherwise.
 	override bool InitOtherThings()
 	{
+		InitSelectedObjectToSpawn();
+		
 		if (!InitRepeatableSpawn())
 			return false;
 		
@@ -355,6 +420,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Finishes initialization, assigns unique ID, sets up damage manager, event handlers, inventory, and garbage system if applicable
 	override void FinishInit()
 	{
 		if (!m_sID.IsEmpty())
@@ -406,6 +472,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario framework slot
+	//! \param[in] area that this slot is nested into.
+	//! \param[in] activation Activates scenario framework action type, sets up for children spawning.
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
 		if (m_OnAllChildrenSpawned)
@@ -415,6 +484,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes plugins, actions, and checks if parent layer has all children spawned after all children have spawned in scenario framework
+	//! \param[in] layer Initializes layer, sets up plugins, actions, and checks parent layer spawning status.
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
@@ -436,29 +507,16 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	ScriptInvoker GetOnAllAreasInitiatedInvoker()
-	{
-		BaseGameMode gameMode = GetGame().GetGameMode();
-		if (!gameMode)
-			return null;
-
-		SCR_GameModeSFManager pGameModeMgr = SCR_GameModeSFManager.Cast(gameMode.FindComponent(SCR_GameModeSFManager));
-		if (!pGameModeMgr)
-			return null;
-
-		return pGameModeMgr.GetOnAllAreasInitiated();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Slot cannot have children
+	//! Slot cannot have children
+	//! \param[in] previouslyRandomized PreviouslyRandomized: Boolean indicating if children were previously randomized before spawning.
 	override void SpawnChildren(bool previouslyRandomized = false)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[out] prefab
-	//! \return
+	//! Randomly selects an entity from a catalog based on provided parameters, handles error cases, and returns the prefab of the
+	//! \param[out] prefab Randomly selected prefab from entity catalog for randomized spawning.
+	//! \return The return value represents a randomly selected prefab from the entity catalog based on the applied labels and filters.
 	ResourceName GetRandomAsset(out ResourceName prefab)
 	{
 		SCR_EntityCatalog entityCatalog;
@@ -534,8 +592,8 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return
+	//! Spawns random asset, sets position, ignores terrain orientation, requests navmesh rebuild, adds to spawned entities
+	//! \return an entity spawned from the specified resource.
 	IEntity SpawnAsset()
 	{
 		//If Randomization is enabled, it will try to apply settings from Attributes.
@@ -597,12 +655,19 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	//! Draws debug shape based on m_bShowDebugShapesInWorkbench setting in Workbench after world update.
+	//! \param[in] owner The owner represents the entity (object) calling the method.
+	//! \param[in] timeSlice TimeSlice represents the time interval for which the method is called during each frame update.
 	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		DrawDebugShape(m_bShowDebugShapesInWorkbench);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets preview entity's transform or teleports it if it's a BaseGameEntity.
+	//! \param[in] owner The owner represents the entity controlling the transformation changes in the method.
+	//! \param[in,out] mat Represents transformation matrix for object's position, rotation, and scale.
+	//! \param[in] src Source entity representing the object whose transform is being set.
 	override void _WB_SetTransform(IEntity owner, inout vector mat[4], IEntitySource src)
 	{
 		if (!m_PreviewEntity)
@@ -616,9 +681,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] owner
-	//! \param[in] resource
+	//! Spawns preview entity for given resource at owner's position.
+	//! \param[in] owner The owner represents the entity that spawns the preview entity in the method.
+	//! \param[in] resource Resource represents an object or entity prefab to spawn as preview for the owner entity.
 	void SpawnEntityPreview(IEntity owner, Resource resource)
 	{
 		EntitySpawnParams spawnParams = new EntitySpawnParams();
@@ -629,18 +694,27 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes preview entity, deletes previous one, loads resource, and spawns entity preview if resource is valid.
+	//! \param[in] owner The owner represents the entity initiating the method call, typically an object in the game world.
+	//! \param[in,out] mat Mat represents the world space transformation matrix for the object owner in the method.
+	//! \param[in] src Source entity represents the object that triggers the initialization of the preview process in the method.
 	override void _WB_OnInit(IEntity owner, inout vector mat[4], IEntitySource src)
 	{
 		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
-
+		
+		InitSelectedObjectToPreview();
 		Resource resource = Resource.Load(m_sObjectToSpawn);
-		if (!resource)
+		if (!resource || !resource.IsValid())
 			return;
 
 		SpawnEntityPreview(owner, resource);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Manages key changes for debug shapes, object spawning, and entity deletion in Workbench.
+	//! \param[in] owner The owner represents the entity invoking the method.
+	//! \param[in] src represents the source container for key changes in the method.
+	//! \param[in] key represents the workbench attribute
 	override bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		if (key == "m_bShowDebugShapesInWorkbench")
@@ -657,7 +731,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			SpawnEntityPreview(owner, resource);
 			return true;
 		}
-		else if (key == "m_sObjectToSpawn")
+		else if (key == "m_sObjectToSpawn" || key == "m_sFactionKey" || key == "m_aFactionSwitchedObjects")
 		{
 			SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
 			return false;
@@ -678,7 +752,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// destructor
+	//! Deletes preview entity in workbench mode, returns if in edit mode, otherwise despawns scenario slot base.
 	void ~SCR_ScenarioFrameworkSlotBase()
 	{
 #ifdef WORKBENCH

@@ -45,6 +45,9 @@ class SCR_ImageGalleryButtonComponent : SCR_WLibComponentBase
 		
 		return m_Texture;
 	}
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Magic numbers
 	
 	//------------------------------------------------------------------------------------------------
 	void Select()
@@ -65,4 +68,6 @@ class SCR_ImageGalleryButtonComponent : SCR_WLibComponentBase
 		AnimateWidget.Padding(m_wSizeContent, padding, 10);
 		//m_wRoot.SetZOrder(1000);
 	}
+	
+//---- REFACTOR NOTE END ----
 };

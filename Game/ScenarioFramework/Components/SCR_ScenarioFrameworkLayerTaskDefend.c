@@ -63,28 +63,28 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	protected RichTextWidget m_wFlavour;
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Represents time in seconds for defending an object or position.
 	float GetDefendTime()
 	{
 		return m_fDefendTime;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] time
+	//! \param[in] time Defend time sets duration for defending.
 	void SetDefendTime(float time)
 	{
 		m_fDefendTime = time;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Character trigger entity reference for character interaction.
 	SCR_CharacterTriggerEntity GetCharacterTriggerEntity()
 	{
 		return m_CharacterTriggerEntity;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Finds character trigger entity by name.
 	void FindCharacterTriggerEntity()
 	{
 		IEntity foundEntity = GetGame().GetWorld().FindEntityByName(m_sTriggerName);
@@ -103,6 +103,8 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for this layer task.
+	//! \return true if support entity is set, false otherwise.
 	override bool SetSupportEntity()
 	{
 		if (!GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDefendSupportEntity))
@@ -125,6 +127,9 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Counts defenders and attackers inside trigger entity.
+	//! \param[out] defenderCount DefenderCount represents the total number of defenders inside the trigger area.
+	//! \param[out] attackerCount Represents the total number of attackers inside the trigger entity's area.
 	protected void CountAttackerDefenderNumbers(out int defenderCount, out int attackerCount)
 	{
 		for (int i = 0, count = m_aFactionSettings.Count(); i < count; i++)
@@ -150,7 +155,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Evaluates task status
 	void EvaluateStatus()
 	{
 		m_bTaskEvaluated = true;
@@ -211,6 +216,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets up attacker layers from given names in the world.
 	void SetupAttackerLayer()
 	{
 		SCR_ScenarioFrameworkLayerBase attackerLayer;
@@ -230,6 +236,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets up evaluation time, triggers attacker layer, and checks for character trigger entities in scenario layers.
 	void SetupEvaluation()
 	{
 		if (m_fDefendTime > 0)
@@ -264,8 +271,11 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default settings, clears attacker layer, nullifies entities, and calls superclass method.
+	//! \param[in] includeChildren Restores default settings, optionally including children entities.
+	//! \param[in] reinitAfterRestoration Resets object state after restoration, optionally reinitializing it afterwards.
+	//! \param[in] affectRandomization Affects randomization parameters during restoration process.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		m_CharacterTriggerEntity = null;
 		m_fTempCountdown = m_fDefendTime;
@@ -280,15 +290,19 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		
 		m_aAttackerLayer.Clear();
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Dynamic Despawn is disabled for Task Defend
+	//! \param[in] layer Layer represents the scenario framework layer being dynamically despawned in the method.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario, finds trigger entity, initializes HUD, sets up evaluation, and initializes post-init for owner.
+	//! \param[in] layer that is to be used for this method
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		super.AfterAllChildrenSpawned(layer);
@@ -302,6 +316,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] owner The owner represents the entity being initialized in the method.
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
@@ -312,7 +327,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes HUD layout, sets visibility of widgets, sets countdown time, and sets flavor text.
 	void InitHUD()
 	{
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
@@ -354,7 +369,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Updates HUD based on task state, displays countdown or delayed evaluation text, hides HUD if task is cancelled
 	void UpdateHUD()
 	{
 		m_fTempTimeSlice = 0;
@@ -396,10 +411,9 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		m_wRoot.SetVisible(true);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] countdown
-	//! \param[in] taskID
+	//! Updates HUD with countdown or delayed evaluation text based on task state, displays countdown or title, hides or
+	//! \param[in] countdown Countdown displays remaining time for active task in HUD.
+	//! \param[in] taskID represents the identifier for the current task in the scenario, used for updating HUD based on its state.
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RpcDo_UpdateHUD(float countdown, int taskID)
 	{
@@ -447,7 +461,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Checks if attacker layers have repeated spawns, then iterates through spawned entities, checking if any character or group is alive or not
 	void CheckAttackerLayers()
 	{
 		m_fTempTimeSlice = 0;
@@ -481,7 +495,7 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Removes periodic updates and clears debug shapes during runtime if not shown.
 	void RemovePeriodicUpdates()
 	{
 		if (!m_bShowDebugShapesDuringRuntime)
@@ -491,8 +505,14 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Updates HUD, checks attacker layers based on time slice, evaluates status if not delayed evaluation.
+	//! \param[in] owner The owner represents the entity (object) in the game world that this script is attached to, controlling its behavior.
+	//! \param[in] timeSlice represents the time interval for each frame update in the method.
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
+		if (!m_bInitiated)
+			return;
+		
 		super.EOnFrame(owner, timeSlice);
 
 		m_fTempTimeSlice += timeSlice;
@@ -530,7 +550,7 @@ class SCR_ScenarioFrameworkTaskDefendFactionSettings
 	protected bool				m_bCountOnlyPlayers;
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return the Faction object associated with the provided key, or null if not found.
 	Faction GetFaction()
 	{
 		FactionManager factionManager = GetGame().GetFactionManager();
@@ -541,14 +561,14 @@ class SCR_ScenarioFrameworkTaskDefendFactionSettings
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] factionKey
+	//! \param[in] factionKey Faction key is an identifier for a faction in the game
 	void SetFactionKey(FactionKey factionKey)
 	{
 		m_sFactionKey = factionKey;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Represents whether only players should be counted.
 	bool GetCountOnlyPlayers()
 	{
 		return m_bCountOnlyPlayers;
@@ -558,6 +578,11 @@ class SCR_ScenarioFrameworkTaskDefendFactionSettings
 //------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTaskDefendDefendingFactionTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
+	//! Defines custom title for defending faction.
+	//! \param[in] source represents the container holding data.
+	//! \param[out] title Defending faction title represents the side being defended.
+	//! \return the custom title for the defending faction.
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = "Defending faction";
@@ -568,6 +593,11 @@ class SCR_ScenarioFrameworkTaskDefendDefendingFactionTitle : BaseContainerCustom
 //------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTaskDefendAttackingFactionTitle : BaseContainerCustomTitle
 {
+	//------------------------------------------------------------------------------------------------
+	//! Sets custom title for attacking faction.
+	//! \param[in] source Source represents the attacking faction's data container.
+	//! \param[out] title Faction title for attacking side.
+	//! \return the custom title for the attacking faction.
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = "Attacking faction";

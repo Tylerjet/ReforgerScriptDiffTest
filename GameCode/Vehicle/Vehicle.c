@@ -1,4 +1,6 @@
-enum EVehicleType
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Separate file, also it should have SCR_ prefix
+enum EVehicleType // should be SCR_EVehicleType
 {
 	VEHICLE 		= 0,
 	CAR 			= 2,
@@ -11,6 +13,7 @@ enum EVehicleType
 	REPAIR			= 256,
 	ARSENAL			= 512,
 }
+//---- REFACTOR NOTE END ----
 
 class VehicleClass : BaseVehicleClass
 {
@@ -21,10 +24,16 @@ class Vehicle : BaseVehicle
 	// Can be removed when EOnPhysicsActive is on components as well
 	protected ref ScriptInvoker<IEntity, bool> m_OnPhysicsActive;
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Attributes should be protected and use proper getter
 	[Attribute("0", UIWidgets.ComboBox, "Vehicle type:", "", ParamEnumArray.FromEnum(EVehicleType) )]
 	EVehicleType m_eVehicleType;
+	//---- REFACTOR NOTE END ----
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Module variable should be protected and have getter instead, also _p is wrong prefix
 	SCR_VehicleFactionAffiliationComponent m_pFactionComponent;
+	//---- REFACTOR NOTE END ----
 	protected VehicleControllerComponent m_VehicleController;
 	protected SCR_ResourceComponent m_ResourceComponent;
 	

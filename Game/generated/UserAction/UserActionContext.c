@@ -43,6 +43,10 @@ class UserActionContext: ScriptAndConfig
 	proto external vector GetOrigin();
 	//! Returns true if visibility depends on line-of-sight, false otherwise.
 	proto external bool ShouldCheckLineOfSight();
+	//! Returns true if the actions ui display will be placed at the interaction reference point.
+	proto external bool ShouldDisplayAtReferencePoint();
+	//! Returns the highest visibility range from registered actions, if its higher than the 'globalRange' parameter, else return 'globalRange'.
+	proto external float GetVisibilityRange(float globalRange);
 	/*!
 	Returns true if this context is in visibility angle for the provided position.
 	Does not perform any distance checks!

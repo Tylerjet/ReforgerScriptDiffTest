@@ -18,9 +18,8 @@ class SCR_FindResourcesPlugin : ResourceManagerPlugin
 		m_sExtension.Split(",", extensions, true);
 
 		array<ResourceName> selection = {};
-		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		resourceManager.GetResourceBrowserSelection(context.Insert, true);
+		resourceManager.GetResourceBrowserSelection(selection.Insert, true);
 		WBProgressDialog progress = new WBProgressDialog("Processing...", resourceManager);
 
 		array<ref Resource> resourceObjects = {}; // reference MUST be kept

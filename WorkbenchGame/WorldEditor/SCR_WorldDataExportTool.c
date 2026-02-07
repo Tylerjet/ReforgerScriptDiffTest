@@ -339,22 +339,22 @@ class WorldDataExport : WorkbenchPlugin // TODO: SCR_WorldDataExportPlugin
 		{
 			Print("Exporting map rasterization...", LogLevel.NORMAL);
 			//TODO: change to user defined values (along with WorldMapExportTool)
-			Color landColorBright = new Color(1.0, 1.0, 1.0, 1.0);
-			Color landColorDark = new Color(0.5, 0.5, 0.5, 1.0);
-			Color oceanColorBright = new Color(0.863, 0.980, 1.0, 1.0);
-			Color oceanColorDark = new Color(0.757, 0.91, 0.929, 1.0);
-			float landScale = 2.5;
-			float oceanScale = 1.2;
-			float heightScale = 500.0;
-			float depthScale = 60.0;
-			float depthLerpMeters = -50.0;
-			float shadeIntensity = 0.5;
-			float heightIntensity = 1.8;
-			bool includeGeneratorAreas = true;
-			Color forestAreaColor = new Color(0.608, 0.784, 0.529, 1.0);
-			float forestAreaIntensity = 1.25;
-			Color otherAreaColor = new Color(0.745, 0.745, 0.745, 1.0);
-			float otherAreaIntensity = 1.0;
+			const Color landColorBright = new Color(1.0, 1.0, 1.0, 1.0);
+			const Color landColorDark = new Color(0.5, 0.5, 0.5, 1.0);
+			const Color oceanColorBright = new Color(0.863, 0.980, 1.0, 1.0);
+			const Color oceanColorDark = new Color(0.757, 0.91, 0.929, 1.0);
+			const float landScale = 2.5;
+			const float oceanScale = 1.2;
+			const float heightScale = 500.0;
+			const float depthScale = 60.0;
+			const float depthLerpMeters = -50.0;
+			const float shadeIntensity = 0.5;
+			const float heightIntensity = 1.8;
+			const bool includeGeneratorAreas = true;
+			const Color forestAreaColor = new Color(0.608, 0.784, 0.529, 1.0);
+			const float forestAreaIntensity = 1.25;
+			const Color otherAreaColor = new Color(0.745, 0.745, 0.745, 1.0);
+			const float otherAreaIntensity = 1.0;
 
 			DataExportErrorType result = mapDataExporter.SetupColors(landColorBright, landColorDark, oceanColorBright, oceanColorDark, forestAreaColor, otherAreaColor);
 			if (result == DataExportErrorType.DataExportErrorNone)

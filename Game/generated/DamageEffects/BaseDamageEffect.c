@@ -9,13 +9,13 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class BaseDamageEffect: ScriptAndConfig
+class BaseDamageEffect: ScriptAndConfig
 {
 	/*!
-	Called when this DamageEffect gets applied on a DamageManager.
+	Called to apply a DamageEffect.
 	InstantDamageEffects get applied whenever they are added.
 	PersistentDamageEffects only get applied when ApplyEffect() gets called.
-	This call gets automatically replicated to clients, which means that  BaseDamageEffect.Save will be getting called.
+	This call gets automatically replicated to clients, which means that BaseDamageEffect.Save will be getting called.
 	\param SCR_ExtendedDamageManagerComponent dmgManager: Manager containing this DamageEffect
 	*/
 	proto external void ApplyEffect(SCR_ExtendedDamageManagerComponent dmgManager);
@@ -56,10 +56,9 @@ sealed class BaseDamageEffect: ScriptAndConfig
 	proto external void SetAffectedHitZone(HitZone hitZone);
 	/*!
 	Used to check if you are a proxy or not
-	\param SCR_ExtendedDamageManagerComponent dmgManager: manager containing this DamageEffect
 	\return true if this DamageEffect is a proxy
 	*/
-	proto external bool IsProxy(SCR_ExtendedDamageManagerComponent dmgManager);
+	proto external bool IsProxy();
 
 	// callbacks
 

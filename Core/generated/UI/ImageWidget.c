@@ -103,6 +103,19 @@ sealed class ImageWidget: Widget
 	\return True when image is loaded, false otherwise
 	*/
 	proto bool LoadImageTexture(int num, ResourceName resource, bool noCache = false, bool fromLocalStorage = false);
+	/*!
+	Copy image from screenshot texture data into widget texture. When image of this 'num' is already loaded,
+	then is replaced by new one.
+	\param num Number of image (0...7)
+	\return True when image is copyied, false otherwise
+	*/
+	proto bool CopyImageTexture(int num, ScreenshotTextureData texData);
+	/*!
+	get texture data from image
+	\param num						Number of image (0...7)
+	\param scriptCallback
+	*/
+	proto bool GetTextureRawData(int num, GetTextureRawDataCallback scriptCallback);
 	//! Returns offset of the image shadow. Z coordinate is not used (always 0)
 	proto external vector GetShadowOffset();
 	proto external void SetShadowOffset(float x, float y);

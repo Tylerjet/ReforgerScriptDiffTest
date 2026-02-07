@@ -40,8 +40,12 @@ class SCR_AIFollowInFormationBehavior : SCR_AIMoveBehaviorBase
 	void SCR_AIFollowInFormationBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_PLAYER)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/KeepInFormation.bt";
-		m_bAllowLook = true;
-		m_bResetLook = true;
+		if (priorityLevel > 0)
+		{
+			m_bAllowLook = false;
+			m_bResetLook = true;
+		}
+
 		float m_fTimestamp = GetGame().GetWorld().GetWorldTime(); // world time when constructor of behavior is called
 		m_fTimestampEnd = m_fTimestamp + DURATION_MS;
 	}
@@ -76,7 +80,7 @@ class SCR_AIMoveIndividuallyBehavior : SCR_AIMoveBehaviorBase
 	//-----------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " moving to " + m_vPosition.ValueToString();
+		return this.ToString() + " moving to " + m_vPosition.m_Value.ToString();
 	}
 };
 
@@ -88,6 +92,7 @@ class SCR_AIMoveAndInvestigateBehavior : SCR_AIMoveBehaviorBase
 	ref SCR_BTParam<bool> m_bResetTimer = new SCR_BTParam<bool>(SCR_AIActionTask.RESET_TIMER_PORT);
 	ref SCR_BTParam<float> m_fTimeOut = new SCR_BTParam<float>(SCR_AIActionTask.TIMEOUT_PORT);
 	ref SCR_BTParam<float> m_fDuration = new SCR_BTParam<float>("Duration"); // How much to investigate once we have arrived
+	ref SCR_BTParam<vector> m_vStartPos = new SCR_BTParam<vector>("StartPos"); // Our position when the behavior was created
 	
 	EAIUnitType m_eTargetUnitType;
 	float m_fTimeStamp;													// world time when constructor of behavior is called
@@ -104,6 +109,7 @@ class SCR_AIMoveAndInvestigateBehavior : SCR_AIMoveBehaviorBase
 		m_fTimeOut.Init(this, 5.0 * 60.0); // For now it's a reasonable long enough time
 		m_fDuration.Init(this, Math.RandomFloat(0.8*duration, 1.2*duration));
 		m_eTargetUnitType = targetUnitType;
+		m_vStartPos.Init(this, vector.Zero);
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/MoveAndInvestigate.bt";
 		if (m_Utility)
@@ -125,6 +131,10 @@ class SCR_AIMoveAndInvestigateBehavior : SCR_AIMoveBehaviorBase
 		super.OnActionSelected();
 		m_bCanTimeout = false;
 		m_Utility.m_CombatComponent.SetExpectedEnemyType(m_eTargetUnitType);
+		
+		// Initialize m_vStartPos value
+		if (m_vStartPos.m_Value == vector.Zero)
+			m_vStartPos.m_Value = m_Utility.m_OwnerEntity.GetOrigin();
 	}
 };
 

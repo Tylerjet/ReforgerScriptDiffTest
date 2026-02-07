@@ -97,7 +97,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 	
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " healing unit " + m_EntityToHeal.ValueToString();
+		return this.ToString() + " healing unit " + m_EntityToHeal.m_Value.ToString();
 	}
 	
 	override bool OnMessage(AIMessage msg)

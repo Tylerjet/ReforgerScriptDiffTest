@@ -87,8 +87,20 @@ class SCR_AudioSource
 		// Play event
 		m_AudioHandle = AudioSystem.PlayEvent(m_AudioSourceConfiguration.m_sSoundProject, m_AudioSourceConfiguration.m_sSoundEventName, m_aMat, m_aSignalName, m_aSignalValue);
 
-		// Check if AudioHandle is valid		
-		return m_AudioHandle != AudioHandle.Invalid;
+		// Check if AudioHandle is valid
+		if (m_AudioHandle == AudioHandle.Invalid)
+			return false;
+		
+		// Set bounding volume size
+		if (m_Owner && SCR_Enum.HasFlag(m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.BoundingVolume))
+		{
+			// Get world bounding box
+			vector mins, maxs;			
+			m_Owner.GetWorldBounds(mins, maxs);													
+			AudioSystem.SetBoundingVolumeParams(m_AudioHandle, AudioSystem.BV_Box, maxs[0] - mins[0], maxs[1] - mins[1], maxs[2] - mins[2]);
+		}	
+						
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -105,7 +117,7 @@ class SCR_AudioSource
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Ternimate()
+	void Terminate()
 	{
 		AudioSystem.TerminateSound(m_AudioHandle);
 		m_bTerminated = true;

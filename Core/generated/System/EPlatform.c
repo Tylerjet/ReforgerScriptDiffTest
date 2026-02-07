@@ -20,6 +20,7 @@ enum EPlatform
 	XBOX_SERIES_X,
 	PS4,
 	PS5,
+	PS5_PRO,
 	UNKNOWN,
 }
 

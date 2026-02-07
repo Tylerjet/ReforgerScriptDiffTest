@@ -18,7 +18,7 @@ class SCR_DamageEffect : BaseDamageEffect
 	{
 		string text = this.Type().ToString() + "\n";
 
-		if (!IsProxy(dmgManager))
+		if (!IsProxy())
 		{
 			if (!GetInstigator().GetInstigatorEntity())
 				text += text.Format("  Instigator entity: %1 \n", "None");

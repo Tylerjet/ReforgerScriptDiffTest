@@ -63,6 +63,14 @@ class TurretControllerComponent: CompartmentControllerComponent
 	*IMPORTANT* Only works locally. Used mainly for cinematic
 	*/
 	proto external void SetAimingAngles(float yaw, float pitch);
+	proto external bool GetIsOverridden();
+	proto external void SetOverride(IEntity pUser, bool bOverride);
+	proto external string GetUniqueName();
+	/*!
+	Used to remotely trigger weapon actions on the turret. Note that the
+	turret must be overridden for this to have any effect
+	*/
+	proto external void SetWeaponInputState(ETurretWeaponInputState state);
 }
 
 /*!

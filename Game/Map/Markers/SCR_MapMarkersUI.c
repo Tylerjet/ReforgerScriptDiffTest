@@ -167,10 +167,14 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		m_EditBoxComp.SetValue(string.Empty);
 				
 		SCR_InputButtonComponent confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonPublic").FindHandler(SCR_InputButtonComponent));
-		confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
 		
 		if (isEditing)
 		{
+			if (m_EditedMarker.GetMarkerID() >= 0)
+				confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
+			else
+				confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmedPrivate);
+			
 			confirmComp.SetLabel("#AR-ServerHosting_Edit");
 			
 			m_MarkerEditRoot.FindAnyWidget("ButtonPrivate").SetVisible(false);
@@ -178,7 +182,14 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		}
 		else 
 		{
+			confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmed);
 			confirmComp.SetLabel("#AR-MapMarker_PlacePublic");
+			
+			SocialComponent sc = GetSocialComponent();
+			if (sc && !sc.IsPrivilegedTo(EUserInteraction.UserGeneratedContent))
+				confirmComp.SetEnabled(false);
+			else
+				confirmComp.SetEnabled(true);
 		
 			confirmComp = SCR_InputButtonComponent.Cast(m_MarkerEditRoot.FindAnyWidget("ButtonPrivate").FindHandler(SCR_InputButtonComponent));
 			confirmComp.m_OnClicked.Insert(OnPlaceMarkerConfirmedPrivate);
@@ -484,6 +495,11 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	protected void CreateStaticMarkers()
 	{
 		array<ref SCR_MapMarkerBase> markersSimple = m_MarkerMgr.GetStaticMarkers();
+		foreach(SCR_MapMarkerBase markerDis: m_MarkerMgr.GetDisabledMarkers())
+		{
+			markersSimple.Insert(markerDis);
+		}
+		
 		FactionManager factionManager = GetGame().GetFactionManager();
 		
 		int count = markersSimple.Count();
@@ -558,6 +574,16 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected SocialComponent GetSocialComponent()
+	{
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return null;
+		
+		return SocialComponent.Cast(pc.FindComponent(SocialComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// EVENTS
 	//------------------------------------------------------------------------------------------------
 	//! SCR_TabViewComponent event
@@ -575,12 +601,10 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	{
 		if (m_SelectedFactionButton)
 		{
-			m_SelectedFactionButton.SetBackgroundColors(BACKGROUND_DEFAULT);
-			m_SelectedFactionButton.ColorizeBackground(false);
+			m_SelectedFactionButton.ColorizeBackground();
 		}
 		
-		component.SetBackgroundColors(BACKGROUND_SELECTED);
-		component.ColorizeBackground(false);	// this will color the button to hover color for KBM
+		component.ColorizeBackground();	// this will color the button to hover color for KBM
 		m_SelectedFactionButton = component;
 		m_iSelectedFactionID = m_mFactionIDs.Get(component);
 		
@@ -611,12 +635,10 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	{
 		if (m_SelectedDimensionButton)
 		{
-			m_SelectedDimensionButton.SetBackgroundColors(BACKGROUND_DEFAULT);
-			m_SelectedDimensionButton.ColorizeBackground(false);
+			m_SelectedDimensionButton.ColorizeBackground();
 		}
 		
-		component.SetBackgroundColors(BACKGROUND_SELECTED);
-		component.ColorizeBackground(false);	// this will color the button to hover color for KBM
+		component.ColorizeBackground();	// this will color the button to hover color for KBM
 		m_SelectedDimensionButton = component;
 		m_iSelectedDimensionID = m_mDimensionIDs.Get(component);
 		m_iWantedDimensionEntry = m_iSelectedDimensionID;
@@ -645,12 +667,10 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	{		
 		if (m_SelectedColorButton)
 		{
-			m_SelectedColorButton.SetBackgroundColors(BACKGROUND_DEFAULT);
-			m_SelectedColorButton.ColorizeBackground(false);
+			m_SelectedColorButton.ColorizeBackground();
 		}
 		
-		component.SetBackgroundColors(BACKGROUND_SELECTED);
-		component.ColorizeBackground(false);	// this will color the button to hover color for KBM
+		component.ColorizeBackground();	// this will color the button to hover color for KBM
 		m_SelectedColorButton = component;
 		m_iSelectedColorID = m_mColorIDs.Get(component);
 		
@@ -675,12 +695,10 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 	{		
 		if (m_SelectedIconButton)
 		{
-			m_SelectedIconButton.SetBackgroundColors(BACKGROUND_DEFAULT);
-			m_SelectedIconButton.ColorizeBackground(false);
+			m_SelectedIconButton.ColorizeBackground();
 		}
 		
-		component.SetBackgroundColors(BACKGROUND_SELECTED);
-		component.ColorizeBackground(false);	// this will color the button to hover color for KBM
+		component.ColorizeBackground();	// this will color the button to hover color for KBM
 		m_SelectedIconButton = component;
 		m_iSelectedIconID = m_mIconIDs.Get(component);
 		
@@ -973,6 +991,9 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			if (marker)
 			{
 				if (marker.GetType() != SCR_EMapMarkerType.PLACED_CUSTOM && marker.GetType() != SCR_EMapMarkerType.PLACED_MILITARY)
+					continue;
+				
+				if (!marker.CanBeRemovedByOwner())
 					continue;
 				
 				RemoveOwnedMarker(marker);

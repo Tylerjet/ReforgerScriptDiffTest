@@ -1,7 +1,7 @@
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 {
-	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "1.0 1000.0 0.5", desc: "Radius of the trigger if selected", category: "Trigger")]
+	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "0 inf", desc: "Radius of the trigger if selected", category: "Trigger")]
 	float m_fAreaRadius;
 
 	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation), category: "Trigger Activation")]
@@ -18,7 +18,7 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 
 	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
 	ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
-
+	
 	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "If you set some vehicle to be detected by the trigger, it will also search the inventory for vehicle prefabs/classes that are set", category: "Trigger")]
 	bool m_bSearchVehicleInventory;
 
@@ -45,8 +45,19 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 
 	[Attribute(desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
 	string m_sCountdownAudio;
+	
+	[Attribute(desc: "Actions that will be activated when entity that went through the filter entered the trigger and is inside (Be carefull as Framework Triggers activate this periodically if you don't disable the Once attribute)", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aEntityEnteredActions;
+	
+	[Attribute(desc: "Actions that will be activated when entity that went through the filter left the trigger", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aEntityLeftActions;
+	
+	[Attribute(desc: "Actions that will be activated when all conditions are met and Trigger finishes", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkActionBase> m_aFinishedActions;
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario framework trigger entity with provided parameters.
+	//! \param[in] object of layer base from which entity is further retrieved
 	override void Init(SCR_ScenarioFrameworkLayerBase object)
 	{
 		if (!object)
@@ -88,6 +99,9 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 			trigger.SetPlayerActivationNotificationTitle(m_sPlayerActivationNotificationTitle);
 			trigger.SetActivationCountdownTimer(m_fActivationCountdownTimer);
 			trigger.SetCountdownAudio(m_sCountdownAudio);
+			trigger.SetEntityEnteredActions(m_aEntityEnteredActions);
+			trigger.SetEntityLefActions(m_aEntityLeftActions);
+			trigger.SetFinishedActions(m_aFinishedActions);
 
 			return;
 		}
@@ -103,6 +117,7 @@ class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] object of layer base from which entity is further retrieved
 	override void OnWBKeyChanged(SCR_ScenarioFrameworkLayerBase object)
 	{
 		super.OnWBKeyChanged(object);

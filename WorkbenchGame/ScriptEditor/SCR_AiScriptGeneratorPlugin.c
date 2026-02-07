@@ -649,11 +649,11 @@ class SCR_AiScriptGenerator_ClassGeneratorBase
 			if (v.m_sBindPropertyName.IsEmpty())
 				continue;
 
-			string _quote = "\"";
 			if (!v.m_bBindPropertyIsEnum)
-				ctx.AddLine(string.Format("[Attribute(%1%2, UIWidgets.Auto)]", _quote, _quote));
+				ctx.AddLine("[Attribute(\"" + "\")]");
 			else
-				ctx.AddLine(string.Format("[Attribute(%1%2, UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(%3))]", _quote, _quote, v.m_sType));
+				ctx.AddLine(string.Format("[Attribute(\"" + "\", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(%1))]", v.m_sType));
+
 			ctx.AddLine(string.Format("%1 %2;", v.m_sType, v.m_sBindPropertyName));
 			ctx.AddLine("");
 		}

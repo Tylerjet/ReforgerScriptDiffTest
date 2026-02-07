@@ -36,7 +36,7 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ChargeStart()
 	{
-		if (m_MenuManager.IsAnyDialogOpen())
+		if (m_MenuManager.IsAnyDialogOpen() || m_EditorManager.GetCurrentModeEntity().GetPreventClose())
 			return;
 		
 		m_bCharging = true;
@@ -116,7 +116,9 @@ class SCR_EditorToggleUIComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorToggleValue(float value, EActionTrigger reason)
 	{
-		if (m_MenuManager.IsAnyDialogOpen())
+		SCR_EditorModeEntity mode = m_EditorManager.GetCurrentModeEntity();
+		
+		if (m_MenuManager.IsAnyDialogOpen() || mode && mode.GetPreventClose())
 			ChargeFail();
 		
 		if (value == 0)

@@ -32,8 +32,10 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	//! \param[in] playerEntity
 	//! \param[in] killerEntity
 	//! \param[in] killer
-	void OnKill(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	void OnKill(notnull SCR_InstigatorContextData instigatorContextData)
 	{
+		int playerId = instigatorContextData.GetVictimPlayerID();
+		
 		// Remove player from assigned firing line
 		s_Manager.RemoveAssignedPlayerFromFireline(playerId);	
 		

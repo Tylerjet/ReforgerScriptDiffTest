@@ -2,6 +2,7 @@
 // *************************************************************************************
 // ! CharacterCamera1stPersonVehicle - 1st person camera when character is in vehicle
 // *************************************************************************************
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 class CharacterCamera1stPersonVehicle extends CharacterCamera1stPerson
 {
 	protected IEntity m_OwnerVehicle;
@@ -189,4 +190,5 @@ class CharacterCamera1stPersonVehicleTransition extends CharacterCamera1stPerson
 			}
 		}
 	}
-};
+}
+//---- REFACTOR NOTE END ----

@@ -6,14 +6,10 @@ class SCR_ScenarioFrameworkSlotDeliveryClass : SCR_ScenarioFrameworkSlotTaskClas
 class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 {
 	[Attribute(desc: "Name of the task layer associated with this deliver point, Doesn't need to be set if nested under task layer Deliver.", category: "Task")];
-	protected ref array<string>						m_aAssociatedTaskLayers;
-	
-	/*
-	[Attribute(defvalue: "", desc: "Name of the entity to be delivered")];
-	protected string					m_sIDToDeliver;
-	*/	
-		
+	protected ref array<string>	m_aAssociatedTaskLayers;
+
 	//------------------------------------------------------------------------------------------------
+	//! Sets delivery point entity for nested tasks within associated layers or parent layer if no associated layers exist.
 	override void StoreTaskSubjectToParentTaskLayer()
 	{
 		if (m_aAssociatedTaskLayers.IsEmpty())
@@ -50,6 +46,7 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets up delivery point for tasks in scenario framework.
 	override void FinishInitChildrenInsert()
 	{
 		super.FinishInitChildrenInsert();

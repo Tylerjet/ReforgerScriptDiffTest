@@ -13,13 +13,13 @@ class SCR_ScenarioFrameworkActionEndMission : SCR_ScenarioFrameworkActionBase
 		if (!CanActivate())
 			return;
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
 		if (m_bOverrideGameOverType)
-			manager.SetMissionEndScreen(m_eOverriddenGameOverType);
+			scenarioFrameworkSystem.SetMissionEndScreen(m_eOverriddenGameOverType);
 
-		manager.Finish();
+		scenarioFrameworkSystem.Finish();
 	}
 }

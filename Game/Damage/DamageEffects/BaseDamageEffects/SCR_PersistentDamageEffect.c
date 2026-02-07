@@ -19,7 +19,7 @@ class SCR_PersistentDamageEffect : PersistentDamageEffect
 	{
 		super.OnDiag(dmgManager);
 
-		if (IsProxy(dmgManager))
+		if (IsProxy())
 			return;
 		
 		if(!IsActive())

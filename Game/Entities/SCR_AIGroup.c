@@ -162,6 +162,9 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected static ref ScriptInvoker s_OnJoinPrivateGroupConfirm = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnJoinPrivateGroupCancel = new ScriptInvoker();
 	
+	protected ref SCR_ScriptProfanityFilterRequestCallback m_ProfanityCallbackName;
+	protected ref SCR_ScriptProfanityFilterRequestCallback m_ProfanityCallbackDesc;
+	
 	protected ref array<int> m_aRequesterIDs = {};
 	protected ref array<int> m_aDeniedRequesters = {};
 	
@@ -585,8 +588,30 @@ class SCR_AIGroup : ChimeraAIGroup
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoSetCustomName(string name, int authorID)
 	{
-		m_sCustomName = name;
+		if (name.IsEmpty())
+		{
+			m_sCustomName = name;
+			m_iNameAuthorID = authorID;
+			s_OnCustomNameChanged.Invoke(this);
+			return;
+		}
+		
+		array<string> textToFilter = {};
+		
+		m_ProfanityCallbackName = new SCR_ScriptProfanityFilterRequestCallback();
+		textToFilter.Insert(name);
+		m_ProfanityCallbackName.m_OnResult.Insert(OnNameFilteredCallback);
+
+		if (!GetGame().GetPlatformService().FilterProfanityAsync(textToFilter, m_ProfanityCallbackName))
+			OnNameFilteredCallback(textToFilter);
+		
 		m_iNameAuthorID = authorID;
+		
+	}
+	
+	void OnNameFilteredCallback(array<string> resultText)
+	{
+		m_sCustomName = resultText.Get(0);
 		s_OnCustomNameChanged.Invoke(this);
 	}
 	
@@ -616,20 +641,46 @@ class SCR_AIGroup : ChimeraAIGroup
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	void RPC_DoSetCustomDescription(string desc, int authorID)
 	{
-		m_sCustomDescription = desc;
+		if (desc.IsEmpty())
+		{
+			m_sCustomDescription = desc;
+			m_iDescriptionAuthorID = authorID;
+			s_OnCustomDescChanged.Invoke(this);
+			return;
+		}
+		
+		array<string> textToFilter = {};
+		
+		m_ProfanityCallbackDesc = new SCR_ScriptProfanityFilterRequestCallback();
+		textToFilter.Insert(desc);
+		m_ProfanityCallbackDesc.m_OnResult.Insert(OnDescFilteredCallback);
+		
+		if (!GetGame().GetPlatformService().FilterProfanityAsync(textToFilter, m_ProfanityCallbackDesc))
+			OnDescFilteredCallback(textToFilter);
+		
 		m_iDescriptionAuthorID = authorID;
+	}
+	
+	void OnDescFilteredCallback(array<string> resultText)
+	{
+		
+		m_sCustomDescription = resultText.Get(0);
 		s_OnCustomDescChanged.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetCustomDescription()
 	{	
-		bool canViewContentBy = true;
+		bool isRestricted;
+		
+		SocialComponent  socialComp = SocialComponent.Cast(GetGame().GetPlayerController().FindComponent(SocialComponent));
+		if (!socialComp)
+			return string.Empty;
 		
 		if (m_iDescriptionAuthorID > 0)
-			canViewContentBy = GetGame().GetPlayerController().CanViewContentCreatedBy(m_iDescriptionAuthorID);
+			isRestricted = socialComp.IsRestricted(m_iDescriptionAuthorID, EUserInteraction.UserGeneratedContent);
 		
-		if (m_sCustomDescription.IsEmpty() || !canViewContentBy)
+		if (m_sCustomDescription.IsEmpty() || isRestricted)
 			return string.Empty;
 		
 		return m_sCustomDescription;
@@ -638,12 +689,16 @@ class SCR_AIGroup : ChimeraAIGroup
 	//------------------------------------------------------------------------------------------------
 	string GetCustomName()
 	{	
-		bool canViewContentBy = true;
+		bool isRestricted;
+		
+		SocialComponent  socialComp = SocialComponent.Cast(GetGame().GetPlayerController().FindComponent(SocialComponent));
+		if (!socialComp)
+			return string.Empty;
 		
 		if (m_iNameAuthorID > 0)
-			canViewContentBy = GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID);
+			isRestricted = socialComp.IsRestricted(m_iNameAuthorID, EUserInteraction.UserGeneratedContent);
 		
-		if (m_sCustomName.IsEmpty() || !canViewContentBy)
+		if (isRestricted || m_sCustomName.IsEmpty())
 			return string.Empty;
 		
 		return m_sCustomName;
@@ -668,7 +723,11 @@ class SCR_AIGroup : ChimeraAIGroup
 		GetCallsigns(company, platoon, squad, character, format);
 		string originalName = string.Format(format, company, platoon, squad, character);
 		
-		if (m_iDescriptionAuthorID < 1 || m_sCustomName.IsEmpty() || !GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
+		SocialComponent  socialComp = SocialComponent.Cast(GetGame().GetPlayerController().FindComponent(SocialComponent));
+		if (!socialComp)
+			return originalName;
+		
+		if (m_iDescriptionAuthorID < 1 || m_sCustomName.IsEmpty() || socialComp.IsRestricted(m_iNameAuthorID, EUserInteraction.UserGeneratedContent))
 			return originalName;
 				
 		return m_sCustomName + " ( " + originalName + " )";
@@ -1149,6 +1208,13 @@ class SCR_AIGroup : ChimeraAIGroup
 		if (!m_aPlayerIDs.Contains(playerID))
 			return;
 		
+		//if player is last in group it doesnt matter as the group will get deleted
+		if (playerID == m_iLeaderID  &&  GetPlayerCount() > 1)
+		{
+			SetCustomName("", 0);
+			SetCustomDescription("", 0);
+		}
+		
 		RPC_DoRemovePlayer(playerID);
 		Rpc(RPC_DoRemovePlayer, playerID);
 		CheckForLeader(-1, false);
@@ -1338,7 +1404,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		spawnParams.Transform[3] = pos;
 		
-		IEntity member = GetGame().SpawnEntityPrefab(res, true, world, spawnParams);
+		IEntity member = GetGame().SpawnEntityPrefabEx(res, true, world, spawnParams);
 		if (!member)
 			return true;
 		
@@ -2257,6 +2323,9 @@ class SCR_AIGroup : ChimeraAIGroup
 		writer.WriteInt(m_iLeaderID);
 		writer.WriteBool(m_bPrivate);
 		
+		writer.WriteInt(m_iDescriptionAuthorID);
+		writer.WriteInt(m_iNameAuthorID);
+		
 		writer.WriteString(m_sCustomDescription);
 		writer.WriteString(m_sCustomName);
 		
@@ -2269,8 +2338,6 @@ class SCR_AIGroup : ChimeraAIGroup
 		groupID = Replication.FindId(m_SlaveGroup);
 		writer.WriteRplId(groupID);
 		
-		writer.WriteInt(m_iDescriptionAuthorID);
-		writer.WriteInt(m_iNameAuthorID);
 		writer.WriteInt(m_iMaxMembers);
 		
 		//do rpcs for players join/leave
@@ -2315,8 +2382,15 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		reader.ReadBool(m_bPrivate);
 		
-		reader.ReadString(m_sCustomDescription);
-		reader.ReadString(m_sCustomName);
+		reader.ReadInt(m_iDescriptionAuthorID);
+		reader.ReadInt(m_iNameAuthorID);
+		
+		string customDesc, customName;
+		reader.ReadString(customDesc);
+		reader.ReadString(customName);
+		
+		RPC_DoSetCustomDescription(customDesc, m_iDescriptionAuthorID);
+		RPC_DoSetCustomName(customName, m_iNameAuthorID);
 		
 		if (!m_UiInfo)
 		 m_UiInfo = new SCR_AIGroupUIInfo();
@@ -2335,8 +2409,6 @@ class SCR_AIGroup : ChimeraAIGroup
 		reader.ReadRplId(groupID);
 		m_SlaveGroup = SCR_AIGroup.Cast(Replication.FindItem(groupID));
 		
-		reader.ReadInt(m_iDescriptionAuthorID);
-		reader.ReadInt(m_iNameAuthorID);
 		reader.ReadInt(m_iMaxMembers);
 		
 		return true;

@@ -17,10 +17,10 @@ class SCR_ScenarioFrameworkActionPlaySoundOnEntity : SCR_ScenarioFrameworkAction
 		if (!ValidateInputEntity(object, m_Getter, entity))
 			return;
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
-		GetGame().GetCallqueue().CallLater(manager.PlaySoundOnEntity, 2000, false, entity, m_sSound);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(scenarioFrameworkSystem.PlaySoundOnEntity, 2000, false, entity, m_sSound);
 	}
 }

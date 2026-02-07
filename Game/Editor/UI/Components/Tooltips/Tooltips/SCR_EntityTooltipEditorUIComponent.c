@@ -86,7 +86,17 @@ class SCR_EntityTooltipEditorUIComponent : SCR_BaseTooltipEditorUIComponent
 			{
 				if (playerID > 0)
 				{
-					nameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerID));
+					//string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID);
+					string playerName = GetGame().GetPlayerManager().GetPlayerName(playerID);
+					
+					if(GetGame().GetPlayerManager().GetPlatformKind(SCR_PlayerController.GetLocalPlayerId()) == PlatformKind.PSN || true){
+						if (GetGame().GetPlayerManager().GetPlatformKind(playerID) == PlatformKind.PSN)
+							playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, 1.75) + playerName;
+						else
+							playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, 1.75) + playerName;
+					}
+									
+					nameWidget.SetText(playerName);
 					
 					Widget colorBar = widget.FindAnyWidget(m_sColorBarName);
 					if (colorBar)

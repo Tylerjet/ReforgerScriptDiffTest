@@ -479,8 +479,8 @@ class CharacterCameraADS extends CharacterCameraBase
 			resultPosition = vector.Lerp(resultPosition, goal, m_fFreelookBlendAlpha);
 		}
 
-		// If the result position is behind the camera bone, the camera might collide with the chest, so we move it forward.
-		float resultNegativeZ = resultPosition[2] - cameraBoneMS[3][2];
+		// If the result position is behind the camera bone, the camera might collide with the chest, so we move it forward. (NO LONGER USED)
+		/*float resultNegativeZ = resultPosition[2] - cameraBoneMS[3][2];
 		if (resultNegativeZ < 0)
 		{
 			sightsMS[3] = resultPosition + (-resultNegativeZ * pureSightsFwd[2] * pureSightsFwd);
@@ -488,7 +488,9 @@ class CharacterCameraADS extends CharacterCameraBase
 		else
 		{
 			sightsMS[3] = resultPosition;
-		}
+		}*/
+		
+		sightsMS[3] = resultPosition;
 
 		// Get transformation to parent
 		if (!shouldStabilize)
@@ -722,13 +724,12 @@ class CharacterCameraADS extends CharacterCameraBase
 		}
 
 		//! update angles
-		auto sights = m_WeaponManager.GetCurrentSights();
+		SightsComponent sights = m_WeaponManager.GetCurrentSights();
 		bool canFreelook = sights && sights.CanFreelook();
 		//! update fov
 		m_fFreelookFOV = GetBaseFOV();
 
 		pOutResult.m_vBaseAngles = GetBaseAngles();
-
 
 		//! yaw pitch roll vector
 		vector lookAngles = m_CharacterHeadAimingComponent.GetLookAngles();
@@ -777,10 +778,10 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		//special handling for FOV blending for 2d sights
 		//special handling for eye snapping too
-		auto sights2d = SCR_2DOpticsComponent.Cast(sights);
+		SCR_2DPIPSightsComponent pip = SCR_2DPIPSightsComponent.Cast(sights);
+		SCR_2DOpticsComponent sights2d = SCR_2DOpticsComponent.Cast(sights);
 		if (sights2d)
 		{
-			auto pip = SCR_2DPIPSightsComponent.Cast(sights2d);
 			// 2D sights
 			if (!pip || SCR_Global.IsScope2DEnabled())
 			{
@@ -840,6 +841,12 @@ class CharacterCameraADS extends CharacterCameraBase
 		// Apply shake
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
+
+		if (!pip)
+			return;
+
+		float offset = pip.GetMainCameraOffset();
+		pOutResult.m_CameraTM[3] = pOutResult.m_CameraTM[3] - Vector(0, 0, offset);
 	}
 	
 	bool IsProneStance()

@@ -201,18 +201,19 @@ class SCR_AIThreatSystem
 			AIDangerEvent dangerEvent;
 			for (int max = m_Agent.GetDangerEventsCount(); i < max; i++)
 			{
-				dangerEvent = m_Agent.GetDangerEvent(i);
+				int dangerEventCount;
+				dangerEvent = m_Agent.GetDangerEvent(i, dangerEventCount);
 				
 				if (dangerEvent)
 				{
 					#ifdef AI_DEBUG
-					AddDebugMessage(string.Format("PerformDangerReaction: %1, %2", dangerEvent, typename.EnumToString(EAIDangerEventType, dangerEvent.GetDangerType())));
+					AddDebugMessage(string.Format("PerformDangerReaction: %1x %2, %3", dangerEventCount, dangerEvent, typename.EnumToString(SCR_EAIDangerEventType, dangerEvent.GetDangerType())));
 					#endif
 					
-					if (m_Config.PerformDangerReaction(m_Utility, dangerEvent))
+					if (m_Config.PerformDangerReaction(m_Utility, dangerEvent, dangerEventCount))
 					{
 #ifdef WORKBENCH	
-						string message = typename.EnumToString(EAIDangerEventType, dangerEvent.GetDangerType());
+						string message = typename.EnumToString(SCR_EAIDangerEventType, dangerEvent.GetDangerType());
 						SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, message, EAIDebugCategory.DANGER, 2);	// Show message above AI's head
 #endif
 						break;

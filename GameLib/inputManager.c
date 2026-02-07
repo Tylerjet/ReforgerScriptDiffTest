@@ -17,5 +17,5 @@ enum EInputDeviceType
 }
 
 typedef func ActionListenerCallback;
-void ActionListenerCallback(float value = 0.0, EActionTrigger reason = 0); 
+void ActionListenerCallback(float value = 0.0, EActionTrigger reason = 0, string actionName = string.Empty); 
 

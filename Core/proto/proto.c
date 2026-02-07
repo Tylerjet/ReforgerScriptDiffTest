@@ -54,7 +54,7 @@ class ProfileData
 int VectorToRGBA( vector vec, float h)
 {
 	float x,y,z;
-	int r,g,b,a,rgba;
+	int r,g,b,a;
 
 	x = vec[0];
 	y = vec[1];

@@ -33,12 +33,15 @@ class CharacterAnimGraphComponent: GenericComponent
 	//! Binds integer variable and returns it's ID
 	proto external int BindIntVariable(string varName);
 	proto external void SetIntVariable(int varId, int value);
+	proto external int GetIntVariable(int varId);
 	//! Binds float variable and returns it's ID
 	proto external int BindFloatVariable(string varName);
 	proto external void SetFloatVariable(int varId, float value);
+	proto external float GetFloatVariable(int varId);
 	//! Binds bool variable and returns it's ID
 	proto external int BindBoolVariable(string varName);
 	proto external void SetBoolVariable(int varId, bool value);
+	proto external bool GetBoolVariable(int varId);
 	proto external int BindTag(string tagName);
 	proto external bool IsTag(int tagId);
 	proto external int BindEvent(string eventName);
@@ -47,6 +50,13 @@ class CharacterAnimGraphComponent: GenericComponent
 	proto bool GetEventCompletion(int eventId, float timeSlice, out float completion);
 	//! Get event user data if eventId is present.
 	proto bool GetEventUserData(int eventId, out string eventUserString, out int eventUserInt);
+	proto external int BindPrediction(string predictionName);
+	//! Get prediction data if predictionId is present.
+	proto bool GetPredictionData(int predictionId, out vector translation, out float rotation[4], out float time, out float normTime);
+	proto external vector GetRootMotionTranslation();
+	proto external vector OverrideRootMotionTranslation(vector translation);
+	proto void GetRootMotionRotation(out float rotation[4]);
+	proto void OverrideRootMotionRotation(float rotation[4]);
 }
 
 /*!

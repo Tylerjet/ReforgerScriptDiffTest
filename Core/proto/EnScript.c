@@ -64,33 +64,6 @@ class Restrict
 	}
 }
 
-//! Module containing compiled scripts.
-class ScriptModule
-{
-	private void ~ScriptModule();
-
-	/*!
-	Dynamic call of function.
-	when `inst == NULL`, it's global function call, otherwise it's method of class.
-	If `async` is `true`, creates new thread (so it's legal to use sleep/wait).
-	Otherwise main thread is used and call is blocking.
-	Return value of called method is returned via `returnVal` (only when `async` is false!)
-	Returns `true`, when success.
-	*/
-	proto volatile bool Call(Class inst, string function, bool async, out void returnVal, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL );
-
-	proto native void Release();
-
-	/*!
-	Load script and create ScriptModule for it.
-	\param parentModule Module
-	\param scriptFile Script file path
-	\param listing ??
-	\returns Loaded scripted module
-	*/
-	static proto native ScriptModule LoadScript(ScriptModule parentModule, string scriptFile, bool listing);
-}
-
 //!Helper for printing out string expression. Example: PrintString("Hello " + var);
 void PrintString(string s)
 {

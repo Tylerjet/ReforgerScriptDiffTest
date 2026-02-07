@@ -335,7 +335,6 @@ class SCR_LoadingOverlay : ScriptedWidgetComponent
 	override bool OnKeyPress(Widget w, int x, int y, int key) {return true;}
 	override bool OnChange(Widget w, int x, int y, bool finished) {return true;}
 	override bool OnResize(Widget w, int x, int y) {return true;}
-	override bool OnEvent(EventType eventType, Widget target, int parameter0, int parameter1) {return true;}
 	override bool OnModalClickOut(Widget modalRoot, int x, int y, int button) {return true;}
 
 };

@@ -21,7 +21,8 @@ class SCR_WeaponFiremodeCountCondition : SCR_AvailableActionCondition
 		if (!muzzle)
 			return false;
 
-		auto result = SCR_Comparer<int>.Compare(m_eOperator, muzzle.GetFireModesCount(), m_iValue);
+		bool result = SCR_Comparer<int>.Compare(m_eOperator, muzzle.GetFireModesCount(), m_iValue);
+		
 		return GetReturnResult(result);
 	}
 };

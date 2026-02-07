@@ -1,6 +1,7 @@
 // *************************************************************************************
 // ! CharacterCameraADSVehicle - ADS camera when character is in vehicle
 // *************************************************************************************
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 class CharacterCameraADSVehicle extends CharacterCameraADS
 {
 	protected TurretControllerComponent m_TurretController;
@@ -170,3 +171,4 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		AddVehiclePitchRoll(owner, pDt, transformMS);
 	}
 }
+//---- REFACTOR NOTE END ----

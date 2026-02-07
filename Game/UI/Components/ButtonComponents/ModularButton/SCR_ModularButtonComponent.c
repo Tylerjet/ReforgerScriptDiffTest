@@ -24,10 +24,16 @@ enum EModularButtonEventHandler
 	MOUSE_LEAVE		= 1 << 5,
 }
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Completely separate hierarchy from other buttons and ui components
+
 //! Modular button implements all logic of a button.
 //! It can be customised by various SCR_ButtonEffectBase objects attached to it.
 class SCR_ModularButtonComponent : ScriptedWidgetComponent
 {
+	
+//---- REFACTOR NOTE END ----
+	
 	// ---- Public and attributes ----
 	
 	// Attributes - effects
@@ -55,6 +61,9 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	[Attribute("false", UIWidgets.CheckBox, "Mouse over, focus, clicks, etc, will be completely ignored. Useful to create a button driven by SlaveButton effect.")]
 	protected bool m_bIgnoreStandardInputs;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old untyped invokers
+		
 	// Script invokers
 	
 	ref ScriptInvoker m_OnClicked = new ScriptInvoker();		// (SCR_ModularButtonComponent comp)
@@ -64,6 +73,8 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	ref ScriptInvoker m_OnFocusLost = new ScriptInvoker();		// (SCR_ModularButtonComponent comp)
 	ref ScriptInvoker m_OnMouseEnter = new ScriptInvoker();		// (SCR_ModularButtonComponent comp, bool mouseInput) - mouseEvent - when true, last input was from a mouse, not keyboard/gamepad.
 	ref ScriptInvoker m_OnMouseLeave = new ScriptInvoker();		// (SCR_ModularButtonComponent comp, bool mouseInput)
+	
+//---- REFACTOR NOTE END ----
 	
 	// ---- Protected ----
 	

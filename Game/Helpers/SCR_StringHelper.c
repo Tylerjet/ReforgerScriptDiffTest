@@ -6,9 +6,19 @@ class SCR_StringHelper
 	static const string DIGITS = "0123456789";
 	static const string UNDERSCORE = "_";
 	static const string DASH = "-";
+	static const string COLON = ":";
+	static const string SEMICOLON = ";";
 	static const string SPACE = " ";
+	static const string DOUBLE_SPACE = SPACE + SPACE;
+	static const string QUADRUPLE_SPACE = DOUBLE_SPACE + DOUBLE_SPACE;
+	static const string SINGLE_QUOTE = "'";
+	static const string DOUBLE_QUOTE = "\"";
 	static const string TAB = "\t";
 	static const string LINE_RETURN = "\n";
+	static const string SLASH = "/";
+	static const string DOUBLE_SLASH = SLASH + SLASH;
+	static const string ANTISLASH = "\\";
+	static const string DOUBLE_ANTISLASH = ANTISLASH + ANTISLASH;
 	static const string LIPSUM = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
 	protected static const string TRANSLATION_KEY_CHARS = UNDERSCORE + DASH;
 
@@ -218,6 +228,147 @@ class SCR_StringHelper
 
 		// 9 and more
 		return string.Format(input, arguments[0], arguments[1], arguments[2], arguments[3], arguments[4], arguments[5], arguments[6], arguments[7], arguments[8]);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Turns e.g m_bIsValid to "Is Valid"
+	//! \param[in] valueName
+	//! \return space-separated words without resourceName extension
+	static string FormatValueNameToUserFriendly(string valueName)
+	{
+		if (valueName.IsEmpty())
+			return string.Empty;
+
+		int asciiValue;
+
+		if (valueName.StartsWith("m_") || valueName.StartsWith("s_"))
+		{
+			valueName = valueName.Substring(2, valueName.Length() - 2);
+
+			if (valueName.IsEmpty())
+				return string.Empty;
+
+			// is first after prefix letter lowercase
+			asciiValue = valueName[0].ToAscii();
+			if (asciiValue >= 97 && asciiValue <= 122)
+				valueName = valueName.Substring(1, valueName.Length() - 1);
+
+			if (valueName.IsEmpty())
+				return string.Empty;
+		}
+
+		array<string> pieces = {};
+		string piece;
+		string prevChar;
+		string currChar;
+		string nextChar;
+		int prevCharType; // 0 = LC, 1 = UC, 2 = NUM
+		for (int i, len = valueName.Length(); i < len; i++)
+		{
+			currChar = valueName[i];
+			if (i < len - 1)
+				nextChar = valueName[i + 1];
+			else
+				nextChar = "a";
+
+			asciiValue = currChar.ToAscii();
+			if (asciiValue >= 97 && asciiValue <= 122)		// lowercase
+			{
+				if (prevCharType < 2) // prev can be lower or upper
+				{
+					piece += currChar;
+				}
+				else
+				{
+					if (!piece.IsEmpty())
+						pieces.Insert(piece);
+
+					piece = currChar;
+				}
+				prevCharType = 0;
+			}
+			else if (asciiValue >= 65 && asciiValue <= 90)	// uppercase
+			{
+				int nextAsciiValue = nextChar.ToAscii();
+				if (
+					prevCharType == 1 &&
+					(asciiValue < 97 || asciiValue > 122)) // next char is NOT lowercase
+				{
+					piece += currChar;
+				}
+				else
+				{
+					if (!piece.IsEmpty())
+						pieces.Insert(piece);
+
+					piece = currChar;
+				}
+				prevCharType = 1;
+			}
+			else if (asciiValue >= 48 && asciiValue <= 57)	// digits
+			{
+				if (prevCharType == 2)
+				{
+					piece += currChar;
+				}
+				else
+				{
+					if (!piece.IsEmpty())
+						pieces.Insert(piece);
+
+					piece = currChar;
+				}
+				prevCharType = 2;
+			}
+			else											// anything else
+			{
+				if (!piece.IsEmpty())
+				{
+					pieces.Insert(piece);
+					piece = string.Empty;
+				}
+				prevCharType = 0;
+			}
+
+			prevChar = currChar;
+		}
+
+		if (!piece.IsEmpty())
+			pieces.Insert(piece);
+
+		return Join(" ", pieces);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Turns "{GUID012345678910}Prefabs/Characters/Factions/Faction/Character_FactionName_NLAW.et" into "Character FactionName NLAW"
+	//! \param[in] resourceName
+	//! \return space-separated words without resourceName extension
+	static string FormatResourceNameToUserFriendly(ResourceName resourceName)
+	{
+		array<string> pieces = {};
+		FilePath.StripExtension(FilePath.StripPath(resourceName)).Split("_", pieces, true);
+		return Join(" ", pieces);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Turns "THIS_IS_AN_ENUM" or "tHIs_is_aN_enUM" into "This Is An Enum"
+	//! \param[in] snakeCase any string with words separated by underscores
+	//! \return firstchar-uppercased space-separated words
+	static string FormatSnakeCaseToUserFriendly(string snakeCase)
+	{
+		array<string> pieces = {};
+		snakeCase.Split("_", pieces, true);
+		for (int i, count = pieces.Count(); i < count; i++)
+		{
+			string piece = pieces[i];
+			string firstChar = piece[0];
+			firstChar.ToUpper();
+			piece.ToLower();
+			piece = firstChar + piece.Substring(1, piece.Length() - 1);
+
+			pieces[i] = piece;
+		}
+		return Join(" ", pieces);
 	}
 
 	//------------------------------------------------------------------------------------------------

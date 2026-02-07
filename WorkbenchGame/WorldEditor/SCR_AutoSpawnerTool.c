@@ -121,9 +121,8 @@ class SCR_AutoSpawnerTool : WorldEditorTool
 		ClearSelection();
 		Debug.BeginTimeMeasure();
 
-		SCR_WorkbenchSearchResourcesCallbackArray arr = new SCR_WorkbenchSearchResourcesCallbackArray(m_aSelection);
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		worldEditor.GetResourceBrowserSelection(arr.Insert, true);
+		worldEditor.GetResourceBrowserSelection(m_aSelection.Insert, true);
 
 		m_aSpawnHistory.Insert(m_iEntityId);
 		m_iEntityIdPrev = m_aSpawnHistory[m_aSpawnHistory.Count() - 1];

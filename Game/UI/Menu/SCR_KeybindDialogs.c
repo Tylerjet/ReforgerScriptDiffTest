@@ -5,6 +5,9 @@ class SCR_KeybindDialogs
 	//---------------------------------------------------------------------------------------------
 	static SCR_ConfigurableDialogUi CreateKeybindsResetDialog()
 	{
+		if (System.GetPlatform() == EPlatform.PS4 || System.GetPlatform() == EPlatform.PS5 || System.GetPlatform() == EPlatform.PS5_PRO)
+			return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "reset_keybinds_ps");
+		
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "reset_keybinds");
 	}
 	
@@ -13,7 +16,40 @@ class SCR_KeybindDialogs
 	{
 		string tag = "simple_keybind";
 		if (device == EInputDeviceType.GAMEPAD)
-			tag = "simple_keybind_gamepad";
+		{
+			if (GetGame().IsPlatformGameConsole())
+			{
+				switch (System.GetPlatform())
+				{
+					case EPlatform.PS4:
+					case EPlatform.PS5:
+					case EPlatform.PS5_PRO:
+					{
+						tag = "simple_keybind_gamepad_ps";
+						break;
+					}
+					
+					case EPlatform.XBOX_ONE:
+					case EPlatform.XBOX_ONE_S:
+					case EPlatform.XBOX_ONE_X:
+					case EPlatform.XBOX_SERIES_S:
+					case EPlatform.XBOX_SERIES_X:
+					{
+						tag = "simple_keybind_gamepad_xbox";
+						break;
+					}
+					
+					default:
+					{
+						tag = "simple_keybind_gamepad_generic";
+					}
+				}
+			}
+			else
+			{
+				tag = "simple_keybind_gamepad_xbox";
+			}
+		}
 		
 		SCR_SimpleKeybindDialogUI dialog = new SCR_SimpleKeybindDialogUI(entry, displayName, actionName, binding, device, showOverrideWarning);
 		SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, tag, dialog);

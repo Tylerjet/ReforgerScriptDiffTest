@@ -1,7 +1,20 @@
 [BaseContainerProps()]
 class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 {
+	protected const FactionKey FACTION_CIVILIAN = "CIV";
+	protected const float DEADEYE_RANGE = 300;
+	protected const float DEADEYE_RANGE_SQ = DEADEYE_RANGE * DEADEYE_RANGE;
+	protected const int DEADEYE_KILL_COUNT = 10;
+	protected const int NIGHT_STALKER_KILL_COUNT = 5;
+	protected const int LAST_ONE_STANDING_KILL_COUNT = 10;
+
+	protected ref map<int, int> m_mDeadeyeKillCounter = new map<int, int>();// <playerID, counter>
+	protected ref map<int, int> m_mLastOneStandingKillCounter = new map<int, int>();// <playerID, counter>
+	protected ref map<int, int> m_mNightStalkerKillCounter = new map<int, int>();// <playerID, counter>
 	
+	protected TimeAndWeatherManagerEntity m_TimeManager;
+	protected SCR_GameModeCampaign m_Conflict;
+
 	//------------------------------------------------------------------------------------------------
 	protected override void InitModule()
 	{
@@ -11,6 +24,8 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		RplComponent rplComp = RplComponent.Cast(GetGame().GetGameMode().FindComponent(RplComponent));
 		if (rplComp.IsMaster())
 		{
+			m_Conflict = SCR_GameModeCampaign.Cast(GetGame().GetGameMode());
+
 			// Invoke thhose only as authority
 			// Achievement NUTCRACKER
 			SCR_VehicleDamageManagerComponent.GetOnVehicleDestroyed().Insert(VehicleDestroyed);
@@ -21,6 +36,24 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 			if (supportStationManager)
 			{
 				supportStationManager.GetOnSupportStationExecutedSuccessfully().Insert(OnSupportStationUsed);
+			}
+
+			// allowed only in conflict mode
+			if (m_Conflict)
+			{
+				// Achievement RESCUE_TECHNICIAN
+				SCR_RepairSupportStationComponent.GetOnFireExtinguished().Insert(OnFireExtinguished);
+
+				// Achievement CHANGING_CHANNELS
+				SCR_CampaignNetworkComponent.GetOnBaseCaptured().Insert(OnBaseCaptured);
+
+				// Achievement NIGHT_STALKER
+				ChimeraWorld world = GetGame().GetWorld();
+				if (world)
+					m_TimeManager = world.GetTimeAndWeatherManager();
+
+				// Achievement REQUISTIONED
+				SCR_ResourceEntityRefundAction.GetOnRefundPerformed().Insert(OnEntityRefundPerformed);
 			}
 		}
 		
@@ -79,59 +112,79 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		{
 			supportStationManager.GetOnSupportStationExecutedSuccessfully().Remove(OnSupportStationUsed);
 		}
+
+		SCR_ResourceEntityRefundAction.GetOnRefundPerformed().Remove(OnEntityRefundPerformed);
+		SCR_RepairSupportStationComponent.GetOnFireExtinguished().Remove(OnFireExtinguished);
+		SCR_CampaignNetworkComponent.GetOnBaseCaptured().Remove(OnBaseCaptured);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		// Only players are counted towards stats & achievements
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
-		{
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
-		}
 		
-		const int killerId = killer.GetInstigatorPlayerID();
+		const int killerId = instigator.GetInstigatorPlayerID();
 		
-		// Self harm doesn't count
-		if (playerId == killerId)
-		{
+		// zeroing counter for LAST_ONE_STANDING Achievement
+		m_mLastOneStandingKillCounter.Set(playerId, 0);
+
+		//~ Not a player kill so ignore (Like suicide)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER | SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			return;
-		}
 		
 		// Handle achievement statistic PLAYER_KILLED (achievement TRUE_GRIT)
 		// Note: PLAYER_KILLED is counted even for friendlies - oopsies makes fun
 		IncrementAchievementProgress(playerId, AchievementStatId.PLAYER_KILLED);
 		
-		// Handle achievement statistic ENEMIES_NEUTRALIZED (achievements ONE_TO_WATCH, ARMY_OF_ONE)
-		
-		// Note: faction less games couldn't count towards achievement, this will need fixing
-		// in case where player could be "kicked" out of the faction - e.g. becoming rogue
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-		{
+		// Teamkills don't count
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			return;
-		}
-
-		Faction victimFaction = factionManager.GetPlayerFaction(playerId);
-		if (!victimFaction)
-		{
-			return;
-		}
-
-		Faction killerFaction = factionManager.GetPlayerFaction(killerId);
-		if (!killerFaction)
-		{
-			return;
-		}
-
-		// Teamkill? - doesn't count
-		if (victimFaction.IsFactionFriendly(killerFaction))
-		{
-			return;
-		}
 		
 		// Increment stat for the killer
 		IncrementAchievementProgress(killerId, AchievementStatId.ENEMIES_NEUTRALIZED);
+
+		// allowed only in conflict mode
+		if (m_Conflict)
+		{
+			// Increment counter for LAST_ONE_STANDING Achievement
+			int lastOneStandingKillCount = m_mLastOneStandingKillCounter.Get(killerId) + 1;
+			if (lastOneStandingKillCount >= LAST_ONE_STANDING_KILL_COUNT)
+			{
+				Print("Player with id " + killerId + " Unlocked - Last one standing", LogLevel.DEBUG);
+				UnlockAchievement(killerId, AchievementId.LAST_ONE_STANDING);
+			}
+			m_mLastOneStandingKillCounter.Set(killerId, lastOneStandingKillCount);
+
+			// Increment counter for NIGHT_STALKER Achievement
+			if (m_TimeManager && m_TimeManager.IsNightHour(m_TimeManager.GetTimeOfTheDay()))
+			{
+				int nightStalkerKillCount = m_mNightStalkerKillCounter.Get(killerId) + 1;
+				if (nightStalkerKillCount >= NIGHT_STALKER_KILL_COUNT)
+				{
+					Print("Player with id " + killerId + " Unlocked - Night stalker", LogLevel.DEBUG);
+					UnlockAchievement(killerId, AchievementId.NIGHT_STALKER);
+				}
+				m_mNightStalkerKillCounter.Set(killerId, nightStalkerKillCount);
+			}
+
+			if (!playerEntity || !killerEntity)
+				return;
+
+			// Increment counter for DEADEYE Achievement
+			if (vector.DistanceSq(playerEntity.GetOrigin(), killerEntity.GetOrigin()) >= DEADEYE_RANGE_SQ)
+			{
+				int count = m_mDeadeyeKillCounter.Get(killerId) + 1;
+				if (count >= DEADEYE_KILL_COUNT)
+				{
+					Print("Player with id " + killerId + " Unlocked - DEADEYE", LogLevel.DEBUG);
+					UnlockAchievement(killerId, AchievementId.DEADEYE);
+				}
+
+				m_mDeadeyeKillCounter.Set(killerId, count);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -268,6 +321,9 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		}
 
 		IEntity targetCharacter = consumableComp.GetTargetCharacter();
+
+		OnHealItemUsed(consumType, userCharacter, targetCharacter);
+
 		if (!targetCharacter)
 		{
 			return;
@@ -297,6 +353,42 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		IncrementAchievementProgress(userPlayerId, AchievementStatId.MEDICAL_ASSISTS);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void OnHealItemUsed(SCR_EConsumableType consumType, IEntity userCharacter, IEntity targetCharacter)
+	{
+		if (!userCharacter)
+			return;
+
+		// Only player as a user is counted
+		int userPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(userCharacter);
+		if (userPlayerId == 0)
+		{
+			return;
+		}
+
+		// if targetCharacter is null, he used the item on himself, and this is allowed
+		if (targetCharacter)
+		{
+			// Only player as a target is counted
+			int targetPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(targetCharacter);
+			if (targetPlayerId == 0)
+			{
+				return;
+			}
+		}
+
+		// allowed only in conflict mode
+		if (!m_Conflict)
+			return;
+
+		// Achievement READY_SALTED
+		if (consumType == SCR_EConsumableType.SALINE)
+		{
+			Print("Player with id " + userPlayerId + " used a saline solution!", LogLevel.DEBUG);
+			IncrementAchievementProgress(userPlayerId, AchievementStatId.SALINE_SOLUTION_USED);
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnSupportStationUsed(SCR_BaseSupportStationComponent supportStation, ESupportStationType supportStationType, IEntity actionTarget, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
@@ -463,5 +555,51 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		//Achievement PIPING_UP
 		Print("Player with id " + playerId + " played an Organ!", LogLevel.DEBUG);
 		UnlockAchievement(playerId, AchievementId.PIPING_UP);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnEntityRefundPerformed(IEntity refundedEntity, IEntity playerEntity)
+	{
+		// Achievement REQUISTIONED
+		if (!refundedEntity || !playerEntity)
+			return;
+
+		SCR_VehicleFactionAffiliationComponent factionComponent = SCR_VehicleFactionAffiliationComponent.Cast(refundedEntity.FindComponent(SCR_VehicleFactionAffiliationComponent));
+		if (!factionComponent)
+			return;
+
+		if (factionComponent.GetDefaultFactionKey() != FACTION_CIVILIAN)
+			return;
+
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(playerEntity);
+
+		Print("Player with id " + playerId + " refunded a civilian vehicle!", LogLevel.DEBUG);
+		IncrementAchievementProgress(playerId, AchievementStatId.CIV_VEHICLE_DECOMMISSIONED);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFireExtinguished(IEntity playerEntity)
+	{
+		// Achievement RESCUE_TECHNICIAN
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(playerEntity);
+		Print("Player with id " + playerId + " extinguished a fire!", LogLevel.DEBUG);
+		IncrementAchievementProgress(playerId, AchievementStatId.FIRE_EXTINGUISHED);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnBaseCaptured(SCR_CampaignMilitaryBaseComponent base, int playerId)
+	{
+		// Achievement CHANGING_CHANNELS
+		if (!base)
+			return;
+
+		if (base.GetType() != SCR_ECampaignBaseType.RELAY)
+			return;
+
+		if (playerId == 0) // is AI
+			return;
+
+		Print("Player with id " + playerId + " reconfigured a radio relay!", LogLevel.DEBUG);
+		IncrementAchievementProgress(playerId, AchievementStatId.RADIO_RELAY_RECONFIGURED);
 	}
 };

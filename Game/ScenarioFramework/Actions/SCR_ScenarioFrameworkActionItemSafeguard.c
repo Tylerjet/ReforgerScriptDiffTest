@@ -251,4 +251,27 @@ class SCR_ScenarioFrameworkActionItemSafeguard : SCR_ScenarioFrameworkActionBase
 		gameMode.GetOnPlayerSpawned().Insert(RegisterPlayer);
 		gameMode.GetOnPlayerDisconnected().Insert(OnDisconnected);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		array<ref SCR_ScenarioFrameworkActionBase> m_aSubActions = {};
+		if (m_aActionsOnItemDropped)
+		{
+			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnItemDropped)
+			{
+				m_aSubActions.Insert(action);
+			}
+		}
+		
+		if (m_aActionsOnItemPossessed)
+		{
+			foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnItemPossessed)
+			{
+				m_aSubActions.Insert(action);
+			}
+		}
+		
+		return m_aSubActions;
+	}
 }

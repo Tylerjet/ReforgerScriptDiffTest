@@ -11,6 +11,7 @@ Each response type can be listened separately.
 //! Basic callback responses 
 enum EBackendCallbackResponse
 {
+	NONE,
 	SUCCESS,
 	ERROR,
 	TIMEOUT,
@@ -24,7 +25,7 @@ class SCR_BackendCallback : BackendCallback
 	protected int m_iCode = -1;
 	protected int m_iRestCode = -1;
 	protected int m_iApiCode = -1;
-	protected EBackendCallbackResponse m_Result = -1;
+	protected EBackendCallbackResponse m_Result = EBackendCallbackResponse.NONE;
 	
 	// Invokers 
 	protected ref ScriptInvoker<SCR_BackendCallback> Event_OnSuccess;

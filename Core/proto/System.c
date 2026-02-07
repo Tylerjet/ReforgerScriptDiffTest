@@ -37,14 +37,28 @@ example how to access pixel data on further c++ side:
 		}
 	}
 
-\param pixels		pointer to pixels
+\param pixels		pointer to raw pixels
 \param width 		width of image data
 \param height		height of image data
 \param stride		stride is offset to next row - it doesn't need to be same like image width due to GPU data alignment rules
 */
-typedef func ScreenshotCallback;
-void ScreenshotCallback(ScreenshotPixelData data, int imageWidth, int imageHeight, int stride);
+typedef func ScreenshotRawDataCallback;
+void ScreenshotRawDataCallback(PixelRawData data, int imageWidth, int imageHeight, int stride);
                              
+/*!
+screenshot callback API, returned texture in RGBA8 format
+*/
+typedef func ScreenshotTextureCallback;
+void ScreenshotTextureCallback(ScreenshotTextureData data);
+
+/*!
+texture data callback API, returned texture in RGBA8 format
+*/
+typedef func GetTextureRawDataCallback;
+void GetTextureRawDataCallback(PixelRawData data, int imageWidth, int imageHeight, int stride);
+
+
+
 class MemoryStatsSnapshot: Managed
 {
 	proto native static int GetStatsCount();

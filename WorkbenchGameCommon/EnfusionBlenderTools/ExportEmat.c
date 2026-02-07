@@ -8,6 +8,7 @@ class ExportEmatRequest : JsonApiStruct
 	ref array<string> properties = new array<string>;
 	string path;
 	bool create;
+	bool xobAssignedMaterial;
 	string shaderClass;
 	string materialName;
 
@@ -16,6 +17,7 @@ class ExportEmatRequest : JsonApiStruct
 		RegV("properties");
 		RegV("path");
 		RegV("create");
+		RegV("xobAssignedMaterial");
 		RegV("shaderClass");
 		RegV("materialName");
 	}
@@ -63,6 +65,7 @@ class ExportEmatUtils
 		}
 		// convert to absolute path
 		Workbench.GetAbsolutePath(ematPath.GetPath(), absPath);
+		
 		return absPath;
 	}
 
@@ -71,7 +74,8 @@ class ExportEmatUtils
 		// load emat
 		Resource resource = Resource.Load(path);
 		BaseContainer cont = resource.GetResource().ToBaseContainer();
-
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		
 		string defaultValue;
 		string value;
 		bool uvTrans = false;
@@ -85,20 +89,44 @@ class ExportEmatUtils
 				// matching the property
 				if (properties[i] == cont.GetVarName(j))
 				{
+					string importPath = properties[i+1];
+					MetaFile meta = resourceManager.GetMetaFile(importPath);
+					
 					// if its texture get its ResourceID
 					if (FilePath.IsAbsolutePath(properties[i+ 1]))
 					{
-						ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-						MetaFile meta = resourceManager.GetMetaFile(properties[i+ 1]);
-						properties[i+ 1] = meta.GetResourceID();
+						RegisterResourceUtils utils = new RegisterResourceUtils();
+						
+						if(!LoadedProjects.InLoadedProjects(importPath))
+						{
+							// Get importPath to emat folder
+							Workbench.GetAbsolutePath(path.GetPath(), importPath);
+							importPath = FilePath.StripExtension(importPath);
+							importPath = FilePath.StripFileName(importPath);
+							
+							// add texture name
+							importPath += FilePath.StripPath(properties[i+1]);
+							
+							// import 
+							FileIO.CopyFile(properties[i+1], importPath);
+							
+							meta = resourceManager.GetMetaFile(importPath);
+							// Register the texture that was copied to dataFolder
+							utils.Register(importPath);
+							
+							
+						}	
+						
+
+						properties[i+1] = meta.GetResourceID();
 					}
 
 					// if its UVTransform
-					if (properties[i+ 1] == EBTConfig.UVTransform)
+					if (properties[i+ 1] == EBTContainerFields.UVTransform)
 					{
 						// create MatUVTransform class
 						string transformType = properties[i];
-						Resource matUVTransform = BaseContainerTools.CreateContainer(EBTConfig.UVTransform);
+						Resource matUVTransform = BaseContainerTools.CreateContainer(EBTContainerFields.UVTransform);
 						BaseContainer uvTransform = matUVTransform.GetResource();
 
 						// looping through the UVTransforms and setting its values
@@ -136,6 +164,7 @@ class ExportEmatUtils
 		return;
 	}
 
+
 	string CreateEmat(string save, string classname, array<string> properties, string matName, ExportEmatResponse response)
 	{
 		// create Data folder if one doesn't exists
@@ -143,8 +172,12 @@ class ExportEmatUtils
 		{
 			FileIO.MakeDirectory(save + "\\Data");
 		}
-		save = save + "\\Data\\" + matName + ".emat";
-
+		// path to dataFolder
+		string dataFolder = save + "\\Data\\";
+		
+		// absPath to emat
+		save = dataFolder + matName + ".emat";
+		
 		// creating Emat container with correct class
 		Resource res = BaseContainerTools.CreateContainer(classname);
 		BaseContainer cont = res.GetResource().ToBaseContainer();
@@ -155,19 +188,39 @@ class ExportEmatUtils
 		for (int i = 0; i < properties.Count(); i+=2)
 		{
 			// if its texture set the ResourceID
+			Print("HUH");
+			Print(properties[i+1]);
 			if (FilePath.IsAbsolutePath(properties[i+ 1]))
 			{
+				RegisterResourceUtils utils = new RegisterResourceUtils();
 				ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-				MetaFile meta = resourceManager.GetMetaFile(properties[i+ 1]);
-				properties[i+ 1] = meta.GetResourceID();
+				
+				
+				string importPath = properties[i+1];
+				Print(importPath);
+				if(!LoadedProjects.InLoadedProjects(importPath))
+				{
+					importPath = dataFolder + FilePath.StripPath(properties[i+1]);
+					
+					// import 
+					FileIO.CopyFile(properties[i+1], importPath);
+				}	
+				MetaFile meta = resourceManager.GetMetaFile(importPath);
+						
+				// Register the texture that was copied to dataFolder
+				utils.Register(importPath);
+				
+				// get ResourceName from metaFile and assign it
+				meta = resourceManager.GetMetaFile(importPath);
+				properties[i+1] = meta.GetResourceID();
 			}
 
 			// if its uvTransforms
-			if (properties[i+ 1] == EBTConfig.UVTransform)
+			if (properties[i+ 1] == EBTContainerFields.UVTransform)
 			{
 				// create new container
 				defaultObject = true;
-				Resource matUVTransform = BaseContainerTools.CreateContainer(EBTConfig.UVTransform);
+				Resource matUVTransform = BaseContainerTools.CreateContainer(EBTContainerFields.UVTransform);
 				BaseContainer uvTransform = matUVTransform.GetResource().ToBaseContainer();
 				string transformType = properties[i];
 				// loop through transforms
@@ -198,10 +251,13 @@ class ExportEmatUtils
 		// saving the emat file and register meta
 		BaseContainerTools.SaveContainer(cont, "", save);
 
+		const int WAITING_TIME = 3000;
+		
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		MetaFile meta = resourceManager.RegisterResourceFile(save);
 		meta.Save();
 		resourceManager.RebuildResourceFile(save,"PC", true);
+		resourceManager.WaitForFile(save,WAITING_TIME);
 		response.firstExport = true;
 		return meta.GetResourceID();
 	}
@@ -222,20 +278,22 @@ class ExportEmat : NetApiHandler
 		ExportEmatResponse response = new ExportEmatResponse();
 		ExportEmatUtils utils = new ExportEmatUtils();
 
-		// check if the export path is in LoadedProjects
 		response.inProject = LoadedProjects.InLoadedProjects(req.path);
 		if (!response.inProject)
 		{
 			return response;
 		}
-
-
+		
+					
 		if (req.create)
 		{
+			Print("CREATE");
 			response.guid = utils.CreateEmat(req.path, req.shaderClass, req.properties, req.materialName, response);
+			
 		}
 		else
 		{
+			Print("EDIT XOB");
 			utils.EditEmat(utils.FindEmat(req.path, true, req.materialName), req.shaderClass, req.properties);
 		}
 		return response;

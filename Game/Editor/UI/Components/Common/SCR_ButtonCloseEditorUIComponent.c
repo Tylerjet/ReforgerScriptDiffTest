@@ -78,7 +78,7 @@ class SCR_ButtonCloseEditorUIComponent: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		Refresh();
 	}

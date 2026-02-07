@@ -20,6 +20,10 @@ class SCR_AIOpenDoor : AITaskScripted
 		if (doorActions.IsEmpty())
 			return ENodeResult.FAIL;
 		
+		IEntity actionPerformer = owner.GetControlledEntity();
+		if (!actionPerformer)
+			actionPerformer = owner;
+		
 		foreach (ScriptedUserAction action : doorActions)
 		{
 			IEntity actionOwner = action.GetOwner();
@@ -28,9 +32,9 @@ class SCR_AIOpenDoor : AITaskScripted
 			DoorComponent doorComp = DoorComponent.Cast(actionOwner.FindComponent(DoorComponent));
 			if (!doorComp)
 				continue;
-			
+				
 			if (!doorComp.IsOpen() && !doorComp.IsOpening())
-				action.PerformAction(actionOwner, owner.GetControlledEntity());
+				action.PerformAction(actionOwner, actionPerformer);
 		}
 			
 		return ENodeResult.SUCCESS;

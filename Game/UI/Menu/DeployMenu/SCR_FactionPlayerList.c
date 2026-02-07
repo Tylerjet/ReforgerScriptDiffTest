@@ -306,12 +306,14 @@ class SCR_PlayerName : ScriptedWidgetComponent
 	protected ResourceName m_sIcons = "{D17288006833490F}UI/Textures/Icons/icons_wrapperUI-32.imageset";
 	protected int m_iPlayerId;
 
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_wIcon = ImageWidget.Cast(w.FindAnyWidget(m_sIcon));
 		m_wName = TextWidget.Cast(w.FindAnyWidget(m_sName));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void SetIcon(ResourceName icon)
 	{
 		if (!m_wIcon)
@@ -321,6 +323,7 @@ class SCR_PlayerName : ScriptedWidgetComponent
 			m_wIcon.SetVisible(m_wIcon.LoadImageTexture(0, icon));
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void SetPlayer(int pid)
 	{
 		m_iPlayerId = pid;
@@ -330,26 +333,21 @@ class SCR_PlayerName : ScriptedWidgetComponent
 		SetPlatform();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	int GetPlayerId()
 	{
 		return m_iPlayerId;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void SetPlatform()
 	{
-		// todo@lk: local profile pic
-		PlatformKind platform = GetGame().GetPlayerManager().GetPlatformKind(m_iPlayerId);
-		string icon;
-		if (platform == PlatformKind.NONE)
-			icon = "platform-windows";
-		else if (platform == PlatformKind.XBOX)
-			icon = "platform-xbox";
-		else if (platform == PlatformKind.PSN)
-			icon = "platform-playstation";
-		else if (platform == PlatformKind.STEAM)
-			icon = "platform-windows";
+		if (!m_wIcon)
+			return;
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		playerController && playerController.SetPlatformImageTo(m_iPlayerId, m_wIcon, showOnPC: true, showOnXbox: true)
 
-		if (m_wIcon)
-			m_wIcon.LoadImageFromSet(0, m_sIcons, icon);
+		// todo@lk: local profile pic
 	}
 };

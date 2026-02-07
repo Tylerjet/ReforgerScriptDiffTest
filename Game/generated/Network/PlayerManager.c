@@ -11,6 +11,8 @@ Do not modify, this script is generated
 
 class PlayerManager
 {
+	static ref ScriptInvoker<bool> s_OnPlayerNameCacheUpdateInvoker = new ScriptInvoker<bool>();
+
 	/*!
 	Kicks player from the game with option to specify timeout for reconnection (temporary ban).
 	\param playerId Player to be kicked
@@ -32,6 +34,13 @@ class PlayerManager
 	proto external int GetDisconnectedPlayers(out notnull array<int> outPlayers);
 	//! Returns the name of a given player. Empty is player can't be found
 	proto external string GetPlayerName(int iPlayerId);
+	/*!
+	Requests player name cache update.
+	Invokes OnPlayerNameCacheUpdate when finished.
+	*/
+	static proto bool RequestPlayerNameCacheUpdate(array<string> aIdentityIDs);
+	//! Get name of the player with the given identity. Empty if not connected and not in player name cache.
+	proto external owned string GetPlayerNameByIdentity(string playerIdentity);
 	//! Returns the entity controlled by a given player
 	proto external IEntity GetPlayerControlledEntity(int iPlayerId);
 	/*!
@@ -84,6 +93,11 @@ class PlayerManager
 	ShowMultiplayerActivityInvite
 	*/
 	proto external bool IsMultiplayerActivityInviteAvailable();
+
+	// callbacks
+
+	//! Event invoked as a result of RequestPlayerNameCacheUpdate
+	static event protected void OnPlayerNameCacheUpdate(bool success) { s_OnPlayerNameCacheUpdateInvoker.Invoke(success); };
 }
 
 /*!

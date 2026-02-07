@@ -110,6 +110,9 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 		return true;
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// auto
+	
 	//------------------------------------------------------------------------------------------------
 	static SCR_SelectionWidgetComponent GetSelectionComponent(string name, Widget parent, bool searchAllChildren = true)
 	{
@@ -118,4 +121,7 @@ class SCR_SelectionWidgetComponent : SCR_ChangeableComponentBase
 		);
 		return comp;
 	}
+
+//---- REFACTOR NOTE END ----
+	
 };

@@ -334,9 +334,9 @@ class SCR_PossessingManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
+	override void OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		int pid = GetPlayerIdFromMainEntity(entity);
+		int pid = instigatorContextData.GetVictimPlayerID();
 		if (pid > 0)
 		{
 			SCR_RespawnComponent rc = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(pid));
@@ -346,7 +346,7 @@ class SCR_PossessingManagerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override bool HandlePlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator)
 	{
 		if (playerId > 0)
 		{
@@ -379,7 +379,7 @@ class SCR_PossessingManagerComponent : SCR_BaseGameModeComponent
 		}
 		
 		// Main entity, handle kill as usual
-		return super.HandlePlayerKilled(playerId, playerEntity, killerEntity, killer);
+		return super.HandlePlayerKilled(playerId, playerEntity, killerEntity, instigator);
 	}
 
 	//------------------------------------------------------------------------------------------------

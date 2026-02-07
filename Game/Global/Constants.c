@@ -33,8 +33,7 @@ class UIColors
 	static const ref Color BACKGROUND_DISABLED			= Color.FromSRGBA(0, 0, 0, 38);
 	static const ref Color BACKGROUND_DEFAULT			= Color.FromSRGBA(0, 0, 0, 102);
 	static const ref Color BACKGROUND_HOVERED			= Color.FromSRGBA(0, 0, 0, 153);
-	
-	static const ref Color WARNING_FOCUSED				= Color.FromSRGBA(249, 67, 67, 107);
+
 	static const ref Color INFO							= Color.FromSRGBA(0, 128, 255, 255);
 	
 	// From Manual
@@ -46,6 +45,7 @@ class UIColors
 	static const ref Color IDLE_DISABLED_TRANSPARENT	= Color.FromSRGBA(77, 77, 77, 153);		//60% #4D4D4D
 	static const ref Color WARNING						= Color.FromSRGBA(249, 67, 67, 255);	//#f94343 red
 	static const ref Color WARNING_DISABLED				= Color.FromSRGBA(146, 72, 72, 255);	//#924848 dark red
+	static const ref Color WARNING_DISABLED_FOCUSED		= Color.FromSRGBA(173, 71, 71, 255);  	//#ad4747
 	static const ref Color SLIGHT_WARNING				= Color.FromSRGBA(234, 203, 131, 255);	//#EACB83 light yellow
 	static const ref Color CONFIRM						= Color.FromSRGBA(67, 194, 93, 255);	//#43C25D green, Manual calls it POSITIVE
 	static const ref Color CONTRAST_COLOR	 			= Color.FromSRGBA(226, 167, 79, 255); 	//#e2a74f REFORGER ORANGE
@@ -157,10 +157,24 @@ class UIConstants
 	static const string BOHEMIA_INTERACTIVE_LOC =	"#AR-Author_BI";
 	
 	static const string VALUE_UNIT_PERCENTAGE = 	"#AR-ValueUnit_Percentage";
+	static const string VALUE_UNIT_SHORT_PLUS =		"#AR-ValueUnit_Short_Plus";
+	static const string VALUE_OUT_OF =				"#AR-SupportStation_ActionFormat_ItemAmount";
+	static const string VALUE_OUT_OF_SPACED =		"#AR-Filters_EntriesFound_Condensed";
+	
+	static const string TIME_DISPLAY_DAYS_HOURS_MINUTES_SECONDS =	"#AR-TimeDisplay_Days_Hours_Minutes_Seconds";
+	static const string TIME_DISPLAY_HOURS_MINUTES_SECONDS = 		"#AR-TimeDisplay_Hours_Minutes_Seconds";
+	static const string TIME_DISPLAY_MINUTES_SECONDS = 				"#AR-TimeDisplay_Minutes_Seconds";
+	static const string TIME_DISPLAY_SECONDS =						"#AR-TimeDisplay_Seconds";
 	
 	// Common icons
 	static const ResourceName ICONS_IMAGE_SET = 		"{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
 	static const ResourceName ICONS_GLOW_IMAGE_SET = 	"{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
+	
+	// Platform Icons
+	static const string PLATFROM_PC_ICON_NAME = "platform-windows";
+	static const string PLATFROM_XBOX_ICON_NAME = "platform-xbox";
+	static const string PLATFROM_PLAYSTATION_ICON_NAME = "platform-playstation";
+	static const string PLATFROM_GENERIC_ICON_NAME = "generic-platform";
 
 	static const string ICON_WARNING = 			"warning";
 	static const string ICON_OK = 				"okCircle";
@@ -226,6 +240,24 @@ class UIConstants
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Get formatted +x string
+	static string FormatUnitShortPlus(float value)
+	{
+		return WidgetManager.Translate(VALUE_UNIT_SHORT_PLUS, value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get formatted x out of y string. Not condensed adds a space in some languages, ie: x / y instead of  x/y
+	static string FormatValueOutOf(float value, float max, bool condensed = true)
+	{
+		string text = VALUE_OUT_OF;
+		if (!condensed)
+			text = VALUE_OUT_OF_SPACED;
+		
+		return WidgetManager.Translate(text, value, max);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//TODO: LOCALIZED STRING!
 	static string FormatVersion(string version)
 	{
@@ -239,6 +271,29 @@ class UIConstants
 			return FAVORITE_LABEL_REMOVE;
 		else
 			return FAVORITE_LABEL_ADD;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Depending on seconds given, returns formatted time display strings
+	static string FormatSeconds(int totalSeconds)
+	{
+		int days;
+		int hours;
+		int minutes;
+		int seconds;
+		
+		SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(totalSeconds, days, hours, minutes, seconds);
+
+		if (days >= 1)
+			return WidgetManager.Translate(TIME_DISPLAY_DAYS_HOURS_MINUTES_SECONDS, days, hours, minutes, seconds);
+		
+		if (hours >= 1)
+			return WidgetManager.Translate(TIME_DISPLAY_HOURS_MINUTES_SECONDS, hours, minutes, seconds);
+		
+		if (minutes >= 1)
+			return WidgetManager.Translate(TIME_DISPLAY_MINUTES_SECONDS, minutes, seconds);
+		
+		return WidgetManager.Translate(TIME_DISPLAY_SECONDS, seconds);
 	}
 }
 

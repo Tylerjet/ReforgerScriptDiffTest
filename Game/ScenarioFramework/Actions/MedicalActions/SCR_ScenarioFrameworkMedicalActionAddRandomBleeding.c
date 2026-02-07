@@ -4,6 +4,8 @@ class SCR_ScenarioFrameworkMedicalActionAddRandomBleeding : SCR_ScenarioFramewor
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.AddRandomBleeding();
 	}
 }

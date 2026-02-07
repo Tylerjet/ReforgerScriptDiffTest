@@ -65,6 +65,24 @@ class SCR_ScenarioUICommon
 		SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(mission.Id()));
 		return header && GetGame().GetSaveManager().HasLatestSave(header);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool LoadSave(MissionWorkshopItem scenario, SCR_MissionHeader header, ChimeraMenuPreset startMenu)
+	{
+		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
+			return false;
+		
+		MissionWorkshopItem mission = SCR_SaveWorkshopManager.GetScenarioMissionWorkshopItem(header);	
+		string scenarioName = SCR_SaveWorkshopManager.GetScenarioNameFile(mission);
+		
+		if (header && !scenarioName.IsEmpty())
+			GetGame().GetSaveManager().SetFileNameToLoad(header);
+		else
+			GetGame().GetSaveManager().ResetFileNameToLoad();
+
+		SCR_MenuLoadingComponent.SaveLastMenu(startMenu);
+		return true;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool IsMultiplayer(MissionWorkshopItem mission)
@@ -121,13 +139,16 @@ class SCR_ScenarioUICommon
 
 		Revision revision = mission.GetOwner().GetActiveRevision();
 		if (!revision)
+			revision = mission.GetOwner().GetLocalRevision();
+		
+		if (!revision)
 			return true;
 		
 		array<Dependency> dependencies = {};
 		revision.GetDependencies(dependencies);
 		
 		foreach (Dependency dependency : dependencies)
-		{
+		{	
 			if (!dependency.IsOffline())
 				return true;
 		}
@@ -221,6 +242,9 @@ class SCR_ScenarioUICommon
 		return GetGame().GetBackendApi().GetWorkshop().GetInGameScenario(resource);
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// The way these methods are used currently, these checks are repeated a myriad times and constantly. This is far from ideal, but was the quickest way to get it done
+	
 	// --- Issues ---
 	// TODO: change the enum to flags to reduce the number of times these checks need to be performed
 	/*
@@ -301,6 +325,11 @@ class SCR_ScenarioUICommon
 		return SCR_EScenarioIssues.NONE;
 	}
 
+//---- REFACTOR NOTE END ----
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Overreliance on scripts and hardcoded strings to drive UI looks. We should start considering the possibility of defining configurable stylesheets designers can work with outside of scripts
+	
 	// --- UI ---
 	//------------------------------------------------------------------------------------------------
 	protected static string GetErrorTexture(SCR_EScenarioIssues issue, SCR_ERevisionAvailability availability)
@@ -396,6 +425,22 @@ class SCR_ScenarioUICommon
 			SCR_ListEntryHelper.UpdateMouseButtonColor(button, GetPlayHighestPriorityIssue(mission) != SCR_EScenarioIssues.NONE, entryFocused);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	static void UpdatePlaySaveMouseButton(SCR_ModularButtonComponent button, WorldSaveItem save, bool entryFocused, bool visible = true)
+	{
+		if (!button)
+			return;
+
+		visible = visible && entryFocused;
+
+		string id = save.Id();
+		string fileName = GetGame().GetSaveManager().FindFileNameById(id);
+		
+		button.SetVisible(visible);
+		if (visible)
+			SCR_ListEntryHelper.UpdateMouseButtonColor(button, !fileName.IsEmpty(), entryFocused);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	static void UpdateContinueMouseButton(SCR_ModularButtonComponent button, MissionWorkshopItem mission, bool entryFocused, bool visible = true)
 	{
@@ -573,6 +618,8 @@ class SCR_ScenarioUICommon
 		else if (tooltip.IsValid(BUTTON_HOST))
 			UpdateHostMouseButtonTooltip(tooltip, mission);
 	}
+	
+	//---- REFACTOR NOTE END ----
 }
 
 enum SCR_EScenarioIssues

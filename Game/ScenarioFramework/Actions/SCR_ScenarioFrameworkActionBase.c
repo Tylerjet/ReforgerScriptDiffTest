@@ -1,15 +1,18 @@
 [BaseContainerProps(), SCR_ContainerActionTitle()]
 class SCR_ScenarioFrameworkActionBase
 {
+	[Attribute(desc: "If set to true, when this action gets activated, it will break the breakpoint in the Script Editor in CanActivate method from which you can step out to the OnActivate method and debug this specific action. This can be also set during runtime via Debug Menu > ScenarioFramework > Action Inspector")]
+	bool m_bDebug;
+	
 	[Attribute(defvalue: "-1", uiwidget: UIWidgets.Graph, params: "-1 10000 1", desc: "How many times this action can be performed if this gets triggered? Value -1 for infinity")]
-	int					m_iMaxNumberOfActivations;
+	int	m_iMaxNumberOfActivations;
 
-	IEntity				m_Entity;
-	int					m_iNumberOfActivations;
+	IEntity	m_Entity;
+	int	m_iNumberOfActivations;
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] entity
+	//! Initializes entity, sets OnActivate and OnDeactivate event handlers for SCR_BaseTriggerEntity.
+	//! \param[in] entity that initialized this action.
 	void Init(IEntity entity)
 	{
 		if (!SCR_BaseTriggerEntity.Cast(entity))
@@ -30,10 +33,15 @@ class SCR_ScenarioFrameworkActionBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return
+	//! Checks if action can be activated, handles maximum activation limit, increments activation count if possible
+	//! \return true if action can be activated, false otherwise.
 	bool CanActivate()
 	{
+		// Here you can step out to the OnActivate method and debug this specific action if m_bDebug attribute is set to true.
+		// This can be also adjusted during runtime via Debug Menu > ScenarioFramework > Action Inspector
+		if (m_bDebug)
+			Print("[SCR_ScenarioFrameworkActionBase.CanActivate] debug line (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+		
 		if (m_iMaxNumberOfActivations != -1 && m_iNumberOfActivations >= m_iMaxNumberOfActivations)
 		{
 			if (m_Entity)
@@ -49,9 +57,11 @@ class SCR_ScenarioFrameworkActionBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \out entity
-	//! \return
+	//! Validates input entity for ScenarioFramework Action, checks if it's from layer or getter, returns true if valid
+	//! \param[in] object Validates if input object is a valid entity for the action
+	//! \param[in] getter Getter represents an optional parameter used to retrieve an entity from a scenario framework action.
+	//! \param[out] entity that is valid for this action
+	//! \return true if the input entity is valid, otherwise false.
 	bool ValidateInputEntity(IEntity object, SCR_ScenarioFrameworkGet getter, out IEntity entity)
 	{
 		if (!getter && object)
@@ -97,11 +107,30 @@ class SCR_ScenarioFrameworkActionBase
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] object
 	void OnActivate(IEntity object);
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] subActions
+	array<ref SCR_ScenarioFrameworkActionBase> GetSubActions();
+	
+	//------------------------------------------------------------------------------------------------
+	//! Restores default settings for action and resets number of activations.
+	void RestoreToDefault()
+	{
+		m_iNumberOfActivations = 0;
+		array<ref SCR_ScenarioFrameworkActionBase> subActions = GetSubActions();
+		if (subActions && !subActions.IsEmpty())
+		{
+			foreach (SCR_ScenarioFrameworkActionBase subAction : subActions)
+			{
+				subAction.RestoreToDefault();
+			}
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] aObjectsNames
-	//! \param[in] eActivationType
+	//! Spawns objects from an array, checks for existence, activation type, and initializes them with specified activation type.
+	//! \param[in] aObjectsNames An array of object names for spawning in the scenario.
+	//! \param[in] eActivationType eActivationType represents the activation type for the objects being spawned in the scenario.
 	void SpawnObjects(notnull array<string> aObjectsNames, SCR_ScenarioFrameworkEActivationType eActivationType)
 	{
 		IEntity object;

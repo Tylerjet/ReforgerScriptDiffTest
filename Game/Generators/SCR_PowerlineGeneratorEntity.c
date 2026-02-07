@@ -1,5 +1,5 @@
 [EntityEditorProps(category: "GameLib/Scripted/Generator", description: "Power Line Generator", dynamicBox: true, visible: false)]
-class SCR_PowerlineGeneratorEntityClass : SCR_GeneratorBaseEntityClass
+class SCR_PowerlineGeneratorEntityClass : SCR_LineTerrainShaperGeneratorBaseEntityClass
 {
 }
 
@@ -12,8 +12,11 @@ class SCR_PowerlineGeneratorEntityClass : SCR_GeneratorBaseEntityClass
 //! e.g closest LV to closest LV, closest Telephone to closest Telephone
 
 // TODO: move most of the properties to PrefabData (https://community.bistudio.com/wiki/Arma_Reforger:Prefab_Data)
-class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
+class SCR_PowerlineGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 {
+	[Attribute(defvalue: "0", desc: "Use at the very end, as any other generator change will use the old system", category: "[NEW] New Placement")]
+	protected bool m_bUseNewPlacementSystem;
+
 	/*
 		Pole Setup
 	*/
@@ -101,15 +104,18 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	protected static ref array<IEntitySource> s_aGenerators = {};
 	protected static IEntitySource s_CurrentQueryGenerator;
 
+	protected static bool s_bClearingNewPlacementSystem;
+
 	protected static ref SCR_DebugShapeManager s_DebugShapeManager; // this one is static
 
 	protected static const float TOLERANCE_SQUARED = 0.01; // 0.1 * 0.1
 	protected static const float MIN_CABLE_LENGTH_SQ = 0.01; // 0.1 * 0.1
 	protected static const float GENERATOR_BBOX_TOLERANCE = 5; // in metres
-	protected static const string POINT_DATA_CLASS = "SCR_PowerlineGeneratorPointData";
 	protected static const string POWER_LINE_CLASS = "PowerlineEntity";
 
 	protected static const SCR_EPoleCableType DEFAULT_CABLE_TYPE = SCR_EPoleCableType.POWER_LV;
+
+	protected static const float POLE_DISTANCE_TOLERANCE = 1.0; // any pole closer than that will be dropped
 
 	// DEBUG variables (color, pos, size)
 
@@ -132,11 +138,12 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	protected static const int DEBUG_CABLE_COLOUR_POS = Color.YELLOW & 0x00FFFFFF | 0x88000000;	//!< virtual power cables
 
 	protected static const int DEBUG_GENERATOR_COLOUR = Color.GREEN;								//!< generators's bounding box
-	protected static const int DEBUG_GENERATOR_MIN_HEIGHT = 10; // plus bbox tolerance
+	protected static const int DEBUG_GENERATOR_MIN_HEIGHT = 20; // plus bbox tolerance
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] generator
+	//! Generates junctions for selected powerline generators, optionally drawing debug shapes, and generates poles for them.
+	//! \param[in] generator Generates junctions for powerline generators in the world editor, also handles pole generation based on new placement system.
+	//! \param[in] drawDebugShapes Determines whether debug shapes for generator junctions are drawn during execution.
 	protected static void GenerateGeneratorJunctions(notnull IEntitySource generator, bool drawDebugShapes = false)
 	{
 		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
@@ -172,6 +179,18 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		s_aGenerators.Insert(generator);
 		QueryGenerators(generator);
 
+		bool useNewPlacementSystem;
+		if (generator.Get("m_bUseNewPlacementSystem", useNewPlacementSystem) && useNewPlacementSystem)
+		{
+			s_bClearingNewPlacementSystem = true;
+			if (!worldEditorAPI.ClearVariableValue(generator, null, "m_bUseNewPlacementSystem"))
+				Print("Cannot clear m_bUseNewPlacementSystem", LogLevel.WARNING);
+		}
+		else
+		{
+			useNewPlacementSystem = false; // in case there is no value
+		}
+
 		SCR_PowerlineGeneratorEntity queriedGenerator;
 		int generatorsCount = s_aGenerators.Count();
 		foreach (IEntitySource generatorSource : s_aGenerators)
@@ -203,7 +222,18 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 				queriedGenerator.FindCommonJunctionsPoints(otherQueriedGenerator.m_aMyJunctionPoles);
 			}
 
-			queriedGenerator.GeneratePoles();
+			if (useNewPlacementSystem) // this makes "new placement" managed by the generator 
+			{
+				Debug.BeginTimeMeasure();
+				queriedGenerator.GeneratePolesNew();
+				Debug.EndTimeMeasure("Pole Generation (NEW)");
+			}
+			else
+			{
+				Debug.BeginTimeMeasure();
+				queriedGenerator.GeneratePoles();
+				Debug.EndTimeMeasure("Pole Generation (OLD)");
+			}
 		}
 	}
 
@@ -322,6 +352,12 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
+		if (s_bClearingNewPlacementSystem && key == "m_bUseNewPlacementSystem")
+		{
+			s_bClearingNewPlacementSystem = false;
+			return false;
+		}
+
 		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
 
 		if (key == "coords")
@@ -380,13 +416,11 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		point.Get("Position", pointPosition);
 
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
-		IEntitySource poleSrc = worldEditorAPI.CreateEntity(junctionResourceName, "", 0, m_Source, pointPosition, vector.Zero);
+		IEntitySource poleSrc = worldEditorAPI.CreateEntity(junctionResourceName, string.Empty, 0, m_Source, pointPosition, vector.Zero);
 		if (!poleSrc)
 			return;
 
-		yaw += junctionData.m_fYawOffset;
-		if (yaw > 360)
-			yaw -= 360;
+		yaw = Math.Repeat(yaw + junctionData.m_fYawOffset, 360);
 
 		worldEditorAPI.SetVariableValue(poleSrc, null, "angleY", yaw.ToString());
 
@@ -606,10 +640,348 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] point
-	//! \param[out] sameLine
-	//! \return
+	//! Generates power poles position first then creates poles and cables if valid
+	protected void GeneratePolesNew()
+	{
+		if (!m_ParentShapeSource)
+		{
+			Print("Parent Shape Source is null, cannot generate power poles", LogLevel.ERROR);
+			return;
+		}
+
+		if (m_bDrawDebugShapes)
+			m_DebugShapeManager = new SCR_DebugShapeManager();
+		else
+			m_DebugShapeManager = null;
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		if (!worldEditorAPI)
+			return;
+
+		if (!worldEditorAPI.IsDoingEditAction())
+		{
+			Print("GeneratePoles was called while not in edit action", LogLevel.ERROR);
+			return;
+		}
+
+		ShapeEntity parentShapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+		if (!parentShapeEntity) // wat
+		{
+			Print("Parent Shape is null, cannot generate power poles", LogLevel.ERROR);
+			return;
+		}
+
+		array<vector> anchorPointsRelPos = {};
+		parentShapeEntity.GetPointsPositions(anchorPointsRelPos);
+
+		if (anchorPointsRelPos.Count() < 2)
+		{
+			Print("Not enough shape points", LogLevel.ERROR);
+			return;
+		}
+
+		// ANCHORS DATA COLLECTION
+		map<int, ref SCR_PowerlineGeneratorPointData> pointsData = GetParentShapeAnchorsData();
+
+		// GET POLES'S POSITION
+		array<vector> tesselatedPointsRelPos = {};
+		parentShapeEntity.GenerateTesselatedShape(tesselatedPointsRelPos);
+
+		array<vector> polePointsRelPos = GetPolesRelPosition(anchorPointsRelPos, tesselatedPointsRelPos, pointsData);
+		if (!polePointsRelPos)
+		{
+			Print("Power Line Generator shape is invalid; no poles will be generated", LogLevel.ERROR);
+			return;
+		}
+
+		bool debugShapes = false;
+		if (debugShapes && !s_DebugShapeManager)
+		{
+			s_DebugShapeManager = new SCR_DebugShapeManager();
+
+			vector prevPoleWorldPos;
+			foreach (int i, vector polePointRelPos : polePointsRelPos)
+			{
+				polePointRelPos = CoordToParent(polePointRelPos);
+				s_DebugShapeManager.AddSphere(polePointRelPos, 1);
+
+				if (prevPoleWorldPos)
+					s_DebugShapeManager.AddLine(prevPoleWorldPos + vector.Up, polePointRelPos + vector.Up);
+				else
+					s_DebugShapeManager.AddSphere(polePointRelPos + 3 * vector.Up, 2, Color.DARK_GREEN, ShapeFlags.NOOUTLINE);
+
+				if (i == polePointsRelPos.Count() - 1)
+					s_DebugShapeManager.AddSphere(polePointRelPos + 3 * vector.Up, 2, Color.DARK_RED, ShapeFlags.NOOUTLINE);
+
+				prevPoleWorldPos = polePointRelPos;
+			}
+		}
+
+		// POLES (and cables) CREATION
+		if (!debugShapes)
+			CreatePolesAndCables(polePointsRelPos, anchorPointsRelPos, pointsData);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get point data from parent shape source points.
+	//! \return map of anchor index / point data
+	protected map<int, ref SCR_PowerlineGeneratorPointData> GetParentShapeAnchorsData()
+	{
+		map<int, ref SCR_PowerlineGeneratorPointData> result = new map<int, ref SCR_PowerlineGeneratorPointData>();
+		BaseContainerList pointsSource = m_ParentShapeSource.GetObjectArray("Points");
+		BaseContainerList dataArray;
+		BaseContainer data;
+		typename classNameType;
+		SCR_PowerlineGeneratorPointData pointData;
+		SCR_PowerlineGeneratorJunctionData junctionData;
+		for (int i, count = pointsSource.Count(); i < count; i++)
+		{
+			dataArray = pointsSource.Get(i).GetObjectArray("Data");
+			if (!dataArray)
+				continue;
+
+			for (int j = 0, dataCount = dataArray.Count(); j < dataCount; j++)
+			{
+				data = dataArray.Get(j);
+				classNameType = data.GetClassName().ToType();
+				if (!classNameType || !classNameType.IsInherited(SCR_PowerlineGeneratorPointData))
+					continue;
+
+				pointData = new SCR_PowerlineGeneratorPointData();
+				data.Get("m_fPoleOffset", pointData.m_fPoleOffset);
+				data.Get("m_bGeneratePerPoint", pointData.m_bGeneratePerPoint);
+				data.Get("m_JunctionData", junctionData);
+				if (junctionData)
+					pointData.m_JunctionData = junctionData;
+
+				result.Insert(i, pointData);
+				break; // only take the first one
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Generates poles relative positions for powerline generator based on anchor points, tesselated points, and powerline data
+	//! \param[in] anchorPointsRelPos
+	//! \param[in] tesselatedPointsRelPos
+	//! \param[in] pointsData
+	//! \return null if the shape is invalid
+	protected array<vector> GetPolesRelPosition(
+		notnull array<vector> anchorPointsRelPos,
+		notnull array<vector> tesselatedPointsRelPos,
+		notnull map<int, ref SCR_PowerlineGeneratorPointData> pointsData)
+	{
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		ShapeEntity shapeEntity = ShapeEntity.Cast(worldEditorAPI.SourceToEntity(m_ParentShapeSource));
+		if (!shapeEntity)
+			return null;
+
+		SCR_ShapeNextPointHelper shapeNextPointHelper = new SCR_ShapeNextPointHelper(shapeEntity);
+		if (!shapeNextPointHelper.IsValid())
+			return null;
+
+		array<vector> result = {};
+
+		float poleOffset;
+
+		if (m_fDistance < POLE_DISTANCE_TOLERANCE)
+			m_fDistance = POLE_DISTANCE_TOLERANCE;
+
+		const float distanceSq = m_fDistance * m_fDistance;
+
+		bool generatePerPoint;
+		vector lastPoleRelPos;
+		IEntity junction;
+		SCR_PowerlineGeneratorPointData pointData;
+		int anchorPointsCountMinus1 = anchorPointsRelPos.Count() - 1;
+		foreach (int i, vector anchorPointRelPos : anchorPointsRelPos)
+		{
+			bool isStart = i == 0;
+			bool isEnd = i == anchorPointsCountMinus1;
+			bool hasJunction;
+
+			bool wasGeneratedPerPoint = generatePerPoint;
+			float oldPoleOffset = poleOffset;
+
+			pointData = pointsData.Get(i);
+			if (pointData)
+			{
+				poleOffset = pointData.m_fPoleOffset;
+				generatePerPoint = pointData.m_bGeneratePerPoint;
+
+				// hardcoded safety
+				if (m_fDistance + poleOffset < POLE_DISTANCE_TOLERANCE)
+					poleOffset = POLE_DISTANCE_TOLERANCE - m_fDistance;
+
+				hasJunction = pointData.m_JunctionData != null && (m_DefaultJunctionPole || pointData.m_JunctionData.m_sJunctionPrefab);
+			}
+			else
+			{
+				poleOffset = 0;
+			}
+
+			if (!isStart && !wasGeneratedPerPoint)
+			{
+				// add offset if it exists
+				if (poleOffset > 0 && shapeNextPointHelper.GetNextPoint(m_fDistance + poleOffset, lastPoleRelPos, i))
+					result.Insert(lastPoleRelPos);
+
+				// straight to the current anchor point!
+				while (shapeNextPointHelper.GetNextPoint(m_fDistance, lastPoleRelPos, i))
+				{
+					result.Insert(lastPoleRelPos);
+				}
+			}
+
+			if (wasGeneratedPerPoint || generatePerPoint || hasJunction || isEnd || isStart || vector.Distance(lastPoleRelPos, anchorPointRelPos) == 0)
+			{
+				int resultCount = result.Count();
+				if (resultCount > 0 && vector.Distance(lastPoleRelPos, anchorPointRelPos) < POLE_DISTANCE_TOLERANCE)
+					result.Remove(resultCount - 1);
+
+				result.Insert(anchorPointRelPos);
+				shapeNextPointHelper.SetOnAnchor(i);
+				// shapeNextPointHelper.SetPos(anchorPointRelPos);
+				lastPoleRelPos = anchorPointRelPos;
+			}
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Creates poles and cables between given points with optional random pitch and roll, snaps to terrain if no junction found
+	//! \param[in] polePointsRelpos
+	//! \param[in] anchorPointsRelPos
+	//! \param[in] pointsData
+	void CreatePolesAndCables(notnull array<vector> polePointsRelPos, notnull array<vector> anchorPointsRelPos, notnull map<int, ref SCR_PowerlineGeneratorPointData> pointsData)
+	{
+		bool snapToGround = !m_bSculptTerrain;
+		float yOffset = m_ShapeEntity.GetOrigin()[1];
+
+		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
+		int poleWorldPointsCountMinus1 = polePointsRelPos.Count() - 1;
+		vector prevPoleRelPoint;
+		ResourceName prefab;
+		vector vectorDir;
+		IEntitySource prevPole;
+		IEntitySource currPole;
+		IEntity junction;
+		int anchorPointIndex;
+		SCR_PowerlineGeneratorPointData pointData;
+		foreach (int i, vector currPoleRelPoint : polePointsRelPos)
+		{
+			bool applyRandomPitchAndRoll;
+			bool isStart = i == 0;
+			bool isEnd = i == poleWorldPointsCountMinus1;
+			if (isStart || isEnd || anchorPointsRelPos[anchorPointIndex] == currPoleRelPoint)	// anchor: start, end or junction
+			{
+				bool isSameLine;
+				junction = FindJunctionOnPoint(currPoleRelPoint, isSameLine);	// one must look for junction on all points
+																				// as another generator could make a junction here
+				if (junction)
+				{
+					currPole = worldEditorAPI.EntityToSource(junction);
+					if (m_DebugShapeManager)
+						m_DebugShapeManager.AddSphere(CoordToParent(currPoleRelPoint), 2);
+				}
+
+				if (currPole)																		// found junction
+				{
+					pointData = pointsData.Get(anchorPointIndex);
+					applyRandomPitchAndRoll = isSameLine;
+					if (isSameLine)
+					{
+						vectorDir = vector.Direction(
+							vector.Direction(currPoleRelPoint, prevPoleRelPoint),
+							vector.Direction(currPoleRelPoint, polePointsRelPos[i + 1]));
+
+						float yaw = vectorDir.ToYaw();
+						if (pointData.m_JunctionData)
+							yaw += pointData.m_JunctionData.m_fYawOffset;
+	
+						worldEditorAPI.SetVariableValue(currPole, null, "angleY", yaw.ToString());
+					}
+				}
+				else
+				{
+					if (isStart)																	// start pole
+					{
+						vectorDir = vector.Direction(currPoleRelPoint, polePointsRelPos[1]);
+						prefab = m_StartPole;
+						applyRandomPitchAndRoll = m_bApplyPitchAndRollStart;
+						if (m_bRotate180DegreeYawStartPole)
+							vectorDir = -vectorDir;
+					}
+					else if (isEnd)																	// end pole
+					{
+						vectorDir = vector.Direction(prevPoleRelPoint, currPoleRelPoint);
+						prefab = m_EndPole;
+						applyRandomPitchAndRoll = m_bApplyPitchAndRollEnd;
+						if (m_bRotate180DegreeYawEndPole)
+							vectorDir = -vectorDir;
+					}
+					else																			// normal pole that happens to be EXACTLY on an anchor pos
+					{
+						vectorDir = vector.Direction(
+							vector.Direction(currPoleRelPoint, prevPoleRelPoint).Normalized(),
+							vector.Direction(currPoleRelPoint, polePointsRelPos[i + 1]).Normalized());
+
+						prefab = m_DefaultPole;
+						applyRandomPitchAndRoll = m_bApplyPitchAndRollDefault;
+					}
+				}
+
+				anchorPointIndex++;
+			}
+			else																					// normal pole
+			{
+				vectorDir = vector.Direction(
+					vector.Direction(currPoleRelPoint, prevPoleRelPoint).Normalized(),
+					vector.Direction(currPoleRelPoint, polePointsRelPos[i + 1]).Normalized());
+
+				prefab = m_DefaultPole;
+				applyRandomPitchAndRoll = m_bApplyPitchAndRollDefault;
+			}
+
+			if (!currPole)
+			{
+				if (snapToGround)
+				{
+					vector worldPos = CoordToParent(currPoleRelPoint);
+					worldPos[1] = worldEditorAPI.GetTerrainSurfaceY(worldPos[0], worldPos[2]);
+					currPoleRelPoint = CoordToLocal(worldPos);
+				}
+
+				currPole = worldEditorAPI.CreateEntity(prefab, string.Empty, 0, m_Source, currPoleRelPoint, vector.Zero);
+
+				worldEditorAPI.SetVariableValue(currPole, null, "angleY", vectorDir.ToYaw().ToString());
+				if (applyRandomPitchAndRoll)
+					ApplyRandomPitchAndRoll(currPole);
+
+				if (m_DebugShapeManager)
+				{
+					m_DebugShapeManager.AddSphere(CoordToParent(currPoleRelPoint), DEBUG_POLE_SIZE, DEBUG_POLE_COLOUR_POS, ShapeFlags.NOOUTLINE);
+					m_DebugShapeManager.AddArrow(CoordToParent(currPoleRelPoint), CoordToParent(currPoleRelPoint + (3 * { Math.Sin(vectorDir.ToYaw() * Math.DEG2RAD), 0, Math.Cos(vectorDir.ToYaw() * Math.DEG2RAD) })));
+				}
+			}
+
+			if (i > 0)
+				CreatePowerLines(GetPowerPoleFromEntitySource(prevPole), GetPowerPoleFromEntitySource(currPole));
+
+			prevPole = currPole;
+			prevPoleRelPoint = currPoleRelPoint;
+			currPole = null;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds nearest junction pole from given point
+	//! \param[in] point Finds nearest junction pole on given point, checks if it is on same line as the current generator
+	//! \param[out] sameLine Represents whether the found junction is on the same line as the given point
+	//! \return the junction pole closest to the given point, or null if no junction pole is found
 	protected IEntity FindJunctionOnPoint(vector point, out bool sameLine)
 	{
 		foreach (IEntity junctionPole : m_aMyJunctionPoles)
@@ -634,8 +1006,8 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] point
+	//! Attaches junctions to point based on distance tolerance, separates junctions into attached and unattached groups.
+	//! \param[in] point a world-space coordinate where the junction can be attached
 	protected void AttachJunctionOnPoint(vector point)
 	{
 		foreach (IEntity junctionPole : m_aMyJunctionPoles)
@@ -652,9 +1024,9 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] junction
-	//! \param[in] sameLine
+	//! Attaches junction to power pole, creates power lines if necessary, updates last junction state
+	//! \param[in] junction Connects power poles in a line, updates previous power pole source for next junction attachment
+	//! \param[in] sameLine Whether the new junction is on the same line as the previous one
 	protected void AttachJunction(notnull IEntity junction, bool sameLine)
 	{
 		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
@@ -874,20 +1246,19 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
-	{
-		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
-
-		// TODO handle this case better if needed, use the bbox arrays
-		OnShapeInit(shapeEntitySrc, shapeEntity);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Poles order matter - otherwise previous pole's B slots are ignored
 	//! \param[in] existingPole
 	//! \param[in] addedPole
 	//! \param[in] sameLine
 	//! \return the created power line entity sources, or null array on error / no cables
+	// TODO: fix cable bug on rotated shape
+
+	//------------------------------------------------------------------------------------------------
+	//! Creates power lines between two power poles based on their cable types, if they have compatible slots
+	//! \param[in] existingPole Existing pole represents the current power pole in the scene
+	//! \param[in] addedPole Added pole represents the new pole being added to the power line
+	//! \param[in] sameLine(Optional, default true) Creates power lines between existing pole and added pole if they belong to same line
+	//! \return created power lines entity sources, null on error
 	protected array<IEntitySource> CreatePowerLines(SCR_PowerPole existingPole, SCR_PowerPole addedPole, bool sameLine = true)
 	{
 		if (!existingPole || !addedPole || existingPole == addedPole)
@@ -1045,7 +1416,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 					if (m_DebugShapeManager)
 					{
 						float localX = existingPole.CoordToLocal(startPoint)[0];
-						vector forward = (endPoints[i] - startPoint).Normalized();
+						vector forward = vector.Direction(startPoint, endPoints[i]);
 						vector right = -{
 							forward[0] * Math.Cos(Math.PI_HALF) - forward[2] * Math.Sin(Math.PI_HALF),
 							0,													// Y rotation - 2D only
@@ -1116,7 +1487,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	//! \param[in] pole the pole from which to get cable slot groups
 	//! \param[in] worldPos the world position from which get the closest groups
 	//! \param[in] sameLine if poles are on the same lines or if it is a connection\n
-	//! (used for backward compatibility with the old slot system)
+	//! (used for backward compatibility with the slot system)
 	//! \return cableType-slotGroup map of non-empty slot groups or null on all empty groups or error
 	protected map<SCR_EPoleCableType, ref SCR_PoleCableSlotGroup> GetClosestSlotGroups(notnull SCR_PowerPole pole, vector worldPos, bool sameLine)
 	{
@@ -1124,7 +1495,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!result.IsEmpty())
 			return result;
 
-		Print("Pole uses the old cable slot system at " + pole.GetOrigin(), LogLevel.WARNING);
+		Print("Pole uses the cable slot system at " + pole.GetOrigin(), LogLevel.WARNING);
 
 		int slotCount = pole.GetSlotsCount(sameLine);
 		if (pole.GetSlotsCount(sameLine) < 1)
@@ -1206,15 +1577,16 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 		BaseContainerList points = shapeSource.GetObjectArray("Points");
 
-		// Get bbox
 		array<vector> vectorPoints = GetPoints(shapeSource);
 		SCR_AABB bbox = new SCR_AABB(vectorPoints);
 
-		// Query entities in bbox
-		vector mat[4];
-		shapeEntity.GetTransform(mat);
-
 		IEntity generatorEntity = worldEditorAPI.SourceToEntity(generator);
+		if (!generatorEntity) // disabled, or anything else
+		{
+			Print("A Generator may have the Disabled flag - please check", LogLevel.WARNING);
+			return;
+		}
+
 		BaseWorld world = generatorEntity.GetWorld();
 
 		if (bbox.m_vMax[1] - bbox.m_vMin[1] < DEBUG_GENERATOR_MIN_HEIGHT)
@@ -1224,7 +1596,6 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 			bbox.m_vMax[1] = middle + DEBUG_GENERATOR_MIN_HEIGHT * 0.5;
 			bbox.m_vMin[1] = middle - DEBUG_GENERATOR_MIN_HEIGHT * 0.5;
 		}
-
 
 		bbox.m_vMin -= { GENERATOR_BBOX_TOLERANCE, GENERATOR_BBOX_TOLERANCE, GENERATOR_BBOX_TOLERANCE };
 		bbox.m_vMax += { GENERATOR_BBOX_TOLERANCE, GENERATOR_BBOX_TOLERANCE, GENERATOR_BBOX_TOLERANCE };
@@ -1283,49 +1654,19 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Create a Point Data on each shape's anchor point if none is present
-	protected void AddPointData(BaseContainerList points)
-	{
-		WorldEditorAPI worldEditorAPI = _WB_GetEditorAPI();
-		if (!worldEditorAPI || worldEditorAPI.UndoOrRedoIsRestoring())
-			return;
-
-		BaseContainerList dataArr;
-		typename classNameType;
-		for (int i = points.Count() - 1; i >= 0; i--)
-		{
-			dataArr = points.Get(i).GetObjectArray("Data");
-			int dataCount = dataArr.Count();
-			bool hasPointData = false;
-			for (int j = 0; j < dataCount; ++j)
-			{
-				classNameType = dataArr.Get(j).GetClassName().ToType();
-				if (!classNameType)
-					continue;
-
-				if (classNameType.IsInherited(SCR_PowerlineGeneratorPointData))
-				{
-					hasPointData = true;
-					break;
-				}
-			}
-
-			if (!hasPointData)
-				worldEditorAPI.CreateObjectArrayVariableMember(points[i], null, "Data", POINT_DATA_CLASS, dataCount);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
 		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
 
-		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
-		if (!points)
-			return;
+		GenerateGeneratorJunctions(m_Source, m_bDrawDebugShapes);
+	}
 
-		AddPointData(points);
+	//------------------------------------------------------------------------------------------------
+	override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
+	{
+		super.OnShapeChangedInternal(shapeEntitySrc, shapeEntity, mins, maxes);
 
+		// TODO handle this case better if needed, use the bbox arrays
 		GenerateGeneratorJunctions(m_Source, m_bDrawDebugShapes);
 	}
 #endif // WORKBENCH
@@ -1343,30 +1684,4 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		SetEventMask(EntityEvent.INIT);
 #endif // WORKBENCH
 	}
-}
-
-[BaseContainerProps()]
-class SCR_PowerlineGeneratorJunctionData
-{
-	[Attribute(desc: "Junction prefab to be used", uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
-	ResourceName m_sJunctionPrefab;
-
-	// not a slider for performance reason (type the value directly)
-	[Attribute(defvalue: "0", desc: "Set the junction's yaw offset; can be used to setup the prefab properly", /* uiwidget: UIWidgets.Slider, */params: "0 360")]
-	float m_fYawOffset;
-
-	[Attribute(defvalue: "0", desc: "Define whether or not this junction is a power source")]
-	bool m_bPowerSource;
-}
-
-class SCR_PowerlineGeneratorPointData : ShapePointDataScriptBase
-{
-	[Attribute(desc: "Offset of the pole, in metres")]
-	float m_fPoleOffset;
-
-	[Attribute(defvalue: "0", desc: "Generate poles on anchor points until a point with this attribute unchecked is reached.")]
-	bool m_bGeneratePerPoint;
-
-	[Attribute()]
-	ref SCR_PowerlineGeneratorJunctionData m_JunctionData;
 }

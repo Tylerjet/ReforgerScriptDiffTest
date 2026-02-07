@@ -8,7 +8,7 @@ class SCR_RadialMenuItemsComponent : ScriptComponent
 	[Attribute()]
 	protected ref SCR_RadialMenuController m_MenuController;
 
-	protected const int FIRST_ITEM_SLOT = 4;
+	protected const int FIRST_ITEM_SLOT = 3;
 	protected const int SLOT_COUNT = 10;
 	
 	//------------------------------------------------------------------------------------------------

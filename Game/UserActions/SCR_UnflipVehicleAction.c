@@ -1,5 +1,8 @@
 class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 {
+	[Attribute(defvalue: "1", desc: "Factor that will multiply number of suggested required players to better indicate difficulty of flipping this vehicle\nDue to the fact that some vehicles are very boxy they are inherently harder to flip back on wheels", params: "0.01 inf")]
+	protected float m_fSuggestedUsersMultiplier;
+
 	protected vector m_vAngles;
 	protected ref array<IEntity> m_aUsers = {};
 
@@ -60,14 +63,18 @@ class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 		if (!info)
 			return false;
 
-		int userCount = m_aUsers.Count();
-		int suggestedUsers;
 		Physics physics = GetOwner().GetPhysics();
-		if (physics)
-			suggestedUsers = Math.Ceil(physics.GetMass() / m_fForceLimit);
+		if (!physics)
+			return false;
+
+		float forcePerUser = Math.Min(m_fMassToForce * physics.GetMass(), m_fForceLimit);
+		if (forcePerUser == 0)
+			return false;
+
+		int suggestedUsers = Math.Ceil((physics.GetMass() / forcePerUser) * m_fSuggestedUsersMultiplier);
 
 		outName = info.GetName();
-		ActionNameParams[0] = userCount.ToString();
+		ActionNameParams[0] = m_aUsers.Count().ToString();
 		ActionNameParams[1] = suggestedUsers.ToString();
 		return true;
 	}
@@ -80,7 +87,11 @@ class SCR_UnflipVehicleAction : SCR_PushVehicleAction
 		if (!physics)
 			return 1;
 
-		int suggestedUsers = Math.Ceil(physics.GetMass() / m_fForceLimit);
+		float forcePerUser = Math.Min(m_fMassToForce * physics.GetMass(), m_fForceLimit);
+		if (forcePerUser == 0)
+			return 1;
+
+		int suggestedUsers = Math.Ceil((physics.GetMass() / forcePerUser) * m_fSuggestedUsersMultiplier);
 
 		return m_aUsers.Count() / suggestedUsers;
 	}

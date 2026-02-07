@@ -335,6 +335,14 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		
 		hintManager.GetOnHintShow().Remove(OnHintShow);
 		hintManager.GetOnHintHide().Remove(OnHintHide);
+		
+		// Keep persistent hint opened 
+		SCR_HintUIInfo hint = hintManager.GetCurrentHint();
+		if (hint && hintManager.IsShown() && hint.IsPersistent())
+		{
+			hintManager.Hide();
+			hintManager.Show(hint, true);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

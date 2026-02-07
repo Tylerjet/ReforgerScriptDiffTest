@@ -18,6 +18,7 @@ sealed class RplIdentity
 	static proto RplIdentity Local();
 	static proto RplIdentity Invalid();
 	proto external bool IsValid();
+	proto external string AsString();
 }
 
 /*!

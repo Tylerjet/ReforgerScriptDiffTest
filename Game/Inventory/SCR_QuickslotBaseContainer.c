@@ -12,6 +12,10 @@ class SCR_QuickslotBaseContainer
 	//! Handles how the quickslot with this container is represented visually
 	//!	\params widgets that are available for the quickslot visualization
 	void HandleVisualization(ImageWidget iconImage, RenderTargetWidget renderTarget, RichTextWidget text, TextWidget quickslotNumber);
+	
+	//------------------------------------------------------------------------------------------------
+	//!	returns true if the containers action can be performed
+	bool IsQuickslotActionAvailable();
 }
 
 class SCR_QuickslotEntityContainer : SCR_QuickslotBaseContainer
@@ -58,6 +62,15 @@ class SCR_QuickslotEntityContainer : SCR_QuickslotBaseContainer
 		Widget commandOutline = iconImage.GetParent().FindAnyWidget(COMMAND_OUTLINE_WIDGET_NAME);
 		if (commandOutline)
 			commandOutline.SetVisible(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsQuickslotActionAvailable()
+	{
+		if (!m_Entity)
+			return false;
+		
+		return true;
 	}
 }
 
@@ -124,5 +137,11 @@ class SCR_QuickslotCommandContainer : SCR_QuickslotBaseContainer
 	void SCR_QuickslotCommandContainer(string name)
 	{
 		m_sCommandName = name;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsQuickslotActionAvailable()
+	{
+		return !m_sCommandName.IsEmpty();
 	}
 }

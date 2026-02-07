@@ -76,6 +76,9 @@ class SCR_KeyBindingEntry
 	
 	[Attribute(SCR_Enum.GetDefault(SCR_EActionPrefixType.NON_CONTINUOUS), UIWidgets.ComboBox, "Type of prefix that can be applied to this action", "", ParamEnumArray.FromEnum(SCR_EActionPrefixType))]
 	SCR_EActionPrefixType m_ePrefixType;
+
+	[Attribute(uiwidget: UIWidgets.SearchComboBox, desc: "Displayed only on specified platforms if defined", enums: ParamEnumArray.FromEnum(EPlatform))]
+	ref array<EPlatform> m_aPlatforms;
 };
 
 [BaseContainerProps("", "Category of key bindings"), BaseContainerCustomTitleField("m_sName")]

@@ -28,6 +28,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	protected Widget m_wBackground;
 	protected Widget m_wLabelRoot;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Untyped invoker abuse! Not only passing different data to the same invoker is very prone to mistakes in listeners, child components' interpretation of what OnChanged means to them is very different, and led to mistakes in menus that resulted in huge amounts of pointless calls. We need different events for init, changes, and user interactions that are specific to each child
+		
 	ref ScriptInvoker m_OnChanged = new ScriptInvoker();
 	// Arguments passed:
 	// Toolbox (multiselect off): SCR_ToolboxComponent, int (selected item)
@@ -37,6 +40,8 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	// ComboBox: SCR_ComboBoxComponent, int (selected item)
 	// EditBox: SCR_EditBoxComponent, string (text)
 	// Slider: SCR_SliderComponent, float (value)
+
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -57,6 +62,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		else
 			ClearLabel();
 	}
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Unmantained, and not generic enough! Too tied to Reforger's old look: this handling of borders and backgrounds is now pointless because they were mostly abandoned
 	
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
@@ -101,6 +109,9 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		AnimateWidget.Color(m_wBackground, Color.FromInt(UIColors.BACKGROUND_DEFAULT.PackToInt()), m_fAnimationRate);
 		return false;
 	}
+	
+	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetupLabel()
@@ -181,6 +192,8 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 		if (use == m_bUseLabel)
 			return;
 		
+		m_bUseLabel = use;
+		
 		if (use)
 			SetupLabel();
 		else
@@ -198,5 +211,21 @@ class SCR_ChangeableComponentBase : SCR_WLibComponentBase
 	Widget GetLabelWidget()
 	{
 		return m_wLabelRoot;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSizeWithLabel(float size)
+	{
+		m_fSizeWithLabel = size;
+		if (m_bUseLabel)
+			SetupLabel();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetSizeWithoutLabel(float size)
+	{
+		m_fSizeWithoutLabel = size;
+		if (!m_bUseLabel)
+			ClearLabel();
 	}
 };

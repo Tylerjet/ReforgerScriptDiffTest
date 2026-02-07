@@ -1,10 +1,12 @@
 class RegisterResourceRequest : JsonApiStruct
 {
 	ref array<string> path = new array<string>;
+	string textureImportSize;
 
 	void RegisterResourceRequest()
 	{
 		RegV("path");
+		RegV("textureImportSize");
 	}
 }
 
@@ -18,28 +20,80 @@ class RegisterResourceResponse : JsonApiStruct
 	}
 }
 
+// Copied over from TextureImportTool
+bool IsImage(string className)
+{
+	return
+		className == "PNGResourceClass" ||
+		className == "DDSResourceClass" ||
+		className == "TGAResourceClass" ||
+		className == "TIFFResourceClass" ||
+		className == "PNGResourceClass" ||
+		className == "HDRResourceClass" ||
+		className == "PAAResourceClass" ||
+		className == "JPGResourceClass";
+}
+
 class RegisterResourceUtils
 {
-	void Register(string absPath, RegisterResourceResponse response)
+	bool Register(string absPath, int textureImportSize = -1)
 	{
-		//Get Resource
-		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		MetaFile meta = resourceManager.GetMetaFile(absPath);
+		const int WAITING_TIME = 3000;
+		ResourceManager rm = Workbench.GetModule(ResourceManager);
+		MetaFile meta = rm.GetMetaFile(absPath);
+		bool needsMetaUpdate = false;
+		
+		// check if meta doesnt exist already
 		if (!meta)
 		{
-			meta = resourceManager.RegisterResourceFile(absPath);
+			// create if not
+			meta = rm.RegisterResourceFile(absPath);
+			needsMetaUpdate = true;
+			// if creation was succesful
+			if (!meta)	
+				return false;
 		}
-		//Check if metafile was created
-		if (!meta)
+		
+		// save and rebuild
+		BaseContainerList configurations = meta.GetObjectArray("Configurations");
+		
+		if (IsImage(configurations[0].GetClassName()))
 		{
-			response.Output = false;
-			return;
+			needsMetaUpdate = true;
+			array<ref TextureType> textureTypes = new array<ref TextureType>;
+			TextureType.RegisterTypes(textureTypes);	
+			FixTextureMetaFile(meta, absPath, textureTypes);
+			
+			if (textureImportSize > 0)
+			{
+				for (int c = 0; c < configurations.Count(); c++)
+				{
+					BaseContainer cfg = configurations.Get(c);
+					
+					cfg.Set("MaxSize", textureImportSize);
+				}
+			}
+			else
+			{
+				for (int c = 0; c < configurations.Count(); c++)
+				{
+					BaseContainer cfg = configurations.Get(c);
+					cfg.ClearVariable("MaxSize");
+				}
+			}
+				
 		}
-		else response.Output = true;
-		//Rebuild
-		meta.Save();
-		resourceManager.RebuildResourceFile(absPath,"PC", true);
-		return;
+		
+		if (needsMetaUpdate)
+		{
+			meta.Save();
+		
+			rm.RebuildResourceFile(absPath, "PC", true);
+			rm.WaitForFile(absPath, WAITING_TIME);
+		}
+		
+		return true;
+
 	}
 }
 
@@ -55,11 +109,15 @@ class RegisterResource : NetApiHandler
 		RegisterResourceRequest req = RegisterResourceRequest.Cast(request);
 		RegisterResourceResponse response = new RegisterResourceResponse();
 		RegisterResourceUtils utils = new RegisterResourceUtils();
+		
+		int textureImportSize = -1;
+		if (req.textureImportSize != "")
+			textureImportSize = req.textureImportSize.ToInt();
 
 		// for each export path
 		for (int i = 0; i < req.path.Count(); i++)
 		{
-			utils.Register(req.path[i], response);
+			response.Output = utils.Register(req.path[i], textureImportSize);
 		}
 		return response;
 	}

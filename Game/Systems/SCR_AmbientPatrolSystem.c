@@ -321,7 +321,7 @@ class SCR_AmbientPatrolSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		RefreshPlayerList();
 	}

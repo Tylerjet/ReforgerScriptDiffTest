@@ -510,9 +510,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	//! \param[in] playerEntity
 	//! \param[in] killerEntity
 	//! \param[in] killer
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		if (playerEntity != SCR_PlayerController.GetLocalControlledEntity())
+		if (instigatorContextData.GetVictimEntity() != SCR_PlayerController.GetLocalControlledEntity())
 			return;
 
 		if (m_BaseWithPlayer)
@@ -582,7 +582,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (m_BaseWithPlayer.GetFaction() != playerFaction)
 		{
 			// Entering an enemy base
-			if (m_BaseWithPlayer.IsHQRadioTrafficPossible(playerFaction))
+			if (playerFaction && m_BaseWithPlayer.IsHQRadioTrafficPossible(playerFaction))
 			{
 				SCR_BaseTaskExecutor executor = SCR_BaseTaskExecutor.FindTaskExecutorByID(m_PlayerController.GetPlayerId());
 

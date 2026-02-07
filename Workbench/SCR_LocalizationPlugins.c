@@ -113,7 +113,7 @@ class SCR_LocLengthPlugin : LocalizationEditorPlugin
 
 		array<int> indices = {};
 		array<string> targets;
-		string id;
+//		string id;
 		BaseContainerList rows = stringTableSrc.GetObjectArray("Items");
 		BaseContainer row;
 

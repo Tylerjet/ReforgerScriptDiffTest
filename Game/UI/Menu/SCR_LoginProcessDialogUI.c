@@ -37,18 +37,20 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 
 	// Dialog creation
 	//------------------------------------------------------------------------------------------------
-	static void CreateLoginDialog()
+	static SCR_LoginDialogUI CreateLoginDialog()
 	{
 		if (GetGame().IsPlatformGameConsole())
 		{
 			SCR_LoginDialogConsoleUI dialog = new SCR_LoginDialogConsoleUI();
 			SCR_ConfigurableDialogUi.CreateFromPreset(DIALOG_CONFIG, "LOGIN_CONSOLE", dialog);
 			
-			return;
+			return dialog;
 		}
 		
 		SCR_LoginDialogUI dialog = new SCR_LoginDialogUI();
 		SCR_ConfigurableDialogUi.CreateFromPreset(DIALOG_CONFIG, "LOGIN", dialog);
+		
+		return dialog;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -228,7 +230,8 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	//------------------------------------------------------------------------------------------------
 	protected void OnTOSButton()
 	{
-		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem(TOS_LINK));
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PrivacyPolicyMenu);
+		Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -299,6 +302,12 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	protected void OnTimeoutScripted()
 	{
 		OnTimeout(m_Callback);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_BackendCallback GetCallback()
+	{
+		return m_Callback;
 	}
 }
 

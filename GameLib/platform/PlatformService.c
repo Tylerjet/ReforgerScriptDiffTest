@@ -3,6 +3,14 @@ class PlatformService
 	// Native C++ methods
 
 	/*!
+	Requests profanity filtering on the provided texts.
+	\param[in]	textsToFilter	Array of strings on which profanity filtering is being requested.
+	\param			callback			Callback object used to notify result.
+	\return			Returns true if the request is submitted.
+	*/
+	proto native bool FilterProfanityAsync(array<string> textsToFilter, ProfanityFilterRequestCallback cb);
+	
+	/*!
 	Requests privilege from platform. Implemented as queue. When the result for
 	one type of privilege is received, all requests of that type receive the result.
 	\param[privilege] Requested privilege

@@ -122,6 +122,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 
 		if (m_RplComp && !m_RplComp.Role())
 		{
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 			if (!world)
 				return;
@@ -132,6 +133,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 
 			m_fTimer = timeAndWeatherManager.GetEngineTime() + m_fFuzeTime;
 			SetEventMask(GetOwner(), EntityEvent.FRAME);
+//---- REFACTOR NOTE END ----
 			SetGarbageCollectable(false);
 			Replication.BumpMe();
 		}
@@ -324,6 +326,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 		return true;
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
@@ -345,6 +348,7 @@ class SCR_ExplosiveChargeComponent : ScriptGameComponent
 			m_Trigger.UseTrigger();
 		}
 	}
+//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)

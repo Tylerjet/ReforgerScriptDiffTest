@@ -72,9 +72,12 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	\return Returns the count of output contexts or 0 if none.
 	*/
 	proto external int GetNearbyUnavailableContextList(out notnull array<UserActionContext> outContexts);
+	//! The last known interaction reference point.
+	proto external vector GetLastReferencePoint(float timeSlice);
 
 	// callbacks
 
+	event protected void OnControlledEntityChanged(IEntity from, IEntity to);
 	/*!
 	Event called when InteractionHandlerComponent finds new target UserActionContext and a change occurs.
 	Both previous and new context might be 'null' if no context is caught in collection.

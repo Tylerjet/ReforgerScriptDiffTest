@@ -10,6 +10,11 @@ class SCR_ScenarioFrameworkDayTimeHourCondition : SCR_ScenarioFrameworkActivatio
 	//------------------------------------------------------------------------------------------------
 	override bool Init(IEntity entity)
 	{
+		// Here you can debug specific Condition instance.
+		// This can be also adjusted during runtime via Debug Menu > ScenarioFramework > Condition Inspector
+		if (m_bDebug)
+			Print("[SCR_ScenarioFrameworkDayTimeHourCondition.Init] debug line (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+		
 		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
 		if (!world)
 			return true;

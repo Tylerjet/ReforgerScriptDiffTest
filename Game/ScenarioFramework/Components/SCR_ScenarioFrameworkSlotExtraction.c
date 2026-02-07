@@ -6,6 +6,7 @@ class SCR_ScenarioFrameworkSlotExtractionClass : SCR_ScenarioFrameworkSlotTaskCl
 class SCR_ScenarioFrameworkSlotExtraction : SCR_ScenarioFrameworkSlotTask
 {
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario trigger entity, sets its owner faction, then calls base class FinishInit method.
 	override void FinishInit()
 	{
 		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(m_Entity);

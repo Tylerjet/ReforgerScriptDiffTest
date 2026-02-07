@@ -2,6 +2,9 @@
 Component for a line which indicates addon download state in the download manager.
 */
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Common problem in UI scripts: they do not inherit from the same parent. As a result there are a myriad duplicate methods and lines of code (eg. m_wRoot)
+
 class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 {
 	// Icon setting
@@ -13,7 +16,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	protected const Color ICON_COLOR_DOWN = UIColors.WARNING;
 
 	protected const Color TEXT_SIZE_COLOR_DOWNLOAD = UIColors.CONTRAST_COLOR;
-	protected const Color TEXT_SIZE_COLOR_DOWNLOADED = Color.White;
+	protected const Color TEXT_SIZE_COLOR_DOWNLOADED = UIColors.NEUTRAL_INFORMATION;
 	protected const Color TEXT_SIZE_COLOR_ERROR = UIColors.WARNING;
 
 	protected ref SCR_DownloadManager_AddonDownloadLineBaseWidgets m_Widgets = new SCR_DownloadManager_AddonDownloadLineBaseWidgets();
@@ -39,6 +42,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		m_Widgets.m_CancelButtonComponent.m_OnClicked.Insert(OnCancelButton);
 	}
 
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
@@ -46,7 +50,9 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		GetGame().GetCallqueue().Remove(Update);
 	}
 
-
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Callqueue to perform continuous updates: this means a looping callqueue running for each one of these lines, and desyncronized updates (if other independent UIs display similar download progress visuals, they most likely rely on their own callqueues, so the progress bar/percentages will update at different times). This is a common issue in Workshop UI classes: they handle the same data but each one in their own sligtly different ways. Code was copy pasted all over the place, making the codebase extremely bloated and hard to mantain
+	
 	//------------------------------------------------------------------------------------------------
 	//! Initializes the line in interactive mode.
 	//! It will be able to interact with the download action.
@@ -54,7 +60,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	{
 		m_Action = action;
 		Update();
-		GetGame().GetCallqueue().CallLater(Update, 20, true);
+		GetGame().GetCallqueue().CallLater(Update, SCR_WorkshopUiCommon.CONTINUOUS_UPDATE_DELAY, true);
 	}
 
 
@@ -66,7 +72,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		m_bHideButtons = true;
 
 		Update();
-		GetGame().GetCallqueue().CallLater(Update, 20, true);
+		GetGame().GetCallqueue().CallLater(Update, SCR_WorkshopUiCommon.CONTINUOUS_UPDATE_DELAY, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -80,9 +86,10 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 			m_Widgets.m_AddonSizeIcon.SetVisible(false);
 		
 		Update();
-		GetGame().GetCallqueue().CallLater(Update, 20, true);
+		GetGame().GetCallqueue().CallLater(Update, SCR_WorkshopUiCommon.CONTINUOUS_UPDATE_DELAY, true);
 	}
 	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//! Initializes the line in non-interactive mode, shows basic data about a download
@@ -241,15 +248,9 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 
 		// Progress text
 		if (m_Action.IsCompleted() || m_Action.IsFailed() || m_Action.IsCanceled())
-		{
 			m_Widgets.m_ProgressText.SetText(string.Empty);
-		}
 		else
-		{
-			float progress = m_Action.GetProgress();
-			string progressStr = string.Format("%1%%", Math.Round(progress * 100.0));
-			m_Widgets.m_ProgressText.SetText(progressStr);
-		}
+			m_Widgets.m_ProgressText.SetText(UIConstants.FormatUnitPercentage(SCR_WorkshopUiCommon.GetDownloadProgressPercentage(m_Action.GetProgress())));
 
 		// Progress bar
 		if (m_Action.IsCompleted())
@@ -265,31 +266,19 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		m_Widgets.m_AddonSizeText.SetText(sizeStr);
 
 		if (m_Action.IsCompleted())
-		{
 			m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOADED);
-		}
 		else if (m_Action.IsFailed() || m_Action.IsCanceled())
-		{
 			m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_ERROR);
-		}
 		else
-		{
 			m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOAD);
-		}
 
 		// Addon Size Icon
 		if (m_Action.IsCompleted())
-		{
 			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_UP);
-		}
 		else if (m_Action.IsFailed() || m_Action.IsCanceled())
-		{
 			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_DOWN);
-		}
 		else
-		{
 			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_DOWNLOAD);
-		}
 
 		// Buttons
 		if (m_bHideButtons)
@@ -331,8 +320,6 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 			m_Widgets.m_DownloadFinishedImage.SetVisible(false);
 		}
 	}
-
-
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnPauseButton()

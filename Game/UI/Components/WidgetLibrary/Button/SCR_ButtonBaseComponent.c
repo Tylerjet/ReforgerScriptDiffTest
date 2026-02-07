@@ -1,7 +1,10 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Several issues: missing events, and duplicate OnClick (one already in a parent class), incomplete handling of interaction states, it's looks are too tied to old Reforger style, and setting them in component's attributes makes mantaining a consistent look across the whole project an absolute nightmare. Holding refernces to parent menu or submenu is very limiting: it's not the button's business to change based on parent menu state, it's whatever holds the button that should notify it of important changes, because there's no guarantee this button will only be in a menu or submenu. 
+
 //! Base class for any button, regardless its own content
 //------------------------------------------------------------------------------------------------
 class SCR_ButtonBaseComponent : SCR_WLibComponentBase 
-{
+{	
 	[Attribute("", UIWidgets.CheckBox, "Can the button be only clicked, or also toggled?")]
 	bool m_bCanBeToggled;
 	
@@ -370,3 +373,5 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 			return true;
 	}
 };
+
+//---- REFACTOR NOTE END ----

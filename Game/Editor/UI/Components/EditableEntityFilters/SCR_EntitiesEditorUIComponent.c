@@ -175,6 +175,7 @@ class SCR_EntitiesEditorUIComponent : SCR_EditableEntitySlotManagerUIComponent
 	//--- Update
 	////////////////////////////////////////////////////////////////////////////////////////////////
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] tDelta
 	void OnMenuUpdate(float tDelta)
@@ -245,6 +246,7 @@ class SCR_EntitiesEditorUIComponent : SCR_EditableEntitySlotManagerUIComponent
 		if (m_HoverManager && m_MouseArea.IsMouseOn())
 			m_HoverManager.SetEntityUnderCursor(m_EntityUnderCursor, true);
 	}
+	//---- REFACTOR NOTE END ----
 		
 	//------------------------------------------------------------------------------------------------
 	//! Places the slot of the attached entites in an absolute mannear, with an offset to parent

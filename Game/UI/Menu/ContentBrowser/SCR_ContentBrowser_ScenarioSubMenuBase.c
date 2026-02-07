@@ -16,6 +16,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	protected ref SCR_MissionHeader m_Header;
 	
 	protected SCR_ScenarioDetailsPanelComponent m_ScenarioDetailsPanel;
+	protected SCR_AddonDetailsPanelComponent m_AddonDetailsPanel;
 
 	// Line Actions
 	protected EInputDeviceType m_eLastInputType;
@@ -279,7 +280,25 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		//! If using Mouse single click opens confirmation dialog, double click goes straight to the play interaction
 		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
 		{
-			SCR_ScenarioConfirmationDialogUi scenarioConfirmationDialog = SCR_ScenarioDialogs.CreateScenarioConfirmationDialog(scenario, GetOnLineFavorite());
+			SCR_ScenarioConfirmationDialogUi scenarioConfirmationDialog;
+			
+			// Save details dialog
+			SCR_ContentBrowser_GMSaveLineComponent saveLineComp = SCR_ContentBrowser_GMSaveLineComponent.Cast(lineComp);
+			
+			if (saveLineComp)
+			{
+				// zzz Issue is that this call just create plain SCR_ConfigurableDialog
+				SCR_GMSaveDialog saveDialog = SCR_SaveWorkshopManagerUI.CreateSaveDetailsnDialog(scenario, GetOnLineFavorite());
+				scenarioConfirmationDialog = saveDialog;
+
+				if (saveDialog)
+					saveDialog.SetSave(saveLineComp.GetSave());
+			}
+			
+			// Scenario confirm dialog
+			if (!scenarioConfirmationDialog)
+				scenarioConfirmationDialog = SCR_ScenarioDialogs.CreateScenarioConfirmationDialog(scenario, GetOnLineFavorite());
+			
 			if (!scenarioConfirmationDialog)
 			{
 				OnPlayInteraction(scenario);
@@ -331,20 +350,31 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
 			return;
 
+		// Save behavior
+		WorldSaveItem save = WorldSaveItem.Cast(scenario.GetOwner());
+		if (save)
+		{
+			// Find save by id
+			string id = save.Id();
+			string fileName = GetGame().GetSaveManager().FindFileNameById(id);
+			
+			if (!fileName)
+			{
+				Print("Save to play was not found", LogLevel.WARNING);
+				return;
+			}
+			
+			GetGame().GetSaveManager().SetFileNameToLoad(fileName);
+		}
+		
+		// Play scenario 
 		SCR_ScenarioUICommon.TryPlayScenario(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Continue(MissionWorkshopItem scenario)
 	{
-		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
-			return;
-
-		if (m_Header && !m_Header.GetSaveFileName().IsEmpty())
-			GetGame().GetSaveManager().SetFileNameToLoad(m_Header);
-		else
-			GetGame().GetSaveManager().ResetFileNameToLoad();
-
+		SCR_ScenarioUICommon.LoadSave(scenario, m_Header, ChimeraMenuPreset.ScenarioMenu);
 		SCR_ScenarioUICommon.TryPlayScenario(scenario);
 	}
 
@@ -377,7 +407,7 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		if (!scenario || !SCR_ScenarioUICommon.CanJoin(scenario))
 			return;
 
-		ServerBrowserMenuUI.OpenWithScenarioFilter(scenario);
+		ServerBrowserMenuUI.TryOpenServerBrowserWithScenarioFilter(scenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -419,25 +449,34 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 	{
 		foreach (MissionWorkshopItem scenario : scenarios)
 		{
-			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sLinesLayout, parent);
-			if (!w)
+			if (!CreateLine(m_sLinesLayout, parent, scenario))
 				return false;
-
-			SCR_ContentBrowser_ScenarioLineComponent comp = SCR_ContentBrowser_ScenarioLineComponent.FindComponent(w);
-			if (!comp)
-				return false;
-
-			comp.SetScenario(scenario);
-			m_aScenarioLines.Insert(comp);
-
-			comp.GetOnFavorite().Insert(OnLineFavorite);
-			comp.GetOnMouseInteractionButtonClicked().Insert(OnInteractionButtonPressed);
-			comp.GetOnFocus().Insert(OnLineFocus);
-			comp.GetOnFocusLost().Insert(OnLineFocusLost);
-			comp.GetOnMouseEnter().Insert(OnLineMouseEnter);
 		}
 
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected Widget CreateLine(ResourceName layout,  Widget parent, MissionWorkshopItem scenario)
+	{
+		Widget w = GetGame().GetWorkspace().CreateWidgets(layout, parent);
+		if (!w)
+			return null;
+
+		SCR_ContentBrowser_ScenarioLineComponent comp = SCR_ContentBrowser_ScenarioLineComponent.FindComponent(w);
+		if (!comp)
+			return null;
+
+		comp.SetScenario(scenario);
+		m_aScenarioLines.Insert(comp);
+
+		comp.GetOnFavorite().Insert(OnLineFavorite);
+		comp.GetOnMouseInteractionButtonClicked().Insert(OnInteractionButtonPressed);
+		comp.GetOnFocus().Insert(OnLineFocus);
+		comp.GetOnFocusLost().Insert(OnLineFocusLost);
+		comp.GetOnMouseEnter().Insert(OnLineMouseEnter);
+		
+		return w;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -459,6 +498,26 @@ class SCR_ContentBrowser_ScenarioSubMenuBase : SCR_SubMenuBase
 		if (!lineComp)
 			return;
 		
+		// Display panel
+		SCR_ContentBrowser_GMSaveLineComponent saveLineComp = SCR_ContentBrowser_GMSaveLineComponent.Cast(lineComp); 
+		bool isSave = saveLineComp != null;
+		
+		if (m_AddonDetailsPanel)
+			m_AddonDetailsPanel.GetRootWidget().SetVisible(isSave);
+		
+		if (m_ScenarioDetailsPanel)
+			m_ScenarioDetailsPanel.GetRootWidget().SetVisible(!isSave);
+		
+		// Fill from save 
+		if (isSave)
+		{
+			if (m_AddonDetailsPanel)
+				m_AddonDetailsPanel.SetWorkshopItem(saveLineComp.GetSaveScrWorkshopItem());
+			
+			return;
+		}
+		
+		// Fill scenario 
 		MissionWorkshopItem scenario = lineComp.GetScenario();
 		if (scenario && m_ScenarioDetailsPanel)
 			m_ScenarioDetailsPanel.SetScenario(scenario);

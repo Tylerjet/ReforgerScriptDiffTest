@@ -70,7 +70,7 @@ class SCR_RadialMenuWidgetPairList
 		if (widget == null)
 			return;
 		
-		auto index = m_aWidgets.Find(widget);
+		int index = m_aWidgets.Find(widget);
 		if (index == -1)
 			return;
 		
@@ -85,7 +85,7 @@ class SCR_RadialMenuWidgetPairList
 		if (entry == null)
 			return;
 		
-		auto index = m_aEntries.Find(entry);
+		int index = m_aEntries.Find(entry);
 		if (index == -1)
 			return;
 		

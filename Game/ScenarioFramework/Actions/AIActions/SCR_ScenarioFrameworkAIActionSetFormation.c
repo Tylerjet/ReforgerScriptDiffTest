@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkAIActionSetFormation : SCR_ScenarioFrameworkAIAction
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));
 		if (!formComp)
 		{

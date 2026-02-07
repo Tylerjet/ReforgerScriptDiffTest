@@ -36,6 +36,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 	protected vector GetTargetPosition();
 	protected float GetTargetDistance();
 	protected bool MoveToNextPosCondition();
+	protected vector GetAvoidStraightPathDir() { return vector.Zero; }; // Must return vector for straight path avoidance (flanking)
 	//--------------------------------------------------------------------------------------------
 	
 	
@@ -220,7 +221,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		rq.m_eStanceEnd = rq.m_eStanceMoving;
 		rq.m_vMovePos = ResolveRequestTargetPos();
 		rq.m_eMovementType = EMovementType.WALK;
-		rq.m_fMoveDistance = 1.5;
+		rq.m_fMoveDuration_s = 1.0;
 		rq.m_bAimAtTarget = SCR_AICombatMoveUtils.IsAimingAndMovementPossible(rq.m_eStanceMoving, rq.m_eMovementType);
 		rq.m_bAimAtTargetEnd = true;
 		
@@ -239,14 +240,14 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		
 		// Common values
 		rq.m_vTargetPos = ResolveRequestTargetPos();
-		ResolveMoveRequestMovePosAndDir(rq.m_vTargetPos, rq.m_vMovePos, rq.m_eDirection, rq.m_fCoverSearchSectorHalfAngleRad);
+		ResolveMoveRequestMovePosAndDir(rq.m_vTargetPos, rq.m_vMovePos, rq.m_vAvoidStraightPathDir, rq.m_eDirection, rq.m_fCoverSearchSectorHalfAngleRad);
 		rq.m_bTryFindCover = true;
 		rq.m_bUseCoverSearchDirectivity = true;
 		rq.m_bCheckCoverVisibility = true;
 
 		float coverSearchDistMin = 0;
 		float coverSearchDistMax = 30;
-		float moveDistanceMax = 30;
+		float moveDurationMax = 6;
 		if (m_bCloseRangeCombat)
 		{
 			// Close range combat
@@ -259,7 +260,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 					rq.m_eStanceEnd = ECharacterStance.CROUCH;
 					coverSearchDistMin = 2.0;
 					coverSearchDistMax = 10.0;
-					moveDistanceMax = 8.0;
+					moveDurationMax = 2;
 					break;
 				}
 				default:
@@ -268,7 +269,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 					rq.m_eStanceEnd = ECharacterStance.CROUCH;
 					coverSearchDistMin = 5.0;
 					coverSearchDistMax = 15.0;
-					moveDistanceMax = 10.0;
+					moveDurationMax = 3;
 					break;
 				}
 			}
@@ -288,7 +289,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 				{
 					coverSearchDistMin = 2.0;
 					coverSearchDistMax = 20.0;
-					moveDistanceMax = 10.0;
+					moveDurationMax = 2.5;
 					rq.m_eStanceMoving = ECharacterStance.CROUCH;
 					rq.m_eStanceEnd = ECharacterStance.PRONE;
 					break;
@@ -297,7 +298,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 				{
 					coverSearchDistMin = 10.0;
 					coverSearchDistMax = 30.0;
-					moveDistanceMax = 15.0; // Shouldn't be so large because we are sprinting and can't shoot
+					moveDurationMax = 4; // Shouldn't be so large because we are sprinting and can't shoot
 					rq.m_eStanceMoving = ECharacterStance.CROUCH;
 					rq.m_eStanceEnd = ECharacterStance.CROUCH;
 					break;
@@ -317,7 +318,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		
 		rq.m_fCoverSearchDistMin = coverSearchDistMin;
 		rq.m_fCoverSearchDistMax = coverSearchDistMax;
-		rq.m_fMoveDistance = Math.RandomFloat(0.5, 1.0) * moveDistanceMax; // Move distance if cover is not found, randomized
+		rq.m_fMoveDuration_s = Math.RandomFloat(0.5, 1.0) * moveDurationMax;
 		
 		// Subscribe to events
 		// We will pronounce voice lines once we start or end moving
@@ -347,7 +348,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 	
 	// Resolves which move pos and dir. we should use for _MOVE_ request
 	// By now rq.m_vTargetPos must be already calculated!
-	protected void ResolveMoveRequestMovePosAndDir(vector targetPos, out vector outMovePos, out SCR_EAICombatMoveDirection outDirection, out float outCoverSearchSectorHalfAngleRad)
+	protected void ResolveMoveRequestMovePosAndDir(vector targetPos, out vector outMovePos, out vector outAvoidStraightPathDir, out SCR_EAICombatMoveDirection outDirection, out float outCoverSearchSectorHalfAngleRad)
 	{	
 		AIWaypoint wp = null;
 		AIAgent agent = m_Utility.GetAIAgent();
@@ -358,12 +359,14 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		vector movePos;
 		SCR_EAICombatMoveDirection eDirection;
 		float coverSearchSectorHalfAngleRad;
+		vector avoidStraightPathDir;
 		
 		if (!wp)
 		{
 			// No waypoint, standard move logic
 			movePos = targetPos;
-			eDirection = SCR_EAICombatMoveDirection.FORWARD;
+			eDirection = SCR_EAICombatMoveDirection.CUSTOM_POS; // Move to target
+			avoidStraightPathDir = GetAvoidStraightPathDir(); // Use flanking
 			
 			if (IsFirstExecution())
 					coverSearchSectorHalfAngleRad = Math.PI; // Full circle, on first run we just want any cover if possible
@@ -383,6 +386,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 				movePos = wpPos;
 				eDirection = SCR_EAICombatMoveDirection.CUSTOM_POS;
 				coverSearchSectorHalfAngleRad = COVER_QUERY_SECTOR_ANGLE_RAD;
+				avoidStraightPathDir = vector.Zero; // Go straight
 			}
 			else if (myDistToWp > 0.5 * wpRadius)
 			{
@@ -392,7 +396,8 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 				{
 					// Towards target
 					movePos = targetPos;
-					eDirection = SCR_EAICombatMoveDirection.FORWARD;
+					eDirection = SCR_EAICombatMoveDirection.CUSTOM_POS;
+					avoidStraightPathDir = GetAvoidStraightPathDir(); // Use flanking
 					coverSearchSectorHalfAngleRad = COVER_QUERY_SECTOR_ANGLE_RAD;
 				}
 				else
@@ -400,6 +405,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 					// Move around current pos.
 					movePos = targetPos;
 					eDirection = SCR_EAICombatMoveDirection.ANYWHERE;
+					avoidStraightPathDir = vector.Zero;
 					coverSearchSectorHalfAngleRad = -1.0;
 				}
 			}
@@ -408,7 +414,8 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 				// We are within 50% radius of wp,
 				// Move towards tgt, regardless where tgt is
 				movePos = targetPos;
-				eDirection = SCR_EAICombatMoveDirection.FORWARD;
+				eDirection = SCR_EAICombatMoveDirection.CUSTOM_POS;
+				avoidStraightPathDir = GetAvoidStraightPathDir();
 				
 				coverSearchSectorHalfAngleRad = COVER_QUERY_SECTOR_ANGLE_RAD;
 			}
@@ -416,6 +423,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		
 		outMovePos = movePos;
 		outDirection = eDirection;
+		outAvoidStraightPathDir = avoidStraightPathDir;
 		outCoverSearchSectorHalfAngleRad = coverSearchSectorHalfAngleRad;
 	}
 	
@@ -549,7 +557,7 @@ class SCR_AICombatMoveLogicBase : AITaskScripted
 		rq.m_eStanceMoving = ECharacterStance.STAND;
 		rq.m_eStanceEnd = ECharacterStance.STAND;
 		rq.m_eDirection = SCR_EAICombatMoveDirection.BACKWARD;
-		rq.m_fMoveDistance = 3.0;
+		rq.m_fMoveDuration_s = 2.0;
 		rq.m_bAimAtTarget = SCR_AICombatMoveUtils.IsAimingAndMovementPossible(rq.m_eStanceMoving, rq.m_eMovementType);
 		rq.m_bAimAtTargetEnd = true;
 		
@@ -625,13 +633,16 @@ class SCR_AICombatMoveLogic_Attack : SCR_AICombatMoveLogicBase
 {
 	// Inputs
 	protected static const string PORT_BASE_TARGET = "BaseTarget";
+	protected static const string PORT_AVOID_STRAIGHT_PATH_DIR = "AvoidStraightPathDir";
 	
 	protected BaseTarget m_Target;
+	protected vector m_vAvoidStraightPathDir;
 	
 	//--------------------------------------------------------------------------------------------
 	protected override bool OnUpdate(AIAgent owner, float dt)
 	{
 		GetVariableIn(PORT_BASE_TARGET, m_Target);
+		GetVariableIn(PORT_AVOID_STRAIGHT_PATH_DIR, m_vAvoidStraightPathDir);
 		
 		if (!m_Target || !m_Target.GetTargetEntity())
 			return false;
@@ -649,6 +660,11 @@ class SCR_AICombatMoveLogic_Attack : SCR_AICombatMoveLogicBase
 	protected override vector GetTargetPosition()
 	{
 		return m_Target.GetLastSeenPosition();
+	}
+	
+	protected override vector GetAvoidStraightPathDir()
+	{
+		return m_vAvoidStraightPathDir;
 	}
 	
 	//--------------------------------------------------------------------------------------------
@@ -765,7 +781,8 @@ class SCR_AICombatMoveLogic_Attack : SCR_AICombatMoveLogicBase
 	
 	//--------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
-		PORT_BASE_TARGET
+		PORT_BASE_TARGET,
+		PORT_AVOID_STRAIGHT_PATH_DIR
 	};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 }

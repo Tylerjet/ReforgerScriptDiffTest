@@ -9,18 +9,22 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aTriggerActions;
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default settings for trigger actions, then calls base class method.
+	//! \param[in] includeChildren Restores default settings for all child objects, if includeChildren is true.
+	//! \param[in] reinitAfterRestoration Resets object state after restoration.
+	//! \param[in] affectRandomization Affects randomization state during restoration.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aTriggerActions)
 		{
 			activationAction.m_iNumberOfActivations = 0;
 		}
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes trigger entities, disables periodic queries, and sets init sequence done to false.
 	override void FinishInit()
 	{
 		BaseGameTriggerEntity trigger = BaseGameTriggerEntity.Cast(m_Entity);
@@ -37,6 +41,8 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes scenario layer, checks parent layer, sets area, and removes self from onAllChildrenSpawned list.
+	//! \param[in] layer for which this is called.
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		m_bInitiated = true;
@@ -57,6 +63,8 @@ class SCR_ScenarioFrameworkSlotTrigger : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes plugins, actions, and triggers, checks for repeated spawn timer, removes event handler, enables periodic queries,
+	//! \param[in] layer Initializes plugins, actions, and triggers for scenario framework layer after parent area children spawned.
 	protected void AfterParentAreaChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)

@@ -123,10 +123,6 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 	{
 		m_InterfaceSettings.Set("m_bShowChat", currentItem);
 
-		BaseContainer hintSetings = GetGame().GetGameUserSettings().GetModule("SCR_HintSettings");
-		if (hintSetings)
-			hintSetings.Set("m_bHintsEnabled", currentItem);
-
 		GetGame().UserSettingsChanged();
 	}
 
@@ -158,6 +154,10 @@ class SCR_InterfaceSettingsSubMenu : SCR_SettingsSubMenuBase
 	void OnHintsChange(SCR_SpinBoxComponent spinBox, int currentItem)
 	{
 		m_InterfaceSettings.Set("m_bShowHints", currentItem);
+		
+		BaseContainer hintSetings = GetGame().GetGameUserSettings().GetModule("SCR_HintSettings");
+		if (hintSetings)
+			hintSetings.Set("m_bHintsEnabled", currentItem);
 
 		GetGame().UserSettingsChanged();
 	}

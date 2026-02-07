@@ -45,4 +45,10 @@ class SCR_ScenarioFrameworkActionMedical : SCR_ScenarioFrameworkActionBase
 			medicalAction.Init(character);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_ScenarioFrameworkMedicalAction> GetSubActionsMedical()
+	{
+		return m_aMedicalActions;
+	}
 }

@@ -578,6 +578,18 @@ class SCR_AIMessageHandling
 		#endif
 		myComms.RequestBroadcast(msg, agent);
 	}
+	
+	//------------------------------------------------------------------------------------
+	static void SendAnimateMessage(notnull AIAgent agent, notnull IEntity rootEntity, notnull SCR_AIAnimationScript script, SCR_AIActivityBase relatedActivity, 
+									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	{
+		SCR_AIMessage_Animate msg = SCR_AIMessage_Animate.Create(rootEntity, script, relatedActivity);
+		msg.SetReceiver(agent);
+		#ifdef AI_DEBUG
+		msg.m_sSentFromBt = sendFrom;
+		#endif
+		myComms.RequestBroadcast(msg, agent);
+	}
 }
 
 class SCR_AIWorldHandling

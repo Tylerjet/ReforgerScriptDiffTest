@@ -1,3 +1,6 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// This class was a workaround for the lack of a scripted MenuManager
+
 //! This class is a collection of useful invokers for menu and dialog related events
 void ScriptInvokerActiveWidgetInteractionMethod(bool isActive, int delay);
 typedef func ScriptInvokerActiveWidgetInteractionMethod;
@@ -242,3 +245,5 @@ enum SCR_EListMenuWidgetFocus
 	FALLBACK = 3,
 	NULL = 4
 }
+
+//---- REFACTOR NOTE END ----

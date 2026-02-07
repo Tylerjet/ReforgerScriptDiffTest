@@ -118,6 +118,7 @@ class SCR_VehicleCameraAlignment : Managed
 			vector alignTarget = m_vAlignYawPitchRoll;
 			if (isReverse)
 				alignTarget = m_vAlignYawPitchRollReverse;
+			alignTarget[1] = 0.0; // Hack: Ignore pitch for now. This is independently controlled by CharacterCamera3rdPersonVehicle.c
 			
 			// We can return result if we're within a threshold
 			vector delta = (alignTarget - currentAngles);

@@ -23,6 +23,9 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 	[Attribute("lineIcon", desc: "line icon widget")]
 	protected string m_sLineIconWidgetName;
 	
+	[Attribute("PlatformIcon")]
+	protected string m_sPlatformIconWidgetName;
+	
 	[Attribute("40", desc: "pixels, group info offset")]
 	protected int m_iGroupInfoOffset;
 		
@@ -132,6 +135,10 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 					txtW.SetText(pManager.GetPlayerName(id));
 					entry.SetVisible(true);
 					
+					ImageWidget platformImage= ImageWidget.Cast(entry.FindAnyWidget(m_sPlatformIconWidgetName));
+					if (platformImage)
+						SCR_PlayerController.Cast(GetGame().GetPlayerController()).SetPlatformImageTo(id, platformImage);
+					
 					if (GetGame().GetPlayerController().GetPlayerId() == id)
 						txtW.SetColor(GUIColors.ORANGE);
 					else 
@@ -156,6 +163,10 @@ class SCR_MapMarkerSquadLeaderComponent : SCR_MapMarkerDynamicWComponent
 					TextWidget txtW = TextWidget.Cast(entry.FindWidget(m_sLineTextWidgetName));
 					txtW.SetText(pManager.GetPlayerName(membersCopy[i-1]));
 					entry.SetVisible(true);
+					
+					ImageWidget platformImage= ImageWidget.Cast(entry.FindAnyWidget(m_sPlatformIconWidgetName));
+					if (platformImage)
+						SCR_PlayerController.Cast(GetGame().GetPlayerController()).SetPlatformImageTo(membersCopy[i-1], platformImage);
 					
 					if (GetGame().GetPlayerController().GetPlayerId() == membersCopy[i-1])
 						txtW.SetColor(GUIColors.ORANGE);

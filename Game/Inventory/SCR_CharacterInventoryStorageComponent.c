@@ -512,11 +512,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (gadget)
 			return gadget;
 		
-		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
-		if (!weaponManager)
-			return null;
-		
-		BaseWeaponComponent weapon = weaponManager.GetCurrentWeapon();
+		BaseWeaponComponent weapon = GetCurrentWeapon();
 		if (weapon)
 			return weapon.GetOwner();
 		
@@ -883,9 +879,6 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			
 			case ESlotFunction.TYPE_GADGET:
 			{
-				if (character.IsInVehicleADS())
-					return false;
-				
 				return controller.CanEquipGadget(item);
 			}
 		}
@@ -1024,9 +1017,6 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			
 			case ESlotFunction.TYPE_GADGET:
 			{
-				if (character.IsInVehicleADS())
-					return false;
-				
 				// need to run through manager
 				// TODO kamil: this doesnt call setmode when switching to other item from gadget (no direct call to scripted togglefocused for example, possibly other issues?)
 				SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(character);
@@ -1249,11 +1239,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			// Find next weapon within limit
 			IEntity item;
 			int nextSlot = -1;
-			for (int i = 1; i < maxSlots; i++)
+			for (int i; i < maxSlots; i++)
 			{
-				nextSlot = (currentSlot + i) % maxSlots;
+				nextSlot = (currentSlot + i + 1) % maxSlots;
 
-				// should not happen because i starts from 1
 				if (nextSlot == currentSlot)
 					continue;
 

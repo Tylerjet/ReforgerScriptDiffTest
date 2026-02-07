@@ -1,8 +1,9 @@
 enum EScenarioSubMenuMode
 {
 	MODE_ALL,		// Show all scenarios
+	MODE_SAVES,		// Downloaded saves item
 	MODE_FAVOURITE,	// Show only favourite scenarios
-	MODE_RECENT		// Show only recently played scenarios
+	MODE_RECENT,		// Show only recently played scenarios
 }
 
 class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBase
@@ -11,9 +12,12 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	[Attribute("0", UIWidgets.ComboBox, "Mode in which this submenu must work.", "", ParamEnumArray.FromEnum(EScenarioSubMenuMode))]
 	EScenarioSubMenuMode m_eMode;
 
+	[Attribute("{723ED8FDA27DD0BB}UI/layouts/Menus/ContentBrowser/ScenariosMenu/ContentBrowser_GMSaveLine.layout", UIWidgets.ResourceNamePicker, ".layout for the scenario lines", params: "layout")]
+	protected ResourceName m_sSaveLineLayout;
+	
 	// Constants
 	protected const int RECENTLY_PLAYED_MAX_ENTRIES = 10; // How many recently played missions to show in the recently played tab
-
+	
 	// Message tags
 	// Those which end with '2' should be used when no content is found due to filters.
 	protected const string MESSAGE_TAG_NOTHING_FOUND =		"nothing_found";
@@ -22,7 +26,9 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	protected const string MESSAGE_TAG_NOTHING_FAVOURITE_2 ="nothing_favourite2";
 	protected const string MESSAGE_TAG_NOTHING_RECENT =		"nothing_recent";
 	protected const string MESSAGE_TAG_NOTHING_RECENT_2 =	"nothing_recent2";
-
+	protected const string MESSAGE_TAG_NO_SAVE = 			"no_save";
+	protected const string MESSAGE_TAG_NO_SAVE_FOUND = 		"no_save_found";
+	
 	// Other
 	protected ref SCR_ContentBrowser_ScenarioSubMenuWidgets m_Widgets = new SCR_ContentBrowser_ScenarioSubMenuWidgets;
 
@@ -37,6 +43,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		InitWidgets();
 
 		m_ScenarioDetailsPanel = m_Widgets.m_ScenarioDetailsPanelComponent;
+		m_AddonDetailsPanel = m_Widgets.m_AddonDetailsPanelComponent;
 
 		// Try to restore filters
 		m_Widgets.m_FilterPanelComponent.TryLoad();
@@ -135,6 +142,43 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		super.OnScenarioStateChanged(comp);
 	}
 
+	//------------------------------------------------------------------------------------------------\
+	//! Be able to create various lines type - saves
+	override protected bool CreateLines(array<MissionWorkshopItem> scenarios, Widget parent)
+	{
+		foreach (MissionWorkshopItem scenario : scenarios)
+		{
+			ResourceName layout = m_sLinesLayout;
+			if (WorldSaveItem.Cast(scenario.GetOwner()))
+				layout = m_sSaveLineLayout;
+			
+			if (!CreateLine(layout, parent, scenario))
+				return false;
+		}
+
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected Widget CreateLine(ResourceName layout,  Widget parent, MissionWorkshopItem scenario)
+	{
+		Widget w = super.CreateLine(layout, parent, scenario);
+		if (!w)
+			return null;
+		
+		WorldSaveItem save = WorldSaveItem.Cast(scenario.GetOwner());
+		if (!save)
+			return w;
+		
+		SCR_ContentBrowser_GMSaveLineComponent comp = SCR_ContentBrowser_GMSaveLineComponent.Cast(w.FindHandler(SCR_ContentBrowser_GMSaveLineComponent));
+		if (!comp)
+			return null;
+		
+		comp.SetSaveItem(save);
+		
+		return w;
+	}
+	
 	// ---- PROTECTED ----
 	//------------------------------------------------------------------------------------------------
 	//! Requests missions from API and shows them in the list
@@ -154,8 +198,18 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				continue;
 
 			SCR_WorkshopItem scriptedItem = SCR_AddonManager.GetInstance().GetItem(addon.Id());
-
+			
 			if (scriptedItem && scriptedItem.GetAnyDependencyMissing())
+				missionItemsAll.Remove(i);
+			
+			// Remove save which is not containing file 
+			WorldSaveItem save = WorldSaveItem.Cast(addon);
+			if (!save)
+				continue;
+			
+			string id = save.Id();
+			string fileName = GetGame().GetSaveManager().FindFileNameById(id);
+			if (!fileName)
 				missionItemsAll.Remove(i);
 		}
 
@@ -176,14 +230,8 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				}
 
 				// Bail if there are no favourite missions
-				if (missionItemsTabFiltered.IsEmpty())
-				{
-					ScenarioList_ClearMissionEntries();
-
-					m_iEntriesCurrent = 0;
-					SetPanelsMode(true, MESSAGE_TAG_NOTHING_FAVOURITE);
+				if (ScenarioEmptyMessage(missionItemsTabFiltered, MESSAGE_TAG_NOTHING_FAVOURITE))
 					return;
-				}
 
 				break;
 			}
@@ -204,15 +252,35 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				}
 
 				// Bail if no recent missions
-				if (missionItemsTabFiltered.IsEmpty())
-				{
-					ScenarioList_ClearMissionEntries();
-
-					m_iEntriesCurrent = 0;
-					SetPanelsMode(true, MESSAGE_TAG_NOTHING_RECENT);
+				if (ScenarioEmptyMessage(missionItemsTabFiltered, MESSAGE_TAG_NOTHING_RECENT))
 					return;
-				}
 
+				break;
+			}
+			
+			// Select only recently played missions
+			case EScenarioSubMenuMode.MODE_SAVES:
+			{
+				foreach (MissionWorkshopItem m : missionItemsAll)
+				{
+					WorkshopItem addon = m.GetOwner();
+					if (!addon)
+						continue;
+		
+					SCR_WorkshopItem scriptedItem = SCR_AddonManager.GetInstance().GetItem(addon.Id());
+					
+					WorldSaveItem save;
+					if (scriptedItem && scriptedItem.GetWorkshopItem())
+						save = WorldSaveItem.Cast(scriptedItem.GetWorkshopItem());
+					
+					if (save)
+						missionItemsTabFiltered.Insert(m);
+				}
+				
+				// Bail if no save
+				if (ScenarioEmptyMessage(missionItemsTabFiltered, MESSAGE_TAG_NO_SAVE))
+					return;
+				
 				break;
 			}
 
@@ -228,11 +296,29 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 					return;
 				}
 
-				missionItemsTabFiltered = missionItemsAll;
+				foreach (MissionWorkshopItem m : missionItemsAll)
+				{
+					WorkshopItem addon = m.GetOwner();
+					if (!addon)
+					{
+						missionItemsTabFiltered.Insert(m);
+						continue;
+					}
+		
+					SCR_WorkshopItem scriptedItem = SCR_AddonManager.GetInstance().GetItem(addon.Id());
+					
+					WorldSaveItem save;
+					if (scriptedItem && scriptedItem.GetWorkshopItem())
+						save = WorldSaveItem.Cast(scriptedItem.GetWorkshopItem());
+					
+					if (!scriptedItem || !save)
+						missionItemsTabFiltered.Insert(m);
+				}
+				
 				break;
 			}
 		}
-
+		
 		// Filter scenarios based on search string
 		string searchStr = m_Widgets.m_FilterPanelComponent.GetEditBoxSearch().GetValue();
 		array<MissionWorkshopItem> missionItemsSearched = SearchScenarios(missionItemsTabFiltered, searchStr);
@@ -248,6 +334,10 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 			{
 				case EScenarioSubMenuMode.MODE_FAVOURITE:
 					messageTag = MESSAGE_TAG_NOTHING_FAVOURITE_2;
+					break;
+				
+				case EScenarioSubMenuMode.MODE_SAVES:
+					messageTag = MESSAGE_TAG_NO_SAVE_FOUND;
 					break;
 
 				case EScenarioSubMenuMode.MODE_RECENT:
@@ -283,20 +373,44 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		switch (currentSortingItem)
 		{
 			case "name":
+			{
+				// Sort save by addon name as it is actial name of save
+				if (m_eMode == EScenarioSubMenuMode.MODE_SAVES)
+				{
+					SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionAddonName>.HeapSort(missionItems, sortOrder);
+					break;
+				}
+				
 				SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(missionItems, sortOrder);
 				break;
+			}
 			case "player_count": // sort by player count
+			{
 				SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionPlayerCount>.HeapSort(missionItems, sortOrder);
 				break;
+			}
 			case "favourite":
+			{
 				SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionFavourite>.HeapSort(missionItems, sortOrder);
 				break;
+			}
 			case "last_played":
+			{
 				SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionTimeSinceLastPlay>.HeapSort(missionItems, sortOrder);
 				break;
+			}
 			case "source":
+			{
+				// Sort save by scenario name as it is used as source indicator
+				if (m_eMode == EScenarioSubMenuMode.MODE_SAVES)
+				{
+					SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(missionItems, sortOrder);
+					break;
+				}
+				
 				SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionAddonName>.HeapSort(missionItems, sortOrder);
 				break;
+			}
 		}
 
 		m_iEntriesCurrent = missionItemsSearched.Count();
@@ -304,6 +418,19 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		ScenarioList_CreateMissionEntries(missionItems, setNewFocus);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected bool ScenarioEmptyMessage(array<MissionWorkshopItem> mission, string messageTag)
+	{
+		if (!mission.IsEmpty())
+			return false;
+		
+		ScenarioList_ClearMissionEntries();
+
+		m_iEntriesCurrent = 0;
+		SetPanelsMode(true, messageTag);
+		return true;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected static bool SearchStringLocalized(string str, string searchStrLower)
 	{

@@ -18,7 +18,7 @@ class SCR_CrosshairDebug
 		vector muzzleMat[4];
 		m_WeaponManager.GetCurrentMuzzleTransform(muzzleMat);
 
-		float traceDistance = 100;
+		const float traceDistance = 100;
 		vector traceStart = muzzleMat[3];
 		vector traceEnd = muzzleMat[3] + muzzleMat[2] * traceDistance;
 

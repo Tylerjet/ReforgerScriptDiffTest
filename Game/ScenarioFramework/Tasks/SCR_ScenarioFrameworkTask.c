@@ -1,9 +1,7 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTaskClass : SCR_BaseTaskClass
 {
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTask : SCR_BaseTask
 {
 	protected IEntity 												m_Asset;
@@ -15,18 +13,21 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	protected string 												m_sSpawnedEntityName;
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state sets state of the task.
 	void SetTaskState(SCR_TaskState state)
 	{
 		SetState(state);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] layer Sets the layer task for this task.
 	void SetLayerTask(SCR_ScenarioFrameworkLayerTask layer)
 	{
 		m_LayerTask = layer;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return Layer task linked to this task.
 	SCR_ScenarioFrameworkLayerTask GetLayerTask()
 	{
 		return m_LayerTask;
@@ -39,8 +40,8 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 		if (!m_LayerTask)
 			return;
 		
-		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeManager || !gameModeManager.IsMaster())
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem || !scenarioFrameworkSystem.IsMaster())
 			return;
 
 		if (m_SlotTask)
@@ -59,13 +60,15 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 		m_LayerTask.OnTaskStateChanged(previousState, newState);
 				
 		if (newState == SCR_TaskState.FINISHED)
-			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC", m_TargetFaction.GetFactionKey());
+			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC", m_TargetFaction.GetFactionKey());
 
 		if (newState == SCR_TaskState.CANCELLED)
-			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFailed-UC", m_TargetFaction.GetFactionKey());
+			scenarioFrameworkSystem.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFailed-UC", m_TargetFaction.GetFactionKey());
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Finishes mission based on player's faction, shows message if player's faction matches target faction.
+	//! \param[in] showMsg Determines if local player's faction matches target faction for message display.
 	override void Finish(bool showMsg = true)
 	{
 		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
@@ -73,12 +76,15 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] object Sets the asset for the task, represented by an entity object.
 	void SetTaskAsset(IEntity object)
 	{
 		m_Asset = object;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates linked entity for this task.
+	//! \param[in] object Updates blacklist for garbage system, sets task entity for support entity.
 	void RehookTaskAsset(IEntity object)
 	{
 		if (!object)
@@ -95,61 +101,71 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return Asset entity.
 	IEntity GetAsset()
 	{
 		return m_Asset;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] slotTask that will be linked to this task.
 	void SetSlotTask(SCR_ScenarioFrameworkSlotTask slotTask)
 	{
 		m_SlotTask = slotTask;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return linked slot task.
 	SCR_ScenarioFrameworkSlotTask GetSlotTask()
 	{
 		return m_SlotTask;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Support entity.
 	SCR_ScenarioFrameworkTaskSupportEntity GetSupportEntity()
 	{
 		return m_SupportEntity;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] text Sets the briefing for task execution.
 	void SetTaskExecutionBriefing(string text)
 	{
 		m_sTaskExecutionBriefing = text;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return Task execution briefing string.
 	string GetTaskExecutionBriefing()
 	{ 
 		return m_sTaskExecutionBriefing;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] name Represents the name for the spawned entity in the game world.
 	void SetSpawnedEntityName(string name) 
 	{ 
 		m_sSpawnedEntityName = name;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return The name of the entity spawned by the method.
 	string GetSpawnedEntityName() 
 	{ 
 		return m_sSpawnedEntityName;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//Description fetch for the Task List
+	//! \return formatted string with translated description and spawned entity name.
 	override string GetTaskListTaskText()
 	{
 		return string.Format(WidgetManager.Translate(m_sDescription, m_sSpawnedEntityName));
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for task.
+	//! \return true if a support entity is found, false otherwise.
 	protected bool SetSupportEntity()
 	{
 		m_SupportEntity = SCR_ScenarioFrameworkTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskSupportEntity));
@@ -164,6 +180,8 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Serializes task execution briefing and spawned entity name.
+	//! \param[in] writer Writer is used for serializing object data into a stream.
 	override void Serialize(ScriptBitWriter writer)
 	{
 		super.Serialize(writer);
@@ -173,6 +191,8 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Deserializes task execution briefing and spawned entity name from ScriptBitReader.
+	//! \param[in] reader Reads serialized data from the provided ScriptBitReader object, deserializing it into the object's fields.
 	override void Deserialize(ScriptBitReader reader)
 	{
 		super.Deserialize(reader);
@@ -189,6 +209,7 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes support entity, sets task entity, updates blacklist if necessary.
 	void Init()
 	{
 		if (SCR_Global.IsEditMode(this))
@@ -213,13 +234,11 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 			if (garbageSystem)
 				garbageSystem.UpdateBlacklist(m_Asset, true);
 		}
-		
-		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeManager)
-			return;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes task manager if it exists, otherwise returns without action.
+	//! \param[in] owner The owner represents the entity that initializes this method, typically an object in the game world.
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);

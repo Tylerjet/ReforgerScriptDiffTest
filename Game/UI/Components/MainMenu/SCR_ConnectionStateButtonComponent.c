@@ -192,7 +192,7 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 		// Check states of services
 		foreach (SCR_BackendServiceDisplay serviceInfo : m_ServicesPresets.GetServices())
 		{
-			if (SCR_ServicesStatusHelper.SkipConsoleService(serviceInfo))
+			if (!SCR_ServicesStatusHelper.DisplayServiceOnCurrentPlatform(serviceInfo))
 				continue;
 			
 			ServiceStatusItem statusItem = SCR_ServicesStatusHelper.GetStatusByName(serviceInfo.m_sServiceId);

@@ -6,6 +6,9 @@ Instead of just dependencies main m_Item is used for downloading single item
 Is displaying workshop donwload related UI and automatically starts download
 */
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Data handling class tangled with UI. Furthermore, it complicates the already messy cross referencing going on with SCR_WorkshopItem and related classes
+
 class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 {	
 	protected static float LOADING_DELAY = 500;
@@ -291,4 +294,6 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 		// Unsubscribe from item's events
 		m_Item.m_OnDependenciesLoaded.Remove(OnItemDependenciesLoaded);
 	}
+	
+	//---- REFACTOR NOTE END ----
 };

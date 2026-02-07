@@ -107,6 +107,7 @@ class SCR_NTName : SCR_NTTextBase
 	//------------------------------------------------------------------------------------------------
  	override void GetText(SCR_NameTagData data, out string name, out notnull array<string> nameParams)
 	{	
+		data.UpdateEntityType();
 		data.GetName(name, nameParams);
 	}
 	
@@ -115,25 +116,20 @@ class SCR_NTName : SCR_NTTextBase
 	{
 		super.UpdateElement(data, index);
 		
-		if (data.m_Flags & ENameTagFlags.NAME_UPDATE)
+		if (data.m_Flags & ENameTagFlags.NAME_UPDATE || data.m_Flags & ENameTagFlags.ENT_TYPE_UPDATE)
 		{
-			if (data.m_Flags & ENameTagFlags.ENT_TYPE_UPDATE)
-			{
-				data.UpdateEntityType();
-				data.m_Flags &= ~ENameTagFlags.ENT_TYPE_UPDATE;
-			}
-			
 			string name;
 			array<string> nameParams = {};
 			
 			GetText(data, name, nameParams);
 			
-			if (name == string.Empty)
+			if (name.IsEmpty())
 				SetText(data, "GETNAME_ERROR", nameParams, index);
 			else
 			{
 				SetText(data, name, nameParams, index);
 				data.m_Flags &= ~ENameTagFlags.NAME_UPDATE;
+				data.m_Flags &= ~ENameTagFlags.ENT_TYPE_UPDATE;
 			}
 		}
 	}

@@ -5,6 +5,9 @@ Widget component for short message suggesting what needs to be done with widget.
 //------------------------------------------------------------------------------------------------
 class SCR_WidgetHintComponent : SCR_WLibComponentBase 
 {
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// While these attributes in theory allow reusing the component in different layouts, it is often the case that for the prefab to work the layout hierarchy needs to be very consistent, so components end up tied to very specific layouts anyways. Might as well have predefined widget names: these just attributes clutter the component's settings
+		
 	[Attribute("Icon", UIWidgets.EditBox, "Widget name to find icon")]
 	protected string m_sWidgetIcon;
 	
@@ -13,6 +16,8 @@ class SCR_WidgetHintComponent : SCR_WLibComponentBase
 	
 	[Attribute("Bumper", UIWidgets.EditBox, "Widget name to find message text widget")]
 	protected string m_sWidgetBumper;
+
+//---- REFACTOR NOTE END ----
 	
 	[Attribute("", UIWidgets.EditBox, "Default message to display")]
 	protected string m_sDefaultMessage;

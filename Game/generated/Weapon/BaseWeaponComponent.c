@@ -56,6 +56,8 @@ class BaseWeaponComponent: GameComponent
 	Changes state of bipod to deployed/undeployed depending on parameter.
 	*/
 	proto external void SetBipod(bool deploy);
+	//! Set deployment gamepad-trigger-effect enable/disable.
+	proto external void SetDeploymentTriggerEffectEnabled(bool val);
 }
 
 /*!

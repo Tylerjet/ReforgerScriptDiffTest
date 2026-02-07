@@ -204,33 +204,29 @@ class SCR_PlaceableItemComponent : ScriptComponent
 
 	static float GetDistanceFromCharacter(notnull ChimeraCharacter char, vector destination, SCR_ECharacterDistanceMeasurementMethod method = SCR_ECharacterDistanceMeasurementMethod.FROM_EYES)
 	{
-		vector charPos;
+		vector pos;
 		switch (method)
 		{
 			case (SCR_ECharacterDistanceMeasurementMethod.FROM_ORIGIN):
 			{
-				charPos = char.GetOrigin();
+				pos = char.GetOrigin();
 				break;
 			}
 
 			case (SCR_ECharacterDistanceMeasurementMethod.FROM_CENTER_OF_MASS):
 			{
-				Physics phys = char.GetPhysics();
-				if (!phys)
-					return 0;
-
-				charPos = phys.GetCenterOfMass();
+				pos = char.AimingPosition(); //Physics cannot be used for characters
 				break;
 			}
 
 			default:	//SCR_ECharacterDistanceMeasurementMethod.FROM_EYES
 			{
-				charPos = char.EyePosition();
+				pos = char.EyePosition();
 				break;
 			}
 		}
 
-		return vector.Distance(charPos, destination);
+		return vector.Distance(pos, destination);
 	}
 
 	//------------------------------------------------------------------------------------------------

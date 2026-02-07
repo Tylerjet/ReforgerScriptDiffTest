@@ -147,76 +147,121 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 	}
 #endif
 
-	//------------------------------------------------------------------------------------------------
-	override void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnAIKilled(AIEntity, killerEntity, killer);
+		super.OnAIKilled(AIEntity, killerEntity, instigator, instigatorContextData);
 		
 		//This method adds a kill no matter the mean by which the AI was killed.
 		//The name of the module is a little bit misleading		
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
+		
+		//~ Not a player kill so ignore (Like suicide)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER | SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
+			return;
+		
+		int killerId = instigator.GetInstigatorPlayerID();
 
-		SCR_ChimeraCharacter AIEntityChar = SCR_ChimeraCharacter.Cast(AIEntity);
-		if (!AIEntityChar)
-			return;
-		
-		int killerId = killer.GetInstigatorPlayerID();
-		
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-		
-		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
-		if (!factionKiller)
-			return;
-		
 		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
-
-		//Add an AI kill. Find if friendly or unfriendly
-		if (factionKiller.IsFactionFriendly(AIEntityChar.GetFaction()))
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
-		else
+		if (!killerData)
+			return;
+		
+		//~ Add an AI kill or friendly kill stats
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+		{
 			killerData.AddStat(SCR_EDataStats.AI_KILLS);
+			return;
+		}
+		else
+		{
+			//~ Friendly kills do not count for admins, GMs and possessed AI by GM
+			SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			//~ Friendly kills only counted if friendly fire is punished else the player can rank up a massive crime score
+			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+			if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
+				return;
+				
+			killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
+			return;
+		}	
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		super.OnPlayerKilled(playerId, playerEntity, killerEntity, instigator, instigatorContextData);
 		m_mTrackedPossibleShooters.Remove(playerId);
 
 		SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(playerId);
 		playerData.AddStat(SCR_EDataStats.DEATHS);
 		
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		//~ Also tracks Possessed AI as if player kill as the data is not seen by player
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
 		
-		SCR_ChimeraCharacter playerEntityChar = SCR_ChimeraCharacter.Cast(playerEntity);
-		if (!playerEntityChar)
+		//~ Not a player kill so ignore (Like suicide)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER | SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			return;
 		
-		int killerId = killer.GetInstigatorPlayerID();
-
-		// Suicide?
-		if (playerId == killerId)
-			return;
-
+		int killerId = instigator.GetInstigatorPlayerID();
+		
 		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
-
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
+		if (!killerData)
 			return;
 		
-		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
-		if (!factionKiller)
-			return;
-
-		//Add a kill. Find if friendly or unfriendly
-		if (factionKiller.IsFactionFriendly(playerEntityChar.GetFaction()))
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
-		else
+		SCR_ECharacterControlType victimControlType = instigatorContextData.GetVictimCharacterControlType();
+		
+		//~ Possessed AI count towards AI kills
+		if (victimControlType == SCR_ECharacterControlType.POSSESSED_AI)
+		{
+			//~ Add an AI kill or friendly kill stats
+			if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+			{
+				killerData.AddStat(SCR_EDataStats.AI_KILLS);
+				return;
+			}
+			else
+			{
+				//~ Friendly kills do not count for admins, GMs and possessed AI by GM
+				SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+				if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+					return;
+				
+				//~ Friendly kills only counted if friendly fire is punished else the player can rank up a massive crime score
+				SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+				if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
+					return;
+				
+				killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
+				return;
+			}
+		}
+		
+		//~ Add kill or friendly kill stats
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+		{
 			killerData.AddStat(SCR_EDataStats.KILLS);
+			return;
+		}
+		else
+		{
+			//~ Friendly kills do not count for admins, GMs and possessed AI by GM
+			SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			//~ Friendly kills only counted if friendly fire is punished else the player can rank up a massive crime score
+			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+			if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
+				return;
+			
+			killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
+			return;
+		}
+			
 	}
 
 	//------------------------------------------------------------------------------------------------

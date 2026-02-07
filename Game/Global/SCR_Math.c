@@ -108,4 +108,12 @@ class SCR_Math
 	{
 		return RANDOM_GENERATOR;
 	}
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! Ensures the angle is in range <-units; +units>
+	//! \return float angle in range <-units; +units>
+	static float FixAngle(float angle, float units = Math.PI)
+	{
+		return Math.Repeat(units + angle, units * 2) - units;
+	}
+}

@@ -22,12 +22,17 @@ class SCR_VideoSettingsConsoleSubMenu : SCR_SettingsSubMenuBase
 		
 		m_ePlatform = System.GetPlatform();
 		SetupQualityPreset();
+
+		m_aSettingsBindings.Clear();
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_b2DScopes", "ScopeMode"));
+
+		LoadSettings();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnQualityPresetChanged(SCR_ComboBoxComponent combobox, int itemIndex)
 	{
-		if (m_ePlatform != EPlatform.XBOX_SERIES_X && m_ePlatform != EPlatform.XBOX_SERIES_S)
+		if (m_ePlatform != EPlatform.XBOX_SERIES_X && m_ePlatform != EPlatform.XBOX_SERIES_S && m_ePlatform != EPlatform.PS5 && m_ePlatform != EPlatform.PS5_PRO)
 			return;
 		
 		ChangePreset(m_ePlatform, itemIndex);
@@ -51,6 +56,17 @@ class SCR_VideoSettingsConsoleSubMenu : SCR_SettingsSubMenuBase
 		if (platform == EPlatform.XBOX_SERIES_X && itemIndex == COMBO_OPTION_PERFORMANCE)
 			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
 		
+		if (platform == EPlatform.PS5 && itemIndex == COMBO_OPTION_QUALITY)
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_QUALITY);
+		
+		if (platform == EPlatform.PS5 && itemIndex == COMBO_OPTION_PERFORMANCE)
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PERFORMANCE);
+		
+		if (platform == EPlatform.PS5_PRO && itemIndex == COMBO_OPTION_QUALITY)
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PRO_QUALITY);
+		
+		if (platform == EPlatform.PS5_PRO && itemIndex == COMBO_OPTION_PERFORMANCE)
+			m_SettingsVideoModule.SetConsolePreset(EVideoQualityPreset.PS5_PRO_PERFORMANCE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -68,10 +84,10 @@ class SCR_VideoSettingsConsoleSubMenu : SCR_SettingsSubMenuBase
 		
 		videoSettings.Get("m_iLastUsedPreset", lastPreset);
 
-		if (lastPreset == EVideoQualityPreset.SERIES_X_PRESET_QUALITY || lastPreset == EVideoQualityPreset.SERIES_S_PRESET_QUALITY)
+		if (lastPreset == EVideoQualityPreset.SERIES_X_PRESET_QUALITY || lastPreset == EVideoQualityPreset.SERIES_S_PRESET_QUALITY || lastPreset == EVideoQualityPreset.PS5_QUALITY || lastPreset == EVideoQualityPreset.PS5_PRO_QUALITY)
 			qualityPreset.SetCurrentItem(COMBO_OPTION_QUALITY);
 		
-		if (lastPreset == EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE || lastPreset == EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE)
+		if (lastPreset == EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE || lastPreset == EVideoQualityPreset.SERIES_S_PRESET_PERFORMANCE || lastPreset == EVideoQualityPreset.PS5_PERFORMANCE || lastPreset == EVideoQualityPreset.PS5_PRO_PERFORMANCE)
 			qualityPreset.SetCurrentItem(COMBO_OPTION_PERFORMANCE);
 		
 		qualityPreset.m_OnChanged.Insert(OnQualityPresetChanged);

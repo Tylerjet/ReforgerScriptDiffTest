@@ -17,6 +17,9 @@ class SCR_FieldManualPiece_Image : SCR_FieldManualPiece
 
 	[Attribute(defvalue: "{68553AA626CD1A41}UI/layouts/Menus/FieldManual/Pieces/FieldManual_Piece_Image.layout", uiwidget: UIWidgets.EditBoxWithButton, params: "layout")]
 	protected ResourceName m_Layout;
+	
+	[Attribute(defvalue: PlatformKind.PSN.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Platform selected here will not show this element", enums: ParamEnumArray.FromEnum(PlatformKind))]
+	protected PlatformKind m_eExcludedPlatform;
 
 	//------------------------------------------------------------------------------------------------
 	override void CreateWidget(notnull Widget parent)
@@ -86,5 +89,16 @@ class SCR_FieldManualPiece_Image : SCR_FieldManualPiece
 	ResourceName GetCaption()
 	{
 		return m_sCaption;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool CanCreateWidget()
+	{
+		PlatformKind localPlatform = GetGame().GetPlatformService().GetLocalPlatformKind();
+		
+		if (localPlatform == m_eExcludedPlatform && localPlatform != PlatformKind.NONE)
+			return false;
+		
+		return super.CanCreateWidget();
 	}
 }

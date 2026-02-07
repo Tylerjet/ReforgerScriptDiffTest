@@ -373,9 +373,8 @@ class LocParserManager
 
 		//--- Get selected files
 		array<ResourceName> selection = {};
-		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		resourceManager.GetResourceBrowserSelection(context.Insert, true);
+		resourceManager.GetResourceBrowserSelection(selection.Insert, true);
 		WBProgressDialog progress = new WBProgressDialog("Processing...", resourceManager);
 
 		//--- Process files

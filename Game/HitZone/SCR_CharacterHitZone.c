@@ -1,3 +1,5 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Move enum definitions to separate file possibly in Damage folder
 enum ECharacterDamageState: EDamageState
 {
 	WOUNDED = 3
@@ -36,6 +38,7 @@ enum EBandagingAnimationBodyParts
 	LeftLeg = 7,
 	RightLeg = 8
 };
+//---- REFACTOR NOTE END ----
 
 class SCR_BleedingHitZoneParameters : Managed
 {
@@ -189,6 +192,9 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	{
 		super.OnDamage(damageContext);
 		
+	//	Print("Character hitzone Damage amount: " + damageContext.damageValue + " Bullet type: " + damageContext.damageSource.GetName());
+	//	Print("Character hitzone Damage amount: " + damageContext.damageValue + " DamageType: " + damageContext.struckHitZone.GetName() + "    Bullet type: " + damageContext.damageSource.Type());
+		
 		if (this != damageContext.struckHitZone)
 			return;
 				
@@ -233,15 +239,18 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 		if (isDOT)
 			return super.ComputeEffectiveDamage(damageContext, isDOT);
 		
-		float rawDamage = damageContext.damageValue;
-		if (damageContext.damageValue > 0)
+		BaseDamageContext hack = BaseDamageContext.Cast(damageContext.Clone());
+		float damage = damageContext.damageValue * GetBaseDamageMultiplier();
+		damage *= GetDamageMultiplier(damageContext.damageType);
+	
+		if (damage > 0)
 		{
 			float protectionValue = GetArmorProtectionValue(damageContext.damageType);
-			rawDamage = Math.Max(damageContext.damageValue - protectionValue, 0);
+			float damageScale = ((damage - protectionValue) / damage);
+			damageScale = Math.Max(damageScale, 0);
+			
+			hack.damageValue *= damageScale;
 		}
-		
-		BaseDamageContext hack = BaseDamageContext.Cast(damageContext.Clone());
-		hack.damageValue = rawDamage;
 		
 		return super.ComputeEffectiveDamage(hack, isDOT);
 	}
@@ -454,6 +463,7 @@ class SCR_CharacterBloodHitZone : SCR_RegeneratingHitZone
 		return dps;
 	}
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//-----------------------------------------------------------------------------------------------------------
 	bool AddBleedingHZToMap(SCR_CharacterHitZone hitZone, SCR_BleedingHitZoneParameters localBleedingHZParams)
 	{
@@ -486,6 +496,7 @@ class SCR_CharacterBloodHitZone : SCR_RegeneratingHitZone
 	{
 		return m_mHitZoneDOTMap;
 	}
+	//---- REFACTOR NOTE END ----
 };
 
 //-----------------------------------------------------------------------------------------------------------

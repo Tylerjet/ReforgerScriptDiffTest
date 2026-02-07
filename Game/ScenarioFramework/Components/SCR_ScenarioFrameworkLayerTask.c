@@ -40,90 +40,91 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 #endif
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Layer task state in current task layer.
 	SCR_TaskState GetLayerTaskState()
 	{
 		return m_eLayerTaskState;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Indicates if task was resolved before loading.
 	bool GetLayerTaskResolvedBeforeLoad()
 	{
 		return m_bTaskResolvedBeforeLoad;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param state
+	//! \param[in] state Sets layer task state
 	void SetLayerTaskState(SCR_TaskState state)
 	{
 		m_eLayerTaskState = state;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return the current task.
 	SCR_ScenarioFrameworkTask GetTask()
 	{
 		return m_Task;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return The return value represents the prefab for the task in the method.
 	ResourceName GetTaskPrefab()
 	{
 		return m_sTaskPrefab;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	// TODO: overridd*en
+	//! \return the display name for an overridden object.
 	string GetOverridenObjectDisplayName()
 	{
 		return m_sOverrideObjectDisplayName;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] name
-	// TODO: overridd*en
+	//! \param[in] name Sets object display name override.
 	void SetOverridenObjectDisplayName(string name)
 	{
 		m_sOverrideObjectDisplayName = name;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return The return value represents the title of the task.
 	string GetTaskTitle()
 	{
 		return m_sTaskTitle;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Original task description string returned by the method.
 	string GetOriginalTaskDescription()
 	{
 		return m_sTaskDescription;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return the task description, or sets it if an override object display name is provided.
 	string GetTaskDescription()
 	{
-		if (!m_sOverrideObjectDisplayName.IsEmpty() && m_SlotTask && m_SlotTask.GetOverridenObjectDisplayName().IsEmpty())
-			m_SlotTask.SetOverridenObjectDisplayName(m_sOverrideObjectDisplayName);
+		if (!m_sOverrideObjectDisplayName.IsEmpty() && m_SlotTask && m_SlotTask.GetOverriddenObjectDisplayName().IsEmpty())
+			m_SlotTask.SetOverriddenObjectDisplayName(m_sOverrideObjectDisplayName);
 
 		return m_sTaskDescription;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Task type enum representing the type of task in the mission.
 	SCR_ESFTaskType GetTaskType()
 	{
 		return m_eTypeOfTask;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default settings, clears children, removes spawned entities, optionally reinitializes after restoration.
+	//! \param[in] includeChildren Restores default settings for this entity and its children if includeChildren is true.
+	//! \param[in] reinitAfterRestoration Restores entity to default state, optionally reinitializes after restoration.
+	//! \param[in] affectRandomization determines whether to clear all randomly spawned children entities after restoring default settings.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aTriggerActionsOnFinish)
 		{
@@ -131,21 +132,28 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		}
 		
 		m_SlotTask = null;
+		
+		if (m_SupportEntity)
+			m_SupportEntity.CancelTask(m_Task.GetTaskID());
+		
 		m_Task = null;
 		m_SupportEntity = null;
 		m_eLayerTaskState = SCR_TaskState.OPENED;
 		m_bTaskResolvedBeforeLoad = false;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes layer with same activation type as parent.
 	override void DynamicReinit()
 	{
 		Init(null, SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Dynamically despawns this layer.
+	//! \param[in] layer for which this is called.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);
@@ -190,6 +198,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes tasks after all children spawned, logs error if task manager not found.
 	override void FinishInit()
 	{
 		if (!GetTaskManager())
@@ -204,8 +213,9 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] previousState
-	//! \param[in] newState
+	//! Triggers actions on task finish if not resolved before load.
+	//! \param[in] previousState represents the current state of the task before it transitions to new state.
+	//! \param[in] newState Triggers actions on task finish state change.
 	void OnTaskStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
 	{
 		m_eLayerTaskState = newState;
@@ -220,6 +230,8 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets task prefab for support entity
+	//! \return true if task prefab is set, false otherwise.
 	protected bool SetTaskPrefab()
 	{
 		if (!m_SupportEntity.GetTaskPrefab())
@@ -237,20 +249,22 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] slotTask
+	//! \param[in] slotTask related to this layer task.
 	void SetSlotTask(SCR_ScenarioFrameworkSlotTask slotTask)
 	{
 		m_SlotTask = slotTask;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return related to this layer task.
 	SCR_ScenarioFrameworkSlotTask GetSlotTask()
 	{
 		return m_SlotTask;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for layer task
+	//! \return true if support entity is found and set, false otherwise.
 	protected bool SetSupportEntity()
 	{
 		if (!GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskSupportEntity))
@@ -263,7 +277,8 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Initializes task, sets up support entity, and handles task state changes based on scenario framework layer.
+	//! \param[in] layer for which this task is to be initialized
 	void InitTask(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		//If m_Task already exists, we are reiniting it, not creating new one
@@ -361,6 +376,8 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Creates a task for the support entity, sets its target faction, and moves it to the specified location.
+	//! \return true if the task creation is successful, false otherwise.
 	protected bool CreateTask()
 	{
 		m_Task = SCR_ScenarioFrameworkTask.Cast(m_SupportEntity.CreateTask(this));
@@ -426,6 +443,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Sets up a task with optional title, description, and spawned entity name from a slot task, or prints an error message
 	protected void SetupTask()
 	{
 		//if title and description is provided, fill it in
@@ -455,17 +473,40 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		}
 
 		s_OnTaskSetup.Invoke(m_Task);
+		
+		//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+		
+		string cachedLanguage;
+		WidgetManager.GetLanguage(cachedLanguage);
+		if (cachedLanguage != "en_us")
+			WidgetManager.SetLanguage("en_us");
+		
 		Print(string.Format("ScenarioFramework: -> LayerTask: SlotTask %1 - generating task %2. Description: %3", m_SlotTask.GetOwner().GetName(), WidgetManager.Translate(m_Task.GetTitle()), string.Format(WidgetManager.Translate(m_Task.GetDescription(), WidgetManager.Translate(m_Task.GetSpawnedEntityName())))), LogLevel.NORMAL);
+		
+		if (cachedLanguage != "en_us")
+			WidgetManager.SetLanguage(cachedLanguage);
+		
+		//---- REFACTOR NOTE END ----
 	}
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	//! Draws debug shape based on m_bShowDebugShapesInWorkbench setting in Workbench after world update.
+	//! \param[in] owner The owner represents the entity (object) calling the method.
+	//! \param[in] timeSlice TimeSlice represents the time interval for which the method is called during each frame update.
 	override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
 		DrawDebugShape(m_bShowDebugShapesInWorkbench);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Controls debug shape visibility in Workbench based on user input.
+	//! \param[in] owner The owner represents the entity (object) in the game world that triggers the key change event, which in turn calls this
+	//! \param[in] src is the prefab of owner entity
+	//! \param[in] key corresponds with the workbench attribute.
+	//! \param[in] ownerContainers Represents a list of containers related to the owner entity in the method.
+	//! \param[in] parent Parent represents the parent entity.
+	//! \return bool
 	override bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		if (key == "m_bShowDebugShapesInWorkbench")
@@ -476,7 +517,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 #endif
 	
 	//------------------------------------------------------------------------------------------------
-	// destructor
+	//! Removes task from support entity and despawns if in edit mode or task is cancelled.
 	void ~SCR_ScenarioFrameworkLayerTask()
 	{
 		if (SCR_Global.IsEditMode())

@@ -16,6 +16,13 @@ enum SCR_EAICombatMoveReason
 	SUPPRESSED_IN_COVER,
 }
 
+// For which unit type this move request is meant
+enum SCR_EAICombatMoveUnitType
+{
+	CHARACTER,			// Character on foot
+	GROUND_VEHICLE		// Ground vehicle
+}
+
 enum SCR_EAICombatMoveDirection
 {
 	FORWARD,	// Towards the target
@@ -23,7 +30,7 @@ enum SCR_EAICombatMoveDirection
 	RIGHT,
 	LEFT,
 	ANYWHERE,	// Without specific direciton, find any position close to current one
-	CUSTOM_POS	// 
+	CUSTOM_POS	// Moving directly to the provided position
 }
 
 
@@ -40,6 +47,7 @@ class SCR_AICombatMoveRequestBase
 	SCR_EAICombatMoveRequestState m_eState = SCR_EAICombatMoveRequestState.IDLE;
 	SCR_EAICombatMoveRequestFailReason m_eFailReason = SCR_EAICombatMoveRequestFailReason.NONE;
 	SCR_EAICombatMoveReason m_eReason;		// "Reason" of request - abstract data to help identify our request in combat move logic
+	SCR_EAICombatMoveUnitType m_eUnitType;
 	
 	// It can be used for various timings, up to sender of the request to decide what it means
 	float m_f_UserTimer_s;
@@ -88,9 +96,10 @@ class SCR_AICombatMoveRequest_Move : SCR_AICombatMoveRequestBase
 	float m_fCoverSearchDistMin;			// (only m_bTryFindCover)
 	float m_fCoverSearchDistMax;			// (only m_bTryFindCover)
 	float m_fCoverSearchSectorHalfAngleRad = Math.PI;	// (only m_bTryFindCover) Half-angle (in radians) of cover query sector. Pi is full circle, Pi/2 is -90deg...+90deg sector.
-	float m_fMoveDistance;					// Movement distance if for movement to non-cover position
+	float m_fMoveDuration_s;				// Movement duration for movement to non-cover position
 	bool m_bUseCoverSearchDirectivity;		// If trying to find cover, prefer covers in given direction or not. Affects cover scoring.
 	SCR_EAICombatMoveDirection m_eDirection;// Direction - Where we want to move !!! relative to m_vMovePos
+	vector m_vAvoidStraightPathDir;			// When not 0,0,0, changes pathfinding to try to flank and avoid the path aligned same direction. Makes sense mostly for m_eDirection = CUSTOM_POS.
 	
 	// Events
 	protected ref ScriptInvokerBase<SCR_AICombatMoveRequest_Move_MovementEvent> m_OnMovementStarted;

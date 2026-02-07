@@ -32,6 +32,8 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	
 	protected SCR_CoreMenuHeaderButtonComponent m_News;
 	protected SCR_CoreMenuHeaderButtonComponent m_Career;
+	protected SCR_CoreMenuHeaderButtonComponent m_Settings;
+	protected SCR_CoreMenuHeaderButtonComponent m_BlockedList;
 
 	protected SCR_ModularButtonComponent m_Profile;
 	protected SCR_DynamicIconComponent m_ProfileStatusIcon;
@@ -42,10 +44,11 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	protected SCR_ScriptedWidgetTooltip m_Tooltip;
 
 	static const int AUTH_CHECK_PERIOD = 1000;
+	static const ResourceName BLOCKED_USER_DIALOG_CONFIG = "{12C2EC09520BE302}Configs/Blocking/BlockedUsersDialog.conf";
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
-	{
+	{	
 		super.HandlerAttached(w);
 
 		m_News = SCR_CoreMenuHeaderButtonComponent.Cast(GetComponent(SCR_CoreMenuHeaderButtonComponent, "NewsButton", w));
@@ -55,6 +58,19 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 		m_Career = SCR_CoreMenuHeaderButtonComponent.Cast(GetComponent(SCR_CoreMenuHeaderButtonComponent, "CareerButton", w));
 		if (m_Career)
 			m_Career.GetButton().m_OnClicked.Insert(OnCareer);
+		
+		m_Settings = SCR_CoreMenuHeaderButtonComponent.Cast(GetComponent(SCR_CoreMenuHeaderButtonComponent, "SettingsButton", w));
+		if (m_Settings)
+			m_Settings.GetButton().m_OnClicked.Insert(OnSettings);
+		
+		// TODO: Hide if no user is on block list (Backend API needed)
+		m_BlockedList = SCR_CoreMenuHeaderButtonComponent.Cast(GetComponent(SCR_CoreMenuHeaderButtonComponent, "BlockedUsersButton", w));
+		if (m_BlockedList)
+		{
+			m_BlockedList.GetButton().m_OnClicked.Insert(OnBlocked);
+			//if (System.GetPlatform() != EPlatform.PS5 && System.GetPlatform() != EPlatform.PS5_PRO)
+				//m_BlockedList.GetButton().SetVisible(false);
+		}
 
 		Widget profile = w.FindAnyWidget("Profile");
 		if (profile)
@@ -191,6 +207,20 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	{
 		//TODO: uncomment once Career Menu is finished
 		//GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.CareerProfileMenu, 0, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Open the Settings menu
+	protected void OnSettings()
+	{
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.SettingsSuperMenu, 0, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnBlocked()
+	{
+		SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
+		SCR_ConfigurableDialogUi.CreateFromPreset(BLOCKED_USER_DIALOG_CONFIG, "blocked_list", dialog);
 	}
 
 	//------------------------------------------------------------------------------------------------

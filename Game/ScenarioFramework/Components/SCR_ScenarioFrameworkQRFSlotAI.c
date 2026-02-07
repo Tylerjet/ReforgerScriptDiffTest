@@ -116,16 +116,19 @@ class SCR_ScenarioFrameworkQRFSlotAI : SCR_ScenarioFrameworkSlotAI
 			}
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	//! Checks for QRF Waypoints for Queue processing
+	//! \return true if all initialization steps succeed, false otherwise.
+	override bool InitOtherThings()
 	{
 		if (m_bDynamicallyDespawned && !m_aQRFWaypoints.IsEmpty() && !SCR_StringHelper.IsEmptyOrWhiteSpace(m_sObjectToSpawn))
 		{
 			GetOnAllChildrenSpawned().Remove(ProcessQueuedWaypoints);
 			GetOnAllChildrenSpawned().Insert(ProcessQueuedWaypoints);
 		}
-		super.Init(area, activation);
+		
+		return super.InitOtherThings();
 	}
 
 	//------------------------------------------------------------------------------------------------

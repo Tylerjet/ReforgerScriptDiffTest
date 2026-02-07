@@ -425,10 +425,11 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	//! \param[in] waypoint
 	void OnWaypointCompleted(AIWaypoint waypoint)
 	{
-		if (m_WaypointState && waypoint)
+		if (m_WaypointState && waypoint && m_WaypointState.GetWaypoint() == waypoint)
+		{
 			m_WaypointState.OnDeselected();
-		
-		m_WaypointState = null;
+			m_WaypointState = null;
+		}	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -439,7 +440,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		// Remove old wp state, if it existed
 		if (isCurrentWaypoint)
 		{
-			if (waypoint && m_WaypointState)
+			if (waypoint && m_WaypointState && m_WaypointState.GetWaypoint() == waypoint)
 				m_WaypointState.OnDeselected();
 			
 			m_WaypointState = null;
@@ -590,7 +591,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	void OnCurrentWaypointChanged(AIWaypoint currentWp, AIWaypoint prevWp)
 	{
 		// Remove old wp state, if it existed
-		if (m_WaypointState && prevWp)
+		if (m_WaypointState && prevWp && m_WaypointState.GetWaypoint() == prevWp)
 			m_WaypointState.OnDeselected();
 		
 		m_WaypointState = null;
@@ -726,10 +727,10 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMoveFailed(int moveResult, IEntity vehicleUsed, bool isWaypointReleated, vector moveLocation)
+	void OnMoveFailed(int moveResult, IEntity vehicleUsed, bool isWaypointRelated, vector moveLocation)
 	{
 		if (m_OnMoveFailed)
-			m_OnMoveFailed.Invoke(moveResult, vehicleUsed, isWaypointReleated, moveLocation);
+			m_OnMoveFailed.Invoke(moveResult, vehicleUsed, isWaypointRelated, moveLocation);
 	}
 	
 	//------------------------------------------------------------------------------------------------

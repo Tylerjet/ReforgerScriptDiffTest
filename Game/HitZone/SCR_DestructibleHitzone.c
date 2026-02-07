@@ -1,5 +1,6 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Visual destruction effects should be handled via separate component called by damage manager, not hitzone
 #define ENABLE_BASE_DESTRUCTION
-//------------------------------------------------------------------------------------------------
 class SCR_DestructibleHitzone : SCR_HitZone
 {
 	[Attribute(desc: "Secondary explosion reference point", category: "Secondary damage")]
@@ -97,26 +98,9 @@ class SCR_DestructibleHitzone : SCR_HitZone
 	//! Start destruction effects
 	void StartDestruction(bool immediate = false)
 	{
-		SCR_VehicleDamageManagerComponent parentDamageManager = FindParentVehicleDamageManager();
-
-		// Kill and eject occupants
-		// Only main hitzone should deal damage to occupants.
-		// TODO: Make passengers suffer random fire and bleeding instead, and let them get out if they are conscious.
-		// TODO: Depends on ability to move the occupants to proper positions inside wrecks.
-		HitZoneContainerComponent hitZoneContainer = GetHitZoneContainer();
-		if (hitZoneContainer && hitZoneContainer.GetDefaultHitZone() == this && m_CompartmentManager && !IsProxy())
-		{
-			SCR_DamageManagerComponent damageManager = parentDamageManager;
-			if (!damageManager)
-				damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-
-			Instigator instigator;
-			if (damageManager)
-				instigator = damageManager.GetInstigator();
-
-			m_CompartmentManager.KillOccupants(instigator, true);
-		}
-
+		if (m_CompartmentManager && GetHitZoneGroup() == EVehicleHitZoneGroup.HULL)
+			m_CompartmentManager.EjectRandomOccupants(-1, true);
+		
 		if (m_pDestructionHandler)
 			m_pDestructionHandler.StartDestruction(immediate);
 	}
@@ -235,3 +219,4 @@ class SCR_DestructibleHitzone : SCR_HitZone
 	}
 #endif
 }
+//---- REFACTOR NOTE END ----

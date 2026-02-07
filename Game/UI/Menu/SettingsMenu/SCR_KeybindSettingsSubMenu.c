@@ -36,6 +36,7 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 	// Description
 	protected TextWidget m_wDescriptionHeader;
 	protected RichTextWidget m_wDescription;
+	protected RichTextWidget m_wDescriptionNL;
 	protected Widget m_wDescriptionActionRowsContainer;
 	protected ScrollLayoutWidget m_wDescriptionScroll;
 	
@@ -79,13 +80,14 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		// Description
 		m_wDescriptionHeader = TextWidget.Cast(GetRootWidget().FindAnyWidget("DescriptionHeader"));
 		m_wDescription = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Description"));
+		m_wDescriptionNL = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("DescriptionNL"));
 		m_wDescriptionActionRowsContainer = GetRootWidget().FindAnyWidget("DescriptionActionRows");
 		m_wDescriptionScroll = ScrollLayoutWidget.Cast(GetRootWidget().FindAnyWidget("DescriptionScroll"));
 		
-		if (m_wDescription)
+		if (m_wDescription && m_wDescriptionNL)
 		{
 			m_wDescription.SetVisible(false);
-			
+			m_wDescriptionNL.SetVisible(false);
 			string action = string.Format(
 				"<action name='%1', scale='%2', state = '%3'/>", 
 				ACTION_ADVANCED_KEYBIND, 
@@ -93,7 +95,8 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 				UIConstants.GetActionDisplayStateAttribute(SCR_EActionDisplayState.NON_INTERACTABLE_HINT)
 			);
 			
-			m_wDescription.SetText(DESCRIPTION + "\n" + WidgetManager.Translate(DESCRIPTION_ADVANCED_BINDINGS, action));
+			m_wDescription.SetText(DESCRIPTION);
+			m_wDescriptionNL.SetTextFormat(DESCRIPTION_ADVANCED_BINDINGS, action);
 		}
 		
 		// Footer Buttons
@@ -226,9 +229,14 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		SCR_LabelComponent separatorText;
 		Widget keybindTitle;
 		Widget gamepadTitle;
+		EPlatform platform = System.GetPlatform();
 
 		foreach (SCR_KeyBindingEntry entry : category.m_KeyBindingEntries)
 		{
+			// Platform specific actions
+			if (!entry.m_aPlatforms.IsEmpty() && !entry.m_aPlatforms.Contains(platform))
+				continue;
+
 			// Action row
 			if (entry.m_sActionName != "separator")
 			{
@@ -489,8 +497,11 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 		if (m_wDescriptionHeader)
 			m_wDescriptionHeader.SetVisible(bindCount > 1);
 		
-		if (m_wDescription)
+		if (m_wDescription && m_wDescriptionNL)
+		{
 			m_wDescription.SetVisible(bindCount > 1);
+			m_wDescriptionNL.SetVisible(bindCount > 1);
+		}
 		
 		foreach (int i, Widget widget : m_aDescriptionActionRows)
 		{

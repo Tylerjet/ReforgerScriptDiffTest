@@ -15,5 +15,25 @@ class SCR_ScenarioMenu : SCR_SuperMenuBase
 		
 		if (m_NavBack)
 			m_NavBack.m_OnActivated.Insert(Close);
+		
+		// Hide tabs for PS 
+		if (System.GetPlatform() == EPlatform.PS5 || System.GetPlatform() == EPlatform.PS4 || System.GetPlatform() == EPlatform.PS5_PRO)
+		{
+			if (!m_SuperMenuComponent || !m_SuperMenuComponent.GetTabView())
+				return;
+			
+			m_SuperMenuComponent.GetTabView().RemoveTab(EScenarioSubMenuMode.MODE_SAVES);
+		}
+		
+		// Hide news menu button (top right corner) on PS
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			Widget newsButton = GetRootWidget().FindAnyWidget("NewsButton");
+			if (newsButton)
+			{
+				newsButton.SetVisible(false);
+				newsButton.SetEnabled(false);
+			}
+		}
 	}
 };

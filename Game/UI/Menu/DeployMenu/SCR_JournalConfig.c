@@ -196,7 +196,12 @@ class SCR_JournalEntry
 			
 			TextWidget text = TextWidget.Cast(m_Widget.FindAnyWidget("Text"));
 			if (text)
-				text.SetTextFormat(m_sEntryText, m_sEntryTextParam1);
+			{
+				string hack = WidgetManager.Translate(m_sEntryText, "H4CK_STR");//it seems like any form of translation fails when it needs to replace %X with long already localized string
+
+				hack.Replace("H4CK_STR", m_sEntryTextParam1);//thus more of a manual replacement is required
+				text.SetTextFormat(hack);
+			}
 		}
 		
 		return m_Widget;

@@ -31,6 +31,8 @@ class SCR_CycleWaypointEditorUIComponent : SCR_ModularButtonComponent
 		UpdateInputVisuals();
 	}
 
+	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	//! Styles the widget according to the current input device
 	protected void UpdateInputVisuals()
@@ -51,6 +53,7 @@ class SCR_CycleWaypointEditorUIComponent : SCR_ModularButtonComponent
 			scaleWidget.SetScale(scale);
 
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//! Runs when selected entities from entities manager change. Used to update visibility of toggle
@@ -113,6 +116,8 @@ class SCR_CycleWaypointEditorUIComponent : SCR_ModularButtonComponent
 		GetGame().GetInputManager().RemoveActionListener(m_sRadialActionName, EActionTrigger.PRESSED, ToggleCycleWaypoints);
 	}
 
+	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	//! Toggle cycle waypoints for selected groups, based on the status of the first group
 	protected void ToggleCycleWaypoints()
@@ -127,6 +132,7 @@ class SCR_CycleWaypointEditorUIComponent : SCR_ModularButtonComponent
 		else
 			DisableCycleWaypoints();
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//! Enable cycle waypoints for selected groups

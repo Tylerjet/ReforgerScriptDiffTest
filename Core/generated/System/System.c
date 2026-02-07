@@ -143,11 +143,13 @@ sealed class System
 							relative to $profile: file system. Finally, if path is empty string, screenshot will be
 							saved to "$profile:ScreenShots/DATETIME.bmp" where DATETIME will be replaced by current
 							date and time.
+	\return			true if file can be written
 	*/
-	static proto void MakeScreenshot(string path);
+	static proto bool MakeScreenshot(string path);
 	/*!
 	Take screenshot on specified position and size. dstWidth x dstHeight point to final image size,
-	if they are zero then they equal to srcWidth x srcHeight.
+	if they are zero then they equal to srcWidth x srcHeight. The callback receives raw image data
+	which are valid in the time of callback call only
 	\param scriptCallback	callback to script function which receives the data
 	\param posX						X position of screenshot
 	\param posY						Y position of screenshot
@@ -156,7 +158,20 @@ sealed class System
 	\param dstWidth				width of destination image, 0 means the srcWidth is used
 	\param dstHeight			height of destination image, 0 means the srcHeight is used
 	*/
-	static proto void MakeScreenshotExt(ScreenshotCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	static proto void MakeScreenshotRawData(ScreenshotRawDataCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	/*!
+	Take screenshot on specified position and size. dstWidth x dstHeight point to final image size,
+	if they are zero then they equal to srcWidth x srcHeight. The callback receives a full texture
+	which can be used for any purpose
+	\param scriptCallback	callback to script function which receives the data
+	\param posX						X position of screenshot
+	\param posY						Y position of screenshot
+	\param srcWidth				width of image to be taken
+	\param srcHeight			height of image to be taken
+	\param dstWidth				width of destination image, 0 means the srcWidth is used
+	\param dstHeight			height of destination image, 0 means the srcHeight is used
+	*/
+	static proto void MakeScreenshotTexture(ScreenshotTextureCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
 	/*!
 	Returns actual fps (average in last 10 frames)
 	*/

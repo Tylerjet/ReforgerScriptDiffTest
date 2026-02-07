@@ -49,10 +49,10 @@ class SCR_DataCollectorModule : Managed
 	void OnPlayerAuditSuccess(int playerID);
 	
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer);
+	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData);
 	
 	//------------------------------------------------------------------------------------------------
-	void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer);
+	void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData);
 	
 	//------------------------------------------------------------------------------------------------
 	void OnGameModeEnd();

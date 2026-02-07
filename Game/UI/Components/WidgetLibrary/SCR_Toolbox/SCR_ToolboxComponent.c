@@ -30,11 +30,18 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 		CreateWidgets();
 		SetInitialState();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void CreateWidgets()
 	{
+		
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Exposed an attribute, and then in the only place where it is used, changes it's value
+		
 		float padding = m_fElementSpacing * 0.5;
+		
+//---- REFACTOR NOTE END ----
+		
 		LayoutSlot.SetPadding(m_wButtonRow, -padding, -padding, -padding, -padding);
 		foreach (string name : m_aElementNames)
 		{

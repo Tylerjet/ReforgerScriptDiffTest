@@ -49,6 +49,7 @@ class CharacterInputContext
 	proto external void SetFreelook(bool pFreelook);
 	proto external void SetTransferFreeaimAfterFreelookRequest(bool val);
 	proto external bool ShouldTransferFreeaimAfterFreelook();
+	proto external void AccumulateFreelookAdjustment(vector change);
 	//! is weapon raised
 	proto external bool WeaponIsRaisedOrADS();
 	proto external bool WeaponIsRaised();

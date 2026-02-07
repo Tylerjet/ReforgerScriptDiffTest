@@ -6,7 +6,14 @@ class SCR_OpenVehicleDoorUserAction : VehicleDoorUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool GetActionNameScript(out string outName)
 	{
-		outName = GetUIInfo().GetName();
+		UIInfo uiInfo = GetUIInfo();
+		if (!uiInfo)
+		{
+			outName = "Missing UIInfo";
+			return true;
+		}
+		
+		outName = uiInfo.GetName();
 		return true;
 	}
 	

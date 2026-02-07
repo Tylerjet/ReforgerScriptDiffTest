@@ -78,4 +78,10 @@ class SCR_ScenarioFrameworkActionOnCompartmentEnteredOrLeft : SCR_ScenarioFramew
 				ehManager.RegisterScriptHandler("OnCompartmentLeft", this, OnCompartmentEnteredOrLeft, true, false);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
+	}
 }

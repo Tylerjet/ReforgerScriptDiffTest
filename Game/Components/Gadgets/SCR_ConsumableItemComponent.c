@@ -81,7 +81,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		IEntity target = GetTargetCharacter();
 		if (!target)
 			target = m_CharacterOwner;
-		if (!target)
+		if (!m_CharacterOwner)
 			return;
 
 		ApplyItemEffect(target, m_CharacterOwner, animParams, item, deleteItem);

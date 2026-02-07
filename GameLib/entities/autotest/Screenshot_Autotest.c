@@ -300,7 +300,6 @@ class Screenshot_Autotest: GenericEntity
 
 	private void MakeScreenshotMetafile(string filename)
 	{
-		string content;
 		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
 
 		vector position = m_camera.GetOrigin();

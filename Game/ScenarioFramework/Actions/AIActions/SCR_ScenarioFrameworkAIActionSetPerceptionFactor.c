@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkAIActionSetPerceptionFactor : SCR_ScenarioFrameworkAI
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		array<AIAgent> agents = {};
 		m_AIGroup.GetAgents(agents);
 		

@@ -15,6 +15,8 @@ class TimerTriggerComponentClass: BaseTriggerComponentClass
 
 class TimerTriggerComponent: BaseTriggerComponent
 {
+	proto external float GetTimer();
+	proto external void SetTimer(float newTime);
 }
 
 /*!

@@ -50,7 +50,7 @@ class SCR_ArmExplosiveChargeWithRemoteFuzeAction : SCR_ExplosiveChargeAction
 			return false;
 		}
 
-		if (m_ChargeComp.GetUsedFuzeType() != SCR_EFuzeType.NONE && m_ChargeComp.GetUsedFuzeType() != SCR_EFuzeType.REMOTE)
+		if (m_ChargeComp.GetUsedFuzeType() != SCR_EFuzeType.NONE)
 		{
 			SetCannotPerformReason(m_sDifferentFuzeInUseText);
 			return false;
@@ -68,24 +68,21 @@ class SCR_ArmExplosiveChargeWithRemoteFuzeAction : SCR_ExplosiveChargeAction
 		if (!m_ChargeComp.GetRplId().IsValid())
 			return;
 
-		if (!m_HeldDetonatorComp)
-		{
-			ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
-			if (!character)
-				return;
+		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
+		if (!character)
+			return;
 
-			CharacterControllerComponent charController = character.GetCharacterController();
-			if (!charController || charController.IsChangingItem())
-				return;
+		CharacterControllerComponent charController = character.GetCharacterController();
+		if (!charController || charController.IsChangingItem())
+			return;
 
-			IEntity item = charController.GetAttachedGadgetAtLeftHandSlot();
-			if (!item)
-				return;
+		IEntity item = charController.GetAttachedGadgetAtLeftHandSlot();
+		if (!item)
+			return;
 
-			m_HeldDetonatorComp = SCR_DetonatorGadgetComponent.Cast(item.FindComponent(SCR_DetonatorGadgetComponent));
-			if (!m_HeldDetonatorComp)
-				return;
-		}
+		m_HeldDetonatorComp = SCR_DetonatorGadgetComponent.Cast(item.FindComponent(SCR_DetonatorGadgetComponent));
+		if (!m_HeldDetonatorComp)//we need to do this as other clients will also execute this code and they need to have newest detonator
+			return;
 
 		super.PerformAction(pOwnerEntity, pUserEntity);
 	}

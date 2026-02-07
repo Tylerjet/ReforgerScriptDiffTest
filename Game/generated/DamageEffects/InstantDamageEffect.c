@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class InstantDamageEffect: SCR_DamageEffect
+class InstantDamageEffect: SCR_DamageEffect
 {
 }
 

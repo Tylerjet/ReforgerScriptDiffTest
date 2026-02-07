@@ -24,6 +24,10 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	protected float qz; //--- Quaternion Z
 	protected float qw; //--- Quaternion W
 	protected float sc; //--- Scale
+	protected string au; //--- Author UID
+	protected string ap; //--- Author PlatformID
+	protected int as; //--- Author Platform (system)
+	protected int ut; //--- Last Time of Update
 	protected ref array<ref SCR_EditorAttributeStruct> at = {}; //--- Attributes
 	
 	//--- Non-serialized
@@ -132,6 +136,11 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				entry.ti = TARGET_SLOT;
 		}
 		
+		entry.as = entity.GetAuthorPlatform();
+		entry.au = entity.GetAuthorUID();
+		entry.ap = entity.GetAuthorPlatformID();
+		entry.ut = entity.GetAuthorLastUpdated();
+		
 		SCR_EditorAttributeStruct.SerializeAttributes(entry.at, attributeList, entity);
 		
 		//--- Process children if the composition is dirty or artificially created (i.e., non-placeable)
@@ -238,6 +247,11 @@ class SCR_EditableEntityStruct: JsonApiStruct
 				{
 					entry.m_Entity.Destroy();
 				}
+				
+				SCR_EditableEntityAuthor author = new SCR_EditableEntityAuthor();
+				author.Initialize(entry.au, entry.ap, entry.as, -1);
+				entry.m_Entity.SetAuthor(author);
+				entry.m_Entity.SetAuthorUpdatedTime(entry.ut);
 				
 				Print(string.Format("SCR_EditableEntityStruct: Entity @\"%1\" spawned at %2 as a child of %3", entry.pf, spawnParams.Transform, parent), LogLevel.VERBOSE);
 			}
@@ -388,5 +402,9 @@ class SCR_EditableEntityStruct: JsonApiStruct
 		RegV("qw");
 		RegV("sc");
 		RegV("at");
+		RegV("au");
+		RegV("as");
+		RegV("ap");
+		RegV("ut");
 	}
 };

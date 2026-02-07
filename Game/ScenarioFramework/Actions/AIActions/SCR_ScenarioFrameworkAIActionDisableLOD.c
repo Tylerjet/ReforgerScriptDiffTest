@@ -6,6 +6,8 @@ class SCR_ScenarioFrameworkAIActionDisableLOD : SCR_ScenarioFrameworkAIAction
 	
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		if (!m_bDisableLOD)
 			return;
 		

@@ -62,9 +62,58 @@ class AttachmentMuzzle762_39 : AttachmentMuzzle
 {
 };
 
-
 class AttachmentMuzzle308Class {}
+
 AttachmentMuzzle308Class AttachmentMuzzle308Source;
 class AttachmentMuzzle308 : AttachmentMuzzle
+{
+};
+
+class AttachmentSuppressorClass {}
+
+AttachmentSuppressorClass AttachmentSuppressorSource;
+class AttachmentSuppressor : AttachmentMuzzle
+{
+};
+
+class AttachmentSuppressorMark3Class {}
+
+AttachmentSuppressorMark3Class AttachmentSuppressorMark3Source;
+class AttachmentSuppressorMark3 : AttachmentMuzzle556_45
+{
+};
+
+class AttachmentSuppressorPBS4Class {}
+
+AttachmentSuppressorPBS4Class AttachmentSuppressorPBS4Source;
+class AttachmentSuppressorPBS4 : AttachmentMuzzle545_39
+{
+};
+
+class AttachmentFlashHiderClass {}
+
+AttachmentFlashHiderClass AttachmentFlashHiderSource;
+class AttachmentFlashHider : AttachmentMuzzle
+{
+};
+
+class AttachmentFlashHiderA2Class {}
+
+AttachmentFlashHiderA2Class AttachmentFlashHiderA2Source;
+class AttachmentFlashHiderA2 : AttachmentMuzzle556_45
+{
+};
+
+class AttachmentFlashHider6P26Class {}
+
+AttachmentFlashHider6P26Class AttachmentFlashHider6P26Source;
+class AttachmentFlashHider6P26 : AttachmentMuzzle545_39
+{
+};
+
+class AttachmentFlashHider6P20Class {}
+
+AttachmentFlashHider6P20Class AttachmentFlashHider6P20Source;
+class AttachmentFlashHider6P20 : AttachmentMuzzle545_39
 {
 };

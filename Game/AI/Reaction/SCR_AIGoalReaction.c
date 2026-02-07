@@ -597,6 +597,36 @@ class SCR_AIGoalReaction_Suppress : SCR_AIGoalReaction
 	}
 };
 
+[BaseContainerProps()]
+class SCR_AIGoalReaction_Animate : SCR_AIGoalReaction
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_Animate.Cast(message);
+		if (!msg || !msg.m_RootEntity)
+			return;
+		
+		auto behavior = new SCR_AIAnimateBehavior(utility, msg.m_RelatedGroupActivity, rootEntity: msg.m_RootEntity, priorityLevel: msg.m_fPriorityLevel, scriptForAgent: msg.m_AgentScript);
+		if (m_OverrideBehaviorTree != string.Empty)
+			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
+		
+		utility.AddAction(behavior);
+	}
+	
+	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_Animate.Cast(message);
+		if (!msg || !msg.m_RelatedWaypoint)
+			return;
+		
+		auto activity = new SCR_AIAnimateActivity(utility, msg.m_RelatedWaypoint, priorityLevel: msg.m_fPriorityLevel);
+		if (m_OverrideBehaviorTree != string.Empty)
+			activity.m_sBehaviorTree = m_OverrideBehaviorTree;
+		
+		utility.AddAction(activity);
+	}
+};
+
 //--------------------------------------------------------------------------------------------------------
 // Helper methods used in above
 

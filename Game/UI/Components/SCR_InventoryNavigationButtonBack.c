@@ -45,11 +45,12 @@ class SCR_InventoryNavigationButtonBack : SCR_InputButtonComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void SetAction(string action)
+	override bool SetAction(string action, EInputDeviceType currentInputDevice = -1, bool forceUpdate = false)
 	{
 		// Remove old listener and add a new one
 		GetGame().GetInputManager().RemoveActionListener(m_sActionName, EActionTrigger.DOWN, OnInput);
 		GetGame().GetInputManager().AddActionListener(m_sActionName, EActionTrigger.DOWN, OnInput);
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

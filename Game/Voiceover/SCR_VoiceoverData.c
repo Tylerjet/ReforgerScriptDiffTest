@@ -19,6 +19,18 @@ class SCR_VoiceoverData
 
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_VoiceoverLineStandalone GetLineBySoundEvent(string eventName)
+	{
+		foreach (SCR_VoiceoverLineStandalone line : m_aLines)
+		{
+			if (line.GetSoundEventName() == eventName)
+				return line;
+		}
+
+		return null;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	SCR_VoiceoverSequence GetSequenceByName(string name)
@@ -52,8 +64,13 @@ class SCR_VoiceoverSequence
 	//------------------------------------------------------------------------------------------------
 	void GetLines(out notnull array<ref SCR_VoiceoverLine> lines)
 	{
-		if (m_aLines)
-			lines = m_aLines;
+		if (!m_aLines)
+			return;
+	
+		foreach (SCR_VoiceoverLine line : m_aLines)
+		{
+			lines.Insert(line);
+		}
 	}
 }
 
@@ -61,7 +78,7 @@ class SCR_VoiceoverSequence
 [BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sSoundEventName")]
 class SCR_VoiceoverLine
 {
-	[Attribute(SCR_EVoiceoverActor.ACTOR_1.ToString(), uiwidget: UIWidgets.ComboBox, desc: "Type", enums: ParamEnumArray.FromEnum(SCR_EVoiceoverActor))]
+	[Attribute(SCR_EVoiceoverActor.ACTOR_1.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_EVoiceoverActor))]
 	protected SCR_EVoiceoverActor m_eActor;
 
 	[Attribute("", desc: "Sound event name as defined in the appropriate .acp file in the actor's SCR_CommunicationSoundComponent.")]
@@ -69,6 +86,12 @@ class SCR_VoiceoverLine
 
 	[Attribute("")]
 	protected string m_sSubtitleText;
+	
+	[Attribute("", desc: "Actor name to be shown in the subtitle.")]
+	protected string m_sActorName;
+	
+	[Attribute("0", desc: "Non-zero value overrides the maximum distance from the voiceover source at which a subtitle will still be displayed.", params: "0 inf 1")]
+	protected int m_iCustomSubtitleDistanceThreshold;
 
 	//------------------------------------------------------------------------------------------------
 	SCR_EVoiceoverActor GetActor()
@@ -87,10 +110,22 @@ class SCR_VoiceoverLine
 	{
 		return m_sSubtitleText;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetActorName()
+	{
+		return m_sActorName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCustomSubtitleDistanceThreshold()
+	{
+		return m_iCustomSubtitleDistanceThreshold;
+	}
 }
 
 //------------------------------------------------------------------------------------------------
-[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sName")]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sSoundEventName")]
 class SCR_VoiceoverLineStandalone : SCR_VoiceoverLine
 {
 	[Attribute("")]
@@ -109,5 +144,20 @@ enum SCR_EVoiceoverActor
 	ACTOR_2,
 	ACTOR_3,
 	ACTOR_4,
-	ACTOR_5
+	ACTOR_5,
+	ACTOR_6,
+	ACTOR_7,
+	ACTOR_8,
+	ACTOR_9,
+	ACTOR_10,
+	ACTOR_11,
+	ACTOR_12,
+	ACTOR_13,
+	ACTOR_14,
+	ACTOR_15,
+	ACTOR_16,
+	ACTOR_17,
+	ACTOR_18,
+	ACTOR_19,
+	ACTOR_20
 }

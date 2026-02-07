@@ -45,4 +45,10 @@ class SCR_ScenarioFrameworkActionOnEngineStartedOrStop : SCR_ScenarioFrameworkAc
 		else
 			vehicleController.GetOnEngineStop().Insert(OnEngineStartedOrStop);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
+	}
 }

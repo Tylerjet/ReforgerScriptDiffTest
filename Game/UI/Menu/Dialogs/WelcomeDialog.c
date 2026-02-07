@@ -30,10 +30,21 @@ class WelcomeDialogUI: DialogUI
 		"#ar-welcomescreen_text_07"
 	};
 
+	protected ref array<string> m_aPageTextsPS = 
+	{
+		"#ar-welcomescreen_text_01",
+		"#ar-welcomescreen_text_02",
+		"#ar-welcomescreen_text_03",
+		"#ar-welcomescreen_text_06"
+	};
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
+		
+		if (System.GetPlatform() == EPlatform.PS5 || System.GetPlatform() == EPlatform.PS4 || System.GetPlatform() == EPlatform.PS5_PRO)
+			m_aPageTexts = m_aPageTextsPS;
 		
 		m_iMaxIndex = m_aPageTexts.Count() - 1;
 		Widget w = GetRootWidget();

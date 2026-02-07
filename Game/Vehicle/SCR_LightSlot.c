@@ -1,8 +1,5 @@
 class SCR_LightSlot : BaseLightSlot 
 {
-	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Hit zone", category: "Damage")]
-	protected string m_sHitZoneName;
-
 	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Name of the sound event that should be called when the lights are activated.", category: "Sounds")]
 	protected string m_sLightOnEventName;
 
@@ -59,12 +56,5 @@ class SCR_LightSlot : BaseLightSlot
 		
 		if (m_SoundComponent && !eventName.IsEmpty())
 			m_SoundComponent.SoundEvent(eventName);	
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	string GetHitZoneName()
-	{
-		return m_sHitZoneName;
 	}
 };

@@ -335,14 +335,14 @@ class SCR_PlayerSpawnPointManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		if (!m_pGameMode.IsMaster())
 			return;
 		
 		SCR_PlayerSpawnPoint playerPoint;
-		if (m_SpawnPoints.Find(playerId, playerPoint))
-			playerPoint.DisablePoint(playerId);
+		if (m_SpawnPoints.Find(instigatorContextData.GetVictimPlayerID(), playerPoint))
+			playerPoint.DisablePoint(instigatorContextData.GetVictimPlayerID());
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -58,11 +58,6 @@ sealed class WorldEditorAPI
 	proto external bool RenameEntity(notnull IEntitySource ent, string newName);
 	proto external int GetCurrentSubScene();
 	proto external int GetNumSubScenes();
-	proto external int GetEntityLayerId(int subscene, string name);
-	proto external int GetCurrentEntityLayerId();
-	proto external void SetCurrentEntityLayerId(int subscene, int layerID);
-	proto external bool IsEntityLayerVisible(int subscene, int layerID);
-	proto external void DeleteEntityLayer(int subscene, int layerID);
 	//! Returns width of active scene window (usually it's perspective window but it can be also one of Top, Back, Right view).
 	proto external int GetScreenWidth();
 	//! Returns height of active scene window (usually it's perspective window but it can be also one of Top, Back, Right view).
@@ -207,6 +202,8 @@ sealed class WorldEditorAPI
 	proto external IEntitySource CreateClonedEntity(notnull IEntitySource ent, string name, IEntitySource parent, bool cloneChildren);
 	proto external IEntitySource CreateEntityInWindow(RenderTargetWidget window, int winX, int winY, string className, string name, int layerID);
 	proto external IEntitySource CreateEntityInWindowEx(int windowType, int winX, int winY, string className, string name, int layerID);
+	//! Parent childs to parent and resolve previous parent->child dependencies
+	proto external bool ParentEntities(notnull IEntitySource parent, notnull array<IEntitySource> childs, bool transformChildToParentSpace);
 	proto external bool DeleteEntity(notnull IEntitySource ent);
 	proto external bool DeleteEntities(notnull array<IEntitySource> ents);
 	//! Trace inside WorldEditor window, x and y coords are window coordinates.
@@ -215,8 +212,6 @@ sealed class WorldEditorAPI
 	proto external string GetEntityNiceName(IEntitySource entSrc);
 	//! Generates unique name for a particular entity which is based on class/prefab name and numerical postfix
 	proto external string GenerateDefaultEntityName(IEntitySource entSrc);
-	proto external int CreateSubsceneLayer(int subscene, string name);
-	proto external int GetSelectedEntityLayers(int subscene, notnull array<int> outLayerIDs);
 	/*!
 	Set value of potentially nested variable. The whole path must exist, this function is just to set
 	the value. For creation, see CreateObjectArrayVariableMember().
@@ -318,11 +313,26 @@ sealed class WorldEditorAPI
 	Moves existing entity instances from map into a prefab.
 	\param newParentInMap It's any entity of the prefab instance that exists in map (can be any child or sub-child). This it's only an optional parameter which ensures that transformations of the entitiesInMap after move to the prefab will be relative to the entity that exists in map. If this parameter is null then world transformations of the entitiesInMap will be stored into a prefab
 	\param newParentInPrefab It's a further parent entity in the prefab. It can be root or any sub-child entity stored in a prefab.
-	\param entitiesInMap Any entity instancies that currently exist in a map. These entities will be deleted from map and added into a prefab as children of newParentInPrefab.
+	\param entitiesInMap Any entity instances that currently exist in a map. These entities will be deleted from map and added into a prefab as children of newParentInPrefab.
 	*/
 	proto external bool MoveEntitiesToPrefab(IEntitySource newParentInMap, IEntitySource newParentInPrefab, notnull array<IEntitySource> entitiesInMap);
 	proto external string GetCurrentToolName();
 	proto external BaseWorld GetWorld();
+	proto external string CreateSubsceneLayer(int subScene, string name, string parentPath = string.Empty);
+	proto external string CreateSubsceneFolder(int subScene, string name, string parentPath = string.Empty);
+	proto external bool RenameSubsceneFolder(int subScene, string itemPath, string newItemName);
+	proto external bool DeleteSubsceneFolder(int subScene, string itemPath);
+	proto external bool SetSubsceneFolderParent(int subScene, string itemPath, string parentPath);
+	proto external void GetSubsceneFolders(int subscene, out notnull array<string> outItemPaths);
+	proto external bool SetEntitySubsceneLayer(int subScene, IEntitySource pEntitySource, string itemPath);
+	proto external string GetEntitySubsceneLayer(int subScene, IEntitySource pEntitySource);
+	proto external string GetActiveSubsceneLayer(int subScene);
+	proto external void SetActiveSubsceneLayer(int subScene, string layerPath);
+	proto external int GetSubsceneLayerId(int subscene, string layerPath);
+	proto external string GetSubsceneLayerPath(int subscene, int layerId);
+	proto external bool IsSubsceneLayerVisible(int subscene, string layerPath);
+	proto external bool IsEntityLayerVisible(int subscene, int layerId);
+	proto external int GetCurrentEntityLayerId();
 }
 
 /*!

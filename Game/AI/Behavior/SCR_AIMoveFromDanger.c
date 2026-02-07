@@ -83,6 +83,19 @@ class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 	}
 }
 
+class SCR_AIMoveFromUnsafeAreaBehavior : SCR_AIMoveFromDangerBehavior
+{	
+	ref SCR_BTParam<float> m_Distance = new SCR_BTParam<float>("Distance");
+	
+	//-----------------------------------------------------------------------------------------------------
+	void SCR_AIMoveFromUnsafeAreaBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity, float distance)
+	{
+		m_Distance.Init(this, distance);
+		m_MovementType.Init(this, EMovementType.RUN);
+		m_sBehaviorTree = "{9C0564CA979D57B1}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_UnsafeArea.bt";
+	}
+}
+
 class SCR_AIMoveFromGrenadeBehavior : SCR_AIMoveFromDangerBehavior
 {
 	static const float MAX_GRENADE_LOOKAT_TIMEOUT_MS = 600;

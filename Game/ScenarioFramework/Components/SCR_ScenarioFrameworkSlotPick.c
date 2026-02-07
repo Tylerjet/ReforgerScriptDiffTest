@@ -19,6 +19,9 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	protected string 		m_sTaskDescriptionUpdated2;
 	
 	//------------------------------------------------------------------------------------------------
+	//! Task title getter with state-dependent titles.
+	//! \param[in] iState iState represents the current state of the task, used for differentiating between various stages of the task's progression
+	//! \return different task titles based on state.
 	override string GetTaskTitle(int iState = 0) 
 	{ 
 		if (iState == 0)
@@ -38,6 +41,8 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes dynamic despawning if not already initiated, excludes if marked for exclusion, sets dynamic despawn flag true
+	//! \param[in] layer for which this is called.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		if (!m_bInitiated || m_bExcludeFromDynamicDespawn)
@@ -47,6 +52,9 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Returns different descriptions based on state, defaulting to superclass description if no state-specific description is found.
+	//! \param[in] iState Task state representation for description updates.
+	//! \return different descriptions based on state parameter.
 	override string GetTaskDescription(int iState = 0)	
 	{ 
 		if (iState == 0)
@@ -66,6 +74,8 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! Updates blacklist for garbage system when all children spawned in scenario layer.
+	//! \param[in] layer Layer represents scenario framework layer, used for spawning entities in the game world.
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		super.AfterAllChildrenSpawned(this);

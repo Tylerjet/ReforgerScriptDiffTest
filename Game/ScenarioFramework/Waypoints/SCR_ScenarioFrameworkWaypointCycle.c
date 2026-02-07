@@ -107,8 +107,9 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] layer
-	void ProcessWaypoints(SCR_ScenarioFrameworkLayerBase layer)
+	protected void ProcessWaypoints(SCR_ScenarioFrameworkLayerBase layer)
 	{
+		Math.Randomize(-1);
 		AIWaypoint waypoint;
 		foreach (SCR_ScenarioFrameworkSlotWaypoint slotWaypoint : m_aSlotWaypoints)
 		{
@@ -122,8 +123,7 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 		{
 			foreach (AIWaypoint wp : m_aWaypointsWithoutCycle)
 			{
-				Math.Randomize(-1);
-				m_aWaypointsWithoutCycle.SwapItems(Math.RandomInt(0, Math.Floor(wpCount * 0.5)), Math.RandomInt(Math.Ceil(wpCount * 0.5), wpCount));
+				ShuffleWaypointArray(m_aWaypointsWithoutCycle);
 			}
 		}
 
@@ -131,6 +131,18 @@ class SCR_ScenarioFrameworkWaypointCycle : SCR_ScenarioFrameworkWaypoint
 		m_CycleWaypoint.SetWaypoints(m_aWaypointsWithoutCycle);
 		m_bInitiated = true;
 		InvokeAllWaypointsSpawned();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ShuffleWaypointArray(notnull array<AIWaypoint> arr)
+	{
+	    int n = arr.Count();
+	    for (int i = n - 1; i > 0; i--)
+	    {
+	        int j = Math.RandomInt(0, i + 1);
+			
+			arr.SwapItems(i, j);
+	    }
 	}
 
 	//------------------------------------------------------------------------------------------------

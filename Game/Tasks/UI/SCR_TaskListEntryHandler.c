@@ -114,7 +114,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 			{
 			m_wLocalBackground.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_BG);
 			m_wOutline.LoadImageFromSet(0,m_sIconImageset, SCR_BaseTask.TASK_O);
-			m_wSymbol.LoadImageFromSet(0, m_Task.GetIconImageset(), m_Task.GetTaskListIconName() + m_Task.GetIconSuffix());
+			m_wSymbol.LoadImageFromSet(0, m_Task.GetIconImageset(), m_Task.GetFullTaskIconName());
 			m_wOutline.SetColor(faction.GetOutlineFactionColor());
 			m_wSymbol.SetColor(faction.GetOutlineFactionColor());
 			m_wLocalBackground.SetColor(Color.White);

@@ -6,6 +6,8 @@ class SCR_ScenarioFrameworkSlotDefendClass : SCR_ScenarioFrameworkSlotTaskAIClas
 class SCR_ScenarioFrameworkSlotDefend : SCR_ScenarioFrameworkSlotTaskAI
 {
 	//------------------------------------------------------------------------------------------------
+	//! Dynamically despawns this layer.
+	//! \param[in] layer Layer represents the scenario framework layer where dynamic despawning occurs.
 	override void DynamicDespawn(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		GetOnAllChildrenSpawned().Remove(DynamicDespawn);

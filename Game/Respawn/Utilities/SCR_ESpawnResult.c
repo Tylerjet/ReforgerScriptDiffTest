@@ -47,6 +47,7 @@ enum SCR_ESpawnResult
 	NOT_ALLOWED_SPAWNPOINT_DISABLED_OUT_OF_RESPAWNS,
 	NOT_ALLOWED_NOT_ENOUGH_SUPPLIES,
 	NOT_ALLOWED_NO_ARSENAL,
+	NOT_ALLOWED_CUSTOM_LOADOUT,
 
 	/*!
 		Prefab needs to meet certain conditions before it is spawned.

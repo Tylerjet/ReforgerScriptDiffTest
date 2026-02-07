@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionAddParticularBleeding : SCR_ScenarioFram
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.AddParticularBleeding(m_sHitZoneName);
 	}
 }

@@ -61,8 +61,15 @@ enum EWorkshopItemQuery
 
 	FAVOURITE		= 1<<17,
 	
-	AUTHOR_BLOCKED	= 1<<18
+	AUTHOR_BLOCKED	= 1<<18,
+	
+	ONLY_WORKSHOP_ITEM =1<<19,
+	ONLY_WORLD_SAVES = 1<<20, 
 };
+
+void ScriptInvokerSCRWorkshopItemMethod(WorkshopItem item);
+typedef func ScriptInvokerSCRWorkshopItemMethod;
+typedef ScriptInvokerBase<ScriptInvokerSCRWorkshopItemMethod> ScriptInvokerWorkshopItem;
 
 [EntityEditorProps(category: "", description: "A centralized system which lets many users perform actions on addons. Most likely only needed in the main menu world.")]
 class SCR_AddonManagerClass: GenericEntityClass
@@ -79,6 +86,9 @@ class SCR_AddonManager : GenericEntity
 	protected const static float ADDONS_ENABLED_UPDATE_INTERVAL_S = 1/30;
 	protected const static float ADDONS_OUTDATED_UPDATE_INTERVAL_S = 1.0;
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Old untyped invokers. This code is old and unmantained, and we also have a SCR_DonwloadManager class that seems to share some responsibilitites and that fires it's own invokers and some of them seem to happen on the same events as this one, making it unclear to which ones classes should listen to
+	
 	// Public callbacks
 	ref ScriptInvoker m_OnAddonsChecked = new ScriptInvoker;
 
@@ -94,7 +104,6 @@ class SCR_AddonManager : GenericEntity
 	// Called wherever set of enabled addons has changed
 	ref ScriptInvoker m_OnAddonsEnabledChanged = new ScriptInvoker; //
 	
-
 	// Other
 	protected ref array<WorkshopItem> m_aAddonsToRegister = {};
 	protected ref map<string, ref SCR_WorkshopItem> m_mItems = new map<string, ref SCR_WorkshopItem>();
@@ -120,6 +129,8 @@ class SCR_AddonManager : GenericEntity
 		
 	// Called when a new download have been started
 	ref ScriptInvoker m_OnNewDownload = new ScriptInvoker; // (SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
+	
+	//---- REFACTOR NOTE END ----
 	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I
@@ -524,6 +535,9 @@ class SCR_AddonManager : GenericEntity
 		return Event_OnAllAddonsEnabled;
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// addon manager system doing UI
+	
 	//-----------------------------------------------------------------------------------------------
 	//! Enable/disable multiple mods recursively to save performance 
 	void EnableMultipleAddons(array<ref SCR_WorkshopItem> items, bool enable)
@@ -538,6 +552,8 @@ class SCR_AddonManager : GenericEntity
 		else
 			m_LoadingOverlay.SetShown(true);
 	}
+	
+//---- REFACTOR NOTE END ----
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void EnableAddonsRecursively(array<ref SCR_WorkshopItem> addons, out int remaining, bool enable)
@@ -596,6 +612,7 @@ class SCR_AddonManager : GenericEntity
 		itemWrapper.m_OnOfflineStateChanged.Insert(Callback_OnAddonOfflineStateChanged);
 		itemWrapper.m_OnReportStateChanged.Insert(Callback_OnAddonReportStateChanged);
 		itemWrapper.m_OnDownloadComplete.Insert(CountOutdatedAddons);
+		//
 
 		m_mItems.Insert(id, itemWrapper);
 		
@@ -638,6 +655,8 @@ class SCR_AddonManager : GenericEntity
 			case EWorkshopItemQuery.ENABLED_AND_DEPENDENCY_DISABLED:	return item.GetEnabledAndAnyDependencyDisabled();
 			case EWorkshopItemQuery.FAVOURITE:							return item.GetFavourite();
 			case EWorkshopItemQuery.AUTHOR_BLOCKED:						return item.GetModAuthorReportedByMe();
+			case EWorkshopItemQuery.ONLY_WORKSHOP_ITEM:					return !item.IsWorldSave();
+			case EWorkshopItemQuery.ONLY_WORLD_SAVES:					return item.IsWorldSave();
 			default: return false;
 		}
 		return false;
@@ -835,14 +854,16 @@ class SCR_AddonManager : GenericEntity
 	{
 		m_OnAddonReportedStateChanged.Invoke(item, newReport);
 	}
-
-
+	
 	//-----------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		array<string> unregisterIds;
 		array<SCR_WorkshopItem> updateItems;
 
+		//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+		// Reliance on reference counting
+		
 		// Iterate all items
 		// Existins utems are updated
 		// Non-existant items are marked for deletion from the map
@@ -869,6 +890,8 @@ class SCR_AddonManager : GenericEntity
 			}
 		}
 
+		//---- REFACTOR NOTE END ----
+		
 		// Update the marked entries
 		if (updateItems)
 		{
@@ -930,12 +953,17 @@ class SCR_AddonManager : GenericEntity
 		*/
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Public method called "Internal" because we don't allow friend classes: now SCR_WorkshopItems and SCR_AddonManager both call public methods on each other, hold references and duplicate cached data, and have bloated public APIs
+	
 	//-----------------------------------------------------------------------------------------------
 	//! Called by SCR_WorkshopItem when it starts a new download
 	void Internal_OnNewDownload(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	{
 		m_OnNewDownload.Invoke(item, action);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Go throught all offline addons and count size
@@ -968,8 +996,13 @@ class SCR_AddonManager : GenericEntity
 		return m_mItems.Get(id);
 	}
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Declare variables at the top of the class
+	
 	protected SCR_WorkshopAddonPreset m_SelectedPreset;
 	protected ref array<ref SCR_WorkshopAddonPresetAddonMeta> m_aAddonsNotFound = {};
+	
+	//---- REFACTOR NOTE END ----
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------------
 	// Enables addons from preset, disables all addons from other presets
@@ -1005,6 +1038,9 @@ class SCR_AddonManager : GenericEntity
 		m_SelectedPreset = null;
 	}
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// AddonManager system doing UI stuff
+	
 	//-----------------------------------------------------------------------------------------------
 	//! Call this when all dialog are enabled, but some are missing to show which one
 	protected void OnAllAddonsEnabledCorrupted()
@@ -1017,6 +1053,8 @@ class SCR_AddonManager : GenericEntity
 		
 		GetEventOnAllAddonsEnabled().Remove(OnAllAddonsEnabledCorrupted);
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//----------------------------------------------------------------------------------------------------------------------------------------------------
 	SCR_WorkshopAddonPreset CreatePresetFromEnabledAddons(string presetName)
@@ -1044,7 +1082,7 @@ class SCR_AddonManager : GenericEntity
 	//! Return int count of all enabled mods
 	int CountOfEnabledAddons()
 	{
-		array<ref SCR_WorkshopItem> enabledAddons = SCR_AddonManager.SelectItemsBasic(GetOfflineAddons(), EWorkshopItemQuery.ENABLED);
+		array<ref SCR_WorkshopItem> enabledAddons = SCR_AddonManager.SelectItemsAnd(GetOfflineAddons(), EWorkshopItemQuery.ENABLED | EWorkshopItemQuery.ONLY_WORKSHOP_ITEM);
 		return enabledAddons.Count();
 	} 
 

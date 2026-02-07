@@ -248,11 +248,15 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		string fileName;
 		if (m_mEntries.Find(m_wLastFocusedEntry, fileName))
 		{
+			// Load save 		
 			SCR_SaveManagerCore saveManager = GetGame().GetSaveManager();
-			
 			saveManager.RestartAndLoad(fileName);
 			
-			SCR_ServerSaveRequestCallback uploadCallback = saveManager.GetUploadCallback();
+			// Handle server load
+			if (!Replication.IsClient())
+				return;
+			
+			SCR_BackendCallback uploadCallback = saveManager.GetUploadCallback();
 			if (uploadCallback)
 			{
 				uploadCallback.GetEventOnResponse().Insert(OnLoadEntryUploadResponse);
@@ -505,8 +509,6 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		return false;
 	}
 	
-	ref SCR_ServerSaveRequestCallback m_UploadTestCallback;
-	
 	//----------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -551,7 +553,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		
 		//--- Used for testing to artifically inflate the amount of entries
-		int debugCoef = 1;
+		const int debugCoef = 1;
 		
 		Widget entryWidget;
 		TextWidget entryNameWidget;

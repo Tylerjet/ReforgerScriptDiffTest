@@ -656,7 +656,6 @@ class BatchTextureProcessorPlugin: WorkbenchPlugin
 
 		int reportCount = 0;
 
-		int reimportCount = 0;
 		int reimportCountMax;
 		if (MaxFixCount > 0)
 			reimportCountMax = MaxFixCount;

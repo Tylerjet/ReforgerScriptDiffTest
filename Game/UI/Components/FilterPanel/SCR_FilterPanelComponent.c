@@ -584,9 +584,16 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			// Create filter list entries according to configuration
 
 			foreach (SCR_FilterCategory category : m_FilterSet.GetFilterCategories())
-			{
-				m_Widgets.m_FilterListBoxComponent.AddSeparator(category.m_sDisplayName);
-
+			{	
+				// Don't create for selected platforms
+				array<EPlatform> platforms = {};
+				category.GetHideOnPlaforms(platforms);
+				
+				if (platforms.Contains(System.GetPlatform()))
+					continue;
+				
+				category.m_wCategoryTitleWidget = m_Widgets.m_FilterListBoxComponent.AddSeparator(category.m_sDisplayName);
+				
 				// Resolve filter element layout
 				// Mutually exclusive and generic filter category have different layouts and visuals
 				ResourceName elementLayout = m_sElementLayoutGeneral;
@@ -600,8 +607,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 					if (iconImageSet.IsEmpty())
 						iconImageSet = category.m_sFilterImageSet;
 
-					int id = m_Widgets.m_FilterListBoxComponent.AddItemAndIcon(filter.m_sDisplayName, iconImageSet,
-						filter.m_sImageName, filter, elementLayout);
+					m_Widgets.m_FilterListBoxComponent.AddItemAndIcon(filter.m_sDisplayName, iconImageSet,
+						filter.m_sImageName, filter.m_FilterComponent, filter, elementLayout);
 				}
 			}
 		}

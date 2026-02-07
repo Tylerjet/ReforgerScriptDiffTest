@@ -22,6 +22,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("Flags", UIWidgets.ResourcePickerThumbnail, "Flag icon of this particular group.", params: "edds")]
 	private ref array<ResourceName> m_aGroupFlags;
 	
+	[Attribute(defvalue: "1", desc: "When true group menu will be normally accesible, when false group menu will be disabled, but NOT the group functionality")]
+	protected bool m_bAllowGroupMenu;
+	
 	//this is changed only localy and doesnt replicate
 	protected bool m_bConfirmedByPlayer;
 	
@@ -1168,6 +1171,13 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	bool GetConfirmedByPlayer()
 	{
 		return m_bConfirmedByPlayer;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool IsGroupMenuAllowed()
+	{
+		return m_bAllowGroupMenu;
 	}
 	
 	//------------------------------------------------------------------------------------------------

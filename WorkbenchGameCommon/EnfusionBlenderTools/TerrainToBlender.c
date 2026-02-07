@@ -1,3 +1,5 @@
+#ifdef WORKBENCH
+
 [WorkbenchToolAttribute(name: "Send Terrain To Blender", description: "Sends terrain selection to Blender for advanced terrain modifications.", wbModules: { "WorldEditor" }, shortcut: "Ctrl+P", awesomeFontCode: 0xf00a)]
 class TerrainExportTool : WorldEditorTool
 {
@@ -11,8 +13,6 @@ class TerrainExportTool : WorldEditorTool
 	vector m_vStartLocation;
 	[Attribute(defvalue: "0 0 0", desc: "Location of end corner. No need to fill Y-axis", category: "Selection")]
 	vector m_vEndLocation;
-	[Attribute(defvalue: "C:\\Program Files\\Blender Foundation\\Blender 3.6\\blender.exe", UIWidgets.FileNamePicker, desc: "Absolute path to your FBX Report Tool .exe", params: "exe FileNameFormat=absolute", category: "Path")]
-	string m_sBlenderPath;
 
 
 	ref DebugTextScreenSpace m_text;
@@ -30,6 +30,9 @@ class TerrainExportTool : WorldEditorTool
 	[ButtonAttribute("Import To Blender")]
 	protected void Execute()
 	{
+		if (!EBTConfigPlugin.HasBlenderRegistered())
+			return;
+		
 		// getting coords from the selection shape
 		float zMax = line[0][2];
 		float xMin = line[0][0];
@@ -79,9 +82,13 @@ class TerrainExportTool : WorldEditorTool
 			int columns = Math.Round(((SnapToVertex(xMax, cellSize) - SnapToVertex(xMin, cellSize)) / cellSize));
 			int rows = Math.Round(((SnapToVertex(zMax, cellSize) - SnapToVertex(zMin, cellSize)) / cellSize));
 
+			string pathToExecutable;
+			if (!EBTConfigPlugin.GetDefaultBlenderPath(pathToExecutable))
+				return;
+			
 			// run Blender via CMD with the parameters and the path to the bin temp
 			Workbench.RunProcess(string.Format("\"%1\" --python-expr \"import bpy;bpy.ops.scene.ebt_import_terrain()\" -- -binPath \"%2\" -count %3 -rows %4 -columns %5 -cellsize %6 -coords \" %7\" -worldpath \"%8\"",
-			m_sBlenderPath, path, height.Count(), rows, columns, cellSize, coords, worldpath));
+			pathToExecutable, path, height.Count(), rows, columns, cellSize, coords, worldpath));
 			Print("Blender is starting");
 		}
 		else
@@ -238,6 +245,7 @@ class TerrainExportTool : WorldEditorTool
 	}
 	override void OnActivate()
 	{
+		EBTConfigPlugin.UpdateRegisteredBlenderExecutables();
 		// showing cross
 		m_text = DebugTextScreenSpace.Create(m_API.GetWorld(), "", 0, 100, 100, 14, ARGBF(1, 1, 1, 1), 0x00000000);
 		m_crossHair = DebugTextScreenSpace.Create(m_API.GetWorld(), "", 0, 0, 0, 30, ARGBF(1, 1, 1, 1), 0x00000000);
@@ -283,4 +291,6 @@ class TerrainExportTool : WorldEditorTool
 		return vertex_coord;
 	}
 }
+
+#endif 
 

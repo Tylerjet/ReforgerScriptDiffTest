@@ -184,7 +184,7 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	//! \param instigator
 	//! \param gettingIn
 	//! \param gettingOut
-	void DamageOccupants(float damage, EDamageType damageType, notnull Instigator instigator, bool gettingIn = false, bool gettingOut = false)
+	void DamageOccupants(float damage, EDamageType damageType, notnull Instigator instigator, bool damageWhileGetIn = false, bool damageWhileGetOut = false)
 	{
 		if (damage == 0)
 			return;
@@ -196,13 +196,13 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 		{
 			if (compartment)
 			{
-				compartment.DamageOccupant(damage, damageType, instigator, gettingIn, gettingOut);
+				compartment.DamageOccupant(damage, damageType, instigator, damageWhileGetIn, damageWhileGetOut);
 				if (damageType == EDamageType.COLLISION)
 					compartment.ScreenShakeOccupant(damage);
 			}
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Kill all the occupants and eject them if requested. Must be called on authority.
 	//! \param instigator
@@ -211,16 +211,44 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	//! \param gettingOut
 	void KillOccupants(notnull Instigator instigator, bool eject = false, bool gettingIn = false, bool gettingOut = false)
 	{
-		array<BaseCompartmentSlot> compartments = {}; 
+		array<BaseCompartmentSlot> compartments = {};
 		GetCompartments(compartments);
-		
-		foreach (BaseCompartmentSlot compartment: compartments)
+
+		foreach (BaseCompartmentSlot compartment : compartments)
 		{
 			if (compartment)
 				compartment.KillOccupant(instigator, eject, gettingIn, gettingOut);
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Kill all the occupants and eject them if requested. Must be called on authority.
+	//! \param forceEject Chance the passengers get ejected. -1 Will use the same value that is configured on the compartment. 1 will force eject. Inbetween is custom chance.
+	void EjectRandomOccupants(float ejectionChance = -1, bool ejectUnconscious = false)
+	{
+		array<BaseCompartmentSlot> compartments = {};
+		GetCompartments(compartments);
+
+		foreach (BaseCompartmentSlot compartment : compartments)
+		{
+			// if ejectionChance is <0, eject if random > compartmentChance
+			float random = Math.RandomFloat01();
+			if (ejectionChance < 0)
+			{
+				if (random > compartment.GetRandomEjectionChance())
+					continue;
+			}// if ejectionChance is 0>&&<1, eject if random > ejectionChance 
+			else if (ejectionChance > 0 && ejectionChance < 1)
+			{
+				if (random > ejectionChance)
+					continue;
+			}
+			// else if (ejectionChance ==  1) force eject
+			if (compartment)
+				compartment.EjectOccupant(ejectionChance == 1, ejectUnconscious);
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Set AI compartment access for all compartments
 	//! \param accessible

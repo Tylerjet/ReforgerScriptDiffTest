@@ -51,14 +51,13 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	
 	static const ref array<EDamageType> HEALING_DAMAGE_TYPES = {EDamageType.HEALING, EDamageType.REGENERATION};
 
-	// TODO@FAC: do remove this static const when this is added as a Physics.c const
-	static const float KM_PER_H_TO_M_PER_S = 0.277777;
-
 	protected int m_iTimetickInstigator = System.GetTickCount();
 	protected int m_iTimeThresholdInstigatorReplacement = 180000; //180000 miliseconds = 3 minutes
 	protected int m_iPlayerId = 0;
 
 	protected int m_iDamageManagerDataIndex = -1;
+
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	protected bool m_bRplReady;
 
 	//------------------------------------------------------------------------------------------------
@@ -105,6 +104,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 		return true;
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	/*! Get the HitZone that matches the provided name. Case sensitivity is optional.
@@ -169,7 +169,8 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 				regeneratingHitZones.Insert(regenHitZone);
 		}
 	}
-	
+
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Set fire rate of a flammable hitzone
@@ -185,6 +186,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (flammableHitZone)
 			flammableHitZone.SetFireState(fireState);
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//! No contacts for destroyed entities
@@ -193,6 +195,8 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		return GetState() != EDamageState.DESTROYED;
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Convert to static method in SCR_PhysicsHelper
 	//------------------------------------------------------------------------------------------------
 	float CalculateMomentum(Contact contact, float ownerMass, float otherMass)
 	{
@@ -207,6 +211,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		float momentumB = Math.AbsFloat(momentumBefore - momentumAfter);
 		return momentumA + momentumB;
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	// This method uses similar logic to the logic of DamageSurroundingHitzones, but not the same.
@@ -345,6 +350,8 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			invoker.Invoke(damageContext);
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Move to Character Damage Manager, use simplified instigator tracking for everything else
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Called whenever an instigator is going to be set.
@@ -400,6 +407,8 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		m_iTimetickInstigator = currentTimeTick;
 		return true;
 	}
+	//---- REFACTOR NOTE END ----
+
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_DamageManagerComponent()
 	{
@@ -568,7 +577,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			hitZoneDamage = Math.Min(hitZone.ComputeEffectiveDamage(hitZoneContext, false), hitZone.GetHealth());
 
 			// Remove hit zones that cannot be damaged with this loop
-			if (hitZoneDamage <= 0)
+			if (hitZoneDamage <= 0 || float.AlmostEqual(hitZoneDamage, 0))
 			{
 				hitZones.RemoveItem(hitZone);
 				continue;
@@ -587,7 +596,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	bool CanBeHealed(bool ignoreHealingDOT = true)
 	{
 		// Any damage to default hitzone
-		if (GetDefaultHitZone().GetHealthScaled() < 1)
+		if (GetDefaultHitZone().GetDamageState() == EDamageState.UNDAMAGED)
 			return true;
 
 		// Check if has damage over time
@@ -612,7 +621,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		GetAllHitZonesInHierarchy(hitZones);
 		foreach (HitZone hitZone : hitZones)
 		{
-			if (hitZone && hitZone.GetHealthScaled() < 1)
+			if (hitZone && hitZone.GetDamageState() != EDamageState.UNDAMAGED)
 				return true;
 
 			// Flammable hitzone may be smoking
@@ -1075,6 +1084,18 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		// Ignore all hierarchy members as well
 		SCR_EntityHelper.GetHierarchyEntityList(GetOwner().GetRootParent(), ignoreList);
 
+		// Remove possible character entites from ignorelist
+		SCR_BaseCompartmentManagerComponent baseCompartment = SCR_BaseCompartmentManagerComponent.Cast(GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (baseCompartment)
+		{
+			array<IEntity> vehicleOccupants = {};
+			baseCompartment.GetOccupants(vehicleOccupants);
+			foreach (IEntity entity : vehicleOccupants)
+			{
+				ignoreList.RemoveItem(entity);
+			}
+		}
+			
 		array<BaseProjectileEffect> explosionContainers = {};
 		trigger.GetProjectileEffects(ExplosionDamageContainer, explosionContainers);
 		foreach (BaseProjectileEffect effect : explosionContainers)
@@ -1379,6 +1400,8 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	}
 
 #ifdef WORKBENCH
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: DrawDebug should only run when toggled on by user
 	//------------------------------------------------------------------------------------------------
 	protected override void _WB_AfterWorldUpdate(IEntity owner, float timeSlice)
 	{
@@ -1404,5 +1427,6 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 				hitzone.DrawDebug();
 		}
 	}
+	//---- REFACTOR NOTE END ----
 #endif
 }

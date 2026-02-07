@@ -26,19 +26,16 @@ class MaterialPropertiesUtils
 		BaseContainer uvTransform;
 		BaseContainer empty;
 		string temp = ".";
-		string textureType;
 		TextureUtils tUtils = new TextureUtils();
-
 		
 		Resource resource = Resource.Load(path);
 
-
 		ematCont = resource.GetResource().ToBaseContainer();
-
 
 		// looping through material properties
 		for (int i = 0; i < ematCont.GetNumVars(); i++)
 		{
+			
 			// get MatUVTransforms
 			if (ematCont.GetObject(ematCont.GetVarName(i)) != empty) //Uv Tiling
 			{
@@ -60,6 +57,21 @@ class MaterialPropertiesUtils
 					}
 				}
 			}
+			
+			if (ematCont.GetVarName(i) == "SubsurfaceProfile")
+			{
+				ResourceName profile;
+				ematCont.Get("SubsurfaceProfile", profile);
+				
+				if (profile != "")
+				{
+					props.mat_props.Insert("SubsurfaceProfile");
+					
+					props.mat_props.Insert(profile.GetPath());
+				}
+				
+			}
+			
 			// getting other paramaters
 			ematCont.Get(ematCont.GetVarName(i), temp);
 			if (temp != "")
@@ -73,7 +85,7 @@ class MaterialPropertiesUtils
 					if (texProps.Count() == 0)
 					{
 						// add invalid GUID if the texture couldn't be found
-						props.mat_props.Insert("InvalidGUID|PBRBasic|" + EBTConfig.tosRGB + "|" + EBTConfig.rgHQCompression);
+						props.mat_props.Insert("InvalidGUID|PBRBasic|" + EBTContainerFields.tosRGB + "|" + EBTContainerFields.rgHQCompression);
 					}
 					else
 					{
@@ -85,7 +97,10 @@ class MaterialPropertiesUtils
 						}
 						props.mat_props.Insert(texPropsStr.Substring(0,texPropsStr.Length()));
 					}
+					
 				}
+				
+				
 				else if (temp.Contains(" "))
 				{
 					// vectors and other values that has space in it must be replaced with "|"

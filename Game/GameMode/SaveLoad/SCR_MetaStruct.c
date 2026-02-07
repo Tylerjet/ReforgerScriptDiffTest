@@ -4,6 +4,7 @@ class SCR_MetaStruct: SCR_JsonApiStruct
 	protected string bV; //--- Build version
 	protected int cT; //--- Creation time
 	protected string hR; //--- Header resource GUID
+	protected string sA; // --- Scenario Addon GUID - From which addon is modded scenario comming from
 	protected ref array<string> ad = {}; //--- Addon GUIDs
 	
 	//----------------------------------------------------------------------------------------
@@ -19,6 +20,12 @@ class SCR_MetaStruct: SCR_JsonApiStruct
 	string GetHeaderResource()
 	{
 		return hR;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	string GetScenarioAddon()
+	{
+		return sA;
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -61,10 +68,16 @@ class SCR_MetaStruct: SCR_JsonApiStruct
 		
 		//--- Header resource GUID
 		MissionHeader header = GetGame().GetMissionHeader();
+
 		if (header)
 			hR = SCR_ConfigHelper.GetGUID(header.GetHeaderResourceName());
 		else if (SCR_SaveLoadComponent.GetInstance())
 			hR = SCR_ConfigHelper.GetGUID(SCR_SaveLoadComponent.GetInstance().GetDebugHeaderResourceName());
+		
+		// Scenario sorce addon 
+		MissionWorkshopItem missionItem = SCR_SaveWorkshopManager.GetCurrentScenario();
+		if (missionItem && missionItem.GetOwner()) // Is modded?
+			sA = missionItem.GetOwner().Id();
 		
 		//--- Addons GUIDs
 		GameProject.GetLoadedAddons(ad);
@@ -84,6 +97,7 @@ class SCR_MetaStruct: SCR_JsonApiStruct
 		bV = string.Empty;
 		cT = 0;
 		hR = string.Empty;
+		sA = string.Empty;
 		ad.Clear();
 	}
 	
@@ -97,6 +111,7 @@ class SCR_MetaStruct: SCR_JsonApiStruct
 		PrintFormat("Build version = %1", bV);
 		PrintFormat("Creation time = %1", SCR_FormatHelper.FormatDateTime(y, m, d, hh, mm, 0));
 		PrintFormat("Header resource GUID = %1", hR);
+		PrintFormat("Scenario addon GUID = %1", sA);
 		Print("Addons:");
 		foreach (string guid: ad)
 		{

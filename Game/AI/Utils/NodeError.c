@@ -33,4 +33,9 @@ class SCR_AIErrorMessages
 	{
 		return NodeError(node, owner, string.Format("Combat Move Request is null or of wring type: %1", rq));
 	}
+	
+	static ENodeResult NodeErrorDefendPreset(Node node, AIAgent owner)
+	{
+		return NodeError(node, owner, string.Format("A Defend waypoint doesn't have a correctly set up Defend Preset!"));
+	}
 }

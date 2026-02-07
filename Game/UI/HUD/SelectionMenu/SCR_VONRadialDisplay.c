@@ -20,7 +20,7 @@ class SCR_CompareGroupRadioFreq : SCR_SortCompare<SCR_AIGroup>
 [BaseContainerProps()]
 class SCR_VONRadialDisplay : SCR_RadialMenuDisplay
 {
-	const ref Color ORANGE = new Color(1.0, 0.5, 0, 0.05); // TODO placeholder before visual concept is done
+	static const ref Color ORANGE = new Color(1.0, 0.5, 0, 0.05); // TODO placeholder before visual concept is done
 	
 	protected Widget m_wFrequencyDisplay;		// group frequency list within the center of the menu
 	

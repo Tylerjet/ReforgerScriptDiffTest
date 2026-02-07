@@ -87,7 +87,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//~ Called on player killed
-	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		/*DeleteSupplyLoadingPlayer(playerId);
 		DeleteSupplyUnloadingPlayer(playerId);*/

@@ -2,7 +2,6 @@
 class SCR_WorldEditorToolHelper
 {
 	protected static ref array<IEntity> s_aTempEntities;
-	protected static ref array<ResourceName> s_aTempResourceNames;
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the ResourceManager object
@@ -109,6 +108,26 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return an array of selected entities's IEntitySources, null on error (e.g WorldEditorAPI not available)
+	static array<IEntitySource> GetSelectedWorldEntitySources()
+	{
+		WorldEditorAPI worldEditorAPI = GetWorldEditorAPI();
+		if (!worldEditorAPI)
+			return null;
+
+		array<IEntitySource> result = {};
+		IEntitySource entitySource;
+		for (int i, count = worldEditorAPI.GetSelectedEntitiesCount(); i < count; ++i)
+		{
+			entitySource = worldEditorAPI.GetSelectedEntity(i);
+			if (entitySource)
+				result.Insert(entitySource);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Get selected or opened resources
 	//! \param[in] acceptedExtensions accepted extensions (case-insensitive)
 	//! \param[in] keywords words that should be present in the file name (case-insensitive)
@@ -178,7 +197,7 @@ class SCR_WorldEditorToolHelper
 	//------------------------------------------------------------------------------------------------
 	//! Get all ResourceName that are selected in the Resource Browser
 	//! \param[in] recursive true to get a selected directory's files, false to stop at the directory
-	//! \return array of ResourceName of selected resources
+	//! \return array of ResourceName of selected resources or null on error (e.g World Editor is not available)
 	static array<ResourceName> GetSelectedResources(bool recursive = true)
 	{
 		WorldEditor worldEditor = GetWorldEditor();
@@ -186,13 +205,7 @@ class SCR_WorldEditorToolHelper
 			return null;
 
 		array<ResourceName> result = {};
-
-		s_aTempResourceNames = {};
-		worldEditor.GetResourceBrowserSelection(ResourceNameCallback, recursive);
-
-		result.Copy(s_aTempResourceNames);
-		s_aTempResourceNames = null;
-
+		worldEditor.GetResourceBrowserSelection(result.Insert, recursive);
 		return result;
 	}
 
@@ -206,19 +219,14 @@ class SCR_WorldEditorToolHelper
 	// TODO: move to an eventual SCR_WorkbenchHelper
 	static array<ResourceName> SearchWorkbenchResources(array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = "", bool recursive = true)
 	{
-		array<ResourceName> result = {};
-
-		s_aTempResourceNames = {};
 		SearchResourcesFilter filter = new SearchResourcesFilter();
 		filter.fileExtensions = fileExtensions;
 		filter.recursive = recursive;
 		filter.rootPath = rootPath;
 		filter.searchStr = searchStrArray;
-		ResourceDatabase.SearchResources(filter, ResourceNameCallback);
 
-		result.Copy(s_aTempResourceNames);
-		s_aTempResourceNames = null;
-
+		array<ResourceName> result = {};
+		ResourceDatabase.SearchResources(filter, result.Insert);
 		return result;
 	}
 
@@ -284,13 +292,38 @@ class SCR_WorldEditorToolHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// one day, func arguments will be supported in script methods - /perhaps/
-//	static array<IEntity> QueryEntitiesByAABB(notnull World world, vector mins, vector maxs, QueryEntitiesCallback addEntity, QueryEntitiesCallback filterEntity = null, EQueryEntitiesFlags queryFlags = EQueryEntitiesFlags.ALL)
-//	{
-//		s_aTempEntities = {};
-//		world.QueryEntitiesByAABB(mins, maxs, addEntity, filterEntity, queryFlags);
-//		s_aTempEntities = null;
-//	}
+	//! Queries entities within an AABB in the world, returns results in an array
+	//! \param[in] world represents the game's environment in which entities exist, used for querying entities within an Axis-Aligned Bounding Box
+	//! \param[in] mins min bounds for an axis-aligned bounding box (AABB) query in 3D space
+	//! \param[in] maxs max bounds for an axis-aligned bounding box (AABB) query in 3D space
+	//! \param[in] queryFlags is an enumeration representing filter options for entity query in AABB - see BaseWorld.QueryEntitiesByAABB
+	//! \return an array of entities within the specified AABB (Axis-Aligned Bounding Box) in the world
+	static array<IEntity> QueryEntitiesByAABB(notnull World world, vector mins, vector maxs, EQueryEntitiesFlags queryFlags = EQueryEntitiesFlags.ALL)
+	{
+		array<IEntity> result = {};
+		s_aTempEntities = {};
+		world.QueryEntitiesByAABB(mins, maxs, QueryEntitiesCallbackMethod, null, queryFlags);
+		result.Copy(s_aTempEntities);
+		s_aTempEntities = null;
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Queries entities within a sphere in the world, returns them in an array.
+	//! \param[in] world World represents the game's environment in which entities exist, used for querying entities within a specified sphere radius in the method
+	//! \param[in] worldPos represents the center point for the sphere query in 3D space
+	//! \param[in] radius represents the distance from the center point (worldPos) within which entities are searched in the method
+	//! \param[in] queryFlags specifies query flags for entity selection criteria - see BaseWorld.QueryEntitiesBySphere
+	//! \return an array of entities within specified radius from world position
+	static array<IEntity> QueryEntitiesBySphere(notnull World world, vector worldPos, float radius, EQueryEntitiesFlags queryFlags = EQueryEntitiesFlags.ALL)
+	{
+		array<IEntity> result = {};
+		s_aTempEntities = {};
+		world.QueryEntitiesBySphere(worldPos, radius, QueryEntitiesCallbackMethod, null, queryFlags);
+		result.Copy(s_aTempEntities);
+		s_aTempEntities = null;
+		return result;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return all entities found by moved sphere trace
@@ -333,13 +366,11 @@ class SCR_WorldEditorToolHelper
 	*/
 
 	//------------------------------------------------------------------------------------------------
-	//! WorkbenchSearchResourcesCallback method used for Workbench searches and Resource Browser-selected files
-	//! \param[in] resName found ResourceName
-	//! \param[in] filePath absolute filepath of said ResourceName if available, empty string otherwise
-	protected static void ResourceNameCallback(ResourceName resName, string filePath = "")
+	//! QueryEntitiesCallback method used for Entity querying
+	protected static bool QueryEntitiesCallbackMethod(IEntity e)
 	{
-		Print("DEBUG LINE | " + filePath + " " + FilePath.StripPath(__FILE__) + ":" + __LINE__, LogLevel.DEBUG);
-		s_aTempResourceNames.Insert(resName);
+		s_aTempEntities.Insert(e);
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

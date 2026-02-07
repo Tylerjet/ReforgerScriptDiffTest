@@ -240,6 +240,55 @@ class SCR_BaseContainerResourceTitleField : BaseContainerCustomTitle
 };
 
 /*!
+	\brief Attribute to use a variable and additional variable
+	@code
+	[BaseContainerProps(), SCR_BaseContainerResourceTitleField("m_sPrefab", "m_iTestValue" "%1: %2")]
+	class TestConfigClass
+	{
+		[Attribute()]
+		protected ResourceName m_sPrefab;
+
+		[Attribute()]
+		protected int m_iTestValue;
+	};
+	@endcode
+*/
+class SCR_BaseContainerTitleFieldWithValue : BaseContainerCustomTitle
+{
+	protected string m_sPropertyName;
+	protected string m_sSecondaryPropertyName;
+	protected string m_sFallbackSecondaryProperty;
+	protected string m_sFormat;
+
+	//------------------------------------------------------------------------------------------------
+	void SCR_BaseContainerTitleFieldWithValue(string propertyName, string secondaryPropertyName,  string format = "%1: %2", string fallbackSecondaryProperty = "")
+	{
+		m_sPropertyName = propertyName;
+		m_sSecondaryPropertyName = secondaryPropertyName;
+		m_sFallbackSecondaryProperty = fallbackSecondaryProperty;
+		m_sFormat = format;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		string property;
+		if (!source.Get(m_sPropertyName, property))
+			return false;
+		
+		string secondaryProperty;
+		if (!source.Get(m_sSecondaryPropertyName, secondaryProperty))
+			return false;
+		
+		if (secondaryProperty.IsEmpty())
+			secondaryProperty = m_sFallbackSecondaryProperty;
+
+		title = string.Format(m_sFormat, property, secondaryProperty);
+		return true;
+	}
+};
+
+/*!
 	\brief Attribute for setting any enum property as custom title.
 	@code
 	[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EEditorMode, "m_Mode")]
@@ -515,7 +564,7 @@ class BaseContainerCustomDoubleTitleField : BaseContainerCustomTitle
 		if (!source.Get(m_sPropertyName2, title2))
 			return false;
 
-		title = string.Format(m_sFormat, title1, title2);
+		title = string.Format(m_sFormat, WidgetManager.Translate(title1), title2);
 		return true;
 	}
 };
@@ -542,15 +591,17 @@ class BaseContainerCustomDoubleCheckTitleField : BaseContainerCustomTitle
 	protected string m_sFormatTrue;
 	protected string m_sFormatFalse;
 	protected string m_sCheckVarEqual;
+	protected bool m_bCheckForLocalization;
 
 	//------------------------------------------------------------------------------------------------
-	void BaseContainerCustomDoubleCheckTitleField(string checkVar, string propertyName, string checkVarEqual = "1", string formatTrue = "%1", string formatFalse = "EXAMPLE FORMAT - %1")
+	void BaseContainerCustomDoubleCheckTitleField(string checkVar, string propertyName, string checkVarEqual = "1", string formatTrue = "%1", string formatFalse = "EXAMPLE FORMAT - %1", bool checkForLocalization = true)
 	{
 		m_sCheckVar = checkVar;
 		m_sPropertyName = propertyName;
 		m_sFormatTrue = formatTrue;
 		m_sFormatFalse = formatFalse;
 		m_sCheckVarEqual = checkVarEqual;
+		m_bCheckForLocalization = checkForLocalization;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -563,6 +614,16 @@ class BaseContainerCustomDoubleCheckTitleField : BaseContainerCustomTitle
 
 		if (!source.Get(m_sPropertyName, titleName))
 			return false;
+		
+		bool unlocalized;
+		
+		if (m_bCheckForLocalization && !titleName.IsEmpty() && titleName[0] != "#")
+			unlocalized = true;
+		
+		titleName = WidgetManager.Translate(titleName);
+		
+		if (unlocalized)
+			titleName = "(LOC) " + titleName;
 
 		if (checkVar == m_sCheckVarEqual)
 			title = string.Format(m_sFormatTrue, titleName);

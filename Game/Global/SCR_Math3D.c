@@ -36,33 +36,49 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Ensures the angles are in range <-180; 180>
+	//! Ensures the angles are in range <-units; +units>
 	//! \code
-	//! Print(SCR_Math3D.FixEulerVector180({ 270, 45, 900 }), LogLevel.NORMAL); // { -90, 45, 180 }
+	//! Print(SCR_Math3D.FixEulerVector({270, 45, 900}, 180)); // {-90, 45, 180}
 	//! \code
-	//! \return angles in range -180..+180
-	static vector FixEulerVector180(vector angles)
+	//! \return angles in range <-units; +units>
+	static vector FixEulerVector(vector angles, float units = Math.PI)
 	{
-		for (int i = 0; i < 3; i++)
+		for (int i; i < 3; i++)
 		{
-			if (angles[i] < -180 || angles[i] > 180)
-				angles[i] = Math.Repeat(180 + angles[i], 360) - 180;
+			angles[i] = Math.Repeat(units + angles[i], units * 2) - units;
 		}
 
 		return angles;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// IEntity entity is the entity you want to be affected by extrapolation.
-	// Physics physics is the physics that the extrapolation should calculate with.
-	// vector netPosition is the last received position.
-	// vector netVelocity is the last received velocity.
-	// float netTeleportDistance is the max distance between position and netPosition, anything over this causes the entity to teleport.
-	// float netRotation[4] is the last received rotation.
-	// vector netVelocityAngular is the last received angular velocity.
-	// float netTeleportAng is the max angle between current rotation and replicated rotation, anything over this causes the entity to teleport.
-	// float timeSinceLastTick is the time since last synchronization of extrapolation relevant data was received, it should already be incremented by timeSlice by you!
-	// float timeSlice is the time since last frame / simulation step.
+	//! Ensures the angles are in range <-180; +180>
+	//! \code
+	//! Print(SCR_Math3D.FixEulerVector180({270, 45, 900})); // {-90, 45, 180}
+	//! \code
+	//! \return angles in range <-180; +180>
+	static vector FixEulerVector180(vector angles)
+	{
+		for (int i; i < 3; i++)
+		{
+			angles[i] = Math.Repeat(180 + angles[i], 360) - 180;
+		}
+
+		return angles;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] entity is the entity you want to be affected by extrapolation.
+	//! \param[in] physics is the physics that the extrapolation should calculate with.
+	//! \param[in] netPosition is the last received position.
+	//! \param[in] netVelocity is the last received velocity.
+	//! \param[in] netTeleportDistance is the max distance between position and netPosition, anything over this causes the entity to teleport.
+	//! \param[in] netRotation[4] is the last received rotation.
+	//! \param[in] netVelocityAngular is the last received angular velocity.
+	//! \param[in] netTeleportAng is the max angle between current rotation and replicated rotation, anything over this causes the entity to teleport.
+	//! \param[in] timeSinceLastTick is the time since last synchronization of extrapolation relevant data was received, it should already be incremented by timeSlice by you!
+	//! \param[in] timeSlice is the time since last frame / simulation step.
+	//! \param[in] netTickInterval
 	static void Extrapolate(IEntity entity, Physics physics, vector netPosition, vector netVelocityLinear, float netTeleportDistance, float netRotation[4], vector netVelocityAngular, float netTeleportAng, float timeSinceLastTick, float timeSlice, float netTickInterval)
 	{
 		float scale = entity.GetScale();
@@ -90,7 +106,7 @@ class SCR_Math3D
 		// Dynamic object, so calculate projected position/rotation based on last tick
 		vector projectedPos = netPosition + netVelocityLinear * timeSinceLastTick;
 
-		vector netVelocityAngularFlipped = SCR_Math3D.GetFixedAxisVector(netVelocityAngular * timeSinceLastTick);
+		vector netVelocityAngularFlipped = GetFixedAxisVector(netVelocityAngular * timeSinceLastTick);
 		float projectedRotation[4];
 		float netVelocityAngularQuat[4];
 		netVelocityAngularFlipped.QuatFromAngles(netVelocityAngularQuat);
@@ -122,7 +138,7 @@ class SCR_Math3D
 		// Adjust to account for errors in position/rotation
 		if (posError > 0.01)
 		{
-			entity.SetOrigin(SCR_Math3D.MoveTowards(position, projectedPos, posError * timeStep));
+			entity.SetOrigin(MoveTowards(position, projectedPos, posError * timeStep));
 			physics.SetVelocity(physics.GetVelocity() + (projectedPos - position) * timeStepTick);
 		}
 
@@ -139,7 +155,7 @@ class SCR_Math3D
 			Math3D.QuatInverse(rotInv, rotation);
 			Math3D.QuatMultiply(rotDiff, projectedRotation, rotInv);
 			vector angularVelocity = Math3D.QuatToAngles(rotDiff);
-			angularVelocity = SCR_Math3D.FixEulerVector180(angularVelocity) * Math.DEG2RAD * timeStepTick;
+			angularVelocity = FixEulerVector180(angularVelocity) * Math.DEG2RAD * timeStepTick;
 			angularVelocity += physics.GetAngularVelocity();
 			physics.SetAngularVelocity(angularVelocity);
 		}
@@ -148,26 +164,22 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get intersection between a line and a plane
-	\param rayPos Ray intersection position
-	\param rayVector Ray intersection direction vector
-	\param planePos Plane position
-	\param planeNormal Plane normal vector
-	\return Intersection position
-	*/
+	//! Get intersection between a line and a plane
+	//! \param[in] rayPos Ray intersection position
+	//! \param[in] rayVector Ray intersection direction vector
+	//! \param[in] planePos Plane position
+	//! \param[in] planeNormal Plane normal vector
+	//! \return Intersection position
 	static vector IntersectPlane(vector rayPos, vector rayVector, vector planePos, vector planeNormal)
 	{
 		return rayPos - rayVector * (vector.Dot(rayPos - planePos, planeNormal) / vector.Dot(rayVector, planeNormal));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if two matrices are equal
-	\param matrixA
-	\param matrixB
-	\return True when the matrices are equal
-	*/
+	//! Check if two matrices are equal
+	//! \param[in] matrixA
+	//! \param[in] matrixB
+	//! \return True when the matrices are equal
 	static bool MatrixEqual(vector matrixA[4], vector matrixB[4])
 	{
 		return matrixA[3] == matrixB[3]
@@ -177,11 +189,9 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if matrix is empty
-	\param matrix
-	\return True when all matrix vectors are zero
-	*/
+	//! Check if matrix is empty
+	//! \param[in] matrix
+	//! \return True when all matrix vectors are zero
 	static bool IsMatrixEmpty(vector matrix[4])
 	{
 		return matrix[3] == vector.Zero
@@ -191,11 +201,9 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Check if matrix is identity matrix (right, up, forward, zero vectors)
-	\param matrix
-	\return True when identity matrix
-	*/
+	//! Check if matrix is identity matrix (right, up, forward, zero vectors)
+	//! \param[in] matrix
+	//! \return True when identity matrix
 	static bool IsMatrixIdentity(vector matrix[4])
 	{
 		return matrix[3] == vector.Zero
@@ -205,47 +213,43 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Return the smallest from each vector value
-	\code
-	Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { -5, 2, 8 }
-	\code
-	\param vector A
-	\param vector B
-	\return Vector
-	*/
+	//! Return the smallest from each vector value
+	//! \code
+	//! Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { -5, 2, 8 }
+	//! \code
+	//! \param[in] vector A
+	//! \param[in] vector B
+	//! \return
 	static vector Min(vector vA, vector vB)
 	{
-		return Vector(
+		return {
 			Math.Min(vA[0], vB[0]),
 			Math.Min(vA[1], vB[1]),
 			Math.Min(vA[2], vB[2])
-		);
+		};
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Return the largest from each vector value
-	\code
-	Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { 0, 5, 10 }
-	\code
-	\param vector A
-	\param vector B
-	\return Vector
-	*/
+	//! Return the largest from each vector value
+	//! \code
+	//! Print(SCR_Math3D.Max({ 0, 2, 10 }, { -5, 5, 8 }, LogLevel.NORMAL); // { 0, 5, 10 }
+	//! \code
+	//! \param[in] vector A
+	//! \param[in] vector B
+	//! \return
 	static vector Max(vector vA, vector vB)
 	{
-		return Vector(
+		return {
 			Math.Max(vA[0], vB[0]),
 			Math.Max(vA[1], vB[1]),
 			Math.Max(vA[2], vB[2])
-		);
+		};
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Gets the shortest 3D distance between a point and a spline
-	//! \param points array of all points forming the spline, minimum 1 point
-	//! \param point point that is being checked
+	//! \param[in] points array of all points forming the spline, minimum 1 point
+	//! \param[in] point point that is being checked
 	//! \return distance from spline, -1 if no points are provided
 	static float GetDistanceFromSpline(notnull array<vector> points, vector point)
 	{
@@ -277,8 +281,8 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	//! Gets the shortest 2D distance between a point and a spline
-	//! \param points array of all points forming the spline, minimum 1 point
-	//! \param point point that is being checked
+	//! \param[in] points array of all points forming the spline, minimum 1 point
+	//! \param[in] point point that is being checked
 	//! \return distance from spline, -1 if no points are provided
 	static float GetDistanceFromSplineXZ(notnull array<vector> points, vector point)
 	{
@@ -314,9 +318,9 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if point is within provided 3D distance from the shape - faster than getting distance then comparing
-	//! \param points the spline's points
-	//! \param point the position to check
-	//! \param distance the checked distance (should be positive)
+	//! \param[in] points the spline's points
+	//! \param[in] point the position to check
+	//! \param[in] distance the checked distance (should be positive)
 	//! \return true if provided pos is <= distance from diff outline, false otherwise
 	static bool IsPointWithinSplineDistance(notnull array<vector> points, vector point, float distance)
 	{
@@ -346,9 +350,9 @@ class SCR_Math3D
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if point is within provided 2D distance from the shape - faster than getting distance then comparing
-	//! \param points the spline's points
-	//! \param point the position to check
-	//! \param distance the checked distance (should be positive)
+	//! \param[in] points the spline's points
+	//! \param[in] point the position to check
+	//! \param[in] distance the checked distance (should be positive)
 	//! \return true if provided pos is <= distance from diff outline, false otherwise
 	static bool IsPointWithinSplineDistanceXZ(notnull array<vector> points, vector point, float distance)
 	{
@@ -381,19 +385,17 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns a rotation that rotates angle (rad) around the provided axis.
-		\param angle Rotation angle in radians.
-		\param axis The axis around which the rotation turns.
-		\param[out] q Output quaternion
-		@code
-		float quat[4];
-		SCR_Math3D.QuatAngleAxis(0.5 * Math.PI_HALF, vector.Up, quat);
-		vector angles = Math3D.QuatToAngles( quat );
-		Print(angles);
-		>> vector angles = <45,0,-0>
-		@endcode
-	*/
+	//! Get a rotation that rotates angle (rad) around the provided axis.
+	//! \param[in] angle Rotation angle in radians
+	//! \param[in] axis The axis around which the rotation turns
+	//! \param[out] q Output quaternion
+	//! @code
+	//! float quat[4];
+	//! SCR_Math3D.QuatAngleAxis(0.5 * Math.PI_HALF, vector.Up, quat);
+	//! vector angles = Math3D.QuatToAngles( quat );
+	//! Print(angles);
+	//! >> vector angles = <45,0,-0>
+	//! @endcode
 	static void QuatAngleAxis(float angle, vector axis, out float quat[4])
 	{
 		angle = angle * 0.5;
@@ -407,28 +409,24 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Rotates provided vector by given quaternion.
-		\param quat Quaternion rotation to apply.
-		\param vec Vector to rotate.
-		\return Returns rotated vector.
-	*/
+	//! Rotates provided vector by given quaternion
+	//! \param[in] quat Quaternion rotation to apply
+	//! \param[in] vec Vector to rotate
+	//! \return rotated vector
 	static vector QuatMultiply(float quat[4], vector vec)
 	{
-		vector xyz = Vector(quat[0], quat[1], quat[2]);
+		vector xyz = { quat[0], quat[1], quat[2] };
 		vector t = 2.0 * (xyz * vec);
 		return vec + quat[3] * t + (xyz * t);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Rotates a transformation around the provided pivot point by angle (rad) around the axis.
-		\param transform Input transformation to rotate.
-		\param pivot The point around which the transform rotates.
-		\param axis The axis in which the rotation is applied.
-		\param angle The applied angle in radians.
-		\param[out] result Rotated transformation.
-	*/
+	//! Rotates a transformation around the provided pivot point by angle (rad) around the axis
+	//! \param[in] transform Input transformation to rotate
+	//! \param[in] pivot The point around which the transform rotates
+	//! \param[in] axis The axis in which the rotation is applied
+	//! \param[in] angle The applied angle in radians
+	//! \param[out] result Rotated transformation
 	static void RotateAround(vector transform[4], vector pivot, vector axis, float angle, out vector result[4])
 	{
 		float q[4];
@@ -442,26 +440,21 @@ class SCR_Math3D
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns a rotation matrix that makes object positioned at source position face the point at destination.
-		\param source Source point the rotation looks 'from'.
-		\param destination Target point the rotation looks 'at'.
-		\param up Reference axis, start with 'vector.Up' if unsure.
-		\param[out] rotMat Output rotational matrix.
-	*/
+	//! Returns a rotation matrix that makes object positioned at source position face the point at destination
+	//! \param[in] source Source point the rotation looks 'from'
+	//! \param[in] destination Target point the rotation looks 'at'
+	//! \param[in] up Reference axis, start with 'vector.Up' if unsure
+	//! \param[out] rotMat Output rotational matrix
 	static void LookAt(vector source, vector destination, vector up, out vector rotMat[4])
 	{
-		vector lookDir = destination - source;
-		Math3D.DirectionAndUpMatrix(lookDir.Normalized(), up.Normalized(), rotMat);
+		Math3D.DirectionAndUpMatrix(vector.Direction(source, destination).Normalized(), up.Normalized(), rotMat);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-		Returns the provided vector clamped to desired magnitude.
-		\param v Input vector
-		\param magnitude The magnitude to clamp at
-		\return Returns clamped vector
-	*/
+	//! Returns the provided vector clamped to desired magnitude.
+	//! \param[in] v Input vector
+	//! \param[in] magnitude The magnitude to clamp at
+	//! \return clamped vector
 	static vector ClampMagnitude(vector v, float magnitude)
 	{
 		if (v.LengthSq() > magnitude * magnitude)

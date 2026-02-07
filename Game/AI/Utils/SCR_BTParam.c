@@ -10,7 +10,6 @@ class SCR_BTParamBase : Managed
 	
 	void SetVariableOut(Node node);
 	void GetVariableIn(Node node);
-	string ValueToString();
 	
 	void SCR_BTParamBase(string portName)
 	{
@@ -51,12 +50,6 @@ class SCR_BTParam<Class T> : SCR_BTParamBase
 		action.m_aParams.Insert(this);
 		m_Value = value;
 	}
-	
-	//----------------------------------------------------------------
-	override string ValueToString()
-	{
-		return m_Value.ToString();
-	}
 };
 
 // Same as SCR_BTParam, but has a strong reference to T
@@ -91,12 +84,6 @@ class SCR_BTParamRef<Class T> : SCR_BTParamBase
 	{
 		action.m_aParams.Insert(this);
 		m_Value = value;
-	}
-	
-	//----------------------------------------------------------------
-	override string ValueToString()
-	{
-		return m_Value.ToString();
 	}
 };
 
@@ -147,12 +134,6 @@ class SCR_BTParamAssignable<Class T> : SCR_BTParamBase
 		action.m_aParams.Insert(this);
 		m_Value = value;
 		m_AssignedOut = assignedOut;
-	}
-	
-	//----------------------------------------------------------------
-	override string ValueToString()
-	{
-		return m_Value.ToString();
 	}
 };
 

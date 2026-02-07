@@ -146,6 +146,10 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnTos()
 	{
-		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
+		MenuBase base = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PrivacyPolicyMenu);
+		if (!base)
+			return;
+		
+		GetGame().GetWorkspace().SetFocusedWidget(base.GetRootWidget());
 	}
 }

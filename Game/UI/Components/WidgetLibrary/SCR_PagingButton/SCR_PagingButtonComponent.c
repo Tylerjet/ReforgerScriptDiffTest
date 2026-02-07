@@ -143,7 +143,13 @@ class SCR_PagingButtonComponent : SCR_ButtonBaseComponent
 		else
 		{
 			GetGame().GetInputManager().AddActionListener(m_sActionName, EActionTrigger.DOWN, OnMenuSelect);
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Hardcoded scale. Baaaaaaaaaad
+	
 			m_wText.SetTextFormat("<action name='%1' scale='1.5'/>", m_sActionName);
+			
+//---- REFACTOR NOTE END ----
 		}
 	}
 

@@ -8,7 +8,7 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 	ref Shape s1,s2,s3,s4;
 #endif
 	
-	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
+	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		IEntity door = dangerEvent.GetObject();
 		if (!door)

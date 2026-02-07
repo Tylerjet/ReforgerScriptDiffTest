@@ -25,8 +25,8 @@ class SCR_ScenarioFrameworkActionIntroVoicelineBasedOnTasks : SCR_ScenarioFramew
 
 		m_aAffectedPlayers.Insert(playerID);
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
 		EntityID entityID;
@@ -41,6 +41,6 @@ class SCR_ScenarioFrameworkActionIntroVoicelineBasedOnTasks : SCR_ScenarioFramew
 			}
 		}
 
-		manager.PlayIntroVoiceline(playerID, m_sSound, entityID);
+		scenarioFrameworkSystem.PlayIntroVoiceline(playerID, m_sSound, entityID);
 	}
 }

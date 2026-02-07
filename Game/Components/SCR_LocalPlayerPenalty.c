@@ -40,41 +40,55 @@ class SCR_LocalPlayerPenalty : Managed
 	//! \param[in] entity
 	//! \param[in] killerEntity
 	//! \param[in] instigator
-	void OnControllableDestroyed(IEntity entity, IEntity killerEntity, Instigator instigator)
+	//! \param[in] instigatorContextData Holds data of victim and killer
+	void OnControllableDestroyed(IEntity entity, IEntity killerEntity, Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER || (m_iFriendlyAIKillPenalty == 0 && m_iFriendlyPlayerKillPenalty == 0))
 			return;
 		
-		SCR_ChimeraCharacter victimChar = SCR_ChimeraCharacter.Cast(entity);
-		
-		if (!victimChar)
+		//~ Check if teamkill punishment is enabled
+		SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
 			return;
 		
+		//~ Not a teamkill by player
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
+			return;
+		
+		//~ GM or admin are never punished for teamkilling
+		SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+		if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+			return;
+		
+		SCR_ECharacterControlType victimControlType = instigatorContextData.GetVictimCharacterControlType();
 		int killerPlayerId = instigator.GetInstigatorPlayerID();
-		int victimPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(victimChar);
-		
-		//Suicide is not punishable by the Player Penalty system
-		if (killerPlayerId == victimPlayerId)
-			return;
-		
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-		
-		Faction factionKiller = factionManager.GetPlayerFaction(killerPlayerId);
-		if (!factionKiller)
-			return;
-		
-		//If it's no friendly kill, no wrongdoing was committed
-		if (!factionKiller.IsFactionFriendly(victimChar.GetFaction()))
-			return;
-		
-		SCR_LocalPlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(killerPlayerId);
-		
-		if (victimPlayerId <= 0)
-			playerPenaltyData.AddPenaltyScore(m_iFriendlyAIKillPenalty);
-		else
-			playerPenaltyData.AddPenaltyScore(m_iFriendlyPlayerKillPenalty);
+				
+		//~ Character killed by player (Unlimited editor players and admins do not get punished)
+		switch (victimControlType)
+		{
+			//~ When killed a player or player that is GM/Admin
+			case SCR_ECharacterControlType.PLAYER:
+			case SCR_ECharacterControlType.UNLIMITED_EDITOR:
+			{
+				SCR_LocalPlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(killerPlayerId);
+				
+				if (playerPenaltyData)
+					playerPenaltyData.AddPenaltyScore(m_iFriendlyPlayerKillPenalty);
+				
+				break;
+			}
+			//~ When killing friendly AI or possessed AI (Possessed AI are treated as normal AI as they are hidden to the player)
+			case SCR_ECharacterControlType.AI:
+			case SCR_ECharacterControlType.POSSESSED_AI:
+			{
+				SCR_LocalPlayerPenaltyData playerPenaltyData = GetPlayerPenaltyData(killerPlayerId);
+				
+				if (playerPenaltyData)
+					playerPenaltyData.AddPenaltyScore(m_iFriendlyAIKillPenalty);
+				
+				break;
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

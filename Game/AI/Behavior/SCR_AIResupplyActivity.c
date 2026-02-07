@@ -21,6 +21,6 @@ class SCR_AIResupplyActivity : SCR_AIActivityBase
 	
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " resupplying unit " + m_EntityToResupply.ValueToString() + " with ammo type " + m_MagazineWell.ValueToString();
+		return this.ToString() + " resupplying unit " + m_EntityToResupply.m_Value.ToString() + " with ammo type " + m_MagazineWell.m_Value.ToString();
 	}
 };

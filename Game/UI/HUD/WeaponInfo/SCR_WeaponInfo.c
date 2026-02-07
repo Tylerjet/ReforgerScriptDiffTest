@@ -57,8 +57,8 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	const float UPDATE_INTERVAL = 0.1;	
 	const float FADED_OPACITY = 0.3;
 	
-	const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
-	const ref Color COLOR_ORANGE = Color.FromSRGBA(226, 167, 79, 255);
+	static const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
+	static const ref Color COLOR_ORANGE = Color.FromSRGBA(226, 167, 79, 255);
 	
 	protected const float FADEOUT_PANEL_DELAY = 6; // Time until whole panel fades out
 	protected const float FADEOUT_OPTICS_DELAY = 6; // Time until zeroing fades out
@@ -938,7 +938,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		if (state.m_Muzzle && state.m_MuzzleUI && state.m_MuzzleUI.ShowFiremodeIcon())
 		{
-			auto fm = state.m_FireModeType;
+			EWeaponFiremodeType fm = state.m_FireModeType;
 			string icon = state.m_MuzzleUI.GetFiremodeIconName(fm);
 			
 			if (icon != string.Empty)

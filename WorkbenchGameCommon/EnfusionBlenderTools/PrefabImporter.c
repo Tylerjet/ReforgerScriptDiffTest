@@ -56,7 +56,7 @@ class PrefabImporterUtils
 	// this function loops through all the components and returns "i" when the component is the same as the input
 	int GetPrefabParamIndex(BaseContainer prefab, string name)
 	{
-		BaseContainerList srcList = prefab.GetObjectArray(EBTConfig.components);
+		BaseContainerList srcList = prefab.GetObjectArray(EBTContainerFields.components);
 		for (int i = 0; i < srcList.Count(); i++)
 		{
 			prefab = srcList.Get(i);
@@ -85,16 +85,15 @@ class PrefabImporterUtils
 		}
 
 		// get hierarchy
-		int hierarchy = GetPrefabParamIndex(prefab, EBTConfig.hierarchy);
+		int hierarchy = GetPrefabParamIndex(prefab, EBTContainerFields.hierarchy);
 		if (hierarchy != -1)
 		{
 			// set pivot/socket ID and Name 
-			BaseContainerList srcList = prefab.GetObjectArray(EBTConfig.components);
+			BaseContainerList srcList = prefab.GetObjectArray(EBTContainerFields.components);
 			BaseContainer prefabSocket = srcList.Get(hierarchy);
 			ResourceName id = prefabSocket.GetResourceName();
-			prefabSocket.Get(EBTConfig.pivot, pivotID);
+			prefabSocket.Get(EBTContainerFields.pivot, pivotID);
 			pivotID.ToLower();
-			int index = 0;
 			response.ids.Insert(prefab.GetID().ToString());
 			response.pivots.Insert(pivotID);
 		}
@@ -110,18 +109,18 @@ class PrefabImporterUtils
 		string scale;
 
 		// getting coords in local space
-		if (prefab.IsVariableSet(EBTConfig.coords))
+		if (prefab.IsVariableSet(EBTContainerFields.coords))
 		{
-			prefab.Get(EBTConfig.coords, coords);
+			prefab.Get(EBTContainerFields.coords, coords);
 		}
 		else
 		{
 			coords = "0 0 0";
 		}
 		// getting scale
-		if (prefab.IsVariableSet(EBTConfig.scale))
+		if (prefab.IsVariableSet(EBTContainerFields.scale))
 		{
-			prefab.Get(EBTConfig.scale, scale);
+			prefab.Get(EBTContainerFields.scale, scale);
 		}
 		else
 		{
@@ -129,13 +128,13 @@ class PrefabImporterUtils
 		}
 		// getting angles as one string (EBT formatting)
 		string allAngles;
-		for (int j = 0; j < EBTConfig.angles.Count(); j++)
+		for (int j = 0; j < EBTContainerFields.angles.Count(); j++)
 		{
 			string angle;
 			//If angle is set
-			if (prefab.IsVariableSet(EBTConfig.angles[j]))
+			if (prefab.IsVariableSet(EBTContainerFields.angles[j]))
 			{
-				prefab.Get(EBTConfig.angles[j], angle);
+				prefab.Get(EBTContainerFields.angles[j], angle);
 				allAngles += " " + angle;
 			}
 			// if not then 0
@@ -149,11 +148,11 @@ class PrefabImporterUtils
 		// check if this fbx is parented to something in the prefab
 		if (parent != empty)
 		{
-			int parentObjectID = GetPrefabParamIndex(parent, EBTConfig.meshObject);
+			int parentObjectID = GetPrefabParamIndex(parent, EBTContainerFields.meshObject);
 			if (parentObjectID != -1)
 			{
 				// get parentFBX and check if the FBX already was processed
-				string parentFbx = GetFBXPath(parent, parentObjectID, EBTConfig.object, response, false);
+				string parentFbx = GetFBXPath(parent, parentObjectID, EBTContainerFields.object, response, false);
 				for (int i = response.fbx.Count() - 1; i > 0; i--)
 				{
 					// if it was processed then we know its index and we add the index to this prefabs "parent" array since this prefab is parented to it
@@ -181,13 +180,13 @@ class PrefabImporterUtils
 		}
 
 		// now get the absolute fbx path of the prefab we got parameters from
-		int meshObjectID = GetPrefabParamIndex(prefab, EBTConfig.meshObject);
+		int meshObjectID = GetPrefabParamIndex(prefab, EBTContainerFields.meshObject);
 		
 		// only if the meshObject exists
 		// and read its ancestor
 		if (meshObjectID != -1)
 		{
-			response.fbx.Insert(GetFBXPath(prefab, meshObjectID, EBTConfig.object, response, true));
+			response.fbx.Insert(GetFBXPath(prefab, meshObjectID, EBTContainerFields.object, response, true));
 			ReadAncestor(ancestorSource, response, true);
 		}
 		
@@ -197,9 +196,6 @@ class PrefabImporterUtils
 			response.fbx.Insert("Collection-" + FilePath.StripExtension(FilePath.StripPath(prefab.GetResourceName())));
 			ReadAncestor(ancestorSource, response, true);
 		}
-
-
-
 		return;
 	}
 
@@ -207,11 +203,10 @@ class PrefabImporterUtils
 	string GetFBXPath(IEntitySource prefab, int meshObjectID, string meshVarName, PrefabImporterResponse response, bool getEmat)
 	{
 		// get meshObjectID from the prefab file
-		ResourceName absPath, output, relXob, ematPath, absPathEmat;
-		string matName;
+		ResourceName absPath, output, relXob;
 		array<string> sourceMat = new array<string>;
 		Workbench.GetAbsolutePath(prefab.GetResourceName().GetPath(), absPath);
-		BaseContainerList srcList = prefab.GetObjectArray(EBTConfig.components);
+		BaseContainerList srcList = prefab.GetObjectArray(EBTContainerFields.components);
 		IEntitySource prefabMesh = srcList.Get(meshObjectID);
 		// if prefab has its own emat
 		if (getEmat)
@@ -279,7 +274,7 @@ class PrefabImporterUtils
 		for (int i = 0; i < prefab.GetNumChildren(); i++)
 		{
 			IEntitySource child = prefab.GetChild(i).ToEntitySource();
-			if(EBTConfig.supportedTypes.Contains(child.GetClassName()))
+			if(EBTContainerFields.supportedTypes.Contains(child.GetClassName()))
 			{
 				GetPrefabParams(child, response);
 			}

@@ -25,6 +25,7 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	
 	protected ref array<ref SCR_ChatMessage> m_aMessages = {};
 	protected ref array<SCR_ChatPanel> m_aChatPanels = {};
+	protected ref array<ref SCR_ProfanityFilterRequestCallback> m_aProfanityCallbacks = {};
 	
 	// Registered chat commands
 	protected ref map<string, ref ChatCommandInvoker> m_mCommands = new map<string, ref ScriptInvokerBase<ChatCommandCallback>>;
@@ -353,13 +354,49 @@ class SCR_ChatPanelManager : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnNewMessage(SCR_ChatMessage msg)
 	{
-		m_aMessages.Insert(msg);
+		SCR_ProfanityFilterRequestCallback filterCallback = new SCR_ProfanityFilterRequestCallback(msg);
+		array<string> textToFilter = {};
+		textToFilter.Insert(msg.m_sMessage);
+		filterCallback.m_OnResultInstance.Insert(OnMessageFiltered);
+		m_aProfanityCallbacks.Insert(filterCallback);
+		
+		//if we return fail, we call the method manually to still show the unchanged text and delete callback
+		if (!GetGame().GetPlatformService().FilterProfanityAsync(textToFilter, filterCallback))
+			OnMessageFiltered(filterCallback, textToFilter, msg);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnMessageFiltered(SCR_ProfanityFilterRequestCallback callback, array<string> filteredTexts, SCR_ChatMessage originalMessage)
+	{
+		originalMessage.m_sMessage = filteredTexts.Get(0);
+		
+		m_aMessages.Insert(originalMessage);
 		
 		if (m_aMessages.Count() > CHAT_HISTORY_SIZE)
 			m_aMessages.RemoveOrdered(0);
 		
 		//! Notify all registered chat panels
 		foreach (SCR_ChatPanel panel : m_aChatPanels)
-			panel.Internal_OnNewMessage(msg);
+			panel.Internal_OnNewMessage(originalMessage);
+		
+		m_aProfanityCallbacks.RemoveItem(callback);
 	}
+};
+
+class SCR_ProfanityFilterRequestCallback : SCR_ScriptProfanityFilterRequestCallback
+{
+	ref ScriptInvoker m_OnResultInstance = new ScriptInvoker; //(SCR_ProfanityFilterRequestCallback callback, array<string> filteredTexts, SCR_ChatMessage originalMessage)
+	ref SCR_ChatMessage m_OriginalMessage;
+	
+	void SCR_ProfanityFilterRequestCallback(SCR_ChatMessage originalMgs)
+	{
+		m_OriginalMessage = originalMgs;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnFilteredResult()
+	{		
+		GetTexts(m_FilteredTexts);
+		m_OnResultInstance.Invoke(this, m_FilteredTexts, m_OriginalMessage);
+	}	
 };

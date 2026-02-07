@@ -21,9 +21,9 @@ class SCR_AICombatMoveLogic_MovingCommander : AITaskScripted
 	
 	// minimal distance Driver should be from enemy
 	protected const float MIN_ENGAGEMENT_DISTANCE_TO_TARGET_SQ = 60.0 * 60.0;	// when too close to target, try to move backwards
-	protected const float MAX_MOVE_STEP_TO_TARGET = 30.0; 						// max step to move towards target
-	protected const float MAX_MOVE_STEP_TO_TARGET_THREATENED = 10.0; 			// move less under threat
-	protected const float MIN_MOVE_STEP_TARGET = 5.0; 							// min step to move from target
+	protected const float MAX_MOVE_DURATION_TO_TARGET_S = 9; 					// max step to move towards target
+	protected const float MAX_MOVE_DURATION_TO_TARGET_THREATENED_S = 5; 		// move less under threat
+	protected const float MIN_MOVE_DURATION_TARGET_S = 3; 						// min step to move from target
 	
 	// Values updated on each update, to avoid passing them through calls
 	protected EAIThreatState m_eThreatState;
@@ -59,6 +59,13 @@ class SCR_AICombatMoveLogic_MovingCommander : AITaskScripted
 				m_MyVehicle = Vehicle.Cast(m_CompartmentAccessComponent.GetVehicle());	
 			}	
 		}
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected void ApplyNewRequest(notnull SCR_AICombatMoveRequestBase rq)
+	{
+		rq.m_eUnitType = SCR_EAICombatMoveUnitType.GROUND_VEHICLE;
+		m_DriverState.ApplyNewRequest(rq);
 	}
 	
 	//--------------------------------------------------------------------------------------------
@@ -164,11 +171,11 @@ class SCR_AICombatMoveLogic_MovingCommander : AITaskScripted
 		
 		rq.m_vMovePos = ResolveRequestTargetPos();
 		rq.m_eDirection = SCR_EAICombatMoveDirection.BACKWARD;
-		rq.m_fMoveDistance = MIN_MOVE_STEP_TARGET;
+		rq.m_fMoveDuration_s = MIN_MOVE_DURATION_TARGET_S;
 		rq.m_bAimAtTarget = false;
 		rq.m_bAimAtTargetEnd = false;
 		
-		m_DriverState.ApplyNewRequest(rq);
+		ApplyNewRequest(rq);
 	}
 	
 	//--------------------------------------------------------------------------------------------
@@ -188,7 +195,7 @@ class SCR_AICombatMoveLogic_MovingCommander : AITaskScripted
 		rq.m_bCheckCoverVisibility = false;
 		
 		
-		float moveDistanceMax = MAX_MOVE_STEP_TO_TARGET;
+		float moveDurationMax = MAX_MOVE_DURATION_TO_TARGET_S;
 		
 		// Long range combat
 		
@@ -196,29 +203,28 @@ class SCR_AICombatMoveLogic_MovingCommander : AITaskScripted
 		{
 			case EAIThreatState.THREATENED:
 			{
-				moveDistanceMax = MAX_MOVE_STEP_TO_TARGET_THREATENED;				
+				moveDurationMax = MAX_MOVE_DURATION_TO_TARGET_THREATENED_S;				
 				break;
 			}
 			default:
 			{
-				moveDistanceMax = MAX_MOVE_STEP_TO_TARGET;				
+				moveDurationMax = MAX_MOVE_DURATION_TO_TARGET_S;				
 				break;
 			}
 		}
 		
-		rq.m_eMovementType = EMovementType.SPRINT;
 		rq.m_bAimAtTarget = false; 
 		rq.m_bAimAtTargetEnd = false; // turn towards the target should be true!
 		rq.m_bFailIfNoCover = false;
 		
-		rq.m_fMoveDistance = Math.RandomFloat(0.5, 1.0) * moveDistanceMax; // Move distance randomized
+		rq.m_fMoveDuration_s = Math.RandomFloat(0.5, 1.0) * moveDurationMax; // Move distance randomized
 		
 		// Subscribe to events
 		// We will pronounce voice lines once we start or end moving
 		rq.GetOnMovementStarted().Insert(OnMovementStarted);
 		rq.GetOnCompleted().Insert(OnMovementCompleted);
 		
-		m_DriverState.ApplyNewRequest(rq);
+		ApplyNewRequest(rq);
 	}
 	
 	//--------------------------------------------------------------------------------------------
@@ -351,11 +357,11 @@ class SCR_AICombatMoveLogic_MovingCommander : AITaskScripted
 		}
 		
 		rq.m_vMovePos = ResolveRequestTargetPos();
-		rq.m_fMoveDistance = MIN_MOVE_STEP_TARGET;
+		rq.m_fMoveDuration_s = MIN_MOVE_DURATION_TARGET_S;
 		rq.m_bAimAtTarget = false;
 		rq.m_bAimAtTargetEnd = false;
 		
-		m_DriverState.ApplyNewRequest(rq);
+		ApplyNewRequest(rq);
 	}
 			
 	//--------------------------------------------------------------------------------------------

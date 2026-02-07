@@ -126,15 +126,6 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		}
 		
 		campaign.GetBaseManager().StoreBasesStates(m_aBasesStructs);
-		
-		SCR_CampaignTutorialArlandComponent tutorial = SCR_CampaignTutorialArlandComponent.Cast(campaign.FindComponent(SCR_CampaignTutorialArlandComponent));
-		
-		if (tutorial)
-		{
-			m_iTutorialStage = tutorial.GetStage();
-			return true;
-		}
-		
 		campaign.StoreRemnantsStates(m_aRemnantsStructs);
 		
 		SCR_CampaignFaction factionBLUFOR = campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR);

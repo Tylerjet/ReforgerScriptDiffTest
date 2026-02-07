@@ -34,6 +34,9 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	protected static WidgetAnimationPosition m_PositionAnimation;
 	protected static SCR_ScriptedWidgetTooltip m_CurrentTooltip;
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Static invokers on tooltips means a lot of different components in a menu will need to listen and react to these events even though none of them but one at a time will care about the triggered tooltip. Different instances of the same component might fight to update the tooltip with their data (like in a list or menu tabs). There is also the fact that these tooltips are set on the widgets in the layouts, meaning they can get lost in huge hierarchies. 
+	
 	// Invokers
 	// Reliance on static invokers is a bit of a bandaid solution but there is no other way for other scripts to access the tooltip class
 	// If possible, only bind on hover/focus gained and make sure to unbind on lost.
@@ -41,6 +44,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	protected static ref ScriptInvokerTooltip m_OnTooltipShow;		// Called after creating the content widget
 	protected static ref ScriptInvokerTooltip m_OnTooltipHide;		// Called after removing the content widget
 
+	//---- REFACTOR NOTE END ----
+	
 	//! ---- OVERRIDES ----
 	//------------------------------------------------------------------------------------------------
 	//! Override in child classes to change the proxy layout
@@ -87,10 +92,11 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		FrameSlot.SetSizeToContent(pToolTipWidget, m_Preset.m_bSizeToContent);
 	
 		Widget debugBorder = pToolTipWidget.FindAnyWidget("DebugBorder");
-		bool showDebug;
 		
 		#ifdef WORKBENCH
-			showDebug = m_Preset.m_bShowDebugBorder;
+			bool showDebug = m_Preset.m_bShowDebugBorder;
+		#else
+			const bool showDebug = false;
 		#endif
 		
 		if (debugBorder)
@@ -272,6 +278,9 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		OnHide();
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Tooltips rely on hardcoded string tags, far from ideal. This method is also somewhat weird, as it performs extra checks based on the optional parameters. It could probably be written better. it is necessary because we must use static invokers to notify classes that a tooltip has appeared: ideally, Widgets should have build in events for their tooltips, that ScriptedWidetComponent would expose to script
+	
 	//------------------------------------------------------------------------------------------------
 	// Check if the tooltip has the right parameters. The most important one is the tag, since it differentiates tooltips
 	bool IsValid(string tag, Widget hoverWidget = null, ResourceName presets = string.Empty)
@@ -289,6 +298,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		
 		return valid;
 	}
+	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	string GetTag()
@@ -394,15 +405,25 @@ class SCR_ScriptedWidgetTooltipPreset
 	[Attribute("1", UIWidgets.CheckBox, "Defines if the tooltip should animate to follow mouse cursor or remain at initial position")]
 	bool m_bFollowCursor;
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Given that we have objects for position settings, this should probably be in SCR_TooltipPositionPreset and allow different fixed positions based on device
+	
 	[Attribute(desc: "Fixed Absolute screen position")]
 	protected vector m_vFixedPosition;
 
+//---- REFACTOR NOTE END ----
+	
 	[Attribute("0", UIWidgets.CheckBox, desc: "Should the proxy adapt to the content: the proxy is used to check for overflowing and contains the actual Content layout. Giving it a fixed size will prevent slide in effect for overflowing tooltips. This will NOT influence the look of the content layout, as long as it fits inside the proxy and it's not set to stretch")]
 	bool m_bSizeToContent;
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// This is needed for overflowing tooltips, as it allows to create a safe zone and avoid the tooltip flickering in on the frame it's actual size is initialized. It feels like a hacky workaround, there's probably a better way to tackle the issue (like starting with 0 opacity and fading in the next frame, perhaps?)
+	
 	[Attribute(desc: "Fixed proxy layout size. The proxy is used to check for overflowing and contains the actual Content layout.  This will NOT influence the look of the comntent layout, as long as it fits inside the proxy and it's not set to stretch")]
 	vector m_vSize;
 
+//---- REFACTOR NOTE END ----
+	
 	[Attribute(UIConstants.FADE_RATE_FAST.ToString(), desc: "FadeIn speed. Set to 0 to skip the animation")]
 	float m_fFadeInSpeed;
 

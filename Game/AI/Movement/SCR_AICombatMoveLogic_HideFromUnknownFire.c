@@ -74,7 +74,7 @@ class SCR_AICombatMoveLogic_HideFromUnknownFire : AITaskScripted
 			rq.m_eMovementType = EMovementType.SPRINT;
 			rq.m_fCoverSearchDistMax = COVER_SEARCH_DIST_MAX;
 			rq.m_fCoverSearchDistMin = 0;
-			rq.m_fMoveDistance = Math.RandomFloat(1.0, 1.5) * COVER_SEARCH_DIST_MAX;
+			rq.m_fMoveDuration_s = Math.RandomFloat(1.0, 1.5) * COVER_SEARCH_DIST_MAX / SCR_AICombatMoveUtils.CHARACTER_SPEED_STAND_SPRINT;
 			rq.m_eDirection = SCR_EAICombatMoveDirection.ANYWHERE;
 			// rq.m_fCoverSearchSectorHalfAngleRad - not needed since direction is ANYWHERE
 			

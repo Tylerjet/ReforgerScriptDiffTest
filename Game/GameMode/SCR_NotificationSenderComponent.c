@@ -30,97 +30,64 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	//States
 	protected bool m_bListeningToWeatherChanged;
 	
-	//---- REFACTOR NOTE START: As Replication hotfix as On character destroy is not called on Clients. At least back in the day ----
 	//------------------------------------------------------------------------------------------------
-	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
+	override void OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		//~ hot fix for On Controllable Destroyed issues \/
-		if (Replication.IsClient())
+		IEntity entity = instigatorContextData.GetVictimEntity();
+		
+		//~	No entity destroyed or entity not a character
+		if (!entity || !ChimeraCharacter.Cast(entity))
 			return;
 		
-		if (!entity)
-			return;
-		
-		RplComponent entityRpl = RplComponent.Cast(entity.FindComponent(RplComponent));
-		RplComponent instigatorRpl;
-		
-		if (killerEntity)
-			instigatorRpl = RplComponent.Cast(killerEntity.FindComponent(RplComponent));
-		
-		RplId entityRplId = RplId.Invalid();
-		RplId instigatorRplId = RplId.Invalid();
-		
-		if (entityRpl)
-			entityRplId = entityRpl.Id();
-		
-		if (instigatorRpl)
-			instigatorRplId = instigatorRpl.Id();
-		
-		OnControllableDestroyedBroadCast(entityRplId, instigatorRplId);
-		Rpc(OnControllableDestroyedBroadCast, entityRplId,instigatorRplId);
-		
-		//~ hot fix for On Controllable Destroyed issues /\
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//~ Todo: This is a hot a hotfix for On Controllable Destroyed issues \/
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void OnControllableDestroyedBroadCast(RplId entityRplId, RplId instigatorRplId)
-	{
-		IEntity entity;
-		IEntity instigator;
-		
-		RplComponent entityRpl = RplComponent.Cast(Replication.FindItem(entityRplId));
-		RplComponent instigatorRpl = RplComponent.Cast(Replication.FindItem(instigatorRplId));
-		
-		if (entityRpl)
-			entity = entityRpl.GetEntity();
-		
-		if (instigatorRpl)
-			instigator = instigatorRpl.GetEntity();
-		
-		OnControllableDestroyedHotfix(entity, instigator);
-	}
-	//~ hot fix for On Controllable Destroyed  issues /\
-	
-	//------------------------------------------------------------------------------------------------
-	//~ Todo: hot fix for On Controllable Destroyed  issues - Move logic to OnControllableDestroyed if fixed
-	protected void OnControllableDestroyedHotfix(IEntity entity, IEntity instigator)
-	{		
-		//~	No entity destroyed
-		if (!entity)
-			return;
-		
-		bool isUnlimitedEditorOpened = false;
+		bool isUnlimitedEditor = false;
 		
 		//~ Check if player has unlimited editor and if the editor is open
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (editorManager)
-			isUnlimitedEditorOpened = !editorManager.IsLimited() && editorManager.IsOpened();
+			isUnlimitedEditor = !editorManager.IsLimited();
 		
 		//~ Killfeed is disabled and unlimited editor is not open
-		if (!isUnlimitedEditorOpened && m_iKillFeedType == EKillFeedType.DISABLED)
+		if (!isUnlimitedEditor && m_iKillFeedType == EKillFeedType.DISABLED)
 			return;
 		
-		int playerId = SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(entity);
-		if (playerId <= 0)
+		IEntity killerEntity = instigatorContextData.GetKillerEntity();
+		
+		int victimPlayerId = SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(entity);
+		
+		//~ Entity is not a player so do not show notification
+		if (victimPlayerId <= 0)
 			return;
 		
-		//~ Check if killed player message can be seen if Limited editor (or editor not open)
-		if (!isUnlimitedEditorOpened && m_iReceiveKillFeedType != EKillFeedReceiveType.ALL)
+		int localPlayerID = SCR_PlayerController.GetLocalPlayerId();
+		Faction localPlayerFaction = m_FactionManager.GetLocalPlayerFaction();
+		
+		//~ No local faction and player is not GM so don't show killfeed
+		if (!localPlayerFaction && !isUnlimitedEditor)
+			return;
+		
+		//~ Check if the player can show the notification of a player dying
+		if (localPlayerFaction && !isUnlimitedEditor && m_iReceiveKillFeedType != EKillFeedReceiveType.ALL)
 		{
 			//~ No faction manager so don't show killfeed?
 			if (!m_FactionManager)
 				return;
 			
-			Faction localPlayerFaction = m_FactionManager.GetLocalPlayerFaction();
-
-			//~ No local faction so don't show killfeed
-			if (!localPlayerFaction)
-				return;
+			//~ Get victim faction
+			Faction victimFaction;
+			if (victimPlayerId > 0)
+			{
+				 victimFaction = m_FactionManager.GetPlayerFaction(victimPlayerId);
+			}
+			else if (entity)
+			{
+				SCR_FactionAffiliationComponent FactionAffiliation = SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent));
+				if (FactionAffiliation)
+					victimFaction = FactionAffiliation.GetAffiliatedFaction();
+			}
 			
-			int localPlayerID = SCR_PlayerController.GetLocalPlayerId();
-			Faction killedPlayerFaction = m_FactionManager.GetPlayerFaction(playerId);
+			//~ Is victim faction friendly to local faction
+			SCR_Faction scrLocalPlayerFaction = SCR_Faction.Cast(localPlayerFaction);
+			bool victimIsFriendly = (scrLocalPlayerFaction && scrLocalPlayerFaction.DoCheckIfFactionFriendly(scrLocalPlayerFaction)) || (!scrLocalPlayerFaction && localPlayerFaction.IsFactionFriendly(victimFaction));
 			
 			switch (m_iReceiveKillFeedType)
 			{
@@ -128,10 +95,10 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 				case EKillFeedReceiveType.GROUP_ONLY :
 				{
 					//~ Check if local player is not the same as killed otherwise they are always in the same group
-					if (localPlayerID != playerId)
+					if (localPlayerID != victimPlayerId)
 					{
 						//~ Factions not friendly so don't show killfeed
-						if (!localPlayerFaction.IsFactionFriendly(killedPlayerFaction))
+						if (!victimIsFriendly)
 							return;
 						
 						//~ No group manager so don't send
@@ -141,8 +108,8 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 						
 						SCR_AIGroup localPlayerGroup = groupManager.GetPlayerGroup(localPlayerID);
 						
-						//~ If not in group or not in the same group do not send
-						if (!localPlayerGroup || !localPlayerGroup.IsPlayerInGroup(playerId))
+						//~ If not in a group or not in the same group do not send
+						if (!localPlayerGroup || !localPlayerGroup.IsPlayerInGroup(victimPlayerId))
 							return;
 					}
 					
@@ -153,14 +120,14 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 				case EKillFeedReceiveType.SAME_FACTION_ONLY :
 				{
 					//~ Check if local player is not the same as killed otherwise they are always the same faction
-					if (localPlayerID != playerId)
+					if (localPlayerID != victimPlayerId)
 					{
 						//~ If no local faction or if not the same faction do not show killfeed
-						if (!localPlayerFaction || localPlayerFaction != killedPlayerFaction)
+						if (!localPlayerFaction || localPlayerFaction != victimFaction)
 							return;
 						
-						//~ If Faction is hostile towards itself still do not show killfeed (DM)
-						if (!localPlayerFaction.IsFactionFriendly(localPlayerFaction))
+						//~ If Faction is hostile towards itself still do not show killfeed (Deathmatch)
+						if (!victimIsFriendly)
 							return;
 					}
 					
@@ -171,10 +138,10 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 				case EKillFeedReceiveType.ALLIES_ONLY :
 				{
 					//~ Check if local player is not the same as killed otherwise they are always allied
-					if (localPlayerID != playerId)
+					if (localPlayerID != victimPlayerId)
 					{
 						//~ Factions not friendly so don't show killfeed
-						if (!localPlayerFaction || !localPlayerFaction.IsFactionFriendly(killedPlayerFaction))
+						if (!victimIsFriendly)
 							return;
 					}
 					
@@ -185,11 +152,11 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 				case EKillFeedReceiveType.ENEMIES_ONLY :
 				{
 					//~ If local player killed it is never an enemy
-					if (localPlayerID == playerId)
+					if (localPlayerID == victimPlayerId)
 						return;
 					
 					//~ Factions friendly so don't show killfeed
-					if (localPlayerFaction.IsFactionFriendly(killedPlayerFaction))
+					if (victimIsFriendly)
 						return;
 					
 					break;
@@ -197,134 +164,133 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			}
 		}
 		
-		//~ Never show killer so simply show player died if limited editor
-		if (!isUnlimitedEditorOpened && m_iKillFeedType == EKillFeedType.UNKNOWN_KILLER)
+		SCR_ECharacterControlType victimControlType = instigatorContextData.GetVictimCharacterControlType();
+		SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+		
+		int killerPlayerID =  instigatorContextData.GetKillerPlayerID();
+		
+		//~ Killed by GM so send GM notification
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_UNLIMITED_EDITOR))
 		{
-			SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, playerId);
+			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+			{
+				//~ Player killed by GM but GM not known
+				if (killerPlayerID <= 0)
+				{
+					//SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_KILLED_BY_EDITOR, victimPlayerId);
+					SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, victimPlayerId);
+				}
+				//~ Player killed by GM and GM is known
+				else 
+					SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_KILLED_BY_EDITOR_PLAYER, victimPlayerId, killerPlayerID);
+			}
+			else 
+			{
+				//~ Possessed AI killed by GM but GM not known
+				if (killerPlayerID <= 0)
+				{
+					//SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_BY_EDITOR, victimPlayerId);
+					SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, victimPlayerId);
+				}
+				//~ Possessed AI killed by GM and GM is known
+				else 
+					SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_BY_EDITOR_PLAYER, victimPlayerId, killerPlayerID);
+			}
+			
 			return;
 		}
 		
-		int killerId;
-		if (entity == instigator)
-			killerId = playerId;
-		else 
-			killerId = SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(instigator);
-
-		SCR_EditableCharacterComponent killerEditableCharacterComponent;
-		//~ If there is a killer and the killer is not the player itself
-		if (instigator && killerId <= 0)
+		//~ Never show killer so simply show player died if limited editor
+		if (!isUnlimitedEditor && m_iKillFeedType == EKillFeedType.UNKNOWN_KILLER)
 		{
-			killerEditableCharacterComponent = SCR_EditableCharacterComponent.Cast(instigator.FindComponent(SCR_EditableCharacterComponent));
-		
-			//~ Killer was not character so get killer in vehicle
-			if (!killerEditableCharacterComponent)
-				killerEditableCharacterComponent = GetKillerFromVehicle(instigator, instigator.IsInherited(Vehicle));
+			//Player died
+			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, victimPlayerId);
+			//Possessed AI died
+			else 
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, victimPlayerId);
 			
-			if (killerEditableCharacterComponent)
-				killerId = SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(killerEditableCharacterComponent.GetOwner());
+			return;
 		}
-
-		bool playerIsPossessed = false; 
-		bool killerIsPossessed = false; 
 		
-		//~ Check if player or killer where possessed
-		SCR_PossessingManagerComponent possesionManager = SCR_PossessingManagerComponent.GetInstance();
-		if (possesionManager)
+		//~ Death notification	
+		//~ Suicide	
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.SUICIDE))
 		{
-			playerIsPossessed = possesionManager.IsPossessing(playerId);
-			
-			if (killerId > 0)
-				killerIsPossessed = possesionManager.IsPossessing(killerId);
-		}
-
-		//Death notification	
-		//Suicide	
-		if (playerId == killerId || !instigator)
-		{			
 			//Player Suicide
-			if (!playerIsPossessed)
-				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, playerId);
+			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, victimPlayerId);
 			//Possessed Suicide
 			else 
-				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, playerId);
-		}
-		//If killed by other player
-		else if (killerId > 0)
-		{
-			//Player killed player
-			if (!playerIsPossessed && !killerIsPossessed)
-			{
-				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_KILLED_PLAYER, killerId, playerId);
-			}
-			//Possesed player killed by other player (Show player killed by NPC and for GM: possesed GM killed player)
-			else if (!playerIsPossessed && killerIsPossessed)
-			{		
-				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_PLAYER, killerId, playerId);
-				SCR_NotificationsComponent.SendLocalLimitedEditor(ENotification.AI_KILLED_PLAYER, killerId, playerId);
-			}
-			//Player killed possessed player (Show to GM only)
-			else if (playerIsPossessed && !killerIsPossessed)
-			{
-				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.PLAYER_KILLED_POSSESSED_AI, killerId, playerId);
-			}
-			//Possessed AI Killed Possessed AI (GM Only)
-			else
-			{
-				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_POSSESSED_AI, killerId, playerId);
-			}
-		}
-		//Killed by NPC
-		else if (killerEditableCharacterComponent)
-		{
-			int killerRplId = Replication.FindId(killerEditableCharacterComponent);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, victimPlayerId);
 			
-			if (!playerIsPossessed)
-				SCR_NotificationsComponent.SendLocal(ENotification.AI_KILLED_PLAYER, killerRplId, playerId);
-			else 
-				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.AI_KILLED_POSSESSED_AI, killerRplId, playerId);
+			return;
 		}
-		//Unknown killer
+		//If killed by other player or player that is has an unlimited editor
+		if (killerControlType == SCR_ECharacterControlType.PLAYER || killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
+		{
+			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_KILLED_PLAYER, killerPlayerID, victimPlayerId);
+			else 
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.PLAYER_KILLED_POSSESSED_AI, killerPlayerID, victimPlayerId);
+			
+			return;
+		}
+		
+		//~ Get RPL component if AI or possessed AI
+		RplId killerRplId;
+		if ((killerControlType == SCR_ECharacterControlType.AI || killerControlType == SCR_ECharacterControlType.POSSESSED_AI) && killerEntity)
+		{
+			SCR_EditableCharacterComponent editableCharacterComponent = SCR_EditableCharacterComponent.Cast(killerEntity.FindComponent(SCR_EditableCharacterComponent));
+			if (editableCharacterComponent)
+				killerRplId = Replication.FindId(editableCharacterComponent);
+			
+			//~ Invalid killer so show that player simply died
+			if (!killerRplId.IsValid())
+			{
+				//Player died
+				if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+					SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, victimPlayerId);
+				//Possessed AI died
+				else 
+					SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, victimPlayerId);
+				
+				return;
+			}
+		}
+		
+		//~ Killed by possessed AI
+		if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+		{
+			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+			{
+				SCR_NotificationsComponent.SendLocalLimitedEditor(ENotification.AI_KILLED_PLAYER, killerRplId, victimPlayerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_PLAYER, killerPlayerID, victimPlayerId);
+			}
+			else 
+			{
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_POSSESSED_AI, killerPlayerID, victimPlayerId);
+			}
+			
+			return;
+		}
+		//~ Killed by AI
+		if (killerControlType == SCR_ECharacterControlType.AI)
+		{
+			if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+				SCR_NotificationsComponent.SendLocal(ENotification.AI_KILLED_PLAYER, killerRplId, victimPlayerId);
+			else 
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.AI_KILLED_POSSESSED_AI, killerRplId, victimPlayerId);
+
+			return;
+		}
+		
+		//~ Unknown killer (Fallback)
+		if (victimControlType != SCR_ECharacterControlType.POSSESSED_AI)
+			SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, victimPlayerId);
 		else 
-		{
-			if (!playerIsPossessed)
-				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, playerId);
-			else 
-				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, playerId);
-		}
+			SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, victimPlayerId);
 	}
-	//---- REFACTOR NOTE END ----
-	
-	//---- REFACTOR NOTE START: Checks if character was killed by a vehicle. Don't think this is needed any more ----
-	//------------------------------------------------------------------------------------------------
-	protected SCR_EditableCharacterComponent GetKillerFromVehicle(IEntity veh, bool pilot)
-	{
-		BaseCompartmentManagerComponent compartmentManager = BaseCompartmentManagerComponent.Cast(veh.FindComponent(BaseCompartmentManagerComponent));
-			
-		if (!compartmentManager)
-			return null;
-		
-		array<BaseCompartmentSlot> compartments = {};
-		
-		for (int i = 0, compart = compartmentManager.GetCompartments(compartments); i < compart; i++)
-		{
-			BaseCompartmentSlot slot = compartments[i];
-			
-			if (pilot && slot.Type() == PilotCompartmentSlot)
-			{
-				if (slot.GetOccupant())
-					return SCR_EditableCharacterComponent.Cast(slot.GetOccupant().FindComponent(SCR_EditableCharacterComponent));
-			}
-			else if (!pilot && slot.Type() == TurretCompartmentSlot)
-			{
-				if (slot.GetOccupant())
-					return SCR_EditableCharacterComponent.Cast(slot.GetOccupant().FindComponent(SCR_EditableCharacterComponent));
-			}
-		}
-		
-		return null;
-	}
-	
-	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorLimitedChanged(bool isLimited)

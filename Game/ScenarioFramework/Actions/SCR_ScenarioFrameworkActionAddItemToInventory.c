@@ -82,3 +82,21 @@ class SCR_ScenarioFrameworkActionAddItemToInventory : SCR_ScenarioFrameworkActio
 		}
 	}
 }
+
+class SCR_InvCallBackCheck : SCR_InvCallBack
+{
+	string m_sNameMaster = "";
+	string m_sNameItem = "";
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnFailed()
+	{
+		PrintFormat("ScenarioFramework: The item %1 could not be inserted into %2! Check name of the entity and be sure the entity has a space in the inventory", m_sNameItem, m_sNameMaster, LogLevel.ERROR);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnComplete()
+	{
+		//PrintFormat("ScenarioFramework: The item %1 has been correctly inserted into %2 inventory", m_sNameItem, m_sNameMaster);
+	}
+}

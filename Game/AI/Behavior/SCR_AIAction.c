@@ -38,6 +38,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_BEHAVIOR_MOVE							= 30;
 	const static float PRIORITY_BEHAVIOR_MOVE_IN_FORMATION				= 30;
 	const static float PRIORITY_BEHAVIOR_WAIT							= 10;
+	const static float PRIORITY_BEHAVIOR_ANIMATE						= 10;
 	const static float PRIORITY_BEHAVIOR_IDLE_DRIVER					= 2;
 	const static float PRIORITY_BEHAVIOR_IDLE							= 1;
 	//const static float PRIORITY_BEHAVIOR_
@@ -62,6 +63,7 @@ class SCR_AIActionBase : AIActionBase
 	const static float PRIORITY_ACTIVITY_DEFEND					= 50;
 	const static float PRIORITY_ACTIVITY_GET_OUT				= 50;
 	const static float PRIORITY_ACTIVITY_SUPPRESS				= 40;
+	const static float PRIORITY_ACTIVITY_ANIMATE				= 10;
 	
 	
 	// TODO: Get rid of flags we don't neccesarily need	

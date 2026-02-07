@@ -21,6 +21,8 @@ class SCR_DownloadManager : GenericEntity
 {
 	protected const int DOWNLOAD_STUCK_DELAY = 60; // Max time in which download needs to progress in seconds
 	
+	protected const int ERROR_FULL_STORAGE = 19;
+	
 	protected static SCR_DownloadManager s_Instance;
 	
 	// All download actions
@@ -46,29 +48,12 @@ class SCR_DownloadManager : GenericEntity
 	//! ALways gets called after the new download is registered in the download manager.
 	ref ScriptInvoker m_OnNewDownload = new ScriptInvoker; // (SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	
-	protected ref ScriptInvoker<> Event_OnDownloadFail;
 	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadComplete = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
 	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerActionError> m_OnDownloadFailed = new ScriptInvokerBase<ScriptInvoker_DownloadManagerActionError>();
 	protected ref ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage> m_OnFullStorageError;
 	ref ScriptInvokerBase<ScriptInvoker_DownloadManagerAction> m_OnDownloadCanceled = new ScriptInvokerBase<ScriptInvoker_DownloadManagerAction>();
 	protected ref ScriptInvokerVoid m_OnDownloadQueueCompleted
 	protected ref ScriptInvokerVoid m_OnAllDownloadsStopped;
-	
-	//------------------------------------------------------------------------------------------------
-	void InvokeEventOnDownloadFail()
-	{
-		if (Event_OnDownloadFail)
-			Event_OnDownloadFail.Invoke();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnDownloadFail()
-	{
-		if (!Event_OnDownloadFail)
-			Event_OnDownloadFail = new ScriptInvoker();
-
-		return Event_OnDownloadFail;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerBase<ScriptInvoker_ActionDownloadFullStorage> GetOnFullStorageError()
@@ -705,16 +690,14 @@ class SCR_DownloadManager : GenericEntity
 		m_OnDownloadComplete.Invoke(action);
 	}
 	
-	protected const int ERROR_FULL_STORAGE = 19;
-	
 	//-----------------------------------------------------------------------------------------------
 	//! Call on downloading fail to show download manager dialog with problematic
 	protected void Callback_OnFailed(SCR_WorkshopItemActionDownload action, int reason)
 	{	
 		m_aFailedDownloads.Insert(action);
 		
-		if (!SCR_DownloadManager_Dialog.IsOpened())
-			SCR_DownloadManager_Dialog.Create();
+		// TODO: hack, download manager should not open UI, but we lack a proper system to handle this better
+		SCR_FailedModsDownloadDialog.ShowFailedModsDialog(action, reason);
 		
 		// Prevent error on full storage error
 		if (reason == ERROR_FULL_STORAGE)
@@ -728,6 +711,9 @@ class SCR_DownloadManager : GenericEntity
 	//! Call on full addons storage reached to display storage limit reached error 
 	protected void Callback_OnFullStorageError(SCR_WorkshopItemActionDownload action, float size)
 	{	
+		// TODO: hack, download manager should not open UI, but we lack a proper system to handle this better
+		SCR_NotEnoughStorageDialog.ShowNotEnoughStorageDialog(size, action);
+		
 		if (m_OnFullStorageError)
 			m_OnFullStorageError.Invoke(action, size);
 	}

@@ -17,42 +17,40 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	protected IEntity		m_DeliverPoint;
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetEntity(IEntity entity)
-	{
-		m_Entity = entity;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] entity
+	//! \param[in] entity Sets delivery point entity.
 	void SetDeliveryPointEntity(IEntity entity)
 	{
 		m_DeliverPoint = entity;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Delivery point entity representing a location for delivery in the game world.
 	IEntity GetDeliveryPointEntity()
 	{
 		return m_DeliverPoint;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Delay in seconds between intel map marker updates.
 	int GetIntelMapMarkerUpdateDelay()
 	{
 		return m_iIntelMapMarkerUpdateDelay;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default values, nullifies deliver point, calls base method.
+	//! \param[in] includeChildren Restores default settings, optionally including children objects.
+	//! \param[in] reinitAfterRestoration Restores object state after default settings, optionally reinitializes after restoration.
+	//! \param[in] affectRandomization Affects randomization during default restoration.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		m_DeliverPoint = null;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets up delivery trigger for task at deliver point.
 	override void SetupTask()
 	{
 		super.SetupTask();
@@ -64,7 +62,7 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Updates task title and description if provided.
 	void UpdateTaskTitleAndDescription()
 	{
 		if (!m_sTaskTitleUpdated.IsEmpty()) 
@@ -74,6 +72,8 @@ class SCR_ScenarioFrameworkLayerTaskDeliver : SCR_ScenarioFrameworkLayerTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity.
+	//! \return true if support entity is found and set, false otherwise.
 	override bool SetSupportEntity()
 	{
 		if (!GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskDeliverSupportEntity))

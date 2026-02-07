@@ -5,7 +5,7 @@ class SCR_AIDangerReaction_MeleeDamageTaken : SCR_AIDangerReaction
 	static const float MIN_DIST_RUN = 10.0;
 	static const float MAX_DIST_RUN = 15.0;
 	
-	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
+	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		if (dangerEvent.GetVictim() != utility.m_OwnerEntity)
 			return false;

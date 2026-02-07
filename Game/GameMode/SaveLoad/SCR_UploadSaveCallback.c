@@ -4,9 +4,10 @@ class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 	
 	protected string m_sFileName;
 	protected ref SCR_UploadSaveCallback_PageParams m_PageParams;
-	protected ref SCR_ServerSaveUploadCallback m_UploadCallback;
+	protected ref SCR_BackendCallback m_UploadCallback;
 	
 	protected bool m_bHasData = false;
+	protected string m_sId;
 	
 	//----------------------------------------------------------------------------------------
 	override void OnSuccess(int code)
@@ -49,6 +50,7 @@ class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 		manifest.m_sName = SESSION_SAVE_NAME;
 		manifest.m_sSummary = m_sFileName;
 		manifest.m_aFileNames = {m_sFileName};
+		manifest.m_bUnlisted = true;
 		
 		//--- Create new save from manifest
 		if (isNew)
@@ -57,7 +59,10 @@ class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 		}
 		
 		//--- Upload file
-		m_UploadCallback = new SCR_ServerSaveUploadCallback(save.Id());
+		m_sId = save.Id();
+		m_UploadCallback = new SCR_BackendCallback();
+		m_UploadCallback.GetEventOnResponse().Insert(OnUploadResponse);
+		
 		save.UploadWorldSave(manifest, m_UploadCallback);
 	}
 	
@@ -73,6 +78,36 @@ class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 	{
 		super.OnTimeout();
 		Print("[SCR_ServerSaveRequestCallback] OnTimeout", LogLevel.NORMAL);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected void OnUploadResponse(SCR_BackendCallback callback)
+	{
+		switch (callback.GetResponseType())
+		{
+			case EBackendCallbackResponse.SUCCESS:
+			{
+				Print(string.Format("[SCR_ServerSaveRequestCallback] OnSuccess(): code=%1", callback.GetCode()), LogLevel.NORMAL);
+		
+				BaseChatComponent chatComponent = BaseChatComponent.Cast(GetGame().GetPlayerController().FindComponent(BaseChatComponent));
+				if (chatComponent)
+					chatComponent.SendMessage(string.Format("#load %1", m_sId), 0);
+				
+				break;
+			}
+			
+			case EBackendCallbackResponse.ERROR:
+			{
+				Print(string.Format("[SCR_ServerSaveUploadCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", callback.GetCode(), callback.GetRestCode(), callback.GetApiCode(), GetGame().GetBackendApi().GetErrorCode(callback.GetCode())), LogLevel.NORMAL);
+				break;
+			}
+			
+			case EBackendCallbackResponse.TIMEOUT:
+			{
+				Print("[SCR_ServerSaveUploadCallback] OnTimeout", LogLevel.NORMAL);
+				break;
+			}
+		}
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -96,37 +131,3 @@ class SCR_UploadSaveCallback_PageParams: PageParams
 		StoreString("search", SCR_ServerSaveRequestCallback.SESSION_SAVE_NAME);
 	}
 };
-
-//----------------------------------------------------------------------------------------
-class SCR_ServerSaveUploadCallback: SCR_BackendCallback
-{
-	protected string m_sId;
-	
-	//----------------------------------------------------------------------------------------
-	override void OnSuccess(int code)
-	{
-		Print(string.Format("[SCR_ServerSaveRequestCallback] OnSuccess(): code=%1", code), LogLevel.NORMAL);
-		
-		BaseChatComponent chatComponent = BaseChatComponent.Cast(GetGame().GetPlayerController().FindComponent(BaseChatComponent));
-		if (chatComponent)
-			chatComponent.SendMessage(string.Format("#load %1", m_sId), 0);
-	}
-	
-	//----------------------------------------------------------------------------------------
-	override void OnError(int code, int restCode, int apiCode)
-	{
-		Print(string.Format("[SCR_ServerSaveUploadCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code)), LogLevel.NORMAL);
-	}
-	
-	//----------------------------------------------------------------------------------------
-	override void OnTimeout()
-	{
-		Print("[SCR_ServerSaveUploadCallback] OnTimeout", LogLevel.NORMAL);
-	}
-	
-	//----------------------------------------------------------------------------------------
-	void SCR_ServerSaveUploadCallback(string id)
-	{
-		m_sId = id;
-	}
-}

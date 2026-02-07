@@ -47,6 +47,8 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 		UpdateAllButtonsPadding(m_wRightFooter, SCR_EDynamicFooterButtonAlignment.RIGHT);
 	}
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// It is questionable if this component should care at all about giving invokers for the buttons, and instead just focus on setting the paddings/looks. The menu/dialog can then find the buttons and bind the proper events
 
 	// ---- PRIVATE ----
 	//------------------------------------------------------------------------------------------------
@@ -58,6 +60,8 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 			m_OnButtonActivated.Invoke(button.GetRootWidget().GetName());
 	}
 
+//---- REFACTOR NOTE END ----	
+	
 	//------------------------------------------------------------------------------------------------
 	private void UpdateAllButtonsPadding(Widget wrapper, SCR_EDynamicFooterButtonAlignment alignment = 0)
 	{
@@ -184,7 +188,7 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 
 		return button;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Caches a button and binds the invoker. Uses the button widget's name as a tag
 	void RegisterButton(SCR_InputButtonComponent button)
@@ -226,7 +230,7 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 
 		return true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Removes all buttons
 	void ClearButtons()

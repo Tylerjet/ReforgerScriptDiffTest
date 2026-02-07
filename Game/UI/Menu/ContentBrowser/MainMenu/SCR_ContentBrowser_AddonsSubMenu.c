@@ -17,6 +17,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	[Attribute("0", UIWidgets.ComboBox, "This menu is quite universal and can work in many modes - what do you want it to be?", "", ParamEnumArray.FromEnum(EContentBrowserAddonsSubMenuMode))]
 	protected EContentBrowserAddonsSubMenuMode m_eMode;
 
+	[Attribute("")]
+	protected string m_sOnlinePageType;
+	
 	[Attribute("SOUND_FE_TURN_PAGE")]
 	protected string m_sScrollWheelPageTurningSound;
 	
@@ -368,7 +371,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		m_WorkshopApi.RequestPage(callback, m_GetAssetListParamsDefault, m_bClearCacheAtNextRequest);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Requests a filtered page from backend to get the actual items to display
 	protected void RequestOnlinePage(int pageId)
@@ -387,6 +390,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		m_GetAssetListParams.limit = GRID_N_ROWS * GRID_N_COLUMNS;
 		m_GetAssetListParams.offset = pageId * GRID_N_ROWS * GRID_N_COLUMNS;
+		m_GetAssetListParams.type = m_sOnlinePageType;
 
 		//m_GetAssetListParams.PackToFile("$profile:GetAssetList.json");
 		#ifdef WORKSHOP_DEBUG
@@ -452,6 +456,10 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		SCR_WorkshopItem itemRegistered;
 		foreach (WorkshopItem i : rawWorkshopItems)
 		{
+			// Skip local items 
+			if (WorldSaveItem.Cast(i) && !i.GetActiveRevision())
+				continue;
+			
 			itemRegistered = SCR_AddonManager.GetInstance().Register(i);
 			itemsUnfiltered.Insert(itemRegistered);
 		}
@@ -671,9 +679,11 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		bool show = GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE && !m_bPanelsModeEmpty;
 		string primaryLabel = SCR_WorkshopUiCommon.GetPrimaryActionName(item);
 
+		SCR_EAddonPrimaryActionState state = SCR_WorkshopUiCommon.GetPrimaryActionState(item);
+		
 		SetNavigationButtonVisibile(m_NavDetails, show && m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY);
 		SetNavigationButtonVisibile(m_NavFavourite, show);
-		SetNavigationButtonVisibile(m_NavEnable, show && item.GetOffline() && !SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item));
+		SetNavigationButtonVisibile(m_NavEnable, show && item.GetOffline() && !SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item) && !(!item.GetEnabled() && state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD));
 		SetNavigationButtonVisibile(m_NavPrimary, show && !primaryLabel.IsEmpty());
 		
 		// Favorite
@@ -921,7 +931,11 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected void SetItemEnabled()
 	{
 		SCR_WorkshopItem item = GetSelectedItem();
-		if (!item || item.GetRestricted() || !item.GetOffline() || SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item))
+		if (!item)
+			return;
+		
+		SCR_EAddonPrimaryActionState state = SCR_WorkshopUiCommon.GetPrimaryActionState(item);
+		if (item.GetRestricted() || !item.GetOffline() || SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item) || (!item.GetEnabled() && state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD))
 			return;
 		
 		SCR_WorkshopUiCommon.OnEnableAddonButton(item);
@@ -1412,9 +1426,29 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	void PackGetAssetListParams(SCR_ContentBrowser_GetAssetListParams p, bool defaultValues = false)
 	{
 		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
-
 		SCR_FilterCategory otherCategory = filterSet.FindFilterCategory("other");
+		
+		// Pack search string
+		string searchStr = m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterSearchComponent.GetValue();
+		if (!searchStr.IsEmpty() && !defaultValues)
+			p.StoreString("search", searchStr);				// <- "search": "..."
+		
+		// Pack sorting and filters
+		PackSortingData(p);
+		PackQuickFilterData(p, defaultValues);
+		PackTagFilterData(p, defaultValues);
 
+		// --- Reported ---
+		// Pack reported
+		SCR_FilterEntry reportedFilter = otherCategory.FindFilter("reported");
+		p.StoreBoolean("reported", reportedFilter.GetSelected(defaultValues));		// <- "reported": true
+		p.StoreBoolean("hidden", reportedFilter.GetSelected(defaultValues));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Pack filter sorting settings - order type, dirrection
+	protected void PackSortingData(SCR_ContentBrowser_GetAssetListParams params)
+	{
 		// Pack sorting
 		string orderBy = "name";
 		string currentSortingItem = m_Widgets.m_SortingHeaderComponent.GetSortElementName();
@@ -1447,16 +1481,15 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		if (!sortAscending)
 			orderDirection = orderDesc;
 
-		p.StoreString("orderBy", orderBy);					// <- "orderBy": "..."
-		p.StoreString("orderDirection", orderDirection);	// <- "orderDirection": "..."
-
-		// Pack search string
-		string searchStr = m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterSearchComponent.GetValue();
-		if (!searchStr.IsEmpty() && !defaultValues)
-		{
-			p.StoreString("search", searchStr);				// <- "search": "..."
-		}
-
+		params.StoreString("orderBy", orderBy);					// <- "orderBy": "..."
+		params.StoreString("orderDirection", orderDirection);	// <- "orderDirection": "..."
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void PackQuickFilterData(SCR_ContentBrowser_GetAssetListParams params, bool defaultValues)
+	{
+		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
+		
 		// Pack 'quick filters'
 		SCR_FilterCategory quickCategory = filterSet.FindFilterCategory("quick_filters");
 		SCR_FilterEntry filterAll = quickCategory.FindFilter("all");
@@ -1465,18 +1498,24 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		SCR_FilterEntry filterRated = quickCategory.FindFilter("rated");
 
 		if (filterFav.GetSelected(defaultValues))
-			p.StoreBoolean("favorited", true);				// <- "favorited": true
+			params.StoreBoolean("favorited", true);				// <- "favorited": true
 		//else if (filterSub.GetSelected())
 		//	p.StoreBoolean("subscribed", true);				// <- "subscribed": true
 		else if (filterRated.GetSelected(defaultValues))
 		{
-			p.StartObject("averageRating");					// <- "AverageRating" object
-			p.StoreFloat("gt", 0.75);						// <- "gt": 1.23
-			p.StoreFloat("lt", 1);							// <- "lt": 1.23
-			p.EndObject();									// <- End AverageRating
+			params.StartObject("averageRating");					// <- "AverageRating" object
+			params.StoreFloat("gt", 0.75);						// <- "gt": 1.23
+			params.StoreFloat("lt", 1);							// <- "lt": 1.23
+			params.EndObject();									// <- End AverageRating
 		}
-
-		// --- Pack tags ---
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void PackTagFilterData(SCR_ContentBrowser_GetAssetListParams params, bool defaultValues)
+	{
+		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
+		SCR_FilterCategory otherCategory = filterSet.FindFilterCategory("other");
+		
 		// Make arrays with tags to include or exclude
 		array<ref array<string>> tagArraysInclude = {};
 		array<string> tagsExclude = {};
@@ -1502,43 +1541,37 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Pack the tags
 		if (!tagArraysInclude.IsEmpty() || !tagsExclude.IsEmpty())
 		{
-			p.StartObject("tags");							// <- Start "tags" object
+			params.StartObject("tags");							// <- Start "tags" object
 
 			if (!tagArraysInclude.IsEmpty())
 			{
-				p.StartArray("include");					// <- Start "include"  array
+				params.StartArray("include");					// <- Start "include"  array
 
 				foreach (array<string> tagArray : tagArraysInclude)
 				{
-					p.ItemArray();							// <- Start tags array
+					params.ItemArray();							// <- Start tags array
 					foreach (string tag : tagArray)
 					{
-						p.ItemString(tag);					// <- Array element
+						params.ItemString(tag);					// <- Array element
 					}
-					p.EndArray();							// <- End tags array
+					params.EndArray();							// <- End tags array
 				}
 
-				p.EndArray();								// <- End "include" array
+				params.EndArray();								// <- End "include" array
 			}
 
 			if (!tagsExclude.IsEmpty())
 			{
-				p.StartArray("exclude");					// <- Start "exclude" array
+				params.StartArray("exclude");					// <- Start "exclude" array
 				foreach (string tag : tagsExclude)
 				{
-					p.ItemString(tag);						// <- Array element
+					params.ItemString(tag);						// <- Array element
 				}
-				p.EndArray();								// <- End "exclude" array
+				params.EndArray();								// <- End "exclude" array
 			}
 
-			p.EndObject();									// <- End "tags" object
+			params.EndObject();									// <- End "tags" object
 		}
-
-		// --- Reported ---
-		// Pack reported
-		SCR_FilterEntry reportedFilter = otherCategory.FindFilter("reported");
-		p.StoreBoolean("reported", reportedFilter.GetSelected(defaultValues));		// <- "reported": true
-		p.StoreBoolean("hidden", reportedFilter.GetSelected(defaultValues));
 	}
 	
 	//------------------------------------------------------------------------------------------------

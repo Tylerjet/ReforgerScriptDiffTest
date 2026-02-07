@@ -47,7 +47,7 @@ class CareerMenuUI: ChimeraMenuBase
 		entry.SetName(sName);
 		
 		// Setup label 
-		string sLabelName = "txtLabel";
+		const string sLabelName = "txtLabel";
 		TextWidget wLabel = TextWidget.Cast(entry.FindAnyWidget(sLabelName));
 		if(wLabel)
 			wLabel.SetText(sLabel);

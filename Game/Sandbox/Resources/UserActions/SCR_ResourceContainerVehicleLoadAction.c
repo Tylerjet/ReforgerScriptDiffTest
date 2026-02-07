@@ -89,19 +89,31 @@ class SCR_ResourceContainerVehicleLoadAction : SCR_ScriptedUserAction
 		
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	/*override bool CanBeShownScript(IEntity user)
+	override bool CanBeShownScript(IEntity user)
 	{	
 		if (!super.CanBeShownScript(user))
 			return false;
-		
-		if (!m_ResourceComponent || !m_ResourceComponent.AreSuppliesEnabled())
+
+		if (!m_ResourceComponent || !m_ResourceComponent.IsResourceTypeEnabled(m_eResourceType))
 			return false;
-		
+
+		Vehicle vehicle = Vehicle.Cast(GetOwner());
+		if (!vehicle)
+		{
+			vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+			if (!vehicle)
+				return false;
+		}
+
+		SCR_DamageManagerComponent damageMgr = vehicle.GetDamageManager();
+		if (!damageMgr || damageMgr.GetState() == EDamageState.DESTROYED)
+			return false;
+
 		return true;
-	}*/
-	
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override event bool CanBePerformedScript(IEntity user)
 	{	

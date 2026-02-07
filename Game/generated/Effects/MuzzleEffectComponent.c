@@ -15,6 +15,10 @@ class MuzzleEffectComponentClass: BaseEffectComponentClass
 
 class MuzzleEffectComponent: BaseEffectComponent
 {
+	proto external bool IsOverridenByAttachment();
+
+	// callbacks
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.

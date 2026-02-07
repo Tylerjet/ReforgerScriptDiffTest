@@ -83,7 +83,7 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 	//----------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " throwing grenade to " + m_vTargetPosition.ValueToString();
+		return this.ToString() + " throwing grenade to " + m_vTargetPosition.m_Value.ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------------------

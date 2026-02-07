@@ -46,12 +46,16 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	protected ref ScriptInvoker Event_OnTransformationStart = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnTransformationConfirm = new ScriptInvoker;
 	protected ref ScriptInvoker Event_OnTransformationCancel = new ScriptInvoker;
+	// Called in beginning of Clean so system realying on tranforming entities can handle them before cleared in component
+	protected ref ScriptInvokerVoid m_OnCleanStart = new ScriptInvokerVoid();
 	
 	//Server only script invokers
 	protected ref ScriptInvoker Event_OnTransformationConfirmServer = new ScriptInvoker;
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Start
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Initiate editing process.
 	Must be called on editor's owner.
@@ -136,6 +140,7 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		Rpc(StartEditingServer, pivotId, entityIds, vector.One, transform, m_PreviewManager.IsUnderwater(), m_PreviewManager.GetVerticalMode());
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void StartEditingServer(int pivotId, array<int> entityIds, vector dummyVector, vector transform[4], bool isUnderwater, EEditorTransformVertical verticalMode)
 	{
@@ -182,8 +187,9 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 			GetGame().GetCallqueue().CallLater(StartEditingOwner, simulatedDelay, false);
 		else
 			Rpc(StartEditingOwner);
-		//StartEditingOwner(result);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void StartEditingOwner()
 	{
@@ -207,6 +213,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Confirm
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Confirm editing process.
 	Must be called on editor's owner.
@@ -246,12 +254,14 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		if (!params) return false;
 		
 		//--- Send request to server
-		Rpc(ConfirmEditingServer, params);
+		Rpc(ConfirmEditingServer, params, GetManager().GetPlayerID());
 		
 		return true;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void ConfirmEditingServer(SCR_EditorPreviewParams params)
+	protected void ConfirmEditingServer(SCR_EditorPreviewParams params, int playerID)
 	{
 		if (!params.Deserialize())
 		{
@@ -271,6 +281,11 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 				if (slotEntity) slotEntity.SetOccupant(m_EditedPivot.GetOwner());
 			}
 			
+			foreach (SCR_EditableEntityComponent entity : m_aEditedEntities)
+			{
+				entity.SetAuthor(playerID);
+			}
+			
 			Event_OnTransformationConfirmServer.Invoke(m_aEditedEntities, m_mServerEntityStartingPosition);
 			result = true;
 		}
@@ -279,6 +294,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		
 		Clean();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
 	protected void ConfirmEditingOwner(bool result)
 	{
@@ -302,6 +319,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Cancel
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Cancel editing process.
 	Must be called on editor's owner.
@@ -322,6 +341,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		
 		Clean();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	protected void CancelEditingServer()
 	{
@@ -330,6 +351,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Support Funcions
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if editing is currently on.
 	\return True when editing
@@ -338,6 +361,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	{
 		return m_aEditedEntities != null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check if given entity is edited
 	\return True when editing the entity
@@ -346,6 +371,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	{
 		return m_aEditedEntities && m_aEditedEntities.Find(entity) != -1;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called when request for editing is sent to server.
 	Called only for editor user.
@@ -355,6 +382,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	{
 		return Event_OnTransformationRequest;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called when editing is confirmed by server.
 	Called only for editor user.
@@ -364,6 +393,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	{
 		return Event_OnTransformationStart;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called when editing is confirmed.
 	Called only for editor user.
@@ -373,6 +404,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	{
 		return Event_OnTransformationConfirm;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called when editing is confirmed on server only.
 	Called only for editor user.
@@ -385,6 +418,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		
 		return Event_OnTransformationConfirmServer;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get event called when editing is canceled.
 	Called only for editor user.
@@ -394,16 +429,30 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	{
 		return Event_OnTransformationCancel;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnCleanStart()
+	{
+		return m_OnCleanStart;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	bool CanBeTransformed()
 	{
 		return m_bCanBeTransformed;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetCanBeTransformed(bool val)
 	{
 		m_bCanBeTransformed = val;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void Clean()
 	{
+		m_OnCleanStart.Invoke();
+		
 		m_aEditedEntities = null;
 		m_EditedPivot = null;
 #ifndef PREVIEW_ENTITY_SHOW_REFERENCE
@@ -421,6 +470,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 			core.Event_OnEntityAccessKeyChanged.Remove(OnEntityAccessKeyChanged);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityUnregistered(SCR_EditableEntityComponent entity)
 	{
 		if (!m_aEditedEntities || m_aEditedEntities.Find(entity) == -1) return;
@@ -428,6 +479,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		CancelEditing();
 		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindId(entity));
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityVisibilityChanged(SCR_EditableEntityComponent entity)
 	{
 		if (!m_aEditedEntities || m_aEditedEntities.Find(entity) == -1) return;
@@ -435,6 +488,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		if (!entity.GetVisibleInHierarchy()) CancelEditing();
 		SendNotification(ENotification.EDITOR_TRANSFORMING_LOST_ACCESS, Replication.FindId(entity));
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnEntityAccessKeyChanged(SCR_EditableEntityComponent entity)
 	{
 		if (!m_aEditedEntities || m_aEditedEntities.Find(entity) == -1) return;
@@ -445,6 +500,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Default Functions
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		/*
@@ -489,6 +546,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 			CancelEditing();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorActivate()
 	{
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
@@ -501,6 +560,8 @@ class SCR_TransformingEditorComponent : SCR_BaseEditorComponent
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_CONFIRM, "", "Confirm Transforming", "Transforming");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_TRANSFORM_CANCEL, "", "Cancel Transforming", "Transforming");
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnEditorDeactivate()
 	{
 		Clean();

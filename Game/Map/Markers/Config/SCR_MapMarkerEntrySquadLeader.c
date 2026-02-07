@@ -133,9 +133,9 @@ class SCR_MapMarkerEntrySquadLeader: SCR_MapMarkerEntryDynamic
 	
 	//------------------------------------------------------------------------------------------------
 	//! SCR_BaseGameMode event
-	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
-	{		
-		UpdateMarkerTarget(playerId);
+	protected void OnPlayerKilled( notnull SCR_InstigatorContextData instigatorContextData)
+	{
+		UpdateMarkerTarget(instigatorContextData.GetVictimPlayerID());
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -19,6 +19,10 @@ class AIAgent: GenericController
 	proto external AIGroup GetParentGroup();
 	proto external void SetLOD(int newLOD);
 	proto external int GetLOD();
+	/*
+	* Sets LOD that is to be forced upon the Agent.
+	* @param lod between -1 and MaxLOD
+	*/
 	proto external void SetPermanentLOD(int lod);
 	proto external int GetPermanentLOD();
 	/*
@@ -34,7 +38,8 @@ class AIAgent: GenericController
 	//Does AIAgent affects AIWorld limit of AIs
 	proto external bool CountTowardsAIWorldLimit();
 	proto external int GetDangerEventsCount();
-	proto external AIDangerEvent GetDangerEvent(int index);
+	//! Internally similar danger events can be aggregated. In that case the new danger event is not put into the queue, but instead counter of previous similar event is increased.
+	proto AIDangerEvent GetDangerEvent(int index, out int outCount);
 	proto external void ClearDangerEvents(int howMany);
 	proto external ActionManager GetActionManager();
 	proto external AICommunicationComponent GetCommunicationComponent();

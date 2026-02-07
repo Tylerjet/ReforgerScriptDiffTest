@@ -1,7 +1,7 @@
 class SCR_PushVehicleAction : SCR_ScriptedUserAction
 {
 	protected const float FORCE_SCALE						= 1.0;
-	protected const float COUNTERFORCE_SCALE				= -0.5;
+	protected const float COUNTERFORCE_SCALE				= -1.5;
 
 	[Attribute(defvalue: "1", desc: "Mass to force\n[N per kg]")]
 	protected float m_fMassToForce;
@@ -20,6 +20,9 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 
 	[Attribute(defvalue: "5", desc: "How many times per second server should try to apply this force to the vehicle", params: "1 30 1")]
 	protected int m_iForceApplicationFrequency;
+
+	[Attribute(defvalue: "1.5", desc: "Multiplies the offset used for the position of the counter force.\nThis makes it easier to apply rotational force without pushing away the object from the user.", params: "0.1 inf")]
+	protected float m_fCounterForceOffsetMultiplier;
 
 	protected float m_fApplicationInterval;
 	protected float m_fApplicationDeltaTime;
@@ -123,8 +126,9 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 		m_fApplicationDeltaTime = 0;
 		// Apply force above and below center of mass for best efficiency
 		physics.ApplyImpulseAt(forceTarget + forceOffset, impulse * FORCE_SCALE);
+
 		if (forceOffset != vector.Zero)
-			physics.ApplyImpulseAt(forceTarget - forceOffset, impulse * COUNTERFORCE_SCALE);
+			physics.ApplyImpulseAt(forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier), impulse * COUNTERFORCE_SCALE);//lowered by another 50% to reduce sliding
 
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_UNFLIP))
@@ -136,8 +140,8 @@ class SCR_PushVehicleAction : SCR_ScriptedUserAction
 			m_aShapes.Insert(Shape.CreateArrow(forceTarget + forceOffset, forceTarget + forceOffset + impulse, 1, Color.GREEN, shapeFlags));
 			if (forceOffset != vector.Zero)
 			{
-				m_aShapes.Insert(Shape.CreateArrow(forceTarget, forceTarget - forceOffset, 0.1, Color.PINK, shapeFlags));
-				m_aShapes.Insert(Shape.CreateArrow(forceTarget - forceOffset, forceTarget - forceOffset + (impulse * COUNTERFORCE_SCALE), 1, Color.BLACK, shapeFlags));
+				m_aShapes.Insert(Shape.CreateArrow(forceTarget, forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier), 0.1, Color.PINK, shapeFlags));
+				m_aShapes.Insert(Shape.CreateArrow(forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier), forceTarget - (forceOffset * m_fCounterForceOffsetMultiplier) + (impulse * COUNTERFORCE_SCALE), 1, Color.BLACK, shapeFlags));
 			}
 		}
 #endif

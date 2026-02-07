@@ -92,6 +92,7 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 		if (!world)
 			return;
 
+		//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 		// Using TagManager we get array of closest entities where Insects can spawn
 		TagSystem tagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
 		if (!tagSystem)
@@ -110,6 +111,8 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 		{
 			ProcessEntity(entity);
 		}
+		
+		//---- REFACTOR NOTE END ----
 	}
 
 	//------------------------------------------------------------------------------------------------

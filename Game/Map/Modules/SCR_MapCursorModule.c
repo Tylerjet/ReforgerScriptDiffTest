@@ -242,12 +242,11 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{
 		float screenX, screenY;
 		m_MapWidget.GetScreenSize(screenX, screenY);
-		
-		m_InputManager.SetCursorPosition(screenX/2, screenY/2);
+		m_InputManager.SetCursorPosition(screenX * 0.5, screenY * 0.5);
 
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		m_CursorInfo.x = workspace.DPIUnscale(screenX/2);
-		m_CursorInfo.y = workspace.DPIUnscale(screenY/2);
+		m_CursorInfo.x = workspace.DPIUnscale(screenX * 0.5);
+		m_CursorInfo.y = workspace.DPIUnscale(screenY * 0.5);
 
 		if (!m_CursorInfo.isFixedMode)
 			m_fFreeCursorTime = FREE_CURSOR_RESET;
@@ -262,13 +261,13 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		//begin move
 		if (m_CursorInfo.lastX != m_CursorInfo.x || m_CursorInfo.lastY != m_CursorInfo.y)
 		{
-			if (m_CursorInfo.isGamepad)
-				m_InputManager.SetCursorPosition(m_CursorInfo.x, m_CursorInfo.y);
+			WorkspaceWidget workspace = GetGame().GetWorkspace();
+			if (m_CursorInfo.isGamepad && workspace)
+				m_InputManager.SetCursorPosition(workspace.DPIScale(m_CursorInfo.x), workspace.DPIScale(m_CursorInfo.y));
 
-			if ( ~m_CursorState & EMapCursorState.CS_MOVE )
-			{
+
+			if (~m_CursorState & EMapCursorState.CS_MOVE)
 				SetCursorState(EMapCursorState.CS_MOVE);
-			}
 		}
 		//end move
 		else if (m_CursorState & EMapCursorState.CS_MOVE)
@@ -700,35 +699,6 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		{
 			fX = workspace.DPIScale(x);
 			fY = workspace.DPIScale(y);
-
-			// free mode
-			if (!m_CursorInfo.isFixedMode)
-			{
-				if (m_CursorState & STATE_RESET_RESTRICTED)
-					m_fFreeCursorTime = 0;
-				else
-					m_fFreeCursorTime += System.GetFrameTimeS();
-				
-				if (m_fFreeCursorTime > FREE_CURSOR_RESET - 1.0)
-				{
-					float alpha = Math.InverseLerp(FREE_CURSOR_RESET, FREE_CURSOR_RESET - 1.0, m_fFreeCursorTime);
-					m_CustomCursor.SetOpacity(alpha);
-				}
-				
-				if (m_fFreeCursorTime >= FREE_CURSOR_RESET)
-				{
-					m_CursorInfo.isFixedMode = true;
-					m_fFreeCursorTime = 0;
-					m_CustomCursor.SetOpacity(1);
-					
-					ForceCenterCursor();
-
-					int iX, iY;
-					WidgetManager.GetMousePos(iX, iY);
-					fX = iX;
-					fY = iY;
-				}
-			}
 		}
 		else
 		{
@@ -869,7 +839,17 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_fFreeCursorTime = 0;
 		m_CustomCursor.SetOpacity(1);
 		m_CursorInfo.isFixedMode = false;
-		m_CursorInfo.x += value * System.GetFrameTimeS() * 1000 * m_fPanStickMultiplier;
+
+		float maxX, maxY;
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		if (m_wRootWidget && workspace)
+		{
+			m_wRootWidget.GetScreenSize(maxX, maxY);
+			maxX = workspace.DPIUnscale(maxX);
+			maxY = workspace.DPIUnscale(maxY);
+		}
+
+		m_CursorInfo.x = Math.Clamp(m_CursorInfo.x + value * System.GetFrameTimeS() * 1000 * m_fPanStickMultiplier, 1, maxX);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -885,7 +865,17 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_fFreeCursorTime = 0;
 		m_CustomCursor.SetOpacity(1);
 		m_CursorInfo.isFixedMode = false;
-		m_CursorInfo.y -= value * System.GetFrameTimeS() * 1000 * m_fPanStickMultiplier;
+
+		float maxX, maxY;
+		WorkspaceWidget workspace = GetGame().GetWorkspace();
+		if (m_wRootWidget && workspace)
+		{
+			m_wRootWidget.GetScreenSize(maxX, maxY);
+			maxX = workspace.DPIUnscale(maxX);
+			maxY = workspace.DPIUnscale(maxY);
+		}
+
+		m_CursorInfo.y = Math.Clamp(m_CursorInfo.y - value * System.GetFrameTimeS() * 1000 * m_fPanStickMultiplier, 1, maxY);
 	}
 	
 	//------------------------------------------------------------------------------------------------

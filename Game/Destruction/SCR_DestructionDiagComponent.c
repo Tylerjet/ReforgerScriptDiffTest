@@ -6,7 +6,7 @@ class SCR_DestructionDiagComponentClass : ScriptComponentClass
 class SCR_DestructionDiagComponent : ScriptComponent
 {
 #ifdef ENABLE_DIAG
-	protected const string DAMAGE_TYPE_NAMES[10] = { "TRUE", "COLLISION", "MELEE", "KINETIC", "FRAGMENTATION", "EXPLOSIVE", "INCENDIARY", "FIRE", "REGENERATION", "BLEEDING" };
+	protected static const string DAMAGE_TYPE_NAMES[10] = { "TRUE", "COLLISION", "MELEE", "KINETIC", "FRAGMENTATION", "EXPLOSIVE", "INCENDIARY", "FIRE", "REGENERATION", "BLEEDING" };
 	protected ref array<IEntity> m_aToDamage = {};
 	
 	//------------------------------------------------------------------------------------------------

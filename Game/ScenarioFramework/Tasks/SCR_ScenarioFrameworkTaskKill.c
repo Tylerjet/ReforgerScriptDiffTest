@@ -1,13 +1,12 @@
-//------------------------------------------------------------------------------------------------
 class SCR_TaskKillClass: SCR_ScenarioFrameworkTaskClass
 {
 };
 
-//------------------------------------------------------------------------------------------------
 class SCR_TaskKill : SCR_ScenarioFrameworkTask
 {	
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] state Checks if object is not destroyed, has asset and support entity, then removes self from damage state change event and finishes the task
 	void OnObjectDamage(EDamageState state)
 	{
 		if (state != EDamageState.DESTROYED || !m_Asset || !m_SupportEntity)
@@ -21,6 +20,8 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Rehooks task asset, gets damage manager, and subscribes to damage state changes.
+	//! \param[in] object Rehooks task asset, gets damage manager, adds damage state change listener.
 	override void RehookTaskAsset(IEntity object)
 	{
 		if (!object)
@@ -34,6 +35,8 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 	}
 		
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity.
+	//! \return true if support entity is found, false otherwise.
 	override bool SetSupportEntity()
 	{
 		m_SupportEntity = SCR_ScenarioFrameworkTaskKillSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskKillSupportEntity));
@@ -48,6 +51,7 @@ class SCR_TaskKill : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Initializes damage manager component, subscribes to damage state changes.
 	override void Init()
 	{
 		super.Init();

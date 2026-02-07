@@ -2,66 +2,16 @@ class SCR_DefendWaypointClass: SCR_TimedWaypointClass
 {
 };
 
-[BaseContainerProps()]
-class SCR_DefendWaypointPreset
-{
-	[Attribute("", UIWidgets.EditBox, "Preset name, only informative. Switch using index.")];
-	private string m_sName;
-	
-	[Attribute("true", UIWidgets.CheckBox, "Use turrets?")];
-	bool m_bUseTurrets;
-	
-	[Attribute("1", UIWidgets.Slider, "Fraction of SA used for this waypoint 0 - no, 1 - all available. The rest uses sector defense", "0 1 0.1")];
-	float m_fFractionOfSA;
-	
-	[Attribute("", UIWidgets.Auto, "List tags to search in the preset")];
-	ref array<string> m_aTagsForSearch;	
-};
-
+//----------------------------------------------------------------------------------------
 class SCR_DefendWaypoint : SCR_TimedWaypoint
 {
 	[Attribute("0", UIWidgets.Object, "Fast init - units will be spawned on their defensive locations")];
 	protected bool m_bFastInit;
 	
 	[Attribute("", UIWidgets.Object, "Defend presets")];
-	protected ref array<ref SCR_DefendWaypointPreset> m_DefendPresets;
+	protected ref array<ref SCR_DefendWaypointPreset> m_aDefendPresets;
 	
 	protected int m_iCurrentDefendPreset;
-	 
-	//----------------------------------------------------------------------------------------
-	array<string> GetTagsForSearch()
-	{
-		return m_DefendPresets[m_iCurrentDefendPreset].m_aTagsForSearch;
-	}
-	
-	//----------------------------------------------------------------------------------------
-	bool GetUseTurrets()
-	{
-		return m_DefendPresets[m_iCurrentDefendPreset].m_bUseTurrets;
-	}
-	
-	//----------------------------------------------------------------------------------------
-	int GetCurrentDefendPreset()
-	{
-		return m_iCurrentDefendPreset;
-	}
-	
-	//----------------------------------------------------------------------------------------
-	float GetFractionOfSA()
-	{
-		return m_DefendPresets[m_iCurrentDefendPreset].m_fFractionOfSA;
-	}
-	
-	//----------------------------------------------------------------------------------------
-	bool SetCurrentDefendPreset(int newDefendPresetIndex)
-	{
-		if ((newDefendPresetIndex >= 0) && (newDefendPresetIndex < m_DefendPresets.Count()))
-		{ 
-			m_iCurrentDefendPreset = newDefendPresetIndex;
-			return true;
-		}
-		return false;
-	}
 	
 	//----------------------------------------------------------------------------------------
 	bool GetFastInit()
@@ -80,8 +30,64 @@ class SCR_DefendWaypoint : SCR_TimedWaypoint
 	{
 		return new SCR_AIDefendWaypointState(groupUtilityComp, this);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Clears Defend Presets
+	void ClearDefendPresets()
+	{
+		if (m_aDefendPresets)
+			m_aDefendPresets.Clear();
+	}
+
+	//----------------------------------------------------------------------------------------
+	SCR_DefendWaypointPreset GetCurrentDefendPreset()
+	{
+		if (!m_aDefendPresets.IsIndexValid(m_iCurrentDefendPreset))
+			return null;
+		return m_aDefendPresets[m_iCurrentDefendPreset];
+	}
+	
+	//----------------------------------------------------------------------------------------
+	int GetCurrentDefendPresetIndex()
+	{
+		return m_iCurrentDefendPreset;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	bool SetCurrentDefendPreset(int newDefendPresetIndex)
+	{
+		if (m_aDefendPresets.IsIndexValid(newDefendPresetIndex))
+		{ 
+			m_iCurrentDefendPreset = newDefendPresetIndex;
+			return true;
+		}
+		return false;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	bool AddDefendPreset(SCR_DefendWaypointPreset preset)
+	{
+		if (!m_aDefendPresets.Contains(preset))
+		{
+			m_aDefendPresets.Insert(preset);
+			return true;
+		}
+		return false;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	bool RemoveDefendPreset(int presetIndex)
+	{
+		if (m_aDefendPresets.IsIndexValid(presetIndex))
+		{
+			m_aDefendPresets.Remove(presetIndex);
+			return true;
+		}
+		return false;
+	}
 };
 
+//----------------------------------------------------------------------------------------
 class SCR_AIDefendWaypointState : SCR_AIWaypointState
 {
 	override void OnDeselected()
@@ -125,4 +131,4 @@ class SCR_AIDefendWaypointState : SCR_AIWaypointState
 		}
 		myGroup.ReleaseCompartments();
 	}
-}
+};

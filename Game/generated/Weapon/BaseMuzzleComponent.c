@@ -11,6 +11,8 @@ Do not modify, this script is generated
 
 class BaseMuzzleComponent: GameComponent
 {
+	// Returns true if muzzle is suppressed
+	proto external bool IsMuzzleSuppressed();
 	proto external EMuzzleType GetMuzzleType();
 	proto external int GetNextFireModeIndex();
 	proto external int GetFireModesCount();
@@ -38,6 +40,10 @@ class BaseMuzzleComponent: GameComponent
 	proto external UIInfo GetUIInfo();
 	// Open Bolt Info
 	proto external bool GetOpenBoltState();
+	// Get gamepad effect context name
+	proto external owned string GetGamepadEffectContext();
+	proto external void SetGamepadEffectsEnabled(bool val);
+	proto external WeaponGamepadEffectsManagerComponent GetGamepadEffectsManager();
 	proto external IEntity GetOwner();
 }
 

@@ -14,7 +14,7 @@ Do not modify, this script is generated
 class ResourceManagerPlugin: WorkbenchPlugin
 {
 	event void OnRegisterResource(string absFileName, BaseContainer metaFile);
-	event BuildResourceContext OnBuildResource(string absFileName, BaseContainer metaFile, GeneratedResources generatedResources);
+	event BuildResourceContext OnBuildResource(string absSrcFileName, string absDestFileName, BaseContainer metaFile, BaseContainer configuration, GeneratedResources generatedResources);
 	event void OnRenameResource(string absFileNameOld, string absFileNameNew, BaseContainer metaFile);
 	//! Returns a directory where new default materials may be generated for given mesh object model (`absModelPath`).
 	event string OnGetMaterialGenerateDir(string absModelPath);

@@ -19,7 +19,7 @@ class SCR_ServerBrowserDialogManager
 	protected const string TAG_CHECKING_CONTENT 				= "CHECKING_CONTENT";
 	protected const string TAG_MOD_UGC_PRIVILEGE_MISSING 		= "MOD_UGC_PRIVILEGE_MISSING";
 	protected const string TAG_MODS_DOWNLOADING 				= "MODS_DOWNLOADING";
-	protected const string TAG_QUEUE_WAITING 					= "QUEUE_WAITING";
+	protected const string TAG_SERVER_FULL 						= "SERVER_FULL";
 	protected const string TAG_PASSWORD_REQUIRED 				= "PASSWORD_REQUIRED";
 	protected const string TAG_BACKEND_TIMEOUT					= "BACKEND_TIMEOUT";
 	protected const string TAG_BANNED							= "JOIN_FAILED_BAN";
@@ -44,10 +44,8 @@ class SCR_ServerBrowserDialogManager
 	protected ref ScriptInvokerVoid m_OnConfirm;
 	protected ref ScriptInvokerVoid m_OnCancel;
 	protected ref ScriptInvokerVoid m_OnJoinProcessCancel;
-	protected ref ScriptInvokerVoid m_OnDialogClose;
 
 	protected ref ScriptInvokerRoom m_OnDownloadComplete;
-	protected ref ScriptInvokerRoom m_OnJoinRoomDemand;
 	protected ref ScriptInvokerVoid m_OnDownloadCancelDialogClose;
 
 	//------------------------------------------------------------------------------------------------
@@ -69,13 +67,17 @@ class SCR_ServerBrowserDialogManager
 		{
 			// Searching server
 			case EJoinDialogState.SEARCHING_SERVER:
+			{
 				SetDialogByTag(TAG_SEARCHING_SERVER);
 				break;
+			}
 
 			// Joining
 			case EJoinDialogState.JOIN:
+			{
 				SetDialogByTag(TAG_JOIN);
 				break;
+			}
 
 			// Joining
 			case EJoinDialogState.REJOIN:
@@ -86,9 +88,11 @@ class SCR_ServerBrowserDialogManager
 
 			// Server by given parameters wasn't found
 			case EJoinDialogState.SERVER_NOT_FOUND:
+			{
 				SetDialogByTag(TAG_SERVER_NOT_FOUND);
 				break;
-
+			}
+			
 			// Wrong version restriction
 			case EJoinDialogState.VERSION_MISMATCH:
 			{
@@ -105,23 +109,17 @@ class SCR_ServerBrowserDialogManager
 
 			// Checking mod content
 			case EJoinDialogState.CHECKING_CONTENT:
+			{
 				SetDialogByTag(TAG_CHECKING_CONTENT);
 				break;
+			}
 
-			// Mod to update
-			case EJoinDialogState.MODS_TO_UPDATE:
-				//DisplayModsToUpdate();
-				break;
-
-			// Cleint can't access user generated content
+			// Client can't access user generated content
 			case EJoinDialogState.MOD_UGC_PRIVILEGE_MISSING:
+			{
 				SetDialogByTag(TAG_MOD_UGC_PRIVILEGE_MISSING);
 				break;
-
-			// Queue waiting
-			case EJoinDialogState.QUEUE_WAITING:
-				DisplayWaitingQueue();
-				break;
+			}
 
 			// Password input dialog
 			case EJoinDialogState.PASSWORD_REQUIRED:
@@ -187,7 +185,6 @@ class SCR_ServerBrowserDialogManager
 		// Add invoker actions to current dialog
 		m_CurrentDialog.m_OnConfirm.Insert(OnDialogConfirm);
 		m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
-		m_CurrentDialog.m_OnClose.Insert(OnDialogClose);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -206,13 +203,6 @@ class SCR_ServerBrowserDialogManager
 		// Separate invoker for final cleanup (the other OnCancel might be used for specific functionalities still)
 		if (m_OnJoinProcessCancel)
 			m_OnJoinProcessCancel.Invoke();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnDialogClose(SCR_ConfigurableDialogUi dialog)
-	{
-		if (m_OnDialogClose)
-			m_OnDialogClose.Invoke();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -301,7 +291,6 @@ class SCR_ServerBrowserDialogManager
 		// Add invoker actions to current dialog
 		m_CurrentDialog.m_OnConfirm.Insert(OnDialogConfirm);
 		m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
-		m_CurrentDialog.m_OnClose.Insert(OnDialogClose);
 		
 		if (type == SCR_EJoinDownloadsConfirmationDialogType.REQUIRED)
 			SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Insert(OnDownloadingDone);
@@ -313,50 +302,27 @@ class SCR_ServerBrowserDialogManager
 		// Check if any of required addon is not failed
 		array<ref SCR_WorkshopItem> required = m_ModManager.GetRoomItemsScripted();
 
-		for (int i = 0, count = required.Count(); i < count; i++)
+		foreach (SCR_WorkshopItem item : required)
 		{
-			// Is offline
-			if (!required[i].GetOffline())
+			if (!item.GetOffline())
 				return;
 		}
 
+		SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Remove(OnDownloadingDone);
+		
 		if (m_OnDownloadComplete)
 			m_OnDownloadComplete.Invoke(m_JoinRoom);
-		
-		SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Remove(OnDownloadingDone);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Display waiting queue when server is full
-	//! Show current state of players
-	protected void DisplayWaitingQueue()
-	{
-		SetDialogByTag(TAG_QUEUE_WAITING);
-		UpdateWaitingQueue();
-
-		// Set state text
-		TextWidget txtStateTitle = TextWidget.Cast(m_CurrentDialog.GetRootWidget().FindAnyWidget("TxtStateTitle"));
-		if (txtStateTitle)
-			txtStateTitle.SetText("#AR-PlayerList_Header");
-
-		// Set action
-		m_CurrentDialog.m_OnConfirm.Insert(OnWaitingQueueConfirm);
-
-		#ifdef SB_DEBUG
-		Print("[SCR_ServerBrowserDialogManager] displaying queue waiting dialog");
-		#endif
-	}
-
-
-	//------------------------------------------------------------------------------------------------
-	//! Dispaly dialog for password insert whenever oassword is required
+	//! Display dialog for password insert whenever password is required
 	protected void DisplayPasswordRequired()
 	{
 		SCR_EditboxDialogUi editboxDialog = new SCR_EditboxDialogUi();
 		SetDialogByTag(TAG_PASSWORD_REQUIRED, editboxDialog);
 
 		editboxDialog.m_OnWriteModeLeave.Insert(OnPasswordEditboxChanged);
-		editboxDialog.FindButton("confirm").SetEnabled(false);
+		editboxDialog.FindButton(SCR_ConfigurableDialogUi.BUTTON_CONFIRM).SetEnabled(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -366,59 +332,13 @@ class SCR_ServerBrowserDialogManager
 		if (!m_CurrentDialog || !SCR_EditboxDialogUi.Cast(m_CurrentDialog))
 			return;
 
-		SCR_InputButtonComponent navButton = m_CurrentDialog.FindButton("confirm");
+		SCR_InputButtonComponent navButton = m_CurrentDialog.FindButton(SCR_ConfigurableDialogUi.BUTTON_CONFIRM);
 		if (navButton)
 			navButton.SetEnabled(!text.IsEmpty());
 
-		navButton = m_CurrentDialog.FindButton("cancel");
+		navButton = m_CurrentDialog.FindButton(SCR_ConfigurableDialogUi.BUTTON_CANCEL);
 		if (navButton)
 			navButton.SetEnabled(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this on server browser resfresh
-	protected void OnServerBrowserAutoRefresh()
-	{
-		if (m_iDisplayState == EJoinDialogState.QUEUE_WAITING)
-			UpdateWaitingQueue();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnWaitingQueueConfirm(SCR_ConfigurableDialogUi dialog)
-	{
-		if (m_ServerBrowser && m_OnJoinRoomDemand)
-			m_OnJoinRoomDemand.Invoke(m_JoinRoom);
-
-		m_CurrentDialog.m_OnConfirm.Remove(OnWaitingQueueConfirm);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Update wating queue with acutal player count
-	protected void UpdateWaitingQueue()
-	{
-		// Check room
-		if (!m_JoinRoom)
-			return;
-
-		// Gte player state
-		int count = m_JoinRoom.PlayerCount();
-		int limit = m_JoinRoom.PlayerLimit();
-
-		if (!m_CurrentDialog)
-			return;
-
-		// Set text
-		TextWidget txtState = TextWidget.Cast(m_CurrentDialog.GetRootWidget().FindAnyWidget("TxtState"));
-		if (txtState)
-			txtState.SetText(count.ToString() + "/" + limit.ToString());
-
-		// Setup button
-		SCR_InputButtonComponent btnConfirm = m_CurrentDialog.FindButton("confirm");
-		if (btnConfirm)
-		{
-			bool enable = limit - count > 0;
-			btnConfirm.SetEnabled(enable);
-		}
 	}
 
 	//! DECOUPLED DIALOGS
@@ -432,6 +352,7 @@ class SCR_ServerBrowserDialogManager
 		return dialog;
 	}
 
+	// Server details
 	//------------------------------------------------------------------------------------------------
 	SCR_ServerDetailsDialog CreateServerDetailsDialog(Room room, array<ref SCR_WorkshopItem> items, ScriptInvokerVoid onFavoritesResponse = null)
 	{
@@ -452,10 +373,41 @@ class SCR_ServerBrowserDialogManager
 	void UpdateRoomDetailsScenarioImage(MissionWorkshopItem scenario)
 	{
 		SCR_ServerDetailsDialog dialog = SCR_ServerDetailsDialog.Cast(m_CurrentDialog);
-		if(dialog)
+		if (dialog)
 			dialog.SetScenarioImage(scenario);
 	}
 
+	// Server Full
+	//------------------------------------------------------------------------------------------------
+	SCR_ServerFullDialog CreateServerFullDialog()
+	{
+		SCR_ServerFullDialog dialog = new SCR_ServerFullDialog();
+		SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS, TAG_SERVER_FULL, dialog);
+
+		m_CurrentDialog = dialog;
+
+		if (m_CurrentDialog)
+			m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
+		
+		return dialog;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateServerFullScenarioImage(MissionWorkshopItem scenario)
+	{
+		SCR_ServerFullDialog dialog = SCR_ServerFullDialog.Cast(m_CurrentDialog);
+		if (dialog)
+			dialog.SetScenarioImage(scenario);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Update wating queue with actual player count
+	void UpdateServerFullDialog()
+	{
+		SCR_ServerFullDialog dialog = SCR_ServerFullDialog.Cast(m_CurrentDialog);
+		if (dialog)
+			dialog.UpdateInfo();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Get & Set API
@@ -490,15 +442,6 @@ class SCR_ServerBrowserDialogManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvokerVoid GetOnDialogClose()
-	{
-		if (!m_OnDialogClose)
-			m_OnDialogClose = new ScriptInvokerVoid();
-
-		return m_OnDialogClose;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	ScriptInvokerRoom GetOnDownloadComplete()
 	{
 		if (!m_OnDownloadComplete)
@@ -514,15 +457,6 @@ class SCR_ServerBrowserDialogManager
 			m_OnDownloadCancelDialogClose = new ScriptInvokerVoid();
 
 		return m_OnDownloadCancelDialogClose;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ScriptInvokerRoom GetOnJoinRoomDemand()
-	{
-		if (!m_OnJoinRoomDemand)
-			m_OnJoinRoomDemand = new ScriptInvokerRoom();
-
-		return m_OnJoinRoomDemand;
 	}
 	
 	// Helpers
@@ -557,24 +491,11 @@ class SCR_ServerBrowserDialogManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetServerBrowser(ServerBrowserMenuUI serverBrowser)
-	{
-		m_ServerBrowser = serverBrowser;
-
-		if (m_ServerBrowser)
-		{
-			m_ServerBrowser.m_OnAutoRefresh.Remove(OnServerBrowserAutoRefresh);
-			m_ServerBrowser.m_OnAutoRefresh.Insert(OnServerBrowserAutoRefresh);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void SetModManager(SCR_RoomModsManager modManager)
 	{
 		m_ModManager = modManager;
 	}
-
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Enum for tracking current state of joining process
@@ -592,13 +513,11 @@ enum EJoinDialogState
 
 	// Content states
 	CHECKING_CONTENT, // Basic msg dialog with loading
-	MODS_TO_UPDATE, // Download confirm dialog
 	MODS_DOWNLOADING, // Progress bar dialog
 	MOD_RESTRICTED, // Basic error msg dialog
 	MOD_UGC_PRIVILEGE_MISSING, // Client can't use user generated content
 
 	// Additional actions states
-	QUEUE_WAITING, // Dialog with player count
 	PASSWORD_REQUIRED, // Editbox dialog
 
 	// Issues

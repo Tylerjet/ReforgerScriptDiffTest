@@ -8,40 +8,48 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	[Attribute(desc: "Marker Type", category: "Map Marker")]
 	protected ref SCR_ScenarioFrameworkMarkerType m_MapMarkerType;
 	
+	[Attribute(desc: "When enabled, map marker can by removed by owner on map.", category: "Map Marker")]
+	protected bool m_bCanBeRemovedByOwner;
+	
 	protected ref SCR_MapMarkerBase m_MapMarker;
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Represents the type of map marker in the scenario.
 	SCR_ScenarioFrameworkMarkerType GetMapMarkerType()
 	{
 		return m_MapMarkerType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] type
+	//! \param[in] type Sets map marker type for scenario framework marker.
 	void SetMapMarkerType(SCR_ScenarioFrameworkMarkerType type)
 	{
 		m_MapMarkerType = type;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return Represents the map marker object used by the method.
 	SCR_MapMarkerBase GetMapMarker()
 	{
 		return m_MapMarker;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false)
+	//! Restores default state, removes map marker, nullifies it, calls base method.
+	//! \param[in] includeChildren Includes children objects in default restoration process.
+	//! \param[in] reinitAfterRestoration Resets object after restoration, optionally reinitializing it.
+	//! \param[in] affectRandomization Affects randomization during default restoration.
+	override void RestoreToDefault(bool includeChildren = false, bool reinitAfterRestoration = false, bool affectRandomization = true)
 	{
 		RemoveMapMarker();
 		m_MapMarker = null;
 		
-		super.RestoreToDefault(includeChildren, reinitAfterRestoration);
+		super.RestoreToDefault(includeChildren, reinitAfterRestoration, affectRandomization);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Spawns map marker after all children spawned in scenario layer.
+	//! \param[in] layer for which this is called.
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		if (!m_MapMarker)
@@ -51,7 +59,7 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Removes map marker by ID from map marker manager.
 	void RemoveMapMarker()
 	{
 		if (!m_MapMarker)
@@ -72,6 +80,7 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Creates a map marker based on provided type, sets its position, custom text, and adds it to map marker manager if possible
 	protected void CreateMapMarker()
 	{
 		SCR_MapMarkerManagerComponent mapMarkerMgr = SCR_MapMarkerManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_MapMarkerManagerComponent));
@@ -100,6 +109,7 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 		vector worldPos = GetOwner().GetOrigin();
 		m_MapMarker.SetWorldPos(worldPos[0], worldPos[2]);
 		m_MapMarker.SetCustomText(m_MapMarkerType.m_sMapMarkerText);
+		m_MapMarker.SetCanBeRemovedByOwner(m_bCanBeRemovedByOwner);
 		
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (factionManager)
@@ -113,7 +123,7 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// destructor
+	//! Removes map marker when not in edit mode, despawns object if in edit mode.
 	void ~SCR_ScenarioFrameworkSlotMarker()
 	{
 		if (SCR_Global.IsEditMode())

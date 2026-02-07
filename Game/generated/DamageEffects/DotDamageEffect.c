@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-sealed class DotDamageEffect: SCR_PersistentDamageEffect
+class DotDamageEffect: SCR_PersistentDamageEffect
 {
 	/*!
 	Applies DOT equivalent to timeSlice seconds.
@@ -32,17 +32,17 @@ sealed class DotDamageEffect: SCR_PersistentDamageEffect
 	*/
 	proto external void DealCustomDot(notnull HitZone hitzone, float dotAmount, notnull DotDamageEffectTimerToken token, SCR_ExtendedDamageManagerComponent dmgManager);
 	/*!
-	set amount of damage per second
+	set amount of damage per second. Only works on server.
 	\param float dps: damage per second dealt by this DamageEffect.
 	*/
 	proto external void SetDPS(float dps);
 	/*!
-	Set max duration for this DOT effect. Value of 0 will make it infinite.
+	Set max duration for this DOT effect. Value of 0 will make it infinite.  Only works on server.
 	\param float newMaxduration: New max duration for this DamageEffect
 	*/
 	proto external void SetMaxDuration(float newMaxduration);
 	/*!
-	Increases the max duration of this damage effect
+	Increases the max duration of this damage effect.  Only works on server.
 	\param float amount: how much the max duration should be increased by
 	*/
 	proto external void ExtendMaxDuration(float amount);

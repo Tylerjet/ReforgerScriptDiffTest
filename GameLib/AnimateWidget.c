@@ -1,7 +1,13 @@
 //------------------------------------------------------------------------------------------------
 class AnimateWidget
 {
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Solving this with an array resulted in a crapton of calls. In Mod Manager menu, it was reported we reached 26 million .Get() calls!
+	
 	protected ref array<ref WidgetAnimationBase> m_aAnimations = {};
+		
+//---- REFACTOR NOTE END ----
+	
 	protected static AnimateWidget s_Instance;
 
 	ref ScriptInvoker m_OnAnimatingStarted = new ScriptInvoker();

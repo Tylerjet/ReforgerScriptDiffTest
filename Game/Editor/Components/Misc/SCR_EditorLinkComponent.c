@@ -115,7 +115,7 @@ class SCR_EditorLinkComponent : ScriptComponent
 		foreach (SCR_EditorLinkEntry entry : prefabData.m_aEntries)
 		{
 			entry.SetSpawnParams(spawnParams);
-			if (!game.SpawnEntityPrefab(entry.m_Prefab, prefabData.m_bRandomizeVariants, world, spawnParams))
+			if (!game.SpawnEntityPrefabEx(entry.m_Prefab, prefabData.m_bRandomizeVariants, world, spawnParams))
 				Print(string.Format("Unable to spawn linked entity @\"%1\"!", entry.m_Prefab.GetPath()), LogLevel.WARNING);
 		}
 		

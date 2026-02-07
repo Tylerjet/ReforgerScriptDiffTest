@@ -201,7 +201,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 					callTime = 0;
 
 				m_bWaitingForNextWave = true;
-				GetGame().GetCallqueue().CallLater(StartQRFProcedure, callTime, param1: killedEntity);
+				SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(StartQRFProcedure, callTime, param1: killedEntity);
 			}
 			return;
 		}
@@ -249,7 +249,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 				ThresholdHandling();
 				m_fNextWaveDelayClock = time + m_fQRFNextWaveDelay * 1000;
 				m_bWaitingForDelayedSpawn = true;
-				GetGame().GetCallqueue().CallLater(StartQRFProcedure, m_fQRFSpawnDelay * 1000, param1: killedEntity);
+				SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(StartQRFProcedure, m_fQRFSpawnDelay * 1000, param1: killedEntity);
 				if (killedEntity)
 					DoPlaySoundOnEntityPosition(killedEntity, m_sSoundProjectFile, m_sQRFRequestedSoundEventName);
 
@@ -409,7 +409,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 		array<SCR_ScenarioFrameworkQRFSlotAI> verifiedList = {};
 		foreach (SCR_ScenarioFrameworkQRFSlotAI spawn : aListOfSpawnPoints)
 		{
-			if (spawn.GetGroupType() ~& searchedType)
+			if (!(spawn.GetGroupType() & searchedType))
 				continue;
 
 			if (!CheckSpawnPointSafeZones(spawn.GetOwner().GetOrigin(), spawn.GetSpawnSafeZones(), searchedType))
@@ -428,7 +428,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 		float distanceToTarget, cloasestPosDistance = float.MAX;
 		foreach (int i, SCR_ScenarioFrameworkQRFSlotAI spawn : aListOfSpawnPoints) //int i = aListOfSpawnPoints.Count() - 1; i >= 0; i--)
 		{
-			if (spawn.GetGroupType() ~& searchedType)
+			if ( !(spawn.GetGroupType() & searchedType) )
 				continue;
 
 			if (!CheckSpawnPointSafeZones(spawn.GetOwner().GetOrigin(), spawn.GetSpawnSafeZones(), searchedType))
@@ -570,8 +570,8 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(soundEventName))
 			return;
 
-		SCR_GameModeSFManager sfManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!sfManager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
 		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.Cast(entity.FindComponent(SCR_GadgetManagerComponent));
@@ -581,7 +581,7 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 		if (!gadgetManager.GetGadgetByType(EGadgetType.RADIO))
 			return;
 
-		sfManager.PlaySoundOnEntityPosition(entity, soundFileName, soundEventName);
+		scenarioFrameworkSystem.PlaySoundOnEntityPosition(entity, soundFileName, soundEventName);
 	}
 
 	//------------------------------------------------------------------------------------------------

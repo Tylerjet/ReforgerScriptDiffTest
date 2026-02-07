@@ -486,9 +486,8 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 		relativeForce = contact.Impulse / contact.Physics2.GetMass();
 		//We divide the relative force by 20, because for some reason, objects with this response index receive ~20x bigger impulse
 		//TODO: investigate @matousvoj1
-		if (responseIndex >= MIN_DESTRUCTION_RESPONSE_INDEX && responseIndex <= MAX_DESTRUCTION_RESPONSE_INDEX)
-			relativeForce *= 0.05;
-		
+		//if (responseIndex >= MIN_DESTRUCTION_RESPONSE_INDEX && responseIndex <= MAX_DESTRUCTION_RESPONSE_INDEX)
+			//relativeForce *= 0.05;
 		if (relativeForce < componentData.m_fRelativeContactForceThresholdMinimum) // Below minimum threshold, ignore
 			return false;
 	
@@ -522,8 +521,10 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 		// Now get the relative force, which is the impulse divided by the mass of the dynamic object
 		float relativeForce = 0;
 		relativeForce = contact.Impulse / physics.GetMass();
-		if (responseIndex >= MIN_DESTRUCTION_RESPONSE_INDEX && responseIndex <= MAX_DESTRUCTION_RESPONSE_INDEX)
-			relativeForce *= 0.05;
+		
+		//if (responseIndex >= MIN_DESTRUCTION_RESPONSE_INDEX && responseIndex <= MAX_DESTRUCTION_RESPONSE_INDEX)
+			//relativeForce *= 0.05;
+		
 		if (relativeForce < componentData.m_fRelativeContactForceThresholdMinimum) // Below minimum threshold, ignore
 			return;
 		

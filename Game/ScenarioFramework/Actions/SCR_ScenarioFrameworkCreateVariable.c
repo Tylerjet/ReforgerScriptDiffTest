@@ -13,10 +13,10 @@ class SCR_ScenarioFrameworkCreateVariable : SCR_ScenarioFrameworkActionBase
 		if (!CanActivate())
 			return;
 		
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
-		manager.CreateVariableValue(m_sVariableName, m_sVariableValue);
+		scenarioFrameworkSystem.CreateVariableValue(m_sVariableName, m_sVariableValue);
 	}
 }

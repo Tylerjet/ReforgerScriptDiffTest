@@ -13,6 +13,9 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	
 	protected ref SCR_AddonPatchSizeLoader m_Loader = new SCR_AddonPatchSizeLoader();
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Old script invoker. Auto
+		
 	protected ref ScriptInvoker m_OnDownloadConfirmed; // (SCR_DownloadConfirmationDialog dlg)
 	
 	//------------------------------------------------------------------------------------------------
@@ -37,6 +40,8 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		
 		return dlg;
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected static void SetupDownloadDialogAddons(notnull out SCR_DownloadConfirmationDialog dialog, notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
@@ -83,9 +88,14 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		// Load patch size 
 		OnAllPatchSizeLoaded(m_Loader, true);
 		
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Overreliance on strings, weird naming
+		
 		// Buttons
 		SCR_InputButtonComponent confirmButton  = FindButton("confirm");
 		SCR_InputButtonComponent confirmAlternativeButton  = FindButton("confirm2");
+		
+//---- REFACTOR NOTE END ----
 		
 		if (confirmAlternativeButton)
 			confirmAlternativeButton.m_OnActivated.Insert(OnConfirmAlternative);
@@ -96,7 +106,13 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 			if (confirmAlternativeButton)
 				confirmAlternativeButton.SetVisible(false);
 			
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Hardcoded string
+			
 			confirmButton.SetLabel("#AR-Workshop_Dialog_ConfirmDownload_ButtonDownload");
+
+//---- REFACTOR NOTE END ----			
+
 		}
 		else if (!m_bDownloadMainItem)
 		{

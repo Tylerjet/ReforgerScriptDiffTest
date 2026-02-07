@@ -1,3 +1,5 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Remove this dead code
 class SCR_WeaponSwitchingHints: ScriptedWidgetComponent
 {
 	Widget m_wChangeAmmo;
@@ -101,3 +103,4 @@ class SCR_WeaponSwitchingHints: ScriptedWidgetComponent
 		// MUST BE IMPLEMENTED BY PROGRAMMER!
 	}
 };
+//---- REFACTOR NOTE END ----

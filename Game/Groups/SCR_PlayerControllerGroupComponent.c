@@ -18,7 +18,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	protected int m_iGroupInviteFromPlayerID = -1;
 	protected string m_sGroupInviteFromPlayerName; //Player name is saved to get the name of the one who invited even if that player left the server	
 	
-	protected const ref Color DEFAULT_COLOR = new Color(0, 0, 0, 0.4);
+	protected static const ref Color DEFAULT_COLOR = new Color(0, 0, 0, 0.4);
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] playerID
@@ -138,27 +138,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return false;
 		}
 		
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerID);
-		if (!pc)
-		{
-			#ifdef DEPLOY_MENU_DEBUG
-				Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - No player controller", playerID, group), LogLevel.ERROR);
-			#endif
-			return false;
-		}
-		
-		SCR_PlayerFactionAffiliationComponent playerAffiliation
-			= SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
-		if (!playerAffiliation)
-		{
-			// Happen only if PlayerController prefab is poorly configured
-			#ifdef DEPLOY_MENU_DEBUG
-				Print(string.Format("SCR_PlayerControllerGroupComponent.CanPlayerJoinGroup(%1, %2) - No SCR_PlayerFactionAffiliationComponent", playerID, group), LogLevel.ERROR);
-			#endif
-			return false;
-		}
-		
-		Faction playerFaction = playerAffiliation.GetAffiliatedFaction();
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerID);
 		if (playerFaction != groupFaction)
 		{
 			#ifdef DEPLOY_MENU_DEBUG

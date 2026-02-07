@@ -178,15 +178,23 @@ class SCR_MeleeComponent : ScriptComponent
 			return;
 		
 		m_MeleeHitData.m_fDamage = m_MeleeWeaponProperties.GetWeaponDamage();
-		m_fWeaponMeleeAccuracy = m_MeleeWeaponProperties.GetWeaponMeleeAccuracy();
 		m_fWeaponMeleeRange = m_MeleeWeaponProperties.GetWeaponRange();
+		m_fWeaponMeleeAccuracy = m_MeleeWeaponProperties.GetWeaponMeleeAccuracy();
+			
+		IEntity bayonet;
+		IEntity child = weaponEntity.GetChildren();
+		while (child)
+		{
+			if (child.FindComponent(SCR_BayonetComponent))
+			{
+				bayonet = child;
+				break;
+			}
+			
+			child = child.GetSibling();
+		}
 		
-		SCR_BayonetComponent bayonet = m_MeleeWeaponProperties.GetBayonet();
-		if (bayonet)
-			m_MeleeHitData.m_Bayonet = bayonet.GetOwner();
-		else
-			m_MeleeHitData.m_Bayonet = null;
-		
+		m_MeleeHitData.m_Bayonet = bayonet;
 		m_bHasBayonet = m_MeleeHitData.m_Bayonet != null;
 		Replication.BumpMe();
 	}
@@ -355,6 +363,11 @@ class SCR_MeleeComponent : ScriptComponent
 		SCR_DamageContext context = new SCR_DamageContext(EDamageType.MELEE, m_MeleeHitData.m_fDamage, hitPosDirNorm, 
 			damageManager.GetOwner(), hitZone, Instigator.CreateInstigator(GetOwner()), 
 			m_MeleeHitData.m_SurfaceProps, m_MeleeHitData.m_iColliderIndex, m_MeleeHitData.m_iNodeIndex);
+
+		if (m_MeleeHitData.m_Bayonet)
+			context.damageSource = m_MeleeHitData.m_Bayonet;
+		else
+			context.damageSource = m_MeleeHitData.m_Weapon;
 
 		if (m_MeleeHitData.m_Bayonet)
 			context.damageSource = m_MeleeHitData.m_Bayonet;

@@ -27,7 +27,7 @@ class SCR_AIDangerReaction_Explosion : SCR_AIDangerReaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
+	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		IEntity ownerEntity = utility.m_OwnerEntity;
 		

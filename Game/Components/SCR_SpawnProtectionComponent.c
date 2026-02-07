@@ -111,7 +111,7 @@ class SCR_SpawnProtectionComponent : SCR_BaseGameModeComponent
 			return;
 		
 		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(playerEntity.FindComponent(SCR_DamageManagerComponent));
-		if (!damageManager && damageManager.IsDamageHandlingEnabled())
+		if (!damageManager || damageManager.IsDamageHandlingEnabled())
 			return;
 
 		damageManager.EnableDamageHandling(true);

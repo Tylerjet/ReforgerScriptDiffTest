@@ -144,7 +144,7 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 		TextWidget titleWidget;
 		foreach (SCR_BackendServiceDisplay service : m_ServicesPresets.GetServices())
 		{
-			if (SCR_ServicesStatusHelper.SkipConsoleService(service))
+			if (!SCR_ServicesStatusHelper.DisplayServiceOnCurrentPlatform(service))
 				continue;
 			
 			line = GetGame().GetWorkspace().CreateWidgets(m_LineLayout, m_wLinesParentWidget);
@@ -230,7 +230,7 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 		
 		foreach (SCR_BackendServiceDisplay serviceInfo : m_ServicesPresets.GetServices())
 		{
-			if (SCR_ServicesStatusHelper.SkipConsoleService(serviceInfo))
+			if (!SCR_ServicesStatusHelper.DisplayServiceOnCurrentPlatform(serviceInfo))
 				continue;
 			
 			SetServiceState(serviceInfo.m_sId, status);

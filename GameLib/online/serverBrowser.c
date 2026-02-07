@@ -28,6 +28,47 @@ class Room: Managed
 	proto native string Region();
 	proto native string Name();
 	proto native string ScenarioName();
+	
+	/**
+	\brief Returns maximum size of the join queue.
+	*/
+	proto native int GetQueueMaxSize();
+	
+	/**
+	\brief Returns current size of the join queue.
+	*/
+	proto native int GetQueueSize();
+	
+	/**
+	\brief Returns current position of user in join queue.
+	\note  Returns -1 if user is not in queue of this room. Must be called on room provided by GetJoinRoom()
+	*/
+	proto native int GetQueueUserPosition();
+	/**
+	\brief Returns average time (in seconds) to wait one position in this queue.
+	\note  Returns -1 if there wasn't enough data to compute this value.
+	\note  Value calculation is based on how long in average it took previous people in queue to join the server.
+	*/
+	proto native int GetQueueAvgWaitTime();
+	/**
+	\brief Returns time (in seconds) of how long you are in queue since joining it.
+	\note  Returns -1 if you are not in queue.
+	*/
+	proto native int GetQueueJoinTime();
+	/**
+	\brief Returns time (in seconds) of how long ago you last moved in queue.
+	\note  Returns -1 if you did not yet moved in queue.
+	*/
+	proto native int GetQueueLastMoveTime();
+	/**
+	\brief Set BackendCallback which will be used in periodical polls in queue
+	*/
+	proto native void SetQueueBackendCallback(BackendCallback callback);
+	/**
+	\brief Leave join queue
+	*/
+	proto native void LeaveJoinQueue();
+
 	/**
 	\brief Addon that contains the hosted scenario
 	*/
@@ -121,7 +162,13 @@ class ClientLobbyApi
 	proto native void KillGeneratedRooms();
 	proto native void GenerateRooms();
 	//only debug api
-	
+
+	/**
+	\brief Get room for the room player is currently joining to or playing on.
+	\note Returns null if no room is available
+	*/
+	proto native Room GetJoinRoom();
+
 	/**
 	\brief Get room for the last invite request. Returns null if no room is available
 	*/

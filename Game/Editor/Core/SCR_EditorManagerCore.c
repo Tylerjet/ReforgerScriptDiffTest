@@ -411,9 +411,9 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		SCR_EditorManagerEntity editorManager = GetEditorManager(playerId);
+		SCR_EditorManagerEntity editorManager = GetEditorManager(instigatorContextData.GetVictimPlayerID());
 		if (editorManager)
 			editorManager.SetCanOpen(false, EEditorCanOpen.ALIVE);
 	}
@@ -421,7 +421,7 @@ class SCR_EditorManagerCore : SCR_GameCoreBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayerDeleted(int playerID, IEntity player)
 	{
-		OnPlayerKilled(playerID, player, null, Instigator.CreateInstigator(null));
+		OnPlayerKilled(new SCR_InstigatorContextData(playerID, player, null, Instigator.CreateInstigatorGM(), true));
 	}
 
 	//------------------------------------------------------------------------------------------------

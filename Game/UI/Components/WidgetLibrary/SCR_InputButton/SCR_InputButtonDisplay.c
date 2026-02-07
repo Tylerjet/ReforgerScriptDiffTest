@@ -140,9 +140,9 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! Overrides Texture of the Button
 	//! USE SCR_InputButtonComponent.SetTexture() to call
-	void OverrideTexture(string imagePath, string image = string.Empty, Color color = Color.White)
+	void OverrideTexture(string imagePath, string image = string.Empty, Color color = Color.White, SCR_EButtonSize buttonType = SCR_EButtonSize.KEYBOARD_MEDIUM, bool setOverride = true)
 	{
-		m_bIsOverwritten = true;
+		m_bIsOverwritten = setOverride;
 		
 		GameProject.GetModuleConfig("ChimeraGlobalConfig").Get("InputButtonLayoutConfig", m_sButtonLayoutConfig);
 		
@@ -160,7 +160,7 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 			return;
 		}
 
-		m_eButtonType = SCR_EButtonSize.KEYBOARD_MEDIUM;
+		m_eButtonType = buttonType;
 		m_ButtonLayout = m_cInput.GetButtonSize(m_eButtonType);
 
 		if (!m_ButtonLayout)

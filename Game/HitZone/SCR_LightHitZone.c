@@ -1,65 +1,93 @@
-class SCR_LightHitZone : SCR_DestructibleHitzone
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+class SCR_LightHitZone : SCR_VehicleHitZone
 {
-	private BaseLightManagerComponent m_pLightManager;
+	private BaseLightManagerComponent m_LightManager;
 	private ref array<BaseLightSlot> m_aLightSlots = {};
-	
-	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	protected string m_sSurfaceName;
+	protected int m_iParentSurfaceID;
+
+	//------------------------------------------------------------------------------------------------
+	void SetSurfaceName(string surfaceName)
 	{
-		super.OnInit(pOwnerEntity, pManagerComponent);
-		
-		IEntity parent = pOwnerEntity;
-		while (parent && !m_pLightManager)
-		{
-			m_pLightManager = BaseLightManagerComponent.Cast(parent.FindComponent(BaseLightManagerComponent));
-			parent = parent.GetParent();
-		}
-		
-		if (!m_pLightManager)
+		m_aLightSlots.Clear();
+		m_iParentSurfaceID = -1;
+		if (surfaceName == string.Empty)
 			return;
-		
+
+		m_sSurfaceName = surfaceName;
+		IEntity parent = GetOwner();
+		while (parent && !m_LightManager)
+		{
+			m_LightManager = BaseLightManagerComponent.Cast(parent.FindComponent(BaseLightManagerComponent));
+			if (!m_LightManager)
+				parent = parent.GetParent();
+		}
+
+		if (!m_LightManager)
+			return;
+
 		SCR_LightSlot scrLightSlot;
-		string name = GetName();
-		array<BaseLightSlot> lights = {}; m_pLightManager.GetLights(lights);
-		foreach (BaseLightSlot lightSlot: lights)
+		array<BaseLightSlot> lights = {};
+		m_LightManager.GetLights(lights);
+		foreach (BaseLightSlot lightSlot : lights)
 		{
 			scrLightSlot = SCR_LightSlot.Cast(lightSlot);
-			if (scrLightSlot && name.Compare(scrLightSlot.GetHitZoneName(), false) == 0)
+			if (scrLightSlot && m_sSurfaceName.Compare(scrLightSlot.GetParentSurfaceName(), false) == 0)
+			{
 				m_aLightSlots.Insert(lightSlot);
+				if (m_iParentSurfaceID == -1)
+					m_iParentSurfaceID = lightSlot.GetSurfaceID();
+
+#ifdef WORKBENCH
+				if (m_iParentSurfaceID != -1 && m_iParentSurfaceID != lightSlot.GetSurfaceID())
+					Print("WARNING! Multiple lights tied to the hit zone from this entity: "+GetOwner()+" while having different parent surface id ("+m_iParentSurfaceID+" != "+lightSlot.GetSurfaceID()+")", LogLevel.ERROR);
+#endif
+			}
 		}
-		
-		UpdateLightState();
+
+		UpdateLightState(GetDamageState());
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
 		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
-		
-		UpdateLightState();
+
+		UpdateLightState(newState);
 	}
-	
-	void UpdateLightState()
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateLightState(EDamageState newState)
 	{
-		bool isAlive = GetDamageState() != EDamageState.DESTROYED;
-		int surfaceID;
-		foreach (BaseLightSlot lightSlot: m_aLightSlots)
+		if (!m_LightManager)
+			return;
+
+		RplComponent rplComp = SCR_EntityHelper.GetEntityRplComponent(GetOwner());
+		if (rplComp && rplComp.IsProxy())
+			return;
+
+		bool isAlive = newState != EDamageState.DESTROYED;
+
+		bool functionalityStateChanged;
+		if (m_iParentSurfaceID > -1)
+			functionalityStateChanged = m_LightManager.TrySetSurfaceFunctional(m_iParentSurfaceID, isAlive);
+
+		foreach (BaseLightSlot lightSlot : m_aLightSlots)
 		{
 			if (!lightSlot)
 				continue;
-			
+
 			lightSlot.SetLightFunctional(isAlive);
-			
-			if (!m_pLightManager)
-				continue;
-			
-			surfaceID = lightSlot.GetSurfaceID();
-			if (surfaceID > -1)
-				m_pLightManager.TrySetSurfaceFunctional(surfaceID, isAlive);
+			if (functionalityStateChanged)
+				m_LightManager.SetLightsState(lightSlot.GetLightType(), m_LightManager.GetLightsState(lightSlot.GetLightType()));
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_LightHitZone()
 	{
 		m_aLightSlots.Clear();
 		m_aLightSlots = null;
 	}
-};
+}
+//---- REFACTOR NOTE END ----

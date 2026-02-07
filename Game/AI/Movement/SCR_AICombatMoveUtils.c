@@ -7,6 +7,18 @@ class SCR_AICombatMoveUtils
 	// Threshold distance beyond which it is considered we are in long range fight
 	static const float CLOSE_RANGE_COMBAT_DIST = 40.0;
 	
+	// Character movement speeds
+	static const float CHARACTER_SPEED_STAND_SPRINT = 5.5;
+	static const float CHARACTER_SPEED_STAND_RUN = 3.6;
+	static const float CHARACTER_SPEED_CROUCH_SPRINT = 4;
+	static const float CHARACTER_SPEED_CROUCH_RUN = 2.6;
+	static const float CHARACTER_SPEED_PRONE_SPRINT = 1.1;
+	static const float CHARACTER_SPEED_PRONE_RUN = 0.9;
+	
+	// Vehicle generic movement speed
+	static const float GROUND_VEHICLE_GENERIC_SPEED = 10.0;
+	
+	
 	//! Decodes SCR_EAICombatMoveDirection enum
 	static vector CalculateMoveDirection(SCR_EAICombatMoveDirection eDirection, vector myPos, vector movePos)
 	{
@@ -39,6 +51,17 @@ class SCR_AICombatMoveUtils
 			case SCR_EAICombatMoveDirection.LEFT:		return dirSideways;
 		}
 		return vector.Zero;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static float GetEstimatedMoveSpeed(notnull SCR_AICombatMoveRequest_Move rq)
+	{
+		switch (rq.m_eUnitType)
+		{
+			case SCR_EAICombatMoveUnitType.CHARACTER: return CHARACTER_SPEED_STAND_SPRINT;
+			case SCR_EAICombatMoveUnitType.GROUND_VEHICLE: return GROUND_VEHICLE_GENERIC_SPEED;
+		}
+		return GROUND_VEHICLE_GENERIC_SPEED;
 	}
 	
 	//! Returns true if aiming is possible in this stance and speed

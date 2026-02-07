@@ -27,6 +27,8 @@ class SCR_FilterEntry
 	[Attribute("", UIWidgets.EditBox, "Image name if image set is used")]
 	string m_sImageName;
 	
+	SCR_ListBoxElementComponent m_FilterComponent;
+	
 	protected bool m_bSelected;
 	
 	// Pointer back to category of this filter, initialized in constructor of Category class
@@ -76,6 +78,9 @@ class SCR_FilterCategory
 	[Attribute("true", UIWidgets.Auto, "When false, the filter panel will prohibit deselection of last selected entry.")];
 	bool m_bAllowNothingSelected;
 	
+	[Attribute(uiwidget: UIWidgets.SearchComboBox, desc:"Category won't be created on selected platforms", enums: ParamEnumArray.FromEnum(EPlatform))]
+	protected ref array<EPlatform> m_aHideOnPlatforms;
+	
 	//[Attribute("false", UIWidgets.Auto, "The category is hidden in release build.")]
 	//bool m_bHiddenInReleaseBuild;
 	
@@ -90,6 +95,8 @@ class SCR_FilterCategory
 	
 	[Attribute("", UIWidgets.Object)]
 	protected ref array<ref SCR_FilterEntry> m_aFilters;
+	
+	Widget m_wCategoryTitleWidget;
 	
 	
 	//-----------------------------------------------------------------------------------------------------------
@@ -170,6 +177,12 @@ class SCR_FilterCategory
 				n++;
 		}
 		return n;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------	
+	void GetHideOnPlaforms(out array<EPlatform> platforms)
+	{
+		platforms.Copy(m_aHideOnPlatforms);
 	}
 };
 

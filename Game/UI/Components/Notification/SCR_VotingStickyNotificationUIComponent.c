@@ -24,6 +24,8 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 	protected bool m_bIsUpdatingTime;
 	protected bool m_bIsUpdatingActionContext;
 	
+	protected static const float PLATFORM_ICON_SIZE = 2;
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnVotingChanged(bool isInit = false)
 	{		
@@ -77,8 +79,16 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 				string playerName;
 				
 				PlayerManager playermanager = GetGame().GetPlayerManager();
-				if (playermanager)
+				
+				if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)				
+					if (GetGame().GetPlayerManager().GetPlatformKind(votingValues[0]) == PlatformKind.PSN)
+						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, PLATFORM_ICON_SIZE) + playermanager.GetPlayerName(votingValues[0]);
+					else
+						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, PLATFORM_ICON_SIZE) + playermanager.GetPlayerName(votingValues[0]);
+				else
+				{
 					playerName = playermanager.GetPlayerName(votingValues[0]);
+				}
 				
 				string text = WidgetManager.Translate(m_VotingManagerComponent.GetVotingInfo(m_eActiveSingularVoteType).GetStickyNotificationText(), playerName);
 				

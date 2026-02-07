@@ -44,7 +44,7 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 			videoUserSettings.Set("ResolutionScale", 0.75);
 			videoUserSettings.Set("Fsaa", 2);
 			videoSettings.Set("m_bNearDofEffect", false);
-			videoSettings.Set("m_iDofType", DepthOfFieldTypes.BOKEH);
+			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE );
 			videoUserSettings.Set("MaxFps", 30);
 			videoUserSettings.Set("Vsynch", true);
 			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.SERIES_X_PRESET_QUALITY);
@@ -59,6 +59,50 @@ class SCR_SettingsManagerVideoModule : SCR_SettingsManagerModuleBase
 			videoUserSettings.Set("MaxFps", 60);
 			videoUserSettings.Set("Vsynch", true);
 			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.SERIES_X_PRESET_PERFORMANCE);
+		}
+		else if (presetIndex == EVideoQualityPreset.PS5_QUALITY)
+		{
+			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_QUALITY);
+			videoUserSettings.Set("ResolutionScale", 0.75);
+			videoUserSettings.Set("Fsaa", 2);
+			videoSettings.Set("m_bNearDofEffect", false);
+			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
+			videoUserSettings.Set("MaxFps", 30);
+			videoUserSettings.Set("Vsynch", true);
+			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.PS5_QUALITY);
+		}
+		else if (presetIndex == EVideoQualityPreset.PS5_PERFORMANCE)
+		{
+			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_PERFORMANCE);
+			videoUserSettings.Set("ResolutionScale", 0.50);
+			videoUserSettings.Set("Fsaa", 2);
+			videoSettings.Set("m_bNearDofEffect", false);
+			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
+			videoUserSettings.Set("MaxFps", 60);
+			videoUserSettings.Set("Vsynch", true);
+			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.PS5_PERFORMANCE);
+		}
+		else if (presetIndex == EVideoQualityPreset.PS5_PRO_QUALITY)
+		{
+			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_PRO_QUALITY);
+			videoUserSettings.Set("ResolutionScale", 0.9);
+			videoUserSettings.Set("Fsaa", 2);
+			videoSettings.Set("m_bNearDofEffect", false);
+			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
+			videoUserSettings.Set("MaxFps", 30);
+			videoUserSettings.Set("Vsynch", true);
+			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.PS5_PRO_QUALITY);
+		}
+		else if (presetIndex == EVideoQualityPreset.PS5_PRO_PERFORMANCE)
+		{
+			displayUserSettings.Set("OverallQuality", EVideoQualityPreset.PS5_PRO_PERFORMANCE);
+			videoUserSettings.Set("ResolutionScale", 0.6666);
+			videoUserSettings.Set("Fsaa", 2);
+			videoSettings.Set("m_bNearDofEffect", false);
+			videoSettings.Set("m_iDofType", DepthOfFieldTypes.SIMPLE);
+			videoUserSettings.Set("MaxFps", 60);
+			videoUserSettings.Set("Vsynch", true);
+			videoSettings.Set("m_iLastUsedPreset", EVideoQualityPreset.PS5_PRO_PERFORMANCE);
 		}
 		
 		GetGame().ApplySettingsPreset();
@@ -78,4 +122,8 @@ enum EVideoQualityPreset
 	SERIES_S_PRESET_QUALITY = 5,
 	SERIES_X_PRESET_PERFORMANCE = 6,
 	SERIES_S_PRESET_PERFORMANCE = 7,
+	PS5_QUALITY = 8,
+	PS5_PERFORMANCE = 9,
+	PS5_PRO_QUALITY = 10,
+	PS5_PRO_PERFORMANCE = 11
 }

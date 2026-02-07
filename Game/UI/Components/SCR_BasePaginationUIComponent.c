@@ -206,11 +206,15 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 				UniformGridSlot.SetColumn(child, column);
 			
 				//--- Set navigation
-				if (column == 0 && m_sFocusPrevName)
-					child.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, m_sFocusPrevName);
-				
-				if (column == m_iColumns - 1 && m_sFocusNextName)
-					child.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, m_sFocusNextName);
+				if (!m_bIgnoreGamePadInput)
+				{
+					if (column == 0 && m_sFocusPrevName)
+						child.SetNavigation(WidgetNavigationDirection.LEFT, WidgetNavigationRuleType.EXPLICIT, m_sFocusPrevName);
+	
+					
+					if (column == m_iColumns - 1 && m_sFocusNextName)
+						child.SetNavigation(WidgetNavigationDirection.RIGHT, WidgetNavigationRuleType.EXPLICIT, m_sFocusNextName);
+				}
 				
 				//--- Find focused widget
 				if (row == focusedRow && column == focusedColumn)
@@ -463,7 +467,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 				m_FocusPrevWidget.SetFlags(WidgetFlags.NOFOCUS);
 			if (m_FocusNextWidget)
 				m_FocusNextWidget.SetFlags(WidgetFlags.NOFOCUS); 
-			
+		
 			if (m_ButtonPrevWidget)
 				m_ButtonPrevWidget.SetFlags(WidgetFlags.NOFOCUS);
 			if (m_ButtonNextWidget)
@@ -472,7 +476,7 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 			if (m_ButtonPrevNoScrollWidget)
 				m_ButtonPrevNoScrollWidget.SetFlags(WidgetFlags.NOFOCUS);
 			if (m_ButtonNextNoScrollWidget)
-				m_ButtonNextNoScrollWidget.SetFlags(WidgetFlags.NOFOCUS); 
+				m_ButtonNextNoScrollWidget.SetFlags(WidgetFlags.NOFOCUS);
 		}
 		
 		SCR_InputButtonComponent prevButtonComponent = SCR_InputButtonComponent.Cast(m_ButtonPrevWidget.FindHandler(SCR_InputButtonComponent));

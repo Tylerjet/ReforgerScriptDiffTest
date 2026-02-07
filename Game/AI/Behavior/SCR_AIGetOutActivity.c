@@ -45,7 +45,7 @@ class SCR_AIGetOutActivity : SCR_AIActivityBase
 		if (!m_Vehicle.m_Value)
 			vehicleRef = "all vehicles";
 		else
-			vehicleRef = m_Vehicle.ValueToString();	
+			vehicleRef = m_Vehicle.m_Value.ToString();	
 		return this.ToString() + " leaving " + vehicleRef;
 	}
 };

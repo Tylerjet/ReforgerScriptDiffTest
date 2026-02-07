@@ -705,6 +705,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		float fTotalWeight = 0.0;
 
 		//TODO: actually not a very good way how to get storages, but using the GetStorages() method causes the weight being doubled. We need to get just the "parent" storages
+		//Also if someone ever fixes this let character anim progs know to fix it in CharacterControllerComponent.CalculateSpeedLimits.
 		storages.Insert(m_Storage.GetWeaponStorage());
 		storages.Insert(m_Storage);
 				

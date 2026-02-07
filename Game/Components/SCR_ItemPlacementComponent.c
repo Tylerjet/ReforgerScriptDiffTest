@@ -32,8 +32,9 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	//! \param[in] forward
 	//! \param[in] position
 	//! \param[in] placeableId replication id of placed item
+	//! \param[in] characterId replication id of the character that placed it there
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	void RPC_AskSetPlacementPosition(vector right, vector up, vector forward, vector position, RplId placeableId)
+	void RPC_AskSetPlacementPosition(vector right, vector up, vector forward, vector position, RplId placeableId, RplId characterId)
 	{
 		RplComponent rplComponent = RplComponent.Cast(Replication.FindItem(placeableId));
 		if (!rplComponent)
@@ -44,7 +45,10 @@ class SCR_ItemPlacementComponent : ScriptComponent
 		if (!itemComponent)
 			return;
 
-		itemComponent.SetPlacementPosition(right, up, forward, position);
+		if (!characterId.IsValid())
+			return;
+
+		itemComponent.SetPlacementPosition(right, up, forward, position, characterId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -63,7 +67,6 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			return;
 
 		itemComponent.PlaceItem();
-		NotifyItemPlacementDone(item);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -87,8 +90,6 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			itemComponent.PlaceItemWithParentChange(targetId, nodeId);
 		else
 			itemComponent.PlaceItem();
-
-		NotifyItemPlacementDone(item);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -178,20 +179,6 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void NotifyItemPlacementDone(IEntity item)
-	{
-		SCR_PlaceableInventoryItemComponent placeableItem = SCR_PlaceableInventoryItemComponent.Cast(item.FindComponent(SCR_PlaceableInventoryItemComponent));
-		if (!placeableItem)
-			return;
-
-		PlayerController playerController = PlayerController.Cast(GetOwner());
-		if (!playerController)
-			return;
-
-		placeableItem.PlacementDone(playerController.GetControlledEntity());
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected void StartPlaceItem()
 	{
 		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
@@ -250,12 +237,16 @@ class SCR_ItemPlacementComponent : ScriptComponent
 	{
 		GetGame().GetCallqueue().Remove(ValidateTargetEntityExistance);
 
-		IEntity controlledEntity = GetGame().GetPlayerController().GetControlledEntity();
+		ChimeraCharacter controlledEntity = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 		if (!controlledEntity)
 			return;
 
 		SCR_CharacterControllerComponent characterController = GetCharacterController(controlledEntity);
 		if (!characterController)
+			return;
+
+		RplComponent characterRplComp = controlledEntity.GetRplComponent();
+		if (!characterRplComp)
 			return;
 
 		characterController.SetDisableWeaponControls(true);
@@ -290,7 +281,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 			cb.m_iNodeId = m_iTargetEntityNodeID;
 			cb.m_bIsBeingAttachedToEntity = m_bIsBeingAttachedToEntity;
 
-			Rpc(RPC_AskSetPlacementPosition, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id());
+			Rpc(RPC_AskSetPlacementPosition, m_vCurrentMat[0], m_vCurrentMat[1], m_vCurrentMat[2], m_vCurrentMat[3], rplComponent.Id(), characterRplComp.Id());
 			if (storageManager.TryRemoveItemFromStorage(m_EquippedItem, storage.GetWeaponStorage(), cb))
 			{
 				InventoryItemComponent equippedItemIIC = InventoryItemComponent.Cast(m_EquippedItem.FindComponent(InventoryItemComponent));
@@ -722,7 +713,7 @@ class SCR_ItemPlacementComponent : ScriptComponent
 				return false;
 
 			Physics entPhys = tracedEntity.GetPhysics();
-			if (entPhys && entPhys.GetInteractionLayer() ~& EPhysicsLayerDefs.Terrain)
+			if (entPhys && !(entPhys.GetInteractionLayer() & EPhysicsLayerDefs.Terrain))
 				m_bIsBeingAttachedToEntity = true;
 		}
 

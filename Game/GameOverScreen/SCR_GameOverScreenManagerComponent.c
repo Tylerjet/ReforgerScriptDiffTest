@@ -47,7 +47,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 	//! Once the fade in is done the end screen will be shown
 	protected void StartEndGameFade()
 	{	
-		SetGameOverVarriables(GetGameMode().GetEndGameData());
+		SetGameOverVariables(GetGameMode().GetEndGameData());
 		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
 		if (!hudManager)
 			return;
@@ -121,7 +121,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 			endData = GetGameMode().GetEndGameData();
 		
 		if (m_iEndGameType == EGameOverTypes.UNKNOWN)
-			SetGameOverVarriables(endData);
+			SetGameOverVariables(endData);
 		
 		SCR_BaseGameOverScreenInfo gameOverScreenInfo;
 				
@@ -177,7 +177,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Set all variables needed to set the correct game over screen
 	//! \param[in] endData
-	protected void SetGameOverVarriables(SCR_GameModeEndData endData = null)
+	protected void SetGameOverVariables(SCR_GameModeEndData endData = null)
 	{
 		m_iEndGameType = EGameOverTypes.UNKNOWN;
 		m_bIsPlayingGameOverAudio = false;
@@ -233,6 +233,48 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 					m_FactionPlayer = scrFactionManager.GetLocalPlayerFaction();
 				else
 					m_FactionPlayer = null;
+			}
+		}
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!m_bIsFactionVictory && m_iEndReason == EGameOverTypes.EDITOR_FACTION_DRAW && gameMode.GetRemainingTime() <= 0 && m_aWinningFactions.IsEmpty())
+		{
+			SCR_BaseScoringSystemComponent scoringSystem = gameMode.GetScoringSystemComponent();
+			if (scoringSystem)
+			{
+				array<Faction> factions = {};
+				int count = GetGame().GetFactionManager().GetFactionsList(factions);
+				
+				SCR_Faction scrfaction;
+				for (int i = count - 1; i >= 0; i--)
+				{
+					scrfaction = SCR_Faction.Cast(factions[i]);
+					if (!scrfaction.IsPlayable())
+						factions.RemoveOrdered(i);
+				}
+				
+				if (factions.Count() == 2)
+				{
+					int scoreA = scoringSystem.GetFactionScore(factions[0]);
+					int scoreB = scoringSystem.GetFactionScore(factions[1]);
+
+					if (scoreA > scoreB)
+					{
+						m_bIsFactionVictory = true;
+						m_aWinningFactions.Insert(factions[0]);
+						m_iEndReason = EGameOverTypes.ENDREASON_SCORELIMIT;
+					}
+					else if (scoreB > scoreA)
+					{
+						m_bIsFactionVictory = true;
+						m_aWinningFactions.Insert(factions[1]);
+						m_iEndReason = EGameOverTypes.ENDREASON_SCORELIMIT;
+					}
+					else 
+					{
+						m_iEndReason = EGameOverTypes.FACTION_DRAW;
+					}
+				}
 			}
 		}
 		

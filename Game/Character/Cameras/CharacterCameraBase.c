@@ -1,27 +1,3 @@
-// TODO: remove these global methods!!
-
-float fixAngle_PI_PI(float pAngle)
-{
-	while (pAngle > Math.PI)
-		pAngle -= Math.PI2;
-
-	while (pAngle < -Math.PI)
-		pAngle += Math.PI2;
-
-	return pAngle;
-}
-
-float fixAngle_180_180(float pAngle)
-{
-	while (pAngle > 180)
-		pAngle -= 360;
-
-	while (pAngle < -180)
-		pAngle += 360;
-
-	return pAngle;
-}
-
 class CharacterCameraBase : ScriptedCameraItem
 {
 	//------------------------------------------------------------------------------------------------
@@ -101,7 +77,7 @@ class CharacterCameraBase : ScriptedCameraItem
 			}
 			else
 			{
-				pAngle = fixAngle_180_180(pAngle);
+				pAngle = SCR_Math.FixAngle(pAngle, 180);
 			}
 			
 			m_fLRAngleVel = 0;	// reset filter
@@ -253,8 +229,8 @@ class CharacterCameraBase : ScriptedCameraItem
 	//-----------------------------------------------------------------------------
 	override void SetBaseAngles(out vector angles)
 	{
-		m_fUpDownAngle = fixAngle_180_180(angles[0]);
-		m_fLeftRightAngle = fixAngle_180_180(angles[1]);
+		m_fUpDownAngle = SCR_Math.FixAngle(angles[0], 180);
+		m_fLeftRightAngle = SCR_Math.FixAngle(angles[1], 180);
 	}
 	
 	//-----------------------------------------------------------------------------

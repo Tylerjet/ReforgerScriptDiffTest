@@ -6,7 +6,12 @@ Panel which shows state of addon.
 
 class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 {
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// This sort of visual stuff should be configurable in attributes
+		
 	protected const int MAX_ADDON_TYPE_IMAGES = 12; // Max amount of addon type images will be shown.
+	
+//---- REFACTOR NOTE END ----
 	
 	protected ref SCR_AddonInfoWidgets m_InfoWidgets = new SCR_AddonInfoWidgets();
 	protected ref SCR_WorkshopItem m_Item;

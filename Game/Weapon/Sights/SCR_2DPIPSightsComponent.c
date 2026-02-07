@@ -88,6 +88,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("1.05", UIWidgets.Slider, "PIP reticle additional scale to compensate discrepancy between camera and reticle\n[x]", params: "0.01 10 0.00001", category: "PiPSights", precision: 5)]
 	protected float m_fReticlePIPScale;
 
+	[Attribute("0.0", UIWidgets.Slider, "Offset when not unfocused to improve view\n[m]", params: "-1 1 0.001", category: "PiPSights")]
+	protected float m_fMainCameraOffsetUnfocused;
+
 	[Attribute("1.0", UIWidgets.Slider, "PIP objective inner edge. Should be lower than max\n[x]", params: "0.001 10 0.00001", category: "PiPSights-Parallax", precision: 5)]
 	protected float m_fObjectivePIPEdgeMin;
 
@@ -143,8 +146,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		float screenDistanceSq = vector.DistanceSq(screenPosition, m_vScreenScopeCenter);
 		return screenDistanceSq < m_fScreenScopeRadiusSq;
 	}
-
-	protected int m_iDisableVignetteFrames;
 
 	//! The root layout hierarchy widget for PIP
 	protected ref Widget m_wPIPRoot;
@@ -233,11 +234,38 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (SCR_Global.IsScope2DEnabled())
 			return GetFOV();
 
-		if (m_fMainCameraFOV > 0)
+		if (m_fMainCameraFOV <= 0)
+			m_fMainCameraFOV = CalculateZoomFOV(1);
+
+		return GetFocusFOV();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float GetFocusFOV()
+	{
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
 			return m_fMainCameraFOV;
 
-		m_fMainCameraFOV = CalculateZoomFOV(1);
+		PlayerCamera camera = PlayerCamera.Cast(cameraManager.CurrentCamera());
+		if (camera)
+			return Math.Lerp(cameraManager.GetFirstPersonFOV(), m_fMainCameraFOV, camera.GetFocusMode());
+
 		return m_fMainCameraFOV;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMainCameraOffset()
+	{
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
+			return 0;
+
+		PlayerCamera camera = PlayerCamera.Cast(cameraManager.CurrentCamera());
+		if (camera)
+			return Math.Lerp(m_fMainCameraOffsetUnfocused, 0, camera.GetFocusMode());
+
+		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -337,8 +365,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		// Create neccessary items
 		if (enabled && !m_bPIPIsEnabled)
 		{
-			m_iDisableVignetteFrames = 5;
-
 			// Try to create UI for PIP,
 			// output params are either set to valid ones,
 			// or root itself is set to null and destroyed
@@ -474,7 +500,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		bool scope2d = SCR_Global.IsScope2DEnabled();
 		if (!scope2d)
 		{
-			m_iDisableVignetteFrames = 15;
 			SetPIPEnabled(true);
 
 			if (m_pMaterial)
@@ -563,13 +588,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (!mainCamera)
 			return;
 
-		vector cameraMat[4];
-		mainCamera.GetLocalTransform(cameraMat);
-		vector localCameraPosition = cameraMat[3]; // Camera's position in character's model space.
-
-		vector parentToLocalMat[4];
-		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), mainCamera.GetParent(), parentToLocalMat);
-		localCameraPosition = localCameraPosition.Multiply4(parentToLocalMat); // Camera's position in our local space.
+		// Get camera to sight matrix
+		vector cameraToSightMat[4];
+		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), mainCamera, cameraToSightMat);
+		vector localCameraPosition = cameraToSightMat[3]; // Camera's position in sight local space
 
 		vector pipSurfaceCenter = GetSightsRearPosition(true);
 		float distance = vector.Distance(pipSurfaceCenter, localCameraPosition);
@@ -591,7 +613,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 
 		// Account for distance of camera to scope and its diameter
 		float scopeSize = Math.Atan2(m_fScopeRadius * 2, distance) * Math.RAD2DEG;
-		float screenPortion = scopeSize / mainCamera.GetVerticalFOV();
+		// PIPCQB Account for focus
+		float screenPortion = scopeSize / m_fMainCameraFOV;
+
 		float currentFOV = m_PIPCamera.GetVerticalFOV();
 		bool fovChanged = !float.AlmostEqual(fov * screenPortion, currentFOV, currentFOV * 0.005);
 
@@ -642,7 +666,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		angles += Vector(m_fCenterOffsetX, m_fCenterOffsetY, 0);
 
 		// Scale parallax angle with apparent FOV
-		angles *= fov / mainCamera.GetVerticalFOV();
+		angles *= fov / m_fMainCameraFOV;
+
+		// Limit angles again after they are scaled with parallax
+		angles = SCR_Math3D.FixEulerVector180(angles);
 
 		// modify camera, reticle and objective with the same angles
 		m_fParallaxX = -angles[0];
@@ -657,7 +684,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		m_PIPCamera.SetLocalTransform(mat);
 
 		// Finally update camera props
-		m_PIPCamera.UpdatePIPCamera(timeSlice);
+		m_PIPCamera.ApplyTransform(timeSlice);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -680,17 +707,12 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	//------------------------------------------------------------------------------------------------
 	void UpdateScopeMaterial()
 	{
-		if (m_iDisableVignetteFrames > 0)
-		{
-			m_pMaterial.SetParamByIndex(m_iVignetteCenterXIndex, 0);
-			m_pMaterial.SetParamByIndex(m_iVignetteCenterYIndex, 0);
-			m_pMaterial.SetParamByIndex(m_iVignettePowerIndex, 2);
 
-			m_iDisableVignetteFrames--;
+		CameraManager cameraManager = GetGame().GetCameraManager();
+		if (!cameraManager)
 			return;
-		}
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
+		ChimeraCharacter character = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 		if (!character)
 			return;
 
@@ -700,10 +722,6 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 
 		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
 		if (!weaponManager)
-			return;
-
-		CameraManager cameraManager = GetGame().GetCameraManager();
-		if (!cameraManager)
 			return;
 
 		CameraBase mainCamera = cameraManager.CurrentCamera();
@@ -717,7 +735,10 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		//sights matrix in local coordinates
 		vector sightsLSCam[4];
 		float fov;
-		weaponManager.GetCurrentSightsCameraTransform(sightsLSCam, fov);
+
+		// if there is no sight, do not continue	
+		if (!weaponManager.GetCurrentSightsCameraTransform(sightsLSCam, fov))
+			return;
 
 		//position of scope in main camera space
 		vector scopePosCam = sightsLSCam[3] - mainCam[3];
@@ -896,7 +917,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override bool CanFreelook()
+	override bool CanFreelook()
 	{
 		if (m_bPIPIsEnabled)
 			return true;

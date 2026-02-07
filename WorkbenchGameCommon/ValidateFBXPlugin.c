@@ -18,10 +18,10 @@ class ValidateFBXPlugin: WorkbenchPlugin
 	// Tool is located in the root folder
 	private void GetToolPath(out string toolPath)
 	{
-		string toolName = "/ValidateResource.exe";
+		const string TOOL_NAME = "/ValidateResource.exe";
 		string rootPath;
 		Workbench.GetCwd(rootPath);
-		toolPath = rootPath + toolName; 
+		toolPath = rootPath + TOOL_NAME; 
 		return;
 	}
 	

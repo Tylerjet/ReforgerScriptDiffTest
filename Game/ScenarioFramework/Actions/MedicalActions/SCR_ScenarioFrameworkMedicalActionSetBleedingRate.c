@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionSetBleedingRate : SCR_ScenarioFrameworkM
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.SetBleedingScale(m_fBleedingRate, true);
 	}
 }

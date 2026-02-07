@@ -27,9 +27,7 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	{
 		super.OnTabHide();
 
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-			playerController.SetGameUserSettings();
+		SCR_PlayerController.SetGameUserSettings();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -41,43 +39,90 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "MouseInvert", "MouseY"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GamepadInvert", "GamepadY"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_b2DScopes", "ScopeMode"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyADS", "StickyADS"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bShowRadioProtocolText", "RadioProtocolSubtitles"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bMouseControlAircraft", "MouseControlAircraft"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bGamepadFreelookInAircraft", "GamepadFreelookInAircraft"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_eDrivingAssistance", "DrivingAssistance"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFirstPersonFOV", "1PP"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fThirdPersonFOV", "3PP"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fVehicleFOV", "VehicleFOV"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFocusInADS", "FocusIntensityADS"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_FieldOfViewSettings", "m_fFocusInPIP", "FocusIntensityPIP"));
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fMouseSensitivity", "AimMouse"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fStickSensitivity", "AimGamepad"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fAimADS", "AimADS"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("UserInterfaceSettings", "UseSoftwareCursor", "CursorMode"));
+
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fFOVInputCurveMouse", "FOVInputCurveMouse"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fFOVInputCurveStick", "FOVInputCurveStick"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_AimSensitivitySettings", "m_fFOVInputCurveGyro", "FOVInputCurveGyro"));
+
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_bGyroAlways", "GyroAlways"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_bGyroFreelook", "GyroFreelook"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_bGyroADS", "GyroADS"));
+
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroSensitivity", "GyroSensitivity"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroVerticalHorizontalRatio", "GyroVerticalHorizontalRatio"));
+
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroDirectionYaw", "GyroDirectionYaw"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroDirectionPitch", "GyroDirectionPitch"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_ControllerSettings", "m_fGyroDirectionRoll", "GyroDirectionRoll"));
+
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSensitivity", "GyroAcceleration"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSpeedMin", "GyroAccelerationSpeedMin"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroAccelerationSpeedMax", "GyroAccelerationSpeedMax"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroPrecisionSpeed", "GyroPrecisionSpeed"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GyroSmoothingSpeed", "GyroSmoothingSpeed"));
 
 		LoadSettings();
 		
 		BindFOVSettings();
 		BindSensitivitySettings();
+		BindControllerSettings();
 		BindLanguage();
+		BindCrossplaySettings();
 
-// Hide unusual console settings (consoles -can- use USB KBM)
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_SHOW_ALL_SETTINGS, false))
+			return;
+
 #ifdef PLATFORM_CONSOLE
-		HideMenuItem("MouseY");
-		HideMenuItem("CursorMode");
-		HideMenuItem("AimMouse");
+		// Hide unusual console settings (consoles -can- use USB KBM)
+		if (!GetGame().GetHasKeyboard())
+		{
+			HideMenuItem("MouseY");
+			HideMenuItem("AimMouse");
+			HideMenuItem("MouseControlAircraft");
+			HideMenuItem("FOVInputCurveMouse");
+		}
 #endif
-	}
 
-	//------------------------------------------------------------------------------------------------
-	protected void HideMenuItem(string widgetName)
-	{
-		Widget w = GetRootWidget().FindAnyWidget(widgetName);
-		if (w)
-			w.SetVisible(false);
+		// Hide gyro settings outside platforms that support them
+		EPlatform platform = System.GetPlatform();
+		if (platform != EPlatform.PS4 && platform != EPlatform.PS5 && platform != EPlatform.PS5_PRO && platform != EPlatform.UNKNOWN)
+		{
+			HideMenuItem("TitleGyro");
+
+			HideMenuItem("GyroAlways");
+			HideMenuItem("GyroFreelook");
+			HideMenuItem("GyroADS");
+
+			HideMenuItem("GyroSensitivity");
+			HideMenuItem("FOVInputCurveGyro");
+			HideMenuItem("GyroVerticalHorizontalRatio");
+
+			HideMenuItem("GyroDirectionYaw");
+			HideMenuItem("GyroDirectionPitch");
+			HideMenuItem("GyroDirectionRoll");
+
+			HideMenuItem("GyroAcceleration");
+			HideMenuItem("GyroAccelerationSpeedMin");
+			HideMenuItem("GyroAccelerationSpeedMax");
+			HideMenuItem("GyroPrecisionSpeed");
+			HideMenuItem("GyroSmoothingSpeed");
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -105,37 +150,68 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		comp.SetCurrentItem(i);
 		comp.m_OnChanged.Insert(OnLanguageChange);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void BindCrossplaySettings()
+	{
+		Widget w = m_wRoot.FindAnyWidget("AllowCrossplay");
+		if (!w)
+			return;
+		
+		SCR_SpinBoxComponent comp = SCR_SpinBoxComponent.Cast(w.FindHandler(SCR_SpinBoxComponent));
+		if (!comp)
+			return;
+		
+		comp.SetCurrentItem(GetGame().IsCrossPlayEnabled());
+		comp.m_OnChanged.Insert(OnCrossplayChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCrossplayChanged()
+	{
+		Widget w = m_wRoot.FindAnyWidget("AllowCrossplay");
+		if (!w)
+			return;
+		
+		SCR_SpinBoxComponent comp = SCR_SpinBoxComponent.Cast(w.FindHandler(SCR_SpinBoxComponent));
+		if (!comp)
+			return;
+		
+		Print("Setting: " + comp.GetCurrentIndex());
+		if (!GetGame().SetCrossPlay(comp.GetCurrentIndex()))
+		{
+			comp.SetCurrentItem(!comp.GetCurrentIndex());			
+			Print("Setting back: " + !comp.GetCurrentIndex());
+		}
+		
+		GetGame().UserSettingsChanged();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void BindFOVSettings()
 	{
-		SCR_CheckboxComponent chkboxMaximumZoomInADS = SCR_CheckboxComponent.GetCheckboxComponent("MaxZoomADS", m_wRoot);
-
-		if (chkboxMaximumZoomInADS)
-			chkboxMaximumZoomInADS.m_OnChanged.Insert(OnGameSettingsCheckboxChange);
-
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-			playerController.SetGameUserSettings();
+		BindSettingChange("1PP");
+		BindSettingChange("3PP");
+		BindSettingChange("VehicleFOVPP");
 	}
+
 	//------------------------------------------------------------------------------------------------
 	protected void BindSensitivitySettings()
 	{
-		SCR_SliderComponent sliderMouse = SCR_SliderComponent.GetSliderComponent("AimMouse", m_wRoot);
-		SCR_SliderComponent sliderGamepad = SCR_SliderComponent.GetSliderComponent("AimGamepad", m_wRoot);
-		SCR_SliderComponent sliderADS = SCR_SliderComponent.GetSliderComponent("AimADS", m_wRoot);
+		BindSettingChange("AimMouse");
+		BindSettingChange("AimGamepad");
+		BindSettingChange("AimADS");
+	}
 
-		if (sliderMouse)
-			sliderMouse.GetOnChangedFinal().Insert(OnGameSettingsSliderChange);
-
-		if (sliderGamepad)
-			sliderGamepad.GetOnChangedFinal().Insert(OnGameSettingsSliderChange);
-
-		if (sliderADS)
-			sliderADS.GetOnChangedFinal().Insert(OnGameSettingsSliderChange);
-
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-			playerController.SetGameUserSettings();
+	//------------------------------------------------------------------------------------------------
+	protected void BindControllerSettings()
+	{
+		BindSettingChange("GyroSensitivityYaw");
+		BindSettingChange("GyroSensitivityPitch");
+		BindSettingChange("GyroSensitivityRoll");
+		BindSettingChange("GyroInvertYaw");
+		BindSettingChange("GyroInvertPitch");
+		BindSettingChange("GyroInvertRoll");
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -155,18 +231,16 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnGameSettingsSliderChange(SCR_SliderComponent comp, float val)
+	protected void BindSettingChange(string settingName)
 	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-			playerController.SetGameUserSettings();
+		SCR_SliderComponent slider = SCR_SliderComponent.GetSliderComponent(settingName, m_wRoot);
+		if (slider)
+			slider.GetOnChangedFinal().Insert(OnSliderChange);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnGameSettingsCheckboxChange(SCR_CheckboxComponent comp, bool val)
+	protected void OnSliderChange(SCR_SliderComponent comp, float val)
 	{
-		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		if (playerController)
-			playerController.SetGameUserSettings();
+		SCR_PlayerController.SetGameUserSettings();
 	}
 }

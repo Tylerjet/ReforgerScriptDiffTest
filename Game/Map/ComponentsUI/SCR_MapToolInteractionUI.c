@@ -287,7 +287,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		float newAngle = Math.RAD2DEG * Math.Atan2(s_CursorInfo.x - centerX, s_CursorInfo.y - centerY);
 		float lastAngle = Math.RAD2DEG * Math.Atan2(s_CursorInfo.lastX - centerX, s_CursorInfo.lastY - centerY);
 
-		float rotation = fixAngle_180_180(newAngle - lastAngle);
+		float rotation = SCR_Math.FixAngle(newAngle - lastAngle, 180);
 
 		// Slow down rotation near the center
 		vector grip = Vector(s_CursorInfo.x - centerX, s_CursorInfo.y - centerY, 0);

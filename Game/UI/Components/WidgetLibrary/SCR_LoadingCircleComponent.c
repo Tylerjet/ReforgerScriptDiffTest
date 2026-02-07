@@ -1,5 +1,8 @@
 // Component for simple loading circle widget with endless spining  
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Non interactable component that inherits from the base of interactable components, and thus includes needless settings for clicking and sounds
+
 //------------------------------------------------------------------------------------------------
 class SCR_LoadingCircleComponent : SCR_WLibComponentBase 
 {
@@ -67,3 +70,5 @@ class SCR_LoadingCircleComponent : SCR_WLibComponentBase
 	//------------------------------------------------------------------------------------------------
 	bool GetIsPlayingAnimation() { return m_bIsPlayingAnimation; }
 };
+
+//---- REFACTOR NOTE END ----

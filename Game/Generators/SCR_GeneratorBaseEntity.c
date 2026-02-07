@@ -14,8 +14,8 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 
 #ifdef WORKBENCH
 
-	protected IEntitySource m_Source;
-	protected IEntitySource m_ParentShapeSource;
+	protected IEntitySource m_Source;				//!< the generator's entity source
+	protected IEntitySource m_ParentShapeSource;	//!< the parent shape's entity source, if any
 
 	protected bool m_bIsChangingWorkbenchKey;
 

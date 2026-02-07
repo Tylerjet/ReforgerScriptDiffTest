@@ -19,6 +19,7 @@ sealed class WBModuleDef: pointer
 	proto external bool Save();
 	proto external bool GetCmdLine(string name, out string value);
 	proto external bool Close();
+	proto external bool ExecuteAction(notnull array<string> menuPath, bool bKeepFocus = true);
 	proto external WorkbenchPlugin GetPlugin(typename pluginType);
 }
 

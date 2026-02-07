@@ -321,6 +321,12 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 	void SetBuilderId(int id)
 	{
 		m_iBuilderId = id;
+		
+		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(GetOwner().FindComponent(SCR_EditableEntityComponent));
+		if (!editableEntity)
+			return;
+		
+		editableEntity.SetAuthor(id);
 	}
 
 	//------------------------------------------------------------------------------------------------

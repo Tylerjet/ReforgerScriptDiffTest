@@ -24,10 +24,8 @@ class LayerPresetsUtils
 	{
 		// get project setting conf
 		BaseContainer cont = Workbench.GetGameProjectSettings();
-		BaseContainerList config = cont.GetObjectArray(EBTConfig.conf);
+		BaseContainerList config = cont.GetObjectArray(EBTContainerFields.conf);
 
-		// navigating to the right settings
-		string output;
 		cont = config.Get(0);
 		cont = cont.GetObject("PhysicsSettings");
 		cont = cont.GetObject("Interactions");

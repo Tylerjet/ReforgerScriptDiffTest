@@ -12,7 +12,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("1800", UIWidgets.EditBox, "If suicide is committed more than once in this time (seconds), a penalty is issued.", params: "0 inf 1")]
 	protected int m_iSuicidePenaltyCooldown;
-
+	
 	//static const int SKILL_LEVEL_MAX = 10;
 	//static const int SKILL_LEVEL_XP_COST = 1000;				// how much XP is needed for new level
 
@@ -32,6 +32,9 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
 		super.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
+		
+		if (!requestComponent || !entity)
+			return;
 
 		if (!IsProxy())
 		{
@@ -61,17 +64,20 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
-
+		super.OnPlayerKilled(instigatorContextData);
+		
 		if (IsProxy())
 			return;
+		
+		int playerID = instigatorContextData.GetVictimPlayerID();
+		
+		//~ If player killed self (Admins and GM are not punished)
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.SUICIDE))
+			ProcessSuicide(playerID);
 
-		if (playerId == killer.GetInstigatorPlayerID())
-			ProcessSuicide(playerId);
-
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerID);
 
 		if (pc)
 		{
@@ -81,9 +87,9 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 				compXP.OnPlayerKilled();
 		}
 
-		AwardTransportXP(playerId);
-		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(playerEntity.FindComponent(SCR_CompartmentAccessComponent));
-
+		AwardTransportXP(playerID);
+		
+		SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(instigatorContextData.GetVictimEntity().FindComponent(SCR_CompartmentAccessComponent));
 		if (!compartmentAccessComponent)
 			return;
 
@@ -91,42 +97,47 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
+	override void OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnControllableDestroyed(entity, killerEntity, killer);
+		super.OnControllableDestroyed(instigatorContextData);
 
-		// Handle XP for kill
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		// Handle XP for kills of players
+		if (instigatorContextData.GetInstigator().GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
-
-		int killerId = killer.GetInstigatorPlayerID();
-		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
-
-		SCR_ChimeraCharacter entityChar = SCR_ChimeraCharacter.Cast(entity);
-		if (!entityChar)
-			return;
-
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-
-		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
-		if (!factionKiller)
-			return;
-
-		if (factionKiller.IsFactionFriendly(entityChar.GetFaction()))
+		
+		SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+		int killerId = instigatorContextData.GetKillerPlayerID();
+		
+		//~ Punish for teamkilling if teamkill punishment is enabled. GM and Admin are never punished
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 		{
-			if (killerId != playerId)
+			//~ GM and Admin are never punished XPwise for team killing even if they possess an AI
+			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR || killerControlType ==  SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+			if (!additionalGameModeSettings || additionalGameModeSettings.IsTeamKillingPunished())
 				AwardXP(killerId, SCR_EXPRewards.FRIENDLY_KILL);
+			
+			return;
 		}
-		else
+		//~ Killed by Enemy player
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
 		{
-			SCR_ChimeraCharacter instigatorChar = SCR_ChimeraCharacter.Cast(killerEntity);
-
-			if (!instigatorChar || !instigatorChar.IsInVehicle())
-				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL);
-			else
+			//~ Possessed AI will not get any XP to hide that the GM is possessing
+			if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+				return;
+			
+			//~ Check if player is in vehicle
+			//~ TODO: This logic is incomplete. If the player places a mine then gets into a vehicle and kills a enemy with the mine they will get the vehicle XP
+			SCR_ChimeraCharacter instigatorChar = SCR_ChimeraCharacter.Cast(instigatorContextData.GetKillerEntity());
+			if (instigatorChar && instigatorChar.IsInVehicle())
 				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL_VEH);
+			//~ Character not in vehicle so give normal reward
+			else 
+				AwardXP(killerId, SCR_EXPRewards.ENEMY_KILL);
+			
+			return;
 		}
 	}
 

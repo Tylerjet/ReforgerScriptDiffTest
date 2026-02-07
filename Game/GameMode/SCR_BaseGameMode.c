@@ -110,8 +110,9 @@ Important:
 void SCR_BaseGameMode_OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE, int timeout = -1);
 typedef func SCR_BaseGameMode_OnPlayerDisconnected;
 
-void SCR_BaseGameMode_OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer);
-typedef func SCR_BaseGameMode_OnPlayerKilled;
+//~ Player or controllable entity was killed/destroyed
+void SCR_BaseGameMode_OnControllableDestroyed(notnull SCR_InstigatorContextData instigatorContextData);
+typedef func SCR_BaseGameMode_OnControllableDestroyed;
 
 //~ Generic Event that sends over player ID
 void SCR_BaseGameMode_PlayerId(int playerId);
@@ -159,18 +160,20 @@ class SCR_BaseGameMode : BaseGameMode
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> m_OnPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>();
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> m_OnPostCompPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>(); //~ Called after the GameMode Components are notified that a player was disconnected
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity> m_OnPlayerSpawned = new ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity>();
-	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerKilled> m_OnPlayerKilled = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerKilled>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnControllableDestroyed> m_OnPlayerKilled = new ScriptInvokerBase<SCR_BaseGameMode_OnControllableDestroyed>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnControllableDestroyed> m_OnControllableDestroyed = new ScriptInvokerBase<SCR_BaseGameMode_OnControllableDestroyed>();
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity> m_OnPlayerDeleted = new ScriptInvokerBase<SCR_BaseGameMode_PlayerIdAndEntity>();
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerRoleChanged> m_OnPlayerRoleChange = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerRoleChanged>();
 	
 	protected ref ScriptInvoker m_OnWorldPostProcess = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnControllableSpawned = new ScriptInvoker();
-	protected ref ScriptInvoker m_OnControllableDestroyed = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnControllableDeleted = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnGameModeEnd = new ScriptInvoker();
 	
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnResourceEnabledChanged> m_OnResourceTypeEnabledChanged;
 
+	protected SCR_EPauseReason m_ePauseReasons;
+	
 	//-----------------------------------------
 	//
 	// World Editor attributes meant for Debug or Testing
@@ -618,7 +621,7 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		return m_OnPlayerSpawned;
 	}
-	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerKilled> GetOnPlayerKilled()
+	ScriptInvokerBase<SCR_BaseGameMode_OnControllableDestroyed> GetOnPlayerKilled()
 	{
 		return m_OnPlayerKilled;
 	}
@@ -638,7 +641,7 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		return m_OnControllableSpawned;
 	}
-	ScriptInvoker GetOnControllableDestroyed()
+	ScriptInvokerBase<SCR_BaseGameMode_OnControllableDestroyed> GetOnControllableDestroyed()
 	{
 		return m_OnControllableDestroyed;
 	}
@@ -1008,7 +1011,12 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
 		
-		m_OnPlayerKilled.Invoke(playerId, playerEntity, killerEntity, killer);
+		//~ Create instigator context data to determine what the relation is between victim and killer and control types of the victim and killer
+		SCR_InstigatorContextData instigatorContextData = new SCR_InstigatorContextData(playerId, playerEntity, killerEntity, killer);
+		
+		//~ Send on player killed event
+		m_OnPlayerKilled.Invoke(instigatorContextData);
+	
 		
 		// RespawnSystemComponent is not a SCR_BaseGameModeComponent, so for now we have to
 		// propagate these events manually. 
@@ -1018,14 +1026,22 @@ class SCR_BaseGameMode : BaseGameMode
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
-			comp.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+			comp.OnPlayerKilled(instigatorContextData);
 		}
 
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
 			SCR_GameModeStatistics.RecordDeath(playerId, playerEntity, killerEntity, killer);
 		#endif
+		
+		//~ Call extended OnPlayerKilled
+		OnPlayerKilledEx(instigatorContextData);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Extended OnPlayer Kill, called after BaseGamemode has executed the OnPlayerKilled
+	//! Param[in] instigatorContextData Instigator context data of the killer and victim
+	protected void OnPlayerKilledEx(notnull SCR_InstigatorContextData instigatorContextData);
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called after player kill behaviour is handled by a component overriding the generic logic.
@@ -1113,13 +1129,30 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator instigator)
 	{
 		super.OnControllableDestroyed(entity, killerEntity, instigator);
-		m_OnControllableDestroyed.Invoke(entity, killerEntity, instigator);
-
+		
+		//~ Create instigator context data to determine what the relation is between victim and killer and control types of the victim and killer
+		SCR_InstigatorContextData instigatorContextData = new SCR_InstigatorContextData(-1, entity, killerEntity, instigator);
+		m_OnControllableDestroyed.Invoke(instigatorContextData);
+		
+		#ifdef ENABLE_DIAG
+		//~ Debug print to see death types of characters
+		if (ChimeraCharacter.Cast(entity) && IsMaster())
+			Print("Character Killed: " + typename.EnumToString(SCR_ECharacterDeathStatusRelations, instigatorContextData.GetVictimKillerRelation()) + " | Victim: " + typename.EnumToString(SCR_ECharacterControlType, instigatorContextData.GetVictimCharacterControlType()) + " (id: " + instigatorContextData.GetVictimPlayerID() + ") | Killer: " + typename.EnumToString(SCR_ECharacterControlType, instigatorContextData.GetKillerCharacterControlType()) + " (id: " + instigatorContextData.GetKillerPlayerID() + ")");
+		#endif
+		
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
 		{
-			comp.OnControllableDestroyed(entity, killerEntity, instigator);	
+			comp.OnControllableDestroyed(instigatorContextData);	
 		}
+		
+		//~ Call extended OnControllableDestroyed
+		OnControllableDestroyedEx(instigatorContextData);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Extended controlled character Kill or destroyed, called after BaseGamemode has executed the OnControllableDestroyed
+	//! Param[in] instigatorContextData Instigator context data of the killer and victim
+	protected void OnControllableDestroyedEx(notnull SCR_InstigatorContextData instigatorContextData);
 
 	//------------------------------------------------------------------------------------------------
 	/*
@@ -1719,6 +1752,37 @@ class SCR_BaseGameMode : BaseGameMode
 
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Pause or unpause game. Prevent unpause if it's paused by GM. 
+	\param[in] pause		True - will pause game, False - will continue game 
+	\param[in] reason		From which system is pause called.
+	\return 				True if pause/unpause was done. False if changing pause state is blocked by pause reason or game can't be saved.
+	*/
+	bool PauseGame(bool pause, SCR_EPauseReason reason = SCR_EPauseReason.SYSTEM)
+	{
+		if (!CanBePaused())
+			return false;
+		
+		if (pause)
+			m_ePauseReasons = m_ePauseReasons | reason;
+		else
+			m_ePauseReasons = m_ePauseReasons &~ reason;
+			
+		ChimeraWorld world = GetGame().GetWorld();
+		world.PauseGameTime(m_ePauseReasons != 0);
+		
+		return !pause && m_ePauseReasons != 0 || pause;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return true if client is offline
+	bool CanBePaused()
+	{
+		return !Replication.IsRunning();
+	}
+
 
 	//------------------------------------------------------------------------------------------------
 	// TODO@AS: Small thing, but get rid of m_fTimeElapsed and use

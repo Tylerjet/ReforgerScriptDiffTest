@@ -69,4 +69,10 @@ class SCR_ScenarioFrameworkActionCompareCounterAndExecute : SCR_ScenarioFramewor
 			}
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
+	}
 }

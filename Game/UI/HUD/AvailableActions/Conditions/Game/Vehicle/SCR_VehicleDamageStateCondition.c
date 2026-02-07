@@ -20,7 +20,7 @@ class SCR_VehicleDamageStateCondition : SCR_AvailableActionCondition
 		if (!damageManager)
 			return false;
 
-		auto result = (damageManager.GetState() == m_eValue);
+		bool result = (damageManager.GetState() == m_eValue);
 
 		return GetReturnResult(result);
 	}

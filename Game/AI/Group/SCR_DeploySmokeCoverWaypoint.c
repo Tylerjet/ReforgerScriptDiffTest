@@ -16,11 +16,25 @@ class SCR_DeploySmokeCoverWaypoint : SCR_AIWaypoint
 		return m_iMaxGrenadeCount;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] count Max grenade count to be used
+	void SetMaxGrenadeCount(float count)
+	{
+		m_iMaxGrenadeCount = count;
+	}
+	
 	//-------------------------------------------------------------------------------------
 	SCR_AIActivitySmokeCoverFeatureProperties GetSmokeCoverProperties()
 	{
 		return m_SmokeCoverProperties;
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] smokeCoverProperties Sets smoke cover properties for AI activity smoke cover waypoint.
+	void SetSmokeCoverProperties(SCR_AIActivitySmokeCoverFeatureProperties smokeCoverProperties)
+	{
+		m_SmokeCoverProperties = smokeCoverProperties;
+	}
 	
 	//-------------------------------------------------------------------------------------
 	override SCR_AIWaypointState CreateWaypointState(SCR_AIGroupUtilityComponent groupUtilityComp)

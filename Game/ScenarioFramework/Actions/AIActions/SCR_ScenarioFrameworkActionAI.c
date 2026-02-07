@@ -91,4 +91,10 @@ class SCR_ScenarioFrameworkActionAI : SCR_ScenarioFrameworkActionBase
 			AIAction.Init(targetAIGroup, object);
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_ScenarioFrameworkAIAction> GetSubActionsAI()
+	{
+		return m_aAIActions;
+	}
 }

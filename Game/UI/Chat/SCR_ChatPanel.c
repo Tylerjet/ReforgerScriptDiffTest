@@ -487,13 +487,12 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 			if (PrivateMessageChannel.Cast(m_ActiveChannel))
 			{
 				// Get whisper receiver ID
-				int nameLength;
 				int playerId = this.GetPlayerIdByName(cmd);
 
 				if (playerId != -1)
 				{
 					// Remove player name from the message
-					message = message.Substring(nameLength + 1, message.Length() - nameLength - 1);
+					message = message.Substring(1, message.Length() - 1);
 
 					chatComponent.SendPrivateMessage(message, playerId);
 				}
@@ -734,8 +733,8 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 				if (m_Widgets.m_ChannelTagOverlay)
 				{
 					m_Widgets.m_ChannelTagEditor.SetText(channelName);
-					string tagOverlayText = string.Format(WidgetManager.Translate("#AR-Chat_SendToChannel", WidgetManager.Translate(style.m_sNameLower)));
-					m_Widgets.m_ChannelTagOverlay.SetText(tagOverlayText);
+					//string tagOverlayText = string.Format(WidgetManager.Translate("#AR-Chat_SendToChannel", WidgetManager.Translate(style.m_sNameLower)));
+					m_Widgets.m_ChannelTagOverlay.SetTextFormat("#AR-Chat_SendToChannel", style.m_sNameLower);
 				}
 			}
 		}

@@ -311,7 +311,7 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 	//------------------------------------------------------------------------------------------------
 	protected void StartMainLayout()
 	{
-		if (m_HUDManager.GetHUDElements().IsEmpty())
+		if (!m_HUDManager.GetHUDElements().IsEmpty())
 			return;
 
 		ChangeActiveHUDLayout(m_sMainLayout);

@@ -46,7 +46,7 @@ class LightUserAction : BaseLightUserAction
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override bool HasLocalEffectOnlyScript()
+	override bool CanBroadcastScript()
 	{
 		return false;
 	}

@@ -173,6 +173,14 @@ class SCR_AIGetMoveFromDangerBehaviorParameters  : SCR_AIGetActionParameters
 	override bool VisibleInPalette() { return true; }
 };
 
+class SCR_AIGetMoveFromUnsafeAreaBehaviorParameters  : SCR_AIGetActionParameters
+{
+	static ref TStringArray s_aVarsOut = (new SCR_AIMoveFromUnsafeAreaBehavior(null, null, vector.Zero, null, 0)).GetPortNames();
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	
+	override bool VisibleInPalette() { return true; }
+};
+
 class SCR_AIGetMoveIndividuallyBehaviorParameters : SCR_AIGetActionParameters
 {
 	static ref TStringArray s_aVarsOut = (new SCR_AIMoveIndividuallyBehavior(null, null, vector.Zero)).GetPortNames();

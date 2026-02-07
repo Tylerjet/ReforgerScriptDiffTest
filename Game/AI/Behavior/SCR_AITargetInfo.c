@@ -29,7 +29,8 @@ class SCR_AITargetInfo
 		vector worldPos = vector.Zero,
 		float timestamp = 0.0,
 		EAITargetInfoCategory category = 0,
-		bool endangering = false)
+		bool endangering = false,
+		Faction faction = null)
 	{
 		m_Entity = entity;
 		m_vWorldPos = worldPos;
@@ -40,22 +41,28 @@ class SCR_AITargetInfo
 		if (entity)
 		{
 			// Init m_Faction
-			FactionAffiliationComponent fcomp;
-			
-			SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
-			if (character)
-				fcomp = character.m_pFactionComponent; // Common case
+			if (faction)
+				m_Faction = faction; // Faction was provided
 			else
 			{
-				Vehicle veh = Vehicle.Cast(entity);
-				if (veh)
-					fcomp = veh.m_pFactionComponent;
+				// Faction was not provided, try to resolve it
+				FactionAffiliationComponent fcomp;
+				
+				SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
+				if (character)
+					fcomp = character.m_pFactionComponent; // Common case
 				else
-					fcomp = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent)); // Last resort
+				{
+					Vehicle veh = Vehicle.Cast(entity);
+					if (veh)
+						fcomp = veh.m_pFactionComponent;
+					else
+						fcomp = FactionAffiliationComponent.Cast(entity.FindComponent(FactionAffiliationComponent)); // Last resort
+				}
+				
+				if (fcomp)
+					m_Faction = fcomp.GetAffiliatedFaction();
 			}
-			
-			if (fcomp)
-				m_Faction = fcomp.GetAffiliatedFaction();
 			
 			// Init pointers to components
 			m_DamageManager = DamageManagerComponent.Cast(entity.FindComponent(DamageManagerComponent));
@@ -90,9 +97,9 @@ class SCR_AITargetInfo
 	}
 	
 	//----------------------------------------------------------------------------------------------------------
-	void InitFromGunshot(IEntity entity, PerceivableComponent perceivable, vector posWorld, float timestamp, bool endangering)
+	void InitFromGunshot(IEntity entity, PerceivableComponent perceivable, vector posWorld, Faction faction, float timestamp, bool endangering)
 	{
-		Init(entity, perceivable, posWorld, timestamp, category: EAITargetInfoCategory.DETECTED, endangering);
+		Init(entity, perceivable, posWorld, timestamp, category: EAITargetInfoCategory.DETECTED, endangering, faction);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------

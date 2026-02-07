@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkAIActionSetCharacterStance : SCR_ScenarioFrameworkAIA
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		array<AIAgent> agents = {};
 		m_AIGroup.GetAgents(agents);
 		

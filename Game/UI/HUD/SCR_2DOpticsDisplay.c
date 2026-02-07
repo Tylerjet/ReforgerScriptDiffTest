@@ -352,7 +352,7 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 		// Blur
 		m_wBlur.SetIntensity(OPACITY_INITIAL);
 		m_wBlur.SetOpacity(1);
-		
+
 		m_bActivated = true;
 
 		//Play fadeIn animation after given delay
@@ -364,7 +364,7 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 	protected void Deactivate()
 	{
 		m_bActivated = false;
-		
+
 		// Prevent entering animation
 		AnimateWidget.StopAnimation(m_wRoot, WidgetAnimationOpacity);
 		GetGame().GetCallqueue().Remove(PlayEntryAnimation);
@@ -599,10 +599,10 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 
 		m_vVignetteOffset = vector.Lerp(m_vVignetteOffset, m_vObjectiveOffset, vignetteMove);
 
-		if (m_fRotationScale > 0)
+		if (m_fRotationScale != 0)
 			m_vVignetteOffset = m_vVignetteOffset - rotation * m_fRotationScale;
 
-		if (m_fMovementScale > 0)
+		if (m_fMovementScale != 0)
 			m_vVignetteOffset = m_vVignetteOffset - movement * m_fMovementScale;
 
 		// Clamp vignette distance from objective center down to objective size
@@ -623,25 +623,53 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 
 		float pixelsPerDegree = screenH / fov;
 
-		// Vignette movement
-		float defaultRearLeft = VignetteDefaultPosition(screenW, m_fVignetteSize);
-		float defaultRearTop = VignetteDefaultPosition(screenH, m_fVignetteSize);
+		// Objective horizontal movement
+		float defaultFrontLeft = LayerDefaultPosition(screenW, m_fObjectiveSize);
+		float objectiveX = m_vObjectiveOffset[0] * pixelsPerDegree;
+		float frontPaddingLeft = defaultFrontLeft + objectiveX;
+		float frontEdgeRight = screenW - m_fObjectiveSize;
 
-		float rearPaddingLeft = defaultRearLeft + pixelsPerDegree * m_vVignetteOffset[0];
-		float rearPaddingTop = defaultRearTop - pixelsPerDegree * m_vVignetteOffset[1];
-
-		m_wRearFillLeft.SetWidthOverride(rearPaddingLeft);
-		m_wRearFillTop.SetHeightOverride(rearPaddingTop);
-
-		// Objective and reticle movement
-		float defaultFrontLeft = VignetteDefaultPosition(screenW, m_fObjectiveSize);
-		float defaultFrontTop = VignetteDefaultPosition(screenH, m_fObjectiveSize);
-
-		float frontPaddingLeft = defaultFrontLeft + pixelsPerDegree * m_vObjectiveOffset[0];
-		float frontPaddingTop = defaultFrontTop - pixelsPerDegree * m_vObjectiveOffset[1];
+		// If objective is passing right edge of the screen, horizontal movement is halved
+		if (frontPaddingLeft > frontEdgeRight)
+			frontPaddingLeft = frontEdgeRight + (frontPaddingLeft - frontEdgeRight) * 2;
 
 		m_wFrontFillLeft.SetWidthOverride(frontPaddingLeft);
+
+		// Objective vertical movement
+		float defaultFrontTop = LayerDefaultPosition(screenH, m_fObjectiveSize);
+		float objectiveY = m_vObjectiveOffset[1] * pixelsPerDegree;
+		float frontPaddingTop = defaultFrontTop - objectiveY;
+		float frontEdgeBottom = screenH - m_fObjectiveSize;
+
+		// If objective is passing bottom edge of the screen, vertical movement is halved
+		if (frontPaddingTop > frontEdgeBottom)
+			frontPaddingTop = frontEdgeBottom + (frontPaddingTop - frontEdgeBottom) * 2;
+
 		m_wFrontFillTop.SetHeightOverride(frontPaddingTop);
+
+		// Vignette horizontal movement
+		float defaultRearLeft = LayerDefaultPosition(screenW, m_fVignetteSize);
+		float vignetteX = 2 * objectiveX - m_vVignetteOffset[0] * pixelsPerDegree;
+		float rearPaddingLeft = defaultRearLeft + vignetteX;
+		float rearEdgeLeft = screenW - m_fVignetteSize;
+
+		// If vignette is passing right edge of the screen, horizontal movement is halved
+		if (rearPaddingLeft > rearEdgeLeft)
+			rearPaddingLeft = rearEdgeLeft + (rearPaddingLeft - rearEdgeLeft) * 2;
+
+		m_wRearFillLeft.SetWidthOverride(rearPaddingLeft);
+
+		// Vignette vertical movement
+		float defaultRearTop = LayerDefaultPosition(screenH, m_fVignetteSize);
+		float vignetteY = 2 * objectiveY - m_vVignetteOffset[1] * pixelsPerDegree;
+		float rearPaddingTop = defaultRearTop - vignetteY;
+		float rearEdgeBottom = screenH - m_fVignetteSize;
+
+		// If vignette is passing bottom edge of the screen, vertical movement is halved
+		if (rearPaddingTop > rearEdgeBottom)
+			rearPaddingTop = rearEdgeBottom + (rearPaddingTop - rearEdgeBottom) * 2;
+
+		m_wRearFillTop.SetHeightOverride(rearPaddingTop);
 
 		// Reticle rotation
 		if (m_wImgReticle)
@@ -688,12 +716,9 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected float VignetteDefaultPosition(float screenSize, float vignetteSize)
+	static float LayerDefaultPosition(float screenSize, float layerSize)
 	{
-		float defaultPos = (screenSize - vignetteSize) * 0.5;
-		if (defaultPos < 0)
-			defaultPos = 0;
-		return defaultPos;
+		return (screenSize - layerSize) * 0.5;
 	}
 
 #ifdef ENABLE_DIAG

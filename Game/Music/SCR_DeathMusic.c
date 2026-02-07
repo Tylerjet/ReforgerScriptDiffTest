@@ -3,9 +3,9 @@ class SCR_DeathMusic : ScriptedMusic
 	MusicManager m_MusicManager;
 	
 		//~ When the player died
-	protected void OnPlayerDied(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnPlayerDied(notnull SCR_InstigatorContextData instigatorContextData)
 	{	
-		if (playerId != SCR_PlayerController.GetLocalPlayerId())
+		if (instigatorContextData.GetVictimPlayerID() != SCR_PlayerController.GetLocalPlayerId())
 			return;
 		
 		m_MusicManager.Play(SCR_SoundEvent.SOUND_ONDEATH);

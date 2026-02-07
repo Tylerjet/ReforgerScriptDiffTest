@@ -23,11 +23,8 @@ class SCR_SupportStationAreaMeshComponent : SCR_BaseAreaMeshComponent
 		if (!m_SupportStationComponent)
 			return m_fRadius;
 
-		//~ Range is set to Pow2 in runtime so make sure to Sqrt it
-		if (SCR_Global.IsEditMode())
-			return m_SupportStationComponent.GetRange();
-		else
-			return Math.Sqrt(m_SupportStationComponent.GetRange());
+		//~ Get Radius of support station
+		return m_SupportStationComponent.GetRange();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -41,10 +38,8 @@ class SCR_SupportStationAreaMeshComponent : SCR_BaseAreaMeshComponent
 
 		if (supportStation && supportStation.GetOwner() != owner && supportStation.GetOwner() != owner.GetParent())
 		{
-			if (SCR_Global.IsEditMode() && m_fRadius != supportStation.GetRange())
+			if (m_fRadius != supportStation.GetRange())
 				Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + supportStation.GetRange() + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
-			else if (!SCR_Global.IsEditMode() && m_fRadius != Math.Sqrt(supportStation.GetRange()))
-				Print("'SCR_SupportStationAreaMeshComponent' is on a child entity yet the m_fRadius (" + m_fRadius + ") is not equal to the support Station range (" + Math.Sqrt(supportStation.GetRange()) + ") make sure it is equal else the preview will not show correctly", LogLevel.ERROR);
 		}
 		
 		return supportStation;

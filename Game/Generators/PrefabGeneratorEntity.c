@@ -608,7 +608,7 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity // TODO: make it use SCR_O
 		static vector m_EdgeDebugLine[DEBUG_CURVE_LINE_SIZE];
 		static vector m_ThresholdDebugLine[DEBUG_CURVE_LINE_SIZE];
 
-		float stepDistance = 0.1;
+		const float stepDistance = 0.1;
 		float distanceWalked = 0;
 		vector lastPos = "0 0 0";
 		float space = 0;
@@ -681,7 +681,7 @@ class PrefabGeneratorEntity : SCR_GeneratorBaseEntity // TODO: make it use SCR_O
 	// unused
 	protected void PerlinDebug()
 	{
-		string filePath = "d:\\test.dds";
+		const string filePath = "d:\\test.dds";
 		array<int> data = {};
 
 		const int WIDTH = 1024;

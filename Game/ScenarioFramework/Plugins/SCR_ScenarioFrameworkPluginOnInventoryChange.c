@@ -10,6 +10,8 @@ class SCR_ScenarioFrameworkPluginOnInventoryChange : SCR_ScenarioFrameworkPlugin
 	IEntity m_Asset;
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes inventory storage managers for an entity, subscribes to item added and removed events.
+	//! \param[in] object of layer base from which entity is further retrieved
 	override void Init(SCR_ScenarioFrameworkLayerBase object)
 	{
 		if (!object)
@@ -49,8 +51,16 @@ class SCR_ScenarioFrameworkPluginOnInventoryChange : SCR_ScenarioFrameworkPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Handles inventory item addition, debugs, and triggers actions on item addition.
+	//! \param[in] item Adds an item to inventory, triggers actions on item addition.
+	//! \param[in] storageOwner Represents the entity owning the inventory where an item is added.
 	protected void OnItemAdded(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
+		// Here you can debug specific Plugin instance.
+		// This can be also adjusted during runtime via Debug Menu > ScenarioFramework > Plugin Inspector
+		if (m_bDebug)
+			Print("[SCR_ScenarioFrameworkPluginOnInventoryChange.OnItemAdded] debug line (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+		
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnItemAdded)
 		{
 			action.OnActivate(m_Asset);
@@ -58,8 +68,16 @@ class SCR_ScenarioFrameworkPluginOnInventoryChange : SCR_ScenarioFrameworkPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Handles inventory item removal, debugs, and triggers actions on item removal.
+	//! \param[in] item Removes an item from inventory, triggers actions on item removal.
+	//! \param[in] storageOwner Represents the entity owning the inventory where item is removed from.
 	protected void OnItemRemoved(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
+		// Here you can debug specific Plugin instance.
+		// This can be also adjusted during runtime via Debug Menu > ScenarioFramework > Plugin Inspector
+		if (m_bDebug)
+			Print("[SCR_ScenarioFrameworkPluginOnInventoryChange.OnItemRemoved] debug line (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+		
 		foreach (SCR_ScenarioFrameworkActionBase action : m_aActionsOnItemRemoved)
 		{
 			action.OnActivate(m_Asset);

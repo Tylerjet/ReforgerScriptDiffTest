@@ -33,6 +33,7 @@ class SCR_AIActionTask : AITaskScripted
 	static const string DELAY_PORT = "Delay";
 	static const string REINIT_PORT = "Reinit";
 	static const string RADIUS_PORT = "Radius";
+	static const string AGENT_SCRIPT_PORT = "AgentScript";
 	
 	protected SCR_AIBaseUtilityComponent m_UtilityComp;
 	

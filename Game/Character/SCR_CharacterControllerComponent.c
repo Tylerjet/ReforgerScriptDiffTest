@@ -970,6 +970,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//! \param[in] trigger
 	void ActionNextWeapon(float value = 0.0, EActionTrigger trigger = 0)
 	{
+		CharacterInputContext inputContext = GetInputContext();
+		if (inputContext && inputContext.IsThrowCanceled())
+		{
+			inputContext.SetThrow(false);
+			return;
+		}
+
 		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(GetInventoryStorageManager());
 		if (!storageManager)
 			return;
@@ -1185,7 +1192,9 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//! \param[in] alignToPosition
 	//! \param[in] targetPosition
 	//! \param[in] disableInput - If true, player cannot interrupt the loiter by pressing space. It is the responsibility of the caller to ensure that the action will be finished. If false, action can be cancelled by player input.
-	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" }, bool disableInput = false)
+	//! \param[in] customAnimData - data for playing custom animation in graph attachment
+	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" }, bool disableInput = false,
+		SCR_LoiterCustomAnimData customAnimData = SCR_LoiterCustomAnimData.Default)
 	{
 		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
 			return;
@@ -1203,6 +1212,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		m_pScrInputContext.m_bLoiteringDisablePlayerInput = disableInput;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
+		m_pScrInputContext.m_CustomAnimData = customAnimData;
 		
 		if (IsGadgetInHands())
 			RemoveGadgetFromHand(true);
@@ -1231,37 +1241,40 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void Rpc_StartLoitering_S(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4])
+	protected void Rpc_StartLoitering_S(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4], SCR_LoiterCustomAnimData customAnimData)
 	{
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
 		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
 		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
+		m_pScrInputContext.m_CustomAnimData = customAnimData;
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StartCommandLoitering();
+		scrCmdHandler.StartCommandLoitering(customAnimData);
 
 		Rpc(Rpc_StartLoitering_BCNO,
 				m_pScrInputContext.m_iLoiteringType,
 				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
-				m_pScrInputContext.m_mLoiteringPosition);
+				m_pScrInputContext.m_mLoiteringPosition,
+				m_pScrInputContext.m_CustomAnimData);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
-	protected void Rpc_StartLoitering_BCNO(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4])
+	protected void Rpc_StartLoitering_BCNO(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4],	SCR_LoiterCustomAnimData customAnimData)
 	{
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
 		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
 		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
+		m_pScrInputContext.m_CustomAnimData = customAnimData;
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StartCommandLoitering();
+		scrCmdHandler.StartCommandLoitering(customAnimData);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1287,7 +1300,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
-		scrCmdHandler.StartCommandLoitering();
+		scrCmdHandler.StartCommandLoitering(m_pScrInputContext.m_CustomAnimData);
 		
 		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
 			Rpc(Rpc_StartLoitering_S,
@@ -1295,14 +1308,16 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
-				m_pScrInputContext.m_mLoiteringPosition);
+				m_pScrInputContext.m_mLoiteringPosition,
+				m_pScrInputContext.m_CustomAnimData);
 			else
 			Rpc(Rpc_StartLoitering_BCNO,
 				m_pScrInputContext.m_iLoiteringType,
 				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
 				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
-				m_pScrInputContext.m_mLoiteringPosition);
+				m_pScrInputContext.m_mLoiteringPosition,
+				m_pScrInputContext.m_CustomAnimData);
 		
 		return true;
 	}

@@ -75,4 +75,10 @@ class SCR_SuperMenuBase : MenuRootBase
 		if (m_SuperMenuComponent)
 			m_SuperMenuComponent.OnMenuFocusLost();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_SuperMenuComponent GetSuperMenu()
+	{
+		return m_SuperMenuComponent;
+	}
 }

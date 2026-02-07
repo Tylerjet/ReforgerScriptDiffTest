@@ -27,6 +27,12 @@ class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Whether the AI will occasionally lean to side", "", ParamEnumArray.FromEnum(ELeaningType))]
 	protected ELeaningType m_eLeaningType;
 	
+	[Attribute("0", UIWidgets.ComboBox, "Loiter animation to be played.", "", ParamEnumArray.FromEnum(ELoiteringType))];
+	protected ELoiteringType m_eLoiterAnimation;
+	
+	[Attribute("false", UIWidgets.CheckBox, "Holster weapon during loiter animation?")];
+	protected bool m_bHolsterWeapon;
+	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	vector GetLookPosition()
@@ -67,5 +73,17 @@ class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 	ELeaningType GetLeaningType()
 	{
 		return m_eLeaningType;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	ELoiteringType GetLoiterAnimation()
+	{
+		return m_eLoiterAnimation;
+	}
+	
+	//----------------------------------------------------------------------------------------
+	bool GetHolsterWeapon()
+	{
+		return m_bHolsterWeapon;
 	}
 }

@@ -15,7 +15,7 @@ class SCR_ByteFormat
 	//! Return byte size in 3 digid max format with included size name up to GB
 	static string ReadableSizeFromBytes(out float value, int decimals = 1)
 	{
-		int safeCount = 4;
+		const int safeCount = 4;
 		int count = 0;
 		
 		float valCheck = value;

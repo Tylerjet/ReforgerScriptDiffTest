@@ -45,7 +45,7 @@ class SCR_ConfigListComponent : ScriptedWidgetComponent
 	
 	//-------------------------------------------------------------------------------------------
 	//! Find variable of given property name and group tag - no group tag find any variable of given property name
-	protected SCR_WidgetListEntry FindEntry(string propertyName, string groupTag = "")
+	SCR_WidgetListEntry FindEntry(string propertyName, string groupTag = "")
 	{
 		for (int i = 0, count = m_aInitialEntryList.Count(); i < count; i++)
 		{

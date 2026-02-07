@@ -10,6 +10,9 @@ void ScriptInvokerConfigurableDialogMethod(SCR_ConfigurableDialogUi dialog);
 typedef func ScriptInvokerConfigurableDialogMethod;
 typedef ScriptInvokerBase<ScriptInvokerConfigurableDialogMethod> ScriptInvokerConfigurableDialog;
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Despite being a widget component, this is NOT meant to be placed manually in layouts: it is added by script, so it should not have attributes
+
 class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 {
 	static const ResourceName NAVIGATION_BUTTON_LAYOUT = "{87037226B1A2064B}UI/layouts/WidgetLibrary/Buttons/WLib_NavigationButtonSuperSmall.layout";
@@ -20,6 +23,11 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	
 	[Attribute(NAVIGATION_BUTTON_LAYOUT, UIWidgets.ResourceNamePicker, "Layout of the navigation button", params: "layout")]
 	protected ResourceName m_sNavigationButtonLayout;
+
+//---- REFACTOR NOTE END ----
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// A unified solution for footers should be used instead
 	
 	[Attribute("ButtonsLeft", UIWidgets.Auto, "Widget name of left buttons layout")]
 	protected string m_sWidgetNameButtonsLeft;
@@ -30,12 +38,19 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	[Attribute("ButtonsCenter", UIWidgets.Auto, "Widget name of center buttons layout")]
 	protected string m_sWidgetNameButtonsCenter;
 	
+//---- REFACTOR NOTE END ----
+	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Old untyped invokers
+	
 	// Script Invokers
 	ref ScriptInvoker m_OnConfirm = new ScriptInvoker();			// (SCR_ConfigurableDialogUi dlg) - Called when Confirm button was clicked, if you don't override OnConfirm of this class
 	ref ScriptInvoker m_OnCancel = new ScriptInvoker();				// (SCR_ConfigurableDialogUi dlg) - Called when Cancel button was clicked, if you don't override OnConfirm of this class
 	ref ScriptInvoker m_OnClose = new ScriptInvoker();				// (SCR_ConfigurableDialogUi dlg) - Called when dialog is closed, AFTER the fade out animation is over
 	ref ScriptInvoker m_OnCloseStart = new ScriptInvoker();			// (SCR_ConfigurableDialogUi dlg) - Called when dialog is closed, as soon as the fade out animation STARTS
-	ref ScriptInvoker m_OnButtonPressed = new ScriptInvoker(); 		// (SCR_ConfigurableDialogUi dlg, string tag) - Generic delegate called by all the buttons, returning their tag
+	ref ScriptInvoker m_OnButtonPressed = new ScriptInvoker(); 		// (SCR_ConfigurableDialogUi dlg, string tag) - Generic delegate called by all the buttons, returning their EStage
+
+//---- REFACTOR NOTE END ----
 	
 	// Widgets
 	protected ImageWidget m_wImgTopLine;
@@ -696,6 +711,9 @@ enum EConfigurableDialogUiButtonAlign
 };
 
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Duplicate of EDialogType
+
 //------------------------------------------------------------------------------------------------
 //! Style of the dialog
 enum EConfigurableDialogStyle
@@ -707,13 +725,14 @@ enum EConfigurableDialogStyle
 	ONLINE
 };
 
+//---- REFACTOR NOTE END ----
 
 //-------------------------------------------------------------------------------------------
 //		C O N F I G U R A T I O N   C L A S S E S 
 //-------------------------------------------------------------------------------------------
 //-------------------------------------------------------------------------------------------
 //! Configuration for a button
-[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sTag")]
+[BaseContainerProps(configRoot : true), SCR_BaseContainerCustomTitleField("m_sTag")]
 class SCR_ConfigurableDialogUiButtonPreset
 {
 	[Attribute("", UIWidgets.Auto, "Custom tag, used for finding this button at run time")]
@@ -740,7 +759,7 @@ class SCR_ConfigurableDialogUiButtonPreset
 
 //-------------------------------------------------------------------------------------------
 //! Configuration for a dialog
-[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sTag")]
+[BaseContainerProps(configRoot : true), SCR_BaseContainerCustomTitleField("m_sTag")]
 class SCR_ConfigurableDialogUiPreset
 {
 	[Attribute("{E6B607B27BCC1477}UI/layouts/Menus/Dialogs/ConfigurableDialog.layout", UIWidgets.ResourceNamePicker, ".layout for the base of the dialog", params: "layout")]

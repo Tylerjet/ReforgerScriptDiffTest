@@ -32,6 +32,9 @@ class SCR_ProfileSuperMenu : SCR_SuperMenuBase
 		SCR_TabViewComponent tabView = m_SuperMenuComponent.GetTabView();
 		if (tabView)
 			tabView.GetOnContentShow().Insert(OnTabContentShow);
+		
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+			tabView.RemoveTabByIdentifier("Community");
 	}
 
 	//------------------------------------------------------------------------------------------------

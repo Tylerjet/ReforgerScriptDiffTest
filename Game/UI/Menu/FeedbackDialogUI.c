@@ -367,7 +367,8 @@ class FeedbackDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	private void OnCreateAccount()
 	{
-		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PrivacyPolicyMenu);
+		Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -20,16 +20,18 @@ class SCR_MapMarkerBase
 	
 	// server only
 	protected bool m_bIsServerSideDisabled; // in hosted server scenario, opposing faction markers have to be properly managed but still disabled from showing up
+	protected bool m_bCanBeRemovedByOwner = true; // can this marker be deleted by user in map.
 
 	// rest
 	protected bool m_bTestVisibleFrame = true;			// only run update based on presence in visible frame
-	protected bool m_bIsUpdateDisabled;					// is update currently disbled
+	protected bool m_bIsUpdateDisabled;				// is update currently disbled
 	protected bool m_bIsDragged;						// currently being dragged
+	protected bool m_bIsBlocked;						// is marker blocked from showing to the user (ex. UGC restrictions)
 	protected int m_iScreenX;							// cached screen position X
 	protected int m_iScreenY;						 	// cached screen position Y
 	protected SCR_MapMarkerEntryConfig m_ConfigEntry; 	// marker entry associated with this marker type
 	protected SCR_MapEntity m_MapEntity;
-	protected Widget m_wRoot;
+	protected ref Widget m_wRoot;
 	protected SCR_MapMarkerWidgetComponent m_MarkerWidgetComp;
 	protected ref Color m_Color;
 		
@@ -204,13 +206,36 @@ class SCR_MapMarkerBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Disable marker update based on visibility on screen
+	//! Disable posibility to remove marker from map by owner.
+	void SetCanBeRemovedByOwner(bool state)
+	{
+		m_bCanBeRemovedByOwner = state
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool CanBeRemovedByOwner()
+	{
+		return m_bCanBeRemovedByOwner;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Disable marker update based on visibility on screen, overriden by m_bIsBlocked
 	void SetUpdateDisabled(bool state)
 	{
+		if (m_bIsBlocked && !state)
+			SetUpdateDisabled(true);
+		
 		m_bIsUpdateDisabled = state;
 		
 		if (m_wRoot)
 			m_wRoot.SetVisible(!state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets if marker is blocked (this changes visibility)
+	void SetBlocked(bool state)
+	{
+		m_bIsBlocked = state;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -317,7 +342,7 @@ class SCR_MapMarkerBase
 	//! Called from SCR_MapMarkerManagerComponent
 	bool OnUpdate(vector visibleMin = vector.Zero, vector visibleMax = vector.Zero)
 	{
-		if (m_bIsServerSideDisabled || m_bIsDragged)
+		if (m_bIsServerSideDisabled || m_bIsDragged || m_bIsBlocked)
 			return true;
 		
 		if (m_bTestVisibleFrame)

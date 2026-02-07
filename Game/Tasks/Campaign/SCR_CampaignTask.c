@@ -286,11 +286,13 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 			case SCR_CampaignTaskType.CAPTURE:
 			{
 				if (m_TargetBase)
-					if (m_bIndividualTask && DoneByAssignee())
+				{
+					//if (m_bIndividualTask && DoneByAssignee())
+					if (false)
 						text = string.Format(CAMPAIGN_TASK_RECONFIGURED_BY_TEXT, GetBaseNameWithCallsign(), GetAllAssigneeNamesString());
 					else
 						text = string.Format(CAMPAIGN_TASK_RECONFIGURED_TEXT, GetBaseNameWithCallsign());
-				
+				}
 				break;
 			};
 		}
@@ -307,7 +309,9 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 			case SCR_CampaignTaskType.CAPTURE:
 			{
 				if (m_TargetBase)
-					if (m_bIndividualTask && DoneByAssignee())
+				{
+					//if (m_bIndividualTask && DoneByAssignee())
+					if (false)
 					{
 						text = CAMPAIGN_TASK_RECONFIGURED_BY_TEXT;
 						param1 = GetBaseNameWithCallsign();
@@ -318,6 +322,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 						text = CAMPAIGN_TASK_RECONFIGURED_TEXT;
 						param1 = GetBaseNameWithCallsign();
 					}
+				}
 
 				break;
 			};

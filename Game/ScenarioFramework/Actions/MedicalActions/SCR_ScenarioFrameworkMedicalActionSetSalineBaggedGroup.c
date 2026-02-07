@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionSetSalineBaggedGroup : SCR_ScenarioFrame
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		Resource resource = Resource.Load(m_sSalineBagPrefab);
 		if (!resource)
 			return;

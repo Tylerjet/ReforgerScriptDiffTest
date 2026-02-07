@@ -179,7 +179,7 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 			//--- Preserve existing values of the entity budget
 			if (infoAncestor)
 			{
-				string varName = "m_EntityBudgetCost";
+				const string varName = "m_EntityBudgetCost";
 				array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
 				PreserveBudgets(api, infoCurrent, varName, entityBudgetCosts);
 

@@ -32,10 +32,15 @@ class SCR_DownloadSequence
 	// True - skip loading of addon details which speed up loading time, useful for getting downloading list like in Server broweser
 	protected bool m_bSkipDetails;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// No need for = 0, it's the default value for ints already
+	
 	protected int m_iDependencyDetailsLoadedCount = 0;
 	protected bool m_bAllDependencyDetailsLoaded;
 	
 	protected int m_iPatchesLoaded = 0;
+	
+//---- REFACTOR NOTE END ----
 	
 	protected ref array<ref SCR_BackendCallbackWorkshopItem> m_aPatchSizeCallbacks = {};
 	
@@ -137,6 +142,9 @@ class SCR_DownloadSequence
 		LoadDependenciesDetails();
 	}
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// A comment on top of the class states "This class only solves functionality, not UI " ...and then it does UI
+	
 	//------------------------------------------------------------------------------------------------
 	//! Show dialog with list of resctricted
 	//! In dialog is possible to cancel reports 
@@ -152,6 +160,8 @@ class SCR_DownloadSequence
 		
 		return reportedDialog;
 	}
+	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//! Cancels this download request.

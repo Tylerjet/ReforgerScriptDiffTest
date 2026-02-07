@@ -114,6 +114,8 @@ class SCR_LocalizedPropertyExtended : SCR_LocalizedProperty
 [BaseContainerProps(configRoot: true), SCR_WidgetListEntryCustomTitle()]
 class SCR_WidgetListEntry
 {
+	protected const ResourceName ENTRY_DEFINITIONS = "{A6EFD45A3A38965C}Configs/JsonConfigList/JsonConfigListDefinition.conf";
+	
 	const string INVALID_VALUE = "-invalid-";
 	
 	[Attribute("{0022F0B45ADBC5AC}UI/layouts/WidgetLibrary/EditBox/WLib_EditBox.layout", UIWidgets.ResourceNamePicker, "What kind of widget should be generated for this value", "layout")]
@@ -153,20 +155,19 @@ class SCR_WidgetListEntry
 	{
 		// Create widget 
 		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sEntryLayout, parent);
-	
+		m_EntryRoot = w;
+		
 		// Setup component
 		m_ChangeableComponent = SCR_ChangeableComponentBase.Cast(w.FindHandler(SCR_ChangeableComponentBase));
 		if (!m_ChangeableComponent)
 			return;
 		
 		m_ChangeableComponent.SetLabel(m_sLabel);
+		m_ChangeableComponent.UseLabel(!m_sLabel.IsEmpty());
 		
 		SetupHandlers();
 		SetInteractive(m_bInteractive);
 		
-		m_EntryRoot = w;
-		
-		// Show 
 		w.SetVisible(m_bShow);
 	}
 	
@@ -279,13 +280,38 @@ class SCR_WidgetListEntry
 	{
 		return m_bValidInput;
 	}
+	
+	//-------------------------------------------------------------------------------------------
+	bool GetVisible()
+	{
+		return m_bShow;
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	void SetVisible(bool show)
+	{
+		m_bShow = show;
+		m_EntryRoot.SetVisible(m_bShow);
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	static SCR_ConfigListEntries GetEntriesDefinitions(ResourceName presetsResourceName)
+	{
+		Resource rsc = BaseContainerTools.LoadContainer(presetsResourceName);
+		if (!rsc)
+			return null;
+		
+		BaseContainer container = rsc.GetResource().ToBaseContainer();
+		
+		return SCR_ConfigListEntries.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+	}
 };
 
 //-------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot: true)]
 class SCR_WidgetListEntryGroup
 {
-	[Attribute("", UIWidgets.EditBox, "Group tag for fast recongition")]
+	[Attribute("", UIWidgets.EditBox, "Group tag for fast recognition")]
 	protected string m_sTag;
 	
 	[Attribute()]
@@ -298,6 +324,50 @@ class SCR_WidgetListEntryGroup
 	}
 };
 
+
+//-------------------------------------------------------------------------------------------
+//! Used for entry that just show text or message. This widget is not editable
+//! Example: Uploaded GM save has a version which is set automatically, therefore: Version - 1.0.0
+[BaseContainerProps(configRoot: true), SCR_WidgetListEntryCustomTitle()]
+class SCR_WidgetListEntryMessage : SCR_WidgetListEntry
+{ 
+	[Attribute("", UIWidgets.EditBox, "Group tag for fast recognition")]
+	protected string m_sMessage;
+	
+	protected SCR_SimpleEntryComponent m_SimpleEntry;
+	
+	//-------------------------------------------------------------------------------------------
+	override void CreateWidget(Widget parent)
+	{
+		// Create widget 
+		Widget w = GetGame().GetWorkspace().CreateWidgets(m_sEntryLayout, parent);
+	
+		// Show 
+		w.SetVisible(m_bShow);
+		if (!m_bShow)
+			return;
+		
+		m_EntryRoot = w;
+		
+		m_SimpleEntry = SCR_SimpleEntryComponent.Cast(m_EntryRoot.FindHandler(SCR_SimpleEntryComponent));
+		m_SimpleEntry.SetMessages(m_sLabel, m_sMessage);
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	//! Apply value to message
+	override void SetValue(string str)
+	{
+		m_sMessage = str;
+		m_SimpleEntry.SetMessages(m_sLabel, m_sMessage);
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	//! Return message
+	override string ValueAsString()
+	{
+		return m_sMessage;
+	}
+}
 
 //-------------------------------------------------------------------------------------------
 //! Configurable widget list entry for list label
@@ -316,6 +386,7 @@ class SCR_WidgetListEntryLabel : SCR_WidgetListEntry
 	//-------------------------------------------------------------------------------------------
 	override void CreateWidget(Widget parent)
 	{
+		
 		TextWidget wText = TextWidget.Cast(GetGame().GetWorkspace().CreateWidgets(m_sEntryLayout, parent));
 		if (!wText)
 			return;
@@ -324,6 +395,11 @@ class SCR_WidgetListEntryLabel : SCR_WidgetListEntry
 		VerticalLayoutSlot.SetPadding(wText, m_iLeftBottom, m_iOffsetTop, 0, m_iOffsetBottom);
 		
 		m_sClassTag = "label";
+		
+		m_EntryRoot = wText;
+		
+		// Show 
+		wText.SetVisible(m_bShow);
 	}
 };
 
@@ -362,6 +438,9 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 	[Attribute("0")]
 	protected bool m_bShowWriteIcon;
 	
+	[Attribute("-1", desc: "Height -1 keep editbox single line. Changing height will override current height")]
+	protected float m_fCustomHeight;
+	
 	protected SCR_EditBoxComponent m_EditBox;
 	protected EditBoxFilterComponent m_Filter;
 	
@@ -382,11 +461,29 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 		// Editbox setup
 		m_EditBox.SetValue(m_sDefaultValue);
 		m_EditBox.SetPlaceholderText(m_sPlaceholderText);
-		m_EditBox.GetHint().SetMessage(m_sWarningText);
 		m_EditBox.ShowWriteIcon(m_bShowWriteIcon);
 		
+		// Label and size setup
+		//m_EditBox.SetLabel(m_sLabel);
+		bool useLabel = !m_sLabel.IsEmpty();
+		
+		if (m_fCustomHeight > 0)
+		{
+			if (useLabel)
+				m_EditBox.SetSizeWithLabel(m_fCustomHeight);
+			else
+				m_EditBox.SetSizeWithoutLabel(m_fCustomHeight);
+		}
+		
+		//m_EditBox.UseLabel(useLabel);
+		
+		// Hint setup
+		if (m_EditBox.GetHint())
+			m_EditBox.GetHint().SetMessage(m_sWarningText);
+		
 		EditBoxWidget editBox = EditBoxWidget.Cast(m_EditBox.GetEditBoxWidget());
-		editBox.SetObfuscationChar(m_sObfuscation);
+		if (editBox)
+			editBox.SetObfuscationChar(m_sObfuscation);
 		
 		if (m_FormatCheck)
 		{
@@ -421,9 +518,9 @@ class SCR_WidgetListEntryEditBox : SCR_WidgetListEntry
 			m_Filter.SetCharacterLimit(m_CharLimit);
 			m_Filter.m_OnInvalidInput.Insert(OnInvalidInput);
 			m_Filter.m_OnTextTooLong.Insert(OnInvalidInput);
+			
+			m_Filter.SetCharBlacklist(m_sCharBlackList);
 		}
-		
-		m_Filter.SetCharBlacklist(m_sCharBlackList);
 	}
 	
 	//-------------------------------------------------------------------------------------------

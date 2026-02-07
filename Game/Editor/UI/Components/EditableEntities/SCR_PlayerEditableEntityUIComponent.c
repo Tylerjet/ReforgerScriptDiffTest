@@ -5,7 +5,11 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 	[Attribute("1 1 1 1")]
 	protected ref Color m_ColorPossessed;
 	
-	const string WIDGET_NAME = "Name"; //--- ToDo: Don't hardcode
+	[Attribute("Name")]
+	protected string m_sPlayerNameWidgetName;
+	
+	[Attribute("PlatformIcon")]
+	protected string m_sPlatformIconWidgetName;
 	
 	//------------------------------------------------------------------------------------------------
 	protected void SetName(TextWidget nameWidget, int playerID)
@@ -20,7 +24,7 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 	
 	override void OnShownOffScreen(bool offScreen)
 	{
-		Widget nameWidget = GetWidget().FindAnyWidget(WIDGET_NAME);
+		Widget nameWidget = GetWidget().FindAnyWidget(m_sPlayerNameWidgetName);
 		if (!nameWidget)
 			return;
 
@@ -37,7 +41,7 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 		if (!widget)
 			return;
 		
-		TextWidget nameWidget = TextWidget.Cast(widget.FindAnyWidget(WIDGET_NAME));
+		TextWidget nameWidget = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
 		if (!nameWidget)
 			return;
 		
@@ -66,7 +70,12 @@ class SCR_PlayerEditableEntityUIComponent : SCR_BaseEditableEntityUIComponent
 			return;
 		
 		//--- Assign name after it's been initialized (ToDo: Better solution? Callback?)
-		if (game.GetCallqueue()) game.GetCallqueue().CallLater(SetName, 0, true, nameWidget, playerID);
+		if (game.GetCallqueue())
+			game.GetCallqueue().CallLater(SetName, 0, true, nameWidget, playerID);
+		
+		ImageWidget platformImage = ImageWidget.Cast(widget.FindAnyWidget(m_sPlatformIconWidgetName));
+		if (platformImage)
+			SCR_PlayerController.Cast(game.GetPlayerController()).SetPlatformImageTo(playerID, platformImage);
 		
 		SCR_EditableEntitySceneSlotUIComponent sceneSlot = SCR_EditableEntitySceneSlotUIComponent.Cast(slot);
 		if (sceneSlot && sceneSlot.GetOffScreenWidget())

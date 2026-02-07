@@ -409,9 +409,10 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Try redownload failed addon
-	void RetryDownload()
+	SCR_WorkshopItemActionDownload RetryDownload()
 	{
-		m_Wrapper.RetryDownload(m_TargetRevision);
+		// TODO: circular dependencies insanity: this m_Wrapper also has a reference to a SCR_WorkshopItemActionDownload which is not guaranteed to be this one
+		return m_Wrapper.RetryDownload(m_TargetRevision);
 	}
 	
 	//-----------------------------------------------------------------------------------------------

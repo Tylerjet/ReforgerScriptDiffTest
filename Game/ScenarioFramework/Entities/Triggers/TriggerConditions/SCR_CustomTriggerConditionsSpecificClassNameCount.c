@@ -8,6 +8,8 @@ class SCR_CustomTriggerConditionsSpecificClassNameCount : SCR_CustomTriggerCondi
 	int 	m_iClassnameCount;
 
 	//------------------------------------------------------------------------------------------------
+	//! Initializes specific class names for scenario trigger entity, adding them as class types.
+	//! \param[in] trigger Trigger entity for scenario framework initialization.
 	override void Init(SCR_ScenarioFrameworkTriggerEntity trigger)
 	{
 		trigger.SetSpecificClassName(m_aSpecificClassNames);

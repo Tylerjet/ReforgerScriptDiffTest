@@ -1,19 +1,21 @@
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTaskClearAreaClass: SCR_ScenarioFrameworkTaskAreaClass
 {
 };
 
 
-//------------------------------------------------------------------------------------------------
 class SCR_ScenarioFrameworkTaskClearArea : SCR_ScenarioFrameworkTaskArea
 {	
 	//------------------------------------------------------------------------------------------------
+	//! Finishes current task for support entity on trigger activation.
 	override void OnTriggerActivated()
 	{
+		m_Trigger.GetOnActivate().Remove(OnTriggerActivated);
 		m_SupportEntity.FinishTask(this);	
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! Sets support entity for clear area task
+	//! \return true if support entity is found, false otherwise.
 	override bool SetSupportEntity()
 	{
 		m_SupportEntity = SCR_ScenarioFrameworkTaskClearAreaSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_ScenarioFrameworkTaskClearAreaSupportEntity));

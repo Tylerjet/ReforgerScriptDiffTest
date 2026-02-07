@@ -4,6 +4,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected SCR_EditableEntityComponent m_EditableEntity;
 	protected SCR_EditorManagerEntity m_EditorManager;
 	protected FactionAffiliationComponent m_FactionComponent;
+	protected SCR_MilitaryBaseComponent m_BaseComponent;
 	protected ref array<SCR_EditableVehicleComponent> m_EditableVehicle = {};
 	protected bool m_bCompositionSpawned;
 	protected bool m_bTurretCollected;
@@ -11,6 +12,8 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	protected bool m_DoNotDisassemble;
 	protected IEntity m_RootEntity;
 	protected IEntity m_User;
+	protected bool m_bDisassembleOnlyWhenCapturing = false;
+	protected bool m_bSameFactionDisassembleOnly = false;
 	
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 
@@ -36,7 +39,10 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 			if (!buildingManagerComponent)
 				return;
 			
-			if (buildingManagerComponent.CanDisassembleSameFactionOnly())
+			m_bSameFactionDisassembleOnly = buildingManagerComponent.CanDisassembleSameFactionOnly();
+			m_bDisassembleOnlyWhenCapturing = buildingManagerComponent.CanDisassembleOnlyWhenCapturing();
+			
+			if (m_bSameFactionDisassembleOnly || m_bDisassembleOnlyWhenCapturing)
 				m_CompositionComponent.GetOnBuilderSet().Insert(CacheFactionAffiliationComponent);
 		}
 			
@@ -184,7 +190,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (m_DoNotDisassemble)
 			return false;
 		
-		if (!IsPlayerFactionSame(user))
+		if (m_bSameFactionDisassembleOnly && !IsPlayerFactionSame(user))
 			return false;
 				
 		if (!m_GadgetManager)
@@ -244,7 +250,37 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 		if (!gadgetComponent)
 			return false;
 		
-		return (gadgetComponent.GetMode() == EGadgetMode.IN_HAND);
+		if (gadgetComponent.GetMode() != EGadgetMode.IN_HAND)
+			return false;
+		
+		if (!m_bDisassembleOnlyWhenCapturing || IsPlayerFactionSame(user))
+			return true;
+		
+		if (!m_BaseComponent)
+		{
+			if (!m_CompositionComponent)
+				return false;
+			
+			IEntity provider = m_CompositionComponent.GetProviderEntity();
+			if (!provider)
+				return false;
+			
+			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+			if (!providerComponent)
+				return false;
+			
+			array<SCR_MilitaryBaseComponent> bases = {};
+			providerComponent.GetBases(bases);
+			if (bases.IsEmpty())
+				return false;
+			
+			m_BaseComponent = bases[0];
+		}
+		
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
+		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerId);
+		
+		return playerFaction == m_BaseComponent.GetCapturingFaction();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -315,7 +351,7 @@ class SCR_CampaignBuildingDisassemblyUserAction : ScriptedUserAction
 	bool IsPlayerFactionSame(notnull IEntity user)
 	{
 		if (!m_FactionComponent)
-			return true;
+ 			return true;
 		
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
 		Faction playerFaction = SCR_FactionManager.SGetPlayerFaction(playerId);

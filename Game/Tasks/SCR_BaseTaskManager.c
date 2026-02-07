@@ -316,9 +316,13 @@ class SCR_BaseTaskManager : GenericEntity
 		foreach (SCR_BaseTask task : m_aTaskList)
 		{
 			if (task.GetTaskID() == taskID)
-			{
 				return task;
-			}
+		}
+		
+		foreach (SCR_BaseTask finishedTask : m_aFinishedTaskList)
+		{
+			if (finishedTask.GetTaskID() == taskID)
+				return finishedTask;
 		}
 		
 		return null;

@@ -158,6 +158,9 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 					Widget factionColor;
 					foreach (string factionColorName: m_aFactionColorNames)
 					{
+						if (infoCard.IsFullBackgroundAssetCard() && factionColorName == "ColorOverlay")
+							continue;
+						
 						factionColor = m_wWidget.FindAnyWidget(factionColorName);
 						if (factionColor)
 							factionColor.SetColor(Color.FromInt(faction.GetFactionColor().PackToInt()));

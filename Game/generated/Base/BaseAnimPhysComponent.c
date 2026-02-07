@@ -49,6 +49,8 @@ class BaseAnimPhysComponent: GameComponent
 	proto external bool PhysicsIsFalling();
 	//! enables physics
 	proto external void PhysicsEnableGravity(bool pState);
+	proto external void PhysicsSetStance(int index);
+	proto external void PhysicsSetCollisionOffset(vector pOff);
 }
 
 /*!

@@ -26,7 +26,7 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " moving to " + m_Vehicle.ValueToString() + " as " + m_eRoleInVehicle.ValueToString();
+		return this.ToString() + " moving to " + m_Vehicle.m_Value.ToString() + " as " + m_eRoleInVehicle.m_Value.ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------

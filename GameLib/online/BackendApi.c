@@ -615,8 +615,6 @@ class BackendApi
 	*/
 	proto native WorkshopApi GetWorkshop();
 
-	proto native WorldSaveApi GetWorldSaveApi();
-
 	/**
 	\brief Get Lobby Api
 	*/
@@ -827,6 +825,19 @@ class BackendApi
 	*/
 	proto native string GetLocalIdentityId();
 
+	/*!
+	\brief Get Player Platform Kind by Player ID
+	\param iPlayerId Is id of player in session
+	*/
+	proto native PlatformKind GetPlayerPlatformKind(int iPlayerId);
+
+	/*!
+	\brief Get Player Platform ID by Player ID
+	\param iPlayerId Is id of player in session
+	\note Xbox and PS Ids are hashed in SHA-256
+	*/
+	proto native string GetPlayerPlatformId(int iPlayerId);
+
 	/**
 	\brief Return true if local platform data are to be used for authentication/ persistency of client (meaningless on server)
 	*/
@@ -880,7 +891,7 @@ class BackendApi
 	\param fileName Is path to image you want to send
 	*/
 	proto native void FeedbackImage( BackendCallback cb, JsonApiStruct dataObject, string fileName );
-
+	
 	/**
 	\brief Set credentials value per item
 	\param item Is type of EBackendCredentials parameter you want to set

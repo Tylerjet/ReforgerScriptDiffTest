@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionSetBlood : SCR_ScenarioFrameworkMedicalA
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		HitZone bloodHitZone = m_DamageManager.GetBloodHitZone();
 		if (!bloodHitZone)
 		{

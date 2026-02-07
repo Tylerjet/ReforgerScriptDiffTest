@@ -2,6 +2,11 @@ void ScriptInvoker_EntityCoreBudgetUpdated(EEditableEntityBudget type, int origi
 typedef func ScriptInvoker_EntityCoreBudgetUpdated;
 typedef ScriptInvokerBase<ScriptInvoker_EntityCoreBudgetUpdated> ScriptInvoker_EntityCoreBudgetUpdatedEvent;
 
+void ScriptInvoker_AuthorRequestedFinished(set<SCR_EditableEntityAuthor> authors);
+typedef func ScriptInvoker_AuthorRequestedFinished;
+typedef ScriptInvokerBase<ScriptInvoker_AuthorRequestedFinished> ScriptInvoker_AuthorRequestedFinishedEvent;
+
+
 //! @ingroup Editor_Core GameCore Editable_Entities
 
 //! Core component to manage SCR_EditableEntityComponent.
@@ -32,8 +37,9 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	private ref map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>> m_LabelListMap = new map<EEditableEntityLabelGroup, ref array<SCR_EditableEntityCoreLabelSetting>>;
 	private ref map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting> m_LabelGroupSettingsMap = new map<EEditableEntityLabelGroup, SCR_EditableEntityCoreLabelGroupSetting>;
 	private ref map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting> m_LabelSettingsMap = new map<EEditableEntityLabel, SCR_EditableEntityCoreLabelSetting>;
-
+	
 	private ref set<SCR_EditableEntityComponent> m_Entities;
+	
 	ref map<RplId, ref array<RplId>> m_OrphanEntityIds = new map<RplId, ref array<RplId>>();
 	private SCR_EditableEntityComponent m_CurrentLayer;
 
@@ -67,6 +73,14 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 	//! Called when entity is extended or cease to be extended
 	ref ScriptInvoker Event_OnEntityExtendedChange = new ScriptInvoker;
 
+	// UGC Authors
+	// Authors = people who currently own entity in a world
+	private ref map<string, ref SCR_EditableEntityAuthor> m_mAuthors = new map<string, ref SCR_EditableEntityAuthor>; // Held by server, needs to be requested by client.
+	
+	protected bool m_bAuthorRequesting;
+	
+	ref ScriptInvoker_AuthorRequestedFinishedEvent Event_OnAuthorsRegisteredFinished = new ScriptInvoker_AuthorRequestedFinishedEvent;
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param entity
@@ -216,6 +230,102 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				//entities.InsertAll(subEntities)
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all editable entities with specified PlayerUID. Works even after World Save/Load -> only works for Streamed in Entities
+	//! \param[out] entities Array to be filled with editable entities
+	//! \param playerUID Player Unique Identifier. Returns all entities with author of this identifier.
+	int GetAllEntitiesByAuthorUID(out notnull set<SCR_EditableEntityComponent> entities, string playerUID)
+	{
+		entities.Clear();
+		if (!m_Entities) 
+			return 0;
+		
+		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		{
+			string authorUID = entity.GetAuthorUID();
+			if (authorUID.IsEmpty() || authorUID != playerUID)
+				continue;
+			
+			entities.Insert(entity);
+			
+			if (entity.IsLayer())
+			{
+				set<SCR_EditableEntityComponent> subEntities = new set<SCR_EditableEntityComponent>;
+				entity.GetChildren(subEntities);
+				foreach (SCR_EditableEntityComponent child: subEntities)
+				{
+					if (authorUID.IsEmpty() || authorUID != playerUID)
+						continue;
+					
+					entities.Insert(child);
+				}
+			}
+		}
+		
+		return entities.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Static call for GetAllEntitiesByAuthorUID for ease of use -> only works for Streamed in Entities
+	//! \param[out] entities Array to be filled with editable entities
+	//! \param playerUID Player Unique Identifier. Returns all entities with author of this identifier.
+	static int GetAllEntitiesByAuthorUIDExt(out notnull set<SCR_EditableEntityComponent> entities, string playerUID)
+	{
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+			return 0;
+		
+		return core.GetAllEntitiesByAuthorUID(entities, playerUID);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get all editable entities with specified PlayerID. Works only if this session wasn't reloaded. -> only works for Streamed in Entities
+	//! \param[out] entities Array to be filled with editable entities
+	//! \param playerID Player Unique Identifier. Returns all entities with author of this identifier.
+	int GetAllEntitiesByAuthorID(out notnull set<SCR_EditableEntityComponent> entities, int playerID)
+	{
+		entities.Clear();
+		if (!m_Entities) 
+			return 0;
+		
+		foreach (SCR_EditableEntityComponent entity: m_Entities)
+		{
+			int authorID = entity.GetAuthorPlayerID();
+			if (playerID != authorID)
+				continue;
+			
+			entities.Insert(entity);
+			
+			if (entity.IsLayer())
+			{
+				set<SCR_EditableEntityComponent> subEntities = new set<SCR_EditableEntityComponent>;
+				entity.GetChildren(subEntities);
+				foreach (SCR_EditableEntityComponent child: subEntities)
+				{
+					if (playerID != authorID)
+						continue;
+					
+					entities.Insert(child);
+				}
+			}
+		}
+		
+		return entities.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Static call for GetAllEntitiesByAuthorUID for ease of use -> only works for Streamed in Entities
+	//! \param[out] entities Array to be filled with editable entities
+	//! \param playerID Player Unique Identifier. Returns all entities with author of this identifier.
+	static int GetAllEntitiesByAuthorIDExt(out notnull set<SCR_EditableEntityComponent> entities, int playerID)
+	{
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+			return 0;
+		
+		return core.GetAllEntitiesByAuthorID(entities, playerID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -802,6 +912,116 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 			Print(string.Format("New budget for type %1: %2", budgetType, updatedBudgetValue), LogLevel.NORMAL);
 		
 		Event_OnEntityBudgetUpdated.Invoke(budgetType, originalBudgetValue, budgetChange, updatedBudgetValue, entity);
+	}
+	
+	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+	//--- Authors logic (UGC)
+	//------------------------------------------------------------------------------------------------
+	void RegisterAuthorServer(SCR_EditableEntityAuthor newAuthor)
+	{
+		if (RplSession.Mode() == RplMode.Client)
+			return;
+		
+		if (!m_mAuthors.Contains(newAuthor.m_sAuthorUID))
+		{
+			newAuthor.m_iEntityCount++;
+			m_mAuthors.Insert(newAuthor.m_sAuthorUID, newAuthor);
+			Print("SCR_EditableEntityCore::RegisterAuthorServer - Author Added", LogLevel.VERBOSE);
+		}
+		else
+		{
+			m_mAuthors[newAuthor.m_sAuthorUID].m_iEntityCount++;
+			Print("SCR_EditableEntityCore::RegisterAuthorServer - Author Updated", LogLevel.VERBOSE);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AuthorEntityRemovedServer(SCR_EditableEntityAuthor newAuthor)
+	{
+		if (RplSession.Mode() == RplMode.Client)
+			return;
+		
+		if (!m_mAuthors.Contains(newAuthor.m_sAuthorUID))
+		{
+			Print("SCR_EditableEntityCore::AuthorEntityRemovedServer - This should not happen, author has to be registered if entity is being removed", LogLevel.ERROR);
+		}
+		else
+		{
+			m_mAuthors[newAuthor.m_sAuthorUID].m_iEntityCount--;
+			
+			if (m_mAuthors[newAuthor.m_sAuthorUID].m_iEntityCount <= 0)
+				m_mAuthors.Remove(newAuthor.m_sAuthorUID);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	set<SCR_EditableEntityAuthor> GetAllAuthorsServer()
+	{
+		if (RplSession.Mode() == RplMode.Client)
+			return new set<SCR_EditableEntityAuthor>();
+		
+		set<SCR_EditableEntityAuthor> authors = new set<SCR_EditableEntityAuthor>();
+		
+		foreach (SCR_EditableEntityAuthor author : m_mAuthors)
+		{
+			authors.Insert(author);
+		}
+		
+		return authors;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestAllAuthors()
+	{
+		SCR_EditorManagerCore managerCore = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+		if (!managerCore)
+			return;
+		
+		SCR_EditorManagerEntity manager = managerCore.GetEditorManager();
+		if (!manager)
+			return;
+		
+		if (!m_bAuthorRequesting)
+		{
+			m_bAuthorRequesting = true;
+			manager.RequestAllAuthors();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Do not call this function yourself, this has to be requested by server
+	void AddAuthorOnRequest(notnull SCR_EditableEntityAuthor newAuthor)
+	{
+		if (m_mAuthors.IsEmpty())
+			m_mAuthors.Insert(newAuthor.m_sAuthorUID, newAuthor);
+		
+		foreach(SCR_EditableEntityAuthor author : m_mAuthors)
+		{
+			if (author.m_sAuthorUID == newAuthor.m_sAuthorUID)
+			{
+				author = newAuthor;
+				PrintFormat("SCR_EditableEntityCore::AddAuthorOnRequest - %1 Updated", newAuthor.m_sAuthorUID, level: LogLevel.VERBOSE);
+				return;
+			}
+		}
+		
+		m_mAuthors.Insert(newAuthor.m_sAuthorUID, newAuthor);
+		
+		PrintFormat("SCR_EditableEntityCore::AddAuthorOnRequest - %1", newAuthor.m_sAuthorUID, level: LogLevel.VERBOSE);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnAuthorRequestFinished()
+	{
+		m_bAuthorRequesting = false;
+		
+		set<SCR_EditableEntityAuthor> authors = new set<SCR_EditableEntityAuthor>();
+		foreach (SCR_EditableEntityAuthor author : m_mAuthors)
+		{
+			authors.Insert(author);
+		}
+		
+		Event_OnAuthorsRegisteredFinished.Invoke(authors);
 	}
 
 	//------------------------------------------------------------------------------------------------

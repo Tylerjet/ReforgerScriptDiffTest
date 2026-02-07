@@ -174,8 +174,16 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 	{
 		if (IsProxy())
 			return;
+		
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		
+		if (!gameMode)
+			return;
 
-		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
+		SCR_XPHandlerComponent comp = SCR_XPHandlerComponent.Cast(gameMode.FindComponent(SCR_XPHandlerComponent));
+		
+		if (!comp)
+			return;
 
 		if (addDirectly != 0)
 		{

@@ -53,6 +53,7 @@ class SCR_ScenarioFrameworkTaskArea : SCR_ScenarioFrameworkTask
 	//! Finishes current task for support entity on trigger activation.
 	void OnTriggerActivated()
 	{
+		m_Trigger.GetOnActivate().Remove(OnTriggerActivated);
 		m_SupportEntity.FinishTask(this);	
 	}	
 }

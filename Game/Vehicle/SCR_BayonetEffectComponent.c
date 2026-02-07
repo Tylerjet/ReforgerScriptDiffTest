@@ -5,7 +5,7 @@ class SCR_BayonetEffectComponentClass : SCR_ImpactEffectComponentClass
 class SCR_BayonetEffectComponent : SCR_ImpactEffectComponent
 {	
 	//------------------------------------------------------------------------------------------------
-	override void OnImpact(notnull IEntity other, float impulse, vector impactPosition, vector impactNormal, GameMaterial mat)
+	override void OnImpact(notnull IEntity other, float impulse, vector impactPosition, vector impactNormal, GameMaterial mat, vector velocityBefore = vector.Zero, vector velocityAfter = vector.Zero)
 	{		
 		vector transform[4];
 		Math3D.MatrixFromUpVec(impactNormal, transform);
@@ -19,12 +19,12 @@ class SCR_BayonetEffectComponent : SCR_ImpactEffectComponent
 			resourceName = GetDefaultParticles()[0];
 		
 		EmitParticles(transform, resourceName);	
-		Rpc(RPC_OnImpactBroadcast, impactPosition, impactNormal, 0);
+		Rpc(RPC_OnImpactParticlesBroadcast, impactPosition, impactNormal, 0);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Unreliable, RplRcver.Broadcast)]
-	override protected void RPC_OnImpactBroadcast(vector contactPos, vector contactNormal, int magnitude)
+	override protected void RPC_OnImpactParticlesBroadcast(vector contactPos, vector contactNormal, int magnitude)
 	{
 		vector transform[4];
 		Math3D.MatrixFromUpVec(contactNormal, transform);

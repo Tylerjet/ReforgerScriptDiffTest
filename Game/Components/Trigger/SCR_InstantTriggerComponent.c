@@ -21,6 +21,16 @@ class SCR_InstantTriggerComponent : ScriptComponent
 		if (SCR_Global.IsEditMode(owner))
 			return;
 		
+		//~ Call init slightly later so Other systems can set the proper instigators
+		GetGame().GetCallqueue().CallLater(DelayedInit, param1: owner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DelayedInit(IEntity owner)
+	{
+		if (!owner)
+			return;
+		
 		BaseTriggerComponent trigger = BaseTriggerComponent.Cast(owner.FindComponent(BaseTriggerComponent));
 		if (trigger)
 			trigger.OnUserTrigger(owner);

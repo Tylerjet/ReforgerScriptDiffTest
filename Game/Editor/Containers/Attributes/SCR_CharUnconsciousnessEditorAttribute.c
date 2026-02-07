@@ -55,7 +55,7 @@ class SCR_CharUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 		
 		//Neutralize character if unconsciousness is disabled and character is already unconscious
 		if (lifeState == ECharacterLifeState.INCAPACITATED && !var.GetBool())
-			characterDamageManager.Kill(Instigator.CreateInstigator(null));
+			characterDamageManager.Kill(Instigator.CreateInstigatorGM());
 		
 		characterDamageManager.SetPermitUnconsciousness(var.GetBool(), true);
 	}

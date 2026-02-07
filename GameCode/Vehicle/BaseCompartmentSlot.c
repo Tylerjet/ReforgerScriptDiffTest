@@ -28,7 +28,10 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	protected vector m_vFreelookCameraNeckOffsetScale;
 
 	[Attribute("1.0", desc: "Extent to which body should account for turret traverse.\nThe higher, the more neck will rotate around turret pivot\nExamples: BTR-70 neck does not pivot, tripod and M151 turret pivots")]
-	protected float m_fFreelookCameraNeckFollowTraverse;
+	protected float m_fFreelookCameraNeckFollowTraverse;	
+	
+	[Attribute("0.5", desc: "Chance the occupant will get ejected upon EjectOccupant being called.\nOnly applies to compartments without roof or open doors unless forced")]
+	protected float m_fRandomEjectionChance;
 
 	static const vector SPAWN_IN_VEHICLE_OFFSET = Vector(0, 250, 0); //~ Offset added when characters are spawned to add to vehicle. To make sure they are close and streamed but not on the vehicle as this would kill them
 
@@ -135,7 +138,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void DamageOccupant(float damage, EDamageType damageType, notnull Instigator instigator, bool gettingIn = false, bool gettingOut = false)
+	void DamageOccupant(float damage, EDamageType damageType, notnull Instigator instigator, bool damageWhileGetIn = true, bool damageWhileGetOut = true)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOccupant());
 		if (!character)
@@ -147,10 +150,10 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 
 		// Ignore characters that only began to get in the vehicle
 		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
-		if (!gettingIn && access && access.IsGettingIn())
+		if (!damageWhileGetIn && access && access.IsGettingIn())
 			return;
 
-		if (!gettingOut && access && access.IsGettingOut())
+		if (!damageWhileGetOut && access && access.IsGettingOut())
 			return;
 
 		SCR_DamageManagerComponent damageManager = character.GetDamageManager();
@@ -214,6 +217,41 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		{
 			damageManager.Kill(instigator);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Get default occupent prefab data
+	\param[in] irrespectiveEject Force occupant out of compartment regardless of whether it makes sense realistically.
+	\param[in] gettingIn
+	\param[in] gettingOut 
+	*/
+	void EjectOccupant(bool forceEject = false, bool ejectUnconsciously = false)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOccupant());
+		if (!character)
+			return;
+
+		RplComponent rpl = character.GetRplComponent();
+		if (rpl && rpl.IsProxy())
+			return;
+		
+		// Ignore characters that only began to get in the vehicle
+		CompartmentAccessComponent access = character.GetCompartmentAccessComponent();
+		if (!access)
+			return;
+
+		int nearestDoorInd = PickDoorIndexForPoint(character.GetOrigin());
+		
+		if (ejectUnconsciously)
+		{
+			SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
+			if (damageMan)
+				damageMan.ForceUnconsciousness(damageMan.GetResilienceHitZone().GetDamageStateThreshold(ECharacterDamageState.STATE3));
+		}
+		
+		if (forceEject || GetManager().AreDoorOpen(nearestDoorInd) || ShouldCharactersFallOutWhenFlipped())
+			access.GetOutVehicle(EGetOutType.TELEPORT, nearestDoorInd, ECloseDoorAfterActions.INVALID, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -379,6 +417,12 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	float GetFreelookCameraNeckFollowTraverse()
 	{
 		return m_fFreelookCameraNeckFollowTraverse;
+	}	
+	
+	//------------------------------------------------------------------------------------------------
+	float GetRandomEjectionChance()
+	{
+		return m_fRandomEjectionChance;
 	}
 }
 

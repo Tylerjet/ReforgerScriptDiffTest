@@ -1,7 +1,7 @@
 [BaseContainerProps()]
 class SCR_AIDangerReaction_DamageTaken : SCR_AIDangerReaction
 {
-	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
+	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent, int dangerEventCount)
 	{
 		if (dangerEvent.GetVictim() != utility.m_OwnerEntity)
 			return false;

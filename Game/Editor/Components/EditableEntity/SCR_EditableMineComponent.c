@@ -14,7 +14,7 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 		super.OnPostInit(owner);
 		
 		//~ Activate Mine on server one frame later so the SCR_PressureTriggerComponent can initialize
-		if (IsServer())	
+		if (IsServer())
 			GetGame().GetCallqueue().CallLater(ActivateMine);
 	}
 	
@@ -22,9 +22,15 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 	//~ Make sure the mine is activated so it explodes when a vehicle drives over it
 	protected void ActivateMine()
 	{
+		if (!GetOwner())
+			return;
+		
 		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
-		if (pressureTriggerComponent)
-			pressureTriggerComponent.ActivateTrigger();
+		if (!pressureTriggerComponent)
+			return;
+		
+		pressureTriggerComponent.ActivateTrigger();
+		pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -50,6 +56,7 @@ class SCR_EditableMineComponent : SCR_EditableSystemComponent
 		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
 		if (pressureTriggerComponent)
 		{
+			pressureTriggerComponent.SetInstigator(Instigator.CreateInstigatorGM());
 			pressureTriggerComponent.TriggerManuallyServer();
 			return true;
 		}

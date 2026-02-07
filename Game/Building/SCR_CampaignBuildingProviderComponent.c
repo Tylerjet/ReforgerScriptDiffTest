@@ -187,6 +187,22 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
+	//! Remove all cooldown times for player
+	void RemovePlayerCooldowns(int playerId)
+	{
+		if (!m_aPlacingCooldown || m_aPlacingCooldown.IsEmpty())
+			return;
+		
+		for (int i = m_aPlacingCooldown.Count() -1 ; i >= 0; i--)
+		{
+			if (m_aPlacingCooldown[i].param1 == playerId)
+				m_aPlacingCooldown.Remove(i);
+		}
+		
+		SetClientLock(false, GetOwner(), playerId);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Periodically called method to evaluate a current status of the cooldown.
 	void UpdateCooldownTimer()
 	{

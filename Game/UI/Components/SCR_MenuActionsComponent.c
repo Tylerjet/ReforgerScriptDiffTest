@@ -220,16 +220,26 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 [BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sActionName")]
 class SCR_MenuActionPreset
 {
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// Overreliance on strings: UIs have hardcoded strings everywhere, often hidden in huge layouts and a myriad of components, making them hard to mantain. Furthermore, changing the hierarchy of a parent prefab will destroy of all these settings in children
+	
 	[Attribute()]
 	string m_sActionName;
-
+	
 	[Attribute(typename.EnumToString(EActionTrigger, EActionTrigger.PRESSED), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EActionTrigger))]
 	EActionTrigger m_eActionTrigger;
 	
 	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox)]
 	string m_sActivationSound;
+
+	//---- REFACTOR NOTE END ----
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// These should be flags: as of now, having the same action active on different input devices means adding multiple entries to the array of presets, making the component's setup needlessly bloated
+		
 	[Attribute(typename.EnumToString(EInputDeviceType, EInputDeviceType.MOUSE), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EInputDeviceType))]
 	EInputDeviceType m_eInputMode;
+	
+	//---- REFACTOR NOTE END ----
 }
 

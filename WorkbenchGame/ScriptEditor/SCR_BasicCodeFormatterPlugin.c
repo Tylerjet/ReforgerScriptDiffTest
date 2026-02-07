@@ -527,7 +527,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 				if (m_bFixMethodSeparators)
 				{
-					if (piecesCount == 1 && pieces[0].StartsWith(TWO_SLASHES + "---") && pieces[0].EndsWith("---") && pieces[0] != METHOD_SEPARATOR)
+					if (piecesCount == 1 && pieces[0].StartsWith(TWO_SLASHES + "---") && pieces[0].EndsWith("---") && !SCR_StringHelper.Filter(pieces[0], "/-", true) && pieces[0] != METHOD_SEPARATOR)
 					{
 						pieces.Set(0, METHOD_SEPARATOR);
 						report.m_iMethodSeparatorFixedTotal++;

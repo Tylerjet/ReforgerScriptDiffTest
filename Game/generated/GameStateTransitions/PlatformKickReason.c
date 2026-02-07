@@ -17,6 +17,8 @@ enum PlatformKickReason
 	NO_MP_PRIVILEGE,
 	//! User is not allowed to play cross-platform multiplayer.
 	NO_CROSSPLAY_PRIVILEGE,
+	//! User signed out of online services
+	USER_SIGNED_OUT,
 }
 
 /*!

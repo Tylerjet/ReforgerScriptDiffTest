@@ -55,7 +55,14 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external bool IsRagdollActive();
 	//! Adds damage effectors that will be applied to ragdoll once it is enabled
 	//! Position and Direction in character's local space, force is in m/kg3, maxLifeTime is time in seconds as for how long this damage will be applicable (scales with decrease)
+	//! This should be only called on server, replication to the owner is done on gamecode side, remote proxy clients don't need to know this information as the ragdoll init state is replicated to them when entering ragdoll.
 	proto external void AddRagdollEffectorDamage(vector posLS, vector dirLS, float force, float radius, float maxLifeTime);
+
+	// callbacks
+
+	//! Using AddRagdollEffectorDamage calls, you can specify parameters of the effector that affects ragdoll.
+	//! Return true if the damage have been handled, otherwise, it will use default gamecode implementation.
+	event bool HandleDamage(BaseDamageContext damageContext, IEntity owner);
 }
 
 /*!

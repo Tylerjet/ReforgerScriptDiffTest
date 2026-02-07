@@ -7,8 +7,10 @@ class SCR_VehicleDebug : GenericEntity
 {
 	[Attribute(desc: "Name of vehicle entity a player starts in")]
 	string m_VehicleName;
-	[Attribute("0", UIWidgets.ComboBox, "Compartment type to be used", "", ParamEnumArray.FromEnum(ECompartmentType))]
+	[Attribute("0", UIWidgets.ComboBox, "Compartment type to be used (if available)", "", ParamEnumArray.FromEnum(ECompartmentType))]
 	ECompartmentType m_CompartmentType;
+	[Attribute("0", UIWidgets.CheckBox, "Engine will be started (if possible)")]
+	bool m_StartEngine;
 	
 	void SCR_VehicleDebug(IEntitySource src, IEntity parent)
 	{
@@ -50,5 +52,14 @@ class SCR_VehicleDebug : GenericEntity
 			return;
 		
 		compartmentAccess.GetInVehicle(vehicle, slot, true, -1, ECloseDoorAfterActions.INVALID, true);
+		
+		if (!m_StartEngine)
+			return;
+		
+		BaseVehicleControllerComponent controller = BaseVehicleControllerComponent.Cast(vehicle.FindComponent(BaseVehicleControllerComponent));
+		if (!controller)
+			return;
+		
+		controller.ForceStartEngine();
 	}
 }

@@ -55,6 +55,7 @@ class SCR_WorkshopUiCommon
 	static const string LABEL_DEPENDENCIES_NUMBER =		"#AR-Workshop_Details_ModDependencies_Short_LC";
 	static const string LABEL_DEPENDENT_NUMBER_ONE =	"#AR-Workshop_Details_DependentMods_Short_One_LC_Downloaded";
 	static const string LABEL_DEPENDENT_NUMBER =		"#AR-Workshop_Details_DependentMods_Short_LC_Downloaded";
+	static const string LABEL_IP_ADDRESS =				"#AR-ServerBrowser_IP";
 	
 	// --- ICONS ---
 	static const string ICON_DOWNLOAD = 		"download";
@@ -140,6 +141,8 @@ class SCR_WorkshopUiCommon
 		mgr.m_OnUgcPrivilegeResult.Remove(OnTryOpenWorkshopUgcPrivilegeResult);
 		if (result)
 			ContentBrowserUI.Create();
+		else 
+			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_CommonDialogs.DIALOGS_CONFIG, "mp_you_dont_have_the_right");
 	}
 
 	// --- ADDON INTERACTIONS ---
@@ -584,7 +587,7 @@ class SCR_WorkshopUiCommon
 		if (!item.GetOffline())
 			return;
 
-		button.SetEnabled(state != SCR_EAddonPrimaryActionState.DOWNLOADING);
+		button.SetEnabled(state != SCR_EAddonPrimaryActionState.DOWNLOADING && !(!item.GetEnabled() && state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD));
 
 		string enableButtonMode = "no_problems";
 		if (state == SCR_EAddonPrimaryActionState.DEPENDENCIES_DOWNLOAD || state == SCR_EAddonPrimaryActionState.DEPENDENCIES_ENABLE)

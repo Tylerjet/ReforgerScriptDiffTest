@@ -16,6 +16,13 @@ class AttachmentUnderBarrelM203 : AttachmentUnderBarrel
 {
 };
 
+//M203 UGL Carbine
+class AttachmentUnderBarrelM203CarbineClass {}
+AttachmentUnderBarrelM203CarbineClass AttachmentUnderBarrelM203CarbineSource;
+
+class AttachmentUnderBarrelM203Carbine : AttachmentUnderBarrel
+{
+};
 
 // RIS 1913 - underbarrel pic rail medium
 // Rail for larger underbarrel accessories like grenade launchers

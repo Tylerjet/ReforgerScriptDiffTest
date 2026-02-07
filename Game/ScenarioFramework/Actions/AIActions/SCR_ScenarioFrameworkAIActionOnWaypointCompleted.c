@@ -29,6 +29,8 @@ class SCR_ScenarioFrameworkAIActionOnWaypointCompleted : SCR_ScenarioFrameworkAI
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		if (!m_Getter)
 		{
 			Print(string.Format("ScenarioFramework Action: Getter not found for Action %1.", this), LogLevel.ERROR);
@@ -108,5 +110,11 @@ class SCR_ScenarioFrameworkAIActionOnWaypointCompleted : SCR_ScenarioFrameworkAI
 		{
 			action.Init(m_AISlotEntity);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActionsOnWaypointCompleted;
 	}
 }

@@ -225,7 +225,7 @@ class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void CaptureGamepad()
 	{
-		if (m_sActionPreset.IsEmpty() || !m_sGamepadAltActionPreset.IsEmpty())
+		if (m_sActionPreset.IsEmpty() && m_sGamepadAltActionPreset.IsEmpty())
 			return;
 		
 		string finalPreset;
@@ -471,7 +471,9 @@ class SCR_KeybindRowComponent : SCR_ScriptedWidgetComponent
 		else
 			devicePrefix = m_SettingsKeybindModule.GetPrimaryPresetPrefix();
 		
-		if (!m_sActionPreset.IsEmpty())
+		if (deviceType == EInputDeviceType.GAMEPAD && !m_sGamepadAltActionPreset.IsEmpty())
+			finalPreset = devicePrefix + m_sGamepadAltActionPreset;
+		else if (!m_sActionPreset.IsEmpty())
 			finalPreset = devicePrefix + m_sActionPreset;
 		
 		return finalPreset;

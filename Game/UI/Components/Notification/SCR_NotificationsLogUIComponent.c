@@ -157,11 +157,8 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	//------------------------------------------------------------------------------------------------
 	protected void RemoveOldestNotification()
 	{
-		if (m_aNotificationMessages.IsEmpty())
-			return;
-
 		// Delete every notification one by one until we are below the max notifications
-		while (m_aNotificationMessages.Count() > m_iCurrentMaxNotifications)
+		while (!m_aNotificationMessages.IsEmpty() && m_aNotificationMessages.Count() > m_iCurrentMaxNotifications)
 		{
 			int index = m_aNotificationMessages.Count() -1;
 

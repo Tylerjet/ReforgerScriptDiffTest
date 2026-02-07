@@ -47,7 +47,21 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 	//! Opens the menu for a given workshop item
 	static ContentBrowserDetailsMenu OpenForWorkshopItem(SCR_WorkshopItem item)
 	{
-		ContentBrowserDetailsMenu detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowserDetailsMenu));
+		ContentBrowserDetailsMenu detailsMenu;
+		WorldSaveItem saveItem = WorldSaveItem.Cast(item.GetWorkshopItem());
+		
+		if (saveItem)
+		{
+			// World save
+			detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowserDetailsMenuSave));
+		}
+		else
+		{
+			// Addon
+			detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowserDetailsMenu));
+		}
+		
+		
 		if (detailsMenu)
 			detailsMenu.SetWorkshopItem(item);
 		

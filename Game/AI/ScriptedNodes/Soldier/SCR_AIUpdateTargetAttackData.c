@@ -245,7 +245,7 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
-	void ResolveAimpointTypes(notnull BaseTarget target, EAimPointType aimpointType0, EAimPointType aimpointType1)
+	void ResolveAimpointTypes(notnull BaseTarget target, out EAimPointType aimpointType0, out EAimPointType aimpointType1)
 	{
 		IEntity targetEntity = target.GetTargetEntity();
 		if (!targetEntity)

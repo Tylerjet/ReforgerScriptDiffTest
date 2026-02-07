@@ -7,8 +7,6 @@ class SCR_AICalculateNextCombatMovePos : AITaskScripted
 	// Outputs
 	protected static const string PORT_POS = "Pos";
 	
-	protected static const float RANDOM_POS_RADIUS = 2;
-	
 	//--------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{		
@@ -23,20 +21,40 @@ class SCR_AICalculateNextCombatMovePos : AITaskScripted
 		if (!rq)
 			return SCR_AIErrorMessages.NodeErrorCombatMoveRequest(this, owner, rq);
 		
+		// Case for CUSTOM_POS is trivial, we move directly there
+		if (rq.m_eDirection == SCR_EAICombatMoveDirection.CUSTOM_POS)
+		{
+			SetVariableOut(PORT_POS, rq.m_vMovePos);
+			return ENodeResult.SUCCESS;
+		}
+		
+		// The remaining cases are for moving a given distance in given direction
+		
 		vector ownerPos = myEntity.GetOrigin();
 		
 		vector moveDir = SCR_AICombatMoveUtils.CalculateMoveDirection(rq.m_eDirection, ownerPos, rq.m_vMovePos); // It can't return 000!
 		
-		float moveDistance = rq.m_fMoveDistance;
+		// Estimated move speed, depends on what we are controlling
+		float estMoveSpeed = SCR_AICombatMoveUtils.GetEstimatedMoveSpeed(rq);
+		float moveDistance = rq.m_fMoveDuration_s * estMoveSpeed;
 		
-		vector newPositionCenter = ownerPos + moveDir * moveDistance, newPosition;
+		// Randomize destination pos
+		vector newPositionCenter = ownerPos + moveDir * moveDistance;
 		
-		newPosition = s_AIRandomGenerator.GenerateRandomPointInRadius(0, RANDOM_POS_RADIUS, newPositionCenter, true);
-		newPosition[1] = newPositionCenter[1];
+		vector randomizedPos = RandomizeDestinationPos(moveDistance, newPositionCenter);
 		
-		SetVariableOut(PORT_POS, newPosition);
+		SetVariableOut(PORT_POS, randomizedPos);
 		
 		return ENodeResult.SUCCESS;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected vector RandomizeDestinationPos(float distance, vector centerPos)
+	{
+		float radius = 0.1 * distance;
+		vector pos = s_AIRandomGenerator.GenerateRandomPointInRadius(0, radius, centerPos, true);
+		pos[1] = centerPos[1];
+		return pos;
 	}
 	
 	//--------------------------------------------------------------------------------------------

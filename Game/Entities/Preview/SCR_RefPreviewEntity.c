@@ -3,25 +3,24 @@
 [EntityEditorProps(category: "GameScripted/Preview", description: "")]
 class SCR_RefPreviewEntityClass: SCR_EditablePreviewEntityClass
 {
-};
-/*!
-Reference entity used to position edited entities according to preview.
-*/
+}
+
+//! Reference entity used to position edited entities according to preview.
 class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 {
 	protected ref set<SCR_EditableEntityComponent> m_aEditedEntities;
 	protected bool m_bIsInstant;
 	
-	/*!
-	Create and apply reference entity used for entity placement once transformation is confirmed.
-	\param pivot Directly edited entity
-	\param param Transformation params
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Create and apply reference entity used for entity placement once transformation is confirmed.
+	//! \param[in] entity Directly edited entity
+	//! \param[in] param Transformation params
 	static void SpawnAndApplyReference(SCR_EditableEntityComponent entity, SCR_EditorPreviewParams param)
 	{
-		ResourceName material;
 #ifdef PREVIEW_ENTITY_SHOW_REFERENCE
-		material = "{D0126AF0E6A27141}Common/Materials/Colors/colorRed.emat";
+		const ResourceName material = "{D0126AF0E6A27141}Common/Materials/Colors/colorRed.emat";
+#else
+		const ResourceName material;
 #endif
 		EPreviewEntityFlag flags = EPreviewEntityFlag.IGNORE_TERRAIN | EPreviewEntityFlag.IGNORE_PREFAB | EPreviewEntityFlag.ONLY_EDITABLE;
 		
@@ -41,16 +40,15 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 #endif
 	}
 	
-	/*!
-	Apply changes in reference entity to its original entities.
-	\param param Transformation params
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! Apply changes in reference entity to its original entities.
+	//! \param[in] param Transformation params
 	void ApplyReference(SCR_EditorPreviewParams param)
 	{
 		//--- Get navmesh rebuild areas *BEFORE* the change
 		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
-		array<ref Tuple2<vector, vector>> areas = new array<ref Tuple2<vector, vector>>; //--- Min, max
-		array<bool> redoAreas = new array<bool>;
+		array<ref Tuple2<vector, vector>> areas = {}; //--- Min, max
+		array<bool> redoAreas = {};
 		if (aiWorld)
 		{
 			foreach (SCR_BasePreviewEntity child: m_aChildren)
@@ -97,13 +95,15 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			}
 		}
 	}
-	/*!
-	Mark the reference entity as applied at the same time as it's created.
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! Mark the reference entity as applied at the same time as it's created.
 	void SetAsInstant()
 	{
 		m_bIsInstant = true;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ApplyChild(SCR_EditorPreviewParams param, bool isDirectChild, set<SCR_EditableEntityComponent> editedEntities, bool isInstant)
 	{
 		if (!m_EditableEntity)
@@ -171,6 +171,8 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			}
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateReference(vector transform[4], EEditorTransformVertical verticalMode, bool isUnderwater)
 	{
 		TraceParam trace;
@@ -191,6 +193,8 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 		m_fHeightTerrain = 0;
 		SetPreviewTransform(transform, verticalMode, height - currentHeight, isUnderwater, trace);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override protected void EOnPreviewInit(SCR_BasePreviewEntry entry, SCR_BasePreviewEntity root)
 	{
 		super.EOnPreviewInit(entry, root);
@@ -204,4 +208,4 @@ class SCR_RefPreviewEntity: SCR_EditablePreviewEntity
 			refRoot.m_aEditedEntities.Insert(m_EditableEntity);
 		}
 	}
-};
+}

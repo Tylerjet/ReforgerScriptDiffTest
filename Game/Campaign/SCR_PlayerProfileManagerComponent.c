@@ -59,56 +59,49 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Called after a player gets killed.
-	//! \param[in] playerId PlayerId of victim player.
-	//! \param[in] playerEntity Entity of victim player if any.
-	//! \param[in] killerEntity Entity of killer instigator if any.
-	//! \param[in] killer Instigator of the kill, use type to see if there is any
-	protected override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		super.OnPlayerKilled(instigatorContextData);
 		
-		CareerBackendData victimProfile = GetPlayerProfile(playerId);
-		int killerId = killer.GetInstigatorPlayerID();
+		CareerBackendData victimProfile = GetPlayerProfile(instigatorContextData.GetVictimPlayerID());
+		int killerId = instigatorContextData.GetKillerPlayerID();
 		
-		// Victim profile exists
+		// If victim profile exists, then add death no matter what
 		if (victimProfile)
-		{
-			// Add death no matter what
 			victimProfile.AddDeath();
-			
-			// Suicide?
-			if (playerId == killerId)
-			{
-				// Return, the rest of the code is irrelevant in this case, don't add kill to anyone
-				return;
-			}
-		}
 		
+		//~ Not a player kill so ignore (Like suicide)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER | SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
+			return;
+		
+		//~ Possessed AI kills are never counted. Though any kills made without possessing, admin or not, will count
+		SCR_ECharacterControlType killerControlType = instigatorContextData.GetKillerCharacterControlType();
+		if (killerControlType == SCR_ECharacterControlType.POSSESSED_AI)
+			return;
+		
+		//~ Check if killer profile exists
 		CareerBackendData killerProfile = GetPlayerProfile(killerId);
-		Faction victimFaction = GetPlayerFaction(playerId);
-		Faction killerFaction = GetPlayerFaction(killerId);
-		
-		// Killer profile exists
-		if (killerProfile)
+		if (!killerProfile)
+			return;
+
+		//~ Is a teamkill, so add teamkill to profile
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 		{
-			// Both killer & victim factions exist
-			if (killerFaction && victimFaction)
-			{
-				// Check faction friendliness
-				if (killerFaction.IsFactionFriendly(victimFaction))
-				{
-					// Bad luck, the factions were friendly, add team kill
-					killerProfile.AddKill(true);
-					
-					// Return, we don't want to add a regular kill to this team-killing monster
-					return;
-				}
-			}
+			//~ Friendly kills do not count for admins, GMs and possessed AI by GM
+			if (killerControlType == SCR_ECharacterControlType.UNLIMITED_EDITOR)
+				return;
 			
-			// It wasn't a team kill, add a regular kill
-			killerProfile.AddKill();
+			//~ Friendly kills only counted if friendly fire is punished
+			SCR_AdditionalGameModeSettingsComponent additionalGameModeSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+			if (additionalGameModeSettings && !additionalGameModeSettings.IsTeamKillingPunished())
+				return;
+			
+			killerProfile.AddKill(true);
+			return;
 		}
+			
+		// It wasn't a team kill, add a regular kill
+		killerProfile.AddKill();
 	}
 	
 	//------------------------------------------------------------------------------------------------

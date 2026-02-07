@@ -42,6 +42,8 @@ class SCR_WorkshopTileWidgets
 	SCR_DynamicIconComponent m_BackendSourceComponent0;
 	SCR_CoreMenuHeaderComponent m_BackendSourceComponent1;
 
+	ImageWidget m_wItemTypeImage;
+	ImageWidget m_wItemTypeShadow;
 
 	FrameWidget m_wFrameName;
 	SCR_HorizontalScrollAnimationComponent m_FrameNameComponent;
@@ -98,6 +100,8 @@ class SCR_WorkshopTileWidgets
 		m_BackendSourceComponent0 = SCR_DynamicIconComponent.Cast(m_wBackendSource.FindHandler(SCR_DynamicIconComponent));
 		m_BackendSourceComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wBackendSource.FindHandler(SCR_CoreMenuHeaderComponent));
 
+		m_wItemTypeImage = ImageWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.SizeItemImageType.Overlay.m_ItemTypeImage"));
+		m_wItemTypeShadow = ImageWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.SizeItemImageType.Overlay.m_ItemTypeShadow"));
 
 		m_wFrameName = FrameWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameName"));
 		m_FrameNameComponent = SCR_HorizontalScrollAnimationComponent.Cast(m_wFrameName.FindHandler(SCR_HorizontalScrollAnimationComponent));

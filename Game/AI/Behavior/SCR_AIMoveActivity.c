@@ -37,7 +37,7 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " moving to " + m_vPosition.ValueToString();
+		return this.ToString() + " moving to " + m_vPosition.m_Value.ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -85,6 +85,6 @@ class SCR_AISeekAndDestroyActivity : SCR_AIMoveActivity
 	
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " seek and destroy around" + m_Entity.ValueToString();
+		return this.ToString() + " seek and destroy around" + m_Entity.m_Value.ToString();
 	}
 };

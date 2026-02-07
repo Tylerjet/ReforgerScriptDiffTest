@@ -567,7 +567,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 		CheckIfCanRespawn();
 
-		Faction baseFaction = m_Base.GetFaction();
+		SCR_CampaignFaction baseFaction = m_Base.GetCampaignFaction();
 		ChimeraWorld world = GetGame().GetWorld();
 		float respawnCooldown = Math.Ceil(m_Base.GetRespawnTimestamp().DiffMilliseconds(world.GetServerTimestamp()) * 0.001);
 		string shownRespawnCooldown;
@@ -582,7 +582,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		ImageWidget suppliesImg = ImageWidget.Cast(m_wInfoText.FindAnyWidget("SuppliesIMG"));
 
 		// Cooldown in progress, update UI timer
-		if (respawnCooldown > 0 && baseFaction && baseFaction == playerFaction)
+		if (respawnCooldown > 0 && baseFaction && baseFaction == playerFaction && m_Base.GetHQRadioCoverage(baseFaction) == SCR_ERadioCoverageStatus.BOTH_WAYS)
 		{
 			shownRespawnCooldown = "#AR-Campaign_MobileAssemblyCooldown";
 			SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(respawnCooldown, d, h, m, s);
@@ -999,8 +999,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	//!
 	void ChangeBaseIconSize() // Function for getting base services count and setting base size according to the value
 	{
-		protected int m_iServicesLimit = 8;	// Maximum amount of services - used as a max size for base icon resize.
-		protected int m_iServicesCount = 1; // Amount of services - it cannot be 0 
+		const int m_iServicesLimit = 8;	// Maximum amount of services - used as a max size for base icon resize.
+		int m_iServicesCount = 1;		// Amount of services - it cannot be 0 
 		
 		array<SCR_EServicePointType> checkedTypes = 
 		{

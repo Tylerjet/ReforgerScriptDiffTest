@@ -1288,10 +1288,7 @@ class SCR_AISendGoalMessage_FireIllumFlareAt : SCR_AISendMessageGenerated
 		SCR_AISendMessageGenerated.PORT_RECEIVER,
 		"PriorityLevel",
 		"IsWaypointRelated",
-		"TargetPosition",
-		"WeaponComponent",
-		"MagazineComponent",
-		"MuzzleId"
+		"TargetPosition"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
 	
@@ -1390,5 +1387,63 @@ class SCR_AISendGoalMessage_Suppress : SCR_AISendMessageGenerated
 		return s;
 	}
 	override bool VisibleInPalette() { return true; }
+}
+
+//---------------------------------------------------------------------------------------
+// Generated from class: SCR_AIMessage_Animate
+class SCR_AISendGoalMessage_Animate : SCR_AISendMessageGenerated
+{
+	[Attribute("")]
+	float m_fPriorityLevel;
+	
+	[Attribute("")]
+	bool m_bIsWaypointRelated;
+	
+	protected static ref TStringArray _s_aVarsIn =
+	{
+		SCR_AISendMessageGenerated.PORT_RECEIVER,
+		"PriorityLevel",
+		"IsWaypointRelated",
+		"RootEntity",
+		"AgentScript"
+	};
+	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
+	
+	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
+	{
+		AIAgent receiver = GetReceiverAgent(owner);
+		SCR_AIMessage_Animate msg = new SCR_AIMessage_Animate();
+		
+		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
+		
+		msg.SetText(m_sText);
+		
+		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
+			msg.m_fPriorityLevel = m_fPriorityLevel;
+		
+		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
+			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
+		
+		GetVariableIn("RootEntity", msg.m_RootEntity);
+		
+		GetVariableIn("AgentScript", msg.m_AgentScript);
+		
+		if (msg.m_bIsWaypointRelated)
+			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
+		
+		if (SendMessage(owner, receiver, msg))
+			return ENodeResult.SUCCESS;
+		else
+			return ENodeResult.FAIL;
+	}
+	
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
+		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		return s;
+	}
+	static override bool VisibleInPalette() { return true; }
 }
 

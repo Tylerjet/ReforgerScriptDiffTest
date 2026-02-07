@@ -1,5 +1,7 @@
 class SCR_BatteryHitZone: SCR_VehicleHitZone
 {
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Collider ID retrieval is obsolete
 	//------------------------------------------------------------------------------------------------
 	//! Called when hit zone is initialized
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -30,6 +32,7 @@ class SCR_BatteryHitZone: SCR_VehicleHitZone
 			return;
 		}
 	}
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	/*!

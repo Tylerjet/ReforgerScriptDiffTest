@@ -36,6 +36,6 @@ class SCR_ScenarioFrameworkActionInputCheckEntitiesInAreaTrigger : SCR_ScenarioF
 
 		m_Trigger = trigger;
 		//We want to give trigger enough time to be properly set up and not to get OnChange called prematurely
-		GetGame().GetCallqueue().CallLater(RegisterOnChange, 5000);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(RegisterOnChange, 5000);
 	}	
 }

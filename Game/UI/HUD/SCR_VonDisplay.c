@@ -50,15 +50,18 @@ class TransmissionData
 //! VON display of active outgoing and incoming transmissions
 class SCR_VonDisplay : SCR_InfoDisplayExtended
 {
-	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.m_sImageSet")];
+	[Attribute(UIConstants.ICONS_IMAGE_SET)];
 	protected string m_sImageSet;
 
-	[Attribute("{ABC6B36856013403}UI/Textures/Icons/icons_wrapperUI-64-glow.m_sImageSet")];
+	[Attribute(UIConstants.ICONS_GLOW_IMAGE_SET)];
 	protected string m_sImageSetGlow;
 
 	[Attribute("{25221F619214A722}UI/layouts/HUD/VON/VoNOverlay_Element.layout")];
 	protected string m_sReceivingTransmissionLayout;
-
+	
+	[Attribute(defvalue: "1", desc: "Show enemy names in radio and direct talk?")]
+	protected bool m_bShowEnemyNames;
+	
 	const string ICON_DIRECT_SPEECH = "VON_directspeech";
 	const string ICON_RADIO_HINT = "VON_radio";
 	const string ICON_RADIO = "VON_frequency";
@@ -77,7 +80,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	const string WIDGET_SELECTED_VON = "Selected_VONChannel";
 	const string WIDGET_SELECTED_TEXT = "Selected_Text";
 
-	const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
+	static const ref Color COLOR_WHITE = Color.FromSRGBA(255, 255, 255, 255);
 
 	protected int m_iTransmissionSlots = 4;			// max amount of receiving transmissions
 	const float FADEOUT_TIMER_THRESHOLD = 1;
@@ -253,15 +256,15 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			playerFaction = factionMgr.SGetPlayerFaction(controlledID);
 			data.m_Faction = factionMgr.SGetPlayerFaction(data.m_iPlayerID);
 		}
-
+		
 		bool enemyTransmission;
-		if (IsReceiving && playerFaction && playerFaction.IsFactionEnemy(data.m_Faction))	// enemy transmission case
+		if (IsReceiving && playerFaction && playerFaction.IsFactionEnemy(data.m_Faction) && !m_bShowEnemyNames)       // enemy transmission case
 		{
 			if (!radioTransceiver)
-				return false;		// if direct ignore
-
+				return false;           // if direct ignore
+			
 			enemyTransmission = true;
-		}
+ 	  	}
 
 		if (!data.m_wBaseWidget)
 			return false;
@@ -277,6 +280,8 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		data.m_Widgets.m_wChannelFrame.SetVisible(false);
 		data.m_Widgets.m_wFrequency.SetVisible(false);
 		data.m_Widgets.m_wSeparator.SetVisible(false);
+		data.m_Widgets.m_wPlatformImage.SetVisible(false);
+		data.m_Widgets.m_wPlatformImageGlow.SetVisible(false);
 
 		// radio
 		if (radioTransceiver)
@@ -309,7 +314,8 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		{
 			data.m_Widgets.m_wIcon.SetColor(COLOR_WHITE);
 
-			if (!enemyTransmission)
+			//always show the player name, keep the check if we need it again
+			if (!enemyTransmission || m_bShowEnemyNames)
 			{			
 				data.m_Entity = GetGame().GetPlayerManager().GetPlayerControlledEntity(data.m_iPlayerID);
 				SCR_PossessingManagerComponent possMgr =  SCR_PossessingManagerComponent.GetInstance();
@@ -332,7 +338,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 							data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));	
 					}
 				}
-				else 
+				else
 					data.m_Widgets.m_wName.SetText(m_PlayerManager.GetPlayerName(data.m_iPlayerID));		
 			}
 			else
@@ -342,12 +348,18 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 
 			if (radioTransceiver)
 				data.m_Widgets.m_wSeparator.SetVisible(false);
+			
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+			if (playerController)
+				playerController.SetPlatformImageTo(data.m_iPlayerID, data.m_Widgets.m_wPlatformImage, data.m_Widgets.m_wPlatformImageGlow);
 		}
 		else	// outgoing
 		{
 			data.m_Widgets.m_wIcon.SetColor(Color.FromInt(GUIColors.ORANGE.PackToInt()));
 			data.m_Widgets.m_wName.SetText(string.Empty);
 			data.m_Widgets.m_wName.SetVisible(false);
+			data.m_Widgets.m_wPlatformImage.SetVisible(false);
+			data.m_Widgets.m_wPlatformImageGlow.SetVisible(false);
 
 			if (radioTransceiver)	// direct vs radio
 			{
@@ -434,7 +446,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			if (!radioEntry || !m_wSelectedHint || !radioEntry.GetUIInfo())
 			return;
 						
-			string formatText = "#AR-VON_ChannelHint"; 
+			const string formatText = "#AR-VON_ChannelHint"; 
 			m_wSelectedVON.SetTextFormat(formatText, radioEntry.GetUIInfo().GetName(), radioEntry.GetTransceiverNumber(), radioEntry.GetDisplayText());
 
 			SetHintIcon(true);

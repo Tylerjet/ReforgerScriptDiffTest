@@ -9,6 +9,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected const string SCENARIO_SELECTION_ENTRY = "scenarioId";
 	protected const string SCENARIO_MOD_SELECTION_ENTRY = "scenarioModId";
 	protected const string PLAYER_LIMIT_ENTRY = "maxPlayers";
+	protected const string JOIN_QUEUE_MAX_SIZE = "joinQueueMaxSize";
 	protected const string BATTLEYE = "battlEye";
 	protected const string CROSSPLAY = "crossPlatform";
 	protected const string SIMPLE_PORT = "publicPortSimple";
@@ -27,6 +28,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected SCR_WidgetListEntrySelection m_CrossplaySelect;
 	
 	protected SCR_WidgetListEntrySlider m_PlayerListSlider;
+	protected SCR_WidgetListEntrySlider m_JoinQueueSizeSlider;
 	
 	protected bool m_bNameEdited;
 	protected bool m_bFileNameEdited;
@@ -89,6 +91,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		m_ScenarioModSelect = SCR_WidgetListEntrySelection.Cast(FindEntry(SCENARIO_MOD_SELECTION_ENTRY));
 		
 		m_PlayerListSlider = SCR_WidgetListEntrySlider.Cast(FindEntry(PLAYER_LIMIT_ENTRY));
+		m_JoinQueueSizeSlider = SCR_WidgetListEntrySlider.Cast(FindEntry(JOIN_QUEUE_MAX_SIZE));
 		
 		m_BattleyeSelect = SCR_WidgetListEntrySelection.Cast(FindEntry(BATTLEYE));
 		
@@ -321,8 +324,12 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			if (!mission.GetOwner() || !SCR_ScenarioUICommon.IsMultiplayer(mission))
 				continue;
 			
-			// Exclude scenarios comming from incompatible addon 
+			// Exclude scenarios coming from incompatible addon 
 			if (SCR_AddonManager.ItemAvailability(mission.GetOwner()) != SCR_ERevisionAvailability.ERA_AVAILABLE)
+				continue;
+			
+			// Exclude unhostable scenarios (hacky, as it includes connection issues unrelated to the scenario)
+			if (!SCR_ScenarioUICommon.CanHost(mission))
 				continue;
 			
 			// Exclude broken mod scenarios

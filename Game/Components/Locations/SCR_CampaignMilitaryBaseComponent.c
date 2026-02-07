@@ -238,6 +238,11 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			child = child.GetSibling();
 		}
 
+#ifdef ENABLE_DIAG
+		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
+			HandleSpawnPointFaction();
+#endif
+		
 		// Initialize registered services
 		array<SCR_ServicePointComponent> services = {};
 		GetServices(services);
@@ -463,10 +468,21 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		SCR_CampaignBuildingCompositionComponent buildingComponent = SCR_CampaignBuildingCompositionComponent.Cast(SCR_EntityHelper.GetMainParent(service.GetOwner(), true).FindComponent(SCR_CampaignBuildingCompositionComponent));
 
 		if (buildingComponent && !buildingComponent.GetProviderEntity())
-			buildingComponent.SetProviderEntityServer(GetOwner());
+		{
+			array<SCR_CampaignBuildingProviderComponent> buildingProviders = {}; 
+			GetBuildingProviders(buildingProviders);
+			
+			foreach (SCR_CampaignBuildingProviderComponent provider : buildingProviders)
+			{
+				if (provider && provider.IsMasterProvider())
+				{
+					buildingComponent.SetProviderEntityServer(provider.GetOwner());
+					break;
+				}
+			}
+		}
 	}
 	
-
 	//------------------------------------------------------------------------------------------------
 	protected void SendHighestPriorityMessage(notnull SCR_CampaignFaction faction)
 	{
@@ -2111,7 +2127,19 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		//GetGame().GetCallqueue().CallLater(SpawnSavedBuildings, SCR_GameModeCampaign.DEFAULT_DELAY, false, baseStruct);	// Delay so we don't spawn stuff during init
 
 		if (m_HQTent)
+		{
+			// Get rid of the old provider component right now otherwise it will still be used in provider selection for a couple of frames
+			// Which would not be good because its owner would be null soon
+			for (int i = m_aSystems.Count() - 1; i >= 0; i--)
+			{
+				SCR_CampaignBuildingProviderComponent provider = SCR_CampaignBuildingProviderComponent.Cast(m_aSystems[i]);
+				
+				if (provider && SCR_EntityHelper.GetMainParent(provider.GetOwner(), true) == m_HQTent)
+					UnregisterLogicComponent(provider);
+			}
+			
 			RplComponent.DeleteRplEntity(m_HQTent, false);
+		}
 
 		// Starting vehicles have been presumably spent at this point
 		GetGame().GetCallqueue().Remove(SpawnStartingVehicles);

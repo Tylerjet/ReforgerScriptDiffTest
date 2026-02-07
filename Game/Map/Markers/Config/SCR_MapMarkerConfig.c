@@ -74,11 +74,17 @@ class SCR_MapMarkerEntryConfig
 		
 		if (ownerID > 0)
 		{
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+			if (playerController)
+				playerController.SetPlatformImageToKind(GetGame().GetPlayerManager().GetPlatformKind(ownerID), widgetComp.GetAuthorPlatformIcon(), showOnPC: true, showOnXbox: true);
+			
 			if (GetGame().GetPlayerController().GetPlayerId() == ownerID)
+			{
 				widgetComp.SetModeIcon(true, marker.GetMarkerID() != -1);
-			else
-				widgetComp.SetAuthor("(" + GetGame().GetPlayerManager().GetPlayerName(ownerID) + ")");
-
+				widgetComp.SetAuthorVisible(false);
+			}
+			
+			widgetComp.SetAuthor(GetGame().GetPlayerManager().GetPlayerName(ownerID));
 		}
 	}
 	

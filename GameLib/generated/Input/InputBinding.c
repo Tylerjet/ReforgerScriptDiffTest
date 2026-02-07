@@ -23,6 +23,8 @@ class InputBinding
 	proto external bool SetFilter(string actionName, EInputDeviceType deviceType, string preset, int keyBindIndex, string filterName);
 	proto external string GetFilter(string actionName, EInputDeviceType deviceType, string preset, int keyBindIndex);
 	proto external void StartCapture(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty, bool bAppend = false, EInputBindingAxleCapture eAxleCapture = EInputBindingAxleCapture.HALF_AXLE);
+	proto external void GetCustomConfigs(out notnull array<ResourceName> customConfigs);
+	proto external void SetCustomConfigs(notnull array<ResourceName> customConfigs);
 	proto external void CancelCapture();
 	//! Additional key bindings can be added using additionalKeyBindings array.
 	proto external void SaveCapture(array<string> additionalKeyBindings = null);

@@ -180,6 +180,12 @@ class SCR_ScenarioFrameworkWaypointTimed : SCR_ScenarioFrameworkWaypointScripted
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointTimedDefend : SCR_ScenarioFrameworkWaypointTimed
 {
+	[Attribute("0", UIWidgets.Object, "If enabled, it will clear default Defend presets that are on prefab. There has to be at least one Preset set afterwards in order for this Waypoint to work.")]
+	bool m_bClearDefaultDefendPresets;
+	
+	[Attribute("", UIWidgets.Object, "Defend presets that will be added to the waypoint")];
+	ref array<ref SCR_DefendWaypointPreset> m_aDefendPresets;
+	
 	//------------------------------------------------------------------------------------------------
 	override void SetupWaypoint(IEntity waypointEntity)
 	{
@@ -190,6 +196,14 @@ class SCR_ScenarioFrameworkWaypointTimedDefend : SCR_ScenarioFrameworkWaypointTi
 			return;
 
 		waypointDefend.SetFastInit(GetFastInit());
+		
+		if (m_bClearDefaultDefendPresets)
+			waypointDefend.ClearDefendPresets();
+		
+		foreach (SCR_DefendWaypointPreset defendPreset : m_aDefendPresets)
+		{
+			waypointDefend.AddDefendPreset(defendPreset);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

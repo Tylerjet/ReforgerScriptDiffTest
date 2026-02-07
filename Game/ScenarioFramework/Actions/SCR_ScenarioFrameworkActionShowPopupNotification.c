@@ -19,8 +19,8 @@ class SCR_ScenarioFrameworkActionShowPopupNotification : SCR_ScenarioFrameworkAc
 		if (!CanActivate())
 			return;
 
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return;
 
 		PlayerManager playerManager = GetGame().GetPlayerManager();
@@ -59,7 +59,7 @@ class SCR_ScenarioFrameworkActionShowPopupNotification : SCR_ScenarioFrameworkAc
 
 		if (!aEntities)
 		{
-			manager.PopUpMessage(m_sTitle, m_sText, m_sFactionKey, playerID);
+			scenarioFrameworkSystem.PopUpMessage(m_sTitle, m_sText, m_sFactionKey, playerID);
 		}
 		else
 		{
@@ -69,7 +69,7 @@ class SCR_ScenarioFrameworkActionShowPopupNotification : SCR_ScenarioFrameworkAc
 					continue;
 
 				playerID = playerManager.GetPlayerIdFromControlledEntity(entity);
-				manager.PopUpMessage(m_sTitle, m_sText, m_sFactionKey, playerID);
+				scenarioFrameworkSystem.PopUpMessage(m_sTitle, m_sText, m_sFactionKey, playerID);
 			}
 		}
 	}

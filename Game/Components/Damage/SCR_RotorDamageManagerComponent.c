@@ -298,6 +298,8 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		super.OnFilteredContact(owner, other, contact);
 	}
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	// TODO: Call queue should not be needed there, it is because of hierarchy / slots
 	//------------------------------------------------------------------------------------------------
 	protected void GetComponentsDelayed()
 	{
@@ -311,6 +313,7 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		m_ParticleSpawnParams.TransformMode = ETransformMode.WORLD;
 		m_ParticleSpawnParams.UseFrameEvent = true;
 	}
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity owner)
@@ -322,7 +325,9 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		if (!m_RotorHitZone)
 			return;
 
+		//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 		GetGame().GetCallqueue().CallLater(GetComponentsDelayed); //get components after init
+		//---- REFACTOR NOTE END ----
 		
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (!rplComp || rplComp.IsProxy())

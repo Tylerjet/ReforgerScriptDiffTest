@@ -71,7 +71,6 @@ class ExportTerrain : NetApiHandler
 	{
 		// open temp bin
 		FileHandle bin = FileIO.OpenFile(path, FileMode.READ);
-		float x, y, z;
 		array<float> coords = new array<float>;
 
 		// read the new coords and remove the file

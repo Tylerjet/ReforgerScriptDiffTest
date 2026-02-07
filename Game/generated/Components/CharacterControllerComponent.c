@@ -15,6 +15,50 @@ class CharacterControllerComponentClass: PrimaryControllerComponentClass
 
 class CharacterControllerComponent: PrimaryControllerComponent
 {
+	//!------------------------------------------------------------------------
+	//! Aiming input sensitivities
+	static proto void SetAimingSensitivity(float mouse, float gamepad, float ads);
+	static proto void GetAimingSensitivity(out float mouse, out float gamepad, out float ads);
+	//!------------------------------------------------------------------------
+	//! FOV input curves
+	static proto void SetFOVInputCurve(float mouse, float gamepad, float gyro);
+	static proto void GetFOVInputCurve(out float mouse, out float gamepad, out float gyro);
+	//!------------------------------------------------------------------------
+	//! Gyro input sensitivity yaw/pitch/roll
+	static proto void SetGyroSensitivity(float yaw, float pitch, float roll);
+	static proto void GetGyroSensitivity(out float yaw, out float pitch, out float roll);
+	//!------------------------------------------------------------------------
+	//! Gyro control scope
+	static proto void SetGyroControl(bool always, bool freelook, bool ads);
+	static proto void GetGyroControl(out bool always, out bool freelook, out bool ads);
+	//!------------------------------------------------------------------------
+	//! Sets gadget handling into persistent mode
+	static proto void SetStickyGadget(bool enable);
+	//!------------------------------------------------------------------------
+	//! Sets ads and gadget focus into persistent mode
+	static proto void SetStickyADS(bool enable);
+	//!------------------------------------------------------------------------
+	//! When enabled, controller freelook is not forced while piloting aircraft
+	static proto void SetGamepadControlAircraft(bool enable);
+	static proto bool GetGamepadControlAircraft();
+	//!------------------------------------------------------------------------
+	//! When enabled, mouse freelook is not forced while piloting aircraft
+	static proto void SetMouseControlAircraft(bool enable);
+	static proto bool GetMouseControlAircraft();
+	//!------------------------------------------------------------------------
+	//! Track-IR controls
+	static proto void SetTrackIRFreelookEnable(bool enable);
+	static proto bool GetTrackIRFreelookEnable();
+	static proto void SetTrackIRLeaningEnable(bool enable);
+	static proto bool GetTrackIRLeaningEnable();
+	static proto void SetTrackIRFreelookSensitivity(float sensitivity);
+	static proto float GetTrackIRFreelookSensitivity();
+	static proto void SetTrackIRLeaningSensitivity(float sensitivity);
+	static proto float GetTrackIRLeaningSensitivity();
+	static proto void SetTrackIRLeaningDeadzone(float deadzone);
+	static proto float GetTrackIRLeaningDeadzone();
+	static proto void SetTrackIRLeaningActiveYawRange(float range);
+	static proto float GetTrackIRLeaningActiveYawRange();
 	proto external CharacterAimingComponent GetAimingComponent();
 	proto external CharacterHeadAimingComponent GetHeadAimingComponent();
 	proto external CharacterAnimationComponent GetAnimationComponent();
@@ -70,6 +114,11 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	\param value Desired stance height as percentage of full erect <0,1>.
 	*/
 	proto external void SetDynamicStance(float value);
+	proto external float GetVehicleRagdollSpeed();
+	/*
+	Gets vehicle ragdoll speed in m/s, squared
+	*/
+	proto external float GetVehicleRagdollSpeedMsSq();
 	/*!
 	Returns whether provided dynamic stance can be set for this character.
 	\see CharacterControllerComponent::SetDynamicStance(float value)
@@ -305,22 +354,6 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool GetDisableViewControls();
 	//------------------------------------------------------------------------
 	proto external void SetDisableViewControls(bool other);
-	//------------------------------------------------------------------------
-	proto external void SetAimingSensitivity(float mouse, float gamepad, float ads);
-	//------------------------------------------------------------------------
-	proto external void GetAimingSensitivity(out float mouse, out float gamepad, out float ads);
-	// Sets gadget handling into persistent mode
-	proto external void SetStickyGadget(bool enable);
-	// Sets ads and gadget focus into persistent mode
-	proto external void SetStickyADS(bool enable);
-	//------------------------------------------------------------------------
-	proto external void SetMaxZoomInADS(bool enable);
-	//------------------------------------------------------------------------
-	proto external bool GetMaxZoomInADS();
-	//------------------------------------------------------------------------
-	proto external void SetMouseControlAircraft(bool enable);
-	//------------------------------------------------------------------------
-	proto external bool GetMouseControlAircraft();
 	//------------------------------------------------------------------------
 	proto external bool GetDisableWeaponControls();
 	//------------------------------------------------------------------------

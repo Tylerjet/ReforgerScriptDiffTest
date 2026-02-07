@@ -1,6 +1,7 @@
 enum EWorkshopTabId
 {
 	ONLINE = 0,
+	GAME_SAVES,
 	OFFLINE,
 	MOD_MANAGER
 }
@@ -32,6 +33,17 @@ class ContentBrowserUI : SCR_SuperMenuBase
 		m_NavBack = m_DynamicFooter.FindButton(UIConstants.BUTTON_BACK);
 		if (m_NavBack)
 			m_NavBack.m_OnActivated.Insert(Close);
+		
+		// Hide news menu button (top right corner) on PS
+		if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN)
+		{
+			Widget newsButton = GetRootWidget().FindAnyWidget("NewsButton");
+			if (newsButton)
+			{
+				newsButton.SetVisible(false);
+				newsButton.SetEnabled(false);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

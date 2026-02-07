@@ -5,10 +5,17 @@ Scripted DS config to store server config from script
 class SCR_DSConfig : DSConfig
 {
 	protected const string DEFAULT_FILE_NAME = "GeneratedServerConfig";
-	//protected string m_sConfigName = "Server config";
-	
+
 	protected ref array<ref SCR_WidgetListEntry> m_aDSConfigEntries = {};
-	//protected ref SCR_DSGameProperties m_gameProperties = new SCR_DSGameProperties();
+
+	protected ref SCR_DSOperating m_Operating;
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPack()
+	{
+		super.OnPack();
+		StoreObject("operating", m_Operating);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// API
@@ -20,6 +27,10 @@ class SCR_DSConfig : DSConfig
 		game = new DSGameConfig();
 		game.gameProperties = new SCR_DSGameProperties();
 		game.mods = {};
+		
+		// Register queue settings 
+		m_Operating = new SCR_DSOperating();
+		m_Operating.joinQueue = new SCR_DSJoinQueue();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -95,6 +106,9 @@ class SCR_DSConfig : DSConfig
 				game.mods.Insert(scenarioDSMod);
 			}
 		}
+		
+		// Join queue 
+		m_Operating.joinQueue.maxSize = StringToNumber(FindValue("joinQueueMaxSize"));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -194,5 +208,28 @@ class SCR_DSGameProperties : DSGameProperties
 		RegV("VONDisableUI");
 		RegV("VONDisableDirectSpeechUI");
 		RegV("VONCanTransmitCrossFaction");
+	}
+}
+
+class SCR_DSOperating : JsonApiStruct
+{
+	ref SCR_DSJoinQueue joinQueue;
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_DSOperating()
+	{
+		joinQueue = new SCR_DSJoinQueue();
+		RegV("joinQueue");
+	}
+}
+
+class SCR_DSJoinQueue : JsonApiStruct
+{
+	int maxSize;
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_DSJoinQueue()
+	{
+		RegV("maxSize");
 	}
 }

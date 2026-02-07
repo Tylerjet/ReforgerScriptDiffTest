@@ -28,7 +28,7 @@ class SCR_DotDamageEffect : DotDamageEffect
 		super.OnDiag(dmgManager);
 
 		string text = text.Format("  DOT: %1 \n", this.GetDPS());
-		if (!IsProxy(dmgManager))
+		if (!IsProxy())
 			text += text.Format("  Duration: %1s/%2s \n", this.GetCurrentDuration(), this.GetMaxDuration());
 
 		DbgUI.Text(text);

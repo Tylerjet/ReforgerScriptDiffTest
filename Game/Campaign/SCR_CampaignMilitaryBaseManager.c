@@ -209,9 +209,12 @@ class SCR_CampaignMilitaryBaseManager
 	void SelectHQs(notnull array<SCR_CampaignMilitaryBaseComponent> candidates, notnull array<SCR_CampaignMilitaryBaseComponent> controlPoints, out notnull array<SCR_CampaignMilitaryBaseComponent> selectedHQs)
 	{
 		// Pick the same HQs every time when debugging
-#ifdef TDM_CLI_SELECTION
-		SelectHQsSimple(candidates, selectedHQs);
-		return;
+#ifdef ENABLE_DIAG
+		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
+		{
+			SelectHQsSimple(candidates, selectedHQs);
+			return;
+		}
 #endif
 
 		int candidatesCount = candidates.Count();
@@ -300,9 +303,12 @@ class SCR_CampaignMilitaryBaseManager
 	protected void SelectHQsSimple(notnull array<SCR_CampaignMilitaryBaseComponent> candidates, out notnull array<SCR_CampaignMilitaryBaseComponent> selectedHQs)
 	{
 		// Pick the same HQs every time when debugging
-#ifdef TDM_CLI_SELECTION
-		selectedHQs = {candidates[0], candidates[1]};
-		return;
+#ifdef ENABLE_DIAG
+		if (SCR_RespawnComponent.Diag_IsCLISpawnEnabled())
+		{
+			selectedHQs = {candidates[0], candidates[1]};
+			return;
+		}
 #endif
 
 		// In Tutorial mode, we always want to use the same HQs

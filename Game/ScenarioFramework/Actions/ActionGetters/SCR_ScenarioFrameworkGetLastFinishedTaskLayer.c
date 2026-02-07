@@ -4,10 +4,10 @@ class SCR_ScenarioFrameworkGetLastFinishedTaskLayer : SCR_ScenarioFrameworkGet
 	//------------------------------------------------------------------------------------------------
 	override SCR_ScenarioFrameworkParamBase Get()
 	{
-		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeManager)
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return null;
 
-		return new SCR_ScenarioFrameworkParam<SCR_ScenarioFrameworkLayerTask>(SCR_ScenarioFrameworkLayerTask.Cast(gameModeManager.GetLastFinishedTaskLayer()));
+		return new SCR_ScenarioFrameworkParam<SCR_ScenarioFrameworkLayerTask>(SCR_ScenarioFrameworkLayerTask.Cast(scenarioFrameworkSystem.GetLastFinishedTaskLayer()));
 	}
 }

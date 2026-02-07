@@ -431,6 +431,9 @@ class SCR_AICommsHandler : Managed
 			CharacterControllerComponent characterController = characterEnt.GetCharacterController();			
 			AIControlComponent aiControlComponent = characterController.GetAIControlComponent();
 			
+			if (!aiControlComponent)
+				continue;
+			
 			AIAgent agent = aiControlComponent.GetControlAIAgent();			
 			SCR_ChimeraAIAgent chimeraAgent = SCR_ChimeraAIAgent.Cast(agent);
 			if (!chimeraAgent)

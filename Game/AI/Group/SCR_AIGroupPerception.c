@@ -176,7 +176,7 @@ class SCR_AIGroupPerception : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	void AddOrUpdateGunshot(notnull IEntity shooter, vector worldPos, float timestamp, bool endangering)
+	void AddOrUpdateGunshot(notnull IEntity shooter, vector worldPos, Faction faction, float timestamp, bool endangering)
 	{
 		int id = m_aTargetEntities.Find(shooter);
 		if (id > -1)
@@ -203,7 +203,7 @@ class SCR_AIGroupPerception : Managed
 				return;
 			
 			SCR_AITargetInfo targetInfo = new SCR_AITargetInfo();
-			targetInfo.InitFromGunshot(shooter, perceivable, worldPos, timestamp, endangering);
+			targetInfo.InitFromGunshot(shooter, perceivable, worldPos, faction, timestamp, endangering);
 			
 			m_aTargets.Insert(targetInfo);
 			m_aTargetEntities.Insert(shooter);

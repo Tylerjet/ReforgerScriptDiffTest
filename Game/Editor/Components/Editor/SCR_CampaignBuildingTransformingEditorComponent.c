@@ -180,11 +180,11 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	override void ConfirmEditingServer(SCR_EditorPreviewParams params)
+	override void ConfirmEditingServer(SCR_EditorPreviewParams params, int playerID)
 	{
 		IEntity composition = m_EditedPivot.GetOwner();
 
-		super.ConfirmEditingServer(params);
+		super.ConfirmEditingServer(params, playerID);
 
 		SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(composition.FindComponent(SCR_CampaignBuildingCompositionComponent));
 		if (!compositionComponent)

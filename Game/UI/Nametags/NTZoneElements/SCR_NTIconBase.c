@@ -95,3 +95,78 @@ class SCR_NTIconState : SCR_NTIconBase
 		}
 	}
 };
+
+
+[BaseContainerProps(), SCR_NameTagElementTitle()]
+class SCR_NTIconPlatform : SCR_NTIconBase
+{	
+	//------------------------------------------------------------------------------------------------	
+	override void SetDefaults(SCR_NameTagData data, int index)
+	{
+		ImageWidget iWidget = ImageWidget.Cast( data.m_aNametagElements[index] );
+		if (!iWidget)
+			return;
+		
+		data.SetVisibility(iWidget, false, 0, false);
+		
+		if (!m_bScaleElement)
+			FrameSlot.SetSize(iWidget, m_iImageSizeMin, m_iImageSizeMin);
+		
+		if (data.m_eType != ENameTagEntityType.PLAYER && data.m_eType != ENameTagEntityType.VEHICLE)
+			return;
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+		
+		if (data.m_eType == ENameTagEntityType.PLAYER)
+		{
+			if (playerController.SetPlatformImageTo(data.m_iPlayerID, iWidget))
+				data.SetVisibility(iWidget, true, 100, false);
+		}
+		else if (data.m_eType == ENameTagEntityType.VEHICLE)
+		{
+			SCR_VehicleTagData tagData = SCR_VehicleTagData.Cast(data);
+			if (!data)
+				return; 
+			
+			if (playerController.SetPlatformImageTo(tagData.m_aPassengers[0].m_iPlayerID, iWidget))
+				data.SetVisibility(iWidget, true, 100, false);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateElement(SCR_NameTagData data, int index)
+	{
+		super.UpdateElement(data, index);
+		
+		if (!data.m_aNametagElements[index])
+			return;
+		
+		if (data.m_eType != ENameTagEntityType.PLAYER && data.m_eType != ENameTagEntityType.VEHICLE)
+			return;
+		
+		ImageWidget image = ImageWidget.Cast(data.m_aNametagElements[index]);
+		if (!image)
+			return;
+		
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+		
+		if (data.m_eType == ENameTagEntityType.PLAYER)
+		{
+			if (playerController.SetPlatformImageTo(data.m_iPlayerID, image))
+				data.SetVisibility(image, true, 100, false);
+		} 
+		else if (data.m_eType == ENameTagEntityType.VEHICLE)
+		{
+			SCR_VehicleTagData tagData = SCR_VehicleTagData.Cast(data);
+			if (!tagData)
+				return; 
+			
+			if (playerController.SetPlatformImageTo(tagData.m_aPassengers[0].m_iPlayerID, image))
+				tagData.SetVisibility(image, true, 100, false);
+		}
+	}
+}

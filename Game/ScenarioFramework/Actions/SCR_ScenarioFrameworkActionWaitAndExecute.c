@@ -45,6 +45,12 @@ class SCR_ScenarioFrameworkActionWaitAndExecute : SCR_ScenarioFrameworkActionBas
 			m_iDelay = Math.RandomIntInclusive(m_iDelayInSeconds, m_iDelayInSecondsMax);
 
 		//Used to delay the call as it is the feature of this action
-		GetGame().GetCallqueue().CallLater(ExecuteActions, m_iDelay * 1000, m_bLooped, object);
+		SCR_ScenarioFrameworkSystem.GetCallQueue().CallLater(ExecuteActions, m_iDelay * 1000, m_bLooped, object);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override array<ref SCR_ScenarioFrameworkActionBase> GetSubActions()
+	{
+		return m_aActions;
 	}
 }

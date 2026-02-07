@@ -849,14 +849,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			GetGame().GetCallqueue().CallLater(timeHandler.SetupDaytimeAndWeather, DEFAULT_DELAY, false, m_LoadedData.GetHours(), m_LoadedData.GetMinutes(), m_LoadedData.GetSeconds(), m_LoadedData.GetWeatherState(), true);
 		}
 
-		SCR_CampaignTutorialArlandComponent tutorial = SCR_CampaignTutorialArlandComponent.Cast(FindComponent(SCR_CampaignTutorialArlandComponent));
-
-		if (tutorial)
-		{
-			tutorial.SetResumeStage(m_LoadedData.GetTutorialStage());
-			return;
-		}
-
 		m_iCallsignOffset = m_LoadedData.GetCallsignOffset();
 		Replication.BumpMe();
 
@@ -932,21 +924,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		}
 
 		m_bRemnantsStateLoaded = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Triggered each time player built a composition
-	void OnStructureBuilt(SCR_CampaignMilitaryBaseComponent base, SCR_EditableEntityComponent entity, bool add)
-	{
-		if (IsTutorial())
-		{
-			SCR_CampaignTutorialArlandComponent tutorial = SCR_CampaignTutorialArlandComponent.Cast(FindComponent(SCR_CampaignTutorialArlandComponent));
-
-			if (tutorial)
-				tutorial.OnStructureBuilt(base, entity.GetOwner());
-			else
-				SCR_CampaignTutorialArlandComponent.GetOnStructureBuilt().Invoke(base, entity.GetOwner());
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1401,13 +1378,14 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilledEx(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		super.OnPlayerKilledEx(instigatorContextData);
 
 		if (IsProxy())
 			return;
 
+		int playerId = instigatorContextData.GetVictimPlayerID();
 		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
 
 		if (!pc)
@@ -1423,7 +1401,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 		UpdateRespawnPenalty(playerId);
 
-		if (playerId == killer.GetInstigatorPlayerID())
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.SUICIDE))
 			OnSuicide(playerId);
 	}
 
@@ -1564,13 +1542,35 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		
 		if (!spawnpointSpawnData)
 			return true;
+
+		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+
+		if (!loadoutComp)
+			return true;
 		
-		SCR_CampaignSpawnPointGroup spawnpoint = SCR_CampaignSpawnPointGroup.Cast(spawnpointSpawnData.GetSpawnPoint());
+		SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
+		
+		if (!loadout)
+			return true;
+		
+		SCR_SpawnPoint spawnpoint = spawnpointSpawnData.GetSpawnPoint();
 		
 		if (!spawnpoint)
 			return true;
 		
-		IEntity spawnpointParent = spawnpoint.GetParent();
+		// Spawning on MHQ with custom loadouts is not allowed
+		if (spawnpoint.FindComponent(SCR_CampaignMobileAssemblyStandaloneComponent))
+		{
+			result = SCR_ESpawnResult.NOT_ALLOWED_CUSTOM_LOADOUT;
+			return false;
+		}
+		
+		SCR_CampaignSpawnPointGroup spawnpointCampaign = SCR_CampaignSpawnPointGroup.Cast(spawnpoint);
+		
+		if (!spawnpointCampaign)
+			return true;
+		
+		IEntity spawnpointParent = spawnpointCampaign.GetParent();
 		
 		if (!spawnpointParent)
 			return true;
@@ -1585,71 +1585,65 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (armory)
 			return true;
 
-		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
-
-		if (!loadoutComp)
-			return true;
-		
-		SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
-		
-		if (!loadout)
-			return true;
-
 		result = SCR_ESpawnResult.NOT_ALLOWED_NO_ARSENAL;
 		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Award additional XP for enemies killed in friendly bases
-	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator instigator)
+	override void OnControllableDestroyedEx(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnControllableDestroyed(entity, killerEntity, instigator);
+		super.OnControllableDestroyedEx(instigatorContextData);
 
 		if (IsProxy())
 			return;
-
+		
+		Instigator instigator = instigatorContextData.GetInstigator();
+		
+		// Ignore AI or NONE instigators
+ 		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+			return;
+		
+		//~ Only handle cases were the player kills a character (No Suicide or friendly fire)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
+			return;
+		
 		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(FindComponent(SCR_XPHandlerComponent));
-
 		if (!compXP)
 			return;
-
-		// Ignore AI or NONE instigators
-		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
-			return;
-
-		int killerId = instigator.GetInstigatorPlayerID();
-
-		SCR_ChimeraCharacter victimCharacter = SCR_ChimeraCharacter.Cast(entity);
-
+		
+		//~ Victim is not a character (Safty check)
+		SCR_ChimeraCharacter victimCharacter = SCR_ChimeraCharacter.Cast(instigatorContextData.GetVictimEntity());
 		if (!victimCharacter)
 			return;
-
+		
+		vector victimPos = victimCharacter.GetOrigin();
+		
+		//~ Get nearest base
+		SCR_CampaignMilitaryBaseComponent nearestBase = m_BaseManager.FindClosestBase(victimPos);
+		if (!nearestBase)
+			return;
+		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
 			return;
 
+		int killerId = instigator.GetInstigatorPlayerID();
+		
+		//~ Get killer faction to check if the closest base has the same faction as the killer
 		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
-
-		//Friendly kills are not to be rewarded
-		if (factionKiller.IsFactionFriendly(victimCharacter.GetFaction()))
-			return;
-
-		vector victimPos = victimCharacter.GetOrigin();
-
-		SCR_CampaignMilitaryBaseComponent nearestBase = m_BaseManager.FindClosestBase(victimPos);
-
-		if (!nearestBase)
-			return;
-
+		
 		//this awards additional XP to base defenders, so if the instigator is not in his own base, there should be no reward
 		if (nearestBase.GetFaction() != factionKiller)
 			return;
-
+		
+		//~ Not in defending range
 		if (vector.DistanceXZ(victimPos, nearestBase.GetOwner().GetOrigin()) > nearestBase.GetRadius())
 			return;
 
+		//~ Award defending XP
 		compXP.AwardXP(killerId, SCR_EXPRewards.CUSTOM_1);
 	}
 

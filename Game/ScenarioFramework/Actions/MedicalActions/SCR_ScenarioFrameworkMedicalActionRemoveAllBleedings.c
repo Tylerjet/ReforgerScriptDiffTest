@@ -4,6 +4,8 @@ class SCR_ScenarioFrameworkMedicalActionRemoveAllBleedings : SCR_ScenarioFramewo
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.RemoveAllBleedings();
 	}
 }

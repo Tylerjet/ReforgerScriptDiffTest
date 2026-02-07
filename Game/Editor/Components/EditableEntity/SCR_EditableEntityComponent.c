@@ -45,6 +45,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 	protected int m_iIconBoneIndex = -1;
 	protected ref ScriptInvokerEntity m_OnDeleted;
 	
+	protected ref SCR_EditableEntityAuthor m_Author;
+	protected int m_iAuthorLastUpdated;
+	
 	protected ref set<SCR_EditableEntityComponent> m_aAttachedEntities;
 
 	//------------------------------------------------------------------------------------------------
@@ -79,7 +82,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	ResourceName GetPrefab(bool shorten = false)
 	{
 		if (!m_Owner)
-			return ResourceName.Empty;
+			return ResourceName.Empty; 
 
 		EntityPrefabData prefabData = m_Owner.GetPrefabData();
 		if (!prefabData)
@@ -341,6 +344,128 @@ class SCR_EditableEntityComponent : ScriptComponent
 	int GetPlayerID()
 	{
 		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets AuthorID (player that modified this entity last) in Session
+	//! \param[in] authorID
+	void SetAuthor(int playerID)
+	{
+		if (!m_Author)
+			m_Author = new SCR_EditableEntityAuthor();
+		
+		m_Author.m_iAuthorID = playerID;
+		m_iAuthorLastUpdated = System.GetUnixTime();
+		
+		Rpc(OnAuthorChangedServer, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, "", -1, m_iAuthorLastUpdated);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets AuthorID (player that modified this entity last) from a Save
+	//! \param[in] author
+	void SetAuthor(SCR_EditableEntityAuthor author)
+	{
+		m_Author = author;
+		
+		Rpc(OnAuthorChangedSaveServer, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, m_Author.m_sAuthorPlatformID, m_Author.m_ePlatform, m_iAuthorLastUpdated);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EditableEntityAuthor GetAuthor()
+	{
+		return m_Author;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns author UID
+	//! \return
+	string GetAuthorUID()
+	{
+		if (!m_Author)
+			return string.Empty;
+		
+		return m_Author.m_sAuthorUID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns author Platform ID
+	//! \return
+	string GetAuthorPlatformID()
+	{
+		if (!m_Author)
+			return string.Empty;
+		
+		return m_Author.m_sAuthorPlatformID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns author Player ID
+	//! \return
+	int GetAuthorPlayerID()
+	{
+		if (!m_Author)
+			return -1;
+		
+		return m_Author.m_iAuthorID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns Unix Time of last modification
+	//! \return
+	int GetAuthorLastUpdated()
+	{
+		if (!m_Author)
+			return -1;
+		
+		return m_iAuthorLastUpdated;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns Unix Time of last modification
+	//! \return
+	PlatformKind GetAuthorPlatform()
+	{
+		if (!m_Author)
+			return null;
+		
+		return m_Author.m_ePlatform;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Author UID (for normal usage use SetAuthor())
+	//! \param[in] authorUID
+	void SetAuthorUID(string authorUID)
+	{
+		if (!m_Author)
+			return;
+		
+		m_Author.m_sAuthorUID = authorUID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetAuthorPlatformID(string authorPlatformID)
+	{
+		if (!m_Author)
+			return;
+		
+		m_Author.m_sAuthorPlatformID = authorPlatformID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Time of last update
+	//! \param[in] authorUID
+	void SetAuthorUpdatedTime(int updatedLast)
+	{
+		m_iAuthorLastUpdated = updatedLast;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetAuthorPlatform(PlatformKind authorPlatform)
+	{
+		if (!m_Author)
+			return;
+		
+		m_Author.m_ePlatform = authorPlatform;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -632,6 +757,65 @@ class SCR_EditableEntityComponent : ScriptComponent
 		if (core)
 			core.Event_OnEntityTransformChanged.Invoke(this);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void OnAuthorChangedServer(string authorUID, int authorID, string authorPlatformID, int platform, int lastUpdated)
+	{
+		string oldAuthor = m_Author.m_sAuthorUID;
+		string newAuthor;
+		
+		SCR_EditableEntityCore entityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
+		BackendApi backendApi = GetGame().GetBackendApi();
+		if (backendApi)
+		{
+			newAuthor = backendApi.GetPlayerIdentityId(authorID);
+			
+			if (entityCore && newAuthor != m_Author.m_sAuthorUID && !m_Author.m_sAuthorUID.IsEmpty() && !newAuthor.IsEmpty())
+				entityCore.AuthorEntityRemovedServer(m_Author);
+			
+			m_Author.m_ePlatform = backendApi.GetPlayerPlatformKind(authorID);
+			m_Author.m_sAuthorPlatformID = backendApi.GetPlayerPlatformId(authorID);
+		}
+		m_Author.m_iAuthorID = authorID;
+		m_iAuthorLastUpdated = lastUpdated;
+		m_Author.m_sAuthorUID = newAuthor;
+		
+		if (entityCore && oldAuthor != m_Author.m_sAuthorUID)
+			entityCore.RegisterAuthorServer(m_Author);
+		
+		Rpc(OnAuthorChanged, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, m_Author.m_sAuthorPlatformID, m_Author.m_ePlatform, m_iAuthorLastUpdated);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void OnAuthorChangedSaveServer(string authorUID, int authorID, string authorPlatformID, int platform, int lastUpdated)
+	{
+		SCR_EditableEntityCore entityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
+		m_Author.m_sAuthorUID = authorUID;
+		m_Author.m_ePlatform = platform;
+		m_Author.m_sAuthorPlatformID = authorPlatformID;
+		m_Author.m_iAuthorID = authorID;
+		m_iAuthorLastUpdated = lastUpdated;
+		
+		if (entityCore)
+			entityCore.RegisterAuthorServer(m_Author);
+		
+		Rpc(OnAuthorChanged, m_Author.m_sAuthorUID, m_Author.m_iAuthorID, m_Author.m_sAuthorPlatformID, m_Author.m_ePlatform, m_iAuthorLastUpdated);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void OnAuthorChanged(string authorUID, int authorID, string authorPlatformID, int platform, int lastUpdated)
+	{
+		m_Author.m_ePlatform = platform;
+		m_Author.m_sAuthorPlatformID = authorPlatformID;
+		m_Author.m_sAuthorUID = authorUID;
+		m_Author.m_iAuthorID = authorID;
+		m_iAuthorLastUpdated = lastUpdated;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Kill/destroy this editable entity.
@@ -643,7 +827,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 			if (!IsDestroyed() && CanDestroy())
 			{
 				DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
-				damageManager.SetInstigator(Instigator.CreateInstigator(null));
+				damageManager.SetInstigator(Instigator.CreateInstigatorGM());
 				damageManager.SetHealthScaled(0);
 				return true;
 			}
@@ -685,6 +869,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Mark parents as dirty
 		if (changedByUser)
 			SetHierarchyAsDirtyInParents();
+		
+		SCR_EditableEntityCore entityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		
+		if (entityCore && m_Author && !m_Author.m_sAuthorUID.IsEmpty())
+			entityCore.AuthorEntityRemovedServer(m_Author);
 
 		//--- Delete the entity
 		RplComponent.DeleteRplEntity(m_Owner, false);
@@ -1913,7 +2102,22 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//--- JIP on server
 	override bool RplSave(ScriptBitWriter writer)
 	{
+		string authorUID, authorPlatformID;
+		int platform, authorID;
+		
 		writer.Write(m_AccessKey, 32);
+		if (m_Author)
+		{
+			authorUID = m_Author.m_sAuthorUID;
+			authorID = m_Author.m_iAuthorID;
+			authorPlatformID = m_Author.m_sAuthorPlatformID;
+			platform = m_Author.m_ePlatform;
+		}
+		writer.WriteString(authorUID);
+		writer.WriteString(authorPlatformID);
+		writer.WriteInt(platform);
+		writer.WriteInt(authorID);
+		writer.WriteInt(m_iAuthorLastUpdated);
 
 		RplId parentID = Replication.FindId(m_ParentEntity);
 		writer.WriteRplId(parentID);
@@ -1925,8 +2129,19 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//--- JIP on client
 	override bool RplLoad(ScriptBitReader reader)
 	{
+		string authorUID, authorPlatformID;
+		int platform, authorID;
+		
 		reader.Read(m_AccessKey, 32);
+		reader.ReadString(authorUID);
+		reader.ReadString(authorPlatformID);
+		reader.ReadInt(platform);
+		reader.ReadInt(authorID);
+		reader.ReadInt(m_iAuthorLastUpdated);
 
+		m_Author = new SCR_EditableEntityAuthor();
+		m_Author.Initialize(authorUID, authorPlatformID, platform, authorID);
+		
 		RplId parentID;
 		reader.ReadRplId(parentID);
 
@@ -2124,5 +2339,114 @@ class SCR_EditableEntityComponent : ScriptComponent
 	SCR_EditableEntityComponent GetAttachedTo()
 	{
 		return null;
+	}
+}
+
+class SCR_EditableEntityAuthor
+{
+	string m_sAuthorUID; // Author's Player UUID
+	string m_sAuthorPlatformID; // Author's Platform ID
+	PlatformKind m_ePlatform;
+	int m_iAuthorID; // Author's Player ID (PlayerManager PlayerID), if the value is -1 it means it was loaded from a save.
+	int m_iEntityCount;
+	
+	//------------------------------------------------------------------------------------------------
+	void Initialize(string authorUID, string platformID, PlatformKind platform, int authorID)
+	{
+		m_sAuthorUID = authorUID;
+		m_sAuthorPlatformID = platformID;
+		m_ePlatform = platform;
+		m_iAuthorID = authorID;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetAllOwnedEntities(out notnull set<SCR_EditableEntityComponent> entities)
+	{
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (!core)
+		{
+			Print("GetAllOwnedEntities(): SCR_EditableEntityCore was not found!", LogLevel.ERROR);
+			return 0;
+		}
+		
+		return core.GetAllEntitiesByAuthorUID(entities, m_sAuthorUID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] instance
+	//! \param[in] ctx
+	//! \param[in] snapshot
+	//! \return
+	static bool Extract(SCR_EditableEntityAuthor instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
+	{
+		snapshot.SerializeString(instance.m_sAuthorUID);
+		snapshot.SerializeString(instance.m_sAuthorPlatformID);
+		snapshot.SerializeInt(instance.m_ePlatform);
+		snapshot.SerializeInt(instance.m_iAuthorID);
+		snapshot.SerializeInt(instance.m_iEntityCount);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \param[in] instance
+	//! \return
+	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, SCR_EditableEntityAuthor instance)
+	{
+		snapshot.SerializeString(instance.m_sAuthorUID);
+		snapshot.SerializeString(instance.m_sAuthorPlatformID);
+		snapshot.SerializeInt(instance.m_ePlatform);
+		snapshot.SerializeInt(instance.m_iAuthorID);
+		snapshot.SerializeInt(instance.m_iEntityCount);
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \param[in] packet
+	static void Encode(SSnapSerializerBase snapshot, ScriptCtx ctx, ScriptBitSerializer packet)
+	{
+		snapshot.EncodeString(packet);	// m_sAuthorUID
+		snapshot.EncodeString(packet);	// m_sAuthorPlatformID
+		snapshot.EncodeInt(packet);		// m_ePlatform
+		snapshot.EncodeInt(packet);		// m_iAuthorID
+		snapshot.EncodeInt(packet);		// m_iEntityCount
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] packet
+	//! \param[in] ctx
+	//! \param[in] snapshot
+	//! \return
+	static bool Decode(ScriptBitSerializer packet, ScriptCtx ctx, SSnapSerializerBase snapshot)
+	{
+		snapshot.DecodeString(packet);	// m_sAuthorUID
+		snapshot.DecodeString(packet);	// m_sAuthorPlatformID
+		snapshot.DecodeInt(packet);		// m_ePlatform
+		snapshot.DecodeInt(packet);		// m_iAuthorID
+		snapshot.DecodeInt(packet);		// m_iEntityCount
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] lhs
+	//! \param[in] rhs
+	//! \param[in] ctx
+	//! \return
+	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs , ScriptCtx ctx)
+	{
+		return lhs.CompareStringSnapshots(rhs); // m_sAuthorUID
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] instance
+	//! \param[in] snapshot
+	//! \param[in] ctx
+	//! \return
+	static bool PropCompare(SCR_EditableEntityAuthor instance, SSnapSerializerBase snapshot, ScriptCtx ctx)
+	{
+		return snapshot.CompareString(instance.m_sAuthorUID);
 	}
 }

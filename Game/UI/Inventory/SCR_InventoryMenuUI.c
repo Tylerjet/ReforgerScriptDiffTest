@@ -320,10 +320,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected SCR_NavigationBarUI							m_pNavigationBar			= null;
 	protected SCR_InputButtonComponent						m_CloseButton;
 	
-	protected ResourceName 									m_sSupplyCostUIInfoPrefab = "{4D8296CB3CB3B8BF}Configs/Inventory/SupplyCost_ItemUIInfo.conf";
+	const protected ResourceName 							m_sSupplyCostUIInfoPrefab = "{4D8296CB3CB3B8BF}Configs/Inventory/SupplyCost_ItemUIInfo.conf";
 	protected ref SCR_SupplyCostItemHintUIInfo 				m_SupplyCostUIInfo;
-	protected ResourceName 									m_sSupplyRefundUIInfoPrefab = "{6FD3DF5A3B2C6D30}Configs/Inventory/ItemHints/SupplySell_ItemHint.conf";
+	const protected ResourceName 							m_sSupplyRefundUIInfoPrefab = "{6FD3DF5A3B2C6D30}Configs/Inventory/ItemHints/SupplySell_ItemHint.conf";
 	protected ref SCR_SupplyRefundItemHintUIInfo 			m_SupplyRefundUIInfo;
+	const protected ResourceName 							m_sNonrefundableUIInfoPrefab = "{B3E94EB9D0F0EAC6}Configs/Inventory/ItemHints/Nonrefundable_ItemHint.conf";
+	protected ref SCR_NonrefundableItemHintUIInfo			m_NonrefundableUIInfo;
 	
 	//variables dedicated to move an item from storage to storage
 	protected IEntity 											m_pItem;
@@ -362,6 +364,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//protected ProgressBarWidget								m_wInfoStamina;	// Preparation for showing the stamina level in inventory
 	protected ref array<HitZone> 								m_aBleedingHitZones = {};
 
+	protected bool												m_bEnablePagingContext;
 	protected bool 												m_bWasJustTraversing;
 	protected bool 												m_bStorageSwitchMode;
 	protected SCR_InventorySlotUI 								m_pItemToAssign;
@@ -466,6 +469,18 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_CharDamageManager.GetOnDamageStateChanged().Insert(OnDamageStateChanged);
 		OnDamageStateChanged();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_InventoryStorageBaseUI GetWeaponStorage() { return m_pWeaponStorage; }
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_InventorySlotStorageUI GetSelectedSlotStorageUI() { return m_pSelectedSlotStorageUI; }
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_InventoryStorageBaseUI GetActiveStorageUI() { return m_pActiveStorageUI; }
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_InventorySlotUI GetSelectedSlotUI() { return m_pSelectedSlotUI; }
 	
 	//------------------------------------------------------------------------------------------------
 	void AddItemToAttachmentSelection(string item, Managed data = null)
@@ -706,6 +721,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			if (!ProcessInitQueue())
 				return;
 		}
+
+		if (m_bEnablePagingContext)
+			GetGame().GetInputManager().ActivateContext("InventoryPagingContext");
+
+		GetGame().GetInputManager().ActivateContext("InventoryMenuContext");
 
 		if (m_InspectionScreen)
 		{
@@ -1669,6 +1689,55 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pWeaponStorage = SCR_InventoryWeaponSlotsUI.Cast( m_pStorageBaseUI );
 		m_pWeaponStorageComp = EquipedWeaponStorageComponent.Cast( m_pWeaponStorage.GetStorage() );
  	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Add any general hints not found on the item itself such as arsenal cost when the item is in an arsenal
+	protected void GetGeneralItemHintsInfos(out notnull array<SCR_InventoryItemHintUIInfo> hintsInfo)
+	{
+		bool arsenalCostSet;
+		
+		//~ Arsenal supply cost hint if item is in an arsenal storage
+		if (m_SupplyCostUIInfo)
+		{
+			SCR_ArsenalInventorySlotUI arsenalSlot = SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI);
+			if (arsenalSlot)
+			{
+				m_SupplyCostUIInfo.SetSupplyCost(arsenalSlot.GetItemSupplyCost());
+				hintsInfo.InsertAt(m_SupplyCostUIInfo, 0);
+				arsenalCostSet = true;
+			}
+		}
+		
+		//~ Add refund cost
+		if (!arsenalCostSet && m_SupplyRefundUIInfo && IsStorageArsenal(m_pStorageLootUI.GetCurrentNavigationStorage()))
+		{
+			bool nonrefundableItemInStorage = false;
+			if (DoesSlotContainNonRefundableItems(m_pFocusedSlotUI, nonrefundableItemInStorage))
+			{
+				m_NonrefundableUIInfo.SetContainsNonrefundableItem(nonrefundableItemInStorage);
+				hintsInfo.InsertAt(m_NonrefundableUIInfo, 0);
+				return;
+			}
+			
+			BaseInventoryStorageComponent storage = m_pStorageLootUI.GetCurrentNavigationStorage();
+			
+			if (storage)
+			{
+				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(storage.GetOwner().FindComponent(SCR_ArsenalComponent));
+				if (arsenalComp)
+				{
+					bool isSupplyStorageAvailable;
+					float supplyRefundAmount = SCR_ArsenalManagerComponent.GetItemRefundAmount(m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner(), arsenalComp, true, isSupplyStorageAvailable: isSupplyStorageAvailable);
+					
+					if (supplyRefundAmount >= 0)
+					{
+						m_SupplyRefundUIInfo.SetSupplyRefund(supplyRefundAmount, isSupplyStorageAvailable);
+						hintsInfo.InsertAt(m_SupplyRefundUIInfo, 0);
+					}
+				}
+			}
+		}
+	}
 
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
@@ -1706,41 +1775,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (uiInfo)
 			uiInfo.GetItemHintArray(hintsInfo);
 		
-		bool arsenalCostSet;
-		
-		//~ Arsenal supply cost hint if item is in an arsenal storage
-		if (m_SupplyCostUIInfo)
-		{
-			SCR_ArsenalInventorySlotUI arsenalSlot = SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI);
-			if (arsenalSlot)
-			{
-				m_SupplyCostUIInfo.SetSupplyCost(arsenalSlot.GetItemSupplyCost());
-				hintsInfo.InsertAt(m_SupplyCostUIInfo, 0);
-				arsenalCostSet = true;
-			}
-		}
-		
-		//~ Add refund cost
-		if (!arsenalCostSet && m_SupplyRefundUIInfo && IsStorageArsenal(m_pStorageLootUI.GetCurrentNavigationStorage()))
-		{
-			BaseInventoryStorageComponent storage = m_pStorageLootUI.GetCurrentNavigationStorage();
-			
-			if (storage)
-			{
-				SCR_ArsenalComponent arsenalComp = SCR_ArsenalComponent.Cast(storage.GetOwner().FindComponent(SCR_ArsenalComponent));
-				if (arsenalComp)
-				{
-					bool isSupplyStorageAvailable;
-					float supplyRefundAmount = SCR_ArsenalManagerComponent.GetItemRefundAmount(m_pFocusedSlotUI.GetInventoryItemComponent().GetOwner(), arsenalComp, true, isSupplyStorageAvailable: isSupplyStorageAvailable);
-					
-					if (supplyRefundAmount >= 0)
-					{
-						m_SupplyRefundUIInfo.SetSupplyRefund(supplyRefundAmount, isSupplyStorageAvailable);
-						hintsInfo.InsertAt(m_SupplyRefundUIInfo, 0);
-					}
-				}
-			}
-		}
+		//~ Add general hints that are not found on the item but are more generic depending where the item is (eg: arsenal) and the components on the item
+		//~ These hints cover a wide arrange of items so that each item does not need to be set up individually
+		GetGeneralItemHintsInfos(hintsInfo);
 
 		//~ If has hints show them
 		if (!hintsInfo.IsEmpty())
@@ -2057,6 +2094,11 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			isArsenal = false;
 			flag = false;
+		}
+		
+		if (DoesSlotContainNonRefundableItems(m_pFocusedSlotUI))
+		{
+			isArsenal = false;
 		}
 		
 		if (isArsenal)
@@ -3544,6 +3586,60 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Checks slotToCheck for any items that cannot be refunded. This is done to avoid deleting mission critical items.
+	//! \param[in] slotToCheck is the slot to check - both the item itself aswell as it's contents will be checked.
+	//! \param[out] nonrefundableItemInStorage when set to true the slot contains a non refundable item.
+	//! \return true if the item is nonrefundable or contains one.
+	protected bool DoesSlotContainNonRefundableItems(notnull SCR_InventorySlotUI slotToCheck, out bool nonrefundableItemInStorage = false)
+	{
+		// Check if the itemitself is nonrefundable
+		InventoryItemComponent refundItemComponent = slotToCheck.GetInventoryItemComponent();
+		if (!refundItemComponent)
+			return false;
+		
+		SCR_ItemAttributeCollection refundItemAttributes = SCR_ItemAttributeCollection.Cast(refundItemComponent.GetAttributes());
+		if (refundItemAttributes && !refundItemAttributes.IsRefundable())
+			return true;
+		
+		BaseInventoryStorageComponent selectedSlotStorage = slotToCheck.GetAsStorage();
+		SCR_UniversalInventoryStorageComponent selectedSlotUniversalStorage = SCR_UniversalInventoryStorageComponent.Cast(selectedSlotStorage);
+		
+		// Check if stroage contains any nonrefundable items
+		if (selectedSlotUniversalStorage && selectedSlotUniversalStorage.GetNonRefundableItemCount() > 0)
+		{
+			nonrefundableItemInStorage = true;
+			return true;
+		}
+		else
+		{
+			// Check all substorages in a ClothNodeStorage
+			ClothNodeStorageComponent selectedSlotClothStorage = ClothNodeStorageComponent.Cast(selectedSlotStorage);
+			if (selectedSlotClothStorage)
+			{
+				array<BaseInventoryStorageComponent> storages = {};
+				selectedSlotClothStorage.GetOwnedStorages(storages, 1, false);
+				SCR_UniversalInventoryStorageComponent univStor;
+				
+				foreach (BaseInventoryStorageComponent stor : storages)
+				{
+					if (!stor)
+						continue;
+					univStor = SCR_UniversalInventoryStorageComponent.Cast(stor);
+					if (!univStor)
+						continue;
+					if (univStor.GetNonRefundableItemCount() > 0)
+					{
+						nonrefundableItemInStorage = true;
+						return true;
+					}
+				}
+			}
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected bool MoveBetweenToVicinity_VirtualArsenal()
 	{
 		BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
@@ -3564,6 +3660,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		}
 		
 		if (!storageComponent || !IsStorageArsenal(storageComponent))	
+			return false;
+		
+		// Check if slot contains any nonrefundable items
+		if (DoesSlotContainNonRefundableItems(m_pSelectedSlotUI))
 			return false;
 		
 		//! Perform refund logic.
@@ -3593,6 +3693,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!arsenalInventorySlotUI)
 		{
 			if (m_pActiveHoveredStorageUI)
+				return false;
+			
+			// Check if slot contains any nonrefundable items
+			if (DoesSlotContainNonRefundableItems(m_pSelectedSlotUI))
 				return false;
 			
 			//! Perform refund logic.
@@ -3708,6 +3812,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		{
 			// If the slot was dragged onto a non arsenal slot then do not process virtual arsenal.
 			if (!SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI))	
+				return false;
+			
+			// Check if slot contains any nonrefundable items
+			if (DoesSlotContainNonRefundableItems(m_pSelectedSlotUI))
 				return false;
 			
 			//! Perform refund logic.
@@ -4611,6 +4719,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pActiveHoveredStorageUI = pContainer;
 		pContainer.SetPagingActive(true);
 		NavigationBarUpdate();
+
+		m_bEnablePagingContext = pContainer.GetPageCount() > 1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -5088,6 +5198,19 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		NavigationBarUpdate();
 	}
 
+	//------------------------------------------------------------------------------------------------	
+	SCR_InventorySlotUI GetDraggedSlot()
+	{
+		return m_DraggedSlot;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsDraggingEnabled()
+	{
+		return m_bDraggingEnabled;
+	}
+
+	//------------------------------------------------------------------------------------------------	
 	static SCR_InventoryMenuUI GetInventoryMenu()
 	{
 		return SCR_InventoryMenuUI.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.Inventory20Menu));
@@ -5098,6 +5221,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		m_SupplyCostUIInfo = SCR_SupplyCostItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sSupplyCostUIInfoPrefab));
 		m_SupplyRefundUIInfo = SCR_SupplyRefundItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sSupplyRefundUIInfoPrefab));
+		m_NonrefundableUIInfo = SCR_NonrefundableItemHintUIInfo.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sNonrefundableUIInfoPrefab));
 	}
 	
 	//------------------------------------------------------------------------------------------------

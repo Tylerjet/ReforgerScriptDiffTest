@@ -159,6 +159,9 @@ class SCR_AmbientVehicleSystem : GameSystem
 	//------------------------------------------------------------------------------------------------
 	protected void ProcessSpawnpoint(int spawnpointIndex)
 	{
+		if (!m_aSpawnpoints || !m_aSpawnpoints.IsIndexValid(spawnpointIndex))
+			return;
+
 		SCR_AmbientVehicleSpawnPointComponent spawnpoint = m_aSpawnpoints[spawnpointIndex];
 
 		if (!spawnpoint || spawnpoint.GetIsDepleted())
@@ -301,7 +304,7 @@ class SCR_AmbientVehicleSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		RefreshPlayerList();
 	}

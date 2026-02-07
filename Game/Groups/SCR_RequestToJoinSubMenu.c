@@ -68,6 +68,8 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 			if (!playerName)
 				continue;
 			
+			ImageWidget platformIcon = ImageWidget.Cast(entryWidget.FindAnyWidget("PlatformImage"));
+			
 			ButtonWidget refuseWidget = ButtonWidget.Cast(entryWidget.FindAnyWidget("Refuse"));
 			if (!refuseWidget)
 				continue;
@@ -95,7 +97,14 @@ class SCR_RequestToJoinSubmenu : SCR_SubMenuBase
 			playerName.SetText(GetGame().GetPlayerManager().GetPlayerName(requesterIDs[i]));
 			
 			acceptButton.m_OnClicked.Insert(AcceptToJoinPrivateGroup);
-			refuseButton.m_OnClicked.Insert(RefuseJoinPrivateGroup);			
+			refuseButton.m_OnClicked.Insert(RefuseJoinPrivateGroup);
+			
+			if (platformIcon)
+			{
+				SCR_PlayerController playerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+				if (playerCtrl)
+					playerCtrl.SetPlatformImageTo(requesterIDs[i], platformIcon);
+			}	
 		}		
 		
 		// TODO: a sub menu tab should not call a method on the menu class. This should be an invoker

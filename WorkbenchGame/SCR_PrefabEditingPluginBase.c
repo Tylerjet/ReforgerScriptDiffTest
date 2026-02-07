@@ -22,17 +22,15 @@ class SCR_PrefabEditingPluginBase : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void GetSelectedWorldEditor(out array<ResourceName> selection)
 	{
-		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		worldEditor.GetResourceBrowserSelection(context.Insert, true);
+		worldEditor.GetResourceBrowserSelection(selection.Insert, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void GetSelectedResourceBrowser(out array<ResourceName> selection)
 	{
-		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
-		resourceManager.GetResourceBrowserSelection(context.Insert, true);
+		resourceManager.GetResourceBrowserSelection(selection.Insert, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

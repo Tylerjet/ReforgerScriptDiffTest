@@ -1,9 +1,12 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// TODO: Separate file
 enum SCR_ERotorDamageState: EDamageState
 {
 	MINOR = 3,
 	MAJOR = 4,
 	CRITICAL = 5
 }
+//---- REFACTOR NOTE END ----
 
 class SCR_RotorHitZone : SCR_VehicleHitZone
 {

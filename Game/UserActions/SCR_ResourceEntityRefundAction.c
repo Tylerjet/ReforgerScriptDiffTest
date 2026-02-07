@@ -24,9 +24,22 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	
 	protected bool m_bIsResourceEnabled = true;
 	
+	protected static ref ScriptInvokerEntity2 s_OnRefundPerformed;//Entity refundedEntity, Entity playerEntity
+
 	//~ For vehicles it sets the compartment manager to check if it is occupied
 	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
 	
+	//! Get event called when player refunds some entity.
+	//! Invoker params are: Entity refundedEntity, Entity playerEntity
+	//! \return ScriptInvokerEntity2
+	static ScriptInvokerEntity2 GetOnRefundPerformed()
+	{
+		if (!s_OnRefundPerformed)
+			s_OnRefundPerformed = new ScriptInvokerEntity2();
+
+		return s_OnRefundPerformed;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
  	{
@@ -39,7 +52,7 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 		//~ Vehicle is in use
 		if (m_CompartmentManager && m_CompartmentManager.AnyCompartmentsOccupiedOrLocked())
 			return;
-		
+
 		//~ Refund if resource is enabled
 		if (m_bIsResourceEnabled)
 		{
@@ -49,6 +62,9 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 				m_ResourceGenerator.RequestGeneration(SCR_ResourceSystemHelper.RoundRefundSupplyAmount(m_fResourceCost * m_CatalogEntitySpawnerComponent.GetPostGracePeriodRefundMultiplier()));
 		}
 		
+		if (s_OnRefundPerformed)
+			s_OnRefundPerformed.Invoke(pOwnerEntity, pUserEntity);
+
 		RplComponent.DeleteRplEntity(GetOwner(), false);
 	}
 	
@@ -95,6 +111,14 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 			return false;
 		}*/
 		
+		//~ Additional settings has disabled the action so do not perform and show disabled reason
+		SCR_AdditionalGameModeSettingsComponent additionalSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (additionalSettings && !additionalSettings.IsEntityRefundingActionAllowed())
+		{
+			m_sCannotPerformReason = additionalSettings.GetEntityRefundingDisabledReason();
+			return false;
+		}
+			
 		//~ Check if vehicle is in use
 		if (m_CompartmentManager && m_CompartmentManager.AnyCompartmentsOccupiedOrLocked())
 		{
@@ -159,6 +183,11 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 		if (!SelectSuitableResourceGenerator(user))
 			return false;
 		
+		//~ Additional settings has disabled the action and the reason for disabling is set empty so hide the action
+		SCR_AdditionalGameModeSettingsComponent additionalSettings = SCR_AdditionalGameModeSettingsComponent.GetInstance();
+		if (additionalSettings && (!additionalSettings.IsEntityRefundingActionAllowed() && additionalSettings.GetEntityRefundingDisabledReason().IsEmpty()))
+			return false;
+		
 		return super.CanBeShownScript(user);
 	}
 	
@@ -173,6 +202,9 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	protected void DelayedInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
 	{
 		m_fResourceCost = -1;
+		
+		if (!pOwnerEntity)
+			return;
 		
 		m_ReplicationComponent = RplComponent.Cast(pOwnerEntity.FindComponent(RplComponent));
 		m_EntityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();

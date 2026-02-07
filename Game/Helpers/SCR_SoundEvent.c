@@ -288,6 +288,7 @@ class SCR_SoundEvent
 	static const string SOUND_EXPLOSIVE_DISARM = "SOUND_DISARM";
 	static const string SOUND_EXPLOSIVE_ARM = "SOUND_ARM";
 	static const string SOUND_EXPLOSIVE_ADJUST_TIMER = "SOUND_TIMER_ADJUST";
+	static const string SOUND_LOAD = "SOUND_LOAD";
 
 	// Actions
 	static const string SOUND_EQUIP = "SOUND_EQUIP";
@@ -321,4 +322,7 @@ class SCR_SoundEvent
 	
 	// Music Instruments
 	static const string SOUND_STOP_PLAYING = "SOUND_STOP_PLAYING";
+	
+	static const string SOUND_MHQ_DEPLOY = "SOUND_MHQ_DEPLOY";
+	static const string SOUND_MHQ_DISMANTLE = "SOUND_MHQ_DISMANTLE";
 };

@@ -51,7 +51,7 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 			if (!catalog)
 				continue;
 
-			stringBuilder.AddTitle(3, EnumSnakeCaseToUserFriendly(typename.EnumToString(EEntityCatalogType, catalogType)));
+			stringBuilder.AddTitle(3, SCR_StringHelper.FormatSnakeCaseToUserFriendly(typename.EnumToString(EEntityCatalogType, catalogType)));
 			stringBuilder.BeginTable("min-width: 60em");
 			stringBuilder.AddTableHeader("Name", "min-width: 50%");
 			stringBuilder.AddTableHeader("Prefab");
@@ -61,45 +61,13 @@ class SCR_BIKIFactionAssetsExportPlugin : SCR_BIKIExportBasePlugin
 			foreach (SCR_EntityCatalogEntry entry : entityList)
 			{
 				ResourceName prefab = entry.GetPrefab();
-				stringBuilder.AddTableDataCellsLine(ResourceNameToUserFriendly(prefab), "{{Link|enfusion:/" + "/ResourceManager/~ArmaReforger:" + prefab.GetPath() + "}}");
+				stringBuilder.AddTableDataCellsLine(SCR_StringHelper.FormatResourceNameToUserFriendly(prefab), "{{Link|enfusion:/" + "/ResourceManager/~ArmaReforger:" + prefab.GetPath() + "}}");
 			}
 
 			stringBuilder.EndTable();
 		}
 
 		return stringBuilder.GetContent();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Turns "THIS_IS_AN_ENUM" into "This Is An Enum"
-	//! \param[in] snakeCase any string with words separated by underscores
-	//! \return firstchar-uppercased space-separated words
-	protected string EnumSnakeCaseToUserFriendly(string snakeCase)
-	{
-		array<string> pieces = {};
-		snakeCase.Split("_", pieces, true);
-		for (int i, count = pieces.Count(); i < count; i++)
-		{
-			string piece = pieces[i];
-			string firstChar = piece[0];
-			firstChar.ToUpper();
-			piece.ToLower();
-			piece = firstChar + piece.Substring(1, piece.Length() - 1);
-
-			pieces[i] = piece;
-		}
-		return SCR_StringHelper.Join(" ", pieces);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Turns "{GUID012345678910}Prefabs/Characters/Factions/Faction/Character_FactionName_NLAW.et" into "Character FactionName NLAW"
-	//! \param[in] resourceName
-	//! \return space-separated words without resourceName extension
-	protected string ResourceNameToUserFriendly(ResourceName resourceName)
-	{
-		array<string> pieces = {};
-		FilePath.StripExtension(FilePath.StripPath(resourceName)).Split("_", pieces, true);
-		return SCR_StringHelper.Join(" ", pieces);
 	}
 }
 

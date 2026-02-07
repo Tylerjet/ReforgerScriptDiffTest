@@ -64,13 +64,6 @@ class SCR_VehicleSoundComponent : VehicleSoundComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
-	{	
-		// Collision sounds setup
-		SetMinTimeAfterImpact(300);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src
 	//! \param[in] ent

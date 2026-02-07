@@ -548,6 +548,11 @@ class SCR_NameTagData : Managed
 			m_vTagWorldPos = m_vEntWorldPos + BODY_OFFSET;
 		}
 
+		if (m_eType != ENameTagEntityType.PLAYER && GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(m_Entity) > 0)
+		{
+			m_Flags |= ENameTagFlags.ENT_TYPE_UPDATE;
+			m_Flags |= ENameTagFlags.NAME_UPDATE;
+		}
 	}
 		
 	//------------------------------------------------------------------------------------------------

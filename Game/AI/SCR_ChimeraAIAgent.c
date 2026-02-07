@@ -173,7 +173,7 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	Faction GetFaction(IEntity entity)
+	static Faction GetFaction(IEntity entity)
 	{
 		// Common case first
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
@@ -212,6 +212,19 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool IsEnemy(Faction otherFaction)
+	{
+		Faction myFaction;
+		if (m_FactionAffiliationComponent)
+			myFaction = m_FactionAffiliationComponent.GetAffiliatedFaction();
+		
+		if (!otherFaction || !myFaction)
+			return false;
+				
+		return myFaction.IsFactionEnemy(otherFaction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void OnGroupWaypointChanged(AIWaypoint newWaypoint)
 	{
 		m_GroupWaypoint = newWaypoint;
@@ -233,5 +246,13 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	bool IsPlayerPending_S()
 	{
 		return m_iPendingPlayerId != 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool ShouldAbortLoiterFast()
+	{
+		if (!m_UtilityComponent)
+			return false;
+		return m_UtilityComponent.FindActionOfInheritedType(SCR_AIAttackBehavior) != null;
 	}
 };

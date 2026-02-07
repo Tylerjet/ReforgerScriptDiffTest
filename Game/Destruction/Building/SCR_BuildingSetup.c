@@ -312,8 +312,8 @@ class SCR_BuildingSetup
 			}
 		}
 		
-		int num = 10;
-		float radius = 1.5;
+		const int num = 10;
+		const float radius = 1.5;
 		
 		for (int i = 0; i < num; i++)
 		{

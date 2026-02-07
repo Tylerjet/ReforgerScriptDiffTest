@@ -15,6 +15,13 @@ sealed class RplNode: pointer
 	proto external RplRole GetRole();
 	proto external bool IsLocked();
 	proto external void SetParent(RplNode newParent, bool unusedAndDeprecated = true);
+	proto external RplNode GetParent();
+	proto external RplNode GetRootParent();
+	proto external RplNode GetChildren();
+	proto external RplNode GetSibling();
+	proto external int GetItemCount();
+	proto external RplId GetItemId(int idx);
+	proto external Managed GetItem(int idx);
 }
 
 /*!

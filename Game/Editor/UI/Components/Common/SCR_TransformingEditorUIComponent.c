@@ -110,6 +110,8 @@ class SCR_TransformingEditorUIComponent : SCR_PreviewEntityEditorUIComponent
 		
 		//--- Start editing process
 		m_TransformingManager.StartEditing(m_HoverEntity, entities, m_vClickTransform);
+		
+		m_TransformingManager.GetOnCleanStart().Insert(OnTransformCleanStart);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -152,12 +154,20 @@ class SCR_TransformingEditorUIComponent : SCR_PreviewEntityEditorUIComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnTransformCleanStart()
+	{
+		CancelEditing();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void Clean()
 	{
 		m_bClicked = false;
 		m_InputManager.ResetAction("EditorTransform");
 		m_HoverEntity = null;
 		m_ActiveHoverEntity = null;
+		
+		m_TransformingManager.GetOnCleanStart().Remove(OnTransformCleanStart);
 	}
 
 	//------------------------------------------------------------------------------------------------

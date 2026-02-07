@@ -34,11 +34,9 @@ class ScriptedWidgetEventHandler: Managed
 	event bool OnChildAdd(Widget w, Widget child);
 	event bool OnChildRemove(Widget w, Widget child);
 	event bool OnUpdate(Widget w);
-	event bool OnEvent(EventType eventType, Widget target, int parameter0, int parameter1);
 	event bool OnModalClickOut(Widget modalRoot, int x, int y, int button);
 	event void HandlerAttached(Widget w);
 	event void HandlerDeattached(Widget w);
-
 }
 
 /*!

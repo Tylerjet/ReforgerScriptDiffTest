@@ -7,12 +7,12 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 
 	[Attribute()]
 	protected ref array<string> m_aProperties;
-	
-	const ref array<string> EXTENSIONS = {"et"};
-	const ref array<string> DESTRUCTIBLE_COMPONENT_CLASSES = {"SCR_DestructionDamageManagerComponent", "SCR_DestructionMultiPhaseComponent"};
-	const string DESTRUCTION_COMPONENT_CLASS = "SCR_DestructionMultiPhaseComponent";
-	const string PHYSICS_COMPONENT = "RigidBody";
-	
+
+	protected static const ref array<string> EXTENSIONS = { "et" };
+	protected static const ref array<string> DESTRUCTIBLE_COMPONENT_CLASSES = { "SCR_DestructionDamageManagerComponent", "SCR_DestructionMultiPhaseComponent" };
+	protected const string DESTRUCTION_COMPONENT_CLASS = "SCR_DestructionMultiPhaseComponent";
+	protected const string PHYSICS_COMPONENT = "RigidBody";
+
 	protected ref SCR_IndicesAssignToolHandler m_Handler;
 
 	//------------------------------------------------------------------------------------------------

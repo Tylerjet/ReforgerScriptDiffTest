@@ -379,14 +379,13 @@ class SCR_PlayersRestrictionZoneManagerComponent : ScriptComponent
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	//~Todo: Test what happens if player is deleted
-	protected void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	protected void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		if (m_aRestrictionZones.IsEmpty())
 			return;
 		
-		if (m_PlayerRestrictionZoneData.Contains(playerId))
-			SetPlayerZoneData(playerId, null, false, false, -1);
+		if (m_PlayerRestrictionZoneData.Contains(instigatorContextData.GetVictimPlayerID()))
+			SetPlayerZoneData(instigatorContextData.GetVictimPlayerID(), null, false, false, -1);
 	}
 	
 	//------------------------------------------------------------------------------------------------

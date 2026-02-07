@@ -44,6 +44,9 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	[Attribute("0", desc: "If true will only notify the local player when the mode is added or removed, if false it sends to to all Game Masters and the local player", category: "Notification")]
 	protected bool m_bSendNotificationLocalOnly;
 	
+	[Attribute("false", UIWidgets.Auto, "True - Mode can't be closed", category: "Editor Mode")]
+	protected bool m_bPreventClose;
+	
 	private SCR_EditorManagerEntity m_EditorManager;
 	
 	private ref ScriptInvoker Event_OnInit = new ScriptInvoker();
@@ -166,6 +169,13 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	{
 		return m_bSendNotificationLocalOnly;
 	}
+	
+	//----------------------------------------------------------------------------------------
+	bool GetPreventClose()
+	{
+		return m_bPreventClose;
+	}
+	
 	/*!
 	Returns enum for on Add notification
 	\return ENotification on Add

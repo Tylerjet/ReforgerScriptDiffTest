@@ -145,15 +145,17 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	//! \param[in] playerEntity
 	//! \param[in] killerEntity
 	//! \param[in] killer
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(notnull SCR_InstigatorContextData instigatorContextData)
 	{
-		super.OnPlayerKilled(playerId, playerEntity, killerEntity, killer);
+		super.OnPlayerKilled(instigatorContextData);
 
+		int playerId = instigatorContextData.GetVictimPlayerID();
+		
 		// Invalid playerID
 		if (playerId <= 0)
 			return;
 
-		if (playerEntity.IsDeleted()) //todo(@langepau): remove hack after character event flow rework
+		if (instigatorContextData.GetVictimEntity().IsDeleted()) //todo(@langepau): remove hack after character event flow rework
 			return;
 
 		// TODO@AS: Propagate change to owner
@@ -166,8 +168,8 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerDeleted(int playerId, IEntity player)
-	{
-		OnPlayerKilled(playerId, player, null, Instigator.CreateInstigator(null));
+	{	
+		OnPlayerKilled(new SCR_InstigatorContextData(playerId, player, null, Instigator.CreateInstigator(null), true));
 	}
 
 	//------------------------------------------------------------------------------------------------

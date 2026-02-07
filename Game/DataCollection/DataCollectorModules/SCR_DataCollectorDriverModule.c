@@ -179,59 +179,50 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		//We are only looking for roadkills here. That's why we don't call super.OnPlayerKilled. This behaviour is very specific
 		
 		//If the killer is AI count no roadKill
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
 			return;
 
-		//if the player killed themselves do nothing
-		int killerId = killer.GetInstigatorPlayerID();
-		if (killerId == playerId)
+		//~ The player was not killed by a player so do nothing (Like suicide)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER | SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			return;
 		
-		SCR_ChimeraCharacter playerEntityChar = SCR_ChimeraCharacter.Cast(playerEntity);
-		if (!playerEntityChar)
-			return;
+		int killerId = instigator.GetInstigatorPlayerID();
 		
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-		
-		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
-		if (!factionKiller)
-			return;
-
-		SCR_DataCollectorDriverModuleContext killerContext = m_mTrackedPlayersInVehicles.Get(killerId);
 		//If the killer is not tracked as a driver, then this was no roadkill
+		SCR_DataCollectorDriverModuleContext killerContext = m_mTrackedPlayersInVehicles.Get(killerId);
 		if (!killerContext || !killerContext.m_bPilot)
 			return;
-
-		//Now we know the killer is not an AI and they are a driver. Add roadkill!
-
+		
+		//~ Get killer data in order to add roadkill stats
 		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
-
-		//Add a kill. Find if friendly or unfriendly
-		if (factionKiller.IsFactionFriendly(playerEntityChar.GetFaction()))
-			killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
-		else
+		if (!killerData)
+			return;
+		
+		//~ Roadkill enemy
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER))
 			killerData.AddStat(SCR_EDataStats.ROADKILLS);
+		//~ Roadkill friendly
+		else 
+			killerData.AddStat(SCR_EDataStats.FRIENDLY_ROADKILLS);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator killer)
+	override void OnAIKilled(IEntity AIEntity, IEntity killerEntity, notnull Instigator instigator, notnull SCR_InstigatorContextData instigatorContextData)
 	{
 		//We are only looking for roadkills here. That's why we don't call super.OnAIKilled. This behaviour is very specific
-
-		//This code has many similarities with OnPlayerKilled.
-		//It would be nice to have only one method for OnCharacterKilled instead of having this duplicity
+		if (instigator.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+			return;
 		
-		if (killer.GetInstigatorType() != InstigatorType.INSTIGATOR_PLAYER)
+		//~ The player was not killed by a player so do nothing (Like suicide)
+		if (!instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_ENEMY_PLAYER | SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			return;
 
-		int killerId = killer.GetInstigatorPlayerID();
+		int killerId = instigator.GetInstigatorPlayerID();
 		
 		SCR_ChimeraCharacter AIEntityChar = SCR_ChimeraCharacter.Cast(AIEntity);
 		if (!AIEntityChar)
@@ -245,16 +236,8 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		//Now we know the killer is not an AI and they are a driver. Add roadkill!
 		SCR_PlayerData killerData = GetGame().GetDataCollector().GetPlayerData(killerId);
 
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager)
-			return;
-		
-		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
-		if (!factionKiller)
-			return;
-
 		//Add an AI kill. Find if friendly or unfriendly
-		if (factionKiller.IsFactionFriendly(AIEntityChar.GetFaction()))
+		if (instigatorContextData.HasAnyVictimKillerRelation(SCR_ECharacterDeathStatusRelations.KILLED_BY_FRIENDLY_PLAYER))
 			killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_ROADKILLS);
 		else
 			killerData.AddStat(SCR_EDataStats.AI_ROADKILLS);
@@ -331,9 +314,15 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 				compartmentManagerComponent.GetOccupants(occupants);
 				int crewSize = occupants.Count();
 
-				//Ignore dead crew
+				//Ignore dead crew and AI
 				foreach (IEntity occupant : occupants)
 				{
+					if (!EntityUtils.IsPlayer(occupant))
+					{
+						crewSize--;
+						continue;
+					}
+					
 					ChimeraCharacter character = ChimeraCharacter.Cast(occupant);
 
 					if (!character)

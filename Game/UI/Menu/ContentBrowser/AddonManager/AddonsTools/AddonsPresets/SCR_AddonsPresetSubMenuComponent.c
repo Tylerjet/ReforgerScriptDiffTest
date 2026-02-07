@@ -364,7 +364,7 @@ class SCR_AddonsPresetsSubMenuComponent : SCR_SubMenuBase
 			return;
 
 		SCR_AddonManager addonMgr = SCR_AddonManager.GetInstance();
-		array<ref SCR_WorkshopItem> enabledAddons = addonMgr.SelectItemsBasic(addonMgr.GetOfflineAddons(), EWorkshopItemQuery.ENABLED);
+		array<ref SCR_WorkshopItem> enabledAddons = addonMgr.SelectItemsAnd(addonMgr.GetOfflineAddons(), EWorkshopItemQuery.ENABLED | EWorkshopItemQuery.ONLY_WORKSHOP_ITEM);
 
 		if (!IsAddonsListEmpty(enabledAddons))
 			return;

@@ -103,8 +103,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	//! Method called when player takes controll over an entity
 	//! \param[in] from entity which was previously controlled
 	//! \param[in] to entity which is now controlled
-	// HACK: this is added to SCR_PlayerController.OnControlledEntityChanged by SCR_PlayerController.EOnInit() because InteractionHandlerComponent.OnInit() is only called by the host
-	void OnControlledEntityChanged(IEntity from, IEntity to)
+	override protected void OnControlledEntityChanged(IEntity from, IEntity to)
 	{
 		PlayerController controller = GetGame().GetPlayerController();
 		if (!controller)
@@ -348,7 +347,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// We will leave a small error threshold
 			const float threshold = 1.1;
 			// Global action visibility range in meters
-			float visRange = GetVisibilityRange();
+			float visRange = currentContext.GetVisibilityRange(GetVisibilityRange());
 			// Maximum sq distance we can interact at
 			float maxSqDistance = (visRange * visRange) * 1.1;
 			// Sq distance to controlled entity

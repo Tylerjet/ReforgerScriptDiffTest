@@ -13,7 +13,8 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	protected bool m_bIsFirstTimeOpened = true;		// whether the map has bene opened since put into a lot
 	protected SCR_MapEntity m_MapEntity;			// map instance
 	protected SCR_FadeInOutEffect m_FadeInOutEffect;	
-	
+
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	//! Switch between map view
 	//! \param[in] state is desired state: true = open, false = close
@@ -51,7 +52,8 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			}
 		}
 	}
-	
+//---- REFACTOR NOTE END ----
+
 	//------------------------------------------------------------------------------------------------
 	//! Open/close map
 	//! \param[in] state is desired state: true = open, false = close

@@ -36,7 +36,7 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 	//------------------------------------------------------------------------------------------------
 	override void OnEffectRemoved(SCR_ExtendedDamageManagerComponent dmgManager)
 	{
-		super.OnEffectAdded(dmgManager);
+		super.OnEffectRemoved(dmgManager);
 
 		SCR_CharacterDamageManagerComponent characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(dmgManager);
 		characterDamageManager.RegenPhysicalHitZones();
@@ -172,6 +172,14 @@ class SCR_BleedingDamageEffect : SCR_DotDamageEffect
 		super.Load(r);
 
 		r.ReadInt(m_iColliderDescriptorIndex);
+		HitZone hz = GetAffectedHitZone();
+		if (!hz)
+			return true;
+
+		SCR_ExtendedDamageManagerComponent dmgManager = SCR_ExtendedDamageManagerComponent.Cast(hz.GetHitZoneContainer());
+		if (dmgManager)
+			OnEffectAdded(dmgManager);
+
 		return true;
 	}
 

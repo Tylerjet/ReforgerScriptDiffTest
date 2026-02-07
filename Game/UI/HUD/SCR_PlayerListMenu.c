@@ -13,7 +13,6 @@ class SCR_PlayerListEntry
 	int m_iSortFrequency;
 
 	SCR_ButtonBaseComponent m_Mute;
-	SCR_ButtonBaseComponent m_Block;
 	SCR_ButtonBaseComponent m_Friend;
 	SCR_ComboBoxComponent m_PlayerActionList;
 
@@ -27,6 +26,7 @@ class SCR_PlayerListEntry
 	Widget m_wTaskIcon;
 	Widget m_wFactionImage;
 	Widget m_wVotingNotification;
+	Widget m_wBlockedIcon;
 };
 
 //------------------------------------------------------------------------------------------------
@@ -40,6 +40,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 	protected SCR_InputButtonComponent m_Mute;
 	protected SCR_InputButtonComponent m_Block;
+ 	protected SCR_InputButtonComponent m_Unblock;
 	protected SCR_InputButtonComponent m_Friend;
 	protected SCR_InputButtonComponent m_Vote;
 	protected SCR_InputButtonComponent m_Invite;
@@ -52,6 +53,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected SCR_PlayerListEntry m_SelectedEntry;
 	protected SCR_PlayerControllerGroupComponent m_PlayerGroupController;
 	protected PlayerController m_PlayerController;
+	protected SocialComponent m_SocialComponent;
 	SCR_SortHeaderComponent m_Header;
 	protected Widget m_wTable;
 	protected bool m_bFiltering;
@@ -91,6 +93,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected ref Color m_PlayerNameSelfColor = new Color(0.898, 0.541, 0.184, 1);
 	
 	protected ref map<EVotingType, int> m_mVotingTypesOnCooldown = new map<EVotingType, int>();
+	
+	protected static ref PlayerlistBlockCallback m_BlockCallback;
 
 	/*!
 	Get event called when player list opens or closes.
@@ -162,8 +166,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			SortByScore(sortUp);
 		else if (filterName == FILTER_MUTE)
 			SortByMuted(sortUp);
-		else if (filterName == FILTER_BLOCK)
-			SortByBlocked(sortUp);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -176,19 +178,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		foreach (SCR_PlayerListEntry entry : m_aEntries)
 		{
 			entry.m_wRow.SetZOrder(entry.m_Mute.IsToggled() * direction);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SortByBlocked(bool reverseSort = false)
-	{
-		int direction = 1;
-		if (reverseSort)
-			direction = -1;
-
-		foreach (SCR_PlayerListEntry entry : m_aEntries)
-		{
-			entry.m_wRow.SetZOrder(entry.m_Block.IsToggled() * direction);
 		}
 	}
 
@@ -307,16 +296,23 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnBlock()
+	void OnBlock(SCR_InputButtonComponent comp, string actionName)
 	{
-		if (!m_SelectedEntry)
+		if (!m_SelectedEntry || !m_SocialComponent)
 			return;
+		
+		m_BlockCallback = new PlayerlistBlockCallback(this, false);
+		m_SocialComponent.Block(m_BlockCallback, m_SelectedEntry.m_iID);
+	}
 
-		SCR_ButtonBaseComponent block = m_SelectedEntry.m_Block;
-		if (!block)
+	//------------------------------------------------------------------------------------------------
+	void OnUnblock(SCR_InputButtonComponent comp, string actionName)
+	{
+		if (!m_SelectedEntry || !m_SocialComponent)
 			return;
-
-		block.SetToggled(!block.IsToggled());
+		
+		m_BlockCallback = new PlayerlistBlockCallback(this, true);
+		m_SocialComponent.Unblock(m_BlockCallback, m_SelectedEntry.m_iID);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -446,39 +442,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnBlockClick(SCR_ButtonBaseComponent comp, bool selected)
-	{
-		SCR_ButtonBaseComponent mute;
-		if (!m_PlayerController)
-			return;
-
-		int id = -1;
-		foreach (SCR_PlayerListEntry entry : m_aEntries)
-		{
-			if (entry.m_Block != comp)
-				continue;
-			mute = entry.m_Mute;
-			id = entry.m_iID;
-			break;
-		}
-
-		m_PlayerController.SetPlayerBlockedState(id, selected);
-
-		// Set button state, set nav button state
-		if (m_PlayerController.GetPlayerBlockedState(id) == PermissionState.DISALLOWED)
-			m_Block.SetLabel(UNBLOCK);
-		else
-			m_Block.SetLabel(BLOCK);
-
-		if (mute)
-		{
-			mute.SetToggled(true);
-			mute.SetEnabled(!mute.IsEnabled());
-			m_Mute.SetEnabled(!m_Mute.IsEnabled());
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	void OnFriendClick(SCR_ButtonBaseComponent comp, bool selected)
 	{
 		// TODO: waiting for API
@@ -518,14 +481,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				enableFriend = m_SelectedEntry.m_Friend.IsEnabled();
 			if (m_SelectedEntry.m_Mute)
 				enableMute = m_SelectedEntry.m_Mute.IsEnabled();
-			if (m_SelectedEntry.m_Block)
-			{
-				enableBlock = m_SelectedEntry.m_Block.IsEnabled();
-				if (m_SelectedEntry.m_Block.IsToggled())
-					m_Friend.SetLabel(REMOVE_FRIEND);
-				else
-					m_Friend.SetLabel(ADD_FRIEND);
-			}
 			if (m_SelectedEntry.m_PlayerActionList)
 				m_SelectedEntry.m_PlayerActionList.SetEnabled(enablePlayerOptionList);
 		}
@@ -533,16 +488,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		if (m_Friend)
 			m_Friend.SetEnabled(enableFriend);
 		
-		if (m_Block)
+		if (m_Block && m_Unblock && m_SelectedEntry)
 		{
-			m_Block.SetEnabled(enableBlock);
-			if (m_PlayerController.GetPlayerBlockedState(m_SelectedEntry.m_iID) == PermissionState.DISALLOWED)
-			{
-				enableMute = false;
-				m_Block.SetLabel(UNBLOCK);
-			}
-			else
-				m_Block.SetLabel(BLOCK);
+			UpdateBlockElements();
 		}
 		
 		if (m_Mute)
@@ -704,6 +652,32 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 		}
 		
+		//~ Reporting action
+		if (playerID != SCR_PlayerController.GetLocalPlayerId())
+			combo.AddItem("#AR-Report_Dialog_Title", false,
+		 		new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.REPORT,
+			 		SCR_EPlayerListComboAction.REPORT_PLAYER
+				)
+			);
+		
+		//Blockin system action
+		//~ Reporting action
+		if (playerID != SCR_PlayerController.GetLocalPlayerId())
+		{
+			if (!m_SocialComponent.IsBlocked(playerID))
+				combo.AddItem("#AR-PlayerList_Block", false,
+			 		new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.BLOCK,
+				 		SCR_EPlayerListComboAction.BLOCK_PLAYER
+					)
+				);
+			else
+				combo.AddItem("#AR-PlayerList_Unblock", false,
+			 		new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.BLOCK,
+				 		SCR_EPlayerListComboAction.UNBLOCK_PLAYER
+					)
+				);
+		}
+		
 		//~ Update any votes that have a cooldown
 		if (!m_mVotingTypesOnCooldown.IsEmpty())
 		{
@@ -843,6 +817,21 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				case SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP:
 				{
 					m_PlayerGroupController.AcceptJoinPrivateGroup(playerID, false);
+					break;
+				}
+				case SCR_EPlayerListComboAction.REPORT_PLAYER:
+				{
+					new SCR_ReportPlayerDialog(playerID);
+					break;
+				}
+				case SCR_EPlayerListComboAction.BLOCK_PLAYER:
+				{
+					OnBlock(null, string.Empty);
+					break;
+				}
+				case SCR_EPlayerListComboAction.UNBLOCK_PLAYER:
+				{
+					OnUnblock(null, string.Empty);
 					break;
 				}
 			}
@@ -1032,8 +1021,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		entry.m_Mute = SCR_ButtonBaseComponent.GetButtonBase("Mute", w);
 		entry.m_Friend = SCR_ButtonBaseComponent.GetButtonBase("Friend", w);
-		entry.m_Block = SCR_ButtonBaseComponent.GetButtonBase("Block", w);
 		entry.m_wTaskIcon = entry.m_wRow.FindAnyWidget("TaskIcon");
+		entry.m_wBlockedIcon = entry.m_wRow.FindAnyWidget("BlockedIcon");
 		entry.m_wLoadoutIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("LoadoutIcon"));
 		entry.m_wPlatformIcon = ImageWidget.Cast(entry.m_wRow.FindAnyWidget("PlatformIcon"));
 
@@ -1076,6 +1065,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			playerLoadout = loadoutManager.GetPlayerLoadout(entry.m_iID);		 
 
 				
+		if (entry.m_wBlockedIcon && m_SocialComponent)
+			entry.m_wBlockedIcon.SetOpacity(m_SocialComponent.IsBlocked(entry.m_iID));
 		
 		if (entry.m_wLoadoutIcon && (playerFaction != entryPlayerFaction))
 			entry.m_wLoadoutIcon.SetVisible(false);
@@ -1097,11 +1088,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 		if (entry.m_wPlatformIcon)
 		{
-			PlayerManager playerManager = GetGame().GetPlayerManager();
-			PlatformKind playerPlatform = playerManager.GetPlatformKind(entry.m_iID);
-			string iconName = SCR_Global.GetPlatformName(playerPlatform);
-			entry.m_wPlatformIcon.LoadImageFromSet(0, "{D17288006833490F}UI/Textures/Icons/icons_wrapperUI-32.imageset", iconName);
-			entry.m_wPlatformIcon.SetImage(0);
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+			if (playerController)
+				playerController.SetPlatformImageTo(entry.m_iID, entry.m_wPlatformIcon, showOnPC: true, showOnXbox: true)
 		}
 		else
 		{
@@ -1130,9 +1119,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 
 			if (entry.m_Mute)
 				entry.m_Mute.SetEnabled(false);
-
-			if (entry.m_Block)
-				entry.m_Block.SetEnabled(false);
 		}
 		else
 		{
@@ -1162,26 +1148,6 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			{
 				entry.m_Friend.SetEnabled(false);
 				entry.m_Friend.m_OnToggled.Insert(OnFriendClick);
-			}
-
-			if (entry.m_Block)
-			{
-				if (m_PlayerController)
-				{
-					entry.m_Block.SetEnabled(true);
-					if (m_PlayerController.GetPlayerBlockedState(entry.m_iID) == PermissionState.DISALLOWED)
-						entry.m_Block.SetToggled(true);
-
-					else if (m_PlayerController.GetPlayerBlockedState(entry.m_iID) == PermissionState.ALLOWED)
-
-						entry.m_Block.SetToggled(false);
-
-					if (m_PlayerController.GetPlayerBlockedState(entry.m_iID) == PermissionState.DISABLED)
-							entry.m_Block.SetEnabled(false);
-
-				}
-
-				entry.m_Block.m_OnToggled.Insert(OnBlockClick);
 			}
 		}
 
@@ -1326,6 +1292,10 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 		}
 		
+		//Check if reporting is available
+		if (entry.m_iID != SCR_PlayerController.GetLocalPlayerId())
+			return true;
+		
 		//~ None of the conditions met
 		return false;
 	}
@@ -1361,6 +1331,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		//	m_ChatPanel = SCR_ChatPanel.Cast(m_wRoot.FindAnyWidget("ChatPanel").FindHandler(SCR_ChatPanel));		
 		
 		m_PlayerController = GetGame().GetPlayerController();
+		if (m_PlayerController)
+			m_SocialComponent = SocialComponent.Cast(m_PlayerController.FindComponent(SocialComponent));
 		
 		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(m_PlayerController.FindComponent(SCR_HUDManagerComponent));
 		hudManager.SetVisibleLayers(hudManager.GetVisibleLayers() & ~EHudLayers.HIGH);
@@ -1422,12 +1394,14 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_Friend.m_OnActivated.Insert(OnAddFriend);
 		}
 
+
 		m_Block = SCR_InputButtonComponent.GetInputButtonComponent("Block", footer);
 		if (m_Block)
-		{
-			m_Block.SetEnabled(false);
 			m_Block.m_OnActivated.Insert(OnBlock);
-		}
+		
+		m_Unblock = SCR_InputButtonComponent.GetInputButtonComponent("Unblock", footer);
+		if (m_Unblock)
+			m_Unblock.m_OnActivated.Insert(OnUnblock);
 
 		m_Mute = SCR_InputButtonComponent.GetInputButtonComponent("Mute", footer);
 		if (m_Mute)
@@ -1679,6 +1653,48 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		}
 		GetGame().GetCallqueue().CallLater(UpdateFrequencies, 1000, false);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateBlockElements()
+	{
+		if (!m_SelectedEntry || !m_SocialComponent)
+			return;
+		
+		//no self block
+		if (m_SelectedEntry.m_iID == SCR_PlayerController.GetLocalPlayerId())
+		{
+			if (m_Block)
+			{
+				m_Block.SetVisible(false, false);
+				m_Block.SetEnabled(false);
+			}
+			
+			if (m_Unblock)
+			{
+				m_Unblock.SetVisible(false, false);
+				m_Unblock.SetEnabled(false);
+			}
+			
+			m_SelectedEntry.m_wBlockedIcon.SetOpacity(0);
+			return;
+		}
+		
+		bool isBlocked = m_SocialComponent.IsBlocked(m_SelectedEntry.m_iID);
+		
+		m_SelectedEntry.m_wBlockedIcon.SetOpacity(isBlocked);
+		
+		if (m_Block)
+		{
+			m_Block.SetVisible(!isBlocked, false);
+			m_Block.SetEnabled(!isBlocked);
+		}
+		
+		if (m_Unblock)
+		{
+			m_Unblock.SetVisible(isBlocked, false);
+			m_Unblock.SetEnabled(isBlocked);
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void UpdateScore()
@@ -1815,6 +1831,8 @@ class SCR_PlayerListComboEntryData : Managed
 enum SCR_EPlayerListComboType : EVotingType
 {
 	GROUP, //~ Makes sure System knows the combo data is regarding group
+	REPORT,
+	BLOCK
 };
 
 //------------------------------------------------------------------------------------------------
@@ -1831,4 +1849,47 @@ enum SCR_EPlayerListComboAction
 	INVITE_TO_GROUP,
 	COMFIRM_JOIN_PRIVATE_GROUP,
 	CANCEL_JOIN_PRIVATE_GROUP,
+	
+	//Report
+	REPORT_PLAYER,
+	BLOCK_PLAYER,
+	UNBLOCK_PLAYER
 };
+
+class PlayerlistBlockCallback : BlockListRequestCallback
+{
+	SCR_PlayerListMenu m_Menu;
+	bool m_bUnblocking;
+	
+	//------------------------------------------------------------------------------------------------
+	void PlayerlistBlockCallback(SCR_PlayerListMenu menu, bool unblocking)
+	{
+		m_Menu = menu;
+		m_bUnblocking = unblocking;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnSuccess(int code)
+	{
+		m_Menu.UpdateBlockElements();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnError(int code, int restCode, int apiCode)
+	{
+		string dialogTag = "block_failed_general";
+		if (!m_bUnblocking)
+		{
+			if ( apiCode == EApiCode.EACODE_ERROR_REQUEST_ERROR && code == EBackendError.EBERR_STORAGE_IS_FULL)
+				dialogTag = "block_failed_full";
+			
+			SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
+			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, dialogTag, dialog);
+		} else {
+			SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
+			SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, dialogTag, dialog);
+		}
+		
+		m_Menu.UpdateBlockElements();
+	}
+}

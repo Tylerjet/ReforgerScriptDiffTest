@@ -2,8 +2,14 @@
 // 
 //------------------------------------------------------------------------------------------------
 
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Missing a prefix
+
 class EditBoxFilterComponent : ScriptedWidgetComponent
 {
+
+//---- REFACTOR NOTE END ----
+	
 	[Attribute("500", UIWidgets.EditBox, "Set maximum character limit of the editbox")]
 	private int m_iCharacterLimit;
 
@@ -19,24 +25,40 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 	[Attribute("true", UIWidgets.CheckBox, "Allow UTF-8 multibyte symbols - including special symbols and diacritics")]
 	private bool m_bUTFMultibyte;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----	
+// Aren't these mutually exclusive? Also filling them this way might make reading the values rather annoying. How are different alphabets handled?
+	
 	[Attribute("", UIWidgets.EditBox, "Explicitly blacklisted characters, write without spaces or or commas")]
 	private string m_sCharBlacklist;
 	
 	[Attribute("", UIWidgets.EditBox, "Explicitly whitelisted characters, write without spaces or or commas")]
 	private string m_sCharWhitelist;
 
+//---- REFACTOR NOTE END ----
+	
 	private ref array<int> m_aBlacklist = new array<int>;
 	private ref array<int> m_aWhitelist = new array<int>;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Only works with single line edit box, because the widgets do not share a common parent, even though in the end they should be functionally almost identical
+	
 	private EditBoxWidget m_wEditBox;
+	protected MultilineEditBoxWidget m_wMultilineEditBox;
+	
+//---- REFACTOR NOTE END ----
 	
 	private int m_iCharacterCount;
 	
 	protected bool m_bLastInputValid = true;
 	
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+// Untyped invokers
+	
 	ref ScriptInvoker m_OnInvalidInput = new ScriptInvoker();
 	ref ScriptInvoker m_OnTextTooLong = new ScriptInvoker();
 	ref ScriptInvoker m_OnValidInput = new ScriptInvoker();
+	
+//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -44,8 +66,10 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 		super.HandlerAttached(w);
 		
 		m_wEditBox = EditBoxWidget.Cast(w);
-		
 		if (!m_wEditBox)
+			m_wMultilineEditBox = MultilineEditBoxWidget.Cast(w);
+		
+		if (!m_wEditBox || !m_wMultilineEditBox)
 		{
 			Print("EditBoxFilterComponent used on invalid widget type.", LogLevel.WARNING);
 			return;
@@ -78,7 +102,12 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 	{
 		bool validInput = true;
 		if (!m_wEditBox)
+		{
+			if (m_wMultilineEditBox)
+				return OnChangeMultiline();
+			
 			return false;
+		}
 		
 		string text = m_wEditBox.GetText();
 		int length = text.Length();
@@ -103,6 +132,50 @@ class EditBoxFilterComponent : ScriptedWidgetComponent
 				if (shortText != text)
 				{
 					m_wEditBox.SetText(shortText);
+					m_OnInvalidInput.Invoke();
+					validInput = false;
+				}
+			}
+		}
+		
+		m_iCharacterCount = length;
+		
+		if (validInput)
+			m_OnValidInput.Invoke();
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool OnChangeMultiline()
+	{
+		bool validInput = true;
+		if (!m_wMultilineEditBox)
+			return false;
+		
+		string text = m_wMultilineEditBox.GetText();
+		int length = text.Length();
+		string shortText = text;
+		
+		if (length > 0)
+		{
+			if (length > m_iCharacterLimit) 
+			{
+				shortText = text.Substring(0, m_iCharacterLimit);
+				m_wMultilineEditBox.SetText(shortText);
+				
+				m_OnTextTooLong.Invoke();
+				validInput = false;
+			}
+			else
+			{
+				// Find invalid characters 
+				shortText = FilterSymbolsFromText(text);
+				
+				// Invoke wrong input if texts are not same
+				if (shortText != text)
+				{
+					m_wMultilineEditBox.SetText(shortText);
 					m_OnInvalidInput.Invoke();
 					validInput = false;
 				}

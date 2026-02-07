@@ -68,6 +68,12 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	[Attribute("#AR-AttributesDialog_TitlePage_Editing_Text")]
 	protected LocalizedString m_sEditingTitlePart;
 	
+	[Attribute("PlatformImage")]
+	protected string m_sPlatformImageWidgetName;
+	
+	[Attribute("PlayerName")]
+	protected string m_sPlayerNameWidgetName;
+	
 	[Attribute("2", "If more types then given type, m_sMultiEntitiesTitle will be used as text")]
 	protected int m_iEntityTypesUntilMulti;
 	
@@ -113,6 +119,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	protected SCR_InputButtonComponent m_ResetButton;
 	protected SCR_InputButtonComponent m_GamepadToggleEnableButton;
 	protected SCR_BaseEditorAttributeUIComponent m_GamepadFocusAttribute;
+	protected ImageWidget m_PlatformImageWidget;
+	protected TextWidget m_PlayerNameWidget;
 	
 	//Ref
 	protected SCR_AttributesManagerEditorComponent m_AttributesManager;
@@ -321,7 +329,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	void InitWidget(array<ResourceName> categoryConfigs, array<ref SCR_EditorAttributeCategory> categories)
 	{		
 		SCR_UISoundEntity.SoundEvent(m_sSfxOnOpenDialog, true);
-					
+		
 		m_AttributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
 		if (!m_AttributesManager) return;
 				
@@ -330,6 +338,9 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 		
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 		if (!workspace) return;
+		
+		m_PlatformImageWidget = ImageWidget.Cast(widget.FindAnyWidget(m_sPlatformImageWidgetName));
+		m_PlayerNameWidget = TextWidget.Cast(widget.FindAnyWidget(m_sPlayerNameWidgetName));
 		
 		Widget tabWidget = widget.FindAnyWidget(m_sTabWidgetName);
 		if (!tabWidget) return;
@@ -609,6 +620,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			if (sameNames)
 			{
 				SetHeaderPart(header, name, count, false);
+				HidePlayerInfo();
 			}
 			//If single group with all characters of same parent then show group name and character amount
 			else if (oneGroup)
@@ -617,6 +629,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 				
 				SetHeaderPart(header, groupEntity.GetDisplayName(), 0 , false);
 				SetHeaderPart(header, TranslateEntityType(types[characterIndex]), typeCounts[characterIndex], true);
+				HidePlayerInfo();
 			}
 			//If multiple selected of a type so display those types
 			else if (showTypes)
@@ -656,6 +669,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 						}
 					}
 					
+					HidePlayerInfo();
 					SetHeaderPart(header, TranslateEntityType(types[indexHighestPriority]), typeCounts[indexHighestPriority], firstShown);
 					types.Remove(indexHighestPriority);
 					typeCounts.Remove(indexHighestPriority);
@@ -665,6 +679,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			//If too many types selected show just "entity"
 			else 
 			{
+				HidePlayerInfo();
 				SetHeaderPart(header, m_sMultiEntitiesTitle, count, false);
 			}				
 		}
@@ -731,7 +746,9 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			if (playerDelegate)
 			{
 				header.SetTextFormat("%1", m_sEditingTitlePart);
-				SetHeaderPart(header, GetGame().GetPlayerManager().GetPlayerName(playerDelegate.GetPlayerID()), 0, false);
+				//SetHeaderPart(header, SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerDelegate.GetPlayerID()), 0, false);
+				SetHeaderPart(header, "", 0, false);
+				SetPlayerInfo(playerDelegate.GetPlayerID());
 				return;
 			}
 			
@@ -748,24 +765,46 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 					int playerID = SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(editableEntity.GetOwner());						
 					if (playerID > 0)
 					{
-						SetHeaderPart(header, GetGame().GetPlayerManager().GetPlayerName(playerID), 0, false);
+						///SetHeaderPart(header, SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerID), 0, false);
+						SetHeaderPart(header, "", 0, false);
+						SetPlayerInfo(playerID);
+						
 						return;
 					}
 				}
 				//One task is being edited
 				else if (editableEntity.GetEntityType() == EEditableEntityType.TASK)
 				{
+					HidePlayerInfo();
 					SetHeaderPart(header, m_sTaskTitle, 1, false);
 					return;
 				}
 				else if (editableEntity.GetEntityType() == EEditableEntityType.FACTION)
 				{
+					HidePlayerInfo();
 					SetHeaderPart(header, editableEntity.GetDisplayName(), 0, false);
 					return;
 				}
+				HidePlayerInfo();
 				SetHeaderPart(header, editableEntity.GetDisplayName(), 1, false);
 			}	
 		}
+	}
+	
+	protected void SetPlayerInfo(int playerId){
+		SCR_PlayerController contr = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		
+		//m_PlayerNameWidget.SetText(SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerId));
+		m_PlayerNameWidget.SetText(GetGame().GetPlayerManager().GetPlayerName(playerId));
+		contr.SetPlatformImageTo(playerId, m_PlatformImageWidget);
+		
+		m_PlayerNameWidget.SetVisible(true);
+		m_PlatformImageWidget.SetVisible(true);
+	}
+	
+	protected void HidePlayerInfo(){
+		m_PlayerNameWidget.SetVisible(false);
+		m_PlatformImageWidget.SetVisible(false);
 	}
 	
 	protected void SetHeaderPart(RichTextWidget textWidget, string name, int count, bool showSeperator)

@@ -309,7 +309,7 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 			return null;
 
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(ent);
-		if (!playerId)
+		if (!playerId && charControl)
 		{
 			AIControlComponent ctrComp = charControl.GetAIControlComponent();
 			if (ctrComp)

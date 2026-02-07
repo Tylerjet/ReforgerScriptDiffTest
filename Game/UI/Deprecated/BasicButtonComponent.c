@@ -1,9 +1,9 @@
 class BasicButtonComponent : ScriptedWidgetComponent
 {
-	const ref Color COLOR_DEFAULT = new Color(0,0,0,0.6);
-	const ref Color COLOR_FOCUSED = new Color(1,1,1,0.06);
-	const ref Color COLOR_HOVERED = new Color(1,1,1,0.06);
-	const ref Color COLOR_PRESSED = new Color(0.8,0.8,0.8,0.06);
+	static const ref Color COLOR_DEFAULT = new Color(0, 0, 0, 0.6);
+	static const ref Color COLOR_FOCUSED = new Color(1, 1, 1, 0.06);
+	static const ref Color COLOR_HOVERED = new Color(1, 1, 1, 0.06);
+	static const ref Color COLOR_PRESSED = new Color(0.8, 0.8, 0.8, 0.06);
 	
 	[Attribute(SCR_SoundEvent.FOCUS, UIWidgets.EditBox, "")]
 	protected string m_sSoundFocused;

@@ -14,18 +14,11 @@ class SCR_ShellSoundComponent : ProjectileSoundComponent
 	protected int m_iSignalIdxDistanceToClosestPoint = -1;
 	protected int m_iSignalIdxCosAngleProjectileToListener = -1;
 	
-	protected float m_fTimer;
-	
 	//------------------------------------------------------------------------------------------------		
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
 	{
 		// Check component availability
 		if (!m_SignalsManagerComponent || !m_ProjectileMoveComponent)
-			return;
-		
-		// Limit calculations
-		m_fTimer += timeSlice;
-		if (m_fTimer < 0.075)
 			return;
 
 		// Get projectile velocity and set speed-related signals
@@ -47,9 +40,6 @@ class SCR_ShellSoundComponent : ProjectileSoundComponent
 		dirProjectileToListener.Normalize();
 		float cosAngleProjectileToListener = vector.Dot(dirProjectileToListener,velocity);
 		m_SignalsManagerComponent.SetSignalValue(m_iSignalIdxCosAngleProjectileToListener, cosAngleProjectileToListener);
-		
-		// Update timer
-		m_fTimer = 0;	
 	}
 		
 	//------------------------------------------------------------------------------------------------

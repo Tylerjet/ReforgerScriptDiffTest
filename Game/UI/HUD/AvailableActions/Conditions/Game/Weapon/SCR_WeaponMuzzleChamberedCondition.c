@@ -13,7 +13,7 @@ class SCR_WeaponMuzzleChamberedCondition : SCR_AvailableActionCondition
 		if (!muzzle)
 			return false;
 
-		auto result = muzzle.IsCurrentBarrelChambered();
+		bool result = muzzle.IsCurrentBarrelChambered();
 
 		return GetReturnResult(result);
 	}

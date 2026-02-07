@@ -51,6 +51,15 @@ class SCR_LightningContextAction : SCR_BaseContextAction
 		angles[0] = Math.RandomFloat(0, 360);	
 		Math3D.AnglesToMatrix(angles, spawnParams.Transform);
 		
-		GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), spawnParams);
+		IEntity lightning = GetGame().SpawnEntityPrefab(resource, GetGame().GetWorld(), spawnParams);
+		if (!lightning)
+			return;
+		
+		BaseTriggerComponent trigger = BaseTriggerComponent.Cast(lightning.FindComponent(BaseTriggerComponent));
+		if (!trigger)
+			return;
+		
+		//~ Add GM as instigator
+		trigger.SetInstigator(Instigator.CreateInstigatorGM());
 	}
 };

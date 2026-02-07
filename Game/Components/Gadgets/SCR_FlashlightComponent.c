@@ -77,6 +77,38 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetNumberOfAvailableLenses()
+	{
+		if (!m_aLenseArray)
+			return 0;
+
+		return m_aLenseArray.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Cycle through all available lenses
+	//! \param[in] direction decides whether it will switch to next (true) / previous (false) lens color
+	void CycleThroughLenses(bool direction)
+	{
+		int lastLensId = GetNumberOfAvailableLenses() - 1;
+		if (lastLensId < 1)
+			return;
+
+		if (direction)
+			m_iCurrentLenseColor += 1;
+		else
+			m_iCurrentLenseColor -= 1;
+
+		if (m_iCurrentLenseColor < 0)
+			SwitchLenses(lastLensId);
+		else if (m_iCurrentLenseColor > lastLensId)
+			SwitchLenses(0);
+		else
+			SwitchLenses(m_iCurrentLenseColor);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Switch flashlight lenses
 	//! \param[in] filter
 	protected void SwitchLenses(int filter)
@@ -99,7 +131,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		if (m_EmissiveMaterial)
 			m_EmissiveMaterial.SetEmissiveMultiplier(m_fEmissiveIntensity);
 
-		SwitchLenses(m_iCurrentLenseColor);	// TODO lens switch support
+		SwitchLenses(m_iCurrentLenseColor);
 
 		if (m_iMode == EGadgetMode.IN_SLOT)
 			SetShadowNearPlane(true);
@@ -390,16 +422,16 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		}
 
 		// adjust angle of the flashlight to provide usable angle within various poses
-		GetOwner().GetTransform(m_ItemMat);
-		m_vAnglesCurrent = GetOwner().GetLocalYawPitchRoll();
+		m_Light.GetTransform(m_ItemMat);
+		m_vAnglesCurrent = m_Light.GetLocalYawPitchRoll();
 		m_vAnglesTarget = (Math.RAD2DEG * m_CharController.GetInputContext().GetAimingAngles() - Math3D.MatrixToAngles(m_ItemMat)) + m_vAnglesCurrent;	// diff between WS aiming and item angles, add local to the result
-		m_vAnglesTarget[0] = fixAngle_180_180(m_vAnglesTarget[0]);
+		m_vAnglesTarget[0] = SCR_Math.FixAngle(m_vAnglesTarget[0], 180);
 		m_vAnglesTarget[1] = Math.Clamp(m_vAnglesTarget[1], 0, 30);	// only need too offset upwards, also avoid glitches with some stances
 		m_vAnglesTarget[2] = 0;	// no roll
 
 		m_vAnglesTarget[0] = Math.Lerp(m_vAnglesCurrent[0], m_vAnglesTarget[0], timeSlice* 4);
 		m_vAnglesTarget[1] = Math.Lerp(m_vAnglesCurrent[1], m_vAnglesTarget[1], timeSlice* 4);
-		GetOwner().SetYawPitchRoll(m_vAnglesTarget); // sets local angles
+		m_Light.SetYawPitchRoll(m_vAnglesTarget); // sets local angles
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -138,6 +138,13 @@ class SCR_AddonLineBaseComponent : SCR_ListMenuEntryComponent
 
 		// Update name
 		m_Widgets.m_wNameText.SetText(m_Item.GetName());
+		
+		// Show type 
+		string imageType = "modIcon";
+		if (m_Item.IsWorldSave())
+			imageType = "save-published";
+		
+		m_Widgets.m_wItemTypeImage.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, imageType);
 	}
 
 	//------------------------------------------------------------------------------------------------

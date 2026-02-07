@@ -11,6 +11,8 @@ class SCR_ScenarioFrameworkSlotWaypoint : SCR_ScenarioFrameworkSlotBase
 	ref SCR_ScenarioFrameworkWaypoint m_Waypoint;
 
 	//------------------------------------------------------------------------------------------------
+	//! Spawns random or specified asset at specified position or waypoint, optionally ignores orientation to terrain, and requests nav
+	//! \return the spawned entity.
 	override IEntity SpawnAsset()
 	{
 		//If Randomization is enabled, it will try to apply settings from Attributes.
@@ -77,6 +79,8 @@ class SCR_ScenarioFrameworkSlotWaypoint : SCR_ScenarioFrameworkSlotBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Draws debug shapes for debugging purposes, creating cylinder shapes for center and outer radius based on specified parameters.
+	//! \param[in] draw Draws debug shapes representing debug shape center and debug shape outer based on debug shape radius, color, and owner's origin
 	override protected void DrawDebugShape(bool draw)
 	{
 		if (!draw)
@@ -109,6 +113,10 @@ class SCR_ScenarioFrameworkSlotWaypoint : SCR_ScenarioFrameworkSlotBase
 	
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
+	//! Manages key changes for debug shapes, object spawning, and deletion in Workbench.
+	//! \param[in] owner The owner represents the entity triggering the key change event in the method.
+	//! \param[in] src represents the source container for key changes in the method.
+	//! \param[in] key that corresponds with the workbench attribute
 	override bool _WB_OnKeyChanged(IEntity owner, BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		if (key == "m_bShowDebugShapesInWorkbench")

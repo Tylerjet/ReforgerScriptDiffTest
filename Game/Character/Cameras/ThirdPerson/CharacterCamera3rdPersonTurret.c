@@ -1,6 +1,7 @@
 // *************************************************************************************
 // ! CharacterCamera3rdPersonTurret - 3rd person camera when character is controlling turret
 // *************************************************************************************
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 {
 
@@ -154,4 +155,5 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 	{
 		AddVehiclePitchRoll(m_OwnerVehicle, pDt, transformMS);
 	}
-};
+}
+//---- REFACTOR NOTE END ----

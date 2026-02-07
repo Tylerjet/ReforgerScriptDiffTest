@@ -16,7 +16,6 @@ class AIDangerEvent: AIMessage
 	proto external EAIDangerEventType GetDangerType();
 	proto external void SetVictim(IEntity victim);
 	proto external void SetDangerType(EAIDangerEventType type);
-	proto external int GetCount();
 }
 
 /*!

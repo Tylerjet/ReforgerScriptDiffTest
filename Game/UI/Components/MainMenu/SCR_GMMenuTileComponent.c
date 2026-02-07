@@ -129,17 +129,8 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnContinue()
 	{
-		if (!m_Item || !SCR_ScenarioUICommon.CanPlay(m_Item))
-			return;
-
-		if (m_Header && !m_Header.GetSaveFileName().IsEmpty())
-			GetGame().GetSaveManager().SetFileNameToLoad(m_Header);
-		else
-			GetGame().GetSaveManager().ResetFileNameToLoad();
-
+		SCR_ScenarioUICommon.LoadSave(m_Item, m_Header, ChimeraMenuPreset.EditorSelectionMenu);
 		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
-
-		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -167,7 +158,7 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 		if (!m_Item || !SCR_ScenarioUICommon.CanJoin(m_Item))
 			return;
 
-		ServerBrowserMenuUI.OpenWithScenarioFilter(m_Item);
+		ServerBrowserMenuUI.TryOpenServerBrowserWithScenarioFilter(m_Item);
 	}
 
 	//------------------------------------------------------------------------------------------------

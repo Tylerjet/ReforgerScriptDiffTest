@@ -1429,21 +1429,21 @@ class SCR_MapEntity: MapEntity
 		GetSelected(outItems);
 		
 		DbgUI.Begin("Map debug");
-		string dbg1 = "CURSOR SCREEN POS: x: %1 y: %2";
+		const string dbg1 = "CURSOR SCREEN POS: x: %1 y: %2";
 		DbgUI.Text( string.Format( dbg1, x, y ) );
-		string dbg2 = "CURSOR WORLD POS: x: %1 y: %2";
+		const string dbg2 = "CURSOR WORLD POS: x: %1 y: %2";
 		DbgUI.Text( string.Format( dbg2, wX, wY ) );
-		string dbg3 = "PAN OFFSET: x: %1 y: %2 ";
+		const string dbg3 = "PAN OFFSET: x: %1 y: %2 ";
 		DbgUI.Text( string.Format( dbg3, pan[0], pan[1] ) );
-		string dbg4 = "ZOOM: min: %1 max: %2 | pixPerUnit: %3";
+		const string dbg4 = "ZOOM: min: %1 max: %2 | pixPerUnit: %3";
 		DbgUI.Text( string.Format( dbg4, GetMinZoom(), GetMaxZoom(), GetCurrentZoom() ) );
-		string dbg5 = "LAYER: current: %1 | pixPerUnit ceiling: %2";
+		const string dbg5 = "LAYER: current: %1 | pixPerUnit ceiling: %2";
 		DbgUI.Text( string.Format( dbg5, GetLayerIndex(), GetLayer(GetLayerIndex()).GetCeiling() ) );
-		string dbg6 = "MODULES: loaded: %1 | active: %2 | list: %3 ";
+		const string dbg6 = "MODULES: loaded: %1 | active: %2 | list: %3 ";
 		DbgUI.Text( string.Format( dbg6, m_aLoadedModules.Count(), m_aActiveModules.Count(), m_aActiveModules ) );
-		string dbg7 = "COMPONENTS: loaded: %1 | active: %2 | list: %3 ";
+		const string dbg7 = "COMPONENTS: loaded: %1 | active: %2 | list: %3 ";
 		DbgUI.Text( string.Format( dbg7, m_aLoadedComponents.Count(), m_aActiveComponents.Count(), m_aActiveComponents ) );
-		string dbg8 = "MAPITEMS: selected: %1 | hovered: %2 ";
+		const string dbg8 = "MAPITEMS: selected: %1 | hovered: %2 ";
 		DbgUI.Text( string.Format( dbg8, outItems, m_HoveredMapItem ) );
 		DbgUI.End();
 	}

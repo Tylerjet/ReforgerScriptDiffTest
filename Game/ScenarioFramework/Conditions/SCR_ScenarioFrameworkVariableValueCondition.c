@@ -10,12 +10,17 @@ class SCR_ScenarioFrameworkVariableValueCondition : SCR_ScenarioFrameworkActivat
 	//------------------------------------------------------------------------------------------------
 	override bool Init(IEntity entity)
 	{
-		SCR_GameModeSFManager manager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!manager)
+		// Here you can debug specific Condition instance.
+		// This can be also adjusted during runtime via Debug Menu > ScenarioFramework > Condition Inspector
+		if (m_bDebug)
+			Print("[SCR_ScenarioFrameworkVariableValueCondition.Init] debug line (" + __FILE__ + " L" + __LINE__ + ")", LogLevel.WARNING);
+		
+		SCR_ScenarioFrameworkSystem scenarioFrameworkSystem = SCR_ScenarioFrameworkSystem.GetInstance();
+		if (!scenarioFrameworkSystem)
 			return false;
 		
 		string outValue;
-		manager.GetVariable(m_sVariableName, outValue);
+		scenarioFrameworkSystem.GetVariable(m_sVariableName, outValue);
 		
 		if (outValue.IsEmpty())
 			return false;

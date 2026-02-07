@@ -31,7 +31,7 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 	protected SCR_SpinBoxComponent m_WindowMode;
 	protected SCR_SpinBoxComponent m_MaxFPS;
 
-	protected string m_sResolutionScaleLocalisation;
+	protected string m_sResolutionScaleLocalisation = "#AR-Settings_RenderScale";
 
 	protected UserSettings m_Video;
 	protected UserSettings m_Pipeline;
@@ -155,6 +155,10 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("DisplayUserSettings", "SSR", "SSR", "PPQuality"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_VideoSettings", "m_iDofType", "DOF"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_VideoSettings", "m_bNearDofEffect", "NearDOF"));
+
+		// Other settings
+		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_b2DScopes", "ScopeMode"));
+		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("UserInterfaceSettings", "UseSoftwareCursor", "CursorMode"));
 
 		LoadSettings();
 
@@ -619,10 +623,6 @@ class SCR_VideoSettingsSubMenu : SCR_SettingsSubMenuBase
 		float scale = m_ResolutionScale.GetValue() * 100;
 		scale = Math.Round(scale);
 		m_ResolutionScale.ShowCustomValue(scale.ToString());
-
-		TextWidget labelWidget = m_ResolutionScale.GetLabel();
-		if (labelWidget)
-			m_sResolutionScaleLocalisation = labelWidget.GetText();
 
 		m_ResolutionScale.m_OnChanged.Insert(OnResolutionScaleChanged);
 		OnRenderResolutionChanged();

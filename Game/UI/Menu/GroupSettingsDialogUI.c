@@ -7,7 +7,7 @@ class GroupSettingsDialogUI: DialogUI
 	protected SCR_EditBoxComponent m_GroupName;
 	protected SCR_EditBoxComponent m_GroupDescription;
 	
-	protected ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
+	protected static ref SCR_ScriptPlatformRequestCallback m_CallbackGetPrivilege;
 		
 	protected SCR_PlayerControllerGroupComponent m_PlayerComponent;
 	protected SCR_GroupsManagerComponent m_GroupsManager;
@@ -29,10 +29,19 @@ class GroupSettingsDialogUI: DialogUI
 			Close();
 			return;
 		}
+		if (!m_CallbackGetPrivilege)
+			m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
 		
-		m_CallbackGetPrivilege = new SCR_ScriptPlatformRequestCallback();
 		m_CallbackGetPrivilege.m_OnResult.Insert(OnPrivilegeCallback);
+		
 		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.USER_GEN_CONTENT, m_CallbackGetPrivilege);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		if (m_CallbackGetPrivilege)
+			m_CallbackGetPrivilege.m_OnResult.Remove(OnPrivilegeCallback);
 	}
 	
 	void OnPrivilegeCallback(UserPrivilege privilege, UserPrivilegeResult result)
@@ -100,14 +109,9 @@ class GroupSettingsDialogUI: DialogUI
 		
 		if (m_bHasPrivilege)
 		{
-			string outputName;
-			string outputDesc;
-			GetGame().GetProfanityFilter().ReplaceProfanities(m_GroupDescription.GetValue(), outputDesc);
-			GetGame().GetProfanityFilter().ReplaceProfanities(m_GroupName.GetValue(), outputName);
-			
 			int groupID = m_PlayerGroup.GetGroupID();
-			groupController.RequestSetCustomGroupDescription(groupID, outputDesc);
-			groupController.RequestSetCustomGroupName(groupID, outputName);
+			groupController.RequestSetCustomGroupDescription(groupID, m_GroupDescription.GetValue());
+			groupController.RequestSetCustomGroupName(groupID, m_GroupName.GetValue());
 		}
 		
 		Close();

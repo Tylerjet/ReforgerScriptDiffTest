@@ -37,6 +37,7 @@ class AnimPhysCommandScripted
 	proto native void PreAnim_SetFloat(int pVar, float pFlt);
 	proto native void PreAnim_SetInt(int pVar, int pInt);
 	proto native void PreAnim_SetBool(int pVar, bool pBool);
+	proto native void PreAnim_SetAttachment(string bindingName, string animGraphResourceName, string animInstanceResourceName, string startingNodeName);
 				
 	//------------------------------------------------------------------------
 	// Graph states/modifications - PrePhys Update

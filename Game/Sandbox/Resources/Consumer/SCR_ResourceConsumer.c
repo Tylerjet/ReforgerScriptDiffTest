@@ -148,8 +148,8 @@ class SCR_ResourceActor : ScriptAndConfig
 [BaseContainerProps()]
 class SCR_ResourceInteractor : SCR_ResourceActor
 {	
-	protected ref ScriptInvoker m_OnResourcesChangedInvoker;
-	protected ref ScriptInvoker m_OnMaxResourcesChangedInvoker;
+	protected ref ScriptInvoker<SCR_ResourceInteractor, float> m_OnResourcesChangedInvoker;
+	protected ref ScriptInvoker<SCR_ResourceInteractor, float> m_OnMaxResourcesChangedInvoker;
 	protected int m_iGridUpdateId = int.MIN;
 	//! HOTFIX: Until replication issues are resolved.
 	protected float	m_fAggregatedResourceValue = -1.0;
@@ -213,10 +213,10 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	ScriptInvoker GetOnResourcesChanged()
+	ScriptInvoker<SCR_ResourceInteractor, float> GetOnResourcesChanged()
 	{
 		if (!m_OnResourcesChangedInvoker)	
-			m_OnResourcesChangedInvoker = new ScriptInvoker();
+			m_OnResourcesChangedInvoker = new ScriptInvoker<SCR_ResourceInteractor, float>();
 		
 		return m_OnResourcesChangedInvoker;
 		
@@ -224,10 +224,10 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	ScriptInvoker GetOnMaxResourcesChanged()
+	ScriptInvoker<SCR_ResourceInteractor, float> GetOnMaxResourcesChanged()
 	{
 		if (!m_OnMaxResourcesChangedInvoker)	
-			m_OnMaxResourcesChangedInvoker = new ScriptInvoker();
+			m_OnMaxResourcesChangedInvoker = new ScriptInvoker<SCR_ResourceInteractor, float>();
 		
 		return m_OnMaxResourcesChangedInvoker;
 		
@@ -444,6 +444,16 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 	//! \param[in] container
 	//! \param[in] previousValue
 	void UpdateContainerMaxResourceValue(SCR_ResourceContainer container, float previousValue);
+	
+	//------------------------------------------------------------------------------------------------
+	//! Gets called when the interactor container queue is updated by the resource grid.
+	//! \param[in] grid The resource grid that cause the update.
+	void OnResourceGridUpdated(notnull SCR_ResourceGrid grid)
+	{
+		SetGridUpdateId(grid.GetGridUpdateId());
+		UpdateLastPosition();
+		Replicate();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] previousValue

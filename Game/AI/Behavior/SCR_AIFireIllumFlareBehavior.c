@@ -65,7 +65,7 @@ class SCR_AIFireIllumFlareBehavior : SCR_AIBehaviorBase
 	//----------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
-		return this.ToString() + " firing illum flare at " + m_vTargetPosition.ValueToString();
+		return this.ToString() + " firing illum flare at " + m_vTargetPosition.m_Value.ToString();
 	}
 	
 	//------------------------------------------------------------------------------------------------------------------------------------

@@ -7,6 +7,8 @@ class SCR_ScenarioFrameworkMedicalActionRemoveGroupBleeding : SCR_ScenarioFramew
 	//------------------------------------------------------------------------------------------------
 	override void OnActivate()
 	{
+		super.OnActivate();
+		
 		m_DamageManager.RemoveGroupBleeding(m_eCharacterHitZoneGroup);
 	}
 }
