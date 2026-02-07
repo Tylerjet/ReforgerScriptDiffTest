@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class PauseMenuUI: ChimeraMenuBase
+class PauseMenuUI : ChimeraMenuBase
 {
 	InputManager m_InputManager;
 
@@ -14,19 +14,19 @@ class PauseMenuUI: ChimeraMenuBase
 	protected SCR_ButtonTextComponent m_EditorUnlimitedCloseButton;
 	protected SCR_ButtonTextComponent m_EditorPhotoOpenButton;
 	protected SCR_ButtonTextComponent m_EditorPhotoCloseButton;
-	
+
 	protected SCR_SaveLoadComponent m_SavingComponent;
 	protected ref SCR_SaveManagerCore m_SaveManager;
-	
+
 	protected ref SCR_ConfigurableDialogUi m_ExitDialog;
-	
+
 	const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
 	const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
-	
+
 	const string EXIT_MESSAGE = "#AR-PauseMenu_ReturnText";
 	const string EXIT_TITLE = "#AR-PauseMenu_ReturnTitle";
 	const string EXIT_IMAGE = "exit";
-	
+
 	const string RESTART_MESSAGE = "#AR-PauseMenu_RestartText";
 	const string RESTART_TITLE = "#AR-PauseMenu_Restart";
 	const string RESTART_IMAGE = "restart";
@@ -34,13 +34,13 @@ class PauseMenuUI: ChimeraMenuBase
 	const string LOAD_MESSAGE = "#AR-PauseMenu_LoadText";
 	const string LOAD_TITLE = "#AR-PauseMenu_Load";
 	const string LOAD_IMAGE = "up";
-	
+
 	const string DIALOG_SCENARIO_EXIT = "scenario_exit";
 	const string DIALOG_SAVE_FAILED = "pause_menu_save_failed";
-		
+
 	static ref ScriptInvoker m_OnPauseMenuOpened = new ScriptInvoker();
 	static ref ScriptInvoker m_OnPauseMenuClosed = new ScriptInvoker();
-	
+
 	protected static PauseMenuUI s_Instance;
 
 	//------------------------------------------------------------------------------------------------
@@ -49,27 +49,27 @@ class PauseMenuUI: ChimeraMenuBase
 	{
 		if (!s_Instance)
 			return;
-		
+
 		s_Instance.Close();
-		
+
 		// Must be called the next frame for the menu to be reopened immediately after closing
 		GetGame().GetCallqueue().CallLater(OpenMenuOnTop);
-		
+
 		// TODO: tried setting the ZOrder but it does not work: ask for Enfusion API
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	// Opens the pause menu with settings for it to be on top of other menus
 	static void OpenMenuOnTop()
 	{
 		GetGame().OpenPauseMenu(false, true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		s_Instance = this;
-		
+
 		m_SavingComponent = SCR_SaveLoadComponent.GetInstance();
 		m_SaveManager = GetGame().GetSaveManager();
 
@@ -83,7 +83,7 @@ class PauseMenuUI: ChimeraMenuBase
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 			gameMode.PauseGame(true, SCR_EPauseReason.MENU);
-		
+
 		// Continue
 		comp = SCR_ButtonTextComponent.GetButtonText("Continue", m_wRoot);
 		if (comp)
@@ -103,10 +103,10 @@ class PauseMenuUI: ChimeraMenuBase
 
 		// Respawn
 		SCR_RespawnSystemComponent respawnComponent = SCR_RespawnSystemComponent.GetInstance();
-		
+
 		comp = SCR_ButtonTextComponent.GetButtonText("Respawn", m_wRoot);
 		if (comp)
-		{			
+		{
 			if (respawnComponent && !respawnComponent.IsPauseMenuRespawnEnabled())
 			{
 				comp.SetVisible(false);
@@ -124,7 +124,7 @@ class PauseMenuUI: ChimeraMenuBase
 				comp.m_OnClicked.Insert(OnRespawn);
 			}
 		}
-		
+
 		// Leave faction
 		comp = SCR_ButtonTextComponent.GetButtonText("LeaveFaction", m_wRoot);
 		if (comp)
@@ -152,13 +152,13 @@ class PauseMenuUI: ChimeraMenuBase
 
 			comp.GetRootWidget().SetVisible(factionLeaveAllowed);
 			if (factionLeaveAllowed)
-			{			
+			{
 				PlayerController pc = GetGame().GetPlayerController();
 				SCR_PlayerFactionAffiliationComponent factionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
-				
+
 				if (factionComp)
 					comp.SetEnabled(factionComp.GetAffiliatedFaction() != null);
-			
+
 				comp.m_OnClicked.Insert(OnLeaveFaction)
 			}
 		}
@@ -181,18 +181,18 @@ class PauseMenuUI: ChimeraMenuBase
 			SCR_RewindComponent rewindManager = SCR_RewindComponent.GetInstance();
 			comp.GetRootWidget().SetVisible(rewindManager != null); //--- Hide the button when rewinding is not configured for the mission
 			comp.GetRootWidget().SetEnabled(rewindManager && rewindManager.HasRewindPoint()); //--- Disable the button when the rewind point does not exist
-			
+
 			comp.m_OnClicked.Insert(OnRewind);
 		}
-		
+
 		// Tutorial HUB
 		//TODO> Rename
 		comp = SCR_ButtonTextComponent.GetButtonText("ReturnHUB", m_wRoot);
-		
+
 		if (comp)
 		{
 			SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
-		
+
 			if (tutorial && tutorial.CanBreakCourse())
 			{
 				comp.SetVisible(true);
@@ -221,10 +221,8 @@ class PauseMenuUI: ChimeraMenuBase
 		// Field Manual
 		comp = SCR_ButtonTextComponent.GetButtonText("FieldManual", m_wRoot);
 		if (comp)
-		{
 			comp.m_OnClicked.Insert(OnFieldManual);
-		}
-		
+
 		// Group menu
 		comp = SCR_ButtonTextComponent.GetButtonText("GroupMenu", m_wRoot);
 		if (comp)
@@ -232,11 +230,11 @@ class PauseMenuUI: ChimeraMenuBase
 			SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 			if (!groupManager || !groupManager.IsGroupMenuAllowed() || System.GetPlatform() == EPlatform.WINDOWS || System.GetPlatform() == EPlatform.LINUX)
 				comp.GetRootWidget().SetVisible(false);
-			
+
 			comp.m_OnClicked.Insert(OnGroupMenu);
-			
+
 		}
-		
+
 		// Block list
 		comp = SCR_ButtonTextComponent.GetButtonText("BlockList", m_wRoot);
 		if (comp)
@@ -258,36 +256,36 @@ class PauseMenuUI: ChimeraMenuBase
 		{
 			bool canInvite = Replication.IsRunning() && GetGame().GetPlayerManager().IsMultiplayerActivityInviteAvailable();
 			comp.GetRootWidget().SetVisible(canInvite);
-			
+
 			if (canInvite)
 				comp.m_OnClicked.Insert(OnInviteFriends);
 		}
-		
+
 		// Version
 		m_wVersion = TextWidget.Cast(m_wRoot.FindAnyWidget("Version"));
 		if (m_wVersion)
 			m_wVersion.SetText(GetGame().GetBuildVersion());
 
 		// Unlimited editor (Game Master)
-		m_EditorUnlimitedOpenButton = SCR_ButtonTextComponent.GetButtonText("EditorUnlimitedOpen",m_wRoot);
-		if (m_EditorUnlimitedOpenButton)		
+		m_EditorUnlimitedOpenButton = SCR_ButtonTextComponent.GetButtonText("EditorUnlimitedOpen", m_wRoot);
+		if (m_EditorUnlimitedOpenButton)
 			m_EditorUnlimitedOpenButton.m_OnClicked.Insert(OnEditorUnlimited);
 
-		m_EditorUnlimitedCloseButton = SCR_ButtonTextComponent.GetButtonText("EditorUnlimitedClose",m_wRoot);
-		if (m_EditorUnlimitedCloseButton)		
+		m_EditorUnlimitedCloseButton = SCR_ButtonTextComponent.GetButtonText("EditorUnlimitedClose", m_wRoot);
+		if (m_EditorUnlimitedCloseButton)
 			m_EditorUnlimitedCloseButton.m_OnClicked.Insert(OnEditorUnlimited);
-		
+
 		//--- Photo mode
-		m_EditorPhotoOpenButton = SCR_ButtonTextComponent.GetButtonText("EditorPhotoOpen",m_wRoot);
+		m_EditorPhotoOpenButton = SCR_ButtonTextComponent.GetButtonText("EditorPhotoOpen", m_wRoot);
 		if (m_EditorPhotoOpenButton)
 			m_EditorPhotoOpenButton.m_OnClicked.Insert(OnEditorPhoto);
-		m_EditorPhotoCloseButton = SCR_ButtonTextComponent.GetButtonText("EditorPhotoClose",m_wRoot);
+		m_EditorPhotoCloseButton = SCR_ButtonTextComponent.GetButtonText("EditorPhotoClose", m_wRoot);
 		if (m_EditorPhotoCloseButton)
 			m_EditorPhotoCloseButton.m_OnClicked.Insert(OnEditorPhoto);
-		
+
 		SetEditorUnlimitedButton(editorManager);
 		SetEditorPhotoButton(editorManager);
-		
+
 		if (editorManager)
 		{
 			editorManager.GetOnModeAdd().Insert(OnEditorModeChanged);
@@ -301,19 +299,19 @@ class PauseMenuUI: ChimeraMenuBase
 		}
 
 		m_InputManager = GetGame().GetInputManager();
-		
+
 		m_OnPauseMenuOpened.Invoke();
-		
+
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_OPEN);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnCourseBreak()
 	{
 		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
 		if (!tutorial)
 			return;
-		
+
 		tutorial.RequestBreakCourse(SCR_ETutorialBreakType.FORCED);
 	}
 
@@ -338,27 +336,27 @@ class PauseMenuUI: ChimeraMenuBase
 			editorManager.GetOnOpened().Insert(Close);
 			editorManager.GetOnClosed().Insert(Close);
 		}
-		
+
 		if (m_wFade)
 			m_wFade.SetVisible(false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		s_Instance = null;
-		
+
 		// Unpause
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (gameMode)
 			gameMode.PauseGame(false, SCR_EPauseReason.MENU);
-		
+
 		SCR_HUDManagerComponent hud = GetGame().GetHUDManager();
 		if (hud)
 			hud.SetVisible(true);
-		
+
 		m_OnPauseMenuClosed.Invoke();
-		
+
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_FE_HUD_PAUSE_MENU_CLOSE);
 	}
 
@@ -385,13 +383,13 @@ class PauseMenuUI: ChimeraMenuBase
 			m_InputManager.AddActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, Close);
 		#endif
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void FadeBackground(bool fade, bool animate = true)
 	{
 		if (!m_wFade)
 			return;
-		
+
 		m_wFade.SetVisible(fade);
 		m_wFade.SetOpacity(0);
 		if (fade && animate)
@@ -409,24 +407,24 @@ class PauseMenuUI: ChimeraMenuBase
 	{
 		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.FieldManualDialog);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnGroupMenu()
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager || !groupManager.IsGroupMenuAllowed())
 			return;
-		
+
 		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.GroupMenu);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnBlockList()
 	{
 		SCR_BlockedUsersDialogUI dialog = new SCR_BlockedUsersDialogUI();
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_AccountWidgetComponent.BLOCKED_USER_DIALOG_CONFIG, "blocked_list", dialog);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnExit()
 	{
@@ -434,21 +432,21 @@ class PauseMenuUI: ChimeraMenuBase
 		m_ExitDialog = SCR_CommonDialogs.CreateDialog(DIALOG_SCENARIO_EXIT);
 		if (!m_ExitDialog)
 			return;
-		
+
 		m_ExitDialog.m_OnConfirm.Insert(OnExitConfirm);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnRewind()
 	{
 		new SCR_RewindDialog(ESaveType.EDITOR, string.Empty);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnExitConfirm()
 	{
 		m_ExitDialog.m_OnConfirm.Remove(OnExitConfirm);
-		
+
 		if (m_SaveManager && IsSavingOnExit())
 		{
 			//--- Close only after the save file was created
@@ -462,7 +460,7 @@ class PauseMenuUI: ChimeraMenuBase
 			CloseToMainMenu();
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnSaved(ESaveType type, string fileName)
 	{
@@ -471,38 +469,38 @@ class PauseMenuUI: ChimeraMenuBase
 			m_SaveManager.GetOnSaved().Remove(OnSaved);
 			m_SaveManager.GetOnSaveFailed().Remove(OnSaveFailed);
 		}
-		
+
 		CloseToMainMenu();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnSaveFailed(ESaveType type, string fileName)
 	{
 		m_ExitDialog.Close();
-		
+
 		if (m_SaveManager)
 		{
 			m_SaveManager.GetOnSaved().Remove(OnSaved);
 			m_SaveManager.GetOnSaveFailed().Remove(OnSaveFailed);
 		}
-		
+
 		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(DIALOG_SAVE_FAILED);
 		if (!dialog)
 			return;
-		
+
 		dialog.m_OnConfirm.Insert(CloseToMainMenu);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void CloseToMainMenu()
 	{
 		ChimeraWorld world = GetGame().GetWorld();
 		world.PauseGameTime(false);
-		
+
 		Close();
 		GameStateTransitions.RequestGameplayEndTransition();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnEditorUnlimited()
 	{
@@ -527,23 +525,23 @@ class PauseMenuUI: ChimeraMenuBase
 	private void SetEditorUnlimitedButton(SCR_EditorManagerEntity editorManager)
 	{
 		if (!m_EditorUnlimitedOpenButton || !m_EditorUnlimitedCloseButton) return;
-		
+
 		if (!editorManager || editorManager.IsLimited())
 		{
 			//--- LIMITED EDITOR
-			
+
 			//--- Show disabled "Open Unlimited Editor" button when editor is *legal* in the mission
 			bool isUnlimitedEditorLegal;
 			SCR_EditorSettingsEntity settingsEntity = SCR_EditorSettingsEntity.GetInstance();
 			if (settingsEntity)
 				isUnlimitedEditorLegal = settingsEntity.IsUnlimitedEditorLegal();
-			
+
 			m_EditorUnlimitedOpenButton.GetRootWidget().SetVisible(isUnlimitedEditorLegal);
 			m_EditorUnlimitedOpenButton.SetEnabled(false);
-			
+
 			//--- Don't show the "Close Unlimited Editor" button
 			m_EditorUnlimitedCloseButton.GetRootWidget().SetVisible(false);
-			
+
 			//--- Don't show the real-time clock
 			m_wSystemTime.SetVisible(false);
 		}
@@ -563,7 +561,7 @@ class PauseMenuUI: ChimeraMenuBase
 				m_EditorUnlimitedCloseButton.GetRootWidget().SetVisible(true);
 				m_EditorUnlimitedCloseButton.SetEnabled(editorManager.CanClose());
 			}
-			
+
 			//--- Show the real-time clock
 			m_wSystemTime.SetVisible(true);
 		}
@@ -600,9 +598,9 @@ class PauseMenuUI: ChimeraMenuBase
 	//Update Photo Mode Button text and if Enabled
 	//------------------------------------------------------------------------------------------------
 	private void SetEditorPhotoButton(SCR_EditorManagerEntity editorManager)
-	{		
+	{
 		if (!m_EditorPhotoOpenButton || !m_EditorPhotoCloseButton) return;
-		
+
 		if (!editorManager || !editorManager.HasMode(EEditorMode.PHOTO))
 		{
 			m_EditorPhotoOpenButton.GetRootWidget().SetVisible(true);
@@ -610,12 +608,12 @@ class PauseMenuUI: ChimeraMenuBase
 			m_EditorPhotoCloseButton.GetRootWidget().SetVisible(false);
 		}
 		else
-		{			
+		{
 			if (!editorManager.IsOpened() || editorManager.GetCurrentMode() != EEditorMode.PHOTO)
 			{
 				m_EditorPhotoOpenButton.GetRootWidget().SetVisible(true);
 				m_EditorPhotoCloseButton.GetRootWidget().SetVisible(false);
-				
+
 				//Set enabled
 				m_EditorPhotoOpenButton.SetEnabled(!editorManager.IsLimited() || GetGame().GetPlayerController().GetControlledEntity());
 			}
@@ -626,6 +624,30 @@ class PauseMenuUI: ChimeraMenuBase
 				m_EditorPhotoCloseButton.SetEnabled(editorManager.CanClose());
 			}
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DisableSettings()
+	{
+		SCR_ButtonTextComponent comp = SCR_ButtonTextComponent.GetButtonText("Settings", m_wRoot);
+		if (comp)
+			comp.GetRootWidget().SetEnabled(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DisableGameMaster()
+	{
+		SCR_ButtonTextComponent comp = SCR_ButtonTextComponent.GetButtonText("EditorUnlimitedOpen", m_wRoot);
+		if (comp)
+			comp.GetRootWidget().SetEnabled(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void DisableArmaVision()
+	{
+		SCR_ButtonTextComponent comp = SCR_ButtonTextComponent.GetButtonText("EditorPhotoOpen", m_wRoot);
+		if (comp)
+			comp.GetRootWidget().SetEnabled(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -641,10 +663,10 @@ class PauseMenuUI: ChimeraMenuBase
 		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(SCR_ScenarioUICommon.DIALOG_RESTART);
 		if (!dialog)
 			return;
-		
+
 		dialog.m_OnConfirm.Insert(OnRestartConfirm);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnRestartConfirm()
 	{
@@ -657,13 +679,13 @@ class PauseMenuUI: ChimeraMenuBase
 	{
 		ArmaReforgerScripted.OpenPlayerList();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected void OnInviteFriends()
 	{
 		GetGame().GetPlayerManager().ShowMultiplayerActivityInvite();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Check if the player has a Character he is controling and that is alive
 	//! \return True is there is a valid player that is alive, false otherwise
@@ -672,21 +694,21 @@ class PauseMenuUI: ChimeraMenuBase
 		IEntity player = GetGame().GetPlayerController().GetControlledEntity();
 		if (!player)
 			return false;
-		
+
 		SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(player);
 		if (!char)
 			return false;
-		
+
 		CharacterControllerComponent charController = char.GetCharacterController();
 		if (!charController)
 			return false;
 
 		if (charController.GetLifeState() == ECharacterLifeState.DEAD)
 			return false;
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void OnRespawn()
 	{
@@ -702,13 +724,13 @@ class PauseMenuUI: ChimeraMenuBase
 		Close();
 	}
 
-	//------------------------------------------------------------------------------------------------	
+	//------------------------------------------------------------------------------------------------
 	private void OnLeaveFaction()
 	{
 		PlayerController pc = GetGame().GetPlayerController();
 		if (!pc)
 			return;
-		
+
 		SCR_PlayerFactionAffiliationComponent factionComp = SCR_PlayerFactionAffiliationComponent.Cast(pc.FindComponent(SCR_PlayerFactionAffiliationComponent));
 		if (!factionComp)
 			return;
@@ -739,20 +761,20 @@ class PauseMenuUI: ChimeraMenuBase
 
 		//Remove Editor modes listener
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		
+
 		if (editorManager)
 		{
 			editorManager.GetOnModeAdd().Remove(OnEditorModeChanged);
 			editorManager.GetOnModeRemove().Remove(OnEditorModeChanged);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected bool IsSavingOnExit()
 	{
 		return !Replication.IsRunning() && m_SaveManager.CanSave(ESaveType.AUTO) && m_SavingComponent && m_SavingComponent.CanSaveOnExit();
 	}
-};
+}
 
 
 

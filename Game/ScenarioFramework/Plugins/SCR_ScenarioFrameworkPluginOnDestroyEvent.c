@@ -58,7 +58,7 @@ class SCR_ScenarioFrameworkPluginOnDestroyEvent : SCR_ScenarioFrameworkPlugin
 		if (objectDmgManager)
 		{
 			objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
-			GetGame().GetCallqueue().Remove(CheckEngineDrowned);
+			SCR_ScenarioFrameworkSystem.GetCallQueue().Remove(CheckEngineDrowned);
 
 			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
 			if (vehicleController)
@@ -87,7 +87,7 @@ class SCR_ScenarioFrameworkPluginOnDestroyEvent : SCR_ScenarioFrameworkPlugin
 		if (vehicleController && vehicleController.GetEngineDrowned())
 		{
 			vehicleController.GetOnEngineStop().Remove(CheckEngineDrowned);
-			GetGame().GetCallqueue().Remove(CheckEngineDrowned);
+			SCR_ScenarioFrameworkSystem.GetCallQueue().Remove(CheckEngineDrowned);
 
 			SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
 			if (objectDmgManager)

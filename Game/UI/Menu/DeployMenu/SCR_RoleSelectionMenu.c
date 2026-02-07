@@ -413,7 +413,15 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	protected void OnPauseMenu()
 	{
 		UpdateViewProfileButton(true);
-		GetGame().OpenPauseMenu(false, true);
+		
+		MenuBase menu = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PauseMenu, 0, true, false);
+
+		PauseMenuUI pauseMenu = PauseMenuUI.Cast(menu);
+		if (pauseMenu)
+		{
+			pauseMenu.FadeBackground(true, true);
+			pauseMenu.DisableSettings();
+		}
 	}
 
 	override void OnMenuClose()

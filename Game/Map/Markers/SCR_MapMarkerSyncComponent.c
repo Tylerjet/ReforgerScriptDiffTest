@@ -94,6 +94,9 @@ class SCR_MapMarkerSyncComponent : ScriptComponent
 			return;
 		
 		SCR_MapMarkerBase marker = markerMgr.GetStaticMarkerByID(markerID);
+		if (!marker)
+			marker = markerMgr.GetDisabledMarkerByID(markerID);
+
 		if (!marker 
 			|| marker.GetMarkerOwnerID() == -1 																				// cannot delete server marker by client request
 			||(m_bIsDeleteRestricted && marker.GetMarkerOwnerID() != SCR_PlayerController.Cast(GetOwner()).GetPlayerId())) 	// delete by anyone not allowed && is not the callers marker

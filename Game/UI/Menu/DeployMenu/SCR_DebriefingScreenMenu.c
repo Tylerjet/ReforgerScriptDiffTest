@@ -123,4 +123,20 @@ class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.DebriefingScreenMenu);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Opens pause menu
+	override protected void OpenPauseMenu()
+	{
+		MenuBase menu = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PauseMenu, 0, true, false);
+
+		PauseMenuUI pauseMenu = PauseMenuUI.Cast(menu);
+		if (pauseMenu)
+		{
+			pauseMenu.FadeBackground(true, true);
+			pauseMenu.DisableSettings();
+			pauseMenu.DisableGameMaster();
+			pauseMenu.DisableArmaVision();
+		}
+	}
 };

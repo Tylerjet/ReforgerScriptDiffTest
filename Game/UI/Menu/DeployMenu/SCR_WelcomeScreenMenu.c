@@ -34,7 +34,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 
 		RichTextWidget scenarioSubtitle = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("HeaderSubtitle"));
 		if (scenarioSubtitle)
-			scenarioSubtitle.SetText(welcomeScreen.GetHeaderSubtitle());*/
+			scenarioSubtitle.SetText(welcomeScreen.GetHeaderSubtitle()); */
 
 		SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
 		if (header)
@@ -52,7 +52,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 			if (continueButton)
 				continueButton.m_OnActivated.Insert(CloseWelcomeScreenMenu);
 		}
-		
+
 		Widget pauseMenuBtn = GetRootWidget().FindAnyWidget("PauseButton");
 		if (pauseMenuBtn)
 		{
@@ -60,7 +60,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 			if (pauseMenuButton)
 				pauseMenuButton.m_OnActivated.Insert(OpenPauseMenu);
 		}
-		
+
 		Widget chat = GetRootWidget().FindAnyWidget("ChatPanel");
 		if (chat)
 			m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
@@ -77,11 +77,11 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		baseLayout.InitContent(this);
 
 		InitMap();
-		
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		gameMode.PauseGame(true, SCR_EPauseReason.MENU);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Mutes sounds once the menu is opened
 	override void OnMenuOpened()
@@ -91,20 +91,18 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		if (ArmaReforgerLoadingAnim.IsOpen())
 			ArmaReforgerLoadingAnim.m_onExitLoadingScreen.Insert(MuteSounds);
 		else
-			MuteSounds();	
-
-		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Insert(OnLanguageChanged);	
+			MuteSounds();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuClose()
 	{
 		super.OnMenuClose();
-		
+
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if (!gameMode)
 			return;
-		
+
 		gameMode.PauseGame(false, SCR_EPauseReason.MENU);
 	}
 
@@ -117,7 +115,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		ResourceName conf = "{A786DD4868598F15}Configs/Map/MapPlain.conf";
 		m_MapEntity.OpenMap(m_MapEntity.SetupMapConfig(EMapEntityMode.PLAIN, conf, GetRootWidget()));
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Adds action listeners when menu is focused
 	override void OnMenuFocusGained()
@@ -127,7 +125,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 			editorManager.AutoInit();
 
 		GetGame().GetInputManager().AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		
+
 		super.OnMenuFocusGained();
 	}
 
@@ -136,15 +134,22 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	override void OnMenuFocusLost()
 	{
 		GetGame().GetInputManager().RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OpenPlayerList);
-		
+
 		super.OnMenuFocusLost();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Opens pause menu
 	protected void OpenPauseMenu()
 	{
-		GetGame().OpenPauseMenu(false, true);
+		MenuBase menu = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PauseMenu, 0, true, false);
+
+		PauseMenuUI pauseMenu = PauseMenuUI.Cast(menu);
+		if (pauseMenu)
+		{
+			pauseMenu.FadeBackground(true, true);
+			pauseMenu.DisableSettings();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -159,7 +164,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	void CloseWelcomeScreenMenu()
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.WelcomeScreenMenu);
-		
+
 		PlayerController playerController = GetGame().GetPlayerController();
 		SCR_PlayerDeployMenuHandlerComponent deployMenu = SCR_PlayerDeployMenuHandlerComponent.Cast(playerController.FindComponent(SCR_PlayerDeployMenuHandlerComponent));
 		if (deployMenu)
@@ -171,10 +176,10 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	override void OnMenuUpdate(float tDelta)
 	{
 		super.OnMenuUpdate(tDelta);
-		
+
 		GetGame().GetInputManager().ActivateContext("DeployMenuContext");
 		GetGame().GetInputManager().ActivateContext("MenuWithEditorContext");
-		
+
 		if (m_ChatPanel)
 			m_ChatPanel.OnUpdateChat(tDelta);
 
@@ -182,7 +187,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		if (m_fTimeSlice > 1)
 			UpdateElapsedTime();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Toggles chat panel
 	protected void OnChatToggle()
@@ -193,15 +198,15 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 			if (chat)
 				m_ChatPanel = SCR_ChatPanel.Cast(chat.FindHandler(SCR_ChatPanel));
 		}
-		
+
 		if (!m_ChatPanel || m_ChatPanel.IsOpen())
 			return;
 
 		SCR_ChatPanelManager chatPanelManager = SCR_ChatPanelManager.GetInstance();
-		
+
 		if (!chatPanelManager)
 			return;
-		
+
 		SCR_ChatPanelManager.GetInstance().ToggleChatPanel(m_ChatPanel);
 	}
 
@@ -224,4 +229,4 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		else
 			m_wPlayerCount.SetText(m_PlayerManager.GetPlayerCount().ToString());
 	}
-};
+}

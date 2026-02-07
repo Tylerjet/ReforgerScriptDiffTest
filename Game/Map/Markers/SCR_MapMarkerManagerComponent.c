@@ -93,6 +93,20 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] markerID
+	//! \return
+	SCR_MapMarkerBase GetDisabledMarkerByID(int markerID)
+	{
+		foreach (SCR_MapMarkerBase marker : m_aDisabledMarkers)
+		{
+			if (markerID == marker.GetMarkerID())
+				return marker;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] type
 	//! \param[in] target
 	//! \return
@@ -528,9 +542,19 @@ class SCR_MapMarkerManagerComponent : SCR_BaseGameModeComponent
 	{			
 		SCR_MapMarkerBase marker = GetStaticMarkerByID(markerID);
 		if (marker)
-			marker.OnDelete();
+		{
+			m_aStaticMarkers.RemoveItem(marker);
+		}
+		else
+		{
+			marker = GetDisabledMarkerByID(markerID);
+			if (!marker)
+				return;
+
+			m_aDisabledMarkers.RemoveItem(marker);
+		}
 		
-		m_aStaticMarkers.RemoveItem(marker);
+		marker.OnDelete();
 	}
 	
 	//------------------------------------------------------------------------------------------------

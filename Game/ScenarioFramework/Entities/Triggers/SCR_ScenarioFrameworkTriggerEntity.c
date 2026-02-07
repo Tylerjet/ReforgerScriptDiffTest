@@ -699,7 +699,7 @@ class SCR_ScenarioFrameworkTriggerEntity : SCR_BaseTriggerEntity
 
 		if (GetCountInsideTrigger() == 0)
 		{
-			GetGame().GetCallqueue().Remove(UpdateTimer);
+			SCR_ScenarioFrameworkSystem.GetCallQueue().Remove(UpdateTimer);
 			m_fTempWaitTime = m_fActivationCountdownTimer;
 			m_bTimerActive = false;
 		}

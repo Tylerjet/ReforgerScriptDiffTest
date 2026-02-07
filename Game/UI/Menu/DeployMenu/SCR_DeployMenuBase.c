@@ -42,17 +42,7 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 		if (ArmaReforgerLoadingAnim.IsOpen())
 			ArmaReforgerLoadingAnim.m_onExitLoadingScreen.Insert(MuteSounds);
 		else
-			MuteSounds();		
-
-		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Insert(OnLanguageChanged);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Hack used to refresh the map after language is changed in order to force reload fonts used by location descriptors
-	protected void OnLanguageChanged(SCR_GameplaySettingsSubMenu menu)
-	{
-		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.PauseMenu);//fore close it or it may become impossible to open it later
-		GetGame().GetMenuManager().CloseMenu(this);
+			MuteSounds();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -61,8 +51,6 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 		MuteSounds(false);
 		if (m_MapEntity && m_MapEntity.IsOpen())
 			m_MapEntity.CloseMap();
-
-		SCR_GameplaySettingsSubMenu.m_OnLanguageChanged.Remove(OnLanguageChanged);
 
 		super.OnMenuClose();
 	}
@@ -847,7 +835,14 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//! Opens pause menu.
 	protected void OnPauseMenu()
 	{
-		GetGame().OpenPauseMenu(false, true);
+		MenuBase menu = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.PauseMenu, 0, true, false);
+
+		PauseMenuUI pauseMenu = PauseMenuUI.Cast(menu);
+		if (pauseMenu)
+		{
+			pauseMenu.FadeBackground(true, true);
+			pauseMenu.DisableSettings();
+		}
 	}
 
 	//! Callback when respawn request was sent for the player.
