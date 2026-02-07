@@ -1745,7 +1745,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			// if a collision was capable of causing more than minCollisionEjectionDamageThreshold damage, try to eject passengers
 
  			if (damage > GetMinCollisionDamageEjectionThreshold())
-				m_CompartmentManager.EjectRandomOccupants(GetCollisionDamageEjectionChance(), true, ejectOnTheSpot: true);
+				m_CompartmentManager.EjectRandomOccupants(GetCollisionDamageEjectionChance(), true);
 			
 			return;
 		}
@@ -1754,7 +1754,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		{
 			// An explosion of minExplosionEjectionDamageThreshold or larger is capable of ejecting occupants.
 			if (damage > GetMinExplosionDamageEjectionThreshold())
-				m_CompartmentManager.EjectRandomOccupants(GetExplosionDamageEjectionChance(), true, ejectOnTheSpot: true);
+				m_CompartmentManager.EjectRandomOccupants(GetExplosionDamageEjectionChance(), true);
 			
 			return;
 		}

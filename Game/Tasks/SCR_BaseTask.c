@@ -1123,9 +1123,16 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void Serialize(ScriptBitWriter writer)
 	{
+		// Make sure that the server tells clients whether it had the faction manager
+		// during serialization or not. Because tasks can't some from non-replicated
+		// prefabs, this will help us avoid deserialization issues mentioned in Deserialize.
 		FactionManager factionManager = GetGame().GetFactionManager();
 		if (!factionManager)
+		{
+			writer.WriteBool(false);
 			return;
+		}
+		writer.WriteBool(true);
 		
 		int factionIndex = factionManager.GetFactionIndex(m_TargetFaction);
 		writer.Write(factionIndex, 4);
@@ -1152,15 +1159,33 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void Deserialize(ScriptBitReader reader)
 	{
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
+		// Make sure that the server actually had the faction manager
+		// during serialization. If it did not, we can safely return
+		// because the server is guaranteed to not have written anything.
+		bool serverHadFactionManager;
+		reader.ReadBool(serverHadFactionManager);
+		if (!serverHadFactionManager)
 			return;
+
+		// https://jira.bistudio.com/browse/ARMA4-62494
+		// If there's no faction manager we won't be able to update the faction
+		// index. However, if we simply returned right now, we'd create a huge problem
+		// because we wouldn't read the rest of our data.
+		// A task following after this one would therefore read data that would still
+		// partially belong to this one. That would result in undefined behavior and
+		// most likely in crashes during ScriptBitReader's data serialization.
+		// For this reason, even if the faction manager is not present, we proceed.
+		// We simply won't be able to set the faction properly.
+		FactionManager factionManager = GetGame().GetFactionManager();
+		//if (!factionManager)
+		//	return; <<< DON'T DO THIS
 		
 		// Reading factionIndex
 		int factionIndex = 0;
 		reader.Read(factionIndex, 4);
 		
-		SetTargetFaction(factionManager.GetFactionByIndex(factionIndex));
+		if (factionManager)
+			SetTargetFaction(factionManager.GetFactionByIndex(factionIndex));
 
 		// Reading m_iTaskID
 		reader.ReadInt(m_iTaskID);

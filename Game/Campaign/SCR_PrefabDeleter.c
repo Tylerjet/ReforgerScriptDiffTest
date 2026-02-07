@@ -24,6 +24,12 @@ class SCR_PrefabDeleterEntity : GenericEntity
 		if (rplComponent && !rplComponent.IsMaster())
 			return;
 
+		GetGame().GetCallqueue().CallLater(PerformDeletion, 0, false, owner);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void PerformDeletion(IEntity owner)
+	{
 		BaseWorld world = GetWorld();
 		world.QueryEntitiesBySphere(owner.GetOrigin(), m_fRadius, QueryEntities);
 			

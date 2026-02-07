@@ -1475,17 +1475,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			
 			AddFactionPlayerCounter(faction);
 		}
-
-		//handle groups tab
-		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		Faction playerFaction;
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (factionManager)
-			playerFaction = factionManager.GetLocalPlayerFaction();
 		
-		
-		if (!groupsManager || !playerFaction)
-			m_SuperMenuComponent.GetTabView().SetTabVisible(EPlayerListTab.GROUPS, false);
 		UpdateFrequencies();
 
 		s_OnPlayerListMenu.Invoke(true);

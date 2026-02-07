@@ -842,7 +842,7 @@ class SCR_BaseTaskManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void LoadTasksForRpl(ScriptBitReader reader, int count)
+	bool LoadTasksForRpl(ScriptBitReader reader, int count)
 	{
 		reader.ReadInt(count);
 		
@@ -860,22 +860,47 @@ class SCR_BaseTaskManager : GenericEntity
 			
 			resource = Resource.Load(resourceName);
 			if (!resource.IsValid())
-				continue;
+			{
+				// https://jira.bistudio.com/browse/ARMA4-62494
+				// We have to return. This is a fatal failure and because these
+				// tasks are not replicated by themselves the task that follows
+				// wouldn't know where to read its data from. It would simply
+				// read from wherewhere we left form and most likely cause a crash
+				// during deserialization.
+				Print("Invalid resource name for a task. Tasks can't be synchronized properly!", LogLevel.ERROR);
+				return false; // DON'T CONTINUE
+			}
 			
 			task = SCR_BaseTask.Cast(GetGame().SpawnEntityPrefab(resource, GetWorld()));
 			if (!task)
-				continue;
+			{
+				// https://jira.bistudio.com/browse/ARMA4-62494
+				// We have to return. This is a fatal failure and because these
+				// tasks are not replicated by themselves the task that follows
+				// wouldn't know where to read its data from. It would simply
+				// read from wherewhere we left form and most likely cause a crash
+				// during deserialization.
+				Print(string.Format("Unable to spawn a task for resource name %1. Some tasks can't synchronized!", resourceName), LogLevel.ERROR);
+				return false; // DON'T CONTINUE
+			}
 			
 			task.Deserialize(reader);
 		}
+
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
+		// https://jira.bistudio.com/browse/ARMA4-62494
+		// We keep reading only as long as valid tasks are present.
+		// The first broken task would break deserialization and cause crashes.
+		// Therefore, we won't even attempt reading further if an issue is detected
+		// and we'll try to intialize at least the tasks we managed to extract.
 		const int count; // TODO: check for good const usage
-		LoadTasksForRpl(reader, count);
-		LoadTasksForRpl(reader, count);
+		if (LoadTasksForRpl(reader, count))
+			LoadTasksForRpl(reader, count);
 		
 		//Let the game mode know, the tasks are ready
 		SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());

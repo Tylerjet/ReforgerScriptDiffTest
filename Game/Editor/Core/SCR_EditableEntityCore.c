@@ -953,6 +953,10 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 		
 		if(!budgetChangesAccumulated)
 		{
+			//during restarts we dont queue any budget changes
+			if(conflictCompositionHackOnServerRestartCheck)
+				return;
+		
 			GetGame().GetCallqueue().CallLater(ApplyQueuedBudgetChanges);
 			budgetChangesAccumulated = true;
 		}
