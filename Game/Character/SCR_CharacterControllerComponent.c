@@ -420,6 +420,72 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Method for proxy in order to ask the authority to sync the change that he requested for currently used turret weapon system
+	//! \param[in] change that was made in the FireModeManagerComponent
+	//! \param[in] newValue
+	//! \param[in] turretRplId in replication system
+	void ReplicateTurretFireModeChange(SCR_EFireModeChange change, int newValue, RplId turretRplId)
+	{
+		if (!turretRplId.IsValid())
+			return;
+
+		Rpc(RPC_AskTurretFireModeChange, change, newValue, turretRplId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_AskTurretFireModeChange(SCR_EFireModeChange change, int newValue, RplId turretRplId)
+	{
+		if (!turretRplId.IsValid())
+			return;
+
+		RplComponent turretRplComp = RplComponent.Cast(Replication.FindItem(turretRplId));
+		if (!turretRplComp)
+			return;
+
+		Turret turret = Turret.Cast(turretRplComp.GetEntity());
+		if (!turret)
+			return;
+
+		SCR_FireModeManagerComponent fireModeMgr = SCR_FireModeManagerComponent.Cast(turret.FindComponent(SCR_FireModeManagerComponent));
+		if (!fireModeMgr)
+			return;
+
+		fireModeMgr.ChangeFireModeValues(change, newValue);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method for proxy in order to ask the authority to sync the state of the helicopter collimator sight with other clients
+	//! \param[in] newState
+	//! \param[in] sightId in replication system
+	void ReplicateHelicopterSightState(bool newState, RplId sightId)
+	{
+		if (!sightId.IsValid())
+			return;
+
+		Rpc(RPC_AskSyncSightState, newState, sightId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void RPC_AskSyncSightState(bool newState, RplId sightId)
+	{
+		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(sightId));
+		if (!rplComp)
+			return;
+
+		IEntity owner = rplComp.GetEntity();
+		if (!owner)
+			return;
+
+		SCR_HelicopterCollimatorSightComponent collimator = SCR_HelicopterCollimatorSightComponent.Cast(owner.FindComponent(SCR_HelicopterCollimatorSightComponent));
+		if (!collimator)
+			return;
+
+		collimator.OwnerSyncSightState(newState);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override bool GetCanMeleeAttack()
 	{
 		if (!m_MeleeComponent)

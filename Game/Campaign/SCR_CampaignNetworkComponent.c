@@ -27,7 +27,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	protected bool m_bFirstSpawn = true;
 
 	protected vector m_vLastLoadedAt;
-	protected vector m_vLastUnloadedAt;
+	protected SCR_ResourceComponent m_LastLoadedComponent;
 	protected float m_fLoadedSupplyAmount;
 
 	protected float m_fNoRewardSupplies;
@@ -74,6 +74,12 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	WorldTimestamp GetLastRequestTimestamp()
 	{
 		return m_fLastAssetRequestTimestamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ResourceComponent GetLastLoadedComponent()
+	{
+		return m_LastLoadedComponent;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1286,7 +1292,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			
 			case EResourcePlayerInteractionType.VEHICLE_UNLOAD:
 			{
-				OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId());
+				OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId(), resourceComponentFrom);
 				break;
 			}
 			
@@ -1300,7 +1306,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 					break;
 				
 				if (vehicleFrom)
-					OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId());
+					OnSuppliesUnloaded(pos, resourceValue, playerController.GetPlayerId(), resourceComponentFrom);
 				else
 					OnSuppliesLoaded(pos, resourceValue, resourceComponentTo);
 				
@@ -1320,11 +1326,43 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 			return;
 		
 		m_fLoadedSupplyAmount = container.GetResourceValue();
+		m_LastLoadedComponent = resourceComponentTo;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSuppliesUnloaded(vector position, float amount, int playerId)
+	void OnSuppliesUnloaded(vector position, float amount, int playerId, notnull SCR_ResourceComponent resourceComponentFrom, int assistantId = 0)
 	{
+		// Identify the player who actually loaded the supplies
+		if (resourceComponentFrom != m_LastLoadedComponent)
+		{
+			array<int> allPlayerIds = {};
+			PlayerManager pManager = GetGame().GetPlayerManager();
+			pManager.GetPlayers(allPlayerIds);
+			PlayerController loaderController;
+			SCR_CampaignNetworkComponent networkComponent;
+			
+			foreach (int loaderId : allPlayerIds)
+			{
+				loaderController = pManager.GetPlayerController(loaderId);
+				
+				if (!loaderController)
+					continue;
+				
+				networkComponent = SCR_CampaignNetworkComponent.Cast(loaderController.FindComponent(SCR_CampaignNetworkComponent));
+				
+				if (!networkComponent)
+					continue;
+				
+				if (networkComponent.GetLastLoadedComponent() == resourceComponentFrom)
+				{
+					networkComponent.OnSuppliesUnloaded(position, amount, loaderId, resourceComponentFrom, playerId);
+					return;
+				}
+			}
+			
+			return;
+		}
+		
 		if (m_vLastLoadedAt == vector.Zero || amount > m_fLoadedSupplyAmount || vector.DistanceSqXZ(m_vLastLoadedAt, position) <= SUPPLY_DELIVERY_THRESHOLD_SQ)
 			return;
 
@@ -1337,7 +1375,14 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
 
 		if (compXP)
+		{
 			compXP.AwardXP(playerId, SCR_EXPRewards.SUPPLIES_DELIVERED, amount / FULL_SUPPLY_TRUCK_AMOUNT);
+			
+			SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+			
+			if (campaign && assistantId > 0)
+				compXP.AwardXP(assistantId, SCR_EXPRewards.SUPPLIES_DELIVERED, (amount / FULL_SUPPLY_TRUCK_AMOUNT) * campaign.GetSupplyOffloadAssistanceReward());
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1345,6 +1390,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	void ResetSavedSupplies()
 	{
 		m_vLastLoadedAt = vector.Zero;
+		m_LastLoadedComponent = null;
+		m_fLoadedSupplyAmount = 0;
 	}
 
 	//------------------------------------------------------------------------------------------------

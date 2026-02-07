@@ -764,7 +764,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		RemoveItemFromQuickSlot( item );
 	}
 	
-	// For use from inventory menu
+	//------------------------------------------------------------------------------------------------
+	//! Checks if provided item can be equiped while in the inventory menu
+	//! \return true if this item can be equiped, otherwise false
 	bool CanEquipItem_Inventory(notnull IEntity item)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
@@ -775,22 +777,33 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (!charCtrl)
 			return false;
 
-		if (charCtrl.GetRightHandItem() == item || charCtrl.GetInputContext().GetLeftHandGadgetEntity() == item)
+		if (charCtrl.GetCurrentItemInHands() == item || charCtrl.GetInputContext().GetLeftHandGadgetEntity() == item)
 			return false;
 
-		if (item.FindComponent(SCR_GadgetComponent))
+		GenericComponent component = GenericComponent.Cast(item.FindComponent(SCR_GadgetComponent));
+		if (SCR_GadgetComponent.Cast(component))
 			return CanUseItem(item, ESlotFunction.TYPE_GADGET);
 
-		if (item.FindComponent(MagazineComponent))
+		component = GenericComponent.Cast(item.FindComponent(MagazineComponent));
+		if (MagazineComponent.Cast(component))
 			return false;
 
-		if (item.FindComponent(BaseLoadoutClothComponent))
-			return true;
+		component = GenericComponent.Cast(item.FindComponent(BaseLoadoutClothComponent));
+		if (BaseLoadoutClothComponent.Cast(component))
+		{
+			BaseLoadoutClothComponent clothComp = BaseLoadoutClothComponent.Cast(component);
+			LoadoutAreaType loadoutArea = clothComp.GetAreaType();
+			return loadoutArea && item != GetClothFromArea(loadoutArea.Type());//prevent reequipping of an item
+		}
 
-		if (item.FindComponent(BaseWeaponComponent))
+		component = GenericComponent.Cast(item.FindComponent(BaseWeaponComponent));
+		if (component)
 		{
 			if (charCtrl.IsChangingItem())
 				return false;
+
+			BaseWeaponComponent weapon = BaseWeaponComponent.Cast(component);
+			return weapon && weapon.CanBeEquipped(charCtrl) == ECanBeEquippedResult.OK;//f.e. mines cannot be equipped while prone
 		}
 
 		return CanUseItem(item);

@@ -197,6 +197,13 @@ class SCR_PopUpNotification : GenericEntity
 	{
 		m_bInventoryOpen = open;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTitleText(string text)
+	{
+		if (m_wPopupMsg)
+			m_wPopupMsg.SetTextFormat(text);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Queue new popup notification
@@ -333,7 +340,7 @@ class SCR_PopUpNotification : GenericEntity
 					// Infinite duration is always considered higher prio
 					if (msg.m_fDuration == -1)
 					{
-						if (checkedMsg.m_fDuration != -1 || checkedMsg.m_iPriority < msg.m_iPriority)
+						if (checkedMsg.m_fDuration != -1 || checkedMsg.m_iPriority <= msg.m_iPriority)
 							index = i;
 					}
 					else if (checkedMsg.m_fDuration != -1 && checkedMsg.m_iPriority < msg.m_iPriority)

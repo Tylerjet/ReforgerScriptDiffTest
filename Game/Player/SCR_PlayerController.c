@@ -214,10 +214,34 @@ class SCR_PlayerController : PlayerController
 			m_CharacterController = null;
 
 		SetGameUserSettings();
-		
+
+		UpdateTurretFireModeControlls(from, to);
 		SCR_AimSensitivitySettings.SetAimSensitivitySettings();
 		SCR_HeadTrackingSettings.SetHeadTrackingSettings();
 		SCR_ControllerSettings.SetControllerSettings();
+	}
+
+	protected void UpdateTurretFireModeControlls(IEntity from, IEntity to)
+	{
+		ChimeraCharacter abandonedCharacter = ChimeraCharacter.Cast(from);
+		SCR_CompartmentAccessComponent compartmentAccessComp;
+		SCR_FireModeManagerComponent fireModeMgr;
+		if (abandonedCharacter)
+		{
+			compartmentAccessComp = SCR_CompartmentAccessComponent.Cast(abandonedCharacter.GetCompartmentAccessComponent());
+			fireModeMgr = compartmentAccessComp.GetControlledFireModeManager();
+			if (fireModeMgr)
+				fireModeMgr.RemoveActionListeners();
+		}
+
+		ChimeraCharacter possessedCharacter = ChimeraCharacter.Cast(to);
+		if (!possessedCharacter)
+			return;
+
+		compartmentAccessComp = SCR_CompartmentAccessComponent.Cast(possessedCharacter.GetCompartmentAccessComponent());
+		fireModeMgr = compartmentAccessComp.GetControlledFireModeManager();
+		if (fireModeMgr)
+			fireModeMgr.SetUpAllActionListeners(possessedCharacter);
 	}
 
 	//------------------------------------------------------------------------------------------------

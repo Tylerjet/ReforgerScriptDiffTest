@@ -21,20 +21,24 @@ class SCR_ATLManualCameraComponent : SCR_BaseManualCameraComponent
 		if (!param.isDirty)
 			return;
 		
+		float vertical = m_InputManager.GetActionValue("ManualCameraMoveVertical");
+		if (vertical != 0.0)
+			return;
+		
 		//--- Get target height
 		vector pos = param.transform[3];
-		float height = pos[1] - Math.Max(param.world.GetSurfaceY(pos[0], pos[2]), 0);
-		
+		float height = Math.AbsFloat(pos[1] - Math.Max(param.world.GetSurfaceY(pos[0], pos[2]), 0));
+
 		//--- Terminate when the height is above threshold
 		if (height > m_fATLMaxHeight)
 			return;
 		
 		//--- Get original height
 		vector posOrig = param.transformOriginal[3];
-		float heightOrig = posOrig[1] - Math.Max(param.world.GetSurfaceY(posOrig[0], posOrig[2]), 0);
+		float heightOrig = Math.AbsFloat(posOrig[1] - Math.Max(param.world.GetSurfaceY(posOrig[0], posOrig[2]), 0));
 		
 		//--- Get interpolated height between min and max
-		float progress = Math.InverseLerp(m_fATLMinHeight, m_fATLMaxHeight, height);
+		float progress = Math.Clamp(Math.InverseLerp(m_fATLMinHeight, m_fATLMaxHeight, height), 0.0, 1.0);
 		float heightInterpolated = Math.Lerp(heightOrig - height, 0, progress);
 		
 		//--- Apply manual input

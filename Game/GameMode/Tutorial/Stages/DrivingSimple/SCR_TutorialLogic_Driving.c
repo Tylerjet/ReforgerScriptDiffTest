@@ -4,6 +4,14 @@ class SCR_TutorialLogic_Driving : SCR_BaseTutorialCourseLogic
 	protected Vehicle m_CourseVehicle;
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		SCR_TutorialGamemodeComponent tutorial = SCR_TutorialGamemodeComponent.GetInstance();
+		if (tutorial)
+			tutorial.RequestBreakCourse(SCR_ETutorialBreakType.FORCED);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void OnHitZoneDamageStateChanged(SCR_HitZone hitzone)
 	{
 		if (hitzone.GetDamageState() != EDamageState.DESTROYED)
@@ -70,6 +78,14 @@ class SCR_TutorialLogic_Driving : SCR_BaseTutorialCourseLogic
 		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_CourseVehicle.FindComponent(VehicleControllerComponent));
 		if (vehicleController)
 			vehicleController.GetOnEngineStop().Insert(OnEngineStoppedJeep);
+		
+		IEntity instructor = GetGame().GetWorld().FindEntityByName("DRIVING_Copilot");
+		if (!instructor)
+			return;
+		
+		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(instructor.FindComponent(SCR_CompartmentAccessComponent));
+		if (compartmentAccess)
+			compartmentAccess.GetOnCompartmentLeft().Insert(OnCompartmentLeft);
 	};
 	
 	//------------------------------------------------------------------------------------------------
@@ -102,6 +118,14 @@ class SCR_TutorialLogic_Driving : SCR_BaseTutorialCourseLogic
 	//------------------------------------------------------------------------------------------------
 	override void OnCourseEnd()
 	{
+		IEntity instructor = GetGame().GetWorld().FindEntityByName("DRIVING_Copilot");
+		if (instructor)
+		{
+			SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(instructor.FindComponent(SCR_CompartmentAccessComponent));
+			if (compartmentAccess)
+				compartmentAccess.GetOnCompartmentLeft().Remove(OnCompartmentLeft);
+		}
+		
 		if (!m_CourseVehicle)
 			return;
 		

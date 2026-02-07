@@ -187,10 +187,20 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		array<UserActionContext> contexts = {};
 		m_InteractionHandlerComponent.GetNearbyAvailableContextList(contexts);
 		
+		array<BaseUserAction> outActions = {};
+		array<UserActionContext> additionalContexts = {};
+		m_InteractionHandlerComponent.GetNearbyShowableContextList(additionalContexts);
+		foreach(UserActionContext ctx: additionalContexts)
+		{
+			if (ctx.GetActionsList(outActions) > 0)
+				if (SCR_NearbyContextWidgetComponentInteract.IsHealingAction(outActions[0]))
+					contexts.Insert(ctx);
+		}
+		
 		#ifdef DEBUG_ACTIONICONS
-		array<UserActionContext> debugContexts = {};
-		m_InteractionHandlerComponent.GetNearbyUnavailableContextList(debugContexts);
-		contexts.InsertAll(debugContexts);
+		additionalContexts = {};
+		m_InteractionHandlerComponent.GetNearbyShowableContextList(additionalContexts);
+		contexts.InsertAll(additionalContexts);
 		#endif
 
 		// Get required data
@@ -244,7 +254,6 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		bool isOverrideEnabled = m_InteractionHandlerComponent.GetManualCollectionOverride();
 		SCR_NearbyContextColorsComponentInteract nearbyColors;
 		SCR_HealSupportStationAction medAction;
-		array<BaseUserAction> outActions = {};
 		IEntity entAction;
 
 		// Iterate through every available context and assign a Widget to it

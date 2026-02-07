@@ -20,6 +20,8 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	
 	protected ref OnPlayerEnterCompartment m_OnPlayerEnterCompartment;
 	protected ref OnPlayerExitCompartment m_OnPlayerExitCompartment;
+
+	protected SCR_FireModeManagerComponent m_TurretFireModeManager;
 	
 	protected const int WAIT_FOR_VEHICLE_MAX_TRIES = 10;
 	protected static int s_iWaitForVehicleTries = 0;
@@ -73,6 +75,10 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		SCR_CharacterControllerComponent controller = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		if (controller)
 			controller.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
+
+		BaseCompartmentSlot slot = GetCompartment();
+		if (slot)
+			ToggleTurretFireModeControlls(slot, true);
 		
 		//--- Check if the character is a player
 		int playerId = playerManager.GetPlayerIdFromControlledEntity(character);
@@ -82,7 +88,68 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		if (m_OnPlayerEnterCompartment)
 			m_OnPlayerEnterCompartment.Invoke(character, targetEntity);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Updates the inputs for fire mode manager of a turret
+	//! \param[in] slot for which this should be exectued
+	//! \param[in] entered
+	protected void ToggleTurretFireModeControlls(notnull BaseCompartmentSlot slot, bool entered)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		IEntity localCharacter = SCR_PlayerController.GetLocalControlledEntity();
+		if (!entered && character == localCharacter)
+		{
+			if (m_TurretFireModeManager)
+				m_TurretFireModeManager.RemoveActionListeners();
+
+			m_TurretFireModeManager = null;
+			return;
+		}
+
+		TurretControllerComponent turretController = slot.GetAttachedTurret();
+		Turret turret;
+		if (turretController)
+		{
+			turret = Turret.Cast(turretController.GetOwner());
+		}
+		else
+		{
+			string turretName = slot.GetAutoConnectTurret();
+			if (turretName.IsEmpty())
+				return;
+
+			IEntity child = slot.GetOwner().GetChildren();
+			while (child)
+			{
+				turret = Turret.Cast(child);
+				if (turret)
+				{
+					turretController = TurretControllerComponent.Cast(turret.FindComponent(TurretControllerComponent));
+					if (turretController && turretController.GetUniqueName() == turretName)
+						break;
+				}
+
+				child = child.GetSibling();
+			}
+
+			if (!turret)
+				return;
+		}
+
+		m_TurretFireModeManager = SCR_FireModeManagerComponent.Cast(turret.FindComponent(SCR_FireModeManagerComponent));
+		if (!m_TurretFireModeManager)
+			return;
+
+		if (character == localCharacter)
+			m_TurretFireModeManager.SetUpAllActionListeners(character);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_FireModeManagerComponent GetControlledFireModeManager()
+	{
+		return m_TurretFireModeManager;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
@@ -94,6 +161,10 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 
 		if (!playerManager || !character)
 			return;
+
+		BaseCompartmentSlot slot = manager.FindCompartment(slotID);
+		if (slot)
+			ToggleTurretFireModeControlls(slot, false);
 
 		//--- Check if the character is a player
 		int playerId = playerManager.GetPlayerIdFromControlledEntity(character);

@@ -111,7 +111,15 @@ class SCR_NearbyContextWidgetComponentInteract : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool IsHealingAction(BaseUserAction userAct, out bool showOuterBackground, out int nearbyColorState)
+	static bool IsHealingAction(BaseUserAction userAct)
+	{
+		bool showOuterBackground;
+		int nearbyColorState;
+		return IsHealingAction(userAct, showOuterBackground, nearbyColorState);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsHealingAction(BaseUserAction userAct, out bool showOuterBackground, out int nearbyColorState)
 	{
 		SCR_BaseDamageHealSupportStationAction supportHealAction = SCR_BaseDamageHealSupportStationAction.Cast(userAct);
 		if (!supportHealAction)		

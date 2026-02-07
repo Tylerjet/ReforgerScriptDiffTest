@@ -3,6 +3,8 @@ class SCR_VotingKick : SCR_VotingReferendum
 {	
 	[Attribute(desc: "When true, only players on the same faction as target of the vote can vote.")]
 	protected bool m_bFactionSpecific;
+
+	protected Faction m_SubjectFaction;
 	
 	//~ Used in voting to make sure there is a min kick duration (in seconds)
 	protected static const int PLAYER_VOTE_KICK_DURATION = 300;
@@ -19,6 +21,15 @@ class SCR_VotingKick : SCR_VotingReferendum
 		string cliVal;
 		if (playerMgr && System.GetCLIParam("logVoting", cliVal))
 			Print("VOTING SYSTEM - Player '" + playerMgr.GetPlayerName(startingPlayerID) + "' (with player id = " + startingPlayerID + ") started a vote to kick player '" + playerMgr.GetPlayerName(value) + "' (with player id = " + value + ")", LogLevel.NORMAL);
+		
+		if (m_bFactionSpecific)
+		{
+			SCR_FactionManager factionMgr = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (!factionMgr)
+				return;
+
+			m_SubjectFaction = factionMgr.GetPlayerFaction(value);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -45,15 +56,21 @@ class SCR_VotingKick : SCR_VotingReferendum
 		SCR_PlayerListedAdminManagerComponent adminManager = SCR_PlayerListedAdminManagerComponent.GetInstance();
 		if (adminManager && adminManager.IsPlayerOnAdminList(value))
 			return false;
-		
+
 		//--- When faction specific, allow voting only for players on the same faction as target of the vote
 		if (m_bFactionSpecific)
 		{
 			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 			if (!factionManager)
 				return false;
-				
-			Faction targetFaction = factionManager.GetPlayerFaction(value); //--- value is ID of the player who is target of the vote
+
+			Faction targetFaction;
+			PlayerManager playerMgr = GetGame().GetPlayerManager();
+			if (isOngoing && !m_bCancelWhenSubjectLeavesTheServer && playerMgr && !playerMgr.IsPlayerConnected(value))
+				targetFaction = m_SubjectFaction;
+			else
+				targetFaction = factionManager.GetPlayerFaction(value); //--- value is ID of the player who is target of the vote
+
 			Faction playerFaction = factionManager.GetPlayerFaction(SCR_PlayerController.GetLocalPlayerId());
 			if (targetFaction != playerFaction || !targetFaction)
 				return false;
@@ -110,6 +127,33 @@ class SCR_VotingKick : SCR_VotingReferendum
 		//--- Limit to prevent instant completion in a session with less than limited participants
 		return Math.Max(playerCount, m_iMinVotes);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override int GetWinner()
+	{
+		EVotingOutcome outcome;
+		if (super.GetWinner() != DEFAULT_VALUE)
+		{
+			PlayerManager playerMgr = GetGame().GetPlayerManager();
+			if (!m_bCancelWhenSubjectLeavesTheServer && playerMgr && !playerMgr.IsPlayerConnected(m_iValue))
+				return ALTERNATIVE_VALUE;
+			else
+				return m_iValue;
+		}
+
+		return DEFAULT_VALUE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool Evaluate(out EVotingOutcome outcome)
+	{
+		bool output = super.Evaluate(outcome);
+
+		//Ensure that outcome is set to 'evaluate' in order to force the manager to use value provided by GetWinner()
+		outcome = EVotingOutcome.EVALUATE;
+
+		return output;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE)
@@ -135,16 +179,16 @@ class SCR_VotingKick : SCR_VotingReferendum
 			switch(m_Type)
 			{
 				case EVotingType.KICK:
-					crimesModule.KickOrBanPlayer(winner, PlayerManagerKickReason.KICK_VOTED, PLAYER_VOTE_KICK_DURATION);
+					crimesModule.KickOrBanPlayer(value, PlayerManagerKickReason.KICK_VOTED, PLAYER_VOTE_KICK_DURATION);
 					return;
 				case EVotingType.AUTO_KICK:
-					crimesModule.KickOrBanPlayer(winner, PlayerManagerKickReason.KICK, 0);
+					crimesModule.KickOrBanPlayer(value, PlayerManagerKickReason.KICK, 0);
 					return;
 				case EVotingType.AUTO_LIGHTBAN:
-					crimesModule.KickOrBanPlayer(winner, PlayerManagerKickReason.TEMP_BAN, SCR_DataCollectorCrimesModule.MIN_AUTO_BAN_DURATION);
+					crimesModule.KickOrBanPlayer(value, PlayerManagerKickReason.TEMP_BAN, SCR_DataCollectorCrimesModule.MIN_AUTO_BAN_DURATION);
 					return;
 				case EVotingType.AUTO_HEAVYBAN:
-					crimesModule.KickOrBanPlayer(winner, PlayerManagerKickReason.BAN, SCR_DataCollectorCrimesModule.MIN_AUTO_BAN_DURATION);
+					crimesModule.KickOrBanPlayer(value, PlayerManagerKickReason.BAN, SCR_DataCollectorCrimesModule.MIN_AUTO_BAN_DURATION);
 					return;
 			}
 		}

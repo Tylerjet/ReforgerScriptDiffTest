@@ -89,12 +89,31 @@ class SCR_InventoryIdentityItemWidgetComponent : SCR_ScriptedWidgetComponent
 			{
 				//~ Get player name instead of Identity name
 				SCR_ExtendedCharacterIdentityComponent extendedCharacterIdentity = SCR_ExtendedCharacterIdentityComponent.Cast(linkedIdentity);
-				if (identityManager && extendedCharacterIdentity && identityManager.ShowPlayerNameOnIdentityItem() && extendedCharacterIdentity.GetPlayerID() > 0)
+				if (identityManager && extendedCharacterIdentity && identityManager.ShowPlayerNameOnIdentityItem())
 				{
-					string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(extendedCharacterIdentity.GetPlayerID());
-					nameText.SetText(playerName);
-					
-					nameSet = !playerName.IsEmpty();
+					if (extendedCharacterIdentity.GetPlayerID() > 0)
+					{
+						string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(extendedCharacterIdentity.GetPlayerID());
+						nameText.SetText(playerName);
+						
+						nameSet = !playerName.IsEmpty();
+					}
+					//~ Get player name via linked identity owner instead
+					else
+					{
+						IEntity identityOwner = linkedIdentity.GetOwner();
+						if (identityOwner)
+						{
+							int ownerPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(identityOwner);
+							if (ownerPlayerId > 0)
+							{
+								string ownerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(ownerPlayerId);
+								
+								nameText.SetText(ownerName);
+								nameSet = !ownerName.IsEmpty();
+							}					
+						}	
+					}
 				}
 				
 				//~ Use Identity name instead

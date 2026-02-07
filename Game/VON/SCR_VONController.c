@@ -267,7 +267,8 @@ class SCR_VONController : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Finds first unmuted entry and sets it as the active entry
-	void SelectFirstUnmutedEntry()
+	//! \return EVONTransmitType for selected entry. if no entry selected, return EVONTransmitType.NONE;
+	EVONTransmitType SelectFirstUnmutedEntry()
 	{
 		foreach (SCR_VONEntry entry : m_aEntries)
 		{
@@ -276,8 +277,19 @@ class SCR_VONController : ScriptComponent
 				continue;
 			
 			SetEntryActive(entry, true);
-			break;
+			
+			bool longRange = radioEntry.IsLongRange();
+			if (longRange)
+			{
+				return EVONTransmitType.LONG_RANGE;
+			}
+			else
+			{
+				return EVONTransmitType.CHANNEL; 
+			}
 		}
+		
+		return EVONTransmitType.NONE;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -328,7 +340,7 @@ class SCR_VONController : ScriptComponent
 		
 		// If active entry is null, attempt to select another.
 		if (!m_ActiveEntry)
-			SelectFirstUnmutedEntry();
+			transmitType = SelectFirstUnmutedEntry();
 
 		// if active entry disabled or character is incapacitated, use direct instead
 		if (m_eLifeState != ECharacterLifeState.ALIVE || !m_ActiveEntry || !m_ActiveEntry.IsUsable())

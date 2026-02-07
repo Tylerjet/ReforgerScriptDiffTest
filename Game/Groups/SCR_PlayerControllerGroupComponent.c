@@ -396,6 +396,14 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		//in case of the selected group being deleted, remove it from selected
 		if (group.GetGroupID() == GetSelectedGroupID())
 			SetSelectedGroupID(-1);
+		
+		if (group.GetGroupID() == m_iGroupInviteID)
+		{
+			//delete the invite if the target group has been deleted
+			m_iGroupInviteID = -1;
+			if (m_OnInviteCancelled)
+				m_OnInviteCancelled.Invoke();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

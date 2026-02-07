@@ -19,19 +19,22 @@ class SCR_VotingUIInfo : SCR_UIInfo
 	[Attribute(desc: "Text shown with the name of the author of the vote")]
 	protected LocalizedString m_sVoteAuthorText;
 	
-	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Start notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
+	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Start notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enumType: ENotification)]
 	protected ENotification m_iStartNotificationId;
 	
-	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Succeed notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
+	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Succeed notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enumType: ENotification)]
 	protected ENotification m_iSucceededNotificationId;
 	
-	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Fail notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
+	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Fail notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enumType: ENotification)]
 	protected ENotification m_iFailedNotificationId;
+
+	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Notification that is meant to be shown as an alternative text for the result of the vote", uiwidget: UIWidgets.SearchComboBox, enumType: ENotification)]
+	protected ENotification m_iAlternativeNotificationId;
 	
-	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Local notification send when player casts vote. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
+	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Local notification send when player casts vote. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enumType: ENotification)]
 	protected ENotification m_eVoteCastedLocalNotification;	
 	
-	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Local notification send when player abstains from voting. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
+	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Local notification send when player abstains from voting. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enumType: ENotification)]
 	protected ENotification m_eVoteAbstainedLocalNotification;
 	
 	//------------------------------------------------------------------------------------------------
@@ -112,6 +115,14 @@ class SCR_VotingUIInfo : SCR_UIInfo
 	ENotification GetVotingFailNotification()
 	{
 		return m_iFailedNotificationId;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return ENotification notification ID that is meant to be used for alternative resolution of the vote
+	ENotification GetVotingAlternativeNotification()
+	{
+		return m_iAlternativeNotificationId;
 	}
 	
 	//------------------------------------------------------------------------------------------------

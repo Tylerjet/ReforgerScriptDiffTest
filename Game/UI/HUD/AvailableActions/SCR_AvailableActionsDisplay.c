@@ -205,9 +205,9 @@ class SCR_AvailableActionContext
 	{
 		if (!m_bEnabled)
 			return false;
-
+		
 		bool isOk = true;
-		foreach (auto cond : m_aConditions)
+		foreach (SCR_AvailableActionCondition cond : m_aConditions)
 		{
 			if (!cond.IsEnabled())
 				continue;
@@ -336,7 +336,7 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 
 		outActions.Clear();
 		int count = 0;
-		foreach (auto action : inActions)
+		foreach (SCR_AvailableActionContext action : inActions)
 		{
 			string actionName = action.GetActionName();
 			
@@ -435,51 +435,25 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		array<SCR_AvailableActionContext> availableActions = new array<SCR_AvailableActionContext>();
 		int actionsCount = GetAvailableActions(m_data, m_aActions, availableActions, timeSlice);
 
-		// Enable additional ones
-		if (actionsCount > m_iLastCount)
-		{
-			foreach (int i, SCR_AvailableActionsWidget widget : m_aWidgets)
-			{
-				if (i >= actionsCount)
-					break;
-
-				if (i < m_iLastCount)
-					continue;
-
-				if (!widget)
-					continue;
-
-				DisplayHint(widget.GetRootWidget(), UIConstants.FADE_RATE_SUPER_FAST, UIConstants.FADE_RATE_SUPER_FAST);
-			}
-		}
-		// Or hide previously shown
-		else if (actionsCount != m_iLastCount)
-		{
-			foreach (int i, SCR_AvailableActionsWidget widget : m_aWidgets)
-			{
-				if (i >= m_iLastCount)
-					break;
-
-				if (i < actionsCount)
-					continue;
-
-				if (!widget)
-					continue;
-
-				HintFadeOut(widget.GetRootWidget(), UIConstants.FADE_RATE_DEFAULT, UIConstants.FADE_RATE_FAST);
-			}
-		}
-
+		int updateCount = Math.Max(m_iLastCount, actionsCount);
+		bool shouldBeVisible;
+		SCR_AvailableActionContext availableAction;
 		foreach (int i, SCR_AvailableActionsWidget widget : m_aWidgets)
 		{
+			if (i >= updateCount)
+				break;
+
 			if (!widget)
 				continue;
 
-			if (m_bForceUpdate)
-				widget.SetForcedUpdate();
-
-			if (availableActions.IsIndexValid(i) && availableActions[i])
-				widget.SetText(availableActions[i].GetActionName(), availableActions[i].GetUIName(), m_eCurrentInputDevice);
+			shouldBeVisible = i < actionsCount;
+			if (widget.IsVisible() != shouldBeVisible)
+			{
+				if (shouldBeVisible)
+					DisplayHint(widget.GetRootWidget(), UIConstants.FADE_RATE_SUPER_FAST, UIConstants.FADE_RATE_SUPER_FAST);
+				else
+					HintFadeOut(widget.GetRootWidget(), UIConstants.FADE_RATE_DEFAULT, UIConstants.FADE_RATE_FAST);
+			}
 
 			if (actionsCount > m_iMaxActionsMedium)
 				widget.SetSize(m_iButtonSizeSmall);
@@ -487,13 +461,25 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 				widget.SetSize(m_iButtonSizeMedium);
 			else
 				widget.SetSize(m_iButtonSizeLarge);
+
+			if (!shouldBeVisible)
+				continue;
+
+			if (m_bForceUpdate)
+				widget.SetForcedUpdate();
+
+			if (!availableActions.IsIndexValid(i))
+				continue;
+
+			availableAction = availableActions[i];
+			if (availableAction)
+				widget.SetText(availableAction.GetActionName(), availableAction.GetUIName(), m_eCurrentInputDevice);
 		}
 
 		m_bForceUpdate = false;
 
 		// Acknowledge new count
 		m_iLastCount = actionsCount;
-			
 
 		ApplyLayoutBehavior();
 	}

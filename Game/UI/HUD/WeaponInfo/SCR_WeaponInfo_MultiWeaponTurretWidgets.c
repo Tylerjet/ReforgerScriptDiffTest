@@ -27,6 +27,7 @@ class SCR_WeaponInfo_MultiWeaponTurretWidgets
 	ImageWidget m_wFiremodeIcon;
 	HorizontalLayoutWidget m_wWeaponNameAndCaliber;
 	RichTextWidget m_wWeaponName;
+	RichTextWidget m_wProjectileQuantityText;
 
 	//------------------------------------------------------------------------------------------------
 	bool Init(notnull Widget root)
@@ -54,6 +55,7 @@ class SCR_WeaponInfo_MultiWeaponTurretWidgets
 		m_wFiremodeIcon = ImageWidget.Cast(root.FindWidget("m_WeaponInfoPanel.m_MagazinesHolder.m_Firemode.m_FiremodeIcon"));
 		m_wWeaponNameAndCaliber = HorizontalLayoutWidget.Cast(root.FindWidget("m_WeaponInfoPanel.m_WeaponNameAndCaliber"));
 		m_wWeaponName = RichTextWidget.Cast(root.FindWidget("m_WeaponInfoPanel.m_WeaponNameAndCaliber.m_WeaponName"));
+		m_wProjectileQuantityText = RichTextWidget.Cast(root.FindWidget("m_WeaponInfoPanel.m_MagazinesHolder.m_ProjectileQuantityText"));
 
 		return true;
 	}

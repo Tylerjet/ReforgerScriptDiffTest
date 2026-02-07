@@ -22,8 +22,10 @@ class SCR_DeployCollimatorAction : SCR_AdjustCollimatorAction
 		if (!m_SightsComponent)
 			return saved;
 		
-		writer.WriteFloat(m_fTargetValue);
 		m_bSightIsUnstowed = Math.Round(m_fTargetValue);
+		SCR_HelicopterCollimatorSightComponent helicopterCollimator = SCR_HelicopterCollimatorSightComponent.Cast(m_SightsComponent);
+		if (helicopterCollimator)
+			helicopterCollimator.OverrideSightState(m_bSightIsUnstowed);
 
 		return saved;
 	}
@@ -39,6 +41,9 @@ class SCR_DeployCollimatorAction : SCR_AdjustCollimatorAction
 			return loaded;
 
 		m_bSightIsUnstowed = Math.Round(m_fTargetValue);
+		SCR_HelicopterCollimatorSightComponent helicopterCollimator = SCR_HelicopterCollimatorSightComponent.Cast(m_SightsComponent);
+		if (helicopterCollimator)
+			helicopterCollimator.OverrideSightState(m_bSightIsUnstowed);
 		
 		return loaded;
 	}
@@ -50,7 +55,7 @@ class SCR_DeployCollimatorAction : SCR_AdjustCollimatorAction
 		if (!actionInfo)
 			return false;
 
-		if (!m_bSightIsUnstowed)
+		if (Math.Round(GetCurrentValue()) == 0)
 			outName = actionInfo.GetName();
 		else
 			outName = actionInfo.GetDescription();

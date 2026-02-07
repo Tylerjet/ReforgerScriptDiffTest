@@ -6,7 +6,8 @@ class SCR_Tutorial_VehicleMaintenance_SUPPLIESBAGClass: SCR_BaseTutorialStageCla
 //------------------------------------------------------------------------------------------------
 class SCR_Tutorial_VehicleMaintenance_SUPPLIESBAG : SCR_BaseTutorialStage
 {
-	EquipedLoadoutStorageComponent m_LoadoutStorage;
+	protected const ResourceName BACKPACK_RESOURCENAME = "{06B68C58B72EAAC6}Prefabs/Items/Equipment/Backpacks/Backpack_ALICE_Medium.et";
+	protected EquipedLoadoutStorageComponent m_LoadoutStorage;
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
@@ -30,7 +31,15 @@ class SCR_Tutorial_VehicleMaintenance_SUPPLIESBAG : SCR_BaseTutorialStage
 		if (!m_LoadoutStorage)
 			return false;
 		
-		return m_LoadoutStorage.GetClothFromArea(LoadoutBackpackArea);
+		IEntity backpackEnt = m_LoadoutStorage.GetClothFromArea(LoadoutBackpackArea);
+		if (!backpackEnt)
+			return false;
+		
+		EntityPrefabData prefabData = backpackEnt.GetPrefabData();
+		if (!prefabData)
+			return false;
+			
+		return prefabData.GetPrefabName() == BACKPACK_RESOURCENAME; 
 	}
 	
 	//------------------------------------------------------------------------------------------------

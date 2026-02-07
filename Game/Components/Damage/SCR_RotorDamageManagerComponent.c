@@ -278,6 +278,14 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 		vector rotorTransform[4];
 		m_RotorHitZone.GetPointInfo().GetTransform(rotorTransform);
 
+		// GetComponentsDelayed may not have enough time to initialise members. To avoid a VME, initialise m_HelicopterSimulation
+		if(!m_HelicopterSimulation)
+		{
+			m_HelicopterSimulation = VehicleHelicopterSimulation.Cast(GetOwner().GetRootParent().FindComponent(VehicleHelicopterSimulation));
+			if(!m_HelicopterSimulation)
+				return;
+		}
+		
 		float rotorRPM = m_HelicopterSimulation.RotorGetRPM(m_RotorHitZone.GetRotorIndex()) * 0.1;
 		float rotorRadius = m_RotorHitZone.GetRotorRadius();				
 		float rotorCenterToContact = vector.Distance(rotorTransform[3], contact.Position);

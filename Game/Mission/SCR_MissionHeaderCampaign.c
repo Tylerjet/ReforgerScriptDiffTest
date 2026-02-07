@@ -21,6 +21,9 @@ class SCR_MissionHeaderCampaign : SCR_MissionHeader
 	[Attribute("0", UIWidgets.CheckBox, "Disable rank requirements for spawning vehicles ")]
 	bool m_bIgnoreMinimumVehicleRank;
 	
+	[Attribute("-1", desc: "Fraction of XP awarded to players unloading supplies which they have not loaded themselves (override, -1 for default)", params: "-1 inf")]
+	float m_fSupplyOffloadAssistanceReward;
+	
 	[Attribute()]
 	ref array<ref SCR_CampaignCustomBase> m_aCampaignCustomBaseList;
 };

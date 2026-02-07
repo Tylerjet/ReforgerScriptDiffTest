@@ -1337,6 +1337,45 @@ class SCR_ScenarioFrameworkSystem : GameSystem
 		if (info)
 			SCR_HintManagerComponent.ShowHint(info);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Hide current hint
+	//! \param[in] factionKey represents the identifier for the faction in the game world.
+	//! \param[in] playerID represents the unique identifier for the player receiving the hint.
+	void HideHint(FactionKey factionKey = "", int playerID = -1)
+	{
+		Rpc(RpcDo_HideHint, factionKey, playerID);
+		RpcDo_HideHint(factionKey, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Hide current hint.
+	//! \param[in] factionKey represents the identifier for the faction in the game, used to check if the local player is part of it
+	//! \param[in] playerID represents the unique identifier for a player in the game.
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_HideHint(FactionKey factionKey, int playerID)
+	{
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+		
+		if (!SCR_StringHelper.IsEmptyOrWhiteSpace(factionKey))
+		{
+			if (SCR_FactionManager.SGetLocalPlayerFaction() != GetGame().GetFactionManager().GetFactionByKey(factionKey))
+				return;
+		}
+
+		if (playerID != -1)
+		{
+			PlayerController playerController = GetGame().GetPlayerController();
+			if (!playerController)
+				return;
+
+			if (playerID != playerController.GetPlayerId())
+				return;
+		}
+		
+		SCR_HintManagerComponent.HideHint();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Displays a pop-up message with title, subtitle, optional faction key, and optional player ID.

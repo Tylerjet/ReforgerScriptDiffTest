@@ -71,12 +71,19 @@ class SCR_NavigationBarUI : SCR_ScriptedWidgetComponent
 	void SetButtonEnabled( string sButtonName, bool bEnable = true, string sName = "" )
 	{
 		SCR_InputButtonComponent pActionButton = GetButton( sButtonName );
-		if( !pActionButton )
+		if(!pActionButton)
 			return;
-		pActionButton.SetEnabled( bEnable );
-		pActionButton.GetRootWidget().SetVisible( bEnable );
-		
-		if( !sName.IsEmpty() )
+
+		//if state is the same then quit early
+		if (pActionButton.IsEnabled() == bEnable)
+			return;
+
+		array<string> keyStack = {};
+		bEnable = bEnable && pActionButton.IsKeybindAvailable(keyStack);
+		pActionButton.SetEnabled(bEnable);
+		pActionButton.GetRootWidget().SetVisible(bEnable);
+
+		if(!sName.IsEmpty())
 			pActionButton.SetLabel(sName);
 	}		
 	
@@ -143,11 +150,11 @@ class SCR_NavigationBarUI : SCR_ScriptedWidgetComponent
 				continue;
 			
 			entry.m_Component = comp;
-			comp.SetAction(entry.m_sAction);
+			comp.SetAction(entry.m_sAction, forceUpdate: true);
 			comp.SetLabel(entry.m_sDisplayName);
 			comp.m_OnActivated.Insert(OnNavigation);
-			comp.SetClickedSound("");
-		}	
+			comp.SetClickedSound(string.Empty);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

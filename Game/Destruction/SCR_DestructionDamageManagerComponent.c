@@ -37,6 +37,7 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 	protected static ref array<ref SCR_DestructionBaseData> s_aDestructionBaseData = {};
 	
 	protected int m_iDestructionBaseDataIndex = -1;
+	protected int m_iLastCollisionTime = -1;
 	
 	//------------------------------------------------------------------------------------------------
 	static bool GetReadingInit(bool readingInit)
@@ -139,7 +140,7 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 		if (m_iDestructionBaseDataIndex == -1)
 			return GetHealth() <= 0;
 		
-		return GetDestructionBaseData().GetHitInfo(false) || GetHealth() <= 0;
+		return GetHealth() <= 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -425,6 +426,14 @@ class SCR_DestructionDamageManagerComponent : SCR_DamageManagerComponent
 		float relativeForce = contact.Impulse / contact.Physics2.GetMass();
 		if (relativeForce < componentData.m_fRelativeContactForceThresholdMinimum) // Below minimum threshold, ignore
 			return false;
+		
+		// Check if enough time has passed since the last collision (1 second = 1000 milliseconds)
+		int currentTime = GetGame().GetWorld().GetWorldTime();
+		if (m_iLastCollisionTime > 0 && currentTime - m_iLastCollisionTime < 1000)
+			return false;
+		
+		// Update the last collision time
+		m_iLastCollisionTime = currentTime;
 	
 		return true;
 	}

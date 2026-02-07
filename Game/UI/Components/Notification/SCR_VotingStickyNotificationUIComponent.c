@@ -33,10 +33,14 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 		array<int> votingValues = {};
 		int count = m_VotingManagerComponent.GetAllVotingsWithValue(validActiveVotingTypes, votingValues, false, true);
 		
+		int value;
+		EVotingType voteType;
 		for (int i = count - 1; i >= 0; i--)
 		{
+			voteType = validActiveVotingTypes[i];
+			value = votingValues[i];
 			//~ Ignore any abstained, unavailible or voted votes
-			if (!m_VotingManagerComponent.IsVotingAvailable(validActiveVotingTypes[i], votingValues[i]) || m_VotingManagerComponent.HasAbstainedLocally(validActiveVotingTypes[i], votingValues[i]) || m_VotingManagerComponent.IsLocalVote(validActiveVotingTypes[i], votingValues[i]))
+			if (m_VotingManagerComponent.HasAbstainedLocally(voteType, value) || m_VotingManagerComponent.IsLocalVote(voteType, value))
 			{
 				validActiveVotingTypes.RemoveOrdered(i);
 				votingValues.RemoveOrdered(i);

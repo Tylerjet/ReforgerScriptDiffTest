@@ -839,6 +839,7 @@ class SCR_RestrictedDeployableSpawnPointComponent : SCR_BaseDeployableSpawnPoint
 
 		groupsManager.GetOnPlayableGroupRemoved().Insert(OnGroupRemoved);
 		m_LocalPlayerGroup = groupsManager.GetPlayerGroup(playerController.GetPlayerId());
+		m_bNoGroupJoined = !m_LocalPlayerGroup;
 		
 		m_bIsGroupLimitReached = IsDeployLimitReachedLocal();
 	}

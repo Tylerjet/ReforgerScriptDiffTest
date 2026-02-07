@@ -231,6 +231,7 @@ enum ENotification
 	VOTING_BAN_FAIL = 1033, //!< Voting failed to auto light/heavy ban player (param1 = player id)
 	VOTING_BAN_VOTE_CASTED = 1034, //!< Voting Cast locally to auto light/heavy ban player (param1 = player id)
 	VOTING_BAN_VOTE_ABSTAINED = 1035, //!< Voting Abstained localy to auto light/heavy ban player (param1 = player id)
+	VOTING_KICK_SUCCEED_SUBJECT_LEFT = 1036, //!< Voting notification shown when vote to kick ends when kicked player left the server
 	
 	//GROUPS 
 	GROUPS_PLAYER_JOINED = 1101, //!< Player joined the group (param1 = player id)

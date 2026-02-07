@@ -9,8 +9,10 @@ Do not modify, this script is generated
 \{
 */
 
-class ClimbingDataComponent: GenericComponent
+class ClimbingDataComponentClass: GenericComponentClass
 {
+	//! Checks if the given entity can be climbed.
+	static proto bool CanClimbOver(notnull IEntity entity);
 }
 
 /*!

@@ -95,6 +95,8 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	protected const string COMBO_INDICATOR_SHADOW_NAME = "ComboIndicatorShadow";
 	protected const string COMBO_INDICATOR_DIVIDER_NAME = "keybind_divider";
 	protected const string COMBO_INDICATOR_COMBO_NAME = "keybind_combo";
+	protected const string COMBO_INDICATOR_KEY = " + ";
+	protected const string COMBO_DIVIDER_KEY = " | ";
 
 	protected const float COMBO_INDICATOR_SIZE_MULTIPLIER = 0.5;
 	
@@ -258,6 +260,21 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[inout] keyStack stack for keys. Can be: '+' for input combo (binary node followed by two child nodes) or '|' for input sum/alternative (binary node followed by two child nodes) otherwise contains key code (leaf node)
+	//! \return true when there is a keybind avialable for current input device
+	bool IsKeybindAvailable(inout notnull array<string> keyStack)
+	{
+		if (m_sActionName.IsEmpty())
+			return false;
+
+		if (m_aFilterStack.IsEmpty())
+			ProcessFilterStack();
+
+		return m_InputManager && m_InputManager.GetActionKeybinding(m_sActionName, keyStack, m_aFilterStack, m_eCurrentInputDevice);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	override void SetEnabled(bool enabled, bool animate = true)
 	{
 		m_bShouldBeEnabled = enabled;
@@ -316,8 +333,6 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 				m_eCurrentInputDevice = EInputDeviceType.KEYBOARD;
 		}
 
-		DeleteComboWidget();
-
 		if (inputDevice == EInputDeviceType.INVALID)
 			return false;
 
@@ -365,6 +380,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 				m_wTextHint.SetMinFontSize(textSize * MIN_FONTSIZE_MULTIPLIER);
 			}
 
+			DeleteComboWidget();
 			if (m_bIsComboInput || m_bIsAlternativeInput)
 				CreateComboWidget();
 
@@ -470,48 +486,51 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		if (m_ButtonDisplay.GetIsOverwritten())
 			return;
 
-		int count = m_aKeyStackArray.Count();
-		for (int i = 1, filterIndex = 1, comboAmount; i < count; i++)
+		int comboCount;
+		int filterIndex;
+		Widget button;
+		SizeLayoutWidget comboIndicatorContainer;
+		ImageWidget comboIndicator;
+		ImageWidget comboIndicatorShadow;
+		SCR_InputButtonDisplay display;
+		foreach (int i, string key : m_aKeyStackArray)
 		{
-			if (!m_aKeyStackArray[i])
-				continue;
+			if (i == 0)
+				continue;//skip first button info to not duplicate it
 
-			if (m_aKeyStackArray[i] == " | " || m_aKeyStackArray[i] == " + ")
+			if (key == COMBO_INDICATOR_KEY || key == COMBO_DIVIDER_KEY)
 			{
-				// If we already show the max amount of combos and the next input is an alternative, don't show any more buttons
-				if (comboAmount >= m_iMaxShownKeys - 1 && m_aKeyStackArray[i] == " | ")
+				if (comboCount >= m_iMaxShownKeys - 1 && key == COMBO_DIVIDER_KEY)
 					break;
 
-				//! Create Combo indicator
-				SizeLayoutWidget comboIndicator = SizeLayoutWidget.Cast(GetGame().GetWorkspace().CreateWidgets(m_sComboIndicatorWidget, m_wHorizontalLayout));
-				if (!comboIndicator)
+				comboIndicatorContainer = SizeLayoutWidget.Cast(GetGame().GetWorkspace().CreateWidgets(m_sComboIndicatorWidget, m_wHorizontalLayout));
+				if (!comboIndicatorContainer)
 				{
 					Print(string.Format("Unable to create Widget! %1 or %2 are null!", m_sComboIndicatorWidget, m_wHorizontalLayout), LogLevel.ERROR);
 					return;
 				}
 
-				ImageWidget comboIndicatorImage = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_IMAGE_NAME));
-				ImageWidget comboIndicatorShadow = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_SHADOW_NAME));
+				comboIndicator = ImageWidget.Cast(comboIndicatorContainer.FindAnyWidget(COMBO_INDICATOR_IMAGE_NAME));
+				comboIndicatorShadow = ImageWidget.Cast(comboIndicatorContainer.FindAnyWidget(COMBO_INDICATOR_SHADOW_NAME));
 
-				if (comboIndicatorImage && comboIndicatorShadow)
+				if (comboIndicator && comboIndicatorShadow)
 				{
-					if (m_aKeyStackArray[i] == " + ")
+					if (key == COMBO_INDICATOR_KEY)
 					{
-						comboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_COMBO_NAME);
+						comboIndicator.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_COMBO_NAME);
 						comboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_COMBO_NAME);
 					}
-
-					if (m_aKeyStackArray[i] == " | ")
+					else if (key == COMBO_DIVIDER_KEY)
 					{
-						comboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_DIVIDER_NAME);
+						comboIndicator.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_DIVIDER_NAME);
 						comboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_DIVIDER_NAME);
 
-						comboAmount++;
+						comboCount++;
 					}
 				}
 
-				m_aComboIndicators.Insert(comboIndicator);
-				m_aComboWidgets.Insert(comboIndicator);
+				m_aComboIndicators.Insert(comboIndicatorContainer);
+				m_aComboWidgets.Insert(comboIndicatorContainer);
 				continue;
 			}
 
@@ -601,7 +620,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	{
 		if (!m_bKeybindActive)
 			return;
-		
+
 		PlaySoundClicked();
 		OnInput();
 	}
@@ -841,7 +860,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			{
 				m_aFilterStackIndexRemover.Insert(index + 1);
 				ProcessKeybindStack(index, keyStack);
-				m_aKeyStackArray.Insert(" + ");
+				m_aKeyStackArray.Insert(COMBO_INDICATOR_KEY);
 				ProcessKeybindStack(index, keyStack);
 				m_bIsComboInput = true;
 				break;
@@ -850,7 +869,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			{
 				m_aFilterStackIndexRemover.Insert(index + 1);
 				ProcessKeybindStack(index, keyStack);
-				m_aKeyStackArray.Insert(" | ");
+				m_aKeyStackArray.Insert(COMBO_DIVIDER_KEY);
 				ProcessKeybindStack(index, keyStack);
 				m_bIsAlternativeInput = true;
 				break;
@@ -950,7 +969,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		if (ChangeInputDevice(currentInputDevice, false))
 			return true;
 
-		m_sActionName = string.Empty;
+		if (!forceUpdate)
+			m_sActionName = string.Empty;
+
 		return false;
 	}
 

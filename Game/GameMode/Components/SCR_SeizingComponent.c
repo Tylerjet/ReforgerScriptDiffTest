@@ -94,6 +94,12 @@ class SCR_SeizingComponent : SCR_MilitaryBaseLogicComponent
 	{
 		return m_iRadius;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetMaximumAltitude()
+	{
+		return m_iMaximumAltitude;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//!

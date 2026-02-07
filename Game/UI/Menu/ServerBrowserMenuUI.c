@@ -1364,8 +1364,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		string sortElementName = sortHeader.GetSortElementName();
 		m_ParamsFilter.SetSorting(sortElementName, sortAscending);
 
-		if (!m_bFirstRoomLoad)
-			Refresh();
+		Refresh();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1436,8 +1435,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_ParamsFilter)
 			m_ParamsFilter.SetSelectedTab(id);
 
-		if (!m_bFirstRoomLoad)
-			Refresh();
+
+		Refresh();
 		
 		Widget focus = GetGame().GetWorkspace().GetFocusedWidget();
 		if (!m_FilterPanel || !m_FilterPanel.GetFilterListBoxShown() || !focus || !focus.IsVisible())

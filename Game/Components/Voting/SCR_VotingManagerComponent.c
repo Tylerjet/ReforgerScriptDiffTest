@@ -305,8 +305,12 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	//! \return True if available
 	bool IsVotingAvailable(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
-		SCR_VotingBase template = FindTemplate(type);
-		return template && (template.IsAvailable(value, IsVoting(type, value)) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL));
+		SCR_VotingBase vote = FindVoting(type, value);
+		bool isOngoing = vote != null;
+		if (!vote)
+			vote = FindTemplate(type);
+
+		return vote && (vote.IsAvailable(value, isOngoing) || DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VOTING_ENABLE_ALL));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -835,14 +839,17 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		//~ Vote End Notification
 		if (template && template.CanSendNotification(value))
 		{
-			if (template.GetInfo())
+			SCR_VotingUIInfo uiInfo = template.GetInfo();
+			if (uiInfo)
 			{
 				//~ Vote succeeded notification
-				if (winner != SCR_VotingBase.DEFAULT_VALUE && template.GetInfo().GetVotingSucceedNotification() != ENotification.UNKNOWN)
-					SCR_NotificationsComponent.SendLocal(template.GetInfo().GetVotingSucceedNotification(), value);
+				if (winner > SCR_VotingBase.DEFAULT_VALUE && uiInfo.GetVotingSucceedNotification() != ENotification.UNKNOWN)
+					SCR_NotificationsComponent.SendLocal(uiInfo.GetVotingSucceedNotification(), value);
 				//~ Vote failed notification
-				else if (winner == SCR_VotingBase.DEFAULT_VALUE && template.GetInfo().GetVotingFailNotification() != ENotification.UNKNOWN)
-					SCR_NotificationsComponent.SendLocal(template.GetInfo().GetVotingFailNotification(), value);
+				else if (winner == SCR_VotingBase.DEFAULT_VALUE && uiInfo.GetVotingFailNotification() != ENotification.UNKNOWN)
+					SCR_NotificationsComponent.SendLocal(uiInfo.GetVotingFailNotification(), value);
+				else if (winner == SCR_VotingBase.ALTERNATIVE_VALUE && uiInfo.GetVotingAlternativeNotification() != ENotification.UNKNOWN)
+					SCR_NotificationsComponent.SendLocal(uiInfo.GetVotingAlternativeNotification(), value);
 			}
 		}
 		
@@ -921,16 +928,17 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
+		SCR_VotingBase vote;
 		for (int i = m_aVotingInstances.Count() - 1; i >= 0; i--)
 		{
-			//--- Remove player's vote
-			m_aVotingInstances[i].RemoveVote(playerId);
-			
-			//--- If the player was a target of a vote, update the vote
-			if (m_aVotingInstances[i].RemoveValue(playerId))
-			{
-				EndVoting(m_aVotingInstances[i]);
-			}
+			vote = m_aVotingInstances[i];
+			if (!vote)
+				continue;
+
+			vote.RemoveVote(playerId);
+
+			if (vote.ShouldCancelWhenSubjectLeavesTheServer() && vote.RemoveValue(playerId))
+				EndVoting(vote);
 		}
 		
 		//--- Force instant refresh in EOnFrame

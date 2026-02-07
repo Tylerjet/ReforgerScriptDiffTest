@@ -9,6 +9,9 @@ class SCR_VotingBase
 	
 	[Attribute(desc: "When enabled, values are considered player IDs (e.g., a vote to KICK player).")]
 	protected bool m_bIsValuePlayerID;
+
+	[Attribute(defvalue: "1", desc: "Should vote be canceled when subject leaves the server.")]
+	protected bool m_bCancelWhenSubjectLeavesTheServer;
 	
 	[Attribute("120", desc: "The voting will end after this duration (in seconds) and outcome will be evaluated.")]
 	protected float m_fDuration;
@@ -38,6 +41,8 @@ class SCR_VotingBase
 	protected bool m_bHasInitiatedVotingLocallyOnce;
 	
 	static const int DEFAULT_VALUE = -1;
+	//! Value of the vote, that is used when vote ends in an alternative solution
+	static const int ALTERNATIVE_VALUE = -2;
 	
 	protected int m_iVoteAuthorId;
 	protected int m_iLocalValue = DEFAULT_VALUE;
@@ -212,6 +217,13 @@ class SCR_VotingBase
 	int GetWinner()
 	{
 		return DEFAULT_VALUE;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return true if vote should be cancled when subject of the server leaves the server
+	bool ShouldCancelWhenSubjectLeavesTheServer()
+	{
+		return m_bCancelWhenSubjectLeavesTheServer;
 	}
 
 	//------------------------------------------------------------------------------------------------

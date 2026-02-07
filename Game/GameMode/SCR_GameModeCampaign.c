@@ -50,6 +50,9 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 	[Attribute("25", desc: "The step by which randomized supplies will be added in randomization. Min and Max limits should be divisible by this.", params: "1 inf 1", category: "Campaign")]
 	protected int m_iStartingSuppliesInterval;
+	
+	[Attribute("0.5", desc: "Fraction of XP awarded to players unloading supplies which they have not loaded themselves.", params: "0 inf", category: "Campaign")]
+	protected float m_fSupplyOffloadAssistanceReward;
 
 	[Attribute("US", category: "Campaign")]
 	protected FactionKey m_sBLUFORFactionKey;
@@ -241,6 +244,12 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	int GetStartingSuppliesInterval()
 	{
 		return m_iStartingSuppliesInterval;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetSupplyOffloadAssistanceReward()
+	{
+		return m_fSupplyOffloadAssistanceReward;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1935,7 +1944,8 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			int suppliesMax = header.m_iMaximumBaseSupplies;
 			int suppliesMin = header.m_iMinimumBaseSupplies;
 			int controlPointsLimit = header.m_iControlPointsCap;
-			int victoryTimeout = header.m_fVictoryTimeout;
+			float victoryTimeout = header.m_fVictoryTimeout;
+			float supplyAssistanceReward = header.m_fSupplyOffloadAssistanceReward;
 
 			if (suppliesMax != -1)
 				m_iMaxStartingSupplies = suppliesMax;
@@ -1948,6 +1958,9 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 
 			if (victoryTimeout != -1)
 				m_fVictoryTimer = victoryTimeout;
+			
+			if (supplyAssistanceReward >= 0)
+				m_fSupplyOffloadAssistanceReward = supplyAssistanceReward;
 		}
 	}
 

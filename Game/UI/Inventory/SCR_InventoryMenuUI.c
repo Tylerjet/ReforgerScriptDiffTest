@@ -393,6 +393,29 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	protected EInvInitStage 									m_eInitStage = EInvInitStage.BEGIN;
 	protected SCR_LoadingOverlay 								m_LoadingOverlay;
 
+	protected const string BUTTON_USE = "ButtonUse";
+	protected const string BUTTON_BUY = "ButtonBuy";
+	protected const string BUTTON_SELL = "ButtonSell";
+	protected const string BUTTON_BACK = "ButtonBack";
+	protected const string BUTTON_DROP = "ButtonDrop";
+	protected const string BUTTON_MOVE = "ButtonMove";
+	protected const string BUTTON_SWAP = "ButtonSwap";
+	protected const string BUTTON_EQUIP = "ButtonEquip";
+	protected const string BUTTON_SELECT = "ButtonSelect";
+	protected const string BUTTON_PICK_UP = "ButtonPickup";
+	protected const string BUTTON_INSPECT = "ButtonInspect";
+	protected const string BUTTON_STEP_BACK = "ButtonStepBack";
+	protected const string BUTTON_OPEN_STORAGE = "ButtonOpenStorage";
+	protected const string BUTTON_QUICK_ASSIGN = "ButtonQuickSlotAssign";
+	protected const string BUTTON_ENTER_STORAGE = "ButtonEnterStorage";
+	protected const string BUTTON_QUICK_UNASSIGN = "ButtonQuickSlotUnassign";
+	protected const string BUTTON_OPEN_NEW_CONTAINER = "ButtonOpenAsContainer";
+	protected const string BUTTON_REMOVE_TOURNIQUET = "ButtonRemoveTourniquet";
+
+	protected const LocalizedString GAMEPAD_HINT_BACK = "#AR-Menu_Back";
+	protected const LocalizedString GAMEPAD_HINT_CLOSE = "#AR-Inventory_Close";
+	protected const LocalizedString GAMEPAD_HINT_DESELECT = "#AR-Inventory_Deselect";
+
 	//------------------------------------------------------------------------------------------------
 	ItemPreviewManagerEntity GetItemPreviewManager()
 	{
@@ -867,12 +890,12 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		}
 
 		m_AttachmentSpinBox = SCR_InventorySpinBoxComponent.Cast(w.FindHandler(SCR_InventorySpinBoxComponent));
-		m_AttachmentSpinBox.m_OnChanged.Insert(NavigationBarUpdateGamepad);
+		m_AttachmentSpinBox.m_OnChanged.Insert(NavigationBarUpdate);
 	}
 
 
 	//------------------------------------------------------------------------------------------------
-	protected void SetStorageSwitchMode(bool enabled)
+	protected void SetStorageSwitchMode(bool enabled, bool updateNavBar = true)
 	{
 		m_bStorageSwitchMode = enabled;
 		foreach (SCR_InventoryStorageBaseUI storage : m_aStorages)
@@ -908,7 +931,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			}
 		}
 
-		NavigationBarUpdate();
+		if (updateNavBar)
+			NavigationBarUpdate();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1989,13 +2013,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 					if ( m_pActiveStorageUI )
 					{
 						SCR_InventorySlotUI pLastFocusedSlot = pFromStorageUI.GetLastFocusedSlot();
-						pFromStorageUI.SetSlotFocused( pLastFocusedSlot );
-						if ( pLastFocusedSlot )
-						{
-							m_bLocked = true;
-							GetGame().GetWorkspace().SetFocusedWidget( pLastFocusedSlot.GetButtonWidget(), true );
-							m_bLocked = false;
-						}
+						pFromStorageUI.SetSlotFocused(pLastFocusedSlot);
 					}
 
 					m_pActiveStorageUI = pFromStorageUI;
@@ -2017,7 +2035,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 
 				HideItemInfo();
 				m_pFocusedSlotUI = null;
-				NavigationBarUpdate();
+				m_pNavigationBar.SetAllButtonEnabled(false);
 			}
 
 			pFocusedSlot.CheckCompatibility(null);
@@ -2102,8 +2120,30 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//! Checks if provided item is part of the player hierarchy
+	//! \param[in] item
+	//! \return true if item belongs to the player, otherwise false
+	protected bool ItemBelongsToThePlayer(notnull IEntity item)
+	{
+		if (!m_Player)
+			return false;
+
+		IEntity parent = item.GetParent();
+		while (parent)
+		{
+			if (parent == m_Player)
+				return true;
+
+			parent = parent.GetParent();
+		}
+
+		return false;
+	}
+
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
+	//! Update the states of the navigation buttons used in the inventory
 	void NavigationBarUpdate()
 	{
 		if (!m_pNavigationBar)
@@ -2112,78 +2152,182 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (m_bIsUsingGamepad)
 		{
 			NavigationBarUpdateGamepad();
-			return;
-		}
-
-		m_pNavigationBar.SetAllButtonEnabled( false );
-		m_pNavigationBar.SetButtonEnabled( "ButtonBack", true );
-
-		SCR_InventoryHitZoneUI hzSlot = SCR_InventoryHitZoneUI.Cast(m_pActiveHoveredStorageUI);
-		m_pNavigationBar.SetButtonEnabled("ButtonRemoveTourniquet", (hzSlot && hzSlot.IsTourniquetted()));			
-
-		if ( !m_pFocusedSlotUI )
-			return;
-
-		InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
-		if (itemComp && itemComp.GetOwner()
-			&& m_pActiveHoveredStorageUI != m_pStorageListUI
-			&& m_pActiveHoveredStorageUI != m_pStorageLootUI)
-		{
-			bool canUse = m_StorageManager.CanUseItem_Inventory(itemComp.GetOwner());
-			bool canEquip = m_StorageManager.CanEquipItem_Inventory(itemComp.GetOwner());
-
-			m_pNavigationBar.SetButtonEnabled("ButtonUse", canUse);
-			m_pNavigationBar.SetButtonEnabled("ButtonEquip", canEquip);
-		}
-
-		if ( m_pFocusedSlotUI.GetStorageUI() == m_pQuickSlotStorage )
-		{
-			if (m_pFocusedSlotUI.GetInventoryItemComponent())
-				m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotUnassign", true);
-			return;
-		}
-
-		bool arsenalItem = IsStorageArsenal(m_pFocusedSlotUI.GetStorageUI().GetCurrentNavigationStorage());
-		if (itemComp && itemComp.GetOwner() && !arsenalItem)
-			m_pNavigationBar.SetButtonEnabled("ButtonInspect", (itemComp.GetOwner().FindComponent(SCR_WeaponAttachmentsStorageComponent) != null));
-		
-		m_pNavigationBar.SetButtonEnabled( "ButtonSelect", true );
-		m_pNavigationBar.SetButtonEnabled( "ButtonDrop", m_pFocusedSlotUI.IsDraggable() );
-
-		bool flag = m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI;
-		bool isArsenal = IsStorageArsenal(m_pStorageLootUI.GetCurrentNavigationStorage());
-		
-		if (m_aOpenedStoragesUI.Contains(SCR_InventoryOpenedStorageUI.Cast(m_pFocusedSlotUI.GetStorageUI())))
-		{
-			isArsenal = false;
-			flag = false;
-		}
-		
-		if (DoesSlotContainNonRefundableItems(m_pFocusedSlotUI))
-		{
-			isArsenal = false;
-		}
-		
-		if (isArsenal)
-		{
-			m_pNavigationBar.SetButtonEnabled("ButtonBuy", flag);
-			m_pNavigationBar.SetButtonEnabled("ButtonSell", !flag);
-			m_pNavigationBar.SetButtonEnabled("ButtonPickup", false);
-			m_pNavigationBar.SetButtonEnabled("ButtonDrop", false);
+			if (m_pActiveStorageUI == m_pAttachmentStorageUI)
+				return;
 		}
 		else
 		{
-			m_pNavigationBar.SetButtonEnabled("ButtonBuy", false);
-			m_pNavigationBar.SetButtonEnabled("ButtonSell", false);
-			m_pNavigationBar.SetButtonEnabled("ButtonPickup", flag);
-			m_pNavigationBar.SetButtonEnabled("ButtonDrop", !flag);
+			m_pNavigationBar.SetAllButtonEnabled(false);
+			m_pNavigationBar.SetButtonEnabled(BUTTON_BACK, true);
+			m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, !m_DraggedSlot);
+	
+			SCR_InventoryHitZoneUI hzSlot = SCR_InventoryHitZoneUI.Cast(m_pActiveHoveredStorageUI);
+			m_pNavigationBar.SetButtonEnabled(BUTTON_REMOVE_TOURNIQUET, (hzSlot && hzSlot.IsTourniquetted()));			
 		}
+
+		//if player is dragging a slotted item then we dont want to show hints for items that will happen to be under the cursor
+		if (m_DraggedSlot)
+			return;
+
+		//if there is no slot under the cursor then there are no hints to show
+		if (!m_pFocusedSlotUI)
+			return;
+
+		InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
+		if (!itemComp)
+			return;
+
+		IEntity item = itemComp.GetOwner();
+		if (!item)
+			return;
+
+		bool isItemInCharacter;
+		SCR_ArsenalInventorySlotUI arsenalSlot = SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI);
+		if (!arsenalSlot)
+		{
+			isItemInCharacter = ItemBelongsToThePlayer(item);
+		}
+		else if (!arsenalSlot.IsAvailable())
+		{
+			m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, false);
+			return;
+		}
+
+		if (isItemInCharacter)
+		{
+			m_pNavigationBar.SetButtonEnabled(BUTTON_USE, m_StorageManager.CanUseItem_Inventory(item));
+
+			m_pNavigationBar.SetButtonEnabled(BUTTON_EQUIP, !m_pItemToAssign && m_StorageManager.CanEquipItem_Inventory(item));
+			m_pNavigationBar.SetButtonEnabled(BUTTON_INSPECT, CanInspectItemInInventory(item, itemComp));
+		}
+
+		BaseInventoryStorageComponent desiredStorage = m_pStorageLootUI.GetCurrentNavigationStorage();
+		//is targeted item going to be transfered into the arsenal
+		bool isTargetingArsenal = isItemInCharacter && IsStorageArsenal(desiredStorage);
+
+		//if there is no specific storage open as main target, then check if any of the open containers is not an arsenal, as in such case it has the priority when item is transfered
+ 		if (isItemInCharacter && !isTargetingArsenal && !desiredStorage && m_aOpenedStoragesUI)
+			isTargetingArsenal = GetOpenArsenalStorage();
+
+		//check if currently focused item is not in a arsenal
+		if (isTargetingArsenal && m_aOpenedStoragesUI.Contains(SCR_InventoryOpenedStorageUI.Cast(m_pActiveHoveredStorageUI)))
+			isTargetingArsenal = false;
+
+		if (isTargetingArsenal && DoesSlotContainNonRefundableItems(m_pFocusedSlotUI))
+			isTargetingArsenal = false;
+
+		bool allowItemTransfer = !m_bIsUsingGamepad || m_pActiveStorageUI != m_pQuickSlotStorage;
+
+		m_pNavigationBar.SetButtonEnabled(BUTTON_BUY, arsenalSlot != null);
+		m_pNavigationBar.SetButtonEnabled(BUTTON_SELL, allowItemTransfer && isItemInCharacter && isTargetingArsenal);
+		m_pNavigationBar.SetButtonEnabled(BUTTON_PICK_UP, !isItemInCharacter && !arsenalSlot);
+		m_pNavigationBar.SetButtonEnabled(BUTTON_DROP, allowItemTransfer && m_pFocusedSlotUI.IsDraggable() && isItemInCharacter && !isTargetingArsenal);
 		
-		m_pNavigationBar.SetButtonEnabled( "ButtonStepBack", true );
+		m_pNavigationBar.SetButtonEnabled(BUTTON_STEP_BACK, true);
 	
 		HandleSlottedItemFunction();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Update the states of the navigation buttons used in the inventory while gamepad is used
+	void NavigationBarUpdateGamepad()
+	{
+		if (!m_pNavigationBar)
+			return;
+
+		m_pNavigationBar.SetAllButtonEnabled(false);
+		m_pNavigationBar.SetButtonEnabled(BUTTON_BACK, true);
+		m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, true);
+
+		SCR_InventoryHitZoneUI hzSlot = m_AttachmentSpinBox.GetFocusedHZPoint();
+		m_pNavigationBar.SetButtonEnabled(BUTTON_REMOVE_TOURNIQUET, hzSlot && hzSlot.IsTourniquetted() && m_AttachmentSpinBox.IsFocused());		
+
+		if (m_pActiveStorageUI == m_pAttachmentStorageUI)
+		{
+			m_pNavigationBar.SetButtonEnabled(BUTTON_USE, !m_pSelectedSlotUI);
+			return;
+		}
+ 
+		InventoryItemComponent iic;
+		if (m_pFocusedSlotUI)
+			iic = m_pFocusedSlotUI.GetInventoryItemComponent();
+
+		IEntity focusedItem;
+		bool isItemInCharacter;
+		if (iic)
+		{
+			focusedItem = iic.GetOwner();
+			if(focusedItem)
+				isItemInCharacter = ItemBelongsToThePlayer(focusedItem);
+		}
+
+		if (m_pFocusedSlotUI)
+			m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, !m_pSelectedSlotUI && focusedItem && m_pFocusedSlotUI.IsDraggable());
+		else
+			m_pNavigationBar.SetButtonEnabled(BUTTON_SELECT, !m_pSelectedSlotUI);
+
+		bool hoveringOverQuickSlots = m_pActiveStorageUI == m_pQuickSlotStorage;
+		if (m_bStorageSwitchMode)
+		{
+			if (m_pSelectedSlotUI)
+				m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_DESELECT);
+			else
+				m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_CLOSE);
+
+			bool shouldShowMove = m_pSelectedSlotUI && m_pSelectedSlotUI.IsDraggable() && m_pSelectedSlotUI != m_pFocusedSlotUI;
+			if (m_pActiveStorageUI)
+				shouldShowMove &= m_pActiveStorageUI.IsStorageHighlighted();
+
+			m_pNavigationBar.SetButtonEnabled(BUTTON_MOVE, shouldShowMove);
+
+			m_pNavigationBar.SetButtonEnabled(BUTTON_ENTER_STORAGE, m_pSelectedSlotUI != null && !hoveringOverQuickSlots);
+		}
+		else
+		{
+			m_pNavigationBar.SetButtonEnabled(BUTTON_SWAP, m_pSelectedSlotUI && m_pSelectedSlotUI != m_pFocusedSlotUI);// && m_pItemToAssign && focusedItem && m_pItemToAssign != focusedItem);
+			m_pNavigationBar.SetButtonEnabled(BUTTON_MOVE, m_pSelectedSlotUI && m_pSelectedSlotUI != m_pFocusedSlotUI);
+			if (!m_pSelectedSlotUI)
+				m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_BACK);
+		}
+
+		bool isWeaponQuickSlot = SCR_InventorySlotWeaponSlotsUI.Cast(m_pFocusedSlotUI);
+		m_pNavigationBar.SetButtonEnabled(BUTTON_QUICK_ASSIGN, !isWeaponQuickSlot && (hoveringOverQuickSlots && m_pItemToAssign || isItemInCharacter && !hoveringOverQuickSlots && CanItemFitIntoQuickSlots(iic)));
+		m_pNavigationBar.SetButtonEnabled(BUTTON_QUICK_UNASSIGN, hoveringOverQuickSlots && isItemInCharacter && !isWeaponQuickSlot && !m_pItemToAssign);
+	}
 	//---- REFACTOR NOTE END ----
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if given item can be used for entering inspection view in the inventory
+	//! \param[in] item
+	//! \param[in] iic
+	//! \return true when provided item can be inspected in the inventory view
+	protected bool CanInspectItemInInventory(notnull IEntity item, notnull InventoryItemComponent iic)
+	{
+		return item.FindComponent(SCR_WeaponAttachmentsStorageComponent);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Searches through the list of open containers in order to find the first storage which is an arsenal
+	//! \return storage component of the arsenal if found, otherwise null
+	protected BaseInventoryStorageComponent GetOpenArsenalStorage()
+	{
+		if (!m_aOpenedStoragesUI)
+			return null;
+
+		BaseInventoryStorageComponent storage;
+		//! The first opened storage that belong to arsenal is to be used.
+		foreach (SCR_InventoryOpenedStorageUI storageUI: m_aOpenedStoragesUI)
+		{
+			if (!SCR_InventoryOpenedStorageArsenalUI.Cast(storageUI))
+				continue;
+
+			storage = storageUI.GetStorage();
+			if (storage)
+				return storage;
+		}
+
+		return null;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void HandleSlottedItemFunction()
@@ -2194,10 +2338,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		switch ( m_pFocusedSlotUI.GetSlotedItemFunction() )
 		{
 			case ESlotFunction.TYPE_GADGET:
-				// m_pNavigationBar.SetButtonEnabled( "ButtonEquip", true );
+				// m_pNavigationBar.SetButtonEnabled( BUTTON_EQUIP, true );
 				break;
 			case ESlotFunction.TYPE_WEAPON:
-				//m_pNavigationBar.SetButtonEnabled( "ButtonEquip", true );
+				//m_pNavigationBar.SetButtonEnabled( BUTTON_EQUIP, true );
 
 				InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
 
@@ -2215,44 +2359,44 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 						weaponComp.GetWeaponType() != EWeaponType.WT_SMOKEGRENADE &&
 						weaponComp.Type() != SCR_MineWeaponComponent)
 					{
-						m_pNavigationBar.SetButtonEnabled( "ButtonOpenStorage", !arsenalItem );
-						m_pNavigationBar.SetButtonEnabled( "ButtonOpenAsContainer", !arsenalItem );
+						m_pNavigationBar.SetButtonEnabled(BUTTON_OPEN_STORAGE, !arsenalItem && !ItemBelongsToThePlayer(item));
+						m_pNavigationBar.SetButtonEnabled(BUTTON_OPEN_NEW_CONTAINER, !arsenalItem);
 					}
 				}
 
 				break;
 			case ESlotFunction.TYPE_MAGAZINE:
 				// TODO: show the Reload action
-				//m_pNavigationBar.SetButtonEnabled( "ButtonUse", true );
+				//m_pNavigationBar.SetButtonEnabled( BUTTON_USE, true );
 				break;
 			case ESlotFunction.TYPE_CONSUMABLE:
 				// TODO: show the Consume action
-				m_pNavigationBar.SetButtonEnabled( "ButtonUse", true );
+				m_pNavigationBar.SetButtonEnabled( BUTTON_USE, true );
 
 				break;
 			case ESlotFunction.TYPE_STORAGE:
 				if( m_EStateMenuItem == EStateMenuItem.STATE_MOVING_ITEM_STARTED && m_pFocusedSlotUI != m_pSelectedSlotUI )
 				{
 					sAction = "#AR-Inventory_Move";
-					//m_pNavigationBar.SetButtonEnabled( "ButtonSelect", false );
-					//m_pNavigationBar.SetButtonEnabled( "ButtonMove", true );
+					//m_pNavigationBar.SetButtonEnabled( BUTTON_SELECT, false );
+					//m_pNavigationBar.SetButtonEnabled( BUTTON_MOVE, true );
 				}
 				// Enable in case the storage is not "togglable" - can be only shown and only opening another storage will close it
 				/*else if ( m_EStateMenuStorage == EStateMenuStorage.STATE_OPENED && m_pFocusedSlotUI == m_pSelectedSlotUI && m_pFocusedSlotUI.Type() != SCR_InventorySlotStorageEmbeddedUI)
 				{
-					m_pNavigationBar.SetButtonEnabled( "ButtonSelect", false );
+					m_pNavigationBar.SetButtonEnabled( BUTTON_SELECT, false );
 				}*/
 				else if ( m_pFocusedSlotUI.Type() == SCR_InventorySlotStorageEmbeddedUI || m_pFocusedSlotUI.Type() == SCR_SupplyInventorySlotUI)
 				{
-					m_pNavigationBar.SetButtonEnabled( "ButtonOpenStorage", !arsenalItem );
-					m_pNavigationBar.SetButtonEnabled( "ButtonOpenAsContainer", !arsenalItem );
+					m_pNavigationBar.SetButtonEnabled(BUTTON_OPEN_STORAGE, !arsenalItem);
+					m_pNavigationBar.SetButtonEnabled(BUTTON_OPEN_NEW_CONTAINER, !arsenalItem);
 				}
 				
 				break;
 
 			case ESlotFunction.TYPE_HEALTH:
 				// TODO: show the Heal action
-				m_pNavigationBar.SetButtonEnabled( "ButtonUse", true );
+				m_pNavigationBar.SetButtonEnabled( BUTTON_USE, true );
 				
 				break;
 		}
@@ -2355,123 +2499,18 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		return true;
 	}
 
-
-	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-	//------------------------------------------------------------------------------------------------
-	void NavigationBarUpdateGamepad()
-	{
-		m_pNavigationBar.SetAllButtonEnabled(false);
-		m_pNavigationBar.SetButtonEnabled("ButtonBack", true);
-		m_pNavigationBar.SetButtonEnabled("ButtonSelect", true);
-
-		SCR_InventoryHitZoneUI hzSlot = m_AttachmentSpinBox.GetFocusedHZPoint();
-
-		m_pNavigationBar.SetButtonEnabled("ButtonRemoveTourniquet",
-			(hzSlot && hzSlot.IsTourniquetted()) &&
-			m_AttachmentSpinBox.IsFocused()
-		);		
-		
-		if (m_pActiveStorageUI == m_pAttachmentStorageUI)
-		{
-			m_pNavigationBar.SetButtonEnabled("ButtonUse", true);
-			return;
-		}
-
-		if (m_bStorageSwitchMode)
-		{
-			m_pNavigationBar.SetButtonActionName("ButtonBack", "#AR-Inventory_Close");
-			bool shouldShowMove = (m_pSelectedSlotUI != null) && m_pSelectedSlotUI.IsDraggable();
-			if (m_pSelectedSlotUI)
-				m_pNavigationBar.SetButtonActionName("ButtonBack", "#AR-Inventory_Deselect");			
-			if (m_pActiveStorageUI)
-				shouldShowMove &= m_pActiveStorageUI.IsStorageHighlighted();
-			m_pNavigationBar.SetButtonEnabled("ButtonMove", shouldShowMove);
-			m_pNavigationBar.SetButtonEnabled("ButtonSelect", !m_pSelectedSlotUI);
-			m_pNavigationBar.SetButtonEnabled("ButtonEnterStorage", m_pSelectedSlotUI != null)
-		}
-		else
-		{
-			m_pNavigationBar.SetButtonEnabled("ButtonMove", m_pSelectedSlotUI != null);
-			m_pNavigationBar.SetButtonEnabled("ButtonSwap", m_pSelectedSlotUI != null);
-		}
-
-		if (!m_bStorageSwitchMode &&
-			m_pActiveStorageUI != m_pStorageLootUI &&
-			m_pActiveStorageUI != m_pStorageListUI &&
-			m_pActiveStorageUI && !m_pActiveStorageUI.IsInherited(SCR_InventoryOpenedStorageUI))
-		{
-			m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotAssign", true);
-		}
-
-		bool isQuickSlotStorage = (m_pActiveStorageUI == m_pQuickSlotStorage);
-		if (isQuickSlotStorage)
-		{
-			bool itmToAssign = m_pItemToAssign != null;
-			m_pNavigationBar.SetAllButtonEnabled(false);
-			m_pNavigationBar.SetButtonEnabled("ButtonMove", m_pSelectedSlotUI != null);
-			m_pNavigationBar.SetButtonEnabled("ButtonBack", true);
-			if (m_bStorageSwitchMode)
-				m_pNavigationBar.SetButtonEnabled("ButtonSelect", true);
-
-			m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotAssign", itmToAssign);
-			m_pNavigationBar.SetButtonEnabled("ButtonQuickSlotUnassign",
-				!itmToAssign &&
-				m_pFocusedSlotUI != null
-			);
-		}
-
-		if (!m_pFocusedSlotUI)
-			return;
-
-		InventoryItemComponent itemComp = m_pFocusedSlotUI.GetInventoryItemComponent();
-		bool arsenalItem = IsStorageArsenal(m_pFocusedSlotUI.GetStorageUI().GetCurrentNavigationStorage());
-		if (itemComp && itemComp.GetOwner() && !arsenalItem)
-			m_pNavigationBar.SetButtonEnabled("ButtonInspect", (itemComp.GetOwner().FindComponent(SCR_WeaponAttachmentsStorageComponent) != null));
-
-		if (itemComp 
-			&& m_pActiveStorageUI != m_pStorageListUI
-			&& m_pActiveStorageUI != m_pStorageLootUI)
-		{
-			bool canUse = m_StorageManager.CanUseItem_Inventory(itemComp.GetOwner());
-			bool canEquip = m_StorageManager.CanEquipItem_Inventory(itemComp.GetOwner());
-
-			m_pNavigationBar.SetButtonEnabled("ButtonUse", canUse);
-			m_pNavigationBar.SetButtonEnabled("ButtonEquip", canEquip);
-		}
-
-		if (!m_pSelectedSlotUI)
-		m_pNavigationBar.SetButtonActionName("ButtonBack", "#AR-Menu_Back");
-
-		m_pNavigationBar.SetButtonEnabled("ButtonDrop",
-			(m_pFocusedSlotUI != null) &&
-			!isQuickSlotStorage &&
-			m_pFocusedSlotUI.IsDraggable() &&
-			!m_AttachmentSpinBox.IsFocused()
-		);
-
-		bool flag = m_pFocusedSlotUI.GetStorageUI() == m_pStorageLootUI;
-		m_pNavigationBar.SetButtonEnabled("ButtonPickup", flag);
-
-		if (!isQuickSlotStorage)
-		{
-			m_pNavigationBar.SetButtonEnabled("ButtonDrop", !flag);
-			HandleSlottedItemFunction();
-		}
-	}
-	//---- REFACTOR NOTE END ----
-
 	//------------------------------------------------------------------------------------------------
 	protected void HandleSelectButtonState( string sAction = "#AR-Inventory_Select" )
 	{
 		//TODO: this can be done better
 		if ( sAction == "#AR-Inventory_Move" )
-			m_pNavigationBar.SetButtonActionName( "ButtonSelect", sAction );
+			m_pNavigationBar.SetButtonActionName( BUTTON_SELECT, sAction );
 		else
 		{
 			if ( !m_pFocusedSlotUI.IsSlotSelected() )
-				m_pNavigationBar.SetButtonActionName( "ButtonSelect", sAction );
+				m_pNavigationBar.SetButtonActionName( BUTTON_SELECT, sAction );
 			else
-				m_pNavigationBar.SetButtonActionName( "ButtonSelect", "#AR-Inventory_Deselect" );
+				m_pNavigationBar.SetButtonActionName( BUTTON_SELECT, "#AR-Inventory_Deselect" );
 		}
 	}
 
@@ -2838,6 +2877,13 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				if (m_pSelectedSlotUI)
 					m_pSelectedSlotUI.SetSelected(false);
 
+				if (!m_pFocusedSlotUI.IsDraggable())
+					return;
+
+				SCR_ArsenalInventorySlotUI arsenalSlot = SCR_ArsenalInventorySlotUI.Cast(m_pFocusedSlotUI);
+				if (arsenalSlot && !arsenalSlot.IsAvailable())
+					return;
+
 				if (m_bIsUsingGamepad)
 				{
 					m_pSelectedSlotUI = m_pFocusedSlotUI;
@@ -3031,7 +3077,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (m_pItemToAssign && m_pActiveStorageUI == m_pQuickSlotStorage)
 		{
-			int slotId = m_pQuickSlotStorage.GetFocusedSlotId() + 1;
+			int slotId = m_pQuickSlotStorage.GetSlotId(m_pFocusedSlotUI) + 1;
 			SetItemToQuickSlot(slotId, m_pItemToAssign);
 			FocusOnSlotInStorage(m_pQuickSlotStorage, slotId - 1);
 			m_pItemToAssign = null;
@@ -3044,7 +3090,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 				FocusOnSlotInStorage(m_pQuickSlotStorage, 4);
 			}
 		}
-
+		
 		NavigationBarUpdate();
 	}
 
@@ -3069,6 +3115,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		ShowQuickSlotStorage();
 		FocusOnSlotInStorage(m_pQuickSlotStorage, slotId);
 		NavigationBarUpdate();
+		HideItemInfo();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -3382,7 +3429,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		if (!m_InventoryManager.CanMoveItem(pItem))
 			return;
 		
-		if (pItem.FindComponent(BaseMagazineComponent) && pStorageFrom.IsInherited(SCR_WeaponAttachmentsStorageComponent))
+		if (pStorageFrom && pItem.FindComponent(BaseMagazineComponent) && pStorageFrom.IsInherited(SCR_WeaponAttachmentsStorageComponent))
 		{
 			if (!IsWeaponEquipped(pStorageFrom.GetOwner()))
 				return;
@@ -3707,20 +3754,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
 		
-		if (!storageComponent && m_aOpenedStoragesUI) //! Relevant for OpenStorage classes
-		{
-			//! The first opened storage that belong to arsenal is to be used.
-			foreach (SCR_InventoryOpenedStorageUI storageUI: m_aOpenedStoragesUI)
-			{
-				if (!SCR_InventoryOpenedStorageArsenalUI.Cast(storageUI))
-					continue;
-				
-				storageComponent = storageUI.GetStorage();
-				
-				if (storageComponent)
-					break;
-			}
-		}
+ 		if (!storageComponent && m_aOpenedStoragesUI) //! Relevant for OpenStorage classes
+			storageComponent = GetOpenArsenalStorage();
 		
 		if (!storageComponent || !IsStorageArsenal(storageComponent))	
 			return false;
@@ -3959,7 +3994,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		
 		if (!m_pSelectedSlotUI || !arsenalInventorySlotUI)
 			return false;
-		
+
+		if (!arsenalInventorySlotUI.IsAvailable())
+			return true;
+
 		SCR_InventoryStorageManagerComponent invManagerTo	= m_InventoryManager;
 		IEntity slotEntity									= arsenalInventorySlotUI.GetInventoryItemComponent().GetOwner();
 		BaseInventoryStorageComponent storageTo				= m_InventoryManager.FindStorageForItem(slotEntity, EStoragePurpose.PURPOSE_ANY);
@@ -4416,7 +4454,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (m_pFocusedSlotUI)
 			m_pFocusedSlotUI.UseItem(m_Player, SCR_EUseContext.FROM_INVENTORY);
-		}
+
+		NavigationBarUpdate();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void Action_MoveBetween()
@@ -4999,7 +5039,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		pContainer.ShowContainerBorder( false );
 		m_pActiveHoveredStorageUI = null;
 		pContainer.SetPagingActive(false);
-		NavigationBarUpdate();
+		m_pNavigationBar.SetAllButtonEnabled(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -5123,8 +5163,10 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		if (!slot)
 			slot = m_pFocusedSlotUI;
-		if ( !slot )
+
+		if (!slot)
 			return;
+
 		if (iSlotIndex < WEAPON_SLOTS_COUNT)
 			return;
 
@@ -5134,22 +5176,39 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		|| IsStorageArsenal(storageUI.GetCurrentNavigationStorage()))
 			return;	//we don't want to take anything from vicinity to the quickslot
 
-		if ( slot.Type() == SCR_InventorySlotQuickSlotUI )
+		if (slot.Type() == SCR_InventorySlotQuickSlotUI)
 			return;
+
 		InventoryItemComponent pInventoryComponent = slot.GetInventoryItemComponent();
-		if ( !pInventoryComponent )
+		if (!pInventoryComponent)
 			return;
+
 		IEntity pItem = pInventoryComponent.GetOwner();
 		if (!pItem)
 			return;
+
 		if (m_pWeaponStorageComp.Contains(pItem))
 			return;
-		SCR_ItemAttributeCollection pItemAttributes = SCR_ItemAttributeCollection.Cast( pInventoryComponent.GetAttributes() );
-		if ( pItemAttributes && ( pItemAttributes.GetQuickSlotItemSize() != ESlotSize.SLOT_1x1 && pItemAttributes.GetQuickSlotItemSize() != ESlotSize.SLOT_2x1 ) )
+		
+		if (!CanItemFitIntoQuickSlots(pInventoryComponent))
 			return; //so far only items with one line are supported ( issue on the UI side )
 
 		m_StorageManager.StoreItemToQuickSlot( pItem, --iSlotIndex );
 		ShowQuickSlotStorage();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks if item's slot configuration matches size requirements for a quick slot
+	//! \param[in] iic InventoryItemComponent of the validated item
+	//! returns true if item slot size is either 1x1 or 2x1, otherwise false
+	protected bool CanItemFitIntoQuickSlots(notnull InventoryItemComponent iic)
+	{
+		SCR_ItemAttributeCollection itemAttributes = SCR_ItemAttributeCollection.Cast(iic.GetAttributes());
+		if (!itemAttributes)
+			return true;
+
+		ESlotSize size = itemAttributes.GetQuickSlotItemSize();
+		return size == ESlotSize.SLOT_1x1 || size == ESlotSize.SLOT_2x1;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -5306,9 +5365,24 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	//------------------------------------------------------------------------------------------------
 	void OnInputDeviceIsGamepad(bool isGamepad)
 	{
+		bool oldState = m_bIsUsingGamepad;
+		bool switchedToMnK = m_bIsUsingGamepad && m_bIsUsingGamepad != isGamepad;
 		m_bIsUsingGamepad = isGamepad;
-		SetStorageSwitchMode(m_bIsUsingGamepad);
+		SetStorageSwitchMode(m_bIsUsingGamepad, false);
 		SetAttachmentSpinBoxActive(isGamepad);
+		if (oldState != isGamepad)
+		{
+			if (oldState)
+			{//force reset the lable of this hint as for M&K there is only one mode for this button
+				m_pNavigationBar.SetButtonActionName(BUTTON_BACK, GAMEPAD_HINT_CLOSE);
+			}
+			else if (m_pSelectedSlotUI)
+			{//as there is nothing that cleares the selected slot which was selected when using M&K
+				m_pSelectedSlotUI.SetSelected(false);
+				m_pSelectedSlotUI = null;
+			}
+		}
+
 		NavigationBarUpdate();
 	}
 

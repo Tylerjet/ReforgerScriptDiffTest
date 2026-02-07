@@ -384,8 +384,58 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 						if (m_BaseWithPlayer.GetReconfiguredByID() != SCR_PlayerController.GetLocalPlayerId())
 						{
-							if (!currentMsg || currentMsg.m_iPriority != SCR_ECampaignSeizingMessagePrio.SEIZING_YOU)
-								popup.PopupMsg("#AR-Campaign_SeizingFriendly-UC", -1, prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, progressStart: m_fBaseWithPlayerCaptureStart, progressEnd: m_fBaseWithPlayerCaptureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
+							bool isPlayerCapturing;
+							SCR_CampaignSeizingComponent seizingComp = SCR_CampaignSeizingComponent.Cast(m_BaseWithPlayer.GetOwner().FindComponent(SCR_CampaignSeizingComponent));
+							
+							if (seizingComp)
+							{
+								ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+								
+								if (player)
+								{
+									CharacterControllerComponent charController = player.GetCharacterController();
+									
+									if (charController && charController.GetLifeState() != ECharacterLifeState.DEAD)
+									{
+										vector playerPos = player.GetOrigin();
+
+										// Triggers calculate entity presence by bounding boxes
+										// We need to calculate the player's bbox radius to match the distance to the trigger
+										vector boundsMin, boundsMax;
+										player.GetWorldBounds(boundsMin, boundsMax);
+										float distanceDiff = vector.DistanceXZ(boundsMin, boundsMax) / 2;
+
+										if (!player.IsInVehicle() || SCR_TerrainHelper.GetHeightAboveTerrain(playerPos) <= seizingComp.GetMaximumAltitude())
+											isPlayerCapturing = vector.DistanceXZ(playerPos, m_BaseWithPlayer.GetOwner().GetOrigin()) <= (seizingComp.GetRadius() + distanceDiff);
+									}
+								}
+							}
+							
+							string text;
+							bool update;
+							
+							if (isPlayerCapturing)
+							{
+								if (!currentMsg || currentMsg.m_sText != "#AR-Campaign_SeizingPlayer-UC")
+									update = true;
+								
+								text = "#AR-Campaign_SeizingPlayer-UC";
+							}
+							else
+							{
+								if (!currentMsg || currentMsg.m_sText != "#AR-Campaign_SeizingFriendly-UC")
+									update = true;
+							
+								text = "#AR-Campaign_SeizingFriendly-UC";
+							}
+							
+							if (!currentMsg || currentMsg.m_iPriority != SCR_ECampaignSeizingMessagePrio.SEIZING_YOU || update)
+							{
+								if (isPlayerCapturing)
+									popup.PopupMsg(text, -1, prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, progressStart: m_fBaseWithPlayerCaptureStart, progressEnd: m_fBaseWithPlayerCaptureEnd, category: SCR_EPopupMsgFilter.TUTORIAL);
+								else
+									popup.PopupMsg(text, -1, "#AR-Campaign_Popup_HelpCapture", prio: SCR_ECampaignSeizingMessagePrio.SEIZING_YOU, category: SCR_EPopupMsgFilter.TUTORIAL);
+							}
 						}
 					}
 					else

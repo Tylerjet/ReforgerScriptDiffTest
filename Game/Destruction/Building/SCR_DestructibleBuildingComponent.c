@@ -1442,6 +1442,9 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	//! Handles calling SpawnEffects, calculates percentDone parameter
 	protected void LerpPosition(IEntity owner, float timeSlice)
 	{
+		if (!owner)
+			return;
+		
 		SCR_BuildingDestructionData data = GetData();
 		if (!data)
 			return;

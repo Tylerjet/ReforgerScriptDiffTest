@@ -292,6 +292,7 @@ class SCR_SoundEvent
 	static const string SOUND_EXPLOSIVE_ARM = "SOUND_ARM";
 	static const string SOUND_EXPLOSIVE_ADJUST_TIMER = "SOUND_TIMER_ADJUST";
 	static const string SOUND_LOAD = "SOUND_LOAD";
+	static const string SOUND_SIGHT_ELEVATION = "SOUND_SIGHT_ELEVATION";
 
 	// Actions
 	static const string SOUND_EQUIP = "SOUND_EQUIP";

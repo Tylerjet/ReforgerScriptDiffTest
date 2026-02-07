@@ -18,6 +18,9 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 	
 	[Attribute("0")]
 	protected bool m_bShouldFade;
+
+	[Attribute(uiwidget: UIWidgets.ComboBox, desc: "List of modes for which quantity indicator should be visible.", enumType: EWeaponGroupFireMode)]
+	ref array<EWeaponGroupFireMode> m_aShowQuantityIndicator;
 	
 	protected EventHandlerManagerComponent m_turretEventHandler;
 	protected BaseWeaponManagerComponent m_WeaponManager;
@@ -76,6 +79,8 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		else
 		{
 			m_DataHolder.Reset();
+			if (m_DataHolder.m_FireModeManager)
+				m_DataHolder.m_FireModeManager.GetOnTurretFireModeValuesChanged().Remove(UpdateQuantityIndicator);
 		}
 		
 		//Get turret and turret Controller
@@ -93,6 +98,7 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		if (!m_DataHolder.m_FireModeManager)
 			return;
 		
+		m_DataHolder.m_FireModeManager.GetOnTurretFireModeValuesChanged().Insert(UpdateQuantityIndicator);
 		//Get all slots and filter out the empty ones
 		m_DataHolder.m_multiWComp.GetWeaponsSlots(m_DataHolder.m_aWeaponslots);
 		
@@ -123,6 +129,7 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		EWeaponGroupFireMode firemode = typename.StringToEnum(EWeaponGroupFireMode, sFiremode);
 		
 		OnFiremodeChanged(firemode);
+		UpdateQuantityIndicator(firemode, m_DataHolder.m_FireModeManager.GetRippleQuantity());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -587,6 +594,31 @@ class SCR_WeaponInfo_MultiWeaponTurret : SCR_InfoDisplayExtended
 		m_Widgets.m_wFiremodeGlow.SetVisible(true);
 		
 		AnimateWidget_ColorFlash(m_Widgets.m_wFiremodeIcon, EWeaponFeature.FIREMODE);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Method used to update the visibility as well as the text of the projectile quantity indicator
+	//! \param[in] firemode
+	//! \param[in] quantity
+	//! \param[in] weaponGroupId
+	protected void UpdateQuantityIndicator(EWeaponGroupFireMode fireMode, int quantity, int weaponGroupId = 0)
+	{
+		if (!m_Widgets || !m_Widgets.m_wProjectileQuantityText)
+			return;
+
+		bool show;
+		foreach (int enabledMode : m_aShowQuantityIndicator)
+		{
+			if (enabledMode != fireMode)
+				continue;
+
+			show = true;
+			break;
+		}
+
+		m_Widgets.m_wProjectileQuantityText.SetVisible(show);
+		if (show)
+			m_Widgets.m_wProjectileQuantityText.SetText(quantity.ToString());
 	}
 	
 	//------------------------------------------------------------------------------------------------
