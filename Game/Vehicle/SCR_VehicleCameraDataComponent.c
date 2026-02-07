@@ -6,6 +6,8 @@ class SCR_VehicleCameraDataComponentClass: ScriptComponentClass
 
 class SCR_VehicleCameraDataComponent : ScriptComponent
 {
+	[Attribute("false", UIWidgets.CheckBox, "Override the vehicle camera data component of the parent Vehicle\n")]
+	bool m_bOverrideVehicleSettings;
 	[Attribute("1", UIWidgets.EditBox, "Height the camera should stay above the vehicle's bounding box center\n[m]")]
 	float m_fHeight;
 	[Attribute("1", UIWidgets.EditBox, "Speed-based view bobbing multiplier\n[x * 100%]")]

@@ -376,7 +376,7 @@ class SCR_BaseTask : GenericEntity
 		
 		string assigneeNames = "";
 		if (IsAssigned())
-			assigneeNames = "#AR-DeployMenu_AssignedPlayers: \n" + GetAllAssigneeNamesString();
+			assigneeNames = "#AR-DeployMenu_AssignedPlayers \n" + GetAllAssigneeNamesString();
 		
 		textWidget.SetTextFormat(assigneeNames);
 	}

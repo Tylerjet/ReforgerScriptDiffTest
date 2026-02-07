@@ -207,7 +207,10 @@ class SCR_BaseCampaignTutorialArlandStage : GenericEntity
 		}
 		
 		if (!m_Player)
-			return;
+			m_Player = m_TutorialComponent.GetPlayer();
+		
+		if (!m_Player)
+			return; // If this returns something is horribly fundamentally wrong with the game.
 		
 		// If duration is set up, simply check the timer
 		// Otherwise periodically check the ending condition

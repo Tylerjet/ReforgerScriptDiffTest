@@ -336,7 +336,7 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		float healthPercentage;
 		
 		//~ Get the current percentage of healing and if all hitZones are healed to the max
-		SCR_SupportStationManagerComponent.GetCombinedHitZonesStateForDamageSupportStation(action.GetActionDamageManager(), hitZones, m_fMaxHealScaled, healthPercentage, allHitZonesMaxHealth);	
+		SCR_SupportStationManagerComponent.GetCombinedHitZonesStateForDamageSupportStation(action.GetActionDamageManager(), hitZones, GetMaxHealScaled(), healthPercentage, allHitZonesMaxHealth);	
 		SCR_FlammableHitZone flammableHitZone;
 		EFireState fireState;
 		

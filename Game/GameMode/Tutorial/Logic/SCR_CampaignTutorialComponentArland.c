@@ -1577,10 +1577,14 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 			identityComp.SetIdentity(oldIdentity);
 		
 		m_Player = ChimeraCharacter.Cast(newCharacter);
-		m_Stage.SetPlayer(m_Player);
 		playerController.SetControlledEntity(newCharacter);
 		
 		SCR_EntityHelper.DeleteEntityAndChildren(oldCharacter);
+		
+		if (!m_Stage)
+			return;
+		
+		m_Stage.SetPlayer(m_Player);
 	}
 	
 	//------------------------------------------------------------------------------------------------

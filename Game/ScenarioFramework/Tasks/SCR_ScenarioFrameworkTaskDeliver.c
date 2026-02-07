@@ -216,7 +216,10 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		m_bTaskPositionUpdated = true;
 		SCR_ScenarioFrameworkLayerTaskDeliver layerTaskDeliver = SCR_ScenarioFrameworkLayerTaskDeliver.Cast(m_Layer);
 		if (!layerTaskDeliver)
+		{
+			Print("ScenarioFramework: Task Deliver failed to access LayerTask", LogLevel.ERROR);
 			return;
+		}
 					
 		//We want to delay position movement of the Task marker on the map by given time
 		GetGame().GetCallqueue().CallLater(MoveTaskMarkerPosition, 1000 * layerTaskDeliver.GetIntelMapMarkerUpdateDelay(), false);

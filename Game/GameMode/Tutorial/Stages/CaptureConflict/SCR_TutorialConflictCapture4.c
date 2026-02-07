@@ -9,7 +9,7 @@ class SCR_TutorialConflictCapture4 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 12;
+		m_fDuration = 20;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	}
 };

@@ -3370,7 +3370,47 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pCallBack.m_iSlotToFocus = m_pFocusedSlotUI.GetStorageUI().GetFocusedSlotId();
 		m_pCallBack.m_bUpdateSlotOnly = m_pSelectedSlotUI.IsStacked();
 
+		if (MoveBetweenToVicinity_VirtualArsenal())
+			return;
+		
 		MoveToVicinity( pItem );
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool MoveBetweenToVicinity_VirtualArsenal()
+	{
+		BaseInventoryStorageComponent storageComponent = m_pStorageLootUI.GetCurrentNavigationStorage();
+		
+		if (!storageComponent && m_aOpenedStoragesUI) //! Relevant for OpenStorage classes
+		{
+			//! The first opened storage that belong to arsenal is to be used.
+			foreach (SCR_InventoryOpenedStorageUI storageUI: m_aOpenedStoragesUI)
+			{
+				if (!SCR_InventoryOpenedStorageArsenalUI.Cast(storageUI))
+					continue;
+				
+				storageComponent = storageUI.GetStorage();
+				
+				if (storageComponent)
+					break;
+			}
+		}
+		
+		if (!storageComponent || !IsStorageArsenal(storageComponent))	
+			return false;
+		
+		//! Perform refund logic.
+		IEntity arsenalEntity							= storageComponent.GetOwner();
+		InventoryItemComponent inventoryItemComponent	= m_pSelectedSlotUI.GetInventoryItemComponent();
+		SCR_ResourceComponent resourceComponent			= SCR_ResourceComponent.FindResourceComponent(arsenalEntity);
+		SCR_ResourcePlayerControllerInventoryComponent resourceInventoryComponent = SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent));
+		
+		if (!resourceInventoryComponent)
+			return false;
+		
+		resourceInventoryComponent.Rpc(resourceInventoryComponent.RpcAsk_ArsenalRefundItem, Replication.FindId(resourceComponent), Replication.FindId(inventoryItemComponent), EResourceType.SUPPLIES);
+		
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------

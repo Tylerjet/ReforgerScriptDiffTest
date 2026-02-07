@@ -158,6 +158,8 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 		foreach(Widget w, SCR_MapUIElement e : m_mIcons)
 		{
+			if (!w)
+				continue;
 			w.RemoveFromHierarchy();
 		}
 		

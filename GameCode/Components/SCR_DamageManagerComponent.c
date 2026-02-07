@@ -243,7 +243,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		// Fix hitzones
 		foreach (HitZone hitZone : hitZones)
 		{
-			if (hitZone && hitZone.GetHealthScaled() < 1)
+			if (hitZone && hitZone.GetDamageState() != EDamageState.UNDAMAGED)
 				hitZone.SetHealthScaled(1);
 		}
 	}
@@ -369,12 +369,16 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 		if (!hitZones)
 			return 0;
-
-		float totalDamage;
+		
+		float totalDamage, addedDamage;
 
 		foreach (HitZone hitZone : hitZones)
 		{
-			float addedDamage = (hitZone.GetMaxHealth() * untilThresholdScaled) - hitZone.GetHealth();
+			//~ Ignore undamaged
+			if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
+				continue;
+			
+			addedDamage = (hitZone.GetMaxHealth() * untilThresholdScaled) - hitZone.GetHealth();
 			if (addedDamage > 0)
 				totalDamage += addedDamage;
 		}
@@ -402,6 +406,12 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 		foreach (HitZone hitZone : hitZones)
 		{
+			if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
+			{
+				totalHealthScaled += 1;
+				continue;
+			}
+				
 			totalHealthScaled += hitZone.GetHealthScaled();
 		}
 
@@ -432,11 +442,18 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		{
 			if (returnValue < 0)
 			{
-				returnValue = hitZone.GetHealthScaled();
+				if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
+					returnValue = 1;
+				else 
+					returnValue = hitZone.GetHealthScaled();
+				
 				continue;
 			}
-
-			healthScaled = hitZone.GetHealthScaled();
+			
+			if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
+				healthScaled = 1;
+			else 
+				healthScaled = hitZone.GetHealthScaled();
 
 			if ((getLowestHealth && returnValue > healthScaled) || (!getLowestHealth && returnValue < healthScaled))
 				returnValue = healthScaled;

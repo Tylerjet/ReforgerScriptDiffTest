@@ -9,7 +9,7 @@ class SCR_CampaignTutorialArlandDrivingAdvanced1 : SCR_BaseCampaignTutorialArlan
 		//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 6;
+		m_fDuration = 20;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 
 		m_TutorialComponent.ResetStage_VehiclesHeavy();

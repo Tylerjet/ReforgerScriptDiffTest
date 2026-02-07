@@ -91,7 +91,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		
 		if (m_pItem && m_pItem.GetAttributes())
 			m_Attributes = SCR_ItemAttributeCollection.Cast( m_pItem.GetAttributes() );			//set the slot attributes (size) based on the information stored in the item 
-		if(! m_Attributes)
+		if (!m_Attributes)
 			return;
 		if (m_pItem && !m_Attributes.IsVisible())
 			return;
@@ -102,6 +102,10 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 
 		m_workspaceWidget = GetGame().GetWorkspace();
 		Widget wGrid = m_pStorageUI.GetStorageGrid();
+		
+		if (!wGrid)
+			return;
+		
 		m_widget = m_workspaceWidget.CreateWidgets( SetSlotSize(), wGrid );
 		m_widget.AddHandler( this );	//calls the HandlerAttached()
 	}

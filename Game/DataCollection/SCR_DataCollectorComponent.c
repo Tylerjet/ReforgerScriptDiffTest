@@ -331,10 +331,11 @@ class SCR_DataCollectorComponent : SCR_BaseGameModeComponent
 	{
 		if (!SCR_ChimeraCharacter.Cast(entity))
 		{
-			Print("Error: The OnControllableDestroyed method from the Data Collector was invoked with an IEntity that is not a chimera character."
-			+ "Dead entity is" + entity +", and killerEntity is "+killerEntity, LogLevel.ERROR);
-			PrintFormat("Dead: %1", entity);
-			PrintFormat("KillerEntity: %1", killerEntity);
+			// Spoiler - it was a vehicle, not an error
+			// Print("Error: The OnControllableDestroyed method from the Data Collector was invoked with an IEntity that is not a chimera character."
+			// + "Dead entity is" + entity +", and killerEntity is "+killerEntity, LogLevel.ERROR);
+			// PrintFormat("Dead: %1", entity);
+			// PrintFormat("KillerEntity: %1", killerEntity);
 			return;
 		}
 

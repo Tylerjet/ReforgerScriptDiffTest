@@ -985,6 +985,9 @@ class SCR_ScenarioFrameworkActionRemoveItemFromInventory : SCR_ScenarioFramework
 			
 			foreach (IEntity item : items)
 			{
+				if (!item)
+					continue;
+				
 				EntityPrefabData prefabData = item.GetPrefabData();
 				if (!prefabData)
 					continue;
@@ -1079,9 +1082,13 @@ class SCR_ScenarioFrameworkActionCountInventoryItemsAndExecuteAction : SCR_Scena
 			int count;
 			int targetCount = prefabFilter.m_iPrefabCount;
 			bool includeInheritance = prefabFilter.m_bIncludeChildren;
+			countCondition = false;
 			
 			foreach (IEntity item : items)
 			{
+				if (!item)
+					continue;
+				
 				EntityPrefabData prefabData = item.GetPrefabData();
 				if (!prefabData)
 					continue;
@@ -1122,6 +1129,10 @@ class SCR_ScenarioFrameworkActionCountInventoryItemsAndExecuteAction : SCR_Scena
 					break;
 				}
 			}
+			
+			//If just one prefab filter is false, we don't count any further and return
+			if (!countCondition)
+				return;
 		}
 		
 		if (countCondition)

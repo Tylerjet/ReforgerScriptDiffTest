@@ -91,10 +91,6 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 			m_TaskLayer.SetTaskSubject(this);
 			if (m_Entity)
 				m_TaskLayer.SetEntity(m_Entity);
-			
-			SCR_ScenarioFrameworkTask task = m_TaskLayer.GetTask();
-			if (task)
-				task.SetSlotTask(this);
 		}
 		else
 		{

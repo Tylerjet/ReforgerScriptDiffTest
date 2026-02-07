@@ -135,7 +135,7 @@ class SCR_MapLocator : GenericEntity
 		int playerGridID = GetGridIndex(playerGridPositionX,playerGridPositionY);
 		m_wUIHintText.SetTextFormat(m_WorldDirections.GetPlayerPositionHint(), m_WorldDirections.GetQuadHint(playerGridID));
 		if (lastDistance < 40000)
-			m_wUIHintText2.SetTextFormat("%1.", closestLocationName);
+			m_wUIHintText2.SetTextFormat("#AR-MapLocationHint_PlayerPositionNear", closestLocationName);
 		else
 		{
 			m_wUIHintText2.SetVisible(!closestLocationName.IsEmpty());

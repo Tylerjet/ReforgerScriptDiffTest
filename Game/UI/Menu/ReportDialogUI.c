@@ -85,14 +85,17 @@ class ReportDialogUI: DialogUI
 				action.Cancel();
 		}
 		
-		m_Overlay.Close();
-		this.Close();
+		if (m_Overlay)
+			m_Overlay.Close();
+		
+		Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnReportFailed(SCR_WorkshopItemAction action)
 	{
-		m_Overlay.Close();
+		if (m_Overlay)
+			m_Overlay.Close();
 	}
 	
 	//------------------------------------------------------------------------------------------------

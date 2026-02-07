@@ -10,7 +10,7 @@ class SCR_BuildingTutorialStage12: SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected void Setup()
 	{
-		m_fDuration = 5;
+		m_fDuration = 10;
 		m_bCheckWaypoint = false;
 		m_PlayerInventory = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
 		

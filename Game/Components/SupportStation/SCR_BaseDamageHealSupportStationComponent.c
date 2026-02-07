@@ -64,14 +64,18 @@ class SCR_BaseDamageHealSupportStationComponentClass : SCR_BaseSupportStationCom
 
 class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponent
 {
-	[Attribute("500", desc: "Max damage healed each execute. If you hold the action it will heal each time the action ends", category: "Heal/Repair Support Station")]
+	[Attribute("500", desc: "Max damage healed each execute. If you hold the action it will heal each time the action ends", category: "Heal/Repair Support Station", params: "0.01 inf")]
 	protected float m_iDamageHealedEachExecution;
 	
-	[Attribute("100", desc: "Supply cost for ever 'Damage Healed Each Execution' damage healed. If the left over damage is less then it will of course be cheaper with a min value of 1", category: "Heal/Repair Support Station")]
+	[Attribute("100", desc: "Supply cost for ever 'Damage Healed Each Execution' damage healed. If the left over damage is less then it will of course be cheaper with a min value of 1", category: "Heal/Repair Support Station", params: "0 inf")]
 	protected int m_iSupplyCostDamageHealed;
 	
 	[Attribute("1", desc: "The max percentage that this support station can heal scaled. 1 == 100%, This is not calculated as a whole but for each hitZone. Aka if hitZone A is less than this percentage then the heal action can be executed even if total health is more than this %", params: "0.01 1", category: "Heal/Repair Support Station")]
 	protected float m_fMaxHealScaled;
+	
+	//~ Hotfixed
+	[Attribute("0.05", desc: "Hotfix: If server then this value is added on top of the m_fMaxHealScaled. This is because there is a potential desync of around 5% between client and server. EG: client can only heal up to 20% but server up to 25% so if client things the health is 19% and server things it is 21% the heal is still executed up to 25%", params: "0 0.10", category: "Heal/Repair Support Station")]
+	protected float m_fServerAddedMaxHealScaled;
 	
 	[Attribute(desc: "The DPS types that cost supplies to be healed/repaired. It will still remove the DPS effect even if it is not included here. It simply does not cost extra", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EDamageType), category: "Heal/Repair Support Station")]
 	protected ref array<EDamageType> m_aDoTTypesHealed;
@@ -81,7 +85,20 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 	
 	[Attribute(ESupportStationReasonInvalid.HEAL_MAX_HEALABLE_HEALTH_REACHED_EMERGENCY.ToString(), desc: "Invalid reason when healing is done but full health not reached. For repair vehicle this is HEAL_MAX_HEALABLE_HEALTH_REACHED_FIELD for repair wrench only this is HEAL_MAX_HEALABLE_HEALTH_REACHED_EMERGENCY", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ESupportStationReasonInvalid), category: "Heal/Repair Support Station")]
 	protected ESupportStationReasonInvalid m_eMaxHealDone;
+	
+	//~ Damage that can be healed if there are less supplies than the entire damage that can be healed
+	protected float m_fMaxDamageToHealSupplyCap = -1;
 		
+	//------------------------------------------------------------------------------------------------
+	//~ Hotfix to prevent the heal action to be stuck because of the potential 5% desycn of health between server and client
+	protected float GetMaxHealScaled()
+	{
+		if (m_fMaxHealScaled >= 1 || Replication.IsClient())
+			return m_fMaxHealScaled;
+		else 
+			return Math.Clamp(m_fMaxHealScaled + m_fServerAddedMaxHealScaled, m_fMaxHealScaled, 1);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override bool IsValid(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action, vector actionPosition, out ESupportStationReasonInvalid reasonInvalid, out int supplyCost)
 	{
@@ -103,7 +120,7 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 			foreach (HitZone hitzone : hitZones)
 			{
 				//~ No damage can be healed yet a hitzone is not full heath
-				if (hitzone.GetHealthScaled() != 1)
+				if (hitzone.GetDamageState() != EDamageState.UNDAMAGED)
 				{
 					reasonInvalid = m_eMaxHealDone;
 					return false;
@@ -139,12 +156,14 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 		}		
 		
 		//~ Get amount healed (Cap to damage healed each execute)
-		return Math.Clamp(action.GetActionDamageManager().GetHitZonesDamage(m_fMaxHealScaled, hitZones), 0, m_iDamageHealedEachExecution);
+		return Math.Clamp(action.GetActionDamageManager().GetHitZonesDamage(GetMaxHealScaled(), hitZones), 0, m_iDamageHealedEachExecution);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override int GetSupplyCostAction(IEntity actionOwner, IEntity actionUser, SCR_BaseUseSupportStationAction action)
 	{
+		m_fMaxDamageToHealSupplyCap = -1;
+		
 		if (!IsUsingSupplies())
 			return 0;
 		
@@ -166,6 +185,20 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 		//~ Calculate the supply cost
 		float damageHealCost = (damageToHeal / m_iDamageHealedEachExecution) * m_iSupplyCostDamageHealed;
 		
+		//~ Check if there aren't enough supplies for the heal action how much damage can be healed instead. The available supplies should be at least >= than baseSupplyCost + 1 
+		float availableSupplies = GetMaxAvailableSupplies();
+		if (availableSupplies > 0 && damageHealCost > 0 && (damageHealCost + m_iBaseSupplyCostOnUse) > availableSupplies && availableSupplies >= m_iBaseSupplyCostOnUse +1)
+		{
+			//~ Calculate how many can be healed depending on how many supplies there are
+			m_fMaxDamageToHealSupplyCap = (m_iDamageHealedEachExecution / m_iSupplyCostDamageHealed) * availableSupplies;
+			return availableSupplies;
+		}
+		//~ If there aren't enough supplies show the cost of the action for the min cost it can be executed.
+		else if (availableSupplies < m_iBaseSupplyCostOnUse +1)
+		{
+			return m_iBaseSupplyCostOnUse + 1;
+		}
+		
 		//~ There is damage so there should always be a cost of 1
 		if ((damageHealCost + m_iBaseSupplyCostOnUse) < 1)
 			return 1;
@@ -179,7 +212,7 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 		//~ Consume supplies
 		if (IsUsingSupplies())
 		{
-			//~ Failed to consume supplies, meaning there weren't enough supplies for the action
+			//~ Failed to consume supplies, meaning there weren't enough supplies for the action. Also sets m_fMaxDamageToHealSupplyCap GetSupplyCostAction to make sure the system can still heal even if there is a limited amount of supplies
 			if (!OnConsumeSuppliesServer(GetSupplyCostAction(actionOwner, actionUser, action)))
 				return;
 		}
@@ -190,6 +223,10 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 		EDamageType activeDoT;
 		array<HitZone> hitZones = {};
 		float damageToHeal = GetDamageOrStateToHeal(actionOwner, actionUser, damageHealAction, activeDoT, hitZones);
+		
+		//~ There are not enough supplies to heal full damage. So heal to amount supplies allow it
+		if (m_fMaxDamageToHealSupplyCap > 0 && m_fMaxDamageToHealSupplyCap < damageToHeal)
+			damageToHeal = m_fMaxDamageToHealSupplyCap;
 		
 		//~ Get broadcast ids
 		RplId ownerId;
@@ -218,18 +255,20 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 		if (!damageManager)
 			return;
 		
+		float maxHealScaled = GetMaxHealScaled();
+		
 		//~ No DoT so get hitZones to heal
-		damageManager.HealHitZones(damageToHeal, true, m_fMaxHealScaled, hitZones);
+		damageManager.HealHitZones(damageToHeal, true, maxHealScaled, hitZones);
 		
 		//~ The support station can still heal more
-		if (damageManager.GetHitZonesDamage(m_fMaxHealScaled, hitZones) > 0)
+		if (damageManager.GetHitZonesDamage(maxHealScaled, hitZones) > 0)
 		{
 			healState = SCR_EDamageSupportStationHealState.HEAL_UPDATE;
 		}	
 		else 
 		{
 			//~ Entity health is full health
-			if (m_fMaxHealScaled >= 1)
+			if (maxHealScaled >= 1)
 				healState = SCR_EDamageSupportStationHealState.HEAL_DONE;
 			//~ The support station reached the max health
 			else 
@@ -292,7 +331,7 @@ class SCR_BaseDamageHealSupportStationComponent : SCR_BaseSupportStationComponen
 					SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.GetDamageManager(actionOwner);
 					if (damageManager)
 					{
-						if (damageManager.GetHealthScaled() >= 1)
+						if (damageManager.GetState() == EDamageState.UNDAMAGED)
 							PlayCharacterVoiceEvent(actionOwner);
 					}
 

@@ -225,6 +225,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 	
 	void InitTask()
 	{
+		//If m_Task already exists, we are reiniting it, not creating new one
 		if (m_Task)
 		{
 			// We need to make sure that we have m_TaskSubject to work with 
@@ -241,7 +242,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 			
 			if (!m_TaskSubject)
 			{
-				PrintFormat("ScenarioFramework: %1 could not reinit task due to missing m_TaskSubject!", GetOwner().GetName(), LogLevel.ERROR);
+				Print(string.Format("ScenarioFramework: %1 could not reinit task due to missing m_TaskSubject!", GetOwner().GetName()), LogLevel.ERROR);
 				return;
 			}
 			
@@ -283,15 +284,18 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 			return;
 		}
 		
+		if (!m_TaskSubject)
+		{
+			Print(string.Format("ScenarioFramework: %1 could not init task due to missing m_TaskSubject!", GetOwner().GetName()), LogLevel.ERROR);
+			return;
+		}
+		
 		if (SetSupportEntity() && SetTaskPrefab() && CreateTask())
 		{
 			SetupTask();
 			m_Task.SetTaskLayer(this);
-			if (!m_TaskSubject) 	
-				return;
 			
 			m_TaskSubject.OnTaskStateChanged(SCR_TaskState.OPENED);
-			
 			if (m_TaskSubject.GetIsTerminated() || m_bIsTerminated)
 			{
 				if (m_eLayerTaskState == SCR_TaskState.FINISHED)
@@ -367,6 +371,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 			return false;
 		}
 				
+		m_Task.SetSlotTask(m_TaskSubject);
 		m_SupportEntity.SetTargetFaction(m_Task, factionSelected);
 		vector vOrigin;
 		if (m_bPlaceMarkerOnSubjectSlot && m_TaskSubject)

@@ -28,7 +28,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 
 		// Hide verrsion selection in release
 		#ifndef WORKSHOP_DEBUG
-			m_Widgets.m_VersionComboBoxComponent.SetVisible(false, false);
+			m_Widgets.m_VersionComboBoxComponent0.SetVisible(false, false);
 		#endif
 
 		// Hide scenario and gallery section
@@ -61,8 +61,11 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		m_Widgets.m_EnableButtonComponent.m_OnToggled.Insert(OnEnableButtonToggled);				// Toggleable!
 		m_Widgets.m_FavoriteButtonComponent.m_OnToggled.Insert(OnAddonFavouriteButtonToggled);		// Toggleable!
 		m_Widgets.m_ReportButtonComponent.m_OnClicked.Insert(OnReportButton);
-		m_Widgets.m_SubscribeButtonComponent.m_OnClicked.Insert(OnSubscribeDeleteButton);
-		m_Widgets.m_ContinueDownloadButtonComponent.m_OnClicked.Insert(OnSubscribeButton);
+		
+		m_Widgets.m_DownloadButtonComponent.m_OnClicked.Insert(OnDownloadButton);
+		m_Widgets.m_DeleteButtonComponent.m_OnClicked.Insert(OnDeleteButton);
+		m_Widgets.m_DownloadingButtonComponent.m_OnClicked.Insert(OnDownloadingButton);
+		
 		m_Widgets.m_SolveIssuesButtonComponent.m_OnClicked.Insert(OnSolveIssuesButton);
 
 		// Init the addon details panel
@@ -294,38 +297,39 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	}
 
 	// ---- WIDGET CALLBACKS ----
-	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSubscribeDeleteButton()
+	protected void OnDeleteButton()
 	{
 		// Unsubscribe/delete any addon data is available
 		if (m_WorkshopItem.GetOffline() || m_WorkshopItem.GetWorkshopItem().GetDownloadingRevision())
-		{
 			SCR_WorkshopUiCommon.OnUnsubscribeAddonButton(m_WorkshopItem);
-			return;
-		}
-		
-		// Download if no data are avilable
-		OnSubscribeButton();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSubscribeButton()
+	protected void OnDownloadButton()
 	{
 		// Start new download or continue in downloading
 		Revision specificVersion;
 
 		#ifdef WORKSHOP_DEBUG
-		string strSpecificVersion = m_Widgets.m_VersionComboBoxComponent.GetCurrentItem();
-		specificVersion = m_WorkshopItem.FindRevision(strSpecificVersion);
+			string strSpecificVersion = m_Widgets.m_VersionComboBoxComponent0.GetCurrentItem();
+			specificVersion = m_WorkshopItem.FindRevision(strSpecificVersion);
 		#endif
 
 		if (specificVersion)
 			m_DownloadRequest = SCR_WorkshopDownloadSequence.Create(m_WorkshopItem, specificVersion, m_DownloadRequest);
 		else
 			m_DownloadRequest = SCR_WorkshopDownloadSequence.Create(m_WorkshopItem, m_WorkshopItem.GetLatestRevision(), m_DownloadRequest);
+		
+		GetGame().GetCallqueue().CallLater(SCR_DownloadManager_Dialog.Create);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void OnDownloadingButton()
+	{
+		SCR_DownloadManager_Dialog.Create();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnSolveIssuesButton()
 	{
@@ -543,7 +547,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 
 		// Enable button
 		bool enableButtonEnabled = item.GetOffline() && !downloading;
-		m_Widgets.m_EnableButton.SetEnabled(enableButtonEnabled);
+		//m_Widgets.m_EnableButtonComponent.SetVisible(enableButtonEnabled);
+		m_Widgets.m_EnableButtonComponent.SetEnabled(enableButtonEnabled);
 		m_Widgets.m_EnableButtonComponent.SetToggled(item.GetEnabled(), false);
 
 		bool reportIndividual = item.GetReportedByMe();
@@ -556,38 +561,15 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 			reportButtonMode = "reported";
 		m_Widgets.m_ReportButtonComponent.SetEffectsWithAnyTagEnabled({"all", reportButtonMode});
 
-		//! Subscribe button
-		bool subscribeButtonEnabled = false;
-		string subscribeButtonMode = "not_subscribed";
-		
+		//! Download/Downloading/Delete buttons
 		Revision downloadRevision = item.GetWorkshopItem().GetDownloadingRevision();
 		bool differentEnvironment = item.GetWorkshopItem().GetBackendEnv() != GetGame().GetBackendApi().GetBackendEnv();
-		
-		// Show download contirnue if there was unfinished download
-		m_Widgets.m_ContinueDownloadButtonComponent.SetVisible(!downloading && downloadRevision != null);
-		
-		if (!downloading && item.GetOnline() && item.GetOffline() || !downloading && item.GetOnline() && downloadRevision)
-		{
-			// We are in a state when we want to unsubscribe this
-			subscribeButtonEnabled = true;
-			subscribeButtonMode = "subscribed";
-		}
-		else if (!downloading && item.GetOnline())
-		{
-			// We are in a state when we want to subscribe to this
-			subscribeButtonEnabled = true;
-		}
-		else if (differentEnvironment)
-		{
-			// Different environment 
-			subscribeButtonEnabled = true;
-			
-			if (item.GetWorkshopItem().GetLatestRevision())
-				subscribeButtonMode = "subscribed";
-		}
 
-		m_Widgets.m_SubscribeButtonComponent.SetEnabled(subscribeButtonEnabled);
-		m_Widgets.m_SubscribeButtonComponent.SetEffectsWithAnyTagEnabled({"all_modes", subscribeButtonMode}); // Enable only effects used in this mode or used in all modes
+		bool downloaded = !downloading && item.GetOnline() && (item.GetOffline() || differentEnvironment);
+		
+		m_Widgets.m_DownloadButtonComponent.SetVisible(!downloaded && !downloading);
+		m_Widgets.m_DeleteButtonComponent.SetVisible(downloaded);
+		m_Widgets.m_DownloadingButtonComponent.SetVisible(downloading);
 
 		// Solve issues button
 		// Visible only when there are any issues
@@ -651,19 +633,19 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 	protected void UpdateVersionComboBox()
 	{
 		#ifdef WORKSHOP_DEBUG
-		// Fill version combo box - only for testing!
-		if (m_Widgets.m_VersionComboBoxComponent.GetNumItems() == 0)
-		{
-			array<string> versions = m_WorkshopItem.GetVersions();
-			if (!versions.IsEmpty())
+			// Fill version combo box - only for testing!
+			if (m_Widgets.m_VersionComboBoxComponent0.GetNumItems() == 0)
 			{
-				m_Widgets.m_VersionComboBoxComponent.ClearAll();
-				foreach (string version : versions)
+				array<string> versions = m_WorkshopItem.GetVersions();
+				if (!versions.IsEmpty())
 				{
-					m_Widgets.m_VersionComboBoxComponent.AddItem(version);
+					m_Widgets.m_VersionComboBoxComponent0.ClearAll();
+					foreach (string version : versions)
+					{
+						m_Widgets.m_VersionComboBoxComponent0.AddItem(version);
+					}
 				}
 			}
-		}
 		#endif
 	}
 
@@ -731,6 +713,6 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowser_ScenarioSub
 		m_WorkshopItem.GetDownloadState(inProgress, paused, progress, revision);
 
 		if (!inProgress && !paused)
-			OnSubscribeButton();
+			OnDownloadButton();
 	}
 }

@@ -36,21 +36,25 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	SCR_ModularButtonComponent m_PrevButtonComponent;
 
 	ButtonWidget m_SpinBox;
-	SCR_SpinBoxComponent m_SpinBoxComponent;
+	SCR_SpinBoxComponent m_SpinBoxComponent0;
+	SCR_ModularButtonComponent m_SpinBoxComponent1;
 
 	VerticalLayoutWidget m_MainSection;
 
 	ButtonWidget m_EnableButton;
 	SCR_ModularButtonComponent m_EnableButtonComponent;
 
-	ButtonWidget m_SubscribeButton;
-	SCR_ModularButtonComponent m_SubscribeButtonComponent;
+	ButtonWidget m_DownloadButton;
+	SCR_ModularButtonComponent m_DownloadButtonComponent;
+
+	ButtonWidget m_DeleteButton;
+	SCR_ModularButtonComponent m_DeleteButtonComponent;
+
+	ButtonWidget m_DownloadingButton;
+	SCR_ModularButtonComponent m_DownloadingButtonComponent;
 
 	ButtonWidget m_SolveIssuesButton;
 	SCR_ModularButtonComponent m_SolveIssuesButtonComponent;
-
-	ButtonWidget m_ContinueDownloadButton;
-	SCR_ModularButtonComponent m_ContinueDownloadButtonComponent;
 
 	ButtonWidget m_VoteUpButton;
 	SCR_ModularButtonComponent m_VoteUpButtonComponent;
@@ -65,7 +69,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 	SCR_ModularButtonComponent m_FavoriteButtonComponent;
 
 	ButtonWidget m_VersionComboBox;
-	SCR_ComboBoxComponent m_VersionComboBoxComponent;
+	SCR_ComboBoxComponent m_VersionComboBoxComponent0;
+	SCR_ModularButtonComponent m_VersionComboBoxComponent1;
 
 	TextWidget m_NameText;
 
@@ -121,21 +126,25 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_PrevButtonComponent = SCR_ModularButtonComponent.Cast(m_PrevButton.FindHandler(SCR_ModularButtonComponent));
 
 		m_SpinBox = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_Gallery.m_SpinBox"));
-		m_SpinBoxComponent = SCR_SpinBoxComponent.Cast(m_SpinBox.FindHandler(SCR_SpinBoxComponent));
+		m_SpinBoxComponent0 = SCR_SpinBoxComponent.Cast(m_SpinBox.FindHandler(SCR_SpinBoxComponent));
+		m_SpinBoxComponent1 = SCR_ModularButtonComponent.Cast(m_SpinBox.FindHandler(SCR_ModularButtonComponent));
 
 		m_MainSection = VerticalLayoutWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection"));
 
 		m_EnableButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_EnableButton"));
 		m_EnableButtonComponent = SCR_ModularButtonComponent.Cast(m_EnableButton.FindHandler(SCR_ModularButtonComponent));
 
-		m_SubscribeButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_SubscribeButton"));
-		m_SubscribeButtonComponent = SCR_ModularButtonComponent.Cast(m_SubscribeButton.FindHandler(SCR_ModularButtonComponent));
+		m_DownloadButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_DownloadButton"));
+		m_DownloadButtonComponent = SCR_ModularButtonComponent.Cast(m_DownloadButton.FindHandler(SCR_ModularButtonComponent));
+
+		m_DeleteButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_DeleteButton"));
+		m_DeleteButtonComponent = SCR_ModularButtonComponent.Cast(m_DeleteButton.FindHandler(SCR_ModularButtonComponent));
+
+		m_DownloadingButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_DownloadingButton"));
+		m_DownloadingButtonComponent = SCR_ModularButtonComponent.Cast(m_DownloadingButton.FindHandler(SCR_ModularButtonComponent));
 
 		m_SolveIssuesButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_SolveIssuesButton"));
 		m_SolveIssuesButtonComponent = SCR_ModularButtonComponent.Cast(m_SolveIssuesButton.FindHandler(SCR_ModularButtonComponent));
-
-		m_ContinueDownloadButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_ContinueDownloadButton"));
-		m_ContinueDownloadButtonComponent = SCR_ModularButtonComponent.Cast(m_ContinueDownloadButton.FindHandler(SCR_ModularButtonComponent));
 
 		m_VoteUpButton = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.Buttons.m_VoteUpButton"));
 		m_VoteUpButtonComponent = SCR_ModularButtonComponent.Cast(m_VoteUpButton.FindHandler(SCR_ModularButtonComponent));
@@ -150,7 +159,8 @@ class SCR_ContentBrowserDetails_OverviewSubMenuWidgets
 		m_FavoriteButtonComponent = SCR_ModularButtonComponent.Cast(m_FavoriteButton.FindHandler(SCR_ModularButtonComponent));
 
 		m_VersionComboBox = ButtonWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.m_VersionComboBox"));
-		m_VersionComboBoxComponent = SCR_ComboBoxComponent.Cast(m_VersionComboBox.FindHandler(SCR_ComboBoxComponent));
+		m_VersionComboBoxComponent0 = SCR_ComboBoxComponent.Cast(m_VersionComboBox.FindHandler(SCR_ComboBoxComponent));
+		m_VersionComboBoxComponent1 = SCR_ModularButtonComponent.Cast(m_VersionComboBox.FindHandler(SCR_ModularButtonComponent));
 
 		m_NameText = TextWidget.Cast(root.FindWidget("MainPanel.VerticalLayout0.Content.m_MainContentScroll.m_MainContent.m_MainSection.MainSectionContent.m_NameText"));
 

@@ -11,7 +11,7 @@ class SCR_HeliCourse_stage1 : SCR_BaseCampaignTutorialArlandStage
 	{
 		m_TutorialComponent.StageReset_Helicopter();
 		
-		m_fDuration = 7;
+		m_fDuration = 10;
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));
 	}
 };

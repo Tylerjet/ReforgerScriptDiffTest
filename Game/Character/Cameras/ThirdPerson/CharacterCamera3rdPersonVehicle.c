@@ -63,13 +63,18 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
 			m_pCompartment = compartmentAccess.GetCompartment();
-			IEntity vehicle = m_pCompartment.GetOwner();
+			IEntity vehicle = m_pCompartment.GetOwner().GetRootParent();
 			if (vehicle)
 			{
 				m_OwnerVehicle = vehicle;
 				m_TurretController = TurretControllerComponent.Cast(m_pCompartment.GetController());
-				
+
 				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(vehicle.FindComponent(SCR_VehicleCameraDataComponent));
+				// Can owner replace Vehicle's camera data?
+				SCR_VehicleCameraDataComponent ownerCamData = SCR_VehicleCameraDataComponent.Cast(m_pCompartment.GetOwner().FindComponent(SCR_VehicleCameraDataComponent));
+				if (ownerCamData && ownerCamData.m_bOverrideVehicleSettings)
+					vehicleCamData = ownerCamData;
+				
 				if( vehicleCamData )
 				{
 					m_fHeight = vehicleCamData.m_fHeight;
@@ -134,7 +139,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
 			m_pCompartment = compartmentAccess.GetCompartment();
-			IEntity vehicle = m_pCompartment.GetOwner();
+			IEntity vehicle = m_pCompartment.GetOwner().GetRootParent();
 			if (vehicle && vehicle != m_OwnerVehicle)
 			{
 				InitCameraData();

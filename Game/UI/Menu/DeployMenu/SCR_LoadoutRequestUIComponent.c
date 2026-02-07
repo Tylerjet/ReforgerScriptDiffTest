@@ -160,11 +160,14 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	
 	protected void DeleteEntity(IEntity entity)
 	{
+		if (!entity)
+			return;
+
 		IEntity child = entity.GetChildren();
 		while (child)
 		{
 			IEntity sibling = child.GetSibling();
-			DeleteEntity(sibling);
+			DeleteEntity(child);
 			child = sibling;
 		}
 

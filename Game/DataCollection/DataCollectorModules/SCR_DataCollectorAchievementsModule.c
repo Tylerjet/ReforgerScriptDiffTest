@@ -9,7 +9,12 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 		SCR_FlushToilet.GetOnToiletFlushed().Insert(ToiletFlushed);
 		
 		// Achievement NUTCRACKER
-		SCR_VehicleDamageManagerComponent.GetOnVehicleDestroyed().Insert(VehicleDestroyed);
+		RplComponent rplComp = RplComponent.Cast(GetGame().GetGameMode().FindComponent(RplComponent));
+		if (rplComp.IsMaster())
+		{
+			// Invoke this only as authority
+			SCR_VehicleDamageManagerComponent.GetOnVehicleDestroyed().Insert(VehicleDestroyed);
+		}
 		
 		// Achievement MAJOR_PROMOTION
 		SCR_CharacterRankComponent.s_OnRankChanged.Insert(RankedUp);
@@ -333,7 +338,6 @@ class SCR_DataCollectorAchievementsModule : SCR_DataCollectorModule
 	protected void VehicleDestroyed(int playerId)
 	{
 		// Achievement NUTCRACKER
-		Print("Player with id " + playerId + " destroyed a vehicle!", LogLevel.DEBUG);
 		IncrementAchievementProgress(playerId, AchievementStatId.VEHICLES_DESTROYED);
 	}
 	

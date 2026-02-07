@@ -248,9 +248,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 				
 				if (gadgetComp.GetType() == EGadgetType.MAP) // TODO hotfix against incorrect toggle set when spamming input, will be solved when map has unfocused & focused mode
 					return;
-				
-				UpdateHeldGadget(null);
-				
+								
 				if (gadgetComp.m_bFocused)	// close focus state
 					gadgetComp.ToggleFocused(false);
 			}

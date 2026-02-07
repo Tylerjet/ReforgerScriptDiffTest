@@ -13,6 +13,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	protected bool m_bTaskListInvoked;
 	protected bool m_bOpened;
 	protected bool m_bOnMapClose;
+	protected bool m_bMapContextAllowed = true;
 
 	[Attribute("JournalFrame", desc: "Journal frame widget name")]
 	protected string m_sJournalFrameName;
@@ -64,6 +65,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		}
 
 		SCR_UITaskManagerComponent.s_OnTaskListVisible.Insert(ToggleTaskListInvoker);
+		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		//If there is a OverlayWidget like on the DeployMenu we use that instead of the default one
 		m_wTaskListFrame = OverlayWidget.Cast(m_RootWidget.FindAnyWidget(TASK_LIST_FRAME));
@@ -71,6 +73,19 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 			return;
 
 		m_wUI = m_UITaskManager.CreateTaskList(m_wTaskListFrame);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		if (m_bOpened && !m_bMapContextAllowed && m_MapEntity && m_MapEntity.IsOpen())
+			GetGame().GetInputManager().ActivateContext("TaskListMapContext");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetMapContextAllowed(bool val)
+	{
+		m_bMapContextAllowed = val;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -148,5 +163,26 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		}
 
 		ToggleTaskList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInputDeviceIsGamepad(bool isGamepad)
+	{
+		if (isGamepad && m_bOpened)
+		{
+			m_bMapContextAllowed = false;
+			return;
+		}
+		
+		m_bMapContextAllowed = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		if (SCR_Global.IsEditMode()) 
+			return;
+
+		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 }

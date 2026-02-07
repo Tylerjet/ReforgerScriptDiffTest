@@ -340,7 +340,7 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		// Success
 		if (m_Action.IsCompleted())
 		{
-			message = "#AR-Workshop_TabName_Downloaded";
+			message = "#AR-Workshop_Details_Downloaded";
 			imageName = "okCircle";
 			color = UIColors.CONFIRM;
 			colorText = true;
