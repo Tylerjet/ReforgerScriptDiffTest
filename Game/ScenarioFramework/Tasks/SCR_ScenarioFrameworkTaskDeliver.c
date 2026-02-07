@@ -144,7 +144,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		
 		ChimeraWorld world = item.GetWorld();
 		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (garbageSystem && garbageSystem.IsInserted(item))
+		if (garbageSystem)
 			garbageSystem.Withdraw(item);
 		
 		SetState(SCR_TaskState.UPDATED);

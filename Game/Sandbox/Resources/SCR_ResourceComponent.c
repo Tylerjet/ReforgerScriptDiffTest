@@ -1357,17 +1357,13 @@ class SCR_ResourceComponent : ScriptComponent
 		if (m_bIsVisible)
 		{
 			owner.SetFlags(EntityFlags.VISIBLE | EntityFlags.TRACEABLE, true);
-			
-			if (!Vehicle.Cast(GetOwner().GetRootParent()))
-				SCR_PhysicsHelper.ChangeSimulationState(owner, SimulationState.COLLISION, true);
+			SCR_PhysicsHelper.ChangeSimulationState(owner, SimulationState.COLLISION, true);
 			
 			return;
 		}
 		
 		owner.ClearFlags(EntityFlags.VISIBLE | EntityFlags.TRACEABLE, true);
-		
-		if (!Vehicle.Cast(GetOwner().GetRootParent()))
-			SCR_PhysicsHelper.ChangeSimulationState(owner, SimulationState.NONE, true);
+		SCR_PhysicsHelper.ChangeSimulationState(owner, SimulationState.NONE, true);
 	}
 		
 	//------------------------------------------------------------------------------------------------

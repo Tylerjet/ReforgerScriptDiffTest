@@ -1,64 +1,3 @@
-class SCR_VirtualArsenalCacheManager
-{
-	protected static ref SCR_VirtualArsenalCacheManager INSTANCE;
-	protected ref map<BaseResourceObject, IEntity> m_mCachedEntities;
-
-	static SCR_VirtualArsenalCacheManager GetInstance()
-	{
-		if (!SCR_VirtualArsenalCacheManager.INSTANCE)
-			SCR_VirtualArsenalCacheManager.INSTANCE = new SCR_VirtualArsenalCacheManager();
-		
-		return SCR_VirtualArsenalCacheManager.INSTANCE;
-	}
-
-	IEntity RegisterResource(notnull Resource resource)
-	{
-		if (!resource.IsValid())
-			return null;
-		
-		BaseResourceObject resourceObject = resource.GetResource();
-		
-		if (!m_mCachedEntities.Contains(resourceObject) && GetGame().CanSpawnEntityPrefab(resource))
-		{
-			IEntity cachedEntity = GetGame().SpawnEntityPrefabLocal(resource);
-			
-			m_mCachedEntities.Set(resourceObject, cachedEntity);
-			
-			return cachedEntity;
-		}
-
-		return m_mCachedEntities.Get(resourceObject);
-	}
-
-	void UnregisterResource(notnull Resource resource)
-	{
-		if (!resource.IsValid())
-			return;
-		
-		BaseResourceObject resourceObject = resource.GetResource();
-		
-		if (!m_mCachedEntities.Contains(resourceObject))
-			return;
-		
-		delete m_mCachedEntities.Get(resourceObject);
-
-		m_mCachedEntities.Remove(resourceObject);
-	}
-
-	void SCR_VirtualArsenalCacheManager()
-	{
-		m_mCachedEntities = new map<BaseResourceObject, IEntity>();
-	}
-
-	void ~SCR_VirtualArsenalCacheManager()
-	{
-		foreach (BaseResourceObject resource, IEntity entity: m_mCachedEntities)
-		{
-			delete entity;
-		}
-	}
-}
-
 class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 {
 	//------------------------------------------------------------------------------------------------
@@ -71,6 +10,9 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 			return;
 		}
 		
+		ChimeraWorld chimeraWorld = GetGame().GetWorld();
+		ItemPreviewManagerEntity itemPreviewManagerEntity = chimeraWorld.GetItemPreviewManager();
+		
 		SCR_ArsenalComponent arsenalComponent	= SCR_ArsenalComponent.Cast(m_Storage.GetOwner().FindComponent(SCR_ArsenalComponent));
 		array<ResourceName> prefabsToSpawn		= new array<ResourceName>();
 		
@@ -81,7 +23,7 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 		
 		foreach (ResourceName resourceName: prefabsToSpawn)
 		{
-			pItemsInStorage.Insert(SCR_VirtualArsenalCacheManager.GetInstance().RegisterResource(Resource.Load(resourceName)));
+			pItemsInStorage.Insert(itemPreviewManagerEntity.ResolvePreviewEntityForPrefab(resourceName));
 		}
 		
 	}

@@ -8,9 +8,6 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 	[Attribute("1", desc: "If true it will negate the weight and volume of the items within the arsenal, if false the items within the arsenal will have weight and volume")]
 	protected bool m_bNegateItemWeightAndVolume;
 	
-	ref ScriptInvoker m_OnItemAddedInvoker = new ScriptInvoker();
-	ref ScriptInvoker m_OnItemRemovedInvoker = new ScriptInvoker();
-	
 	//~ Total weight of items that were added 1 frame OnBeforePossessed
 	protected float m_fTotalItemWeight;
 	
@@ -58,40 +55,34 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 			m_ItemsInArsenal.Insert(prefab);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
 		super.OnItemAdded(storageOwner, item);
-		
-		if (m_OnItemAddedInvoker)
-			m_OnItemAddedInvoker.Invoke(item, storageOwner);
-		
+
 		//~ Get the total weight and volume of all items added to negate that weight and volume the next frame
 		if (m_bNegateItemWeightAndVolume && Replication.IsServer())
 		{	
 			if (storageOwner.GetParentSlot())
 				return;
-			
-			InventoryItemComponent inventoryItem = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
-			if (!inventoryItem)
-				return;
-			
+
 			if (!m_bItemAddCallQuequeCalled)
 			{
 				m_fTotalItemWeight = 0;
 				m_bItemAddCallQuequeCalled = true;
-				
+
 				//~ All items are added the same frame to negate the weight and volume the next frame
 				GetGame().GetCallqueue().CallLater(OnItemsAddedDelay, param1: storageOwner);
 			}
-				
+
+			InventoryItemComponent inventoryItem = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
 			m_fTotalItemWeight += inventoryItem.GetTotalWeight();
 			inventoryItem.SetAdditionalVolume(-inventoryItem.GetTotalVolume());
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//~ Called one frame later after items were added to the arsenal. All items are added the same frame so the overal weight and volume of all those items added prev frame is removed to negate them
 	protected void OnItemsAddedDelay(BaseInventoryStorageComponent storageOwner)
@@ -139,8 +130,9 @@ class SCR_ArsenalInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 		if (!arsenalComponent)
 			return;
 		
-		arsenalComponent.GetAvailablePrefabs(prefabsToSpawn);
-		OnArsenalUpdated(prefabsToSpawn);
+		array<ResourceName> prefabs = {};
+		arsenalComponent.GetAvailablePrefabs(prefabs);
+		OnArsenalUpdated(prefabs);
 		
 		//~ Subscribe to arsenal changes
 		arsenalComponent.GetOnArsenalUpdated().Insert(OnArsenalUpdated);

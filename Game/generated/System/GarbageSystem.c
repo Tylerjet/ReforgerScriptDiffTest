@@ -12,8 +12,8 @@ Do not modify, this script is generated
 /*!
 Allows semi-automatic management and disposal of 'garbage'.
 
-Following types support being marked as garbage:
-	InventoryItemComponent
+Any entity with InventoryItemComponent can be marked as Garbage, providing the
+correct configuration for its class.
 
 Instances of such types can be inserted and removed from automatic collection.
 Default life time of individual categories can be set in entity attributes.

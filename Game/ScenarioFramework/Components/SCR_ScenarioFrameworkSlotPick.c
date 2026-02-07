@@ -105,7 +105,7 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 			return;
 		
 		GarbageSystem garbageSystem = world.GetGarbageSystem();
-		if (garbageSystem && garbageSystem.IsInserted(m_Entity))
+		if (garbageSystem)
 			garbageSystem.Withdraw(m_Entity);
 	}
 };

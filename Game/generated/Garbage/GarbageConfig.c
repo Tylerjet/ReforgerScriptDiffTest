@@ -9,6 +9,9 @@ Do not modify, this script is generated
 \{
 */
 
+/*!
+* Garbage Config class, used to fill the .conf file that will be used for all garbage properties
+*/
 class GarbageConfig: ScriptAndConfig
 {
 }

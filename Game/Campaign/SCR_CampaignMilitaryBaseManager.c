@@ -1023,16 +1023,15 @@ class SCR_CampaignMilitaryBaseManager
 	{
 		ChimeraWorld world = vehicle.GetWorld();
 		GarbageSystem garbageSystem = world.GetGarbageSystem();
-
-		if (!garbageSystem)
+		if (!garbageSystem || !garbageSystem.IsInserted(vehicle))
 			return;
 
-		if (!garbageSystem.IsInserted(vehicle))
+		float curLifetime = garbageSystem.GetRemainingLifetime(vehicle);
+		if (curLifetime >= PARKED_LIFETIME)
 			return;
 
 		int baseDistanceSq = Math.Pow(MAX_DIST_TO_BASE, 2);
 		vector vehPos = vehicle.GetOrigin();
-		float curLifetime = garbageSystem.GetRemainingLifetime(vehicle);
 
 		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
 		{
@@ -1041,13 +1040,8 @@ class SCR_CampaignMilitaryBaseManager
 
 			if (vector.DistanceSqXZ(vehPos, base.GetOwner().GetOrigin()) <= baseDistanceSq)
 			{
-				float curLifeTime = garbageSystem.GetRemainingLifetime(vehicle);
-
-				if (curLifetime < PARKED_LIFETIME)
-				{
-					garbageSystem.Bump(vehicle, PARKED_LIFETIME - curLifetime);
-					return;
-				}
+				garbageSystem.Bump(vehicle, PARKED_LIFETIME - curLifetime);
+				return;
 			}
 		}
 	}

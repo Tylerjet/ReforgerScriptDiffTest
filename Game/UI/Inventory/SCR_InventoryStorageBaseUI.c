@@ -1191,6 +1191,9 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 			{
 				if (!pStorage)
 					return;
+				
+				ChimeraWorld chimeraWorld = GetGame().GetWorld();
+				ItemPreviewManagerEntity itemPreviewManagerEntity = chimeraWorld.GetItemPreviewManager();
 			
 				SCR_ArsenalComponent arsenalComponent	= SCR_ArsenalComponent.Cast(ownerEntity.FindComponent(SCR_ArsenalComponent));
 				array<ResourceName> prefabsToSpawn		= new array<ResourceName>();
@@ -1202,7 +1205,7 @@ class SCR_InventoryStorageBaseUI : ScriptedWidgetComponent
 				
 				foreach (ResourceName resourceName: prefabsToSpawn)
 				{
-					pItemsInStorage.Insert(GetGame().SpawnEntityPrefabLocal(Resource.Load(resourceName)));
+					pItemsInStorage.Insert(itemPreviewManagerEntity.ResolvePreviewEntityForPrefab(resourceName));
 				}
 				
 				return;

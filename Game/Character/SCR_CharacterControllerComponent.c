@@ -218,32 +218,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetOwner().GetWorld());
 		if (!world)
 			return;
-		
+
 		GarbageSystem garbageSystem = world.GetGarbageSystem();
 		if (garbageSystem)
-		{
 			garbageSystem.Insert(GetCharacter());
-
-			BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
-			if (!weaponManager)
-				return;
-
-			BaseWeaponComponent weaponOrSlot = weaponManager.GetCurrentWeapon();
-			if (!weaponOrSlot)
-				return;
-
-			IEntity weaponEntity;
-			WeaponSlotComponent slot = WeaponSlotComponent.Cast(weaponOrSlot);
-			if (slot)
-				weaponEntity = slot.GetWeaponEntity();
-			else
-				weaponEntity = weaponOrSlot.GetOwner();
-
-			if (!weaponEntity)
-				return;
-
-			garbageSystem.Insert(weaponEntity);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------

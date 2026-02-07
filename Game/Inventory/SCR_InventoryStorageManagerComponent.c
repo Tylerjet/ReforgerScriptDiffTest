@@ -406,9 +406,6 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	private IEntity 											m_pStorageToOpen;
 	protected ref SCR_ResupplyMagazinesCallback						m_ResupplyMagazineCallback;
 	
-	ref ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> m_OnItemAddedInvoker = new ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod>();
-	ref ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod> m_OnItemRemovedInvoker = new ScriptInvokerBase<ScriptInvokerEntityAndStorageMethod>();
-
 	ref ScriptInvoker<bool> 									m_OnInventoryOpenInvoker	= new ref ScriptInvoker<bool>();
 	ref ScriptInvoker<bool> 									m_OnQuickBarOpenInvoker		= new ref ScriptInvoker<bool>();
 
@@ -460,53 +457,27 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		
 		return rootItems.Count();
 	}
-	
+
 	// Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	override protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{		
 		super.OnItemAdded(storageOwner, item);
-		
+
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment++;	//store count of the health components
-				
-		if ( m_OnItemAddedInvoker )
-			m_OnItemAddedInvoker.Invoke( item, storageOwner );
-		
-		// Withdraw item from gc collection
-		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
-		if (world)
-		{
-			GarbageSystem garbageSystem = world.GetGarbageSystem();
-			if (garbageSystem)
-			{
-				if (item.FindComponent(InventoryItemComponent))
-					garbageSystem.Withdraw(item);
-			}
-		}
 	}
-	
+
 	// Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
 	override protected void OnItemRemoved(BaseInventoryStorageComponent storageOwner, IEntity item)
 	{
 		super.OnItemRemoved(storageOwner, item);
-		
+
 		auto consumable = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 		if ( consumable && consumable.GetConsumableType() == SCR_EConsumableType.BANDAGE )
 			m_iHealthEquipment--;	//store count of the health components
-		
-		if ( m_OnItemRemovedInvoker )
-			m_OnItemRemovedInvoker.Invoke( item, storageOwner );
-
-		// Insert item into gc collection
-		ChimeraWorld world = ChimeraWorld.CastFrom(item.GetWorld());
-		if (world)
-		{
-			GarbageSystem garbageSystem = world.GetGarbageSystem();
-			if (garbageSystem)
-				garbageSystem.Insert(item);
-		}
 	}
+
 	//------------------------------------------------------------------------------------------------
 	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
 	{
