@@ -6,6 +6,9 @@
 !  ! reference to it, if it is offline or as if any download is active.
 !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  
 */
+void ScriptInvokerMissionWorkshopItemMethod(MissionWorkshopItem item);
+typedef func ScriptInvokerMissionWorkshopItemMethod;
+typedef ScriptInvokerBase<ScriptInvokerMissionWorkshopItemMethod> ScriptInvokerMissionWorkshopItem;
 
 // Enum for possible issues of addons
 enum EWorkshopItemProblem
@@ -208,13 +211,6 @@ class SCR_WorkshopItem
 		{
 			Internal_LoadDetails();
 		}
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	void ClearLoadDetails()
-	{
-		m_bDetailsLoaded = false;
-		m_bWaitingLoadDetails = false;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -711,8 +707,8 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	float GetSizeBytes()
 	{
-		if (m_Item)
-			return m_Item.GetSizeBytes();
+		if (m_Item && m_Item.GetLatestRevision())
+			return m_Item.GetLatestRevision().GetSizeBytes();
 		else if(m_Dependency)
 			return m_Dependency.TotalFileSize();
 		else
@@ -1180,10 +1176,15 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	Revision GetLatestRevision()
 	{
-		if (!m_Item)
-			return null;
+		Revision rev;
 		
-		return m_Item.GetLatestRevision();
+		if (m_Item)
+			rev = m_Item.GetLatestRevision();
+		
+		if (!rev)
+			Print("SCR_WorkshopItem - GetLatestRevision() - Latest revision is null! This should only occur when user manually tampers with the addon folder", LogLevel.ERROR);
+		
+		return rev;
 	}
 	
 	
@@ -1436,8 +1437,10 @@ class SCR_WorkshopItem
 		// Get array of dependencies - TODO: differentiate between dependencies version to load
 		Revision latestRevision = GetLatestRevision();
 		array<Dependency> dependencies = new array<Dependency>;
-		latestRevision.GetDependencies(dependencies);
 		
+		if (latestRevision)
+			latestRevision.GetDependencies(dependencies);
+
 		if (!m_aDependencies)
 			m_aDependencies = new array<ref SCR_WorkshopItem>;
 		
@@ -1468,8 +1471,10 @@ class SCR_WorkshopItem
 		Revision latestRevision = GetLatestRevision();
 		
 		m_aMissions = new array<MissionWorkshopItem>;
-		latestRevision.GetScenarios(m_aMissions);
 		
+		if (latestRevision)
+			latestRevision.GetScenarios(m_aMissions);
+
 		#ifdef WORKSHOP_DEBUG
 		_print(string.Format("TryLoadScenarios(): Received %1 scenarios", m_aMissions.Count()));
 		_print("OnChanged: Callback_AskDetails_OnGetScenarios");

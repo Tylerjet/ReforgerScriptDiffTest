@@ -16,6 +16,9 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 	
 	[Attribute("0", desc: "At which int the randomizer starts. This is when you want the first few buttons to be ignored by the randomize button")]
 	protected int m_iRandomizerButtonStart;
+	
+	[Attribute("true", desc: "Shows border when hovering over button.")]
+	protected bool m_bShowBorderOnHover;
 
 	protected SCR_ToolboxComponent m_ToolBoxComponent;
 
@@ -188,6 +191,8 @@ class SCR_ButtonBoxAttributeUIComponent: SCR_BaseEditorAttributeUIComponent
 			SCR_EditorAttributeFloatStringValueHolder value = m_ButtonBoxData.GetValuesEntry(i);
 			if(!value)
 				continue;
+			
+			elements[i].m_bShowBorderOnHover = m_bShowBorderOnHover;
 			
 			if (hasIcon)
 			{

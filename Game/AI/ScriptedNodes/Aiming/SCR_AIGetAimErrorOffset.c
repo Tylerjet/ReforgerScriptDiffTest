@@ -141,10 +141,11 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		// Correct aim point size based on factors
 		float distanceFactor = GetDistanceFactor(distance);
 		float offsetWeaponFactor = GetOffsetWeaponTypeFactor(weaponType);				
+		float illuminationFactor = GetTargetIlluminationFactor(target);
 		
 		EAISkill currentSkill = m_CombatComponent.GetAISkill();
-		offsetX = GetRandomFactor(currentSkill, 0) * offsetX * AIMING_ERROR_SCALE * distanceFactor * offsetWeaponFactor;
-		offsetY = GetRandomFactor(currentSkill, 0) * offsetY * AIMING_ERROR_SCALE * distanceFactor * offsetWeaponFactor;
+		offsetX = GetRandomFactor(currentSkill, 0) * offsetX * AIMING_ERROR_SCALE * distanceFactor * offsetWeaponFactor * illuminationFactor;
+		offsetY = GetRandomFactor(currentSkill, 0) * offsetY * AIMING_ERROR_SCALE * distanceFactor * offsetWeaponFactor * illuminationFactor;
 		
 		tolerance = GetTolerance(entity, targetEntity, angularSize, distance, weaponType);
 		
@@ -210,6 +211,20 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! returns 1.0 if target is well illuminated, and a bigger value if target is poorly illuminated.
+	float GetTargetIlluminationFactor(BaseTarget tgt)
+	{
+		PerceivableComponent perceivable = tgt.GetPerceivableComponent();
+		if (!perceivable)
+			return 1.0;
+		
+		if (perceivable.GetIlluminationFactor() < 0.5)
+			return 2.0;
+		
+		return 1.0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// returns random factor based on AI skill
 	float GetRandomFactor(EAISkill skill,float mu)
 	{
@@ -244,120 +259,6 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 		// PrintFormat("Gauss: %1, sigma: %2, skill: %3",result,sigma,typename.EnumToString(EAISkill,skill));
 		return Math.RandomGaussFloat(sigma,mu);
 	}
-		
-	//------------------------------------------------------------------------------------------------
-	EAimPointType SelectAimPointType(EAimingPreference aimingPreference, EAimPointType currentSelection)
-	{
-		switch (aimingPreference)
-		{
-			case EAimingPreference.AUTOMATIC:
-			{
-				switch(currentSelection)
-				{
-					case EAimPointType.WEAK:
-					{
-						return EAimPointType.INCAPACITATE;
-					}
-					case EAimPointType.INCAPACITATE:
-					{
-						return EAimPointType.NORMAL;
-					}
-					case EAimPointType.NORMAL:
-					{
-						if (m_iTorsoCount < 2)
-						{
-							m_iTorsoCount += 1;
-							return EAimPointType.NORMAL;
-						}
-						else 
-						{
-							m_iTorsoCount = 0;
-							return EAimPointType.WEAK;
-						}
-					}
-				};
-				break;
-			}
-			case EAimingPreference.RANDOM: 
-			{
-				return Math.RandomInt(EAimPointType.NORMAL,EAimPointType.INCAPACITATE);
-			}
-			case EAimingPreference.FIXED:
-			{
-				return m_eAimPointType;
-			}
-		};
-		return currentSelection;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// returns skill corrected by current threat level and if AI can shoot under such suppression
-	EAISkill GetSkillFromThreat(EAISkill inSkill, EAIThreatState threat)
-	{
-		switch (threat)
-		{
-			case EAIThreatState.THREATENED : 
-			{		 
-				switch (inSkill)
-				{
-					case EAISkill.ROOKIE :
-					{
-						return EAISkill.ROOKIE;
-					}
-					case EAISkill.REGULAR :
-					{
-						return EAISkill.ROOKIE;
-					}
-					case EAISkill.VETERAN :
-					{
-						return EAISkill.REGULAR;
-					}
-					case EAISkill.EXPERT :
-					{
-						return EAISkill.VETERAN;
-					}
-					case EAISkill.CYLON :
-					{
-						return EAISkill.CYLON;
-					}
-				};
-				break;
-			}
-			case EAIThreatState.ALERTED :
-			{
-				switch (inSkill)
-				{
-					case EAISkill.ROOKIE :
-					{
-						return EAISkill.REGULAR;
-					}
-					case EAISkill.REGULAR :
-					{
-						return EAISkill.VETERAN;
-					}
-					case EAISkill.VETERAN :
-					{
-						return EAISkill.EXPERT;
-					}
-					case EAISkill.EXPERT :
-					{
-						return EAISkill.CYLON;
-					}
-					case EAISkill.CYLON :
-					{
-						return EAISkill.CYLON;
-					}
-				};
-				break;
-			}
-			default :
-			{
-				return inSkill;
-				break;
-			}	
-		}	
-		return EAISkill.NONE;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! basic tolerance based on angular size of target in degrees
@@ -387,52 +288,34 @@ class SCR_AIGetAimErrorOffset: AITaskScripted
 	//------------------------------------------------------------------------------------------------	
 	float GetAngularSpeedFactor(IEntity observer, IEntity enemy, out bool setBigTolerance)
 	{
-		IEntity parent = enemy.GetParent(); // getting the vehicle for character inside vehicle
-		if (parent)
+		vector enemyVelocity;
+		IEntity enemyRoot = enemy.GetRootParent();
+		Physics enemyPhysics = enemyRoot.GetPhysics();
+		if (enemyPhysics)
+			enemyVelocity = enemyPhysics.GetVelocity();
+		
+		vector observerVelocity;
+		vector observerAngularVelocity;
+		IEntity observerRoot = observer.GetRootParent();
+		Physics observerPhysics = observerRoot.GetPhysics();
+		if (observerPhysics)
 		{
-			enemy = parent;					// case of driver
-			parent = enemy.GetParent();
-			if (parent)						// case of turret
-				enemy = parent;
+			observerVelocity = observerPhysics.GetVelocity();
+			observerAngularVelocity = observerPhysics.GetAngularVelocity();
 		}
-		Physics ph = enemy.GetPhysics();
-		if (ph)
-		{
-			vector positionVector = enemy.GetOrigin() - observer.GetOrigin();
-			vector angularVelocity = positionVector * ph.GetVelocity() / positionVector.LengthSq();  // omega = (r x v) / ||r||^2 
-			float angularSpeed = angularVelocity.Length();			
-			
-			if (angularSpeed < 0.07) // rougly 4 degs in radians
-				return 1.0;
-			else if (angularSpeed < 0.17) // roughly 10 degs in radians
-				return 2;
-		}	
+		
+		vector relativeVelocity = enemyVelocity - observerVelocity;
+		
+		vector positionVector = enemy.GetOrigin() - observer.GetOrigin();
+		vector targetLocalAngularVelocity = observerAngularVelocity + (positionVector * relativeVelocity / positionVector.LengthSq());  // omega = (r x v) / ||r||^2 
+		float totalTargetLocalAngularVelocity = targetLocalAngularVelocity.Length();			
+		
+		if (totalTargetLocalAngularVelocity < 0.07) // rougly 4 degs in radians
+			return 1.0;
+		else if (totalTargetLocalAngularVelocity < 0.17) // roughly 10 degs in radians
+			return 2;
+	
 		setBigTolerance = true;
-		return 0;
-	}
-
-	//------------------------------------------------------------------------------------------------	
-	float GetSuppressionFactor(EAIThreatState threat, out bool setBigTolerance)
-	{
-		switch (threat)
-		{
-			case EAIThreatState.THREATENED : 
-			{		 
-				setBigTolerance = true;
-				return 0;
-				break;
-			}
-			case EAIThreatState.ALERTED :
-			{
-				return 2.0;
-				break;
-			}
-			default :
-			{
-				return 1.0;	
-				break;
-			}
-		}
 		return 0;
 	}
 

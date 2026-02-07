@@ -278,8 +278,11 @@ class SCR_BatchPrefabsOperationsTool : WorldEditorTool
 		{
 			string addon = SCR_AddonTool.ToFileSystem(SCR_AddonTool.GetAddonIndex(m_iAddonToUse));
 
-			// Get all prefabs from selected folder
-			Workbench.SearchResources(m_aPrefabsToProcess.Insert, { "et" }, null, addon + m_sDirectoryToProcess.GetPath());
+			// Get all prefabs from the selected subdirectory
+			SearchResourcesFilter filter = new SearchResourcesFilter();
+			filter.fileExtensions = { "et" };
+			filter.rootPath = addon + m_sDirectoryToProcess.GetPath();
+			ResourceDatabase.SearchResources(filter, m_aPrefabsToProcess.Insert);
 
 			Print("Processing " + m_aPrefabsToProcess.Count(), LogLevel.NORMAL);
 

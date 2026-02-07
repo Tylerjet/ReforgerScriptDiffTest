@@ -37,6 +37,8 @@ class BaseDamageContext: Managed
 	vector impactVelocity;
 	// bone index in mesh obj
 	int boneIndex;
+	// DamageEffect
+	ref BaseDamageEffect damageEffect;
 
 }
 

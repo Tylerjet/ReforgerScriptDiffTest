@@ -51,7 +51,7 @@ class SCR_AIToggleFlashlights : AITaskScripted
 			
 			bool occluded = slot.IsOccluded();
 			
-			gadget.ToggleActive(newState && !occluded);
+			gadget.ToggleActive(newState && !occluded, SCR_EUseContext.FROM_ACTION);
 			success |= true;
 		}
 			

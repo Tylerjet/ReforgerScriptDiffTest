@@ -225,16 +225,16 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	//! \param[in] item
 	//! \param[in] selected
 	//! \param[in] invokeOnChanged
-	void SetItemSelected(int item, bool selected, bool invokeOnChanged = true)
+	void SetItemSelected(int item, bool selected, bool invokeOnChanged = true, bool instant = false)
 	{
 		if (item < 0 || item > m_aElementComponents.Count())
 			return;
 		
 		// If multiselection is disabled, unselect current item
 		if (!m_bMultiSelection && selected && m_aElementComponents.IsIndexValid(m_iCurrentItem))
-			VisualizeSelection(m_iCurrentItem, false);
+			VisualizeSelection(m_iCurrentItem, false, instant);
 
-		_SetItemSelected(item, selected, invokeOnChanged);
+		_SetItemSelected(item, selected, invokeOnChanged, instant);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -266,9 +266,9 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
-	protected void VisualizeSelection(int item, bool selected)
+	protected void VisualizeSelection(int item, bool selected, bool instant = false)
 	{
-		m_aElementComponents[item].SetToggled(selected);
+		m_aElementComponents[item].SetToggled(selected, true, instant);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -319,7 +319,7 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void _SetItemSelected(int item, bool selected, bool invokeOnChanged)
+	protected void _SetItemSelected(int item, bool selected, bool invokeOnChanged, bool instant = false)
 	{
 		// Set m_iCurrentItem, if multi selection is not used
 		if (!m_bMultiSelection)
@@ -337,7 +337,7 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		}
 				
 		bool oldSelected = m_aElementComponents[item].GetToggled();
-		this.VisualizeSelection(item, selected);
+		VisualizeSelection(item, selected, instant);
 		
 		if (invokeOnChanged && oldSelected != selected) // Only invoke if value actually changed
 			m_OnChanged.Invoke(this, item, selected);
@@ -369,7 +369,7 @@ class SCR_ListBoxComponent : ScriptedWidgetComponent
 		{
 			// Unselect previous item
 			if (id != m_iCurrentItem && m_iCurrentItem >= 0 && m_iCurrentItem < m_aElementComponents.Count())
-				this.VisualizeSelection(m_iCurrentItem, false);
+				VisualizeSelection(m_iCurrentItem, false);
 			
 			// Select new item
 			_SetItemSelected(id, true, true);

@@ -15,7 +15,6 @@ class CoverManagerComponentClass: GenericComponentClass
 
 class CoverManagerComponent: GenericComponent
 {
-	proto external void SetOccupiedCover(int tileX, int tileY, int coverId, bool occupied);
 }
 
 /*!

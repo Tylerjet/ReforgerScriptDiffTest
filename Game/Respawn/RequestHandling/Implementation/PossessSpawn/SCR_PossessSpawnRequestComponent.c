@@ -59,13 +59,13 @@ class SCR_PossessSpawnRequestComponent : SCR_SpawnRequestComponent
 		if (!possessData)
 			return false;
 
-		Rpc(Rpc_RequestRespawn_S, possessData.GetRplId());
+		Rpc(Rpc_RequestRespawn_S, possessData.GetRplId(), possessData.GetSkipPreload());
 		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	private void Rpc_RequestRespawn_S(RplId entityRplId)
+	private void Rpc_RequestRespawn_S(RplId entityRplId, bool skipPreload)
 	{
 		#ifdef _ENABLE_RESPAWN_LOGS
 		Print(string.Format("%1::Rpc_RequestRespawn_S(playerId: %2, entityRplId: %3)", Type().ToString(),
@@ -74,6 +74,7 @@ class SCR_PossessSpawnRequestComponent : SCR_SpawnRequestComponent
 		#endif
 
 		SCR_PossessSpawnData possessData = SCR_PossessSpawnData.FromRplId(entityRplId);
+		possessData.SetSkipPreload(skipPreload);
 		ProcessRequest_S(possessData);
 	}
 

@@ -17,7 +17,6 @@ class UIColors
 {
 	static const ref Color DARK_SAGE        			= Color.FromSRGBA(86, 92, 84, 255);
 	static const ref Color DARK_GREY					= Color.FromSRGBA(85, 85, 85, 255);
-	static const ref Color LIGHT_GREY             		= Color.FromSRGBA(255, 255, 255, 179);
 	static const ref Color TRANSPARENT      			= Color.FromSRGBA(0, 0, 0, 0);
 
 	// Refined UI colors
@@ -55,8 +54,8 @@ class UIColors
 	static const ref Color SUB_HEADER 					= Color.FromSRGBA(255, 220, 105, 255);	//#ffdc69 yellow
 	
 	//~ editor
-	static const ref Color EDITOR_ICON_COLOR_NEUTRAL	= Color.FromSRGBA(255, 255, 255, 255); ///< Colors for Editor Icons when an entity does not have an assigned faction and is not destroyed
-	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); ///< Colors for Editor Icons when an entity is dead or destroyed
+	static const ref Color EDITOR_ICON_COLOR_NEUTRAL	= Color.FromSRGBA(255, 255, 255, 255);	///< Colors for Editor Icons when an entity does not have an assigned faction and is not destroyed
+	static const ref Color EDITOR_ICON_COLOR_DESTROYED	= Color(0.25, 0.25, 0.25, 1); 			///< Colors for Editor Icons when an entity is dead or destroyed
 
 	//------------------------------------------------------------------------------------------------
 	//! Get the provided colour in a format usable as default of Attributes
@@ -74,7 +73,7 @@ class UIColors
 	//! Get the provided color in a format usable for Rich Text formatting
 	//! \param color if null, considered white
 	//! \return the provided colour in "R, G, B, A" string format (note the commas, values in range 0..255)
-	static string SRGBAFloatToInt(Color color)
+	static string FormatColor(Color color)
 	{
 		if (!color)
 			return "255, 255, 255, 255";
@@ -92,6 +91,13 @@ class UIColors
 		
 		return string.Format("%1, %2, %3, %4", colorR, colorG, colorB, colorA);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Use this to fetch colors, for safety
+	static Color CopyColor(Color uiConstColor)
+	{
+		return Color.FromInt(uiConstColor.PackToInt());
+	}
 }
 
 class GUIColors
@@ -103,7 +109,9 @@ class GUIColors
 	static const ref Color ENABLED_GLOW 			= Color.FromSRGBA(162, 162, 162, 255);	//GREY
 	
 	static const ref Color DEFAULT 					= Color.FromSRGBA(255, 255, 255, 255);	//WHITE
-	static const ref Color DEFAULT_GLOW 			= Color.FromSRGBA(0, 0, 0, 255);		//BLACK																					  
+	static const ref Color DEFAULT_GLOW 			= Color.FromSRGBA(0, 0, 0, 255);		//BLACK				
+	
+	static const ref Color WHITE_GLOW				= Color.FromSRGBA(225, 225, 225, 178); 	//WHITE with 70% alpha															  
 	//---
 
 	static const ref Color ORANGE 					= Color.FromSRGBA(226, 167, 80, 255);	//ORANGE, standard UI orange, warnings
@@ -125,66 +133,112 @@ class GUIColors
 	static const ref Color GREEN_BRIGHT 			= Color.FromSRGBA(157, 250, 153, 255);	//GREEN (bright)
 	static const ref Color GREEN_BRIGHT2			= Color.FromSRGBA(216, 255, 214, 255);	//GREEN (bright++)
 	static const ref Color GREEN_DARK 				= Color.FromSRGBA(28, 157, 22, 255);	//DARK GREEN
+	
+	static const ref Color LIGHT_GRAY				= Color.FromSRGBA(189, 189, 188, 255);	//LIGHT GRAY
 }
 
 class UIConstants
 {
 	// Animation
-	static const float FADE_RATE_INSTANT = 0;
-	static const float FADE_RATE_SUPER_FAST = 20;
-	static const float FADE_RATE_FAST = 10;
-	static const float FADE_RATE_DEFAULT = 5; 		// Used for near instant actions
-	static const float FADE_RATE_SLOW = 1; 			// Used for fading out elements that should be visible for some time
-	static const float FADE_RATE_SUPER_SLOW = 0.2; 	// Very slow fade out
+	static const float FADE_RATE_INSTANT =		0;
+	static const float FADE_RATE_SUPER_FAST = 	20;
+	static const float FADE_RATE_FAST = 		10;
+	static const float FADE_RATE_DEFAULT = 		5; 		// Used for near instant actions
+	static const float FADE_RATE_SLOW = 		1; 		// Used for fading out elements that should be visible for some time
+	static const float FADE_RATE_SUPER_SLOW = 	0.2; 	// Very slow fade out
 	
-	//	Spinners 
+	// Spinners 
 	static const float PROCESSING_SPINNER_ANIMATION_SPEED = 0.75;
 	
 	// Common labels
-	static const string FAVORITE_LABEL_ADD = "#AR-Workshop_ButtonAddToFavourites";
-	static const string FAVORITE_LABEL_REMOVE = "#AR-Workshop_ButtonRemoveFavourites";
-	static const string BOHEMIA_INTERACTIVE = "Bohemia Interactive";
-	static const string BOHEMIA_INTERACTIVE_LOC = "#AR-Author_BI";
+	static const string FAVORITE_LABEL_ADD = 		"#AR-Workshop_ButtonAddToFavourites";
+	static const string FAVORITE_LABEL_REMOVE = 	"#AR-Workshop_ButtonRemoveFavourites";
+	static const string BOHEMIA_INTERACTIVE = 		"Bohemia Interactive";
+	static const string BOHEMIA_INTERACTIVE_LOC =	"#AR-Author_BI";
+	
+	static const string VALUE_UNIT_PERCENTAGE = 	"#AR-ValueUnit_Percentage";
 	
 	// Common icons
-	static const ResourceName ICONS_IMAGE_SET = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
-	static const ResourceName ICONS_GLOW_IMAGE_SET = "{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
+	static const ResourceName ICONS_IMAGE_SET = 		"{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
+	static const ResourceName ICONS_GLOW_IMAGE_SET = 	"{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
+
+	static const string ICON_WARNING = 			"warning";
+	static const string ICON_OK = 				"okCircle";
+	static const string ICON_CANCEL =			"cancelCircle";
+	static const string ICON_CHECK = 			"check";
+	static const string ICON_NOT_AVAILABLE = 	"not-available";
 	
-	static const string ACTION_DISPLAY_ICON_SCALE_BIG = "1.25";
-	static const string ACTION_DISPLAY_ICON_SCALE_VERY_BIG = "1.5";
+	// Action rich text
+	static const string ACTION_DISPLAY_ICON_SCALE_BIG = 		"1.25";
+	static const string ACTION_DISPLAY_ICON_SCALE_VERY_BIG =	"1.5";
+	static const string ACTION_DISPLAY_ICON_SCALE_HUGE =		"1.75";
 	
 	// Values
-    static const float DISABLED_WIDGET_OPACITY = 0.3;
-    static const float ENABLED_WIDGET_OPACITY = 1;
+    static const float DISABLED_WIDGET_OPACITY = 	0.3;
+    static const float ENABLED_WIDGET_OPACITY = 	1;
 	
 	static const float DISABLED_WIDGET_SATURATION = 0.5;
-	static const float ENABLED_WIDGET_SATURATION = 1;
-	
-	static const int LOADING_SCREEN_Z_ORDER = 1000;
-	static const int SPLASH_SCREEN_Z_ORDER = 1001;
+	static const float ENABLED_WIDGET_SATURATION = 	1;
 	
 	// Menu base actions
-	static const string MENU_ACTION_LEFT = "MenuLeft";
-	static const string MENU_ACTION_RIGHT = "MenuRight";
-	static const string MENU_ACTION_UP = "MenuUp";
-	static const string MENU_ACTION_DOWN = "MenuDown";
-	static const string MENU_ACTION_BACK = "MenuBack";
-	static const string MENU_ACTION_SELECT = "MenuSelect";
+	static const string MENU_ACTION_LEFT = 			"MenuLeft";
+	static const string MENU_ACTION_RIGHT = 		"MenuRight";
+	static const string MENU_ACTION_UP = 			"MenuUp";
+	static const string MENU_ACTION_DOWN = 			"MenuDown";
+	static const string MENU_ACTION_BACK = 			"MenuBack";
 	
-	// Connection related
-	static const string ICON_SERVICES_ISSUES = "connection-issues";
-	static const string ICON_CONNECTION = "connection";
-	static const string ICON_DISCONNECTION = "disconnection";
+	static const string MENU_ACTION_MOUSE_WHEEL =	"MouseWheel";
 	
-	static const string MESSAGE_SERVICES_ISSUES = "#AR-CoreMenus_Tooltips_UnavailableServices";
-	static const string MESSAGE_CONNECTING = "#AR-Workshop_Connecting";
-	static const string MESSAGE_DISCONNECTION = "#AR-CoreMenus_Tooltips_NoConnection";
+	static const string MENU_ACTION_SELECT = 		"MenuSelect";
+	static const string MENU_ACTION_SELECT_HOLD = 	"MenuSelectHold";
+	static const string MENU_ACTION_ENABLE = 		"MenuEnable";
+	static const string MENU_ACTION_ENABLE_ALL =	"MenuEnableAll";
+	static const string MENU_ACTION_DOUBLE_CLICK =	"MenuSelectDouble";
+	static const string MENU_ACTION_FAVORITE =		"MenuFavourite";
+	static const string MENU_ACTION_OPEN =			"MenuOpen";
+	
+	static const string MENU_ACTION_OPEN_WB =		"MenuOpenWB";
+	static const string MENU_ACTION_BACK_WB =		"MenuBackWB";
+	
+	// Input devices
+	static const string DEVICE_KEYBOARD = 	"keyboard";
+	static const string DEVICE_GAMEPAD = 	"gamepad";
+	
+	// Mouse buttons
+	static const int MOUSE_LEFT_CLICK =		0;
+	static const int MOUSE_RIGHT_CLICK =	1;
+	
+	// Footer buttons
+	static const string BUTTON_BACK = "Back";
 	
 	//------------------------------------------------------------------------------------------------
-	// Convert the action display state to a string for attributes and Rich Text formatting
+	//! Convert the action display state to a string for attributes and Rich Text formatting
 	static string GetActionDisplayStateAttribute(SCR_EActionDisplayState state)
 	{
 		return typename.EnumToString(SCR_EActionDisplayState, state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get formatted percentage string
+	static string FormatUnitPercentage(float percentage)
+	{
+		return WidgetManager.Translate(VALUE_UNIT_PERCENTAGE, percentage);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//TODO: LOCALIZED STRING!
+	static string FormatVersion(string version)
+	{
+		return string.Format("v. %1", version);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static string GetFavoriteLabel(bool isFavorite)
+	{
+		if (isFavorite)
+			return FAVORITE_LABEL_REMOVE;
+		else
+			return FAVORITE_LABEL_ADD;
 	}
 }
 
@@ -194,5 +248,6 @@ enum SCR_EActionDisplayState
 {
 	DEFAULT,
 	DISABLED,
-	NON_INTERACTABLE_HINT
+	NON_INTERACTABLE_HINT,
+	WARNING
 }

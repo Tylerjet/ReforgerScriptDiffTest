@@ -58,7 +58,7 @@ class SCR_AICombatMoveLogic_MoveFromIncomingVehicle : AITaskScripted
 			rq.m_eStanceMoving = ECharacterStance.STAND;
 			rq.m_eStanceEnd = ECharacterStance.STAND;
 			rq.m_eMovementType = EMovementType.SPRINT;
-			rq.m_fCoverSearchDistMax = 15;
+			rq.m_fCoverSearchDistMax = 9;
 			rq.m_fCoverSearchDistMin = 0;
 			rq.m_fMoveDistance = rq.m_fCoverSearchDistMax;
 			rq.m_eDirection = CalculateVehicleAvoidDirection(vehicleEntity);
@@ -78,6 +78,11 @@ class SCR_AICombatMoveLogic_MoveFromIncomingVehicle : AITaskScripted
 		{
 			// Moving somewhere
 			
+			// It is not our request, send a new request
+			SCR_AICombatMoveRequest_Move rqMove = SCR_AICombatMoveRequest_Move.Cast(m_State.GetRequest());
+			if (rqMove && rqMove.m_eReason != SCR_EAICombatMoveReason.MOVE_FROM_DANGER)
+				return true;
+			
 			if (m_State.IsMovingToCover())
 			{
 				// Moving to cover
@@ -89,19 +94,6 @@ class SCR_AICombatMoveLogic_MoveFromIncomingVehicle : AITaskScripted
 					return false;
 				else
 					return true; // Cover will not protect against vehicle, find another one
-			}
-			else
-			{
-				// Moving but not to cover
-				
-				SCR_AICombatMoveRequest_Move rqMove = SCR_AICombatMoveRequest_Move.Cast(m_State.GetRequest());
-				if (rqMove && rqMove.m_eReason == SCR_EAICombatMoveReason.MOVE_FROM_DANGER)
-					return false; // This is our request, no need to send a new one
-				else
-				{
-					// This is not our request, make a new request
-					return true;
-				}
 			}
 		}	
 		else if (m_State.m_bInCover && m_State.IsAssignedCoverValid())

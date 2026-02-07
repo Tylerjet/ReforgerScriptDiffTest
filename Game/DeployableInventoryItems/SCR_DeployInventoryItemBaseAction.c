@@ -4,6 +4,8 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 	
 	protected RplComponent m_RplComp;
 	
+	protected bool m_bActionStarted;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
@@ -13,14 +15,57 @@ class SCR_DeployInventoryItemBaseAction : ScriptedUserAction
 		return m_DeployableItemComp.CanDeployBeShown(user);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override bool CanBePerformedScript(IEntity user)
+	{
+		if (!m_DeployableItemComp)
+			return false;
+		
+		return m_bActionStarted || !m_DeployableItemComp.IsDeploying();
+	}
+	
  	//------------------------------------------------------------------------------------------------
  	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
  	{
-		if (!m_DeployableItemComp || !m_RplComp || m_RplComp.IsProxy())
+		if (!m_DeployableItemComp)
 			return;
 		
 		m_DeployableItemComp.Deploy(pUserEntity);
+		GetGame().GetCallqueue().CallLater(ResetDeployingDelayed, 100, param1: pUserEntity); //reset bool later so there is enough time for user action to disappear
  	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ResetDeployingDelayed(IEntity pUserEntity)
+	{
+		m_DeployableItemComp.SetDeploying(false);
+		
+		if (pUserEntity == GetGame().GetPlayerController().GetControlledEntity())
+			m_bActionStarted = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActionStart(IEntity pUserEntity)
+	{
+		if (!m_DeployableItemComp)
+			return;
+		
+		m_DeployableItemComp.SetDeploying(true);
+		
+		if (pUserEntity == GetGame().GetPlayerController().GetControlledEntity())
+			m_bActionStarted = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActionCanceled(IEntity pOwnerEntity, IEntity pUserEntity)
+	{
+		if (!m_DeployableItemComp)
+			return;
+		
+		m_DeployableItemComp.SetDeploying(false);
+		
+		if (pUserEntity == GetGame().GetPlayerController().GetControlledEntity())
+			m_bActionStarted = false;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)

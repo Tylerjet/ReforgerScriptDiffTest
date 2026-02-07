@@ -384,6 +384,12 @@ class SCR_MapToolMenuUI : SCR_MapUIBaseComponent
 		m_MapEntity.GetOnMapPan().Remove(OnMapPan);
 	}
 	
+	//------------------------------------------------------------------------------------------------	
+	bool IsFocused()
+	{
+		return m_bIsMenuFocused;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	void SCR_MapToolMenuUI()

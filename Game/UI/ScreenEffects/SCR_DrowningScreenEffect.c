@@ -60,7 +60,7 @@ class SCR_DrowningScreenEffect : SCR_BaseScreenEffect
 		if (!m_wDrowningEffect)
 			return;
 		
-		float effectStrength = 1;
+		const float effectStrength = 1;
 		
 		// Add a couple seconds to drowningDuration so the widget still animates when death occurs
 		float drowningDuration = (maxDrowningDuration - drowningTimeStartFX) + 2;

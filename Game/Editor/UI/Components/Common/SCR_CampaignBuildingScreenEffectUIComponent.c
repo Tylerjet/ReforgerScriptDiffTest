@@ -3,7 +3,6 @@ class SCR_CampaignBuildingScreenEffectUIComponent : ScriptedWidgetComponent
 	protected ImageWidget m_wScrenEffectColor;
 	protected ImageWidget m_wScrenEffectVignette;
 	protected BlurWidget m_wBlurEffect;
-	protected WidgetAnimationBase m_WidgetAnimation;
 	
 	protected const float DURATION_IN_ALPHA = 0.5;
 	protected const float DURATION_IN_BLUR = 0.75;
@@ -43,19 +42,15 @@ class SCR_CampaignBuildingScreenEffectUIComponent : ScriptedWidgetComponent
 	//! Start screen obstruction effect.
 	void StartObstructionAnimation()
 	{
-		m_WidgetAnimation = AnimateWidget.AlphaMask(m_wScrenEffectVignette, VALUE_ALPHA, DURATION_IN_ALPHA);
-		m_WidgetAnimation.SetCurve(EAnimationCurve.EASE_OUT_CUBIC);
-
-		AnimateWidget.AddAnimation(new SCR_WidgetAnimationBlurIntensity(m_wBlurEffect, DURATION_IN_BLUR, VALUE_BLUR));
+		AnimateWidget.StopAnimation(m_wBlurEffect, WidgetAnimationBlurIntensity);
+		AnimateWidget.BlurIntensity(m_wBlurEffect, VALUE_BLUR, DURATION_IN_BLUR);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Ends screen obstruction effect.
 	void FinishObstructionAnimation()
 	{
-		m_WidgetAnimation = AnimateWidget.AlphaMask(m_wScrenEffectVignette, VALUE_DISABLED, DURATION_OUT_ALPHA);
-		m_WidgetAnimation.SetCurve(EAnimationCurve.EASE_IN_OUT_CUBIC);
-
-		AnimateWidget.AddAnimation(new SCR_WidgetAnimationBlurIntensity(m_wBlurEffect, DURATION_OUT_BLUR, VALUE_DISABLED));
+		AnimateWidget.StopAnimation(m_wBlurEffect, WidgetAnimationBlurIntensity);
+		AnimateWidget.BlurIntensity(m_wBlurEffect, VALUE_DISABLED, DURATION_OUT_BLUR);
 	}
 };

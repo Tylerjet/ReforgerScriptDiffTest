@@ -196,7 +196,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!m_Helicopter)
 			return;
 		
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Helicopter.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Helicopter.FindComponent(VehicleControllerComponent));
 		if (!vehicleController)
 			return;
 		
@@ -285,7 +285,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!m_Jeep)
 			return;
 		
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Jeep.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Jeep.FindComponent(VehicleControllerComponent));
 		if (!vehicleController || !vehicleController.GetEngineDrowned())
 			return;
 		
@@ -299,7 +299,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!m_Hummer)
 			return;
 		
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Hummer.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Hummer.FindComponent(VehicleControllerComponent));
 		if (!vehicleController || !vehicleController.GetEngineDrowned())
 			return;
 		
@@ -313,7 +313,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!m_RepairTruck)
 			return;
 		
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_RepairTruck.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_RepairTruck.FindComponent(VehicleControllerComponent));
 		if (!vehicleController || !vehicleController.GetEngineDrowned())
 			return;
 		
@@ -416,7 +416,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//! \param[in] enable
 	void ShowMapDescriptor(string descriptorOwnerName, bool enable)
 	{
-		IEntity ent = IEntity.Cast(GetGame().GetWorld().FindEntityByName(descriptorOwnerName));
+		IEntity ent = GetGame().GetWorld().FindEntityByName(descriptorOwnerName);
 		if (!ent)
 			return;
 
@@ -776,7 +776,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	void StageReset_MoveInJeep(IEntity position = null)
 	{
 		SpawnAsset("Jeep", "{5168FEA3054D6D15}Prefabs/Vehicles/Wheeled/M151A2/M151A2_M2HB_MERDC.et", position);
-		MoveInVehicle("Jeep", ECompartmentType.Pilot);
+		MoveInVehicle("Jeep", ECompartmentType.PILOT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -793,7 +793,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	void StageReset_ProcessTruck()
 	{
 		//m_SupplyTruckComponent.AddSupplies(1000);
-		MoveInVehicle("SupplyTruck", ECompartmentType.Pilot);
+		MoveInVehicle("SupplyTruck", ECompartmentType.PILOT);
 		SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast(m_Player.FindComponent(SCR_CompartmentAccessComponent));
 		
 		if (accessComp)
@@ -931,7 +931,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		if (!compartmentAccess)
 			return false;
 		
-		if (!compartmentAccess.MoveInVehicle(vehicle, ECompartmentType.Pilot))
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!compartmentAccess.MoveInVehicle(vehicle, ECompartmentType.PILOT, world.IsGameTimePaused()))
 			return false;
 		
 		//prepare injuries on victim
@@ -940,7 +941,6 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 		damageComp.GetHitZoneByName("LThigh").SetHealth(0);
 		damageComp.GetHitZoneByName("Chest").SetHealth(0);
 		damageComp.ForceUnconsciousness();
-		damageComp.UpdateBloodClothes();
 		damageComp.GetOnDamageStateChanged().Insert(OnObjectDestroyed);
 		
 		GetGame().GetCallqueue().Remove(RefreshVictimBloodLevel);
@@ -1003,7 +1003,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				gearbox.GetOnDamageStateChanged().Insert(OnVehicleDamaged);
 		}
 			
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Jeep.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Jeep.FindComponent(VehicleControllerComponent));
 		if (vehicleController)
 			vehicleController.GetOnEngineStop().Insert(OnEngineStoppedJeep);
 		
@@ -1070,7 +1070,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				gearbox.GetOnDamageStateChanged().Insert(OnTruckDamaged);
 		}
 		
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_RepairTruck.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_RepairTruck.FindComponent(VehicleControllerComponent));
 		if (vehicleController)
 			vehicleController.GetOnEngineStop().Insert(OnEngineStoppedTruck);
 		
@@ -1090,7 +1090,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				gearbox.GetOnDamageStateChanged().Insert(OnHmwDamaged);
 		}
 		
-		vehicleController = VehicleControllerComponent_SA.Cast(m_Hummer.FindComponent(VehicleControllerComponent_SA));
+		vehicleController = VehicleControllerComponent.Cast(m_Hummer.FindComponent(VehicleControllerComponent));
 		if (vehicleController)
 			vehicleController.GetOnEngineStop().Insert(OnEngineStoppedHmw);
 	}
@@ -1099,7 +1099,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//!
 	void ResetStage_ShootingRange()
 	{
-		IEntity m16 = SpawnAsset("M16", "{3E413771E1834D2F}Prefabs/Weapons/Rifles/M16/Rifle_M16A2.et");
+		IEntity m16 = SpawnAsset("M16", "{135C974EBDA312D9}Prefabs/Weapons/Rifles/M16/Rifle_M16A2_Tutorial.et");
 		if (!m16)
 			return;	
 			
@@ -1198,8 +1198,6 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//! \return
 	IEntity SpawnAsset(string name, ResourceName type, IEntity spawnpoint = null)
 	{
-		string posName;
-		
 		if (!spawnpoint)
 			spawnpoint = GetGame().GetWorld().FindEntityByName(string.Format("SpawnPos_%1", name));
 		
@@ -1694,8 +1692,9 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 				AnimateWidget.Opacity(m_wFadeOut, 0, 0.8);
 			}
 			
+			ChimeraWorld world = GetGame().GetWorld();
 			m_bMovedOutOfVehicleByScript = false;
-			compartmentAccessComponent.MoveInVehicle(veh, seat);
+			compartmentAccessComponent.MoveInVehicle(veh, seat, world.IsGameTimePaused());
 		}
 	}
 	
@@ -1752,7 +1751,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//! \param[in] newPos
 	//! \param[in] loadoutResourceName
 	void MovePlayer(notnull IEntity newPos, ResourceName loadoutResourceName)
-	{		
+	{
 		GetGame().GetCallqueue().CallLater(ResetPlayerCharacter, FADE_SPEED*100, false, newPos, loadoutResourceName);
 		
 		if (m_wFadeOut)
@@ -1762,6 +1761,7 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ResetPlayerCharacter(IEntity newPos, ResourceName loadoutResourceName)
 	{
+		GetGame().GetMenuManager().CloseAllMenus();
 		EntitySpawnParams params = EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
 		newPos.GetWorldTransform(params.Transform);
@@ -1987,9 +1987,8 @@ class SCR_CampaignTutorialArlandComponent : SCR_BaseGameModeComponent
 
 		if (GetStage() == SCR_ECampaignTutorialArlandStage.END_STAGE)
 		{
-			SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(m_pGameMode);
 			SCR_GameModeEndData endData = SCR_GameModeEndData.CreateSimple(EGameOverTypes.ENDREASON_SCORELIMIT, winnerFactionId: 1);
-			gamemode.EndGameMode(endData)
+			m_pGameMode.EndGameMode(endData);
 		}
 		
 		FlushWaypoints();

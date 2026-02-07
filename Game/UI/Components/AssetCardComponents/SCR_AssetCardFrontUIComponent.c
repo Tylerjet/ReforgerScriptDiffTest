@@ -55,6 +55,9 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	[Attribute(params: "edds")]
 	protected ref array<ResourceName> m_ImageOverlayTextures;
 	
+	[Attribute("", UIWidgets.EditBox, "Name of frame widget which holds Content meant for Horizontal scrolling")]
+	string m_sAssetCardNameFrameWidget;
+	
 	protected ref ImageWidget m_EntityImageWidget;
 	
 	protected Widget m_BudgetCostLayout;
@@ -63,6 +66,7 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	
 	//Widgets
 	private Widget m_wWidget;
+	private Widget m_wAssetCardName //~ saved for hotfix below (todo ewe)
 	//protected Widget m_Background;
 	
 	//Grid
@@ -73,6 +77,9 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	
 	//Info Ref
 	private ref SCR_UIInfo m_Info;
+	
+	//Component Ref
+	private ref SCR_HorizontalScrollAnimationComponent m_HorizontalScrollComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -181,8 +188,8 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 				
 				//--- Set entity image
 				m_EntityImageWidget = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sEnityImageWidgetName));
-				if (m_EntityImageWidget) 
-					infoCard.SetAssetImageTo(m_EntityImageWidget);
+				if (m_EntityImageWidget)
+					infoCard.SetAssetImageTo(m_EntityImageWidget); // Also, depending on the entity flag, can set the background stretched, check function definition
 				
 				ImageWidget imageOverlayWidget = ImageWidget.Cast(m_wWidget.FindAnyWidget(m_sImageOverlayName));
 				if (imageOverlayWidget && !m_ImageOverlayTextures.IsEmpty()) 
@@ -274,6 +281,25 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 			}
 		}
 		
+		//--- Hook up events for Asset name horizontal scrolling component
+		m_wAssetCardName = m_wWidget.FindAnyWidget(m_sAssetCardNameFrameWidget);
+		
+		if (m_wAssetCardName)
+		{
+			m_HorizontalScrollComponent = SCR_HorizontalScrollAnimationComponent.Cast(m_wAssetCardName.FindHandler(SCR_HorizontalScrollAnimationComponent));
+			if (m_HorizontalScrollComponent)
+			{
+				// Focus is for controller "hover"
+				GetOnFocus().Insert(OnHoverScrollAnimation);
+				// Hover is for mouse hover
+				GetOnHover().Insert(OnHoverScrollAnimation);
+				
+				// Necessary otherwise animation starts playing on Init
+				m_HorizontalScrollComponent.AnimationStop();
+				m_HorizontalScrollComponent.ResetPosition();
+			}
+		}
+		
 		//Check if asset is modded
 		Widget modIndicator = m_wWidget.FindAnyWidget(m_sModIndicatorWidgetName);
 		if (modIndicator)
@@ -288,6 +314,31 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 		}
 		
 		Event_OnCardInit.Invoke(m_iPrefabIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	set<SCR_EditableEntityComponent> FactionRecipients()
+	{
+		Faction faction;
+		
+		SCR_EditableEntityUIInfo infoCard = SCR_EditableEntityUIInfo.Cast(m_Info);
+		if (infoCard)
+			faction = infoCard.GetFaction();
+		
+		if (!faction)
+			return null;
+		
+		SCR_EditableFactionComponent factionDelegate;
+		
+		SCR_DelegateFactionManagerComponent delegateFactionManager = SCR_DelegateFactionManagerComponent.GetInstance();
+		if (delegateFactionManager)
+			factionDelegate = delegateFactionManager.GetFactionDelegate(faction);
+		
+		set<SCR_EditableEntityComponent> factionRecipients = new set<SCR_EditableEntityComponent>();
+		if (factionDelegate)
+			factionRecipients.Insert(factionDelegate);
+		
+		return factionRecipients;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -306,6 +357,31 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 
 		outIndex = int.MAX;
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnHoverScrollAnimation(Widget widget, int prefabIndex, bool hoverEntered)
+	{
+		//~todo ewe: known issue on Content browser Animation wont start cause frameWidth is always 0 on init
+		// Makes sure name text widget is up to date for ContentFit check
+		widget.Update();
+		
+		// Hotfix for animation starting when content fits on Content Browser Init (related to todo above)
+		float width, height;
+		
+		m_wAssetCardName.Update();
+		m_wAssetCardName.GetScreenSize(width, height);
+		
+		// Checks if content does not fit before starting animation
+		if (hoverEntered && !m_HorizontalScrollComponent.GetContentFit() && width > 0)
+		{
+			m_HorizontalScrollComponent.AnimationStart();
+		}
+		else if (!hoverEntered || m_HorizontalScrollComponent.GetContentFit() || width <= 0)
+		{
+			m_HorizontalScrollComponent.AnimationStop();
+			m_HorizontalScrollComponent.ResetPosition();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -396,5 +472,14 @@ class SCR_AssetCardFrontUIComponent : ScriptedWidgetComponent
 	override void HandlerAttached(Widget w)
     {
 		m_wWidget = w;
+	}
+	
+	override void HandlerDeattached(Widget w)
+	{
+		if (m_HorizontalScrollComponent)
+		{
+			GetOnFocus().Remove(OnHoverScrollAnimation);
+			GetOnHover().Remove(OnHoverScrollAnimation);
+		}
 	}
 }

@@ -12,7 +12,7 @@ Do not modify, this script is generated
 /*!
 Set of parameters used by TryUseItemOverrideParams
 */
-class ItemUseParameters
+sealed class ItemUseParameters
 {
 	// Item which will be used.
 	proto external IEntity GetEntity();
@@ -23,6 +23,12 @@ class ItemUseParameters
 	// Should we hide the item after the action is successfully performed? If action is cancelled, item is always left in hand (unless it's cancelled by a different action that hides the item).
 	proto external bool ShouldKeepInHandAfterSuccess();
 	proto external void SetKeepInHandAfterSuccess(bool keep);
+	// Should we keep the gadget in hand, while the animation is playing, even if the gadget is not the item being primarily used?
+	proto external bool ShouldKeepGadgetVisible();
+	proto external void SetKeepGadgetVisible(bool keepVisible);
+	// There can be only one main user of an item, with whom there is proper animation synchronization (incl. timing correction, etc.). If it is possible to attach multiple users to the item, all short-term users of an item should use m_bIsMainUserOfTheItem = false.
+	proto external bool IsMainUserOfTheItem();
+	proto external void SetIsMainUserOfTheItem(bool isMainUser);
 	// ID of the command that should be called, can be found using BindCommand() from the item's animation component.
 	proto external int GetCommandID();
 	proto external void SetCommandID(int cmdID);

@@ -1,109 +1,91 @@
 class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 {
-	MissionWorkshopItem m_Item;
-	ref SCR_MissionHeader m_Header;
-	string m_sScenarioPath;
-	Widget m_wFeatured;
-	TextWidget m_wTypeText;
-	TextWidget m_wName;
-	TextWidget m_wDescription;
-	SCR_InputButtonComponent m_Play;
-	SCR_InputButtonComponent m_Continue;
-	SCR_InputButtonComponent m_Restart;
-	SCR_InputButtonComponent m_FindServer;
-	Widget m_wFooter;
+	protected MissionWorkshopItem m_Item;
+	protected ref SCR_MissionHeader m_Header;
 
-	// All return SCR_GMMenuTileComponent as script invoker
-	ref ScriptInvoker m_OnPlay = new ScriptInvoker();
-	ref ScriptInvoker m_OnContinue = new ScriptInvoker();
-	ref ScriptInvoker m_OnRestart = new ScriptInvoker();
-	ref ScriptInvoker m_OnFindServer = new ScriptInvoker();
+	protected TextWidget m_wName;
+	protected TextWidget m_wDescription;
+
+	protected SCR_InputButtonComponent m_Play;
+	protected SCR_InputButtonComponent m_Continue;
+	protected SCR_InputButtonComponent m_Restart;
+	protected SCR_InputButtonComponent m_FindServer;
+	
+	protected bool m_bFocused;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
-		m_wTypeText = TextWidget.Cast(w.FindAnyWidget("TypeText"));
+
 		m_wName = TextWidget.Cast(w.FindAnyWidget("Name"));
 		m_wDescription = TextWidget.Cast(w.FindAnyWidget("Description"));
-		m_wFooter = w.FindAnyWidget("Footer");
-		m_wFeatured = w.FindAnyWidget("Featured");
-		m_Play = SCR_InputButtonComponent.GetInputButtonComponent("Play", w);
+
+		m_Play = SCR_InputButtonComponent.GetInputButtonComponent(SCR_ScenarioUICommon.BUTTON_PLAY, w);
 		if (m_Play)
 			m_Play.m_OnActivated.Insert(OnPlay);
-		
-		m_Continue = SCR_InputButtonComponent.GetInputButtonComponent("Continue", w);
+
+		m_Continue = SCR_InputButtonComponent.GetInputButtonComponent(SCR_ScenarioUICommon.BUTTON_CONTINUE, w);
 		if (m_Continue)
 			m_Continue.m_OnActivated.Insert(OnContinue);
 
-		m_FindServer = SCR_InputButtonComponent.GetInputButtonComponent("FindServer", w);
+		m_FindServer = SCR_InputButtonComponent.GetInputButtonComponent(SCR_ScenarioUICommon.BUTTON_FIND_SERVERS, w);
 		if (m_FindServer)
-			m_FindServer.m_OnActivated.Insert(OnFindServer);
-		
-		m_Restart = SCR_InputButtonComponent.GetInputButtonComponent("Restart", w);
+			m_FindServer.m_OnActivated.Insert(OnFindServers);
+
+		m_Restart = SCR_InputButtonComponent.GetInputButtonComponent(SCR_ScenarioUICommon.BUTTON_RESTART, w);
 		if (m_Restart)
 			m_Restart.m_OnActivated.Insert(OnRestart);
-		
-		m_wFooter.SetOpacity(0);
-		m_wFooter.SetEnabled(false);
+
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnDoubleClick(Widget w, int x, int y, int button)
 	{
-		super.OnDoubleClick(w, x, y, button);
+		OnPlay();
 
-		if (button == 0)
-			m_OnPlay.Invoke(this);
-		
-		return false;
+		return super.OnDoubleClick(w, x, y, button);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		super.OnFocus(w, x, y);
-		//AnimateWidget.Opacity(m_wFooter, 1, m_fAnimationRate);
-		m_wFooter.SetOpacity(1);
-		m_wFooter.SetEnabled(true);
-		return false;
+		SCR_ScenarioUICommon.UpdateInputButtons(m_Item, {m_Play, m_Continue, m_Restart, m_FindServer});
+
+		m_bFocused = true;
+		
+		return super.OnFocus(w, x, y);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		super.OnFocusLost(w, x, y);
-		//AnimateWidget.Opacity(m_wFooter, 0, m_fAnimationRate);
-		m_wFooter.SetOpacity(0);
-		m_wFooter.SetEnabled(false);
+		SCR_ScenarioUICommon.UpdateInputButtons(m_Item, {m_Play, m_Continue, m_Restart, m_FindServer}, false);
+
+		m_bFocused = false;
 		
-		return false;
+		return super.OnFocusLost(w, x, y);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] item
-	//! \param[in] isFeatured
-	//! \param[in] isRecent
-	//! \param[in] isRecommended
-	void ShowMission(notnull MissionWorkshopItem item, bool isFeatured = false, bool isRecent = false, bool isRecommended = false)
+	void ShowMission(notnull MissionWorkshopItem item)
 	{
 		m_Item = item;
+		if (!m_Item)
+			return;
 
-		if (isFeatured)
-			m_wTypeText.SetText("#AR-MainMenu_Featured");
-		else if (isRecent)
-			m_wTypeText.SetText("#AR-MainMenu_Recent");
-		else if (isRecommended)
-			m_wTypeText.SetText("#AR-MainMenu_Recommended");
-		else
-			m_wTypeText.SetText(" "); // Hide the widget, keep space
+		if (m_wName)
+			m_wName.SetText(m_Item.Name());
 
-		m_wName.SetText(item.Name());
-		m_wDescription.SetText(item.Description());
-		
+		if (m_wDescription)
+			m_wDescription.SetText(m_Item.Description());
+
 		// Set image through SCR_ButtonImageComponent
-		m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(item.Id()));
+		m_Header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(m_Item.Id()));
+
 		SCR_ButtonImageComponent comp = SCR_ButtonImageComponent.Cast(m_wRoot.FindHandler(SCR_ButtonImageComponent));
 		if (comp)
 		{
@@ -111,22 +93,15 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 			if (!texture.IsEmpty())
 				comp.SetImage(texture);
 		}
-		
-		m_wFeatured.SetVisible(isFeatured);
 
-		bool canContinue = m_Header && GetGame().GetSaveManager().HasLatestSave(m_Header);
-		m_Play.SetVisible(!canContinue);
-		m_Continue.SetVisible(canContinue);
-		
-		m_Restart.SetVisible(canContinue);
-		m_FindServer.SetVisible(item.GetPlayerCount() > 1);
+		SCR_ScenarioUICommon.UpdateInputButtons(m_Item, {m_Play, m_Continue, m_Restart, m_FindServer}, m_bFocused);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	ResourceName GetTexture()
+	protected ResourceName GetTexture()
 	{
-		if (!m_Header)
+		if (!m_Header && m_Item)
 			return m_Item.Thumbnail().GetLocalScale(1920).Path();
 
 		if (!m_Header.m_sPreviewImage.IsEmpty())
@@ -139,26 +114,65 @@ class SCR_GMMenuTileComponent : SCR_TileBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnPlay()
+	protected void OnPlay()
 	{
-		m_OnPlay.Invoke(this);
+		if (!m_Item || !SCR_ScenarioUICommon.CanPlay(m_Item))
+			return;
+
+		GetGame().GetSaveManager().ResetFileNameToLoad();
+
+		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
+
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnContinue()
+	protected void OnContinue()
 	{
-		m_OnContinue.Invoke(this);
+		if (!m_Item || !SCR_ScenarioUICommon.CanPlay(m_Item))
+			return;
+
+		if (m_Header && !m_Header.GetSaveFileName().IsEmpty())
+			GetGame().GetSaveManager().SetFileNameToLoad(m_Header);
+		else
+			GetGame().GetSaveManager().ResetFileNameToLoad();
+
+		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
+
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnRestart()
+	protected void OnRestart()
 	{
-		m_OnRestart.Invoke(this);
+		if (!m_Item || !SCR_ScenarioUICommon.CanPlay(m_Item))
+			return;
+
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(SCR_ScenarioUICommon.DIALOG_RESTART);
+		dialog.m_OnConfirm.Insert(OnRestartConfirmed);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnFindServer()
+	protected void OnRestartConfirmed()
 	{
-		m_OnFindServer.Invoke(this);
+		GetGame().GetSaveManager().ResetFileNameToLoad();
+		SCR_ScenarioUICommon.TryPlayScenario(m_Item);
+
+		SCR_MenuLoadingComponent.SaveLastMenu(ChimeraMenuPreset.EditorSelectionMenu);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnFindServers()
+	{
+		if (!m_Item || !SCR_ScenarioUICommon.CanJoin(m_Item))
+			return;
+
+		ServerBrowserMenuUI.OpenWithScenarioFilter(m_Item);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnCommStatusCheckFinished(SCR_ECommStatus status, float responseTime, float lastSuccessTime, float lastFailTime)
+	{
+		SCR_ScenarioUICommon.UpdateInputButtons(m_Item, {m_Play, m_Continue, m_Restart, m_FindServer}, m_bFocused);
 	}
 }

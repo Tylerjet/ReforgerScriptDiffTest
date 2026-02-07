@@ -247,18 +247,18 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 		if (m_CharacterTriggerEntity)
 			return;
 
-		for (int i = 0, count = m_aChildren.Count(); i < count; i++)
+		foreach (SCR_ScenarioFrameworkLayerBase layerBase : m_aChildren)
 		{
-			SCR_ScenarioFrameworkLayerBase layerBase = SCR_ScenarioFrameworkLayerBase.Cast(m_aChildren[i]);
 			if (!layerBase)
 				continue;
 
+			SCR_CharacterTriggerEntity charTrigger;
 			array<IEntity> spawnedEntities = layerBase.GetSpawnedEntities();
-			for (int j = 0, countJ = spawnedEntities.Count(); j < countJ; j++)
+			foreach (IEntity spawnedEntity : spawnedEntities)
 			{
-				SCR_CharacterTriggerEntity charTriggr = SCR_CharacterTriggerEntity.Cast(spawnedEntities[j]);
-				if (charTriggr)
-					m_CharacterTriggerEntity = charTriggr;
+				charTrigger = SCR_CharacterTriggerEntity.Cast(spawnedEntity);
+				if (charTrigger)
+					m_CharacterTriggerEntity = charTrigger; // TODO: break?
 			}
 		}
 	}
@@ -289,55 +289,9 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
-	{
-		if (m_bInitiated)
-			return;
-		
-		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-		}
-		
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-				
-				return;
-			}
-		}
-
-		super.Init(area, activation);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
-		m_bInitiated = true;
-		
-		ActivateLogic();
-		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
-		{
-			plugin.Init(this);
-		}
-		
-		foreach (SCR_ScenarioFrameworkActionBase activationAction : m_aActivationActions)
-		{
-			activationAction.Init(GetOwner());
-		}
-
-		if (m_ParentLayer)
-			m_ParentLayer.CheckAllChildrenSpawned(this);
-
-		GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawned);
-
-		if (m_fRepeatedSpawnTimer >= 0)
-			RepeatedSpawn();
+		super.AfterAllChildrenSpawned(layer);
 		
 		if (!m_sTriggerName.IsEmpty())
 			FindCharacterTriggerEntity();

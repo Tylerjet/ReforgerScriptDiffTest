@@ -1,17 +1,17 @@
-class RegisterResourceRequest: JsonApiStruct
+class RegisterResourceRequest : JsonApiStruct
 {
 	ref array<string> path = new array<string>;
-	
+
 	void RegisterResourceRequest()
 	{
 		RegV("path");
 	}
 }
 
-class RegisterResourceResponse: JsonApiStruct
+class RegisterResourceResponse : JsonApiStruct
 {
 	bool Output;
-	
+
 	void RegisterResourceResponse()
 	{
 		RegV("Output");
@@ -20,7 +20,7 @@ class RegisterResourceResponse: JsonApiStruct
 
 class RegisterResourceUtils
 {
-	void Register(string absPath ,RegisterResourceResponse response)
+	void Register(string absPath, RegisterResourceResponse response)
 	{
 		//Get Resource
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
@@ -28,7 +28,7 @@ class RegisterResourceUtils
 		if (!meta)
 		{
 			meta = resourceManager.RegisterResourceFile(absPath);
-		} 
+		}
 		//Check if metafile was created
 		if (!meta)
 		{
@@ -43,20 +43,21 @@ class RegisterResourceUtils
 	}
 }
 
-class RegisterResource: NetApiHandler
+class RegisterResource : NetApiHandler
 {
 	override JsonApiStruct GetRequest()
 	{
 		return new RegisterResourceRequest();
 	}
-	
+
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		RegisterResourceRequest req = RegisterResourceRequest.Cast(request);
 		RegisterResourceResponse response = new RegisterResourceResponse();
- 		RegisterResourceUtils utils = new RegisterResourceUtils();
-		//To fbx which is in WB files
-		for(int i = 0; i < req.path.Count(); i++)
+		RegisterResourceUtils utils = new RegisterResourceUtils();
+
+		// for each export path
+		for (int i = 0; i < req.path.Count(); i++)
 		{
 			utils.Register(req.path[i], response);
 		}

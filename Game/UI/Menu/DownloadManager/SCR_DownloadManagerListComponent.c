@@ -33,7 +33,7 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	{
 		super.HandlerAttached(w);
 		
-		m_ScrollLayout = ScrollLayoutWidget.Cast(w);
+		m_ScrollLayout = ScrollLayoutWidget.Cast(w.FindAnyWidget("ScrollLayout"));
 		m_wList = w.FindAnyWidget(m_sList);
 		m_wFallbackTextWrap = w.FindAnyWidget(m_sFallbackTextWrapWidget);
 	}
@@ -48,7 +48,7 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 		// Show fallback if list is empty 
 		ShowFallbackText(m_wList.GetChildren() == null);
 		
-		GetGame().GetWorkspace().SetFocusedWidget(null);
+		GetGame().GetCallqueue().Call(FocusFirstLine);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -67,6 +67,14 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 		
 		m_NavPauseResumeAll = CreateNavigationButton("WorkshopPauseAllDownloads", "#AR-DownloadManager_ButtonPauseAll", false);
 		m_NavPauseResumeAll.m_OnActivated.Insert(OnClickPauseResumeAll);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuFocusGained()
+	{
+		super.OnMenuFocusGained();
+		
+		GetGame().GetCallqueue().Call(FocusFirstLine);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -150,10 +158,10 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	//! Find line containing selected download action 
 	SCR_DownloadManagerEntry DownloadActionLine(notnull SCR_WorkshopItemActionDownload action)
 	{
-		for (int i = 0, count = m_aAddonLines.Count(); i < count; i++)
+		foreach (SCR_DownloadManagerEntry entry : m_aAddonLines)
 		{
-			if (m_aAddonLines[i].GetDownloadAction() == action)
-				return m_aAddonLines[i];
+			if (entry.GetDownloadAction() == action)
+				return entry;
 		}
 		
 		return null;
@@ -181,13 +189,6 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 			return null;
 		
 		return SCR_DownloadManagerEntry.Cast(focused.FindHandler(SCR_DownloadManagerEntry));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ScrollTop()
-	{
-		if (m_ScrollLayout)
-			m_ScrollLayout.SetSliderPos(0, 0);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -330,6 +331,18 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 	protected void EnablePauseResumeAll()
 	{
 		m_NavPauseResumeAll.SetEnabled(true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void FocusFirstLine()
+	{
+		if (m_aAddonLines.IsEmpty())
+			return;
+		
+		GetGame().GetWorkspace().SetFocusedWidget(m_aAddonLines[0].GetRootWidget());
+		
+		if (m_ScrollLayout)
+			m_ScrollLayout.SetSliderPos(0, 0);
 	}
 }
 

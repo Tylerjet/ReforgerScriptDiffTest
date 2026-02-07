@@ -18,7 +18,6 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 	protected bool m_bAlignToNormalOverride;
 
 	protected BaseWorld m_BaseWorld;
-	protected WorldEditorAPI m_WorldEditorAPI;
 
 	protected static const ResourceName BUSH_BASE = "{D7163D1B571F4C0C}Prefabs/Vegetation/Core/Bush_Base.et";
 	protected static const ResourceName TREE_BASE = "{388AE316D09D0680}Prefabs/Vegetation/Core/Tree_Base.et";
@@ -42,7 +41,10 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 		TraceParam traceParam = new TraceParam();
 		float traceRatio;
 		float minVerticalOffset, maxVerticalOffset, maxPitch, maxRoll;
-		int selectedEntitiesCount = m_WorldEditorAPI.GetSelectedEntitiesCount();
+
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+
+		int selectedEntitiesCount = worldEditorAPI.GetSelectedEntitiesCount();
 		bool manyEntities = selectedEntitiesCount > MANY_ENTITIES_THRESHOLD;
 		RandomGenerator randomGenerator = new RandomGenerator();
 
@@ -50,14 +52,14 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 			return;
 
 		int firstTick = System.GetTickCount();
-		m_WorldEditorAPI.BeginEntityAction();
+		worldEditorAPI.BeginEntityAction();
 		for (int i; i < selectedEntitiesCount; i++)
 		{
-			entitySource = m_WorldEditorAPI.GetSelectedEntity(i);
+			entitySource = worldEditorAPI.GetSelectedEntity(i);
 			if (!entitySource)
 				continue;
 
-			entity = m_WorldEditorAPI.SourceToEntity(entitySource);
+			entity = worldEditorAPI.SourceToEntity(entitySource);
 			editorData = null;
 			alignToSurfaceNormal = m_bAlignToNormalOverride;
 			minVerticalOffset = 0;
@@ -99,7 +101,7 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 			entityPosOffset = entityPos - SCR_BaseContainerTools.GetLocalCoords(entitySource.GetParent(), entityPos);
 
 			// altitude
-			terrainY = m_WorldEditorAPI.GetTerrainSurfaceY(entityPos[0], entityPos[2]);
+			terrainY = worldEditorAPI.GetTerrainSurfaceY(entityPos[0], entityPos[2]);
 			altitude = entityPos[1] - terrainY;
 			if (altitude < 0)
 				entityPos[1] = terrainY;
@@ -139,9 +141,9 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 				if (alignToSurfaceNormal)
 				{
 					normalAngles = GetXYZAnglesFromNormal(entity, traceParam.TraceNorm);
-					m_WorldEditorAPI.SetVariableValue(entitySource, null, "angleX", normalAngles[0].ToString());
-					m_WorldEditorAPI.SetVariableValue(entitySource, null, "angleY", normalAngles[1].ToString());
-					m_WorldEditorAPI.SetVariableValue(entitySource, null, "angleZ", normalAngles[2].ToString());
+					worldEditorAPI.SetVariableValue(entitySource, null, "angleX", normalAngles[0].ToString());
+					worldEditorAPI.SetVariableValue(entitySource, null, "angleY", normalAngles[1].ToString());
+					worldEditorAPI.SetVariableValue(entitySource, null, "angleZ", normalAngles[2].ToString());
 				}
 
 				if (m_bSetOnTerrainAndEntitiesSurface)
@@ -159,9 +161,9 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 			if (m_bUsePrefabVerticalOffset && (minVerticalOffset != 0 || maxVerticalOffset != 0))
 				entityPos[1] = entityPos[1] + randomGenerator.RandFloatXY(minVerticalOffset, maxVerticalOffset);
 
-			m_WorldEditorAPI.SetVariableValue(entitySource, null, "coords", entityPos.ToString(false));
+			worldEditorAPI.SetVariableValue(entitySource, null, "coords", entityPos.ToString(false));
 		}
-		m_WorldEditorAPI.EndEntityAction();
+		worldEditorAPI.EndEntityAction();
 
 		Print(string.Format("Fixed %1 floating entities in %2ms", selectedEntitiesCount, System.GetTickCount() - firstTick), LogLevel.NORMAL);
 		Print("Floaters Fixer - Run method ended", LogLevel.NORMAL);
@@ -189,10 +191,7 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 			return false;
 		}
 
-		WorldEditorAPI worldEditorAPI = m_WorldEditorAPI;
-		if (!worldEditorAPI)
-			worldEditorAPI = worldEditor.GetApi();
-
+		WorldEditorAPI worldEditorAPI = worldEditor.GetApi();
 		if (!worldEditorAPI)
 		{
 			Print("Floaters Fixer - Run method stopped because World Editor API was not found", LogLevel.WARNING);
@@ -206,7 +205,6 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 			return false;
 		}
 
-		m_WorldEditorAPI = worldEditorAPI;
 		m_BaseWorld = baseWorld;
 
 		return true;
@@ -218,7 +216,8 @@ class SCR_FloatersFixerPlugin : WorkbenchPlugin
 		if (entity.IsInherited(GenericTerrainEntity))
 			return true;
 
-		IEntitySource source = m_WorldEditorAPI.EntityToSource(entity);
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		IEntitySource source = worldEditorAPI.EntityToSource(entity);
 		if (!source)
 			return false;
 

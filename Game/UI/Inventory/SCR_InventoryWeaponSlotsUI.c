@@ -97,7 +97,6 @@ class SCR_InventoryWeaponSlotsUI : SCR_InventoryStorageBaseUI
 	{
 		array<int> aCoordinates;
 		int iWidgetColumnSize, iWidgetRowSize;
-		int iPageCounter = 0;				
 		int iRelativeOffset = 0; 				//if there's an item taking more than one slot, offset the following items to the right
 
 		foreach( int iIndex, SCR_InventorySlotUI pSlot: m_aSlots )
@@ -113,7 +112,7 @@ class SCR_InventoryWeaponSlotsUI : SCR_InventoryStorageBaseUI
 				SCR_ItemAttributeCollection pAttrib = new SCR_ItemAttributeCollection();
 				pAttrib.SetSlotType( ESlotID.SLOT_ANY );
 				pAttrib.SetSlotSize( eSlotSize );
-				pSlot = SCR_InventorySlotWeaponSlotsUI.Cast( CreateSlotUI( null, iIndex, pAttrib, iIndex, m_aWeaponSlots[iIndex].GetWeaponSlotType() ) );
+				pSlot = CreateSlotUI( null, iIndex, pAttrib, iIndex, m_aWeaponSlots[iIndex].GetWeaponSlotType() );
 				m_aSlots.Set( iIndex, pSlot );
 			}
 			Widget w = pSlot.GetWidget();
@@ -237,4 +236,4 @@ class SCR_InventoryWeaponSlotsUI : SCR_InventoryStorageBaseUI
 		m_sGridPath = "WeaponsGrid";
 		m_Storage = storage;
 	}	
-};
+}

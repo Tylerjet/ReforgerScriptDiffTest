@@ -30,31 +30,35 @@ class SCR_ResourceSystem : GameSystem
     {
 		float timeSlice = GetWorld().GetFixedTimeSlice();
 		
-		//!------------------------------------------------------------ Process new items in the grid.
+		//------------------------------------------------------------ Process new items in the grid.
 		m_ResourceGrid.ProcessFlaggedItems();
 		
-		//!----------------------------------------------------------------- Process graceful handles.
+		//----------------------------------------------------------------- Process graceful handles.
 		m_ResourceSystemSubscriptionManager.ProcessGracefulHandles();
 		
-		//!------------------------------------------------------------------- Container self updates.
-		foreach (SCR_ResourceContainer container : m_aContainers)
+		//------------------------------------------------------------------- Container self updates.
+		SCR_ResourceContainer container;
+		
+		for (int i = m_aContainers.Count() - 1; i >= 0; --i)
 		{
+			container = m_aContainers[i];
+			
 			if (container)
 				container.Update(timeSlice);
 			else
-				/*!
+				/*
 				It could not always remove the specific null container, but eventually it should
 					clear them out.
 				*/
-				m_aContainers.RemoveItem(container);
+				m_aContainers.Remove(i);
 		}
 		
-		//!-------------------------------------------------------- Process dynamic items in the grid.
+		//-------------------------------------------------------- Process dynamic items in the grid.
 		bool wasGridUpdateIdIncreased;
 		
 		foreach (SCR_ResourceComponent component : m_DynamicComponentsBudgetManager.ProcessNextBatch())
 		{
-			/*!
+			/*
 			It could not always remove the specific null component, but eventually it should clear
 				them out.
 			*/
@@ -75,12 +79,12 @@ class SCR_ResourceSystem : GameSystem
 			component.UpdateLastPosition();
 		}
 		
-		//!------------------------------------------------ Process and update subscribed interactors.
+		//------------------------------------------------ Process and update subscribed interactors.
 		m_ResourceGrid.ResetFrameBudget();
 		
 		foreach (SCR_ResourceInteractor interactor : m_SubscribedInteractorsBudgetManager.ProcessNextBatch())
 		{
-			/*!
+			/*
 			It could not always remove the specific null interactor, but eventually it should clear
 				them out.
 			*/
@@ -93,7 +97,7 @@ class SCR_ResourceSystem : GameSystem
 				break;
 		}
 		
-		//!------------------------------------------------------------- Replicate resource listeners.
+		//------------------------------------------------------------- Replicate resource listeners.
 		m_ResourceSystemSubscriptionManager.ReplicateListeners();
     }
  	
@@ -129,14 +133,18 @@ class SCR_ResourceSystem : GameSystem
 	//------------------------------------------------------------------------------------------------
     void RegisterDynamicComponent(notnull SCR_ResourceComponent component)
     {
-        if (!m_aDynamicComponents.Contains(component))
+		const RplComponent rplComponent = component.GetReplicationComponent();
+		
+        if (rplComponent.Role() == RplRole.Authority && !m_aDynamicComponents.Contains(component))
             m_aDynamicComponents.Insert(component);
     }
 	
 	//------------------------------------------------------------------------------------------------
     void RegisterContainer(notnull SCR_ResourceContainer container)
     {
-        if (!m_aContainers.Contains(container))
+		const RplComponent rplComponent = container.GetComponent().GetReplicationComponent();
+		
+        if (rplComponent.Role() == RplRole.Authority && !m_aContainers.Contains(container))
             m_aContainers.Insert(container);
     }
 	

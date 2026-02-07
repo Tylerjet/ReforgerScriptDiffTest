@@ -9,18 +9,30 @@ class SCR_Faction : ScriptedFaction
 	protected int m_iOrder;
 
 	[Attribute("1 1 1", UIWidgets.ColorPicker, desc: "Outline faction color")]
-	private ref Color m_OutlineFactionColor;
+	protected ref Color m_OutlineFactionColor;
+	
+	[Attribute("1 1 1", UIWidgets.ColorPicker, desc: "Faction color for notifications")]
+	protected ref Color m_NotificationFactionColor;
+	
+	[Attribute("1 1 1", UIWidgets.ColorPicker, desc: "Faction color for text in notifications")]
+	protected ref Color m_NotificationTextFactionColor;
 
 	[Attribute(defvalue: "1", desc: "Will the faction appear in the respawn menu?")]
-	private bool m_bIsPlayable;
+	protected bool m_bIsPlayable;
 
+	[Attribute(defvalue: "1", desc: "If true will show the faction in the welcome screen even if it is not playable")]
+	protected bool m_bShowInWelcomeScreenIfNonPlayable;
+	
+	[Attribute("true", desc: "Is this a military faction? This affects AI functionality related to combat.")]
+	protected bool m_bIsMilitary;
+	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag icon of this particular faction.", params: "edds")]
 	private ResourceName m_sFactionFlag;
 
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Faction flag material, used on flag poles.", params: "emat")]
 	protected ResourceName m_FactionFlagMaterial;
 
-	[Attribute("0", UIWidgets.ComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
+	[Attribute("0", UIWidgets.SearchComboBox, "", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
 	protected EEditableEntityLabel m_FactionLabel;
 	
 	[Attribute("1", desc: "If this is false it would mean that every AI will be hostile towards their own faction members and essentially allow for Deathmatch. Use with caution, only checked on init, you can still set the faction hostile towards itself in runtime. This essentially makes sure it adds itself to FriendlyFactionsIds.")]
@@ -58,9 +70,15 @@ class SCR_Faction : ScriptedFaction
 	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag imageset for groups of this faction.", params: "imageset")]
 	protected ResourceName m_sGroupFlagsImageSet;
+	
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Flag outlines imageset for groups of this faction.", params: "imageset")]
+	protected ResourceName m_sGroupFlagsImageSetOutlines;
 
 	[Attribute("List of flags from imageset")]
 	protected ref array<string> m_aFlagNames;
+
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Background imageset for this faction background", params:"imageset")]
+	protected ResourceName m_sFactionBackground;
 	
 	[Attribute()]
 	protected ref array<ref SCR_MilitaryBaseCallsign> m_aBaseCallsigns;
@@ -123,6 +141,11 @@ class SCR_Faction : ScriptedFaction
 	{
 		return m_sGroupFlagsImageSet;
 	}
+	
+	ResourceName GetGroupFlagImageSetOutlines()
+	{
+		return m_sGroupFlagsImageSetOutlines;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[out] textures
@@ -168,6 +191,20 @@ class SCR_Faction : ScriptedFaction
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return Faction color used in notifications
+	Color GetNotificationFactionColor()
+	{
+		return Color.FromInt(m_NotificationFactionColor.PackToInt());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Faction color for text used in notifications
+	Color GetNotificationTextFactionColor()
+	{
+		return Color.FromInt(m_NotificationTextFactionColor.PackToInt());
+	}		
+	
+	//------------------------------------------------------------------------------------------------
 	//! \return
 	Color GetOutlineFactionColor()
 	{
@@ -201,6 +238,14 @@ class SCR_Faction : ScriptedFaction
 	bool IsPlayable()
 	{
 		return m_bIsPlayable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! If faction should be shown in the welcome screen if it is not playable
+	//! \return True if it should show even if not playable otherwise hide
+	bool IsShownInWelcomeScreenIfNonPlayable()
+	{
+		return m_bShowInWelcomeScreenIfNonPlayable;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -516,9 +561,10 @@ class SCR_Faction : ScriptedFaction
 	*/
 
 	//------------------------------------------------------------------------------------------------
-	//! \param catalogType
-	//! \return
-	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType)
+	//! \param[in] catalogType Catalog type to find
+	//! \param[in] printNotFound True will print a warning if the given category was not found
+	//! \return Entity catalog of faction of given type
+	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, bool printNotFound = true)
 	{	
 		if (!m_bCatalogInitDone)
 		{
@@ -533,7 +579,9 @@ class SCR_Faction : ScriptedFaction
 			return entityCatalog;
 	
 		//~ No data found
-		Print(string.Format("'SCR_Faction' trying to get entity list of type '%1' but there is no catalog with that type for faction '%2'", typename.EnumToString(EEntityCatalogType, catalogType), GetFactionKey()), LogLevel.WARNING);
+		if (printNotFound)
+			Print(string.Format("'SCR_Faction' trying to get entity list of type '%1' but there is no catalog with that type for faction '%2'", typename.EnumToString(EEntityCatalogType, catalogType), GetFactionKey()), LogLevel.WARNING);
+		
 		return null;
 	}
 
@@ -557,6 +605,35 @@ class SCR_Faction : ScriptedFaction
 	    }
 		
 		return outEntityCatalogs.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[out] friendlyFactions List of factions friendly to this faction
+	//! \param[in] includeSelf If the list should include this faction if it is friendly to itself
+	//! \return number of factions friendly
+	int GetFriendlyFactions(notnull out array<Faction> friendlyFactions, bool includeSelf = true)
+	{
+		friendlyFactions.Clear();
+		
+		foreach (Faction faction : m_FriendlyFactions)
+		{
+			if (!faction)
+				continue;
+			
+			if (this == faction)
+			{
+				if (!includeSelf)
+					continue;
+				
+				friendlyFactions.InsertAt(faction, 0);
+			}
+			else 
+			{
+				friendlyFactions.Insert(faction);
+			}
+		}
+		
+		return friendlyFactions.Count();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -666,6 +743,21 @@ class SCR_Faction : ScriptedFaction
 		
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return 
+	ResourceName GetFactionBackground()
+	{
+		return m_sFactionBackground;
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsMilitary()
+	{
+		return m_bIsMilitary;
+	}
+	
 }
 
 //------------------------------------------------------------------------------------------------

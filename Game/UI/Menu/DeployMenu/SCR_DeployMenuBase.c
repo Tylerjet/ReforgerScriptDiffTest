@@ -1,3 +1,6 @@
+void OnSpawnPointRplIdSet(RplId id);
+typedef func OnSpawnPointRplIdSet;
+typedef ScriptInvokerBase<OnSpawnPointRplIdSet> OnSpawnPointRplIdSetInvoker;
 //------------------------------------------------------------------------------------------------
 //! Base deploy menu class.
 class SCR_DeployMenuBase : ChimeraMenuBase
@@ -67,6 +70,8 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] mute
 	void MuteSounds(bool mute = true)
 	{
 		if (!IsOpen())
@@ -86,6 +91,8 @@ class SCR_DeployMenuBase : ChimeraMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	static OnDeployMenuOpenInvoker SGetOnMenuOpen()
 	{
 		if (!s_OnMenuOpen)
@@ -153,6 +160,12 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	protected float m_fCurrentDeployTimeOut;
 	protected const float DEPLOY_TIME_OUT = 0.5;
 	
+	protected ref OnSpawnPointRplIdSetInvoker m_OnSpawnPointSet;
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] component
+	//! \return
 	//----------------------------------------------------------------------------------------------
 	int GetLoadoutCost(SCR_PlayerLoadoutComponent component)
 	{
@@ -197,6 +210,14 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	void AllowMapContext(bool allow)
 	{
 		m_bMapContextAllowed = allow;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if map context is allowed
+	//! \return
+	bool GetAllowMapContext()
+	{
+		return m_bMapContextAllowed;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -350,9 +371,6 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		if (!m_GroupRequestUIHandler.GetPlayerGroup())
 			m_GroupRequestUIHandler.JoinGroupAutomatically();
 		m_SpawnPointRequestUIHandler.ShowAvailableSpawnPoints(plyFaction);
-		
-		// If the player gets killed while the pause menu is opened, we need to move it on top of the deploy screen
-		PauseMenuUI.MoveToTop();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -365,7 +383,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		
 		m_fCurrentDeployTimeOut = 0;
 	}
-
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{
@@ -458,6 +476,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		
 		UpdateRespawnButton();
 	}
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected void ResetRespawnResultVars()
@@ -547,6 +566,10 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		{
 			Print("Failed to find SCR_LoadoutRequestUIComponent!", LogLevel.ERROR);
 		}
+		else
+		{
+			m_LoadoutRequestUIHandler.RegisterOnSpawnPointInvoker(GetOnSpawnPointRplIdSet());
+		}
 
 		m_GroupRequestUIHandler = m_MenuHandler.GetGroupRequestHandler();
 		if (!m_GroupRequestUIHandler)
@@ -580,6 +603,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		m_GameMode.GetOnPreloadFinished().Insert(HideLoading);
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----	
 	//------------------------------------------------------------------------------------------------
 	protected void OnMapOpen(MapConfiguration config)
 	{
@@ -603,6 +627,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		if (sp)
 			GetGame().GetCallqueue().CallLater(SetInitialSpawnPoint, 0, false, m_iSelectedSpawnPointId); // called the next frame because of widget init order
 	}
+	//---- REFACTOR NOTE END ----
 
 	//! Callback when player joins a group
 	protected void OnLocalPlayerGroupJoined(SCR_AIGroup group)
@@ -662,6 +687,8 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 		}
 		
 		UpdateRespawnButton();
+		if (m_OnSpawnPointSet)
+			m_OnSpawnPointSet.Invoke(id);
 	}
 
 	//! Centers map to a specific spawn point.
@@ -845,22 +872,44 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//! Opens deploy menu.
 	static SCR_DeployMenuMain OpenDeployMenu()
 	{
+		GetGame().GetMenuManager().CloseAllMenus();
 		if (!GetDeployMenu())
 			GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.RespawnSuperMenu);
 		
 		return GetDeployMenu();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! As the name suggests, this method closes the deploy menu instance.
 	static void CloseDeployMenu()
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.RespawnSuperMenu);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Returns the deploy menu instance.
 	static SCR_DeployMenuMain GetDeployMenu()
 	{
 		return SCR_DeployMenuMain.Cast(GetGame().GetMenuManager().FindMenuByPreset(ChimeraMenuPreset.RespawnSuperMenu));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	SCR_SpawnPointRequestUIComponent GetSpawnPointRequestHandler()
+	{
+		return m_SpawnPointRequestUIHandler;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+	OnSpawnPointRplIdSetInvoker GetOnSpawnPointRplIdSet()
+	{
+		if (!m_OnSpawnPointSet)
+			m_OnSpawnPointSet = new OnSpawnPointRplIdSetInvoker();
+
+		return m_OnSpawnPointSet;
 	}
 };
 
@@ -917,18 +966,27 @@ class SCR_DeployButton : SCR_InputButtonComponent
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] enabled
 	//----------------------------------------------------------------------------------------------
 	void SetSuppliesEnabled(bool enabled)
 	{
 		m_bSuppliesEnabled = enabled;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] cost
 	//----------------------------------------------------------------------------------------------
 	void SetSupplyCost(int cost)
 	{
 		m_iSupplyCost = cost;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	//----------------------------------------------------------------------------------------------
 	int GetSupplyCost()
 	{
@@ -941,8 +999,6 @@ class SCR_DeployButton : SCR_InputButtonComponent
 	{
 		if (!m_wText)
 			return;
-		
-		string inputText;
 		
 		if (m_wShortcut)
 			m_wShortcut.SetVisible(deployEnabled && remainingTime <= 0);
@@ -1005,4 +1061,4 @@ class SCR_DeployButton : SCR_InputButtonComponent
 
 		m_wBackgroundWidget.SetColor(color);
 	}
-};
+}

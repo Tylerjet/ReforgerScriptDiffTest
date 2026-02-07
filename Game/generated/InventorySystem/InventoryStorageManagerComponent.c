@@ -12,12 +12,13 @@ Do not modify, this script is generated
 class InventoryStorageManagerComponent: GameComponent
 {
 	proto external IEntity GetOwner();
+	proto external void AddStorage(BaseInventoryStorageComponent storage);
 	//! Will iterate over storages and find if item can be inserted in first best match
 	proto external bool CanInsertItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	proto external bool CanInsertItemInStorage(IEntity item, BaseInventoryStorageComponent storage, int slotID = -1);
 	//! Will iterate over storages and find if item can be inserted in first best match
-	proto external bool CanInsertResource(ResourceName resourceName, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
-	proto external bool CanInsertResourceInStorage(ResourceName resourceName, BaseInventoryStorageComponent storage, int slotID = -1);
+	proto external bool CanInsertResource(ResourceName resourceName, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, int count = 1);
+	proto external bool CanInsertResourceInStorage(ResourceName resourceName, BaseInventoryStorageComponent storage, int slotID = -1, int count = 1);
 	//! Will iterate over storages and try insert the item at first best match
 	proto external bool TryInsertItem(IEntity item, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, InventoryOperationCallback cb = null);
 	//! Will try to insert item at storage. If slotID -1 will try to insert in any free storage
@@ -37,7 +38,9 @@ class InventoryStorageManagerComponent: GameComponent
 	proto external bool TryDeleteItem(IEntity item, InventoryOperationCallback cb = null);
 	//! Spawn and insert into inventory
 	//! if provided storage is null then most suitable storage would be chosen from owned storages
-	proto external bool TrySpawnPrefabToStorage(ResourceName prefab, BaseInventoryStorageComponent storage = null, int slotID = -1,EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, InventoryOperationCallback cb = null);
+	proto external bool TrySpawnPrefabToStorage(ResourceName prefab, BaseInventoryStorageComponent storage = null, int slotID = -1,EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY, InventoryOperationCallback cb = null, int count = 1);
+	//! Validate that the storage is near the player to eliminate potentual message tampering
+	proto external bool ValidateStorageRequest( IEntity storageOwner );
 	//! Get all managed storages
 	proto external int GetStorages(out notnull array<BaseInventoryStorageComponent> outStorages, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! Get all items from all managed storages
@@ -53,9 +56,9 @@ class InventoryStorageManagerComponent: GameComponent
 	//! returns first storage with empty space from provided storage hierarchy for provided resource and provided storage purpose
 	proto external BaseInventoryStorageComponent FindStorageForResourceInsert(ResourceName resourceName, BaseInventoryStorageComponent fromStorage, EStoragePurpose purpose = EStoragePurpose.PURPOSE_ANY);
 	//! Fast access to item count in inventory (returns only items that are stored in DEPOSIT storages)
-	proto external int GetDepositItemCountByEntity(IEntity entity);
+	proto external int GetDepositItemCountByEntity(IEntity verifier, IEntity entity);
 	//! Fast access to item count in inventory (returns only items that are stored in DEPOSIT storages)
-	proto external int GetDepositItemCountByResource(ResourceName resourceName);
+	proto external int GetDepositItemCountByResource(IEntity verifier, ResourceName resourceName);
 	/*! Find Item by providing InventorySearchPredicate object
 
 				class SCR_SomeCrazyPredicate: InventorySearchPredicate
@@ -106,11 +109,13 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int GetMagazineCountByWeapon(BaseWeaponComponent weapon);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
-	proto external int GetMagazineCountByMuzzle(BaseMuzzleComponent pMuzzle);
+	proto external int GetMagazineCountByMuzzle(IEntity verifier, BaseMuzzleComponent pMuzzle);
 	proto external int GetGrenadesCount();
 
 	// callbacks
 
+	// ------------------------------------------------------------------------------------------
+	event void OnDelete(IEntity owner);
 	//! Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	event protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item);
 	//! Callback when item is removed (will be performed locally after server completed the Remove/Move operation)

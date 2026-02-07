@@ -26,6 +26,14 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 		SetPriority(priority);
 	}
 	
+	override float CustomEvaluate()
+	{
+		if (m_Utility.HasActionOfType(SCR_AIHealActivity))
+			return 0;
+		
+		return GetPriority();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
@@ -78,22 +86,5 @@ class SCR_AISeekAndDestroyActivity : SCR_AIMoveActivity
 	override string GetActionDebugInfo()
 	{
 		return this.ToString() + " seek and destroy around" + m_Entity.ValueToString();
-	}
-};
-
-class SCR_AIFollowActivity : SCR_AIMoveActivity
-{
-	ref SCR_BTParam<float> m_fCompletionDistance = new SCR_BTParam<float>(SCR_AIActionTask.DESIREDDISTANCE_PORT);
-	
-	// SCR_AIBaseUtilityComponent utility, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_MOVE, IEntity ent = null, bool useVehicles = true
-	void SCR_AIFollowActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, vector pos, IEntity ent, EMovementType movementType = EMovementType.RUN, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_NORMAL, float distance = 1.0)
-	{
-		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityFollow.bt";
-		m_fCompletionDistance.Init(this, distance);
-	}
-	
-	override string GetActionDebugInfo()
-	{
-		return this.ToString() + " following entity " + m_Entity.ValueToString();
 	}
 };

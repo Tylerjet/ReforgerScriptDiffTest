@@ -4,7 +4,11 @@ class SCR_AIGetAllowedLookRange : AITaskScripted
 	protected static const string LOOK_AXIS_PORT = "LookAxis";
 	protected static const string IS_FREE_LOOK = "IsFreeLook";
 	protected static const float FREE_LOOK_ANGLE = 30.0;	
-	
+	protected static const float MOVING_IN_VEHICLE_ANGLE = 15;
+
+	// Used to test whether our vehicle is moving or not
+	protected const float MIN_SPEED_MPS_SQ = 0.5 * 0.5;
+		
 	[Attribute("20", UIWidgets.EditBox, "Distance for looking" )]
 	protected float m_fDistance;
 	
@@ -27,11 +31,18 @@ class SCR_AIGetAllowedLookRange : AITaskScripted
 		BaseCompartmentSlot comp = compAcc.GetCompartment();
 		if (!comp)
 			return ENodeResult.FAIL;
-		vector aimingLimitHoriz, aimingLimitVert, forwardVec;
+		vector forwardVec;
 		IEntity vehicle = comp.GetVehicle();
 		forwardVec = vehicle.GetTransformAxis(2).Normalized();
 		float angleBound;
 		bool isFreeLook = true;
+		
+		bool isMoving = false;
+		Physics phy = vehicle.GetPhysics();
+		bool phyActive = phy.IsActive(); // delete
+		vector phyVelo = phy.GetVelocity(); // delete
+		if (phy && phy.IsActive())
+			isMoving = phy.GetVelocity().LengthSq() > MIN_SPEED_MPS_SQ;
 		
 		TurretCompartmentSlot turret = TurretCompartmentSlot.Cast(comp);
 		if (turret)
@@ -42,9 +53,23 @@ class SCR_AIGetAllowedLookRange : AITaskScripted
 			TurretComponent turretComponent = turretController.GetTurretComponent();
 			if (!turretComponent)
 				return ENodeResult.FAIL;
+			
+			
+			vector aimingLimitHoriz, aimingLimitVert;
 			turretComponent.GetAimingLimits(aimingLimitHoriz,aimingLimitVert);
-			angleBound = aimingLimitHoriz[1];
-			isFreeLook = false;		
+			
+			if (turretComponent.HasMoveableBase())
+				aimingLimitHoriz = Vector(-180, 180, 0);
+			
+			if (isMoving)
+			{
+				// When moving, look forward
+				angleBound = Math.Min(aimingLimitHoriz[1], MOVING_IN_VEHICLE_ANGLE);
+			}
+			else
+				angleBound = aimingLimitHoriz[1];
+			
+			isFreeLook = false;
 		}	
 		else
 		{

@@ -99,7 +99,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 	
 		float bleedingRate;
 		int groupDamageIntensity;
-		bool regenerating, isTourniquetted, isSalineBagged, isMorphined, isArmFractured, isLegFractured;
+		bool regenerating, isTourniquetted, isSalineBagged, isMorphined;
 		string damageIntensity, damageIntensityText, bleedingIntensityText;
 		array <bool> hZGroupsBleeding = {};
 		
@@ -116,7 +116,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			damageInfoUI.SetTourniquetStateVisible(isTourniquetted);
 			damageInfoUI.SetSalineBagStateVisible(isSalineBagged);
 			damageInfoUI.SetMorphineStateVisible(isMorphined);
-			damageInfoUI.SetFractureStateVisible(isArmFractured, isLegFractured);
+			damageInfoUI.SetFractureStateVisible(0, 0);
 		}
 	}
 
@@ -156,7 +156,6 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			return;
 		}
 		
-		float opacity = 1;
 		float distanceOpacityReduction = 1;
 		
 		if (dist <= 3)
@@ -164,7 +163,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 		else
 			distanceOpacityReduction = Math.InverseLerp(3, 4, dist);
 				
-		m_wCasualtyInspectWidget.SetOpacity(opacity - distanceOpacityReduction);
+		m_wCasualtyInspectWidget.SetOpacity(1 - distanceOpacityReduction);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -179,7 +178,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			return;		
 		
 		float defaultHZHealth = damageMan.GetHealthScaled();
-		bleedingRate = damageMan.GetBloodHitZone().GetDamageOverTime(EDamageType.BLEEDING);
+		bleedingRate = damageMan.GetBloodHitZone().GetTotalBleedingAmount();
 		if (bleedingRate)
 		{
 			hZGroupsBleeding = {};
@@ -203,9 +202,8 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			
 			if (!isMorphined)
 			{
-				SCR_CharacterHeadHitZone headHitZone = SCR_CharacterHeadHitZone.Cast(damageMan.GetHeadHitZone());
-				if (headHitZone)
-					isMorphined = headHitZone.GetDamageOverTime(EDamageType.HEALING) < 0;
+				array<ref PersistentDamageEffect> effects = damageMan.GetAllPersistentEffectsOfType(SCR_MorphineDamageEffect);
+				isMorphined = !effects.IsEmpty();
 			}
 			
 			if (!regenerating)

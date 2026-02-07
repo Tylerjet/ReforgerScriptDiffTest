@@ -29,7 +29,7 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 		
 		m_ConfigList = SCR_ConfigListComponent.Cast(GetRootWidget().FindHandler(SCR_ConfigListComponent));
 		
-		m_NavHost = CreateNavigationButton("MenuSelectHold", "#AR-ServerHosting_HostLocally", true);
+		m_NavHost = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT_HOLD, "#AR-ServerHosting_HostLocally", true);
 		if (m_NavHost)
 			m_NavHost.m_OnActivated.Insert(OnHost);
 		
@@ -76,7 +76,7 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 		if (!m_NavHost)
 			return;
 		
-		SCR_InputButtonComponent.SetConnectionButtonEnabled(m_NavHost, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
+		SCR_ConnectionUICommon.SetConnectionButtonEnabled(m_NavHost, SCR_ServicesStatusHelper.SERVICE_BI_BACKEND_MULTIPLAYER);
 	}
 	
 	//------------------------------------------------------------------------------------------------

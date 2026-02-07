@@ -259,6 +259,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		return ScriptedGameTriggerEntity.Cast(GetGame().SpawnEntityPrefab(resource, provider.GetWorld(), params));
 	}
 
+	//---- REFACTOR NOTE START: Has a hot fix for content browser as for some reason it would show an empty entry. So we skip an entry from the catalog and simply hide it ----
 	//------------------------------------------------------------------------------------------------
 	//! Make the area around where is possible to build composition visible for player
 	override protected void EOnEditorActivate()
@@ -320,6 +321,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 
 		ToggleBuildingTool(false);
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------------------------
 	//! Check if the given tab can be shown
@@ -694,8 +696,10 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	override protected bool RplLoad(ScriptBitReader reader)
 	{
 		RplId entityRplID;
+		RplComponent rplComp;
 		IEntity ent;
 		int count;
+		SCR_CampaignBuildingProviderComponent providerComponent;
 		reader.ReadInt(count);
 
 		for (int i = 0; i < count; i++)
@@ -704,18 +708,18 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 			if (!entityRplID.IsValid())
 				continue;
 
-			RplComponent rplComp = RplComponent.Cast(Replication.FindItem(entityRplID));
+			rplComp = RplComponent.Cast(Replication.FindItem(entityRplID));
 			if (!rplComp)
 			{
 				m_aProvidersRplIds.Insert(entityRplID);
 				continue;
 			}
 
-			ent = IEntity.Cast(rplComp.GetEntity());
+			ent = rplComp.GetEntity();
 			if (!ent)
 				continue;
 
-			SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(ent.FindComponent(SCR_CampaignBuildingProviderComponent));
+			providerComponent = SCR_CampaignBuildingProviderComponent.Cast(ent.FindComponent(SCR_CampaignBuildingProviderComponent));
 			AddProviderEntityEditorComponent(providerComponent);
 		}
 

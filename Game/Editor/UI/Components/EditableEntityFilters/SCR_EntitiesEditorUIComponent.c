@@ -200,24 +200,41 @@ class SCR_EntitiesEditorUIComponent : SCR_EditableEntitySlotManagerUIComponent
 			//--- Mouse & keyboard (or non-interactive)
 			foreach (SCR_EditableEntityBaseSlotUIComponent entitySlot : m_mEntitySlots)
 			{
-				entitySlot.UpdateSlot(screenW, screenH, posCenter, posCam);
+				//--- If it is an attached entity, position it only if the parent entity slot is not found
+				//--- An example of this is when it is attached to a character of a group, and the character slot gets hidden in the distance
+				SCR_EditableEntityBaseSlotUIComponent parentSlot;
+				if (entitySlot.GetEntity() && entitySlot.GetEntity().IsAttached() && entitySlot.GetEntity().GetAttachedTo() && m_mEntitySlots.Find(entitySlot.GetEntity().GetAttachedTo(), parentSlot))
+					continue;
+				
+				vector position = entitySlot.UpdateSlot(screenW, screenH, posCenter, posCam);
+				PlaceAttachedSlots(entitySlot, position);
 			}
 		}
 		else
 		{
 			//--- Gamepad (check for icon distances)
-			float dis;
+			float distanceSq;
 			float nearestDis = m_CursorComponent.GetCursorRadiusSq();
 			vector cursorPos = m_CursorComponent.GetCursorPos();
+			vector position;
 			SCR_EditableEntityBaseSlotUIComponent nearestSlot;
 			foreach (SCR_EditableEntityBaseSlotUIComponent entitySlot : m_mEntitySlots)
 			{
-				dis = vector.DistanceSq(cursorPos, entitySlot.UpdateSlot(screenW, screenH, posCenter, posCam));
-				if (dis < nearestDis && !entitySlot.IsPreview()) //--- Ignore preview entity, it's snapped cursor and would block actual entities under cursor
+				//--- If it is an attached entity, position it only if the parent entity slot is not found
+				//--- An example of this is when it is attached to a character of a group, and the character slot gets hidden in the distance
+				SCR_EditableEntityBaseSlotUIComponent parentSlot;
+				if (entitySlot.GetEntity() && entitySlot.GetEntity().IsAttached() && entitySlot.GetEntity().GetAttachedTo() && m_mEntitySlots.Find(entitySlot.GetEntity().GetAttachedTo(), parentSlot))
+					continue;
+				
+				position = entitySlot.UpdateSlot(screenW, screenH, posCenter, posCam);
+				distanceSq = vector.DistanceSq(cursorPos, position);
+				if (distanceSq < nearestDis && !entitySlot.IsPreview()) //--- Ignore preview entity, it's snapped cursor and would block actual entities under cursor
 				{
-					nearestDis = dis;
+					nearestDis = distanceSq;
 					nearestSlot = entitySlot;
 				}
+				
+				PlaceAttachedSlots(entitySlot, position);
 			}
 			if (nearestSlot)
 				m_EntityUnderCursor = nearestSlot.GetEntity();
@@ -227,6 +244,32 @@ class SCR_EntitiesEditorUIComponent : SCR_EditableEntitySlotManagerUIComponent
 		
 		if (m_HoverManager && m_MouseArea.IsMouseOn())
 			m_HoverManager.SetEntityUnderCursor(m_EntityUnderCursor, true);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Places the slot of the attached entites in an absolute mannear, with an offset to parent
+	//! \param[in] entitySlot is the child (current) slot
+	//! \param[in] vector position of current slot
+	//! \param[in] offset offset to add to each slot
+	protected void PlaceAttachedSlots(SCR_EditableEntityBaseSlotUIComponent entitySlot, vector position, float offset = 32)
+	{
+		SCR_EditableEntityComponent entity = entitySlot.GetEntity();
+		if (!entity)
+			return;
+		
+		set<SCR_EditableEntityComponent> attached = entity.GetAttachedEntities();
+		
+		foreach (int i, SCR_EditableEntityComponent attachment : attached) 
+		{
+			if (!attachment || !attachment.IsAttached())
+				continue;
+			
+			SCR_EditableEntityBaseSlotUIComponent attachmentSlot;
+			if (!m_mEntitySlots.Find(attachment, attachmentSlot))
+				continue;
+			
+			FrameSlot.SetPos(attachmentSlot.GetWidget(), position[0], (position[1] - (i + 1) * offset));
+		}	
 	}
 
 	//------------------------------------------------------------------------------------------------

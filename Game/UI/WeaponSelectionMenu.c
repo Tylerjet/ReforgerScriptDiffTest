@@ -304,7 +304,7 @@ class SCR_WeaponSelectionMenu : SCR_InfoDisplay
 			
 			if (slotIndex > -1)
 			{
-				WeaponSlotComponent slot = WeaponSlotComponent.Cast(weapons.Get(slotIndex));
+				WeaponSlotComponent slot = weapons.Get(slotIndex);
 				sortedWeapons.Insert(slot);
 				slotIndexes.Set(slotIndex,1000);
 			}

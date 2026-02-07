@@ -248,11 +248,11 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 			return;
 
 		// TODO ImageWidget.GetPivot(float x, float y)
-		float fx, fy, minX, minY, maxX, maxY;
+		// float fx, fy, minX, minY, maxX, maxY;
 
 		// mouse position difference
-		fx = cursorInfo.x - cursorInfo.lastX; 
-		fy = cursorInfo.y - cursorInfo.lastY;
+		float fx = cursorInfo.x - cursorInfo.lastX; 
+		float fy = cursorInfo.y - cursorInfo.lastY;
 
 		// no change
 		if (fx == 0 && fy == 0)

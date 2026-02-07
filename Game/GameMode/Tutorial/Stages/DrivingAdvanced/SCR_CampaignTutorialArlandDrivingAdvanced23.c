@@ -32,14 +32,14 @@ class SCR_CampaignTutorialArlandDrivingAdvanced23 : SCR_BaseCampaignTutorialArla
 		if (!damageManager)
 			return;
 		
-		damageManager.GetAllHitZones(hitzones);
+		damageManager.GetAllHitZonesInHierarchy(hitzones);
 
 		SCR_FlammableHitZone flammableHitZone;
 		foreach (HitZone hitZone : hitzones)
 		{
 			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
 			if (flammableHitZone)
-				flammableHitZone.SetFireState(EFireState.NONE);
+				flammableHitZone.SetFireState(SCR_EBurningState.NONE);
 		}
 	}
 };

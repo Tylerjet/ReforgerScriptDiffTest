@@ -1,0 +1,46 @@
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_LookAtGroupCommand : SCR_BaseGroupCommand
+{
+	//------------------------------------------------------------------------------------------------
+	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
+	{
+		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
+			return true;
+
+		if (!target || !targetPosition)
+			return false;
+		
+		//Hotfix until we get api to know when the speaker is done saying the command voiceline
+		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);
+		
+		
+		return LookAtPosition(target, targetPosition, playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool LookAtPosition(IEntity target, vector targetPosition, int playerID)
+	{
+		SCR_AIGroup group = SCR_AIGroup.Cast(target);
+		if (!target)
+			return false;
+		
+		array<AIAgent> agents = {};
+		group.GetAgents(agents);
+		
+		SCR_AIUtilityComponent utilityComponent;
+		foreach (AIAgent agent : agents)
+		{
+			if (!agent)
+				continue;
+			
+			utilityComponent = SCR_AIUtilityComponent.Cast(agent.FindComponent(SCR_AIUtilityComponent));
+			if (!utilityComponent)
+				continue;
+			
+			utilityComponent.LookAt(targetPosition);
+		}
+		
+		return true;
+	}
+}

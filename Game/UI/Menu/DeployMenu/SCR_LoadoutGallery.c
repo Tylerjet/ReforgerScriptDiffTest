@@ -1,3 +1,9 @@
+void OnLoadoutFocusLostDelegate(SCR_BasePlayerLoadout base);
+
+typedef func OnLoadoutFocusLostDelegate;
+
+typedef ScriptInvokerBase<OnLoadoutFocusLostDelegate> OnLoadoutFocusLostInvoker;
+
 class SCR_LoadoutGallery : SCR_GalleryComponent
 {
 	[Attribute("{39D815C843414C76}UI/layouts/Menus/DeployMenu/LoadoutButton.layout")]
@@ -6,8 +12,10 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 
 	protected ref ScriptInvoker<SCR_LoadoutButton> m_OnLoadoutClicked;
 	protected ref ScriptInvoker<SCR_BasePlayerLoadout> m_OnLoadoutHovered;
+	protected ref OnLoadoutFocusLostInvoker m_OnLoadoutFocusLost;
 	protected ref ScriptInvokerBool m_OnFocusChange = new ScriptInvokerBool();
 	protected bool m_bFocused;
+	protected SCR_LoadoutButton m_SelectedButton;
 	
 	override void HandlerAttached(Widget w)
 	{
@@ -75,6 +83,8 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 			loadoutBtn.m_OnClicked.Insert(OnLoadoutClicked);
 			loadoutBtn.m_OnFocus.Insert(OnLoadoutHovered);
 			loadoutBtn.m_OnMouseEnter.Insert(OnLoadoutHovered);
+			loadoutBtn.m_OnMouseLeave.Insert(OnLoadoutMouseLeave);
+			loadoutBtn.m_OnFocusLost.Insert(OnLoadoutFocusLost);
 
 			m_aLoadoutButtons.Insert(loadoutBtn);
 		}
@@ -100,11 +110,29 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 		GetOnLoadoutClicked().Invoke(loadoutBtn);
 	}
 	
-	protected void OnLoadoutHovered(Widget btn)
+	protected void OnLoadoutHovered(notnull Widget btn)
 	{
 		SCR_LoadoutButton loadoutBtn = SCR_LoadoutButton.Cast(btn.FindHandler(SCR_LoadoutButton));
 		if (loadoutBtn)
 			GetOnLoadoutHovered().Invoke(loadoutBtn.GetLoadout());
+	}
+	
+	protected void OnLoadoutFocusLost(notnull Widget btn)
+	{
+		SCR_LoadoutButton loadoutBtn = SCR_LoadoutButton.Cast(btn.FindHandler(SCR_LoadoutButton));
+		if(!loadoutBtn)
+			return;
+		
+		if (loadoutBtn.IsSelected() && m_OnLoadoutFocusLost)
+			GetOnLoadoutFocusLost().Invoke(loadoutBtn.GetLoadout());
+		
+		if(m_SelectedButton && !loadoutBtn.IsSelected() && m_OnLoadoutClicked)
+			GetOnLoadoutClicked().Invoke(m_SelectedButton);
+	}
+	
+	protected void OnLoadoutMouseLeave(notnull Widget btn)
+	{
+		OnLoadoutFocusLost(btn);
 	}
 	
 	Widget GetContentRoot()
@@ -116,7 +144,15 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 	{
 		foreach (SCR_LoadoutButton loadoutBtn : m_aLoadoutButtons)
 		{
-			loadoutBtn.SetSelected(loadoutBtn.GetLoadout() == loadout)
+			if(loadoutBtn.GetLoadout() == loadout)
+			{
+				loadoutBtn.SetSelected(true);
+				m_SelectedButton = loadoutBtn;
+			}
+			else
+			{
+				loadoutBtn.SetSelected(false);
+			}
 		}
 	}
 
@@ -152,4 +188,12 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 
 		return m_OnLoadoutHovered;
 	}	
+	
+	OnLoadoutFocusLostInvoker GetOnLoadoutFocusLost()
+	{
+		if (!m_OnLoadoutFocusLost)
+			m_OnLoadoutFocusLost = new OnLoadoutFocusLostInvoker();
+
+		return m_OnLoadoutFocusLost;
+	}
 };

@@ -337,9 +337,9 @@ class SCR_ScenarioFrameworkActionQRFDispacher : SCR_ScenarioFrameworkActionBase
 					if (compartmentManager)
 					{
 						compartmentManager.GetOnDoneSpawningDefaultOccupants().Insert(OnFinishedSpawningVehicleOccupants);
-						array<ECompartmentType> compartmentTypes = {ECompartmentType.Pilot, ECompartmentType.Turret};
+						array<ECompartmentType> compartmentTypes = {ECompartmentType.PILOT, ECompartmentType.TURRET};
 						if (selectedGroup.GetGroupType() == SCR_EQRFGroupType.MOUNTED_INFANTRY)
-							compartmentTypes.Insert(ECompartmentType.Cargo);
+							compartmentTypes.Insert(ECompartmentType.CARGO);
 
 						m_aVehicleSpawnQueueConfig.Insert(new SCR_QRFVehicleSpawnConfig(compartmentManager, selectedGroup.GetGroupType(), m_vTargetPosition, selectedSpawnPoint));
 						compartmentManager.SpawnDefaultOccupants(compartmentTypes);

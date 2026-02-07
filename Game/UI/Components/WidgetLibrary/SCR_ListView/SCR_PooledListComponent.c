@@ -101,12 +101,6 @@ class SCR_PooledListComponent : SCR_ScriptedWidgetComponent
 		CreateEntriesWidgets();
 		
 		SetupOffsets(0);
-		
-		/*
-		// Setup actions 
-		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnActionUp);
-		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnActionDown);	
-		*/
 	}
 	
 	//-------------------------------------

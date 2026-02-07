@@ -49,7 +49,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	//! \return True if preview changed succesfully
 	bool SetWeatherStatePreview(bool preview, string stateName = "")
 	{
-		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
+		BaseWeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
 		if (!weatherStateTransitionManager)
 			return false;
 		
@@ -71,7 +71,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	//! \return True if preview changed succesfully
 	bool SetWindPreview(bool preview, float windSpeed = -1, float windAngleDegrees = -1)
 	{
-		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
+		BaseWeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
 		if (!weatherStateTransitionManager)
 			return false;
 		
@@ -95,7 +95,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 	//! \return True if preview changed succesfully
 	bool SetDateTimePreview(bool preview, int year = -1, int month = -1, int day = -1, float timeOfTheDay = -1)
 	{
-		WeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
+		BaseWeatherStateTransitionManager weatherStateTransitionManager = GetTransitionManager();
 		if (!weatherStateTransitionManager)
 			return false;
 		
@@ -195,7 +195,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 			return;
 		}
 		
-		WeatherStateTransitionManager transitionManager = GetTransitionManager();	
+		BaseWeatherStateTransitionManager transitionManager = GetTransitionManager();	
 		if (!transitionManager)
 		{
 			Print("'ForceWeatherTo' was called in 'TimeAndWeatherManagerEntity' but TransitionManager was not found!", LogLevel.WARNING);

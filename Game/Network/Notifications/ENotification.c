@@ -101,6 +101,8 @@ enum ENotification
 	EDITOR_COOLDOWN = 534, ///< Cooldown for requesting another entity is running.
 	EDITOR_AILIMIT = 535, ///< Max limit of spawned AI at base (Free Roam Building) has been reached.
 	EDITOR_ENEMY_IN_AREA = 536, ///< The enemy was detected in Free Roam Building mode area, mode is terminated.
+	EDITOR_PLACING_RANK_TOO_LOW = 537, ///< Rank is too low to be able to place this composition.
+
 	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, ///< An AI group was eliminated - (param1 = EditableEntityID)
@@ -153,7 +155,14 @@ enum ENotification
 	
 	EDITOR_ATTRIBUTES_ENABLE_GLOBAL_SUPPLY_USAGE = 747, ///< Called when GM enables Global supplies usage (param1 = GM)
 	EDITOR_ATTRIBUTES_DISABLE_GLOBAL_SUPPLY_USAGE = 748, ///< Called when GM disables Global supplies usage (param1 = GM)
-	//EDITOR_ATTRIBUTES_CHANGED_SPAWN_SUPPLYCOST_MULTIPLIER = 749, ///< Called when GM changes the supply cost multiplier for loadouts (param1 = GM, param2 = SupplyCost multiplier)
+	EDITOR_ATTRIBUTES_CHANGED_SPAWN_SUPPLYCOST_MULTIPLIER = 749, ///< Called when GM changes the supply cost multiplier for loadouts (param1 = GM, param2 = SupplyCost multiplier)
+	EDITOR_ATTRIBUTES_CHANGED_ARSENAL_GAMEMODE_TYPE = 750, ///< Called when GM changes the Arsenal game mode type (param1 = GM, param2 = new gamemode type enum)
+	EDITOR_ATTRIBUTES_CHANGED_ARSENAL_TYPE_ENABLED = 751, ///< Called when GM changes the Arsenal enabled type (param1 = GM)
+	
+	EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_BUDGET_NONE = 752, ///< Called when GM changes deployable radio budget type to NONE (param1 = GM)
+	EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_BUDGET_SUPPLIES = 753, ///< Called when GM changes deployable radio budget type to SUPPLIES (param1 = GM)
+	EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_BUDGET_TICKETS = 754, ///< Called when GM changes deployable radio budget type to TICKETS (param1 = GM)
+	EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_TICKET_AMOUNT = 755, ///< Called when GM changes amount of respawn tickets available to deployed radios (param1 = GM, param2 = ticket amount)
 	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, ///<Player become GM - (param1 = PlayerID)
@@ -260,6 +269,8 @@ enum ENotification
 	DEPLOYABLE_SPAWNPOINTS_NEARBY_BASE = 1605,
 	DEPLOYABLE_SPAWNPOINTS_NEARBY_HQ = 1606,
 	DEPLOYABLE_SPAWNPOINTS_ZONE_ENTERED = 1607,
-	DEPLOYABLE_SPAWNPOINTS_ZONE_EXITED = 1608
+	DEPLOYABLE_SPAWNPOINTS_ZONE_EXITED = 1608,
+	DEPLOYABLE_SPAWNPOINTS_LOADOUTS_ALLOWED = 1609,
+	DEPLOYABLE_SPAWNPOINTS_LOADOUTS_BANNED = 1610
 };
 

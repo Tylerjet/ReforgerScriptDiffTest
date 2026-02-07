@@ -35,7 +35,7 @@ class SCR_BatteryHitZone: SCR_VehicleHitZone
 	/*!
 	Called when the damage state changes.
 	*/
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
 		SCR_PowerComponent powerComp = SCR_PowerComponent.Cast(GetOwner().FindComponent(SCR_PowerComponent));
 		if (powerComp)

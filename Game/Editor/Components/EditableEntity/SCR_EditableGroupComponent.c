@@ -41,6 +41,74 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	protected ref array<ECompartmentType> m_aForceSpawnVehicleCompartments;
 
 	protected SCR_PlacingEditorComponent m_PlacedEditorComponent;
+	
+	protected AIWaypointCycle m_CycleWaypoint;
+	protected bool m_bAreWaypointsCycled;
+	static ResourceName AI_WAYPOINT_CYCLE = "{35BD6541CBB8AC08}Prefabs/AI/Waypoints/AIWaypoint_Cycle.et";
+	
+	//------------------------------------------------------------------------------------------------
+	void EnableCycledWaypoints(bool enable)
+	{
+		if (enable == m_bAreWaypointsCycled || !IsServer())
+			return;
+		
+		m_bAreWaypointsCycled = enable;
+		array<AIWaypoint> waypoints = {};
+		if (m_bAreWaypointsCycled)
+		{
+			m_CycleWaypoint = AIWaypointCycle.Cast(GetGame().SpawnEntityPrefab(Resource.Load(SCR_EditableGroupComponent.AI_WAYPOINT_CYCLE)));
+			
+			m_Group.GetWaypoints(waypoints);
+			m_CycleWaypoint.SetWaypoints(waypoints);
+			RemoveAllWaypointsFromGroup();
+			m_Group.AddWaypoint(m_CycleWaypoint);
+		}
+		else
+		{
+			m_CycleWaypoint.GetWaypoints(waypoints);
+			AddWaypoints(waypoints);
+			m_Group.RemoveWaypoint(m_CycleWaypoint);
+			delete m_CycleWaypoint;
+		}
+		
+		ReindexWaypoints();
+		
+		Rpc(EnableCycledWaypointsBroadcast, enable)
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AddWaypoints(array<AIWaypoint> waypoints)
+	{
+		for (int i = 0, count = waypoints.Count(); i < count; i++)
+		{
+			m_Group.AddWaypoint(waypoints[i]);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RemoveAllWaypointsFromGroup()
+	{
+		array<AIWaypoint> waypoints = {};
+		m_Group.GetWaypoints(waypoints);
+		for (int i = 0, count = waypoints.Count(); i < count; i++)
+		{
+			m_Group.RemoveWaypointAt(0);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void EnableCycledWaypointsBroadcast(bool enable)
+	{
+		m_bAreWaypointsCycled = enable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool AreCycledWaypointsEnabled()
+	{
+		return m_bAreWaypointsCycled;
+	}
+	
 
 	//------------------------------------------------------------------------------------------------
 //	protected void OnEmpty()
@@ -103,10 +171,11 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnWaypointAdded(AIWaypoint wp)
 	{
-		SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
-		if (waypoint)
+		if (wp != m_CycleWaypoint)
 		{
-			waypoint.SetParentEntity(this);
+			SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
+			if (waypoint)
+				waypoint.SetParentEntity(this);
 		}
 		ReindexWaypoints();
 	}
@@ -114,18 +183,30 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnWaypointRemoved(AIWaypoint wp)
 	{
-		//--- Delete waypoints which were not assigned to another group
-		SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
-		if (waypoint && waypoint.GetParentEntity() == this)
-			waypoint.Delete();
-
+		if (wp != m_CycleWaypoint && !m_CycleWaypoint)
+		{
+			//--- Delete waypoints which were not assigned to another group
+			SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(wp));
+			if (waypoint && waypoint.GetParentEntity() == this)
+				waypoint.Delete();
+		}
 		ReindexWaypoints();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected int GetGroupWaypoints(array<AIWaypoint> outWaypoints)
+	{
+		if (m_CycleWaypoint)
+			m_CycleWaypoint.GetWaypoints(outWaypoints);
+		else
+			m_Group.GetWaypoints(outWaypoints);
+		
+		return outWaypoints.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void ReindexWaypoints()
 	{
-		int index = 1;
 		SCR_EditableWaypointComponent waypoint, currentWaypoint;
 		array<SCR_EditableWaypointComponent> waypoints = new array<SCR_EditableWaypointComponent>;
 		
@@ -133,7 +214,7 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		AIWaypoint aiWaypoint;
 		AIWaypoint currentAiWaypoint = m_Group.GetCurrentWaypoint();
 		array<AIWaypoint> aiWaypoints = {};
-		for (int i = 0, count = m_Group.GetWaypoints(aiWaypoints); i < count; i++)
+		for (int i = 0, count = GetGroupWaypoints(aiWaypoints); i < count; i++)
 		{
 			aiWaypoint = aiWaypoints[i];
 			waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(aiWaypoint));
@@ -155,9 +236,13 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		
 		//--- Show warning when the group mixes editable and non-editable waypoints. The latter will not be visible in the editor, potentially causing confusion.
 		if (hasNull)
+		{
 			Log("Group contains null waypoints!", true, LogLevel.WARNING);
+		}
 		else if (!waypoints.IsEmpty() && hasNonEditable)
+		{
 			Log("Group has a mix of editable and non-editable waypoints. Please use only one of those!", true, LogLevel.WARNING);
+		}
 		
 		SCR_EditableWaypointComponent prevWaypoint;
 		for (int i = 0, count = waypoints.Count(); i < count; i++)
@@ -282,7 +367,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		{
 			foreach (SCR_EditableEntityComponent child: m_Entities)
 			{
-				if (child.GetEntityType() == EEditableEntityType.WAYPOINT)
+				//--- TODO: unsure why child is null
+				if (child && child.GetEntityType() == EEditableEntityType.WAYPOINT)
 					count++;
 			}
 		}
@@ -297,8 +383,8 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 		if (!m_Group)
 			return;
 		
-		array<AIWaypoint> aiWaypoints = {};
-		for (int i = 0, count = m_Group.GetWaypoints(aiWaypoints); i < count; i++)
+		array<AIWaypoint> aiWaypoints = new array<AIWaypoint>;
+		for (int i = 0, count = GetGroupWaypoints(aiWaypoints); i < count; i++)
 		{
 			SCR_EditableWaypointComponent waypoint = SCR_EditableWaypointComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(aiWaypoints[i]));
 			if (waypoint)
@@ -454,6 +540,31 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 
 		bool isGroupEmpty = m_Group.GetAgentsCount() == 0;
 		SetVisible(!isGroupEmpty);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplSave(ScriptBitWriter writer)
+	{
+		if (!super.RplSave(writer))
+			return false;
+		
+		writer.WriteBool(m_bAreWaypointsCycled);
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplLoad(ScriptBitReader reader)
+	{
+		if (!super.RplLoad(reader))
+			return false;
+		
+		int areWaypointsCycled;
+		reader.ReadBool(areWaypointsCycled);
+		EnableCycledWaypointsBroadcast(areWaypointsCycled);
+		
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -638,24 +749,55 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 				
 				break;
 			}
-
 			case EEditableEntityType.WAYPOINT:
 			{
 				AIWaypoint waypoint = AIWaypoint.Cast(child.GetOwner());
 				if (!waypoint)
 					return;
 				
+				array<AIWaypoint> waypoints = {};
 				if (isAdded)
 				{
 					//--- Check for duplicates, one waypoint can be added multiple times
-					array<AIWaypoint> waypoints = {};
-					m_Group.GetWaypoints(waypoints);
-					if (waypoints.Find(waypoint) == -1)
-						m_Group.AddWaypoint(waypoint);
+					if (m_CycleWaypoint)
+					{
+						m_CycleWaypoint.GetWaypoints(waypoints);
+						if (!waypoints.Contains(waypoint))
+						{
+							waypoints.Insert(waypoint);
+							m_CycleWaypoint.SetWaypoints(waypoints);
+							
+							for (int i = 0, count = waypoints.Count(); i < count; i++)
+							{
+								m_Group.RemoveWaypointAt(0);
+							}
+							
+							m_Group.AddWaypoint(m_CycleWaypoint);
+						}
+					}
+					else
+					{
+						m_Group.GetWaypoints(waypoints);
+						if (!waypoints.Contains(waypoint))
+							m_Group.AddWaypoint(waypoint);
+					}
 				}
 				else
 				{
-					m_Group.RemoveWaypoint(waypoint);
+					if (m_CycleWaypoint)
+					{
+						m_CycleWaypoint.GetWaypoints(waypoints);
+						int waypointID = waypoints.Find(waypoint);
+						if (waypointID != -1)
+						{
+							waypoints.Remove(waypointID);
+							m_CycleWaypoint.SetWaypoints(waypoints);
+						}
+					}
+					else
+					{
+						m_Group.RemoveWaypoint(waypoint);
+					}
 				}
 				
 				break;
@@ -703,6 +845,9 @@ class SCR_EditableGroupComponent : SCR_EditableEntityComponent
 	void SCR_EditableGroupComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Group = SCR_AIGroup.Cast(ent);
+		
+		if (m_CycleWaypoint)
+			delete m_CycleWaypoint;
 		
 		//--- Check if attached to correct entity type. Needs to be SCR_AIGroup, not just AIGroup, because it requires certain events.
 		if (!m_Group)

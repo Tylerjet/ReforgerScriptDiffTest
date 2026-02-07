@@ -19,6 +19,7 @@ class SCR_InventoryStorageWeaponsUI : SCR_InventoryStorageBaseUI
 			m_Storage = m_InventoryStorage.GetWeaponStorage();
 		
 		m_wStorageName.SetText( "#AR-Editor_TooltipDetail_Weapons_Name" );
+		m_wProgressBar.SetVisible(false);
 	}	
 	
 	//------------------------------------------------------------------------------------------------

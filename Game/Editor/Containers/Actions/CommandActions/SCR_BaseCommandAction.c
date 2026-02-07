@@ -26,6 +26,7 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 		}
 		return placingManager.SetSelectedPrefab(m_CommandPrefab, recipients: GetSelectedEntities(selectedEntities));
 	}
+	
 	//--- Called from radial menu, places the command instantly
 	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags, int param = -1)
 	{
@@ -43,55 +44,14 @@ class SCR_BaseCommandAction : SCR_BaseToggleToolbarAction
 		transform[3] = cursorWorldPosition;
 		SCR_EditorPreviewParams params = SCR_EditorPreviewParams.CreateParams(transform);
 		
-		placingManager.CreateEntity(m_CommandPrefab, params, !isQueue, false, GetSelectedEntities(selectedEntities));
+		//++ If the flags is to attach, use the hovered entity as the holder for the spawned entity
+		SCR_EditableEntityComponent holder = null;
+		if (flags & EEditorCommandActionFlags.ATTACH)
+			holder = hoveredEntity;
+		
+		placingManager.CreateEntity(m_CommandPrefab, params, !isQueue, false, GetSelectedEntities(selectedEntities), holder);
 	}
-	/*
-	protected SCR_EditableEntityComponent CreatePrefab(vector position, typename expectedType)
-	{
-		Resource resource = Resource.Load(m_CommandPrefab);
-		if (!resource || !resource.IsValid())
-		{
-			Print(string.Format("Unable to load prefab '%1'!", m_CommandPrefab), LogLevel.ERROR);
-			return null;
-		}
-		
-		if (!resource.GetResource().ToEntitySource().GetClassName().ToType().IsInherited(expectedType))
-		{
-			Print(string.Format("Prefab '%1' must contain entity of type %1!", m_CommandPrefab, expectedType), LogLevel.ERROR);
-			return null;
-		}
-		
-		vector transform[4];
-		Math3D.MatrixIdentity3(transform);
-		transform[3] = position;
-		
-		return SCR_PlacingEditorComponent.SpawnEntityResource(m_CommandPrefab, transform);
-	}
-	protected void GetOffsets(int count, out notnull array<vector> outOffsets)
-	{
-		if (count == 0)
-		{
-			return;
-		}
-		if (count == 1)
-		{
-			outOffsets.Insert(vector.Zero);
-			return;
-		}
-		
-		int rowCount = Math.Round(Math.Sqrt(count));
-		int columnCount = Math.Ceil(Math.Sqrt(count));
-		vector offset = -Vector((rowCount - 1) * m_fSpacing / 2, 0, (columnCount - 1) * m_fSpacing / 2);
-
-		int row, column;
-		for (int i = 0; i < count; i++)
-		{
-			row = Math.Floor(i / columnCount);
-			column = i % columnCount;
-			outOffsets.Insert(offset + Vector(row * m_fSpacing, 0, column * m_fSpacing));
-		}
-	}
-	*/
+	
 	protected void OnCurrentActionChanged()
 	{
 		SCR_CommandActionsEditorComponent commandActionsManager = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent));

@@ -1,5 +1,11 @@
 class SCR_SwitchSeatAction : SCR_GetInUserAction
 {
+	[Attribute("0")]
+	protected bool m_bPilotOnly;
+	
+	[Attribute("0")]
+	protected bool m_bCargoOnly;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
@@ -92,16 +98,21 @@ class SCR_SwitchSeatAction : SCR_GetInUserAction
 			return false;
 
 		//! Check if some other action or animation is preventing the seat switch
-		if (GetGame().GetIsClientAuthority())
+		auto vehicleController = VehicleControllerComponent.Cast(characterCompartment.GetController());
+		if (vehicleController && !vehicleController.CanSwitchSeat())
+			return false;
+		
+		if (m_bPilotOnly)
 		{
-			auto vehicleController = VehicleControllerComponent.Cast(characterCompartment.GetController());
-			if (vehicleController && !vehicleController.CanSwitchSeat())
+			// Check if the Compartment the player is in, is part of the Vehicle and not a sub compartment
+			if (characterCompartment.GetOwner() != characterCompartment.GetOwner().GetRootParent())
 				return false;
 		}
-		else
+		
+		if (m_bCargoOnly)
 		{
-			auto vehicleController = VehicleControllerComponent_SA.Cast(characterCompartment.GetController());
-			if (vehicleController && !vehicleController.CanSwitchSeat())
+			// Check if the Compartment the player is in, is not the main Compartment of the Vehicle but a sub compartment
+			if (characterCompartment.GetOwner() == characterCompartment.GetOwner().GetRootParent())
 				return false;
 		}
 

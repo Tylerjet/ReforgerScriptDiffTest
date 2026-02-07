@@ -103,7 +103,7 @@ class SCR_PlacingEditorComponentClass: SCR_BaseEditorComponentClass
 		return m_TestPrefab;
 	}
 	
-	void SCR_PlacingEditorComponentClass(BaseContainer prefab)
+	void SCR_PlacingEditorComponentClass(IEntityComponentSource componentSource, IEntitySource parentSource, IEntitySource prefabSource)
 	{
 		foreach (SCR_PlaceableEntitiesRegistry registry: m_Registries)
 		{
@@ -178,7 +178,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	\param canBePlayer True if the entity should be spawned as player
 	\return True if the request was sent
 	*/
-	bool CreateEntity(bool unselectPrefab = true, bool canBePlayer = false)
+	bool CreateEntity(bool unselectPrefab = true, bool canBePlayer = false, SCR_EditableEntityComponent holder = null)
 	{
 		//--- Check if placing is allowed. If not, prevent the operation and send a notification to player.
 		ENotification notification = -1;
@@ -284,14 +284,22 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			}
 		}
 		
+		RplId holderId = null;
+		if (holder)
+		{
+			holderId = Replication.FindId(holder);
+			if (!holderId.IsValid())
+				holderId = null;
+		}
+		
 		//--- Send request to server
 		m_StatesManager.SetIsWaiting(true);
 		Event_OnRequestEntity.Invoke(prefabID, params.m_vTransform, null);
 		
 		if (simulatedDelay > 0 && !Replication.IsRunning())
-			GetGame().GetCallqueue().CallLater(CreateEntityServer, simulatedDelay, false, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer);
+			GetGame().GetCallqueue().CallLater(CreateEntityServer, simulatedDelay, false, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer, holderId);
 		else
-			Rpc(CreateEntityServer, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer);
+			Rpc(CreateEntityServer, params, prefabID, playerID, m_iEntityIndex, !unselectPrefab, recipientIds, canBePlayer, holderId);
 		
 		//--- ToDo: Fail the request if server didn't respond in given time
 		//GetGame().GetCallqueue().CallLater(CreateEntityOwner, 10000, false, prefabID, -1);
@@ -312,9 +320,10 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 	\param unselectPrefab True to unselect prefab after placing the entity
 	\param canBePlayer True if the entity should be spawned as player
 	\param recipients Array of entities for whom new entities will be created (e.g., waypoints for groups)
+	\param[in] holder Entity to which the spawned entity will be attached (used in waypoints and tasks)
 	\return True if the request was sent
 	*/
-	bool CreateEntity(ResourceName prefab, SCR_EditorPreviewParams param, bool unselectPrefab = true, bool canBePlayer = false, set<SCR_EditableEntityComponent> recipients = null)
+	bool CreateEntity(ResourceName prefab, SCR_EditorPreviewParams param, bool unselectPrefab = true, bool canBePlayer = false, set<SCR_EditableEntityComponent> recipients = null, SCR_EditableEntityComponent holder = null)
 	{
 		if (m_bBlockPlacing)
 			return false;
@@ -322,11 +331,11 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		m_SelectedPrefab = prefab;
 		m_Recipients = recipients;
 		SetInstantPlacing(param);
-		return CreateEntity(unselectPrefab, canBePlayer);
+		return CreateEntity(unselectPrefab, canBePlayer, holder);
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer)
+	protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer, RplId holderId)
 	{
 		if (m_bBlockPlacing)
 			return;
@@ -350,6 +359,10 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			Rpc(CreateEntityOwner, prefabID, entityIds, entityIndex, false, false, RplId.Invalid(), 0);
 			return;
 		}
+		
+		//~ Get variant if any
+		prefab = SCR_EditableEntityComponentClass.GetRandomVariant(prefab);
+		
 		Resource prefabResource = Resource.Load(prefab);
 		if (!prefabResource || !prefabResource.IsValid())
 		{
@@ -427,6 +440,19 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			entities.Insert(entity);
 			entityIds.Insert(Replication.FindId(entity));
 			currentLayerID = Replication.FindId(params.m_CurrentLayer);
+		}
+		
+		//++ Attach if there is an attacher
+		if (holderId)
+		{
+			SCR_EditableEntityComponent holder = SCR_EditableEntityComponent.Cast(Replication.FindItem(holderId));
+			if (holder)
+			{
+				foreach(SCR_EditableEntityComponent ent : entities)
+				{
+					ent.SetParentEntity(holder);
+				}
+			}
 		}
 		
 		entity.OnCreatedServer(this);
@@ -628,6 +654,7 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 			if (respawnComponent && SCR_Enum.HasFlag(compatiblePlacingFlags, EEditorPlacingFlags.CHARACTER_PLAYER))
 			{
 				SCR_PossessSpawnData spawnData = SCR_PossessSpawnData.FromEntity(owner);
+				spawnData.SetSkipPreload(true);
 				if (!respawnComponent.RequestSpawn(spawnData))
 					Print(string.Format("@\"%1\" control cannot be given to playerID=%2, error in RequestSpawn!", prefabResource.GetResource().GetResourceName().GetPath(), playerID), LogLevel.ERROR);
 			}
@@ -1153,6 +1180,43 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 		if (m_BudgetManager)
 		{
 			m_BudgetManager.Event_OnBudgetMaxReached.Remove(OnBudgetMaxReached);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets the cycle waypoints to the given value on each group of the array
+	//! \param[in] selectedGroups array of groups not null
+	//! \param[in] value of type bool
+	void SetCycleWaypoints(notnull set<SCR_EditableGroupComponent> selectedGroups, bool value)
+	{
+		
+		if (Replication.IsRunning())
+		{
+			array<RplId> recipientIds = {};
+			foreach (SCR_EditableGroupComponent entity: selectedGroups)
+			{
+				RplId id = Replication.FindId(entity);
+				if (id.IsValid())
+					recipientIds.Insert(id);
+			}
+			Rpc(SetCycleWaypointsServer, recipientIds, value);
+		}
+		else
+		{
+			foreach (SCR_EditableGroupComponent group : selectedGroups)
+			{
+				group.EnableCycledWaypoints(value);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void SetCycleWaypointsServer(array<RplId> selectedGroups, bool value)
+	{
+		foreach (RplId group : selectedGroups)
+		{
+			SCR_EditableGroupComponent.Cast(Replication.FindItem(group)).EnableCycledWaypoints(value);
 		}
 	}
 };

@@ -1,48 +1,39 @@
 /*
 Component for a line in scenario browser.
 */
-class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
+class SCR_ContentBrowser_ScenarioLineComponent : SCR_BrowserListMenuEntryComponent
 {
 	protected ref SCR_ContentBrowser_ScenarioLineWidgets m_Widgets = new SCR_ContentBrowser_ScenarioLineWidgets;
 
 	protected MissionWorkshopItem m_Mission;
 	
-	protected const string MOD_ICON = "modIcon";
+	protected bool m_bMouseButtonsEnabled = true;
 	
-	protected Widget m_wLineBackground;
+	protected const string MOD_ICON = "modIcon";
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
-		m_wRoot = w;
 		m_Widgets.Init(w);
 
 		if (!GetGame().InPlayMode())
 			return;
 
 		// Mouse interaction buttons
-		m_FavComponent = m_Widgets.m_FavouriteButtonComponent;
+		m_aMouseButtons.Insert(m_Widgets.m_PlayComponent0);
+		m_aMouseButtons.Insert(m_Widgets.m_ContinueComponent0);
+		m_aMouseButtons.Insert(m_Widgets.m_RestartComponent0);
+		m_aMouseButtons.Insert(m_Widgets.m_HostComponent0);
+		m_aMouseButtons.Insert(m_Widgets.m_FindServersComponent0);
 
-		m_aMouseButtons.Insert(m_FavComponent);
-		m_aMouseButtons.Insert(m_Widgets.m_PlayComponent);
-		m_aMouseButtons.Insert(m_Widgets.m_ContinueComponent);
-		m_aMouseButtons.Insert(m_Widgets.m_RestartComponent);
-		m_aMouseButtons.Insert(m_Widgets.m_HostComponent);
-		m_aMouseButtons.Insert(m_Widgets.m_FindServersComponent);
-		
-		m_aMouseButtonsError.Insert(m_Widgets.m_HostComponent);
-		m_aMouseButtonsError.Insert(m_Widgets.m_FindServersComponent);
-
-		m_Widgets.m_PlayComponent.m_OnClicked.Insert(OnPlay);
-		m_Widgets.m_ContinueComponent.m_OnClicked.Insert(OnContinue);
-		m_Widgets.m_RestartComponent.m_OnClicked.Insert(OnRestart);
-		m_Widgets.m_HostComponent.m_OnClicked.Insert(OnHost);
-		m_Widgets.m_FindServersComponent.m_OnClicked.Insert(OnFindServers);
+		m_Widgets.m_PlayComponent0.m_OnClicked.Insert(OnPlay);
+		m_Widgets.m_ContinueComponent0.m_OnClicked.Insert(OnContinue);
+		m_Widgets.m_RestartComponent0.m_OnClicked.Insert(OnRestart);
+		m_Widgets.m_HostComponent0.m_OnClicked.Insert(OnHost);
+		m_Widgets.m_FindServersComponent0.m_OnClicked.Insert(OnFindServers);
 
 		SCR_ServicesStatusHelper.RefreshPing();
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
-		
-		m_wLineBackground = w.FindAnyWidget("LineBackground");
 		
 		super.HandlerAttached(w);
 	}
@@ -60,43 +51,36 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 		if (!m_Mission)
 			return;
 
-		// Visibility
-		bool mp = SCR_ScenarioEntryHelper.IsMultiplayer(m_Mission);
-		bool canContinue = SCR_ScenarioEntryHelper.HasSave(m_Mission);
-		bool show = m_bMouseButtonsEnabled && m_bFocused && SCR_ScenarioEntryHelper.IsReady(m_Mission);
-
-		m_Widgets.m_Play.SetVisible(show && !canContinue);
-		m_Widgets.m_Continue.SetVisible(show && canContinue);
-		m_Widgets.m_Restart.SetVisible(canContinue);
+		SCR_ScenarioUICommon.UpdateMouseButtonTooltips(m_CurrentTooltip, m_Mission);
 		
-		m_Widgets.m_Host.SetVisible(show && !GetGame().IsPlatformGameConsole() && mp);
-
-		m_Widgets.m_FindServers.SetVisible(show && mp);
-
-		m_bIsInErrorState = SCR_ScenarioEntryHelper.IsInErrorState(m_Mission);
-		SCR_ScenarioEntryHelper.UpdateErrorMouseButtonsTooltip(m_CurrentTooltip, m_Mission);
+		SCR_ERevisionAvailability availability = SCR_ScenarioUICommon.GetOwnerRevisionAvailability(m_Mission);
+		bool inError = availability != SCR_ERevisionAvailability.ERA_AVAILABLE && availability != SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY;
 		
-		bool inError = SCR_ScenarioEntryHelper.IsModInErrorState(m_Mission);
-		
-		if (m_Widgets.m_SourceImageCommunity.IsVisible())
+		if (m_Widgets.m_wSourceImageCommunity.IsVisible())
 		{
 			string icon = MOD_ICON;
 			Color color = Color.FromInt(UIColors.NEUTRAL_INFORMATION.PackToInt());
 			
 			if (inError)
 			{
-				icon = SCR_ScenarioEntryHelper.GetErrorTexture(m_Mission);
+				icon = SCR_WorkshopUiCommon.GetRevisionAvailabilityErrorTexture(availability);
 				if (m_bFocused)
 					color = Color.FromInt(UIColors.WARNING.PackToInt());
 				else
 					color = Color.FromInt(UIColors.WARNING_DISABLED.PackToInt());
 			}
 			
-			m_Widgets.m_SourceImageCommunity.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
-			m_Widgets.m_SourceImageCommunity.SetIsColorInherited(!inError);
-			m_Widgets.m_SourceImageCommunity.SetColor(color);
+			m_Widgets.m_wSourceImageCommunity.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
+			m_Widgets.m_wSourceImageCommunity.SetIsColorInherited(!inError);
+			m_Widgets.m_wSourceImageCommunity.SetColor(color);
 		}
 
+		SCR_ScenarioUICommon.UpdatePlayMouseButton(m_Widgets.m_PlayComponent0, m_Mission, m_bFocused, m_bMouseButtonsEnabled);
+		SCR_ScenarioUICommon.UpdateContinueMouseButton(m_Widgets.m_ContinueComponent0, m_Mission, m_bFocused, m_bMouseButtonsEnabled);
+		SCR_ScenarioUICommon.UpdateRestartMouseButton(m_Widgets.m_RestartComponent0, m_Mission, m_bFocused, m_bMouseButtonsEnabled);
+		SCR_ScenarioUICommon.UpdateHostMouseButton(m_Widgets.m_HostComponent0, m_Mission, m_bFocused, m_bMouseButtonsEnabled);
+		SCR_ScenarioUICommon.UpdateJoinMouseButton(m_Widgets.m_FindServersComponent0, m_Mission, m_bFocused,m_bMouseButtonsEnabled);
+		
 		super.UpdateModularButtons();
 	}
 
@@ -111,11 +95,11 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	override void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		SCR_ScenarioEntryHelper.UpdateErrorMouseButtonsTooltip(tooltipClass, m_Mission);
+		SCR_ScenarioUICommon.UpdateMouseButtonTooltips(tooltip, m_Mission);
 		
-		super.OnTooltipShow(tooltipClass, tooltipWidget, hoverWidget, preset, tag);
+		super.OnTooltipShow(tooltip);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -129,7 +113,7 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 			SetFavorite(m_Mission.IsFavorite());
 
 		//! Name
-		m_Widgets.m_NameText.SetText(m_Mission.Name());
+		m_Widgets.m_wNameText.SetText(m_Mission.Name());
 
 		//! Game mode
 		/*
@@ -138,11 +122,11 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 
 		//! Type/player count
 		int playerCount = m_Mission.GetPlayerCount();
-		bool mp = SCR_ScenarioEntryHelper.IsMultiplayer(m_Mission);
+		bool mp = SCR_ScenarioUICommon.IsMultiplayer(m_Mission);
 	
-		m_Widgets.m_SinglePlayerImage.SetVisible(!m_bMouseButtonsEnabled && !mp);
-		m_Widgets.m_MultiPlayerImage.SetVisible(!m_bMouseButtonsEnabled && mp);
-		m_Widgets.m_PlayerCountText.SetText(playerCount.ToString());
+		m_Widgets.m_wSinglePlayerImage.SetVisible(!m_bMouseButtonsEnabled && !mp);
+		m_Widgets.m_wMultiPlayerImage.SetVisible(!m_bMouseButtonsEnabled && mp);
+		m_Widgets.m_wPlayerCountText.SetText(playerCount.ToString());
 
 		//! Last played time text
 		int timeSinceLastPlayedSeconds = m_Mission.GetTimeSinceLastPlay();
@@ -153,19 +137,19 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 		else
 			timeSinceLastPlayText = "-";
 
-		m_Widgets.m_LastPlayedText.SetText(timeSinceLastPlayText);
+		m_Widgets.m_wLastPlayedText.SetText(timeSinceLastPlayText);
 
 		//! Source addon
 		WorkshopItem sourceAddon = m_Mission.GetOwner();
-		m_Widgets.m_SourceImageOfficial.SetVisible(sourceAddon == null);
-		m_Widgets.m_SourceImageCommunity.SetVisible(sourceAddon != null);
-		m_Widgets.m_SourceNameTextOfficial.SetVisible(sourceAddon == null);
-		m_Widgets.m_SourceNameTextCommunity.SetVisible(sourceAddon != null);
+		m_Widgets.m_wSourceImageOfficial.SetVisible(sourceAddon == null);
+		m_Widgets.m_wSourceImageCommunity.SetVisible(sourceAddon != null);
+		m_Widgets.m_wSourceNameTextOfficial.SetVisible(sourceAddon == null);
+		m_Widgets.m_wSourceNameTextCommunity.SetVisible(sourceAddon != null);
 		string sourceAddonText = string.Empty;
 		if (sourceAddon)
-			m_Widgets.m_SourceNameTextCommunity.SetText(sourceAddon.Name());
+			m_Widgets.m_wSourceNameTextCommunity.SetText(sourceAddon.Name());
 		else
-			m_Widgets.m_SourceNameTextOfficial.SetText("#AR-Editor_Attribute_OverlayLogo_Reforger");
+			m_Widgets.m_wSourceNameTextOfficial.SetText("#AR-Editor_Attribute_OverlayLogo_Reforger");
 
 		//! Modular buttons
 		UpdateModularButtons();
@@ -175,41 +159,41 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 	protected void OnPlay()
 	{
 		if (m_OnMouseInteractionButtonClicked)
-			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_PLAY);
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioUICommon.BUTTON_PLAY);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnContinue()
 	{
 		if (m_OnMouseInteractionButtonClicked)
-			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_CONTINUE);
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioUICommon.BUTTON_CONTINUE);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnRestart()
 	{
 		if (m_OnMouseInteractionButtonClicked)
-			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_RESTART);
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioUICommon.BUTTON_RESTART);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnHost()
 	{
-		if (m_bIsInErrorState)
+		if (!SCR_ScenarioUICommon.CanHost(m_Mission))
 			return;
 		
 		if (m_OnMouseInteractionButtonClicked)
-			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_HOST);
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioUICommon.BUTTON_HOST);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnFindServers()
 	{
-		if (m_bIsInErrorState)
+		if (!SCR_ScenarioUICommon.CanJoin(m_Mission))
 			return;
 		
 		if (m_OnMouseInteractionButtonClicked)
-			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
+			m_OnMouseInteractionButtonClicked.Invoke(SCR_ScenarioUICommon.BUTTON_FIND_SERVERS);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -220,8 +204,14 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Must be called when the scenario properties have been updated (set/clear favourite or similar)
-	void NotifyScenarioUpdate()
+	void NotifyScenarioUpdate(bool itemDownloaded)
 	{
+		m_bMouseButtonsEnabled = itemDownloaded;
+		UpdateModularButtons();
+		
+		m_Widgets.m_wFavouriteButtonOverlay.SetVisible(itemDownloaded);
+		m_Widgets.m_wLastPlayedTextSize.SetVisible(itemDownloaded);
+		
 		UpdateAllWidgets();
 	}
 
@@ -239,36 +229,6 @@ class SCR_ContentBrowser_ScenarioLineComponent : SCR_ListMenuEntryComponent
 		return m_Mission;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	void ShowFavouriteButton(bool show)
-	{
-		m_Widgets.m_FavouriteButtonOverlay.SetVisible(show);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ShowName(bool show)
-	{
-		m_Widgets.m_NameText.SetVisible(show);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ShowPlayerCount(bool show)
-	{
-		m_Widgets.m_PlayerCount.SetVisible(show);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ShowLastPlayedText(bool show)
-	{
-		m_Widgets.m_LastPlayedTextSize.SetVisible(show);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ShowSource(bool show)
-	{
-		m_Widgets.m_Source.SetVisible(show);
-	}
-
 	//------------------------------------------------------------------------------------------------
 	static SCR_ContentBrowser_ScenarioLineComponent FindComponent(Widget w)
 	{

@@ -8,7 +8,7 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 	
 	private float m_fFreelookBlend;
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void CharacterCamera3rdPersonProne(CameraHandlerComponent pCameraHandler)
 	{
 		m_fDistance 		= 1.4;
@@ -17,11 +17,10 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 		m_fShoulderWidth	= 0.4;
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		pOutResult.m_fFOV = m_fFOV;
-		float nextMSOffset = 0.2;
 		bool sprinting = m_ControllerComponent.IsSprinting();
 		if( sprinting )
 			pOutResult.m_fFOV = m_fFOV + 2 * m_fBobScale;
@@ -35,6 +34,7 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void HandleFreelook(float pDt, inout ScriptedCameraItemResult pOutResult)
 	{
 		vector charaRot = m_OwnerCharacter.GetLocalYawPitchRoll();
@@ -84,4 +84,4 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 		pitchReductionMultiplier = Math.Lerp(1.0, 0.7, tSlopeUp);
 		m_CharacterHeadAimingComponent.SetPitchLimitReductionMultiplier(Math.Lerp(1.0, pitchReductionMultiplier, m_fFreelookBlend));
 	}
-};
+}

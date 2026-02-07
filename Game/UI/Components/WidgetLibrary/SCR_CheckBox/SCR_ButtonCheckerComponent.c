@@ -17,13 +17,13 @@ class SCR_ButtonCheckerComponent : SCR_ButtonTextComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetToggled(bool toggled, bool animate = true, bool invokeChange = true)
+	override void SetToggled(bool toggled, bool animate = true, bool invokeChange = true, bool instant = false)
 	{
-		super.SetToggled(toggled, animate, invokeChange);	
+		super.SetToggled(toggled, animate, invokeChange, instant);	
 		
 		// Switch checker 
 		if (m_Checker)
-			m_Checker.SetToggled(toggled);
+			m_Checker.SetToggled(toggled, true, instant);
 	}
 	
 	override bool OnClick(Widget w, int x, int y, int button)

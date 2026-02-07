@@ -470,7 +470,10 @@ class FilteredServerParams : RoomFilterBase
 	//------------------------------------------------------------------------------------------------
 	void SetSorting(string mOrder, bool bAscendent)
 	{
-		order = mOrder;
+		if (mOrder.IsEmpty())
+			order = SORT_NAME;
+		else
+			order = mOrder;
 
 		// find order filter 
 		SCR_FilterEntryRoom orderFilter = FindFilterByInternalName(m_aDefaultFilters, SORT_ASCENDENT);

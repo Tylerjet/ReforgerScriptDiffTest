@@ -27,6 +27,13 @@ class SCR_CoreMenuHeaderComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void SetTitleVisible(bool visible)
+	{
+		if (m_wTitle)
+			m_wTitle.SetVisible(visible);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static SCR_CoreMenuHeaderComponent FindComponentInHierarchy(notnull Widget root)
 	{
 		SCR_CoreMenuHeaderComponent comp;

@@ -1,3 +1,4 @@
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 {
 	[Attribute("Bleeding")]
@@ -202,14 +203,14 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		m_eHitZoneGroup = m_pCharDmgManager.LIMB_GROUPS.Get( hitZoneId  );
 		m_pDamageHandler.SetParentContainer(this);
 		
-		m_pBloodHitZone = SCR_CharacterBloodHitZone.Cast(m_pCharDmgManager.GetBloodHitZone());
+		m_pBloodHitZone = m_pCharDmgManager.GetBloodHitZone();
 		m_pBloodHitZone.GetOnDamageStateChanged().Insert(UpdateHitZoneState);
 		m_aGroupHitZones.Insert(m_pBloodHitZone);
 
 		UpdateHitZoneState(m_pBloodHitZone);
 
-		m_pCharDmgManager.GetOnDamageOverTimeAdded().Insert(UpdateHitZoneDOTAdded);
-		m_pCharDmgManager.GetOnDamageOverTimeRemoved().Insert(UpdateHitZoneDOTRemoved);
+		m_pCharDmgManager.GetOnDamageEffectAdded().Insert(UpdateHitZoneDOTAdded);
+		m_pCharDmgManager.GetOnDamageEffectRemoved().Insert(UpdateHitZoneDOTRemoved);
 		m_pCharDmgManager.GetHitZonesOfGroup(m_eHitZoneGroup, m_aGroupHitZones);
 		string boneName = m_pCharDmgManager.GetBoneName(m_eHitZoneGroup);
 		m_iBoneIndex = m_Player.GetAnimation().GetBoneIndex(boneName);
@@ -240,15 +241,15 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateHitZoneDOTAdded(EDamageType dType, float dps, HitZone hz = null)
+	protected void UpdateHitZoneDOTAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		UpdateHitZoneState(SCR_HitZone.Cast(hz));
+		UpdateHitZoneState(SCR_HitZone.Cast(dmgEffect.GetAffectedHitZone()));
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateHitZoneDOTRemoved(EDamageType dType, HitZone hz = null)
+	protected void UpdateHitZoneDOTRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		UpdateHitZoneState(SCR_HitZone.Cast(hz));
+		UpdateHitZoneState(SCR_HitZone.Cast(dmgEffect.GetAffectedHitZone()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -283,14 +284,18 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 			if (groupHZ == m_pBloodHitZone)
 				continue;
 			
-			if (groupHZ.GetDamageOverTime(EDamageType.BLEEDING))
+			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(groupHZ);
+			if (!regenHitZone)
+				continue;
+			
+			if (regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING) > 0)
 			{
 				bleeding = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING);
 				break;
 			}
 		}		
 
-		float dotHealing = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.HEALING);
+		float dotHealing = -m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.HEALING);
 		float dotRegen = m_pCharDmgManager.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.REGENERATION);
 		float regen = (dotHealing + dotRegen);
 
@@ -557,7 +562,7 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		int groupDamageIntensity;
 		bool regenerating;
 		float bleedingRate, bloodHealth;
-		bool isTourniquetted, isSalineBagged, isMorphined, isArmFractured, isLegFractured;
+		bool isTourniquetted, isSalineBagged, isArmFractured, isLegFractured;
 		string damageIntensity, damageIntensityText, bleedingIntensityText, bloodLevelText;
 		
 		GetHitZoneInfo(ECharacterHitZoneGroup.VIRTUAL, groupDamageIntensity, regenerating, bleedingRate, bloodHealth, isTourniquetted, isSalineBagged, isArmFractured, isLegFractured);
@@ -751,11 +756,11 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		{
 			isArmFractured = damageMan.GetAimingDamage() > 0;
 			isLegFractured = damageMan.GetMovementDamage() > 0;
-			SCR_CharacterBloodHitZone hz = SCR_CharacterBloodHitZone.Cast(damageMan.GetBloodHitZone());
+			SCR_CharacterBloodHitZone hz = damageMan.GetBloodHitZone();
 			if (!hz)
 				return;
 			
-			bleedingRate = hz.GetDamageOverTime(EDamageType.BLEEDING);
+			bleedingRate = hz.GetTotalBleedingAmount();
 			bloodHealth = hz.GetHealthScaled();
 		}
 		
@@ -821,7 +826,7 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		if (!m_DamageState)
 			return;
 
-		bool isRegen = (regen < 0);
+		bool isRegen = (regen > 0);
 		float regenSpeed = Math.AbsFloat(regen);
 		if (regenSpeed < 0.3)
 			regenSpeed = 0.3;
@@ -973,3 +978,4 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		m_eHitZoneGroup = container.GetHitZoneGroup();
 	}
 };
+	//---- REFACTOR NOTE END ----

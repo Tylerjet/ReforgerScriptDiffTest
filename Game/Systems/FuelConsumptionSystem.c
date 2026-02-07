@@ -1,7 +1,14 @@
 class FuelConsumptionSystem : GameSystem
 {
 	protected ref array<SCR_FuelConsumptionComponent> m_Components = {};
-	
+
+	//------------------------------------------------------------------------------------------------
+	override bool ShouldBePaused()
+	{
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void OnUpdate(ESystemPoint point)
 	{
 		float timeSlice = GetWorld().GetFixedTimeSlice();

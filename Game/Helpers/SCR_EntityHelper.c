@@ -396,6 +396,50 @@ class SCR_EntityHelper
 			child = child.GetSibling();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*! Get relative local transform from member to owner. Currently supports single hierarchy only.
+		\param[in] owner Starting entity. Read as IEntity for convenience, but it has to be BaseGameEntity.
+		\param[in] member Ending entity. Has to be BaseGameEntity if it's not parent of owner. Must be in the same hierarchy as owner.
+		\param[out] relativeTransform transformation from member to owner local space
+		\return whether the result is reliable
+	*/
+	static bool GetRelativeLocalTransform(notnull IEntity owner, notnull IEntity member, out vector relativeTransform[4])
+	{
+		// Currently they have to be members of same hierarchy
+		IEntity root = owner.GetRootParent();
+		if (member.GetRootParent() != root)
+			return false;
+
+		Math3D.MatrixIdentity4(relativeTransform);
+
+		// Simple check if member is parent of owner
+		bool isParent;
+		IEntity parent = owner;
+		while (parent)
+		{
+			// Early return if succeded
+			if (parent == member)
+				return EntityUtils.GetAncestorToChildTransform(owner, member, relativeTransform);
+
+			parent = parent.GetParent();
+		}
+
+		// First get transform all the way up to root
+		vector ownerToRootTransform[4];
+		Math3D.MatrixIdentity4(ownerToRootTransform);
+		bool ownerToRoot = EntityUtils.GetAncestorToChildTransform(owner, root, ownerToRootTransform);
+
+		// Then go back to member
+		vector rootToMemberTransform[4];
+		Math3D.MatrixIdentity4(rootToMemberTransform);
+		bool rootToMember = EntityUtils.GetChildToAncestorTransform(member, root, rootToMemberTransform);
+
+		// Rewind the transform
+		Math3D.MatrixMultiply4(ownerToRootTransform, rootToMemberTransform, relativeTransform);
+
+		return ownerToRoot && rootToMember;
+	}
 }
 
 class SCR_EntityHelperT<Class T>

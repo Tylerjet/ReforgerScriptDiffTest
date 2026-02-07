@@ -4,6 +4,9 @@ class SCR_BaseRadialCommand
 	[Attribute("", UIWidgets.EditBox, "Unique name of the command")]
 	protected string m_sCommandName;
 	
+	[Attribute("", UIWidgets.EditBox, "Display name of the command, in future will replace the one in commanding menu conf")]
+	protected string m_sCommandDisplayName;
+	
 	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", UIWidgets.ResourceNamePicker, "Imageset source for display icon" )]
 	protected ResourceName m_sImageset;
 	
@@ -21,10 +24,23 @@ class SCR_BaseRadialCommand
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void VisualizeCommand(vector targetPosition);
+	
+	//------------------------------------------------------------------------------------------------
+	void VisualizeCommandPreview(vector targetPosition);
+	
+	//------------------------------------------------------------------------------------------------
 	//!
 	string GetIconName()
 	{
 		return m_sIconName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	string GetCommandDisplayName()
+	{
+		return m_sCommandDisplayName;
 	}
 	
 	//------------------------------------------------------------------------------------------------

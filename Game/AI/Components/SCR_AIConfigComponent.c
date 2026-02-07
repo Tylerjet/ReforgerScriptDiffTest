@@ -65,6 +65,14 @@ class SCR_AIConfigComponent : ScriptComponent
 	[Attribute("", UIWidgets.Auto, "Specifies which behavior tree is used for specific weapon type", category: "Weapon Handling")]
 	ref array<ref SCR_AIWeaponTypeSelectionConfig> m_aWeaponTypeSelectionConfig;
 	
+	[Attribute("", UIWidgets.Object, "Handling configs for weapon types", category: "Weapon Handling")]
+	ref array<ref SCR_AIWeaponTypeHandlingConfig> m_aWeaponTypeHandlingConfig;
+	ref map<EWeaponType, ref SCR_AIWeaponTypeHandlingConfig> m_mWeaponTypeHandlingConfig = new map<EWeaponType, ref SCR_AIWeaponTypeHandlingConfig>();
+	ref array<int> m_aMinSuppressiveMagCountSpec = {}; // This array is passed to AIWeaponTargetSelector
+	
+	[Attribute("", UIWidgets.Object, "Default weapon handling config", category: "Weapon Handling")]
+	ref SCR_AIWeaponTypeHandlingConfig m_DefaultWeaponTypeHandlingConfig;
+	
 	[Attribute("{3EA0ED1A7C3B8FE5}AI/BehaviorTrees/Chimera/Soldier/HandleWeapon_Default.bt", UIWidgets.Auto, "Fallback BT when nothing found in WeaponTypeSelectionConfig", category: "Weapon Handling")]
 	ResourceName m_sDefaultWeaponBehaviorTree;
 	
@@ -96,24 +104,46 @@ class SCR_AIConfigComponent : ScriptComponent
 		typename type_EMessageType_Goal = EMessageType_Goal;
 		typename type_EMessageType_Info = EMessageType_Info;
 		
-		foreach (SCR_AIDangerReaction reaction : m_aDangerReactions)
+		// Map weapon handling configs based on weapon type
+		// Initialize min magazine specification array
+		m_aMinSuppressiveMagCountSpec.Clear();
+		m_aMinSuppressiveMagCountSpec.Insert(SCR_AIWeaponTypeHandlingConfig.DEFAULT_LOW_MAG_THRESHOLD);
+		if (m_DefaultWeaponTypeHandlingConfig)
+			m_aMinSuppressiveMagCountSpec[0] = m_DefaultWeaponTypeHandlingConfig.m_iMinSuppressiveMagCountThreshold;
+		foreach (SCR_AIWeaponTypeHandlingConfig config : m_aWeaponTypeHandlingConfig)
 		{
-			m_mDangerReactions[reaction.m_eType] = reaction;
+			m_mWeaponTypeHandlingConfig[config.m_eWeaponType] = config;
+			
+			m_aMinSuppressiveMagCountSpec.Insert(config.m_eWeaponType);
+			m_aMinSuppressiveMagCountSpec.Insert(config.m_iMinSuppressiveMagCountThreshold);
 		}
+			
+		foreach (SCR_AIDangerReaction reaction : m_aDangerReactions)
+			m_mDangerReactions[reaction.m_eType] = reaction;
 		
 		m_aGoalReactionsPacked.Resize(type_EMessageType_Goal.GetVariableCount());
 		foreach (SCR_AIGoalReaction reaction : m_aGoalReactions)
 		{
-			if(reaction.m_eType != EMessageType_Goal.NONE)
+			if (reaction.m_eType != EMessageType_Goal.NONE)
 				m_aGoalReactionsPacked[reaction.m_eType] = reaction;
 		}
 		
 		m_aInfoReactionsPacked.Resize(type_EMessageType_Info.GetVariableCount());
 		foreach (SCR_AIInfoReaction reaction : m_aInfoReactions)
 		{
-			if(reaction.m_eType != EMessageType_Info.NONE)
+			if (reaction.m_eType != EMessageType_Info.NONE)
 				m_aInfoReactionsPacked[reaction.m_eType] = reaction;
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_AIWeaponTypeHandlingConfig GetWeaponTypeHandlingConfig(EWeaponType weaponType)
+	{
+		SCR_AIWeaponTypeHandlingConfig config = m_mWeaponTypeHandlingConfig[weaponType];
+		if (!config)
+			return m_DefaultWeaponTypeHandlingConfig;
+			
+		return config;
 	}
 	
 	//------------------------------------------------------------------------------------------------

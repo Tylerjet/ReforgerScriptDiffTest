@@ -18,6 +18,8 @@ class MapEntity: GenericEntity
 	proto external void UpdateTexts();
 	//! Absorb world data and create precalculated form for visualisation
 	proto external void AbsorbData();
+	//! Starting offset of the map.
+	proto external vector Offset();
 	//! Terrain dimensions (x, height = maxElevation-minElevation, z)
 	proto external vector Size();
 	//! Terrain unit scale

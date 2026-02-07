@@ -20,10 +20,10 @@ class EditorMenuUI: EditorMenuBase
 		if (inputManager)
 		{
 			inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
-			inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OpenPauseMenu);
+			inputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN, EActionTrigger.DOWN, OpenPauseMenu);
 			inputManager.AddActionListener("ChatToggle", EActionTrigger.DOWN, ChatToggle);
 #ifdef WORKBENCH
-			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
+			inputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, OpenPauseMenu);
 #endif
 		}
 	}
@@ -36,10 +36,10 @@ class EditorMenuUI: EditorMenuBase
 		if (inputManager)
 		{
 			inputManager.RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
-			inputManager.RemoveActionListener("MenuOpen", EActionTrigger.DOWN, OpenPauseMenu);
+			inputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN, EActionTrigger.DOWN, OpenPauseMenu);
 			inputManager.RemoveActionListener("ChatToggle", EActionTrigger.DOWN, ChatToggle);
 #ifdef WORKBENCH
-			inputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
+			inputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, OpenPauseMenu);
 #endif
 		}
 	}

@@ -1,29 +1,15 @@
 
 class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 {
-	protected SCR_ContentBrowser_AddonsSubMenu m_DependencySubMenu;
-
-	protected static SCR_WorkshopItem m_WorkshopItem;
 	protected SCR_InputButtonComponent m_NavBack;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
-		if (!m_WorkshopItem)
-		{
-			Close();
-			GetGame().GetCallqueue().CallLater(SCR_CommonDialogs.CreateRequestErrorDialog);
-			return;
-		}
-
 		super.OnMenuOpen();
 
-		SCR_ModDetailsSuperMenuComponent detailsSuperMenu = SCR_ModDetailsSuperMenuComponent.Cast(m_SuperMenuComponent);
-		if (detailsSuperMenu)
-			detailsSuperMenu.SetWorkshopItem(m_WorkshopItem);
-		
 		// Setup the 'back' nav button
-		m_NavBack = m_DynamicFooter.FindButton("Back");
+		m_NavBack = m_DynamicFooter.FindButton(UIConstants.BUTTON_BACK);
 		if (m_NavBack)	
 			m_NavBack.m_OnActivated.Insert(OnNavButtonClose);
 	}
@@ -36,20 +22,35 @@ class ContentBrowserDetailsMenu : SCR_SuperMenuBase
 			Close();
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void SetWorkshopItem(SCR_WorkshopItem item)
+	{
+		if (!item)
+		{
+			Close();
+			GetGame().GetCallqueue().Call(SCR_CommonDialogs.CreateRequestErrorDialog);
+			return;
+		}
+
+		SCR_ModDetailsSuperMenuComponent detailsSuperMenu = SCR_ModDetailsSuperMenuComponent.Cast(m_SuperMenuComponent);
+		if (detailsSuperMenu)
+			detailsSuperMenu.SetWorkshopItem(item);
+		
+		// Header
+		SCR_CoreMenuHeaderComponent header = SCR_CoreMenuHeaderComponent.FindComponentInHierarchy(GetRootWidget());
+		if (header)
+			header.SetTitle(item.GetName());
+	}
+	
 	// Public
 	//------------------------------------------------------------------------------------------------
 	//! Opens the menu for a given workshop item
 	static ContentBrowserDetailsMenu OpenForWorkshopItem(SCR_WorkshopItem item)
 	{
-		m_WorkshopItem = item;
-		
 		ContentBrowserDetailsMenu detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ContentBrowserDetailsMenu));
+		if (detailsMenu)
+			detailsMenu.SetWorkshopItem(item);
+		
 		return detailsMenu;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static SCR_WorkshopItem GetWorkshopItem()
-	{
-		return m_WorkshopItem;
 	}
 }

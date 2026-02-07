@@ -31,7 +31,7 @@ class SCR_AIDecoTestVehicleIsMoving : DecoratorTestScripted
 			m_heliSimulation = VehicleHelicopterSimulation.Cast(vehicle.FindComponent(VehicleHelicopterSimulation));			
 		}	
 				
-		Physics ph = controlled.GetPhysics();
+		Physics ph = m_vehicle.GetPhysics();
 		if (!ph || !ph.IsActive())
 			return false;
 		

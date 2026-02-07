@@ -56,6 +56,8 @@ class SCR_MapCompassUI : SCR_MapRTWBaseUI
 	//------------------------------------------------------------------------------------------------
 	protected void OnInputQuickBind(float value, EActionTrigger reason)
 	{
+		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && IsToolMenuFocused())
+			return;		
 		SetVisible(!m_bIsVisible);
 	}
 		

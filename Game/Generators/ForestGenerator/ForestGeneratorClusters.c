@@ -5,10 +5,10 @@ class ForestGeneratorCluster
 	[Attribute(defvalue: "", uiwidget: UIWidgets.Object, desc: "Define which tree groups should spawn in this cluster.")]
 	ref array<ref SmallForestGeneratorClusterObject> m_aObjects;
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "The minimum density of the filling in number of clusters for hectare.")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "The minimum density of the filling in number of clusters for hectare.", params: "0 inf")]
 	float m_fMinCDENSHA;
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "The maximum density of the filling in number of clusters for hectare.")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "The maximum density of the filling in number of clusters for hectare.", params: "0 inf")]
 	float m_fMaxCDENSHA;
 
 	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Generate this cluster?")]
@@ -128,16 +128,16 @@ class WideForestGeneratorClusterObject : SmallForestGeneratorClusterObject
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class SmallForestGeneratorClusterObject : SCR_ForestGeneratorTreeBase
 {
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimum count of this object to spawn")];
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimum count of this object to spawn", params: "0 inf 1")];
 	int m_iMinCount;
 
-	[Attribute(defvalue: "2", uiwidget: UIWidgets.SpinBox, desc: "Maximum count of this object to spawn")];
+	[Attribute(defvalue: "2", uiwidget: UIWidgets.SpinBox, desc: "Maximum count of this object to spawn", params: "0 inf 1")];
 	int m_iMaxCount;
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimum distance of this object from the center of this cluster")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.SpinBox, desc: "Minimum distance of this object from the center of this cluster", params: "0 inf")]
 	float m_fMinRadius;
 
-	[Attribute(defvalue: "2", uiwidget: UIWidgets.SpinBox, desc: "Maximum distance of this object from the center of this cluster")]
+	[Attribute(defvalue: "2", uiwidget: UIWidgets.SpinBox, desc: "Maximum distance of this object from the center of this cluster", params: "0 inf")]
 	float m_fMaxRadius;
 
 	//------------------------------------------------------------------------------------------------
@@ -150,7 +150,7 @@ class SmallForestGeneratorClusterObject : SCR_ForestGeneratorTreeBase
 [BaseContainerProps(namingConvention: NamingConvention.NC_MUST_HAVE_NAME)]
 class MiddleForestGeneratorClusterObject : SmallForestGeneratorClusterObject
 {
-	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
+	[Attribute(defvalue: "5", uiwidget: UIWidgets.SpinBox, "Minimum required radius in the middle layer for this object to spawn", params: "0 inf"), ForestGeneratorDistaceAttribute(DistanceType.MID)]
 	float m_fMidDistance;
 
 	//------------------------------------------------------------------------------------------------

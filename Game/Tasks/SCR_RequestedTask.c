@@ -190,7 +190,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		if (!taskManager || taskManager.IsProxy())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(taskManager.FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = taskManager.FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		

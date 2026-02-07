@@ -19,6 +19,8 @@ enum EGadgetType
 	BUILDING_TOOL 	= 1 << 9,
 	SPECIALIST_ITEM = 1 << 10,
 	NIGHT_VISION 	= 1 << 11,
+	DETONATOR		= 1 << 12,
+	GPS				= 1 << 13,
 }
 
 //! Gadget mode
@@ -50,13 +52,19 @@ enum EGadgetAnimVariable
 
 //! Gadget base class
 class SCR_GadgetComponent : ScriptGameComponent
-{			
+{
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EGadgetAnimVariable), desc: "Gadget anim variable", category: "Gadget")]
 	protected EGadgetAnimVariable m_eAnimVariable;
+
+	[Attribute(SCR_EUseContext.NONE.ToString(), uiwidget: UIWidgets.Flags, desc: "From what context this gadget can be toggled.\nValue NONE is always selected but it is ignored when there is any other value selected", enums: ParamEnumArray.FromEnum(SCR_EUseContext), category: "Gadget")]
+	protected SCR_EUseContext m_eUseMask;
 	
 	[Attribute("0 0 0", UIWidgets.Coords, desc: "Adjusted position of prefab within equipment slot, for when items placed intto a same slot have different sizes like flashlights", category: "Gadget")]
 	protected vector m_vEquipmentSlotOffset;
 	
+	[Attribute("0.5", UIWidgets.Auto, desc: "Weapon no fire time set while equipped\n[s]", category: "Gadget")]
+	protected float m_fWeaponNoFireTime;
+
 	bool m_bFocused;
 	protected bool m_bActivated = false;					// current state if the gadget can be toggled on	
 	protected EGadgetMode m_iMode = EGadgetMode.ON_GROUND;	// curent gadget mode
@@ -67,6 +75,13 @@ class SCR_GadgetComponent : ScriptGameComponent
 	EGadgetAnimVariable GetAnimVariable()
 	{
 		return m_eAnimVariable;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetWeaponNoFireTime()
+	{
+		return m_fWeaponNoFireTime;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -81,56 +96,21 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//! Event called from SCR_GadgetManagerComponent through RPC request
 	//! \param[in] state is gadget state: true - active / false - inactive
 	void OnToggleActive(bool state);
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! InventoryItemComponent event
 	void OnParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
-		if (newSlot == null)	// ground
+		IEntity parentOwner = GetOwner().GetRootParent();
+		if (!SCR_ChimeraCharacter.Cast(parentOwner))
 		{
-			IEntity parentOwner, owner;
-			
-			BaseInventoryStorageComponent storageComp = oldSlot.GetStorage();
-			if (storageComp)
-				parentOwner = storageComp.GetOwner();
-			else 
-				parentOwner = oldSlot.GetOwner();	// LoadoutSlotInfo wont return storage comp 
-			
-			owner = parentOwner;
-			
-			while (owner != null)
-			{
-				parentOwner = owner;
-				owner = owner.GetParent();
-			}
-			
-			if ( !SCR_ChimeraCharacter.Cast(parentOwner) )	// remove from char is currently handled by gadget manager
+			if (!newSlot)
 				SCR_GadgetManagerComponent.SetGadgetModeStashed(this, EGadgetMode.ON_GROUND);
-		}
-		else if (oldSlot == null)
-		{
-			IEntity parentOwner, owner;
-			
-			BaseInventoryStorageComponent storageComp = newSlot.GetStorage();
-			if (storageComp)
-				parentOwner = storageComp.GetOwner();
-			else 
-				parentOwner = newSlot.GetOwner();	// LoadoutSlotInfo wont return storage comp
-			
-			owner = parentOwner;
-			
-			while (owner != null)
-			{
-				parentOwner = owner;
-				owner = owner.GetParent();
-			}
-			
-			
-			if ( !SCR_ChimeraCharacter.Cast(parentOwner) ) // add to char is currently handled by gadget manager
+			else if (!oldSlot)
 				SCR_GadgetManagerComponent.SetGadgetModeStashed(this, EGadgetMode.IN_STORAGE);
 		}
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	//! Gadget mode change event
 	//! \param[in] mode is the target mode being switched to
@@ -165,9 +145,12 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	//! Clear gadget mode
 	//! \param[in] mode is the mode being cleared
-	protected void ModeClear(EGadgetMode mode)
-	{
-	}
+	protected void ModeClear(EGadgetMode mode);
+
+	//------------------------------------------------------------------------------------------------
+	//! Method called when slot to which item is attached to changed its occlusion state
+	//! \param[in] occluded if parent slot is now occluded or not
+	void OnSlotOccludedStateChanged(bool occluded);
 						
 	//------------------------------------------------------------------------------------------------
 	//! Activate gadget frame update
@@ -233,20 +216,23 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	//! Synchronise gadget state
 	//! \param[in] state is target state true = active, false = inactive
-	void ToggleActive(bool state)
-	{		
+	void ToggleActive(bool state, SCR_EUseContext context)
+	{
 		if (!m_CharacterOwner)
 			return;
-		
+
+		if (m_eUseMask == SCR_EUseContext.NONE || (m_eUseMask & context) == 0)
+			return;
+
 		RplComponent rplComponent = RplComponent.Cast(m_CharacterOwner.FindComponent(RplComponent));
 		if (!rplComponent || !rplComponent.IsOwner())
 			return;					// NOT owner of the character in possession of this gadget
-				
+
 		// Client side
 		rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (rplComponent && rplComponent.IsProxy())
 			OnToggleActive(state);	// activate client side to avoid server delay
-			
+
 		// Sync
 		if (m_CharacterOwner)
 			SCR_GadgetManagerComponent.GetGadgetManager(m_CharacterOwner).AskToggleGadget(this, state);
@@ -304,13 +290,13 @@ class SCR_GadgetComponent : ScriptGameComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Can be toggled/activated
-	//! \return Returns true if toggleable
-	bool CanBeToggled()
+	//! Provides value that contains mask of contexts from which this gadget can be toggled
+	//! \return Returns int mask of SCR_EUseContext 
+	SCR_EUseContext GetUseMask()
 	{
-		return false;
+		return m_eUseMask;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Gadget has a raised animation version
 	//! \return Returns true if raisable
@@ -368,7 +354,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		writer.WriteIntRange(m_iMode, 0, EGadgetMode.LAST-1);
-		
+
 		return true;
 	}
 	
@@ -393,8 +379,8 @@ class SCR_GadgetComponent : ScriptGameComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		SetEventMask( owner, EntityEvent.INIT);
-		
+		SetEventMask(owner, EntityEvent.INIT);
+
 		InventoryItemComponent invComp = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
 		if (invComp)
 			invComp.m_OnParentSlotChangedInvoker.Insert(OnParentSlotChanged);

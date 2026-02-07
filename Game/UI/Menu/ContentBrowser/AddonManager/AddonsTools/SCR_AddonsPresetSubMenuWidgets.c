@@ -7,7 +7,7 @@ class SCR_AddonsPresetSubMenuWidgets
 	ResourceName GetLayout() { return s_sLayout; }
 
 	ButtonWidget m_ButonNewPreset;
-	SCR_ButtonTextComponent m_ButonNewPresetComponent;
+	SCR_ModularButtonComponent m_ButonNewPresetComponent;
 
 	ScrollLayoutWidget m_ScrollPresets;
 	SCR_ListBoxComponent m_ScrollPresetsComponent;
@@ -15,7 +15,7 @@ class SCR_AddonsPresetSubMenuWidgets
 	bool Init(Widget root)
 	{
 		m_ButonNewPreset = ButtonWidget.Cast(root.FindWidget("VerticalList.m_ButonNewPreset"));
-		m_ButonNewPresetComponent = SCR_ButtonTextComponent.Cast(m_ButonNewPreset.FindHandler(SCR_ButtonTextComponent));
+		m_ButonNewPresetComponent = SCR_ModularButtonComponent.Cast(m_ButonNewPreset.FindHandler(SCR_ModularButtonComponent));
 
 		m_ScrollPresets = ScrollLayoutWidget.Cast(root.FindWidget("VerticalList.m_ScrollPresets"));
 		m_ScrollPresetsComponent = SCR_ListBoxComponent.Cast(m_ScrollPresets.FindHandler(SCR_ListBoxComponent));

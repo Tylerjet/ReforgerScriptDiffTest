@@ -296,15 +296,15 @@ class SCR_AISoundHandling
 	{
 		switch (role)
 		{
-			case ECompartmentType.Pilot:
+			case ECompartmentType.PILOT:
 			{
 				return ECP_VehicleRoles.DRIVER;
 			}
-			case ECompartmentType.Turret:
+			case ECompartmentType.TURRET:
 			{
 				return ECP_VehicleRoles.GUNNER;
 			}
-			case ECompartmentType.Cargo:
+			case ECompartmentType.CARGO:
 			{
 				return ECP_VehicleRoles.PASSANGER;
 			}
@@ -364,7 +364,7 @@ class SCR_AISoundHandling
 		{
 			int SN_Vehicle = signalsManagerComponent.FindSignal("Vehicle");
 			
-			SetSignal(SN_Vehicle, Vehicle.Cast(target).m_eVehicleType, signals);
+			SetSignal(SN_Vehicle, VehicleTypeToSoundVehicleFactionEnum(Vehicle.Cast(target).m_eVehicleType), signals);
 		}
 		
 		else if (target.IsInherited(ChimeraCharacter))

@@ -117,9 +117,9 @@ class SCR_SortElementComponent : SCR_ModularButtonComponent
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	protected override void Internal_SetToggled(bool newToggled, bool invokeOnToggled = true)
+	protected override void Internal_SetToggled(bool newToggled, bool invokeOnToggled = true, bool instant = false)
 	{
-		super.Internal_SetToggled(newToggled, invokeOnToggled);
+		super.Internal_SetToggled(newToggled, invokeOnToggled, instant);
 		UpdateSortEffects();
 	}
 	

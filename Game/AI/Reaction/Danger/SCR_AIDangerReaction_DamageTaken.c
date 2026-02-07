@@ -15,7 +15,7 @@ class SCR_AIDangerReaction_DamageTaken : SCR_AIDangerReaction
 		float dist = vector.Distance(shooterPos, utility.GetOrigin());
 		
 
-		if (utility.m_CombatComponent.GetCurrentTarget() == null && dist > SCR_AICombatComponent.LONG_RANGE_FIRE_DISTANCE && shooter)
+		if (utility.m_CombatComponent.GetCurrentTarget() == null && dist > SCR_AICombatComponent.LONG_RANGE_COMBAT_DISTANCE && shooter)
 		{
 			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, null, shooterPos, shooter));
 		}

@@ -53,7 +53,7 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 		if (!weatherManager) 
 			return;
 		
-		WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
+		BaseWeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
 
 		//Is preview
 		if (!item)
@@ -112,7 +112,7 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 			if (!weatherManager) 
 				return;
 			
-			WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
+			BaseWeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
 			if (!weatherTransitionManager)
 				return;
 			

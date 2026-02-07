@@ -4,11 +4,7 @@ class SCR_BaseLightComponentClass : ScriptComponentClass
 }
 
 class SCR_BaseLightComponent : ScriptComponent
-{		
-	// DEBUG
-//	Shape shape;
-//	Shape shape1;
-	
+{
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] lightData
@@ -26,17 +22,12 @@ class SCR_BaseLightComponent : ScriptComponent
 		if (!light)
 			return null;
 			
-		GetOwner().AddChild(light, -1);
-		light.SetOrigin(position);
+		GetOwner().AddChild(light, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
 		light.SetLensFlareType(lightData.GetFlareType());
 		light.SetLensFlareScale(lightData.GetLensFlareScale());
 		light.SetLensFlareOffset(lightData.GetLensFlareOffset());
 		light.SetConeAngle(lightData.GetLightConeAngle());
 		light.SetIntensityEVClip(lightData.GetIntensityClipEV());
-		
-		// DEBUG POSITION OF THE LIGHT
-		//shape = Shape.CreateCylinder(ARGB(255, 255, 0, 0), ShapeFlags.VISIBLE, position, 0.008, 0.008);
-		//shape1 = Shape.CreateArrow(lightOffset.Multiply4(mat), componentData.m_aLightData[i].GetLightConeDirection().Multiply4(mat), 1.5, ARGB(255, 0, 255, 0), ShapeFlags.VISIBLE);*/
 		
 		return light;
 	}

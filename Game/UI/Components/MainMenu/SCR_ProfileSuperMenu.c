@@ -6,24 +6,42 @@ enum SCR_EProfileSuperMenuTabId
 
 class SCR_ProfileSuperMenu : SCR_SuperMenuBase
 {
+	SCR_ModularButtonComponent m_Logo;
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		super.OnMenuOpen();
 		
-		SCR_InputButtonComponent comp = m_DynamicFooter.FindButton("Back");
+		SCR_InputButtonComponent comp = m_DynamicFooter.FindButton(UIConstants.BUTTON_BACK);
 		if (comp)
 			comp.m_OnActivated.Insert(Close);
 
 		Widget logoWidget = GetRootWidget().FindAnyWidget("LogoButton");
 		if (logoWidget)
 		{
-			SCR_ModularButtonComponent logo = SCR_ModularButtonComponent.FindComponent(logoWidget);
-			if (logo)
-				logo.m_OnClicked.Insert(OnLogoClicked);
+			m_Logo = SCR_ModularButtonComponent.FindComponent(logoWidget);
+			if (m_Logo)
+				m_Logo.m_OnClicked.Insert(OnLogoClicked);
 		}
+		
+		// Setup automatic focusing on tab show
+		if (!m_SuperMenuComponent)
+			return;
+		
+		SCR_TabViewComponent tabView = m_SuperMenuComponent.GetTabView();
+		if (tabView)
+			tabView.GetOnContentShow().Insert(OnTabContentShow);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuShow()
+	{
+		super.OnMenuShow();
+		
+		ResetFocus();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnLogoClicked()
 	{
@@ -31,8 +49,15 @@ class SCR_ProfileSuperMenu : SCR_SuperMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetPage(SCR_EProfileSuperMenuTabId page)
+	protected void OnTabContentShow(SCR_TabViewComponent tabView, Widget widget)
 	{
-		m_SuperMenuComponent.GetTabView().ShowTab(page);
+		ResetFocus();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ResetFocus()
+	{
+		if (m_Logo)
+			GetGame().GetWorkspace().SetFocusedWidget(m_Logo.GetRootWidget());
 	}
 }

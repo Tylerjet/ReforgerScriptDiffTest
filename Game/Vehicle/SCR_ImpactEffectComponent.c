@@ -5,6 +5,9 @@ class SCR_ImpactEffectComponentClass : ScriptComponentClass
 	
 	[Attribute()]
 	ref array<ResourceName> m_aWaterParticles;
+	
+	[Attribute(defvalue: "-1", desc: "If set to -1 component will use impulse to determine effect intensity")]
+	int m_iEffectMagnitude;
 }
 
 class SCR_ImpactEffectComponent : ScriptComponent
@@ -38,25 +41,21 @@ class SCR_ImpactEffectComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected int GetEffectMagnitude()
+	{
+		return SCR_ImpactEffectComponentClass.Cast(GetComponentData(GetOwner())).m_iEffectMagnitude;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void ResetContactsDelayed()
 	{
 		m_iCachedContactCalls = 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnImpact(notnull IEntity other, notnull Contact contact)
+	void OnImpact(notnull IEntity other, float impulse, vector impactPosition, vector impactNormal, GameMaterial mat)
 	{
 		if (m_iCachedContactCalls >= MAX_CALLS_PER_CONTACT)
-			return;
-		
-		int responseIndex = contact.Physics2.GetResponseIndex();
-		
-		// Exclude collisions with physics objects with tiny response index e.g. bushes, fences etc.
-		if (responseIndex == SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE || responseIndex == SCR_EPhysicsResponseIndex.SMALL_DESTRUCTIBLE)
-			return;
-		
-		// Exclude collisions with other vehicle parts
-		if (SCR_VehicleDamageManagerComponent.Cast(other.GetRootParent().FindComponent(SCR_VehicleDamageManagerComponent)))
 			return;
 		
 		// all contacts will be ignored until cached contacts are reset
@@ -65,22 +64,36 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		
 		m_iCachedContactCalls++;
 		
-		if (contact.Impulse < MIN_TINY_IMPULSE)
-			return;
+		int magnitude = GetEffectMagnitude();
 		
-		int magnitude = -1;
-		if (contact.Impulse < MIN_SMALL_IMPULSE)
-			magnitude = 0;
-		else if (contact.Impulse < MIN_MEDIUM_IMPULSE)
-			magnitude = 1;
-		else
-			magnitude = 2;
+		if (magnitude <= -1)
+		{
+			int responseIndex = other.GetPhysics().GetResponseIndex();
+		
+			// Exclude collisions with physics objects with tiny response index e.g. bushes, fences etc.
+			if (responseIndex == SCR_EPhysicsResponseIndex.TINY_DESTRUCTIBLE || responseIndex == SCR_EPhysicsResponseIndex.SMALL_DESTRUCTIBLE)
+				return;
+		
+			// Exclude collisions with other vehicle parts
+			if (SCR_VehicleDamageManagerComponent.Cast(other.GetRootParent().FindComponent(SCR_VehicleDamageManagerComponent)))
+				return;
+			
+			if (impulse < MIN_TINY_IMPULSE)
+				return;
+		
+			if (impulse < MIN_SMALL_IMPULSE)
+				magnitude = 0;
+			else if (impulse < MIN_MEDIUM_IMPULSE)
+				magnitude = 1;
+			else
+				magnitude = 2;
+		}
 		
 		vector transform[4];
 		Math3D.MatrixIdentity4(transform);
-		transform[3] = contact.Position;
+		transform[3] = impactPosition;
 
-		GameMaterial material = contact.Material2;
+		GameMaterial material = mat;
 		ParticleEffectInfo effectInfo = material.GetParticleEffectInfo();		
 		ResourceName resourceName = effectInfo.GetBlastResource(magnitude);
 
@@ -90,7 +103,7 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		EmitParticles(transform, resourceName);
 		
 		if (magnitude > -1)
-			Rpc(RPC_OnImpactBroadcast, contact.Position, contact.Normal, magnitude);
+			Rpc(RPC_OnImpactBroadcast, impactPosition, impactNormal, magnitude);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -216,6 +229,10 @@ class SCR_ImpactEffectComponent : ScriptComponent
 		m_ParticleSpawnParams.UseFrameEvent = true;
 		
 		m_SoundComponent = SoundComponent.Cast(GetOwner().FindComponent(SoundComponent));
+		
+		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
+		if (!rpl || rpl.IsProxy())
+			return;
 		
 		SCR_VehicleBuoyancyComponent buoyancyComp = SCR_VehicleBuoyancyComponent.Cast(GetOwner().FindComponent(SCR_VehicleBuoyancyComponent));
 		if (!buoyancyComp)

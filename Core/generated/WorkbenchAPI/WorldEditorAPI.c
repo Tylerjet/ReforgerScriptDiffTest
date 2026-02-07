@@ -57,7 +57,7 @@ sealed class WorldEditorAPI
 	proto external IEntitySource GetEntityUnderCursor();
 	proto external bool RenameEntity(notnull IEntitySource ent, string newName);
 	proto external int GetCurrentSubScene();
-	proto external int GetNumSubScenes();;
+	proto external int GetNumSubScenes();
 	proto external int GetEntityLayerId(int subscene, string name);
 	proto external int GetCurrentEntityLayerId();
 	proto external void SetCurrentEntityLayerId(int subscene, int layerID);
@@ -80,28 +80,6 @@ sealed class WorldEditorAPI
 	//! Enable/disable calling of events on generators. Must be enabled for the VectorTool and generators to work properly.
 	proto external void ToggleGeneratorEvents(bool isEnabled);
 	proto external bool AreGeneratorEventsEnabled();
-	//---------------------------------- Terrain ---------------------------------
-	proto external bool BeginTerrainAction(TerrainToolType toolType, string historyPointName = string.Empty, string historyPointIcon = string.Empty);
-	proto external void EndTerrainAction(string historyPointName = string.Empty);
-	//! Returns terrain height (world space) in given point x,z (world space). Very fast method.
-	proto external float GetTerrainSurfaceY(float x, float z);
-	//! Returns terrain Planar resolution (meters).
-	proto external float GetTerrainUnitScale(int terrainIndex = 0);
-	//! Adds entity to list of terrain flatters and updates heightmap
-	proto external void RemoveTerrainFlatterEntity(IEntity entity, bool bUpdateTerrain = true);
-	//--------------------------------- Rivers ----------------------------------
-	proto external void RegenerateFlowMaps(bool preview = true, bool save = true, bool asyncReturn = true, bool noWarning = false);
-	//--------------------------------- Shore -----------------------------------
-	proto external void BuildShoreMap();
-	//! Returns true, if entity is hidden by functions HIDE/UNHIDE or is hidden because of hidden layer etc.
-	proto external bool IsEntityVisible(IEntitySource entity);
-	proto external void SetEntityVisible(IEntitySource entity, bool isVisible, bool recursive);
-	//! Whether entity is selected (any member of multi-selection)
-	proto external bool IsEntitySelected(IEntitySource entity);
-	//! Whether entity is selected and it's a main member of multi-selection
-	proto external bool IsEntitySelectedAsMain(IEntitySource entity);
-	proto external bool IsEditMode();
-	proto external bool IsGameMode();
 	/*!
 	Modifies the terrain height at specified position based on given brush.
 	\param xWorldPos X coordinate of the modification position.
@@ -142,6 +120,76 @@ sealed class WorldEditorAPI
 	\param userShapeFilter Filtering to use when the tool size is not the same as the userShape array dimension.
 	*/
 	proto external void ModifyLayersUserShape(float xWorldPos, float zWorldPos, FilterMorphOperation operation, notnull TerrainToolDesc toolDesc, array<float> userShape, UserShapeFilter userShapeFilter);
+	proto external bool BeginTerrainAction(TerrainToolType toolType, string historyPointName = string.Empty, string historyPointIcon = string.Empty);
+	proto external void EndTerrainAction(string historyPointName = string.Empty);
+	//! Returns terrain height (world space) in given point x,z (world space). Very fast method.
+	proto external float GetTerrainSurfaceY(float x, float z);
+	/*!
+	Returns terrain height (world space) for given tile. Data are in final form - with applied roads and other modifiers. Very fast method.
+	Output array will be resized by this method and size will be:
+	(GetTerrainSizeX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainSizeY(terrainIndex) / GetTerrainTilesY(terrainIndex))
+
+	\code
+	WorldEditor we = Workbench.GetModule(WorldEditor);
+	auto api = we.GetApi();
+	array<float> heightMap = {};
+	api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+	if (api.GetTerrainSurfaceTile(0, 1, 8, heightMap))
+	{
+		for (int i = 0; i < heightMap.Count(); i++)
+			heightMap[i] = heightMap[i] + Math.RandomFloat(-0.3, 0.3);
+		api.SetTerrainSurfaceTile(0, 1, 8, heightMap);
+	}
+	api.EndTerrainAction();
+	/endcode
+	*/
+	proto external bool GetTerrainSurfaceTile(int terrainIndex, int tileX, int tileY, out notnull array<float> surfaceY);
+	/*!
+	Write terrain height (world space) to given tile. Very fast method.
+	Use in combination with BeginTerrainAction(TerrainToolType.HEIGHT_EXACT) /EndTerrainAction
+	Input array must have exact size:
+	(GetTerrainSizeX(terrainIndex) / GetTerrainTilesX(terrainIndex)) * (GetTerrainSizeY(terrainIndex) / GetTerrainTilesY(terrainIndex))
+
+	\code
+	WorldEditor we = Workbench.GetModule(WorldEditor);
+	auto api = we.GetApi();
+	array<float> heightMap = {};
+	api.BeginTerrainAction(TerrainToolType.HEIGHT_EXACT);
+	if (api.GetTerrainSurfaceTile(0, 1, 8, heightMap))
+	{
+		for (int i = 0; i < heightMap.Count(); i++)
+			heightMap[i] = heightMap[i] + Math.RandomFloat(-0.3, 0.3);
+		api.SetTerrainSurfaceTile(0, 1, 8, heightMap);
+	}
+	api.EndTerrainAction();
+	/endcode
+	*/
+	proto external bool SetTerrainSurfaceTile(int terrainIndex, int tileX, int tileY, notnull array<float> surfaceY);
+	//! Returns terrain X resolution of height map.
+	proto external int GetTerrainResolutionX(int terrainIndex = 0);
+	//! Returns terrain Y resolution of height map.
+	proto external int GetTerrainResolutionY(int terrainIndex = 0);
+	//! Returns terrain number of tiles.
+	proto external int GetTerrainTilesX(int terrainIndex = 0);
+	//! Returns terrain number of tiles.
+	proto external int GetTerrainTilesY(int terrainIndex = 0);
+	//! Returns terrain Planar resolution (meters).
+	proto external float GetTerrainUnitScale(int terrainIndex = 0);
+	//! Adds entity to list of terrain flatters and updates heightmap
+	proto external void RemoveTerrainFlatterEntity(IEntity entity, bool bUpdateTerrain = true);
+	//--------------------------------- Rivers ----------------------------------
+	proto external void RegenerateFlowMaps(bool preview = true, bool save = true, bool asyncReturn = true, bool noWarning = false);
+	//--------------------------------- Shore -----------------------------------
+	proto external void BuildShoreMap();
+	//! Returns true, if entity is hidden by functions HIDE/UNHIDE or is hidden because of hidden layer etc.
+	proto external bool IsEntityVisible(IEntitySource entity);
+	proto external void SetEntityVisible(IEntitySource entity, bool isVisible, bool recursive);
+	//! Whether entity is selected (any member of multi-selection)
+	proto external bool IsEntitySelected(IEntitySource entity);
+	//! Whether entity is selected and it's a main member of multi-selection
+	proto external bool IsEntitySelectedAsMain(IEntitySource entity);
+	proto external bool IsEditMode();
+	proto external bool IsGameMode();
 	//! Set world editor perspective view camera position and look direction.
 	proto external void SetCamera(vector pos, vector lookVec);
 	proto external void AddTerrainFlatterEntity(IEntity entity, vector mins, vector maxs, int iPriority, float fFalloffStart, float fFalloff, bool bForceUpdate = true, array<vector> updateMins = null, array<vector> updateMaxes = null);

@@ -11,6 +11,9 @@ class SCR_InventoryOpenedStorageUI : SCR_InventoryStorageBaseUI
 		CreateSlots();
 		SortSlots();
 		ShowPage(0);
+		
+		if (m_Storage.GetOwner().FindComponent(BaseWeaponComponent))
+			m_wProgressBar.SetVisible(false);
 	}
 
 	protected override int CreateSlots()

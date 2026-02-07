@@ -200,15 +200,21 @@ class SCR_WorldEditorToolHelper
 	//! Search Workbench-available files by extension and filters inside a provided directory
 	//! \param[in] fileExtensions
 	//! \param[in] searchStrArray
-	//! \param[in] rootPath
+	//! \param[in] rootPath format $addon:Workbench/Directory
 	//! \param[in] recursive
 	//! \return found resources
+	// TODO: move to an eventual SCR_WorkbenchHelper
 	static array<ResourceName> SearchWorkbenchResources(array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = "", bool recursive = true)
 	{
 		array<ResourceName> result = {};
 
 		s_aTempResourceNames = {};
-		Workbench.SearchResources(ResourceNameCallback, fileExtensions, searchStrArray, rootPath, recursive);
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = fileExtensions;
+		filter.recursive = recursive;
+		filter.rootPath = rootPath;
+		filter.searchStr = searchStrArray;
+		ResourceDatabase.SearchResources(filter, ResourceNameCallback);
 
 		result.Copy(s_aTempResourceNames);
 		s_aTempResourceNames = null;

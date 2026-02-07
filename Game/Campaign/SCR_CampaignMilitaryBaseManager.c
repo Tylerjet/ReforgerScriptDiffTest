@@ -144,8 +144,9 @@ class SCR_CampaignMilitaryBaseManager
 
 		SCR_MilitaryBaseSystem.GetInstance().GetOnLogicRegisteredInBase().Insert(DisableExtraSeizingComponents);
 		ProcessRemnantsPresence();
-		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
-		RecalculateRadioCoverage(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
+		SCR_RadioCoverageSystem.UpdateAll(true);
+		SelectPrimaryTarget(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.BLUFOR));
+		SelectPrimaryTarget(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.OPFOR));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -177,6 +178,7 @@ class SCR_CampaignMilitaryBaseManager
 	//! Update the list of Conflict bases
 	int UpdateBases()
 	{
+		SCR_RadioCoverageSystem.UpdateAll();
 		SCR_MilitaryBaseSystem baseManager = SCR_MilitaryBaseSystem.GetInstance();
 		array<SCR_MilitaryBaseComponent> bases = {};
 		baseManager.GetBases(bases);
@@ -458,9 +460,6 @@ class SCR_CampaignMilitaryBaseManager
 					campaignBase.SetFaction(m_Campaign.GetFactionByEnum(SCR_ECampaignFaction.INDFOR));
 			}
 
-			// Register bases in range of each other
-			campaignBase.UpdateBasesInRadioRange();
-
 			// Assign callsign
 			if (campaignBase.GetType() == SCR_ECampaignBaseType.BASE)
 			{
@@ -473,6 +472,8 @@ class SCR_CampaignMilitaryBaseManager
 				// Relays use a dummy callsign just so search by callsign is still possible
 				campaignBase.SetCallsignIndex(callsignsCount + iBase);
 			}
+			
+			campaignBase.RefreshTasks();
 
 			// Sort bases by distance to a HQ so randomized supplies can be applied fairly (if enabled)
 			if (randomizeSupplies && campaignBase.GetType() == SCR_ECampaignBaseType.BASE)
@@ -679,223 +680,12 @@ class SCR_CampaignMilitaryBaseManager
 	//! Determine the radio coverage of all bases (no coverage / can be reached / can respond / both ways)
 	void RecalculateRadioCoverage(notnull SCR_CampaignFaction faction)
 	{
-		SCR_CampaignMilitaryBaseComponent hq = faction.GetMainBase();
+		bool newSettingsDetected = SCR_RadioCoverageSystem.UpdateAll();
 
-		// No HQ is currently operational, switch all bases to out of signal state
-		if (!hq)
-		{
-			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
-			{
-				if (!base.IsInitialized())
-					continue;
-
-				if (base.GetFaction() == faction)
-					base.SetHQRadioConverage(faction, SCR_ECampaignHQRadioComms.NONE);
-			}
-
-			return;
-		}
-
-		int basesCount = m_aBases.Count();
-		SCR_CampaignMilitaryBaseComponent base;
-		map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms> newSettings = new map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms>();
-		array<SCR_CampaignMilitaryBaseComponent> canReceiveHQ = {};
-		array<SCR_CampaignMilitaryBaseComponent> canReachHQ = {};
-		SCR_CampaignMobileAssemblyStandaloneComponent mobileHQComponent = faction.GetMobileAssembly();
-		SCR_ECampaignHQRadioComms connectionMHQ = SCR_ECampaignHQRadioComms.NONE;
-		bool processedMHQ;
-		int noMHQNeeded;
-
-		// This loop is restarted every time a new link has been found to make sure all new possible links are also handled
-		for (int i = 0; i < basesCount; i++)
-		{
-			base = SCR_CampaignMilitaryBaseComponent.Cast(m_aBases[i]);
-
-			if (base.IsInitialized() && (!base.IsHQ() || base.GetFaction() == faction))
-				CheckBaseRadioCoverage(i, base, hq, mobileHQComponent, connectionMHQ, faction, canReceiveHQ, canReachHQ, newSettings);
-
-			// All bases have been processed, check MHQ connection
-			if (i == basesCount - 1 && !processedMHQ && connectionMHQ != SCR_ECampaignHQRadioComms.NONE)
-			{
-				processedMHQ = true;
-
-				if (noMHQNeeded == 0)
-					noMHQNeeded = canReceiveHQ.Count();
-
-				array<SCR_CampaignMilitaryBaseComponent> connectedBases = {};
-				mobileHQComponent.GetBasesInRange(connectedBases);
-				vector posMHQ = mobileHQComponent.GetOwner().GetOrigin();
-
-				foreach (SCR_CampaignMilitaryBaseComponent connectedBase : connectedBases)
-				{
-					if (connectedBase.IsHQ() && connectedBase.GetFaction() != faction)
-						continue;
-
-					CheckBaseMHQConnection(i, connectedBase, connectionMHQ, newSettings, canReceiveHQ, canReachHQ, vector.DistanceXZ(posMHQ, connectedBase.GetOwner().GetOrigin()));
-				}
-			}
-		}
-
-		// We want to know how many bases are linked only by MHQ (shown in a user action)
-		if (mobileHQComponent)
-			mobileHQComponent.SetCountOfExclusivelyLinkedBases(canReceiveHQ.Count() - noMHQNeeded);
-
-		int settingsCount = newSettings.Count();
-		SCR_ECampaignHQRadioComms newCoverage;
-
-		// Trace finished, apply radio status to all bases where the coverage has actually changed
-		for (int i = 0; i < settingsCount; i++)
-		{
-			base = newSettings.GetKey(i);
-			newCoverage = newSettings.Get(base);
-
-			if (base.GetHQRadioCoverage(faction) != newCoverage)
-				base.SetHQRadioConverage(faction, newCoverage);
-		}
-
-		if (settingsCount != 0)
-		{
+		if (newSettingsDetected)
 			EvaluateControlPoints();
-			SelectPrimaryTarget(faction);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CheckBaseRadioCoverage(inout int i, notnull SCR_CampaignMilitaryBaseComponent base, notnull SCR_CampaignMilitaryBaseComponent hq, SCR_CampaignMobileAssemblyStandaloneComponent mobileHQComponent, inout SCR_ECampaignHQRadioComms connectionMHQ, notnull SCR_CampaignFaction faction, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReceiveHQ, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReachHQ, inout notnull map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms> newSettings)
-	{
-		bool processedReceive = canReceiveHQ.Contains(base);
-		bool processedReach = canReachHQ.Contains(base);
-
-		if (processedReceive && processedReach)
-			return;
-
-		bool canReceive;
-		bool canReach;
-		SCR_ECampaignHQRadioComms newCoverage;
-		SCR_ECampaignHQRadioComms savedCoverage;
-
-		if (base == hq)
-		{
-			canReceive = true;
-			canReach = true;
-		}
-		else
-		{
-			savedCoverage = newSettings.Get(base);
-
-			if (processedReceive)
-			{
-				canReceive = (savedCoverage == SCR_ECampaignHQRadioComms.RECEIVE);
-			}
-			else
-			{
-				// Checked base can receive broadcast from a base which can receive broadcast from HQ
-				foreach (SCR_CampaignMilitaryBaseComponent receiving : canReceiveHQ)
-				{
-					if (receiving.GetFaction() == faction && receiving.CanReachByRadio(base))
-					{
-						canReceive = true;
-						break;
-					}
-				}
-			}
-
-			if (processedReach)
-			{
-				canReach = (savedCoverage == SCR_ECampaignHQRadioComms.SEND);
-			}
-			else
-			{
-				// Checked base can broadcast to a base which can broadcast to HQ
-				foreach (SCR_CampaignMilitaryBaseComponent reaching : canReachHQ)
-				{
-					if (reaching.GetFaction() == faction && base.CanReachByRadio(reaching))
-					{
-						canReach = true;
-						break;
-					}
-				}
-			}
-		}
-
-		if (newSettings.Contains(base))
-			newCoverage = savedCoverage;
-		else
-			newCoverage = base.GetHQRadioCoverage(faction);
-
-		if (!canReceive && !canReach)
-		{
-			newCoverage = SCR_ECampaignHQRadioComms.NONE;
-		}
-		else
-		{
-			if (canReceive && !processedReceive)
-			{
-				if (canReach || processedReach)
-					newCoverage = SCR_ECampaignHQRadioComms.BOTH_WAYS;
-				else
-					newCoverage = SCR_ECampaignHQRadioComms.RECEIVE;
-
-				canReceiveHQ.Insert(base);
-				i = -1;		// New link has been found - restart loop
-			}
-
-			if (canReach && !processedReach)
-			{
-				if (canReceive || processedReceive)
-					newCoverage = SCR_ECampaignHQRadioComms.BOTH_WAYS;
-				else
-					newCoverage = SCR_ECampaignHQRadioComms.SEND;
-
-				canReachHQ.Insert(base);
-				i = -1;		// New link has been found - restart loop
-			}
-		}
-
-		newSettings.Set(base, newCoverage);
-
-		// Check if MHQ is connected to the radio network and its traffic capabilities
-		if (mobileHQComponent && connectionMHQ != SCR_ECampaignHQRadioComms.BOTH_WAYS)
-		{
-			if ((newCoverage == SCR_ECampaignHQRadioComms.BOTH_WAYS || newCoverage == SCR_ECampaignHQRadioComms.RECEIVE) && mobileHQComponent.CanReachByRadio(base))
-				connectionMHQ = newCoverage;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void CheckBaseMHQConnection(inout int i, notnull SCR_CampaignMilitaryBaseComponent connectedBase, SCR_ECampaignHQRadioComms connectionMHQ, inout notnull map<SCR_CampaignMilitaryBaseComponent, SCR_ECampaignHQRadioComms> newSettings, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReceiveHQ, inout notnull array<SCR_CampaignMilitaryBaseComponent> canReachHQ, float distance)
-	{
-		SCR_ECampaignHQRadioComms coverage = newSettings.Get(connectedBase);
-
-		if (coverage == SCR_ECampaignHQRadioComms.BOTH_WAYS || coverage == connectionMHQ)
-			return;
-
-		i = -1;		// We found a new linked base, restart the loop
-
-		if (!canReceiveHQ.Contains(connectedBase))
-			canReceiveHQ.Insert(connectedBase);
-
-		bool canReach;
-
-		if (connectionMHQ == SCR_ECampaignHQRadioComms.BOTH_WAYS && connectedBase.GetRadioRange() > distance)
-		{
-			if (!canReachHQ.Contains(connectedBase))
-				canReachHQ.Insert(connectedBase);
-
-			canReach = true;
-		}
-
-		if (coverage == SCR_ECampaignHQRadioComms.NONE)
-		{
-			if (canReach)
-				newSettings.Set(connectedBase, connectionMHQ);
-			else
-				newSettings.Set(connectedBase, SCR_ECampaignHQRadioComms.RECEIVE);
-		}
-		else if (canReach || coverage == SCR_ECampaignHQRadioComms.SEND)
-		{
-			newSettings.Set(connectedBase, SCR_ECampaignHQRadioComms.BOTH_WAYS);
-		}
+		
+		SelectPrimaryTarget(faction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -993,7 +783,7 @@ class SCR_CampaignMilitaryBaseManager
 				{
 					int distance = vector.DistanceSqXZ(base.GetOwner().GetOrigin(), positionCP);
 					bool closer = distance < minDistance;
-					bool coversControlPoint = base.CanReachByRadio(controlPoint);
+					bool coversControlPoint = base.CanReachByRadio(controlPoint.GetOwner());
 
 					// Also check if some of the bases in range can reach the Control Point with radio
 					if (coversControlPoint)
@@ -1044,7 +834,7 @@ class SCR_CampaignMilitaryBaseManager
 			// Update amount of control points currently held by this faction
 			foreach (SCR_CampaignMilitaryBaseComponent controlPoint : m_aControlPoints)
 			{
-				if (controlPoint.IsInitialized() && controlPoint.GetFaction() == fCast && controlPoint.IsHQRadioTrafficPossible(fCast, SCR_ECampaignHQRadioComms.RECEIVE))
+				if (controlPoint.IsInitialized() && controlPoint.GetFaction() == fCast && controlPoint.IsHQRadioTrafficPossible(fCast, SCR_ERadioCoverageStatus.RECEIVE))
 				{
 					controlPointsHeld++;
 
@@ -1211,11 +1001,6 @@ class SCR_CampaignMilitaryBaseManager
 		}
 
 		UpdateBases();
-
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBases)
-		{
-			base.UpdateBasesInRadioRange();
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1424,13 +1209,4 @@ class SCR_CampaignMilitaryBaseManager
 		if (m_Campaign)
 			m_Campaign.GetOnStarted().Remove(OnConflictStarted);
 	}
-}
-
-//------------------------------------------------------------------------------------------------
-enum SCR_ECampaignHQRadioComms
-{
-	NONE,
-	RECEIVE,
-	SEND,
-	BOTH_WAYS
 }

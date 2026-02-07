@@ -61,7 +61,10 @@ class SCR_UpdateAllEditablePrefabsPlugin : WorkbenchPlugin
 
 		//--- Get all files
 		array<ResourceName> resources = {};
-		Workbench.SearchResources(resources.Insert, { "et" });
+		
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = { "et" };
+		ResourceDatabase.SearchResources(filter, resources.Insert);
 		int resourcesCount = resources.Count();
 
 		string prefabPath;

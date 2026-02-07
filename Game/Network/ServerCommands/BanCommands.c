@@ -6,6 +6,7 @@ enum SCR_EBanSubcommandArg
 	EBSA_CREATE,
 	EBSA_REMOVE,
 	EBSA_LIST,
+	EBSA_LIST_FILTERED,
 	EBSA_END
 }
 
@@ -38,6 +39,13 @@ enum SCR_EBanListArgs
 	EBLA_END
 }
 
+enum SCR_EPlayerIdType
+{
+	EPIT_IDENTITY = 0,
+	EPIT_PLAYERID,
+	EPIT_USERNAME
+}
+
 // Ban Server Command
 class BanCommand: ScrServerCommand
 {
@@ -62,12 +70,9 @@ class BanCommand: ScrServerCommand
 		// All args except Reason are required
 		if (argv.Count() < SCR_EBanCreateArgs.EBCA_REASON)
 			return ScrServerCmdResult(string.Empty, EServerCmdResultType.PARAMETERS);
-	
-		// if lenght of id is 36 then consider it as Identity Id. Otherwise try to get number as Player Id
-		m_iBanPlayerId = 0;
-		if (argv[SCR_EBanCreateArgs.EBCA_ID].Length() != 36)
-			m_iBanPlayerId = argv[SCR_EBanCreateArgs.EBCA_ID].ToInt();
-	
+
+		argv = TryParsePlayerNameWithSpaces(argv, SCR_EBanCreateArgs.EBCA_ID);
+
 		// Get duration for ban in Int from String
 		m_iDuration = argv[SCR_EBanCreateArgs.EBCA_DURATION].ToInt(-1);
 		if (m_iDuration < 0)
@@ -88,27 +93,45 @@ class BanCommand: ScrServerCommand
 			m_sBanReason = "No reason provided" 
 		}
 	
-		// Create Ban for Player Id in session or directly on Identity Id
+		// Create Ban for player based on the id type (identity, playerId or username)
+		m_iBanPlayerId = 0;
 		m_sPlayerName = "";
-		if (m_iBanPlayerId > 0)
+		
+		SCR_EPlayerIdType idType = GetPlayerIdType(argv[SCR_EBanCreateArgs.EBCA_ID]);
+		switch (idType)
 		{
-			m_sPlayerName = GetGame().GetPlayerManager().GetPlayerName(m_iBanPlayerId);
-			if (m_sPlayerName == "")
-				return ScrServerCmdResult("Player not found", EServerCmdResultType.ERR);
-			PrintFormat("Request Ban %1[%2] for %3 seconds. Reason: '%4'", m_sPlayerName, m_iBanPlayerId, m_iDuration, m_sBanReason);
-			bool success = m_BanApi.CreateBanPlayerId(m_Callback, m_iBanPlayerId, m_sBanReason, m_iDuration);
-			if (!success)
-				return ScrServerCmdResult("Failed to create ban.", EServerCmdResultType.ERR);
+			case SCR_EPlayerIdType.EPIT_PLAYERID:
+			{
+				m_iBanPlayerId = argv[SCR_EBanCreateArgs.EBCA_ID].ToInt();
+				m_sPlayerName = GetGame().GetPlayerManager().GetPlayerName(m_iBanPlayerId);
+				if (m_sPlayerName == "")
+					return ScrServerCmdResult("Player not found", EServerCmdResultType.ERR);
+				PrintFormat("Request Ban %1[%2] for %3 seconds. Reason: '%4'", m_sPlayerName, m_iBanPlayerId, m_iDuration, m_sBanReason);
+				bool success = m_BanApi.CreateBanPlayerId(m_Callback, m_iBanPlayerId, m_sBanReason, m_iDuration);
+				if (!success)
+					return ScrServerCmdResult("Failed to create ban.", EServerCmdResultType.ERR);			
+			} break;
+
+			case SCR_EPlayerIdType.EPIT_IDENTITY:
+			{
+				m_sPlayerName = argv[SCR_EBanCreateArgs.EBCA_ID];
+				PrintFormat("Request Ban %1 for %2 seconds. Reason: '%3'", m_sPlayerName, m_iDuration, m_sBanReason);
+				bool success = m_BanApi.CreateBanIdentityId(m_Callback, m_sPlayerName, m_sBanReason, m_iDuration);
+				if (!success)
+					return ScrServerCmdResult("Failed to create ban.", EServerCmdResultType.ERR);
+			} break;
+
+			case SCR_EPlayerIdType.EPIT_USERNAME:
+			{
+				m_sPlayerName = argv[SCR_EBanCreateArgs.EBCA_ID];
+				m_iBanPlayerId = GetPlayerIdFromName(m_sPlayerName);
+				PrintFormat("Request Ban %1[%2] for %3 seconds. Reason: '%4'", m_sPlayerName, m_iBanPlayerId, m_iDuration, m_sBanReason);
+				bool success = m_BanApi.CreateBanPlayerId(m_Callback, m_iBanPlayerId, m_sBanReason, m_iDuration);
+				if (!success)
+					return ScrServerCmdResult("Failed to create ban.", EServerCmdResultType.ERR);
+			} break;
 		}
-		else
-		{
-			// We dont know name of player so use his identityId as replacement
-			m_sPlayerName = argv[SCR_EBanCreateArgs.EBCA_ID];
-			PrintFormat("Request Ban %1 for %2 seconds. Reason: '%3'", argv[SCR_EBanCreateArgs.EBCA_ID], m_iDuration, m_sBanReason);
-			bool success = m_BanApi.CreateBanIdentityId(m_Callback, argv[SCR_EBanCreateArgs.EBCA_ID], m_sBanReason, m_iDuration);
-			if (!success)
-				return ScrServerCmdResult("Failed to create ban.", EServerCmdResultType.ERR);
-		}
+
 		return ScrServerCmdResult(string.Empty, EServerCmdResultType.PENDING);
 	}
 	
@@ -119,9 +142,24 @@ class BanCommand: ScrServerCommand
 		// All args are required
 		if (argv.Count() < SCR_EBanRemoveArgs.EBRA_END)
 			return ScrServerCmdResult(string.Empty, EServerCmdResultType.PARAMETERS);
-		
-		PrintFormat("Unban user with identity: '%1'", argv[SCR_EBanRemoveArgs.EBRA_ID]);
-		bool success = m_BanApi.RemoveBans(m_Callback, {argv[SCR_EBanRemoveArgs.EBRA_ID]});
+
+		argv = TryParsePlayerNameWithSpaces(argv, SCR_EBanRemoveArgs.EBRA_ID);
+
+		bool success = false;
+		SCR_EPlayerIdType idType = GetPlayerIdType(argv[SCR_EBanRemoveArgs.EBRA_ID]);
+		if (idType == SCR_EPlayerIdType.EPIT_USERNAME)
+		{
+			m_Callback.m_eLastMatchType = EStringMatchType.ESMT_EQUALS;
+			m_sPlayerName = argv[SCR_EBanRemoveArgs.EBRA_ID];
+			success = m_BanApi.RemoveBanByName(m_Callback, m_sPlayerName, EStringMatchType.ESMT_EQUALS);
+			PrintFormat("Requested unban of user with user name: '%1'", argv[SCR_EBanRemoveArgs.EBRA_ID]);
+		}
+		else
+		{
+			success = m_BanApi.RemoveBans(m_Callback, {argv[SCR_EBanRemoveArgs.EBRA_ID]});
+			PrintFormat("Requested unban of user with identity: '%1'", argv[SCR_EBanRemoveArgs.EBRA_ID]); 
+		}
+
 		if (!success)
 			return ScrServerCmdResult("Failed to remove ban.", EServerCmdResultType.ERR);
 		return ScrServerCmdResult(string.Empty, EServerCmdResultType.PENDING);
@@ -181,7 +219,33 @@ class BanCommand: ScrServerCommand
 	
 		return ScrServerCmdResult(banListStr, EServerCmdResultType.OK);
 	}
+
+	// Handle result for multiple target match
+	//-----------------------------------------------------------------------------	
+	protected ScrServerCmdResult ListBansResultFiltered()
+	{
+		// Check if there are any bans
+		if (m_BanApi.GetPageCount() == 0)
+			return ScrServerCmdResult("Server has no bans to list.", EServerCmdResultType.OK);
+		
+		// Error if requested page exceeded page count
+		if ((m_BanApi.GetPage() + 1) > m_BanApi.GetPageCount())
+			return ScrServerCmdResult("Page not found!", EServerCmdResultType.ERR);
+		
+		// Generate string resposne for list
+		ref array<OnlineBanListData> banList = new array<OnlineBanListData>;
+		m_BanApi.GetPageItems(banList);
+		string banListStr = "Multiple users found! Please use a unique identifier.\n";
+		banListStr += "Total bans: " + m_BanApi.GetTotalItemCount() + " | Page: " + (m_BanApi.GetPage() + 1) +"/" + m_BanApi.GetPageCount() + "\n";
+		banListStr += "- Identity Id | Banned name\n";
+		foreach (OnlineBanListData ban : banList)
+		{
+			banListStr += string.Format("- %1 | %2\n", ban.identityId, ban.bannedName);
+		}
 	
+		return ScrServerCmdResult(banListStr, EServerCmdResultType.OK);
+	}
+
 	// Command handler for RCON and Chat
 	//-----------------------------------------------------------------------------
 	protected ScrServerCmdResult HandleCommand(array<string> argv, int playerId = 0)
@@ -217,7 +281,7 @@ class BanCommand: ScrServerCommand
 		{
 			// Handle Help
 			case SCR_EBanSubcommandArg.EBSA_HELP:
-				return ScrServerCmdResult("Help for ban command. \n#ban create <playerId> <duration> <reason> \n#ban create <identityId> <duration> <reason> \n#ban remove <identityId>\n#ban list <page>\n\n- <duration> is in seconds and can be set to 0 for permanent.\n- <reason> is optional.", EServerCmdResultType.OK);
+				return ScrServerCmdResult("Help for ban command. \n#ban create <playerId/playerName> <duration> <reason> \n#ban create <identityId/playerName> <duration> <reason> \n#ban remove <identityId/playerName>\n#ban list <page>\n\n- <duration> is in seconds and can be set to 0 for permanent.\n- <reason> is optional.", EServerCmdResultType.OK);
 			
 			// Handle Create
 			case SCR_EBanSubcommandArg.EBSA_CREATE:
@@ -233,7 +297,88 @@ class BanCommand: ScrServerCommand
 		}
 		return ScrServerCmdResult(string.Empty, EServerCmdResultType.ERR);	
 	}
-	
+
+	// Specify what kind of player identifier is used
+	//-----------------------------------------------------------------------------
+	protected SCR_EPlayerIdType GetPlayerIdType(string id)
+	{
+		if (id.Length() == 36)
+		{
+			if (id.ContainsAt("-", 8) && id.ContainsAt("-", 13) && id.ContainsAt("-", 18) && id.ContainsAt("-", 23))
+				return SCR_EPlayerIdType.EPIT_IDENTITY;
+			else
+				return SCR_EPlayerIdType.EPIT_USERNAME;
+		}
+		else if (SCR_StringHelper.IsFormat(SCR_EStringFormat.DIGITS_ONLY, id))
+		{
+			return SCR_EPlayerIdType.EPIT_PLAYERID;
+		}
+		else
+		{
+			return SCR_EPlayerIdType.EPIT_USERNAME;
+		}
+
+		return string.Empty;
+	}
+
+	// Find playerId from given player name
+	//-----------------------------------------------------------------------------
+	protected int GetPlayerIdFromName(string name)
+	{
+		array<int> playerIds = {};
+		GetGame().GetPlayerManager().GetPlayers(playerIds);
+		foreach (int pid : playerIds)
+		{
+			if (GetGame().GetPlayerManager().GetPlayerName(pid) == name)
+				return pid;
+		}
+
+		return 0;
+	}
+
+	/* 
+	If player name contains spaces, assign the whole string to ID position in argv array
+	Player name containing spaces has to be wrapped in quotes (eg. #ban create "Name with spaces" 100)
+	*/
+	//-----------------------------------------------------------------------------
+	protected array<string> TryParsePlayerNameWithSpaces(array<string> argv, int playerNameStartId)
+	{
+		array<string> result = argv;
+		if (!argv[playerNameStartId].ContainsAt("\"", 0))
+			return result;
+
+		int lastQuotesIndex = -1;
+		for (int i = argv.Count()-1; i > playerNameStartId; --i)
+		{
+			if (argv[i].IsEmpty())
+				continue;
+
+			if (argv[i].ContainsAt("\"", argv[i].Length()-1))
+			{
+				lastQuotesIndex = i;
+				break;
+			}
+		}
+
+		if (lastQuotesIndex > -1)
+		{
+			string playerName = argv[playerNameStartId];
+			int i;
+			for (i = playerNameStartId + 1; i <= lastQuotesIndex; ++i)
+			{
+				playerName += (" " + argv[i]);
+			}
+
+			result[playerNameStartId] = playerName.Substring(1, playerName.Length()-2);
+			for (i = lastQuotesIndex; i > playerNameStartId; --i)
+			{
+				result.Remove(i);
+			}
+		}
+
+		return result;
+	}
+
 	// Specify keyword of command
 	//-----------------------------------------------------------------------------
 	override string GetKeyword()
@@ -302,8 +447,71 @@ class BanCommand: ScrServerCommand
 			// Handle List Result
 			case SCR_EBanSubcommandArg.EBSA_LIST:
 				return ListBansResult();
+			
+			case SCR_EBanSubcommandArg.EBSA_LIST_FILTERED:
+				return ListBansResultFiltered();
 		}
 		return ScrServerCmdResult(string.Empty, EServerCmdResultType.OK);
+	}
+	
+	// Handle failure in OnUpdate()
+	//-----------------------------------------------------------------------------	
+	protected ScrServerCmdResult HandleFailure()
+	{
+		switch (m_Callback.m_eLastError)
+		{
+			case EApiCode.EACODE_ERROR_MULTIPLE_TARGET_MATCH:
+			{
+				m_eSubcommandArg = SCR_EBanSubcommandArg.EBSA_LIST_FILTERED;
+				m_Callback = new StateBackendCallback;
+
+				m_Params = new BanListPageParams();
+				m_Params.playerName = m_sPlayerName;
+				m_Params.playerNameMatchType = EStringMatchType.ESMT_STARTS_WITH;
+				m_Params.offset = m_Params.limit * (m_iPage - 1);
+				
+				if (GetPlayerIdFromName(m_sPlayerName) == 0)
+					m_Params.limit = BAN_LIST_ITEMS_PER_PAGE_RCON;
+				else
+					m_Params.limit = BAN_LIST_ITEMS_PER_PAGE_CHAT;
+
+				bool success = m_BanApi.RequestServerBanList(m_Callback, m_Params);
+				if (!success)
+					return ScrServerCmdResult("Failed to list bans.", EServerCmdResultType.ERR);
+
+				return ScrServerCmdResult(string.Empty, EServerCmdResultType.PENDING);
+			} break;
+
+			case EApiCode.EACODE_ERROR_NOT_FOUND:
+			{
+				if (m_Callback.m_eLastMatchType == EStringMatchType.ESMT_EQUALS)
+				{
+					m_Callback = new StateBackendCallback;
+					m_Callback.m_eLastMatchType = EStringMatchType.ESMT_STARTS_WITH;
+
+					bool success = m_BanApi.RemoveBanByName(m_Callback, m_sPlayerName, EStringMatchType.ESMT_STARTS_WITH);
+					PrintFormat("Retrying unban of user with user name: '%1'", m_sPlayerName);
+					if (!success)
+						return ScrServerCmdResult("Failed to remove the ban.", EServerCmdResultType.ERR);
+
+					return ScrServerCmdResult(string.Empty, EServerCmdResultType.PENDING);					
+				}
+
+				return ScrServerCmdResult("User not found!", EServerCmdResultType.ERR);
+			} break;
+
+			case EApiCode.EACODE_ERROR_USER_NOT_FOUND:
+			{
+				return ScrServerCmdResult("User not found!", EServerCmdResultType.ERR);
+			} break;
+			
+			case EApiCode.EACODE_ERROR_UNKNOWN:
+			{
+				return ScrServerCmdResult("Unknown error.", EServerCmdResultType.ERR);
+			} break;
+		}
+
+		return ScrServerCmdResult(string.Empty, EServerCmdResultType.ERR);
 	}
 	
 	// Handle Pending command
@@ -315,6 +523,7 @@ class BanCommand: ScrServerCommand
 			case EBackendCallbackState.EBCS_SUCCESS: return HandleSuccessfulResult();
 			case EBackendCallbackState.EBCS_PENDING: return ScrServerCmdResult(string.Empty, EServerCmdResultType.PENDING);
 			case EBackendCallbackState.EBCS_TIMEOUT: return ScrServerCmdResult("Timeout", EServerCmdResultType.ERR);
+			case EBackendCallbackState.EBCS_ERROR:	 return HandleFailure();
 		}
 		return ScrServerCmdResult(string.Empty, EServerCmdResultType.ERR);	
 	}

@@ -41,7 +41,7 @@ class SCR_AISwitchMagazine : SCR_AIWeaponHandlingBase
 				if (m_ControlComp.IsReloading())
 					return ENodeResult.RUNNING;
 				
-				if (!SCR_AIWeaponHandling.IsCurrentMuzzleChambered(weaponMgr))
+				if (!SCR_AIWeaponHandling.IsCurrentMuzzleChambered(weaponMgr, true))
 				{
 					#ifdef AI_DEBUG
 					AddDebugMessage("Muzzle is not chambered, requesting reload");

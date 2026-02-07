@@ -23,15 +23,34 @@ class SCR_PositionalInsectType
 
 	protected ref set<ref Resource> m_ResourceSet = new set<ref Resource>();
 	protected ref set<BaseContainer> m_PrefabContainerSet = new set<BaseContainer>();
+	
+	ref SCR_InsectSpawnDef m_SpawnDef;
+	float m_fDayTimeCurve = 1;
+	float m_fRainIntensityCurve = 1;
 
 	protected static const int INVALID = -1;
 
 	//------------------------------------------------------------------------------------------------
 	//! Initialises necessary things for Insect type
 	//! \param[in] ambientSoundsComponent
-	void Init(SCR_AmbientSoundsComponent ambientSoundsComponent)
+	//! \param[in] objectPositionalInsects
+	//! \param[in] ambientInsectsComponent
+	void Init(notnull SCR_AmbientSoundsComponent ambientSoundsComponent, notnull SCR_ObjectPositionalInsects objectPositionalInsects, notnull SCR_AmbientInsectsComponent ambientInsectsComponent)
 	{
 		m_AmbientSoundsComponent = ambientSoundsComponent;
+		
+		if (!m_sSpawnDef.IsEmpty())
+		{
+			Resource holder = BaseContainerTools.LoadContainer(m_sSpawnDef);
+			if (holder)
+				m_SpawnDef = SCR_InsectSpawnDef.Cast(BaseContainerTools.CreateInstanceFromContainer(holder.GetResource().ToBaseContainer()));
+		}
+
+		if (!m_SpawnDef)
+		{
+			Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Spawn Definition Config", LogLevel.WARNING);
+			ambientInsectsComponent.RemoveInsectEffect(objectPositionalInsects);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -47,11 +66,11 @@ class SCR_PositionalInsectType
 		if (!animComponent)
 			return;
 		
-		SCR_AnimationResourceHolderComponent animResourceHolder = SCR_AnimationResourceHolderComponent.Cast(entity.FindComponent(SCR_AnimationResourceHolderComponent));
-		if (!animResourceHolder)
+		ResourceName animationResource = animComponent.GetAnimation();
+		if (!animationResource || SCR_StringHelper.IsEmptyOrWhiteSpace(animationResource))
 			return;
 			
-		animComponent.Prepare(animResourceHolder.m_sAnimation, Math.RandomFloatInclusive(1, 5), 1, true);
+		animComponent.Prepare(animationResource, Math.RandomFloatInclusive(1, 5), 1, true);
 		animComponent.Play();
 	}
 	
@@ -154,12 +173,12 @@ class SCR_PositionalLightSourceInsect : SCR_PositionalInsectType
 {
 	[Attribute(desc: "Prefab names of entities that correspond with this insect type")]
 	protected ref array<ResourceName> m_aPrefabNames;
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Initialises necessary things for Insect type
-	override void Init(SCR_AmbientSoundsComponent ambientSoundsComponent)
+	override void Init(notnull SCR_AmbientSoundsComponent ambientSoundsComponent, notnull SCR_ObjectPositionalInsects objectPositionalInsects, notnull SCR_AmbientInsectsComponent ambientInsectsComponent)
 	{
-		super.Init(ambientSoundsComponent);
+		super.Init(ambientSoundsComponent, objectPositionalInsects, ambientInsectsComponent);
 
 		Resource resource;		
 		foreach (ResourceName prefab : m_aPrefabNames)
@@ -185,30 +204,72 @@ class SCR_PositionalLightSourceInsect : SCR_PositionalInsectType
 		// Play sounds on entities, that become closest
 		ProcessLightsSources();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] state
+	void OnObjectDamage(EDamageState state)
+	{
+		if (state != EDamageState.DESTROYED)
+			return;
+		
+		IEntity entity;
+		IEntity childEntity;
+		SCR_DamageManagerComponent objectDmgManager;
+		for (int i = m_aActiveEntities.Count() - 1; i >= 0; i--)
+		{
+			entity = m_aActiveEntities[i];
+			childEntity = entity.GetChildren();
+			if (!childEntity)
+				continue;
+			
+			objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(childEntity);
+			if (objectDmgManager)
+			{
+				if (objectDmgManager.GetState() != EDamageState.DESTROYED)
+					continue;
+					
+				objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
+				
+				if (m_aParticles[i].m_AudioHandle)
+					m_AmbientSoundsComponent.TerminateLooped(m_aParticles[i].m_AudioHandle);
+				
+				m_aActiveEntities.Remove(i);
+				m_aParticles.Remove(i);
+			}
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Processes closest light sources and spawns Insects on correct positions
 	protected void ProcessLightsSources()
 	{
+		IEntity childEntity;
+		SCR_DamageManagerComponent objectDmgManager;
 		foreach (IEntity entity : m_aClosestEntities)
 		{
 			if (m_aActiveEntities.Contains(entity))
 				continue;
-
+			
 			ParticleEffectEntitySpawnParams spawnParams();
 			vector mat[4];
 			entity.GetWorldTransform(mat);
 			vector position = mat[3];
 			
-			//There is one lamp that does not have the light as child entity
-			//but using a StreetLampComponent that has 5.65m offset on Y axis
-			position[1] = position[1] + 5.65;
-			position += m_vOffset;
+			//Lamps have lights as their children
+			childEntity = entity.GetChildren();
+			if (!childEntity)
+				continue;
 			
-			//All the other lamps have lights as their children
-			IEntity childEntity = entity.GetChildren();
-			if (childEntity)
-				position = 	childEntity.CoordToParent(m_vOffset);
+			position = 	childEntity.CoordToParent(m_vOffset);
+			
+			objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(childEntity);
+			if (objectDmgManager)
+			{
+				if (objectDmgManager.GetState() == EDamageState.DESTROYED)
+					continue;
+				
+				objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
+			}
 			
 			mat[3] = position;
 			
@@ -297,12 +358,12 @@ class SCR_PositionalGenericInsect : SCR_PositionalInsectType
 {
 	[Attribute(desc: "Prefab names of entities that correspond with this insect type")]
 	protected ref array<ResourceName> m_aPrefabNames;
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Initialises necessary things for Insect type
-	override void Init(SCR_AmbientSoundsComponent ambientSoundsComponent)
+	override void Init(notnull SCR_AmbientSoundsComponent ambientSoundsComponent, notnull SCR_ObjectPositionalInsects objectPositionalInsects, notnull SCR_AmbientInsectsComponent ambientInsectsComponent)
 	{
-		super.Init(ambientSoundsComponent);
+		super.Init(ambientSoundsComponent, objectPositionalInsects, ambientInsectsComponent);
 
 		Resource resource;		
 		foreach (ResourceName prefab : m_aPrefabNames)

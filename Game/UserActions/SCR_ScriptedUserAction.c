@@ -1,3 +1,6 @@
+void UserActionEventListener(IEntity user, ScriptedUserAction action, EUserActionEvent e);
+typedef func UserActionEventListener;
+
 //! A scripted action class having optional logic to check if vehicle is valid
 class SCR_ScriptedUserAction : ScriptedUserAction
 {
@@ -71,7 +74,7 @@ class SCR_ScriptedUserAction : ScriptedUserAction
 			//~ Check if character is in current vehicle and pilot
 			case EUserActionInVehicleState.IN_VEHICLE_PILOT :
 			{
-				if (!isCharacterInVehicle || compAccess.GetCompartment().GetType() != ECompartmentType.Pilot)
+				if (!isCharacterInVehicle || compAccess.GetCompartment().GetType() != ECompartmentType.PILOT)
 					return false;
 
 				break;
@@ -79,7 +82,7 @@ class SCR_ScriptedUserAction : ScriptedUserAction
 			//~ Check if character is in current vehicle and cargo
 			case EUserActionInVehicleState.IN_VEHICLE_CARGO :
 			{
-				if (!isCharacterInVehicle || compAccess.GetCompartment().GetType() != ECompartmentType.Cargo)
+				if (!isCharacterInVehicle || compAccess.GetCompartment().GetType() != ECompartmentType.CARGO)
 					return false;
 
 				break;
@@ -87,7 +90,7 @@ class SCR_ScriptedUserAction : ScriptedUserAction
 			//~ Check if character is in current vehicle and turret
 			case EUserActionInVehicleState.IN_VEHICLE_TURRET :
 			{
-				if (!isCharacterInVehicle || compAccess.GetCompartment().GetType() != ECompartmentType.Turret)
+				if (!isCharacterInVehicle || compAccess.GetCompartment().GetType() != ECompartmentType.TURRET)
 					return false;
 
 				break;
@@ -195,7 +198,7 @@ class SCR_ScriptedUserAction : ScriptedUserAction
 	/*!
 	\return progress value for action progressbar UI.
 	*/
-	float GetActionProgress(float fProgress, float timeSlice)
+	override float GetActionProgressScript(float fProgress, float timeSlice)
 	{
 		fProgress = fProgress + timeSlice;
 

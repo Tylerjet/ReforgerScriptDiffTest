@@ -215,6 +215,9 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 	//! Toggle hint. Hide it if it's shown, and open it again if it's hidden.
 	void Toggle()
 	{
+		if (m_Settings && !m_Settings.AreHintsEnabled())
+			return;
+		
 		if (IsShown())
 			Hide();
 		else
@@ -225,7 +228,7 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 	//! Open context to currently shown hint.
 	void OpenContext()
 	{
-		if (!IsShown() || !m_LatestHint)
+		if (!IsShown() || !m_LatestHint || (m_Settings && !m_Settings.AreHintsEnabled()))
 			return;
 		
 		EFieldManualEntryId link = m_LatestHint.GetFieldManualLink();
@@ -448,12 +451,22 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	protected void LoadSettings()
 	{
-		m_Settings = new SCR_HintSettings();
-		m_SettingsContainer = GetGame().GetGameUserSettings().GetModule("SCR_HintSettings");
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
 		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		interfaceSettings.Get("m_bShowHints", state);
+
+		m_SettingsContainer = GetGame().GetGameUserSettings().GetModule("SCR_HintSettings");
+		m_Settings.SetHintsEnabled(state);
 		m_Settings.LoadShownHints(m_SettingsContainer);
 		
-		if (!m_Settings.AreHintsEnabled() && (m_bIsShown && !m_LatestHint.IsInSequence()))
+		if (m_bIsShown && !m_Settings.AreHintsEnabled())
 			Hide();
 	}
 
@@ -494,6 +507,7 @@ class SCR_HintManagerComponent : SCR_BaseGameModeComponent
 		SCR_HintManagerComponentClass componentPrefab = SCR_HintManagerComponentClass.Cast(GetComponentData(owner));
 		componentPrefab.InitConditionLists(owner);
 		
+		m_Settings = new SCR_HintSettings();
 		LoadSettings();		
 		GetGame().OnUserSettingsChangedInvoker().Insert(LoadSettings);
 		

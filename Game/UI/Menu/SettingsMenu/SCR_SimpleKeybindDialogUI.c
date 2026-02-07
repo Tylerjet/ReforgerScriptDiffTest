@@ -34,11 +34,11 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 		m_wActionRowSize = SizeLayoutWidget.Cast(m_wRoot.FindAnyWidget("ActionDisplayRowSize"));
 		m_wActionRowWrapper = m_wRoot.FindAnyWidget("ActionMainHorizontalLayout");
 		m_wCloseHint = RichTextWidget.Cast(m_wRoot.FindAnyWidget("CloseHintText"));
-		if (m_wCloseHint && m_SettingsKeybindModule)
+		if (m_wCloseHint)
 		{
-			string device = m_SettingsKeybindModule.GetKeyboardDeviceString();
+			string device = UIConstants.DEVICE_KEYBOARD;
 			if (m_eDevice == EInputDeviceType.GAMEPAD)
-				device = m_SettingsKeybindModule.GetGamepadDeviceString();
+				device = UIConstants.DEVICE_GAMEPAD;
 			
 			string actionText = string.Format(
 				"<action name='%1' scale='%2' state='%3'/>", 
@@ -74,6 +74,15 @@ class SCR_SimpleKeybindDialogUI : SCR_KeybindDialogBase
 			
 			Close();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		
+		if (m_Binding && m_Binding.GetCaptureState() == EInputBindingCaptureState.CAPTURING)
+			m_Binding.CancelCapture();
 	}
 	
 	//------------------------------------------------------------------------------------------------

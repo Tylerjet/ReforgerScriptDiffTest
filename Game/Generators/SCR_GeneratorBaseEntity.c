@@ -20,7 +20,6 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 	protected bool m_bIsChangingWorkbenchKey;
 
 	protected static const ref Color BASE_GENERATOR_COLOR = Color.White;
-	protected static const ref array<string> ACCEPTED_PARENT_CLASSNAMES = { "SplineShapeEntity", "PolylineShapeEntity" }; // hardcoded, ok for now
 
 	//------------------------------------------------------------------------------------------------
 	override void _WB_OnParentChange(IEntitySource src, IEntitySource prevParentSrc)
@@ -32,7 +31,9 @@ class SCR_GeneratorBaseEntity : GeneratorBaseEntity
 			return;
 
 		m_ParentShapeSource = src.GetParent();
-		if (!m_ParentShapeSource || !ACCEPTED_PARENT_CLASSNAMES.Contains(m_ParentShapeSource.GetClassName()))
+		if (!m_ParentShapeSource
+			|| !m_ParentShapeSource.GetClassName().ToType()
+			|| !m_ParentShapeSource.GetClassName().ToType().IsInherited(ShapeEntity))
 			DeleteAllChildren();
 	}
 

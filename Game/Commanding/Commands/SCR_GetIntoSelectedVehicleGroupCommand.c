@@ -51,6 +51,9 @@ class SCR_GetINtoSelectedVehicleGroupCommand : SCR_WaypointGroupCommand
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown()
 	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
 		PlayerCamera camera = GetGame().GetPlayerController().GetPlayerCamera();
 		if (!camera)
 			return false;

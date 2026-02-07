@@ -136,6 +136,52 @@ class SCR_Enum
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Finds and returns the previous enum value even when it was modded
+	//! \param[in] enumType
+	//! \param[in] value
+	//! \return previous (smaller) enum value or one that was provided if it the last value for this enum type
+	static int GetPreviousEnumValue(typename enumType, int value)
+	{
+		int previousValue;
+		enumType.GetVariableValue(null, 0, previousValue);
+		if (previousValue == value)
+			return value;
+
+		array<int> intValues = {};
+		for (int i, count = GetEnumValues(enumType, intValues); i < count; i++)
+		{
+			if (intValues[i] > previousValue && intValues[i] < value)
+				previousValue = intValues[i];
+		}
+
+		return previousValue;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds and returns the next enum value even when it was modded
+	//! \param[in] enumType
+	//! \param[in] value
+	//! \return next (bigger) enum value or one that was provided if it the last value for this enum type
+	static int GetNextEnumValue(typename enumType, int value)
+	{
+		int count = enumType.GetVariableCount();
+		int nextValue;
+		enumType.GetVariableValue(null, count - 1, nextValue);
+		if (nextValue == value)
+			return value;
+
+		array<int> intValues = {};
+		GetEnumValues(enumType, intValues);
+		for (int i; i < count; i++)
+		{
+			if (intValues[i] > value && intValues[i] < nextValue)
+				nextValue = intValues[i];
+		}
+
+		return nextValue;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get all values within an enum as bitwise flags
 	\param enumType Type of the enum

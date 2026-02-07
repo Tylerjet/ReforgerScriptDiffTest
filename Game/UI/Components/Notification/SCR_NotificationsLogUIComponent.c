@@ -39,10 +39,12 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	protected VerticalLayoutWidget m_wPriorityNotificationHolder;
 	protected VerticalLayoutWidget m_wNotificationHolderParent;
 	protected ref SCR_NotificationMessageUIComponent m_PrevOverFlowNotification;
+	protected FactionManager m_FactionManager;
 
 	protected Widget m_wRoot;
 	protected int m_iCurrentMaxNotifications;
 	protected int m_iCurrentPriorityNotifications;
+	protected int m_iCurrentStickyNotifications;
 
 	//InputType
 	protected bool m_bIsUsingMouseAndKeyboard = true;
@@ -54,7 +56,7 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	protected ref array<ref SCR_NotificationMessageUIComponent> m_aPriorityNotificationMessages = {};
 	//Notification Color Data Map
 	protected ref map<ENotificationColor, SCR_NotificationDisplayColor> m_NotificationDisplayColorMap = new map<ENotificationColor, SCR_NotificationDisplayColor>();
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected bool OnNotification(SCR_NotificationData data)
 	{
@@ -158,18 +160,22 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 		if (m_aNotificationMessages.IsEmpty())
 			return;
 
-		int index = m_aNotificationMessages.Count() -1;
+		// Delete every notification one by one until we are below the max notifications
+		while (m_aNotificationMessages.Count() > m_iCurrentMaxNotifications)
+		{
+			int index = m_aNotificationMessages.Count() -1;
 
-		//Make sure there is never more then 1 notification that was removed by overflow
-		if (m_PrevOverFlowNotification)
-			m_PrevOverFlowNotification.DeleteNotification();
-
-		m_PrevOverFlowNotification = m_aNotificationMessages[index];
-		m_aNotificationMessages[index].ForceRemoveNotification();
-
-		//Can be that notification is already removed
-		if (index < m_aNotificationMessages.Count())
-			m_aNotificationMessages.Remove(index);
+			//Make sure there is never more then 1 notification that was removed by overflow
+			if (m_PrevOverFlowNotification)
+				m_PrevOverFlowNotification.DeleteNotification();
+	
+			m_PrevOverFlowNotification = m_aNotificationMessages[index];
+			m_aNotificationMessages[index].ForceRemoveNotification();
+	
+			//Can be that notification is already removed
+			if (index < m_aNotificationMessages.Count())
+				m_aNotificationMessages.Remove(index);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -204,7 +210,32 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	//------------------------------------------------------------------------------------------------
 	//! \return the colour of the notification using the ENotificationColor enum
 	Color GetNotificationWidgetColor(ENotificationColor notificationColor)
-	{
+	{		
+		//~ Get faction color if color enum is less than 0
+		if (notificationColor < 0)
+		{
+			if (!m_FactionManager)
+			{
+				notificationColor = ENotificationColor.NEUTRAL;
+				Print("SCR_NotificationsLogComponent: Could not find the FactionManager so faction color for notification could not be set", LogLevel.WARNING);
+			}
+			
+			Faction faction = m_FactionManager.GetFactionByIndex((notificationColor * -1) - 1);
+			if (!faction)
+			{
+				notificationColor = ENotificationColor.NEUTRAL;
+				Print("SCR_NotificationsLogComponent: Could not find the faction index: '" + (notificationColor * -1) + "' so faction color for notification could not be set", LogLevel.WARNING);
+			}
+			else 
+			{
+				SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+				if (scrFaction)
+					return scrFaction.GetNotificationFactionColor();
+				else 
+					return faction.GetFactionColor();
+			}
+		}
+		
 		if (m_NotificationDisplayColorMap.Contains(notificationColor))
 		{
 			return m_NotificationDisplayColorMap.Get(notificationColor).GetWidgetColor();
@@ -220,6 +251,31 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	//! \return the color of the notification using the ENotificationColor enum
 	Color GetNotificationTextColor(ENotificationColor notificationColor)
 	{
+		//~ Get faction color if color enum is less than 0
+		if (notificationColor < 0)
+		{
+			if (!m_FactionManager)
+			{
+				notificationColor = ENotificationColor.NEUTRAL;
+				Print("SCR_NotificationsLogComponent: Could not find the FactionManager so faction color for notification could not be set", LogLevel.WARNING);
+			}
+			
+			Faction faction = m_FactionManager.GetFactionByIndex((notificationColor * -1) - 1);
+			if (!faction)
+			{
+				notificationColor = ENotificationColor.NEUTRAL;
+				Print("SCR_NotificationsLogComponent: Could not find the faction index: '" + (notificationColor * -1) + "' so faction color for notification could not be set", LogLevel.WARNING);
+			}
+			else 
+			{
+				SCR_Faction scrFaction = SCR_Faction.Cast(faction);
+				if (scrFaction)
+					return scrFaction.GetNotificationTextFactionColor();
+				else 
+					return faction.GetFactionColor();
+			}
+		}
+		
 		if (m_NotificationDisplayColorMap.Contains(notificationColor))
 		{
 			return Color.FromInt(m_NotificationDisplayColorMap.Get(notificationColor).GetTextColor().PackToInt());
@@ -259,14 +315,19 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	{
 		if (newActive)
 		{
-			m_iCurrentMaxNotifications -= m_iPriorityNotificationSize;
+			m_iCurrentMaxNotifications--;
 			Math.Clamp(m_iCurrentMaxNotifications, 0, m_iMaxNotifications);		
 			
-			RemoveOldestNotification();
+			m_iCurrentStickyNotifications++;
+			
+			if (m_aNotificationMessages.Count() > m_iCurrentMaxNotifications)
+				RemoveOldestNotification();
 		}
 		else
 		{
-			m_iCurrentMaxNotifications += m_iPriorityNotificationSize;
+			m_iCurrentMaxNotifications++;
+			Math.Clamp(m_iCurrentMaxNotifications, 0, m_iMaxNotifications);
+			m_iCurrentStickyNotifications--;
 		}
 	}
 
@@ -275,15 +336,33 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	{
 		if (newActive)
 		{
-			m_iCurrentMaxNotifications--;
+			m_iCurrentMaxNotifications -= m_iPriorityNotificationSize;
 			Math.Clamp(m_iCurrentMaxNotifications, 0, m_iMaxNotifications);
 			
-			RemoveOldestNotification();
+			if (m_aNotificationMessages.Count() > m_iCurrentMaxNotifications)
+				RemoveOldestNotification();
 		}
 		else
 		{
-			m_iCurrentMaxNotifications++;
+			m_iCurrentMaxNotifications += m_iPriorityNotificationSize;
+			Math.Clamp(m_iCurrentMaxNotifications, 0, m_iMaxNotifications);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSettingsChanged()
+	{		
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		interfaceSettings.Get("m_bShowNotifications", state);
+		m_wRoot.SetVisible(state);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -309,6 +388,21 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 			Print("SCR_NotificationsLogDisplay requires SCR_NotificationsComponent on PlayerController!", LogLevel.WARNING);
 			m_wRoot.SetVisible(false);
 			return;
+		}
+		
+		// Since Notifications still work as component inside Editor, we need to apply the same logic as to the InfoDisplay here.
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (hudManager)
+		{
+			BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+			if (interfaceSettings)
+			{
+				bool state;
+				interfaceSettings.Get("m_bShowNotifications", state);
+				m_wRoot.SetVisible(state);
+				
+				GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);
+			}
 		}
 
 		m_wPriorityNotificationHolder = VerticalLayoutWidget.Cast(m_wRoot.FindAnyWidget(m_sPriorityNotificationHolderName));
@@ -338,6 +432,7 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 		EInputDeviceType inputDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
 		m_bIsUsingMouseAndKeyboard = (inputDevice == EInputDeviceType.KEYBOARD || inputDevice == EInputDeviceType.MOUSE);
 		m_EditorManagerEntity = SCR_EditorManagerEntity.GetInstance();
+		m_FactionManager = GetGame().GetFactionManager();
 
 		//Generate Color map data
 		GenerateNotificationColorMap();
@@ -364,9 +459,6 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 			//Init the sticky notification
 			stickyNotificationComponent.OnInit(this);
 
-			if (!stickyNotificationComponent.InfluenceNotificationListSize())
-				continue;
-
 			stickyNotificationComponent.GetOnStickyActiveChanged().Insert(OnStickyNotificationChanged);
 
 			if (stickyNotificationComponent.isStickyActive())
@@ -387,6 +479,8 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
+		
+		GetGame().OnUserSettingsChangedInvoker().Remove(OnSettingsChanged);
 
 		if (!m_NotificationsManager)
 			return;
@@ -406,7 +500,8 @@ class SCR_NotificationsLogComponent : MenuRootSubComponent
 			m_iMaxNotifications = SCR_NotificationsComponent.NOTIFICATION_HISTORY_LENGTH;
 		}
 
-		m_iCurrentMaxNotifications = m_iMaxNotifications - m_aPriorityNotificationMessages.Count();
+		// Max amount of Notifications that can be shown are determined by the normal Max Notifications - amount of Priority Notifications - amount of Sticky Notifications 
+		m_iCurrentMaxNotifications = m_iMaxNotifications - m_aPriorityNotificationMessages.Count() - m_iCurrentStickyNotifications;
 		
 		Math.Clamp(m_iCurrentMaxNotifications, 0, m_iMaxNotifications);
 

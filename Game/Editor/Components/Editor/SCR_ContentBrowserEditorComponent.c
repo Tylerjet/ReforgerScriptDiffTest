@@ -1482,7 +1482,7 @@ class SCR_ContentBrowserEditorComponent : SCR_BaseEditorComponent
 					editableEntitySource = SCR_EditableEntityComponentClass.GetEditableEntitySource(entityResource);
 					if (editableEntitySource)
 					{
-						info = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+						info = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
 						if (!info)
 						{
 							Print(string.Format("Prefab '%1' is missing UI info in SCR_EditableEntityComponent!", m_aAsyncPrefabs[m_iAsyncIndex]), LogLevel.ERROR);

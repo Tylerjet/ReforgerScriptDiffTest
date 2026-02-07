@@ -41,9 +41,8 @@ class SCR_SupplyContainerValueAttribute : SCR_BaseValueListEditorAttribute
 			return;
 
 		float percentage = var.GetFloat();
-		float currentValue = supplyContainer.GetResourceValue();
 		float maxValue = supplyContainer.GetMaxResourceValue();
-		float newValue = (maxValue * percentage) / 100;
+		float newValue = maxValue * (percentage / 100);
 
 		supplyContainer.SetResourceValue(newValue);
 	}

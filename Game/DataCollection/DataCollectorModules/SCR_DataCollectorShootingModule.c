@@ -82,7 +82,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
 
 		//Turrets can shoot
-		if (!compartment || !compartment.GetOccupant() || compartment.GetType() == ECompartmentType.Turret)
+		if (!compartment || !compartment.GetOccupant() || compartment.GetType() == ECompartmentType.TURRET)
 			return;
 
 		PlayerManager playerManager = GetGame().GetPlayerManager();
@@ -167,7 +167,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		if (!factionManager)
 			return;
 		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 		
@@ -208,7 +208,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		if (!factionManager)
 			return;
 		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 

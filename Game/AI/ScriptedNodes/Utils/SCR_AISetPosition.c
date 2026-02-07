@@ -64,7 +64,7 @@ class SCR_AISetPosition : AITaskScripted
 			vehicle = compartmentSlot.GetOwner();
 			if (!CAComponent || !vehicle)
 				return NodeError(this, owner, "Enity to teleport does not have CompartmentAccessComponent or target is not an Entity!");
-			if (!CAComponent.MoveInVehicle(vehicle, compartmentSlot))
+			if (!CAComponent.GetInVehicle(vehicle, compartmentSlot, true, -1, ECloseDoorAfterActions.INVALID, false))
 			{
 #ifdef AI_DEBUG
 				Print("Teleport to vehicle was not successful!", LogLevel.VERBOSE);

@@ -297,14 +297,18 @@ class SCR_GroupIdentityRuleIconWeapon: SCR_GroupIdentityRuleIcon
 	[Attribute("0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EWeaponType))]
 	protected EWeaponType m_WeaponType;
 	
-	[Attribute("0.5", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Condition is met only if ratio of weapons defined by 'Weapon Type' in the group is higher than this limit.\nE.g., Four-man group with two MGs will have MG ratio of 0.5")]
+	[Attribute("0.5", uiwidget: UIWidgets.Slider, params: "0 1 0.01", desc: "Condition is met only if ratio of weapons defined by 'Weapon Type' in the group is higher than this limit.\nE.g., Four-man group with two MGs will have MG ratio of 0.5\nUnarmed will never check ratio.")]
 	protected float m_fMinRatio;
 	
-	[Attribute("0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EWeaponType), desc: "Condition is failed if any of these weapon types have ratio bigger than the one of 'Weapon Type', even when it's above 'Min Limit'")]
+	[Attribute("0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EWeaponType), desc: "Condition is failed if any of these weapon types have ratio bigger than the one of 'Weapon Type', even when it's above 'Min Limit'.\nUnarmed will never check ratio.")]
 	protected ref array<EWeaponType> m_ComparedWeaponTypes;
 	
 	override protected bool IsCompatible(notnull SCR_MilitarySymbol symbol, SCR_GroupIdentityRuleData data)
 	{
+		//~ If check for no weapons and weapons are empty it succeeds
+		if (m_WeaponType == EWeaponType.WT_NONE && data.m_WeaponTypes.IsEmpty())
+			return true;
+		
 		//--- Check if the ratio is above limit
 		float ratio;
 		if (data.m_WeaponTypes.Find(m_WeaponType, ratio) && ratio >= m_fMinRatio)

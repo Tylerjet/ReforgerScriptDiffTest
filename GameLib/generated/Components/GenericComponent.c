@@ -20,8 +20,9 @@ class GenericComponent
 	//!Gets config container with the prefab data
 	proto external BaseContainer GetComponentSource(notnull IEntity ent);
 	/*!
-	Attempts to run a remote procedure call of this instance with parameters pecified in method NetRpc attribute.
-	\param method member function pointer
+	Attempts to run a remote procedure call (RPC) of this instance with parameters
+	specified in method RplRpc attribute.
+	\param      method  Member function to be invoked as an RPC.
 	*/
 	proto void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 	/*!

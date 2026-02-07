@@ -34,7 +34,7 @@ class SCR_GameOverScreenCombatControlPatrolUIComponent: SCR_GameOverScreenConten
 		timeElapsed = string.Format(WidgetManager.Translate("#AR-CareerProfile_TimePlayed_TotalValue", ""+days, ""+hours, ""+minutes, ""+seconds));
 		
 		if (timeWidget)
-			timeWidget.SetTextFormat(string.Format("<color rgba=%1>%2</color> <br/> %3", UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), "#AR-CombatScenario_Total_Operation_Time",  timeElapsed));
+			timeWidget.SetTextFormat(string.Format("<color rgba=%1>%2</color> <br/> %3", UIColors.FormatColor(UIColors.CONTRAST_COLOR), "#AR-CombatScenario_Total_Operation_Time",  timeElapsed));
 		
 		SCR_BaseTaskManager taskManager = GetTaskManager();
 		if (!taskManager)
@@ -54,7 +54,7 @@ class SCR_GameOverScreenCombatControlPatrolUIComponent: SCR_GameOverScreenConten
 		if (tasksWidget)
 		{
 			if (tasksToShow != "<br/>")
-				tasksWidget.SetText(string.Format(WidgetManager.Translate("<color rgba=%1>%2</color> %3", UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), "#AR-CombatScenario_Completed_Tasks",  tasksToShow)));
+				tasksWidget.SetText(string.Format(WidgetManager.Translate("<color rgba=%1>%2</color> %3", UIColors.FormatColor(UIColors.CONTRAST_COLOR), "#AR-CombatScenario_Completed_Tasks",  tasksToShow)));
 			else
 				tasksWidget.SetText("");
 		}

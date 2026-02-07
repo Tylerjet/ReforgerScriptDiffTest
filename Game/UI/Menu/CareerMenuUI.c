@@ -173,7 +173,7 @@ class CareerMenuUI: ChimeraMenuBase
 		Widget w = GetRootWidget();
 		m_sInstance = this;
 		InputManager inputManager = GetGame().GetInputManager();
-		inputManager.AddActionListener( "MenuBack", EActionTrigger.PRESSED, Back );
+		inputManager.AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.PRESSED, Back );
 				
 		// Preview character 
 		Widget wCharacterPreview = GetRootWidget().FindAnyWidget(WIDGET_CHARACTER_PREVIEW);

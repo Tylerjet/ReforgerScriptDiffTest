@@ -26,9 +26,9 @@ class SCR_GearboxHitZone : SCR_VehicleHitZone
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		UpdateGearboxState();
 	}

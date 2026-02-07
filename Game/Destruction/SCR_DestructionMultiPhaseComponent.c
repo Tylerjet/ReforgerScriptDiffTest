@@ -1,10 +1,12 @@
 #define ENABLE_BASE_DESTRUCTION
-
+//------------------------------------------------------------------------------------------------
 enum SCR_EMaterialSoundTypeDebris
 {
 	NONE,
+	CERAMIC,
 	BELL_SMALL,
 	GLASS,
+	HAYBALE,
 	MATRESS,
 	METAL_HEAVY,
 	METAL_LIGHT,
@@ -15,16 +17,20 @@ enum SCR_EMaterialSoundTypeDebris
 	ROCK,
 	ROCK_SMALL,
 	SANDBAG,
+	TREE,
 	WOOD_PLANK_SMALL,
 	WOOD_PLANK_LARGE
-}
+};
 
+//------------------------------------------------------------------------------------------------
 enum SCR_EMaterialSoundTypeBreak
 {
 	NONE,
+	BREAK_CERAMIC,
 	BREAK_GLASS,
 	BREAK_GLASS_PANE,
 	BREAK_GROUNDRADAR,
+	BREAK_HAYBALE,
 	BREAK_MATRESS,
 	BREAK_METAL,
 	BREAK_METAL_GENERATOR,
@@ -35,16 +41,17 @@ enum SCR_EMaterialSoundTypeBreak
 	BREAK_ROCK,
 	BREAK_SANDBAG,
 	BREAK_TENT,
+	BREAK_TREE,
 	BREAK_WATERHYDRANT,
 	BREAK_WOOD_SOLID
-}
+};
 
+//------------------------------------------------------------------------------------------------
 [ComponentEditorProps(category: "GameScripted/Destruction", description: "Multi-Phase destruction component, for objects that go through several damage phases")]
 class SCR_DestructionMultiPhaseComponentClass: SCR_DestructionDamageManagerComponentClass
 {
 	[Attribute("1", UIWidgets.CheckBox, "If true, the object will be deleted after being damaged beyond the final damage phase", category: "Destruction Multi-Phase")]
 	bool m_bDeleteAfterFinalPhase;
-
 	[Attribute("", UIWidgets.Object, "List of the individual damage phases (sequential) above initial damage phase", category: "Destruction Multi-Phase")]
 	ref array<ref SCR_DamagePhaseData> m_aDamagePhases;
 	
@@ -53,8 +60,9 @@ class SCR_DestructionMultiPhaseComponentClass: SCR_DestructionDamageManagerCompo
 	
 	[Attribute("0")]
 	float m_fMeshChangeDelay;
-}
+};
 
+//------------------------------------------------------------------------------------------------
 //! Multi-Phase destruction component, for objects that go through several destruction states
 class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 {
@@ -101,7 +109,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return the input damage phase data (null = initial)
+	//! Returns the input damage phase data (null = initial)
 	SCR_DamagePhaseData GetDamagePhaseData(int damagePhase)
 	{
 		if (damagePhase <= 0 || damagePhase >= GetNumDamagePhases())
@@ -111,21 +119,21 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return whether the object should disable physics on destruction (before being deleted or changed)
+	//! Returns whether the object should disable physics on destruction (before being deleted or changed)
 	override bool GetDisablePhysicsOnDestroy()
 	{
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return if the object is in the initial damage phase
+	//! Returns if the object is in the initial damage phase
 	bool GetIsInInitialDamagePhase()
 	{
 		return GetDamagePhase() == 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return which damage phase the object is currently in (0 = initial)
+	//! Returns which damage phase the object is currently in (0 = initial)
 	int GetDamagePhase()
 	{
 		if (m_iDestructionMultiPhaseDataIndex == -1)
@@ -135,7 +143,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return the amount of damage phases (including initial)
+	//! Returns the amount of damage phases (including initial)
 	int GetNumDamagePhases()
 	{
 		SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
@@ -147,11 +155,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return the target damage stage for the input current health, current phase and damage
-	//! \param[in] damagePhase
-	//! \param[in] health
-	//! \param[in] damage
-	//! \return
+	//! Returns the target damage stage for the input current health, current phase and damage
 	int CalculateDamagePhase(int damagePhase, float health, float damage)
 	{
 		if (damage < 0)
@@ -175,17 +179,16 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
 	float GetDestructibleSize()
 	{
-		vector mins, maxs;
+		vector mins, maxs
 		GetOwner().GetBounds(mins, maxs);
 		return (maxs[0] - mins[0]) * (maxs[1] - mins[1]);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Update DamagePhase signal on entity that has SignalsManagerComponent
-	//! Used for triggering looped sounds
+	// Update DamagePhase signal on entity that has SignalsManagerComponent
+	// Used for triggering looped sounds
 	protected void SetDamagePhaseSignal()
 	{
 		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(GetOwner().FindComponent(SignalsManagerComponent));
@@ -235,19 +238,14 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switches to the input damage phase (or deletes if past last phase)
-	//! \param[in] damagePhase
-	//! \param[in] delayMeshChange
 	void GoToDamagePhase(int damagePhase, bool delayMeshChange)
 	{
 		if (damagePhase >= GetNumDamagePhases()) // Going past final phase, so delete if we can
 		{
-			if (s_OnDestructibleDestroyed && GetDestructionBaseData())
+			if (GetDestructionBaseData())
 				s_OnDestructibleDestroyed.Invoke(this);
 			
-			SCR_DestructionMultiPhaseComponentClass componentData = SCR_DestructionMultiPhaseComponentClass.Cast(GetComponentData(GetOwner()));
-			if (componentData && componentData.m_bDeleteAfterFinalPhase)
 			DeleteDestructible();
-
 			return;
 		}
 		
@@ -273,9 +271,6 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] damagePhaseData
-	//! \param[in] delayMeshChange
 	void ApplyDamagePhaseData(SCR_DamagePhaseData damagePhaseData, bool delayMeshChange)
 	{
 		ResourceName model;
@@ -357,7 +352,6 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		
 		// Set position
 		vector mat[4];
-		owner.GetTransform(mat);
 		
 		// Get position offset for slotted entities
 		vector mins;
@@ -387,7 +381,6 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns objects that are meant to be created when the object is destroyed (particles, debris, etc)
-	//! \param[in] hitInfo
 	override void SpawnDestroyObjects(SCR_HitInfo hitInfo)
 	{
 		Physics ownerPhysics = GetOwner().GetPhysics();
@@ -526,7 +519,7 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected override bool OnRplLoad(ScriptBitReader reader)
+	protected override event bool OnRplLoad(ScriptBitReader reader)
 	{
 		if (!super.OnRplLoad(reader))
 			return false;
@@ -554,11 +547,11 @@ class SCR_DestructionMultiPhaseComponent : SCR_DestructionDamageManagerComponent
 		m_iOriginalHealth = GetHealth();
 	}
 #endif
-}
+};
 
+//------------------------------------------------------------------------------------------------
 class SCR_DamagePhaseTitle : BaseContainerCustomTitle
 {
-	//------------------------------------------------------------------------------------------------
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		float health = 0;
@@ -566,18 +559,17 @@ class SCR_DamagePhaseTitle : BaseContainerCustomTitle
 		title = "Phase | HP: " + health.ToString();
 		return true;
 	}
-}
+};
 
+//------------------------------------------------------------------------------------------------
 //! Multi-Phase destruction phase
 [BaseContainerProps(), SCR_DamagePhaseTitle()]
 class SCR_DamagePhaseData
 {
 	[Attribute("100", UIWidgets.Slider, "Base health value for the damage phase. Upon switching to this phase, this value replaces the base health of the object", "0.01 100000 0.01")]
 	float m_fPhaseHealth;
-
 	[Attribute(ResourceName.Empty, UIWidgets.ResourcePickerThumbnail, "Model to use for the damage phase", "xob")]
 	ResourceName m_PhaseModel;
-
 	[Attribute("", UIWidgets.Object, "List of objects (particles, debris, etc) to spawn on destruction of the phase")]
 	ref array<ref SCR_BaseSpawnable> m_PhaseDestroySpawnObjects;
-}
+};

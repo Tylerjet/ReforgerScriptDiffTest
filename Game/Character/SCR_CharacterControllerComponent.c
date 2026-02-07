@@ -37,6 +37,17 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.EditBox, params:"1 inf 0.1", desc: "Maximum duration it takes for character to drown\n[s]")]
 	protected float m_fDrowningDuration;
 	
+	[Attribute(defvalue: "4", uiwidget: UIWidgets.EditBox, params:"0 inf 0.1", desc: "Amount of raw damage needed for character to play an animated hitreaction")]
+	protected float m_fAnimatedHitReactionThreshold;
+	
+	protected static ref array<EDamageType> s_aHitReactionDamageTypes = {
+		EDamageType.COLLISION,
+		EDamageType.MELEE,
+		EDamageType.KINETIC,
+		EDamageType.FRAGMENTATION,
+		EDamageType.EXPLOSIVE
+	};
+	
 	// Private members
 	protected SCR_CharacterCameraHandlerComponent m_CameraHandler; // Set from the camera handler itself
 	protected SCR_MeleeComponent m_MeleeComponent;
@@ -191,7 +202,20 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	{
 		m_MeleeComponent.SetMeleeAttackStarted(started);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	// play hitreaction when taking momentary physical damage 
+	protected override EHitReactionType ComputeHitReaction(float damageValue, EDamageType damageType)
+	{
+		if (damageValue < m_fAnimatedHitReactionThreshold)
+			return EHitReactionType.HIT_REACTION_NONE;
+		
+		if (!s_aHitReactionDamageTypes.Contains(damageType))
+			return EHitReactionType.HIT_REACTION_NONE;
+		
+		return EHitReactionType.HIT_REACTION_LIGHT;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	ScriptInvokerVoid GetOnPlayerDeath()
@@ -327,7 +351,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		CompartmentAccessComponent accesComp = char.GetCompartmentAccessComponent();
 		bool isInWatertightCompartment = accesComp && accesComp.GetCompartment() && accesComp.GetCompartment().GetIsWaterTight();
 
-		float drowningTimeStartFX = 4;
+		const float drowningTimeStartFX = 4;
 		if (waterLevel[2] > 0 && !isInWatertightCompartment)
 		{
 			if (m_fDrowningTime < drowningTimeStartFX && (m_fDrowningTime + timeSlice) > drowningTimeStartFX)
@@ -356,7 +380,10 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		
 		if (m_fDrowningTime > m_fDrowningDuration)
 		{
-			damageMan.GetResilienceHitZone().HandleDamage(1000, EDamageType.TRUE, GetOwner());
+			vector hitPosDirNorm[3];
+			SCR_DamageContext context = new SCR_DamageContext(EDamageType.TRUE, 1000, hitPosDirNorm, char, damageMan.GetResilienceHitZone(), null, null, -1, -1);
+			context.damageEffect = new SCR_DrowningDamageEffect();
+			damageMan.HandleDamage(context);
 			damageMan.Kill(Instigator.CreateInstigator(char));
 		}
 	}
@@ -416,7 +443,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return;
 		
 		if (handler.IsLoitering())
+		{
+			if (m_pScrInputContext.m_bLoiteringDisablePlayerInput)
+				return;
+
 			StopLoitering(false);
+		}
 		
 		if (IsAligningBeforeLoiter())
 		{
@@ -749,7 +781,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 				if (!action && compAccess.CanGetOutVehicle())
 				{
-					compAccess.GetOutVehicle(-1, false);
+					compAccess.GetOutVehicle(EGetOutType.ANIMATED, -1, ECloseDoorAfterActions.INVALID, false);
 				}
 			}
 		}
@@ -837,16 +869,27 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	{
 		// Check if we are in a turret and switch the turret's optics instead
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetOwner());
-		Turret turret = Turret.Cast(character.GetParent());
-		if (turret)
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+		if (compartmentAccess)
 		{
-			TurretComponent turretComponent = TurretComponent.Cast(turret.FindComponent(TurretComponent));
-			if (direction > 0)
-				turretComponent.SwitchNextSights();
-			else 
-				turretComponent.SwitchPrevSights();
-			
-			return;
+			BaseCompartmentSlot compartment = compartmentAccess.GetCompartment();
+			if (compartment)
+			{
+				TurretControllerComponent turretController = TurretControllerComponent.Cast(compartment.GetController());
+				if (turretController)
+				{
+					TurretComponent turretComponent = turretController.GetTurretComponent();
+					if (turretComponent)
+					{
+						if (direction > 0)
+							turretComponent.SwitchNextSights();
+						else 
+							turretComponent.SwitchPrevSights();
+					
+						return;
+					}
+				}
+			}
 		}
 		
 		BaseWeaponManagerComponent weaponManager = GetWeaponManagerComponent();
@@ -888,6 +931,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		// Do initialisation/deinitialisation of character that was given/lost control by plyer here
 		if (controlled && owner == SCR_PlayerController.GetLocalControlledEntity())
 		{
+			GetGame().GetInputManager().AddActionListener("CharacterNextWeapon", EActionTrigger.DOWN, ActionNextWeapon);
 			GetGame().GetInputManager().AddActionListener("CharacterUnequipItem", EActionTrigger.DOWN, ActionUnequipItem);
 			GetGame().GetInputManager().AddActionListener("CharacterDropItem", EActionTrigger.DOWN, ActionDropItem);
 			GetGame().GetInputManager().AddActionListener("CharacterWeaponLowReady", EActionTrigger.DOWN, ActionWeaponLowReady);
@@ -900,6 +944,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		}
 		else
 		{
+			GetGame().GetInputManager().RemoveActionListener("CharacterNextWeapon", EActionTrigger.DOWN, ActionNextWeapon);
 			GetGame().GetInputManager().RemoveActionListener("CharacterUnequipItem", EActionTrigger.DOWN, ActionUnequipItem);
 			GetGame().GetInputManager().RemoveActionListener("CharacterDropItem", EActionTrigger.DOWN, ActionDropItem);
 			GetGame().GetInputManager().RemoveActionListener("CharacterWeaponLowReady", EActionTrigger.DOWN, ActionWeaponLowReady);
@@ -920,7 +965,22 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Alternate between primary weapons
+	//! \param[in] value
+	//! \param[in] trigger
+	void ActionNextWeapon(float value = 0.0, EActionTrigger trigger = 0)
+	{
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(GetInventoryStorageManager());
+		if (!storageManager)
+			return;
+
+		SCR_CharacterInventoryStorageComponent storage = storageManager.GetCharacterStorage();
+		if (storage)
+			storage.SelectNextWeapon();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Put current item away to inventory/back
 	//! \param[in] value
 	//! \param[in] trigger
 	void ActionUnequipItem(float value = 0.0, EActionTrigger trigger = 0)
@@ -935,7 +995,7 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Drop current item on ground
 	//! \param[in] value
 	//! \param[in] trigger
 	void ActionDropItem(float value = 0.0, EActionTrigger trigger = 0)
@@ -1124,7 +1184,8 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	//! \param[in] allowRootMotion
 	//! \param[in] alignToPosition
 	//! \param[in] targetPosition
-	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" })
+	//! \param[in] disableInput - If true, player cannot interrupt the loiter by pressing space. It is the responsibility of the caller to ensure that the action will be finished. If false, action can be cancelled by player input.
+	void StartLoitering(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4] = { "1 0 0", "0 1 0", "0 0 1", "0 0 0" }, bool disableInput = false)
 	{
 		if (GetCharacter().GetRplComponent() && !GetCharacter().GetRplComponent().IsOwner())
 			return;
@@ -1133,12 +1194,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		if (!scrCmdHandler)
 			return;
 
-		if (scrCmdHandler.IsLoitering())
+		if (!scrCmdHandler.GetCommandMove())
 			return;
 		
 		m_pScrInputContext.m_iLoiteringType = loiteringType;
 		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
 		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
+		m_pScrInputContext.m_bLoiteringDisablePlayerInput = disableInput;
 		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
 		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
 		
@@ -1179,12 +1241,32 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StartCommandLoitering();
+
+		Rpc(Rpc_StartLoitering_BCNO,
+				m_pScrInputContext.m_iLoiteringType,
+				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
+				m_pScrInputContext.m_bLoiteringRootMotion,
+				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
+				m_pScrInputContext.m_mLoiteringPosition);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
+	protected void Rpc_StartLoitering_BCNO(int loiteringType, bool holsterWeapon, bool allowRootMotion, bool alignToPosition, vector targetPosition[4])
+	{
+		m_pScrInputContext.m_iLoiteringType = loiteringType;
+		m_pScrInputContext.m_iLoiteringShouldHolsterWeapon = holsterWeapon;
+		m_pScrInputContext.m_bLoiteringShouldAlignCharacter = alignToPosition;
+		m_pScrInputContext.m_mLoiteringPosition = targetPosition;
+		m_pScrInputContext.m_bLoiteringRootMotion = allowRootMotion;
+		
+		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
+		scrCmdHandler.StartCommandLoitering();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected bool TryStartLoiteringInternal()
 	{
-		CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
 		if (IsChangingItem())
 			return false;
 		
@@ -1194,10 +1276,14 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 			return false;
 		}
 		
-		if (headingComponent && headingComponent.IsAligning())
+		if(m_pScrInputContext.m_bLoiteringShouldAlignCharacter)
 		{
-			if (AlignToPositionFromCurrentPosition(GetScrInputContext().m_mLoiteringPosition, 0.02, 0.3)) // distance smaller than 2cm
-				return false;
+			CharacterHeadingAnimComponent headingComponent = GetAnimationComponent().GetHeadingComponent();
+			if (headingComponent && headingComponent.IsAligning())
+			{
+				if (AlignToPositionFromCurrentPosition(GetScrInputContext().m_mLoiteringPosition, 0.02, 0.3)) // distance smaller than 2cm
+					return false;
+			}
 		}
 		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
@@ -1205,6 +1291,13 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 		
 		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
 			Rpc(Rpc_StartLoitering_S,
+				m_pScrInputContext.m_iLoiteringType,
+				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
+				m_pScrInputContext.m_bLoiteringRootMotion,
+				m_pScrInputContext.m_bLoiteringShouldAlignCharacter,
+				m_pScrInputContext.m_mLoiteringPosition);
+			else
+			Rpc(Rpc_StartLoitering_BCNO,
 				m_pScrInputContext.m_iLoiteringType,
 				m_pScrInputContext.m_iLoiteringShouldHolsterWeapon,
 				m_pScrInputContext.m_bLoiteringRootMotion,
@@ -1220,9 +1313,6 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
 	void RPC_StopLoitering_S(bool terminateFast)
 	{
-		if (GetCharacter().GetRplComponent() && GetCharacter().GetRplComponent().IsProxy())
-			Print("Called RPC_StopLoitering_S on a proxy.", LogLevel.ERROR);
-		
 		SCR_CharacterCommandHandlerComponent scrCmdHandler = SCR_CharacterCommandHandlerComponent.Cast(GetCharacter().GetAnimationComponent().GetCommandHandler());
 		scrCmdHandler.StopLoitering(terminateFast);
 	}

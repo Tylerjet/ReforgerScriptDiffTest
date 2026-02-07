@@ -100,7 +100,6 @@ class SCR_SpawnPointRespawnDiag : SCR_RespawnDiag<SCR_SpawnPointRespawnRequestCo
 	{
 		super.DrawContent();
 		DbgUI.InputText("Prefab: ", m_Prefab);
-		int rplId;
 		DbgUI.InputInt("RplId: ", m_RplId);
 		
 		DbgUI.Spacer(32);

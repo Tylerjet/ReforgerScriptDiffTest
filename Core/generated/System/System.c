@@ -146,6 +146,18 @@ sealed class System
 	*/
 	static proto void MakeScreenshot(string path);
 	/*!
+	Take screenshot on specified position and size. dstWidth x dstHeight point to final image size,
+	if they are zero then they equal to srcWidth x srcHeight.
+	\param scriptCallback	callback to script function which receives the data
+	\param posX						X position of screenshot
+	\param posY						Y position of screenshot
+	\param srcWidth				width of image to be taken
+	\param srcHeight			height of image to be taken
+	\param dstWidth				width of destination image, 0 means the srcWidth is used
+	\param dstHeight			height of destination image, 0 means the srcHeight is used
+	*/
+	static proto void MakeScreenshotExt(ScreenshotCallback callback, int posX, int posY, int srcWidth, int srcHeight, int dstWidth, int dstHeight);
+	/*!
 	Returns actual fps (average in last 10 frames)
 	*/
 	static proto float GetFPS();

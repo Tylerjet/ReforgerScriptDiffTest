@@ -23,11 +23,9 @@ class SCR_ScenarioFrameworkSlotDefend : SCR_ScenarioFrameworkSlotTaskAI
 		if (m_Entity)
 			m_vPosition = m_Entity.GetOrigin();
 		
+		m_aSpawnedEntities.RemoveItem(null);
 		foreach (IEntity entity : m_aSpawnedEntities)
 		{
-			if (!entity)
-				continue;
-			
 			m_vPosition = entity.GetOrigin();
 			SCR_EntityHelper.DeleteEntityAndChildren(entity);
 		}

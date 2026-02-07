@@ -1,62 +1,61 @@
 //! This component handles server entry and visiualization of server data
-class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
+class SCR_ServerBrowserEntryComponent : SCR_BrowserListMenuEntryComponent
 {
 	// Attributes
 	[Attribute("999")]
 	protected int m_iPingLimit;
 	
-	[Attribute("download")]
+	[Attribute(SCR_WorkshopUiCommon.ICON_DOWNLOAD)]
 	protected string m_sTooltipDownloadIcon;
 	
-	[Attribute("1.75")]
+	[Attribute(UIConstants.ACTION_DISPLAY_ICON_SCALE_HUGE)]
 	protected float m_fTooltipDownloadIconScale;
 
+	[Attribute("", UIWidgets.Object)]
+	protected ref array<ref ServerBrowserEntryProperty> m_aPingStates;
+	
 	// Const
-	protected static const string LAYOUT_CONTENT = "HorizontalLayout";
-	protected static const string LAYOUT_LOADING = "Loading";
+	protected const string LAYOUT_CONTENT =		"HorizontalLayout";
+	protected const string LAYOUT_LOADING =		"Loading";
 	
-	protected static const string BUTTON_FAVORITE = "FavButton";
-	protected static const string BUTTON_JOIN = "JoinButton";
-	protected static const string BUTTON_PASSWORD = "PasswordButton";
+	protected const string BUTTON_JOIN = 		"JoinButton";
+	protected const string BUTTON_PASSWORD = 	"PasswordButton";
 	
-	protected static const string ICON_WARNING = "VersionWarningIcon";
-	protected static const string ICON_UNJOINABLE = "JoinWarningIcon";
-	protected static const string ICON_MODDED = "ImageModded";
-	protected static const string ICON_PING = "ImgPing";
+	protected const string ICON_WARNING =		"VersionWarningIcon";
+	protected const string ICON_UNJOINABLE = 	"JoinWarningIcon";
+	protected const string ICON_MODDED = 		"ImageModded";
+	protected const string ICON_PING = 			"ImgPing";
 	
-	protected static const string FRAME_NAME = "FrameName";
-	protected static const string FRAME_SCENARIO = "FrameScenario";
+	protected const string FRAME_NAME = 		"FrameName";
+	protected const string FRAME_SCENARIO = 	"FrameScenario";
 	
-	protected static const string TEXT_CELL = "Content";
+	protected const string TEXT_CELL = 			"Content";
+	
+	protected const string TOOLTIP_JOIN = 				"Join";
+	protected const string TOOLTIP_VERSION_MISMATCH = 	"VersionMismatch";
 	
 	// Base
 	protected Room m_RoomInfo;
 	protected SCR_EServerEntryProperty m_iProperties;
 
-	// Ping
-	[Attribute("", UIWidgets.Object)]
-	protected ref array<ref ServerBrowserEntryProperty> m_aPingStates;
-
-	// Backrounds and wrappers
-	protected Widget m_wHorizontalContent;
-	protected Widget m_wLoading;
-
-	// Favorite widgets and behavior
-	protected Widget m_wUnjoinableIcon;
-
-	protected ImageWidget m_wImgPing;
-	protected int m_iHighestPing = 0;
-
-	protected Widget m_wImageModded;
-	protected Widget m_wJoinButton;
-	protected Widget m_wPasswordButton;
-
 	protected SCR_RoomModsManager m_ModsManager;
 	protected string m_sPatchSize;
 	protected bool m_bIsPatchSizeLoaded;
+	protected int m_iHighestPing;
 	
+	// Widgets
+	protected Widget m_wHorizontalContent;
+	protected Widget m_wLoading;
+	protected Widget m_wUnjoinableIcon;
+	protected ImageWidget m_wImgPing;
+	protected Widget m_wImageModded;
+	protected Widget m_wJoinButton;
+	protected Widget m_wPasswordButton;
 	protected Widget m_wVersionWarningIcon;
-
+	
+	protected SCR_ModularButtonComponent m_JoinButton;
+	protected SCR_ModularButtonComponent m_PasswordButton;
+	
 	//------------------------------------------------------------------------------------------------
 	// Override
 	//------------------------------------------------------------------------------------------------
@@ -64,24 +63,16 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
-		m_wRoot = w;
-
 		if (!GetGame().InPlayMode())
 			return;
 
 		// Get wrappers
-		m_wHorizontalContent = m_wRoot.FindAnyWidget(LAYOUT_CONTENT);
-		m_wLoading = m_wRoot.FindAnyWidget(LAYOUT_LOADING);
+		m_wHorizontalContent = w.FindAnyWidget(LAYOUT_CONTENT);
+		m_wLoading = w.FindAnyWidget(LAYOUT_LOADING);
 
 		// Setup favorite button
-		Widget favoriteButton = w.FindAnyWidget(BUTTON_FAVORITE);
-		if (favoriteButton)
-		{
-			m_FavComponent = SCR_ModularButtonComponent.Cast(favoriteButton.FindHandler(SCR_ModularButtonComponent));
-
-			m_wVersionWarningIcon = w.FindAnyWidget(ICON_WARNING);
-			m_wUnjoinableIcon = w.FindAnyWidget(ICON_UNJOINABLE);
-		}
+		m_wVersionWarningIcon = w.FindAnyWidget(ICON_WARNING);
+		m_wUnjoinableIcon = w.FindAnyWidget(ICON_UNJOINABLE);
 
 		// Property images and buttons
 		m_wImageModded = w.FindAnyWidget(ICON_MODDED);
@@ -89,21 +80,18 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 		m_wPasswordButton = w.FindAnyWidget(BUTTON_PASSWORD);
 
 		// Mouse interaction buttons
-		if (m_FavComponent)
-			m_aMouseButtons.Insert(m_FavComponent);
-
-		SCR_ModularButtonComponent buttonComp = SCR_ModularButtonComponent.FindComponent(m_wJoinButton);
-		if (buttonComp)
+		m_JoinButton = SCR_ModularButtonComponent.FindComponent(m_wJoinButton);
+		if (m_JoinButton)
 		{
-			buttonComp.m_OnClicked.Insert(OnJoinInteractionButtonClicked);
-			m_aMouseButtons.Insert(buttonComp);
+			m_JoinButton.m_OnClicked.Insert(OnJoinInteractionButtonClicked);
+			m_aMouseButtons.Insert(m_JoinButton);
 		}
 
-		buttonComp = SCR_ModularButtonComponent.FindComponent(m_wPasswordButton);
-		if (buttonComp)
+		m_PasswordButton = SCR_ModularButtonComponent.FindComponent(m_wPasswordButton);
+		if (m_PasswordButton)
 		{
-			buttonComp.m_OnClicked.Insert(OnJoinInteractionButtonClicked);
-			m_aMouseButtons.Insert(buttonComp);
+			m_PasswordButton.m_OnClicked.Insert(OnJoinInteractionButtonClicked);
+			m_aMouseButtons.Insert(m_PasswordButton);
 		}
 
 		// Ping
@@ -111,7 +99,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 
 		// Name
 		SCR_HorizontalScrollAnimationComponent scrollComp;
-		Widget frameName = m_wRoot.FindAnyWidget(FRAME_NAME);
+		Widget frameName = w.FindAnyWidget(FRAME_NAME);
 		if (frameName)
 		{
 			scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(frameName.FindHandler(SCR_HorizontalScrollAnimationComponent));
@@ -120,7 +108,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 		}
 
 		// Scenario
-		Widget frameScenario = m_wRoot.FindAnyWidget(FRAME_SCENARIO);
+		Widget frameScenario = w.FindAnyWidget(FRAME_SCENARIO);
 		if (frameScenario)
 		{
 			scrollComp = SCR_HorizontalScrollAnimationComponent.Cast(frameScenario.FindHandler(SCR_HorizontalScrollAnimationComponent));
@@ -143,25 +131,29 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	override void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		super.OnTooltipShow(tooltipClass, tooltipWidget, hoverWidget, preset, tag);
+		super.OnTooltipShow(tooltip);
 
-		string message = tooltipClass.GetDefaultMessage();
+		SCR_ScriptedWidgetTooltipContentBase content = tooltip.GetContent();
+		if (!content)
+			return;
+		
+		string message = content.GetDefaultMessage();
 
-		switch (tag)
+		switch (tooltip.GetTag())
 		{
-			case "VersionMismatch":
-				SCR_VersionMismatchTooltipComponent comp = SCR_VersionMismatchTooltipComponent.FindComponent(tooltipWidget);
+			case TOOLTIP_VERSION_MISMATCH:
+				SCR_VersionMismatchTooltipComponent comp = SCR_VersionMismatchTooltipComponent.FindComponent(content.GetContentRoot());
 				if (comp && m_RoomInfo)
 					comp.SetWrongVersionMessage(m_RoomInfo.GameVersion());
 				break;
 
-			case "Join":
+			case TOOLTIP_JOIN:
 				if (m_bIsPatchSizeLoaded)
 					message = string.Format(message, GetDownloadSizeMessage());
 
-				tooltipClass.SetMessage(message);
+				content.SetMessage(message);
 				break;
 		}
 	}
@@ -171,8 +163,11 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	{
 		// Password and Play buttons
 		if (m_wJoinButton)
-			m_wJoinButton.SetVisible(m_bMouseButtonsEnabled && m_bFocused && !(m_iProperties & SCR_EServerEntryProperty.PASSWORD_PROTECTED) && !(m_iProperties & SCR_EServerEntryProperty.UNJOINABLE));
+			m_wJoinButton.SetVisible(m_bFocused && !(m_iProperties & SCR_EServerEntryProperty.PASSWORD_PROTECTED) && !(m_iProperties & SCR_EServerEntryProperty.UNJOINABLE));
 
+		SCR_ListEntryHelper.UpdateMouseButtonColor(m_JoinButton, m_bUnavailable, m_bFocused);
+		SCR_ListEntryHelper.UpdateMouseButtonColor(m_PasswordButton, m_bUnavailable, m_bFocused);
+		
 		super.UpdateModularButtons();
 	}
 	
@@ -312,18 +307,18 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 			m_wPasswordButton.SetVisible(m_iProperties & SCR_EServerEntryProperty.PASSWORD_PROTECTED && !(m_iProperties & SCR_EServerEntryProperty.UNJOINABLE));
 
 		// Turn favorites button into warning or unjoinable icon
-		if (!m_FavComponent || !m_wVersionWarningIcon || !m_wUnjoinableIcon)
+		if (!m_FavoriteButton || !m_wVersionWarningIcon || !m_wUnjoinableIcon)
 			return;
 
 		bool versionMismatch = m_iProperties & SCR_EServerEntryProperty.VERSION_MISMATCH;
 		bool unjoinable = m_iProperties & SCR_EServerEntryProperty.UNJOINABLE;
 
-		m_FavComponent.SetEnabled(!versionMismatch && !unjoinable);
+		m_FavoriteButton.SetEnabled(!versionMismatch && !unjoinable);
 
 		m_wVersionWarningIcon.SetVisible(versionMismatch && !unjoinable);
 		m_wUnjoinableIcon.SetVisible(unjoinable);
 
-		m_bDisabled = versionMismatch || unjoinable;
+		m_bUnavailable = versionMismatch || unjoinable;
 		UpdateModularButtons();
 	}
 
@@ -333,9 +328,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 		if (!m_ModsManager || !(m_iProperties & SCR_EServerEntryProperty.MODDED) || m_sPatchSize.IsEmpty())
 			return string.Empty;
 
-		string icon, color;
-		
-		icon = string.Format("<image set='%1' name='%2' scale='%3'/>", UIConstants.ICONS_IMAGE_SET, m_sTooltipDownloadIcon, m_fTooltipDownloadIconScale.ToString());
+		string icon = string.Format("<image set='%1' name='%2' scale='%3'/>", UIConstants.ICONS_IMAGE_SET, m_sTooltipDownloadIcon, m_fTooltipDownloadIconScale.ToString());
 		return string.Format("  [%1%2 ]", icon, m_sPatchSize);
 	}
 
@@ -358,17 +351,15 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateTooltipJoinDownloadSizeMessage()
 	{
-		if (!m_CurrentTooltip || !m_CurrentTooltip.IsVisible())
+		if (!m_CurrentTooltip || !m_CurrentTooltip.IsValid(TOOLTIP_JOIN))
+			return;
+
+		SCR_ScriptedWidgetTooltipContentBase content = m_CurrentTooltip.GetContent();
+		if (!content)
 			return;
 		
-		switch (m_CurrentTooltip.GetTag())
-		{
-			case "Join":
-				string message = m_CurrentTooltip.GetDefaultMessage();
-				message = string.Format(message, GetDownloadSizeMessage());
-				m_CurrentTooltip.SetMessage(message);
-				break;
-		}
+		string message = string.Format(content.GetDefaultMessage(), GetDownloadSizeMessage());
+		content.SetMessage(message);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -403,7 +394,7 @@ class SCR_ServerBrowserEntryComponent : SCR_ListMenuEntryComponent
 		SetCellText("Players", playerCount + "/" + playerCountMax);
 
 		// Favorite
-		if (m_FavComponent)
+		if (m_FavoriteButton)
 			SetFavorite(m_RoomInfo.IsFavorite());
 
 		// Ping

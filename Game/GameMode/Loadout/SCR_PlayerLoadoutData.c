@@ -15,6 +15,7 @@ class SCR_PlayerLoadoutData
     ref array<ref SCR_ClothingLoadoutData> Clothings = {};
 	ref array<ref SCR_WeaponLoadoutData> Weapons = {};
 	float LoadoutCost;
+	int FactionIndex;
 
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -49,6 +50,7 @@ class SCR_PlayerLoadoutData
 		}
 
 		snapshot.SerializeFloat(instance.LoadoutCost);
+		snapshot.SerializeInt(instance.FactionIndex);
 
         return true;
     }
@@ -97,6 +99,7 @@ class SCR_PlayerLoadoutData
 		}
 
 		snapshot.SerializeFloat(instance.LoadoutCost);
+		snapshot.SerializeInt(instance.FactionIndex);
 		
         return true;
     }
@@ -130,6 +133,7 @@ class SCR_PlayerLoadoutData
 		}
 
 		snapshot.EncodeFloat(packet);
+		snapshot.EncodeInt(packet);
     }
  
 	//------------------------------------------------------------------------------------------------
@@ -161,6 +165,7 @@ class SCR_PlayerLoadoutData
 		}
 		
 		snapshot.DecodeFloat(packet);
+		snapshot.DecodeInt(packet);
 
         return true;
     }

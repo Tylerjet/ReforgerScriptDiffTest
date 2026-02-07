@@ -116,11 +116,11 @@ class SCR_UnconsciousScreenEffect : SCR_BaseScreenEffect
 		if (!m_pDamageManager)
 			return 0;
 			
-		SCR_CharacterResilienceHitZone resilience = SCR_CharacterResilienceHitZone.Cast(m_pDamageManager.GetResilienceHitZone()); 
+		SCR_CharacterResilienceHitZone resilience = m_pDamageManager.GetResilienceHitZone();
 		if (!resilience)
 			return 0;
 		
-		SCR_CharacterBloodHitZone blood = SCR_CharacterBloodHitZone.Cast(m_pDamageManager.GetBloodHitZone()); 
+		SCR_CharacterBloodHitZone blood = m_pDamageManager.GetBloodHitZone();
 		if (blood && blood.GetHealthScaled() < blood.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS))
 			return 0;
 

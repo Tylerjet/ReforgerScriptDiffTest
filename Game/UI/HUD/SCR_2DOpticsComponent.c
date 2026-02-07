@@ -12,19 +12,17 @@ typedef func OnSightsADSChanged;
 class SCR_2DOpticsComponent : ScriptedSightsComponent
 {
 	// Action names
-	const string ACTION_WHEEL = "WeaponChangeMagnification";
+	const string ACTION_ZOOM_IN = "WeaponOpticsZoomIn";
+	const string ACTION_ZOOM_OUT = "WeaponOpticsZoomOut";
 	const string ACTION_ILLUMINATION = "WeaponToggleSightsIllumination";
 
-	const float REFERENCE_FOV = 38;
+	const float REFERENCE_FOV = 28;
 	const float OPACITY_INITIAL = 0.75;
 
 	const float NEAR_PLANE_DEFAULT = 0.05;
 	const float NEAR_PLANE_ZOOMED = 0.05;
 
 	// Optics setup
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Layout used for 2D sights HUD\n[OBSOLETE]", params: "layout", category: "Resources")]
-	protected ResourceName m_sLayoutResource;
-
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Texture of reticle\n", params: "edds imageset", category: "Resources")]
 	protected ResourceName m_sReticleTexture;
 
@@ -60,9 +58,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	[Attribute("0", UIWidgets.Slider, "POSITIVE:\n Rear focal plane - magnification at which reticle markings are valid\n\nZERO:\n Front focal plane reticle scaling with magnification.\n\nNEGATIVE:\n Enforced base FOV in degrees\n", params: "-60 200 0.001", category: "Sights", precision: 5)]
 	protected float m_fReticleBaseZoom;
-
-	[Attribute("0", UIWidgets.CheckBox, "Check if the optic is attached to a turret\n", category: "Sights")]
-	protected bool m_bIsTurretOptic;
 
 	[Attribute("10", UIWidgets.EditBox, desc: "Field of view of the objective\n[ ° ]", params: "0.001 60 0.001", category: "2DSights", precision: 3)]
 	protected float m_fObjectiveFov;
@@ -102,7 +97,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("4", UIWidgets.EditBox, desc: "Rotation damping speed - the higher, the faster the rotation speed gets zeroed", params: "0 60 0.1", category: "Effects")]
 	protected float m_fRotationDampingSpeed;
 
-	[Attribute("0.01", UIWidgets.EditBox, desc: "Movement effect scaling", params: "-100 100 0.01", category: "Effects")]
+	[Attribute("0.2", UIWidgets.EditBox, desc: "Movement effect scaling", params: "-100 100 0.01", category: "Effects")]
 	protected float m_fMovementScale;
 
 	[Attribute("2", UIWidgets.EditBox, desc: "Movement damping speed - the higher, the faster the movement speed gets zeroed", params: "0 60 0.1", category: "Effects")]
@@ -295,14 +290,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		return m_bIsOpticsHidden;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	bool GetIsZoomed()
-	{
-		return m_bZoomed;
-	}
-
-	protected ref array<float> m_aReticleSizes = {};
-	protected int m_iSelectedZoomLevel = 0;
+	protected int m_iSelectedZoomLevel;
 
 	// Overall movement
 	protected float m_fScratchesRoll;
@@ -310,21 +298,19 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	// FOVs
 	protected float m_fFovZoomed;
 	protected float m_fDefaultSize;
-	protected float m_fCurrentReticleSize;
 	protected float m_fNearPlaneCurrent;
 
 	// Movement check
 	protected bool m_bIsMoving;
 	protected bool m_bIsRotating;
-	protected bool m_bZoomed = false;
-	protected bool m_bWasEntityHidden = false;
+	protected bool m_bWasEntityHidden;
 	protected int m_iHeadBoneId = -1;
 
 	protected bool m_bIsOpticsHidden;
 	protected bool m_bIsIlluminationOn;
 
 	// Owner and character references
-	protected ChimeraCharacter m_ParentCharacter = null;
+	protected ChimeraCharacter m_ParentCharacter;
 
 	static ref ScriptInvokerBase<OnSightsADSChanged> s_OnSightsADSChanged = new ScriptInvokerBase<OnSightsADSChanged>();
 	static ref ScriptInvokerBase<On2DOpticsADSChange> s_On2DOpticADSChanged = new ScriptInvokerBase<On2DOpticsADSChange>();
@@ -425,11 +411,9 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnSightADSActivated()
+	protected void HandleSightActivation()
 	{
 		m_ParentCharacter = ChimeraCharacter.Cast(GetOwner().GetParent());
-
-		super.OnSightADSActivated();
 
 		s_On2DOpticADSChanged.Invoke(this, true);
 		s_OnSightsADSChanged.Invoke(true, GetFovZoomed());
@@ -438,8 +422,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		m_fNearPlaneCurrent = NEAR_PLANE_DEFAULT;
 		GetGame().GetCallqueue().CallLater(HideObjects, m_iAnimationActivationDelay, false);
 
-		m_bZoomed = true;
-
 		m_bIsOpticsHidden = false;
 
 		// Setup illumination
@@ -447,9 +429,8 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnSightADSDeactivated()
+	protected void HandleSightDeactivation()
 	{
-		super.OnSightADSDeactivated();
 		s_On2DOpticADSChanged.Invoke(this, false);
 		s_OnSightsADSChanged.Invoke(false, 0);
 
@@ -473,11 +454,23 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		// Leaving animation
 		m_fNearPlaneCurrent = NEAR_PLANE_DEFAULT;
 
-		m_bZoomed = false;
 		m_bIsOpticsHidden = true;
+	}
 
-		// Clean up reticle illumination
-		EnableReticleIllumination(false);
+	//------------------------------------------------------------------------------------------------
+	override void OnSightADSActivated()
+	{
+		super.OnSightADSActivated();
+
+		HandleSightActivation();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnSightADSDeactivated()
+	{
+		super.OnSightADSDeactivated();
+
+		HandleSightDeactivation();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -526,7 +519,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	{
 		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (!cameraManager)
-			return 74;
+			return REFERENCE_FOV;
 
 		float referenceFOV;
 		PlayerCamera camera = PlayerCamera.Cast(cameraManager.CurrentCamera());
@@ -559,7 +552,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		// Get camera parent to sight matrix
 		vector parentToSightMat[4];
-		GetParentToLocalTransform(parentToSightMat, camera.GetParent());
+		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), camera.GetParent(), parentToSightMat);
 
 		// Camera in parent space
 		vector cameraMat[4];
@@ -577,7 +570,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		Math3D.MatrixMultiply3(sightMat, cameraMat, sightMat);
 
 		// Sight transform which is important for turrets
-		vector turretMat[3];
+		vector turretMat[4];
 		GetSightsTransform(turretMat, true);
 		Math3D.MatrixInvMultiply3(sightMat, turretMat, sightMat);
 
@@ -647,14 +640,14 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		vector currentPos = camera.GetWorldTransformAxis(3);
 
-		bool moved = !float.AlmostEqual(previousPos[0], currentPos[0]);
-		moved &= !float.AlmostEqual(previousPos[1], currentPos[1]);
-		moved &= !float.AlmostEqual(previousPos[2], currentPos[2]);
+		float threshold = 0.0001;
+		float distance = vector.Distance(currentPos, previousPos);
 
-		if (moved)
+		if (distance > threshold)
 		{
 			m_bIsMoving = true;
-			vector movement = (currentPos - previousPos) / timeSlice;
+			float scale = (distance - threshold) / distance;
+			vector movement = (currentPos - previousPos) * (scale / timeSlice);
 			previousPos = currentPos;
 			return camera.VectorToLocal(movement);
 		}
@@ -756,58 +749,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	vector GetCameraAngles()
 	{
 		return m_vCameraAngles;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-		\param matrix Out transformation from parent model space to our local space.
-		\param parent Parent to override. The loop will quit on a node matching this.
-		\return lastNode Last node that was processed
-	*/
-	IEntity GetParentToLocalTransform(out vector result[4], IEntity parent = null)
-	{
-		vector temp[4];
-		Math3D.MatrixIdentity4(temp);
-
-		IEntity lastNode = GetOwner();
-
-		while (lastNode)
-		{
-			// Stop on defined parent entity, that is final node
-			if (parent == lastNode)
-				break;
-
-			vector localTransform[4];
-			lastNode.GetLocalTransform(localTransform);
-
-			// If using a pivot, we need to apply the pivot transformation
-			TNodeId pivotIndex = lastNode.GetPivot();
-			if (pivotIndex != -1)
-			{
-				// Multiply pivot * local TM = model TM
-				IEntity parentNode = lastNode.GetParent();
-				if (parentNode)
-				{
-					vector pivotTM[4];
-					parentNode.GetAnimation().GetBoneMatrix(pivotIndex, pivotTM);
-
-					// This should not be happening - there should
-					// rather be no pivot, yet it triggers at times.
-					// ??? TODO@AS: See if we can have better API for pivoting like this
-					if (!SCR_Math3D.IsMatrixEmpty(pivotTM))
-						Math3D.MatrixMultiply4(pivotTM, localTransform, localTransform);
-				}
-			}
-
-			Math3D.MatrixMultiply4(localTransform, temp, result);
-			Math3D.MatrixCopy(result, temp);
-
-			lastNode = lastNode.GetParent();
-		}
-
-		Math3D.MatrixGetInverse4(temp, result);
-
-		return lastNode;
 	}
 
 	//------------------------------------------------------------------------------------------------

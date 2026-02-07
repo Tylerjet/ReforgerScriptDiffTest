@@ -1,6 +1,6 @@
 class GameOverScreenInput: ChimeraMenuBase
 {	
-	protected InputManager m_InputManager = GetGame().GetInputManager();;
+	protected InputManager m_InputManager = GetGame().GetInputManager();
 	protected Widget m_BackButton;
 	protected Widget m_ChatButton;
 	protected SCR_GameOverScreenUIComponent m_GameOverScreenUIComponent;
@@ -11,8 +11,8 @@ class GameOverScreenInput: ChimeraMenuBase
 		Widget widgetRoot = GetRootWidget();
 
 		//~ Find Back button
-		m_BackButton = widgetRoot.FindAnyWidget("Back");
-		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent("Back", widgetRoot);
+		m_BackButton = widgetRoot.FindAnyWidget(UIConstants.BUTTON_BACK);
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, widgetRoot);
 		if (comp)
 			comp.m_OnActivated.Insert(ReturnToMainMenu);
 		

@@ -15,6 +15,8 @@ class CharacterCommandHandlerComponentClass: BaseCommandHandlerComponentClass
 
 class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 {
+	//-----------------------------------------------------------------------------
+	proto external IEntity GetCharacter();
 	//! Returns the current character controller component.
 	proto external CharacterControllerComponent GetControllerComponent();
 	//! gets some basic info about movement
@@ -38,10 +40,10 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external bool WasRotation();
 	proto external CharacterCommandFall		StartCommand_Fall(float pYVelocity);
 	proto external CharacterCommandLadder	StartCommand_Ladder(LadderComponent pLadder);
+	proto external CharacterCommandVehicle	StartCommand_Vehicle(BaseCompartmentSlot pCompartment);
 	//----------------------------------------------------------------------------
 	proto external CharacterCommandMove		StartCommand_Move();
 	proto external CharacterCommandClimb	StartCommand_Climb(CharacterCommandClimbResult pClimbResult, int pType);
-	proto external CharacterCommandVehicle	StartCommand_Vehicle(BaseCompartmentSlot pCompartment);
 	proto external CharacterCommandSwim		StartCommand_Swim();
 	proto external CharacterCommandDamageFullBody StartCommand_DamageFullBody(float direction, int pType);
 	proto external CharacterCommandSlide	StartCommand_Slide();
@@ -105,7 +107,6 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external bool HandleLeftHandGadgetDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleDynamicStanceDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool TransitionMove_JumpClimbDefault(CharacterInputContext pInputCtx);
-	proto external bool TransitionMove_VehicleDefault(CharacterInputContext pInputCtx);
 	proto external bool TransitionMove_SwimmingDefault(CharacterInputContext pInputCtx);
 	proto external bool TransitionMove_LadderDefault(CharacterInputContext pInputCtx);
 	proto external void DropLiveGrenadeFromHand(bool throwWithForce);
@@ -152,7 +153,6 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	----------------------------------------------------------------------------
 	*/
 	event bool TransitionMove_JumpClimb(CharacterInputContext pInputCtx);
-	event bool TransitionMove_Vehicle(CharacterInputContext pInputCtx);
 	event bool TransitionMove_Swimming(CharacterInputContext pInputCtx);
 	event bool TransitionMove_Ladder(CharacterInputContext pInputCtx);
 	/*
@@ -163,6 +163,12 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	event bool SubhandlerStatesBegin(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool SubhandlerStatesEnd(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool SubhandlerTransitionsMove(CharacterInputContext InputCtx);
+	/*
+	----------------------------------------------------------------------------
+	additional callbacks
+	----------------------------------------------------------------------------
+	*/
+	event int SelectMeleeAnimationType();
 }
 
 /*!

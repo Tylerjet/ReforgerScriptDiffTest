@@ -74,6 +74,7 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		m_wSuppliesText.SetText(string.ToString(m_ResourceConsumer.GetAggregatedResourceValue()));
 	}
 
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------
 	void UpdateIcon()
 	{
@@ -141,6 +142,7 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 		if (faction)
 			m_MilitarySymbolComponent.Update(symbol);
 	}
+	//---- REFACTOR NOTE END ----
 
 	//------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

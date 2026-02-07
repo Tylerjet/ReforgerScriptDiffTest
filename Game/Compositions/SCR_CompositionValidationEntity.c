@@ -2,7 +2,7 @@
 [EntityEditorProps(category: "GameScripted/Editor", description: "Core Editor manager", color: "251 91 0 255", dynamicBox: true)]
 class SCR_CompositionValidationEntityClass: SCR_GenericBoxEntityClass
 {
-};
+}
 
 class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 {
@@ -17,7 +17,6 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 	
 #ifdef WORKBENCH
 	private bool m_bCompositionSearched;
-	private WorldEditorAPI m_API;
 	private IEntitySource m_CompositionSource;
 	private float m_fTime;
 	private ref DebugTextScreenSpace m_Title;
@@ -26,6 +25,7 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 	private ref Shape m_Shape;
 #endif
 
+	//------------------------------------------------------------------------------------------------
 	protected bool InArea(vector pos)
 	{
 		pos = CoordToLocal(pos);
@@ -42,7 +42,8 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 			return Vector(pos[0], 0, pos[2]).Length() < sizeX;
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	protected bool FindComposition()
 	{
 		if (m_bCompositionSearched) 
@@ -56,41 +57,49 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 		m_bCompositionSearched = true;
 		
 		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		if (!worldEditor) return false;
-		
-		m_API = worldEditor.GetApi();
-		if (!m_API) return false;
+		if (!worldEditor)
+			return false;
+
+		WorldEditorAPI worldEditorAPI = worldEditor.GetApi();
+		if (!worldEditorAPI)
+			return false;
 		
 		for (int i = 0, containersCount = worldEditor.GetNumContainers(); i < containersCount; i++)
 		{
 			IEntitySource entitySource = IEntitySource.Cast(worldEditor.GetContainer(i));
-			if (!entitySource || entitySource.GetSubScene() != m_API.GetCurrentSubScene() || entitySource.GetLayerID() != m_API.GetCurrentEntityLayerId()) continue;
+			if (!entitySource || entitySource.GetSubScene() != worldEditorAPI.GetCurrentSubScene() || entitySource.GetLayerID() != worldEditorAPI.GetCurrentEntityLayerId())
+				continue;
 			
 			//--- Get composition prefab
 			m_CompositionSource = entitySource;
 			break;
 		}
+
 		if (!m_CompositionSource)
 		{
 			Print("Cannot find the composition, no entities are present in the current layer.", LogLevel.WARNING);
 			return false;
 		}
+
 		m_Title.SetText(m_CompositionSource.GetResourceName());
+
 		return true;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected void ProcessEntities(IEntitySource entitySource, out int count)
 	{
 		IEntitySource childSource;
 		IEntity child;
 		vector boundMin, boundMax;
 		vector boundPoints[8];
-		bool inArea;
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
 		for (int i = 0, countChildren = entitySource.GetNumChildren(); i < countChildren; i++)
 		{
 			childSource = entitySource.GetChild(i);
-			child = m_API.SourceToEntity(childSource);
-			if (!child) continue;
+			child = worldEditorAPI.SourceToEntity(childSource);
+			if (!child)
+				continue;
 			
 			//--- Check if it's inside slot area
 			child.GetBounds(boundMin, boundMax);
@@ -108,7 +117,6 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 				DebugTextWorldSpace.Create(GetWorld(), "!", DebugTextFlags.FACE_CAMERA | DebugTextFlags.CENTER | DebugTextFlags.ONCE, pos[0], pos[1], pos[2], 30, Color.WHITE, Color.RED);
 			}
 			
-			
 			//--- Check if it has replication component
 			/*if (child.FindComponent(RplComponent))
 			{
@@ -122,9 +130,11 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
-		if (!FindComposition()) return;
+		if (!FindComposition())
+			return;
 		
 		//--- Save performance by not refreshing every frame
 		if (m_fTime < m_fRefreshRate)
@@ -133,12 +143,17 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 			return;
 		}
 		
-		//Print(m_API.GetSelectedEntity(0));
+		//Print(worldEditorAPI.GetSelectedEntity(0));
 		
 		int count = 1;
 		ProcessEntities(m_CompositionSource, count);
 		m_Text.SetText(string.Format("Entities: %1", count));
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] src
+	//! \param[in] parent
 	void SCR_CompositionValidationEntity(IEntitySource src, IEntity parent)
 	{
 		m_Title = DebugTextScreenSpace.Create(GetWorld(), "", DebugTextFlags.FACE_CAMERA, 10, 10, 20, ARGBF(1, 1, 1, 1), ARGBF(1, 0, 0, 0));
@@ -151,6 +166,9 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 			m_Shape = Shape.CreateCylinder(ARGBF(0.1, 1, 1, 1), ShapeFlags.VISIBLE | ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE | ShapeFlags.ADDITIVE | ShapeFlags.DOUBLESIDE, GetOrigin(), m_vSlotSize[0], m_vSlotSize[2]);
 #endif
 	}
+
+	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CompositionValidationEntity()
 	{
 #ifdef DEBUG_SHAPE
@@ -158,4 +176,4 @@ class SCR_CompositionValidationEntity : SCR_GenericBoxEntity
 #endif
 	}
 #endif
-};
+}

@@ -41,7 +41,7 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		if (!compartmentAccess)
 			return;
 		
-		if (!compartmentAccess.GetInVehicle(pOwnerEntity, targetCompartment, GetRelevantDoorIndex(pUserEntity)))
+		if (!compartmentAccess.GetInVehicle(pOwnerEntity, targetCompartment, false, GetRelevantDoorIndex(pUserEntity), ECloseDoorAfterActions.RETURN_TO_PREVIOUS_STATE, false))
 			return;
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);
@@ -103,7 +103,7 @@ class SCR_GetInUserAction : SCR_CompartmentUserAction
 		}
 		
 		// Make sure vehicle can be enter via provided door, if not, set reason.
-		if (!compartmentAccess.CanGetInVehicleViaDoor(owner, compartment, GetRelevantDoorIndex(user)))
+		if (!compartmentAccess.CanGetInVehicleViaDoor(owner, m_CompartmentManager, GetRelevantDoorIndex(user)))
 		{
 			SetCannotPerformReason("#AR-UserAction_SeatObstructed");
 			return false;

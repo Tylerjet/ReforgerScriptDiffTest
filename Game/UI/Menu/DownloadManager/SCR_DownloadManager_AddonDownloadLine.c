@@ -5,11 +5,10 @@ Component for a line which indicates addon download state in the download manage
 class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 {
 	// Icon setting
-	protected const string ICONICON_DOWNLOAD = "download";
-	protected const string ICON_UP = "up";
-	protected const string ICON_DOWN = "down";
+	protected const string ICON_UP = 	"up";
+	protected const string ICON_DOWN = 	"down";
 
-	protected const Color ICON_COLORICON_DOWNLOAD = UIColors.CONTRAST_COLOR;
+	protected const Color ICON_COLOR_DOWNLOAD = UIColors.CONTRAST_COLOR;
 	protected const Color ICON_COLOR_UP = UIColors.CONFIRM;
 	protected const Color ICON_COLOR_DOWN = UIColors.WARNING;
 
@@ -17,15 +16,11 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	protected const Color TEXT_SIZE_COLOR_DOWNLOADED = Color.White;
 	protected const Color TEXT_SIZE_COLOR_ERROR = UIColors.WARNING;
 
-	protected const string ICON_SIZE_DOWNLOAD = "download";
-	protected const string ICON_SIZE_UPDATE = "update";
-	protected const string ICON_SIZE_DOWNLOADED = "check";
-
 	protected ref SCR_DownloadManager_AddonDownloadLineBaseWidgets m_Widgets = new SCR_DownloadManager_AddonDownloadLineBaseWidgets();
 	protected ref SCR_WorkshopItemActionDownload m_Action;
 	protected ref SCR_WorkshopItem m_Item;
 
-	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset", UIWidgets.ResourcePickerThumbnail, "Imageset resource for icons", "imageset")]
+	[Attribute(UIConstants.ICONS_IMAGE_SET, UIWidgets.ResourcePickerThumbnail, "Imageset resource for icons", "imageset")]
 	protected ResourceName m_IconImageSet;
 
 	bool m_bHideButtons;
@@ -103,8 +98,8 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		if (!item.GetOffline()) //Missing
 		{
 			m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOAD);
-			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLORICON_DOWNLOAD);
-			m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, ICON_SIZE_DOWNLOAD);
+			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_DOWNLOAD);
+			m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, SCR_WorkshopUiCommon.ICON_DOWNLOAD);
 		}
 		else //Downloaded
 		{
@@ -112,15 +107,15 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 			{
 				// Need version change
 				m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOAD);
-				m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLORICON_DOWNLOAD);
-				m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, ICON_SIZE_UPDATE);
+				m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_DOWNLOAD);
+				m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, SCR_WorkshopUiCommon.ICON_UPDATE);
 			}
 			else
 			{
 				// Version match
 				m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOADED);
 				m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_UP);
-				m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, ICON_SIZE_DOWNLOADED);
+				m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, UIConstants.ICON_CHECK);
 				
 				// Display whole size
 				m_Widgets.m_AddonSizeText.SetText(SCR_ByteFormat.GetReadableSize(item.GetSizeBytes()));
@@ -293,7 +288,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		}
 		else
 		{
-			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLORICON_DOWNLOAD);
+			m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_DOWNLOAD);
 		}
 
 		// Buttons
@@ -373,8 +368,8 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 			return;
 
 		// Defaul to download
-		string imageName = ICONICON_DOWNLOAD;
-		Color color = ICON_COLORICON_DOWNLOAD;
+		string imageName = SCR_WorkshopUiCommon.ICON_DOWNLOAD;
+		Color color = ICON_COLOR_DOWNLOAD;
 
 		// Is there current verion?
 		if (vFrom)

@@ -100,9 +100,9 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 		// Let's try to find empty slot and equip weapon to it
 		if (suitableSlots.Count() > 1)
 		{
-			for (int j = 0; j < suitableSlots.Count(); j++)
+			for (int j = 0, countJ = suitableSlots.Count(); j < countJ; j++)
 			{
-				WeaponSlotComponent slot = WeaponSlotComponent.Cast(weaponsList[suitableSlots[j]]);
+				WeaponSlotComponent slot = weaponsList[suitableSlots[j]];
 				
 				if (slot.GetWeaponEntity() == null)
 				{
@@ -116,7 +116,7 @@ class SCR_EquipWeaponAction : SCR_BaseWeaponAction
 				}
 			}
 		}
-		WeaponSlotComponent slot = WeaponSlotComponent.Cast(weaponsList[suitableSlots[i]]);
+		WeaponSlotComponent slot = weaponsList[suitableSlots[i]];
 		// Target slot has weapon, first detach it
 		if (slot.GetWeaponEntity())
 		{
@@ -302,7 +302,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 				// If we have weapon equipped, search for the slot that is not selected one
 				if (weaponSlotCurr != null)
 				{
-					if ( weaponSlotCurr != WeaponSlotComponent.Cast(weaponsList[suitableSlots[j]]))
+					if (weaponSlotCurr != weaponsList[suitableSlots[j]])
 					{
 						i = j;
 						break;
@@ -311,7 +311,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 				else
 				{
 					// otherwise prefer slot that doesn't have any weapon set in it
-					WeaponSlotComponent slotComp = WeaponSlotComponent.Cast(weaponsList[suitableSlots[j]]);
+					WeaponSlotComponent slotComp = weaponsList[suitableSlots[j]];
 					if (!slotComp.GetWeaponEntity())
 					{
 						i = j;
@@ -321,7 +321,7 @@ class SCR_EquipWeaponHolsterAction : SCR_BaseWeaponAction
 			}
 		}
 		
-		weaponSlotFinal = WeaponSlotComponent.Cast(weaponsList[suitableSlots[i]]);
+		weaponSlotFinal = weaponsList[suitableSlots[i]];
 		
 		if (weaponSlotFinal == weaponSlotCurr && weaponSlotCurr != null && weaponSlotCurr.GetWeaponEntity() != null)
 			return;

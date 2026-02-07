@@ -29,7 +29,7 @@ class SCR_HealingUserAction : ScriptedUserAction
 		if (!item)
 			return null;
 		
-		return SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));;
+		return SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------	

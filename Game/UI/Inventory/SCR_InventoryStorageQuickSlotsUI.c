@@ -20,7 +20,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	
 	//------------------------------------------------------------------------------------------------
 	// ! 
-	protected void HighlightSlot( int iSlotIndex, bool bHighlight )
+	void HighlightSlot(int iSlotIndex, bool bHighlight)
 	{
 		if ( m_aSlots.IsEmpty() || iSlotIndex == -1 )
 			return;
@@ -96,6 +96,10 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	void SelectSlot( int iSlotIndex )
 	{
 		HighlightSlot( iSlotIndex, true );
+
+		if (s_iLastSelectedSlotIndex == iSlotIndex)
+			UseItemInSlot();
+
 		s_iLastSelectedSlotIndex = iSlotIndex;
 	}
 	
@@ -115,7 +119,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	override protected void UpdateOwnedSlots(notnull array<IEntity> pItemsInStorage)
 	{
 		int count = pItemsInStorage.Count();
-		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && !m_MenuHandler)
+		if (SCR_WeaponSwitchingBaseUI.s_bRadial && !m_MenuHandler)
 			count = Math.Min(count, 4); // todo: get this from radial menu config
 		
 		if (count < m_aSlots.Count())
@@ -148,8 +152,26 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		if (!m_Player)
 			return;
 		
-		if ( m_InventoryStorage && m_InventoryStorage.GetQuickSlotItems() )
-			pItemsInStorage.Copy( m_InventoryStorage.GetQuickSlotItems() );		
+		array<ref SCR_QuickslotBaseContainer> quickslots = m_InventoryStorage.GetQuickSlotItems();
+		
+		if (!m_InventoryStorage || !quickslots)
+			return;
+		
+		pItemsInStorage.Clear();
+		SCR_QuickslotEntityContainer entityContainer;
+		foreach (SCR_QuickslotBaseContainer container : quickslots)
+		{
+			entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+			if (!entityContainer)
+			{
+				pItemsInStorage.Insert(null); //we insert null here because previous implementation expected whole array even with nulls to be copied over
+				continue;
+			}
+			
+			pItemsInStorage.Insert(entityContainer.GetEntity());
+			
+		}
+			//pItemsInStorage.Copy( m_InventoryStorage.GetQuickSlotItems() );		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -226,9 +248,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	override void FillWithEmptySlots()
 	{
-		array<int> aCoordinates;
 		int iWidgetColumnSize, iWidgetRowSize;
-		int iPageCounter = 0;				
 		int iRelativeOffset = 0; 				//if there's an item taking more than one slot, offset the following items to the right
 		int i = 0;
 		
@@ -245,7 +265,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 				SCR_ItemAttributeCollection pAttrib = new SCR_ItemAttributeCollection();
 				pAttrib.SetSlotType( ESlotID.SLOT_ANY );
 				pAttrib.SetSlotSize( eSlotSize );
-				pSlot = SCR_InventorySlotQuickSlotUI.Cast( CreateSlotUI( null, iIndex, pAttrib ) );
+				pSlot = CreateSlotUI( null, iIndex, pAttrib );
 				m_aSlots.Set( iIndex, pSlot );
 			}
 			Widget w = pSlot.GetWidget();
@@ -311,7 +331,7 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 
 		if (useItem)
 		{
-			m_pSelectedSlot.UseItem(m_Player);
+			UseSelectedQuickslot();
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
 		}
 		else
@@ -323,20 +343,57 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void UseSelectedQuickslot()
+	{
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
+		if (!characterController)
+			return;
+		
+		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(characterController.GetInventoryStorageManager());
+		if (!storageManager)
+			return;
+		
+		SCR_CharacterInventoryStorageComponent characterStorage = storageManager.GetCharacterStorage();
+		if (!characterStorage)
+			return;
+		
+		array<ref SCR_QuickslotBaseContainer> quickslotItems = {};
+		quickslotItems = characterStorage.GetQuickSlotItems();
+		SCR_QuickslotBaseContainer container = quickslotItems.Get(s_iLastSelectedSlotIndex);
+		if (!container)
+			return;
+		
+		//a bit hardcoded solution for now to perserve old functionality with items
+		SCR_QuickslotEntityContainer entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+		if (entityContainer)
+		{
+			entityContainer.ActivateContainer(m_pSelectedSlot, m_Player);
+			return;
+		}
+		
+		container.ActivateContainer();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetInitialQuickSlot()
 	{
 		IEntity currentItem = m_InventoryStorage.GetSelectedItem();
 		if (!currentItem)
+		{
 			s_iInitSelectedSlotIndex = -1;
-		
-		array<IEntity> items = m_InventoryStorage.GetQuickSlotItems();
+			s_iLastSelectedSlotIndex = -1;
+			return;
+		}
+
+		array<IEntity> items = m_InventoryStorage.GetQuickSlotEntitiesOnly();
 		foreach (int i, IEntity item : items)
 		{
 			if (item != currentItem)
 				continue;
 			
 			s_iInitSelectedSlotIndex = i;
-			SelectSlot(s_iInitSelectedSlotIndex);
+			s_iLastSelectedSlotIndex = i;
+			HighlightSlot(s_iInitSelectedSlotIndex, true);
 			return;
 		}
 	}
@@ -462,9 +519,15 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 	//------------------------------------------------------------------------------------------------
 	void HighlightLastSelectedSlot()
 	{
-		SelectSlot(s_iLastSelectedSlotIndex);
+		HighlightSlot(s_iLastSelectedSlotIndex, true);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	int GetLastSelectedSlotIndex()
+	{
+		return s_iLastSelectedSlotIndex;
+	}
+	
 	//------------------------------------------- COMMON METHODS  -----------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
@@ -484,4 +547,4 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		m_iMaxColumns	= 0;
 		m_iLastShownPage = iPage;
 	}
-};
+}

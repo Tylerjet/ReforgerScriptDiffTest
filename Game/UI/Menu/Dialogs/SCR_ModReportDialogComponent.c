@@ -56,7 +56,6 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		
 		// Actions 
 		m_CurrentDialog.m_OnConfirm.Insert(OnSelectReportConfirm);
-		m_CurrentDialog.m_OnCancel.Insert(OnSelectReportCancel);
 		
 		// Author report action
 		SCR_InputButtonComponent butAuthor = m_CurrentDialog.FindButton("report_author");
@@ -65,44 +64,45 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnSelectReportConfirm(SCR_ConfigurableDialogUi dialog)
+	void OpenSelectReportAuthor(notnull SCR_WorkshopItem item)
 	{
-		OpenReportThis();
-		m_CurrentDialog.ClearButtons();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnSelectReportCancel(SCR_ConfigurableDialogUi dialog)
-	{
-		m_CurrentDialog.ClearButtons();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void OnSelectReportAuthor()
-	{	
-		if (m_CurrentDialog)
-			m_CurrentDialog.ClearButtons();
+		m_Item = item;
+		m_Author = item.GetWorkshopItem().Author();
 		
 		if (!m_Author.IsBlocked())
 		{
 			// Block author
 			m_LoadingOverlayDlg = SCR_LoadingOverlayDialog.Create();
 			OpenReportAuthorModList();
+			
+			return;
 		}
-		else
-		{
-			// Show cancel report block
-			OpenRemoveAuthorBlockModList();
-		}
+
+		// Show cancel report block
+		OpenRemoveAuthorBlockModList();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSelectReportConfirm(SCR_ConfigurableDialogUi dialog)
+	{
+		OpenReportThis();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSelectReportAuthor()
+	{	
+		OpenSelectReportAuthor(m_Item);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Dialog for selecting type, typing message and confirming this mod report
-	void OpenReportThis()
+	protected void OpenReportThis()
 	{
 		m_ReportDialog = ReportDialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ReportItemDialog));
 		if (!m_ReportDialog)
 			return;
+		
+		m_ReportDialog.SetWorkshopItem(m_Item);
 		
 		// Invoker actions 
 		m_ReportDialog.GetOnReportSuccess().Insert(OnItemReportedSuccessfully);
@@ -112,7 +112,7 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnItemReportedSuccessfully(bool isAuthorBlocked)
 	{
-		SCR_ConfigurableDialogUi dlg = SCR_WorkshopUiCommon.CreateDialog("report_success");
+		SCR_ConfigurableDialogUi dlg = SCR_WorkshopDialogs.CreateDialog("report_success");
 		dlg.m_OnClose.Insert(OnItemReportSuccessDialogClose);
 
 		// Message
@@ -220,10 +220,7 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 			
 			// Owned 
 			if (item.GetOffline())
-			{
-				line.DisplayError(LINE_DOWNLOADED);
-				continue;
-			}
+				line.DisplayError(SCR_WorkshopUiCommon.DOWNLOAD_STATE_COMPLETED);
 		}
 	}
 
@@ -238,7 +235,6 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		
 		if (!m_ActionAddAuthorBlock.Activate() && !m_ActionAddAuthorBlock.Reactivate())
 			return;
-		
 		
 		OnCancelReportAuthorModList();
 		m_LoadingOverlayDlg = SCR_LoadingOverlayDialog.Create();
@@ -328,13 +324,6 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 	protected void OnCancelAuthorReport()
 	{
 		m_ReportDialog.m_OnCancel.Remove(OnCancelAuthorReport);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetItem(notnull SCR_WorkshopItem item)
-	{
-		m_Item = item;
-		m_Author = item.GetWorkshopItem().Author();
 	}
 	
 	//------------------------------------------------------------------------------------------------

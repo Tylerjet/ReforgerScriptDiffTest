@@ -22,6 +22,66 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	protected Faction m_TargetFaction;
 	protected int m_iTextIndex;
 	
+	protected SCR_AttachableTask m_AttachableTask;
+	protected SCR_EditableEntityComponent m_AttachedTo;
+	
+	[RplProp(onRplName: "OnAttachedToId")]
+	protected RplId m_AttachedToId;
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Attaches a entity to this editable task
+	//! \param[in] attachedTo to which component attach this task - can be null to detach it
+	protected void AttachTo(SCR_EditableEntityComponent attachedTo)
+	{	
+		//++ Remove from the existing parent first
+		if (GetOwner().GetParent())
+			m_AttachableTask.GetParent().RemoveChild(m_AttachableTask, true);
+		
+		
+		//++ Add to the new parent (when defined)
+		if (attachedTo)
+		{
+				
+			//++ Do not allow to attach if target exceeds attached entities number
+			if (attachedTo.GetAttachedEntities().Count() >= EditorConstants.MAX_ATTACHED_ENTITIES)
+			{
+				SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BLOCKED, SCR_PlayerController.GetLocalPlayerId());
+				return;
+			}
+			
+			m_AttachableTask.SetOrigin(vector.Zero);
+			attachedTo.GetOwner().AddChild(m_AttachableTask, -1);
+			m_AttachableTask.SetTarget(attachedTo);
+			attachedTo.Attach(this);
+		}
+		else
+		{
+			m_AttachableTask.SetTarget(null);
+			if (m_AttachedTo)
+				m_AttachedTo.Detach(this);
+		}
+		
+		m_AttachedTo = attachedTo;
+		m_NearestLocation = m_AttachedTo;
+		UpdateText();
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Runs when an ID is attached
+	protected void OnAttachedToId()
+	{
+		SCR_EditableEntityComponent attachedTo = SCR_EditableEntityComponent.Cast(Replication.FindItem(m_AttachedToId));
+		AttachTo(attachedTo);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override SCR_EditableEntityComponent GetAttachedTo()
+	{
+		return m_AttachedTo;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Reveal the task to all players.
 	void ActivateTask()
@@ -127,6 +187,11 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	//------------------------------------------------------------------------------------------------
 	override void SetTransform(vector transform[4], bool changedByUser = false)
 	{	
+		//--- If it is moved by the user and has attached task, unlink it
+		
+		if (m_AttachableTask && changedByUser)
+			AttachTo(null);
+		
 		super.SetTransform(transform, changedByUser);
 		UpdateNearestLocation();
 	}
@@ -169,6 +234,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		
 		writer.WriteInt(factionIndex);
 		writer.WriteInt(m_iTextIndex);
+		writer.WriteRplId(m_AttachedToId);
 			
 		if (m_Task)
 			m_Task.Serialize(writer);
@@ -188,6 +254,9 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 			m_TargetFaction = GetGame().GetFactionManager().GetFactionByIndex(factionIndex);
 		
 		reader.ReadInt(m_iTextIndex);
+		reader.ReadRplId(m_AttachedToId);
+		OnAttachedToId();
+		
 		m_Task.SetTextIndex(m_iTextIndex);
 		
 		m_Task.Deserialize(reader);
@@ -214,6 +283,24 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		}
 		return this;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnParentEntityChanged(SCR_EditableEntityComponent parentEntity, SCR_EditableEntityComponent parentEntityPrev, bool changedByUser)
+	{
+		if (m_AttachableTask)
+		{
+			AttachTo(parentEntity);
+			
+			m_AttachedToId = Replication.FindId(parentEntity);
+			Replication.BumpMe();
+			
+			super.OnParentEntityChanged(null, null, changedByUser); //--- Needed to continue entity registration
+		}
+		else
+		{
+			super.OnParentEntityChanged(parentEntity, parentEntityPrev, changedByUser);
+		}
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -223,6 +310,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 	void SCR_EditableTaskComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		m_Task = SCR_EditorTask.Cast(ent);
+		m_AttachableTask = SCR_AttachableTask.Cast(ent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -232,5 +320,20 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 			m_Task.ShowTaskNotification(ENotification.EDITOR_TASK_DELETED, true);
 		
 		return super.Delete(changedByUser, updateNavmesh);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsAttachable()
+	{
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool IsAttached()
+	{
+		if (GetAttachedTo())
+			return true;
+		
+		return false;
 	}
 }

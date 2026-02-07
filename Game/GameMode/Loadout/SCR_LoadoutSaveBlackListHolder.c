@@ -4,6 +4,9 @@ class SCR_LoadoutSaveBlackListHolder
 	[Attribute(desc: "List of blacklist entries. Each blacklist becomes a button in attributes which the GM can enable and/or disable and is a set of items/item types which cannot be saved in loadout if the blacklist is activate")]
 	protected ref array<ref SCR_LoadoutSaveBlackList> m_LoadoutSaveBlackLists;
 	
+	[Attribute(desc: "List of Items that are black listed regardless of the other black list rules. Players with the item in their inventory can never save their loadout")]
+	protected ref array<ref SCR_LoadoutSaveBlackListItem> m_aSaveBlackListItems;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Init black lists, this will make sure each blacklist has a list to items that are blacklisted
 	void Init()
@@ -51,6 +54,14 @@ class SCR_LoadoutSaveBlackListHolder
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(prefab))
 			return true;
 		
+		//~ Check if the specific item is blacklisted
+		foreach (SCR_LoadoutSaveBlackListItem blackListItem : m_aSaveBlackListItems)
+		{
+			if (blackListItem.m_bEnabled && blackListItem.m_sSaveBlackListItem == prefab)
+				return true;
+		}
+		
+		//~ Check if the item type is black listed
 		foreach (SCR_LoadoutSaveBlackList blackList : m_LoadoutSaveBlackLists)
 		{
 			if (!blackList || !blackList.IsActive())
@@ -254,4 +265,14 @@ class SCR_LoadoutSaveBlackListItemType
 	
 	[Attribute("1", desc: "If true than the ItemMode will be ignored and any items that have the type regardless of the mode will be blacklisted", UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
 	bool m_bIgnoreItemMode;
+}
+
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(SCR_EArsenalItemType, "m_eItemType")]
+class SCR_LoadoutSaveBlackListItem
+{
+	[Attribute(desc: "Item prefabs that are not allowed to be saved in the players loadout", UIWidgets.ResourcePickerThumbnail, params: "et")]
+	ResourceName m_sSaveBlackListItem;
+	
+	[Attribute("1", desc: "If the item is actively blacklisted")]
+	bool m_bEnabled;
 }

@@ -63,6 +63,12 @@ class SCR_CommonDialogs
 		SCR_DownloadManager_Dialog dialog = new SCR_DownloadManager_Dialog();
 		return SCR_DownloadManager_Dialog.Cast(SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "download_manager", dialog));
 	}
+	
+	//---------------------------------------------------------------------------------------------
+	static SCR_ConfigurableDialogUi CreateScenarioLoadDialog()
+	{
+		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "scenario_load");
+	}
 }
 
 //---------------------------------------------------------------------------------------------

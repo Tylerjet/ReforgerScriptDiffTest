@@ -151,7 +151,7 @@ class SCR_CampaignBuildingPlacingObstructionEditorComponent : SCR_BaseEditorComp
 		if (!m_CampaignBuildingComponent)
 			return;
 
-		m_AreaTrigger = SCR_FreeRoamBuildingClientTriggerEntity.Cast(m_CampaignBuildingComponent.GetTrigger());
+		m_AreaTrigger = m_CampaignBuildingComponent.GetTrigger();
 	}
 
 	//------------------------------------------------------------------------------------------------

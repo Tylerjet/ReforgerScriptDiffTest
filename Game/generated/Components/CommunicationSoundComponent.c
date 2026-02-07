@@ -23,6 +23,7 @@ class CommunicationSoundComponent: SoundComponent
 	// callbacks
 
 	event void OnSoundEventFinished(string eventName, AudioHandle handle, int priority, bool terminated);
+	event void OnSoundEventStarted(string eventName, AudioHandle handle, int priority);
 	event protected void HandleMetadata(array<string> metadata, int priority, float distance);
 }
 

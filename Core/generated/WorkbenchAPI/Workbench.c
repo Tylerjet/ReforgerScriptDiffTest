@@ -22,6 +22,7 @@ sealed class Workbench
 	static proto void Dialog(string caption, string text, string detailedText = string.Empty);
 	static proto int ScriptDialog(string caption, string text, Class data);
 	//! Search for all resources by filer and call callback method for each. `rootPath` must be in "exact path" format e.g. `"$addonName:Prefabs"`.
+	[Obsolete("Use ResourceDatabase.SearchResources() instead")]
 	static proto bool SearchResources(WorkbenchSearchResourcesCallback callback, array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = string.Empty, bool recursive = true);
 	static proto int RunCmd(string command, bool wait = false);
 	/*!

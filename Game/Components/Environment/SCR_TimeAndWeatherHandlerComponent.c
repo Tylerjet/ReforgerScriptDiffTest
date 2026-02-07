@@ -12,7 +12,22 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("0")]
 	protected bool m_bRandomStartingDaytime;
+	
+	[Attribute("0", desc: "Random time range is superior to random time. When both are set to true, random range will be used.")]
+	protected bool m_bRandomStartingDaytimeRange;
+	
+	[Attribute("8", UIWidgets.Slider, "Starting range of starting time of day \n (hours)", "0 23 1")]
+	protected int m_iRangeHoursStart;
 
+	[Attribute("0", UIWidgets.Slider, "Starting range of starting time of day \n (minutes)", "0 59 1")]
+	protected int m_iRangeMinutesStart;
+	
+	[Attribute("8", UIWidgets.Slider, "Ending range of starting time of day \n (hours)", "0 23 1")]
+	protected int m_iRangeHoursEnd;
+
+	[Attribute("0", UIWidgets.Slider, "Ending range of starting time of day \n (minutes)", "0 59 1")]
+	protected int m_iRangeMinutesEnd;
+	
 	[Attribute("1", UIWidgets.Slider, "Time acceleration during the day (1 = 100%, 2 = 200% etc)", "0.1 12 0.1")]
 	protected float m_fDayTimeAcceleration;
 
@@ -21,6 +36,12 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 
 	[Attribute("0")]
 	protected bool m_bRandomStartingWeather;
+	
+	[Attribute("0", desc: "Use predefine sets of weather and time.")]
+	protected bool m_bUsePredefineStartingTimeAndWeatehr;
+	
+	[Attribute(desc: "List of predefine time and weather settings.")]
+	protected ref array<ref SCR_TimeAndWeatherState> m_aStartingWeatherAndTime;
 
 	[Attribute("0", desc: "Weather can change during gameplay")]
 	protected bool m_bRandomWeatherChanges;
@@ -79,7 +100,7 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			sunset = DEFAULT_DAYTIME_END;
 		}
 
-		if (m_bRandomStartingDaytime && !loadDone)
+		if (m_bRandomStartingDaytime && !loadDone && !m_bRandomStartingDaytimeRange)
 		{
 			// Compile a list of presets based on the sunrise and sunset times of current world if we're randomizing
 			morning = sunrise + 0.25;	// Just so it's not still completely dark at the start
@@ -105,6 +126,27 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 
 			manager.TimeToHoursMinutesSeconds(startingTime, hours, minutes, seconds);
 		}
+		
+		if (m_bRandomStartingDaytimeRange && !loadDone)
+		{			
+			if (m_iRangeHoursStart <= m_iRangeHoursEnd)
+			{
+				hours = Math.RandomInt(m_iRangeHoursStart, m_iRangeHoursEnd);
+			}
+			else
+			{
+				hours = Math.RandomInt(m_iRangeHoursStart, m_iRangeHoursEnd + 24) - 24;
+			}
+			
+			if (m_iRangeMinutesStart <= m_iRangeMinutesEnd)
+			{
+				minutes = Math.RandomInt(m_iRangeMinutesStart, m_iRangeMinutesEnd);
+			}
+			else
+			{
+				minutes = Math.RandomInt(m_iRangeHoursStart, m_iRangeHoursEnd + 60) - 60;
+			}
+		}
 
 		if (m_bRandomStartingWeather && !loadDone)
 		{
@@ -112,10 +154,15 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 			manager.GetWeatherStatesList(weatherStates);
 
 			if (!weatherStates.IsEmpty())
-			{
-				Math.Randomize(-1);
 				manager.ForceWeatherTo(!m_bRandomWeatherChanges, weatherStates.GetRandomElement().GetStateName());
-			}
+		}
+		
+		if (m_bUsePredefineStartingTimeAndWeatehr && !m_aStartingWeatherAndTime.IsEmpty())
+		{
+			SCR_TimeAndWeatherState timeAndWEatherState = m_aStartingWeatherAndTime.GetRandomElement();
+			manager.ForceWeatherTo(!m_bRandomWeatherChanges, timeAndWEatherState.GetWeatherPresetName());
+			hours = timeAndWEatherState.GetStartingHour();
+			minutes = timeAndWEatherState.GetStartingMinutes();
 		}
 
 		if (!loadedWeatherState.IsEmpty())

@@ -1,6 +1,6 @@
 class SCR_PlayerControllerClass : PlayerControllerClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 void OnControlledEntityChangedPlayerController(IEntity from, IEntity to);
@@ -27,15 +27,15 @@ void OnBeforePossessed(IEntity entity);
 typedef func OnBeforePossessed;
 typedef ScriptInvokerBase<OnBeforePossessed> OnBeforePossessedInvoker;
 
-//------------------------------------------------------------------------------------------------
 class SCR_PlayerController : PlayerController
 {
 	static PlayerController s_pLocalPlayerController;
 	protected static const float WALK_SPEED = 0.5;
-	protected static const float FOCUS_ACTIVATION = 0.1;
-	protected static const float FOCUS_DEACTIVATION = 0.05;
+	protected static const float FOCUS_ACTIVATION = 0.5;
+	protected static const float FOCUS_DEACTIVATION = 0.2;
 	protected static const float FOCUS_TIMEOUT = 0.3;
 	protected static const float FOCUS_TOLERANCE = 0.005;
+	protected static const float FOCUS_ANALOGUE_SCALE = 3.0;
 	protected static float s_fADSFocus = 0.7;
 	protected static float s_fFocusTimeout;
 	protected static float s_fFocusAnalogue;
@@ -46,7 +46,7 @@ class SCR_PlayerController : PlayerController
 	protected bool m_bIsPaused;
 	bool m_bRetain3PV;
 	protected bool m_bGadgetFocus;
-	protected bool m_bFocusToggle;
+	protected SCR_EFocusToggleMode m_eFocusToggle;
 	protected float m_fCharacterSpeed;
 
 
@@ -66,9 +66,9 @@ class SCR_PlayerController : PlayerController
 	/*!
 		\see PlayerController.OnOwnershipChanged for more information.
 	*/
-	OnOwnershipChangedInvoker GetOnOwnershipChangedInvoker() 
-	{ 
-		return m_OnOwnershipChangedInvoker; 
+	OnOwnershipChangedInvoker GetOnOwnershipChangedInvoker()
+	{
+		return m_OnOwnershipChangedInvoker;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -116,6 +116,7 @@ class SCR_PlayerController : PlayerController
 				aimSensitivitySettings.Get("m_fAimADS", aimMultipADS))
 			{
 				m_CharacterController.SetAimingSensitivity(aimSensitivityMouse, aimSensitivityGamepad, aimMultipADS);
+				SCR_CharacterCameraHandlerComponent.SetADSSensitivity(aimMultipADS);
 			}
 
 
@@ -132,22 +133,14 @@ class SCR_PlayerController : PlayerController
 			bool stickyGadgets = true;
 			if (gameplaySettings.Get("m_bStickyGadgets", stickyGadgets))
 				m_CharacterController.SetStickyGadget(stickyGadgets);
-			
+
 			bool mouseControlAircraft = true;
 			if (gameplaySettings.Get("m_bMouseControlAircraft", mouseControlAircraft))
 				m_CharacterController.SetMouseControlAircraft(mouseControlAircraft);
 
 			EVehicleDrivingAssistanceMode drivingAssistance;
-			if(GetGame().GetIsClientAuthority())
-			{
-				if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
-					VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
-			}
-			else
-			{
-				if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
-					VehicleControllerComponent_SA.SetDrivingAssistanceMode(drivingAssistance);
-			}
+			if (gameplaySettings.Get("m_eDrivingAssistance", drivingAssistance))
+				VehicleControllerComponent.SetDrivingAssistanceMode(drivingAssistance);
 		}
 
 		//TODO: we might want to set default focusInADS to 100 on XBOX and PSN ( default for mouse control should be 70 - see SCR_GameplaySettings )
@@ -232,7 +225,7 @@ class SCR_PlayerController : PlayerController
 
 					SetAIActivation(controlledEntity, true);
 				}
-				
+
 				//--- Switch control
 				if (m_MainEntity)
 				{
@@ -450,11 +443,12 @@ class SCR_PlayerController : PlayerController
 		inputManager.AddActionListener("CharacterWalk", EActionTrigger.DOWN, OnWalk);
 		inputManager.AddActionListener("CharacterWalk", EActionTrigger.UP, OnEndWalk);
 		inputManager.AddActionListener("FocusToggle", EActionTrigger.DOWN, ActionFocusToggle);
+		inputManager.AddActionListener("FocusToggleVehicle", EActionTrigger.DOWN, ActionFocusToggleVehicle);
 		inputManager.AddActionListener("FocusToggleUnarmed", EActionTrigger.DOWN, ActionFocusToggleUnarmed);
-		inputManager.AddActionListener("Inventory", EActionTrigger.DOWN, ActionOpenInventory );
-		inputManager.AddActionListener("TacticalPing", EActionTrigger.DOWN, ActionGesturePing );
-		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.DOWN, ActionGesturePingHold );
-		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.UP, ActionGesturePingHold );
+		inputManager.AddActionListener("Inventory", EActionTrigger.DOWN, ActionOpenInventory);
+		inputManager.AddActionListener("TacticalPing", EActionTrigger.DOWN, ActionGesturePing);
+		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.DOWN, ActionGesturePingHold);
+		inputManager.AddActionListener("TacticalPingHold", EActionTrigger.UP, ActionGesturePingHold);
 		inputManager.AddActionListener("WeaponSwitchOptics", EActionTrigger.UP, ChangeWeaponOptics);
 	}
 
@@ -550,41 +544,47 @@ class SCR_PlayerController : PlayerController
 
 		// Cancel toggled focus when focus is held
 		bool inputDigital = inputManager.GetActionTriggered("Focus");
-		if (inputDigital && m_bFocusToggle)
-			m_bFocusToggle = false;
+		if (inputDigital && m_eFocusToggle != SCR_EFocusToggleMode.DISABLED)
+			m_eFocusToggle = SCR_EFocusToggleMode.DISABLED;
 
 		// Conditions must be consistent with ActionFocusToggle and ActionFocusToggleUnarmed
 		ChimeraCharacter character = m_CharacterController.GetCharacter();
-		if (m_bFocusToggle && character)
+		if (character && character.IsInVehicle())
 		{
-			if (character.IsInVehicle())
+			// Vehicle focus toggle mode
+			if (m_eFocusToggle == SCR_EFocusToggleMode.VEHICLE)
 			{
 				// Cancel toggle focus when in vehicle and aiming through gadget (binocular, compass)
 				if (m_bGadgetFocus)
-					m_bFocusToggle = false;
+					m_eFocusToggle = SCR_EFocusToggleMode.DISABLED;
 
 				// Cancel toggle focus when in vehicle and not in forced freelook
 				if (!m_CharacterController.IsFreeLookEnabled() && !m_CharacterController.GetFreeLookInput())
-					m_bFocusToggle = false;
+					m_eFocusToggle = SCR_EFocusToggleMode.DISABLED;
 			}
-			else
+		}
+		else
+		{
+			// Unarmed focus toggle mode
+			if (m_eFocusToggle == SCR_EFocusToggleMode.UNARMED)
 			{
 				// Cancel toggle focus when not in vehicle and holding item in hands
 				if (m_CharacterController.GetCurrentItemInHands())
-					m_bFocusToggle = false;
+					m_eFocusToggle = SCR_EFocusToggleMode.DISABLED;
 
 				// Cancel toggle focus when not in vehicle and holding gadget
 				if (m_CharacterController.IsGadgetInHands())
-					m_bFocusToggle = false;
+					m_eFocusToggle = SCR_EFocusToggleMode.DISABLED;
 			}
 		}
 
-		// Ground vehicles have different focus action to prevent conflict with brakes
+		// Vehicles have different focus action to prevent conflict with brakes
+		bool isVehicleContextActive = inputManager.IsContextActive("CarContext") || inputManager.IsContextActive("TrackedContext") || inputManager.IsContextActive("HelicopterContext");
 		float inputAnalogue;
-		if (!inputManager.IsContextActive("CarContext") && !inputManager.IsContextActive("HelicopterContext"))
+		if (!isVehicleContextActive)
 		{
 			// Square root input to focus mapping results in linear change of picture area
-			float focusAnalogue = Math.Sqrt(inputManager.GetActionValue("FocusAnalog"));
+			float focusAnalogue = Math.Sqrt(FOCUS_ANALOGUE_SCALE * inputManager.GetActionValue("FocusAnalog"));
 
 			// Tolerance to prevent jittering
 			if (focusAnalogue < FOCUS_DEACTIVATION)
@@ -625,21 +625,21 @@ class SCR_PlayerController : PlayerController
 		else if (s_bWasADS != isADS && s_fFocusTimeout > 0)
 			s_fFocusTimeout = FOCUS_TIMEOUT; // ADS toggled
 		else if (inputAnalogue < FOCUS_ACTIVATION && s_fFocusTimeout > 0)
-			s_fFocusTimeout = FOCUS_TIMEOUT;  // Below activation threshold and not active
+			s_fFocusTimeout = FOCUS_TIMEOUT; // Below activation threshold and not active
 		else if (s_fFocusTimeout > dt)
 			s_fFocusTimeout -= dt; // Not yet active, decrementing
 		else
 			s_fFocusTimeout = 0; // Activated
 
 		// Cancel toggle focus with analogue input
-		if (m_bFocusToggle && s_fFocusTimeout == 0)
-			m_bFocusToggle = false;
+		if (m_eFocusToggle != SCR_EFocusToggleMode.DISABLED && s_fFocusTimeout == 0)
+			m_eFocusToggle = SCR_EFocusToggleMode.DISABLED;
 
 		s_bWasADS = isADS;
 
 		// Combine all valid input sources
 		float input;
-		if (m_bFocusToggle || inputDigital)
+		if (m_eFocusToggle != SCR_EFocusToggleMode.DISABLED || inputDigital)
 			input = 1;
 		else if (s_fFocusTimeout == 0)
 			input = inputAnalogue;
@@ -669,6 +669,16 @@ class SCR_PlayerController : PlayerController
 	//------------------------------------------------------------------------------------------------
 	void ActionFocusToggle(float value = 0.0, EActionTrigger reason = 0)
 	{
+		// If focus toggle was in different mode, it should be disabled first
+		if (m_eFocusToggle == SCR_EFocusToggleMode.DISABLED)
+			m_eFocusToggle = SCR_EFocusToggleMode.ENABLED;
+		else
+			m_eFocusToggle = SCR_EFocusToggleMode.DISABLED
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ActionFocusToggleVehicle(float value = 0.0, EActionTrigger reason = 0)
+	{
 		if (!m_CharacterController)
 			return;
 
@@ -685,7 +695,11 @@ class SCR_PlayerController : PlayerController
 		if (!m_CharacterController.IsFreeLookEnabled() && !m_CharacterController.GetFreeLookInput())
 			return;
 
-		m_bFocusToggle = !m_bFocusToggle;
+		// If focus toggle was in different mode, it should be disabled first
+		if (m_eFocusToggle == SCR_EFocusToggleMode.DISABLED)
+			m_eFocusToggle = SCR_EFocusToggleMode.VEHICLE;
+		else
+			m_eFocusToggle = SCR_EFocusToggleMode.DISABLED
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -710,10 +724,14 @@ class SCR_PlayerController : PlayerController
 		// Allow cancelling unarmed focus while picking up items
 		// Disallow enabling unarmed focus while picking up items, as it may become irreleant quickly
 		// Reason is player may want to enter ADS before ready, while intent is unclear
-		if (!m_bFocusToggle && m_CharacterController.IsPlayingItemGesture())
+		if (m_eFocusToggle == SCR_EFocusToggleMode.DISABLED && m_CharacterController.IsPlayingItemGesture())
 			return;
-
-		m_bFocusToggle = !m_bFocusToggle;
+		
+		// If focus toggle was in different mode, it should be disabled first
+		if (m_eFocusToggle == SCR_EFocusToggleMode.DISABLED)
+			m_eFocusToggle = SCR_EFocusToggleMode.UNARMED;
+		else
+			m_eFocusToggle = SCR_EFocusToggleMode.DISABLED
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -769,7 +787,7 @@ class SCR_PlayerController : PlayerController
 		if (reason == EActionTrigger.DOWN)
 		{
 			m_CharacterController.TryStartCharacterGesture(ECharacterGestures.POINT_WITH_FINGER);
-		} else if ( reason == EActionTrigger.UP)
+		} else if (reason == EActionTrigger.UP)
 		{
 			m_CharacterController.StopCharacterGesture();
 		}

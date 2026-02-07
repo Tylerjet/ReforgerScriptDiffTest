@@ -11,6 +11,9 @@ class SCR_EditorImagePositionEntityClass: GenericEntityClass
 */
 class SCR_EditorImagePositionEntity : GenericEntity
 {
+	protected const float ANIM_TIME_STEP = 30.0;
+	protected const string ANIM_ARM_IK = "ArmIK";
+	
 	[Attribute("0", uiwidget: UIWidgets.SearchComboBox, "Use this location fo entities with these labels.", "", ParamEnumArray.FromEnum(EEditableEntityLabel), category: "Configuration")]
 	protected ref array<EEditableEntityLabel> m_Labels;
 	
@@ -59,6 +62,8 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	[Attribute("-1", uiwidget: UIWidgets.ComboBox, category: "Animation", enums: SCR_Enum.GetList(EWeaponType, ParamEnum("<Unchanged>", "-1")))]
 	protected EWeaponType m_ForceWeaponType;
 	
+	
+	
 	[Attribute("-4", uiwidget:UIWidgets.Slider, params: "-90 90 1", category: "Environment")]
 	protected float m_fLatitude;
 	
@@ -80,6 +85,13 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	[Attribute(defvalue: "Clear", uiwidget: UIWidgets.ComboBox, category: "Environment", enums: { ParamEnum("Clear", "Clear"), ParamEnum("Cloudy", "Cloudy"), ParamEnum("Overcast", "Overcast"), ParamEnum("Rainy", "Rainy") }, desc: "Area shape")]
 	private string m_sWeatherState;
 	
+	[Attribute(desc: "Default pose that should be used if no faction specific pose is defined",  category: "Animation - Character")]
+	protected ref SCR_EditorImagePositionCharacterPose m_DefaultPose;
+	
+	[Attribute(desc: "List of pose for each faction. Use default pose if selected character faction pose is not defined",  category: "Animation - Character")]
+	protected ref array<ref SCR_EditorImagePositionCharacterPose> m_aFactionPoses;
+	
+	
 #ifdef WORKBENCH
 	protected ref array<SCR_CameraBase> m_aCameras = {};
 	protected SCR_EditorImagePositionEntity m_Parent;
@@ -89,8 +101,6 @@ class SCR_EditorImagePositionEntity : GenericEntity
 	protected ref array<IEntity> m_aOriginalNearbyEntities = {};
 	protected string m_sNewWeaponMesh;
 	protected string m_sCurrentWeaponMesh;
-	
-	protected CharacterAnimationComponent m_CharacterAnimation;
 	
 	float GetDelay()
 	{
@@ -156,7 +166,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 			envManager.SetDate(m_iYear, m_iMonth, m_iDay, true);
 			
 			//Set weather
-			WeatherStateTransitionManager weatherTransitionManager = envManager.GetTransitionManager();
+			BaseWeatherStateTransitionManager weatherTransitionManager = envManager.GetTransitionManager();
 			if (weatherTransitionManager)
 			{
 				WeatherStateTransitionNode transitionNode = weatherTransitionManager.CreateStateTransition(m_sWeatherState, 0, 1);
@@ -175,106 +185,22 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		SCR_AIGroup group = SCR_AIGroup.Cast(m_Entity);
 		if (group)
 		{
-			//--- Make sure group AI members are spawned instantly, not asynchronously
+			/*
+			bool success = ActivateGroupPosition(group, spawnParams);
+			if (!success)
+				return false;
+			*/
+			
 			group.SetMemberSpawnDelay(0);
 			group.SpawnUnits();
 			
-			array<AIAgent> agents = {};
-			int agentCount = group.GetAgents(agents);
-			if (agentCount <= m_aSubPositions.Count())
-			{
-				m_Entity = GetGame().SpawnEntity(GenericEntity, GetWorld(), spawnParams);
-				IEntity member;
-				vector transform[4];
-				SCR_SortedArray<SCR_EditorImagePositionEntity> subPositions = new SCR_SortedArray<SCR_EditorImagePositionEntity>();
-				subPositions.CopyFrom(m_aSubPositions);
-				SCR_EditorImagePositionEntity subPosition;
-				bool failed = false;
-				for (int i = 0; i < agentCount; i++)
-				{
-					member = agents[i].GetControlledEntity();
-					
-					//--- Get member labels
-					SCR_EditableEntityComponent editableMember = SCR_EditableEntityComponent.GetEditableEntity(member);
-					SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(editableMember.GetInfo());
-					array<EEditableEntityLabel> memberLabels = {};
-					if (info)
-						info.GetEntityLabels(memberLabels);
-					
-					//--- Find suitable sub-position, taking member labels into consideration
-					subPosition = FindSuitableSubPosition(subPositions, memberLabels);
-					if (subPosition)
-					{
-						subPositions.RemoveValues(subPosition);
-						subPosition.GetTransform(transform);
-						
-						CloneCharacter(member, transform);
-						//m_Entity.AddChild(member, -1, EAddChildFlags.RECALC_LOCAL_TRANSFORM); //--- Crashes the game! Not needed, area garbage collection removes clones anyway.
-						subPosition.SetPose(member);
-						subPosition.EOnImagePositonActivate(member);
-					}
-					else
-					{
-						Print(string.Format("Cannot capture group member @\"%1\"! Unable to find suitable sub-position for %1!", member.GetPrefabData().GetPrefabName()), LogLevel.WARNING);
-						failed = true;
-					}
-				}
-				SCR_EntityHelper.DeleteEntityAndChildren(group);
-				
-				if (failed)
-					return false;
-			}
-			else
-			{
-				Print(string.Format("Cannot capture group @\"%1\"! It has %2 members, but the position '%3' has only %4 sub-positions!", prefab, agentCount, GetPositionName(), m_aSubPositions.Count()), LogLevel.WARNING);
-				return false;
-			}
-			
-			EOnImagePositonActivate(m_Entity);
+			GetGame().GetCallqueue().CallLater(ActivateGroupPosition, 1000, false, group, spawnParams);
 		}
 		else
 		{
-			ChimeraCharacter character = ChimeraCharacter.Cast(m_Entity);
+			SCR_EditableCharacterComponent character = SCR_EditableCharacterComponent.Cast(m_Entity.FindComponent(SCR_EditableCharacterComponent));
 			if (character)
-			{
-				if (m_ForceWeaponType >= 0)
-				{
-					InventoryStorageManagerComponent inventoryStorage = InventoryStorageManagerComponent.Cast(m_Entity.FindComponent(InventoryStorageManagerComponent));
-					if (inventoryStorage)
-					{
-						array<IEntity> items = {};
-						for (int i = inventoryStorage.GetItems(items) - 1; i >= 0; i--)
-						{
-							BaseWeaponComponent weapon = BaseWeaponComponent.Cast(items[i].FindComponent(BaseWeaponComponent));
-							if (weapon)
-							{
-								if (weapon.GetWeaponType() == m_ForceWeaponType)
-								{
-									m_sNewWeaponMesh = items[i].GetVObject().GetResourceName();
-									break;
-								}
-							}
-						}
-					}
-					
-					BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(m_Entity.FindComponent(BaseWeaponManagerComponent));
-					if (weaponManager)
-					{
-						BaseWeaponComponent currentWeapon = weaponManager.GetCurrentWeapon();
-						if (currentWeapon)
-							m_sCurrentWeaponMesh = currentWeapon.GetOwner().GetVObject().GetResourceName();
-					}
-				}
-				
-				// Set hands position 
-				CharacterControllerComponent characterController = character.GetCharacterController();
-				 m_CharacterAnimation = characterController.GetAnimationComponent();
-				
-				vector transform[4];
-				m_Entity.GetTransform(transform);
-				CloneCharacter(m_Entity, transform);
-				SetPose(m_Entity);
-			}
+				ActivateCharacterPosition(prefab);
 			
 			//--- Position the entity by its bounding center, not mesh origin
 			if (m_bUseBoundingCenter)
@@ -346,6 +272,8 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		
 		return true;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void DeactivatePosition()
 	{
 		UpdateNearbyEntities();
@@ -355,95 +283,7 @@ class SCR_EditorImagePositionEntity : GenericEntity
 				delete entity;
 		}
 	}
-	protected void CloneCharacter(out IEntity character, vector transform[4])
-	{
-		InventoryItemComponent inventoryComponent = InventoryItemComponent.Cast(character.FindComponent(InventoryItemComponent));
-		if (!inventoryComponent)
-			return;
-		
-		//--- Clone character using inventory preview function so we can play animations on it
-		IEntity clone = inventoryComponent.CreatePreviewEntity(GetWorld(), GetWorld().GetCurrentCameraId());
-		if (!clone)
-			return;
-		
-		//--- Swap weapons
-		if (m_sNewWeaponMesh != m_sCurrentWeaponMesh)
-		{
-			IEntity currentWeapon, newWeapon;
-			TNodeId currentPivot, newPivot;
-			vector currentLocalTransform[4], newLocalTransform[4];
-			
-			IEntity child = clone.GetChildren();
-			while (child)
-			{
-				VObject mesh = child.GetVObject();
-				if (mesh)
-				{
-					if (mesh.GetResourceName() == m_sCurrentWeaponMesh)
-					{
-						currentWeapon = child;
-						currentPivot = child.GetPivot();
-						child.GetLocalTransform(currentLocalTransform);
-					}
-					if (mesh.GetResourceName() == m_sNewWeaponMesh)
-					{
-						newWeapon = child;
-						newPivot = child.GetPivot();
-						child.GetLocalTransform(newLocalTransform);
-					}
-				}
-				child = child.GetSibling();
-			}
-			
-			clone.AddChild(newWeapon, currentPivot);
-			newWeapon.SetLocalTransform(currentLocalTransform);
-			
-			clone.AddChild(currentWeapon, newPivot);
-			currentWeapon.SetLocalTransform(newLocalTransform);
-		}
-		
-		
-		SCR_EntityHelper.DeleteEntityAndChildren(character);
-		character = clone;
-		character.SetTransform(transform);
-	}
-	protected void SetPose(IEntity entity)
-	{
-		if (m_PosesGraph.IsEmpty() && m_PosesInstance.IsEmpty() && m_sStartNode.IsEmpty())
-			return;
-		
-		PreviewAnimationComponent animComponent = PreviewAnimationComponent.Cast(entity.FindComponent(PreviewAnimationComponent));
-		animComponent.SetGraphResource(entity, m_PosesGraph, m_PosesInstance, m_sStartNode);
-		
-		//animComponent.SetIkState(true, true);
-		//animComponent.SetHandsIKPose(entity, m_PosesGraph);
-		
-		// Perform one frame step to apply animations immediately
-		animComponent.UpdateFrameStep(entity, 1.0 / 30.0);
-				
-		// Find variable that we want to change
-		int poseVar = animComponent.BindIntVariable(m_sPoseVar);
-		if (poseVar != -1)
-		{
-			// change pose
-			animComponent.SetIntVariable(poseVar, m_iPoseID);
-			
-			// Set hands IK 
-			int armIkVar = animComponent.BindIntVariable("ArmIK");
-			if (armIkVar != -1)
-			{
-				animComponent.SetIntVariable(armIkVar, m_iArmIK);
-				animComponent.SetHandsIKPose(entity, m_ArmIKResource);
-			}
-		
-			// Perform one frame step to submit graph variable change
-			animComponent.UpdateFrameStep(entity, 1.0 / 30.0);
-		}
-		else
-		{
-			Debug.Error2(Type().ToString(), string.Format("Unable to set character pose at positon '%1'!", GetPositionName()));
-		}
-	}
+	
 	protected void AddSubPosition(SCR_EditorImagePositionEntity subPosition)
 	{
 		m_aSubPositions.Insert(subPosition.GetPriority(), subPosition);
@@ -577,6 +417,327 @@ class SCR_EditorImagePositionEntity : GenericEntity
 		
 		vector pos = GetOrigin();
 		DebugTextWorldSpace.Create(GetWorld(), name, DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA | DebugTextFlags.ONCE, pos[0], pos[1], pos[2], fontSize, Color.WHITE, ARGBF(1, 0.5, 0, 1));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Character position
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ActivateCharacterPosition(ResourceName prefab)
+	{
+		// Check faction and get pose 
+		SCR_EditorImagePositionCharacterPose pose = CurrentPose(m_Entity);
+		
+		Resource characterResource = Resource.Load(prefab);
+		ResourceName weaponIK = CharacterWeaponIK(characterResource, pose);
+		
+		// Select weapon
+		EWeaponType forceWeaponType = pose.GetForceWeaponType();
+		
+		if (forceWeaponType >= 0)
+		{
+			InventoryStorageManagerComponent inventoryStorage = InventoryStorageManagerComponent.Cast(m_Entity.FindComponent(InventoryStorageManagerComponent));
+			if (inventoryStorage)
+			{
+				array<IEntity> items = {};
+				for (int i = inventoryStorage.GetItems(items) - 1; i >= 0; i--)
+				{
+					BaseWeaponComponent weapon = BaseWeaponComponent.Cast(items[i].FindComponent(BaseWeaponComponent));
+					if (!weapon)
+						continue;
+					
+					if (weapon.GetWeaponType() == forceWeaponType)
+					{
+						m_sNewWeaponMesh = items[i].GetVObject().GetResourceName();
+						break;
+					}
+				}
+			}
+			
+			BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(m_Entity.FindComponent(BaseWeaponManagerComponent));
+			if (weaponManager)
+			{
+				BaseWeaponComponent currentWeapon = weaponManager.GetCurrentWeapon();
+				if (currentWeapon)
+					m_sCurrentWeaponMesh = currentWeapon.GetOwner().GetVObject().GetResourceName();
+			}
+		}
+		
+		vector transform[4];
+		m_Entity.GetTransform(transform);
+		CloneCharacter(m_Entity, transform);
+		
+		SetPose(m_Entity, pose, weaponIK);
+	}
+	
+		//------------------------------------------------------------------------------------------------
+	//! Return pose used for current character
+	protected SCR_EditorImagePositionCharacterPose CurrentPose(notnull IEntity entity, SCR_EditorImagePositionEntity position = this)
+	{
+		if (!position)
+			position = this;
+		
+		// Get faction key
+		SCR_EditableCharacterComponent editable = SCR_EditableCharacterComponent.Cast(entity.FindComponent(SCR_EditableCharacterComponent));
+		if (!editable)
+		{
+			Print("No editable entity for: " + entity.GetName(), LogLevel.WARNING);
+			return null;
+		}
+		
+		SCR_UIInfo uiInfoBase = editable.GetInfo();
+		if (!uiInfoBase)
+		{
+			return null;
+		}
+		
+		SCR_EditableEntityUIInfo uiInfo = SCR_EditableEntityUIInfo.Cast(editable.GetInfo());
+		if (!uiInfo)
+		{
+			Print("No uiinfo for: " + entity.GetName(), LogLevel.WARNING);
+			return null;
+		}
+		
+		FactionKey factionKey = uiInfo.GetFactionKey();
+		
+		// Find pose based on faction 
+		foreach (SCR_EditorImagePositionCharacterPose pose : position.m_aFactionPoses)
+		{
+			if (pose.GetFactionKey() == factionKey)
+				return pose;
+		}
+		
+		// Use default if no faction pose is defined
+		return position.m_DefaultPose;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set character pose animation and holding weapon animation
+	protected void SetPose(IEntity entity, notnull SCR_EditorImagePositionCharacterPose pose, ResourceName armsIK)
+	{
+		ResourceName poseGraph = pose.GetPoseGraph();
+		ResourceName poseInstance = pose.GetPosesInstance();
+		string startNode = pose.GetStartNode();
+		
+		if (poseGraph.IsEmpty() && poseInstance.IsEmpty() && startNode.IsEmpty())
+			return;
+		
+		PreviewAnimationComponent animComponent = PreviewAnimationComponent.Cast(entity.FindComponent(PreviewAnimationComponent));
+		animComponent.SetGraphResource(entity, poseGraph, poseInstance, startNode);
+		
+		// Perform one frame step to apply animations immediately
+		animComponent.UpdateFrameStep(entity, 1.0 / ANIM_TIME_STEP);
+				
+		// Find variable that we want to change
+		int poseVar = animComponent.BindIntVariable(pose.GetPosVar());
+		if (poseVar == -1)
+		{
+			Debug.Error2(Type().ToString(), string.Format("Unable to set character pose at positon '%1'!", GetPositionName()));
+			return;
+		}
+		
+		// change pose
+		animComponent.SetIntVariable(poseVar, pose.GetPosId());
+		
+		// Set hands IK 
+		int armIkVar = pose.BindAnimValueInteger(animComponent, ANIM_ARM_IK);
+		if (armIkVar != -1)
+		{
+			animComponent.SetIntVariable(armIkVar, pose.GetArmIK());
+			animComponent.SetHandsIKPose(entity, armsIK);
+		}
+	
+		// Perform one frame step to submit graph variable change
+		animComponent.UpdateFrameStep(entity, 1.0 / ANIM_TIME_STEP);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find anim IK of currently held player weapon
+	protected ResourceName CharacterWeaponIK(Resource characterResource, SCR_EditorImagePositionCharacterPose pose)
+	{
+		//Resource characterResource = Resource.Load(prefab);
+		
+		array<ref array<IEntityComponentSource>> weaponSlotComponents = {};
+		array<string> componentTypeArray = { "CharacterWeaponSlotComponent" };
+		int weaponSlotCount = SCR_BaseContainerTools.FindComponentSources(characterResource, componentTypeArray, weaponSlotComponents);
+		
+		array<IEntityComponentSource> weaponSlotComponentSources = weaponSlotComponents.Get(0);
+		if (!weaponSlotComponentSources)
+			return ResourceName.Empty;
+
+		foreach	(IEntityComponentSource weaponSlotComponent : weaponSlotComponentSources)
+		{
+			ResourceName weaponPrefab;
+			if (!weaponSlotComponent.Get("WeaponTemplate", weaponPrefab))
+				return ResourceName.Empty;
+			
+			if (!weaponPrefab)
+				continue;
+
+			Resource resource = Resource.Load(weaponPrefab);
+			if (!resource.IsValid())
+				continue;
+			
+			IEntitySource weaponSource = SCR_BaseContainerTools.FindEntitySource(resource);
+			if (!weaponSource)
+				continue;
+			
+			// Check type 
+			IEntityComponentSource weaponComponentSource = SCR_BaseContainerTools.FindComponentSource(resource, WeaponComponent);
+			if (!weaponComponentSource)
+				continue;
+			
+			EWeaponType forcedWeaponType = pose.GetForceWeaponType();
+			
+			if (forcedWeaponType != -1)
+			{
+				EWeaponType weaponType;
+				weaponComponentSource.Get("WeaponType", weaponType);
+				
+				if (weaponType != pose.GetForceWeaponType())
+					continue;
+			}
+			
+			// Get anim 
+			IEntityComponentSource weaponEntitySource = SCR_ComponentHelper.GetInventoryItemComponentSource(weaponSource);
+			
+			BaseContainer attributesContainer = weaponEntitySource.GetObject("Attributes");
+			
+			BaseContainer animAttributes = attributesContainer.GetObject("ItemAnimationAttributes");
+			
+			ResourceName animIkResourceName;
+			animAttributes.Get("AnimationIKPose", animIkResourceName);
+			return animIkResourceName;
+		}
+		
+		return ResourceName.Empty;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void CloneCharacter(out IEntity character, vector transform[4])
+	{
+		InventoryItemComponent inventoryComponent = InventoryItemComponent.Cast(character.FindComponent(InventoryItemComponent));
+		if (!inventoryComponent)
+			return;
+		
+		//--- Clone character using inventory preview function so we can play animations on it
+		IEntity clone = inventoryComponent.CreatePreviewEntity(GetWorld(), GetWorld().GetCurrentCameraId());
+		if (!clone)
+			return;
+		
+		//--- Swap weapons
+		if (m_sNewWeaponMesh != m_sCurrentWeaponMesh)
+		{
+			IEntity currentWeapon, newWeapon;
+			TNodeId currentPivot, newPivot;
+			vector currentLocalTransform[4], newLocalTransform[4];
+			
+			IEntity child = clone.GetChildren();
+			while (child)
+			{
+				VObject mesh = child.GetVObject();
+				if (mesh)
+				{
+					if (mesh.GetResourceName() == m_sCurrentWeaponMesh)
+					{
+						currentWeapon = child;
+						currentPivot = child.GetPivot();
+						child.GetLocalTransform(currentLocalTransform);
+					}
+					if (mesh.GetResourceName() == m_sNewWeaponMesh)
+					{
+						newWeapon = child;
+						newPivot = child.GetPivot();
+						child.GetLocalTransform(newLocalTransform);
+					}
+				}
+				child = child.GetSibling();
+			}
+			
+			clone.AddChild(newWeapon, currentPivot);
+			newWeapon.SetLocalTransform(currentLocalTransform);
+			
+			clone.AddChild(currentWeapon, newPivot);
+			currentWeapon.SetLocalTransform(newLocalTransform);
+		}
+		
+		SCR_EntityHelper.DeleteEntityAndChildren(character);
+		character = clone;
+		character.SetTransform(transform);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Groups position
+	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	protected bool ActivateGroupPosition(SCR_AIGroup group, EntitySpawnParams spawnParams)
+	{
+		//--- Make sure group AI members are spawned instantly, not asynchronously
+		//group.SetMemberSpawnDelay(0);
+		//group.SpawnUnits();
+		
+		array<AIAgent> agents = {};
+		int agentCount = group.GetAgents(agents);
+		
+		if (agentCount > m_aSubPositions.Count())
+		{
+			//Print(string.Format("Cannot capture group @\"%1\"! It has %2 members, but the position '%3' has only %4 sub-positions!", prefab, agentCount, GetPositionName(), m_aSubPositions.Count()), LogLevel.WARNING);
+			return false;
+		}
+		
+		m_Entity = GetGame().SpawnEntity(GenericEntity, GetWorld(), spawnParams);
+		IEntity member;
+		vector transform[4];
+		SCR_SortedArray<SCR_EditorImagePositionEntity> subPositions = new SCR_SortedArray<SCR_EditorImagePositionEntity>();
+		subPositions.CopyFrom(m_aSubPositions);
+		SCR_EditorImagePositionEntity subPosition;
+		bool failed = false;
+		
+		for (int i = 0; i < agentCount; i++)
+		{
+			member = agents[i].GetControlledEntity();
+			
+			//--- Get member labels
+			SCR_EditableEntityComponent editableMember = SCR_EditableEntityComponent.GetEditableEntity(member);
+			SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(editableMember.GetInfo());
+			array<EEditableEntityLabel> memberLabels = {};
+			if (info)
+				info.GetEntityLabels(memberLabels);
+			
+			//--- Find suitable sub-position, taking member labels into consideration
+			subPosition = FindSuitableSubPosition(subPositions, memberLabels);
+			if (subPosition)
+			{
+				// Prepare position values
+				SCR_EditorImagePositionCharacterPose pose = CurrentPose(member, subPosition);
+
+				Resource characterResource = BaseContainerTools.CreateContainerFromInstance(member);
+				ResourceName weaponIK = CharacterWeaponIK(characterResource, pose);
+				
+				// Apply position
+				subPositions.RemoveValues(subPosition);
+				subPosition.GetTransform(transform);
+				
+				CloneCharacter(member, transform);
+				//m_Entity.AddChild(member, -1, EAddChildFlags.RECALC_LOCAL_TRANSFORM); //--- Crashes the game! Not needed, area garbage collection removes clones anyway.
+				subPosition.SetPose(member, pose, weaponIK);
+				subPosition.EOnImagePositonActivate(member);
+			}
+			else
+			{
+				Print(string.Format("Cannot capture group member @\"%1\"! Unable to find suitable sub-position for %1!", member.GetPrefabData().GetPrefabName()), LogLevel.WARNING);
+				failed = true;
+			}
+		}
+		SCR_EntityHelper.DeleteEntityAndChildren(group);
+		
+		if (failed)
+			return false;
+		
+		EOnImagePositonActivate(m_Entity);
+		return true;
 	}
 #endif
 };

@@ -194,7 +194,7 @@ class SCR_CampaignBuildingSupplyEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		m_ProviderCallsign.SetText(providerComponent.GetProviderDisplayName());
 		
-		SCR_MilitaryBaseComponent targetBase = SCR_MilitaryBaseComponent.Cast(providerComponent.GetMilitaryBaseComponent());
+		SCR_MilitaryBaseComponent targetBase = providerComponent.GetMilitaryBaseComponent();
 		if (targetBase)
 		{
 			m_ProviderCallsign.SetText(targetBase.GetCallsignDisplayName());

@@ -87,6 +87,8 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	protected bool m_bIsTooltipHoverWidgetInHierarchy;
 	protected bool m_bIsTooltipInitialized;
 	
+	protected SCR_ScriptedWidgetTooltip m_Tooltip;
+	
 	protected static ref array<SCR_FilterPanelComponent> m_aActiveFilterPanels = {};
 
 	// --------------- Public API -----------------------
@@ -187,9 +189,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	//! \param[in] filter
 	//! \param[in] select
 	//! \param[in] invokeOnChanged
-	void SelectFilter(SCR_FilterEntry filter, bool select, bool invokeOnChanged = true)
+	void SelectFilter(SCR_FilterEntry filter, bool select, bool invokeOnChanged = true, bool instant = false)
 	{
-		Filter_ListBox_EnableFilter(filter, select);
+		Filter_ListBox_EnableFilter(filter, select, instant);
 
 		if (select)
 		{
@@ -355,7 +357,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	//! Enables/disables this filter in the list box
 	//! \param[in] filter
 	//! \param[in] enabled
-	protected void Filter_ListBox_EnableFilter(SCR_FilterEntry filter, bool enabled)
+	protected void Filter_ListBox_EnableFilter(SCR_FilterEntry filter, bool enabled, bool instant = false)
 	{
 		SCR_ListBoxComponent comp = m_Widgets.m_FilterListBoxComponent;
 
@@ -363,7 +365,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		if (item == -1)
 			return;
 
-		comp.SetItemSelected(item, enabled, false);
+		comp.SetItemSelected(item, enabled, false, instant);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -379,7 +381,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			SCR_FilterEntry filter = SCR_FilterEntry.Cast(comp.GetItemData(i));
 			if ((filter.GetCategory() == category) && (filter != filterExclude)) // If same category as the changed item, and not this item, reset it
 			{
-				comp.SetItemSelected(i, false, false);
+				comp.SetItemSelected(i, false, false, true);
 			}
 		}
 	}
@@ -568,6 +570,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		{
 			m_Widgets.m_FilterButtonsCountText.SetVisible(false);
 		}
+		
+		if (m_Tooltip)
+			OnTooltipShow(m_Tooltip);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -631,7 +636,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			filters = category.GetFilters();
 			foreach (SCR_FilterEntry filter : filters)
 			{
-				SelectFilter(filter, filter.GetSelected(), false);
+				SelectFilter(filter, filter.GetSelected(), false, true);
 			}
 		}
 		
@@ -766,7 +771,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		{
 			// If it's last item deselected, and it's not allowed to have nothing selected, switch it back.
 			if (preventDeselection)
-				comp.SetItemSelected(item, true, false);
+				comp.SetItemSelected(item, true, false, true);
 			else
 				Filter_TopBar_DeleteButton(filter);
 		}
@@ -831,9 +836,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 	// ---- Tooltips ----
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		if (tag != m_sTopBarFilterButtonTooltipTag && tag != m_sTopBarHiddenFiltersTooltipTag && tag != m_sTopBarItemsFoundTooltipTag)
+		if (tooltip.GetTag() != m_sTopBarFilterButtonTooltipTag && tooltip.GetTag() != m_sTopBarHiddenFiltersTooltipTag && tooltip.GetTag() != m_sTopBarItemsFoundTooltipTag)
 			return;
 		
 		MenuManager menuManager = GetGame().GetMenuManager();
@@ -849,7 +854,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		
 		foreach (Widget child : children)
 		{
-			m_bIsTooltipHoverWidgetInHierarchy = child == hoverWidget;
+			m_bIsTooltipHoverWidgetInHierarchy = child == tooltip.GetHoverWidget();
 			
 			if (m_bIsTooltipHoverWidgetInHierarchy)
 				break;
@@ -870,7 +875,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		{
 			if (panel.IsTooltipHoverWidgetInHierarchy())
 			{
-				panel.FillTooltip(tooltipClass);
+				panel.FillTooltip(tooltip);
 				validTooltips = true;
 			}
 			
@@ -880,7 +885,9 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		
 		// Prevent empty tooltips from being triggered
 		if (!validTooltips)
-			tooltipClass.ForceHidden();	
+			tooltip.ForceHidden();	
+		
+		m_Tooltip = tooltip;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -889,20 +896,28 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 		if (!m_ItemsFoundTooltip || !m_bIsTooltipHoverWidgetInHierarchy)
 			return;
 		
-		m_ItemsFoundTooltip.SetMessage(WidgetManager.Translate(m_sTopBarItemsFoundTooltipMessage, m_iEntriesFiltered, m_iEntriesTotal));
+		SCR_ScriptedWidgetTooltipContentBase content = m_ItemsFoundTooltip.GetContent();
+		if (!content)
+			return;
+		
+		content.SetMessage(WidgetManager.Translate(m_sTopBarItemsFoundTooltipMessage, m_iEntriesFiltered, m_iEntriesTotal));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] tooltipClass
-	void FillTooltip(SCR_ScriptedWidgetTooltip tooltipClass)
+	//! \param[in] tooltip
+	void FillTooltip(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		if (m_bIsTooltipInitialized || !tooltipClass)
+		if (m_bIsTooltipInitialized || !tooltip)
 			return;
 		
 		m_bIsTooltipInitialized = true;
 		
-		switch (tooltipClass.GetTag())
+		SCR_ScriptedWidgetTooltipContentBase content = tooltip.GetContent();
+		if (!content)
+			return;
+		
+		switch (tooltip.GetTag())
 		{
 			case m_sTopBarFilterButtonTooltipTag:
 			{
@@ -913,14 +928,18 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 				if (!category)
 					break;
 
-				tooltipClass.SetMessage(string.Format("%1: %2", category.m_sDisplayName, m_FocusedTopBarFilter.m_sDisplayName));
+				content.SetMessage(string.Format("%1: %2", category.m_sDisplayName, m_FocusedTopBarFilter.m_sDisplayName));
 				
 				break;
 			}
 
 			case m_sTopBarHiddenFiltersTooltipTag:
 			{
-				SCR_ListTooltipComponent comp = SCR_ListTooltipComponent.FindComponent(tooltipClass.GetContentWidget());
+				Widget root = content.GetContentRoot();
+				if (!root)
+					break;
+				
+				SCR_ListTooltipComponent comp = SCR_ListTooltipComponent.FindComponent(root);
 				if (!comp)
 					break;
 
@@ -938,7 +957,7 @@ class SCR_FilterPanelComponent : SCR_ScriptedWidgetComponent
 			
 			case m_sTopBarItemsFoundTooltipTag:
 			{
-				m_ItemsFoundTooltip = tooltipClass;
+				m_ItemsFoundTooltip = tooltip;
 				UpdateItemsFoundTooltip();
 				break;
 			}

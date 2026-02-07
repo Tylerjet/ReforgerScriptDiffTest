@@ -268,10 +268,8 @@ class SCR_DownloadSequence
 				continue;
 			}
 			
-			float patchSize;
-			
 			// Catch missing 
-			Revision revision = null;
+			Revision revision;
 			
 			if (dependency.GetDependency())
 				revision = dependency.GetDependency().GetRevision();

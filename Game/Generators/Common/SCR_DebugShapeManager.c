@@ -14,10 +14,10 @@ class SCR_DebugShapeManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	Shape AddLine(vector from, vector to, int colour = DEFAULT_COLOUR)
+	Shape AddLine(vector from, vector to, int colour = DEFAULT_COLOUR, ShapeFlags additionalFlags = 0)
 	{
 		vector points[2] = { from, to };
-		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS, points, 2);
+		Shape shape = Shape.CreateLines(colour, DEFAULT_FLAGS | additionalFlags, points, 2);
 		m_aShapes.Insert(shape);
 		return shape;
 	}

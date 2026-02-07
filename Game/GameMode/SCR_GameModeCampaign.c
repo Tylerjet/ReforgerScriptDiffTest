@@ -63,9 +63,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	[Attribute("1", UIWidgets.CheckBox, "Randomized starting supplies in small bases", category: "Campaign")]
 	protected bool m_bRandomizeSupplies;
 
-	[Attribute("40", desc: "How much supplies it cost to spawn at base by default?", params: "0 inf 1", category: "Campaign")]
-	protected int m_iSpawnCost;
-
 	[Attribute("1200", UIWidgets.EditBox, "The furthest an independent supply depot can be from the nearest base to still be visible in the map.", params: "0 inf 1", category: "Campaign")]
 	protected int m_iSupplyDepotIconThreshold;
 
@@ -244,12 +241,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	int GetStartingSuppliesInterval()
 	{
 		return m_iStartingSuppliesInterval;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetSpawnCost()
-	{
-		return m_iSpawnCost;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -604,6 +595,11 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	//------------------------------------------------------------------------------------------------
 	void OnStarted()
 	{
+		SCR_RadioCoverageSystem coverageSystem = SCR_RadioCoverageSystem.GetInstance();
+		
+		if (coverageSystem)
+			coverageSystem.TogglePeriodicUpdates(false);
+		
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(OnSpawnPointFactionAssigned);
 
 		if (m_OnStarted)
@@ -1090,15 +1086,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (!MHQ)
 			return;
 
-		BaseRadioComponent radioComponent = BaseRadioComponent.Cast(MHQ.FindComponent(BaseRadioComponent));
-
-		if (radioComponent && radioComponent.TransceiversCount() > 0)
-		{
-			radioComponent.SetPower(false);
-			radioComponent.GetTransceiver(0).SetFrequency(faction.GetFactionRadioFrequency());
-			radioComponent.SetEncryptionKey(faction.GetFactionRadioEncryptionKey());
-		}
-
 		SlotManagerComponent slotManager = SlotManagerComponent.Cast(MHQ.FindComponent(SlotManagerComponent));
 
 		if (!slotManager)
@@ -1184,7 +1171,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			return;
 
 		array<HitZone> hitZones = {};
-		helicopterDamageManager.GetAllHitZones(hitZones);
+		helicopterDamageManager.GetAllHitZonesInHierarchy(hitZones);
 		vector transform[3];
 		transform[0] = vehicle.GetOrigin();
 		transform[1] = vector.Forward;
@@ -1316,74 +1303,6 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		WriteClientData(playerId, true);
 		m_BaseManager.OnPlayerDisconnected(playerId)
 	}
-	
-	override bool CanPlayerSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
-	{
-		if (!super.CanPlayerSpawn_S(requestComponent, handlerComponent, data, result))
-			return false;
-		
-		SCR_CampaignMilitaryBaseComponent base;
-		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
-		if (spawnPointData)
-		{
-			IEntity parent = spawnPointData.GetSpawnPoint().GetParent();
-			while (parent)
-			{
-				base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
-	
-				if (base)
-					break;
-	
-				parent = parent.GetParent();
-			}
-		}
-		
-		//Base HQ doesn't need to check supplies cost
-		if (!base)
-			return true;
-		
-		int spawnSupplyCost = 0;
-		
-		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
-		if (loadoutComp)
-			spawnSupplyCost = SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(loadoutComp.GetLoadout(), false, requestComponent.GetPlayerId(), null, base, base.GetResourceComponent());
-		
-		//~ Check if there are enough supplies
-		if (base.GetSupplies() < spawnSupplyCost)
-		{
-			result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
-			return false;
-		}
-		
-		/*bool validPersonalLoadout = false;
-		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
-		if (loadoutComp && loadoutComp.GetLoadout())
-		{
-			SCR_PlayerArsenalLoadout playerArsenalLoadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
-			if (playerArsenalLoadout)
-			{
-				validPersonalLoadout = true;
-				
-				string playerUID = GetGame().GetBackendApi().GetPlayerIdentityId(requestComponent.GetPlayerId());
- 				if (base.GetSupplies() < (playerArsenalLoadout.GetLoadoutSuppliesCost(playerUID) * base.GetBaseSpawnCostFactor()))
-				{
-					result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
-					return false;
-				}
-			}
-		}
-		
-		if (!validPersonalLoadout)
-		{
-			if (base.GetSupplies() < base.GetBaseSpawnCost())
-			{
-				result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
-				return false;
-			}
-		}*/
-		
-		return true;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
@@ -1438,58 +1357,48 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			}
 		}
 
-		IEntity parent = spawnPointData.GetSpawnPoint().GetParent();
-		SCR_CampaignMilitaryBaseComponent base;
-
-		// Find spawnpoint's parent base, deduct supplies if applicable
-		while (parent)
-		{
-			base = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
-
-			if (base)
-				break;
-
-			parent = parent.GetParent();
-		}
-
-		//~ Todo: Move to SCR_BaseGameMode and make sure it also checks the Spawnpoint for Resource for having spawning cost supplies
-		if (!base)
-			return;
-		
-		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
- 		
-		int spawnSupplyCost = 0;
-		if (loadoutComp)
-			spawnSupplyCost = SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(loadoutComp.GetLoadout(), false, requestComponent.GetPlayerId(), null, base, base.GetResourceComponent());
- 		
-		if (spawnSupplyCost > 0)
-			base.AddSupplies(spawnSupplyCost * -1);
-		
 		// Location popup for player
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(requestComponent.GetPlayerId());
 
 		if (playerController)
 		{
-			SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
+			SCR_CampaignMilitaryBaseComponent spawnPointParentBase;
+			IEntity parent = spawnPointData.GetSpawnPoint();
+			
+			//~ Check if spawn target is a base
+			while (parent)
+			{
+				spawnPointParentBase = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+	
+				if (spawnPointParentBase)
+					break;
+	
+				parent = parent.GetParent();
+			}
+			
+			//~ If spawned on base
+			if (spawnPointParentBase)
+			{
+				SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
 
-			if (campaignNetworkComponent)
-				campaignNetworkComponent.RespawnLocationPopup(base.GetCallsign());
+				if (campaignNetworkComponent)
+					campaignNetworkComponent.RespawnLocationPopup(spawnPointParentBase.GetCallsign());
+			}
 		}
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void OnSpawnPointFactionAssigned(SCR_SpawnPoint spawnpoint)
 	{
 		IEntity owner = spawnpoint.GetParent();
+		if (!owner)
+			return;
 
-		if (owner)
-		{
-			SCR_CampaignMilitaryBaseComponent parentBase = SCR_CampaignMilitaryBaseComponent.Cast(owner.FindComponent(SCR_CampaignMilitaryBaseComponent));
-
-			if (parentBase)
-				parentBase.OnSpawnPointFactionAssigned(spawnpoint.GetFactionKey())
-		}
-		}
+		SCR_CampaignMilitaryBaseComponent parentBase = SCR_CampaignMilitaryBaseComponent.Cast(owner.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		if (parentBase)
+			parentBase.OnSpawnPointFactionAssigned(spawnpoint.GetFactionKey());
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerKilled(int playerId, IEntity playerEntity, IEntity killerEntity, notnull Instigator killer)
@@ -1636,6 +1545,61 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Disable spawning with custom loadout on bases with no armories
+	/*!
+		Authority:
+			Override and implement logic for whether provided player can spawn.
+			\param requestComponent The player request component instigating this spawn.
+			\param handlerComponent The spawn handler component handling this spawn.
+			\param data The request payload.
+			\param[out] result Reason why respawn is disabled. Note that if returns true the reason will always be OK
+			\return True when spawn is allowed, false otherwise. 
+	*/
+	override bool CanPlayerSpawn_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, out SCR_ESpawnResult result = SCR_ESpawnResult.SPAWN_NOT_ALLOWED)
+	{
+		if (!super.CanPlayerSpawn_S(requestComponent, handlerComponent, data, result))
+			return false;
+		
+		SCR_SpawnPointSpawnData spawnpointSpawnData = SCR_SpawnPointSpawnData.Cast(data);
+		
+		if (!spawnpointSpawnData)
+			return true;
+		
+		SCR_CampaignSpawnPointGroup spawnpoint = SCR_CampaignSpawnPointGroup.Cast(spawnpointSpawnData.GetSpawnPoint());
+		
+		if (!spawnpoint)
+			return true;
+		
+		IEntity spawnpointParent = spawnpoint.GetParent();
+		
+		if (!spawnpointParent)
+			return true;
+		
+		SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(spawnpointParent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+		
+		if (!base)
+			return true;
+		
+		SCR_ServicePointComponent armory = base.GetServiceByType(SCR_EServicePointType.ARMORY);
+		
+		if (armory)
+			return true;
+
+		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+
+		if (!loadoutComp)
+			return true;
+		
+		SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
+		
+		if (!loadout)
+			return true;
+
+		result = SCR_ESpawnResult.NOT_ALLOWED_NO_ARSENAL;
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Award additional XP for enemies killed in friendly bases
 	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator instigator)
 	{
@@ -1664,7 +1628,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (!factionManager)
 			return;
 
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 

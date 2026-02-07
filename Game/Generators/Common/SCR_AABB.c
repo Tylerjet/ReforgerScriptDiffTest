@@ -1,6 +1,6 @@
 //! Axis-Aligned Bounding Box
 //! Used by generators
-class SCR_AABB : Managed
+class SCR_AABB
 {
 	vector m_vMin;
 	vector m_vMax;

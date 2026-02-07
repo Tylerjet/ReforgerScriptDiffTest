@@ -277,8 +277,8 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		if (stageIndexes && !stageIndexes.IsEmpty()) // Check if the assigned particle effect supports staging (Staging divides effect's emittors into groups which are selectively enabled/disabled according to our needs)
 		{
 			// Staging is supported, so disable all emittors...
-			particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0);
-			particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
+			particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0.0);
+			particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0.0);
 
 			// ... now enable only the relevant emittors and work with them
 			int iMaxStage = stageIndexes.Count();

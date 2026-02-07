@@ -36,8 +36,11 @@ enum EMessageType_Goal
 	CANCEL,
 	SIT_REP,
 	THROW_GRENADE_TO,
+	SUPPRESS,
 	PROVIDE_AMMO,
-	PICKUP_INVENTORY_ITEMS
+	PICKUP_INVENTORY_ITEMS,
+	OPEN_NAVLINK_DOOR,
+	FIRE_ILLUM_FLARE
 };
 
 //----------------- EXPAND MESSAGE TYPES
@@ -372,8 +375,19 @@ class SCR_AIMessage_Move : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMe
 		if (!node.GetVariableIn(node.PORT_BOOL, m_bUseVehicles))
 			m_bUseVehicles = node.m_bool;
 		if (!node.GetVariableIn(node.PORT_PRIORITY_LEVEL,m_fPriorityLevel))
-			m_fPriorityLevel = SCR_AISendGoalMessage.Cast(node).m_fPriorityLevel;
-	}		
+			m_fPriorityLevel = node.m_fPriorityLevel;
+	}
+	
+	static SCR_AIMessage_Move Create(IEntity entity, vector position, EMovementType movementType, bool useVehicles, SCR_AIActivityBase relatedActivity)
+	{
+		SCR_AIMessage_Move msg = new SCR_AIMessage_Move();
+		msg.m_FollowEntity = entity;
+		msg.m_MovePosition = position;
+		msg.m_eMovementType = movementType;
+		msg.m_bUseVehicles = useVehicles;
+		msg.m_RelatedGroupActivity = relatedActivity;
+		return msg;
+	}
 };
 
 class SCR_AIMessage_Follow : SCR_AIMessage_Move // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Follow)
@@ -393,7 +407,7 @@ class SCR_AIMessage_Follow : SCR_AIMessage_Move // MESSAGE_CLASS(GenerateSendGoa
 		if (!node.GetVariableIn(node.PORT_BOOL, m_bUseVehicles))
 			m_bUseVehicles = node.m_bool;
 		if (!node.GetVariableIn(node.PORT_PRIORITY_LEVEL,m_fPriorityLevel))
-			m_fPriorityLevel = SCR_AISendGoalMessage.Cast(node).m_fPriorityLevel;
+			m_fPriorityLevel = node.m_fPriorityLevel;
 	}
 };
 
@@ -432,7 +446,7 @@ class SCR_AIMessage_Investigate : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSen
 		if (!node.GetVariableIn(node.PORT_BOOL, m_bIsDangerous))
 			m_bIsDangerous = false;
 		if (!node.GetVariableIn(node.PORT_PRIORITY_LEVEL,m_fPriorityLevel))
-			m_fPriorityLevel = SCR_AISendGoalMessage.Cast(node).m_fPriorityLevel;
+			m_fPriorityLevel = node.m_fPriorityLevel;
 	}
 };
 
@@ -492,7 +506,7 @@ class SCR_AIMessage_PickupInventoryItems : SCR_AIMessageGoal // MESSAGE_CLASS(Ge
 
 class SCR_AIMessage_Defend : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Defend)
 {
-	vector m_vDefendLocation; 		// VARIABLE(NodePort, DefendLocation)
+	vector m_vDefendDirection; 		// VARIABLE(NodePort, DefendDirection)
 	float m_fDefendAngularRange; 	// VARIABLE(NodePort, DefendAngularRange, NodeProperty, m_fDefendAngularRange)
 	
 	void SCR_AIMessage_Defend() 
@@ -504,7 +518,20 @@ class SCR_AIMessage_Defend : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoal
 	{
 		super.SetMessageParameters(node, relatedActivity);
 		node.GetVariableIn(node.PORT_ENTITY, m_RelatedWaypoint);
-	}	
+	}
+	
+	static SCR_AIMessage_Defend Create(vector defendDirection, float defendAngularRange, bool waypointRelated,
+									float priorityLevel, AIWaypoint relatedWaypoint, SCR_AIActivityBase relatedActivity)
+	{
+		SCR_AIMessage_Defend msg = new SCR_AIMessage_Defend();
+		msg.m_vDefendDirection = defendDirection;
+		msg.m_fDefendAngularRange = defendAngularRange;
+		msg.m_bIsWaypointRelated = waypointRelated;
+		msg.m_fPriorityLevel = priorityLevel;
+		msg.m_RelatedWaypoint = relatedWaypoint;
+		msg.m_RelatedGroupActivity = relatedActivity;
+		return msg;
+	}
 };
 
 class SCR_AIMessage_Retreat : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Retreat)
@@ -548,42 +575,79 @@ class SCR_AIMessage_PerformAction : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateS
 		node.GetVariableIn(node.PORT_ENTITY, m_SmartActionEntity);
 		node.GetVariableIn(node.PORT_STRING, m_SmartActionTag);
 	}
+	
+	static SCR_AIMessage_PerformAction Create(IEntity sAEntity, string sATag, SCR_AISmartActionComponent sAComponent, bool waypointRelated,
+									float priorityLevel, AIWaypoint relatedWaypoint, SCR_AIActivityBase relatedActivity)
+	{
+		SCR_AIMessage_PerformAction msg = new SCR_AIMessage_PerformAction();
+		msg.m_SmartActionEntity = sAEntity;
+		msg.m_SmartActionTag = sATag;
+		msg.m_SmartActionComponent = sAComponent;
+		msg.m_bIsWaypointRelated = waypointRelated;
+		msg.m_fPriorityLevel = priorityLevel;
+		msg.m_RelatedWaypoint = relatedWaypoint;
+		msg.m_RelatedGroupActivity = relatedActivity;
+		return msg;
+	}
+};
+
+class SCR_AIMessage_OpenNavlinkDoor : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_OpenNavlinkDoor)
+{
+	IEntity m_DoorEntity; // VARIABLE(NodePort, DoorEntity)
+	
+	void SCR_AIMessage_OpenNavlinkDoor()
+	{
+		m_MessageType = EMessageType_Goal.OPEN_NAVLINK_DOOR;
+	}
 };
 
 class SCR_AIMessage_Vehicle : SCR_AIMessageGoal // MESSAGE_CLASS()
 {
 	IEntity m_Vehicle; // VARIABLE(NodePort, VehicleEntity)
+	ref SCR_AIBoardingParameters m_BoardingParams; // VARIABLE(NodePort, BoardingParams)
 };
 
 class SCR_AIMessage_GetIn : SCR_AIMessage_Vehicle // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_GetIn)
 {
 	EAICompartmentType m_eRoleInVehicle; // VARIABLE(NodePort, RoleInVehicle, NodePropertyEnum, m_eRoleInVehicle)
-	
+		
 	void SCR_AIMessage_GetIn() 
 	{
 		m_MessageType = EMessageType_Goal.GET_IN_VEHICLE;
 	}	
 	
-	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
+	static SCR_AIMessage_GetIn Create(IEntity vehicle, SCR_AIBoardingParameters boardingParams, EAICompartmentType roleInVehicle, bool waypointRelated, float priorityLevel, AIWaypoint relatedWaypoint,
+									  SCR_AIActivityBase relatedActivity)
 	{
-		super.SetMessageParameters(node, relatedActivity);
-		node.GetVariableIn(node.PORT_ENTITY, m_Vehicle);
-		if (!node.GetVariableIn(node.PORT_INTEGER,m_eRoleInVehicle))
-			m_eRoleInVehicle = node.m_integer;
-	}	
+		SCR_AIMessage_GetIn msg = new SCR_AIMessage_GetIn();
+		msg.m_Vehicle = vehicle;
+		msg.m_BoardingParams = boardingParams;
+		msg.m_eRoleInVehicle = roleInVehicle;
+		msg.m_bIsWaypointRelated = waypointRelated;
+		msg.m_fPriorityLevel = priorityLevel;
+		msg.m_RelatedWaypoint = relatedWaypoint;
+		msg.m_RelatedGroupActivity = relatedActivity;
+		return msg;
+	}
 };
 
 class SCR_AIMessage_GetOut : SCR_AIMessage_Vehicle // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_GetOut)
 {
+	float m_fDelay_s;
+	
 	void SCR_AIMessage_GetOut() 
 	{
 		m_MessageType = EMessageType_Goal.GET_OUT_VEHICLE;
 	}
 		
-	override void SetMessageParameters(SCR_AISendGoalMessage node, SCR_AIActivityBase relatedActivity)
+	static SCR_AIMessage_GetOut Create(IEntity vehicle, SCR_AIBoardingParameters boardingParams, SCR_AIActivityBase relatedActivity, float delay_s = 0)
 	{
-		super.SetMessageParameters(node, relatedActivity); 
-		node.GetVariableIn(node.PORT_ENTITY, m_Vehicle);
+		SCR_AIMessage_GetOut msg = new SCR_AIMessage_GetOut();
+		msg.m_Vehicle = vehicle;
+		msg.m_RelatedGroupActivity = relatedActivity;
+		msg.m_BoardingParams = boardingParams;
+		msg.m_fDelay_s = delay_s;
+		return msg;
 	}
 };
 
@@ -612,6 +676,45 @@ class SCR_AIMessage_ThrowGrenadeTo : SCR_AIMessageGoal // MESSAGE_CLASS(Generate
 		msg.m_vTargetPosition = position;
 		msg.e_WeaponType = weaponType;
 		msg.m_fDelay = delay;
+		return msg;
+	}
+};
+
+class SCR_AIMessage_FireIllumFlareAt  : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_FireIllumFlareAt)
+{
+	vector m_vTargetPosition; // VARIABLE(NodePort, TargetPosition)
+	
+	void SCR_AIMessage_FireIllumFlareAt()
+	{
+		m_MessageType = EMessageType_Goal.FIRE_ILLUM_FLARE;
+	}
+
+	static SCR_AIMessage_FireIllumFlareAt Create(vector position)
+	{
+		SCR_AIMessage_FireIllumFlareAt msg = new SCR_AIMessage_FireIllumFlareAt();
+		msg.m_vTargetPosition = position;
+		return msg;
+	}
+};
+
+class SCR_AIMessage_Suppress : SCR_AIMessageGoal // MESSAGE_CLASS(GenerateSendGoalMessage, SCR_AISendGoalMessage_Suppress)
+{
+	ref SCR_AISuppressionVolumeBase m_Volume; // VARIABLE(NodePort, SuppressionVolume)
+	float m_fDuration_s; // VARIABLE(NodePort, Duration_s)
+	float m_fFireRate; // VARIABLE(NodePort, FireRate)
+	
+	void SCR_AIMessage_Suppress()
+	{
+		m_MessageType = EMessageType_Goal.SUPPRESS;
+	}
+
+	static SCR_AIMessage_Suppress Create(SCR_AISuppressionVolumeBase volume, float duration, float fireRate = 1)
+	{
+		SCR_AIMessage_Suppress msg = new SCR_AIMessage_Suppress();
+		msg.m_Volume = volume;
+		msg.m_fDuration_s = duration;
+		msg.m_fFireRate = fireRate;
+		
 		return msg;
 	}
 };

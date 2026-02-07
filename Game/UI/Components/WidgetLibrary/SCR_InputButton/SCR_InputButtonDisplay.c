@@ -1,9 +1,7 @@
 class SCR_InputButtonDisplay : ScriptedWidgetComponent
 {
 	protected const float HOLD_ANIMATION_FAILED_ANIMATION_SPEED = -2.5;
-	
-	//Key data
-	protected BaseContainer m_KeyData;
+
 	protected string m_sButtonText;
 	protected ref array<ref SCR_ButtonTexture> m_aButtonTextures = {};
 	protected SCR_EButtonSize m_eButtonType;
@@ -350,7 +348,6 @@ class SCR_InputButtonDisplay : ScriptedWidgetComponent
 	protected void GetWidth()
 	{
 		//! Apply correct size to all images
-		int sx, sy;
 		switch (m_eButtonType)
 		{
 			case SCR_EButtonSize.KEYBOARD_MEDIUM:

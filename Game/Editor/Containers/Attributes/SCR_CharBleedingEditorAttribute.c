@@ -22,7 +22,7 @@ class SCR_CharBleedingEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (characterDamageManager.GetState() == EDamageState.DESTROYED)  
 			return null;
 		
-		return SCR_BaseEditorAttributeVar.CreateFloat(characterDamageManager.GetDOTScale());
+		return SCR_BaseEditorAttributeVar.CreateFloat(characterDamageManager.GetBleedingScale());
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
@@ -52,6 +52,6 @@ class SCR_CharBleedingEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!characterDamageManager.IsDamageHandlingEnabled())
 			return;
 		
-		characterDamageManager.SetDOTScale(var.GetFloat(), true);
+		characterDamageManager.SetBleedingScale(var.GetFloat(), true);
 	}
 };

@@ -69,6 +69,16 @@ class SCR_MapUIBaseComponent : ScriptedWidgetComponent
 	//! Update method for frame operations
 	void Update(float timeSlice);
 	
+	//------------------------------------------------------------------------------------------------	
+	bool IsToolMenuFocused()
+	{
+		SCR_MapToolMenuUI toolMenu = SCR_MapToolMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolMenuUI));
+		if (toolMenu)
+			return toolMenu.IsFocused();
+
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	void SCR_MapUIBaseComponent()

@@ -55,7 +55,7 @@ class SCR_GlobalUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 			if (!characterDamageManager) 
 				continue;
 			
-			CharacterControllerComponent controller = CharacterControllerComponent.Cast(character.GetCharacterController());
+			CharacterControllerComponent controller = character.GetCharacterController();
 			if (!controller) 
 				continue;
 			

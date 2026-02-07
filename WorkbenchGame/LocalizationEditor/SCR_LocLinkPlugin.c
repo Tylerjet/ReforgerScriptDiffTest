@@ -71,7 +71,7 @@ class SCR_LocLinkImagePlugin : LocalizationEditorPlugin
 				IEntityComponentSource component = SCR_BaseContainerTools.FindComponentSource(resource, SCR_EditableEntityComponent);
 				if (component)
 				{
-					SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(component));
+					SCR_EditableEntityUIInfo info = SCR_EditableEntityComponentClass.GetInfo(component);
 					if (info)
 					{
 						string image = info.GetImage();

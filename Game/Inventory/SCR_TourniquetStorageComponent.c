@@ -165,22 +165,41 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		m_TourniquetMovedCallback.m_Storage = targetStorage;
 		m_TourniquetMovedCallback.m_bRemove = false;
 		
+		bool success = false;
+		
 		if (storageMan.TryMoveItemToStorage(targetTourniquet, targetStorage, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
-			return true;
+			success = true;
 		
 		InventoryItemComponent invComp = InventoryItemComponent.Cast(targetTourniquet.FindComponent(InventoryItemComponent));
 		if (!invComp)
 			return false;
 		
-		if (!invComp.GetParentSlot())
+		if (!success && !invComp.GetParentSlot())
 		{
 			if (storageMan.TryInsertItemInStorage(targetTourniquet, targetStorage, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
-				return true;
+				success = true;
 		}
-		else
+		else if (!success)
 		{
 			if (storageMan.TryMoveItemToStorage(targetTourniquet, targetStorage, tqTargetSlot.GetID(), m_TourniquetMovedCallback))
-				return true;
+				success = true;
+		}
+		
+		if (success)
+		{
+			SCR_HitZone hitZone;
+			array<ref PersistentDamageEffect> tourniquetEffects = damageMgr.GetAllPersistentEffectsOfType(SCR_TourniquetDamageEffect);
+			foreach (PersistentDamageEffect effect : tourniquetEffects)
+			{
+				hitZone = SCR_HitZone.Cast(effect.GetAffectedHitZone());
+				if (!hitZone)
+					continue;
+				
+				if (tqTargetSlot.GetAssociatedHZGroup() == hitZone.GetHitZoneGroup())
+					damageMgr.TerminateDamageEffect(effect);
+			}
+			
+			return true;
 		}
 		
 		return false;	

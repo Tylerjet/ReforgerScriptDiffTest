@@ -165,25 +165,27 @@ class SCR_GameModeLastStand : SCR_BaseGameMode
 		}
 		BaseWorld world = owner.GetWorld();
 		m_AttackWP = AIWaypoint.Cast(world.FindEntityByName("WP1"));
-		m_aEnemySoldiers = new array<IEntity>;
-		m_aGroups = new array<SCR_AIGroup>;
-		m_aPlayerSpawnPoints = new array<SCR_SpawnPoint>;
-		m_aEnemySpawnPoints = new array<SCR_SpawnPoint>;
-		array<SCR_SpawnPoint> spawnPoints = new array<SCR_SpawnPoint>;
+		m_aEnemySoldiers = {};
+		m_aGroups = {};
+		m_aPlayerSpawnPoints = {};
+		m_aEnemySpawnPoints = {};
+		array<SCR_SpawnPoint> spawnPoints = {};
 		spawnPoints = SCR_SpawnPoint.GetSpawnPoints();
 
+		FactionKey faction;
+		SCR_SpawnPoint spawnPoint;
 		for (int i = spawnPoints.Count() - 1; i >= 0; i--)
 		{
-			SCR_SpawnPoint spawnPoint = SCR_SpawnPoint.Cast(spawnPoints[i]);
-			if (spawnPoint)
-			{
-				FactionKey faction = spawnPoint.GetFactionKey();
-				if (faction == m_sEnemyFactionKey)
-					m_aEnemySpawnPoints.Insert(spawnPoint);
-				
-				if (faction == m_sFriendlyFactionKey)
-					m_aPlayerSpawnPoints.Insert(spawnPoint);
-			}
+			spawnPoint = spawnPoints[i];
+			if (!spawnPoint)
+				continue;
+
+			faction = spawnPoint.GetFactionKey();
+			if (faction == m_sEnemyFactionKey)
+				m_aEnemySpawnPoints.Insert(spawnPoint);
+
+			if (faction == m_sFriendlyFactionKey)
+				m_aPlayerSpawnPoints.Insert(spawnPoint);
 		}
 	}
 };

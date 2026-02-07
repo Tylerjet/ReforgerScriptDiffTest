@@ -18,6 +18,8 @@ class SCR_SuperMenuComponent : SCR_ScriptedWidgetComponent
 	protected SCR_TabViewComponent m_TabViewComponent;
 	
 	protected SCR_SubMenuBase m_OpenedSubmenu;
+	
+	// The index might not be the same as the tab's Elements, as the tabs might be created later or not have a SubMenu component
 	protected ref array<SCR_SubMenuBase> m_aSubMenus = {};
 	
 	Widget m_wMenuRoot;
@@ -122,6 +124,7 @@ class SCR_SuperMenuComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	// --- Sub menus handling ---
 	//------------------------------------------------------------------------------------------------
+	// Might be called after OnMenuOpen, given that tabs have the option to be created only when they are selected 
 	SCR_SubMenuBase OnTabCreate(SCR_TabViewComponent comp, Widget w, int index)
 	{
 		if (!w)
@@ -238,12 +241,14 @@ class SCR_SuperMenuComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// Returns a sub menu based TabView's Elements, meaning it might return null if the tab's content hasn't been created yet
 	SCR_SubMenuBase GetSubMenu(int index)
 	{
-		if (!m_aSubMenus.IsIndexValid(index))
+		Widget content = m_TabViewComponent.GetContentWidget(index);
+		if (!content)
 			return null;
 		
-		return m_aSubMenus[index];
+		return SCR_SubMenuBase.Cast(content.FindHandler(SCR_SubMenuBase));
 	}
 	
 	//------------------------------------------------------------------------------------------------

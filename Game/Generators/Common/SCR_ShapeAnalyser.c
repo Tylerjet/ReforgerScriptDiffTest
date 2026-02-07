@@ -1,13 +1,15 @@
-//! The Shape Analyser provides "points" (Rays/Transforms) with position and vectorDir (vectorUp is not filled)
+//! The Shape Analyser provides "points" (Rays/Transforms) with absolute position and vectorDir (vectorUp is not filled)
 //! if the shape is closed, the first point is added as the last point FOR THE POLYLINE ONLY (the engine already does it for the spline)
 class SCR_ShapeAnalyser
 {
 	protected bool m_bIsSpline;
 	protected bool m_bIsClosed;
 
-	protected ref array<ref SCR_Ray> m_aAnchorRays;			//!< points as shown by the Vector tool
-	protected ref array<ref SCR_Ray> m_aMidPointRays;		//!< tesselated points between two "normal" points, regardless of distance (by num of tesselated points)
+	protected ref array<ref SCR_Ray> m_aAnchorRays;				//!< points as shown by the Vector tool
+	protected ref array<ref SCR_Ray> m_aMidPointRays;			//!< tesselated points between two "normal" points, regardless of distance (by num of tesselated points)
 	protected ref array<ref SCR_Ray> m_aTesselatedPointRays;	//!< intermediate points
+	protected ref array<vector> m_aRelativeAnchorPoints;
+	protected ref array<vector> m_aAbsoluteAnchorPoints;
 
 	// stats
 	protected float m_fLength2D;
@@ -17,19 +19,22 @@ class SCR_ShapeAnalyser
 	protected float m_fMinSlope, m_fMaxSlope; //!< in radians
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsClosed()
 	{
 		return m_bIsClosed;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \return
 	bool IsSpline()
 	{
 		return m_bIsSpline;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_Ray> GetPoints()
+	//! \return
+	array<ref SCR_Ray> GetPointRays()
 	{
 		array<ref SCR_Ray> result = {};
 		foreach (SCR_Ray point : m_aAnchorRays)
@@ -40,25 +45,36 @@ class SCR_ShapeAnalyser
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_Ray> GetMiddlePoints()
+	//! \return absolute anchor points positions
+	array<vector> GetAbsoluteAnchorPoints()
 	{
-		array<ref SCR_Ray> result = {};
-		foreach (SCR_Ray point : m_aMidPointRays)
-		{
-			result.Insert(point);
-		}
+		array<vector> result = {};
+		result.Copy(m_aAbsoluteAnchorPoints);
 		return result;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_Ray> GetTesselatedPoints()
+	//! \return relative anchor points positions
+	array<vector> GetRelativeAnchorPoints()
 	{
-		array<ref SCR_Ray> result = {};
-		foreach (SCR_Ray point : m_aTesselatedPointRays)
-		{
-			result.Insert(point);
-		}
+		array<vector> result = {};
+		result.Copy(m_aRelativeAnchorPoints);
 		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	array<ref SCR_Ray> GetMiddlePointRays()
+	{
+		return SCR_ArrayHelperT<SCR_Ray>.GetCopy(m_aMidPointRays);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tesselated positions are absolute
+	//! \return
+	array<ref SCR_Ray> GetTesselatedPointRays()
+	{
+		return SCR_ArrayHelperT<SCR_Ray>.GetCopy(m_aTesselatedPointRays);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -71,15 +87,20 @@ class SCR_ShapeAnalyser
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
-	//! \param isClosed -has- to be taken from EntitySource :-|
-	void SCR_ShapeAnalyser(notnull ShapeEntity shapeEntity, bool isClosed)
+	//! \param[in] shapeEntity
+	void SCR_ShapeAnalyser(notnull ShapeEntity shapeEntity)
 	{
 		m_bIsSpline = SplineShapeEntity.Cast(shapeEntity) != null;
+		m_bIsClosed = shapeEntity.IsClosed();
 
-		vector origin = shapeEntity.GetOrigin();
+		vector mat[4];
+		shapeEntity.GetTransform(mat);
 
 		array<vector> points = {};
 		shapeEntity.GetPointsPositions(points);
+		m_aRelativeAnchorPoints = {};
+		m_aRelativeAnchorPoints.Copy(points);
+		m_aAbsoluteAnchorPoints = {}; // filled in the later loop
 
 		int pointsCount = points.Count();
 		if (pointsCount < 2)
@@ -115,7 +136,9 @@ class SCR_ShapeAnalyser
 				diff = currTessPoint - prevTessPoint;
 
 			SCR_Ray point = new SCR_Ray();
-			point.m_vPosition = origin + currTessPoint;
+			point.m_vPosition = currTessPoint.Multiply4(mat); // absolute (world) position
+
+			m_aAbsoluteAnchorPoints.Insert(point.m_vPosition);
 
 			float slopeRad = Math.Atan2(diff[1], vector.DistanceXZ(diff, vector.Zero));
 
@@ -123,8 +146,7 @@ class SCR_ShapeAnalyser
 				point.m_vDirection = (tesselatedPoints[i + 1] - currTessPoint).Normalized();
 			else if (i < count - 1)	// mid-curve - averages previous and next vector
 				point.m_vDirection = (0.5 * ((currTessPoint - prevTessPoint) + (tesselatedPoints[i + 1] - currTessPoint))).Normalized();
-				// (float.AlmostEqual) equivalent to
-				// point.m_vDirection = vector.Lerp(currTessPoint - prevTessPoint, tesselatedPoints[i + 1] - currTessPoint, 0.5).Normalized();
+				// point.m_vDirection = (0.5 * ((currTessPoint - prevTessPoint).Normalized() + (tesselatedPoints[i + 1] - currTessPoint).Normalized())).Normalized();
 			else					// last
 				point.m_vDirection = (currTessPoint - prevTessPoint).Normalized();
 

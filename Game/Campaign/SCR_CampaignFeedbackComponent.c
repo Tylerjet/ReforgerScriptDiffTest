@@ -324,7 +324,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (!playerFaction || base.GetFaction() != playerFaction)
 			return;
 
-		if (base.GetHQRadioCoverage(playerFaction) != SCR_ECampaignHQRadioComms.RECEIVE)
+		if (base.GetHQRadioCoverage(playerFaction) != SCR_ERadioCoverageStatus.RECEIVE)
 			return;
 
 		ShowHint(EHint.CONFLICT_NO_CONNECTION);

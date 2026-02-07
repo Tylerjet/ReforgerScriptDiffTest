@@ -9,16 +9,29 @@ class SCR_AIGroupUtilityComponentClass : SCR_AIBaseUtilityComponentClass
 
 class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 {
+	protected static const float AUTONOMOUS_DISTANCE_MAX_DEFAULT = 9999;
+	
 	SCR_AIGroup m_Owner;
 	SCR_AIConfigComponent m_ConfigComponent;
 	SCR_AIGroupInfoComponent m_GroupInfo;
+	SCR_AIGroupMovementComponent m_GroupMovementComponent;
 	SCR_MailboxComponent m_Mailbox;
 	ref array<SCR_AIInfoComponent> m_aInfoComponents = {};
 	
 	ref ScriptInvoker_GroupMoveFailed m_OnMoveFailed;
+	ref ScriptInvokerBase<SCR_AIOnAgentLifeStateChanged> m_OnAgentLifeStateChanged = new ScriptInvokerBase<SCR_AIOnAgentLifeStateChanged>();
 	
+	// Settings for cluster suppression
+	const float SUPPRESS_MAX_CLUSTER_INFO_AGE_S = 90; // For how long since last info we'll be suppressing cluster
+	const float SUPPRESS_OLD_CLUSTER_INFO_AGE_S = 15; // Time since last cluster info that we'll consider as old (starts scaling of fire rate to save ammo)
+	const float SUPPRESS_MAX_DESTROYED_CLUSTER_INFO_AGE_S = 10; // How long to suppress a target cluster which has only destroyed targets
+	const float SUPPRESS_MIN_DIST_TO_CLUSTER_M = 30; // What is the minimal distance of units to suppression bbox to stop firing
+		
 	protected float m_fLastUpdateTime = -1.0;
 	protected float m_fPerceptionUpdateTimer_ms;
+	
+	// See SetMaxAutonomousDistance()
+	protected float m_fMaxAutonomousDistance = AUTONOMOUS_DISTANCE_MAX_DEFAULT;
 	
 	// Update interval of group perception and target clusters and their processing
 	protected const float PERCEPTION_UPDATE_TIMER_MS = 2000.0;
@@ -37,8 +50,77 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	// Fireteams
 	ref SCR_AIGroupFireteamManager m_FireteamMgr;
 	
+	// Vehicles
+	ref SCR_AIGroupVehicleManager m_VehicleMgr;
+	
 	// Used by SCR_AIGetMemberByGoal nodes
 	int m_iGetMemberByGoalNextIndex = 0;
+	
+	// Current group's threat measure
+	protected float m_fThreatMeasure;
+	
+	// Current group's fire rate (external)
+	protected float m_fFireRateCoef = 1;	
+	
+	// Currently suppressed cluster state
+	protected ref SCR_AITargetClusterState m_CurrentSuppressClusterState;
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateThreatMeasure()
+	{
+		// Exit if no agents
+		float count = m_aInfoComponents.Count();
+		if (count == 0)
+			return;
+		
+		float threat = 0;
+		foreach (SCR_AIInfoComponent infoComp : m_aInfoComponents)
+			threat += infoComp.GetThreatSystem().GetThreatMeasure();
+		
+		threat /= count;
+		m_fThreatMeasure = threat;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Sets group's fire rate coef
+	void SetFireRateCoef(float coef = 1, bool overridePersistent = false)
+	{
+		m_fFireRateCoef = coef;
+		
+		foreach (SCR_AIInfoComponent infoComp : m_aInfoComponents)
+		{
+			SCR_AICombatComponent comp = infoComp.GetCombatComponent();
+			if (comp)
+				comp.SetGroupFireRateCoef(coef, overridePersistent);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Get group's current fire rate coef
+	float GetFireRateCoef()
+	{
+		return m_fFireRateCoef;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Get group's current threat measure
+	float GetThreatMeasure()
+	{
+		return m_fThreatMeasure;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Sets max distance for various autonomous behaviors.
+	void SetMaxAutonomousDistance(float dist)
+	{
+		m_fMaxAutonomousDistance = Math.Max(0, dist);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMaxAutonomousDistance()
+	{
+		return m_fMaxAutonomousDistance;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -139,23 +221,31 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		#endif
 		
 		// Rebalance fireteams if needed
-		if (m_FireteamMgr.m_bRebalanceFireteams)
+		bool isMilitary = IsMilitary();
+		if (isMilitary && !m_Owner.IsSlave())
 		{
-			if (CanRebalanceFireteams()) // In some cases we can't rebalance fireteams yet
+			if (m_FireteamMgr.m_bRebalanceFireteams)
 			{
-				m_FireteamMgr.RebalanceFireteams();
+				if (CanRebalanceFireteams()) // In some cases we can't rebalance fireteams yet
+				{
+					m_FireteamMgr.RebalanceAllFireteams();
+				}
 			}
-		}
 		
-		// Perception and clusters
-		m_fPerceptionUpdateTimer_ms += deltaTime_ms;
-		if (m_fPerceptionUpdateTimer_ms > PERCEPTION_UPDATE_TIMER_MS)
-		{
-			m_Perception.Update();
-			if (!m_Perception.m_aTargetClusters.IsEmpty())
-				UpdateClustersState(m_fPerceptionUpdateTimer_ms);
-			
-			m_fPerceptionUpdateTimer_ms -= PERCEPTION_UPDATE_TIMER_MS;
+			// Perception and clusters
+			m_fPerceptionUpdateTimer_ms += deltaTime_ms;
+			if (m_fPerceptionUpdateTimer_ms > PERCEPTION_UPDATE_TIMER_MS)
+			{
+				m_Perception.Update();
+				UpdateSuppressCluster();
+				UpdateThreatMeasure();
+				EvaluateFlareUsage();
+				
+				if (!m_Perception.m_aTargetClusters.IsEmpty())
+					UpdateClustersState(m_fPerceptionUpdateTimer_ms);
+				
+				m_fPerceptionUpdateTimer_ms -= PERCEPTION_UPDATE_TIMER_MS;
+			}
 		}
 			
 		m_fLastUpdateTime = currentTime;
@@ -163,7 +253,109 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		return m_CurrentActivity;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void EvaluateFlareUsage()
+	{
+		if (!SCR_AIWorldHandling.IsLowLightEnvironment() || !m_GroupInfo || !m_GroupInfo.IsIllumFlareAllowed())
+			return;
+		
+		if (!m_CurrentSuppressClusterState)
+			return;
 
+		vector targetPosition = m_CurrentSuppressClusterState.GetCenterPosition();
+		
+		SCR_AIActivityIllumFlareFeature illumFeature = new SCR_AIActivityIllumFlareFeature();	
+		if (illumFeature.Execute(this, targetPosition, null))
+			m_GroupInfo.OnIllumFlareUsed();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_AITargetClusterState GetCurrentSuppressClusterState()
+	{
+		return m_CurrentSuppressClusterState;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool AnyMembersInsideBBox(vector bbMin, vector bbMax)
+	{
+		// Check if any friends are inside bbox
+		foreach (SCR_AIInfoComponent infoComp : m_aInfoComponents)
+		{
+			AIAgent agent = AIAgent.Cast(infoComp.GetOwner());
+			if (!agent)
+				continue;
+				
+			IEntity character = agent.GetControlledEntity();
+			if (!character)
+				continue;
+				
+			vector unitPos = character.GetOrigin();
+
+			if (Math.IsInRange(unitPos[0], bbMin[0], bbMax[0]) && Math.IsInRange(unitPos[1], bbMin[1], bbMax[1]) && Math.IsInRange(unitPos[2], bbMin[2], bbMax[2]))
+				return true;
+		}
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool ShouldSuppressCluster(SCR_AITargetClusterState clusterState)
+	{
+		// Ignore clusters without endangering & identified targets or members too close
+		if (clusterState.m_iCountIdentified == 0 && clusterState.m_iCountEndangering == 0 || clusterState.m_fDistMin < SUPPRESS_MIN_DIST_TO_CLUSTER_M)
+			return false;
+		
+		// Max suppression time
+		float maxSuppressionTime = SUPPRESS_MAX_CLUSTER_INFO_AGE_S;
+		if (clusterState.m_iCountAlive == 0)
+			maxSuppressionTime = SUPPRESS_MAX_DESTROYED_CLUSTER_INFO_AGE_S;
+		
+		// Ignore too old clusters
+		if (clusterState.GetTimeSinceLastNewInformation() > maxSuppressionTime)
+			return false;
+		
+		vector bbMin = clusterState.m_vBBMin;
+		vector bbMax = clusterState.m_vBBMax;
+		
+		// Scale BBox
+		SCR_AISuppressionObjectVolumeBox.ScaleTargetBBox(bbMin, bbMax, clusterState.m_fDistMin, clusterState.m_iCountIdentified > 0);
+			
+		// Ignore cluster if some group members are inside it
+		if (AnyMembersInsideBBox(bbMin, bbMax))
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateSuppressCluster()
+	{
+		SCR_AIGroupTargetCluster cluster = m_Perception.m_MostDangerousCluster;		
+		SCR_AITargetClusterState state;
+		
+		if (cluster)
+		{
+			state = cluster.m_State;
+			
+			if (!ShouldSuppressCluster(state))
+				state = null;
+		}
+		
+		if (state != m_CurrentSuppressClusterState)
+		{
+			m_CurrentSuppressClusterState = state;
+			
+			// Alert agents about change in cluster
+			foreach (SCR_AIInfoComponent infoComp : m_aInfoComponents)
+			{
+				SCR_AICombatComponent comp = infoComp.GetCombatComponent();
+				if (comp)
+					comp.SetGroupSuppressClusterState(state);
+			}		
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Updates info of group members to planner - should be called when adding or removing group member
 	//! \param[in] agent
@@ -181,18 +373,31 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		m_aInfoComponents.Insert(info);	
 		
-		m_FireteamMgr.OnAgentAdded(agent, info);
+		m_FireteamMgr.OnAgentAdded(agent);
 		
+		info.m_OnCompartmentEntered.Insert(OnAgentCompartmentEntered);
+		info.m_OnCompartmentLeft.Insert(OnAgentCompartmentLeft);
+		info.m_OnAgentLifeStateChanged.Insert(OnAgentLifeStateChanged);
 		m_bNewGroupMemberAdded = true;
 		
-		return;
+		if (info.HasUnitState(EUnitState.IN_VEHICLE))
+		{
+			OnJoinGroupFromVehicle(agent, info.HasUnitState(EUnitState.PILOT));
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] group
 	//! \param[in] agent
 	void OnAgentRemoved(SCR_AIGroup group, AIAgent agent)
-	{
+	{	
+		SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(agent.FindComponent(SCR_AIUtilityComponent));
+		if(!utility)
+			return Debug.Error("Null AI utility");
+			
+		if(agent)
+			utility.CancelAllGroupActivityBehaviors(this);
+		
 		// Remove from array of AIInfo
 		for (int i = m_aInfoComponents.Count() - 1; i >= 0; i--)
 		{
@@ -203,6 +408,11 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			}
 			else if (m_aInfoComponents[i].IsOwnerAgent(agent))
 			{
+				// Unsubscribe from compartment event
+				SCR_AIInfoComponent infoComp = m_aInfoComponents[i];
+				infoComp.m_OnCompartmentEntered.Remove(OnAgentCompartmentEntered);
+				infoComp.m_OnCompartmentLeft.Remove(OnAgentCompartmentLeft);
+				
 				m_aInfoComponents.RemoveOrdered(i);
 				break;
 			}
@@ -234,6 +444,138 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			
 			m_WaypointState = null;
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAgentCompartmentEntered(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		if (!agent || !targetEntity)
+			return;
+		// ignoring attachments such as turrets, cargo slots, etc.
+		SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(targetEntity, targetEntity);
+		if (!vehicleUsageComp)
+		{
+			SCR_AIVehicleUsageComponent.ErrorNoComponent(targetEntity);
+			return;
+		}
+		
+		AddUsableVehicle(vehicleUsageComp);
+		
+		// Not from our group? Should not happen.
+		if (agent.GetParentGroup() != m_Owner)
+			return;
+		
+		BaseCompartmentSlot compSlot =  manager.FindCompartment(slotID, mgrID);
+		
+		if (m_GroupMovementComponent && compSlot)
+		{
+			bool isDriving = compSlot.GetType() == ECompartmentType.PILOT;
+			SCR_AIGroupVehicle groupVehicle = m_VehicleMgr.FindVehicle(vehicleUsageComp);
+			int vehicleId = groupVehicle.GetSubgroupHandleId();
+			if (vehicleId > -1) // agent entered vehicle with subgroup
+				JoinSubgroup(agent, vehicleId, isDriving);
+			else	// agent entered vehicle, that does not have subgroup, yet
+				CreateNewSubgroup(agent, isDriving, groupVehicle);
+		}
+		
+		m_FireteamMgr.OnAgentAssignedToVehicle(agent, vehicleUsageComp, compSlot.GetType());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void JoinSubgroup(AIAgent agent, int handleId, bool isSubgroupLeader)
+	{
+		
+		int oldHandleId = m_GroupMovementComponent.GetAgentMoveHandlerId(agent);
+		if (isSubgroupLeader)
+			m_GroupMovementComponent.SetMoveHandlerLeader(agent, oldHandleId, handleId);
+		else
+			m_GroupMovementComponent.MoveAgentToHandler(agent, oldHandleId, handleId);		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool OnJoinGroupFromVehicle(AIAgent agent, bool isDriving)
+	{
+		ChimeraCharacter charact = ChimeraCharacter.Cast(agent.GetControlledEntity());
+		if (!charact)
+			return false;
+		CompartmentAccessComponent comp = charact.GetCompartmentAccessComponent();
+		if (!comp)
+			return false;
+		IEntity vehicleEntity = comp.GetVehicleIn(charact);
+		if (!vehicleEntity)
+			return false;
+		SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(vehicleEntity, vehicleEntity);
+		if (!vehicleUsageComp)
+			return false;
+			
+		BaseCompartmentSlot compartment = comp.GetCompartment();
+		if (!compartment)
+			return false;
+		
+		OnAgentCompartmentEntered(agent, vehicleEntity, compartment.GetManager(), compartment.GetCompartmentMgrID(), compartment.GetCompartmentSlotID(), false); 
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected int CreateNewSubgroup(AIAgent agent, bool isSubgroupLeader, SCR_AIGroupVehicle groupVehicle)
+	{
+		int oldHandleId = m_GroupMovementComponent.GetAgentMoveHandlerId(agent);
+		AIFormationDefinition formationDef = m_GroupMovementComponent.GetFormationDefinition(oldHandleId);
+		if (!formationDef)
+			return -1;
+		string formationType = formationDef.GetName();
+		int newHandleId = m_GroupMovementComponent.CreateGroupMoveHandler(formationType);
+		if (isSubgroupLeader)
+			m_GroupMovementComponent.SetMoveHandlerLeader(agent, oldHandleId, newHandleId);
+		else
+			m_GroupMovementComponent.MoveAgentToHandler(agent, oldHandleId, newHandleId);
+		groupVehicle.SetSubgroupHandleId(newHandleId);
+		return newHandleId;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void LeaveSubgroup(AIAgent agent, SCR_AIGroupVehicle groupVehicle)
+	{
+		int oldHandleId = m_GroupMovementComponent.GetAgentMoveHandlerId(agent);
+		m_GroupMovementComponent.MoveAgentToHandler(agent, oldHandleId, AIGroupMovementComponent.DEFAULT_HANDLER_ID);		
+		bool isHandleEmpty = m_GroupMovementComponent.GetMoveHandlerAgentCount(oldHandleId) == 0;
+		if (isHandleEmpty)
+		{
+			m_GroupMovementComponent.RemoveGroupMoveHandler(oldHandleId);
+			if (groupVehicle)
+				groupVehicle.SetSubgroupHandleId();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAgentCompartmentLeft(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		if (!agent || !targetEntity)
+			return;
+		
+		// ignoring attachments such as turrets, cargo slots, etc.
+		SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.FindOnNearestParent(targetEntity, targetEntity);
+		
+		// Not from our group? Should not happen.
+		if (agent.GetParentGroup() != m_Owner)
+			return;
+		
+		SCR_AIGroupVehicle groupVehicle = m_VehicleMgr.FindVehicle(targetEntity);
+		LeaveSubgroup(agent,groupVehicle);
+		
+		if (!vehicleUsageComp)
+		{
+			SCR_AIVehicleUsageComponent.ErrorNoComponent(targetEntity);
+			return;
+		}
+		
+		m_FireteamMgr.OnAgentUnassignedFromVehicle(agent, vehicleUsageComp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnAgentLifeStateChanged(AIAgent incapacitatedAgent, SCR_AIInfoComponent infoIncap, IEntity vehicle, ECharacterLifeState lifeState)
+	{
+		m_OnAgentLifeStateChanged.Invoke(incapacitatedAgent, infoIncap, vehicle, lifeState);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -339,6 +681,11 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			if (!activity || (checkType && !activity.IsInherited(activityType)))
 				continue;
 			
+			EAIActionState state = activity.GetActionState();
+			
+			if (state == EAIActionState.COMPLETED || state == EAIActionState.FAILED)
+				continue;
+			
 			if (activity.m_RelatedWaypoint == waypoint)
 				activity.Fail();
 		}
@@ -417,9 +764,13 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		m_Perception = new SCR_AIGroupPerception(this, m_Owner);
 		m_Perception.GetOnEnemyDetectedFiltered().Insert(OnEnemyDetectedFiltered);
 		
+		m_VehicleMgr = new SCR_AIGroupVehicleManager();
+		
 		m_Mailbox = SCR_MailboxComponent.Cast(m_Owner.FindComponent(SCR_MailboxComponent));
 		
 		m_fPerceptionUpdateTimer_ms = Math.RandomFloat(0, PERCEPTION_UPDATE_TIMER_MS);
+		
+		m_GroupMovementComponent = SCR_AIGroupMovementComponent.Cast(owner.FindComponent(SCR_AIGroupMovementComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -430,6 +781,9 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_FIRETEAMS))
 			m_FireteamMgr.DiagDrawFireteams();
+		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SUBGROUPS))
+			m_GroupMovementComponent.DiagDrawSubgroups(m_Owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -473,16 +827,90 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	{		
 		AIWaypoint wp = m_Owner.GetCurrentWaypoint();
 		
-		// If there is no waypoint, we can go anywhere
-		if (!wp)
-			return true;
-		
-		// If we have a defend wp, we can go only inside of it
 		SCR_DefendWaypoint defendWp = SCR_DefendWaypoint.Cast(wp);
 		if (defendWp)
+		{
+			// If we have a defend wp, we can go only inside of it
 			return vector.Distance(defendWp.GetOrigin(), pos) < defendWp.GetCompletionRadius();
+		}
+		else
+		{
+			// Either no waypoint, or not a defend waypoint
+			// We can go anywhere, but it depends on range
+			
+			float distance = vector.Distance(m_Owner.GetCenterOfMass(), pos);
+			
+			return distance < m_fMaxAutonomousDistance;
+		}
 		
 		return true;
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	void AddUsableVehicle(notnull SCR_AIVehicleUsageComponent vehicleUsageComp)
+	{
+		m_VehicleMgr.TryAddVehicle(vehicleUsageComp);
+		
+		// Events
+		vehicleUsageComp.GetOnDeleted().Remove(OnVehicleDeleted); // not to add it twice
+		vehicleUsageComp.GetOnDeleted().Insert(OnVehicleDeleted);
+		vehicleUsageComp.GetOnDamageStateChanged().Remove(OnVehicleDamageStateChanged); // not to add it twice
+		vehicleUsageComp.GetOnDamageStateChanged().Insert(OnVehicleDamageStateChanged);
+		
+		// Create a vehicle combat activity as soon as first vehicle is added
+		if (!HasActionOfType(SCR_AIVehicleCombatActivity))
+		{
+			auto activity = new SCR_AIVehicleCombatActivity(this, null);
+			AddAction(activity);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveUsableVehicle(notnull SCR_AIVehicleUsageComponent vehicleUsageComp)
+	{
+		// Remove from vehicle mgr
+		m_VehicleMgr.RemoveVehicle(vehicleUsageComp);
+		
+		// Remove from fireteam mgr
+		m_FireteamMgr.OnVehicleRemoved(vehicleUsageComp);
+		
+		// Events
+		vehicleUsageComp.GetOnDeleted().Remove(OnVehicleDeleted);
+		vehicleUsageComp.GetOnDamageStateChanged().Remove(OnVehicleDamageStateChanged);
+		
+		// Remove vehicle combat activity when we no longer have any vehicles
+		if (m_VehicleMgr.GetVehiclesCount() == 0)
+		{
+			auto vehicleCombatActivity = FindActionOfType(SCR_AIVehicleCombatActivity);
+			if (vehicleCombatActivity)
+				vehicleCombatActivity.Fail();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleDeleted(SCR_AIVehicleUsageComponent comp)
+	{
+		RemoveUsableVehicle(comp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnVehicleDamageStateChanged(SCR_AIVehicleUsageComponent comp, EDamageState state)
+	{
+		if (state != EDamageState.DESTROYED)
+			return;
+		
+		RemoveUsableVehicle(comp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Are we a military AI or not?
+	bool IsMilitary()
+	{
+		SCR_Faction f = SCR_Faction.Cast(m_Owner.GetFaction());
+		if (!f)
+			return false;
+		return f.IsMilitary();
 	}
 	
 	// Diagnostics and debugging below

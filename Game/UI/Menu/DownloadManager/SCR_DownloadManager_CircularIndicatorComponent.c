@@ -73,7 +73,6 @@ class SCR_DownloadManager_CircularIndicatorComponent : SCR_ScriptedWidgetCompone
 		if (!mgr)
 			return;
 		
-		string downloadStateText;
 		int nCompleted, nTotal;
 		mgr.GetDownloadQueueState(nCompleted, nTotal);
 

@@ -20,12 +20,13 @@ class SCR_ScenarioFrameworkWaypointCaptureRelay : SCR_ScenarioFrameworkWaypointS
 	//------------------------------------------------------------------------------------------------
 	override void SetWaypointSmartActionTag(string tag)
 	{
+		m_sSmartActionTag = tag;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override string GetWaypointSmartActionTag()
 	{
-		return string.Empty;
+		return m_sSmartActionTag;
 	}
 
 	//------------------------------------------------------------------------------------------------

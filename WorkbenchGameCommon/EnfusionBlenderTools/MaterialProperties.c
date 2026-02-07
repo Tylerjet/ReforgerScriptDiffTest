@@ -1,88 +1,101 @@
-class MaterialPropertiesRequest: JsonApiStruct
+class MaterialPropertiesRequest : JsonApiStruct
 {
 	string path;
-	
+
 	void MaterialPropertiesRequest()
 	{
 		RegV("path");
 	}
-};
+}
 
-class MaterialPropertiesResponse: JsonApiStruct
+class MaterialPropertiesResponse : JsonApiStruct
 {
-	string mat_props;
-	
+	ref array<string> mat_props  = new array<string>();
+
 	void MaterialPropertiesResponse()
 	{
 		RegV("mat_props");
 	}
-};
+}
 
 class MaterialPropertiesUtils
 {
-	void GetEmat(ResourceName path, MaterialPropertiesResponse props)
+	void GetEmatProperties(ResourceName path, MaterialPropertiesResponse props)
 	{
 		BaseContainer ematCont;
 		BaseContainer uvTransform;
 		BaseContainer empty;
-		string temp = ".";	
+		string temp = ".";
 		string textureType;
 		TextureUtils tUtils = new TextureUtils();
-		
-		Resource resource = Resource.Load(path);
-				
-				
-		ematCont = resource.GetResource().ToBaseContainer();
 
 		
-		//Main loop for props		
-		for(int i = 0; i < ematCont.GetNumVars(); i++)
-		{	
-			//If its a class -> Tiling
-			if(ematCont.GetObject(ematCont.GetVarName(i)) != empty) //Uv Tiling
+		Resource resource = Resource.Load(path);
+
+
+		ematCont = resource.GetResource().ToBaseContainer();
+
+
+		// looping through material properties
+		for (int i = 0; i < ematCont.GetNumVars(); i++)
+		{
+			// get MatUVTransforms
+			if (ematCont.GetObject(ematCont.GetVarName(i)) != empty) //Uv Tiling
 			{
-				props.mat_props += ematCont.GetVarName(i)  + "||" + "1||";
-				//Getting child and same thing as up
+				// formatting for EBT
+				// 1 -> as True when the specified UV Tiling is there
+				props.mat_props.Insert(ematCont.GetVarName(i));
+				props.mat_props.Insert("1");
+				
 				uvTransform = ematCont.GetObject(ematCont.GetVarName(i));
-				for(int j = 0; j < uvTransform.GetNumVars(); j++)
+				// getting individual transforms
+				for (int j = 0; j < uvTransform.GetNumVars(); j++)
 				{
-					//Getting every tiling/rotation etc.
 					uvTransform.Get(uvTransform.GetVarName(j), temp);
-					if(temp != "")
+					if (temp != "")
 					{
-						//Output is stylized for processing in blender | Example: "DirtUVTransform_TilingU 5"
-						props.mat_props += ematCont.GetVarName(i) + "_" + uvTransform.GetVarName(j) + "||" + temp + "||";
+						// again every output must be formated for EBT
+						props.mat_props.Insert(ematCont.GetVarName(i)+"_"+uvTransform.GetVarName(j));
+						props.mat_props.Insert(temp);
 					}
 				}
 			}
-			//If its not class
-			ematCont.Get(ematCont.GetVarName(i),temp);
-			if(temp != "")
+			// getting other paramaters
+			ematCont.Get(ematCont.GetVarName(i), temp);
+			if (temp != "")
 			{
-				//Add Varname -> Color/Metalness/etc.
-				props.mat_props += ematCont.GetVarName(i) + "||";
-				if(temp.Contains(".edds"))
+				props.mat_props.Insert(ematCont.GetVarName(i));
+				if (temp.Contains(".edds"))
 				{
-					//If texture
-					if(tUtils.GetEdds(temp, false) == "")
+					// texture info
+					array<string> texProps = tUtils.GetEdds(temp, false);
+					// texture itself has different format for better interpretation in EBT
+					if (texProps.Count() == 0)
 					{
-						props.mat_props += ("InvalidGUID" + "|" + "PBRBasic" + "|" + "TosRGB" + "|" + "RedGreenHQCompression" + "||");
+						// add invalid GUID if the texture couldn't be found
+						props.mat_props.Insert("InvalidGUID|PBRBasic|" + EBTConfig.tosRGB + "|" + EBTConfig.rgHQCompression);
 					}
 					else
 					{
-						props.mat_props += tUtils.GetEdds(temp, false);
+						// format it for EBT
+						string texPropsStr = "";
+						for (int number = 0; number < texProps.Count(); number++)
+						{
+							texPropsStr += texProps[number] + "|";
+						}
+						props.mat_props.Insert(texPropsStr.Substring(0,texPropsStr.Length()));
 					}
 				}
-				else if(temp.Contains(" "))
+				else if (temp.Contains(" "))
 				{
-					//Conversion from spaces to |
+					// vectors and other values that has space in it must be replaced with "|"
 					temp.Replace(" ", "|");
-					props.mat_props += temp + "||";
+					props.mat_props.Insert(temp);
 				}
 				else
-				{	
-					//If nothing of that then just output
-					props.mat_props += temp + "||";
+				{
+					// everything else can be interpreted as it is
+					props.mat_props.Insert(temp);
 				}
 				temp = "";
 			}
@@ -91,24 +104,23 @@ class MaterialPropertiesUtils
 		return;
 	}
 
-};
+}
 
-class MaterialProperties: NetApiHandler
+class MaterialProperties : NetApiHandler
 {
 	override JsonApiStruct GetRequest()
 	{
 		return new MaterialPropertiesRequest();
 	}
-	
+
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		MaterialPropertiesRequest req = MaterialPropertiesRequest.Cast(request);
 		MaterialPropertiesResponse props = new MaterialPropertiesResponse();
 		MaterialPropertiesUtils utils = new MaterialPropertiesUtils();
 		ResourceName path = req.path;
-		
 
-		utils.GetEmat(path, props);
+		utils.GetEmatProperties(path, props);
 		return props;
 	}
 }

@@ -525,7 +525,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			
 			m_iCurrentPlayerID = playerController.GetPlayerId();
 			
-			m_PlayerManager = GetGame().GetPlayerManager();;
+			m_PlayerManager = GetGame().GetPlayerManager();
 			if (!m_PlayerManager)
 				return false;
 		

@@ -44,7 +44,7 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		if (!timeManager)
 			return;
 		
-		WeatherStateTransitionManager weatherTransitionManager = timeManager.GetTransitionManager();
+		BaseWeatherStateTransitionManager weatherTransitionManager = timeManager.GetTransitionManager();
 		if (!weatherTransitionManager)
 			return;
 		
@@ -95,7 +95,7 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 			if (!weatherManager) 
 				return;
 		
-			WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
+			BaseWeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
 			if (!weatherTransitionManager)
 				return;
 			

@@ -106,7 +106,7 @@ class SCR_QuickPlacingEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!m_wExpandWidget)
 			return;
 		
-		float offsetLeft, offsetTop, offsetRight, offsetBottom;
+		float offsetLeft, /* offsetTop, */ offsetRight, offsetBottom;
 		FrameSlot.GetOffsets(m_wExpandWidget, offsetLeft, m_fDefaultOffset, offsetRight, offsetBottom);
 		
 		SetCoef(m_fHideCoef, true);

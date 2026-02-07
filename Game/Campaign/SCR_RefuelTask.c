@@ -109,7 +109,7 @@ class SCR_RefuelTask : SCR_RequestedTask
 		if (!GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		

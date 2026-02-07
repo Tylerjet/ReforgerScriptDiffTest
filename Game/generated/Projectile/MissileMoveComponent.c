@@ -9,7 +9,7 @@ Do not modify, this script is generated
 \{
 */
 
-class MissileMoveComponent: BaseMoveComponent
+class MissileMoveComponent: ProjectileMoveComponent
 {
 	proto external EngineState GetCurrentEngineState();
 	proto external FlightMode GetCurrentFlightMode();

@@ -272,7 +272,7 @@ class SCR_BaseGameMode : BaseGameMode
 	int GetDisabledResourceTypes(inout notnull array<EResourceType> disabledResourceTypes)
 	{
 		disabledResourceTypes.Copy(m_aDisabledResourceTypes);
-		return disabledResourceTypes.Count();;
+		return disabledResourceTypes.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -914,23 +914,11 @@ class SCR_BaseGameMode : BaseGameMode
 							BaseCompartmentSlot compartment = compAccess.GetCompartment();
 							if (compartment)
 							{
-								if(GetGame().GetIsClientAuthority())
+								CarControllerComponent carController = CarControllerComponent.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent));
+								if (carController)
 								{
-									CarControllerComponent carController = CarControllerComponent.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent));
-									if (carController)
-									{
-										carController.Shutdown();
-										carController.StopEngine(false);
-									}
-								}
-								else
-								{
-									CarControllerComponent_SA carController = CarControllerComponent_SA.Cast(compartment.GetVehicle().FindComponent(CarControllerComponent_SA));
-									if (carController)
-									{
-										carController.Shutdown();
-										carController.StopEngine(false);
-									}
+									carController.Shutdown();
+									carController.StopEngine(false);
 								}
 							}
 						}
@@ -1248,6 +1236,30 @@ class SCR_BaseGameMode : BaseGameMode
 	*/
 	void OnPlayerSpawnOnPoint_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, IEntity entity, SCR_SpawnPointSpawnData spawnPointData)
 	{
+		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+ 		
+		//~ Update supplies of base or spawn point
+		ConsumeSuppliesOnPlayerSpawn_S(requestComponent.GetPlayerId(), spawnPointData.GetSpawnPoint(), loadoutComp);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Consume supplies for spawning
+	protected void ConsumeSuppliesOnPlayerSpawn_S(int playerID, IEntity spawnPoint, SCR_PlayerLoadoutComponent loadoutComp)
+	{
+		SCR_CampaignMilitaryBaseComponent base;
+		SCR_ResourceComponent resourceComp;
+		
+		int spawnSupplyCost = 0;
+		if (loadoutComp)
+			spawnSupplyCost = SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(loadoutComp.GetLoadout(), false, playerID, null, spawnPoint, base, resourceComp);
+ 		
+		if (spawnSupplyCost > 0)
+		{
+			if (base)
+				base.AddSupplies(spawnSupplyCost * -1);
+			else if (resourceComp)
+				SCR_ResourceSystemHelper.ConsumeResources(resourceComp, spawnSupplyCost, false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1297,6 +1309,43 @@ class SCR_BaseGameMode : BaseGameMode
 				if (!m_RespawnTimerComponent.GetCanPlayerSpawn(playerId, spawnPointTime))
 				{
 					result = SCR_ESpawnResult.NOT_ALLOWED_TIMER;
+					return false;
+				}
+			}
+		}
+		
+		SCR_SpawnPointSpawnData spawnPointData = SCR_SpawnPointSpawnData.Cast(data);
+		if (!spawnPointData)
+			return true;
+		
+		//~ Check if spawn point has enough supplies
+		SCR_CampaignMilitaryBaseComponent base;
+		SCR_ResourceComponent resourceComp;
+		
+		int spawnSupplyCost = 0;
+		
+		SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(requestComponent.GetPlayerController().FindComponent(SCR_PlayerLoadoutComponent));
+		if (loadoutComp)
+			spawnSupplyCost = SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(loadoutComp.GetLoadout(), false, requestComponent.GetPlayerId(), null, spawnPointData.GetSpawnPoint(), base, resourceComp);
+		
+		if (base)
+		{
+			//~ Check if there are enough supplies for base
+			if (base.GetSupplies() < spawnSupplyCost)
+			{
+				result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
+				return false;
+			}
+		}
+		else if (resourceComp)
+		{
+			//~ Check if there are enough supplies for Resource comp
+			float availableSupplies;
+			if (SCR_ResourceSystemHelper.GetAvailableResources(resourceComp, availableSupplies))
+			{
+				if (availableSupplies < spawnSupplyCost)
+				{
+					result = SCR_ESpawnResult.NOT_ALLOWED_NOT_ENOUGH_SUPPLIES;
 					return false;
 				}
 			}
@@ -1393,7 +1442,7 @@ class SCR_BaseGameMode : BaseGameMode
 		}
 		
 		// Fetch loadout info (if present)
-		SCR_LoadoutManager loadoutManager = SCR_LoadoutManager.Cast(GetGame().GetLoadoutManager());
+		SCR_LoadoutManager loadoutManager = GetGame().GetLoadoutManager();
 		if (loadoutManager)
 		{
 			string loadoutKey = "None";

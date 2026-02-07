@@ -19,6 +19,8 @@ class TurretComponent: AimingComponent
 	proto external bool HasMoveableBase();
 	proto external PointInfo GetCameraAttachmentSlot();
 	proto external bool IsVehicleMounted();
+	proto external float GetBaseRotation();
+	proto external void SetBaseRotation(float fRotation);
 	/*!
 	Calculates aiming angle to target and returns horizontal and vertical excess of target angle compared to aiming limits, in degrees.
 		outExcess[0] - horizontal excess
@@ -33,6 +35,7 @@ class TurretComponent: AimingComponent
 	proto external int NextSights();
 	proto external void SwitchNextSights();
 	proto external void SwitchPrevSights();
+	proto external bool IsUsingWeaponSights();
 }
 
 /*!

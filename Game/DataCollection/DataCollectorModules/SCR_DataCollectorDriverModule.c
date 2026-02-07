@@ -70,7 +70,7 @@ class SCR_DataCollectorDriverModule : SCR_DataCollectorModule
 		if (playerID == 0) // Non-player character
 			return;
 
-		m_mTrackedPlayersInVehicles.Insert(playerID, new SCR_DataCollectorDriverModuleContext(playerEntity, targetEntity, compartment.GetType() == ECompartmentType.Pilot));
+		m_mTrackedPlayersInVehicles.Insert(playerID, new SCR_DataCollectorDriverModuleContext(playerEntity, targetEntity, compartment.GetType() == ECompartmentType.PILOT));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		if (playerContext.m_bPilot)
 		{
 			array<IEntity> checkPilot = {};
-			compartmentManager.GetOccupantsOfType(checkPilot, ECompartmentType.Pilot);
+			compartmentManager.GetOccupantsOfType(checkPilot, ECompartmentType.PILOT);
 
 			if (checkPilot.IsEmpty())
 			{
@@ -161,7 +161,7 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 
 		//Find if there's a pilot and their ID
 		array<IEntity> pilot = {};
-		compartmentManager.GetOccupantsOfType(pilot, ECompartmentType.Pilot);
+		compartmentManager.GetOccupantsOfType(pilot, ECompartmentType.PILOT);
 
 		//If there's no pilot it's none's fault.
 		if (pilot.IsEmpty())
@@ -200,7 +200,7 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		if (!factionManager)
 			return;
 		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 
@@ -249,7 +249,7 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 		if (!factionManager)
 			return;
 		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 

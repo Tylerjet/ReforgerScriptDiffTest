@@ -35,7 +35,7 @@ class SCR_PlayerArsenalLoadout : SCR_FactionPlayerLoadout
 		SCR_ArsenalManagerComponent arsenalManager;
  		if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
  		{
-			float supplyCostMulti = arsenalManager.GetLoadoutSpawnSupplyCostMultiplier();
+			float supplyCostMulti = arsenalManager.GetCalculatedLoadoutSpawnSupplyCostMultiplier();
 				
 			//~ No need to get supply cost if multiplier is 0
 			if (supplyCostMulti <= 0)

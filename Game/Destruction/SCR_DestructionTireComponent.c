@@ -85,7 +85,6 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	protected ref SCR_DamagePhaseData m_InitialData;
 	
 	protected VehicleWheeledSimulation m_VehicleWheeledSimulation;
-	protected VehicleWheeledSimulation_SA m_VehicleWheeledSimulation_SA;
 
 	protected int m_iWheelIndex = -1;
 	
@@ -96,16 +95,8 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 	{
 		m_iWheelIndex = wheelIndex;
 		
-		if(GetGame().GetIsClientAuthority())
-		{
-			if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation && m_iWheelIndex < m_VehicleWheeledSimulation.WheelCount())
-				m_fWheelRadius = m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex);
-		}
-		else
-		{
-			if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation_SA && m_iWheelIndex < m_VehicleWheeledSimulation_SA.WheelCount())
-				m_fWheelRadius = m_VehicleWheeledSimulation_SA.WheelGetRadius(m_iWheelIndex);
-		}
+		if (m_iWheelIndex > -1 && m_VehicleWheeledSimulation && m_iWheelIndex < m_VehicleWheeledSimulation.WheelCount())
+			m_fWheelRadius = m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -148,44 +139,21 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 			return;
 		
 		// Update the physics wheel radius
-		if(GetGame().GetIsClientAuthority())
+		if (m_VehicleWheeledSimulation && m_fWheelRadius > 0)
 		{
-			if (m_VehicleWheeledSimulation && m_fWheelRadius > 0)
+			float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
+			if (targetWheelRadius != m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex))
 			{
-				float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
-				if (targetWheelRadius != m_VehicleWheeledSimulation.WheelGetRadius(m_iWheelIndex))
+				m_VehicleWheeledSimulation.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
+				
+				Physics physics = null;
+				IEntity parent = owner.GetParent();
+				if (parent)
 				{
-					m_VehicleWheeledSimulation.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
-					
-					Physics physics = null;
-					IEntity parent = owner.GetParent();
-					if (parent)
-					{
-						physics = parent.GetPhysics();
-						if (physics && !physics.IsActive())
-							physics.SetActive(ActiveState.ACTIVE);
-					}
-				}
-			}
-		}
-		else
-		{
-			if (m_VehicleWheeledSimulation_SA && m_fWheelRadius > 0)
-			{
-				float targetWheelRadius = (0.5 + m_fInflation * 0.5) * m_fWheelRadius;
-				if (targetWheelRadius != m_VehicleWheeledSimulation_SA.WheelGetRadius(m_iWheelIndex))
-				{
-					m_VehicleWheeledSimulation_SA.WheelSetRadiusState(m_iWheelIndex, targetWheelRadius);
-					
-					Physics physics = null;
-					IEntity parent = owner.GetParent();
-					if (parent)
-					{
-						physics = parent.GetPhysics();
+					physics = parent.GetPhysics();
 
-						if (physics && !physics.IsActive())
-							physics.SetActive(ActiveState.ACTIVE);
-					}
+					if (physics && !physics.IsActive())
+						physics.SetActive(ActiveState.ACTIVE);
 				}
 			}
 		}
@@ -299,11 +267,7 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		
 		if (parent)
 		{
-			if(GetGame().GetIsClientAuthority())
-				m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
-			else
-				m_VehicleWheeledSimulation_SA = VehicleWheeledSimulation_SA.Cast(parent.FindComponent(VehicleWheeledSimulation_SA));
-
+			m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
 		}
 	}
 #endif

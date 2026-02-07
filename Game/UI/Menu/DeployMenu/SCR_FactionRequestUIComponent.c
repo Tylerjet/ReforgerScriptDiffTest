@@ -171,7 +171,8 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		if (!factionBtn)
 			return;
 
-		factionBtn.SetTooltipAvailable(m_PlyFactionAffilComp.GetAffiliatedFaction() != factionBtn.GetFaction());
+		if (m_PlyFactionAffilComp)
+			factionBtn.SetTooltipAvailable(m_PlyFactionAffilComp.GetAffiliatedFaction() != factionBtn.GetFaction());
 		m_OnButtonFocused.Invoke(factionBtn.GetFaction());
 	}
 
@@ -196,7 +197,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		{
 			RequestPlayerFaction(factionBtn);
 		}	
-		else
+		else if (m_FactionManager)
 		{
 			int factionIndex = m_FactionManager.GetFactionIndex(factionBtn.GetFaction());
 			SCR_PersistentFactionDialog dialog = SCR_PersistentFactionDialog.CreatePersistentFactionDialog(factionIndex);
@@ -207,7 +208,7 @@ class SCR_FactionRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	//! Callback when player closes the persistent faction dialog.
 	protected void OnFactionDialogConfirm(SCR_PersistentFactionDialog dialog)
 	{
-		SCR_FactionButton btn = SCR_FactionButton.Cast(GetFactionButton(dialog.GetRequestedFactionIndex()));
+		SCR_FactionButton btn = GetFactionButton(dialog.GetRequestedFactionIndex());
 		if (btn)
 			RequestPlayerFaction(btn);
 	}
@@ -301,13 +302,13 @@ class SCR_FactionButton : SCR_DeployButtonBase
 		return m_iPlayerCount;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Update faction player count of this button.
 	void UpdatePlayerCount()
 	{
-		SCR_Faction scrFaction = SCR_Faction.Cast(m_Faction);
-		if (scrFaction && m_wPlayerCount)
+		if (m_Faction && m_wPlayerCount)
 		{
-			m_iPlayerCount = scrFaction.GetPlayerCount();
+			m_iPlayerCount = m_Faction.GetPlayerCount();
 			m_wPlayerCount.SetText(m_iPlayerCount.ToString());
 		}
 	}

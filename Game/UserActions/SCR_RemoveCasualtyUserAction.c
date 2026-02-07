@@ -3,6 +3,12 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 	const string m_sCannotPerformHostile = "#AR-UserAction_SeatHostile";
 	const string m_sCannotPerformObstructed = "#AR-UserAction_SeatObstructed";
 
+	[Attribute(desc: "If true, the action will be only shown if player is inside a vehicle")]
+	protected bool m_bInteriorOnly;
+
+	[Attribute(desc: "If true, the action will be only shown if player is not inside a vehicle")]
+	protected bool m_bExteriorOnly;
+
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
@@ -17,9 +23,17 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		if (!casualty)
 			return;
 
+		ChimeraCharacter user = ChimeraCharacter.Cast(pUserEntity);
+		if (!user)
+			return;
+
+		CompartmentAccessComponent userCompartmentAccess = user.GetCompartmentAccessComponent();
 		CompartmentAccessComponent casualtyCompartmentAccess = casualty.GetCompartmentAccessComponent();
-		if (casualtyCompartmentAccess)
-			casualtyCompartmentAccess.EjectOutOfVehicle();
+		if (casualtyCompartmentAccess && userCompartmentAccess)
+		{
+			int doorIdx = GetRelevantDoorIndex(pUserEntity);
+			casualtyCompartmentAccess.KickFromVehicle(doorIdx);
+		}
 
 		super.PerformAction(pOwnerEntity, pUserEntity);
 	}
@@ -50,14 +64,14 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 		{
 			Faction characterFaction = character.GetFaction();
 			Faction vehicleFaction = vehicle.GetFaction();
-			
+
 			if (characterFaction && vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
 			{
 				bool isActive = true;
 				SCR_VehicleFactionAffiliationComponent vehicleAffiliation = vehicle.GetFactionAffiliation();
 				if (vehicleAffiliation)
 					isActive = vehicleAffiliation.IsVehicleActive();
-				
+
 				if (isActive)
 				{
 					SetCannotPerformReason(m_sCannotPerformHostile);
@@ -66,8 +80,12 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 			}
 		}
 
+		BaseCompartmentManagerComponent managerComponent = compartment.GetManager();
+		if (!managerComponent)
+			return false;
+
 		// Make sure vehicle can be enter via provided door, if not, set reason.
-		if (!character.IsInVehicle() && !compartmentAccess.CanGetInVehicleViaDoor(owner, compartment, GetRelevantDoorIndex(user)))
+		if (!character.IsInVehicle() && !compartmentAccess.CanGetInVehicleViaDoor(owner, managerComponent, GetRelevantDoorIndex(user)))
 		{
 			SetCannotPerformReason(m_sCannotPerformObstructed);
 			return false;
@@ -105,6 +123,12 @@ class SCR_RemoveCasualtyUserAction : SCR_CompartmentUserAction
 
 		CharacterControllerComponent controller = casualty.GetCharacterController();
 		if (!controller)
+			return false;
+
+		if (m_bInteriorOnly && !SCR_InteractionHandlerComponent.CanBeShownInVehicle(character, this, interiorOnly: m_bInteriorOnly))
+			return false;
+
+		if (m_bExteriorOnly && character.IsInVehicle())
 			return false;
 
 		return controller.GetLifeState() != ECharacterLifeState.ALIVE;

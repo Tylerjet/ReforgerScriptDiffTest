@@ -28,8 +28,8 @@ class SCR_AIGetUsableVehicle : AITaskScripted
 		
 		array<IEntity> vehicles = {};
 		group.GetUsableVehicles(vehicles);
-		if (!vehicles)
-		 return ENodeResult.FAIL;
+		if (!vehicles || vehicles.IsEmpty())
+		 	return ENodeResult.FAIL;
 		IEntity vehicle;
 		
 		if (SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, compType, compartmentOut, vehicle))

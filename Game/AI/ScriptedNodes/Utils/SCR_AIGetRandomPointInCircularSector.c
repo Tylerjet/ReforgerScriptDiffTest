@@ -53,7 +53,6 @@ class SCR_AIGetRandomPointInCircularSector: AITaskScripted
     {
 		vector sectorAxis, sectorAxisPoint, sectorOrigin, result;
 		float range, angle, wantedMaxLength, resX, resZ;
-		bool isWaypointRelated;
 		IEntity controlledEntity;
 		
 		if (!GetVariableIn(ORIGIN_ENTITY_PORT,controlledEntity))

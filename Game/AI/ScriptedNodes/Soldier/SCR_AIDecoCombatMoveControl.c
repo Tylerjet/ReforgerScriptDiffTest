@@ -31,21 +31,21 @@ class SCR_AIDecoCombatMoveControl : DecoratorScripted
 	
 	override void OnInit(AIAgent owner)
 	{
-		m_entity = owner.GetControlledEntity();					
+		m_entity = owner.GetControlledEntity();
 	}
 	
 	protected override bool TestFunction(AIAgent owner)
 	{
 		if (m_entity && !m_CombatComponent)
 		{
-			m_CombatComponent = SCR_AICombatComponent.Cast(m_entity.FindComponent(SCR_AICombatComponent));			
+			m_CombatComponent = SCR_AICombatComponent.Cast(m_entity.FindComponent(SCR_AICombatComponent));
 		}
 		
 		if (!m_CombatComponent)
 			return false;
 		else if (!m_Utility)
 		{
-			m_Utility = SCR_AIUtilityComponent.Cast(owner.FindComponent(SCR_AIUtilityComponent));		
+			m_Utility = SCR_AIUtilityComponent.Cast(owner.FindComponent(SCR_AIUtilityComponent));
 		}
 		
 		if (!m_CombatComponent.IsActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE))
@@ -62,14 +62,14 @@ class SCR_AIDecoCombatMoveControl : DecoratorScripted
 			bool allowStand = true;
 			GetVariableIn(PORT_ALLOW_STANCE_STAND, allowStand);
 			
-			ECharacterStance threatStance = GetStanceFromThreat(m_Utility.m_ThreatSystem.GetState());
+			ECharacterStance threatStance = SCR_AIStanceHandling.GetStanceFromThreat(m_Utility.m_ThreatSystem.GetState());
 			if (threatStance == ECharacterStance.STAND && !allowStand)
 				threatStance = ECharacterStance.CROUCH;
 			SetVariableOut(PORT_COMBAT_STANCE, threatStance);
 		}
-		return true;			
-	}	
-		
+		return true;
+	}
+	
 	protected override bool VisibleInPalette()
 	{
 		return true;
@@ -78,5 +78,5 @@ class SCR_AIDecoCombatMoveControl : DecoratorScripted
 	protected override string GetOnHoverDescription()
 	{
 		return "Decorator that controls attack move";
-	}	
+	}
 };

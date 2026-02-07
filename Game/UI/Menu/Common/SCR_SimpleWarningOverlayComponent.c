@@ -32,9 +32,13 @@ class SCR_SimpleWarningOverlayComponent : SCR_SimpleWarningComponent
 	[Attribute("0 0 0")]
 	protected vector m_vWarningPositionOffset;
 	
+	[Attribute("0")]
+	protected bool m_bBlurBackground;
+	
 	protected SmartPanelWidget m_wTextBackground;
 	protected ImageWidget m_wWarningImageGlow;
 	protected ImageWidget m_wWarningOuterBackground;
+	protected BlurWidget m_wWarningOuterBlur;
 	protected SizeLayoutWidget m_wWarningTextSize;
 	protected Widget m_wWarningImageOverlay;
 	protected Widget m_wWarningVerticalLayout;
@@ -60,6 +64,10 @@ class SCR_SimpleWarningOverlayComponent : SCR_SimpleWarningComponent
 		m_wWarningOuterBackground = ImageWidget.Cast(w.FindAnyWidget("WarningOuterBackground"));
 		if (m_wWarningOuterBackground)
 			m_wWarningOuterBackground.SetVisible(m_bShowDarkeningBackground);
+		
+		m_wWarningOuterBlur = BlurWidget.Cast(w.FindAnyWidget("WarningOuterBlur"));
+		if (m_wWarningOuterBlur)
+			m_wWarningOuterBlur.SetVisible(m_bBlurBackground);
 		
 		// Adjust text padding
 		m_wWarningTextSize = SizeLayoutWidget.Cast(w.FindAnyWidget("WarningTextSize"));
@@ -94,7 +102,7 @@ class SCR_SimpleWarningOverlayComponent : SCR_SimpleWarningComponent
 				effect.m_vDefault = size;
 				effect.m_vHovered = size * m_fIconSizeHoveredMultiplier;
 				
-				m_WarningIconButton.InvokeAllEnabledEffects(false);
+				m_WarningIconButton.InvokeAllEnabledEffects(true);
 				
 				m_WarningIconButton.m_OnClicked.Insert(OnWarningIconButtonClicked);
 			}
@@ -114,12 +122,13 @@ class SCR_SimpleWarningOverlayComponent : SCR_SimpleWarningComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetWarning(string text, string iconName)
+	override void SetWarning(string text, string iconName, ResourceName imageset = string.Empty)
 	{
-		super.SetWarning(text, iconName);
+		super.SetWarning(text, iconName, imageset);
 		
-		if (m_wWarningImageGlow && !iconName.IsEmpty())
-			m_wWarningImageGlow.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, iconName);
+		// TODO: glow for different imagesets
+		if (m_wWarningImageGlow && !iconName.IsEmpty() && imageset == UIConstants.ICONS_IMAGE_SET)
+			m_wWarningImageGlow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, iconName);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -166,6 +175,13 @@ class SCR_SimpleWarningOverlayComponent : SCR_SimpleWarningComponent
 		m_wWarningImageSize.SetHeightOverride(safeSize);
 		
 		m_WarningIconButton.SetEnabled(enabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetBlurUnderneath(bool blur)
+	{
+		if (m_wWarningOuterBlur)
+			m_wWarningOuterBlur.SetVisible(blur);
 	}
 	
 	//------------------------------------------------------------------------------------------------

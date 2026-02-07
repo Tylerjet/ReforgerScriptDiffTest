@@ -323,8 +323,8 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		if (m_bHasActionListeners)
 			return;
 		
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnMenuRight);
 		
 		m_bHasActionListeners = true;
 	}
@@ -335,8 +335,8 @@ class SCR_SpinBoxComponent : SCR_SelectionWidgetComponent
 		if (!m_bHasActionListeners)
 			return;
 		
-		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnMenuRight);
 		
 		m_bHasActionListeners = false;
 	}

@@ -40,8 +40,8 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 		m_MapUiTask.UpdateFocusedTask();
 
 		ButtonWidget assignButton = ButtonWidget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("TaskTitleButton"));
-		Widget assignees = Widget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("Assignee"));
-		Widget iconHover = Widget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("TaskIconHover"));
+		Widget assignees = m_MapUiTask.GetMapWidget().FindAnyWidget("Assignee");
+		Widget iconHover = m_MapUiTask.GetMapWidget().FindAnyWidget("TaskIconHover");
 
 		if (!assignButton || !assignees || !iconHover)
 			return false;
@@ -54,7 +54,7 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 		iconHover.SetEnabled(true);
 		iconHover.SetOpacity(VISIBLE);
 		
-		GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, ButtonPressed);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, ButtonPressed);
 
 		return false;
 	}
@@ -62,7 +62,7 @@ class SCR_TaskSelectButton : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-		GetGame().GetInputManager().RemoveActionListener("MenuSelect", EActionTrigger.DOWN, ButtonPressed);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, ButtonPressed);
 		return false;
 	}
 	

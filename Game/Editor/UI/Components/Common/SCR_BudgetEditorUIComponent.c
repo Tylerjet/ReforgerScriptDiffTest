@@ -20,7 +20,7 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnBudgetMaxUpdate(EEditableEntityBudget budgetType, int currentBudgetValue, int maxBudgetValue)
 	{
-		TextWidget budgetWidget;
+		Widget budgetWidget;
 		if (m_BudgetWidgets.Find(budgetType, budgetWidget))
 		{
 			SetBudgetData(budgetWidget, currentBudgetValue, maxBudgetValue);
@@ -31,7 +31,7 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnBudgetUpdate(EEditableEntityBudget budgetType, int originalBudgetValue, int updatedBudgetValue, int maxBudgetValue)
 	{
-		TextWidget budgetWidget;
+		Widget budgetWidget;
 		if (m_BudgetWidgets.Find(budgetType, budgetWidget))
 		{
 			SetBudgetData(budgetWidget, updatedBudgetValue, maxBudgetValue);

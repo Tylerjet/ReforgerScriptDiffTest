@@ -172,7 +172,7 @@ class SCR_AmbientVehicleSpawnPointComponent : ScriptComponent
 		if (!m_Vehicle)
 			return null;
 
-		CarControllerComponent_SA carController = CarControllerComponent_SA.Cast(m_Vehicle.FindComponent(CarControllerComponent_SA));
+		CarControllerComponent carController = CarControllerComponent.Cast(m_Vehicle.FindComponent(CarControllerComponent));
 
 		// Activate handbrake so the vehicles don't go downhill on their own when spawned
 		if (carController)

@@ -68,7 +68,7 @@ class SCR_GarbageSystem : GarbageSystem
 	//------------------------------------------------------------------------------------------------
 	static SCR_GarbageSystem GetByEntityWorld(IEntity entity)
 	{
-		ChimeraWorld world = entity.GetWorld();
+		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
 		if (!world)
 			return null;
 

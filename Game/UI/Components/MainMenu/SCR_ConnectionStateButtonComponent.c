@@ -242,7 +242,7 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 		if (showLabel)
 			SetLabelText(label);
 		else
-			SetLabelText("");
+			SetLabelText(string.Empty);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -316,15 +316,15 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		if (tag != m_sTooltipTag)
+		if (tooltip.GetTag() != m_sTooltipTag)
 		{
 			m_Tooltip = null;
 			return;
 		}
 
-		m_Tooltip = tooltipClass;
+		m_Tooltip = tooltip;
 		UpdateTooltip();
 	}
 	
@@ -337,13 +337,17 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 		string message = m_CurrentStatusPreset.m_sTooltipMessage;
 		Color messageColor = m_CurrentStatusPreset.m_Color;
 		
+		SCR_ScriptedWidgetTooltipContentBase content = m_Tooltip.GetContent();
+		if (!content)
+			return;
+		
 		if (m_CurrentStatusPreset.m_Status == SCR_ECommStatus.FINISHED)
 		{
 			// Unavailable services: the tooltips will display the list of issues
 			if (!m_aUnavailableServices.IsEmpty())
 			{
 				// fill the tooltip with the list of issues
-				Widget tooltipContent = m_Tooltip.GetContentWidget();
+				Widget tooltipContent = content.GetContentRoot();
 				if (tooltipContent)
 				{
 					SCR_ListTooltipComponent comp = SCR_ListTooltipComponent.FindComponent(tooltipContent);
@@ -355,7 +359,7 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 			// Low bandwidth: this is the default message set in the tooltip's .conf file
 			else if (CheckLowBandwidth())
 			{
-				message = m_Tooltip.GetDefaultMessage();
+				message = content.GetDefaultMessage();
 				messageColor = m_LowBandwidthColor;
 			}
 			
@@ -366,8 +370,8 @@ class SCR_ConnectionStateButtonComponent : SCR_CoreMenuHeaderButtonComponent
 			}
 		}
 		
-		m_Tooltip.SetMessage(message);
-		m_Tooltip.SetMessageColor(messageColor);
+		content.SetMessage(message);
+		content.SetMessageColor(messageColor);
 	}
 }
 
@@ -380,16 +384,16 @@ class SCR_ConnectionStateButtonComponent_StatusPreset
 	[Attribute(defvalue: SCR_Enum.GetDefault(SCR_ECommStatus.RUNNING), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ECommStatus))]
 	SCR_ECommStatus m_Status;
 
-	[Attribute("connection")]
+	[Attribute(SCR_ConnectionUICommon.ICON_CONNECTION)]
 	string m_sIcon;
 	
-	[Attribute("#AR-Workshop_Connecting")]
+	[Attribute(SCR_ConnectionUICommon.MESSAGE_CONNECTING)]
 	string m_sLabel;
 
 	[Attribute(UIColors.GetColorAttribute(UIColors.CONTRAST_COLOR), UIWidgets.ColorPicker)]
 	ref Color m_Color;
 	
-	[Attribute("#AR-Workshop_Connecting")]
+	[Attribute(SCR_ConnectionUICommon.MESSAGE_CONNECTING)]
 	string m_sTooltipMessage;
 	
 	[Attribute("1")]

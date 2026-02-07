@@ -614,7 +614,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 	//------------------------------------------------------------------------------------------------
     override bool RplLoad(ScriptBitReader reader)
     {
-		int company, platoon, squad, groupSize;
+		int company, platoon, squad;
 		
         reader.ReadInt(company);
         reader.ReadInt(platoon);

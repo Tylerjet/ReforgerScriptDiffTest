@@ -171,9 +171,10 @@ class EditablePrefabsConfig
 		//--- Add link component
 		if (links.Count() != 0)
 		{
+			int hasVariants;
 			IEntityComponentSource linkComponent = api.CreateComponent(entitySource, "SCR_EditorLinkComponent");
 			foreach (int i, SCR_EditorLinkEntry entry : links)
-			{
+			{				
 				if (api.CreateObjectArrayVariableMember(entitySource, {ContainerIdPathEntry("SCR_EditorLinkComponent")}, "m_aEntries", "SCR_EditorLinkEntry", i))
 				{
 					array<ref ContainerIdPathEntry> entryPath = {ContainerIdPathEntry("SCR_EditorLinkComponent"), ContainerIdPathEntry("m_aEntries", i)};
@@ -181,8 +182,15 @@ class EditablePrefabsConfig
 					api.SetVariableValue(entitySource, entryPath, "m_vPosition", entry.m_vPosition.ToString(false));
 					api.SetVariableValue(entitySource, entryPath, "m_vAngles", entry.m_vAngles.ToString(false));
 					api.SetVariableValue(entitySource, entryPath, "m_fScale", entry.m_fScale.ToString());
+					
+					//~ Check if entry has random variant
+					if (hasVariants == 0)
+						hasVariants = SCR_EditableEntityComponentClass.HasVariants(entry.m_Prefab);
 				}
 			}
+
+			api.SetVariableValue(entitySource, {ContainerIdPathEntry("SCR_EditorLinkComponent")}, "m_bRandomizeVariants", hasVariants.ToString());
+			
 			//api.SetVariableValue(entitySource, {ContainerIdPathEntry("SCR_EditorLinkComponent"), ContainerIdPathEntry("m_aEntries")}, "Name", string.Format(m_sNameFormat, prefabName));
 		}
 
@@ -888,7 +896,9 @@ class EditablePrefabsConfig
 		m_mLinksFromSource = new map<string, string>();
 
 		ref array<ResourceName> resources = {};
-		Workbench.SearchResources(resources.Insert, { "et" });
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = { "et" };
+		ResourceDatabase.SearchResources(filter, resources.Insert);
 
 		string prefabPath, prefabGUID, ancestorGUID;
 		ResourceName ancestor;

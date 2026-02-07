@@ -98,8 +98,7 @@ class SCR_AIBaseUtilityComponent : AIBaseUtilityComponent
 		string _strSuspended = string.Empty;
 		if (action.GetActionIsSuspended())
 			_strSuspended = "(S) ";
-		float score = action.Evaluate() + action.EvaluatePriorityLevel();
-		
+		float score = action.Evaluate();
 		string _strDebugInfo;
 		if (scrActionBase)
 			_strDebugInfo = scrActionBase.GetActionDebugInfo();

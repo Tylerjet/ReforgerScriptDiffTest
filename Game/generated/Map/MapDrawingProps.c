@@ -22,7 +22,7 @@ class MapDrawingProps
 	proto external void SetDetail( int iDetail );
 	proto external int GetDetail();
 	proto external void SetOutlineType(EMapLineType type );
-	proto external float GetOutlineWidth();;
+	proto external float GetOutlineWidth();
 	proto external void SetOutlineWidth( float outlineWidth );
 	proto ref Color GetOutlineColor();
 	proto external void SetOutlineColor( notnull Color outsideColor );

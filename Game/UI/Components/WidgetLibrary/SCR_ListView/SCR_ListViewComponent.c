@@ -76,8 +76,8 @@ class SCR_ListViewComponent : ScriptedWidgetComponent
 		CreateEntriesWidgets();
 		
 		// Setup inputs invokers 
-		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnMenuDown);
-		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnMenuUp);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_DOWN, EActionTrigger.DOWN, OnMenuDown);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnMenuUp);
 	}
 	
 	//------------------------------------------------------------------------------------------------

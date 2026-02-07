@@ -24,17 +24,12 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 	//-----------------------------------------------------------------------------------
 	void SetScenario(MissionWorkshopItem scenario)
 	{
-		if (m_Scenario == scenario)
-			return;
-		
-		m_Scenario = scenario;	
+		SCR_MissionHeader header;
 		if (scenario)
-		{
-			SCR_MissionHeader header = SCR_MissionHeader.Cast(scenario.GetHeader());
-			m_Header = header;
-		}
-		else
-			m_Header = null;
+			header = SCR_MissionHeader.Cast(scenario.GetHeader());
+
+		m_Header = header;
+		m_Scenario = scenario;
 		
 		UpdateAllWidgets();
 	}	
@@ -53,7 +48,7 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			SetDescriptionText(string.Empty);
 			
 			if (m_BackendImageComponent)
-				m_BackendImageComponent.SetScenarioAndImage(null, null);
+				m_BackendImageComponent.SetImage(null);
 			
 			return;
 		}
@@ -80,24 +75,34 @@ class SCR_ScenarioDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		// Image
 		if (m_BackendImageComponent)
 		{
+			BackendImage image;
+			
 			if (m_Scenario)
-				m_BackendImageComponent.SetScenarioAndImage(m_Scenario, m_Scenario.Thumbnail());
-			else
-				m_BackendImageComponent.SetScenarioAndImage(m_Scenario, null);
+				image = m_Scenario.Thumbnail();
+			
+			m_BackendImageComponent.SetImage(image);
 		}
 
 		// Error message
-		bool isInError = SCR_ScenarioEntryHelper.IsModInErrorState(m_Scenario);
-		float saturation = UIConstants.ENABLED_WIDGET_SATURATION;
+		SCR_ERevisionAvailability availability = SCR_ScenarioUICommon.GetOwnerRevisionAvailability(m_Scenario);
+		bool isInError = availability != SCR_ERevisionAvailability.ERA_AVAILABLE && availability != SCR_ERevisionAvailability.ERA_UNKNOWN_AVAILABILITY;
+		bool restricted = SCR_ScenarioUICommon.IsOwnerRestricted(m_Scenario);
 		
-		m_CommonWidgets.m_WarningOverlayComponent.SetWarningVisible(isInError, false);
-		m_CommonWidgets.m_WarningOverlayComponent.SetWarning(SCR_ScenarioEntryHelper.GetErrorMessageVerbose(m_Scenario), SCR_ScenarioEntryHelper.GetErrorTexture(m_Scenario));
+		m_CommonWidgets.m_WarningOverlayComponent.SetWarningVisible(isInError || restricted, false);
+		m_CommonWidgets.m_WarningOverlayComponent.SetBlurUnderneath(restricted);
+		
+		if (restricted)
+			m_CommonWidgets.m_WarningOverlayComponent.SetWarning(SCR_WorkshopUiCommon.MESSAGE_RESTRICTED_GENERIC, SCR_WorkshopUiCommon.ICON_REPORTED);
+		else
+			m_CommonWidgets.m_WarningOverlayComponent.SetWarning(SCR_WorkshopUiCommon.GetRevisionAvailabilityErrorMessageVerbose(availability), SCR_WorkshopUiCommon.GetRevisionAvailabilityErrorTexture(availability));
 	
-		if (isInError)
-			saturation = UIConstants.DISABLED_WIDGET_SATURATION;
-		
 		if (m_BackendImageComponent)
-			m_BackendImageComponent.SetImageSaturation(saturation);
+		{
+			if (isInError)
+				m_BackendImageComponent.SetImageSaturation(UIConstants.DISABLED_WIDGET_SATURATION);
+			else
+				m_BackendImageComponent.SetImageSaturation(UIConstants.ENABLED_WIDGET_SATURATION);
+		}
 	}
 	
 	//-----------------------------------------------------------------------------------

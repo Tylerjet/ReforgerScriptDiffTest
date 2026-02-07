@@ -81,7 +81,14 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	//------------------------------------------------------------------------------------------------
 	void RehookTaskAsset(IEntity object)
 	{
+		if (!object)
+			return;
+		
 		m_Asset = object;
+		
+		SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(m_Asset);
+		if (garbageSystem)
+			garbageSystem.UpdateBlacklist(m_Asset, true);
 		
 		if (m_SupportEntity)
 			m_SupportEntity.SetTaskEntity(m_Asset);
@@ -197,14 +204,14 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 			if (m_SlotTask)
 				m_Asset = m_SlotTask.GetSpawnedEntity();
 			
-			if (!m_Asset)
-			{
-				m_SupportEntity.CancelTask(this.GetTaskID());
-				Print("ScenarioFramework: Task subject not found!", LogLevel.ERROR);
-				return;
-			}
-			
-			m_SupportEntity.SetTaskEntity(m_Asset);
+			if (m_Asset)
+				m_SupportEntity.SetTaskEntity(m_Asset);
+		}
+		else
+		{
+			SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(m_Asset);
+			if (garbageSystem)
+				garbageSystem.UpdateBlacklist(m_Asset, true);
 		}
 		
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));

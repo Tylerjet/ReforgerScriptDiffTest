@@ -10,18 +10,9 @@ class SCR_VehicleHasAnyGroundContactCondition : SCR_AvailableActionCondition
 			return false;
 
 		VehicleBaseSimulation simulation;
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(data.GetCurrentVehicleController());
-			if (controller)
-				simulation = controller.GetBaseSimulation();
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(data.GetCurrentVehicleController());
-			if (controller)
-				simulation = controller.GetBaseSimulation();
-		}
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(data.GetCurrentVehicleController());
+		if (controller)
+			simulation = controller.GetBaseSimulation();
 
 		if (!simulation)
 			return false;

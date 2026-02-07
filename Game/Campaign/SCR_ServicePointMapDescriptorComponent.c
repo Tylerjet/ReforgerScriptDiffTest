@@ -117,7 +117,7 @@ class SCR_ServicePointMapDescriptorComponent : SCR_MapDescriptorComponent
 		if (!campaignBase)
 			return;
 		
-		Faction f = SCR_FactionManager.SGetLocalPlayerFaction();
+		SCR_CampaignFaction f = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 		
 		if (!f)
 			return;

@@ -47,9 +47,9 @@ class SCR_AdvancedActionRowComponent : SCR_ScriptedWidgetComponent
 	{
 		m_iKeybindIndex = index;
 		
-		string deviceString = settingsKeybindModule.GetKeyboardDeviceString();
+		string deviceString = UIConstants.DEVICE_KEYBOARD;
 		if (device == EInputDeviceType.GAMEPAD)
-			deviceString = settingsKeybindModule.GetGamepadDeviceString();
+			deviceString = UIConstants.DEVICE_GAMEPAD;
 
 		if (m_wActionBindRichText)
 			m_wActionBindRichText.SetText(string.Format(

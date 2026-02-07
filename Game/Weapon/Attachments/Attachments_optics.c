@@ -40,8 +40,13 @@ class AttachmentOpticsDovetailSVD : AttachmentOpticsDovetailAKSVD
 {
 };
 
+//UK 59 dovetail
+class AttachmentOpticsDovetailUK59Class {}
+AttachmentOpticsDovetailUK59Class AttachmentOpticsDovetailUK59Source;
 
-
+class AttachmentOpticsDovetailUK59 : AttachmentOptics
+{
+};
 
 //M21 scope mount
 class AttachmentOpticsM21Class {}

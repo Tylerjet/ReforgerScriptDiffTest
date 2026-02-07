@@ -46,6 +46,9 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	proto external float GetTopSpeed(int moveType = -1, bool ignoreStance = false);
 	//! Returns the current inertia speed.
 	proto external vector GetInertiaSpeed();
+	proto external void SetSharedVariableFloat(TAnimGraphVariable varIdx, float value, bool varHasOtherUsers);
+	proto external void SetSharedVariableInt(TAnimGraphVariable varIdx, int value, bool varHasOtherUsers);
+	proto external void SetSharedVariableBool(TAnimGraphVariable varIdx, bool value, bool varHasOtherUsers);
 	//! command handler access
 	proto external CharacterCommandHandlerComponent GetCommandHandler();
 	//! Returns if Character is currently ragdolling.

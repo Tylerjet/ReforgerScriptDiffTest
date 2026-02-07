@@ -181,8 +181,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 			m_Widgets.m_ProgressBarComponent.SetValue(progress);
 			
 			// Progress percent text
-			string progressText = WidgetManager.Translate("#AR-ValueUnit_Percentage", Math.Floor(progress * 100.0));
-			m_Widgets.m_ProgressText.SetText(progressText);
+			m_Widgets.m_ProgressText.SetText(UIConstants.FormatUnitPercentage(SCR_WorkshopUiCommon.GetDownloadProgressPercentage(progress)));
 			
 			// Display total size 
 			float downloadTotalSize = SCR_DownloadManager.GetInstance().GetDownloadQueueSize();
@@ -195,8 +194,8 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 				string downloadDoneSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadDoneSize);
 				string downloadTotalSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadTotalSize);
 				
-				string coloredDone = WidgetManager.Translate(DOWNLOAD_SUMMARY_COLORED_FORMAT, UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), downloadDoneSizeStr);
-				string coloredTotal = WidgetManager.Translate(DOWNLOAD_SUMMARY_COLORED_FORMAT, UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), downloadTotalSizeStr);
+				string coloredDone = WidgetManager.Translate(DOWNLOAD_SUMMARY_COLORED_FORMAT, UIColors.FormatColor(UIColors.CONTRAST_COLOR), downloadDoneSizeStr);
+				string coloredTotal = WidgetManager.Translate(DOWNLOAD_SUMMARY_COLORED_FORMAT, UIColors.FormatColor(UIColors.CONTRAST_COLOR), downloadTotalSizeStr);
 				
 				m_Widgets.m_DownloadSummaryText.SetText(string.Format(DOWNLOAD_SUMMARY_FORMAT, coloredDone, coloredTotal));
 			}
@@ -341,7 +340,6 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		
 		// Open active and scroll up 
 		m_SuperMenuComponent.GetTabView().ShowTab(SCR_EDownloadManagerTabs.ACTIVE, false);
-		m_ActiveDownloads.ScrollTop();
 		
 		// Show error dialog 
 		ShowFailedModsDialog(action, reason);
@@ -365,19 +363,19 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		switch (reason)
 		{
 			// Connection failed
-			case 1: message = "#AR-Workshop_Dialog_Error_ConnectionTimeout2"; break;
+			case 1: message = SCR_ConnectionUICommon.MESSAGE_VERBOSE_TIMEOUT; break;
 		}
 		
 		if (!message.IsEmpty())
 			message += "\n";
 		
 		// Create dialog
-		m_DownloadFailDialog = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, FAILED_ADDON_LIST_DIALOG);
+		m_DownloadFailDialog = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopDialogs.DIALOGS_CONFIG, FAILED_ADDON_LIST_DIALOG);
 		m_DownloadFailDialog.SetMessage(message);
 		m_DownloadFailDialog.m_OnClose.Insert(OnDownloadFailDialogClose);
 		
 		// Setup message 
-		Widget contentWidget = m_DownloadFailDialog.GetContentLayoutRoot(m_DownloadFailDialog.GetRootWidget());
+		Widget contentWidget = m_DownloadFailDialog.GetContentLayoutRoot();
 		m_DownloadFailDialogContent = SCR_MessageDialogContent.Cast(contentWidget.FindHandler(SCR_MessageDialogContent));
 		m_DownloadFailDialogContent.SetMessage(STR_AFFECTED_MODS + "\n\n" + string.Format(FAILED_ADDON_FORMAT, action.GetAddonName()));
 	}
@@ -513,7 +511,7 @@ class SCR_DownloadManager_MiniDialog : SCR_ConfigurableDialogUi
 	static SCR_DownloadManager_MiniDialog Create()
 	{
 		SCR_DownloadManager_MiniDialog dlg = new SCR_DownloadManager_MiniDialog();
-		SCR_DownloadManager_MiniDialog.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "download_manager_mini", dlg);
+		SCR_DownloadManager_MiniDialog.CreateFromPreset(SCR_WorkshopDialogs.DIALOGS_CONFIG, "download_manager_mini", dlg);
 		return dlg;
 	}
 	

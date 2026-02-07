@@ -60,6 +60,7 @@ class SCR_SelectionMenu
 	protected ref ScriptInvoker<SCR_SelectionMenu, array<ref SCR_SelectionMenuEntry>> m_OnUpdateEntries;
 
 	protected ref ScriptInvoker<SCR_SelectionMenu, SCR_SelectionMenuControllerInputs> m_OnControllerChanged;
+	protected ref ScriptInvoker<SCR_SelectionMenu, SelectionMenuFailReason> m_OnOpenFailed;
 
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeOnBeforeOpen()
@@ -123,6 +124,15 @@ class SCR_SelectionMenu
 			m_OnSelect = new ScriptInvoker();
 
 		return m_OnSelect;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnOpenFailed()
+	{
+		if (!m_OnOpenFailed)
+			m_OnOpenFailed = new ScriptInvoker();
+
+		return m_OnOpenFailed;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -232,10 +242,18 @@ class SCR_SelectionMenu
 				
 		// Prevent opening emtpy menu
 		if (m_ControllerInputs.m_bPreventEmptyMenuOpen && m_aEntries.IsEmpty())
+		{
+			if (m_OnOpenFailed)
+				m_OnOpenFailed.Invoke(this, SCR_ESelectionMenuFailReason.MENU_EMPTY);
 			return;
+		}
 		
 		if (m_bOpened)
+		{
+			if (m_OnOpenFailed)
+				m_OnOpenFailed.Invoke(this, SCR_ESelectionMenuFailReason.MENU_ALREADY_OPEN);
 			return;
+		}
 			
 		m_bOpened = true;
 		m_bEntryPerformed = false;
@@ -875,3 +893,11 @@ class SCR_SelectionMenuPreviewAttributes : BaseItemAttributeData
 	[Attribute(desc: "If true colorize item shadow in Radial Menu to medical color")]
 	bool m_bShowMedicalColor;
 };
+
+//! Enum of reason why the menu did not open
+enum SCR_ESelectionMenuFailReason
+{
+	UNKNOWN,
+	MENU_EMPTY,
+	MENU_ALREADY_OPEN
+}

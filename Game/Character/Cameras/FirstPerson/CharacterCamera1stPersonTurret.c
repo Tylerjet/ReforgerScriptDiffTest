@@ -92,39 +92,52 @@ class CharacterCamera1stPersonTurret extends CharacterCamera1stPerson
 		
 		vector offset = m_OffsetLS;
 		if (m_pCompartment && m_pCompartment.IsDirectAimMode() && m_pTurretController.GetCanAimOnlyInADS())
-		{
-			offset = "0 0 0";
-		}
-		
+			offset = vector.Zero;
+
 		CharacterControllerComponent charController = m_OwnerCharacter.GetCharacterController();
 
 		//! apply to rotation matrix
 		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
-		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS())
+		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS() || charController.IsTrackIREnabled())
 		{
-			// Override angle limits based on turret aiming angles
-			float turretPitch = m_pControlledTurret.GetAimingRotation()[1];
-			float downLimit = -40.0;
-			if (turretPitch < 0.0)
-				downLimit -= turretPitch;
-			float upLimit = 89.9;
-			if (turretPitch > 0.0)
-				upLimit -= turretPitch;
+			float downLimit = m_pCompartment.GetFreelookAimLimitOverrideDown();
+			float upLimit = m_pCompartment.GetFreelookAimLimitOverrideUp();
+			float leftLimit = m_pCompartment.GetFreelookAimLimitOverrideLeft();
+			float rightLimit = m_pCompartment.GetFreelookAimLimitOverrideRight();
 
-			float turretYaw = m_pControlledTurret.GetAimingRotation()[0];
-			float leftLimit = -160.0;
-			if (turretYaw < 0.0)
-				leftLimit -= turretYaw;
-			float rightLimit = 160.0;
-			if (turretYaw > 0.0)
-				rightLimit -= turretYaw;
-			
 			m_CharacterHeadAimingComponent.SetLimitAnglesOverride(downLimit, upLimit, leftLimit, rightLimit);
 			
-			vector lookAnglesOverriden = m_CharacterHeadAimingComponent.GetLookAngles();
-			m_vLastCameraAngles += lookAnglesOverriden;
+			vector lookAnglesOverriden = m_CharacterHeadAimingComponent.GetLookAngles();			
 
-			m_CharacterHeadAimingComponent.ResetLimitAnglesOverride();			
+			// Pivot around Neck1 bone to prevent showing neck hole to player
+			vector headBoneMat[4];
+			vector neckBoneMat[4];
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(sm_iHeadBoneIndex, headBoneMat);
+			m_OwnerCharacter.GetAnimation().GetBoneMatrix(s_iNeckBoneIndex, neckBoneMat);
+
+			vector neckPosition = neckBoneMat[3] - headBoneMat[3];
+
+			// Account for body rotation that comes from animation and cannot be retrieved otherwise
+			vector aiming = m_pControlledTurret.GetAimingRotation();
+			float neckTraverse = aiming[0] * m_pCompartment.GetFreelookCameraNeckFollowTraverse();
+
+			// Rotate around neck
+			vector neckOffsetMat[4];
+			Math3D.MatrixIdentity4(neckOffsetMat);
+			SCR_Math3D.RotateAround(neckOffsetMat, neckPosition, vector.Up, -Math.DEG2RAD * (lookAnglesOverriden[0] + neckTraverse), neckOffsetMat);
+			SCR_Math3D.RotateAround(neckOffsetMat, neckPosition, neckOffsetMat[0], -Math.DEG2RAD * lookAnglesOverriden[1], neckOffsetMat);
+
+			// Scale by compartment configuration
+			vector neckOffset = neckOffsetMat[3];
+
+			vector neckOffsetScale = m_pCompartment.GetFreelookCameraNeckOffsetScale();
+			neckOffset[0] = neckOffset[0] * neckOffsetScale[0];
+			neckOffset[1] = neckOffset[1] * neckOffsetScale[1];
+			neckOffset[2] = neckOffset[2] * neckOffsetScale[2];
+			offset += neckOffset;
+
+			m_vLastCameraAngles[1] = 0; // Ignore gun elevation
+			m_vLastCameraAngles += lookAnglesOverriden;
 		}
 		
 		// character matrix

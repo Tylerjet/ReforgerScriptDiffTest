@@ -35,7 +35,15 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	//! Movement stop sound event name
 	[Attribute(desc: "Movement stop sound event name")]
 	protected string m_sMovementStopSoundEvent;
-
+	
+	//! Should action only be Visible when player is inside the vehicle
+	[Attribute(desc: "Show this action only when a player is inside a vehicle")]
+	protected bool m_bOnlyInVehicle;
+	
+	//! Should the action only be visible for the Pilot/Driver
+	[Attribute(desc: "Enable if only the Pilot/Driver should see this action. OnlyInVehicle needs to be true for this to work!")]
+	protected bool m_bPilotOnly;
+	
 	//! Normalized current value
 	protected float m_fTargetValue;
 
@@ -64,6 +72,8 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 		m_SoundComponent = SoundComponent.Cast(pOwnerEntity.FindComponent(SoundComponent));
 		if (GetActionDuration() != 0)
 			m_fAdjustmentStep /= Math.AbsFloat(GetActionDuration());
+
+		m_fTargetValue = Math.Clamp(GetCurrentValue(), GetMinimumValue(), GetMaximumValue());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -77,7 +87,46 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 			if (m_fAdjustmentStep < 0 && GetCurrentValue() <= GetMinimumValue())
 				return false;
 		}
-
+		
+		// Check if player is inside a vehicle
+		if (!m_bOnlyInVehicle)
+			return true;
+		
+		// See if character is in vehicle
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+	
+		// We cannot be pilot nor interior, if we are not seated in vehicle at all.
+		if (!character.IsInVehicle())
+			return false;
+	
+		// See if character is in "this" (owner) vehicle
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+		if (!compartmentAccess)
+			return false;
+	
+		// Character is in compartment
+		// that belongs to owner of this action
+		BaseCompartmentSlot slot = compartmentAccess.GetCompartment();
+		if (!slot)
+			return false;
+		
+		// Check pilot only condition
+		if (m_bPilotOnly)
+		{
+			if (!PilotCompartmentSlot.Cast(slot))
+				return false;
+	
+			Vehicle vehicle = Vehicle.Cast(GetOwner().GetRootParent());
+			if (vehicle && vehicle.GetPilotCompartmentSlot() != slot)
+				return false;
+		}
+	
+		// Check interior only condition
+		if (m_bOnlyInVehicle && slot.GetOwner().GetRootParent() != GetOwner().GetRootParent())
+			return false;
+		
 		return true;
 	}
 
@@ -106,7 +155,9 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 		if (!m_bIsAdjustedByPlayer)
 			return;
 
-		m_fTargetValue = Math.InverseLerp(GetMinimumValue(), GetMaximumValue(), GetCurrentValue());
+		if (m_fTargetValue < GetMinimumValue() || m_fTargetValue > GetMaximumValue())
+			m_fTargetValue = Math.Clamp(GetCurrentValue(), GetMinimumValue(), GetMaximumValue());
+
 		if (!GetActionDuration())
 			ToggleActionBypass();
 
@@ -241,12 +292,9 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 	//! Only available for actions for which HasLocalEffectOnly returns false.
 	override protected bool OnSaveActionData(ScriptBitWriter writer)
 	{
-		float lerp = Math.Lerp(GetMinimumValue(), GetMaximumValue(), m_fTargetValue);
-		writer.WriteFloat01(lerp);
-
+		writer.WriteFloat(m_fTargetValue);
 		SetSignalValue(m_fTargetValue);
-
-		PlayMovementAndStopSound(lerp);
+		PlayMovementAndStopSound(Math.InverseLerp(GetMinimumValue(), GetMaximumValue(), m_fTargetValue));
 
 		return true;
 	}
@@ -260,14 +308,19 @@ class SCR_AdjustSignalAction : ScriptedSignalUserAction
 		if (m_bIsAdjustedByPlayer)
 			return true;
 
-		float lerp;
-		reader.ReadFloat01(lerp);
-
-		m_fTargetValue = Math.InverseLerp(GetMinimumValue(), GetMaximumValue(), lerp);
+		reader.ReadFloat(m_fTargetValue);
 		SetSignalValue(m_fTargetValue);
-
-		PlayMovementAndStopSound(lerp);
+		PlayMovementAndStopSound(Math.InverseLerp(GetMinimumValue(), GetMaximumValue(), m_fTargetValue));
 
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override float GetActionProgressScript(float fProgress, float timeSlice)
+	{
+		if (IsManuallyAdjusted() && GetMaximumValue() - GetMinimumValue() != 0)
+			return (m_fTargetValue - GetMinimumValue()) / (GetMaximumValue() - GetMinimumValue());
+		
+		return fProgress + timeSlice;
 	}
 }

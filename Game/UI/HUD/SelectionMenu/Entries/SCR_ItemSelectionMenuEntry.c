@@ -62,9 +62,13 @@ class SCR_ItemSelectionMenuEntry : SCR_SelectionMenuEntry
 		if (!m_Storage)
 			return null;
 
-		array<IEntity> quickSlotItems = m_Storage.GetQuickSlotItems();
+		array<ref SCR_QuickslotBaseContainer> quickSlotItems = m_Storage.GetQuickSlotItems();
 		if (quickSlotItems && m_iQuickSlotID < quickSlotItems.Count())
-			return quickSlotItems[m_iQuickSlotID];
+		{	
+			SCR_QuickslotEntityContainer entityContainer = SCR_QuickslotEntityContainer.Cast(quickSlotItems[m_iQuickSlotID]);
+			if (entityContainer)
+				return entityContainer.GetEntity();
+		}
 
 		return null;
 	}

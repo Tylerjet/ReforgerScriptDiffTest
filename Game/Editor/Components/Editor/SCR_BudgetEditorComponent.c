@@ -195,7 +195,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		if (!editableEntitySource)
 			return false;
 		
- 		SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+ 		SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
 		if (editableUIInfo)
 			return GetEntityPreviewBudgetCosts(editableUIInfo, budgetCosts);
 
@@ -394,7 +394,6 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	//------------------------------------------------------------------------------------------------
 	protected int GetEntityTypeBudgetCost(EEditableEntityBudget budgetType)
 	{
-		int minCost;
 		SCR_EditableEntityCoreBudgetSetting budgetSettings = m_BudgetSettingsMap.Get(budgetType);
 		if (budgetSettings)
 			return budgetSettings.GetMinBudgetCost();
@@ -625,7 +624,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 		if (!m_MaxBudgets || m_MaxBudgets.IsEmpty())
 			return null;
 		else
-			return m_MaxBudgets[0].GetBudgetType();;
+			return m_MaxBudgets[0].GetBudgetType();
 	}
 
 	//------------------------------------------------------------------------------------------------

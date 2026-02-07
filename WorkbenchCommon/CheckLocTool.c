@@ -28,7 +28,10 @@ class CheckLocalizationPlugin: LocalizationEditorPlugin
 		WBProgressDialog progress = new WBProgressDialog("Scanning Layouts", editor);
 		array<ResourceName> resNames = {};
 		
-		Workbench.SearchResources(resNames.Insert, {"layout"});
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = {"layout"};
+		ResourceDatabase.SearchResources(filter, resNames.Insert);
+		
 		int count = resNames.Count();
 		int problems;
 		string report;

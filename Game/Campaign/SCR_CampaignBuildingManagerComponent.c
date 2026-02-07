@@ -327,7 +327,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (!editorManager)
 			return;
 
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
 		if (!modeEntity)
 			modeEntity = editorManager.CreateEditorMode(EEditorMode.BUILDING, false);
 
@@ -399,7 +399,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (!editorManager)
 			return;
 
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
 		if (!modeEntity)
 			return;
 
@@ -407,7 +407,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (!buildingComponent)
 			return;
 
-		SCR_CampaignBuildingProviderComponent provider = SCR_CampaignBuildingProviderComponent.Cast(buildingComponent.GetProviderComponent());
+		SCR_CampaignBuildingProviderComponent provider = buildingComponent.GetProviderComponent();
 		if (!provider)
 			return;
 
@@ -547,7 +547,7 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (!editorManager)
 			return;
 
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
 		if (!modeEntity)
 			return;
 

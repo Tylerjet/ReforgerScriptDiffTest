@@ -35,34 +35,19 @@ class SCR_ServerBrowserDialogManager
 	protected ServerBrowserMenuUI m_ServerBrowser;
 
 	// States
-	protected bool m_bIsOpen = false;
-	protected int m_iOpenDialogCount = 0;
 	protected EJoinDialogState m_iDisplayState;
 	protected SCR_ConfigurableDialogUi m_CurrentDialog;
 
-	// Join dialog widget handling
-	const string WIDGET_IMAGE_ICON = "ImgIcon";
-	const string WIDGET_TXT_SUBMSG = "TxtSubMsg";
-	const string WIDGET_LOADING = "LoadingCircle0";
-
-	const string WIDGET_PROGRESS = "VProgress";
-	const string WIDGET_TXT_PROGRESS = "TxtProgress";
-	const string WIDGET_PROGRESS_BAR = "ProgressBar";
-
-	const string WIDGET_BUTTON_ADDITIONAL = "Additional";
 	const string ERROR_TAG_DEFAULT = "JOIN_FAILED";
-
-	protected int m_iDownloadedCount = 0;
-	protected ref array<ref SCR_WorkshopItemAction> m_JoinDownloadActions = {};
 
 	// Invokers
 	protected ref ScriptInvokerVoid m_OnConfirm;
 	protected ref ScriptInvokerVoid m_OnCancel;
+	protected ref ScriptInvokerVoid m_OnJoinProcessCancel;
 	protected ref ScriptInvokerVoid m_OnDialogClose;
 
 	protected ref ScriptInvokerRoom m_OnDownloadComplete;
 	protected ref ScriptInvokerRoom m_OnJoinRoomDemand;
-	protected ref ScriptInvokerVoid Event_OnCloseAll;
 	protected ref ScriptInvokerVoid m_OnDownloadCancelDialogClose;
 
 	//------------------------------------------------------------------------------------------------
@@ -76,7 +61,6 @@ class SCR_ServerBrowserDialogManager
 		// Set
 		m_iDisplayState = state;
 
-		//m_bIsOpen = true;
 		if (m_CurrentDialog)
 			m_CurrentDialog.Close();
 
@@ -199,8 +183,6 @@ class SCR_ServerBrowserDialogManager
 
 		// Create dialog
 		m_CurrentDialog = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS, tag, dialog);
-		m_iOpenDialogCount++;
-		m_bIsOpen = true;
 
 		// Add invoker actions to current dialog
 		m_CurrentDialog.m_OnConfirm.Insert(OnDialogConfirm);
@@ -220,15 +202,10 @@ class SCR_ServerBrowserDialogManager
 	{
 		if (m_OnCancel)
 			m_OnCancel.Invoke();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void InvokeOnCloseAll()
-	{
-		if (!Event_OnCloseAll)
-			Event_OnCloseAll = new ScriptInvokerVoid();
-
-		Event_OnCloseAll.Invoke();
+		
+		// Separate invoker for final cleanup (the other OnCancel might be used for specific functionalities still)
+		if (m_OnJoinProcessCancel)
+			m_OnJoinProcessCancel.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -236,9 +213,6 @@ class SCR_ServerBrowserDialogManager
 	{
 		if (m_OnDialogClose)
 			m_OnDialogClose.Invoke();
-
-		if (m_CurrentDialog == dialog)
-			InvokeOnCloseAll();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -330,10 +304,7 @@ class SCR_ServerBrowserDialogManager
 		m_CurrentDialog.m_OnClose.Insert(OnDialogClose);
 		
 		if (type == SCR_EJoinDownloadsConfirmationDialogType.REQUIRED)
-		{
 			SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Insert(OnDownloadingDone);
-			SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Insert(OnDownloadActionFailed);
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -353,16 +324,6 @@ class SCR_ServerBrowserDialogManager
 			m_OnDownloadComplete.Invoke(m_JoinRoom);
 		
 		SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Remove(OnDownloadingDone);
-		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(OnDownloadActionFailed);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnDownloadActionFailed(notnull SCR_WorkshopItemAction action)
-	{
-		CloseCurrentDialog();
-
-		SCR_DownloadManager.GetInstance().GetOnDownloadQueueCompleted().Remove(OnDownloadingDone);
-		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(OnDownloadActionFailed);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -520,21 +481,21 @@ class SCR_ServerBrowserDialogManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnJoinProcessCancel()
+	{
+		if (!m_OnJoinProcessCancel)
+			m_OnJoinProcessCancel = new ScriptInvokerVoid();
+
+		return m_OnJoinProcessCancel;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	ScriptInvokerVoid GetOnDialogClose()
 	{
 		if (!m_OnDialogClose)
 			m_OnDialogClose = new ScriptInvokerVoid();
 
 		return m_OnDialogClose;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ScriptInvokerVoid GetOnCloseAll()
-	{
-		if (!Event_OnCloseAll)
-			Event_OnCloseAll = new ScriptInvokerVoid();
-
-		return Event_OnCloseAll;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -587,12 +548,6 @@ class SCR_ServerBrowserDialogManager
 	bool IsDialogOpen()
 	{
 		return GetCurrentDialog();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsOpen()
-	{
-		return m_bIsOpen;
 	}
 
 	//------------------------------------------------------------------------------------------------

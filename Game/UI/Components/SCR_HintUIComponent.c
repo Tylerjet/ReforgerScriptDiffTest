@@ -66,6 +66,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	protected bool m_bMenuScanned;
 	protected Widget m_VisibilitySelector;
 	
+	protected bool m_bCanShow;
 	protected bool m_bIsHintShown;
 	protected ref ScriptInvokerBool m_OnHintShown;
 
@@ -79,7 +80,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			m_Menu = SCR_WidgetTools.FindMenu(m_Widget);
 		}
 		
-		m_Widget.SetVisible(true);
+		m_Widget.SetVisible(m_bCanShow);
 
 		if (m_OnHintShown)
 			m_OnHintShown.Invoke(true);
@@ -239,6 +240,22 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnSettingsChanged()
+	{		
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+
+		bool state;
+		interfaceSettings.Get("m_bShowHints", state);
+		m_bCanShow = state;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
 		m_Widget = w;
@@ -253,6 +270,22 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 		
 		m_Widget.SetOpacity(0);
 		m_Widget.SetVisible(false);
+		
+		// Since Hints still work as component inside Editor, we need to apply the same logic as to the InfoDisplay here.
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (hudManager)
+		{
+			BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+			if (interfaceSettings)
+			{
+				bool state;
+				interfaceSettings.Get("m_bShowHints", state);
+				m_bCanShow = state;
+				
+				GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);
+			}
+		}
+		
 		
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
 		if (!hintManager)
@@ -294,6 +327,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 	override void HandlerDeattached(Widget w)
 	{
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
+		GetGame().OnUserSettingsChangedInvoker().Remove(OnSettingsChanged);
 		
 		SCR_HintManagerComponent hintManager = SCR_HintManagerComponent.GetInstance();
 		if (!hintManager)

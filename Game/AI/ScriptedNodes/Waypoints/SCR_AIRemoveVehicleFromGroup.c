@@ -26,35 +26,16 @@ class SCR_AIRemoveVehicleFromGroup : AITaskScripted
 		{
 			return ENodeResult.FAIL;
 		};
-				
-		ref array<AIAgent> agents = {};
-		group.GetAgents(agents);
-		CompartmentAccessComponent compartmentAccess;
-		BaseCompartmentSlot compartment;
-		ENodeResult nodeResult = ENodeResult.FAIL;
 		
+		array<IEntity> groupVehicles = {};
+		group.GetUsableVehicles(groupVehicles);
 		
-		foreach (AIAgent agent : agents)
+		foreach (IEntity vehicle : groupVehicles)
 		{
-			agentEntity = agent.GetControlledEntity();
-			if (!agentEntity)
-				continue;
-			compartmentAccess = CompartmentAccessComponent.Cast(agentEntity.FindComponent(CompartmentAccessComponent));
-			if (!compartmentAccess)
-				continue;
-			compartment = compartmentAccess.GetCompartment();
-			if (!compartment)
-				continue;
-			vehicleEntity = compartment.GetOwner();
-			if (vehicleEntity)
-			{
-				group.RemoveUsableVehicle(vehicleEntity);
-				nodeResult = ENodeResult.SUCCESS;
-			}	
+			group.RemoveUsableVehicle(vehicle);
 		}
-		// if noone of the group is inside a vehicle and no vehicle provided => wrong use of the node? -> fail
-		return nodeResult;
 		
+		return ENodeResult.SUCCESS;		
 	}
 		
 	//------------------------------------------------------------------------------------------------

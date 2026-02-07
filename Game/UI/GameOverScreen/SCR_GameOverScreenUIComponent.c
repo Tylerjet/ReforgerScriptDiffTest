@@ -18,13 +18,13 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("#AR-PauseMenu_ReturnText", uiwidget: UIWidgets.LocaleEditBox)]
 	protected LocalizedString m_sMainMenuPopUpMessage;
 	
-	[Attribute("{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset", params: "imageset")]
+	[Attribute(UIConstants.ICONS_IMAGE_SET, params: "imageset")]
 	protected ResourceName m_sMainMenuPopUpImageSet;
 	
 	[Attribute("exit")]
 	protected string m_sMainMenuPopUpImage;
 	
-	[Attribute("Back")]
+	[Attribute(UIConstants.BUTTON_BACK)]
 	protected string m_sBackButtonName;
 	
 	[Attribute("ChatButton")]
@@ -36,7 +36,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	[Attribute("ButtonHolder")]
 	protected string m_sButtonHolderName;
 	
-	[Attribute("RestartTimeHolder")]
+	[Attribute("RestartTimerHolder")]
 	protected string m_sRestartTimerHolderName;
 	
 	[Attribute("0.05")]
@@ -50,6 +50,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	
 	protected Widget m_wRoot;
 	protected Widget m_wEndscreenContent;
+	protected Widget m_wRestartTimerHolder;
 	protected SCR_TabViewComponent m_TabViewComponent;
 	protected SCR_FadeUIComponent m_OverlayBackgroundColorFadeUIComponent;
 	protected SCR_FadeUIComponent m_ContentFadeComponent;
@@ -57,6 +58,7 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	protected SCR_FadeUIComponent m_ButtonHolderFadeComponent;
 	protected SCR_FadeUIComponent m_RestartTimerFadeComponent;
 	protected ref SCR_GameOverScreenUIContentData m_EndScreenUIContentInfo;
+	protected SCR_ServerRestartTimerUIComponent m_RestartTimerComponent;
 	
 	//~ On tab changed
 	protected void OnTabChanged(SCR_TabViewComponent tabView, Widget w, int tabIndex)
@@ -174,6 +176,10 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 	void OpenDebriefingScreenMenu()
 	{
 		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.DebriefingScreenMenu);
+
+		// Stop the timer to prevent it from running twice
+		if (m_RestartTimerComponent)
+			m_RestartTimerComponent.StopTimer();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -253,18 +259,18 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 			}
 		}
 		
-		Widget restartTimerHolder = w.FindAnyWidget(m_sRestartTimerHolderName);
-		if (restartTimerHolder)
+		m_wRestartTimerHolder = w.FindAnyWidget(m_sRestartTimerHolderName);
+		if (m_wRestartTimerHolder)
 		{
-			SCR_ServerRestartTimerUIComponent restartTimer = SCR_ServerRestartTimerUIComponent.Cast(restartTimerHolder.FindHandler(SCR_ServerRestartTimerUIComponent));
+			m_RestartTimerComponent = SCR_ServerRestartTimerUIComponent.Cast(m_wRestartTimerHolder.FindHandler(SCR_ServerRestartTimerUIComponent));
 			
-			if (restartTimer && restartTimer.IsValid())
+			if (m_RestartTimerComponent && m_RestartTimerComponent.IsValid())
 			{
-				m_RestartTimerFadeComponent = SCR_FadeUIComponent.Cast(restartTimerHolder.FindHandler(SCR_FadeUIComponent));
+				m_RestartTimerFadeComponent = SCR_FadeUIComponent.Cast(m_wRestartTimerHolder.FindHandler(SCR_FadeUIComponent));
 				if (m_RestartTimerFadeComponent)
 				{
 					m_RestartTimerFadeComponent.SetFadeInSpeed(m_fContentFadeInSpeed);
-					restartTimerHolder.SetVisible(false);
+					m_wRestartTimerHolder.SetVisible(false);
 				}
 			}
 		}
@@ -304,6 +310,9 @@ class SCR_GameOverScreenUIComponent: ScriptedWidgetComponent
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());	
 		if (gameMode)
 			gameMode.GetOnGameEnd().Remove(OnGameEnd);
+		
+		if (m_wRestartTimerHolder)
+			m_RestartTimerComponent.StopTimer();
 	}
 };
 

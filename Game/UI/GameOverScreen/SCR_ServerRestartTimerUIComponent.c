@@ -70,9 +70,19 @@ class SCR_ServerRestartTimerUIComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Stop the timer
+	void StopTimer()
+	{
+		if (m_fAutoReloadDelay <= 0)
+			return;
+		
+		GetGame().GetCallqueue().Remove(UpdateTimer);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateTimer()
 	{
-		if (!m_World || !m_wRestartTimer)
+		if (!m_World || !m_wRestartTimer || !m_wRoot.IsVisible())
 			return;
 		
 		//~ Call function which knows everythime the time changes a second with current restart time left
@@ -88,14 +98,10 @@ class SCR_ServerRestartTimerUIComponent : SCR_ScriptedWidgetComponent
 
 		//~ Set current timer as previous timer
 		m_iPreviousRestartTime = currentRestartTimer;
-		
-		//~ Hide leading 0 of seconds if less than 1 minute
-		ETimeFormatParam hideLeadingZero;
-		if (currentRestartTimer < 60)
-			hideLeadingZero = ETimeFormatParam.SECONDS;
-		
+				
 		//~ Update the timer widget
-		m_wRestartTimer.SetTextFormat(m_sRestartTimerFormat, SCR_FormatHelper.GetTimeFormatting(currentRestartTimer, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES, hideLeadingZero));
+		string timerText = string.Format("<color rgba='%1'>%2</color>",  UIColors.FormatColor(GUIColors.ENABLED), SCR_FormatHelper.GetTimeFormatting(currentRestartTimer, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS));
+		m_wRestartTimer.SetTextFormat(m_sRestartTimerFormat, timerText);
 		
 		//~ Countdown SFX
 		if (m_bEnableCountDownSfx)

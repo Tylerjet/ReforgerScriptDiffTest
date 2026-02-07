@@ -1,3 +1,15 @@
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
+
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 //! Component responsible for requesting and visualization of available loadouts in deploy menu.
 class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 {
@@ -17,6 +29,26 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected string m_sLoadoutName;
 	protected TextWidget m_wLoadoutName;
 
+	[Attribute("Dawn")]
+	protected string m_sDTDawn;
+	
+	[Attribute("Forenoon")]
+	protected string m_sDTForenoon;
+	
+	[Attribute("Afternoon")]
+	protected string m_sDTAfternoon;
+	
+	[Attribute("Dusk")]
+	protected string m_sDTDusk;
+	
+	[Attribute("Evening")]
+	protected string m_sDTEvening;
+		
+	[Attribute("Night")]
+	protected string m_sDTNight;
+	
+	protected ref array<string> m_sDayModifierStrings = { m_sDTDawn, m_sDTForenoon, m_sDTAfternoon, m_sDTDusk, m_sDTEvening, m_sDTNight };
+	
 	[Attribute("{39D815C843414C76}UI/layouts/Menus/DeployMenu/LoadoutButton.layout", desc: "Layout for loadout button, has to have SCR_LoadoutButton attached to it.")]
 	protected ResourceName m_sLoadoutButton;
 
@@ -38,6 +70,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 	protected Widget m_wLoadouty;
 	protected Widget m_wSupplies;
+	protected ResourceName m_sLoadoutImageSet;
 	protected RichTextWidget m_wSuppliesText;
 
 	protected const int LOADOUTS_PER_ROW = 2;
@@ -45,6 +78,11 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	protected ref ScriptInvokerInt m_OnPlayerEntryFocused;
 	protected ref ScriptInvokerWidget m_OnPlayerEntryFocusLost;
 
+	protected SCR_UIInfo uiInfo;
+	protected string m_sLoadoutImageName;
+	protected string m_sDayModifier;
+	protected string m_sWeatherModifier;
+	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
@@ -71,10 +109,12 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_wExpandButtonIcon = ImageWidget.Cast(w.FindAnyWidget(m_sExpandButtonIcon));
 		m_wExpandButton = w.FindAnyWidget(m_sExpandButton);
 
-		SCR_ArsenalManagerComponent.GetArsenalManager(m_ArsenalManagerComp);
-		if (m_ArsenalManagerComp)
+		if (SCR_ArsenalManagerComponent.GetArsenalManager(m_ArsenalManagerComp))
+		{
 			m_ArsenalManagerComp.GetOnLoadoutUpdated().Insert(UpdateLoadouts);
-
+			m_ArsenalManagerComp.GetOnLoadoutSpawnSupplyCostMultiplierChanged().Insert(OnLoadoutSpawnCostMultiplierChanged);
+		}
+			
 		if (m_wExpandButton && m_wExpandButton.IsVisible())
 		{
 			SCR_ButtonBaseComponent expandBtn = SCR_ButtonBaseComponent.Cast(m_wExpandButton.FindHandler(SCR_ButtonBaseComponent));
@@ -119,6 +159,19 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		if (m_ArsenalManagerComp)
+		{
+			m_ArsenalManagerComp.GetOnLoadoutUpdated().Remove(UpdateLoadouts);
+			m_ArsenalManagerComp.GetOnLoadoutSpawnSupplyCostMultiplierChanged().Remove(OnLoadoutSpawnCostMultiplierChanged);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected override void ToggleCollapsed()
 	{
 		if (m_wExpandButton && m_wExpandButton.IsVisible())
@@ -129,20 +182,24 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void SetExpanded(bool expanded)
 	{
 		m_wLoadouty.SetVisible(expanded);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	protected override bool IsExpanded()
 	{
 		return m_wLoadouty.IsVisible();
 	}	
 	
+	//------------------------------------------------------------------------------------------------
 	protected void OnLoadoutsChanged(SCR_BasePlayerLoadout loadout, int newCount)
 	{
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Called from deploy menu when player's loadout is assigned.
 	void OnPlayerLoadoutAssigned(SCR_PlayerLoadoutComponent component)
 	{
@@ -157,6 +214,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Show available loadouts in the loadout selector.
 	void ShowAvailableLoadouts(Faction faction)
 	{
@@ -193,9 +251,10 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				m_PlyLoadoutComp.RequestLoadout(availableLoadouts[0]);
 		}
 
-		RefreshLoadoutPreview();		
+		GetGame().GetCallqueue().CallLater(RefreshLoadoutPreview, 0, false); // delayed refresh call helps with performance
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Fill the loadout list with players' loadouts.
 	void ShowPlayerLoadouts(array<int> playerIds, int slotCount = -1)
 	{
@@ -222,6 +281,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Removed all buttons from the loadout list.
 	protected void ClearLoadoutList()
 	{
@@ -236,6 +296,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_aButtons.Clear();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	// Create a non-interactive loadout button with player's name.
 	protected void CreatePlayerLoadoutButton(SCR_BasePlayerLoadout loadout, int pid, int order)
 	{
@@ -258,6 +319,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		GridSlot.SetRow(name, order / LOADOUTS_PER_ROW);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Create an empty slot in the loadout grid.
 	protected void CreateEmptySlot(int order)
 	{
@@ -271,6 +333,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		GridSlot.SetRow(slot, order / LOADOUTS_PER_ROW);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void UpdateLoadouts(int playerID, bool hasValidLoadout)
 	{
 		array<ref SCR_BasePlayerLoadout> availableLoadouts = {};
@@ -283,6 +346,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Send a loadout request when clicking on a loadout button.
 	protected void RequestPlayerLoadout(SCR_LoadoutButton loadoutBtn)
 	{
@@ -299,6 +363,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_PlyLoadoutComp.RequestLoadout(loadout);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void OnButtonFocused(Widget w)
 	{
 		SCR_LoadoutButton loadoutBtn = SCR_LoadoutButton.Cast(w.FindHandler(SCR_LoadoutButton));
@@ -335,7 +400,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		
 		return m_OnPlayerEntryFocusLost;
 	}
-	
+
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	//------------------------------------------------------------------------------------------------
 	//! Send a request to assign a random faction loadout.
 	void RequestRandomLoadout(Faction faction)
 	{
@@ -345,7 +412,9 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_PlyLoadoutComp.RequestLoadout(loadouts.GetRandomElement());
 		GetGame().GetCallqueue().CallLater(SetLoadoutPreview, 10, false, rndLoadout);
 	}
+	//---- REFACTOR NOTE END ----
 
+	//------------------------------------------------------------------------------------------------
 	void SetSelected(SCR_PlayerLoadoutComponent component)
 	{
 		foreach (SCR_DeployButtonBase btn : m_aButtons)
@@ -359,13 +428,48 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_LoadoutSelector.SetSelected(component.GetLoadout());
 	}
 	
-	//----------------------------------------------------------------------------------------------
-	protected float GetLoadoutCost()
+	//------------------------------------------------------------------------------------------------
+	protected void OnSpawnPointChanged(RplId id)
 	{
-		//~ TODO: It should know the BASE (Or ResourceComponent of spawnpoint)
-		return SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(m_PlyLoadoutComp.GetLoadout(), true, -1, SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction()), null, null);
+		RefreshLoadoutPreview();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnLoadoutSpawnCostMultiplierChanged(float newMultiplier)
+	{
+		RefreshLoadoutPreview();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void RegisterOnSpawnPointInvoker(notnull OnSpawnPointRplIdSetInvoker invoker)
+	{
+		invoker.Insert(OnSpawnPointChanged);
+	}
+
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+	//------------------------------------------------------------------------------------------------
+	protected float GetLoadoutCost()
+	{
+		IEntity spawnPoint;
+		
+		//~ TODO: Get loadout refresh should be called on spawnpoint selection changed
+		//~ Get selected spawnpoint
+		SCR_DeployMenuMain deployMenu = SCR_DeployMenuMain.GetDeployMenu();
+		if (deployMenu)
+		{
+			SCR_SpawnPointRequestUIComponent spawnPointRequest = deployMenu.GetSpawnPointRequestHandler();
+			if (spawnPointRequest)
+			{
+				RplComponent rplComp = RplComponent.Cast(Replication.FindItem(spawnPointRequest.GetCurrentRplId()));
+				if (rplComp)
+					spawnPoint = rplComp.GetEntity();
+			}
+		}
+		
+		return SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(m_PlyLoadoutComp.GetLoadout(), true, -1, SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction()), spawnPoint);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Set a loadout shown in the preview widget.
 	protected void SetLoadoutPreview(SCR_BasePlayerLoadout loadout)
 	{
@@ -385,6 +489,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Refreshes current loadout preview widget.
 	void RefreshLoadoutPreview()
 	{
@@ -413,14 +518,48 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wSuppliesText.SetText(SCR_ResourceSystemHelper.SuppliesToString(supplyCost));			
 			m_wSupplies.SetVisible(supplyCost > 0);
 		}
-	}
+		
+		ImageWidget LoadoutBackground = ImageWidget.Cast((m_wLoadoutSelector.GetParent()).GetParent().FindAnyWidget("Background"));
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)	
+			return;
+		
+		TimeAndWeatherManagerEntity tmwManager = world.GetTimeAndWeatherManager();
+		if (!tmwManager)
+			return;
+				
+		int dayTime = tmwManager.GetCurrentDayTimeUIInfo(uiInfo);
+		SCR_Faction faction = SCR_Faction.Cast(m_PlyFactionAffilComp.GetAffiliatedFaction());
+		WeatherStateTransitionManager transitionManager = WeatherStateTransitionManager.Cast(tmwManager.GetTransitionManager());
+		m_sWeatherModifier = transitionManager.GetCurrentState().GetStateName();
+		
+		if (!m_sDayModifierStrings.IsIndexValid(dayTime))
+			return;
+		
+		m_sDayModifier = m_sDayModifierStrings[dayTime];
+		
+		if (!faction) 
+			return;
+		
+		m_sLoadoutImageSet = faction.GetFactionBackground();
+		
+		if (m_sWeatherModifier == "Rainy")
+			m_sLoadoutImageName = m_sDayModifier + m_sWeatherModifier;	
+		else
+			m_sLoadoutImageName = m_sDayModifier;
 
+		LoadoutBackground.LoadImageFromSet(0, m_sLoadoutImageSet, m_sLoadoutImageName);
+	}
+	//---- REFACTOR NOTE END ----
+	//------------------------------------------------------------------------------------------------
 	//! Get local player's assigned loadout.
 	SCR_BasePlayerLoadout GetPlayerLoadout()
 	{
 		return m_PlyLoadoutComp.GetAssignedLoadout();
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Add a loadout into the loadout selector.
 	protected void AddLoadout(SCR_BasePlayerLoadout loadout)
 	{
@@ -428,6 +567,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_LoadoutSelector.AddItem(loadout);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void ResetPlayerLoadoutPreview()
 	{
 		if (m_wLoadoutPreview)
@@ -437,17 +577,20 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			m_wLoadoutName.SetText("#AR-DeployMenu_SelectLoadout");
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void SetListVisible(bool visible)
 	{
 		if (m_wLoadoutList)
 			m_wLoadoutList.SetVisible(visible);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void ShowLoadoutSelector(bool show)
 	{
 		m_wRoot.SetVisible(show);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	SCR_EditableEntityUIInfo GetUIInfo(SCR_BasePlayerLoadout loadout)
 	{
 		if (!loadout)
@@ -466,6 +609,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		return null;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void SetListWidget(Widget list)
 	{
 		if (m_wLoadoutList)
@@ -477,6 +621,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		m_wLoadoutList = GridLayoutWidget.Cast(list);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	bool IsSelectorFocused()
 	{
 		return m_LoadoutSelector && m_LoadoutSelector.GetFocused();
@@ -496,6 +641,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 
 	protected SCR_BasePlayerLoadout m_Loadout;
 	protected int m_iPlayerId = -1;
+	protected bool m_bIsSelected = false;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -510,6 +656,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 			SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(OnLeaderChanged);
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -517,6 +664,33 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		SCR_AIGroup.GetOnPlayerLeaderChanged().Remove(OnLeaderChanged);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		if(m_bShowBorderOnFocus)
+			m_bShowBorderOnFocus = false;
+		
+		if(!GetGame().GetInputManager().IsUsingMouseAndKeyboard() || m_bIsSelected)
+			ShowBorder(true, true);
+		else
+			ShowBorder(false, true);
+		
+		return super.OnFocus(w, x, y);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		if(!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && !m_bIsSelected)
+			ShowBorder(false, true);
+		
+		if(m_bIsSelected)
+			ShowBorder(true, false);
+		
+		return super.OnFocusLost(w, x, y);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Assign loadout associated with this button.
 	void SetLoadout(SCR_BasePlayerLoadout loadout)
 	{
@@ -528,6 +702,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 			SetImage(GetUIInfo().GetIconPath());
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Set player id associated with this button and update the visuals.
 	void SetPlayer(int pid)
 	{
@@ -545,6 +720,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		SetIsLeader(pid == m_iPlayerId && group.IsPlayerLeader(pid));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	//! Update visuals when group leader changes.
 	protected void OnLeaderChanged(int groupId, int pid)
 	{
@@ -560,40 +736,51 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 			SetIsLeader(group.IsPlayerLeader(pid));
 	}
 
+	//------------------------------------------------------------------------------------------------
 	protected void SetIsLeader(bool leader)
 	{
 		if (m_wLeaderText)
 			m_wLeaderText.SetVisible(leader);
 	}
 
-	/*!
-	Get player id associated with this button.
-	\return player id
-	*/
+	//------------------------------------------------------------------------------------------------
 	int GetPlayerId()
 	{
 		return m_iPlayerId;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	bool IsSelected()
+	{
+		return m_bIsSelected;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetSelected(bool selected)
+	{
+		super.SetSelected(selected);
+
+		m_bIsSelected = selected;
+		
+		ShowBorder(selected, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SetPlayerName(string name)
 	{
 		if (m_wPlayerName)
 			m_wPlayerName.SetText(name);
 	}
 
-	/*!
-	Get the loadout associated with this button.
-	\return player loadout
-	*/
+	//------------------------------------------------------------------------------------------------
+	//!return player loadout
 	SCR_BasePlayerLoadout GetLoadout()
 	{
 		return m_Loadout;
 	}
 
-	/*!
-	Get UI info of this button's loadout.
-	\return UI info
-	*/
+	//------------------------------------------------------------------------------------------------
+	//! \return
 	SCR_EditableEntityUIInfo GetUIInfo()
 	{
 		Resource res = Resource.Load(m_Loadout.GetLoadoutResource());
@@ -601,6 +788,7 @@ class SCR_LoadoutButton : SCR_DeployButtonBase
 		if (source)
 		{
 			BaseContainer container = source.GetObject("m_UIInfo");
+
 			SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 
 			return info;

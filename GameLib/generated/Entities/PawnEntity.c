@@ -26,6 +26,9 @@ class PawnEntity: GenericEntity
 	proto external bool IsControlledProxy();
 	proto external bool IsControlledMaster();
 	proto external bool IsSimulatedProxy();
+	proto external void AddRelatedEntity(PawnRelatedEntity entity);
+	proto external void RemoveRelatedEntity(PawnRelatedEntity entity);
+	proto external void SetSimulationDisabled(bool state);
 
 	// callbacks
 

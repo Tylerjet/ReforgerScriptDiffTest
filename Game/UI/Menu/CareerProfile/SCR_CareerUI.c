@@ -13,7 +13,7 @@ class SCR_CareerUI: Managed
 		if (!workspace)
 			return null;
 		
-		Widget StatEntry = Widget.Cast(workspace.CreateWidgets(statsLayout, container));
+		Widget StatEntry = workspace.CreateWidgets(statsLayout, container);
 		if (!StatEntry)
 			return null;
 		
@@ -38,7 +38,7 @@ class SCR_CareerUI: Managed
 		if (!workspace)
 			return null;
 		
-		Widget StatProgressionEntry = Widget.Cast(workspace.CreateWidgets(statsProgressionLayout, container));
+		Widget StatProgressionEntry = workspace.CreateWidgets(statsProgressionLayout, container);
 		if (!StatProgressionEntry)
 			return null;
 		
@@ -76,7 +76,7 @@ class SCR_CareerUI: Managed
 		if (!workspace)
 			return null;
 		
-		Widget HeaderEntry = Widget.Cast(workspace.CreateWidgets(headerStatsLayout, container));
+		Widget HeaderEntry = workspace.CreateWidgets(headerStatsLayout, container);
 		if (!HeaderEntry)
 			return null;
 		

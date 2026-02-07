@@ -51,6 +51,7 @@ class SCR_DynamicFooterComponent : SCR_ScriptedWidgetComponent
 	// ---- PRIVATE ----
 	//------------------------------------------------------------------------------------------------
 	//! Provides the button's name as a tag to easily identify which button was pressed
+	// TODO: provide the input button's action as well
 	private void OnButtonActivated(SCR_InputButtonComponent button)
 	{
 		if(m_OnButtonActivated)

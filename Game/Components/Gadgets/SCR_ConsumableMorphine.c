@@ -2,39 +2,6 @@
 [BaseContainerProps()]
 class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 {
-	[Attribute("10", UIWidgets.EditBox, "Regeneration speed of related hitzone when consuming this item", category: "Regeneration")]
-	protected float m_fItemRegenerationSpeed;
-	
-	[Attribute("10", UIWidgets.EditBox, "Regeneration duration of related hitzone when consuming this item in seconds", category: "Regeneration")]
-	protected float m_fItemRegenerationDuration;	
-	
-	[Attribute("0", UIWidgets.EditBox, "Total amount of regeneration that will be applied to the related hitzone. Will be ignored if m_fItemRegenerationDuration > 0", category: "Regeneration")]
-	protected float m_fItemAbsoluteRegenerationAmount;
-	
-	//------------------------------------------------------------------------------------------------
-	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
-	{
-		super.ApplyEffect(target, user, item, animParams);
-
-		ChimeraCharacter char = ChimeraCharacter.Cast(target);
-		if (!char)
-			return;
-		
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
-		if (!damageMgr)
-			return;
-		
-		array<HitZone> physicalHitZones = {};
-		damageMgr.GetPhysicalHitZones(physicalHitZones);
-		foreach (HitZone physicalHitZone: physicalHitZones)
-		{
-			SCR_HitZone hitzone = SCR_HitZone.Cast(physicalHitZone);
-			if (!hitzone)
-				continue;
-
-			hitzone.CustomRegeneration(target, m_fItemRegenerationDuration, m_fItemRegenerationSpeed, m_fItemAbsoluteRegenerationAmount);
-		}		
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason)
@@ -47,18 +14,24 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return false;
 		
-		array<HitZone> hitzones = {};
-		damageMgr.GetPhysicalHitZones(hitzones);
-
-		foreach (HitZone hitzone : hitzones)
+		array<ref PersistentDamageEffect> effects = damageMgr.GetAllPersistentEffectsOfType(SCR_MorphineDamageEffect);
+		if (!effects.IsEmpty())
 		{
-			if (hitzone.GetDamageOverTime(EDamageType.HEALING) < 0)
-			{
-				failReason = SCR_EConsumableFailReason.ALREADY_APPLIED;
-				return false;
-			}
+			failReason = SCR_EConsumableFailReason.ALREADY_APPLIED;
+			return false;
+		}
+		
+		array<HitZone> hitZones = {};
+		damageMgr.GetPhysicalHitZones(hitZones);
+		SCR_RegeneratingHitZone regenHitZone;
+		
+		foreach (HitZone hitZone : hitZones)
+		{
+			regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
+			if (!regenHitZone)
+				continue;
 			
-			if (hitzone.GetDamageState() != EDamageState.UNDAMAGED)
+			if (regenHitZone.GetDamageState() != EDamageState.UNDAMAGED)
 				return true;
 		}
 
@@ -71,6 +44,12 @@ class SCR_ConsumableMorphine : SCR_ConsumableEffectHealthItems
 	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
 		return CanApplyEffect(target, user, failReason);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	EDamageType GetDefaultDamageType()
+	{
+		return EDamageType.HEALING;
 	}
 		
 	//------------------------------------------------------------------------------------------------

@@ -323,6 +323,10 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 			IEntity resourcesOwner = resourceComponent.GetOwner();
 			if (!resourcesOwner)
 				return;
+
+			// Spatial validation check 
+			if (!inventoryManagerComponent.ValidateStorageRequest(resourcesOwner))
+				return;
 			
 			//~ Get Supply cost only if arsenal has supplies enabled
 			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
@@ -391,43 +395,12 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		if (!inventoryItemEntity)
 			return;
 		
-		float resourceCost = 0;
+		IEntity resourcesOwner = resourceComponent.GetOwner();
+		if (!resourcesOwner)
+			return;
 		
-		//~ Get item cost
-		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
-		if (entityCatalogManager)
-		{
-			IEntity resourcesOwner = resourceComponent.GetOwner();
-			if (!resourcesOwner)
-				return;
-			
-			//~ Get Supply cost only if arsenal has supplies enabled
-			SCR_ArsenalComponent arsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner);
-			if ((arsenalComponent && arsenalComponent.IsArsenalUsingSupplies()) || !arsenalComponent)
-			{
-				SCR_Faction faction;
-				if (arsenalComponent)
-					faction = arsenalComponent.GetAssignedFaction();
-				
-				ResourceName resourceNameItem = inventoryItemEntity.GetPrefabData().GetPrefabName();
-				
-				SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, resourceNameItem, faction);
-				if (!entry)
-					return;
-	
-				SCR_ArsenalItem data = SCR_ArsenalItem.Cast(entry.GetEntityDataOfType(SCR_ArsenalItem));
-				if (data)
-				{
-					if (arsenalComponent)
-						resourceCost = data.GetSupplyCost(arsenalComponent.GetSupplyCostType());
-					else 
-						resourceCost = data.GetSupplyCost(SCR_EArsenalSupplyCostType.DEFAULT);
-				}
-					
-			}
-		}
-		
-		resourceCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(resourceCost * generator.GetResourceMultiplier());
+		//~ Get resource cost (cap at 0 minimum as function can return -1)
+		float resourceCost = Math.Clamp(SCR_ArsenalManagerComponent.GetItemRefundAmount(inventoryItemEntity, SCR_ArsenalComponent.FindArsenalComponent(resourcesOwner), false), 0, float.MAX);
 		
 		//~ Check if it can refund if resource cost is greater than 0
 		if (resourceCost > 0)
@@ -448,7 +421,7 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		else if (!inventoryManagerComponent)
 			RplComponent.DeleteRplEntity(inventoryItemEntity, false);
 		
-		generator.RequestGeneration(SCR_ResourceSystemHelper.RoundRefundSupplyAmount(resourceCost));
+		generator.RequestGeneration(resourceCost);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -625,7 +598,6 @@ class SCR_ResourcePlayerControllerInventoryComponent : ScriptComponent
 		SCR_EntityCatalog resourceContainerCatalog	= SCR_EntityCatalogManagerComponent.GetInstance().GetEntityCatalogOfType(EEntityCatalogType.SUPPLY_CONTAINER_ITEM); 
 		array<SCR_EntityCatalogEntry> entries		= {};
 		array<SCR_BaseEntityCatalogData> data		= {};
-		float maxResourceValueTo					= 0.0;
 		
 		resourceContainerCatalog.GetEntityListWithData(SCR_ResourceContainerItemData, entries, data);
 		

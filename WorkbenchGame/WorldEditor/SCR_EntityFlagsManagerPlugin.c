@@ -77,8 +77,6 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 	[Attribute(defvalue: "0", desc: "Force flags cleaning - slower but sure to remove unneeded flags", category: "Options")]
 	protected bool m_bForceCleaning;
 
-	protected WorldEditorAPI m_WorldEditorAPI;
-
 	protected static const int PROGRESSBAR_TIMEOUT = 3000; //!< in milliseconds - when does the progressbar display
 	protected static const int PROGRESSBAR_REFRESH = 1000; //!< in milliseconds - when does the progressbar refresh
 	protected static const string COORDS = "coords";
@@ -91,15 +89,14 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-		m_WorldEditorAPI = worldEditor.GetApi();
-		if (!m_WorldEditorAPI)
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		if (!worldEditorAPI)
 		{
 			Print("World Editor API is not available", LogLevel.ERROR);
 			return;
 		}
 
-		int selectedCount = m_WorldEditorAPI.GetSelectedEntitiesCount();
+		int selectedCount = worldEditorAPI.GetSelectedEntitiesCount();
 		string message = "Entities currently selected: " + selectedCount;
 
 		if (selectedCount < 1)
@@ -179,8 +176,10 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 		vector entityPos;
 		int clearedFlags, editedFlags, fixed;
 
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+
 		Debug.BeginTimeMeasure();
-		m_WorldEditorAPI.BeginEntityAction();
+		worldEditorAPI.BeginEntityAction();
 
 		foreach (int i, IEntitySource entitySource : entitySources)
 		{
@@ -205,7 +204,7 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 
 			bool useEditSequence = m_bResetRelativeYFlag; // due to flag + pos
 			if (useEditSequence)
-				m_WorldEditorAPI.BeginEditSequence(entitySource);
+				worldEditorAPI.BeginEditSequence(entitySource);
 
 			/*
 				FLAGS
@@ -289,10 +288,10 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 						// ATL to World
 						float y;
 						entitySource.Get(COORDS, entityPos);
-						if (m_WorldEditorAPI.TryGetTerrainSurfaceY(entityPos[0], entityPos[2], y))
+						if (worldEditorAPI.TryGetTerrainSurfaceY(entityPos[0], entityPos[2], y))
 							entityPos[1] = entityPos[1] + y;
 						else
-							Print("Entity " + m_WorldEditorAPI.SourceToEntity(entitySource).GetID() + " position cannot be changed (ATL to World)", LogLevel.WARNING);
+							Print("Entity " + worldEditorAPI.SourceToEntity(entitySource).GetID() + " position cannot be changed (ATL to World)", LogLevel.WARNING);
 					}
 					else
 					{
@@ -306,10 +305,10 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 						// World to ATL
 						float y;
 						entitySource.Get(COORDS, entityPos);
-						if (m_WorldEditorAPI.TryGetTerrainSurfaceY(entityPos[0], entityPos[2], y))
+						if (worldEditorAPI.TryGetTerrainSurfaceY(entityPos[0], entityPos[2], y))
 							entityPos[1] = entityPos[1] - y;
 						else
-							Print("Entity " + m_WorldEditorAPI.SourceToEntity(entitySource).GetID() + " position cannot be changed (World to ATL)", LogLevel.WARNING);
+							Print("Entity " + worldEditorAPI.SourceToEntity(entitySource).GetID() + " position cannot be changed (World to ATL)", LogLevel.WARNING);
 					}
 					else
 					{
@@ -336,25 +335,25 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 
 			if (newFlags == prefabFlags)
 			{
-				m_WorldEditorAPI.ClearVariableValue(entitySource, null, FLAGS);
+				worldEditorAPI.ClearVariableValue(entitySource, null, FLAGS);
 				clearedFlags++;
 			}
 			else
 			if (newFlags != oldFlags)
 			{
-				m_WorldEditorAPI.SetVariableValue(entitySource, null, FLAGS, newFlags.ToString());
+				worldEditorAPI.SetVariableValue(entitySource, null, FLAGS, newFlags.ToString());
 				editedFlags++;
 			}
 
 			// relativeY aftermath
 			if (m_bResetRelativeYFlag && entityPos != vector.Zero)
-				m_WorldEditorAPI.SetVariableValue(entitySource, null, COORDS, entityPos.ToString(false));
+				worldEditorAPI.SetVariableValue(entitySource, null, COORDS, entityPos.ToString(false));
 
 			if (oldFlags != newFlags)
 				fixed++;
 
 			if (useEditSequence)	 // due to flag + pos
-				m_WorldEditorAPI.EndEditSequence(entitySource);
+				worldEditorAPI.EndEditSequence(entitySource);
 
 			int timeDiff = System.GetTickCount() - lastRefresh;
 			if (!progress)
@@ -373,7 +372,7 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 			}
 		}
 
-		m_WorldEditorAPI.EndEntityAction();
+		worldEditorAPI.EndEntityAction();
 		Debug.EndTimeMeasure("Entity flag fixing");
 
 		Print("Fixed " + fixed + "/" + entitySourcesCount + " entities (edited: " + editedFlags + " / cleared " + clearedFlags + ")", LogLevel.NORMAL);
@@ -388,7 +387,8 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 	{
 		int originalCount;
 		array<IEntitySource> result = {};
-		int selectedCount = m_WorldEditorAPI.GetSelectedEntitiesCount();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		int selectedCount = worldEditorAPI.GetSelectedEntitiesCount();
 
 		Debug.BeginTimeMeasure();
 		if (selectedCount > 0)
@@ -398,7 +398,7 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 			result.Reserve(selectedCount);
 			for (int i = 0; i < selectedCount; i++)
 			{
-				entitySource = m_WorldEditorAPI.GetSelectedEntity(i);
+				entitySource = worldEditorAPI.GetSelectedEntity(i);
 				
 				if (!entitySource)
 					continue;
@@ -412,13 +412,13 @@ class SCR_EntityFlagsManagerPlugin : WorldEditorPlugin
 		}
 		else
 		{
-			int entitiesCount = m_WorldEditorAPI.GetEditorEntityCount(); // maximum possible (almost)
+			int entitiesCount = worldEditorAPI.GetEditorEntityCount(); // maximum possible (almost)
 			originalCount = entitiesCount;
 			result.Reserve(entitiesCount);
 			IEntitySource entitySource;
 			for (int i = 0; i < entitiesCount; i++)
 			{
-				entitySource = m_WorldEditorAPI.GetEditorEntity(i);
+				entitySource = worldEditorAPI.GetEditorEntity(i);
 				if (!entitySource)
 					continue;
 

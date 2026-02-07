@@ -57,11 +57,17 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	[Attribute("1", desc: "If true it will play the next and prev page audio on page change")]
 	protected bool m_bPlayAudioOnPageChange;
 	
+	[Attribute("1", desc: "If true it will show empty entries")]
+	protected bool m_bShowEmptyEntries;
+	
 	[Attribute(SCR_SoundEvent.TURN_PAGE, UIWidgets.EditBox)]
 	protected string m_sOnNextPageSfx;
 	
 	[Attribute(SCR_SoundEvent.TURN_PAGE, UIWidgets.EditBox)]
 	protected string m_sOnPrevPageSfx;
+	
+	[Attribute("", desc: "When true it will disable the arrows if number of pages is one.")]
+	protected bool m_bDisableArrowsSinglePage;
 	
 	protected int m_iCurrentPage;
 	protected bool m_bUnderCursor;
@@ -69,6 +75,22 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 	protected TextWidget m_PageNumberWidget;
 	protected ref ScriptInvoker m_OnPageChanged = new ScriptInvoker();
 	protected int m_FocusedIndex[2];
+	
+	//------------------------------------------------------------------------------------------------
+	//! Disable page change button if flag is true and number of pages is 1
+	protected void DisableArrowsSinglePage()
+	{
+		if (!m_bDisableArrowsSinglePage || !m_ButtonPrevWidget || !m_ButtonNextWidget || m_iRows == 0 || m_iColumns == 0)
+			return;
+		
+		int countEntries = GetEntryCount();
+		int totalPages = Math.Ceil(countEntries / (m_iRows * m_iColumns));
+		if (totalPages > 1)
+			return;
+		
+		m_ButtonPrevWidget.SetVisible(false);
+		m_ButtonNextWidget.SetVisible(false);
+	}
 	
 	//--- To be overridden by inherited classes
 	/*!
@@ -197,33 +219,37 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 				IterateIndex(row, column);
 				child = child.GetSibling();
 			}
-			//--- Fill the rest with empty layout
-			int minRows = m_iRows;
-			if (page == 0 && m_iMinRows >= 0)
-				minRows = Math.Max(m_iMinRows, row);
 			
-			int minColumns = m_iColumns;
-			if (page == 0 && m_iMinColumns >= 0)
-				minColumns = Math.Max(m_iMinColumns, row);
-			
-			Widget emptyWidget;
-			int emptyItemsCount = m_aEmptyItemLayouts.Count() - 1;
-			while (row < minRows && column < minColumns)
+			if (m_bShowEmptyEntries)
 			{
-				if (m_aEmptyItemLayouts.IsEmpty())
-				{
-					emptyWidget = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE | WidgetFlags.IGNORE_CURSOR | WidgetFlags.NOFOCUS, new Color(0, 0, 0, 0), 0, m_ContentWidget);
-				}
-				else
-				{
-					int index = Math.Min(row * m_iColumns + column, emptyItemsCount);
-					emptyWidget = GetGame().GetWorkspace().CreateWidgets(m_aEmptyItemLayouts[index], m_ContentWidget);
-				}
+				//--- Fill the rest with empty layout
+				int minRows = m_iRows;
+				if (page == 0 && m_iMinRows >= 0)
+					minRows = Math.Max(m_iMinRows, row);
 				
-				UniformGridSlot.SetRow(emptyWidget, row);
-				UniformGridSlot.SetColumn(emptyWidget, column);
+				int minColumns = m_iColumns;
+				if (page == 0 && m_iMinColumns >= 0)
+					minColumns = Math.Max(m_iMinColumns, row);
 				
-				IterateIndex(row, column);
+				Widget emptyWidget;
+				int emptyItemsCount = m_aEmptyItemLayouts.Count() - 1;
+				while (row < minRows && column < minColumns)
+				{
+					if (m_aEmptyItemLayouts.IsEmpty())
+					{
+						emptyWidget = GetGame().GetWorkspace().CreateWidget(WidgetType.ImageWidgetTypeID, WidgetFlags.VISIBLE | WidgetFlags.IGNORE_CURSOR | WidgetFlags.NOFOCUS, new Color(0, 0, 0, 0), 0, m_ContentWidget);
+					}
+					else
+					{
+						int index = Math.Min(row * m_iColumns + column, emptyItemsCount);
+						emptyWidget = GetGame().GetWorkspace().CreateWidgets(m_aEmptyItemLayouts[index], m_ContentWidget);
+					}
+					
+					UniformGridSlot.SetRow(emptyWidget, row);
+					UniformGridSlot.SetColumn(emptyWidget, column);
+					
+					IterateIndex(row, column);
+				}
 			}
 		}
 		
@@ -483,6 +509,8 @@ class SCR_BasePaginationUIComponent: MenuRootSubComponent
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		SetPage(m_iCurrentPage, true);
+		
+		DisableArrowsSinglePage(); // Only runs if the flag is set to true
 	}
 	override void HandlerDeattached(Widget w)
 	{

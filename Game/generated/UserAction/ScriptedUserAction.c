@@ -28,19 +28,21 @@ class ScriptedUserAction: BaseUserAction
 	//! \param pUserEntity The entity that started performing this action
 	event void OnActionStart(IEntity pUserEntity) { };
 	//! If overridden and true is returned, outName is returned when BaseUserAction.GetActionName is called.
-	//! If not overriden or false is returned the default value from UIInfo is taken (or empty string if no UI info exists)
+	//! If not overridden or false is returned the default value from UIInfo is taken (or empty string if no UI info exists)
 	event bool GetActionNameScript(out string outName) { return false; };
 	//! If overridden and true is returned, outName is returned when BaseUserAction.GetActionDescription is called.
-	//! If not overriden or false is returned the default value from UIInfo is taken (or empty string if no UI info exists)
+	//! If not overridden or false is returned the default value from UIInfo is taken (or empty string if no UI info exists)
 	event bool GetActionDescriptionScript(out string outName) { return false; };
 	//! Can this action be performed by the provided user entity?
 	event bool CanBePerformedScript(IEntity user) { return true; };
 	//! Can this entity be shown in the UI by the provided user entity?
 	event bool CanBeShownScript(IEntity user) { return true; };
-	//! Can this action be shown in the UI for the user?
+	//! Does this action only have client side effect?
 	event bool HasLocalEffectOnlyScript() { return false; };
-	//! If HasLocalEffectOnly() is true this method tells if the server is supposed to broadcast this action to clients.
+	//! If HasLocalEffectOnly() is false this method tells if the server is supposed to broadcast this action to clients.
 	event bool CanBroadcastScript() { return true; };
+	//! Returns the progress of this action in seconds.
+	event float GetActionProgressScript(float fProgress, float timeSlice) { return fProgress + timeSlice; };
 }
 
 /*!

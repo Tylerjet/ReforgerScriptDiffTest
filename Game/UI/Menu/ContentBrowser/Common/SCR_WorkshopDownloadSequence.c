@@ -15,14 +15,6 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 
 	protected SCR_LoadingOverlayDialog m_LoadingOverlay;
 	
-	protected ref ScriptInvoker<> m_OnDownloadConfirmDisplayed = new ScriptInvoker<>();
-	
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnDownloadConfirmDisplayed()
-	{
-		return m_OnDownloadConfirmDisplayed;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	// Public 
 	//------------------------------------------------------------------------------------------------
@@ -112,7 +104,7 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.CloseAnimated(false);
 		
-		SCR_WorkshopUiCommon.CreateDialog("error_addon_blocked");
+		SCR_WorkshopDialogs.CreateDialog("error_addon_blocked");
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -136,9 +128,6 @@ class SCR_WorkshopDownloadSequence : SCR_DownloadSequence
 		if (!m_aDependencies.IsEmpty())
 		{
 			SCR_DownloadConfirmationDialog confirmDialog = SCR_DownloadConfirmationDialog.CreateForAddonAndDependencies(m_Item, downloadMainItem, dependenciesToLoad, m_bSubscribeToAddons);
-			
-			if (m_OnDownloadConfirmDisplayed)
-				m_OnDownloadConfirmDisplayed.Invoke(this, confirmDialog);
 		}
 		else
 		{

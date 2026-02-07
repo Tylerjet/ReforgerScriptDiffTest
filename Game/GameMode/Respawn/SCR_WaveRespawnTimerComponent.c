@@ -98,10 +98,15 @@ class SCR_WaveRespawnTimerComponent : SCR_RespawnTimerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
-		super.OnPlayerSpawned(playerId, controlledEntity);
+		super.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
 		
+		if (!requestComponent)
+			return;
+		
+		int playerId = requestComponent.GetPlayerId();
+
 		int allowedIndex = m_aAllowedPlayers.Find(playerId);
 		if (allowedIndex != -1)
 			m_aAllowedPlayers.Remove( allowedIndex );

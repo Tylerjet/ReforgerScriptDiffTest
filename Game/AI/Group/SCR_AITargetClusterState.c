@@ -27,12 +27,16 @@ class SCR_AITargetClusterState
 	// Values updated by ProcessTargets() call
 	vector m_vBBMax;
 	vector m_vBBMin;
-	float m_fRadius; // Radius of cluster
+	float m_fDistMin;
 	float m_fMaxTimestamp;
 	int m_iCountDetected;
 	int m_iCountIdentified;
 	int m_iCountLost;
 	int m_iCountDestroyed;
+	int m_iCountAlive;
+	
+	// Target might remain marked as endangering even after it was destroyed, be careful when using this variable!
+	int m_iCountEndangering;
 	
 	
 	void SCR_AITargetClusterState(SCR_AIGroupTargetCluster cluster)
@@ -47,7 +51,11 @@ class SCR_AITargetClusterState
 		int nIdentified = 0;
 		int nLost = 0;
 		int nDestroyed = 0;
+		int nAlive = 0;
+		
 		float maxTimestamp = 0;
+		int nEndangering = 0;
+		float distMin = float.MAX;
 		
 		vector bbMax = vector.Zero;
 		vector bbMin = vector.Zero;
@@ -57,20 +65,24 @@ class SCR_AITargetClusterState
 			bbMax = Vector(-float.MAX, -float.MAX, -float.MAX);
 			bbMin = Vector(float.MAX, float.MAX, float.MAX);
 			
-			foreach (SCR_AITargetInfo target : m_Cluster.m_aTargets)
+			foreach (int tgtId, SCR_AITargetInfo target : m_Cluster.m_aTargets)
 			{
 				EAITargetInfoCategory category = target.m_eCategory;
 				switch (category)
 				{
-					case EAITargetInfoCategory.DETECTED:	nDetected++; break;
-					case EAITargetInfoCategory.IDENTIFIED:	nIdentified++; break;
+					case EAITargetInfoCategory.DETECTED:	nDetected++; nAlive++; break;
+					case EAITargetInfoCategory.IDENTIFIED:	nIdentified++; nAlive++; break;
 					case EAITargetInfoCategory.DESTROYED:	nDestroyed++; break;
-					case EAITargetInfoCategory.LOST:		nLost++; break;
-					case EAITargetInfoCategory.DISARMED:	nDestroyed++; break; // Disarmed counts as destroyed
+					case EAITargetInfoCategory.LOST:		nLost++; nAlive++; break;
+					case EAITargetInfoCategory.DISARMED:	nDestroyed++; break; // Disarmed counts as destroyed. All outside code should not know the target is disarmed and should pretend the target is destroyed.
 				}
 				
 				if (target.m_fTimestamp > maxTimestamp)
 					maxTimestamp = target.m_fTimestamp;
+				
+				float distance = m_Cluster.m_aDistances[tgtId];
+				if (distance < distMin)
+					distMin = distance;
 				
 				vector tgtPos = target.m_vWorldPos;
 				for (int i = 0; i < 3; i++)
@@ -81,6 +93,9 @@ class SCR_AITargetClusterState
 					if (tgtPosI < bbMin[i])
 						bbMin[i] = tgtPosI;
 				}
+				
+				if (target.m_bEndangering)
+					nEndangering++;
 			}
 		}
 		
@@ -88,9 +103,12 @@ class SCR_AITargetClusterState
 		m_iCountDetected = nDetected;
 		m_iCountIdentified = nIdentified;
 		m_iCountDestroyed = nDestroyed;
+		m_iCountAlive = nAlive;
+		m_iCountEndangering = nEndangering;
 		m_fMaxTimestamp = maxTimestamp;
 		m_vBBMin = bbMin;
 		m_vBBMax = bbMax;
+		m_fDistMin = distMin;
 	}
 	
 	//! Returns time passed since any new information was received from this cluster

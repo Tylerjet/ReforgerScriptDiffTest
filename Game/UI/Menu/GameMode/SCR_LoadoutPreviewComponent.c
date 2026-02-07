@@ -18,7 +18,7 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 		m_bReloadLoadout = true;
 	}
 	
-	protected void DeleteChildrens(IEntity entity, bool deleteRoot = true)
+	protected void DeleteChildrens(IEntity entity, bool deleteRoot)
 	{
 		if (!entity || !entity.FindComponent(InventoryItemComponent))
 			return;
@@ -27,7 +27,7 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 		while (child)
 		{
 			IEntity sibling = child.GetSibling();
-			DeleteChildrens(child);
+			DeleteChildrens(child, true);
 			child = sibling;
 		}
 
@@ -68,7 +68,7 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 			if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
 				return previewedEntity;
 			
-			SCR_PlayerLoadoutData loadoutData = arsenalManager.m_bLocalPlayerLoadoutData;
+			SCR_PlayerLoadoutData loadoutData = arsenalManager.m_LocalPlayerLoadoutData;
 			if (!loadoutData)
 				return previewedEntity;
 			

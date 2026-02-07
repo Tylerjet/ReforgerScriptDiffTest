@@ -208,7 +208,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		if (m_bDebug && debugAllowed)
 			GetWorldTransform(matWrld);
 
-		vector forwardPrev = "1 1 1";
+		vector forwardPrev = vector.One;
 		foreach (int i, vector pointTemp : pointsTemp)
 		{
 			vector forwardNext;
@@ -228,7 +228,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			bool almostLine = dotProductPrevNext < -0.95;
 			vector diagonal = forwardNext + forwardPrev;
 
-			vector normalRight = -forwardPrev * "0 1 0";
+			vector normalRight = -forwardPrev * vector.Up;
 			normalRight.Normalize();
 			float dotProductNormNext = vector.Dot(normalRight, forwardNext);
 			bool isLeft = dotProductNormNext > 0;
@@ -247,7 +247,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 			if (almostLine)
 			{
 				vector vec = forwardNext - forwardPrev;
-				vector right = vec * "0 1 0";
+				vector right = vec * vector.Up;
 				right.Normalize();
 				diagonal = right * offset;
 			}
@@ -402,7 +402,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		bool prepadNext,
 		bool snapToGround = false,
 		bool allowClipping = false,
-		vector offsetRight = "0 0 0")
+		vector offsetRight = vector.Zero)
 	{
 		if (name.IsEmpty())
 			return null;
@@ -429,7 +429,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		if (generate)
 		{
 			vector rotMat[4];
-			Math3D.DirectionAndUpMatrix(orientation, "0 1 0", rotMat);
+			Math3D.DirectionAndUpMatrix(orientation, vector.Up, rotMat);
 			vector rot = Math3D.MatrixToAngles(rotMat);
 			rot[1] = rot[0] + rotationAdjustment;
 			rot[0] = 0;
@@ -448,7 +448,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 				vector matWrld[4];
 				GetWorldTransform(matWrld);
 
-				ent = api.CreateEntityExt(name, "", layerID, thisSource, (pos + offsetRight), rot, TraceFlags.WORLD);
+				ent = api.CreateEntityExt(name, "", layerID, thisSource, (pos + offsetRight), rot, TraceFlags.ENTS);
 				api.ParentEntity(thisSource, ent, true);
 			}
 			else
@@ -538,7 +538,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 		vector from = localPoints[0].m_vPos;
 		vector to, dir, prevDir, rightVec;
 
-		bool firstUsed, exhausted, lastPoint, lastSegment, generate, firstPass;
+		bool exhausted, lastPoint, lastSegment, generate, firstPass;
 		ResourceName customMesh;
 		float remaining;
 
@@ -585,7 +585,7 @@ class WallGeneratorEntity : SCR_GeneratorBaseEntity
 
 			firstPass = true; // first segment on the polyline
 
-			rightVec = dir * "0 1 0";
+			rightVec = dir * vector.Up;
 
 			// walking the polyline line segment and populating it with assets
 			// as long as there is enough room for at least the smallest wall available

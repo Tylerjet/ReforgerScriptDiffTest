@@ -24,6 +24,10 @@ class SCR_EditableSpawnPointComponent : SCR_EditableDescriptorComponent
 	override protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
 	{
 		UpdateText();
+		
+		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(m_Owner.FindComponent(FactionAffiliationComponent));
+		if (factionAffiliation)
+			factionAffiliation.SetAffiliatedFaction(GetFaction());
 	}
 
 	//------------------------------------------------------------------------------------------------

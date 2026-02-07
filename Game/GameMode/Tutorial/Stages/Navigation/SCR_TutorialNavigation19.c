@@ -43,7 +43,7 @@ class SCR_TutorialNavigation19 : SCR_BaseCampaignTutorialArlandStage
 		
 		vector mat[4];
 		tpPos.GetTransform(mat);
-		compartmentAccessComp.MoveOutVehicle(-1, mat);
+		compartmentAccessComp.GetOutVehicle_NoDoor(mat, false, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

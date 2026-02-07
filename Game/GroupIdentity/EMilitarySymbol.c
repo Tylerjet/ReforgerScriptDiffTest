@@ -58,7 +58,7 @@ enum EMilitarySymbolIcon
 	AMPHIBIOUS_TRANSPORT	= 1 << 27,
 	CROSS_WHEELED_TRANSPORT	= 1 << 28,
 	WHEELED_TRANSPORT		= 1 << 29,
-	EXERCISE				= 1 << 30,
+	UNARMED					= 1 << 30,
 };	
 enum EMilitarySymbolAmplifier
 {

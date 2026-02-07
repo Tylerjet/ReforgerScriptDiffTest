@@ -1,14 +1,14 @@
-class OpenXOBRequest: JsonApiStruct
+class OpenXOBRequest : JsonApiStruct
 {
 	string path;
-	
+
 	void OpenXOBRequest()
 	{
 		RegV("path");
 	}
 }
 
-class OpenXOBResponse: JsonApiStruct
+class OpenXOBResponse : JsonApiStruct
 {
 	string Output;
 	
@@ -18,19 +18,21 @@ class OpenXOBResponse: JsonApiStruct
 	}
 }
 
-class OpenXOB: NetApiHandler
+class OpenXOB : NetApiHandler
 {
 	override JsonApiStruct GetRequest()
 	{
 		return new OpenXOBRequest();
 	}
-	
+
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		OpenXOBRequest req = OpenXOBRequest.Cast(request);
 		OpenXOBResponse response = new OpenXOBResponse();
-		
-		Workbench.GetModule(ResourceManager).SetOpenedResource(req.path);	
+		// opening xob in ResourceManager
+		Workbench.GetModule(ResourceManager).SetOpenedResource(req.path);
+
 		return response;
 	}
+	
 }

@@ -22,7 +22,7 @@ class BetaWarningDialogUI: ChimeraMenuBase
 	override void OnMenuOpen()
 	{
 		GetGame().GetMenuManager().CloseMenuByPreset(ChimeraMenuPreset.MainMenu);
-		GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.PRESSED, CloseDialog);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.PRESSED, CloseDialog);
 	}
 };
 

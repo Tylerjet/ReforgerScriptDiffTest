@@ -41,7 +41,13 @@ enum ECommonItemType
 	COMPASS = 51,
 	FLASHLIGHT = 52,
 	RADIO = 53,
-	WATCH = 54
+	WATCH = 54,
+	BAYONET = 55,
+	EXPLOSIVE_CHARGE = 56,
+	MINE = 57,
+	DETONATOR = 58,
+	NIGHT_VISION = 59,
+	GPS = 60,
 };
 
 //TODO: move this to the UI constants (if exists)

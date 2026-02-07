@@ -10,6 +10,15 @@ class SCR_AIDangerReaction_VehicleHorn : SCR_AIDangerReaction
 		if (!vehicleObject)
 			return false;
 		
+		// Ignore if we are in same vehicle
+		IEntity parent = utility.m_OwnerEntity.GetParent();
+		while(parent)
+		{
+			if (parent == vehicleObject)
+				return false;
+			parent = parent.GetParent();
+		}
+		
 		// Ignore if we already have an action to move from that vehicle
 		if (SCR_AIMoveFromDangerBehavior.ExistsBehaviorForEntity(utility, vehicleObject))
 			return false;

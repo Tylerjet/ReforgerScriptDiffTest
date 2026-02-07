@@ -262,19 +262,17 @@ class SCR_FiringRangeController : GenericEntity
 
 		GetGame().GetCallqueue().Remove(ErectRandomTarget);
 		
-		for (int i = m_aAllTargetsArray.Count() - 1; i >= 0; i--)
+		foreach (SCR_FiringRangeTarget target : m_aAllTargetsArray)
 		{
-				SCR_FiringRangeTarget target = SCR_FiringRangeTarget.Cast(m_aAllTargetsArray[i]);
-			
-			if (target)
-			{
-				target.SetState(ETargetState.TARGET_UP);
-				target.SetAutoResetTarget(true); // The BumpMe is called in SetState!
-				target.SetTargetMode(ETargetMode.TRAINING);
-				target.SetTargetOwner(NO_TARGET_OWNER);
-			}
+			if (!target)
+				continue;
+
+			target.SetState(ETargetState.TARGET_UP);
+			target.SetAutoResetTarget(true); // The BumpMe is called in SetState!
+			target.SetTargetMode(ETargetMode.TRAINING);
+			target.SetTargetOwner(NO_TARGET_OWNER);
 		}
-		
+
 		m_aAllTargetsArray.Clear();
 		if (m_FiringRangeManager)
 			m_FiringRangeManager.ControllerLight(this, ControllerLightType.LIGHT_SEQUENCE, LIGHT_OFF);

@@ -57,7 +57,7 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 		if (vehicleFaction && characterFaction && characterFaction.IsFactionEnemy(vehicleFaction) && !characterFaction.IsFactionEnemy(characterFaction))	
 		{
 			CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
-			compartmentAccess.EjectOutOfVehicle();
+			compartmentAccess.GetOutVehicle(EGetOutType.TELEPORT, -1, ECloseDoorAfterActions.INVALID, false);
 			// Drop through, we need to account for this new occupant still
 		};
 		

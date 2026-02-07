@@ -14,9 +14,6 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 	protected ref array<ref SCR_InsectSpawnDef> m_aSpawnDef = {};
 	protected vector m_vCameraPosLooped;
 
-	protected ref array<float> m_aDayTimeCurve = {};
-	protected ref array<float> m_aRainIntensityCurve = {};
-
 	//------------------------------------------------------------------------------------------------
 	//! Called by SCR_AmbientInsectsComponent.Update()
 	override void Update(float worldTime, vector cameraPos, float timeOfDay, float rainIntensity)
@@ -49,23 +46,22 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 		if (!prefabContainer)
 			return;
 
-		float dayTimeCurve;
-		float rainIntensityCurve;
-		
+		SCR_PositionalAmbientLeafParticles leaves;
+		BaseContainer prefabContainerToTest;
 		// According to the prefab, if time and weather conditions are valid, it is added to the respective Insect type 
 		foreach (int i, SCR_PositionalInsectType type : m_aPositionalInsectType)
 		{
-			SCR_PositionalAmbientLeafParticles leaves = SCR_PositionalAmbientLeafParticles.Cast(type);
+			leaves = SCR_PositionalAmbientLeafParticles.Cast(type);
 			if (leaves)
 				continue;
 			
-			if (m_aDayTimeCurve[i] <= 0)
+			if (type.m_fDayTimeCurve <= 0)
 				continue;
 
-			if (m_aRainIntensityCurve[i] <= 0)
+			if (type.m_fRainIntensityCurve <= 0)
 				continue;
 
-			BaseContainer prefabContainerToTest = prefabContainer;
+			prefabContainerToTest = prefabContainer;
 			while (prefabContainerToTest)
 			{
 				if (type.GetPrefabContainerSet().Contains(prefabContainerToTest))
@@ -88,8 +84,8 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 		{
 			type.ClearClosestEntities();
 
-			m_aDayTimeCurve[i] = SCR_AmbientSoundsComponent.GetPoint(m_AmbientInsectsComponent.GetTimeOfDay(), m_aSpawnDef[i].m_TimeModifier);
-			m_aRainIntensityCurve[i] = SCR_AmbientSoundsComponent.GetPoint(m_AmbientInsectsComponent.GetRainIntensity(), m_aSpawnDef[i].m_RainModifier);
+			type.m_fDayTimeCurve = SCR_AmbientSoundsComponent.GetPoint(m_AmbientInsectsComponent.GetTimeOfDay(), type.m_SpawnDef.m_TimeModifier);
+			type.m_fRainIntensityCurve = SCR_AmbientSoundsComponent.GetPoint(m_AmbientInsectsComponent.GetRainIntensity(), type.m_SpawnDef.m_RainModifier);
 		}
 		
 		ChimeraWorld world = GetGame().GetWorld();
@@ -122,30 +118,9 @@ class SCR_ObjectPositionalInsects : SCR_AmbientInsectsEffect
 	{
 		super.OnPostInit(ambientSoundsComponent, ambientInsectsComponent, signalsManagerComponent);
 
-		SCR_InsectSpawnDef spawnDef = null;
 		foreach (SCR_PositionalInsectType type : m_aPositionalInsectType)
 		{
-			type.Init(ambientSoundsComponent);
-
-			if (!type.m_sSpawnDef.IsEmpty())
-			{
-				Resource holder = BaseContainerTools.LoadContainer(type.m_sSpawnDef);
-				if (holder)
-					spawnDef = SCR_InsectSpawnDef.Cast(BaseContainerTools.CreateInstanceFromContainer(holder.GetResource().ToBaseContainer()));
-			}
-
-			if (!spawnDef)
-			{
-				Print("AMBIENT LIFE: SCR_AmbientInsectsComponent: Missing Spawn Definition Config", LogLevel.WARNING);
-				m_AmbientInsectsComponent.RemoveInsectEffect(this);
-				
-				return;
-			}
-
-			// Preparing curves and SpawnDefs
-			m_aDayTimeCurve.Insert(1);
-			m_aRainIntensityCurve.Insert(1);
-			m_aSpawnDef.Insert(spawnDef);
+			type.Init(ambientSoundsComponent, this, ambientInsectsComponent);
 		}
 	}
 }

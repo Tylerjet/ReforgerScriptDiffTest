@@ -444,7 +444,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!groupManager)
 			return;
 			
-		SCR_AIGroup group = SCR_AIGroup.Cast(groupManager.FindGroup(groupID));
+		SCR_AIGroup group = groupManager.FindGroup(groupID);
 		if (!group)
 			return;
 		
@@ -472,7 +472,7 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!groupManager)
 			return;
 		
-		SCR_AIGroup group = SCR_AIGroup.Cast(groupManager.FindGroup(groupID));
+		SCR_AIGroup group = groupManager.FindGroup(groupID);
 		if (!group)
 			return;
 		
@@ -1063,6 +1063,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!group)
 			return;
 		
+		//we dont delete slave groups when empty, we disable them
+		group.SetDeleteWhenEmpty(false);
+		
 		RplComponent slaveRplComp = RplComponent.Cast(group.FindComponent(RplComponent));
 		if (!slaveRplComp)
 			return;
@@ -1360,18 +1363,14 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//! \param[in] faction
 	void CreateAndJoinGroup(Faction faction)
 	{
-		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-		if (!playerGroupController)
-			return;
-		
 		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupsManager || !groupsManager.IsPlayerInAnyGroup(SCR_PlayerController.GetLocalPlayerId()))
+		if (!groupsManager)
 			return;
 		
 		SCR_AIGroup group = groupsManager.GetFirstNotFullForFaction(faction, null, true);
 		if (group)
-			playerGroupController.RequestJoinGroup(group.GetGroupID());
+			RequestJoinGroup(group.GetGroupID());
 		else
-			playerGroupController.RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
+			RequestCreateGroup(); //requestCreateGroup automatically puts player to the newly created group
 	}
 }

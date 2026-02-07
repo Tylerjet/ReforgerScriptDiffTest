@@ -1,3 +1,8 @@
+enum SCR_ERadialMenuType
+{
+	DEFAULT,
+	ADD_COMMANDS_MENU
+}
 //------------------------------------------------------------------------------------------------
 /*!
 Radial menu class specifing behavior and interaction for circular interface
@@ -33,7 +38,10 @@ class SCR_RadialMenu : SCR_SelectionMenu
 	// Events
 	protected ref ScriptInvoker<SCR_RadialMenu, float> m_OnDisplaySizeChange;
 	protected ref ScriptInvoker<SCR_RadialMenu, string> m_OnSetActionHint;
+	
+	SCR_ERadialMenuType m_eRadialType = SCR_ERadialMenuType.DEFAULT;
 
+	
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeOnDisplaySizeChange(float size)
 	{
@@ -91,10 +99,17 @@ class SCR_RadialMenu : SCR_SelectionMenu
 				return null;
 			}
 			
-			m_GlobalRadialMenu = SCR_RadialMenu.Cast(rm.GetMenu());
+			m_GlobalRadialMenu = rm.GetMenu();
 		}
 		
 		return m_GlobalRadialMenu;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find and get reference to global redial menu
+	static SCR_RadialMenu GetOpenedRadialMenu()
+	{
+		return m_OpenedRadialMenu;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -261,6 +276,8 @@ class SCR_RadialMenu : SCR_SelectionMenu
 		DebugSetupControllerInputs(m_RadialControllerInputs);
 		DebugFillWithEntries();
 		#endif
+		
+		m_eRadialType = SCR_ERadialMenuType.DEFAULT;
 	}
 
 	//------------------------------------------------------------------------------------------------

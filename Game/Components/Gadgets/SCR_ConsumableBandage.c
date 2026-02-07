@@ -5,42 +5,19 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 	//------------------------------------------------------------------------------------------------
 	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
-		super.ApplyEffect(target, user, item, animParams);
-
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
 			return;
-
+		
 		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
 		if (!damageMgr)
 			return;
-
-		array<HitZone> hitZones = {};
-		ECharacterHitZoneGroup hzGroup;
-		damageMgr.GetBandageAnimHitzones(animParams.GetIntParam(), hitZones);
-		if (hitZones.IsEmpty())
-		{
-			hzGroup = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING);
-		}
-		else
-		{
-			HitZone targetHitZone = hitZones.Get(0);
-			if (!targetHitZone)
-				return;
-				
-			SCR_CharacterHitZone charHitZone = SCR_CharacterHitZone.Cast(targetHitZone);
-			if (!charHitZone)
-				return;
-			
-			hzGroup = charHitZone.GetHitZoneGroup();
-		}
-
-		if (hzGroup == ECharacterHitZoneGroup.VIRTUAL)
-			return;
 		
-		damageMgr.RemoveGroupBleeding(hzGroup);
+		m_eTargetHZGroup = damageMgr.FindAssociatedHitZoneGroup(animParams.GetIntParam());
+		
+		super.ApplyEffect(target, user, item, animParams);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user, out SCR_EConsumableFailReason failReason)
 	{
@@ -52,7 +29,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return false;
 
-		return damageMgr.IsDamagedOverTime(EDamageType.BLEEDING);
+		return damageMgr.IsBleeding();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -103,9 +80,11 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		if (bodyPartToBandage == EBandagingAnimationBodyParts.Invalid)
 			return null;
 		
+		bool allowMovement = bodyPartToBandage != EBandagingAnimationBodyParts.RightLeg && bodyPartToBandage != EBandagingAnimationBodyParts.LeftLeg;
+		
 		ItemUseParameters params = ItemUseParameters();
 		params.SetEntity(item);
-		params.SetAllowMovementDuringAction(false);
+		params.SetAllowMovementDuringAction(allowMovement);
 		params.SetKeepInHandAfterSuccess(false);
 		params.SetCommandID(GetApplyToSelfAnimCmnd(target));
 		params.SetCommandIntArg(1);

@@ -30,6 +30,9 @@ class SCR_StopMovementGroupCommand : SCR_BaseGroupCommand
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown()
 	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
 		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!groupController)
 			return false;

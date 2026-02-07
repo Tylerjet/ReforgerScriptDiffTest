@@ -32,6 +32,8 @@ class FactionAffiliationComponent: GameComponent
 	\param factionKey The identifier of the faction
 	*/
 	proto external void SetAffiliatedFactionByKey(FactionKey factionKey);
+	proto external FactionKey GetDefaultFactionKey();
+	proto external FactionKey GetAffiliatedFactionKey();
 
 	// callbacks
 

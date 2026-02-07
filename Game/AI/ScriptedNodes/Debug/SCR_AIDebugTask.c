@@ -36,7 +36,7 @@ class SCR_AIDebugTask : AITaskScripted
 		string prefix;
 		if ( m_bIncludeMe )
 			prefix = owner.ToString() + ": ";
-		PrintInternal(prefix + m_sDebugMessage + SCR_AIGetStringFromPort(this, PORT_DEBUG_MESSAGE));
+		PrintInternal(prefix + m_sDebugMessage + SCR_AINodePortsHelpers.GetStringFromPort(this, PORT_DEBUG_MESSAGE));
 #endif
 		if (m_bFailAfter)
 			return ENodeResult.FAIL;

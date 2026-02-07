@@ -157,8 +157,10 @@ class SCR_DownloadManager : GenericEntity
 		if (!m_aDownloadQueue)
 			return downloads;
 		
-		foreach (auto i : m_aDownloadQueue)
-			downloads.Insert(i);
+		foreach (SCR_WorkshopItemActionDownload action : m_aDownloadQueue)
+		{
+			downloads.Insert(action);
+		}
 		
 		return downloads;
 	}
@@ -461,8 +463,8 @@ class SCR_DownloadManager : GenericEntity
 		// Create an array of all download actions started from this tile
 		// Get their aggregated progress
 		
-		auto actionThisItem = item.GetDownloadAction();					// Action for downloading this item
-		auto actionDependencies = item.GetDependencyCompositeAction();	// Action for downloading dependencies
+		SCR_WorkshopItemActionDownload actionThisItem = item.GetDownloadAction();					// Action for downloading this item
+		SCR_WorkshopItemActionComposite actionDependencies = item.GetDependencyCompositeAction();	// Action for downloading dependencies
 		
 		array<ref SCR_WorkshopItemAction> allActions;
 		if (actionDependencies)

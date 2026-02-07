@@ -11,6 +11,24 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	
 	[Attribute(desc: "Contains parameters for executing screenshake upon crashing vehicle for passengers", params: "et")]
 	protected ref SCR_BaseScreenShakeData m_ScreenShakeData;
+	
+	[Attribute("-89.9", desc: "Aim limit angle override (in degrees) when free-looking down", params: "-89.9 0.05 0.05")]
+	protected float m_fFreelookAimLimitOverrideDown;
+
+	[Attribute("89.9", desc: "Aim limit angle override (in degrees) when free-looking up", params: "0.05 89.9 0.05")]
+	protected float m_fFreelookAimLimitOverrideUp;
+
+	[Attribute("-160.0", desc: "Aim limit angle override (in degrees) when free-looking left", params: "-160.0 0.05 0.05")]
+	protected float m_fFreelookAimLimitOverrideLeft;
+
+	[Attribute("160.0", desc: "Aim limit angle override (in degrees) when free-looking right", params: "0.05 160.0 0.05")]
+	protected float m_fFreelookAimLimitOverrideRight;
+
+	[Attribute("-1 1 1", desc: "First person camera local space offset scale from Neck1 bone")]
+	protected vector m_vFreelookCameraNeckOffsetScale;
+
+	[Attribute("1.0", desc: "Extent to which body should account for turret traverse.\nThe higher, the more neck will rotate around turret pivot\nExamples: BTR-70 neck does not pivot, tripod and M151 turret pivots")]
+	protected float m_fFreelookCameraNeckFollowTraverse;
 
 	static const vector SPAWN_IN_VEHICLE_OFFSET = Vector(0, 250, 0); //~ Offset added when characters are spawned to add to vehicle. To make sure they are close and streamed but not on the vehicle as this would kill them
 
@@ -146,6 +164,9 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOccupant());
 		if (!character)
 			return;
+		
+		if (character != SCR_PlayerController.GetLocalControlledEntity())
+			return;
 
 		SCR_DamageManagerComponent damageManager = character.GetDamageManager();
 		if (!damageManager)
@@ -185,8 +206,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 
 		if (eject && access)
 		{
-			access.EjectOutOfVehicle();
-			controller.GetInputContext().SetVehicleCompartment(null);
+			access.GetOutVehicle(EGetOutType.TELEPORT, -1, ECloseDoorAfterActions.INVALID, false);
 			// because person needs to be out of vehicle for sure
 			GetGame().GetCallqueue().CallLater(damageManager.Kill, 1, false, instigator);
 		}
@@ -216,7 +236,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		if (!m_DefaultOccupantData || (checkIfValid && !m_DefaultOccupantData.IsValid()))
 			return string.Empty;
 
-		return m_DefaultOccupantData.GetDefaultOccupantPrefab();
+		return SCR_EditableEntityComponentClass.GetRandomVariant(m_DefaultOccupantData.GetDefaultOccupantPrefab());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -249,10 +269,12 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		EntitySpawnParams params = new EntitySpawnParams();
 		GetOwner().GetTransform(params.Transform);
 
+		ChimeraWorld world = GetGame().GetWorld();
+
 		//~ Spawn characters above the vehicle to make sure physics do not interact with the character and they die on contact of the vehicle
 		params.Transform[3] + SPAWN_IN_VEHICLE_OFFSET;
 
-		IEntity spawnedCharacter = GetGame().SpawnEntityPrefab(Resource.Load(characterPrefab), params: params);
+		IEntity spawnedCharacter = GetGame().SpawnEntityPrefab(Resource.Load(characterPrefab), null, params);
 		if (!spawnedCharacter)
 		{
 			Print(string.Format("'BaseCompartmentSlot' Failed to spawn character in compartment. Check if ResourceName is correct! Path: '%1'", characterPrefab), LogLevel.ERROR);
@@ -278,7 +300,7 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		}
 
 		//~ Could not move in compartment so delete
-		if (!compartmentAccess.MoveInVehicle(GetOwner(), this))
+		if (!compartmentAccess.GetInVehicle(GetOwner(), this, true, -1, ECloseDoorAfterActions.INVALID, world.IsGameTimePaused()))
 		{
 			Print(string.Format("'BaseCompartmentSlot' Trying to spawn character in compartment but it could not be moved into it so character is deleted. Compartment type: %1", typename.EnumToString(ECompartmentType, GetType())), LogLevel.WARNING);
 			delete spawnedCharacter;
@@ -321,6 +343,42 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 		group.AddAgent(agentControlComponent.GetControlAIAgent());
 
 		return spawnedCharacter;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetFreelookAimLimitOverrideDown()
+	{
+		return m_fFreelookAimLimitOverrideDown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetFreelookAimLimitOverrideUp()
+	{
+		return m_fFreelookAimLimitOverrideUp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetFreelookAimLimitOverrideLeft()
+	{
+		return m_fFreelookAimLimitOverrideLeft;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetFreelookAimLimitOverrideRight()
+	{
+		return m_fFreelookAimLimitOverrideRight;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	vector GetFreelookCameraNeckOffsetScale()
+	{
+		return m_vFreelookCameraNeckOffsetScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetFreelookCameraNeckFollowTraverse()
+	{
+		return m_fFreelookCameraNeckFollowTraverse;
 	}
 }
 

@@ -149,6 +149,48 @@ class SCR_TerrainHelper
 
 		return true;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Snap transformation to nearest geometry beneath provided position.
+	\param[out] newPosition that is snapped to the geometry
+	\param[in] currentPosition that will be used as a starting point for snapping
+	\param[in] excludedEntities array that will not be taken into account when snapping to the geometry
+	\param[in] world World to be checked (default world is used when undefined)
+	\param[in] traceParam When defined, use this trace to check surface intersection (useful for setting custom trace flags or ignored entities)
+	*/
+	static void SnapToGeometry(out vector newPosition, vector currentPosition, array<IEntity> excludedEntities, BaseWorld world, TraceParam traceParam = null)
+	{
+		if (!world)
+			world = GetGame().GetWorld();
+		
+		TraceParam trace = new TraceParam();
+		//If traceParam is provided, we use that instead
+		if (!traceParam)
+		{
+			trace.Start = currentPosition;
+		
+			currentPosition[1] = world.GetSurfaceY(currentPosition[0], currentPosition[2]);
+			currentPosition[1] = SCR_TerrainHelper.GetTerrainY(currentPosition, world, true);
+			trace.End = currentPosition;
+	
+			trace.ExcludeArray = excludedEntities;
+			trace.TargetLayers = EPhysicsLayerDefs.FireGeometry;
+			trace.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
+		}
+		else
+		{
+			trace = traceParam;
+		}
+		
+		float traceDistPercentage = world.TraceMove(trace, null);
+		
+		//If geometry was found along the way, new Y position is set
+		if (traceDistPercentage > 0)
+			currentPosition[1] = trace.Start[1] + (trace.End[1] - trace.Start[1]) * traceDistPercentage;
+		
+		newPosition = currentPosition;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!

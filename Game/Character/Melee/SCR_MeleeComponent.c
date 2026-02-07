@@ -7,6 +7,7 @@ class SCR_MeleeHitDataClass
 {
 	IEntity m_Entity = null;
 	IEntity m_Weapon = null;
+	IEntity m_Bayonet = null;
 	SurfaceProperties m_SurfaceProps = null;
 	int	m_iNodeIndex = -1;
 	float m_fDamage = 0;
@@ -29,12 +30,24 @@ class SCR_MeleeComponent : ScriptComponent
 	ref array<ref Shape> m_aDbgCollisionShapes;
 #endif
 	
-	private ref SCR_MeleeHitDataClass m_MeleeHitData;		//! holds melee hit data
-	private bool m_bMeasurementDone;
-	private bool m_bAttackAlreadyExecuted = false;			//! attack execution limiter
-	private bool m_bMeleeAttackStarted = false;
-	private float m_fMWPWeaponRange = 1;
+	protected ref SCR_MeleeHitDataClass m_MeleeHitData;		//! holds melee hit data
+	protected bool m_bMeasurementDone;
+	protected bool m_bAttackAlreadyExecuted = false;			//! attack execution limiter
+	protected bool m_bMeleeAttackStarted = false;
+	protected float m_fWeaponMeleeAccuracy;
+	protected float m_fWeaponMeleeRange;
 	protected ref OnMeleePerformedInvoker m_OnMeleePerformed;
+	protected SCR_MeleeWeaponProperties m_MeleeWeaponProperties;
+	
+	[RplProp()]
+	protected bool m_bHasBayonet;
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	bool HasBayonet()
+	{
+		return m_bHasBayonet;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -74,9 +87,22 @@ class SCR_MeleeComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool TraceFilter(notnull IEntity e)
+	protected bool TraceFilter(notnull IEntity ent)
 	{
-		return !SCR_ArmorDamageManagerComponent.Cast(e.FindComponent(SCR_ArmorDamageManagerComponent));
+		if (SCR_ChimeraCharacter.Cast(ent))
+			return true;
+				
+		return !SCR_ChimeraCharacter.Cast(ent.GetRootParent()); // Ignore anything that is not a character but attached to one e.g. weapons, armor, etc.
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected vector GetAimingVector(notnull ChimeraCharacter character)
+	{
+		vector aimMat[4];
+		if (character)
+			Math3D.AnglesToMatrix(character.GetCharacterController().GetInputContext().GetAimingAngles() * Math.RAD2DEG, aimMat);
+	
+		return aimMat[2];
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -85,18 +111,21 @@ class SCR_MeleeComponent : ScriptComponent
 	//! \return When hit is detected or it is miss
 	protected bool CheckCollisionsSimple(out SCR_MeleeHitDataClass pHitData)
 	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return false;
+		
 		TraceSphere param = new TraceSphere();
-		param.Exclude = character;
 		param.LayerMask = EPhysicsLayerDefs.Projectile;
 		param.Flags = TraceFlags.ENTS | TraceFlags.WORLD;
-		param.Radius = 0.3;
+		param.Exclude = character;
+		
+		param.Radius = m_fWeaponMeleeAccuracy;		
 		param.Start = character.EyePosition();
-		//! trace to a range defined by MeleeWeaponProperties along the players direction
-		param.End = param.Start + GetPlayersDirection(character) * m_fMWPWeaponRange;
+		param.End = param.Start + GetAimingVector(character) * m_fWeaponMeleeRange;
 
 		// Trace stops on the first hit entity if you want to change this, change the filter callback
-		float hit = character.GetWorld().TraceMove(param, TraceFilter);
+		float hit = GetOwner().GetWorld().TraceMove(param, TraceFilter);
 
 		if (!param.TraceEnt)
 			return false;
@@ -144,23 +173,22 @@ class SCR_MeleeComponent : ScriptComponent
 		if (!weaponEntity)
 			return;
 		
-		SCR_MeleeWeaponProperties meleeWeaponProperties = SCR_MeleeWeaponProperties.Cast(weaponEntity.FindComponent(SCR_MeleeWeaponProperties));
-		if (!meleeWeaponProperties)
+		m_MeleeWeaponProperties = SCR_MeleeWeaponProperties.Cast(weaponEntity.FindComponent(SCR_MeleeWeaponProperties));
+		if (!m_MeleeWeaponProperties)
 			return;
 		
-		m_MeleeHitData.m_fDamage = meleeWeaponProperties.GetWeaponDamage();
-		m_fMWPWeaponRange = meleeWeaponProperties.GetWeaponRange();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return the direction in which the player is looking
-	protected vector GetPlayersDirection(ChimeraCharacter character)
-	{
-		vector aimMat[4];
-		if (character)
-			Math3D.AnglesToMatrix(character.GetCharacterController().GetInputContext().GetAimingAngles() * Math.RAD2DEG, aimMat);
-	
-		return aimMat[2];
+		m_MeleeHitData.m_fDamage = m_MeleeWeaponProperties.GetWeaponDamage();
+		m_fWeaponMeleeAccuracy = m_MeleeWeaponProperties.GetWeaponMeleeAccuracy();
+		m_fWeaponMeleeRange = m_MeleeWeaponProperties.GetWeaponRange();
+		
+		SCR_BayonetComponent bayonet = m_MeleeWeaponProperties.GetBayonet();
+		if (bayonet)
+			m_MeleeHitData.m_Bayonet = bayonet.GetOwner();
+		else
+			m_MeleeHitData.m_Bayonet = null;
+		
+		m_bHasBayonet = m_MeleeHitData.m_Bayonet != null;
+		Replication.BumpMe();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -209,7 +237,10 @@ class SCR_MeleeComponent : ScriptComponent
 		Math3D.MatrixIdentity3(transform);
 		transform[3] = position;
 		
-		soundComp.SoundEventTransform(SCR_SoundEvent.SOUND_MELEE_IMPACT, transform);
+		if (m_bHasBayonet)
+			soundComp.SoundEventTransform(SCR_SoundEvent.SOUND_MELEE_IMPACT_BAYONET, transform);
+		else
+			soundComp.SoundEventTransform(SCR_SoundEvent.SOUND_MELEE_IMPACT, transform);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -248,7 +279,11 @@ class SCR_MeleeComponent : ScriptComponent
 		}
 		
 		if (damageManager)
-			hitZone = damageManager.GetDefaultHitZone();
+		{
+			hitZone = damageManager.GetHitZoneByColliderID(m_MeleeHitData.m_iColliderIndex);
+			if (!hitZone)
+				hitZone = damageManager.GetDefaultHitZone();
+		}
 		
 		return damageManager;
 	}
@@ -272,13 +307,36 @@ class SCR_MeleeComponent : ScriptComponent
 		Debug_DrawSphereAtPos(m_MeleeHitData.m_vHitPosition, m_aDbgSamplePositionsShapes, 0xff00ff00, 0.03, ShapeFlags.NOZBUFFER);
 #endif
 		
+		if (m_OnMeleePerformed)
+			m_OnMeleePerformed.Invoke(GetOwner());
+		
+		// This callLater is necessary because the use of traces pushed the handledamage out of main thread, which causes VME's
+		GetGame().GetCallqueue().CallLater(HandleDamageDelayed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void HandleDamageDelayed()
+	{
+		if (m_MeleeHitData.m_Bayonet && m_MeleeHitData.m_Entity)
+		{
+			SCR_BayonetComponent bayonet = SCR_BayonetComponent.Cast(m_MeleeHitData.m_Bayonet.FindComponent(SCR_BayonetComponent));
+			if (bayonet && SCR_ChimeraCharacter.Cast(m_MeleeHitData.m_Entity))
+				bayonet.AddBloodToBayonet();
+			
+			SCR_BayonetEffectComponent effectComponent = SCR_BayonetEffectComponent.Cast(m_MeleeHitData.m_Bayonet.FindComponent(SCR_BayonetEffectComponent));
+			if (effectComponent)
+				effectComponent.OnImpact(
+					m_MeleeHitData.m_Entity,
+					m_MeleeHitData.m_fDamage,
+					m_MeleeHitData.m_vHitPosition,
+					m_MeleeHitData.m_vHitNormal,
+					m_MeleeHitData.m_SurfaceProps);
+		}
+		
 		vector hitPosDirNorm[3];
 		hitPosDirNorm[0] = m_MeleeHitData.m_vHitPosition;
 		hitPosDirNorm[1] = m_MeleeHitData.m_vHitDirection;
 		hitPosDirNorm[2] = m_MeleeHitData.m_vHitNormal;
-		
-		if (m_OnMeleePerformed)
-			m_OnMeleePerformed.Invoke(GetOwner());
 		
 		// check if the entity is destructible entity
 		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(m_MeleeHitData.m_Entity);
@@ -291,11 +349,15 @@ class SCR_MeleeComponent : ScriptComponent
 		// check if the entity has the damage manager component
 		HitZone hitZone;
 		SCR_DamageManagerComponent damageManager = SearchHierarchyForDamageManager(m_MeleeHitData.m_Entity, hitZone);
-		if (!hitZone && damageManager)
-			hitZone = damageManager.GetDefaultHitZone();
-		
-		if (hitZone)
-			hitZone.HandleDamage(m_MeleeHitData.m_fDamage, EDamageType.MELEE, GetOwner());
+		if (!hitZone || !damageManager)
+			return;
+
+		SCR_DamageContext context = new SCR_DamageContext(EDamageType.MELEE, m_MeleeHitData.m_fDamage, hitPosDirNorm, 
+			damageManager.GetOwner(), hitZone, Instigator.CreateInstigator(GetOwner()), 
+			m_MeleeHitData.m_SurfaceProps, m_MeleeHitData.m_iColliderIndex, m_MeleeHitData.m_iNodeIndex);
+
+		context.damageEffect = new SCR_MeleeDamageEffect();
+		damageManager.HandleDamage(context);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -360,7 +422,7 @@ class SCR_MeleeComponent : ScriptComponent
 
 		int shapeFlags = ShapeFlags.NOOUTLINE;
 		Shape s = Shape.CreateLines(ARGBF(1, 1, 1, 1), shapeFlags, p, 2);
-		dbgShapes.Insert(s);	
+		dbgShapes.Insert(s);
 	}
 	
 #ifdef SCR_MELEE_DEBUG_MSG
@@ -384,17 +446,6 @@ class SCR_MeleeComponent : ScriptComponent
 	{
 		if (!m_bAttackAlreadyExecuted || !m_bMeleeAttackStarted || m_bMeasurementDone)
 			return;
-		
-		//! Simplified hit detection
-#ifdef SCR_MELEE_DEBUG
-		//! draws a line with start and end point higlighted	
-		vector start = ChimeraCharacter.Cast(GetOwner()).EyePosition();
-		vector end = start + GetPlayersDirection() * m_fMWPWeaponRange;
-		
-		Debug_DrawLineSimple(start, end, m_aDbgCollisionShapes);
-		Debug_DrawSphereAtPos(start, ARGBF(0.75, 0, 0, 1), m_aDbgCollisionShapes);
-		Debug_DrawSphereAtPos(end, ARGBF(0.75, 0, 0, 1), m_aDbgCollisionShapes);
-#endif
 		
 		ProcessMeleeAttack();
 		m_bMeasurementDone = true;

@@ -499,9 +499,8 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	{		
 		if (!header)
 			return;
-		
-		string titleText;
-		array<Managed> editedItems = new array<Managed>;
+
+		array<Managed> editedItems = {};
 		int count = m_AttributesManager.GetEditedItems(editedItems);
 		
 		//Check if multiple entites are selected
@@ -510,10 +509,9 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 			header.SetTextFormat("%1", m_sEditingTitlePart);
 			
 			SCR_EditableEntityComponent editableEntity;
-			array<EEditableEntityType> types = new array<EEditableEntityType>;
-			array<int> typeCounts = new array<int>;
+			array<EEditableEntityType> types = {};
+			array<int> typeCounts = {};
 			SCR_EditableEntityComponent groupEntity;
-			
 			
 			bool showTypes = true;
 			bool sameNames = true;
@@ -857,5 +855,5 @@ class SCR_EntityAttributeTitleType
 	{
 		return m_UiInfo.GetName();
 	}
-};
+}
 

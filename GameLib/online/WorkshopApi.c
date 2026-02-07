@@ -24,7 +24,8 @@ enum EWorkshopItemState
 class PageParams extends JsonApiStruct
 {	
 	int limit;
-	int offset;		
+	int offset;
+	string type;
 }
 
 // -------------------------------------------------------------------------
@@ -116,7 +117,11 @@ class Revision
 
 class DownloadableCatalogue extends WorkshopCatalogue
 {	
+	/**
+	\brief Scans for both local addons and world saves
+	*/
 	proto native void ScanOfflineItems();
+	
 	/**
 	\brief Destroy items.
 	*/
@@ -382,7 +387,6 @@ class WorkshopItem extends DownloadableItem
 	*/
 	proto native int GetReportType();
 
-
 	/**
 	\brief Get current state flags (EWorkshopItemState)
 	*/
@@ -403,17 +407,14 @@ class WorkshopItem extends DownloadableItem
 	\brief Reset my rating
 	*/
 	proto native void ResetRating( BackendCallback callback );
-	
 	/**
 	\brief Set rating 
 	*/
 	proto native void Rate( bool upvote, BackendCallback callback );
-	
 	/**
 	\brief Is my rating set
 	*/
 	proto native bool IsRatingSet();
-	
 	/**
 	\brief Get rating value - true upvote, false downvote
 	*/
@@ -422,9 +423,11 @@ class WorkshopItem extends DownloadableItem
 	\brief Get rating count
 	*/
 	proto native int RatingCount();	
+
 	/*!
-	\brief Get 
+	\brief Copy all tags to given Array
 	\param items Array of Workshop Items
+	\return Count of items
 	*/
 	proto native int GetTags( out notnull array<WorkshopTag> items );
 
@@ -433,10 +436,22 @@ class WorkshopItem extends DownloadableItem
 	*/
 	proto native bool IsProcessed();
 	
+	/**
+	\brief Activate addon
+	*/
 	proto native void Enable(bool enable);
+	/**
+	\brief Returns True if addon is currently activated
+	*/
 	proto native bool IsEnabled();
 	
+	/**
+	\brief Read Licence type
+	*/
 	proto native string License();
+	/**
+	\brief Read Licence text
+	*/
 	proto native string LicenseText();
 	
 	/**
@@ -444,11 +459,23 @@ class WorkshopItem extends DownloadableItem
 	*/
 	proto native int Gallery(out notnull array<BackendImage> gallery);
 		
-	proto native bool IsFavorite();	
+	/**
+	\brief Add to favourites
+	*/
 	proto native void SetFavorite(BackendCallback callback, bool isFavorite);
+	/**
+	\brief Returns True - when item when item is Favourite
+	*/
+	proto native bool IsFavorite();	
 	
+	/**
+	\brief Pause download
+	*/
 	proto native void PauseDownload(BackendCallback callback);
 	
+	/**
+	\brief Resume download
+	*/
 	proto native void ResumeDownload(BackendCallback callback);
 	
 	/**
@@ -460,6 +487,10 @@ class WorkshopItem extends DownloadableItem
 	*/
 	proto native bool IsLoaded();
 		
+	/**
+	\brief Results True if any of tags passed via. array 'tags' is present
+	\param tags Array of tags to check against
+	*/
 	proto native bool HasAnyTag(notnull array<WorkshopTag> tags);
 	
 	/**
@@ -487,9 +518,30 @@ class WorkshopItem extends DownloadableItem
 	*/
 	proto native static void SetThumbnailGridScale(int scale);
 	
+	/**
+	\brief Read actual environment as string (can be validated against addon to confirm source and current environment are same)
+	*/
 	proto native owned string GetBackendEnv();
 	
+	/**
+	\brief Returns True - when item or dependencies are not Offline and Revision is equal to selected 
+	*/
 	proto native bool IsReadyToRun();
+	
+	/**
+	\brief True when mod have been Unlisted (regular maintenance when major update is released)
+	*/
+	proto native bool IsUnlisted();
+	
+	/**
+	\brief Is the current user author of this asset
+	*/
+	proto native bool IsAuthor();
+	
+	/**
+	\brief Is the current user contributor of this asset
+	*/
+	proto native bool IsContributor();
 }
 
 // -------------------------------------------------------------------------
@@ -546,14 +598,39 @@ class WorkshopApi extends DownloadableCatalogue
 	proto native void OnItemsChecked(BackendCallback callback);
 	
 	/**
-	\brief Get downloaded WorskhopItems
+	\brief Get downloaded WorskhopItems + WorldSaveItems
 	*/
 	proto native int GetOfflineItems(out notnull array<WorkshopItem> items);
 	
 	/**
-	\brief True if local data were not loaded yet -> You can load them by ScanOfflineItems()
+	\brief Scan for default scenarios
 	*/
-	proto native bool NeedScan();
+	proto native void ReadDefaultScenarios(array<string> resources);
+	
+	/**
+	\brief Load local addons data
+	*/
+	proto native void ScanOfflineAddons();
+	
+	/**
+	\brief Load local world saves data
+	*/
+	proto native void ScanOfflineSaves();
+	
+	/**
+	\brief Trze if local *addons* or *saves* data were not loeaded yet
+	*/
+	[Obsolete("use WorkshopApi.NeedAddonsScan or WorkshopApi.NeedSavesScan")] proto native bool NeedScan();
+	
+	/**
+	\brief True if local *addons* data were not loaded yet -> You can load them by ScanOfflineAddons()
+	*/
+	proto native bool NeedAddonsScan();
+	
+	/**
+	\brief True if local *saves* data were not loaded yet -> You can load them by ScanOfflineSaves()
+	*/
+	proto native bool NeedSavesScan();
 	
 	/*!
 	Get page content.
@@ -566,6 +643,16 @@ class WorkshopApi extends DownloadableCatalogue
 	\brief Get downloaded WorskhopItems
 	*/
 	proto native MissionWorkshopItem GetCurrentMission();
+	
+	/**
+	\brief Get current world save
+	*/
+	proto native WorldSaveItem GetCurrentSave();
+	
+	/**
+	\brief Set current world save
+	*/
+	proto native void SetCurrentSave(WorldSaveItem item);
 }
 
 // -------------------------------------------------------------------------

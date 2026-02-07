@@ -55,8 +55,7 @@ class SCR_VehicleTrackDecal : ScriptComponent
 	[Attribute( "0.5", UIWidgets.EditBox, "Minimal longitudinal slip of wheel" )]
 	float	m_fMinimalLongitudinalSlip;
 	
-	VehicleWheeledSimulation 	m_VehicleWheeledSimulation;
-	VehicleWheeledSimulation_SA	m_VehicleWheeledSimulation_SA;
+	VehicleWheeledSimulation m_VehicleWheeledSimulation;
 
 	ref array<ref TrackDecalInfo> m_TrackDecalsInfo;
 	int m_iWheelCount = 0;
@@ -82,19 +81,8 @@ class SCR_VehicleTrackDecal : ScriptComponent
 				
 		if(generic_entity)
 		{
-			if(GetGame().GetIsClientAuthority())
-			{
-				m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(generic_entity.FindComponent(VehicleWheeledSimulation));
-				m_iWheelCount = m_VehicleWheeledSimulation.WheelCount();
-				//m_iWheelCount = 1;
-			}
-			else
-			{
-				m_VehicleWheeledSimulation_SA = VehicleWheeledSimulation_SA.Cast(generic_entity.FindComponent(VehicleWheeledSimulation_SA));
-				m_iWheelCount = m_VehicleWheeledSimulation_SA.WheelCount();
-				//m_iWheelCount = 1;
-			}
-			
+			m_VehicleWheeledSimulation = VehicleWheeledSimulation.Cast(generic_entity.FindComponent(VehicleWheeledSimulation));
+			m_iWheelCount = m_VehicleWheeledSimulation.WheelCount();
 		}
 		
 		m_TrackDecalsInfo = new array<ref TrackDecalInfo>();
@@ -121,26 +109,11 @@ class SCR_VehicleTrackDecal : ScriptComponent
 	{
 		TrackDecalInfo trackInfo = m_TrackDecalsInfo[wheelIdx];
 		
-		float lateralSlip = 0;
-		float latitudeSlip = 0;
-		
-		bool shouldAddTrackDecal = 0;
-		
-		if(GetGame().GetIsClientAuthority())
-		{
-			lateralSlip = m_VehicleWheeledSimulation.WheelGetLateralSlip(wheelIdx);
-			latitudeSlip = m_VehicleWheeledSimulation.WheelGetLongitudinalSlip(wheelIdx);
-			
-			shouldAddTrackDecal = m_VehicleWheeledSimulation.WheelHasContact(wheelIdx) && (lateralSlip >= m_fMinimalLateralSlip || latitudeSlip >= m_fMinimalLongitudinalSlip);
-		}
-		else
-		{
-			lateralSlip = m_VehicleWheeledSimulation_SA.WheelGetLateralSlip(wheelIdx);
-			latitudeSlip = m_VehicleWheeledSimulation_SA.WheelGetLongitudinalSlip(wheelIdx);
-			
-			shouldAddTrackDecal = m_VehicleWheeledSimulation_SA.WheelHasContact(wheelIdx) && (lateralSlip >= m_fMinimalLateralSlip || latitudeSlip >= m_fMinimalLongitudinalSlip);
-		}
-		
+		float lateralSlip = m_VehicleWheeledSimulation.WheelGetLateralSlip(wheelIdx);
+		float latitudeSlip = m_VehicleWheeledSimulation.WheelGetLongitudinalSlip(wheelIdx);
+
+		bool shouldAddTrackDecal = m_VehicleWheeledSimulation.WheelHasContact(wheelIdx) && (lateralSlip >= m_fMinimalLateralSlip || latitudeSlip >= m_fMinimalLongitudinalSlip);
+
 		if(!shouldAddTrackDecal)
 		{
 			if(trackInfo.m_Decal)
@@ -151,22 +124,9 @@ class SCR_VehicleTrackDecal : ScriptComponent
 			return;
 		}
 		
-		vector position;
-		vector normal;
-		IEntity contactEntity;
-		
-		if(GetGame().GetIsClientAuthority())
-		{
-			position = m_VehicleWheeledSimulation.WheelGetContactPosition(wheelIdx);
-		 	normal = m_VehicleWheeledSimulation.WheelGetContactNormal(wheelIdx);
-			contactEntity = m_VehicleWheeledSimulation.WheelGetContactEntity(wheelIdx);
-		}
-		else
-		{
-			position = m_VehicleWheeledSimulation_SA.WheelGetContactPosition(wheelIdx);
-		 	normal = m_VehicleWheeledSimulation_SA.WheelGetContactNormal(wheelIdx);
-			contactEntity = m_VehicleWheeledSimulation_SA.WheelGetContactEntity(wheelIdx);
-		}
+		vector position = m_VehicleWheeledSimulation.WheelGetContactPosition(wheelIdx);
+		vector normal = m_VehicleWheeledSimulation.WheelGetContactNormal(wheelIdx);
+		IEntity contactEntity = m_VehicleWheeledSimulation.WheelGetContactEntity(wheelIdx);
 		
 		if(!trackInfo.m_Decal)
 		{

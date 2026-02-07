@@ -159,8 +159,8 @@ class SCR_AreaGeneratorBaseEntity : SCR_GeneratorBaseEntity
 		if (!_WB_GetEditorAPI()) // thumbnail generation
 			return;
 
-		if (!s_ObstacleDetector || !s_ObstacleDetector.IsValid())
-			s_ObstacleDetector = new SCR_ObstacleDetector(_WB_GetEditorAPI());
+		if (!s_ObstacleDetector)
+			s_ObstacleDetector = new SCR_ObstacleDetector();
 #endif
 	}
 }

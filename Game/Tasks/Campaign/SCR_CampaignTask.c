@@ -104,7 +104,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		if (!assigneeNetworkComponent)
 			return;
 		
-		assigneeNetworkComponent.SendPlayerMessage(GetAssignMessage(), m_TargetBase.GetCallsign());
+		assigneeNetworkComponent.SendPlayerMessage(GetAssignMessage(), m_TargetBase.GetCallsign(), public: false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -338,11 +338,17 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 	override void SetTitleWidgetText(notnull TextWidget textWidget, string taskText)
 	{
 		string baseName;
-		
+
 		if (m_TargetBase)
+		{
 			baseName = GetBaseNameWithCallsign();
-		
-		textWidget.SetTextFormat(taskText, baseName);
+			textWidget.SetTextFormat(taskText, baseName);
+		}
+		else
+		{
+			// m_TargetBase has not been set in time, delay another call
+			GetGame().GetCallqueue().CallLater(SetTitleWidgetText, SCR_GameModeCampaign.UI_UPDATE_DELAY, false, textWidget, taskText);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -419,7 +425,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		if (!GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		
 		if (!supportEntity)
 			return;
@@ -441,7 +447,7 @@ class SCR_CampaignTask : SCR_CampaignBaseTask
 		if (!GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		
 		if (!supportEntity)
 			return;

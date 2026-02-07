@@ -9,9 +9,12 @@ enum EBackendCallbackState
 class StateBackendCallback : BackendCallback
 {
 	EBackendCallbackState m_eState = EBackendCallbackState.EBCS_PENDING;
+	EApiCode m_eLastError = EApiCode.EACODE_ERROR_OK;
+	EStringMatchType m_eLastMatchType = EStringMatchType.ESMT_EQUALS;
 	
 	override void OnError( int code, int restCode, int apiCode )
 	{
+		m_eLastError = apiCode;
 		m_eState = EBackendCallbackState.EBCS_ERROR;
 	}
 	

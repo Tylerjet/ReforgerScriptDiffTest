@@ -6,9 +6,12 @@ The Chat HUD opens the chat on a button press, and doesn't do anything more inte
 
 class SCR_ChatHud : SCR_InfoDisplayExtended
 {
+	protected static const string CHAT_INPUT_ACTION = "ChatToggle";
+	
 	protected SCR_ChatPanel m_ChatPanel;
 	protected SCR_InfoDisplaySlotHandler m_slotHandler;
 	protected SCR_HUDSlotUIComponent m_HUDSlotComponent;
+	protected InputManager m_InputManager;
 	
 	protected int m_iHUDPriorityDefault;
 	
@@ -39,8 +42,12 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-		InputManager inputMgr = GetGame().GetInputManager();
-		inputMgr.AddActionListener("ChatToggle", EActionTrigger.DOWN, Callback_OnToggleAction);
+		m_InputManager = GetGame().GetInputManager();
+		
+		if (!m_InputManager)
+			return; 
+		
+		m_InputManager.AddActionListener(CHAT_INPUT_ACTION, EActionTrigger.DOWN, Callback_OnToggleAction);
 		
 		if (!m_wRoot)
 			return;
@@ -63,6 +70,32 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 		m_ChatPanel.GetOnChatOpen().Insert(OnChatOpen);
 		m_ChatPanel.GetOnChatClosed().Insert(OnChatClose);
 		
+		if (!m_HUDManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(m_HUDManager.GetInterfaceSettingsClass());
+		if (interfaceSettings)
+		{
+			bool state;
+			interfaceSettings.Get(m_sInterfaceSettingName, state);
+			m_bIsEnabledInSettings = state;
+			
+			if (!state)
+				m_InputManager.RemoveActionListener(CHAT_INPUT_ACTION, EActionTrigger.DOWN, Callback_OnToggleAction);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnSettingsChanged()
+	{		
+		super.OnSettingsChanged();
+		
+		bool active = m_InputManager.IsActionActive(CHAT_INPUT_ACTION);
+		
+		if (m_bIsEnabledInSettings && !active)
+			m_InputManager.AddActionListener(CHAT_INPUT_ACTION, EActionTrigger.DOWN, Callback_OnToggleAction);
+		else if (!m_bIsEnabledInSettings && active)
+			m_InputManager.RemoveActionListener(CHAT_INPUT_ACTION, EActionTrigger.DOWN, Callback_OnToggleAction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -83,9 +116,19 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void CloseAllChatPanels()
+	{
+		SCR_ChatPanelManager.GetInstance().CloseAllChatPanels();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! When the chat is open, increase it's priority to make it easier to read through the chat
 	void OnChatOpen()
 	{
+		//Close all chat panels with delay, so every open chat panel is registered first
+		if (!m_bIsEnabledInSettings)
+			GetGame().GetCallqueue().Call(CloseAllChatPanels);
+		
 		// Assign it again in case the SlotUIComponent has changed
 		m_HUDSlotComponent = m_slotHandler.GetSlotUIComponent();
 		if (!m_HUDSlotComponent)
@@ -110,12 +153,11 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 	override void DisplayStopDraw(IEntity owner)
 	{
 		InputManager inputMgr = GetGame().GetInputManager();
-		inputMgr.RemoveActionListener("ChatToggle", EActionTrigger.DOWN, Callback_OnToggleAction);
+		inputMgr.RemoveActionListener(CHAT_INPUT_ACTION, EActionTrigger.DOWN, Callback_OnToggleAction);
 		
 		// Widget does not get destroyed by HUD manager when switching characters, so we unregister the chat panel manually.
 		SCR_ChatPanelManager.GetInstance().Unregister(m_ChatPanel);
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called when Enter key is pressed

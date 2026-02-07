@@ -319,7 +319,7 @@ class SCR_CareerSpecializationsUI : ScriptedWidgetComponent
 		if (!workspace)
 			return null;
 
-		Widget SpecializationProgressButton = Widget.Cast(workspace.CreateWidgets(m_sSpProgressLayout, container));
+		Widget SpecializationProgressButton = workspace.CreateWidgets(m_sSpProgressLayout, container);
 		if (!SpecializationProgressButton)
 			return null;
 

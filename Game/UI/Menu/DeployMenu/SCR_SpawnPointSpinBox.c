@@ -32,10 +32,10 @@ class SCR_SpawnPointSpinBox : SCR_SpinBoxComponent
 
 	override void RemoveItem(int item, bool last = false)
 	{
-		super.RemoveItem(item, last);
-		
 		if (m_aSpawnPointIds.IsIndexValid(item))
 			m_aSpawnPointIds.Remove(item);
+
+		super.RemoveItem(item, true);
 	}
 
 	override void ClearAll()

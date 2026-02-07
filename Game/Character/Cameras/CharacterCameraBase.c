@@ -61,6 +61,7 @@ class CharacterCameraBase : ScriptedCameraItem
 			Animation anim = m_OwnerCharacter.GetAnimation();
 			sm_iHeadBoneIndex = anim.GetBoneIndex("Head");
 			sm_iCameraBoneIndex = anim.GetBoneIndex("Camera");
+			s_iNeckBoneIndex = anim.GetBoneIndex("Neck1");
 		}
 		m_CharacterAnimationComponent = CharacterAnimationComponent.Cast(m_OwnerCharacter.FindComponent(CharacterAnimationComponent));
 		CharacterCommandHandlerComponent cmdHandler = CharacterCommandHandlerComponent.Cast(m_CharacterAnimationComponent.FindComponent(CharacterCommandHandlerComponent));
@@ -311,6 +312,7 @@ class CharacterCameraBase : ScriptedCameraItem
 	protected float									m_fShakeVelocity;
 	protected static TNodeId sm_iCameraBoneIndex = -1;
 	protected static TNodeId sm_iHeadBoneIndex = -1;
+	protected static TNodeId s_iNeckBoneIndex = -1;
 	protected static AnimationTagID sm_TagFPCamera = -1;
 	protected static AnimationTagID sm_TagLyingCamera = -1; // beware: very deceitful!
 	protected static AnimationTagID sm_TagItemUpdateCols = -1; // beware: very deceitful!

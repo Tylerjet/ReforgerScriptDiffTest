@@ -85,7 +85,7 @@ class SCR_HitZoneInfo : SCR_BaseVehicleInfo
 			// Find all matching hitzones
 			m_aHitZones = {};
 			array<HitZone> hitZones = {};
-			damageManager.GetAllHitZones(hitZones);
+			damageManager.GetAllHitZonesInHierarchy(hitZones);
 			string name;
 			foreach (HitZone hitZone : hitZones)
 			{

@@ -5,11 +5,8 @@ class SCR_AIFindTurrets: AITaskScripted
 	static const string PORT_TURRET_NUMBER			= "TurretNumber";
 	static const string PORT_TURRET_FOUND			= "TurretsFound";
 	
-	private BaseWorld m_world;
-	private int m_turretCount;
-	private int m_agentsCount;
-	private bool m_turretsFound;
-	private SCR_AIGroup m_groupOwner;
+	protected TagSystem m_tagSystem;
+	protected SCR_AIGroup m_groupOwner;
 	
 	//------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() {return true;}
@@ -17,8 +14,12 @@ class SCR_AIFindTurrets: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
-		if (!m_world && GetGame())
-			m_world = GetGame().GetWorld();
+		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
+		m_tagSystem = TagSystem.Cast(world.FindSystem(TagSystem));
+		if (!m_tagSystem)
+		{
+			NodeError(this, owner, "SCR_AIFindTurret: TagManager is not present in the world, cannot find static turrets.");			
+		}
 		m_groupOwner = SCR_AIGroup.Cast(owner);
 		if (!m_groupOwner)
 		{
@@ -31,7 +32,7 @@ class SCR_AIFindTurrets: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!m_world)
+		if (!m_tagSystem)
 		{
 			ClearVariable(PORT_TURRET_NUMBER);
 			ClearVariable(PORT_TURRET_FOUND);
@@ -39,51 +40,46 @@ class SCR_AIFindTurrets: AITaskScripted
 		}	
 		vector center;
 		float radius;
-		m_agentsCount = m_groupOwner.GetAgentsCount(); 
+		int agentsCount = m_groupOwner.GetAgentsCount();
+		int turretCount;
+		bool turretsFound;
 		
 		GetVariableIn(PORT_CENTER_OF_SEARCH, center);
 		GetVariableIn(PORT_RADIUS, radius);
 		
-		m_world.QueryEntitiesBySphere(center, radius, GetFirstEntity, FilterEntities, EQueryEntitiesFlags.DYNAMIC | EQueryEntitiesFlags.WITH_OBJECT);
-		if (m_turretsFound)
-			SetVariableOut(PORT_TURRET_NUMBER, m_turretCount);
-		else 
-			ClearVariable(PORT_TURRET_NUMBER);
-		SetVariableOut(PORT_TURRET_FOUND, m_turretsFound);
-		return ENodeResult.SUCCESS;
-	}
-	
-	bool GetFirstEntity(IEntity ent) 
-	{
-		BaseCompartmentManagerComponent compComp = BaseCompartmentManagerComponent.Cast(ent.FindComponent(BaseCompartmentManagerComponent));
-		if (!compComp)
-			return true;
+		array<IEntity> entities = {};	
+		m_tagSystem.GetTagsInRange(entities, center, radius, ETagCategory.StaticTurret);
 		
-		array<BaseCompartmentSlot> compartmentSlots = {};
-		compComp.GetCompartments(compartmentSlots);
-		foreach (BaseCompartmentSlot slot : compartmentSlots)
+		foreach (IEntity ent : entities)
 		{
-			TurretCompartmentSlot turretComp = TurretCompartmentSlot.Cast(slot);
-			if (turretComp)
+			BaseCompartmentManagerComponent compComp = BaseCompartmentManagerComponent.Cast(ent.FindComponent(BaseCompartmentManagerComponent));
+			if (!compComp)
+				continue;
+			
+			array<BaseCompartmentSlot> compartmentSlots = {};
+			compComp.GetCompartments(compartmentSlots);
+			foreach (BaseCompartmentSlot slot : compartmentSlots)
 			{
-				if (!turretComp.AttachedOccupant() && turretComp.IsCompartmentAccessible() && !turretComp.IsReserved())
+				TurretCompartmentSlot turretComp = TurretCompartmentSlot.Cast(slot);
+				if (turretComp)
 				{
-					//turretComp.GetCompartmentSlotID();
-					m_turretCount += 1;
-					m_turretsFound = true;
-					if (m_turretCount <= m_agentsCount) // do not occupy more turrets that you have agents
-						m_groupOwner.AllocateCompartment(turretComp);
-					break;
+					if (!turretComp.AttachedOccupant() && turretComp.IsCompartmentAccessible() && !turretComp.IsReserved())
+					{
+						turretCount += 1;
+						turretsFound = true;
+						if (turretCount <= agentsCount) // do not occupy more turrets that you have agents
+							m_groupOwner.AllocateCompartment(turretComp);
+						break;
+					}
 				}
 			}
 		}
-		return true; //continue search to next turret
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool FilterEntities(IEntity ent) 
-	{
-		return Turret.Cast(ent) != null;
+		if (turretsFound)
+			SetVariableOut(PORT_TURRET_NUMBER, turretCount);
+		else 
+			ClearVariable(PORT_TURRET_NUMBER);
+		SetVariableOut(PORT_TURRET_FOUND, turretsFound);
+		return ENodeResult.SUCCESS;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -104,5 +100,11 @@ class SCR_AIFindTurrets: AITaskScripted
 	override TStringArray GetVariablesIn()
 	{
 		return s_aVarsIn;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override string GetOnHoverDescription()
+	{
+		return "SCR_AIFindTurrets: finds all static turrets within center and radius. All results are allocated (reserved) for this group.";
 	}
 };

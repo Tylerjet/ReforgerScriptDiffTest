@@ -40,7 +40,7 @@ class SCR_SelectOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		if (!compartmentManager)
 			return;
 		
-		SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.Cast(SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.SELECTED));
+		SCR_BaseEditableEntityFilter filter = SCR_BaseEditableEntityFilter.GetInstance(EEditableEntityState.SELECTED);
 		if (!filter)
 			return;
 		

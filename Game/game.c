@@ -32,8 +32,6 @@ class ArmaReforgerScripted : ChimeraGame
 {
 	const string CONFIG_CORES_PATH = "Configs/Core/";
 
-	const ResourceName CONFIG_DIALOGS_ERROR = "{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf";
-
 	//! Game Flags specific for current game mode, or for the game mode which is going to be played when it is a host/server side.
 	protected EGameFlags 					m_eGameFlags;
 	protected bool							m_bAreGameFlagsObtained;
@@ -83,6 +81,25 @@ class ArmaReforgerScripted : ChimeraGame
 	void ~ArmaReforgerScripted()
 	{
 		g_ARGame = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Spawn entity or potential entity variant
+	//! \param[in] prefab Entity prefab to spawn
+	//! \param[in] randomizeEditableVariant If true and the entity has the SCR_EditableEntityComponent, then it will try and get a random variant if it has any assigned (More performance heavy)
+	//! \param[in] world
+	//! \param[in] params Entity spawn params
+	//! \return Spawned Entity
+	IEntity SpawnEntityPrefab(ResourceName prefab, bool randomizeEditableVariant, BaseWorld world = null, EntitySpawnParams params = null)
+	{
+		Resource prefabResource = Resource.Load(prefab);
+		if (!prefabResource.IsValid())
+			return null;
+		
+		if (!randomizeEditableVariant)
+			return SpawnEntityPrefab(prefabResource, world, params);
+		
+		return SpawnEntityPrefab(Resource.Load(SCR_EditableEntityComponentClass.GetRandomVariant(prefab)), world, params);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -260,14 +277,6 @@ class ArmaReforgerScripted : ChimeraGame
 	ScriptInvoker OnWindowResizeInvoker()
 	{
 		return m_OnWindowResizeInvoker;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Getter for where authority is for vehicles
-	//! \return always false
-	override bool GetIsClientAuthority()
-	{
-		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -611,8 +620,12 @@ class ArmaReforgerScripted : ChimeraGame
 				session.SetRCONCommander(m_dsCommander);*/
 			}
 		}
-		m_CoresManager = SCR_GameCoresManager.CreateCoresManager();
-		m_SaveManagerCore = SCR_SaveManagerCore.Cast(m_CoresManager.GetCore(SCR_SaveManagerCore));
+
+		if (GetGame().InPlayMode())
+		{
+			m_CoresManager = SCR_GameCoresManager.CreateCoresManager();
+			m_SaveManagerCore = SCR_SaveManagerCore.Cast(m_CoresManager.GetCore(SCR_SaveManagerCore));
+		}
 		
 		WidgetManager.SetCursor(0);
 	}
@@ -650,7 +663,7 @@ class ArmaReforgerScripted : ChimeraGame
 		
 		AddActionListeners();
 
-		if (m_CoresManager)
+		if (GetGame().InPlayMode() && m_CoresManager)
 			m_CoresManager.OnGameStart();
 
 		m_SessionErrorHandler = new RplSessionErrorHandler();
@@ -774,11 +787,11 @@ class ArmaReforgerScripted : ChimeraGame
 		if (menuManager.IsAnyDialogOpen())
 			return null; // We don't want to open this menu behind any dialogs.
 
-		MenuBase menu = MenuBase.Cast(menuManager.FindMenuByPreset(ChimeraMenuPreset.GroupMenu));
-		MenuBase playerMenu = MenuBase.Cast(menuManager.FindMenuByPreset(ChimeraMenuPreset.PlayerListMenu));
+		MenuBase playerMenu = menuManager.FindMenuByPreset(ChimeraMenuPreset.PlayerListMenu);
 		if (playerMenu)
 			return null;
 		
+		MenuBase menu = menuManager.FindMenuByPreset(ChimeraMenuPreset.GroupMenu);
 		if (!menu)
 			GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.GroupMenu, 0, false, false);
 		else	
@@ -802,7 +815,7 @@ class ArmaReforgerScripted : ChimeraGame
 
 		ShutdownBackend();
 
-		if (m_CoresManager)
+		if (GetGame().InPlayMode() && m_CoresManager)
 			m_CoresManager.OnGameEnd();
 	}
 	
@@ -848,10 +861,10 @@ class ArmaReforgerScripted : ChimeraGame
 		InputManager inputManager = GetInputManager();
 		inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
 		inputManager.AddActionListener("ShowGroupMenu", EActionTrigger.DOWN, OnShowGroupMenu);
-		inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
+		inputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN, EActionTrigger.DOWN, OnMenuOpen);
 		
 		#ifdef WORKBENCH
-			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OnMenuOpen);
+			inputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, OnMenuOpen);
 		#endif
 	}
 	
@@ -862,10 +875,10 @@ class ArmaReforgerScripted : ChimeraGame
 		InputManager inputManager = GetInputManager();
 		inputManager.RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
 		inputManager.RemoveActionListener("ShowGroupMenu", EActionTrigger.DOWN, OnShowGroupMenu);
-		inputManager.RemoveActionListener("MenuOpen", EActionTrigger.DOWN, OnMenuOpen);
+		inputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN, EActionTrigger.DOWN, OnMenuOpen);
 		
 		#ifdef WORKBENCH
-			inputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, OnMenuOpen);
+			inputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, OnMenuOpen);
 		#endif
 	}
 
@@ -1112,7 +1125,7 @@ class ArmaReforgerScripted : ChimeraGame
 
 		#endif
 
-		if (m_CoresManager)
+		if (GetGame().InPlayMode() && m_CoresManager)
 			m_CoresManager.OnUpdate(timeslice);
 	}
 

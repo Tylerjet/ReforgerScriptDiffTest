@@ -85,6 +85,27 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Return name of passed rank.
+	//! \param[in] unit
+	//! \param[in] rank
+	//! \return
+	static string GetRankName(IEntity unit, SCR_ECharacterRank rank)
+	{
+		if (!unit)
+			return string.Empty;
+		
+		SCR_CharacterRankComponent comp = GetCharacterRankComponent(unit);
+		if (!comp)
+			return string.Empty;
+
+		SCR_Faction faction = comp.GetCharacterFaction(unit);
+		if (!faction)
+			return string.Empty;
+		
+		return faction.GetRankName(rank);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] unit
 	//! \return
 	static string GetCharacterRankName(IEntity unit)

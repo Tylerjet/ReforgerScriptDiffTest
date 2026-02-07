@@ -71,6 +71,7 @@ class BaseRplComponentClass: GenericComponentClass
 */
 class BaseRplComponent: GenericComponent
 {
+	proto external RplNode GetNode();
 	/*!
 	Transfers ownership of the hierarchy to given connection.
 	\param identity connection identity.

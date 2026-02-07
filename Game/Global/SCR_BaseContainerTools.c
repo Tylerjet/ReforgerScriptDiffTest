@@ -224,6 +224,84 @@ class SCR_BaseContainerTools
 
 		return classNamesCount;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all component sources of given class from entity source.
+	//! \param[in] prefabEntity Entity source
+	//! \param[in] componentClass Class names of desired components
+	//! \param[in] GetChildComponentsOfComponents if true it will itterate over all children of the component (not entity) and get the components from it. Will search two layers deep
+	//! \param[out] componentSources Array filled with the found IEntityComponentSource of given class
+	//! \return Number of components found
+	static int FindComponentSourcesOfClass(IEntitySource prefabEntity, typename componentClass, bool GetChildComponentsOfComponents, notnull out array<IEntityComponentSource> componentSources)
+	{
+		componentSources.Clear();
+		if (!prefabEntity)
+			return 0;
+
+		IEntityComponentSource componentSource;
+		array<IEntityComponentSource> components;
+		for (int i, componentsCount = prefabEntity.GetComponentCount(); i < componentsCount; i++)
+		{
+			componentSource = prefabEntity.GetComponent(i);
+			
+			if (componentSource.GetClassName().ToType().IsInherited(componentClass))
+				componentSources.Insert(componentSource);
+			
+			//~ Search children of components and the children of components children
+			if (GetChildComponentsOfComponents)
+			{
+				array<IEntityComponentSource> componentSourceChildren = {};
+				array<IEntityComponentSource> componentSourceChildChildren = {};
+				
+				//~ Search children of components
+				if (GetComponentSourceChildren(componentSource, componentSourceChildren) > 0)
+				{
+					foreach (IEntityComponentSource componentSourceChild : componentSourceChildren)
+					{
+						if (componentSourceChild.GetClassName().ToType().IsInherited(componentClass))
+							componentSources.Insert(componentSourceChild);
+						
+						//~ Search children of components children
+						if (GetComponentSourceChildren(componentSourceChild, componentSourceChildChildren) > 0)
+						{
+							foreach (IEntityComponentSource componentSourceChildChild : componentSourceChildChildren)
+							{
+								if (componentSourceChildChild.GetClassName().ToType().IsInherited(componentClass))
+									componentSources.Insert(componentSourceChildChild);
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return componentSources.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get all component sources children from given component source
+	//! \param[in] componentSource Component source
+	//! \param[out] componentSources Array filled with the found IEntityComponentSource
+	//! \return Number of components found
+	static int GetComponentSourceChildren(notnull IEntityComponentSource componentSource, notnull out array<IEntityComponentSource> componentSources)
+	{
+		componentSources.Clear();
+		
+		BaseContainerList containerList = componentSource.GetObjectArray("components");
+		if (!containerList)
+			return 0;
+		
+		for (int i = 0, count = containerList.Count(); i < count; i++)
+		{
+			componentSource = containerList.Get(i);
+			if (!componentSource)
+				continue;
+			
+			componentSources.Insert(componentSource);
+		}
+		
+		return componentSources.Count();
+	}
 
 //	//------------------------------------------------------------------------------------------------
 //	//! Check if the container contains any changes as opposed to its ancestor

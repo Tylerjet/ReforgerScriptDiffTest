@@ -13,6 +13,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	
 	protected ref ScriptInvoker m_OnThirdPersonSwitch = new ScriptInvoker();
 	protected static float s_fOverlayCameraFOV;
+	protected static float s_fADSSensitivity = 1.0;
 	
 	protected int m_iHipsBoneIndex = 0;
 	
@@ -1086,28 +1087,21 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	protected bool CanUseOverlayCameraFOV()
 	{
-		if (m_ControllerComponent)
-		{
-			EWeaponObstructedState obstructedState = m_ControllerComponent.GetWeaponObstructedState();
-			if (obstructedState >= EWeaponObstructedState.SLIGHTLY_OBSTRUCTED_CAN_FIRE)
-				return false;
-		}
-		
+		if (!m_ControllerComponent)
+			return false;
+
+		if (m_ControllerComponent.IsFreeLookEnabled())
+			return false;
+
+		if (m_ControllerComponent.GetWeaponObstructedState() >= EWeaponObstructedState.SIGNIFICANTLY_OBSTRUCTED)
+			return false;
+
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override float GetOverlayCameraFOVScalarWeight()
 	{
-		if (!m_ControllerComponent)
-			return 0.0;
-		
-		if (m_ControllerComponent.IsFreeLookEnabled())
-			return 0.0;
-		
-		if (!CanUseOverlayCameraFOV())
-			return 0.0;
-		
 		return m_fADSProgress;
 	}
 	
@@ -1126,13 +1120,25 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] sensitivity
+	static void SetADSSensitivity(float sensitivity)
+	{
+		s_fADSSensitivity = sensitivity;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override event float CalculateFovScalar(notnull CameraBase mainCamera, CameraBase overlayCamera)
 	{
 		float fov = mainCamera.GetVerticalFOV();
-		if (overlayCamera && s_fOverlayCameraFOV > 0)
+		if (overlayCamera && s_fOverlayCameraFOV > 0 && CanUseOverlayCameraFOV())
 			fov = Math.Lerp(fov, s_fOverlayCameraFOV, GetOverlayCameraFOVScalarWeight());
-		
-		return fov / 90;
+
+		// Account for player ADS sensitivity
+		float sensitivity = 1.0;
+		if (m_fADSProgress > 0)
+			sensitivity = Math.Lerp(1.0, s_fADSSensitivity, m_fADSProgress);
+
+		return sensitivity * fov / 90;
 	}
 
 	//------------------------------------------------------------------------------------------------

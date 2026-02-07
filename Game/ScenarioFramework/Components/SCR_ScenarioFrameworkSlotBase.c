@@ -69,7 +69,7 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		if (state != EDamageState.DESTROYED || !m_Entity)
 			return;
 
-		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Entity.FindComponent(SCR_DamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Entity);
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 
@@ -278,75 +278,55 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = true;
+		m_aSpawnedEntities.RemoveItem(null);
 		foreach (IEntity entity : m_aSpawnedEntities)
 		{
-			if (!entity)
-				continue;
-
 			m_vPosition = entity.GetOrigin();
 			SCR_EntityHelper.DeleteEntityAndChildren(entity);
 		}
 
 		m_aSpawnedEntities.Clear();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	override bool InitAlreadyHappened()
 	{
-		if (m_bIsTerminated)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			return;
-		}
-
-		if (m_OnAllChildrenSpawned)
-			m_OnAllChildrenSpawned.Remove(DynamicDespawn);
-
-		if (!m_ParentLayer)
-		{
-			IEntity entity = GetOwner().GetParent();
-			if (!entity)
-				return;
-
-			m_ParentLayer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
-			if (!m_ParentLayer)
-			{
-				Print(string.Format("ScenarioFramework: Slot %1 has no parent layer linked - whole parent hierarchy won't be properly working!", GetName()), LogLevel.ERROR);
-				return;
-			}
-		}
-
-		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			return;
-		}
-
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-				return;
-			}
-		}
-
+		// We do not want to check this condition for Slots
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool InitRepeatableSpawn()
+	{
 		if (m_Entity && !m_bEnableRepeatedSpawn && !m_ParentLayer.GetEnableRepeatedSpawn())
 		{
 			Print(string.Format("ScenarioFramework: Object %1 already exists and won't be spawned for %2, exiting...", m_Entity, GetName()), LogLevel.ERROR);
 			m_ParentLayer.CheckAllChildrenSpawned(this);
-			return;
+			return false;
 		}
-
-		// Handles inheritance of faction settings from parents
-		if (m_sFactionKey.IsEmpty() && !m_ParentLayer.GetFactionKey().IsEmpty())
-			SetFactionKey(m_ParentLayer.GetFactionKey());
-
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool InitEntitySpawnCheck()
+	{
+		if (!m_Entity)
+		{
+			GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
+			InvokeAllChildrenSpawned();
+			return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	bool InitEntitySpawn()
+	{
 		if (!m_bUseExistingWorldAsset)
 		{
 			m_Entity = SpawnAsset();
@@ -356,18 +336,49 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			QueryObjectsInRange();	//sets the m_Entity in subsequent callback
 		}
 
-		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
-
-		if (!m_Entity)
+		if (!InitEntitySpawnCheck())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool InitOtherThings()
+	{
+		if (!InitRepeatableSpawn())
+			return false;
+		
+		if (!InitEntitySpawn())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void FinishInit()
+	{
+		if (!m_sID.IsEmpty())
 		{
-			InvokeAllChildrenSpawned();
-			return;
+			if (GetGame().GetWorld().FindEntityByName(m_sID))
+			{
+				string IDWithSuffix = m_sID;
+				int suffixNumber;
+				while (GetGame().GetWorld().FindEntityByName(IDWithSuffix))
+	            {
+					suffixNumber++;
+					Print(string.Format("ScenarioFramework Slot: Entity of name %1 was found. The suffix _%2 will be added.", m_sID, suffixNumber), LogLevel.WARNING);
+					IDWithSuffix = m_sID + "_" + suffixNumber.ToString();
+	            }
+					
+				m_Entity.SetName(IDWithSuffix); 
+			}
+			else
+			{
+				m_Entity.SetName(m_sID); 
+			}
 		}
 
-		if (!m_sID.IsEmpty())
-			m_Entity.SetName(m_sID);
-
-		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(m_Entity.FindComponent(SCR_DamageManagerComponent));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Entity);
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 
@@ -388,16 +399,19 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 			if (garbageSystem)
 				garbageSystem.UpdateBlacklist(m_Entity, true);
 		}
-
-		if (!area)
-		{
-			SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-			if (gameModeComp)
-				area = gameModeComp.GetParentArea(GetOwner());
-		}
-		m_Area = area;
-
+		
+		super.FinishInit();
+		
 		InvokeAllChildrenSpawned();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	{
+		if (m_OnAllChildrenSpawned)
+			m_OnAllChildrenSpawned.Remove(DynamicDespawn);
+		
+		super.Init(area, activation);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -670,110 +684,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 #ifdef WORKBENCH
 		SCR_EntityHelper.DeleteEntityAndChildren(m_PreviewEntity);
 #endif
-	}
-}
-
-[BaseContainerProps()]
-class SCR_ScenarioFrameworkActivationConditionBase
-{
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] entity
-	//! \return
-	bool Init(IEntity entity);
-}
-
-[BaseContainerProps()]
-class SCR_ScenarioFrameworkDayTimeCondition : SCR_ScenarioFrameworkActivationConditionBase
-{
-	[Attribute(defvalue: "1", desc: "If true, this can be activated only during the day. If false, only during the night.", category: "Time")]
-	protected bool m_bOnlyDuringDay;
-
-	//------------------------------------------------------------------------------------------------
-	override bool Init(IEntity entity)
-	{
-		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
-		if (!world)
-			return true;
-
-		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
-		if (!manager)
-			return true;
-
-		TimeContainer timeContainer = manager.GetTime();
-		int currentHour = timeContainer.m_iHours;
-
-		if (m_bOnlyDuringDay)
-			return manager.IsDayHour(currentHour);
-		else
-			return manager.IsNightHour(currentHour);
-	}
-}
-
-[BaseContainerProps()]
-class SCR_ScenarioFrameworkDayTimeHourCondition : SCR_ScenarioFrameworkActivationConditionBase
-{
-	[Attribute(defvalue: "0", desc: "Minimal day time hour", params: "0 24 1", category: "Time")]
-	protected int m_iMinHour;
-
-	[Attribute(defvalue: "24", desc: "Maximal day time hour", params: "0 24 1", category: "Time")]
-	protected int m_iMaxHour;
-
-	//------------------------------------------------------------------------------------------------
-	override bool Init(IEntity entity)
-	{
-		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
-		if (!world)
-			return true;
-
-		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
-		if (!manager)
-			return true;
-
-		TimeContainer timeContainer = manager.GetTime();
-		int currentHour = timeContainer.m_iHours;
-
-		if (currentHour < m_iMinHour || currentHour > m_iMaxHour)
-			return false;
-
-		return true;
-	}
-}
-
-[BaseContainerProps()]
-class SCR_ScenarioFrameworkWeatherCondition : SCR_ScenarioFrameworkActivationConditionBase
-{
-	[Attribute(defvalue: "0", desc: "Minimal wind speed in meters per second", params: "0 100 0.001", precision: 3, category: "Wind")]
-	protected float m_fMinWindSpeed;
-
-	[Attribute(defvalue: "20", desc: "Maximal wind speed in meters per second", params: "0 100 0.001", precision: 3, category: "Wind")]
-	protected float m_fMaxWindSpeed;
-
-	[Attribute(defvalue: "0", desc: "Minimal rain intensity", params: "0 1 0.001", precision: 3, category: "Rain")]
-	protected float m_fMinRainIntensity;
-
-	[Attribute(defvalue: "1", desc: "Maximal rain intensity", params: "0 1 0.001", precision: 3, category: "Rain")]
-	protected float m_fMaxRainIntensity;
-
-	//------------------------------------------------------------------------------------------------
-	override bool Init(IEntity entity)
-	{
-		ChimeraWorld world = ChimeraWorld.CastFrom(entity.GetWorld());
-		if (!world)
-			return true;
-
-		TimeAndWeatherManagerEntity manager = world.GetTimeAndWeatherManager();
-		if (!manager)
-			return true;
-
-		float currentWindSpeed = manager.GetWindSpeed();
-		if (currentWindSpeed < m_fMinWindSpeed || currentWindSpeed > m_fMaxWindSpeed)
-			return false;
-
-		float currentRainIntensity = manager.GetRainIntensity();
-		if (currentRainIntensity < m_fMinRainIntensity || currentRainIntensity > m_fMaxRainIntensity)
-			return false;
-
-		return true;
+		if (SCR_Global.IsEditMode())
+			return;
+		
+		DynamicDespawn(this);
 	}
 }

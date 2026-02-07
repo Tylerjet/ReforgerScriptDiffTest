@@ -36,6 +36,7 @@ class AIWorld: GenericEntity
 
 	// callbacks
 
+	event void OnDebugCameraTeleport(vector pos);
 	event void OnDebugAgentTeleport(AIAgent agent);
 	event void AddedAIAgent(AIAgent agent);
 	event void RemovingAIAgent(AIAgent agent);

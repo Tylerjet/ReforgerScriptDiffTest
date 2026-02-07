@@ -27,6 +27,7 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 
 	protected SCR_GalleryComponent m_Gallery;
 	protected SCR_SimpleMessageComponent m_SimpleMessage;
+	protected bool m_bEntriesDisplayed;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
@@ -55,10 +56,20 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnTabHide()
+	{
+		super.OnTabHide();
+		
+		m_bEntriesDisplayed = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnTabRemove()
 	{
 		super.OnTabRemove();
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
+		
+		m_bEntriesDisplayed = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -71,6 +82,9 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 			ShowErrorDialog();
 			return;
 		}
+		
+		if (m_bEntriesDisplayed)
+			return;
 		
 		if (m_SimpleMessage)
 			m_SimpleMessage.SetVisible(false);
@@ -93,6 +107,8 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 
 			m_Gallery.AddItem(w);
 		}
+		
+		m_bEntriesDisplayed = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -126,6 +142,8 @@ class SCR_NewsSubMenu : SCR_SubMenuBase
 		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateTimeoutOkDialog();
 		if (dialog)
 			dialog.m_OnConfirm.Insert(OnErrorDialogClose);
+		
+		m_bEntriesDisplayed = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------

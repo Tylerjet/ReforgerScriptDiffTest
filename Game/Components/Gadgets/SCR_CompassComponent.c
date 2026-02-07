@@ -60,13 +60,6 @@ class SCR_CompassComponentClass : SCR_GadgetComponentClass
 		if (m_iSignalNeedle != -1 && m_iSignalShake != -1 && m_iSignalInHand != -1)
 			m_bSignalInit = true;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	//! \param[in] prefab
-	void SCR_CompassComponentClass(BaseContainer prefab)
-	{
-	}
 }
 
 //! Compass component

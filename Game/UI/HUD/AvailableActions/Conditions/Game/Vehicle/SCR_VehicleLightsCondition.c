@@ -16,31 +16,15 @@ class SCR_VehicleLightsCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(data.GetCurrentVehicleController());
-			if (!controller)
-				return false;
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(data.GetCurrentVehicleController());
+		if (!controller)
+			return false;
 
-			BaseLightManagerComponent lightManager = controller.GetLightManager();
-			if (!lightManager)
-				return false;
+		BaseLightManagerComponent lightManager = controller.GetLightManager();
+		if (!lightManager)
+			return false;
 
-			bool result = lightManager.GetLightsState(m_eLightType, m_iLightSide);
-			return GetReturnResult(result);
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(data.GetCurrentVehicleController());
-			if (!controller)
-				return false;
-
-			BaseLightManagerComponent lightManager = controller.GetLightManager();
-			if (!lightManager)
-				return false;
-
-			bool result = lightManager.GetLightsState(m_eLightType, m_iLightSide);
-			return GetReturnResult(result);
-		}
+		bool result = lightManager.GetLightsState(m_eLightType, m_iLightSide);
+		return GetReturnResult(result);
 	}
 }

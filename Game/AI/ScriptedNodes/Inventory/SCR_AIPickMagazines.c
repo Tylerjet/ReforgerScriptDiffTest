@@ -38,27 +38,29 @@ class SCR_AIPickMagazines : AITaskScripted
 		{
 			array<IEntity> items = {};
 			vicinity.GetAvailableItems(items);
-			
+
+			MagazineComponent magComp;
 			foreach (IEntity item : items)
 			{
-				MagazineComponent magComp = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
+				magComp = MagazineComponent.Cast(item.FindComponent(MagazineComponent));
 				if (!magComp)
 					continue;
+
 				if (magComp.GetMagazineWell().Type() == m_oMagazineWell && !m_Inventory.TryInsertItem(item,EStoragePurpose.PURPOSE_DEPOSIT))
-				{
-					CharacterControllerComponent charCtrlComp = CharacterControllerComponent.Cast(ChimeraCharacter.Cast(m_OwnerEntity).GetCharacterController());
-					charCtrlComp.ReloadWeaponWith(item);
-				}
+					ChimeraCharacter.Cast(m_OwnerEntity).GetCharacterController().ReloadWeaponWith(item);
 			}
 			
-			if (items.Count() == 0)
+			if (items.IsEmpty())
 			{
 				PrintFormat("No items found to pick up by %1!",m_OwnerEntity);
 				return ENodeResult.FAIL;
 			}
 			else
+			{
 				return ENodeResult.SUCCESS;
+			}
 		}
+
 		return ENodeResult.FAIL;
 	}
 	

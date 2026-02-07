@@ -129,7 +129,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		GetOnPlayerGroupJoined().Invoke(group, pid);
 		UpdateNewGroupButton();
 	}
-
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//! Update the group widget relevant to local player.
 	protected void UpdateLocalPlayerGroup(int groupId)
 	{
@@ -160,7 +160,7 @@ class SCR_GroupRequestUIComponent : SCR_DeployRequestUIBaseComponent
 			GetGame().GetCallqueue().CallLater(SetPlayerGroup, 100, false, group); // call later because of group name initialization
 		}
 	}
-
+	//---- REFACTOR NOTE END ----
 	//! Set group private.
 	protected void UpdateGroupPrivacy(int groupId, bool isPrivate)
 	{
@@ -530,7 +530,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		m_iGroupId = group.GetGroupID();
 		m_Group = group;
 	}
-	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroup(bool canJoin = true)
 	{
@@ -554,7 +554,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		if (m_wPlayerCount)
 			m_wPlayerCount.SetTextFormat("%1/%2", m_Group.GetPlayerCount(), m_Group.GetMaxMembers());		
 	}
-	
+	//---- REFACTOR NOTE END ----
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroupName()
 	{
@@ -659,7 +659,8 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		if (m_wFreq && m_Group)
 			m_wFreq.SetTextFormat("%1 #AR-VON_FrequencyUnits_MHz", (m_Group.GetRadioFrequency() * 0.001).ToString());
 	}
-	
+
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	void UpdateGroupFlag()
 	{
@@ -716,6 +717,7 @@ class SCR_GroupButton : SCR_DeployButtonBase
 		else
 			m_wArrowIcon.SetRotation(270);
 	}	
+	//---- REFACTOR NOTE END ----
 };
 
 class SCR_NewGroupButton : SCR_DeployButtonBase

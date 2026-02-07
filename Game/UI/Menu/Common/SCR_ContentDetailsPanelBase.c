@@ -35,13 +35,16 @@ class SCR_ContentDetailsPanelBase : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnUpdate(Widget w)
 	{
+		if (SCR_Global.IsEditMode())
+			return super.OnUpdate(w);
+		
 		// This will also get called on updates of children, ignore them
 		if (w != m_wRoot)
-			return true;
+			return false;
 		
-		GetGame().GetCallqueue().CallLater(UpdateSize, 0);
+		GetGame().GetCallqueue().Call(UpdateSize);
 		
-		return true;
+		return super.OnUpdate(w);
 	}
 
 	//------------------------------------------------------------------------------------------------

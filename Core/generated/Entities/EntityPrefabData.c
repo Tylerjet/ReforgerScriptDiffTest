@@ -19,6 +19,8 @@ class EntityPrefabData
 {
 	proto external ResourceName GetPrefabName();
 	proto external BaseContainer GetPrefab();
+	//!Find component data container of given type
+	proto external EntityComponentPrefabData FindComponentData(typename typeName);
 }
 
 /*!

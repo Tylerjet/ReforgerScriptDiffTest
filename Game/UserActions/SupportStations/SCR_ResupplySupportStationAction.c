@@ -20,6 +20,8 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseUseSupportStationAction
 	[Attribute(ENotification.UNKNOWN.ToString(), desc: "Notification when the action is used. Shown to player using the action if resupply self or on the player that is being resupplied if resupply other. Leave unknown to ignore", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
 	protected ENotification m_eNotificationOnUse; 
 	
+	protected SCR_ArsenalComponent m_ArsenalComponent;
+	
 	protected SCR_InventoryStorageManagerComponent m_InventoryManagerTarget;
 	
 	protected EResupplyUnavailableReason m_eResupplyUnavailableReason;
@@ -79,6 +81,9 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseUseSupportStationAction
 	override bool CanBeShownScript(IEntity user)
 	{	
 		if (!m_ResupplyData)
+			return false;
+		
+		if (m_ArsenalComponent && !m_ArsenalComponent.IsArsenalEnabled())
 			return false;
 		
 		return super.CanBeShownScript(user);
@@ -152,9 +157,9 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseUseSupportStationAction
 		
 		//~ Check if resupply is availible (And get current item amount)
 		if (muzzle)
-			m_eResupplyUnavailableReason = m_InventoryManagerTarget.CanResupplyMuzzle(muzzle, m_iMaxResupplyCount, GetProviderInventory(), m_iCurrentItemAmount);
+			m_eResupplyUnavailableReason = m_InventoryManagerTarget.CanResupplyMuzzle(user, muzzle, m_iMaxResupplyCount, GetProviderInventory(), m_iCurrentItemAmount);
 		else
-			m_eResupplyUnavailableReason = m_InventoryManagerTarget.CanResupplyItem(m_sItemToResupply, m_iMaxResupplyCount, GetProviderInventory(), m_iCurrentItemAmount);
+			m_eResupplyUnavailableReason = m_InventoryManagerTarget.CanResupplyItem(user, m_sItemToResupply, m_iMaxResupplyCount, GetProviderInventory(), m_iCurrentItemAmount);
 		
 		m_bCanResupply = m_eResupplyUnavailableReason == EResupplyUnavailableReason.RESUPPLY_VALID;
 	}
@@ -202,6 +207,8 @@ class SCR_BaseResupplySupportStationAction : SCR_BaseUseSupportStationAction
 		
 		if (m_ResupplyData)
 			m_ResupplyData.Init(owner);
+		
+		m_ArsenalComponent = SCR_ArsenalComponent.FindArsenalComponent(owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------

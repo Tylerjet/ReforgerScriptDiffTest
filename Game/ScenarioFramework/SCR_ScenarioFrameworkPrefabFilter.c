@@ -6,8 +6,6 @@ class SCR_ScenarioFrameworkPrefabFilter
 	
 	[Attribute(defvalue: "0", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
 	bool m_bIncludeChildren;
-	
-	BaseContainer m_PrefabContainer;
 }
 
 [BaseContainerProps()]

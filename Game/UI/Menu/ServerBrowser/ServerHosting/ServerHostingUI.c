@@ -7,23 +7,16 @@ enum SCR_EServerHostingDialogTabs
 
 class ServerHostingUI : SCR_TabDialog
 {
-	protected static string DIALOG_TAG_SAVE_CONFIRM = 	"save_confirm";
-	protected static string DIALOG_TAG_SAVE_SUCCESS = 	"save_successful";
-	protected static string DIALOG_TAG_SAVE_FAIL = 		"save_failed";
-	protected static string DIALOG_TAG_SAVE_OVERRIDE = 	"save_override";
-	protected static string DIALOG_TAG_NO_CONNECTION = 	"no_connection";
+	protected const string JSON_POSTFIX = ".json";
 
-	protected static string JSON_POSTFIX = ".json";
-
-	protected static string DIALOG_OVERRIDE =	"#AR-ServerHosting_OverrideWarning";
-	protected static string DIALOG_SAVED = 		"#AR-ServerHosting_SaveSuccessful";
+	protected const string DIALOG_OVERRIDE =	"#AR-ServerHosting_OverrideWarning";
+	protected const string DIALOG_SAVED = 		"#AR-ServerHosting_SaveSuccessful";
 
 	protected const string COLOR_TAG = 		"<color rgba='%1'>";
 	protected const string COLOR_TAG_END = 	"</color>";
-	protected const Color SERVER_CONFIG_NAME_COLOR = UIColors.CONTRAST_COLOR;
 
 	protected ref SCR_DSConfig m_DSConfig = new SCR_DSConfig();
-	protected static ref SCR_DSConfig m_TemporaryConfig;
+	protected static ref SCR_DSConfig s_TemporaryConfig;
 
 	// Config widget wrapper components
 	protected ref SCR_ServerConfigListComponent m_ConfigList;
@@ -36,8 +29,9 @@ class ServerHostingUI : SCR_TabDialog
 
 	// Values
 	protected string m_iUnifiedPort; // Unified port used acress sub menu to define port from basic in advanced settings and vice versa
+	protected string m_sFileName;
 
-	// TODO: move tab specific stuff to a child of SCR_SuperMenuComponent
+	// TODO: move tab specific stuff to a child of SCR_SuperMenuComponent (low priority)
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
@@ -51,6 +45,7 @@ class ServerHostingUI : SCR_TabDialog
 		m_ConfigMods = SCR_ServerHostingModSubMenu.Cast(m_SuperMenuComponent.GetSubMenu(SCR_EServerHostingDialogTabs.MODS));
 
 		m_ConfigMods.GetEventOnWorkshopButtonActivate().Insert(OnWorkshopOpenActivate);
+		m_ConfigMods.GetOnRequestDefaultScenario().Insert(SelectDefaultScenario);
 
 		// Advanced settings
 		m_AdvancedSubMenu = SCR_ServerHostingSettingsSubMenu.Cast(m_SuperMenuComponent.GetSubMenu(SCR_EServerHostingDialogTabs.ADVANCED_SETTINGS));
@@ -68,16 +63,22 @@ class ServerHostingUI : SCR_TabDialog
 		m_AdvancedSubMenu.GetOnSave().Insert(OnSaveTemplateClick);
 
 		// Restore config
-		if (m_TemporaryConfig)
+		if (s_TemporaryConfig)
 		{
-			m_ConfigList.FillFromDSConfig(m_TemporaryConfig);
-			m_AdvancedSettings.FillFromDSConfig(m_TemporaryConfig);
-			m_ConfigMods.EnableModsFromDSConfig(m_TemporaryConfig);
-			m_TemporaryConfig = null;
+			m_ConfigList.FillFromDSConfig(s_TemporaryConfig);
+			m_AdvancedSettings.FillFromDSConfig(s_TemporaryConfig);
+			m_ConfigMods.EnableModsFromDSConfig(s_TemporaryConfig);
+			s_TemporaryConfig = null;
 		}
-
+		else
+		{
+			SelectDefaultScenario();
+		}
+		
 		// Setup menu listeners
 		m_ConfigList.GetOnPortChanged().Insert(OnSubMenuChangePort);
+		m_ConfigList.GetOnScenarioSelected().Insert(OnScenarioSelected);
+		
 		m_AdvancedSettings.GetOnPortChanged().Insert(OnSubMenuChangePort);
 	}
 
@@ -155,7 +156,7 @@ class ServerHostingUI : SCR_TabDialog
 		// Check connection - prevent host
 		if (!GetGame().GetBackendApi().IsActive() || !SCR_ServicesStatusHelper.AreMultiplayerServicesAvailable())
 		{
-			SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_NO_CONNECTION);
+			SCR_ServerHostingDialogs.CreateNoConnectionDialog();
 			return;
 		}
 
@@ -163,7 +164,7 @@ class ServerHostingUI : SCR_TabDialog
 		protected ref MissionWorkshopItem hostedScenario = m_ConfigList.GetSelectedScenario();
 
 		if (hostedScenario)
-			SCR_WorkshopUiCommon.TryHostScenario(hostedScenario, m_DSConfig);
+			SCR_ScenarioUICommon.TryHostScenario(hostedScenario, m_DSConfig);
 
 		GameSessionStorage.s_Data["m_iRejoinAttempt"] = "0";
 
@@ -185,20 +186,16 @@ class ServerHostingUI : SCR_TabDialog
 		DisplaySaveDialog();
 	}
 
-	protected string m_sFileName;
-
 	//------------------------------------------------------------------------------------------------
 	//! Show dialog with file name settings and confirmation
 	protected void DisplaySaveDialog()
 	{
-		SCR_ServerConfigSaveDialog saveDialog = new SCR_ServerConfigSaveDialog();
-
-		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_SAVE_CONFIRM, saveDialog);
+		SCR_ServerConfigSaveDialog dialog = SCR_ServerHostingDialogs.CreateSaveConfirmDialog();
 		dialog.m_OnConfirm.Insert(OnSaveDialogConfirm);
 
 		// Generate
 		string name = m_ConfigList.GenerateFileName(m_ConfigList.GetSelectedScenario());
-		saveDialog.SetFileNameText(name);
+		dialog.SetFileNameText(name);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -218,9 +215,9 @@ class ServerHostingUI : SCR_TabDialog
 			if (name + JSON_POSTFIX == configs[i])
 			{
 				// Display config exists
-				SCR_ConfigurableDialogUi overrideDialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_SAVE_OVERRIDE);
+				SCR_ConfigurableDialogUi overrideDialog = SCR_ServerHostingDialogs.CreateSaveOverrideDialog();
 
-				string color = string.Format(COLOR_TAG, UIColors.SRGBAFloatToInt(SERVER_CONFIG_NAME_COLOR));
+				string color = string.Format(COLOR_TAG, UIColors.FormatColor(UIColors.CONTRAST_COLOR));
 				string msg = WidgetManager.Translate(DIALOG_OVERRIDE, name, color, COLOR_TAG_END);
 				overrideDialog.SetMessage(msg);
 				overrideDialog.m_OnConfirm.Insert(OnOverrideConfirm);
@@ -242,7 +239,7 @@ class ServerHostingUI : SCR_TabDialog
 		if (saved)
 		{
 			// Show success dialog
-			SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_SAVE_SUCCESS);
+			SCR_ConfigurableDialogUi dialog = SCR_ServerHostingDialogs.CreateSaveSuccessDialog();
 
 			array<string> paths = {};
 			GetGame().GetBackendApi().GetAvailableConfigPaths(paths);
@@ -252,25 +249,24 @@ class ServerHostingUI : SCR_TabDialog
 			GetGame().GetBackendApi().GetAvailableConfigs(configs);
 			string name = m_sFileName;
 
-			for (int i = 0, count = configs.Count(); i < count; i++)
+			foreach (int i, string config : configs)
 			{
-				if (name + JSON_POSTFIX == configs[i])
-				{
-					string color = string.Format(COLOR_TAG, UIColors.SRGBAFloatToInt(SERVER_CONFIG_NAME_COLOR));
-					string msg = WidgetManager.Translate(DIALOG_SAVED, paths[i], color, COLOR_TAG_END);
+				if (name + JSON_POSTFIX != config)
+					continue;
+				
+				string color = string.Format(COLOR_TAG, UIColors.FormatColor(UIColors.CONTRAST_COLOR));
+				string msg = WidgetManager.Translate(DIALOG_SAVED, paths[i], color, COLOR_TAG_END);
 
-					if (dialog)
-						dialog.SetMessage(msg);
+				if (dialog)
+					dialog.SetMessage(msg);
 
-					break;
-				}
+				break;
 			}
 
 		}
 		else
 		{
-			// Show fail dialog
-			SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_ConfigList.GetDialogs(), DIALOG_TAG_SAVE_FAIL);
+			SCR_ServerHostingDialogs.CreateSaveFailedDialog();
 		}
 	}
 
@@ -297,7 +293,7 @@ class ServerHostingUI : SCR_TabDialog
 		WorkshopItem scenarioMod = m_ConfigList.GetScenarioOwnerMod();
 
 		m_DSConfig.StoreFullJson(properties, mods, scenarioMod);
-		m_TemporaryConfig = m_DSConfig;
+		s_TemporaryConfig = m_DSConfig;
 
 		Close();
 
@@ -318,6 +314,13 @@ class ServerHostingUI : SCR_TabDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnScenarioSelected(MissionWorkshopItem scenario)
+	{
+		if (m_ConfigMods)
+			m_ConfigMods.SetScenario(scenario);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// API
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
@@ -331,8 +334,18 @@ class ServerHostingUI : SCR_TabDialog
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Select scenario in scenario selection dropdown
+	void SelectDefaultScenario()
+	{
+		if (!m_ConfigList)
+			return;
+
+		m_ConfigList.SelectDefaultScenario();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static SCR_DSConfig GetTemporaryConfig()
 	{
-		return m_TemporaryConfig;
+		return s_TemporaryConfig;
 	}
 }

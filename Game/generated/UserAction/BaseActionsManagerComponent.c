@@ -40,6 +40,10 @@ class BaseActionsManagerComponent: GameComponent
 	\return Returns true when active, false otherwise.
 	*/
 	proto external bool IsEnabled();
+	//! Add a script function of type 'UserActionEventListener' which will receive EUserActionEvent events.
+	proto bool AddUserActionEventListener(ScriptedUserAction action, UserActionEventListener listener);
+	//! Remove the listener added using AddUserActionEventListener(ScriptedUserAction, UserActionEventListener).
+	proto void RemoveUserActionEventListener(ScriptedUserAction action, UserActionEventListener listener);
 
 	// callbacks
 

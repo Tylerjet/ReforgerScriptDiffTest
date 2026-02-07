@@ -40,7 +40,7 @@ class SCR_NightModeGameModeComponent : SCR_BaseGameModeComponent
 	protected BaseWorld m_World;
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherManager;
 	protected SCR_EditorManagerEntity m_EditorManager;
-	protected WeatherStateTransitionManager m_WeatherStateTransitionManager;
+	protected BaseWeatherStateTransitionManager m_WeatherStateTransitionManager;
 	
 	//~ Script Invokers
 	protected ref ScriptInvokerBool m_OnLocalEditorNightModeEnabledChanged;

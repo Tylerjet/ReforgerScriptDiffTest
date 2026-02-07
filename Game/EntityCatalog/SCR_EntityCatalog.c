@@ -186,6 +186,9 @@ class SCR_EntityCatalog
 	[Attribute(desc: "List of all entities of the given type (Note that this list can still be used if using the 'SCR_EntityCatalogMultiList' Class. All entries in the multi lists will be merged into this one on init including the entries already in it)")]
 	protected ref array<ref SCR_EntityCatalogEntry> m_aEntityEntryList;
 	
+	//~ A map of all prefabs with the linked index for quicker getting the prefab data
+	protected ref map<ResourceName, int> m_mPrefabIndexes = new map<ResourceName, int>();
+	
 	//======================================== TYPE ========================================\\
 	/*!
 	Get Data type
@@ -227,16 +230,18 @@ class SCR_EntityCatalog
 	*/
 	SCR_EntityCatalogEntry GetEntryWithPrefab(ResourceName prefabToFind)
 	{
-		if (SCR_StringHelper.IsEmptyOrWhiteSpace(prefabToFind))
+		int index;
+		
+		//~ Entry not found
+		if (!m_mPrefabIndexes.Find(prefabToFind, index))
 			return null;
 		
-		foreach (SCR_EntityCatalogEntry entityEntry: m_aEntityEntryList)
-		{
-			if (entityEntry.GetPrefab() == prefabToFind)
-				return entityEntry;
-		}
+		//~ Somehow an invalid index
+		if (!m_aEntityEntryList.IsIndexValid(index))
+			return null;
 		
-		return null;
+		//~ Return entry
+		return m_aEntityEntryList[index];
 	}
 	
 		
@@ -566,10 +571,29 @@ class SCR_EntityCatalog
 		{
 			m_aEntityEntryList.Insert(entry);
 		}
+		
+		//~ Merge multi lists
+		SCR_EntityCatalogMultiList multiListClass = SCR_EntityCatalogMultiList.Cast(catalogToMerge);
+		if (multiListClass)
+		{
+			array <SCR_EntityCatalogMultiListEntry> multiLists = {};
+			multiListClass.GetMultiList(multiLists);
+			
+			foreach (SCR_EntityCatalogMultiListEntry multiList : multiLists)
+			{
+				foreach (SCR_EntityCatalogEntry entry : multiList.m_aEntities)
+				{
+					m_aEntityEntryList.Insert(entry);
+				}
+			}
+		}
+		
+		catalogToMerge.ClearCatalogOnMerge();
 	}
 	
+	//---- REFACTOR NOTE START: Has a call later as it needs to initialize all other lists need to be initialized before the post init should be called ----
 	//======================================== INIT ========================================\\
-	protected void InitCatalog()
+	void InitCatalog()
 	{		
 		//~ Init data for entries		
 		for (int i = m_aEntityEntryList.Count() - 1; i >= 0; i--)
@@ -583,15 +607,31 @@ class SCR_EntityCatalog
 			
 			//~ Call init
 			m_aEntityEntryList[i].InitEntry(this, i);
+			
+			//~ Add to quick access map after if it is enabled to allow the system to quickly obtain the index of a prefab within the catalog
+			m_mPrefabIndexes.Insert(m_aEntityEntryList[i].GetPrefab(), i);
 		}
+		
+		//~ Call post init one frame later for all entries to allow all Catalogs to be initialized before the post init is called on entries
+		GetGame().GetCallqueue().CallLater(PostInitCatalog);
 	}
 	
-	void SCR_EntityCatalog()
-	{		
-		if (SCR_Global.IsEditMode()) 
-			return;
-		
-		InitCatalog();
+	//------------------------------------------------------------------------------------------------
+	protected void PostInitCatalog()
+	{	
+		//~ Post Init data for entries	
+		foreach (SCR_EntityCatalogEntry entry : m_aEntityEntryList)
+		{
+			entry.PostInitEntry(this);
+		}
+	}
+	//---- REFACTOR NOTE END ----
+	
+	//------------------------------------------------------------------------------------------------
+	//! Clear the catalog only executed on merge
+	void ClearCatalogOnMerge()
+	{
+		m_aEntityEntryList.Clear();
 	}
 };
 

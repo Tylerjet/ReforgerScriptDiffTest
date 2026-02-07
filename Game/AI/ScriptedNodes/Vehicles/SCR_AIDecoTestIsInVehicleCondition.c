@@ -3,7 +3,7 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 	// this tests SCR_BoardingWaypoint waypoint completion condition: either characters are in vehicles or group usable vehicles are fully occupied
 	protected override bool TestFunction(AIAgent agent, IEntity controlled)
 	{
-		SCR_AIBoardingWaypointParameters allowance = new SCR_AIBoardingWaypointParameters();
+		SCR_AIBoardingParameters allowance = new SCR_AIBoardingParameters();
 		EAIWaypointCompletionType completionType;
 		AIWaypoint wp = AIWaypoint.Cast(controlled);
 		if (!wp)
@@ -92,7 +92,7 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 	}
 	
 	// returns true if there is compartment of required type that is yet unoccupied
-	bool VehicleHasEmptyCompartments(notnull IEntity vehicle, SCR_AIBoardingWaypointParameters allowedCompartmentTypes) 
+	bool VehicleHasEmptyCompartments(notnull IEntity vehicle, SCR_AIBoardingParameters allowedCompartmentTypes) 
 	{
 		BaseCompartmentManagerComponent compComp = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
 		if (!compComp)
@@ -104,15 +104,15 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 		foreach (BaseCompartmentSlot slot : compartmentSlots)
 		{
 			if (allowedCompartmentTypes.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot))
-				compartmentType = ECompartmentType.Pilot;
+				compartmentType = ECompartmentType.PILOT;
 			else if (allowedCompartmentTypes.m_bIsGunnerAllowed && TurretCompartmentSlot.Cast(slot))
-				compartmentType = ECompartmentType.Turret;
+				compartmentType = ECompartmentType.TURRET;
 			else if (allowedCompartmentTypes.m_bIsCargoAllowed && CargoCompartmentSlot.Cast(slot))
-				compartmentType = ECompartmentType.Cargo;
+				compartmentType = ECompartmentType.CARGO;
 			else 
 				continue;
 			
-			if (!slot.AttachedOccupant())
+			if (!slot.IsOccupied())
 			{
 				// PrintFormat("Found empty compartment %1 of type %2", slot, compartmentType);
 				return true;

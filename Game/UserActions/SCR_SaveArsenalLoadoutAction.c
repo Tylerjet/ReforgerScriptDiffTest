@@ -10,6 +10,8 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 	protected SCR_ArsenalComponent m_ArsenalComponent;
 	protected SCR_ArsenalManagerComponent m_ArsenalManager;
 	
+	protected const LocalizedString SPECIFIC_FACTION_CANNOT_PERFORM = "#AR-ArsenalSaveType_FACTION_ITEMS_ONLY_CannotPerformAction";
+	
 	//------------------------------------------------------------------------------------------------
 	override protected bool CanBeShownScript(IEntity user)
 	{
@@ -24,7 +26,7 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 			return false;
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
-		SCR_ArsenalManagerComponent arsenalManager;
+
 		return (!playerController || !playerController.IsPossessing());
 	}
 	
@@ -40,6 +42,22 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 		{
 			m_sSaveTypeDisplayName = string.Empty;
 			return false;
+		}
+		
+		if (m_ArsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY)
+		{
+			Faction arsenalFaction = m_ArsenalComponent.GetAssignedFaction();
+			
+			if (arsenalFaction)
+			{
+				FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
+				if (factionAffiliation && factionAffiliation.GetAffiliatedFaction() != arsenalFaction)
+				{
+					m_sSaveTypeDisplayName = string.Empty;
+					SetCannotPerformReason(WidgetManager.Translate(SPECIFIC_FACTION_CANNOT_PERFORM, arsenalFaction.GetFactionName()));
+					return false;
+				}
+			}
 		}
 		
 		return true;
@@ -120,14 +138,13 @@ class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 		
 		if (arsenalSaveType == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY)
 		{
-			FactionAffiliationComponent userFactionAffiliation = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
-			if (!userFactionAffiliation)
+			if (!m_ArsenalComponent)
 			{
 				m_sSaveTypeDisplayName = string.Empty;
 				return;
 			}
-				
-			Faction faction = userFactionAffiliation.GetAffiliatedFaction();
+			
+			Faction faction = m_ArsenalComponent.GetAssignedFaction();
 			if (!faction)
 			{
 				m_sSaveTypeDisplayName = string.Empty;

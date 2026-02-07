@@ -23,6 +23,8 @@ class SCR_TaskTextBaseEditorAttribute: SCR_BaseEditorAttribute
 		SCR_EditableTaskComponent task = SCR_EditableTaskComponent.Cast(item);
 		task.SetTextIndex(var.GetInt());
 	}
+
+	//------------------------------------------------------------------------------------------------
 	override int GetEntries(notnull array<ref SCR_BaseEditorAttributeEntry> outEntries)
 	{
 		//~ First entry is always the param used in the UI
@@ -34,9 +36,10 @@ class SCR_TaskTextBaseEditorAttribute: SCR_BaseEditorAttribute
 		
 		array<ref SCR_UIDescription> infos = {};
 		int count = textsComponent.GetTexts(m_TextType, infos);
-		string text;
 		for (int i; i < count; i++)
+		{
 			outEntries.Insert( new SCR_BaseEditorAttributeEntryText(infos[i].GetName()));
+		}
 	
 		return outEntries.Count();
 	}
@@ -45,4 +48,4 @@ class SCR_TaskTextBaseEditorAttribute: SCR_BaseEditorAttribute
 	{
 		return taskType == m_TextType;
 	}
-};
+}

@@ -2,50 +2,101 @@
 Component of a gallery in addon details menu.
 */
 
-class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
+class SCR_ContentBrowserDetails_GalleryComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute("", UIWidgets.Auto, "Names of tile widgets")]
 	protected ref array<string> m_aTileWidgetNames;
-	
-	[Attribute("", UIWidgets.Auto, "See LoadImageTexture documentation")]
-	protected bool m_bFromLocalStorage;
-	
+
 	// Array with image preview widgets
 	protected ref array<Widget> m_aTiles = {};
 	protected ref array<SCR_BackendImageComponent> m_aTileComponents = {};
-	protected ref array<ref BackendImage> m_aImages = {};
+	protected ref array<BackendImage> m_aImages = {};
+	protected SCR_ContentBrowser_GalleryDialog m_GalleryDialog;
 	
-	protected ref SCR_ContentBrowser_GalleryWidgets m_Widgets = new SCR_ContentBrowser_GalleryWidgets;
+	protected ref SCR_ContentBrowser_GalleryWidgets m_Widgets = new SCR_ContentBrowser_GalleryWidgets();
 	
-	protected int m_iCurrentItem = 0;
+	protected int m_iCurrentItem;
+	protected int m_iSelectedItem;
 	
+	protected const int UPDATE_DELAY = 250;
 	
-	// -------------------- Public ----------------------
+	//------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		m_Widgets.Init(w);
+
+		// Find image gallery widgets
+		foreach (string widgetName : m_aTileWidgetNames)
+		{
+			Widget wImageTile = w.FindAnyWidget(widgetName);
+			if (!wImageTile)
+				continue;
+			
+			m_aTiles.Insert(wImageTile);
+			
+			SCR_ModularButtonComponent comp = SCR_ModularButtonComponent.FindComponent(wImageTile);
+			comp.m_OnClicked.Insert(OnTileClick);
+
+			SCR_BackendImageComponent backendImgComp = SCR_BackendImageComponent.Cast(wImageTile.FindHandler(SCR_BackendImageComponent));
+			m_aTileComponents.Insert(backendImgComp);
+		}
+
+		if (!SCR_Global.IsEditMode())
+		{
+			m_Widgets.m_SpinBoxComponent.ClearAll();
+			
+			GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnNextAction);
+			GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnPrevAction);
+		}
+		
+		m_Widgets.m_NextButtonComponent.m_OnClicked.Insert(OnNextButton);
+		m_Widgets.m_PrevButtonComponent.m_OnClicked.Insert(OnPrevButton);
+		
+		m_Widgets.m_SpinBoxComponent.SetCurrentItem(0);
+		
+		UpdateAllWidgets();
+		
+		GetGame().GetCallqueue().CallLater(Update, UPDATE_DELAY, true);
+	}
 	
+	//------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		if (!SCR_Global.IsEditMode())
+		{
+			GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnNextAction);
+			GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnPrevAction);
+		}
+		
+		GetGame().GetCallqueue().Remove(Update);
+	}
+	
+	// --- Public ---
 	//------------------------------------------------------------------------------------------
 	void SetImages(array<BackendImage> images)
 	{
+		m_Widgets.m_SpinBoxComponent.ClearAll();
 		m_aImages.Clear();
+		m_aImages = images;
 		
-		int total = images.Count();
-		foreach (int i, BackendImage img : images)
+		int total = m_aImages.Count();
+		foreach (int i, BackendImage img : m_aImages)
 		{
-			m_aImages.Insert(img);
 			m_Widgets.m_SpinBoxComponent.AddItem(string.Empty, i == total - 1);
 		}
 			
 		UpdateAllWidgets();
+		
+		if (m_GalleryDialog)
+			m_GalleryDialog.SetImages(m_aImages, m_iSelectedItem);
 	}
 	
-	
-	// ----------- Protected -----------
-	
+	// --- Protected ---
+	//------------------------------------------------------------------------------------------
 	protected void Update()
 	{
 		// Update current highlighted dot
-		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
-		
-		int tileId = m_aTiles.Find(focusedWidget);
+		int tileId = m_aTiles.Find(GetGame().GetWorkspace().GetFocusedWidget());
 		if (tileId != -1)
 		{
 			int spinBoxItemId = m_iCurrentItem + tileId;
@@ -59,10 +110,9 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 			if (m_Widgets.m_SpinBoxComponent.GetCurrentIndex() != spinBoxItemId)
 				m_Widgets.m_SpinBoxComponent.SetCurrentItem(spinBoxItemId);
 		}
-		
-		GetGame().GetCallqueue().CallLater(Update, 10);
 	}
 	
+	//------------------------------------------------------------------------------------------
 	protected void UpdateAllWidgets()
 	{
 		UpdateTiles();
@@ -75,12 +125,12 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 	//! Updates images on tiles according to currently selected item
 	protected void UpdateTiles()
 	{
-		int nTiles = m_aTiles.Count();
+		int iImage;
 		int nImages = m_aImages.Count();
 		
-		for (int iTile = 0; iTile < nTiles; iTile++)
+		foreach (int iTile, Widget tile : m_aTiles)
 		{
-			int iImage = m_iCurrentItem + iTile;
+			iImage = m_iCurrentItem + iTile;
 			
 			if (iImage < nImages && iImage >= 0)
 				ShowImageOnTile(iTile, m_aImages[iImage]);
@@ -89,7 +139,6 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 		}
 	}
 	
-	
 	//------------------------------------------------------------------------------------------
 	//! Shows image on one of preview image boxes
 	//! Preview image box is of this layout:
@@ -97,10 +146,8 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 	protected void ShowImageOnTile(int id, BackendImage backendImage)
 	{
 		SCR_BackendImageComponent comp = m_aTileComponents[id];
-		
 		if (!comp)
 			return;
-		
 		
 		Widget tile = m_aTiles[id];
 		ImageWidget wImage = ImageWidget.Cast(tile.FindAnyWidget("Image"));
@@ -124,7 +171,6 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 		UpdateAllWidgets();
 	}
 	
-	
 	//------------------------------------------------------------------------------------------
 	//! Called when a tile is clicked
 	protected void OnTileClick(SCR_ModularButtonComponent comp)
@@ -135,53 +181,31 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 		
 		// Find what image was selected in this tile
 		int tileId = m_aTiles.Find(comp.GetRootWidget());
-		
 		if (tileId == -1)
 			return;
 		
-		int imageId = m_iCurrentItem + tileId;
-		
-		// Correct the image ID if a tile without an image was selected
-		imageId = Math.Clamp(imageId, 0, m_aImages.Count() - 1);
-		
-		array<BackendImage> galleryDialogImages = {};
-		foreach (auto img : m_aImages)
-			galleryDialogImages.Insert(img);
-		
-		SCR_ContentBrowser_GalleryDialog.CreateForImages(galleryDialogImages, imageId);
+		m_iSelectedItem = Math.Clamp(m_iCurrentItem + tileId, 0, m_aImages.Count() - 1);
+		m_GalleryDialog = SCR_ContentBrowser_GalleryDialog.CreateForImages(m_aImages, m_iSelectedItem);
 	}
-	
-	
-	
-	
-	
-	
-	// Action listeners. They are invoked by right/left keys.
 	
 	//------------------------------------------------------------------------------------------
 	protected void OnNextAction()
 	{
 		if (GetGame().GetWorkspace().GetFocusedWidget() != m_aTiles[m_aTiles.Count()-1])
 			return;
+		
 		OffsetCurrentItem(1);		
 	}
-	
-	
+
 	//------------------------------------------------------------------------------------------
 	protected void OnPrevAction()
 	{
 		if (GetGame().GetWorkspace().GetFocusedWidget() != m_aTiles[0])
 			return;
+		
 		OffsetCurrentItem(-1);		
 	}
-	
-	
-	
-	
-	
-	
-	// Event handlers for left/right buttons
-	
+
 	//------------------------------------------------------------------------------------------
 	protected void OnNextButton()
 	{
@@ -196,18 +220,19 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 		GetGame().GetWorkspace().SetFocusedWidget(m_aTiles[0]);
 	}
 	
-	
-	
-	
-	
 	//------------------------------------------------------------------------------------------
 	override bool OnUpdate(Widget w)
 	{
-		if (!SCR_Global.IsEditMode())
-			GetGame().GetCallqueue().CallLater(UpdateSize, 0);
-		return true;
+		if (SCR_Global.IsEditMode())
+			return super.OnUpdate(w);
+		
+		if (w != m_wRoot)
+			return false;
+		
+		GetGame().GetCallqueue().Call(UpdateSize);
+		
+		return super.OnUpdate(w);
 	}
-	
 	
 	//------------------------------------------------------------------------------------------
 	protected void UpdateSize()
@@ -222,61 +247,4 @@ class SCR_ContentBrowserDetails_GalleryComponent : ScriptedWidgetComponent
 		m_Widgets.m_ImagesHeightSize.EnableHeightOverride(true);
 		m_Widgets.m_ImagesHeightSize.SetHeightOverride(sizexUnscaled / SCR_WorkshopUiCommon.IMAGE_SIZE_RATIO);
 	}
-	
-	
-	//------------------------------------------------------------------------------------------
-	override void HandlerAttached(Widget w)
-	{
-		m_Widgets.Init(w);
-	
-		
-		// Find image gallery widgets
-		foreach (string widgetName : m_aTileWidgetNames)
-		{
-			Widget wImageTile = w.FindAnyWidget(widgetName);
-			m_aTiles.Insert(wImageTile);
-			
-			SCR_ModularButtonComponent comp = SCR_ModularButtonComponent.Cast(wImageTile.FindHandler(SCR_ModularButtonComponent));
-			comp.m_OnClicked.Insert(OnTileClick);
-			
-			if (wImageTile)
-			{
-				SCR_BackendImageComponent backendImgComp = SCR_BackendImageComponent.Cast(wImageTile.FindHandler(SCR_BackendImageComponent));
-				m_aTileComponents.Insert(backendImgComp);
-			}
-		}
-		
-		// Reset the state of dots
-		if (!SCR_Global.IsEditMode())
-			m_Widgets.m_SpinBoxComponent.ClearAll();
-		
-		// Listen to inputs
-		if (!SCR_Global.IsEditMode())
-		{
-			GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnNextAction);
-			GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnPrevAction);
-		}
-		
-		m_Widgets.m_NextButtonComponent.m_OnClicked.Insert(OnNextButton);
-		m_Widgets.m_PrevButtonComponent.m_OnClicked.Insert(OnPrevButton);
-		
-		m_Widgets.m_SpinBoxComponent.SetCurrentItem(0);
-		
-		UpdateAllWidgets();
-		
-		GetGame().GetCallqueue().CallLater(Update, 50);
-	}
-	
-	
-	//------------------------------------------------------------------------------------------
-	override void HandlerDeattached(Widget w)
-	{
-		if (!SCR_Global.IsEditMode())
-		{
-			GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnNextAction);
-			GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnPrevAction);
-		}
-		
-		GetGame().GetCallqueue().Remove(Update);
-	}
-};
+}

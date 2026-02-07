@@ -69,7 +69,11 @@ class SCR_AttachementAction : SCR_InventoryAction
 	//------------------------------------------------------------------------------------------------
 	override protected void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(attachment);
+		BaseInventoryStorageComponent storage = m_InventoryManager.FindStorageForItem(attachment, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
+		
+		if (!storage)
+			storage = m_InventoryManager.FindStorageForItem(attachment);
+		
 		manager.TryMoveItemToStorage(attachment, storage);
 		manager.PlayItemSound(pOwnerEntity, "SOUND_UNEQUIP");
 	}

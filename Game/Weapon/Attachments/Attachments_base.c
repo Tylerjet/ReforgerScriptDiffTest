@@ -59,3 +59,11 @@ AttachmentStockClass AttachmentStockSource;
 class AttachmentStock : BaseAttachmentType
 {
 };
+
+// Bayonet lug
+class AttachmentBayonetClass {}
+AttachmentBayonetClass AttachmentBayonetSource;
+
+class AttachmentBayonet : BaseAttachmentType
+{
+};

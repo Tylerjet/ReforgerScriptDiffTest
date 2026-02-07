@@ -93,6 +93,14 @@ class SCR_HintSettings : ModuleGameSettings
 	{
 		return m_bHintsEnabled;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetHintsEnabled(bool enabled)
+	{
+		m_bHintsEnabled = enabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check how many times has specific hint been shown previously.
 	\param type Hint type

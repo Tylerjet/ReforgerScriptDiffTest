@@ -212,7 +212,7 @@ class SCR_AirstrikePrototype: GenericEntity
 		if(!rocket)
 			return;
 		
-		BaseMoveComponent moveComp = BaseMoveComponent.Cast(rocket.FindComponent(BaseMoveComponent));
+		ProjectileMoveComponent moveComp = ProjectileMoveComponent.Cast(rocket.FindComponent(ProjectileMoveComponent));
 
 		if(!moveComp)
 			return;

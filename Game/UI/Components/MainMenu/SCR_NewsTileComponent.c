@@ -77,7 +77,6 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		super.OnFocus(w, x, y);
 		if (m_wFooter)
 		{
 			m_wFooter.SetEnabled(true);
@@ -87,19 +86,19 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 		SetRead();
 
 		m_OnFocused.Invoke(this);
-		return false;
+		return super.OnFocus(w, x, y);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
-		super.OnFocusLost(w, x, y);
-		if (!m_wFooter)
-			return false;
-
-		AnimateWidget.Opacity(m_wFooter, 0, m_fAnimationRate);
-		m_wFooter.SetEnabled(false);
-		return false;
+		if (m_wFooter)
+		{
+			AnimateWidget.Opacity(m_wFooter, 0, m_fAnimationRate);
+			m_wFooter.SetEnabled(false);
+		}
+		
+		return super.OnFocusLost(w, x, y);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -111,7 +110,7 @@ class SCR_NewsTileComponent : SCR_TileBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateConnectionButtons()
 	{
-		SCR_InputButtonComponent.ForceConnectionButtonEnabled(m_Read, SCR_ServicesStatusHelper.IsBackendConnectionAvailable());
+		SCR_ConnectionUICommon.ForceConnectionButtonEnabled(m_Read, SCR_ServicesStatusHelper.IsBackendConnectionAvailable());
 	}
 	
 	//------------------------------------------------------------------------------------------------

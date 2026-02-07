@@ -14,13 +14,13 @@ class SCR_ServerConfigAdvancedComponent : SCR_ConfigListComponent
 	protected bool m_bWasPortEdited = false;
 	
 	// Invokers
-	protected ref ScriptInvoker<string> m_OnPortChanged;
+	protected ref ScriptInvokerString m_OnPortChanged;
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnPortChanged()
+	ScriptInvokerString GetOnPortChanged()
 	{
 		if (!m_OnPortChanged)
-			m_OnPortChanged = new ScriptInvoker();
+			m_OnPortChanged = new ScriptInvokerString();
 
 		return m_OnPortChanged;
 	}

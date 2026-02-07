@@ -41,6 +41,8 @@ class UserActionContext: ScriptAndConfig
 	proto external bool IsCapsule();
 	//! Returns the context position in world space.
 	proto external vector GetOrigin();
+	//! Returns true if visibility depends on line-of-sight, false otherwise.
+	proto external bool ShouldCheckLineOfSight();
 	/*!
 	Returns true if this context is in visibility angle for the provided position.
 	Does not perform any distance checks!

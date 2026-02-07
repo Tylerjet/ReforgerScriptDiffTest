@@ -51,6 +51,9 @@ sealed class GameStateTransitions
 	static proto void RequestGameplayEndTransition(KickCauseCode code = KickCauseCode.NONE);
 	//! Request graceful shut down of the game from whatever is current game state (eg. online vs. offline).
 	static proto void RequestGameTerminateTransition();
+	static proto bool RequestStartEditorTransition(string resourceStr, string addonList, bool createSubScene = false);
+	//! Return true if in main menu is loaded for the first time
+	static proto bool IsInsideMainMenu();
 	//! Return true if in main menu is loaded for the first time
 	static proto bool IsFirstMainMenu();
 }

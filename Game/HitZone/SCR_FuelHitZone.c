@@ -6,6 +6,9 @@ class SCR_FuelHitZone : SCR_DestructibleHitzone
 	[Attribute(EVehicleHitZoneGroup.FUEL_TANKS.ToString(), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EVehicleHitZoneGroup))]
 	protected EVehicleHitZoneGroup m_eHitZoneGroup;
 
+	[Attribute("0.5", desc: "Minimum factor for determining explosion scale from fuel amount", category: "Fuel Damage Config")]
+	protected float m_fMinExplosionScaleFactor;
+
 	protected SCR_FuelNode m_FuelTank;
 
 	//------------------------------------------------------------------------------------------------
@@ -72,9 +75,9 @@ class SCR_FuelHitZone : SCR_DestructibleHitzone
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		UpdateFuelTankState();
 	}
@@ -85,10 +88,12 @@ class SCR_FuelHitZone : SCR_DestructibleHitzone
 	{
 		// Truck addon fuel cargo that does not have its own health
 		float damage;
-		if (GetBaseDamageMultiplier() == 0 && GetHitZoneContainer().GetDefaultHitZone() == this)
+		if (m_RootDamageManager && m_RootDamageManager.GetDefaultHitZone().GetDamageState() == EDamageState.DESTROYED)
+			damage = 1;
+		else if (GetBaseDamageMultiplier() == 0 && GetHitZoneContainer().GetDefaultHitZone() == this)
 			damage = 1;
 		else
-		 	damage = 1 - GetDamageStateThreshold(GetDamageState());
+		 	damage = Math.Lerp(m_fMinExplosionScaleFactor, 1, 1 - GetDamageStateThreshold(GetDamageState()));
 
 		// TODO: Curve based on fuel to air ratio
 		return m_FuelTank.GetFuel() * damage;

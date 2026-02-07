@@ -16,10 +16,7 @@ class LocParserManager
 	protected ResourceName m_sFile;
 	protected string m_sFileName, m_sFileExt, m_sFileLink, m_sContainerName, m_sContainerPath;
 	protected bool m_bLogOnly;
-	protected BaseContainer m_StringTable;
-	protected ref map<string, string> m_IDs = new map<string, string>();
-	protected LocalizationEditor m_LocEditor;
-	protected WorldEditorAPI m_API;
+	protected ref map<string, string> m_mIDs = new map<string, string>();
 	protected ref array<BaseContainer> m_aRuleSources = {};
 	protected int m_iCurrentRule;
 
@@ -38,33 +35,42 @@ class LocParserManager
 
 		//--- Check if the item already exist
 		string existingText;
-		bool exists = m_IDs.Find(id, existingText);
+		bool exists = m_mIDs.Find(id, existingText);
+
+		LocalizationEditor stringEditor = Workbench.GetModule(LocalizationEditor);
+		BaseContainer stringTable = stringEditor.GetTable();
+		if (!stringTable)
+		{
+			Print(string.Format("Unable to open string table '%1'!", m_StringTablePath.GetPath()), LogLevel.WARNING);
+			return null;
+		}
 
 		BaseContainer item;
 		if (!m_bLogOnly && !exists)
 		{
 			//--- Create item
-			int index = m_IDs.Count();
-			if (!m_API.CreateObjectArrayVariableMember(m_StringTable, null, "Items", "CustomStringTableItem", index))
+			int index = m_mIDs.Count();
+			WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+			if (!worldEditorAPI.CreateObjectArrayVariableMember(stringTable, null, "Items", "CustomStringTableItem", index))
 				return null;
 
 			//--- Retrieve the item
-			BaseContainerList items = m_StringTable.GetObjectArray("Items");
+			BaseContainerList items = stringTable.GetObjectArray("Items");
 			item = items.Get(index);
 
 			//--- Apply template
-			UpdateFromTemplate(item);
+			UpdateFromTemplate(stringEditor, item);
 
 			//--- Save mandatory information
 			string userName;
 			Workbench.GetUserName(userName);
 
-			m_LocEditor.ModifyProperty(item, item.GetVarIndex("Id"), id);
-			m_LocEditor.ModifyProperty(item, item.GetVarIndex("Target_en_us"), text);
-			m_LocEditor.ModifyProperty(item, item.GetVarIndex("SourceFile"), m_sFile);
-			m_LocEditor.ModifyProperty(item, item.GetVarIndex("Modified"), Workbench.GetPackedUtcTime().ToString());
-			m_LocEditor.ModifyProperty(item, item.GetVarIndex("Author"), userName);
-			m_LocEditor.ModifyProperty(item, item.GetVarIndex("LastChanged"), userName);
+			stringEditor.ModifyProperty(item, item.GetVarIndex("Id"), id);
+			stringEditor.ModifyProperty(item, item.GetVarIndex("Target_en_us"), text);
+			stringEditor.ModifyProperty(item, item.GetVarIndex("SourceFile"), m_sFile);
+			stringEditor.ModifyProperty(item, item.GetVarIndex("Modified"), Workbench.GetPackedUtcTime().ToString());
+			stringEditor.ModifyProperty(item, item.GetVarIndex("Author"), userName);
+			stringEditor.ModifyProperty(item, item.GetVarIndex("LastChanged"), userName);
 		}
 
 		//--- Log results
@@ -84,7 +90,7 @@ class LocParserManager
 		else
 		{
 			Print(string.Format("%1%2 = \"%3\"\n ", LOCALIZED_PREFIX, id, text), LogLevel.NORMAL);
-			m_IDs.Set(id, text);
+			m_mIDs.Set(id, text);
 		}
 
 		return item;
@@ -92,8 +98,9 @@ class LocParserManager
 
 	//------------------------------------------------------------------------------------------------
 	//!
+	//! \param[in] stringEditor
 	//! \param[in] item
-	protected void UpdateFromTemplate(BaseContainer item)
+	protected void UpdateFromTemplate(notnull LocalizationEditor stringEditor, notnull BaseContainer item)
 	{
 		BaseContainer itemTemplate = m_aRuleSources[m_iCurrentRule];
 		if (!itemTemplate)
@@ -112,21 +119,21 @@ class LocParserManager
 				{
 					string value;
 					itemTemplate.Get(varName, value);
-					m_LocEditor.ModifyProperty(item, v, value);
+					stringEditor.ModifyProperty(item, v, value);
 					break;
 				}
 				case DataVarType.INTEGER:
 				{
 					int value;
 					itemTemplate.Get(varName, value);
-					m_LocEditor.ModifyProperty(item, v, value.ToString());
+					stringEditor.ModifyProperty(item, v, value.ToString());
 					break;
 				}
 				case DataVarType.BOOLEAN:
 				{
 					bool value;
 					itemTemplate.Get(varName, value);
-					m_LocEditor.ModifyProperty(item, v, value.ToString());
+					stringEditor.ModifyProperty(item, v, value.ToString());
 					break;
 				}
 				case DataVarType.STRING_ARRAY:
@@ -136,10 +143,13 @@ class LocParserManager
 					string valueOutput;
 					foreach (int i, string entry : valueInput)
 					{
-						if (i > 0) valueOutput += ",";
+						if (i > 0)
+							valueOutput += ",";
+
 						valueOutput += string.ToString(entry);
 					}
-					m_LocEditor.ModifyProperty(item, v, valueOutput);
+
+					stringEditor.ModifyProperty(item, v, valueOutput);
 					break;
 				}
 				case DataVarType.INTEGER_ARRAY:
@@ -149,10 +159,13 @@ class LocParserManager
 					string valueOutput;
 					foreach (int i, int entry : valueInput)
 					{
-						if (i > 0) valueOutput += ",";
+						if (i > 0)
+							valueOutput += ",";
+
 						valueOutput += entry.ToString();
 					}
-					m_LocEditor.ModifyProperty(item, v, valueOutput);
+
+					stringEditor.ModifyProperty(item, v, valueOutput);
 					break;
 				}
 				case DataVarType.BOOLEAN_ARRAY:
@@ -162,10 +175,12 @@ class LocParserManager
 					string valueOutput;
 					foreach (int i, bool entry : valueInput)
 					{
-						if (i > 0) valueOutput += ",";
+						if (i > 0)
+							valueOutput += ",";
+
 						valueOutput += entry.ToString();
 					}
-					m_LocEditor.ModifyProperty(item, v, valueOutput);
+					stringEditor.ModifyProperty(item, v, valueOutput);
 					break;
 				}
 				default:
@@ -196,16 +211,17 @@ class LocParserManager
 			else
 			{
 				containerName = container.GetName();
-				if (containerName.IsEmpty()) containerName = container.GetClassName();
+				if (containerName.IsEmpty())
+					containerName = container.GetClassName();
 			}
 			path += " > " + containerName;
 		}
 
-		array<BaseContainer> objectsCopy = new array<BaseContainer>;
+		array<BaseContainer> objectsCopy = {};
 		objectsCopy.Copy(objects);
 		objectsCopy.InsertAt(container, 0);
 
-		array<int> indexesCopy = new array<int>;
+		array<int> indexesCopy = {};
 		indexesCopy.Copy(indexes);
 		indexesCopy.InsertAt(index, 0);
 
@@ -248,7 +264,8 @@ class LocParserManager
 							m_iCurrentRule = r;
 							rule.Localize(m_sFileName, varName, objectsCopy, id, text);
 
-							if (!m_bLogOnly) container.Set(varName, LOCALIZED_PREFIX + id);
+							if (!m_bLogOnly)
+								container.Set(varName, LOCALIZED_PREFIX + id);
 						}
 						break;
 					}
@@ -316,17 +333,17 @@ class LocParserManager
 		if (!Workbench.OpenModule(LocalizationEditor))
 			return;
 
-		m_LocEditor = Workbench.GetModule(LocalizationEditor);
-		m_LocEditor.SetOpenedResource(m_StringTablePath);
-		m_StringTable = m_LocEditor.GetTable();
-		if (!m_StringTable)
+		LocalizationEditor stringEditor = Workbench.GetModule(LocalizationEditor);
+		stringEditor.SetOpenedResource(m_StringTablePath);
+		BaseContainer stringTable = stringEditor.GetTable();
+		if (!stringTable)
 		{
 			Print(string.Format("Unable to open string table '%1'!", m_StringTablePath.GetPath()), LogLevel.WARNING);
 			return;
 		}
 
 		//--- Get all items, so we can check if item exists
-		BaseContainerList items = m_StringTable.GetObjectArray("Items");
+		BaseContainerList items = stringTable.GetObjectArray("Items");
 		BaseContainer item;
 		string itemId, itemText;
 		int itemsCount = items.Count();
@@ -335,7 +352,7 @@ class LocParserManager
 			item = items.Get(i);
 			item.Get("Id", itemId);
 			item.Get("Target_en_us", itemText);
-			m_IDs.Insert(itemId, itemText);
+			m_mIDs.Insert(itemId, itemText);
 		}
 
 		if (!m_bLogOnly)
@@ -343,23 +360,19 @@ class LocParserManager
 			if (!Workbench.OpenModule(WorldEditor))
 				return;
 
-			WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
-			m_API = worldEditor.GetApi();
-			m_API.BeginEntityAction("Automatic localization");
-			m_LocEditor.BeginModify("Automatic localization");
+			stringEditor.BeginModify("Automatic localization");
 		}
-
 
 		//--- Initialize rules
 		BaseContainerList rulesSource = source.GetObjectArray("m_aRules"); //--- Save sources, because CustomStringTableItem objects cannot be created in script
 		foreach (int r, LocParserRule rule : m_aRules)
 		{
 			m_aRuleSources.Insert(rulesSource.Get(r).GetObject("m_ItemTemplate"));
-			rule.InitRule(this, m_LocEditor);
+			rule.InitRule(this);
 		}
 
 		//--- Get selected files
-		array<ResourceName> selection = new array<ResourceName>;
+		array<ResourceName> selection = {};
 		SCR_WorkbenchSearchResourcesCallbackArray context = new SCR_WorkbenchSearchResourcesCallbackArray(selection);
 		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
 		resourceManager.GetResourceBrowserSelection(context.Insert, true);
@@ -393,8 +406,8 @@ class LocParserManager
 			foundCountPrev = foundCount;
 			m_sFileName = FilePath.StripExtension(FilePath.StripPath(m_sFile), m_sFileExt);
 			m_sFileLink = string.Format("@\"%1\"", m_sFile.GetPath());
-			array<BaseContainer> objects = new array<BaseContainer>;
-			array<int> indexes = new array<int>;
+			array<BaseContainer> objects = {};
+			array<int> indexes = {};
 			ProcessContainer(container, foundCount, objects, indexes, m_sFileLink);
 
 			if (!m_bLogOnly && foundCount != foundCountPrev)
@@ -405,11 +418,10 @@ class LocParserManager
 
 		if (!m_bLogOnly)
 		{
-			m_API.EndEntityAction();
-			m_LocEditor.EndModify();
+			stringEditor.EndModify();
 			if (foundCount > 0)
 			{
-				m_LocEditor.Save();
+				stringEditor.Save();
 
 				//--- Show only newly added strings
 				array<int> newIds = {};
@@ -417,7 +429,7 @@ class LocParserManager
 				{
 					newIds.Insert(i);
 				}
-				m_LocEditor.AddUserFilter(newIds, "New strings");
+				stringEditor.AddUserFilter(newIds, "New strings");
 			}
 		}
 
@@ -426,6 +438,7 @@ class LocParserManager
 			LogLevel logLevel = LogLevel.DEBUG;
 			if (foundCount > 0)
 				logLevel = LogLevel.WARNING;
+
 			Print(string.Format("%1 file(s) processed, %2 unlocalized string(s) found\n               Logging only, no files were modified.", selectionCount, foundCount), logLevel);
 		}
 		else
@@ -433,9 +446,8 @@ class LocParserManager
 			Print(string.Format("%1 file(s) processed, %2 string(s) localized", selectionCount, foundCount), LogLevel.DEBUG);
 		}
 
-		m_IDs = null;
-		m_StringTable = null;
-		m_LocEditor = null;
+		m_mIDs = null;
+		stringEditor = null;
 	}
 
 	//------------------------------------------------------------------------------------------------

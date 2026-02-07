@@ -136,6 +136,10 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPoint);
 
 		SCR_BaseTaskManager.s_OnTaskUpdate.Insert(OnTaskAdded);
+		SCR_BaseTaskManager.s_OnTaskFailed.Insert(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskRemoved.Insert(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskDeleted.Insert(OnTaskRemoved);
+		SCR_BaseTaskManager.s_OnTaskFinished.Insert(OnTaskRemoved);
 
 		m_bIsDeployMap = (config.MapEntityMode == EMapEntityMode.SPAWNSCREEN);
 
@@ -329,6 +333,11 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		handler.SetParent(this);
 		handler.InitTask(task);
 		m_mIcons.Set(w, handler);
+		
+		SCR_MapDescriptorComponent mapDescriptor = SCR_MapDescriptorComponent.Cast(task.FindComponent(SCR_MapDescriptorComponent));
+		
+		if (mapDescriptor)
+			mapDescriptor.Item().SetVisible(true);
 
 		FrameSlot.SetSizeToContent(w, true);
 		FrameSlot.SetAlignment(w, 0.5, 0.5);
@@ -354,6 +363,14 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 
 		InitTaskIcon(task);
 		UpdateIcons();
+	}
+	
+	protected void OnTaskRemoved(SCR_BaseTask task)
+	{
+		MapDescriptorComponent mapDescriptor = MapDescriptorComponent.Cast(task.FindComponent(MapDescriptorComponent));
+		
+		if (mapDescriptor && mapDescriptor.Item())
+			mapDescriptor.Item().SetVisible(false);
 	}
 
 	protected void RemoveAllIcons()

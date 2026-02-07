@@ -289,7 +289,7 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 						ftsMain.Remove(ftsMain.Count()-1);
 						ftsAux.Insert(ftLock);
 					}
-					else if (m_Utility.m_FireteamMgr.FindFreeFireteams(newFireteams, 1))
+					else if (m_Utility.m_FireteamMgr.FindFreeFireteams(newFireteams, 1, SCR_AIGroupFireteam))
 					{
 						SCR_AIGroupFireteamLock.TryLockFireteams(newFireteams, ftsAux, true);
 					}
@@ -322,7 +322,7 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 					
 					ftsAux = {};
 				}
-				else if (m_Utility.m_FireteamMgr.FindFreeFireteams(newFireteams, 1))
+				else if (m_Utility.m_FireteamMgr.FindFreeFireteams(newFireteams, 1, SCR_AIGroupFireteam))
 				{
 					ftsMain = {};
 					SCR_AIGroupFireteamLock.TryLockFireteams(newFireteams, ftsMain, true);
@@ -393,7 +393,7 @@ class SCR_AIGroupTargetClusterProcessor : Managed
 		
 		// Allocate fireteams
 		array<SCR_AIGroupFireteam> freeFireteams = {};
-		m_Utility.m_FireteamMgr.GetFreeFireteams(freeFireteams);
+		m_Utility.m_FireteamMgr.GetFreeFireteams(freeFireteams, SCR_AIGroupFireteam);
 		while (nSoldiersAllocated < nEnemies && !freeFireteams.IsEmpty())
 		{
 			SCR_AIGroupFireteam newFireteam = freeFireteams[0];

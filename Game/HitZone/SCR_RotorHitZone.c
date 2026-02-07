@@ -48,45 +48,17 @@ class SCR_RotorHitZone : SCR_VehicleHitZone
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Calculates the amount of damage a hitzone will receive.
-	\param damageType - damage type
-	\param rawDamage - incoming damage, without any modifiers taken into account
-	\param hitEntity - damaged entity
-	\param struckHitZone - hitzone to damage
-	\param damageSource - projectile
-	\param damageSourceGunner - damage source instigator
-	\param damageSourceParent - damage source parent entity (soldier, vehicle)
-	\param hitMaterial - hit surface physics material
-	\param colliderID - collider ID - if it exists
-	\param hitTransform - hit position, direction and normal
-	\param impactVelocity - projectile velocity in time of impact
-	\param nodeID - bone index in mesh obj
-	\param isDOT - true if this is a calculation for DamageOverTime
-	*/
-	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
-	{
-		vector hitTransform[3] = {damageContext.hitPosition, damageContext.hitDirection, damageContext.hitNormal};		
-		
-		if (!isDOT && damageContext.damageType == EDamageType.KINETIC && m_RotorPointInfo && Math.RandomFloat01() > RotorHitChance(hitTransform))
-			return 0;
-
-		return super.ComputeEffectiveDamage(damageContext, isDOT);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Calculates the chance the rotor was hit by a bullet between 0 and 1
-	float RotorHitChance(vector hitTransform[3])
+	float RotorHitChance(vector worldPosition)
 	{
-		if (!m_Simulation || m_Simulation.RotorGetState(GetRotorIndex()) != RotorState.SPINNING)
-			return 1;
-
-		if (m_fBladeWidth <= 0 || m_iBladeCount < 1)
+		if (!m_RotorPointInfo || !m_Simulation || m_fBladeWidth <= 0 || m_iBladeCount < 1)
+		
+		if (m_Simulation.RotorGetState(GetRotorIndex()) != RotorState.SPINNING)
 			return 1;
 
 		vector transform[4];
 		m_RotorPointInfo.GetTransform(transform);
-		vector relativePosition = hitTransform[0].InvMultiply4(transform);
+		vector relativePosition = worldPosition.InvMultiply4(transform);
 
 		float distanceFromAxis = vector.DistanceXZ(relativePosition, vector.Zero);
 		if (distanceFromAxis == 0)
@@ -96,9 +68,9 @@ class SCR_RotorHitZone : SCR_VehicleHitZone
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		UpdateRotorState();
 	}

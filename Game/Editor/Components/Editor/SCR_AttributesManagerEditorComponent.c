@@ -33,7 +33,7 @@ class SCR_AttributesManagerEditorComponentClass : SCR_BaseEditorComponentClass
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] prefab
-	void SCR_AttributesManagerEditorComponentClass(BaseContainer prefab)
+	void SCR_AttributesManagerEditorComponentClass(IEntityComponentSource componentSource, IEntitySource parentSource, IEntitySource prefabSource)
 	{
 		foreach (SCR_EditorAttributeList list: m_AttributeLists)
 		{
@@ -734,6 +734,9 @@ class SCR_AttributesManagerEditorComponent : SCR_BaseEditorComponent
 	//! \return if the class is succesfully found
 	bool SetAttributeEnabled(typename type, bool enabled)
 	{
+		if (!m_aEditedAttributes || m_aEditedAttributes.IsEmpty())
+			return false;
+		
 		SCR_BaseEditorAttribute attribute;
 		
 		foreach (SCR_BaseEditorAttribute attributeEntry: m_aEditedAttributes)
@@ -983,12 +986,15 @@ class SCR_AttributesManagerEditorComponent : SCR_BaseEditorComponent
 		
 		//--- Check if any server attributes are defined
 		m_bHasServerAttributes = false;
+		SCR_BaseEditorAttribute attribute;
 		for (int i = 0, count = m_PrefabData.GetAttributesCount(); i < count; i++)
 		{
-			if (m_PrefabData.GetAttribute(i).IsServer())
+			attribute = m_PrefabData.GetAttribute(i);
+			attribute.Initialize();
+			if (attribute.IsServer())
 			{
 				m_bHasServerAttributes = true;
-				break;
+				continue;
 			}
 		}	
 	}
@@ -997,5 +1003,10 @@ class SCR_AttributesManagerEditorComponent : SCR_BaseEditorComponent
 	override void EOnEditorInitServer()
 	{
 		m_PrefabData = SCR_AttributesManagerEditorComponentClass.Cast(GetEditorComponentData());
+		for (int i = 0, count = m_PrefabData.GetAttributesCount(); i < count; i++)
+		{
+			m_PrefabData.GetAttribute(i).Initialize();
+		}	
 	}
+	
 }

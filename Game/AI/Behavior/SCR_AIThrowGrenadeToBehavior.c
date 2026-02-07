@@ -32,7 +32,7 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 		m_bAllowLook = false;
 		
 #ifdef WORKBENCH 
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SMOKE_COVER_POSITIONS))
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_POSITIONS))
 			DrawPositionDebug(false);		
 #endif
 	}
@@ -53,7 +53,7 @@ class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 	
 #ifdef WORKBENCH
 		m_aDbgShapes.Clear();
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SMOKE_COVER_POSITIONS))
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_POSITIONS))
 			DrawPositionDebug(true);		
 #endif	
 	}

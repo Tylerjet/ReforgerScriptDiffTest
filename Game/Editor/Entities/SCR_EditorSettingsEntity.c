@@ -26,6 +26,9 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 	[Attribute("0", UIWidgets.Flags, "Editor modes added to every pllayer when they connect.", enums: ParamEnumArray.FromEnum(EEditorMode), category: "Editor Settings")]
 	protected EEditorMode m_BaseModes;
 	
+	[Attribute("", UIWidgets.SearchComboBox, "Skip Streaming Rules", enums: ParamEnumArray.FromEnum(EEditableEntityType), category: "Editor Settings")]
+	protected ref array<EEditableEntityType> m_SkipStreamingRules;
+	
 	/*!
 	\return Local instance of the editor settings entity
 	*/
@@ -121,9 +124,23 @@ class SCR_EditorSettingsEntity : SCR_EditorBaseEntity
 		}
 	}
 	
+	/*!
+	Get which EEditableEntityType to not stream in to client when he opens editor.
+	\param skipStreamingRules The array of EEditableEntityType for which to skip streaming logic.
+	\return True if there are any streaming rules set.
+	*/
+	bool GetSkipStreamingRules(notnull array<EEditableEntityType> skipStreamingRules)
+	{		
+		skipStreamingRules.InsertAll(m_SkipStreamingRules);
+		return !m_SkipStreamingRules.IsEmpty();
+	}
+	
 	void SCR_EditorSettingsEntity(IEntitySource src, IEntity parent)
 	{
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-		if (core) core.SetSettingsEntity(this);
+		if (core)
+		{
+			core.SetSettingsEntity(this);
+		} 
 	}
 };

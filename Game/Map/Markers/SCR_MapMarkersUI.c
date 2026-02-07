@@ -335,8 +335,6 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 			child = dimensionSelectorLine.GetChildren();
 		}
 		
-		string imageset, quad;
-		
 		foreach (int i, SCR_MarkerMilitaryDimension dimensionEntry : dimensionsArr)
 		{			
 			Widget button = GetGame().GetWorkspace().CreateWidgets(m_sSelectorDimensionEntry, dimensionSelectorLine);
@@ -1276,13 +1274,13 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		GetGame().GetInputManager().AddActionListener("MapQuickMarkerMenu", EActionTrigger.DOWN, OnInputQuickMarkerMenu);
 		GetGame().GetInputManager().AddActionListener("MapMarkerDelete", EActionTrigger.DOWN, OnInputMarkerDelete);
 		GetGame().GetInputManager().AddActionListener("MapSelect", EActionTrigger.DOWN, OnInputMapSelect);
-		GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, OnInputMenuConfirm);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, OnInputMenuConfirm);
 		GetGame().GetInputManager().AddActionListener("MenuRefresh", EActionTrigger.DOWN, OnInputMenuConfirmAlter);
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.DOWN, OnInputMenuBack);
-		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnInputMenuDown);
-		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnInputMenuUp);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnInputMenuRight);
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnInputMenuLeft);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, OnInputMenuBack);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_DOWN, EActionTrigger.DOWN, OnInputMenuDown);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnInputMenuUp);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnInputMenuRight);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnInputMenuLeft);
 		
 		if ( SCR_MapToolInteractionUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapToolInteractionUI)) )	// if dragging available, add callback
 		{
@@ -1316,13 +1314,13 @@ class SCR_MapMarkersUI : SCR_MapUIBaseComponent
 		GetGame().GetInputManager().RemoveActionListener("MapQuickMarkerMenu", EActionTrigger.DOWN, OnInputQuickMarkerMenu);
 		GetGame().GetInputManager().RemoveActionListener("MapMarkerDelete", EActionTrigger.DOWN, OnInputMarkerDelete);
 		GetGame().GetInputManager().RemoveActionListener("MapSelect", EActionTrigger.DOWN, OnInputMapSelect);
-		GetGame().GetInputManager().RemoveActionListener("MenuSelect", EActionTrigger.DOWN, OnInputMenuConfirm);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, OnInputMenuConfirm);
 		GetGame().GetInputManager().RemoveActionListener("MenuRefresh", EActionTrigger.DOWN, OnInputMenuConfirmAlter);
-		GetGame().GetInputManager().RemoveActionListener("MenuBack", EActionTrigger.DOWN, OnInputMenuBack);
-		GetGame().GetInputManager().RemoveActionListener("MenuDown", EActionTrigger.DOWN, OnInputMenuDown);
-		GetGame().GetInputManager().RemoveActionListener("MenuUp", EActionTrigger.DOWN, OnInputMenuUp);
-		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnInputMenuRight);
-		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnInputMenuLeft);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, OnInputMenuBack);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_DOWN, EActionTrigger.DOWN, OnInputMenuDown);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnInputMenuUp);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnInputMenuRight);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnInputMenuLeft);
 		
 		m_MarkerMgr.EnableUpdate(false);
 		super.OnMapClose(config);

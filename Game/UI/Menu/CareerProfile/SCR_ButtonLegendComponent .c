@@ -95,10 +95,10 @@ class SCR_ButtonLegendComponent : SCR_WLibComponentBase
 			m_wSpecializationBackgroundImage.SetColor(m_ColorBackgroundInactive);
 		}
 		
-		m_wChangeSpLeftLayout = Widget.Cast(w.FindAnyWidget("ChangeSpLeftSizeLayout"));
+		m_wChangeSpLeftLayout = w.FindAnyWidget("ChangeSpLeftSizeLayout");
 		m_wChangeSpLeft = ImageWidget.Cast(w.FindAnyWidget("ChangeSpLeft"));
 		m_wChangeSpRight = ImageWidget.Cast(w.FindAnyWidget("ChangeSpRight"));
-		m_wChangeSpRightLayout = Widget.Cast(w.FindAnyWidget("ChangeSpRightSizeLayout"));
+		m_wChangeSpRightLayout = w.FindAnyWidget("ChangeSpRightSizeLayout");
 		
 		//Buttons on the sides of the legend
 		m_bLeftAndRightUI = false;

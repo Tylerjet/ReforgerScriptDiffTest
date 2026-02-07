@@ -45,7 +45,9 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	protected VerticalLayoutWidget m_wContentVerticalLayout;
 	
 	// Other
+	// TODO: let the dynamic footer handle keeping track of buttons
 	protected ref map<string, SCR_InputButtonComponent> m_aButtonComponents = new map<string, SCR_InputButtonComponent>;
+	
 	protected Widget m_wRoot;
 	protected OverlayWidget m_wDialogBase;
 	
@@ -91,7 +93,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			return null;
 		}
 		
-		
 		SCR_ConfigurableDialogUi dialog = CreateByPreset(preset, customDialogObj);
 
 		#ifdef DEBUG_CONFIGURABLE_DIALOGS
@@ -102,7 +103,34 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static SCR_ConfigurableDialogUi CreateByPreset(SCR_ConfigurableDialogUiPreset preset, SCR_ConfigurableDialogUi customDialogObj = null)
+	static SCR_ConfigurableDialogUi GetCurrentDialog()
+	{
+		return m_CurrentDialog;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static string GetCurrentDialogTag()
+	{
+		if (m_CurrentDialog)
+			return m_CurrentDialog.GetDialogPreset().m_sTag;
+
+		return string.Empty;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static bool IsPresetValid(ResourceName presetsResourceName, string tag)
+	{
+		// Create presets
+		Resource rsc = BaseContainerTools.LoadContainer(presetsResourceName);
+		BaseContainer container = rsc.GetResource().ToBaseContainer();
+		SCR_ConfigurableDialogUiPresets presets = SCR_ConfigurableDialogUiPresets.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		
+		// Find preset
+		return presets.FindPreset(tag);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected static SCR_ConfigurableDialogUi CreateByPreset(SCR_ConfigurableDialogUiPreset preset, SCR_ConfigurableDialogUi customDialogObj = null)
 	{
 		// Open the proxy dialog
 		SCR_ConfigurableDialogUiProxy proxyComp = SCR_ConfigurableDialogUiProxy.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ConfigurableDialog));
@@ -159,71 +187,51 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		return dialog;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	static void InitFromPreset(ResourceName presetsResourceName, string tag, Widget widget)
+	//----------------------------------------------------------------------------------------
+	//! Returns the container in which to place the content layout. Container must be called ContentLayoutContainer
+	protected static Widget GetContentWidget(Widget baseWidget)
 	{
-		// Create presets
-		Resource rsc = BaseContainerTools.LoadContainer(presetsResourceName);
-		BaseContainer container = rsc.GetResource().ToBaseContainer();
-		SCR_ConfigurableDialogUiPresets presets = SCR_ConfigurableDialogUiPresets.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
-		
-		// Find preset
-		SCR_ConfigurableDialogUiPreset preset = presets.FindPreset(tag);
-		
-		// Bail if preset is not found
-		if (!preset)
+		if(!baseWidget)
 		{
-			Print(string.Format("[SCR_ConfigurableDialogUi] Preset was not found: %1, %2", presets, tag), LogLevel.ERROR);
-			return;
+			Print(string.Format("[SCR_ConfigurableDialogUi] GetContentWidet(): invalid base Widget"), LogLevel.ERROR);
+			return null;
+		}	
+		
+		Widget contentContainer = baseWidget.FindAnyWidget("ContentLayoutContainer");
+		
+		if(!contentContainer)
+		{
+			Print(string.Format("[SCR_ConfigurableDialogUi] GetContentWidet(): couldn't find ContentLayoutContainer widget in base layout"), LogLevel.ERROR);
+			return null;
 		}
 		
-		InitByPreset(preset, widget);
+		return contentContainer;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	static void InitByPreset(SCR_ConfigurableDialogUiPreset preset, Widget widget)
+	//----------------------------------------------------------------------------------------
+	Widget GetRootWidget()
 	{
-		MenuBase menu;
-		Widget parent = widget;
-		while (parent)
-		{
-			menu = MenuBase.Cast(parent.FindHandler(MenuBase));
-			if (menu)
-				break;
-			
-			parent = parent.GetParent();
-		}
-		
-		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.Cast(widget.FindHandler(SCR_ConfigurableDialogUi));
-		dialog.InitAttributedVariables();
-		dialog.Init(widget, preset, menu);
+		return m_wRoot;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	static SCR_ConfigurableDialogUi GetCurrentDialog()
+	//----------------------------------------------------------------------------------------
+	//! Returns the base dialog overlay (the rectangle covered by the background). Useful for dialog wide darkening (e.g. by SCR_LoadingOverlay)
+	OverlayWidget GetDialogBaseOverlay()
 	{
-		return m_CurrentDialog;
+		return m_wDialogBase;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	static string GetCurrentDialogTag()
-	{
-		if (m_CurrentDialog)
-			return m_CurrentDialog.GetDialogPreset().m_sTag;
-
-		return string.Empty;
+	//----------------------------------------------------------------------------------------
+	//! Returns the root of the content layout
+	Widget GetContentLayoutRoot()
+	{	
+		return GetContentWidget(GetRootWidget()).GetChildren();
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	static bool IsPresetValid(ResourceName presetsResourceName, string tag)
+	//----------------------------------------------------------------------------------------
+	SCR_ConfigurableDialogUiPreset GetDialogPreset()
 	{
-		// Create presets
-		Resource rsc = BaseContainerTools.LoadContainer(presetsResourceName);
-		BaseContainer container = rsc.GetResource().ToBaseContainer();
-		SCR_ConfigurableDialogUiPresets presets = SCR_ConfigurableDialogUiPresets.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
-		
-		// Find preset
-		return presets.FindPreset(tag);
+		return m_DialogPreset;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -234,8 +242,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			return;
 		
 		m_bIsClosing = true;
-		//AnimateWidget.Opacity(GetRootWidget(), 0, 1 / m_fFadeInTime);
-		//GetGame().GetCallqueue().CallLater(Internal_Close, m_fFadeInTime * 1000.0);
 		m_OnCloseStart.Invoke(this);
 		Internal_Close();
 	}
@@ -267,7 +273,10 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	TextWidget GetMessageWidget() { return m_wMessage; }
+	TextWidget GetMessageWidget()
+	{
+		return m_wMessage;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	string GetMessageStr()
@@ -275,9 +284,8 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		if (m_wMessage)
 			return m_wMessage.GetText();
 		
-		return "";
+		return string.Empty;
 	}
-	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Set title icons with custom image 
@@ -339,41 +347,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 	}
 	
 	//----------------------------------------------------------------------------------------
-	//! Returns the container in which to place the content layout. Container must be called ContentLayoutContainer
-	static Widget GetContentWidget(Widget baseWidget)
-	{
-		if(!baseWidget)
-		{
-			Print(string.Format("[SCR_ConfigurableDialogUi] GetContentWidet(): invalid base Widget"), LogLevel.ERROR);
-			return null;
-		}	
-		
-		Widget contentContainer = baseWidget.FindAnyWidget("ContentLayoutContainer");
-		
-		if(!contentContainer)
-		{
-			Print(string.Format("[SCR_ConfigurableDialogUi] GetContentWidet(): couldn't find ContentLayoutContainer widget in base layout"), LogLevel.ERROR);
-			return null;
-		}
-		
-		return contentContainer;
-	}
-	
-	//----------------------------------------------------------------------------------------
-	//! Returns the root of the content layout
-	static Widget GetContentLayoutRoot(Widget baseWidget)
-	{	
-		return GetContentWidget(baseWidget).GetChildren();
-	}
-
-	//----------------------------------------------------------------------------------------
-	//! Returns the base dialog overlay (the rectangle covered by the background). Useful for dialog wide darkening (e.g. by SCR_LoadingOverlay)
-	OverlayWidget GetDialogBaseOverlay()
-	{
-		return m_wDialogBase;
-	}
-	
-	//----------------------------------------------------------------------------------------
 	//! Allows to register a custom button to call OnConfirm (i.e. one not in the conf files but placed by hand in the layout)
 	void BindButtonConfirm(SCR_InputButtonComponent button)
 	{
@@ -388,7 +361,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		else
 			m_aButtonComponents.Insert(BUTTON_CONFIRM, button);
 	}
-	
 	
 	//----------------------------------------------------------------------------------------
 	//! Allows to register a custom button to call OnCancel (i.e. one not in the conf files but placed by hand in the layout)
@@ -405,7 +377,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		else
 			m_aButtonComponents.Insert(BUTTON_CANCEL, button);
 	}
-	
 	
 	//----------------------------------------------------------------------------------------
 	//! Allows to register a custom button to call OnButtonPressed (i.e. one not in the conf files but placed by hand in the layout). An empty tag will result in the widget's name being used instead
@@ -428,118 +399,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 			m_aButtonComponents.Insert(buttonTag, button);
 	}
 	
-	//-------------------------------------------------------------------------------------------------------------------------
-	//                                       P R O T E C T E D   M E T H O D S
-	//-------------------------------------------------------------------------------------------------------------------------
-	//-------------------------------------------------------------------------------------------------------------------------
-	// C A N   B E   O V E R R I D E N   I N   I N H E R I T E D   C L A S S E S 
-	//-------------------------------------------------------------------------------------------------------------------------
-	//----------------------------------------------------------------------------------------
-	protected void OnConfirm()
-	{
-		Close();
-		m_OnConfirm.Invoke(this);
-	}
-	
-	
-	//----------------------------------------------------------------------------------------
-	protected void OnCancel()
-	{
-		Close();
-		m_OnCancel.Invoke(this);
-	}
-	
-	
-	//----------------------------------------------------------------------------------------
-	protected void OnButtonPressed(SCR_InputButtonComponent button)
-	{
-		m_sLastPressedButtonTag = GetButtonTag(button);
-		m_OnButtonPressed.Invoke(this, m_sLastPressedButtonTag);
-	}
-	
-	//----------------------------------------------------------------------------------------
-	//! Called last of all, after all the initialization of main element done.
-	//! Here you can perform custom initialization.
-	protected void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset);
-	
-	//----------------------------------------------------------------------------------------
-	void OnMenuUpdate(float tDelta);
-
-	//----------------------------------------------------------------------------------------
-	void OnMenuFocusGained();
-	
-	//----------------------------------------------------------------------------------------
-	void OnMenuFocusLost();
-	
-	//----------------------------------------------------------------------------------------
-	void OnMenuShow();
-	
-	//----------------------------------------------------------------------------------------
-	void OnMenuHide();
-	
-	//----------------------------------------------------------------------------------------
-	void OnMenuClose();
-	
-	//----------------------------------------------------------------------------------------
-	SCR_InputButtonComponent CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
-	{
-		HorizontalLayoutWidget wLayout;
-		float padding, paddingLeft, paddingRight;
-		switch (buttonPreset.m_eAlign)
-		{
-			case EConfigurableDialogUiButtonAlign.LEFT:
-				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsLeft));
-				break;
-			
-			case EConfigurableDialogUiButtonAlign.RIGHT:
-				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsRight));
-				break;
-			
-			default:
-				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsCenter)); break;
-		}
-		
-		Widget wButton = GetGame().GetWorkspace().CreateWidgets(m_sNavigationButtonLayout, wLayout);
-		
-		//! Handle padding
-		float left, top, bottom;
-		AlignableSlot.GetPadding(wButton, left, top, padding, bottom);
-		switch (buttonPreset.m_eAlign)
-		{
-			case EConfigurableDialogUiButtonAlign.LEFT:
-				paddingRight = padding;
-				break;
-			
-			case EConfigurableDialogUiButtonAlign.RIGHT:
-				paddingLeft = padding;
-				break;
-			
-			default: break;
-		}
-		
-		AlignableSlot.SetPadding(wButton, paddingLeft, 0.0, paddingRight, 0.0);
-		
-		//! Button setup
-		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(wButton.FindHandler(SCR_InputButtonComponent));
-			
-		if (!comp)
-			return null;
-		
-		comp.SetVisible(buttonPreset.m_bShowButton, false);
-		comp.SetLabel(buttonPreset.m_sLabel);
-		comp.SetAction(buttonPreset.m_sActionName);
-		
-		comp.SetHoverSound(buttonPreset.m_sSoundHovered);
-		comp.SetClickedSound(buttonPreset.m_sSoundClicked);
-		
-		comp.m_OnActivated.Insert(OnButtonPressed);
-		
-		//! Cache
-		m_aButtonComponents.Insert(buttonPreset.m_sTag, comp);
-		
-		return comp;
-	}
-	
 	//----------------------------------------------------------------------------------------
 	//! Returns a button with given tag
 	SCR_InputButtonComponent FindButton(string tag)
@@ -557,11 +416,42 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		return m_aButtonComponents.GetKeyByValue(button);
 	}
 	
+	// --- Protected ---
 	//----------------------------------------------------------------------------------------
-	void ClearButtons()
+	protected void OnConfirm()
 	{
-		m_aButtonComponents.Clear();
+		m_OnConfirm.Invoke(this);
+		Close();
 	}
+	
+	
+	//----------------------------------------------------------------------------------------
+	protected void OnCancel()
+	{
+		m_OnCancel.Invoke(this);
+		Close();
+	}
+	
+	
+	//----------------------------------------------------------------------------------------
+	protected void OnButtonPressed(SCR_InputButtonComponent button)
+	{
+		m_sLastPressedButtonTag = GetButtonTag(button);
+		m_OnButtonPressed.Invoke(this, m_sLastPressedButtonTag);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	//! Called last of all, after all the initialization of main element done.
+	//! Here you can perform custom initialization.
+	protected void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset);
+	
+	// Menu events
+	void OnMenuUpdate(float tDelta);
+	void OnMenuFocusGained();
+	void OnMenuFocusLost();
+	void OnMenuShow();
+	void OnMenuHide();
+	void OnMenuClose();
 	
 	//----------------------------------------------------------------------------------------
 	protected void Init(Widget root, SCR_ConfigurableDialogUiPreset preset, MenuBase proxyMenu)
@@ -614,7 +504,6 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		BindButtonCancel(buttonCancel);
 	}
 	
-	
 	//----------------------------------------------------------------------------------------
 	protected void InitWidgets()
 	{
@@ -633,24 +522,71 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		
 		// Base Overlay
 		m_wDialogBase = OverlayWidget.Cast(w.FindAnyWidget("DialogBase"));
+	}
+	
+	//----------------------------------------------------------------------------------------
+	protected SCR_InputButtonComponent CreateButton(SCR_ConfigurableDialogUiButtonPreset buttonPreset)
+	{
+		HorizontalLayoutWidget wLayout;
+		float padding, paddingLeft, paddingRight;
+		switch (buttonPreset.m_eAlign)
+		{
+			case EConfigurableDialogUiButtonAlign.LEFT:
+				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsLeft));
+				break;
+			
+			case EConfigurableDialogUiButtonAlign.RIGHT:
+				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsRight));
+				break;
+			
+			default:
+				wLayout = HorizontalLayoutWidget.Cast(GetRootWidget().FindAnyWidget(m_sWidgetNameButtonsCenter)); break;
+		}
 		
-		/*
-		// Play animation
-		w.SetOpacity(0);
-		AnimateWidget.Opacity(w, 1, 1 / m_fFadeInTime);*/
-	}
-	
-	
-	//----------------------------------------------------------------------------------------
-	Widget GetRootWidget()
-	{
-		return m_wRoot;
-	}
-	
-	//----------------------------------------------------------------------------------------
-	SCR_ConfigurableDialogUiPreset GetDialogPreset()
-	{
-		return m_DialogPreset;
+		Widget wButton = GetGame().GetWorkspace().CreateWidgets(m_sNavigationButtonLayout, wLayout);
+		wButton.SetName(buttonPreset.m_sTag);
+		
+		//! Handle padding
+		// TODO: let the dynamic footer handle the padding entirely
+		float left, top, bottom;
+		AlignableSlot.GetPadding(wButton, left, top, padding, bottom);
+		switch (buttonPreset.m_eAlign)
+		{
+			case EConfigurableDialogUiButtonAlign.LEFT:
+				paddingRight = padding;
+				break;
+			
+			case EConfigurableDialogUiButtonAlign.RIGHT:
+				paddingLeft = padding;
+				break;
+			
+			default: break;
+		}
+		
+		AlignableSlot.SetPadding(wButton, paddingLeft, 0.0, paddingRight, 0.0);
+		
+		// Button setup
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.Cast(wButton.FindHandler(SCR_InputButtonComponent));
+			
+		if (!comp)
+			return null;
+		
+		comp.SetVisible(buttonPreset.m_bShowButton, false);
+		comp.SetLabel(buttonPreset.m_sLabel);
+		comp.SetAction(buttonPreset.m_sActionName);
+		
+		comp.SetHoverSound(buttonPreset.m_sSoundHovered);
+		comp.SetClickedSound(buttonPreset.m_sSoundClicked);
+		
+		comp.m_OnActivated.Insert(OnButtonPressed);
+		
+		// Cache
+		m_aButtonComponents.Insert(buttonPreset.m_sTag, comp);
+		
+		if (m_DynamicFooter)
+			m_DynamicFooter.RegisterButton(comp);
+		
+		return comp;
 	}
 	
 	//----------------------------------------------------------------------------------------
@@ -683,8 +619,7 @@ class SCR_ConfigurableDialogUi: ScriptedWidgetComponent
 		if (m_fFadeInTime == 0)
 			m_fFadeInTime = 1/UIConstants.FADE_RATE_FAST;
 	}
-};
-
+}
 
 //-------------------------------------------------------------------------------------------
 //! It is here to expose the Menu API to the configurable dialog instance.

@@ -56,8 +56,6 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	
 	protected SCR_WidgetHintComponent m_Hint;
 	
-	protected bool m_bValidInput = true;
-	protected bool m_bIsTyping;
 	protected ref Color COLOR_INVALID_INPUT = UIColors.WARNING;
 	protected ref Color COLOR_VALID_INPUT 	= Color.White;
 	
@@ -75,14 +73,24 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 	protected bool m_bIsFocused;
 	protected bool m_bIsInWriteMode;
 	protected bool m_bIsInWriteModePrevious;
+	protected bool m_bValidInput = true;
+	protected bool m_bIsTyping;
 	protected ref Color m_BackgroundCurrent;
 	
 	// TODO: protect these
 	ref ScriptInvokerVoid m_OnWriteModeEnter = new ScriptInvokerVoid();
+	ref ScriptInvokerVoid m_OnCancel = new ScriptInvokerVoid();
 	ref ScriptInvokerString m_OnWriteModeLeave = new ScriptInvokerString();
 	ref ScriptInvokerString m_OnTextChange = new ScriptInvokerString();
 	
 	protected string m_sTextPrevious;
+	
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancel()
+	{
+		m_OnCancel.Invoke();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -400,7 +408,6 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 		if (m_wMultilineEditBoxWidget)
 			m_wMultilineEditBoxWidget.ActivateWriteMode();
 
-
 		if (m_wEditBoxWidget)
 			m_wEditBoxWidget.ActivateWriteMode();
 	}
@@ -445,9 +452,15 @@ class SCR_EditBoxComponent : SCR_ChangeableComponentBase
 			UpdateBackgroundColor();
 			
 			if(m_bIsInWriteMode)
+			{
+				GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.PRESSED, OnCancel);
 				m_OnWriteModeEnter.Invoke();
+			}
 			else
+			{
+				GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.PRESSED, OnCancel);
 				m_OnWriteModeLeave.Invoke(GetEditBoxText());
+			}
 		}
 		
 		m_bIsInWriteModePrevious = m_bIsInWriteMode;

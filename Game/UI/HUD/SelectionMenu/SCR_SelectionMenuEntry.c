@@ -6,8 +6,6 @@ Scripted selection menu entry based on UI info for storing data into SCR_Selecti
 [BaseContainerProps(configRoot: true), SCR_BaseContainerCustomTitleUIInfo("Name")]
 class SCR_SelectionMenuEntry : SCR_UIInfo
 {
-	const string DEFAULT_IMAGE_SET = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
-
 	[Attribute(desc: "Entry name used for searching and definition")]
 	protected string m_sId;
 
@@ -170,7 +168,7 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 	//------------------------------------------------------------------------------------------------
 	void SetIconFromDeafaultImageSet(string imageSetName = "")
 	{
-		Icon = DEFAULT_IMAGE_SET;
+		Icon = UIConstants.ICONS_IMAGE_SET;
 		IconSetName = imageSetName;
 
 		InvokeOnIconChange(Icon, IconSetName);
@@ -245,6 +243,6 @@ class SCR_SelectionMenuEntry : SCR_UIInfo
 		m_bEnabled = true;
 		
 		if (Icon.IsEmpty())
-			Icon = DEFAULT_IMAGE_SET;
+			Icon = UIConstants.ICONS_IMAGE_SET;
 	}
 };

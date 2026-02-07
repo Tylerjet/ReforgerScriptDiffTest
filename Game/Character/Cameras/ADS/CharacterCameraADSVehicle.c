@@ -3,9 +3,9 @@
 // *************************************************************************************
 class CharacterCameraADSVehicle extends CharacterCameraADS
 {
-	private TurretControllerComponent m_TurretController;
-	private IEntity m_OwnerVehicle;
-	private bool m_bUseCameraSlot;
+	protected TurretControllerComponent m_TurretController;
+	protected IEntity m_OwnerVehicle;
+	protected PointInfo m_CameraSlot;
 
 	//------------------------------------------------------------------------------------------------
 	// constructor
@@ -13,31 +13,34 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 	void CharacterCameraADSVehicle(CameraHandlerComponent pCameraHandler)
 	{
 		m_WeaponManager = null;
+		m_OwnerVehicle = null;
+		m_TurretController = null;
+
+		if (!m_OwnerCharacter)
+			return;
 
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
-		if (compartmentAccess && compartmentAccess.IsInCompartment())
-		{
-			BaseCompartmentSlot compartment = compartmentAccess.GetCompartment();
-			if (compartment)
-			{
-				m_OwnerVehicle = compartment.GetVehicle();
+		if (!compartmentAccess || !compartmentAccess.IsInCompartment())
+			return;
 
-				SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
-				if (vehicleCamData)
-				{
-					m_fRollFactor = vehicleCamData.m_fRollFactor;
-					m_fPitchFactor = vehicleCamData.m_fPitchFactor;
-				}
+		BaseCompartmentSlot compartment = compartmentAccess.GetCompartment();
+		if (!compartment)
+			return;
 
-				BaseControllerComponent controller = compartment.GetController();
-				if (controller)
-				{
-					m_TurretController = TurretControllerComponent.Cast(controller);
-					if (m_TurretController)
-						m_WeaponManager = m_TurretController.GetWeaponManager();
-				}
-			}
-		}
+		m_TurretController = TurretControllerComponent.Cast(compartment.GetController());
+		if (m_TurretController)
+			m_WeaponManager = m_TurretController.GetWeaponManager();
+
+		m_OwnerVehicle = compartment.GetVehicle();
+		if (!m_OwnerVehicle)
+			return;
+
+		SCR_VehicleCameraDataComponent vehicleCamData = SCR_VehicleCameraDataComponent.Cast(m_OwnerVehicle.FindComponent(SCR_VehicleCameraDataComponent));
+		if (!vehicleCamData)
+			return;
+
+		m_fRollFactor = vehicleCamData.m_fRollFactor;
+		m_fPitchFactor = vehicleCamData.m_fPitchFactor;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -55,21 +58,23 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 	//------------------------------------------------------------------------------------------------
 	override protected void OnBlendingIn(float blendAlpha)
 	{
-		if (m_TurretController && blendAlpha >= GetSightsADSActivationPercentage())
-		{
-			if (!m_TurretController.GetCurrentSightsADS()) // Only enable if not enabled yet
-				m_TurretController.SetCurrentSightsADS(true);
-		}
+		if (blendAlpha < GetSightsADSActivationPercentage())
+			return;
+
+		// Only enable if not enabled
+		if (m_TurretController && !m_TurretController.GetCurrentSightsADS())
+			m_TurretController.SetCurrentSightsADS(true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override protected void OnBlendingOut(float blendAlpha)
 	{
-		if (m_TurretController && blendAlpha >= GetSightsADSDeactivationPercentage())
-		{
-			if (m_TurretController.GetCurrentSightsADS()) // Only disable if enabled
-				m_TurretController.SetCurrentSightsADS(false);
-		}
+		if (blendAlpha < GetSightsADSDeactivationPercentage())
+			return;
+
+		// Only disable if enabled
+		if (m_TurretController && m_TurretController.GetCurrentSightsADS())
+			m_TurretController.SetCurrentSightsADS(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -86,75 +91,79 @@ class CharacterCameraADSVehicle extends CharacterCameraADS
 		TurretComponent turret = m_TurretController.GetTurretComponent();
 		vector aimingTranslationWeaponLS = turret.GetRawAimingTranslation();
 
-		//! sights transformation and FOV get
-		vector sightWSMat[4];
-		m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
+		// Sight camera slot
+		BaseSightsComponent sights = turret.GetSights();
+		PointInfo cameraSlot;
+		if (sights)
+			cameraSlot = sights.GetPositionPointInfo();
 
-		PointInfo cameraSlot = turret.GetCameraAttachmentSlot();
+		// Legacy camera slot of TurretComponent
+		if (!cameraSlot)
+			cameraSlot = turret.GetCameraAttachmentSlot();
+
+		if (cameraSlot != m_CameraSlot)
+			m_CameraSlot = cameraSlot;
+
+		//! sights transformation and FOV get
 		if (cameraSlot)
 		{
-			m_bUseCameraSlot = true;
+			vector sightLSMat[4];
+			m_TurretController.GetCurrentSightsCameraLocalTransform(sightLSMat, pOutResult.m_fFOV);
+			sightLSMat[3] = sightLSMat[3] - aimingTranslationWeaponLS;
 
-			pOutResult.m_CameraTM[3] 			= aimingTranslationWeaponLS;
-			pOutResult.m_iDirectBone 			= -1;
-			pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
-			pOutResult.m_bUpdateWhenBlendOut	= false;
-			pOutResult.m_fDistance 				= 0;
-			pOutResult.m_fUseHeading 			= 0;
-			pOutResult.m_fNearPlane				= 0.025;
-			pOutResult.m_bAllowInterpolation	= true;
+			vector cameraSlotMat[4];
+			cameraSlot.GetModelTransform(cameraSlotMat);
+
+			pOutResult.m_CameraTM[3]            = (sightLSMat[3] - cameraSlotMat[3]).InvMultiply3(cameraSlotMat);
 			pOutResult.m_pWSAttachmentReference = cameraSlot;
+		}
+		else
+		{
+			//Add translation
+			vector sightWSMat[4];
+			m_TurretController.GetCurrentSightsCameraTransform(sightWSMat, pOutResult.m_fFOV);
+			sightWSMat[3] = sightWSMat[3] - aimingTranslationWeaponLS.Multiply3(sightWSMat);
 
-			// Apply shake
-			if (m_CharacterCameraHandler)
-				m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
-			return;
+			// character matrix
+			vector charMat[4];
+			m_OwnerCharacter.GetTransform(charMat);
+			Math3D.MatrixInvMultiply4(charMat, sightWSMat, pOutResult.m_CameraTM);
+
+			pOutResult.m_pOwner                 = m_OwnerCharacter;
+			pOutResult.m_pWSAttachmentReference = null;
 		}
 
-		// character matrix
-		vector charMat[4];
-		m_OwnerCharacter.GetTransform(charMat);
-
-		//Add translation
-		vector aimingTranslationWeapon = aimingTranslationWeaponLS.Multiply3(sightWSMat);
-		sightWSMat[3] = sightWSMat[3] - aimingTranslationWeapon;
-
-		Math3D.MatrixInvMultiply4(charMat, sightWSMat, pOutResult.m_CameraTM);
-
-		pOutResult.m_iDirectBone 			= -1;
-		pOutResult.m_iDirectBoneMode 		= EDirectBoneMode.None;
-		pOutResult.m_bUpdateWhenBlendOut	= false;
-		pOutResult.m_fDistance 				= 0;
-		pOutResult.m_fUseHeading 			= 0;
-		pOutResult.m_fNearPlane				= 0.025;
-		pOutResult.m_bAllowInterpolation	= true;
-		pOutResult.m_pOwner 				= m_OwnerCharacter;
-		pOutResult.m_pWSAttachmentReference = null;
+		pOutResult.m_iDirectBone         = -1;
+		pOutResult.m_iDirectBoneMode     = EDirectBoneMode.None;
+		pOutResult.m_bUpdateWhenBlendOut = false;
+		pOutResult.m_fDistance           = 0;
+		pOutResult.m_fUseHeading         = 0;
+		pOutResult.m_fNearPlane          = 0.025;
+		pOutResult.m_bAllowInterpolation = true;
 
 		// Apply shake
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
-				
-		SCR_2DSightsComponent sights = SCR_2DSightsComponent.Cast(turret.GetSights());
-		if (sights)
-		{
-			SCR_SightsZoomFOVInfo fovInfo = SCR_SightsZoomFOVInfo.Cast(sights.GetFOVInfo());
-			if (fovInfo) 
-				fovInfo.ForceUpdate(m_TurretController.GetOwner(), sights, pDt);
-		}
+
+		if (!sights)
+			return;
+
+		SCR_SightsZoomFOVInfo fovInfo = SCR_SightsZoomFOVInfo.Cast(sights.GetFOVInfo());
+		if (fovInfo) 
+			fovInfo.ForceUpdate(m_TurretController.GetOwner(), sights, pDt);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnAfterCameraUpdate(float pDt, bool pIsKeyframe, inout vector transformMS[4])
 	{
+		if (!m_CameraSlot)
+			return;
+
 		IEntity owner = m_OwnerVehicle;
 		if (m_TurretController)
 			owner = m_TurretController.GetOwner();
 
-		if (m_bUseCameraSlot)
-		{
-			m_fPitchFactor = 0;
-			AddVehiclePitchRoll(owner, pDt, transformMS);
-		}
+		m_fPitchFactor = 0;
+		AddVehiclePitchRoll(owner, pDt, transformMS);
 	}
-};
+}

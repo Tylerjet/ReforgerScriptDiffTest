@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypoint
 {
@@ -7,7 +6,7 @@ class SCR_ScenarioFrameworkWaypoint
 	//TODO: Request AI Behaviour Tree Move To attribute to be exposed to script with getters and setters
 
 	//! Getters and Setters in this class (And similar that inherit) are set in a way to allow for different default values for attributes of child classes.
-	//! This is why we do not have the actual attribute her, but just empty Setters and Getters returning some value that will never be used.
+	//! This is why we do not have the actual attribute here, but just empty Setters and Getters returning some value that will never be used.
 	
 	SCR_ScenarioFrameworkLayerBase m_SlotWaypoint;
 
@@ -63,7 +62,7 @@ class SCR_ScenarioFrameworkWaypoint
 	}
 }
 
-//------------------------------------------------------------------------------------------------
+
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointScripted : SCR_ScenarioFrameworkWaypoint
 {
@@ -93,11 +92,11 @@ class SCR_ScenarioFrameworkWaypointScripted : SCR_ScenarioFrameworkWaypoint
 	}
 }
 
-//------------------------------------------------------------------------------------------------
+
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointSmartAction : SCR_ScenarioFrameworkWaypointScripted
 {
-	[Attribute("", UIWidgets.EditBox, "Static reference to entity with smart action")]
+	[Attribute(desc: "Static reference to entity with smart action")]
 	string m_sStaticEntityName;
 
 	//------------------------------------------------------------------------------------------------
@@ -127,11 +126,11 @@ class SCR_ScenarioFrameworkWaypointSmartAction : SCR_ScenarioFrameworkWaypointSc
 	}
 }
 
-//------------------------------------------------------------------------------------------------
+
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointEntity : SCR_ScenarioFrameworkWaypointScripted
 {
-	[Attribute("", UIWidgets.EditBox, "Related entity")]
+	[Attribute(desc: "Related entity")]
 	string	m_sEntityName;
 
 	//------------------------------------------------------------------------------------------------
@@ -147,7 +146,7 @@ class SCR_ScenarioFrameworkWaypointEntity : SCR_ScenarioFrameworkWaypointScripte
 	}
 }
 
-//------------------------------------------------------------------------------------------------
+
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointTimed : SCR_ScenarioFrameworkWaypointScripted
 {
@@ -177,7 +176,7 @@ class SCR_ScenarioFrameworkWaypointTimed : SCR_ScenarioFrameworkWaypointScripted
 	}
 }
 
-//------------------------------------------------------------------------------------------------
+
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkWaypointTimedDefend : SCR_ScenarioFrameworkWaypointTimed
 {
@@ -207,9 +206,9 @@ class SCR_ScenarioFrameworkWaypointTimedDefend : SCR_ScenarioFrameworkWaypointTi
 	}
 }
 
-//------------------------------------------------------------------------------------------------
+
 [BaseContainerProps()]
-class SCR_ScenarioFrameworkWaypointBoarding : SCR_ScenarioFrameworkWaypointTimed
+class SCR_ScenarioFrameworkWaypointBoarding : SCR_ScenarioFrameworkWaypointScripted
 {
 	//------------------------------------------------------------------------------------------------
 	override void SetupWaypoint(IEntity waypointEntity)
@@ -260,5 +259,53 @@ class SCR_ScenarioFrameworkWaypointBoarding : SCR_ScenarioFrameworkWaypointTimed
 	bool GetCargoAllowed()
 	{
 		return false;
+	}
+}
+
+
+[BaseContainerProps()]
+class SCR_ScenarioFrameworkWaypointBoardingEntity : SCR_ScenarioFrameworkWaypointBoarding
+{
+	[Attribute(desc: "Related entity")]
+	string	m_sEntityName;
+	
+	//------------------------------------------------------------------------------------------------
+	override void SetupWaypoint(IEntity waypointEntity)
+	{
+		super.SetupWaypoint(waypointEntity);
+
+		SCR_BoardingEntityWaypoint waypointBoardingEntity = SCR_BoardingEntityWaypoint.Cast(waypointEntity);
+		if (!waypointBoardingEntity)
+			return;
+
+		waypointBoardingEntity.SetEntityName(m_sEntityName);
+	}
+}
+
+
+[BaseContainerProps()]
+class SCR_ScenarioFrameworkWaypointBoardingTimed : SCR_ScenarioFrameworkWaypointBoarding
+{
+	//------------------------------------------------------------------------------------------------
+	override void SetupWaypoint(IEntity waypointEntity)
+	{
+		super.SetupWaypoint(waypointEntity);
+		
+		SCR_BoardingTimedWaypoint waypointBoardingTimed = SCR_BoardingTimedWaypoint.Cast(waypointEntity);
+		if (!waypointBoardingTimed)
+			return;
+
+		waypointBoardingTimed.SetHoldingTime(GetWaypointHoldingTime());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] time
+	void SetWaypointHoldingTime(float time);
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetWaypointHoldingTime()
+	{
+		return 0;
 	}
 }

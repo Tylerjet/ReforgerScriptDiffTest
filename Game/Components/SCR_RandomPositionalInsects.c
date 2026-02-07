@@ -153,11 +153,11 @@ class SCR_RandomPositionalInsects : SCR_AmbientInsectsEffect
 		if (!animComponent)
 			return;
 		
-		SCR_AnimationResourceHolderComponent animResourceHolder = SCR_AnimationResourceHolderComponent.Cast(entity.FindComponent(SCR_AnimationResourceHolderComponent));
-		if (!animResourceHolder)
+		ResourceName animationResource = animComponent.GetAnimation();
+		if (!animationResource || SCR_StringHelper.IsEmptyOrWhiteSpace(animationResource))
 			return;
 			
-		animComponent.Prepare(animResourceHolder.m_sAnimation, Math.RandomFloatInclusive(1, 5), 1, true);
+		animComponent.Prepare(animationResource, Math.RandomFloatInclusive(1, 5), 1, true);
 		animComponent.Play();
 	}
 

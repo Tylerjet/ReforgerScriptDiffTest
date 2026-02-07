@@ -2,12 +2,6 @@
 //------------------------------------------------------------------------------------------------
 class SCR_DestructibleHitzone : SCR_HitZone
 {
-	[Attribute("0", UIWidgets.Slider, "Scale of damage passed to parent default hitzone\nIgnores base damage multiplier, reduction and threshold\nDamage type multipliers are applied", "0 100 0.001")]
-	protected float m_fPassDamageToParentScale;
-
-	[Attribute(desc: "Rules for passing damage to parent and root damage managers")]
-	protected ref array<ref SCR_DamagePassRule> m_aDamagePassRules;
-
 	[Attribute(desc: "Secondary explosion reference point", category: "Secondary damage")]
 	protected ref PointInfo m_SecondaryExplosionPoint;
 
@@ -60,137 +54,6 @@ class SCR_DestructibleHitzone : SCR_HitZone
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Calculates the amount of damage a hitzone will receive.
-	\param damageType Damage type
-	\param rawDamage Incoming damage, without any modifiers taken into account
-	\param hitEntity Damaged entity
-	\param struckHitZone Hitzone to be damaged
-	\param damageSource Projectile
-	\param instigator Instigator
-	\param hitMaterial Surface physics material
-	\param colliderID Collider ID if provided
-	\param hitTransform Position, direction and normal
-	\param impactVelocity Projectile velocity at impact
-	\param nodeID Bone index in mesh object
-	\param isDOT True if this is a calculation for DamageOverTime
-	*/
-	override float ComputeEffectiveDamage(notnull BaseDamageContext damageContext, bool isDOT)
-	{
-		vector hitTransform[3] = {damageContext.hitPosition, damageContext.hitDirection, damageContext.hitNormal};		
-
-		// Forward non-DOT damage to parent, ignoring own base damage multiplier
-		if (!isDOT && m_fPassDamageToParentScale != 0)
-			PassDamageToParent(damageContext.damageType, damageContext.damageValue, damageContext.instigator, hitTransform, damageContext.material);
-		
-		// Forward non-DOT damage to root or parent default hitzone, ignoring own base damage multiplier
-		EDamageType type;
-		foreach (SCR_DamagePassRule rule : m_aDamagePassRules)
-		{
-			if (isDOT && !rule.m_bAllowDOT)
-				continue;
-
-			// If damage types are defined, only allow passing specified damage types
-			if (!rule.m_aSourceDamageTypes.IsEmpty() && !rule.m_aSourceDamageTypes.Contains(damageContext.damageType))
-				continue;
-
-			// If damage states are defined, only allow passing while damage state is allowed
-			if (!rule.m_aDamageStates.IsEmpty() && !rule.m_aDamageStates.Contains(GetDamageState()))
-				continue;
-
-			if (rule.m_eOutputDamageType == EDamageType.TRUE)
-				type = damageContext.damageType;
-			else
-				type = rule.m_eOutputDamageType;
-
-			if (rule.m_bPassToRoot)
-				PassDamageToRoot(damageContext.damageType, damageContext.damageValue * rule.m_fMultiplier, damageContext.instigator, hitTransform, damageContext.material);
-
-			if (rule.m_bPassToParent)
-				PassDamageToParent(damageContext.damageType, damageContext.damageValue * rule.m_fMultiplier, damageContext.instigator, hitTransform, damageContext.material);
-			
-			if (rule.m_bPassToDefaultHitZone)
-				PassDamageToDefaultHitZone(damageContext.damageType, damageContext.damageValue * rule.m_fMultiplier, damageContext.instigator, hitTransform, damageContext.material);
-		}
-
-		return super.ComputeEffectiveDamage(damageContext, isDOT);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Pass damage to default hitzone of parent damage manager, ignoring base damage multiplier, reduction and threshold
-	\param type - damage type, use TRUE damage to ignore thresholds and multipliers of default hitzone
-	\param damage - amount of damage passed to default hitzone of parent damage manager, multiplied by damage type multiplier of current hitzone
-	\param Instigator - Instigator
-	\param transform - hit position, direction and normal
-	\param surface - hit surface properties
-	*/
-	void PassDamageToParent(EDamageType type, float damage, notnull Instigator instigator, inout vector transform[3], SurfaceProperties surface = null)
-	{
-		if (!m_ParentDamageManager)
-			return;
-
-		if (damage == 0)
-			return;
-
-		SCR_DamageContext damageContext = new SCR_DamageContext(type, damage, transform, m_ParentDamageManager.GetOwner(), m_ParentDamageManager.GetDefaultHitZone(), instigator, surface, -1, -1);
-			
-		m_ParentDamageManager.HandleDamage(damageContext);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Pass damage to default hitzone of root damage manager, ignoring base damage multiplier, reduction and threshold
-	\param type - damage type, use TRUE damage to ignore thresholds and multipliers of default hitzone
-	\param damage - amount of damage passed to default hitzone of root damage manager, multiplied by damage type multiplier of current hitzone
-	\param Instigator - Instigator
-	\param transform - hit position, direction and normal
-	\param surface - hit surface properties
-	*/
-	void PassDamageToRoot(EDamageType type, float damage, notnull Instigator instigator, inout vector transform[3], SurfaceProperties surface = null)
-	{
-		if (!m_RootDamageManager)
-			return;
-
-		if (damage == 0)
-			return;
-
-		HitZone defaultHZ = m_RootDamageManager.GetDefaultHitZone();
-		if (defaultHZ != this)
-		{
-			SCR_DamageContext damageContext = new SCR_DamageContext(type, damage, transform, m_RootDamageManager.GetOwner(), defaultHZ, instigator, surface, -1, -1);
-		
-			m_RootDamageManager.HandleDamage(damageContext);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Pass damage to default hitzone of owner damage manager, ignoring base damage multiplier, reduction and threshold
-	\param type - damage type, use TRUE damage to ignore thresholds and multipliers of default hitzone
-	\param damage - amount of damage passed to default hitzone of owner damage manager, multiplied by damage type multiplier of current hitzone
-	\param Instigator - Instigator
-	\param transform - hit position, direction and normal
-	\param surface - hit surface properties
-	*/
-	void PassDamageToDefaultHitZone(EDamageType type, float damage, notnull Instigator instigator, inout vector transform[3], SurfaceProperties surface = null)
-	{
-		SCR_DamageManagerComponent damageManager = SCR_DamageManagerComponent.Cast(GetHitZoneContainer());
-		if (!damageManager || !damageManager.GetDefaultHitZone())
-			return;
-
-		if (damage == 0)
-			return;
-
-		HitZone defaultHZ = damageManager.GetDefaultHitZone();
-		if (defaultHZ != this)
-		{
-			SCR_DamageContext damageContext = new SCR_DamageContext(type, damage, transform, damageManager.GetOwner(), defaultHZ, instigator, surface, -1, -1);
-			damageManager.HandleDamage(damageContext);		
-		}		
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Get secondary explosion desired scale. It will determine the prefab retrieved from secondary explosion config.
 	float GetSecondaryExplosionScale()
 	{
@@ -206,9 +69,9 @@ class SCR_DestructibleHitzone : SCR_HitZone
 
 	//------------------------------------------------------------------------------------------------
 	//! Kill occupants and start destruction
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		EDamageState state = GetDamageState();
 

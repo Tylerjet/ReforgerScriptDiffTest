@@ -29,7 +29,6 @@ class SCR_AICheckLowAmmo : AITaskScripted
 		
 		// Output
 		bool lowAmmo = false;
-		typename magWellType;
 		
 		GetVariableIn(WEAPON_COMPONENT_PORT, weaponComp);
 		GetVariableIn(MUZZLE_ID_PORT, muzzleId);

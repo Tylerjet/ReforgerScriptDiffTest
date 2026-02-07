@@ -143,9 +143,12 @@ class SCR_PrefabValidatorPlugin : WorkbenchPlugin
 		pathsCLI.Split(",", paths, true);
 
 		array<ResourceName> prefabs = {};
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = { "et" };
 		foreach (string path : paths)
 		{
-			Workbench.SearchResources(prefabs.Insert, { "et" }, null, path);
+			filter.rootPath = path;
+			ResourceDatabase.SearchResources(filter, prefabs.Insert);
 		}
 
 		ValidatePrefabs(prefabs);

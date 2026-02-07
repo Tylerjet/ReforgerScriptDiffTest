@@ -49,11 +49,11 @@ class SCR_InventoryButton : BasicButtonComponent
 				m_pMenuHandler.Action_StepBack();
 			} break;
 			
-			case EInventoryButton.BUTTON_SHOW_DEFAULT:
+			/*case EInventoryButton.BUTTON_SHOW_DEFAULT:
 			{
 				if ( m_pMenuHandler )
 					m_pMenuHandler.ShowDefault( );
-			} break;
+			} break;*/
 			
 		}
 		return true;

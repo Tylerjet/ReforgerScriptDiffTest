@@ -5,31 +5,10 @@ class SCR_JunctionPowerPoleClass : SCR_PowerPoleClass
 
 class SCR_JunctionPowerPole : SCR_PowerPole
 {
-	[Attribute(desc: "Slots for connecting with other power poles in a junction", category: "Power Cable Slots")]
-	protected ref array<ref SCR_PowerPoleSlotBase> m_aJunctionSlots;
+	[Attribute(desc: "[OBSOLETE (use Cable Slot Groups above)] Slots for connecting with other power poles in a junction", category: "[OLD] Power Cable Slots")]
+	protected ref array<ref SCR_PowerPoleSlotBase> m_aJunctionSlots; // obsolete since 2024-04-02
 
-	//------------------------------------------------------------------------------------------------
-	override void DrawDebugShapes()
-	{
-		super.DrawDebugShapes();
-
-		if (!m_bDrawDebugShapes)
-			return;
-
-		foreach (SCR_PowerPoleSlotBase slot : m_aJunctionSlots)
-		{
-			slot.DrawDebugShapes(m_aDebugShapes, this);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override vector GetSlot(int index, bool sameLine)
-	{
-		if (sameLine)
-			return super.GetSlot(index, sameLine);
-		else
-			return m_aJunctionSlots[index].m_vSlotA;
-	}
+#ifdef WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
 	override int GetSlotsCount(bool sameLine = true)
@@ -44,22 +23,39 @@ class SCR_JunctionPowerPole : SCR_PowerPole
 	override vector TryGetSlot(int index, vector otherSlot, bool sameLine)
 	{
 		if (sameLine)
-			return super.TryGetSlot(index, otherSlot, sameLine);
+			return super.TryGetSlot(index, otherSlot, sameLine); // using m_aSlots
+
+		if (index < 0)
+		{
+			Print("Power line slot index was negative (" + index + ")", LogLevel.WARNING);
+			return vector.Zero;
+		}
 
 		int junctionCount = m_aJunctionSlots.Count();
+		if (junctionCount < 1)
+		{
+			Print("No junction slots defined - check Prefab at " + GetOrigin(), LogLevel.WARNING);
+			return vector.Zero;
+		}
+
 		if (index >= junctionCount)
 			index = index % junctionCount;
+
+		SCR_PowerPoleSlotSingle singleSlot = SCR_PowerPoleSlotSingle.Cast(m_aJunctionSlots[index]);
+		if (singleSlot)
+			return CoordToParent(singleSlot.m_vSlotA);
 
 		SCR_PowerPoleSlot dualSlot = SCR_PowerPoleSlot.Cast(m_aJunctionSlots[index]);
 		if (dualSlot)
 		{
+			// let's detect which slot is wanted: A or B
 			vector avgSideA;
 			vector avgSideB;
 			SCR_PowerPoleSlot powerPoleJunction;
-			for (int i; i < junctionCount; i++)
+			foreach (SCR_PowerPoleSlotBase powerPoleSlot : m_aJunctionSlots)
 			{
-				avgSideA += m_aJunctionSlots[i].m_vSlotA;
-				powerPoleJunction = SCR_PowerPoleSlot.Cast(m_aJunctionSlots[i]);
+				avgSideA += powerPoleSlot.m_vSlotA;
+				powerPoleJunction = SCR_PowerPoleSlot.Cast(powerPoleSlot);
 				if (powerPoleJunction)
 					avgSideB += powerPoleJunction.m_vSlotB;
 			}
@@ -73,12 +69,10 @@ class SCR_JunctionPowerPole : SCR_PowerPole
 				return CoordToParent(dualSlot.m_vSlotB);
 		}
 
-		SCR_PowerPoleSlotSingle singleSlot = SCR_PowerPoleSlotSingle.Cast(m_aJunctionSlots[index]);
-		if (singleSlot)
-			return CoordToParent(singleSlot.m_vSlotA);
-
 		return vector.Zero;
 	}
+
+#endif // WORKBENCH
 
 	//------------------------------------------------------------------------------------------------
 	// constructor

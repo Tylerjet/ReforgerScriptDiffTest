@@ -29,7 +29,10 @@ class SCR_EditableEntityMaintenancePlugin : WorkbenchPlugin
 
 		array<ResourceName> resources = {};
 		string path = SCR_AddonTool.ToFileSystem(m_sAddon) + m_sDirectory.GetPath();
-		Workbench.SearchResources(resources.Insert, { "et" }, null, path);
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = { "et" };
+		filter.rootPath = path;
+		ResourceDatabase.SearchResources(filter, resources.Insert);
 
 		int repairedCount;
 		Resource resource;

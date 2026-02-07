@@ -87,7 +87,7 @@ class SCR_MilitaryBaseSystem : GameSystem
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void SetupInvokers()
+	override event protected void OnInit()
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
 

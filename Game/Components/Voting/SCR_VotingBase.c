@@ -25,6 +25,18 @@ class SCR_VotingBase
 	[Attribute(desc: "Visual representation of the voting.")]
 	protected ref SCR_VotingUIInfo m_Info;
 	
+	[Attribute("0", desc: "Delay in seconds between when the player joined the server and when they are able to start this specific vote. 0 means this is ignored", params: "0 inf")]
+	protected int m_iJoinServerVoteCooldown;
+	
+	[Attribute("0", desc: "If the server started fresh / restarted and players join it will check if the server was active for longer than this time (in seconds). If not it will not set the ServerVoteDelay time. Ignored if 0.", params: "0 inf")]
+	protected int m_iServerRuntimeIgnoreJoinServerCooldown;
+	
+	[Attribute("0", desc: "Cooldown in seconds between instantiating votes. If a player has started a vote than they will no longer be able to do the same vote until the time has passed. Ignored if 0.", params: "0 inf")]
+	protected int m_iVoteCooldownTime;
+	
+	protected float m_fVoteCooldownTimeStamp = -1;
+	protected bool m_bHasInitiatedVotingLocallyOnce;
+	
 	static const int DEFAULT_VALUE = -1;
 	
 	protected int m_iLocalValue = DEFAULT_VALUE;
@@ -34,7 +46,7 @@ class SCR_VotingBase
 	
 	//~ Keep track of who voted (server only)
 	protected ref array<int> m_aPlayersVoted_Server = {};
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! A player has voted to approve (server only)
 	//! \param[in] playerID Id of player who voted
@@ -86,6 +98,66 @@ class SCR_VotingBase
 		return m_iCurrentVoteCount;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! \return The voting delay cooldown when a player joins the server. How long 
+	int GetJoinServerVoteCooldown()
+	{
+		return m_iJoinServerVoteCooldown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Get the server vote delay ignore time. It will not set a server vote delay time when the player joins if the server has started less seconds ago than this
+	int GetServerRuntimeIgnoreJoinServerCooldown()
+	{
+		return m_iServerRuntimeIgnoreJoinServerCooldown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Get the cooldown amount between voting
+	int GetVoteCooldownTime()
+	{
+		return m_iVoteCooldownTime;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Return if the Vote has a cooldown set. Will use the join cooldown if not yet initiated voting
+	bool HasCooldown()
+	{
+		if (!m_bHasInitiatedVotingLocallyOnce)
+			return GetJoinServerVoteCooldown() > 0;
+		
+		return GetVoteCooldownTime() > 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Get the last cooldown (Either when joining server or last voted) 
+	float GetLocalCooldownTimeStamp()
+	{
+		return m_fVoteCooldownTimeStamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set the time stamp for cooldowns for this voting
+	//! param[in] New Time stamp to set
+	void SetLocalCooldownTimeStamp(float newTimeStamp)
+	{
+		m_fVoteCooldownTimeStamp = newTimeStamp;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return True if a player has initiated voted locally at least once for this vote
+	bool HasInitiatedVotingLocallyOnce()
+	{
+		return m_bHasInitiatedVotingLocallyOnce;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set Has initiated voting locally at least once to true
+	void SetHasInitiatedVotingLocallyOnce()
+	{
+		m_bHasInitiatedVotingLocallyOnce = true;
+	}
+	 
 	//------------------------------------------------------------------------------------------------
 	//--- Public, server
 
@@ -544,7 +616,6 @@ class SCR_VotingElection : SCR_VotingBase
 	{
 		PrintFormat("%1 (m_Type = %2, m_iLocalValue = %3)", Type(), typename.EnumToString(EVotingType, m_Type), GetValueName(m_iLocalValue));
 		PrintFormat("    Leading value: %1 with %2 votes", m_iHighestValue, m_iHighestCount);
-		string valueName;
 		foreach (int playerID, int value: m_Votes)
 		{
 			PrintFormat("    %1 votes for  %2", GetGame().GetPlayerManager().GetPlayerName(playerID), GetValueName(value));

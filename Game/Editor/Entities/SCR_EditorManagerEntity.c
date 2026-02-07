@@ -201,17 +201,9 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	protected void ToggleOwnerServerCallback(bool open)
 	{
 		if (open)
-		{
 			Event_OnOpenedServerCallback.Invoke();
-
-			GameStatsApi statsApi = GetGame().GetStatsApi();
-			if (statsApi)
-				statsApi.IncrementEditorCounter(GetPlayerID());
-		}
 		else
-		{
 			Event_OnClosedServerCallback.Invoke();
-		}
 	}
 	
 	protected int GetEnumSum(typename enumType)
@@ -802,18 +794,19 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				CreateEditorMode(flags[i], isInit);
 		}
 	}
-	/*!
-	\return Editor modes from all access layers
-	*/
+
+	//------------------------------------------------------------------------------------------------
+	//! \return Editor modes from all access layers
 	EEditorMode GetEditorModes()
 	{
-		EEditorMode modes, defaultModes;
-		for(int i, count = m_ModesByAccess.Count(); i < count; i++)
+		EEditorMode modes;
+		for (int i, count = m_ModesByAccess.Count(); i < count; i++)
 		{
 			modes |= m_ModesByAccess.GetElement(i);
 		}
 		return modes;
 	}
+
 	/*!
 	Get the first enabled mode from the list.
 	\return Editor mode
@@ -1666,19 +1659,21 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		
 	}
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////// 
+
 	//--- Debug
+
+	//------------------------------------------------------------------------------------------------
 	protected void ShowDebug()
 	{
 		array<string> debugTexts = new array<string>;
 		
-		string accessSuffix = "";
 		debugTexts.Insert(string.Format("CanOpen: %1/%2", m_CanOpen, m_CanOpenSum));
 		debugTexts.Insert(string.Format("CanClose: %1/%2", m_CanClose, m_CanCloseSum));
 		
 		string currentModeName = "N/A";
-		if (m_CurrentModeEntity) currentModeName = typename.EnumToString(EEditorMode, m_CurrentModeEntity.GetModeType());
+		if (m_CurrentModeEntity)
+			currentModeName = typename.EnumToString(EEditorMode, m_CurrentModeEntity.GetModeType());
+
 		debugTexts.Insert(string.Format("Current Mode: %1", currentModeName));
 		debugTexts.Insert(string.Format("Available Modes: %1", m_Modes.Count()));
 		debugTexts.Insert(string.Format("Limited: %1", m_bIsLimited));
@@ -1691,6 +1686,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		}
 		DbgUI.End();
 	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void ProcessDebug()
 	{
 #ifdef ENABLE_DIAG
@@ -1916,4 +1913,4 @@ class SCR_EditorModePrefab
 	{
 		return m_ModeUIInfo;
 	}
-};
+}

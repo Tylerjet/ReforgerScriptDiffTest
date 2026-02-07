@@ -54,7 +54,7 @@ class SCR_AICompositeActionParallel : SCR_AIActionBase
 			}
 			else
 			{
-				float priority = action.Evaluate() + action.EvaluatePriorityLevel();
+				float priority = action.Evaluate();
 				if (priority > maxPriority)
 					maxPriority = priority;
 			

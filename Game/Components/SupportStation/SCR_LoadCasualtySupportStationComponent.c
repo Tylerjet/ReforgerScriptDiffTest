@@ -80,7 +80,8 @@ class SCR_LoadCasualtySupportStationComponent : SCR_BaseSupportStationComponent
 			if (compartmentSlot)
 			{
 				//~ Successfully moved the character
-				if (accessComp.MoveInVehicle(m_CompartmentManagerOwner, ECompartmentType.Cargo, compartmentSlot))
+				ChimeraWorld world = GetGame().GetWorld();
+				if (accessComp.MoveInVehicle(m_CompartmentManagerOwner, ECompartmentType.CARGO, world.IsGameTimePaused(), compartmentSlot))
 					super.OnExecutedServer(actionOwner, actionUser, action);
 			}
 		}

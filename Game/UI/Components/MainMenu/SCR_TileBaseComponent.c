@@ -1,4 +1,4 @@
-class SCR_TileBaseComponent : ScriptedWidgetComponent
+class SCR_TileBaseComponent : SCR_ScriptedWidgetComponent
 {
 	[Attribute(UIConstants.ENABLED_WIDGET_SATURATION.ToString())]
 	float m_fSaturationSelected;
@@ -18,7 +18,6 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	[Attribute("Image")]
 	string m_sContentName;
 	
-	Widget m_wRoot;
 	ImageWidget m_wImage;
 	float m_fAnimationRate;
 	
@@ -26,12 +25,12 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 	
 	ref ScriptInvoker m_OnFocused = new ScriptInvoker();
 	ref ScriptInvoker m_OnFocusLost = new ScriptInvoker();
-	ref ScriptInvoker m_OnClicked = new ScriptInvoker();
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
 	{
-		m_wRoot = w;
+		super.HandlerAttached(w);
+		
 		m_wImage = ImageWidget.Cast(w.FindAnyWidget(m_sContentName));
 		
 		SetInitialAnimationRate();
@@ -70,7 +69,7 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 		}
 
 		m_OnFocused.Invoke(this);
-		return false;
+		return super.OnFocus(w, x, y);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -79,20 +78,6 @@ class SCR_TileBaseComponent : ScriptedWidgetComponent
 		AnimateWidget.Saturation(m_wImage, m_fSaturationDeselected, m_fAnimationRate);
 		AnimateWidget.Color(m_wImage, m_ColorDeselected, m_fAnimationRate);
 		m_OnFocusLost.Invoke(this);
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnClick(Widget w, int x, int y, int button)
-	{
-		m_OnClicked.Invoke(this);
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	Widget GetRootWidget()
-	{
-		return m_wRoot;
+		return super.OnFocusLost(w, x, y);
 	}
 }

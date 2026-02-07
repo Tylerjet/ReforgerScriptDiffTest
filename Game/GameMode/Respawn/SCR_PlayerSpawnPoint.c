@@ -260,7 +260,10 @@ class SCR_PlayerSpawnPoint : SCR_SpawnPoint
 		{
 			BaseCompartmentSlot slot = compartments[i];
 			if (!slot.IsOccupied() && (!slot.IsReserved() || slot.IsReservedBy(entity)))
-				return accessComponent.MoveInVehicle(vehicle, slot);
+			{
+				ChimeraWorld world = GetGame().GetWorld();
+				return accessComponent.GetInVehicle(vehicle, slot, true, -1, ECloseDoorAfterActions.INVALID, world.IsGameTimePaused());
+			}
 		}
 		
 		return false;

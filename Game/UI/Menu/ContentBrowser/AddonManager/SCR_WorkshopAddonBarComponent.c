@@ -159,7 +159,10 @@ class SCR_WorkshopAddonBarComponent : SCR_ScriptedWidgetComponent
 		}
 		
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
-		array<ref SCR_WorkshopItem> addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
+		array<ref SCR_WorkshopItem> addonsOutdated = {};
+		
+		if (mgr)
+			addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
 
 		int nOutdated;
 		

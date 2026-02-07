@@ -307,7 +307,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 				// If groups are enabled, update them first, otherwise just show players assigned to the faction
 				if (m_GroupRequestUIHandler && m_GroupRequestUIHandler.IsEnabled())
 				{
-					Widget list = m_FactionRequestUIHandler.GetFactionButton(factionIndex).GetList();;
+					Widget list = m_FactionRequestUIHandler.GetFactionButton(factionIndex).GetList();
 					m_GroupRequestUIHandler.SetListWidget(list);
 					m_GroupRequestUIHandler.ShowAvailableGroups(component.GetAffiliatedFaction());
 					m_LoadoutRequestUIHandler.ShowAvailableLoadouts(component.GetAffiliatedFaction());
@@ -381,7 +381,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 		{
 			m_LoadoutRequestUIHandler.OnPlayerLoadoutAssigned(component);
 			m_LoadoutRequestUIHandler.SetSelected(component);
-			m_LoadoutRequestUIHandler.RefreshLoadoutPreview();
+			m_LoadoutRequestUIHandler.RefreshLoadoutPreview();			
 		}
 
 		m_ContinueButton.SetEnabled(CanContinue());

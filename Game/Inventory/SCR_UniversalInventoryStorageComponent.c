@@ -51,7 +51,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected bool IsWeightOk( float fWeight ) 
+	bool IsAdditionalWeightOk( float fWeight ) 
 	{ 
 		if (!m_Attributes)
 			return false;
@@ -78,7 +78,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_BIG );
 		}
 		
-		bool bWeightOK = IsWeightOk( pItemComp.GetTotalWeight() );
+		bool bWeightOK = IsAdditionalWeightOk( pItemComp.GetTotalWeight() );
 		if( !bWeightOK )
 		{
 			if( pInventoryManager )	
@@ -90,12 +90,12 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool CanStoreResource(ResourceName resourceName, int slotID)
+	override bool CanStoreResource(ResourceName resourceName, int slotID, int count)
 	{
-		if (!super.CanStoreResource(resourceName, slotID))
+		if (!super.CanStoreResource(resourceName, slotID, count))
 			return false;
 		
-		bool bVolumeOK = PerformVolumeAndDimensionValidationForResource(resourceName, true);
+		bool bVolumeOK = PerformVolumeAndDimensionValidationForResource(resourceName, true, count);
 		if( !bVolumeOK )
 		{
 			if( pInventoryManager )	
@@ -103,7 +103,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		}
 		
 		float fWeight = GetWeightFromResource(resourceName);
-		bool bWeightOK = IsWeightOk( fWeight );
+		bool bWeightOK = IsAdditionalWeightOk( fWeight );
 		if( !bWeightOK )
 		{
 			if( pInventoryManager )	
@@ -149,7 +149,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
 		}
 		
-		bool bWeightOK = IsWeightOk(nextItemComp.GetTotalWeight() - itemComp.GetTotalWeight());
+		bool bWeightOK = IsAdditionalWeightOk(nextItemComp.GetTotalWeight() - itemComp.GetTotalWeight());
 		if(!bWeightOK && pInventoryManager)
 		{
 			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
@@ -273,7 +273,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	protected bool IsVolumeOk( float fVolume );	
 	protected bool IsWeightOk( float fWeight );
 	override bool CanStoreItem(IEntity item, int slotID);
-	override bool CanStoreResource(ResourceName resourceName, int slotID);
+	override bool CanStoreResource(ResourceName resourceName, int slotID, int count);
 	override bool CanRemoveItem(IEntity item);
 	override void OnRemovedFromSlot(IEntity item, int slotID);
 	protected override void OnAddedToSlot(IEntity item, int slotID);

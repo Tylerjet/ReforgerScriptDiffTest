@@ -9,10 +9,6 @@ Do not modify, this script is generated
 \{
 */
 
-class CharacterAnimGraphComponentClass: GenericComponentClass
-{
-}
-
 class CharacterAnimGraphComponent: GenericComponent
 {
 	//! Switch the active animation set instance to a new one.
@@ -29,6 +25,7 @@ class CharacterAnimGraphComponent: GenericComponent
 	proto external bool SetAttachment(string bindingName, ResourceName resNameAttachedGraph, ResourceName resNameAttachedInst, string attachedNodeName);
 	//! Remove graph attachment. Returns false when there is no attachment bound under given name.
 	proto external bool RemoveAttachment(string bindingName);
+	proto external void SetExternalIKPose(ResourceName ikPoseResource);
 	//! Binds anim command and returns it's ID
 	proto external int BindCommand(string commandName);
 	proto external void CallCommand(int cmdID, int intParam, float floatParam);
@@ -46,6 +43,10 @@ class CharacterAnimGraphComponent: GenericComponent
 	proto external bool IsTag(int tagId);
 	proto external int BindEvent(string eventName);
 	proto external bool IsEvent(int eventId);
+	//! Get event completion if eventId is present.
+	proto bool GetEventCompletion(int eventId, float timeSlice, out float completion);
+	//! Get event user data if eventId is present.
+	proto bool GetEventUserData(int eventId, out string eventUserString, out int eventUserInt);
 }
 
 /*!

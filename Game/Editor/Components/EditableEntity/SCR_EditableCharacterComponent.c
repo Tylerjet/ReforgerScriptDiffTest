@@ -363,23 +363,24 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 						if (isAi)
 							AddUsableVehicle(parentOwner);
 
+						ChimeraWorld world = GetGame().GetWorld();
 						//~ Try placing character into vehicle
 						if (!m_aForceVehicleCompartments || m_aForceVehicleCompartments.IsEmpty())
 						{
 							//~ Try to add character to any free vehicle slot
-							if (!isAi && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot))
+							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.PILOT, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
-							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret))
+							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.TURRET, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
-							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo))
+							if (compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.CARGO, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
@@ -390,21 +391,21 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 						//~ Force character into vehicle. Will delete the character if it fails to find a valid empty compartment
 						else
 						{
-							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Pilot) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Pilot))
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.PILOT) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.PILOT, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
 
-							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Turret) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Turret))
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.TURRET) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.TURRET, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
 								break;
 							}
 
-							if (m_aForceVehicleCompartments.Contains(ECompartmentType.Cargo) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.Cargo))
+							if (m_aForceVehicleCompartments.Contains(ECompartmentType.CARGO) && compartmentAccess.MoveInVehicle(parentOwner, ECompartmentType.CARGO, world.IsGameTimePaused()))
 							{
 								UpdateCompartment(parentOwner);
 								Event_OnCharacterMovedInVehicle.Invoke(this, parentOwner);
@@ -454,6 +455,9 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override void SetTransform(vector transform[4], bool changedByUser = false)
 	{
+		//--- Make sure characters don't fall through ground
+		transform[3][1] = Math.Max(transform[3][1], GetOwner().GetWorld().GetSurfaceY(transform[3][0], transform[3][2]));
+		
 		//--- Move out of a vehicle
 		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
@@ -467,17 +471,29 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			if (changedByUser && IsPlayerOrPossessed())
 				Rpc(PlayerTeleportedFeedback, false);
 
-			compartmentAccess.MoveOutVehicle(-1, transform);
+			// Get out of vehicle 
+			RplComponent slotRplComponent = RplComponent.Cast(compartmentAccess.GetOwner().FindComponent(RplComponent));
+			RplId slotEntityID = slotRplComponent.Id();
 			
-			UpdateCompartment(null);
+			Rpc(GetOutVehicleOwner, slotEntityID, transform);
 
 			return;
 		}
 
-		//--- Make sure characters don't fall through ground
-		transform[3][1] = Math.Max(transform[3][1], GetOwner().GetWorld().GetSurfaceY(transform[3][0], transform[3][2]));
-
 		super.SetTransform(transform, changedByUser);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	protected void GetOutVehicleOwner(RplId slotEntityID, vector transform[4])
+	{
+		RplComponent slotRplComponent = RplComponent.Cast(Replication.FindItem(slotEntityID));
+		IEntity slotEntity = slotRplComponent.GetEntity();
+		
+		CompartmentAccessComponent compartmentAccess = CompartmentAccessComponent.Cast(slotEntity.FindComponent(CompartmentAccessComponent));
+		
+		compartmentAccess.GetOutVehicle_NoDoor(transform, false, true);
+		UpdateCompartment(null);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -696,7 +712,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 
 	//------------------------------------------------------------------------------------------------
 	override SCR_EditableEntityComponent EOnEditorPlace(out SCR_EditableEntityComponent parent, SCR_EditableEntityComponent recipient, EEditorPlacingFlags flags, bool isQueue, int playerID = 0)
-	{
+	{	
 		GenericEntity owner = GetOwner();
 
 		//--- Entity is a player, don't activate AI
@@ -707,7 +723,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		m_AgentControlComponent = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
 		if (m_AgentControlComponent)
 			m_AgentControlComponent.ActivateAI();
-
+		
 		if (parent && AIGroup.Cast(parent.GetOwner()))
 		{
 			//--- Creating inside of a group - add character to it
@@ -722,8 +738,8 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 			else
 				return this;
 		}
-	}
-
+ 	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnEditorSessionLoad(SCR_EditableEntityComponent parent)
 	{
@@ -765,7 +781,7 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 		compartmentManager.GetCompartments(compartments);
 
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(GetOwner().FindComponent(SCR_CompartmentAccessComponent));
-		compartmentAccess.MoveInVehicle(target.GetOwner(), compartments[targetValue]);
+		compartmentAccess.GetInVehicle(target.GetOwner(), compartments[targetValue], true, -1, ECloseDoorAfterActions.INVALID, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

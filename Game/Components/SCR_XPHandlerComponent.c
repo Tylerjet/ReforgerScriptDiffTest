@@ -29,19 +29,19 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 	protected float m_fXpMultiplier = 1;
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerSpawned(int playerId, IEntity controlledEntity)
+	override void OnPlayerSpawnFinalize_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnHandlerComponent handlerComponent, SCR_SpawnData data, IEntity entity)
 	{
-		super.OnPlayerSpawned(playerId, controlledEntity);
+		super.OnPlayerSpawnFinalize_S(requestComponent, handlerComponent, data, entity);
 
 		if (!IsProxy())
 		{
-			SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(controlledEntity.FindComponent(SCR_CompartmentAccessComponent));
+			SCR_CompartmentAccessComponent compartmentAccessComponent = SCR_CompartmentAccessComponent.Cast(entity.FindComponent(SCR_CompartmentAccessComponent));
 
 			if (compartmentAccessComponent)
 				compartmentAccessComponent.GetOnCompartmentLeft().Insert(OnCompartmentLeft);
 		}
 
-		PlayerController pc = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		PlayerController pc = requestComponent.GetPlayerController();
 
 		if (!pc)
 			return;
@@ -110,7 +110,7 @@ class SCR_XPHandlerComponent : SCR_BaseGameModeComponent
 		if (!factionManager)
 			return;
 
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 

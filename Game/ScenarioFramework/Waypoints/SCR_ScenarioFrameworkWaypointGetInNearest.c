@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps()]
-class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointBoarding
+class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointBoardingTimed
 {
 	[Attribute(defvalue: "20", desc: "Radius in m")]
 	float m_fCompletionRadius;
@@ -17,7 +17,7 @@ class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointB
 	[Attribute("30", UIWidgets.EditBox, "Minimal time to hold the waypoint before it completes")]
 	float m_fHoldingTime;
 
-	[Attribute("0", UIWidgets.CheckBox, "Occupy driver")]
+	[Attribute("1", UIWidgets.CheckBox, "Occupy driver")]
 	bool m_bDriverAllowed;
 
 	[Attribute("1", UIWidgets.CheckBox, "Occupy gunner")]
@@ -29,6 +29,7 @@ class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointB
 	//------------------------------------------------------------------------------------------------
 	override void SetDriverAllowed(bool enabled)
 	{
+		m_bDriverAllowed = enabled;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -40,6 +41,7 @@ class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointB
 	//------------------------------------------------------------------------------------------------
 	override void SetGunnerAllowed(bool enabled)
 	{
+		m_bGunnerAllowed = enabled;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -51,6 +53,7 @@ class SCR_ScenarioFrameworkWaypointGetInNearest : SCR_ScenarioFrameworkWaypointB
 	//------------------------------------------------------------------------------------------------
 	override void SetCargoAllowed(bool enabled)
 	{
+		m_bCargoAllowed = enabled;
 	}
 
 	//------------------------------------------------------------------------------------------------

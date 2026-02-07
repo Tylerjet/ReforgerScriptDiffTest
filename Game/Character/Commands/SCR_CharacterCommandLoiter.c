@@ -70,7 +70,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 					cancelLoiterInputs = iManager.GetActionValue("CharacterFire") || iManager.GetActionValue("CharacterSprint") || iManager.GetActionValue("CharacterRaiseWeapon") || iManager.GetActionValue("CharacterWeaponADS") || iManager.GetActionValue("CharacterReload");
 				}
 				
-				if ((m_bWasTag && !isTag) || cancelLoiterInputs)
+				if ((m_bWasTag && !isTag) || (cancelLoiterInputs && !m_pScrInputCtx.m_bLoiteringDisablePlayerInput))
 				{
 					m_pCommandHandler.StopLoitering(false);
 				}
@@ -84,6 +84,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 				if (!isTag)
 				{
 					FinishLoiter();
+					m_pCommandHandler.BroadCastLoiterFinish();
 				}
 			}
 			break;
@@ -121,7 +122,7 @@ class SCR_CharacterCommandLoiter : CharacterCommandScripted
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void FinishLoiter()
+	void FinishLoiter()
 	{
 		SetFlagFinished(true);
 		m_pScrInputCtx.m_iLoiteringType = -1;

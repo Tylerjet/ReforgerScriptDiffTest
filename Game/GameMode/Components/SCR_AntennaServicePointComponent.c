@@ -27,7 +27,7 @@ class SCR_AntennaServicePointComponent : SCR_ServicePointComponent
 		if (!m_RadioControl || m_RadioControl.TransceiversCount() == 0)
 			return;
 		
-		BaseTransceiver tsv = BaseTransceiver.Cast(m_RadioControl.GetTransceiver(0));
+		BaseTransceiver tsv = m_RadioControl.GetTransceiver(0);
 		if (!tsv)
 			return;
 		

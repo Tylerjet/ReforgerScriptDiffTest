@@ -40,14 +40,14 @@ class SCR_CharacterCommandFly : ScriptedCommand
 		
 		vector trans = vector.Zero;
 
-		//! get local translations 
+		// get local translations 
 		PrePhys_GetTranslation(trans);		// in case this returns false ... trans is still zero 
 		
 		//trans	= vector.Zero;
 
-		//! XZ side translation 
+		// XZ side translation 
 		vector 	locDir;
-		float 	speed;
+		//float 	speed;
 		float 	swimSpeedX = 0, swimSpeedZ = 0, swimSpeedY = 0;
 
 		// get int movement 
@@ -83,7 +83,6 @@ class SCR_CharacterCommandFly : ScriptedCommand
 		trans[1] = trans[1] + m_fSpeedY * pDt;
 		trans[2] = trans[2] + m_fSpeedZ * pDt;
 
-		//!
 		PrePhys_SetTranslation(trans);
 	}
 

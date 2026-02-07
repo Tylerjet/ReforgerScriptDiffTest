@@ -19,7 +19,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	protected const string STR_VERSION_MISMATCH = "#AR-ServerBrowser_JoinModVersionMissmatch";
 	protected const string STR_UNJOINABLE = "#AR-ServerBrowser_NoneServers";
 	
-	protected const string STR_DEFAULT_VERSION = "v0.0.0.0";
+	protected const string STR_DEFAULT_VERSION = "0.0.0.0";
 	
 	// Mods Widgets 
 	protected ImageWidget m_wImgModsIcon;
@@ -67,8 +67,11 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	//------------------------------------------------------------------------------------------------
 	override void SetScenario(MissionWorkshopItem scenario)
 	{
-		m_BackendImageComponent.GetEventOnImageSelected().Clear();
-		m_BackendImageComponent.GetEventOnImageSelected().Insert(OnScenarioBackendImageSelected);
+		if (m_BackendImageComponent)
+		{
+			m_BackendImageComponent.GetOnImageSelected().Remove(OnScenarioBackendImageSelected);
+			m_BackendImageComponent.GetOnImageSelected().Insert(OnScenarioBackendImageSelected);
+		}
 		
 		DisplayRoomDataScenario(m_Room);
 		
@@ -85,14 +88,14 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		UpdateAllWidgets();
 		
 		// Set room version
-		string strVersion = STR_DEFAULT_VERSION;
+		string strVersion = UIConstants.FormatVersion(STR_DEFAULT_VERSION);
 		
-		if (!m_Room.Joinable())
+		if (!m_Room || !m_Room.Joinable())
 			strVersion = STR_UNJOINABLE + "!";
 
 		else if (m_Room.GameVersion())
 		{
-			strVersion = "v" + m_Room.GameVersion();
+			strVersion = UIConstants.FormatVersion(m_Room.GameVersion());
 		
 			if (m_Room.GameVersion() != GetGame().GetBuildVersion())
 				strVersion += " - " + STR_VERSION_MISMATCH + "!";
@@ -107,7 +110,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	protected void OnScenarioBackendImageSelected()
 	{
 		if (m_BackendImageComponent)
-			m_BackendImageComponent.GetEventOnImageSelected().Remove(OnScenarioBackendImageSelected);
+			m_BackendImageComponent.GetOnImageSelected().Remove(OnScenarioBackendImageSelected);
 		
 		m_CommonWidgets.m_wLoadingOverlay.SetVisible(false);
 	}
@@ -237,12 +240,12 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_CommonWidgets.m_wAuthorNameText.SetVisible(true);
 
 		// Set room version
-		string strVersion = STR_DEFAULT_VERSION;
+		string strVersion = UIConstants.FormatVersion(STR_DEFAULT_VERSION);
 		if (room.GameVersion())
-			strVersion = "v" + room.GameVersion();
+			strVersion = UIConstants.FormatVersion(room.GameVersion());
 		
 		// Scenario 
-		string scenarioDescription = "";
+		string scenarioDescription;
 		if (m_Scenario)
 			scenarioDescription	= m_Scenario.Description();
 		
@@ -256,11 +259,11 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		// Version match 
 		if (room.GameVersion() == GetGame().GetBuildVersion() && room.Joinable())
 		{
-			m_CommonWidgets.m_wAuthorNameText.SetColor(UIColors.SUB_HEADER);
+			m_CommonWidgets.m_wAuthorNameText.SetColor(Color.FromInt(UIColors.SUB_HEADER.PackToInt()));
 		}
 		else
 		{
-			m_CommonWidgets.m_wAuthorNameText.SetColor(UIColors.WARNING);
+			m_CommonWidgets.m_wAuthorNameText.SetColor(Color.FromInt(UIColors.WARNING.PackToInt()));
 			
 			string text = m_CommonWidgets.m_wAuthorNameText.GetText();
 			if(room.Joinable())
@@ -279,7 +282,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 	void DisplayDefaultScenarioImage()
 	{
 		if (m_BackendImageComponent)
-			m_BackendImageComponent.SetScenarioAndImage(null, null);
+			m_BackendImageComponent.SetImage(null);
 		
 		m_CommonWidgets.m_wLoadingOverlay.SetVisible(false);
 	}
@@ -317,7 +320,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		{
 			m_wModsSizeText.SetVisible(true);
 			m_wModsSizeText.SetText("#AR-ServerBrowser_ContentNotAllowed");
-			m_wModsSizeText.SetColor(UIColors.WARNING); 
+			m_wModsSizeText.SetColor(Color.FromInt(UIColors.WARNING.PackToInt())); 
 			return;
 		}
 		
@@ -327,7 +330,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 		m_wImgModsIcon.SetVisible(show);
 		m_wTxtModsCount.SetVisible(show);
 		m_wModsSizeText.SetVisible(show);
-		m_wModsSizeText.SetColor(UIColors.NEUTRAL_ACTIVE_STANDBY); 
+		m_wModsSizeText.SetColor(Color.FromInt(UIColors.NEUTRAL_ACTIVE_STANDBY.PackToInt())); 
 		
 		if (!show)
 			return;

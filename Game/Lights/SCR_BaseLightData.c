@@ -7,13 +7,13 @@ class SCR_BaseLightData
 	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(LightType))]
 	private LightType m_eLightType;	
 	
-	[Attribute("0 0.3 0", UIWidgets.EditBox, "Light offset in local space from the origin of the entity")]
+	[Attribute("0 0.3 0", UIWidgets.EditBox, "Light offset in local space from the origin of the entity", params: "inf inf purpose=coords space=entity")]
 	private vector m_vLightOffset;
 	
 	[Attribute("1 1 1", UIWidgets.ColorPicker, "Color of the light")]
 	private vector m_vLightColor;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "Direction of the light cone (useful for LightType.SPOT only).")]
+	[Attribute("0 0 1", UIWidgets.EditBox, "Direction of the light cone (useful for LightType.SPOT only).")]
 	private vector m_vLightConeDirection;
 	
 	[Attribute("0", UIWidgets.EditBox, "Angle of the light cone (useful for LightType.SPOT only).")]

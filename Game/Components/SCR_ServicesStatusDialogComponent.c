@@ -425,17 +425,17 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		if (tag != m_sTooltipTag || !hoverWidget || !tooltipClass)
+		if (!tooltip || tooltip.GetTag() != m_sTooltipTag || !tooltip.GetHoverWidget())
 		{
 			m_Tooltip = null;
 			return;
 		}
 
-		m_Tooltip = tooltipClass;
+		m_Tooltip = tooltip;
 		
-		SCR_ServicesStatusDialogLineComponent lineComp = SCR_ServicesStatusDialogLineComponent.FindComponent(hoverWidget);
+		SCR_ServicesStatusDialogLineComponent lineComp = SCR_ServicesStatusDialogLineComponent.FindComponent(tooltip.GetHoverWidget());
 		if (!lineComp)
 			return;
 		
@@ -463,11 +463,15 @@ class SCR_ServicesStatusDialogComponent : ScriptedWidgetComponent
 			}
 		}
 		
-		m_Tooltip.SetMessage(message);
+		SCR_ScriptedWidgetTooltipContentBase content = m_Tooltip.GetContent();
+		if (!content)
+			return;
+		
+		content.SetMessage(message);
 		
 		SCR_ServicesStatusDialogComponent_Status statusPreset = GetStatus(status, m_aStatuses);
 		if (statusPreset)
-			m_Tooltip.SetMessageColor(statusPreset.m_sIconColor);
+			content.SetMessageColor(statusPreset.m_sIconColor);
 	}
 }
 
@@ -480,7 +484,7 @@ class SCR_ServicesStatusDialogComponent_Status
 	[Attribute(defvalue: SCR_Enum.GetDefault(EServiceStatus.ERROR), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EServiceStatus))]
 	EServiceStatus m_Status;
 
-	[Attribute(defvalue: "okCircle")]
+	[Attribute(defvalue: UIConstants.ICON_OK)]
 	string m_sIcon;
 
 	[Attribute(defvalue: "1 1 1 1")]

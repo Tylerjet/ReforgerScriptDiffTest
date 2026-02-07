@@ -13,6 +13,90 @@ class SCR_EditableEntityComponentClass : ScriptComponentClass
 	[Attribute(category: "Editable Entity")]
 	protected ref SCR_EditableEntityInteraction m_EntityInteraction;
 	
+	[Attribute(desc: "When spawning the editable entity and the data is set it will randomly grab a variant depending on the weight set. Any variant needs to have an editable entity component.\n\nLeave class null if there are no variants that need to be randomized", category: "Variants")]
+	protected ref SCR_EditableEntityVariantData m_VariantData;
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get random variant of the given ResourceName (needs to have a editable entity component)
+	//! \param[in] prefab The default variant. It will be used to get the variants from as well as potentially adding it to the randomization pool depending on the settings
+	//! \return Prefab variant or default if no variant found (or randomly selected)
+	static ResourceName GetRandomVariant(ResourceName prefab)
+	{
+		Resource prefabResource = Resource.Load(prefab);
+		if (!prefabResource.IsValid())
+			return prefab;
+		
+		IEntityComponentSource componentSource = SCR_BaseContainerTools.FindComponentSource(prefabResource, SCR_EditableEntityComponent);
+		if (!componentSource)
+			return prefab;
+		
+		SCR_EditableEntityVariantData variantData;
+		componentSource.Get("m_VariantData", variantData);
+		
+		if (!variantData)
+			return prefab;
+		
+		array<SCR_EditableEntityVariant> variants = {};
+		if (variantData.GetVariants(variants) == 0)
+			return prefab;
+		
+		//~ Created weighted array for randomization
+		SCR_WeightedArray<ResourceName> weightedArray = new SCR_WeightedArray<ResourceName>();
+		
+		foreach (SCR_EditableEntityVariant variant : variants)
+		{
+			prefabResource = Resource.Load(variant.m_sVariantPrefab);
+			if (!prefabResource.IsValid())
+				continue;
+			
+			//~ Editable entities only
+			if (!GetEditableEntitySource(prefabResource))
+				continue;
+			
+			//~ Add to randomizer
+			weightedArray.Insert(variant.m_sVariantPrefab, variant.m_iRandomizerWeight);
+		}
+		
+		//~ No variants to randomize
+		if (weightedArray.IsEmpty())
+			return prefab;
+		
+		//~ Add default variant to randomizer
+		if (variantData.m_bRandomizeDefaultVariant)
+			weightedArray.Insert(prefab, variantData.m_iDefaultVariantRandomizerWeight);
+		
+		//~ Get random variant
+		ResourceName randomVariant;
+		weightedArray.GetRandomValue(randomVariant);
+		
+		//~ Return random variant
+		return randomVariant;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! If any variants were assigned to the prefab (Does not check if the variants are valid)
+	//! \param[in] prefab Prefab to check default variants of
+	//! \return True if any variants were assigned
+	static bool HasVariants(ResourceName prefab)
+	{
+		Resource prefabResource = Resource.Load(prefab);
+		if (!prefabResource.IsValid())
+			return false;
+		
+		IEntityComponentSource componentSource = SCR_BaseContainerTools.FindComponentSource(prefabResource, SCR_EditableEntityComponent);
+		if (!componentSource)
+			return false;
+		
+		SCR_EditableEntityVariantData variantData;
+		componentSource.Get("m_VariantData", variantData);
+		
+		if (!variantData)
+			return false;
+		
+		array<SCR_EditableEntityVariant> variants = {};
+		return variantData.GetVariants(variants) > 0;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Get entity type.
 	//! \return Type
@@ -183,7 +267,7 @@ class SCR_EditableEntityComponentClass : ScriptComponentClass
 		if (!editableEntitySource)
 			return false;
 		
-		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
 		if (editableEntityUIInfo)
 			return editableEntityUIInfo.GetEntityBudgetCost(budgetValues);
 		
@@ -200,7 +284,7 @@ class SCR_EditableEntityComponentClass : ScriptComponentClass
 		if (!editableEntitySource)
 			return false;
 		
-		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+		SCR_EditableEntityUIInfo editableEntityUIInfo = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
 		if (editableEntityUIInfo)
 			editableEntityUIInfo.GetEntityChildrenBudgetCost(budgetValues);
 		

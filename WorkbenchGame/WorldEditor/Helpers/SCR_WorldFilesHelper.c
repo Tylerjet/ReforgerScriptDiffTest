@@ -40,12 +40,12 @@ class SCR_WorldFilesHelper
 		string defaultLayerFilePath = layersDirectory + "/default.layer";
 
 		if (!FileIO.FileExists(absoluteWorldDirectory))
-			SCR_FileIOHelper.CreateDirectory(absoluteWorldDirectory);
+			FileIO.MakeDirectory(absoluteWorldDirectory);
 
 		// create world and layers directory
 		if (!FileIO.FileExists(layersDirectory))
 		{
-			if (!SCR_FileIOHelper.CreateDirectory(layersDirectory))
+			if (!FileIO.MakeDirectory(layersDirectory))
 			{
 				Print("Cannot create " + layersDirectory, LogLevel.WARNING);
 				return string.Empty;

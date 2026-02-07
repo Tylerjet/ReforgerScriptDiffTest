@@ -35,7 +35,12 @@ class SCR_VotingKick : SCR_VotingReferendum
 		//--- Cannot kick admin
 		if (SCR_Global.IsAdmin(value))
 			return false;
-
+		
+		//~ Player is currently not admin but is on the admin list and should not be able to be voted out
+		SCR_PlayerListedAdminManagerComponent adminManager = SCR_PlayerListedAdminManagerComponent.GetInstance();
+		if (adminManager && adminManager.IsPlayerOnAdminList(value))
+			return false;
+		
 		//--- When faction specific, allow voting only for players on the same faction as target of the vote
 		if (m_bFactionSpecific)
 		{

@@ -176,10 +176,13 @@ class SCR_SoundManagerEntity : GenericEntity
 	{			
 		// Update global occlusion signals
 		audioSource.SetGlobalOcclusionSignals();
-		
+				
 		// Get owner transformation
 		vector mat[4];
 		audioSource.m_Owner.GetTransform(mat);
+		
+		// Update environmental signals
+		audioSource.SetEnvironmentalSignals(m_SoundWorld, mat[3]);
 		
 		// Play event
 		PlaySoundEvent(audioSource, mat);
@@ -197,6 +200,9 @@ class SCR_SoundManagerEntity : GenericEntity
 	{		
 		// Update global occlusion signals
 		audioSource.SetGlobalOcclusionSignals();
+		
+		// Update environmental signals
+		audioSource.SetEnvironmentalSignals(m_SoundWorld, mat[3]);
 		
 		// Play event
 		PlaySoundEvent(audioSource, mat);

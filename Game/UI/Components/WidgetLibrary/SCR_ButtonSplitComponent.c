@@ -75,12 +75,11 @@ class SCR_ButtonSplitComponent : SCR_ButtonComponent
 	//------------------------------------------------------------------------------------------------
 	void InsertWidgetCells(array<string> cellNames)
 	{
-		int i = 0;
-		
+		Widget w;
 		foreach (string cellName : cellNames)
 		{
-			Widget w = m_wRoot.FindAnyWidget(cellName);
-			if(w)
+			w = m_wRoot.FindAnyWidget(cellName);
+			if (w)
 			{
 				m_aWidgetCells.Insert(w);
 				m_aPreventContentChange.Insert(false);

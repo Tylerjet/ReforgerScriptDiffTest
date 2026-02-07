@@ -62,23 +62,40 @@ class SCR_ChimeraAIAgent : ChimeraAIAgent
 	//------------------------------------------------------------------------------------------------	
 	protected void SendWoundedMsg()
 	{
-		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(GetControlledEntity().FindComponent(SCR_CharacterDamageManagerComponent));
+		IEntity controlled = GetControlledEntity();
+		
+		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(controlled.FindComponent(SCR_CharacterDamageManagerComponent));
 		if (!damageMgr)
 			return;
 	
-		if (!damageMgr.IsDamagedOverTime(EDamageType.BLEEDING))
+		if (!damageMgr.IsBleeding())
 			return;
 		
 		SCR_AIGroup msgReceiverGroup = null;
 		
+		// if wounded is AI
 		SCR_AIGroup myGroup = SCR_AIGroup.Cast(GetParentGroup());
 		if (myGroup)
+			msgReceiverGroup = myGroup;			// Send to AI group
+		
+		// if wounded is player
+		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(controlled);
+		if (playerId != 0)
 		{
-			SCR_AIGroup slaveGroup = myGroup.GetSlave();
+			SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+			if (!groupsManager)
+				return;
+			
+			SCR_AIGroup playerGroup = groupsManager.GetPlayerGroup(playerId);
+			if (!playerGroup)
+				return;
+			
+			SCR_AIGroup slaveGroup = playerGroup.GetSlave();
+			
 			if (slaveGroup)
 				msgReceiverGroup = slaveGroup;	// Send to our slave group - this is the one which has AIs and will heal us
 			else
-				msgReceiverGroup = myGroup;	// Send to our group
+				msgReceiverGroup = playerGroup;	// Send to our group
 		}
 		
 		if (!msgReceiverGroup)

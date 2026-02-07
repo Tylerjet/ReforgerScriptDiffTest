@@ -14,8 +14,11 @@ class SCR_AddonLinePresetWidgets
 	SCR_EditBoxComponent m_EditNameComponent;
 
 	TextWidget m_NameText;
+	
+	ButtonWidget m_wSelectedHighlight;
+	SCR_ModularButtonComponent m_SelectedHighlightButtonComponent;
 
-	SizeLayoutWidget m_SizeWarning;
+	ImageWidget m_SizeWarning;
 
 	ButtonWidget m_EditNameButton;
 	SCR_ModularButtonComponent m_EditNameButtonComponent;
@@ -28,6 +31,8 @@ class SCR_AddonLinePresetWidgets
 
 	ButtonWidget m_LoadButton;
 	SCR_ModularButtonComponent m_LoadButtonComponent;
+	
+	ImageWidget m_wImgAddons;
 
 	bool Init(Widget root)
 	{
@@ -39,8 +44,11 @@ class SCR_AddonLinePresetWidgets
 		m_EditNameComponent = SCR_EditBoxComponent.Cast(m_EditName.FindHandler(SCR_EditBoxComponent));
 
 		m_NameText = TextWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.OverlayName.HorizontalName.m_NameText"));
+		
+		m_wSelectedHighlight = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.OverlayName.HorizontalName.m_SelectedHighlight"));
+		m_SelectedHighlightButtonComponent = SCR_ModularButtonComponent.Cast(m_wSelectedHighlight.FindHandler(SCR_ModularButtonComponent));
 
-		m_SizeWarning = SizeLayoutWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.m_SizeWarning"));
+		m_SizeWarning = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.m_SizeWarning.ImgWarning"));
 
 		m_EditNameButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.m_EditNameButton"));
 		m_EditNameButtonComponent = SCR_ModularButtonComponent.Cast(m_EditNameButton.FindHandler(SCR_ModularButtonComponent));
@@ -53,6 +61,8 @@ class SCR_AddonLinePresetWidgets
 
 		m_LoadButton = ButtonWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.m_LoadButton"));
 		m_LoadButtonComponent = SCR_ModularButtonComponent.Cast(m_LoadButton.FindHandler(SCR_ModularButtonComponent));
+		
+		m_wImgAddons = ImageWidget.Cast(root.FindWidget("LineHeight.Overlay.LineContent.LineElements.SizeAddons.HorizontalAddons.m_ImgAddons"));;
 
 		return true;
 	}

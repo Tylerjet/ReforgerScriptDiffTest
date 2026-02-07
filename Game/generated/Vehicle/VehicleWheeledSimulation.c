@@ -15,8 +15,12 @@ class VehicleWheeledSimulationClass: VehicleBaseSimulationClass
 
 class VehicleWheeledSimulation: VehicleBaseSimulation
 {
-	//! Returns current vehicle speed in km/h (kilometres per hour).
+	//! Returns current vehicle speed in km/h (kilometers per hour).
 	proto external float GetSpeedKmh();
+	/*!
+	Forcibly enables simulation of vehicle, only meant for cinematics, not to be used in any game logic!
+	*/
+	proto external void ForceEnableSimulation();
 	//! Returns current steering input in range < -1, 1 >
 	proto external float GetSteering();
 	//! Sets steering input.

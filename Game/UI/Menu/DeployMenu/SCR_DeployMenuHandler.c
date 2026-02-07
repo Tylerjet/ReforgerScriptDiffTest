@@ -7,27 +7,24 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 {
 	[Attribute("FactionOverlay")]
 	protected string m_sFactionUIHandler;
-	protected SCR_FactionRequestUIComponent m_FactionRequestHandler;
 
 	[Attribute("LoadoutSelector")]
 	protected string m_sLoadoutUIHandler;
-	protected SCR_LoadoutRequestUIComponent m_LoadoutRequestHandler;
 
 	[Attribute("GroupSelector")]
 	protected string m_sGroupUIHandler;
-	protected SCR_GroupRequestUIComponent m_GroupRequestHandler;
 
 	[Attribute("SpawnPointSelector")]
 	protected string m_sSpawnPointUIHandler;
-	protected SCR_SpawnPointRequestUIComponent m_SpawnPointUIHandler;
 	
 	[Attribute("FactionPlayerList")]
 	protected string m_sFactionPlayerList;
-	protected SCR_FactionPlayerList m_FactionPlayerList;	
 
 	[Attribute("GroupPlayerList")]
 	protected string m_sGroupPlayerList;
-	protected SCR_GroupPlayerList m_GroupPlayerLIst;
+	
+	[Attribute("HudManagerLayout")]
+	protected string m_sHudLayoutUIHandler;
 	
 	[Attribute(desc:"Determines which widgets should be hidden when opening the pause menu")]
 	protected ref array<string> m_aHiddenWidgetsOnPause;
@@ -37,6 +34,14 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 	
 	protected ref array<Widget> m_aHiddenWidgets = {};
 	protected ref array<Widget> m_aDisabledWidgets = {};
+	
+	protected SCR_FactionRequestUIComponent m_FactionRequestHandler;
+	protected SCR_LoadoutRequestUIComponent m_LoadoutRequestHandler;
+	protected SCR_GroupRequestUIComponent m_GroupRequestHandler;
+	protected SCR_SpawnPointRequestUIComponent m_SpawnPointUIHandler;
+	protected SCR_FactionPlayerList m_FactionPlayerList;	
+	protected SCR_GroupPlayerList m_GroupPlayerLIst;
+	protected SCR_HUDMenuComponent m_HudMenuComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -61,6 +66,12 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 			if (widget)
 				m_aDisabledWidgets.Insert(widget);
 		}
+		
+		Widget hudMenu = m_wRoot.FindAnyWidget(m_sHudLayoutUIHandler);
+		if (hudMenu)
+			m_HudMenuComponent = SCR_HUDMenuComponent.Cast(hudMenu.FindHandler(SCR_HUDMenuComponent));
+		
+		ForceHUDLayout();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -82,6 +93,7 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 	protected void OnPauseMenuClosed()
 	{
 		UpdateWidgetsOnPause(false);
+		ForceHUDLayout();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -96,6 +108,15 @@ class SCR_DeployMenuHandler : SCR_ScriptedWidgetComponent
 		{
 			widget.SetEnabled(!paused);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ForceHUDLayout()
+	{
+		if (!m_HudMenuComponent)
+			return;
+		
+		m_HudMenuComponent.EnableHUDMenu();
 	}
 
 	//------------------------------------------------------------------------------------------------

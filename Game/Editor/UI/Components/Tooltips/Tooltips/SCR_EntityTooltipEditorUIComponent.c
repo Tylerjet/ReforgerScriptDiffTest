@@ -99,7 +99,7 @@ class SCR_EntityTooltipEditorUIComponent : SCR_BaseTooltipEditorUIComponent
 				}
 			}
 			
-			SCR_CallsignBaseComponent callsignComponent = SCR_CallsignBaseComponent.Cast(entity.GetOwner().FindComponent(SCR_CallsignBaseComponent));;
+			SCR_CallsignBaseComponent callsignComponent = SCR_CallsignBaseComponent.Cast(entity.GetOwner().FindComponent(SCR_CallsignBaseComponent));
 			if (callsignComponent)
 			{
 				TextWidget callsignWidget = TextWidget.Cast(widget.FindAnyWidget(m_sHeaderTypeName)); 
@@ -258,7 +258,7 @@ class SCR_EntityTooltipDetailType
 			//With label
 			if (detail.GetShowLabel())
 			{
-				detailWidget = workspace.CreateWidgets(m_DetailLayout, parent);;
+				detailWidget = workspace.CreateWidgets(m_DetailLayout, parent);
 				detailFrame = detailWidget.FindAnyWidget(m_sDetailLayoutFrame);
 				detailName = TextWidget.Cast(detailWidget.FindAnyWidget(m_sDetailLayoutName));	
 			}

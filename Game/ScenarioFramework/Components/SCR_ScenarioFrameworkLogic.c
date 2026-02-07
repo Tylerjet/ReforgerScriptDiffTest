@@ -1,10 +1,10 @@
 [BaseContainerProps()]
 class SCR_ScenarioFrameworkLogicInput
 {
-	[Attribute(defvalue: "1", desc: "Input connector", UIWidgets.Auto, category: "Input")];
+	[Attribute(desc: "Input connector", category: "Input")]
 	protected ref SCR_ScenarioFrameworkActionInputBase m_InputAction;
 	
-	[Attribute(defvalue: "0", desc: "Input connector", UIWidgets.Auto, category: "Input")];
+	[Attribute(defvalue: "0", desc: "Input connector", category: "Input")]
 	protected bool 			m_bLatch;
 	
 	protected bool			m_bSignal;
@@ -38,10 +38,10 @@ class SCR_ScenarioFrameworkLogicClass : GenericEntityClass
 class SCR_ScenarioFrameworkLogic : GenericEntity
 {
 	
-	[Attribute(defvalue: "1", desc: "What causes the increase", UIWidgets.Auto, category: "Input")];
+	[Attribute(desc: "What causes the increase", category: "Input")]
 	protected ref array<ref SCR_ScenarioFrameworkLogicInput> m_aInputs;
 		
-	[Attribute(defvalue: "1", desc: "What to do once counter is reached", UIWidgets.Auto, category: "OnActivate")];
+	[Attribute(desc: "What to do once counter is reached", category: "OnActivate")]
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aActions;
 	
 	protected bool												m_bIsTerminated; //Marks if this was terminated - either by death or deletion
@@ -54,7 +54,9 @@ class SCR_ScenarioFrameworkLogic : GenericEntity
 			return;
 		
 		foreach (SCR_ScenarioFrameworkLogicInput input : m_aInputs)
+		{
 			input.Init(this);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -101,18 +103,24 @@ class SCR_ScenarioFrameworkLogicCounterClass : SCR_ScenarioFrameworkLogicClass
 
 class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 {	
-	[Attribute(defvalue: "1", desc: "Threshold", UIWidgets.Graph, category: "Counter")];
+	[Attribute(defvalue: "1", desc: "Threshold", UIWidgets.Graph, category: "Counter")]
 	protected int							m_iCountTo;
 	
-	[Attribute(defvalue: "1", desc: "What to do once value is increased", UIWidgets.Auto, category: "OnIncrease")];
+	[Attribute(desc: "What to do once value is increased", category: "OnIncrease")]
 	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aOnIncreaseActions;
+	
+	[Attribute(desc: "What to do once value is decreased", category: "OnDecrease")]
+	protected ref array<ref SCR_ScenarioFrameworkActionBase>	m_aOnDecreaseActions;
 			
 	int 							m_iCnt = 0;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInput(bool pSignal = true, IEntity entity = null)
 	{
-		Increase(entity);
+		if (entity)
+			Increase(entity);
+		else
+			Increase(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -130,7 +138,7 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//!
+	//! Increases the counter value by 1
 	//! \param[in] entity
 	void Increase(IEntity entity)
 	{
@@ -139,12 +147,27 @@ class SCR_ScenarioFrameworkLogicCounter : SCR_ScenarioFrameworkLogic
 		{
 			OnActivate(entity);
 		}
-		else
+		
+		foreach (SCR_ScenarioFrameworkActionBase increaseAction : m_aOnIncreaseActions)
 		{
-			foreach (SCR_ScenarioFrameworkActionBase increaseAction : m_aOnIncreaseActions)
-			{
-				increaseAction.OnActivate(entity);
-			}
+			increaseAction.OnActivate(entity);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Decreases the counter value by 1
+	//! \param[in] entity
+	void Decrease(IEntity entity)
+	{
+		m_iCnt--;
+		if (m_iCnt == m_iCountTo)
+		{
+			OnActivate(entity);
+		}
+		
+		foreach (SCR_ScenarioFrameworkActionBase decreaseAction : m_aOnDecreaseActions)
+		{
+			decreaseAction.OnActivate(entity);
 		}
 	}
 	

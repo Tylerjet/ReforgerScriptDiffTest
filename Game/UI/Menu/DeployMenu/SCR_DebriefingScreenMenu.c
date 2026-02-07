@@ -1,11 +1,13 @@
 //------------------------------------------------------------------------------------------------
 class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 {
+	protected static const string RESTART_TIMER_WIDGET_NAME = "RestartTimerHolder";
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
 	{
 		m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		m_PlayerManager = PlayerManager.Cast(GetGame().GetPlayerManager());
+		m_PlayerManager = GetGame().GetPlayerManager();
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
 
 		SCR_DebriefingScreenComponent debriefingScreen = SCR_DebriefingScreenComponent.Cast(m_GameMode.FindComponent(SCR_DebriefingScreenComponent));
@@ -32,6 +34,11 @@ class SCR_DebriefingScreenMenu : SCR_WelcomeScreenMenu
 		    }
 		}
 
+		// Check is the restarting counter is in the layout and make it active
+		Widget restartCounterWidget = GetRootWidget().FindAnyWidget(RESTART_TIMER_WIDGET_NAME);
+		if (restartCounterWidget)
+			restartCounterWidget.SetVisible(true);
+		
 		RichTextWidget scenarioTitle = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("DeploySetup"));
 		if (scenarioTitle)
 			//scenarioTitle.SetText(debriefingScreen.GetHeaderTitle());

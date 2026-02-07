@@ -1,88 +1,106 @@
 enum SCR_EModDetailsMenuTabs
 {
 	OVERVIEW = 0,
-	DEPENDENCY
+	DEPENDENCY,
+	DEPENDENT
 }
 
 class SCR_ModDetailsSuperMenuComponent : SCR_SuperMenuComponent
 {
 	protected SCR_WorkshopItem m_WorkshopItem;
 	protected ref array<ref SCR_WorkshopItem> m_aDependencies = {};
+	protected ref array<ref SCR_WorkshopItem> m_aDependent = {}; 
 	
 	//------------------------------------------------------------------------------------------------
-	//! Callback passed to tab view, called when a new tab is created
 	override SCR_SubMenuBase OnTabCreate(SCR_TabViewComponent comp, Widget w, int index)
 	{
-		SCR_SubMenuBase subMenu = SCR_SubMenuBase.Cast(w.FindHandler(SCR_SubMenuBase));
-		if (!subMenu)
-			return null;
+		SCR_SubMenuBase subMenu = super.OnTabCreate(comp, w, index);
 		
-		SCR_ContentBrowser_AddonsSubMenu dependencySubMenu = SCR_ContentBrowser_AddonsSubMenu.Cast(subMenu);
-		if (dependencySubMenu)
-			dependencySubMenu.SetWorkshopItems(m_aDependencies);
+		// Dependencies tab is created only on click
+		if (index == SCR_EModDetailsMenuTabs.DEPENDENCY)
+			InitDependenciesTab();
 		
-		return super.OnTabCreate(comp, w, index);
+		if (index == SCR_EModDetailsMenuTabs.DEPENDENT)
+			InitDependentTab();
+		
+		return subMenu;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuClose()
+	{
+		super.OnMenuClose();
+		
+		if (m_WorkshopItem)
+			m_WorkshopItem.m_OnDependenciesLoaded.Remove(OnDetailsLoaded);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetWorkshopItem(SCR_WorkshopItem item)
 	{
-		m_WorkshopItem = item;
-		
-		// Request data from the backend, if this item is present in the backend and we are connected
-		if (m_WorkshopItem.GetOnline() && SCR_ServicesStatusHelper.IsBackendReady() && GetGame().GetBackendApi().IsAuthenticated())
-		{
-			m_WorkshopItem.m_OnGetAsset.Insert(OnDetailsLoaded);
-			m_WorkshopItem.m_OnDependenciesLoaded.Insert(OnAskDetailsGetDependencyTree);
-
-			m_WorkshopItem.LoadDetails();
-		}
-		else
-		{
-			// If this item is purely local, we call the callbacks ourselves
-			string gameEnv = GetGame().GetBackendApi().GetBackendEnv();
-			string modEnv = m_WorkshopItem.GetWorkshopItem().GetBackendEnv();
-			if (gameEnv == modEnv)
-			{
-				OnDetailsLoaded();
-				OnAskDetailsGetDependencyTree();
-			}
-		}
-	}
-	
-	// SCR_WorkshopItem requests
-	//------------------------------------------------------------------------------------------------
-	protected void OnDetailsLoaded()
-	{
-		#ifdef WORKSHOP_DEBUG
-		m_WorkshopItem.LogState();
-		#endif
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Called when we have received dependencies
-	protected void OnAskDetailsGetDependencyTree()
-	{
-		// Whole list of dependencies is available now
-		m_aDependencies = m_WorkshopItem.GetLatestDependencies();
-
-		if (m_aDependencies.IsEmpty())
+		if (!item)
 			return;
 		
-		SCR_ContentBrowser_AddonsSubMenu dependencySubMenu;
+		if (m_WorkshopItem)
+			m_WorkshopItem.m_OnDependenciesLoaded.Remove(OnDetailsLoaded);
 		
-		if (m_aSubMenus.IsIndexValid(SCR_EModDetailsMenuTabs.DEPENDENCY))
-		 dependencySubMenu = SCR_ContentBrowser_AddonsSubMenu.Cast(m_aSubMenus[SCR_EModDetailsMenuTabs.DEPENDENCY]);
+		m_WorkshopItem = item;
+		m_WorkshopItem.m_OnDependenciesLoaded.Insert(OnDetailsLoaded);
 		
+		LoadItemDetails();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void LoadItemDetails()
+	{
+		if (!m_WorkshopItem)
+			return;
+		
+		if (!m_WorkshopItem.GetDetailsLoaded())
+			m_WorkshopItem.LoadDetails();
+		
+		OnDetailsLoaded(m_WorkshopItem);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Called when we have received dependencies
+	protected void OnDetailsLoaded(SCR_WorkshopItem item)
+	{
+		// Details tab - Created at start
+		SCR_ContentBrowserDetails_OverviewSubMenu detailsSubMenu = SCR_ContentBrowserDetails_OverviewSubMenu.Cast(GetSubMenu(SCR_EModDetailsMenuTabs.OVERVIEW));
+		if (detailsSubMenu)
+			detailsSubMenu.SetWorkshopItem(item);
+		
+		// Dependencies tab - Created on tab button click
+		m_aDependencies = item.GetLatestDependencies();
+		if (!m_aDependencies.IsEmpty())
+			GetTabView().EnableTab(SCR_EModDetailsMenuTabs.DEPENDENCY, true);
+		
+		// Dependent tab
+		m_aDependent = item.GetDependentAddons();
+		if (!m_aDependent.IsEmpty())
+			GetTabView().EnableTab(SCR_EModDetailsMenuTabs.DEPENDENT, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitDependenciesTab()
+	{
+		if (m_aDependencies.IsEmpty())
+			return;
+
+		SCR_ContentBrowser_AddonsSubMenu dependencySubMenu = SCR_ContentBrowser_AddonsSubMenu.Cast(GetSubMenu(SCR_EModDetailsMenuTabs.DEPENDENCY));
 		if (dependencySubMenu)
 			dependencySubMenu.SetWorkshopItems(m_aDependencies);
-
-		// Load details for all dependencies, so we have data about reported state
-		foreach (SCR_WorkshopItem dep : m_aDependencies)
-		{
-			dep.LoadDetails();
-		}
-
-		GetTabView().EnableTab(SCR_EModDetailsMenuTabs.DEPENDENCY, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InitDependentTab()
+	{
+		if (m_aDependent.IsEmpty())
+			return;
+		
+		SCR_ContentBrowser_AddonsSubMenu dependentSubMenu = SCR_ContentBrowser_AddonsSubMenu.Cast(GetSubMenu(SCR_EModDetailsMenuTabs.DEPENDENT));
+		if (dependentSubMenu)
+			dependentSubMenu.SetWorkshopItems(m_aDependent);
 	}
 }

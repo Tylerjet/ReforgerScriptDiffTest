@@ -20,6 +20,8 @@ of multiply physics geometries. Certain methods allow to work with a specific ph
 */
 sealed class Physics: NativeComponent
 {
+	static const float KMH2MS = 1 / 3.6; //<! Constant for converting km/h to m/s
+	static const float MS2KMH = 3.6; //<! Constant for converting m/s to km/h
 	static const float STANDARD_GRAVITY = 9.81;
 	static const vector VGravity = "0 -9.81 0";
 

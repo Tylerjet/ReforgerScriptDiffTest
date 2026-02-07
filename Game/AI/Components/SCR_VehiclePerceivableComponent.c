@@ -9,7 +9,7 @@ class SCR_VehiclePerceivableComponent : VehiclePerceivableComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		m_DamageMgr = SCR_DamageManagerComponent.GetDamageManager(owner);
+		m_DamageMgr = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
 
 		if (m_DamageMgr)
 		{

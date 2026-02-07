@@ -1,8 +1,9 @@
 class SCR_AIGetEmptyCompartment : AITaskScripted
 {
-	static const string PORT_POSITION 	=	"Position";
-	static const string PORT_AGENT 		=	"Agent";
-	static const string PORT_VEHICLE 	=	"Vehicle";
+	static const string PORT_POSITION 			=	"Position";
+	static const string PORT_AGENT 				=	"Agent";
+	static const string PORT_VEHICLE 			=	"Vehicle";
+	static const string PORT_BOARDING_PARAMS 	=	"BoardingParams";
 	
 	[Attribute("0", UIWidgets.CheckBox, "Occupy driver compartment with Group Leader Agent?" )]
 	protected bool m_bAllowLeaderAsDriver;
@@ -24,18 +25,24 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 			return ENodeResult.FAIL;
 		}
 		
+		SCR_AIBoardingParameters params;
+		if (!GetVariableIn(PORT_BOARDING_PARAMS, params) || !params)
+			params = new SCR_AIBoardingParameters;
+		
 		BaseCompartmentManagerComponent compartmentMan = BaseCompartmentManagerComponent.Cast(m_VehicleEntity.FindComponent(BaseCompartmentManagerComponent));
 		if (!compartmentMan)
 		{
 			return NodeError(this, owner, "Missing compartment manager on IEntity" + m_VehicleEntity.ToString());
 		}
 
+		VehicleHelicopterSimulation heliSim = VehicleHelicopterSimulation.Cast(m_VehicleEntity.FindComponent(VehicleHelicopterSimulation));
+		
 		ref array<BaseCompartmentSlot>	compartments = {}, pilotComp = {}, turretComp = {}, cargoComp = {};
 		int numOfComp = compartmentMan.GetCompartments(compartments);
 		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 		if (!group)
 		{
-			return NodeError(this, owner, "GetEmptyCompartment not run on SCR_AIGroup agent!");
+			group = SCR_AIGroup.Cast(owner.GetParentGroup());
 		}
 		AIAgent groupMember;
 		BaseCompartmentSlot compartmentToAlocate;
@@ -47,14 +54,16 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 		
 		foreach (BaseCompartmentSlot comp : compartments)
 		{
-			if (!comp.AttachedOccupant() && comp.IsCompartmentAccessible())
+			if (!comp.AttachedOccupant() && comp.IsCompartmentAccessible() && !comp.IsReserved())
 			{
-				if (PilotCompartmentSlot.Cast(comp)) 
+				if (PilotCompartmentSlot.Cast(comp) && params.m_bIsDriverAllowed && !heliSim) //exclude helicopter pilot slots for now
 					pilotComp.Insert(comp);
-				else if (TurretCompartmentSlot.Cast(comp))
+				else if (TurretCompartmentSlot.Cast(comp) && params.m_bIsGunnerAllowed)
 					turretComp.Insert(comp);
-				else
+				else if (CargoCompartmentSlot.Cast(comp) && params.m_bIsCargoAllowed)
 					cargoComp.Insert(comp);
+				else 
+					continue;
 				foundEmptyCompartment = true;
 			}
 		}
@@ -87,7 +96,6 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 		if (compartmentToAlocate)
 		{
 			group.AllocateCompartment(compartmentToAlocate);
-			PrintFormat("Here %1 for %2", compartmentToAlocate, owner);
 			SetVariableOut(PORT_POSITION, SCR_AICompartmentHandling.CompartmentClassToType(compartmentToAlocate.Type()));					
 			return ENodeResult.SUCCESS;
 		}
@@ -99,7 +107,8 @@ class SCR_AIGetEmptyCompartment : AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_VEHICLE,
-		PORT_AGENT
+		PORT_AGENT,
+		PORT_BOARDING_PARAMS
 	};
 	override TStringArray GetVariablesIn()
 	{

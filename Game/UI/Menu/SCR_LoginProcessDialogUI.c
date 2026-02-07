@@ -13,13 +13,6 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	
 	protected const string PID_TEXT_WIDGET = "PIDText";
 	protected const string PID_BUTTON_WIDGET = "CopyPIDButton";
-
-	// Warning messages
-	protected const string WARNING_SUCCESS_IMG = "check";
-	protected const string WARNING_FAILED_IMG = "warning";
-	protected const string WARNING_TIMEOUT_IMG = "disconnection";
-	
-	protected const string WARNING_TIMEOUT = "#AR-Account_LoginTimeout";
 	
 	// Buttons
 	protected SCR_InputButtonComponent m_TOSButton;
@@ -171,10 +164,10 @@ class SCR_LoginProcessDialogUI : SCR_ConfigurableDialogUi
 	{	
 		string service = SCR_ServicesStatusHelper.SERVICE_ACCOUNT_PROFILE;
 		
-		SCR_InputButtonComponent.ForceConnectionButtonEnabled(m_TOSButton, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
-		SCR_InputButtonComponent.ForceConnectionButtonEnabled(m_CreateAccount, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_ConnectionUICommon.ForceConnectionButtonEnabled(m_TOSButton, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_ConnectionUICommon.ForceConnectionButtonEnabled(m_CreateAccount, SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 
-		SCR_InputButtonComponent.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || ! SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
+		SCR_ConnectionUICommon.SetConnectionButtonEnabled(m_ConfirmButton, service, m_bForceConfirmButtonDisabled || ! SCR_ServicesStatusHelper.IsBackendConnectionAvailable(), false);
 	
 		string identity;
 		BackendApi backendAPI = GetGame().GetBackendApi();
@@ -331,7 +324,7 @@ class SCR_AccountLockedDialogUi : SCR_ConfigurableDialogUi
 		if (!widget)
 			return;
 		
-		string message = string.Format("<color rgba=%1>%2</color>", UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), GetGame().GetBackendApi().GetLinkItem(SUPPORT));
+		string message = string.Format("<color rgba=%1>%2</color>", UIColors.FormatColor(UIColors.CONTRAST_COLOR), GetGame().GetBackendApi().GetLinkItem(SUPPORT));
 		widget.SetText(WidgetManager.Translate(CONTENT_MESSAGE, message));
 		
 		UpdateMessage();

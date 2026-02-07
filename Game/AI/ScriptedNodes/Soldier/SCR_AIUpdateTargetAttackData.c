@@ -4,13 +4,14 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 	protected static const string BASE_TARGET_PORT = "BaseTarget";
 	protected static const string WEAPON_IS_READY = "WeaponReady";
 	
-	
 	// Outputs
 	protected static const string PORT_LAST_SEEN_POSITION = "LastSeenPosition";
 	protected static const string PORT_VISIBLE = "Visible";
 	protected static const string PORT_FIRE_TREE_ID = "FireTreeId";
+	protected static const string PORT_FIRE_RATE = "FireRate";
 	static const string PORT_AIMPOINT_TYPE_0 = "AimpointType0";
 	static const string PORT_AIMPOINT_TYPE_1 = "AimpointType1";
+	
 	
 	// These IDs must match to actual trees in attack tree
 	protected const int FIRE_TREE_INVALID 		= -1;	// No aiming or firing is allowed at all
@@ -23,6 +24,7 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 	protected const float MELEE_MAX_DISTANCE = 2.0;
 	protected const float BURST_FIRE_MAX_DISTANCE = 50.0;
 	
+	protected SCR_ChimeraAIAgent m_Agent;
 	protected SCR_AICombatComponent m_CombatComponent;
 	protected CharacterControllerComponent m_CharacterController;
 	protected PerceptionComponent m_PerceptionComponent;
@@ -33,16 +35,17 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 	
 	protected bool m_bWeaponHasBurstOrAuto; // Cached on first run
 	
-	
 	//-----------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
 		m_UtilityComponent = SCR_AIUtilityComponent.Cast(owner.FindComponent(SCR_AIUtilityComponent));
+		m_Agent = SCR_ChimeraAIAgent.Cast(owner);
 		
 		IEntity myEntity = owner.GetControlledEntity();
 		if (myEntity)
 		{
 			m_CombatComponent = SCR_AICombatComponent.Cast(myEntity.FindComponent(SCR_AICombatComponent));
+			
 			m_PerceptionComponent = PerceptionComponent.Cast(myEntity.FindComponent(PerceptionComponent));
 			m_CharacterController = CharacterControllerComponent.Cast(myEntity.FindComponent(CharacterControllerComponent));
 		}
@@ -83,10 +86,14 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 		bool visible = m_CombatComponent.IsTargetVisible(target);
 		SetVariableOut(PORT_VISIBLE, visible);
 		
+		// Fire rate modifier (modified in ResolveFireTree)
+		float fireRate = 1;
+		
 		// Which fire tree to use?
 		// This must be reevaluated periodically
-		int fireTreeId = ResolveFireTree(target, visible, weaponReady);
+		int fireTreeId = ResolveFireTree(target, visible, weaponReady, fireRate);
 		SetVariableOut(PORT_FIRE_TREE_ID, fireTreeId);
+		SetVariableOut(PORT_FIRE_RATE, fireRate);
 		
 		// Which aimpoints to use?
 		// We run this only once, since it's not going to change much
@@ -107,7 +114,7 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 	
 	//-----------------------------------------------------------------------------------------------------
 	// Evaluates which fire tree should be used
-	int ResolveFireTree(BaseTarget target, bool visible, bool weaponReady)
+	int ResolveFireTree(BaseTarget target, bool visible, bool weaponReady, out float fireRate)
 	{
 		// Is aiming forbidden by combat move?
 		SCR_AIBehaviorBase executedBehavior = SCR_AIBehaviorBase.Cast(m_UtilityComponent.GetExecutedAction());
@@ -157,7 +164,6 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 			
 			return FIRE_TREE_LOOK;
 		}
-		
 
 		// Within weapon usage range
 		
@@ -184,16 +190,29 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 			// except for rocket launchers, their ammo is too valuable
 			// Also ensure we don't do suppressive fire into a wall in front of us
 			
+			float threat = m_UtilityComponent.m_ThreatSystem.GetThreatMeasure();
 			float lastSeenThreshold;
 			if (weaponType == EWeaponType.WT_MACHINEGUN)
 				lastSeenThreshold = SCR_AICombatComponent.TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_MG;
 			else
-				lastSeenThreshold = SCR_AICombatComponent.TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK;
+			{
+				if (targetDistance < SCR_AICombatComponent.CLOSE_RANGE_COMBAT_DISTANCE)
+					lastSeenThreshold = SCR_AICombatComponent.TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE;
+				else
+					lastSeenThreshold = SCR_AICombatComponent.TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK;
+			}
+			
+			lastSeenThreshold = Math.Max(SCR_AICombatComponent.TARGET_MIN_LAST_SEEN_INDIRECT_ATTACK, lastSeenThreshold * threat);
 			
 			if ((!directDamage || weaponType != EWeaponType.WT_ROCKETLAUNCHER) &&
 				target.GetTimeSinceSeen() < lastSeenThreshold &&
 				target.GetTraceFraction() > 0.5)
+			{
+				float maxFireRate = Math.Max(1, Math.Map(targetDistance, 0, SCR_AICombatComponent.LONG_RANGE_COMBAT_DISTANCE, 2, 1));
+				fireRate = maxFireRate * threat;
+								
 				return FIRE_TREE_SUPPRESSIVE;
+			}
 			else
 				return FIRE_TREE_LOOK;
 		}
@@ -285,7 +304,8 @@ class SCR_AIUpdateTargetAttackData : AITaskScripted
 		PORT_LAST_SEEN_POSITION,
 		PORT_FIRE_TREE_ID,
 		PORT_AIMPOINT_TYPE_0,
-		PORT_AIMPOINT_TYPE_1
+		PORT_AIMPOINT_TYPE_1,
+		PORT_FIRE_RATE
 	};
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	

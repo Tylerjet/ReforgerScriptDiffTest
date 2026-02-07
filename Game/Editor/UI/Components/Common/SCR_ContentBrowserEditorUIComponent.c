@@ -56,9 +56,6 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	[Attribute("SOUND_E_OPENASSETBROWSER", UIWidgets.EditBox, "")]
 	protected string m_sSfxOnOpenDialog;
 	
-	[Attribute(SCR_SoundEvent.CLICK_CANCEL, UIWidgets.EditBox, "Played when no entity card is selected on close dialog")]
-	protected string m_sSfxOnCloseDialog;
-	
 	private SCR_EditableEntityCore m_EntityCore;
 	private SCR_BudgetEditorComponent m_BudgetManager;
 	private SCR_ContentBrowserEditorComponent m_ContentBrowserManager;
@@ -557,9 +554,6 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	
 	protected override void OnButtonPrev()
 	{
-		if (m_bPlayAudioOnPageChange)
-			SCR_UISoundEntity.SoundEvent(m_sOnPrevPageSfx, true);
-		
 		int previousPageIndex = m_iCurrentPage - 1;
 		if (SetPage(previousPageIndex))
 		{
@@ -569,9 +563,6 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 	
 	protected override void OnButtonNext()
 	{
-		if (m_bPlayAudioOnPageChange)
-			SCR_UISoundEntity.SoundEvent(m_sOnPrevPageSfx, true);
-		
 		int nextPageIndex = m_iCurrentPage + 1;
 		if (SetPage(nextPageIndex))
 		{
@@ -706,9 +697,6 @@ class SCR_ContentBrowserEditorUIComponent: SCR_BasePaginationUIComponent//MenuRo
 		{
 			m_SearchEditBox.m_OnConfirm.Remove(OnSearchConfirmed);
 		}
-		
-		if (!m_bCardSelected)
-			SCR_UISoundEntity.SoundEvent(m_sSfxOnCloseDialog, true);
 	}
 };
 

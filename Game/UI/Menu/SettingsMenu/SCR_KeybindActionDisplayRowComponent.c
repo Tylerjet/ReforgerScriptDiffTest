@@ -164,7 +164,7 @@ class SCR_KeybindActionDisplayRowComponent : SCR_ScriptedWidgetComponent
 		if (entry && settingsKeybindModule)
 		{
 			string finalPreset;
-			string preset = entry.m_sPreset;;
+			string preset = entry.m_sPreset;
 			
 			if (device == EInputDeviceType.GAMEPAD)
 			{

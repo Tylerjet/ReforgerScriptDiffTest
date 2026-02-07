@@ -344,10 +344,10 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 			AnimateWidget.Color(m_wTextBackground, m_BackgroundInteracting, m_fAnimationRate);
 		
 		// Add escape handling
-		m_InputManager.ResetAction("MenuSelect");
-		m_InputManager.AddActionListener("MenuBack", EActionTrigger.DOWN, OnMenuBack);
+		m_InputManager.ResetAction(UIConstants.MENU_ACTION_SELECT);
+		m_InputManager.AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, OnMenuBack);
 #ifdef WORKBENCH
-		m_InputManager.AddActionListener("MenuBackWB", EActionTrigger.DOWN, OnMenuBack);
+		m_InputManager.AddActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, OnMenuBack);
 #endif
 		
 		float x, y, w, h;
@@ -453,9 +453,9 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 			AnimateWidget.Color(m_wTextBackground, m_BackgroundDefault, m_fAnimationRate);
 		
 		// Remove escape handling
-		GetGame().GetInputManager().RemoveActionListener("MenuBack", EActionTrigger.DOWN, OnMenuBack);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, OnMenuBack);
 #ifdef WORKBENCH
-		GetGame().GetInputManager().RemoveActionListener("MenuBackWB", EActionTrigger.DOWN, OnMenuBack);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, OnMenuBack);
 #endif
 
 		m_bOpened = false;
@@ -528,6 +528,27 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		if (m_bOpened)
 			CreateEntries();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set given element index as enabled or disabled
+	//! \param[in] index Given index of element
+	//! \param[in] enable If it should be enabled or disabled
+	//! \param[in] animate Should it animate on enabled/disabled changed?
+	void SetElementWidgetEnabled(int index, bool enable, bool animate = true)
+	{
+		if (!m_aElementWidgets.IsIndexValid(index))
+			return;
+		
+		Widget element = m_aElementWidgets[index];
+		if (!element)
+			return;
+		
+		SCR_WLibComponentBase wLib = SCR_WLibComponentBase.Cast(element.FindHandler(SCR_WLibComponentBase));
+		if (wLib)
+			wLib.SetEnabled(enable, animate);
+		else 
+			element.SetEnabled(enable);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	private void OnElementSelected(SCR_ButtonTextComponent comp)
@@ -535,7 +556,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		int i = m_aElementWidgets.Find(comp.m_wRoot);
 		if (i > -1)
 		{
-			SetCurrentItem(i, true, true);
+			SetCurrentItem(i, false, true);
 			if (m_wText)
 				m_wText.SetText(m_aElementNames[i]);
 		}
@@ -544,6 +565,7 @@ class SCR_ComboBoxComponent : SCR_SelectionWidgetComponent
 		m_OnChanged.Invoke(this, i);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get elementWidgets array
 	\param[out] elementWidgets array of Widgets taken from m_aElementWidgets

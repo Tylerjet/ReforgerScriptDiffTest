@@ -26,12 +26,13 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 	ref SCR_BTParam<bool> m_bUseBinoculars = new SCR_BTParam<bool>("UseBinoculars");
 	ref SCR_BTParam<float> m_fDelay = new SCR_BTParam<float>("Delay");
 	ref SCR_BTParam<bool> m_bUseMovement = new SCR_BTParam<bool>("UseMovement");
+	ref SCR_BTParam<bool> m_bLookedOnce = new SCR_BTParam<bool>("LookedOnce"); // We set it to true after we've looked at pos. once
 	
 	protected float m_fDeleteActionTime_ms;
 	
 	protected float m_fCombatMoveLogicTimeout = 0;
 	
-	void SCR_AIObserveUnknownFireBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity,	vector posWorld, bool useMovement, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIObserveUnknownFireBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity,	vector posWorld, bool useMovement, float priorityLevel = PRIORITY_LEVEL_NORMAL, float priority = PRIORITY_BEHAVIOR_OBSERVE_UNKNOWN_FIRE)
 	{
 		InitParameters(posWorld, useMovement);
 		
@@ -44,7 +45,7 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		m_bUseCombatMove = useMovement;
 		SetIsUniqueInActionQueue(true);
 		m_fThreat = 1.01 * SCR_AIThreatSystem.VIGILANT_THRESHOLD;
-		m_fPriority = SCR_AIActionBase.PRIORITY_BEHAVIOR_OBSERVE_UNKNOWN_FIRE;
+		m_fPriority = priority;
 		m_fPriorityLevel.m_Value = priorityLevel;
 		
 		// Calculate duration depending on distance
@@ -64,7 +65,8 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		{
 			float radius = distance * Math.Tan(Math.DEG2RAD * DIRECTION_SPAN_DEG);
 			m_fRadius.m_Value = radius;
-			m_bUseBinoculars.m_Value = distance > USE_BINOCULARS_DISTANCE_THRESHOLD;
+			bool inVehicleOrTurret = utility.m_AIInfo.HasUnitState(EUnitState.IN_VEHICLE) || utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
+			m_bUseBinoculars.m_Value = !inVehicleOrTurret && distance > USE_BINOCULARS_DISTANCE_THRESHOLD;
 		}
 	}
 	
@@ -76,6 +78,7 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 		m_bUseBinoculars.Init(this, false);
 		m_fDelay.Init(this, 0.0);
 		m_bUseMovement.Init(this, useMovement);
+		m_bLookedOnce.Init(this, false);
 	}
 	
 	void InitTiming(float distance)
@@ -135,6 +138,10 @@ class SCR_AIObserveUnknownFireBehavior : SCR_AIBehaviorBase
 			return 0;
 		}
 		
+		// If we already looked at this once, lower the priority
+		if (m_bLookedOnce.m_Value)
+			return PRIORITY_BEHAVIOR_OBSERVE_LOW_PRIORITY;
+		
 		return m_fPriority;
 	}
 	
@@ -155,3 +162,11 @@ class SCR_AIGetObserveUnknownFireBehaviorParameters: SCR_AIGetActionParameters
 	
 	override bool VisibleInPalette() { return true; }
 };
+
+class SCR_AISetObserveUnknownFireBehaviorParameters : SCR_AISetActionParameters
+{
+	static ref TStringArray s_aVarsIn = (new SCR_AIObserveUnknownFireBehavior(null, null, vector.Zero, false)).GetPortNames();
+	override TStringArray GetVariablesIn() { return s_aVarsIn; }
+	
+	override bool VisibleInPalette() { return true; }
+}

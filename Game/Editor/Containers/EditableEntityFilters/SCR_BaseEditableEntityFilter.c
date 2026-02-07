@@ -647,7 +647,8 @@ class SCR_BaseEditableEntityFilter
 	protected sealed bool AddToArray(SCR_EditableEntityComponent entity, out bool isChange, bool returnWhenExists = false)
 	{
 		if (
-			(m_PredecessorState == 0 || entity.HasEntityState(m_PredecessorState))
+			entity
+			&& (m_PredecessorState == 0 || entity.HasEntityState(m_PredecessorState))
 			&& (!m_bOnlyInteractive || !entity.HasEntityFlag(EEditableEntityFlag.NON_INTERACTIVE))
 			&& CanAdd(entity)
 		)

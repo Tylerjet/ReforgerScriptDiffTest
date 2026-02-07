@@ -71,12 +71,14 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	#ifndef DISABLE_INVENTORY
 	
 	private BaseInventoryStorageComponent				m_LootStorage;
-	protected ref array<IEntity>						m_aQuickSlots = { null, null, null, null, null, null, null, null, null, null };
+	protected ref array<ref SCR_QuickslotBaseContainer>	m_aQuickSlots = { null, null, null, null, null, null, null, null, null, null };
 	protected ref map<IEntity, int> 					m_mSlotHistory = new map<IEntity, int>();
 	protected ref array<IEntity>						m_aWeaponQuickSlotsStorage = {}; //Is used to store first four quickslots of turrets.
 	protected ref array< int >							m_aQuickSlotsHistory = {};	//here we'll be remembering the items stored
 //	protected ref array<EntityComponentPrefabData>		m_aPrefabsData = { null, null, null, null, null, null, null, null, null, null }; // todo: figure out the intentions
 	protected static const int							GADGET_OFFSET = 9999;	//EWeaponType && EGadgetType might be have the same number, offset it ( not nice (i agree) )
+	protected static const int							TURRET_WEAPON_SWITCH_SLOTS = 4; //How many slots can player cycle between using SelectNextWeapon method by default when in turret
+	protected static const int							INFANTRY_WEAPON_SWITCH_SLOTS = 2; //How many slots can player cycle between using SelectNextWeapon method by default when not in turret
 
 //	protected ref array<ref array<int>>					m_aDefaultRiflemanQuickSlots = 	{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 //																							{ EWeaponType.WT_HANDGUN, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, ( EGadgetType.BINOCULARS ) + GADGET_OFFSET  },
@@ -86,6 +88,9 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 //																							{ ( EGadgetType.COMPASS ) + GADGET_OFFSET }
 //																						};
 
+	
+	//---- REFACTOR NOTE START: Not the best way to do this, should be more configurable by players ----
+	
 	protected static const ref array<ref array<int>>	DEFAULT_QUICK_SLOTS =			{	{ EWeaponType.WT_RIFLE, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_RIFLE, EWeaponType.WT_ROCKETLAUNCHER, EWeaponType.WT_GRENADELAUNCHER, EWeaponType.WT_SNIPERRIFLE, EWeaponType.WT_MACHINEGUN },
 																							{ EWeaponType.WT_HANDGUN },
@@ -98,6 +103,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 																							{ EGadgetType.BUILDING_TOOL + GADGET_OFFSET } // To be replaced with engineering tool
 																						};
 
+	//---- REFACTOR NOTE END ----
+	
 	protected ref array<typename> m_aBlockedSlots = {};
 	protected ref array<BaseInventoryStorageComponent> m_aStoragesInStorageList = {};		//here we remember the opened storages in the Inventory menu ( in the Storages list area )
 	protected SCR_CompartmentAccessComponent m_CompartmentAcessComp;
@@ -238,10 +245,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		m_aStoragesInStorageList.RemoveItem( pStorage );
 	}
 	
+	//---- REFACTOR NOTE START: Ideally should be linked to components and rather should work based on item config instead ----
+	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] pItem
 	//! \return
-	static int GetItemType( IEntity pItem )
+	static int GetItemType(notnull IEntity pItem)
 	{
 		int iItemType = -1;
 		//Weapons:
@@ -271,6 +280,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		return iItemType;
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] iItemType
@@ -294,10 +305,10 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] item
 	//! \return
-	int GetEntityQuickSlot(IEntity item)
+	static int GetDefaultQuickSlot(notnull IEntity item)
 	{
 		int itemType = GetItemType(item);
-		foreach (int i, ref array<int> allowedTypes: DEFAULT_QUICK_SLOTS)
+		foreach (int i, ref array<int> allowedTypes : DEFAULT_QUICK_SLOTS)
 		{
 			if (allowedTypes.Contains(itemType))
 				return i;
@@ -309,17 +320,17 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] item
 	//! \return
-	bool IsItemAlreadyInQuickSlot(IEntity item)
+	bool IsInDefaultQuickSlot(notnull IEntity item)
 	{
 		int itemType = GetItemType(item);
 		if (itemType < 0)
 			return false;
 
-		int slotId = GetEntityQuickSlot(item);
+		int slotId = GetDefaultQuickSlot(item);
 		if (slotId < 0)
 			return false;
 
-		return m_aQuickSlots[slotId] == item;
+		return GetEntityIndexInQuickslots(item) == slotId;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -328,7 +339,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//! \param[in] iSlotIndex
 	//! \param[in] isForced
 	//! \return
-	int StoreItemToQuickSlot( notnull IEntity pItem, int iSlotIndex = -1, bool isForced = false )
+	int StoreItemToQuickSlot(notnull IEntity pItem, int iSlotIndex = -1, bool isForced = false)
 	{
 		int iItemType = GetItemType( pItem );
 		if ( iSlotIndex == -1 ) //we don't know what slot we put the item into. Check first if we remember the type of the item
@@ -384,21 +395,28 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			}
 		}
 		
-		if ( pItem == m_aQuickSlots.Get( iSlotIndex ) )	//if there's already the item in the slot, remove it
-		{
-			m_aQuickSlots.Set( iSlotIndex, null );
-		}
-		else
-		{
-			int iOldIndex = RemoveItemFromQuickSlot( pItem );
-			if ( 0 <= iOldIndex && iOldIndex < m_aQuickSlotsHistory.Count() )
-				m_aQuickSlotsHistory[ iOldIndex ] = 0;	//in case the item is already in slot and we shift the item into a different slot
-			m_aQuickSlots.Set( iSlotIndex, pItem );
-			
-			m_aQuickSlotsHistory[ iSlotIndex ] = iItemType; // remember it
-		}
-
+		SCR_QuickslotEntityContainer entityContainer = SCR_QuickslotEntityContainer.Cast(m_aQuickSlots[iSlotIndex]);
+		if ( entityContainer && pItem == entityContainer.GetEntity() )
+			return iSlotIndex;	
+		
+		int iOldIndex = RemoveItemFromQuickSlot( pItem );
+		if ( 0 <= iOldIndex && iOldIndex < m_aQuickSlotsHistory.Count() )
+			m_aQuickSlotsHistory[ iOldIndex ] = 0;	//in case the item is already in slot and we shift the item into a different slot
+		
+		SCR_QuickslotEntityContainer inventoryContainer = new SCR_QuickslotEntityContainer(pItem);
+		InsertContainerIntoQuickslot(inventoryContainer, iSlotIndex);
+		
+		m_aQuickSlotsHistory[ iSlotIndex ] = iItemType; // remember it
 		return iSlotIndex;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	void InsertContainerIntoQuickslot(SCR_QuickslotBaseContainer container, int slotIndex)
+	{
+		//clear the array in case something reacts to it
+		m_aQuickSlots.Set(slotIndex, null);
+		m_aQuickSlots.Set(slotIndex, container);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -407,33 +425,70 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//! \return
 	int RemoveItemFromQuickSlot( IEntity pItem )
 	{
-		int iIndex = m_aQuickSlots.Find( pItem );
-		if ( iIndex != -1 )
-			m_aQuickSlots.Set( iIndex, null );
+		int index = GetEntityIndexInQuickslots(pItem);
+	
+		RemoveItemFromQuickSlotAtIndex(index);
 		
-		return iIndex;
+		return index;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
-	//! \param[in] iIndex
-	void RemoveItemFromQuickSlotAtIndex(int iIndex)
+	//! \param[in] index
+	void RemoveItemFromQuickSlotAtIndex(int index)
 	{
-		if (iIndex >= 0 && m_aQuickSlots.Get(iIndex))
-			m_aQuickSlots.Set(iIndex, null);
+		if (m_aQuickSlots.IsIndexValid(index))
+			m_aQuickSlots.Set(index, null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
-	array<IEntity> GetQuickSlotItems()
+	array<ref SCR_QuickslotBaseContainer> GetQuickSlotItems()
 	{ 
 		return m_aQuickSlots; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! gets all entities in quickslots, and nulls in arrays for non-entity or empty slots
+	array<IEntity> GetQuickSlotEntitiesOnly()
+	{
+		array<IEntity> entities = {};
+		
+		SCR_QuickslotEntityContainer entityContainer;
+		foreach(SCR_QuickslotBaseContainer container : m_aQuickSlots)
+		{
+			entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+			if (!entityContainer)
+			{
+				entities.Insert(null);
+				continue;
+			}
+			
+			entities.Insert(entityContainer.GetEntity());
+		}
+		
+		return entities;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] index
 	//! \return
 	IEntity GetItemFromQuickSlot(int index)
+	{
+		if (!m_aQuickSlots.IsIndexValid(index))
+			return null;
+
+		SCR_QuickslotEntityContainer entityContainer = SCR_QuickslotEntityContainer.Cast(m_aQuickSlots[index]);
+		if (!entityContainer)
+			return null;
+		
+		return entityContainer.GetEntity();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] index
+	//! \return
+	SCR_QuickslotBaseContainer GetContainerFromQuickslot(int index)
 	{
 		if (!m_aQuickSlots.IsIndexValid(index))
 			return null;
@@ -676,7 +731,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//! \param[in] storageOwner
 	void HandleOnItemRemovedFromInventory( IEntity item, BaseInventoryStorageComponent storageOwner )
 	{
-		m_mSlotHistory.Set(item, m_aQuickSlots.Find(item));
+		int itemIndex = GetEntityIndexInQuickslots(item);
+		m_mSlotHistory.Set(item, itemIndex);
 		RemoveItemFromQuickSlot( item );
 	}
 	
@@ -709,6 +765,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		return CanUseItem(item);
 	}
 
+	//---- REFACTOR NOTE START: Ideally should be linked to components and rather should work based on item config instead ----
+	
 	// For use from inventory menu	
 	bool CanUseItem_Inventory(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
 	{
@@ -764,7 +822,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				else
 				{
 					SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
-					return (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.CanBeToggled());
+					return (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.GetUseMask() & SCR_EUseContext.FROM_INVENTORY);
 				}
 			} break;
 		}
@@ -840,7 +898,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	//! \param[in] item
 	//! \param[in] slotFunction
 	//! \return
-	bool UseItem(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC)
+	bool UseItem(notnull IEntity item, ESlotFunction slotFunction = ESlotFunction.TYPE_GENERIC, SCR_EUseContext context = SCR_EUseContext.FROM_QUICKSLOT)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
 		if (!character)
@@ -975,8 +1033,8 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				if (gadgetMgr)
 				{
 					SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
-					if (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.CanBeToggled())
-						gadgetComp.ToggleActive(!gadgetComp.IsToggledOn());
+					if (gadgetComp.GetMode() == EGadgetMode.IN_HAND && gadgetComp.GetUseMask() != SCR_EUseContext.NONE)
+						gadgetComp.ToggleActive(!gadgetComp.IsToggledOn(), context);
 					else
 						gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
 				}
@@ -1009,22 +1067,12 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		return false;
 	}
 	
+	//---- REFACTOR NOTE END ----
+	
 	//------------------------------------------------------------------------------------------------	
 	protected bool CanReloadCurrentWeapon(notnull IEntity item)
 	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
-		if (!character)
-			return false;
-		
-		CharacterControllerComponent controller = character.GetCharacterController();	
-		if (!controller)
-			return false;
-		
-		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
-		if (!weaponManager)
-			return false;
-		
-		BaseWeaponComponent currentWeapon = weaponManager.GetCurrent();
+		BaseWeaponComponent currentWeapon = GetCurrentWeapon();
 		if (!currentWeapon)
 			return false;
 		
@@ -1113,6 +1161,121 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		return weaponManager.GetCurrentWeapon();
 	}
+
+	//------------------------------------------------------------------------------------------------
+	protected BaseWeaponComponent GetCurrentCharacterWeapon()
+	{
+		BaseWeaponComponent turretWeapon = GetCurrentTurretWeapon();
+		if (turretWeapon)
+			return turretWeapon;
+
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+		if (!character)
+			return null;
+
+		CharacterControllerComponent controller = character.GetCharacterController();	
+		if (!controller)
+			return null;
+
+		BaseWeaponManagerComponent weaponManager = controller.GetWeaponManagerComponent();
+		if (!weaponManager)
+			return null;
+
+		return weaponManager.GetCurrentWeapon();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected BaseWeaponComponent GetCurrentWeapon()
+	{
+		TurretCompartmentSlot compartment = TurretCompartmentSlot.Cast(GetCurrentCompartment());
+		if (compartment)
+			return GetCurrentTurretWeapon();
+		else
+			return GetCurrentCharacterWeapon();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Select next weapon
+	IEntity SelectNextWeapon(int maxSlot = -1)
+	{
+		IEntity nextWeapon = GetNextWeapon(maxSlot);
+		if (!nextWeapon)
+			return null;
+
+		if (CanUseItem(nextWeapon))
+		{
+			UseItem(nextWeapon);
+
+			int id = GetEntityIndexInQuickslots(nextWeapon);
+			SCR_WeaponSwitchingBaseUI.HighlightQuickSlot(id);
+		}
+
+		return nextWeapon;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get next weapon up to specified maximum
+	IEntity GetNextWeapon(int maxSlots = -1)
+	{
+		if (maxSlots < 0)
+		{
+			if (TurretCompartmentSlot.Cast(GetCurrentCompartment()))
+				maxSlots = TURRET_WEAPON_SWITCH_SLOTS;
+			else
+				maxSlots = INFANTRY_WEAPON_SWITCH_SLOTS;
+		}
+
+		maxSlots = Math.Min(maxSlots, m_aQuickSlots.Count());
+
+		IEntity currentWeapon;
+		BaseWeaponComponent currentWeaponComponent = GetCurrentWeapon();
+		if (currentWeaponComponent)
+			currentWeapon = currentWeaponComponent.GetOwner();
+
+		// If not currently equipped, select weapon again
+		if (currentWeapon && currentWeapon == GetCurrentItem())
+		{
+			// Find current slot
+			int currentSlot = -1;
+			for (int i; i < maxSlots; i++)
+			{
+				if (GetItemFromQuickSlot(i) != currentWeapon)
+					continue;
+
+				currentSlot = i;
+				break;
+			}
+
+			// Find next weapon within limit
+			IEntity item;
+			int nextSlot = -1;
+			for (int i = 1; i < maxSlots; i++)
+			{
+				nextSlot = (currentSlot + i) % maxSlots;
+
+				// should not happen because i starts from 1
+				if (nextSlot == currentSlot)
+					continue;
+
+				item = GetItemFromQuickSlot(nextSlot);
+				if (item)
+					return item;
+			}
+		}
+		else
+		{
+			// Get first valid item
+			IEntity item;
+			for (int i; i < maxSlots; i++)
+			{
+				item = GetItemFromQuickSlot(i);
+				if (item)
+					return item;
+			}
+		}
+
+		return null;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -1161,7 +1324,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 				if (!pItem)
 					continue;
 				
-				if (IsItemAlreadyInQuickSlot(pItem))
+				if (IsInDefaultQuickSlot(pItem))
 					continue;
 				
 				StoreItemToQuickSlot( pItem );
@@ -1206,7 +1369,7 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			return;
 		
 		// restock used medical item back to its quick slot
-		int quickSlot = m_aQuickSlots.Find(item);
+		int quickSlot = GetEntityIndexInQuickslots(item);
 		if (quickSlot == -1)
 			return;
 
@@ -1249,12 +1412,21 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 	{
 		BaseCompartmentSlot compartment = manager.FindCompartment(slotID, mgrID);
 		
-		if (m_CompartmentAcessComp && m_CompartmentAcessComp.IsGettingIn())
+		if (m_CompartmentAcessComp)
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
+			IEntity entity;
+			SCR_QuickslotEntityContainer entityContainer;
 			for (int i, count = m_aQuickSlots.Count(); i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT && i < count; i++)
 			{
-				m_aWeaponQuickSlotsStorage.Insert(m_aQuickSlots[i]);
+				entityContainer = SCR_QuickslotEntityContainer.Cast(m_aQuickSlots[i]);
+				if (!entityContainer)
+				{
+					m_aWeaponQuickSlotsStorage.Insert(null);
+					continue;
+				}
+				
+				m_aWeaponQuickSlotsStorage.Insert(entityContainer.GetEntity());
 			}
 		}
 		
@@ -1315,13 +1487,22 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		if (!TurretCompartmentSlot.Cast(compartment))
 		{
 			m_aWeaponQuickSlotsStorage.Clear();
+			IEntity entity;
+			SCR_QuickslotEntityContainer entityContainer;
 			for (int i, count = m_aQuickSlots.Count(); i < SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT && i < count; i++)
 			{
-				m_aWeaponQuickSlotsStorage.Insert(m_aQuickSlots[i]);
+				entityContainer = SCR_QuickslotEntityContainer.Cast(m_aQuickSlots[i]);
+				if (!entityContainer)
+				{
+					m_aWeaponQuickSlotsStorage.Insert(null);
+					continue;
+				}
+				
+				m_aWeaponQuickSlotsStorage.Insert(entityContainer.GetEntity());
 			}
 		}
 		
-		if (m_CompartmentAcessComp && m_CompartmentAcessComp.IsGettingOut())
+		if (m_CompartmentAcessComp)
 		{
 			RemoveItemsFromWeaponQuickSlots();
 			
@@ -1382,6 +1563,22 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 			return weaponManager.GetWeaponsSlots(weaponSlots);
 		
 		return -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	int GetEntityIndexInQuickslots(notnull IEntity entity)
+	{
+		int index = -1;
+		SCR_QuickslotEntityContainer entityContainer;
+		foreach (int i, SCR_QuickslotBaseContainer container : m_aQuickSlots)
+		{
+			entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+			if (entityContainer && entityContainer.GetEntity() == entity)
+				index = i;
+		} 
+		
+		return index;
 	}
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------

@@ -42,6 +42,8 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	protected ref ScriptInvoker_VotingManagerStart m_OnAbstainVoteLocal = new ScriptInvoker_VotingManagerStart();
 	protected ref ScriptInvoker_VotingManagerVoteCountChanged m_PlayerVoteCountChanged = new ScriptInvoker_VotingManagerVoteCountChanged();
 	
+	static const LocalizedString VOTE_TIMEOUT_FORMAT = "#AR-Voting_TimeOut";
+	
 	////////////////////////////////////////////////////////////////////////////////////////////////
 	//--- Public, static, anywhere
 
@@ -468,6 +470,76 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		}
 		return outValues.Count();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] type The type to which to get the delay time
+	//! \return Gets the current Time left before the player can vote when they join the server 
+	protected int GetCurrentJoinServerVoteCooldown(EVotingType type)
+	{
+		SCR_VotingBase template = FindTemplate(type);
+		if (!template)
+			return 0;
+		
+		if (template.HasInitiatedVotingLocallyOnce())
+		{
+			Print("Trying to get Join Server vote delay but the local player has already voted for the vote type + ("  + typename.EnumToString(EVotingType, type) + ") once so this will always returns 0", LogLevel.WARNING);
+			return 0;
+		}
+		
+		if (!template.HasCooldown())
+			return 0;
+		
+		//~ Get time stamp. -1 means it is not set
+		float joinTimeStamp = template.GetLocalCooldownTimeStamp();
+		if (joinTimeStamp < 0)
+			return 0;
+		
+		return Math.Max((template.GetJoinServerVoteCooldown() + joinTimeStamp) - GetTimeStamp(), 0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] type The type to which to get the cooldown time
+	//! \return Gets the current Time left before the player can vote when they join the server 
+	protected int GetCurrentVoteCooldownTime(EVotingType type)
+	{
+		SCR_VotingBase template = FindTemplate(type);
+		if (!template || !template.HasCooldown())
+			return 0;
+		
+		float lastTimeStamp = template.GetLocalCooldownTimeStamp();
+		if (lastTimeStamp <= 0)
+			return 0;
+
+		return Math.Max((template.GetVoteCooldownTime() + lastTimeStamp) - GetTimeStamp(), 0);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! param[in] type The voting type to get current cooldown for
+	//! \return The current cooldown of the voting type. This can be server join cooldown or between voting cooldown 
+	int GetCurrentVoteCooldownForLocalPlayer(EVotingType type)
+	{
+		SCR_VotingBase template = FindTemplate(type);
+		if (!template)
+			return 0;
+		
+		//~ Has voted once so take the cooldown
+		if (template.HasInitiatedVotingLocallyOnce())
+			return GetCurrentVoteCooldownTime(type);
+		//~ Hasn't voted yet so take the delay
+		else 
+			return GetCurrentJoinServerVoteCooldown(type);			
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Get the current local timestamp
+	protected float GetTimeStamp()
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (!world)
+			return System.GetTickCount() * 0.001;
+		
+		return world.GetLocalTimestamp().DiffMilliseconds(null) * 0.001;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Get UI representation of given voting.
@@ -494,6 +566,34 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 			return template.GetValueName(value);
 		else
 			return value.ToString();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Called before the vote is cased locally to make sure the cooldowns are set if the vote was initiated by the player
+	//! \param[in] type Type of the vote
+	//! \param[in] value Voted value, depends on the type (e.g., for KICK it's player ID)
+	void PreVoteLocal(EVotingType type, int value)
+	{				
+		array<EVotingType> validActiveVotingTypes = {};
+		array<int> votingValues = {};
+		
+		GetAllVotingsWithValue(validActiveVotingTypes, votingValues, false, true);
+		
+		//~ If the vote is already active it does not count as player starting vote
+		for (int i = 0, count = validActiveVotingTypes.Count(); i < count; i++)
+		{
+			if (validActiveVotingTypes[i] == type && votingValues[i] == value)
+				return;
+		}
+		
+		//~ Check if the vote has any cooldowns.
+		SCR_VotingBase template = FindTemplate(type);
+		if (!template || !template.HasCooldown())
+			return;
+		
+		//~ It has cooldowns so set the last time stamp and set voted once
+		template.SetLocalCooldownTimeStamp(GetTimeStamp());
+		template.SetHasInitiatedVotingLocallyOnce();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -744,6 +844,7 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 					VoteLocal(record.param1, record.param2);
 				
 				m_LocalVoteRecords.Remove(index);
+				break;
 			}
 		}
 	}
@@ -763,6 +864,37 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	{		
 		//--- Force instant refresh in EOnFrame
 		m_fUpdateLength = m_fUpdateStep;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnPlayerRegistered(int playerId)
+	{
+		if (SCR_PlayerController.GetLocalPlayerId() != playerId)
+			return;
+		
+		float timeStamp = GetTimeStamp();
+		
+		//~ How long the game has been running
+		float gameRunTime;
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (gameMode)
+			gameRunTime = gameMode.GetElapsedTime();
+		else 
+			gameRunTime = float.MAX;
+		
+		//~ Add player joined timestamps to any voting that has a delay when player joined
+		foreach (SCR_VotingBase template : m_aVotingTemplates)
+		{
+			if (!template)
+				continue;
+
+			//~ If the vote has a join server delay and the server runtime is greater or equal to the Ignore JoinDelay time. Then set a cooldown for the vote
+			if (template.GetJoinServerVoteCooldown() > 0 && gameRunTime >= template.GetServerRuntimeIgnoreJoinServerCooldown())
+			{
+				template.SetLocalCooldownTimeStamp(timeStamp);
+				continue;
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

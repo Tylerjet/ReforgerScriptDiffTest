@@ -89,11 +89,11 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override event bool CanBePerformedScript(IEntity user)
 	{
-		if (!SelectSuitableResourceGenerator(user))
+		/*if (!SelectSuitableResourceGenerator(user))
 		{
 			m_sCannotPerformReason = m_sInvalidNoValidRefundPoint;
 			return false;
-		}
+		}*/
 		
 		//~ Check if vehicle is in use
 		if (m_CompartmentManager && m_CompartmentManager.AnyCompartmentsOccupiedOrLocked())
@@ -154,6 +154,9 @@ class SCR_ResourceEntityRefundAction : SCR_ScriptedUserAction
 	override event bool CanBeShownScript(IEntity user)
 	{
 		if (m_fResourceCost <= 0 || !m_ReplicationComponent)
+			return false;
+		
+		if (!SelectSuitableResourceGenerator(user))
 			return false;
 		
 		return super.CanBeShownScript(user);

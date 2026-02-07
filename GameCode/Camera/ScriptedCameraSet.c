@@ -131,8 +131,10 @@ class ScriptedCameraItemResult
 	
 	vector		m_vBacktraceDir;			//!< local direction used for backtrace if m_fUseBacktraceDir > 0. Used when m_bAllowCollisionSolver is true
 	float		m_fUseBacktraceDir = 0.0;	//!< [0-1] Blend b/w m_vBacktraceDir and m_CameraTM[2]. default 0.0
+	
+	bool		m_bInterpolateOrientation = true;
 
-	//! cannot be instanced from script (always created from C++)
+	//! cannot be instanced from script (always created from C++)`
 	private void ScriptedCameraItemResult()
 	{
 	}

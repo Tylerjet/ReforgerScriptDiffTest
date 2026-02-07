@@ -13,14 +13,12 @@
 	description: "This plugin updates Scenario Framework Slots from the old (1.0.0) to the new (1.1.0+) standard")]
 class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 {
-	protected static WorldEditorAPI s_WorldEditorAPI;
-
-			static const string GENERIC_CLASSNAME = "GenericEntity";
+	static const string GENERIC_CLASSNAME = "GenericEntity";
 
 	// Layer
+	static const string SLOT_WAYPOINT_PREFAB = "{EBD91177954E8236}Prefabs/ScenarioFramework/Components/SlotWaypoint.et";
+	static const string SLOT_WAYPOINT_COMPONENT_CLASSNAME = "SCR_ScenarioFrameworkSlotWaypoint";
 	protected static const string LAYER_PREFAB = "{5F9FFF4BF027B3A3}Prefabs/ScenarioFramework/Components/Layer.et";
-			static const string SLOT_WAYPOINT_PREFAB = "{EBD91177954E8236}Prefabs/ScenarioFramework/Components/SlotWaypoint.et";
-			static const string SLOT_WAYPOINT_COMPONENT_CLASSNAME = "SCR_ScenarioFrameworkSlotWaypoint";
 	protected static const string CYCLE_WAYPOINT_CLASSNAME = "SCR_ScenarioFrameworkWaypointCycle";
 
 	// Base Slot
@@ -48,8 +46,8 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		s_WorldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		if (!s_WorldEditorAPI)
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		if (!worldEditorAPI)
 			return;
 
 		bool manageEditAction = SCR_WorldEditorToolHelper.BeginEntityAction();
@@ -77,9 +75,10 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 	{
 		IEntitySource entitySource;
 		array<IEntitySource> result = {};
-		for (int i, count = s_WorldEditorAPI.GetEditorEntityCount(); i < count; i++)
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		for (int i, count = worldEditorAPI.GetEditorEntityCount(); i < count; i++)
 		{
-			entitySource = s_WorldEditorAPI.GetEditorEntity(i);
+			entitySource = worldEditorAPI.GetEditorEntity(i);
 			if (!entitySource)
 				continue;
 
@@ -118,6 +117,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 		IEntity entity;
 		IEntityComponentSource componentSource;
 
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		bool manageEditAction = SCR_WorldEditorToolHelper.BeginEntityAction();
 
 		foreach (SCR_WaypointSet cycleWaypointSet : cycleWaypointSets)
@@ -130,26 +130,26 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 			}
 
 			string cycleWaypointEntityName = cycleWaypointSet.m_sName + CYCLE_SUFFIX;
-			entitySource = s_WorldEditorAPI.FindEntityByName(cycleWaypointEntityName);
+			entitySource = worldEditorAPI.FindEntityByName(cycleWaypointEntityName);
 			if (entitySource)
 			{
 				Print("Cycle waypoint already exists - " + cycleWaypointEntityName, LogLevel.WARNING);
 				continue;
 			}
 
-			entitySource = s_WorldEditorAPI.CreateEntity(SLOT_WAYPOINT_PREFAB, cycleWaypointEntityName, namedLayer.GetLayerID(), namedLayer, vector.Zero, vector.Zero);
+			entitySource = worldEditorAPI.CreateEntity(SLOT_WAYPOINT_PREFAB, cycleWaypointEntityName, namedLayer.GetLayerID(), namedLayer, vector.Zero, vector.Zero);
 			if (!entitySource)
 			{
 				Print("Failed to create cycle waypoint - " + cycleWaypointEntityName, LogLevel.WARNING);
 				continue;
 			}
 
-			if (!s_WorldEditorAPI.FindEntityByName(cycleWaypointEntityName)) // CreateEntity bug
+			if (!worldEditorAPI.FindEntityByName(cycleWaypointEntityName)) // CreateEntity bug
 			{
-				if (!s_WorldEditorAPI.RenameEntity(entitySource, cycleWaypointEntityName) || !s_WorldEditorAPI.FindEntityByName(cycleWaypointEntityName))
+				if (!worldEditorAPI.RenameEntity(entitySource, cycleWaypointEntityName) || !worldEditorAPI.FindEntityByName(cycleWaypointEntityName))
 				{
 					Print("Could not name cycle waypoint entity properly - " + cycleWaypointEntityName, LogLevel.WARNING);
-					s_WorldEditorAPI.DeleteEntity(entitySource);
+					worldEditorAPI.DeleteEntity(entitySource);
 					continue;
 				}
 			}
@@ -166,13 +166,13 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 
 				// let's go, any issue is an error from here
 
-				if (!s_WorldEditorAPI.CreateObjectVariableMember(entitySource, waypointPath, WAYPOINT_COMPONENT_FIELD, CYCLE_WAYPOINT_CLASSNAME))
+				if (!worldEditorAPI.CreateObjectVariableMember(entitySource, waypointPath, WAYPOINT_COMPONENT_FIELD, CYCLE_WAYPOINT_CLASSNAME))
 				{
 					Print("Cannot create component's waypoint - " + cycleWaypointEntityName, LogLevel.WARNING);
 					break;
 				}
 
-				if (!s_WorldEditorAPI.SetVariableValue(entitySource, randomOrderBoolPath, "m_bUseRandomOrder", "1"))
+				if (!worldEditorAPI.SetVariableValue(entitySource, randomOrderBoolPath, "m_bUseRandomOrder", "1"))
 				{
 					Print("Cannot set component waypoint's UseRandomOrder value - " + cycleWaypointEntityName, LogLevel.WARNING);
 					break;
@@ -185,7 +185,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 			if (!dealt)
 			{
 				Print("Waypoint could not be set in SlotWaypoint - " + cycleWaypointEntityName, LogLevel.WARNING);
-				s_WorldEditorAPI.DeleteEntity(entitySource);
+				worldEditorAPI.DeleteEntity(entitySource);
 			}
 		}
 
@@ -273,12 +273,13 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 	protected void Convert(notnull array<IEntitySource> allEntitySources)
 	{
 		bool manageEditAction = SCR_WorldEditorToolHelper.BeginEntityAction();
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 
 		IEntity entity;
 		IEntitySource ancestor;
 		foreach (IEntitySource entitySource : allEntitySources)
 		{
-			entity = s_WorldEditorAPI.SourceToEntity(entitySource);
+			entity = worldEditorAPI.SourceToEntity(entitySource);
 			if (!entity) // how
 				continue;
 
@@ -383,18 +384,19 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 			return false;
 		}
 
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		string componentType = rune.m_ComponentType.ToString();
-		IEntityComponentSource newComponentSource = s_WorldEditorAPI.CreateComponent(entitySource, componentType);
+		IEntityComponentSource newComponentSource = worldEditorAPI.CreateComponent(entitySource, componentType);
 		if (!newComponentSource)
 		{
 			Print("New component " + rune.m_ComponentType + " was not found in the new ancestor", LogLevel.ERROR);
 			return false;
 		}
 
-		if (!CopyDataFromOldToNewComponent(entitySource, componentSource, newComponentSource))
+		if (!SCR_EntitySourceHelper.CopyDataFromOldToNewComponent(entitySource, componentSource, entitySource, newComponentSource))
 		{
 			Print("Old data cannot be ported over to new component", LogLevel.ERROR);
-			if (!s_WorldEditorAPI.DeleteComponent(entitySource, newComponentSource))
+			if (!worldEditorAPI.DeleteComponent(entitySource, newComponentSource))
 				Print("And the new component cannot be deleted - do it manually", LogLevel.ERROR);
 
 			return false;
@@ -416,7 +418,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 			return false;
 		}
 
-		if (!s_WorldEditorAPI.ClearVariableValue(entitySource, { new ContainerIdPathEntry(componentType, newComponentId) }, BASE_SLOT_FIELD))
+		if (!worldEditorAPI.ClearVariableValue(entitySource, { new ContainerIdPathEntry(componentType, newComponentId) }, BASE_SLOT_FIELD))
 		{
 			Print("Cannot clear field, do it manually - " + BASE_SLOT_FIELD, LogLevel.WARNING);
 		}
@@ -431,10 +433,10 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 		{
 			array<ref ContainerIdPathEntry> path = { new ContainerIdPathEntry("components", newComponentId) };
 			string waypointClassname = ((typename)rune.m_WaypointClassType).ToString();
-			if (!s_WorldEditorAPI.CreateObjectVariableMember(entitySource, path, WAYPOINT_COMPONENT_FIELD, waypointClassname))
+			if (!worldEditorAPI.CreateObjectVariableMember(entitySource, path, WAYPOINT_COMPONENT_FIELD, waypointClassname))
 			{
 				Print("Cannot create the new waypoint", LogLevel.ERROR);
-				if (!s_WorldEditorAPI.DeleteComponent(entitySource, newComponentSource))
+				if (!worldEditorAPI.DeleteComponent(entitySource, newComponentSource))
 					Print("And the new component cannot be deleted - do it manually", LogLevel.ERROR);
 
 				return false;
@@ -447,7 +449,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 		foreach (IEntityComponentSource oldComponentSource : oldComponentSources)
 		{
 			if (componentSource)
-				s_WorldEditorAPI.DeleteComponent(entitySource, oldComponentSource);
+				worldEditorAPI.DeleteComponent(entitySource, oldComponentSource);
 		}
 
 		return true;
@@ -463,6 +465,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 		array<ref SCR_WaypointSet> waypointGroupNameSets;
 		SCR_ScenarioFrameworkWaypointSet existingWaypointSet;
 		BaseContainer resourceBaseContainer;
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		for (int i, count = entitySource.GetComponentCount(); i < count; i++)
 		{
 			componentSource = entitySource.GetComponent(i);
@@ -487,7 +490,7 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 
 			array<ref ContainerIdPathEntry> path = { new ContainerIdPathEntry("components", i) };
 
-			if (!s_WorldEditorAPI.CreateObjectVariableMember(entitySource, path, BASE_SLOTWP_FIELD_TO, WAYPOINT_CLASSNAME))
+			if (!worldEditorAPI.CreateObjectVariableMember(entitySource, path, BASE_SLOTWP_FIELD_TO, WAYPOINT_CLASSNAME))
 			{
 				Print("Cannot create " + WAYPOINT_CLASSNAME + " - " + entitySource.GetName(), LogLevel.ERROR);
 				continue;
@@ -507,13 +510,13 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 				}
 			}
 
-			if (!s_WorldEditorAPI.SetVariableValue(entitySource, path, "m_aLayerName", SCR_StringHelper.Join(",", waypointNames)))
+			if (!worldEditorAPI.SetVariableValue(entitySource, path, "m_aLayerName", SCR_StringHelper.Join(",", waypointNames)))
 			{
 				Print("Cannot set waypoint name array values - " + entitySource.GetName(), LogLevel.ERROR);
 				continue;
 			}
 
-			if (!s_WorldEditorAPI.ClearVariableValue(entitySource, { new ContainerIdPathEntry("components", i) }, BASE_SLOTWP_FIELD_FROM))
+			if (!worldEditorAPI.ClearVariableValue(entitySource, { new ContainerIdPathEntry("components", i) }, BASE_SLOTWP_FIELD_FROM))
 				componentSource.ClearVariable(BASE_SLOTWP_FIELD_FROM);
 
 			if (componentSource.Get(BASE_SLOTWP_FIELD_FROM, waypointGroupNameSets) && (!waypointGroupNameSets || !waypointGroupNameSets.IsEmpty()))
@@ -524,93 +527,6 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 			Print("Successfully converted waypoints", LogLevel.DEBUG);
 			break;
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Copies bool, float, int, string (including ResourceName), vector and object values from the old to the new component source
-	//! using World Editor API
-	//! \param[in] entitySource
-	//! \param[in] oldSource
-	//! \param[in] newSource
-	//! \return true on success, false otherwise
-	static bool CopyDataFromOldToNewComponent(notnull IEntitySource entitySource, notnull IEntityComponentSource source, notnull IEntityComponentSource destination)
-	{
-		int sourceId = -1;
-		int destinationId = -1;
-		IEntityComponentSource componentSource;
-		for (int i = entitySource.GetComponentCount() - 1; i >= 0; --i)
-		{
-			componentSource = entitySource.GetComponent(i);
-			if (componentSource == source)
-				sourceId = i;
-			else if (componentSource == destination)
-				destinationId = i;
-		}
-
-		if (sourceId == -1 || destinationId == -1)
-		{
-			Print("Not all components were found under the provided entity", LogLevel.WARNING);
-			return false;
-		}
-
-		return CopyFromTo(entitySource, source, { new ContainerIdPathEntry("components", destinationId) });
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected static bool CopyFromTo(IEntitySource entitySource, IEntityComponentSource source, array<ref ContainerIdPathEntry> path)
-	{
-		if (!s_WorldEditorAPI)
-			s_WorldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-
-		for (int i, count = source.GetNumVars(); i < count; i++)
-		{
-			string varName = source.GetVarName(i);
-			if (!source.IsVariableSetDirectly(varName))
-				continue;
-
-			switch (source.GetDataVarType(i))
-			{	// oh noes, the formatting
-				case DataVarType.BOOLEAN:	{ bool bValue;		if (source.Get(varName, bValue) && s_WorldEditorAPI.SetVariableValue(entitySource, path, varName, bValue.ToString(true))) continue; break; }
-				case DataVarType.SCALAR:	{ float fValue;		if (source.Get(varName, fValue) && s_WorldEditorAPI.SetVariableValue(entitySource, path, varName, fValue.ToString())) continue; break; }
-				case DataVarType.INTEGER:	{ int iValue;		if (source.Get(varName, iValue) && s_WorldEditorAPI.SetVariableValue(entitySource, path, varName, iValue.ToString())) continue; break; }
-				case DataVarType.RESOURCE_NAME:
-				case DataVarType.STRING:	{ string sValue;	if (source.Get(varName, sValue) && s_WorldEditorAPI.SetVariableValue(entitySource, path, varName, sValue)) continue; break; }
-				case DataVarType.VECTOR3:	{ vector vValue;	if (source.Get(varName, vValue) && s_WorldEditorAPI.SetVariableValue(entitySource, path, varName, vValue.ToString(false))) continue; break; }
-
-				case DataVarType.OBJECT:
-				{
-					if (!source.Get(varName, null))
-						break;
-
-					BaseContainer sourceObj = source.GetObject(varName);
-					if (!sourceObj) // it's null, let's make sure it is null there too
-					{
-						if (s_WorldEditorAPI.ClearVariableValue(entitySource, path, varName))
-							continue;
-
-						break;
-					}
-
-					// create, no check if exists
-					if (!s_WorldEditorAPI.CreateObjectVariableMember(entitySource, path, varName, sourceObj.GetClassName()))
-						break;
-
-					// avoids editing the same array again and again for all objects
-					array<ref ContainerIdPathEntry> path2 = SCR_ArrayHelperT<ContainerIdPathEntry>.GetCopy(path);
-					path2.Insert(new ContainerIdPathEntry(varName));
-
-					if (CopyFromTo(entitySource, sourceObj, path2))
-						continue;
-
-					break;
-				}
-			}
-
-			Print("A variable set manually cannot be auto-converted and must be done by hand: " + varName, LogLevel.WARNING);
-			return false;
-		}
-
-		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -676,11 +592,6 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase1 : WorkbenchPlugin
 				"{EBD91177954E8236}Prefabs/ScenarioFramework/Components/SlotWaypoint.et",
 				SCR_ScenarioFrameworkSlotWaypoint,
 				SCR_ScenarioFrameworkWaypointGetInNearest),
-			new SCR_ScenarioFrameworkConversionPlugin_Rune(									// Get In Selected
-				"{8AD8C82346156494}Prefabs/AI/Waypoints/AIWaypoint_GetInSelected.et",
-				"{EBD91177954E8236}Prefabs/ScenarioFramework/Components/SlotWaypoint.et",
-				SCR_ScenarioFrameworkSlotWaypoint,
-				SCR_ScenarioFrameworkWaypointGetInSelected),
 			new SCR_ScenarioFrameworkConversionPlugin_Rune(									// Get Out
 				"{C40316EE26846CAB}Prefabs/AI/Waypoints/AIWaypoint_GetOut.et",
 				"{EBD91177954E8236}Prefabs/ScenarioFramework/Components/SlotWaypoint.et",
@@ -821,12 +732,12 @@ class SCR_ScenarioFrameworkConversionPlugin_Phase2 : WorkbenchPlugin
 				IEntityComponentSource componentSource2 = sameComponents[1];
 				if (componentSource.IsVariableSetDirectly(SCR_ScenarioFrameworkConversionPlugin_Phase1.WAYPOINT_COMPONENT_FIELD))
 				{
-					SCR_ScenarioFrameworkConversionPlugin_Phase1.CopyDataFromOldToNewComponent(entitySource, componentSource, componentSource2);
+					SCR_EntitySourceHelper.CopyDataFromOldToNewComponent(entitySource, componentSource, entitySource, componentSource2);
 					worldEditorAPI.DeleteComponent(entitySource, componentSource);
 				}
 				else
 				{
-					SCR_ScenarioFrameworkConversionPlugin_Phase1.CopyDataFromOldToNewComponent(entitySource, componentSource2, componentSource);
+					SCR_EntitySourceHelper.CopyDataFromOldToNewComponent(entitySource, componentSource2, entitySource, componentSource);
 					worldEditorAPI.DeleteComponent(entitySource, componentSource2);
 				}
 			}

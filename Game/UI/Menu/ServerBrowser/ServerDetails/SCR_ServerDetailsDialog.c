@@ -69,11 +69,9 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 	protected const ResourceName ADDON_LINE_LAYOUT_SERVER_BROWSER = "{3BC78F295971FD3D}UI/layouts/Menus/ContentBrowser/DownloadManager/DownloadManager_AddonDownloadLineConfirmation_ServerBrowser.layout";
 	protected const string STR_VERSION_MISMATCH = "#AR-ServerBrowser_JoinModVersionMissmatch";
-	protected const string ICON_VERSION_MISMATCH = "warning";
 	
 	protected const string STR_HIGH_PING = "#AR-ServerBrowser_HighPingWarning_Title";
 	protected const string STR_HIGH_PING_ICON = "ping-low";
-	protected const string STR_HIGH_PING_ICON_SCALE = "1.75";
 	
 	//This should probably be a setting in SCR_HorizontalScrollAnimationComponent, as this is a bandaid solution to the title flickering
 	protected const int MAX_TITLE_LENGTH = 55;
@@ -181,7 +179,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	static SCR_ServerDetailsDialog CreateServerDetailsDialog(Room room, array<ref SCR_WorkshopItem> items, string preset, ResourceName dialogsConfig = "", ScriptInvokerVoid onFavoritesResponse = null)
 	{
 		if (dialogsConfig == "")
-			dialogsConfig = SCR_WorkshopUiCommon.DIALOGS_CONFIG;
+			dialogsConfig = SCR_WorkshopDialogs.DIALOGS_CONFIG;
 
 		s_Room = room;
 
@@ -279,9 +277,9 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 			return;
 
 		if (scenario)
-			m_BackendImageComp.SetScenarioAndImage(scenario, scenario.Thumbnail());
+			m_BackendImageComp.SetImage(scenario.Thumbnail());
 		else
-			m_BackendImageComp.SetScenarioAndImage(null, null);
+			m_BackendImageComp.SetImage(null);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -303,12 +301,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	protected void DisplayFavoriteAction(bool isFavorite)
 	{
 		if (m_NavFavorites)
-		{
-			if (isFavorite)
-				m_NavFavorites.SetLabel(UIConstants.FAVORITE_LABEL_REMOVE);
-			else
-				m_NavFavorites.SetLabel(UIConstants.FAVORITE_LABEL_ADD);
-		}
+			m_NavFavorites.SetLabel(UIConstants.GetFavoriteLabel(isFavorite));
 
 		// Star Button
 		if (m_BtnFavorites)
@@ -430,11 +423,11 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		if (versionMismatch)
 		{
 			m_wAlertText.SetText(s_Room.GameVersion() + " - " + STR_VERSION_MISMATCH);
-			m_NavConfirm.SetTexture(UIConstants.ICONS_IMAGE_SET, ICON_VERSION_MISMATCH, Color.FromInt(UIColors.WARNING.PackToInt()));
+			m_NavConfirm.SetTexture(UIConstants.ICONS_IMAGE_SET, UIConstants.ICON_WARNING, Color.FromInt(UIColors.WARNING.PackToInt()));
 		}
 		else
 		{
-			string icon = string.Format("<image set='%1' name='%2' scale='%3'/>", UIConstants.ICONS_IMAGE_SET, STR_HIGH_PING_ICON, STR_HIGH_PING_ICON_SCALE);
+			string icon = string.Format("<image set='%1' name='%2' scale='%3'/>", UIConstants.ICONS_IMAGE_SET, STR_HIGH_PING_ICON, UIConstants.ACTION_DISPLAY_ICON_SCALE_HUGE);
 			m_wAlertText.SetText(icon + "  " + STR_HIGH_PING + "  ");
 		}
 	}

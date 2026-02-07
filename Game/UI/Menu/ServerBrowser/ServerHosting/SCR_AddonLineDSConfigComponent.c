@@ -4,13 +4,19 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 	protected const string BUTTON_UP = "m_UpButton";
 	protected const string BUTTON_DOWN = "m_DownButton";
 	protected const string BUTTON_SORT_CONFIRM = "m_SortConfirmButton";
+	protected const string BUTTON_DISABLE_REQUIRED = "m_DisableRequiredButton";
 	
-	protected bool m_bWidgetEnabled = false; // Doesn't reflect enable state of item
+	// Marks the addon as enabled in the hosting menu, but does NOT actually enable the addon. It's a flag for the creation of the server config
+	protected bool m_bWidgetEnabled;
+	
+	// Marks which addons must be added to the server config to play a specific scenario
+	protected bool m_bRequired;
 	
 	// Sort buttons
 	protected SCR_ModularButtonComponent m_ButtonUp;
 	protected SCR_ModularButtonComponent m_ButtonDown;
 	protected SCR_ModularButtonComponent m_ButtonSortConfirm;
+	protected SCR_ModularButtonComponent m_ButtonDisableRequired;
 	
 	protected bool m_bOnBottom;
 	protected bool m_bIsSorting;
@@ -18,6 +24,7 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 	protected ref ScriptInvokerScriptedWidgetComponent Event_OnButtonUp;
 	protected ref ScriptInvokerScriptedWidgetComponent Event_OnButtonDown;
 	protected ref ScriptInvokerScriptedWidgetComponent m_OnSortConfirm;
+	protected ref ScriptInvokerScriptedWidgetComponent m_OnRequiredDisabled;
 
 	//----------------------------------------------------------------------------------------------
 	override void Init(SCR_WorkshopItem item)
@@ -56,6 +63,14 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 			m_aMouseButtons.Insert(m_ButtonSortConfirm);
 		}
 		
+		// Disable required
+		Widget disableRequired = m_wRoot.FindAnyWidget(BUTTON_DISABLE_REQUIRED);
+		if (disableRequired)
+			m_ButtonDisableRequired = SCR_ModularButtonComponent.FindComponent(disableRequired);
+		
+		if (m_ButtonDisableRequired)
+			m_ButtonDisableRequired.m_OnClicked.Insert(OnDisableButton);
+		
 		// Setup rest 
 		super.Init(item);
 		
@@ -71,10 +86,42 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 		HandleSortingButtons();
 		
 		// Hide action buttons
-		m_Widgets.m_wDeleteButton.SetVisible(false);
+		m_Widgets.m_DeleteButtonComponent0.SetVisible(false);
 		
 		m_Widgets.m_wHorizontalState.SetVisible(false);
-		m_Widgets.m_wUpdateButton.SetVisible(false);
+		m_Widgets.m_UpdateButtonComponent0.SetVisible(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandleEnableButtons(bool addonEnabled, bool forceHidden = false)
+	{
+		super.HandleEnableButtons(addonEnabled, forceHidden);
+		
+		if (m_bRequired && m_bWidgetEnabled)
+			m_Widgets.m_wSizeMoveLeft.SetVisible(false);
+		
+		if (m_ButtonDisableRequired)
+			m_ButtonDisableRequired.SetVisible(m_bRequired && m_bWidgetEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDisableButton()
+	{
+		if (!m_bRequired)
+		{
+			super.OnDisableButton();
+			return;
+		}
+		
+		SCR_ConfigurableDialogUi dialog = SCR_ServerHostingDialogs.CreateRequiredDisableDialog();
+		if (dialog)
+			dialog.m_OnConfirm.Insert(OnRequiredDisableDialogConfirm);
+	}
+
+	//----------------------------------------------------------------------------------------------
+	override bool IsEnabled()
+	{
+		return m_bWidgetEnabled;
 	}
 	
 	// Display oredering buttons if enabled
@@ -92,6 +139,15 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 		
 		if (m_ButtonSortConfirm)
 			m_ButtonSortConfirm.SetVisible(m_bIsSorting);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRequiredDisableDialogConfirm()
+	{
+		if (m_OnRequiredDisabled)
+			m_OnRequiredDisabled.Invoke(this);
+		
+		super.OnDisableButton();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -121,14 +177,24 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 	//----------------------------------------------------------------------------------------------
 	void SetWidgetEnabled(bool enabled)
 	{
+		if (m_bRequired)
+			enabled = true;
+		
 		m_bWidgetEnabled = enabled;	
 		UpdateAllWidgets();
 	}
 	
 	//----------------------------------------------------------------------------------------------
-	bool GetWidgetEnabled()
+	void SetRequired(bool required)
 	{
-		return m_bWidgetEnabled;
+		m_bRequired = required;
+		HandleEnableButtons(m_bWidgetEnabled, m_bIsSorting);
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	bool IsItemRequired()
+	{
+		return m_bRequired;
 	}
 	
 	//----------------------------------------------------------------------------------------------
@@ -170,5 +236,14 @@ class SCR_AddonLineDSConfigComponent : SCR_AddonLineBaseComponent
 			m_OnSortConfirm = new ScriptInvokerScriptedWidgetComponent();
 
 		return m_OnSortConfirm;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerScriptedWidgetComponent GetOnRequiredDisabled()
+	{
+		if (!m_OnRequiredDisabled)
+			m_OnRequiredDisabled = new ScriptInvokerScriptedWidgetComponent();
+
+		return m_OnRequiredDisabled;
 	}
 }

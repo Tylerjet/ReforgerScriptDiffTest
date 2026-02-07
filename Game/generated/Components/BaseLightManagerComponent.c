@@ -27,6 +27,7 @@ class BaseLightManagerComponent: GameComponent
 	proto external int GetLights(out notnull array<BaseLightSlot> outLights);
 	//! Changes functional state of light surface and all linked lights for provided surface id, return true on success
 	proto external bool TrySetSurfaceFunctional(int surfaceID, bool functiona);
+	proto external int GetEmissiveSurfaces(out notnull array<EmissiveLightSurfaceSlot> outSurfaces);
 
 	// callbacks
 

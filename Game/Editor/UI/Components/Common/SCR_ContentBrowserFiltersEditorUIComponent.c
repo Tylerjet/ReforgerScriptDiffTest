@@ -64,15 +64,15 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 	protected float m_fFiltersScrollPosY;
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SetFilterToggled(EEditableEntityLabel entityLabel, bool state, bool setData = false, SCR_ListBoxElementComponent handler = null)
+	protected void SetFilterToggled(EEditableEntityLabel entityLabel, bool state, bool setData = false, SCR_ListBoxElementComponent handler = null, bool instant = false)
 	{
 		if (!handler)
 			handler = m_ButtonByLabel.Get(entityLabel);
 
 		if (handler)
-			handler.SetToggled(state, false);
+			handler.SetToggled(state, false, instant);
 
-		CheckConditionalGroup(entityLabel, state);
+		CheckConditionalGroup(entityLabel, state, instant);
 		m_ContentBrowserEditorComponent.SetLabel(entityLabel, state);
 	}
 	
@@ -107,7 +107,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void CheckConditionalGroup(EEditableEntityLabel filterLabel, bool value)
+	protected void CheckConditionalGroup(EEditableEntityLabel filterLabel, bool value, bool instant = false)
 	{
 		if (!m_GroupWidgetByConditionalLabel.Contains(filterLabel))
 			return;
@@ -142,7 +142,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 					if (!labelSettings)
 						continue;
 					
-					SetFilterToggled(labelSettings.GetLabelType(), false, false, filterHandler);
+					SetFilterToggled(labelSettings.GetLabelType(), false, false, filterHandler, instant);
 					
 					filterLayout = filterLayout.GetSibling();
 				}
@@ -201,7 +201,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		foreach	(EEditableEntityLabel toggledLabel : activeLabels)
 		{
-			SetFilterToggled(toggledLabel, false, false);
+			SetFilterToggled(toggledLabel, false, false, null, true);
 		}
 		
 		m_wScrollview.SetSliderPos(0, 0);
@@ -214,7 +214,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 			
 			foreach (EEditableEntityLabel label: alwaysActiveLabels)
 			{
-				CheckConditionalGroup(label, true);
+				CheckConditionalGroup(label, true, true);
 			}
 		}
 	}
@@ -229,7 +229,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		//~ Reset labels
 		foreach (EEditableEntityLabel label: savedLabels)
 		{
-			SetFilterToggled(label, false, false);
+			SetFilterToggled(label, false, false, null, true);
 		}
 	}
 	
@@ -243,7 +243,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		//~ Set saved Labels
 		foreach (EEditableEntityLabel label: savedLabels)
 		{
-			SetFilterToggled(label, true, false);
+			SetFilterToggled(label, true, false, null, true);
 		}
 	}
 	
@@ -284,7 +284,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 		{
 			SCR_ListBoxElementComponent buttonComponent = SCR_ListBoxElementComponent.Cast(filterWidget.FindHandler(SCR_ListBoxElementComponent));
 			if (buttonComponent && buttonComponent.GetToggled() && (!ignoreButton || ignoreButton != buttonComponent.GetRootWidget()))
-				buttonComponent.SetToggled(false, true);
+				buttonComponent.SetToggled(false, true, true);
 			
 			filterWidget = filterWidget.GetSibling();
 			i++;
@@ -344,7 +344,6 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 				editorMode = modeEntity.GetModeType();
 		}
 		
-		string entityLabelString;
 		SCR_ButtonTextComponent selectableButton;
 		foreach (SCR_EditableEntityCoreLabelGroupSetting labelGroup : labelGroups)
 		{
@@ -443,7 +442,7 @@ class SCR_ContentBrowserFiltersEditorUIComponent : SCR_BaseEditorUIComponent
 				bool isLabelActive = m_ContentBrowserEditorComponent.IsLabelActive(entityLabel);
 				
 				labelOptionHandler.SetText(labelUIInfo.GetName());
-				labelOptionHandler.SetToggled(isLabelActive, false);
+				labelOptionHandler.SetToggled(isLabelActive, false, true);
 				labelOptionHandler.SetData(entityLabelSettings);
 				labelOptionHandler.m_OnMouseEnter.Insert(OnMouseEnterFilterWidget);
 				labelOptionHandler.m_OnFocus.Insert(OnMouseEnterFilterWidget);

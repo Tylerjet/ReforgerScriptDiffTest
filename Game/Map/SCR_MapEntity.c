@@ -29,6 +29,8 @@ class SCR_MapEntity: MapEntity
 	protected bool m_bIsDebugMode;							// variable debug mode
 	protected int m_iMapSizeX;								// map size X in meters/units
 	protected int m_iMapSizeY;								// map size Y in meters/units 
+	protected int m_iMapOffsetX;							// map offset X in meters/units
+	protected int m_iMapOffsetY;							// map offset Y in meters/units 
 	protected vector m_vVisibleFrameMin;					// cache visible frame min point for use elsewhere
 	protected vector m_vVisibleFrameMax;					// cache visible frame max point for use elsewhere
 	protected EMapEntityMode m_eLastMapMode;				// cached mode of last map for reload check
@@ -585,7 +587,7 @@ class SCR_MapEntity: MapEntity
 		
 		//! get current size of map(includes zoom level) in screen space
 		int x, y;
-		WorldToScreen(GetMapSizeX() / 2, GetMapSizeY() / 2, x, y);
+		WorldToScreen(m_iMapOffsetX + m_iMapSizeX / 2, m_iMapOffsetY + m_iMapSizeY / 2, x, y);
 
 		SetPan(x, y); 
 	}
@@ -813,7 +815,7 @@ class SCR_MapEntity: MapEntity
 		
 		// un-center to get direct pan pos
 		m_aStartPan = { m_Workspace.DPIUnscale(screenWidth/2) - m_iPanX, m_Workspace.DPIUnscale(screenHeight/2) - m_iPanY };
-		m_aTargetPan = { m_Workspace.DPIUnscale(panX), m_Workspace.DPIUnscale(panY) };
+		m_aTargetPan = { m_Workspace.DPIUnscale(panX), m_Workspace.DPIUnscale(panY)};
 		m_fPanTimeModif = 1/panTime;
 		m_fPanSlice = 1.0;
 		m_bIsPanInterp = true;
@@ -884,16 +886,16 @@ class SCR_MapEntity: MapEntity
 	
 		if (withPan)
 		{
-			screenPosX = (worldX * m_fZoomPPU) + m_Workspace.DPIScale(m_iPanX);
-			screenPosY = (worldY * m_fZoomPPU) + m_Workspace.DPIScale(m_iPanY);
+			screenPosX = ((worldX - m_iMapOffsetX) * m_fZoomPPU) + m_Workspace.DPIScale(m_iPanX);
+			screenPosY = ((worldY + m_iMapOffsetY) * m_fZoomPPU) + m_Workspace.DPIScale(m_iPanY);
 		}
 		else
 		{
-			screenPosX = worldX * m_fZoomPPU;
-			screenPosY = worldY * m_fZoomPPU;		
+			screenPosX = (worldX - m_iMapOffsetX) * m_fZoomPPU;
+			screenPosY = (worldY + m_iMapOffsetY) * m_fZoomPPU;		
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Use canvas world coords and defined pixel per unit to get DPIscaled screen coords, flips the y-axis
 	// \param worldX is world x
@@ -908,13 +910,13 @@ class SCR_MapEntity: MapEntity
 		
 		if (withPan)
 		{
-			screenPosX = (worldX * targetPPU) + m_Workspace.DPIScale(m_iPanX);
-			screenPosY = (worldY * targetPPU) + m_Workspace.DPIScale(m_iPanY);
+			screenPosX = ((worldX - m_iMapOffsetX) * targetPPU) + m_Workspace.DPIScale(m_iPanX);
+			screenPosY = ((worldY + m_iMapOffsetY) * targetPPU) + m_Workspace.DPIScale(m_iPanY);
 		}
 		else
 		{
-			screenPosX = worldX * targetPPU;
-			screenPosY = worldY * targetPPU;		
+			screenPosX = (worldX - m_iMapOffsetX) * targetPPU;
+			screenPosY = (worldY + m_iMapOffsetY) * targetPPU;		
 		}
 	}
 
@@ -926,8 +928,8 @@ class SCR_MapEntity: MapEntity
 	// \param worldY is world y
 	void ScreenToWorld(int screenPosX, int screenPosY, out float worldX, out float worldY)
 	{				
-		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU;
-		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU;
+		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU + m_iMapOffsetX;
+		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU - m_iMapOffsetY;
 		worldY =  m_iMapSizeY - worldY;	// fix Y axis which is reversed between screen and world
 	}
 	
@@ -939,8 +941,8 @@ class SCR_MapEntity: MapEntity
 	// \param worldY is world y
 	void ScreenToWorldNoFlip(int screenPosX, int screenPosY, out float worldX, out float worldY)
 	{		
-		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU;
-		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU;
+		worldX = (screenPosX - m_Workspace.DPIScale(m_iPanX)) / m_fZoomPPU + m_iMapOffsetX;
+		worldY = (screenPosY - m_Workspace.DPIScale(m_iPanY)) / m_fZoomPPU + m_iMapOffsetY;
 	}
 		
 	/*!
@@ -1504,9 +1506,13 @@ class SCR_MapEntity: MapEntity
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		// Save size
-		m_iMapSizeX = Size()[0];
-		m_iMapSizeY = Size()[2];
+
+		vector size = Size();
+		m_iMapSizeX = size[0];
+		m_iMapSizeY = size[2];
+		vector offset = Offset();
+		m_iMapOffsetX = offset[0];
+		m_iMapOffsetY = offset[2];
 		
 		if (m_iMapSizeX == 0 || m_iMapSizeY == 0)
 		{

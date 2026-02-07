@@ -89,9 +89,9 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
- 	{		
+ 	{
 		//~ If hitzones to heal are not on fire but the entity is then hide make the action invalid
-		if (m_OnFireCheckDamageManager && !IsHitZoneOnFire() && m_OnFireCheckDamageManager.IsDamagedOverTime(EDamageType.FIRE))
+		if (m_OnFireCheckDamageManager &&  m_OnFireCheckDamageManager.IsDamagedOverTime(EDamageType.FIRE) && !m_OnFireCheckDamageManager.IsOnFire(m_aHitZonesToHeal))
 		{
 			SetCanPerform(false, ESupportStationReasonInvalid.HEAL_ENTITY_ONFIRE);
 			
@@ -100,7 +100,7 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 			return false;
 		}
 		
-		if (!m_DamageManagerComponent.CanBeHealed())
+		if (!m_DamageManagerComponent.CanBeHealed(false))
 		{
 			SetCanPerform(false, ESupportStationReasonInvalid.HEAL_ENTITY_UNDAMAGED);
 			
@@ -132,7 +132,7 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 			
 			array<HitZone> allHitZones = {};
 			
-			m_DamageManagerComponent.GetAllHitZones(allHitZones);
+			m_DamageManagerComponent.GetAllHitZonesInHierarchy(allHitZones);
 			
 			foreach (HitZone hitZone : allHitZones)
 			{
@@ -165,31 +165,10 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Check if any of the hitzone to heal is on fire
-	protected bool IsHitZoneOnFire()
-	{
-		SCR_FlammableHitZone flammableHitZone;
-		array<HitZone> hitZones = {};
-		GetHitZonesToHeal(hitZones);
-		
-		foreach (HitZone hitZone : hitZones)
-		{
-			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
-			if (!flammableHitZone)
-				continue;
-			
-			if (flammableHitZone.GetFireState() == EFireState.BURNING)// || flammableHitZone.GetFireState() == EFireState.SMOKING_IGNITING)
-				return true;
-		}
-		
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected override string GetActionStringParam()
 	{
 		//~ Don't show damage state when on fire
-		if (IsHitZoneOnFire())
+		if (m_OnFireCheckDamageManager.IsOnFire(m_aHitZonesToHeal))
 			return string.Empty;
 		
 		return super.GetActionStringParam();
@@ -202,7 +181,7 @@ class SCR_RepairAtSupportStationAction : SCR_BaseDamageHealSupportStationAction
 			return super.GetActionNameScript(outName);
 		
 		//~ Set extinguish fire action name 
-		if (IsHitZoneOnFire())
+		if (m_OnFireCheckDamageManager.IsOnFire(m_aHitZonesToHeal))
 			outName = m_sOnFireOverrideActionName;
 		//~ Override action name
 		else if (m_SupportStationComponent)

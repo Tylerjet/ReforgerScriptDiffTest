@@ -119,7 +119,7 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 		if (timeManager)
 		{
 			timeManager.GetHoursMinutesSeconds(m_iHours, m_iMinutes, m_iSeconds);
-			WeatherStateTransitionManager transitionManager = timeManager.GetTransitionManager();
+			BaseWeatherStateTransitionManager transitionManager = timeManager.GetTransitionManager();
 			
 			if (transitionManager)
 				m_sWeatherState = transitionManager.GetCurrentState().GetStateName();

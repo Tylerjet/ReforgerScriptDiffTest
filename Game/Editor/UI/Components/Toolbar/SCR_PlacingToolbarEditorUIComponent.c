@@ -43,7 +43,7 @@ class SCR_PlacingToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		
 		int prefabID = assetCard.GetPrefabIndex();
 		ResourceName prefab = m_ContentBrowserManager.GetResourceNamePrefabID(prefabID);
-
+		
 		if (!m_PlacingManager.SetSelectedPrefab(prefab, showBudgetMaxNotification: true))
 			return;
 			

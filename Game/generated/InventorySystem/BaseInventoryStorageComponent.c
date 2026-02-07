@@ -81,10 +81,14 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	proto external float GetMaxVolumeCapacity();
 	// return dimension limits for storage
 	proto external vector GetMaxDimensionCapacity();
+	//!get a rough estimate of how many times the item can fit in the inventory
+	proto external int GetEstimatedCountFitForItem(IEntity item);
 	//! get the weight of a prefab
-	proto external float GetWeightFromResource(ResourceName resourceName);
+	proto external float GetWeightFromResource(ResourceName resourceName, int count = 1);
+	//!get a rough estimate of how many times the resource can fit in the inventory
+	proto external int GetEstimatedCountFitForResource(ResourceName resourceName);
 	//! performs volume and item dimension validation.
-	proto external bool PerformVolumeAndDimensionValidationForResource(ResourceName resourceName, bool includeDimensionValidation = true);
+	proto external bool PerformVolumeAndDimensionValidationForResource(ResourceName resourceName, bool includeDimensionValidation = true, int count = 1);
 
 	// callbacks
 
@@ -123,7 +127,7 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
 	event bool CanStoreItem(IEntity item, int slotID) { return true; };
 	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
-	event bool CanStoreResource(ResourceName resourceName, int slotID) { return true; };
+	event bool CanStoreResource(ResourceName resourceName, int slotID, int count) { return true; };
 	//! Implemented logics for can remove here,
 	event bool CanRemoveItem(IEntity item) { return true; };
 	//! Implemented logics for can replace to nextItem at slotID,
@@ -143,6 +147,8 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	*IMPORTANT* This is called after the C++ event.
 	*/
 	event protected void OnManagerChanged(InventoryStorageManagerComponent manager);
+	//! Virtual method for updating the UI when an item is removed/added
+	event protected void UpdateUI();
 }
 
 /*!

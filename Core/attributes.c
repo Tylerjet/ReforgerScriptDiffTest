@@ -412,6 +412,7 @@ Inherit this attribute to set your own custom title.
 class BaseContainerCustomTitle
 {
 	bool _WB_GetCustomTitle(BaseContainer source, out string title);
+	bool _WB_GetCustomClassTitle(string className, out string title);
 }
 
 /*!

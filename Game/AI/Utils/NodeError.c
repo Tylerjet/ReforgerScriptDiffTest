@@ -5,7 +5,7 @@ ENodeResult NodeError(Node node, AIAgent owner, string msg)
 	string sOwner = owner.ToString();
 	string nodeStack;
 	node.GetCallstackStr(nodeStack);
-	Debug.Error(sOwner + " : " + nodeStack + "\n" + msg);
+	Debug.Error(msg + "\n\n" + sOwner + " : " + nodeStack);
 	return ENodeResult.FAIL;
 };
 

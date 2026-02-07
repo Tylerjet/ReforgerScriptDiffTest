@@ -45,17 +45,17 @@ class GarbageSystem: GameSystem
 	\return Remaining lifetime in seconds or -1 if not tracked.
 	*/
 	proto external float GetRemainingLifetime(notnull IEntity entity);
-	/*!
-	Forcefully disposes all entities that are tracked at least for x seconds.
-	*/
-	proto external void Flush(float minTrackedSeconds = 60);
+	//! Forcefully disposes all entities that are tracked at least for x seconds.
+	proto external void Flush(float minTrackedSeconds = 30);
 	/*!
 	Determine if the provided entity instance is blacklisted from being inserted.
-	Will widthdraw the entity if it is currently tracked and blacklist was enabled for it.
+	Will withdraw the entity if it is currently tracked and blacklist was enabled for it.
 	Can by bypassed via Insert(..., ignoreBlacklist: true)
 	\return True if blacklist update was successful, false otherwise.
 	*/
 	proto external bool UpdateBlacklist(notnull IEntity entity, bool blacklisted);
+	//! Get all entities tracked by the garbage system. Expensive operation. Use with care!
+	proto external int GetTrackedEntities(notnull array<IEntity> entities);
 
 	// callbacks
 

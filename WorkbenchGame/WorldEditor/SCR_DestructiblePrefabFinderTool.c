@@ -14,7 +14,7 @@ class SCR_DestructiblePrefabFinderTool : WorldEditorTool
 	[Attribute("0", UIWidgets.CheckBox, "Include disabled MPD Components", category: "Folder Scan Filters")]
 	protected bool m_bIncludeDisabledMPDComponents;
 
-	[Attribute("1", UIWidgets.CheckBox, "Check if MPD Components have at least one hitzone attached to them", category: "Folder Scan Filters")]
+	[Attribute("1", UIWidgets.CheckBox, "Check if MPD Components have at least one hit zone attached to them", category: "Folder Scan Filters")]
 	protected bool m_bCheckMPDForHitzone;
 
 	[Attribute("1", UIWidgets.CheckBox, "Check if MPD Prefabs have RplComponent attached to them", category: "Folder Scan Filters")]
@@ -22,8 +22,6 @@ class SCR_DestructiblePrefabFinderTool : WorldEditorTool
 
 	[Attribute("1", UIWidgets.CheckBox, "Check if MPD Components have default values", category: "Folder Scan Filters")]
 	protected bool m_bCheckMPDForDefaultValues;
-
-	protected WorldEditor m_WorldEditor = Workbench.GetModule(WorldEditor);
 
 	protected ref array<ResourceName> m_aSelection = {};
 	protected ref array<ResourceName> m_aPrefabs = {};
@@ -110,7 +108,9 @@ class SCR_DestructiblePrefabFinderTool : WorldEditorTool
 		Debug.BeginTimeMeasure();
 
 		SCR_WorkbenchSearchResourcesCallbackArray callback = new SCR_WorkbenchSearchResourcesCallbackArray(m_aSelection);
-		m_WorldEditor.GetResourceBrowserSelection(callback.Insert, true);
+
+		WorldEditor worldEditor = Workbench.GetModule(WorldEditor);
+		worldEditor.GetResourceBrowserSelection(callback.Insert, true);
 
 		foreach (string resourceName : m_aSelection)
 		{

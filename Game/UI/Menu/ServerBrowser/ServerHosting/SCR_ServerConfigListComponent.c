@@ -4,9 +4,6 @@ Script component for handling server config editing UI
 
 class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 {
-	[Attribute("{7E4D962E3084CD77}Configs/ServerBrowser/ServerHosting/Dialogs/ServerConfigDialogs.conf", UIWidgets.ResourceAssignArray)]
-	protected ResourceName m_sDialogs;
-	
 	protected const string NAME_ENTRY = "name";
 	protected const string FILE_NAME_ENTRY = "fileName";
 	protected const string SCENARIO_SELECTION_ENTRY = "scenarioId";
@@ -19,7 +16,8 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	// Properties content
 	protected const string SERVER_NAME_BASE = "%1 %2";
 	protected const string FILE_NAME_BASE = "Config_%1";
-	protected const string DEFAULT_SCENARIO = "{ECC61978EDCC2B5A}Missions/23_Campaign.conf";
+
+	protected const string CHAR_BLACK_LIST = "<>:\/\|?*.";
 	
 	protected SCR_WidgetListEntryEditBox m_NameEdit;
 	protected SCR_WidgetListEntryEditBox m_SimplePortEdit;
@@ -37,30 +35,23 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected ref array<ref SCR_ScenarioSources> m_aScenarioSources = {};
 
 	// Invokers
-	protected ref ScriptInvoker<string> m_OnScenarioSelected;
-	protected ref ScriptInvoker<string> m_OnPortChanged;
+	protected ref ScriptInvokerMissionWorkshopItem m_OnScenarioSelected;
+	protected ref ScriptInvokerString m_OnPortChanged;
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeOnScenarioSelected(string itemId)
-	{
-		if (m_OnScenarioSelected)
-			m_OnScenarioSelected.Invoke(itemId);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnScenarioSelected()
+	ScriptInvokerMissionWorkshopItem GetOnScenarioSelected()
 	{
 		if (!m_OnScenarioSelected)
-			m_OnScenarioSelected = new ScriptInvoker();
+			m_OnScenarioSelected = new ScriptInvokerMissionWorkshopItem();
 
 		return m_OnScenarioSelected;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetOnPortChanged()
+	ScriptInvokerString GetOnPortChanged()
 	{
 		if (!m_OnPortChanged)
-			m_OnPortChanged = new ScriptInvoker();
+			m_OnPortChanged = new ScriptInvokerString();
 
 		return m_OnPortChanged;
 	}
@@ -121,9 +112,9 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		// Fill scenario options 
 		array<ref SCR_LocalizedProperty> options = {};
 		
-		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
+		foreach (SCR_ScenarioSources source : m_aScenarioSources)
 		{
-			MissionWorkshopItem scenario = m_aScenarioSources[i].m_Scenario;
+			MissionWorkshopItem scenario = source.m_Scenario;
 			if (!scenario)
 				return;
 			
@@ -137,9 +128,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		m_ScenarioSelect.GetSelectionComponent().m_OnChanged.Insert(OnSelectScenario);
 		
 		// Select default scenario
-		int defaultId = SetSelectedScenarioById(DEFAULT_SCENARIO);
-		m_ScenarioSelect.SelectOption(defaultId);
-		OnSelectScenario(null, defaultId);
+		SelectDefaultScenario();
 		
 		// Platform specific setup 
 		ConsoleSetup();
@@ -148,47 +137,15 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//-------------------------------------------------------------------------------------------
 	protected void FillScenarioSources()
 	{
-		// Get all scenarios 
-		array<MissionWorkshopItem> allMissions = {};
-		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(allMissions, 0, 4096);
-		
-		// Filter scenarios 
-		array<MissionWorkshopItem> missions = {};
-		
-		for (int i = 0, count = allMissions.Count(); i < count; i++)
+		// Add scenarios and sources to map 
+		foreach (MissionWorkshopItem mission : GetDefaultScenarios())
 		{
-			// Exclude single player 
-			if (allMissions[i].GetPlayerCount() == 1)
-				continue;
-			
-			// Check scenario from mod and modded scenario
-			WorkshopItem scenarioAddon = allMissions[i].GetOwner();
-			if (scenarioAddon)
-			{
-				// Exclude scenarios comming from incompatible addon 
-				if (SCR_AddonManager.ItemAvailability(scenarioAddon) != SCR_ERevisionAvailability.ERA_AVAILABLE)
-					continue;
-			}
-			
-			// Exclude broken mod scenarios
-			if (allMissions[i].GetOwner())
-			{
-				SCR_WorkshopItem item = SCR_AddonManager.GetInstance().Register(allMissions[i].GetOwner());
-				 
-				if (item && item.GetAnyDependencyMissing() || item.GetCorrupted())
-					continue;
-			}
-			
-			missions.Insert(allMissions[i]);
+			InsertScenarioToMap(mission, mission.GetOwner());
 		}
 		
-		// Order scenarios 
-		SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(missions);
-		
-		// Add scenarios and sorces to map 
-		for (int i = 0, count = missions.Count(); i < count; i++)
+		foreach (MissionWorkshopItem mission : GetModdedScenarios())
 		{
-			InsertScenarioToMap(missions[i], missions[i].GetOwner());
+			InsertScenarioToMap(mission, mission.GetOwner());
 		}
 	}
 	
@@ -197,51 +154,39 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//! If scenario name is reapeate, insert source mod in to existing scenario 
 	protected void InsertScenarioToMap(MissionWorkshopItem scenario, WorkshopItem modOwner)
 	{
-		// Scenario map structure  - key: scenario (SCR_LocalizedProperty), value: sources (array SCR_LocalizedProperty)
-		
 		// Scenario id is in map - there stil could be repeating names 
 		int scenarioIndex = -1;
 		
-		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
+		foreach (int i, SCR_ScenarioSources source : m_aScenarioSources)
 		{		
-			MissionWorkshopItem mission = m_aScenarioSources[i].m_Scenario;
+			MissionWorkshopItem mission = source.m_Scenario;
 			
 			// Scenario structure - label: name, propertyName: id	
 			if (mission && scenario.Id() == mission.Id())
 			{
-				//scenario = m_aScenarioSources[i].m_Scenario;
 				scenarioIndex = i;
 				break;
 			}
 		}
 		
 		// Scenario is in map 
-		if (scenarioIndex != -1)
-		{
-			// Add source to existing scenario
+		if (scenarioIndex != -1) // Add source to existing scenario
 			m_aScenarioSources[scenarioIndex].m_aMods.Insert(modOwner);
-		}
-		else
-		{
-			// Add new 
+		else // Add new 
 			m_aScenarioSources.Insert(new SCR_ScenarioSources(scenario, {modOwner}));
-		}
 	}
 	
 	//-------------------------------------------------------------------------------------------
-	//! Return default scenario id
-	protected int SetSelectedScenarioById(string scenarioId)
+	protected int GetScenarioIndexById(string scenarioId)
 	{
-		array<ref SCR_LocalizedProperty> scenarios = {};
-		m_ScenarioSelect.GetOptions(scenarios);
+		array<ref SCR_LocalizedProperty> entries = {};
+		m_ScenarioSelect.GetOptions(entries);
 		
-		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
+		foreach (int i, SCR_LocalizedProperty entry : entries)
 		{
 			// Property name = scenario id
-			if (scenarios[i].m_sPropertyName == scenarioId)
-			{
+			if (entry.m_sPropertyName == scenarioId)
 				return i;
-			}
 		}
 
 		// Fallback
@@ -268,20 +213,26 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//-------------------------------------------------------------------------------------------
 	// Public
 	//-------------------------------------------------------------------------------------------
+	void SelectDefaultScenario()
+	{
+		if (!m_ScenarioSelect)
+			return;
+		
+		array<MissionWorkshopItem> defaultMissions = GetDefaultScenarios();
+		if (!defaultMissions.IsEmpty())
+			SelectScenario(defaultMissions[0]);
+	}
 	
 	//-------------------------------------------------------------------------------------------
 	void SelectScenario(notnull MissionWorkshopItem scenario)
 	{
-		array<MissionWorkshopItem> missionItemsAll = new array<MissionWorkshopItem>;
-		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, 4096);
-		
-		if (m_ScenarioSelect)
-		{
-			int selected = SetSelectedScenarioById(scenario.Id());
+		if (!m_ScenarioSelect)
+			return;
 			
-			m_ScenarioSelect.SelectOption(selected);
-			OnSelectScenario(SCR_ComboBoxComponent.Cast(m_ScenarioSelect.GetSelectionComponent()), selected);
-		}
+		int selected = GetScenarioIndexById(scenario.Id());
+			
+		m_ScenarioSelect.SelectOption(selected);
+		OnSelectScenario(SCR_ComboBoxComponent.Cast(m_ScenarioSelect.GetSelectionComponent()), selected);
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -290,18 +241,16 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		if (!m_ScenarioSelect)
 			return null;
 	
-		array<MissionWorkshopItem> missionItemsAll = new array<MissionWorkshopItem>;
-		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, 4096);
+		array<MissionWorkshopItem> missionItemsAll = {};
+		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, SCR_WorkshopUiCommon.PAGE_SCENARIOS);
 		
-		for (int i = 0, count = missionItemsAll.Count(); i < count; i++)
+		foreach (MissionWorkshopItem scenario : missionItemsAll)
 		{
 			SCR_LocalizedProperty selected = m_ScenarioSelect.GetSelectedOption();
 			string name = selected.m_sPropertyName;
 			
-			if (missionItemsAll[i].Id() == name)
-			{
-				return missionItemsAll[i];
-			}
+			if (scenario.Id() == name)
+				return scenario;
 		}
 		
 		return null;
@@ -314,8 +263,8 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		if (!m_ScenarioSelect)
 			return null;
 	
-		array<MissionWorkshopItem> missionItemsAll = new array<MissionWorkshopItem>;
-		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, 4096);
+		array<MissionWorkshopItem> missionItemsAll = {};
+		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, SCR_WorkshopUiCommon.PAGE_SCENARIOS);
 		
 		// Check current selection 
 		SCR_LocalizedProperty property = m_ScenarioModSelect.GetSelectedOption();
@@ -324,19 +273,69 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			return null;
 		
 		// Select owner mod
-		for (int i = 0, count = missionItemsAll.Count(); i < count; i++)
+		foreach (MissionWorkshopItem scenario : missionItemsAll)
 		{
-			WorkshopItem ownerItem = missionItemsAll[i].GetOwner();
+			WorkshopItem ownerItem = scenario.GetOwner();
 			if (!ownerItem)
 				continue;
 			
 			if (ownerItem.Id() == property.m_sPropertyName)
-			{
 				return ownerItem;
-			}
 		}
 		
 		return null;
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	// Default Reforger scenarios lack a owner mod
+	array<MissionWorkshopItem> GetDefaultScenarios()
+	{
+		array<MissionWorkshopItem> allMissions = {};
+		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(allMissions, 0, SCR_WorkshopUiCommon.PAGE_SCENARIOS);
+		
+		array<MissionWorkshopItem> defaultMissions = {};
+		foreach (MissionWorkshopItem mission : allMissions)
+		{
+			if (!mission.GetOwner() && SCR_ScenarioUICommon.IsMultiplayer(mission))
+				defaultMissions.Insert(mission);
+		}
+		
+		// Order scenarios alphabetically
+		SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(defaultMissions);
+		return defaultMissions;
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	array<MissionWorkshopItem> GetModdedScenarios()
+	{
+		// Get all scenarios 
+		array<MissionWorkshopItem> allMissions = {};
+		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(allMissions, 0, SCR_WorkshopUiCommon.PAGE_SCENARIOS);
+		
+		// Filter scenarios 
+		array<MissionWorkshopItem> missions = {};
+		
+		foreach (MissionWorkshopItem mission : allMissions)
+		{
+			// Exclude default and single player scenarios
+			if (!mission.GetOwner() || !SCR_ScenarioUICommon.IsMultiplayer(mission))
+				continue;
+			
+			// Exclude scenarios comming from incompatible addon 
+			if (SCR_AddonManager.ItemAvailability(mission.GetOwner()) != SCR_ERevisionAvailability.ERA_AVAILABLE)
+				continue;
+			
+			// Exclude broken mod scenarios
+			SCR_WorkshopItem item = SCR_AddonManager.GetInstance().Register(mission.GetOwner());
+			if (item && item.GetAnyDependencyMissing() || item.GetCorrupted())
+				continue;
+			
+			missions.Insert(mission);
+		}
+		
+		// Order scenarios alphabetically
+		SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(missions);
+		return missions;
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -366,8 +365,11 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			FindEntry("serverMinGrassDistance").SetValue(gamePropertiesSCr.serverMinGrassDistance.ToString());
 		}
 
-		// Scenario 
-		m_ScenarioSelect.SelectOption(SetSelectedScenarioById(config.game.scenarioId));
+		// Scenario
+		int index = GetScenarioIndexById(config.game.scenarioId);
+		
+		m_ScenarioSelect.SelectOption(index);
+		OnSelectScenario(SCR_ComboBoxComponent.Cast(m_ScenarioSelect.GetSelectionComponent()), index);
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -478,7 +480,8 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		
 		SetupPlayerLimit(scenario.GetPlayerCount());
 		
-		InvokeOnScenarioSelected(scenario.Id());
+		if (m_OnScenarioSelected)
+			m_OnScenarioSelected.Invoke(scenario);
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -493,8 +496,6 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		m_NameEdit.SetValue(name);
 		m_NameEdit.ClearInvalidInput();
 	}
-	
-	protected const string CHAR_BLACK_LIST = "<>:\/\|?*.";
 	
 	//-------------------------------------------------------------------------------------------
 	//! Generate server name to the name editbox in case name wasn't edited
@@ -527,17 +528,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		if (value > limit)
 			m_PlayerListSlider.SetValue(limit.ToString());
 	}
-	
-	//-------------------------------------------------------------------------------------------
-	// API
-	//-------------------------------------------------------------------------------------------
-	
-	//-------------------------------------------------------------------------------------------
-	ResourceName GetDialogs()
-	{
-		return m_sDialogs;
-	}
-};
+}
 
 //! Stores scenario with scenario source
 //-------------------------------------------------------------------------------------------

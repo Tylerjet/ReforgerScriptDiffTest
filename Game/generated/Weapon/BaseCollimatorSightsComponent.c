@@ -51,6 +51,8 @@ class BaseCollimatorSightsComponent: SightsComponent
 	proto external void ReticleNextColor();
 	//! Set the previous reticle color. This always works, but might not do anything if only one or no color is defined
 	proto external void ReticlePreviousColor();
+	//! Get the normalized light intensity at the sight
+	proto external float GetNormalizedLightIntensity();
 	//! Set reticle color by index. Return true if successful
 	proto external bool SetReticleColorByIndex(int iIndex);
 
@@ -64,6 +66,13 @@ class BaseCollimatorSightsComponent: SightsComponent
 	event void UpdateReticleShapeIndex(int index);
 	//! Called to update reticle color
 	event void UpdateReticleColor(vector inner, vector glow);
+	//! Called to set auto brightness factor
+	event void UpdateReticleBrightnessScale(float scale);
+	//! Called to set glow brightness
+	event void UpdateReticleBrightness(float lvFactor,  bool useOwn);
+	//! Get the Brightness of the reticle glow
+	event float GetReticleBrightnessDay();
+	event float GetReticleBrightnessNight();
 	event void OnSightADSActivate();
 	event void OnSightADSDeactivated();
 }

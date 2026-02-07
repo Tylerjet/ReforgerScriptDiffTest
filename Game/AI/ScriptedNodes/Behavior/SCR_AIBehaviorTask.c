@@ -16,10 +16,14 @@ class SCR_AIActionTask : AITaskScripted
 	static const string COMPARTMENT_PORT = "Compartment";
 	static const string SMARTACTION_PORT = "SmartActionComponent";
 	static const string WEAPON_TYPE_PORT = "WeaponType";
+	static const string WEAPON_COMP_PORT = "WeaponComponent";
+	static const string MAGAZINE_COMP_PORT = "MagazineComponent";
 	static const string MAGAZINE_WELL_PORT = "MagazineWell";
 	static const string PRIORITY_LEVEL_PORT = "PriorityLevel";
+	static const string MUZZLE_ID = "MuzzleID";
 	static const string WAYPOINT_PORT = "Waypoint";
-	static const string ATTACK_LOCATION_PORT = "AttackLocation";
+	static const string BOARDING_PARAMS_PORT = "BoardingParams";
+	static const string DEFEND_DIRECTION_PORT = "DefendDirection";
 	static const string DEFEND_LOCATION_PORT = "DefendLocation";
 	static const string ANGULAR_RANGE_PORT = "AngularRange";
 	static const string WAYPOINT_RELATED_PORT = "WaypointRelated";

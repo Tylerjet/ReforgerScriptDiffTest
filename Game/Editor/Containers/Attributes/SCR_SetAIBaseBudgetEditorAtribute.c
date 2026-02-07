@@ -12,7 +12,7 @@ class SetAIBaseBudgetEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!provider)
 			return null;
 		
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(GetProviderComponent(provider));
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent(provider);
 		if (!providerComponent)
 			return null;
 
@@ -34,7 +34,7 @@ class SetAIBaseBudgetEditorAttribute : SCR_BaseValueListEditorAttribute
 		if (!provider)
 			return;
 		
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(GetProviderComponent(provider));
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent(provider);
 		if (!providerComponent)
 			return;
 		

@@ -68,6 +68,12 @@ sealed class LightHandle: pointer
 	*/
 	proto external void SetCone(notnull BaseWorld world, float cone);
 	/*!
+	Set light distance attenuation -> power function, default is 2 corresponding to light without
+	any other internal reflector
+	\param att attenuation
+	*/
+	proto external void SetLightDistanceAtt(notnull BaseWorld world, float cone);
+	/*!
 	Sets color-lookup texture, light color with LV is multiplied by the texture
 	* point lights -> texture must be cube map
 	* spot lights, 2D texture -> the texture serves as projector texture

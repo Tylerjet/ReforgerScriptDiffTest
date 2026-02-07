@@ -35,6 +35,9 @@ class SCR_ContinuousLoiterCommand : SCR_BaseRadialCommand
 		
 		if (characterController.IsLoitering())
 		{
+			if (m_pScrInputContext.m_bLoiteringDisablePlayerInput)
+				return false;
+
 			characterController.StopLoitering(false);
 			return true;
 		}

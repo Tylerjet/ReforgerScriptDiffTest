@@ -13,7 +13,7 @@ class SCR_PlayerLoadout : SCR_BasePlayerLoadout
 	//------------------------------------------------------------------------------------------------
 	override ResourceName GetLoadoutResource()
 	{
-		return m_sLoadoutResource;
+		return SCR_EditableEntityComponentClass.GetRandomVariant(m_sLoadoutResource);
 	}
 	
 	//------------------------------------------------------------------------------------------------

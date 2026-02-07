@@ -1,5 +1,5 @@
 [WorkbenchPluginAttribute(name: "Send To Blender", wbModules: { "ResourceManager" }, resourceTypes: { "fbx", "xob", "et" }, awesomeFontCode: 0xF00C)]
-class SCR_SendToBlenderPlugin : WorkbenchPlugin
+class SendToBlenderPlugin : WorkbenchPlugin
 {
 	[Attribute(defvalue: "C:\\Program Files\\Blender Foundation\\Blender 3.6\\blender.exe", uiwidget: UIWidgets.FileNamePicker, desc: "Absolute path to your blender.exe", params: "exe FileNameFormat=absolute", category: "Path")]
 	protected string m_sBlenderPath;
@@ -44,9 +44,8 @@ class SCR_SendToBlenderPlugin : WorkbenchPlugin
 			Print("Resource couldn't be imported to blender because .fbx file is missing", LogLevel.WARNING);
 			return;
 		}
-		
-		string command = string.Format("\"%1\" --python-expr \"import bpy;bpy.ops.scene.ebt_import_fbx()\" -- -filePath \"%2\" -remove %3", m_sBlenderPath, absPath, true);
 
+		string command = string.Format("\"%1\" --python-expr \"import bpy;bpy.ops.scene.ebt_import_fbx()\" -- -filePath \"%2\" -remove %3", m_sBlenderPath, absPath, true);
 		Workbench.RunProcess(command);
 	}
 

@@ -35,7 +35,7 @@ class SCR_MapUITask : SCR_MapUIElement
 			task.SetWidgetIcon(image);
 		}
 
-		Widget widget = Widget.Cast(m_wMapTask.FindAnyWidget("TaskIconOutline"));
+		Widget widget = m_wMapTask.FindAnyWidget("TaskIconOutline");
 		if (widget)
 		{
 			if (targetFaction)
@@ -120,7 +120,7 @@ class SCR_MapUITask : SCR_MapUIElement
 		m_eIconType = SCR_EIconType.TASK;
 		m_wTaskTitle = TextWidget.Cast(w.FindAnyWidget("Title"));
 		m_wImage = ImageWidget.Cast(w.FindAnyWidget("TaskIcon"));
-		m_wAssignees = Widget.Cast(w.FindAnyWidget("Assignee"));
+		m_wAssignees = w.FindAnyWidget("Assignee");
 		m_wHorizLayout = w.FindAnyWidget("HorizLayout");
 		m_wMapTask = w;
 
@@ -128,27 +128,27 @@ class SCR_MapUITask : SCR_MapUIElement
 		Widget overlayWidget;
 		ButtonWidget taskAssignButton
 
-		Widget widget = Widget.Cast(w.FindAnyWidget("TaskIconHover"));
+		Widget widget = w.FindAnyWidget("TaskIconHover");
 		if (widget)
 		{
 			widget.SetEnabled(false);
 			widget.SetOpacity(0);
 		}
 
-		widget = Widget.Cast(w.FindAnyWidget("Border"));
+		widget = w.FindAnyWidget("Border");
 		if (widget)
 		{
 			widget.SetEnabled(false);
 			widget.SetOpacity(0);
 		}
 
-		widget = Widget.Cast(w.FindAnyWidget("TaskTitleButton"));
+		widget = w.FindAnyWidget("TaskTitleButton");
 		if (widget)
 		{
 			widget.SetVisible(false);
 		}
 
-		widget = Widget.Cast(w.FindAnyWidget("Assignee"));
+		widget = w.FindAnyWidget("Assignee");
 		if (widget)
 		{
 			widget.SetEnabled(false);

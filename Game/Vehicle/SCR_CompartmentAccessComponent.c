@@ -183,7 +183,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	\param compartmentType Type of compartment
 	\return True if the request was successful
 	*/
-	bool MoveInVehicle(IEntity vehicle, ECompartmentType compartmentType, BaseCompartmentSlot customSlot = null)
+	bool MoveInVehicle(IEntity vehicle, ECompartmentType compartmentType, bool performWhenPaused = false, BaseCompartmentSlot customSlot = null)
 	{
 		if (!vehicle)
 			return false;
@@ -193,12 +193,12 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		if (!slot)
 			return false;
 
-		//--- Move character in the slot (must be called where character is local)		
+		//--- Move character in the slot (must be called where character is local)
 		IEntity slotEntity = slot.GetOwner();
 		RplComponent slotRplComponent = RplComponent.Cast(slotEntity.FindComponent(RplComponent));
 		RplId slotEntityID = slotRplComponent.Id();
 		int slotID = slot.GetCompartmentSlotID();
-		Rpc(MoveInVehicleOwner, slotEntityID, slotID);
+		Rpc(MoveInVehicleOwner, slotEntityID, slotID, performWhenPaused);
 		
 		//--- Lock the slot for a frame, so any other MoveInVehicle calls in this frame will skip it
 		slot.SetCompartmentAccessible(false);
@@ -207,7 +207,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	}
 	
 	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void MoveInVehicleOwner(RplId slotEntityID, int slotID)
+	protected void MoveInVehicleOwner(RplId slotEntityID, int slotID, bool performWhenPaused)
 	{
 		RplComponent slotRplComponent = RplComponent.Cast(Replication.FindItem(slotEntityID));
 		if (!slotRplComponent)
@@ -219,7 +219,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 				return;
 			}
 			
-			GetGame().GetCallqueue().CallLater(MoveInVehicleOwner, 1000, false, slotEntityID, slotID);
+			GetGame().GetCallqueue().CallLater(MoveInVehicleOwner, 1000, false, slotEntityID, slotID, performWhenPaused);
 			s_iWaitForVehicleTries++;
 			return;
 		}
@@ -232,7 +232,7 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		BaseCompartmentSlot slot = slotCompartmentManager.FindCompartment(slotID);
 		
 		//--- Use slot's owner, not the vehicle - the slot may be in vehicle's child entity
-		MoveInVehicle(slotEntity, slot);
+		GetInVehicle(slotEntity, slot, true, -1, ECloseDoorAfterActions.INVALID, performWhenPaused);
 	}
 	
 	/*!
@@ -246,13 +246,14 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 		if (!vehicle)
 			return false;
 		
-		if (MoveInVehicle(vehicle, ECompartmentType.Pilot))
+		ChimeraWorld world = GetGame().GetWorld();
+		if (MoveInVehicle(vehicle, ECompartmentType.PILOT, world.IsGameTimePaused()))
 			return true;
 		
-		if (MoveInVehicle(vehicle, ECompartmentType.Turret))
+		if (MoveInVehicle(vehicle, ECompartmentType.TURRET, world.IsGameTimePaused()))
 			return true;
 		
-		if (MoveInVehicle(vehicle, ECompartmentType.Cargo))
+		if (MoveInVehicle(vehicle, ECompartmentType.CARGO, world.IsGameTimePaused()))
 			return true;
 		
 		return false;

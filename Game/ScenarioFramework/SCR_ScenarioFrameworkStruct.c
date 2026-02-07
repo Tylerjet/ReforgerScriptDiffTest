@@ -27,7 +27,7 @@ class SCR_ScenarioFrameworkStruct : SCR_JsonApiStruct
 		if (timeManager)
 		{
 			timeManager.GetHoursMinutesSeconds(m_iHours, m_iMinutes, m_iSeconds);
-			WeatherStateTransitionManager transitionManager = timeManager.GetTransitionManager();
+			BaseWeatherStateTransitionManager transitionManager = timeManager.GetTransitionManager();
 			
 			if (transitionManager)
 				m_sWeatherState = transitionManager.GetCurrentState().GetStateName();
@@ -368,9 +368,9 @@ class SCR_ScenarioFrameworkAreaStruct : SCR_ScenarioFrameworkLayerStruct
 	//! Stores the Activation type
 	void StoreActivationTypeStatus(notnull SCR_ScenarioFrameworkArea area, notnull SCR_ScenarioFrameworkAreaStruct areaStruct)
 	{
-		if (area.GetActivationType() != area.GetActivationType())
+		if (area.m_eActivationTypeDefault != area.m_eActivationType)
 		{
-			areaStruct.SetActivationType(area.GetActivationType());
+			areaStruct.SetActivationType(area.m_eActivationType);
 			areaStruct.IncreaseStructVarCount();
 		}
 		else
@@ -643,9 +643,9 @@ class SCR_ScenarioFrameworkLayerStruct : SCR_JsonApiStruct
 	//! Marks if this was terminated - either by death or deletion
 	void StoreActivationTypeStatus(notnull SCR_ScenarioFrameworkLayerBase layer, notnull SCR_ScenarioFrameworkLayerStruct layerStruct)
 	{
-		if (layer.GetActivationType() != layer.GetActivationType())
+		if (layer.m_eActivationTypeDefault != layer.m_eActivationType)
 		{
-			layerStruct.SetActivationType(layer.GetActivationType());
+			layerStruct.SetActivationType(layer.m_eActivationType);
 			layerStruct.IncreaseStructVarCount();
 		}
 		else

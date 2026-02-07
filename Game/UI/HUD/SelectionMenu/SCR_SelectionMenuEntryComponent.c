@@ -11,6 +11,9 @@ class SCR_SelectionMenuEntryComponent : SCR_ScriptedWidgetComponent
 	[Attribute("Size")]
 	protected string m_sSizeLayout;
 	
+	[Attribute("EntryText")]
+	protected string m_sEntryText;
+	
 	protected SCR_SelectionMenuEntry m_Entry;
 	
 	protected bool m_bEnabled = true;
@@ -18,6 +21,7 @@ class SCR_SelectionMenuEntryComponent : SCR_ScriptedWidgetComponent
 	protected float m_fAdjustedSize;
 	
 	protected Widget m_wSizeLayout;
+	protected TextWidget m_wEntryText;
 	
 	// Invokers 
 	protected ref ScriptInvoker<SCR_SelectionMenuEntryComponent> m_OnMouseEnter;
@@ -83,8 +87,13 @@ class SCR_SelectionMenuEntryComponent : SCR_ScriptedWidgetComponent
 		SetEnabled(m_bEnabled);
 		
 		m_wSizeLayout = m_wRoot.FindAnyWidget(m_sSizeLayout);
+		m_wEntryText = TextWidget.Cast(m_wRoot.FindAnyWidget(m_sEntryText));
 		m_fOriginalSize = GetLayoutSize();
 		m_fAdjustedSize = m_fOriginalSize;
+		
+		// Set anchor to allow for size/pos override
+		if (m_wSizeLayout)
+			FrameSlot.SetAnchor(m_wSizeLayout, 0.5, 0.5);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -143,6 +152,19 @@ class SCR_SelectionMenuEntryComponent : SCR_ScriptedWidgetComponent
 	void SetEntry(SCR_SelectionMenuEntry entry)
 	{
 		m_Entry = entry;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetEntryText(string str)
+	{
+		if (!m_wEntryText)
+		{
+			Print("Entry text widget was not found!", LogLevel.ERROR);
+			return; 
+		}
+		
+		m_wEntryText.SetVisible(!str.IsEmpty());
+		m_wEntryText.SetText(str);
 	}
 	
 	//------------------------------------------------------------------------------------------------

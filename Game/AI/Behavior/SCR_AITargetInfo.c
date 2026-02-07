@@ -20,6 +20,7 @@ class SCR_AITargetInfo
 	PerceivableComponent m_Perceivable;
 	vector m_vWorldPos;
 	float m_fTimestamp; // Perception mgr time
+	bool m_bEndangering;
 	
 	EAITargetInfoCategory m_eCategory;
 	
@@ -27,12 +28,14 @@ class SCR_AITargetInfo
 	void Init(IEntity entity = null,
 		vector worldPos = vector.Zero,
 		float timestamp = 0.0,
-		EAITargetInfoCategory category = 0)
+		EAITargetInfoCategory category = 0,
+		bool endangering = false)
 	{
 		m_Entity = entity;
 		m_vWorldPos = worldPos;
 		m_fTimestamp = timestamp;	
 		m_eCategory = category;
+		m_bEndangering = endangering;
 		
 		if (entity)
 		{
@@ -83,9 +86,9 @@ class SCR_AITargetInfo
 	}
 	
 	//----------------------------------------------------------------------------------------------------------
-	void InitFromGunshot(IEntity entity, vector posWorld, float timestamp)
+	void InitFromGunshot(IEntity entity, vector posWorld, float timestamp, bool endangering)
 	{
-		Init(entity, posWorld, timestamp, category: EAITargetInfoCategory.DETECTED);
+		Init(entity, posWorld, timestamp, category: EAITargetInfoCategory.DETECTED, endangering);
 	}
 	
 	//----------------------------------------------------------------------------------------------------------
@@ -112,13 +115,15 @@ class SCR_AITargetInfo
 	}
 	
 	//----------------------------------------------------------------------------------------------------------
-	void UpdateFromGunshot(vector worldPos, float timestamp)
+	void UpdateFromGunshot(vector worldPos, float timestamp, bool endangering)
 	{
 		m_vWorldPos = worldPos;
 		m_fTimestamp = timestamp;
 		
 		if (m_eCategory == EAITargetInfoCategory.LOST)
 			m_eCategory = EAITargetInfoCategory.DETECTED;
+		
+		m_bEndangering |= endangering;
 	}
 	
 	//----------------------------------------------------------------------------------------------------------
@@ -129,5 +134,6 @@ class SCR_AITargetInfo
 		m_fTimestamp = other.m_fTimestamp;
 		m_eCategory = other.m_eCategory;
 		m_Faction = other.m_Faction;
+		m_bEndangering = other.m_bEndangering;
 	}
 };

@@ -7,6 +7,7 @@ class SCR_AILookAction : Managed
 	bool m_bRestartLook;	// Restart might happen if we have a new request while previous one is still not Complete()
 	float m_fDuration;		// How long to look at something
 	
+	static const float PRIO_COMMANDER = 100;
 	static const float PRIO_ENEMY_TARGET = 80;
 	static const float PRIO_UNKNOWN_TARGET = 50;
 	static const float PRIO_DANGER_EVENT = 20;

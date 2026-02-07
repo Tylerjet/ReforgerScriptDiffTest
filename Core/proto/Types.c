@@ -105,7 +105,7 @@ class Class
 	proto static Class Cast(Class from);
 
 	//! This function is for internal script usage.
-	private proto static bool SafeCastType(out typename type, out Class to, Class from);
+	private proto static void SafeCastType(out typename type, out Class to, Class from);
 }
 
 class Managed

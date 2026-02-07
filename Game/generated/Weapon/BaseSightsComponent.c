@@ -91,6 +91,9 @@ class BaseSightsComponent: GameComponent
 	proto external bool GetSightsSkipSwitch();
 	//! Hide parts of the sight on ADS. 0 means completely visible, 1 means completely hidden
 	proto external void SetSightsVisibility(float visFactor);
+	proto external PointInfo GetPositionPointInfo();
+	proto external PointInfo GetRearPositionPointInfo();
+	proto external PointInfo GetFrontPositionPointInfo();
 
 	// callbacks
 

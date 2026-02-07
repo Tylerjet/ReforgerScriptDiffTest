@@ -40,7 +40,6 @@ class SCR_ModdedScenarioComponent : SCR_ButtonComponent
 		m_OnFocus.Invoke(w);
 		super.OnFocus(w, x, y);
 		ColorizeWidgets(COLOR_BACKGROUND_HOVERED, COLOR_CONTENT_HOVERED);
-		//GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, OnMenuSelect);
 		return false;
 	}
 	

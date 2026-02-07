@@ -12,6 +12,10 @@ class SCR_DynamicSimulationEditorComponent : SCR_BaseEditorComponent
 {
 	protected RplIdentity m_EditorIdentity = RplIdentity.Invalid();
 	
+	protected ref array<EEditableEntityType> m_LocalSkipStreamingRules = {};
+	
+	protected bool m_bStreamingRulesInitialized = false;
+	
 	protected void EnableStreaming(bool enable)
 	{
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -42,6 +46,19 @@ class SCR_DynamicSimulationEditorComponent : SCR_BaseEditorComponent
 	{
 		//--- Check if the entity was meanwhile deleted (e.g., when placing a waypoint that's instantly completed)
 		if (!entity.GetOwner())
+			return;
+		
+		if(!m_bStreamingRulesInitialized)
+		{
+			SCR_EditorSettingsEntity editorSettingsEntity = SCR_EditorSettingsEntity.GetInstance();
+			if(editorSettingsEntity && m_LocalSkipStreamingRules)
+			{
+				editorSettingsEntity.GetSkipStreamingRules(m_LocalSkipStreamingRules);
+				m_bStreamingRulesInitialized = true;
+			}
+		}	
+		
+		if(m_LocalSkipStreamingRules.Contains(entity.GetEntityType()))
 			return;
 		
 		RplComponent entityRpl = RplComponent.Cast(entity.GetOwner().FindComponent(RplComponent));

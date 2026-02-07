@@ -8,7 +8,6 @@ class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_Re
 	override int RegisterContainer(notnull SCR_ResourceContainer container)
 	{
 		int position = SCR_ResourceContainerQueueBase.INVALID_CONTAINER_INDEX;
-		float resourceValue;
 		bool shouldIncrementOffset;
 		SCR_ResourceContainerStorageQueue<SCR_ResourceEncapsulator> storageQueue;
 		
@@ -39,7 +38,7 @@ class SCR_ResourceEncapsulatorContainerQueue : SCR_ResourceContainerQueue<SCR_Re
 				}
 			}
 			
-			m_fAggregatedResourceValue		+= container.GetResourceValue();;
+			m_fAggregatedResourceValue		+= container.GetResourceValue();
 			m_fAggregatedMaxResourceValue	+= container.GetMaxResourceValue();
 			
 			shouldIncrementOffset = true;

@@ -131,11 +131,35 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 				
 				return true;
 
+			case EEditableEntityBudget.RANK_PRIVATE:
+				maxBudget = m_eHighestRank;
+				return true;
+			
 			case EEditableEntityBudget.RANK_CORPORAL:
 				maxBudget = m_eHighestRank;
 				return true;
 
 			case EEditableEntityBudget.RANK_SERGEANT:
+				maxBudget = m_eHighestRank;
+				return true;
+			
+			case EEditableEntityBudget.RANK_LIEUTENANT:
+				maxBudget = m_eHighestRank;
+				return true;
+			
+			case EEditableEntityBudget.RANK_CAPTAIN:
+				maxBudget = m_eHighestRank;
+				return true;
+			
+			case EEditableEntityBudget.RANK_MAJOR:
+				maxBudget = m_eHighestRank;
+				return true;
+			
+			case EEditableEntityBudget.RANK_COLONEL:
+				maxBudget = m_eHighestRank;
+				return true;
+			
+			case EEditableEntityBudget.RANK_GENERAL:
 				maxBudget = m_eHighestRank;
 				return true;
 
@@ -186,10 +210,28 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 				
 				return consumer.GetAggregatedMaxResourceValue() - consumer.GetAggregatedResourceValue();
 
+			case EEditableEntityBudget.RANK_PRIVATE:
+				return m_eHighestRank - GetUserRank();
+			
 			case EEditableEntityBudget.RANK_CORPORAL:
 				return m_eHighestRank - GetUserRank();
 
 			case EEditableEntityBudget.RANK_SERGEANT:
+				return m_eHighestRank - GetUserRank();
+			
+			case EEditableEntityBudget.RANK_LIEUTENANT:
+				return m_eHighestRank - GetUserRank();
+			
+			case EEditableEntityBudget.RANK_CAPTAIN:
+				return m_eHighestRank - GetUserRank();
+			
+			case EEditableEntityBudget.RANK_MAJOR:
+				return m_eHighestRank - GetUserRank();
+			
+			case EEditableEntityBudget.RANK_COLONEL:
+				return m_eHighestRank - GetUserRank();
+			
+			case EEditableEntityBudget.RANK_GENERAL:
 				return m_eHighestRank - GetUserRank();
 
 			case EEditableEntityBudget.PROPS:
@@ -304,7 +346,7 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 		if (!m_CampaignBuildingComponent)
 			return;
 		
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_CampaignBuildingComponent.GetProviderComponent());
+		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
 		if (!providerComponent)
 			return;
 		
@@ -375,15 +417,51 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 					break;
 				}
 
+				case EEditableEntityBudget.RANK_PRIVATE:
+				{
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.PRIVATE);
+					break;
+				}
+				
 				case EEditableEntityBudget.RANK_CORPORAL:
 				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_CORPORAL_NEEDED, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.CORPORAL);
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.CORPORAL);
 					break;
 				}
 
 				case EEditableEntityBudget.RANK_SERGEANT:
 				{
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_SERGEANT_NEEDED, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.SERGEANT);
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.SERGEANT);
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_LIEUTENANT:
+				{
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.LIEUTENANT);
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_CAPTAIN:
+				{
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.CAPTAIN);
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_MAJOR:
+				{
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.MAJOR);
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_COLONEL:
+				{
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.COLONEL);
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_GENERAL:
+				{
+					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_RANK_TOO_LOW, SCR_PlayerController.GetLocalPlayerId(), SCR_ECharacterRank.GENERAL);
 					break;
 				}
 
@@ -438,6 +516,12 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 					newMaxBudget = consumer.GetAggregatedResourceValue();
 					break;
 				}
+				
+				case EEditableEntityBudget.RANK_PRIVATE:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				}
 
 				case EEditableEntityBudget.RANK_CORPORAL:
 				{
@@ -446,6 +530,36 @@ class SCR_CampaignBuildingBudgetEditorComponent : SCR_BudgetEditorComponent
 				}
 
 				case EEditableEntityBudget.RANK_SERGEANT:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_LIEUTENANT:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_CAPTAIN:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_MAJOR:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_COLONEL:
+				{
+					newMaxBudget = GetUserRank();
+					break;
+				}
+				
+				case EEditableEntityBudget.RANK_GENERAL:
 				{
 					newMaxBudget = GetUserRank();
 					break;

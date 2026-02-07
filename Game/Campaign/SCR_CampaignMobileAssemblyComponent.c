@@ -21,10 +21,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	protected SCR_CampaignFaction m_ParentFaction;
 	
 	protected bool m_bIsInRadioRange;
-	
-	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBasesInRadioRange = {};
-	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBasesInRadioRangeOld = {};
-	
+
 	protected SCR_SpawnPoint m_SpawnPoint;
 	
 	protected SCR_CampaignMobileAssemblyStandaloneComponent m_StandaloneComponent;
@@ -77,44 +74,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Remove(OnParentFactionIDSet);
 		campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Remove(OnDeployChanged);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	void UpdateBasesInRadioRange()
-	{
-		array<SCR_MilitaryBaseComponent> bases = {};
-		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
-		
-		float radioRange = GetRadioRange();
-		radioRange = radioRange * radioRange;	// We're checking square distance
-		vector truckPosition = GetOwner().GetOrigin();
-		SCR_CampaignMilitaryBaseComponent campaignBase;
-		
-		m_aBasesInRadioRange = {};
-		
-		foreach (SCR_MilitaryBaseComponent base : bases)
-		{
-			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
-			
-			if (!campaignBase || !campaignBase.IsInitialized())
-				continue;
-			
-			if (campaignBase.IsHQ() && campaignBase.GetFaction() != m_ParentFaction)
-				continue;
-			
-			if (vector.DistanceSqXZ(truckPosition, campaignBase.GetOwner().GetOrigin()) < radioRange)
-				m_aBasesInRadioRange.Insert(campaignBase);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] base
-	//! \return
-	bool CanReachByRadio(notnull SCR_CampaignMilitaryBaseComponent base)
-	{
-		return m_aBasesInRadioRange.Contains(base);
-	}
-	
+
 	//------------------------------------------------------------------------------------------------	
 	protected bool IsProxy()
 	{
@@ -157,14 +117,6 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 		return m_ParentFaction;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	//! \param[out] basesInRange
-	//! \return
-	int GetBasesInRange(notnull out array<SCR_CampaignMilitaryBaseComponent> basesInRange)
-	{
-		return basesInRange.Copy(m_aBasesInRadioRange);
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	int GetRadioRange()
@@ -219,8 +171,6 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			
 			if (m_SpawnPoint)
 				RplComponent.DeleteRplEntity(m_SpawnPoint, false);
-			
-			campaign.GetBaseManager().RecalculateRadioCoverage(m_ParentFaction);
 		}
 		
 		OnDeployChanged();
@@ -233,48 +183,13 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void OnDeployChanged()
 	{
-		Faction playerFaction = SCR_FactionManager.SGetLocalPlayerFaction();
-		BaseRadioComponent radioComponent;
-		
-		IEntity vehicle = GetOwner().GetParent();
-		
-		if (vehicle)
-			radioComponent = BaseRadioComponent.Cast(vehicle.FindComponent(BaseRadioComponent));
-		
-		m_aBasesInRadioRangeOld.Copy(m_aBasesInRadioRange);
+		if (IsProxy())
+			return;
 		
 		if (m_bIsDeployed)
-		{
-			UpdateBasesInRadioRange();
-
-			if (!IsProxy())
-			{
-				if (radioComponent)
-					radioComponent.SetPower(true);
-				
-				if (GetTaskManager())
-				{
-					SCR_CampaignTaskSupportEntity supportClass = SCR_CampaignTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignTaskSupportEntity));
-					
-					if (supportClass)
-						supportClass.GenerateCaptureTasks(GetOwner());
-				}
-				
-				GetGame().GetCallqueue().CallLater(CheckStatus, 500, true);
-			}
-		}
+			GetGame().GetCallqueue().CallLater(CheckStatus, 500, true);
 		else
-		{
-			m_aBasesInRadioRange = {};
-
-			if (!IsProxy())
-			{
-				if (radioComponent)
-					radioComponent.SetPower(false);
-				
-				GetGame().GetCallqueue().Remove(CheckStatus);
-			}
-		}
+			GetGame().GetCallqueue().Remove(CheckStatus);
 	}
 	
 	//------------------------------------------------------------------------------------------------

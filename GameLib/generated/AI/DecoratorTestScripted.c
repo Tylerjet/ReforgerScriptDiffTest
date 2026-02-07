@@ -11,7 +11,7 @@ Do not modify, this script is generated
 
 class DecoratorTestScripted: BaseDecoratorTest
 {
-	event protected bool TestFunction(AIAgent agent, IEntity controlled);;
+	event protected bool TestFunction(AIAgent agent, IEntity controlled);
 }
 
 /*!

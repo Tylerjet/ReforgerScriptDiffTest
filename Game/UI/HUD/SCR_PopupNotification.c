@@ -45,10 +45,13 @@ class SCR_PopUpNotification : GenericEntity
 
 	protected bool m_bInventoryOpen;
 	protected bool m_bOffset;
+	protected bool m_bIsEnabledInSettings;
 
 	protected IEntity m_Player;
 
 	protected SCR_PopupMessage m_ShownMsg;
+	
+	protected static const string INTERFACE_SETTINGS_NAME = "m_bShowNotifications";
 
 	//------------------------------------------------------------------------------------------------
 	static SCR_PopUpNotification GetInstance()
@@ -143,6 +146,42 @@ class SCR_PopUpNotification : GenericEntity
 			if (mapWidget)
 				root.SetZOrder(mapWidget.GetZOrder() - 1);
 		}
+		
+		// Initialize Interface settings
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		interfaceSettings.Get(INTERFACE_SETTINGS_NAME, state);
+		m_bIsEnabledInSettings = state;
+		
+		GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSettingsChanged()
+	{		
+		SCR_HUDManagerComponent hudManager = GetGame().GetHUDManager();
+		if (!hudManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(hudManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		if (!interfaceSettings.Get(INTERFACE_SETTINGS_NAME, state))
+			return;
+		
+		m_bIsEnabledInSettings = state;
+		
+		if (!m_bIsEnabledInSettings)
+			HideCurrentMsg();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -348,6 +387,9 @@ class SCR_PopUpNotification : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	protected void ShowMsg(notnull SCR_PopupMessage msg)
 	{
+		if (!m_bIsEnabledInSettings)
+			return;
+		
 		if (msg == m_ShownMsg)
 			return;
 
@@ -473,6 +515,8 @@ class SCR_PopUpNotification : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_PopUpNotification()
 	{
+		GetGame().OnUserSettingsChangedInvoker().Remove(OnSettingsChanged);
+		
 		if (m_wPopupMsg)
 			m_wPopupMsg.GetParent().RemoveFromHierarchy();
 

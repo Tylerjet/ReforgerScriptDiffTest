@@ -14,15 +14,19 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 	[Attribute(defvalue: "0", desc: "Will the command override autonomous group behavior?")]
 	protected bool m_bForceCommand;
 	
+	[Attribute(defvalue: "5", desc: "Completion radius of command")]
+	protected float m_fCompletionRadius;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
 	{
-		if (isClient)
+		if (isClient && playerID == SCR_PlayerController.GetLocalPlayerId())
 		{
-			//place to place a logic that would be executed for other players
+			SpawnWPVisualization(targetPosition, playerID);
 			return true;
 		}
-		
+
+		SpawnWPVisualization(targetPosition, playerID);
 		if (!m_sWaypointPrefab || !target || !targetPosition)
 			return false;
 		
@@ -66,9 +70,25 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 			return false;
 		
 		if (m_bForceCommand)
-			wp.SetPriority(true);
+			wp.SetPriorityLevel(SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
+		
+		wp.SetCompletionRadius(m_fCompletionRadius);
 		slaveGroup.AddWaypoint(wp);
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SpawnWPVisualization(vector targetPosition, int playerID)
+	{
+		PlayerController controller = GetGame().GetPlayerManager().GetPlayerController(playerID);
+		if (!controller)
+			return;
+		
+		SCR_PlayerControllerCommandingComponent commandingComp = SCR_PlayerControllerCommandingComponent.Cast(controller.FindComponent(SCR_PlayerControllerCommandingComponent));
+		if (!commandingComp)
+			return;
+	
+		commandingComp.DrawWaypointVisualization(targetPosition, m_fCompletionRadius);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -122,12 +142,17 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		{
 			slaveGroup.RemoveWaypoint(currentwp);
 		}
-		slaveGroup.SetFormationDisplacement(0);
+		AIGroupMovementComponent slaveGroupMovementComp = AIGroupMovementComponent.Cast(slaveGroup.FindComponent(AIGroupMovementComponent));
+		if (slaveGroupMovementComp)
+			slaveGroupMovementComp.SetFormationDisplacement(0);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown()
 	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
 		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		return groupController && CanRoleShow();
 	}

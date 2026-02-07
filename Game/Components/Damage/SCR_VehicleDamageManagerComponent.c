@@ -123,11 +123,6 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 	{
 		return m_vFrontalImpact;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	//! \param[in] prefab
-	void SCR_VehicleDamageManagerComponentClass(BaseContainer prefab);
 }
 
 enum SCR_EPhysicsResponseIndex
@@ -147,8 +142,12 @@ enum SCR_EPhysicsResponseIndex
 
 class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 {
+	protected const float MIN_IMPULSE_THRESHOLD = 5;
 	protected const int MIN_RESPONSE_INDEX = SCR_EPhysicsResponseIndex.TINY_MOMENTUM;
 	protected const int MAX_RESPONSE_INDEX = SCR_EPhysicsResponseIndex.HUGE_MOMENTUM;
+	
+	protected float m_fVelocityMultiplierOnWaterEnter = 0.5;
+	protected int m_fMinWaterFallDamageVelocity = 5;
 
 	static ref map<SCR_EPhysicsResponseIndex, float> s_mResponseIndexMomentumMap = new map<SCR_EPhysicsResponseIndex, float>();
 
@@ -426,6 +425,10 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			m_iFuelTankFireStateSignalIdx = m_SignalsManager.AddOrFindSignal(m_sFuelTankFireStateSignal);
 			m_iSuppliesFireStateSignalIdx = m_SignalsManager.AddOrFindSignal(m_sSuppliesFireStateSignal);
 		}
+		
+		SCR_VehicleBuoyancyComponent vehicleBuoyancy = SCR_VehicleBuoyancyComponent.Cast(vehicle.FindComponent(SCR_VehicleBuoyancyComponent));
+		if (vehicleBuoyancy)
+			vehicleBuoyancy.GetOnWaterEnter().Insert(OnWaterEnter);
 
 		UpdateVehicleState();
 
@@ -552,18 +555,9 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (functional)
 			return;
 
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_Controller);
-			if (controller && controller.IsEngineOn())
-				controller.StopEngine(false);
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_Controller);
-			if (controller && controller.IsEngineOn())
-				controller.StopEngine(false);
-		}
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_Controller);
+		if (controller && controller.IsEngineOn())
+			controller.StopEngine(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -585,23 +579,11 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	{
 		m_fEngineEfficiency = efficiency;
 
-		if (GetGame().GetIsClientAuthority())
+		VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_Simulation);
+		if (simulation && simulation.IsValid())
 		{
-			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_Simulation);
-			if (simulation && simulation.IsValid())
-			{
-				simulation.EngineSetPeakTorqueState(efficiency * simulation.EngineGetPeakTorque());
-				simulation.EngineSetPeakPowerState(efficiency * simulation.EngineGetPeakPower());
-			}
-		}
-		else
-		{
-			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
-			if (simulation && simulation.IsValid())
-			{
-				simulation.EngineSetPeakTorqueState(efficiency * simulation.EngineGetPeakTorque());
-				simulation.EngineSetPeakPowerState(efficiency * simulation.EngineGetPeakPower());
-			}
+			simulation.EngineSetPeakTorqueState(efficiency * simulation.EngineGetPeakTorque());
+			simulation.EngineSetPeakPowerState(efficiency * simulation.EngineGetPeakPower());
 		}
 	}
 
@@ -609,18 +591,10 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	protected void SetGearboxFunctional(bool functional)
 	{
 		m_bGearboxFunctional = functional;
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_Controller);
-			if (controller)
-				controller.SetCanMove(functional);
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_Controller);
-			if (controller)
-				controller.SetCanMove(functional);
-		}
+
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_Controller);
+		if (controller)
+			controller.SetCanMove(functional);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -642,18 +616,9 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	{
 		m_fGearboxEfficiency = efficiency;
 
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_Simulation);
-			if (simulation && simulation.IsValid())
-				simulation.GearboxSetEfficiencyState(efficiency * simulation.GearboxGetEfficiency());
-		}
-		else
-		{
-			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
-			if (simulation && simulation.IsValid())
-				simulation.GearboxSetEfficiencyState(efficiency * simulation.GearboxGetEfficiency());
-		}
+		VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(m_Simulation);
+		if (simulation && simulation.IsValid())
+			simulation.GearboxSetEfficiencyState(efficiency * simulation.GearboxGetEfficiency());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -670,7 +635,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 
 		array<HitZone> hitzones = {};
 
-		int count = GetAllHitZones(hitzones);
+		int count = GetAllHitZonesInHierarchy(hitzones);
 		float maxSharedDamageDistance = GetMaxSharedDamageDistance();
 		float maxDistanceSq = maxSharedDamageDistance * maxSharedDamageDistance; //SQUARE it for faster calculations of distance
 
@@ -776,7 +741,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			if (!damageManager)
 				continue;
 
-			SCR_DamageContext damageContext = new SCR_DamageContext(damageType, currentDamage, empty, GetOwner(), hitzone, Instigator.CreateInstigator(null), null, -1, -1);
+			SCR_DamageContext damageContext = new SCR_DamageContext(damageType, currentDamage, empty, GetOwner(), hitzone, null, null, -1, -1);
 			damageManager.HandleDamage(damageContext);
 
 			leftoverDamage -= currentDamage;
@@ -950,7 +915,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		p[1][0] = mins[1];
 		p[1][1] = maxs[0];
 		p[1][2] = maxs[2];
-		/*p[0] = maxs;
+		p[0] = maxs;
 		p[1] = mins;
 		p[1][0] = mins[0]; */
 		/*shape = Shape.Create(ShapeType.PYRAMID, ARGB(255, 0, 255, 0), ShapeFlags.NOZBUFFER, p[1], p[0]);
@@ -1072,64 +1037,87 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		}
 	}
 #endif
-
+	
 	//------------------------------------------------------------------------------------------------
-	//! Must be first enabled with event mask
-	override bool OnContact(IEntity owner, IEntity other, Contact contact)
+	//! Determine whether collision into water is severe enough to apply damage, then get velocities an manually call CollisionDamage
+	protected void OnWaterEnter()
 	{
-		super.OnContact(owner, other, contact);
+		Physics physics = GetOwner().GetPhysics();
+		if (!physics)
+			return;
 
+		// Don't try to apply waterFallDamage when going less than X m/s
+		float impactSpeed = Math.AbsFloat(physics.GetVelocity()[1]);
+		if (impactSpeed < m_fMinWaterFallDamageVelocity)
+			return;
+		
+		vector ownerTransform = GetOwner().GetOrigin();
+		vector velocityBefore = Vector(0, GetOwner().GetPhysics().GetVelocity()[1], 0);
+		vector velocityAfter = velocityBefore * m_fVelocityMultiplierOnWaterEnter;
+		CollisionDamage(GetGame().GetWorldEntity().GetTerrain(0, 0), 0, velocityBefore, velocityAfter, vector.Zero, vector.Zero, ownerTransform, vector.Zero);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Filter out any contacts under a reasonable speed for damage
+	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
+	{
+		// Returning when impulse is less than 5 doesn't impact gameplay at all, but saves a lot of OnFilteredContact calls
+		if (contact.Impulse < MIN_IMPULSE_THRESHOLD)
+			return false;
+		
+		return super.FilterContact(owner, other, contact);;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handle damage and collision effects of contact
+	//! Contact must NEVER be passed as variable to external functions
+	override void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
+	{
 		if (m_ImpactEffectComponent && other)
-			m_ImpactEffectComponent.OnImpact(other, contact);
+			m_ImpactEffectComponent.OnImpact(other, contact.Impulse, contact.Position, contact.Normal, contact.Material2);
 		
-		ChimeraCharacter char = ChimeraCharacter.Cast(other);
-		if (char)
-		{
-			SCR_CharacterDamageManagerComponent charDamageMan = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
-			if (charDamageMan)
-				charDamageMan.ContactDamage(other, owner, contact);
-		}
-		
-		return CollisionDamage(owner, other, contact);
+		if (contact.Impulse > m_fMinImpulse)
+			CollisionDamage(other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, contact.Position, contact.Normal);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] owner
-	//! \param[in] other
-	//! \param[in] contact
-	//! \return
-	bool CollisionDamage(notnull IEntity owner, notnull IEntity other, notnull Contact contact)
+	//! Collisiondamage is exposed to be used by other scripts as well.
+	//! \param other Other is other entity involved in collision with GetOwner()
+	//! \param impulse Impulse applied to resolve the collision
+	//! \param velocityBefore1 Velocity of Object1 before collision (world space)
+	//! \param velocityAfter1 Velocity of Object1 after collision (world space)
+	//! \param velocityBefore2 Velocity of Object2 before collision (world space)
+	//! \param velocityAfter2 Velocity of Object2 after collision (world space)
+	//! \param impactNormal Collision axis at the contact point
+	//! \param impactPosition Position of the contact point (world space)
+	void CollisionDamage(notnull IEntity other, float impulse, vector velocityBefore1, vector velocityAfter1, vector velocityBefore2, vector velocityAfter2, vector impactPosition, vector impactNormal)
 	{
-		if (contact.Impulse < m_fMinImpulse)
-			return false;
-
 		// This data can be moved back to component
 		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
 		if (!prefabData)
-			return false;
+			return;
 
 		// Get the physics of the dynamic object (if owner is static we ignore the collision)
-		Physics ownerPhysics = owner.GetPhysics();
+		Physics ownerPhysics = GetOwner().GetPhysics();
 		if (!ownerPhysics.IsDynamic())
 		{
 			m_bIsInContact = false;
-			return false;
+			return;
 		}
 
 		Physics otherPhysics = other.GetPhysics();
 
 		// Now get the relative force, which is the impulse divided by the mass of the dynamic object
-		float relativeForce = contact.Impulse / ownerPhysics.GetMass();
+		float relativeForce = impulse / ownerPhysics.GetMass();
 		// We keep relative force temporarily, until we re-calculate it to momentum
 
 		// We hit a destructible that will break, static object -> deal no damage to vehicle or occupants
 		int ownerResponseIndex = ownerPhysics.GetResponseIndex();
 		int otherResponseIndex = otherPhysics.GetResponseIndex();
 		if (otherPhysics && !otherPhysics.IsDynamic() && other.FindComponent(SCR_DestructionDamageManagerComponent) && otherResponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX <= ownerResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX)
-			return false;
+			return;
 
-		float ownerMass = owner.GetPhysics().GetMass();
+		float ownerMass = GetOwner().GetPhysics().GetMass();
 		float otherMass = otherPhysics.GetMass();
 
 		// Store information about being in contact - so we don't delete physics objects
@@ -1137,12 +1125,12 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 
 #ifdef DISABLE_VEHICLE_COLLISION_DAMAGE
 		m_bIsInContact = false;
-		return false;
+		return;
 #endif
 
 		//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
-		float momentumVehicleThreshold = ownerMass * m_fVehicleDamageSpeedThreshold * KM_PER_H_TO_M_PER_S;
-		float momentumVehicleDestroy = ownerMass * m_fVehicleSpeedDestroy * KM_PER_H_TO_M_PER_S;
+		float momentumVehicleThreshold = ownerMass * m_fVehicleDamageSpeedThreshold * Physics.KMH2MS;
+		float momentumVehicleDestroy = ownerMass * m_fVehicleSpeedDestroy * Physics.KMH2MS;
 		float damageScaleToVehicle = m_fVehicleDestroyDamage / (momentumVehicleDestroy - momentumVehicleThreshold);
 		//TODO^
 
@@ -1150,8 +1138,8 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (m_bPrintRelativeForce && relativeForce > m_fMaxRelativeForce)
 		{
 			m_fMaxRelativeForce = relativeForce;
-			Print(contact.Impulse, LogLevel.DEBUG);
-			Print(contact.VelocityBefore1, LogLevel.DEBUG);
+			Print(impulse, LogLevel.DEBUG);
+			Print(velocityBefore1, LogLevel.DEBUG);
 			Print(m_fMaxRelativeForce, LogLevel.DEBUG);
 		}
 
@@ -1159,14 +1147,14 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (otherMass > 0) // mass == 0 is probably a static object
 			damageShare -= ownerMass / (ownerMass + otherMass);
 
-		float DotMultiplier = vector.Dot(contact.VelocityAfter1.Normalized(), contact.VelocityBefore1.Normalized());
-		float MomentumBefore = ownerMass * contact.VelocityBefore1.Length();
-		float MomentumAfter = ownerMass * contact.VelocityAfter1.Length() * DotMultiplier;
+		float DotMultiplier = vector.Dot(velocityAfter1.Normalized(), velocityBefore1.Normalized());
+		float MomentumBefore = ownerMass * velocityBefore1.Length();
+		float MomentumAfter = ownerMass * velocityAfter1.Length() * DotMultiplier;
 		float momentumA = Math.AbsFloat(MomentumBefore - MomentumAfter);
 
-		DotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
-		MomentumBefore = otherMass * contact.VelocityBefore2.Length();
-		MomentumAfter = otherMass * contact.VelocityAfter2.Length() * DotMultiplier;
+		DotMultiplier = vector.Dot(velocityAfter2.Normalized(), velocityBefore2.Normalized());
+		MomentumBefore = otherMass * velocityBefore2.Length();
+		MomentumAfter = otherMass * velocityAfter2.Length() * DotMultiplier;
 		float momentumB = Math.AbsFloat(MomentumBefore - MomentumAfter);
 
 		float collisionDamage = damageScaleToVehicle * (momentumA + momentumB - momentumVehicleThreshold);
@@ -1176,8 +1164,8 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (m_CompartmentManager)
 		{
 			//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
-			float momentumOccupantsThreshold = ownerMass * GetOccupantsDamageSpeedThreshold() * KM_PER_H_TO_M_PER_S;
-			float momentumOccupantsDeath = ownerMass * GetOccupantsSpeedDeath() * KM_PER_H_TO_M_PER_S;
+			float momentumOccupantsThreshold = ownerMass * GetOccupantsDamageSpeedThreshold() * Physics.KMH2MS;
+			float momentumOccupantsDeath = ownerMass * GetOccupantsSpeedDeath() * Physics.KMH2MS;
 			float damageScaleToCharacter = APPROXIMATE_CHARACTER_LETHAL_DAMAGE / (momentumOccupantsDeath - momentumOccupantsThreshold);
 			//TODO^
 
@@ -1189,7 +1177,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			{
 				//If the entity is dynamic, we need to look if the entity has a driver or not.
 				//If the vehicle's speed is bigger than m_fVehicleDamageSpeedThreshold
-				if (otherPhysics.IsDynamic() && contact.VelocityBefore1.LengthSq() > m_fVehicleDamageSpeedThreshold * m_fVehicleDamageSpeedThreshold)
+				if (otherPhysics.IsDynamic() && velocityBefore1.LengthSq() > m_fVehicleDamageSpeedThreshold * m_fVehicleDamageSpeedThreshold)
 				{
 					IEntity otherPilot;
 					Vehicle otherVehicle = Vehicle.Cast(other);
@@ -1203,15 +1191,15 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 						//(their dot product indicates that they are within 60° cone):
 						//their driver is the instigator of the damage the occupants of this vehicle's compartments receive.
 						//If not, the driver of this vehicle is the instigator.
-						vector directionToOther = (other.GetOrigin() - owner.GetOrigin()).Normalized();
-						if (vector.Dot(contact.VelocityBefore1.Normalized(), directionToOther) < 0.5)
+						vector directionToOther = (other.GetOrigin() - GetOwner().GetOrigin()).Normalized();
+						if (vector.Dot(velocityBefore1.Normalized(), directionToOther) < 0.5)
 							instigatorEntity = otherPilot;
 					}
 				}
 
 				// If there was no other pilot to blame, blame own pilot
-				if (!instigatorEntity && Vehicle.Cast(owner))
-					instigatorEntity = Vehicle.Cast(owner).GetPilot();
+				if (!instigatorEntity && Vehicle.Cast(GetOwner()))
+					instigatorEntity = Vehicle.Cast(GetOwner()).GetPilot();
 
 				//Implement instigator's logic
 				m_CompartmentManager.DamageOccupants(momentumOverOccupantsThreshold * damageScaleToCharacter, EDamageType.COLLISION, Instigator.CreateInstigator(instigatorEntity), true, true);
@@ -1222,7 +1210,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (collisionDamage > 0)
 		{
 			// Get hit side multiplier (e. g. front is stronger than the left/right side)
-			float damageSideMultiplier = GetSideDamageMultiplier(GetHitDirection(contact.Position));
+			float damageSideMultiplier = GetSideDamageMultiplier(GetHitDirection(impactPosition));
 
 			collisionDamage *= damageSideMultiplier * damageShare;
 			// Handle damage requires a matrix, so we create an empty one
@@ -1231,15 +1219,14 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			empty[1] = vector.Zero;
 			empty[2] = vector.Zero;
 
-			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, DamageSurroundingHitzones(contact.Position, collisionDamage, EDamageType.COLLISION), empty, GetOwner(), GetDefaultHitZone(), Instigator.CreateInstigator(instigatorEntity), null, -1, -1);
+			SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, DamageSurroundingHitzones(impactPosition, collisionDamage, EDamageType.COLLISION), empty, GetOwner(), GetDefaultHitZone(), Instigator.CreateInstigator(instigatorEntity), null, -1, -1);
+			damageContext.damageEffect = new SCR_CollisionDamageEffect();
 			// finally we deal damage
 			HandleDamage(damageContext);
 		}
 
 		// Reset is in contact
 		m_bIsInContact = false;
-
-		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1261,34 +1248,30 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (!defaultHitZone)
 			return;
 
-		VehicleBuoyancyComponent vehicleBuoyancy = VehicleBuoyancyComponent.Cast(GetOwner().FindComponent(VehicleBuoyancyComponent));
+		SCR_VehicleBuoyancyComponent vehicleBuoyancy = SCR_VehicleBuoyancyComponent.Cast(GetOwner().FindComponent(SCR_VehicleBuoyancyComponent));
 		if (vehicleBuoyancy)
+		{
 			vehicleBuoyancy.SetHealth(defaultHitZone.GetDamageStateThreshold(state));
-
+			
+			if (state == EDamageState.DESTROYED)
+				vehicleBuoyancy.GetOnWaterEnter().Remove(OnWaterEnter);
+		}
+		
 		if (s_OnVehicleDestroyed && state == EDamageState.DESTROYED)
 			s_OnVehicleDestroyed.Invoke(GetInstigator().GetInstigatorPlayerID());
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return true if there is damage that can be repaired
-	override bool CanBeHealed()
+	override bool CanBeHealed(bool ignoreHealingDOT = true)
 	{
 		// Get drowned engine
 		BaseVehicleNodeComponent vehicleNode = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
 		if (vehicleNode)
 		{
-			if (GetGame().GetIsClientAuthority())
-			{
-				VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(vehicleNode.FindComponent(VehicleControllerComponent));
-				if (vehicleController && vehicleController.GetEngineDrowned())
-					return true;
-			}
-			else
-			{
-				VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(vehicleNode.FindComponent(VehicleControllerComponent_SA));
-				if (vehicleController && vehicleController.GetEngineDrowned())
-					return true;
-			}
+			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(vehicleNode.FindComponent(VehicleControllerComponent));
+			if (vehicleController && vehicleController.GetEngineDrowned())
+				return true;
 		}
 
 		return super.CanBeHealed();
@@ -1303,19 +1286,9 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		BaseVehicleNodeComponent vehicleNode = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
 		if (vehicleNode)
 		{
-			if (GetGame().GetIsClientAuthority())
-			{
-				VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(vehicleNode.FindComponent(VehicleControllerComponent));
-				if (vehicleController && vehicleController.GetEngineDrowned())
-					vehicleController.SetEngineDrowned(false);
-			}
-			else
-			{
-				VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(vehicleNode.FindComponent(VehicleControllerComponent_SA));
-				if (vehicleController && vehicleController.GetEngineDrowned())
-					vehicleController.SetEngineDrowned(false);
-			}
-
+			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(vehicleNode.FindComponent(VehicleControllerComponent));
+			if (vehicleController && vehicleController.GetEngineDrowned())
+				vehicleController.SetEngineDrowned(false);
 		}
 
 		// Repair everything else that can be repaired
@@ -1392,32 +1365,15 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		if (!rplComponent)
 			return;
 
-		if (!GetGame().GetIsClientAuthority())
+		if (rplComponent.IsProxy() && !rplComponent.IsOwner())
 		{
-			if (rplComponent.IsProxy() && !rplComponent.IsOwner())
-			{
-				// Make sure to always deactivate ticking on remote proxies
-				if (!activeState)
-					RPC_OnPhysicsActive(activeState);
-			}
-			else if (rplComponent.IsOwner() || !rplComponent.IsProxy())
-			{
+			// Make sure to always deactivate ticking on remote proxies
+			if (!activeState)
 				RPC_OnPhysicsActive(activeState);
-			}
 		}
-		else
+		else if (rplComponent.IsOwner() || !rplComponent.IsProxy())
 		{
-			if (rplComponent.IsProxy())
-			{
-				// Make sure to always deactivate ticking on remote proxies
-				if (!activeState)
-					RPC_OnPhysicsActive(activeState);
-				// Only enable ticking on owner proxies
-				else if (rplComponent.IsOwner())
-					RPC_OnPhysicsActive(activeState);
-			}
-
-			Rpc(RPC_OnPhysicsActive, activeState);
+			RPC_OnPhysicsActive(activeState);
 		}
 	}
 
@@ -1713,6 +1669,28 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	/*!
+	Called whenever an instigator is going to be set.
+	//! \param[in] currentInstigator: This damage manager's last instigator
+	//! \param[in] newInstigator: The new instigator for this damage manager
+	//! \return If it returns true, newInstigator will become the new current instigator for the damage manager and it will receive kill credit.
+	*/
+	protected override bool ShouldOverrideInstigator(notnull Instigator currentInstigator, notnull Instigator newInstigator)
+	{
+		// if the vehicle is on fire and we have a valid fireInstigator, do not allow any new instigators to override it
+		SCR_FlammableHitZone flammableHitZone = SCR_FlammableHitZone.Cast(GetDefaultHitZone());
+		Instigator fireInstigator = flammableHitZone.GetFireInstigator();
+		if (fireInstigator && flammableHitZone && IsOnFire(flammableHitZone) && flammableHitZone.GetFireInstigator() != newInstigator)
+			return false;
+		
+		// Don't override valid instigators with invalid instigators
+		if (newInstigator.GetInstigatorType() == InstigatorType.INSTIGATOR_NONE)
+			return false;
+		
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src
 	//! \param[in] ent
@@ -1726,5 +1704,14 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 
 		if (!s_mResponseIndexMomentumMap.Find(SCR_EPhysicsResponseIndex.TINY_MOMENTUM, null))
 			InitStaticMapForIndices();
+	}
+
+	void ~SCR_VehicleDamageManagerComponent()
+	{
+		if (m_FuelTankFireParticle)
+			SCR_ParticleHelper.StopParticleEmissionAndLights(m_FuelTankFireParticle);
+
+		if (m_SuppliesFireParticle)
+			SCR_ParticleHelper.StopParticleEmissionAndLights(m_SuppliesFireParticle);
 	}
 }

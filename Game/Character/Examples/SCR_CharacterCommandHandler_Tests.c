@@ -53,31 +53,6 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override bool HandleVehicle(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
-	{
-		if( pCurrentCommandID == ECharacterCommandIDs.VEHICLE )
-		{
-			CharacterCommandVehicle cmdVeh = GetCommandVehicle();
-			vector tmp[4];
-			if( pInputCtx.GetVehicleAction() == 2 )
-			{
-				cmdVeh.GetOutVehicle(1, 0, tmp);
-				return true;
-			}
-
-			if( pInputCtx.GetVehicleAction() == 3 )
-			{
-				cmdVeh.GetOutVehicle(3, 0, tmp);
-				return true;
-			}
-
-			return true;
-		}
-
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override bool HandleSwimming(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID)
 	{
 		//! get water level 
@@ -498,22 +473,6 @@ class SCR_CharacterCommandHandlerComponent_Tests : SCR_CharacterCommandHandlerCo
 				StartCommand_Fall(pInputCtx.GetJump());
 			}
 			return true;
-		}
-
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool TransitionMove_Vehicle(CharacterInputContext pInputCtx)
-	{
-		if( pInputCtx.GetVehicleAction() == 1 )
-		{		
-			BaseCompartmentSlot getInCompartment = pInputCtx.GetVehicleCompartment();
-			if ( getInCompartment )
-			{
-				StartCommand_Vehicle(getInCompartment);
-				return true;
-			}
 		}
 
 		return false;

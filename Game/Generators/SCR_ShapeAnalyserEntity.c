@@ -78,8 +78,7 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected void Process(notnull IEntitySource shapeEntitySrc, notnull ShapeEntity shapeEntity)
 	{
-		bool isClosed;
-		SCR_ShapeAnalyser shapeAnalyser = new SCR_ShapeAnalyser(shapeEntity, shapeEntitySrc.Get("IsClosed", isClosed) && isClosed);
+		SCR_ShapeAnalyser shapeAnalyser = new SCR_ShapeAnalyser(shapeEntity);
 
 		s_aDebugShapes = null;
 		s_aErrorShapes = null;
@@ -99,9 +98,9 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	{
 		s_aDebugShapes = {};
 
-		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPoints();
-		array<ref SCR_Ray> middlePointRays = shapeAnalyser.GetMiddlePoints();
-		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPoints();
+		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPointRays();
+		array<ref SCR_Ray> middlePointRays = shapeAnalyser.GetMiddlePointRays();
+		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPointRays();
 
 		int currentPointIndex = 0;
 		int currentMiddlePointIndex = 0;
@@ -148,8 +147,8 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected void DrawErrorShapes(notnull SCR_ShapeAnalyser shapeAnalyser)
 	{
-		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPoints();
-		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPoints();
+		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPointRays();
+		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPointRays();
 
 		// error display
 		s_aErrorShapes = {};
@@ -224,8 +223,8 @@ class SCR_ShapeAnalyserEntity : /*SCR_*/GeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected void PrintDebugInfo(notnull SCR_ShapeAnalyser shapeAnalyser)
 	{
-		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPoints();
-		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPoints();
+		array<ref SCR_Ray> pointRays = shapeAnalyser.GetPointRays();
+		array<ref SCR_Ray> tesselatedPointRays = shapeAnalyser.GetTesselatedPointRays();
 		array<float> polygon2D = {};
 
 		array<float> stats = shapeAnalyser.GetStats();

@@ -5,11 +5,12 @@ enum ENameTagEntityState
 {
 	DEFAULT		 	= 1,	// alive
 	FOCUSED 		= 1<<1,	// focused
-	GROUP_MEMBER	= 1<<2,	// part of the same squad
-	UNCONSCIOUS 	= 1<<3,	// unconscious
-	VON 			= 1<<4,	// voice over network
-	DEAD 			= 1<<5,	// dead
-	HIDDEN 			= 1<<6	// tag is hidden
+	AI_SUBORDINATE	= 1<<2, // used for AIs that are under players command through commanding system
+	GROUP_MEMBER	= 1<<3,	// part of the same squad
+	UNCONSCIOUS 	= 1<<4,	// unconscious
+	VON 			= 1<<5,	// voice over network
+	DEAD 			= 1<<6,	// dead
+	HIDDEN 			= 1<<7	// tag is hidden
 };
 
 //------------------------------------------------------------------------------------------------
@@ -102,8 +103,8 @@ class SCR_NameTagData : Managed
 	float m_fDeadEntitiesCleanup;	
 	float m_fTagFadeSpeed;
 		
-	ref Widget m_aNametagElements[10];	// nametag layout elements
 					
+	ref Widget m_aNametagElements[10];	// nametag layout elements
 	//------------------------------------------------------------------------------------------------
 	//! Update the highest priority entity state (as ordered in enum)
 	void UpdatePriorityEntityState()
@@ -254,7 +255,10 @@ class SCR_NameTagData : Managed
 				}
 			}
 			else 	// non players are considered AI
+			{
 				m_eType = ENameTagEntityType.AI;
+				CheckAISubordinate(m_Entity);				
+			}
 		}
 		else if (Vehicle.Cast(m_Entity))
 		{
@@ -339,6 +343,30 @@ class SCR_NameTagData : Managed
 		
 		if (m_VehicleParent && m_VehicleParent.m_MainTag == this)	// update vehicle parent as well if this tag is its main tag
 			m_VehicleParent.m_Flags |= ENameTagFlags.NAME_UPDATE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set AI_SUBORDINATE if it falls under current players command
+	void CheckAISubordinate(IEntity entity)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(entity);
+		if (!entity)
+			return;
+		
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		int playerID = GetGame().GetPlayerController().GetPlayerId();
+		SCR_AIGroup playerGroup = groupManager.GetPlayerGroup(playerID);
+		
+		if (!playerGroup || !playerGroup.IsAIControlledCharacterMember(character))
+		{
+			DeactivateEntityState(ENameTagEntityState.AI_SUBORDINATE);
+			return;
+		}
+		
+		ActivateEntityState(ENameTagEntityState.AI_SUBORDINATE);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -107,7 +107,7 @@ class SCR_CampaignBuildingLayoutComponent : ScriptComponent
 		if (!buildingEditorComponent)
 			return false;
 		
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(buildingEditorComponent.GetProviderComponent());
+		SCR_CampaignBuildingProviderComponent providerComponent = buildingEditorComponent.GetProviderComponent();
 		if (!providerComponent)
 			return false;
 		

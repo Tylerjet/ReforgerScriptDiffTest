@@ -62,7 +62,7 @@ class BaseUserAction: ScriptAndConfig
 	//! Returns the duration of this action in seconds.
 	proto external float GetActionDuration();
 	//! Returns the progress of this action in seconds.
-	proto external float GetActionProgress();
+	proto external float GetActionProgress(float fProgress, float timeSlice);
 	//! Returns true while continuous or timed action is being used.
 	proto external bool IsInProgress();
 	//! Returns the UIInfo set for this user action or null if none.
@@ -75,6 +75,7 @@ class BaseUserAction: ScriptAndConfig
 	proto external int GetActionID();
 	//! Used to ask to send action data again during continuous action
 	proto external void SetSendActionDataFlag();
+	proto external ActionsManagerComponent GetActionsManager();
 
 	// callbacks
 

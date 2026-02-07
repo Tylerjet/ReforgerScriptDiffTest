@@ -75,7 +75,6 @@ class SCR_Shape
 		vector vectorUp = vector.Up * height;
 		vector pos0, pos1, pos2, pos3;
 		vector matrix[4];
-		float entitySurfaceY;
 		
 		for (int v = -1; v < resolution; v++)
 		{

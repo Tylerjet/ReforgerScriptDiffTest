@@ -20,11 +20,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 	protected bool m_bIsInRadioRange;
 	protected bool m_bCooldownDone = true;
-	protected bool m_bIsHovered;
-
-	protected ref array<MapLink> m_aMapLinks = {};
-	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBasesInRadioRange = {};
-	protected ref array<SCR_CampaignMilitaryBaseComponent> m_aBasesInRadioRangeOld = {};
 
 	[RplProp(onRplName: "OnFactionChanged")]
 	protected int m_iFaction = SCR_CampaignMilitaryBaseComponent.INVALID_FACTION_INDEX;
@@ -34,8 +29,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 	[RplProp()]
 	protected WorldTimestamp m_fRespawnAvailableSince;
-	[RplProp()]
-	protected int m_iBasesCoveredByMHQOnly;
 
 	[RplProp()]
 	protected int m_iRadioRange;
@@ -78,12 +71,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 			}
 			Replication.BumpMe();
 		}
-
-		if (RplSession.Mode() == RplMode.Dedicated)
-			return;
-
-		// Delay so map links can operate with properly loaded (or deleted) spawnpoint
-		GetGame().GetCallqueue().CallLater(HandleMapLinks, 1000, false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -99,148 +86,7 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 		if (!campaign)
 			return;
 
-		if (RplSession.Mode() != RplMode.Dedicated)
-		{
-			m_aBasesInRadioRangeOld.Copy(m_aBasesInRadioRange);
-			m_aBasesInRadioRange.Clear();
-			HandleMapLinks(true);
-		}
-
 		campaign.GetInstance().GetOnFactionAssignedLocalPlayer().Remove(OnParentFactionIDSet);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	void UpdateBasesInRadioRange()
-	{
-		array<SCR_MilitaryBaseComponent> bases = {};
-		SCR_MilitaryBaseSystem.GetInstance().GetBases(bases);
-
-		int radioRange = m_iRadioRange * m_iRadioRange;	// We're checking square distance
-		vector truckPosition = GetOwner().GetOrigin();
-		SCR_CampaignMilitaryBaseComponent campaignBase;
-
-		m_aBasesInRadioRange = {};
-
-		foreach (SCR_MilitaryBaseComponent base : bases)
-		{
-			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
-
-			if (!campaignBase || !campaignBase.IsInitialized())
-				continue;
-
-			if (campaignBase.IsHQ() && campaignBase.GetFaction() != m_ParentFaction)
-				continue;
-
-			if (vector.DistanceSqXZ(truckPosition, campaignBase.GetOwner().GetOrigin()) < radioRange)
-				m_aBasesInRadioRange.Insert(campaignBase);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] base
-	//! \return
-	bool CanReachByRadio(notnull SCR_CampaignMilitaryBaseComponent base)
-	{
-		return m_aBasesInRadioRange.Contains(base);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[in] icon
-	//! \param[in] hovering
-	void OnIconHovered(SCR_CampaignMapUIBase icon, bool hovering)
-	{
-		m_bIsHovered = hovering;
-
-		foreach (MapLink link : m_aMapLinks)
-		{
-			if (!link)
-				continue;
-
-			ColorMapLink(link);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] link
-	void ColorMapLink(notnull MapLink link)
-	{
-		if (!m_ParentFaction)
-			return;
-
-		MapLinkProps props = link.GetMapLinkProps();
-
-		if (!props)
-			return;
-
-		SCR_CampaignMilitaryBaseComponent hq = m_ParentFaction.GetMainBase();
-
-		if (!hq)
-			return;
-
-		props.SetLineWidth(hq.GetLineWidth());
-
-		Color c = Color.FromInt(props.GetLineColor().PackToInt());
-
-		if (!c)
-			return;
-
-		SCR_GraphLinesData linesData = hq.GetGraphLinesData();
-
-		if (m_bIsHovered)
-		{
-			// Highlight only bases in range
-			MapItem otherEnd = link.Target();
-
-			if (otherEnd == m_MapItem)
-				otherEnd = link.Owner();
-
-			IEntity otherEndOwner = otherEnd.Entity();
-
-			if (!otherEndOwner)
-				return;
-
-			SCR_CampaignMilitaryBaseComponent base = SCR_CampaignMilitaryBaseComponent.Cast(otherEndOwner.FindComponent(SCR_CampaignMilitaryBaseComponent));
-
-			if (!base)
-				return;
-
-			if (!m_aBasesInRadioRange.Contains(base))
-				return;
-
-			c.SetA(linesData.GetHighlightedAlpha());
-		}
-		else
-		{
-			c.SetA(linesData.GetDefaultAlpha());
-		}
-
-		props.SetLineColor(c);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void HandleMapLinks(bool onDelete = false)
-	{
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBasesInRadioRangeOld)
-		{
-			if (!m_aBasesInRadioRange.Contains(base))
-				base.GetMapDescriptor().HandleMapLinks(onDelete);
-		}
-
-		foreach (SCR_CampaignMilitaryBaseComponent base : m_aBasesInRadioRange)
-		{
-			base.GetMapDescriptor().HandleMapLinks();
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] link
-	void AddMapLink(notnull MapLink link)
-	{
-		m_aMapLinks.Insert(link);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -286,6 +132,11 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 		if (!m_ParentFaction)
 			return;
+		
+		SCR_CoverageRadioComponent radioComponent = SCR_CoverageRadioComponent.Cast(GetOwner().FindComponent(BaseRadioComponent));
+				
+		if (radioComponent)
+			radioComponent.SetEncryptionKey(m_ParentFaction.GetFactionRadioEncryptionKey());
 
 		m_ParentFaction.SetMobileAssembly(this);
 
@@ -322,14 +173,8 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 			}
 		}
 
-		UpdateBasesInRadioRange();
+		SCR_RadioCoverageSystem.UpdateAll();
 		UpdateRadioCoverage();
-
-		if (m_MapItem)
-			HandleMapLinks();
-
-		if (!IsProxy())
-			campaign.GetBaseManager().RecalculateRadioCoverage(m_ParentFaction);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -351,14 +196,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	SCR_CampaignFaction GetFaction()
 	{
 		return m_Faction;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \param[out] basesInRange
-	//! \return
-	int GetBasesInRange(notnull out array<SCR_CampaignMilitaryBaseComponent> basesInRange)
-	{
-		return basesInRange.Copy(m_aBasesInRadioRange);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -411,21 +248,6 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] count
-	void SetCountOfExclusivelyLinkedBases(int count)
-	{
-		m_iBasesCoveredByMHQOnly = count;
-		Replication.BumpMe();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	int GetCountOfExclusivelyLinkedBases()
-	{
-		return m_iBasesCoveredByMHQOnly;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//!
 	void UpdateRadioCoverage()
 	{
@@ -433,16 +255,7 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 			return;
 
 		bool inRangeNow = SCR_GameModeCampaign.GetInstance().GetBaseManager().IsEntityInFactionRadioSignal(GetOwner(), m_ParentFaction);
-		bool refreshLinks = inRangeNow != m_bIsInRadioRange;
 		m_bIsInRadioRange = inRangeNow;
-
-		if (refreshLinks && RplSession.Mode() != RplMode.Dedicated)
-		{
-			foreach (SCR_CampaignMilitaryBaseComponent base : m_aBasesInRadioRange)
-			{
-				base.GetMapDescriptor().HandleMapLinks();
-			}
-		}
 
 		DamageManagerComponent damageComponent = DamageManagerComponent.Cast(GetOwner().FindComponent(DamageManagerComponent));
 
@@ -453,15 +266,10 @@ class SCR_CampaignMobileAssemblyStandaloneComponent : ScriptComponent
 
 			if (!IsProxy())
 			{
-				IEntity vehicle = GetOwner().GetParent();
-
-				if (vehicle)
-				{
-					BaseRadioComponent radioComponent = BaseRadioComponent.Cast(vehicle.FindComponent(BaseRadioComponent));
-
-					if (radioComponent)
-						radioComponent.SetPower(false);
-				}
+				SCR_CoverageRadioComponent radioComponent = SCR_CoverageRadioComponent.Cast(GetOwner().FindComponent(BaseRadioComponent));
+				
+				if (radioComponent)
+					radioComponent.SetPower(false);
 			}
 		}
 

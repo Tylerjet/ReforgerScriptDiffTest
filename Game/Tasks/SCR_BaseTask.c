@@ -48,6 +48,9 @@ class SCR_BaseTask : GenericEntity
 	[Attribute("Icon_Seize")]
 	protected string m_sTaskListIconName;
 	
+	[Attribute("M_")]
+	protected string m_sMajorModifier;
+
 	[Attribute("{EAB5D9841F081D07}UI/layouts/Campaign/TaskElementNew.layout")]
 	protected ResourceName m_sMapUIElementResourceName;
 	
@@ -86,12 +89,15 @@ class SCR_BaseTask : GenericEntity
 	protected Widget m_wMapTaskIcon;
 	protected Widget m_wTaskListDescription;
 	protected bool m_bIsPriority;
+	protected SCR_PlayerFactionAffiliationComponent m_sPlyFactionAffilComp;
+	protected float m_fMajorSize = 80;
 	
 	const string TASK_BG_M = "Icon_M_Task_BG";
 	const string TASK_O_M = "Icon_M_Task_Outline";
 	const string TASK_BG = "Icon_Task_BG";
 	const string TASK_O = "Icon_Task_Outline";
 	const string TASK_H = "Icon_M_Task_Hover";
+	const string Task_S = "TaskIconSymbol";
 	
 	//***************************//
 	//PUBLIC MEMBER EVENT METHODS//
@@ -191,6 +197,12 @@ class SCR_BaseTask : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	string GetMajorModifier()
+	{
+		return m_sMajorModifier;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//Description
 	string GetTaskListTaskText()
 	{
@@ -217,11 +229,12 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SetWidgetIcon(ImageWidget image)
 	{
-		if (!image)
+		if (!image || !m_wMapTaskIcon)
 			return;
-		
 		image.LoadImageFromSet(0, m_sIconImageset, GetTaskListIconName() + GetIconSuffix());
 		UpdateMapTaskIcon();
+		image.LoadImageFromSet(0, m_sIconImageset, GetMajorModifier() + GetTaskListIconName() + GetIconSuffix());
+		UpdatePriorityMapTaskIcon();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -235,28 +248,75 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void UpdateMapTaskIcon()
 	{
-		if (!m_wMapTaskIcon)
-			return;
+		if(m_bIsPriority)
+			return;	
+		// Set color for default unnasigned task
+		if(!m_wMapTaskIcon)	
+			return;	
 		
 		m_wMapTaskIcon.SetColor(Color.FromInt(Color.WHITE));
-		if (m_TargetFaction && (IsAssignedToLocalPlayer() || SCR_EditorManagerEntity.IsOpenedInstance(false)))
+		
+		if (m_TargetFaction && (IsAssignedToLocalPlayer() || SCR_EditorManagerEntity.IsOpenedInstance(false)) && !m_bIsPriority)
 			m_wMapTaskIcon.SetColor(m_TargetFaction.GetFactionColor());
+	}
+	//------------------------------------------------------------------------------------------------
+	void UpdatePriorityMapTaskIcon()
+	{
+		if(!m_bIsPriority)
+			return;
+		
+		GetTaskIconkWidget();
+		//Casting widgets, layouts and variables for Icon handling
+		
+		if (!m_wMapTaskIcon)
+			return;
 		
 		ImageWidget outline = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconOutline"));
 		ImageWidget background = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconBackground"));
 		ImageWidget hover = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconHover"));
+		ImageWidget symbol = ImageWidget.Cast(m_wMapTaskIcon.GetParent().FindAnyWidget("TaskIconSymbol"));
 		
-		if (!outline || !background || !hover)
+		PlayerController playerController = GetGame().GetPlayerController();	
+		if (!playerController)
 			return;
-	
-		if (m_bIsPriority)
-		{
-			background.LoadImageFromSet(0, m_sIconImageset,TASK_BG_M);
-			outline.LoadImageFromSet(0, m_sIconImageset,TASK_O_M);
-			hover.LoadImageFromSet(0,m_sIconImageset,TASK_H);
+		
+		m_sPlyFactionAffilComp = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+		if (!m_sPlyFactionAffilComp)
+			return;
+		
+		SCR_Faction m_sfactionCol = SCR_Faction.Cast(m_sPlyFactionAffilComp.GetAffiliatedFaction());
+		if (!m_sfactionCol)
+			return;
+		
+		background.LoadImageFromSet(0, m_sIconImageset,"Icon_M_Task_BG");
+		outline.LoadImageFromSet(0, m_sIconImageset,"Icon_M_Task_Outline");
+		hover.LoadImageFromSet(0,m_sIconImageset,TASK_H);
+		
+		background.SetSize(m_fMajorSize,m_fMajorSize);
+		outline.SetSize(m_fMajorSize,m_fMajorSize);
+		symbol.SetSize(m_fMajorSize,m_fMajorSize);
+		hover.SetSize(m_fMajorSize,m_fMajorSize);
+		
+		// Set color for assigned tasks
+		if (IsAssignedToLocalPlayer())
+		{		
+			if (!outline || !background || !hover || !symbol)
+				return;
+			
+			background.SetColor(UIColors.CONTRAST_COLOR);
+			outline.SetColor(m_sfactionCol.GetOutlineFactionColor()); 
+			symbol.SetColor(m_sfactionCol.GetOutlineFactionColor()); 
+			return;
 		}
+		//Set color for unassigned priority task
+		if (!IsAssignedToLocalPlayer())
+		{
+			background.SetColor(m_sfactionCol.GetOutlineFactionColor()); 
+			outline.SetColor(m_sfactionCol.GetFactionColor());
+			symbol.SetColor(m_sfactionCol.GetFactionColor());
+		}
+		
 	}
-	
 	//------------------------------------------------------------------------------------------------
 	bool AssignTaskToAI(AIAgent agent)
 	{
@@ -462,7 +522,7 @@ class SCR_BaseTask : GenericEntity
 		if (!m_bIndividualTask || !m_aAssignees || !IsAssigned() || !GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		
@@ -991,8 +1051,10 @@ class SCR_BaseTask : GenericEntity
 		if (m_aAssignees.Count() <= 0)
 			SetState(SCR_TaskState.OPENED);
 		
-		UpdateMapTaskIcon();
+		UpdateMapTaskIcon();	
+		UpdatePriorityMapTaskIcon();
 		UpdateTaskListAssignee();
+
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1001,9 +1063,9 @@ class SCR_BaseTask : GenericEntity
 	{
 		if (newAssignee)
 			newAssignee.AssignNewTask(this);
-		
-		UpdateMapTaskIcon();
-		UpdateTaskListAssignee();		
+			UpdateMapTaskIcon();
+			UpdatePriorityMapTaskIcon();
+			UpdateTaskListAssignee();	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1169,4 +1231,4 @@ class SCR_BaseTask : GenericEntity
 		if (GetTaskManager())
 			SCR_BaseTaskManager.s_OnTaskDeleted.Invoke(this);
 	}
-};
+}

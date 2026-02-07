@@ -18,12 +18,11 @@ class SCR_JumpOutAction : SCR_CompartmentUserAction
 		if (!targetCompartment)
 			return;
 		
-		CompartmentAccessComponent compartmentAcess = character.GetCompartmentAccessComponent();
-		if (!compartmentAcess)
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+		if (!compartmentAccess)
 			return;
 		
-		// Should become JumpOut when available
-		if (!compartmentAcess.GetOutVehicle(GetRelevantDoorIndex(pUserEntity), true))
+		if (!compartmentAccess.GetOutVehicle(EGetOutType.ANIMATED, GetRelevantDoorIndex(pUserEntity), ECloseDoorAfterActions.LEAVE_OPEN, false))
 			return;
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);

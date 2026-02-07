@@ -12,11 +12,17 @@ class SCR_NotificationDisplayData
 	[Attribute()]
 	bool m_bPriorityNotification;
 	
+	[Attribute("0", desc: "If true will add the (Friendly) indicator to any entities named in the notification that are friendly towards the local player that recieved the notification")]
+	protected bool m_bAddFriendlyIndicator;
+	
 	[Attribute(desc: "Holds the display information of the notification, Fill in Name and Color. Optional: Icon")]
 	ref SCR_UINotificationInfo m_info;	
 	
 	//Max amount of Characters a username can be. (Xbox = 12, Playstation = 16, Steam = 32)
 	const int MAX_USERNAME_CHARACTERS = 32;
+	
+	//! String used to indicate friendly entities together with the name eg: (Friendly) [PlayerName]. Used only if m_bAddFriendlyIndicator is true
+	protected const LocalizedString FRIENDLY_INDICATOR = "#AR-Notification_FriendlyIndicator";
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -173,6 +179,9 @@ class SCR_NotificationDisplayData
 			playerName = trimedName + "...";
 		}
 		
+		if (!playerName.IsEmpty() && m_bAddFriendlyIndicator && IsPlayerFriendlyToLocalPlayer(playerID))
+			playerName = WidgetManager.Translate(FRIENDLY_INDICATOR, playerName);
+			
 		return !playerName.IsEmpty();
 	}
 	
@@ -216,7 +225,12 @@ class SCR_NotificationDisplayData
 						{
 							entityName = WidgetManager.Translate(format, firstname, alias, surname);
 							if (!entityName.IsEmpty())
+							{
+								if (m_bAddFriendlyIndicator && IsEntityFriendlyToLocalPlayer(editableEntity.GetOwner()))
+									entityName = WidgetManager.Translate(FRIENDLY_INDICATOR, entityName);
+									
 								return true;
+							}
 						}
 					}
 				}
@@ -234,8 +248,71 @@ class SCR_NotificationDisplayData
 					entityName = editableEntity.GetDisplayName();
 			}
 		}
+		
+		if (!entityName.IsEmpty() && m_bAddFriendlyIndicator && IsEntityFriendlyToLocalPlayer(editableEntity.GetOwner()))
+			entityName = WidgetManager.Translate(FRIENDLY_INDICATOR, entityName);
 
 		return !entityName.IsEmpty();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsPlayerFriendlyToLocalPlayer(int notificationPlayerID, bool friendlyIfNoFaction = false)
+	{
+		//~ Is player self no need to show friendly
+		if (SCR_PlayerController.GetLocalPlayerId() == notificationPlayerID)
+			return false;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager) 
+			return false;
+		
+		Faction notificationPlayerFaction = factionManager.GetPlayerFaction(notificationPlayerID);
+		if (!notificationPlayerFaction)
+			return friendlyIfNoFaction;
+		
+		//Get local player faction
+		Faction playerSelfFaction = factionManager.GetLocalPlayerFaction();
+		if (!playerSelfFaction) 
+			return friendlyIfNoFaction;
+		
+		return playerSelfFaction.IsFactionFriendly(notificationPlayerFaction);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsEntityFriendlyToLocalPlayer(IEntity notificationEntity, bool friendlyIfNoFaction = false)
+	{		
+		//If no entity given or the entity is the same as local controlled entity return false
+		if (!notificationEntity || SCR_PlayerController.GetLocalControlledEntity() == notificationEntity) 
+			return false;
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager) 
+			return false;
+		
+		Faction notificationEntityFaction;
+		
+		//Get notification entity ChimeraCharacter
+		SCR_ChimeraCharacter notificationEntityChimera = SCR_ChimeraCharacter.Cast(notificationEntity);
+		if (notificationEntityChimera)
+		{
+			notificationEntityFaction = notificationEntityChimera.GetFaction();
+		}
+		else 
+		{
+			FactionAffiliationComponent factionAffiliationComponent = FactionAffiliationComponent.Cast(notificationEntity.FindComponent(FactionAffiliationComponent));
+			if (factionAffiliationComponent)
+				notificationEntityFaction = factionAffiliationComponent.GetAffiliatedFaction();
+		}
+			
+		if (!notificationEntityFaction)
+			return friendlyIfNoFaction;
+		
+		//Get local player faction
+		Faction playerSelfFaction = factionManager.GetLocalPlayerFaction();
+		if (!playerSelfFaction) 
+			return friendlyIfNoFaction;
+
+		return playerSelfFaction.IsFactionFriendly(notificationEntityFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -482,16 +559,29 @@ class SCR_NotificationDisplayData
 		if (colorType < ENotificationColor.FACTION_FRIENDLY_IS_NEGATIVE)
 			return colorType;
 		
-		if (!GetGame().GetPlayerController()) 
-			return ENotificationColor.NEUTRAL;
-		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager) 
 			return ENotificationColor.NEUTRAL;
 		
+		Faction notificationPlayerFaction = factionManager.GetPlayerFaction(notificationPlayerID);
+		
+		//~ Notification color is equal to faction color
+		if (colorType == ENotificationColor.FACTION_COLOR)
+		{
+			if (!notificationPlayerFaction)
+				return ENotificationColor.NEUTRAL;
+			
+			int factionIndex = factionManager.GetFactionIndex(notificationPlayerFaction);
+			
+			//~ Return minus number to let system know to use it to get faction color
+			return (factionIndex +1) * -1;
+		}
+		
+		if (!GetGame().GetPlayerController()) 
+			return ENotificationColor.NEUTRAL;
+		
 		//Get factions using ID
 		Faction playerSelfFaction = factionManager.GetLocalPlayerFaction();
-		Faction notificationPlayerFaction = factionManager.GetPlayerFaction(notificationPlayerID);
 		
 		if (!playerSelfFaction || !notificationPlayerFaction) 
 			return ENotificationColor.NEUTRAL;
@@ -534,21 +624,38 @@ class SCR_NotificationDisplayData
 		
 		if (!GetGame().GetPlayerController()) return ENotificationColor.NEUTRAL;
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (!factionManager) return ENotificationColor.NEUTRAL;
+		if (!factionManager) 
+			return ENotificationColor.NEUTRAL;
 		
 		//Get notification entity
 		SCR_EditableEntityComponent notificationEntity = SCR_EditableEntityComponent.Cast(Replication.FindItem(notificationEntityID));
-		if (!notificationEntity) return ENotificationColor.NEUTRAL;
+		if (!notificationEntity) 
+			return ENotificationColor.NEUTRAL;
 		
 		//Get notification entity ChimeraCharacter
 		SCR_ChimeraCharacter notificationEntityChimera = SCR_ChimeraCharacter.Cast(notificationEntity.GetOwner());
-		if (!notificationEntityChimera) return ENotificationColor.NEUTRAL;
+		if (!notificationEntityChimera) 
+			return ENotificationColor.NEUTRAL;
+		
+		Faction notificationEntityFaction = notificationEntityChimera.GetFaction();
+		
+		//~ Notification color is equal to faction color
+		if (colorType == ENotificationColor.FACTION_COLOR)
+		{
+			if (!notificationEntityFaction)
+				return ENotificationColor.NEUTRAL;
+			
+			int factionIndex = factionManager.GetFactionIndex(notificationEntityFaction);
+			
+			//~ Return minus number to let system know to use it to get faction color
+			return (factionIndex +1) * -1;
+		}
 		
 		//Get factions
 		Faction playerSelfFaction = factionManager.GetLocalPlayerFaction();
-		Faction notificationEntityFaction = notificationEntityChimera.GetFaction();
 		
-		if (!playerSelfFaction || !notificationEntityFaction) return ENotificationColor.NEUTRAL;
+		if (!playerSelfFaction || !notificationEntityFaction) 
+			return ENotificationColor.NEUTRAL;
 		
 		//Check if friendly
 		if (playerSelfFaction.IsFactionFriendly(notificationEntityFaction))

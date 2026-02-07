@@ -12,7 +12,7 @@ class SCR_CampaignTutorialArlandStageMedical16: SCR_BaseCampaignTutorialArlandSt
 		m_bCheckWaypoint = false;
 		m_fWaypointHeightOffset = 0.5;
 		
-		RegisterWaypoint("Figurant");;
+		RegisterWaypoint("Figurant");
 		
 		GetGame().GetCallqueue().Remove(m_TutorialComponent.RefreshVictimBloodLevel);
 		

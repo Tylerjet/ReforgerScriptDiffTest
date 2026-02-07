@@ -188,6 +188,13 @@ class SCR_ActionsRadialMenuEditorComponent : SCR_BaseEditorComponent
 		SCR_CommandActionsEditorComponent editorCommandsComponent = SCR_CommandActionsEditorComponent.Cast(SCR_CommandActionsEditorComponent.GetInstance(SCR_CommandActionsEditorComponent, true));
 		if (!editorCommandsComponent)
 			return;
+		
+		if (m_CommandsMenuController)
+		{
+			SCR_RadialMenu radialMenu = m_CommandsMenuController.GetRadialMenu();
+			if (radialMenu)
+				radialMenu.m_eRadialType = SCR_ERadialMenuType.ADD_COMMANDS_MENU;
+		}
 
 		OnBeforeMenuOpen(m_CommandsMenuController, editorCommandsComponent, 0);
 	}

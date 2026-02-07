@@ -81,6 +81,7 @@ class SCR_ResourceComponent : ScriptComponent
 	
 	protected ref ScriptInvokerBase<SCR_Resources_OnResourceEnabledChanged> m_OnResourceTypeEnabledChanged;
 	
+	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
 	//------------------------------------------------------------------------------------------------
 	//! HOTFIX: Until replication issues are resolved.
 	ScriptInvoker TEMP_GetOnInteractorReplicated()
@@ -98,6 +99,7 @@ class SCR_ResourceComponent : ScriptComponent
 		if (m_TEMP_OnInteractorReplicated)
 			m_TEMP_OnInteractorReplicated.Invoke();
 	}
+	//---- REFACTOR NOTE END ----
 	
 	//! Setting for enabling the debugging visualization of the container and/or consumer.
 	[Attribute(uiwidget: UIWidgets.CheckBox, category: "Debugging")]
@@ -1052,7 +1054,6 @@ class SCR_ResourceComponent : ScriptComponent
 			m_FactionAffiliationComponent = FactionAffiliationComponent.Cast(owner.FindComponent(FactionAffiliationComponent));
 		
 		Physics physics = owner.GetPhysics();
-		float maxLength;
 		vector tempBoundsMaxs, tempBoundsMins;
 		
 		// ---------------------------------------------------------------- Container initialisation.
@@ -1291,7 +1292,7 @@ class SCR_ResourceComponent : ScriptComponent
 		
 		foreach (SCR_ResourceEncapsulator encapsulator: m_aEncapsulators)
 		{
-			queue = encapsulator.GetContainerQueue();;
+			queue = encapsulator.GetContainerQueue();
 			
 			for (int i = queue.GetContainerCount() - 1; i >= 0; --i)
 			{

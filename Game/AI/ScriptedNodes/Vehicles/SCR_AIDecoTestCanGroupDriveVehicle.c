@@ -42,7 +42,7 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 		BaseCompartmentSlot compartment;
 		ref array<BaseCompartmentSlot> compartments = {};
 		BaseCompartmentManagerComponent compMan;
-		if (!vehicleToUse && !SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.Pilot, compartment, vehicleToUse))	
+		if (!vehicleToUse && !SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.PILOT, compartment, vehicleToUse))	
 			return false; 			// no available driver
 		
 		while (!vehicles.IsEmpty() && agentsCount > 0 && vehicleToUse)
@@ -59,7 +59,7 @@ class SCR_AIDecoTestCanGroupDriveVehicle: DecoratorTestScripted
 					break;
 			}
 			vehicles.Remove(vehicles.Find(vehicleToUse));
-			if (!SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.Pilot, compartment, vehicleToUse))
+			if (!SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, ECompartmentType.PILOT, compartment, vehicleToUse))
 				break; // no vehicle with available driver
 		}
 		return agentsCount == 0;			

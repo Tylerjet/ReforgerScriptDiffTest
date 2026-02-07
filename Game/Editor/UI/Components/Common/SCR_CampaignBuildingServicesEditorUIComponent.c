@@ -111,7 +111,7 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 			if (!editableEntitySource)
 				continue;
 
-			SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+			SCR_EditableEntityUIInfo editableUIInfo = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
 			if (!editableUIInfo)
 				continue;
 
@@ -135,7 +135,7 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		RemoveOnServiceStateChangedEvent();
 
-		m_MilitaryBaseComponent = SCR_MilitaryBaseComponent.Cast(militaryBaseComponent);
+		m_MilitaryBaseComponent = militaryBaseComponent;
 		
 		array<SCR_ServicePointComponent> services = {};
 		array<int> allEditorLabels = {};
@@ -164,7 +164,7 @@ class SCR_CampaignBuildingServicesEditorUIComponent : SCR_BaseEditorUIComponent
 		if (!buildingEditorComponent)
 			return;
 		
-		SCR_MilitaryBaseComponent militaryBaseComponent = SCR_MilitaryBaseComponent.Cast(buildingEditorComponent.GetProviderComponent().GetMilitaryBaseComponent());
+		SCR_MilitaryBaseComponent militaryBaseComponent = buildingEditorComponent.GetProviderComponent().GetMilitaryBaseComponent();
 		if (!militaryBaseComponent)
 			return;
 		

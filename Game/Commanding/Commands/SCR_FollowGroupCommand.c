@@ -43,10 +43,12 @@ class SCR_FollowGroupCommand : SCR_WaypointGroupCommand
 		wp.SetEntity(controlledEntity);
 		
 		if (m_bForceCommand)
-			wp.SetPriority(true);
+			wp.SetPriorityLevel(SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
 		slaveGroup.AddWaypoint(wp);
 		
-		slaveGroup.SetFormationDisplacement(1);
+		AIGroupMovementComponent slaveGroupMovementComp = AIGroupMovementComponent.Cast(slaveGroup.FindComponent(AIGroupMovementComponent));
+		if (slaveGroupMovementComp)
+			slaveGroupMovementComp.SetFormationDisplacement(1);
 		
 		//Hotfix until we get api to know when the speaker is done saying the command voiceline
 		GetGame().GetCallqueue().CallLater(PlayAIResponse, 2000, false, target);

@@ -29,7 +29,7 @@ class SCR_AIGetMyGroup: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	protected override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		AIGroup group = AIGroup.Cast(owner.GetParentGroup());
+		AIGroup group = owner.GetParentGroup();
 		if ( group )
 		{
 			SetVariableOut(PORT_GROUP_OUT,group);

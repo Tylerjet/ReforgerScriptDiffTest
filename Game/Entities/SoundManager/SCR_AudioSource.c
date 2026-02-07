@@ -25,6 +25,10 @@ class SCR_AudioSource
 	static const string COLLISION_D_V_SIGNAL_NAME = "CollisionDV";
 	static const string DISTANCE_SINAL_NAME = "Distance";
 	static const string ROOM_SIZE_SIGNAL_NAME = "RoomSize";
+	static const string FOREST_SIGNAL_NAME = "Forest";
+	static const string HOUSES_SIGNAL_NAME = "Houses";
+	static const string MEADOWS_SIGNAL_NAME = "Meadows";
+	static const string SEA_SIGNAL_NAME = "Sea";
 	
 	//------------------------------------------------------------------------------------------------	
 	/*!
@@ -57,6 +61,24 @@ class SCR_AudioSource
 		SetSignalValue(SCR_SoundManagerEntity.G_CURR_VEHICLE_COVERAGE_SIGNAL_NAME, gameSignalsManager.GetSignalValue(soundManagerEntity.GetGCurrVehicleCoverageSignalIdx()));
 		SetSignalValue(SCR_SoundManagerEntity.G_IS_THIRD_PERSON_CAM_SIGNAL_NAME, gameSignalsManager.GetSignalValue(soundManagerEntity.GetGIsThirdPersonCamSignalIdx()));
 		SetSignalValue(SCR_SoundManagerEntity.G_ROOM_SIZE, gameSignalsManager.GetSignalValue(soundManagerEntity.GetRoomSizeIdx()));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Sets environmental signals based on SoundMap
+	*/
+	void SetEnvironmentalSignals(SoundWorld soundWorld, vector pos)
+	{
+		if (!soundWorld || !SCR_Enum.HasFlag(m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.EnvironmentSignals))
+			return;
+		
+		float sea, forest, city, meadow;	
+		soundWorld.GetMapValuesAtPos(pos, sea, forest, city, meadow);
+		
+		SetSignalValue(SEA_SIGNAL_NAME, sea);
+		SetSignalValue(FOREST_SIGNAL_NAME, forest);
+		SetSignalValue(HOUSES_SIGNAL_NAME, city);	
+		SetSignalValue(MEADOWS_SIGNAL_NAME, meadow);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -96,7 +118,6 @@ class SCR_AudioSource
 		m_Owner = owner;
 		
 		// Set distance signal
-		if (SCR_Enum.HasFlag(audioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.DistanceSignal))
-			SetSignalValue(DISTANCE_SINAL_NAME, distance);
+		SetSignalValue(DISTANCE_SINAL_NAME, distance);
 	}
 }

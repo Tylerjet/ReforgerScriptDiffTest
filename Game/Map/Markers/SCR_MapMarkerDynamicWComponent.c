@@ -27,8 +27,6 @@ class SCR_MapMarkerDynamicWComponent : SCR_ScriptedWidgetComponent
 	void SetImage(ResourceName icon, string quad, float aspectRatio = 1, int sizeFlag = 64)
 	{
 		m_wMarkerIcon.LoadImageFromSet(0, icon, quad);
-		if (aspectRatio != 1 && aspectRatio > 0)
-			m_wMarkerIcon.SetSize(sizeFlag * 0.9, (sizeFlag / aspectRatio) * 0.9); // todo, temp size adjust before symbols group side are fixed
 	}
 	
 	//------------------------------------------------------------------------------------------------

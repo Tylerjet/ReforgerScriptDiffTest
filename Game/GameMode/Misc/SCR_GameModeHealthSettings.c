@@ -28,23 +28,8 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	[Attribute(defvalue: "10", uiwidget: UIWidgets.Slider, desc: "Time without receiving damage or bleeding to start regeneration [s]", params: "0 600 1", category: "Game Mode")]
 	protected float m_fRegenerationDelay;
 	
-	[Attribute(defvalue: "200", uiwidget: UIWidgets.Slider, desc: "Time to fully regenerate resilience hit zone [s]", params: "0 600 1", category: "Game Mode")]
-	protected float m_fFullRegenerationTime;
-	
-	[Attribute(defvalue: "0.75", uiwidget: UIWidgets.Slider, desc: "Minimum amount of stamina needed to regenerate character hit zones", params: "0 1 0.001", precision: 3, category: "Game Mode")]
-	protected float m_fRegenerationMinStaminaLevel;
-	
-	[Attribute(defvalue: "40", uiwidget: UIWidgets.Slider, desc: "Maximal weight of all the items character can carry to regenerate character hit zones", params: "0 150 1", category: "Game Mode")]
-	protected float m_fRegenerationMaxLoadoutWeight;
-	
-	[Attribute(defvalue: "2", uiwidget: UIWidgets.Slider, desc: "Maximal character movement speed to regenerate character hit zones", params: "0 25 0.001", precision: 3, category: "Game Mode")]
-	protected float m_fRegenerationMaxMovementSpeed;
-	
-	[Attribute(defvalue: "1.333", uiwidget: UIWidgets.Slider, desc: "Character hit zone regeneration speed when in crouch", params: "0 5 0.001", precision: 3, category: "Game Mode")]
-	protected float m_fRegenerationSpeedCrouch;
-	
-	[Attribute(defvalue: "1.666", uiwidget: UIWidgets.Slider, desc: "Character hit zone regeneration speed when in prone", params: "0 5 0.001", precision: 3, category: "Game Mode")]
-	protected float m_fRegenerationSpeedProne;	
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Character resilience regeneration rate multiplier", params: "0 20", category: "Game Mode")]
+	protected float m_fRegenerationScale;
 
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -62,6 +47,21 @@ class SCR_GameModeHealthSettings : ScriptComponent
 		m_fDOTScale = rate;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return rate (0.0-1000.00) Higher numbers result in slower regeneration of resilience
+	float GetResilienceHzRegenScale()
+	{
+		return m_fRegenerationScale;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] rate (0.0-1000.00) Higher numbers result in slower regeneration of resilience
+	void SetResilienceHzRegenScale(float rate)
+	{
+		m_fRegenerationScale = rate;
+	}
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \return rate (0.0-5.00) Higher numbers result in faster regeneration
@@ -172,101 +172,5 @@ class SCR_GameModeHealthSettings : ScriptComponent
 	void SetRegenerationDelay(float rate)
 	{
 		m_fRegenerationDelay = rate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return rate (0.0-1000.00) Higher numbers result in slower regeneration of resilience
-	float GetResilienceHzRegenTime()
-	{
-		return m_fFullRegenerationTime;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rate (0.0-1000.00) Higher numbers result in slower regeneration of resilience
-	void SetResilienceHzRegenTime(float rate)
-	{
-		m_fFullRegenerationTime = rate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return rate (0.0-1.00) Minimum amount of stamina needed to regenerate character hit zones.
-	float GetMinStaminaLevelForRegeneration()
-	{
-		return m_fRegenerationMinStaminaLevel;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rate (0.0-1.00) Minimum amount of stamina needed to regenerate character hit zones.
-	void SetMinStaminaLevelForRegeneration(float rate)
-	{
-		m_fRegenerationMinStaminaLevel = rate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return rate (0.0-100.00) Maximal weight of all the items character can carry to regenerate character hit zones
-	float GetMaxCharWeightForRegeneration()
-	{
-		return m_fRegenerationMaxLoadoutWeight;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rate (0.0-100.00) Maximal weight of all the items character can carry to regenerate character hit zones
-	void SetMaxCharWeightForRegeneration(float rate)
-	{
-		m_fRegenerationMaxLoadoutWeight = rate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return rate (0.0-5.50) Maximal character movement speed to regenerate character hit zones
-	float GetMaxCharMovementSpeedForRegeneration()
-	{
-		return m_fRegenerationMaxMovementSpeed;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rate (0.0-5.50) Maximal character movement speed to regenerate character hit zones
-	void SetMaxCharMovementSpeedForRegeneration(float rate)
-	{
-		m_fRegenerationMaxMovementSpeed = rate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return rate (0.0-5.00) Character hit zone regeneration speed when in crouch. Higher numbers result in higher regeneration speed
-	float GetRegenerationSpeedCrouc()
-	{
-		return m_fRegenerationSpeedCrouch;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rate (0.0-5.00) Character hit zone regeneration speed when in crouch. Higher numbers result in higher regeneration speed
-	void SetRegenerationSpeedCrouc(float rate)
-	{
-		m_fRegenerationSpeedCrouch = rate;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \return rate (0.0-5.00) Character hit zone regeneration speed when in prone. Higher numbers result in higher regeneration speed
-	float GetRegenerationSpeedProne()
-	{
-		return m_fRegenerationSpeedProne;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] rate (0.0-5.00) Character hit zone regeneration speed when in prone. Higher numbers result in higher regeneration speed
-	void SetRegenerationSpeedProne(float rate)
-	{
-		m_fRegenerationSpeedProne = rate;
 	}
 }

@@ -1,5 +1,7 @@
 class ReportDialogUI: DialogUI
 {
+	protected SCR_WorkshopItem m_WorkshopItem;
+	
 	protected ContentBrowserDetailsMenu m_DetailsMenu;
 		
 	protected SCR_ComboBoxComponent m_ReasonCombo;
@@ -77,7 +79,7 @@ class ReportDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	override protected void OnConfirm()
 	{
-		if (!m_bAcceptInput)
+		if (!m_bAcceptInput || !m_WorkshopItem)
 			return;
 		
 		m_OnConfirm.Invoke();
@@ -109,7 +111,7 @@ class ReportDialogUI: DialogUI
 		}
 		
 		// Report
-		m_ReportAction = ContentBrowserDetailsMenu.GetWorkshopItem().Report(reason, content);
+		m_ReportAction = m_WorkshopItem.Report(reason, content);
 		
 		m_ReportAction.m_OnCompleted.Insert(OnReportSuccess);
 		m_ReportAction.m_OnFailed.Insert(OnReportFailed);
@@ -120,17 +122,20 @@ class ReportDialogUI: DialogUI
 	//------------------------------------------------------------------------------------------------
 	protected void OnReportSuccess()
 	{
+		if (!m_WorkshopItem)
+			return;
+		
 		if (m_OnReportSuccess)
 			m_OnReportSuccess.Invoke(false);
 		
-		ContentBrowserDetailsMenu.GetWorkshopItem().DeleteLocally();
-		ContentBrowserDetailsMenu.GetWorkshopItem().SetSubscribed(false);
+		m_WorkshopItem.DeleteLocally();
+		m_WorkshopItem.SetSubscribed(false);
 		
 		// Cancel download 
 		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
 		if (mgr)
 		{
-			SCR_WorkshopItemActionDownload action = mgr.GetActionOfItem(ContentBrowserDetailsMenu.GetWorkshopItem());
+			SCR_WorkshopItemActionDownload action = mgr.GetActionOfItem(m_WorkshopItem);
 			if (action)
 				action.Cancel();
 		}
@@ -194,6 +199,12 @@ class ReportDialogUI: DialogUI
 	protected void OnTos()
 	{
 		GetGame().GetPlatformService().OpenBrowser(GetGame().GetBackendApi().GetLinkItem("Link_PrivacyPolicy"));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetWorkshopItem(SCR_WorkshopItem item)
+	{
+		m_WorkshopItem = item;	
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -59,8 +59,8 @@ class SCR_MoveLineDownPluginHelper
 	//! \param[in,out] lineBelow
 	static void IndentChange(inout string lineAbove, inout string lineBelow)
 	{
-		int tabsDiffAbove; // "above" and "below" are -before- change
-		int tabsDiffBelow;
+//		int tabsDiffAbove; // "above" and "below" are -before- change
+//		int tabsDiffBelow;
 
 		string trimmedLine = lineAbove.Trim();
 

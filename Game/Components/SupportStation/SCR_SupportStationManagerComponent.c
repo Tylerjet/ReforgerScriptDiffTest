@@ -145,8 +145,11 @@ class SCR_SupportStationManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Add support station to manager
 	//! \param[in] supportStation Support Station to add
-	void AddSupportStation(notnull SCR_BaseSupportStationComponent supportStation)
+	void AddSupportStation(SCR_BaseSupportStationComponent supportStation)
 	{
+		if (!supportStation)
+			return;
+		
 		if (supportStation.GetSupportStationType() == ESupportStationType.NONE)
 		{
 			Print("Cannot add SupportStation of type NONE! Make sure to overwrite GetSupportStationType() in inherited class.", LogLevel.ERROR);
@@ -178,9 +181,9 @@ class SCR_SupportStationManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	//! Remove support station from manager
 	//! \param[in] supportStation Support Station to remove
-	void RemoveSupportStation(notnull SCR_BaseSupportStationComponent supportStation)
+	void RemoveSupportStation(SCR_BaseSupportStationComponent supportStation)
 	{
-		if (supportStation.GetSupportStationType() == ESupportStationType.NONE)
+		if (!supportStation || supportStation.GetSupportStationType() == ESupportStationType.NONE)
 			return;
 
 		array<SCR_BaseSupportStationComponent> supportStations = {};

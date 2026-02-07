@@ -87,9 +87,6 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		if (!m_BaseRadioComp.IsPowered() || m_bAnimInProgress)
 			return false;
 
-		string strUp = "UP";
-		string strDown = "DOWN";
-		
 		BaseTransceiver tsv = m_BaseRadioComp.GetTransceiver(0);
 		if (!tsv)
 			return false;
@@ -115,9 +112,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 			{
 				RadioHandlerComponent rhc = RadioHandlerComponent.Cast(pc.FindComponent(RadioHandlerComponent));
 				if (rhc)
-				{
 					rhc.SetFrequency(tsv, freq);
-				}
 			}
 
 			float targetAngle;

@@ -28,12 +28,12 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	//! \param[in] animParams
 	//! \param[in] item
 	//! \param[in] deleteItem
-	void ApplyItemEffect(IEntity target, ItemUseParameters animParams, IEntity item, bool deleteItem = true)
+	void ApplyItemEffect(IEntity target, IEntity user, ItemUseParameters animParams, IEntity item, bool deleteItem = true)
 	{
 		if (!m_ConsumableEffect)
 			return;
 
-		m_ConsumableEffect.ApplyEffect(target, target, item, animParams);
+		m_ConsumableEffect.ApplyEffect(target, user, item, animParams);
 
 		ModeClear(EGadgetMode.IN_HAND);
 		
@@ -84,7 +84,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		if (!target)
 			return;
 
-		ApplyItemEffect(target, animParams, item, deleteItem);
+		ApplyItemEffect(target, m_CharacterOwner, animParams, item, deleteItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -233,12 +233,6 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	override EGadgetType GetType()
 	{
 		return EGadgetType.CONSUMABLE;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override bool CanBeToggled()
-	{
-		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

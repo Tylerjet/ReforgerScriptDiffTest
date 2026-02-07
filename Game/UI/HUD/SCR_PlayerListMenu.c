@@ -89,6 +89,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected static ref ScriptInvoker s_OnPlayerListMenu = new ScriptInvoker();
 
 	protected ref Color m_PlayerNameSelfColor = new Color(0.898, 0.541, 0.184, 1);
+	
+	protected ref map<EVotingType, int> m_mVotingTypesOnCooldown = new map<EVotingType, int>();
 
 	/*!
 	Get event called when player list opens or closes.
@@ -606,6 +608,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			return;
 
 		combo.ClearAll();
+		
+		m_mVotingTypesOnCooldown.Clear();
 
 		int playerID = GetVotingPlayerID(combo);
 		SCR_VotingUIInfo info;
@@ -623,8 +627,19 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 				
 			if (!m_VotingManager.IsVoting(votingType, playerID))
 			{				
+				int cooldown = m_VotingManager.GetCurrentVoteCooldownForLocalPlayer(votingType);
+				
 				//--- Voting not in progress, start it
-				combo.AddItem(info.GetStartVotingName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.START_VOTE));				
+				if (cooldown <= 0)
+				{
+					combo.AddItem(info.GetStartVotingName(), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.START_VOTE));				
+				}
+				//~ Currently the player cannot vote as there is a cooldown
+				else 
+				{		
+					combo.AddItem(WidgetManager.Translate(m_VotingManager.VOTE_TIMEOUT_FORMAT, info.GetStartVotingName(), SCR_FormatHelper.GetTimeFormatting(cooldown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS)), false, new SCR_PlayerListComboEntryData(votingType, SCR_EPlayerListComboAction.START_VOTE));
+					m_mVotingTypesOnCooldown.Insert(votingType, combo.GetNumItems() -1);
+				}
 			}
 			//--- Voting in progress
 			else
@@ -669,24 +684,117 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			}
 		}
 
+		//~ Group actions
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupManager)
-			return;
-
-		SCR_AIGroup group = groupManager.GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
-		if (!group)
-			return;
-
-		array<int> requesters = {};
-		group.GetRequesterIDs(requesters);
-
-		if (requesters.Contains(playerID))
+		if (groupManager)
 		{
-			combo.AddItem(OPTIONS_COMBO_ACCEPT, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.COMFIRM_JOIN_PRIVATE_GROUP));
-			combo.AddItem(OPTIONS_COMBO_CANCEL, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP));
+			SCR_AIGroup group = groupManager.GetPlayerGroup(SCR_PlayerController.GetLocalPlayerId());
+			if (group)
+			{
+				array<int> requesters = {};
+				group.GetRequesterIDs(requesters);
+
+				if (requesters.Contains(playerID))
+				{
+					combo.AddItem(OPTIONS_COMBO_ACCEPT, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.COMFIRM_JOIN_PRIVATE_GROUP));
+					combo.AddItem(OPTIONS_COMBO_CANCEL, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.CANCEL_JOIN_PRIVATE_GROUP));
+				}
+				else if (m_PlayerGroupController.CanInvitePlayer(playerID))
+					combo.AddItem(INVITE_PLAYER_VOTE, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.INVITE_TO_GROUP));
+			}
 		}
-		else if (m_PlayerGroupController.CanInvitePlayer(playerID))
-			combo.AddItem(INVITE_PLAYER_VOTE, false, new SCR_PlayerListComboEntryData(SCR_EPlayerListComboType.GROUP, SCR_EPlayerListComboAction.INVITE_TO_GROUP));
+		
+		//~ Update any votes that have a cooldown
+		if (!m_mVotingTypesOnCooldown.IsEmpty())
+		{
+			//~ Disable the HUD elements of the votes that are disabled
+			foreach (EVotingType votingType, int index : m_mVotingTypesOnCooldown)
+			{
+				combo.SetElementWidgetEnabled(index, false, false);
+			}
+			
+			UpdatePlayerActionList(combo , false);
+			GetGame().GetCallqueue().CallLater(UpdatePlayerActionList, 1000, true, combo, true);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdatePlayerActionList(SCR_ComboBoxComponent combo, bool isCallqueue)
+	{
+		//~ Check if there is a combo and any votes have a cooldown
+		if (!combo || m_mVotingTypesOnCooldown.IsEmpty())
+		{
+			if (isCallqueue)
+				GetGame().GetCallqueue().Remove(UpdatePlayerActionList);
+			
+			return;
+		}
+		
+		//~ Check if combo has elements
+		array<Widget> elementWidgets = {};
+		combo.GetElementWidgets(elementWidgets);
+		
+		if (elementWidgets.IsEmpty())
+		{
+			if (isCallqueue)
+				GetGame().GetCallqueue().Remove(UpdatePlayerActionList);
+			
+			return;
+		}
+		
+		int cooldown;
+		SCR_VotingUIInfo info;
+		
+		array<EVotingType> votingTypesToRemove = {};
+		TextWidget textWidget;
+		
+		//~ For each disbled voting entry
+		foreach (EVotingType votingType, int index : m_mVotingTypesOnCooldown)
+		{
+			info = m_VotingManager.GetVotingInfo(votingType);
+			if (!info)
+				continue;
+			
+			cooldown = m_VotingManager.GetCurrentVoteCooldownForLocalPlayer(votingType);
+			
+			//~ Entry still disabled so update the timer
+			if (cooldown > 0)
+			{
+				if (!elementWidgets.IsIndexValid(index))
+					continue;
+				
+				textWidget = TextWidget.Cast(elementWidgets[index].FindAnyWidget("Text"));
+				if (!textWidget)
+					continue;
+				
+				textWidget.SetTextFormat(m_VotingManager.VOTE_TIMEOUT_FORMAT, info.GetStartVotingName(), SCR_FormatHelper.GetTimeFormatting(cooldown, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS));
+			}
+			//~ Voting is possible so set the entry active
+			else 
+			{
+				votingTypesToRemove.Insert(votingType);
+				combo.SetElementWidgetEnabled(index, true, true);
+				
+				if (!elementWidgets.IsIndexValid(index))
+					continue;
+				
+				textWidget = TextWidget.Cast(elementWidgets[index].FindAnyWidget("Text"));
+				if (!textWidget)
+					continue;
+				
+				textWidget.SetText(info.GetStartVotingName());
+			}
+		}
+		
+		//~ Any entries that need to be removed
+		foreach (EVotingType votingType : votingTypesToRemove)
+		{
+			m_mVotingTypesOnCooldown.Remove(votingType);
+		}
+		
+		//~ No longer any votes with active cooldowns
+		if (isCallqueue && m_mVotingTypesOnCooldown.IsEmpty())
+			GetGame().GetCallqueue().Remove(UpdatePlayerActionList);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1303,7 +1411,7 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 		// Create navigation buttons
 		Widget footer = GetRootWidget().FindAnyWidget("FooterLeft");
 		Widget footerBack = GetRootWidget().FindAnyWidget("Footer");
-		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", footerBack);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, footerBack);
 		if (back)
 			back.m_OnActivated.Insert(OnBack);
 
@@ -1481,6 +1589,9 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_ScoringSystem.GetOnPlayerScoreChanged().Remove(OnPlayerScoreChanged);
 			m_ScoringSystem.GetOnFactionScoreChanged().Remove(OnFactionScoreChanged);
 		}
+		
+		if (!m_mVotingTypesOnCooldown.IsEmpty())
+			GetGame().GetCallqueue().Remove(UpdatePlayerActionList);
 
 		s_OnPlayerListMenu.Invoke(false);
 	}
@@ -1626,10 +1737,14 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	{
 		for (int i = m_aEntries.Count() - 1; i >= 0; i--)
 		{
-			if (GetGame().GetPlayerManager().IsPlayerConnected(m_aEntries[i].m_iID))
+			if (!m_aEntries[i])
 				continue;
-			m_aEntries[i].m_wRow.RemoveFromHierarchy();
-			m_aEntries.RemoveItem(m_aEntries[i]);
+			
+			if (!m_aEntries[i] || GetGame().GetPlayerManager().IsPlayerConnected(m_aEntries[i].m_iID))
+				continue;
+			
+			m_aEntries[i].m_wRow.RemoveFromHierarchy();			
+			m_aEntries.Remove(i);
 		}
 	}
 	

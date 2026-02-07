@@ -10,10 +10,6 @@ class SCR_AIEvaluateExpectedWeapon : AITaskScripted
 	
 	protected SCR_AICombatComponent m_CombatComponent;
 	
-	protected BaseWeaponComponent m_WeaponComp;
-	protected int m_MuzzleId;
-	protected BaseMagazineComponent m_MagazineComp;
-	
 	//--------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{

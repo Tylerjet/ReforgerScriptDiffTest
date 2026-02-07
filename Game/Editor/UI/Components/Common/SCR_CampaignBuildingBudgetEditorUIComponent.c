@@ -68,7 +68,7 @@ class SCR_CampaignBuildingBudgetEditorUIComponent : SCR_BudgetEditorUIComponent
 		if (!editorManager)
 			return null;
 		
-		SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
+		SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
 		if (!modeEntity)
 			return null;
 

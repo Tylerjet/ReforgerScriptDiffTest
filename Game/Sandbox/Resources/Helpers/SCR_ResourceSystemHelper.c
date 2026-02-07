@@ -33,13 +33,6 @@ class SCR_ResourceSystemHelper
 			storedRescources = consumer.GetAggregatedResourceValue();
 			return true;
 		}
-			
-		
-		if (resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, resourceType, consumer))
-		{
-			storedRescources = consumer.GetAggregatedResourceValue();
-			return true;
-		}
 		
 		SCR_ResourceGenerator generator;
 		if (resourceComponent.GetGenerator(EResourceGeneratorID.VEHICLE_LOAD, resourceType, generator))
@@ -47,8 +40,42 @@ class SCR_ResourceSystemHelper
 			storedRescources = generator.GetAggregatedResourceValue();
 			return true;
 		}
+		
+		if (resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, resourceType, consumer))
+		{
+			storedRescources = consumer.GetAggregatedResourceValue();
+			return true;
+		}
 
 		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Call this to consume resources
+	\param resourceComponent ResourceComponent to get consume resources from
+	\param resourcesToConsume How much needs to be consumed
+	\param failIfNotEnoughResources If true it will never remove resources if there aren't enough. If false it will remove either the given amount or, if not enough resources, it will remove all the resources it can
+	\param resourceType Type of resources to find
+	\return EResourceReason, if it succeeded or not and the reason why
+	*/
+	static EResourceReason ConsumeResources(notnull SCR_ResourceComponent resourceComponent, float resourcesToConsume, bool failIfNotEnoughResources, EResourceType resourceType = EResourceType.SUPPLIES)
+	{
+		//~ If it does not fail if there are not enough resources than make sure to remove the max amount possible
+		if (!failIfNotEnoughResources)
+		{
+			float available;
+			GetAvailableResources(resourceComponent, available, resourceType);
+			
+			if (available < resourcesToConsume)
+				resourcesToConsume = available;
+		}
+
+		SCR_ResourceConsumer consumer = GetAvailableResourceConsumer(resourceComponent, resourceType);
+		if (!consumer)
+			return EResourceReason.UNAVAILABLE;
+		
+		return consumer.RequestConsumtion(resourcesToConsume);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -77,15 +104,6 @@ class SCR_ResourceSystemHelper
 		
 		totalResources = 0;
 		maxResources = 0;
-		
-		if (resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, resourceType, consumer))
-		{
-			maxResources = consumer.GetAggregatedMaxResourceValue();
-			totalResources = consumer.GetAggregatedResourceValue();
-			
-			if (maxResources > 0)
-				return true;
-		}
 			
 		if (resourceComponent.GetConsumer(EResourceGeneratorID.VEHICLE_UNLOAD, resourceType, consumer))
 		{
@@ -101,6 +119,15 @@ class SCR_ResourceSystemHelper
 		{
 			maxResources = generator.GetAggregatedMaxResourceValue();
 			totalResources = generator.GetAggregatedResourceValue();
+			
+			if (maxResources > 0)
+				return true;
+		}
+		
+		if (resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT_STORAGE, resourceType, consumer))
+		{
+			maxResources = consumer.GetAggregatedMaxResourceValue();
+			totalResources = consumer.GetAggregatedResourceValue();
 			
 			if (maxResources > 0)
 				return true;

@@ -44,7 +44,7 @@ class SCR_AICoverLock
 	//! Unlocks the cover and invalidates it
 	void Release()
 	{
-		CoverManagerComponent coverMgr = GetCoverManager();
+		ChimeraCoverManagerComponent coverMgr = GetCoverManager();
 		if (!coverMgr)
 			return;
 		
@@ -59,7 +59,7 @@ class SCR_AICoverLock
 	//----------------------------------------------------------------
 	void SCR_AICoverLock(int tilex, int tiley, int coverId, vector coverPos, vector coverTallestPos)
 	{
-		CoverManagerComponent coverMgr = GetCoverManager();
+		ChimeraCoverManagerComponent coverMgr = GetCoverManager();
 		if (!coverMgr)
 			return;
 		
@@ -98,12 +98,12 @@ class SCR_AICoverLock
 	}
 	
 	//----------------------------------------------------------------
-	protected static CoverManagerComponent GetCoverManager()
+	protected static ChimeraCoverManagerComponent GetCoverManager()
 	{
 		AIWorld aiWorld = GetGame().GetAIWorld();
 		if (!aiWorld)
 			return null;
-		CoverManagerComponent coverMgr = CoverManagerComponent.Cast(aiWorld.FindComponent(CoverManagerComponent));
+		ChimeraCoverManagerComponent coverMgr = ChimeraCoverManagerComponent.Cast(aiWorld.FindComponent(CoverManagerComponent));
 		return coverMgr;
 	}
 }

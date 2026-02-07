@@ -29,7 +29,7 @@ class SCR_WaypointLinesEditorUIComponent : SCR_BaseEditorUIComponent
 			for (int i = 0, count = group.GetChildrenCount(true); i < count; i++)
 			{
 				child = group.GetChild(i);
-				if (child.GetEntityType() != EEditableEntityType.WAYPOINT)
+				if (!child || child.GetEntityType() != EEditableEntityType.WAYPOINT)
 					continue;
 				
 				waypoint = SCR_EditableWaypointComponent.Cast(child);

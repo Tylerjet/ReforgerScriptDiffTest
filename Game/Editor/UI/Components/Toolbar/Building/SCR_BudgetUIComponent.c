@@ -72,7 +72,7 @@ class SCR_BudgetUIComponent : SCR_BaseEditorUIComponent
 		if (!m_CampaignBuildingComponent || !m_BudgetManager)
 			return;
 		
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(m_CampaignBuildingComponent.GetProviderComponent());
+		SCR_CampaignBuildingProviderComponent providerComponent = m_CampaignBuildingComponent.GetProviderComponent();
 		if (!providerComponent)
 			return;
 		

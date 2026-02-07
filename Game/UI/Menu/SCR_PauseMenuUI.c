@@ -20,7 +20,6 @@ class PauseMenuUI: ChimeraMenuBase
 	const string EXIT_SAVE = "#AR-PauseMenu_ReturnSaveTitle";
 	const string EXIT_NO_SAVE = "#AR-PauseMenu_ReturnTitle";
 	
-	const ResourceName ACTIONS_IMAGESET = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
 	const string EXIT_MESSAGE = "#AR-PauseMenu_ReturnText";
 	const string EXIT_TITLE = "#AR-PauseMenu_ReturnTitle";
 	const string EXIT_IMAGE = "exit";
@@ -95,10 +94,10 @@ class PauseMenuUI: ChimeraMenuBase
 		
 		comp = SCR_ButtonTextComponent.GetButtonText("Respawn", m_wRoot);
 		if (comp)
-		{
+		{			
 			if (campaign && campaign.IsTutorial())
 			{
-				comp.SetVisible(false)
+				comp.SetVisible(false);
 			}
 			else
 			{
@@ -107,7 +106,7 @@ class PauseMenuUI: ChimeraMenuBase
 				if (gameMode)
 				{
 					RespawnSystemComponent respawn = RespawnSystemComponent.Cast(gameMode.FindComponent(RespawnSystemComponent));
-					canRespawn = (respawn != null);
+					canRespawn = (respawn != null && CanRespawn());
 				}
 
 				comp.GetRootWidget().SetVisible(canRespawn);
@@ -318,11 +317,11 @@ class PauseMenuUI: ChimeraMenuBase
 	override void OnMenuFocusLost()
 	{
 		m_bFocused = false;
-		m_InputManager.RemoveActionListener("MenuOpen", EActionTrigger.DOWN, Close);
-		m_InputManager.RemoveActionListener("MenuBack", EActionTrigger.DOWN, Close);
+		m_InputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN, EActionTrigger.DOWN, Close);
+		m_InputManager.RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, Close);
 		#ifdef WORKBENCH
-			m_InputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, Close);
-			m_InputManager.RemoveActionListener("MenuBackWB", EActionTrigger.DOWN, Close);
+			m_InputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, Close);
+			m_InputManager.RemoveActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, Close);
 		#endif
 	}
 
@@ -330,11 +329,11 @@ class PauseMenuUI: ChimeraMenuBase
 	override void OnMenuFocusGained()
 	{
 		m_bFocused = true;
-		m_InputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, Close);
-		m_InputManager.AddActionListener("MenuBack", EActionTrigger.DOWN, Close);
+		m_InputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN, EActionTrigger.DOWN, Close);
+		m_InputManager.AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, Close);
 		#ifdef WORKBENCH
-			m_InputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, Close);
-			m_InputManager.AddActionListener("MenuBackWB", EActionTrigger.DOWN, Close);
+			m_InputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, Close);
+			m_InputManager.AddActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, Close);
 		#endif
 	}
 	
@@ -555,7 +554,7 @@ class PauseMenuUI: ChimeraMenuBase
 	private void OnRestart()
 	{
 		// Create dialog
-		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_restart");
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(SCR_ScenarioUICommon.DIALOG_RESTART);
 		if (!dialog)
 			return;
 		
@@ -579,6 +578,29 @@ class PauseMenuUI: ChimeraMenuBase
 	protected void OnInviteFriends()
 	{
 		GetGame().GetPlayerManager().ShowMultiplayerActivityInvite();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Check if the player has a Character he is controling and that is alive
+	//! \return True is there is a valid player that is alive, false otherwise
+	protected bool CanRespawn()
+	{
+		IEntity player = GetGame().GetPlayerController().GetControlledEntity();
+		if (!player)
+			return false;
+		
+		SCR_ChimeraCharacter char = SCR_ChimeraCharacter.Cast(player);
+		if (!char)
+			return false;
+		
+		CharacterControllerComponent charController = char.GetCharacterController();
+		if (!charController)
+			return false;
+
+		if (charController.GetLifeState() == ECharacterLifeState.DEAD)
+			return false;
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

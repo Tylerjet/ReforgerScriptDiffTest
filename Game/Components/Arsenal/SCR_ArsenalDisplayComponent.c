@@ -43,6 +43,13 @@ class SCR_ArsenalDisplayComponent : SCR_ArsenalComponent
 		ClearArsenal();
 		RefreshArsenal();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnArsenalGameModeTypeChanged(SCR_EArsenalGameModeType newArsenalGameModeType)
+	{
+		ClearArsenal();
+		RefreshArsenal();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Remove every slot's item

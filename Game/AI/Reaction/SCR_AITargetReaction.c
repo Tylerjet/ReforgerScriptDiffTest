@@ -92,9 +92,10 @@ class SCR_AITargetReaction_SelectedTargetChanged : SCR_AITargetReaction_Selected
 		// AddAction must be used here, not AddActionIfMissing!
 		utility.AddAction(behavior);
 		
+		// this is now disabled since group commands when we dismount
 		// If passenger and not in turret, dismount vehicle
-		if (!utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
-			utility.WrapBehaviorOutsideOfVehicle(behavior);
+		//if (!utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
+		//	utility.WrapBehaviorOutsideOfVehicle(behavior);
 	}
 	
 	//--------------------------------------------------------------------------------------------------

@@ -201,20 +201,17 @@ class SCR_PlayersManagerEditorComponent : SCR_BaseEditorComponent
 
 	protected void UpdatePlayerGroup(notnull SCR_EditableEntityComponent editableEntity, notnull IEntity controlledEntity, int playerID)
 	{
-		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-		if (!groupManager)
-			return;
-
 		Faction entityFaction = editableEntity.GetFaction();
-		SCR_AIGroup group = groupManager.GetPlayerGroup(playerID);
-		if (group && group.GetFaction() == entityFaction)
-			return; 
-
-		SCR_AIGroup foundGroup = groupManager.GetFirstNotFullForFaction(entityFaction, null, true);
-		if (!foundGroup)
-			foundGroup = groupManager.CreateNewPlayableGroup(entityFaction);
-
-		foundGroup.AddPlayer(playerID);
+		
+		SCR_PlayerController controller = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(playerID));
+		if (!controller)
+			return;
+		
+		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupComponent)
+			return;
+		
+		groupComponent.CreateAndJoinGroup(entityFaction);
 	}
 	
 	protected void UpdatePlayerFaction(SCR_EditableEntityComponent editableEntity, IEntity controlledEntity)

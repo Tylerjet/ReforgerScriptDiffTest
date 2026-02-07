@@ -1,9 +1,11 @@
 void SCR_AIOnFireteamRemoved(SCR_AIGroupFireteam fireteam);
 typedef func SCR_AIOnFireteamRemoved;
 
+typedef array<ref SCR_AIGroupFireteam> TAIFireteamArray;
+
 class SCR_AIGroupFireteamManager : Managed
 {
-	protected const int FIRETEAM_MIN_SIZE = 2;
+	protected const int FIRETEAM_MIN_SIZE = 1;
 	
 	protected SCR_AIGroup m_Group;
 	protected ref array<ref SCR_AIGroupFireteam> m_aFireteams = {};
@@ -26,14 +28,15 @@ class SCR_AIGroupFireteamManager : Managed
 	
 	//---------------------------------------------------------------------------------------------------
 	//! Called from SCR_AIGroupUtilityComponent
-	void OnAgentAdded(AIAgent agent, SCR_AIInfoComponent infoComp)
+	void OnAgentAdded(AIAgent agent)
 	{	
 		// Add to fireteam
 		// We find smallest fireteam and rebalance them later
-		SCR_AIGroupFireteam destFt = FindSmallestFireteam();
+		typename ftTypename = SCR_AIGroupFireteam;
+		SCR_AIGroupFireteam destFt = FindSmallestFireteam(m_aFireteams, ftTypename);
 		if (!destFt)
-			destFt = CreateFireteam();
-		destFt.AddMember(agent, infoComp);
+			destFt = CreateFireteam(m_aFireteams, ftTypename);
+		destFt.AddMember(agent);
 		
 		m_bRebalanceFireteams = true;
 	}
@@ -50,7 +53,7 @@ class SCR_AIGroupFireteamManager : Managed
 			
 			int ftSize = ft.GetMemberCount();
 			if (ftSize == 0)
-				RemoveFireteam(ft);
+				RemoveFireteam(m_aFireteams, ft);
 			
 			// Rebalance fireteams later
 			m_bRebalanceFireteams = true;
@@ -58,89 +61,96 @@ class SCR_AIGroupFireteamManager : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	protected SCR_AIGroupFireteam CreateFireteam()
-	{
-		SCR_AIGroupFireteam ft = new SCR_AIGroupFireteam();
-		m_aFireteams.Insert(ft);
-		return ft;
+	void OnAgentAssignedToVehicle(notnull AIAgent agent, notnull SCR_AIVehicleUsageComponent vehicleComp, ECompartmentType compType)
+	{		
+		// Remove from current fireteam
+		SCR_AIGroupFireteam prevFt = FindFireteam(agent);
+		
+		if (prevFt)
+		{
+			prevFt.RemoveMember(agent);
+			
+			int ftSize = prevFt.GetMemberCount();
+			if (ftSize == 0)
+				RemoveFireteam(m_aFireteams, prevFt);
+		}
+		
+		// Depending on compartment type, we will add the agent to specific type of fireteam
+		// Which was created for this vehicle
+		typename ftTypename;
+		if (compType == ECompartmentType.CARGO)
+			ftTypename = SCR_AIGroupFireteamVehicleCargo;
+		else
+			ftTypename = SCR_AIGroupFireteamVehicleCrew;
+		
+		array<ref SCR_AIGroupFireteam> ftsOfVehicle = {};
+		FindFireteamsOfVehicle(ftsOfVehicle, vehicleComp, ftTypename);
+		SCR_AIGroupFireteamVehicleBase ft = SCR_AIGroupFireteamVehicleBase.Cast(FindSmallestFireteam(ftsOfVehicle, ftTypename));
+		if (!ft)
+		{
+			ft = SCR_AIGroupFireteamVehicleBase.Cast(CreateFireteam(m_aFireteams, ftTypename));
+			ft.SetVehicle(vehicleComp);
+		}
+		ft.AddMember(agent);
+		
+		m_bRebalanceFireteams = true;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	protected void RemoveFireteam(SCR_AIGroupFireteam ft)
+	void OnAgentUnassignedFromVehicle(AIAgent agent, notnull SCR_AIVehicleUsageComponent vehicleComp)
 	{
-		int id = m_aFireteams.Find(ft);
-		if (id == -1)
-			return;
+		// Remove from current fireteam
+		SCR_AIGroupFireteam prevFt = FindFireteam(agent);
 		
-		if (ft.GetMemberCount() != 0)
+		if (prevFt)
 		{
-			Print("SCR_AIGroupUtilityComponent: removing a non-empty fireteam", LogLevel.ERROR);
-			return;
+			prevFt.RemoveMember(agent);
+			
+			int ftSize = prevFt.GetMemberCount();
+			if (ftSize == 0)
+				RemoveFireteam(m_aFireteams, prevFt);
 		}
 		
-		Event_OnFireteamRemoved.Invoke(ft);
+		// Add to a generic fireteam
+		typename ftTypename = SCR_AIGroupFireteam;
+		SCR_AIGroupFireteam destFt = FindSmallestFireteam(m_aFireteams, ftTypename);
+		if (!destFt)
+			destFt = CreateFireteam(m_aFireteams, ftTypename);
+		destFt.AddMember(agent);
 		
-		m_aFireteams.Remove(id);
+		// Rebalance fireteams later
+		m_bRebalanceFireteams = true;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	protected SCR_AIGroupFireteam FindSmallestFireteam(array<SCR_AIGroupFireteam> fireteamsExclude = null)
+	//! Removes all fireteams related to this vehicle, soldiers are redistributed
+	void OnVehicleRemoved(SCR_AIVehicleUsageComponent vehicleComp)
 	{
-		if (m_aFireteams.IsEmpty())
-			return null;
+		array<ref SCR_AIGroupFireteam> fireteamsOfVehicle = {};
+		FindFireteamsOfVehicle(fireteamsOfVehicle, vehicleComp, SCR_AIGroupFireteamVehicleBase);
 		
-		int minSize = int.MAX;
-		SCR_AIGroupFireteam outFt;
-		for (int i = 0; i < m_aFireteams.Count(); i++)
+		array<AIAgent> agents = {};
+		foreach (SCR_AIGroupFireteam ft : fireteamsOfVehicle)
 		{
-			SCR_AIGroupFireteam ft = m_aFireteams[i];
-			int size = ft.GetMemberCount();
-			if (size < minSize)
-			{
-				if (!fireteamsExclude || (fireteamsExclude && fireteamsExclude.Find(ft) == -1))
-				{
-					minSize = size;
-					outFt = ft;
-				}
-			}
+			agents.Clear();
+			ft.GetMembers(agents);
+			foreach (AIAgent agent : agents)
+				OnAgentUnassignedFromVehicle(agent, vehicleComp);
 		}
-		
-		return outFt;
-	}
-	
-	//---------------------------------------------------------------------------------------------------
-	protected SCR_AIGroupFireteam FindBiggestFireteam(array<SCR_AIGroupFireteam> fireteamsExclude = null)
-	{
-		if (m_aFireteams.IsEmpty())
-			return null;
-		
-		int maxSize = int.MIN;
-		SCR_AIGroupFireteam outFt;
-		for (int i = 0; i < m_aFireteams.Count(); i++)
-		{
-			SCR_AIGroupFireteam ft = m_aFireteams[i];
-			int size = ft.GetMemberCount();
-			if (size > maxSize)
-			{
-				if (!fireteamsExclude || (fireteamsExclude && fireteamsExclude.Find(ft) == -1))
-				{
-					maxSize = size;
-					outFt = ft;
-				}
-			}
-		}
-		
-		return outFt;
 	}
 	
 	//---------------------------------------------------------------------------------------------------
 	// Tries to find at least 'count' free fireteams. Returns true if it was able to achieve this amount of fireteams.
-	bool FindFreeFireteams(notnull array<SCR_AIGroupFireteam> outFireteams, int count, array<SCR_AIGroupFireteam> fireteamsExclude = null)
+	bool FindFreeFireteams(notnull array<SCR_AIGroupFireteam> outFireteams, int count, typename ftTypename, array<SCR_AIGroupFireteam> fireteamsExclude = null)
 	{
 		outFireteams.Clear();
 		for (int i = 0; i < m_aFireteams.Count(); i++)
 		{
 			SCR_AIGroupFireteam ft = m_aFireteams[i];
+			
+			if (ft.Type() != ftTypename)
+				continue;
+			
 			if (!ft.IsLocked())
 			{
 				if (!fireteamsExclude || (fireteamsExclude && fireteamsExclude.Find(ft) == -1))
@@ -157,12 +167,16 @@ class SCR_AIGroupFireteamManager : Managed
 	
 	//---------------------------------------------------------------------------------------------------
 	// Returns all free fireteams
-	void GetFreeFireteams(notnull array<SCR_AIGroupFireteam> outFireteams, array<SCR_AIGroupFireteam> fireteamsExclude = null)
+	void GetFreeFireteams(notnull array<SCR_AIGroupFireteam> outFireteams, typename ftTypename, array<SCR_AIGroupFireteam> fireteamsExclude = null)
 	{
 		outFireteams.Clear();
 		for (int i = 0; i < m_aFireteams.Count(); i++)
 		{
 			SCR_AIGroupFireteam ft = m_aFireteams[i];
+			
+			if (ft.Type() != ftTypename)
+				continue;
+			
 			if (!ft.IsLocked())
 			{
 				if (!fireteamsExclude || (fireteamsExclude && fireteamsExclude.Find(ft) == -1))
@@ -186,6 +200,21 @@ class SCR_AIGroupFireteamManager : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
+	void FindFireteamsOfVehicle(notnull array<ref SCR_AIGroupFireteam> outFireteams, notnull SCR_AIVehicleUsageComponent vehicleComp, typename ftType)
+	{
+		foreach (SCR_AIGroupFireteam ft : m_aFireteams)
+		{
+			SCR_AIGroupFireteamVehicleBase ftVehicle = SCR_AIGroupFireteamVehicleBase.Cast(ft);
+			if (!ftVehicle)
+				continue;
+			if (ftVehicle.Type() != ftType)
+				continue;
+			if (ftVehicle.GetVehicle() == vehicleComp)
+				outFireteams.Insert(ftVehicle);
+		}
+	}
+	
+	//---------------------------------------------------------------------------------------------------
 	int GetFireteamCount()
 	{
 		return m_aFireteams.Count();
@@ -203,6 +232,163 @@ class SCR_AIGroupFireteamManager : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
+	void RebalanceAllFireteams()
+	{
+		// Rebalance all normal fireteams
+		array<ref SCR_AIGroupFireteam> normalFireteams = {};
+		foreach (auto ft : m_aFireteams)
+		{
+			if (ft.Type() == SCR_AIGroupFireteam)
+				normalFireteams.Insert(ft);
+		}
+		
+		if (RebalanceFireteams(normalFireteams, SCR_AIGroupFireteam))
+			m_bRebalanceFireteams = false;
+		
+		// Rebalance all vehicle-associated cargo fireteams
+		// For each vehicle, find all cargo fireteams associated with it
+		map<SCR_AIVehicleUsageComponent, ref TAIFireteamArray> m = new map<SCR_AIVehicleUsageComponent, ref TAIFireteamArray>();
+		foreach (SCR_AIGroupFireteam ft : m_aFireteams)
+		{
+			SCR_AIGroupFireteamVehicleCargo ftCargo = SCR_AIGroupFireteamVehicleCargo.Cast(ft);
+			if (!ftCargo || !ftCargo.GetVehicle())
+				continue;
+			
+			TAIFireteamArray ftArray;
+			if (!m.Find(ftCargo.GetVehicle(), ftArray))
+			{
+				ftArray = new TAIFireteamArray();
+				m.Insert(ftCargo.GetVehicle(), ftArray);
+			}
+			ftArray.Insert(ftCargo);
+		}
+		
+		foreach (SCR_AIVehicleUsageComponent vehicleComp, TAIFireteamArray ftArray : m)
+		{
+			// All cargo fireteams of that vehicle are rebalanced together
+			RebalanceFireteams(ftArray, SCR_AIGroupFireteamVehicleCargo);
+			
+			// All fireteams which have been created must be associated with this vehicle
+			foreach (SCR_AIGroupFireteam ft : ftArray)
+				SCR_AIGroupFireteamVehicleBase.Cast(ft).SetVehicle(vehicleComp);
+		}
+	}
+	
+	
+	
+	//---------------------------------------------------------------------------------------------------
+	// PROTECTED / INTERNAL
+	
+	//---------------------------------------------------------------------------------------------------
+	//! Creates a fireteam and registers it
+	protected SCR_AIGroupFireteam CreateFireteam(notnull array<ref SCR_AIGroupFireteam> fireteams, typename t)
+	{
+		SCR_AIGroupFireteam ft = FireteamFactory(t);
+		fireteams.Insert(ft);
+		if (fireteams != m_aFireteams)
+			m_aFireteams.Insert(ft);
+		return ft;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected static SCR_AIGroupFireteam FireteamFactory(typename t)
+	{
+		switch (t)
+		{
+			case SCR_AIGroupFireteam:
+				return new SCR_AIGroupFireteam();
+			case SCR_AIGroupFireteamVehicleCrew:
+				return new SCR_AIGroupFireteamVehicleCrew();
+			case SCR_AIGroupFireteamVehicleCargo:
+				return new SCR_AIGroupFireteamVehicleCargo();
+		}
+		return null;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected void RemoveFireteam(notnull array<ref SCR_AIGroupFireteam> fireteams, SCR_AIGroupFireteam ft)
+	{
+		int id = fireteams.Find(ft);
+		if (id == -1)
+			return;
+		
+		if (ft.GetMemberCount() != 0)
+		{
+			Print("SCR_AIGroupUtilityComponent: removing a non-empty fireteam", LogLevel.ERROR);
+			return;
+		}
+		
+		Event_OnFireteamRemoved.Invoke(ft);
+		
+		fireteams.Remove(id);
+		
+		if (fireteams != m_aFireteams)
+		{
+			int _id = m_aFireteams.Find(ft);
+			if (_id != -1)
+				m_aFireteams.Remove(_id);
+		}
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected static SCR_AIGroupFireteam FindSmallestFireteam(notnull array<ref SCR_AIGroupFireteam> fireteams, typename fireteamTypename, array<SCR_AIGroupFireteam> fireteamsExclude = null)
+	{
+		if (fireteams.IsEmpty())
+			return null;
+		
+		int minSize = int.MAX;
+		SCR_AIGroupFireteam outFt;
+		for (int i = 0; i < fireteams.Count(); i++)
+		{
+			SCR_AIGroupFireteam ft = fireteams[i];
+			
+			if (ft.Type() != fireteamTypename)
+				continue;
+			
+			int size = ft.GetMemberCount();
+			if (size < minSize)
+			{
+				if (!fireteamsExclude || (fireteamsExclude && fireteamsExclude.Find(ft) == -1))
+				{
+					minSize = size;
+					outFt = ft;
+				}
+			}
+		}
+		
+		return outFt;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	protected static SCR_AIGroupFireteam FindBiggestFireteam(notnull array<ref SCR_AIGroupFireteam> fireteams, typename fireteamTypename, notnull array<SCR_AIGroupFireteam> fireteamsExclude = null)
+	{
+		if (fireteams.IsEmpty())
+			return null;
+		
+		int maxSize = int.MIN;
+		SCR_AIGroupFireteam outFt;
+		for (int i = 0; i < fireteams.Count(); i++)
+		{
+			SCR_AIGroupFireteam ft = fireteams[i];
+			
+			if (ft.Type() != fireteamTypename)
+				continue;
+			
+			int size = ft.GetMemberCount();
+			if (size > maxSize)
+			{
+				if (!fireteamsExclude || (fireteamsExclude && fireteamsExclude.Find(ft) == -1))
+				{
+					maxSize = size;
+					outFt = ft;
+				}
+			}
+		}
+		
+		return outFt;
+	}
+	
+	//---------------------------------------------------------------------------------------------------
 	protected static int GetMaxFireteamSize(int groupSize)
 	{
 		if (groupSize >= 12)
@@ -211,63 +397,64 @@ class SCR_AIGroupFireteamManager : Managed
 			return 3;
 		else if (groupSize == 4)
 			return 2; // When exactly 4 members, we want two fireteams of 2 members
+		else if (groupSize == 3)
+			return 2; // When 3 members, one fireteam of 2, one fireteam of 1
+		else if (groupSize == 2)
+			return 1;
 		else
-			return groupSize; // When below 4 members, one fireteam or 1-2-3
+			return groupSize; // When below 4 members, one fireteam or 1-2
 	}
 	
-	
 	//---------------------------------------------------------------------------------------------------
-	void RebalanceFireteams()
+	protected bool RebalanceFireteams(array<ref SCR_AIGroupFireteam> existingFireteams, typename ftTypename)
 	{
-		int groupSize = m_Group.GetAgentsCount();
+		int agentsCount = 0;
+		foreach (SCR_AIGroupFireteam ft : existingFireteams)
+			agentsCount += ft.GetMemberCount();
 		
 		// Bail if group size is 0
-		if (groupSize == 0)
-		{
-			m_bRebalanceFireteams = false;
-			return;
-		}
+		if (agentsCount == 0)
+			return true;
 				
-		int maxFtSize = GetMaxFireteamSize(groupSize);
+		int maxFtSize = GetMaxFireteamSize(agentsCount);
 		float fMaxFtSize = maxFtSize;
-		int agentsCount = m_Group.GetAgentsCount();
 		float fAgentsCount = agentsCount;
 		
 		int desiredFtCount = Math.Ceil(fAgentsCount / fMaxFtSize);
 		
-		if (m_aFireteams.Count() < desiredFtCount)
+		if (existingFireteams.Count() < desiredFtCount)
 		{
 			// Create new fireteams
-			int newFtCount = desiredFtCount - m_aFireteams.Count();
+			int newFtCount = desiredFtCount - existingFireteams.Count();
 			for (int i = 0; i < newFtCount; i++)
-				CreateFireteam();
+				CreateFireteam(existingFireteams, ftTypename);
 		}
-		else if (m_aFireteams.Count() > desiredFtCount)
+		else if (existingFireteams.Count() > desiredFtCount)
 		{
 			// Delete fireteams ...
 			
-			int deleteFtCount = m_aFireteams.Count() - desiredFtCount;
+			int deleteFtCount = existingFireteams.Count() - desiredFtCount;
 			array<SCR_AIGroupFireteam> fireteamsDelete = {};
 			
 			// Find smallelst fireteams for deletion
 			for (int i = 0; i < deleteFtCount; i++)
 			{
-				SCR_AIGroupFireteam smallestFt = FindSmallestFireteam(fireteamsDelete);
+				SCR_AIGroupFireteam smallestFt = FindSmallestFireteam(existingFireteams, ftTypename, fireteamsDelete);
 				fireteamsDelete.Insert(smallestFt);
 			}
 			
 			// Move members from those selected fireteams, and delete them
 			foreach (SCR_AIGroupFireteam fireteamDelete : fireteamsDelete)
 			{
-				SCR_AIGroupFireteam destinationFt = FindSmallestFireteam(fireteamsDelete);
+				SCR_AIGroupFireteam destinationFt = FindSmallestFireteam(existingFireteams, ftTypename, fireteamsDelete);
 				destinationFt.MoveMembersFrom(fireteamDelete, fireteamDelete.GetMemberCount());
-				RemoveFireteam(fireteamDelete);
+				RemoveFireteam(existingFireteams, fireteamDelete);
 			}
 		}
 		
 		array<SCR_AIGroupFireteam> fireteamsTooBig = {};
 		array<SCR_AIGroupFireteam> fireteamsTooSmall = {};
-		CountUnbalancedFireteams(fireteamsTooBig, fireteamsTooSmall);
+		CountUnbalancedFireteams(existingFireteams, maxFtSize, fireteamsTooBig, fireteamsTooSmall);
 		
 		//array<SCR_AIGroupFireteam> fireteamsExclude = {};
 		bool failed = false;
@@ -284,7 +471,7 @@ class SCR_AIGroupFireteamManager : Managed
 				int nExcessMembers = srcFt.GetMemberCount() - maxFtSize;
 				for (int i = 0; i < nExcessMembers; i++)
 				{
-					SCR_AIGroupFireteam dstFt = FindSmallestFireteam(fireteamsTooBig);
+					SCR_AIGroupFireteam dstFt = FindSmallestFireteam(existingFireteams, ftTypename, fireteamsTooBig);
 					if (!dstFt)
 					{
 						// It shouldn't be possible
@@ -308,7 +495,7 @@ class SCR_AIGroupFireteamManager : Managed
 				
 				for (int i = 0; i < nLackMembers; i++)
 				{
-					SCR_AIGroupFireteam srcFt = FindBiggestFireteam(fireteamsTooSmall);
+					SCR_AIGroupFireteam srcFt = FindBiggestFireteam(existingFireteams, ftTypename, fireteamsTooSmall);
 					
 					if (!srcFt)
 					{
@@ -328,7 +515,7 @@ class SCR_AIGroupFireteamManager : Managed
 				
 			}
 			
-			CountUnbalancedFireteams(fireteamsTooBig, fireteamsTooSmall);
+			CountUnbalancedFireteams(existingFireteams, maxFtSize, fireteamsTooBig, fireteamsTooSmall);
 			nIterations++;
 		}
 		
@@ -337,14 +524,13 @@ class SCR_AIGroupFireteamManager : Managed
 			Print(string.Format("SCR_AIGroupUtilityComponent: RebalanceFireteams: max amount of iterations has been reached. %1", DiagGetFireteamsData()), LogLevel.ERROR);
 		}
 		
-		m_bRebalanceFireteams = false;
+		return true;
 	}
-	protected void CountUnbalancedFireteams(notnull array<SCR_AIGroupFireteam> fireteamsTooBig, notnull array<SCR_AIGroupFireteam> fireteamsTooSmall)
+	protected static void CountUnbalancedFireteams(notnull array<ref SCR_AIGroupFireteam> inFireteams, int maxFtSize, notnull array<SCR_AIGroupFireteam> fireteamsTooBig, notnull array<SCR_AIGroupFireteam> fireteamsTooSmall)
 	{
-		int maxFtSize = GetMaxFireteamSize(m_Group.GetAgentsCount());
 		fireteamsTooBig.Clear();
 		fireteamsTooSmall.Clear();
-		foreach (SCR_AIGroupFireteam ft : m_aFireteams)
+		foreach (SCR_AIGroupFireteam ft : inFireteams)
 		{
 			int size = ft.GetMemberCount();
 			if (size == maxFtSize) // Perfect
@@ -376,19 +562,53 @@ class SCR_AIGroupFireteamManager : Managed
 	//---------------------------------------------------------------------------------------------------
 	void DiagDrawFireteams()
 	{
+		int bgColors[8] = {
+			Color.DARK_RED,
+			Color.DARK_GREEN,
+			Color.DARK_BLUE,
+			Color.DARK_CYAN,
+			Color.DARK_MAGENTA,
+			Color.DARK_YELLOW,
+			Color.DODGER_BLUE,
+			Color.VIOLET
+		};
+		const int bgColorsCount = 8;
+		
+		/*
+			static const int DARK_BLUE = 0xff000080; // navy
+			static const int DARK_CYAN = 0xff008080; // teal
+			static const int DARK_MAGENTA = 0xff800080; // purple
+			static const int DARK_YELLOW = 0xff808000; // olive
+		};
+		*/
+		
 		array<AIAgent> members = {};
 		foreach (int fireteamId, SCR_AIGroupFireteam ft : m_aFireteams)
 		{
 			ft.GetMembers(members);
+			int bgColor = bgColors[fireteamId % bgColorsCount];
 			foreach (AIAgent agent : members)
 			{
 				IEntity e = agent.GetControlledEntity();
 				if (!e)
 					continue;
 				vector textPos = e.GetOrigin() + Vector (0, 0.5, 0);
-				string text = string.Format("FT: %1", fireteamId);
+				
+				string strFtType;
+				if (SCR_AIGroupFireteamVehicleCrew.Cast(ft))
+				{
+					strFtType = "Crew  ";
+					textPos[1] = textPos[1] + 0.25;
+				}
+				else if (SCR_AIGroupFireteamVehicleCargo.Cast(ft))
+				{
+					strFtType = "Cargo ";
+					textPos[1] = textPos[1] + 0.5;
+				}
+					
+				string text = string.Format("%1FT: %2", strFtType, fireteamId);
 				DebugTextWorldSpace.Create(GetGame().GetWorld(), text, DebugTextFlags.ONCE | DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA,
-					textPos[0], textPos[1], textPos[2], color: Color.GREEN, bgColor: Color.BLACK,
+					textPos[0], textPos[1], textPos[2], color: Color.WHITE, bgColor: bgColor,
 					size: 13.0); 
 			}
 		}

@@ -9,13 +9,13 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	[Attribute(UIColors.GetColorAttribute(UIColors.NEUTRAL_ACTIVE_STANDBY), UIWidgets.ColorPicker)]
 	protected ref Color m_ColorConnecting;
 
-	[Attribute(UIConstants.ICON_CONNECTION)]
+	[Attribute(SCR_ConnectionUICommon.ICON_CONNECTION)]
 	protected string m_sIconOnline;
 
-	[Attribute(UIConstants.ICON_SERVICES_ISSUES)]
+	[Attribute(SCR_ConnectionUICommon.ICON_SERVICES_ISSUES)]
 	protected string m_sIconOffline;
 
-	[Attribute(UIConstants.ICON_CONNECTION)]
+	[Attribute(SCR_ConnectionUICommon.ICON_CONNECTION)]
 	protected string m_sIconConnecting;
 	
 	[Attribute("0")]
@@ -115,11 +115,11 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag)
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
 	{
-		if (tag == m_sTooltipTag)
+		if (tooltip.GetTag() == m_sTooltipTag)
 		{
-			m_Tooltip = tooltipClass;
+			m_Tooltip = tooltip;
 			UpdateAuthentication();
 		}
 	}
@@ -145,6 +145,10 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 		string tooltipMessage = m_sTooltipMessageOffline;
 		Color tooltipMessageColor = m_ColorOffline;
 		
+		SCR_ScriptedWidgetTooltipContentBase tooltipContent;
+		if (m_Tooltip)
+			tooltipContent = m_Tooltip.GetContent();
+		
 		if (m_BackendApi.IsAuthInProgress())
 		{
 			color = m_ColorConnecting;
@@ -160,8 +164,8 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 			
 			m_ProfileStatusIcon.SetVisibile(m_bShowOnlineIcon);
 			
-			if (m_Tooltip)
-				tooltipMessage = m_Tooltip.GetDefaultMessage();
+			if (tooltipContent)
+				tooltipMessage = tooltipContent.GetDefaultMessage();
 			
 			tooltipMessageColor = Color.FromInt(Color.WHITE);
 		}
@@ -169,19 +173,17 @@ class SCR_AccountWidgetComponent : SCR_ScriptedWidgetComponent
 		m_ProfileStatusIcon.SetIconColor(color);
 		m_ProfileStatusIcon.SetImage(image);
 		
-		if (m_Tooltip)
+		if (tooltipContent)
 		{
-			m_Tooltip.SetMessage(tooltipMessage);
-			m_Tooltip.SetMessageColor(tooltipMessageColor);
+			tooltipContent.SetMessage(tooltipMessage);
+			tooltipContent.SetMessageColor(tooltipMessageColor);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnNews()
 	{
-		SCR_ProfileSuperMenu menu = SCR_ProfileSuperMenu.Cast(GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ProfileSuperMenu, 0, true));
-		if (menu)
-			menu.SetPage(SCR_EProfileSuperMenuTabId.NEWS);
+		GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.ProfileSuperMenu, 0, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

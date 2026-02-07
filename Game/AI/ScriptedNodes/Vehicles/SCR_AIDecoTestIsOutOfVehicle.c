@@ -1,9 +1,13 @@
 class SCR_AIDecoTestIsOutOfVehicle : DecoratorTestScripted
 {
-	CompartmentAccessComponent compAccComp;
-	
+	// this test either test group / character out of (any) vehicle or group / character out of specific vehicle given in controlled
+	// if controlled provided -> it returns TRUE if somebody is inside a different vehicle than the controlled!	
 	protected override bool TestFunction(AIAgent agent, IEntity controlled)
 	{
+		bool onlySingleVehicleTest = controlled != null;
+		ChimeraCharacter character;
+		CompartmentAccessComponent compAccComp;
+		
 		AIGroup gr = AIGroup.Cast(agent);
 		if (gr)
 		{
@@ -12,20 +16,27 @@ class SCR_AIDecoTestIsOutOfVehicle : DecoratorTestScripted
 			
 			foreach (AIAgent ag : agents)
 			{
-				ChimeraCharacter char = ChimeraCharacter.Cast(ag.GetControlledEntity());
-				if (char)
-				{
-					if (char.IsInVehicle())
-						return false;
-				}			
+				character = ChimeraCharacter.Cast(ag.GetControlledEntity());
+				compAccComp = character.GetCompartmentAccessComponent();
+				if (!character || !compAccComp)
+					continue;
+				if (character.IsInVehicle() && onlySingleVehicleTest && compAccComp.GetVehicleIn(character) == controlled)
+					return false;
+				else if (character.IsInVehicle() && !onlySingleVehicleTest)
+					return false;
 			}
 			return true;
 		}
-		if (!controlled)
+		// agent is not group, we must be provided with vehicle we check
+		character = ChimeraCharacter.Cast(agent.GetControlledEntity());
+		compAccComp = character.GetCompartmentAccessComponent();
+		if (!character || !compAccComp)
 			return false;
 		
-		if (!compAccComp)
-			compAccComp = CompartmentAccessComponent.Cast(controlled.FindComponent(CompartmentAccessComponent));
-		return !compAccComp.IsInCompartment();		
+		if (onlySingleVehicleTest && compAccComp.GetVehicleIn(character) != controlled) // inside different vehicle than tested against
+			return true;
+		else if (!onlySingleVehicleTest)
+			return character.IsInVehicle();
+		return false;
 	}
 };

@@ -33,14 +33,13 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! Get Entity catalog of specific type not part of a faction
 	//! The catalog contains all entities part of the specific type not part of a faction
 	//! \param[in] catalogType Type to get catalog of
+	//! \param[in] printNotFound True will print a warning if the given category was not found
 	//! \return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
-	SCR_EntityCatalog GetEntityCatalogOfType(EEntityCatalogType catalogType)
+	SCR_EntityCatalog GetEntityCatalogOfType(EEntityCatalogType catalogType, bool printNotFound = true)
 	{
+		//~ Init not yet called so initialize the factionless catalogs
 		if (!m_bInitDone)
-		{
-			Debug.Error2("SCR_EntityCatalogManagerComponent", "Trying to obtain catalog of type: '" + typename.EnumToString(EEntityCatalogType, catalogType) + "' (Factionless) but catalog is not yet initialized! Call your function one frame later!");
-			return null;
-		}
+			Init();
 		
 		//~ Get catalog
 		SCR_EntityCatalog entityCatalog = m_mEntityCatalogs.Get(catalogType);
@@ -49,7 +48,9 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			return entityCatalog;
 
 		//~ No data found
-		Print(string.Format("'SCR_EntityCatalogManagerComponent' trying to get entity list of type '%1' but there is no catalog with that type.", typename.EnumToString(EEntityCatalogType, catalogType)), LogLevel.WARNING);
+		if (printNotFound)
+			Print(string.Format("'SCR_EntityCatalogManagerComponent' trying to get entity list of type '%1' but there is no catalog with that type.", typename.EnumToString(EEntityCatalogType, catalogType)), LogLevel.WARNING);
+		
 		return null;
 	}
 
@@ -58,8 +59,9 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! The catalog contains all entities part of the faction of that specific type
 	//! \param[in] catalogType Type to get catalog of
 	//! \param[in] factionKey FactionKey of faction
+	//! \param[in] printNotFound True will print a warning if the given category was not found
 	//! \return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
-	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, FactionKey factionKey)
+	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, FactionKey factionKey, bool printNotFound = true)
 	{
 		if (!m_FactionManager)
 			return null;
@@ -71,7 +73,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			return null;
 		}
 
-		return GetFactionEntityCatalogOfType(catalogType, faction);
+		return GetFactionEntityCatalogOfType(catalogType, faction, printNotFound);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -79,10 +81,11 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! The catalog contains all entities part of the faction of that specific type
 	//! \param[in] catalogType Type to get catalog of
 	//! \param[in] faction Faction to find
+	//! \param[in] printNotFound True will print a warning if the given category was not found
 	//! \return Catalog. Can be null if not found. Note that Only one catalog of each type can be in the list
-	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, notnull SCR_Faction faction)
+	SCR_EntityCatalog GetFactionEntityCatalogOfType(EEntityCatalogType catalogType, notnull SCR_Faction faction, bool printNotFound = true)
 	{
-		return faction.GetFactionEntityCatalogOfType(catalogType);
+		return faction.GetFactionEntityCatalogOfType(catalogType, printNotFound);
 	}
 
 	//======================================== GET ALL CATALOGS ========================================\\
@@ -426,9 +429,10 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! \param[out] arsenalItems output array
 	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
 	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] arsenalGameModeType The Arsenal Game mode type which dictates which items are available (-1 is unrestricted)
 	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
-	//! \return bool False if no config is set and when 0 items are configured
-	bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	//! \return False if no config is set and when 0 items are configured
+	bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, SCR_EArsenalGameModeType arsenalGameModeType = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		arsenalItems.Clear();
 		
@@ -436,7 +440,7 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		if (!itemCatalog)
 			return false;
 		
-		return GetArsenalItems(arsenalItems, itemCatalog, typeFilter, modeFilter, requiresDisplayType);
+		return GetArsenalItems(arsenalItems, itemCatalog, typeFilter, modeFilter, arsenalGameModeType, requiresDisplayType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -446,9 +450,10 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] faction faction to get items from
 	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
 	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] arsenalGameModeType The Arsenal Game mode type which dictates which items are available (-1 is unrestricted)
 	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
 	//! \return bool False if no config is set and when 0 items are configured
-	bool GetFactionArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_Faction faction, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	bool GetFactionArsenalItems(out array<SCR_ArsenalItem> arsenalItems, SCR_Faction faction, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, SCR_EArsenalGameModeType arsenalGameModeType = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{		
 		arsenalItems.Clear();
 		
@@ -456,18 +461,19 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 		if (!itemCatalog)
 			return false;
 		
-		return GetArsenalItems(arsenalItems, itemCatalog, typeFilter, modeFilter, requiresDisplayType);
+		return GetArsenalItems(arsenalItems, itemCatalog, typeFilter, modeFilter, arsenalGameModeType, requiresDisplayType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Gets a filtered list of arsenal items
-	//! \param[out] arsenalItems
-	//! \param[in] itemCatalog
-	//! \param[in] typeFilter
-	//! \param[in] modeFilter
-	//! \param[in] requiresDisplayType
-	//! \return
-	protected bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, notnull SCR_EntityCatalog itemCatalog, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	//! \param[out] arsenalItems output array
+	//! \param[in] faction faction to get items from
+	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
+	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] arsenalGameModeType The Arsenal Game mode type which dictates which items are available (-1 is unrestricted)
+	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
+	//! \return bool False if no config is set and when 0 items are configured
+	protected bool GetArsenalItems(out array<SCR_ArsenalItem> arsenalItems, notnull SCR_EntityCatalog itemCatalog, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, SCR_EArsenalGameModeType arsenalGameModeType = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		array<SCR_EntityCatalogEntry> arsenalEntries = {};
 		array<SCR_BaseEntityCatalogData> arsenalDataList = {};
@@ -491,6 +497,10 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			//~ Get if has display data, ignore if it doesn't
 			if (requiresDisplayType != -1 && !arsenalItem.GetDisplayDataOfType(requiresDisplayType))
 				continue;
+
+			//~ Only get items that have the given arsenal game mode type flag. (-1 means no restrictions)
+			if (arsenalGameModeType > 0 && !SCR_Enum.HasFlag(arsenalItem.GetArsenalGameModeTypes(), arsenalGameModeType))
+				continue;
 			
 			arsenalItems.Insert(arsenalItem);
 		}
@@ -504,9 +514,10 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! \param[out] allArsenalItems output array
 	//! \param[in] typeFilter filter for Types (-1 is ignore filter)
 	//! \param[in] modeFilter filter for Modes (-1 is ignore filter)
+	//! \param[in] arsenalGameModeType The Arsenal Game mode type which dictates which items are available (-1 is unrestricted)
 	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
 	//! \return int count of items found
-	int GetAllArsenalItems(out array<SCR_ArsenalItem> allArsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, EArsenalItemDisplayType requiresDisplayType = -1)
+	int GetAllArsenalItems(out array<SCR_ArsenalItem> allArsenalItems, SCR_EArsenalItemType typeFilter = -1, SCR_EArsenalItemMode modeFilter = -1, SCR_EArsenalGameModeType arsenalGameModeType = -1, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		allArsenalItems.Clear();
 		
@@ -521,11 +532,11 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			if (!scrFaction)
 				continue;
 			
-			GetFactionArsenalItems(arsenalItems, scrFaction, typeFilter, modeFilter, requiresDisplayType);
+			GetFactionArsenalItems(arsenalItems, scrFaction, typeFilter, modeFilter, arsenalGameModeType, requiresDisplayType);
 			allArsenalItems.InsertAll(arsenalItems);
 		}
 		
-		GetArsenalItems(arsenalItems, typeFilter, modeFilter, requiresDisplayType);
+		GetArsenalItems(arsenalItems, typeFilter, modeFilter, arsenalGameModeType, requiresDisplayType);
 		allArsenalItems.InsertAll(arsenalItems);
 		
 		return allArsenalItems.Count();
@@ -536,17 +547,18 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] typeFilter Combined flags for available items for this faction (RIFLE, MAGAZINE, EQUIPMENT, RADIOBACKPACK etc.)
 	//! \param[in] modeFilter Things like AMMO and CONSUMABLE
 	//! \param[in] faction If empty will take non-faction data else will take the data from the faction
+	//! \param[in] arsenalGameModeType The Arsenal Game mode type which dictates which items are available (-1 is unrestricted)
 	//! \param[in] requiresDisplayType Requires the Arsenal data to have display data type (-1 is ignore)
 	//! \return array with availabe arsenal items of give filter types
-	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, SCR_Faction faction = null, EArsenalItemDisplayType requiresDisplayType = -1)
+	array<SCR_ArsenalItem> GetFilteredArsenalItems(SCR_EArsenalItemType typeFilter, SCR_EArsenalItemMode modeFilter, SCR_EArsenalGameModeType arsenalGameModeType, SCR_Faction faction = null, EArsenalItemDisplayType requiresDisplayType = -1)
 	{
 		array<SCR_ArsenalItem> refFilteredItems = {};
 		array<SCR_ArsenalItem> filteredItems = {};
 		
 		if (faction)
-			GetFactionArsenalItems(refFilteredItems, faction, typeFilter, modeFilter, requiresDisplayType);
+			GetFactionArsenalItems(refFilteredItems, faction, typeFilter, modeFilter, arsenalGameModeType, requiresDisplayType);
 		else 
-			GetArsenalItems(refFilteredItems, typeFilter, modeFilter, requiresDisplayType);
+			GetArsenalItems(refFilteredItems, typeFilter, modeFilter, arsenalGameModeType, requiresDisplayType);
 		
 		foreach (SCR_ArsenalItem item : refFilteredItems)
 		{
@@ -566,9 +578,9 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 	{
 		SCR_EntityCatalog foundCatalog;
 		
-		//~ Move catalogs to map for quicker processing
+		//~ Process all catalogs
 		foreach (SCR_EntityCatalog entityCatalog : entityCatalogArray)
-		{
+		{			
 			//~ Catalog not part of map so add it
 			if (!entityCatalogMap.Find(entityCatalog.GetCatalogType(), foundCatalog))
 				entityCatalogMap.Insert(entityCatalog.GetCatalogType(), entityCatalog);
@@ -576,19 +588,33 @@ class SCR_EntityCatalogManagerComponent : SCR_BaseGameModeComponent
 			else 
 				foundCatalog.MergeCatalogs(entityCatalog);
 		}
+		
+		//~ Init the entries after merge
+		foreach (SCR_EntityCatalog entityCatalog : entityCatalogArray)
+		{		
+			//~ Init the catalog
+			entityCatalog.InitCatalog();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
+		if (!m_bInitDone)
+			Init();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Init()
+	{
+		m_bInitDone = true;
+		
 		m_FactionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!m_FactionManager)
 			Debug.Error2("SCR_EntityCatalogManagerComponent", "Could not find SCR_FactionManager, this is required for many the Getter Functions!");
 
 		//~ Init the catalog
 		InitCatalogs(m_aEntityCatalogs, m_mEntityCatalogs);
-		
-		m_bInitDone = true;
 		
 		//~ Clear array as no longer needed
 		m_aEntityCatalogs = null;

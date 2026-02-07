@@ -56,8 +56,6 @@ class SCR_AIGetOverwatchMembers: AITaskScripted
 			return ENodeResult.FAIL;
 		
 		// Select moving team member, take furthest member in our fireteam
-		float distMax = 0;
-		int selectedIndexForMovement;
 		int selectedIndexForMovementPrevious = m_selectedIndexForMovement;
 		for (int i = 0; i < length; i++)
 		{

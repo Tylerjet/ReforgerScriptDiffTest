@@ -955,7 +955,7 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		//Called, if spawned entity is vehicle
 		if (m_SpawnedEntity.IsInherited(Vehicle))
 		{
-			CarControllerComponent_SA carController = CarControllerComponent_SA.Cast(m_SpawnedEntity.FindComponent(CarControllerComponent_SA));
+			CarControllerComponent carController = CarControllerComponent.Cast(m_SpawnedEntity.FindComponent(CarControllerComponent));
 			if (carController)
 				carController.SetPersistentHandBrake(true);
 			

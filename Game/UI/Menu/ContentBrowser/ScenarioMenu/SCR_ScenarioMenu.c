@@ -11,7 +11,7 @@ class SCR_ScenarioMenu : SCR_SuperMenuBase
 		super.OnMenuOpen();
 		
 		// Find nav buttons
-		m_NavBack = m_DynamicFooter.FindButton("Back");
+		m_NavBack = m_DynamicFooter.FindButton(UIConstants.BUTTON_BACK);
 		
 		if (m_NavBack)
 			m_NavBack.m_OnActivated.Insert(Close);

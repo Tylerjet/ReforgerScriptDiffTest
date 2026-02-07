@@ -9,6 +9,16 @@ enum EGameOverTypes
 	//~ Default
 	UNKNOWN = 0,
 	NEUTRAL = 1,
+	VICTORY = 2,
+	LOOSE = 3,
+	
+	//~ Generic
+	END1 = 4,
+	END2 = 5,
+	END3 = 6,
+	END4 = 7,
+	END5 = 8,
+	END6 = 9,
 	
 	//~ Faction
 	FACTION_NEUTRAL = 100,

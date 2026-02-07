@@ -9,12 +9,10 @@ enum SCR_EIconType
 	SPAWNPOINT
 };
 
-class SCR_MapUIElement : ScriptedWidgetComponent
+class SCR_MapUIElement : SCR_ScriptedWidgetComponent
 {
 	protected SCR_MapUIElementContainer m_Parent;
 	protected static SCR_MapUIElement s_SelectedElement;
-
-	protected Widget m_wRoot;
 
 	protected MapItem m_MapItem; // todo@lk: delet
 

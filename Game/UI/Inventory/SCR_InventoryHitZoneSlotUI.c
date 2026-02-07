@@ -16,8 +16,7 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		SCR_GadgetManagerComponent gadgetMgr = SCR_GadgetManagerComponent.GetGadgetManager(m_Player);
 		gadgetMgr.SetGadgetMode(item, EGadgetMode.IN_HAND);
 
-		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
-		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 		if (charCtrl.GetRightHandItem() == item || charCtrl.GetAttachedGadgetAtLeftHandSlot() == item)
 		{
 			ApplyItem(item, true, false);
@@ -38,17 +37,16 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		if (!isInHand)
 			return;
 		
-		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
 		InventoryItemComponent itemComp = InventoryItemComponent.Cast(gadget.FindComponent(InventoryItemComponent));
 
-		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(m_Player.GetCharacterController());
 		SCR_ConsumableItemComponent comp = SCR_ConsumableItemComponent.Cast(gadget.FindComponent(SCR_ConsumableItemComponent));
 		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
 		if (!effect)
 			return;
 		
-		if (effect.ActivateEffect(character, character, gadget, effect.GetAnimationParameters(gadget, character, m_pParentContainer.GetHitZoneGroup())))
-			itemComp.RequestUserLock(character, true);
+		if (effect.ActivateEffect(m_Player, m_Player, gadget, effect.GetAnimationParameters(gadget, m_Player, m_pParentContainer.GetHitZoneGroup())))
+			itemComp.RequestUserLock(m_Player, true);
 		
 		charCtrl.m_OnGadgetStateChangedInvoker.Remove(ApplyItem);
 	}

@@ -25,7 +25,7 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 		super.SetSlotVisible( bVisible );
 
 		m_wKeybindText = RichTextWidget.Cast(m_widget.FindAnyWidget("KeybindRichText"));
-		if (m_wKeybindText && !GetStorageUI().GetInventoryMenuHandler())
+		if (m_wKeybindText)
 		{
 			EInputDeviceType currentDevice = GetGame().GetInputManager().GetLastUsedInputDevice();
 			InputBinding binding = GetGame().GetInputManager().CreateUserBinding();
@@ -82,10 +82,10 @@ class SCR_InventorySlotQuickSlotUI : SCR_InventorySlotUI
 			slotSize = m_Attributes.GetQuickSlotItemSize();
 		switch ( slotSize ) 
 		{
-			case ESlotSize.SLOT_1x1:	{ slotLayout = SLOT_LAYOUT_1x1; m_iSizeX = 1; m_iSizeY = 1; } break;
-			case ESlotSize.SLOT_2x1:	{ slotLayout = SLOT_LAYOUT_2x1; m_iSizeX = 2; m_iSizeY = 1; } break;
-			case ESlotSize.SLOT_2x2:	{ slotLayout = SLOT_LAYOUT_2x2; m_iSizeX = 2; m_iSizeY = 2; } break;
-			case ESlotSize.SLOT_3x3:	{ slotLayout = SLOT_LAYOUT_3x3; m_iSizeX = 3; m_iSizeY = 3; } break;
+			case ESlotSize.SLOT_1x1:	{ m_iSizeX = 1; m_iSizeY = 1; } break;
+			case ESlotSize.SLOT_2x1:	{ m_iSizeX = 2; m_iSizeY = 1; } break;
+			case ESlotSize.SLOT_2x2:	{ m_iSizeX = 2; m_iSizeY = 2; } break;
+			case ESlotSize.SLOT_3x3:	{ m_iSizeX = 3; m_iSizeY = 3; } break;
 		}
 		return slotLayout;
 	}

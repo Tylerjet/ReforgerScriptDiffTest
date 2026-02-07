@@ -49,19 +49,19 @@ class SCR_KeybindActionDisplayComponent : SCR_ScriptedWidgetComponent
 			else
 				preset = entry.m_sPreset;
 			
-			deviceString = data.m_SettingsKeybindModule.GetGamepadDeviceString();
+			deviceString = UIConstants.DEVICE_GAMEPAD;
 
 			if (!preset.IsEmpty())
-				finalPreset = data.m_SettingsKeybindModule.GetGamepadPresetPrefix()+preset;
+				finalPreset = data.m_SettingsKeybindModule.GetGamepadPresetPrefix() + preset;
 		}
 		else if (data.m_eDevice == EInputDeviceType.KEYBOARD) // Keyboard & mouse setup
 		{
 			actionName = entry.m_sActionName;
 			preset = entry.m_sPreset;
-			deviceString = data.m_SettingsKeybindModule.GetKeyboardDeviceString();
+			deviceString = UIConstants.DEVICE_KEYBOARD;
 
 			if (!preset.IsEmpty())
-				finalPreset = data.m_SettingsKeybindModule.GetPrimaryPresetPrefix()+preset;
+				finalPreset = data.m_SettingsKeybindModule.GetPrimaryPresetPrefix() + preset;
 		}
 		
 		// Set Action text

@@ -22,7 +22,8 @@ enum EUnitState
 	WOUNDED 		= 1,
 	IN_TURRET		= 2,
 	IN_VEHICLE		= 4,
-	UNCONSCIOUS		= 8
+	PILOT			= 8,
+	UNCONSCIOUS		= 16
 }
 
 enum EUnitAIState
@@ -31,6 +32,15 @@ enum EUnitAIState
 	BUSY,
 	UNRESPONSIVE,
 }
+
+void SCR_AIOnCompartmentEntered(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move);
+typedef func SCR_AIOnCompartmentEntered;
+
+void SCR_AIOnCompartmentLeft(AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move);
+typedef func SCR_AIOnCompartmentLeft;
+
+void SCR_AIOnAgentLifeStateChanged(AIAgent agent, SCR_AIInfoComponent info, IEntity vehicle, ECharacterLifeState lifeState);
+typedef func SCR_AIOnAgentLifeStateChanged;
 
 class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 {
@@ -44,6 +54,10 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	protected SCR_AICombatComponent m_CombatComponent;
 	protected SCR_CharacterControllerComponent m_CharacterController;
 	PerceptionComponent m_Perception;
+	
+	ref ScriptInvokerBase<SCR_AIOnCompartmentEntered> m_OnCompartmentEntered = new ScriptInvokerBase<SCR_AIOnCompartmentEntered>();
+	ref ScriptInvokerBase<SCR_AIOnCompartmentLeft> m_OnCompartmentLeft = new ScriptInvokerBase<SCR_AIOnCompartmentLeft>();
+	ref ScriptInvokerBase<SCR_AIOnAgentLifeStateChanged> m_OnAgentLifeStateChanged = new ScriptInvokerBase<SCR_AIOnAgentLifeStateChanged>();
 	
 	protected SCR_CharacterBloodHitZone m_BloodHitZone;
 	protected float m_fUnconsciousBloodLevel;
@@ -66,11 +80,18 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//! \param[in] manager
 	//! \param[in] mgrID
 	//! \param[in] slotID
-	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	void OnVehicleEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
+		m_OnCompartmentEntered.Invoke(AIAgent.Cast(GetOwner()), vehicle, manager, mgrID, slotID, move);
+		
+		AddUnitState(EUnitState.IN_VEHICLE);
+		
 		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
-		if (TurretCompartmentSlot.Cast(compSlot))
+		ECompartmentType compType = compSlot.GetType();
+		if (compType == ECompartmentType.TURRET)
 			AddUnitState(EUnitState.IN_TURRET);
+		else if (compType == ECompartmentType.PILOT)
+			AddUnitState(EUnitState.PILOT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -78,16 +99,18 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//! \param[in] manager
 	//! \param[in] mgrID
 	//! \param[in] slotID
-	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	void OnVehicleLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
-		auto aiworld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
-		if (!aiworld)
-			return;
-		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
-		if (!TurretCompartmentSlot.Cast(compSlot))
-			return;
+		m_OnCompartmentLeft.Invoke(AIAgent.Cast(GetOwner()), vehicle, manager, mgrID, slotID, move);
 		
-		RemoveUnitState(EUnitState.IN_TURRET);
+		RemoveUnitState(EUnitState.IN_VEHICLE);
+		
+		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
+		ECompartmentType compType = compSlot.GetType();
+		if (compType == ECompartmentType.TURRET)
+			RemoveUnitState(EUnitState.IN_TURRET);
+		else if (compType == ECompartmentType.PILOT)
+			RemoveUnitState(EUnitState.PILOT);
 	}
 	
 
@@ -95,7 +118,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//!
 	void InitBloodLevel()
 	{
-		m_BloodHitZone = SCR_CharacterBloodHitZone.Cast(m_DamageManager.GetBloodHitZone());
+		m_BloodHitZone = m_DamageManager.GetBloodHitZone();
 		if (m_BloodHitZone)
 			m_fUnconsciousBloodLevel = m_BloodHitZone.GetMaxHealth() * m_BloodHitZone.GetDamageStateThreshold(EDamageState.STATE3);
 	}
@@ -132,8 +155,8 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		if (m_DamageManager)
 		{
 			InitBloodLevel();
-			m_DamageManager.GetOnDamageOverTimeAdded().Insert(OnDamageOverTimeAdded);
-			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
+			m_DamageManager.GetOnDamageEffectAdded().Insert(OnDamageEffectAdded);
+			m_DamageManager.GetOnDamageEffectRemoved().Insert(OnDamageEffectRemoved);
 			EvaluateWoundedState();
 		}
 	}
@@ -157,11 +180,17 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		
 		if (m_DamageManager)
 		{
-			m_DamageManager.GetOnDamageOverTimeAdded().Remove(OnDamageOverTimeAdded);
-			m_DamageManager.GetOnDamageOverTimeRemoved().Remove(OnDamageOverTimeRemoved);
+			m_DamageManager.GetOnDamageEffectAdded().Remove(OnDamageEffectAdded);
+			m_DamageManager.GetOnDamageEffectRemoved().Remove(OnDamageEffectRemoved);
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	SCR_AICombatComponent GetCombatComponent()
+	{
+		return m_CombatComponent;
+	}
+		
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] agent
@@ -349,26 +378,25 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 	//! Returns true when state has changed and we must invoke an event
 	protected void EvaluateWoundedState()
 	{
-		bool wounded = m_DamageManager.IsDamagedOverTime(EDamageType.BLEEDING);
-		if (wounded)
+		if (m_DamageManager.IsBleeding())
 			AddUnitState(EUnitState.WOUNDED);
 		else
 			RemoveUnitState(EUnitState.WOUNDED);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
+	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dType != EDamageType.BLEEDING)
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
 			return;
 		
 		EvaluateWoundedState();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDamageOverTimeRemoved(EDamageType dType, HitZone hz)
+	protected void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dType != EDamageType.BLEEDING)
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
 			return;
 		
 		EvaluateWoundedState();
@@ -382,6 +410,18 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 			RemoveUnitState(EUnitState.UNCONSCIOUS);
 		else
 			AddUnitState(EUnitState.UNCONSCIOUS);
+		
+		AIAgent agent = AIAgent.Cast(GetOwner());
+		IEntity vehicle;
+		// find which vehicle this agent is in
+		if (HasUnitState(EUnitState.IN_VEHICLE))
+		{
+			ChimeraCharacter ent = ChimeraCharacter.Cast(agent.GetControlledEntity());
+			CompartmentAccessComponent compartComp = ent.GetCompartmentAccessComponent();
+			vehicle = compartComp.GetVehicleIn(ent);
+			
+		}
+		m_OnAgentLifeStateChanged.Invoke(agent, this, vehicle, newLifeState);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -391,8 +431,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		if (!m_BloodHitZone || !m_fUnconsciousBloodLevel)
 			return -1;
 		
-		float bleedingPerSec = m_BloodHitZone.GetDamageOverTime(EDamageType.BLEEDING);
-				
+		float bleedingPerSec = m_BloodHitZone.GetTotalBleedingAmount();
 		float timeToUnconscious = -1;
 		
 		if (bleedingPerSec > 0)
@@ -400,6 +439,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		
 		return timeToUnconscious;
 	}
+	
 	
 //-------- Debugging
 

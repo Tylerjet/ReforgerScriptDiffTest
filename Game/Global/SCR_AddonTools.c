@@ -51,7 +51,7 @@ class SCR_AddonTool
 	//------------------------------------------------------------------------------------------------
 	//! Returns an array of addons where given resource is present or modified.
 	//! \param prefab Prefab path
-	//! \param ignoreCoreAddons if true then ArmaReforger and Core are ignored
+	//! \param ignoreCoreAddons if true then ArmaReforger and Core are ignored unless no other addons are found
 	//! \return array of addon ID strings
 	static array<string> GetResourceAddons(ResourceName prefab, bool ignoreCoreAddons = false)
 	{
@@ -113,6 +113,36 @@ class SCR_AddonTool
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! \param[in] ignoreCoreAddons
+	//! \return addon IDs (format "core", "ArmaReforger" etc)
+	static array<string> GetAllAddonIDs(bool ignoreCoreAddons = false)
+	{
+		array<string> addonGUIDs = {};
+		GameProject.GetLoadedAddons(addonGUIDs);
+		array<string> result = {};
+		foreach (string addonGUID : addonGUIDs)
+		{
+			result.Insert(GameProject.GetAddonID(addonGUID));
+		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] ignoreCoreAddons
+	//! \return addon IDs (format "$core:", "$ArmaReforger:" etc)
+	static array<string> GetAllAddonFileSystems(bool ignoreCoreAddons = false)
+	{
+		array<string> addonGUIDs = {};
+		GameProject.GetLoadedAddons(addonGUIDs);
+		array<string> result = {};
+		foreach (string addonGUID : addonGUIDs)
+		{
+			result.Insert(ToFileSystem(GameProject.GetAddonID(addonGUID)));
+		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Return the FileSystem prefix-stripped path
 	//! e.g from $ArmaReforger:scripts/Game/Global/SCR_AddonTools.c to scripts/Game/Global/SCR_AddonTools.c
 	//! $abc:test -> test
@@ -145,9 +175,13 @@ class SCR_AddonTool
 	//!  Convert addon name to file system format.
 	//! For instance, "ArmaReforger" will get converted to "$ArmaReforger:".
 	//! \param addon Addon ID
-	//! \return Class name
+	//! \return addon name or empty string on wrong input
 	static string ToFileSystem(string addon)
 	{
+		addon.Trim();
+		if (!addon) // !.IsEmpty()
+			return string.Empty;
+
 		return "$" + addon + ":";
 	}
 

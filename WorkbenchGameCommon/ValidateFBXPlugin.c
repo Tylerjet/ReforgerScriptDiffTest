@@ -1,4 +1,4 @@
-[WorkbenchPluginAttribute(name: "Validate FBXs", wbModules: {"ResourceManager"},resourceTypes: {"fbx"} , awesomeFontCode: 0xf0ad)]
+[WorkbenchPluginAttribute(name: "Validate FBXs", wbModules: {"ResourceManager"},resourceTypes: {"fbx"} , awesomeFontCode: 0xf0ad, description:"Validates checks on FBX on various issues that can be tedious and time-consuming to verify manually", category:"EBT Validation")]
 class ValidateFBXPlugin: WorkbenchPlugin
 {	
 	[Attribute("true", UIWidgets.CheckBox, "Report missing usage property on a colliders")]

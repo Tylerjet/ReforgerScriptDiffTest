@@ -20,6 +20,9 @@ class SCR_WidgetExportRule : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	static BaseContainer FindInWidgetSource(WidgetSource ws)
 	{
+		if (!ws)
+			return null;
+
 		BaseContainerList components = ws.GetObjectArray("components");
 
 		BaseContainer comp;

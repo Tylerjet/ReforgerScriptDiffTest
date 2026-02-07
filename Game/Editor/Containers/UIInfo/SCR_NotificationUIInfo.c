@@ -5,7 +5,7 @@ class SCR_UINotificationInfo : SCR_UIInfo
 	[Attribute("0", UIWidgets.ComboBox, "Notification Color", "", ParamEnumArray.FromEnum(ENotificationColor) )]
 	protected ENotificationColor m_cNotificationColor;
 	
-	[Attribute("0", UIWidgets.ComboBox, "Editor Position Data", "", ParamEnumArray.FromEnum(ENotificationSetPositionData) )]
+	[Attribute("0", UIWidgets.ComboBox, "Editor Position Data, Set the teleport position to the notification location either never (no teleport) once (where it happened) or Update (Follows whatever was the target of the notification)", "", ParamEnumArray.FromEnum(ENotificationSetPositionData) )]
 	protected ENotificationSetPositionData m_EditorSetPositionData;
 	
 	//------------------------------------------------------------------------------------------------

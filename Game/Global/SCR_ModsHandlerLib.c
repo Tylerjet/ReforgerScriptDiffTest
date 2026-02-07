@@ -138,14 +138,4 @@ class SCR_ModHandlerLib
 		// Does active version match required?		
 		return Revision.AreEqual(item.GetCurrentLocalRevision(), dependency.GetRevision());
 	}
-};
-
-//------------------------------------------------------------------------------------------------
-enum ERoomModStates
-{	
-	MISSING,
-	LOCAL_VERSION_MATCH,
-	LOCAL_VERSION_MISMATCH,
-	CLIENT_REPORTED,
-	BANNED
-};
+}

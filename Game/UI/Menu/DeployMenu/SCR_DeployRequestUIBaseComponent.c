@@ -170,7 +170,7 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 	protected Widget m_wLoading;
 	protected SCR_LoadingSpinner m_Loading;
 	
-	protected SCR_BrowserHoverTooltipComponent m_ControlsTooltip;
+	protected SCR_ScriptedWidgetTooltip m_ControlsTooltip;
 	
 	protected bool m_bCanBeUnlocked = true;
 	protected bool m_bShowTooltip = true;
@@ -185,7 +185,6 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 		if (m_wLoading)
 			m_Loading = SCR_LoadingSpinner.Cast(m_wLoading.FindHandler(SCR_LoadingSpinner));
 		
-		m_ControlsTooltip = SCR_BrowserHoverTooltipComponent.FindComponent(w);
 		m_wBackgroundHighlight = w.FindAnyWidget(m_sBackgroundHighlight);
 
 		if (w.GetParent())
@@ -199,17 +198,29 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 			m_wList = w.FindAnyWidget(m_sList);
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
+	}
 	
+	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
-		super.OnFocus(w, x, y);
-		
-		if (ShouldShowTooltip())
-			HandleTooltip();
-		
-		return false;
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Insert(OnTooltipShow);
+		return super.OnFocus(w, x, y);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		SCR_ScriptedWidgetTooltip.GetOnTooltipShow().Remove(OnTooltipShow);
+		return super.OnFocusLost(w, x, y);
+	}
+	
 	Widget GetList()
 	{
 		return m_wList;
@@ -243,16 +254,10 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 		m_ParentHandler = parent;
 	}
 
-	protected void HandleTooltip()
-	{
-		if (m_ControlsTooltip)
-			m_ControlsTooltip.CreateTooltip();
-	}
-
 	void HideTooltip()
 	{
 		if (m_ControlsTooltip)
-			m_ControlsTooltip.ForceDeleteTooltip();
+			m_ControlsTooltip.ForceHidden();
 	}
 
 	void Update(float dt)
@@ -285,10 +290,13 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 	void SetSelected(bool selected)
 	{
 		Color color = Color.FromInt(Color.WHITE);
+		
 		if (selected)
 			color = Color.FromInt(m_ColorSelected.PackToInt());
+		
 		if (m_wElements)
 			m_wElements.SetColor(color);
+		
 		if (m_wBackgroundHighlight)
 			m_wBackgroundHighlight.SetVisible(selected);
 	}
@@ -340,4 +348,25 @@ class SCR_DeployButtonBase : SCR_ButtonImageComponent
 	{
 		m_bShowTooltip = available;
 	}
-};
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnTooltipShow(SCR_ScriptedWidgetTooltip tooltip)
+	{
+		if (!tooltip.IsValid("Join") && !tooltip.IsValid("JoinGroup"))
+			return;
+		
+		if (!m_bShowTooltip)
+			tooltip.ForceHidden();
+		
+		m_ControlsTooltip = tooltip;
+		
+		SCR_ActionHintScriptedWidgetTooltip content = SCR_ActionHintScriptedWidgetTooltip.Cast(tooltip.GetContent());
+		if (!content)
+			return;
+		
+		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
+			content.SetAction("MenuSelectMouse");
+		else
+			content.ResetAction();
+	}
+}

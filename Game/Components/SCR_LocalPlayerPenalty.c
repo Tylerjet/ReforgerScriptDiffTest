@@ -61,7 +61,7 @@ class SCR_LocalPlayerPenalty : Managed
 		if (!factionManager)
 			return;
 		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerPlayerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerPlayerId);
 		if (!factionKiller)
 			return;
 		

@@ -106,7 +106,7 @@ class SCR_BaseTaskManager : GenericEntity
 		if (executor)
 			task = executor.GetAssignedTask();
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		
@@ -463,6 +463,9 @@ class SCR_BaseTaskManager : GenericEntity
 		Faction taskFaction;
 		foreach (SCR_BaseTask task : m_aTaskList)
 		{
+			if (!task) //--- TODO: this runs before the task is deleted, should not
+				continue;
+			
 			taskFaction = task.GetTargetFaction();
 			if (!taskFaction || taskFaction == filterFaction)
 			{
@@ -530,7 +533,7 @@ class SCR_BaseTaskManager : GenericEntity
 		if (task.NotifyUnassign())
 			task.DoNotifyUnassign(SCR_BaseTaskExecutor.GetTaskExecutorID(assignee));
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		
@@ -552,7 +555,7 @@ class SCR_BaseTaskManager : GenericEntity
 		if (task.NotifyAssignment())
 			task.DoNotifyAssignment(SCR_BaseTaskExecutor.GetTaskExecutorID(assignee));
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		

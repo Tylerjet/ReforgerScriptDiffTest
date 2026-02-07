@@ -39,7 +39,7 @@ class SCR_PrefabHelper
 		string absoluteDirPath = FilePath.StripFileName(absoluteFilePath);
 		if (!FileIO.FileExists(absoluteDirPath))
 		{
-			if (!SCR_FileIOHelper.CreateDirectory(absoluteDirPath))
+			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
 				Print("Could not create the destination directory (" + absoluteDirPath + ")", LogLevel.ERROR);
 				return string.Empty;
@@ -108,7 +108,7 @@ class SCR_PrefabHelper
 		string absoluteDirPath = FilePath.StripFileName(absoluteFilePath);
 		if (!FileIO.FileExists(absoluteDirPath))
 		{
-			if (!SCR_FileIOHelper.CreateDirectory(absoluteDirPath))
+			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
 				Print("Could not create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
 				return string.Empty;
@@ -161,7 +161,7 @@ class SCR_PrefabHelper
 
 		if (!FileIO.FileExists(absoluteDirPath))
 		{
-			if (!SCR_FileIOHelper.CreateDirectory(absoluteDirPath))
+			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
 				Print("Could not create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
 				return null;
@@ -252,7 +252,7 @@ class SCR_PrefabHelper
 		if (absoluteDirPath.EndsWith("/"))
 			absoluteDirPath = absoluteDirPath.Substring(0, absoluteDirPath.Length() - 1);
 
-		if (!SCR_FileIOHelper.CreateDirectory(absoluteDirPath))
+		if (!FileIO.MakeDirectory(absoluteDirPath))
 		{
 			Print("Could not create directory \"" + absoluteDirPath + "\"", LogLevel.ERROR);
 			return string.Empty;
@@ -533,7 +533,7 @@ class SCR_PrefabHelper
 		if (!absoluteDirPath.EndsWith("/"))
 			absoluteDirPath += "/";
 
-		if (!FileIO.FileExists(absoluteDirPath) && !SCR_FileIOHelper.CreateDirectory(absoluteDirPath))
+		if (!FileIO.FileExists(absoluteDirPath) && !FileIO.MakeDirectory(absoluteDirPath))
 		{
 			Print("Could not create the destination directory (" + absoluteDirPath + ")", LogLevel.ERROR);
 			return string.Empty;

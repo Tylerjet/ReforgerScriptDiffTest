@@ -2,7 +2,7 @@
 // ackchyually, these SVN plugins are VCS plugins (could work with e.g git)
 class SCR_SVNPluginBase : WorkbenchPlugin
 {
-	// m_sCommandLine is not part of this class because of [Attribute()] default value
+	// m_sCommandLine is not part of this parent class because of [Attribute()] default value
 
 	//------------------------------------------------------------------------------------------------
 	protected override void Run()
@@ -19,14 +19,16 @@ class SCR_SVNPluginBase : WorkbenchPlugin
 			return;
 		}
 
+		int lineNumber = scriptEditor.GetCurrentLine() + 1; // 0-based
+
 		string command = GetCommandLine();
 		command.Replace("$path", "\"" + absPath + "\"");
+		command.Replace("$line", "\"" + lineNumber + "\"");
 		Workbench.RunCmd(command);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected string GetCommandLine();
-
 }
 
 [WorkbenchPluginAttribute("SVN Log", "Show SVN log of the selected file", "Alt+Shift+L", "", { "ScriptEditor" }, "SVN", 0xF1DE)]

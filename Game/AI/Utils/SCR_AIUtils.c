@@ -1,74 +1,146 @@
-// gets a string from value given in port
-// basically workaround that we can't cast void from GetVariableIn into type of that variable
-//------------------------------------------------------------------------------------------------
-static string SCR_AIGetStringFromPort(Node node, string port)
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Helper functions regarding ports of nodes
+class SCR_AINodePortsHelpers
 {
-	const string UNASSIGNED_VARIABLE = "Unassigned";
-	if ( node.GetVariableType(true, port) == string )
+	// gets a string from value given in port
+	// basically workaround that we can't cast void from GetVariableIn into type of that variable
+	//------------------------------------------------------------------------------------------------
+	static string GetStringFromPort(Node node, string port)
 	{
-		string value;
-		if(!node.GetVariableIn(port, value))
-			value = UNASSIGNED_VARIABLE;
-		return value;		
-	}
-	else if ( node.GetVariableType(true, port) == int )
-	{
-		int value;
-		if(!node.GetVariableIn(port, value))
-			return UNASSIGNED_VARIABLE;
-		return value.ToString();
-	}
-	else if ( node.GetVariableType(true, port) == float )
-	{
-		float value;
-		if(!node.GetVariableIn(port, value))
-			return UNASSIGNED_VARIABLE;
-		return value.ToString();
-	}
-	else if ( node.GetVariableType(true, port) == bool )
-	{
-		bool value;
-		if(!node.GetVariableIn(port, value))
-			return UNASSIGNED_VARIABLE;
-		return value.ToString();
-	}
-	else if ( node.GetVariableType(true, port) == vector )
-	{
-		vector value;
-		if(!node.GetVariableIn(port, value))
-			return UNASSIGNED_VARIABLE;
-		return value.ToString();
-	}
-	else if ( node.GetVariableType(true, port).IsInherited(Managed) )
-	{
-		Managed value;
-		if(!node.GetVariableIn(port, value))
-			return UNASSIGNED_VARIABLE;
-		if (value)
+		const string UNASSIGNED_VARIABLE = "Unassigned";
+		if ( node.GetVariableType(true, port) == string )
+		{
+			string value;
+			if(!node.GetVariableIn(port, value))
+				value = UNASSIGNED_VARIABLE;
+			return value;		
+		}
+		else if ( node.GetVariableType(true, port) == int )
+		{
+			int value;
+			if(!node.GetVariableIn(port, value))
+				return UNASSIGNED_VARIABLE;
 			return value.ToString();
-		else 
-			return "NULL";
+		}
+		else if ( node.GetVariableType(true, port) == float )
+		{
+			float value;
+			if(!node.GetVariableIn(port, value))
+				return UNASSIGNED_VARIABLE;
+			return value.ToString();
+		}
+		else if ( node.GetVariableType(true, port) == bool )
+		{
+			bool value;
+			if(!node.GetVariableIn(port, value))
+				return UNASSIGNED_VARIABLE;
+			return value.ToString();
+		}
+		else if ( node.GetVariableType(true, port) == vector )
+		{
+			vector value;
+			if(!node.GetVariableIn(port, value))
+				return UNASSIGNED_VARIABLE;
+			return value.ToString();
+		}
+		else if ( node.GetVariableType(true, port).IsInherited(Managed) )
+		{
+			Managed value;
+			if(!node.GetVariableIn(port, value))
+				return UNASSIGNED_VARIABLE;
+			if (value)
+				return value.ToString();
+			else 
+				return "NULL";
+		}
+		return "";
+	};
+	
+	// merges two TStringsArray into one
+	//------------------------------------------------------------------------------------------------------------------------------------------------------------
+	static TStringArray MergeTwoArrays(TStringArray first, TStringArray second)
+	{
+		ref TStringArray merged = {};
+		merged.Copy(first);
+		foreach (string s: second)
+			merged.Insert(s);
+		return merged;
 	}
-	return "";
-};
+}
 
 // use this for generating random numbers for AI, no need to create another instance
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 static ref RandomGenerator s_AIRandomGenerator = new RandomGenerator;
 
-// use this for interpretting relevant character stance based on threat level
-//------------------------------------------------------------------------------------------------
-static ECharacterStance GetStanceFromThreat(EAIThreatState threatState)
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+// AI stance
+class SCR_AIStanceHandling
 {
-	switch (threatState)
+	// use this for interpretting relevant character stance based on threat level
+	//------------------------------------------------------------------------------------------------
+	static ECharacterStance GetStanceFromThreat(EAIThreatState threatState)
 	{
-		case EAIThreatState.THREATENED: return ECharacterStance.PRONE;
-		case EAIThreatState.ALERTED: return ECharacterStance.CROUCH;
-		case EAIThreatState.VIGILANT: return ECharacterStance.STAND;
-		case EAIThreatState.SAFE: return ECharacterStance.STAND;
-		default: return ECharacterStance.STAND;
+		switch (threatState)
+		{
+			case EAIThreatState.THREATENED: return ECharacterStance.PRONE;
+			case EAIThreatState.ALERTED: return ECharacterStance.CROUCH;
+			case EAIThreatState.VIGILANT: return ECharacterStance.STAND;
+			case EAIThreatState.SAFE: return ECharacterStance.STAND;
+			default: return ECharacterStance.STAND;
+		}
+		return ECharacterStance.STAND;
 	}
-	return ECharacterStance.STAND;
+	
+	// use this to change AI stance info and character
+	//------------------------------------------------------------------------------------------------
+	static void SetStance(SCR_AIInfoComponent infoComp, CharacterControllerComponent charContrComp, ECharacterStance stance) 
+	{
+		infoComp.SetStance(stance);		
+		charContrComp.SetStanceChange(ConvertStanceToStanceChange(stance));
+	}
+	
+	// use this to convert stance enum to int
+	//------------------------------------------------------------------------------------------------
+	static int ConvertStanceToStanceChange(ECharacterStance stance)
+	{
+		switch (stance)
+		{
+			case ECharacterStance.STAND: return ECharacterStanceChange.STANCECHANGE_TOERECTED;
+			case ECharacterStance.CROUCH: return ECharacterStanceChange.STANCECHANGE_TOCROUCH;
+			case ECharacterStance.PRONE: return ECharacterStanceChange.STANCECHANGE_TOPRONE;
+		}
+		return 0;
+	}
+}
+
+// use this to find all components in all children of an entity
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+static bool FindComponentsInAllChildren(typename typeName, IEntity parent, bool findFirst, int depth, int maxDepth, notnull inout array<Managed> outComponents)
+{
+	if (depth > maxDepth)
+		return false;
+
+	IEntity child = parent.GetChildren();
+	
+	while (child)
+	{
+		if (FindComponentsInAllChildren(typeName, child, findFirst, depth + 1, maxDepth, outComponents) && findFirst)
+			return true;
+		
+		child = child.GetSibling();
+	}
+	
+	if (parent)
+	{
+		Managed component = parent.FindComponent(typeName);
+		if (component)
+		{
+			outComponents.Insert(component);
+			return true;
+		}
+	}
+	
+	return false;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -79,11 +151,11 @@ class SCR_AICompartmentHandling
 	static ECompartmentType CompartmentClassToType(typename type)
 	{
 		if (type.IsInherited(CargoCompartmentSlot))
-			return ECompartmentType.Cargo;
+			return ECompartmentType.CARGO;
 		else if (type.IsInherited(PilotCompartmentSlot))
-			return ECompartmentType.Pilot;
+			return ECompartmentType.PILOT;
 		else if (type.IsInherited(TurretCompartmentSlot))
-			return ECompartmentType.Turret;
+			return ECompartmentType.TURRET;
 		return -1;
 	}
 	
@@ -94,6 +166,7 @@ class SCR_AICompartmentHandling
 		{
 			if (!vehicle)
 				continue;
+	
 			BaseCompartmentManagerComponent compartmentMan = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
 			if (!Vehicle.Cast(vehicle) || !compartmentMan)
 				return false;
@@ -103,7 +176,7 @@ class SCR_AICompartmentHandling
 			{
 				if (SCR_AICompartmentHandling.CompartmentClassToType(compartment.Type()) == roleInVehicle)
 				{
-					if (!compartment.GetOccupant() && compartment.IsCompartmentAccessible())
+					if (!compartment.GetOccupant() && compartment.IsCompartmentAccessible() && !compartment.IsReserved())
 					{
 						compartmentOut = compartment;
 						vehicleOut = vehicle;
@@ -128,12 +201,110 @@ class SCR_AICompartmentHandling
 		
 		return character.IsInVehicle();
 	}
+	
+	//--------------------------------------------------------------------------------------------
+	static IEntity GetAgentVehicleAndCompartment(notnull AIAgent agent, out BaseCompartmentSlot outCompartmentSlot)
+	{
+		outCompartmentSlot = null;
+		
+		IEntity controlledEntity = agent.GetControlledEntity();
+		if (!controlledEntity)
+			return null;
+		
+		CompartmentAccessComponent compartmentAccessComp = CompartmentAccessComponent.Cast(controlledEntity.FindComponent(CompartmentAccessComponent));
+		if (!compartmentAccessComp)
+			return null;
+		
+		BaseCompartmentSlot slot = compartmentAccessComp.GetCompartment();
+		
+		if (!slot)
+			return null;
+		
+		outCompartmentSlot = slot;
+		return outCompartmentSlot.GetVehicle();
+	}
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Check if vehicle can move or is not on fire
+class SCR_AIVehicleUsability
+{
+	//--------------------------------------------------------------------------------------------
+	static void TurnOnVehicleHazardLights(IEntity vehicle)
+	{
+		BaseLightManagerComponent vehicleLightManager = BaseLightManagerComponent.Cast(vehicle.FindComponent(BaseLightManagerComponent));
+		if (vehicleLightManager)
+			vehicleLightManager.SetLightsState(ELightType.Hazard, true);
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static bool VehicleCanMove(IEntity vehicle, SCR_VehicleDamageManagerComponent damageManager = null)
+	{
+		if (!vehicle)
+			return false;
+		
+		if (!damageManager)
+		{
+			damageManager = SCR_VehicleDamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(vehicle));
+			if (!damageManager)
+				return false;
+		}
+		
+		return damageManager.GetMovementDamage() < 1;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static bool VehicleIsOnFire(IEntity vehicle, SCR_DamageManagerComponent damageManager = null)
+	{
+		if(!vehicle)
+			return false;
+		
+		if (!damageManager)
+		{
+			damageManager = SCR_DamageManagerComponent.GetDamageManager(vehicle);
+			if (!damageManager)
+				return false;
+		}
+		
+		return damageManager.IsOnFire(damageManager.GetDefaultHitZone());
+	}
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Weapon Handling
 class SCR_AIWeaponHandling
 {
+	//------------------------------------------------------------------------------------------------
+	static EMuzzleType GetWeaponCurrentMuzzleType(notnull BaseWeaponComponent weapon)
+	{
+		BaseMuzzleComponent currentMuzzle = weapon.GetCurrentMuzzle();
+		if (currentMuzzle)
+			return currentMuzzle.GetMuzzleType();
+		
+		return EMuzzleType.MT_BaseMuzzle;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static EWeaponType GetWeaponType(notnull BaseWeaponComponent weapon, bool overrideWithMuzzle = false)
+	{
+		EWeaponType weaponType = weapon.GetWeaponType();
+		
+		if (!overrideWithMuzzle)
+			return weaponType;
+		
+		EMuzzleType muzzleType = SCR_AIWeaponHandling.GetWeaponCurrentMuzzleType(weapon);
+		
+		// We treat RPG muzzle as rocket launcher
+		if (muzzleType == EMuzzleType.MT_RPGMuzzle)
+			weaponType = EWeaponType.WT_ROCKETLAUNCHER;
+		
+		// We treat UGL muzzle as grenade launcher
+		if (muzzleType == EMuzzleType.MT_UGLMuzzle)
+			weaponType = EWeaponType.WT_GRENADELAUNCHER;
+		
+		return weaponType;
+	}	
+	
 	//--------------------------------------------------------------------------------------------
 	static int GetCurrentMuzzleId(BaseWeaponManagerComponent weapMgr)
 	{
@@ -170,7 +341,8 @@ class SCR_AIWeaponHandling
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	static bool IsCurrentMuzzleChambered(BaseWeaponManagerComponent weapMgr)
+	//! defvalue - value returned if chamberring of this muzzle is not possible
+	static bool IsCurrentMuzzleChambered(BaseWeaponManagerComponent weapMgr, bool defValue = false)
 	{
 		BaseWeaponComponent weaponComp = weapMgr.GetCurrentWeapon();
 		
@@ -180,6 +352,9 @@ class SCR_AIWeaponHandling
 		BaseMuzzleComponent	currentMuzzle = weaponComp.GetCurrentMuzzle();
 		if (!currentMuzzle)
 			return false;
+		
+		if (!currentMuzzle.IsChamberingPossible())
+			return defValue;
 		
 		return currentMuzzle.IsCurrentBarrelChambered();
 	}
@@ -245,6 +420,26 @@ class SCR_AIWeaponHandling
 
 class SCR_AIDamageHandling
 {
+	//---------------------------------------------------------------------------------------------------------
+	static bool IsConscious(IEntity entity)
+	{
+		if (!entity)
+			return false;
+		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
+		if (character)
+		{	
+			CharacterControllerComponent contr = character.GetCharacterController();
+			if (!contr)
+				return false;
+			return contr.GetLifeState() == ECharacterLifeState.ALIVE;
+		}
+		DamageManagerComponent damageManager = DamageManagerComponent.Cast(entity.FindComponent(DamageManagerComponent));
+		if (!damageManager)
+			return true;
+		return damageManager.GetState() != EDamageState.DESTROYED;
+	}
+	
+	//---------------------------------------------------------------------------------------------------------
 	static bool IsAlive(IEntity entity)
 	{
 		if (!entity)
@@ -270,10 +465,131 @@ class SCR_AIDamageHandling
 		if (!character)
 			return false;
 		
-		DamageManagerComponent damageManager = character.GetDamageManager();
+		SCR_CharacterDamageManagerComponent damageManager = SCR_CharacterDamageManagerComponent.Cast(character.GetDamageManager());
 		if (!damageManager)
 			return false;
 		
-		return damageManager.IsDamagedOverTime(EDamageType.BLEEDING);
+		return damageManager.IsBleeding();
+	}
+}
+
+class SCR_AISmartActionHandling
+{
+	//! Finds first smart action component with given tag on this entity, does not search hierarchy
+	static SCR_AISmartActionComponent FindSmartAction(notnull IEntity entity, string tag, bool checkAccessibility)
+	{
+		array<Managed> components = {};
+		entity.FindComponents(SCR_AISmartActionComponent, components);
+		
+		array<string> tags = {};
+		
+		foreach (Managed c : components)
+		{
+			SCR_AISmartActionComponent saComp = SCR_AISmartActionComponent.Cast(c);
+			
+			if (checkAccessibility && !saComp.IsActionAccessible())
+				continue;
+			
+			tags.Clear();
+			saComp.GetTags(tags);
+			
+			if (tags.Contains(tag))
+				return saComp;
+		}
+		
+		return null;
+	}
+}
+
+class SCR_AIMessageHandling
+{
+	//------------------------------------------------------------------------------------
+	static void SendDismountMessage(notnull AIAgent agent, notnull IEntity vehicleEntity, int soldierId, SCR_AIActivityBase relatedActivity, 
+									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	{
+		float dismountDelay = 0.9 * soldierId;
+		
+		SCR_AIBoardingParameters bParams = new SCR_AIBoardingParameters();
+		SCR_AIMessage_GetOut msg = SCR_AIMessage_GetOut.Create(vehicleEntity, bParams, relatedActivity, delay_s: dismountDelay);
+		msg.SetReceiver(agent);
+		#ifdef AI_DEBUG
+		msg.m_sSentFromBt = sendFrom;
+		#endif
+		myComms.RequestBroadcast(msg, agent);
+	}
+	
+	//------------------------------------------------------------------------------------
+	static void SendGetInDriverMessage(notnull AIAgent agent, notnull IEntity vehicleEntity, SCR_AIActivityBase relatedActivity, 
+									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	{
+		SCR_AIBoardingParameters bParams = new SCR_AIBoardingParameters();
+		int priorityLevel = SCR_AIActionBase.PRIORITY_LEVEL_NORMAL;
+		if (relatedActivity)
+			priorityLevel = relatedActivity.EvaluatePriorityLevel();
+		SCR_AIMessage_GetIn msg = SCR_AIMessage_GetIn.Create(vehicleEntity, bParams, EAICompartmentType.Pilot, false, 
+										priorityLevel: priorityLevel, null, relatedActivity: relatedActivity);	
+		
+		msg.SetReceiver(agent);
+		#ifdef AI_DEBUG
+		msg.m_sSentFromBt = sendFrom;
+		#endif
+		myComms.RequestBroadcast(msg, agent);
+	}
+	
+	//------------------------------------------------------------------------------------
+	static void SendGetInGunnerMessage(notnull AIAgent agent, notnull IEntity vehicleEntity, SCR_AIActivityBase relatedActivity, 
+									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	{
+		SCR_AIBoardingParameters bParams = new SCR_AIBoardingParameters();
+		int priorityLevel = SCR_AIActionBase.PRIORITY_LEVEL_NORMAL;
+		if (relatedActivity)
+			priorityLevel = relatedActivity.EvaluatePriorityLevel();
+		SCR_AIMessage_GetIn msg = SCR_AIMessage_GetIn.Create(vehicleEntity, bParams, EAICompartmentType.Pilot, false, 
+										priorityLevel: priorityLevel, null, relatedActivity: relatedActivity);	
+		msg.SetReceiver(agent);
+		#ifdef AI_DEBUG
+		msg.m_sSentFromBt = sendFrom;
+		#endif
+		myComms.RequestBroadcast(msg, agent);
+	}
+	
+	//------------------------------------------------------------------------------------
+	static void SendMoveDriverMessage(notnull AIAgent agent, IEntity moveToEntity, SCR_AIActivityBase relatedActivity, 
+									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	{
+		SCR_AIMessage_Move msg = SCR_AIMessage_Move.Create(moveToEntity, vector.Zero, EMovementType.SPRINT, true, relatedActivity);
+		msg.SetReceiver(agent);
+		#ifdef AI_DEBUG
+		msg.m_sSentFromBt = sendFrom;
+		#endif
+		myComms.RequestBroadcast(msg, agent);
+	}
+	
+	//------------------------------------------------------------------------------------
+	static void SendCancelMessage(notnull AIAgent agent, SCR_AIActivityBase relatedActivity, 
+									notnull AICommunicationComponent myComms, string sendFrom = string.Empty)
+	{
+		SCR_AIMessage_Cancel msg = SCR_AIMessage_Cancel.Create(relatedActivity);
+		msg.SetReceiver(agent);
+		#ifdef AI_DEBUG
+		msg.m_sSentFromBt = sendFrom;
+		#endif
+		myComms.RequestBroadcast(msg, agent);
+	}
+}
+
+class SCR_AIWorldHandling
+{
+	//! Returns true if according to ambient lv perception it's dark right now, used in vehicle lights and illum flares usage
+	static bool IsLowLightEnvironment()
+	{
+		PerceptionManager pm = GetGame().GetPerceptionManager();
+		if (!pm)
+			return false;
+		
+		float directLV, ambientLV, totalAmbientLv;
+		pm.GetAmbientLV(directLV, ambientLV, totalAmbientLv);
+		
+		return totalAmbientLv < -3.5;
 	}
 }

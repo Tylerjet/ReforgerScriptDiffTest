@@ -1,4 +1,3 @@
-//------------------------------------------------------------------------------------------------
 //! Commands config root
 [BaseContainerProps(configRoot: true)]
 class SCR_PlayerCommandsConfig : Managed
@@ -12,12 +11,11 @@ class SCR_PlayerCommandsConfig : Managed
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 //! Commanding menu config root
 [BaseContainerProps(configRoot: true)]
 class SCR_PlayerCommandingMenuConfig : Managed
 {
-	[Attribute("", UIWidgets.Object, "Root category of the commanding radial menu")]
+	[Attribute(desc: "Commanding configs and actions pairs")]
 	protected ref SCR_PlayerCommandingMenuCategoryElement m_RootCategory;
 	
 	SCR_PlayerCommandingMenuCategoryElement GetRootCategory()
@@ -26,7 +24,36 @@ class SCR_PlayerCommandingMenuConfig : Managed
 	}
 };
 
-//------------------------------------------------------------------------------------------------
+//! Commanding menus config to setup different menus to different keybinds
+[BaseContainerProps(configRoot: true)]
+class SCR_PlayerCommandingMenuActionsSetup : Managed
+{
+	[Attribute("", UIWidgets.Object, "Commanding configs and actions pairs")]
+	ref array<ref SCR_PlayerCommandingConfigActionPair> m_aActionConfigPairs;
+};
+
+[BaseContainerProps()]
+class SCR_PlayerCommandingConfigActionPair : Managed
+{
+	[Attribute("", UIWidgets.EditBox, "Name of the action in ChimeraInputCommon.conf that triggers menu with selected config" )]
+	protected string m_sActionName;
+	
+	[Attribute()]
+	protected ResourceName m_sCommandingMenuConf;
+	
+	//------------------------------------------------------------------------------------------------
+	string GetActionName()
+	{
+		return m_sActionName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetConfig()
+	{
+		return m_sCommandingMenuConf;
+	}
+}
+
 //! Commanding menu commanding element class
 [BaseContainerProps()]
 class SCR_PlayerCommandingMenuCommand : SCR_PlayerCommandingMenuBaseElement
@@ -70,7 +97,6 @@ class SCR_PlayerCommandingMenuCommand : SCR_PlayerCommandingMenuBaseElement
 	}
 };
 
-//------------------------------------------------------------------------------------------------
 //! Commanding menu base element class
 [BaseContainerProps()]
 class SCR_PlayerCommandingMenuBaseElement : Managed
@@ -78,7 +104,6 @@ class SCR_PlayerCommandingMenuBaseElement : Managed
 
 };
 
-//------------------------------------------------------------------------------------------------
 //! Commanding menu base element class
 [BaseContainerProps()]
 class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElement

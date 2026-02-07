@@ -2,14 +2,10 @@
 [BaseContainerProps()]
 class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 {
-	//Cached to remember which bodypart to remove tourniquet from
-	protected ECharacterHitZoneGroup m_eTargetHZGroup;
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
-		super.ApplyEffect(target, user, item, animParams);
-		
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
 			return;
@@ -28,6 +24,8 @@ class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 		}
 		
 		tqStorageComp.AddTourniquetToSlot(target, m_eTargetHZGroup, item);
+		
+		super.ApplyEffect(target, user, item, animParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -38,7 +36,7 @@ class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 			return false;
 		
 		SCR_CharacterDamageManagerComponent damageMgr = SCR_CharacterDamageManagerComponent.Cast(char.GetDamageManager());
-		if (!damageMgr || !damageMgr.IsDamagedOverTime(EDamageType.BLEEDING))
+		if (!damageMgr || !damageMgr.IsBleeding())
 			return false;
 		
 		return damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
@@ -111,9 +109,11 @@ class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 		if (bodyPartToBandage == EBandagingAnimationBodyParts.Invalid)
 				return null;
 		
+		bool allowMovement = bodyPartToBandage != EBandagingAnimationBodyParts.RightLeg && bodyPartToBandage != EBandagingAnimationBodyParts.LeftLeg;
+		
 		ItemUseParameters params = ItemUseParameters();
 		params.SetEntity(item);
-		params.SetAllowMovementDuringAction(false);
+		params.SetAllowMovementDuringAction(allowMovement);
 		params.SetKeepInHandAfterSuccess(false);
 		params.SetCommandID(GetApplyToSelfAnimCmnd(target));
 		params.SetCommandIntArg(1);
@@ -122,13 +122,6 @@ class SCR_ConsumableTourniquet : SCR_ConsumableEffectHealthItems
 		params.SetIntParam(bodyPartToBandage);
 
 		return params;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	ECharacterHitZoneGroup GetTargetHitZoneGroup()
-	{
-		return m_eTargetHZGroup;
 	}
 	
 	//------------------------------------------------------------------------------------------------

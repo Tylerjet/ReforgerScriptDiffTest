@@ -29,11 +29,14 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 
 	protected SCR_PlayerFactionAffiliationComponent m_PlyFactionAffilComp;
 	
-	[Attribute("MapTaskListFrame", desc: "Map task list frame widget name")]
+	[Attribute("MapTaskList", desc: "Map task list frame widget name")]
 	protected string m_sMapTaskListFrame;
 	
 	[Attribute("faction", desc: "Map task list imageset quad name")]
 	protected string m_sTaskListToolMenuIconName;
+
+	[Attribute("{7482F0B8A63C1159}UI/layouts/Menus/DeployMenu/Journal.layout", desc: "Journal layout path")]
+	protected ResourceName m_sJournalLayout;
 
 	//We'll store the bool in order to know if is it the first opening or not
 	protected bool m_bFirstOpening = true;
@@ -70,7 +73,26 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 			return;
 
 		m_wJournalFrame = m_RootWidget.FindAnyWidget(m_sRootWidgetName);
+		if (!m_wJournalFrame)
+			return;
 		
+		if (!m_wJournalFrame.GetChildren())
+		{
+			Widget journal = GetGame().GetWorkspace().CreateWidgets(m_sJournalLayout, m_wJournalFrame);
+			if (!journal)
+				return;
+		}
+
+		Widget focusBtn = m_wJournalFrame.FindAnyWidget("FocusButton");
+		if (focusBtn)
+		{
+			SCR_EventHandlerComponent focusHandler = SCR_EventHandlerComponent.Cast(focusBtn.FindHandler(SCR_EventHandlerComponent));
+			if (focusHandler)
+			{
+				focusHandler.GetOnFocus().Insert(FocusOnFirstEntry);
+			}
+		}
+
 		m_wEntryList = m_RootWidget.FindAnyWidget(m_sEntryList);
 		if (!m_wEntryList)
 			return;
@@ -142,6 +164,7 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 				SCR_UITaskManagerComponent m_UITaskManager = SCR_UITaskManagerComponent.GetInstance();
 				if (m_UITaskManager)
 					m_UITaskManager.Action_TasksClose();
+				break;
 			}
 		}
 
@@ -152,8 +175,17 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	void Disable()
+	{
+		m_ToolMenuEntry.SetActive(false);
+		m_wJournalFrame.SetVisible(false);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected void GetJournalForPlayer()
 	{
+		m_aEntries.Clear();
+
 		Widget child = m_wEntryList.GetChildren();
 		while (child)
 		{
@@ -235,6 +267,19 @@ class SCR_MapJournalUI : SCR_MapUIBaseComponent
 			journalBtn.ShowEntry(m_wEntryLayout);
 			m_wEntryLayout.SetVisible(true);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void FocusOnFirstEntry()
+	{
+		if (!m_aEntries.IsEmpty() && m_aEntries[0])
+			GetGame().GetWorkspace().SetFocusedWidget(m_aEntries[0].GetRootWidget());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsVisible()
+	{
+		return m_wJournalFrame && m_wJournalFrame.IsVisible();
 	}
 }
 

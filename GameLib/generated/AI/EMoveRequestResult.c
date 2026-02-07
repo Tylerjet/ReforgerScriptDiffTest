@@ -28,6 +28,10 @@ enum EMoveRequestResult
 	Unreachable,
 	// = 7
 	PathfindingFailure,
+	// = 8
+	WaitingOnNavlink,
+	// = 9
+	EntityCantMove,
 }
 
 /*!

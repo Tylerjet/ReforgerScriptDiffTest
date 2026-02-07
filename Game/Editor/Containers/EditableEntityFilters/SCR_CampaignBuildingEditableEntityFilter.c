@@ -172,6 +172,6 @@ class SCR_CampaignBuildingEditableEntityFilter : SCR_BaseEditableEntityFilter
 		if (!buildingComponent)
 			return null;
 		
-		return SCR_CampaignBuildingProviderComponent.Cast(buildingComponent.GetProviderComponent());
+		return buildingComponent.GetProviderComponent();
 	} 
 }

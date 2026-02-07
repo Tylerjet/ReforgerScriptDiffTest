@@ -3,7 +3,7 @@ class SCR_ResourceActor : ScriptAndConfig
 {
 	static const float RESOURCES_LOWER_LIMIT	= 0.0;
 	protected static const float UPDATE_PERIOD = 10.0 / 60.0;
-	protected static const int CODEC_GENERATOR_PACKET_BYTESIZE = 28;
+	protected static const int CODEC_GENERATOR_PACKET_BYTESIZE = 32;
 	
 	[Attribute(defvalue: string.Empty, uiwidget: UIWidgets.EditBox, desc: "Identifier for debug prints", category: "Debugging")]
 	string m_sDebugName;
@@ -275,14 +275,20 @@ class SCR_ResourceInteractor : SCR_ResourceActor
 				FactionAffiliationComponent interactorFactionComponent = m_ResourceComponent.GetFactionAffiliationComponent();
 				
 				if (!interactorFactionComponent)
-					return false;
+					return true;
 				
-				FactionAffiliationComponent containerrFactionComponent = container.GetComponent().GetFactionAffiliationComponent();
+				FactionAffiliationComponent containerFactionComponent = container.GetComponent().GetFactionAffiliationComponent();
 				
-				if (!containerrFactionComponent)
-					return false;
+				if (!containerFactionComponent)
+					return true;
+			
+				Faction interactorFaction = interactorFactionComponent.GetAffiliatedFaction();
+				Faction containerFaction = containerFactionComponent.GetAffiliatedFaction();
+			
+				if (!interactorFaction || !containerFaction)
+					return true;
 				
-				return interactorFactionComponent.GetAffiliatedFaction() == containerrFactionComponent.GetAffiliatedFaction();
+				return interactorFaction == containerFaction || interactorFaction.IsFactionFriendly(containerFaction);
 
 			case EResourceRights.ALL:
 				return true;

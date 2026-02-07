@@ -5,14 +5,59 @@ Entity Entry within the SCR_EntityCatalog. This is meant for NON-EDITABLE ENTITI
 [BaseContainerProps(), SCR_BaseContainerCustomInventoryCatalogEntry("m_sEntityPrefab", "m_aEntityDataList", "m_bEnabled")]
 class SCR_EntityCatalogInventoryItem : SCR_EntityCatalogEntryNonEditable
 {
-	//======================================== UI INFO ========================================\\
-	//--------------------------------- UI Info not supported ---------------------------------\\
-	override SCR_UIInfo GetEntityUiInfo()
+	//--------------------------------- Class Specific Init ---------------------------------\\
+	protected override void ClassSpecificInit()
 	{
-		Print("Getting UIInfo from Inventory Items is not supported from Catalog. Get it from InventoryItemComponent after spawning instead!", LogLevel.WARNING);
+		if (m_EditableEntityUiInfo != null)
+			return;
 		
-		//~ Returns emtpy UIInfo for now. Also to make sure autotest succeeds
-		return new SCR_UIInfo();
+		Resource resource = Resource.Load(GetPrefab());
+		if (!resource || !resource.IsValid())
+			return;
+		
+		IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(resource);
+		if (!entitySource)
+			return;
+		
+		UIInfo uiInfo;
+		
+		//~ Get UI info from weapon
+		IEntityComponentSource weaponEntitySource = SCR_ComponentHelper.GetWeaponComponentSource(entitySource);
+		if (weaponEntitySource)
+		{
+			uiInfo = SCR_ComponentHelper.GetWeaponComponentInfo(weaponEntitySource);
+			
+			if (uiInfo)
+			{
+				m_EditableEntityUiInfo = SCR_UIInfo.CreateInfo(uiInfo);
+				return;
+			}
+		}
+		
+		//~ Get UI info from item
+		IEntityComponentSource inventoryEntitySource = SCR_ComponentHelper.GetInventoryItemComponentSource(entitySource);
+		if (inventoryEntitySource)
+		{
+			SCR_ItemAttributeCollection inventoryEntityUiInfo = SCR_ComponentHelper.GetInventoryItemInfo(inventoryEntitySource);
+			if (inventoryEntityUiInfo)
+			{
+				uiInfo = inventoryEntityUiInfo.GetUIInfo();
+				
+				if (uiInfo)
+				{
+					m_EditableEntityUiInfo = SCR_UIInfo.CreateInfo(uiInfo);
+					return;
+				}
+			}
+		}
+	
+		//~ No UI info found so create new invalid
+		if (!m_EditableEntityUiInfo)
+		{
+			Print("Catalog Entry: '" + GetPrefab() + "' could not create UIinfo for inventory item. Non was found for weapon nor Inventory item data", LogLevel.WARNING);
+			m_EditableEntityUiInfo = new SCR_UIInfo();
+			m_EditableEntityUiInfo.CreateInfo("MISSING");
+		}
 	}
 };
 

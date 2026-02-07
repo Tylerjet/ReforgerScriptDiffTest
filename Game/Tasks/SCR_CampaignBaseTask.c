@@ -43,10 +43,15 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 			
 		m_TargetBase = targetBase;
 		m_bIsPriority = (SCR_CampaignFaction.Cast(m_TargetFaction).GetPrimaryTarget() == targetBase);
+
 		SetOrigin(m_TargetBase.GetOwner().GetOrigin());
-		CreateMapUIIcon();
-		UpdateMapInfo();
-		SetHUDIcon();
+		
+		if (RplSession.Mode() != RplMode.Dedicated)
+		{
+			CreateMapUIIcon();
+			UpdateMapInfo();
+			SetHUDIcon();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

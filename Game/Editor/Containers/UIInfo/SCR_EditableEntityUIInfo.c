@@ -22,6 +22,9 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 	[Attribute(category: "Editable Entity", params: "et", desc: "Prefab this entity extends.")]
 	protected ResourceName m_SlotPrefab;
 	
+	[Attribute("1", UIWidgets.Auto, category: "Visualization", desc: "Asset card in content browser should occupy the full available area.")]
+	protected bool m_bFullBackgroundAssetCard;
+	
 	//--- Hidden vars, used only in content browser where they're filled from component source
 	protected EEditableEntityType m_EntityType;
 	protected EEditableEntityFlag m_EntityFlags;
@@ -41,6 +44,12 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 		return Name;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	bool IsFullBackgroundAssetCard()
+	{
+		return m_bFullBackgroundAssetCard;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetImage()
 	{
@@ -145,7 +154,7 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Set asset image to given image widget.
+	//! Set asset image to given image widget and stretches if is full background flagged.
 	//! Use this function instead of retrieving the texture using GetIconPath() and setting it manually!
 	//! When the texture is an image set, manual setting would not work.
 	//! \param imageWidget Target image widget
@@ -156,9 +165,16 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 			return false;
 		
 		imageWidget.LoadImageTexture(0, m_Image);
+		
+		if (m_bFullBackgroundAssetCard)
+		{
+			OverlaySlot.SetVerticalAlign(imageWidget, LayoutVerticalAlign.Stretch);
+			OverlaySlot.SetHorizontalAlign(imageWidget, LayoutHorizontalAlign.Stretch);
+		}
+		
 		return true;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Initialise UI info from component source
 	//! \param componentSource
@@ -181,6 +197,7 @@ class SCR_EditableEntityUIInfo : SCR_UIInfo
 			m_EntityBudgetCost = editableEntitySource.m_EntityBudgetCost;
 			m_EntityChildrenBudgetCost = editableEntitySource.m_EntityChildrenBudgetCost;
 			m_SlotPrefab = editableEntitySource.m_SlotPrefab;
+			m_bFullBackgroundAssetCard = editableEntitySource.m_bFullBackgroundAssetCard;
 		}
 		
 		super.CopyFrom(source);

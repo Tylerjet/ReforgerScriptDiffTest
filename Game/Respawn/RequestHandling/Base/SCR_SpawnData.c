@@ -34,4 +34,11 @@ class SCR_SpawnData
 	{
 		return true;
 	}
+	
+	bool GetSkipPreload()
+	{
+		return false;
+	}
+	
+	void SetSkipPreload(bool skip);
 };

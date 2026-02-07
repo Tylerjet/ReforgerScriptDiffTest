@@ -14,7 +14,7 @@ class SCR_InventorySlotStorageUI : SCR_InventorySlotUI
 	{
 		super.SetSlotVisible( bVisible );
 		if ( bVisible )
-			m_wShownIcon = Widget.Cast( m_widget.FindAnyWidget( "SelectedFrame" ) );
+			m_wShownIcon = m_widget.FindAnyWidget( "SelectedFrame" );
 		else
 			m_wShownIcon = null;
 	}

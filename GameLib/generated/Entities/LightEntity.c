@@ -31,7 +31,7 @@ class LightEntity: GenericEntity
 	\param direction Direction of spot-vector (used for spotlights)
 	\return LightEntity
 	*/
-	static proto LightEntity CreateLight(LightType type, LightFlags flags, float radius, Color color, float LV, vector position, vector direction = vector.Zero);
+	static proto LightEntity CreateLight(LightType type, LightFlags flags, float radius, Color color, float LV, vector position, vector direction = vector.Forward);
 	/*!
 	Set the enabled state of the light.
 	\param state Enable state.
@@ -82,6 +82,12 @@ class LightEntity: GenericEntity
 	Sets light cone angle in degrees (useful for LightType.SPOT only)
 	*/
 	proto external void SetConeAngle(float angle);
+	/*!
+	Set light distance attenuation -> power function, default is 2 corresponding to light without
+	any other internal reflector
+	\param att attenuation
+	*/
+	proto external void SetDistanceAtt(float att);
 	/*!
 	Sets light cone angle attenuation (SPOT)
 	\param coneAngleAttenuation <0..1> value, where 0 = full angle attenuation, 1 = no angle attenuation

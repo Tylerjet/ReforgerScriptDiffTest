@@ -4,7 +4,7 @@
 [BaseContainerProps(), SCR_BaseManualCameraComponentTitle()]
 class SCR_RotateManualCameraComponent : SCR_BaseManualCameraComponent
 {
-	[Attribute("1")]
+	[Attribute("90")]
 	private float m_fSpeed;
 	
 	private float m_fYaw;

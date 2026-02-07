@@ -1,15 +1,38 @@
 #ifdef WORKBENCH
-[WorkbenchPluginAttribute(name: "LocModifiedPlugin", wbModules: { "LocalizationEditor" })]
+[WorkbenchPluginAttribute(name: "Modified Localisation Plugin", wbModules: { "LocalizationEditor" }, awesomeFontCode: 0xF246)]
 class SCR_LocModifiedPlugin : LocalizationEditorPlugin
 {
+	[Attribute(category: "Authorship")]
+	protected string UserName;
+
+	//------------------------------------------------------------------------------------------------
+	protected string GetUserName()
+	{
+		if (UserName.IsEmpty())
+			Workbench.GetUserName(UserName);
+
+		return UserName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void Configure()
+	{
+		Workbench.ScriptDialog("Configure Modified Localisation Plugin", "", this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	[ButtonAttribute("OK")]
+	void OkButton()
+	{
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void OnChange(BaseContainer stringTableItem, string propName, string propValue)
 	{
 		LocalizationEditor editor = Workbench.GetModule(LocalizationEditor);
 		editor.ModifyProperty(stringTableItem, stringTableItem.GetVarIndex("Modified"), Workbench.GetPackedUtcTime().ToString());
 
-		string userName;
-		Workbench.GetUserName(userName);
+		string userName = GetUserName();
 
 		if (propName == "Id")
 			editor.ModifyProperty(stringTableItem, stringTableItem.GetVarIndex("Author"), userName);
@@ -22,8 +45,7 @@ class SCR_LocModifiedPlugin : LocalizationEditorPlugin
 	{
 		newItem.Set("Modified", Workbench.GetPackedUtcTime());
 
-		string userName;
-		Workbench.GetUserName(userName);
+		string userName = GetUserName();
 
 		if (oldItem)
 			newItem.Set("LastChanged", userName);
@@ -43,7 +65,7 @@ class SCR_LocExportPlugin : LocalizationEditorPlugin
 		item.Get("Hidden", hidden);
 
 		if (hidden)
-			return ""; // do not export this item
+			return string.Empty; // do not export this item
 #endif
 		if (languageCode == "en_us")
 		{
@@ -98,7 +120,7 @@ class SCR_LocLengthPlugin : LocalizationEditorPlugin
 		for (int iRow, count = rows.Count(); iRow < count; iRow++)
 		{
 			row = rows[iRow];
-			
+
 			if (!targets)
 			{
 				targets = new array<string>;
@@ -106,12 +128,10 @@ class SCR_LocLengthPlugin : LocalizationEditorPlugin
 				{
 					string colName = row.GetVarName(iCol);
 					if (colName.Contains("Target_"))
-					{
 						targets.Insert(colName);
-					}
 				}
 			}
-			
+
 			string ID;
 			row.Get("Id", ID);
 

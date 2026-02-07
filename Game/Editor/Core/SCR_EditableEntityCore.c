@@ -299,6 +299,8 @@ class SCR_EditableEntityCore : SCR_GameCoreBase
 				budget = EEditableEntityBudget.VEHICLES;
 				break;
 			case EEditableEntityType.WAYPOINT:
+				budget = EEditableEntityBudget.WAYPOINTS;
+				break;
 			case EEditableEntityType.COMMENT:
 			case EEditableEntityType.SYSTEM:
 			case EEditableEntityType.TASK:

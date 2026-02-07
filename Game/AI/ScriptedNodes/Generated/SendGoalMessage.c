@@ -2,10 +2,10 @@
 // Generated from class: SCR_AIMessage_Cancel
 class SCR_AISendGoalMessage_Cancel : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -54,10 +54,10 @@ class SCR_AISendGoalMessage_Cancel : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Attack
 class SCR_AISendGoalMessage_Attack : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -109,10 +109,10 @@ class SCR_AISendGoalMessage_Attack : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_AttackCluster
 class SCR_AISendGoalMessage_AttackCluster : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -167,10 +167,10 @@ class SCR_AISendGoalMessage_AttackCluster : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_AttackClusterDone
 class SCR_AISendGoalMessage_AttackClusterDone : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -219,10 +219,10 @@ class SCR_AISendGoalMessage_AttackClusterDone : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_KeepFormation
 class SCR_AISendGoalMessage_KeepFormation : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -271,16 +271,16 @@ class SCR_AISendGoalMessage_KeepFormation : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Move
 class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
 	EMovementType m_eMovementType;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bUseVehicles;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -343,16 +343,16 @@ class SCR_AISendGoalMessage_Move : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Follow
 class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
 	EMovementType m_eMovementType;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bUseVehicles;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -418,22 +418,22 @@ class SCR_AISendGoalMessage_Follow : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Investigate
 class SCR_AISendGoalMessage_Investigate : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fRadius;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsDangerous;
 	
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAIUnitType))]
 	EAIUnitType m_eTargetUnitType;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fDuration;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -506,16 +506,16 @@ class SCR_AISendGoalMessage_Investigate : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_SeekAndDestroy
 class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EMovementType))]
 	EMovementType m_eMovementType;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bUseVehicles;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -578,10 +578,10 @@ class SCR_AISendGoalMessage_SeekAndDestroy : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Heal
 class SCR_AISendGoalMessage_Heal : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -633,10 +633,10 @@ class SCR_AISendGoalMessage_Heal : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_ProvideAmmo
 class SCR_AISendGoalMessage_ProvideAmmo : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -691,10 +691,10 @@ class SCR_AISendGoalMessage_ProvideAmmo : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_PickupInventoryItems
 class SCR_AISendGoalMessage_PickupInventoryItems : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -749,13 +749,13 @@ class SCR_AISendGoalMessage_PickupInventoryItems : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Defend
 class SCR_AISendGoalMessage_Defend : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fDefendAngularRange;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -763,7 +763,7 @@ class SCR_AISendGoalMessage_Defend : SCR_AISendMessageGenerated
 		SCR_AISendMessageGenerated.PORT_RECEIVER,
 		"PriorityLevel",
 		"IsWaypointRelated",
-		"DefendLocation",
+		"DefendDirection",
 		"DefendAngularRange"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
@@ -783,7 +783,7 @@ class SCR_AISendGoalMessage_Defend : SCR_AISendMessageGenerated
 		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
 			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
 		
-		GetVariableIn("DefendLocation", msg.m_vDefendLocation);
+		GetVariableIn("DefendDirection", msg.m_vDefendDirection);
 		
 		if(!GetVariableIn("DefendAngularRange", msg.m_fDefendAngularRange))
 			msg.m_fDefendAngularRange = m_fDefendAngularRange;
@@ -812,10 +812,10 @@ class SCR_AISendGoalMessage_Defend : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Retreat
 class SCR_AISendGoalMessage_Retreat : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -864,10 +864,10 @@ class SCR_AISendGoalMessage_Retreat : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_HealWait
 class SCR_AISendGoalMessage_HealWait : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -919,13 +919,13 @@ class SCR_AISendGoalMessage_HealWait : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_PerformAction
 class SCR_AISendGoalMessage_PerformAction : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	string m_sSmartActionTag;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -982,13 +982,68 @@ class SCR_AISendGoalMessage_PerformAction : SCR_AISendMessageGenerated
 }
 
 //---------------------------------------------------------------------------------------
+// Generated from class: SCR_AIMessage_OpenNavlinkDoor
+class SCR_AISendGoalMessage_OpenNavlinkDoor : SCR_AISendMessageGenerated
+{
+	[Attribute("")]
+	float m_fPriorityLevel;
+	
+	[Attribute("")]
+	bool m_bIsWaypointRelated;
+	
+	protected static ref TStringArray _s_aVarsIn =
+	{
+		SCR_AISendMessageGenerated.PORT_RECEIVER,
+		"PriorityLevel",
+		"IsWaypointRelated",
+		"DoorEntity"
+	};
+	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
+	
+	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
+	{
+		AIAgent receiver = GetReceiverAgent(owner);
+		SCR_AIMessage_OpenNavlinkDoor msg = new SCR_AIMessage_OpenNavlinkDoor();
+		
+		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
+		
+		msg.SetText(m_sText);
+		
+		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
+			msg.m_fPriorityLevel = m_fPriorityLevel;
+		
+		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
+			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
+		
+		GetVariableIn("DoorEntity", msg.m_DoorEntity);
+		
+		if (msg.m_bIsWaypointRelated)
+			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
+		
+		if (SendMessage(owner, receiver, msg))
+			return ENodeResult.SUCCESS;
+		else
+			return ENodeResult.FAIL;
+	}
+	
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
+		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		return s;
+	}
+	override bool VisibleInPalette() { return true; }
+}
+
+//---------------------------------------------------------------------------------------
 // Generated from class: SCR_AIMessage_GetIn
 class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	[Attribute("", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAICompartmentType))]
@@ -1000,6 +1055,7 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 		"PriorityLevel",
 		"IsWaypointRelated",
 		"VehicleEntity",
+		"BoardingParams",
 		"RoleInVehicle"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
@@ -1020,6 +1076,8 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
 		
 		GetVariableIn("VehicleEntity", msg.m_Vehicle);
+		
+		GetVariableIn("BoardingParams", msg.m_BoardingParams);
 		
 		if(!GetVariableIn("RoleInVehicle", msg.m_eRoleInVehicle))
 			msg.m_eRoleInVehicle = m_eRoleInVehicle;
@@ -1048,10 +1106,10 @@ class SCR_AISendGoalMessage_GetIn : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_GetOut
 class SCR_AISendGoalMessage_GetOut : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -1059,7 +1117,8 @@ class SCR_AISendGoalMessage_GetOut : SCR_AISendMessageGenerated
 		SCR_AISendMessageGenerated.PORT_RECEIVER,
 		"PriorityLevel",
 		"IsWaypointRelated",
-		"VehicleEntity"
+		"VehicleEntity",
+		"BoardingParams"
 	};
 	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
 	
@@ -1079,6 +1138,8 @@ class SCR_AISendGoalMessage_GetOut : SCR_AISendMessageGenerated
 			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
 		
 		GetVariableIn("VehicleEntity", msg.m_Vehicle);
+		
+		GetVariableIn("BoardingParams", msg.m_BoardingParams);
 		
 		if (msg.m_bIsWaypointRelated)
 			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
@@ -1103,10 +1164,10 @@ class SCR_AISendGoalMessage_GetOut : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_Flee
 class SCR_AISendGoalMessage_Flee : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -1155,10 +1216,10 @@ class SCR_AISendGoalMessage_Flee : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIMessage_ThrowGrenadeTo
 class SCR_AISendGoalMessage_ThrowGrenadeTo : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	float m_fPriorityLevel;
 	
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bIsWaypointRelated;
 	
 	protected static ref TStringArray _s_aVarsIn =
@@ -1192,6 +1253,125 @@ class SCR_AISendGoalMessage_ThrowGrenadeTo : SCR_AISendMessageGenerated
 		GetVariableIn("WeaponType", msg.e_WeaponType);
 		
 		GetVariableIn("Delay", msg.m_fDelay);
+		
+		if (msg.m_bIsWaypointRelated)
+			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
+		
+		if (SendMessage(owner, receiver, msg))
+			return ENodeResult.SUCCESS;
+		else
+			return ENodeResult.FAIL;
+	}
+	
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
+		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		return s;
+	}
+	override bool VisibleInPalette() { return true; }
+}
+
+//---------------------------------------------------------------------------------------
+// Generated from class: SCR_AIMessage_FireIllumFlareAt
+class SCR_AISendGoalMessage_FireIllumFlareAt : SCR_AISendMessageGenerated
+{
+	[Attribute("")]
+	float m_fPriorityLevel;
+	
+	[Attribute("")]
+	bool m_bIsWaypointRelated;
+	
+	protected static ref TStringArray _s_aVarsIn =
+	{
+		SCR_AISendMessageGenerated.PORT_RECEIVER,
+		"PriorityLevel",
+		"IsWaypointRelated",
+		"TargetPosition",
+		"WeaponComponent",
+		"MagazineComponent",
+		"MuzzleId"
+	};
+	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
+	
+	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
+	{
+		AIAgent receiver = GetReceiverAgent(owner);
+		SCR_AIMessage_FireIllumFlareAt msg = new SCR_AIMessage_FireIllumFlareAt();
+		
+		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
+		
+		msg.SetText(m_sText);
+		
+		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
+			msg.m_fPriorityLevel = m_fPriorityLevel;
+		
+		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
+			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
+		
+		GetVariableIn("TargetPosition", msg.m_vTargetPosition);
+		
+		if (msg.m_bIsWaypointRelated)
+			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);
+		
+		if (SendMessage(owner, receiver, msg))
+			return ENodeResult.SUCCESS;
+		else
+			return ENodeResult.FAIL;
+	}
+	
+	override string GetNodeMiddleText()
+	{
+		string s;
+		s = s + string.Format("m_fPriorityLevel: %1\n", m_fPriorityLevel);
+		s = s + string.Format("m_bIsWaypointRelated: %1\n", m_bIsWaypointRelated);
+		return s;
+	}
+	override bool VisibleInPalette() { return true; }
+}
+
+//---------------------------------------------------------------------------------------
+// Generated from class: SCR_AIMessage_Suppress
+class SCR_AISendGoalMessage_Suppress : SCR_AISendMessageGenerated
+{
+	[Attribute("")]
+	float m_fPriorityLevel;
+	
+	[Attribute("")]
+	bool m_bIsWaypointRelated;
+	
+	protected static ref TStringArray _s_aVarsIn =
+	{
+		SCR_AISendMessageGenerated.PORT_RECEIVER,
+		"PriorityLevel",
+		"IsWaypointRelated",
+		"SuppressionVolume",
+		"Duration_s",
+		"FireRate"
+	};
+	override TStringArray GetVariablesIn() { return _s_aVarsIn; }
+	
+	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
+	{
+		AIAgent receiver = GetReceiverAgent(owner);
+		SCR_AIMessage_Suppress msg = new SCR_AIMessage_Suppress();
+		
+		msg.m_RelatedGroupActivity = GetRelatedActivity(owner);
+		
+		msg.SetText(m_sText);
+		
+		if(!GetVariableIn("PriorityLevel", msg.m_fPriorityLevel))
+			msg.m_fPriorityLevel = m_fPriorityLevel;
+		
+		if(!GetVariableIn("IsWaypointRelated", msg.m_bIsWaypointRelated))
+			msg.m_bIsWaypointRelated = m_bIsWaypointRelated;
+		
+		GetVariableIn("SuppressionVolume", msg.m_Volume);
+		
+		GetVariableIn("Duration_s", msg.m_fDuration_s);
+		
+		GetVariableIn("FireRate", msg.m_fFireRate);
 		
 		if (msg.m_bIsWaypointRelated)
 			msg.m_RelatedWaypoint = GetRelatedWaypoint(owner);

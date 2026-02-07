@@ -4,7 +4,6 @@
 class SCR_GearShiftInfo: SCR_BaseVehicleInfo
 {	
 	protected CarControllerComponent m_pCarController;
-	protected CarControllerComponent_SA m_pCarController_SA;
 
 	protected SCR_InfoDisplayExtended m_pParentDisplayExtended;
 	
@@ -39,18 +38,10 @@ class SCR_GearShiftInfo: SCR_BaseVehicleInfo
 	void GetGearboxModeDisplay(bool automatic, int futureGear, int currentGear)
 	{
 		int gearCount = 0;
-		if(GetGame().GetIsClientAuthority())
-		{
-			VehicleWheeledSimulation simulation = m_pCarController.GetSimulation();
-			if (simulation)
-				gearCount = simulation.GearboxGearsCount();
-		}
-		else
-		{
-			VehicleWheeledSimulation_SA simulation = m_pCarController_SA.GetSimulation();
-			if (simulation)
-				gearCount = simulation.GearboxGearsCount();
-		}
+
+		VehicleWheeledSimulation simulation = m_pCarController.GetSimulation();
+		if (simulation)
+			gearCount = simulation.GearboxGearsCount();
 	
 		if (automatic)
 		{
@@ -178,113 +169,56 @@ class SCR_GearShiftInfo: SCR_BaseVehicleInfo
 		if (!m_wRoot)
 			return;
 		
-		if(GetGame().GetIsClientAuthority())
+		if (!m_pCarController)
+			return;
+			
+		EVehicleDrivingAssistanceMode drivingAssistance = CarControllerComponent.GetDrivingAssistanceMode();
+		
+		bool assistanceChanged = m_eDrivingAssistance != drivingAssistance;
+		
+		if (assistanceChanged)
 		{
-			if (!m_pCarController)
+			#ifdef DEBUG_GEARSHIFT
+			PrintFormat("Gear assistance changed from %1 -> %2", m_eDrivingAssistance, drivingAssistance);
+			#endif			
+			
+			m_eDrivingAssistance = drivingAssistance;
+			
+			bool show = drivingAssistance != EVehicleDrivingAssistanceMode.FULL;
+			
+			Show(show);
+			
+			if (m_pParentDisplayExtended)
+				m_pParentDisplayExtended.Show(show);
+			
+			if (!show)			
 				return;
-			
-			EVehicleDrivingAssistanceMode drivingAssistance = CarControllerComponent.GetDrivingAssistanceMode();
-			
-			bool assistanceChanged = m_eDrivingAssistance != drivingAssistance;
-			
-			if (assistanceChanged)
-			{
-				#ifdef DEBUG_GEARSHIFT
-				PrintFormat("Gear assistance changed from %1 -> %2", m_eDrivingAssistance, drivingAssistance);
-				#endif			
-				
-				m_eDrivingAssistance = drivingAssistance;
-				
-				bool show = drivingAssistance != EVehicleDrivingAssistanceMode.FULL;
-				
-				Show(show);
-				
-				if (m_pParentDisplayExtended)
-					m_pParentDisplayExtended.Show(show);
-				
-				if (!show)			
-					return;
-			}
-			
-			bool automatic = drivingAssistance == EVehicleDrivingAssistanceMode.PARTIAL || m_pCarController.HasAutomaticGearbox();
-			
-			bool automaticChanged = m_bAutomaticGearbox != automatic;
-			
-			if (automaticChanged)
-			{
-				#ifdef DEBUG_GEARSHIFT
-				PrintFormat("Gearbox manual vs. automatic changed! automatic: %1", automaticChanged);
-				#endif	
-				
-				m_bAutomaticGearbox = automatic;	
-			}
-			
-			int futureGear = m_pCarController.GetFutureGear();
-			int currentGear = m_pCarController.GetCurrentGear();
-					
-			// Prevent unneeded execution and UI updates, if gears didn't change
-			if (!assistanceChanged && futureGear == m_iFutureGear && currentGear == m_iCurrentGear)
-				return;
-			
-			m_iFutureGear = futureGear;
-			m_iCurrentGear = currentGear;
-			
-			GetGearboxModeDisplay(automatic, futureGear, currentGear);
 		}
-		else
+			
+		bool automatic = drivingAssistance == EVehicleDrivingAssistanceMode.PARTIAL || m_pCarController.HasAutomaticGearbox();
+
+		bool automaticChanged = m_bAutomaticGearbox != automatic;
+		
+		if (automaticChanged)
 		{
-			if (!m_pCarController_SA)
-				return;
+			#ifdef DEBUG_GEARSHIFT
+			PrintFormat("Gearbox manual vs. automatic changed! automatic: %1", automaticChanged);
+			#endif	
 			
-			EVehicleDrivingAssistanceMode drivingAssistance = CarControllerComponent_SA.GetDrivingAssistanceMode();
-			
-			bool assistanceChanged = m_eDrivingAssistance != drivingAssistance;
-			
-			if (assistanceChanged)
-			{
-				#ifdef DEBUG_GEARSHIFT
-				PrintFormat("Gear assistance changed from %1 -> %2", m_eDrivingAssistance, drivingAssistance);
-				#endif			
-				
-				m_eDrivingAssistance = drivingAssistance;
-				
-				bool show = drivingAssistance != EVehicleDrivingAssistanceMode.FULL;
-				
-				Show(show);
-				
-				if (m_pParentDisplayExtended)
-					m_pParentDisplayExtended.Show(show);
-				
-				if (!show)			
-					return;
-			}
-			
-			bool automatic = drivingAssistance == EVehicleDrivingAssistanceMode.PARTIAL || m_pCarController_SA.HasAutomaticGearbox();
-			
-			bool automaticChanged = m_bAutomaticGearbox != automatic;
-			
-			if (automaticChanged)
-			{
-				#ifdef DEBUG_GEARSHIFT
-				PrintFormat("Gearbox manual vs. automatic changed! automatic: %1", automaticChanged);
-				#endif	
-				
-				m_bAutomaticGearbox = automatic;	
-			}
-			
-			int futureGear = m_pCarController_SA.GetFutureGear();
-			int currentGear = m_pCarController_SA.GetCurrentGear();
-					
-			// Prevent unneeded execution and UI updates, if gears didn't change
-			if (!assistanceChanged && futureGear == m_iFutureGear && currentGear == m_iCurrentGear)
-				return;
-			
-			m_iFutureGear = futureGear;
-			m_iCurrentGear = currentGear;
-			
-			GetGearboxModeDisplay(automatic, futureGear, currentGear);
+			m_bAutomaticGearbox = automatic;	
 		}
 		
+		int futureGear = m_pCarController.GetFutureGear();
+		int currentGear = m_pCarController.GetCurrentGear();
+				
+		// Prevent unneeded execution and UI updates, if gears didn't change
+		if (!assistanceChanged && futureGear == m_iFutureGear && currentGear == m_iCurrentGear)
+			return;
+		
+		m_iFutureGear = futureGear;
+		m_iCurrentGear = currentGear;
+		
+		GetGearboxModeDisplay(automatic, futureGear, currentGear);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -295,16 +229,8 @@ class SCR_GearShiftInfo: SCR_BaseVehicleInfo
 			return false;
 		
 		// Should probably kill the display if there is no controller
-		if(GetGame().GetIsClientAuthority())
-		{
-			if (!m_pCarController)
-				return false;
-		}
-		else
-		{
-			if (!m_pCarController_SA)
-				return false;
-		}
+		if (!m_pCarController)
+			return false;
 		
 		// Fallback to avoid the need to fill-in always the same layout filename
 		if (m_LayoutPath == "")
@@ -341,10 +267,6 @@ class SCR_GearShiftInfo: SCR_BaseVehicleInfo
 		if (m_wRoot)
 			m_wRoot.RemoveFromHierarchy();
 		
-		if(GetGame().GetIsClientAuthority())
-			m_pCarController = CarControllerComponent.Cast(owner.FindComponent(CarControllerComponent));
-		else
-			m_pCarController_SA = CarControllerComponent_SA.Cast(owner.FindComponent(CarControllerComponent_SA));
-
+		m_pCarController = CarControllerComponent.Cast(owner.FindComponent(CarControllerComponent));
 	}
 };

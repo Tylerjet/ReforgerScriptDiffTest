@@ -13,6 +13,7 @@ class SCR_CollimatorControllerComponent : ScriptComponent
 	vector m_vEmissive;
 	vector m_vColor;
 	int m_ReticleMap;
+	float m_fAlphaMul;
 	
 	
 	void UpdateUVCoordinates(float u, float v, float uScale, float vScale)
@@ -39,6 +40,11 @@ class SCR_CollimatorControllerComponent : ScriptComponent
 		m_ReticleMap = i;
 	}
 	
+	void SetReticleBrightnessScale(float scale)
+	{
+		m_fAlphaMul = scale;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
@@ -46,5 +52,6 @@ class SCR_CollimatorControllerComponent : ScriptComponent
 		SetReticleBrightness(9);
 		SetReticleColors("0.318 0.561 0.071 1", "0.013 1 0.04 0");
 		SetReticleIndex(0);
+		SetReticleBrightnessScale(1.0);
 	}
 };

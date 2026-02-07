@@ -7,6 +7,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 {
 	GenericEntity m_OwnerEntity;
 	protected SCR_CharacterControllerComponent m_OwnerController;
+	protected FactionAffiliationComponent m_FactionComponent;
 	SCR_AIConfigComponent m_ConfigComponent;
 	SCR_AIInfoComponent m_AIInfo;
 	SCR_AICombatComponent m_CombatComponent;
@@ -216,6 +217,22 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// when agent leaves a group, all former group-induced behaviors should fail
+	void CancelAllGroupActivityBehaviors(notnull SCR_AIGroupUtilityComponent groupUtility)
+	{
+		array<ref AIActionBase> actions = {};
+		GetActions(actions);
+		foreach (AIActionBase action : actions)
+		{
+			if (!action)
+				continue;
+			SCR_AIActivityBase relatedGroupActivity = SCR_AIActivityBase.Cast(action.GetRelatedGroupActivity());
+			if (relatedGroupActivity && relatedGroupActivity.m_Utility == groupUtility)
+				action.Fail();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] action
 	void WrapBehaviorOutsideOfVehicle(SCR_AIActionBase action)
@@ -238,14 +255,14 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		IEntity vehicle = compartmentAccess.GetCompartment().GetOwner();
 		ECompartmentType compartmentType = SCR_AICompartmentHandling.CompartmentClassToType(compartmentAccess.GetCompartment().Type());
 		AddAction(new SCR_AIGetOutVehicle(this, relatedActivity, vehicle, priority: score + 100, priorityLevel: priorityLevel));
-		AddAction(new SCR_AIGetInVehicle(this, relatedActivity, vehicle, compartmentType, priorityLevel: priorityLevel));
+		AddAction(new SCR_AIGetInVehicle(this, relatedActivity, vehicle, compartmentAccess.GetCompartment(), roleInVehicle: compartmentType, priority: score, priorityLevel: priorityLevel));
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
-		AIAgent agent = AIAgent.Cast(GetOwner());
+		AIAgent agent = GetOwner();
 		if (!agent)
 			return;	
 		
@@ -259,6 +276,7 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		m_CombatComponent = SCR_AICombatComponent.Cast(m_OwnerEntity.FindComponent(SCR_AICombatComponent));
 		m_PerceptionComponent = PerceptionComponent.Cast(m_OwnerEntity.FindComponent(PerceptionComponent));
 		m_OwnerController = SCR_CharacterControllerComponent.Cast(m_OwnerEntity.FindComponent(SCR_CharacterControllerComponent));
+		m_FactionComponent = FactionAffiliationComponent.Cast(m_OwnerEntity.FindComponent(FactionAffiliationComponent));
 		m_ThreatSystem = new SCR_AIThreatSystem(this);
 		m_AIInfo.InitThreatSystem(m_ThreatSystem); // let the AIInfo know about the threat system - move along with creating threat system instance!
 		m_LookAction = new SCR_AILookAction(this, false); // LookAction is not regular behavior and is evaluated separately
@@ -266,6 +284,40 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 		m_Mailbox = SCR_MailboxComponent.Cast(owner.FindComponent(SCR_MailboxComponent));
 		m_CommsHandler = new SCR_AICommsHandler(m_OwnerEntity, agent);
 		m_CombatMoveState = new SCR_AICombatMoveState();
+		m_AIInfo.m_OnCompartmentEntered.Insert(OnCompartmentEntered);
+		m_AIInfo.m_OnCompartmentLeft.Insert(OnCompartmentLeft);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCompartmentEntered (AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		BaseCompartmentSlot slot = manager.FindCompartment(slotID, mgrID);
+		if (PilotCompartmentSlot.Cast(slot))
+		{
+			auto behavior = new SCR_AIIdleBehavior_Driver(this, null);
+			AddAction(behavior);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnCompartmentLeft (AIAgent agent, IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
+	{
+		BaseCompartmentSlot slot = manager.FindCompartment(slotID, mgrID);
+		if (PilotCompartmentSlot.Cast(slot))
+		{
+			auto behavior = FindActionOfType(SCR_AIIdleBehavior_Driver);
+			behavior.Fail();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Are we a military AI or not?
+	bool IsMilitary()
+	{
+		SCR_Faction f = SCR_Faction.Cast(m_FactionComponent.GetAffiliatedFaction());
+		if (!f)
+			return false;
+		return f.IsMilitary();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -279,5 +331,21 @@ class SCR_AIUtilityComponent : SCR_AIBaseUtilityComponent
 	vector GetOrigin()
 	{
 		return m_OwnerEntity.GetOrigin();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void LookAt(vector pos,float duration = 2)
+	{
+		m_LookAction.LookAt(pos, SCR_AILookAction.PRIO_COMMANDER, duration);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_AIUtilityComponent()
+	{
+		if (m_AIInfo)
+		{
+			m_AIInfo.m_OnCompartmentEntered.Remove(OnCompartmentEntered);
+			m_AIInfo.m_OnCompartmentLeft.Remove(OnCompartmentLeft);
+		}
 	}
 }

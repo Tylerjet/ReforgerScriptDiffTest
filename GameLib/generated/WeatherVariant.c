@@ -8,6 +8,7 @@ class WeatherVariant: ScriptAndConfig
 {
 	proto external ref WeatherWindPattern GetWindPattern();
 	proto external ref WeatherRainPattern GetRainPattern();
+	proto external ref WeatherFogPattern GetFogPattern();
 	proto external ref WeatherLightningPattern GetLightningPattern();
 
 	proto external string GetVariantName();

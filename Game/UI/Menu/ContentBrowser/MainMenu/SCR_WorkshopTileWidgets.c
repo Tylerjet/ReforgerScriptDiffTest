@@ -4,6 +4,8 @@ class SCR_WorkshopTileWidgets
 {
 	protected static const ResourceName LAYOUT = "{67B0EFBDF7EAFF27}UI/layouts/Menus/ContentBrowser/Tile/WorkshopTile.layout";
 
+	SizeLayoutWidget m_wSizeLayoutMain;
+
 	OverlayWidget m_wWarningOverlay;
 	SCR_SimpleWarningOverlayComponent m_WarningOverlayComponent;
 
@@ -21,14 +23,9 @@ class SCR_WorkshopTileWidgets
 	SCR_DynamicIconComponent m_FavouriteButtonComponent1;
 
 
-	OverlayWidget m_wBackendSource;
-	SCR_DynamicIconComponent m_BackendSourceComponent0;
-	SCR_CoreMenuHeaderComponent m_BackendSourceComponent1;
-
-
-	OverlayWidget m_wDependencies;
-	SCR_DynamicIconComponent m_DependenciesComponent0;
-	SCR_CoreMenuHeaderComponent m_DependenciesComponent1;
+	OverlayWidget m_wRating;
+	SCR_DynamicIconComponent m_RatingComponent0;
+	SCR_CoreMenuHeaderComponent m_RatingComponent1;
 
 
 	OverlayWidget m_wDependent;
@@ -36,9 +33,14 @@ class SCR_WorkshopTileWidgets
 	SCR_CoreMenuHeaderComponent m_DependentComponent1;
 
 
-	OverlayWidget m_wRating;
-	SCR_DynamicIconComponent m_RatingComponent0;
-	SCR_CoreMenuHeaderComponent m_RatingComponent1;
+	OverlayWidget m_wDependencies;
+	SCR_DynamicIconComponent m_DependenciesComponent0;
+	SCR_CoreMenuHeaderComponent m_DependenciesComponent1;
+
+
+	OverlayWidget m_wBackendSource;
+	SCR_DynamicIconComponent m_BackendSourceComponent0;
+	SCR_CoreMenuHeaderComponent m_BackendSourceComponent1;
 
 
 	FrameWidget m_wFrameName;
@@ -58,54 +60,56 @@ class SCR_WorkshopTileWidgets
 	//------------------------------------------------------------------------------------------------
 	bool Init(Widget root)
 	{
-		m_wWarningOverlay = OverlayWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.m_WarningOverlay"));
+		m_wSizeLayoutMain = SizeLayoutWidget.Cast(root.FindWidget("m_wSizeLayoutMain"));
+
+		m_wWarningOverlay = OverlayWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.m_WarningOverlay"));
 		m_WarningOverlayComponent = SCR_SimpleWarningOverlayComponent.Cast(m_wWarningOverlay.FindHandler(SCR_SimpleWarningOverlayComponent));
 
-		m_wDownloadProgressBarOverlay = OverlayWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.DownloadProgressBarSize.m_wDownloadProgressBarOverlay"));
-		m_wDownloadProgressBar = ProgressBarWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.DownloadProgressBarSize.m_wDownloadProgressBarOverlay.m_wDownloadProgressBar"));
+		m_wDownloadProgressBarOverlay = OverlayWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.DownloadProgressBarSize.m_wDownloadProgressBarOverlay"));
+		m_wDownloadProgressBar = ProgressBarWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.DownloadProgressBarSize.m_wDownloadProgressBarOverlay.m_wDownloadProgressBar"));
 
-		m_wMainActionButton = ButtonWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wMainActionButton"));
+		m_wMainActionButton = ButtonWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wMainActionButton"));
 		m_MainActionButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wMainActionButton.FindHandler(SCR_ModularButtonComponent));
 		m_MainActionButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wMainActionButton.FindHandler(SCR_DynamicIconComponent));
 
-		m_wMainActionText = TextWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wMainActionButton.MainActionSizeLayout.MainActionOverlay.MainActionHorizontalLayout.m_wMainActionText"));
+		m_wMainActionText = TextWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wMainActionButton.MainActionSizeLayout.MainActionOverlay.MainActionHorizontalLayout.m_wMainActionText"));
 
-		m_wFavouriteButton = ButtonWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wFavouriteButton"));
+		m_wFavouriteButton = ButtonWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaHeaderHorizontalLayout.m_wFavouriteButton"));
 		m_FavouriteButtonComponent0 = SCR_ModularButtonComponent.Cast(m_wFavouriteButton.FindHandler(SCR_ModularButtonComponent));
 		m_FavouriteButtonComponent1 = SCR_DynamicIconComponent.Cast(m_wFavouriteButton.FindHandler(SCR_DynamicIconComponent));
 
 
-		m_wBackendSource = OverlayWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.m_wBackendSource"));
-		m_BackendSourceComponent0 = SCR_DynamicIconComponent.Cast(m_wBackendSource.FindHandler(SCR_DynamicIconComponent));
-		m_BackendSourceComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wBackendSource.FindHandler(SCR_CoreMenuHeaderComponent));
-
-
-		m_wDependencies = OverlayWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.m_wDependencies"));
-		m_DependenciesComponent0 = SCR_DynamicIconComponent.Cast(m_wDependencies.FindHandler(SCR_DynamicIconComponent));
-		m_DependenciesComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wDependencies.FindHandler(SCR_CoreMenuHeaderComponent));
-
-
-		m_wDependent = OverlayWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.m_wDependent"));
-		m_DependentComponent0 = SCR_DynamicIconComponent.Cast(m_wDependent.FindHandler(SCR_DynamicIconComponent));
-		m_DependentComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wDependent.FindHandler(SCR_CoreMenuHeaderComponent));
-
-
-		m_wRating = OverlayWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.m_wRating"));
+		m_wRating = OverlayWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.RightFooterOverlay.RightFooter.m_wRating"));
 		m_RatingComponent0 = SCR_DynamicIconComponent.Cast(m_wRating.FindHandler(SCR_DynamicIconComponent));
 		m_RatingComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wRating.FindHandler(SCR_CoreMenuHeaderComponent));
 
 
-		m_wFrameName = FrameWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameName"));
+		m_wDependent = OverlayWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.RightFooterOverlay.RightFooter.m_wDependent"));
+		m_DependentComponent0 = SCR_DynamicIconComponent.Cast(m_wDependent.FindHandler(SCR_DynamicIconComponent));
+		m_DependentComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wDependent.FindHandler(SCR_CoreMenuHeaderComponent));
+
+
+		m_wDependencies = OverlayWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.RightFooterOverlay.RightFooter.m_wDependencies"));
+		m_DependenciesComponent0 = SCR_DynamicIconComponent.Cast(m_wDependencies.FindHandler(SCR_DynamicIconComponent));
+		m_DependenciesComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wDependencies.FindHandler(SCR_CoreMenuHeaderComponent));
+
+
+		m_wBackendSource = OverlayWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.ImageAreaSize.ImageAreaOverlay.MainAreaFooterHorizontalLayout.RightFooterOverlay.RightFooter.m_wBackendSource"));
+		m_BackendSourceComponent0 = SCR_DynamicIconComponent.Cast(m_wBackendSource.FindHandler(SCR_DynamicIconComponent));
+		m_BackendSourceComponent1 = SCR_CoreMenuHeaderComponent.Cast(m_wBackendSource.FindHandler(SCR_CoreMenuHeaderComponent));
+
+
+		m_wFrameName = FrameWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameName"));
 		m_FrameNameComponent = SCR_HorizontalScrollAnimationComponent.Cast(m_wFrameName.FindHandler(SCR_HorizontalScrollAnimationComponent));
 
-		m_wAddonName = TextWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameName.NameWrapper.m_wAddonName"));
+		m_wAddonName = TextWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameName.NameWrapper.m_wAddonName"));
 
-		m_wFrameAuthor = FrameWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameAuthor"));
+		m_wFrameAuthor = FrameWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameAuthor"));
 		m_FrameAuthorComponent = SCR_HorizontalScrollAnimationComponent.Cast(m_wFrameAuthor.FindHandler(SCR_HorizontalScrollAnimationComponent));
 
-		m_wAddonAuthor = TextWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameAuthor.AuthorWrapper.m_wAddonAuthor"));
+		m_wAddonAuthor = TextWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.NamesSize.NamesVerticalLayout.m_wFrameAuthor.AuthorWrapper.m_wAddonAuthor"));
 
-		m_wEnableAddonButton = ButtonWidget.Cast(root.FindWidget("SizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.EnableButtonOverlay.m_wEnableAddonButton"));
+		m_wEnableAddonButton = ButtonWidget.Cast(root.FindWidget("m_wSizeLayoutMain.OverlayMain.VerticalLayoutMain.NameAreaSize.NameAreaOverlay.NameAreaHorizontalLayout.EnableButtonOverlay.m_wEnableAddonButton"));
 		m_EnableAddonButtonComponent = SCR_ModularButtonComponent.Cast(m_wEnableAddonButton.FindHandler(SCR_ModularButtonComponent));
 
 

@@ -32,10 +32,18 @@ class SCR_ArsenalComponent : ScriptComponent
 	[Attribute("0", desc: "Save type of Arsenal. Only applicable if there is a save arsenal action attached to the arsenal.\nSAVING_DISABLED: Saving action is disabled.\nIN_ARSENAL_ITEMS_ONLY: Only allow saving if all the items the player has are in the arsenal as well.\nFACTION_ITEMS_ONLY: Only allow saving if all the items the player has in their inventory are of the faction of the arsenal.\nNO_RESTRICTIONS: No restriction as what the arsenal is allowed to save.", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalSaveType), category: "Settings")]
 	protected SCR_EArsenalSaveType m_eArsenalSaveType;
 	
+	[Attribute(SCR_EArsenalTypes.STATIC_ENTITIES.ToString(), desc: "What arsenal type is this arsenal. As the arsenal manager can disable an arsenal", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(SCR_EArsenalTypes), category: "Settings")]
+	protected SCR_EArsenalTypes m_eArsenalTypes;
+	
 	[Attribute("0", desc: "If false it will get the arsenals current faction and change when the faction is updated. If true it will never check the on faction and use the default faction assigned. Use this if you want the content to never change or if there is never a current faction", category: "Settings")]
 	protected bool m_bAlwaysUseDefaultFaction;
 	
-	protected bool m_bArsenalEnabled = true;
+	[Attribute("1", desc: "If false the arsenal is disabled but GM can set it enabled. Setting this to false counts as being overwritten meaning the arsenal is not enabled when the arsenal type flag is set in the manager", category: "Settings")]
+	protected bool m_bArsenalEnabled;
+	
+	//~ Has arsenal enabled been overwritten before?
+	protected bool m_bArsenalEnabledOverwritten;
+	
 	protected SCR_EArsenalItemMode m_eOnDisableArsenalModes; //~ Saves the arsenal item mode when the arsenal is disabled and the mode is set to 0
 	
 	protected bool m_bArsenalSavingDisplayedIfDisabled = true;	//!< This is auto set on init and when arsenal save type is changed. If the prefab has saving disabled than the arsenal save action will never show unless saving has been changed in runtime
@@ -52,15 +60,43 @@ class SCR_ArsenalComponent : ScriptComponent
 	protected bool m_bIsClearingInventory;
 
 	//------------------------------------------------------------------------------------------------
-	//! \return
+	//! \return The arsenal type
+	SCR_EArsenalTypes GetArsenalType()
+	{
+		return m_eArsenalTypes;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return If the arsenal type is enabled by the Arsenal Manager
+	bool IsArsenalEnabledByType()
+	{
+		return SCR_ArsenalManagerComponent.IsArsenalTypeEnabled_Static(GetArsenalType());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//~ Server only
+	protected void OnArsenalTypeEnabledChanged(SCR_EArsenalTypes typesEnabled)
+	{
+		//~ Arsenal enabled state has been overwritten so do not change it when arsenal enabled change was overwritten
+		if (m_bArsenalEnabledOverwritten)
+			return;
+		
+		if (SCR_Enum.HasFlag(typesEnabled, GetArsenalType()) && !IsArsenalEnabled())
+			SetArsenalEnabled(true, false);
+		else if (!SCR_Enum.HasFlag(typesEnabled, GetArsenalType()) && IsArsenalEnabled())
+			SetArsenalEnabled(false, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return If arsenal is enabled and the arsenal type is enabled by the Arsenal Manager
 	bool IsArsenalEnabled()
 	{
 		return m_bArsenalEnabled;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \param[in] enable
-	void SetArsenalEnabled(bool enable)
+	//! \param[in] enable Sets the arsenal enabled true or false. Both the arsenal Type needs to be enabled in the manager and the arsenal entity for arsenal items to show up
+	void SetArsenalEnabled(bool enable, bool isOverwrite = true)
 	{
 		if (m_bArsenalEnabled == enable)
 			return;
@@ -69,18 +105,28 @@ class SCR_ArsenalComponent : ScriptComponent
 		if ((gameMode && !gameMode.IsMaster()) || (!gameMode && Replication.IsClient()))
 			return;
 		
-		if (!enable)
+		SetArsenalEnabledBroadcast(enable);
+		Rpc(SetArsenalEnabledBroadcast, enable);	
+		
+		if (isOverwrite)
+			m_bArsenalEnabledOverwritten = true;
+		
+		UpdateArsenalEnabledState();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateArsenalEnabledState()
+	{
+		if (!m_bArsenalEnabled && m_eOnDisableArsenalModes == 0)
 		{
 			m_eOnDisableArsenalModes = m_eSupportedArsenalItemModes;
 			SetSupportedArsenalItemModes(0);
 		}
-		else 
+		else if (m_bArsenalEnabled && m_eOnDisableArsenalModes != 0)
 		{
 			SetSupportedArsenalItemModes(m_eOnDisableArsenalModes);
+			m_eOnDisableArsenalModes = 0;
 		}
-			
-		SetArsenalEnabledBroadcast(enable);
-		Rpc(SetArsenalEnabledBroadcast, enable);	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -304,7 +350,7 @@ class SCR_ArsenalComponent : ScriptComponent
 			return false;
 
 		//~ Get filtered list from faction (if any) or default
-		filteredArsenalItems = catalogManager.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, GetAssignedFaction(), requiresDisplayType);
+		filteredArsenalItems = catalogManager.GetFilteredArsenalItems(m_eSupportedArsenalItemTypes, m_eSupportedArsenalItemModes, SCR_ArsenalManagerComponent.GetArsenalGameModeType_Static(), GetAssignedFaction(), requiresDisplayType);
 		return !filteredArsenalItems.IsEmpty();
 	}
 
@@ -413,6 +459,12 @@ class SCR_ArsenalComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnArsenalGameModeTypeChanged(SCR_EArsenalGameModeType newArsenalGameModeType)
+	{
+		RefreshArsenal();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override protected void OnPostInit(IEntity owner)
 	{
 		if (SCR_Global.IsEditMode())
@@ -461,13 +513,35 @@ class SCR_ArsenalComponent : ScriptComponent
 		else if (!m_FactionComponent)
 			return;
 		
-		if (!m_bAlwaysUseDefaultFaction)
-		{	
-			RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
-			if (rplComponent && rplComponent.Role() == RplRole.Authority)
-			{
+		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
+		
+		if (rplComponent && rplComponent.Role() == RplRole.Authority)
+		{
+			if (!m_bAlwaysUseDefaultFaction)
 				m_FactionComponent.GetOnFactionChanged().Insert(OnFactionChanged);
+			
+			SCR_ArsenalManagerComponent arsenalManager;
+			
+			if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			{
+				arsenalManager.GetOnArsenalGameModeTypeChanged().Insert(OnArsenalGameModeTypeChanged);
+				arsenalManager.GetOnArsenalTypeEnabledChanged().Insert(OnArsenalTypeEnabledChanged);
 			}
+			
+			if (IsArsenalEnabled())
+			{
+				//~ If arsenal is enabled but the type is not on the manager, than disable it instead
+				if (!IsArsenalEnabledByType())
+					SetArsenalEnabled(false, false);
+			}
+			else 
+			{
+				//~ If arsenal is disabled on init than it is considered an overwrite
+				m_bArsenalEnabledOverwritten = true;
+			}
+
+			//~ Check if arsenal is enabled on init
+			UpdateArsenalEnabledState();
 		}
 	}
 
@@ -476,12 +550,20 @@ class SCR_ArsenalComponent : ScriptComponent
 	{
 		if (SCR_Global.IsEditMode())
 			return;
-
+		
 		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (rplComponent && rplComponent.Role() == RplRole.Authority)
 		{
 			if (!m_bAlwaysUseDefaultFaction && m_FactionComponent)
 				m_FactionComponent.GetOnFactionChanged().Remove(OnFactionChanged);
+			
+			SCR_ArsenalManagerComponent arsenalManager;
+			
+			if (SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+			{
+				arsenalManager.GetOnArsenalGameModeTypeChanged().Remove(OnArsenalGameModeTypeChanged);
+				arsenalManager.GetOnArsenalTypeEnabledChanged().Remove(OnArsenalTypeEnabledChanged);
+			}
 		}
 	}
 	
@@ -517,10 +599,11 @@ class SCR_ArsenalComponent : ScriptComponent
 //------------------------------------------------------------------------------------------------
 enum SCR_EArsenalSaveType
 {
-	SAVING_DISABLED = 0,		//!< Saving is disabled
-	IN_ARSENAL_ITEMS_ONLY = 10,	//!< Only allows arsenal saving if all the items the player has are in the arsenal
-	FACTION_ITEMS_ONLY = 20,	//!< Only allow saving if items the player has are items of the player faction
-	NO_RESTRICTIONS = 30,		//!< Always allow saving of arsenal
+	SAVING_DISABLED = 0,					//!< Saving is disabled
+	IN_ARSENAL_ITEMS_ONLY = 10,				//!< Only allows arsenal saving if all the items the player has are in the arsenal
+	FACTION_ITEMS_ONLY = 20,				//!< Only allow saving if items the player has are items of the player faction
+	FRIENDLY_AND_FACTION_ITEMS_ONLY = 21,	//!< Only allow saving if items the player has are items of the player faction or from a faction friendly to the faction
+	NO_RESTRICTIONS = 30,					//!< Always allow saving of arsenal
 }
 
 //------------------------------------------------------------------------------------------------

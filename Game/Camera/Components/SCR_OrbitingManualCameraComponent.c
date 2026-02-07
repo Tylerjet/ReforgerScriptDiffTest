@@ -8,7 +8,7 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	protected static const float INERTIA_THRESHOLD = 0.001;
 	
-	[Attribute("0.01", UIWidgets.Auto, "")]	
+	[Attribute("90", UIWidgets.Auto, "")]	
 	private float m_fSpeed;		
 	
 	[Attribute(defvalue: "0.042")]
@@ -112,7 +112,7 @@ class SCR_OrbitingManualCameraComponent : SCR_BaseManualCameraComponent
 				-GetInputManager().GetActionValue("ManualCameraRotatePitch"),
 				0
 			);
-			m_vAngleVelocity *= m_fSpeed * param.timeSlice * 100; //--- ToDo: Remove hardcoded coef after new camera is enabled
+			m_vAngleVelocity *= m_fSpeed * param.timeSlice;
 			if (m_vAngleVelocity != vector.Zero)
 			{
 				m_bIsInertia = true;

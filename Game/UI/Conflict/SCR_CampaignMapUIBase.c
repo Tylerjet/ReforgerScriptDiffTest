@@ -79,6 +79,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	protected SCR_SpawnPoint m_SpawnPoint;
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	ScriptInvoker GetOnMapIconEnter()
 	{
 		if (!m_OnMapIconEnter)
@@ -88,6 +90,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	ScriptInvoker GetOnMapIconClick()
 	{
 		if (!m_OnMapIconClick)
@@ -137,11 +141,14 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
+	//! \param[in] changeToDefault
 	void FlashBaseIcon(Faction faction = null, bool changeToDefault = false)
 	{
 		// Flash the icon only if base faction is known to player's faction
 		// Otherwise just switch to default
-		if (m_Base.IsHQRadioTrafficPossible(SCR_FactionManager.SGetLocalPlayerFaction()))
+		if (m_Base.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction())))
 		{
 			if (changeToDefault)
 				SetBaseIconFactionColor(m_Base.GetCampaignFaction());
@@ -164,7 +171,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_wBaseOverlay.SetEnabled(true);	// enable the underlying button, allowing click
 
 		SCR_UITaskManagerComponent tm = SCR_UITaskManagerComponent.GetInstance();
-		if (tm && !tm.IsTaskListOpen())
+		SCR_DeployMenuMain deployMenu = SCR_DeployMenuMain.GetDeployMenu();
+		if (tm && deployMenu && !tm.IsTaskListOpen() && deployMenu.GetAllowMapContext())
 		{
 			GetGame().GetWorkspace().SetFocusedWidget(w);
 		}
@@ -173,19 +181,28 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_OnMapIconEnter.Invoke();
 
 		super.OnMouseEnter(w, x, y);
+		
+		m_bHighlighted = true;
 
 		if (w.Type() == ButtonWidget)
 			AnimExpand();
 		
 		if (m_Base)
 		{
-			m_Base.GetMapDescriptor().OnIconHovered(this, true);
+			m_Base.GetMapDescriptor().OnIconHovered(true);
 
-		if (m_wServices && m_Base && m_Base.GetType() == SCR_ECampaignBaseType.BASE && m_Base.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction())))
+			if (m_wServices && m_Base.GetType() == SCR_ECampaignBaseType.BASE && m_Base.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction())))
 			{
 				m_wServices.SetVisible(!m_mServices.IsEmpty());
 				m_wServices.SetEnabled(!m_mServices.IsEmpty());
 			}
+		}
+		else if (m_MobileAssembly)
+		{
+			SCR_RadioCoverageMapDescriptorComponent mapDesc = SCR_RadioCoverageMapDescriptorComponent.Cast(m_MobileAssembly.GetOwner().FindComponent(SCR_RadioCoverageMapDescriptorComponent));
+			
+			if (mapDesc)
+				mapDesc.OnIconHovered(true);
 		}
 		
 		if (m_wInfoText)
@@ -195,7 +212,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		}
 		
 		if (m_MobileAssembly){
-			m_MobileAssembly.OnIconHovered(this, true);
 			m_wServices.SetVisible(true);
 			m_w_ServicesOverlay.SetVisible(false);
 			m_wRoot.SetZOrder(1);
@@ -209,23 +225,32 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
-	{
+	{	
 		super.OnMouseLeave(w, enterW, x, y);
 
 		AnimCollapse();
 		
-		if(m_wInfoText)
+		m_bHighlighted = false;
+		
+		if (m_wInfoText)
 		{
 		m_wInfoText.SetVisible(false);
 		m_wRoot.SetZOrder(0);
 		}
 		
 		if (m_Base)
-			m_Base.GetMapDescriptor().OnIconHovered(this, false);
+		{
+			m_Base.GetMapDescriptor().OnIconHovered(false);
+		}
+		else if (m_MobileAssembly)
+		{
+			SCR_RadioCoverageMapDescriptorComponent mapDesc = SCR_RadioCoverageMapDescriptorComponent.Cast(m_MobileAssembly.GetOwner().FindComponent(SCR_RadioCoverageMapDescriptorComponent));
+			
+			if (mapDesc)
+				mapDesc.OnIconHovered(false);
+		}
 
-		if (m_MobileAssembly)
-			m_MobileAssembly.OnIconHovered(this, false);
-			m_wInfoText.SetVisible(false);
+		m_wInfoText.SetVisible(false);
 
 		if (!m_bCanRespawn && m_bIsRespawnMenu)
 			return false;
@@ -237,7 +262,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			m_wLocalTask.SetVisible(true);
 
 		if (enterW)
-			m_bCanPlaySounds = ScriptedWidgetEventHandler.Cast(w.FindHandler(SCR_CampaignMapUIService)) == null;
+			m_bCanPlaySounds = w.FindHandler(SCR_CampaignMapUIService) == null;
 		else
 			m_bCanPlaySounds = true;
 
@@ -267,6 +292,9 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	//------------------------------------------------------------------------------------------------
 	override void AnimExpand()
 	{
+		if (!m_bHighlighted)
+			return;
+		
 		if (!m_bIsAnyElementHovered && m_bCanPlaySounds)
 		{
 			switch (m_eIconType)
@@ -293,19 +321,17 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			}
 		}
 
-		int paddingLeft = 0;
-		int paddingRight = 0;
-		int paddingBottom = 0;
-		int expand = -5;
-		if (m_mTasks.IsEmpty())
-			paddingRight = 0;
-		if (m_mServices.IsEmpty())
-			paddingLeft = 0;
+//		int paddingLeft = 0;
+//		int paddingRight = 0;
+//		int paddingBottom = 0;
+//		int expand = -5;
+//		if (m_mTasks.IsEmpty())
+//			paddingRight = 0;
+//		if (m_mServices.IsEmpty())
+//			paddingLeft = 0;
 
 		if (m_wServices)
-		{
 			AnimateWidget.Opacity(m_wServices, 1, ANIM_SPEED);
-		}
 
 		m_wHighlightImg.SetVisible(true);
 		if (m_wGradient)
@@ -326,6 +352,12 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] name
+	//! \param[in] text
+	//! \param[in] show
+	//! \param[in] suppliesAmount
+	//! \param[in] suppliesMax
 	void ShowServiceHint(string name, string text, bool show, int suppliesAmount = -1, int suppliesMax = -1)
 	{
 		int mx;
@@ -384,7 +416,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		m_w_ServicesOverlay = w.FindAnyWidget("ServicesSizeOverlay");
 
 		m_wBaseFrame = w.FindAnyWidget("BaseFrame");
-		m_wBaseIcon = Widget.Cast(w.FindAnyWidget("SideSymbol"));
+		m_wBaseIcon =w.FindAnyWidget("SideSymbol");
 
 		m_wBaseName = TextWidget.Cast(w.FindAnyWidget("Name"));
 		m_wCallsignName = TextWidget.Cast(w.FindAnyWidget("Callsign"));
@@ -393,7 +425,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		m_wCallsignNameDialog = TextWidget.Cast(w.FindAnyWidget("Callsign-Dialog"));
 
 
-		m_wInfoText = Widget.Cast(w.FindAnyWidget("Info"));
+		m_wInfoText = w.FindAnyWidget("Info");
 		m_wAntennaImg = w.FindAnyWidget("AntenaOff");
 
 		m_wLocalTask = ImageWidget.Cast(w.FindAnyWidget("LocalTask"));
@@ -415,12 +447,15 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] config
 	void OnMapCloseInvoker(MapConfiguration config)
 	{
 		RemoveHint();
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void RemoveHint()
 	{
 		if (m_wServiceHint)
@@ -442,7 +477,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		SCR_MapEntity.GetOnMapClose().Remove(OnMapCloseInvoker);
 
 		if (m_ResourceComponent)
-			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(SetIconInfoText);
+			m_ResourceComponent.TEMP_GetOnInteractorReplicated().Remove(UpdateIconAndText);
 		
 		m_ResourceSubscriptionHandleConsumer = null;
 	}
@@ -506,6 +541,14 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void UpdateIconAndText()
+	{
+		SetIconInfoText();
+		SetBaseImage();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//!
 	void SetIconInfoText()
 	{
 		if (!m_wInfoText)
@@ -522,6 +565,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		if (!playerFaction)
 			return;
 
+		CheckIfCanRespawn();
+
 		Faction baseFaction = m_Base.GetFaction();
 		ChimeraWorld world = GetGame().GetWorld();
 		float respawnCooldown = Math.Ceil(m_Base.GetRespawnTimestamp().DiffMilliseconds(world.GetServerTimestamp()) * 0.001);
@@ -537,7 +582,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		ImageWidget suppliesImg = ImageWidget.Cast(m_wInfoText.FindAnyWidget("SuppliesIMG"));
 
 		// Cooldown in progress, update UI timer
-		if (m_Base.GetSupplies() >= m_Base.GetBaseSpawnCost() && respawnCooldown > 0 && baseFaction && baseFaction == playerFaction)
+		if (respawnCooldown > 0 && baseFaction && baseFaction == playerFaction)
 		{
 			shownRespawnCooldown = "#AR-Campaign_MobileAssemblyCooldown";
 			SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(respawnCooldown, d, h, m, s);
@@ -602,6 +647,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
 	void InitServices()
 	{
 		Widget w = m_wServices.FindAnyWidget("ServicesSizeOverlay"); //GetGame().GetWorkspace().CreateWidgets(m_sServiceElement, m_wServices);
@@ -665,6 +711,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] id
 	void UpdateBaseIcon(int id)
 	{
 		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
@@ -741,6 +789,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] base
 	void InitBase(SCR_CampaignMilitaryBaseComponent base)
 	{
 		m_Base = base;
@@ -787,10 +837,12 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		m_ResourceInventoryPlayerComponentRplId = Replication.FindId(SCR_ResourcePlayerControllerInventoryComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ResourcePlayerControllerInventoryComponent)));
 		m_ResourceSubscriptionHandleConsumer = GetGame().GetResourceSystemSubscriptionManager().RequestSubscriptionListenerHandle(m_ResourceConsumer, m_ResourceInventoryPlayerComponentRplId);
 		
-		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(SetIconInfoText);
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateIconAndText);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] assembly
 	void InitMobile(SCR_CampaignMobileAssemblyStandaloneComponent assembly)
 	{
 		m_MobileAssembly = assembly;
@@ -828,9 +880,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	protected void OnMapClose(MapConfiguration config)
 	{
 		if (m_Base)
-			m_Base.GetMapDescriptor().OnIconHovered(this, false);
-		else if (m_MobileAssembly)
-			m_MobileAssembly.OnIconHovered(this, false);
+			m_Base.GetMapDescriptor().OnIconHovered(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -872,7 +922,33 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		if (!spawnPoint)
 			return;
 
-		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey());// && SCR_SelectSpawnPointSubMenu.GetInstance() != null); @lk: why
+		bool enoughSupplies = true;
+
+		if (m_Base && !m_Base.IsHQ())
+		{
+			if (!m_PlayerFaction)
+				return;
+
+			PlayerController pc = GetGame().GetPlayerController();
+
+			if (!pc)
+				return;
+
+			SCR_PlayerLoadoutComponent comp = SCR_PlayerLoadoutComponent.Cast(pc.FindComponent(SCR_PlayerLoadoutComponent));
+
+			if (!comp)
+				return;
+			
+			SCR_BasePlayerLoadout loadout = comp.GetLoadout();
+			
+			if (loadout)
+			{
+				float loadoutCost = SCR_ArsenalManagerComponent.GetLoadoutCalculatedSupplyCost(loadout, true, -1, m_PlayerFaction, spawnPoint);
+				enoughSupplies = (m_Base.GetSupplies() >= loadoutCost);
+			}
+		}
+
+		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && enoughSupplies);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -920,6 +996,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 	
 	//------------------------------------------------------------------------------------------------	
+	//!
 	void ChangeBaseIconSize() // Function for getting base services count and setting base size according to the value
 	{
 		protected int m_iServicesLimit = 8;	// Maximum amount of services - used as a max size for base icon resize.
@@ -971,6 +1048,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] task
 	void SetLocalTaskIcon(SCR_BaseTask task = null)
 	{
 		m_wLocalTask.SetEnabled(task != null);
@@ -1002,6 +1081,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] visible
 	void ChangeNameSize(bool visible)
 	{
 		Widget w = m_wRoot.FindAnyWidget("BaseNameFrame");
@@ -1029,28 +1110,38 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] layer
 	void ChangeNameSizeOnLayerChange(int layer)
 	{
 		ChangeNameSize(layer <= 3);
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	string GetFactionKey()
 	{
 		return m_sFactionKey;
 	}
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	Color GetFactionColor()
 	{
 		return GetColorForFaction(m_sFactionKey);
 	}
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return
 	SCR_CampaignMilitaryBaseComponent GetBase()
 	{
 		return m_Base;
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] faction
 	void SetBaseIconFactionColor(Faction faction)
 	{
 		if (!m_wBaseIcon)
@@ -1164,7 +1255,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				spawnPoint = m_Base.GetSpawnPoint();
 				if (strs.Get(0) != "Unknown")
 				{
-					if (!m_Base.IsHQRadioTrafficPossible(m_Base.GetFaction(), SCR_ECampaignHQRadioComms.BOTH_WAYS) && m_Base.GetFaction() == m_PlayerFaction)
+					if (!m_Base.IsHQRadioTrafficPossible(m_Base.GetCampaignFaction(), SCR_ERadioCoverageStatus.BOTH_WAYS) && m_Base.GetFaction() == m_PlayerFaction)
 					{
 						m_wAntennaImg.SetVisible(true);
 					}
@@ -1191,7 +1282,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			return;
 
 		m_SpawnPoint = spawnPoint;
-		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey());// && SCR_SelectSpawnPointSubMenu.GetInstance() != null); note@lk: why
+		CheckIfCanRespawn();
 
 		if (m_bCanRespawn)
 		{
@@ -1211,6 +1302,9 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		return RplId.Invalid();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \param[in] visible
 	//------------------------------------------------------------------------------	
 	void SetAntennaIconVisible(bool visible)
 	{
@@ -1218,6 +1312,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
+	// destructor
 	void ~SCR_CampaignMapUIBase()
 	{
 		s_SelectedElement = null;

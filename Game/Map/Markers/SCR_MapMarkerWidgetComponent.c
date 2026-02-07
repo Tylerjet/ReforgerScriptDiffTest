@@ -2,7 +2,6 @@
 //! Attached to root of marker base layout
 class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 {
-	protected const ResourceName IMAGE_SET = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
 	protected const string PRIVATE_QUAD = "private";
 	protected const string PUBLIC_QUAD = "public";
 	
@@ -178,9 +177,9 @@ class SCR_MapMarkerWidgetComponent : SCR_ScriptedWidgetComponent
 		m_bIsOwnerMode = true;
 		
 		if (isPublic)
-			m_wMarkerModeIcon.LoadImageFromSet(0, IMAGE_SET, PUBLIC_QUAD);
+			m_wMarkerModeIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, PUBLIC_QUAD);
 		else 
-			m_wMarkerModeIcon.LoadImageFromSet(0, IMAGE_SET, PRIVATE_QUAD);
+			m_wMarkerModeIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, PRIVATE_QUAD);
 	}
 	
 	//------------------------------------------------------------------------------------------------

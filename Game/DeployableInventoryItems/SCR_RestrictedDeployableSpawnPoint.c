@@ -13,9 +13,13 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 	[RplProp()]
 	protected int m_iGroupID = -1;
 	
+	protected SCR_ESpawnPointBudgetType m_eRespawnBudgetType;
+	
 	protected int m_iMaxRespawns;
 	
 	protected int m_iRespawnCount;
+	
+	protected bool m_bLoadoutAllowed;
 		
 	//------------------------------------------------------------------------------------------------
 	protected bool CanSpawn(notnull array<SCR_ChimeraCharacter> characters, Faction spawnPointFaction, vector spawnPointOrigin)
@@ -58,31 +62,6 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 		if (m_bAllowAllGroupsToSpawn)
 			return true;
 		
-		/*PlayerManager playerManager = GetGame().GetPlayerManager();
-		if (!playerManager)
-			return false;
-		
-		IEntity playerEntity = playerManager.GetPlayerControlledEntity(pid);
-		if (!playerEntity)
-			return false;
-		
-		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(playerEntity.FindComponent(FactionAffiliationComponent));
-		if (!factionAffiliation)
-			return false;
-		
-		Faction playerFaction = factionAffiliation.GetAffiliatedFaction();
-		if (!playerFaction)
-			return false;
-		
-		FactionManager factionManager = GetGame().GetFactionManager();
-		if (!factionManager)
-			return false;
-		
-		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByKey(GetFactionKey()));
-		
-		if (!faction.DoCheckIfFactionFriendly(playerFaction))
-			return false;*/
-		
 		SCR_PlayerControllerGroupComponent playerControllerGroupComp = SCR_PlayerControllerGroupComponent.GetPlayerControllerComponent(pid);
 		if (!playerControllerGroupComp)
 			return false;
@@ -96,14 +75,17 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 	override void OnFinalizeSpawnDone_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{		
 		super.OnFinalizeSpawnDone_S(requestComponent, data, entity);
-			
-		m_iRespawnCount++;
 		
-		SCR_RestrictedDeployableSpawnPointComponent restrictedDeployableSpawnPointComp = SCR_RestrictedDeployableSpawnPointComponent.Cast(m_DeployableSpawnPointComp);
-		if (!restrictedDeployableSpawnPointComp)
-			return;
+		if (m_eRespawnBudgetType == SCR_ESpawnPointBudgetType.SPAWNTICKET)
+		{
+			m_iRespawnCount++;
 		
-		 restrictedDeployableSpawnPointComp.SetRespawnCount(m_iRespawnCount);
+			SCR_RestrictedDeployableSpawnPointComponent restrictedDeployableSpawnPointComp = SCR_RestrictedDeployableSpawnPointComponent.Cast(m_DeployableSpawnPointComp);
+			if (!restrictedDeployableSpawnPointComp)
+				return;
+		
+		 	restrictedDeployableSpawnPointComp.SetRespawnCount(m_iRespawnCount);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -111,13 +93,32 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 	{
 		if (!super.CanReserveFor_S(playerId, result))
             return false;
-
-		// Deny spawning when respawn limit is reached
-		if (m_iRespawnCount >= m_iMaxRespawns)
+		
+		// Deny spawning when respawn limit is reached and supply usage is disabled
+		if (m_eRespawnBudgetType == SCR_ESpawnPointBudgetType.SPAWNTICKET && m_iRespawnCount >= m_iMaxRespawns)
 		{
-            result = SCR_ESpawnResult.NOT_ALLOWED_SPAWNPOINT_DISABLED_OUT_OF_RESPAWNS;
+			result = SCR_ESpawnResult.NOT_ALLOWED_SPAWNPOINT_DISABLED_OUT_OF_RESPAWNS;
 			return false;
 		}
+		
+		// Deny spawning if custom loadouts are disabled and player is trying to spawn with one
+		if (m_eRespawnBudgetType == SCR_ESpawnPointBudgetType.SUPPLIES && !m_bLoadoutAllowed)
+		{
+			IEntity playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
+			if (!playerController)
+				return true;
+			
+			SCR_PlayerLoadoutComponent loadoutComp = SCR_PlayerLoadoutComponent.Cast(playerController.FindComponent(SCR_PlayerLoadoutComponent));
+			if (!loadoutComp)
+				return true;
+			
+			SCR_PlayerArsenalLoadout loadout = SCR_PlayerArsenalLoadout.Cast(loadoutComp.GetLoadout());
+			if (!loadout)
+				return true;
+						
+			result = SCR_ESpawnResult.NOT_ALLOWED_NO_ARSENAL;
+			return false;	
+		}	
 		
 		// Deny spawning when enemies are near spawnpoint
 		array<SCR_ChimeraCharacter> characters = SCR_CharacterRegistrationComponent.GetChimeraCharacters();	
@@ -142,6 +143,12 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 	{
 		m_bAllowAllGroupsToSpawn = allowAllGroupsToSpawn;
 		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetBudgetType(SCR_ESpawnPointBudgetType budgetType)
+	{
+		m_eRespawnBudgetType = budgetType;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -173,5 +180,17 @@ class SCR_RestrictedDeployableSpawnPoint : SCR_DeployableSpawnPoint
 	void SetRespawnCount(int respawnCount)
 	{
 		m_iRespawnCount = respawnCount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsLoadoutAllowed()
+	{
+		return m_bLoadoutAllowed;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetLoadoutAllowed(bool allow)
+	{
+		m_bLoadoutAllowed = allow;
 	}
 }

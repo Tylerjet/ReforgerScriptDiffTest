@@ -28,7 +28,6 @@ enum EPhysicsLayerPresets
 	Weapon,
 	WeaponFire,
 	Terrain,
-	PropFireView,
 	TreeFireView,
 	CharNoCollide,
 	FireGeo,
@@ -42,8 +41,12 @@ enum EPhysicsLayerPresets
 	Bush,
 	Foliage,
 	Wheel,
+	PropFireView,
+	PropFireViewNoNavmesh,
 	PropView,
+	PropViewNoNavmesh,
 	Prop,
+	PropNoNavmesh,
 	CharacterAI,
 	Glass,
 	GlassFire,
@@ -51,11 +54,13 @@ enum EPhysicsLayerPresets
 	ViewGeo,
 	VehicleComplex,
 	VehicleSimple,
+	VehicleRotorDisc,
 	CharacterFireGeoRagdoll,
 	InteractionFireGeo,
-	Liquids,
 	MineTrigger,
-	MineTriggerFire
+	MineTriggerFire,
+	MineTriggerComplex,
+	Liquids
 }
 
 /**

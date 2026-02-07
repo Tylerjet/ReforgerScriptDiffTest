@@ -160,126 +160,61 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		{
 			float currentConsumption;
 
-			if(GetGame().GetIsClientAuthority())
+			VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(m_Simulation);
+			if (wheeledSimulation)
 			{
-				VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(m_Simulation);
-				if (wheeledSimulation)
-				{
-					float throttle = wheeledSimulation.GetThrottle();
-					if (throttle >= MIN_THRUST && wheeledSimulation.GetGear() != NEUTRAL_GEAR && wheeledSimulation.GetClutch() >= MIN_CLUTCH)
-						currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakTorque();
-					else if (throttle >= MIN_THRUST)
-						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMIdle();
-					else
-						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle;
-				}
-	
-				VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
-				if (helicopterSimulation)
-				{
-					currentConsumption = m_ComponentData.m_fFuelConsumption;
-				}
-	
-				// Scale and convert consumption rate per hour to per second
-				float consumptionScale = m_fTimeDelta * s_fGlobalFuelConsumptionScale * SECOND_TO_HOUR;
-	
-				float newFuel = m_CurrentFuelTank.GetFuel() - currentConsumption * consumptionScale;
-	
-	#ifdef ENABLE_DIAG
-				if (wheeledSimulation && currentConsumption > 0 && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_FUEL_CONSUMPTION))
-				{
-					float throttle = wheeledSimulation.GetThrottle();
-					float speed = wheeledSimulation.GetSpeedKmh();
-					float range;
-					
-					if (s_fGlobalFuelConsumptionScale != 0 && currentConsumption != 0)
-						range = speed * newFuel / (currentConsumption * s_fGlobalFuelConsumptionScale);
-					else 
-						range = -1;
-					
-					float litersPer100KM;
-					if (speed > 0)
-						litersPer100KM = currentConsumption * 100 / speed;
-	
-					Print(throttle);
-					Print(speed);
-					Print(currentConsumption);
-					Print(newFuel);
-					Print(range);
-					Print(litersPer100KM);
-				}
-	#endif // ENABLE_DIAG
-				m_CurrentFuelTank.SetFuel(newFuel);
+				float throttle = wheeledSimulation.GetThrottle();
+				if (throttle >= MIN_THRUST && wheeledSimulation.GetGear() != NEUTRAL_GEAR && wheeledSimulation.GetClutch() >= MIN_CLUTCH)
+					currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakTorque();
+				else if (throttle >= MIN_THRUST)
+					currentConsumption = m_ComponentData.m_fFuelConsumptionIdle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMIdle();
+				else
+					currentConsumption = m_ComponentData.m_fFuelConsumptionIdle;
 			}
-			else
+
+			VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
+			if (helicopterSimulation)
 			{
-				VehicleWheeledSimulation_SA wheeledSimulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
-				if (wheeledSimulation)
-				{
-					float throttle = wheeledSimulation.GetThrottle();
-					if (throttle >= MIN_THRUST && wheeledSimulation.GetGear() != NEUTRAL_GEAR && wheeledSimulation.GetClutch() >= MIN_CLUTCH)
-						currentConsumption = m_ComponentData.m_fFuelConsumption * throttle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMPeakTorque();
-					else if (throttle >= MIN_THRUST)
-						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle * wheeledSimulation.EngineGetRPM() / wheeledSimulation.EngineGetRPMIdle();
-					else
-						currentConsumption = m_ComponentData.m_fFuelConsumptionIdle;
-				}
-	
-				VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
-				if (helicopterSimulation)
-				{
-					currentConsumption = m_ComponentData.m_fFuelConsumption;
-				}
-	
-				// Scale and convert consumption rate per hour to per second
-				float consumptionScale = m_fTimeDelta * s_fGlobalFuelConsumptionScale * SECOND_TO_HOUR;
-	
-				float newFuel = m_CurrentFuelTank.GetFuel() - currentConsumption * consumptionScale;
+				currentConsumption = m_ComponentData.m_fFuelConsumption;
+			}
+
+			// Scale and convert consumption rate per hour to per second
+			float consumptionScale = m_fTimeDelta * s_fGlobalFuelConsumptionScale * SECOND_TO_HOUR;
+
+			float newFuel = m_CurrentFuelTank.GetFuel() - currentConsumption * consumptionScale;
 	
 	#ifdef ENABLE_DIAG
-				if (wheeledSimulation && currentConsumption > 0 && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_FUEL_CONSUMPTION))
-				{
-					float throttle = wheeledSimulation.GetThrottle();
-					float speed = wheeledSimulation.GetSpeedKmh();
-					float range;
-					
-					if (s_fGlobalFuelConsumptionScale != 0 && currentConsumption != 0)
-						range = speed * newFuel / (currentConsumption * s_fGlobalFuelConsumptionScale);
-					else 
-						range = -1;
-					
-					float litersPer100KM;
-					if (speed > 0)
-						litersPer100KM = currentConsumption * 100 / speed;
-	
-					Print(throttle);
-					Print(speed);
-					Print(currentConsumption);
-					Print(newFuel);
-					Print(range);
-					Print(litersPer100KM);
-				}
+			if (wheeledSimulation && currentConsumption > 0 && DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_VEHICLES_FUEL_CONSUMPTION))
+			{
+				float throttle = wheeledSimulation.GetThrottle();
+				float speed = wheeledSimulation.GetSpeedKmh();
+				float range;
+				
+				if (s_fGlobalFuelConsumptionScale != 0 && currentConsumption != 0)
+					range = speed * newFuel / (currentConsumption * s_fGlobalFuelConsumptionScale);
+				else 
+					range = -1;
+				
+				float litersPer100KM;
+				if (speed > 0)
+					litersPer100KM = currentConsumption * 100 / speed;
+
+				Print(throttle);
+				Print(speed);
+				Print(currentConsumption);
+				Print(newFuel);
+				Print(range);
+				Print(litersPer100KM);
+			}
 	#endif // ENABLE_DIAG
-				m_CurrentFuelTank.SetFuel(newFuel);
-			}		
+			m_CurrentFuelTank.SetFuel(newFuel);
 		}
 		else
 		{
-			if(GetGame().GetIsClientAuthority())
+			VehicleControllerComponent controller = VehicleControllerComponent.Cast(GetOwner().FindComponent(VehicleControllerComponent));
+			if (controller)
 			{
-				VehicleControllerComponent controller = VehicleControllerComponent.Cast(GetOwner().FindComponent(VehicleControllerComponent));
-				if (controller)
-				{
-					controller.StopEngine(false);
-				}
-			}
-			else
-			{
-				VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(GetOwner().FindComponent(VehicleControllerComponent_SA));
-				if (controller)
-				{
-					controller.StopEngine(false);
-				}
+				controller.StopEngine(false);
 			}
 		}
 		
@@ -352,20 +287,10 @@ class SCR_FuelConsumptionComponent : ScriptGameComponent
 		if (!m_Simulation)
 			return;
 
-		if(GetGame().GetIsClientAuthority())
-		{
-			VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(m_Simulation);
-			if (wheeledSimulation && wheeledSimulation.EngineIsOn())
-				SetEnabled(true);
-		}
-		else
-		{
-			VehicleWheeledSimulation_SA wheeledSimulation = VehicleWheeledSimulation_SA.Cast(m_Simulation);
-			if (wheeledSimulation && wheeledSimulation.EngineIsOn())
-				SetEnabled(true);
-		}
+		VehicleWheeledSimulation wheeledSimulation = VehicleWheeledSimulation.Cast(m_Simulation);
+		if (wheeledSimulation && wheeledSimulation.EngineIsOn())
+			SetEnabled(true);
 		
-
 		VehicleHelicopterSimulation helicopterSimulation = VehicleHelicopterSimulation.Cast(m_Simulation);
 		if (helicopterSimulation && helicopterSimulation.EngineIsOn())
 			SetEnabled(true);

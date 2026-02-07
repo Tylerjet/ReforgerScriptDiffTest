@@ -16,8 +16,8 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	[Attribute(desc: "Faction which is used for area control calculation. Leave empty for any faction.", category: "Trigger")]
 	protected FactionKey 		m_sOwnerFactionKey;
 	
-	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger")]
-	protected TA_EActivationPresence	m_eActivationPresence;
+	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation), category: "Trigger")]
+	protected SCR_EScenarioFrameworkTriggerActivation	m_eActivationPresence;
 	
 	/*
 	[Attribute(desc: "Trigger activation - all connected players of the given faction or just one?", category: "Trigger")]
@@ -84,7 +84,7 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 			return false;
 
 		// take only players
-		if (m_eActivationPresence == TA_EActivationPresence.PLAYER)
+		if (m_eActivationPresence == SCR_EScenarioFrameworkTriggerActivation.PLAYER)
 		{
 			if (!EntityUtils.IsPlayer(ent))
 				return false;
@@ -106,7 +106,7 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 			return;
 			
 		m_iEntitiesInside++;
-		if (m_eActivationPresence == TA_EActivationPresence.PLAYER || m_eActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
+		if (m_eActivationPresence == SCR_EScenarioFrameworkTriggerActivation.PLAYER || m_eActivationPresence == SCR_EScenarioFrameworkTriggerActivation.ANY_CHARACTER)
 		{
 			m_OnActivate.Invoke(ent);
 		}

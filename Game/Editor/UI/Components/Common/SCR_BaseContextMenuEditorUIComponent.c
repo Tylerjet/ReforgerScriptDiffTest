@@ -266,7 +266,7 @@ class SCR_BaseContextMenuEditorUIComponent : SCR_BaseEditorUIComponent
 		
 		game.OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
-		m_EditorManager = SCR_EditorManagerEntity.Cast(SCR_EditorManagerEntity.GetInstance());
+		m_EditorManager = SCR_EditorManagerEntity.GetInstance();
 		
 		m_EditorManager.GetOnModeChange().Insert(OnEditorModeChanged);
 		

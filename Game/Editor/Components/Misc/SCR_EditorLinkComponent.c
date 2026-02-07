@@ -1,6 +1,9 @@
 [ComponentEditorProps(category: "GameScripted/Editor", description: "")]
 class SCR_EditorLinkComponentClass : ScriptComponentClass
 {
+	[Attribute(desc: "If true it will allow variant randomization of editable entities. The 'Update editable entity' tool will automatically set this value if any of the direct children have variants.")]
+	bool m_bRandomizeVariants;
+	
 	[Attribute()]
 	ref array<ref SCR_EditorLinkEntry> m_aEntries;
 }
@@ -102,7 +105,7 @@ class SCR_EditorLinkComponent : ScriptComponent
 		if (!prefabData)
 			return;
 
-		Game game = GetGame();
+		ArmaReforgerScripted game = GetGame();
 		BaseWorld world = GetOwner().GetWorld();
 
 		EntitySpawnParams spawnParams = new EntitySpawnParams();
@@ -112,7 +115,7 @@ class SCR_EditorLinkComponent : ScriptComponent
 		foreach (SCR_EditorLinkEntry entry : prefabData.m_aEntries)
 		{
 			entry.SetSpawnParams(spawnParams);
-			if (!game.SpawnEntityPrefab(Resource.Load(entry.m_Prefab), world, spawnParams))
+			if (!game.SpawnEntityPrefab(entry.m_Prefab, prefabData.m_bRandomizeVariants, world, spawnParams))
 				Print(string.Format("Unable to spawn linked entity @\"%1\"!", entry.m_Prefab.GetPath()), LogLevel.WARNING);
 		}
 		

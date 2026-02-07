@@ -48,7 +48,7 @@ class SCR_DownloadManager_ProgressIndicatorComponent : ScriptedWidgetComponent
 		mgr.GetDownloadQueueState(nCompleted, nTotal);
 		
 		if (nTotal > 0 && !mgr.GetDownloadsPaused())
-			downloadStateText = string.Format("%1 %2 / %3", WidgetManager.Translate("#AR-DownloadManager_State_Downloading"), nCompleted, nTotal);
+			downloadStateText = string.Format("%1 %2 / %3", WidgetManager.Translate(SCR_WorkshopUiCommon.DOWNLOAD_STATE_DOWNLOADING), nCompleted, nTotal);
 		else if (nTotal > 0 && mgr.GetDownloadsPaused())
 			downloadStateText = string.Format("%1 %2 / %3", WidgetManager.Translate("#AR-DownloadManager_State_AllDownloadsPaused"), nCompleted, nTotal);
 		else if (mgr.GetDownloadsPaused())

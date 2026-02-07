@@ -1,6 +1,9 @@
 [BaseContainerProps()]
 class SCR_EditableGroupUIInfo : SCR_EditableEntityUIInfo
 {
+	[Attribute("0", desc: "Will use Name that can be set dirrectly in UI info instead of using dynamic name by m_MilitarySymbol")]
+	protected bool m_bUseUIInfoName;
+	
 	[Attribute()]
 	protected ref SCR_MilitarySymbol m_MilitarySymbol;
 	
@@ -31,6 +34,9 @@ class SCR_EditableGroupUIInfo : SCR_EditableEntityUIInfo
 	//------------------------------------------------------------------------------------------------
 	override string GetName()
 	{
+		if (m_bUseUIInfoName)
+			return super.GetName();
+		
 		if (!m_MilitarySymbolInstance)
 		{
 			SCR_GroupIdentityCore core = SCR_GroupIdentityCore.Cast(SCR_GroupIdentityCore.GetInstance(SCR_GroupIdentityCore));
@@ -38,8 +44,9 @@ class SCR_EditableGroupUIInfo : SCR_EditableEntityUIInfo
 			{
 				SCR_GroupNameConfig nameManager = core.GetNames();
 				if (nameManager)
-				{
-					return nameManager.GetGroupName(GetMilitarySymbol());
+				{					
+					string name = nameManager.GetGroupName(GetMilitarySymbol());				
+					return name;
 				}
 			}
 		}

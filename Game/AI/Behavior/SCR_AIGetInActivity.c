@@ -1,24 +1,26 @@
 class SCR_AIGetInActivity : SCR_AIActivityBase
 {
 	ref SCR_BTParam<IEntity> m_Vehicle = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
-	ref SCR_BTParam<ECompartmentType> m_eRoleInVehicle = new SCR_BTParam<ECompartmentType>(SCR_AIActionTask.ROLEINVEHICLE_PORT);	
+	ref SCR_BTParam<SCR_AIBoardingParameters> m_BoardingParameters = new SCR_BTParam<SCR_AIBoardingParameters>(SCR_AIActionTask.BOARDING_PARAMS_PORT);
+	ref SCR_BTParam<ECompartmentType> m_eRoleInVehicle = new SCR_BTParam<ECompartmentType>(SCR_AIActionTask.ROLEINVEHICLE_PORT);
 	protected SCR_AIGroup m_OwnerGroup;
 	
-	void InitParameters(IEntity vehicle, ECompartmentType role, float priorityLevel)
+	void InitParameters(IEntity vehicle, SCR_AIBoardingParameters parameters, ECompartmentType role, float priorityLevel)
 	{
 		m_Vehicle.Init(this, vehicle);
+		m_BoardingParameters.Init(this, parameters);
 		m_eRoleInVehicle.Init(this, role);
 		m_fPriorityLevel.Init(this, priorityLevel);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_AIGetInActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, IEntity vehicle, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_ACTIVITY_GET_IN, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	void SCR_AIGetInActivity(SCR_AIGroupUtilityComponent utility, AIWaypoint relatedWaypoint, IEntity vehicle, SCR_AIBoardingParameters boardingParameters = null, ECompartmentType role = ECompartmentType.CARGO, float priority = PRIORITY_ACTIVITY_GET_IN, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
-		InitParameters(vehicle, role, priorityLevel);
+		InitParameters(vehicle, boardingParameters, role, priorityLevel);
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityGetIn.bt";
 		SetPriority(priority);
 		if (utility)
-			m_OwnerGroup = SCR_AIGroup.Cast(utility.GetAIAgent());
+			m_OwnerGroup = utility.m_Owner;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -30,22 +32,37 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	//------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
-		super.OnActionDeselected();
 		m_OwnerGroup.ReleaseCompartments();
+		super.OnActionDeselected();	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActionSelected()
+	{
+		if (m_Vehicle.m_Value)
+			m_OwnerGroup.AddUsableVehicle(m_Vehicle.m_Value);
+		super.OnActionDeselected();	
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
+		if (m_RelatedWaypoint)
+			m_OwnerGroup.CompleteWaypoint(m_RelatedWaypoint);
 		super.OnActionCompleted();
-		m_OwnerGroup.ReleaseCompartments();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
 		super.OnActionFailed();
-		m_OwnerGroup.ReleaseCompartments();
+		SendCancelMessagesToAllAgents();
 		m_OwnerGroup.RemoveUsableVehicle(m_Vehicle.m_Value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ClearActivityVehicle()
+	{
+		m_Vehicle.m_Value = null;
 	}
 };

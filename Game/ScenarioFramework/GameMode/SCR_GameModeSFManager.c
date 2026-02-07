@@ -3,32 +3,6 @@ class SCR_GameModeSFManagerClass : SCR_BaseGameModeComponentClass
 {
 }
 
-enum SCR_ScenarioFrameworkEActivationType
-{
-	SAME_AS_PARENT = 0,
-	ON_TRIGGER_ACTIVATION,
-	ON_AREA_TRIGGER_ACTIVATION,
-	ON_INIT,						//when the game mode is initiated
-	ON_TASKS_INIT,					//when the  game mode starts creating tasks
-	CUSTOM1,						//won't spawn until something will try to spawn the object with CUSTOM as parameter
-	CUSTOM2,
-	CUSTOM3,
-	CUSTOM4,
-}
-
-enum SCR_ESFTaskType
-{
-	NONE,
-	DELIVER,
-	DESTROY,
-	DEFEND,
-	KILL,
-	CLEAR_AREA,
-	LAST,
-	EXTRACTION,
-	DEFAULT
-}
-
 class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 {	
 	[Attribute("Available Tasks for the Scenario", category: "Tasks")];
@@ -52,6 +26,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	[Attribute(defvalue: "4", UIWidgets.Slider, params: "0 600 1", desc: "How frequently is dynamic spawn/despawn being checked in seconds", category: "Dynamic Spawn/Despawn")]
 	protected int m_iUpdateRate;
 	
+	[Attribute(desc: "Config with voice over data for whole scenario", params: "conf class=SCR_VoiceoverData")]
+	ResourceName m_sVoiceOverDataConfig;
+	
 	protected bool m_bMatchOver;
 	protected int m_iCurrentlySpawnedLayerTasks;
 	
@@ -74,7 +51,9 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	
 	protected ref array<ref Tuple3<SCR_ScenarioFrameworkArea, vector, int>> m_aSpawnedAreas = {};
 	protected ref array<ref Tuple3<SCR_ScenarioFrameworkArea, vector, int>> m_aDespawnedAreas = {};
+	protected ref array<ref Tuple3<EntityID, bool, float>> m_aDebugShapesLayers = {};
 	protected ref array<vector> m_aObservers = {};
+	protected ref map<string, string> m_VariableMap = new map<string, string>;
 	
 	//------------------------------------------------------------------------------------------------
 	//!
@@ -682,6 +661,33 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Create a new global variable at the scenario
+	void CreateVariableValue(string key, string value)
+	{
+		m_VariableMap.Insert(key, value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set a value to global variable at the scenario
+	void SetVariableValue(string key, string value)
+	{
+		m_VariableMap.Set(key, value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get value of given variable
+	bool GetVariable(string key, out string value)
+	{
+		if(key.IsEmpty())
+		{
+			Print(string.Format("Variable %1 is not set in this scenario", key), LogLevel.NORMAL);
+			return false;
+		}
+		
+		return m_VariableMap.Find(key, value);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Prepares Layer Tasks that were selected by ON_TASK_INIT activation for invoking AfterTasksInitActions
 	protected void PrepareLayerTasksAfterInit()
 	{
@@ -981,6 +987,38 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
+		int count;
+		reader.ReadInt(count);
+		
+		EntityID id;
+		bool draw;
+		float radius;
+		for (int i = 0; i < count; i++)
+		{
+			reader.ReadEntityId(id);
+			reader.ReadBool(draw);
+			reader.ReadFloat(radius);
+			
+			ManageLayerDebugShape(id, draw, radius, false);
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool RplSave(ScriptBitWriter writer)
+	{
+		int count = m_aDebugShapesLayers.Count();
+		writer.WriteInt(count);
+		
+		for (int i = 0; i < count; i++)
+		{
+			Tuple3<EntityID, bool, float> debugLayer = m_aDebugShapesLayers[i];
+			writer.WriteEntityId(debugLayer.param1);
+			writer.WriteBool(debugLayer.param2);
+			writer.WriteFloat(debugLayer.param3);
+		}
+		
 		return true;
 	}
 	
@@ -1066,5 +1104,48 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		}
 		
 		SCR_PopUpNotification.GetInstance().PopupMsg(sTitle, text2: sSubtitle);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ManageLayerDebugShape(EntityID id, bool draw, float radius, bool runtime)
+	{
+		IEntity entity = GetGame().GetWorld().FindEntityByID(id);
+		if (!entity)
+			return;
+			
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+			return;
+		
+		layer.m_bShowDebugShapesDuringRuntime = draw;
+		layer.m_fDebugShapeRadius = radius;
+		
+		if (draw)
+			layer.SetEventMask(layer.GetOwner(), EntityEvent.INIT | EntityEvent.FRAME);
+		
+		if (RplSession.Mode() != RplMode.Client)
+			m_aDebugShapesLayers.Insert(new Tuple3<EntityID, bool, float>(id, draw, radius));
+		
+		if (runtime)
+			Rpc(RpcDo_ManageLayerDebugShape, id, draw, radius);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RpcDo_ManageLayerDebugShape(EntityID id, bool draw, float radius)
+	{
+		IEntity entity = GetGame().GetWorld().FindEntityByID(id);
+		if (!entity)
+			return;
+			
+		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(entity.FindComponent(SCR_ScenarioFrameworkLayerBase));
+		if (!layer)
+			return;
+		
+		layer.m_bShowDebugShapesDuringRuntime = draw;
+		layer.m_fDebugShapeRadius = radius;
+		
+		if (draw)
+			layer.SetEventMask(layer.GetOwner(), EntityEvent.INIT | EntityEvent.FRAME);
 	}
 }

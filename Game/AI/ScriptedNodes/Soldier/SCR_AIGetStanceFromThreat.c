@@ -18,7 +18,7 @@ class SCR_AIGetStanceFromThreat : AITaskScripted
 		
 		EAIThreatState threat = m_Utility.m_ThreatSystem.GetState();
 		
-		int stance = GetStanceFromThreat(threat);
+		int stance = SCR_AIStanceHandling.GetStanceFromThreat(threat);
 		SetVariableOut(STANCE_PORT, stance);
 		
 		return ENodeResult.SUCCESS;

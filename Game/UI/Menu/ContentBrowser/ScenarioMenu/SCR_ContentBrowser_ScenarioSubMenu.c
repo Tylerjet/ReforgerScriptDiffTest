@@ -22,12 +22,10 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	protected const string MESSAGE_TAG_NOTHING_FAVOURITE_2 ="nothing_favourite2";
 	protected const string MESSAGE_TAG_NOTHING_RECENT =		"nothing_recent";
 	protected const string MESSAGE_TAG_NOTHING_RECENT_2 =	"nothing_recent2";
-	
+
 	// Other
 	protected ref SCR_ContentBrowser_ScenarioSubMenuWidgets m_Widgets = new SCR_ContentBrowser_ScenarioSubMenuWidgets;
 
-	protected Widget m_wBeforeSort;
-	
 	protected int m_iEntriesTotal;
 	protected int m_iEntriesCurrent;
 
@@ -37,9 +35,9 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		super.OnTabCreate(menuRoot, buttonsLayout, index);
 
 		InitWidgets();
-		
+
 		m_ScenarioDetailsPanel = m_Widgets.m_ScenarioDetailsPanelComponent;
-		
+
 		// Try to restore filters
 		m_Widgets.m_FilterPanelComponent.TryLoad();
 
@@ -71,30 +69,30 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		//Bring back focus to the last selected line after closing a pop-up dialog, in order to always have an element focused
 		Widget target;
-		
+
 		if (m_LastSelectedLine)
 			target = m_LastSelectedLine.GetRootWidget();
 		else if (m_Widgets && m_Widgets.m_ScenarioList)
 			target = m_Widgets.m_ScenarioList.GetChildren();
-		
+
 		if (target)
 			GetGame().GetWorkspace().SetFocusedWidget(target);
-		
+
 		super.OnMenuFocusGained();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void InitWidgets()
 	{
 		super.InitWidgets();
-		
+
 		// We provide scenarioSubMenuRoot as root because the widgets of the layours were exported starting from scenarioSubMenuRoot
 		m_Widgets.Init(m_wRoot.FindWidget("scenarioSubMenuRoot"));
 
 		m_Widgets.m_FilterPanelComponent.GetEditBoxSearch().m_OnConfirm.Insert(OnSearchConfirm);
 		m_Widgets.m_SortingHeaderComponent.m_OnChanged.Insert(OnSortingHeaderChange);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void UpdateNavigationButtons(bool visible = true)
 	{
@@ -105,7 +103,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	//------------------------------------------------------------------------------------------------
 	override void Play(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
 			return;
 
 		super.Play(scenario);
@@ -115,7 +113,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	//------------------------------------------------------------------------------------------------
 	override void Continue(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
 			return;
 
 		super.Continue(scenario);
@@ -144,7 +142,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		// Get missions from Workshop API
 		array<MissionWorkshopItem> missionItemsAll = {};
-		m_WorkshopApi.GetPageScenarios(missionItemsAll, 0, 4096); // Get all missions at once
+		m_WorkshopApi.GetPageScenarios(missionItemsAll, 0, SCR_WorkshopUiCommon.PAGE_SCENARIOS); // Get all missions at once
 
 		// Remove scenarios from disabled addons
 		for (int i = missionItemsAll.Count() - 1; i >= 0; i--)
@@ -163,7 +161,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 
 		// Store total number of entries
 		m_iEntriesTotal = missionItemsAll.Count();
-		
+
 		// Filter items according to current tab mode
 		array<MissionWorkshopItem> missionItemsTabFiltered = {};
 		switch (m_eMode)
@@ -181,7 +179,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				if (missionItemsTabFiltered.IsEmpty())
 				{
 					ScenarioList_ClearMissionEntries();
-					
+
 					m_iEntriesCurrent = 0;
 					SetPanelsMode(true, MESSAGE_TAG_NOTHING_FAVOURITE);
 					return;
@@ -196,7 +194,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				// Sort missions by time since last play, select top latest N entries
 				SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionTimeSinceLastPlay>.HeapSort(missionItemsAll, false);
 
-				int i = 0;
+				int i;
 				while (missionItemsTabFiltered.Count() < RECENTLY_PLAYED_MAX_ENTRIES && i < missionItemsAll.Count())
 				{
 					int dt = missionItemsAll[i].GetTimeSinceLastPlay();
@@ -209,7 +207,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				if (missionItemsTabFiltered.IsEmpty())
 				{
 					ScenarioList_ClearMissionEntries();
-					
+
 					m_iEntriesCurrent = 0;
 					SetPanelsMode(true, MESSAGE_TAG_NOTHING_RECENT);
 					return;
@@ -224,7 +222,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 				if (missionItemsAll.IsEmpty())
 				{
 					ScenarioList_ClearMissionEntries();
-					
+
 					m_iEntriesCurrent = 0;
 					SetPanelsMode(true, MESSAGE_TAG_NOTHING_FOUND);
 					return;
@@ -260,7 +258,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 					messageTag = MESSAGE_TAG_NOTHING_FOUND_2;
 					break;
 			}
-			
+
 			m_iEntriesCurrent = 0;
 			SetPanelsMode(false, messageTag);
 			return;
@@ -369,71 +367,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 		// Reset scroll position
 		m_Widgets.m_ScenarioScroll.SetSliderPos(0, 0, true);
 	}
-	/*
-	//------------------------------------------------------------------------------------------------
-	protected void OnFilterButton()
-	{
-		// Toggle the state of the filter panel
-		bool filterShown = m_Widgets.m_FilterPanelComponent.GetFilterListBoxShown();
-		bool selectedAnyMission = GetSelectedScenario() != null;
-		bool newFilterShown = !filterShown || (filterShown && selectedAnyMission);
 
-		m_Widgets.m_FilterPanelComponent.ShowFilterListBox(newFilterShown);
-
-		// Set focus on the button of the filter panel
-		if (newFilterShown)
-			GetGame().GetWorkspace().SetFocusedWidget(m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterButton);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnSortingButton()
-	{
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		Widget focused = workspace.GetFocusedWidget();
-		ScriptedWidgetEventHandler sortComp;
-		if (focused)
-			sortComp = focused.FindHandler(SCR_SortElementComponent);
-
-
-		if (sortComp)
-		{
-			// Focused on a sort element
-			// Focus back to previous widget or on first line
-			if (m_wBeforeSort)
-				GetGame().GetWorkspace().SetFocusedWidget(m_wBeforeSort);
-			else
-			{
-				Widget firstLine = m_Widgets.m_ScenarioList.GetChildren();
-				if (firstLine)
-					workspace.SetFocusedWidget(firstLine);
-			}
-		}
-		else
-		{
-			// Not focused on a sort element
-			// Focus on a sort button
-			if (focused.FindHandler(SCR_ContentBrowser_ScenarioLineComponent))
-				m_wBeforeSort = focused;	// Return to this widget only if it's a scenario line
-			else
-				m_wBeforeSort = null;
-			m_Widgets.m_SortingHeaderComponent.SetFocus(1);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnCopyIdButton()
-	{
-		SCR_ContentBrowser_ScenarioLineComponent line = GetSelectedLine();
-
-		if (!line)
-			return;
-
-		MissionWorkshopItem scenario = line.GetScenario();
-
-		if (scenario)
-			System.ExportToClipboard(scenario.Id());
-	}
-	*/
 	//------------------------------------------------------------------------------------------------
 	//! Called when user confirms the value in the seacrh string
 	protected void OnSearchConfirm(SCR_EditBoxComponent comp, string newValue)
@@ -447,18 +381,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 	{
 		UpdateScenarioList(false);
 	}
-	/*
-	//------------------------------------------------------------------------------------------------
-	//! Called when filter panel is toggled (shown or hidden)
-	protected void OnFilterPanelToggled(bool newState)
-	{
-		// When filter panel is disabled, we restore focus back to last focused line
-		if (!newState && GetSelectedLine())
-		{
-			GetGame().GetWorkspace().SetFocusedWidget(GetSelectedLine().GetRootWidget());
-		}
-	}
-	*/
+
 	// ---- PUBLIC ----
 	//------------------------------------------------------------------------------------------------
 	void SetPanelsMode(bool showEmptyPanel, string messagePresetTag = string.Empty)
@@ -480,7 +403,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 			else
 				m_Widgets.m_MainPanelMessageComponent.SetContentFromPreset(messagePresetTag);
 		}
-		
+
 		// Items Found Message
 		m_Widgets.m_FilterPanelComponent.SetItemsFoundMessage(m_iEntriesCurrent, m_iEntriesTotal, m_iEntriesCurrent != m_iEntriesTotal);
 	}
@@ -518,23 +441,13 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 
 		return scenariosOut;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	static bool GetHostingAllowed()
-	{
-		#ifdef HOST_SCENARIO_ENABLED
-		return true;
-		#else
-		return false;
-		#endif
-	}
 }
-
 
 // Classes to compare mission headers
 // Sort by name
 class SCR_CompareMissionName : SCR_SortCompare<MissionWorkshopItem>
 {
+	//------------------------------------------------------------------------------------------------
 	override static int Compare(MissionWorkshopItem left, MissionWorkshopItem right)
 	{
 		string name1 = ResolveName(left.Name());
@@ -546,6 +459,7 @@ class SCR_CompareMissionName : SCR_SortCompare<MissionWorkshopItem>
 			return 0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	static string ResolveName(string name)
 	{
 		if (name.StartsWith("#"))
@@ -558,10 +472,10 @@ class SCR_CompareMissionName : SCR_SortCompare<MissionWorkshopItem>
 // Sort by name
 class SCR_CompareMissionAddonName : SCR_SortCompare<MissionWorkshopItem>
 {
+	//------------------------------------------------------------------------------------------------
 	override static int Compare(MissionWorkshopItem left, MissionWorkshopItem right)
 	{
 		WorkshopItem ownerItem = left.GetOwner();
-
 
 		string name1 = ResolveAddonName(left);
 		string name2 = ResolveAddonName(right);
@@ -572,9 +486,9 @@ class SCR_CompareMissionAddonName : SCR_SortCompare<MissionWorkshopItem>
 			return 0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	static string ResolveAddonName(MissionWorkshopItem scenario)
 	{
-
 		WorkshopItem sourceAddon = scenario.GetOwner();
 		if (!sourceAddon)
 			return WidgetManager.Translate("#AR-Editor_Attribute_OverlayLogo_Reforger");
@@ -586,6 +500,7 @@ class SCR_CompareMissionAddonName : SCR_SortCompare<MissionWorkshopItem>
 // Sort by player count
 class SCR_CompareMissionPlayerCount : SCR_SortCompare<MissionWorkshopItem>
 {
+	//------------------------------------------------------------------------------------------------
 	override static int Compare(MissionWorkshopItem left, MissionWorkshopItem right)
 	{
 		return left.GetPlayerCount() < right.GetPlayerCount();
@@ -595,6 +510,7 @@ class SCR_CompareMissionPlayerCount : SCR_SortCompare<MissionWorkshopItem>
 // Sort by favouriteness
 class SCR_CompareMissionFavourite : SCR_SortCompare<MissionWorkshopItem>
 {
+	//------------------------------------------------------------------------------------------------
 	override static int Compare(MissionWorkshopItem left, MissionWorkshopItem right)
 	{
 		return right.IsFavorite();
@@ -604,6 +520,7 @@ class SCR_CompareMissionFavourite : SCR_SortCompare<MissionWorkshopItem>
 // Sort by time since last played
 class SCR_CompareMissionTimeSinceLastPlay : SCR_SortCompare<MissionWorkshopItem>
 {
+	//------------------------------------------------------------------------------------------------
 	override static int Compare(MissionWorkshopItem left, MissionWorkshopItem right)
 	{
 		int timeLeft = left.GetTimeSinceLastPlay();

@@ -27,7 +27,6 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 	protected string m_sImagePlaceholderPath;
 	protected string m_sImagePlaceholderSource;
 	protected string m_sImagePlaceholderExt;
-	protected ResourceManager m_ResourceManager;
 	protected ref SCR_EditableEntityCore m_EntityCoreConfig;
 
 	protected ref map<EEditableEntityBudget, int> m_MinBudgetCost = new map<EEditableEntityBudget, int>();
@@ -93,6 +92,8 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 				api.SetVariableValue(entitySource, path, "Icon", entityIcon);
 		}
 
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+
 		//--- Image
 		string imagePath = targetPath;
 		if (GetImagePath(config, imagePath))
@@ -100,7 +101,7 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 			//--- Create placeholder preview image
 			string addonName = SCR_AddonTool.GetResourceLastAddon(prefab);
 			addonName = SCR_AddonTool.ToFileSystem(addonName);
-			CreatePreviewImage(config, api, imagePath, entitySource, addonName);
+			CreatePreviewImage(resourceManager, config, api, imagePath, entitySource, addonName);
 
 			api.SetVariableValue(entitySource, path, "m_Image", imagePath);
 		}
@@ -329,11 +330,14 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CreatePreviewImage(EditablePrefabsConfig config, WorldEditorAPI api, out string targetPath, IEntitySource entitySource, string addonName)
+	protected void CreatePreviewImage(
+		notnull ResourceManager resourceManager,
+		EditablePrefabsConfig config,
+		WorldEditorAPI api,
+		out string targetPath,
+		IEntitySource entitySource,
+		string addonName)
 	{
-		if (!m_ResourceManager)
-			return;
-
 		//--- Cannot find image path
 		//if (!GetImagePath(config, targetPath)) return;
 
@@ -342,7 +346,7 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 		{
 			string absolutePath;
 			Workbench.GetAbsolutePath(targetPath, absolutePath);
-			MetaFile metaContainer = m_ResourceManager.GetMetaFile(absolutePath);
+			MetaFile metaContainer = resourceManager.GetMetaFile(absolutePath);
 			targetPath = metaContainer.GetResourceID();
 			return;
 		}
@@ -375,7 +379,7 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 
 		//--- Register the file
 		Workbench.GetAbsolutePath(addonName + FilePath.StripFileName(targetPath) + sourceFile, absolutePath, false);
-		MetaFile metaContainer = m_ResourceManager.RegisterResourceFile(absolutePath);
+		MetaFile metaContainer = resourceManager.RegisterResourceFile(absolutePath);
 		if (metaContainer)
 		{
 			//--- Update meta file
@@ -570,16 +574,16 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 						if (slotType.IsInherited(CargoCompartmentSlot))
 						{
 							AddBudgetCostsFromEntity(slotEntity, passengerBudgetCosts);
-							compartmentType = ECompartmentType.Cargo;
+							compartmentType = ECompartmentType.CARGO;
 						}
 						else
 						{
 							AddBudgetCostsFromEntity(slotEntity, crewBudgetCosts);
 
 							if (slotType.IsInherited(PilotCompartmentSlot))
-								compartmentType = ECompartmentType.Pilot;
+								compartmentType = ECompartmentType.PILOT;
 							else
-								compartmentType = ECompartmentType.Turret;
+								compartmentType = ECompartmentType.TURRET;
 						}
 
 						if (!vehicleCompartmentTypes.Contains(compartmentType))
@@ -645,7 +649,7 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 				if (!childEditableEntity)
 					continue;
 
-				SCR_EditableEntityUIInfo childUiInfo = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(childEditableEntity));
+				SCR_EditableEntityUIInfo childUiInfo = SCR_EditableEntityComponentClass.GetInfo(childEditableEntity);
 				if (!childUiInfo)
 					continue;
 
@@ -736,8 +740,8 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 			return;
 		}
 
-		m_ResourceManager = Workbench.GetModule(ResourceManager);
-		if (!m_ResourceManager)
+		ResourceManager resourceManager = Workbench.GetModule(ResourceManager);
+		if (!resourceManager)
 			return;
 
 		Resource resource = BaseContainerTools.LoadContainer(m_EntityCoreConfigPrefab);
@@ -765,7 +769,7 @@ class EditablePrefabsComponent_EditableEntity : EditablePrefabsComponent_Base
 		m_sImagesPath = m_ImagesDirectory.GetPath();
 		m_sImagePlaceholderPath = FilePath.StripFileName(m_ImagePlaceholder.GetPath());
 
-		MetaFile metaContainer = m_ResourceManager.GetMetaFile(absolutePath);
+		MetaFile metaContainer = resourceManager.GetMetaFile(absolutePath);
 		if (!metaContainer)
 			return;
 

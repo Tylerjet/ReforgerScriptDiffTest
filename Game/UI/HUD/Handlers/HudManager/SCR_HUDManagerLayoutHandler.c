@@ -12,7 +12,10 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 	[Attribute()]
 	protected string m_sMainLayout;
 
+	protected bool m_bIsEditorOpen;
+	
 	protected SCR_HUDLayout m_ActiveLayout;
+	protected SCR_HUDLayout m_SavedEditorLayout;
 	protected ref OnLayoutChange m_OnLayoutChange;
 	
 	protected ref ScriptInvokerVoid m_OnMainLayoutInitialize;
@@ -227,14 +230,25 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 
 		if (m_ActiveLayout)
 			SetLayoutEnabled(m_ActiveLayout.GetIdentifier(), false);
-			
+		
 		SCR_HUDLayout mainLayout = FindHUDLayout(m_sMainLayout);
 		SCR_HUDLayout oldActiveLayout = m_ActiveLayout;
-		m_ActiveLayout = newLayout;
+		
+		// If editor is open we don't change back to the Main layout
+		if (m_bIsEditorOpen && m_SavedEditorLayout && newLayout.GetIdentifier() == m_sMainLayout)
+		{
+			newLayout = m_SavedEditorLayout;
+			m_ActiveLayout = m_SavedEditorLayout;
+		}
+		else
+		{
+			m_ActiveLayout = newLayout;
+		}
+		
 		SetLayoutEnabled(m_ActiveLayout.GetIdentifier(), true);
 		
 		array<SCR_HUDElement> allHudElements = {};
-		GetAllHudElements(allHudElements);		
+		GetAllHudElements(allHudElements);
 		
 		foreach (SCR_HUDElement element : allHudElements)
 		{
@@ -259,7 +273,7 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 					mainLayout.AddHudElement(element, true);
 			}
 			
-			if (!newParentWidget)			
+			if (!newParentWidget || !newParentWidget.IsEnabled())			
 				continue;
 			
 			elementWidget.SetVisible(true);
@@ -305,13 +319,19 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 		
 		if (m_OnMainLayoutInitialize)
 			m_OnMainLayoutInitialize.Invoke();
+		
+		// Wait until the main layout is initialized to prevent changing to editor layouts before the HudLayout are fully initialized
+		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
+		editorManager.GetOnOpened().Insert(OnEditorOpen);
+		editorManager.GetOnClosed().Insert(OnEditorClose);
+		editorManager.GetOnModeChange().Insert(OnEditorChange);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(notnull SCR_HUDManagerComponent owner)
 	{
 		super.OnInit(owner);
-
+		
 		InitializeHUDLayouts();
 	}
 
@@ -329,5 +349,28 @@ class SCR_HUDManagerLayoutHandler : SCR_HUDManagerHandler
 		
 		return m_OnMainLayoutInitialize;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	//! When editor gets opened save the editor HudLayout
+	protected void OnEditorOpen()
+	{
+		m_bIsEditorOpen = true;
+		m_SavedEditorLayout = m_ActiveLayout;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! When editor gets closed allow the change back to the main layout again
+	protected void OnEditorClose()
+	{
+		m_bIsEditorOpen = false;
+		m_SavedEditorLayout = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! when chaning Editor modes store the HudLayout of the newly opened mode
+	protected void OnEditorChange()
+	{
+		if (m_bIsEditorOpen)
+			m_SavedEditorLayout = m_ActiveLayout;
+	}
 }

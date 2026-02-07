@@ -90,11 +90,11 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 			m_FocusedElement = m_aSelectionElements[0];
 		}
 		
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnMenuRight);
 		
 		if (m_bAllowMultiselection)
-			GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, OnMenuSelect);
+			GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, OnMenuSelect);
 		
 		return false;
 	}
@@ -107,11 +107,11 @@ class SCR_ToolboxComponent : SCR_SelectionWidgetComponent
 		if (m_FocusedElement)
 			m_FocusedElement.ShowBorder(false);
 		
-		GetGame().GetInputManager().RemoveActionListener("MenuLeft", EActionTrigger.DOWN, OnMenuLeft);
-		GetGame().GetInputManager().RemoveActionListener("MenuRight", EActionTrigger.DOWN, OnMenuRight);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnMenuLeft);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnMenuRight);
 		
 		if (m_bAllowMultiselection)
-			GetGame().GetInputManager().RemoveActionListener("MenuSelect", EActionTrigger.DOWN, OnMenuSelect);
+			GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, OnMenuSelect);
 		
 		return false;
 	}

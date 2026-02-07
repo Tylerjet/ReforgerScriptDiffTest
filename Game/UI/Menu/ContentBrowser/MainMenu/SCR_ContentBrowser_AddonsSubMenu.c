@@ -15,25 +15,20 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 {
 	// This is quite universal and can work in many modes...
 	[Attribute("0", UIWidgets.ComboBox, "This menu is quite universal and can work in many modes - what do you want it to be?", "", ParamEnumArray.FromEnum(EContentBrowserAddonsSubMenuMode))]
-	EContentBrowserAddonsSubMenuMode m_eMode;
+	protected EContentBrowserAddonsSubMenuMode m_eMode;
 
-	[Attribute("true", UIWidgets.CheckBox, "Enables the sorting header")]
-	bool m_bEnableSorting;
-
-	[Attribute("true", UIWidgets.CheckBox, "Enabled the filter panel functionality")]
-	bool m_bEnableFilter;
-
-	[Attribute("true", UIWidgets.CheckBox, "Enables opening details menu of currently selected tile.")]
-	protected bool m_bEnableOpenDetails;
-
-	// ---- Constants ----
-
+	[Attribute("SOUND_FE_TURN_PAGE")]
+	protected string m_sScrollWheelPageTurningSound;
+	
+	// --- Constants ---
 	protected const int GRID_N_COLUMNS = 4;
 	protected const int GRID_N_ROWS = 3;
 	protected const int LOAD_PAGE_DELAY = 500;
 
 	protected const ResourceName LAYOUT_GRID_TILE = "{67B0EFBDF7EAFF27}UI/layouts/Menus/ContentBrowser/Tile/WorkshopTile.layout";
 
+	protected const string TEXT_PAGE_INDICATOR = "#AR-Editor_ContentBrowser_PageIndex_Text";
+	
 	// Message tags
 	protected const string MESSAGE_TAG_NOTHING_FOUND = "nothing_found";
 	protected const string MESSAGE_TAG_NOTHING_DOWNLOADED = "nothing_downloaded";
@@ -41,12 +36,13 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected const string MESSAGE_TAG_ERROR_CONNECTION = "error_connection";
 	protected const string MESSAGE_TAG_LOADING = "loading";
 
-	// ---- Protected / Private ----
+	// --- Protected / Private ---
+	protected ref SCR_ContentBrowser_AddonsSubMenuBaseWidgets m_Widgets = new SCR_ContentBrowser_AddonsSubMenuBaseWidgets();
 
-	protected ref SCR_ContentBrowser_AddonsSubMenuBaseWidgets m_Widgets = new SCR_ContentBrowser_AddonsSubMenuBaseWidgets;
-
-	protected WorkshopApi m_WorkshopApi;
+	protected SCR_MenuActionsComponent m_MenuActionsComponent;
 	
+	protected WorkshopApi m_WorkshopApi;
+
 	protected ref SCR_WorkshopDownloadSequence m_DownloadRequest;
 
 	protected ref array<SCR_ContentBrowserTileComponent> m_aTileComponents = {};
@@ -68,14 +64,13 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected bool m_bPanelsModeEmpty; // True when we are showing empty panels
 
 	protected bool m_bMousePageUsed;
-	
+
 	protected bool m_bFirstLoad = true;
 
 	// State of paging
 	protected int m_iCurrentPage;
-	protected int m_iOfflinePageCount;	// Amount of pages, used only in MODE_OFFLINE and MODE_EXTERNAL_ITEM_ARRAY
-	protected int m_iOnlinePageCount;
-	
+	protected int m_iPageCount;
+
 	// Navigation buttons
 	protected SCR_InputButtonComponent m_NavDetails;
 	protected SCR_InputButtonComponent m_NavPrimary;
@@ -83,42 +78,19 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavFavourite;
 	protected SCR_InputButtonComponent m_NavFilter;
 
+	// Focus
+	protected SCR_EListMenuWidgetFocus m_eFocusedWidgetState;
+	
 	// Items found message
 	protected int m_iItemsTotal;
 	protected int m_iOnlineFilteredItems;
 	protected ref array<ref SCR_WorkshopApiCallback_RequestPage> m_aSearchCallbacks = {};
+	
+	// Mouse wheel input
+	protected bool m_bCanPlayMouseWheelSound = true;
+	protected const int MOUSE_WHEEL_SOUND_COOLDOWN = 75;
 
-	//------------------------------------------------------------------------------------------------
-	//! Sets the item array on which this tab operates. Only possible in external item array mode.
-	void SetWorkshopItems(array<ref SCR_WorkshopItem> items)
-	{
-		if (m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY)
-			return;
-
-		m_aExternalItems.Clear();
-
-		foreach (SCR_WorkshopItem i : items)
-		{
-			m_aExternalItems.Insert(i);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Sets filters to mode which lists only 'enabled' addons. Only works for offline tab.
-	void SetFilterConfiguration_EnabledAddons()
-	{
-		if (m_eMode != EContentBrowserAddonsSubMenuMode.MODE_OFFLINE)
-			return;
-
-		SCR_FilterPanelComponent fp = m_Widgets.m_FilterPanelComponent;
-		fp.ResetToDefaultValues();
-		SCR_FilterSet filterSet = fp.GetFilter();
-		SCR_FilterEntry filterEntry = filterSet.FindFilterCategory("state").FindFilter("enabled");
-		filterEntry.SetSelected(true);
-		fp.SelectFilter(filterEntry, true, invokeOnChanged: false);
-		RequestPage(0); // Update the page again
-	}
-
+	// --- Overrides ---
 	//------------------------------------------------------------------------------------------------
 	override void OnTabCreate(Widget menuRoot, ResourceName buttonsLayout, int index)
 	{
@@ -138,20 +110,27 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Init event handlers
 		InitWidgetEventHandlers();
 
-		// In online mode request page only when menu is opened first time
-		if (m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE)
+		switch (m_eMode)
 		{
-			m_bConnected = SCR_WorkshopUiCommon.GetConnectionState();
-			if (m_bConnected)
-				OnConnected();
-			else
-				SetPanelsMode(true, false, MESSAGE_TAG_ERROR_CONNECTION, false);
-		}
-		
-		else
-		{
-			// Offline modes - request page instantly
-			RequestPage(0);
+			case EContentBrowserAddonsSubMenuMode.MODE_ONLINE:
+			{
+				m_bConnected = SCR_ServicesStatusHelper.IsAuthenticated();
+				if (m_bConnected)
+					OnConnected();
+				else
+					SetPanelsMode(true, false, MESSAGE_TAG_ERROR_CONNECTION, false);
+				
+				break;
+			}
+			
+			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
+			{
+				// Offline mode - request page instantly
+				RequestPage(0);
+				break;
+			}
+			
+			// For EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY we need to wait for the items
 		}
 
 		// Subscribe to addon manager events
@@ -159,46 +138,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		// Subscribe to page refresh request events
 		SCR_AddonManager.GetInstance().m_OnAddonReportedStateChanged.Insert(Callback_OnAddonReportedStateChanged);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void InitWidgets()
-	{
-		m_Widgets.Init(GetRootWidget());
-
-		// Hide elements which are disabled through attributes
-		m_Widgets.m_SortingHeader.SetVisible(m_bEnableSorting);
-
-		// Create nav buttons
-		if (m_bEnableFilter)
-			m_NavFilter = CreateNavigationButton("MenuFilter", "#AR-Editor_ContentBrowser_ButtonOpenFilter", false);
 		
-		m_NavDetails = CreateNavigationButton("MenuSelect", "#AR-Workshop_Details_MenuTitle", true, m_bEnableOpenDetails);
-		m_NavEnable = CreateNavigationButton("MenuEnable", "#AR-Workshop_ButtonEnable", true);
-		m_NavFavourite = CreateNavigationButton("MenuFavourite", UIConstants.FAVORITE_LABEL_ADD, true);
-		m_NavPrimary = CreateNavigationButton("MenuSelectHold", "#AR-Workshop_ButtonDownload", true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void InitWidgetEventHandlers()
-	{
-		m_Widgets.m_PrevPageButton_NoScrollComponent.m_OnActivated.Insert(OnPrevPageButton);
-		m_Widgets.m_NextPageButton_NoScrollComponent.m_OnActivated.Insert(OnNextPageButton);
-		GetGame().GetInputManager().AddActionListener("MouseWheel", EActionTrigger.VALUE, OnScrollPage);
-
-		m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterSearchComponent.m_OnConfirm.Insert(OnFilterSearchConfirm);
-		m_Widgets.m_SortingHeaderComponent.m_OnChanged.Insert(OnSortingHeaderChange);
-		m_Widgets.m_FilterPanelComponent.GetOnFilterChanged().Insert(OnFilterChange);
-
-		// Event handlers of nav buttons
-		m_NavEnable.m_OnActivated.Insert(OnEnableButton);
-		
-		if (m_NavFilter)
-			m_NavFilter.m_OnActivated.Insert(OnFilterButton);
-		
-		m_NavPrimary.m_OnActivated.Insert(OnPrimaryButton);
-		m_NavFavourite.m_OnActivated.Insert(OnFavouriteButton);
-		m_NavDetails.m_OnClicked.Insert(OnDetailsButton);
+		// Listen for input device change to update navigation buttons
+		GetGame().OnInputDeviceUserChangedInvoker().Insert(OnInputDeviceUserChanged);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -211,9 +153,20 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// We do it on tab show becasue this tab and others persists when all other tabs are closed,
 		// But we can switch back to it later, and we must setup the workshop api again
 		InitWorkshopApi();
+
+		if (m_MenuActionsComponent)
+			m_MenuActionsComponent.ActivateActions();
 		
-		if (m_bFailToLoad)
+		if (m_bFailToLoad || m_eMode == EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY)
 			RequestPage(m_iCurrentPage);
+		
+		if (m_bShown)
+		{
+			if (!m_bConnected && m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE)
+				GetGame().GetCallqueue().Call(SwitchFocus, SCR_EListMenuWidgetFocus.NULL);
+			else
+				GetGame().GetCallqueue().Call(SwitchFocus, m_eFocusedWidgetState);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -223,6 +176,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		// Save configuration of filters
 		m_Widgets.m_FilterPanelComponent.Save();
+		
+		if (m_MenuActionsComponent)
+			m_MenuActionsComponent.DeactivateActions();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -235,6 +191,9 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		// Unsubscribe from page refresh request events
 		SCR_AddonManager.GetInstance().m_OnAddonReportedStateChanged.Remove(Callback_OnAddonReportedStateChanged);
+
+		if (m_LastFocusedTile)
+			m_LastFocusedTile.GetOnChange().Remove(OnTileStateChange);
 		
 		GetGame().GetCallqueue().Remove(RequestOnlinePageUnfiltered);
 	}
@@ -243,64 +202,90 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	override void OnMenuShow()
 	{
 		super.OnMenuShow();
-		
+
 		InitWorkshopApi();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Called on each frame
 	override void OnMenuUpdate(float tDelta)
 	{
 		// Update connection state, check if we have reconnected
 		bool connectedOld = m_bConnected;
-		bool connectedNew = SCR_WorkshopUiCommon.GetConnectionState();
+		bool connectedNew = SCR_ServicesStatusHelper.IsAuthenticated();
 		m_bConnected = connectedNew;
 		if (connectedNew != connectedOld)
 		{
-			if (connectedNew)
-				ContentBrowserUI._print("Connected");
-			else
-				ContentBrowserUI._print("Disconnected");
-
-			if (connectedNew && m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE) // Only call OnConnected if it's an online tab
+			// Only call OnConnected if it's an online tab
+			if (connectedNew && m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE)
 				OnConnected();
 		}
-
-		// TODO: don't update on tick!
-		UpdatePagingWidgets();
-		UpdateButtons();
+		
+		super.OnMenuUpdate(tDelta);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuFocusGained()
 	{
 		if (m_bShown)
-			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
+			SwitchFocus(m_eFocusedWidgetState);
 
+		if (m_bShown && m_MenuActionsComponent)
+			m_MenuActionsComponent.ActivateActions();
+		
 		super.OnMenuFocusGained();
+	}
+	
+	// --- Protected ---
+	//------------------------------------------------------------------------------------------------
+	protected void InitWidgets()
+	{
+		m_Widgets.Init(GetRootWidget());
+		
+		// Create nav buttons
+		if (m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY)
+		{
+			m_NavFilter = CreateNavigationButton("MenuFilter", "#AR-FieldManual_Page_EditorAssetBrowser_Text_3", false);
+			m_NavDetails = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT, "#AR-Workshop_Details_MenuTitle", true);
+		}
+		
+		m_NavEnable = CreateNavigationButton(UIConstants.MENU_ACTION_ENABLE, SCR_WorkshopUiCommon.LABEL_ENABLE, true);
+		m_NavPrimary = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT_HOLD, SCR_WorkshopUiCommon.LABEL_DOWNLOAD, true);
+		m_NavFavourite = CreateNavigationButton(UIConstants.MENU_ACTION_FAVORITE, UIConstants.FAVORITE_LABEL_ADD, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnTabChange()
+	protected void InitWidgetEventHandlers()
 	{
-		super.OnTabChange();
+		m_Widgets.m_PrevPageButton_NoScrollComponent.m_OnActivated.Insert(OnPrevPageButton);
+		m_Widgets.m_NextPageButton_NoScrollComponent.m_OnActivated.Insert(OnNextPageButton);
 
-		if (GetShown())
-		{
-			if (!m_bConnected && m_eMode == EContentBrowserAddonsSubMenuMode.MODE_ONLINE)
-				SwitchFocus(SCR_EListMenuWidgetFocus.NULL);
-			else
-				SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
-		}
+		m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterSearchComponent.m_OnConfirm.Insert(OnFilterSearchConfirm);
+		m_Widgets.m_FilterPanelComponent.GetOnFilterPanelToggled().Insert(OnFilterPanelToggled);
+		m_Widgets.m_SortingHeaderComponent.m_OnChanged.Insert(OnSortingHeaderChange);
+		m_Widgets.m_FilterPanelComponent.GetOnFilterChanged().Insert(OnFilterChange);
+
+		m_MenuActionsComponent = SCR_MenuActionsComponent.FindComponent(m_wRoot);
+		if (m_MenuActionsComponent)
+			m_MenuActionsComponent.GetOnAction().Insert(OnInputAction);
+		
+		// Event handlers of nav buttons
+		if (m_NavFilter)
+			m_NavFilter.m_OnActivated.Insert(OnFilterButton);
+		
+		if (m_NavDetails)
+			m_NavDetails.m_OnClicked.Insert(OnDetailsButton);
+
+		m_NavEnable.m_OnActivated.Insert(OnEnableButton);
+		m_NavPrimary.m_OnActivated.Insert(OnPrimaryButton);
+		m_NavFavourite.m_OnActivated.Insert(OnFavouriteButton);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	// Inits workshop API according to current mode
 	protected void InitWorkshopApi()
 	{
-		// Set grid thumbnail size
-		float imageWidth = SCR_WorkshopUiCommon.GetPreferedTileImageWidth();
-		WorkshopItem.SetThumbnailGridScale(imageWidth);
+		WorkshopItem.SetThumbnailGridScale(GetGame().GetWorkspace().DPIScale(SCR_ContentBrowserTileComponent.GetTileWidth()));
 
 		switch (m_eMode)
 		{
@@ -311,25 +296,21 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
 				m_WorkshopApi.ScanOfflineItems();
 				break;
-
-			case EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY:
-				// Don't do anything, we are not using the Workshop API to get items
-				// In this case
-				break;
 		}
 
 		// Register tags for filters
 		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.m_FilterSet;
-		if (filterSet)
+		if (!filterSet)
+			return;
+		
+		SCR_ContentBrowserFilterTag filterTag;
+		foreach (SCR_FilterCategory category : filterSet.GetFilterCategories())
 		{
-			foreach (SCR_FilterCategory category : filterSet.GetFilterCategories())
+			foreach (SCR_FilterEntry filterEntry : category.GetFilters())
 			{
-				foreach (SCR_FilterEntry filterEntry : category.GetFilters())
-				{
-					SCR_ContentBrowserFilterTag filterTag = SCR_ContentBrowserFilterTag.Cast(filterEntry);
-					if (filterTag)
-						filterTag.RegisterInWorkshopApi(m_WorkshopApi);
-				}
+				filterTag = SCR_ContentBrowserFilterTag.Cast(filterEntry);
+				if (filterTag)
+					filterTag.RegisterInWorkshopApi(m_WorkshopApi);
 			}
 		}
 	}
@@ -351,33 +332,34 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			case EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY:
 				DisplayExternalItems(pageId);
 				break;
+			
 			case EContentBrowserAddonsSubMenuMode.MODE_ONLINE:
 				GetGame().GetCallqueue().Remove(RequestOnlinePage);
 				GetGame().GetCallqueue().CallLater(RequestOnlinePage, LOAD_PAGE_DELAY, false, pageId);
 				break;
+			
 			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
 				DisplayOfflineItems(pageId);
 				break;
 		}
 	}
 
-	// ---- Backend page requests ----
+	// --- Backend page requests ---
 	//------------------------------------------------------------------------------------------------
-	//! Total number of items
-	//! Requests an unfiltered page from backend, does not do anything else
+	//! Requests an unfiltered page from backend to get the total number of items
 	protected void RequestOnlinePageUnfiltered(int pageId)
 	{
 		GetGame().GetCallqueue().Remove(RequestOnlinePageUnfiltered);
-		
+
 		m_WorkshopApi.SetPageItems(0);
-		
-		ref SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
+
+		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
 		callback.m_OnGetAssets.Insert(Callback_OnRequestPageGetAllAssets);
 		callback.m_OnError.Insert(Callback_OnRequestPageGetAllAssets);
 		callback.m_OnTimeout.Insert(Callback_OnRequestPageGetAllAssets);
 
 		m_aSearchCallbacks.Insert(callback);
-		
+
 		if (!m_GetAssetListParamsDefault)
 			m_GetAssetListParamsDefault = new SCR_ContentBrowser_GetAssetListParams(this, true);
 
@@ -386,21 +368,20 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		m_WorkshopApi.RequestPage(callback, m_GetAssetListParamsDefault, m_bClearCacheAtNextRequest);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Items with filters
-	//! Requests a filtered page from backend, does not do anything else
+	//! Requests a filtered page from backend to get the actual items to display
 	protected void RequestOnlinePage(int pageId)
-	{	
+	{
 		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
-		
-		ref SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
+
+		SCR_WorkshopApiCallback_RequestPage callback = new SCR_WorkshopApiCallback_RequestPage(pageId);
 		callback.m_OnGetAssets.Insert(Callback_OnRequestPageGetAssets);
 		callback.m_OnError.Insert(Callback_OnRequestPageTimeout);
 		callback.m_OnTimeout.Insert(Callback_OnRequestPageTimeout);
-		
+
 		m_aSearchCallbacks.Insert(callback);
-		
+
 		if (!m_GetAssetListParams)
 			m_GetAssetListParams = new SCR_ContentBrowser_GetAssetListParams(this);
 
@@ -413,7 +394,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		#endif
 
 		m_WorkshopApi.RequestPage(callback, m_GetAssetListParams, m_bClearCacheAtNextRequest);
-		
+
 		m_bClearCacheAtNextRequest = false;
 	}
 
@@ -423,19 +404,1017 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		callback.m_OnSuccess.Clear();
 		callback.m_OnError.Clear();
 		callback.m_OnTimeout.Clear();
-		
+
 		m_aSearchCallbacks.RemoveItem(callback);
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Selects items from the externally provided array and shows them on grid, only makes sense in external array mode
+	protected void DisplayExternalItems(int pageId)
+	{
+		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
+
+		array<ref SCR_WorkshopItem> itemsAtPage = SelectItemsAtPage(m_aExternalItems, pageId);
+
+		// Filtering is disabled in this mode
+		// Update page count
+		float nItemsPerPage = GRID_N_ROWS * GRID_N_COLUMNS;
+		m_iPageCount = Math.Ceil(m_aExternalItems.Count() / nItemsPerPage);
+
+		SetPanelsMode(false);
+
+		GridScreen_DisplayItems(itemsAtPage);
+
+		m_bFirstPage = false;
+
+		UpdateItemsFoundMessage(m_aExternalItems.Count(), m_aExternalItems.Count());
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DisplayOfflineItems(int pageId)
+	{
+		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
+
+		// Get offline items from API
+		array<WorkshopItem> rawWorkshopItems = {};
+		m_WorkshopApi.GetOfflineItems(rawWorkshopItems);
+
+		// Bail if there is no downloaded content
+		if (rawWorkshopItems.IsEmpty())
+		{
+			SetPanelsMode(showEmptyPanel: true, messagePresetTag: MESSAGE_TAG_NOTHING_DOWNLOADED);
+			UpdateItemsFoundMessage(0, 0);
+			return;
+		}
+
+		// Register items in Addon Manager
+		array<ref SCR_WorkshopItem> itemsUnfiltered = {};
+		SCR_WorkshopItem itemRegistered;
+		foreach (WorkshopItem i : rawWorkshopItems)
+		{
+			itemRegistered = SCR_AddonManager.GetInstance().Register(i);
+			itemsUnfiltered.Insert(itemRegistered);
+		}
+
+		// Filter items
+		array<ref SCR_WorkshopItem> itemsFiltered = Filter_OfflineFilterAndSearch(itemsUnfiltered);
+
+		// Bail if no items after filtering
+		if (itemsFiltered.IsEmpty())
+		{
+			SetPanelsMode(showEmptyPanel: false, forceFiltersList: true, messagePresetTag: MESSAGE_TAG_NOTHING_DOWNLOADED_2);
+			UpdateItemsFoundMessage(0, rawWorkshopItems.Count());
+			return;
+		}
+
+		// Sort items
+		array<SCR_WorkshopItem> itemsSortedWeakPtrs = {};
+		foreach (SCR_WorkshopItem i : itemsFiltered)
+		{
+			itemsSortedWeakPtrs.Insert(i);
+		}
+
+		bool sortOrder = !m_Widgets.m_SortingHeaderComponent.GetSortOrderAscending();
+		string currentSortingItem = m_Widgets.m_SortingHeaderComponent.GetSortElementName();
+		if (currentSortingItem.IsEmpty())
+		{
+			currentSortingItem = "name";
+			sortOrder = false;
+		}
+
+		switch (currentSortingItem)
+		{
+			case "name":
+				SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemName>.HeapSort(itemsSortedWeakPtrs, sortOrder);
+				break;
+			case "time_since_played":
+				SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemTimeSinceLastPlay>.HeapSort(itemsSortedWeakPtrs, sortOrder);
+				break;
+			case "time_since_downloaded":
+				SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemTimeSinceFirstDownload>.HeapSort(itemsSortedWeakPtrs, sortOrder);
+				break;
+		}
+
+		array<ref SCR_WorkshopItem> itemsSorted = {};
+		foreach (SCR_WorkshopItem i : itemsSortedWeakPtrs)
+		{
+			itemsSorted.Insert(i);
+		}
+
+		// Update page count
+		m_iPageCount = Math.Ceil(itemsSorted.Count() / (GRID_N_ROWS * GRID_N_COLUMNS));
+
+		// Display items
+		SetPanelsMode(false, m_Widgets.m_FilterPanelComponent.AnyFilterButtonsVisible(), string.Empty, m_bFirstPage);
+		array<ref SCR_WorkshopItem> itemsAtPage = SelectItemsAtPage(itemsSorted, pageId);
+		GridScreen_DisplayItems(itemsAtPage);
+
+		m_bFirstPage = false;
+
+		UpdateItemsFoundMessage(itemsSorted.Count(), rawWorkshopItems.Count());
+	}
+
+	// --- Widgets ---
+	//------------------------------------------------------------------------------------------------
+	// When pages are scrolled, tiles are not deleted, we show different data in the tiles instead to avoid unneeded widget allocations.
+	// Here we create tile widgets in advance.
+	protected void GridScreen_Init()
+	{
+		for (int i = 0; i < GRID_N_COLUMNS * GRID_N_ROWS; i++)
+		{
+			int colId = i % GRID_N_COLUMNS;
+			int rowId = i / GRID_N_COLUMNS;
+
+			// Create tile widgets
+			Widget w = GetGame().GetWorkspace().CreateWidgets(LAYOUT_GRID_TILE, m_Widgets.m_Grid);
+
+			// Set grid positioning
+			GridSlot.SetRow(w, rowId);
+			GridSlot.SetColumn(w, colId);
+
+			// Init the tile component
+			SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(w.FindHandler(SCR_ContentBrowserTileComponent));
+			comp.SetWorkshopItem(null); // Widget will be hidden because of this
+
+			// Tile event handlers
+			comp.m_OnClick.Insert(OnTileClick);
+			comp.GetOnFocus().Insert(OnTileFocus);
+			comp.GetOnFocusLost().Insert(OnTileFocusLost);
+
+			m_aTileComponents.Insert(comp);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Tiles are cleared up here. They are not deleted, but hidden.
+	protected void GridScreen_Clear()
+	{
+		foreach (SCR_ContentBrowserTileComponent comp : m_aTileComponents)
+		{
+			comp.SetWorkshopItem(null);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void GridScreen_DisplayItems(array<ref SCR_WorkshopItem> items)
+	{
+		// Clear old items
+		GridScreen_Clear();
+
+		int nItems = Math.ClampInt(items.Count(), 0, GRID_N_COLUMNS * GRID_N_ROWS);
+
+		for (int i = 0; i < nItems; i++)
+		{
+			SCR_ContentBrowserTileComponent comp = m_aTileComponents[i];
+			comp.SetWorkshopItem(items[i]);
+		}
+		
+		if (nItems > 0 && m_eFocusedWidgetState != SCR_EListMenuWidgetFocus.FILTERING)
+			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
+		
+		UpdatePagingWidgets();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetPanelsMode(bool showEmptyPanel, bool forceFiltersList = false, string messagePresetTag = string.Empty, bool animateFiltersList = false)
+	{
+		m_bPanelsModeEmpty = showEmptyPanel;
+
+		// Show either main+filter panel or empty panel
+		m_Widgets.m_EmptyPanel.SetVisible(showEmptyPanel);
+		m_Widgets.m_FilterPanel.SetVisible(!showEmptyPanel);
+		m_Widgets.m_LeftPanelArea.SetVisible(!showEmptyPanel);
+
+		// Show message or hide it
+		m_Widgets.m_EmptyPanelMessage.SetVisible(!messagePresetTag.IsEmpty());
+		m_Widgets.m_MainPanelMessage.SetVisible(!messagePresetTag.IsEmpty());
+
+		// Set message based on tag
+		if (!messagePresetTag.IsEmpty())
+		{
+			if (showEmptyPanel)
+				m_Widgets.m_EmptyPanelMessageComponent.SetContentFromPreset(messagePresetTag);
+			else
+				m_Widgets.m_MainPanelMessageComponent.SetContentFromPreset(messagePresetTag);
+		}
+
+		// Force-show filter list
+		if (forceFiltersList)
+		{
+			m_Widgets.m_FilterPanelComponent.ShowFilterListBox(true, animateFiltersList);
+			if (!m_Widgets.m_FilterPanelComponent.GetFocused())
+				SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
+		}
+		
+		UpdateNavigationButtons();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateItemsFoundMessage(int current, int total)
+	{
+		if (!m_Widgets || !m_Widgets.m_FilterPanelComponent)
+			return;
+
+		m_Widgets.m_FilterPanelComponent.SetItemsFoundMessage(current, total, current != total);
+
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns currently selected workshop item
+	protected SCR_WorkshopItem GetSelectedItem()
+	{
+		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
+
+		if (!focusedWidget)
+			return null;
+
+		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(focusedWidget.FindHandler(SCR_ContentBrowserTileComponent));
+
+		if (!comp)
+			return null;
+
+		return comp.GetWorkshopItem();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Updates the widgets related to paging: buttons, text
+	protected void UpdatePagingWidgets()
+	{
+		m_Widgets.m_PagingButtons.SetVisible(m_iPageCount != 0);
+
+		if (m_iPageCount == 0)
+			return;
+
+		m_Widgets.m_PageIndicatorText.SetTextFormat(TEXT_PAGE_INDICATOR, m_iCurrentPage + 1, m_iPageCount);
+
+		m_Widgets.m_PrevPageButton_NoScrollComponent.SetEnabled(m_iCurrentPage > 0, false);
+		m_Widgets.m_NextPageButton_NoScrollComponent.SetEnabled(m_iCurrentPage < m_iPageCount - 1, false);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateNavigationButtons()
+	{
+		// Filters button
+		SetNavigationButtonVisibile(m_NavFilter, !m_bPanelsModeEmpty);
+
+		// Item buttons
+		SCR_WorkshopItem item = GetSelectedItem();
+		if (!item || item.GetRestricted())
+		{
+			SetNavigationButtonVisibile(m_NavDetails, false);
+			SetNavigationButtonVisibile(m_NavFavourite, false);
+			SetNavigationButtonVisibile(m_NavEnable, false);
+			SetNavigationButtonVisibile(m_NavPrimary, false);
+			return;
+		}
+		
+		bool show = GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE && !m_bPanelsModeEmpty;
+		string primaryLabel = SCR_WorkshopUiCommon.GetPrimaryActionName(item);
+
+		SetNavigationButtonVisibile(m_NavDetails, show && m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY);
+		SetNavigationButtonVisibile(m_NavFavourite, show);
+		SetNavigationButtonVisibile(m_NavEnable, show && item.GetOffline() && !SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item));
+		SetNavigationButtonVisibile(m_NavPrimary, show && !primaryLabel.IsEmpty());
+		
+		// Favorite
+		if (m_NavFavourite)
+			m_NavFavourite.SetLabel(UIConstants.GetFavoriteLabel(item.GetFavourite()));
+
+		// Enable
+		if (m_NavEnable && item.GetOffline())
+		{
+			string enableLabel;
+			if (item.GetEnabled())
+				enableLabel = SCR_WorkshopUiCommon.LABEL_DISABLE;
+			else
+				enableLabel = SCR_WorkshopUiCommon.LABEL_ENABLE;
+			
+			m_NavEnable.SetLabel(enableLabel);
+		}
+
+		// Primary
+		if (!primaryLabel.IsEmpty() && m_NavPrimary)
+			m_NavPrimary.SetLabel(primaryLabel);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns true if cursor over a given widget
+	protected bool IsWidgetUnderCursor(Widget w)
+	{
+		Widget wCurrent = WidgetManager.GetWidgetUnderCursor();
+		while (wCurrent)
+		{
+			if (wCurrent == w)
+				return true;
+			wCurrent = wCurrent.GetParent();
+		}
+		return false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns array of items within specified page, page ID starting from 0.
+	protected array<ref SCR_WorkshopItem> SelectItemsAtPage(array<ref SCR_WorkshopItem> items, int pageId)
+	{
+		array<ref SCR_WorkshopItem> itemsOut = {};
+
+		float nItemsPerPage = GRID_N_ROWS * GRID_N_COLUMNS;
+		int nPages = Math.Ceil(items.Count() / nItemsPerPage);
+
+		if (pageId < 0 || pageId >= nPages)
+			return itemsOut;
+
+		int idStart = nItemsPerPage * pageId;			// Select from this
+		int idEnd = nItemsPerPage * (pageId + 1) - 1;	// Up to this (including this)
+
+		if (idEnd >= items.Count())
+			idEnd = items.Count() - 1;
+
+		for (int i = idStart; i <= idEnd; i++)
+		{
+			itemsOut.Insert(items[i]);
+		}
+
+		return itemsOut;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Switch focus
+	protected void SwitchFocus(SCR_EListMenuWidgetFocus focus)
+	{
+		m_eFocusedWidgetState = focus;
+		Widget focusTarget;
+
+		switch (focus)
+		{
+			case SCR_EListMenuWidgetFocus.LIST:
+			{
+				if (m_LastFocusedTile && m_LastFocusedTile.IsVisible())
+					focusTarget = m_LastFocusedTile.GetRootWidget();
+				else if (m_Widgets.m_Grid)
+					focusTarget = m_Widgets.m_Grid.GetChildren();
+
+				break;
+			}
+
+			case SCR_EListMenuWidgetFocus.FILTERING:
+			{
+				focusTarget = m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterButton;
+				break;
+			}
+
+			case SCR_EListMenuWidgetFocus.SORTING:
+			{
+				focusTarget = m_Widgets.m_SortingHeader.GetChildren();
+				break;
+			}
+
+			case SCR_EListMenuWidgetFocus.NULL:
+			{
+				GetGame().GetWorkspace().SetFocusedWidget(null);
+				return;
+			}
+		}
+
+		// Fallback
+		if (!focusTarget || !focusTarget.IsVisible())
+			focusTarget = m_Widgets.m_SortingHeader.GetChildren();
+
+		// Execute focusing
+		GetGame().GetWorkspace().SetFocusedWidget(focusTarget);
+
+		// If we've focused a tile, we need to manually update the details panel (by switching page we focus the same widget, but the tile data is different)
+		if (!focusTarget)
+			return;
+
+		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.FindComponent(focusTarget);
+		if (comp)
+			OnTileFocus(comp)
+	}
+
+	// --- Events ---
+	//------------------------------------------------------------------------------------------------
+	protected void OnInputDeviceUserChanged(EInputDeviceType oldDevice, EInputDeviceType newDevice)
+	{
+		UpdateNavigationButtons();
+	}
 	
+	//------------------------------------------------------------------------------------------------
+	// Called when we have lost connection and connected again, or when the tab is opened first time and connection is already active
+	// Not called for offline tab.
+	protected void OnConnected()
+	{
+		// Reinit the workshop API
+		InitWorkshopApi();
+
+		// Ask the same page again
+		RequestPage(m_iCurrentPage);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnTileClick(SCR_ScriptedWidgetComponent baseComp)
+	{
+		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(baseComp);
+
+		if (!comp || m_eMode == EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY)
+			return;
+
+		SCR_WorkshopItem selectedItem = comp.GetWorkshopItem();
+		if (!selectedItem)
+			return;
+		
+		ContentBrowserDetailsMenu.OpenForWorkshopItem(selectedItem);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnTileFocus(ScriptedWidgetComponent comp)
+	{	
+		SCR_ContentBrowserTileComponent tile = SCR_ContentBrowserTileComponent.Cast(comp);
+		if (!tile)
+			return;
+		
+		SCR_WorkshopItem item = tile.GetWorkshopItem();
+
+		UpdateNavigationButtons();
+		tile.GetOnChange().Insert(OnTileStateChange);
+		
+		if (!item || m_Widgets.m_AddonDetailsPanelComponent.GetItem() == item)
+			return;
+
+		m_Widgets.m_AddonDetailsPanelComponent.SetWorkshopItem(item);
+
+		m_LastFocusedTile = tile;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnTileFocusLost(ScriptedWidgetComponent comp)
+	{
+		SCR_ContentBrowserTileComponent tile = SCR_ContentBrowserTileComponent.Cast(comp);
+		if (!tile)
+			return;
+		
+		UpdateNavigationButtons();
+		tile.GetOnChange().Remove(OnTileStateChange);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnTileStateChange(ScriptedWidgetComponent comp)
+	{
+		UpdateNavigationButtons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFilterPanelToggled(bool shown)
+	{
+		if (shown)
+			SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
+		else
+			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInputAction(string name, float multiplier)
+	{
+		if (!m_bShown || GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE)
+			return;
+		
+		switch(name)
+		{
+			case UIConstants.MENU_ACTION_SELECT: 		OpenItemDetails(); 			break;
+			case UIConstants.MENU_ACTION_ENABLE:		SetItemEnabled(); 			break;
+			case UIConstants.MENU_ACTION_SELECT_HOLD:	ExecuteItemPrimaryAction(); break;
+			case UIConstants.MENU_ACTION_FAVORITE:		SetItemFavorite();			break;
+			case UIConstants.MENU_ACTION_MOUSE_WHEEL:	OnScrollPage(name);			break;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFilterButton(SCR_ButtonBaseComponent comp)
+	{
+		// Toggle the state of the filter panel
+		bool show = !m_Widgets.m_FilterPanelComponent.GetFilterListBoxShown();
+		m_Widgets.m_FilterPanelComponent.ShowFilterListBox(show);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPrimaryButton(SCR_ButtonBaseComponent comp)
+	{
+		ExecuteItemPrimaryAction();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ExecuteItemPrimaryAction()
+	{
+		SCR_WorkshopItem item = GetSelectedItem();
+		if (!item || item.GetRestricted())
+			return;
+
+		SCR_WorkshopUiCommon.ExecutePrimaryAction(item, m_DownloadRequest);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnEnableButton(SCR_ButtonBaseComponent comp)
+	{
+		SetItemEnabled();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetItemEnabled()
+	{
+		SCR_WorkshopItem item = GetSelectedItem();
+		if (!item || item.GetRestricted() || !item.GetOffline() || SCR_WorkshopUiCommon.IsDownloadingAddonOrDependencies(item))
+			return;
+		
+		SCR_WorkshopUiCommon.OnEnableAddonButton(item);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnFavouriteButton(SCR_ButtonBaseComponent comp)
+	{
+		SetItemFavorite();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void SetItemFavorite()
+	{
+		SCR_WorkshopItem item = GetSelectedItem();
+		if (!item || item.GetRestricted())
+			return;
+
+		item.SetFavourite(!item.GetFavourite());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDetailsButton(SCR_ButtonBaseComponent comp)
+	{
+		OpenItemDetails();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OpenItemDetails()
+	{
+		SCR_WorkshopItem item = GetSelectedItem();
+		if (m_eMode == EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY || !item || item.GetRestricted())
+			return;
+		
+		OnTileClick(m_LastFocusedTile);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnRequestPageGetAllAssets(SCR_WorkshopApiCallback_RequestPage callback)
+	{
+		PageRequestCallbackCleanup(callback);
+
+		m_iItemsTotal = m_WorkshopApi.GetTotalItemCount();
+		UpdateItemsFoundMessage(m_iOnlineFilteredItems, m_iItemsTotal);
+		m_bFirstLoad = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnRequestPageGetAssets(SCR_WorkshopApiCallback_RequestPage callback)
+	{
+		PageRequestCallbackCleanup(callback);
+
+		// Search Box Message
+		m_iOnlineFilteredItems = m_WorkshopApi.GetTotalItemCount();
+
+		array<WorkshopItem> items = {};
+		m_WorkshopApi.GetPageItems(items);
+
+		if (m_iOnlineFilteredItems < items.Count())
+			m_iOnlineFilteredItems = items.Count();
+
+		if (m_iItemsTotal < m_iOnlineFilteredItems)
+			m_iItemsTotal = m_iOnlineFilteredItems;
+
+		if (!m_bFirstLoad)
+			UpdateItemsFoundMessage(m_iOnlineFilteredItems, m_iItemsTotal);
+
+		// Update Displayed items
+		if (callback.m_iPageId != m_iCurrentPage)
+			return; // ?!
+
+		array<ref SCR_WorkshopItem> itemsRegistered = {};
+		SCR_WorkshopItem iRegistered
+		foreach (WorkshopItem i : items)
+		{
+			iRegistered = SCR_AddonManager.GetInstance().Register(i);
+			if (iRegistered)
+				itemsRegistered.Insert(iRegistered);
+		}
+
+		if (!itemsRegistered.IsEmpty())
+		{
+			// There are some items received
+			SetPanelsMode(false, m_bFirstPage && m_Widgets.m_FilterPanelComponent.AnyFilterButtonsVisible(), string.Empty, m_bFirstPage);
+		}
+		else
+		{
+			// No items received
+			SetPanelsMode(false, messagePresetTag: MESSAGE_TAG_NOTHING_FOUND, forceFiltersList: true);
+		}
+
+		m_iPageCount = m_WorkshopApi.GetPageCount();
+		GridScreen_DisplayItems(itemsRegistered);
+
+		m_bFirstPage = false;
+
+		if (m_bFirstLoad)
+			GetGame().GetCallqueue().CallLater(RequestOnlinePageUnfiltered, LOAD_PAGE_DELAY, false, callback.m_iPageId);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnRequestPageTimeout(SCR_WorkshopApiCallback_RequestPage callback)
+	{
+		PageRequestCallbackCleanup(callback);
+
+		if (GetShown())
+		{
+			// This submenu is shown, show the timeout dialog
+			SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateTimeoutTryAgainCancelDialog();
+			dlg.m_OnCancel.Insert(Callback_OnRequestPageTimeout_OnCloseDialog);
+			dlg.m_OnConfirm.Insert(Callback_OnRequestPageTimeout_OnDialogTryAgain);
+		}
+		else
+		{
+			// This submenu is not shown (probably we switched to another tab)
+			// Try to perform the request again
+			m_bClearCacheAtNextRequest = true;
+			RequestPage(m_iCurrentPage);
+		}
+
+		m_bFailToLoad = true;
+
+		m_iPageCount = 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnRequestPageTimeout_OnCloseDialog()
+	{
+		// Set message
+		SetPanelsMode(m_bPanelsModeEmpty, messagePresetTag: MESSAGE_TAG_ERROR_CONNECTION);
+		RequestTabChange(EWorkshopTabId.OFFLINE);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnRequestPageTimeout_OnDialogTryAgain()
+	{
+		m_bClearCacheAtNextRequest = true;
+		RequestPage(m_iCurrentPage);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called by SCR_AddonManager when some addon is downloaded or uninstalled
+	protected void Callback_OnAddonOfflineStateChanged(SCR_WorkshopItem item, bool newState)
+	{
+		if (m_eMode == EContentBrowserAddonsSubMenuMode.MODE_OFFLINE)
+		{
+			// Some addon was installed or uninstalled, we must refresh the page
+			RequestPage(m_iCurrentPage);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called by SCR_AddonManager when some addon is reported or unreported
+	protected void Callback_OnAddonReportedStateChanged(SCR_WorkshopItem item, bool newReported)
+	{
+		// Refresh current page if it has this addon
+		bool found = false;
+		foreach (SCR_ContentBrowserTileComponent comp : m_aTileComponents)
+		{
+			if (comp.GetWorkshopItem() == item)
+			{
+				m_bClearCacheAtNextRequest = true;
+				RequestPage(m_iCurrentPage);
+				break;
+			}
+		}
+	}
+
+	// --- Paging ---
+	//------------------------------------------------------------------------------------------------
+	protected void OnPrevPageButton()
+	{
+		EInputDeviceType inputType = -1;
+		if (m_bMousePageUsed)
+			inputType = EInputDeviceType.MOUSE;
+
+		m_bMousePageUsed = false;
+
+		if (inputType == EInputDeviceType.MOUSE && !IsWidgetUnderCursor(m_Widgets.m_LeftPanelArea))
+			return;
+
+		m_iCurrentPage--;
+		m_iCurrentPage = Math.ClampInt(m_iCurrentPage, 0, m_iPageCount - 1);
+
+		RequestPage(m_iCurrentPage);
+		UpdatePagingWidgets();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnNextPageButton()
+	{
+		EInputDeviceType inputType = -1;
+		if (m_bMousePageUsed)
+			inputType = EInputDeviceType.MOUSE;
+
+		m_bMousePageUsed = false;
+
+		if (inputType == EInputDeviceType.MOUSE && !IsWidgetUnderCursor(m_Widgets.m_LeftPanelArea))
+			return;
+
+		m_iCurrentPage++;
+		m_iCurrentPage = Math.ClampInt(m_iCurrentPage, 0, m_iPageCount - 1);
+
+		RequestPage(m_iCurrentPage);
+		UpdatePagingWidgets();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnScrollPage(string name)
+	{
+		float value = GetGame().GetInputManager().GetActionValue(name);
+		if (value != 0)
+			m_bMousePageUsed = true;
+				
+		bool playSound;
+		
+		if (value < 0 && m_iCurrentPage < m_iPageCount - 1)
+		{
+			OnNextPageButton();
+			playSound = true;
+		}
+		else if (value > 0 && m_iCurrentPage > 0)
+		{
+			OnPrevPageButton();
+			playSound = true;
+		}
+		
+		if (playSound && m_bCanPlayMouseWheelSound && IsWidgetUnderCursor(m_Widgets.m_LeftPanelArea))
+		{
+			SCR_UISoundEntity.SoundEvent(m_sScrollWheelPageTurningSound);
+			GetGame().GetCallqueue().CallLater(OnMouseWheelSoundCooldownEnd, MOUSE_WHEEL_SOUND_COOLDOWN);
+			m_bCanPlayMouseWheelSound = false;
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnMouseWheelSoundCooldownEnd()
+	{
+		m_bCanPlayMouseWheelSound = true;
+	}
+	
+	// --- Filters and Sorting ---
+	//------------------------------------------------------------------------------------------------
+	//! Called when filter listbox selection changes
+	protected void OnFilterChange(SCR_FilterEntry filter)
+	{
+		m_bClearCacheAtNextRequest = true;
+		RequestPage(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called when user confirms the value in the seacrh string
+	protected void OnFilterSearchConfirm(SCR_EditBoxComponent comp, string newValue)
+	{
+		m_bClearCacheAtNextRequest = true;
+		RequestPage(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Called when sorting header changes
+	protected void OnSortingHeaderChange(SCR_SortHeaderComponent sortHeader)
+	{
+		m_bClearCacheAtNextRequest = true;
+		RequestPage(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected array<ref SCR_WorkshopItem> SearchItems(array<ref SCR_WorkshopItem> items, string searchStr)
+	{
+		array<ref SCR_WorkshopItem> itemsOut = {};
+
+		if (searchStr.IsEmpty())
+		{
+			foreach (SCR_WorkshopItem i : items)
+			{
+				itemsOut.Insert(i);
+			}
+
+			return itemsOut;
+		}
+
+		string searchStrLower = searchStr;
+		searchStrLower.ToLower();
+		string element;
+		array<WorkshopTag> tags = {};
+		bool foundTag;
+		foreach (SCR_WorkshopItem i : items)
+		{
+			// Name
+			element = i.GetName();
+			element.ToLower();
+			if (element.Contains(searchStrLower))
+			{
+				itemsOut.Insert(i);
+				continue;
+			}
+
+			// Author
+			element = i.GetAuthorName();
+			element.ToLower();
+			if (element.Contains(searchStrLower))
+			{
+				itemsOut.Insert(i);
+				continue;
+			}
+			
+			// Description
+			element = i.GetDescription();
+			element.ToLower();
+			if (element.Contains(searchStrLower))
+			{
+				itemsOut.Insert(i);
+				continue;
+			}
+
+			// Tags
+			tags.Clear();
+			i.GetWorkshopItem().GetTags(tags);
+			foundTag = false;
+			foreach (WorkshopTag tag : tags)
+			{
+				element = tag.Name();
+				element.ToLower();
+				if (element == searchStrLower)
+				{
+					foundTag = true;
+					break;
+				}
+			}
+
+			if (foundTag)
+			{
+				itemsOut.Insert(i);
+				continue;
+			}
+		}
+
+		return itemsOut;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Filters the array according to currently selected filters.
+	//! !! Works only for offline configuration of filters!
+	protected array<ref SCR_WorkshopItem> Filter_OfflineFilterAndSearch(array<ref SCR_WorkshopItem> itemsIn)
+	{
+		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
+		string searchStr = m_Widgets.m_FilterPanelComponent.GetEditBoxSearch().GetValue();
+		array<ref SCR_WorkshopItem> items = SearchItems(itemsIn, searchStr);
+
+		// !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !
+		// !  !  Filter categories and filter names are bound by strings, be careful while changing them   !  !
+		// !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !
+		// Arrays produced by each category. In the end we find intersection of those arrays.
+		array<ref array<ref SCR_WorkshopItem>> arraysFromCategories = {};
+
+		// Quick filters - only one is selected at a time
+		SCR_FilterCategory catQuick = filterSet.FindFilterCategory("quick_filters");
+		SCR_FilterEntry filterAll = catQuick.FindFilter("all");
+		SCR_FilterEntry filterFav = catQuick.FindFilter("favourite");
+		if (filterAll.GetSelected())
+			arraysFromCategories.Insert(items);
+		
+		else if (filterFav.GetSelected())
+			arraysFromCategories.Insert(SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.FAVOURITE));
+
+		// Type tags
+		array<WorkshopTag> selectedWorkshopTags = {};
+		SCR_FilterCategory catType = filterSet.FindFilterCategory("type");
+		SCR_ContentBrowserFilterTag filterEntryTag;
+		foreach (SCR_FilterEntry f : catType.GetFilters())
+		{
+			filterEntryTag = SCR_ContentBrowserFilterTag.Cast(f);
+			if (filterEntryTag && filterEntryTag.GetSelected())
+				selectedWorkshopTags.Insert(filterEntryTag.GetWorkshopTag());
+		}
+		// If any tag filter is selected, but not all of them (because it would be same as selecting none)
+		if (!selectedWorkshopTags.IsEmpty() && selectedWorkshopTags.Count() != catType.GetFilters().Count())
+		{
+			array<ref SCR_WorkshopItem> itemsFilteredByTags = {};
+			foreach (SCR_WorkshopItem item : items)
+			{
+				if (item.GetWorkshopItem().HasAnyTag(selectedWorkshopTags))
+					itemsFilteredByTags.Insert(item);
+			}
+			arraysFromCategories.Insert(itemsFilteredByTags);
+		}
+
+		// State
+		SCR_FilterCategory catState = filterSet.FindFilterCategory("state");
+		if (!catState)
+			return {};
+
+		if (catState.GetAllSelected() || catState.GetAllDeselected())
+		{
+			arraysFromCategories.Insert(items);
+		}
+		else
+		{
+			EWorkshopItemQuery query = 0;
+			if (catState.FindFilter("enabled").GetSelected())
+				query = query | EWorkshopItemQuery.ENABLED;
+			
+			if (catState.FindFilter("disabled").GetSelected())
+				query = query | EWorkshopItemQuery.NOT_ENABLED;
+
+			array<ref SCR_WorkshopItem> queryResult = SCR_AddonManager.SelectItemsOr(items, query);
+			arraysFromCategories.Insert(queryResult);
+		}
+
+		// Condition
+		SCR_FilterCategory catCondition = filterSet.FindFilterCategory("condition");
+		if (catCondition.GetAllSelected() || catCondition.GetAllDeselected())
+		{
+			arraysFromCategories.Insert(items);
+		}
+		else
+		{
+			EWorkshopItemQuery query = 0;
+			if (catCondition.FindFilter("ready").GetSelected())
+				query = query | EWorkshopItemQuery.NO_PROBLEMS;
+			
+			if (catCondition.FindFilter("update_available").GetSelected())
+				query = query | EWorkshopItemQuery.UPDATE_AVAILABLE | EWorkshopItemQuery.DEPENDENCY_UPDATE_AVAILABLE;
+			
+			if (catCondition.FindFilter("repair_required").GetSelected())
+				query = query | EWorkshopItemQuery.DEPENDENCY_MISSING | EWorkshopItemQuery.ENABLED_AND_DEPENDENCY_DISABLED;
+
+			array<ref SCR_WorkshopItem> queryResult = SCR_AddonManager.SelectItemsOr(items, query);
+			arraysFromCategories.Insert(queryResult);
+		}
+
+		// Find intersection of all arrays
+		return Filter_IntersectArrays(arraysFromCategories);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns intersection of all arrays (array of elements which are contained in all arrays)
+	protected array<ref SCR_WorkshopItem> Filter_IntersectArrays(array<ref array<ref SCR_WorkshopItem>> arrays)
+	{
+		array<ref SCR_WorkshopItem> result = {};
+
+		// Trivial cace: no arrays
+		if (arrays.IsEmpty())
+			return result;
+
+		array<ref SCR_WorkshopItem> array0 = arrays[0];
+		
+		// Trivial case: one array
+		if (arrays.Count() == 1)
+		{
+			result.Resize(array0.Count());
+			
+			foreach (int i, SCR_WorkshopItem item : array0)
+			{
+				result[i] = item;
+			}
+
+			return result;
+		}
+
+		// Non-trivial case: more than one array
+		bool foundInAll;
+		foreach (SCR_WorkshopItem item : array0)
+		{
+			// This item must be found in all other arrays too
+			foundInAll = true;
+			for (int arrayId = 1; arrayId < arrays.Count(); arrayId++)
+			{
+
+				if (!arrays[arrayId].Contains(item))
+				{
+					foundInAll = false;
+					break;
+				}
+			}
+
+			if (foundInAll)
+				result.Insert(item);
+		}
+
+		return result;
+	}
+	
+	//--- API ---
 	//------------------------------------------------------------------------------------------------
 	//! Called from OnPack of a Json API Struct.
 	//! Here we pack the request data according to current filtering and sorging parameters.
 	void PackGetAssetListParams(SCR_ContentBrowser_GetAssetListParams p, bool defaultValues = false)
 	{
 		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
-		
+
 		SCR_FilterCategory otherCategory = filterSet.FindFilterCategory("other");
-		
+
 		// Pack sorting
 		string orderBy = "name";
 		string currentSortingItem = m_Widgets.m_SortingHeaderComponent.GetSortElementName();
@@ -497,8 +1476,7 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			p.EndObject();									// <- End AverageRating
 		}
 
-		// -------- Pack tags --------
-
+		// --- Pack tags ---
 		// Make arrays with tags to include or exclude
 		array<ref array<string>> tagArraysInclude = {};
 		array<string> tagsExclude = {};
@@ -556,1005 +1534,25 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 			p.EndObject();									// <- End "tags" object
 		}
 
-		// --------------------------------
-
+		// --- Reported ---
 		// Pack reported
 		SCR_FilterEntry reportedFilter = otherCategory.FindFilter("reported");
 		p.StoreBoolean("reported", reportedFilter.GetSelected(defaultValues));		// <- "reported": true
 		p.StoreBoolean("hidden", reportedFilter.GetSelected(defaultValues));
-
-		// Pack test mods
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Selects items from the externally provided array and shows them on grid, only makes sense in external array mode
-	protected void DisplayExternalItems(int pageId)
-	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
-		
-		array<ref SCR_WorkshopItem> itemsAtPage = SelectItemsAtPage(m_aExternalItems, pageId);
-
-		// Filtering is disabled in this mode
-
-		// Update page count
-		m_iOfflinePageCount = Math.Ceil((float)itemsAtPage.Count() / (float)(GRID_N_ROWS * GRID_N_COLUMNS));
-
-		SetPanelsMode(false, m_Widgets.m_FilterPanelComponent.AnyFilterButtonsVisible(), string.Empty, m_bFirstPage);
-
-		GridScreen_DisplayItems(itemsAtPage);
-
-		m_bFirstPage = false;
-		
-		UpdateItemsFoundMessage(m_aExternalItems.Count(), m_aExternalItems.Count());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void DisplayOfflineItems(int pageId)
-	{
-		m_WorkshopApi.SetPageItems(GRID_N_COLUMNS * GRID_N_ROWS);
-		
-		// Get offline items from API
-		array<WorkshopItem> rawWorkshopItems = {};
-		m_WorkshopApi.GetOfflineItems(rawWorkshopItems);
-
-		// Bail if there is no downloaded content
-		if (rawWorkshopItems.IsEmpty())
-		{
-			SetPanelsMode(showEmptyPanel: true, messagePresetTag: MESSAGE_TAG_NOTHING_DOWNLOADED);
-			UpdateItemsFoundMessage(0, 0);
-			return;
-		}
-
-		// Register items in Addon Manager
-		array<ref SCR_WorkshopItem> itemsUnfiltered = {};
-		foreach (WorkshopItem i : rawWorkshopItems)
-		{
-			SCR_WorkshopItem itemRegistered = SCR_AddonManager.GetInstance().Register(i);
-			itemsUnfiltered.Insert(itemRegistered);
-		}
-
-		// Filter items
-		array<ref SCR_WorkshopItem> itemsFiltered = Filter_OfflineFilterAndSearch(itemsUnfiltered);
-
-		// Bail if no items after filtering
-		if (itemsFiltered.IsEmpty())
-		{
-			SetPanelsMode(showEmptyPanel: false, forceFiltersList: true, messagePresetTag: MESSAGE_TAG_NOTHING_DOWNLOADED_2);
-			UpdateItemsFoundMessage(0, rawWorkshopItems.Count());
-			return;
-		}
-
-		// Sort items
-		array<SCR_WorkshopItem> itemsSortedWeakPtrs = {};
-		foreach (SCR_WorkshopItem i : itemsFiltered)
-		{
-			itemsSortedWeakPtrs.Insert(i);
-		}
-
-		bool sortOrder = !m_Widgets.m_SortingHeaderComponent.GetSortOrderAscending();
-		string currentSortingItem = m_Widgets.m_SortingHeaderComponent.GetSortElementName();
-		if (currentSortingItem.IsEmpty())
-		{
-			currentSortingItem = "name";
-			sortOrder = false;
-		}
-		
-		switch (currentSortingItem)
-		{
-			case "name":
-				SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemName>.HeapSort(itemsSortedWeakPtrs, sortOrder);
-				break;
-			case "time_since_played":
-				SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemTimeSinceLastPlay>.HeapSort(itemsSortedWeakPtrs, sortOrder);
-				break;
-			case "time_since_downloaded":
-				SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemTimeSinceFirstDownload>.HeapSort(itemsSortedWeakPtrs, sortOrder);
-				break;
-		}
-
-		array<ref SCR_WorkshopItem> itemsSorted = {};
-		foreach (SCR_WorkshopItem i : itemsSortedWeakPtrs)
-		{
-			itemsSorted.Insert(i);
-		}
-
-		// Update page count
-		m_iOfflinePageCount = Math.Ceil((float)itemsSorted.Count() / (float)(GRID_N_ROWS * GRID_N_COLUMNS));
-
-		// Display items
-		SetPanelsMode(false, m_Widgets.m_FilterPanelComponent.AnyFilterButtonsVisible(), string.Empty, m_bFirstPage);
-		array<ref SCR_WorkshopItem> itemsAtPage = SelectItemsAtPage(itemsSorted, pageId);
-		GridScreen_DisplayItems(itemsAtPage);
-
-		m_bFirstPage = false;
-		
-		UpdateItemsFoundMessage(itemsSorted.Count(), rawWorkshopItems.Count());
-	}
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	// W I D G E T S
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	//------------------------------------------------------------------------------------------------
-	//! When pages are scrolled, tiles are not deleted, we show different data in the tiles instead
-	//! to avoid unneeded widget allocations.
-	//! Here we create tile widgets in advance.
-	protected void GridScreen_Init()
-	{
-		for (int i = 0; i < GRID_N_COLUMNS * GRID_N_ROWS; i++)
-		{
-			int colId = i % GRID_N_COLUMNS;
-			int rowId = i / GRID_N_COLUMNS;
-
-			// Create tile widgets
-			Widget w = GetGame().GetWorkspace().CreateWidgets(LAYOUT_GRID_TILE, m_Widgets.m_Grid);
-
-			// Set grid positioning
-			GridSlot.SetRow(w, rowId);
-			GridSlot.SetColumn(w, colId);
-
-			// Init the tile component
-			SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(w.FindHandler(SCR_ContentBrowserTileComponent));
-			comp.SetWorkshopItem(null); // Widget will be hidden because of that
-	
-			// Tile event handlers
-			comp.m_OnClick.Insert(OnTileClick);
-			comp.GetOnFocus().Insert(OnTileFocus);
-
-			m_aTileComponents.Insert(comp);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Tiles are cleared up here. They are not deleted, but hidden.
-	protected void GridScreen_Clear()
-	{
-		foreach (SCR_ContentBrowserTileComponent comp : m_aTileComponents)
-		{
-			comp.SetWorkshopItem(null);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void GridScreen_DisplayItems(array<ref SCR_WorkshopItem> items)
-	{
-		// Clear old items
-		GridScreen_Clear();
-
-		int nItems = Math.ClampInt(items.Count(), 0, GRID_N_COLUMNS * GRID_N_ROWS);
-		
-		for (int i = 0; i < nItems; i++)
-		{
-			SCR_ContentBrowserTileComponent comp = m_aTileComponents[i];
-			comp.SetWorkshopItem(items[i]);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void SetPanelsMode(bool showEmptyPanel, bool forceFiltersList = false, string messagePresetTag = string.Empty, bool animateFiltersList = false)
-	{
-		m_bPanelsModeEmpty = showEmptyPanel;
-
-		// Show either main+filter panel or empty panel
-		m_Widgets.m_EmptyPanel.SetVisible(showEmptyPanel);
-		m_Widgets.m_FilterPanel.SetVisible(!showEmptyPanel);
-		m_Widgets.m_LeftPanelArea.SetVisible(!showEmptyPanel);
-
-		// Show message or hide it
-		m_Widgets.m_EmptyPanelMessage.SetVisible(!messagePresetTag.IsEmpty());
-		m_Widgets.m_MainPanelMessage.SetVisible(!messagePresetTag.IsEmpty());
-
-		// Set message based on tag
-		if (!messagePresetTag.IsEmpty())
-		{
-			if (showEmptyPanel)
-				m_Widgets.m_EmptyPanelMessageComponent.SetContentFromPreset(messagePresetTag);
-			else
-				m_Widgets.m_MainPanelMessageComponent.SetContentFromPreset(messagePresetTag);
-		}
-
-		// Force-show filter list
-		if (forceFiltersList)
-		{
-			m_Widgets.m_FilterPanelComponent.ShowFilterListBox(true, animateFiltersList);
-			if (!m_Widgets.m_FilterPanelComponent.GetFocused())
-				SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//					F I L T E R    A N D   S O R T I N G
-	//------------------------------------------------------------------------------------------------
-	//------------------------------------------------------------------------------------------------
-	array<ref SCR_WorkshopItem> SearchItems(array<ref SCR_WorkshopItem> items, string searchStr)
-	{
-		array<ref SCR_WorkshopItem> itemsOut = {};
-
-		if (searchStr.IsEmpty())
-		{
-			foreach (SCR_WorkshopItem i : items)
-			{
-				itemsOut.Insert(i);
-			}
-
-			return itemsOut;
-		}
-
-		string searchStrLower = searchStr;
-		searchStrLower.ToLower();
-
-		foreach (SCR_WorkshopItem i : items)
-		{
-			// Name
-			string nameLower = i.GetName();
-			nameLower.ToLower();
-			if (nameLower.Contains(searchStrLower))
-			{
-				itemsOut.Insert(i);
-				continue;
-			}
-
-			// Author name
-			string authorNameLower = i.GetName();
-			authorNameLower.ToLower();
-			if (authorNameLower.Contains(searchStrLower))
-			{
-				itemsOut.Insert(i);
-				continue;
-			}
-
-			// Description
-			string descriptionLower = i.GetDescription();
-			descriptionLower.ToLower();
-			if (descriptionLower.Contains(searchStrLower))
-			{
-				itemsOut.Insert(i);
-				continue;
-			}
-
-			// Tags
-			array<WorkshopTag> tags = {};
-			i.GetWorkshopItem().GetTags(tags);
-			bool foundTag = false;
-			foreach (WorkshopTag tag : tags)
-			{
-				string tagNameLower = tag.Name();
-				tagNameLower.ToLower();
-				if (tagNameLower == searchStrLower)
-				{
-					foundTag = true;
-					break;
-				}
-			}
-
-			if (foundTag)
-			{
-				itemsOut.Insert(i);
-				continue;
-			}
-		}
-
-		return itemsOut;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Filters the array according to currently selected filters.
-	//! !! Works only for offline configuration of filters!
-	protected array<ref SCR_WorkshopItem> Filter_OfflineFilterAndSearch(array<ref SCR_WorkshopItem> itemsIn)
-	{
-		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
-
-		string searchStr = m_Widgets.m_FilterPanelComponent.GetEditBoxSearch().GetValue();
-
-		array<ref SCR_WorkshopItem> items = SearchItems(itemsIn, searchStr);
-
-		// !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !
-		// !  !  Filter categories and filter names are bound by strings, be careful while changing them   !  !
-		// !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !
-		// Arrays produced by each category. In the end we find intersection of those arrays.
-		array<ref array<ref SCR_WorkshopItem>> arraysFromCategories = {};
-
-		// Quick filters - only one is selected at a time
-		SCR_FilterCategory catQuick = filterSet.FindFilterCategory("quick_filters");
-		SCR_FilterEntry filterAll = catQuick.FindFilter("all");
-		SCR_FilterEntry filterFav = catQuick.FindFilter("favourite");
-		if (filterAll.GetSelected())
-			arraysFromCategories.Insert(items);
-		else if (filterFav.GetSelected())
-			arraysFromCategories.Insert(SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.FAVOURITE));
-
-		// Type tags
-		array<WorkshopTag> selectedWorkshopTags = {};
-		SCR_FilterCategory catType = filterSet.FindFilterCategory("type");
-		foreach (SCR_FilterEntry f : catType.GetFilters())
-		{
-			SCR_ContentBrowserFilterTag filterEntryTag = SCR_ContentBrowserFilterTag.Cast(f);
-			if (filterEntryTag && filterEntryTag.GetSelected())
-				selectedWorkshopTags.Insert(filterEntryTag.GetWorkshopTag());
-		}
-		// If any tag filter is selected, but not all of them (because it would be same as selecting none)
-		if (!selectedWorkshopTags.IsEmpty() && selectedWorkshopTags.Count() != catType.GetFilters().Count())
-		{
-			array<ref SCR_WorkshopItem> itemsFilteredByTags = {};
-			foreach (SCR_WorkshopItem item : items)
-			{
-				if (item.GetWorkshopItem().HasAnyTag(selectedWorkshopTags))
-					itemsFilteredByTags.Insert(item);
-			}
-			arraysFromCategories.Insert(itemsFilteredByTags);
-		}
-
-		// State
-		SCR_FilterCategory catState = filterSet.FindFilterCategory("state");
-		if (!catState)
-			return {};
-
-		if (catState.GetAllSelected() || catState.GetAllDeselected())
-			arraysFromCategories.Insert(items);
-		else
-		{
-			EWorkshopItemQuery query = 0;
-			if (catState.FindFilter("enabled").GetSelected())
-				query = query | EWorkshopItemQuery.ENABLED;
-			if (catState.FindFilter("disabled").GetSelected())
-				query = query | EWorkshopItemQuery.NOT_ENABLED;
-
-			auto queryResult = SCR_AddonManager.SelectItemsOr(items, query);
-			arraysFromCategories.Insert(queryResult);
-		}
-
-		// Condition
-		SCR_FilterCategory catCondition = filterSet.FindFilterCategory("condition");
-		if (catCondition.GetAllSelected() || catCondition.GetAllDeselected())
-			arraysFromCategories.Insert(items);
-		else
-		{
-			EWorkshopItemQuery query = 0;
-			if (catCondition.FindFilter("ready").GetSelected())
-				query = query | EWorkshopItemQuery.NO_PROBLEMS;
-			if (catCondition.FindFilter("update_available").GetSelected())
-				query = query | EWorkshopItemQuery.UPDATE_AVAILABLE | EWorkshopItemQuery.DEPENDENCY_UPDATE_AVAILABLE;
-			if (catCondition.FindFilter("repair_required").GetSelected())
-				query = query | EWorkshopItemQuery.DEPENDENCY_MISSING | EWorkshopItemQuery.ENABLED_AND_DEPENDENCY_DISABLED;
-
-			auto queryResult = SCR_AddonManager.SelectItemsOr(items, query);
-			arraysFromCategories.Insert(queryResult);
-		}
-
-		// Find intersection of all arrays
-		array<ref SCR_WorkshopItem> intersection = Filter_IntersectArrays(arraysFromCategories);
-
-		return intersection;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns intersection of all arrays (array of elements which are contained in all arrays)
-	protected array<ref SCR_WorkshopItem> Filter_IntersectArrays(array<ref array<ref SCR_WorkshopItem>> arrays)
-	{
-		array<ref SCR_WorkshopItem> result = {};
-
-		// Trivial cace: no arrays
-		if (arrays.IsEmpty())
-			return result;
-
-		// Trivial case: one array
-		if (arrays.Count() == 1)
-		{
-			int count = arrays[0].Count();
-			result.Resize(count);
-			for (int i = 0; i < count; i++)
-			{
-				result[i] = arrays[0][i];
-			}
-
-			return result;
-		}
-
-		// Non-trivial case: more than one array
-		auto array0 = arrays[0];
-		foreach (auto item : array0)
-		{
-			// This item must be found in all other arrays too
-			bool foundInAll = true;
-			for (int arrayId = 1; arrayId < arrays.Count(); arrayId++)
-			{
-
-				if (!arrays[arrayId].Contains(item))
-				{
-					foundInAll = false;
-					break;
-				}
-			}
-
-			if (foundInAll)
-				result.Insert(item);
-		}
-
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void UpdateItemsFoundMessage(int current, int total)
-	{
-		if (!m_Widgets || !m_Widgets.m_FilterPanelComponent)
-			return;
-		
-		m_Widgets.m_FilterPanelComponent.SetItemsFoundMessage(current, total, current != total);
-
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns page count, might depend on current mode
-	protected int GetPageCount()
+	//! Sets the item array on which this tab operates. Only possible in external item array mode.
+	void SetWorkshopItems(array<ref SCR_WorkshopItem> items)
 	{
-		switch (m_eMode)
-		{
-			case EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY:
-				return m_iOfflinePageCount;
-			case EContentBrowserAddonsSubMenuMode.MODE_ONLINE:
-				return m_iOnlinePageCount;
-			case EContentBrowserAddonsSubMenuMode.MODE_OFFLINE:
-				return m_iOfflinePageCount;
-		}
-		return 0;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns currently selected workshop item
-	protected SCR_WorkshopItem GetSelectedItem()
-	{
-		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
-
-		if (!focusedWidget)
-			return null;
-
-		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(focusedWidget.FindHandler(SCR_ContentBrowserTileComponent));
-
-		if (!comp)
-			return null;
-
-		return comp.GetWorkshopItem();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Updates the widgets related to paging: buttons, text
-	protected void UpdatePagingWidgets()
-	{
-		int pageCount = GetPageCount();
-
-		m_Widgets.m_PagingButtons.SetVisible(pageCount != 0);
-
-		if (pageCount == 0)
+		if (m_eMode != EContentBrowserAddonsSubMenuMode.MODE_EXTERNAL_ITEM_ARRAY)
 			return;
 
-		m_Widgets.m_PageIndicatorText.SetTextFormat("#AR-Editor_ContentBrowser_PageIndex_Text", m_iCurrentPage + 1, pageCount);
-
-		m_Widgets.m_PrevPageButton_NoScrollComponent.SetEnabled(m_iCurrentPage > 0);
-		m_Widgets.m_NextPageButton_NoScrollComponent.SetEnabled(m_iCurrentPage < pageCount - 1);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateButtons()
-	{
-		// Filters button
-		if (m_NavFilter)
-			m_NavFilter.SetEnabled(!m_bPanelsModeEmpty);
-		
-		// Item buttons
-		SCR_WorkshopItem item = GetSelectedItem();
-		
-		if (m_NavDetails && m_NavDetails.IsVisible())
-			m_NavDetails.SetEnabled(item != null);
-		
-		if (!item)
-		{
-			// Nothing is selected, disable all buttons
-			m_NavFavourite.SetEnabled(false);
-			m_NavEnable.SetEnabled(false);
-			m_NavPrimary.SetEnabled(false);
-
-			return;
-		}
-
-		if (item.GetRestricted())
-		{
-			m_NavFavourite.SetEnabled(false);
-			m_NavEnable.SetEnabled(false);
-			m_NavPrimary.SetEnabled(false);
-			
-			return;
-		}
-
-		auto actionThisItem = item.GetDownloadAction();
-		auto actionDependencies = item.GetDependencyCompositeAction();
-		bool downloading = actionThisItem || actionDependencies;
-
-		// Favourite button - always enabled
-		m_NavFavourite.SetEnabled(true);
-		string favLabel;
-		if (!item.GetFavourite())
-			favLabel = UIConstants.FAVORITE_LABEL_ADD;
-		else
-			favLabel = UIConstants.FAVORITE_LABEL_REMOVE;
-		m_NavFavourite.SetLabel(favLabel);
-
-		// Enable button - enabled only for downloaded addons, but not when downloading
-		m_NavEnable.SetEnabled(item.GetOffline() && !downloading);
-		if (item.GetOffline())
-		{
-			string enableLabel;
-			if (item.GetEnabled())
-				enableLabel = "#AR-Workshop_ButtonDisable";
-			else
-				enableLabel = "#AR-Workshop_ButtonEnable";
-			m_NavEnable.SetLabel(enableLabel);
-		}
-
-		// Primary button
-		string primaryLabel = SCR_WorkshopUiCommon.GetPrimaryActionName(item);
-		if (!primaryLabel.IsEmpty())
-			m_NavPrimary.SetLabel(primaryLabel);
-		m_NavPrimary.SetEnabled(!primaryLabel.IsEmpty());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns true when we have selected a filter to show reported mods
-	protected bool GetShowReportedAddons()
-	{
-		SCR_FilterSet filterSet = m_Widgets.m_FilterPanelComponent.GetFilter();
-
-		if (!filterSet)
-			return false;
-
-		SCR_FilterCategory otherCategory = filterSet.FindFilterCategory("other");
-
-		if (!otherCategory)
-			return false;
-
-		SCR_FilterEntry reportedFilter = otherCategory.FindFilter("reported");
-
-		if (!reportedFilter)
-			return false;
-
-		return reportedFilter.GetSelected();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns true if cursor over a given widget
-	bool IsWidgetUnderCursor(Widget w)
-	{
-		Widget wCurrent = WidgetManager.GetWidgetUnderCursor();
-		while (wCurrent)
-		{
-			if (wCurrent == w)
-				return true;
-			wCurrent = wCurrent.GetParent();
-		}
-		return false;
-	}
-
-	// ------ Paging -------
-	//------------------------------------------------------------------------------------------------
-	protected void OnPrevPageButton()
-	{
-		EInputDeviceType inputType = -1;
-		if (m_bMousePageUsed)
-			inputType = EInputDeviceType.MOUSE;
-
-		m_bMousePageUsed = false;
-
-		if (!IsWidgetUnderCursor(m_Widgets.m_LeftPanelArea) && inputType == EInputDeviceType.MOUSE)
-			return;
-
-		m_iCurrentPage--;
-		m_iCurrentPage = Math.ClampInt(m_iCurrentPage, 0, GetPageCount() - 1);
-
-		RequestPage(m_iCurrentPage);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnNextPageButton()
-	{
-		EInputDeviceType inputType = -1;
-		if (m_bMousePageUsed)
-			inputType = EInputDeviceType.MOUSE;
-
-		m_bMousePageUsed = false;
-
-		if (!IsWidgetUnderCursor(m_Widgets.m_LeftPanelArea) && inputType == EInputDeviceType.MOUSE)
-			return;
-
-		m_iCurrentPage++;
-		m_iCurrentPage = Math.ClampInt(m_iCurrentPage, 0, GetPageCount() - 1);
-
-		RequestPage(m_iCurrentPage);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnScrollPage()
-	{
-		float value = GetGame().GetInputManager().GetActionValue("MouseWheel");
-
-		if (value != 0)
-			m_bMousePageUsed = true;
-
-		if (value < 0 && m_iCurrentPage < GetPageCount() - 1)
-			OnNextPageButton();
-		else if (value > 0 && m_iCurrentPage > 0)
-			OnPrevPageButton();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Returns array of items within specified page, page ID starting from 0.
-	protected array<ref SCR_WorkshopItem> SelectItemsAtPage(array<ref SCR_WorkshopItem> items, int pageId)
-	{
-		array<ref SCR_WorkshopItem> itemsOut = {};
-
-		float nItemsPerPage = GRID_N_ROWS * GRID_N_COLUMNS;
-		int nPages = Math.Ceil(items.Count() / nItemsPerPage);
-
-		if (pageId < 0 || pageId >= nPages)
-			return itemsOut;
-
-		int idStart = nItemsPerPage * pageId;			// Select from this
-		int idEnd = nItemsPerPage * (pageId + 1) - 1;	// Up to this (including this)
-
-		if (idEnd >= items.Count())
-			idEnd = items.Count() - 1;
-
-		for (int i = idStart; i <= idEnd; i++)
-		{
-			itemsOut.Insert(items[i]);
-		}
-
-		return itemsOut;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Switch focus
-	protected void SwitchFocus(SCR_EListMenuWidgetFocus focus)
-	{
-		Widget focusTarget;
-
-		switch (focus)
-		{
-			case SCR_EListMenuWidgetFocus.LIST:
-			{
-				if (m_LastFocusedTile && m_LastFocusedTile.IsVisible())
-					focusTarget = m_LastFocusedTile.GetRootWidget();
-				else if (m_Widgets.m_Grid)
-					focusTarget = m_Widgets.m_Grid.GetChildren();
-
-				break;
-			}
-
-			case SCR_EListMenuWidgetFocus.FILTERING:
-			{
-				focusTarget = m_Widgets.m_FilterPanelComponent.GetWidgets().m_FilterButton;
-				break;
-			}
-
-			case SCR_EListMenuWidgetFocus.SORTING:
-			{
-				focusTarget = m_Widgets.m_SortingHeader.GetChildren();
-				break;
-			}
-			
-			case SCR_EListMenuWidgetFocus.NULL:
-			{
-				GetGame().GetWorkspace().SetFocusedWidget(null);
-				return;
-			}
-		}
-
-		if (!focusTarget || !focusTarget.IsVisible())
-		{
-			// Fallback
-			focusTarget = m_Widgets.m_SortingHeader.GetChildren();
-		}
-
-		GetGame().GetWorkspace().SetFocusedWidget(focusTarget);
-
-		// If we've focused a tile, we need to manually update the details panel (by switching page we focus the same widget, but the tile data is different)
-		if (!focusTarget)
-			return;
-		
-		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.FindComponent(focusTarget);
-		if (comp)
-			OnTileFocus(comp)
-	}
-
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	// C A L L B A C K S  A N D  E V E N T S
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-	//------------------------------------------------------------------------------------------------
-	//! Called when we have lost connection and connected again,
-	//! or when the tab is opened first time and connection is already active
-	//! !!! Not called for offline tab. For offline tab connection is not needed. !!!
-	protected void OnConnected()
-	{
-		// Reinit the workshop API
-		InitWorkshopApi();
-
-		// Ask the same page again
-		RequestPage(m_iCurrentPage);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnTileClick(SCR_ScriptedWidgetComponent baseComp)
-	{
-		SCR_ContentBrowserTileComponent comp = SCR_ContentBrowserTileComponent.Cast(baseComp);
-
-		if (!comp || !m_bEnableOpenDetails)
-			return;
-
-		SCR_WorkshopItem selectedItem = comp.GetWorkshopItem();
-		if (selectedItem)
-		{
-			if (! (selectedItem.GetRestricted()) || GetShowReportedAddons())
-			{
-				ContentBrowserDetailsMenu.OpenForWorkshopItem(selectedItem);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnTileFocus(ScriptedWidgetComponent comp)
-	{
-		SCR_ContentBrowserTileComponent tile = SCR_ContentBrowserTileComponent.Cast(comp);
-		SCR_WorkshopItem item;
-		if (tile)
-			item = tile.GetWorkshopItem();
-
-		if (!item || m_Widgets.m_AddonDetailsPanelComponent.GetItem() == item)
-			return;
-
-		m_Widgets.m_AddonDetailsPanelComponent.SetWorkshopItem(item);
-
-		m_LastFocusedTile = tile;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnFilterButton()
-	{
-		// Toggle the state of the filter panel
-		bool show = !m_Widgets.m_FilterPanelComponent.GetFilterListBoxShown();
-		m_Widgets.m_FilterPanelComponent.ShowFilterListBox(show);
-
-		if (show)
-			SwitchFocus(SCR_EListMenuWidgetFocus.FILTERING);
-		else
-			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnPrimaryButton()
-	{
-		SCR_WorkshopItem item = GetSelectedItem();
-
-		if (!item)
-			return;
-
-		SCR_WorkshopUiCommon.ExecutePrimaryAction(item, m_DownloadRequest);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnEnableButton()
-	{
-		SCR_WorkshopUiCommon.OnEnableAddonButton(GetSelectedItem());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnFavouriteButton()
-	{
-		SCR_WorkshopItem item = GetSelectedItem();
-
-		if (!item)
-			return;
-
-		if (item.GetRestricted())
-			return;
-
-		bool fav = item.GetFavourite();
-		item.SetFavourite(!fav);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnDetailsButton(SCR_ButtonBaseComponent comp)
-	{
-		if (GetSelectedItem())
-			OnTileClick(m_LastFocusedTile);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageGetAllAssets(SCR_WorkshopApiCallback_RequestPage callback)
-	{
-		PageRequestCallbackCleanup(callback);
-		
-		m_iItemsTotal = m_WorkshopApi.GetTotalItemCount();
-		UpdateItemsFoundMessage(m_iOnlineFilteredItems, m_iItemsTotal);
-		m_bFirstLoad = false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageGetAssets(SCR_WorkshopApiCallback_RequestPage callback)
-	{		
-		PageRequestCallbackCleanup(callback);
-		
-		// Search Box Message
-		m_iOnlineFilteredItems = m_WorkshopApi.GetTotalItemCount();
-		
-		array<WorkshopItem> items = {};
-		m_WorkshopApi.GetPageItems(items);
-		
-		if (m_iOnlineFilteredItems < items.Count())
-			m_iOnlineFilteredItems = items.Count();
-		
-		if (m_iItemsTotal < m_iOnlineFilteredItems)
-			m_iItemsTotal = m_iOnlineFilteredItems;
-
-		if (!m_bFirstLoad)
-			UpdateItemsFoundMessage(m_iOnlineFilteredItems, m_iItemsTotal);
-		
-		// Update Displayed items
-		if (callback.m_iPageId != m_iCurrentPage)
-			return; // ?!
-
-		array<ref SCR_WorkshopItem> itemsRegistered = {};
-
-		foreach (auto i : items)
-		{
-			SCR_WorkshopItem iRegistered = SCR_AddonManager.GetInstance().Register(i);
-			if (iRegistered)
-				itemsRegistered.Insert(iRegistered);
-		}
-
-		if (!itemsRegistered.IsEmpty())
-		{
-			// There are some items received
-			SetPanelsMode(false, m_bFirstPage && m_Widgets.m_FilterPanelComponent.AnyFilterButtonsVisible(), string.Empty, m_bFirstPage);
-		}
-		else
-		{
-			// No items received
-			SetPanelsMode(false, messagePresetTag: MESSAGE_TAG_NOTHING_FOUND, forceFiltersList: true);
-		}
-
-		m_iOnlinePageCount = m_WorkshopApi.GetPageCount();
-		GridScreen_DisplayItems(itemsRegistered);
-
-		m_bFirstPage = false;
-
-		if (!m_Widgets.m_FilterPanelComponent.GetFilterListBoxShown() || !m_Widgets.m_FilterPanelComponent.GetFocused())
-			SwitchFocus(SCR_EListMenuWidgetFocus.LIST);
-
-		if (m_bFirstLoad)
-			GetGame().GetCallqueue().CallLater(RequestOnlinePageUnfiltered, LOAD_PAGE_DELAY, false, callback.m_iPageId);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageTimeout(SCR_WorkshopApiCallback_RequestPage callback)
-	{
-		PageRequestCallbackCleanup(callback);
-
-		if (GetShown())
-		{
-			// This submenu is shown, show the timeout dialog
-			SCR_ConfigurableDialogUi dlg = SCR_CommonDialogs.CreateTimeoutTryAgainCancelDialog();
-			dlg.m_OnCancel.Insert(Callback_OnRequestPageTimeout_OnCloseDialog);
-			dlg.m_OnConfirm.Insert(Callback_OnRequestPageTimeout_OnDialogTryAgain);
-		}
-		else
-		{
-			// This submenu is not shown (probably we switched to another tab)
-			// Try to perform the request again
-			m_bClearCacheAtNextRequest = true;
-			RequestPage(m_iCurrentPage);
-		}
-
-		m_bFailToLoad = true;
-		
-		m_iOnlinePageCount = 0;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageTimeout_OnCloseDialog()
-	{
-		// Set message
-		SetPanelsMode(m_bPanelsModeEmpty, messagePresetTag: MESSAGE_TAG_ERROR_CONNECTION);
-		RequestTabChange(EWorkshopTabId.OFFLINE);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void Callback_OnRequestPageTimeout_OnDialogTryAgain()
-	{
-		m_bClearCacheAtNextRequest = true;
-		RequestPage(m_iCurrentPage);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Called by SCR_AddonManager when some addon is downloaded or uninstalled
-	protected void Callback_OnAddonOfflineStateChanged(SCR_WorkshopItem item, bool newState)
-	{
-		if (m_eMode == EContentBrowserAddonsSubMenuMode.MODE_OFFLINE)
-		{
-			// Some addon was installed or uninstalled, we must refresh the page
-			RequestPage(m_iCurrentPage);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Called by SCR_AddonManager when some addon is reported or unreported
-	protected void Callback_OnAddonReportedStateChanged(SCR_WorkshopItem item, bool newReported)
-	{
-		// Refresh current page if it has this addon
-		bool found = false;
-		foreach (SCR_ContentBrowserTileComponent comp : m_aTileComponents)
-		{
-			if (comp.GetWorkshopItem() == item)
-			{
-				m_bClearCacheAtNextRequest = true;
-				RequestPage(m_iCurrentPage);
-				break;
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Called when filter listbox selection changes
-	protected void OnFilterChange(SCR_FilterEntry filter)
-	{
-		m_bClearCacheAtNextRequest = true;
+		m_aExternalItems = items;
 		RequestPage(0);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Called when user confirms the value in the seacrh string
-	protected void OnFilterSearchConfirm(SCR_EditBoxComponent comp, string newValue)
-	{
-		m_bClearCacheAtNextRequest = true;
-		RequestPage(0);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Called when sorting header changes
-	protected void OnSortingHeaderChange(SCR_SortHeaderComponent sortHeader)
-	{
-		m_bClearCacheAtNextRequest = true;
-		RequestPage(0);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_ContentBrowser_AddonsSubMenuBaseWidgets GetWidgets()
-	{
-		return m_Widgets;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	array<SCR_ContentBrowserTileComponent> GetTileComponents()
-	{
-		array<SCR_ContentBrowserTileComponent> tiles = {};
-		m_aTileComponents.Copy(tiles);
-
-		return tiles;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_ContentBrowserTileComponent GetTileComponentById(int id)
-	{
-		if (!m_aTileComponents.IsIndexValid(id))
-			return null;
-
-		return m_aTileComponents[id];
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetTileComponentsCount()
-	{
-		return m_aTileComponents.Count();
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_ContentBrowser_GetAssetListParams : PageParams
 {
 	// We will call back to submenu to perform packing of the JSON struct
@@ -1575,7 +1573,6 @@ class SCR_ContentBrowser_GetAssetListParams : PageParams
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CompareWorkshopItemName : SCR_SortCompare<SCR_WorkshopItem>
 {
 	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
@@ -1590,7 +1587,6 @@ class SCR_CompareWorkshopItemName : SCR_SortCompare<SCR_WorkshopItem>
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CompareWorkshopItemTimeSinceLastPlay : SCR_SortCompare<SCR_WorkshopItem>
 {
 	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
@@ -1606,7 +1602,6 @@ class SCR_CompareWorkshopItemTimeSinceLastPlay : SCR_SortCompare<SCR_WorkshopIte
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 class SCR_CompareWorkshopItemTimeSinceFirstDownload : SCR_SortCompare<SCR_WorkshopItem>
 {
 	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
@@ -1622,7 +1617,6 @@ class SCR_CompareWorkshopItemTimeSinceFirstDownload : SCR_SortCompare<SCR_Worksh
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 // Sort by time since last played
 class SCR_CompareWorkshopItemTargetSize : SCR_SortCompare<SCR_WorkshopItem>
 {

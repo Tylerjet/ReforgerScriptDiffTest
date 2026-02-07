@@ -16,6 +16,10 @@ class ScriptedSignalUserAction: ScriptedUserAction
 	proto external float GetMaximumValue();
 	proto external float GetCurrentValue();
 	proto external void SetSignalValue(float newValue);
+
+	// callbacks
+
+	event override float GetActionProgressScript(float fProgress, float timeSlice) { return GetCurrentValue() - GetMinimumValue(); };
 }
 
 /*!

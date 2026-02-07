@@ -64,6 +64,19 @@ class SCR_XPInfoDisplay : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnSettingsChanged()
+ 	{               
+ 		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(m_HUDManager.GetInterfaceSettingsClass());
+ 		if (!interfaceSettings)
+ 	 		return;
+
+		bool state;
+		interfaceSettings.Get(m_sInterfaceSettingName, state);
+		
+		AllowShowingInfo(state);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void RecolorXPBar()
 	{
 		AnimateWidget.Color(m_wProgressDiff, Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt()), UIConstants.FADE_RATE_SLOW);

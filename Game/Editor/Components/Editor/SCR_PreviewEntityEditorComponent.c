@@ -905,7 +905,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		if (prefab)
 		{
 			Resource prefabResource = Resource.Load(prefab);
-			EntitySpawnParams spawnParams = new EntitySpawnParams();;
+			EntitySpawnParams spawnParams = new EntitySpawnParams();
 			
 			IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(prefabResource);
 			IEntityComponentSource entityComponent = SCR_BaseContainerTools.FindComponentSource(entitySource, SCR_EditableEntityComponent);

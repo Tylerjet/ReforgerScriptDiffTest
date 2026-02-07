@@ -229,6 +229,19 @@ class SCR_RadialMenuController
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool IsMenuOpen()
+	{		
+		return m_RadialMenu && m_RadialMenu.IsOpened();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CloseMenu()
+	{
+		if (m_RadialMenu)
+			m_RadialMenu.Close();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Return true if cached menu is controlled by this owner entity 
 	bool HasControl()
 	{

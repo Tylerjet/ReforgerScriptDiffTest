@@ -4,7 +4,7 @@ class SCR_GroupFlagImageComponent : SCR_ButtonImageComponent
 	protected ResourceName m_sImageSet;
 	protected bool m_bIsFromImageset;
 
-	[Attribute("145 100 0")]
+	[Attribute("128 80 0")]
 	protected vector m_vImageSize; //160 90 old values, caused stretching
 	
 	//------------------------------------------------------------------------------------------------

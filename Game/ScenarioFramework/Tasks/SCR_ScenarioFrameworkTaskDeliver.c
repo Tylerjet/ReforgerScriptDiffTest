@@ -23,6 +23,13 @@ class SCR_TaskDeliverClass: SCR_ScenarioFrameworkTaskClass
 	-----------------------------------------
 */
 
+enum SCR_EScenarioFrameworkItemGCState
+{
+	UNDEFINED,
+	NOT_EXCLUDED,
+	EXCLUDED
+}
+
 //------------------------------------------------------------------------------------------------
 class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 {	
@@ -32,6 +39,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	protected  SCR_BaseTriggerEntity			m_TriggerDeliver;
 	protected bool								m_bDeliveryItemFound;
 	protected bool 								m_bTaskPositionUpdated;
+	SCR_EScenarioFrameworkItemGCState m_eGarbageCollectionStatus = SCR_EScenarioFrameworkItemGCState.UNDEFINED;
 		
 	//------------------------------------------------------------------------------------------------
 	// return 0 if item is not possesed and 1 if possesed (someone has it in his possesion)
@@ -88,7 +96,7 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	void OnDeliveryTriggerActivated(notnull SCR_CharacterTriggerEntity trigger)
+	void OnDeliveryTriggerActivated(notnull SCR_ScenarioFrameworkTriggerEntity trigger)
 	{
 		if (!m_SupportEntity || !m_Asset)
 			return;
@@ -252,18 +260,102 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 	//------------------------------------------------------------------------------------------------
 	protected void OnItemCarrierChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
+		EventHandlerManagerComponent eventHandlerMgr;
+		InventoryItemComponent inventoryComponent;
+		IEntity owner;
+		IEntity rootOwner;
 		if (oldSlot)
 		{
-			EventHandlerManagerComponent EventHandlerMgr = EventHandlerManagerComponent.Cast(oldSlot.GetOwner().FindComponent(EventHandlerManagerComponent));
-			if (EventHandlerMgr)
-				EventHandlerMgr.RemoveScriptHandler("OnDestroyed", this, OnDestroyed);
+			owner = oldSlot.GetOwner();
+			rootOwner = oldSlot.GetOwner().GetRootParent();
+			
+			//Handles the case when for example item was inserted into the character inventory somewhere
+			eventHandlerMgr = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
+			if (eventHandlerMgr)
+				eventHandlerMgr.RemoveScriptHandler("OnDestroyed", this, OnDestroyed);
+			
+			//Handles the case when for example item was inserted into a backpack that was already in a vehicle
+			if (owner != rootOwner)
+			{
+				eventHandlerMgr = EventHandlerManagerComponent.Cast(rootOwner.FindComponent(EventHandlerManagerComponent));
+				if (eventHandlerMgr)
+					eventHandlerMgr.RemoveScriptHandler("OnDestroyed", this, OnDestroyed);
+				
+				//Handles possible revert of case prevention where GarbageSystem might delete root entity
+				if (m_eGarbageCollectionStatus != SCR_EScenarioFrameworkItemGCState.UNDEFINED)
+				{
+					HandleOldSlotGC(rootOwner);
+				}
+			}
+			else
+			{
+				HandleOldSlotGC(owner);
+			}
+			
+			//Handles the case when for example item was inserted into a backpack and then this backpack was inserted into a vehicle
+			inventoryComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
+			if (inventoryComponent)
+				inventoryComponent.m_OnParentSlotChangedInvoker.Remove(OnItemCarrierChanged);
 		}
 		
 		if (newSlot)
 		{
-			EventHandlerManagerComponent EventHandlerMgr = EventHandlerManagerComponent.Cast(newSlot.GetOwner().FindComponent(EventHandlerManagerComponent));
-			if (EventHandlerMgr)
-				EventHandlerMgr.RegisterScriptHandler("OnDestroyed", this, OnDestroyed);
+			owner = newSlot.GetOwner();
+			rootOwner = newSlot.GetOwner().GetRootParent();
+			
+			//Handles the case when for example item is inserted into the character inventory somewhere
+			eventHandlerMgr = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
+			if (eventHandlerMgr)
+				eventHandlerMgr.RegisterScriptHandler("OnDestroyed", this, OnDestroyed);
+			
+			//Handles the case when for example item is inserted into a backpack that is already in a vehicle
+			if (owner != rootOwner)
+			{
+				eventHandlerMgr = EventHandlerManagerComponent.Cast(rootOwner.FindComponent(EventHandlerManagerComponent));
+				if (eventHandlerMgr)
+					eventHandlerMgr.RegisterScriptHandler("OnDestroyed", this, OnDestroyed);
+				
+				HandleNewSlotGC(rootOwner);
+			}
+			else
+			{
+				HandleNewSlotGC(owner);
+			}
+			
+			//Handles the case when for example item is inserted into a backpack and then this backpack is inserted into a vehicle
+			inventoryComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
+			if (inventoryComponent)
+			{
+				inventoryComponent.m_OnParentSlotChangedInvoker.Insert(OnItemCarrierChanged);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handles the cases where GarbageSystem might delete new slot entity
+	protected void HandleNewSlotGC(IEntity entity)
+	{
+		SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(entity);
+		if (!garbageSystem)
+			return;
+		
+		if (garbageSystem.IsInserted(entity))
+			m_eGarbageCollectionStatus = SCR_EScenarioFrameworkItemGCState.NOT_EXCLUDED;
+		else
+			m_eGarbageCollectionStatus = SCR_EScenarioFrameworkItemGCState.EXCLUDED;
+					
+		garbageSystem.UpdateBlacklist(entity, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handles possible revert of case prevention where GarbageSystem might delete root entity
+	protected void HandleOldSlotGC(IEntity entity)
+	{
+		SCR_GarbageSystem garbageSystem = SCR_GarbageSystem.GetByEntityWorld(entity);
+		if (garbageSystem && m_eGarbageCollectionStatus == SCR_EScenarioFrameworkItemGCState.NOT_EXCLUDED)
+		{
+			garbageSystem.UpdateBlacklist(entity, false);
+			garbageSystem.Insert(entity);
 		}
 	}
 	
@@ -289,12 +381,35 @@ class SCR_TaskDeliver : SCR_ScenarioFrameworkTask
 		if (!inventoryComponent)
 			return;
 		
-		if (inventoryComponent.Contains(m_Asset))
-		{
-			inventoryComponent.TryRemoveItemFromStorage(m_Asset, parentSlot.GetStorage());
-			m_Asset.SetOrigin(destroyedEntity.GetOrigin());
+		if (!inventoryComponent.Contains(m_Asset))
 			return;	
+		
+		inventoryComponent.TryRemoveItemFromStorage(m_Asset, parentSlot.GetStorage());
+		
+		vector position;
+		array<IEntity> excludedEntities = {};
+		excludedEntities.Insert(destroyedEntity);
+		excludedEntities.Insert(m_Asset);
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(destroyedEntity);
+		if (character && character.IsInVehicle())
+		{
+			CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+			if (compartmentAccess)
+			{
+				BaseCompartmentSlot compartmentSlot = compartmentAccess.GetCompartment();
+				if (compartmentSlot)
+				{
+					IEntity vehicle = compartmentSlot.GetOwner();
+					excludedEntities.Insert(vehicle);
+				}
+			}
 		}
+		
+		SCR_TerrainHelper.SnapToGeometry(position, m_Asset.GetOrigin(), excludedEntities, m_Asset.GetWorld());
+		
+		m_Asset.SetOrigin(position);
+		m_Asset.Update();
 	}
 	
 	//------------------------------------------------------------------------------------------------

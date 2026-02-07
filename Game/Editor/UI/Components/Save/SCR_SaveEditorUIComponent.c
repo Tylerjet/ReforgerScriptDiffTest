@@ -252,9 +252,10 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 			
 			saveManager.RestartAndLoad(fileName);
 			
-			if (saveManager.GetUploadCallback())
+			SCR_ServerSaveRequestCallback uploadCallback = saveManager.GetUploadCallback();
+			if (uploadCallback)
 			{
-				saveManager.GetUploadCallback().GetEventOnResponse().Insert(OnLoadEntryUploadResponse);
+				uploadCallback.GetEventOnResponse().Insert(OnLoadEntryUploadResponse);
 				m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
 			}
 		}
@@ -266,10 +267,12 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		callback.GetEventOnResponse().Remove(OnLoadEntryUploadResponse);
 		
 		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
+		{
 			SCR_CommonDialogs.CreateRequestErrorDialog();
-		
-		if (m_LoadingOverlay)
-			m_LoadingOverlay.Close();
+			
+			if (m_LoadingOverlay)
+				m_LoadingOverlay.Close();
+		}
 		
 		CloseMenu();
 	}
@@ -405,18 +408,22 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 					if (!isVersionCompatible)
 						entryVersionWidget.SetColor(UIColors.WARNING);
 					
-					Resource missionHeaderResource = Resource.Load(meta.GetHeaderResource());
-					if (missionHeaderResource.IsValid())
+					ResourceName headerResourceName = meta.GetHeaderResource();
+					if (!headerResourceName.IsEmpty())
 					{
-						SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(BaseContainerTools.CreateInstanceFromContainer(missionHeaderResource.GetResource().ToBaseContainer()));
-						
-						TextWidget entryMissionNameWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryMissionNameWidgetName));
-						entryMissionNameWidget.SetText(missionHeader.m_sName);
-						
-						if (missionHeader.m_sIcon)
+						Resource missionHeaderResource = Resource.Load(headerResourceName);
+						if (missionHeaderResource.IsValid())
 						{
-							entryImageWidget.LoadImageTexture(0, missionHeader.m_sIcon);
-							entryImageWidget.SetColor(imageColor);
+							SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(BaseContainerTools.CreateInstanceFromContainer(missionHeaderResource.GetResource().ToBaseContainer()));
+							
+							TextWidget entryMissionNameWidget = TextWidget.Cast(entryWidget.FindAnyWidget(m_sEntryMissionNameWidgetName));
+							entryMissionNameWidget.SetText(missionHeader.m_sName);
+							
+							if (missionHeader.m_sIcon)
+							{
+								entryImageWidget.LoadImageTexture(0, missionHeader.m_sIcon);
+								entryImageWidget.SetColor(imageColor);
+							}
 						}
 					}
 					
@@ -424,6 +431,7 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 					{
 						entryIconWidget.SetColor(UIColors.WARNING);
 					}
+
 				}
 				else
 				{
@@ -496,6 +504,8 @@ class SCR_SaveEditorUIComponent : ScriptedWidgetComponent
 		
 		return false;
 	}
+	
+	ref SCR_ServerSaveRequestCallback m_UploadTestCallback;
 	
 	//----------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)

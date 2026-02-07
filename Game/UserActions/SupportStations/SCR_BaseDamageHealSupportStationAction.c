@@ -44,7 +44,7 @@ class SCR_BaseDamageHealSupportStationAction : SCR_BaseUseSupportStationAction
 		if (!m_DamageManagerComponent)
 			return;
 		
-		m_DamageManagerComponent.GetAllHitZones(m_aHitZonesToHeal);
+		m_DamageManagerComponent.GetAllHitZonesInHierarchy(m_aHitZonesToHeal);
 		
 		if (m_aHitZonesToHeal.Count() > 1)
 		{

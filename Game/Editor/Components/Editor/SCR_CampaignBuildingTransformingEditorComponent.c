@@ -145,7 +145,7 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 		if (!editorComponent)
 			return false;
 
-		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(editorComponent.GetProviderComponent());
+		SCR_CampaignBuildingProviderComponent providerComponent = editorComponent.GetProviderComponent();
 		if (!providerComponent)
 			return false;
 

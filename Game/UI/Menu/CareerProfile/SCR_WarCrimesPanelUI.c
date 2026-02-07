@@ -88,14 +88,14 @@ class SCR_WarCrimesPanelUI: ScriptedWidgetComponent
 		if (!workspace)
 			return;
 		
-		Widget container = Widget.Cast(m_wRootWidget.FindAnyWidget("WarCrimeEntriesContainer"));
+		Widget container = m_wRootWidget.FindAnyWidget("WarCrimeEntriesContainer");
 		if (!container)
 			return;
 		
 		switch (crime)
 		{
 			case SCR_EWarCrimes.HARMINGFRIENDLIES:
-				Widget entry = Widget.Cast(workspace.CreateWidgets(m_WarCrimesEntryLayout, container));
+				Widget entry = workspace.CreateWidgets(m_WarCrimesEntryLayout, container);
 				if (!entry)
 					return;
 			
@@ -121,13 +121,13 @@ class SCR_WarCrimesPanelUI: ScriptedWidgetComponent
 		if (!m_WarCrimesHeaderImage || !m_WarCrimesHeaderTitle || !m_WarCrimesHeaderSubTitle)
 				return;
 		
-		Widget ListOfWarCrimes = Widget.Cast(m_wRootWidget.FindAnyWidget("ListOfWarCrimes"));
-			if (!ListOfWarCrimes)
+		Widget warCrimesList = m_wRootWidget.FindAnyWidget("ListOfWarCrimes");
+			if (!warCrimesList)
 				return;
 				
 		if (warCriminal)
 		{
-			ListOfWarCrimes.SetVisible(true);
+			warCrimesList.SetVisible(true);
 			m_bActiveWarCrimes = true;
 			SCR_WLibComponentBase.SetTexture(m_WarCrimesHeaderImage, m_TextureHeaderImageWarCrimes, m_StringHeaderImageWarCrimes);
 			m_WarCrimesHeaderImage.SetColor(m_iWarCrimesHeaderColor);
@@ -137,7 +137,7 @@ class SCR_WarCrimesPanelUI: ScriptedWidgetComponent
 			return;
 		}
 		
-		ListOfWarCrimes.SetVisible(false);
+		warCrimesList.SetVisible(false);
 		m_bActiveWarCrimes = false;
 		SCR_WLibComponentBase.SetTexture(m_WarCrimesHeaderImage, m_TextureHeaderImageNoWarCrimes, m_StringHeaderImageNoWarCrimes);
 		m_WarCrimesHeaderImage.SetColor(m_iNoWarCrimesHeaderColor);
@@ -145,12 +145,9 @@ class SCR_WarCrimesPanelUI: ScriptedWidgetComponent
 		m_WarCrimesHeaderSubTitle.SetText(m_sNoWarCrimesSubtitleString);
 		m_WarCrimesHeaderSubTitle.SetColor(m_iNoWarCrimesSubtitleColor);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-};
+}
 
-//------------------------------------------------------------------------------------------------
 enum SCR_EWarCrimes
 {
 	HARMINGFRIENDLIES
-};
+}

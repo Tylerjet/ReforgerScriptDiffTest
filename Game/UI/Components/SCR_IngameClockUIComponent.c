@@ -1,20 +1,26 @@
 //! Gets the Ingame time and displays it on a UI text element
 class SCR_IngameClockUIComponent : MenuRootSubComponent 
 {			
-	[Attribute("Time", desc: "Clock needs at least the Time icon, time multiplier or Time Text to function")]
+	[Attribute("Time", desc: "Clock needs at least the Time icon, time multiplier, time pause Icon or Time Text to function")]
 	protected string m_sTimeTextName;
 	
-	[Attribute("DayTime_Icon", desc: "Clock needs at least the Time icon, time multiplier or Time Text to function")]
+	[Attribute("DayTime_Icon", desc: "Clock needs at least the Time icon, time multiplier, time pause Icon or Time Text to function")]
 	protected string m_sTimeIconName;
 	
-	[Attribute("Time_Multiplier", desc: "Clock needs at least the Time icon, time multiplier or Time Text to function")]
+	[Attribute("Time_Multiplier", desc: "Clock needs at least the Time icon, time multiplier, time pause Icon or Time Text to function")]
 	protected string m_sTimeMultiplierName;
+	
+	[Attribute("Time_Paused_Icon", desc: "Clock needs at least the Time icon, time multiplier, time pause Icon or Time Text to function")]
+	protected string m_sTimeStoppedIconName;
 	
 	[Attribute("#AR-ValueUnit_Short_Multiplier", uiwidget: UIWidgets.LocaleEditBox)]
 	protected string m_sTimeMultiplierFormat;
 	
 	[Attribute("#AR-Weather_Forecast_NoTimeProgression", uiwidget: UIWidgets.LocaleEditBox)]
-	protected string m_sNoTimeProgression;
+	protected string m_sNoTimeProgressionHint;
+	
+	[Attribute("#AR-Editor_Clock_IngameTime_Name", uiwidget: UIWidgets.LocaleEditBox)]
+	protected string m_sInGameTimeHint;
 	
 	[Attribute("1", desc: "Time until the UI will update in seconds")]
 	protected float m_fUpdateFreq;
@@ -29,7 +35,9 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 	protected TextWidget m_TimeText;
 	protected ImageWidget m_TimeIcon;
 	protected TextWidget m_TimeMultiplier;
+	protected ImageWidget m_TimeStoppedIcon; //~ Icon when simulation is paused
 	protected TimeAndWeatherManagerEntity m_TimeAndWeatherManagerEntity;
+	protected SCR_CustomTooltipTargetEditorUIComponent m_CustomTooltipUIComponent;
 	
 	//======================== CLOCK UPDATE ========================\\
 
@@ -71,6 +79,8 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 				
 				bool visible = !(m_bHideTimeMultiplierIfOne && (TimeMultiplierInt == 1 && (timeMultiplier - TimeMultiplierInt) < 0.1));
 				m_TimeMultiplier.SetVisible(visible);
+				m_TimeStoppedIcon.SetVisible(false);
+				m_CustomTooltipUIComponent.GetInfo().SetDescription(m_sInGameTimeHint);
 				
 				if (visible)
 				{
@@ -82,8 +92,10 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 			}
 			else 
 			{
-				m_TimeMultiplier.SetText(m_sNoTimeProgression);
-				m_TimeMultiplier.SetVisible(true);
+				// When Time progression is paused/No Time Progression Show Pause Icon hide multiplier text
+				m_CustomTooltipUIComponent.GetInfo().SetDescription(m_sNoTimeProgressionHint);
+				m_TimeStoppedIcon.SetVisible(true);
+				m_TimeMultiplier.SetVisible(false);
 			}
 		}
 			
@@ -101,13 +113,21 @@ class SCR_IngameClockUIComponent : MenuRootSubComponent
 		m_TimeText = TextWidget.Cast(w.FindAnyWidget(m_sTimeTextName));
 		m_TimeIcon = ImageWidget.Cast(w.FindAnyWidget(m_sTimeIconName));
 		m_TimeMultiplier = TextWidget.Cast(w.FindAnyWidget(m_sTimeMultiplierName));
+		m_TimeStoppedIcon = ImageWidget.Cast(w.FindAnyWidget(m_sTimeStoppedIconName));
 		
-		if (!m_TimeText && !m_TimeIcon && !m_TimeMultiplier)
+		if (!m_TimeText && !m_TimeIcon && !m_TimeMultiplier && !m_TimeStoppedIcon)
 		{
 			Print("'SCR_IngameClockUIComponent' is has no time time widgets and therefore won't function", LogLevel.ERROR);
 			return;
 		}		
-
+		
+		m_CustomTooltipUIComponent = SCR_CustomTooltipTargetEditorUIComponent.Cast(w.FindHandler(SCR_CustomTooltipTargetEditorUIComponent));
+		if (!m_CustomTooltipUIComponent)
+		{
+			Print("'SCR_IngameClockUIComponent' is missing custom editor tooltip component", LogLevel.ERROR);
+			return;
+		}
+		
 		ChimeraWorld world = GetGame().GetWorld();
 		m_TimeAndWeatherManagerEntity = world.GetTimeAndWeatherManager();
 		if (!m_TimeAndWeatherManagerEntity)

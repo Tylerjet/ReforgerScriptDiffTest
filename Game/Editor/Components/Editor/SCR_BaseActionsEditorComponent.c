@@ -81,7 +81,7 @@ class SCR_BaseActionsEditorComponentClass : SCR_BaseEditorComponentClass
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] prefab
-	void SCR_BaseActionsEditorComponentClass(BaseContainer prefab)
+	void SCR_BaseActionsEditorComponentClass(IEntityComponentSource componentSource, IEntitySource parentSource, IEntitySource prefabSource)
 	{
 		if (!m_ActionGroups || m_ActionGroups.IsEmpty())
 		{
@@ -160,7 +160,7 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 	{
 		return m_HoveredEntity;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Gets all actions on the component
 	//! \param[out] actions output array containing all actions on this component
@@ -469,8 +469,8 @@ class SCR_BaseActionsEditorComponent : SCR_BaseEditorComponent
 		SCR_EntitiesManagerEditorComponent entitiesManager = SCR_EntitiesManagerEditorComponent.Cast(SCR_EntitiesManagerEditorComponent.GetInstance(SCR_EntitiesManagerEditorComponent));
 		if (entitiesManager)
 		{
-			m_HoverManager = SCR_BaseEditableEntityFilter.Cast(entitiesManager.GetFilter(EEditableEntityState.HOVER));
-			m_SelectedManager = SCR_BaseEditableEntityFilter.Cast(entitiesManager.GetFilter(EEditableEntityState.SELECTED));
+			m_HoverManager = entitiesManager.GetFilter(EEditableEntityState.HOVER);
+			m_SelectedManager = entitiesManager.GetFilter(EEditableEntityState.SELECTED);
 		}
 		
 		m_MenuLayoutManager = SCR_MenuLayoutEditorComponent.Cast(SCR_MenuLayoutEditorComponent.GetInstance(SCR_MenuLayoutEditorComponent));

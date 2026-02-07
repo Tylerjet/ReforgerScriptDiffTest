@@ -245,10 +245,12 @@ class SCR_SoundEvent
 	static const string SOUND_ITEM_RADIO_TUNE_UP = "SOUND_ITEM_RADIO_TUNE_UP";
 	static const string SOUND_ITEM_RADIO_TUNE_DOWN = "SOUND_ITEM_RADIO_TUNE_DOWN";
 	static const string SOUND_ITEM_RADIO_TUNE_ERROR = "SOUND_ITEM_RADIO_TUNE_ERROR";
-	static const string SOUND_DEPLOYED_RADIO_DEPLOY = "SOUND_DEPLOYED_RADIO_DEPLOY";
-	static const string SOUND_DEPLOYED_RADIO_UNDEPLOY = "SOUND_DEPLOYED_RADIO_UNDEPLOY";
+	static const string SOUND_DEPLOY = "SOUND_DEPLOY";
+	static const string SOUND_UNDEPLOY = "SOUND_UNDEPLOY";
 	static const string SOUND_DEPLOYED_RADIO_ENTER_ZONE = "SOUND_DEPLOYED_RADIO_ENTER_ZONE";
 	static const string SOUND_DEPLOYED_RADIO_EXIT_ZONE = "SOUND_DEPLOYED_RADIO_EXIT_ZONE";
+	static const string SOUND_DETONATOR_DETONATE_CHARGES = "SOUND_DETONATE";
+	static const string SOUND_DETONATOR_DISCONNECT_WIRES = "SOUND_DISCONNECT";
 
 	//BellSoundComponent
 	static const string SOUND_BELL_END = "SOUND_BELL_END";
@@ -269,6 +271,7 @@ class SCR_SoundEvent
 
 	// Character
 	static const string SOUND_MELEE_IMPACT = "SOUND_MELEE_IMPACT";
+	static const string SOUND_MELEE_IMPACT_BAYONET = "SOUND_MELEE_IMPACT_BAYONET";
 	static const string SOUND_INJURED_PLAYERCHARACTER = "SOUND_INJURED_PLAYERCHARACTER";
 	static const string SOUND_HIT = "SOUND_HIT";
 	static const string SOUND_DEATH = "SOUND_DEATH";
@@ -280,6 +283,11 @@ class SCR_SoundEvent
 	static const string SOUND_SCOPE_ILLUM_OFF = "SOUND_SCOPE_ILLUM_OFF";
 	static const string SOUND_SCOPE_ZOOM_IN = "SOUND_SCOPE_ZOOM_IN";
 	static const string SOUND_SCOPE_ZOOM_OUT = "SOUND_SCOPE_ZOOM_OUT";
+	static const string SOUND_PLACE_OBJECT = "SOUND_PLACEMENT";
+	static const string SOUND_EXPLOSIVE_CONNECT_WIRES = "SOUND_CONNECT";
+	static const string SOUND_EXPLOSIVE_DISARM = "SOUND_DISARM";
+	static const string SOUND_EXPLOSIVE_ARM = "SOUND_ARM";
+	static const string SOUND_EXPLOSIVE_ADJUST_TIMER = "SOUND_TIMER_ADJUST";
 
 	// Actions
 	static const string SOUND_EQUIP = "SOUND_EQUIP";

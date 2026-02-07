@@ -23,18 +23,9 @@ class SCR_PressureTriggerComponent : SCR_BaseTriggerComponent
 		
 	 	float otherMass = otherPhysics.GetMass();
 
-		if(GetGame().GetIsClientAuthority())
-		{
-			VehicleWheeledSimulation vehicleSimulation = VehicleWheeledSimulation.Cast(other.FindComponent(VehicleWheeledSimulation));
-			if (vehicleSimulation)
-				otherMass /= vehicleSimulation.WheelCount(); // assume it's a vehicle and assume min. weight it lays on the trigger is weight / wheels count
-		}
-		else
-		{
-			VehicleWheeledSimulation_SA vehicleSimulation = VehicleWheeledSimulation_SA.Cast(other.FindComponent(VehicleWheeledSimulation_SA));
-			if (vehicleSimulation)
-				otherMass /= vehicleSimulation.WheelCount(); // assume it's a vehicle and assume min. weight it lays on the trigger is weight / wheels count
-		}
+		VehicleWheeledSimulation vehicleSimulation = VehicleWheeledSimulation.Cast(other.FindComponent(VehicleWheeledSimulation));
+		if (vehicleSimulation)
+			otherMass /= vehicleSimulation.WheelCount(); // assume it's a vehicle and assume min. weight it lays on the trigger is weight / wheels count
 		
 		m_fLastTryTime = GetGame().GetWorld().GetWorldTime();
 		

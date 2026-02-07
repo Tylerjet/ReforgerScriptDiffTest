@@ -1,3 +1,5 @@
+//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
+
 void ScriptInvokerAIGroup(SCR_AIGroup group);
 typedef func ScriptInvokerAIGroup;
 
@@ -100,7 +102,8 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected ref array<IEntity> m_aSceneGroupUnitInstances;
 	protected ref array<IEntity> m_aSceneWaypointInstances;
 	protected ref array<IEntity> m_aUsableVehicles;
-	protected ref array<BaseCompartmentSlot> m_aAllocatedCompartments;
+	protected ref array<BaseCompartmentSlot> m_aAllocatedCompartments = {};	// allocated components (on vehicles) this group wants to get in
+	protected ref array<AISmartActionComponent> m_aAllocatedComponents = {};	// allocated smart action components this group wants to use
 	
 	protected int m_iMaxUnitsToSpawn = int.MAX;
 	protected ref ScriptInvoker Event_OnInit = new ScriptInvoker;
@@ -232,9 +235,17 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Returns true if group is in initialization state, for instance while still spawning its members
+	bool IsInitializing()
+	{
+		return !m_delayedSpawnList.IsEmpty();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void BeginDelayedSpawn()
 	{
 		SetEventMask(EntityEvent.FRAME);
+		DeactivateAI();
 		
 		// Allow this entity to frame/tick while in Game Master Mode
 		ChimeraWorld world = GetGame().GetWorld();
@@ -246,6 +257,10 @@ class SCR_AIGroup : ChimeraAIGroup
 	void EndDelayedSpawn()
 	{
 		ClearEventMask(EntityEvent.FRAME);
+		if (m_bDeleteWhenEmpty && GetAgentsCount() == 0)
+			GetGame().GetCallqueue().CallLater(SCR_EntityHelper.DeleteEntityAndChildren, 1, false, this);
+		else if (!m_bPlayable && !m_MasterGroup)
+			ActivateAI();
 		
 		ChimeraWorld world = GetGame().GetWorld();
 		if (world)
@@ -644,8 +659,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		string company, platoon, squad, character, format;
 		GetCallsigns(company, platoon, squad, character, format);
-		string originalName, newName;
-		originalName = string.Format(format, company, platoon, squad, character);
+		string originalName = string.Format(format, company, platoon, squad, character);
 		
 		if (m_iDescriptionAuthorID < 1 || m_sCustomName.IsEmpty() || !GetGame().GetPlayerController().CanViewContentCreatedBy(m_iNameAuthorID))
 			return originalName;
@@ -1317,7 +1331,7 @@ class SCR_AIGroup : ChimeraAIGroup
 		
 		spawnParams.Transform[3] = pos;
 		
-		IEntity member = GetGame().SpawnEntityPrefab(Resource.Load(res), world, spawnParams);
+		IEntity member = GetGame().SpawnEntityPrefab(res, true, world, spawnParams);
 		if (!member)
 			return true;
 		
@@ -1550,13 +1564,43 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		if (Vehicle.Cast(vehicle) && m_aUsableVehicles.Find(vehicle) < 0)
 			m_aUsableVehicles.Insert(vehicle);
+		
+		if (vehicle)
+		{
+			SCR_AIGroupUtilityComponent utility = SCR_AIGroupUtilityComponent.Cast(FindComponent(SCR_AIGroupUtilityComponent));
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
+			
+			if (!vehicleUsageComp)
+				SCR_AIVehicleUsageComponent.ErrorNoComponent(vehicle);
+			
+			if (utility && vehicleUsageComp)
+				utility.AddUsableVehicle(vehicleUsageComp);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void RemoveUsableVehicle(IEntity vehicle)
 	{
-		if (Vehicle.Cast(vehicle) && m_aUsableVehicles.Find(vehicle) > -1)
+		if (!vehicle)
+			m_aUsableVehicles.RemoveItem(null);
+		else if (Vehicle.Cast(vehicle) && m_aUsableVehicles.Find(vehicle) > -1)
 			m_aUsableVehicles.RemoveItem(vehicle);
+		for (int i = m_aAllocatedCompartments.Count() - 1; i >= 0 ; i--)
+		{ 
+			if (m_aAllocatedCompartments[i].GetVehicle() != vehicle)
+				continue;
+			m_aAllocatedCompartments[i].SetCompartmentAccessible(true);
+			m_aAllocatedCompartments.Remove(i);
+		}
+		
+		if (vehicle)
+		{
+			SCR_AIGroupUtilityComponent utility = SCR_AIGroupUtilityComponent.Cast(FindComponent(SCR_AIGroupUtilityComponent));
+			SCR_AIVehicleUsageComponent vehicleUsageComp = SCR_AIVehicleUsageComponent.Cast(vehicle.FindComponent(SCR_AIVehicleUsageComponent));
+			
+			if (utility && vehicleUsageComp)
+				utility.RemoveUsableVehicle(vehicleUsageComp);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1584,6 +1628,30 @@ class SCR_AIGroup : ChimeraAIGroup
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void GetAllocatedSmartActions(out array<AISmartActionComponent> allocatedComponents)
+	{
+		 allocatedComponents = m_aAllocatedComponents;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AllocateSmartActions(array<AISmartActionComponent> components)
+	{
+		if (!components || components.IsEmpty())
+			return;
+		
+		foreach (AISmartActionComponent component : components)
+		{
+			if (m_aAllocatedComponents.Find(component) > -1)
+			{
+				Print("Trying to allocate same component twice!", LogLevel.WARNING);
+				continue;
+			};
+			m_aAllocatedComponents.Insert(component);
+			component.SetActionAccessible(false);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void AllocateCompartment(BaseCompartmentSlot compartment)
 	{
 		if (!compartment)
@@ -1593,8 +1661,13 @@ class SCR_AIGroup : ChimeraAIGroup
 			Print("Trying to allocate same compartment twice!", LogLevel.WARNING);
 			return;
 		};
-		m_aAllocatedCompartments.Insert(compartment);
+		if (!compartment.IsCompartmentAccessible())
+		{
+			Print("Compartment already reserved!", LogLevel.WARNING);
+			return;
+		};
 		compartment.SetCompartmentAccessible(false);
+		m_aAllocatedCompartments.Insert(compartment);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1616,6 +1689,27 @@ class SCR_AIGroup : ChimeraAIGroup
 				comp.SetCompartmentAccessible(true);
 		}
 		m_aAllocatedCompartments.Clear();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ReleaseSmartAction(AISmartActionComponent component)
+	{
+		int index = m_aAllocatedComponents.Find(component);
+		if (index > -1)
+			m_aAllocatedComponents.Remove(index);
+		else
+			Print("Trying to remove smart action that is not allocated!", LogLevel.WARNING);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ReleaseSmartActions()
+	{
+		foreach (AISmartActionComponent comp : m_aAllocatedComponents)
+		{
+			if (comp)
+				comp.SetActionAccessible(true);
+		}
+		m_aAllocatedComponents.Clear();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1719,6 +1813,11 @@ class SCR_AIGroup : ChimeraAIGroup
 	*/
 	Faction GetFaction()
 	{
+		// If it's a slave group, get faction from master group
+		if (m_MasterGroup)
+			return m_MasterGroup.GetFaction();
+		
+		// Master group:
 		ArmaReforgerScripted game = GetGame();
 		if (!game) return null;
 		
@@ -2290,6 +2389,12 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		return m_iDeployedRadioCount;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetDeleteWhenEmpty(bool deleteWhenEmpty)
+	{
+		m_bDeleteWhenEmpty = deleteWhenEmpty;
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	void SCR_AIGroup(IEntitySource src, IEntity parent)
@@ -2360,4 +2465,6 @@ class SCR_WaypointPrefabLocation
 	
 	[Attribute("0", UIWidgets.EditBox, "Waypoint completion time (-1 dont override default)")]
 	float m_WPTimeOverride;
-};
+}
+
+//---- REFACTOR NOTE END ----

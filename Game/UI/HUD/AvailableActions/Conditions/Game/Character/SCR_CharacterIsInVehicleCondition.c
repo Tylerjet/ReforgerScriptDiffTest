@@ -31,13 +31,13 @@ class SCR_CharacterIsInVehicleCondition : SCR_AvailableActionCondition
 			// Check is player fits one of the required roles
 			ECompartmentType type = data.GetCompartmentType();
 			if (m_bIsDriver)
-				result = result || type == ECompartmentType.Pilot;
+				result = result || type == ECompartmentType.PILOT;
 
 			if (m_bIsTurret)
-				result = result || type == ECompartmentType.Turret;
+				result = result || type == ECompartmentType.TURRET;
 
 			if (m_bIsCargo)
-				result = result || type == ECompartmentType.Cargo;
+				result = result || type == ECompartmentType.CARGO;
 		}
 
 		return GetReturnResult(result);

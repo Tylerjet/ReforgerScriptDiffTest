@@ -13,22 +13,7 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	protected const int PROCESSING_MESSAGE_UPDATE_DELAY = 2000; // delay to prevent message flickering when downloading switched to copying fragments
 	
 	// State messages
-	protected const string PERCENTAGE = 			"#AR-SupportStation_ActionFormat_Percentage";
-	protected const string STATE_DOWNLOADING = 		"#AR-DownloadManager_State_Downloading";
-	protected const string STATE_PROCESSING = 		"#AR-DownloadManager_State_Processing";
-	protected const string STATE_PAUSED = 			"#AR-Workshop_ButtonPause";
-	protected const string STATE_CANCELED = 		"#AR-Workshop_Canceled";
-	protected const string STATE_NO_CONNECTION = 	"#AR-Workshop_WarningNoConnection";
-	protected const string STATE_DOWNLOAD_FAIL = 	"#AR-Workshop_DownloadFail";
-	protected const string STATE_COMPLETED = 		"#AR-Workshop_Details_Downloaded";
-	
-	// State icons
-	protected const string STATE_ICON_DOWNLOADING = 	"downloading";
-	protected const string STATE_ICON_PROCESSING = 		"update";
-	protected const string STATE_ICON_PAUSED = 			"download-pause";
-	protected const string STATE_ICON_CANCELED = 		"cancelCircle";
-	protected const string STATE_ICON_DOWNLOAD_FAIL = 	"warning";
-	protected const string STATE_ICON_COMPLETED = 		"okCircle";
+	protected const string PERCENTAGE = "#AR-SupportStation_ActionFormat_Percentage";
 	
 	[Attribute(UIConstants.ICONS_IMAGE_SET, UIWidgets.ResourceNamePicker, desc: "Imageset for the icon", params: "imageset")]
 	protected ResourceName m_sIconImageset;
@@ -287,8 +272,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 			{
 				progress = m_Action.GetProcessingProgress();
 
-				message = WidgetManager.Translate(PERCENTAGE, STATE_PROCESSING, Math.Round(progress * 100.0));
-				imageName = STATE_ICON_PROCESSING;
+				message = WidgetManager.Translate(PERCENTAGE, SCR_WorkshopUiCommon.DOWNLOAD_STATE_PROCESSING, SCR_WorkshopUiCommon.GetDownloadProgressPercentage(progress));
+				imageName = SCR_WorkshopUiCommon.DOWNLOAD_STATE_ICON_PROCESSING;
 				color = Color.FromInt(UIColors.ONLINE.PackToInt());
 				return;
 			}
@@ -296,8 +281,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 			// Download running  
 			progress = m_Action.GetProgress();
 
-			message = WidgetManager.Translate(PERCENTAGE, STATE_DOWNLOADING, Math.Round(progress * 100.0));
-			imageName = STATE_ICON_DOWNLOADING;
+			message = WidgetManager.Translate(PERCENTAGE, SCR_WorkshopUiCommon.DOWNLOAD_STATE_DOWNLOADING, SCR_WorkshopUiCommon.GetDownloadProgressPercentage(progress));
+			imageName = SCR_WorkshopUiCommon.DOWNLOAD_STATE_ICON_DOWNLOADING;
 			color = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());
 			return;
 		}
@@ -307,8 +292,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		{
 			progress = m_Action.GetProgress();
 
-			message = WidgetManager.Translate(PERCENTAGE, STATE_PAUSED, Math.Round(progress * 100.0));
-			imageName = STATE_ICON_PAUSED;
+			message = WidgetManager.Translate(PERCENTAGE, SCR_WorkshopUiCommon.DOWNLOAD_STATE_PAUSED, SCR_WorkshopUiCommon.GetDownloadProgressPercentage(progress));
+			imageName = SCR_WorkshopUiCommon.DOWNLOAD_STATE_ICON_PAUSED;
 			color = Color.FromInt(UIColors.CONTRAST_DEFAULT.PackToInt());
 			return;
 		}
@@ -316,8 +301,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		// Canceled 
 		if (m_Action.IsCanceled())
 		{
-			message = STATE_CANCELED;
-			imageName = STATE_ICON_CANCELED;
+			message = SCR_WorkshopUiCommon.DOWNLOAD_STATE_CANCELED;
+			imageName = UIConstants.ICON_CANCEL;
 			color = Color.FromInt(UIColors.WARNING.PackToInt());
 			return;
 		}
@@ -333,8 +318,8 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		// Success
 		if (m_Action.IsCompleted())
 		{
-			message = STATE_COMPLETED;
-			imageName = STATE_ICON_COMPLETED;
+			message = SCR_WorkshopUiCommon.DOWNLOAD_STATE_COMPLETED;
+			imageName = UIConstants.ICON_OK;
 			color = Color.FromInt(UIColors.CONFIRM.PackToInt());
 			return;
 		}
@@ -345,14 +330,14 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	protected void FailReason(out string message, out string icon)
 	{
 		// Addon specific fail
-		message = STATE_DOWNLOAD_FAIL;
-		icon = STATE_ICON_DOWNLOAD_FAIL;
+		message = SCR_WorkshopUiCommon.DOWNLOAD_STATE_DOWNLOAD_FAIL;
+		icon = UIConstants.ICON_WARNING;
 		
 		// Communication with server failed
 		if (!SCR_ServicesStatusHelper.IsBackendConnectionAvailable())
 		{
-			message = STATE_NO_CONNECTION;
-			icon = UIConstants.ICON_SERVICES_ISSUES;
+			message = SCR_ConnectionUICommon.MESSAGE_VERBOSE_DISCONNECTION;
+			icon = SCR_ConnectionUICommon.ICON_SERVICES_ISSUES;
 		}
 	}
 

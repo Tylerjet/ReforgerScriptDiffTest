@@ -6,16 +6,13 @@ class LoadoutSalineBagArea : LoadoutAreaType
 [BaseContainerProps()]
 class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 {
-	[Attribute("10", UIWidgets.EditBox, "Regeneration duration of related hitzone when consuming this item in seconds", category: "Consumable")]
-	protected float m_fItemRegenerationDuration;	
-	
-	[Attribute("0", UIWidgets.EditBox, "Total amount of regeneration that will be applied to the related hitzone", category: "Consumable")]
-	protected float m_fItemAbsoluteRegenerationAmount;
 	
 	//------------------------------------------------------------------------------------------------
 	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, ItemUseParameters animParams)
 	{
-		super.ApplyEffect(target, user, item, animParams);
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+ 	 	if (itemComp)
+ 	 		itemComp.RequestUserLock(user, false);
 
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -25,7 +22,7 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return;
 		
-		SCR_CharacterBloodHitZone bloodHitZone = SCR_CharacterBloodHitZone.Cast(damageMgr.GetBloodHitZone());
+		SCR_CharacterBloodHitZone bloodHitZone = damageMgr.GetBloodHitZone();
 		if (!bloodHitZone)
 			return;
 		
@@ -38,7 +35,7 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 			return;
 		
 		if (salineStorageComp.AddSalineBagToSlot(target, ECharacterHitZoneGroup.RIGHTARM, item, m_fItemRegenerationDuration))
-			bloodHitZone.CustomRegeneration(target, m_fItemRegenerationDuration, 0, m_fItemAbsoluteRegenerationAmount);
+			AddConsumableDamageEffects(char, user);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -76,6 +73,12 @@ class SCR_ConsumableSalineBag : SCR_ConsumableEffectHealthItems
 	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group, out SCR_EConsumableFailReason failReason = SCR_EConsumableFailReason.NONE)
 	{
 		return CanApplyEffect(target, user, failReason);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	EDamageType GetDefaultDamageType()
+	{
+		return EDamageType.HEALING;
 	}
 	
 	//------------------------------------------------------------------------------------------------

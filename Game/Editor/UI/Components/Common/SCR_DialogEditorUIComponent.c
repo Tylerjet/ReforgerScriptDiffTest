@@ -142,7 +142,7 @@ class SCR_DialogEditorUIComponent : SCR_BaseEditorUIComponent
 				inputManager.AddActionListener(m_sRepeatActionName, EActionTrigger.DOWN, OnRepeat);
 			
 			if (m_bIsInDialog)
-				inputManager.AddActionListener("MenuBack", EActionTrigger.DOWN, CloseDialog);
+				inputManager.AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, CloseDialog);
 		}
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
@@ -186,7 +186,7 @@ class SCR_DialogEditorUIComponent : SCR_BaseEditorUIComponent
 				inputManager.RemoveActionListener(m_sRepeatActionName, EActionTrigger.DOWN, OnRepeat);
 			
 			if (m_bIsInDialog)
-				inputManager.RemoveActionListener("MenuBack", EActionTrigger.DOWN, CloseDialog);
+				inputManager.RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, CloseDialog);
 		}
 		
 		MenuRootBase menu = GetMenu();

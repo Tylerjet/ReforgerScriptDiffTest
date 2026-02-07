@@ -18,19 +18,8 @@ class SCR_InventoryAttachmentStorageUI : SCR_InventoryStorageBaseUI
 		SortSlots();
 		ShowPage(0);
 
-		m_widget.FindAnyWidget("CategoryPanel").SetVisible(false);
+		m_widget.FindAnyWidget("HeaderOverlay").SetVisible(false);
 		ActivateCloseStorageButton();
-	}
-
-	override void Init()
-	{
-		super.Init();
-
-		m_wItemStorage.SetVisible(false);
-		m_wCapacityPercentageText.SetVisible(false);
-		m_wWeightText.SetVisible(false);
-		m_wCapacityDisplay.SetVisible(false);
-		m_wWeightDisplay.SetVisible(false);
 	}
 
 	protected override void SetPreviewItem()
@@ -123,7 +112,7 @@ class SCR_InventoryAttachmentPointUI : SCR_InventoryStorageBaseUI
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
-		w.FindAnyWidget("CategoryPanel").SetVisible(false);
+		w.FindAnyWidget("HeaderOverlay").SetVisible(false);
 
 		m_aSlots.Insert(CreateSlotUI(null));
 	}
@@ -159,7 +148,7 @@ class SCR_InventoryAttachmentSlotUI : SCR_InventorySlotUI
 	override void UpdateReferencedComponent(InventoryItemComponent pComponent, SCR_ItemAttributeCollection attributes = null)
 	{
 		Widget wGrid = m_pStorageUI.GetStorageGrid();
-		m_widget = GetGame().GetWorkspace().CreateWidgets("{F437ACE2BD5F11E1}UI/layouts/Menus/Inventory/InventoryItemSlot.layout", wGrid);
+		m_widget = GetGame().GetWorkspace().CreateWidgets(SLOT_LAYOUT_1x1, wGrid);
 		m_widget.AddHandler(this);
 	}
 

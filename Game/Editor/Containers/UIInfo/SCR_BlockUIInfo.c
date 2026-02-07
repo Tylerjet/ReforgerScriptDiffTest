@@ -114,7 +114,7 @@ class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 		//--- ToDo: Turn color conversion to general function
 		Color sRGBA = Color.FromInt(UIColors.CONTRAST_COLOR.PackToInt());	
 
-		return m_sDelimiter + super.GetName() + "<br/><br/>" + string.Format("<color rgba=%2><action name='%1' scale='1.7'/></color>", m_sActionName, UIColors.SRGBAFloatToInt(sRGBA)) + "</br>";
+		return m_sDelimiter + super.GetName() + "<br/><br/>" + string.Format("<color rgba=%2><action name='%1' scale='1.7'/></color>", m_sActionName, UIColors.FormatColor(sRGBA)) + "</br>";
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
@@ -153,7 +153,7 @@ class SCR_KeyBlockUIName: SCR_DeviceBlockUIName
 			}
 			keys += string.Format("<%2 name='%1' scale='1.7'/>", entry.m_sKey, entry.m_Tag);
 		}
-		return m_sDelimiter + super.GetName() + "<br/>" + string.Format("<color rgba='%2'>%1</color>", keys, UIColors.SRGBAFloatToInt(sRGBA)) + "</br>";	
+		return m_sDelimiter + super.GetName() + "<br/>" + string.Format("<color rgba='%2'>%1</color>", keys, UIColors.FormatColor(sRGBA)) + "</br>";	
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("m_sKey")]
@@ -219,19 +219,18 @@ class SCR_ImageBlockUIName: SCR_SubBlockUIName
 	[Attribute(defvalue: "1 1 1 1")]
 	protected ref Color m_fColor;
 
+	//------------------------------------------------------------------------------------------------
 	override LocalizedString GetName()
 	{
-		LocalizedString text;
-
 		if (m_sImage == string.Empty)
 		{
 			Print("HINT SYSTEM: No Icon name defined! Check 'Image'!", LogLevel.WARNING);
-			return "";
+			return string.Empty;
 		}
 		
-		return "</br>" + string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.SRGBAFloatToInt(m_fColor), m_sImageSet, m_sImage, m_fScale) + "</br>";
+		return "</br>" + string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(m_fColor), m_sImageSet, m_sImage, m_fScale) + "</br>";
 	}
-};
+}
 
 /*
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]
@@ -257,14 +256,14 @@ class SCR_TagBlockUIName: SCR_SubBlockUIName
 		}
 		return text;
 	}
-};
+}
 
 [BaseContainerProps()]
 class SCR_BaseTagBlockEntry
 {
 	string GetStart();
 	string GetEnd();
-};
+}
 [BaseContainerProps()]
 class SCR_CustomTagBlockEntry: SCR_BaseTagBlockEntry
 {
@@ -276,29 +275,29 @@ class SCR_CustomTagBlockEntry: SCR_BaseTagBlockEntry
 	
 	override string GetStart()	{ return m_sStart; }
 	override string GetEnd()	{ return m_sEnd; }
-};
+}
 [BaseContainerProps()]
 class SCR_BoldTagBlockEntry: SCR_BaseTagBlockEntry
 {
 	override string GetStart()	{ return "<b>"; }
 	override string GetEnd()	{ return "</b>"; }
-};
+}
 [BaseContainerProps()]
 class SCR_ItalicTagBlockEntry: SCR_BaseTagBlockEntry
 {
 	override string GetStart()	{ return "<i>"; }
 	override string GetEnd()	{ return "</i>"; }
-};
+}
 [BaseContainerProps()]
 class SCR_HeaderTagBlockEntry: SCR_BaseTagBlockEntry
 {
 	override string GetStart()	{ return "<h1>"; }
 	override string GetEnd()	{ return "</h1>"; }
-};
+}
 [BaseContainerProps()]
 class SCR_SubHeaderTagBlockEntry: SCR_BaseTagBlockEntry
 {
 	override string GetStart()	{ return "<h2>"; }
 	override string GetEnd()	{ return "</h2>"; }
-};
+}
 */

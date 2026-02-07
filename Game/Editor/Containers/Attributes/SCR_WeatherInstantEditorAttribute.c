@@ -22,7 +22,7 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 		if (!weatherManager) 
 			return null;
 		
-		WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
+		BaseWeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
 		if (!weatherTransitionManager)
 			return null;
 		
@@ -95,7 +95,7 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 			if (!weatherManager) 
 				return;
 		
-			WeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
+			BaseWeatherStateTransitionManager weatherTransitionManager = weatherManager.GetTransitionManager();
 			if (!weatherTransitionManager)
 				return;
 			

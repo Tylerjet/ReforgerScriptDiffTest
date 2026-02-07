@@ -248,7 +248,7 @@ class SCR_SpiderNet: ScriptedWidgetComponent
 		if (!workspace)
 			return;
 		
-		Widget legendWidget = Widget.Cast(workspace.CreateWidgets(m_LegendLayout, m_wSpiderNetFrame));
+		Widget legendWidget = workspace.CreateWidgets(m_LegendLayout, m_wSpiderNetFrame);
 		if (!legendWidget)
 			return;
 		

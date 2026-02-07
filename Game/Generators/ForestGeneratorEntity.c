@@ -1482,6 +1482,12 @@ class ForestGeneratorEntity : SCR_AreaGeneratorBaseEntity
 	//------------------------------------------------------------------------------------------------
 	protected int SafeRandomInt(int min, int max)
 	{
+		if (min < 0)
+			min = 0;
+
+		if (max < 0)
+			max = -max;
+
 		if (min < max)
 			return m_RandomGenerator.RandIntInclusive(min, max);
 

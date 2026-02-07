@@ -23,8 +23,22 @@ class SCR_OpenAttributeWindowContextAction : SCR_DoubleClickAction
 		SCR_AttributesManagerEditorComponent attributesManager = SCR_AttributesManagerEditorComponent.Cast(SCR_AttributesManagerEditorComponent.GetInstance(SCR_AttributesManagerEditorComponent));
 		if (attributesManager)
 		{
+			set<SCR_EditableEntityComponent> children = new set<SCR_EditableEntityComponent>();
 			array<Managed> editedEntities = new array<Managed>; //--- Must be 'array', not 'set', otherwise it will confuse the attribute system
-			foreach (SCR_EditableEntityComponent entity: selectedEntities) editedEntities.Insert(entity);
+			foreach (SCR_EditableEntityComponent entity: selectedEntities)
+			{
+				editedEntities.Insert(entity);
+				
+				// For each entity, also select the children, but only if type system
+				// This is required so the properties of the children are also display
+				// Eg: Display spawner properties which is part of a composition
+				entity.GetChildren(children);
+				foreach(SCR_EditableEntityComponent child : children)
+				{
+					if (child.GetEntityType() == EEditableEntityType.SYSTEM)
+						editedEntities.Insert(child);
+				}
+			}
 			attributesManager.StartEditing(editedEntities);
 		}
 	}

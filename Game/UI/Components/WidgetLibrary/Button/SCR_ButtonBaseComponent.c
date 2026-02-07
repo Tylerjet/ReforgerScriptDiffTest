@@ -104,12 +104,9 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 		if (m_bMouseOverToFocus)
 			return false;
 		
-		if (m_bShowBorderOnHover && m_wBorder)
+		if (m_bShowBorderOnHover)
 		{
-			if (m_bNoBorderAnimation)
-				m_wBorder.SetOpacity(1);
-			else
-				AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate, true);
+			ShowBorder(true, !m_bNoBorderAnimation);
 		}
 
 		if (!m_bUseColorization)
@@ -142,13 +139,11 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 				AnimateWidget.Color(m_wBackground, m_BackgroundDefault, m_fAnimationRate);
 		}
 		
-		if (!m_wBorder || !m_bShowBorderOnHover || (m_bShowBorderOnFocus && GetGame().GetWorkspace().GetFocusedWidget() == m_wRoot))
-			return false;
+		if (m_bShowBorderOnHover)
+		{
+			ShowBorder(false, !m_bNoBorderAnimation);
+		}
 		
-		if (m_bNoBorderAnimation)
-			m_wBorder.SetOpacity(0);
-		else
-			AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate, true);
 		return false;
 	}
 	
@@ -156,13 +151,10 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
-
-		if (m_bShowBorderOnFocus && m_wBorder)
+		
+		if(m_bShowBorderOnFocus)
 		{
-			if (m_bNoBorderAnimation)
-				m_wBorder.SetOpacity(1);
-			else
-				AnimateWidget.Opacity(m_wBorder, 1, m_fAnimationRate, true);
+			ShowBorder(true, !m_bNoBorderAnimation);
 		}
 		
 		if (m_bShowBackgroundOnFocus && m_wBackground)
@@ -193,13 +185,10 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 				AnimateWidget.Opacity(m_wBackground, 0, m_fAnimationRate, true);	
 		}
 		
-		if (!m_bShowBorderOnFocus || !m_wBorder || (m_bShowBorderOnHover && WidgetManager.GetWidgetUnderCursor() == m_wRoot))
-			return false;
-		
-		if (m_bNoBorderAnimation)
-			m_wBorder.SetOpacity(0);
-		else
-			AnimateWidget.Opacity(m_wBorder, 0, m_fAnimationRate, true);
+		if(m_bShowBorderOnFocus)
+		{
+			ShowBorder(false, !m_bNoBorderAnimation);
+		}
 
 		return false;
 	}
@@ -231,13 +220,12 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	
 	// Public API
 	//------------------------------------------------------------------------------------------------
-	void SetToggled(bool toggled, bool animate = true, bool invokeChange = true)
+	void SetToggled(bool toggled, bool animate = true, bool invokeChange = true, bool instant = false)
 	{
 		if (!m_bCanBeToggled)
 			return;
 		
 		m_bIsToggled = toggled;
-		PlaySound(m_sSoundClicked);
 		ColorizeBackground(animate);
 		if (invokeChange)
 			m_OnToggled.Invoke(this, m_bIsToggled);

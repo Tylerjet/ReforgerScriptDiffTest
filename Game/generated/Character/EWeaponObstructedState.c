@@ -15,11 +15,11 @@ enum EWeaponObstructedState
 	INVALID,
 	//! Obstruction is at 0.0.
 	UNOBSTRUCTED,
-	//! Obstruction is less than the breaking threshold - all actions should still be possible.
-	SLIGHTLY_OBSTRUCTED_CAN_FIRE,
-	//! Obstruction between breaking threshold and alpha threshold - shooting not possible anymore.
-	SIGNIFICANTLY_OBSTRUCTED_CANT_FIRE,
-	//! Obstruction higher than alpha threshold - weapon fully obstructed.
+	//! Character is moving back to avoid obstruction and can still shoot and ADS
+	SLIGHTLY_OBSTRUCTED,
+	//! Character is moving their weapon back to avoid obstruction, can shoot but cannot ADS
+	SIGNIFICANTLY_OBSTRUCTED,
+	//! obstruction alpha higher then fully obstructed threshold
 	FULLY_OBSTRUCTED_CANT_FIRE,
 }
 

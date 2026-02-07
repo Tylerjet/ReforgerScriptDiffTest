@@ -113,6 +113,12 @@ class CharacterCamera3rdPersonBase extends CharacterCameraBase
 		pOutResult.m_CameraTM[3][1] = m_fYoffsetPrevFrame * yDelta;
 		
 		m_fBobScale = m_CharacterCameraHandler.AddViewBobToTransform(pOutResult.m_CameraTM, 1, true);
+		// follow hip bone when ragdolling
+		if(m_OwnerCharacter.GetAnimationComponent().IsRagdollActive())
+		{
+			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+			pOutResult.m_iDirectBone = m_OwnerCharacter.GetAnimation().GetBoneIndex("Hips");
+		}
 		
 		//! store distance 
 		pOutResult.m_fDistance 				= m_fDistance;

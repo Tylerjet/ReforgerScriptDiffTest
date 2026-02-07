@@ -26,22 +26,28 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool IsInCompartmentADS();
 	//! Returns true if \param targetEntity is accessible for getting in (e.g. not upside down)
 	proto external bool IsTargetVehicleAccessible(IEntity targetEntity);
+	// If force teleport, doorInfoIndex is ignored. closeDoor is still respected.
+	proto external bool GetInVehicle(IEntity vehicle, BaseCompartmentSlot compartment, bool forceTeleport, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused);
+	// If force teleport, doorInfoIndex is used for the teleport position and closeDoor is ignored.
+	proto external bool GetOutVehicle(EGetOutType type, int doorInfoIndex, ECloseDoorAfterActions closeDoor, bool performWhenPaused);
+	// Uses teleport - character is teleported to targetTransform, and door state will not be changed.
+	proto external bool GetOutVehicle_NoDoor(vector targetTransform[4], bool sendIntoRagdoll, bool performWhenPaused);
+	// Kick another character out.
+	proto external void KickFromVehicle(int doorInfoIndex);
+	// Open door only
+	proto external bool OpenDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);
+	// Close door only
+	proto external bool CloseDoor(IEntity vehicle, ECharacterDoorAnimType doorAnimType, int doorInfoIndex);
+	// Interrupt the get in/get out process
+	proto external void InterruptVehicleActionQueue(bool interruptCurrentAction, bool forced, bool replicate);
 	//! Returns true if \param targetEntity can be entered at this time
 	proto external bool CanGetInVehicle(IEntity targetEntity);
 	//! Returns the entity owning the component
 	proto external IEntity GetOwner();
 	//! Returns true if \param targetEntity can be entered at this time
-	proto external bool CanGetInVehicleViaDoor(IEntity targetEntity, BaseCompartmentSlot targetCompartment, int doorInfoIndex);
-	//! Make current entity get into \param targetEntity's compartment specified by \param targetCompartment
-	proto external bool GetInVehicle(IEntity targetEntity, BaseCompartmentSlot targetCompartment, int doorInfoIndex);
-	//! Make current entity move (teleport) into \param targetEntity's compartment specified by \param targetCompartment
-	proto external bool MoveInVehicle(IEntity targetEntity, BaseCompartmentSlot targetCompartment);
-	//! If true, last exiting of vehicle was by ejecting, so we should not reset vehicle inputs.
-	proto external bool WasLastGettingOutEjecting();
-	//! If true, last exiting of vehicle was by teleportation.
-	proto external bool WasLastGettingOutTeleportation();
-	//! Get the target transform for the last exit from vehicle.
-	proto external void GetTeleportTarget(out vector outMat[4]);
+	proto external bool CanGetInVehicleViaDoor(IEntity targetEntity, BaseCompartmentManagerComponent compartmentManagerCompartment, int doorInfoIndex);
+	//! Returns true if \param doorIndex can be closed/opened
+	proto external bool CanAccessDoor(IEntity targetEntity, BaseCompartmentManagerComponent compartmentManagerCompartment, int doorInfoIndex);
 	//! Returns true while getting in
 	proto external bool IsGettingIn();
 	//! Returns true while getting out
@@ -50,18 +56,14 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool CanGetOutVehicle();
 	//! Returns true if compartment can be gotten out of via the door with index \param doorIndex
 	proto external bool CanGetOutVehicleViaDoor(int doorIndex);
-	//! Get out of current entity via the door with index \param doorInfoIndex
-	proto external bool GetOutVehicle(int doorInfoIndex, bool ejects);
-	//! Move out of (teleport from) current vehicle via the door with index \param doorInfoIndex
-	proto external bool MoveOutVehicle(int doorInfoIndex, vector targetTransform[4]);
-	//! Teleport out of the vehicle normally - when exiting is not possible.
-	proto external bool EjectOutOfVehicle();
+	proto external bool FindSuitableTeleportLocation(vector TR[4]);
 	//! Returns true if current compartment can be jumped from
 	proto external bool CanJumpOutVehicle();
-	//! Jump out of current compartment
-	proto external bool JumpOutVehicle();
+	proto external bool IsVehicleFlipped(float dotThreshold);
+	proto external bool CompareSeatOutVectorAndGravity(float dotThreshold);
 	//! Returns the vehicle entity is in (root entity of whole hierarchy)
 	static proto IEntity GetVehicleIn(IEntity entity);
+	proto external void SetActivePilotCompartment(BaseCompartmentSlot pilotCompartment);
 
 	// callbacks
 

@@ -102,7 +102,7 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 	// Adds grenade instigator position to group perception for potentatial investigation later
 	void AddToGroupPerception(SCR_AIUtilityComponent utility, IEntity shooter, vector observePosition)
 	{		
-		AIGroup group = AIGroup.Cast(utility.GetOwner().GetParentGroup());
+		AIGroup group = utility.GetOwner().GetParentGroup();
 		if (!group)
 			return;
 		
@@ -114,7 +114,7 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 		if (!perceptionMan)
 			return;
 
-		groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, observePosition, perceptionMan.GetTime());
+		groupUtilityComp.m_Perception.AddOrUpdateGunshot(shooter, observePosition, perceptionMan.GetTime(), true);
 	}
 	
 	//-------------------------------------------------------------------------------------------

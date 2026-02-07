@@ -14,8 +14,8 @@ class ScriptedWidgetTooltip: ScriptAndConfig
 
 	// callbacks
 
-	event void Show(WorkspaceWidget pWorkspace, Widget pToolTipWidget, float desiredPosX, float desiredPosY);;
-	event void Hide(WorkspaceWidget pWorkspace, Widget pToolTipWidget);;
+	event void Show(WorkspaceWidget pWorkspace, Widget pToolTipWidget, float desiredPosX, float desiredPosY);
+	event void Hide(WorkspaceWidget pWorkspace, Widget pToolTipWidget);
 	//! Create UI widgets for tooltip class (each tooltip class has just one instance of its widgets)
-	static event Widget CreateTooltipWidget();;
+	static event Widget CreateTooltipWidget();
 }

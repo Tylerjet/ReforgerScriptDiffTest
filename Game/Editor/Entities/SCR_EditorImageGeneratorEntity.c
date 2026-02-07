@@ -36,11 +36,13 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	protected SCR_EditorImageGeneratorPrefab m_CurrentPrefab;
 	protected bool m_bIsScreenshotMade;
 	
+	//------------------------------------------------------------------------------------------------
 	static SCR_EditorImageGeneratorEntity GetInstance()
 	{
 		return SCR_EditorImageGeneratorEntity.Cast(GetGame().FindEntity("SCR_EditorImageGeneratorEntity"));
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	SCR_EditorImagePositionEntity FindSuitablePosition(array<EEditableEntityLabel> labels)
 	{
 		SCR_EditorImagePositionEntity position;
@@ -52,6 +54,8 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		}
 		return null;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected bool IsPositionSelected(SCR_EditorImagePositionEntity position)
 	{
 		if (s_aSelectedPositions.IsEmpty())
@@ -65,14 +69,24 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		return false;
 	}
 	
+	//------------------------------------------------------------------------------------------------
 	void AddPosition(SCR_EditorImagePositionEntity position)
 	{
 		m_aPositions.Insert(position.GetPriority(), position);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	static void AddSelectedPosition(SCR_EditorImagePositionEntity position)
 	{
 		s_aSelectedPositions.Insert(position.GetOrigin());
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Add selected assets in resource browser to get generated images.
+	\Selected asset has to exist in worl Eden_AssetImage and has to have same labels set
+	\Used for GetResourceBrowserSelection callback
+	*/
 	protected void AddSelectedPrefab(ResourceName prefab, string filePath)
 	{
 		string ext;
@@ -88,7 +102,7 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		if (!editableEntitySource)
 			return;
 		
-		SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+		SCR_EditableEntityUIInfo info = SCR_EditableEntityComponentClass.GetInfo(editableEntitySource);
 		if (!info)	
 		{
 			Print(string.Format("Prefab @\"%1\" does not have UI info defined in SCR_EditableEntityComponent!", prefab.GetPath()), LogLevel.WARNING);
@@ -125,10 +139,14 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		imagePath = FilePath.StripExtension(imagePath.GetPath());
 		m_aSelectedPrefabs.Insert(new SCR_EditorImageGeneratorPrefab(prefab, imagePath, position));
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void RequestClose()
 	{
 		GetGame().RequestClose();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected bool Init()
 	{
 		if (m_iInit <= 1 && !SCR_Global.IsEditMode(this))
@@ -170,6 +188,8 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		}
 		return m_iInit > 1;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		if (!Init())
@@ -263,6 +283,8 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		m_fTime += timeSlice;
 		m_fTimeRemaining -= timeSlice;
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_EditorImageGeneratorEntity(IEntitySource src, IEntity parent)
 	{
 		SetName("SCR_EditorImageGeneratorEntity");
@@ -271,6 +293,8 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		if (SCR_Global.IsEditMode(this))
 			s_aSelectedPositions.Clear();
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void _WB_AfterWorldUpdate(float timeSlice)
 	{
 		WorldEditorAPI api = _WB_GetEditorAPI();
@@ -292,15 +316,17 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 		DebugTextScreenSpace.Create(GetWorld(), textCurrent, DebugTextFlags.ONCE, 0, 0, 18, color, Color.BLACK);
 		DebugTextScreenSpace.Create(GetWorld(), textTarget, DebugTextFlags.ONCE, 0, 18, 18, Color.WHITE, Color.BLACK);
 	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void _WB_GetBoundBox(inout vector min, inout vector max, IEntitySource src)
 	{
 		GetWorld().GetBoundBox(min, max);
 	}
 	
+	/*
 	//------------------------------------------------------------------------------------------------
 	//! Generate new image file with placeholder texture 
 	//! Use when asset has no preview image
-	/*
 	protected void CreatePreviewImageFile()
 	{
 		string sourceFile = FilePath.ReplaceExtension(FilePath.StripPath(targetPath), m_sImagePlaceholderExt);

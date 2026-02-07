@@ -7,6 +7,33 @@ class SCR_EntityCatalogMultiList: SCR_EntityCatalog
 	[Attribute(desc: "An array of all multi lists which in turn hold lists of entries. Used for readablility for devs and each works the same as the m_aEntityEntryList. You are free to make, delete, rename and move lists as you want and names do not need to be unique. Note that this array will be null after Init as it will be merged into the m_aEntityEntryList")]
 	protected ref array <ref SCR_EntityCatalogMultiListEntry> m_aMultiLists;
 	
+	//------------------------------------------------------------------------------------------------
+	//! Only valid before init. Used when merging entity lists
+	//! param[in] multiLists Return list of all the multilists
+	//! return Count of multiLists
+	int GetMultiList(notnull out array <SCR_EntityCatalogMultiListEntry> multiLists)
+	{
+		multiLists.Clear();
+		
+		if (!m_aMultiLists)
+			return 0;
+		
+		foreach (SCR_EntityCatalogMultiListEntry entry : m_aMultiLists)
+		{
+			multiLists.Insert(entry);
+		}
+		
+		return multiLists.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ClearCatalogOnMerge()
+	{
+		super.ClearCatalogOnMerge();
+		
+		m_aMultiLists.Clear();
+	}
+	
 	//======================================== INIT ========================================\\
 	protected override void InitCatalog()
 	{

@@ -430,6 +430,12 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		if (!slotPrefab)
 			return;
 		
+		bool isEnabled;
+		slotSource.Get("Enabled", isEnabled);
+		
+		if (!isEnabled)
+			return;
+		
 		//Don't show supply boxes at vehicle previews
 		if (slotSource.GetName().Contains("SupplyStorage"))
 			return;

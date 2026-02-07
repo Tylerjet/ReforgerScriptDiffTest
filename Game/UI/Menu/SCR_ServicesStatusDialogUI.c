@@ -26,7 +26,7 @@ class SCR_ServicesStatusDialogUI : SCR_ConfigurableDialogUi
 		if (m_Refresh)
 			m_Refresh.m_OnActivated.Insert(OnRefresh);
 
-		m_ServicesStatusDialogComponent = SCR_ServicesStatusDialogComponent.Cast(SCR_ConfigurableDialogUi.GetContentLayoutRoot(GetRootWidget()).FindHandler(SCR_ServicesStatusDialogComponent));
+		m_ServicesStatusDialogComponent = SCR_ServicesStatusDialogComponent.Cast(GetContentLayoutRoot().FindHandler(SCR_ServicesStatusDialogComponent));
 
 #ifdef WORKBENCH
 		if (!m_ServicesStatusDialogComponent)

@@ -15,6 +15,9 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 	protected SCR_SlotUIComponent			m_pFrameSlotUI;
 	protected Widget 						m_wWidgetUnderCursor;
 	protected bool 							m_bForceShow;
+
+	protected ResourceName					m_sAmmoTypeConfig = "{8D3E102893955B15}Configs/Inventory/ItemHints/MagazineAmmoType.conf";
+	protected ref SCR_AmmoTypeInfoConfig	m_AmmoTypeConf;
 	
 	private string 							m_sHintLayout = "{9996B50BE8DFED5F}UI/layouts/Menus/Inventory/InventoryItemHintElement.layout";
 	
@@ -144,8 +147,83 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 			hintUIInfo.SetItemHintNameTo(item, RichTextWidget.Cast(createdWidget.FindAnyWidget("ItemInfo_hintText")));
 			hintUIInfo.SetIconTo(ImageWidget.Cast(createdWidget.FindAnyWidget("ItemInfo_hintIcon")));
 		}
+
+		SetItemHints(item, false);
 	}
 	
+	void SetItemHints(InventoryItemComponent item, bool deleteSlots = true)
+	{
+		if (!m_AmmoTypeConf)
+		{
+			Resource holder = BaseContainerTools.LoadContainer(m_sAmmoTypeConfig);
+			if (!holder || !holder.IsValid())
+				return;	
+	
+			BaseContainer container = holder.GetResource().ToBaseContainer();
+			if (!container)
+				return;
+			
+			m_AmmoTypeConf = SCR_AmmoTypeInfoConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+			if (!m_AmmoTypeConf)
+				return;
+		}
+		
+		if (deleteSlots)
+		{
+			Widget hintChild = m_wHintWidget.GetChildren();
+			Widget deleteHint;
+			while(hintChild)
+			{
+				deleteHint = hintChild;
+				hintChild = deleteHint.GetSibling();
+			
+				delete deleteHint;
+			}		
+		}
+		
+		if (!item || !item.GetOwner())
+			return;
+
+		EAmmoType flags;
+		
+		MagazineComponent mag = MagazineComponent.Cast(item.GetOwner().FindComponent(MagazineComponent));
+		if (mag)
+		{
+			MagazineUIInfo ammoInfo = MagazineUIInfo.Cast(mag.GetUIInfo());
+			if (!ammoInfo)
+				return;
+
+			flags = ammoInfo.GetAmmoTypeFlags();
+		}
+
+		WeaponComponent weapon = WeaponComponent.Cast(item.GetOwner().FindComponent(WeaponComponent));
+		if (weapon)
+		{
+			GrenadeUIInfo ammoInfo = GrenadeUIInfo.Cast(weapon.GetUIInfo());
+			if (!ammoInfo)
+				return;
+			
+			flags = ammoInfo.GetAmmoTypeFlags();
+		}
+
+		array<EAmmoType> values = {};
+		SCR_Enum.GetEnumValues(EAmmoType, values);
+		foreach (EAmmoType flag : values)
+		{
+			if (flags & flag)
+			{
+				Widget createdWidget = GetGame().GetWorkspace().CreateWidgets(m_sHintLayout, m_wHintWidget);
+				if (!createdWidget)
+					return;
+		
+				RichTextWidget text = RichTextWidget.Cast(createdWidget.FindAnyWidget("ItemInfo_hintText"));
+				ImageWidget icon = ImageWidget.Cast(createdWidget.FindAnyWidget("ItemInfo_hintIcon"));		
+				
+				m_AmmoTypeConf.SetIconAndDescriptionTo(flag, icon, text);
+			}
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void SetWeight( string sWeight )
 	{

@@ -26,11 +26,21 @@ class SCR_RespawnEnabledEditorAttribute : SCR_BaseEditorAttribute
 			manager.SetAttributeAsSubAttribute(SCR_RespawnTimeEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_SpawnAtPlayersEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_SpawnAtRadioVehicleAttribute);
+			manager.SetAttributeAsSubAttribute(SCR_LoadoutSupplyCostMultiplierEditorAttribute);
 		}
 			
 		manager.SetAttributeEnabled(SCR_RespawnTimeEditorAttribute, var && var.GetBool());
 		manager.SetAttributeEnabled(SCR_SpawnAtPlayersEditorAttribute, var && var.GetBool());
 		manager.SetAttributeEnabled(SCR_SpawnAtRadioVehicleAttribute, var && var.GetBool());
+		
+		SCR_BaseEditorAttributeVar globalVar;
+		manager.GetAttributeVariable(SCR_EnableGlobalResourceTypeEditorAttribute, globalVar);
+		bool suppliesEnabled = true;
+		
+		if (globalVar)
+			suppliesEnabled = globalVar.GetBool();
+		
+		manager.SetAttributeEnabled(SCR_LoadoutSupplyCostMultiplierEditorAttribute, var && var.GetBool() && suppliesEnabled);
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

@@ -240,7 +240,7 @@ class SCR_EntityConditionTooltipDetail : SCR_EntityTooltipDetail
 		ChimeraCharacter char = ChimeraCharacter.Cast(m_DamageManager.GetOwner());
 		if (char)
 		{
-			CharacterControllerComponent controller = CharacterControllerComponent.Cast(char.GetCharacterController());
+			CharacterControllerComponent controller = char.GetCharacterController();
 			if (controller.GetLifeState() == ECharacterLifeState.INCAPACITATED)
 			{
 				isUnconscious = true;
@@ -251,10 +251,23 @@ class SCR_EntityConditionTooltipDetail : SCR_EntityTooltipDetail
 					hasCondition = true;
 			}
 		}
-
+		
+		bool isDamagedOverTime;
+		SCR_CharacterDamageManagerComponent characterDamageManager;
+		
 		foreach (SCR_DamageStateInfo damageStateInfo: m_aDamageStateUiInfo)
 		{
-			if (m_DamageManager.IsDamagedOverTime(damageStateInfo.m_eDamageType))
+			if (damageStateInfo.m_eDamageType != EDamageType.BLEEDING)
+			{
+				isDamagedOverTime = m_DamageManager.IsDamagedOverTime(damageStateInfo.m_eDamageType);
+			}
+			else
+			{
+				characterDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_DamageManager);
+				isDamagedOverTime = characterDamageManager && characterDamageManager.IsBleeding();
+			}
+			
+			if (isDamagedOverTime)
 			{
 				activeCondition.Insert(damageStateInfo.m_eDamageType);
 				

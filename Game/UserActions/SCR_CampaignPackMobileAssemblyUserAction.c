@@ -45,11 +45,26 @@ class SCR_CampaignPackMobileAssemblyUserAction : SCR_CampaignDeployMobileAssembl
 		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_AssemblyComponent.GetParentFaction())
 			return false;
 		
+		SCR_SpawnPoint spawnpoint = m_AssemblyComponent.GetSpawnPoint();
+
+		if (!spawnpoint)
+			return false;
+
+		SCR_CoverageRadioComponent radio = SCR_CoverageRadioComponent.Cast(spawnpoint.FindComponent(SCR_CoverageRadioComponent));
+
+		if (!radio)
+			return false;
+
 		int basesCovered;
-		SCR_CampaignMobileAssemblyStandaloneComponent standaloneComponent = m_AssemblyComponent.GetStandaloneComponent();
-		
-		if (standaloneComponent)
-			basesCovered = standaloneComponent.GetCountOfExclusivelyLinkedBases();
+		string encryption = radio.GetEncryptionKey();
+		array<SCR_CoverageRadioComponent> radiosCovered = {};
+		radio.GetRadiosInRange(radiosCovered);
+
+		foreach (SCR_CoverageRadioComponent radioCovered : radiosCovered)
+		{
+			if (!radioCovered.IsSource() && radioCovered.GetRadiosInRangeOfCount(encryption) == 1)
+				basesCovered++;
+		}
 
 		if (basesCovered == 0)
 			return false;

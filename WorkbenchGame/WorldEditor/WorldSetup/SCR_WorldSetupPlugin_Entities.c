@@ -18,7 +18,6 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	protected int m_iAddon;
 
 	// temp work variables
-	protected WorldEditorAPI m_WorldEditorAPI;
 	protected ref SCR_WorldSetupPluginConfig m_Config;
 	protected ref set<string> m_ClassNames = new set<string>();
 	protected ref set<string> m_Prefabs = new set<string>();
@@ -50,15 +49,15 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	protected bool Init()
 	{
 		// has API?
-		m_WorldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
-		if (!m_WorldEditorAPI)
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		if (!worldEditorAPI)
 		{
-			Print("Could not obtain m_WorldEditorAPI", LogLevel.ERROR);
+			Print("Could not obtain worldEditorAPI", LogLevel.ERROR);
 			return false;
 		}
 
 		// has world?
-		BaseWorld baseWorld = m_WorldEditorAPI.GetWorld();
+		BaseWorld baseWorld = worldEditorAPI.GetWorld();
 		if (!baseWorld)
 		{
 			Print("No world is currently loaded", LogLevel.WARNING);
@@ -66,7 +65,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		}
 
 		string worldPath;
-		m_WorldEditorAPI.GetWorldPath(worldPath);
+		worldEditorAPI.GetWorldPath(worldPath);
 		if (worldPath.IsEmpty())
 		{
 			Print("No world is currently loaded or the world has not yet been saved to storage", LogLevel.WARNING);
@@ -98,19 +97,20 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	//------------------------------------------------------------------------------------------------
 	protected void CreateEntities()
 	{
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
 		// array<IEntitySource> entitySources = {};
 		// array<IEntity> entities = {};
 		IEntitySource worldEntitySource;
 		IEntitySource entitySource;
 		BaseContainer ancestor;
-		for (int i, count = m_WorldEditorAPI.GetEditorEntityCount(); i < count; i++)
+		for (int i, count = worldEditorAPI.GetEditorEntityCount(); i < count; i++)
 		{
-			entitySource = m_WorldEditorAPI.GetEditorEntity(i);
+			entitySource = worldEditorAPI.GetEditorEntity(i);
 			if (!worldEntitySource && entitySource.GetClassName().ToType() == GenericWorldEntity)
 				worldEntitySource = entitySource;
 
 			// entitySources.Insert(entitySource);
-			// entities.Insert(m_WorldEditorAPI.SourceToEntity(entitySource));
+			// entities.Insert(worldEditorAPI.SourceToEntity(entitySource));
 			m_ClassNames.Insert(entitySource.GetClassName());
 
 			ancestor = entitySource.GetAncestor();
@@ -171,7 +171,8 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 			return null;
 		}
 
-		IEntitySource entitySource = m_WorldEditorAPI.CreateEntity(prefab, string.Empty, m_WorldEditorAPI.GetCurrentEntityLayerId(), null, entry.m_vPosition, entry.m_vAngles);
+		WorldEditorAPI worldEditorAPI = SCR_WorldEditorToolHelper.GetWorldEditorAPI();
+		IEntitySource entitySource = worldEditorAPI.CreateEntity(prefab, string.Empty, worldEditorAPI.GetCurrentEntityLayerId(), null, entry.m_vPosition, entry.m_vAngles);
 		if (!entitySource)
 		{
 			Print("Entity failed to be created by World Editor API " + prefab, LogLevel.WARNING);
@@ -182,7 +183,7 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 		{
 			foreach (SCR_WorldSetupPluginConfig_EntitySourceKeyValue kvp : entry.m_aAdditionalValues)
 			{
-				if (!m_WorldEditorAPI.SetVariableValue(entitySource, null, kvp.m_sKey, kvp.m_sValue))
+				if (!worldEditorAPI.SetVariableValue(entitySource, null, kvp.m_sKey, kvp.m_sValue))
 					Print("Could not set variable value \"" + kvp.m_sKey + "\" (value: " + kvp.m_sValue + ")", LogLevel.WARNING);
 			}
 		}
@@ -196,7 +197,6 @@ class SCR_WorldSetupPlugin_Entities : SCR_WorldSetupPluginBasePlugin
 	//------------------------------------------------------------------------------------------------
 	protected void Cleanup()
 	{
-		m_WorldEditorAPI = null;
 		m_Config = null;
 		m_ClassNames.Clear();
 		m_Prefabs.Clear();

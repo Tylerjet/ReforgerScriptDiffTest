@@ -3,6 +3,10 @@ class SCR_PlayerSpawnPointManagerComponentClass : SCR_BaseGameModeComponentClass
 {
 }
 
+void SCR_DeployableSpawnPointBudgetChangedDelegate(SCR_ESpawnPointBudgetType newBudgetType);
+typedef func SCR_DeployableSpawnPointBudgetChangedDelegate;
+typedef ScriptInvokerBase<SCR_DeployableSpawnPointBudgetChangedDelegate> SCR_SpawnPointBudgetInvoker;
+
 class SCR_PlayerSpawnPointManagerComponent : SCR_BaseGameModeComponent
 {
 	[Attribute(uiwidget: UIWidgets.ResourcePickerThumbnail, params: "et")]
@@ -17,8 +21,16 @@ class SCR_PlayerSpawnPointManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("1", desc: "It allows players to deploy their radiobackpack and create a deployable radio spawn point. It still allows existing deployed radio spawnpoints to be deconstructed by players if this bool is false")]
 	protected bool m_bDeployableSpawnPointsEnabled;
 	
+	[Attribute(defvalue: SCR_ESpawnPointBudgetType.SUPPLIES.ToString(), uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(SCR_ESpawnPointBudgetType), desc: "Budget type for respawning on deployed radios")]
+	protected SCR_ESpawnPointBudgetType m_eDeployableSpawnPointBudgetType;
+	
+	[Attribute("5", desc: "Amount of spawn tickets available for deployed radios")]
+	protected int m_iDeployableSpawnPointTicketAmount;
+	
 	protected ref ScriptInvokerBool m_OnRadioVehicleSpawningChanged;
 	protected ref ScriptInvokerBool m_OnSpawnPointDeployingEnabledChanged;
+	protected ref SCR_SpawnPointBudgetInvoker m_OnSpawnPointBudgetTypeChanged;
+	protected ref ScriptInvokerInt m_OnSpawnPointTicketAmountChanged;
 	
 	protected ref map<int, SCR_PlayerSpawnPoint> m_SpawnPoints = new map<int, SCR_PlayerSpawnPoint>();
 	
@@ -203,6 +215,102 @@ class SCR_PlayerSpawnPointManagerComponent : SCR_BaseGameModeComponent
 			m_OnSpawnPointDeployingEnabledChanged = new ScriptInvokerBool();
 		
 		return m_OnSpawnPointDeployingEnabledChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set budget type for respawning on deployed radios. (Server only)
+	//! \param[in] budgetType SUPPLIES to enable supply usage; SPAWNTICKET for a limited amount of respawns; NONE to disable respawn budget
+	//! \param[in] notificationPlayerID if not -1 then a notification will be shown to all players that deployable radio budget type has changed
+	void SetDeployableSpawnPointBudgetType(SCR_ESpawnPointBudgetType budgetType, int notificationPlayerID = -1)
+	{
+		if (budgetType == m_eDeployableSpawnPointBudgetType)
+			return;
+		
+		RPC_SetDeployableSpawnPointBudgetType(budgetType);
+		Rpc(RPC_SetDeployableSpawnPointBudgetType, budgetType);
+		
+		if (m_OnSpawnPointBudgetTypeChanged)
+			m_OnSpawnPointBudgetTypeChanged.Invoke(m_eDeployableSpawnPointBudgetType);
+		
+		if (notificationPlayerID <= 0)
+			return;
+
+		if (budgetType == SCR_ESpawnPointBudgetType.NONE)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_BUDGET_NONE, notificationPlayerID);
+		else if (budgetType == SCR_ESpawnPointBudgetType.SUPPLIES)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_BUDGET_SUPPLIES, notificationPlayerID);
+		else if (budgetType == SCR_ESpawnPointBudgetType.SPAWNTICKET)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_BUDGET_TICKETS, notificationPlayerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_SetDeployableSpawnPointBudgetType(SCR_ESpawnPointBudgetType budgetType)
+	{
+		m_eDeployableSpawnPointBudgetType = budgetType;
+		
+		if (m_OnSpawnPointBudgetTypeChanged)
+			m_OnSpawnPointBudgetTypeChanged.Invoke(m_eDeployableSpawnPointBudgetType);
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	SCR_ESpawnPointBudgetType GetDeployableSpawnPointBudgetType()
+	{
+		return m_eDeployableSpawnPointBudgetType;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	SCR_SpawnPointBudgetInvoker GetOnSpawnPointBudgetTypeChanged()
+	{
+		if (!m_OnSpawnPointBudgetTypeChanged)
+			m_OnSpawnPointBudgetTypeChanged = new SCR_SpawnPointBudgetInvoker();
+		
+		return m_OnSpawnPointBudgetTypeChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Set amount of respawn tickets for deployed radios. (Server only)
+	//! \param[in] tickets Amount of respawns per deployed radio
+	//! \param[in] notificationPlayerID if not -1 then a notification will be shown to all players that deployable radio respawn amount has changed
+	void SetDeployableSpawnPointTicketAmount(int tickets, int notificationPlayerID = -1)
+	{
+		if (tickets == m_iDeployableSpawnPointTicketAmount)
+			return;
+		
+		RPC_SetDeployableSpawnPointTicketAmount(tickets);
+		Rpc(RPC_SetDeployableSpawnPointTicketAmount, tickets);
+		
+		if (notificationPlayerID > 0)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_CHANGED_DEPLOYABLE_RADIO_SPAWNPOINT_TICKET_AMOUNT, notificationPlayerID, tickets);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void RPC_SetDeployableSpawnPointTicketAmount(int tickets)
+	{
+		m_iDeployableSpawnPointTicketAmount = tickets;
+		
+		if (m_OnSpawnPointTicketAmountChanged)
+			m_OnSpawnPointTicketAmountChanged.Invoke(m_iDeployableSpawnPointTicketAmount);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	int GetDeployableSpawnPointTicketAmount()
+	{
+		return m_iDeployableSpawnPointTicketAmount;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	ScriptInvokerInt GetOnSpawnPointTicketAmountChanged()
+	{
+		if (!m_OnSpawnPointTicketAmountChanged)
+			m_OnSpawnPointTicketAmountChanged = new ScriptInvokerInt();
+		
+		return m_OnSpawnPointTicketAmountChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------

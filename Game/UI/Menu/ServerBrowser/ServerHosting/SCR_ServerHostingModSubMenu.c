@@ -4,33 +4,22 @@ Server hosting dialog sub menu for setting up mods
 
 class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 {
-	protected const string NAV_ENABLE = "#AR-Workshop_ButtonEnable";
-	protected const string NAV_DISABLE = "#AR-Workshop_ButtonDisable";
 	protected const string NAV_ENABLE_ALL = "#AR-ServerHosting_EnableAll";
 	protected const string NAV_DISABLE_ALL = "#AR-Workshop_DisableAll";
 	
 	protected const string SORT_BTN_SORT_LABEL = "#AR-Editor_TooltipDetail_WaypointIndex_Name";
 	protected const string SORT_BTN_SORT_ACTION = "MenuFilter";
 	protected const string SORT_BTN_PLACE_LABEL = "#AR-Button_Confirm-UC";
-	protected const string SORT_BTN_PLACE_ACTION = "MenuSelect";
 	
 	// Attributes 
-	[Attribute("", UIWidgets.ResourceNamePicker, "Used layout for mod enabling", "layout")]
+	[Attribute("{5CEB59FD637E20B9}UI/layouts/Menus/ContentBrowser/AddonManager/AddonListTab/AddonLineDSConfig.layout", UIWidgets.ResourceNamePicker, "Used layout for mod enabling", "layout")]
 	protected ResourceName m_EntryLayout;
-	
-	[Attribute()]
-	protected ref SCR_WidgetListEntry m_AddonEntryTemplate;
 	
 	// Fields 
 	protected ref SCR_ServerHostingModsWidgets m_Widgets = new SCR_ServerHostingModsWidgets();
 	
-	protected SCR_ListBoxComponent m_DisabledList;
-	protected SCR_ListBoxComponent m_EnabledList;
-	
 	protected ScrollLayoutWidget m_wDisableScroll;
 	protected ScrollLayoutWidget m_wEnableScroll;
-	protected SCR_GamepadScrollComponent m_DisableScroll;
-	protected SCR_GamepadScrollComponent m_EnableScroll;
 	
 	protected ref array<ref Widget> m_aEnabled = {};
 	protected ref array<ref Widget> m_aDisabled = {};
@@ -41,17 +30,19 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected SCR_InputButtonComponent m_NavEnableAll;
 	protected SCR_InputButtonComponent m_NavSelectSort;
 	protected SCR_InputButtonComponent m_NavChangeSortOrder;
-	protected SCR_InputButtonComponent m_NavDownloadDependencies;
 	
 	protected SCR_AddonLineDSConfigComponent m_FocusedLine;
 	protected SCR_AddonLineDSConfigComponent m_OrderedLine;
 	
-	protected ref map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent> m_aEnabledMods = new map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent>();
-	
-	protected bool m_bIsListeningForCommStatus;
+	// Keep track of currently active addons and which line they are associated to
+	protected ref map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent> m_ActiveAddons = new map<ref SCR_WorkshopItem, ref SCR_AddonLineDSConfigComponent>();
+
 	protected bool m_bIsSorting;
 	
-	protected ref ScriptInvokerVoid Event_OnWorkshopButtonActivate;
+	protected MissionWorkshopItem m_SelectedScenario;
+	
+	protected ref ScriptInvokerVoid m_OnWorkshopButtonActivate;
+	protected ref ScriptInvokerVoid m_OnRequestDefaultScenario;
 
 	// --- Overrides ---
 	//------------------------------------------------------------------------------------------------
@@ -65,12 +56,9 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		m_wDisableScroll = ScrollLayoutWidget.Cast(m_Widgets.m_wDisabledAddonsList.GetParent());
 		m_wEnableScroll = ScrollLayoutWidget.Cast(m_Widgets.m_wEnabledAddonsList.GetParent());
 		
-		m_DisableScroll = SCR_GamepadScrollComponent.Cast(m_wDisableScroll.FindHandler(SCR_GamepadScrollComponent));
-		m_EnableScroll = SCR_GamepadScrollComponent.Cast(m_wEnableScroll.FindHandler(SCR_GamepadScrollComponent));
-		
 		// Setup action all buttons 
 		m_Widgets.m_ButtonEnableAllComponent0.m_OnClicked.Insert(OnEnableAllClicked);
-		m_Widgets.m_ButtonEnableAllComponent0.m_OnClicked.Insert(OnDisableAllClicked);
+		m_Widgets.m_ButtonDisableAllComponent0.m_OnClicked.Insert(OnDisableAllClicked);
 		
 		// Disable Delete All buttons
 		m_Widgets.m_wDeleteAllEnabled.SetVisible(false);
@@ -88,7 +76,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		ClearDownloadingCallbacks();
 		
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
-		m_bIsListeningForCommStatus = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -108,11 +95,11 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		if (m_NavChangeSortOrder)
 			FlagNavigationButtonVisibility(m_NavChangeSortOrder, false);
 
-		m_NavEnableAll = CreateNavigationButton("MenuEnableAll", NAV_ENABLE_ALL, true);
+		m_NavEnableAll = CreateNavigationButton(UIConstants.MENU_ACTION_ENABLE_ALL, NAV_ENABLE_ALL, true);
 		if (m_NavEnableAll)
 			m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
 		
-		m_NavEnable = CreateNavigationButton("MenuEnable", NAV_ENABLE, true);
+		m_NavEnable = CreateNavigationButton(UIConstants.MENU_ACTION_ENABLE, SCR_WorkshopUiCommon.LABEL_ENABLE, true);
 		if (m_NavEnable)
 			m_NavEnable.m_OnActivated.Insert(OnNavEnableActivated);
 		
@@ -125,13 +112,10 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		// Focus fist entry next frame to ensure focus will happend
 		GetGame().GetCallqueue().Call(FocusFirstEntry);
 		
-		SCR_ServicesStatusHelper.RefreshPing();
-		
-		if (!m_bIsListeningForCommStatus)
-			SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
-		
-		m_bIsListeningForCommStatus = true;
 		UpdateWorkshopButton();
+		
+		SCR_ServicesStatusHelper.RefreshPing();
+		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
 		
 		super.OnTabShow();
 	}
@@ -141,10 +125,9 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	{
 		super.OnTabHide();
 	
-		ReleaseSort();
-			
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Remove(OnCommStatusCheckFinished);
-		m_bIsListeningForCommStatus = false;
+		
+		ReleaseSort();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -153,7 +136,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		if (!m_NavWorkshop)
 			return;
 
-		SCR_InputButtonComponent.SetConnectionButtonEnabled(m_NavWorkshop, SCR_ServicesStatusHelper.SERVICE_WORKSHOP);
+		SCR_ConnectionUICommon.SetConnectionButtonEnabled(m_NavWorkshop, SCR_ServicesStatusHelper.SERVICE_WORKSHOP);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -165,7 +148,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	override void ShowNavigationButtons(bool show)
 	{
-		super.ShowNavigationButtons(show && !m_aEnabledMods.IsEmpty());
+		super.ShowNavigationButtons(show && !m_ActiveAddons.IsEmpty());
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -174,16 +157,10 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void FocusFirstEntry()
 	{
-		if (!m_aDisabled.IsEmpty())
-		{
-			if (m_aDisabled[0])
-				GetGame().GetWorkspace().SetFocusedWidget(m_aDisabled[0]);
-		}
-		else 
-		{
-			if (!m_aEnabled.IsEmpty() && m_aEnabled[0])
-				GetGame().GetWorkspace().SetFocusedWidget(m_aEnabled[0]);
-		}
+		if (!m_aDisabled.IsEmpty() && m_aDisabled[0])
+			GetGame().GetWorkspace().SetFocusedWidget(m_aDisabled[0]);
+		else if (!m_aEnabled.IsEmpty() && m_aEnabled[0])
+			GetGame().GetWorkspace().SetFocusedWidget(m_aEnabled[0]);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -195,12 +172,12 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		array<ref SCR_WorkshopItem> addons = SCR_AddonManager.GetInstance().GetOfflineAddons();
 		
-		for (int i = 0, count = addons.Count(); i < count; i++)
+		foreach (int i, SCR_WorkshopItem addon : addons)
 		{
-			SCR_ERevisionAvailability availability = SCR_AddonManager.ItemAvailability(addons[i].Internal_GetWorkshopItem());
+			SCR_ERevisionAvailability availability = SCR_AddonManager.ItemAvailability(addon.Internal_GetWorkshopItem());
 			
 			if (availability == SCR_ERevisionAvailability.ERA_AVAILABLE)
-				AddLineEntry(addons[i], i);
+				AddLineEntry(addon, i);
 		}
 	}
 	
@@ -223,26 +200,14 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		line.GetEventOnButtonDown().Insert(OnLineButtonDown);
 		line.GetOnFocus().Insert(OnLineFocus);
 		line.GetOnFocusLost().Insert(OnLineFocusLost);
+		line.GetOnRequiredDisabled().Insert(OnRequiredAddonDisabled);
 		
 		line.Init(item);
 		m_aDisabled.Insert(w);
 		w.SetZOrder(id);
 		
 		// Enable map 
-		m_aEnabledMods.Insert(item, line);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Find line id in map without need to know key (mod Workshop item)
-	protected int FindLineId(SCR_AddonLineDSConfigComponent line)
-	{
-		for (int i = 0, count = m_aEnabledMods.Count(); i < count; i++)
-		{
-			if (m_aEnabledMods.GetElement(i) == line)
-				return i;
-		}
-		
-		return -1;
+		m_ActiveAddons.Insert(item, line);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -266,61 +231,27 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//! Return closest workshop item, first check down, then up if at the end of the list
 	protected Widget ClosestAddonLine(int lineId, bool enabled)
 	{
-		array<ref Widget> list = {};
+		array<ref Widget> list = m_aDisabled;
 		
 		if (enabled)
-			list = m_aDisabled;
-		else
 			list = m_aEnabled;
 		
-		// Not found? 
-		if (lineId == -1)
+		// Not found || The only element in the list || The list has no elements 
+		if (lineId < 0 || lineId > list.Count() || list.IsEmpty())
 			return null;
 		
-		//Widget closestLine = list[lineId];
+		if (lineId == 0)
+			return list[0];
 		
-		// Check if last line 
-		// This is hack for current implemenation
-		// ideally there should be unified logic with SCR_WorkshopListAddonsSubmenu.ClosestAddonLine
-		Widget closestLine;
-		
-		if (lineId < list.Count())
-			closestLine = list[lineId];
-		else
-			closestLine = list[lineId - 1];
-		
-		return closestLine;
-	}
-	
-	//-------------------------------------------------------------------------------------------
-	//! Fill all entries with values from given DS config 
-	void EnableModsFromDSConfig(notnull SCR_DSConfig config)
-	{
-		array<ref DSMod> mods = config.game.mods;
-		array<ref SCR_WorkshopItem> items = {};
-		
-		for (int i = 0, count = mods.Count(); i < count; i++)
-		{
-			SCR_AddonLineDSConfigComponent line = FindLineByModId(mods[i].modId);
-			if (line)
-			{
-				// Do not restore corrupted mod
-				if (line.HasItemAnyIssue())
-					continue;
-				
-				items.Insert(line.GetWorkshopItem());
-			}
-		}
-		
-		EnableItems(true, items);
+		return list[lineId - 1];
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	protected SCR_AddonLineDSConfigComponent FindLineByModId(string id)
 	{
-		for (int i = 0, count = m_aEnabledMods.Count(); i < count; i++)
+		for (int i = 0, count = m_ActiveAddons.Count(); i < count; i++)
 		{
-			SCR_AddonLineDSConfigComponent line = m_aEnabledMods.GetElement(i);
+			SCR_AddonLineDSConfigComponent line = m_ActiveAddons.GetElement(i);
 			if (!line)
 				continue;
 			
@@ -344,26 +275,23 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			return;
 		
 		array<ref SCR_WorkshopItemActionDownload> actions = downloadManager.GetDownloadQueue();
-		
-		for (int i = 0, count = actions.Count(); i < count; i++)
+		foreach (SCR_WorkshopItemActionDownload action : actions)
 		{
-			actions[i].m_OnCompleted.Insert(OnDownloadComplete);
+			action.m_OnCompleted.Insert(OnDownloadComplete);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void ClearDownloadingCallbacks()
 	{
-		array<ref SCR_WorkshopItemActionDownload> actions = {};
-		
-		if (!SCR_DownloadManager.GetInstance() || !SCR_DownloadManager.GetInstance().GetDownloadQueue())
+		SCR_DownloadManager downloadManager = SCR_DownloadManager.GetInstance();
+		if (!downloadManager)
 			return;
 		
-		actions = SCR_DownloadManager.GetInstance().GetDownloadQueue();
-		
-		for (int i = 0, count = actions.Count(); i < count; i++)
+		array<ref SCR_WorkshopItemActionDownload> actions = downloadManager.GetDownloadQueue();
+		foreach (SCR_WorkshopItemActionDownload action : actions)
 		{
-			actions[i].m_OnCompleted.Remove(OnDownloadComplete);
+			action.m_OnCompleted.Remove(OnDownloadComplete);
 		}
 	}
 	
@@ -373,21 +301,21 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		if (!line)
 			forceDisabled = true;
 		
-		bool enabled = line && line.GetWidgetEnabled();
+		bool enabled = line && line.IsEnabled();
 		
 		if (m_NavEnable)
 		{
-			bool issues = line && line.HasItemAnyIssue();
+			bool issues = line && !line.CanBeEnabled();
 			
 			m_NavEnable.SetEnabled(!m_OrderedLine && !issues && !forceDisabled, false);
 			
 			if (enabled)
-				m_NavEnable.SetLabel(NAV_DISABLE);
+				m_NavEnable.SetLabel(SCR_WorkshopUiCommon.LABEL_DISABLE);
 			else
-				m_NavEnable.SetLabel(NAV_ENABLE);
+				m_NavEnable.SetLabel(SCR_WorkshopUiCommon.LABEL_ENABLE);
 			
 			if (issues)
-				m_NavEnable.SetTexture(UIConstants.ICONS_IMAGE_SET, "dependencies", Color.FromInt(UIColors.WARNING_DISABLED.PackToInt()));
+				m_NavEnable.SetTexture(UIConstants.ICONS_IMAGE_SET, SCR_WorkshopUiCommon.ICON_DEPENDENCIES, Color.FromInt(UIColors.WARNING_DISABLED.PackToInt()));
 			else
 				m_NavEnable.ResetTexture();
 		}
@@ -404,14 +332,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		if (m_NavSelectSort)
 			m_NavSelectSort.SetEnabled(!forceDisabled && enabled, false);
-		
-		SCR_WorkshopItem item;
-		if (line)
-			item = line.GetWorkshopItem();
-	
-		bool dependenciesRequired;
-		if (item)
-			dependenciesRequired = item.GetAnyDependencyMissing() || item.GetAnyDependencyUpdateAvailable();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -432,7 +352,9 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		array<ref SCR_WorkshopItem> dependencies = item.GetLatestDependencies();
 		dependencies.Insert(item);
 		
-		EnableItems(!line.GetWidgetEnabled(), dependencies);
+		int indexToFocus = m_aDisabled.Find(component.GetRootWidget());
+
+		EnableItems(true, dependencies, indexToFocus);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -452,7 +374,9 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		// Add item 
 		dependent.Insert(item);
 		
-		EnableItems(false, dependent);
+		int indexToFocus = m_aEnabled.Find(component.GetRootWidget());
+		
+		EnableItems(false, dependent, indexToFocus);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -489,22 +413,30 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Enable/disable multiple addons recursively
-	protected void EnableItems(bool enable, array<ref SCR_WorkshopItem> items)
+	protected void OnRequiredAddonDisabled(SCR_ScriptedWidgetComponent component)
+	{
+		RequestTabChange(SCR_EServerHostingDialogTabs.SETTINGS);
+		
+		if (m_OnRequestDefaultScenario)
+			m_OnRequestDefaultScenario.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Enable/disable multiple addons recursively. This does NOT actually enable/disable the addon, just changes it's state in relation to creating the server config
+	protected void EnableItems(bool enable, array<ref SCR_WorkshopItem> items, int indexToFocus = -1)
 	{
 		if (items.IsEmpty())
 			return;
 
 		SCR_WorkshopItem item = items[0];
-		
-		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(m_aEnabledMods.Get(item));
+		SCR_AddonLineDSConfigComponent line = m_ActiveAddons.Get(item);
 		
 		if (line)
 		{
 			Widget lineRoot = line.GetRootWidget();
 			
 			// Enable 
-			if (enable && !line.GetWidgetEnabled())
+			if (enable && !line.IsEnabled())
 			{
 				// Move to enabled
 				m_Widgets.m_wEnabledAddonsList.AddChild(lineRoot);
@@ -513,7 +445,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				
 				lineRoot.SetZOrder(m_aEnabled.Count() - 1);
 			}
-			else if (!enable && line.GetWidgetEnabled())
+			else if (!enable && line.IsEnabled())
 			{
 				// Move to disabled
 				m_Widgets.m_wDisabledAddonsList.AddChild(lineRoot);
@@ -527,45 +459,93 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		}
 		
 		// Order disabled mods 
-		for (int i = 0, count = m_aDisabled.Count(); i < count; i++)
+		foreach (int i, Widget disabled : m_aDisabled)
 		{
-			m_aDisabled[i].SetZOrder(i);
+			disabled.SetZOrder(i);
 		}
 		
 		// Order enabled mods
-		for (int i = 0, count = m_aEnabled.Count(); i < count; i++)
+		foreach (int i, Widget enabled : m_aEnabled)
 		{
-			m_aEnabled[i].SetZOrder(i);
+			enabled.SetZOrder(i);
 			
 			SCR_AddonLineDSConfigComponent lineCmp = SCR_AddonLineDSConfigComponent.Cast(m_aEnabled[i].FindHandler(SCR_AddonLineDSConfigComponent));
 			if (lineCmp)
 				lineCmp.SetOnBottom(i == m_aEnabled.Count() - 1);
 		}
 		
-		// Call next 
+		// Call next, keep going 
 		items.Remove(0);
 		if (!items.IsEmpty())
 		{
-			GetGame().GetCallqueue().Call(EnableItems, enable, items);
+			EnableItems(enable, items, indexToFocus);
+			return;
 		}
-		else
+	
+		// On finished fix list scrolls 
+		float x,y; 
+		m_wDisableScroll.GetSliderPos(x, y);
+		
+		if (y > 1)
+			m_wDisableScroll.SetSliderPos(0, 1, true);
+		
+		m_wEnableScroll.GetSliderPos(x, y);
+		
+		if (y > 1)
+			m_wEnableScroll.SetSliderPos(0, 1, true);
+		
+		// Reset the focus effects if is to stay focused in the same line
+		if (m_FocusedLine && !indexToFocus)
+			OnLineFocus(m_FocusedLine);
+		
+		if (indexToFocus >= 0) 
 		{
-			// On finished fix list scrolls 
-			float x,y; 
-			m_wDisableScroll.GetSliderPos(x, y);
-			
-			if (y > 1)
-				m_wDisableScroll.SetSliderPos(0, 1, true);
-			
-			m_wEnableScroll.GetSliderPos(x, y);
-			
-			if (y > 1)
-				m_wEnableScroll.SetSliderPos(0, 1, true);
-			
-			// Check focus 
-			if (m_FocusedLine)
-				OnLineFocus(m_FocusedLine);
+			Widget w = ClosestAddonLine(indexToFocus, !enable);
+			if (w)
+				GetGame().GetWorkspace().SetFocusedWidget(w)
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateRequiredItems()
+	{
+		SCR_AddonLineDSConfigComponent line;
+		
+		// Clear required flags
+		for (int i = 0, count = m_ActiveAddons.Count(); i < count; i++)
+		{
+			line = m_ActiveAddons.GetElement(i);
+			if (!line)
+				continue;
+		
+			line.SetRequired(false);
+		}
+		
+		// Find required owner addon
+		if (!m_SelectedScenario)
+			return;
+
+		line = FindLineByModId(m_SelectedScenario.GetOwnerId());
+		if (!line)
+			return;
+
+		SCR_WorkshopItem item = line.GetWorkshopItem();
+		if (!item)
+			return;
+		
+		// Find required dependencies
+		array<ref SCR_WorkshopItem> dependencies = item.GetLatestDependencies();
+		dependencies.Insert(item);
+		
+		foreach (SCR_WorkshopItem dependency : dependencies)
+		{
+			line = m_ActiveAddons.Get(dependency);
+			if (line)
+				line.SetRequired(true);
+		}
+		
+		// Automatically enable required mods and update required flag
+		EnableItems(true, dependencies);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -647,40 +627,44 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnEnableAllClicked()
 	{
-		array<ref SCR_WorkshopItem> enable = {};
+		array<ref SCR_WorkshopItem> toEnable = {};
+		SCR_WorkshopItem item;
+		SCR_AddonLineDSConfigComponent line;
 		
-		for (int i = 0, count = m_aEnabledMods.Count(); i < count; i++)
+		for (int i = 0, count = m_ActiveAddons.Count(); i < count; i++)
 		{
-			SCR_WorkshopItem item = m_aEnabledMods.GetKey(i);
-			SCR_AddonLineDSConfigComponent line = m_aEnabledMods.GetElement(i);
-			if (!line)
+			item = m_ActiveAddons.GetKey(i);
+			line = m_ActiveAddons.GetElement(i);
+			if (!item || !line || !line.CanBeEnabled())
 				continue;
 			
-			if (!line.HasItemAnyIssue())
-				enable.Insert(item);
+			toEnable.Insert(item);
 		}
 		
-		EnableItems(true, enable);
+		EnableItems(true, toEnable);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnDisableAllClicked()
 	{
-		array<ref SCR_WorkshopItem> disable = {};
-		
-		for (int i = 0, count = m_aEnabledMods.Count(); i < count; i++)
+		array<ref SCR_WorkshopItem> toDisable = {};
+
+		foreach (SCR_WorkshopItem item, SCR_AddonLineDSConfigComponent line : m_ActiveAddons)
 		{
-			disable.Insert(m_aEnabledMods.GetKey(i));
+			if (!line || line.IsItemRequired())
+				continue;
+			
+			toDisable.Insert(item);
 		}
 		
-		EnableItems(false, disable);
+		EnableItems(false, toDisable);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnOpenWorkshopButton()
 	{		
-		if (Event_OnWorkshopButtonActivate)
-			Event_OnWorkshopButtonActivate.Invoke();
+		if (m_OnWorkshopButtonActivate)
+			m_OnWorkshopButtonActivate.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -689,7 +673,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		if (!m_FocusedLine)
 			return;
 				
-		bool enabled = m_FocusedLine.GetWidgetEnabled();
+		bool enabled = m_FocusedLine.IsEnabled();
 		
 		// TODO: temporary hacky fix for this method being called multiple times in a row. It's the only button posing this problem, and the invoker is bound only once...
 		GetGame().GetCallqueue().Call(SetLineEnabled, enabled);
@@ -712,9 +696,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		if (!m_FocusedLine)
 			return;
 		
-		bool enabled = m_FocusedLine.GetWidgetEnabled();
-		
-		if (enabled)
+		if (m_FocusedLine.IsEnabled())
 			OnDisableAllClicked();
 		else
 			OnEnableAllClicked();
@@ -741,15 +723,15 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void StartSort(SCR_AddonLineDSConfigComponent line)
 	{
-		if (!line || !line.GetWidgetEnabled())
+		if (!line || !line.IsEnabled())
 			return;
 		
 		m_OrderedLine = line;
 
 		m_OrderedLine.NotifySorting(true);
 		
-		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.DOWN, OnDownSort);
-		GetGame().GetInputManager().AddActionListener("MenuUp", EActionTrigger.DOWN, OnUpSort);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_DOWN, EActionTrigger.DOWN, OnDownSort);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnUpSort);
 		
 		if (m_NavChangeSortOrder)
 			SetNavigationButtonVisibile(m_NavChangeSortOrder, true);
@@ -758,7 +740,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		{
 			// Place and stop ordering
 			m_NavSelectSort.SetLabel(SORT_BTN_PLACE_LABEL);
-			m_NavSelectSort.SetAction(SORT_BTN_PLACE_ACTION);
+			m_NavSelectSort.SetAction(UIConstants.MENU_ACTION_SELECT);
 		}
 		
 		if (m_NavEnable)
@@ -783,8 +765,8 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		m_OrderedLine.NotifySorting(false);
 		m_OrderedLine = null;
 		
-		GetGame().GetInputManager().RemoveActionListener("MenuDown", EActionTrigger.DOWN, OnDownSort);
-		GetGame().GetInputManager().RemoveActionListener("MenuUp", EActionTrigger.DOWN, OnUpSort);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_DOWN, EActionTrigger.DOWN, OnDownSort);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_UP, EActionTrigger.DOWN, OnUpSort);
 		
 		if (m_NavChangeSortOrder)
 			SetNavigationButtonVisibile(m_NavChangeSortOrder, false);
@@ -842,19 +824,51 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	// API
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
+	//! Fill all entries with values from given DS config 
+	void EnableModsFromDSConfig(notnull SCR_DSConfig config)
+	{
+		array<ref DSMod> mods = config.game.mods;
+		array<ref SCR_WorkshopItem> items = {};
+		SCR_AddonLineDSConfigComponent line;
+
+		foreach (DSMod mod : mods)
+		{
+			line = FindLineByModId(mod.modId);
+			if (line)
+			{
+				// Do not restore corrupted mod
+				if (!line.CanBeEnabled())
+					continue;
+				
+				items.Insert(line.GetWorkshopItem());
+			}
+		}
+		
+		EnableItems(true, items);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Enables necessary mods for the given scenario
+	void SetScenario(MissionWorkshopItem scenario)
+	{
+		m_SelectedScenario = scenario;
+		UpdateRequiredItems();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get all selected mods from addon entries
 	array<ref DSMod> SelectedModsList()
 	{
 		array<ref DSMod> mods = {};
 		
-		for (int i = 0, count = m_aEnabled.Count(); i < count; i++)
+		foreach (Widget widget : m_aEnabled)
 		{
-			SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(m_aEnabled[i].FindHandler(SCR_AddonLineDSConfigComponent));
+			SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(widget.FindHandler(SCR_AddonLineDSConfigComponent));
 			if (!line)
 				continue;
 			
 			// Save all enabled
-			if (line.GetWidgetEnabled())
+			if (line.IsEnabled())
 			{
 				SCR_WorkshopItem item = line.GetWorkshopItem();
 				if (!item)
@@ -876,23 +890,18 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	ScriptInvokerVoid GetEventOnWorkshopButtonActivate()
 	{
-		if (!Event_OnWorkshopButtonActivate)
-			Event_OnWorkshopButtonActivate = new ScriptInvokerVoid();
+		if (!m_OnWorkshopButtonActivate)
+			m_OnWorkshopButtonActivate = new ScriptInvokerVoid();
 
-		return Event_OnWorkshopButtonActivate;
+		return m_OnWorkshopButtonActivate;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerVoid GetOnRequestDefaultScenario()
+	{
+		if (!m_OnRequestDefaultScenario)
+			m_OnRequestDefaultScenario = new ScriptInvokerVoid();
+
+		return m_OnRequestDefaultScenario;
 	}
 }
-
-//------------------------------------------------------------------------------------------------
-class SCR_EntryDSMod
-{
-	ref Widget m_Root;
-	ref SCR_WidgetListEntry m_Entry;
-	ref DSMod m_Mod;
-	
-	void SCR_EntryDSMod(SCR_WidgetListEntry entry, DSMod mod)
-	{
-		m_Entry = entry;
-		m_Mod = mod;
-	}
-};

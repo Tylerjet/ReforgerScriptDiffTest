@@ -1,0 +1,112 @@
+[BaseContainerProps(), SCR_ContainerActionTitle()]
+class SCR_ScenarioFrameworkPluginTrigger : SCR_ScenarioFrameworkPlugin
+{
+	[Attribute(defvalue: "5.0", UIWidgets.Slider, params: "1.0 1000.0 0.5", desc: "Radius of the trigger if selected", category: "Trigger")]
+	float m_fAreaRadius;
+
+	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(SCR_EScenarioFrameworkTriggerActivation), category: "Trigger Activation")]
+	SCR_EScenarioFrameworkTriggerActivation m_eActivationPresence;
+
+	[Attribute(desc: "If SPECIFIC_CLASS is selected, fill the class name here.", category: "Trigger")]
+	ref array<string> m_aSpecificClassNames;
+
+	[Attribute(desc: "Which Prefabs and if their children will be detected by the trigger. Is combined with other filters using OR.", category: "Trigger")]
+	ref array<ref SCR_ScenarioFrameworkPrefabFilter> m_aPrefabFilter;
+
+	[Attribute("", category: "Trigger Activation")]
+	FactionKey m_sActivatedByThisFaction;
+
+	[Attribute(desc: "Here you can input custom trigger conditions that you can create by extending the SCR_CustomTriggerConditions", uiwidget: UIWidgets.Object)]
+	ref array<ref SCR_CustomTriggerConditions> m_aCustomTriggerConditions;
+
+	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "If you set some vehicle to be detected by the trigger, it will also search the inventory for vehicle prefabs/classes that are set", category: "Trigger")]
+	bool m_bSearchVehicleInventory;
+
+	[Attribute(defvalue: "1", UIWidgets.CheckBox, desc: "Activate the trigger once or everytime the activation condition is true?", category: "Trigger")]
+	bool m_bOnce;
+
+	[Attribute(defvalue: "1", UIWidgets.Slider, desc: "How frequently is the trigger updated and performing calculations. Lower numbers will decrease performance.", params: "0 86400 1", category: "Trigger")]
+	float m_fUpdateRate;
+
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "Minimum players needed to activate this trigger when PLAYER Activation presence is selected", params: "0 1 0.01", precision: 2, category: "Trigger")]
+	float m_fMinimumPlayersNeededPercentage;
+
+	[Attribute(defvalue: "0", UIWidgets.Slider, desc: "For how long the trigger conditions must be true in order for the trigger to activate. If conditions become false, timer resets", params: "0 86400 1", category: "Trigger")]
+	float m_fActivationCountdownTimer;
+
+	[Attribute(defvalue: "0", UIWidgets.CheckBox, desc: "Whether or not the notification is allowed to be displayed", category: "Trigger")]
+	bool m_bNotificationEnabled;
+
+	[Attribute(desc: "Notification title text that will be displayed when the PLAYER Activation presence is selected", category: "Trigger")]
+	string m_sPlayerActivationNotificationTitle;
+
+	[Attribute(defvalue: "0", UIWidgets.CheckBox, desc: "Whether or not the audio sound is played and affected by the trigger", category: "Trigger")]
+	bool m_bEnableAudio;
+
+	[Attribute(desc: "Audio sound that will be playing when countdown is active.", category: "Trigger")]
+	string m_sCountdownAudio;
+
+	//------------------------------------------------------------------------------------------------
+	override void Init(SCR_ScenarioFrameworkLayerBase object)
+	{
+		if (!object)
+			return;
+
+		super.Init(object);
+		SCR_ScenarioFrameworkTriggerEntity trigger;
+		IEntity entity = object.GetSpawnedEntity();
+
+		SCR_ScenarioFrameworkArea area = SCR_ScenarioFrameworkArea.Cast(object);
+		if (area)
+		{
+			trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(area.GetTrigger());
+		}
+		else
+		{
+			if (!BaseGameTriggerEntity.Cast(entity))
+			{
+				Print("ScenarioFramework: SlotTrigger - The selected prefab is not trigger!", LogLevel.ERROR);
+				return;
+			}
+			trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(entity);
+		}
+
+		if (trigger)
+		{
+			trigger.SetSphereRadius(m_fAreaRadius);
+			trigger.SetActivationPresence(m_eActivationPresence);
+			trigger.SetOwnerFaction(m_sActivatedByThisFaction);
+			trigger.SetSpecificClassName(m_aSpecificClassNames);
+			trigger.SetPrefabFilters(m_aPrefabFilter);
+			trigger.SetCustomTriggerConditions(m_aCustomTriggerConditions);
+			trigger.SetSearchVehicleInventory(m_bSearchVehicleInventory);
+			trigger.SetOnce(m_bOnce);
+			trigger.SetUpdateRate(m_fUpdateRate);
+			trigger.SetNotificationEnabled(m_bNotificationEnabled);
+			trigger.SetEnableAudio(m_bEnableAudio);
+			trigger.SetMinimumPlayersNeeded(m_fMinimumPlayersNeededPercentage);
+			trigger.SetPlayerActivationNotificationTitle(m_sPlayerActivationNotificationTitle);
+			trigger.SetActivationCountdownTimer(m_fActivationCountdownTimer);
+			trigger.SetCountdownAudio(m_sCountdownAudio);
+
+			return;
+		}
+
+		SCR_BaseFactionTriggerEntity factionTrigger = SCR_BaseFactionTriggerEntity.Cast(entity);
+		if (factionTrigger)
+		{
+			factionTrigger.SetSphereRadius(m_fAreaRadius);
+			FactionManager factionManager = GetGame().GetFactionManager();
+			if (factionManager)
+				factionTrigger.SetOwnerFaction(factionManager.GetFactionByKey(m_sActivatedByThisFaction));
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void OnWBKeyChanged(SCR_ScenarioFrameworkLayerBase object)
+	{
+		super.OnWBKeyChanged(object);
+		object.SetDebugShapeSize(m_fAreaRadius);
+		//src.Set("m_sAreaName", m_fAreaRadius);
+	}
+}

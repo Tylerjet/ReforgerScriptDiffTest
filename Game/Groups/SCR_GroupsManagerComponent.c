@@ -1069,6 +1069,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!AIMembers || !AIMember)
 			return;
 		
+		AIMember.SetRecruited(false);
 		AIMembers.RemoveItem(AIMember);
 	}
 	
@@ -1131,6 +1132,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (!AIMembers || !AIMember)
 			return;
 		
+		AIMember.SetRecruited(true);
 		AIMembers.Insert(AIMember);
 	}
 	

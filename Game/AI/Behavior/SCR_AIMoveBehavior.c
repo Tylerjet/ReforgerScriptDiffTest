@@ -23,6 +23,41 @@ class SCR_AIMoveInFormationBehavior : SCR_AIMoveBehaviorBase
 			m_bAllowLook = false;
 			m_bResetLook = true;
 		}
+		
+		// if priority comes from commmanding, lower it
+		if (priorityLevel == PRIORITY_LEVEL_PLAYER)
+			m_fPriorityLevel.m_Value = PRIORITY_LEVEL_NORMAL;
+	}
+};
+// Formation behavior under Follow command (high priority)
+//-----------------------------------------------------------------------------------------------------
+class SCR_AIFollowInFormationBehavior : SCR_AIMoveBehaviorBase
+{						
+	protected float m_fTimestampEnd;			// timestamp when the priority expires
+	const static float DURATION_MS = 15000;		// duration of high priority follow command (ms)
+
+	//-----------------------------------------------------------------------------------------------------
+	void SCR_AIFollowInFormationBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_PLAYER)
+	{
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/KeepInFormation.bt";
+		if (priorityLevel > 0)
+		{
+			m_bAllowLook = false;
+			m_bResetLook = true;
+		}
+
+		float m_fTimestamp = GetGame().GetWorld().GetWorldTime(); // world time when constructor of behavior is called
+		m_fTimestampEnd = m_fTimestamp + DURATION_MS;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------	
+	override float CustomEvaluate()
+	{
+		// decrease follow priority over time
+		if(GetGame().GetWorld().GetWorldTime() >= m_fTimestampEnd)
+			m_fPriorityLevel.m_Value = PRIORITY_LEVEL_NORMAL;
+			
+		return GetPriority();
 	}
 };
 

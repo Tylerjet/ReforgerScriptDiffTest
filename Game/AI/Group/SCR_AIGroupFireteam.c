@@ -1,15 +1,16 @@
+//! Fireteam base class
+//! Fireteam is like a collection of agents in a group
 class SCR_AIGroupFireteam : Managed
 {
 	protected ref array<AIAgent> m_aAgents = {};
-	protected ref array<SCR_AIInfoComponent> m_aInfoComponents = {};
 	
 	protected bool m_bLocked = false;
 	
 	//--------------------------------------------------------------------------
-	void AddMember(AIAgent agent, SCR_AIInfoComponent infoComponent)
+	void AddMember(AIAgent agent)
 	{
-		m_aAgents.Insert(agent);
-		m_aInfoComponents.Insert(infoComponent);
+		if (!m_aAgents.Contains(agent))
+			m_aAgents.Insert(agent);
 	}
 	
 	//--------------------------------------------------------------------------
@@ -19,27 +20,14 @@ class SCR_AIGroupFireteam : Managed
 		if (id == -1)
 			return;
 		m_aAgents.Remove(id);
-		m_aInfoComponents.Remove(id);
 	}
 	
 	//--------------------------------------------------------------------------
-	protected void RemoveMember(int id, out AIAgent outAgent, out SCR_AIInfoComponent outInfoComp)
+	protected void RemoveMember(int id, out AIAgent outAgent)
 	{
 		outAgent = m_aAgents[id];
-		outInfoComp = m_aInfoComponents[id];
 		
 		m_aAgents.Remove(id);
-		m_aInfoComponents.Remove(id);
-	}
-	
-	//--------------------------------------------------------------------------
-	void GetMember(int id, out AIAgent outAgent, out SCR_AIInfoComponent outInfoComp)
-	{
-		if (!m_aAgents.IsIndexValid(id))
-			return;
-		
-		outAgent = m_aAgents[id];
-		outInfoComp = m_aInfoComponents[id];
 	}
 	
 	//--------------------------------------------------------------------------
@@ -91,11 +79,10 @@ class SCR_AIGroupFireteam : Managed
 			// Remove last member from other fireteam
 			int lastId = otherFt.m_aAgents.Count() - 1;
 			AIAgent agent;
-			SCR_AIInfoComponent infoComp;
-			otherFt.RemoveMember(lastId, agent, infoComp);
+			otherFt.RemoveMember(lastId, agent);
 			
 			// Add the member to our fireteam
-			AddMember(agent, infoComp);
+			AddMember(agent);
 		}
 	}
 	
@@ -141,3 +128,35 @@ class SCR_AIGroupFireteam : Managed
 		return lock;
 	}
 };
+
+//! Base class for fireteams dedicated to vehicle
+//! This class must not be instantiated! It's base class for other classes.
+class SCR_AIGroupFireteamVehicleBase : SCR_AIGroupFireteam
+{
+	protected SCR_AIVehicleUsageComponent m_VehicleUsageComponent;
+	
+	void SetVehicle(notnull SCR_AIVehicleUsageComponent vehicleComp)
+	{
+		if (m_VehicleUsageComponent)
+			return;
+		
+		m_VehicleUsageComponent = vehicleComp;
+	}
+	
+	SCR_AIVehicleUsageComponent GetVehicle()
+	{
+		return m_VehicleUsageComponent;
+	}
+}
+
+//! Fireteam for vehicle crew
+class SCR_AIGroupFireteamVehicleCrew : SCR_AIGroupFireteamVehicleBase
+{
+	
+}
+
+//! Fireteam for vehicle cargo
+class SCR_AIGroupFireteamVehicleCargo : SCR_AIGroupFireteamVehicleBase
+{
+	
+}

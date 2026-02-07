@@ -21,6 +21,15 @@ class AIAgent: GenericController
 	proto external int GetLOD();
 	proto external void SetPermanentLOD(int lod);
 	proto external int GetPermanentLOD();
+	/*
+	* AIAgent won't be able to reach MaxLOD unless set by PermanentLOD;
+	* Warning: If the AIAgent is in LOD10 this won't change it;
+	*/
+	proto external void PreventMaxLOD();
+	proto external void AllowMaxLOD();
+	/*
+	* AIAgents get disabled in MaxLOD by default.
+	*/
 	static proto int GetMaxLOD();
 	//Does AIAgent affects AIWorld limit of AIs
 	proto external bool CountTowardsAIWorldLimit();

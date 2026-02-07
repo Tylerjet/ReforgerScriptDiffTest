@@ -7,7 +7,6 @@ class LocParserRule
 	protected ref CustomStringTableItem m_ItemTemplate;
 
 	protected LocParserManager m_Config;
-	protected LocalizationEditor m_LocEditor;
 
 	//------------------------------------------------------------------------------------------------
 	//! Get intended ID of the string.
@@ -51,10 +50,8 @@ class LocParserRule
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] config
-	//! \param[in] locEditor
-	void InitRule(LocParserManager config, LocalizationEditor locEditor)
+	void InitRule(notnull LocParserManager config)
 	{
 		m_Config = config;
-		m_LocEditor = locEditor;
 	}
 }

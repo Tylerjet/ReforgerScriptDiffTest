@@ -41,7 +41,7 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 		if (!m_pDamageManager)
 			return;
 		
-		m_pDamageManager.GetOnDamageOverTimeAdded().Insert(OnDamageOverTimeAdded);
+		m_pDamageManager.GetOnDamageEffectAdded().Insert(OnDamageEffectAdded);
 
 	 	m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), CHROM_ABER_PRIORITY, PostProcessEffectType.ChromAber, CHROMATIC_ABERIATION_EMAT);
 	}
@@ -86,9 +86,9 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
+	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dType != EDamageType.HEALING)
+		if (dmgEffect.GetDamageType() != EDamageType.HEALING)
 			return;
 		
 		m_fRegenEffectTimeRemaining = m_fRegenEffectDuration;
@@ -102,6 +102,6 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 		s_fChromAberPower = 0;
 		
 		if (m_pDamageManager)
-			m_pDamageManager.GetOnDamageOverTimeAdded().Remove(OnDamageOverTimeAdded);
+			m_pDamageManager.GetOnDamageEffectAdded().Remove(OnDamageEffectAdded);
 	}
 };

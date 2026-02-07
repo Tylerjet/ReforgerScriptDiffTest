@@ -26,7 +26,7 @@ class SCR_BudgetProgressEditorUIComponent : SCR_ScriptedWidgetComponent
 	{
 		super.HandlerAttached(w);
 
-		m_wProgressBar = SCR_WLibProgressBarComponent.Cast(SCR_WLibProgressBarComponent.GetProgressBar(m_sProgressBar, w));
+		m_wProgressBar = SCR_WLibProgressBarComponent.GetProgressBar(m_sProgressBar, w);
 		m_wProgressText = TextWidget.Cast(w.FindAnyWidget(m_sProgressText));
 		m_wProgressAddText = TextWidget.Cast(w.FindAnyWidget(m_sProgressAddText));
 		m_wIcon = ImageWidget.Cast(w.FindAnyWidget(m_sIcon));

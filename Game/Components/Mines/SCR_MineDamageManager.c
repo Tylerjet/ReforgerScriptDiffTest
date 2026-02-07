@@ -6,6 +6,21 @@ class SCR_MineDamageManagerClass : SCR_DamageManagerComponentClass
 class SCR_MineDamageManager : SCR_DamageManagerComponent
 {
 	//------------------------------------------------------------------------------------------------
+	//! Hijack melee damage on mines so they cannot take melee damage when inactive
+	override bool HijackDamageHandling(notnull BaseDamageContext damageContext)
+	{
+		if (damageContext.damageType != EDamageType.MELEE)
+			return false;
+		
+		// Inactive mines don't take melee damage, activated mines can be destroyed using melee and explode
+		SCR_PressureTriggerComponent triggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
+		if (triggerComponent && !triggerComponent.IsActivated())
+			damageContext.damageValue = 0;
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override event protected void OnDamageStateChanged(EDamageState state)
 	{
 		if (state != EDamageState.DESTROYED)

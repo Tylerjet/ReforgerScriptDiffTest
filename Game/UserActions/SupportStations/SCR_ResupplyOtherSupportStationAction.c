@@ -10,6 +10,9 @@ class SCR_ResupplyOtherSupportStationAction : SCR_BaseResupplySupportStationActi
 		if (m_bPlayerOnly && SCR_PossessingManagerComponent.GetPlayerIdFromControlledEntity(GetOwner()) <= 0)
 			return false;
 		
+		if (!SCR_ArsenalManagerComponent.IsArsenalTypeEnabled_Static(SCR_EArsenalTypes.GADGETS))
+			return false;
+		
 		if (!super.CanBeShownScript(user))
 			return false; 
 		

@@ -34,6 +34,9 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown()
 	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
 		PlayerCamera camera = GetGame().GetPlayerController().GetPlayerCamera();
 		if (!camera)
 			return false;
@@ -41,6 +44,9 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 		IEntity cursorTarget = camera.GetCursorTarget();
 		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(cursorTarget);
 		if (!character)
+			return false;
+		
+		if (character.IsRecruited() || !character.IsRecruitable())
 			return false;
 		
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
@@ -55,6 +61,23 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 		if (!groupController)
 			return false;
 		
+		SCR_AIGroup group = groupController.GetPlayersGroup();
+		if (!group)
+			return false;
+		
+		SCR_AIGroup slaveGroup = group.GetSlave();
+		if (!slaveGroup)
+			return false;
+		
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (!commandingManager)
+			return false;
+		
+		int maxAI = commandingManager.GetMaxAIPerGroup();
+		//in case there is a limit on how many AIs can be in single group.
+		if (maxAI != -1 && slaveGroup.GetAgentsCount() >= maxAI)
+			return false;
+		
 		if (!CanRoleShow())
 			return false;
 		
@@ -62,7 +85,14 @@ class SCR_RecruitAIGroupCommand : SCR_BaseGroupCommand
 			return false;
 		
 		int playerID = GetGame().GetPlayerController().GetPlayerId();
-		SCR_Faction playerFaction = SCR_Faction.Cast(respawnComponent.GetPlayerFaction(playerID));
+		
+		SCR_Faction playerFaction;
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+		{
+			playerFaction = SCR_Faction.Cast(factionManager.GetPlayerFaction(playerID));
+		}
+		
 		return !groupController.IsAICharacterInAnyGroup(character, playerFaction);
 	}
 }

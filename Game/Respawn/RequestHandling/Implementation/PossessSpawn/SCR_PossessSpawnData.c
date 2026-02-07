@@ -2,6 +2,7 @@
 class SCR_PossessSpawnData : SCR_SpawnData
 {
 	protected RplId m_RplId;
+	protected bool m_bSkipPreload;
 
 	/*!
 		Returns RplId of entity to posses.
@@ -45,5 +46,15 @@ class SCR_PossessSpawnData : SCR_SpawnData
 	override bool IsValid()
 	{
 		return m_RplId.IsValid();
+	}
+	
+	override void SetSkipPreload(bool skip)
+	{
+		m_bSkipPreload = skip;
+	}
+	
+	override bool GetSkipPreload()
+	{
+		return m_bSkipPreload;
 	}
 };

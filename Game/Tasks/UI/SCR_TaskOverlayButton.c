@@ -20,8 +20,8 @@ class SCR_TaskOverlayButton : ScriptedWidgetComponent
 
 		ButtonWidget assignButton = ButtonWidget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("TaskTitleButton"));
 		Widget overlayWidget = m_MapUiTask.GetMapWidget().FindAnyWidget("OverlayWidget");
-		Widget assignee = Widget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("Assignee"));
-		Widget iconHover = Widget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("TaskIconHover"));
+		Widget assignee = m_MapUiTask.GetMapWidget().FindAnyWidget("Assignee");
+		Widget iconHover = m_MapUiTask.GetMapWidget().FindAnyWidget("TaskIconHover");
 
 		if (!assignButton || !overlayWidget || !assignee || !iconHover)
 			return false;

@@ -38,7 +38,7 @@ class SCR_FindResourcesPlugin : ResourceManagerPlugin
 
 		array<string> resources = {};
 		BaseContainer container, object;
-		string varName, varExtension, uiWidget;
+		string varName, varExtension;
 		ResourceName varValue;
 		while (!containers.IsEmpty())
 		{
@@ -74,7 +74,6 @@ class SCR_FindResourcesPlugin : ResourceManagerPlugin
 					BaseContainerList list = container.GetObjectArray(varName);
 					if (list)
 					{
-						int index;
 						for (int l = 0, listCount = list.Count(); l < listCount; l++)
 						{
 							containers.Insert(list.Get(l));

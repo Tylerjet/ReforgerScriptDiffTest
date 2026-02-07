@@ -14,6 +14,8 @@ class SCR_InventoryItemHintUIInfo : SCR_ColorUIInfo
 	[Attribute("0", desc: "If true than will never show this hint when item is in arsenal")]
 	protected bool m_bHideInArsenal;
 	
+	protected SCR_InventorySlotUI m_LastFocusedSlot;
+
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param item
@@ -21,6 +23,8 @@ class SCR_InventoryItemHintUIInfo : SCR_ColorUIInfo
 	//! \return
 	bool CanBeShown(InventoryItemComponent item, SCR_InventorySlotUI focusedSlot)
 	{
+		m_LastFocusedSlot = focusedSlot;
+
 		//~ Make sure it is not shown if stored in arsenal
 		if (m_bHideInArsenal && SCR_ArsenalInventorySlotUI.Cast(focusedSlot))
 			return false;

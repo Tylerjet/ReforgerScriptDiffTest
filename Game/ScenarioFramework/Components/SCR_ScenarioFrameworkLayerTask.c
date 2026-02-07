@@ -172,6 +172,7 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = true;
+		m_aChildren.RemoveItem(null);
 		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 		{
 			child.DynamicDespawn(this);
@@ -187,33 +188,10 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 
 		GetOnAllChildrenSpawned().Remove(InitTask);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	override void FinishInit()
 	{
-		if (m_bInitiated)
-			return;
-
-		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-			return;
-
-		if (!area)
-		{
-			SCR_GameModeSFManager gameModeComp = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-			if (gameModeComp)
-				area = gameModeComp.GetParentArea(GetOwner());
-		}
-
-		m_Area = area;
-
-		bool previouslyRandomized;
-		if (!m_aRandomlySpawnedChildren.IsEmpty())
-			previouslyRandomized = true;
-
-		// Handles inheritance of faction settings from parents
-		if (m_sFactionKey.IsEmpty() && m_ParentLayer && !m_ParentLayer.GetFactionKey().IsEmpty())
-			SetFactionKey(m_ParentLayer.GetFactionKey());
-
 		if (!GetTaskManager())
 		{
 			Print("ScenarioFramework: Task manager not found in the world, tasks won't be created!", LogLevel.ERROR);
@@ -221,11 +199,8 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		}
 
 		GetOnAllChildrenSpawned().Insert(InitTask);
-		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
-
-		GetChildren(m_aChildren);
-
-		SpawnChildren(previouslyRandomized);
+		
+		super.FinishInit();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -499,4 +474,16 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		return false;
 	}
 #endif
+	
+	//------------------------------------------------------------------------------------------------
+	// destructor
+	void ~SCR_ScenarioFrameworkLayerTask()
+	{
+		if (SCR_Global.IsEditMode())
+			return;
+		
+		DynamicDespawn(this);
+		if (m_SupportEntity && m_Task)
+			m_SupportEntity.CancelTask(m_Task.GetTaskID());
+	}
 }

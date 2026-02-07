@@ -156,7 +156,6 @@ class SCR_ObjectBrushTool : WorldEditorTool
 		{
 			float subareaRadius = radiusDividedByFallOffCount;
 			float previousArea = 0;
-			int objectGenerationAttemptCurrentAmount = 0;
 			float curvePoint = 0;
 			float totalArea = Math.PI * m_fRadius * m_fRadius * HECTARE_CONVERSION_FACTOR;
 			int objectGenerationAttemptMaximumAmount = Math.Ceil(totalArea * m_fStrength);
@@ -842,9 +841,9 @@ class SCR_ObjectBrushTool : WorldEditorTool
 	//! Refreshes that Obstacle Detector with current UI settings (Avoid Objects, etc)
 	protected void CreateAndInitialiseObstacleDetector()
 	{
-		if (!m_ObstacleDetector || !m_ObstacleDetector.IsValid())
+		if (!m_ObstacleDetector)
 		{
-			m_ObstacleDetector = new SCR_ObstacleDetector(m_API);
+			m_ObstacleDetector = new SCR_ObstacleDetector();
 			m_bAreasDetectedByWorld = false;
 		}
 

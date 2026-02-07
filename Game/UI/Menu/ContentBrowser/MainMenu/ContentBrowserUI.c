@@ -22,12 +22,6 @@ class ContentBrowserUI : SCR_SuperMenuBase
 		return browser;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	static void _print(string str, LogLevel logLevel = LogLevel.DEBUG)
-	{
-		Print(string.Format("[Content Browser] %1", str), logLevel);
-	}
-	
 	// --- Overrides ---
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -35,7 +29,7 @@ class ContentBrowserUI : SCR_SuperMenuBase
 		super.OnMenuOpen();
 		
 		// Setup the 'back' nav button
-		m_NavBack = m_DynamicFooter.FindButton("Back");
+		m_NavBack = m_DynamicFooter.FindButton(UIConstants.BUTTON_BACK);
 		if (m_NavBack)
 			m_NavBack.m_OnActivated.Insert(Close);
 	}
@@ -83,51 +77,20 @@ class ContentBrowserUI : SCR_SuperMenuBase
 		array<ref SCR_WorkshopItem> allAddons = mgr.GetAllAddons();
 		array<ref SCR_WorkshopItem> offlineAddons = SCR_AddonManager.SelectItemsBasic(allAddons, EWorkshopItemQuery.OFFLINE);
 		
-		bool anyIssue = false;
-		
+		bool anyIssue;
 		foreach (SCR_WorkshopItem item : offlineAddons)
 		{
-			bool dependenciesMissing = item.GetAnyDependencyMissing();
-			bool dependenciesOutdated = item.GetAnyDependencyUpdateAvailable();
-			bool dependenciesDisabled = item.GetEnabledAndAnyDependencyDisabled();
-			bool updateAvailable = item.GetUpdateAvailable();
+			anyIssue = 
+				item.GetAnyDependencyMissing() ||
+				item.GetAnyDependencyUpdateAvailable() ||
+				item.GetEnabledAndAnyDependencyDisabled() ||
+				item.GetUpdateAvailable();
 			
-			if (dependenciesMissing || dependenciesOutdated || dependenciesDisabled || updateAvailable)
-			{
-				anyIssue = true;
+			if (anyIssue)
 				break;
-			}
 		}
 		
 		m_SuperMenuComponent.GetTabView().ShowIcon(EWorkshopTabId.OFFLINE, anyIssue);		
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected static string GetWorkshopStatus()
-	{
-		// Find WS status item
-		ServiceStatusItem wsStatus = FindStatusItemByName(SCR_ServicesStatusHelper.SERVICE_WORKSHOP);
-
-		if (!wsStatus)
-			return string.Empty;
-		
-		return wsStatus.Status();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	// TODO: Move into generic backend script api
-	protected static ServiceStatusItem FindStatusItemByName(string name)
-	{
-		BackendApi backend = GetGame().GetBackendApi();
-		int statusesCount = backend.GetStatusCount();
-		
-		for (int i = 0; i < statusesCount; i++)
-		{
-			if (backend.GetStatusItem(i).Name() == name)
-				return backend.GetStatusItem(i);
-		}
-		
-		return null;
 	}
 	
 	// --- Public ---
@@ -142,4 +105,13 @@ class ContentBrowserUI : SCR_SuperMenuBase
 	{
 		m_SuperMenuComponent.GetTabView().ShowTab(EWorkshopTabId.MOD_MANAGER);
 	}
+	
+	// --- Debug ---
+	//------------------------------------------------------------------------------------------------
+	#ifdef WORKSHOP_DEBUG
+ 	static void _print(string str, LogLevel logLevel = LogLevel.DEBUG)
+	{
+		Print(string.Format("[Content Browser] %1", str), logLevel);
+	}
+	#endif
 }

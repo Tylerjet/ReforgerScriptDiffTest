@@ -4,9 +4,6 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	protected const string GAMEPAD_PRESET_PREFIX = "gamepad:";
 	protected const string PRIMARY_PRESET_PREFIX = "";
 	
-	protected const string DEVICE_KEYBOARD = "keyboard";
-	protected const string DEVICE_GAMEPAD = "gamepad";
-	
 	protected ref InputBinding m_Binding;
 	
 	protected ref SCR_KeyBindingMenuConfig m_KeybindConfig;
@@ -140,7 +137,7 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		array <ref SCR_KeyBindingFilter> foundFilters = {};
 		foreach (SCR_KeyBindingFilter filter : m_KeybindConfig.m_aInputFilters)
 		{
-			if (filter.GetFilterType() == filterType)
+			if (filterType == SCR_EActionPrefixType.AMBIGUOUS || filter.GetFilterType() == filterType)
 				foundFilters.Insert(filter);
 		}
 		
@@ -313,17 +310,5 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 	string GetPrimaryPresetPrefix()
 	{
 		return PRIMARY_PRESET_PREFIX;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetKeyboardDeviceString()
-	{
-		return DEVICE_KEYBOARD;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetGamepadDeviceString()
-	{
-		return DEVICE_GAMEPAD;
 	}
 }

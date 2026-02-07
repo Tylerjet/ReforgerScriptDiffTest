@@ -27,7 +27,7 @@ class SCR_AIHealBehavior : SCR_AIBehaviorBase
 		m_fTimeCreated_ms = GetGame().GetWorld().GetWorldTime();
 		m_fPriorityDelay_ms = Math.RandomFloat(PRIORITY_DELAY_MIN_MS, PRIORITY_DELAY_MAX_MS);
 		
-		SCR_AIUtilityComponent aiUtilComp = SCR_AIUtilityComponent.Cast(utility);
+		SCR_AIUtilityComponent aiUtilComp = utility;
 		if (!aiUtilComp)
 			return;
 		

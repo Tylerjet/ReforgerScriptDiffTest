@@ -14,6 +14,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	SCR_AICombatComponent m_CombatComponent;
 	
 	bool m_bSelected = false;
+	bool m_bCloseRange = false;
 
 	// This delay is executed before shooting starts
 	protected static const float WAIT_TIME_UNEXPECTED = 0.25;
@@ -32,6 +33,10 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 		super.OnActionSelected();
 		m_bSelected = true;
 		EnableFriendlyFireCheck(true);
+		
+		// Update target selection properties if in close combat
+		m_bCloseRange = m_Target.m_Value.GetDistance() < SCR_AICombatComponent.CLOSE_RANGE_COMBAT_DISTANCE;
+		m_CombatComponent.SetTargetSelectionProperties(m_bCloseRange);
 	}
 	
 	//----------------------------------------------------------------------------------
@@ -39,6 +44,10 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	{
 		super.OnActionDeselected();
 		EnableFriendlyFireCheck(false);
+		
+		// Reset target selection properties
+		m_bCloseRange = false;
+		m_CombatComponent.SetTargetSelectionProperties(m_bCloseRange);
 	}
 
 	//----------------------------------------------------------------------------------
@@ -98,10 +107,23 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 			return 0;
 		
 		// Update m_bUseCombatMove
-		m_bUseCombatMove = !m_Utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
+		m_bUseCombatMove = true;
 		
-		float targetScore = m_Utility.m_CombatComponent.m_WeaponTargetSelector.CalculateTargetScore(baseTarget);
+		if (m_Utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
+			m_bUseCombatMove = false;
+		else if (m_Utility.m_AIInfo.HasUnitState(EUnitState.IN_VEHICLE)) // inside vehicle we dont attack unless in turret
+			return 0;
+		
+		// Update target selection properties if needed
+		bool closeRange = baseTarget.GetDistance() < SCR_AICombatComponent.CLOSE_RANGE_COMBAT_DISTANCE;
+		if (closeRange != m_bCloseRange)
+		{
+			m_bCloseRange = closeRange;
+			m_CombatComponent.SetTargetSelectionProperties(m_bCloseRange);
+		}
 				
+		float targetScore = m_Utility.m_CombatComponent.m_WeaponTargetSelector.CalculateTargetScore(baseTarget);
+		
 		if (baseTarget.IsEndangering() || baseTarget.GetTimeSinceEndangered() < SCR_AICombatComponent.TARGET_ENDANGERED_TIMEOUT_S)
 			targetScore *= SCR_AICombatComponent.ENDANGERING_TARGET_SCORE_MULTIPLIER;
 		
@@ -109,7 +131,7 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 			return PRIORITY_BEHAVIOR_ATTACK_HIGH_PRIORITY;
 			
 		if (m_bSelected)
-			return PRIORITY_BEHAVIOR_ATTACK_SELECTED;		
+			return PRIORITY_BEHAVIOR_ATTACK_SELECTED;
 		
 		return PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED;
 	}

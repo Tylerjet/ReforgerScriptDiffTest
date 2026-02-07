@@ -13,13 +13,13 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		if (state != EDamageState.DESTROYED || !m_Asset || !m_SupportEntity)
 			return;
 		
-		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
 		if (objectDmgManager)
 		{
 			objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 			GetGame().GetCallqueue().Remove(CheckEngineDrowned);
 			
-			VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Asset.FindComponent(VehicleControllerComponent_SA));
+			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
 			if (vehicleController)
 				vehicleController.GetOnEngineStop().Remove(CheckEngineDrowned);
 		}
@@ -33,13 +33,13 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		if (!m_Asset || !m_SupportEntity)
 			return;
 		
-		VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Asset.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
 		if (vehicleController && vehicleController.GetEngineDrowned())
 		{
 			vehicleController.GetOnEngineStop().Remove(CheckEngineDrowned);
 			GetGame().GetCallqueue().Remove(CheckEngineDrowned);
 			
-			SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
+			SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
 			if (objectDmgManager)
 		 		objectDmgManager.GetOnDamageStateChanged().Remove(OnObjectDamage);
 			
@@ -53,15 +53,15 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		if (!object)
 			return;
 		
-		m_Asset = object;
+		super.RehookTaskAsset(object);
 		
-		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
 		if (Vehicle.Cast(m_Asset))
 		{
-			VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Asset.FindComponent(VehicleControllerComponent_SA));
+			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
 			if (vehicleController)
 				vehicleController.GetOnEngineStop().Insert(CheckEngineDrowned);
 			
@@ -93,13 +93,13 @@ class SCR_TaskDestroyObject : SCR_ScenarioFrameworkTask
 		if (!m_Asset)
 			return;
 				
-		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.Cast(SCR_DamageManagerComponent.GetDamageManager(m_Asset));
+		SCR_DamageManagerComponent objectDmgManager = SCR_DamageManagerComponent.GetDamageManager(m_Asset);
 		if (objectDmgManager)
 			objectDmgManager.GetOnDamageStateChanged().Insert(OnObjectDamage);
 		
 		if (Vehicle.Cast(m_Asset))
 		{
-			VehicleControllerComponent_SA vehicleController = VehicleControllerComponent_SA.Cast(m_Asset.FindComponent(VehicleControllerComponent_SA));
+			VehicleControllerComponent vehicleController = VehicleControllerComponent.Cast(m_Asset.FindComponent(VehicleControllerComponent));
 			if (vehicleController)
 				vehicleController.GetOnEngineStop().Insert(CheckEngineDrowned);
 			

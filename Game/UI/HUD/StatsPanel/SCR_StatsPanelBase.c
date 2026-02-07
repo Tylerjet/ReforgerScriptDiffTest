@@ -53,9 +53,6 @@ class SCR_StatsPanelBase : SCR_InfoDisplayExtended
 	[Attribute("1", UIWidgets.CheckBox, "Should the indicator be shown on server?")]
 	protected bool m_bShowOnServer;		
 	
-	protected string m_Imageset = "{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
-	protected string m_ImagesetGlow = "{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
-	
 	RplIdentity m_RplIdentity;
 	ref SCR_StatsPanelWidgets m_Widgets;
 	protected EStatsPanelState m_eState = EStatsPanelState.INIT;
@@ -234,8 +231,8 @@ class SCR_StatsPanelBase : SCR_InfoDisplayExtended
 		m_Widgets.m_wColorOpacity.SetColor(color);
 
 		// Set icon & glow		
-		m_Widgets.m_wIcon.LoadImageFromSet(0, m_Imageset, icon);
-		m_Widgets.m_wIconGlow.LoadImageFromSet(0, m_ImagesetGlow, icon);
+		m_Widgets.m_wIcon.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, icon);
+		m_Widgets.m_wIconGlow.LoadImageFromSet(0, UIConstants.ICONS_GLOW_IMAGE_SET, icon);
 		m_Widgets.m_wIconGlow.SetColor(colorGlow);
 		
 		// Update text shadow

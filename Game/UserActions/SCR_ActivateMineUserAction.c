@@ -49,34 +49,20 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void SnapToGround(IEntity user, out vector normal)
-	{
-		IEntity owner = GetOwner();
-		vector mat[4];
-		owner.GetTransform(mat);
-		
-		SCR_PlaceableInventoryItemComponent item = SCR_PlaceableInventoryItemComponent.Cast(owner.FindComponent(SCR_PlaceableInventoryItemComponent));
-		if (item)
-			item.SnapToGround(normal, {user}, startOffset: mat[1] * 0.1, direction: -mat[1]);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override event void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		m_bCanArm = false;
 		GetGame().GetCallqueue().CallLater(AllowArming, 1000 * m_fArmingProtectionTime);
-		
+
 		vector matUser[4], mat[4];
 		pUserEntity.GetTransform(matUser);
-		
-		vector normal = vector.Zero;
-		SnapToGround(pUserEntity, normal);
-		
 		pOwnerEntity.GetTransform(mat);
-		SCR_EntityHelper.OrientUpToVector(normal, mat);
+
+		SCR_EntityHelper.SnapToGround(pOwnerEntity, {pUserEntity}, startOffset: mat[1] * 0.1, onlyStatic: true);
+
 		OrientToForward(matUser[2], mat);
 		pOwnerEntity.SetTransform(mat);
-		
+
 		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
 		
 		if (!character)

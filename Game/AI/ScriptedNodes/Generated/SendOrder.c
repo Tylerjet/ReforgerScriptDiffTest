@@ -41,7 +41,7 @@ class SCR_AISendOrder_Stance : SCR_AISendMessageGenerated
 // Generated from class: SCR_AIOrder_WeaponRaised
 class SCR_AISendOrder_WeaponRaised : SCR_AISendMessageGenerated
 {
-	[Attribute("", UIWidgets.Auto)]
+	[Attribute("")]
 	bool m_bWeaponRaised;
 	
 	protected static ref TStringArray _s_aVarsIn =

@@ -4,7 +4,7 @@ class SCR_SimpleWarningComponent : SCR_ScriptedWidgetComponent
 	[Attribute("#AR-Account_LoginTimeout")]
 	protected string m_sWarning;
 	
-	[Attribute("warning")]
+	[Attribute(UIConstants.ICON_WARNING)]
 	protected string m_sIconName;
 	
 	[Attribute(UIColors.GetColorAttribute(UIColors.WARNING))]
@@ -44,13 +44,16 @@ class SCR_SimpleWarningComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetWarning(string text, string iconName)
+	void SetWarning(string text, string iconName, ResourceName imageset = string.Empty)
 	{
+		if (imageset.IsEmpty())
+			imageset = UIConstants.ICONS_IMAGE_SET;
+		
 		if (m_wWarning)
 			m_wWarning.SetText(text);
 		
 		if (m_wWarningImage && !iconName.IsEmpty())
-			m_wWarningImage.LoadImageFromSet(0, UIConstants.ICONS_IMAGE_SET, iconName);
+			m_wWarningImage.LoadImageFromSet(0, imageset, iconName);
 	}
 	
 	//------------------------------------------------------------------------------------------------

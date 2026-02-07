@@ -50,20 +50,20 @@ class SCR_WorldWindowDataDropPlugin : WorldEditorPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void SpawnParticleEffect(int windowType, int posX, int posY, ResourceName resName)
 	{
-		WorldEditorAPI api = GetEditorApi();
-		if (api.BeginEntityAction("Creating entity"))
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (worldEditorAPI.BeginEntityAction("Creating entity"))
 		{
-			api.ClearEntitySelection();
+			worldEditorAPI.ClearEntitySelection();
 
 			//use the same creating funtion as editor does because it solves correct placing etc.
-			IEntitySource ent = api.CreateEntityInWindowEx(windowType, posX, posY, "ParticleEffectEntity", "", api.GetCurrentEntityLayerId());
+			IEntitySource ent = worldEditorAPI.CreateEntityInWindowEx(windowType, posX, posY, "ParticleEffectEntity", "", worldEditorAPI.GetCurrentEntityLayerId());
 			if (ent)
 			{
-				api.SetVariableValue(ent, null, "EffectPath", resName);
-				api.AddToEntitySelection(ent);
+				worldEditorAPI.SetVariableValue(ent, null, "EffectPath", resName);
+				worldEditorAPI.AddToEntitySelection(ent);
 			}
 
-			api.EndEntityAction();
+			worldEditorAPI.EndEntityAction();
 		}
 	}
 
@@ -71,31 +71,18 @@ class SCR_WorldWindowDataDropPlugin : WorldEditorPlugin
 	protected void SpawnCustomizedEntityAsExample(int windowType, int posX, int posY, string className)
 	{
 		//this is an example how entity must be created.
-		WorldEditorAPI api = GetEditorApi();
-		if (api.BeginEntityAction("Creating entity"))
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (worldEditorAPI.BeginEntityAction("Creating entity"))
 		{
-			api.ClearEntitySelection();
+			worldEditorAPI.ClearEntitySelection();
 
 			//use the same creating funtion as editor does because it solves correct placing etc.
-			IEntitySource ent = api.CreateEntityInWindowEx(windowType, posX, posY, className, "", api.GetCurrentEntityLayerId());
+			IEntitySource ent = worldEditorAPI.CreateEntityInWindowEx(windowType, posX, posY, className, "", worldEditorAPI.GetCurrentEntityLayerId());
 			if (ent)
-				api.AddToEntitySelection(ent);
+				worldEditorAPI.AddToEntitySelection(ent);
 
-			api.EndEntityAction();
+			worldEditorAPI.EndEntityAction();
 		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected WorldEditorAPI GetEditorApi()
-	{
-		WorldEditor mod = Workbench.GetModule(WorldEditor);
-		if (!mod)
-		{
-			Print("World editor module is not available.", LogLevel.ERROR);
-			return null;
-		}
-
-		return mod.GetApi();
 	}
 }
 #endif // WORKBENCH

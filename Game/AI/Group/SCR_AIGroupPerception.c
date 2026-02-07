@@ -30,8 +30,8 @@ class SCR_AIGroupPerception : Managed
 	
 	ref array<IEntity> m_aTargetEntities = new array<IEntity>;						// Read only! Don't dare to modify it!
 	ref array<ref SCR_AITargetInfo> m_aTargets = new array<ref SCR_AITargetInfo>;	// Read only!
-	ref array<ref SCR_AIGroupTargetCluster> m_aTargetClusters = {};						// Read only!
-	
+	ref array<ref SCR_AIGroupTargetCluster> m_aTargetClusters = {};					// Read only!
+	SCR_AIGroupTargetCluster m_MostDangerousCluster;								// Read only!
 	
 	//---------------------------------------------------------------------------------------------------
 	void SCR_AIGroupPerception(SCR_AIGroupUtilityComponent utility, SCR_AIGroup group)
@@ -134,7 +134,7 @@ class SCR_AIGroupPerception : Managed
 			if (targetCategory == ETargetCategory.DETECTED)
 				newTimestamp = target.GetTimeLastDetected();
 			else
-				newTimestamp = target.GetTimeLastDetected();
+				newTimestamp = target.GetTimeLastSeen();
 			
 			if (oldTargetInfo.m_fTimestamp < newTimestamp)
 			{
@@ -176,7 +176,7 @@ class SCR_AIGroupPerception : Managed
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	void AddOrUpdateGunshot(notnull IEntity shooter, vector worldPos, float timestamp)
+	void AddOrUpdateGunshot(notnull IEntity shooter, vector worldPos, float timestamp, bool endangering)
 	{
 		int id = m_aTargetEntities.Find(shooter);
 		if (id > -1)
@@ -186,14 +186,17 @@ class SCR_AIGroupPerception : Managed
 			if ((oldTargetInfo.m_eCategory != EAITargetInfoCategory.IDENTIFIED) &&	// Update only if it wasn't seen yet
 				(timestamp > oldTargetInfo.m_fTimestamp))					// Update only if new data is newer
 			{
-				oldTargetInfo.UpdateFromGunshot(worldPos, timestamp);
+				oldTargetInfo.UpdateFromGunshot(worldPos, timestamp, endangering);
 			}
+			
+			// Update endangering flag
+			oldTargetInfo.m_bEndangering |= endangering;
 		}
 		else
 		{
 			// Create new data
 			SCR_AITargetInfo targetInfo = new SCR_AITargetInfo();
-			targetInfo.InitFromGunshot(shooter, worldPos, timestamp);
+			targetInfo.InitFromGunshot(shooter, worldPos, timestamp, endangering);
 			
 			m_aTargets.Insert(targetInfo);
 			m_aTargetEntities.Insert(shooter);
@@ -206,6 +209,8 @@ class SCR_AIGroupPerception : Managed
 		UpdateTargetsFromMembers();	// These calls ...
 		MaintainTargets();			// ... must be ...		|	<- 	this one removed targets
 		ClusterTargets();			// ... in this order.	|		thus clustering must happen after it
+		
+		SelectMostDangerousCluster();
 	}
 	
 	//---------------------------------------------------------------------------------------------------
@@ -510,6 +515,46 @@ class SCR_AIGroupPerception : Managed
 	}
 	
 	//---------------------------------------------------------------------------
+	protected void SelectMostDangerousCluster()
+	{
+		float maxScore = 0;
+		SCR_AIGroupTargetCluster maxScoreCluster;
+		
+		foreach (SCR_AIGroupTargetCluster c : m_aTargetClusters)
+		{
+			float score = CalculateClusterDangerScore(c);
+			if (score > maxScore)
+			{
+				maxScore = score;
+				maxScoreCluster = c;
+			}
+		}
+		
+		m_MostDangerousCluster = maxScoreCluster;
+	}
+	
+	//---------------------------------------------------------------------------
+	protected float CalculateClusterDangerScore(SCR_AIGroupTargetCluster c)
+	{
+		float score = 0;
+		
+		// distance
+		float distClamped = Math.Min(c.m_State.m_fDistMin, 1000.0); 
+		score += 1000.0 - distClamped;
+		
+		// If it's lost, it matters less, it's about to be forgotten
+		if (c.m_State.m_eState != EAITargetClusterState.LOST)
+			score += 600.0;
+		
+		// Identified or endangering targets
+		score += 200.0 * c.m_State.m_iCountEndangering;
+		score += 50.0 * c.m_State.m_iCountDetected;
+		score += 100.0 * c.m_State.m_iCountIdentified;
+		
+		return score;
+	}
+	
+	//---------------------------------------------------------------------------
 	protected void DeleteClusterState(SCR_AIGroupTargetCluster c)
 	{
 		Event_OnTargetClusterStateDeleted.Invoke(c.m_State);
@@ -567,7 +612,7 @@ class SCR_AIGroupPerception : Managed
 				float timeSinceTimestamp_s = timeNow_s - targetInfo.m_fTimestamp;
 				s = s + string.Format("C: %1, time-timestamp: %2\n", clusterId.ToString(), timeSinceTimestamp_s.ToString(5, 1));
 				
-				s = s + string.Format("Category: %1", typename.EnumToString(EAITargetInfoCategory, targetInfo.m_eCategory));
+				s = s + string.Format("Category: %1, dngr: %2", typename.EnumToString(EAITargetInfoCategory, targetInfo.m_eCategory), targetInfo.m_bEndangering);
 				
 				DebugTextWorldSpace.Create(GetGame().GetWorld(), s, DebugTextFlags.ONCE | DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA,
 					mrkPos[0], mrkPos[1], mrkPos[2],
@@ -587,7 +632,7 @@ class SCR_AIGroupPerception : Managed
 				s = s + string.Format("State: %1, Time since Info: %2, Max age: %3",
 					typename.EnumToString(EAITargetClusterState, cluster.m_State.m_eState),
 					cluster.m_State.GetTimeSinceLastNewInformation().ToString(5,1),
-					cluster.m_State.m_fMaxAge_s.ToString(5, 1));				
+					cluster.m_State.m_fMaxAge_s.ToString(5, 1));
 			}
 			
 			DebugTextWorldSpace.Create(GetGame().GetWorld(), s, DebugTextFlags.ONCE | DebugTextFlags.CENTER | DebugTextFlags.FACE_CAMERA,

@@ -44,7 +44,7 @@ class SCR_AIDecoHasWeaponOfType : DecoratorScripted
 		if (!m_WpnManager)
 			return false;
 		
-		typename magazineWell,nullTypeName;
+		typename magazineWell;
 		bool findByMagazineWell,result;
 		findByMagazineWell = GetVariableIn(PORT_MAGAZINE_WELL,magazineWell);
 								

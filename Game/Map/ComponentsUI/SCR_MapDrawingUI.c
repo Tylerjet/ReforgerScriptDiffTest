@@ -361,6 +361,8 @@ class SCR_MapDrawingUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnInputQuickBind(float value, EActionTrigger reason)
 	{
+		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && IsToolMenuFocused())
+			return;
 		ToggleDrawMode();
 	}
 		

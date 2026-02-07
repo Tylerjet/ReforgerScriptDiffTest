@@ -1,8 +1,9 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "")]
-class SCR_TriggerTaskClass: SCR_EditorTaskClass
+class SCR_TriggerTaskClass : SCR_AttachableTaskClass
 {
 };
-class SCR_TriggerTask: SCR_EditorTask
+
+class SCR_TriggerTask : SCR_AttachableTask
 {
 	[Attribute(desc: "When enabled, task will fail upon activation instead of being completed.", category: "Trigger Task")]
 	protected bool m_bToFail;
@@ -17,7 +18,7 @@ class SCR_TriggerTask: SCR_EditorTask
 		if (!GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		
@@ -37,7 +38,7 @@ class SCR_TriggerTask: SCR_EditorTask
 		if (!GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		

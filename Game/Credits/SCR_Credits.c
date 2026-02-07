@@ -61,7 +61,7 @@ class SCR_Credits: ChimeraMenuBase
 		
 		super.OnMenuOpen();
 		// Subscribe to buttons
-		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", m_wFooter);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, m_wFooter);
 		if (back)
 			back.m_OnActivated.Insert(EndCredits);
 		

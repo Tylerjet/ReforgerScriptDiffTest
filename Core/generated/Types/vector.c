@@ -71,7 +71,7 @@ sealed class vector
 			>> length = 2
 		@endcode
 	*/
-	proto external float LengthSq();;
+	proto external float LengthSq();
 	/*!
 	\brief Returns the distance between tips of two 3D vectors.
 		\param v1 \p vector 3D Vector 1

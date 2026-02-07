@@ -1,7 +1,4 @@
-const string										SLOT_LAYOUT_1x1 		= "{F437ACE2BD5F11E1}UI/layouts/Menus/Inventory/InventoryItemSlot.layout";
-const string										SLOT_LAYOUT_2x1 		= "{F437ACE2BD5F11E1}UI/layouts/Menus/Inventory/InventoryItemSlot.layout";
-const string										SLOT_LAYOUT_2x2 		= "{F437ACE2BD5F11E1}UI/layouts/Menus/Inventory/InventoryItemSlot.layout";
-const string										SLOT_LAYOUT_3x3 		= "{F437ACE2BD5F11E1}UI/layouts/Menus/Inventory/InventoryItemSlot.layout";
+const string										SLOT_LAYOUT_1x1 		= "{F437ACE2BD5F11E2}UI/layouts/Menus/Inventory/InventoryItemSlot.layout";
 
 const int											CURRENT_AMMO_MAGAZINE	= ARGB( 255, 255, 255, 255 );
 const int											CURRENT_AMMO_TEXT		= ARGB( 255, 142, 142, 142 );
@@ -38,15 +35,10 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	private ImageWidget									m_wIcon 				= null;
 	private RenderTargetWidget							m_wPreviewImage 		= null;
 	
-//	protected SCR_InventoryStorageManagerComponent	m_InventoryManager		= null;		//TODO: not needed can be taken from storageBaseUI
 	protected SCR_InventoryStorageBaseUI				m_pStorageUI;
 		
 	protected InventoryItemComponent 					m_pItem;
 	protected ref SCR_ItemAttributeCollection			m_Attributes;
-	const string										ITEM_LAYOUT = "{0921F9EB5F3843BA}UI/layouts/Menus/Inventory/Inventory20Item.layout";
-	const int											LMB_CLICK	= 0;
-	const int											RMB_CLICK	= 1;
-	const int											MID_CLICK	= 2;
 	protected bool										m_bEnabled 	= true;
 	protected bool										m_bSelected = false;
 	protected bool										m_bBlocked = false;
@@ -55,7 +47,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	protected TextWidget								m_wTextQuickSlotLarge = null;
 	protected int										m_iQuickSlotIndex;
 	
-	protected ProgressBarWidget							m_wVolumeBar, m_wAmmoCount, m_wCurrentMagazineAmmoCount;
+	protected ProgressBarWidget							m_wVolumeBar, m_wAmmoCount;
 	protected int										m_iStackNumber = 1;
 	protected TextWidget								m_wStackNumber, m_wMagazineNumber;
 	protected OverlayWidget								m_wItemLockThrobber;
@@ -66,6 +58,10 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	
 	protected bool										m_bVisible;
 	protected ESlotFunction								m_eSlotFunction = ESlotFunction.TYPE_GENERIC;
+	protected SCR_InventoryProgressBar					m_ProgressBar;
+	protected Widget 									m_wCurrentMagazine;
+	protected ImageWidget								m_wCurrentMagazineAmmoCount;
+	protected Widget 									m_wProgressBar;
 	
 	//~ FUEL
 	protected const string FUEL_WIDGET_HOLDER_NAME = "FuelCountHolder";
@@ -134,10 +130,10 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		string slotLayout = SLOT_LAYOUT_1x1;
 		switch ( m_Attributes.GetItemSize() ) 
 		{
-			case ESlotSize.SLOT_1x1:	{ slotLayout = SLOT_LAYOUT_1x1; m_iSizeX = 1; m_iSizeY = 1; } break;
-			case ESlotSize.SLOT_2x1:	{ slotLayout = SLOT_LAYOUT_2x1; m_iSizeX = 2; m_iSizeY = 1; } break;
-			case ESlotSize.SLOT_2x2:	{ slotLayout = SLOT_LAYOUT_2x2; m_iSizeX = 2; m_iSizeY = 2; } break;
-			case ESlotSize.SLOT_3x3:	{ slotLayout = SLOT_LAYOUT_3x3; m_iSizeX = 3; m_iSizeY = 3; } break;
+			case ESlotSize.SLOT_1x1:	{ m_iSizeX = 1; m_iSizeY = 1; } break;
+			case ESlotSize.SLOT_2x1:	{ m_iSizeX = 2; m_iSizeY = 1; } break;
+			case ESlotSize.SLOT_2x2:	{ m_iSizeX = 2; m_iSizeY = 2; } break;
+			case ESlotSize.SLOT_3x3:	{ m_iSizeX = 3; m_iSizeY = 3; } break;
 		}
 		return slotLayout;
 	}
@@ -153,9 +149,38 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		if (m_pItem)
 			m_pItem.m_OnLockedStateChangedInvoker.Insert(OnChangeLockState);
 		
-		//m_widget = w;
-		SetSlotVisible( m_bVisible );
 		SetItemFunctionality();
+		if (m_eSlotFunction == ESlotFunction.TYPE_WEAPON)
+		{
+			m_wMagazineNumber = TextWidget.Cast( m_widget.FindAnyWidget( "magazineCount" ) );
+			m_wCurrentMagazine = m_widget.FindAnyWidget("currentMagazine");
+			if (m_wCurrentMagazine)
+			{
+				m_wCurrentMagazineAmmoCount = ImageWidget.Cast(m_widget.FindAnyWidget("currentMagazineAmmoCount"));		
+				ImageWidget outline = ImageWidget.Cast(m_wCurrentMagazine.FindAnyWidget("Outline"));
+				if (outline && m_pItem)
+				{
+					BaseMuzzleComponent muzzleComp = BaseMuzzleComponent.Cast(m_pItem.GetOwner().FindComponent(BaseMuzzleComponent));
+					if (muzzleComp)
+					{
+						MuzzleUIInfo info = MuzzleUIInfo.Cast(muzzleComp.GetUIInfo());
+						if (muzzleComp.IsInherited(MuzzleInMagComponent))
+						{
+							m_wCurrentMagazineAmmoCount.LoadImageFromSet(0, info.m_MagIndicator.m_sImagesetIcons, info.m_MagIndicator.m_sOutline);
+							outline.LoadImageFromSet(0, info.m_MagIndicator.m_sImagesetIcons, info.m_MagIndicator.m_sOutline);
+						}
+						else
+						{
+							m_wCurrentMagazineAmmoCount.LoadImageFromSet(0, info.m_MagIndicator.m_sImagesetIcons, info.m_MagIndicator.m_sProgress);
+							outline.LoadImageFromSet(0, info.m_MagIndicator.m_sImagesetIcons, info.m_MagIndicator.m_sProgress);
+						}
+					}
+				}
+			}			
+		}
+
+		SetSlotVisible( m_bVisible );
+
 		// If is it storage or attachment, register it to the array for the future use
 		if (!BaseInventoryStorageComponent.Cast(m_pItem) && !WeaponAttachmentsStorageComponent.Cast(m_pItem))
 			return;
@@ -183,27 +208,55 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------
 	void SetStackNumber( int i ) { m_iStackNumber = i; }
-	void IncreaseStackNumber() { m_iStackNumber++; }
-	void IncreaseStackNumber( int i ) { m_iStackNumber = m_iStackNumber + i; }
+
+	//------------------------------------------------------------------------------------------------
+	void IncreaseStackNumber() 
+	{ 
+		m_iStackNumber++;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void IncreaseStackNumberWithRplId(RplId id)
+	{
+		m_iStackNumber++;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnOwnedSlotsUpdated();
 
 	//------------------------------------------------------------------------------------------------	
 	//!
 	protected void SetAmmoCount()
 	{
-		Widget ammoSizeCountHolder = GetWidget().FindAnyWidget("SizeAmmoCount");
-		
-		if (!m_pItem)
+		MagazineComponent magComp = MagazineComponent.Cast(m_pItem.GetOwner().FindComponent(MagazineComponent));
+		if (!magComp)
 			return;
+
+		m_aAmmoCountActual = magComp.GetAmmoCount();
+		m_aAmmoCountMax = magComp.GetMaxAmmoCount();			
 		
-		MagazineComponent pMagazineComponent = MagazineComponent.Cast( m_pItem.GetOwner().FindComponent( MagazineComponent ) );
-		if (!pMagazineComponent)
+		if (m_ProgressBar)
+		{
+			if (m_aAmmoCountMax == 1)
+			{
+				m_wProgressBar.SetVisible(false);
+				return;
+			}
+			
+			m_ProgressBar.FlipColors();
+			m_ProgressBar.SetProgressRange(0, magComp.GetMaxAmmoCount());
+			m_ProgressBar.SetCurrentProgress(magComp.GetAmmoCount());		
+		}
+	}
+	
+	protected void SetAmmoType()
+	{
+		Widget ammoType = m_widget.FindAnyWidget("AmmoTypeSize");
+		if (!ammoType)
 			return;
-		
-		m_aAmmoCountActual = pMagazineComponent.GetAmmoCount();
-		m_aAmmoCountMax = pMagazineComponent.GetMaxAmmoCount();
-		
-		if (ammoSizeCountHolder)
-			ammoSizeCountHolder.SetVisible(true);
+		SCR_InventoryAmmoTypeIndicator indicator = SCR_InventoryAmmoTypeIndicator.Cast(ammoType.FindHandler(SCR_InventoryAmmoTypeIndicator));
+		if (indicator)
+			indicator.SetAmmoType(m_pItem);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -249,6 +302,18 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		if(bVisible)
 		{
 			m_wPreviewImage = RenderTargetWidget.Cast( m_widget.FindAnyWidget( "item" ) );
+			ImageWidget iconImage = ImageWidget.Cast(m_widget.FindAnyWidget("icon"));
+			RichTextWidget iconText = RichTextWidget.Cast(m_widget.FindAnyWidget("itemName"));
+			TextWidget quickslotNumber = TextWidget.Cast(m_widget.FindAnyWidget("TextQuickSlotLarge"));
+			
+			//filter out 1-4 quickslots as they are in fact storages :harold:
+			if (SCR_InventoryMenuUI.WEAPON_SLOTS_COUNT <= m_iQuickSlotIndex && m_iQuickSlotIndex < 10)
+			{
+
+				SCR_QuickslotBaseContainer container = GetCharacterStorage(SCR_PlayerController.GetLocalControlledEntity()).GetContainerFromQuickslot(m_iQuickSlotIndex);
+				if (container)
+					container.HandleVisualization(iconImage, m_wPreviewImage, iconText, quickslotNumber);
+			}
 			
 			ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
 			if (world)
@@ -259,18 +324,25 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 					ItemPreviewWidget renderPreview = ItemPreviewWidget.Cast( m_wPreviewImage );
 					IEntity previewEntity = null;
 					if (m_pItem)
+					{
 						previewEntity = m_pItem.GetOwner();
+						m_wPreviewImage.SetVisible(true);
+					}
+
 					if (renderPreview)
 						manager.SetPreviewItem(renderPreview, previewEntity, null, true);
 				}
 			}
 			
 			//if the slot has storage, then show its volume bar
-			BaseInventoryStorageComponent pStorageTo = GetStorageComponent();
-			if ( pStorageTo )
+			if (m_pStorageUI.Type() != SCR_InventoryStoragesListUI && GetStorageComponent() || m_eSlotFunction == ESlotFunction.TYPE_MAGAZINE)
 			{
-				m_wVolumeBar = ProgressBarWidget.Cast( m_widget.FindAnyWidget( "VolumeBar" ) );
-				m_wVolumeBar.SetVisible( true );
+				m_wProgressBar = m_widget.FindAnyWidget("ProgressBar");
+				if (m_wProgressBar)
+				{
+					m_ProgressBar = SCR_InventoryProgressBar.Cast(m_wProgressBar.FindHandler(SCR_InventoryProgressBar));
+					m_wProgressBar.SetVisible(m_eSlotFunction != ESlotFunction.TYPE_WEAPON);
+				}
 			}
 			m_wSelectedEffect = m_widget.FindAnyWidget("SelectedOverlay");
 			m_wSelectedIcon = m_widget.FindAnyWidget("SelectedIcon");
@@ -291,8 +363,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				m_wStackNumber.SetVisible( false );
 			}
 			
-			m_wAmmoCount = ProgressBarWidget.Cast( m_widget.FindAnyWidget( "ammoCount" ) );
-			if ( m_wAmmoCount )
+			if (m_eSlotFunction == ESlotFunction.TYPE_MAGAZINE )
 			{
 				SetAmmoCount();
 				UpdateAmmoCount();
@@ -301,8 +372,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			if (m_FuelManager)
 				OnFuelAmountChanged(m_FuelManager.GetTotalFuel());
 			
-			m_wMagazineNumber = TextWidget.Cast( m_widget.FindAnyWidget( "magazineCount" ) );
-			m_wCurrentMagazineAmmoCount = ProgressBarWidget.Cast( m_widget.FindAnyWidget( "currentMagazineAmmoCount" ) );
+
 			if ( m_wMagazineNumber && m_wCurrentMagazineAmmoCount )
 			{
 				UpdateWeaponAmmoCount();
@@ -463,7 +533,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 			return;
 
 		m_bSelected = select;
-		if (!m_wSelectedEffect || !m_wSelectedIcon)
+		if (!m_wSelectedEffect)
 			return;
 
 		m_wSelectedEffect.SetVisible(select);
@@ -644,12 +714,15 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_MAGAZINE;
 			SetAmmoCount();
+			SetAmmoType();
+
 			return;
 		} 
 		
 		if (WeaponComponent.Cast(item.FindComponent(WeaponComponent)))
 		{
 			m_eSlotFunction = ESlotFunction.TYPE_WEAPON;
+			SetAmmoType();
 			return;
 		}
 		
@@ -679,7 +752,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------	
-	void UseItem(IEntity player)
+	void UseItem(IEntity player, SCR_EUseContext context)
 	{
 		if (!m_pItem)
 			return;
@@ -692,7 +765,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		if (!storage)
 			return;
 		
-		if (storage.UseItem(item, m_eSlotFunction))
+		if (storage.UseItem(item, m_eSlotFunction, context))
 			Refresh();
 	}
 	
@@ -747,7 +820,7 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	// !
 	protected void UpdateVolumeBarValue()
 	{
-		if ( m_wVolumeBar && m_pItem )
+		if ( m_ProgressBar && m_pItem )
 		{
 			BaseInventoryStorageComponent pStorage = GetAsStorage();
 			if ( !pStorage )
@@ -766,22 +839,26 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 				array<BaseInventoryStorageComponent> pOwnedStorages = new array<BaseInventoryStorageComponent>();
 				pStorage.GetOwnedStorages( pOwnedStorages, 1, false );
 				foreach ( BaseInventoryStorageComponent pSubStorage : pOwnedStorages )
-					fOccupied += pSubStorage.GetOccupiedSpace();
+				{
+					if (SCR_UniversalInventoryStorageComponent.Cast(pSubStorage))				
+						fOccupied += pSubStorage.GetOccupiedSpace();
+				}
 			}
 			else
 			{
 				fOccupied = pStorage.GetOccupiedSpace();
 			}
 			float fCapacity = pStorage.GetMaxVolumeCapacity();
-			m_wVolumeBar.SetMax( fCapacity );
-			m_wVolumeBar.SetCurrent( fOccupied );
-			
+			m_ProgressBar.SetProgressRange(0, fCapacity);
+			m_ProgressBar.SetCurrentProgress(fOccupied);
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateAmmoCount()
 	{
+		if (!m_ProgressBar)
+			return;
 		if ( m_eSlotFunction != ESlotFunction.TYPE_MAGAZINE )
 			return;
 		if( !m_pItem )
@@ -789,13 +866,8 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 
 		if ( m_aAmmoCountActual > -1 && m_aAmmoCountMax != 1 )
 		{
-			m_wAmmoCount.SetMax( m_aAmmoCountMax );
-			m_wAmmoCount.SetCurrent( m_aAmmoCountActual );
-			m_wAmmoCount.SetVisible( true );
-		}
-		else
-		{
-			m_wAmmoCount.SetVisible( false );
+			m_ProgressBar.SetProgressRange(0, m_aAmmoCountMax);
+			m_ProgressBar.SetCurrentProgress(m_aAmmoCountActual);
 		}
 	}
 
@@ -829,41 +901,24 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 		BaseMuzzleComponent weaponMuzzleComp = weaponComp.GetCurrentMuzzle();
 		if (!weaponMuzzleComp)
 			return;
+
 		
 		int currentAmmoCount = weaponMuzzleComp.GetAmmoCount();
 		int maxAmmoCount = weaponMuzzleComp.GetMaxAmmoCount();
 		int magazineCount = GetInventoryManager().GetMagazineCountByWeapon(weaponComp);
 		
 		m_wMagazineNumber.SetText("+" + magazineCount);
-
-		m_wCurrentMagazineAmmoCount.SetMax(maxAmmoCount);
-		m_wCurrentMagazineAmmoCount.SetCurrent(currentAmmoCount);
-
 		m_wMagazineNumber.SetVisible(true);
-		m_wCurrentMagazineAmmoCount.SetVisible(true);
 
-		if (currentAmmoCount > 0 && magazineCount == 0)
-		{
-			m_wCurrentMagazineAmmoCount.SetColorInt( CURRENT_AMMO_MAGAZINE );
-			m_wMagazineNumber.SetOpacity( 0 );
-		}
-		else if (currentAmmoCount == 0 && magazineCount == 0)
-		{
-			m_wMagazineNumber.SetColorInt( CURRENT_AMMO_EMPTY );
-			m_wMagazineNumber.SetOpacity( 1 );
-			
-			m_wCurrentMagazineAmmoCount.SetColorInt( CURRENT_AMMO_EMPTY );
-			m_wCurrentMagazineAmmoCount.SetCurrent( maxAmmoCount );
-			m_wCurrentMagazineAmmoCount.SetOpacity( CURRENT_AMMO_OPACITY );
-		}
-		else
-		{
-			m_wMagazineNumber.SetColorInt( CURRENT_AMMO_TEXT );
-			m_wMagazineNumber.SetOpacity( 1 );
-			
-			m_wCurrentMagazineAmmoCount.SetColorInt( CURRENT_AMMO_MAGAZINE );
-			m_wCurrentMagazineAmmoCount.SetOpacity( CURRENT_AMMO_OPACITY );
-		}
+		if (magazineCount > 0 && maxAmmoCount > 0)
+			m_wCurrentMagazineAmmoCount.SetMaskProgress(Math.InverseLerp(0, maxAmmoCount, currentAmmoCount));
+
+		m_wMagazineNumber.SetVisible(magazineCount > 0);
+
+		if (weaponMuzzleComp.IsInherited(MuzzleInMagComponent))
+			m_wCurrentMagazine.SetVisible(weaponMuzzleComp.IsCurrentBarrelChambered());
+		else		
+			m_wCurrentMagazine.SetVisible(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1030,6 +1085,9 @@ class SCR_InventorySlotUI : ScriptedWidgetComponent
 	{
 		return (m_iStackNumber > 1);
 	}
+
+	//------------------------------------------------------------------------------------------------		
+	void CheckCompatibility(SCR_InventorySlotUI slot);
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_InventorySlotUI( InventoryItemComponent pComponent = null, SCR_InventoryStorageBaseUI pStorageUI = null, bool bVisible = true, int iSlotIndex = -1, SCR_ItemAttributeCollection pAttributes = null )

@@ -30,7 +30,7 @@ class SCR_AIDropWeapon: AITaskScripted
 		if (!m_Controlled || !m_WpnManager || !m_Controller || !m_Inventory)
 			return NodeError(this, owner, "Missing components.");
 			
-		WeaponSlotComponent slot = WeaponSlotComponent.Cast(m_WpnManager.GetCurrentSlot());
+		WeaponSlotComponent slot = m_WpnManager.GetCurrentSlot();
 		if (!slot)
 			return ENodeResult.FAIL;
 		IEntity weaponEntity = slot.GetWeaponEntity();

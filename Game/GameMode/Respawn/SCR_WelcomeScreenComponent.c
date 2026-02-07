@@ -1046,7 +1046,7 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 		{
 			factionCount--;
 			Color factionColor = m_SortedFactions[i].GetFactionColor();
-			FillFactionWidget(SCR_Faction.Cast(m_SortedFactions[i]), blueforContent, factionColor);
+			FillFactionWidget(m_SortedFactions[i], blueforContent, factionColor);
 		}
 
 		RichTextWidget bottomTitleText = RichTextWidget.Cast(m_wFactionContentWidget.FindAnyWidget("BottomTitleText"));
@@ -1066,6 +1066,9 @@ class SCR_WelcomeScreenFactionContent : SCR_WelcomeScreenBaseContent
 	//! \param[in] color
 	protected void FillFactionWidget(notnull SCR_Faction faction, notnull Widget content, Color color)
 	{
+		if (!faction.IsPlayable() && !faction.IsShownInWelcomeScreenIfNonPlayable())
+			return;
+		
 		Widget factionWidget = GetGame().GetWorkspace().CreateWidgets(m_sFactionLayout, content);
 		if (!factionWidget)
 			return;

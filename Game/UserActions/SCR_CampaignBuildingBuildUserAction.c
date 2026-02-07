@@ -70,7 +70,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		{
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
 			int itemActionId = pAnimationComponent.BindCommand("CMD_Item_Action");
-			CharacterCommandHandlerComponent cmdHandler = CharacterCommandHandlerComponent.Cast(pAnimationComponent.GetCommandHandler());
+			CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
 			if (cmdHandler)
 				cmdHandler.FinishItemUse();
 		}
@@ -89,7 +89,7 @@ class SCR_CampaignBuildingBuildUserAction : SCR_ScriptedUserAction
 		if (charController)
 		{
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
-			CharacterCommandHandlerComponent cmdHandler = CharacterCommandHandlerComponent.Cast(pAnimationComponent.GetCommandHandler());
+			CharacterCommandHandlerComponent cmdHandler = pAnimationComponent.GetCommandHandler();
 			cmdHandler.FinishItemUse();
 		}
 	}

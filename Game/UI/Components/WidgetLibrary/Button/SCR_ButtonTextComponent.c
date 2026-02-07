@@ -31,12 +31,12 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void SetToggled(bool toggled, bool animate = true, bool invokeChange = true)
+	override void SetToggled(bool toggled, bool animate = true, bool invokeChange = true, bool instant = false)
 	{
 		if (!m_bCanBeToggled)
 			return;
 		
-		super.SetToggled(toggled, animate, invokeChange);
+		super.SetToggled(toggled, animate, invokeChange, instant);
 		ColorizeText(animate);
 	}
 	

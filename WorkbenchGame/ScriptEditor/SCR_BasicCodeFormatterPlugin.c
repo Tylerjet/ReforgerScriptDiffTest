@@ -94,8 +94,6 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	[Attribute(defvalue: DEFAULT_DIFF_CMD, desc: "The command line used to generate the diff file", category: "Advanced")]
 	protected string m_sDiffCommand;
 
-	protected ScriptEditor m_ScriptEditor;
-
 	protected ref array<ref array<string>> m_aGeneralFormatting_Start;
 	protected ref array<ref array<string>> m_aGeneralFormatting_Middle;
 	protected ref array<ref array<string>> m_aGeneralFormatting_End;
@@ -130,7 +128,7 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected static const string STATIC_PREFIX = "s_";
 
 	// "varName' '= 42", "varName, otherVarName", "varName= 42", "varName;" - tabs are replaced by spaces in HasBadVariableNaming
-	protected static const ref array<string> VARIABLE_NAME_ENDING = { SPACE, ",", "=", ";" }; // technically, "everything but [a-zA-Z0-9_] and []"
+	protected static const ref array<string> VARIABLE_NAME_ENDING = { SPACE, ",", "=", ";", "/" }; // technically, "everything but [a-zA-Z0-9_] and []"
 
 	protected static const string METHOD_SEPARATOR = TWO_SLASHES + "------------------------------------------------------------------------------------------------";
 	protected static const string DIFF_FILENAME = "tempDiffFile.txt";
@@ -186,8 +184,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//! Required initialisation (prefixes filter)
 	protected void Initialise()
 	{
-		m_ScriptEditor = Workbench.GetModule(ScriptEditor);
-		if (!m_ScriptEditor)
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+		if (!scriptEditor)
 		{
 			Print("Script Editor API is not available", LogLevel.ERROR);
 			return;
@@ -261,18 +259,26 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 				"comited",			// committed
 				"comitted",			// committed
 				"commited",			// committed
+				"dammage",			// damage
+				"dammages",			// damages
 				"hitzone",			// hit zone
 				"hitzones",			// hit zones
 				"informations",		// information (uncountable)
 				"inherented",		// inherited
 				"inherenting",		// inheriting
+				"inherents",		// inherits
 				"lenght",			// length
 				"lenghts",			// lengths
 				"overidden",		// overridden
 				"overiden",			// overridden
 				"overriden",		// overridden
 				"plazer",			// player (QWERTZ)
+				"recieve",			// receive
+				"reciever",			// receiver
+				"recievers",		// receivers
+				"recieves",			// receives
 				"solider",			// soldier
+				"soliders",			// soldiers
 			};
 		}
 		else
@@ -300,7 +306,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected void RunCurrentFile()
 	{
 		string currentFile;
-		m_ScriptEditor.GetCurrentFile(currentFile);
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+		scriptEditor.GetCurrentFile(currentFile);
 		SCR_BasicCodeFormatterPluginFileReport report = ProcessFile(currentFile, false);
 		if (report)
 			PrintReport(report, m_bLogFixes, m_bReportFindings); // always print current file's report
@@ -373,7 +380,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	protected array<ref SCR_BasicCodeFormatterPluginFileReport> ProcessFiles(array<string> relativeFilePaths, bool useFileIO)
 	{
 		string currentFile;
-		m_ScriptEditor.GetCurrentFile(currentFile);
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+		scriptEditor.GetCurrentFile(currentFile);
 
 		SCR_BasicCodeFormatterPluginFileReport report;
 		array<ref SCR_BasicCodeFormatterPluginFileReport> result = {};
@@ -453,6 +461,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			Print("Skipping " + relativeFilePath, LogLevel.NORMAL);
 		}
 
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+
 		int linesCount = lines.Count(); // get array count instead of incrementing a variable
 		report.m_iLinesTotal = linesCount;
 
@@ -475,7 +485,6 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			string indentation;
 			GetIndentAndLineContentAsPieces(fullLine, indentation, pieces);
 			int piecesCount = pieces.Count();
-			string lastPiece;
 
 			if (formatThisLine)
 			{
@@ -645,8 +654,8 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			}
 			else
 			{
-				if (m_ScriptEditor.SetOpenedResource(relativeFilePath))		// forces the edited file to be focused
-					m_ScriptEditor.SetLineText(finalLine, lineNumber);		// directly use Script Editor to avoid going through lines twice
+				if (scriptEditor.SetOpenedResource(relativeFilePath))		// forces the edited file to be focused
+					scriptEditor.SetLineText(finalLine, lineNumber);		// directly use Script Editor to avoid going through lines twice
 			}
 		}
 		/*
@@ -693,14 +702,15 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 
 		// open file in Script Editor otherwise
 		array<string> result = {};
-		m_ScriptEditor.SetOpenedResource(relativeFilePath); // open tab
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+		scriptEditor.SetOpenedResource(relativeFilePath); // open tab
 
-		for (int lineNumber, linesCount = m_ScriptEditor.GetLinesCount(); lineNumber < linesCount; lineNumber++)
+		for (int lineNumber, linesCount = scriptEditor.GetLinesCount(); lineNumber < linesCount; lineNumber++)
 		{
 			string line;
 			// forces the read file to be focused - HEAVY on performance (e.g from 100 to 900ms) - use only for breakpoint debug
-			// if (m_ScriptEditor.SetOpenedResource(relativeFilePath))
-				m_ScriptEditor.GetLineText(line, lineNumber);
+			// if (scriptEditor.SetOpenedResource(relativeFilePath))
+				scriptEditor.GetLineText(line, lineNumber);
 
 			result.Insert(line);
 		}
@@ -722,9 +732,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			if (report.m_iLinesEdited > 0)
 				reportArray.Insert(string.Format("%1 lines changed", report.m_iLinesEdited));
 			if (!report.m_aTrimmings.IsEmpty())
-				reportArray.Insert(report.m_aTrimmings.Count().ToString() + "× line trimming"); // at line(s) " + JoinLineNumbers(report.m_aTrimmings));
+				reportArray.Insert(report.m_aTrimmings.Count().ToString() + " line trimmings"); // at line(s) " + JoinLineNumbers(report.m_aTrimmings));
 			if (!report.m_aFixedIndentations.IsEmpty())
-				reportArray.Insert(report.m_aFixedIndentations.Count().ToString() + "× indent fix(es) at line(s) " + JoinLineNumbers(report.m_aFixedIndentations));
+				reportArray.Insert(report.m_aFixedIndentations.Count().ToString() + "× indent fixes at lines " + JoinLineNumbers(report.m_aFixedIndentations));
 			if (report.m_iGeneralFormattingTotal > 0)
 				reportArray.Insert(string.Format("%1 formattings", report.m_iGeneralFormattingTotal));
 			if (report.m_iEndSpacesRemovedTotal > 0)
@@ -1084,19 +1094,22 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 //	//------------------------------------------------------------------------------------------------
 //	protected void RemoveEmptyLinesInCurrentFile()
 //	{
+//		ScriptEditor scriptEditor = Workbench.GetModule(scriptEditor);
+//
 //		// remove double empty lines
 //		int actualLine;
 //		bool isCurrentLineEmpty;
 //		bool wasPreviousLineEmpty;
-//		for (int i, cnt = m_ScriptEditor.GetLinesCount(); i < cnt; i++)
+//		for (int i, cnt = scriptEditor.GetLinesCount(); i < cnt; i++)
 //		{
-//			m_ScriptEditor.GetLineText(fullLine, i);
+//			scriptEditor.GetLineText(fullLine, i);
 //			isCurrentLineEmpty = !fullLine; // !IsEmpty for perf
 //
 //			if (!isCurrentLineEmpty || !wasPreviousLineEmpty)
 //			{
 //				if (i != actualLine)
-//					m_ScriptEditor.SetLineText(fullLine, actualLine);
+//					scriptEditor.SetLineText(fullLine, actualLine);
+//
 //				actualLine++;
 //			}
 //
@@ -1106,26 +1119,26 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 //		// Print("last line with actual content = " + actualLine, LogLevel.NORMAL);
 //
 //		// delete trailing lines
-//		for (int cnt = m_ScriptEditor.GetLinesCount() - 1; actualLine <= cnt; cnt--)
+//		for (int cnt = scriptEditor.GetLinesCount() - 1; actualLine <= cnt; cnt--)
 //		{
-//			m_ScriptEditor.RemoveLine(cnt);
+//			scriptEditor.RemoveLine(cnt);
 //		}
 //
 //		// remove top empty lines
-//		m_ScriptEditor.GetLineText(fullLine, 0);
+//		scriptEditor.GetLineText(fullLine, 0);
 //		for (int i = 0; i < 50; i++)
 //		{
 //			if (fullLine) // !IsEmpty for perf
 //				break;
 //
-//			m_ScriptEditor.RemoveLine(0);
-//			m_ScriptEditor.GetLineText(fullLine, 0);
+//			scriptEditor.RemoveLine(0);
+//			scriptEditor.GetLineText(fullLine, 0);
 //		}
 //
 //		// remove bottom empty lines
 //		for (int i; i < 500; i++)
 //		{
-//			m_ScriptEditor.RemoveLine(actualLine);
+//			scriptEditor.RemoveLine(actualLine);
 //		}
 //	}
 
@@ -1134,9 +1147,10 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 	//! \return true if an empty line has been added, false otherwise
 	protected bool AddFinalLineReturnToCurrentFile()
 	{
-		int lastLineNumber = m_ScriptEditor.GetLinesCount() - 1;
+		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);
+		int lastLineNumber = scriptEditor.GetLinesCount() - 1;
 		string fullLine;
-		m_ScriptEditor.GetLineText(fullLine, lastLineNumber);
+		scriptEditor.GetLineText(fullLine, lastLineNumber);
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(fullLine))
 			return false;
 
@@ -1144,9 +1158,9 @@ class SCR_BasicCodeFormatterPlugin : WorkbenchPlugin
 			return true;
 
 		// haxx
-		m_ScriptEditor.InsertLine(string.Empty, lastLineNumber);
-		m_ScriptEditor.SetLineText(fullLine, lastLineNumber);
-		m_ScriptEditor.SetLineText(string.Empty, lastLineNumber + 1);
+		scriptEditor.InsertLine(string.Empty, lastLineNumber);
+		scriptEditor.SetLineText(fullLine, lastLineNumber);
+		scriptEditor.SetLineText(string.Empty, lastLineNumber + 1);
 		return true;
 	}
 

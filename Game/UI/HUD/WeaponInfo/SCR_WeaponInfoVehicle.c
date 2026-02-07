@@ -81,11 +81,11 @@ class SCR_WeaponInfoVehicle : SCR_WeaponInfo
 				rldProgress = Math.Clamp((rldDuration - rldTime) / rldDuration, 0, 1);
 		}
 		
-		m_Widgets.m_ReloadOutline.SetMaskProgress(rldProgress);
-		m_Widgets.m_ReloadOutline.SetVisible(rldProgress > 0);
+		m_Widgets.m_wReloadOutline.SetMaskProgress(rldProgress);
+		m_Widgets.m_wReloadOutline.SetVisible(rldProgress > 0);
 		
-		m_Widgets.m_ReloadBackground.SetMaskProgress(rldProgress);
-		m_Widgets.m_ReloadBackground.SetVisible(rldProgress > 0);
+		m_Widgets.m_wReloadBackground.SetMaskProgress(rldProgress);
+		m_Widgets.m_wReloadBackground.SetVisible(rldProgress > 0);
 	}	
 	
 	//------------------------------------------------------------------------------------------------

@@ -12,8 +12,6 @@ class MainMenuUI : ChimeraMenuBase
 	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
 	protected bool m_bFirstLoad;
 
-
-	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
 	{
@@ -46,9 +44,15 @@ class MainMenuUI : ChimeraMenuBase
 		}
 
 		// Subscribe to buttons
-		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent("Back", footer);
+		SCR_InputButtonComponent back = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, footer);
 		if (back)
-			back.m_OnActivated.Insert(OnBack);
+		{
+			// If on console, don't show the 'Exit Game' button
+			if (GetGame().IsPlatformGameConsole())
+				back.SetVisible(false, false);
+			else
+				back.m_OnActivated.Insert(OnBack);			
+		}
 
 		// Services Status button
 		SCR_InputButtonComponent servicesStatus = SCR_InputButtonComponent.GetInputButtonComponent("ServicesStatus", footer);
@@ -64,7 +68,7 @@ class MainMenuUI : ChimeraMenuBase
 			credits.m_OnActivated.Insert(OnCredits);
 
 		#ifdef WORKBENCH
-		GetGame().GetInputManager().AddActionListener("MenuBackWB", EActionTrigger.DOWN, OnBack);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, OnBack);
 		#endif
 
 		// Get the entries for the first time

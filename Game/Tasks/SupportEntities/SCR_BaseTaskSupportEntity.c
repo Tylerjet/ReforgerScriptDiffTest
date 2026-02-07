@@ -42,7 +42,7 @@ class SCR_BaseTaskSupportEntity : GenericEntity
 		if (!factionManager)
 			return;
 		
-		SCR_BaseTask task = SCR_BaseTask.Cast(GetTaskManager().GetTask(taskID));
+		SCR_BaseTask task = GetTaskManager().GetTask(taskID);
 		if (!task)
 			return;
 		
@@ -55,7 +55,7 @@ class SCR_BaseTaskSupportEntity : GenericEntity
 		if (!GetTaskManager())
 			return null;
 		
-		return SCR_BaseTask.Cast(GetTaskManager().SpawnTask(GetResourceName())); // Also spawns task on clients
+		return GetTaskManager().SpawnTask(GetResourceName()); // Also spawns task on clients
 	}
 	
 	//------------------------------------------------------------------------------------------------

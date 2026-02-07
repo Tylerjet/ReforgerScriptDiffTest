@@ -24,9 +24,7 @@ class SightsComponent : BaseSightsComponent
 	//------------------------------------------------------------------------------------------------
 	//! Applies the given recoil angles to the camera transform according to the type of sight
 	//! By default this method is empty. It should be overridden by each sight to make the appropriate adjustments
-	void ApplyRecoilToCamera(inout vector pOutCameraTransform[4], vector aimModAngles)
-	{
-	}
+	void ApplyRecoilToCamera(inout vector pOutCameraTransform[4], vector aimModAngles);
 	
 	//------------------------------------------------------------------------------------------------
 	bool CanFreelook()

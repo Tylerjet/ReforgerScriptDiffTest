@@ -6,6 +6,9 @@ class SCR_DamageManagerComponentClass : DamageManagerComponentClass
 	[Attribute()]
 	protected ref SCR_SecondaryExplosions m_SecondaryFires;
 
+	[Attribute(category: "Repairs")]
+	protected ref SCR_RepairConfig m_RepairConfig;
+
 	//------------------------------------------------------------------------------------------------
 	SCR_SecondaryExplosions GetSecondaryExplosions()
 	{
@@ -16,6 +19,22 @@ class SCR_DamageManagerComponentClass : DamageManagerComponentClass
 	SCR_SecondaryExplosions GetSecondaryFires()
 	{
 		return m_SecondaryFires;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Retreives burn state for provided health 
+	//! \param[in] health percenatage of total health (0.0 to 1.0)
+	//! \param[out] state output that will contain state that coresponds to the provided health or SCR_EBurningState.NONE if there is no such state 
+	//! \return true if coresponding state was found
+	bool GetBurnStateForHealth(float health, out SCR_EBurningState state)
+	{
+		if (!m_RepairConfig)
+		{
+			state = SCR_EBurningState.NONE;
+			return false;
+		}
+
+		return m_RepairConfig.GetBurnStateForHealth(health, state);
 	}
 }
 
@@ -28,49 +47,51 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	static const int MAX_DESTRUCTION_RESPONSE_INDEX = 10;
 	static const string MAX_DESTRUCTION_RESPONSE_INDEX_NAME = "HugeDestructible";
 	private static int s_iFirstFreeDamageManagerData = -1;
-	private static ref array<ref SCR_DamageManagerData> s_aDamageManagerData = {};
+	protected static ref array<ref SCR_DamageManagerData> s_aDamageManagerData = {};
 	
+	static const ref array<EDamageType> HEALING_DAMAGE_TYPES = {EDamageType.HEALING, EDamageType.REGENERATION};
+
 	// TODO@FAC: do remove this static const when this is added as a Physics.c const
 	static const float KM_PER_H_TO_M_PER_S = 0.277777;
 
 	protected int m_iTimetickInstigator = System.GetTickCount();
 	protected int m_iTimeThresholdInstigatorReplacement = 180000; //180000 miliseconds = 3 minutes
 	protected int m_iPlayerId = 0;
-	
-	private int m_iDamageManagerDataIndex = -1;
+
+	protected int m_iDamageManagerDataIndex = -1;
 	protected bool m_bRplReady;
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Check if replication loading is completed. Important for join in progress and when streaming entities in.
 	bool IsRplReady()
 	{
 		return m_bRplReady;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected event bool OnRplSave(ScriptBitWriter writer)
 	{
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
 		SCR_FlammableHitZone flammableHitZone;
-		foreach (HitZone hitZone: hitZones)
+		foreach (HitZone hitZone : hitZones)
 		{
 			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
 			if (flammableHitZone)
 				writer.WriteInt(flammableHitZone.GetFireState());
 		}
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override protected event bool OnRplLoad(ScriptBitReader reader)
 	{
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
 		SCR_FlammableHitZone flammableHitZone;
-		EFireState fireState;
-		foreach (HitZone hitZone: hitZones)
+		SCR_EBurningState fireState;
+		foreach (HitZone hitZone : hitZones)
 		{
 			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
 			if (flammableHitZone)
@@ -79,12 +100,12 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 				flammableHitZone.SetFireState(fireState);
 			}
 		}
-		
+
 		m_bRplReady = true;
-		
+
 		return true;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*! Get the HitZone that matches the provided name. Case sensitivity is optional.
 	\param hitZoneName String name of hitzone
@@ -95,27 +116,57 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	{
 		if (hitZoneName.IsEmpty())
 			return null;
-		
+
 		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
-		foreach (HitZone hitZone: hitZones)
+		GetAllHitZonesInHierarchy(hitZones);
+		foreach (HitZone hitZone : hitZones)
 		{
 			if (hitZone && hitZoneName.Compare(hitZone.GetName(), caseSensitive) == 0)
 				return hitZone;
 		}
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	//! Return hitzones with colliders assigned
+	//! Return hit zones with colliders assigned
 	void GetPhysicalHitZones(out notnull array<HitZone> physicalHitZones)
 	{
 		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
-		foreach (HitZone hitZone: hitZones)
+		GetAllHitZonesInHierarchy(hitZones);
+
+		HitZoneContainerComponent container;
+		foreach (HitZone hitZone : hitZones)
 		{
-			if (hitZone && hitZone.HasColliderNodes())
+			if (hitZone.HasColliderNodes())
+			{
 				physicalHitZones.Insert(hitZone);
+				continue;
+			}
+
+			// Ignore own default hit zone
+			container = hitZone.GetHitZoneContainer();
+			if (container == this)
+				continue;
+
+			// Allow subordinate default hit zone
+			if (container.GetDefaultHitZone() == hitZone)
+				physicalHitZones.Insert(hitZone);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Return hit zones with passive regeneration enabled
+	void GetRegeneratingHitZones(out notnull array<SCR_RegeneratingHitZone> regeneratingHitZones)
+	{
+		array<HitZone> hitZones = {};
+		GetAllHitZonesInHierarchy(hitZones);
+
+		HitZoneContainerComponent container;
+		foreach (HitZone hitZone : hitZones)
+		{
+			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
+			if (regenHitZone)
+				regeneratingHitZones.Insert(regenHitZone);
 		}
 	}
 	
@@ -126,7 +177,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	\param fireRate Rate of fire to be applied
 	*/
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDo_SetFireState(int hitZoneIndex, EFireState fireState)
+	void RpcDo_SetFireState(int hitZoneIndex, SCR_EBurningState fireState)
 	{
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
@@ -134,7 +185,14 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (flammableHitZone)
 			flammableHitZone.SetFireState(fireState);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! No contacts for destroyed entities
+	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
+	{
+		return GetState() != EDamageState.DESTROYED;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	float CalculateMomentum(Contact contact, float ownerMass, float otherMass)
 	{
@@ -142,14 +200,14 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		float momentumBefore = ownerMass * contact.VelocityBefore1.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
 		float momentumAfter = ownerMass * contact.VelocityAfter1.Length() * dotMultiplier;
 		float momentumA = Math.AbsFloat(momentumBefore - momentumAfter);
-		
+
 		dotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
 		momentumBefore = otherMass * contact.VelocityBefore2.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
 		momentumAfter = otherMass * contact.VelocityAfter2.Length() * dotMultiplier;
 		float momentumB = Math.AbsFloat(momentumBefore - momentumAfter);
 		return momentumA + momentumB;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	// This method uses similar logic to the logic of DamageSurroundingHitzones, but not the same.
 	int GetSurroundingHitzones(vector origin, Physics physics, float maxDistance, out array<HitZone> outHitzones)
@@ -157,11 +215,11 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		array<HitZone> hitzones = {};
 		outHitzones = {};
 		int hitzonesCount;
-		
-		int count = GetAllHitZones(hitzones);
+
+		int count = GetAllHitZonesInHierarchy(hitzones);
 		float maxDistanceSq = maxDistance * maxDistance; //SQUARE it for faster calculations of distance
 		array<string> hitzoneColliderNames = {};
-		
+
 		float minDistance, currentDistance;
 		int colliderCount, geomIndex;
 		vector mat[4];
@@ -169,39 +227,39 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		{
 			minDistance = float.MAX;
 			colliderCount = hitzones[i].GetAllColliderNames(hitzoneColliderNames); //The array is cleared inside the GetAllColliderNames method
-			
+
 			if (colliderCount == 0)
 				continue;
-			
+
 			for (int y = colliderCount - 1; y >= 0; y--)
 			{
 				geomIndex = physics.GetGeom(hitzoneColliderNames[y]);
 				if (geomIndex == -1)
 					continue;
-				
+
 				physics.GetGeomWorldTransform(geomIndex, mat);
 				currentDistance = vector.DistanceSq(origin, mat[3]);
-				
+
 				if (currentDistance < minDistance)
 					minDistance = currentDistance;
 			}
-			
+
 			if (minDistance > maxDistanceSq)
 				continue;
-			
+
 			minDistance = Math.Sqrt(minDistance);
-			
+
 			hitzonesCount++;
 			outHitzones.Insert(hitzones[i]);
 		}
-		
+
 		return hitzonesCount;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	\ param damageType determinese which damage multipliers are taken into account
-	//! Made specifically for cases where hitzones are not parented 
+	//! Made specifically for cases where hitzones are not parented
 	*/
 	float GetMinDestroyDamage(EDamageType damageType, array<HitZone> hitzones, int count)
 	{
@@ -210,26 +268,26 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		HitZone defaultHitzone = GetDefaultHitZone();
 		if (!IsDamageHandlingEnabled() || defaultHitzone.GetDamageMultiplier(damageType) * defaultHitzone.GetBaseDamageMultiplier() == 0)
 			return -1; // invalid damage value, because this vehicle cannot be destroyed
-		
+
 		for (int i = 0; i < count; i++)
 		{
 			damageMultiplier = hitzones[i].GetDamageMultiplier(damageType) * hitzones[i].GetBaseDamageMultiplier();
 			if (damageMultiplier != 0)
 				damage += (hitzones[i].GetMaxHealth() + hitzones[i].GetDamageReduction()) / damageMultiplier;
 		}
-		
+
 		return damage;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	private notnull SCR_DamageManagerData GetScriptedDamageManagerData()
+	protected notnull SCR_DamageManagerData GetScriptedDamageManagerData()
 	{
 		if (m_iDamageManagerDataIndex == -1)
 			m_iDamageManagerDataIndex = AllocateScriptedDamageManagerData();
-		
+
 		return s_aDamageManagerData[m_iDamageManagerDataIndex];
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private int AllocateScriptedDamageManagerData()
 	{
@@ -244,7 +302,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return returnIndex;
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	private void FreeScriptedDamageManagerData(int index)
 	{
@@ -252,41 +310,41 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		s_aDamageManagerData[index].m_iNextFreeIndex = s_iFirstFreeDamageManagerData;
 		s_iFirstFreeDamageManagerData = index;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnDamage()
 	{
 		return GetScriptedDamageManagerData().GetOnDamage();
-	}	
+	}
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnDamageOverTimeAdded()
 	{
 		return GetScriptedDamageManagerData().GetOnDamageOverTimeAdded();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnDamageOverTimeRemoved()
 	{
 		return GetScriptedDamageManagerData().GetOnDamageOverTimeRemoved();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnDamageStateChanged()
 	{
 		return GetScriptedDamageManagerData().GetOnDamageStateChanged();
 	}
-		
+
 	//------------------------------------------------------------------------------------------------
 	override protected void OnDamage(notnull BaseDamageContext damageContext)
 	{
 		if (!s_aDamageManagerData.IsIndexValid(m_iDamageManagerDataIndex))
 			return;
-		
+
 		ScriptInvoker invoker = s_aDamageManagerData[m_iDamageManagerDataIndex].GetOnDamage(false);
 		if (invoker)
 			invoker.Invoke(damageContext);
-	}			
-	
+	}
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Called whenever an instigator is going to be set.
@@ -298,47 +356,47 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	{
 		//If time difference since last instigator set is small, this kill was a suicide, and the previous instigator was an enemy, do not override
 		int currentTimeTick = System.GetTickCount();
-		
+
 		if (m_iPlayerId == 0)
 		{
 			m_iPlayerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(GetOwner());
 		}
-		
+
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (m_iPlayerId <= 0 || !factionManager)
 		{
 			m_iTimetickInstigator = currentTimeTick;
 			return true;
 		}
-		
+
 		int newId = newInstigator.GetInstigatorPlayerID();
 		int oldId = currentInstigator.GetInstigatorPlayerID();
-		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(newId));
+
+		Faction factionKiller = factionManager.GetPlayerFaction(newId);
 		if (!factionKiller)
 		{
 			m_iTimetickInstigator = currentTimeTick;
 			return true;
 		}
-		
-		Faction factionPrevInstigator = Faction.Cast(factionManager.GetPlayerFaction(oldId));
+
+		Faction factionPrevInstigator = factionManager.GetPlayerFaction(oldId);
 		if (!factionPrevInstigator)
 		{
 			m_iTimetickInstigator = currentTimeTick;
 			return true;
 		}
-		Faction factionPlayer = Faction.Cast(factionManager.GetPlayerFaction(m_iPlayerId));
+		Faction factionPlayer = factionManager.GetPlayerFaction(m_iPlayerId);
 		if (!factionPlayer)
 		{
 			m_iTimetickInstigator = currentTimeTick;
 			return true;
 		}
-		
+
 		if (newId == m_iPlayerId && (currentTimeTick - m_iTimetickInstigator) < m_iTimeThresholdInstigatorReplacement && !factionPrevInstigator.IsFactionFriendly(factionPlayer))
 		{
 			return false;
 		}
-		
+
 		m_iTimetickInstigator = currentTimeTick;
 		return true;
 	}
@@ -348,7 +406,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (m_iDamageManagerDataIndex != -1)
 			FreeScriptedDamageManagerData(m_iDamageManagerDataIndex);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get damage manager from given owner
@@ -381,7 +439,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			groupHitZones.Clear();
 
 		array<HitZone> allHitZones = {};
-		GetAllHitZones(allHitZones);
+		GetAllHitZonesInHierarchy(allHitZones);
 		SCR_HitZone scrHitZone;
 
 		foreach (HitZone hitzone : allHitZones)
@@ -409,7 +467,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return 0;
 
 		array<HitZone> allHitZones = {};
-		GetAllHitZones(allHitZones);
+		GetAllHitZonesInHierarchy(allHitZones);
 		SCR_HitZone scrHitZone;
 
 		foreach (HitZone hitzone : allHitZones)
@@ -458,20 +516,20 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return;
 
 		vector hitPosDirNorm[3];
-		
+
 		SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.TRUE, hitZone.GetMaxHealth(), hitPosDirNorm, owner, hitZone, instigator, null, -1, -1);
 		HandleDamage(damageContext);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Damage random physical hitzones up to damage amount
+	Damage random physical hit zones up to damage amount
 	\param damage Total damage to be applied
 	\param type Type of damage
 	\param instigator Entity that fired the projectile or otherwise caused the damage
-	\param onlyPhysical Whether only physical hitzones should be damaged
+	\param onlyPhysical Whether only physical hit zones should be damaged
 	\param outMat [hitPosition, hitDirection, hitNormal]
-	\param damageDefault Whether to damage default hitzone as well
+	\param damageDefault Whether to damage default hit zone as well
 	*/
 	void DamageRandomHitZones(float damage, EDamageType type, notnull Instigator instigator, bool onlyPhysical = true, vector outMat[3] = {}, bool damageDefault = false)
 	{
@@ -480,7 +538,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (onlyPhysical)
 			GetPhysicalHitZones(hitZones);
 		else
-			GetAllHitZones(hitZones);
+			GetAllHitZonesInHierarchy(hitZones);
 
 		if (!damageDefault)
 			hitZones.RemoveItem(GetDefaultHitZone());
@@ -505,30 +563,28 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 				continue;
 			}
 
-			// True damage ignores thresholds and reductions
-			if (type == EDamageType.TRUE)
-				hitZoneDamage = Math.Min(damage, hitZone.GetHealth());
-			else
-				hitZoneDamage = Math.Min(damage, hitZone.GetHealth() + hitZone.GetDamageReduction());
+			// Check actual damage that will be dealt
+			SCR_DamageContext hitZoneContext = new SCR_DamageContext(type, damage, outMat, damageManager.GetOwner(), hitZone, instigator, null, -1, -1);
+			hitZoneDamage = Math.Min(hitZone.ComputeEffectiveDamage(hitZoneContext, false), hitZone.GetHealth());
 
-			//damage is the remaining amount of damage to split between future hitzones
+			// Remove hit zones that cannot be damaged with this loop
+			if (hitZoneDamage <= 0)
+			{
+				hitZones.RemoveItem(hitZone);
+				continue;
+			}
+
+			//damage is the remaining amount of damage to split between future hit zones
 			damage -= hitZoneDamage;
 
-			if (hitZoneDamage <= 0)
-				continue;
-
-			SCR_DamageContext damageContext = new SCR_DamageContext(type, 0, outMat, GetOwner(), null, instigator, null, -1, -1);
-
-			damageContext.damageValue = hitZoneDamage;
-			damageContext.struckHitZone = hitZone;
-
-			damageManager.HandleDamage(damageContext);
+			damageManager.HandleDamage(hitZoneContext);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Return true if there is damage that can be repaired
-	bool CanBeHealed()
+	//! \param[in] ignoreHealingDOT If this is false the method will return that the entity can be healed also if the damageType is positive, such as HEALING
+	bool CanBeHealed(bool ignoreHealingDOT = true)
 	{
 		// Any damage to default hitzone
 		if (GetDefaultHitZone().GetHealthScaled() < 1)
@@ -537,16 +593,23 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		// Check if has damage over time
 		array<EDamageType> damageTypes = {};
 		SCR_Enum.GetEnumValues(EDamageType, damageTypes);
-
+		
 		foreach (EDamageType type : damageTypes)
 		{
+			if (!ignoreHealingDOT && HEALING_DAMAGE_TYPES.Contains(type))
+				continue;
+			
 			if (IsDamagedOverTime(type))
 				return true;
 		}
+		
+		// No need to check fire on characters
+		if (SCR_ChimeraCharacter.Cast(GetOwner()))
+			return false;
 
 		// Check if any hitzone is damaged
 		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
+		GetAllHitZonesInHierarchy(hitZones);
 		foreach (HitZone hitZone : hitZones)
 		{
 			if (hitZone && hitZone.GetHealthScaled() < 1)
@@ -554,7 +617,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 			// Flammable hitzone may be smoking
 			SCR_FlammableHitZone flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
-			if (flammableHitZone && flammableHitZone.GetFireState() != EFireState.NONE)
+			if (flammableHitZone && flammableHitZone.GetFireState() != SCR_EBurningState.NONE)
 				return true;
 		}
 
@@ -566,7 +629,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	void FullHeal(bool ignoreHealingDOT = true)
 	{
 		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
+		GetAllHitZonesInHierarchy(hitZones);
 
 		// Extinguish flammable hitzones
 		SCR_FlammableHitZone flammableHitZone;
@@ -626,6 +689,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		else // if in Parallel
 			healthToDistribute = HealHitZonesInParallel(healthToDistribute, maxHealThresholdScaled, targetHitZones);
 
+		ReduceSmoke();
 		return healthToDistribute;
 	}
 
@@ -707,6 +771,65 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Reduce smoke output based on the total health of hit zones
+	void ReduceSmoke()
+	{
+		if (IsOnFire())
+			return;
+
+		SCR_DamageManagerComponentClass prefabData = SCR_DamageManagerComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!prefabData)
+			return;
+
+		HitZone defaultHZ = GetDefaultHitZone();
+		if (!defaultHZ)
+			return;
+
+		array<HitZone> hitZones = {};
+		GetAllHitZones(hitZones);
+
+		float averageHP;
+		int numberOfValidHZ;
+		foreach (HitZone hz : hitZones)
+		{
+			if (hz == defaultHZ)
+				continue;
+
+			numberOfValidHZ++;
+			averageHP += hz.GetHealthScaled();
+		}
+
+		if (numberOfValidHZ > 0)
+		{
+			averageHP /= numberOfValidHZ;
+			if (averageHP > defaultHZ.GetHealthScaled())
+				averageHP = defaultHZ.GetHealthScaled();
+		}
+		else
+		{
+			averageHP = defaultHZ.GetHealthScaled();
+		}
+
+		SCR_EBurningState desiredState;
+		if (!prefabData.GetBurnStateForHealth(averageHP, desiredState))
+			return;
+
+		SCR_FlammableHitZone flammableHZ;
+		foreach (HitZone hz : hitZones)
+		{
+			flammableHZ = SCR_FlammableHitZone.Cast(hz);
+			if (!flammableHZ)
+				continue;
+
+			//make sure that we are not going to make it worse than it is now
+			if (flammableHZ.GetFireState() <= desiredState)
+				continue;
+
+			flammableHZ.SetFireState(desiredState);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Get all damage dealt to hitzones. Maxhealth minus current health is damage.
 	//! \param untilThresholdScaled When set damage until this scaled threshold is returned.
 	//! \param alternativeHitZones When filled, function will use these hitzones instead of the default, physicalHitZones
@@ -721,7 +844,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 		if (!hitZones)
 			return 0;
-		
+
 		float totalDamage, addedDamage;
 
 		foreach (HitZone hitZone : hitZones)
@@ -729,7 +852,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			//~ Ignore undamaged
 			if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
 				continue;
-			
+
 			addedDamage = (hitZone.GetMaxHealth() * untilThresholdScaled) - hitZone.GetHealth();
 			if (addedDamage > 0)
 				totalDamage += addedDamage;
@@ -763,7 +886,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 				totalHealthScaled += 1;
 				continue;
 			}
-				
+
 			totalHealthScaled += hitZone.GetHealthScaled();
 		}
 
@@ -796,15 +919,15 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			{
 				if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
 					returnValue = 1;
-				else 
+				else
 					returnValue = hitZone.GetHealthScaled();
-				
+
 				continue;
 			}
-			
+
 			if (hitZone.GetDamageState() == EDamageState.UNDAMAGED)
 				healthScaled = 1;
-			else 
+			else
 				healthScaled = hitZone.GetHealthScaled();
 
 			if ((getLowestHealth && returnValue > healthScaled) || (!getLowestHealth && returnValue < healthScaled))
@@ -813,7 +936,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 		return returnValue;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Determine secondary explosion prefab based on explosion value, type and resource type if defined
 	ResourceName GetSecondaryExplosion(float value, SCR_ESecondaryExplosionType explosionType, EResourceType resourceType = EResourceType.SUPPLIES, bool fire = false)
@@ -877,6 +1000,47 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return ResourceName.Empty;
 
 		return secondaries.GetFireParticles(value, explosionType, resourceType);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Determine if provided or any hit zone from this damage manager is on fire
+	//! \param[in] hitZone zone that will be checked if it is burning and if null then will check all hit zones
+	bool IsOnFire(HitZone hitZone = null)
+	{
+		if (!hitZone)
+			return IsOnFire(new array<HitZone>);
+		
+		SCR_FlammableHitZone flammableHZ = SCR_FlammableHitZone.Cast(hitZone);
+		if (!flammableHZ)
+			return false;
+
+		return flammableHZ.GetFireState() >= SCR_EBurningState.SMOKING_IGNITING;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Determine if any hit zone from this damage manager is on fire
+	//! \param[in] hitZones list of hit zones that should be checked and if empty then all hit zones are going to be checked
+	bool IsOnFire(notnull array<HitZone> hitZones)
+	{
+		if (hitZones.IsEmpty())
+		{
+			GetAllHitZones(hitZones);
+			if (hitZones.IsEmpty())
+				return false;
+		}
+
+		SCR_FlammableHitZone flammableHZ;
+		foreach (HitZone hz : hitZones)
+		{
+			flammableHZ = SCR_FlammableHitZone.Cast(hz);
+			if (!flammableHZ)
+				continue;
+
+			if (flammableHZ.GetFireState() >= SCR_EBurningState.SMOKING_IGNITING)
+				return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1012,12 +1176,15 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return vector.Zero;
 
 		array<HitZone> hitZones = {};
-		GetAllHitZones(hitZones);
+		GetAllHitZonesInHierarchy(hitZones);
 		SCR_DestructibleHitzone destructibleHitZone;
 		PointInfo explosionPoint;
 		vector position;
 		vector weighedAveragePosition;
+		vector averagePosition;
+		Physics physics = owner.GetPhysics();
 		float weight;
+		int validHitZones;
 
 		// Get weighed average position of fuel tanks if defined in their hitzones
 		foreach (HitZone hitZone : hitZones)
@@ -1026,27 +1193,33 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			if (!destructibleHitZone || !destructibleHitZone.Type().IsInherited(hitZoneType))
 				continue;
 
-			weight = destructibleHitZone.GetSecondaryExplosionScale();
-			if (weight < 0 || float.AlmostEqual(weight, 0))
-				continue;
-
 			explosionPoint = destructibleHitZone.GetSecondaryExplosionPoint();
 			if (!explosionPoint && destructibleHitZone != GetDefaultHitZone())
 				continue;
 
 			if (explosionPoint)
 				position = owner.CoordToLocal(explosionPoint.GetWorldTransformAxis(3));
-			else if (owner.GetPhysics())
-				position = owner.GetPhysics().GetCenterOfMass();
+			else if (physics)
+				position = physics.GetCenterOfMass();
+
+			validHitZones++;
+			averagePosition += position;
+			weight = destructibleHitZone.GetSecondaryExplosionScale();
+			if (weight < 0 || float.AlmostEqual(weight, 0))
+				continue;
 
 			weighedAveragePosition += position * weight;
 			totalWeight += weight;
 		}
 
-		if (totalWeight != 0)
-			weighedAveragePosition /= totalWeight;
+		if (totalWeight > 0)
+			return weighedAveragePosition / totalWeight;
+		else if (validHitZones > 0)
+			return averagePosition / validHitZones;
+		else if (physics)
+			return physics.GetCenterOfMass();
 
-		return weighedAveragePosition;
+		return vector.Zero;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1074,7 +1247,10 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	void UpdateFireParticles(vector position, out ParticleEffectEntity particles, SCR_ESecondaryExplosionScale state, SCR_ESecondaryExplosionType fireType, EResourceType resourceType = EResourceType.SUPPLIES)
 	{
 		if (particles)
-			particles.StopEmission();
+		{
+			SCR_ParticleHelper.StopParticleEmissionAndLights(particles);
+			particles = null;
+		}
 
 		SCR_SecondaryExplosion secondaryFire = GetSecondaryExplosionForScale(state, fireType, resourceType);
 		if (!secondaryFire)
@@ -1085,7 +1261,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			return;
 
 		ParticleEffectEntitySpawnParams params();
-		params.Parent = GetOwner();
+		params.FollowParent = GetOwner();
 		params.Transform[3] = position;
 		params.PlayOnSpawn = true;
 		params.DeleteWhenStopped = true;
@@ -1117,14 +1293,14 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	protected override void OnDamageStateChanged(EDamageState state)
 	{
 		super.OnDamageStateChanged(state);
-		
+
 		if (m_iDamageManagerDataIndex != -1)
 		{
 			ScriptInvoker invoker = s_aDamageManagerData[m_iDamageManagerDataIndex].GetOnDamageStateChanged(false);
 			if (invoker)
 				invoker.Invoke(state);
 		}
-		
+
 		// Only main hitzone can explode supplies
 		if (state == EDamageState.DESTROYED)
 		{
@@ -1141,14 +1317,14 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	override void OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
 	{
 		super.OnDamageOverTimeAdded(dType, dps, hz);
-		
+
 		if (m_iDamageManagerDataIndex != -1)
 		{
 			ScriptInvoker invoker = s_aDamageManagerData[m_iDamageManagerDataIndex].GetOnDamageOverTimeAdded(false);
 			if (invoker)
-				invoker.Invoke(dType,  dps,  hz);		
+				invoker.Invoke(dType, dps, hz);
 		}
-		
+
 		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (rpl && rpl.IsProxy())
 			return;
@@ -1164,20 +1340,42 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	override void OnDamageOverTimeRemoved(EDamageType dType, HitZone hz)
 	{
 		super.OnDamageOverTimeRemoved(dType, hz);
-		
+
 		if (m_iDamageManagerDataIndex != -1)
 		{
 			ScriptInvoker invoker = s_aDamageManagerData[m_iDamageManagerDataIndex].GetOnDamageOverTimeRemoved(false);
 			if (invoker)
 				invoker.Invoke(dType, hz);
 		}
-		
+
 		RplComponent rpl = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (rpl && rpl.IsProxy())
 			return;
 
 		if (dType == EDamageType.FIRE && !IsDamagedOverTime(dType))
 			DisconnectFromFireDamageSystem();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Called when this DamageManager is about to handle damage.
+	Any modifications done to the damageContext will persist for the rest of the damage handling process
+	return false if damage handling should proceed with the changes done to the DamageContext.
+	return true if damage should be discarded / was fully hijacked and should no longer be applied on this damage manager
+	(e.g.: damage was passed to another dmg manager, so we dont handle damage on this manager).
+	//! param[in] damageContext
+	*/
+	override bool HijackDamageHandling(notnull BaseDamageContext damageContext)
+	{
+		SCR_HitZone hitZone = SCR_HitZone.Cast(damageContext.struckHitZone);
+		if (hitZone)
+			hitZone.ApplyDamagePassRules(damageContext);
+
+		SCR_FlammableHitZone flammableHitZone = SCR_FlammableHitZone.Cast(damageContext.struckHitZone);
+		if (flammableHitZone && damageContext.damageType == EDamageType.INCENDIARY)
+			flammableHitZone.HandleIncendiaryDamage(damageContext);
+
+		return false;
 	}
 
 #ifdef WORKBENCH

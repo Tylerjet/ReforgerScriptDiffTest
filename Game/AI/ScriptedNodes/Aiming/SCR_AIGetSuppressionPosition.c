@@ -3,74 +3,100 @@ class SCR_AIGetSuppressionPosition: AITaskScripted
   	static const string PORT_DURATION = "DurationIn";
   	static const string PORT_SHOOT_START = "ShootStartIn";
 	static const string PORT_SHOOT_END = "ShootEndIn";
+	
 	static const string PORT_AIM_POSITION = "AimPositionOut";
-	static const string PORT_AIM_TIME = "AimTimeOut";
-	static const string PORT_RESET_TIME = "ResetTime";
-	static const string PORT_RESET_TIME_OUT = "ResetTimeOut";
+	static const string PORT_PROGRESS = "ProgressOut";
+	static const string PORT_IDLE_TIME = "IdleTimeSOut";
 	
-	[Attribute("50", UIWidgets.EditBox, desc: "Number of LERP steps" )]
-	private int m_fSteps;
+	protected float m_fFireDuration;
+	protected vector m_vStartPos, m_vEndPos;
 	
-	private float m_fIterativeStep,m_fCurrentTime,m_fDuration;
+	protected SCR_AICombatComponent m_CombatComponent;
+		
+#ifdef WORKBENCH
+	//Diagnostic visualization
+	ref array<ref Shape> m_aDbgShapes = {};
+#endif
 	
-	private vector m_vStart,m_vEnd,m_vDirection;
+	//------------------------------------------------------------------------------------------------
+	override void OnInit(AIAgent owner)
+	{
+		m_CombatComponent = SCR_AICombatComponent.Cast(owner.FindComponent(SCR_AICombatComponent));
+	}
+
+	//------------------------------------------------------------------------------------------------------------------------------------
+	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
+    {
+		float duration;
+		vector startPos, endPos;
+		
+		if (!GetVariableIn(PORT_DURATION, duration) || !GetVariableIn(PORT_SHOOT_START, startPos) || !GetVariableIn(PORT_SHOOT_END, endPos))
+			return ENodeResult.FAIL;
+						
+		// Start of new line
+		if (m_vStartPos != startPos || m_vEndPos != endPos)
+		{
+			m_vStartPos = startPos;
+			m_vEndPos = endPos;
+			m_fFireDuration = 0;
+		}
+		// Continuation of same line
+		else
+			m_fFireDuration += dt;
+		
+		float progress = Math.Clamp(m_fFireDuration / duration, 0, 1);
+		vector aimPosition = startPos + ((endPos - startPos) * progress);
+		
+		SetVariableOut(PORT_AIM_POSITION, aimPosition);
+		SetVariableOut(PORT_PROGRESS, progress);
+		
+#ifdef WORKBENCH
+		m_aDbgShapes.Clear();
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SUPPRESS_DEBUG))
+		{
+			m_aDbgShapes.Insert(Shape.CreateSphere(Color.DARK_GREEN, ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE, aimPosition, 0.1));
+			m_aDbgShapes.Insert(Shape.CreateSphere(Color.DARK_RED, ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE, m_vStartPos, 0.1));
+			m_aDbgShapes.Insert(Shape.CreateSphere(Color.DARK_YELLOW, ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE, m_vEndPos, 0.1));
+			m_aDbgShapes.Insert(Shape.CreateArrow(m_vStartPos, m_vEndPos, 1, Color.DARK_CYAN, ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE));
+		}
+#endif
+		
+		return ENodeResult.SUCCESS;
+    }
 	
+	//------------------------------------------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_DURATION,
 		PORT_SHOOT_START,
-		PORT_SHOOT_END,
-		PORT_RESET_TIME
+		PORT_SHOOT_END
 	};
+	
+	//------------------------------------------------------------------------------------------------------------------------------------
+	protected static ref TStringArray s_aVarsOut = {
+		PORT_AIM_POSITION,
+		PORT_PROGRESS,
+		PORT_IDLE_TIME
+	};
+	
+	//------------------------------------------------------------------------------------------------------------------------------------
 	override array<string> GetVariablesIn()
     {
         return s_aVarsIn;
     }
-    
-	protected static ref TStringArray s_aVarsOut = {
-            PORT_AIM_POSITION,
-            PORT_AIM_TIME,
-            PORT_RESET_TIME_OUT
-	};
+	
+	//------------------------------------------------------------------------------------------------------------------------------------
     override array<string> GetVariablesOut()
     {
         return s_aVarsOut;
     }
 	
-	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-    {
-		bool reset;
-		GetVariableIn(PORT_DURATION, m_fDuration);
-		GetVariableIn(PORT_RESET_TIME, reset);
-		if (reset)
-		{
-			m_fCurrentTime = 0;
-			SetVariableOut(PORT_RESET_TIME_OUT, false);	
-		};		
-		
-		if (m_fDuration < 1e-10)
-			return ENodeResult.FAIL;
-		m_fIterativeStep = 1 / m_fSteps;	
-		
-		if (!GetVariableIn(PORT_SHOOT_START,m_vStart) || !GetVariableIn(PORT_SHOOT_END,m_vEnd))
-			return ENodeResult.FAIL;
-		
-		SetVariableOut(PORT_AIM_TIME,m_fDuration/m_fSteps);
-		m_vDirection = (m_vEnd - m_vStart);
-		
-		m_vDirection *= Math.Clamp(m_fCurrentTime,0,1);
-		
-		//PrintFormat("Covering current time step: %1", m_fCurrentTime);
-		SetVariableOut(PORT_AIM_POSITION,m_vStart + m_vDirection);
-		m_fCurrentTime += m_fIterativeStep;
-		
-		return ENodeResult.SUCCESS;
-    }
-	
+	//------------------------------------------------------------------------------------------------------------------------------------
 	protected override string GetOnHoverDescription()
 	{
 		return "Calculate position to shoot at during suppressive fire";
 	}
 	
+	//------------------------------------------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() 
 	{
 		return true;

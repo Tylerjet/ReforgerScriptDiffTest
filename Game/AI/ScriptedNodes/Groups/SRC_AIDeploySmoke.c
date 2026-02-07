@@ -2,6 +2,8 @@ class SCR_AIDeploySmokeCover : AITaskScripted
 {	
 	SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
 	
+	static const int MAX_SMOKE_POSITION_COUNT = 3; // Max number of smoke grenades that can be thrown at one time to create smoke cover wall
+	
 	//------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() {return true;}
 	
@@ -31,7 +33,7 @@ class SCR_AIDeploySmokeCover : AITaskScripted
 		if (!smokeCoverFeature)
 			return ENodeResult.FAIL;
 		
-		if (smokeCoverFeature.ExecuteForActivity(currentActivity))
+		if (smokeCoverFeature.ExecuteForActivity(currentActivity, MAX_SMOKE_POSITION_COUNT))
 			return ENodeResult.SUCCESS;
 		
 		return ENodeResult.FAIL;

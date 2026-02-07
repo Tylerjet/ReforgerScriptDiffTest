@@ -18,6 +18,7 @@ sealed class RenderTargetWidget: Widget
 	proto external void SetClearColor(bool useClearColor, int color);
 	proto external void SetBlendMode(RenderTargetWidgetBlendMode blendMode);
 	proto external void SetFormat(RenderTargetWidgetFormat format);
+	proto external void AllowMSAAFromSetup(bool allowMSAA);
 	proto external void SetWorld(BaseWorld world, int camera);
 }
 

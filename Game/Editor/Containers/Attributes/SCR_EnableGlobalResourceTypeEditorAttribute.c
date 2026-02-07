@@ -15,6 +15,19 @@ class SCR_EnableGlobalResourceTypeEditorAttribute : SCR_BaseEditorAttribute
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
+	{
+		SCR_BaseEditorAttributeVar respawnEnabledVar;
+		manager.GetAttributeVariable(SCR_RespawnEnabledEditorAttribute, respawnEnabledVar);
+		bool respawnEnabled = true;
+		
+		if (respawnEnabledVar)
+			respawnEnabled = respawnEnabledVar.GetBool();
+		
+		manager.SetAttributeEnabled(SCR_LoadoutSupplyCostMultiplierEditorAttribute, var && var.GetBool() && respawnEnabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
 		if (!var) 

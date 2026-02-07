@@ -180,7 +180,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 		if (!factionManager)
 			return;
 			
-		Faction faction = Faction.Cast(factionManager.GetLocalPlayerFaction());
+		Faction faction = factionManager.GetLocalPlayerFaction();
 		if (!faction)
 			return;
 		
@@ -206,7 +206,7 @@ class SCR_DebriefingScreenSummaryContent : SCR_WelcomeScreenBaseContent
 		
 		RichTextWidget subtitleText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("SubtitleText"));
 		if (subtitleText)
-			subtitleText.SetTextFormat(subtitle, characterRank, string.Format("<color rgba=%1>%2</color>", UIColors.SRGBAFloatToInt(UIColors.CONTRAST_COLOR), GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId())));
+			subtitleText.SetTextFormat(subtitle, characterRank, string.Format("<color rgba=%1>%2</color>", UIColors.FormatColor(UIColors.CONTRAST_COLOR), GetGame().GetPlayerManager().GetPlayerName(GetGame().GetPlayerController().GetPlayerId())));
 
 		RichTextWidget descriptionText = RichTextWidget.Cast(m_wSummaryWidget.FindAnyWidget("DescriptionText"));
 		if (!descriptionText)
@@ -358,7 +358,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 		if (!factionManager)
 			return;
 		
-		Faction faction = Faction.Cast(factionManager.GetLocalPlayerFaction());
+		Faction faction = factionManager.GetLocalPlayerFaction();
 		if (!faction)
 			return;
 		
@@ -386,7 +386,7 @@ class SCR_DebriefingScreenFinishedObjectivesContent : SCR_WelcomeScreenBaseConte
 			
 			baseComponent = campaignTask.GetTargetBase();
 			//We let through only control points that have signal to the HQ
-			if (baseComponent && !finishedTasksMap.Contains(baseComponent) && baseComponent.IsControlPoint() && baseComponent.IsHQRadioTrafficPossible(faction, SCR_ECampaignHQRadioComms.RECEIVE))
+			if (baseComponent && !finishedTasksMap.Contains(baseComponent) && baseComponent.IsControlPoint() && baseComponent.IsHQRadioTrafficPossible(SCR_CampaignFaction.Cast(faction), SCR_ERadioCoverageStatus.RECEIVE))
 				finishedTasksMap.Set(baseComponent, task);
 		}
 		

@@ -63,7 +63,9 @@ class SCR_AIActivityBase : SCR_AIActionBase
 	#ifdef AI_DEBUG
 	override void AddDebugMessage(string str)
 	{
-		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(m_Utility.GetOwner().FindComponent(SCR_AIInfoBaseComponent));
+		if (!m_Utility || !m_Utility.m_Owner)
+			return;
+		SCR_AIInfoBaseComponent infoComp = SCR_AIInfoBaseComponent.Cast(m_Utility.m_Owner.FindComponent(SCR_AIInfoBaseComponent));
 		infoComp.AddDebugMessage(string.Format("%1: %2", this, str), msgType: EAIDebugMsgType.ACTION);
 	}
 	#endif

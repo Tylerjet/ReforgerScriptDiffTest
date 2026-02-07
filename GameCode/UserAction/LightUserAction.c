@@ -9,16 +9,39 @@ class LightUserAction : BaseLightUserAction
 	protected int m_iLightSide;
 
 	//! Will only be shown if user is in vehicle?
-	[Attribute()]
+	[Attribute("1")]
 	protected bool m_bInteriorOnly;
 
 	//! Will action be available for entities seated in pilot compartment only?
-	[Attribute(defvalue: "1")]
+	[Attribute("1")]
 	protected bool m_bPilotOnly;
+
+	[Attribute("1", "True, if the action should be available to other passengers as long as pilot is not there or unconscious")]
+	protected bool m_bPilotUncapableOverride;
+
+	[Attribute("#AR-UserAction_ControlledByDriver", "Text that will be shown to the passengers when driver of the vehicle is in control of this action")]
+	protected LocalizedString m_sBlockedByPilotText;
+
+	[Attribute(desc: "When anything is defined in here, this action will only be visible if the compartment section of the compartment the player is in is defined in here.")]
+	protected ref array<int> m_aDefinedCompartmentSectionsOnly;
+
+	[Attribute(desc: "When aynthing is defined in here, this action won't be visible if the compartment section of the compartment the player is in is defined in here.")]
+	protected ref array<int> m_aExcludeDefinedCompartmentSections;
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(user);
+		if (!character)
+			return false;
+
+		//check if user can actually manipulate controls if he is not the pilot
+		if (!SCR_InteractionHandlerComponent.CanBeShownInVehicle(character, this, m_bPilotOnly, m_bPilotUncapableOverride, m_bInteriorOnly, m_aDefinedCompartmentSectionsOnly, m_aExcludeDefinedCompartmentSections))
+		{
+			SetCannotPerformReason(m_sBlockedByPilotText);
+			return false;
+		}
+
 		return true;
 	}
 
@@ -35,36 +58,11 @@ class LightUserAction : BaseLightUserAction
 			return false;
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
-		// See if character is in vehicle
-		if (character && character.IsInVehicle())
-		{
-			// See if character is in "this" (owner) vehicle
-			CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
-			if (!compartmentAccess)
-				return false;
-
-			// Character is in compartment
-			// that belongs to owner of this action
-			BaseCompartmentSlot slot = compartmentAccess.GetCompartment();
-			if (!slot)
-				return false;
-
-			// Check pilot only condition
-			if (m_bPilotOnly && !PilotCompartmentSlot.Cast(slot))
-				return false;
-
-			// Check interior only condition
-			if (m_bInteriorOnly && slot.GetOwner() != GetOwner())
-				return false;
-
-			return true;
-		}
-
-		// We cannot be pilot nor interior, if we are not seated in vehicle at all.
-		if (m_bInteriorOnly || m_bPilotOnly)
+		if (!character)
 			return false;
 
-		return true;
+		//check only if user is inside same vehicle as long as we require that
+		return SCR_InteractionHandlerComponent.CanBeShownInVehicle(character, this, false, false, m_bInteriorOnly, m_aDefinedCompartmentSectionsOnly, m_aExcludeDefinedCompartmentSections);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -127,7 +125,7 @@ class LightUserAction : BaseLightUserAction
 			return false;
 		}
 		else
-		{		
+		{
 			pos = GetOwner().CoordToLocal(userActionContext.GetOrigin());
 			return true;
 		}

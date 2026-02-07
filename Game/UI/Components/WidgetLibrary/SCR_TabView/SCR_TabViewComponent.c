@@ -230,10 +230,10 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 		OverlaySlot.SetVerticalAlign(w, LayoutVerticalAlign.Stretch);
 		OverlaySlot.SetHorizontalAlign(w, LayoutHorizontalAlign.Stretch);
 		
+		content.m_wTab = w;
+		
 		if (m_OnContentCreate)
 			m_OnContentCreate.Invoke(this, w, index);
-		
-		content.m_wTab = w;
 
 		int i = m_aElements.Find(content);
 		if (i != m_iSelectedTab)
@@ -248,7 +248,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 				m_OnContentShow.Invoke(this, w);
 		}
 
-		SCR_MenuHelper.OnTabChange(ChimeraMenuBase.GetOwnerMenu(m_wRoot));
+		SCR_MenuHelper.OnTabChange(this, w);
 		
 		if (m_OnTabChange)
 			m_OnTabChange.Invoke(this, w);
@@ -322,6 +322,25 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_TabViewContent GetContent(int index)
+	{
+		if (!m_aElements.IsIndexValid(index))
+			return null;
+		
+		return m_aElements[index];
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget GetContentWidget(int index)
+	{
+		SCR_TabViewContent content = GetContent(index);
+		if (!content)
+			return null;
+		
+		return content.m_wTab;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected void SelectIndex(bool select, int i)
 	{
 		if (!m_aElements || i < 0 || i >= m_aElements.Count())
@@ -376,7 +395,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 			}
 		}
 
-		SCR_MenuHelper.OnTabChange(ChimeraMenuBase.GetOwnerMenu(m_wRoot));
+		SCR_MenuHelper.OnTabChange(this, tab);
 		
 		if (m_OnTabChange)
 			m_OnTabChange.Invoke(this, tab);
@@ -513,7 +532,7 @@ class SCR_TabViewComponent : SCR_ScriptedWidgetComponent
 		if (index == m_iSelectedTab)
 			ShowTab(0, true);
 		else
-			ShowTab(newIndex, true);
+			ShowTab(newIndex, true, playSound: false);
 
 		UpdatePagingButtons();
 	}
@@ -981,10 +1000,6 @@ class SCR_TabViewContent
 	[Attribute("true", UIWidgets.CheckBox, "Is tab enabled?")]
 	bool m_bEnabled;
 
-	SCR_ButtonTextComponent m_ButtonComponent;
-	Widget m_wTab;
-	SizeLayoutWidget m_wLayout;
-
 	[Attribute(desc: "Image shown in front of tab text", params: "edds imageset")]
 	ResourceName m_TabImage;
 	
@@ -1007,4 +1022,7 @@ class SCR_TabViewContent
 	float m_fIconHeight;
 
 	Widget m_wIcon;
+	SCR_ButtonTextComponent m_ButtonComponent;
+	Widget m_wTab;
+	SizeLayoutWidget m_wLayout;
 }

@@ -5,7 +5,7 @@ enum ValidationType
 	Emats = 2
 };
 
-[WorkbenchPluginAttribute(name: "Validate Material", wbModules: {"ResourceManager"},resourceTypes: {"emat","edds"}, awesomeFontCode: 0xf0ad)]
+[WorkbenchPluginAttribute(name: "Validate Material", wbModules: {"ResourceManager"},resourceTypes: {"emat","edds"}, awesomeFontCode: 0xf0ad, description:"Validates material and texture issues that can easily be overlooked and identifies elements that violate our conventions", category:"EBT Validation")]
 class ValidateMaterialPlugin: WorkbenchPlugin
 {	
 	

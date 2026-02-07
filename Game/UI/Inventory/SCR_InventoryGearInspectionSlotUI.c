@@ -98,15 +98,21 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 		{
 			IEntity item = m_Storage.Get(i);
 			InventoryStorageSlot storageSlot = m_Storage.GetSlot(i);
-			AttachmentSlotComponent attachment = AttachmentSlotComponent.Cast(storageSlot.GetParentContainer());
-			if (attachment && !attachment.ShouldShowInInspection())
-				continue;
 			
 			m_aStorageSlotsInStorage.Insert(storageSlot);
 			pItemsInStorage.Insert(item);
 		}
 		
 		UpdateOwnedSlots(pItemsInStorage);
+		
+		for (int i = 0; i < count; ++i)
+		{
+			InventoryStorageSlot storageSlot = m_Storage.GetSlot(i);
+			AttachmentSlotComponent attachment = AttachmentSlotComponent.Cast(storageSlot.GetParentContainer());
+			if (attachment && !attachment.ShouldShowInInspection())
+				m_aSlots[i].SetSlotVisible(false);
+		}
+		
 		return count;
 	}
 	
@@ -198,6 +204,8 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 		
 		callBack.m_pStorageFrom = slot.GetStorageUI();
 		callBack.m_pStorageTo = this;
+		callBack.m_pStorageMan = m_InventoryManager;
+		callBack.m_eAttachAction = EAttachAction.ATTACH;
 		
 		m_InventoryManager.TryReplaceAndDropItemAtSlot(m_Storage, item, GetFocusedSlotId(), callBack);
 		

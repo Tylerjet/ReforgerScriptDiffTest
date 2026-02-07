@@ -33,6 +33,11 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 		if (!camera)
 			return false;
 		
+		Physics targetPhysics = target.GetPhysics();
+		//--- A target is static if is not kinematic and not dynamic (eg: tree)
+		if (targetPhysics && !targetPhysics.IsKinematic() && !targetPhysics.IsDynamic())
+			return false;
+		
 		//--- Already attached - detach first
 		if (m_AttachHelper)
 			Detach();
@@ -103,7 +108,7 @@ class SCR_AttachManualCameraComponent : SCR_BaseManualCameraComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnCameraLoad(SCR_ManualCameraComponentSave data)
 	{
-		if (data.m_Target && m_AttachType == data.m_aValues[0])
+		if (data.m_Target && m_AttachType == data.m_aValues[0] && m_AttachType != EAttachManualCameraType.PLAYER)
 			AttachTo(data.m_Target);
 	}
 

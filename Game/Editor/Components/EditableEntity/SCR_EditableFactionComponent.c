@@ -154,11 +154,6 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 			int thisRplId = Replication.FindId(this);
 			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_FACTION_NO_SPAWNS, thisRplId);
 		}
-		else if (spawnPointCount == 1 && !m_ScrFaction.IsPlayable())
-		{
-			//SetFactionPlayableServer(true);
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_FACTION_CHANGED_NO_GM);
-		}
 		
 		//Update Spawn count
 		OnSpawnPointCountChangedBroadcast(spawnPointCount);

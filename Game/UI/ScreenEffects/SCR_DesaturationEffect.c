@@ -52,7 +52,7 @@ class SCR_DesaturationEffect : SCR_BaseScreenEffect
 			return;
 		
 		// define hitzones for later getting
-		m_pBloodHZ = SCR_CharacterBloodHitZone.Cast(m_pDamageManager.GetBloodHitZone());
+		m_pBloodHZ = m_pDamageManager.GetBloodHitZone();
 		
 		m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), COLORS_PP_PRIORITY, PostProcessEffectType.Colors, DESATURATION_EMAT);
 	}

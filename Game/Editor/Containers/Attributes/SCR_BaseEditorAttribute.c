@@ -22,6 +22,7 @@ class SCR_BaseEditorAttribute
 	protected bool m_bIsSubAttribute;
 	protected bool m_bInitCalled;
 	protected bool m_bConflictingAttributeWasReset;
+	protected BaseGameMode m_GameMode;
 	
 	//Conflicting attributes
 	protected bool m_bIsMultiSelect = false;
@@ -464,7 +465,14 @@ class SCR_BaseEditorAttribute
 	//! \return true if the provided item is the current gamemode
 	protected bool IsGameMode(Managed item)
 	{
-		return item == GetGame().GetGameMode(); 
+		return item == m_GameMode;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Method for initialization of base editor attribute
+	void Initialize() 
+	{
+		m_GameMode = GetGame().GetGameMode();
 	}
 }
 
@@ -580,7 +588,6 @@ class SCR_BaseEditorAttributeEntrySlider: SCR_BaseEditorAttributeEntry
 	// constructor
 	void SCR_BaseEditorAttributeEntrySlider(SCR_EditorAttributeBaseValues sliderValues)
 	{
-		string sliderValueSymbol;
 		string sliderValueFormating;
 		float min, max, step, decimals;
 		

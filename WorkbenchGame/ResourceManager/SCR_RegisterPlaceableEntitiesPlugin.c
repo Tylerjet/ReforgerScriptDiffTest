@@ -34,7 +34,11 @@ class RegisterPlaceableEntitiesPlugin : WorkbenchPlugin // TODO: SCR_
 
 		//--- Get all prefabs
 		array<ResourceName> resources = {};
-		Workbench.SearchResources(resources.Insert, { "et" }, null, filesystem + directory);
+		
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = { "et" };
+		filter.rootPath = filesystem + directory;
+		ResourceDatabase.SearchResources(filter, resources.Insert);
 
 		array<ResourceName> prefabs = {};
 

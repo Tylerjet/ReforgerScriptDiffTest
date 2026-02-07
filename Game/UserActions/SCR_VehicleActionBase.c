@@ -23,6 +23,12 @@ class SCR_VehicleActionBase : ScriptedUserAction
 	//! Available only for entities seated in a vehicle
 	[Attribute(uiwidget: UIWidgets.CheckBox, desc: "Available only for entities seated in a vehicle")]
 	protected bool m_bInteriorOnly;
+	
+	[Attribute(desc: "When anything is defined in here, this action will only be visible if the compartmet section of the compartment the player in in, is defined in here.")]
+	protected ref array<int> m_aDefinedCompartmentSectionsOnly;
+	
+	[Attribute(desc: "When aynthing is defined in here, this action won't be visible if the compartment section of the compartment the player is in, is defined in here.")]
+	protected ref array<int> m_aExcludeDefinedCompartmentSections;
 
 	protected CompartmentControllerComponent m_VehicleController; // Commonly used by inheriting actions
 
@@ -70,6 +76,14 @@ class SCR_VehicleActionBase : ScriptedUserAction
 
 		// Check interior only condition
 		if (m_bInteriorOnly && slot.GetOwner().GetRootParent() != GetOwner().GetRootParent())
+			return false;
+		
+		int compartmentSection = slot.GetCompartmentSection();
+		
+		if (!m_aDefinedCompartmentSectionsOnly.IsEmpty() && !m_aDefinedCompartmentSectionsOnly.Contains(compartmentSection))
+			return false;
+			
+		if (!m_aExcludeDefinedCompartmentSections.IsEmpty() && m_aExcludeDefinedCompartmentSections.Contains(compartmentSection))
 			return false;
 
 		return true;

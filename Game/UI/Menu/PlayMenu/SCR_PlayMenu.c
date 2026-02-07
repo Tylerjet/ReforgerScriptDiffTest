@@ -9,8 +9,6 @@ class SCR_PlayMenuEntry : Managed
 {
 	EPlayMenuContentType m_eContentType;
 	ref MissionWorkshopItem m_Item;
-	SCR_PlayMenuTileComponent m_Tile;
-	Widget m_wRoot;
 
 	void SCR_PlayMenuEntry(MissionWorkshopItem item, EPlayMenuContentType type)
 	{
@@ -51,14 +49,6 @@ class SCR_PlayMenu : MenuRootBase
 
 	const int THRESHOLD_RECENTLY_PLAYED = 3600 * 24 * 30;
 
-	protected Widget m_wFooter;
-
-	protected SCR_InputButtonComponent m_Scenarios;
-	protected SCR_InputButtonComponent m_Play;
-	protected SCR_InputButtonComponent m_Continue;
-	protected SCR_InputButtonComponent m_Restart;
-	protected SCR_InputButtonComponent m_Host;
-	protected SCR_InputButtonComponent m_FindServer;
 	protected ref array<SCR_InputButtonComponent> m_aRightFooterButtons = {};
 
 	protected SCR_PlayMenuTileComponent m_ClickedTile; // Cache last clicked line to trigger the correct dialog after the double click window
@@ -77,20 +67,10 @@ class SCR_PlayMenu : MenuRootBase
 		m_Featured = SCR_PlayMenuComponent.GetComponent("Featured", m_wRoot);
 		m_WorkshopAPI = GetGame().GetBackendApi().GetWorkshop();
 
-		m_wFooter = m_wRoot.FindWidget("MenuBase1.SizeBase.VerticalLayout0.SizeFooter.Footer");
-
 		//! Inputs
 		//! Buttons
 		SCR_DynamicFooterComponent footer = GetFooterComponent();
 		footer.GetOnButtonActivated().Insert(OnInteractionButtonPressed);
-		
-		SCR_InputButtonComponent back = footer.FindButton("Back");
-		m_Scenarios = footer.FindButton("Scenarios");
-		m_Play = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_PLAY);
-		m_Continue = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_CONTINUE);
-		m_Restart = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_RESTART);
-		m_Host = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_HOST);
-		m_FindServer = footer.FindButton(SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS);
 		
 		m_aRightFooterButtons = footer.GetButtonsInFooter(SCR_EDynamicFooterButtonAlignment.RIGHT);
 
@@ -106,7 +86,7 @@ class SCR_PlayMenu : MenuRootBase
 		WorkshopApi workshop = GetGame().GetBackendApi().GetWorkshop();
 		
 		// Scan offline items if needed
-		if (workshop.NeedScan())
+		if (workshop.NeedAddonsScan())
 			workshop.ScanOfflineItems();
 		
 		// Read the PlayMenu config
@@ -188,7 +168,7 @@ class SCR_PlayMenu : MenuRootBase
 		// Restore focus to the last accessed tile
 		if (m_CurrentTile)
 		{
-			GetGame().GetWorkspace().SetFocusedWidget(m_CurrentTile.m_wRoot);
+			GetGame().GetWorkspace().SetFocusedWidget(m_CurrentTile.GetRootWidget());
 			return;
 		}
 
@@ -217,9 +197,6 @@ class SCR_PlayMenu : MenuRootBase
 			if (!tile)
 				continue;
 
-			entry.m_Tile = tile;
-			entry.m_wRoot = tile.m_wRoot;
-
 			tile.GetOnMouseInteractionButtonClicked().Insert(OnInteractionButtonPressed);
 
 			tile.m_OnFocused.Insert(OnTileFocused);
@@ -230,7 +207,7 @@ class SCR_PlayMenu : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void CreateMenuEntries(out array<ref SCR_PlayMenuEntry> entries, array<MissionWorkshopItem> scenarios, EPlayMenuContentType type)
+	protected void CreateMenuEntries(out array<ref SCR_PlayMenuEntry> entries, array<MissionWorkshopItem> scenarios, EPlayMenuContentType type)
 	{
 		foreach (MissionWorkshopItem scenario : scenarios)
 		{
@@ -239,7 +216,7 @@ class SCR_PlayMenu : MenuRootBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GetScenarios(out array<MissionWorkshopItem> scenarios, EPlayMenuContentType type)
+	protected void GetScenarios(out array<MissionWorkshopItem> scenarios, EPlayMenuContentType type)
 	{
 		if (type == EPlayMenuContentType.RECENT)
 		{
@@ -258,16 +235,16 @@ class SCR_PlayMenu : MenuRootBase
 		{
 			MissionWorkshopItem scenario = m_WorkshopAPI.GetInGameScenario(sResource);
 
-			if (scenario && !IsMissingDependency(scenario))
+			if (scenario && !SCR_ScenarioUICommon.IsMissingDependencies(scenario))
 				scenarios.Insert(scenario);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void GetRecentScenarios(out array<MissionWorkshopItem> scenarios)
+	protected void GetRecentScenarios(out array<MissionWorkshopItem> scenarios)
 	{
 		// Get missions from Workshop API
-		m_WorkshopAPI.GetPageScenarios(scenarios, 0, 10000);
+		m_WorkshopAPI.GetPageScenarios(scenarios, 0, SCR_WorkshopUiCommon.PAGE_SCENARIOS);
 
 		int count = scenarios.Count();
 		int elapsed;
@@ -279,64 +256,15 @@ class SCR_PlayMenu : MenuRootBase
 			scenario = scenarios[i];
 			elapsed = scenario.GetTimeSinceLastPlay();
 
-			if (elapsed == -1 || elapsed > THRESHOLD_RECENTLY_PLAYED || IsMissingDependency(scenario))
+			if (elapsed == -1 || elapsed > THRESHOLD_RECENTLY_PLAYED || !SCR_ScenarioUICommon.IsMissingDependencies(scenario))
 			{
-				//PrintFormat("[GetRecentScenarios] removed: %1 | last played: %2 | missing dependency: %3", scenario.Name(), elapsed, IsMissingDependency(scenario));
+				//PrintFormat("[GetRecentScenarios] removed: %1 | last played: %2 | missing dependency: %3", scenario.Name(), elapsed, SCR_ScenarioUICommon.IsMissingDependencies(scenario));
 				scenarios.Remove(i);
 				continue;
 			}
 		};
 
 		SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionTimeSinceLastPlay>.HeapSort(scenarios, false);
-		/*
-		// DEBUG: Print sorted recent scenarios
-		count = scenarios.Count();
-		for (int i = 0; i < count; i++)
-		{
-			scenario = scenarios[i];
-			PrintFormat("[GetRecentScenarios] found: %1 | last played: %2", scenario.Name(), scenario.GetTimeSinceLastPlay());
-		}
-		*/
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected bool IsMissingDependency(MissionWorkshopItem scenario)
-	{
-		WorkshopItem addon = scenario.GetOwner();
-
-		// There are no dependencies if scenario is not from an addon
-		if (!addon)
-			return false;
-
-		array<Dependency> dependencies = {};
-		addon.GetActiveRevision().GetDependencies(dependencies);
-
-		// Check if any dependency is missing
-		foreach (Dependency dependency : dependencies)
-		{
-			if (!dependency.IsOffline())
-				return true;
-		}
-
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected bool IsUnique(MissionWorkshopItem item, array<ref SCR_PlayMenuEntry> entries)
-	{
-		if (!item)
-			return false;
-
-		foreach (SCR_PlayMenuEntry entry : entries)
-		{
-			if (!entry || !entry.m_Item)
-				continue;
-
-			if (item == entry.m_Item)
-				return false;
-		}
-
-		return true;
 	}
 
 	//! Input Events
@@ -351,10 +279,10 @@ class SCR_PlayMenu : MenuRootBase
 		
 		switch (action)
 		{
-			case SCR_ScenarioEntryHelper.ACTION_DOUBLE_CLICK:	OnTileClickInteraction(multiplier); break;
-			case SCR_ScenarioEntryHelper.ACTION_RESTART:		Restart(scenario); break;
-			case SCR_ScenarioEntryHelper.ACTION_FIND_SERVERS:	Join(scenario); break;
-			case SCR_ScenarioEntryHelper.ACTION_HOST:			Host(scenario); break;
+			case UIConstants.MENU_ACTION_DOUBLE_CLICK:		OnTileClickInteraction(multiplier); break;
+			case SCR_ScenarioUICommon.ACTION_RESTART:		Restart(scenario); break;
+			case SCR_ScenarioUICommon.ACTION_FIND_SERVERS:	Join(scenario); break;
+			case SCR_ScenarioUICommon.ACTION_HOST:			Host(scenario); break;
 		}
 	}
 
@@ -378,14 +306,14 @@ class SCR_PlayMenu : MenuRootBase
 	{
 		switch (tag)
 		{
-			case SCR_ConfigurableDialogUi.BUTTON_CONFIRM:		Play(scenario); break;
-			case SCR_ScenarioEntryHelper.BUTTON_PLAY:			Play(scenario); break;
-			case SCR_ScenarioEntryHelper.BUTTON_CONTINUE:		Continue(scenario); break;
-			case SCR_ScenarioEntryHelper.BUTTON_RESTART:		Restart(scenario); break;
-			case SCR_ScenarioEntryHelper.BUTTON_FIND_SERVERS:	Join(scenario); break;
-			case SCR_ScenarioEntryHelper.BUTTON_HOST:			Host(scenario); break;
-			case "Scenarios": 									OnScenarios(); break;
-			case "Back": 										OnBack(); break;
+			case SCR_ConfigurableDialogUi.BUTTON_CONFIRM:	Play(scenario); break;
+			case SCR_ScenarioUICommon.BUTTON_PLAY:			Play(scenario); break;
+			case SCR_ScenarioUICommon.BUTTON_CONTINUE:		Continue(scenario); break;
+			case SCR_ScenarioUICommon.BUTTON_RESTART:		Restart(scenario); break;
+			case SCR_ScenarioUICommon.BUTTON_FIND_SERVERS:	Join(scenario); break;
+			case SCR_ScenarioUICommon.BUTTON_HOST:			Host(scenario); break;
+			case SCR_ScenarioUICommon.BUTTON_SCENARIOS: 	OnScenarios(); break;
+			case UIConstants.BUTTON_BACK: 					OnBack(); break;
 		}
 	}
 
@@ -439,7 +367,7 @@ class SCR_PlayMenu : MenuRootBase
 	
 	// BUTTONS
 	//------------------------------------------------------------------------------------------------
-	protected void OnTileMouseClick(SCR_TileBaseComponent tile)
+	protected void OnTileMouseClick(SCR_ScriptedWidgetComponent tile)
 	{
 		m_ClickedTile = SCR_PlayMenuTileComponent.Cast(tile);
 	}
@@ -451,13 +379,7 @@ class SCR_PlayMenu : MenuRootBase
 		if (!scenario)
 			return;
 
-		SCR_MissionHeader header = SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(scenario.Id()));
-
-		if (!header)
-			return;
-
-		bool canBeLoaded = header && GetGame().GetSaveManager().HasLatestSave(header);
-		if (canBeLoaded)
+		if (SCR_ScenarioUICommon.HasSave(scenario))
 			Continue(scenario);
 		else
 			Play(scenario);
@@ -480,7 +402,7 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Play(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
 			return;
 		
 		m_SelectedScenario = scenario;
@@ -516,7 +438,7 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Continue(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
 			return;
 		
 		m_SelectedScenario = scenario;
@@ -535,12 +457,12 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Restart(MissionWorkshopItem scenario)
 	{
-		if (!scenario)
+		if (!scenario || !SCR_ScenarioUICommon.CanPlay(scenario))
 			return;
 		
 		m_SelectedScenario = scenario;
 
-		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog("scenario_restart");
+		SCR_ConfigurableDialogUi dialog = SCR_CommonDialogs.CreateDialog(SCR_ScenarioUICommon.DIALOG_RESTART);
 		dialog.m_OnConfirm.Insert(OnRestartConfirmed);
 	}
 
@@ -556,8 +478,7 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Host(MissionWorkshopItem scenario)
 	{
-		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(scenario);
-		if (!scenario || !SCR_ScenarioEntryHelper.IsMultiplayer(scenario) || SCR_ScenarioEntryHelper.IsInErrorState(state))
+		if (!scenario || !SCR_ScenarioUICommon.CanHost(scenario))
 			return;
 		
 		m_SelectedScenario = scenario;
@@ -570,8 +491,7 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void Join(MissionWorkshopItem scenario)
 	{
-		SCR_EScenarioEntryErrorState state = SCR_ScenarioEntryHelper.GetErrorState(scenario);
-		if (!scenario || !SCR_ScenarioEntryHelper.IsMultiplayer(scenario) || SCR_ScenarioEntryHelper.IsInErrorState(state))
+		if (!scenario || !SCR_ScenarioUICommon.CanJoin(scenario))
 			return;
 		
 		m_SelectedScenario = scenario;
@@ -588,7 +508,7 @@ class SCR_PlayMenu : MenuRootBase
 
 		UpdateNavigationButtons();
 		
-		tile.m_OnClicked.Insert(OnTileMouseClick);
+		tile.m_OnClick.Insert(OnTileMouseClick);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -596,7 +516,7 @@ class SCR_PlayMenu : MenuRootBase
 	{
 		UpdateNavigationButtons(false);
 		
-		tile.m_OnClicked.Remove(OnTileMouseClick);
+		tile.m_OnClick.Remove(OnTileMouseClick);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -606,23 +526,13 @@ class SCR_PlayMenu : MenuRootBase
 			return;
 		
 		show = show && GetSelectedTile() && GetGame().GetInputManager().GetLastUsedInputDevice() != EInputDeviceType.MOUSE;
-		SCR_ScenarioEntryHelper.UpdateInputButtons(m_CurrentTile.m_Item, m_aRightFooterButtons, show);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void TryPlayScenario(MissionWorkshopItem scenario)
-	{
-		if (!scenario)
-			return;
-
-		SCR_WorkshopUiCommon.TryPlayScenario(scenario);
+		SCR_ScenarioUICommon.UpdateInputButtons(m_CurrentTile.m_Item, m_aRightFooterButtons, show);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void PlayCurrentScenario()
 	{
-		if (m_SelectedScenario)
-			TryPlayScenario(m_SelectedScenario);
+		SCR_ScenarioUICommon.TryPlayScenario(m_SelectedScenario);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -649,7 +559,7 @@ class SCR_PlayMenu : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void OnPlayTutorial()
 	{
-		TryPlayScenario(m_ItemTutorial);
+		SCR_ScenarioUICommon.TryPlayScenario(m_ItemTutorial);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -177,7 +177,12 @@ class GameModeSetupConfig
 	{
 		array<ResourceName> resources = {};
 		string missionsPath = m_sFileSystem + SCENARIOS_PATH;
-		Workbench.SearchResources(resources.Insert, { "conf" }, null, missionsPath);
+
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = { "conf" };
+		filter.rootPath = missionsPath;
+		ResourceDatabase.SearchResources(filter, resources.Insert);
+
 		Resource missionResource;
 		BaseContainer missionContainer;
 		ResourceName missionWorld;
@@ -231,7 +236,7 @@ class GameModeSetupConfig
 				return false;
 			}
 
-			if (!SCR_FileIOHelper.CreateDirectory(absoluteDirPath))
+			if (!FileIO.MakeDirectory(absoluteDirPath))
 			{
 				Print("Unable to create the " + SCENARIOS_PATH + " directory at " + absoluteDirPath, LogLevel.ERROR);
 				return false;

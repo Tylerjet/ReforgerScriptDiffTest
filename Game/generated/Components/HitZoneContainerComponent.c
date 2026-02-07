@@ -15,13 +15,17 @@ sealed class HitZoneContainerComponent: GameComponent
 	proto external HitZone GetDefaultHitZone();
 	proto external HitZone GetHitZoneByColliderID(int colliderID);
 	//! Clears and fills the specified outHitZones array with all HZs that are attached to colliderIDs.
-	//! A collider shouldn't be attached to multiple hitzones. Returns the hitzone matching those collider IDs
+	//! Returns the hitzones matching those collider IDs
 	//! Returns the count of elements that were filled into the array.
 	proto external int GetHitZonesByColliderIDs(out notnull array<HitZone> outHitZones, notnull array<int> colliderIDs);
 	proto external HitZone GetHitZone(string colliderName);
-	//! Clears and fills the specified outHitZones array with all HZs.
+	//! Clears and fills the specified outHitZones array with all HZs in this entity
 	//! Returns the count of elements that were filled into the array.
 	proto external int GetAllHitZones(out notnull array<HitZone> outHitZones);
+	//! Clears and fills the specified outHitZones array with all HZs in this entity and its children.
+	//! Returns the count of elements that were filled into the array.
+	proto external int GetAllHitZonesInHierarchy(out notnull array<HitZone> outHitZones);
+	proto external HitZoneContainerComponent GetParentHitZoneContainer();
 
 	// callbacks
 

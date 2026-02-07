@@ -15,7 +15,7 @@ class SCR_TabDialog : SCR_ConfigurableDialogUi
 	{
 		super.OnMenuOpen(preset);
 
-		m_SuperMenuComponent = SCR_SuperMenuComponent.FindComponent(GetContentLayoutRoot(GetRootWidget()));
+		m_SuperMenuComponent = SCR_SuperMenuComponent.FindComponent(GetContentLayoutRoot());
 		if (!m_SuperMenuComponent)	
 		{
 			Print("SCR_TabDialog | OnMenuOpen() | No SCR_SuperMenuComponent in content layout root", LogLevel.ERROR);

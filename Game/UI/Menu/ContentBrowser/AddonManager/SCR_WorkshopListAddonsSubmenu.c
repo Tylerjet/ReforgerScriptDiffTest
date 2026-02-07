@@ -35,13 +35,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	protected ScrollLayoutWidget m_EnabledAddonsScroll; 
 	protected ScrollLayoutWidget m_DisabledAddonsScroll;
 	
-	protected const string LABEL_ENABLE = "#AR-Workshop_ButtonEnable";
-	protected const string LABEL_UPDATE = "#AR-Workshop_ButtonUpdate";
-	
-	protected const string ACTION_ENABLE_ALL = 	"MenuEnableAll";
-	protected const string ACTION_ENABLE = 		"MenuEnable";
 	protected const string ACTION_DELETE = 		"MenuDelete";
-	protected const string ACTION_PRIMARY = 	"MenuSelectHold";
 	protected const string ACTION_DELETE_ALL =	"MenuUnsubscribeAll";
 
 	// --- Overrides ---
@@ -215,21 +209,19 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected void CreateListLines(VerticalLayoutWidget vLayout, ScrollLayoutWidget scroll, array<ref SCR_WorkshopItem> items, out array<Widget> entries)
 	{
-		// Record scroll pos
+		// Store scroll pos
 		float scrollx, scrolly;
 		if (scroll)
 			scroll.GetSliderPos(scrollx, scrolly);
 
-		if (!entries.IsEmpty())
+		// Clear entries
+		foreach (Widget entry : entries)
 		{
-			for (int i = 0, count = entries.Count(); i < count; i++)
-			{
-				vLayout.RemoveChild(entries[i]);
-			}
-
-			entries.Clear();
+			vLayout.RemoveChild(entry);
 		}
-
+				
+		entries.Clear();
+	
 		foreach (SCR_WorkshopItem item : items)
 		{
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sLineLayout, vLayout);
@@ -255,15 +247,15 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	//! Create navigation button for actions
 	protected void CreateNavigationButtons()
 	{
-		m_NavOpenDetails = CreateNavigationButton("MenuSelect", "#AR-Workshop_Details_MenuTitle", true, false);
+		m_NavOpenDetails = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT, "#AR-Workshop_Details_MenuTitle", true, false);
 		if (m_NavOpenDetails)
 			m_NavOpenDetails.m_OnActivated.Insert(OnNavOpenDetailsActivated);
 		
-		m_NavEnableAll = CreateNavigationButton(ACTION_ENABLE_ALL, "#AR-Workshop_TabName_All", true, false);
+		m_NavEnableAll = CreateNavigationButton(UIConstants.MENU_ACTION_ENABLE_ALL, "#AR-Workshop_TabName_All", true, false);
 		if (m_NavEnableAll)
 			m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
 		
-		m_NavEnable = CreateNavigationButton(ACTION_ENABLE, LABEL_ENABLE, true, false);
+		m_NavEnable = CreateNavigationButton(UIConstants.MENU_ACTION_ENABLE, SCR_WorkshopUiCommon.LABEL_ENABLE, true, false);
 		if (m_NavEnable)
 			m_NavEnable.m_OnActivated.Insert(OnNavEnableActivated);
 		
@@ -271,11 +263,11 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		if (m_NavDeleteAll)
 			m_NavDeleteAll.m_OnActivated.Insert(OnNavDeleteAll);
 		
-		m_NavDelete = CreateNavigationButton(ACTION_DELETE, "#AR-Workshop_ButtonDelete", true, false);
+		m_NavDelete = CreateNavigationButton(ACTION_DELETE, SCR_WorkshopUiCommon.LABEL_DELETE, true, false);
 		if (m_NavDelete)
 			m_NavDelete.m_OnActivated.Insert(OnNavDeleteActivated);
 			
-		m_NavUpdate = CreateNavigationButton(ACTION_PRIMARY, LABEL_UPDATE, true, false);
+		m_NavUpdate = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT_HOLD, SCR_WorkshopUiCommon.LABEL_UPDATE, true, false);
 		if (m_NavUpdate)
 			m_NavUpdate.m_OnActivated.Insert(OnNavUpdateActivate);
 	}
@@ -293,11 +285,11 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 			if (show)
 			{
 				if (m_bIsFocusedEnabled)
-					m_NavEnable.SetLabel("#AR-Workshop_ButtonDisable");
+					m_NavEnable.SetLabel(SCR_WorkshopUiCommon.LABEL_DISABLE);
 				else
-					m_NavEnable.SetLabel(LABEL_ENABLE);
+					m_NavEnable.SetLabel(SCR_WorkshopUiCommon.LABEL_ENABLE);
 				
-				bool issues = m_FocusedAddonLine && m_FocusedAddonLine.IsInErrorState();
+				bool issues = m_FocusedAddonLine && !m_FocusedAddonLine.CanBeEnabled();
 				m_NavEnable.SetEnabled(!issues || m_bIsFocusedEnabled, false);
 				
 				if (issues && !m_bIsFocusedEnabled)
@@ -329,11 +321,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		if (m_FocusedAddonLine)
 			item = m_FocusedAddonLine.GetWorkshopItem();
 		
-		SCR_WorkshopItemActionDownload action;
-		if (item)
-			action = item.GetDownloadAction();
-		
-		bool downloading = (item && item.IsDownloadRunning()) || (action && action.IsPaused());
+		bool downloading = SCR_WorkshopUiCommon.IsDownloadingAddon(item);
 		
 		// Update
 		if (m_NavUpdate)
@@ -343,10 +331,10 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 			if (item)
 			{			
 				if (downloading)
-					m_NavUpdate.SetLabel("#AR-Workshop_ButtonCancelDownload");
+					m_NavUpdate.SetLabel(SCR_WorkshopUiCommon.LABEL_CANCEL);
 				
 				else if (item.GetUpdateAvailable())
-					m_NavUpdate.SetLabel(LABEL_UPDATE);
+					m_NavUpdate.SetLabel(SCR_WorkshopUiCommon.LABEL_UPDATE);
 
 				else if (item.GetAnyDependencyMissing() || item.GetAnyDependencyUpdateAvailable())
 					showNavUpdate = false;
@@ -354,7 +342,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 				else
 				{
 					showNavUpdate = false;
-					m_NavUpdate.SetLabel(LABEL_UPDATE);
+					m_NavUpdate.SetLabel(SCR_WorkshopUiCommon.LABEL_UPDATE);
 				}
 			}
 			
@@ -391,7 +379,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	protected string GetEnableErrorTexture(SCR_WorkshopAddonLineComponent line)
 	{
 		if (line && (line.GetErrorFlags() & SCR_EAddonLineErrorFlags.MISSING_DEPENDENCIES))
-			return "dependencies";
+			return SCR_WorkshopUiCommon.ICON_DEPENDENCIES;
 
 		return GetErrorTexture(line);
 	}
@@ -400,7 +388,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	protected string GetErrorTexture(SCR_WorkshopAddonLineComponent line)
 	{
 		if (line && line.GetErrorFlags() & SCR_EAddonLineErrorFlags.DOWNLOAD_ISSUES)
-			return "downloading";
+			return SCR_WorkshopUiCommon.DOWNLOAD_STATE_ICON_DOWNLOADING;
 		
 		if (line && line.GetErrorFlags() & SCR_EAddonLineErrorFlags.REVISION_AVAILABILITY_ISSUE)
 		{
@@ -410,9 +398,9 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		}
 
 		if (line && line.GetErrorFlags() & SCR_EAddonLineErrorFlags.ITEM_ISSUES)
-			return "download";
+			return SCR_WorkshopUiCommon.ICON_DOWNLOAD;
 		
-		return "not-available";
+		return UIConstants.ICON_NOT_AVAILABLE;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -429,7 +417,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 			m_LastEnabledItem = m_FocusedAddonLine.GetWorkshopItem();
 		
 		// Actions
-		if (m_FocusedAddonLine.IsWorkshopItemEnabled())
+		if (m_FocusedAddonLine.IsEnabled())
 			m_FocusedAddonLine.OnDisableButton();
 		else
 			m_FocusedAddonLine.OnEnableButton();
@@ -549,12 +537,8 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 			SCR_WorkshopItem item;
 			if (m_FocusedAddonLine)
 				item = m_FocusedAddonLine.GetWorkshopItem();
-			
-			SCR_WorkshopItemActionDownload action;
-			if (item)
-				action = item.GetDownloadAction();
 		
-			if ((item && item.IsDownloadRunning()) || (action && action.IsPaused()))
+			if (SCR_WorkshopUiCommon.IsDownloadingAddon(item))
 				return;
 
 			SCR_DeleteAddonDialog dialog = SCR_DeleteAddonDialog.CreateDeleteAddon(item);
@@ -595,7 +579,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		if (!m_FocusedAddonLine)
 			return;
 		
-		if (m_FocusedAddonLine.IsWorkshopItemEnabled())
+		if (m_FocusedAddonLine.IsEnabled())
 			OnDeleteAllEnabled();
 		else
 			OnDeleteAllDisabled();
@@ -685,7 +669,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		if (item)
 			item.m_OnCanceled.Insert(OnDownloadCanceled);
 		
-		m_bIsFocusedEnabled = m_FocusedAddonLine.IsWorkshopItemEnabled();
+		m_bIsFocusedEnabled = m_FocusedAddonLine.IsEnabled();
 		
 		UpdateNavigationButtons();
 		
@@ -717,11 +701,11 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		
 		switch(name)
 		{
-			case ACTION_ENABLE_ALL: OnNavEnableAllActivated(); 	break;
-			case ACTION_ENABLE:		OnNavEnableActivated(); 	break;
-			case ACTION_DELETE:		OnNavDeleteActivated(); 	break;
-			case ACTION_PRIMARY:	OnNavUpdateActivate(); 		break;
-			case ACTION_DELETE_ALL:	OnNavDeleteAll();			break;
+			case UIConstants.MENU_ACTION_ENABLE_ALL: 	OnNavEnableAllActivated(); 	break;
+			case UIConstants.MENU_ACTION_ENABLE:		OnNavEnableActivated(); 	break;
+			case ACTION_DELETE:							OnNavDeleteActivated(); 	break;
+			case UIConstants.MENU_ACTION_SELECT_HOLD:	OnNavUpdateActivate(); 		break;
+			case ACTION_DELETE_ALL:						OnNavDeleteAll();			break;
 		}
 	}
 	
@@ -784,18 +768,30 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! By enable arg move all enabled/disabled mods to opposite state
+	// By enable arg move all enabled/disabled mods to opposite state
 	protected void EnableAll(bool enable)
 	{
 		array<ref SCR_WorkshopItem> addons = SCR_AddonManager.GetInstance().GetOfflineAddons();
-
-		// Remove mods with issues
-		addons = SCR_AddonManager.SelectItemsBasic(addons, EWorkshopItemQuery.DEPENDENCY_NOT_MISSING);
+	
+		if (enable)
+		{
+			array<ref SCR_WorkshopItem> addonsToEnable = {};
+			
+			foreach (SCR_WorkshopItem addon : addons)
+			{
+				SCR_WorkshopAddonLineComponent line = m_aEntriesComponents.Get(addon);
+				if (!line || !line.CanBeEnabled())
+					continue;
+				
+				addonsToEnable.Insert(addon);
+			}
+			
+			addons = addonsToEnable;
+		}
 
 		SCR_AddonManager addonsManager = SCR_AddonManager.GetInstance();
 
 		addonsManager.EnableMultipleAddons(addons, enable);
-		addonsManager.GetEventOnAddonEnabled().Insert(OnAddonEnabled);
 		addonsManager.GetEventOnAllAddonsEnabled().Insert(OnAllAddonsEnabled);
 		m_bIsEnablingAddons = true;
 
@@ -807,14 +803,6 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 
 		// Clear preset name
 		SCR_AddonManager.GetInstance().GetPresetStorage().ClearUsedPreset();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnAddonEnabled(SCR_WorkshopItem item, int id)
-	{
-		SCR_WorkshopAddonLineComponent line = m_aEntriesComponents.Get(item);
-		if (line)
-			line.EnableUpdate(false);
 	}
 
 	//------------------------------------------------------------------------------------------------

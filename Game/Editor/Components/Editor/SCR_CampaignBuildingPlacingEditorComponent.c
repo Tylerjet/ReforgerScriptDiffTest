@@ -266,7 +266,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	override protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer)
+	override protected void CreateEntityServer(SCR_EditorPreviewParams params, RplId prefabID, int playerID, int entityIndex, bool isQueue, array<RplId> recipientIds, bool canBePlayer, RplId holderId)
 	{
 		// Cancel spawning of the composition instantly and spawn a composition layout instead.
 		SCR_EditorLinkComponent.IgnoreSpawning(true);
@@ -274,7 +274,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 		// Cancel a services registration to base - register once the final structure is erected.
 		SCR_ServicePointComponent.SpawnAsOffline(true);
 		
-		super.CreateEntityServer(params, prefabID, playerID, entityIndex, isQueue, recipientIds, canBePlayer);
+		super.CreateEntityServer(params, prefabID, playerID, entityIndex, isQueue, recipientIds, canBePlayer, holderId);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -380,7 +380,7 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			return;
 
 		m_Provider = m_CampaignBuildingComponent.GetProviderEntity();
-		m_AreaTrigger = SCR_FreeRoamBuildingClientTriggerEntity.Cast(m_CampaignBuildingComponent.GetTrigger());
+		m_AreaTrigger = m_CampaignBuildingComponent.GetTrigger();
 	}
 
 	//------------------------------------------------------------------------------------------------

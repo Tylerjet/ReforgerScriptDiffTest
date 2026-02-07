@@ -628,7 +628,7 @@ class SCR_VONController : ScriptComponent
 		if (!baseGameMode)
 			return;
 		
-		SCR_GameModeHealthSettings healthSettingsComp = SCR_GameModeHealthSettings.Cast(baseGameMode.GetGameModeHealthSettings());
+		SCR_GameModeHealthSettings healthSettingsComp = baseGameMode.GetGameModeHealthSettings();
 		if (healthSettingsComp)
 			unconsciousVONEnabled = healthSettingsComp.IsUnconsciousVONPermitted();
 		

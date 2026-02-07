@@ -236,14 +236,20 @@ class SCR_ResourceContainer : SCR_ResourceActor
 				FactionAffiliationComponent interactorFactionComponent = interactor.GetComponent().GetFactionAffiliationComponent();
 				
 				if (!interactorFactionComponent)
-					return false;
+					return true;
 				
-				FactionAffiliationComponent containerrFactionComponent = m_ResourceComponent.GetFactionAffiliationComponent();
+				FactionAffiliationComponent containerFactionComponent = m_ResourceComponent.GetFactionAffiliationComponent();
 				
-				if (!containerrFactionComponent)
-					return false;
+				if (!containerFactionComponent)
+					return true;
+			
+				Faction interactorFaction = interactorFactionComponent.GetAffiliatedFaction();
+				Faction containerFaction = containerFactionComponent.GetAffiliatedFaction();
+			
+				if (!interactorFaction || !containerFaction)
+					return true;
 				
-				return interactorFactionComponent.GetAffiliatedFaction() == containerrFactionComponent.GetAffiliatedFaction();
+				return interactorFaction == containerFaction || interactorFaction.IsFactionFriendly(containerFaction);
 			case EResourceRights.ALL:
 				return true;
 		}
@@ -398,9 +404,6 @@ class SCR_ResourceContainer : SCR_ResourceActor
 			m_ResourceEncapsulator.RequestConsumtion(previousValue - newValue, notifyChange);
 		else
 			return false;
-		
-		if (notifyChange)
-			OnResourcesChanged(previousValue);
 		
 		return true;
 	}
@@ -694,7 +697,7 @@ class SCR_ResourceContainer : SCR_ResourceActor
 			ComputeResourceDecay(timeslice, resourceValue);
 		
 		if (m_ResourceComponent && resourceValue != 0.0 && SetResourceValue(m_fResourceValueCurrent + resourceValue))
-			m_ResourceComponent.Replicate();;
+			m_ResourceComponent.Replicate();
 	}
 
 	//------------------------------------------------------------------------------------------------	
@@ -706,7 +709,7 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	//------------------------------------------------------------------------------------------------	
 	protected void ComputeResourceGain(float timeslice, out float resourceValue)
 	{
-		m_fResourceGainElapsedTime += timeslice;;
+		m_fResourceGainElapsedTime += timeslice;
 		
 		float resourceGainElapsedTimeRelative = m_fResourceGainElapsedTime - m_fResourceGainTimeout;
 		
@@ -955,21 +958,20 @@ class SCR_ResourceContainer : SCR_ResourceActor
 	{
 		super.Clear();
 		
+		// Reverse iter needed  due to self delete operations during UnregisterContainer
 		for (int index = m_aInteractors.Count() - 1; index >= 0; --index)
 		{
-			m_aInteractors[index].UnregisterContainer(this);
+			SCR_ResourceInteractor interactor = m_aInteractors[index];
+			if (interactor)
+				interactor.UnregisterContainer(this);
 		}
-		
+
 		ChimeraWorld world = ChimeraWorld.CastFrom(GetGame().GetWorld());
-     	
 		if (!world)
 			return;
-		
+
 		SCR_ResourceSystem updateSystem = SCR_ResourceSystem.Cast(world.FindSystem(SCR_ResourceSystem));
-        
-		if (!updateSystem)
-			return;
-		
-		updateSystem.UnregisterContainer(this);
+		if (updateSystem)
+			updateSystem.UnregisterContainer(this);
 	}
-};
+}

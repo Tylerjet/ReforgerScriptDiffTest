@@ -96,7 +96,7 @@ class SCR_FieldManualUI : MenuRootBase
 			return;
 		}
 
-		SCR_InputButtonComponent backButtonMenuFrame = SCR_InputButtonComponent.GetInputButtonComponent("Back", menuFrame);
+		SCR_InputButtonComponent backButtonMenuFrame = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, menuFrame);
 		if (!backButtonMenuFrame || !backButtonMenuFrame.m_OnClicked)
 		{
 			Print(string.Format("missing menu frame's back button menu (%1) or m_OnClicked (%2) | " + FilePath.StripPath(__FILE__) + ":" + __LINE__, backButtonMenuFrame != null, backButtonMenuFrame.m_OnClicked != null), LogLevel.WARNING);
@@ -131,8 +131,8 @@ class SCR_FieldManualUI : MenuRootBase
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
 		{
-			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
-			inputManager.AddActionListener("MenuBackWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
+			inputManager.AddActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, CloseMenuOrReadingPanel);
+			inputManager.AddActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, CloseMenuOrReadingPanel);
 		}
 #endif // WORKBENCH
 
@@ -159,8 +159,8 @@ class SCR_FieldManualUI : MenuRootBase
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
 		{
-			inputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
-			inputManager.RemoveActionListener("MenuBackWB", EActionTrigger.DOWN, CloseMenuOrReadingPanel);
+			inputManager.RemoveActionListener(UIConstants.MENU_ACTION_OPEN_WB, EActionTrigger.DOWN, CloseMenuOrReadingPanel);
+			inputManager.RemoveActionListener(UIConstants.MENU_ACTION_BACK_WB, EActionTrigger.DOWN, CloseMenuOrReadingPanel);
 		}
 	}
 #endif // WORKBENCH

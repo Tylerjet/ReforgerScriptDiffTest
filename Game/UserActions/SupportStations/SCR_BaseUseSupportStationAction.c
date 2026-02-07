@@ -184,6 +184,7 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 		return true;
 	}
 	
+	//---- REFACTOR NOTE START: CanBePerformedScript is updated each fix frame by code. The can perform check however is quite expensive to check so I add delays to only check x seconds ----
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
  	{	
@@ -230,6 +231,7 @@ class SCR_BaseUseSupportStationAction : SCR_ScriptedUserAction
 		SetCanPerform(m_SupportStationComponent != null, reasonInvalid);
 		return m_SupportStationComponent != null;
 	}
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//~ Set if action can be performed and to update displayed action name and invalid reason

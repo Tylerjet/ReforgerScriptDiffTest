@@ -31,7 +31,7 @@ class SCR_VehicleControllerTypeCondition : SCR_AvailableActionCondition
 		{
 			case SCR_EVehicleControllerType.WHEELED:
 			{
-				result = CarControllerComponent_SA.Cast(controller) || CarControllerComponent.Cast(controller);
+				result = CarControllerComponent.Cast(controller) || CarControllerComponent.Cast(controller);
 				break;
 			}
 
@@ -43,7 +43,7 @@ class SCR_VehicleControllerTypeCondition : SCR_AvailableActionCondition
 
 			default:
 			{
-				result = VehicleControllerComponent_SA.Cast(controller) || VehicleControllerComponent.Cast(controller);
+				result = VehicleControllerComponent.Cast(controller) || VehicleControllerComponent.Cast(controller);
 				break;
 			}
 		}

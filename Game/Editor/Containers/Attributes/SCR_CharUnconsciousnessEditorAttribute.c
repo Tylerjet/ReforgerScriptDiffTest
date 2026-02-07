@@ -42,7 +42,7 @@ class SCR_CharUnconsciousnessEditorAttribute : SCR_BaseEditorAttribute
 		if (!characterDamageManager) 
 			return;
 		
-		CharacterControllerComponent controller = CharacterControllerComponent.Cast(character.GetCharacterController());
+		CharacterControllerComponent controller = character.GetCharacterController();
 		if (!controller) 
 			return;
 		

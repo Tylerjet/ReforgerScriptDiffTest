@@ -52,7 +52,7 @@ class SCR_SpawnPointRequestResultInfoConfig
 		int count = m_aSortedSpawnPointRequestResultInfos.Count();
 		for(int i = 0; i < count; ++i)
 		{
-			requestResultInfo = SCR_BaseSpawnPointRequestResultInfo.Cast(m_aSortedSpawnPointRequestResultInfos.Get(i));
+			requestResultInfo = m_aSortedSpawnPointRequestResultInfos.Get(i);
 			if (!requestResultInfo || !requestResultInfo.IsValidRequestResultInfo(requestComponent, response, data))
 				continue;
 			

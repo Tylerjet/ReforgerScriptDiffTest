@@ -7,7 +7,7 @@ class SCR_CareerProfileMenuUI : SCR_SuperMenuBase
 	{
 		super.OnMenuOpen();
 
-		SCR_InputButtonComponent comp = m_DynamicFooter.FindButton("Back");
+		SCR_InputButtonComponent comp = m_DynamicFooter.FindButton(UIConstants.BUTTON_BACK);
 		if (comp)
 			comp.m_OnActivated.Insert(Close);
 

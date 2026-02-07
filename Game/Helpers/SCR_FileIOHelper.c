@@ -1,11 +1,15 @@
 class SCR_FileIOHelper
 {
-	protected static const string DELIMITER = "/";
+	protected static const string PATH_DELIMITER = "/"; // accepted under Windows too
+	protected static const string FORBIDDEN_FILENAME_CHARS_WINDOWS = "*/\\<>:|?\t\r\n\"";
+	protected static const string FORBIDDEN_FILENAME_CHARS_LINUX = "/";
 
 	//------------------------------------------------------------------------------------------------
+	//! OBSOLETE - use FileIO.MakeDirectory instead\n
 	//! Create sub-directories in the proper order, circumventing a FileIO.MakeDirectory limitation
-	//! \param absoluteDirectory e.g C:/Arma4/Data/scripts/My/Sub/Directory
+	//! \param[in] absoluteDirectory e.g C:/Arma4/Data/scripts/My/Sub/Directory
 	//! \return true if the whole directory structure was created or already exists, false otherwise
+	[Obsolete("Use FileIO.MakeDirectory instead")]
 	static bool CreateDirectory(string absoluteDirectory)
 	{
 		if (SCR_StringHelper.IsEmptyOrWhiteSpace(absoluteDirectory))
@@ -14,14 +18,14 @@ class SCR_FileIOHelper
 		if (FileIO.FileExists(absoluteDirectory))
 			return true;
 
-		absoluteDirectory.Replace("\\", DELIMITER);
-		absoluteDirectory = SCR_StringHelper.ReplaceRecursive(absoluteDirectory, DELIMITER + DELIMITER, DELIMITER);
+		absoluteDirectory.Replace("\\", PATH_DELIMITER);
+		absoluteDirectory = SCR_StringHelper.ReplaceRecursive(absoluteDirectory, PATH_DELIMITER + PATH_DELIMITER, PATH_DELIMITER);
 
 		if (FileIO.FileExists(absoluteDirectory))
 			return true;
 
 		array<string> pieces = {};
-		absoluteDirectory.Split(DELIMITER, pieces, true);
+		absoluteDirectory.Split(PATH_DELIMITER, pieces, true);
 
 		if (pieces.Count() < 2)
 		{
@@ -32,7 +36,7 @@ class SCR_FileIOHelper
 		string path = pieces[0]; // C: part on Windows
 		for (int i = 1, count = pieces.Count(); i < count; i++)
 		{
-			path += DELIMITER + pieces[i];
+			path += PATH_DELIMITER + pieces[i];
 
 			if (FileIO.FileExists(path))
 				continue;
@@ -49,9 +53,9 @@ class SCR_FileIOHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Copy source file to destination
-	//! \param source file to copy
-	//! \param destination copy destination
-	//! \param overwrite set to false to prevent an accidental overwrite
+	//! \param[in] source file to copy
+	//! \param[in] destination copy destination
+	//! \param[in] overwrite set to false to prevent an accidental overwrite
 	//! \return
 	static bool Copy(string source, string destination, bool overwrite = true)
 	{
@@ -91,14 +95,17 @@ class SCR_FileIOHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Get file content as array of lines
-	//! \param filePath relative or absolute
+	//! \param[in] filePath relative or absolute
+	//! \param[in] printWarning true to print warning on issue, false otherwise
 	//! \return array of lines or null if file does not exist or cannot be opened
-	static array<string> ReadFileContent(string filePath)
+	static array<string> ReadFileContent(string filePath, bool printWarning = true)
 	{
 		FileHandle fileHandle = FileIO.OpenFile(filePath, FileMode.READ);
 		if (!fileHandle)
 		{
-			Print("Could not open " + filePath, LogLevel.WARNING);
+			if (printWarning)
+				Print("Cannot open/read " + filePath, LogLevel.WARNING);
+
 			return null;
 		}
 
@@ -118,15 +125,15 @@ class SCR_FileIOHelper
 	//------------------------------------------------------------------------------------------------
 	//! Write all lines in the file, replacing all its content
 	//! Overwrites the file if it exists
-	//! \param filePath relative or absolute
-	//! \param lines
+	//! \param[in] filePath relative or absolute
+	//! \param[in] lines
 	//! \return true on success, false otherwise
 	static bool WriteFileContent(string filePath, notnull array<string> lines)
 	{
 		FileHandle fileHandle = FileIO.OpenFile(filePath, FileMode.WRITE);
 		if (!fileHandle)
 		{
-			Print("Could not open " + filePath, LogLevel.WARNING);
+			Print("Cannot open/write " + filePath, LogLevel.WARNING);
 			return false;
 		}
 
@@ -150,5 +157,99 @@ class SCR_FileIOHelper
 		fileHandle.Close();
 
 		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get whether or not a file name is valid for the filesystem
+	//! \param[in] fileName the file name to be sanitised - no file path accepted
+	//! \return true if the provided file name is valid under the current OS, false otherwise
+	static bool IsValidFileName(string fileName)
+	{
+		bool isWindowsBased = IsWindowsBased();
+		if (isWindowsBased)
+		{
+			if (fileName.EndsWith("."))
+				return false;
+
+			if (fileName.EndsWith(" "))
+				return false;
+		}
+
+		string forbiddenCharacters;
+		if (isWindowsBased)
+			forbiddenCharacters = FORBIDDEN_FILENAME_CHARS_WINDOWS;
+		else
+			forbiddenCharacters = FORBIDDEN_FILENAME_CHARS_LINUX;
+
+		for (int i, len = forbiddenCharacters.Length(); i < len; i++)
+		{
+			if (fileName.Contains(forbiddenCharacters[i]))
+				return false;
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Sanitise the provided file name (removes invalid characters depending on the current OS, directory information, etc)
+	//! \param[in] fileName the file name to be sanitised - can take a file path that will be stripped
+	//! \return the sanitised, trimmed file name or empty string if no characters are viable
+	static string SanitiseFileName(string fileName)
+	{
+		string forbiddenCharacters;
+		bool isWindowsBased = IsWindowsBased();
+		if (isWindowsBased)
+			forbiddenCharacters = FORBIDDEN_FILENAME_CHARS_WINDOWS;
+		else
+			forbiddenCharacters = FORBIDDEN_FILENAME_CHARS_LINUX;
+
+		fileName = FilePath.StripPath(fileName);
+		for (int i, len = forbiddenCharacters.Length(); i < len; i++)
+		{
+			fileName.Replace(forbiddenCharacters[i], string.Empty);
+		}
+
+		fileName.TrimInPlace();
+		if (fileName.IsEmpty())
+			return string.Empty;
+
+		if (isWindowsBased)
+		{
+			int originalLength = fileName.Length();
+			int properLength = originalLength;
+			string lastChar = fileName[properLength - 1];
+
+			while (lastChar == "." || lastChar == " " || lastChar == "\t")
+			{
+				--properLength;
+				if (properLength < 1)
+					break;
+
+				lastChar = fileName[properLength - 1];
+			}
+
+			if (properLength < 1)
+				return string.Empty;
+
+			if (properLength != originalLength)
+				fileName = fileName.Substring(0, properLength);
+		}
+
+		fileName.TrimInPlace();
+
+		return fileName;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static bool IsWindowsBased()
+	{
+		EPlatform platform = System.GetPlatform();
+
+		return platform == EPlatform.WINDOWS
+			|| platform == EPlatform.XBOX_ONE
+			|| platform == EPlatform.XBOX_ONE_S
+			|| platform == EPlatform.XBOX_ONE_X
+			|| platform == EPlatform.XBOX_SERIES_S
+			|| platform == EPlatform.XBOX_SERIES_X;
 	}
 }

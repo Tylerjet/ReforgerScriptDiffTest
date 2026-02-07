@@ -7,12 +7,6 @@ Do not modify, this script is generated
 class BaseWeatherStateTransitionManager
 {
 	private void BaseWeatherStateTransitionManager();
-	proto external ref WeatherStateTransitionNode CreateStateTransition(string stateName, float transitionDurationHours, float stateDurationHours);
-	proto external ref WeatherStateTransitionNode GetStateTransitionNode(int index);
-	proto external ref WeatherStateTransitionNode GetCurrentStateTransitionNode();
-	proto external ref WeatherState GetCurrentState();
-	proto external ref WeatherState GetNextState();
-	proto external bool RemoveStateTransition(int index, bool removeInvalidTransitions, out int totalRemoved);
 
 	/*!
 	Check if we are previewing a transition.
@@ -49,6 +43,7 @@ class BaseWeatherStateTransitionManager
 	\return SUCCESS if correct, otherwise see WeatherTransitionRequestResponse for possible responses.
 	*/
 	proto external WeatherTransitionRequestResponse RequestStateTransition();
+	proto external ref WeatherStateTransitionNode CreateStateTransition(string stateName, float transitionDurationHours, float stateDurationHours);
 	/*!
 	Adds a new state transition to the state transition queue.
 	Keep in mind that state transition node cannot be inserted to the first node if a transition is already on course.
@@ -76,14 +71,28 @@ class BaseWeatherStateTransitionManager
 	Retrieves state transition node list.
 	*/
 	proto external void GetStateTransitionNodeList(out notnull array<ref WeatherStateTransitionNode> outArr);
+	proto external WeatherStateTransitionNode GetStateTransitionNode(int index);
+	proto external WeatherStateTransitionNode GetCurrentStateTransitionNode();
+	proto external WeatherState GetCurrentState();
+	proto external WeatherState GetNextState();
 	/*!
 	Retrieves in-game remaining time until next state is completely set.
 	*/
-	proto external float GetTimeLeftUntilNextState();;
+	proto external float GetTimeLeftUntilNextState();
 	/*!
 	Retrieves in-game remaining time until next state's variant is completely set.
 	*/
-	proto external float GetTimeLeftUntilNextVariant();;
+	proto external float GetTimeLeftUntilNextVariant();
+	/*!
+	Removes state transition node at supplied index.
+	Can only be called by the authority (server, singleplayer...).
+
+	\param index Index of node which will be deleted.
+	\param removeInvalidTransitions Perform a sanity check and remove any transition nodes which arent compatible after deleting the selected one.
+	\param totalRemoved how many nodes were removed, this will be 0 if supplied index is invalid or caller is not master. 1 if index is valid and removeInvalidTransitions == false, N if index is valid and removeInvalidTransitions == true
+	\return true if master and something was removed, false otherwise.
+	*/
+	proto external bool RemoveStateTransition(int index, bool removeInvalidTransitions, out int totalRemoved);
 	/*!
 	Get total number of state transitions
 	*/

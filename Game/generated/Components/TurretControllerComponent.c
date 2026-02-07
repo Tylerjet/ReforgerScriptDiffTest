@@ -18,6 +18,12 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto external bool IsFreeLookEnabled();
 	//! Returns true if the weapon is in ADS.
 	proto external bool IsWeaponADS();
+	//! Request weapon ADS state
+	proto external void SetWeaponADS(bool val);
+	//! Returns weapon ADS input state
+	proto external bool GetWeaponADSInput();
+	//! Request weapon ADS input state
+	proto external void SetWeaponADSInput(bool val);
 	proto external ETurretReloadState GetReloadingState();
 	//! Returns the time to ADS in seconds.
 	proto external float GetADSTime();

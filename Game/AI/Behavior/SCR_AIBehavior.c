@@ -38,15 +38,17 @@ class SCR_AIBehaviorBase : SCR_AIActionBase
 	#endif
 };
 
+//---------------------------------------------------------------------------------------------------------------------------------
 class SCR_AIWaitBehavior : SCR_AIBehaviorBase
 {	
 	void SCR_AIWaitBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity)
 	{
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Wait.bt";
-		SetPriority(10);
-    }
+		SetPriority(PRIORITY_BEHAVIOR_WAIT);
+	}
 };
 
+//---------------------------------------------------------------------------------------------------------------------------------
 class SCR_AIIdleBehavior : SCR_AIBehaviorBase
 {
 	void SCR_AIIdleBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity)
@@ -54,7 +56,7 @@ class SCR_AIIdleBehavior : SCR_AIBehaviorBase
 		if (!utility)
 			return;
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Idle.bt";
-		SetPriority(1.0);
+		SetPriority(PRIORITY_BEHAVIOR_IDLE);
 	}
 	
 	override void OnActionSelected()
@@ -65,4 +67,3 @@ class SCR_AIIdleBehavior : SCR_AIBehaviorBase
 		m_Utility.m_CombatComponent.SetExpectedEnemyType(EAIUnitType.UnitType_Infantry);
 	}
 };
-

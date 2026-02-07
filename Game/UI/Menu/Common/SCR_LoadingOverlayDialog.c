@@ -54,7 +54,7 @@ class SCR_LoadingOverlayDialog : ChimeraMenuBase
 		Widget w = GetRootWidget().FindWidget("m_LoadingOverlay");
 		m_LoadingOverlay = SCR_LoadingOverlay.Cast(w.FindHandler(SCR_LoadingOverlay));
 		
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.DOWN, Callback_OnBackButton);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, Callback_OnBackButton);
 		
 		// Play fade-in animation
 		GetRootWidget().SetOpacity(0);
@@ -67,7 +67,7 @@ class SCR_LoadingOverlayDialog : ChimeraMenuBase
 	{
 		super.OnMenuClose();
 		
-		GetGame().GetInputManager().RemoveActionListener("MenuBack", EActionTrigger.DOWN, Callback_OnBackButton);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, Callback_OnBackButton);
 		
 		m_OnCloseFinished.Invoke();
 	}

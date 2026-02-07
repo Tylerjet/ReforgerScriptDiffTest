@@ -112,7 +112,7 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] toggled
 	//! \param[in] invokeOnToggled
-	void SetToggled(bool toggled, bool invokeOnToggled = true)
+	void SetToggled(bool toggled, bool invokeOnToggled = true, bool instant = false)
 	{
 		#ifdef DEBUG_MODULAR_BUTTON
 		_print(string.Format("SetToggled: %1", toggled));
@@ -121,7 +121,7 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		if (!m_bCanBeToggled)
 			return;
 		
-		Internal_SetToggled(toggled, invokeOnToggled);
+		Internal_SetToggled(toggled, invokeOnToggled, instant);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -290,7 +290,9 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Applies all enabled effects.
+	//! Applies all enabled effects. 
+	//! Param instant should be true for changes to an effect's setting while it is active (eg: change the focused color while element is focused)
+	//! If instant == false, it's like retriggering the event, eg element simulates being focused again
 	//! \param[in] instant
 	void InvokeAllEnabledEffects(bool instant)
 	{
@@ -411,7 +413,7 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void Internal_SetToggled(bool newToggled, bool invokeOnToggled = true)
+	protected void Internal_SetToggled(bool newToggled, bool invokeOnToggled = true, bool instant = false)
 	{
 		bool oldToggled = m_bToggled;
 		m_bToggled = newToggled;
@@ -419,9 +421,9 @@ class SCR_ModularButtonComponent : ScriptedWidgetComponent
 		if (newToggled != oldToggled)
 		{
 			if (newToggled)
-				InvokeEffectsEvent(EModularButtonEventFlag.EVENT_TOGGLED_ON);
+				InvokeEffectsEvent(EModularButtonEventFlag.EVENT_TOGGLED_ON, instant);
 			else
-				InvokeEffectsEvent(EModularButtonEventFlag.EVENT_TOGGLED_OFF);
+				InvokeEffectsEvent(EModularButtonEventFlag.EVENT_TOGGLED_OFF, instant);
 		}
 		
 		UpdateCurrentState();

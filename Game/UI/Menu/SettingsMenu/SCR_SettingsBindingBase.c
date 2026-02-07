@@ -196,8 +196,8 @@ class SCR_SettingsBindingBase
 			m_Setting = userSettings.GetModule(m_sModule);
 		else
 		{
-		BaseContainer setting = GetGame().GetEngineUserSettings().GetModule(m_sModule);
-		if (setting)
+			BaseContainer setting = GetGame().GetEngineUserSettings().GetModule(m_sModule);
+			if (setting)
 				m_Setting = setting.GetObject(m_sSubModule);
 		}
 
@@ -224,7 +224,8 @@ class SCR_SettingsBindingBase
 			m_Setting.Set(m_sName, i);
 		}
 
-		m_OnEntryChanged.Invoke(this);
+		if (m_OnEntryChanged)
+			m_OnEntryChanged.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -234,7 +235,8 @@ class SCR_SettingsBindingBase
 			return;
 
 		m_Setting.Set(m_sName, value);
-		m_OnEntryChanged.Invoke(this);
+		if (m_OnEntryChanged)
+			m_OnEntryChanged.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -244,6 +246,7 @@ class SCR_SettingsBindingBase
 			return;
 
 		m_Setting.Set(m_sName, checked);
-		m_OnEntryChanged.Invoke(this);
+		if (m_OnEntryChanged)
+			m_OnEntryChanged.Invoke(this);
 	}
 };

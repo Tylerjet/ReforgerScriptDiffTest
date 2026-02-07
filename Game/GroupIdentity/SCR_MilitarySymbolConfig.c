@@ -116,8 +116,13 @@ class SCR_MilitarySymbolAreaImageSet: SCR_MilitarySymbolArea
 		if (m_sAreaWidgetName)
 			parentWidget = parentWidget.FindAnyWidget(m_sAreaWidgetName);
 		
+		//~ Todo: Hotfix to keep non-Combatants icons clear without any other icons
+		if (symbol.HasIcon(EMilitarySymbolIcon.UNARMED))
+			return;
+		
 		ImageWidget imageWidget;
 		string textureSetName;
+		
 		foreach (SCR_MilitarySymbol_QuadBase quad: m_aQuads)
 		{
 			if (!quad.IsCompatible(symbol))
@@ -164,6 +169,7 @@ class SCR_MilitarySymbolAreaConflict: SCR_MilitarySymbolArea
 			if (!imageWidget)
 				continue;
 			textureSetName = string.Format(m_sTextureSetFormat, quad.GetImageSetName());
+
 			imageWidget.LoadImageTexture(0, quad.GetImageSetName());
 		}
 	}

@@ -1,17 +1,17 @@
-class GamematInfoRequest: JsonApiStruct
+class GamematInfoRequest : JsonApiStruct
 {
 	string Input;
-	
+
 	void GamematInfoRequest()
 	{
 		RegV("Input");
 	}
 }
 
-class GamematInfoResponse: JsonApiStruct
+class GamematInfoResponse : JsonApiStruct
 {
 	string Gamemat;
-	
+
 	void GamematInfoResponse()
 	{
 		RegV("Gamemat");
@@ -22,14 +22,20 @@ class GamematInfoUtils
 {
 	void GetGamemat(GamematInfoResponse response)
 	{
-		// Getting gamemats from rdb
+		// getting gamemats from rdb
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = {"gamemat"};
+		
 		array<ResourceName> gamemats = {};
+		ResourceDatabase.SearchResources(filter, gamemats.Insert);
+		
 		string guid;
 		string name;
-		Workbench.SearchResources(gamemats.Insert, {"gamemat"});
-		for(int i = 0; i < gamemats.Count(); i++)
+		
+		for (int i = 0; i < gamemats.Count(); i++)
 		{
-			if(gamemats[i].Contains("/"))
+			// getting name
+			if (gamemats[i].Contains("/"))
 			{
 				name = gamemats[i].Substring(gamemats[i].LastIndexOf("/") + 1, gamemats[i].IndexOf(".") - gamemats[i].LastIndexOf("/") - 1);
 			}
@@ -37,8 +43,10 @@ class GamematInfoUtils
 			{
 				name = gamemats[i].Substring(gamemats[i].IndexOf("}") + 1, gamemats[i].IndexOf(".") - gamemats[i].IndexOf("}") - 1);
 			}
+			// getting GUID
 			guid = gamemats[i].Substring(gamemats[i].IndexOf("{") + 1, gamemats[i].IndexOf("}") - 1);
-			if(i + 1 == gamemats.Count())
+			// adding them to the format
+			if (i + 1 == gamemats.Count())
 			{
 				response.Gamemat += name + "_" + guid;
 			}
@@ -52,21 +60,19 @@ class GamematInfoUtils
 }
 
 
-class GamematInfo: NetApiHandler
+class GamematInfo : NetApiHandler
 {
 	override JsonApiStruct GetRequest()
 	{
 		return new GamematInfoRequest();
 	}
-	
+
 	override JsonApiStruct GetResponse(JsonApiStruct request)
 	{
 		GamematInfoRequest req = GamematInfoRequest.Cast(request);
 		GamematInfoResponse response = new GamematInfoResponse();
 		GamematInfoUtils utils = new GamematInfoUtils();
-		
-		ResourceName input = req.Input;
-		
+
 		utils.GetGamemat(response);
 
 		return response;

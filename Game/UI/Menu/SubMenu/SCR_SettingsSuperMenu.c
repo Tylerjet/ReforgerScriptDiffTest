@@ -6,7 +6,7 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 	{
 		super.OnMenuOpen();
 
-		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent("Back",GetRootWidget());
+		SCR_InputButtonComponent comp = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK,GetRootWidget());
 		if (comp)
 			comp.m_OnActivated.Insert(OnBack);
 		
@@ -33,7 +33,7 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 		if (!isDebug && System.GetPlatform() == EPlatform.WINDOWS)
 		{
 			m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoConsole");
-			m_SuperMenuComponent.GetTabView().ShowTabByIdentifier("SettingsVideoPC");
+			m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoPC", playSound: false);
 		}
 
 // Remove video settings for consoles, if not in settings debug mode
@@ -42,7 +42,7 @@ class SCR_SettingsSuperMenu : SCR_SuperMenuBase
 			return;
 		
 		m_SuperMenuComponent.GetTabView().RemoveTabByIdentifier("SettingsVideoPC");
-		m_SuperMenuComponent.GetTabView().ShowTabByIdentifier("SettingsVideoConsole");	
+		m_SuperMenuComponent.GetTabView().ShowTabByIdentifier(identifier: "SettingsVideoConsole", playSound: false);	
 #endif
 	}
 

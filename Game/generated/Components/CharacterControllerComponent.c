@@ -378,6 +378,13 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event void OnInspectionModeChanged(bool newState);
 	event void UpdateDrowning(float timeSlice, vector waterLevel);
 	/*!
+	When this character gets hit, this function gets called.
+	float damageValue: Raw damage of the hit (no damage multipliers have been applied). Can be negative for "healing" damage.
+	EDamageType damageType:
+	return EHitReactionType: Type of hit reaction that should be played for this impact.
+	*/
+	event EHitReactionType ComputeHitReaction(float damageValue, EDamageType damageType) {return EHitReactionType.HIT_REACTION_NONE;};
+	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
 	*/

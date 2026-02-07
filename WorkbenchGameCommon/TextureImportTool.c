@@ -642,7 +642,10 @@ class BatchTextureProcessorPlugin: WorkbenchPlugin
 			texType.m_PostFix += "edds";
 		}
 
-		Workbench.SearchResources(Find, {"edds"});
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = {"edds"};
+		ResourceDatabase.SearchResources(filter, Find);
+		
 		m_Resources.Sort();
 
 		ResourceManager rb = Workbench.GetModule(ResourceManager);

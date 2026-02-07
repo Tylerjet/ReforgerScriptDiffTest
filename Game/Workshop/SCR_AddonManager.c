@@ -112,14 +112,18 @@ class SCR_AddonManager : GenericEntity
 	protected bool m_bInitFinished 			= false;
 
 	protected ref SCR_BackendCallback m_AddonCheckCallback = new SCR_BackendCallback();
+
+	protected SCR_LoadingOverlay m_LoadingOverlay;
+	
+	protected ref ScriptInvoker<SCR_WorkshopItem, int> Event_OnAddonEnabled;
+	protected ref ScriptInvoker<> Event_OnAllAddonsEnabled;
+		
+	// Called when a new download have been started
+	ref ScriptInvoker m_OnNewDownload = new ScriptInvoker; // (SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I
 	//-----------------------------------------------------------------------------------------------
-
-	// Called when a new download have been started
-	ref ScriptInvoker m_OnNewDownload = new ScriptInvoker; // (SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
-
 	//-----------------------------------------------------------------------------------------------
 	static SCR_AddonManager GetInstance()
 	{
@@ -151,7 +155,6 @@ class SCR_AddonManager : GenericEntity
 		}
 		return ret;
 	}
-
 
 	//-----------------------------------------------------------------------------------------------
 	//! Returns a SCR_WorkshopItem. If it's not registered, creates a new one and registers it.
@@ -185,7 +188,6 @@ class SCR_AddonManager : GenericEntity
 		return newItem;
 	}
 
-
 	//-----------------------------------------------------------------------------------------------
 	//! Returns a SCR_WorkshopItem. If it's not registered, creates a new one and registers it.
 	SCR_WorkshopItem Register(Dependency item)
@@ -218,18 +220,23 @@ class SCR_AddonManager : GenericEntity
 		return newItem;
 	}
 
-
 	//-----------------------------------------------------------------------------------------------
 	//! When true, we can fully use Workshop. All async checks are finished successfully.
 	//! CheckAddons is not reliable and might never finish, so be careful with this.
-	bool GetReady() { return m_bInitFinished && m_bAddonsChecked; }
+	bool GetReady()
+	{
+		return m_bInitFinished && m_bAddonsChecked;
+	}
 
 	//-----------------------------------------------------------------------------------------------
 	//! True when all async checks are done. Doesn't indicate that all checks were successful!
 	//bool GetAllAsyncChecksDone() { return m_bAddonsChecked ; }
 
 	//-----------------------------------------------------------------------------------------------
-	bool GetAddonsChecked() { return m_bAddonsChecked; }
+	bool GetAddonsChecked()
+	{
+		return m_bAddonsChecked;
+	}
 
 	//-----------------------------------------------------------------------------------------------
 	//! Returns immediate value of UserPrivilege.USER_GEN_CONTENT
@@ -262,9 +269,7 @@ class SCR_AddonManager : GenericEntity
 		GetGame().GetPlatformService().GetPrivilegeAsync(UserPrivilege.USER_GEN_CONTENT, m_CallbackGetPrivilege);
 	}
 
-
 	// Handling of addons loaded through external configuration
-
 	//-----------------------------------------------------------------------------------------------
 	//! Returns true when external addon configuration is used (through CLI or other means)
 	protected static bool GetAddonsEnabledExternally()
@@ -316,7 +321,6 @@ class SCR_AddonManager : GenericEntity
 		return count;
 	}
 
-
 	//-----------------------------------------------------------------------------------------------
 	//! Selects items which match query. All flags must match.
 	//! EWorkshopItemQuery.OFFLINE | EWorkshopItemQuery.ENABLED - will return items which are offline AND enabled.
@@ -351,7 +355,6 @@ class SCR_AddonManager : GenericEntity
 		return count;
 	}
 
-
 	//-----------------------------------------------------------------------------------------------
 	//! Selects items which match query. Any flag must match.
 	//! EWorkshopItemQuery.OFFLINE | EWorkshopItemQuery.ENABLED - will return items which are offline OR enabled.
@@ -366,7 +369,6 @@ class SCR_AddonManager : GenericEntity
 
 		return ret;
 	}
-
 
 	//-----------------------------------------------------------------------------------------------
 	//! Counts items which match query.Any flag must match.
@@ -385,7 +387,6 @@ class SCR_AddonManager : GenericEntity
 
 		return count;
 	}
-
 
 	//-----------------------------------------------------------------------------------------------
 	//! Return difference type between current version from current to target
@@ -491,11 +492,6 @@ class SCR_AddonManager : GenericEntity
 		return SCR_ERevisionAvailability.ERA_AVAILABLE;
 	}
 	
-	protected SCR_LoadingOverlay m_LoadingOverlay;
-	
-	protected ref ScriptInvoker<SCR_WorkshopItem, int> Event_OnAddonEnabled;
-	protected ref ScriptInvoker<> Event_OnAllAddonsEnabled;
-	
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeEventOnAddonEnabled(SCR_WorkshopItem arg0, int arg1)
 	{
@@ -569,20 +565,8 @@ class SCR_AddonManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	//-----------------------------------------------------------------------------------------------
-	//-----------------------------------------------------------------------------------------------
-
-
-
-
-
-
-
-
-	//-----------------------------------------------------------------------------------------------
 	// 					P R O T E C T E D   /   P R I V A T E
 	//-----------------------------------------------------------------------------------------------
-
 	//-----------------------------------------------------------------------------------------------
 	//! When internet is disabled, might take a lot of time to complete the request.
 	protected void Internal_CheckAddons()
@@ -695,7 +679,6 @@ class SCR_AddonManager : GenericEntity
 		return false;	// False when no conditions are true
 	}
 
-
 	//-----------------------------------------------------------------------------------------------
 	private void SCR_AddonManager(IEntitySource src, IEntity parent)
 	{
@@ -710,7 +693,6 @@ class SCR_AddonManager : GenericEntity
 	{
 		s_Instance = null;
 	}
-
 
 	//-----------------------------------------------------------------------------------------------
 	//! Finishes init after all async checks are done
@@ -948,7 +930,6 @@ class SCR_AddonManager : GenericEntity
 		*/
 	}
 
-
 	//-----------------------------------------------------------------------------------------------
 	//! Called by SCR_WorkshopItem when it starts a new download
 	void Internal_OnNewDownload(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
@@ -973,7 +954,6 @@ class SCR_AddonManager : GenericEntity
 	
 	//-----------------------------------------------------------------------------------------------
 	// Handling of addon presets
-	
 	//----------------------------------------------------------------------------------------------------------------------------------------------------
 	SCR_WorkshopAddonManagerPresetStorage GetPresetStorage()
 	{
@@ -1038,7 +1018,6 @@ class SCR_AddonManager : GenericEntity
 		GetEventOnAllAddonsEnabled().Remove(OnAllAddonsEnabledCorrupted);
 	}
 	
-	
 	//----------------------------------------------------------------------------------------------------------------------------------------------------
 	SCR_WorkshopAddonPreset CreatePresetFromEnabledAddons(string presetName)
 	{		
@@ -1085,7 +1064,7 @@ class SCR_AddonManager : GenericEntity
 	{
 		Print(string.Format("[SCR_AddonManager] %1 %2", this, str), logLevel);
 	}
-};
+}
 
 enum SCR_ERevisionAvailability : ERevisionAvailability
 {

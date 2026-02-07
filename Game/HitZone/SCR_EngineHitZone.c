@@ -61,33 +61,22 @@ class SCR_EngineHitZone : SCR_VehicleHitZone
 			return;
 
 		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(GetOwner().FindComponent(BaseVehicleNodeComponent));
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller;
-			if (node)
-				controller = VehicleControllerComponent.Cast(node.FindComponent(VehicleControllerComponent));
 
-			if (controller && controller.IsEngineOn())
-				controller.StopEngine(false);
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller;
-			if (node)
-				controller = VehicleControllerComponent_SA.Cast(node.FindComponent(VehicleControllerComponent_SA));
+		VehicleControllerComponent controller;
+		if (node)
+			controller = VehicleControllerComponent.Cast(node.FindComponent(VehicleControllerComponent));
 
-			if (controller && controller.IsEngineOn())
-				controller.StopEngine(false);
-		}
+		if (controller && controller.IsEngineOn())
+			controller.StopEngine(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Called when the damage state changes.
 	*/
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 
 		UpdateEngineState();
 	}
@@ -116,17 +105,8 @@ class SCR_EngineHitZone : SCR_VehicleHitZone
 		else
 			startupChance = Math.Lerp(m_fMinimumEngineStartupChance, 100, health);
 
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(vehicle.GetVehicleController());
-			if (controller)
-				controller.SetEngineStartupChance(startupChance);
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(vehicle.GetVehicleController());
-			if (controller)
-				controller.SetEngineStartupChance(startupChance);
-		}
+		VehicleControllerComponent controller = vehicle.GetVehicleController();
+		if (controller)
+			controller.SetEngineStartupChance(startupChance);
 	}
 }

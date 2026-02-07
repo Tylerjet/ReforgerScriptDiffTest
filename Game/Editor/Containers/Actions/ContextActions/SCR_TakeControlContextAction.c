@@ -45,7 +45,7 @@ class SCR_TakeControlContextAction : SCR_BaseEditorAction
 		else 
 		{
 			array<IEntity> pilots = new array<IEntity>;
-			compartmentManager.GetOccupantsOfType(pilots, ECompartmentType.Pilot);
+			compartmentManager.GetOccupantsOfType(pilots, ECompartmentType.PILOT);
 		
 			if (pilots.IsEmpty() || !pilots[0])
 				return false;
@@ -82,7 +82,7 @@ class SCR_TakeControlContextAction : SCR_BaseEditorAction
 		else 
 		{			
 			array<IEntity> pilots = new array<IEntity>;
-			compartmentManager.GetOccupantsOfType(pilots, ECompartmentType.Pilot);
+			compartmentManager.GetOccupantsOfType(pilots, ECompartmentType.PILOT);
 		
 			if (pilots.IsEmpty() || !pilots[0])
 				return;
@@ -103,6 +103,13 @@ class SCR_TakeControlContextAction : SCR_BaseEditorAction
 			return;
 
 		playerController.SetPossessedEntity(aiEntity.GetOwner());
+		
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(owner.FindComponent(SCR_CharacterControllerComponent));
+		if (!characterController)
+			return;
+		
+		//--- Set the speed of the character to the default speed
+		characterController.SetDynamicSpeed(1);
 		
 		//--- Close the editor (ToDo: Move to lobby's OnPossessed event)
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));

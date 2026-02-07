@@ -20,7 +20,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	protected IEntity m_VehicleToTestForCompartments;
 	protected BaseCompartmentSlot m_Compartment;
 	protected ECompartmentType m_CompartmentType;
-	protected SCR_AIBoardingWaypointParameters m_WaypointParameter;
+	protected SCR_AIBoardingParameters m_WaypointParameter;
 	protected SCR_AIGroupUtilityComponent m_groupUtilityCompoment;
 	
 	//------------------------------------------------------------------------------------------------
@@ -33,6 +33,8 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		{
 			SCR_AgentMustBeAIGroup(this, owner);
 		};
+		m_VehicleToTestForCompartments = null;
+		m_Compartment = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -89,23 +91,25 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		if (m_CompartmentSlots.IsEmpty())
 			return true;
 		
+		VehicleHelicopterSimulation heliSim = VehicleHelicopterSimulation.Cast(ent.FindComponent(VehicleHelicopterSimulation));
 		BaseCompartmentSlot pilotCompartment, turretCompartment, cargoCompartment;
 		
 		foreach (BaseCompartmentSlot slot : m_CompartmentSlots)
 		{
-			if (slot.GetOccupant() || !slot.IsCompartmentAccessible() || slot.IsReserved())
+			if (slot.IsOccupied() || !slot.IsCompartmentAccessible() || slot.IsReserved())
 				continue;
-			if (m_WaypointParameter.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot))
+			if (m_WaypointParameter.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot) && !heliSim) //exclude helicopter pilot slots for now
 				pilotCompartment = slot;
 			else if (m_WaypointParameter.m_bIsGunnerAllowed && TurretCompartmentSlot.Cast(slot))
 				turretCompartment = slot;
 			else if (m_WaypointParameter.m_bIsCargoAllowed && CargoCompartmentSlot.Cast(slot))
 				cargoCompartment = slot;
+			break;
 		}
 		// going through priorities: pilot > turret > cargo
 		if (pilotCompartment)
 		{
-			m_CompartmentType = ECompartmentType.Pilot;
+			m_CompartmentType = ECompartmentType.PILOT;
 			m_VehicleToTestForCompartments = ent;
 			m_Compartment = pilotCompartment;
 			return false;
@@ -113,7 +117,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		
 		if (turretCompartment)
 		{
-			m_CompartmentType = ECompartmentType.Turret;
+			m_CompartmentType = ECompartmentType.TURRET;
 			m_VehicleToTestForCompartments = ent;
 			m_Compartment = turretCompartment;
 			return false;
@@ -121,7 +125,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		
 		if (cargoCompartment)
 		{
-			m_CompartmentType = ECompartmentType.Cargo;
+			m_CompartmentType = ECompartmentType.CARGO;
 			m_VehicleToTestForCompartments = ent;
 			m_Compartment = cargoCompartment;
 			return false;
@@ -132,8 +136,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	bool FilterEntities(IEntity ent) 
 	{
-		
-		if (ent.FindComponent(BaseCompartmentManagerComponent))
+		if (ent.FindComponent(BaseCompartmentManagerComponent) && SCR_AIVehicleUsability.VehicleCanMove(ent) && !SCR_AIVehicleUsability.VehicleIsOnFire(ent))
 			return true;
 		
 		return false;

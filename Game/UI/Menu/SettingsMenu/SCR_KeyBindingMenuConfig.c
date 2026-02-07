@@ -133,5 +133,6 @@ class SCR_KeyBindingCombo
 enum SCR_EActionPrefixType
 {
 	NON_CONTINUOUS,
-	CONTINUOUS
+	CONTINUOUS,
+	AMBIGUOUS
 }

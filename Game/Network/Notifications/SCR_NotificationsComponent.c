@@ -43,7 +43,7 @@ class SCR_NotificationsComponentClass: ScriptComponentClass
 	// constructor
 	//! \param[in] prefab
 	//~ Constructor creates notification map for the system to get the notification data for each ENotification
-	void SCR_NotificationsComponentClass(BaseContainer prefab)
+	void SCR_NotificationsComponentClass(IEntityComponentSource componentSource, IEntitySource parentSource, IEntitySource prefabSource)
 	{
 		//~ Notification map already filled
 		if (!m_mNotificationDisplayDataMap.IsEmpty())

@@ -109,6 +109,12 @@ class SCR_VoterComponent : ScriptComponent
 		if (!manager)
 			return;
 		
+		//~ Trying to start a vote but there is an active cooldown timer for the player
+		if (!manager.IsVoting(type, value) && manager.GetCurrentVoteCooldownForLocalPlayer(type) > 0)
+			return;
+		
+		manager.PreVoteLocal(type, value);
+		
 		Rpc(VoteServer, type, value);
 		manager.VoteLocal(type, value);
 	}

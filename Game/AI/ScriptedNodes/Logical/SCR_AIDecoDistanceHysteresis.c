@@ -97,8 +97,6 @@ class SCR_AIDecoDistanceHysteresis : DecoratorScripted
 	//------------------------------------------------------------------------------------------------
 	protected override string GetNodeMiddleText()
 	{
-		string enumToString;
-		
 		return "Low boundary: " + m_lowBoundary.ToString() + "\n" + "High boundary: " + m_highBoundary.ToString();
 	}
 };

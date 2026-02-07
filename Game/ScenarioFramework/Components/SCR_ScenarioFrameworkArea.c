@@ -167,7 +167,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			return null;
 
 		Math.Randomize(-1);
-		SCR_ScenarioFrameworkLayerBase layer = SCR_ScenarioFrameworkLayerBase.Cast(aSlotsOut.GetRandomElement());
+		SCR_ScenarioFrameworkLayerBase layer = aSlotsOut.GetRandomElement();
 		if (layer)
 			layer.Init(this);
 
@@ -244,7 +244,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		m_Trigger.SetSphereRadius(m_fAreaRadius);
 		m_Trigger.GetOnActivate().Insert(OnAreaTriggerActivated);
 		
-		SCR_CharacterTriggerEntity characterTrigger = SCR_CharacterTriggerEntity.Cast(m_Trigger);
+		SCR_ScenarioFrameworkTriggerEntity characterTrigger = SCR_ScenarioFrameworkTriggerEntity.Cast(m_Trigger);
 		if (characterTrigger)
 			characterTrigger.SetOnce(m_bOnce);
 	}
@@ -418,6 +418,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		
 		m_bInitiated = false;
 		m_bDynamicallyDespawned = true;
+		m_aChildren.RemoveItem(null);
 		foreach (SCR_ScenarioFrameworkLayerBase child : m_aChildren)
 		{
 			child.DynamicDespawn(this);
@@ -425,31 +426,22 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 		
 		m_aChildren.Clear();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override bool InitParentLayer()
+	{
+		// Areas do not have parents
+		return true;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		if (m_bInitiated || m_bIsTerminated)
-			return;
-		
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				InvokeAllChildrenSpawned();
-				return;
-			}
-		}
-
 		if (m_eActivationType != SCR_ScenarioFrameworkEActivationType.ON_INIT)
 			PrintFormat("ScenarioFramework: Area %1 is set to %2 activation type, but area will always spawn on Init as default", GetOwner().GetName(), activation, LogLevel.WARNING);
 
 		if (!m_Trigger)
 			SpawnTrigger();
-		
-		// Area is always spawned on the start
-		super.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
 		
 		if (m_Trigger)
 		{
@@ -458,6 +450,9 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 				triggerAction.Init(m_Trigger);
 			}
 		}
+		
+		// Area is always spawned on the start
+		super.Init(this, SCR_ScenarioFrameworkEActivationType.ON_INIT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -472,6 +467,7 @@ class SCR_ScenarioFrameworkArea : SCR_ScenarioFrameworkLayerBase
 			gameModeManager.RegisterArea(this);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);

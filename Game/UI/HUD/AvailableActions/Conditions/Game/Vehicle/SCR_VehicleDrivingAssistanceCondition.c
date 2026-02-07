@@ -14,17 +14,8 @@ class SCR_VehicleDrivingAssistanceCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 
-		if(GetGame().GetIsClientAuthority())
-		{
-			EVehicleDrivingAssistanceMode drivingAssistanceMode = CarControllerComponent.GetDrivingAssistanceMode();
-			bool result = m_eDrivingAssistanceMode == drivingAssistanceMode;
-			return GetReturnResult(result);
-		}
-		else
-		{
-			EVehicleDrivingAssistanceMode drivingAssistanceMode = CarControllerComponent_SA.GetDrivingAssistanceMode();
-			bool result = m_eDrivingAssistanceMode == drivingAssistanceMode;
-			return GetReturnResult(result);
-		}
+		EVehicleDrivingAssistanceMode drivingAssistanceMode = CarControllerComponent.GetDrivingAssistanceMode();
+		bool result = m_eDrivingAssistanceMode == drivingAssistanceMode;
+		return GetReturnResult(result);
 	}
 };

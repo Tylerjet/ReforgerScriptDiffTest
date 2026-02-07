@@ -24,7 +24,7 @@ class SCR_MenuHelper
 	protected static ref ScriptInvokerMenu m_OnMenuFocusLost;
 	protected static ref ScriptInvokerMenu m_OnMenuShow;
 	protected static ref ScriptInvokerMenu m_OnMenuHide;
-	protected static ref ScriptInvokerMenu m_OnTabChange;
+	protected static ref ScriptInvokerTabView m_OnTabChange;
 
 	// ---- Invokers ----
 	//------------------------------------------------------------------------------------------------
@@ -118,10 +118,10 @@ class SCR_MenuHelper
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static ScriptInvokerMenu GetOnTabChange()
+	static ScriptInvokerTabView GetOnTabChange()
 	{
 		if (!m_OnTabChange)
-			m_OnTabChange = new ScriptInvokerMenu();
+			m_OnTabChange = new ScriptInvokerTabView();
 
 		return m_OnTabChange;
 	}
@@ -226,10 +226,10 @@ class SCR_MenuHelper
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called by SCR_TabViewComponent.
-	static void OnTabChange(ChimeraMenuBase menu)
+	static void OnTabChange(SCR_TabViewComponent tabView, Widget widget)
 	{
 		if (m_OnTabChange)
-			m_OnTabChange.Invoke(menu);
+			m_OnTabChange.Invoke(tabView, widget);
 	}
 }
 

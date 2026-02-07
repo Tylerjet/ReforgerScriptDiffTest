@@ -31,7 +31,7 @@ class MuzzleUIInfo : UIInfo
 
 			
 	//! Firemode imageset with foreground icons
-	[Attribute("{3BB05C675B05A74B}UI/Textures/WeaponInfo/icons_weaponInfo.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
+	[Attribute("{CDA6C73DFD789999}UI/Imagesets/WeaponInfo/WeaponInfo.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
 	protected ResourceName m_sFiremodeIconImageset;
 
 	ResourceName GetFiremodeIconImageset()
@@ -40,7 +40,7 @@ class MuzzleUIInfo : UIInfo
 	}	
 	
 	//! Firemode imageset with glow icons
-	[Attribute("{4E003F94B2A00561}UI/Textures/WeaponInfo/icons_weaponInfo-glow.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
+	[Attribute("{C6D15495F684E841}UI/Imagesets/WeaponInfo/WeaponInfo_Glow.imageset", UIWidgets.ResourceNamePicker, "Imageset with most of weapon info textures", "imageset")]
 	protected ResourceName m_sFiremodeGlowImageset;	
 
 	ResourceName GetFiremodeGlowImageset()

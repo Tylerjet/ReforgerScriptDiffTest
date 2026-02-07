@@ -179,7 +179,7 @@ class SCR_AIMoveFromGrenadeBehavior : SCR_AIMoveFromDangerBehavior
 
 class SCR_AIMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 {
-	protected static const float MIN_COS_ANGLE_COVER_TO_VEHICLE = 0;
+	protected static const float MIN_COS_ANGLE_COVER_TO_VEHICLE = -0.707; // Cos 135 deg
 	
 	//-----------------------------------------------------------------------------------------------------
 	void SCR_AIMoveFromIncomingVehicleBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
@@ -188,6 +188,7 @@ class SCR_AIMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_DANGER);
 		m_MovementType.m_Value = EMovementType.SPRINT;
 		m_bUseCombatMove = true;
+		m_bAllowLook = false;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
@@ -251,7 +252,7 @@ class SCR_AIMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 		
 		float cosAngle = vector.Dot(vecToMe, velocityDir);
 		
-		return cosAngle > 0;
+		return cosAngle > 0.707; // 45deg
 	}
 }
 
@@ -263,4 +264,54 @@ class SCR_AIMoveFromVehicleHornBehavior : SCR_AIMoveFromDangerBehavior
 		m_sBehaviorTree = "{10A3DFFBC3629A79}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_VehicleHorn.bt";
 		SetPriority(PRIORITY_BEHAVIOR_MOVE_FROM_VEHICLE_HORN);
 	}
+}
+
+//! Special behavior for pilot when he's about to collide with another vehicle
+class SCR_AIPilotMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
+{
+	ref SCR_BTParam<vector> m_vMovePos = new SCR_BTParam<vector>("MovePos");
+	
+	protected const float EXTRAPOLATE_POS_FORWARD_TIME_S = 0.2;
+	protected const float SIDE_STEP_LEN = 8;
+	
+	//-----------------------------------------------------------------------------------------------------
+	void SCR_AIPilotMoveFromIncomingVehicleBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
+	{
+		m_sBehaviorTree = "{4CD41D1E2C9CD745}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_PilotVehicle.bt";
+		m_vMovePos.Init(this, vector.Zero);
+	}
+	
+	//-----------------------------------------------------------------------------------------------------
+	override void OnActionSelected()
+	{
+		// Initialize m_vMovePos
+		if (!m_DangerEntity.m_Value)
+		{
+			Fail();
+			return;
+		}
+		
+		IEntity myVehicle = m_Utility.m_OwnerEntity.GetRootParent();
+		Physics phy = myVehicle.GetPhysics();
+		if (!phy)
+		{
+			Fail();
+			return;
+		}
+		
+		vector myVelWorld = phy.GetVelocity();
+		vector myTransform[4];
+		myVehicle.GetTransform(myTransform);
+		
+		// Move some seconds ahead, and some meters sideways to the right
+		m_vMovePos.m_Value = myTransform[3] + EXTRAPOLATE_POS_FORWARD_TIME_S * myVelWorld + SIDE_STEP_LEN * myTransform[0];
+	}
+}
+
+class SCR_AIGetPilotMoveFromIncomingVehicleBehaviorParameters : SCR_AIGetActionParameters
+{
+	protected static ref TStringArray s_aVarsOut = (new SCR_AIPilotMoveFromIncomingVehicleBehavior(null, null, vector.Zero, null)).GetPortNames();
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	
+	override bool VisibleInPalette() { return true; }
 }

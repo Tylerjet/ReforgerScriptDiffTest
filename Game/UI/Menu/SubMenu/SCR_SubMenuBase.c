@@ -11,8 +11,8 @@ class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 	protected ref array<SCR_InputButtonComponent> m_aNavigationButtons = {};
 	protected ref map<SCR_InputButtonComponent, bool> m_aNavigationButtonsVisibilityFlags = new map<SCR_InputButtonComponent, bool>();
 	
-	Widget m_wMenuRoot;
-	int m_iIndex;
+	protected Widget m_wMenuRoot;
+	protected int m_iIndex;
 	
 	protected bool m_bShown;
 	protected bool m_bFocused;
@@ -189,6 +189,12 @@ class SCR_SubMenuBase : SCR_ScriptedWidgetComponent
 	bool GetShown()
 	{
 		return m_bShown;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetIndex()
+	{
+		return m_iIndex;
 	}
 	
 	//------------------------------------------------------------------------------------------------

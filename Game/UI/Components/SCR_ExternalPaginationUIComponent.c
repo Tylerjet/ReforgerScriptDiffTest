@@ -26,4 +26,10 @@ class SCR_ExternalPaginationUIComponent: SCR_BasePaginationUIComponent
 	{
 		return m_iEntryCount;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+	}
 };

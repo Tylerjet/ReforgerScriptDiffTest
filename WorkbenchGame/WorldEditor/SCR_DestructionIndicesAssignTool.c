@@ -20,7 +20,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void FixPhases()
 	{
 		m_API.BeginEntityAction();
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "Prefabs";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 
 		Resource resource;
@@ -225,7 +228,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	[ButtonAttribute("Print all destructible resource names")]
 	protected void PrintAllDestructibleResourceNames()
 	{
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "$ArmaReforger:Prefabs");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "$ArmaReforger:Prefabs";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 
 		Resource resource;
@@ -276,7 +282,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		BallisticInfo ballisticInfo;
 
 		float totalDensity;
-		int j, densitiesCount;
+		int densitiesCount;
 
 		for (int i = physics.GetNumGeoms() - 1; i >= 0; i--)
 		{
@@ -309,7 +315,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void RevertToParent()
 	{
 		m_API.BeginEntityAction();
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "Prefabs";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 		//array<ResourceName> resourceNames = {};
 		//resourceNames.Insert("{AAAF45FD8D585128}Prefabs/Structures/Walls/Brick/BrickWall_02/BrickWall_02_8m.et");
@@ -428,7 +437,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void UpdatePrefabs()
 	{
 		m_API.BeginEntityAction();
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "Prefabs";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 
 		Resource resource;
@@ -580,7 +592,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void RemovePhases()
 	{
 		m_API.BeginEntityAction();
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "Prefabs/";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 
 		Resource resource;
@@ -678,7 +693,6 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 			destructionComponent.Get("m_aDamagePhases", damagePhases);
 			float totalHealth = GetPhasesTotalHealth(destructionComponent, damagePhases);
 			float healthNormalized = 1;
-			float currentPhaseHealth;
 
 			array<ref ContainerIdPathEntry> path = {};
 			foreach (int j, SCR_DamagePhaseData damagePhaseData : damagePhases)
@@ -717,7 +731,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	[ButtonAttribute("Filter prefabs")]
 	protected void FilterPrefabs()
 	{
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs/");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "Prefabs/";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 
 		array<string> componentClassNames = {};
@@ -763,7 +780,10 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void ConvertPrefabs()
 	{
 		m_API.BeginEntityAction();
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs/");
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		filter.rootPath = "Prefabs/";
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 
 		array<string> componentClassNames = {};
@@ -1147,7 +1167,9 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	protected void AssignIndices()
 	{
 		Debug.BeginTimeMeasure();
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS);
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = EXTENSIONS;
+		ResourceDatabase.SearchResources(filter, m_Handler.Callback);
 
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 

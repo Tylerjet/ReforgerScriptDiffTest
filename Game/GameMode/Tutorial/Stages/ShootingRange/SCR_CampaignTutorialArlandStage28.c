@@ -18,6 +18,6 @@ class SCR_CampaignTutorialArlandStage28 : SCR_BaseCampaignTutorialArlandStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return m_TutorialComponent.CheckCharacterInVehicle(ECompartmentType.Turret);
+		return m_TutorialComponent.CheckCharacterInVehicle(ECompartmentType.TURRET);
 	}
 };

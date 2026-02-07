@@ -15,7 +15,7 @@ class SCR_RespawnTimeEditorAttribute : SCR_BaseValueListEditorAttribute
 		SCR_RespawnTimerComponent respawnTimeComponent = SCR_RespawnTimerComponent.Cast(gameMode.FindComponent(SCR_RespawnTimerComponent));
 		if (!respawnTimeComponent) return null;
 		
-		float value = respawnTimeComponent.GetRespawnTime();;
+		float value = respawnTimeComponent.GetRespawnTime();
 		return SCR_BaseEditorAttributeVar.CreateFloat(value);
 	}
 	

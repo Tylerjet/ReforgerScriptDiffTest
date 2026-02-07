@@ -27,7 +27,7 @@ class SCR_TaskAssignButton : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
-		Widget frame = Widget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("Border"));
+		Widget frame = m_MapUiTask.GetMapWidget().FindAnyWidget("Border");
 
 		if (frame)
 		{
@@ -35,7 +35,7 @@ class SCR_TaskAssignButton : ScriptedWidgetComponent
 			frame.SetOpacity(1);
 		}
 
-		GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, ButtonPressed);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, ButtonPressed);
 		return false;
 	}
 
@@ -48,15 +48,14 @@ class SCR_TaskAssignButton : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	override bool OnMouseLeave(Widget w, Widget enterW, int x, int y)
 	{
-		Widget frame = Widget.Cast(m_MapUiTask.GetMapWidget().FindAnyWidget("Border"));
-
+		Widget frame = m_MapUiTask.GetMapWidget().FindAnyWidget("Border");
 		if (frame)
 		{
 			frame.SetEnabled(false);
 			frame.SetOpacity(0);
 		}
 
-		GetGame().GetInputManager().RemoveActionListener("MenuSelect", EActionTrigger.DOWN, ButtonPressed);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_SELECT, EActionTrigger.DOWN, ButtonPressed);
 		return false;
 	}
 

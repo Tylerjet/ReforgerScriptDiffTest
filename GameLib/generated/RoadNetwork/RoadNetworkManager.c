@@ -9,10 +9,10 @@ Do not modify, this script is generated
 \{
 */
 
-class RoadNetworkManager: Managed
+class RoadNetworkManager
 {
-	proto int GetClosestRoad(vector pos, out Road foundRoad, out float distance, bool skipNavlinks = false);
-	proto int GetRoadsInAABB(vector aabbMin, vector aabbMax, out array<Road> outRoads);
+	proto int GetClosestRoad(vector pos, out BaseRoad foundRoad, out float distance, bool skipNavlinks = false);
+	proto int GetRoadsInAABB(vector aabbMin, vector aabbMax, out array<BaseRoad> outRoads);
 }
 
 /*!

@@ -24,6 +24,8 @@ class SCR_EditorVONControllerComponent : SCR_BaseEditorComponent
 		
 		if (instance)
 			instance.GetOnModeChange().Remove(OnEditorModeChange);
+		
+		SetVONMenuDisabled(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -31,9 +33,20 @@ class SCR_EditorVONControllerComponent : SCR_BaseEditorComponent
 	{
 		EEditorMode mode = SCR_EditorManagerEntity.GetInstance().GetCurrentMode();
 		
-		// Prevent von menu using
-		SCR_VONController vonController = SCR_VONController.Cast(GetGame().GetPlayerController().FindComponent(SCR_VONController));
+		SetVONMenuDisabled(mode == EEditorMode.PHOTO);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Enable / Disable VON menu
+	//! \param[in] is disabled
+	protected void SetVONMenuDisabled(bool disabled)
+	{
+		PlayerController playerController = GetGame().GetPlayerController();
+		if (!playerController)
+			return;
+		
+		SCR_VONController vonController = SCR_VONController.Cast(playerController.FindComponent(SCR_VONController));
 		if (vonController && vonController.GetVONMenu())
-			vonController.GetVONMenu().SetMenuDisabled(mode == EEditorMode.PHOTO);
+			vonController.GetVONMenu().SetMenuDisabled(disabled);
 	}
 }

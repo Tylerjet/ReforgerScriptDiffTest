@@ -138,14 +138,25 @@ class AnimateWidget
 			return false;
 
 		StopAnimation(animation.GetWidget(), animation.Type());
-		s_Instance.m_aAnimations.Insert(animation);
 		if (!IsActive())
 			s_Instance.m_OnAnimatingStarted.Invoke();
+		
+		s_Instance.m_aAnimations.Insert(animation);
+		
 		return true;
 	}
 
 	// Visibility/colorization animations
-
+	static WidgetAnimationBlurIntensity BlurIntensity(Widget widget, float targetValue, float speed)
+	{
+		if (!PrepareAnimation(widget, speed, WidgetAnimationBlurIntensity))
+			return null;
+		
+		WidgetAnimationBlurIntensity anim = new WidgetAnimationBlurIntensity(widget, speed, targetValue);
+		s_Instance.m_aAnimations.Insert(anim);
+		return anim;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	static WidgetAnimationOpacity Opacity(Widget widget, float targetValue, float speed, bool toggleVisibility = false)
 	{
@@ -262,7 +273,7 @@ class AnimateWidget
 	//------------------------------------------------------------------------------------------------
 	protected static bool PrepareAnimation(Widget w, float speed, typename typeName)
 	{
-		if (!g_Game || !g_Game.InPlayMode())
+		if (!g_Game || !(g_Game.InPlayMode() || g_Game.GetWorldEditor()))
 			return false;
 		
 		if (!s_Instance)

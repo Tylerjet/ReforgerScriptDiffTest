@@ -25,7 +25,7 @@ class Vehicle : BaseVehicle
 	EVehicleType m_eVehicleType;
 	
 	SCR_VehicleFactionAffiliationComponent m_pFactionComponent;
-	protected BaseControllerComponent m_VehicleController;
+	protected VehicleControllerComponent m_VehicleController;
 	protected SCR_ResourceComponent m_ResourceComponent;
 	
 	//------------------------------------------------------------------------------------------------
@@ -83,8 +83,8 @@ class Vehicle : BaseVehicle
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Get vehicle controller, stored as BaseControllerComponent
-	BaseControllerComponent GetVehicleController()
+	//! Get vehicle controller
+	VehicleControllerComponent GetVehicleController()
 	{
 		return m_VehicleController;
 	}
@@ -93,18 +93,8 @@ class Vehicle : BaseVehicle
 	//! Get primary pilot compartment slot
 	PilotCompartmentSlot GetPilotCompartmentSlot()
 	{
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controllerCA = VehicleControllerComponent.Cast(m_VehicleController);
-			if (controllerCA)
-				return controllerCA.GetPilotCompartmentSlot();
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
-			if (controller)
-				return controller.GetPilotCompartmentSlot();
-		}
+		if (m_VehicleController)
+			return m_VehicleController.GetPilotCompartmentSlot();
 
 		return null;
 	}
@@ -146,11 +136,7 @@ class Vehicle : BaseVehicle
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
-		if (GetGame().GetIsClientAuthority())
-			m_VehicleController = BaseControllerComponent.Cast(FindComponent(VehicleControllerComponent));
-		else
-			m_VehicleController = BaseControllerComponent.Cast(FindComponent(VehicleControllerComponent_SA));
-
+		m_VehicleController = VehicleControllerComponent.Cast(FindComponent(VehicleControllerComponent));
 		m_pFactionComponent = SCR_VehicleFactionAffiliationComponent.Cast(FindComponent(SCR_VehicleFactionAffiliationComponent));
 		UpdateResourceComponent();
 	}

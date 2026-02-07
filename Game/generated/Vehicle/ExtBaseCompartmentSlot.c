@@ -12,9 +12,13 @@ Do not modify, this script is generated
 class ExtBaseCompartmentSlot: ScriptAndConfig
 {
 	proto external int GetAddUserActions(out notnull array<CompartmentUserAction> outAddUserActions);
+	proto external bool IsPiloting();
 	proto external IEntity GetOwner();
 	proto external BaseControllerComponent GetController();
 	proto external ECompartmentType GetType();
+	proto external BaseCompartmentManagerComponent GetManager();
+	proto external int GetAvailableDoorIndices(out notnull array<int> arr);
+	proto external bool IsAvailableFromDoor(int doorIndex);
 	// returns door index with entry position that is closest to provided point (in world space)
 	proto external int PickDoorIndexForPoint(vector point);
 	proto external IEntity AttachedOccupant();
@@ -28,11 +32,12 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external bool GetMouseSteering();
 	// Otherwise they will stay in the compartment and play the unconscious animation.
 	proto external bool ShouldEjectUnconsciousDeadCharacters();
+	proto external void SetCharacterIsStrappedIn(bool val);
+	proto external bool ShouldCharactersFallOutWhenFlipped();
 	//! Returns the manager ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID
 	proto external int GetCompartmentMgrID();
 	//! Returns the slot ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID
 	proto external int GetCompartmentSlotID();
-	proto external CompartmentDoorInfo GetDoorInfo(int doorIndex);
 	/*!
 	Checks if getting in is impossible for a given entity.
 	\warning Covers cases in MP where multiple players could request GetIn.
@@ -51,6 +56,10 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external CompartmentUserAction GetJumpOutAction();
 	proto external CompartmentUserAction GetSwitchSeatAction();
 	proto external vector GetPosition();
+	proto external PointInfo GetOverridenEntryPointInfo();
+	proto external PointInfo GetOverridenExitPointInfo();
+	proto external bool ShouldSkipCharacterDoorAnimationsFromSeat();
+	proto external string GetCompartmentUniqueName();
 
 	// callbacks
 

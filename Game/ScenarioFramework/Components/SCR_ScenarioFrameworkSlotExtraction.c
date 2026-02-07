@@ -6,32 +6,12 @@ class SCR_ScenarioFrameworkSlotExtractionClass : SCR_ScenarioFrameworkSlotTaskCl
 class SCR_ScenarioFrameworkSlotExtraction : SCR_ScenarioFrameworkSlotTask
 {
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	override void FinishInit()
 	{
-        if (m_eActivationType != activation)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			return;
-		}
+		SCR_ScenarioFrameworkTriggerEntity trigger = SCR_ScenarioFrameworkTriggerEntity.Cast(m_Entity);
+		if (trigger)
+			trigger.SetOwnerFaction(m_sFactionKey);
 		
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				InvokeAllChildrenSpawned();
-				return;
-			}
-		}
-			
-		super.Init(area, activation);
-		
-		SCR_CharacterTriggerEntity trigger = SCR_CharacterTriggerEntity.Cast(m_Entity);
-		if (!trigger)
-			return;
-
-		trigger.SetOwnerFaction(m_sFactionKey);
+		super.FinishInit();
 	}
 }

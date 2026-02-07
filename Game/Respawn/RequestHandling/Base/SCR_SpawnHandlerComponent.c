@@ -120,6 +120,9 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 	//! Called when the finalisation process begins.
 	void OnFinalizeBegin_S(SCR_SpawnRequestComponent requestComponent, SCR_SpawnData data, IEntity entity)
 	{
+		if (data && data.GetSkipPreload())
+			return;
+		
 		if (SCR_BaseGameMode.Cast(GetGame().GetGameMode()).CanStartSpawnPreload())
 			requestComponent.StartSpawnPreload(data.GetPosition());
 	}
@@ -247,7 +250,7 @@ class SCR_SpawnHandlerComponent : ScriptComponent
 		}
 		#endif
 		
-		IEntity entity = GetGame().SpawnEntityPrefab(res, params: params);
+		IEntity entity = GetGame().SpawnEntityPrefab(res, null, params);
 		
 		#ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RESPAWN_COMPONENT_TIME))

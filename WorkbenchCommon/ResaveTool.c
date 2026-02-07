@@ -43,7 +43,11 @@ class ResavePlugin: WorkbenchPlugin
 	{
 		if (Workbench.ScriptDialog("Resave", "Which files you want to resave?", this))
 		{
-			Workbench.SearchResources(Find, Extensions, null, RootPath);
+			SearchResourcesFilter filter = new SearchResourcesFilter();
+			filter.rootPath = RootPath;
+			filter.fileExtensions = Extensions;
+			ResourceDatabase.SearchResources(filter, Find);
+			
 			Resave();			
 		}
 	}
@@ -61,7 +65,10 @@ class ResavePlugin: WorkbenchPlugin
 			Extensions = {ext};
 		}
 		
-		Workbench.SearchResources(Find, Extensions);
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = Extensions;
+		ResourceDatabase.SearchResources(filter, Find);
+		
 		Resave();
 		Workbench.Exit(0);
 	}

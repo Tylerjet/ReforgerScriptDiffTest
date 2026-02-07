@@ -822,7 +822,12 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected string AddIndent(string input, int indentLevel = 1)
+	//! Indent text with the provided indent character(s)
+	//! \param[in] input
+	//! \param[in] indentLevel min 1, max int.MAX
+	//! \param[in] indent character(s) to be used (for -one- indent level)
+	//! \return indented text
+	protected static string AddIndent(string input, int indentLevel = 1, string indent = "\t")
 	{
 		if (!input)
 			return string.Empty;
@@ -830,7 +835,7 @@ class SCR_DoxygenFillerPlugin : WorkbenchPlugin
 		if (indentLevel < 1)
 			indentLevel = 1;
 
-		string indent = SCR_StringHelper.PadLeft("", indentLevel, "\t");
+		indent = SCR_StringHelper.PadLeft("", indentLevel, indent);
 		input.Replace("\n", "\n" + indent);
 		return indent + input;
 	}

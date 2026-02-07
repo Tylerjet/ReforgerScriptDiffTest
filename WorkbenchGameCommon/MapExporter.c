@@ -32,7 +32,7 @@ class SCR_MapExporterConfig
     [Attribute(defvalue: "MeshObject", desc: "Components inheriting these classes in this list are not converted, even if they match any other criteria")]
     ref TStringArray m_aComponentClassWhitelist;
 
-    [Attribute(defvalue: "__Export", desc: "Suffix added to the resources that were converted during the export process, typically prefabs")]
+    [Attribute(defvalue: "", desc: "Suffix added to the resources that were converted during the export process, typically prefabs")]
     string m_sConvertedAssetsSuffix;
 
     [Attribute(defvalue: "true", desc: "After export is finished, automatically delete temporary files created during the export")]
@@ -43,6 +43,9 @@ class SCR_MapExporterConfig
 
     [Attribute(defvalue: "", desc: "When cloning prefabs, ignore the ones coming from PrefabLibrary and alter prefab inheritance accordingly")]
     bool m_bSkipPrefabLibrary;
+	
+	[Attribute(defvalue: "false", desc: "Export source files along with the resource files. (will export FBX, TIF etc.. which are not used at run time)")]
+    bool m_bExportSourceFiles;
 
    bool IsValid()
 {
@@ -77,7 +80,7 @@ class SCR_MapExporterConfig
     // Check if m_aResourceExcludeGUIDs is null or has no elements
     if (m_aResourceExcludeGUIDs == null || m_aResourceExcludeGUIDs.Count() == 0)
         return false;
-
+	
     // All checks passed
     return true;
 }
@@ -86,18 +89,6 @@ class SCR_MapExporterConfig
 
 
 #ifdef WORKBENCH
-class PrefabCloneData
-{
-	void PrefabCloneData(ResourceName name, string path)
-	{
-		m_Name = name;
-		m_sPath = path;
-	}
-	
-	ResourceName 	m_Name;
-	string 			m_sPath;
-}
-
 enum ExporterAssetType
 {
 	PREFAB,
@@ -107,19 +98,23 @@ enum ExporterAssetType
 	MISC,
 }
 
-[WorkbenchPluginAttribute(name: "Map Exporter", wbModules: { "WorldEditor" }, shortcut: "Ctrl+`", awesomeFontCode: 0xF338)] // 0xF338 = ↨
+[WorkbenchPluginAttribute(name: "Map Exporter", wbModules: { "WorldEditor" }, shortcut: "", awesomeFontCode: 0xF338)] // 0xF338 = ↨
 class SCR_MapExporterPlugin : WorkbenchPlugin
 {
-	[Attribute(defvalue: "{CC8CDD184A67C624}someMapExportSettings.conf", desc: "'MapExporterConfig' type config", params: "conf")]
+	const string SUFFIX_FALLBACK = "__DefExport";
+	[Attribute(defvalue: "", desc: "'MapExporterConfig' type config", params: "conf")]
 	ResourceName m_ConfigResource;
 	
 	[Attribute(defvalue: "c:/Work/MapExport/", desc: "Destination folder for the export")]
 	string m_ExportDestination;
 	
+	[Attribute(defvalue: "true", desc: "Mostly for debug purposes, enables/disables copying of files identified during export, for normal export, leave enabled")]
+	bool m_AllowResourceCopy;
+	
 	ref SCR_MapExporterConfig m_Config;
 	WorldEditor m_WorldEditor;
 	ref map<string, string>							m_mEntityClassBlacklist;
-	ref map<ResourceName,ref PrefabCloneData> 		m_mCreatedPrefabs;
+	ref map<ResourceName,ResourceName> 				m_mCreatedPrefabs;
 	ref TStringArray 								m_aCreatedFiles;
 	ref set<BaseContainer>							m_sDiscoveredPrefabs;
 	ref map<ResourceName,bool> 						m_mPrefabsNeedingReplace;//when prefab is inside this container, that means it's been processed, 'true' value means it needs to be replaced, 'false' it does not
@@ -134,6 +129,8 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	WorldEditorAPI m_WEapi;
 	ResourceManager resourceManager;
 	bool m_PerformExport;
+	string m_sConvertedAssetsSuffix;
+	bool m_bUsingAssetSuffixFallback;//for faster checking if fallback is being used
 	//------------------------------------------------------------------------------------------------
 	[ButtonAttribute("Run Export", true)]
 	protected bool ButtonExport()
@@ -155,6 +152,12 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		{
 			Print("Config load failed", LogLevel.ERROR);
 			return false;
+		}
+		m_sConvertedAssetsSuffix = m_Config.m_sConvertedAssetsSuffix;
+		if (m_sConvertedAssetsSuffix == string.Empty)
+		{
+			m_sConvertedAssetsSuffix = SUFFIX_FALLBACK;//since we are duplicating resource files during the map export, we need them to have different filename regardless of whether the user wants it or not, however, if they don't, we remove this default suffix at the end of the export process
+			m_bUsingAssetSuffixFallback = true;
 		}
 		
 		m_WorldEditor = Workbench.GetModule(WorldEditor);
@@ -181,11 +184,12 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		return true;
 	}
 	
-	protected void SetupVariables()
+	protected void InitVars()
 	{
+		m_bUsingAssetSuffixFallback		= false;
 		m_PerformExport					= false;
 		m_sDiscoveredPrefabs			= new set<BaseContainer>;
-		m_mCreatedPrefabs 				= new map<ResourceName, ref PrefabCloneData>;
+		m_mCreatedPrefabs 				= new map<ResourceName, ResourceName>;
 		m_aCreatedFiles					= {};
 		m_mPrefabsNeedingReplace 		= new map<ResourceName,bool>;
 		m_sPrefabsToMigrate				= new set<ResourceName>;
@@ -197,7 +201,7 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	//-----------------------------------------------------------------------------------------------
 	override void Run()
 	{
-		SetupVariables();
+		InitVars();
 
 		bool reload = true;
 		while(reload)
@@ -211,7 +215,7 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 			return;
 		}
 
-		if(m_PerformExport)//we perform export here, not in the button method, as at this point, the dialog is already closed which is what we want
+		if(m_PerformExport)
 			PerformExport();
 	}
 	//-----------------------------------------------------------------------------------------------
@@ -221,11 +225,11 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		if (m_WEapi)
 		{
 			ref array<IEntitySource> allEntities = {};
-
-			int selectedEntCount = 0;
+			
+			int selectedEntCount = m_WEapi.GetSelectedEntitiesCount();
+			//int selectedEntCount = 0;
 			if(selectedEntCount > 0)
 			{
-				
 				for (int i = 0; i < selectedEntCount; i++)
 				{
 					IEntitySource entitySource = m_WEapi.GetSelectedEntity(i);
@@ -265,9 +269,30 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 					ProcessEntityRecur(entSource,null,false);
 				}
 			}
+			OnBeforeResourceExport();
 			m_WEapi.EndEntityAction("ENT_CLONE");
-			PerformResourceExport(progress);
+			
+			if(m_AllowResourceCopy)
+				PerformResourceExport(progress);
 		}
+	}
+	//-----------------------------------------------------------------------------------------------
+	void OnBeforeResourceExport()
+	{
+		/*
+		ResourceName prefabResName = m_mCreatedPrefabs.Get("{A43A100E3C377DB2}Prefabs//Structures//Core//Building_Base.et");
+		if(prefabResName)
+		{
+			Print("Step1");
+			Resource resource = BaseContainerTools.LoadContainer(prefabResName);
+			BaseResourceObject bro = resource.GetResource();
+	
+			IEntitySource source = bro.ToEntitySource();
+			if(source)
+			{
+				m_WEapi.CreateComponent(source, "Occluder");			
+			}
+		}*/ 
 	}
 	//-----------------------------------------------------------------------------------------------
 	override void Configure()
@@ -408,22 +433,6 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	}
 
 	//-----------------------------------------------------------------------------------------------
-	bool IsPartOfPrefab(IEntitySource entSource)
-	{
-		BaseContainer thisEntPrefabRoot;
-		if(entSource.GetAncestor() && entSource.GetAncestor().GetParent())
-			thisEntPrefabRoot = entSource.GetAncestor().GetParent();
-		
-		IEntitySource parentSource = entSource.GetParent();
-		
-		BaseContainer parentPrefab;
-		if(parentSource && parentSource.GetAncestor())
-			parentPrefab = parentSource.GetAncestor();
-
-		return (thisEntPrefabRoot && parentPrefab && parentPrefab == thisEntPrefabRoot);
-	}
-
-	//-----------------------------------------------------------------------------------------------
 	bool IsEntityClassBlacklisted(IEntitySource entSource)
 	{
 		string entClassName = entSource.GetClassName();
@@ -548,9 +557,19 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	{
 		//Print("MarkEntityXob Called on:" + entSource.GetResourceName());
 		BaseContainer container = FindComponentSource(entSource, "MeshObject");
+
 		//-------------------------- MeshObject ---------------------------
 		if (container)
 		{
+			BaseContainer ancestor = entSource.GetAncestor();
+		
+			if(ancestor)
+			{
+				BaseContainer componentSourceAnc = FindComponentSource(ancestor, "MeshObject");
+				if(container == componentSourceAnc)
+					return;//no override
+			}
+
 			RegisterXob(container);
 		}
 	}
@@ -807,37 +826,36 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		{
 			if(DoesPrefabNeedReplacingFast(prefab))
 			{
-				ResourceName newPrefab = CloneOrFetchPrefab(prefab);
+				ResourceName newPrefab = ClonePrefabFast(prefab);
 			
 				if(newPrefab)
-					className = newPrefab;
+				{
+					//string fileName = FilePath.StripPath(newPrefab.GetPath());
+					className = newPrefab.GetPath();
+				}
 				else
 					Print("Something went wrong with prefab replace:" + prefab.GetResourceName(), LogLevel.ERROR);
 			}
 		}
-		
-		
-		IEntitySource newEntSrc;
-		newEntSrc = CloneSingleEntity(className, entSource, parent, entSource.GetLayerID());
+
+		IEntitySource newEntSrc = CloneSingleEntity(className, entSource, parent, entSource.GetLayerID());
 		
 		CopyComponents(entSource, newEntSrc);
-
 		return newEntSrc;
 	}
 	//-----------------------------------------------------------------------------------------------
-	protected ResourceName CloneOrFetchPrefab(BaseContainer prefab)
+	protected ResourceName ClonePrefabFast(BaseContainer prefab)
 	{
 		ResourceName newPrefab;
-		ResourceName prefabName = prefab.GetResourceName();
+		ResourceName prefabResName = prefab.GetResourceName();
 		
-		if(!m_mCreatedPrefabs.Contains(prefabName))
+		if(!m_mCreatedPrefabs.Contains(prefabResName))
 		{
-			newPrefab = ClonePrefab(prefab);
+			newPrefab = ClonePrefabSlow(prefab);
 		}
 		else
 		{
-			PrefabCloneData data = m_mCreatedPrefabs.Get(prefab.GetResourceName());
-			newPrefab = data.m_Name;
+			newPrefab = m_mCreatedPrefabs.Get(prefabResName);
 		}
 		return newPrefab;
 	}
@@ -848,84 +866,65 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected ResourceName ClonePrefab(IEntitySource originalPrefab)
+	protected ResourceName ClonePrefabSlow(notnull BaseContainer originalPrefab)
 	{
-		//Print("ClonePrefab called for: " + originalPrefab.GetResourceName());
-		ResourceName newPrefabName;
-		ResourceName prefabName = originalPrefab.GetResourceName();
-		IEntitySource ancestor = originalPrefab.GetAncestor();
+		ResourceName ancestorPrefabName;
+		ResourceName originalPrefabName = originalPrefab.GetResourceName();
+		BaseContainer ancestorPrefab = originalPrefab.GetAncestor();//prefab container this prefab container is inheriting from
 		
-		if(ancestor)
+		if(ancestorPrefab)
 		{
-			if(DoesPrefabNeedReplacingFast(ancestor))
+			if(DoesPrefabNeedReplacingFast(ancestorPrefab))
 			{
-				//Print("Blacklisted ancestor, cloning:"+ancestor.GetResourceName());
-				newPrefabName = CloneOrFetchPrefab(ancestor);
-				//Print("Result:"+ newPrefabName);
+				ancestorPrefabName = ClonePrefabFast(ancestorPrefab);
 			}
 			else
 			{
-				newPrefabName = ancestor.GetResourceName();
-				//Print("Whitelisted ancestor, using:"+newPrefabName);
+				ancestorPrefabName = ancestorPrefab.GetResourceName();
 			}
 		}
 		
 		//this skips over the prefabs from PrefabLibrary in the inheritence of the newly created prefabs
 		//...by returning the ancestor prefab as the cloned prefab, instead of the prefab from the PrefabLibrary
-		if(m_Config.m_bSkipPrefabLibrary && IsFromPrefabLibrary(prefabName) && newPrefabName)
+		if(m_Config.m_bSkipPrefabLibrary && IsFromPrefabLibrary(originalPrefabName) && ancestorPrefabName)
 		{
-			return newPrefabName;
+			return ancestorPrefabName;
 		}
 			
-		
 		string prefabPath = originalPrefab.GetResourceName().GetPath();
 		string prefabPathNoFileName = FilePath.StripFileName(prefabPath);
 		string prefabFileName = FilePath.StripPath(prefabPath);
 		string prefabFileNameNoExt = FilePath.StripExtension(prefabFileName);
 		
-		string newPrefabFileName = prefabFileNameNoExt + m_Config.m_sConvertedAssetsSuffix+".et";
+		string newPrefabFileName = prefabFileNameNoExt + m_sConvertedAssetsSuffix+".et";
 		string newPrefabPath = prefabPathNoFileName + newPrefabFileName;
 		string newPrefabPathAbs;
 		Workbench.GetAbsolutePath(newPrefabPath, newPrefabPathAbs, false);
 		IEntitySource entSrc;
 		if(newPrefabPathAbs)
 		{
-			ResourceName prefabLoaded = Workbench.GetResourceName(newPrefabPath);//variable re-use
-			if(!prefabLoaded.IsEmpty())
-			{
-				Print("new prefab alternative not found for "+prefabName+", lets create it", LogLevel.VERBOSE);
-
-				entSrc = DeepPrefabEntityCloneRecur(originalPrefab,null,newPrefabName);
-				m_WEapi.CreateEntityTemplate(entSrc,newPrefabPathAbs);//<------------ CREATE PREFAB
-				resourceManager.WaitForFile("$ArmaReforger:"+newPrefabPath, 10000);
-				newPrefabName = Workbench.GetResourceName(newPrefabPath);//variable re-use
-			}
-			else
-			{
-				newPrefabName = prefabLoaded;
-			}
+			Print("new prefab alternative not found for "+originalPrefabName+", lets create it");
 			
+			entSrc = DeepPrefabEntityCloneRecur(originalPrefab,null,ancestorPrefabName);
+			m_WEapi.CreateEntityTemplate(entSrc,newPrefabPathAbs);//<------------ CREATE PREFAB
+			resourceManager.WaitForFile("$ArmaReforger:"+newPrefabPath, 10000);
+			ResourceName newPrefabName = Workbench.GetResourceName(newPrefabPath);//variable re-use
 			
 			AddAssetToMigrate(ExporterAssetType.PREFAB, newPrefabName);
-			RegisterNewPrefab(prefabName,new PrefabCloneData(newPrefabName, newPrefabPath));
+			RegisterNewPrefab(originalPrefabName,newPrefabName);
 			
-			Print("new prefab ready for:"+prefabName+", new resource name:" + newPrefabName, LogLevel.VERBOSE);
+			Print("new prefab ready for:"+originalPrefabName+", new resource name:" + newPrefabName);
 			
 			// Delete ent.
-			m_WEapi.DeleteEntity(entSrc);
+			if(entSrc)
+				m_WEapi.DeleteEntity(entSrc);
 			
 			return newPrefabName;
 		}
 		return string.Empty;
 	}
+	
 	//-----------------------------------------------------------------------------------------------
-	void RegisterNewPrefab(ResourceName resName, PrefabCloneData data)
-	{
-		m_mCreatedPrefabs.Insert(resName, data);
-		m_aCreatedFiles.Insert(data.m_sPath);
-	}
-	//-----------------------------------------------------------------------------------------------
-
 	IEntitySource DeepPrefabEntityCloneRecur(IEntitySource prefab, IEntitySource parent, ResourceName ancestor)
 	{
 		IEntitySource newEntSrc;
@@ -938,17 +937,21 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 				className = GetAlternateClassName(className);
 			}
 				
-			BaseContainer anc = prefab.GetAncestor();//okno_old_prefab
+			BaseContainer anc = GetPrefab(prefab);//okno_old_prefab
 			if(anc)
 			{
 				if(DoesPrefabNeedReplacingFast(anc))
 				{
-					ResourceName newPrefab = CloneOrFetchPrefab(anc);//okno_new_prefab
+					ResourceName newPrefab = ClonePrefabFast(anc);//okno_new_prefab
 			
 					if(newPrefab)
 						className = newPrefab;
 					else
 						Print("Something went wrong with prefab replace:" + anc.GetResourceName(), LogLevel.ERROR);
+				}
+				else
+				{
+					className = GetPrefabName(prefab);
 				}
 			}
 			
@@ -960,9 +963,8 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 				newEntSrc.SetAncestor(ancestor);
 				
 			}
-			
 			CopyComponents(prefab, newEntSrc);
-		
+
 		}
 
 		int childCount = prefab.GetNumChildren();
@@ -975,6 +977,66 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		}
 		return newEntSrc;
 	}
+	
+	
+	//-----------------------------------------------------------------------------------------------
+	void RegisterNewPrefab(ResourceName resNameOriginal, ResourceName resNameNew)
+	{
+		m_mCreatedPrefabs.Insert(resNameOriginal, resNameNew);
+		m_aCreatedFiles.Insert(resNameNew.GetPath());
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool IsPartOfPrefab(IEntitySource entSource)
+	{
+		BaseContainer thisEntPrefabRoot;
+		if(entSource.GetAncestor() && entSource.GetAncestor().GetParent())
+			thisEntPrefabRoot = entSource.GetAncestor().GetParent();
+		
+		IEntitySource parentSource = entSource.GetParent();
+		
+		BaseContainer parentPrefab;
+		if(parentSource && parentSource.GetAncestor())
+			parentPrefab = parentSource.GetAncestor();
+
+		return (thisEntPrefabRoot && parentPrefab && parentPrefab == thisEntPrefabRoot);
+	}
+	
+	static BaseContainer GetPrefab(BaseContainer source)
+	{
+		BaseContainer container = source.GetAncestor();
+		BaseContainer prefab;
+		while(container)
+		{
+			if(container.GetResourceName() != ResourceName.Empty)
+			{
+				prefab = container;
+				break;
+			}
+			container = container.GetAncestor();
+		}
+		return prefab;
+	}
+	
+	static ResourceName GetPrefabName(BaseContainer source)
+	{
+		BaseContainer container = source.GetAncestor();
+		ResourceName prefabRes;
+		while(container)
+		{
+			if(container.GetResourceName() != ResourceName.Empty)
+			{
+				prefabRes = container.GetResourceName();
+				break;
+			}
+			container = container.GetAncestor();
+		}
+		return prefabRes;
+	}
+	
+	
+	
+	
 	//-----------------------------------------------------------------------------------------------
 	void CopyComponentProperties(BaseContainer sourceComponent, BaseContainer targetComponent, BaseContainer targetEntity, array<ref ContainerIdPathEntry> path)
 	{
@@ -1086,6 +1148,7 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	        CopyComponent(componentName, source, target);
 	    }
 	}
+	
 	//-----------------------------------------------------------------------------------------------
 	void CopyComponent(string componentName, IEntitySource source, IEntitySource target)
 	{
@@ -1167,18 +1230,42 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	{
 		string fileName = FilePath.StripPath(filePath);
 		string relativePath = FilePath.StripFileName(filePath);
-		//Print(relativePath);
+		
+		if(m_bUsingAssetSuffixFallback)
+		{
+			fileName.Replace(SUFFIX_FALLBACK, "");
+		}
+
 		string fileNameMeta = fileName +".meta";
 		string newPathDir = m_ExportDestination  + relativePath;
-		//Print(newPathDir);
-		CreateDirectory(newPathDir);
-		//Print(newPathFull);
+		FileIO.MakeDirectory(newPathDir);
 		string source1 = filePath;
 		string source2 = filePath +".meta";
+
+		string destination1 = newPathDir + fileName;//resource file
+		string destination2 = newPathDir + fileNameMeta;//resource file's meta
+
 		if(FileIO.FileExists(source1))
-			FileIO.CopyFile(source1,newPathDir + fileName);
+			FileIO.CopyFile(source1,destination1);
+		
+		MetaFile meta = resourceManager.GetMetaFile(source1);
+		if(m_Config.m_bExportSourceFiles && meta)
+		{
+			string sourceFilePath = meta.GetSourceFilePath();
+			string fsName = FilePath.FileSystemNameFromFileName(sourceFilePath);
+			string fsComplete = "$"+fsName+":";
+			sourceFilePath.Replace(fsComplete,"");
+			string sourceFilename = FilePath.StripPath(sourceFilePath);
+			if(!sourceFilename.IsEmpty())
+			{
+				string destination3 = m_ExportDestination+sourceFilePath;
+				if(FileIO.FileExists(sourceFilePath))
+					FileIO.CopyFile(sourceFilePath,destination3);
+			}
+
+		}
 		if(FileIO.FileExists(source2))
-		FileIO.CopyFile(source2,newPathDir + fileNameMeta);
+			FileIO.CopyFile(source2,destination2);
 	}
 	//-----------------------------------------------------------------------------------------------
 	void ExportMapData()
@@ -1197,10 +1284,23 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		m_Config.m_sCopyPathsMixedExtensions.Split(";",extensions, true);
 		
 		foreach(string path: m_Config.m_aCopyPathsMixed)
-			Workbench.SearchResources(foundResources.Insert,extensions , rootPath: "$ArmaReforger:"+path);
+		{
+			SearchResourcesFilter filter = new SearchResourcesFilter();
+			filter.rootPath = "$ArmaReforger:" + path;
+			filter.fileExtensions = extensions;
+			
+			ResourceDatabase.SearchResources(filter, foundResources.Insert);
+		}
 		
 		foreach(string path: m_Config.m_aModelPaths)
-			Workbench.SearchResources(foundResources.Insert, {"xob"}, rootPath: "$ArmaReforger:"+path);
+		{
+			SearchResourcesFilter filter = new SearchResourcesFilter();
+			filter.rootPath = "$ArmaReforger:" + path;
+			filter.fileExtensions = {"xob"};
+			
+			ResourceDatabase.SearchResources(filter, foundResources.Insert);
+		}
+		
 		ExportFiles(foundResources);
 	}
 
@@ -1216,8 +1316,12 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		vector rot = Vector(angleX, angleY, angleZ);
 		
 		IEntitySource newEntSrc = m_WEapi.CreateEntityExt(className, string.Empty, layerID, parent, "0 0 0", rot, 0);
-		
-		CopyEntityProperties(oldEntSrc, newEntSrc);
+		if(newEntSrc)
+			CopyEntityProperties(oldEntSrc, newEntSrc);
+		else
+		{
+			//cloning failed TODO: add print
+		}
 
 		return newEntSrc;
 	}
@@ -1322,6 +1426,20 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 			oldEntSrc.Get("WeatherParameters", confResource);
 			AddAssetToMigrate(ExporterAssetType.MISC,confResource);
 		}
+		else if(newEntSrc.GetClassName() == "TreeEntity")
+		{
+			int value;
+			if (oldEntSrc.IsVariableSetDirectly("SoundType"))
+			{
+				oldEntSrc.Get("SoundType", value);
+				m_WEapi.SetVariableValue(newEntSrc, {}, "soundType", value.ToString());
+			}
+			if (oldEntSrc.IsVariableSetDirectly("m_iFoliageHeight"))
+			{
+				oldEntSrc.Get("m_iFoliageHeight", value);
+				m_WEapi.SetVariableValue(newEntSrc, {}, "foliageHeight", value.ToString());
+			}
+		}
 	}
 	//-----------------------------------------------------------------------------------------------
 	void FixWeatherConfig(string varName,  IEntitySource oldEntSrc,  IEntitySource newEntSrc)
@@ -1333,14 +1451,14 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 		oldEntSrc.Get(varName, confResource);
 		if(confResource.IsEmpty())
 			return;
-		string newFileName = FilePath.StripExtension(confResource.GetPath()) + m_Config.m_sConvertedAssetsSuffix+".conf";
+		string newFileName = FilePath.StripExtension(confResource.GetPath()) + m_sConvertedAssetsSuffix+".conf";
 
 		FileIO.CopyFile(confResource.GetPath(), newFileName);
 
-		string apsPath;
-		bool success =	Workbench.GetAbsolutePath(newFileName, apsPath, true);
+		string absPath;
+		bool success =	Workbench.GetAbsolutePath(newFileName, absPath, true);
 
-		MetaFile meta = resourceManager.RegisterResourceFile(apsPath);
+		MetaFile meta = resourceManager.RegisterResourceFile(absPath);
 		meta.Save();
 
 		resourceManager.WaitForFile("$ArmaReforger:"+newFileName, 3000);
@@ -1435,9 +1553,9 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 	//-----------------------------------------------------------------------------------------------
 	void ClearExportSourceData()
 	{
-		foreach(PrefabCloneData data:m_mCreatedPrefabs)
+		foreach(ResourceName resName:m_mCreatedPrefabs)
 		{
-			DeleteFilePlus(data.m_sPath);
+			DeleteFilePlus(resName.GetPath());
 		}
 		foreach(string filePath:m_aCreatedFiles)
 		{
@@ -1475,55 +1593,5 @@ class SCR_MapExporterPlugin : WorkbenchPlugin
 
 		return null;
 	}
-	//-----------------------------------------------------------------------------------------------
-	static bool CreateDirectory(string path)
-	{
-	    string currentPath = "";
-	    int lastSlash = -1;
-	
-	    // Iterate over each segment of the path
-	    while (true)
-	    {
-	        lastSlash = path.IndexOfFrom(lastSlash + 1, "/");
-	        
-	        // Determine the end of the path or the next slash
-	        int segmentLength;
-	        if (lastSlash == -1)
-	        {
-	            segmentLength = path.Length() - currentPath.Length();
-	        }
-	        else
-	        {
-	            segmentLength = lastSlash - currentPath.Length();
-	        }
-	
-	        // Build the current segment of the path
-	        if (segmentLength > 0)
-	        {
-	            string segment = path.Substring(currentPath.Length(), segmentLength);
-	            currentPath += segment + "/";
-	        }
-	
-	        // Check if this segment exists, if not, create it
-	        if (!FileIO.FileExists(currentPath))
-	        {
-	            if (!FileIO.MakeDirectory(currentPath))
-	            {
-	                return false; // Failed to create directory
-	            }
-	        }
-	
-	        // Check if the last segment is processed
-	        if (lastSlash == -1)
-	        {
-	            break; // Exit loop after handling the last segment
-	        }
-	    }
-
-    return true; // Successfully created all directories
-	}
-	//---------------------------------------
-	
-	
 }
 #endif

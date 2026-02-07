@@ -6,6 +6,9 @@ class SCR_ContentBrowser_AddonsTooltipComponent : SCR_ScriptedWidgetComponent
 	[Attribute("{30907DAA2D89E065}UI/layouts/Menus/Tooltips/Tooltip_ListLine_NoBG.layout")]
 	protected ResourceName m_sAddonLineLayout;
 
+	[Attribute("30")]
+	protected int m_iMaxDisplayed;
+	
 	protected VerticalLayoutWidget m_wAddonsList;
 
 	//------------------------------------------------------------------------------------------------
@@ -19,12 +22,26 @@ class SCR_ContentBrowser_AddonsTooltipComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	void Init(array<ref SCR_WorkshopItem> addons)
 	{
-		foreach (SCR_WorkshopItem addon : addons)
+		foreach (int i, SCR_WorkshopItem addon : addons)
 		{
+			bool last = i >= m_iMaxDisplayed;
+			
+			string message = "...";
+			if (!last)
+				message = addon.GetName();
+			
 			Widget w = GetGame().GetWorkspace().CreateWidgets(m_sAddonLineLayout, m_wAddonsList);
 			TextWidget wText = TextWidget.Cast(w.FindAnyWidget("Text"));
 			if (wText)
-				wText.SetText(addon.GetName());
+				wText.SetText(message);
+			
+			if (last)
+			{
+				Widget dot = w.FindAnyWidget("Dot");
+				if (dot)
+					dot.SetVisible(false);
+				break;
+			}
 		}
 	}
 

@@ -14,6 +14,7 @@ To create a system, you just need to create a class which inherits from BaseSyst
 */
 class BaseSystem: ScriptAndConfig
 {
+	static void InitInfo(WorldSystemInfo outInfo);
 	private void BaseSystem();
 
 	//! Get the world associated to this system
@@ -41,8 +42,9 @@ class BaseSystem: ScriptAndConfig
 	proto external protected void EndUpdate();
 	proto external protected void AddEntity(notnull IEntity entity);
 	/*!
-	Attempts to run a remote procedure call of this instance with parameters pecified in method NetRpc attribute.
-	\param method member function pointer
+	Attempts to run a remote procedure call (RPC) of this instance with parameters
+	specified in method RplRpc attribute.
+	\param      method  Member function to be invoked as an RPC.
 	*/
 	proto void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
 

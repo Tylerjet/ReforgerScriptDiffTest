@@ -310,8 +310,8 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 			PlayCharacterVoiceEvent(actionUser);
 		}
 		
-		//~ Do not send notification
-		if (!GetSendNotificationOnUse())
+		//~ Do not send notification or no user
+		if (!GetSendNotificationOnUse() || !actionUser)
 			return;
 		
 		//~ Editable entity not found
@@ -347,9 +347,6 @@ class SCR_FuelSupportStationComponent : SCR_BaseSupportStationComponent
 	//------------------------------------------------------------------------------------------------
 	protected void PlayRefuelUpdateSound(IEntity actionOwner, SCR_BaseUseSupportStationAction action)
 	{
-		ResourceName soundFile;
-		string soundEventName;
-		
 		SCR_FuelSupportStationComponentClass classData = SCR_FuelSupportStationComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!classData)
 			return;

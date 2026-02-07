@@ -292,11 +292,10 @@ class SCR_FactionManager : FactionManager
 	//! \return
 	int GetRequiredRankXP(SCR_ECharacterRank rankID)
 	{
-		SCR_RankID rank = SCR_RankID.Cast(GetRankByID(rankID));
-		
+		SCR_RankID rank = GetRankByID(rankID);
 		if (!rank)
 			return int.MAX;
-			
+
 		return rank.GetRequiredRankXP();
 	}
 	

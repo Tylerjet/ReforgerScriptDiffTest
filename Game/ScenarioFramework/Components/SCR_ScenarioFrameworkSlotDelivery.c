@@ -50,34 +50,13 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
+	override void FinishInitChildrenInsert()
 	{
-		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-			return;
-		
-		super.Init(area, activation);
-		
-		if (!m_TaskLayer)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			return;
-		}
+		super.FinishInitChildrenInsert();
 		
 		SCR_BaseTriggerEntity trigger = SCR_BaseTriggerEntity.Cast(m_Entity);
 		if (!trigger)
 			return;
-		
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				InvokeAllChildrenSpawned();
-				return;
-			}
-		}
 		
 		SCR_TaskDeliver task = SCR_TaskDeliver.Cast(m_TaskLayer.GetTask());
 		if (task)
@@ -117,30 +96,5 @@ class SCR_ScenarioFrameworkSlotDelivery : SCR_ScenarioFrameworkSlotTask
 				}
 			}
 		}
-		
-		GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawnedDelivery);
-		InvokeAllChildrenSpawned();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
-	{
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//!
-	void AfterAllChildrenSpawnedDelivery(SCR_ScenarioFrameworkLayerBase layer)
-	{
-		m_bInitiated = true;
-		
-		foreach (SCR_ScenarioFrameworkPlugin plugin : m_aPlugins)
-		{
-			plugin.Init(this);
-		}
-
-		if (m_ParentLayer)
-			m_ParentLayer.CheckAllChildrenSpawned(this);
-
-		GetOnAllChildrenSpawned().Remove(AfterAllChildrenSpawnedDelivery);
 	}
 }

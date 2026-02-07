@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 {
-	const string SLOT_LAYOUT_SUPPLY = "{EA29CC1952F8B019}UI/layouts/Menus/Inventory/SupplyInventoryItemSlot.layout";	
+	const string SLOT_LAYOUT_SUPPLY = "{AF25F325D2730142}UI/layouts/Menus/Inventory/SupplyInventoryItemSlot.layout";
 	const float SLOT_UNAVAILABLE_OPACITY = 0.35;
 	
 	protected const string RESOURCES_TEXT_WIDGET_NAME = "SuppliesText";
@@ -25,6 +25,7 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 	protected SCR_ResourceComponent m_ResourceComponent;
 	protected SCR_ResourceConsumer m_ResourceConsumer;
 	protected ref SCR_ResourceSystemSubscriptionHandleBase m_ResourceSubscriptionHandle;
+	protected ref array<RplId> m_aStackedItems = {};
 	
 	//------------------------------------------------------------------------------------------------
 	override protected string SetSlotSize()
@@ -112,6 +113,12 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void OnOwnedSlotsUpdated() 
+	{
+		UpdateConsumer();
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void UpdateStoredResources(bool showUI, float totalResources, float maxResources)
 	{
 		if (!m_StoredResourcesHolder || !m_StoredResourcesText)
@@ -124,10 +131,53 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		}
 		
 		//~ Update supplies
-		m_StoredResourcesText.SetTextFormat(m_sCurrentAndMaxResourceFormat, SCR_ResourceSystemHelper.SuppliesToString(totalResources), SCR_ResourceSystemHelper.SuppliesToString(maxResources));
+		float additionalTotalResources, additionalMaxResources;
+		
+		GetAdditionalResourceValuesFromStack(additionalTotalResources, additionalMaxResources);
+		
+		m_StoredResourcesText.SetTextFormat(
+			m_sCurrentAndMaxResourceFormat, 
+			SCR_ResourceSystemHelper.SuppliesToString(totalResources + additionalTotalResources), 
+			SCR_ResourceSystemHelper.SuppliesToString(maxResources + additionalMaxResources));
 		m_StoredResourcesHolder.SetVisible(true);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	void GetAdditionalResourceValuesFromStack(out float addTotalResources, out float addMaxResources)
+	{
+		foreach (RplId id : m_aStackedItems)
+		{
+			if (!id.IsValid())
+				continue;
+
+			RplComponent rpl = RplComponent.Cast(Replication.FindItem(id));
+			if (!rpl)
+				continue;
+
+			IEntity ent = rpl.GetEntity();
+			if (!ent)
+				continue;
+			
+			SCR_ResourceComponent resComp = SCR_ResourceComponent.Cast(ent.FindComponent(SCR_ResourceComponent));
+			if (!resComp)
+				continue;
+			
+			float addTotal, addMax;
+			if (SCR_ResourceSystemHelper.GetStoredAndMaxResources(resComp, addTotal, addMax))
+			{
+				addTotalResources += addTotal;
+				addMaxResources += addMax;
+			}
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void IncreaseStackNumberWithRplId(RplId id)
+	{
+		m_iStackNumber++;
+		m_aStackedItems.Insert(id);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	void UpdateAvailableResources(bool showUI, float totalResources)
 	{
@@ -173,7 +223,7 @@ class SCR_SupplyInventorySlotUI : SCR_InventorySlotUI
 		if (!m_ResourceComponent)
 			return;
 	
-		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateConsumer);;
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(UpdateConsumer);
 		UpdateConsumer();
 		
 		m_ResourceConsumer = SCR_ResourceSystemHelper.GetFirstValidConsumer(m_ResourceComponent);

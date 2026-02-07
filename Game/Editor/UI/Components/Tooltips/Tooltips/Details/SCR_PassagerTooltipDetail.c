@@ -20,7 +20,7 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 			return;
 		
 		array<BaseCompartmentSlot> compartments = {};
-		m_CompartmentManager.GetCompartmentsOfType(compartments, ECompartmentType.Cargo);
+		m_CompartmentManager.GetCompartmentsOfType(compartments, ECompartmentType.CARGO);
 		
 		int total = compartments.Count();
 		int occupied;
@@ -46,7 +46,7 @@ class SCR_PassagerTooltipDetail: SCR_EntityTooltipDetail
 			return false;
 		
 		array<BaseCompartmentSlot> compartments = {};
-		m_CompartmentManager.GetCompartmentsOfType(compartments, ECompartmentType.Cargo);
+		m_CompartmentManager.GetCompartmentsOfType(compartments, ECompartmentType.CARGO);
 		
 		if (compartments.IsEmpty())
 			return false;

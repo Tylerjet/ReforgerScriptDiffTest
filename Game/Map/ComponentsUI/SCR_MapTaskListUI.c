@@ -4,7 +4,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 	const string ICON_NAME = "faction";
 
 	protected Widget m_wUI;
-	protected OverlayWidget m_wTaskListFrame;
+	protected Widget m_wTaskListFrame;
 	protected SCR_UITaskManagerComponent m_UITaskManager;
 	protected SCR_MapToolMenuUI m_ToolMenu;
 	protected SCR_MapToolEntry m_ToolMenuEntry;
@@ -68,7 +68,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
 		//If there is a OverlayWidget like on the DeployMenu we use that instead of the default one
-		m_wTaskListFrame = OverlayWidget.Cast(m_RootWidget.FindAnyWidget(TASK_LIST_FRAME));
+		m_wTaskListFrame = m_RootWidget.FindAnyWidget(TASK_LIST_FRAME);
 		if (!m_wTaskListFrame)
 			return;
 
@@ -90,7 +90,7 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 		{
 			m_UITaskManager.ClearWidget();
 			if (!m_wTaskListFrame)
-				m_wTaskListFrame = OverlayWidget.Cast(m_RootWidget.FindAnyWidget(TASK_LIST_FRAME));
+				m_wTaskListFrame = m_RootWidget.FindAnyWidget(TASK_LIST_FRAME);
 				
 			m_wUI = m_UITaskManager.CreateTaskList(m_wTaskListFrame);
 			if (m_wUI)
@@ -101,6 +101,10 @@ class SCR_MapTaskListUI : SCR_MapUIBaseComponent
 				m_ToolMenuEntry.SetActive(true);
 				m_LastSelectedTask = taskToFocus;
 			}
+
+			SCR_MapJournalUI journal = SCR_MapJournalUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapJournalUI));
+			if (journal && journal.IsVisible())
+				journal.Disable();
 		}
 		else if (taskToFocus && taskToFocus != m_LastSelectedTask)
 		{

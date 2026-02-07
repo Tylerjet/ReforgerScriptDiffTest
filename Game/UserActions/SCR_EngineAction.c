@@ -3,7 +3,7 @@ class SCR_EngineAction : SCR_VehicleActionBase
 	//------------------------------------------------------------------------------------------------
 	override bool HasLocalEffectOnlyScript()
 	{
-		return false;
+		return true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -15,36 +15,18 @@ class SCR_EngineAction : SCR_VehicleActionBase
 	//------------------------------------------------------------------------------------------------
 	override void PerformContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice)
 	{
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
-			if (controller)
-				controller.TryStartEngine();
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
-			if (controller)
-				controller.TryStartEngine();
-		}
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
+		if (controller)
+			controller.TryStartEngine();
 	}
 
 	//! Method called from scripted interaction handler when an action is started (progress bar appeared)
 	//! \param pUserEntity The entity that started performing this action
 	override void OnActionStart(IEntity pUserEntity)
 	{
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
-			if (controller)
-				controller.TryStartEngine();
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
-			if (controller)
-				controller.TryStartEngine();
-		}
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
+		if (controller)
+			controller.TryStartEngine();
 	}
 
 	//! Action canceled
@@ -54,18 +36,9 @@ class SCR_EngineAction : SCR_VehicleActionBase
 		if (!m_bIsToggle && !m_bTargetState)
 			return;
 
-		if (GetGame().GetIsClientAuthority())
-		{
-			CarControllerComponent controller = CarControllerComponent.Cast(m_VehicleController);
-			if (controller && !controller.IsEngineOn())
-				controller.CancelStart();
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
-			if (controller && !controller.IsEngineOn())
-				controller.CancelStart();
-		}
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
+		if (controller && !controller.IsEngineOn())
+			controller.CancelStart();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -77,42 +50,20 @@ class SCR_EngineAction : SCR_VehicleActionBase
 	//------------------------------------------------------------------------------------------------
 	override bool GetState()
 	{
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
-			return controller && controller.IsEngineOn();
-		}
-		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
-			return controller && controller.IsEngineOn();
-		}
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
+		return controller && controller.IsEngineOn();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void SetState(bool enable)
 	{
-		if (GetGame().GetIsClientAuthority())
-		{
-			VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
-			if (!controller)
-				return;
+		VehicleControllerComponent controller = VehicleControllerComponent.Cast(m_VehicleController);
+		if (!controller)
+			return;
 
-			if (enable)
-				controller.StartEngine();
-			else
-				controller.StopEngine();
-		}
+		if (enable)
+			controller.StartEngine();
 		else
-		{
-			VehicleControllerComponent_SA controller = VehicleControllerComponent_SA.Cast(m_VehicleController);
-			if (!controller)
-				return;
-
-			if (enable)
-				controller.StartEngine();
-			else
-				controller.StopEngine();
-		}
+			controller.StopEngine();
 	}
 }

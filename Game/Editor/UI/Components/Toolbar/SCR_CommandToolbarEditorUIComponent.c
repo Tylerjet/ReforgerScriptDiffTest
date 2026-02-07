@@ -206,7 +206,7 @@ class SCR_CommandToolbarEditorUIComponent : SCR_BaseToolbarEditorUIComponent
 		//inputManager.AddActionListener("EditorQuickCommand12", EActionTrigger.DOWN, OnEditorQuickCommand12);
 		
 		OnInputDeviceIsGamepad(!GetGame().GetInputManager().IsUsingMouseAndKeyboard());
-		
+
 		super.HandlerAttachedScripted(w);
 	}
 

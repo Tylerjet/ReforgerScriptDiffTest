@@ -66,37 +66,6 @@ class SCR_ScenarioFrameworkSlotPick : SCR_ScenarioFrameworkSlotTask
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
-	{
-		if (m_bInitiated)
-		{
-			StoreTaskSubjectToParentTaskLayer();
-			
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			GetOnAllChildrenSpawned().Insert(AfterAllChildrenSpawned);
-			InvokeAllChildrenSpawned();
-			return;
-		}
-		
-		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-			return;
-		
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				InvokeAllChildrenSpawned();
-				return;
-			}
-		}
-		
-		super.Init(area, activation);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
 		super.AfterAllChildrenSpawned(this);

@@ -8,9 +8,6 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	[Attribute(desc: "Waypoint Groups if applicable", category: "Waypoints")]
 	ref SCR_ScenarioFrameworkWaypointSet m_WaypointSet;
 
-	[Attribute(desc: "(OBSOLETE - use Waypoint Set instead) Waypoint Groups if applicable", category: "Waypoints")]
-	ref array<ref SCR_WaypointSet> m_aWaypointGroupNames;
-
 	[Attribute(desc: "Spawn AI on the first WP Slot", defvalue: "1", category: "Waypoints")]
 	bool m_bSpawnAIOnWPPos;
 
@@ -106,11 +103,9 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 
 		m_AIGroup = null;
 
+		m_aSpawnedEntities.RemoveItem(null);
 		foreach (IEntity entity : m_aSpawnedEntities)
 		{
-			if (!entity)
-				continue;
-
 			m_vPosition = entity.GetOrigin();
 			SCR_EntityHelper.DeleteEntityAndChildren(entity);
 		}
@@ -122,47 +117,14 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	//------------------------------------------------------------------------------------------------
 	override void Init(SCR_ScenarioFrameworkArea area = null, SCR_ScenarioFrameworkEActivationType activation = SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT)
 	{
-		if (m_bIsTerminated)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			return;
-		}
-
 		m_iCurrentlySpawnedWaypoints = 0;
 		m_bWaypointsInitialized = false;
-
-		if (!m_bDynamicallyDespawned && activation != m_eActivationType)
-		{
-			if (m_ParentLayer)
-				m_ParentLayer.CheckAllChildrenSpawned(this);
-			
-			return;
-		}
-
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				if (m_ParentLayer)
-					m_ParentLayer.CheckAllChildrenSpawned(this);
-
-				return;
-			}
-		}
-
 		SCR_AIGroup.IgnoreSpawning(true);
+
 		if (m_eActivationType == SCR_ScenarioFrameworkEActivationType.SAME_AS_PARENT && m_WaypointSet && !m_WaypointSet.m_aLayerName.IsEmpty())
-		{
 			InitWaypoints();
-			super.Init(area, activation);
-		}
-		else
-		{
-			super.Init(area, activation);
-		}
+		
+		super.Init(area, activation);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -279,7 +241,7 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		m_AIGroup.GetAgents(agents);
 
 		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));
-		if (formComp && m_vPosition != vector.Zero)
+		if (formComp)
 		{
 			formComp.SetFormation(SCR_Enum.GetEnumName(SCR_EAIGroupFormation, m_eAIGroupFormation));
 
@@ -292,8 +254,11 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 					if (!agentEntity)
 						continue;
 
-					agentEntity.SetOrigin(m_vPosition + formDef.GetOffsetPosition(i));
-
+					if (m_vPosition != vector.Zero)
+						agentEntity.SetOrigin(m_vPosition + formDef.GetOffsetPosition(i));
+					else 
+						agentEntity.SetOrigin(m_AIGroup.GetOrigin() + formDef.GetOffsetPosition(i));
+					
 					SCR_AICombatComponent combatComponent = SCR_AICombatComponent.Cast(agentEntity.FindComponent(SCR_AICombatComponent));
 					if (combatComponent)
 					{
@@ -455,9 +420,39 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 		{
 			m_AIGroup.AddWaypoint(waypoint);
 		}
+		
+		if (m_vPosition != vector.Zero || !m_bSpawnAIOnWPPos || m_aWaypoints.IsEmpty())
+			return;
+		
+		AIWaypoint waypoint = m_aWaypoints[0];
+		AIWaypointCycle cycleWaypoint = AIWaypointCycle.Cast(waypoint);
+		if (cycleWaypoint)
+		{
+			array<AIWaypoint> cycleWaypoints = {};
+			cycleWaypoint.GetWaypoints(cycleWaypoints);
+			if (!cycleWaypoints.IsEmpty() && cycleWaypoints[0] != null)
+				waypoint = cycleWaypoints[0];
+		}
+			
+		AIFormationComponent formComp = AIFormationComponent.Cast(m_AIGroup.FindComponent(AIFormationComponent));
+		if (!formComp)
+			return;
+			
+		AIFormationDefinition formDef = formComp.GetFormation();
+		if (!formDef)
+			return;
+			
+		array<AIAgent> agents = {};
+		m_AIGroup.GetAgents(agents);
 
-		if (m_bSpawnAIOnWPPos && !m_aWaypoints.IsEmpty())
-			m_Entity.SetOrigin(m_aWaypoints[0].GetOrigin());
+		foreach (int i, AIAgent agent : agents)
+		{
+			IEntity agentEntity = agent.GetControlledEntity();
+			if (!agentEntity)
+				continue;
+	
+			agentEntity.SetOrigin(waypoint.GetOrigin() + formDef.GetOffsetPosition(i));
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -559,33 +554,4 @@ class SCR_ScenarioFrameworkSlotAI : SCR_ScenarioFrameworkSlotBase
 	{
 		m_iDebugShapeColor = ARGB(100, 0x00, 0x10, 0xFF);
 	}
-}
-
-//------------------------------------------------------------------------------------------------
-[BaseContainerProps()]
-class SCR_ScenarioFrameworkWaypointSet
-{
-	[Attribute(defvalue: "", desc: "Name of a Layer that contains SlotWaypoints or directly the name of the SlotWaypoint. It will be added into the queue of waypoints for AIs attached to this Slot.")]
-	ref array<string> m_aLayerName;
-
-	//------------------------------------------------------------------------------------------------
-	void Init (AIGroup group, IEntity entity)
-	{
-
-	}
-}
-
-//------------------------------------------------------------------------------------------------
-//! This will remain here for a while until we switch all the waypoints to the SCR_ScenarioFrameworkWaypointSet
-[BaseContainerProps()]
-class SCR_WaypointSet
-{
-	[Attribute("Name")]
-	string m_sName;
-
-	[Attribute("Use random order")]
-	bool m_bUseRandomOrder;
-
-	[Attribute("Cycle the waypoints")]
-	bool m_bCycleWaypoints;
 }

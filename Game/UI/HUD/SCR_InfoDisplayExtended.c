@@ -21,6 +21,9 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	[Attribute("39", UIWidgets.Flags, "Defines when the GUI element is allowed to show.", "", ParamEnumArray.FromEnum(EShowGUI) )]
 	private EShowGUI m_eShow;	
 	
+	[Attribute("", desc: "If Display can be disabled in settings, define the correct variable defined in: 'SCR_InterfaceSettings'")]
+	protected string m_sInterfaceSettingName;
+	
 	protected SCR_PlayerController m_PlayerController;
 	protected SCR_CharacterControllerComponent m_CharacterController;
 	protected SCR_CharacterCameraHandlerComponent m_CameraHandler;
@@ -36,6 +39,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 	protected bool m_bInPauseMenu;
 	protected bool m_bInEditor;
 	protected bool m_bCanShow;							// Global GUI visibility flag, is not meant to be fiddled with outside this class
+	protected bool m_bIsEnabledInSettings = true;
 	protected bool m_bShowInAllCameras = true;
 		
 	//------------------------------------------------------------------------------------------------		
@@ -103,6 +107,42 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		#endif		
 	}		
 
+	//------------------------------------------------------------------------------------------------
+	protected void InitializeInterfaceSettings()
+	{
+		if (!m_HUDManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(m_HUDManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		interfaceSettings.Get(m_sInterfaceSettingName, state);
+		m_bIsEnabledInSettings = state;
+		
+		GetGame().OnUserSettingsChangedInvoker().Insert(OnSettingsChanged);		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSettingsChanged()
+	{		
+		if (!m_HUDManager)
+			return;
+		
+		BaseContainer interfaceSettings = GetGame().GetGameUserSettings().GetModule(m_HUDManager.GetInterfaceSettingsClass());
+		if (!interfaceSettings)
+			return;
+		
+		bool state;
+		if (!interfaceSettings.Get(m_sInterfaceSettingName, state))
+			return;
+
+		m_bIsEnabledInSettings = state;
+		
+		UpdateVisibility();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	// InfoDisplay events blocked for overriding.
 	// The interface methods above should be used instead.		
@@ -196,6 +236,9 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			return;
 		}
 		
+		if (m_sInterfaceSettingName != string.Empty)
+			InitializeInterfaceSettings();
+		
 		// Call the interface method, to allow setup and customization of newly created InfoDisplayExtended class
 		DisplayStartDraw(owner);
 
@@ -262,7 +305,7 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			if (m_CharacterController)
 			{
 				m_CharacterController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
-				m_bIsUnconscious = m_CharacterController.IsUnconscious();	
+				m_bIsUnconscious = m_CharacterController.GetLifeState() == ECharacterLifeState.INCAPACITATED;
 			}
 		}
 		
@@ -403,9 +446,9 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 			cameraPassed = m_eShow & EShowGUI.WITHOUT_ENTITY;
 		}		
 		
-		bool updateNeeded = (cameraPassed && statePassed && menuPassed && editorPassed) != m_bCanShow;
+		bool updateNeeded = (cameraPassed && statePassed && menuPassed && editorPassed && m_bIsEnabledInSettings) != m_bCanShow;
 		
-		m_bCanShow = cameraPassed && statePassed && menuPassed && editorPassed;
+		m_bCanShow = cameraPassed && statePassed && menuPassed && editorPassed && m_bIsEnabledInSettings;
 		
 		if (!updateNeeded)
 			return;
@@ -472,6 +515,8 @@ class SCR_InfoDisplayExtended : SCR_InfoDisplay
 		super.OnStopDraw(owner);
 		
 		DisplayStopDraw(owner);		
+		
+		GetGame().OnUserSettingsChangedInvoker().Remove(OnSettingsChanged);
 	}	
 	
 	//------------------------------------------------------------------------------------------------

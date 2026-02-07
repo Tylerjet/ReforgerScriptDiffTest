@@ -20,8 +20,6 @@ class GameStatsApi
 	proto external void EditorStart();
 	//! Editor End - script invokable
 	proto external void EditorClosed();
-	//! Increment Player's Editor counter - script invokable
-	proto external void IncrementEditorCounter(int iPlayerID);
 	//! Generic Mod related Event - script invokable
 	proto external void ModEvent(Managed params);
 }

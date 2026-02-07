@@ -183,7 +183,7 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 
 		return gadgetManager;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get held (currently in hand) gadget
 	//! \return held gadget entity
@@ -215,7 +215,16 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		
 		return m_HiddenGadgetComponent;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	static bool ValidController(IEntity owner)
+	{
+		if( owner && GetGadgetManager(owner).m_Controller )
+			return true;
+
+		return false;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Set mode of a gadget
 	//! When changing mode FROM EGadgetMode.IN_HAND to inventory, target should be EGadgetMode.IN_STORAGE -> it will do EGadgetMode.IN_SLOT automatically if it is slotted
@@ -309,9 +318,9 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	void ToggleHeldGadget(bool state)
 	{
 		if (m_HeldGadgetComponent)
-			m_HeldGadgetComponent.ToggleActive(state);
+			m_HeldGadgetComponent.ToggleActive(state, SCR_EUseContext.FROM_ACTION);
 		else if (m_HiddenGadgetComponent)
-			m_HiddenGadgetComponent.ToggleActive(state);
+			m_HiddenGadgetComponent.ToggleActive(state, SCR_EUseContext.FROM_ACTION);
 	}
 						
 	//------------------------------------------------------------------------------------------------
@@ -360,18 +369,20 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 	IEntity GetQuickslotGadgetByType(EGadgetType type)
 	{
 		SCR_CharacterInventoryStorageComponent charStorage = SCR_CharacterInventoryStorageComponent.Cast( GetOwner().FindComponent(SCR_CharacterInventoryStorageComponent) );
-		array<IEntity> quickslotEntities = charStorage.GetQuickSlotItems();
+		array<ref SCR_QuickslotBaseContainer> quickSlotsContainers = charStorage.GetQuickSlotItems();
 		
-		foreach (IEntity entity : quickslotEntities )
+		SCR_QuickslotEntityContainer entityContainer;
+		foreach (SCR_QuickslotBaseContainer container : quickSlotsContainers )
 		{
-			if (!entity)	// empty slots will be null
+			entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+			if (!entityContainer || !entityContainer.GetEntity())	// empty slots will be null
 				continue;
 			
-			SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast( entity.FindComponent(SCR_GadgetComponent) );
+			SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast( entityContainer.GetEntity().FindComponent(SCR_GadgetComponent) );
 			if (gadgetComp)
 			{
 				if (gadgetComp.GetType() == type)
-					return entity;
+					return entityContainer.GetEntity();
 			}
 		}
 				
@@ -492,8 +503,8 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		if (!gadgetComp)
 			return;
 		
-		if (inputVal != 1 && gadgetComp.CanBeToggled())
-			gadgetComp.ToggleActive(!gadgetComp.IsToggledOn());
+		if (inputVal != 1 && (gadgetComp.GetUseMask() & SCR_EUseContext.FROM_ACTION) != 0)
+			gadgetComp.ToggleActive(!gadgetComp.IsToggledOn(), SCR_EUseContext.FROM_ACTION);
 		else
 			SetGadgetMode(gadget, targetMode, doFocus);
 	} 
@@ -880,9 +891,16 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 		radiosArray.Copy(GetGadgetsByType(EGadgetType.RADIO)); 					// squad radios
 		radiosArray.InsertAll(GetGadgetsByType(EGadgetType.RADIO_BACKPACK)); 	// backpack radio
 
+		BaseRadioComponent radioComp;
 		foreach (SCR_GadgetComponent radio : radiosArray)
 		{
-			BaseRadioComponent radioComp = BaseRadioComponent.Cast(radio.GetOwner().FindComponent(BaseRadioComponent));
+			if (!radio)
+				continue;
+
+			radioComp = BaseRadioComponent.Cast(radio.GetOwner().FindComponent(BaseRadioComponent));
+			if (!radioComp)
+				continue;
+
 			int count = radioComp.TransceiversCount();
 			for (int i = 0 ; i < count; ++i)	// Get all individual transceivers (AKA channels) from the radio
 			{
@@ -1118,9 +1136,13 @@ class SCR_GadgetManagerComponent : ScriptGameComponent
 			else 
 				gadgetComp = m_HiddenGadgetComponent;
 
+			// Limit weapon fire for short time after gadget is unequipped
+			if (m_Controller)
+				m_Controller.SetWeaponNoFireTime(gadgetComp.GetWeaponNoFireTime());
+
 			m_InputManager.ActivateContext("GadgetContext");
 
-			if (gadgetComp.CanBeToggled())
+			if ((gadgetComp.GetUseMask() & SCR_EUseContext.FROM_ACTION) != 0)
 				m_InputManager.ActivateContext("GadgetContextToggleable");
 
 			if (gadgetComp.IsUsingADSControls())

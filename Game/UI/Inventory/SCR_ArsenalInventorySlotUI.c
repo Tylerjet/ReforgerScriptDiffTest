@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------------------------
 class SCR_ArsenalInventorySlotUI : SCR_InventorySlotUI
 {
-	static const string SLOT_LAYOUT_SUPPLY = "{EA29CC1952F8B019}UI/layouts/Menus/Inventory/SupplyInventoryItemSlot.layout";
+	static const string SLOT_LAYOUT_SUPPLY = "{AF25F325D2730142}UI/layouts/Menus/Inventory/SupplyInventoryItemSlot.layout";
 	
 	protected const string RESOURCES_TEXT_WIDGET_NAME = "SuppliesText";
 	protected const string STORED_RESOURCES_WIDGET_NAME = "SuppliesStored";

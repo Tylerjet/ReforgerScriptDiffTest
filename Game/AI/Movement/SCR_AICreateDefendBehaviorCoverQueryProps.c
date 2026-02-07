@@ -44,7 +44,8 @@ class SCR_AICreateDefendBehaviorCoverQueryProps : AITaskScripted
 		vector threatPos = sectorCenterPos + (4.0 * sectorRadius) * sectorDir;
 		
 		vector myPos = ownerEntity.GetOrigin();
-		m_CoverQueryProps.m_vAgentPos = myPos; // Pathfinding checks are done from our pos, not from center pos
+		m_CoverQueryProps.m_vNearestPolyHalfExtend = SCR_AIFindCover.NEAREST_POLY_HALF_EXTEND;
+		m_CoverQueryProps.m_fNmAreaCostScale = SCR_AIFindCover.NAVMESH_AREA_COST_SCALE;
 		m_CoverQueryProps.m_vSectorPos = myPos;
 		m_CoverQueryProps.m_vSectorDir = sectorDir;
 		m_CoverQueryProps.m_vThreatPos = threatPos;
@@ -66,7 +67,7 @@ class SCR_AICreateDefendBehaviorCoverQueryProps : AITaskScripted
 		m_CoverQueryProps.m_fScoreWeightNavmeshRay = 4.0;
 		
 		// Defend waypoint usage is very numerous, that's why we should reduce its performance impact
-		m_CoverQueryProps.m_iMaxCoversToCheck = SCR_CoverQueryComponent.MAX_COVERS_LOW_PRIORITY;
+		m_CoverQueryProps.m_iMaxCoversToCheck = SCR_AIFindCover.MAX_COVERS_LOW_PRIORITY;
 		
 		SetVariableOut(PORT_COVER_QUERY_PROPERTIES, m_CoverQueryProps);
 		

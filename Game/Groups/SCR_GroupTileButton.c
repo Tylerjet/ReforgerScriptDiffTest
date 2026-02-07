@@ -7,6 +7,7 @@ class SCR_PlayerTileButtonComponent : SCR_ScriptedWidgetComponent
 	protected ref ScriptInvokerInt m_OnTileFocus;
 	protected ref ScriptInvokerInt m_OnTileFocusLost;
 	
+	
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
@@ -118,6 +119,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected SCR_BaseTaskManager m_BaseTaskManager;
 	protected SCR_InputButtonComponent m_JoinGroupButton;
 	protected SCR_PlayerControllerGroupComponent m_GroupComponent;
+	protected SCR_PlayerFactionAffiliationComponent m_sPlyFactionAffilComp;
 
 	[Attribute("0.898 0.541 0.184 1", UIWidgets.ColorPicker)]
 	protected ref Color m_PlayerNameSelfColor;
@@ -129,6 +131,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected ref Color m_GroupFullColor;
 
 	protected ResourceName m_sIconsImageSet = "{2EFEA2AF1F38E7F0}UI/Textures/Icons/icons_wrapperUI-64.imageset";
+	protected RichTextWidget wGroupTaskName;
 
 	protected const string OPTIONS_COMBO_INVITE = "#AR-PlayerList_Invite";
 	protected const string OPTIONS_COMBO_KICK = "#AR-DeployMenu_Groups_Kick";
@@ -148,6 +151,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	
 	protected static ref ScriptInvokerInt m_OnPlayerTileFocus;
 	protected static ref ScriptInvokerInt m_OnPlayerTileFocusLost;
+	
+	protected bool m_bIsPriority;
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
@@ -447,7 +452,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		int leaderID = group.GetLeaderID();
 		if (leaderID >= 0)
 		{
-			playerTile = Widget.Cast(GetGame().GetWorkspace().CreateWidgets(m_textLayout, leaderList));
+			playerTile = GetGame().GetWorkspace().CreateWidgets(m_textLayout, leaderList);
 			SetupPlayerTile(playerTile, leaderID);
 		}
 
@@ -456,11 +461,12 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			if (playerID == leaderID)
 				continue;
 
-			playerTile = Widget.Cast(GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList));
+			playerTile = GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList);
 			SetupPlayerTile(playerTile, playerID);
 		}
 
-		ShowAIsInGroup();
+		//disable this for now as it has issues with replication of aigroups
+		//ShowAIsInGroup();
 
 		SetupJoinGroupButton();
 
@@ -533,6 +539,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		SCR_GadgetManagerComponent gadgetManager;
 		TextWidget playerName, playerFrequency;
 		ImageWidget taskIcon, muteIcon, background, loadoutIcon;
+		string m_sTaskText;
+		SizeLayoutWidget m_wTaskLayout;
 		ButtonWidget playerButton;
 		SCR_BaseTaskExecutor taskExecutor;
 		SCR_BasePlayerLoadout playerLoadout;
@@ -541,12 +549,17 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		BaseContainer container;
 		SCR_EditableEntityUIInfo info;
 		set<int> frequencies = new set<int>();
+		
 		playerName = TextWidget.Cast(playerTile.FindAnyWidget("PlayerName"));
 		playerFrequency = TextWidget.Cast(playerTile.FindAnyWidget("Frequency"));
-		taskIcon = ImageWidget.Cast(playerTile.FindAnyWidget("TaskIcon"));
+		m_wTaskLayout = SizeLayoutWidget.Cast(playerTile.FindAnyWidget("TaskLayout"));
+		Widget wBackground = ImageWidget.Cast(playerTile.FindAnyWidget("TaskIconBackground"));
+		Widget m_wOutline = ImageWidget.Cast(playerTile.FindAnyWidget("TaskIconOutline"));
+		Widget m_wSymbol = ImageWidget.Cast(playerTile.FindAnyWidget("TaskIconSymbol"));
 		muteIcon = ImageWidget.Cast(playerTile.FindAnyWidget("MuteIcon"));
 		background = ImageWidget.Cast(playerTile.FindAnyWidget("Background"));
 		loadoutIcon = ImageWidget.Cast(playerTile.FindAnyWidget("LoadoutIcon"));
+		ImageWidget m_wIconSymbol = ImageWidget.Cast(playerTile.FindAnyWidget("TaskIconSymbol")); 
 
 		playerButton = ButtonWidget.Cast(playerTile.FindAnyWidget("PlayerButton"));
 		if (!playerButton)
@@ -576,18 +589,69 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		//check for task and adjust the icon visibility
 		taskExecutor = SCR_BaseTaskExecutor.FindTaskExecutorByID(playerID);
-		SCR_BaseTask task;
-		if (taskExecutor)
-			task = taskExecutor.GetAssignedTask();
-
-		if (m_BaseTaskManager && task)
+		if(!taskExecutor)
+			return;	
+		
+		if (m_BaseTaskManager)
 		{
-			taskIcon.SetOpacity(1);
-			RichTextWidget taskName = RichTextWidget.Cast(playerTile.FindAnyWidget("TaskName"));
-			if (taskName)
+			PlayerController m_PlayerController = GetGame().GetPlayerController();
+			if (!m_PlayerController) 
+				return;
+			
+			ResourceName TaskIconImageset = "{10C0A9A305E8B3A4}UI/Imagesets/Tasks/Task_Icons.imageset";	
+			SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+			if (!factionManager) 
+				return;
+			
+			Faction playerFaction = factionManager.GetPlayerFaction(m_PlayerController.GetPlayerId());
+			if (!playerFaction) 
+				return;
+			
+			Faction localPlayerFaction = factionManager.GetLocalPlayerFaction();
+			if (!localPlayerFaction) 
+				return;
+			
+			SCR_EditorTask gmTask = SCR_EditorTask.Cast(taskExecutor.GetAssignedTask());
+			SCR_BaseTask baseTask = taskExecutor.GetAssignedTask();
+			SCR_CampaignBaseTask task = SCR_CampaignBaseTask.Cast(taskExecutor.GetAssignedTask());
+			
+			PlayerController playerController = GetGame().GetPlayerController();	
+			if (!playerController)
+				return;
+			
+			m_sPlyFactionAffilComp = SCR_PlayerFactionAffiliationComponent.Cast(playerController.FindComponent(SCR_PlayerFactionAffiliationComponent));
+			if (!m_sPlyFactionAffilComp)
+				return;
+			
+			SCR_Faction m_sfactionCol = SCR_Faction.Cast(m_sPlyFactionAffilComp.GetAffiliatedFaction());
+			if (!m_sfactionCol)
+				return;
+			
+			if(gmTask || baseTask || task && playerFaction == localPlayerFaction)
 			{
-				taskName.SetOpacity(1);
-				task.SetTitleWidgetText(taskName, task.GetTaskListTaskTitle());
+				m_wTaskLayout.SetVisible(true);
+				m_wTaskLayout.SetColor(localPlayerFaction.GetFactionColor());
+				wGroupTaskName = RichTextWidget.Cast(playerTile.FindAnyWidget("TaskDescription"));
+		
+				if (task) // When task is assigned and when player has the same faction with entry faction for campaign.
+				{	
+					m_wIconSymbol.LoadImageFromSet(0,TaskIconImageset,task.GetIconName());
+					m_sTaskText = task.GetTaskListTaskText();
+					task.SetTitleWidgetText(wGroupTaskName, task.GetTaskListTaskTitle());
+				}
+				if (gmTask) // When task is assigned and when player has the same faction with entry faction for Game Master.
+				{
+					m_wIconSymbol.LoadImageFromSet(0,TaskIconImageset,gmTask.GetIconName());
+					m_sTaskText = gmTask.GetTaskListTaskText();
+					wGroupTaskName.SetTextFormat(gmTask.GetTitle(), gmTask.GetLocationName());
+				}
+				
+				if (task.IsPriority())
+				{	
+					wBackground.SetColor(m_sfactionCol.GetOutlineFactionColor());
+					m_wOutline.SetColor(m_sfactionCol.GetFactionColor());
+					m_wIconSymbol.SetColor(m_sfactionCol.GetFactionColor());
+				}
 			}
 		}
 
@@ -640,6 +704,17 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		m_PlayerTileComponent.GetOnTileFocusLost().Insert(OnPlayerTileFocusLost);
 
 		m_aPlayerComponentsList.Insert(m_PlayerTileComponent);
+	}
+	//------------------------------------------------------------------------------------------------
+	void SetIsPriority(bool isPriority)
+	{
+		m_bIsPriority = isPriority;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsPriority()
+	{
+		return m_bIsPriority;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -844,7 +919,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			return;
 		}
 
-		checkerComp.SetToggled(group.IsPrivate());
+		checkerComp.SetToggled(group.IsPrivate(), instant: true);
 		if (group.IsPrivate())
 			checkerComp.SetText(PRIVATE_GROUP);
 		else
@@ -948,7 +1023,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		foreach (SCR_ChimeraCharacter AIcharacter : aiMembers)
 		{
-			playerTile = Widget.Cast(GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList));
+			playerTile = GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList);
 			playerName = TextWidget.Cast(playerTile.FindAnyWidget("PlayerName"));
 
 			identityComponent = SCR_CharacterIdentityComponent .Cast(AIcharacter.FindComponent(SCR_CharacterIdentityComponent));
@@ -980,4 +1055,4 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			SetupOptionsCombo(playerTile);
 		}
 	}
-};
+}

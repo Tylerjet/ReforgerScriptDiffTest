@@ -104,67 +104,58 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 		array<int> aCoordinates;
 		int iWidgetColumnSize = 1;
 		int iWidgetRowSize = 1;
-		int numberOfSlots = m_aSlots.Count();
-		int iIndex = 0;
-		int iCol = 1, iRow = 1;
-		Widget pActualWidgetUI;
-		SCR_InventorySlotUI pWidgetHandler;
+		int iCol = 1;
 			
 		//reset all elements to 0 - free it
 		m_iMatrix.Reset();
-				
 		
 		foreach ( SCR_InventorySlotUI pSlot: m_aSlots )
 		{
-			if( pSlot )
-			{
-				auto pStorageSlotUI = SCR_InventorySlotUI.Cast( pSlot );
-				if( pStorageSlotUI )
+			if(!pSlot)
+				continue;
+
+			InventoryItemComponent pItem = pSlot.GetInventoryItemComponent();
+			if (!pItem)
+				continue;
+
+			#ifdef DEBUG_INVENTORY20
+				ItemAttributeCollection pAttrs = pItem.GetAttributes();
+				if ( pAttrs )
 				{
-					auto pItem = pStorageSlotUI.GetInventoryItemComponent();
-					if( pItem )
+					string sName = pAttrs.GetUIInfo().GetName();
+					Print( sName );
+				}
+			#endif
+			Widget w = pSlot.GetWidget();
+			if( w )
+			{
+				//reserve the position based on the enum
+				int iLoadoutArea = m_pInventoryUIConfig.GetRowByArea( pSlot.GetLoadoutArea() );
+				if ( iLoadoutArea == - 1 )
+					iLoadoutArea = m_pInventoryUIConfig.GetRowByCommonItemType( pSlot.GetCommonItemType() );
+				if ( iLoadoutArea != -1 )
+					aCoordinates = m_iMatrix.ReservePlace( iWidgetColumnSize, iWidgetRowSize, 0, iLoadoutArea );	//if area exists in the config, reserve the index
+				else
+					aCoordinates = m_iMatrix.Reserve1stFreePlace( iWidgetColumnSize, iWidgetRowSize );				//if it doesn't exist, reserve the 1st free place
+				if( ( aCoordinates[0] != -1 ) && ( aCoordinates[1] != -1 ) )
+				{
+					GridSlot.SetColumn( w, aCoordinates[0] );
+					if ( iLoadoutArea < m_iMaxRows )
 					{
-						#ifdef DEBUG_INVENTORY20
-							ItemAttributeCollection pAttrs = pItem.GetAttributes();
-							if ( pAttrs )
-							{
-								string sName = pAttrs.GetUIInfo().GetName();
-								Print( sName );
-							}
-						#endif
-						Widget w = pStorageSlotUI.GetWidget();
-						if( w )
-						{
-							//reserve the position based on the enum
-							int iLoadoutArea = m_pInventoryUIConfig.GetRowByArea( pStorageSlotUI.GetLoadoutArea() );
-							if ( iLoadoutArea == - 1 )
-								iLoadoutArea = m_pInventoryUIConfig.GetRowByCommonItemType( pStorageSlotUI.GetCommonItemType() );
-							if ( iLoadoutArea != -1 )
-								aCoordinates = m_iMatrix.ReservePlace( iWidgetColumnSize, iWidgetRowSize, 0, iLoadoutArea );	//if area exists in the config, reserve the index
-							else
-								aCoordinates = m_iMatrix.Reserve1stFreePlace( iWidgetColumnSize, iWidgetRowSize );				//if it doesn't exist, reserve the 1st free place
-							if( ( aCoordinates[0] != -1 ) && ( aCoordinates[1] != -1 ) )
-							{
-								GridSlot.SetColumn( w, aCoordinates[0] );
-								if ( iLoadoutArea < m_iMaxRows )
-								{
-									GridSlot.SetRow( w, iLoadoutArea );	
-								}
-							}
-							
-							SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
-							
-							if (characterStorage && pSlot.GetLoadoutArea())
-							{
-								pSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(pSlot.GetLoadoutArea().Type()));
-							}
-							
-							GridSlot.SetColumnSpan( w, iWidgetColumnSize );
-							GridSlot.SetRowSpan( w, iWidgetRowSize );
-							iCol += iWidgetColumnSize;			
-						}
+						GridSlot.SetRow( w, iLoadoutArea );	
 					}
 				}
+				
+				SCR_CharacterInventoryStorageComponent characterStorage = SCR_CharacterInventoryStorageComponent.Cast(m_Storage);
+				
+				if (characterStorage && pSlot.GetLoadoutArea())
+				{
+					pSlot.SetSlotBlocked(characterStorage.IsAreaBlocked(pSlot.GetLoadoutArea().Type()));
+				}
+				
+				GridSlot.SetColumnSpan( w, iWidgetColumnSize );
+				GridSlot.SetRowSpan( w, iWidgetRowSize );
+				iCol += iWidgetColumnSize;			
 			}
 		}
 		FillWithEmptySlots();
@@ -290,5 +281,4 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 		if( m_UniStorages )
 			delete m_UniStorages;
 	}
-	
-};
+}

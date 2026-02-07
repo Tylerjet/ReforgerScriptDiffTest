@@ -18,10 +18,11 @@ class BaseItemAnimationComponent: AnimationControllerComponent
 	proto external IEntity GetOwner();
 	//! Syncs item with character and subscribing to it's variable changes and command calls
 	//! returns true on success
-	proto external bool SyncWithCharacter(ChimeraCharacter pCharacter, string overrideStartNode);
+	proto external bool SyncWithCharacter(ChimeraCharacter pCharacter, bool isMainCharacter, string overrideStartNode);
 	//! Removes previously synced character reference
 	proto external bool RemoveSyncReference(ChimeraCharacter pCharacter);
-	proto external bool IsAnimationTag(AnimationTagID tagID);
+	proto external bool IsAnimationTag(AnimationTagID animTagID);
+	proto external bool IsAnimationEvent(AnimationEventID animEventID, out int userInt);
 
 	// callbacks
 

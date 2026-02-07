@@ -17,7 +17,7 @@ class SCR_EditorAttributeUIInfo : SCR_UIInfo
 		if (!overwriteDescription.IsEmpty())
 			Description = overwriteDescription;
 		
-		if (!overwriteColor)
+		if (overwriteColor)
 			m_cDescriptionIconColor = overwriteColor;
 	}
 

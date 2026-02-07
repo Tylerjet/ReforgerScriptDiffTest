@@ -125,6 +125,32 @@ class SCR_ItemTypeSearchPredicate : InventorySearchPredicate
 	}
 }
 
+class SCR_CommonItemTypeSearchPredicate : InventorySearchPredicate
+{
+	ECommonItemType m_eItemType = -1;
+	IEntity m_OriginalItem;
+
+	//------------------------------------------------------------------------------------------------
+	// constructor
+	//! \param[in] wantedItemType
+	//! \param[in] originalItem
+	void SCR_CommonItemTypeSearchPredicate(ECommonItemType wantedItemType, IEntity originalItem)
+	{
+		m_eItemType = wantedItemType;
+		m_OriginalItem = originalItem;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		InventoryItemComponent iic = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (!iic || !iic.GetAttributes())
+			return false;
+
+		return (item != m_OriginalItem) && (iic.GetAttributes().GetCommonType() == m_eItemType);
+	}
+}
+
 //! Searches for attachments of the defined atttachmentType
 class SCR_CompatibleAttachmentPredicate : InventorySearchPredicate
 {
@@ -541,7 +567,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		else
 		{
 			SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
-			if (soundComp)
+			if (soundComp && soundComp.GetEventIndex(soundEvent) != -1)
 			{
 				soundComp.SoundEvent(soundEvent);
 			}
@@ -583,7 +609,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			return;
 		
 		SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
-		if (soundComp)
+		if (soundComp && soundComp.GetEventIndex(soundAction) != -1)
 		{
 			soundComp.SoundEvent(soundAction);
 		}
@@ -632,6 +658,21 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		return false;
 	}
 	
+	BaseInventoryStorageComponent FindActualStorageForItemResource(ResourceName itemResource, BaseInventoryStorageComponent storage, int slotID = -1, int count = 1)
+	{
+		array<BaseInventoryStorageComponent> storages = {};
+		storage.GetOwnedStorages(storages, 1, false);
+		storages.Insert(storage);
+
+		foreach (BaseInventoryStorageComponent actualStorage : storages)
+		{
+			if (CanInsertResourceInStorage(itemResource, actualStorage, slotID, count))
+				return actualStorage;
+		}
+
+		return null;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	// ! The return code informs about the state of the operation ( i.e. cannot insert item, since it is too large )
 	// ! it clear the flag
@@ -703,17 +744,20 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			//TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT);	// works for the owned storages ( not for the vicinity storages )
 			if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_WEAPON_PROXY, cb ) )
 			{
-				if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT, cb ) )
+				if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT, cb ) )
 				{
-					if ( !TryMoveItemToStorage( pItem, FindStorageForItem( pItem, EStoragePurpose.PURPOSE_ANY ), -1, cb ) )
-						canInsert = TryMoveItemToStorage(pItem, m_Storage, -1, cb); 				// clothes from storage in vicinity
+					if ( !TryInsertItem( pItem, EStoragePurpose.PURPOSE_DEPOSIT, cb ) )
+					{
+						if ( !TryMoveItemToStorage( pItem, FindStorageForItem( pItem, EStoragePurpose.PURPOSE_ANY ), -1, cb ) )
+							canInsert = TryMoveItemToStorage(pItem, m_Storage, -1, cb); 				// clothes from storage in vicinity
+						else
+							soundEvent = SCR_SoundEvent.SOUND_PICK_UP;	// play pick up sound for everything else
+					
+						SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
+					}
 					else
-						soundEvent = SCR_SoundEvent.SOUND_PICK_UP;	// play pick up sound for everything else
-				
-					SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
+						soundEvent = SCR_SoundEvent.SOUND_PICK_UP;
 				}
-				else
-					soundEvent = SCR_SoundEvent.SOUND_PICK_UP;
 			}
 			
 			if (canInsert)
@@ -732,7 +776,11 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			}
 			
 			//~ Find a valid storage to insert item in
-			BaseInventoryStorageComponent validStorage = FindStorageForInsert( pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY );
+			BaseInventoryStorageComponent validStorage = FindStorageForInsert(pItem, pStorageTo, EStoragePurpose.PURPOSE_EQUIPMENT_ATTACHMENT);
+			
+			if (!validStorage)
+				validStorage = FindStorageForInsert(pItem, pStorageTo, EStoragePurpose.PURPOSE_ANY);
+			
 			if (validStorage)
 			{
 				pStorageTo = validStorage;
@@ -1250,7 +1298,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if (mustBeInStorage)
 				{
 					arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
-					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineOrProjectilePrefab) < 1))
+					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(GetOwner(), magazineOrProjectilePrefab) < 1))
 					{
 						if (resupplyUnavailableReason < EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE)
 							resupplyUnavailableReason = EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
@@ -1260,7 +1308,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				}
 
 				//~ Check if there are already enough magazines
-				if (resupplyMagazineCount - GetMagazineCountByMuzzle(muzzle) <= 0)
+				if (resupplyMagazineCount - GetMagazineCountByMuzzle(null,muzzle) <= 0)
 				{
 					if (resupplyUnavailableReason < EResupplyUnavailableReason.ENOUGH_ITEMS)
 						resupplyUnavailableReason = EResupplyUnavailableReason.ENOUGH_ITEMS;
@@ -1341,7 +1389,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 					continue;
 
 				//~ Get current magazine count and see if it needs to be increased
-				int resupplyCount = maxMagazineCount - GetMagazineCountByMuzzle(muzzle);
+				int resupplyCount = maxMagazineCount - GetMagazineCountByMuzzle(null,muzzle);
 				if (resupplyCount <= 0)
 					continue;
 
@@ -1349,7 +1397,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				if (mustBeInStorage)
 				{
 					arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
-					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineOrProjectilePrefab) < 1))
+					if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineOrProjectilePrefab)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(GetOwner(), magazineOrProjectilePrefab) < 1))
 						continue;
 				}
 
@@ -1413,7 +1461,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! \param[in] mustBeInStorage
 	//! \param[out] currentMagazineAmount
 	//! \return
-	EResupplyUnavailableReason CanResupplyMuzzle(notnull BaseMuzzleComponent muzzle, int maxMagazineCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentMagazineAmount = -1)
+	EResupplyUnavailableReason CanResupplyMuzzle(IEntity user, notnull BaseMuzzleComponent muzzle, int maxMagazineCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentMagazineAmount = -1)
 	{
 		//~ Cannot resupply weapons that cannot be ressupplied like the US rocket Launcer
 		SCR_MuzzleInMagComponent inMagMuzzle = SCR_MuzzleInMagComponent.Cast(muzzle);
@@ -1429,12 +1477,12 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (mustBeInStorage)
 		{
 			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
-			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(magazineToResupply) < 1))
+			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(magazineToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(user, magazineToResupply) < 1))
 				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
 		}
 		
 		//~ Already has enough magazines
-		currentMagazineAmount = GetMagazineCountByMuzzle(muzzle);
+		currentMagazineAmount = GetMagazineCountByMuzzle(user,muzzle); 
 		if (maxMagazineCount > 0 && currentMagazineAmount >= maxMagazineCount)
 			return EResupplyUnavailableReason.ENOUGH_ITEMS;
 		
@@ -1452,18 +1500,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//! \param[in] mustBeInStorage
 	//! \param[out] currentItemAmount
 	//! \return
-	EResupplyUnavailableReason CanResupplyItem(ResourceName itemToResupply, int maxItemCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentItemAmount = -1)
+	EResupplyUnavailableReason CanResupplyItem(IEntity user, ResourceName itemToResupply, int maxItemCount = -1, InventoryStorageManagerComponent mustBeInStorage = null, out int currentItemAmount = -1)
 	{
 		//~ Check if it is in arsenal or in the storage
 		if (mustBeInStorage)
 		{
 			SCR_ArsenalInventoryStorageManagerComponent arsenalStorage = SCR_ArsenalInventoryStorageManagerComponent.Cast(mustBeInStorage);
-			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(itemToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(itemToResupply) < 1))
+			if ((arsenalStorage && !arsenalStorage.IsPrefabInArsenalStorage(itemToResupply)) || (!arsenalStorage && mustBeInStorage.GetDepositItemCountByResource(user, itemToResupply) < 1))
 				return EResupplyUnavailableReason.NOT_IN_GIVEN_STORAGE;
 		}
 		
 		//~ Already has enough of the item in storage
-		currentItemAmount = GetDepositItemCountByResource(itemToResupply);
+		currentItemAmount = GetDepositItemCountByResource(user, itemToResupply); 
 		if (maxItemCount > 0 && currentItemAmount >= maxItemCount)
 			return EResupplyUnavailableReason.ENOUGH_ITEMS;
 			
@@ -1561,6 +1609,9 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 				owner = owner.GetParent();
 			}
 		}
+
+		if (cac && (cac.IsGettingIn() || cac.IsGettingOut()))
+			return;
 
 		OpenInventory();
 	}

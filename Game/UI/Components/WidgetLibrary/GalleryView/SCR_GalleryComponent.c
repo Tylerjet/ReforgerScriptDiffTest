@@ -82,8 +82,8 @@ class SCR_GalleryComponent : ScriptedWidgetComponent
 		
 		UpdatePagingButtons();
 		
-		GetGame().GetInputManager().AddActionListener("MenuLeft", EActionTrigger.DOWN, OnPreviousItem);
-		GetGame().GetInputManager().AddActionListener("MenuRight", EActionTrigger.DOWN, OnNextItem);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_LEFT, EActionTrigger.DOWN, OnPreviousItem);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_RIGHT, EActionTrigger.DOWN, OnNextItem);
 		GetGame().GetInputManager().AddActionListener(m_sActionLeft, EActionTrigger.DOWN, OnCustomLeft);
 		GetGame().GetInputManager().AddActionListener(m_sActionRight, EActionTrigger.DOWN, OnCustomRight);
 

@@ -57,7 +57,7 @@ class SCR_PhysicsHelper
 	
 	//------------------------------------------------------------------------------------------------
 	//! Traces the smaller segment of longer distance, do not use on its own.
-	private void TraceSegment(TraceFlags flags, EPhysicsLayerDefs layerMask, IEntity exclude, float segmentSize)
+	private void TraceSegment(TraceFlags flags, EPhysicsLayerDefs layerMask, array<IEntity> excludeArray, float segmentSize)
 	{
 		m_fLengthTraced = m_fLengthTraced + segmentSize;
 		
@@ -70,7 +70,7 @@ class SCR_PhysicsHelper
 		m_TraceParam.Start = m_vCurrentStartPosition;
 		m_TraceParam.Flags = flags;
 		m_TraceParam.LayerMask = layerMask;
-		m_TraceParam.Exclude = exclude;
+		m_TraceParam.ExcludeArray = excludeArray;
 		m_TraceParam.TraceEnt = null;
 		
 		float traceResult = GetGame().GetWorld().TraceMove(m_TraceParam, null);
@@ -117,7 +117,7 @@ class SCR_PhysicsHelper
 	//! Does trace for long distance as a series of shorter traces across multiple frames, for performance improvements.
 	//! Subscribe to m_OnTraceFinished<vector, IEntity> that gets invoked after the trace is done.
 	//! Create new instance of SCR_PhysicsHelper when you want to do a trace.
-	void TraceSegmented(vector start, vector end, TraceFlags flags = TraceFlags.DEFAULT, EPhysicsLayerDefs layerMask = EPhysicsLayerDefs.Default, IEntity exclude = null, float segmentSize = DEFAULT_TRACE_SEGMENT_LENGTH)
+	void TraceSegmented(vector start, vector end, TraceFlags flags = TraceFlags.DEFAULT, EPhysicsLayerDefs layerMask = EPhysicsLayerDefs.Default, array<IEntity> excludeArray = null, float segmentSize = DEFAULT_TRACE_SEGMENT_LENGTH)
 	{
 		//calculate and save direction and length there, so we do not have to recalculate it every frame while tracing
 		m_vDirection = end - start;
@@ -138,7 +138,7 @@ class SCR_PhysicsHelper
 		m_vCurrentStartPosition = start;
 		
 		//Call this method every frame to trace segment of the whole length each frame, when the trace is done the method removes itself from the queue
-		GetGame().GetCallqueue().CallLater(TraceSegment, 0, true, flags, layerMask, exclude, segmentSize);
+		GetGame().GetCallqueue().CallLater(TraceSegment, 0, true, flags, layerMask, excludeArray, segmentSize);
 	}
 	
 	//------------------------------------------------------------------------------------------------

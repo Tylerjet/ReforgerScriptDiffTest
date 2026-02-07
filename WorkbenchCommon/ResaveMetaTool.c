@@ -37,7 +37,10 @@ class ResaveMetaPlugin: WorkbenchPlugin
 		{
 			m_module = Workbench.GetModule(ResourceManager);
 			
-			Workbench.SearchResources(Find, Extensions);
+			SearchResourcesFilter filter = new SearchResourcesFilter();
+			filter.fileExtensions = Extensions;
+			ResourceDatabase.SearchResources(filter, Find);
+			
 			Resave();			
 		}
 	}
@@ -54,7 +57,10 @@ class ResaveMetaPlugin: WorkbenchPlugin
 			Extensions = {ext};
 		}
 		
-		Workbench.SearchResources(Find, Extensions);
+		SearchResourcesFilter filter = new SearchResourcesFilter();
+		filter.fileExtensions = Extensions;
+		ResourceDatabase.SearchResources(filter, Find);
+		
 		Resave();
 		Workbench.Exit(0);
 	}

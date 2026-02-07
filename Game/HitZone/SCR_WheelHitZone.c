@@ -54,9 +54,9 @@ class SCR_WheelHitZone : SCR_VehicleHitZone
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 	
 		UpdateWheelState();
 		UpdateDamageSignal()
@@ -94,91 +94,47 @@ class SCR_WheelHitZone : SCR_VehicleHitZone
 		IEntity owner = GetOwner();
 		
 		IEntity parent = SCR_EntityHelper.GetMainParent(owner, true);
-		if(GetGame().GetIsClientAuthority())
-		{
-			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
-			if (!simulation || !simulation.IsValid() || m_iWheelId >= simulation.WheelCount())
-				return;		
+
+		VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(parent.FindComponent(VehicleWheeledSimulation));
+		if (!simulation || !simulation.IsValid() || m_iWheelId >= simulation.WheelCount())
+			return;
 		
-			// Update simulation
-			float radius				= simulation.WheelGetRadius(m_iWheelId);
-			float longitudinalFriction	= simulation.WheelTyreGetLongitudinalFriction(m_iWheelId);
-			float lateralFriction		= simulation.WheelTyreGetLateralFriction(m_iWheelId);
-			float roughness				= simulation.WheelTyreGetRoughness(m_iWheelId);
-			float drag;
-			
-			// Only run the rest of code if state has changed
-			SCR_EWheelDamageState state = GetDamageState();
-			if (state == SCR_EWheelDamageState.DESTROYED)
-			{
-				radius					*= m_fDestroyedRadiusScale;
-				longitudinalFriction	*= m_fDestroyedLongitudinalFrictionScale;
-				lateralFriction			*= m_fDestroyedLateralFrictionScale;
-				roughness				+= m_fDestroyedRoughnessIncrease;
-				drag					=  m_fDestroyedDrag;
-			}
-			else if (state == SCR_EWheelDamageState.PUNCTURED)
-			{
-				radius					*= m_fDamagedRadiusScale;
-				longitudinalFriction	*= m_fDamagedLongitudinalFrictionScale;
-				lateralFriction			*= m_fDamagedLateralFrictionScale;
-				roughness				+= m_fDamagedRoughnessIncrease;
-				drag					=  m_fDamagedDrag;
-			}
-			
-			simulation.WheelSetRadiusState(m_iWheelId, radius);
-			simulation.WheelTyreSetLongitudinalFrictionState(m_iWheelId, longitudinalFriction);
-			simulation.WheelTyreSetLateralFrictionState(m_iWheelId, lateralFriction);
-			simulation.WheelTyreSetRoughnessState(m_iWheelId, roughness);
-			simulation.WheelSetRollingDrag(m_iWheelId, drag);
-			
-			// Need to wake physics up when wheel becomes destroyed
-			if (state == SCR_EWheelDamageState.PUNCTURED || state == SCR_EWheelDamageState.DESTROYED)
-				WakeUpPhysics();	
-		}
-		else
+		// Update simulation
+		float previousRadius 		= simulation.WheelGetRadiusState(m_iWheelId);
+		float radius				= simulation.WheelGetRadius(m_iWheelId);
+		float longitudinalFriction	= simulation.WheelTyreGetLongitudinalFriction(m_iWheelId);
+		float lateralFriction		= simulation.WheelTyreGetLateralFriction(m_iWheelId);
+		float roughness				= simulation.WheelTyreGetRoughness(m_iWheelId);
+		float drag;
+		
+		// Only run the rest of code if state has changed
+		SCR_EWheelDamageState state = GetDamageState();
+		if (state == SCR_EWheelDamageState.DESTROYED)
 		{
-			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(parent.FindComponent(VehicleWheeledSimulation_SA));
-			if (!simulation || !simulation.IsValid() || m_iWheelId >= simulation.WheelCount())
-				return;
-			
-			// Update simulation
-			float previousRadius 		= simulation.WheelGetRadiusState(m_iWheelId);
-			float radius				= simulation.WheelGetRadius(m_iWheelId);
-			float longitudinalFriction	= simulation.WheelTyreGetLongitudinalFriction(m_iWheelId);
-			float lateralFriction		= simulation.WheelTyreGetLateralFriction(m_iWheelId);
-			float roughness				= simulation.WheelTyreGetRoughness(m_iWheelId);
-			float drag;
-			
-			// Only run the rest of code if state has changed
-			SCR_EWheelDamageState state = GetDamageState();
-			if (state == SCR_EWheelDamageState.DESTROYED)
-			{
-				radius					*= m_fDestroyedRadiusScale;
-				longitudinalFriction	*= m_fDestroyedLongitudinalFrictionScale;
-				lateralFriction			*= m_fDestroyedLateralFrictionScale;
-				roughness				+= m_fDestroyedRoughnessIncrease;
-				drag					=  m_fDestroyedDrag;
-			}
-			else if (state == SCR_EWheelDamageState.PUNCTURED)
-			{
-				radius					*= m_fDamagedRadiusScale;
-				longitudinalFriction	*= m_fDamagedLongitudinalFrictionScale;
-				lateralFriction			*= m_fDamagedLateralFrictionScale;
-				roughness				+= m_fDamagedRoughnessIncrease;
-				drag					=  m_fDamagedDrag;
-			}
-			
-			simulation.WheelSetRadiusState(m_iWheelId, radius);
-			simulation.WheelTyreSetLongitudinalFrictionState(m_iWheelId, longitudinalFriction);
-			simulation.WheelTyreSetLateralFrictionState(m_iWheelId, lateralFriction);
-			simulation.WheelTyreSetRoughnessState(m_iWheelId, roughness);
-			simulation.WheelSetRollingDrag(m_iWheelId, drag);		
-			
-			// Need to wake physics up when wheel becomes destroyed
-			if (!float.AlmostEqual(radius, previousRadius))
-				WakeUpPhysics();	
+			radius					*= m_fDestroyedRadiusScale;
+			longitudinalFriction	*= m_fDestroyedLongitudinalFrictionScale;
+			lateralFriction			*= m_fDestroyedLateralFrictionScale;
+			roughness				+= m_fDestroyedRoughnessIncrease;
+			drag					=  m_fDestroyedDrag;
 		}
+		else if (state == SCR_EWheelDamageState.PUNCTURED)
+		{
+			radius					*= m_fDamagedRadiusScale;
+			longitudinalFriction	*= m_fDamagedLongitudinalFrictionScale;
+			lateralFriction			*= m_fDamagedLateralFrictionScale;
+			roughness				+= m_fDamagedRoughnessIncrease;
+			drag					=  m_fDamagedDrag;
+		}
+			
+		simulation.WheelSetRadiusState(m_iWheelId, radius);
+		simulation.WheelTyreSetLongitudinalFrictionState(m_iWheelId, longitudinalFriction);
+		simulation.WheelTyreSetLateralFrictionState(m_iWheelId, lateralFriction);
+		simulation.WheelTyreSetRoughnessState(m_iWheelId, roughness);
+		simulation.WheelSetRollingDrag(m_iWheelId, drag);		
+		
+		// Need to wake physics up when wheel becomes destroyed
+		if (!float.AlmostEqual(radius, previousRadius))
+			WakeUpPhysics();	
 
 		// Notify the relevant damage manager if present
 		SCR_WheeledDamageManagerComponent damageManager = SCR_WheeledDamageManagerComponent.Cast(m_RootDamageManager);

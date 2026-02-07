@@ -17,6 +17,9 @@ sealed class WidgetManager
 	private void WidgetManager();
 	private void ~WidgetManager();
 
+	//! UTF8 encoded nbsp (Non Breaking Space) character usable in UI
+	static const string NonBreakingSpace;
+
 	/*!
 	Gets all widgets at given position returning them in array from the closest to the farthest
 	Widgets with DISABLED or IGNORE_CURSOR or without VISIBLE flags are ignored.

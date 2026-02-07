@@ -11,8 +11,7 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 	protected int m_PlayerID;							// target ID, needed for visibility rules and fetching group
 	
 	const float SL_UPDATE_DELAY = 1; 					// seconds 
-	const float ASPECT_RATIO_FLAG = 1.45;				// temp -> force aspect ratio of a military symbol
-	const int SIZE_FLAG = 56;							// temp -> required due to aspect ratio's need to be set
+	//const float ASPECT_RATIO_FLAG = 1.6;				// temp -> force aspect ratio of a military symbol
 		
 	bool m_bDoGroupTextUpdate;							// group text update flag
 	protected bool m_bDoGroupSymbolUpdate;				// group symbol update flag
@@ -29,7 +28,7 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 			return;
 		
 		if (m_PlayerID == pController.GetPlayerId())	// if this is us, dont display
-			SetLocalVisible(false);
+			SetLocalVisible(false); // set this true for markers testing
 		else
 		{
 			SetLocalVisible(true);
@@ -125,7 +124,7 @@ class SCR_MapMarkerSquadLeader : SCR_MapMarkerEntity
 		}
 		
 		if (m_SquadLeaderWidgetComp)
-			m_SquadLeaderWidgetComp.SetImage(m_sImageset, m_sIconName, ASPECT_RATIO_FLAG, SIZE_FLAG);	
+			m_SquadLeaderWidgetComp.SetImage(m_sImageset, m_sIconName);
 		
 		UpdatePlayerAffiliation();
 		m_bDoGroupSymbolUpdate = false;

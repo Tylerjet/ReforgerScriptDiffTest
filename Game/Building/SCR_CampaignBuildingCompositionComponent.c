@@ -474,7 +474,7 @@ class SCR_CampaignBuildingCompositionComponent : ScriptComponent
 
 		RplComponent rplComp = RplComponent.Cast(Replication.FindItem(rplCompId));
 		if (rplComp)
-			newOwner = IEntity.Cast(rplComp.GetEntity());
+			newOwner = rplComp.GetEntity();
 
 		SetProviderEntity(newOwner);
 	}

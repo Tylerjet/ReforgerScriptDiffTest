@@ -44,16 +44,6 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 	//------------------------------------------------------------------------------------------------
 	override void AfterAllChildrenSpawned(SCR_ScenarioFrameworkLayerBase layer)
 	{
-		foreach (SCR_ScenarioFrameworkActivationConditionBase activationCondition : m_aActivationConditions)
-		{
-			//If just one condition is false, we don't continue and interrupt the init
-			if (!activationCondition.Init(GetOwner()))
-			{
-				super.AfterAllChildrenSpawned(this);
-				return;
-			}
-		}
-		
 		if (!m_MapMarker)
 			CreateMapMarker();
 		
@@ -120,6 +110,17 @@ class SCR_ScenarioFrameworkSlotMarker : SCR_ScenarioFrameworkSlotBase
 		}
 		
 		mapMarkerMgr.InsertStaticMarker(m_MapMarker, false, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// destructor
+	void ~SCR_ScenarioFrameworkSlotMarker()
+	{
+		if (SCR_Global.IsEditMode())
+			return;
+		
+		DynamicDespawn(this);
+		RemoveMapMarker();
 	}
 }
 

@@ -13,7 +13,8 @@ enum EEditableEntityLabel
 	FACTION_USSR = 10,
 	FACTION_US = 11,
 	FACTION_FIA = 12,
-	FACTION_NONE = 13, //FACTION_ANY
+	FACTION_CIV = 13,
+	FACTION_NONE = 14, //FACTION_ANY
 	
 	TRAIT_ARMOR = 20,
 	TRAIT_ARMED = 21,
@@ -98,6 +99,9 @@ enum EEditableEntityLabel
 	
 	GAMELOGIC_RALLYPOINT = 130,
 	
+	// Additional roles 
+	ROLE_SAPPER = 140,
+	
 	//~ Traits continuation
 	TRAIT_SUPPLYSTORAGE_SMALL = 200,
 	TRAIT_SUPPLYSTORAGE_LARGE = 210,
@@ -108,6 +112,7 @@ enum EEditableEntityLabel
 	TRAIT_MANAGEMENT_VEHICLE = 260,
 	TRAIT_HELI_CREW = 270,
 	TRAIT_ARSENAL = 280,
+	TRAIT_RANDOMIZED = 290, //! This trait is for entities that have random variants when placed in the world by Editor
 	
 	SERVICE_ANTENNA = 901,
 	SERVICE_ARMORY = 902,

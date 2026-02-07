@@ -191,7 +191,6 @@ class SCR_PlayerXPHandlerComponent : ScriptComponent
 		if (XP == 0)
 			return;
 
-		float skillXPMultiplier = 1;
 		//EProfileSkillID skillID = comp.GetXPRewardSkill(rewardID);
 		//auto profileManager = campaign.FindComponent(SCR_PlayerProfileManagerComponent); Replaced by SCR_PlayerData
 

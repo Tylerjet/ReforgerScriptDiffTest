@@ -1,12 +1,11 @@
 /*
-This analyzes combat move state and issues new requests for combat move tree.
+This node analyzes combat move state and issues new requests for combat move tree.
 */
 
-class SCR_AICombatMoveLogic_Attack : AITaskScripted
+//! Base class for combat movement. This is the main piece of logic for combat movement during combat behavior and suppression behavior.
+//! But in this class the specific type of target is not yet used, and there are virtual methods which must be overridden in derived classes.
+class SCR_AICombatMoveLogicBase : AITaskScripted
 {
-	// Inputs
-	protected static const string PORT_BASE_TARGET = "BaseTarget";
-	
 	protected SCR_AICombatMoveState m_State;
 	protected SCR_AIUtilityComponent m_Utility;
 	protected SCR_AICombatComponent m_CombatComp;
@@ -17,7 +16,6 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 	protected EAIThreatState m_eThreatState;
 	protected ECharacterStance m_eStance;
 	protected EWeaponType m_eWeaponType;
-	protected BaseTarget m_Target;
 	protected float m_fTargetDist;
 	protected float m_fWeaponMinDist;
 	protected bool m_bCloseRangeCombat;	// True if we consider it's a close range fight
@@ -28,6 +26,18 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 	
 	// Half-angle of cover query sector when directed cover search is used
 	protected const float COVER_QUERY_SECTOR_ANGLE_RAD = 0.3 * Math.PI;
+	
+	//--------------------------------------------------------------------------------------------
+	// These methods must be overriden in derived classes.
+	protected bool OnUpdate(AIAgent owner, float dt); // This gets called before the rest of the logic. Here you should read data from ports, return true on success.
+	protected vector ResolveRequestTargetPos();
+	protected bool ResolveFailMoveIfNoCover(); // Gets called from PushRequestMove, this should return value of request.m_bFailIfNoCover
+	protected float ResolveStoppedWaitTime(bool inCover, EAIThreatState threat, EWeaponType weaponType);
+	protected vector GetTargetPosition();
+	protected float GetTargetDistance();
+	protected bool MoveToNextPosCondition();
+	//--------------------------------------------------------------------------------------------
+	
 	
 	//--------------------------------------------------------------------------------------------
 	protected override void OnInit(AIAgent owner)
@@ -52,9 +62,10 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 			return ENodeResult.RUNNING;
 		m_fNextUpdate_ms = currentTime_ms + m_fUpdateInterval_ms;
 		
-		BaseTarget target;
-		GetVariableIn(PORT_BASE_TARGET, target);
-		if (!target || !target.GetTargetEntity() || !m_State || !m_MyEntity || !m_Utility || !m_CombatComp || !m_CharacterController)
+		if (!OnUpdate(owner, dt))
+			return ENodeResult.FAIL;
+		
+		if (!m_State || !m_MyEntity || !m_Utility || !m_CombatComp || !m_CharacterController)
 			return ENodeResult.FAIL;
 		
 		// Don't run combat movement logic if CombatMove BT is not used now (like in turret)
@@ -63,8 +74,7 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 			return ENodeResult.RUNNING;
 		
 		// Update cached variables
-		m_Target = target;
-		m_fTargetDist = target.GetDistance();
+		m_fTargetDist = GetTargetDistance();
 		m_bCloseRangeCombat = m_fTargetDist < SCR_AICombatMoveUtils.CLOSE_RANGE_COMBAT_DIST;
 		m_eThreatState = m_Utility.m_ThreatSystem.GetState();
 		m_eStance = m_CharacterController.GetStance();
@@ -221,26 +231,6 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 	//--------------------------------------------------------------------------------------------
 	// Movement
 	
-	protected bool MoveToNextPosCondition()
-	{
-		// Don't get any more closer
-		// Except we should still move closer if we haven't seen target for a long time
-		float optimalDist = ResolveOptimalDistance(m_fWeaponMinDist);
-		if (m_fTargetDist < optimalDist && m_Target.GetTimeSinceSeen() < 15)
-			return false;
-			
-		if (m_State.IsExecutingRequest())
-			return false;
-		
-		// If it's first run, ignore timers, only if:
-		// - If we are not in cover.
-		if (IsFirstExecution() && !m_State.m_bInCover)
-			return true;
-		
-		float stoppedWaitTime = ResolveStoppedWaitTime(m_State.m_bInCover, m_eThreatState, m_eWeaponType);	
-		return m_State.m_fTimerStopped_s > stoppedWaitTime;
-	}
-	
 	protected void PushRequestMove()
 	{		
 		SCR_AICombatMoveRequest_Move rq = new SCR_AICombatMoveRequest_Move();
@@ -283,7 +273,6 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 				}
 			}
 			
-			rq.m_bFailIfNoCover = false;
 			rq.m_eMovementType = EMovementType.RUN;
 			rq.m_bAimAtTarget = SCR_AICombatMoveUtils.IsAimingAndMovementPossible(rq.m_eStanceMoving, rq.m_eMovementType) &&
 								IsAimingAndMovingAllowedForWeapon(m_eWeaponType);
@@ -315,15 +304,12 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 				}
 			}
 			
-			if (IsFirstExecution())
-				rq.m_bFailIfNoCover = true; // On first run we want to move to cover, or stay where we are if there is no cover, and shoot.
-			else
-				rq.m_bFailIfNoCover = m_State.m_bInCover; // Don't leave cover if there is no next cover
-			
 			rq.m_eMovementType = EMovementType.SPRINT;
 			rq.m_bAimAtTarget = false; // Can't aim at tgt while sprinting
 			rq.m_bAimAtTargetEnd = true;
 		}
+		
+		rq.m_bFailIfNoCover = ResolveFailMoveIfNoCover();
 		
 		// If we are not in cover, min cover search distance is overridden to 0, we should find any cover ASAP
 		if (!m_State.m_bInCover)
@@ -494,7 +480,7 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 		if (!m_State.m_bInCover || !m_State.IsAssignedCoverValid())
 			return false;
 		
-		vector tgtPos = m_Target.GetLastSeenPosition();
+		vector tgtPos = GetTargetPosition();
 		
 		float cosAngle = m_State.GetAssignedCover().CosAngleToThreat(tgtPos);
 		return (cosAngle < 0.5); // cos 60 deg = 0.5
@@ -571,80 +557,6 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	protected vector ResolveRequestTargetPos()
-	{
-		if (m_CombatComp.IsTargetVisible(m_Target))
-		{
-			IEntity tgtEntity = m_Target.GetTargetEntity(); // We've checked above that it's not null
-		
-			ChimeraCharacter character = ChimeraCharacter.Cast(tgtEntity);
-			if (character)
-			{
-				vector eyePos = character.EyePosition();
-				return eyePos;
-			}
-			
-			// It's a vehicle
-			vector pos = tgtEntity.GetOrigin();
-			pos = pos + Vector(0, 2.0, 0);
-			return pos;
-		}
-		
-		// Target is not visible, use last seen position
-		vector lastSeenPos = m_Target.GetLastSeenPosition();
-		lastSeenPos = lastSeenPos + Vector(0, 1.8, 0);
-		return lastSeenPos;		
-	}
-	
-	//--------------------------------------------------------------------------------------------
-	protected float ResolveStoppedWaitTime(bool inCover, EAIThreatState threat, EWeaponType weaponType)
-	{
-		float waitTime;
-		
-		if (inCover)
-		{
-			// In cover
-			switch (threat)
-			{
-				case EAIThreatState.THREATENED:
-					waitTime = 20.0;	// Stay in cover for a long time, until we are not suppressed any more
-					break;
-				default:
-					waitTime = 5.0;
-			}
-		}
-		else
-		{
-			// Not in cover
-			switch (threat)
-			{
-				case EAIThreatState.THREATENED:
-					waitTime = 6.0;
-					break;
-				default:
-					waitTime = 3.0;
-					break;
-			}
-		}
-		
-		// When using those weapons we want to move much less
-		bool longWaitTime = false;
-		switch (weaponType)
-		{
-			case EWeaponType.WT_MACHINEGUN:
-			case EWeaponType.WT_ROCKETLAUNCHER:
-			case EWeaponType.WT_GRENADELAUNCHER:
-			case EWeaponType.WT_SNIPERRIFLE:
-				longWaitTime = true;
-		}
-		
-		if (longWaitTime)
-			waitTime *= 2.0;
-		
-		return waitTime;
-	}
-	
-	//--------------------------------------------------------------------------------------------
 	// Returns stance when stopped outside cover
 	protected static ECharacterStance ResolveStanceOutsideCover(bool closeRange, EAIThreatState threat)
 	{
@@ -706,9 +618,265 @@ class SCR_AICombatMoveLogic_Attack : AITaskScripted
 	
 	//--------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() { return true; }
+}
+
+//! Combat movement node for attack behavior, which is aimed at BaseTarget
+class SCR_AICombatMoveLogic_Attack : SCR_AICombatMoveLogicBase
+{
+	// Inputs
+	protected static const string PORT_BASE_TARGET = "BaseTarget";
 	
+	protected BaseTarget m_Target;
+	
+	//--------------------------------------------------------------------------------------------
+	protected override bool OnUpdate(AIAgent owner, float dt)
+	{
+		GetVariableIn(PORT_BASE_TARGET, m_Target);
+		
+		if (!m_Target || !m_Target.GetTargetEntity())
+			return false;
+		
+		return true;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override float GetTargetDistance()
+	{
+		return m_Target.GetDistance();
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override vector GetTargetPosition()
+	{
+		return m_Target.GetLastSeenPosition();
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override vector ResolveRequestTargetPos()
+	{
+		if (m_CombatComp.IsTargetVisible(m_Target))
+		{
+			IEntity tgtEntity = m_Target.GetTargetEntity(); // We've checked already
+		
+			ChimeraCharacter character = ChimeraCharacter.Cast(tgtEntity);
+			if (character)
+			{
+				vector eyePos = character.EyePosition();
+				return eyePos;
+			}
+			
+			// It's a vehicle
+			vector pos = tgtEntity.GetOrigin();
+			pos = pos + Vector(0, 2.0, 0);
+			return pos;
+		}
+		
+		// Target is not visible, use last seen position
+		vector lastSeenPos = m_Target.GetLastSeenPosition();
+		lastSeenPos = lastSeenPos + Vector(0, 1.8, 0);
+		return lastSeenPos;		
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override bool ResolveFailMoveIfNoCover()
+	{
+		if (m_bCloseRangeCombat)
+		{
+			return false;
+		}
+		else
+		{
+			// Long range combat
+			if (IsFirstExecution())
+				return true; // On first run we want to move to cover, or stay where we are if there is no cover, and shoot.
+			else
+				return m_State.m_bInCover; // Don't leave cover if there is no next cover
+		}
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override float ResolveStoppedWaitTime(bool inCover, EAIThreatState threat, EWeaponType weaponType)
+	{
+		float waitTime;
+		
+		if (inCover)
+		{
+			// In cover
+			switch (threat)
+			{
+				case EAIThreatState.THREATENED:
+					waitTime = 20.0;	// Stay in cover for a long time, until we are not suppressed any more
+					break;
+				default:
+					waitTime = 5.0;
+			}
+		}
+		else
+		{
+			// Not in cover
+			switch (threat)
+			{
+				case EAIThreatState.THREATENED:
+					waitTime = 6.0;
+					break;
+				default:
+					waitTime = 3.0;
+					break;
+			}
+		}
+		
+		// When using those weapons we want to move much less
+		bool longWaitTime = false;
+		switch (weaponType)
+		{
+			case EWeaponType.WT_MACHINEGUN:
+			case EWeaponType.WT_ROCKETLAUNCHER:
+			case EWeaponType.WT_GRENADELAUNCHER:
+			case EWeaponType.WT_SNIPERRIFLE:
+				longWaitTime = true;
+		}
+		
+		if (longWaitTime)
+			waitTime *= 2.0;
+		
+		return waitTime;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override bool MoveToNextPosCondition()
+	{
+		// Don't get any more closer
+		// Except we should still move closer if we haven't seen target for a long time
+		float optimalDist = ResolveOptimalDistance(m_fWeaponMinDist);
+		if (m_fTargetDist < optimalDist && m_Target.GetTimeSinceSeen() < 15)
+			return false;
+			
+		if (m_State.IsExecutingRequest())
+			return false;
+		
+		// If it's first run, ignore timers, only if:
+		// - If we are not in cover.
+		if (IsFirstExecution() && !m_State.m_bInCover)
+			return true;
+		
+		float stoppedWaitTime = ResolveStoppedWaitTime(m_State.m_bInCover, m_eThreatState, m_eWeaponType);	
+		return m_State.m_fTimerStopped_s > stoppedWaitTime;
+	}
+	
+	//--------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
 		PORT_BASE_TARGET
+	};
+	override TStringArray GetVariablesIn() { return s_aVarsIn; }
+}
+
+//! Combat move logic when doing suppressive fire
+class SCR_AICombatMoveLogic_Suppressive : SCR_AICombatMoveLogicBase
+{
+	// Inputs
+	protected static const string PORT_SUPPRESSION_VOLUME = "SuppressionVolume";
+	protected static const string PORT_VISIBLE = "Visible";
+	protected static const string PORT_TIME_LAST_SEEN = "TimeLastSeen_ms";
+	
+	// Variables updated from input ports
+	protected SCR_AISuppressionVolumeBase m_SuppressionVolume;
+	protected bool m_bTargetVisible = false;
+	protected float m_fTargetLastSeenTime_ms = 0; // World time
+	
+	protected bool m_bGoodVision;
+	
+	protected static const float TIME_SINCE_GOOD_VISIBILITY_MIN_MS = 10000.0;
+	
+	//--------------------------------------------------------------------------------------------
+	protected override bool OnUpdate(AIAgent owner, float dt)
+	{
+		GetVariableIn(PORT_SUPPRESSION_VOLUME, m_SuppressionVolume);
+		
+		if (!GetVariableIn(PORT_VISIBLE, m_bTargetVisible))
+			return false;
+		
+		if (!GetVariableIn(PORT_TIME_LAST_SEEN, m_fTargetLastSeenTime_ms))
+			return false;
+		
+		if (!m_SuppressionVolume)
+			return false;
+		
+		// Update m_bGoodVision
+		// The timer criteria is to exclude occlusion due to us hiding in cover
+		float timeSinceLastSeen_ms = GetGame().GetWorld().GetWorldTime() - m_fTargetLastSeenTime_ms;
+		m_bGoodVision = m_bTargetVisible || (timeSinceLastSeen_ms < TIME_SINCE_GOOD_VISIBILITY_MIN_MS);
+		
+		return true;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override float GetTargetDistance()
+	{
+		return vector.Distance(m_MyEntity.GetOrigin(), m_SuppressionVolume.GetCenterPosition());
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override vector GetTargetPosition()
+	{
+		return m_SuppressionVolume.GetCenterPosition();
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override vector ResolveRequestTargetPos()
+	{
+		return 	m_SuppressionVolume.GetCenterPosition();	
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override bool ResolveFailMoveIfNoCover()
+	{
+		// Don't move out of cover if we already have good vision from current cover
+		if (m_bGoodVision)
+			return true;
+		
+		return false; // We're allowed to move anywhere, including to coverless position. But our own suppression criteria still apply and run above this.
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override float ResolveStoppedWaitTime(bool inCover, EAIThreatState threat, EWeaponType weaponType)
+	{
+		return 1.0;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected override bool MoveToNextPosCondition()
+	{	
+		if (m_State.IsExecutingRequest())
+			return false;
+		
+		if (m_bGoodVision && m_State.m_bInCover)
+		{
+			// We have good vision and we are in cover, just stay here
+			return false;
+		}
+		
+		// If vision is bad, move out until we have good visibility
+		// Here we operate with visibility of the suppression volume, still concept is same as during normal attack.
+		// Most important thing is to exit area with poor vision of target, but beyond that we don't need to move.
+		if (!m_bGoodVision || (m_bGoodVision && !m_State.m_bInCover) || (m_fTargetLastSeenTime_ms == 0))
+		{
+			// If it's first run, ignore timers, only if:
+			// - If we are not in cover.
+			if (IsFirstExecution() && !m_State.m_bInCover)
+				return true;
+			
+			float stoppedWaitTime = ResolveStoppedWaitTime(m_State.m_bInCover, m_eThreatState, m_eWeaponType);	
+			return m_State.m_fTimerStopped_s > stoppedWaitTime;
+		}
+		
+		return false;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	protected static ref TStringArray s_aVarsIn = {
+		PORT_SUPPRESSION_VOLUME,
+		PORT_VISIBLE,
+		PORT_TIME_LAST_SEEN
 	};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 }

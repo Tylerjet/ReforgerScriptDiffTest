@@ -86,6 +86,7 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_DEBUG,"","Print debug from BTs","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_GROUP_INFO,"","Print init of groups","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_FIRETEAMS, "", "Show fireteams", "AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SUBGROUPS, "", "Show subgroups", "AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_TARGET_CLUSTERS, "", "Show target clusters", "AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_SHOT_STATISTICS,"","Print stats for aiming","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_ACTIVITY,"","Print new activity","AIScript");
@@ -96,8 +97,10 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_DEBUG_COVERS,"","Debug cover search","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_COMMS_HANDLERS,"", "Show Comms Handlers","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_PERCEPTION_PANEL,"","Show perception panel","AIScript");
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SMOKE_COVER_POSITIONS,"","Show smoke cover positions","AIScript");
-
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_GRENADE_POSITIONS,"","Show grenade positions","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_SUPPRESS_DEBUG,"","Show suppression debug","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_ILLUM_FLARES_POSITIONS,"","Show illum flares positions","AIScript");
+			
 #ifdef AI_DEBUG
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SEND_MESSAGE, "", "Show Send Message Menu","AIScript");
 			DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_AI_PRINT_DEBUG,true);
@@ -164,6 +167,26 @@ class SCR_AIWorld : AIWorld
 				if (teleportComponent)
 				{
 					teleportComponent.TeleportCamera(agentEntity.GetWorldTransformAxis(3));
+				}
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDebugCameraTeleport(vector pos)
+	{
+		PrintFormat("Moving camera to pos %1", pos);
+		
+		SCR_CameraEditorComponent editorCameraManager = SCR_CameraEditorComponent.Cast(SCR_CameraEditorComponent.GetInstance(SCR_CameraEditorComponent));
+		if (editorCameraManager)
+		{
+			SCR_ManualCamera editorCamera = editorCameraManager.GetCamera();
+			if (editorCamera)
+			{
+				SCR_TeleportToCursorManualCameraComponent teleportComponent = SCR_TeleportToCursorManualCameraComponent.Cast(editorCamera.FindCameraComponent(SCR_TeleportToCursorManualCameraComponent));
+				if (teleportComponent)
+				{
+					teleportComponent.TeleportCamera(pos);
 				}
 			}
 		}
@@ -252,6 +275,7 @@ class SCR_AIWorld : AIWorld
 			
 			//--- Find the closest bounds
 			bool found = false;
+			int i = 0;
 			foreach (Tuple2<vector, vector> area: outAreas)
 			{
 				if (vector.DistanceSqXZ(GetAreaCenter(boundMin, boundMax), GetAreaCenter(area.param1, area.param2)) < MAX_NAVMESH_REBUILD_SIZE)
@@ -260,19 +284,18 @@ class SCR_AIWorld : AIWorld
 					area.param2 = SCR_Math3D.Max(area.param2, boundMax);
 					found = true;
 				}
+				//Check if the entity has a navlink and it has a link that applies to vehicles
+				if (redoRoads[i])
+					redoRoads[i] = !HasVehicleNavlink(entity);
+				i++;
 			}
 			
 			//--- No suitable bounds found, create new ones
 			if (!found)
 			{
-				outAreas.Insert(new Tuple2<vector, vector>(boundMin, boundMax));
-				
+				outAreas.Insert(new Tuple2<vector, vector>(boundMin, boundMax));	
 				//Check if the entity has a navlink and it has a link that applies to vehicles
-				NavmeshCustomLinkComponent hasNavlink = NavmeshCustomLinkComponent.Cast(entity.FindComponent(NavmeshCustomLinkComponent));
-				bool value = false;
-				if (hasNavlink)
-					value = hasNavlink.HasLinkOfNavmeshType("BTRlike");
-				redoRoads.Insert(!value);
+				redoRoads.Insert(!HasVehicleNavlink(entity));
 			}
 		}
 		//--- Process children
@@ -286,5 +309,12 @@ class SCR_AIWorld : AIWorld
 	protected vector GetAreaCenter(vector min, vector max)
 	{
 		return min + (max - min) / 2;
+	}
+	protected bool HasVehicleNavlink(IEntity entity)
+	{
+		NavmeshCustomLinkComponent link = NavmeshCustomLinkComponent.Cast(entity.FindComponent(NavmeshCustomLinkComponent));
+		if (link)
+			return link.HasLinkOfNavmeshType("BTRlike");
+		return false;
 	}
 };

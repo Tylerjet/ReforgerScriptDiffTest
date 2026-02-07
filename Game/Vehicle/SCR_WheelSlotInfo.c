@@ -1,6 +1,3 @@
-class RegisteringComponentSlotInfo : EntitySlotInfo
-{
-}
 class SCR_WheelSlotInfo : RegisteringComponentSlotInfo
 {
 	[Attribute("-1", UIWidgets.Slider, "VehicleWheeledSimulation wheel index", "-1 1000 1")]

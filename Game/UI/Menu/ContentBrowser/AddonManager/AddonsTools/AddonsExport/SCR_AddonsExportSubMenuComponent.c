@@ -38,7 +38,7 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 		
 		if (!m_NavCopyComponent)
 		{
-			m_NavCopyComponent = CreateNavigationButton("MenuSelect", "#AR-Workshop_AddonsExportCopyBtn", true);
+			m_NavCopyComponent = CreateNavigationButton(UIConstants.MENU_ACTION_SELECT, "#AR-Workshop_AddonsExportCopyBtn", true);
 			m_NavCopyComponent.m_OnActivated.Insert(CopyToClipboard);
 		}
 		

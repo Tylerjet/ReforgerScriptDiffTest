@@ -83,7 +83,7 @@ class HitZone: ScriptAndConfig
 	//! Called when max damage changes
 	event protected void OnMaxHealthChanged();
 	//! Called when damage state changes
-	event protected void OnDamageStateChanged();
+	event protected void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP);
 	//! Called when the damage has been dealt by the server, doesn't get called for DOT.
 	event void OnDamage(notnull BaseDamageContext damageContext);
 	/*!

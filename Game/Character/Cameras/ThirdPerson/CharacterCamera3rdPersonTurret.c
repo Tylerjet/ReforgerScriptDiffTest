@@ -112,6 +112,9 @@ class CharacterCamera3rdPersonTurret extends CharacterCameraBase
 		m_vLastCameraAngles = m_pControlledTurret.GetAimingDirectionWorld().VectorToAngles();
 		if (charController.IsFreeLookEnabled() || m_pTurretController.GetCanAimOnlyInADS())
 		{
+			// Do not let gun elevation change view direction in freelook
+			m_vLastCameraAngles[1] = 0;
+			
 			m_vLastCameraAngles += lookAngles;
 		}
 		Math3D.AnglesToMatrix(m_vLastCameraAngles - charAngles, pOutResult.m_CameraTM);

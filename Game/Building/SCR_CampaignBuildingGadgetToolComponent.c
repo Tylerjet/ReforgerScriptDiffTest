@@ -136,7 +136,7 @@ class SCR_CampaignBuildingGadgetToolComponent : SCR_GadgetComponent
 		if (!gadgetManager)
 			return;
 
-		SCR_GadgetComponent gadgetComponent = SCR_GadgetComponent.Cast(gadgetManager.GetHeldGadgetComponent());
+		SCR_GadgetComponent gadgetComponent = gadgetManager.GetHeldGadgetComponent();
 		if (!gadgetComponent)
 			return;
 

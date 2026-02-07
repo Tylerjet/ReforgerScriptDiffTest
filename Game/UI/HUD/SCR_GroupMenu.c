@@ -5,7 +5,7 @@ class SCR_GroupMenu : SCR_SuperMenuBase
 	{
 		super.OnMenuOpen();		
 		
-		SCR_InputButtonComponent cancel = SCR_InputButtonComponent.GetInputButtonComponent("Back", GetRootWidget());
+		SCR_InputButtonComponent cancel = SCR_InputButtonComponent.GetInputButtonComponent(UIConstants.BUTTON_BACK, GetRootWidget());
 		if (cancel)
 			cancel.m_OnActivated.Insert(Close);
 		

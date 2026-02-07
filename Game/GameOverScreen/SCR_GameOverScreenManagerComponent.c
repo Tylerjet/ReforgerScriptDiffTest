@@ -240,6 +240,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		m_iEndGameType = GetGameOverType(m_iEndReason, m_iPlayerId, m_aWinningPlayers, m_FactionPlayer, m_aWinningFactions, m_bIsFactionVictory);
 	}
 	
+	//---- REFACTOR NOTE START: SCR_GameModeEndData and this method use different values for endReason which is unified with these enums. Not ideal, should be done in the SCR_GameModeEndData ----
 	//------------------------------------------------------------------------------------------------
 	//! This method checks if the player is part of the winning faction (if any), if it is the winning player (if any) and return the correct GameOverType (Eg: Won, lost ect)
 	//! \param[in] endReason
@@ -344,6 +345,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 			return endReason;
 		}
 	}
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	//! This will only return the valid gameover type once game over is called!
@@ -376,7 +378,7 @@ class SCR_GameOverScreenManagerComponent : SCR_BaseGameModeComponent
 		//This is just temporary hopefully. This bypasses a lot of the code here and in other files. If one wants to change the layout, do it in Menu Config.
 		MenuBase menu = GetGame().GetMenuManager().OpenMenu(ChimeraMenuPreset.EndgameScreen, 0, true);
 		
-		Widget screen = Widget.Cast(menu.GetRootWidget());
+		Widget screen = menu.GetRootWidget();
 				
 		SCR_GameOverScreenUIComponent screenUIComponent = SCR_GameOverScreenUIComponent.Cast(screen.FindHandler(SCR_GameOverScreenUIComponent));
 		

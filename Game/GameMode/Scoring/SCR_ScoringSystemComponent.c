@@ -164,7 +164,7 @@ class SCR_ScoringSystemComponent : SCR_BaseScoringSystemComponent
 		if (!factionManager)
 			return;
 		
-		Faction factionKiller = Faction.Cast(factionManager.GetPlayerFaction(killerId));
+		Faction factionKiller = factionManager.GetPlayerFaction(killerId);
 		if (!factionKiller)
 			return;
 		

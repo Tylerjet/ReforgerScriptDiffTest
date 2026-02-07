@@ -30,6 +30,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	//States
 	protected bool m_bListeningToWeatherChanged;
 	
+	//---- REFACTOR NOTE START: As Replication hotfix as On character destroy is not called on Clients. At least back in the day ----
 	//------------------------------------------------------------------------------------------------
 	override void OnControllableDestroyed(IEntity entity, IEntity killerEntity, notnull Instigator killer)
 	{
@@ -291,7 +292,9 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, playerId);
 		}
 	}
+	//---- REFACTOR NOTE END ----
 	
+	//---- REFACTOR NOTE START: Checks if character was killed by a vehicle. Don't think this is needed any more ----
 	//------------------------------------------------------------------------------------------------
 	protected SCR_EditableCharacterComponent GetKillerFromVehicle(IEntity veh, bool pilot)
 	{
@@ -320,6 +323,8 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		
 		return null;
 	}
+	
+	//---- REFACTOR NOTE END ----
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnEditorLimitedChanged(bool isLimited)

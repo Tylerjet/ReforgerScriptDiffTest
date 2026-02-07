@@ -9,7 +9,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et")]
 	protected ResourceName m_sAIGroupPrefab;
 	
-	[Attribute("{54764D4E706F348B}Configs/Commanding/Commands.conf")]
+	[Attribute("{54764D4E706F348C}Configs/Commanding/Commands.conf")]
 	protected ResourceName m_sCommandsConfigPath;
 	
 	[Attribute(defvalue: "8", UIWidgets.EditBox, desc: "How many AI soldiers can be recruited into single player group")]
@@ -115,9 +115,9 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 			slaveGroup.RemoveWaypoint(currentwp);
 		}
 		
-		AIFormationComponent slaveGroupFormationComp = slaveGroup.GetFormationComponent();
-		if (slaveGroupFormationComp)
-			slaveGroupFormationComp.SetFormationDisplacement(0);
+		AIGroupMovementComponent slaveGroupMovementComp = AIGroupMovementComponent.Cast(slaveGroup.FindComponent(AIGroupMovementComponent));
+		if (slaveGroupMovementComp)
+			slaveGroupMovementComp.SetFormationDisplacement(0);
 		
 		//remove master-slave connection from slave
 		slaveGroup.SetMaster(null);
@@ -160,11 +160,11 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] groupRplID
 	//! \param[in] targetPosition
 	//! \param[in] playerID
-	void RequestCommandExecution(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID)
+	void RequestCommandExecution(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID, float seed)
 	{
 		//check if the passed arguments are valid, if yes, send a callback RPC to commanders playercontroller so he can make a gesture.	
-		RPC_DoExecuteCommand(commandIndex, cursorTargetID, groupRplID, targetPosition, playerID);
-		Rpc(RPC_DoExecuteCommand, commandIndex, cursorTargetID, groupRplID, targetPosition, playerID);
+		RPC_DoExecuteCommand(commandIndex, cursorTargetID, groupRplID, targetPosition, playerID, seed);
+		Rpc(RPC_DoExecuteCommand, commandIndex, cursorTargetID, groupRplID, targetPosition, playerID, seed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -175,7 +175,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	//! \param[in] targetPosition
 	//! \param[in] playerID
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_DoExecuteCommand(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID)
+	void RPC_DoExecuteCommand(int commandIndex, RplId cursorTargetID, RplId groupRplID, vector targetPosition, int playerID, float seed)
 	{
 		RplComponent rplComp;
 		IEntity cursorTarget, group;
@@ -193,7 +193,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 			SCR_BaseRadialCommand command = FindCommand(FindCommandNameFromIndex(commandIndex));
 			if (command.Execute(cursorTarget, group, targetPosition, playerID, rplComp.IsProxy()))
 			{
-				PlayCommanderSound(playerID, commandIndex);
+				PlayCommanderSound(playerID, commandIndex, seed);
 				if (!rplComp.IsMaster())
 					return;
 				
@@ -214,7 +214,7 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	//!
 	//! \param[in] playerID
 	//! \param[in] commandIndex
-	void PlayCommanderSound(int playerID, int commandIndex)
+	void PlayCommanderSound(int playerID, int commandIndex, float seed)
 	{
 		SCR_ChimeraCharacter playerCharacter = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID));
 		if (!playerCharacter)
@@ -231,10 +231,19 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		string soundEventName = GetCommandSoundEventName(commandIndex);
 		if (soundEventName.IsEmpty())
 			return;
+		
+		float soundEventSeed = GetCommandSoundEventSeed(commandIndex);
+		if (soundEventSeed == -1)
+			soundEventSeed = seed;
 
 		int signalSoldierCalled = signalManager.FindSignal("SoldierCalled");
+		int signalSeed = signalManager.FindSignal("Seed");
+		int signalSoldierCaller = signalManager.FindSignal("SoldierCaller");
 		
+		//for now some values are hard set since we dont need different cases.
 		signalManager.SetSignalValue(signalSoldierCalled, 1000);
+		signalManager.SetSignalValue(signalSoldierCaller, 0);
+		signalManager.SetSignalValue(signalSeed, seed);
 		soundComponent.SoundEventPriority(soundEventName, NORMAL_PRIORITY);
 	}
 	
@@ -272,6 +281,20 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 		
 		
 		return groupCommand.GetSoundEventName();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] commandIndex
+	//! \return
+	float GetCommandSoundEventSeed(int commandIndex)
+	{
+		SCR_BaseRadialCommand command = m_aCommands.Get(commandIndex);
+		SCR_BaseGroupCommand groupCommand = SCR_BaseGroupCommand.Cast(command);
+		if (!groupCommand)
+			return -2;
+		
+		
+		return groupCommand.GetSoundEventSeed();
 	}
 	
 	//------------------------------------------------------------------------------------------------

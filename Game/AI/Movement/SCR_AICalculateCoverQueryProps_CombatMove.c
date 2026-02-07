@@ -69,7 +69,6 @@ class SCR_AICalculateCoverQueryProps_CombatMove : AITaskScripted
 		
 		// Query sector properties
 		query.m_vSectorPos = myPos;
-		query.m_vAgentPos = myPos;
 		query.m_fSectorDistMin = rq.m_fCoverSearchDistMin;
 		query.m_fSectorDistMax = rq.m_fCoverSearchDistMax;
 		
@@ -81,10 +80,12 @@ class SCR_AICalculateCoverQueryProps_CombatMove : AITaskScripted
 		query.m_fScoreWeightDistance = 1.0;
 		
 		// Other
+		query.m_vNearestPolyHalfExtend = SCR_AIFindCover.NEAREST_POLY_HALF_EXTEND;
+		query.m_fNmAreaCostScale = SCR_AIFindCover.NAVMESH_AREA_COST_SCALE;
 		query.m_fCoverHeightMin = 0;
 		query.m_fCoverHeightMax = 10.0;
 		query.m_fScoreWeightNavmeshRay = 2.0; // Penalize non directly reachable covers
-		query.m_iMaxCoversToCheck = SCR_CoverQueryComponent.MAX_COVERS_HIGH_PRIORITY;
+		query.m_iMaxCoversToCheck = SCR_AIFindCover.MAX_COVERS_HIGH_PRIORITY;
 		
 		
 		query.m_fCoverToThreatAngleCosMin = m_fMinCoverToTargetAngleCos;

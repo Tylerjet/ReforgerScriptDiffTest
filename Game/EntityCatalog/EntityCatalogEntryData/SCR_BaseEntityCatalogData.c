@@ -8,23 +8,28 @@ class SCR_BaseEntityCatalogData
 	protected bool m_bEnabled;
 	
 	//--------------------------------- Is Enabled ---------------------------------\\
-	/*!
-	If is Enabled
-	\return If enabled or disabled
-	*/
+	//! If is Enabled
+	//! \return If enabled or disabled
 	bool IsEnabled()
 	{
 		return m_bEnabled;
 	}
 	
 	//--------------------------------- Init Data ---------------------------------\\
-	/*!
-	Called by Catalog on creation. Special init for data
-	Never called if Data is disabled
-	\param entry entry the data is attached to
-	*/
+	//! Called by Catalog on creation. Special init for data. To be overidden.
+	//! Never called if Data is disabled
+	//! \param[in] entry Entry the data is attached to
 	void InitData(notnull SCR_EntityCatalogEntry entry)
 	{
 		
 	}
-};
+	
+	//--------------------------------- Post Init Data ---------------------------------\\
+	//! Called by Catalog after init data is called for all other entries. To be overidden.
+	//! Never called if Data is disabled
+	//! \param[in] entry Entry the data is attached to
+	void PostInitData(notnull SCR_EntityCatalogEntry entry)
+	{
+	
+	}
+}

@@ -157,7 +157,7 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 		if (!m_Optic)
 			return;
 
-		if (!m_bInADS && !SCR_BinocularsComponent.IsZoomedView() && !m_Optic.GetIsZoomed())
+		if (!m_bInADS && !SCR_BinocularsComponent.IsZoomedView() && !m_Optic.IsSightADSActive())
 			return;
 
 		// Widget check
@@ -591,19 +591,28 @@ class SCR_2DOpticsDisplay : SCR_InfoDisplayExtended
 			movement = movement - m_vMovementOffset;
 		}
 
+		// Objective must be set instantly
+		m_vObjectiveOffset = m_fMisalignmentScale * misalignment;
+
 		// Make sure lerp doesn't go out of bounds
 		float vignetteMove = Math.Min(timeSlice * m_fVignetteMoveSpeed, 1);
 
-		m_vVignetteOffset = vector.Lerp(m_vVignetteOffset, m_fMisalignmentScale * misalignment, vignetteMove);
-
-		// Objective must be set instantly
-		m_vObjectiveOffset = m_fMisalignmentScale * misalignment;
+		m_vVignetteOffset = vector.Lerp(m_vVignetteOffset, m_vObjectiveOffset, vignetteMove);
 
 		if (m_fRotationScale > 0)
 			m_vVignetteOffset = m_vVignetteOffset - rotation * m_fRotationScale;
 
 		if (m_fMovementScale > 0)
-			m_vVignetteOffset = m_vVignetteOffset + movement * m_fMovementScale;
+			m_vVignetteOffset = m_vVignetteOffset - movement * m_fMovementScale;
+
+		// Clamp vignette distance from objective center down to objective size
+		vector vignetteObjectiveOffset = m_vVignetteOffset - m_vObjectiveOffset;
+		float vignetteDistance = vignetteObjectiveOffset.Length();
+		if (vignetteDistance > 0 && vignetteDistance > m_fObjectiveFov * m_fObjectiveScale)
+		{
+			vignetteObjectiveOffset *= m_fObjectiveFov * m_fObjectiveScale / vignetteDistance;
+			m_vVignetteOffset = m_vObjectiveOffset + vignetteObjectiveOffset;
+		}
 
 		WorkspaceWidget workspace = GetGame().GetWorkspace();
 

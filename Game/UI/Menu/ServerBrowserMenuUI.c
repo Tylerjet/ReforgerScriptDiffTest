@@ -88,10 +88,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected ref SCR_RoomModsManager m_ModsManager = new SCR_RoomModsManager();
 	protected ref array<ref SCR_WorkshopItem> m_aRequiredMods = {}; 
 	protected ref array<ref SCR_WorkshopItemActionDownload> m_aUnrelatedDownloads = {};
-	protected SCR_DownloadManager m_DownloadManager;
-
-	// Dependencies arrays for pasing updated & outdated server mod dependecies
-	protected MissionWorkshopItem m_RoomScenario;
 
 	// Message components
 	protected SCR_SimpleMessageComponent m_SimpleMessageWrap;
@@ -131,7 +127,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Lobby = GetGame().GetBackendApi().GetClientLobby();
 
 		// Items preloading
-		if (m_WorkshopApi.NeedScan())
+		if (m_WorkshopApi.NeedAddonsScan())
 			m_WorkshopApi.ScanOfflineItems();
 
 		// Find widgets
@@ -291,7 +287,7 @@ class ServerBrowserMenuUI : MenuRootBase
 			return;
 
 		if (m_Widgets.m_FavoritesButton)
-			m_Widgets.m_FavoritesButton.SetLabel(GetFavoriteLabel(room.IsFavorite()));
+			m_Widgets.m_FavoritesButton.SetLabel(UIConstants.GetFavoriteLabel(room.IsFavorite()));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -305,9 +301,9 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		switch (action)
 		{
-			case "MenuSelectDouble": OnServerEntryClickInteraction(multiplier); break;
-			case "MenuServerDetails": OnActionDetails(); break;
-			case "MenuFavourite": OnActionFavorite(); break;
+			case UIConstants.MENU_ACTION_DOUBLE_CLICK: 			OnServerEntryClickInteraction(multiplier); break;
+			case SCR_ScenarioUICommon.ACTION_SERVER_DETAILS:	OnActionDetails(); break;
+			case UIConstants.MENU_ACTION_FAVORITE:				OnActionFavorite(); break;
 		}
 	}
 
@@ -891,7 +887,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_TabView)
 		{
 			if (m_ParamsFilter)
-				m_TabView.ShowTab(m_ParamsFilter.GetSelectedTab());
+				m_TabView.ShowTab(m_ParamsFilter.GetSelectedTab(), true, false);
 		}
 		
 		if (m_FilterPanel)
@@ -1333,12 +1329,10 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	//------------------------------------------------------------------------------------------------
 	//! Based on given boolean favorite nav button is displaying eather add or remove favorite
-	protected void DisplayFavoriteAction(bool favorited)
+	protected void DisplayFavoriteAction(bool isFavorite)
 	{
-		string label = GetFavoriteLabel(favorited);
-
 		if (m_Widgets && m_Widgets.m_FavoritesButton && m_ServerEntry)
-			m_Widgets.m_FavoritesButton.SetLabel(label);
+			m_Widgets.m_FavoritesButton.SetLabel(UIConstants.GetFavoriteLabel(isFavorite));
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1724,9 +1718,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_Dialogs)
 			m_Dialogs.UpdateRoomDetailsScenarioImage(scenarioItem);
 
-		m_RoomScenario = scenarioItem;
-
-		m_OnScenarioLoad.Invoke(m_RoomScenario);
+		m_OnScenarioLoad.Invoke(scenarioItem);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1804,15 +1796,6 @@ class ServerBrowserMenuUI : MenuRootBase
 
 
 		return (clientV == roomV);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected string GetFavoriteLabel(bool isFavorite)
-	{
-		if (isFavorite)
-			return UIConstants.FAVORITE_LABEL_REMOVE;
-		else
-			return UIConstants.FAVORITE_LABEL_ADD;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2138,11 +2121,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Initialize joining process to specific room
 	void JoinProcess_Init(Room roomToJoin)
 	{
-		if (!m_DownloadManager)
-			m_DownloadManager = SCR_DownloadManager.GetInstance();
-		
 		// Set immidiate refresh to receive player count
-		//m_Lobby.SetRefreshRate(1);
 		m_bWaitForRefresh = true;
 
 		// Setup join dialog
@@ -2384,10 +2363,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Show state if mods are already loaded or wait for receiving mods data
 	protected void JoinProcess_LoadModContent()
 	{
-		// Check references
-		if (!m_Dialogs || !m_ModsManager)
-			return;
-
 		// Check mods use privilege - UGC privilege
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
 		array<Dependency> deps = {};
@@ -2429,8 +2404,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 
 		// Show mods loading dialog
-		if (m_Dialogs)
-			m_Dialogs.DisplayDialog(EJoinDialogState.CHECKING_CONTENT);
+		m_Dialogs.DisplayDialog(EJoinDialogState.CHECKING_CONTENT);
 
 		// Set wait for loading
 		m_ModsManager.GetOnGetAllDependencies().Insert(JoinProcess_CheckModContent);
@@ -2464,7 +2438,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check state of room required mods on client
-	//! Show missing mods data to download or move to next step
 	//! Stop progess if room mods are restricted
 	protected void JoinProcess_CheckModContent()
 	{
@@ -2489,24 +2462,21 @@ class ServerBrowserMenuUI : MenuRootBase
 			dialog.GetOnAllReportsCanceled().Insert(JoinProcess_LoadModContentVisualize);
 			return;
 		}
-
-		// Get necessary downloads
-		m_aRequiredMods = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
-
-		// If no downloads are required proceed with the joining process, otherwise stop unrelated downloads and get the required addons to join
-		if (!m_aRequiredMods.IsEmpty())
-		{
-			m_aUnrelatedDownloads = m_DownloadManager.GetUnrelatedDownloads(items);
-			
-			if (!m_aUnrelatedDownloads.IsEmpty())
-				JoinProcess_DisplayUnrelatedDownloadsWarning();
-			else
-				JoinProcess_DownloadRequiredMods();
-			
-			return;
-		}
 		
-		JoinProcess_CheckRunningDownloads();
+		JoinProcess_CheckUnrelatedDownloads();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Display a warning dialog if there are unrelated downloads running, as these will be stopped
+	protected void JoinProcess_CheckUnrelatedDownloads()
+	{	
+		array<ref SCR_WorkshopItem> items = m_ModsManager.GetRoomItemsScripted();
+		m_aUnrelatedDownloads = SCR_DownloadManager.GetInstance().GetUnrelatedDownloads(items);
+			
+		if (!m_aUnrelatedDownloads.IsEmpty())
+			JoinProcess_DisplayUnrelatedDownloadsWarning();
+		else
+			JoinProcess_CheckRequiredDownloads();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2522,55 +2492,62 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void JoinProcess_StopDownloadingUnrelatedMods()
 	{	
 		m_Dialogs.GetOnConfirm().Remove(JoinProcess_StopDownloadingUnrelatedMods);
+
+		// Display filler dialog
+		m_Dialogs.DisplayDialog(EJoinDialogState.UNRELATED_DOWNLOADS_CANCELING);
 		
-		if (!m_DownloadManager || m_DownloadManager.GetDownloadQueue().IsEmpty())
-		{
-			OnAllUnrelatedDownloadsStopped();
-			return;
-		}
-
-		// Stop downloads		
-		m_DownloadManager.GetOnAllDownloadsStopped().Insert(OnAllUnrelatedDownloadsStopped);
-
+		// Stop downloads
 		foreach (SCR_WorkshopItemActionDownload download : m_aUnrelatedDownloads)
 		{
 			download.Cancel();
 		}
 		
-		// Display filler dialog
-		m_Dialogs.DisplayDialog(EJoinDialogState.UNRELATED_DOWNLOADS_CANCELING);
-		
 		//TODO: pause downloads instead of clearing them, and allow the player to resume them once out of multiplayer games
 		//TODO: give the option to keep downloading while playing multiplayer?
+		
+		GetGame().GetCallqueue().Call(JoinProcess_CheckUnrelatedDownloadsCanceling);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnAllUnrelatedDownloadsStopped()
+	//Check if all unrelated downloads have been stopped. Recursive
+	protected void JoinProcess_CheckUnrelatedDownloadsCanceling()
 	{
-		if (m_DownloadManager)
-			m_DownloadManager.GetOnAllDownloadsStopped().Remove(OnAllUnrelatedDownloadsStopped);
+		array<ref SCR_WorkshopItem> items = m_ModsManager.GetRoomItemsScripted();
+		array<ref SCR_WorkshopItemActionDownload> downloads = SCR_DownloadManager.GetInstance().GetUnrelatedDownloads(items);
+		if (!downloads.IsEmpty())
+		{
+			GetGame().GetCallqueue().Call(JoinProcess_CheckUnrelatedDownloadsCanceling);
+			return;
+		}
 		
-		// Must call the next frame or the download will instantly fail
-		GetGame().GetCallqueue().CallLater(JoinProcess_CloseUnrelatedDownloadsCancelingDialog);
+		GetGame().GetCallqueue().Call(JoinProcess_CheckRequiredDownloads);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_CloseUnrelatedDownloadsCancelingDialog()
+	protected void JoinProcess_CheckRequiredDownloads()
 	{
-		m_Dialogs.GetCurrentDialog().Close();
-		JoinProcess_DownloadRequiredMods();
+		m_Dialogs.CloseCurrentDialog();
+		
+		// Get necessary downloads
+		array<ref SCR_WorkshopItem> items = m_ModsManager.GetRoomItemsScripted();
+		m_aRequiredMods = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
+		if (!m_aRequiredMods.IsEmpty())
+		{
+			JoinProcess_DownloadRequiredMods();
+			return;
+		}
+		
+		JoinProcess_WaitToCheckRunningDownloads();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Start downloading necessary mods for the server
 	protected void JoinProcess_DownloadRequiredMods()
 	{
-		if (m_DownloadManager)
-			m_DownloadManager.DownloadItems(m_aRequiredMods);
+		SCR_DownloadManager.GetInstance().DownloadItems(m_aRequiredMods);
 		
-		m_Dialogs.DisplayJoinDownloadsWarning(m_DownloadManager.GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.REQUIRED);
+		m_Dialogs.DisplayJoinDownloadsWarning(SCR_DownloadManager.GetInstance().GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.REQUIRED);
 		
-		// Display Download Manager dialog
 		m_Dialogs.GetOnDownloadComplete().Insert(JoinProcess_OnJoinRoomDemand);
 		m_Dialogs.GetOnCancel().Insert(OnDownloadRequiredModsCancel);
 	}
@@ -2580,11 +2557,8 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		m_Dialogs.GetOnCancel().Remove(OnDownloadRequiredModsCancel);
 		
-		if (m_DownloadManager)
-		{
-			m_DownloadManager.EndAllDownloads();
-			m_DownloadManager.ClearFailedDownloads();
-		}
+		SCR_DownloadManager.GetInstance().EndAllDownloads();
+		SCR_DownloadManager.GetInstance().ClearFailedDownloads();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2593,18 +2567,22 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Dialogs.GetOnDownloadComplete().Remove(JoinProcess_OnJoinRoomDemand);
 		
 		m_RoomToJoin = roomToJoin;
-		JoinProcess_CheckRunningDownloads();
+		JoinProcess_WaitToCheckRunningDownloads();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Final step: display a warning dialog if there are still downloads running, as these will be stopped
+	// We need to wait a frame before performing the next check due to how the DownloadManager handles it's queue
+	protected void JoinProcess_WaitToCheckRunningDownloads()
+	{
+		GetGame().GetCallqueue().Call(JoinProcess_CheckRunningDownloads);
+	}
+	
+	//! Final step: display a warning dialog if there are still downloads running, as these will be stopped (at this point, this should not happen)
+	//------------------------------------------------------------------------------------------------
 	protected void JoinProcess_CheckRunningDownloads()
 	{
 		int nCompleted, nTotal;
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
-
-		if (m_DownloadManager)
-			m_DownloadManager.GetDownloadQueueState(nCompleted, nTotal);
+		SCR_DownloadManager.GetInstance().GetDownloadQueueState(nCompleted, nTotal);
 
 		if (nTotal <= 0)
 		{
@@ -2612,11 +2590,10 @@ class ServerBrowserMenuUI : MenuRootBase
 			return;
 		}
 		
-		m_Dialogs.DisplayJoinDownloadsWarning(m_DownloadManager.GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.REQUIRED);
+		m_Dialogs.DisplayJoinDownloadsWarning(SCR_DownloadManager.GetInstance().GetDownloadQueue(), SCR_EJoinDownloadsConfirmationDialogType.ALL);
 		m_Dialogs.GetOnConfirm().Insert(OnInterruptDownloadConfirm);
-
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected void OnInterruptDownloadConfirm()
 	{
@@ -2628,9 +2605,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		// TODO: pause and cache instead of canceling
 		// Cancel downloading
-		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
-		if (mgr)
-			mgr.EndAllDownloads();
+		SCR_DownloadManager.GetInstance().EndAllDownloads();
 
 		JoinProcess_Join();
 	}
@@ -2728,6 +2703,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Clear dialog
 		m_Dialogs.GetOnConfirm().Clear();
 		m_Dialogs.GetOnCancel().Clear();
+		m_Dialogs.GetOnJoinProcessCancel().Clear();
 		m_Dialogs.GetOnDialogClose().Clear();
 		m_Dialogs.GetOnDownloadComplete().Clear();
 		m_Dialogs.GetOnDownloadCancelDialogClose().Clear();
@@ -2750,7 +2726,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		// Invokers
 		m_Dialogs.GetOnDownloadComplete().Clear();
-		m_Dialogs.GetOnCancel().Insert(JoinProcess_Clear);
+		m_Dialogs.GetOnJoinProcessCancel().Insert(JoinProcess_Clear);
 
 		m_CallbackLastSearch = null;
 	}

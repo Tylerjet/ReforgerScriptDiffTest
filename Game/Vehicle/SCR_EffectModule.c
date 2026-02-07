@@ -408,11 +408,9 @@ class SCR_BaseEffectParticleHelicopterRotorControlAction: SCR_BaseEffectParticle
 		m_SignalManager = module.GetSignalManager();
 		if (!m_SignalManager)
 			return;
+
 		m_iSignalID = m_SignalManager.FindSignal(SIGNAL_RPM);
 		m_Physics = module.GetOwner().GetPhysics();
-		int abc = 0;
-		
-		
 	}	
 	
 	//------------------------------------------------------------------------------------------------

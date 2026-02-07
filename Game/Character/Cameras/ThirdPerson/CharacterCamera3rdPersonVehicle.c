@@ -48,17 +48,15 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 
 	protected SCR_VehicleCameraAimpoint m_pCameraAimpointData;
 	protected SCR_VehicleCameraAlignment m_pCameraAlignData;
-	
-	bool m_bCharacterWasJustEjected = false;
 
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void CharacterCamera3rdPersonVehicle(CameraHandlerComponent pCameraHandler)
 	{
 		m_fFOV = GetBaseFOV();
 		m_bLRAngleNoLimit = true;
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void InitCameraData()
 	{
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
@@ -110,7 +108,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		}
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnActivate(ScriptedCameraItem pPrevCamera, ScriptedCameraItemResult pPrevCameraResult)
 	{
 		super.OnActivate(pPrevCamera, pPrevCameraResult);
@@ -137,11 +135,9 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 	override void OnBlendOut()
 	{
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
-		if (compartmentAccess && compartmentAccess.IsInCompartment())
-			m_bCharacterWasJustEjected = compartmentAccess.WasLastGettingOutTeleportation();
 	}
 
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
@@ -178,17 +174,12 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			m_OwnerVehicle.GetTransform(vehMat);
 
 			vector vehToCharLocalMat[4];
-			if (!m_bCharacterWasJustEjected && m_OwnerCharacter.GetAncestorToLocalTransform(m_OwnerVehicle, vehToCharLocalMat))
+			if (EntityUtils.GetAncestorToChildTransform(m_OwnerCharacter, m_OwnerVehicle, vehToCharLocalMat))
 				characterOffset = m_vCenter.Multiply4(vehToCharLocalMat);
 			else
 			{
 				vector charMat[4];
-				if (m_bCharacterWasJustEjected && compartmentAccess)
-				{
-					compartmentAccess.GetTeleportTarget(charMat);
-				}
-				else
-					m_OwnerCharacter.GetTransform(charMat);
+				m_OwnerCharacter.GetTransform(charMat);
 				characterOffset = m_vCenter.Multiply4(vehMat).InvMultiply4(charMat);
 				bCharacterAttached = false;
 			}
@@ -311,8 +302,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		pOutResult.m_pOwner 				= m_OwnerCharacter;
 		pOutResult.m_bAllowCollisionSolver	= bCharacterAttached;
 
-		pOutResult.m_bAllowInterpolation	= !m_bCharacterWasJustEjected;
-		m_bCharacterWasJustEjected = false;
+		pOutResult.m_bAllowInterpolation	= true;
 		
 		// Apply shake
 		if (m_CharacterCameraHandler)
@@ -325,7 +315,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		//AddVehiclePitchRoll(m_OwnerVehicle, pDt, pOutResult.m_CameraTM);
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	private void UpdateViewBob(float pDt, vector localVelocity, vector localAngularVelocity)
 	{
 		if (pDt <= 0)
@@ -335,7 +325,6 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		vector angVelDiff = localAngularVelocity - m_vLastAngVel;
 		float speed = localVelocity.Length();
 		float accel = velDiff.Length() * (1 / pDt) + angVelDiff.Length() * (1 / pDt);
-		float timeScale;
 		if (accel > m_fBob_Acceleration)
 			m_fBob_Acceleration += (accel - m_fBob_Acceleration) * Math.Clamp(pDt * 12, 0, 1);
 		else
@@ -398,7 +387,7 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 		outTransform[3] = Vector(bobRt, bobUp, bobFw).Multiply3(outTransform) + outTransform[3];
 	}
 	
-	//-----------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override float GetBaseFOV()
 	{
 		CameraManager cameraManager = GetGame().GetCameraManager();

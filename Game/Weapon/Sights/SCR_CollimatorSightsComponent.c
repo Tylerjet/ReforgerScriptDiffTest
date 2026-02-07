@@ -24,26 +24,20 @@ class SCR_CollimatorSightsComponent : BaseCollimatorSightsComponent
 	[Attribute("2", UIWidgets.Slider, "Reticle Night Brightness", params: "0 15 0.1", category: "Collimator")]
 	protected float m_fNightBrightness;
 	
-	/*[Attribute("0", desc: "Default Color index", category: "Collimator")]
-	protected int m_iDefaultColor;
-	
-	[Attribute("", UIWidgets.Object, desc: "Array of reticle colors", category: "Collimator")]
-	protected ref array<ref SCR_ReticleColor> m_ReticleColorArray; 
-	
-	[Attribute("0", desc: "Default Reticle Index from array (or from emat if array is empty)", category: "Collimator")]
-	protected int m_iDefaultReticle;*/
-	
-	/*[Attribute("", desc: "Array of Reticle indices", category: "Collimator")]
-	protected ref array<int> m_ReticleIndexArray;
-	
-	[Attribute("", desc: "Array of Reticle Info", category: "Collimator")]
-	protected ref array<ref BaseCollimatorReticleInfo> m_ReticleInfoArray;*/
-	
 	//------------------------------------------------------------------------------------------------
 	SCR_CollimatorControllerComponent m_managerComponent;
 	bool m_bReticleDaylight = true;
 	int m_iColorIndex = -1;
-	
+	//------------------------------------------------------------------------------------------------
+	override float GetReticleBrightnessDay()
+	{
+		return m_fDaylightBrightness;
+	}
+
+	override float GetReticleBrightnessNight()
+	{
+		return m_fNightBrightness;
+	}
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
@@ -57,7 +51,6 @@ class SCR_CollimatorSightsComponent : BaseCollimatorSightsComponent
 		{
 			m_managerComponent.SetReticleBrightness(m_fDaylightBrightness);
 		}
-		
 	}
 	
 	override void OnSightADSActivate()
@@ -81,7 +74,7 @@ class SCR_CollimatorSightsComponent : BaseCollimatorSightsComponent
 	
 	void ReticleToggleIllumination()
 	{
-			m_bReticleDaylight = !m_bReticleDaylight;
+		m_bReticleDaylight = !m_bReticleDaylight;
 		
 		if (m_managerComponent)
 		{
@@ -109,5 +102,27 @@ class SCR_CollimatorSightsComponent : BaseCollimatorSightsComponent
 	{
 		if (m_managerComponent && inner && glow)
 			m_managerComponent.SetReticleColors(inner, glow);
+	}
+	
+	override void UpdateReticleBrightnessScale(float scale)
+	{
+		if (m_managerComponent)
+			m_managerComponent.SetReticleBrightnessScale(scale);
+	}
+
+	override void UpdateReticleBrightness(float lvFactor, bool useOwn)
+	{
+		if (m_managerComponent)
+		{
+			if (useOwn)
+			{
+				if (m_bReticleDaylight)
+					m_managerComponent.SetReticleBrightness(m_fDaylightBrightness);
+				else
+					m_managerComponent.SetReticleBrightness(m_fNightBrightness);
+			}
+			else
+				m_managerComponent.SetReticleBrightness(lvFactor);
+		}
 	}
 };

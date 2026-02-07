@@ -114,7 +114,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 
 				if (playerIdToReturn == 0)
 					playerIdToReturn = playerId;
-				else if (compartment.GetType() == ECompartmentType.Pilot)
+				else if (compartment.GetType() == ECompartmentType.PILOT)
 					return playerId;
 			}
 		}

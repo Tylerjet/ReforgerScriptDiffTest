@@ -70,15 +70,22 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 		if( m_InventoryStorage )
 		{
 			m_wGrid = GridLayoutWidget.Cast( m_widget.FindAnyWidget( m_sGridPath ) );	
-			m_wStorageName = TextWidget.Cast( m_widget.FindAnyWidget( "TextC" ) );
+			m_wStorageName = TextWidget.Cast( m_widget.FindAnyWidget( "StorageName" ) );
 			//Set the proper ratio according to the number of columns and rows
 			SizeLayoutWidget wSizeContainer = SizeLayoutWidget.Cast( m_widget.FindAnyWidget( "SizeLayout0" ) );
 			if ( wSizeContainer )
 				wSizeContainer.SetAspectRatio( m_iMaxColumns / m_iMaxRows );
 		}
-		if( !m_wStorageName )
-			return;
-		m_wStorageName.SetText( "#AR-Inventory_Vicinity" );
+		if (m_wStorageName)
+			m_wStorageName.SetText("#AR-Inventory_Vicinity");
+
+		Widget storageSpace = m_widget.FindAnyWidget("StorageSpaceIndicator");
+		if (storageSpace)
+			storageSpace.SetVisible(false);
+		
+		Widget item = m_widget.FindAnyWidget("itemStorage");
+		if (item)
+			item.SetVisible(false);
 	}
 	
 	//------------------------------------------------------------------------ COMMON METHODS ----------------------------------------------------------------------
@@ -115,7 +122,7 @@ class SCR_InventoryStorageLootUI : SCR_InventoryStorageBaseUI
 		int iPage = 0,
 		array<BaseInventoryStorageComponent> aTraverseStorage = null,
 		GenericEntity character = null,
-		int rows = 6,
+		int rows = 8,
 		int cols = 6)
 	{
 		m_iMaxRows = rows;

@@ -85,17 +85,25 @@ class SCR_HealSupportStationAction : SCR_BaseDamageHealSupportStationAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
  	{
-		//~ Can heal blood hitzone but somewhere the character is bleeding
-		if (m_BloodHitZone && m_DamageManagerComponent.IsDamagedOverTime(EDamageType.BLEEDING))
+		SCR_CharacterDamageManagerComponent charDamageManager = SCR_CharacterDamageManagerComponent.Cast(m_DamageManagerComponent);
+		if (!charDamageManager)
+			return super.CanBePerformedScript(user);
+		
+		//~ Can heal blood hitzone but somewhere the character is bleeding. Note: m_BloodHitZone will be null if m_bHealBloodHitzone is false
+		if (m_BloodHitZone && charDamageManager.IsBleeding())
 		{
 			SetCanPerform(false, ESupportStationReasonInvalid.HEAL_CHARACTER_IS_BLEEDING);
 			return false;
 		}
 		
 		//~ Check if the character is bleeding at the hitzones this action heals
-		foreach(HitZone hitzone : m_aHitZonesToHeal)
-		{						
-			if (hitzone.GetDamageOverTime(EDamageType.BLEEDING) > 0)
+		foreach(HitZone hitZone : m_aHitZonesToHeal)
+		{
+			SCR_RegeneratingHitZone regenHitZone = SCR_RegeneratingHitZone.Cast(hitZone);
+			if (!regenHitZone)
+				continue;
+			
+			if (regenHitZone.GetHitZoneDamageOverTime(EDamageType.BLEEDING) > 0)
 			{
 				SetCanPerform(false, ESupportStationReasonInvalid.HEAL_CHARACTER_IS_BLEEDING);
 				return false;

@@ -21,11 +21,11 @@ class SCR_GetOutAction : SCR_CompartmentUserAction
 		if (!targetCompartment)
 			return;
 		
-		CompartmentAccessComponent compartmentAcess = character.GetCompartmentAccessComponent();
-		if (!compartmentAcess)
+		CompartmentAccessComponent compartmentAccess = character.GetCompartmentAccessComponent();
+		if (!compartmentAccess)
 			return;
 		
-		if (!compartmentAcess.GetOutVehicle(GetRelevantDoorIndex(pUserEntity), false))
+		if (!compartmentAccess.GetOutVehicle(EGetOutType.ANIMATED, GetRelevantDoorIndex(pUserEntity), ECloseDoorAfterActions.RETURN_TO_PREVIOUS_STATE, false))
 			return;
 		
 		super.PerformAction(pOwnerEntity, pUserEntity);

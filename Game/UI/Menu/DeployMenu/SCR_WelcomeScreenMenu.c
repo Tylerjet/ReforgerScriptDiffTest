@@ -18,7 +18,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		super.OnMenuOpen();
 
 		m_GameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
-		m_PlayerManager = PlayerManager.Cast(GetGame().GetPlayerManager());
+		m_PlayerManager = GetGame().GetPlayerManager();
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
 
 		SCR_WelcomeScreenComponent welcomeScreen = SCR_WelcomeScreenComponent.Cast(m_GameMode.FindComponent(SCR_WelcomeScreenComponent));

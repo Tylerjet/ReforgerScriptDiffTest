@@ -14,9 +14,8 @@ class CharacterInputContext
 	// MOVEMENT
 	proto void GetMovement(out float pSpeed, out vector pLocalDirection);
 	proto external void SetMovement(float speed, vector pLocalDirection);
-	//! GetStanceChange - in case stance change is needed
+	//! GetStanceChange - returns the currently happening stance change.
 	proto external ECharacterStanceChange GetStanceChange();
-	proto external void SetStanceChangeAction(ECharacterStanceChange action);
 	//! returns 0 (no roll), (1 - left), (2 - right)
 	proto external int GetRollCommand();
 	proto external void SetRoll(int rollCommand);
@@ -77,11 +76,6 @@ class CharacterInputContext
 	proto external void SetHit(EHitReactionType hitRecationType, float direction);
 	proto external EHitReactionType GetHitReaction();
 	proto external float GetHitDirection();
-	// Vehicle
-	proto external void SetVehicleCompartment(BaseCompartmentSlot pCompartment);
-	proto external BaseCompartmentSlot GetVehicleCompartment();
-	proto external void SetVehicleAction(EVehicleAction val);
-	proto external EVehicleAction GetVehicleAction();
 	proto external void SetVehicleDoorInfoIndex(int val);
 	proto external int GetVehicleDoorInfoIndex();
 	proto external void SetVehicleTeleportTarget(vector target[]);

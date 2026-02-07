@@ -10,9 +10,9 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	{
 		if (pInputCtx.GetMeleeAttack())
 		{
-			GetCommandModifier_Melee().Attack();
-			pInputCtx.SetMeleeAttack(false);
 			m_MeleeComponent.PerformAttack();
+			GetCommandModifier_Melee().Attack();
+			pInputCtx.SetMeleeAttack(false);		
 			return true;
 		}
 
@@ -20,6 +20,12 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 			m_MeleeComponent.Update(pDt);
 
 		return GetCommandModifier_Melee().IsMeleeAttackTag();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event int SelectMeleeAnimationType()
+	{
+		return m_MeleeComponent.HasBayonet();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -86,6 +92,23 @@ class SCR_CharacterCommandHandlerComponent : CharacterCommandHandlerComponent
 	{
 		if (m_CmdLoiter)
 			m_CmdLoiter.StopLoitering(terminateFast);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void BroadCastLoiterFinish()
+	{
+		Rpc(RPC_FinishLoitering_BCNO);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast, RplCondition.NoOwner)]
+	void RPC_FinishLoitering_BCNO()
+	{		
+		auto loiterCommand = GetLoiterCommand();
+		if (!loiterCommand)
+			return;
+		
+		loiterCommand.FinishLoiter();
 	}
 
 	//------------------------------------------------------------------------------------------------

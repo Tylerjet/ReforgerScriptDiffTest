@@ -19,6 +19,11 @@ class Game
 	\brief Returns path of world file loaded
 	*/
 	proto external string GetWorldFile();
+	/*!
+	Returns the world editor.
+	*IMPORTANT* Only works when InPlayMode is false
+	*/
+	proto external GameWorldEditor GetWorldEditor();
 	// --- Cinematics
 	proto external void StartCinematic(string name);
 	proto external void StopCinematic();

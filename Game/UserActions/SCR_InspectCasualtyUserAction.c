@@ -21,7 +21,7 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 
 		if (hz.GetDamageState() == EDamageState.UNDAMAGED)
 		{		
-			SCR_CharacterBloodHitZone bloodHZ = SCR_CharacterBloodHitZone.Cast(damageMan.GetBloodHitZone());
+			SCR_CharacterBloodHitZone bloodHZ = damageMan.GetBloodHitZone();
 			if (!bloodHZ)
 				return false;
 			
@@ -37,8 +37,8 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 		IEntity userVeh = userCompAccessComp.GetVehicleIn(userChar);
 		IEntity targetVeh = targetCompAccessComp.GetVehicleIn(ownerChar);
 		
-		// If inspector is not in vehicle return true
-		if (!userVeh)
+		// If inspector and target are not in vehicle return true
+		if (!userVeh && !targetVeh)
 			return CanBePerformedScript(user);
 
 		// If inspector and target are both in vehicle, check if they're in the same one, and if so, return true
@@ -64,7 +64,7 @@ class SCR_InspectCasualtyUserAction : ScriptedUserAction
 		SCR_InspectCasualtyWidget casualtyInspectDisplay;
 		array<BaseInfoDisplay> infoDisplays = {};
 		
-		PlayerController playerController = PlayerController.Cast(GetGame().GetPlayerController());
+		PlayerController playerController = GetGame().GetPlayerController();
 		if (!playerController)
 			return false;
 		

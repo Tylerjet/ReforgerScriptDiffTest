@@ -21,7 +21,8 @@ class SCR_AIDangerReaction_Explosion : SCR_AIDangerReaction
 		if (oldObserveBehavior)
 			return;
 		
-		SCR_AIObserveUnknownFireBehavior observeBehavior = new SCR_AIObserveUnknownFireBehavior(utility, null, posWorld: observeReactionPosition, useMovement: false);
+		SCR_AIObserveUnknownFireBehavior observeBehavior = new SCR_AIObserveUnknownFireBehavior(utility, null, posWorld: observeReactionPosition,
+			useMovement: false, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_OBSERVE_EXPLOSION);
 		utility.AddAction(observeBehavior);
 	}
 	
@@ -38,6 +39,17 @@ class SCR_AIDangerReaction_Explosion : SCR_AIDangerReaction
 		
 		if (distance > SCR_AIThreatSystem.EXPLOSION_MAX_DISTANCE)
 			return false;
+		
+		// Ignore if friendly
+		IEntity instigatorRoot = dangerEvent.GetObject();
+		if (instigatorRoot)
+		{
+			instigatorRoot = instigatorRoot.GetRootParent();
+			bool isMilitary = utility.IsMilitary();
+			SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
+			if (isMilitary && (!agent || !agent.IsEnemy(instigatorRoot)))
+				return false;
+		}
 		
 		// Increase threat level
 		threatSystem.ThreatExplosion(distance);

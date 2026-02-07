@@ -23,7 +23,7 @@ class SCR_AIDangerReaction_ProjectileHit : SCR_AIDangerReaction
 		
 		float distanceToShooter = vector.Distance(utility.GetOrigin(), shooterPos);
 		
-		if (utility.m_CombatComponent.GetCurrentTarget() == null && distanceToShooter > SCR_AICombatComponent.LONG_RANGE_FIRE_DISTANCE && shooter)
+		if (utility.m_CombatComponent.GetCurrentTarget() == null && distanceToShooter > SCR_AICombatComponent.LONG_RANGE_COMBAT_DISTANCE && shooter)
 		{
 			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, null, shooterPos, shooter));
 			//TODO: change combat type from SILENT

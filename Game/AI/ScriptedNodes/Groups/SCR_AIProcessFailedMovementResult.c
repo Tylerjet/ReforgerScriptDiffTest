@@ -2,7 +2,7 @@
 class SCR_AIProcessFailedMovementResult : AITaskScripted
 {
 	static const string PORT_MOVE_RESULT = "MoveResult";
-	static const string PORT_VEHICLE_USED = "VehicleUsed";
+	static const string PORT_HANDLER_ID = "FailedHandlerId";
 	static const string PORT_IS_WAYPOINT_RELEATED = "IsWaypointReleated";
 	static const string PORT_MOVE_LOCATION = "MoveLocation";
 
@@ -41,18 +41,29 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 			return ENodeResult.RUNNING; 
 		}
 				
-		IEntity vehicleUsed;
-		GetVariableIn(PORT_VEHICLE_USED, vehicleUsed);		
+		int failedHandlerId;
+		GetVariableIn(PORT_HANDLER_ID, failedHandlerId);
 		
 		bool isWaypointReleated;
-		GetVariableIn(PORT_IS_WAYPOINT_RELEATED, isWaypointReleated);		
+		GetVariableIn(PORT_IS_WAYPOINT_RELEATED, isWaypointReleated);
 		
 		vector moveLocation;
 		GetVariableIn(PORT_MOVE_LOCATION, moveLocation);
 		
-		bool useVehicle;
-		if (vehicleUsed)
-			useVehicle = true;
+		// we failed inside one of our vehicles -> leave the vehicle of the handlerId and try again
+		IEntity vehicleUsed;
+		if (failedHandlerId != AIGroupMovementComponent.DEFAULT_HANDLER_ID) 
+		{
+			SCR_AIGroupVehicle groupVehicle = m_GroupUtilityComponent.m_VehicleMgr.FindVehicleBySubgroupId(failedHandlerId);
+			if (groupVehicle)
+				vehicleUsed = groupVehicle.GetEntity();
+		}
+		
+		// Navlink is being negotiated, try again
+		if (moveResult == EMoveRequestResult.WaitingOnNavlink)
+		{
+			return ENodeResult.FAIL;
+		}
 		
 		// Ivoke event about failed movement
 		m_GroupUtilityComponent.OnMoveFailed(moveResult, vehicleUsed, isWaypointReleated, moveLocation);
@@ -73,7 +84,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 					FailAction();
 					return ENodeResult.FAIL;
 				}
-								
+				
 				// If wp related and wp is the same we just return running
 				// As a result group will be stuck to allow us to debug it
 				NodeError(this, owner, string.Format("Failed move to waypoint %1", moveLocation));
@@ -90,8 +101,8 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 		
 		// If stopped or vehicle is not used, complete waypoint if related and fail action
 		if (moveResult == EMoveRequestResult.Stopped || !vehicleUsed)
-		{		
-#ifdef WORKBENCH		
+		{
+#ifdef WORKBENCH
 			PrintDebug(owner, string.Format("Move failed with result %1 to location %2, failing action.", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult), moveLocation));
 #endif
 			if (isWaypointReleated)
@@ -99,20 +110,30 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 			
 			// Fail action
 			FailAction();
-				
+			
 			return ENodeResult.RUNNING;
 		}
 #ifdef WORKBENCH
 		PrintDebug(owner, string.Format("Move failed with result %1 to location %2, retrying without vehicle.", SCR_Enum.GetEnumName(EMoveRequestResult, moveResult), moveLocation));
 #endif	
 		// Exit vehicle and try again
-		m_Group.RemoveUsableVehicle(vehicleUsed);
-		useVehicle = false;
-		
-		// Don't use vehicle in next try
-		SCR_AIMoveActivity activity = SCR_AIMoveActivity.Cast(m_GroupUtilityComponent.GetCurrentAction());
-		if (activity)
-			activity.m_bUseVehicles.m_Value = false;
+		if (vehicleUsed)
+		{
+			// If failed because the driver is dead, we dont need to leave vehicle
+			if (moveResult != EMoveRequestResult.EntityCantMove) 
+			{
+				SCR_AIGetOutActivity getOut = new SCR_AIGetOutActivity(m_GroupUtilityComponent, null, vehicleUsed);
+				m_GroupUtilityComponent.AddAction(getOut);
+			}
+			
+			// If vehicle got stuck turn the hazard lights on
+			if (moveResult == EMoveRequestResult.Stuck)
+			{
+				// Turn them only if there's no enemy around
+				if (m_GroupUtilityComponent && m_GroupUtilityComponent.m_Perception && !m_GroupUtilityComponent.m_Perception.m_MostDangerousCluster)
+					SCR_AIVehicleUsability.TurnOnVehicleHazardLights(vehicleUsed);
+			}
+		}
 		
 		// Fail a node to enable tree to try again
 		return ENodeResult.FAIL;
@@ -153,7 +174,7 @@ class SCR_AIProcessFailedMovementResult : AITaskScripted
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 
 	//------------------------------------------------------------------------------------------------
-	protected static ref TStringArray s_aVarsIn = {PORT_MOVE_RESULT, PORT_VEHICLE_USED, PORT_IS_WAYPOINT_RELEATED, PORT_MOVE_LOCATION};
+	protected static ref TStringArray s_aVarsIn = {PORT_MOVE_RESULT, PORT_HANDLER_ID, PORT_IS_WAYPOINT_RELEATED, PORT_MOVE_LOCATION};
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	
 	//------------------------------------------------------------------------------------------------

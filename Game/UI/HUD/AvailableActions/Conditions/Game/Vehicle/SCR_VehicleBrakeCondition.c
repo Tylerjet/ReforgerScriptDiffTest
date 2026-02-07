@@ -13,33 +13,16 @@ class SCR_VehicleBrakeCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 
-		if(GetGame().GetIsClientAuthority())
-		{
-			CarControllerComponent controller = CarControllerComponent.Cast(data.GetCurrentVehicleController());
-			if (!controller)
-				return false;
-	
-			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(controller.GetSimulation());
-			if (!simulation)
-				return false;
-	
-			bool result = simulation.GetBrake() >= m_fMinimumBrake;
-	
-			return GetReturnResult(result);
-		}
-		else
-		{
-			CarControllerComponent_SA controller = CarControllerComponent_SA.Cast(data.GetCurrentVehicleController());
-			if (!controller)
-				return false;
-	
-			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(controller.GetSimulation());
-			if (!simulation)
-				return false;
-	
-			bool result = simulation.GetBrake() >= m_fMinimumBrake;
-	
-			return GetReturnResult(result);
-		}
+		CarControllerComponent controller = CarControllerComponent.Cast(data.GetCurrentVehicleController());
+		if (!controller)
+			return false;
+
+		VehicleWheeledSimulation simulation = controller.GetSimulation();
+		if (!simulation)
+			return false;
+
+		bool result = simulation.GetBrake() >= m_fMinimumBrake;
+
+		return GetReturnResult(result);
 	}
 };

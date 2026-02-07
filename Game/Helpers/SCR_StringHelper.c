@@ -99,20 +99,6 @@ class SCR_StringHelper
 		return result;
 	}
 
-//	//------------------------------------------------------------------------------------------------
-//	//! Cut a line if bigger than the wanted length, using #AR-String_Ellipsis
-//	//! \param ellipsisTranslation translation key or ellipsis string; use %1 in it to place the cut text, if %1 is not present default value will be used
-//	static string Ellipsis(string input, int length, string ellipsisTranslation = "#AR-String_Ellipsis")
-//	{
-//		if (input.Length() < length)
-//			return input;
-//
-//		if (ellipsisTranslation != "#AR-String_Ellipsis" && !ellipsisTranslation.Contains("%1") && !Translate(ellipsisTranslation).Contains("%1"))
-//			ellipsisTranslation = "#AR-String_Ellipsis";
-//
-//		return String.Format(ellipsisTranslation, input.Substring(0, length));
-//	}
-
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] input the input string
 	//! \param[in] characters the characters to either respect or remove depending on useCharactersAsBlacklist
@@ -207,7 +193,7 @@ class SCR_StringHelper
 	//------------------------------------------------------------------------------------------------
 	//! format with string arguments in the form of an array
 	//! \param[in] format with %1, %2 etc
-	//! \param[notnull] arguments array
+	//! \param[in] arguments array
 	//! \return string.Format'ted string (with max 9 arguments)
 	static string Format(string input, notnull array<string> arguments)
 	{
@@ -235,6 +221,27 @@ class SCR_StringHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! Gets float values array from a string (e.g { 0.3, 5.0, 7.9 } from "0.3 5.0 abc 7.9")
+	//! \param[in] input
+	//! \param[in] splitter space by default, can be a comma from e.g IEntitySource values
+	//! \return
+	static array<float> GetFloatsFromString(string input, string splitter = SPACE)
+	{
+		array<float> result = {};
+		array<string> splits = {};
+		input.Split(splitter, splits, true);
+
+		foreach (string split : splits)
+		{
+			float value = split.ToFloat();
+			if (value != 0 || split.StartsWith("0"))
+				result.Insert(value);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! Gets int values from a string (e.g { 0, 3, 5, 7, 9 } from "0 3 5 abc 7 9)
 	//! numbers should be separated by spaces
 	static array<int> GetIntsFromString(string input)
@@ -249,6 +256,62 @@ class SCR_StringHelper
 			if (value != 0 || split == "0")
 				result.Insert(value);
 		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets int values array from a string (e.g { 3, 5, 7 } from "3 5 abc 7")
+	//! \param[in] input
+	//! \param[in] splitter space by default, can be a comma from e.g IEntitySource values
+	//! \return
+	static array<int> GetIntsFromString(string input, string splitter = SPACE)
+	{
+		array<int> result = {};
+		array<string> splits = {};
+		input.Split(splitter, splits, true);
+
+		foreach (string split : splits)
+		{
+			int value = split.ToFloat();
+			if (value != 0 || split.StartsWith("0"))
+				result.Insert(value);
+		}
+
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Obtain an array of lines from a multiline string - split is done on the \n character
+	//! \param[in] removeEmptyLines if true, remove empty lines (including trimmed ones)
+	//! \param[in] trimLines if true, trim lines
+	//! \return array of lines, with or without empty/whitespace lines - can remove an empty array if removeEmptyLines is enabled
+	static array<string> GetLines(string input, bool removeEmptyLines = false, bool trimLines = false)
+	{
+		if (!input)
+		{
+			if (removeEmptyLines)
+				return {};
+			else
+				return { string.Empty };
+		}
+
+		array<string> result = {};
+		input.Split("\n", result, removeEmptyLines);
+
+		if (trimLines)
+		{
+			string line;
+			for (int i = result.Count() - 1; i >= 0; --i)
+			{
+				line = result[i];
+				line.TrimInPlace();
+				if (removeEmptyLines && !line)
+					result.RemoveOrdered(i);
+				else
+					result[i] = line;
+			}
+		}
+
 		return result;
 	}
 
@@ -292,60 +355,6 @@ class SCR_StringHelper
 
 		if (result == int.MAX)
 			return -1;
-
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Gets float values from a string (e.g { 0.3, 5.0, 7.9 } from "0.3 5.0 abc 7.9")
-	//! numbers should be separated by spaces
-	static array<float> GetFloatsFromString(string input)
-	{
-		array<float> result = {};
-		array<string> splits = {};
-		input.Split(SPACE, splits, true);
-
-		foreach (string split : splits)
-		{
-			float value = split.ToFloat();
-			if (value != 0 || split.StartsWith("0"))
-				result.Insert(value);
-		}
-
-		return result;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Obtain an array of lines from a multiline string - split is done on the \n character
-	//! \param[in] removeEmptyLines if true, remove empty lines (including trimmed ones)
-	//! \param[in] trimLines if true, trim lines
-	//! \return array of lines, with or without empty/whitespace lines - can remove an empty array if removeEmptyLines is enabled
-	static array<string> GetLines(string input, bool removeEmptyLines = false, bool trimLines = false)
-	{
-		if (!input)
-		{
-			if (removeEmptyLines)
-				return {};
-			else
-				return { string.Empty };
-		}
-
-		array<string> result = {};
-		input.Split("\n", result, removeEmptyLines);
-
-		if (trimLines)
-		{
-			string line;
-			for (int i = result.Count() - 1; i >= 0; --i)
-			{
-				line = result[i];
-				line.TrimInPlace();
-				if (removeEmptyLines && !line)
-					result.RemoveOrdered(i);
-				else
-					result[i] = line;
-			}
-		}
 
 		return result;
 	}
@@ -415,6 +424,7 @@ class SCR_StringHelper
 	//! \param[in] pieces the pieces to be joined
 	//! \param[in] joinEmptyEntries if set to false, will ignore empty pieces (to e.g avoid ", , " occurrences)
 	//! \return the string pieces joined with separator, or empty string if pieces is empty
+	// moved above others for autocompletion's sake
 	static string Join(string separator, notnull array<string> pieces, bool joinEmptyEntries = true)
 	{
 		if (pieces.IsEmpty())
@@ -427,6 +437,70 @@ class SCR_StringHelper
 				result = piece;
 			else
 			if (joinEmptyEntries || piece) // !piece.IsEmpty()'s fast version
+				result += separator + piece;
+		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Joins bools together as string
+	//! \param[in] separator usually "," for an int array
+	//! \param[in] pieces the pieces to be joined
+	//! \param[in] numerical whether or not true is stringified as 1 and false as 0, or written full text ("true" and "false")
+	//! \return the pieces joined with separator, or empty string if pieces is empty
+	static string Join(string separator, notnull array<bool> pieces, bool numerical = false)
+	{
+		if (pieces.IsEmpty())
+			return string.Empty;
+
+		string result;
+		foreach (int i, bool piece : pieces)
+		{
+			if (i == 0)
+				result = piece.ToString(numerical);
+			else
+				result += separator + piece.ToString(numerical);
+		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Joins ints together as string
+	//! \param[in] separator usually "," for an int array
+	//! \param[in] pieces the pieces to be joined
+	//! \return the pieces joined with separator, or empty string if pieces is empty
+	static string Join(string separator, notnull array<int> pieces)
+	{
+		if (pieces.IsEmpty())
+			return string.Empty;
+
+		string result;
+		foreach (int i, int piece : pieces)
+		{
+			if (i == 0)
+				result = piece.ToString();
+			else
+				result += separator + piece;
+		}
+		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Joins floats together as string
+	//! \param[in] separator usually "," for a float array
+	//! \param[in] pieces the pieces to be joined
+	//! \return the pieces joined with separator, or empty string if pieces is empty
+	static string Join(string separator, notnull array<float> pieces)
+	{
+		if (pieces.IsEmpty())
+			return string.Empty;
+
+		string result;
+		foreach (int i, float piece : pieces)
+		{
+			if (i == 0)
+				result = piece.ToString();
+			else
 				result += separator + piece;
 		}
 		return result;
@@ -488,6 +562,7 @@ class SCR_StringHelper
 		return input;
 	}
 
+
 	//------------------------------------------------------------------------------------------------
 	//! Replace until there is no trace of search
 	//! @code
@@ -528,7 +603,7 @@ class SCR_StringHelper
 	//! \param[in] replace the replacement string
 	//! \param[in] howMany times the string must be replaced
 	//! \param[in] skip first occurrences -not- to be replaced
-	//! \return input with 'sample' replaced by 'replace' 'howMany' times after skipptin 'skip' occurrences
+	//! \return input with 'sample' replaced by 'replace' 'howMany' times after skipping 'skip' occurrences
 	static string ReplaceTimes(string input, string sample, string replace, int howMany = 1, int skip = 0)
 	{
 		if (howMany < 1 || input.IsEmpty() || sample.IsEmpty() || sample == replace)

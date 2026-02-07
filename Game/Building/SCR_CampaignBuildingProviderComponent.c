@@ -981,7 +981,7 @@ class SCR_CampaignBuildingProviderComponent : SCR_MilitaryBaseLogicComponent
 			if (!editorManager)
 				return;
 
-			SCR_EditorModeEntity modeEntity = SCR_EditorModeEntity.Cast(editorManager.FindModeEntity(EEditorMode.BUILDING));
+			SCR_EditorModeEntity modeEntity = editorManager.FindModeEntity(EEditorMode.BUILDING);
 			if (!modeEntity)
 				return;
 

@@ -28,16 +28,6 @@ class SCR_ObstacleDetector
 	protected float m_fOceanLevel;
 	protected ref TraceSphere m_AvoidObjectTraceSphere;
 
-	protected WorldEditorAPI m_WorldEditorAPI;
-
-	//------------------------------------------------------------------------------------------------
-	//! changing worlds or something else can lose ref to WorldEditorAPI
-	//! \return true if World Editor API reference is valid, false otherwise
-	bool IsValid()
-	{
-		return m_WorldEditorAPI != null;
-	}
-
 	//------------------------------------------------------------------------------------------------
 	void SetAvoidObjects(bool avoidObjects)
 	{
@@ -124,23 +114,25 @@ class SCR_ObstacleDetector
 	// used by SCR_GeneratorBaseEntity.RefreshObstacles() (and RefreshObstaclesByWorld() which is unused)
 	void RefreshObstaclesByAABB(vector worldMin, vector worldMax)
 	{
-		if (!m_WorldEditorAPI.GetWorld())
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI || !worldEditorAPI.GetWorld())
 			return;
 
 		SetupObstacleArrays(true, true);
-		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
-		m_WorldEditorAPI.GetWorld().QueryEntitiesByAABB(worldMin, worldMax, AllSplineQueryFilter);
+		m_fOceanLevel = worldEditorAPI.GetWorld().GetOceanBaseHeight();
+		worldEditorAPI.GetWorld().QueryEntitiesByAABB(worldMin, worldMax, AllSplineQueryFilter);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// unused
 	void RefreshObstaclesByWorld()
 	{
-		if (!m_WorldEditorAPI.GetWorld())
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI || !worldEditorAPI.GetWorld())
 			return;
 
 		vector min, max;
-		m_WorldEditorAPI.GetWorld().GetBoundBox(min, max);
+		worldEditorAPI.GetWorld().GetBoundBox(min, max);
 		RefreshObstaclesByAABB(min, max);
 	}
 
@@ -148,38 +140,42 @@ class SCR_ObstacleDetector
 	// used by ObjectBrushTool.CreateObjects()
 	void RefreshRoadObstaclesBySphere(vector worldPos, float radius)
 	{
-		if (!m_WorldEditorAPI.GetWorld())
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI || !worldEditorAPI.GetWorld())
 			return;
 
 		SetupObstacleArrays(true, false);
-		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
-		m_WorldEditorAPI.GetWorld().QueryEntitiesBySphere(worldPos, radius, RoadSplineQueryFilter);
+		m_fOceanLevel = worldEditorAPI.GetWorld().GetOceanBaseHeight();
+		worldEditorAPI.GetWorld().QueryEntitiesBySphere(worldPos, radius, RoadSplineQueryFilter);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// used by ObjectBrushTool.OnMousePressEvent()
 	void RefreshAreaObstaclesBySphere(vector worldPos, float radius)
 	{
-		if (!m_WorldEditorAPI.GetWorld())
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI || !worldEditorAPI.GetWorld())
 			return;
 
 		SetupObstacleArrays(false, true);
-		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
-		m_WorldEditorAPI.GetWorld().QueryEntitiesBySphere(worldPos, radius, AreaSplineQueryFilter);
+		m_fOceanLevel = worldEditorAPI.GetWorld().GetOceanBaseHeight();
+		worldEditorAPI.GetWorld().QueryEntitiesBySphere(worldPos, radius, AreaSplineQueryFilter);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	// used by ObjectBrushTool.OnMousePressEvent()
 	void RefreshAreaObstaclesByWorld()
 	{
-		if (!m_WorldEditorAPI.GetWorld())
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI || !worldEditorAPI.GetWorld())
 			return;
 
 		SetupObstacleArrays(false, true);
-		m_fOceanLevel = m_WorldEditorAPI.GetWorld().GetOceanBaseHeight();
+		m_fOceanLevel = worldEditorAPI.GetWorld().GetOceanBaseHeight();
+
 		vector min, max;
-		m_WorldEditorAPI.GetWorld().GetBoundBox(min, max);
-		m_WorldEditorAPI.GetWorld().QueryEntitiesByAABB(min, max, AreaSplineQueryFilter);
+		worldEditorAPI.GetWorld().GetBoundBox(min, max);
+		worldEditorAPI.GetWorld().QueryEntitiesByAABB(min, max, AreaSplineQueryFilter);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -195,7 +191,11 @@ class SCR_ObstacleDetector
 			return true; // prevent placement by default
 		}
 
-		BaseWorld world = m_WorldEditorAPI.GetWorld();
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI)
+			return true;
+
+		BaseWorld world = worldEditorAPI.GetWorld();
 		if (!world)
 			return true;
 
@@ -273,7 +273,7 @@ class SCR_ObstacleDetector
 			{
 				m_AvoidObjectTraceSphere = new TraceSphere();
 				m_AvoidObjectTraceSphere.Radius = m_fAvoidObjectsDetectionRadius;
-				m_AvoidObjectTraceSphere.LayerMask = EPhysicsLayerPresets.Main | EPhysicsLayerDefs.Water; // are the last two required?
+				m_AvoidObjectTraceSphere.LayerMask = EPhysicsLayerPresets.Main | EPhysicsLayerDefs.Water; // is Water required?
 				m_AvoidObjectTraceSphere.Flags = TraceFlags.ENTS;
 			}
 
@@ -386,10 +386,11 @@ class SCR_ObstacleDetector
 		if (!shapeEntity)
 			return true;
 
-		if (!m_WorldEditorAPI)
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		if (!worldEditorAPI)
 			return true;
 
-		IEntitySource shapeSource = m_WorldEditorAPI.EntityToSource(shapeEntity);
+		IEntitySource shapeSource = worldEditorAPI.EntityToSource(shapeEntity);
 		if (!shapeSource)
 			return true;
 
@@ -468,15 +469,6 @@ class SCR_ObstacleDetector
 	protected bool AreaSplineQueryFilter(IEntity entity)
 	{
 		return BaseSplineQueryFilter(entity, false, true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// constructor
-	void SCR_ObstacleDetector(WorldEditorAPI worldEditorAPI) // not using notnull to prevent World Editor lockup
-	{
-		m_WorldEditorAPI = worldEditorAPI;
-		if (!m_WorldEditorAPI)
-			Print("Something went wrong with SCR_ObstacleDetector init: passed worldEditorAPI is null", LogLevel.ERROR);
 	}
 }
 

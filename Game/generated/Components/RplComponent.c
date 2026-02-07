@@ -95,6 +95,11 @@ class RplComponent: BaseRplComponent
 	\param identity Client connection.
 	*/
 	static proto void RemoveMPObserver(RplIdentity identity);
+	/*
+	Enable or disable spatial relevacny of a node.
+	Spatial relevancy is not enforced in a hierarchy, meanining if a root node is not in spatial map, and a spatial node is attached to it, it will not be in spatial map.
+	*/
+	proto external void EnableSpatialRelevancy(bool enable);
 }
 
 /*!

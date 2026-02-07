@@ -386,7 +386,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!campaign)
 			return;
 			
-		IEntity composition = IEntity.Cast(SCR_EntityHelper.GetMainParent(destructibleComp.GetOwner()));
+		IEntity composition = SCR_EntityHelper.GetMainParent(destructibleComp.GetOwner());
 		if (!composition)
 			return;
 		

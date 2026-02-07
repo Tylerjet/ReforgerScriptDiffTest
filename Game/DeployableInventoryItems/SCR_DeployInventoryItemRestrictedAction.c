@@ -12,6 +12,9 @@ class SCR_DeployInventoryItemRestrictedAction : SCR_DeployInventoryItemBaseActio
 		if (!reason.IsEmpty())
 			SetCannotPerformReason(reason);
 		
-		return canBePerformed;
+		if (!canBePerformed)
+			return false;
+		
+		return super.CanBePerformedScript(user);
  	}
 }

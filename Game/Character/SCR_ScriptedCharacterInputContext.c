@@ -4,5 +4,6 @@ class SCR_ScriptedCharacterInputContext
 	bool m_iLoiteringShouldHolsterWeapon = false;
 	bool m_bLoiteringShouldAlignCharacter = false;
 	bool m_bLoiteringRootMotion = false;
+	bool m_bLoiteringDisablePlayerInput = false;
 	vector m_mLoiteringPosition[4] = { vector.Zero, vector.Zero, vector.Zero, vector.Zero };
 }

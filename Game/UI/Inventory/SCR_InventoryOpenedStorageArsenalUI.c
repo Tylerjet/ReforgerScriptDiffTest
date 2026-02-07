@@ -63,18 +63,18 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 		super.Init();
 		
 		m_wWeightDisplay.SetVisible(false);
-		m_wCapacityDisplay.SetVisible(false);
+		m_wProgressBar.SetVisible(false);
 		
 		m_wWeightText = null;
 		m_wWeightDisplay = null;
 		m_wCapacityDisplay = null;
 		m_wCapacityPercentageText = null;
 		
-		m_wResourceStoredDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplayStored"));
+		m_wResourceStoredDisplay = m_widget.FindAnyWidget("ResourceDisplayStored");
 		if (m_wResourceStoredDisplay)
 			m_wResourceStoredText = TextWidget.Cast(m_wResourceStoredDisplay.FindAnyWidget("ResourceText"));
 		
-		m_wResourceAvailableDisplay = Widget.Cast(m_widget.FindAnyWidget("ResourceDisplayAvailable"));
+		m_wResourceAvailableDisplay = m_widget.FindAnyWidget("ResourceDisplayAvailable");
 		if (m_wResourceAvailableDisplay)
 			m_wResourceAvailableText = TextWidget.Cast(m_wResourceAvailableDisplay.FindAnyWidget("ResourceText"));
 		
@@ -91,7 +91,7 @@ class SCR_InventoryOpenedStorageArsenalUI : SCR_InventoryOpenedStorageUI
 		}
 		
 		m_ResourceConsumer = m_ResourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(Refresh);	
+		m_ResourceComponent.TEMP_GetOnInteractorReplicated().Insert(RefreshResources);	
 		
 		RefreshResources();
 		m_wResourceStoredDisplay.SetVisible(false);

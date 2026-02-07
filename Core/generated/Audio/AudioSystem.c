@@ -31,7 +31,7 @@ sealed class AudioSystem
 	static proto AudioHandle PlaySound(string path);
 	//! Preload audio file(*.acp).
 	static proto bool PlayEventInitialize(string filename);
-	static proto AudioHandle PlayEvent(string filename, string eventname, vector transf[], array<string> names, array<float> values);
+	static proto AudioHandle PlayEvent(string filename, string eventname, vector transf[], array<string> names = null, array<float> values = null);
 	static proto bool IsSoundPlayed(AudioHandle handle);
 	static proto void TerminateSound(AudioHandle handle);
 	//! Set transformation for given audio handle, return FALSE if audio handle is not valid.
@@ -45,8 +45,6 @@ sealed class AudioSystem
 		BV_Cylinde	: param0 = radius, param1 = height
 	*/
 	static proto bool SetBoundingVolumeParams(AudioHandle handle, int volumeType, float params0, float param1, float param2);
-	//! Return value current value of a variable.
-	static proto float GetVariableValue(string varname, string filename);
 	//------------------------------------------------------------------------------------------------
 	static proto float OutputVolume();
 	//------------------------------------------------------------------------------------------------
@@ -56,6 +54,20 @@ sealed class AudioSystem
 	static proto bool CreateOutputState(string filename);
 	static proto int GetOutpuStateSignalIdx(int outStateIdx, string signal);
 	static proto void SetOutputStateSignal(int outStateIdx, int idx, float value);
+	//! Returns ID of a variable by Name.
+	static proto int GetVariableIDByName(string varName, string filename);
+	//! Returns Name of a variable by ID.
+	static proto string GetVariableNameByID(int ID, string filename);
+	//! Returns current value of a variable by Name.
+	static proto float GetVariableValue(string varName, string filename);
+	//! Returns current value of a variable by ID.
+	static proto float GetVariableByID(int ID, string filename);
+	//! Returns false if variable does not exist.
+	static proto bool SetVariableByName(string varName, float value, string filename);
+	//! Returns false if variable does not exist.
+	static proto bool SetVariableByID(int ID, float value, string filename);
+	//! Resets all applicable values to 0 or default value
+	static proto void ResetVariables();
 }
 
 /*!

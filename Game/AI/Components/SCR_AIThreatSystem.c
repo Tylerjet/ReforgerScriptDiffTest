@@ -24,10 +24,13 @@ class SCR_AIThreatSystem
 	private static const float SUPPRESSION_BULLET_INCREMENT = 0.10;
 	private static const float ZERO_DISTANCE_SHOT_INCREMENT = 0.008;
 	private static const float DISTANT_SHOT_INCREMENT = 0.002;
-	private static const float EXPLOSION_MAX_INCREMENT = 0.6;
+	// Decrased from 0.6 until friendly explosions can be filtered out on game code level
+	private static const float EXPLOSION_MAX_INCREMENT = 0.2;   
 	
 	private static const float EXPLOSION_CLOSE_DISTANCE = 12;	//!< What distance in m is considered close - max increment is used
-	static const float EXPLOSION_MAX_DISTANCE = 700;			//!< Maxmial distance from explosion to have any influence on threat level
+	
+	// Decrased from 700 until friendly explosions can be filtered out on game code level
+	static const float EXPLOSION_MAX_DISTANCE = 100;			//!< Maxmial distance from explosion to have any influence on threat level
 	
 	private static const float ENDANGERED_INCREMENT = 0.2;
 	
@@ -49,7 +52,7 @@ class SCR_AIThreatSystem
 	private SCR_AIUtilityComponent				m_Utility;
 	private SCR_AIConfigComponent				m_Config;
 	private SCR_AICombatComponent				m_Combat;
-	private SCR_DamageManagerComponent		m_DamageManager;
+	private SCR_ExtendedDamageManagerComponent	m_DamageManager;
 	
 	private SCR_ChimeraAIAgent m_Agent;
 	
@@ -65,7 +68,7 @@ class SCR_AIThreatSystem
 		m_Utility = utility;
 		m_Config = utility.m_ConfigComponent;	
 		m_Combat = utility.m_CombatComponent;
-		m_DamageManager = SCR_DamageManagerComponent.Cast(utility.m_OwnerEntity.FindComponent(SCR_DamageManagerComponent));
+		m_DamageManager = SCR_ExtendedDamageManagerComponent.Cast(utility.m_OwnerEntity.FindComponent(SCR_ExtendedDamageManagerComponent));
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
 		if (!agent)
 			return;
@@ -74,8 +77,8 @@ class SCR_AIThreatSystem
 		// AI threat system is owned by Utility Component, therefore we don't unsubscribe from the event
 		if (m_DamageManager)
 		{
-			m_DamageManager.GetOnDamageOverTimeAdded().Insert(OnDamageOverTimeAdded);
-			m_DamageManager.GetOnDamageOverTimeRemoved().Insert(OnDamageOverTimeRemoved);
+			m_DamageManager.GetOnDamageEffectAdded().Insert(OnDamageEffectAdded);
+			m_DamageManager.GetOnDamageEffectRemoved().Insert(OnDamageEffectRemoved);
 		}
 			
 		m_State = EAIThreatState.SAFE;
@@ -194,11 +197,11 @@ class SCR_AIThreatSystem
 		// Process all danger events and clear the array
 		if (m_Agent && m_Config.m_EnableDangerEvents)
 		{
-			bool handled;
-			int i = 0;
-			for (; i < m_Agent.GetDangerEventsCount(); i++)
+			int i;
+			AIDangerEvent dangerEvent;
+			for (int max = m_Agent.GetDangerEventsCount(); i < max; i++)
 			{
-				AIDangerEvent dangerEvent = m_Agent.GetDangerEvent(i);
+				dangerEvent = m_Agent.GetDangerEvent(i);
 				
 				if (dangerEvent)
 				{
@@ -216,11 +219,12 @@ class SCR_AIThreatSystem
 					}
 				}
 			}
-			m_Agent.ClearDangerEvents(i+1);
+
+			m_Agent.ClearDangerEvents(i + 1);
 		}		
 
 		// Add threat value from current behavior
-		float threatFromBehavior = 0;
+		float threatFromBehavior;
 		if (utility.m_CurrentBehavior)
 			threatFromBehavior = utility.m_CurrentBehavior.m_fThreat;
 		
@@ -233,22 +237,21 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
+	protected void OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dType != EDamageType.BLEEDING)
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
 			return;
 		
-		if (m_DamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
-			m_fThreatInjury = BLEEDING_FIXED_INCREMENT;
+		m_fThreatInjury = BLEEDING_FIXED_INCREMENT;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnDamageOverTimeRemoved(EDamageType dType, HitZone hz)
+	protected void OnDamageEffectRemoved(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dType != EDamageType.BLEEDING)
+		if (dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
 			return;
 		
-		if (!m_DamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
+		if (!m_DamageManager.GetAllPersistentEffectsOfType(SCR_BleedingDamageEffect))
 			m_fThreatInjury = 0;
 	}
 	

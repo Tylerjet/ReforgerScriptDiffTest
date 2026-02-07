@@ -9,6 +9,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	[Attribute("0")]
 	protected bool m_bIsMouseInput;
 
+	[Attribute("2", desc: "Amount of keybinds for one action we display to prevent displaying 100 alternatives for one action")]
+	protected int m_iMaxShownKeys;
+
 	[Attribute(defvalue: "32", desc: "Define the Height in PX. Wight will be adjusted automatically")]
 	int m_iHeightInPixel;
 
@@ -20,28 +23,28 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	[Attribute(UIColors.GetColorAttribute(UIColors.IDLE_DISABLED), UIWidgets.ColorPicker)]
 	ref Color m_ActionDisabled;
-	
+
 	[Attribute(UIColors.GetColorAttribute(Color.White), UIWidgets.ColorPicker)]
 	ref Color m_LabelDefault;
 
 	[Attribute("0.597421 0.061189 0.475868 1.000000", UIWidgets.ColorPicker)]
 	ref Color m_ActionToggled;
-	
+
 	[Attribute("0", desc: "If enabled there will be no sound played when the button is pressed")]
 	protected bool m_bDisableClickSound;
-	
+
 	[Attribute("0", desc: "Postion offset when button is not held")]
 	float m_fHoldIndicatorDefaultPosition;
-	
+
 	[Attribute("5", desc: "Position offset when button is held")]
 	float m_fHoldIndicatorHoldPosition;
-	
+
 	[Attribute("0.1", desc:"Time in sec who long the animation takes.")]
 	float m_fHoldIndicatorAnimationTime;
 
 	[Attribute("1", desc: "If false the button will never change to its disabled visual state.")]
 	bool m_bCanBeDisabled;
-	
+
 	[Attribute("1", desc: "If false the Label does not change its color to disabled when button is disabled.")]
 	bool m_bChangeLabelColorOnDisabled;
 
@@ -60,10 +63,10 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	[Attribute("{983DFCCEB578C1C5}UI/layouts/InputButtons/InputButton_ComboIndicator.layout")]
 	protected ResourceName m_sComboIndicatorWidget;
 
-	[Attribute("{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset")]
+	[Attribute(UIConstants.ICONS_IMAGE_SET)]
 	protected ResourceName m_sComboIndicatorImageSet;
 
-	[Attribute("{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset")]
+	[Attribute(UIConstants.ICONS_GLOW_IMAGE_SET)]
 	protected ResourceName m_sComboIndicatorImageSetGlow;
 
 	[Attribute(desc: "If enabled Text size is controlled by set size Inside the RichText widget")]
@@ -74,11 +77,12 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	[Attribute()]
 	protected bool m_bDebugSimulateController;
-	
+
 	protected const string COMBO_INDICATOR_IMAGE_NAME = "ComboIndicatorImg";
 	protected const string COMBO_INDICATOR_SHADOW_NAME = "ComboIndicatorShadow";
 	protected const string COMBO_INDICATOR_DIVIDER_NAME = "keybind_divider";
-	
+	protected const string COMBO_INDICATOR_COMBO_NAME = "keybind_combo";
+
 	protected const float COMBO_INDICATOR_SIZE_MULTIPLIER = 0.5;
 	protected const float MIN_FONTSIZE_MULTIPLIER = 0.5;
 
@@ -89,8 +93,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	protected RichTextWidget m_wTextHint;
 
 	protected ref array<Widget> m_aComboWidgets = {};
-	protected ref array<BaseContainer> filterStack = {};
+	protected ref array<BaseContainer> m_aFilterStack = {};
 	protected ref array<int> m_aFilterStackIndexRemover = {};
+	protected ref array<string> m_aKeyStackArray = {};
 
 	InputManager m_InputManager = GetGame().GetInputManager();
 
@@ -124,7 +129,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	protected ref ScriptInvokerVoid m_OnHoldAnimComplete;
 
 	ref ScriptInvoker m_OnActivated = new ScriptInvoker();
-	protected ref array<DialogUI> m_aDialogs;
+	protected ref array<DialogUI> m_aDialogs = {};
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -134,7 +139,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		m_wHorizontalLayout = HorizontalLayoutWidget.Cast(w.FindAnyWidget(m_sHorizontalLayoutWidget));
 		m_wTextHint = RichTextWidget.Cast(w.FindAnyWidget(m_sTextHintWidget));
 
-		Widget buttonWidget = Widget.Cast(w.FindAnyWidget(m_sButtonWidgetName));
+		Widget buttonWidget = w.FindAnyWidget(m_sButtonWidgetName);
 		if (!buttonWidget)
 			return;
 
@@ -150,7 +155,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			m_fDefaultClickTime /= 1000;
 			m_fHoldTimeReduction += m_fDefaultClickTime;
 		}
-		
+
 		if (m_wTextHint)
 		{
 			if (!m_sLabel)
@@ -162,8 +167,6 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		if (GetGame().InPlayMode())
 		{
-			m_aDialogs = new array<DialogUI>;
-
 			SCR_MenuHelper.GetOnActiveWidgetInteraction().Insert(OnActiveWidgetInteraction);
 			SCR_MenuHelper.GetOnDialogOpen().Insert(OnDialogOpen);
 			SCR_MenuHelper.GetOnDialogClose().Insert(OnDialogClose);
@@ -244,6 +247,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Check for last used input device and get the correct keybind for it.
+	//! \param[in] EInputDeviceType type of InputDevice
+	//! \param[in] bool is the realted button focused by mouse
+	//! \param[in] bool reset Button override if it was enabled (false by default)
 	protected void ChangeInputDevice(EInputDeviceType inputDevice, bool hasFocus, bool resetOverride = false)
 	{
 		if (inputDevice == m_eCurrentInputDevice && m_sActionName == m_sOldActionName && !resetOverride)
@@ -268,32 +274,13 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		array<string> keyStack = {};
 		//! Get keybind for selected input action and input device
-		if (m_InputManager.GetActionKeybinding(m_sActionName, keyStack, filterStack, m_eCurrentInputDevice))
+		if (m_InputManager.GetActionKeybinding(m_sActionName, keyStack, m_aFilterStack, m_eCurrentInputDevice))
 		{
 			m_aFilterStackIndexRemover.Clear();
+			m_aKeyStackArray.Clear();
 			int index = keyStack.Count() - 1;
-			string keyCode = ProcessKeybindStack(index, keyStack);
-
-			//Check if InputAction is a Combo or alternative.
-			TStringArray m_aKeyCodeString = new TStringArray;
-			if (keyCode.Contains(" + "))
-			{
-				keyCode.Split(" + ", m_aKeyCodeString, true);
-				m_bIsComboInput = true;
-
-				keyCode = m_aKeyCodeString[0];
-			}
-			else if (keyCode.Contains(" | "))
-			{
-				keyCode.Split(" | ", m_aKeyCodeString, true);
-
-				if (m_aKeyCodeString[0].Contains("keyboard:") && m_aKeyCodeString[1].Contains("mouse:"))
-					m_bIsAlternativeInput = false;
-				else
-					m_bIsAlternativeInput = true;
-
-				keyCode = m_aKeyCodeString[0];
-			}
+			ProcessKeybindStack(index, keyStack);
+			string keyCode = m_aKeyStackArray[0];
 
 			if (!m_InputManager || !keyCode || !m_InputManager.GetKeyUIMapping(keyCode))
 				return;
@@ -306,13 +293,13 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			}
 
 			//Check is there is a valid filter applied
-			GetInputFilterSettings(filterStack[0]);
+			GetInputFilterSettings(m_aFilterStack[0]);
 
 			//Process filter stack for visualisation
 			ProcessFilterStack();
 
 			if (m_ButtonDisplay)
-				m_ButtonDisplay.SetAction(data, filterStack[0]);
+				m_ButtonDisplay.SetAction(data, m_aFilterStack[0]);
 
 			if (!m_bOverrideTextSize && m_wTextHint && m_ButtonDisplay)
 			{
@@ -320,12 +307,12 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 				m_wTextHint.SetDesiredFontSize(textSize);
 				m_wTextHint.SetMinFontSize(textSize * MIN_FONTSIZE_MULTIPLIER);
 			}
-				
 
 			if (m_bIsComboInput || m_bIsAlternativeInput)
-				CreateComboWidget(m_aKeyCodeString);
+				CreateComboWidget();
 
-			SetInputAction();
+			if (inputDevice != m_eCurrentInputDevice || m_sActionName != m_sOldActionName)
+				SetInputAction();
 		}
 	}
 
@@ -338,7 +325,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		m_bPressedInput = false;
 		m_bCanBeToggled = false;
 		m_bIsContinuous = false;
-		
+
 		if (!filter)
 			return false;
 
@@ -354,7 +341,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 				m_fMaxHoldtime -= m_fHoldTimeReduction;
 				if (m_fMaxHoldtime <= 0)
 					m_fMaxHoldtime += m_fHoldTimeReduction;
-					
+
 				m_bIsHoldAction = true;
 				break;
 			}
@@ -404,51 +391,64 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Create a second InputButton widget to display combos
-	//! \param keyCodes
-	protected void CreateComboWidget(TStringArray keyCodes)
+	protected void CreateComboWidget()
 	{
 		if (m_ButtonDisplay.GetIsOverwritten())
 			return;
 
-		for (int i = 1, count = keyCodes.Count(); i < count; i++)
+		int count = m_aKeyStackArray.Count();
+		for (int i = 1, filterIndex, comboAmount; i < count; i++)
 		{
-			if (!keyCodes[i])
-				return;
+			if (!m_aKeyStackArray[i])
+				continue;
 
-			BaseContainer keyData = m_InputManager.GetKeyUIMapping(keyCodes[i]).GetObject("Data");
+			if (m_aKeyStackArray[i] == " | " || m_aKeyStackArray[i] == " + ")
+			{
+				// If we already show the max amount of combos and the next input is an alternative, don't show any more buttons
+				if (comboAmount >= m_iMaxShownKeys - 1 && m_aKeyStackArray[i] == " | ")
+					break;
+
+				//! Create Combo indicator
+				Widget comboIndicator = GetGame().GetWorkspace().CreateWidgets(m_sComboIndicatorWidget, m_wHorizontalLayout);
+
+				if (!comboIndicator)
+				{
+					Print(string.Format("Unable to create Widget! %1 or %2 are null!", m_sComboIndicatorWidget, m_wHorizontalLayout), LogLevel.ERROR);
+					return;
+				}
+
+				m_wComboIndicatorImage = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_IMAGE_NAME));
+				m_wComboIndicatorShadow = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_SHADOW_NAME));
+
+				if (m_wComboIndicatorImage && m_wComboIndicatorShadow)
+				{
+					if (m_aKeyStackArray[i] == " + ")
+					{
+						m_wComboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_COMBO_NAME);
+						m_wComboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_COMBO_NAME);
+					}
+
+					if (m_aKeyStackArray[i] == " | ")
+					{
+						m_wComboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_DIVIDER_NAME);
+						m_wComboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_DIVIDER_NAME);
+
+						comboAmount++;
+					}
+
+					m_wComboIndicatorImage.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
+					m_wComboIndicatorShadow.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
+				}
+
+				m_aComboWidgets.Insert(comboIndicator);
+				continue;
+			}
+
+			BaseContainer keyData = m_InputManager.GetKeyUIMapping(m_aKeyStackArray[i]).GetObject("Data");
 			if (!keyData)
 			{
-				Print(string.Format("No data found for %1 !! Check 'chimeraMapping.conf' and add data if necessary!", keyCodes[i]), LogLevel.ERROR);
+				Print(string.Format("No data found for %1 !! Check 'chimeraMapping.conf' and add data if necessary!", m_aKeyStackArray[i]), LogLevel.ERROR);
 				return;
-			}
-
-			//! Create Combo indicator
-			Widget comboIndicator = GetGame().GetWorkspace().CreateWidgets(m_sComboIndicatorWidget, m_wHorizontalLayout);
-
-			if (!comboIndicator)
-			{
-				Print(string.Format("Unable to create Widget! %1 or %2 are null!", m_sComboIndicatorWidget, m_wHorizontalLayout), LogLevel.ERROR);
-				return;
-			}
-
-			m_wComboIndicatorImage = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_IMAGE_NAME));
-			m_wComboIndicatorShadow = ImageWidget.Cast(comboIndicator.FindAnyWidget(COMBO_INDICATOR_SHADOW_NAME));
-
-			if (m_wComboIndicatorImage && m_wComboIndicatorShadow)
-			{
-				if (m_bIsAlternativeInput)
-				{
-					m_wComboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, COMBO_INDICATOR_DIVIDER_NAME);
-					m_wComboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, COMBO_INDICATOR_DIVIDER_NAME);
-				}
-				else
-				{
-					m_wComboIndicatorImage.LoadImageFromSet(0, m_sComboIndicatorImageSet, "keybind_combo");
-					m_wComboIndicatorShadow.LoadImageFromSet(0, m_sComboIndicatorImageSetGlow, "keybind_combo");
-				}
-
-				m_wComboIndicatorImage.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
-				m_wComboIndicatorShadow.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
 			}
 
 			//! Create InputButton widget
@@ -469,9 +469,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			}
 
 			component.Init(m_wRoot);
-			component.SetAction(keyData, filterStack[i]);
+			component.SetAction(keyData, m_aFilterStack[filterIndex]);
+			filterIndex++;
 
-			m_aComboWidgets.Insert(comboIndicator);
 			m_aComboWidgets.Insert(comboWidget);
 		}
 	}
@@ -510,7 +510,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		if (m_bIsHoldAction)
 			m_InputManager.AddActionListener(m_sActionName, EActionTrigger.VALUE, OnButtonHold);
-		
+
 		if (m_bIsContinuous)
 			m_InputManager.AddActionListener(m_sActionName, EActionTrigger.UP, ActionReleased);
 
@@ -596,13 +596,13 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Called when button is held.
-	//! \param Float 0-1. State of button press. 
+	//! \param Float 0-1. State of button press.
 	void OnButtonHold(float value)
 	{
 		if (!m_wRoot)
 			return;
 
-		if (!m_wRoot.IsVisibleInHierarchy() || !m_wRoot.IsEnabledInHierarchy() && m_bCanBeDisabled)
+		if (m_bCanBeDisabled && (!m_wRoot.IsVisibleInHierarchy() || !m_wRoot.IsEnabledInHierarchy()))
 			return;
 
 		// Bail if attached to menu but menu is not focused
@@ -622,7 +622,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 
 		if (value < m_fDefaultClickTime)
 			return;
-		
+
 		if (!m_bIsHoldingButton)
 		{
 			m_bIsHoldingButton = true;
@@ -636,6 +636,9 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		if (m_bDisableClickSound)
 			return;
 		
+		if (m_bCanBeDisabled && (!m_wRoot.IsVisibleInHierarchy() || !m_wRoot.IsEnabledInHierarchy()))
+			return;
+
 		PlaySound(m_sSoundClicked);
 	}
 
@@ -646,7 +649,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		if (!m_wRoot)
 			return;
 
-		if (!m_wRoot.IsVisibleInHierarchy() || !m_wRoot.IsEnabledInHierarchy() && m_bCanBeDisabled)
+		if (m_bCanBeDisabled && (!m_wRoot.IsVisibleInHierarchy() || !m_wRoot.IsEnabledInHierarchy()))
 			return;
 
 		// Bail if attached to menu but menu is not focused
@@ -684,7 +687,7 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ActionReleased()
 	{
-		
+
 		if (!m_bIsHoldAction && !m_bIsContinuous)
 			return;
 
@@ -761,10 +764,10 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	//------------------------------------------------------------------------------------------------
 	//! Iterate trough key bind stack
 	//! \param[in,out] index gets decremented  by one
-	string ProcessKeybindStack(inout int index, notnull array<string> keyStack)
+	void ProcessKeybindStack(inout int index, notnull array<string> keyStack)
 	{
 		if (!keyStack.IsIndexValid(index))
-			return string.Empty;
+			return;
 
 		// pop back
 		string key = keyStack[index];
@@ -775,48 +778,55 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 			case "+": // combo
 			{
 				m_aFilterStackIndexRemover.Insert(index + 1);
-				return ProcessKeybindStack(index, keyStack) + " + " + ProcessKeybindStack(index, keyStack);
+				ProcessKeybindStack(index, keyStack);
+				m_aKeyStackArray.Insert(" + ");
+				ProcessKeybindStack(index, keyStack);
+				m_bIsComboInput = true;
+				break;
 			}
 			case "|": // sum/alternative
 			{
 				m_aFilterStackIndexRemover.Insert(index + 1);
-				return ProcessKeybindStack(index, keyStack) + " | " + ProcessKeybindStack(index, keyStack);
+				ProcessKeybindStack(index, keyStack);
+				m_aKeyStackArray.Insert(" | ");
+				ProcessKeybindStack(index, keyStack);
+				m_bIsAlternativeInput = true;
+				break;
 			}
 
 			default: // key value
-				return key;
-		}
+				m_aKeyStackArray.Insert(key);
 
-		return string.Empty;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Delete not needed entries from FilterStack and bring it into correct order
+	Delete not needed entries from m_aFilterStack and bring it into correct order
 	!*/
 	void ProcessFilterStack()
 	{
-		if (filterStack.IsEmpty())
+		if (m_aFilterStack.IsEmpty())
 			return;
 
 		foreach (int index : m_aFilterStackIndexRemover)
 		{
-			filterStack.RemoveOrdered(index);
+			m_aFilterStack.RemoveOrdered(index);
 		}
 
-		array<BaseContainer> filteredFilterStack = {};
-		int count = filterStack.Count() - 1;
+		array<BaseContainer> filteredm_aFilterStack = {};
+		int count = m_aFilterStack.Count() - 1;
 		for (int i = count; i >= 0; i--)
 		{
-			BaseContainer filterStackIndex = filterStack[i];
-			filteredFilterStack.Insert(filterStackIndex);
+			BaseContainer m_aFilterStackIndex = m_aFilterStack[i];
+			filteredm_aFilterStack.Insert(m_aFilterStackIndex);
 
-			if (!filterStackIndex)
+			if (!m_aFilterStackIndex)
 				continue;
 
-			if (filterStackIndex.GetClassName() == "InputFilterHold" || filterStackIndex.GetClassName() == "InputFilterHoldOnce")
+			if (m_aFilterStackIndex.GetClassName() == "InputFilterHold" || m_aFilterStackIndex.GetClassName() == "InputFilterHoldOnce")
 			{
-				filterStackIndex.Get("HoldDuration", m_fMaxHoldtime);
+				m_aFilterStackIndex.Get("HoldDuration", m_fMaxHoldtime);
 				if (m_fMaxHoldtime == -1 || m_fMaxHoldtime == 0)
 					m_fMaxHoldtime = m_fDefaultHoldTime;
 
@@ -824,12 +834,12 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 				m_fMaxHoldtime -= m_fHoldTimeReduction;
 				if (m_fMaxHoldtime <= 0)
 					m_fMaxHoldtime += m_fHoldTimeReduction;
-				
+
 				m_bIsHoldAction = true;
 			}
 		}
-		filterStack.Clear();
-		filterStack = filteredFilterStack;
+		m_aFilterStack.Clear();
+		m_aFilterStack = filteredm_aFilterStack;
 	}
 
 	///PUBLIC API\\\
@@ -843,14 +853,14 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		m_wTextHint.SetText(label);
 		m_wTextHint.SetVisible(true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Change the color of the Label
 	void SetLabelColor(notnull Color color)
 	{
 		if (!m_wTextHint)
 			return;
-		
+
 		m_wTextHint.SetColor(color);
 	}
 
@@ -865,42 +875,42 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 		m_sActionName = action;
 		ChangeInputDevice(m_InputManager.GetLastUsedInputDevice(), false);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	int GetSize()
 	{
 		return m_iHeightInPixel;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Change the size of the button
 	//! \param Int - Height in px. Width will be calculated automatically
 	void SetSize(int size)
 	{
 		m_iHeightInPixel = size;
-		
+
 		if (!m_bOverrideTextSize && m_wTextHint && m_ButtonDisplay)
 		{
 			int textSize = m_iHeightInPixel / m_ButtonDisplay.GetTextSizeModifier();
 			m_wTextHint.SetDesiredFontSize(textSize);
 			m_wTextHint.SetMinFontSize(textSize * MIN_FONTSIZE_MULTIPLIER);
 		}
-		
+
 		if (m_wComboIndicatorImage && m_wComboIndicatorShadow)
 		{
 			m_wComboIndicatorImage.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
 			m_wComboIndicatorShadow.SetSize(m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER, m_iHeightInPixel * COMBO_INDICATOR_SIZE_MULTIPLIER);
 		}
-		
+
 		m_ButtonDisplay.Resize();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool IsClickSoundDisabled()
 	{
 		return m_bDisableClickSound;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Enable / disable the click sound played when button is pressed
 	void SetClickSoundDisabled(bool isEnabled)
@@ -1039,64 +1049,6 @@ class SCR_InputButtonComponent : SCR_ButtonBaseComponent
 	bool GetForceDisabled()
 	{
 		return m_bForceDisabled;
-	}
-
-	// Connection state related methods
-	//------------------------------------------------------------------------------------------------
-	// Updates the button based on the state of services
-	static bool SetConnectionButtonEnabled(SCR_InputButtonComponent button, string serviceName, bool forceDisabled = false, bool animate = true)
-	{
-		if (!button)
-			return false;
-
-		bool serviceActive = SCR_ServicesStatusHelper.IsServiceActive(serviceName);
-		bool enabled = serviceActive && !forceDisabled;
-		button.SetEnabled(enabled, animate);
-
-		if (forceDisabled && serviceActive)
-		{
-			button.ResetTexture();
-			return true;
-		}
-
-		SetConnectionButtonTexture(button, enabled);
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Forces the button into the desired state irrelevant of services
-	static bool ForceConnectionButtonEnabled(SCR_InputButtonComponent button, bool enabled, bool animate = true)
-	{
-		if (!button)
-			return false;
-
-		button.SetEnabled(enabled, animate);
-		SetConnectionButtonTexture(button, enabled);
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static void SetConnectionButtonTexture(SCR_InputButtonComponent button, bool enabled)
-	{
-		if (!button)
-			return;
-
-		if (enabled)
-		{
-			button.ResetTexture();
-			return;
-		}
-
-		string icon = UIConstants.ICON_SERVICES_ISSUES;
-		Color color = Color.FromInt(UIColors.WARNING_DISABLED.PackToInt());
-
-		// No connection
-		if (SCR_ServicesStatusHelper.GetLastReceivedCommStatus() == SCR_ECommStatus.FAILED)
-			icon = UIConstants.ICON_DISCONNECTION;
-
-		button.SetTexture(UIConstants.ICONS_IMAGE_SET, icon, color);
 	}
 
 	//------------------------------------------------------------------------------------------------

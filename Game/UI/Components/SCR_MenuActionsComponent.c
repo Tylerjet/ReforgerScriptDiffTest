@@ -16,6 +16,9 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 
 	protected bool m_bHasActionListeners;
 
+	protected ref array<SCR_MenuActionPreset> m_aPressActions = {};
+	protected ref array<SCR_MenuActionPreset> m_aValueActions = {};
+	
 	protected ref ScriptInvokerAction m_OnAction;
 
 	//------------------------------------------------------------------------------------------------
@@ -23,6 +26,27 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 	{
 		super.HandlerAttached(w);
 
+		// Setup actions
+		foreach (SCR_MenuActionPreset action : m_aActions)
+		{
+			switch (action.m_eActionTrigger)
+			{
+				case EActionTrigger.UP:
+				case EActionTrigger.DOWN:
+				case EActionTrigger.PRESSED:
+				{
+					m_aPressActions.Insert(action);
+					break;
+				}
+				
+				case EActionTrigger.VALUE:
+				{
+					m_aValueActions.Insert(action);
+					break;
+				}
+			}
+		}
+		
 		AddActionListenersDelayed(m_iDelay);
 		
 		SCR_MenuHelper().GetOnMenuFocusLost().Insert(OnMenuDeactivated);
@@ -57,17 +81,44 @@ class SCR_MenuActionsComponent : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------------------------
 	//! Bind this in your menu
-	protected void OnAction(float multiplier)
+	protected void OnAction(float multiplier, EActionTrigger reason)
 	{
 		//! We might be in a hidden tab or menu, in which case we don't want the invoker to trigger
-		if (!m_wRoot.IsVisible())
+		if (!m_wRoot.IsVisible() || !m_OnAction)
 			return;
 
 		InputManager inputManager = GetGame().GetInputManager();
-		foreach (SCR_MenuActionPreset action : m_aActions)
+		
+		switch (reason)
 		{
-			if (inputManager.GetActionTriggered(action.m_sActionName) && m_OnAction)
-				m_OnAction.Invoke(action.m_sActionName, multiplier);
+			case EActionTrigger.UP:
+			case EActionTrigger.DOWN:
+			case EActionTrigger.PRESSED:
+			{
+				foreach (SCR_MenuActionPreset action : m_aPressActions)
+				{
+					if (inputManager.GetActionTriggered(action.m_sActionName) && action.m_eInputMode == inputManager.GetLastUsedInputDevice())
+					{
+						m_OnAction.Invoke(action.m_sActionName, multiplier);
+						
+						if (!action.m_sActivationSound.IsEmpty())
+							SCR_UISoundEntity.SoundEvent(action.m_sActivationSound);
+					}
+				}
+				
+				break;
+			}
+			
+			case EActionTrigger.VALUE:
+			{
+				foreach (SCR_MenuActionPreset action : m_aValueActions)
+				{
+					if (inputManager.GetActionValue(action.m_sActionName) != 0 && action.m_eInputMode == inputManager.GetLastUsedInputDevice())
+						m_OnAction.Invoke(action.m_sActionName, multiplier);
+				}
+				
+				break;
+			}
 		}
 	}
 
@@ -172,7 +223,13 @@ class SCR_MenuActionPreset
 	[Attribute()]
 	string m_sActionName;
 
-	[Attribute("4", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EActionTrigger))]
+	[Attribute(typename.EnumToString(EActionTrigger, EActionTrigger.PRESSED), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EActionTrigger))]
 	EActionTrigger m_eActionTrigger;
+	
+	[Attribute(SCR_SoundEvent.CLICK, UIWidgets.EditBox)]
+	string m_sActivationSound;
+	
+	[Attribute(typename.EnumToString(EInputDeviceType, EInputDeviceType.MOUSE), UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EInputDeviceType))]
+	EInputDeviceType m_eInputMode;
 }
 

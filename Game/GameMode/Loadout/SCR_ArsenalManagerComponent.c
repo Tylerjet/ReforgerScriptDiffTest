@@ -5,6 +5,14 @@ class SCR_ArsenalPlayerLoadout
 	float suppliesCost = 0.0;
 }
 
+//! Used to allow certain arsenal types to be enabled or disabled
+enum SCR_EArsenalTypes
+{
+	STATIC_ENTITIES				= 1 << 0, //!< Arsenals are enabled on static entities such as arsenal boxes
+	VEHICLES					= 1 << 1, //!< Arsenals are enabled on vehicles
+	GADGETS						= 1 << 2, //!< Arsenals are enabled on gadgets
+}
+
 //~ Scriptinvokers
 void SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged(int playerId, bool hasValidLoadout);
 typedef func SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged;
@@ -27,12 +35,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 {
 	protected static SCR_ArsenalManagerComponent s_Instance;
 	
-	protected static const ref array<string> ARSENALLOADOUT_COMPONENTS_TO_CHECK = {
-		"SCR_CharacterInventoryStorageComponent",
-		"SCR_UniversalInventoryStorageComponent",
-		"EquipedWeaponStorageComponent",
-		"ClothNodeStorageComponent"
-	};
+	protected static ref array<string> ARSENALLOADOUT_COMPONENTS_TO_CHECK;
 	
 	[Attribute("{27F28CF7C6698FF8}Configs/Arsenal/ArsenalSaveTypeInfoHolder.conf", desc: "Holds a list of save types than can be used for arsenals. Any new arsenal save type should be added to the config to allow it to be set by Editor", params: "conf class=SCR_ArsenalSaveTypeInfoHolder")]
 	protected ResourceName m_sArsenalSaveTypeInfoHolder;
@@ -49,22 +52,274 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	//=== Broadcast
 	protected ref ScriptInvokerBase<SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged> m_OnPlayerLoadoutUpdated = new ScriptInvokerBase<SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged>();
 	
+	protected ref ScriptInvokerInt m_OnArsenalGameModeTypeChanged = new ScriptInvokerInt();
+	protected ref ScriptInvokerInt m_OnArsenalTypeEnabledChanged = new ScriptInvokerInt();
+	protected ref ScriptInvokerFloat m_OnLoadoutSpawnSupplyCostMultiplierChanged = new ScriptInvokerFloat();
+	
 	protected ref SCR_ArsenalSaveTypeInfoHolder m_ArsenalSaveTypeInfoHolder;
 	protected ref SCR_LoadoutSaveBlackListHolder m_LoadoutSaveBlackListHolder;
 	
 	protected bool m_bLocalPlayerLoadoutAvailable;
-	ref SCR_PlayerLoadoutData m_bLocalPlayerLoadoutData;
+	ref SCR_PlayerLoadoutData m_LocalPlayerLoadoutData;
 	
-	[Attribute("0", desc: "Cost multiplier for supplies on spawning. 0 means the cost is free. Only used in gamemodes that support supply cost on spawning", params: "-1 inf")]//, RplProp(onRplName: "OnLoadoutSpawnSupplyCostMultiplierChanged")]
+	[Attribute("0", desc: "Cost multiplier for supplies on spawning. 0 means the cost is free. Only used in gamemodes that support supply cost on spawning", params: "0 inf"), RplProp(onRplName: "OnLoadoutSpawnSupplyCostMultiplierChanged")]
 	protected float m_fLoadoutSpawnSupplyCostMultiplier;
 	
+	[RplProp(onRplName: "OnArsenalGameModeTypeChanged"), Attribute("-1", desc: "This value dictates which arsenal items are available in the gamemode. UNRESTRICTED means there are no restrictions and all items with an ArsenalItem data in the catalog manager", uiwidget: UIWidgets.SearchComboBox, enums: SCR_Enum.GetList(SCR_EArsenalGameModeType, new ParamEnum("UNRESTRICTED", "-1")))]
+	protected SCR_EArsenalGameModeType m_eArsenalGameModeType;
+	
+	[Attribute("{39B145760CDDFF59}Configs/Arsenal/ArsenalGameModeUIData.conf", desc: "Holds a list of all Arsenal Game Mode data types. Any entry in here will be displayed in the Editor attributes and can be set.", params: "conf class=SCR_ArsenalGameModeUIDataHolder")]
+	protected ResourceName m_sArsenalGameModeUIDataHolder;
+	
+	[RplProp(onRplName: "OnArsenalTypeEnabledChanged"), Attribute(SCR_Enum.GetFlagValues(SCR_EArsenalTypes).ToString(), desc: "This determinds if arsenals are enabled on All entities or non-vehicle only", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(SCR_EArsenalTypes))]
+	protected SCR_EArsenalTypes m_eArsenalTypesEnabled;
+	
+	protected ref SCR_ArsenalGameModeUIDataHolder m_ArsenalGameModeUIDataHolder;
+	
+	static void GetArsenalLoadoutComponentsToCheck(out notnull array<string> componentsToCheck)
+	{
+		componentsToCheck.Reserve(componentsToCheck.Count() + 4);
+		componentsToCheck.Insert("SCR_CharacterInventoryStorageComponent");
+		componentsToCheck.Insert("SCR_UniversalInventoryStorageComponent");
+		componentsToCheck.Insert("EquipedWeaponStorageComponent");
+		componentsToCheck.Insert("ClothNodeStorageComponent");
+	}
+	
 	//------------------------------------------------------------------------------------------------
-	//! \param[out] arsenalManager
-	//! \return
+	//! \param[out] arsenalManager The arsenal manager that is obtained
+	//! \return If arsenal manager was succesfully obtained
 	static bool GetArsenalManager(out SCR_ArsenalManagerComponent arsenalManager)
 	{
 		arsenalManager = s_Instance;
 		return s_Instance != null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] item Item to get refund supply cost for. Weapons will also calculate the cost of attachments
+	//! \param[in] arsenalComponent The arsenal component if the it is refunded to an arsenal
+	//! \param[in] mustHaveSupplyStorage If true will return -1 if no arsenal component or no resource component
+	//! \param[out] isSupplyStorageAvailable Will return false if there was no storage to put the supplies in or if there is no space left in any storage
+	//! \return Will return the calculated supply cost (this can be 0) or -1 which is the same as 0 but will hide any UI related widgets rather than showing 0
+	static float GetItemRefundAmount(notnull IEntity item, SCR_ArsenalComponent arsenalComponent, bool mustHaveSupplyStorage, out bool isSupplyStorageAvailable = true)
+	{
+		isSupplyStorageAvailable = !mustHaveSupplyStorage;
+		
+		//~ Get prefab data
+		EntityPrefabData prefabData = item.GetPrefabData();
+		if (!prefabData)
+			return -1;
+		
+		//~ Get prefab
+		ResourceName itemPrefab = prefabData.GetPrefabName();
+		if (itemPrefab.IsEmpty())
+			return -1;
+		
+		SCR_EntityCatalogManagerComponent entityCatalogManager = SCR_EntityCatalogManagerComponent.GetInstance();
+		if (!entityCatalogManager)
+			return -1;
+		
+		SCR_Faction faction;
+		SCR_EArsenalSupplyCostType supplyCostType = SCR_EArsenalSupplyCostType.DEFAULT;
+		float refundMultiplier = 1;
+		
+		SCR_ResourceGenerator generator;
+		
+		if (arsenalComponent)
+		{
+			//~ Does not use supplies
+			if (!arsenalComponent.IsArsenalUsingSupplies())
+				return -1;
+			
+			faction = arsenalComponent.GetAssignedFaction();
+			supplyCostType = arsenalComponent.GetSupplyCostType();
+			
+			SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(arsenalComponent.GetOwner().FindComponent(SCR_ResourceComponent));
+			if (resourceComponent)
+			{
+				generator = resourceComponent.GetGenerator(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+				if (generator)
+					refundMultiplier = generator.GetResourceMultiplier();
+			}
+		}
+		//~ No arsenal so so supply storage
+		else if (mustHaveSupplyStorage)
+		{
+			return -1;
+		}
+		//~ No arsenal so check if supplies are enabled or not globally
+		else if (!SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled())
+		{
+			return -1;
+		}
+		
+		//~ No generator so no storage
+		if (!generator && mustHaveSupplyStorage)
+			return -1;
+		
+		//~ Could not find the base entry
+		SCR_EntityCatalogEntry entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, itemPrefab, faction);
+		if (!entry)
+			return -1;
+		
+		array<SCR_BaseEntityCatalogData> entityDataList = {};
+		if (entry.GetEntityDataList(entityDataList) <= 0)
+			return -1;
+		
+		//~ The total item cost
+		float itemCost;
+		
+		SCR_ArsenalItem arsenalData;
+		SCR_NonArsenalItemCostCatalogData nonArsenalData;
+		
+		//~ Get the supply cost of entry
+		foreach (SCR_BaseEntityCatalogData data : entityDataList)
+		{
+			arsenalData = SCR_ArsenalItem.Cast(data);
+			if (arsenalData)
+			{
+				itemCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyCost(supplyCostType, false) * refundMultiplier);
+				break;
+			}
+			
+			nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
+			if (nonArsenalData)
+			{
+				itemCost = SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
+				break;
+			}
+		}
+		
+		//~ Get attachments cost if the item is a weapon
+		if (arsenalData && (arsenalData.GetItemMode() == SCR_EArsenalItemMode.WEAPON || arsenalData.GetItemMode() == SCR_EArsenalItemMode.WEAPON_VARIANTS))
+		{
+			array<Managed> attachments = {};
+			item.FindComponents(AttachmentSlotComponent, attachments);
+			
+			IEntity attachedEntity;
+			ResourceName attachmentPrefab;
+			
+			AttachmentSlotComponent attachment;
+			
+			foreach (Managed managed : attachments)
+			{
+				attachment = AttachmentSlotComponent.Cast(managed);
+				if (!attachment)
+					continue;
+				
+				attachedEntity = attachment.GetAttachedEntity();
+				if (!attachedEntity)
+					continue;
+				
+				prefabData = attachedEntity.GetPrefabData();
+				if (!prefabData)
+					continue;
+				
+				attachmentPrefab = prefabData.GetPrefabName();
+				if (attachmentPrefab.IsEmpty())
+					continue;
+				
+				entry = entityCatalogManager.GetEntryWithPrefabFromAnyCatalog(EEntityCatalogType.ITEM, attachmentPrefab, faction);
+				if (!entry)
+					continue;
+				
+				if (entry.GetEntityDataList(entityDataList) <= 0)
+					continue;
+				
+				//~ Get the supply cost of attachment
+				foreach (SCR_BaseEntityCatalogData data : entityDataList)
+				{
+					arsenalData = SCR_ArsenalItem.Cast(data);
+					if (arsenalData)
+					{
+						itemCost += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(arsenalData.GetSupplyCost(supplyCostType, false) * refundMultiplier);
+						break;
+					}
+					
+					nonArsenalData = SCR_NonArsenalItemCostCatalogData.Cast(data);
+					if (nonArsenalData)
+					{
+						itemCost += SCR_ResourceSystemHelper.RoundRefundSupplyAmount(nonArsenalData.GetSupplyCost(supplyCostType) * refundMultiplier);
+						break;
+					}
+				}
+			}
+		}
+	
+		//~ Can the supplies be stored?
+		if (mustHaveSupplyStorage)
+		{
+			isSupplyStorageAvailable = itemCost == 0;
+			
+			if (itemCost > 0 && generator)
+				isSupplyStorageAvailable = itemCost > 0 && generator.GetAggregatedResourceValue() + itemCost <= generator.GetAggregatedMaxResourceValue();
+		}
+		
+		return itemCost;	
+	}
+
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Arsenal type flags enabled in the game mode
+	SCR_EArsenalTypes GetEnabledArsenalTypes()
+	{
+		return m_eArsenalTypesEnabled;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return True if given arsenal flag is enabled in gamemode
+	static bool IsArsenalTypeEnabled_Static(SCR_EArsenalTypes arsenalType)
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		
+		if (!GetArsenalManager(arsenalManager))
+			return false;
+		
+		return arsenalManager.IsArsenalTypeEnabled(arsenalType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return True if given arsenal flag is enabled in gamemode
+	bool IsArsenalTypeEnabled(SCR_EArsenalTypes arsenalType)
+	{
+		return SCR_Enum.HasFlag(m_eArsenalTypesEnabled, arsenalType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Changes the enabled arsenal types which will enable/disable the arsenals in the world if the player did not enable the arsenal already
+	//! \param[in] newEnabledArsenalType All arsenal type flags that are enabled
+	//! \param[in] playerID Optional to send notification on arsenal types changed
+	void SetEnabledArsenalTypes(SCR_EArsenalTypes newEnabledArsenalTypes, int playerID = -1)
+	{		
+		if (newEnabledArsenalTypes == m_eArsenalTypesEnabled)
+			return;
+		
+		//~ Server only
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if ((gameMode && !gameMode.IsMaster()) || (!gameMode && Replication.IsClient()))
+			return;
+		
+		m_eArsenalTypesEnabled = newEnabledArsenalTypes;
+		
+		if (playerID > 0)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_CHANGED_ARSENAL_TYPE_ENABLED, playerID);
+		
+		Replication.BumpMe();
+		
+		if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
+			OnArsenalTypeEnabledChanged();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Script invoker on enabled arsenal types changed. Sends over the current enabled arsenal flags
+	ScriptInvokerInt GetOnArsenalTypeEnabledChanged()
+	{
+		return m_OnArsenalTypeEnabledChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnArsenalTypeEnabledChanged()
+	{
+		m_OnArsenalTypeEnabledChanged.Invoke(m_eArsenalTypesEnabled);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -75,29 +330,100 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! \return The current Arsenal Game mode type. -1 Means it is unrestricted
+	static SCR_EArsenalGameModeType GetArsenalGameModeType_Static()
+	{
+		SCR_ArsenalManagerComponent arsenalManager;
+		
+		if (!GetArsenalManager(arsenalManager))
+			return -1;
+		
+		return arsenalManager.GetArsenalGameModeType();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return The current Arsenal Game mode type. -1 Means it is unrestricted
+	SCR_EArsenalGameModeType GetArsenalGameModeType()
+	{
+		return m_eArsenalGameModeType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] arsenalGameModeType Mode to set, -1 means the mode is unrestricted
+	//! \param[in] playerID Optional to send notification that the arsenal mode has been changed
+	void SetArsenalGameModeType_S(SCR_EArsenalGameModeType arsenalGameModeType, int playerID = 0)
+	{
+		//~ Server only
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if ((gameMode && !gameMode.IsMaster()) || (!gameMode && Replication.IsClient()))
+			return;
+		
+		//~ Set Unrestricted
+		if (arsenalGameModeType <= 0)
+			arsenalGameModeType = -1;
+		
+		//~ Send notification
+		if (playerID > 0)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_ATTRIBUTES_CHANGED_ARSENAL_GAMEMODE_TYPE, playerID, arsenalGameModeType);
+		
+		m_eArsenalGameModeType = arsenalGameModeType;
+		Replication.BumpMe();
+		
+		if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
+			OnArsenalGameModeTypeChanged();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[in] arsenalGameModeType Type to get Ui info for. -1 gets the unrestricted game mode type
+	//! \return UI info of given Arsenal Mode type.
+	SCR_UIInfo GetArsenalGameModeUIInfo(SCR_EArsenalGameModeType arsenalGameModeType)
+	{
+		if (!m_ArsenalGameModeUIDataHolder)
+		{
+			Print("Arsenal Manager is missing the 'm_ArsenalGameModeUIDataHolder'!", LogLevel.WARNING);
+		
+			SCR_UIInfo unknown = new SCR_UIInfo();
+			unknown.SetName("MISSING");
+			return unknown;
+		}
+		
+		return m_ArsenalGameModeUIDataHolder.GetArsenalGameModeUIInfo(arsenalGameModeType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[inout] arsenalGameModeTypeUIInfoList Return list off all the UI data for the arsenal Game mode type
+	//! \return Count of all the arsenal game mode types
+	int GetArsenalGameModeUIInfoList(inout notnull array<SCR_ArsenalGameModeUIData> arsenalGameModeTypeUIInfoList)
+	{
+		arsenalGameModeTypeUIInfoList.Clear();
+		
+		if (!m_ArsenalGameModeUIDataHolder)
+		{
+			Print("Arsenal Manager is missing the 'm_ArsenalGameModeUIDataHolder'!", LogLevel.WARNING);
+			return 0;
+		}
+		
+		return m_ArsenalGameModeUIDataHolder.GetArsenalGameModeUIInfoList(arsenalGameModeTypeUIInfoList);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnArsenalGameModeTypeChanged()
+	{
+		m_OnArsenalGameModeTypeChanged.Invoke(m_eArsenalGameModeType);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \return Script invoker when arsenal Game mode type changes
+	ScriptInvokerInt GetOnArsenalGameModeTypeChanged()
+	{
+		return m_OnArsenalGameModeTypeChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \return Get Loadout save blacklist holder
 	SCR_LoadoutSaveBlackListHolder GetLoadoutSaveBlackListHolder()
 	{
 		return m_LoadoutSaveBlackListHolder;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnPlayerChangedFaction(int playerId, SCR_PlayerFactionAffiliationComponent playerFactionAffiliation, Faction faction)
-	{
-		string playerUID = GetGame().GetBackendApi().GetPlayerIdentityId(playerId);
-		if (!m_aPlayerLoadouts.Contains(playerUID))
-			return;
-		
-		/*Faction playerFaction = playerFactionAffiliation.GetAffiliatedFaction();
-		
-		//~ Remove loadout from map on server and inform players
-		//! Don't remove player loadout if faction is null (aka disconnect)
-		if (playerFaction && faction)
-		{
-			m_aPlayerLoadouts.Remove(playerUID);
-			DoPlayerClearHasLoadout(playerId);
-			Rpc(DoPlayerClearHasLoadout, playerId);
-		}*/
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -134,7 +460,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		if (!m_bLocalPlayerLoadoutAvailable)
 			return;
 		
-		//~ No local loadout availible anymore
+		//~ No local loadout available anymore
 		m_bLocalPlayerLoadoutAvailable = false;
 		
 		//~ Player loadout was cleared. This can happen when respawn menu is open and needs to be refreshed
@@ -151,7 +477,14 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	//! \return
 	bool GetLocalPlayerLoadoutAvailable()
 	{
-		return m_bLocalPlayerLoadoutAvailable;
+		if (!m_bLocalPlayerLoadoutAvailable || !m_LocalPlayerLoadoutData)
+			return false;
+		
+		Faction faction = SCR_FactionManager.SGetLocalPlayerFaction();
+		if (!faction)
+			return false;
+
+		return m_LocalPlayerLoadoutData.FactionIndex == GetGame().GetFactionManager().GetFactionIndex(faction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -172,8 +505,10 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~ TODO: Add ability to set Cost multiplier in run time
-	/*void SetLoadoutSpawnCostMultiplier(float multiplier, int playerID)
+	//! Set the loadout supply multiplier (Server only)
+	//! \param[in] multiplier new multiplier to set
+	//! \param[in] playerID To send Notifications (optional)
+	void SetLoadoutSpawnCostMultiplier_S(float multiplier, int playerID = 0)
 	{
 		//~ Same or invalid values
 		if (m_fLoadoutSpawnSupplyCostMultiplier == multiplier || multiplier < 0)
@@ -188,12 +523,12 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		
 		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 		if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
-			OnLoadoutSupplyCostMultiplierChanged();
-	}*/
+			OnLoadoutSpawnSupplyCostMultiplierChanged();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return The spawn cost multiplier. Will always be 0 if supplies are disabled
-	float GetLoadoutSpawnSupplyCostMultiplier()
+	float GetCalculatedLoadoutSpawnSupplyCostMultiplier()
 	{
 		if (!SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled())
 			return 0;
@@ -202,61 +537,84 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*protected void OnLoadoutSpawnSupplyCostMultiplierChanged()
+	//! \return The spawn cost multiplier. Does not care if supplies are enabled. Only used by editor
+	float GetLoadoutSpawnSupplyCostMultiplier()
 	{
-	
-	}*/
-	
-	//------------------------------------------------------------------------------------------------
-	/*static int GetLoadoutCalculatedSupplyCost_S(SCR_BasePlayerLoadout playerLoadout, int playerID, SCR_CampaignMilitaryBaseComponent base, SCR_ResourceComponent resourceComponent)
-	{
-		GetLoadoutCalculatedSupplyCost(playerLoadout, playerID, null, base, resourceComponent);
+		return m_fLoadoutSpawnSupplyCostMultiplier;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	static int GetLoadoutCalculatedSupplyCost_C(SCR_BasePlayerLoadout playerLoadout, SCR_Faction playerFaction, SCR_CampaignMilitaryBaseComponent base, SCR_ResourceComponent resourceComponent)
+	protected void OnLoadoutSpawnSupplyCostMultiplierChanged()
 	{
-		GetLoadoutCalculatedSupplyCost(playerLoadout, playerID, playerFaction, base, resourceComponent);
-	}*/
+		m_OnLoadoutSpawnSupplyCostMultiplierChanged.Invoke(m_fLoadoutSpawnSupplyCostMultiplier);
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	//~ TODO: Make sure that this function takes the resourceComponent from SpawnPoint alternativly if it does not try to spawn at base
+	//! \return ScriptInvoker on Loadout spawn cost multiplier changed
+	ScriptInvokerFloat GetOnLoadoutSpawnSupplyCostMultiplierChanged()
+	{
+		return m_OnLoadoutSpawnSupplyCostMultiplierChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Get the cost of spawning as a player at given base
 	//! \param[in] playerLoadout Loadout to check supply cost for
 	//! \param[in] getLocalPlayer If true and the loadout is a SCR_PlayerArsenalLoadout then it will get the locally stored data for the arsenal loadout
 	//! \param[in] playerID Player ID of player that want's to spawn, Required only if !getLocalPlayer
 	//! \param[in] playerFaction (Optional) Faction of player to spawn to speed up getting the spawn cost data from Catalog
-	//! \param[in] base Which Base is  the player trying to spawn (if any)
-	//! \param[in] resourceComponent Respawn component of spawnpoint/base it is trying to spawn at
+	//! \param[in] spawnTarget Spawnpoint of spawn location. Not required but without it, it cannot know if the spawnpoint has supplies enabled or other values if the spawnpoint is a base
+	//! \param[out] spawnPointParentBase Returns the base if the spawnpoint is a base composition
+	//! \param[out] spawnpointResourceComponent Returns the Resource component from the spawnpoint or base
 	//! \return Returns the total cost of spawning with the given loadout
-	static float GetLoadoutCalculatedSupplyCost(notnull SCR_BasePlayerLoadout playerLoadout, bool getLocalPlayer, int playerID, SCR_Faction playerFaction, SCR_CampaignMilitaryBaseComponent base, SCR_ResourceComponent resourceComponent)
-	{				
+	static float GetLoadoutCalculatedSupplyCost(notnull SCR_BasePlayerLoadout playerLoadout, bool getLocalPlayer, int playerID, SCR_Faction playerFaction, IEntity spawnTarget, out SCR_CampaignMilitaryBaseComponent spawnPointParentBase = null, out SCR_ResourceComponent spawnpointResourceComponent = null)
+	{	
+		//~ Check if spawn cost is enabled
 		float multiplier = 1;
 		SCR_ArsenalManagerComponent arsenalManager;
 		if (!GetArsenalManager(arsenalManager))
 			return 0;
 		
-		multiplier = arsenalManager.GetLoadoutSpawnSupplyCostMultiplier();
+		if (spawnTarget)
+		{
+			IEntity parent = spawnTarget;
+			
+			//~ Check if spawn target is a base
+			while (parent)
+			{
+				spawnPointParentBase = SCR_CampaignMilitaryBaseComponent.Cast(parent.FindComponent(SCR_CampaignMilitaryBaseComponent));
+	
+				if (spawnPointParentBase)
+					break;
+	
+				parent = parent.GetParent();
+			}
+			
+			if (spawnPointParentBase)
+				spawnpointResourceComponent = spawnPointParentBase.GetResourceComponent();
+			else 
+				spawnpointResourceComponent = SCR_ResourceComponent.FindResourceComponent(spawnTarget);
+		}
+		
+		multiplier = arsenalManager.GetCalculatedLoadoutSpawnSupplyCostMultiplier();
 		
 		//~ Spawn multiplier is 0
 		if (multiplier <= 0)
 			return 0;
 		
 		//~ Supplies are disabled
-		if (resourceComponent && !resourceComponent.IsResourceTypeEnabled())
+		if (spawnpointResourceComponent && !spawnpointResourceComponent.IsResourceTypeEnabled())
 			return 0;
-		else if (!resourceComponent && !SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled())
+		else if (!spawnpointResourceComponent && !SCR_ResourceSystemHelper.IsGlobalResourceTypeEnabled())
 			return 0;
 
 		float baseMultiplier = 0;
 		
-		//~ TODO: Deploy menu does not know which base (Or Spawnpoint Resource Component) the player is trying to spawn at
-		if (base)
+		if (spawnPointParentBase)
 		{
-			if (!base.CostSuppliesToSpawn())
+			if (!spawnPointParentBase.CostSuppliesToSpawn())
 				return 0;
 			
-			baseMultiplier = base.GetBaseSpawnCostFactor();
+			baseMultiplier = spawnPointParentBase.GetBaseSpawnCostFactor();
 		}
 			
 		SCR_PlayerArsenalLoadout playerArsenalLoadout = SCR_PlayerArsenalLoadout.Cast(playerLoadout);
@@ -266,12 +624,12 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
 			
 			//~ Local
-			if (getLocalPlayer && arsenalManager.m_bLocalPlayerLoadoutData)
+			if (getLocalPlayer && arsenalManager.m_LocalPlayerLoadoutData)
 			{
 				if (baseMultiplier > 0)
-					return Math.Clamp(arsenalManager.m_bLocalPlayerLoadoutData.LoadoutCost * baseMultiplier, 0, float.MAX);
+					return Math.Clamp(arsenalManager.m_LocalPlayerLoadoutData.LoadoutCost * baseMultiplier, 0, float.MAX);
 				else
-					return Math.Clamp(arsenalManager.m_bLocalPlayerLoadoutData.LoadoutCost, 0, float.MAX);
+					return Math.Clamp(arsenalManager.m_LocalPlayerLoadoutData.LoadoutCost, 0, float.MAX);
 			}
 			//~ Server
 			else if ((gameMode && gameMode.IsMaster()) || (!gameMode && Replication.IsServer()))
@@ -282,10 +640,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 					return Math.Clamp(playerArsenalLoadout.GetLoadoutSuppliesCost(playerID), 0, float.MAX);
 			}
 			
-			//~ No custom loadout found so spawn cost is base cost or 0 if no base is given
-			if (base)
-				return Math.Clamp(base.GetBaseSpawnCost(), 0, float.MAX);
-			
+			//~ No custom loadout found so spawn cost is 0
 			return 0;
 		}
 		//~ Not an arsenal loadout so take cost from catalog
@@ -375,11 +730,11 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			return false;
 		}
 			
-		SCR_EntityCatalog itemCatalog;
+		array<SCR_EntityCatalog> itemCatalogs = {};
 		SCR_ArsenalInventoryStorageManagerComponent arsenalInventory;
 		
 		//~ Check either faction or arsenal inventory if item is in it
-		if (arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY || arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.IN_ARSENAL_ITEMS_ONLY)
+		if (arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY || arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FRIENDLY_AND_FACTION_ITEMS_ONLY || arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.IN_ARSENAL_ITEMS_ONLY)
 		{			
 			if (arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FACTION_ITEMS_ONLY)
 			{				
@@ -398,7 +753,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 					return true;
 				}
 				
-				itemCatalog = playerFaction.GetFactionEntityCatalogOfType(EEntityCatalogType.ITEM);
+				SCR_EntityCatalog itemCatalog = playerFaction.GetFactionEntityCatalogOfType(EEntityCatalogType.ITEM);
 				if (!itemCatalog)
 				{
 					Print(string.Format("'SCR_ArsenalManagerComponent' is checking 'CanSaveArsenal()' but player faction '%1' has no ITEM catalog!", playerFaction.GetFactionKey()), LogLevel.ERROR);
@@ -408,10 +763,65 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 					
 					return false;
 				}
+				else 
+				{
+					itemCatalogs.Insert(itemCatalog);
+				}
+			}
+			else if (arsenalComponent.GetArsenalSaveType() == SCR_EArsenalSaveType.FRIENDLY_AND_FACTION_ITEMS_ONLY)
+			{				
+				//~ Player has no faction affiliation comp
+				if (!playerFactionAffiliation)
+				{
+					Print("'SCR_ArsenalManagerComponent' is checking 'CanSaveArsenal()' but player has no faction affiliation component, arsenal saving will simply be allowed", LogLevel.WARNING);
+					return true;
+				}
+				
+				SCR_Faction playerFaction = SCR_Faction.Cast(playerFactionAffiliation.GetAffiliatedFaction());
+				//~ Player has no faction
+				if (!playerFaction)
+				{
+					Print("'SCR_ArsenalManagerComponent' is checking 'CanSaveArsenal()' but player has no SCR_Faction, arsenal saving will simply be allowed", LogLevel.WARNING);
+					return true;
+				}
+				
+				array<Faction> friendlyFactions = {};
+				if (playerFaction.GetFriendlyFactions(friendlyFactions) == 0)
+				{
+					if (sendNotificationOnFailed)
+						SCR_NotificationsComponent.SendToPlayer(playerId, ENotification.PLAYER_LOADOUT_NOT_SAVED);
+					
+					return false;
+				}
+					
+				SCR_Faction scrFaction;
+				SCR_EntityCatalog itemCatalog;
+				
+				foreach (Faction faction : friendlyFactions)
+				{
+					scrFaction = SCR_Faction.Cast(faction);
+					if (!scrFaction)
+						continue;
+					
+					itemCatalog = scrFaction.GetFactionEntityCatalogOfType(EEntityCatalogType.ITEM);
+					if (!itemCatalog)
+						continue;
+					
+					itemCatalogs.Insert(itemCatalog);
+				}
+				
+				if (itemCatalogs.IsEmpty())
+				{
+					if (sendNotificationOnFailed)
+						SCR_NotificationsComponent.SendToPlayer(playerId, ENotification.PLAYER_LOADOUT_NOT_SAVED);
+				
+					//~ Failed to find any item catalogs
+					return false;
+				}
 			}
 			else 
 			{
-				arsenalInventory = SCR_ArsenalInventoryStorageManagerComponent.Cast(arsenalComponent.GetArsenalInventoryComponent());
+				arsenalInventory = arsenalComponent.GetArsenalInventoryComponent();
 				if (!arsenalInventory)
 				{
 					Print("'SCR_ArsenalManagerComponent' is checking 'CanSaveArsenal()' and arsenal check type is 'IN_ARSENAL_ITEMS_ONLY' but arsenal has no SCR_ArsenalInventoryStorageManagerComponent, so saving is simply allowed", LogLevel.WARNING);
@@ -426,7 +836,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		
 		EntityPrefabData prefabData;
 		RplComponent itemRplComponent;
-		string resourceName;
+		ResourceName resourceName;
 		
 		int invalidItemCount = 0;
 		
@@ -450,7 +860,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 			checkedEntities.Insert(resourceName);
 			
 			//~ Check if item is blacklisted if there is a blacklist
-			if (m_LoadoutSaveBlackListHolder && m_LoadoutSaveBlackListHolder.GetBlackListsCount() != 0)
+			if (m_LoadoutSaveBlackListHolder)
 			{
 				//~ Item is blackListed so do not allow saving
 				if (m_LoadoutSaveBlackListHolder.IsPrefabBlacklisted(resourceName))
@@ -484,11 +894,20 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 					continue;
 				}
 			}
-			//~ Check item catalog
-			else if (itemCatalog)
-			{
-				//~ Item not in faction catalog so cannot save
-				if (!itemCatalog.GetEntryWithPrefab(resourceName))
+			//~ Check item catalog(s)
+			else if (!itemCatalogs.IsEmpty())
+			{						
+				bool itemFound;
+				foreach(SCR_EntityCatalog itemCatalog : itemCatalogs)
+				{
+					if (itemCatalog.GetEntryWithPrefab(resourceName))
+					{
+						itemFound = true;
+						break;
+					}
+				}
+				
+				if (!itemFound)
 				{
 					if (sendNotificationOnFailed)
 					{
@@ -764,6 +1183,9 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		{
 			playerLoadout.loadoutData = GetPlayerLoadoutData(characterEntity);
 			playerLoadout.loadoutData.LoadoutCost = SCR_PlayerArsenalLoadout.GetLoadoutSuppliesCost(playerUID);
+			
+			playerLoadout.loadoutData.FactionIndex = GetGame().GetFactionManager().GetFactionIndex(SCR_FactionManager.SGetPlayerFaction(playerId));
+			
 			DoSendPlayerLoadout(playerId, playerLoadout.loadoutData);
 			Rpc(DoSendPlayerLoadout, playerId, playerLoadout.loadoutData);
 		}
@@ -804,8 +1226,8 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 				if (m_bLocalPlayerLoadoutAvailable != loadoutValid || loadoutChanged)
 				{
 					//~ Send notification with loadout cost
-					if (GetLoadoutSpawnSupplyCostMultiplier() > 0 && m_bLocalPlayerLoadoutData)
-						SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_LOADOUT_SAVED_SUPPLY_COST, m_bLocalPlayerLoadoutData.LoadoutCost);
+					if (m_LocalPlayerLoadoutData && GetCalculatedLoadoutSpawnSupplyCostMultiplier() > 0)
+						SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_LOADOUT_SAVED_SUPPLY_COST, m_LocalPlayerLoadoutData.LoadoutCost);
 					//~ Set notification without loadout cost
 					else
 						SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_LOADOUT_SAVED);
@@ -826,7 +1248,7 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	protected void DoSendPlayerLoadout(int playerId, SCR_PlayerLoadoutData loadoutData)
 	{
 		if (playerId == SCR_PlayerController.GetLocalPlayerId())
-			m_bLocalPlayerLoadoutData = loadoutData;
+			m_LocalPlayerLoadoutData = loadoutData;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -845,13 +1267,6 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		//~ Init item black list (Server only). Call one frame later to make sure catalogs are initalized
 		if (m_LoadoutSaveBlackListHolder)
 			GetGame().GetCallqueue().CallLater(m_LoadoutSaveBlackListHolder.Init);
-		
-		if (!GetGameMode().IsMaster())
-			return; 
-		
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (factionManager)
-			factionManager.GetOnPlayerFactionChanged_S().Insert(OnPlayerChangedFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -859,9 +1274,16 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	{	
 		if (s_Instance || SCR_Global.IsEditMode())
 			return;
+		
+		ARSENALLOADOUT_COMPONENTS_TO_CHECK = {};
+		GetArsenalLoadoutComponentsToCheck(ARSENALLOADOUT_COMPONENTS_TO_CHECK);
 
 		s_Instance = SCR_ArsenalManagerComponent.Cast(GetGameMode().FindComponent(SCR_ArsenalManagerComponent));
 		SetEventMask(owner, EntityEvent.INIT);
+		
+		m_ArsenalGameModeUIDataHolder = SCR_ArsenalGameModeUIDataHolder.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sArsenalGameModeUIDataHolder, true));
+		if (!m_ArsenalGameModeUIDataHolder)
+			Print("'SCR_ArsenalManagerComponent' failed to loadm_Arsenal GameMode UI Data Holder config!", LogLevel.WARNING);
 		
 		//~ Get config for saveType holder. This is used by arsenals in the world
 		m_ArsenalSaveTypeInfoHolder = SCR_ArsenalSaveTypeInfoHolder.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sArsenalSaveTypeInfoHolder, true));
@@ -872,15 +1294,62 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 		if (GetGameMode().IsMaster())
 			m_LoadoutSaveBlackListHolder = SCR_LoadoutSaveBlackListHolder.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sLoadoutSaveBlackListHolder, false));		
 	}
+}
+
+[BaseContainerProps(configRoot: true)]
+class SCR_ArsenalGameModeUIDataHolder
+{
+	[Attribute(desc: "List of UIInfo for Arsenal GameMode types, Used for editor attributes and notifications. Only types in this list will be displayed in editor")]
+	protected ref array<ref SCR_ArsenalGameModeUIData> m_aArsenalGameModeTypeUIInfoList;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnDelete(IEntity owner)
+	//! \param[in] arsenalGameModeType Type to get Ui info for. -1 gets the unrestricted game mode type
+	//! \return UI info of given Arsenal Mode type.
+	SCR_UIInfo GetArsenalGameModeUIInfo(SCR_EArsenalGameModeType arsenalGameModeType)
 	{
-		if (SCR_Global.IsEditMode() || !GetGameMode() || !GetGameMode().IsMaster())
-			return; 
+		if (arsenalGameModeType <= 0)
+			arsenalGameModeType = -1;
 		
-		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
-		if (factionManager)
-			factionManager.GetOnPlayerFactionChanged_S().Remove(OnPlayerChangedFaction);
+		//~ Get the game mode type
+		foreach (SCR_ArsenalGameModeUIData data : m_aArsenalGameModeTypeUIInfoList)
+		{
+			if (data.m_eArsenalGameModeType == arsenalGameModeType)
+				return data.m_UIInfo;
+		}
+		
+		Print("Cannot find  arsenal Game Mode type for '" + typename.EnumToString(SCR_EArsenalGameModeType, arsenalGameModeType) + "'!", LogLevel.WARNING);
+		
+		SCR_UIInfo unknown = new SCR_UIInfo();
+		unknown.SetName("MISSING");
+
+		return unknown; 
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! \param[inout] arsenalGameModeTypeUIInfoList Returns a list of all the UI data for the arsenal Game mode type
+	//! \return Count of all the arsenal game mode types
+	int GetArsenalGameModeUIInfoList(inout notnull array<SCR_ArsenalGameModeUIData> arsenalGameModeTypeUIInfoList)
+	{
+		arsenalGameModeTypeUIInfoList.Clear();
+		
+		foreach (SCR_ArsenalGameModeUIData data : m_aArsenalGameModeTypeUIInfoList)
+		{
+			if (!data)
+				continue;
+			
+			arsenalGameModeTypeUIInfoList.Insert(data);
+		}
+		
+		return arsenalGameModeTypeUIInfoList.Count();
+	}
+}
+
+[BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_UIInfo")]
+class SCR_ArsenalGameModeUIData
+{
+	[Attribute(uiwidget: UIWidgets.SearchComboBox, enums: SCR_Enum.GetList(SCR_EArsenalGameModeType, new ParamEnum("UNRESTRICTED", "-1")))]
+	SCR_EArsenalGameModeType m_eArsenalGameModeType;
+	
+	[Attribute()]
+	ref SCR_UIInfo m_UIInfo;
 }

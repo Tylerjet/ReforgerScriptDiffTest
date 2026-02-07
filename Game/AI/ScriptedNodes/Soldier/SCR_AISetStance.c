@@ -2,9 +2,6 @@ class SCR_AISetStance : SCR_AICharacterStats
 {
 	[Attribute("0", UIWidgets.ComboBox, "Desired character stance", "", ParamEnumArray.FromEnum(ECharacterStance) )]
 	private ECharacterStance m_eStance;
-	
-	[Attribute("0", UIWidgets.CheckBox, "Should reset stance to Standing when node is aborted")]
-	private bool m_bStandupOnAbort;
 
 	static const string STANCE_PORT = "Stance";
 	
@@ -17,29 +14,24 @@ class SCR_AISetStance : SCR_AICharacterStats
 			return ENodeResult.FAIL;
 		
 		ECharacterStance stance;
+		ECharacterStance allowedStance;
 		
 		if(!GetVariableIn(STANCE_PORT,stance))
 			stance = m_eStance;
 		
-		m_AIInfo.SetStance(stance);
-		m_CharacterController.SetStanceChange(ConvertStanceToInt(stance));
+		AIGroup group = owner.GetParentGroup();
+		if (!group)
+			return ENodeResult.SUCCESS;
+		
+		SCR_AIGroupInfoComponent groupInfoComp = SCR_AIGroupInfoComponent.Cast(group.FindComponent(SCR_AIGroupInfoComponent));
+		if (!groupInfoComp)
+			return ENodeResult.FAIL;
+		
+		allowedStance = groupInfoComp.GetAllowedStance(stance);
+		
+		SCR_AIStanceHandling.SetStance(m_AIInfo, m_CharacterController, allowedStance);
 
 		return ENodeResult.SUCCESS;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	int ConvertStanceToInt(ECharacterStance stance)
-	{
-		switch (stance)
-		{
-			case ECharacterStance.STAND:
-				return ECharacterStanceChange.STANCECHANGE_TOERECTED;
-			case ECharacterStance.CROUCH:
-				return ECharacterStanceChange.STANCECHANGE_TOCROUCH;
-			case ECharacterStance.PRONE:
-				return ECharacterStanceChange.STANCECHANGE_TOPRONE;
-		}
-		return 0;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -73,21 +65,5 @@ class SCR_AISetStance : SCR_AICharacterStats
 			if (!m_CharacterController)
 				NodeError(this, owner, "Can't find CharacterControllerComponent.");
 		}	
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnAbort(AIAgent owner, Node nodeCausingAbort)
-	{
-		if (!m_bStandupOnAbort)
-		{
-			super.OnAbort(owner, nodeCausingAbort);
-			return;
-		}
-		
-		if (m_AIInfo)
-			m_AIInfo.SetStance(ECharacterStance.STAND);
-		if (m_CharacterController)
-			m_CharacterController.SetStanceChange(ConvertStanceToInt(ECharacterStance.STAND));		
-		super.OnAbort(owner, nodeCausingAbort);
 	}
 };

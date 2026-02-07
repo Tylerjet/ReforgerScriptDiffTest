@@ -275,7 +275,7 @@ class SCR_EntityCatalogEntry
 	\param catalog Catalog entry is in
 	\param index Index within catalog
 	*/
-	void InitEntry(SCR_EntityCatalog catalog, int catalogIndex)
+	void InitEntry(notnull SCR_EntityCatalog catalog, int catalogIndex)
 	{
 		//~ Set idexes for easy getting the entry from the catalog
 		if (GetCatalogIndex() == -1)
@@ -293,6 +293,22 @@ class SCR_EntityCatalogEntry
 		foreach (SCR_BaseEntityCatalogData data: entityDataList)
 		{
 			data.InitData(this);
+		}
+	}
+	
+	//--------------------------------- Class Specific Post Init ---------------------------------\\
+	/*!
+	Post Init for general entry. Called one frame after init is called
+	Only set by Catalog parent on post init. Should not be overwritten
+	\param[i] catalog Catalog entry is in
+	*/
+	void PostInitEntry(SCR_EntityCatalog catalog)
+	{
+		array<SCR_BaseEntityCatalogData> entityDataList = {};
+		GetEntityDataList(entityDataList);
+		foreach (SCR_BaseEntityCatalogData data: entityDataList)
+		{
+			data.PostInitData(this);
 		}
 	}
 	

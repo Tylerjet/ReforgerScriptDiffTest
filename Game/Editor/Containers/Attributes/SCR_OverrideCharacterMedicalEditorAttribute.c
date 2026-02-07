@@ -26,7 +26,7 @@ class SCR_OverrideCharacterMedicalEditorAttribute : SCR_BaseEditorAttribute
 		if (characterDamageManager.GetState() == EDamageState.DESTROYED)  
 			return null;
 		
-		return SCR_BaseEditorAttributeVar.CreateBool(characterDamageManager.GetOverrideCharacterMedical());
+		return SCR_BaseEditorAttributeVar.CreateBool(characterDamageManager.GetOverrideCharacterMedicalGMAttribute());
 	}
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
@@ -74,11 +74,11 @@ class SCR_OverrideCharacterMedicalEditorAttribute : SCR_BaseEditorAttribute
 			if (!gameModeHealthSettings) 
 				return;
 			
-			characterDamageManager.SetDOTScale(gameModeHealthSettings.GetBleedingScale(), false);
+			characterDamageManager.SetBleedingScale(gameModeHealthSettings.GetBleedingScale(), false);
 			characterDamageManager.SetRegenScale(gameModeHealthSettings.GetRegenScale(), false);
 			characterDamageManager.SetPermitUnconsciousness(gameModeHealthSettings.IsUnconsciousnessPermitted(), true);
 		}
 		
-		characterDamageManager.SetOverrideCharacterMedical(value);
+		characterDamageManager.SetOverrideCharacterMedicalGMAttribute(value);
 	}
 };

@@ -135,7 +135,7 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 		{
 			m_bIsZooming = false;
 			
-			float screenX, screenY, screenSX, screenSY;
+			float screenX, screenY;
 			m_MapEntity.WorldToScreen( m_fWorldX, m_fWorldY, screenX, screenY, true );
 				
 			m_fPosX = screenX;
@@ -185,6 +185,8 @@ class SCR_MapRulerUI : SCR_MapUIBaseComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnInputQuickBind(float value, EActionTrigger reason)
 	{
+		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard() && IsToolMenuFocused())
+			return;	
 		ToggleVisible();
 	}
 	

@@ -44,6 +44,8 @@ class SCR_EditableEntityComponent : ScriptComponent
 	protected vector m_vStaticPos;
 	protected int m_iIconBoneIndex = -1;
 	protected ref ScriptInvokerEntity m_OnDeleted;
+	
+	protected ref set<SCR_EditableEntityComponent> m_aAttachedEntities;
 
 	//------------------------------------------------------------------------------------------------
 	//! Get entity name from info component.
@@ -158,10 +160,10 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Get event called when entity is deleted
-	\return Script invoker
-	*/
+	//!
+	//! Get event called when entity is deleted
+	//! \return Script invoker
+	//!
 	ScriptInvokerEntity GetOnDeleted()
 	{
 		if (!m_OnDeleted)
@@ -623,6 +625,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 		m_Owner.SetWorldTransform(transform);
 		m_Owner.SetScale(scale);
 		m_Owner.Update();
+		m_Owner.OnTransformReset();
 		UpdateStaticPos();
 
 		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
@@ -640,6 +643,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 			if (!IsDestroyed() && CanDestroy())
 			{
 				DamageManagerComponent damageManager = DamageManagerComponent.Cast(m_Owner.FindComponent(DamageManagerComponent));
+				damageManager.SetInstigator(Instigator.CreateInstigator(null));
 				damageManager.SetHealthScaled(0);
 				return true;
 			}
@@ -652,7 +656,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	//! \param[in] changedByUser True when the change was initiated by user
 	//! \param[in] updateNavmesh True to update navmesh after the entity is deleted (set to false when deleting children of already deleted entity)
 	//! \return true if deleted
-	bool Delete(bool changedByUser = false, bool updateNavmesh = true)
+	bool Delete(bool changedByUser = false, bool updateNavmesh = false)
 	{
 		if (!IsServer())
 			return false;
@@ -845,6 +849,11 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- No change, ignore
 		if (parentEntity == m_ParentEntity)
 			return parentEntity;
+		
+		//--- When trying to add the entity to a existing group, if that group is inactive (eg: all entities are neutralized)
+		//--- returns the already existing parent, thus not adding to the new group (which is inactive)
+		if (parentEntity && SCR_ChimeraCharacter.Cast(parentEntity.GetOwner()) && parentEntity.IsDestroyed())
+			return m_ParentEntity;
 
 		if (parentEntity)
 		{
@@ -1028,6 +1037,9 @@ class SCR_EditableEntityComponent : ScriptComponent
 			int count = m_Entities.Count();
 			foreach (SCR_EditableEntityComponent child : m_Entities)
 			{
+				if (!child) //--- TODO: unsure why this is triggered
+					continue;
+				
 				count += child.GetChildrenCount(onlyDirect);
 			}
 			return count;
@@ -1552,6 +1564,7 @@ class SCR_EditableEntityComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//!
 	void OnRplVisibilityChanged()
 	{
 		SetVisible(m_bVisible);
@@ -1935,11 +1948,12 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- Delete entities in editor hierarchy
 		if (IsServer() && m_Entities)
 		{
+			SCR_EditableEntityComponent entity;
 			for (int i = m_Entities.Count() - 1; i >= 0; i--)
 			{
-				SCR_EditableEntityComponent entity = m_Entities[i];
+				entity = m_Entities[i];
 				if (!entity.HasEntityFlag(EEditableEntityFlag.GAME_HIERARCHY))
-					m_Entities[i].Delete(false);
+					entity.Delete(false);
 			}
 		}
 
@@ -2051,5 +2065,64 @@ class SCR_EditableEntityComponent : ScriptComponent
 		//--- When spawned dynamically, change auto-registration WHEN_SPAWNED to ALWAYS
 		if (m_bAutoRegister == EEditableEntityRegister.WHEN_SPAWNED && !m_Owner.IsLoaded())
 			m_bAutoRegister = EEditableEntityRegister.ALWAYS;
+		
+		//--- Initialize attached entities
+		m_aAttachedEntities = new set<SCR_EditableEntityComponent>();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Add the received attachable waypoint to the attached entities (runs on parent)
+	//! \param[in] target to link current entity to
+	void Attach(notnull SCR_EditableEntityComponent attachable)
+	{
+		if (m_aAttachedEntities.Count() <= EditorConstants.MAX_ATTACHED_ENTITIES)
+			m_aAttachedEntities.Insert(attachable);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Removes the received attachable waypoint from the attached entities (runs on parent)
+	//! \param[in] attachable target to remove link
+	void Detach(notnull SCR_EditableEntityComponent attachable)
+	{
+		m_aAttachedEntities.RemoveItem(attachable);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns attached entities of self
+	//! \return set containing the attached entities
+	set<SCR_EditableEntityComponent> GetAttachedEntities()
+	{
+		set<SCR_EditableEntityComponent> entities = new set<SCR_EditableEntityComponent>();
+		
+		foreach (SCR_EditableEntityComponent entity : m_aAttachedEntities)
+		{
+			entities.Insert(entity);
+		}
+		
+		return entities;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns if current entity is attachable
+	//! \return bool
+	bool IsAttachable()
+	{
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns if current entity is attached
+	//! \return bool
+	bool IsAttached()
+	{
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns current entity which this editable task is attached to
+	//! \return current entity which this editable task is attached to
+	SCR_EditableEntityComponent GetAttachedTo()
+	{
+		return null;
 	}
 }

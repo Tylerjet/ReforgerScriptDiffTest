@@ -34,6 +34,9 @@ class SCR_RemoveAIGroupCommand : SCR_BaseGroupCommand
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShown()
 	{
+		if (!CanBeShownInCurrentLifeState())
+			return false;
+		
 		PlayerCamera camera = GetGame().GetPlayerController().GetPlayerCamera();
 		if (!camera)
 			return false;

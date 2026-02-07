@@ -141,8 +141,6 @@ class SCR_ScenarioFrameworkSlotWaypoint : SCR_ScenarioFrameworkSlotBase
 	//! \param[in] parent
 	void SCR_ScenarioFrameworkSlotWaypoint(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-#ifdef WORKBENCH
 		m_iDebugShapeColor = ARGB(100, 0x00, 0x10, 0xFF);
-#endif
 	}
 }

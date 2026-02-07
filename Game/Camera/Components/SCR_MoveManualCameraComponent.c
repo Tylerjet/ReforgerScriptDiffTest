@@ -76,6 +76,16 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 			vertical * param.multiplier[1] * m_fSpeed,
 			(currentDir[2] * newDir[2] - currentDir[0] * newDir[0]) * horizontalSpeedCoef,
 		);
+		
+		// Limit position to avoid large numbers
+		{
+			vector mins, maxs;
+			GetCameraEntity().GetWorld().GetBoundBox(mins, maxs);
+			param.transform[3][0] = Math.Clamp(param.transform[3][0], mins[0] - 1000, maxs[0] + 1000);
+			param.transform[3][1] = Math.Clamp(param.transform[3][1], 0.0, 8000.0);
+			param.transform[3][2] = Math.Clamp(param.transform[3][2], mins[2] - 1000, maxs[2] + 1000);
+		}
+		
 		param.isManualInput = true;
 		param.isDirty = true;
 	}

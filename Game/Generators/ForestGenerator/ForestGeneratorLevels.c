@@ -4,7 +4,7 @@ class ForestGeneratorLevel
 	[Attribute(uiwidget: UIWidgets.Object, desc: "Tree groups to spawn in this forest generator level")]
 	ref array<ref TreeGroupClass> m_aTreeGroups;
 
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Generate this level?")]
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.CheckBox, desc: "Generate this level or not")]
 	bool m_bGenerate;
 
 	[Attribute(defvalue: "1", desc: "How many trees per hectare should be generated", uiwidget: UIWidgets.SpinBox)]

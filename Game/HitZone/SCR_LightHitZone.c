@@ -30,9 +30,9 @@ class SCR_LightHitZone : SCR_DestructibleHitzone
 		UpdateLightState();
 	}
 	
-	override void OnDamageStateChanged()
+	override void OnDamageStateChanged(EDamageState newState, EDamageState previousDamageState, bool isJIP)
 	{
-		super.OnDamageStateChanged();
+		super.OnDamageStateChanged(newState, previousDamageState, isJIP);
 		
 		UpdateLightState();
 	}

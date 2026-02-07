@@ -74,8 +74,6 @@ class ChimeraGame: Game
 
 	// callbacks
 
-	//! Getter for where authority is for vehicles
-	event bool GetIsClientAuthority();
 	event void OnCinematicStart();
 	event void OnCinematicEnd();
 	event void OnCinematicBlending(float blendFactor, vector cameraPosition);

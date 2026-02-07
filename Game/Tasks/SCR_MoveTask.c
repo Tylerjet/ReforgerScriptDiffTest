@@ -1,8 +1,8 @@
 [EntityEditorProps(category: "GameScripted/Tasks", description: "Move task.", color: "0 0 255 255")]
-class SCR_MoveTaskClass: SCR_EditorTaskClass
+class SCR_MoveTaskClass: SCR_AttachableTaskClass
 {
 };
-class SCR_MoveTask : SCR_EditorTask
+class SCR_MoveTask : SCR_AttachableTask
 {	
 	[Attribute("5")]
 	protected float m_fMaxDistance;
@@ -12,7 +12,7 @@ class SCR_MoveTask : SCR_EditorTask
 		if (!GetTaskManager())
 			return;
 		
-		SCR_BaseTaskSupportEntity supportEntity = SCR_BaseTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity));
+		SCR_BaseTaskSupportEntity supportEntity = GetTaskManager().FindSupportEntity(SCR_BaseTaskSupportEntity);
 		if (!supportEntity)
 			return;
 		

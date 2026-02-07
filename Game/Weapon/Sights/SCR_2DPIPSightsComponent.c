@@ -58,7 +58,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	[Attribute("0.75", UIWidgets.Slider, "Percentage of camera transition at which sights deactivate\n[%]", params: "0.0 1.0 0.01", category: "PiPSights")]
 	protected float m_fADSDeactivationPercentagePIP;
 
-	[Attribute("40", UIWidgets.Slider, "Vignette parallax angle scale, divided by objective FOV.\n[x]", params: "-100 100 0.1", category: "PiPSights-Parallax")]
+	[Attribute("100", UIWidgets.Slider, "Vignette parallax angle scale, divided by objective FOV.\n[x]", params: "-1000 1000 0.1", category: "PiPSights-Parallax")]
 	protected float m_fVignetteParallaxScale;
 
 	[Attribute("0.014", UIWidgets.Slider, "Optimal distance from scope, where no parallax distant effect is present\n[m]", params: "-0.2 0.2 0.001", category: "PiPSights-Parallax")]
@@ -105,7 +105,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected float m_fParallaxX;
 	protected float m_fParallaxY;
 
-	protected IEntity m_CurrentPlayable;
+	protected IEntity m_ControlledEntity;
 
 	//! Current PIP reticle color
 	protected ref Color m_cReticleColor = m_ReticleColor;
@@ -241,41 +241,30 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	private bool IsLocalControlledEntity(IEntity pEntity, bool checkHierarchy = true)
+	protected bool IsLocalControlledEntity(IEntity pEntity, bool checkHierarchy = true)
 	{
+		m_ControlledEntity = null;
+
 		if (!pEntity)
 			return false;
 
 		// We make sure that we only perform any local items on our local controlled entity
-		auto pGame = GetGame();
-		if (!pGame)
-			return false;
-
-		auto pPlayerController = pGame.GetPlayerController();
-		if (!pPlayerController)
-			return false;
-
-		auto pControlledEntity = pPlayerController.GetControlledEntity();
-		if (!pControlledEntity)
+		IEntity controlledEntity = SCR_PlayerController.GetLocalControlledEntity();
+		if (!controlledEntity)
 			return false;
 
 		// Straight hit
-		if (pControlledEntity == pEntity)
-			return true;
-
-		// No can do
-		if (!checkHierarchy)
-			return false;
-
-		// Check up in hierarchy?
-		m_CurrentPlayable = pEntity.GetParent();
-
-		while (m_CurrentPlayable)
+		if (controlledEntity == pEntity)
 		{
-			if (pControlledEntity == m_CurrentPlayable)
-				return true;
+			m_ControlledEntity = controlledEntity;
+			return true;
+		}
 
-			m_CurrentPlayable = m_CurrentPlayable.GetParent();
+		// Common hierarchy means common root
+		if (checkHierarchy && controlledEntity.GetRootParent() == pEntity.GetRootParent())
+		{
+			m_ControlledEntity = controlledEntity;
+			return true;
 		}
 
 		return false;
@@ -461,7 +450,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnSightADSActivated()
+	protected override void HandleSightActivation()
 	{
 		// A component without an owner shouldnt exist
 		IEntity owner = GetOwner();
@@ -491,16 +480,9 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			if (m_pMaterial)
 				UpdateScopeMaterial();
 
-			// Switching input
-			if (m_SightsFovInfo.GetStepsCount() > 1)
-				GetGame().GetInputManager().AddActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
-
 			// Setup illumination
 			if (m_bHasIllumination)
-			{
-				GetGame().GetInputManager().AddActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 				EnableReticleIllumination(m_bIsIlluminationOn);
-			}
 		}
 
 		s_OnSightsADSChanged.Invoke(true, m_fMainCameraFOV);
@@ -508,29 +490,30 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (scope2d)
 		{
 			if (m_bPIPIsEnabled)
-			{
 				SetPIPEnabled(false);
-			}
 
 			m_b2DIsEnabled = true;
-			super.OnSightADSActivated();
 		}
 		else if (!scope2d && m_b2DIsEnabled)
 		{
 			m_b2DIsEnabled = false;
-			super.OnSightADSDeactivated();
 		}
+
+		if (m_b2DIsEnabled)
+			super.HandleSightActivation();
+		else
+			super.HandleSightDeactivation();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnSightADSDeactivated()
+	protected override void HandleSightDeactivation()
 	{
 		// A component without an owner shouldnt exist
 		IEntity owner = GetOwner();
 		if (!owner)
 			return;
 
-		if (!m_CurrentPlayable)
+		if (!m_ControlledEntity)
 		{
 			if (IsPIPEnabled())
 			{
@@ -553,18 +536,13 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		bool scope2d = SCR_Global.IsScope2DEnabled();
 		if (scope2d)
 		{
-			super.OnSightADSDeactivated();
+			super.HandleSightDeactivation();
 			m_b2DIsEnabled = false;
 		}
 		else
 		{
 			SetPIPEnabled(false);
-			GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 		}
-
-		// Removing switching input
-		GetGame().GetInputManager().RemoveActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
-		GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -590,7 +568,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		vector localCameraPosition = cameraMat[3]; // Camera's position in character's model space.
 
 		vector parentToLocalMat[4];
-		GetParentToLocalTransform(parentToLocalMat, mainCamera.GetParent());
+		SCR_EntityHelper.GetRelativeLocalTransform(GetOwner(), mainCamera.GetParent(), parentToLocalMat);
 		localCameraPosition = localCameraPosition.Multiply4(parentToLocalMat); // Camera's position in our local space.
 
 		vector pipSurfaceCenter = GetSightsRearPosition(true);

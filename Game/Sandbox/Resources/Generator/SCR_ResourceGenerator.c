@@ -344,6 +344,7 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 			&&	snapshot.Compare(m_fStorageRange,				4)
 			&&	snapshot.Compare(m_fAggregatedResourceValue,	4)
 			&&	snapshot.Compare(m_fAggregatedMaxResourceValue,	4)
+			&&	snapshot.Compare(m_fResourceMultiplier,			4)
 			&&	snapshot.Compare(m_eResourceRights,				4)
 			&&	snapshot.Compare(m_eResourceType,				4)
 			&&	snapshot.Compare(m_eIdentifier,					4);
@@ -360,6 +361,7 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 		snapshot.SerializeBytes(m_fStorageRange,			4);
 		snapshot.SerializeBytes(aggregatedResourceValue,	4);
 		snapshot.SerializeBytes(aggregatedMaxResourceValue,	4);
+		snapshot.SerializeBytes(m_fResourceMultiplier,		4);
 		snapshot.SerializeBytes(m_eResourceRights,			4);
 		snapshot.SerializeBytes(m_eResourceType,			4);
 		snapshot.SerializeBytes(m_eIdentifier,				4);
@@ -377,6 +379,7 @@ class SCR_ResourceGenerator : SCR_ResourceInteractor
 		snapshot.SerializeBytes(m_fStorageRange,				4);
 		snapshot.SerializeBytes(m_fAggregatedResourceValue,		4);
 		snapshot.SerializeBytes(m_fAggregatedMaxResourceValue,	4);
+		snapshot.SerializeBytes(m_fResourceMultiplier,			4);
 		snapshot.SerializeBytes(m_eResourceRights,				4);
 		snapshot.SerializeBytes(m_eResourceType,				4);
 		snapshot.SerializeBytes(m_eIdentifier,					4);

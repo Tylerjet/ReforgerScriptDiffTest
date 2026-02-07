@@ -46,7 +46,6 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 	static const int							UPDATE_TIMEOUT = 1000; //Minimal delay between two particle swaps.
 
 	protected VehicleWheeledSimulation			m_Simulation;
-	protected VehicleWheeledSimulation_SA		m_Simulation_SA;
 	protected Physics							m_Physics;
 	protected NwkMovementComponent				m_NwkMovementComponent;
 	protected SCR_VehicleDustPerWheelClass		m_ComponentData;
@@ -85,23 +84,11 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 
-		if(GetGame().GetIsClientAuthority())
+		m_Simulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
+		if (!m_Simulation || !m_Simulation.IsValid())
 		{
-			m_Simulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
-			if (!m_Simulation || !m_Simulation.IsValid())
-			{
-				Deactivate(m_pOwner);
-				return;
-			}
-		}
-		else
-		{
-			m_Simulation_SA = VehicleWheeledSimulation_SA.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation_SA));
-			if (!m_Simulation_SA || !m_Simulation_SA.IsValid())
-			{
-				Deactivate(m_pOwner);
-				return;
-			}
+			Deactivate(m_pOwner);
+			return;
 		}
 
 		m_fUpdateTime = UPDATE_TIME;
@@ -130,11 +117,7 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		
 		ConnectToVehiclesDustSystem();
 
-		int count;
-		if(GetGame().GetIsClientAuthority())
-		 	count = Math.Min(m_Simulation.WheelCount(), m_ComponentData.m_aWheels.Count());
-		else
-			count = Math.Min(m_Simulation_SA.WheelCount(), m_ComponentData.m_aWheels.Count());
+		int count = Math.Min(m_Simulation.WheelCount(), m_ComponentData.m_aWheels.Count());
 
 		m_aVehicleDusts.Resize(count);
 		for (int i = 0; i < count; ++i)
@@ -178,20 +161,10 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 			return;
 		}
 		
-		if(GetGame().GetIsClientAuthority())
-		{
-			if (m_Simulation.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)
-				m_fUpdateTime = UPDATE_TIME;
-			else
-				m_fUpdateTime = -1.0;
-		}
+		if (m_Simulation.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)
+			m_fUpdateTime = UPDATE_TIME;
 		else
-		{
-			if (m_Simulation_SA.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)
-				m_fUpdateTime = UPDATE_TIME;
-			else
-				m_fUpdateTime = -1.0;
-		}
+			m_fUpdateTime = -1.0;
 		
 		m_fTime += timeSlice;
 		if (m_fUpdateTime < 0.0 || m_fTime >= m_fUpdateTime)
@@ -209,12 +182,8 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		m_pOwner.GetWorld().GetCurrentCamera(camMat);
 		
 		float distanceFromCamera = vector.DistanceSq(m_pOwner.GetOrigin(), camMat[3]);
-		float speed;
-		if(GetGame().GetIsClientAuthority())
-			speed = m_Simulation.GetSpeedKmh();
-		else
-			speed = m_Simulation_SA.GetSpeedKmh();
-		
+		float speed = m_Simulation.GetSpeedKmh();
+
 		foreach (int index, VehicleDust vehicleDust : m_aVehicleDusts)
 		{
 			UpdateEffect(vehicleDust, index, speed, distanceFromCamera);
@@ -229,29 +198,17 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		vector worldTransform[4];
 		m_pOwner.GetWorldTransform(worldTransform);
 
-		float radius;
-
-		if(GetGame().GetIsClientAuthority())
-		 	radius = m_Simulation.WheelGetRadiusState(wheelIdx);
-		else
-		 	radius = m_Simulation_SA.WheelGetRadiusState(wheelIdx);
+		float radius = m_Simulation.WheelGetRadiusState(wheelIdx);
 
 		// Physics are offset by center of mass
 		Physics physics = m_pOwner.GetPhysics();
 		vector centerOfMass = physics.GetCenterOfMass();
 
 		TraceParam trace = new TraceParam();
-		if(GetGame().GetIsClientAuthority())
-		{
-			trace.Start = (m_Simulation.WheelGetPosition(wheelIdx, 1.0) + centerOfMass).Multiply4(worldTransform);
-			trace.End = (m_Simulation.WheelGetPosition(wheelIdx, 0.0) + centerOfMass).Multiply4(worldTransform) + worldTransform[1] * -radius;
-		}
-		else
-		{
-			trace.Start = (m_Simulation_SA.WheelGetPosition(wheelIdx, 1.0) + centerOfMass).Multiply4(worldTransform);
-			trace.End = (m_Simulation_SA.WheelGetPosition(wheelIdx, 0.0) + centerOfMass).Multiply4(worldTransform) + worldTransform[1] * -radius;
-		}
-		
+
+		trace.Start = (m_Simulation.WheelGetPosition(wheelIdx, 1.0) + centerOfMass).Multiply4(worldTransform);
+		trace.End = (m_Simulation.WheelGetPosition(wheelIdx, 0.0) + centerOfMass).Multiply4(worldTransform) + worldTransform[1] * -radius;
+
 		trace.Flags = TraceFlags.WORLD;
 		trace.LayerMask = EPhysicsLayerDefs.VehicleCast;
 
@@ -314,24 +271,12 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		}
 		else
 		{
-			if(GetGame().GetIsClientAuthority())
-			{
-				if (m_Simulation.WheelGetContactLiquidState(wheelIdx) > 0)
-					newMaterial = m_Simulation.WheelGetContactLiquidMaterial(wheelIdx);
-				else
-					newMaterial = m_Simulation.WheelGetContactMaterial(wheelIdx);
-
-				wheelHasContact = m_Simulation.WheelHasContact(wheelIdx);
-			}
+			if (m_Simulation.WheelGetContactLiquidState(wheelIdx) > 0)
+				newMaterial = m_Simulation.WheelGetContactLiquidMaterial(wheelIdx);
 			else
-			{
-				if (m_Simulation_SA.WheelGetContactLiquidState(wheelIdx) > 0)
-					newMaterial = m_Simulation_SA.WheelGetContactLiquidMaterial(wheelIdx);
-				else
-					newMaterial = m_Simulation_SA.WheelGetContactMaterial(wheelIdx);
+				newMaterial = m_Simulation.WheelGetContactMaterial(wheelIdx);
 
-				wheelHasContact = m_Simulation_SA.WheelHasContact(wheelIdx);
-			}
+			wheelHasContact = m_Simulation.WheelHasContact(wheelIdx);
 		}
 
 		vehicleDust.m_bWheelHasContact = wheelHasContact;
@@ -401,20 +346,10 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		}
 		else
 		{
-			if(GetGame().GetIsClientAuthority())
-			{
-				if(!m_Simulation.WheelHasContact(wheelIdx))
-					return;
+			if(!m_Simulation.WheelHasContact(wheelIdx))
+				return;
 
-				position = m_Simulation.WheelGetContactPosition(wheelIdx);
-			}
-			else
-			{
-				if(!m_Simulation_SA.WheelHasContact(wheelIdx))
-					return;
-
-				position = m_Simulation_SA.WheelGetContactPosition(wheelIdx);
-			}
+			position = m_Simulation.WheelGetContactPosition(wheelIdx);
 		}
 
 		vehicleDust.m_pParticleEffectEntity.SetOrigin(position);
@@ -428,20 +363,9 @@ class SCR_VehicleDustPerWheel : ScriptGameComponent
 		float birthCoef = 0;
 		float gravityCoef = 0;
 
-		float longitudinalSlip = 0; 
-		float lateralSlip = 0;
+		float longitudinalSlip = m_Simulation.WheelGetLongitudinalSlip(wheelIdx);
+		float lateralSlip = m_Simulation.WheelGetLateralSlip(wheelIdx);
 
-		if(GetGame().GetIsClientAuthority())
-		{
-			longitudinalSlip = m_Simulation.WheelGetLongitudinalSlip(wheelIdx);
-			lateralSlip = m_Simulation.WheelGetLateralSlip(wheelIdx);
-		}
-		else
-		{
-			longitudinalSlip = m_Simulation_SA.WheelGetLongitudinalSlip(wheelIdx);
-			lateralSlip = m_Simulation_SA.WheelGetLateralSlip(wheelIdx);
-		}
-		
 		float effectiveSlip = Math.Clamp(longitudinalSlip + lateralSlip, 0, 1);
 
 		if (vehicleDust.m_bWheelHasContact)

@@ -13,7 +13,7 @@ class SCR_BleedCharacterContextAction : SCR_SelectedEntitiesContextAction
 		if (!characterDamageManager)
 			return false;
 
-		if (characterDamageManager.GetState() == EDamageState.DESTROYED || characterDamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
+		if (characterDamageManager.GetState() == EDamageState.DESTROYED || characterDamageManager.IsBleeding())
 			return false;
 
 		return true;

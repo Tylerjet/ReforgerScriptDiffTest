@@ -21,61 +21,30 @@ class SCR_VehicleGearCondition : SCR_AvailableActionCondition
 		if (!data)
 			return false;
 		
-		if(GetGame().GetIsClientAuthority())
-		{
-			CarControllerComponent controller = CarControllerComponent.Cast(data.GetCurrentVehicleController());
-			if (!controller)
-				return false;
-	
-			VehicleWheeledSimulation simulation = VehicleWheeledSimulation.Cast(controller.GetSimulation());
-			if (!simulation)
-				return false;
-	
-			int currentGear = simulation.GetGear();
-			int gearsCount = simulation.GearboxGearsCount();
-			int neutralGear = gearsCount - simulation.GearboxForwardGearsCount() - 1;
-	
-			bool result;
-			if (m_eVehicleGearboxGear == EVehicleGearboxGear.REVERSE)
-				result = currentGear < neutralGear;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.NEUTRAL)
-				result = currentGear == neutralGear;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.FORWARD)
-				result = currentGear > neutralGear;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.FIRST)
-				result = currentGear == neutralGear + 1;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.LAST)
-				result = currentGear == gearsCount - 1;
-	
-			return GetReturnResult(result);
-		}
-		else
-		{
-			CarControllerComponent_SA controller = CarControllerComponent_SA.Cast(data.GetCurrentVehicleController());
-			if (!controller)
-				return false;
-	
-			VehicleWheeledSimulation_SA simulation = VehicleWheeledSimulation_SA.Cast(controller.GetSimulation());
-			if (!simulation)
-				return false;
-	
-			int currentGear = simulation.GetGear();
-			int gearsCount = simulation.GearboxGearsCount();
-			int neutralGear = gearsCount - simulation.GearboxForwardGearsCount() - 1;
-	
-			bool result;
-			if (m_eVehicleGearboxGear == EVehicleGearboxGear.REVERSE)
-				result = currentGear < neutralGear;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.NEUTRAL)
-				result = currentGear == neutralGear;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.FORWARD)
-				result = currentGear > neutralGear;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.FIRST)
-				result = currentGear == neutralGear + 1;
-			else if (m_eVehicleGearboxGear == EVehicleGearboxGear.LAST)
-				result = currentGear == gearsCount - 1;
-	
-			return GetReturnResult(result);
-		}		
+		CarControllerComponent controller = CarControllerComponent.Cast(data.GetCurrentVehicleController());
+		if (!controller)
+			return false;
+
+		VehicleWheeledSimulation simulation = controller.GetSimulation();
+		if (!simulation)
+			return false;
+
+		int currentGear = simulation.GetGear();
+		int gearsCount = simulation.GearboxGearsCount();
+		int neutralGear = gearsCount - simulation.GearboxForwardGearsCount() - 1;
+
+		bool result;
+		if (m_eVehicleGearboxGear == EVehicleGearboxGear.REVERSE)
+			result = currentGear < neutralGear;
+		else if (m_eVehicleGearboxGear == EVehicleGearboxGear.NEUTRAL)
+			result = currentGear == neutralGear;
+		else if (m_eVehicleGearboxGear == EVehicleGearboxGear.FORWARD)
+			result = currentGear > neutralGear;
+		else if (m_eVehicleGearboxGear == EVehicleGearboxGear.FIRST)
+			result = currentGear == neutralGear + 1;
+		else if (m_eVehicleGearboxGear == EVehicleGearboxGear.LAST)
+			result = currentGear == gearsCount - 1;
+
+		return GetReturnResult(result);
 	}
 };

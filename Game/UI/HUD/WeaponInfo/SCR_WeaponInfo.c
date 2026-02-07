@@ -18,7 +18,8 @@ enum EAmmoType
 	FRAG = 32,
 	SMOKE = 64,
 	INCENDIARY = 128,
-	SNIPER = 256
+	SNIPER = 256,
+	ILLUMINATION = 512
 };
 
 enum EWeaponFeature
@@ -50,10 +51,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	}
 	#endif
 	
-	const float SCALE_DEFAULT = 0.6;
-	const float SCALE_FIREMODE = 0.4;
-	const float SCALE_MAGAZINE = 0.6;
-	
+	const int SIZE_FIREMODE = 50;			// Height in pixels	
+	const int SIZE_MAGAZINE = 77;			// Height in pixels	
+		
 	const float UPDATE_INTERVAL = 0.1;	
 	const float FADED_OPACITY = 0.3;
 	
@@ -738,7 +738,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			m_WeaponInfoPanelAnimator.FadeIn(!panelVisibleOverride);
 		
 		// Zeroing indicator fadein
-		bool zeroingWidgetHasText = !m_Widgets.m_ZeroingText.GetText().IsEmpty();
+		bool zeroingWidgetHasText = !m_Widgets.m_wZeroingText.GetText().IsEmpty();
 		bool zeroingVisibleEvent = m_eWeaponStateEvent & (EWeaponFeature.ADS | EWeaponFeature.ZEROING | EWeaponFeature.MUZZLE | EWeaponFeature.WEAPON | EWeaponFeature.INSPECTION);
 		bool zeroingVisibleOverride = inADS || inInspection;
 		if (zeroingWidgetHasText && (zeroingVisibleEvent || zeroingVisibleOverride))
@@ -821,53 +821,53 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		if (!config)
 		{
-			m_Widgets.m_MagazineIndicator.SetVisible(false);
+			m_Widgets.m_wMagazineIndicator.SetVisible(false);
 		}
 		else
 		{
-			m_Widgets.m_MagazineIndicator.SetVisible(true);
+			m_Widgets.m_wMagazineIndicator.SetVisible(true);
 			
 			if (config.m_bProgressBar)
 			{
-				SetWidgetImage(m_Widgets.m_MagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
-				SetWidgetImage(m_Widgets.m_MagazineBackground, config.m_sImagesetIcons, config.m_sBackground, SCALE_MAGAZINE);
-				SetWidgetImage(m_Widgets.m_MagazineGlow, config.m_sImagesetGlows, config.m_sBackground, SCALE_MAGAZINE);			
+				SetWidgetImage(m_Widgets.m_wMagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SIZE_MAGAZINE);
+				SetWidgetImage(m_Widgets.m_wMagazineBackground, config.m_sImagesetIcons, config.m_sBackground, SIZE_MAGAZINE);
+				SetWidgetImage(m_Widgets.m_wMagazineGlow, config.m_sImagesetGlows, config.m_sBackground, SIZE_MAGAZINE);			
 			}
 			else
 			{
-				SetWidgetImage(m_Widgets.m_MagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
-				//SetWidgetImage(m_Widgets.m_MagazineBackground, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
-				SetWidgetImage(m_Widgets.m_MagazineGlow, config.m_sImagesetGlows, config.m_sOutline, SCALE_MAGAZINE);			
+				SetWidgetImage(m_Widgets.m_wMagazineOutline, config.m_sImagesetIcons, config.m_sOutline, SIZE_MAGAZINE);
+				//SetWidgetImage(m_Widgets.m_wMagazineBackground, config.m_sImagesetIcons, config.m_sOutline, SIZE_MAGAZINE);
+				SetWidgetImage(m_Widgets.m_wMagazineGlow, config.m_sImagesetGlows, config.m_sOutline, SIZE_MAGAZINE);			
 			}
 			
 			// Setup textures for reloading indicator
-			SetWidgetImage(m_Widgets.m_ReloadBackground, config.m_sImagesetIcons, config.m_sProgress, SCALE_MAGAZINE);
-			m_Widgets.m_ReloadBackground.SetVisible(false);			
-			SetWidgetImage(m_Widgets.m_ReloadOutline, config.m_sImagesetIcons, config.m_sOutline, SCALE_MAGAZINE);
-			m_Widgets.m_ReloadOutline.SetVisible(false);
+			SetWidgetImage(m_Widgets.m_wReloadBackground, config.m_sImagesetIcons, config.m_sProgress, SIZE_MAGAZINE);
+			m_Widgets.m_wReloadBackground.SetVisible(false);			
+			SetWidgetImage(m_Widgets.m_wReloadOutline, config.m_sImagesetIcons, config.m_sOutline, SIZE_MAGAZINE);
+			m_Widgets.m_wReloadOutline.SetVisible(false);
 
 			
 			// Setup visibility, keep only Outline texture, if there is no progress indication
-			m_Widgets.m_MagazineProgress.SetVisible(config.m_bProgressBar && state.m_Magazine);
-			m_Widgets.m_MagazineBackground.SetVisible(config.m_bProgressBar);			
-			m_Widgets.m_MagazineOutline.SetOpacity(1);
+			m_Widgets.m_wMagazineProgress.SetVisible(config.m_bProgressBar && state.m_Magazine);
+			m_Widgets.m_wMagazineBackground.SetVisible(config.m_bProgressBar);			
+			m_Widgets.m_wMagazineOutline.SetOpacity(1);
 						
 			if (state.m_Magazine)
 			{
 				if (config.m_bProgressBar)
 				{
-					SetWidgetImage(m_Widgets.m_MagazineProgress, config.m_sImagesetIcons, config.m_sProgress, SCALE_MAGAZINE);
-					m_Widgets.m_MagazineProgress.LoadMaskFromSet(config.m_sImagesetIcons, config.m_sProgressAlphaMask);
-					m_Widgets.m_MagazineProgress.SetMaskMode(ImageMaskMode.REGULAR);
+					SetWidgetImage(m_Widgets.m_wMagazineProgress, config.m_sImagesetIcons, config.m_sProgress, SIZE_MAGAZINE);
+					m_Widgets.m_wMagazineProgress.LoadMaskFromSet(config.m_sImagesetIcons, config.m_sProgressAlphaMask);
+					m_Widgets.m_wMagazineProgress.SetMaskMode(ImageMaskMode.REGULAR);
 				}
 			}
 			else
 			{
 				if (!state.m_bIsExplosive)
-					m_Widgets.m_MagazineOutline.SetOpacity(FADED_OPACITY);
+					m_Widgets.m_wMagazineOutline.SetOpacity(FADED_OPACITY);
 			}
 			
-			//AnimateWidget_ColorFlash(m_Widgets.m_MagazineIndicator);
+			//AnimateWidget_ColorFlash(m_Widgets.m_wMagazineIndicator);
 		}
 	}	
 	
@@ -877,9 +877,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		if (!state || !m_Widgets)
 			return;
 		
-		//AnimateWidget_ColorFlash(m_Widgets.m_MagazineIndicator, EWeaponFeature.AMMOCOUNT);
+		//AnimateWidget_ColorFlash(m_Widgets.m_wMagazineIndicator, EWeaponFeature.AMMOCOUNT);
 		
-		m_Widgets.m_MagazineProgress.SetMaskProgress(state.m_fMagAmmoPerc);
+		m_Widgets.m_wMagazineProgress.SetMaskProgress(state.m_fMagAmmoPerc);
 	}			
 
 	//------------------------------------------------------------------------------------------------
@@ -902,17 +902,17 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		*/
 		
 		if (count > 0)
-			m_Widgets.m_MagCountText.SetOpacity(1);
+			m_Widgets.m_wMagCountText.SetOpacity(1);
 		else
-			m_Widgets.m_MagCountText.SetOpacity(FADED_OPACITY);
+			m_Widgets.m_wMagCountText.SetOpacity(FADED_OPACITY);
 		
-		if (m_Widgets.m_MagCountText.GetText() == countText) 
+		if (m_Widgets.m_wMagCountText.GetText() == countText) 
 			return;
 
-		m_Widgets.m_MagCountText.SetText(countText);		
+		m_Widgets.m_wMagCountText.SetText(countText);		
 		
-		AnimateWidget_ColorFlash(m_Widgets.m_MagCountText, EWeaponFeature.MAGAZINE_COUNT);	
-		AnimateWidget_TextPopUp(m_Widgets.m_MagCountText, 36, 54, EWeaponFeature.MAGAZINE_COUNT);
+		AnimateWidget_ColorFlash(m_Widgets.m_wMagCountText, EWeaponFeature.MAGAZINE_COUNT);	
+		AnimateWidget_TextPopUp(m_Widgets.m_wMagCountText, 36, 54, EWeaponFeature.MAGAZINE_COUNT);
 	}		
 	
 	//------------------------------------------------------------------------------------------------
@@ -922,9 +922,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			return;
 
 		if (state.m_bBarrelChambered)
-			m_Widgets.m_FiremodeIcon.SetOpacity(1);
+			m_Widgets.m_wFiremodeIcon.SetOpacity(1);
 		else
-			m_Widgets.m_FiremodeIcon.SetOpacity(FADED_OPACITY);
+			m_Widgets.m_wFiremodeIcon.SetOpacity(FADED_OPACITY);
 	}		
 	
 	//------------------------------------------------------------------------------------------------
@@ -933,8 +933,8 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		if (!state || !m_Widgets)
 			return;
 
-		m_Widgets.m_FiremodeIcon.SetVisible(false);
-		m_Widgets.m_FiremodeGlow.SetVisible(false);
+		m_Widgets.m_wFiremodeIcon.SetVisible(false);
+		m_Widgets.m_wFiremodeGlow.SetVisible(false);
 		
 		if (state.m_Muzzle && state.m_MuzzleUI && state.m_MuzzleUI.ShowFiremodeIcon())
 		{
@@ -943,13 +943,13 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			
 			if (icon != string.Empty)
 			{
-				SetWidgetImage(m_Widgets.m_FiremodeIcon, state.m_MuzzleUI.GetFiremodeIconImageset(), icon, SCALE_FIREMODE);
-				SetWidgetImage(m_Widgets.m_FiremodeGlow, state.m_MuzzleUI.GetFiremodeGlowImageset(), icon, SCALE_FIREMODE);
+				SetWidgetImage(m_Widgets.m_wFiremodeIcon, state.m_MuzzleUI.GetFiremodeIconImageset(), icon, SIZE_FIREMODE);
+				SetWidgetImage(m_Widgets.m_wFiremodeGlow, state.m_MuzzleUI.GetFiremodeGlowImageset(), icon, SIZE_FIREMODE);
 			
-				m_Widgets.m_FiremodeIcon.SetVisible(true);
-				m_Widgets.m_FiremodeGlow.SetVisible(true);
+				m_Widgets.m_wFiremodeIcon.SetVisible(true);
+				m_Widgets.m_wFiremodeGlow.SetVisible(true);
 				
-				AnimateWidget_ColorFlash(m_Widgets.m_FiremodeIcon, EWeaponFeature.FIREMODE);
+				AnimateWidget_ColorFlash(m_Widgets.m_wFiremodeIcon, EWeaponFeature.FIREMODE);
 			}
 		}		
 	}
@@ -964,16 +964,16 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 
 		if (zeroing <= 0)
 		{
-			m_Widgets.m_Zeroing.SetVisible(false);
-			m_Widgets.m_ZeroingText.SetText(string.Empty);
+			m_Widgets.m_wZeroing.SetVisible(false);
+			m_Widgets.m_wZeroingText.SetText(string.Empty);
 		}
 		else
 		{
-			m_Widgets.m_Zeroing.SetVisible(true);
+			m_Widgets.m_wZeroing.SetVisible(true);
 			string sZeroing = string.Format("%1 m", zeroing);
-			m_Widgets.m_ZeroingText.SetText(sZeroing);
+			m_Widgets.m_wZeroingText.SetText(sZeroing);
 			
-			AnimateWidget_ColorFlash(m_Widgets.m_Zeroing, EWeaponFeature.ZEROING);
+			AnimateWidget_ColorFlash(m_Widgets.m_wZeroing, EWeaponFeature.ZEROING);
 		}
 	}
 	
@@ -987,18 +987,18 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 
 		if (zoom <= 0 || !state.m_bInADS)
 		{
-			m_Widgets.m_Optics.SetVisible(false);
-			m_Widgets.m_OpticsText.SetText(string.Empty);
+			m_Widgets.m_wOptics.SetVisible(false);
+			m_Widgets.m_wOpticsText.SetText(string.Empty);
 		}
 		else
 		{
 			string sZoom = zoom.ToString(-1,1);
 			sZoom = string.Format("%1 ×", sZoom);
 
-			m_Widgets.m_Optics.SetVisible(true);
-			m_Widgets.m_OpticsText.SetText(sZoom);
+			m_Widgets.m_wOptics.SetVisible(true);
+			m_Widgets.m_wOpticsText.SetText(sZoom);
 			
-			AnimateWidget_ColorFlash(m_Widgets.m_Optics, EWeaponFeature.ZOOM);
+			AnimateWidget_ColorFlash(m_Widgets.m_wOptics, EWeaponFeature.ZOOM);
 		}
 	}	
 	
@@ -1010,7 +1010,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		if (!state.m_bHasSpecialAmmo || (!state.m_MagazineUI && !state.m_GrenadeUI))
 		{
-			m_Widgets.m_AmmoType.SetVisible(false);
+			m_Widgets.m_wAmmoType.SetVisible(false);
 			return;
 		}
 
@@ -1031,21 +1031,22 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		if (!bShowAmmoTypeText)
 			sAmmoTypeText = "";
 		
-		m_Widgets.m_AmmoTypeText.SetText(sAmmoTypeText);
+		m_Widgets.m_wAmmoTypeText.SetText(sAmmoTypeText);
 
-		m_Widgets.m_AmmoType.SetVisible(true);
+		m_Widgets.m_wAmmoType.SetVisible(true);
 				
-		m_Widgets.m_AmmoType_FMJ.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FMJ);
-		m_Widgets.m_AmmoType_AP.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.AP);
-		m_Widgets.m_AmmoType_Frag.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FRAG);
-		m_Widgets.m_AmmoType_Smoke.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SMOKE);
-		m_Widgets.m_AmmoType_HE.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HE);
-		m_Widgets.m_AmmoType_HEAT.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HEAT);
-		m_Widgets.m_AmmoType_Incendiary.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.INCENDIARY);
-		m_Widgets.m_AmmoType_Tracer.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.TRACER);
-		m_Widgets.m_AmmoType_Sniper.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SNIPER);
+		m_Widgets.m_wAmmoType_FMJ.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FMJ);
+		m_Widgets.m_wAmmoType_AP.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.AP);
+		m_Widgets.m_wAmmoType_Frag.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.FRAG);
+		m_Widgets.m_wAmmoType_Smoke.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SMOKE);
+		m_Widgets.m_wAmmoType_HE.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HE);
+		m_Widgets.m_wAmmoType_HEAT.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.HEAT);
+		m_Widgets.m_wAmmoType_Incendiary.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.INCENDIARY);
+		m_Widgets.m_wAmmoType_Tracer.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.TRACER);
+		m_Widgets.m_wAmmoType_Sniper.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.SNIPER);
+		m_Widgets.m_wAmmoType_Illumination.SetVisible(state.m_eAmmoTypeFlags & EAmmoType.ILLUMINATION);
 		
-		//AnimateWidget_ColorFlash(m_Widgets.m_AmmoType);
+		//AnimateWidget_ColorFlash(m_Widgets.m_wAmmoType);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1058,9 +1059,9 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		bool showName = state.m_WeaponUI.ShowWeaponName();
 		
 		if (showName)
-			m_Widgets.m_WeaponName.SetText(state.m_WeaponUI.GetName());
+			m_Widgets.m_wWeaponName.SetText(state.m_WeaponUI.GetName());
 		
-		m_Widgets.m_WeaponName.SetVisible(showName);
+		m_Widgets.m_wWeaponName.SetVisible(showName);
 		
 		// Update muzzle caliber indicator
 		bool showCaliber;
@@ -1070,10 +1071,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			showCaliber = state.m_MuzzleUI.ShowCaliber();
 			
 			if (showCaliber)
-				m_Widgets.m_Caliber.SetText(state.m_MuzzleUI.GetCaliber());
+				m_Widgets.m_wCaliber.SetText(state.m_MuzzleUI.GetCaliber());
 		}
 		
-		m_Widgets.m_Caliber.SetVisible(showCaliber);
+		m_Widgets.m_wCaliber.SetVisible(showCaliber);
 	}		
 	
 	//------------------------------------------------------------------------------------------------
@@ -1143,13 +1144,13 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		m_Widgets = new SCR_WeaponInfoWidgets();
 		m_Widgets.Init(m_wRoot);
 		
-		m_Widgets.m_MagazineIndicator.SetVisible(true);
+		m_Widgets.m_wMagazineIndicator.SetVisible(true);
 		
 		if (!m_WeaponInfoPanelAnimator)
-			m_WeaponInfoPanelAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_WeaponInfoPanel, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADEOUT_PANEL_DELAY, true);
+			m_WeaponInfoPanelAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_wWeaponInfoPanel, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADEOUT_PANEL_DELAY, true);
 
 		if (!m_ZeroingAnimator)
-			m_ZeroingAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_Zeroing, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADEOUT_OPTICS_DELAY, true);	
+			m_ZeroingAnimator = new SCR_FadeInOutAnimator(m_Widgets.m_wZeroing, UIConstants.FADE_RATE_FAST, UIConstants.FADE_RATE_SLOW, FADEOUT_OPTICS_DELAY, true);	
 		
 		// Initialize the UI based on what weapon character currently has
 		OnWeaponChanged(m_WeaponManager.GetCurrentWeapon(), null);		
@@ -1269,7 +1270,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 	//---------------------------------------------------------------------------------------------------------
 	//! Sets widget's image to an image or imageset
-	protected void SetWidgetImage(ImageWidget w, string imageOrImageset, string imageName = "", float scale = SCALE_DEFAULT)
+	protected void SetWidgetImage(ImageWidget w, string imageOrImageset, string imageName = "", int size = -1)
 	{
 		if (!imageName.IsEmpty())
 		{
@@ -1281,10 +1282,16 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			// Assume it's an image
 			w.LoadImageTexture(0, imageOrImageset);
 		}
-		
-		// Perform scaling
+
+		if (size == -1)
+			return;
+				
+		// Perform resizing
 		int sx, sy;
 		w.GetImageSize(0, sx, sy);
-		w.SetSize(sx * scale, sy * scale);
+		
+		float ratio = sx / sy;
+		
+		w.SetSize(size * ratio, size);
 	}
 };

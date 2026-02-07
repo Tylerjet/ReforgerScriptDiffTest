@@ -1195,16 +1195,13 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 	//! \param[in] owner
 	//! \param[in] other
 	//! \param[in] contact
-	override bool OnContact(IEntity owner, IEntity other, Contact contact)
+	override void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
 	{
-		if (IsProxy())
-			return false;
-		
 		if (GetHealth() <= 0)
-			return false;
+			return;
 		
 		if (other && other.IsInherited(SCR_DebrisSmallEntity)) // Ignore impacts from debris
- 			return false;
+ 			return;
 		
 		// Get the physics of the dynamic object (if owner is static, then we use the other object instead)
 		Physics physics = contact.Physics1;
@@ -1215,7 +1212,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		{
 			physics = contact.Physics2;
 			if (!physics)
-				return false; // This only happens with ragdolls, other objects do have physics here, as collision only happens between physical objects
+				return; // This only happens with ragdolls, other objects do have physics here, as collision only happens between physical objects
 			
 			otherMass = physics.GetMass();
 		}
@@ -1223,7 +1220,7 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		{
 			Physics otherPhysics = other.GetPhysics();
 			if (!otherPhysics)
-				return false; // This only happens with ragdolls, other objects do have physics here, as collision only happens between physical objects
+				return; // This only happens with ragdolls, other objects do have physics here, as collision only happens between physical objects
 			
 			otherMass = otherPhysics.GetMass();
 		}
@@ -1241,8 +1238,6 @@ class SCR_DestructibleBuildingComponent : SCR_DamageManagerComponent
 		// Send damage to damage handling
 		SCR_DamageContext damageContext = new SCR_DamageContext(EDamageType.COLLISION, damage, outMat, GetOwner(), null, Instigator.CreateInstigator(other), null, -1, -1);
 		HandleDamage(damageContext);
-		
-		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

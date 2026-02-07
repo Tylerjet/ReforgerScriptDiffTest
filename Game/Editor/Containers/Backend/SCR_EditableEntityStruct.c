@@ -80,7 +80,7 @@ class SCR_EditableEntityStruct: JsonApiStruct
 	}
 	protected static void SerializeEntity(SCR_EditableEntityComponent entity, int parentID, out notnull array<ref SCR_EditableEntityStruct> outEntries, SCR_EditorAttributeList attributeList, EEditableEntityFlag requiredFlags, out array<int> entriesWithTarget, bool isParentDirty)
 	{
-		if (requiredFlags != 0 && !entity.HasEntityFlag(requiredFlags))
+		if (!entity || (requiredFlags != 0 && !entity.HasEntityFlag(requiredFlags)))
 			return;
 		
 		SCR_EditableEntityComponent target;

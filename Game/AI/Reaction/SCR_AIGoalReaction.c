@@ -172,19 +172,20 @@ class SCR_AIGoalReaction_Follow : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_RelatedGroupActivity, vector.Zero, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_IN_FORMATION, priorityLevel: msg.m_fPriorityLevel);
-
+		auto behavior = new SCR_AIFollowInFormationBehavior(utility, msg.m_RelatedGroupActivity, vector.Zero,
+				SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW,  priorityLevel: msg.m_fPriorityLevel);
+	
 		utility.AddAction(behavior);
 	}
 	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{		
 		auto msg = SCR_AIMessage_Follow.Cast(message);
-		if (!msg)
+		if (!msg || !msg.m_FollowEntity)
 			return;
 		
 		//SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, IEntity ent = null, bool useVehicles = false, float distance = 1.0
-		auto activity = new SCR_AIFollowActivity(utility, msg.m_RelatedWaypoint, vector.Zero, msg.m_FollowEntity, 
+		auto activity = new SCR_AIFollowActivity(utility, msg.m_RelatedWaypoint, vector.Zero, msg.m_FollowEntity,
 			msg.m_eMovementType, false, SCR_AIActionBase.PRIORITY_ACTIVITY_FOLLOW, priorityLevel: msg.m_fPriorityLevel, distance: msg.m_fDistance);
 		utility.SetStateAllActionsOfType(SCR_AISeekAndDestroyActivity, EAIActionState.FAILED); // move fails seek and destroy
 		utility.AddAction(activity);
@@ -216,9 +217,9 @@ class SCR_AIGoalReaction_MoveInFormation : SCR_AIGoalReaction
 	{
 		SCR_AIMessageGoal msg = SCR_AIMessageGoal.Cast(message);
 		
-		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_RelatedGroupActivity, vector.Zero, 
+		auto behavior = new SCR_AIMoveInFormationBehavior(utility, msg.m_RelatedGroupActivity, vector.Zero,
 			SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_IN_FORMATION, msg.m_fPriorityLevel);
-		
+			
 		utility.AddAction(behavior);
 	}
 };
@@ -231,8 +232,38 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 		auto msg = SCR_AIMessage_GetIn.Cast(message);
 		if (!msg)
 			return;
+		if (!msg.m_Vehicle)
+			return;
+		// from msg.m_eRoleInVehicle and msg.m_Vehicle we deduce empty compartment to get in, if none found, we dont add behavior get in
+		BaseCompartmentSlot compartmentSlot;
+		BaseCompartmentManagerComponent compMan = BaseCompartmentManagerComponent.Cast(msg.m_Vehicle.FindComponent(BaseCompartmentManagerComponent));
+		if (!compMan)
+			return;
+		array<BaseCompartmentSlot> compartments = {};
+		compMan.GetCompartments(compartments);
+		foreach (BaseCompartmentSlot comp: compartments)
+		{
+			if (comp.IsReserved() || SCR_AICompartmentHandling.CompartmentClassToType(comp.Type()) != msg.m_eRoleInVehicle)
+				continue;
 			
-		auto behavior = new SCR_AIGetInVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, msg.m_eRoleInVehicle, SCR_AIActionBase.PRIORITY_BEHAVIOR_VEHICLE, msg.m_fPriorityLevel);
+			IEntity occupant = comp.GetOccupant();
+			if (occupant && occupant == utility.m_OwnerEntity)
+				// we are already inside correct compartment type! we are done -> do not add new behavior
+				return;
+			else if (occupant && SCR_AIDamageHandling.IsConscious(occupant))
+				continue;
+			comp.SetReserved(utility.m_OwnerEntity);
+			compartmentSlot = comp;
+			break;
+		}
+		if (!compartmentSlot)
+		{
+#ifdef AI_DEBUG
+			PrintFormat("Warning: unit %1 got to get in %2 but there is no room for it in comp type %3!", utility.m_OwnerEntity, msg.m_Vehicle, msg.m_eRoleInVehicle);
+#endif
+			return;
+		}
+		auto behavior = new SCR_AIGetInVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, compartmentSlot, msg.m_eRoleInVehicle, SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_IN_VEHICLE, msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
@@ -244,8 +275,8 @@ class SCR_AIGoalReaction_GetInVehicle : SCR_AIGoalReaction
 		auto msg = SCR_AIMessage_GetIn.Cast(message);
 		if (!msg)
 			return;
-			
-		auto activity = new SCR_AIGetInActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, msg.m_eRoleInVehicle, priorityLevel: msg.m_fPriorityLevel);
+		
+		auto activity = new SCR_AIGetInActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, msg.m_BoardingParams, msg.m_eRoleInVehicle, priorityLevel: msg.m_fPriorityLevel);
 		utility.AddAction(activity);
 	}
 };
@@ -259,7 +290,7 @@ class SCR_AIGoalReaction_GetOutVehicle : SCR_AIGoalReaction
 		if (!msg)
 			return;
 
-		auto behavior = new SCR_AIGetOutVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE, priorityLevel: msg.m_fPriorityLevel);
+		auto behavior = new SCR_AIGetOutVehicle(utility, msg.m_RelatedGroupActivity, msg.m_Vehicle, delay_s: msg.m_fDelay_s, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE, priorityLevel: msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
@@ -272,7 +303,16 @@ class SCR_AIGoalReaction_GetOutVehicle : SCR_AIGoalReaction
 		if (!msg)
 			return;
 		
-		auto activity = new SCR_AIGetOutActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, priorityLevel: msg.m_fPriorityLevel);
+		// if current activity is follow, make get out a priority so AI disembarks vehicle first
+		float customPriorityLevel;
+		SCR_AIFollowActivity follow = SCR_AIFollowActivity.Cast(utility.GetCurrentAction());
+		if (follow)
+			customPriorityLevel = SCR_AIActionBase.PRIORITY_LEVEL_GAMEMASTER;
+		else
+			customPriorityLevel = msg.m_fPriorityLevel;
+		
+		auto activity = new SCR_AIGetOutActivity(utility, msg.m_RelatedWaypoint, msg.m_Vehicle, msg.m_BoardingParams, priorityLevel: customPriorityLevel);
+		
 		utility.AddAction(activity);
 	}
 };
@@ -322,18 +362,22 @@ class SCR_AIGoalReaction_Heal : SCR_AIGoalReaction
 		
 		float priorityLevelClamped = currentAction.GetRestrictedPriorityLevel(msg.m_fPriorityLevel);		
 
-		// Ignore message if we already have an activity to heal this soldier
-		SCR_AIHealActivity healActivity = SCR_AIHealActivity.Cast(utility.FindActionOfType(SCR_AIHealActivity));
-		if (!healActivity)
-			return;
-		
-		// Return if we are already healing this soldier
-		if (healActivity.m_EntityToHeal.m_Value == msg.m_EntityToHeal)
+		// Check if we already have an activity to heal this soldier 
+		array <ref AIActionBase> actions = {};
+		utility.FindActionsOfType(SCR_AIHealActivity, actions);
+		foreach (AIActionBase action : actions)
 		{
-			healActivity.SetPriorityLevel(priorityLevelClamped);
-			return;
+			SCR_AIHealActivity healActivity = SCR_AIHealActivity.Cast(action);
+			
+			//Return if we are already healing this soldier
+			if (healActivity.m_EntityToHeal.m_Value == msg.m_EntityToHeal)
+			{
+				healActivity.SetPriorityLevel(priorityLevelClamped);
+				return;
+			}
 		}
-		
+
+
 		auto activity = new SCR_AIHealActivity(utility, msg.m_RelatedWaypoint, msg.m_EntityToHeal, priorityLevel: priorityLevelClamped);
 
 		utility.AddAction(activity);
@@ -361,11 +405,11 @@ class SCR_AIGoalReaction_Defend : SCR_AIGoalReaction
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		auto msg = SCR_AIMessage_Defend.Cast(message);
-		if (!msg)
+		if (!msg || !msg.m_RelatedWaypoint)
 			return;
 		
 		auto behavior = new SCR_AIDefendBehavior(utility, msg.m_RelatedGroupActivity, msg.m_RelatedWaypoint,
-			msg.m_vDefendLocation, msg.m_fDefendAngularRange, priorityLevel: msg.m_fPriorityLevel);
+			msg.m_vDefendDirection, msg.m_fDefendAngularRange, priorityLevel: msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 
@@ -375,10 +419,10 @@ class SCR_AIGoalReaction_Defend : SCR_AIGoalReaction
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility, SCR_AIMessageBase message)
 	{
 		auto msg = SCR_AIMessage_Defend.Cast(message);
-		if (!msg)
+		if (!msg || !msg.m_RelatedWaypoint)
 			return;
 		
-		auto activity = new SCR_AIDefendActivity(utility, msg.m_RelatedWaypoint, msg.m_RelatedWaypoint, msg.m_vDefendLocation,
+		auto activity = new SCR_AIDefendActivity(utility, msg.m_RelatedWaypoint, msg.m_vDefendDirection,
 			priorityLevel: msg.m_fPriorityLevel);
 		if (m_OverrideBehaviorTree != string.Empty)
 			activity.m_sBehaviorTree = m_OverrideBehaviorTree;
@@ -418,6 +462,32 @@ class SCR_AIGoalReaction_PerformAction : SCR_AIGoalReaction
 };
 
 [BaseContainerProps()]
+class SCR_AIGoalReaction_OpenNavlinkDoor : SCR_AIGoalReaction
+{
+	static const string SMART_ACTION_TAG = "OpenGate";
+	
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		auto msg = SCR_AIMessage_OpenNavlinkDoor.Cast(message);
+		if (!msg)
+			return;
+		
+		if (!msg.m_DoorEntity)
+			return;
+		
+		SCR_AISmartActionComponent smartActionComp = SCR_AISmartActionHandling.FindSmartAction(msg.m_DoorEntity, SMART_ACTION_TAG, false); 
+		
+		if (!smartActionComp)
+			return;
+		
+		SCR_AIPerformActionBehavior performActionBehavior = new SCR_AIPerformActionBehavior(utility, msg.m_RelatedGroupActivity, smartActionComp, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_OPEN_NAVLINK_DOOR);
+				
+		utility.WrapBehaviorOutsideOfVehicle(performActionBehavior);
+		utility.AddAction(performActionBehavior);
+	}
+}
+
+[BaseContainerProps()]
 class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
@@ -425,9 +495,15 @@ class SCR_AIGoalReaction_Cancel : SCR_AIGoalReaction
 		SCR_AIMessage_Cancel msg = SCR_AIMessage_Cancel.Cast(message);
 		if (!msg || !msg.m_RelatedGroupActivity)
 			return;
-//		utility.FailBehaviorsOfActivity(msg.m_RelatedGroupActivity);
-		utility.SetStateOfRelatedAction(msg.m_RelatedGroupActivity, EAIActionState.FAILED);
-	}	
+		//utility.SetStateOfRelatedAction(msg.m_RelatedGroupActivity, EAIActionState.FAILED); TODO: fix code, this is not working right
+		array<ref AIActionBase> actions = {};
+		utility.GetActions(actions);
+		foreach(AIActionBase action: actions)
+		{
+			if (action.GetRelatedGroupActivity() == msg.m_RelatedGroupActivity)
+				action.Fail();
+		};
+	}
 };
 
 [BaseContainerProps()]
@@ -445,6 +521,28 @@ class SCR_AIGoalReaction_ThrowGrenadeTo : SCR_AIGoalReaction
 			return;
 		
 		SCR_AIThrowGrenadeToBehavior behavior = new SCR_AIThrowGrenadeToBehavior(utility, msg.m_RelatedGroupActivity, msg.m_vTargetPosition, msg.e_WeaponType, msg.m_fDelay, msg.m_fPriorityLevel);
+		utility.AddAction(behavior);
+	}
+};
+
+[BaseContainerProps()]
+class SCR_AIGoalReaction_FireIllumFlareAt : SCR_AIGoalReaction
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{
+		SCR_AIMessage_FireIllumFlareAt msg = SCR_AIMessage_FireIllumFlareAt.Cast(message);
+		if (!msg)
+			return;
+		
+		BaseWeaponComponent weaponComponent;
+		BaseMagazineComponent magazineComponent;
+		int muzzleId;
+		
+		// Don't react if we can't fire a flare
+		if (!SCR_AIActivityIllumFlareFeature.GetAgentIllumWeaponAndMuzzle(utility.m_AIInfo, weaponComponent, magazineComponent, muzzleId))
+			return;
+		
+		SCR_AIFireIllumFlareBehavior behavior = new SCR_AIFireIllumFlareBehavior(utility, msg.m_RelatedGroupActivity, msg.m_vTargetPosition, weaponComponent, magazineComponent, muzzleId, msg.m_fPriorityLevel);
 		utility.AddAction(behavior);
 	}
 };
@@ -480,6 +578,20 @@ class SCR_AIGoalReaction_PickupInventoryItems : SCR_AIGoalReaction
 		utility.AddAction(behavior);
 	}
 }
+
+[BaseContainerProps()]
+class SCR_AIGoalReaction_Suppress : SCR_AIGoalReaction
+{
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, SCR_AIMessageBase message)
+	{		
+		SCR_AIMessage_Suppress msg = SCR_AIMessage_Suppress.Cast(message);
+		if (!msg || !msg.m_Volume)
+			return;
+				
+		SCR_AISuppressBehavior behavior = new SCR_AISuppressBehavior(utility, msg.m_RelatedGroupActivity, msg.m_Volume, msg.m_fDuration_s, fireRate: msg.m_fFireRate, priorityLevel: msg.m_fPriorityLevel);
+		utility.AddAction(behavior);
+	}
+};
 
 //--------------------------------------------------------------------------------------------------------
 // Helper methods used in above

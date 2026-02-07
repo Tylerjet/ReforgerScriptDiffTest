@@ -51,12 +51,6 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 	[Attribute("1", desc: "Only valid if m_aDoTTypesHealed includes FIRE. The supply cost each time fire rate is reduced (no matter the reduction amount as fire rate is not replicated)", category: "Heal/Repair Support Station")]
 	protected float m_iSupplyCostPerFireRateReduction;
 	
-	[Attribute("0.75", desc: "Heavy smoke (which will never lead to fire) is removed when vehicle rough health is this or higher", category: "Heal/Repair Support Station")]
-	protected float m_fHeavySmokeRemoveHealthPercentage;
-	
-	[Attribute("0.95", desc: "Light smoke (which will never lead to fire) is removed when vehicle rough health is this or higher", category: "Heal/Repair Support Station")]
-	protected float m_fLightSmokeRemoveHealthPercentage;
-	
 	//------------------------------------------------------------------------------------------------
 	override ESupportStationType GetSupportStationType()
 	{
@@ -71,6 +65,9 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		
 		hitZones.Clear();
 		action.GetHitZonesToHeal(hitZones);
+		SCR_DamageManagerComponent dmgManager = action.GetActionDamageManager();
+		if (!dmgManager)
+			return 0;
 		
 		float fireRateHealAmount;
 		
@@ -80,10 +77,10 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
 			if (!flammableHitZone)
 				continue;
-			
-			if (flammableHitZone.GetFireState() != EFireState.BURNING)// && flammableHitZone.GetFireState() != EFireState.SMOKING_IGNITING)
+
+			if (!dmgManager.IsOnFire(flammableHitZone))
 				continue;
-			
+
 			activeDoT = EDamageType.FIRE;
 			
 			fireRateHealAmount += flammableHitZone.GetFireRate();
@@ -175,8 +172,8 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 				}
 				
 				//~ Make sure it doesn't ignite again
-				if (flammableHitZone.GetFireRate() <= 0 && flammableHitZone.GetFireState() == EFireState.SMOKING_IGNITING)
-					flammableHitZone.SetFireState(EFireState.SMOKING_HEAVY);
+				if (flammableHitZone.GetFireRate() <= 0 && flammableHitZone.GetFireState() == SCR_EBurningState.SMOKING_IGNITING)
+					flammableHitZone.SetFireState(SCR_EBurningState.SMOKING_HEAVY);
 			}
 			
 			SCR_EDamageSupportStationHealState healState;
@@ -198,9 +195,6 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		
 		//~ Execute default logics if not on fire
 		super.OnExecutedServer(actionOwner, actionUser, action);
-			
-		//~ Remove smoke states if condition met
-		RemoveSmokeFromHitZone(actionOwner, actionUser, SCR_BaseDamageHealSupportStationAction.Cast(action), hitZones);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -262,7 +256,6 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 			return;
 
 		ENotification inVehicleNotification = ENotification.UNKNOWN;
-		bool usePercentage;
 		
 		//~ Get correct notitfication
 		switch (healState)
@@ -327,35 +320,6 @@ class SCR_RepairSupportStationComponent : SCR_BaseDamageHealSupportStationCompon
 		
 		//~ Send in vehicle notification if player is in vehicle
 		SCR_NotificationsComponent.SendLocal(inVehicleNotification, userRplId, notificationHitZoneGroup, healthScaled * 1000);
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	//~ Removes the smoke state depending on the roughHeal m_fMaxHealScaled
-	protected void RemoveSmokeFromHitZone(notnull IEntity actionOwner, notnull IEntity actionUser, SCR_BaseDamageHealSupportStationAction action, notnull array<HitZone> hitZones)
-	{
-		bool allHitZonesMaxHealth;
-		float healthPercentage;
-		
-		//~ Get the current percentage of healing and if all hitZones are healed to the max
-		SCR_SupportStationManagerComponent.GetCombinedHitZonesStateForDamageSupportStation(action.GetActionDamageManager(), hitZones, GetMaxHealScaled(), healthPercentage, allHitZonesMaxHealth);	
-		SCR_FlammableHitZone flammableHitZone;
-		EFireState fireState;
-		
-		foreach (HitZone hitZone : hitZones)
-		{
-			flammableHitZone = SCR_FlammableHitZone.Cast(hitZone);
-			if (!flammableHitZone)
-				continue;
-			
-			fireState = flammableHitZone.GetFireState();
-			
-			if (healthPercentage >= m_fLightSmokeRemoveHealthPercentage && (fireState == EFireState.SMOKING_LIGHT || fireState == EFireState.SMOKING_HEAVY || fireState == EFireState.SMOKING_IGNITING))
-				flammableHitZone.SetFireState(EFireState.NONE);
-			else if (healthPercentage >= m_fHeavySmokeRemoveHealthPercentage && (fireState == EFireState.SMOKING_HEAVY || fireState == EFireState.SMOKING_IGNITING))
-				flammableHitZone.SetFireState(EFireState.SMOKING_LIGHT);
-			else if (fireState == EFireState.SMOKING_IGNITING)
-				flammableHitZone.SetFireState(EFireState.SMOKING_HEAVY);
-		}
 	}
 }
 	

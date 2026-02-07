@@ -21,13 +21,17 @@ class SCR_EquipmentStorageSlot : EquipmentStorageSlot
 		IEntity ent = GetAttachedEntity();
 		if (ent)
 		{
-			SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast( ent.FindComponent(SCR_GadgetComponent) );
-			if (gadgetComp && gadgetComp.IsVisibleEquipped())
-				return false;	// let the slot handle occlusion if the gadget can be visible
-			else
-				return true;	// if it is slot which is not visualized, dont do any visibility changes (keep invis)
+			SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(ent.FindComponent(SCR_GadgetComponent));
+			if (!gadgetComp)
+				return false;
+
+			gadgetComp.OnSlotOccludedStateChanged(occluded);
+
+			//return false to let the slot handle occlusion if the gadget can be visible
+			//return true if it is slot which is not visualized, dont do any visibility changes (keep invis)
+			return !gadgetComp.IsVisibleEquipped();
 		}
-		
+
 		return false; 
 	}
 }

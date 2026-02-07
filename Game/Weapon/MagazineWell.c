@@ -24,6 +24,14 @@ class MagazineWellM60 : BaseMagazineWell
 {
 };
 
+//M60D - 7.62x51mm
+class MagazineWellM60DClass {}
+MagazineWellM60DClass MagazineWellM60DSource;
+
+class MagazineWellM60D : BaseMagazineWell
+{
+};
+
 //M249 - 5.56x45mm
 class MagazineWellM249Class {}
 MagazineWellM249Class MagazineWellM249Source;

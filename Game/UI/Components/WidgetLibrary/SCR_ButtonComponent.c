@@ -115,8 +115,6 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 	{
 		super.OnFocus(w, x, y);
 		m_OnFocus.Invoke(w);
-		//ColorizeWidgets(COLOR_BACKGROUND_FOCUSED, COLOR_CONTENT_FOCUSED);
-		//GetGame().GetInputManager().AddActionListener("MenuSelect", EActionTrigger.DOWN, OnMenuSelect);
 		return false;
 	}
 
@@ -124,22 +122,8 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
 		super.OnFocusLost(w, x, y);
-
-		//GetGame().GetInputManager().RemoveActionListener("MenuSelect", EActionTrigger.DOWN, OnMenuSelect);
-		//if (GetWidgetUnderCursor() == w)
-			//ColorizeWidgets(COLOR_BACKGROUND_HOVERED, COLOR_CONTENT_HOVERED);
-		//else
-			//ColorizeWidgets(COLOR_BACKGROUND_DEFAULT, COLOR_CONTENT_DEFAULT);
 		return false;
 	}
-
-	/*
-	//------------------------------------------------------------------------------------------------
-	protected void ResetPadding()
-	{
-		ColorizeWidgets(COLOR_BACKGROUND_FOCUSED, COLOR_CONTENT_FOCUSED);
-	}
-	*/
 
 	//------------------------------------------------------------------------------------------------
 	void ColorizeWidgets(Color colorBackground, Color colorContent, float speed = -1)
@@ -161,17 +145,6 @@ class SCR_ButtonComponent : SCR_ButtonBaseComponent
 		if (content)
 			AlignableSlot.SetHorizontalAlign(content, horizontalAlign);
 	}
-
-	/*
-	//------------------------------------------------------------------------------------------------
-	void SetPadding(float left = 4, float top = 4, float right = 4, float bottom = 4)
-	{
-		 if (!m_wContent)
-			return;
-
-		OverlaySlot.SetPadding(m_wContent, left, top, right, bottom);
-	}
-	*/
 
 	//------------------------------------------------------------------------------------------------
 	void SetContent(string text)

@@ -41,16 +41,16 @@ class SCR_InventoryCharacterWidgetHelper: ScriptedWidgetComponent
 		
 		if (m_InputMouseRotate)
 		{
-			m_vRotationInput[1] = m_vRotationInput[1] + m_pInputmanager.GetActionValue("Inventory_InspectPanX");
+			m_vRotationInput[1] = Math.Clamp(m_vRotationInput[1] + m_pInputmanager.GetActionValue("Inventory_InspectPanX"), -10, 10);
 		}
 		if (m_InputMouseWheel)
 		{
 			m_fZoomInput += 0.01 * m_pInputmanager.GetActionValue("Inventory_InspectZoom");
 		}
 		
-		if (m_pInputmanager.GetLastUsedInputDevice() == EInputDeviceType.GAMEPAD)
+		if (!m_pInputmanager.IsUsingMouseAndKeyboard())
 		{
-			m_vRotationInput[1] = 100.0 * m_vRotationInput[1] + m_pInputmanager.GetActionValue("Inventory_InspectPanX");
+			m_vRotationInput[1] = 1000.0 * m_vRotationInput[1] + m_pInputmanager.GetActionValue("Inventory_InspectPanX");
 			m_fZoomInput +=  0.01 * m_pInputmanager.GetActionValue("Inventory_InspectZoom");
 		}
 	}
@@ -82,7 +82,7 @@ class SCR_InventoryCharacterWidgetHelper: ScriptedWidgetComponent
 	bool Update(float ts, inout PreviewRenderAttributes playerRenderAttributes)
 	{
 
-		const float rotSensitivity = 0.5;
+		const float rotSensitivity = 500;
 		const float zoomSensitivity = -64.0;
 		const bool extrapolateInput = false;
 		

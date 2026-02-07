@@ -87,18 +87,7 @@ class SCR_AIActivitySmokeCoverFeatureAgent : Managed
 class SCR_AIActivitySmokeCoverFeature: SCR_AIActivityFeatureBase
 {
 	static const int MAX_DISTANCE_TO_TARGET_POS_SQ = 40*40;
-	static const int MAX_SMOKE_POSITION_COUNT = 3; // Max number of smoke grenades that can be thrown at one time
 	static const int SMOKE_WALL_GAPS_SIZE = 5; // Width in meters of gaps between smokes in smoke walls
-		
-	//-------------------------------------------------------------------------------------
-	protected bool IsAgentAvailable(SCR_ChimeraAIAgent agent)
-	{
-		SCR_AIInfoComponent infoComp = agent.m_InfoComponent;
-		
-		return agent && infoComp.GetAIState() == EUnitAIState.AVAILABLE &&
-			!infoComp.HasUnitState(EUnitState.IN_TURRET) && !infoComp.HasUnitState(EUnitState.IN_VEHICLE) &&
-			!infoComp.HasUnitState(EUnitState.UNCONSCIOUS);
-	}
 	
 	//-------------------------------------------------------------------------------------
 	protected void GetConsideredAgents(SCR_AIGroupUtilityComponent groupUtility, vector targetPosition, array<AIAgent> avoidAgents, array<AIAgent> excludeAgents,
@@ -213,7 +202,8 @@ class SCR_AIActivitySmokeCoverFeature: SCR_AIActivityFeatureBase
 		SCR_AIActivitySmokeCoverFeatureProperties smokeCoverProperties,
 		notnull array<AIAgent> avoidAgents,
 		notnull array<AIAgent> excludeAgents,
-		SCR_AIActivityBase contextActivity
+		int maxPositionCount = 1,
+		SCR_AIActivityBase contextActivity = null
 	) {
 		// Number of agents that are considered combat-ready. Will be used to calculate how many 
 		// grenade throwers can be picked to not impare group's ability to continue fire fight
@@ -228,10 +218,11 @@ class SCR_AIActivitySmokeCoverFeature: SCR_AIActivityFeatureBase
 		// Early exit if no agents to consider for throwing
 		if (!consideredAgentsCount)
 			return false;
+			
 		
 		// Get max count of smoke positions to cover
 		// Don't allow more than half of combat-ready agents to throw, other half must cover/fight
-		int maxSmokePositions = Math.Min(Math.Floor(combatReadyAgentsCount / 2), Math.Min(MAX_SMOKE_POSITION_COUNT, consideredAgentsCount));
+		int maxSmokePositions = Math.Min(Math.Floor(combatReadyAgentsCount / 2), Math.Min(maxPositionCount, consideredAgentsCount));
 		
 		// Early exit if we can't smoke any position
 		if (maxSmokePositions <= 0)
@@ -290,7 +281,7 @@ class SCR_AIActivitySmokeCoverFeature: SCR_AIActivityFeatureBase
 	}
 	
 	//-------------------------------------------------------------------------------------
-	bool ExecuteForActivity(SCR_AIActivityBase activity)
+	bool ExecuteForActivity(SCR_AIActivityBase activity, int maxPositionCount = 3)
 	{
 		SCR_AIGroupUtilityComponent groupUtility = activity.m_Utility;
 		if (!groupUtility)
@@ -302,6 +293,7 @@ class SCR_AIActivitySmokeCoverFeature: SCR_AIActivityFeatureBase
 			GetActivityProperties(activity),
 			GetActivityAvoidedAgents(activity),
 			GetActivityExcludedAgents(activity),
+			maxPositionCount,
 			activity
 		);
 	}
@@ -336,6 +328,7 @@ class SCR_AIActivitySmokeCoverFeature: SCR_AIActivityFeatureBase
 		return null;
 	}
 }
+
 
 class SCR_AIHealActivitySmokeCoverFeature: SCR_AIActivitySmokeCoverFeature
 {

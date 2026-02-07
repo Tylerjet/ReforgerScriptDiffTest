@@ -960,22 +960,19 @@ class SCR_BaseSupportStationComponent : ScriptComponent
 		if (!InitValidSetup() || !owner)
 			return;
 		
-		if (AreSuppliesEnabled())
+		SCR_ResourceComponent resourceComponent = GetResourceComponent();
+		if (resourceComponent)
 		{
-			SCR_ResourceComponent resourceComponent = GetResourceComponent();
-			if (resourceComponent)
-			{
-				m_ResourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
-				if (!m_ResourceConsumer)
-					Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies but the consumer configuration in m_ResourceConsumer is missing", LogLevel.ERROR);
-				//~ Temp solution until replication fixed
-				else 
-					resourceComponent.TEMP_GetOnInteractorReplicated().Insert(TEMP_OnInteractorReplicated);
-			}
-			else
-			{
-				Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies  but it has no SCR_ResourceComponent", LogLevel.ERROR);
-			}
+			m_ResourceConsumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+			if (!m_ResourceConsumer)
+				Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies but the consumer configuration in m_ResourceConsumer is missing", LogLevel.ERROR);
+			//~ Temp solution until replication fixed
+			else 
+				resourceComponent.TEMP_GetOnInteractorReplicated().Insert(TEMP_OnInteractorReplicated);
+		}
+		else
+		{
+			Print("'SCR_BaseSupportStationComponent' 'EOnInit': '" + GetOwner() + "' Support Station is set to use supplies  but it has no SCR_ResourceComponent", LogLevel.ERROR);
 		}
 
 		//~ Subscribe to on damage state changed

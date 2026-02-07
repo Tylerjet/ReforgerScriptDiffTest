@@ -8,33 +8,39 @@ class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 	
 	protected bool m_bHasData = false;
 	
+	//----------------------------------------------------------------------------------------
 	override void OnSuccess(int code)
 	{
-		super.OnSuccess(code);
-		
-		PrintFormat("[SCR_ServerSaveRequestCallback] OnSuccess(): code=%1", code);
+		super.OnSuccess(code);	
+		Print(string.Format("[SCR_ServerSaveRequestCallback] OnSuccess(): code=%1", code), LogLevel.NORMAL);
 		
 		if (code == 0)
 			return;
 		
+		// Get saves 
+		WorkshopApi workshop = GetGame().GetBackendApi().GetWorkshop(); 
+		
+		array<WorkshopItem> items = {};
+		workshop.GetPageItems(items);
+		
 		m_bHasData = code == EBackendRequest.EBREQ_WORKSHOP_GetAsset;
 		
-		WorldSaveItem item;
+		WorldSaveItem save;
 		WorldSaveManifest manifest = new WorldSaveManifest();
 		
-		bool isNew = GetGame().GetBackendApi().GetWorldSaveApi().GetTotalItemCount() == 0;
+		bool isNew = items.IsEmpty();
 		if (!isNew)
 		{
-			//--- Use existing Workshop item
-			array<WorldSaveItem> items = {};
-			GetGame().GetBackendApi().GetWorldSaveApi().GetPageItems(items);
-			item = items[0];
+			// Clear  
+			save = WorldSaveItem.Cast(items[0]);
 			
 			if (m_bHasData)
-				item.FillManifest(manifest);
+			{
+				save.FillManifest(manifest);
+			}
 			else
 			{
-				item.AskDetail(this);
+				save.AskDetail(this);
 				return;
 			}		
 		}
@@ -47,32 +53,41 @@ class SCR_ServerSaveRequestCallback: SCR_BackendCallback
 		//--- Create new save from manifest
 		if (isNew)
 		{
-			item = GetGame().GetBackendApi().GetWorldSaveApi().CreateLocalWorldSave(manifest);
+			save = WorldSaveItem.CreateLocalWorldSave(manifest);
 		}
 		
 		//--- Upload file
-		m_UploadCallback = new SCR_ServerSaveUploadCallback();
-		GetGame().GetBackendApi().GetWorldSaveApi().UploadWorldSave(manifest, m_UploadCallback, item);
+		m_UploadCallback = new SCR_ServerSaveUploadCallback(save.Id());
+		save.UploadWorldSave(manifest, m_UploadCallback);
 	}
+	
+	//----------------------------------------------------------------------------------------
 	override void OnError(int code, int restCode, int apiCode)
 	{
 		super.OnError(code, restCode, apiCode);
-		PrintFormat("[SCR_ServerSaveRequestCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code));
+		Print(string.Format("[SCR_ServerSaveRequestCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code)), LogLevel.NORMAL);
 	}
+	
+	//----------------------------------------------------------------------------------------
 	override void OnTimeout()
 	{
 		super.OnTimeout();
-		Print("[SCR_ServerSaveRequestCallback] OnTimeout");
+		Print("[SCR_ServerSaveRequestCallback] OnTimeout", LogLevel.NORMAL);
 	}
+	
+	//----------------------------------------------------------------------------------------
 	void SCR_ServerSaveRequestCallback(string fileName)
 	{
 		m_sFileName = fileName;
 		
 		m_PageParams = new SCR_UploadSaveCallback_PageParams();
 		m_PageParams.limit = 1;
-		GetGame().GetBackendApi().GetWorldSaveApi().RequestPage(this, m_PageParams, false);
+		m_PageParams.type = "world-save";
+		GetGame().GetBackendApi().GetWorkshop().RequestPage(this, m_PageParams, false);
 	}
 };
+
+//----------------------------------------------------------------------------------------
 class SCR_UploadSaveCallback_PageParams: PageParams
 {
 	override void OnPack()
@@ -82,22 +97,36 @@ class SCR_UploadSaveCallback_PageParams: PageParams
 	}
 };
 
-class SCR_ServerSaveUploadCallback: BackendCallback
+//----------------------------------------------------------------------------------------
+class SCR_ServerSaveUploadCallback: SCR_BackendCallback
 {
+	protected string m_sId;
+	
+	//----------------------------------------------------------------------------------------
 	override void OnSuccess(int code)
 	{
-		PrintFormat("[SCR_ServerSaveUploadCallback] OnSuccess(): code=%1", code);
+		Print(string.Format("[SCR_ServerSaveRequestCallback] OnSuccess(): code=%1", code), LogLevel.NORMAL);
 		
 		BaseChatComponent chatComponent = BaseChatComponent.Cast(GetGame().GetPlayerController().FindComponent(BaseChatComponent));
 		if (chatComponent)
-			chatComponent.SendMessage(string.Format("#load %1", SCR_ServerSaveRequestCallback.SESSION_SAVE_NAME), 0);
+			chatComponent.SendMessage(string.Format("#load %1", m_sId), 0);
 	}
+	
+	//----------------------------------------------------------------------------------------
 	override void OnError(int code, int restCode, int apiCode)
 	{
-		PrintFormat("[SCR_ServerSaveUploadCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code));
+		Print(string.Format("[SCR_ServerSaveUploadCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code)), LogLevel.NORMAL);
 	}
+	
+	//----------------------------------------------------------------------------------------
 	override void OnTimeout()
 	{
-		Print("[SCR_ServerSaveUploadCallback] OnTimeout");
+		Print("[SCR_ServerSaveUploadCallback] OnTimeout", LogLevel.NORMAL);
+	}
+	
+	//----------------------------------------------------------------------------------------
+	void SCR_ServerSaveUploadCallback(string id)
+	{
+		m_sId = id;
 	}
 }

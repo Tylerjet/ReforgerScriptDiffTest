@@ -351,16 +351,71 @@ class Screenshot_Autotest: GenericEntity
 	
 	protected bool GetTimeAndDate(out float normTime, out int year, out int month, out int day)
 	{
+		BaseWorld world = GetWorld();
+		
+		if(world)
+		{
+			BaseWeatherManagerEntity weatherEntity = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(world)); 
+			
+			if(weatherEntity)
+			{
+				normTime = weatherEntity.GetTimeOfTheDay() / 24.0;
+				year = weatherEntity.GetYear();
+				month = weatherEntity.GetMonth();
+				day = weatherEntity.GetDay();
+				return true;
+			}
+		}
+		
 		return false;
 	}
 	
 	bool SetTimeAndDate(float timeOfTheDay24h, int year, int month, int day)
 	{
+		BaseWorld world = GetWorld();
+		
+		
+		if(world)
+		{
+			BaseWeatherManagerEntity weatherEntity = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(world)); 
+		
+			if (weatherEntity)
+			{
+				weatherEntity.SetDate(year, month, day, true);
+				weatherEntity.SetTimeOfTheDay(timeOfTheDay24h);
+				return true;
+			}
+		}
+		
 		return false;
 	}
 	
 	bool SetWeatherState(string state)
 	{
+		BaseWorld world = GetWorld();
+		
+		if(world)
+		{
+			BaseWeatherManagerEntity weatherEntity = BaseWeatherManagerEntity.Cast(WeatherManager.GetRegisteredWeatherManagerEntity(world)); 
+		
+			if (weatherEntity)
+			{
+				BaseWeatherStateTransitionManager transManager = weatherEntity.GetTransitionManager();
+				
+				if(transManager)
+				{
+					WeatherStateTransitionNode node = transManager.CreateStateTransition(state, 0.1, 0.1);
+					if(node)
+					{
+						transManager.EnqueueStateTransition(node, false);
+						transManager.RequestStateTransitionImmediately(node);
+					}
+				}
+				
+				return true;
+			}
+		}
+		
 		return false;
 	}
 }

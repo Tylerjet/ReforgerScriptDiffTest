@@ -113,11 +113,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	//------------------------------------------------------------------------------------------------
 	protected void TurnOn(notnull SCR_BaseInteractiveLightComponentClass componentData, bool skipTransition, bool playSound)
 	{
-		LightEntity light;
 		IEntity owner = GetOwner();
-		vector lightOffset;
-		vector lightDirection;
-		vector pos;
 		
 		// Play sound
 		if (!System.IsConsoleApp())
@@ -144,17 +140,15 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 				continue;
 			
 			vector mat[4];
-			owner.GetTransform(mat);
+			owner.GetWorldTransform(mat);
 			
-			lightOffset = lightData.GetLightOffset();
-			lightDirection = (lightData.GetLightConeDirection().Multiply4(mat) - lightOffset.Multiply4(mat)).Normalized();
-			pos = owner.GetOrigin() + lightOffset;
+			vector lightDirection = lightData.GetLightConeDirection().Multiply3(mat).Normalized();
+			vector pos = lightData.GetLightOffset().Multiply4(mat);
 			
-			light = CreateLight(lightData, pos, lightDirection, LIGHT_EMISSIVITY_START);
+			LightEntity light = CreateLight(lightData, pos, lightDirection, LIGHT_EMISSIVITY_START);
 			if (!light)
 				continue;
-						
-			owner.AddChild(light, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
+			
 			light.SetFlags(EntityFlags.PROXY);
 			m_aLights.Insert(light);
 		}

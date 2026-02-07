@@ -76,11 +76,8 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	[Attribute(defvalue: "0", desc: "Prefix file links with https prefix", category: "Output")]
 	protected bool m_bUseWebPrefix;
 
-	protected BaseWorld m_BaseWorld;
-	protected WorldEditor m_WorldEditor;
-	protected WorldEditorAPI m_WorldEditorAPI;
-	protected const ref array<IEntitySource> m_aWorldEntities = {}; // non-nullable due to const
-	protected static ref Shape m_DetectionRadiusSphere;
+	protected static const ref array<IEntitySource> WORLD_ENTITIES = {}; // non-nullable due to const
+	protected static ref Shape s_DetectionRadiusSphere;
 
 	protected static const int DEBUG_COLOUR = 0x99025D00;
 	protected static const int DEBUG_DURATION = 333; // ms
@@ -95,30 +92,32 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		Print("Floaters Finder - Run method started", LogLevel.NORMAL);
 
 		int firstTick;
-		m_aWorldEntities.Clear();
+		WORLD_ENTITIES.Clear();
 
-		bool useSelectedEntities = m_WorldEditorAPI.GetSelectedEntity() != null;
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		BaseWorld baseWorld = worldEditorAPI.GetWorld();
+		bool useSelectedEntities = worldEditorAPI.GetSelectedEntity() != null;
 		if (useSelectedEntities) // use selected entities
 		{
-			for (int i, cnt = m_WorldEditorAPI.GetSelectedEntitiesCount(); i < cnt; i++)
+			for (int i, cnt = worldEditorAPI.GetSelectedEntitiesCount(); i < cnt; i++)
 			{
-				m_aWorldEntities.Insert(m_WorldEditorAPI.GetSelectedEntity(i));
+				WORLD_ENTITIES.Insert(worldEditorAPI.GetSelectedEntity(i));
 			}
 
-			Print(string.Format("Going with the current selection of %1 entities", m_aWorldEntities.Count()), LogLevel.NORMAL);
+			Print(string.Format("Going with the current selection of %1 entities", WORLD_ENTITIES.Count()), LogLevel.NORMAL);
 		}
 		else // detect entities
 		{
 			firstTick = System.GetTickCount();
-			GetEntities(m_BaseWorld);
-			Print(string.Format("Entity getter duration: %1ms for %2 entities", System.GetTickCount() - firstTick, m_aWorldEntities.Count()), LogLevel.NORMAL);
+			GetEntities(baseWorld);
+			Print(string.Format("Entity getter duration: %1ms for %2 entities", System.GetTickCount() - firstTick, WORLD_ENTITIES.Count()), LogLevel.NORMAL);
 		}
 
 		// filter
 		array<IEntitySource> filteredEntities = {};
 		firstTick = System.GetTickCount();
-		FilterEntities(m_BaseWorld, filteredEntities);
-		Print(string.Format("Entity filter duration: %1ms for %2 entities (output: %3 entities)", System.GetTickCount() - firstTick, m_aWorldEntities.Count(), filteredEntities.Count()), LogLevel.NORMAL);
+		FilterEntities(baseWorld, filteredEntities);
+		Print(string.Format("Entity filter duration: %1ms for %2 entities (output: %3 entities)", System.GetTickCount() - firstTick, WORLD_ENTITIES.Count(), filteredEntities.Count()), LogLevel.NORMAL);
 
 		// select all found entities in UI
 		SelectEntities(filteredEntities);
@@ -127,20 +126,20 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		if (m_bShowSearchRadiusSphere && !useSelectedEntities && m_iCameraSearchRadius > 0)
 		{
 			vector cameraMatrix[4];
-			m_BaseWorld.GetCurrentCamera(cameraMatrix);
-			m_DetectionRadiusSphere = Shape.CreateSphere(DEBUG_COLOUR, ShapeFlags.BACKFACE | ShapeFlags.NOOUTLINE | ShapeFlags.TRANSP, cameraMatrix[3], m_iCameraSearchRadius);
+			baseWorld.GetCurrentCamera(cameraMatrix);
+			s_DetectionRadiusSphere = Shape.CreateSphere(DEBUG_COLOUR, ShapeFlags.BACKFACE | ShapeFlags.NOOUTLINE | ShapeFlags.TRANSP, cameraMatrix[3], m_iCameraSearchRadius);
 			thread DeleteSphereThread();
 		}
 
 		// final report
-		if (m_WorldEditorAPI.GetSelectedEntitiesCount() != filteredEntities.Count())
+		if (worldEditorAPI.GetSelectedEntitiesCount() != filteredEntities.Count())
 		{
 			Print(
 				string.Format(
 					"Could not select all entities: Treated %1, Detected %2, Selected %3",
-					m_aWorldEntities.Count(),
+					WORLD_ENTITIES.Count(),
 					filteredEntities.Count(),
-					m_WorldEditorAPI.GetSelectedEntitiesCount()),
+					worldEditorAPI.GetSelectedEntitiesCount()),
 				LogLevel.WARNING);
 		}
 		else
@@ -148,7 +147,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			Print(
 				string.Format(
 					"%1 entities treated, %2 selected properly",
-					m_aWorldEntities.Count(),
+					WORLD_ENTITIES.Count(),
 					filteredEntities.Count()),
 				LogLevel.NORMAL);
 		}
@@ -186,10 +185,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			return false;
 		}
 
-		WorldEditorAPI worldEditorAPI = m_WorldEditorAPI;
-		if (!worldEditorAPI)
-			worldEditorAPI = worldEditor.GetApi();
-
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
 		if (!worldEditorAPI)
 		{
 			Print("Floaters Finder - Run method stopped because World Editor API was not found", LogLevel.WARNING);
@@ -202,10 +198,6 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			Print("Floaters Finder - Run method stopped because base world was not found", LogLevel.WARNING);
 			return false;
 		}
-
-		m_WorldEditor = worldEditor;
-		m_WorldEditorAPI = worldEditorAPI;
-		m_BaseWorld = baseWorld;
 
 		return true;
 	}
@@ -228,16 +220,17 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DeleteSphereThread()
+	protected static void DeleteSphereThread()
 	{
 		Sleep(DEBUG_DURATION);
-		m_DetectionRadiusSphere = null;
+		s_DetectionRadiusSphere = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected bool InsertEntity(notnull IEntity entity)
 	{
-		m_aWorldEntities.Insert(m_WorldEditorAPI.EntityToSource(entity));
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		WORLD_ENTITIES.Insert(worldEditorAPI.EntityToSource(entity));
 		return true;
 	}
 
@@ -258,7 +251,6 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 
 		vector entityPos, bboxMin, bboxMax, tempPos;
 		vector bboxCorners[15]; // 8 vertices + 6 face centres + 1 centre
-		EntityFlags flags;
 		float entityAngleX, entityAngleZ;
 		float altitude, terrainY, tempTerrainY;
 
@@ -269,12 +261,14 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		float maxPitch = m_fMaxTreeAngle;
 		float maxRoll = m_fMaxTreeAngle;
 
-		bool manyEntities = m_aWorldEntities.Count() > 10;
-		int currentLayerId = m_WorldEditorAPI.GetCurrentEntityLayerId();
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+
+		bool manyEntities = WORLD_ENTITIES.Count() > 10;
+		int currentLayerId = worldEditorAPI.GetCurrentEntityLayerId();
 		int underWaterNb, verticalOffsetNb, angleOffsetNb, fullyUndergroundNb;
 
 		filteredEntities.Clear();
-		foreach (IEntitySource entitySource : m_aWorldEntities)
+		foreach (IEntitySource entitySource : WORLD_ENTITIES)
 		{
 			if (!m_bOutputFindingsToFile && filteredEntities.Count() >= m_iMaxSelectedEntities)
 				break;
@@ -285,7 +279,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			if (m_bActiveLayerOnly && entitySource.GetLayerID() != currentLayerId)
 				continue;
 
-			IEntity entity = m_WorldEditorAPI.SourceToEntity(entitySource);
+			IEntity entity = worldEditorAPI.SourceToEntity(entitySource);
 			isVegetation = Tree.Cast(entity) != null;
 
 			if (!(m_bSearchForEntitiesBelowTerrain || isVegetation))
@@ -321,7 +315,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 			insertEntity = false;
 
 			entityPos = entity.GetOrigin();
-			terrainY = m_WorldEditorAPI.GetTerrainSurfaceY(entityPos[0], entityPos[2]);
+			terrainY = worldEditorAPI.GetTerrainSurfaceY(entityPos[0], entityPos[2]);
 
 			// underwater check - needs WORLD coords
 			if (!insertEntity && m_bCheckBelowWater && isOcean && oceanHeight > entityPos[1])
@@ -401,7 +395,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 				for (int i; i < 15; i++)
 				{
 					tempPos = entity.CoordToParent(bboxCorners[i]);
-					tempTerrainY = m_BaseWorld.GetSurfaceY(tempPos[0], tempPos[2]);
+					tempTerrainY = baseWorld.GetSurfaceY(tempPos[0], tempPos[2]);
 					if (tempPos[1] > tempTerrainY)
 					{
 						insertEntity = false;
@@ -456,6 +450,7 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 				{
 					if (!manyEntities)
 						Print(string.Format("altitude %1 DOES NOT MATCH the [%2, %3] range", altitude, minVerticalOffset, maxVerticalOffset), LogLevel.NORMAL);
+
 					verticalOffsetNb++;
 				}
 			}
@@ -485,12 +480,13 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 	//------------------------------------------------------------------------------------------------
 	protected void SelectEntities(notnull array<IEntitySource> entities)
 	{
-		m_WorldEditorAPI.ClearEntitySelection();
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		worldEditorAPI.ClearEntitySelection();
 		for (int i, cnt = Math.Min(m_iMaxSelectedEntities, entities.Count()); i < cnt; i++)
 		{
-			m_WorldEditorAPI.AddToEntitySelection(entities[i]);
+			worldEditorAPI.AddToEntitySelection(entities[i]);
 		}
-		m_WorldEditorAPI.UpdateSelectionGui();
+		worldEditorAPI.UpdateSelectionGui();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -505,7 +501,8 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		transformation[1] = vector.Up;
 		transformation[2] = vector.Forward; // point North
 
-		m_WorldEditorAPI.GetWorldPath(worldName);
+		WorldEditorAPI worldEditorAPI = ((WorldEditor)Workbench.GetModule(WorldEditor)).GetApi();
+		worldEditorAPI.GetWorldPath(worldName);
 
 		if (filteredEntities.IsEmpty())
 			link = ".";
@@ -521,9 +518,10 @@ class SCR_FloatersFinderPlugin : WorkbenchPlugin
 		if (!filteredEntities.IsEmpty())
 			fileHandle.WriteLine(string.Empty);
 
+		IEntity entity;
 		foreach (IEntitySource entitySource : filteredEntities)
 		{
-			IEntity entity = m_WorldEditorAPI.SourceToEntity(entitySource);
+			entity = worldEditorAPI.SourceToEntity(entitySource);
 			entity.GetBounds(bboxMin, bboxMax);
 			diagonal = (bboxMax - bboxMin).Length();
 			if (diagonal < 5)

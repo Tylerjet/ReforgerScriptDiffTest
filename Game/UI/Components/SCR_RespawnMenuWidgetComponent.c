@@ -229,7 +229,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		GetGame().GetWorkspace().SetFocusedWidget(m_wDefaultFocusWidget);
 		
 		RemoveActionListeners();
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.DOWN, DisableFocusRightMenu);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, DisableFocusRightMenu);
 		
 		if (m_DeployMenu)
 			m_DeployMenu.AllowMapContext(false);
@@ -241,13 +241,13 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		if (!m_MapToolMenuUI)
 			return;
 		
+		ShowDpadWidgets(false);
 		EnableWidget(m_wMapToolWidget, true);
 		ShowControlHints(m_wMapToolWidget, true);
 		m_MapToolMenuUI.SetToolMenuFocused(true);
-		ShowDpadWidgets(false);
 		
 		RemoveActionListeners();
-		GetGame().GetInputManager().AddActionListener("MenuBack", EActionTrigger.DOWN, DisableFocusToolMenu);
+		GetGame().GetInputManager().AddActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, DisableFocusToolMenu);
 		
 		if (m_DeployMenu)
 			m_DeployMenu.AllowMapContext(false);
@@ -256,6 +256,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void DisableFocusRightMenu()
 	{
+		/*
 		SCR_DeployRequestUIBaseComponent selector = GetOpenedSelector();
 		if (selector && !GetGame().GetInputManager().IsUsingMouseAndKeyboard())
 		{
@@ -263,10 +264,11 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 			GetGame().GetWorkspace().SetFocusedWidget(m_wDefaultFocusWidget);
 			return;
 		}
+		*/
 		
 		GetGame().GetWorkspace().SetFocusedWidget(null);
 
-		GetGame().GetInputManager().RemoveActionListener("MenuBack", EActionTrigger.DOWN, DisableFocusRightMenu);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, DisableFocusRightMenu);
 		AddActionListeners();
 		
 		ShowDpadWidgets(true);
@@ -290,7 +292,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 			return;
 		}
 		
-		GetGame().GetInputManager().RemoveActionListener("MenuBack", EActionTrigger.DOWN, DisableFocusToolMenu);
+		GetGame().GetInputManager().RemoveActionListener(UIConstants.MENU_ACTION_BACK, EActionTrigger.DOWN, DisableFocusToolMenu);
 		m_MapToolMenuUI.SetToolMenuFocused(false);
 		AddActionListeners();
 		ShowDpadWidgets(true);

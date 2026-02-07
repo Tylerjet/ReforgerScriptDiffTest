@@ -204,16 +204,37 @@ class CharacterCameraADS extends CharacterCameraBase
 		// Right hand prop is where weapon is attached to
 		vector propBoneMS[4];
 		anim.GetBoneMatrix(m_iHandBoneIndex, propBoneMS);
-
+		
+		bool bUseProneADSMethod = IsProneADS();
+		EMuzzleType muzzleType = EMuzzleType.MT_BaseMuzzle;
+		
 		// UPDATE:
 		// This is quite silly considering what is done afterwards,
 		// but the point is that we have to fight with zeroing, as it is
 		// the only relevant aim modifier that we do not want to offset in
 		// the camera like we do with recoil or sway
-		vector zeroingLS[4];
-		if (m_WeaponManager.GetCurrentWeapon() && m_WeaponManager.GetCurrentWeapon().GetCurrentSightsZeroingTransform(zeroingLS))
+		BaseWeaponComponent currentWeapon = m_WeaponManager.GetCurrent();
+		if (currentWeapon)
 		{
-			Math3D.MatrixMultiply4(cameraData.m_mSightsLocalMat, zeroingLS,cameraData.m_mSightsLocalMat);
+			muzzleType = currentWeapon.GetCurrentMuzzle().GetMuzzleType();
+			if (muzzleType == EMuzzleType.MT_UGLMuzzle || m_LastMuzzleType == EMuzzleType.MT_UGLMuzzle) // HACK: UGL isn't aligned in prone stance without this.
+				bUseProneADSMethod = false;
+			
+			vector zeroingLS[4];
+			if (m_WeaponManager.GetCurrentWeapon().GetCurrentSightsZeroingTransform(zeroingLS))
+			{
+				Math3D.MatrixMultiply4(cameraData.m_mSightsLocalMat, zeroingLS, cameraData.m_mSightsLocalMat);
+				
+				if (bUseProneADSMethod)
+				{
+					// Align camera vertically
+					vector charMat[4];
+					m_OwnerCharacter.GetLocalTransform(charMat);
+					vector camUpMS = vector.Up.InvMultiply3(charMat);
+					cameraData.m_mSightsLocalMat[0] = camUpMS * cameraData.m_mSightsLocalMat[2];
+					cameraData.m_mSightsLocalMat[1] = cameraData.m_mSightsLocalMat[2] * cameraData.m_mSightsLocalMat[0];
+				}
+			}
 		}
 
 		// Get sights relative to right hand prop bone
@@ -237,7 +258,8 @@ class CharacterCameraADS extends CharacterCameraBase
 				// disable all the blending
 				m_LastSightsComponent = currentSights;
 				m_bLastSightsBlend = false;
-				m_fLastSightsBlendTime = 0;				
+				m_fLastSightsBlendTime = 0;
+				m_LastMuzzleType = muzzleType;
 			}
 			else if (m_LastSightsComponent != currentSights) // Use last stored transform if possible
 			{
@@ -266,6 +288,7 @@ class CharacterCameraADS extends CharacterCameraBase
 					{
 						m_fLastSightsBlendTime = 0;
 						m_bLastSightsBlend = false;
+						m_LastMuzzleType = muzzleType;
 					}
 					else
 					{
@@ -345,15 +368,29 @@ class CharacterCameraADS extends CharacterCameraBase
 
 		// And add that to our result
 		sightsMS[3] = sightsMS[3] - aimingTranslationMS - extraTranslation;
+		
+		vector aimingAnglesMS;
+		float fUseHeading = 1.0;
+		float fPositionModelSpace = 0.0;
+		
+		if (bUseProneADSMethod)
+		{
+			aimingAnglesMS = Math3D.MatrixToAngles(sightsMS);			
+			fUseHeading = 0.0;
+			fPositionModelSpace = 1.0;
+			pOutResult.m_bInterpolateOrientation = false;
+		}
+		else
+		{
+			// Now we will disregard any previous rotation... (LOL and use aiming or freelook angles directly)
 
-		// Now we will disregard any previous rotation... (LOL and use aiming or freelook angles directly)
-
-		// Take look angles directly and correct those for character pitch
-		vector aimingAnglesMS = cameraData.m_vLookAngles;
-		aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
-
-		// Use as intended
-		Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
+			// Take look angles directly and correct those for character pitch
+			aimingAnglesMS = cameraData.m_vLookAngles;
+			aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+	
+			// Use as intended
+			Math3D.AnglesToMatrix(aimingAnglesMS, sightsMS);
+		}
 
 		const float alphaEpsilon = 0.0005;
 		// Stabilize camera in certain cases
@@ -368,12 +405,13 @@ class CharacterCameraADS extends CharacterCameraBase
 						m_CmdHandler.IsProneStanceTransition() && m_ControllerComponent.GetMovementVelocity().LengthSq() > 0.0 ||
 						(!m_WeaponManager || !m_WeaponManager.GetCurrentSights());
 		}
+		
+		CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
 
 		// Jump context is reset, so instead check for animation tag presence
 		// and make camera unstable during this period as hand movement is unpredictable
 		if (m_iJumpAnimTagId != -1)
 		{
-			CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
 			if (animComponent && animComponent.IsPrimaryTag(m_iJumpAnimTagId))
 				isUnstable = true;
 		}
@@ -383,7 +421,6 @@ class CharacterCameraADS extends CharacterCameraBase
 		// straight forward, which might not be the case during transitions
 		if (sm_TagADSTransitionOut != -1)
 		{
-			CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
 			if (animComponent)
 			{
 				// In transitions use camera transform directly
@@ -411,17 +448,10 @@ class CharacterCameraADS extends CharacterCameraBase
 			m_fStabilizerAlpha = Math.SmoothCD(m_fStabilizerAlpha, 0.0, m_fStabilizerAlphaVel, 0.1, 1000, pDt);
 		}
 
-		float obstructedAlpha = m_ControllerComponent.GetObstructionAlpha();
-		float lerpToCameraT = Math.Max(m_fStabilizerAlpha, obstructedAlpha);
-		bool shouldStabilize = lerpToCameraT > alphaEpsilon;
+		bool shouldStabilize = m_fStabilizerAlpha > alphaEpsilon;
 		if (shouldStabilize)
 		{
-			resultPosition = vector.Lerp(resultPosition, cameraBoneMS[3], lerpToCameraT);
-		}
-
-		if (!isUnstable && obstructedAlpha < alphaEpsilon)
-		{
-			m_lastStablePos = resultPosition;
+			resultPosition = vector.Lerp(resultPosition, cameraBoneMS[3], m_fStabilizerAlpha);
 		}
 
 		// Last but not least, blend FOV based on aiming vs. freelook angles
@@ -486,9 +516,9 @@ class CharacterCameraADS extends CharacterCameraBase
 		pOutResult.m_fDistance = 0;
 		pOutResult.m_fNearPlane = 0.0125;
 		pOutResult.m_bAllowInterpolation = allowInterpolation;// && (shouldStabilize == m_bWasStabilizedLastFrame);
-		pOutResult.m_fUseHeading = 1.0;
+		pOutResult.m_fUseHeading = fUseHeading;
 		pOutResult.m_bUpdateWhenBlendOut = true;
-		pOutResult.m_fPositionModelSpace = 0.0;
+		pOutResult.m_fPositionModelSpace = fPositionModelSpace;
 
 		m_bWasStabilizedLastFrame = shouldStabilize;
 
@@ -639,7 +669,10 @@ class CharacterCameraADS extends CharacterCameraBase
 		if (aiming)
 		{
 			if (m_ControllerComponent.GetIsWeaponDeployed())
-				adjustedLookAngles = aiming.GetAimingRotation();
+			{
+				if (!IsProneStance())
+					adjustedLookAngles = aiming.GetAimingRotation();
+			}
 
 			// Arbitrary conversion of aiming translation to recoil angle based on current FOV
 			vector offset = aiming.GetModifiedAimingTranslation() * pOutResult.m_fFOV;
@@ -768,7 +801,7 @@ class CharacterCameraADS extends CharacterCameraBase
 		}
 
 		// Store freelook state
-		m_pCameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook);
+		m_pCameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook || m_ControllerComponent.IsTrackIREnabled());
 
 		#ifdef ENABLE_DIAG
 			int solveMethod = DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_CHARACTER_ADS_CAMERA);
@@ -808,6 +841,23 @@ class CharacterCameraADS extends CharacterCameraBase
 		if (m_CharacterCameraHandler)
 			m_CharacterCameraHandler.AddShakeToToTransform(pOutResult.m_CameraTM, pOutResult.m_fFOV);
 	}
+	
+	bool IsProneStance()
+	{
+		CharacterAnimationComponent animComponent = m_ControllerComponent.GetAnimationComponent();
+		if (animComponent)
+		{
+			CharacterMovementState charMovementState = new CharacterMovementState();
+			animComponent.GetMovementState(charMovementState);
+			return charMovementState.m_iStanceIdx == ECharacterStance.PRONE;
+		}
+		return false;
+	}
+	
+	bool IsProneADS()
+	{
+		return IsProneStance() && !m_CmdHandler.IsProneStanceTransition() && !m_pCameraData.m_bFreeLook;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	protected BaseWeaponManagerComponent m_WeaponManager;
@@ -840,6 +890,8 @@ class CharacterCameraADS extends CharacterCameraBase
 	protected 	float	m_fFreelookBlendAlpha;
 
 	private		vector	m_vLastEndPos;		//!< last position used for interpolation
+	
+	private		EMuzzleType m_LastMuzzleType = EMuzzleType.MT_BaseMuzzle;
 
 	protected const float CAMERA_INTERP = 0.6;
 	protected const float CAMERA_RECOIL_LIMIT = 0.25; //!< Maximum amount of recoil applied to camera from weapon in meters.

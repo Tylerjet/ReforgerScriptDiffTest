@@ -1,42 +1,32 @@
 #define DEBUG_NEARBY_CONTEXT_DISPLAY
 
-//------------------------------------------------------------------------------------------------
 class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 {
-	[Attribute("3", UIWidgets.Slider, "Maximum distance of actions that can be presented to player. (meters)", category: "NearbyContextDisplay", params: "0 100 0.1")]
-	protected float m_fWidgetMaximumRange;
-	[Attribute("0.7", UIWidgets.Slider, "Minimum assumed distance of actions (for scaling). (meters)", category: "NearbyContextDisplay", params: "0 100 0.1")]
-	protected float m_fWidgetMinimumRange;
+	[Attribute("5", UIWidgets.Slider, "Maximum amount of individual cached Widgets per kind.")]
+	protected int m_iMaxPrecachedWidgets;
 
-	[Attribute("128", UIWidgets.Slider, "Amount of widgets that are created on initialization and then re-used.", category: "NearbyContextDisplay", params: "0 256 1")]
-	protected int m_iPrecachedWidgetCount;
+	[Attribute("{A604FB23656D64C7}UI/layouts/HUD/InteractionSystem/ContextBlipElement.layout", UIWidgets.ResourceNamePicker, "Layout", "layout", category: "NearbyContextDisplay")]
+	ResourceName m_sIconLayoutPath;
 	
-	[Attribute("", UIWidgets.ResourceNamePicker, "Layout", "layout", category: "NearbyContextDisplay")]
-	ResourceName m_wIconLayoutPath;
+	[Attribute("{BF5FA7B21D658280}UI/layouts/HUD/InteractionSystem/ContextBasicInteractionBlip.layout", UIWidgets.ResourceNamePicker, "Layout", "layout", category: "NearbyContextDisplay")]
+	ResourceName m_sDefaultInteractionLayoutPath;
+
+	[Attribute("", UIWidgets.ResourceNamePicker, "edds", "edds")]
+	protected ResourceName m_sDefaultIconImage;
+
+	[Attribute("", desc: "SCR_NearbyContextCachingConfig Config that hold all the Widgets that will be cached.", params:"conf class=SCR_NearbyContextCachingConfig")]
+	protected ResourceName m_sCachingConfigResource;
 	
-	[Attribute("1 1 1 1", UIWidgets.ColorPicker, category: "NearbyContextDisplay")]
-	protected vector m_vVisibleWidgetColor;
-	[Attribute("0.1 0.1 0.1 1", UIWidgets.ColorPicker, category: "NearbyContextDisplay")]
-	protected vector m_vNotVisibleWidgetColor;
-	
-	
-	/*!
-		Defines horizontal opacity (y) based on distance from screen center (x).
-	*/
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, desc: "Horizontal opacity (y) based on screen center distance (x).", category: "NearbyContextDisplay")]
-	private ref Curve m_pHorizontalOpacityCurve;
-	/*!
-		Defines vertical opacity (y) based on distance from screen center (x).
-	*/
-	[Attribute("0 0 1 1", UIWidgets.GraphDialog, desc: "Vertical opacity (y) based on screen center distance (x).", category: "NearbyContextDisplay")]
-	private ref Curve m_pVerticalOpacityCurve;
-	
-	private ref Color m_pColorVisible;
-	private ref Color m_pColorNotVisible;
-	
+	[Attribute("0.2", desc: "Minimum Opacity of the Blip Widget when calculating Opacity based on distance to Camera.")]
+	protected float m_fMinWidgetAlpha;
+
+	protected ref SCR_NearbyContextCachingConfig m_CachingConfig;
+
 	//! Interaction handler attached to parent entity.
-	private InteractionHandlerComponent m_pInteractionHandlerComponent;	
+	protected SCR_InteractionHandlerComponent m_InteractionHandlerComponent;
 	
+	protected ChimeraCharacter m_Character;
+
 	//! Array of widgets that are filled and re-used as deemed neccessary.
 	private ref array<Widget> m_aWidgets = {};
 	//! Currently visible widgets.
@@ -45,7 +35,23 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 	private float m_fOriginalSizeX;
 	//! Original widget height.
 	private float m_fOriginalSizeY;
+	//! Distance in meters in which a context can be interacted with. Defined in 'InteractionHandlerComponent' on DefaultPlayerController entity.
+	protected float m_fInteractionDistance;
+	//! Distnace in meters in which contexts will be collected and visible to indicate a possible interaction. Defined in 'InteractionHandlerComponent' on DefaultPlayerController entity.
+	protected float m_fContextCollectDistance;
+
+	protected bool m_bIsInitialized;
+
+	protected string m_sDefaultMapKey;
+	protected ref array<Widget> m_aCurrentlyUsedWidgets = {};
+
+	protected ref array<SCR_NearbyContextCachingData> m_aConfigLayouts = {};
+
+	//! Holds all the different cached Widgets with the Layout GUID as key
+	protected ref map<string, ref array<Widget>> m_mCachedWidgets = new map<string, ref array<Widget>>();
 	
+	protected ref TraceParam m_RaycastParam = new TraceParam();
+
 	//------------------------------------------------------------------------------------------------
 	//! Performs cleanup.
 	void ~SCR_NearbyContextDisplay()
@@ -56,107 +62,117 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 			if (m_aWidgets[i])
 				m_aWidgets[i].RemoveFromHierarchy();
 		}
-		
+
 		m_aWidgets.Clear();
-		
-		m_pColorVisible = null;
-		m_pColorNotVisible = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
 	{
-		if (m_aWidgets.IsEmpty())
-		{
-			Print("Pre-cached SCR_NearbyContextDisplay widgets cannot be detected; re-rooting to m_wRoot cannot happen!", LogLevel.ERROR);
-			return;
-		}
-
 		if (!m_wRoot)
 		{
 			Print("The SCR_NearbyContextDisplay root is NULL, the pre-cached SCR_NearbyContextDisplay widgets cannot be re-rooted!", LogLevel.ERROR);
 			return;
 		}
-		
-			
+
+		m_bIsInitialized = true;
+
 		// Re-root the blips to the info display root
 		foreach (Widget w : m_aWidgets)
+		{
 			m_wRoot.AddChild(w);
-	}	
+		}
+
+		m_sDefaultMapKey = m_sIconLayoutPath;
 		
+		m_RaycastParam.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		
+		// For better performance the Cached Widgets are only checked ervery 10 seconds instead of on each update.
+		GetGame().GetCallqueue().CallLater(ClearCachedWidgets, 10000, true);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override void DisplayInit(IEntity owner)
 	{
-		m_pInteractionHandlerComponent = InteractionHandlerComponent.Cast(owner.FindComponent(InteractionHandlerComponent));
-		if (!m_pInteractionHandlerComponent)
+		m_InteractionHandlerComponent = SCR_InteractionHandlerComponent.Cast(owner.FindComponent(SCR_InteractionHandlerComponent));
+		if (!m_InteractionHandlerComponent)
 			Print("Interaction handler component could not be found! SCR_NearbyContextDisplay will not work.", LogLevel.WARNING);
-		
-		
-		m_pColorVisible = new Color(m_vVisibleWidgetColor[0], m_vVisibleWidgetColor[1], m_vVisibleWidgetColor[2], 1.0);
-		m_pColorNotVisible = new Color(m_vNotVisibleWidgetColor[0], m_vNotVisibleWidgetColor[1], m_vNotVisibleWidgetColor[2], 1.0);
-		
-		// Pre-cache widgets
-		for (int i = 0; i < m_iPrecachedWidgetCount; i++)
+
+		m_fInteractionDistance = m_InteractionHandlerComponent.GetVisibilityRange();
+		m_fContextCollectDistance = m_InteractionHandlerComponent.GetNearbyCollectionRadius();
+
+		if (m_sCachingConfigResource)
 		{
-			// Instantiate widgets
-			Widget iconWidget = GetGame().GetWorkspace().CreateWidgets(m_wIconLayoutPath);
-			if (!iconWidget)
+			Resource rsc = BaseContainerTools.LoadContainer(m_sCachingConfigResource);
+			if (rsc && rsc.IsValid())
 			{
-				if (m_wIconLayoutPath.IsEmpty())
-					Print("SCR_NearbyContextDisplay could not create widgets! Verify that provided Icon Layout Path is valid!", LogLevel.ERROR);
-				break;
+				BaseContainer container = rsc.GetResource().ToBaseContainer();
+				if (container)
+					m_CachingConfig = SCR_NearbyContextCachingConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 			}
-			
-			m_aWidgets.Insert(iconWidget);
-			// Disable their visibility by default
-			iconWidget.SetVisible(false);
-			// Prepare their transformation
-			FrameSlot.SetAnchor(iconWidget, 0, 0);
-			FrameSlot.SetAlignment(iconWidget, 0.5, 0.5);
-			FrameSlot.SetSizeToContent(iconWidget, true);
 		}
-		
-		// Store default value
-		if (m_aWidgets[0])
+
+		if (!m_CachingConfig)
+			return;
+
+		m_CachingConfig.GetCachedLayouts(m_aConfigLayouts);
+
+		// Precache all wanted widgets
+		foreach (SCR_NearbyContextCachingData data : m_aConfigLayouts)
 		{
-			Widget icon = FindIconWidget(m_aWidgets[0]);
-			vector size = FrameSlot.GetSize(icon);
-			m_fOriginalSizeX = size[0];
-			m_fOriginalSizeY = size[1];
+			ResourceName layout;
+			int precacheAmount;
+
+			data.GetLayout(layout);
+			data.GetPrecacheAmount(precacheAmount);
+
+			if (!layout)
+				continue;
+
+			CacheWidget(layout, precacheAmount);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStopDraw(IEntity owner)
 	{
-		// Were we drawing something?
-		// If yes, then disable all
-		if (m_iVisibleWidgets > 0)
-			SetVisibleWidgets(0);
+		if (!m_aCurrentlyUsedWidgets.IsEmpty())
+		{
+			foreach (Widget w : m_aCurrentlyUsedWidgets)
+			{
+				if (w)
+					w.SetVisible(false);
+			}
+
+			m_aCurrentlyUsedWidgets.Clear();
+		}
 	}
-	
-	
+
 	//------------------------------------------------------------------------------------------------
 	override void DisplayUpdate(IEntity owner, float timeSlice)
 	{
 		bool bCameraActive = m_CameraHandler && m_CameraHandler.IsCameraActive();
-		// m_pInteractionHandlerComponent.SetNearbyCollectionEnabled(true);
-		if (!m_pInteractionHandlerComponent.GetNearbyCollectionEnabled() || !bCameraActive)
+		// m_InteractionHandlerComponent.SetNearbyCollectionEnabled(true);
+		if (!bCameraActive || !m_InteractionHandlerComponent.GetNearbyCollectionEnabled())
 		{
-			// Were we drawing something?
-			// If yes, then disable all
-			if (m_iVisibleWidgets > 0)
-				SetVisibleWidgets(0);
-		
+			// if we are currently displaying something, clear it.
+			if (!m_aCurrentlyUsedWidgets.IsEmpty())
+			{
+				foreach (Widget w : m_aCurrentlyUsedWidgets)
+				{
+					if (w)
+						w.SetVisible(false);
+				}
+
+				m_aCurrentlyUsedWidgets.Clear();
+			}
+
 			return;
 		}
-		
+
 		// Fetch nearby contexts
 		array<UserActionContext> contexts = {};
-		int count = m_pInteractionHandlerComponent.GetNearbyAvailableContextList(contexts);
-		
-		// Prepare widgets
-		int actualCount = 0;
+		int count = m_InteractionHandlerComponent.GetNearbyAvailableContextList(contexts);
 		
 		// Get required data
 		BaseWorld world = owner.GetWorld();
@@ -164,191 +180,366 @@ class SCR_NearbyContextDisplay : SCR_InfoDisplayExtended
 		vector mat[4];
 		world.GetCamera(cameraIndex, mat);
 		vector referencePos = mat[3];
-		
+
 		// Iterate through individual contexts,
 		// validate that they are visible,
 		// and update their widget representation
 		const float threshold = 0.25;
 		const float fovBase = 100; // whatever fits
-		
+
 		// Field of view and screen resolution is necessary to compute proper position and size of widgets
 		float zoom = 1; // world.GetCameraVerticalFOV(cameraIndex) - missing crucial getter
 		CameraManager cameraManager = GetGame().GetCameraManager();
 		if (cameraManager)
 		{
 			CameraBase camera = cameraManager.CurrentCamera();
-			
+
 			#ifdef DEBUG_NEARBY_CONTEXT_DISPLAY
-			if(camera.GetProjType() == CameraType.NONE)
+			if (camera.GetProjType() == CameraType.NONE)
 				Print(string.Format("%1 [DisplayUpdate] None Projection", this));
-			#endif	
-			
+			#endif
+
 			if (camera && camera.GetProjType() != CameraType.NONE)
 				zoom = fovBase / Math.Max(camera.GetVerticalFOV(), 1);
 		}
-		float distanceLimit =  m_fWidgetMaximumRange * zoom;
-		float distanceLimitSq = distanceLimit * distanceLimit;
+
 		// Screen resolution is necessary to know how far away the widget is from screen center
 		// or from cursor, if we ever allow player to use mouse cursor or eye tracking software to select the actions.
-		float resX; float resY; 
+		float resX; float resY;
 		GetGame().GetWorkspace().GetScreenSize(resX, resY);
+
+		UserActionContext currentContext = m_InteractionHandlerComponent.GetCurrentContext();
+
+		// If we draw something, hide it first
+		if (!m_aCurrentlyUsedWidgets.IsEmpty())
+		{
+			foreach (Widget w : m_aCurrentlyUsedWidgets)
+			{
+				if (w)
+					w.SetVisible(false);
+			}
+
+			m_aCurrentlyUsedWidgets.Clear();
+		}
+
+		bool isOverrideEnabled = m_InteractionHandlerComponent.GetManualCollectionOverride();
 		
-		UserActionContext currentContext = m_pInteractionHandlerComponent.GetCurrentContext();
+		// Iterate through every available context and assign a Widget to it
 		foreach (UserActionContext ctx : contexts)
 		{
 			// Do not draw currently select one
 			if (currentContext == ctx)
 				continue;
-			
-			// We already have too much
-			if (actualCount >= m_iPrecachedWidgetCount)
-				break;
-			
+
 			vector position = ctx.GetOrigin();
-			float distanceSq = vector.DistanceSq(position, referencePos);
-			
-			// Just ignore actions out of reach, we will fade them out anyway
-			if (distanceSq < distanceLimitSq && IsInLineOfSight(position, mat, threshold))
+			float posX, posY;
+			GetWorldToScreenPosition(world, cameraIndex, position, posX, posY);
+
+			// Just ignore actions out of reach or out of screen, we will fade them out anyway
+			if (IsOnScreen(resX, resY, posX, posY) && IsInLineOfSight(position, mat, threshold))
 			{
-				Widget widget =  m_aWidgets[actualCount];
-				if (widget)
+				// Only do the raycast if there is no collection override and the context has UseRaycast enabled
+				if (!isOverrideEnabled && ctx.ShouldCheckLineOfSight() && IsObstructed(position, referencePos, world))
+					continue;
+				
+				//Get the widget array from map using the layout as key
+				SCR_ActionContextUIInfo info = SCR_ActionContextUIInfo.Cast(ctx.GetUIInfo());
+				Widget widget;
+				array<Widget> mapWidgets;
+
+				if (info)
 				{
-					SetWidgetWorldPosition(world, cameraIndex, widget, position);
-					
-					// TODO@AS:
-					// First child is an image.
-					// We need more robust solution if not.
-					Widget child = FindIconWidget(widget);
-					if (child)
+					string layout = info.GetLayout();
+					string mapKey;
+
+					// Get the GUID of the Layout as it's used as key in the map holding the array of different widgets
+					if (layout)
+						mapKey = layout;
+					else
+						mapKey = m_sDefaultMapKey;
+
+					mapWidgets = m_mCachedWidgets.Get(mapKey);
+
+					if (!mapWidgets || mapWidgets.IsEmpty())
+						CacheWidget(mapKey, 1);
+
+					mapWidgets = m_mCachedWidgets.Get(mapKey);
+
+					foreach (Widget w : mapWidgets)
 					{
-						// distance^2 from context to camera origin
-						float distance = Math.Sqrt(distanceSq);
-						bool visible = ctx.IsInVisibilityAngle(referencePos);
-						SetWidgetScale(child, distance, zoom);
-						SetWidgetAlpha(child, distance, distanceLimit, resX, resY);
-						SetWidgetColor(child, distance, visible);
+						if (m_aCurrentlyUsedWidgets.Contains(w))
+							continue;
+
+						widget = w;
+						m_aCurrentlyUsedWidgets.Insert(w);
+						break;
+					}
+
+					//! If there is no widget available create a new one and use that
+					if (!widget)
+					{
+						CacheWidget(mapKey, 1, true, widget);
+						m_aCurrentlyUsedWidgets.Insert(widget);
+					}
+
+				}
+				else
+				{
+					mapWidgets = m_mCachedWidgets.Get(m_sDefaultMapKey);
+
+					if (!mapWidgets || mapWidgets.IsEmpty())
+						CacheWidget(m_sDefaultMapKey, 1);
+
+					mapWidgets = m_mCachedWidgets.Get(m_sDefaultMapKey);
+
+					foreach (Widget w : mapWidgets)
+					{
+						if (m_aCurrentlyUsedWidgets.Contains(w))
+							continue;
+
+						widget = w;
+						m_aCurrentlyUsedWidgets.Insert(w);
+						break;
+					}
+
+					//! If there is no widget available create a new one and use that
+					if (!widget)
+					{
+						CacheWidget(m_sDefaultMapKey, 1, true, widget);
+						m_aCurrentlyUsedWidgets.Insert(widget);
 					}
 				}
-				actualCount++;
+
+				if (widget)
+				{
+					FrameSlot.SetPos(widget, posX, posY);
+
+					bool visible = ctx.IsInVisibilityAngle(referencePos);
+					float distanceLimit = m_fContextCollectDistance * zoom;
+					float distanceSq = vector.DistanceSq(position, referencePos);
+					float distance = Math.Sqrt(distanceSq);
+
+					SetWidgetAlpha(widget, distance, distanceLimit);
+					
+					SCR_NearbyContextWidgetComponentBase widgetComp = SCR_NearbyContextWidgetComponentBase.Cast(widget.FindHandler(SCR_NearbyContextWidgetComponentBase));
+					if (!widgetComp)
+						continue;
+
+					if (widgetComp.GetAssignedContext() != ctx)
+						widgetComp.OnAssigned(info, ctx);
+
+					widgetComp.ChangeVisibility(visible);
+				}
 			}
 		}
-		
 		// Enable required amount of widgets
-		SetVisibleWidgets(actualCount);
+		SetVisibleWidgets();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Add layouts to cache
+	//! Create a certain amount of given Widgets to cache
+	//! \param[in] layout Layout that will be created and cached
+	//! \param[in] int Amount of Widgets you want to cache
+	//! \param[in] bool If true a Widget must be provided that will be used imideatly after caching
+	//! \param[in] widget If returnWidget is true a Widget must be defined to where the newly created one should be used
+	void CacheWidget(ResourceName layout, int amount, bool returnWidget = false, Widget widgetToReturn = null)
+	{
+		if (!layout)
+			return;
+
+		string key = layout;
+		array<Widget> cachedWidgets = {};
+		WorkspaceWidget workSpace = GetGame().GetWorkspace();
+		Widget widgetToCache;
+
+		if (m_mCachedWidgets.Contains(key))
+		{
+			cachedWidgets = m_mCachedWidgets.Get(key);
+		}
+
+		// Create all the Widgets and insert them into the map
+		for (int i = 0; i < amount; i++)
+		{
+			widgetToCache = workSpace.CreateWidgets(layout, m_wRoot);
+
+			if (widgetToCache)
+			{
+				cachedWidgets.Insert(widgetToCache);
+
+				FrameSlot.SetAnchor(widgetToCache, 0, 0);
+				FrameSlot.SetAlignment(widgetToCache, 0.5, 0.5);
+				widgetToCache.SetVisible(false);
+
+				// If the system is not fully initialized and the RootWidget does not exist yet we add them to the Widget array, so they can be reparented
+				if (!m_bIsInitialized && !m_wRoot)
+					m_aWidgets.Insert(widgetToCache);
+			}
+
+		}
+
+		m_mCachedWidgets.Set(key, cachedWidgets);
+
+		if (returnWidget)
+			widgetToReturn = cachedWidgets[0];
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Check every Cached Widget array and check if the array holds more widgets then the cap allows
+	//! If there are too many cached Widgets, delete Widgets until its below the cap.
+	protected void ClearCachedWidgets()
+	{
+		int count;
+		int maxCachedAmount = m_iMaxPrecachedWidgets;
+		Widget cachedWidget;
+
+		foreach (array<Widget> cachedWidgets : m_mCachedWidgets)
+		{
+			string mapKey = m_mCachedWidgets.GetKeyByValue(cachedWidgets);
+			SCR_NearbyContextCachingData data = m_CachingConfig.GetDataFromLayout(mapKey);
+
+			if (data)
+				data.GetMaxCacheAmount(maxCachedAmount);
+
+			count = cachedWidgets.Count();
+
+			if (count <= maxCachedAmount)
+				continue;
+
+			for (int index = count - 1; index >= maxCachedAmount; index--)
+			{
+				cachedWidget = cachedWidgets[index];
+
+				if (cachedWidget && !cachedWidget.IsVisible())
+				{
+					cachedWidget.RemoveFromHierarchy();
+					cachedWidgets.Remove(index);
+				}
+			}
+
+			m_mCachedWidgets.Set(mapKey, cachedWidgets);
+		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Use a Raycast to check if the givin position is in line of sight
+	//! \param[in] Position to which we cast the raycast
+	//! \param[in] Position where the raycast should start
+	//! \param[in] current world
+	//! \return true if raycast collided with something, false otherwise
+	protected bool IsObstructed(vector contextPos, vector cameraPos, BaseWorld world)
+	{
+		m_RaycastParam.Start = cameraPos;
+		m_RaycastParam.End = contextPos;
+
+		return world.TraceMove(m_RaycastParam, IsCharacter) < m_InteractionHandlerComponent.GetRaycastThreshold();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Callback method for TraceMove, to check if hit entity is a Character
+	//! \param entity
+	//! \return true if entity is a character, false otherwise
+	protected static bool IsCharacter(notnull IEntity entity)
+	{		
+		return ChimeraCharacter.Cast(entity) == null;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Iterates through available precached widgets and leaves only provided count enabled.
-	//! \param count The amount of widgets to leave active.
-	protected void SetVisibleWidgets(int count)
+	protected void SetVisibleWidgets()
 	{
-		if (m_aWidgets.IsEmpty() || !m_wRoot)
+		if (!m_wRoot || m_aCurrentlyUsedWidgets.IsEmpty())
 			return;
-		
-		// Enable additional widgets
-		if (count > m_iVisibleWidgets)
-		{
-			for (int i = m_iVisibleWidgets; i < count; i++)
-				m_aWidgets[i].SetVisible(true);
 
-			m_iVisibleWidgets = count;
-		}
-		// Disable exceeding widgets
-		else if (count < m_iVisibleWidgets)
+		foreach (Widget w : m_aCurrentlyUsedWidgets)
 		{
-			for (int i = count; i < m_iVisibleWidgets; i++)
-				m_aWidgets[i].SetVisible(false);
-			
-			m_iVisibleWidgets = count;
+			if (w)
+				w.SetVisible(true);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	protected void SetWidgetScale(Widget widget, float distance, float zoom)
+	//! Set the Widget alpha based on the distance of the Context it's attached to to the Camera
+	//! \param[in] Widget to which the alpha will be applied
+	//! \param[in] Distance from camera to context in world space
+	//! \param[in] Max distance until the alpha will be 0
+	protected void SetWidgetAlpha(Widget widget, float distance, float limit)
 	{
-		// Scale is reversely proportionalto distance, but we don't want to make icons more than 2x bigger - this may depend on art resolution
-		// Scale also depends on current camera FOV, the smaller FOV the bigger the icon
-		float scale = zoom / Math.Max(distance, m_fWidgetMinimumRange);
-		
-		FrameSlot.SetSize(widget, scale * m_fOriginalSizeX, scale * m_fOriginalSizeY);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void SetWidgetAlpha(Widget widget, float distance, float limit, float resX, float resY)
-	{
-		// First stage of alpha depends on distance to camera
-		float alpha = 0;
-		if (limit != 0)
-			alpha = Math.Clamp(limit - distance, 0, limit) / limit;
-		
-		// Second stage of alpha depends on distance from screen center
-		float x; float y; 
-		widget.GetScreenPos(x, y);
-		
-		// Get distance from center as 0,1
-		// where 0 = center, 1 = edge
-		float xDistance = Math.AbsFloat(x - resX * 0.5) / resX;
-		float yDistance = Math.AbsFloat(y - resY * 0.5) / resY;
-		
-		// Sample curves
-		x = Math3D.Curve(ECurveType.CurveProperty2D, xDistance, m_pHorizontalOpacityCurve)[1];
-		y = Math3D.Curve(ECurveType.CurveProperty2D, yDistance, m_pVerticalOpacityCurve)[1];
-		
-		// Take the smaller value as priority,
-		// average doesn't really work well here.
-		float min = Math.Min(x, y);
-		
+		float alpha = 1;
+		if (limit != 0 && distance >= m_fInteractionDistance)
+			alpha = Math.Clamp(limit - distance, m_fMinWidgetAlpha, limit) / limit;
+
 		// Apply opacity
-		widget.SetOpacity(alpha * min);
+		widget.SetOpacity(alpha);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void SetWidgetColor(Widget widget, float distance, bool isInVisibilityRange)
-	{
-		if (isInVisibilityRange)
-			widget.SetColor(m_pColorVisible);
-		else
-			widget.SetColor(m_pColorNotVisible);
-	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Recalculates worldPosition to screen space and applies it to widget.
-	//! \param world The world we work in
-	//! \param cameraIndex Index of currently active camera
-	//! \param widget Target widget to be transformed
-	//! \param worldPosition Position in world space
-	protected void SetWidgetWorldPosition(BaseWorld world, int cameraIndex, Widget widget, vector worldPosition)
+	//! \param[in] worldPosition
+	//! \param[in] int Camera thats being used
+	//! \param[in] vector Position in world space
+	//! \param[out] posX X Position on the screen
+	//! \param[out] posY Y Position on the screen
+	protected bool GetWorldToScreenPosition(BaseWorld world, int cameraIndex, vector worldPosition, out float posX, out float posY)
 	{
 		vector screenPosition = GetGame().GetWorkspace().ProjWorldToScreen(worldPosition, world, cameraIndex);
-		float x =  screenPosition[0];
-		float y =  screenPosition[1];
-		FrameSlot.SetPos(widget, x, y);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Performs a dot product check against threshold whether point is in line of sight of provided transformation.
-	//! \param point Point to perform check for
-	//! \param transform Reference matrix checked against
-	//! \param threshold01 Dot product result is compared against this value, higher values result in more narrow arc.
-	protected bool IsInLineOfSight(vector point, vector transform[4], float val)
-	{
-		vector direction = point - transform[3];
-		direction.Normalize();
-		
-		const float threshold = 0.25;
-		if (vector.Dot(direction, transform[2]) > val)
-			return true;
-		
+		posX = screenPosition[0];
+		posY = screenPosition[1];
+
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! TODO@AS: We need a robust solution if the icon is not first child in the frame.
-	//! \param layout The layout to find icon widget in
-	//! \returns Returns the icon image widget or null if none.
-	protected Widget FindIconWidget(Widget layout)
+	//! Performs a dot product check against threshold whether point is in line of sight of provided transformation.
+	//! \param[in] vector point Point to perform check for
+	//! \param[in] vector[4] transform Reference matrix checked against
+	//! \param[in] float threshold01 Dot product result is compared against this value, higher values result in more narrow arc.
+	//! \return true if is in line of sight, flase otherwise
+	protected bool IsInLineOfSight(vector point, vector transform[4], float val)
 	{
-		return layout.GetChildren();
+		vector direction = point - transform[3];
+		direction.Normalize();
+
+		const float threshold = 0.25;
+		if (vector.Dot(direction, transform[2]) > val)
+			return true;
+
+		return false;
 	}
-	
-};
+
+	//------------------------------------------------------------------------------------------------
+	//! Checks is the given screenposition is within the resolution and not outside of the screen
+	//! \param[in] float ScreenresolutionX
+	//! \param[in] float ScreenresolutionY
+	//! \param[in] float X position on the screen
+	//! \param[in] float Y position on the screen
+	//! \return true if the position is on the screen. False if the position it outside of the screen
+	protected bool IsOnScreen(float resX, float resY, float posX, float posY)
+	{
+		if (posX > resX || posY > resY || posX < 0 || posY < 0)
+			return false;
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Gets the distance from givin point to screen center by taking the X & Y position an calcualting the distance between them
+	//! \param[in] float ScreenresolutionX
+	//! \param[in] float ScreenresolutionY
+	//! \param[in] float X position on the screen
+	//! \param[in] float Y position on the screen
+	//! \return Distance between posX & posY. 0 = Center. >0 further from center
+	protected float GetDistanceFromScreenCenter(float resX, float resY, float posX, float posY)
+	{
+		float aspectRatio = resX / resY;
+
+		// Get distance from center as 0,1
+		// where 0 = center, 1 = edge (only for 1920 x 1080)
+		// when screen is larger than default we increase the distance to larger than 1
+		float xDistance = Math.AbsFloat(posX - resX * 0.5) / resX * aspectRatio;
+		float yDistance = Math.AbsFloat(posY - resY * 0.5) / resY;
+
+		// calculate last unknown lenght
+		return Math.Sqrt(Math.Pow(xDistance, 2) + Math.Pow(yDistance, 2));
+	}
+}

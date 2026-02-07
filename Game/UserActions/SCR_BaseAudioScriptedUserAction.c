@@ -29,7 +29,7 @@ class SCR_BaseAudioScriptedUserAction : SCR_ScriptedUserAction
 		if (soundComponent)
 		{			
 			//~ Check if sound was played. If true simply play it and return
-			if (soundComponent.GetEventIndex(m_sActionSoundEffectEventName) > 0)
+			if (soundComponent.GetEventIndex(m_sActionSoundEffectEventName) != -1)
 			{
 				soundComponent.SoundEventOffset(m_sActionSoundEffectEventName, GetLocalPositionAction());
 				return;

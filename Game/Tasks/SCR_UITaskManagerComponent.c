@@ -1056,9 +1056,14 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	Widget CreateTaskList(Widget w = null)
 	{
 		if (w)
+		{	
 			m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource, w);
+		}
 		else
+		{
 			m_wUI = GetGame().GetWorkspace().CreateWidgets(m_UIResource);
+			FrameSlot.SetAlignment(m_wUI, 0, -0.25);
+		}
 
 		if (m_wUI)
 		{

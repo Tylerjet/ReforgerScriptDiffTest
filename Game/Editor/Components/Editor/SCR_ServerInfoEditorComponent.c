@@ -7,7 +7,7 @@ class SCR_ServerInfoEditorComponent : SCR_BaseEditorComponent
 	[Attribute("1", desc: "How often is info about serevr broadcasted.")]
 	protected float m_fInterval;
 	
-	protected ref ScriptInvoker m_OnReceive = new ScriptInvoker();;
+	protected ref ScriptInvoker m_OnReceive = new ScriptInvoker();
 
 	ScriptInvoker GetOnReceive()
 	{

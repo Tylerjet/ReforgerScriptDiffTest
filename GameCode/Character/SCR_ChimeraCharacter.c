@@ -9,6 +9,12 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 
 	[NonSerialized()]
 	FactionAffiliationComponent m_pFactionComponent;
+	
+	[Attribute(defvalue: "1", desc: "Can this character be recruited by players"), RplProp()]
+	protected bool m_bRecruitable;
+	
+	[RplProp()]
+	protected bool n_bIsRecruited = 0;
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -143,5 +149,31 @@ class SCR_ChimeraCharacter : ChimeraCharacter
 			return false;
 
 		return physics.GetVelocity().LengthSq() >= minSpeedSq;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	bool IsRecruitable()
+	{
+		return m_bRecruitable;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	void SetRecruitable(bool isRecruitable)
+	{
+		m_bRecruitable = isRecruitable;
+		Replication.BumpMe();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsRecruited()
+	{
+		return n_bIsRecruited;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	void SetRecruited(bool recruited)
+	{
+		n_bIsRecruited = recruited;
+		Replication.BumpMe();
 	}
 }

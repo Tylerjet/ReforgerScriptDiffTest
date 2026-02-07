@@ -66,11 +66,11 @@ class SCR_ServicesStatusHelper
 	{
 		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsActive();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	static bool IsBackendInitializing()
+	static bool IsAuthenticated()
 	{
-		return GetGame().GetBackendApi() && GetGame().GetBackendApi().IsInitializing();
+		return IsBackendReady() && GetGame().GetBackendApi().IsAuthenticated();
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -15,6 +15,12 @@ class SCR_AvailableActionsConditionData
 	protected ECharacterStance m_eCharacterStance;
 	// Type of current compartment
 	protected ECompartmentType m_eCompartmentType;
+	//! Is character freelooking?
+	protected bool m_bIsCharacterFreelook;
+	//! Is character freelooking forced?
+	protected bool m_bIsCharacterFreelookForced;
+	//! Is character freelooking toggled?
+	protected bool m_bIsCharacterFreelookToggled;
 	//! Is character aiming down sights?
 	protected bool m_bIsCharacterADS;
 	//! Is character seated in a vehicle?
@@ -147,7 +153,10 @@ class SCR_AvailableActionsConditionData
 	private void Clear()
 	{
 		m_eCharacterStance = ECharacterStance.STAND;
-		m_eCompartmentType = ECompartmentType.Pilot;
+		m_eCompartmentType = ECompartmentType.PILOT;
+		m_bIsCharacterFreelook = false;
+		m_bIsCharacterFreelookForced = false;
+		m_bIsCharacterFreelookToggled = false;
 		m_bIsCharacterADS = false;
 		m_bIsCharacterInVehicle = false;
 		m_bIsCharacterGettingIn = false;
@@ -352,6 +361,27 @@ class SCR_AvailableActionsConditionData
 	bool GetIsCharacterReloading()
 	{
 		return m_bIsCharacterReloading;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns whether character is freelooking
+	bool GetIsCharacterFreelook()
+	{
+		return m_bIsCharacterFreelook;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns whether character is freelooking forced
+	bool GetIsCharacterFreelookForced()
+	{
+		return m_bIsCharacterFreelookForced;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns whether character is freelooking toggled
+	bool GetIsCharacterFreelookToggled()
+	{
+		return m_bIsCharacterFreelookToggled;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -591,6 +621,12 @@ class SCR_AvailableActionsConditionData
 
 		// Current character stance
 		m_eCharacterStance = m_CharacterController.GetStance();
+		// Is character freelooking?
+		m_bIsCharacterFreelook = m_CharacterController.IsFreeLookEnabled();
+		// Is character forced to freelook?
+		m_bIsCharacterFreelookForced = m_CharacterController.IsFreeLookForced() || m_CharacterController.IsFreeLookEnforced();
+		// Is character having freelook toggled?
+		m_bIsCharacterFreelookToggled = m_CharacterController.GetFreeLookInput() && !GetGame().GetInputManager().GetActionValue("Freelook") >= 0.5;
 		// Is character ADS?
 		m_bIsCharacterADS = m_CharacterController.IsWeaponADS();
 		// Is character sprinting?
@@ -631,6 +667,9 @@ class SCR_AvailableActionsConditionData
 			BaseCompartmentSlot slot = compartmentAccess.GetCompartment();
 			if (slot)
 			{
+				// Is character forced to freelook by compartment?
+				m_bIsCharacterFreelookForced = m_bIsCharacterFreelookForced || slot.GetForceFreeLook();
+
 				// Vehicle
 				IEntity vehicle = slot.GetOwner();
 				
@@ -650,7 +689,7 @@ class SCR_AvailableActionsConditionData
 				// Temporary turbo time tracking
 				// TODO: Condition activation time
 				m_eCompartmentType = slot.GetType();
-				if (m_eCompartmentType == ECompartmentType.Pilot && GetGame().GetInputManager().GetActionTriggered("CarTurbo"))
+				if (m_eCompartmentType == ECompartmentType.PILOT && GetGame().GetInputManager().GetActionTriggered("CarTurbo"))
 					m_fTurboTime += timeSlice;
 				else
 					m_fTurboTime = 0;
@@ -721,10 +760,12 @@ class SCR_AvailableActionsConditionData
 			{
 				m_iMedicalItemCountInQuickSlots = 0;
 
-				array<IEntity> items = characterStorage.GetQuickSlotItems();
-				foreach (IEntity item : items)
+				array<ref SCR_QuickslotBaseContainer> items = characterStorage.GetQuickSlotItems();
+				SCR_QuickslotEntityContainer entityContainer;
+				foreach (SCR_QuickslotBaseContainer container : items)
 				{
-					if (item && item.FindComponent(SCR_ConsumableItemComponent))
+					entityContainer = SCR_QuickslotEntityContainer.Cast(container);
+					if (entityContainer && entityContainer.GetEntity()  && entityContainer.GetEntity().FindComponent(SCR_ConsumableItemComponent))
 						m_iMedicalItemCountInQuickSlots++;
 				}
 			}
@@ -791,7 +832,7 @@ class SCR_AvailableActionsConditionData
 		
 		// Check bleeding
 		if (m_CharacterDamageComponent)
-			m_bIsCharacterBleeding = m_CharacterDamageComponent.IsDamagedOverTime(EDamageType.BLEEDING);
+			m_bIsCharacterBleeding = m_CharacterDamageComponent.IsBleeding();
 
 		// Bleeding time tracking
 		if (m_bIsCharacterBleeding)

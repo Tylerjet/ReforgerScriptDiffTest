@@ -16,7 +16,8 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		"ja_jp",
 		"ko_kr",
 		"pt_br",
-		"zh_cn"
+		"zh_cn",
+		"uk_ua"
 	};
 
 	static ref ScriptInvoker_GameplaySettingsSubMenuChanged m_OnLanguageChanged = new ScriptInvoker_GameplaySettingsSubMenuChanged();
@@ -40,8 +41,6 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "MouseInvert", "MouseY"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingEngine("InputDeviceUserSettings", "GamepadInvert", "GamepadY"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_HintSettings", "m_bHintsEnabled", "ContextHints"));
-		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bControlHints", "ControlHints"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_b2DScopes", "ScopeMode"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyADS", "StickyADS"));
 		m_aSettingsBindings.Insert(new SCR_SettingBindingGameplay("SCR_GameplaySettings", "m_bStickyGadgets", "StickyGadgets"));
@@ -146,10 +145,9 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		if (!setting)
 			return;
 
-		if (i >= m_aLanguages.Count())
+		if (!m_aLanguages.IsIndexValid(i))
 			return;
 
-		string currentLang;
 		setting.Set("LanguageCode", m_aLanguages[i]);
 		GetGame().UserSettingsChanged();
 		
@@ -171,4 +169,4 @@ class SCR_GameplaySettingsSubMenu: SCR_SettingsSubMenuBase
 		if (playerController)
 			playerController.SetGameUserSettings();
 	}
-};
+}

@@ -8,8 +8,18 @@ class SCR_AIFindCover : AITaskScripted
 	protected static const string PORT_COVER_LOCK = "CoverLock";
 	
 	
+	// Cached components of this agent
 	protected SCR_AICombatMoveState m_State;
+	protected AIPathfindingComponent m_PathfindingComp;
+	
+	protected ChimeraCoverManagerComponent m_CoverMgr;
 
+	// Constants for amount of covers to check for high priority cover queries and low priority cover queries
+	const vector NEAREST_POLY_HALF_EXTEND = Vector(1.0, 2.0, 1.0);
+	const int MAX_COVERS_HIGH_PRIORITY = 25;
+	const int MAX_COVERS_LOW_PRIORITY = 15;
+	const float NAVMESH_AREA_COST_SCALE = 1/3.0; // It's scaled according to cost of Offroad area type, which is 3.0.
+	
 	
 #ifdef WORKBENCH
 	protected ref array<ref Shape> m_aDebugShapes = {};
@@ -26,13 +36,21 @@ class SCR_AIFindCover : AITaskScripted
 		SCR_AIUtilityComponent utilityComp = SCR_AIUtilityComponent.Cast(owner.FindComponent(SCR_AIUtilityComponent));
 		if (utilityComp)
 			m_State = utilityComp.m_CombatMoveState;
+		
+		AIWorld aiWorld = GetGame().GetAIWorld();
+		if (aiWorld)
+			m_CoverMgr = ChimeraCoverManagerComponent.Cast(aiWorld.FindComponent(ChimeraCoverManagerComponent));
+		
+		IEntity myEntity = owner.GetControlledEntity();
+		if (myEntity)
+			m_PathfindingComp = AIPathfindingComponent.Cast(myEntity.FindComponent(AIPathfindingComponent));
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
 		IEntity ownerEntity = owner.GetControlledEntity();
-		if (!ownerEntity || !m_State)
+		if (!ownerEntity || !m_State || !m_CoverMgr || !m_PathfindingComp)
 			return ENodeResult.FAIL;
 
 		//------------------------------------------------------------------------------------------------
@@ -46,10 +64,6 @@ class SCR_AIFindCover : AITaskScripted
 		//------------------------------------------------------------------------------------------------
 		// Find cover
 
-		CoverQueryComponent coverComp = GetCoverQueryComponent(owner);
-		if (!coverComp)
-			return ENodeResult.FAIL;
-
 #ifdef WORKBENCH
 		ClearDebug();
 #endif
@@ -57,11 +71,7 @@ class SCR_AIFindCover : AITaskScripted
 		vector coverPos, coverTallestPos;
 		int tilex, tiley, coverId;
 		
-		ECoverSearchState coverSearchState = coverComp.GetBestCover("Soldiers", queryProps, coverPos, coverTallestPos, tilex, tiley, coverId);
-		if (coverSearchState == ECoverSearchState.RUNNING)
-			return ENodeResult.RUNNING;
-		
-		bool coverFound = coverSearchState == ECoverSearchState.SUCCESS;
+		bool coverFound = m_CoverMgr.GetBestCover("Soldiers", m_PathfindingComp, queryProps, coverPos, coverTallestPos, tilex, tiley, coverId);
 		
 #ifdef WORKBENCH
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_DEBUG_COVERS))
@@ -91,16 +101,6 @@ class SCR_AIFindCover : AITaskScripted
 #endif
 
 		return ENodeResult.SUCCESS;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	CoverQueryComponent GetCoverQueryComponent(AIAgent owner)
-	{
-		AIGroup myGroup = owner.GetParentGroup();
-		if (!myGroup)
-			return null;
-		CoverQueryComponent coverComp = CoverQueryComponent.Cast(myGroup.FindComponent(CoverQueryComponent));
-		return coverComp;
 	}
 
 	protected static ref TStringArray s_aVarsIn = {

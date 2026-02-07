@@ -50,23 +50,6 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnMenuShow()
-	{
-		super.OnMenuShow();
-		
-		ShowBindsForAction();
-		ReselectRow();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnMenuFocusGained()
-	{
-		super.OnMenuFocusGained();
-		
-		ReselectRow();		
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	// Reselect correct keybind row
 	protected void ReselectRow()
 	{
@@ -217,7 +200,7 @@ class SCR_AdvancedKeybindDialogUI: SCR_KeybindDialogBase
 		if (!buttonWidget)
 			return;
 		
-		SCR_ButtonTextComponent buttonComp = SCR_ButtonTextComponent.Cast(buttonWidget.FindHandler(SCR_ButtonTextComponent));
+		SCR_ModularButtonComponent buttonComp = SCR_ModularButtonComponent.Cast(buttonWidget.FindHandler(SCR_ModularButtonComponent));
 		if (!buttonComp)
 			return;
 		

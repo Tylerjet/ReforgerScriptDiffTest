@@ -45,9 +45,13 @@ class SCR_AICombatComponent : ScriptComponent
 	// Constants related to weapon&target selector
 	static const float TARGET_MAX_LAST_SEEN_VISIBLE = 0.5;		//!< 'IsTargetVisible' variable in attack tree relies on this
 	protected static const float TARGET_MAX_LAST_SEEN_DIRECT_ATTACK = 1.6;
-	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK = 6.0;
-	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_MG = 11.0;
-	          static const float TARGET_MAX_LAST_SEEN = 45.0;	
+	protected static const float TARGET_MAX_LAST_SEEN_DIRECT_ATTACK_CLOSE = 4.5;
+			  static const float TARGET_MIN_LAST_SEEN_INDIRECT_ATTACK = 2.0;
+	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK = 7.0;
+	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_MG = 14.0;
+	          static const float TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE = 20.0;
+
+	          static const float TARGET_MAX_LAST_SEEN = 11.0;
 	protected static const float TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN = 0.5;	//!< Min value of TraceFraction for indirect attacks. \see BaseTarget.GetTraceFraction.
 	protected static const float TARGET_MAX_DISTANCE_INFANTRY = 500.0;
 	protected static const float TARGET_MAX_DISTANCE_VEHICLE = 700.0;
@@ -67,15 +71,21 @@ class SCR_AICombatComponent : ScriptComponent
 	protected const float PERCEPTION_FACTOR_EQUIPMENT_BINOCULARS = 3.0;	//!< Looking through binoculars
 	protected const float PERCEPTION_FACTOR_EQUIPMENT_NONE = 1.0;		//!< Not using any special equipment, same recognition ability as usual
 	
-	//! Beyond this distance AI considers shooting as long range fire, used for danger events
-	static const float LONG_RANGE_FIRE_DISTANCE = 200.0;
+	//! Within this distance AI considers combat as 'close range', used in firing times
+	static const float CLOSE_RANGE_COMBAT_DISTANCE = 35.0;
+	static const float CLOSE_RANGE_COMBAT_DISTANCE_SQ = CLOSE_RANGE_COMBAT_DISTANCE * CLOSE_RANGE_COMBAT_DISTANCE;
+	
+	//! Beyond this distance AI considers combat as 'long range', used for danger events and firing times
+	static const float LONG_RANGE_COMBAT_DISTANCE = 280.0;
+	
+	protected const float FRAG_GRENADE_MAX_THREAT = 0.6; // Max threat measure soldier is allowed to have to be able to use frag grenades
 	
 	protected SCR_ChimeraAIAgent m_Agent;
 	protected SCR_CharacterControllerComponent		m_CharacterController;
 	protected SCR_InventoryStorageManagerComponent	m_InventoryManager;
 	protected BaseWeaponManagerComponent			m_WpnManager;
 	protected SCR_CompartmentAccessComponent		m_CompartmentAccess;
-	protected SCR_DamageManagerComponent		m_DamageManager;
+	protected SCR_ExtendedDamageManagerComponent	m_DamageManager;
 	protected PerceptionComponent 					m_Perception;
 	protected SCR_AIInfoComponent					m_AIInfo;
 	protected SCR_AIUtilityComponent				m_Utility;
@@ -105,6 +115,10 @@ class SCR_AICombatComponent : ScriptComponent
 	// Weapon and target selection
 	ref AIWeaponTargetSelector m_WeaponTargetSelector = new AIWeaponTargetSelector();
 	private ref BaseTarget	m_SelectedTarget;
+	
+	protected bool m_SelectedTargetVisible;
+	protected vector m_SelectedTargetDestinationPos;
+	
 	protected ref BaseTarget m_SelectedRetreatTarget;				//!< Target we should retreat from
 	protected ref array<IEntity> m_aAssignedTargets = {};			//!< Array with assigned targets. Their score is increased.
 	protected SCR_AITargetClusterState m_TargetClusterState;		//!< Assigned target cluster from our group
@@ -120,13 +134,19 @@ class SCR_AICombatComponent : ScriptComponent
 	protected bool m_bSelectedWeaponDirectDamage;
 	protected EAIUnitType m_eUnitTypesCanAttack;
 	protected BaseCompartmentSlot m_WeaponEvaluationCompartment;	//!< Compartment at previous weapon evaluation
+		
+	// Current soldier fire rate
+	protected float m_fFireRateCoef = 1;
+	
+	// Is current soldier fire rate a result of direct/personal order. This is intented to be used 
+	// when you want to set specific fire rate to specific soldier and not be changed by group, unless overriden
+	protected bool m_bIsFireRatePersistent = false;	
 	
 	// Weapon selection updates
 	protected float m_fNextWeaponTargetEvaluation_ms = 0;
 	protected const float WEAPON_TARGET_UPDATE_PERIOD_MS = 500;
 	
 	protected SCR_AIConfigComponent m_ConfigComponent;
-	
 	
 	// Turret dismounting
 	protected float m_fDismountTurretTimer;
@@ -141,6 +161,56 @@ class SCR_AICombatComponent : ScriptComponent
 	
 	protected EGadgetType m_eCurrentGadgetType = -1;	//!< Gadget state. Used for detection when we use binoculars.
 	protected bool m_bGadgetFocus = false;				//!< True when we are in gadget focus mode (like looking through binoculars)
+		
+	//------------------------------------------------------------------------------------------------
+	void SetGroupSuppressClusterState(SCR_AITargetClusterState state)
+	{
+		SCR_AISuppressGroupClusterBehavior behavior = SCR_AISuppressGroupClusterBehavior.Cast(m_Utility.FindActionOfType(SCR_AISuppressGroupClusterBehavior));
+		
+		if (behavior)
+		{
+			// Same cluster as currently suppressed, no need to do anything
+			if (behavior.GetClusterState() == state)
+				return;
+			
+			// Cluster changed, fail current behavior
+			behavior.Fail();
+		}
+		
+		// New cluster is not null, create new behavior
+		if (state)
+		{
+			behavior = new SCR_AISuppressGroupClusterBehavior(m_Utility, null, null, 0, 1, SCR_AIActionBase.PRIORITY_LEVEL_NORMAL, state);
+			m_Utility.AddAction(behavior);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Sets group's fire rate on agent
+	void SetGroupFireRateCoef(float coef = 1, bool overridePersistent = false)
+	{
+		// Exit if not override and current rate is persistent
+		if (m_bIsFireRatePersistent && !overridePersistent)
+			return;
+		
+		// Group order is never persistent
+		SetFireRateCoef(coef, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Sets agent fire rate
+	void SetFireRateCoef(float coef = 1, bool persistent = false)
+	{
+		m_fFireRateCoef = coef;
+		m_bIsFireRatePersistent = persistent;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Get current agent fire rate coef
+	float GetFireRateCoef()
+	{
+		return m_fFireRateCoef;
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	//! \return
@@ -187,25 +257,30 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! \return
-	EWeaponType GetCurrentWeaponType()
+	BaseWeaponComponent GetCurrentWeapon()
 	{
-		BaseWeaponComponent currentWeapon = null;
 		if (m_CurrentTurretController)
 		{
 			// If we are in turret, find turret weapon
 			BaseWeaponManagerComponent turretWpnMgr = m_CurrentTurretController.GetWeaponManager();
 			if (turretWpnMgr)
-				currentWeapon = turretWpnMgr.GetCurrentWeapon();
-		}
-		else if (m_WpnManager)
-		{
-			// If not in turret, use character's weapon
-			currentWeapon = m_WpnManager.GetCurrentWeapon();
+				return turretWpnMgr.GetCurrentWeapon();
 		}
 		
+		// If not in turret, use character's weapon
+		if (m_WpnManager)
+			return m_WpnManager.GetCurrentWeapon();
+		
+		return null;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	EWeaponType GetCurrentWeaponType(bool overrideWithMuzzle = false)
+	{
+		BaseWeaponComponent currentWeapon = GetCurrentWeapon();
 		if (currentWeapon)
-			return currentWeapon.GetWeaponType();
+			return SCR_AIWeaponHandling.GetWeaponType(currentWeapon, overrideWithMuzzle);
 		
 		return EWeaponType.WT_NONE;
 	}
@@ -280,7 +355,9 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		m_fNextWeaponTargetEvaluation_ms = worldTime + WEAPON_TARGET_UPDATE_PERIOD_MS;
 		
-		AIAgent myAgent = GetAiAgent();
+		SCR_ChimeraAIAgent myAgent = GetAiAgent();
+		float agentThreat = m_Utility.m_ThreatSystem.GetThreatMeasure();
+
 		AIGroup myGroup = myAgent.GetParentGroup();
 		SCR_AIGroupInfoComponent groupInfoComp;
 		if (myGroup)
@@ -297,7 +374,7 @@ class SCR_AICombatComponent : ScriptComponent
 		array<EWeaponType> weaponBlacklist;
 		if (groupInfoComp)
 		{
-			if (!groupInfoComp.IsGrenadeThrowAllowed(myAgent))
+			if (agentThreat > FRAG_GRENADE_MAX_THREAT || !groupInfoComp.IsGrenadeThrowAllowed(myAgent))
 				weaponBlacklist = s_aWeaponBlacklistFragGrenades;
 		}
 		
@@ -388,6 +465,29 @@ class SCR_AICombatComponent : ScriptComponent
 			compartmentChanged = true;
 			m_WeaponEvaluationCompartment = currentCompartment;
 		}
+		
+		// Reset last velocity if target changed
+		if (selectedTargetChanged)
+		{
+			m_SelectedTargetVisible = false;
+			m_SelectedTargetDestinationPos = vector.Zero;
+		}
+			
+		if (newTarget)
+		{
+			bool visible = IsTargetVisible(newTarget);
+			IEntity targetEntity = newTarget.GetTargetEntity();
+			
+			if (visible != m_SelectedTargetVisible)
+			{
+				m_SelectedTargetVisible = visible;
+				
+				// Save position (destination) of target pos at the time we figured we've lost LOS
+				// Note: this solution is dependent on update rate of EvaluateWeaponAndTarget
+				if (!visible && targetEntity)
+					m_SelectedTargetDestinationPos = targetEntity.GetOrigin();
+			}
+		}
 				
 		outWeaponEvent = weaponEvent;
 		outSelectedTargetChanged = selectedTargetChanged;
@@ -396,6 +496,13 @@ class SCR_AICombatComponent : ScriptComponent
 		outCurrentTarget = newTarget;
 		outPrevTarget = prevTarget;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Returns selected target destination pos - pos where unit where just after we've lost LOS
+	vector GetTargetDestinationPos()
+	{
+		return m_SelectedTargetDestinationPos;
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	SCR_AIInfoComponent GetAIInfoComponent()
@@ -426,22 +533,20 @@ class SCR_AICombatComponent : ScriptComponent
 			return false;
 		
 		int magCount = m_InventoryManager.GetMagazineCountByWeapon(weaponComp);
-		
-		int lowMagThreshold = 0;
-		
-		// Decide how many remainiing magazines is enough to complain
-		switch (weaponComp.GetWeaponType())
-		{
-			case EWeaponType.WT_RIFLE: lowMagThreshold = 3; break;
-			case EWeaponType.WT_GRENADELAUNCHER: lowMagThreshold = 3; break; // todo now it won't work when we are out of UGL ammo because weapons are not marked with WT_GRENADELAUNCHER
-			case EWeaponType.WT_SNIPERRIFLE: lowMagThreshold = 1; break;
-			case EWeaponType.WT_ROCKETLAUNCHER: lowMagThreshold = 1; break;
-			case EWeaponType.WT_MACHINEGUN: lowMagThreshold = 1; break;
-			case EWeaponType.WT_HANDGUN: lowMagThreshold = 1; break;
-			default: lowMagThreshold = 0;
-		}
+		int lowMagThreshold = GetWeaponLowMagThreshold(weaponComp);
 		
 		return magCount < lowMagThreshold;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetWeaponLowMagThreshold(BaseWeaponComponent weapon)
+	{
+		EWeaponType wpType = SCR_AIWeaponHandling.GetWeaponType(weapon, true);
+		SCR_AIWeaponTypeHandlingConfig config = m_Utility.m_ConfigComponent.GetWeaponTypeHandlingConfig(wpType);
+		if (!config)
+			return SCR_AIWeaponTypeHandlingConfig.DEFAULT_LOW_MAG_THRESHOLD;
+		
+		return config.m_iLowMagCountThreshold;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -571,7 +676,7 @@ class SCR_AICombatComponent : ScriptComponent
 			if (prevGetOutAction)
 				return;
 			
-			SCR_AIGetOutVehicle getOutAction = new SCR_AIGetOutVehicle(m_Utility, null, compartmentSlot.GetOwner(), SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET);
+			SCR_AIGetOutVehicle getOutAction = new SCR_AIGetOutVehicle(m_Utility, null, compartmentSlot.GetOwner(), priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET);
 			m_Utility.AddAction(getOutAction);
 		}
 		
@@ -590,7 +695,7 @@ class SCR_AICombatComponent : ScriptComponent
 			AIActionBase prevGetInAction = m_Utility.FindActionOfType(SCR_AIGetInVehicle);
 			if (!prevGetInAction)
 			{
-				SCR_AIGetInVehicle getInAction = new SCR_AIGetInVehicle(m_Utility, null, compartmentSlot.GetVehicle(), ECompartmentType.Turret, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_GET_IN);
+				SCR_AIGetInVehicle getInAction = new SCR_AIGetInVehicle(m_Utility, null, compartmentSlot.GetVehicle(), compartmentSlot, ECompartmentType.TURRET, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_GET_IN);
 				m_Utility.AddAction(getInAction);
 			}
 		}
@@ -686,7 +791,12 @@ class SCR_AICombatComponent : ScriptComponent
 		IEntity compartmentEntity = m_CurrentCompartmentSlot.GetOwner();
 		m_CurrentTurretController = TurretControllerComponent.Cast(compartmentEntity.FindComponent(TurretControllerComponent));
 		m_CurrentVehicle = m_CurrentCompartmentSlot.GetVehicle();
-		m_CurrentVehicleCompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(m_CurrentVehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
+		
+		// Ensure it's compartment mgr on root of entity, not on a bench
+		if (m_CurrentVehicle)
+			m_CurrentVehicleCompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(m_CurrentVehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
+		else
+			m_CurrentVehicleCompartmentManager = null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -736,7 +846,7 @@ class SCR_AICombatComponent : ScriptComponent
 		// Fire damage inside a vehicle - evac vehicle
 		m_bCurrentVehicleEvac = true;
 		
-		SCR_AIGetOutVehicle behaviorGetOut = new SCR_AIGetOutVehicle(m_Utility, null, m_CurrentVehicle, SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY);
+		SCR_AIGetOutVehicle behaviorGetOut = new SCR_AIGetOutVehicle(m_Utility, null, m_CurrentVehicle, priority: SCR_AIActionBase.PRIORITY_BEHAVIOR_GET_OUT_VEHICLE_HIGH_PRIORITY);
 		m_Utility.AddAction(behaviorGetOut);
 		
 		SCR_AIMoveFromDangerBehavior behaviorMoveFromDanger = new SCR_AIMoveFromDangerBehavior(m_Utility, null, m_CurrentVehicle.GetOrigin(), m_CurrentVehicle);
@@ -744,14 +854,15 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void Event_OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
+	protected void Event_OnDamageEffectAdded(notnull SCR_DamageEffect dmgEffect)
 	{
-		if (dType != EDamageType.BLEEDING || !m_Utility || !m_Utility.m_AIInfo)
+		if (!m_Utility || !m_Utility.m_AIInfo || dmgEffect.GetDamageType() != EDamageType.BLEEDING || !DotDamageEffect.Cast(dmgEffect))
 			return;
 		
 		SCR_AIActionBase currentAction = SCR_AIActionBase.Cast(m_Utility.GetCurrentAction());
 		if (!currentAction)
 			return;
+		
 		float priorityLevelClamped = currentAction.GetRestrictedPriorityLevel();
 		
 		if (m_Utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
@@ -1114,6 +1225,37 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Returns optimal weapon which can be used for suppressing target of given type at given range.
+	//! This will first of all return weapons which are configured in prefabs to cause indirect damage.
+	void EvaluateSuppressionWeapon(EAIUnitType targetUnitType, float distanceToTarget, out BaseWeaponComponent outWeaponComp, out int outMuzzleId, out BaseMagazineComponent outMagazineComp)
+	{
+		bool useCompartmentWeapons = m_AIInfo.HasUnitState(EUnitState.IN_TURRET);
+		bool success = m_WeaponTargetSelector.SelectWeaponAgainstUnitTypeAndDistance(targetUnitType, distanceToTarget, false, useCompartmentWeapons,
+			weaponTypesWhitelist: null,
+			weaponTypesBlacklist: s_aWeaponBlacklistFragGrenades,
+			minMagCountSpec: m_ConfigComponent.m_aMinSuppressiveMagCountSpec);
+		
+		if (success)
+		{
+			BaseWeaponComponent weaponComp;
+			int muzzleId;
+			BaseMagazineComponent magazineComp;
+			
+			m_WeaponTargetSelector.GetSelectedWeapon(weaponComp, muzzleId, magazineComp);
+			
+			outWeaponComp = weaponComp;
+			outMuzzleId = muzzleId;
+			outMagazineComp = magazineComp;
+		}
+		else
+		{
+			outWeaponComp = null;
+			outMuzzleId = null;
+			outMagazineComp = null;
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! \param[in] weaponType
 	//! \return
 	bool HasWeaponOfType(EWeaponType weaponType)
@@ -1195,10 +1337,10 @@ class SCR_AICombatComponent : ScriptComponent
 			InitWeaponTargetSelector(owner);
 		}
 
-		m_DamageManager = SCR_DamageManagerComponent.Cast(owner.FindComponent(SCR_DamageManagerComponent));
+		m_DamageManager = SCR_ExtendedDamageManagerComponent.Cast(owner.FindComponent(SCR_ExtendedDamageManagerComponent));
 		if (m_DamageManager)
 		{
-			m_DamageManager.GetOnDamageOverTimeAdded().Insert(Event_OnDamageOverTimeAdded);
+			m_DamageManager.GetOnDamageEffectAdded().Insert(Event_OnDamageEffectAdded);
 			m_DamageManager.GetOnDamage().Insert(Event_OnDamage);
 		}
 		
@@ -1232,7 +1374,7 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		if (m_DamageManager)
 		{
-			m_DamageManager.GetOnDamageOverTimeAdded().Remove(Event_OnDamageOverTimeAdded);
+			m_DamageManager.GetOnDamageEffectAdded().Remove(Event_OnDamageEffectAdded);
 			m_DamageManager.GetOnDamage().Remove(Event_OnDamage);
 		}
 	}
@@ -1243,8 +1385,8 @@ class SCR_AICombatComponent : ScriptComponent
 		m_WeaponTargetSelector.Init(owner);
 		
 		// maxLastSeenIndirect must be consistent with conditions in ShouldAttackEndForTarget, therefore we use TARGET_INVISIBLE_TIME here
-		m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK, TARGET_MAX_LAST_SEEN, TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN,
-		TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED, TARGET_MAX_DISTANCE_DISARMED);
+		SetTargetSelectionProperties(false);
+
 		
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Infantry,			100.0,	-0.1); // At short range we prefer to shoot enemies in vehicle
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_VehicleUnarmored,	99.0,	-0.08);
@@ -1252,6 +1394,20 @@ class SCR_AICombatComponent : ScriptComponent
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_VehicleHeavy,		200.0,	-0.15);
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Aircraft,			90.0,	-0.015);
 		m_WeaponTargetSelector.SetTargetScoreConstants(EAIUnitType.UnitType_Fortification,		40.0,	-0.1); // Fortifications are not used ATM
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetTargetSelectionProperties(bool closeCombat)
+	{
+		if (closeCombat)
+		{
+			m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK_CLOSE, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK_CLOSE, TARGET_MAX_LAST_SEEN,
+			TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN, TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED, TARGET_MAX_DISTANCE_DISARMED);		
+			return;
+		}
+		
+		m_WeaponTargetSelector.SetSelectionProperties(TARGET_MAX_LAST_SEEN_DIRECT_ATTACK, TARGET_MAX_LAST_SEEN_INDIRECT_ATTACK, TARGET_MAX_LAST_SEEN,
+		TARGET_MIN_INDIRECT_TRACE_FRACTION_MIN, TARGET_MAX_DISTANCE_INFANTRY, TARGET_MAX_DISTANCE_VEHICLE, TARGET_MAX_TIME_SINCE_ENDANGERED, TARGET_MAX_DISTANCE_DISARMED);
 	}
 	
 	//------------------------------------------------------------------------------------------------

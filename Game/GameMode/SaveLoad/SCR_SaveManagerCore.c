@@ -445,15 +445,22 @@ class SCR_SaveManagerCore: SCR_GameCoreBase
 		m_DownloadCallback = null;
 		m_DownloadPageParams = null;
 		
-		Print("GetPageCount() = " + GetGame().GetBackendApi().GetWorldSaveApi().GetPageCount());
-		array<WorldSaveItem> items = {};
-		int count = GetGame().GetBackendApi().GetWorldSaveApi().GetPageItems(items);
-		foreach (int i, WorldSaveItem item: items)
+		array<WorldSaveItem> saves = {};
+		
+		// Get only count of saves 
+		array<WorkshopItem> items = {}; 
+		GetGame().GetBackendApi().GetWorkshop().GetPageItems(items);
+		foreach (WorkshopItem item : items)
 		{
-			PrintFormat("%1: Id=%2, Name='%3', Description='%4'", i, item.Id(), item.Name(), item.Description());
-			
+			WorldSaveItem worldSave = WorldSaveItem.Cast(item);
+			if (worldSave)
+				saves.Insert(worldSave);
+		}
+		
+		foreach (int i, WorldSaveItem save: saves)
+		{
 			if (m_bDebugDelete)
-				item.DeleteOnline(null);
+				save.DeleteOnline(null);
 		}
 	}
 
@@ -936,15 +943,17 @@ class SCR_SaveManager_BackendCallback: BackendCallback
 	override void OnError( int code, int restCode, int apiCode )
 	{
 		PrintFormat("[BackendCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code));
+		Print(string.Format("[BackendCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code)), LogLevel.NORMAL);
+
 	}
 	override void OnSuccess( int code )
 	{
-		PrintFormat("[BackendCallback] OnSuccess(): code=%1", code);
+		Print(string.Format("[BackendCallback] OnSuccess(): code=%1"), LogLevel.NORMAL);
 		GetGame().GetSaveManager().OnDownloadFromWorkshop();
 	}
 	override void OnTimeout()
 	{
-		Print("[BackendCallback] OnTimeout");
+		Print("[BackendCallback] OnTimeout", LogLevel.NORMAL);
 	}
 };
 class SCR_SaveManager_PageParams: PageParams

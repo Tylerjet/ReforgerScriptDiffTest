@@ -11,6 +11,19 @@ Do not modify, this script is generated
 
 class DamageManagerComponent: HitZoneContainerComponent
 {
+	/*!
+	Clears and fills struckHitZones array with all HZs that should get damaged by this BaseDamageContext.
+	This function uses BaseDamageContext.colliderID to find the struck hitzones.
+	If no hitzones are attached to the colliderID, it will return default hitzone.
+	Use this to call HandleDamage individually on each of the affected hitzones.
+	Dont call this if:
+	-The DamageManager has been destroyed, struckHitZones will be empty.
+	-DamageContext.struckHitZone is known. It will only return that hitzone.
+	\param struckHitZones: array of hitzones that were struck
+	\param damageContext: Information about the damage. Only BaseDamageContext.struckHitZone and BaseDamageContext.colliderID are relevant.
+	\return Returns the count of elements that were filled into the array.
+	*/
+	proto external int ComputeStruckHitZones(out notnull array<HitZone> struckHitZones, notnull BaseDamageContext damageContext);
 	//Enables damage handling. It will only be done if called from server.
 	proto external void EnableDamageHandling(bool enable);
 	//Returns true if this damage manager and its hitzones can take damage
@@ -94,8 +107,21 @@ class DamageManagerComponent: HitZoneContainerComponent
 	\param timeSlice Delta time since last update.
 	*/
 	event protected void OnFrame(IEntity owner, float timeSlice);
-	//! Must be first enabled with event mask
-	event protected bool OnContact(IEntity owner, IEntity other, Contact contact);
+	/*!
+	Event when physics engine registered contact with other RigidBody
+	\param owner The owner entity
+	\param other Other Entity who contacted us
+	\param contact Structure describing the contact
+	\return If it returns false, contact gets discarded and DamageManagerComponent::OnFilteredContact will not be called
+	*/
+	event bool FilterContact(IEntity owner, IEntity other, Contact contact);
+	/*!
+	Only called if FilterContact returned true
+	\param owner The owner entity
+	\param other Other Entity who contacted us
+	\param contact Structure describing the contact
+	*/
+	event protected void OnFilteredContact(IEntity owner, IEntity other, Contact contact);
 	/*!
 	Called during EOnDiag.
 	\param owner Entity this component is attached to.
@@ -110,14 +136,14 @@ class DamageManagerComponent: HitZoneContainerComponent
 	return true if damage should be discarded / was fully hijacked and should no longer be applied on this damage manager
 	(e.g.: damage was passed to another dmg manager, so we dont handle damage on this manager ).
 	*/
-	event bool HijackDamageHandling(notnull BaseDamageContext damageContext) {return false;};
+	event bool HijackDamageHandling(notnull BaseDamageContext damageContext) { return false; };
 	/*!
 	Called after HijackDamageHandling.
 	If it returns true, damage will be dealt.
 	If it returns false, damage will not be handled.
 	Use this to introduce randomness on hit chances (e.g.: moving helicopter rotors)
 	*/
-	event bool ShouldCountAsHit(notnull BaseDamageContext damageContext) {return true;};
+	event bool ShouldCountAsHit(notnull BaseDamageContext damageContext) { return true; };
 }
 
 /*!

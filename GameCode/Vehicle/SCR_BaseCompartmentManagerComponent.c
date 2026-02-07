@@ -8,10 +8,10 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	protected bool m_bBlockSuppliesIfOccupied;
 	
 	//Compartment slots associated with crew
-	static const ref array<ECompartmentType> CREW_COMPARTMENT_TYPES = {ECompartmentType.Turret};//{ECompartmentType.Pilot, ECompartmentType.Turret}; //~ Enable again once AI driving is in the game
+	static const ref array<ECompartmentType> CREW_COMPARTMENT_TYPES = {ECompartmentType.PILOT, ECompartmentType.TURRET};
 	
 	//Compartment slots associated with passengers
-	static const ref array<ECompartmentType> PASSENGER_COMPARTMENT_TYPES = {ECompartmentType.Cargo};
+	static const ref array<ECompartmentType> PASSENGER_COMPARTMENT_TYPES = {ECompartmentType.CARGO};
 	
 	//~ Default Occupant spawning
 	protected ref array<BaseCompartmentSlot> m_aCompartmentsToSpawnDefaultOccupant;
@@ -197,7 +197,8 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 			if (compartment)
 			{
 				compartment.DamageOccupant(damage, damageType, instigator, gettingIn, gettingOut);
-				compartment.ScreenShakeOccupant(damage);
+				if (damageType == EDamageType.COLLISION)
+					compartment.ScreenShakeOccupant(damage);
 			}
 		}
 	}

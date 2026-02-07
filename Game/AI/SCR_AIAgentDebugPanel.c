@@ -126,7 +126,7 @@ class SCR_AIAgentDebugPanel : Managed
 				else
 				{
 					DbgUI.Text("Current Action:");
-					float actionPriority = currentAction.Evaluate() + currentAction.EvaluatePriorityLevel();
+					float actionPriority = currentAction.Evaluate();
 					string currentActionStr = string.Format("  > %1 %2", actionPriority.ToString(5, 1), currentAction.Type().ToString());
 					DbgUI.Text(currentActionStr);
 				}
@@ -162,6 +162,15 @@ class SCR_AIAgentDebugPanel : Managed
 			if (groupUtilityComp)
 			{
 				DbgUI.Text(groupUtilityComp.m_FireteamMgr.DiagGetFireteamsData());
+				
+				
+				// Show group usable vehicles
+				bool showUsableVehicles;
+				DbgUI.Check("Show group usable vehicles", showUsableVehicles);
+				if (showUsableVehicles)
+				{
+					ShowGroupUsableVehicles(groupUtilityComp);
+				}
 			}
 			
 			// Dump debug messages button
@@ -285,7 +294,7 @@ class SCR_AIAgentDebugPanel : Managed
 	
 	string GetActionString(AIActionBase action, int actionId)
 	{
-		float actionPriority = action.Evaluate() + action.EvaluatePriorityLevel();
+		float actionPriority = action.Evaluate();
 		string strState = string.Format("(%1)", typename.EnumToString(EAIActionState, action.GetActionState()) );
 		
 		string debugText;
@@ -444,7 +453,7 @@ class SCR_AIAgentDebugPanel : Managed
 					
 					int plotWidth = 200;
 					int plotHeight = 150;
-					int plotHistory = 800;
+					// int plotHistory = 800;
 					DbgUI.PlotLive(string.Format("%1 Detection", targetId), plotWidth, plotHeight, recognitionDetect, 300);
 					DbgUI.PlotLive(string.Format("%1 Identification", targetId), plotWidth, plotHeight, recognitionIdentify, 300);
 				}
@@ -495,6 +504,21 @@ class SCR_AIAgentDebugPanel : Managed
 			str = str + "AIM_AT_TARGET";
 		if (!str.IsEmpty())
 			DbgUI.Text(str);
+	}
+	
+	void ShowGroupUsableVehicles(SCR_AIGroupUtilityComponent utility)
+	{
+		array<ref SCR_AIGroupVehicle> vehicles = {};
+		utility.m_VehicleMgr.GetAllVehicles(vehicles);
+		
+		foreach (int i, SCR_AIGroupVehicle v : vehicles)
+		{
+			IEntity vehicleEntity;
+			if (v.GetVehicleUsageComponent())
+				vehicleEntity = v.GetVehicleUsageComponent().GetOwner();
+			string vehicleStr = string.Format("%1 - %2", i, GetEntityShortNameWithPrefabName(vehicleEntity));
+			DbgUI.Text(vehicleStr);
+		}
 	}
 	
 	//! Returns agent name based on faction and callsign
@@ -563,6 +587,19 @@ class SCR_AIAgentDebugPanel : Managed
 		int _a = entityRawName.IndexOf("<");
 		int _b = entityRawName.IndexOfFrom(_a, ">");
 		string entityPtrStr = entityRawName.Substring(_a+1, _b - _a - 1);
-		return entityPtrStr;
+		string entityClassNameStr = entity.ClassName();
+		return string.Format("%1 %2", entityClassNameStr, entityPtrStr);
+	}
+	
+	static string GetEntityShortNameWithPrefabName(IEntity entity)
+	{
+		string sBase = GetEntityShortName(entity);
+		
+		string prefabName;
+		EntityPrefabData prefabData = entity.GetPrefabData();
+		if (prefabData)
+			prefabName = prefabData.GetPrefabName();
+		
+		return string.Format("%1 %2", sBase, prefabName);
 	}
 };

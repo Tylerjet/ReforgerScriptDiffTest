@@ -7,7 +7,7 @@ In the Behaviour section of the widget you want to have a tooltip, pick this cla
 Don't forget to set Ignore Cursor to false or the tooltip won't trigger!
 */
 
-void ScriptInvokerTooltipMethod(SCR_ScriptedWidgetTooltip tooltipClass, Widget tooltipWidget, Widget hoverWidget, SCR_ScriptedWidgetTooltipPreset preset, string tag);
+void ScriptInvokerTooltipMethod(SCR_ScriptedWidgetTooltip tooltip);
 typedef func ScriptInvokerTooltipMethod;
 typedef ScriptInvokerBase<ScriptInvokerTooltipMethod> ScriptInvokerTooltip;
 
@@ -27,25 +27,19 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 
 	protected float m_fTargetPosition[2];
 
-	// Content Widgets
-	protected RichTextWidget m_wMessage;
-
 	// Const
-	protected const string WIDGET_MESSAGE = "Message";
-	
 	private const float DISTANCE_THRESHOLD = 0.001;
 
 	// Static
-	protected static Widget m_wTooltipContent;
 	protected static WidgetAnimationPosition m_PositionAnimation;
 	protected static SCR_ScriptedWidgetTooltip m_CurrentTooltip;
 
 	// Invokers
-	// Note that this is a bandaid solution because there is no other way to pass data to the tooltip class.
+	// Reliance on static invokers is a bit of a bandaid solution but there is no other way for other scripts to access the tooltip class
 	// If possible, only bind on hover/focus gained and make sure to unbind on lost.
-	protected static ref ScriptInvokerTooltip m_OnTooltipShowInit;	// Called before creating the content widget, returns the proxy
-	protected static ref ScriptInvokerTooltip m_OnTooltipShow;		// Called after creating the content widget, returns the content
-	protected static ref ScriptInvokerTooltip m_OnTooltipHide;		// Called after removing the content widget, returns the proxy
+	protected static ref ScriptInvokerTooltip m_OnTooltipShowInit;	// Called before creating the content widget
+	protected static ref ScriptInvokerTooltip m_OnTooltipShow;		// Called after creating the content widget
+	protected static ref ScriptInvokerTooltip m_OnTooltipHide;		// Called after removing the content widget
 
 	//! ---- OVERRIDES ----
 	//------------------------------------------------------------------------------------------------
@@ -72,8 +66,6 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 
 		if (!m_Preset)
 			return;
-
-		m_Preset.Init();
 		
 		// Setup
 		m_wWorkspace = pWorkspace;
@@ -85,7 +77,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 			m_wHoverWidget = pWorkspace.GetFocusedWidget();
 		
 		if(m_OnTooltipShowInit)
-			m_OnTooltipShowInit.Invoke(this, pToolTipWidget, m_wHoverWidget, m_Preset, m_Preset.m_sTag);
+			m_OnTooltipShowInit.Invoke(this);
 		
 		// Proxy initialization
 		FrameSlot.SetAnchorMin(pToolTipWidget, 0, 0);
@@ -104,18 +96,24 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		if (debugBorder)
 			debugBorder.SetVisible(showDebug);
 
-		m_wTooltipContent = m_wWorkspace.CreateWidgets(m_Preset.m_sContentLayout, GetContentWrapper());
-		if (!m_wTooltipContent)
+		// Content creation
+		if (!m_Preset.m_Content)
+		{
+			Print(string.Format("SCR_ScriptedWidgetTooltip - Show() - Missing content class! Tag: %1 | Conf: %2", GetTag(), m_sPresetsConfig), LogLevel.ERROR);
 			return;
-
+		}
+		
+		if (!m_Preset.m_Content.Init(m_wWorkspace, GetContentWrapper()))
+		{
+			ForceHidden();
+			return;
+		}
+		
 		// Determine and cache the correct content position inside the proxy
 		InitContentPosition();
 		
 		// Cache desired position and instantly place the tooltip there
 		UpdatePosition(true, false, true);
-
-		// Content widgets setup
-		InitContents();
 
 		// Fade in
 		if (m_Preset.m_fFadeInSpeed > 0)
@@ -130,12 +128,12 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		SCR_MenuHelper.GetOnTabChange().Insert(OnTabChange);
 
 		// Invoker
-		if(m_OnTooltipShow)
-			m_OnTooltipShow.Invoke(this, m_wTooltipContent, m_wHoverWidget, m_Preset, m_Preset.m_sTag);
+		if (m_OnTooltipShow)
+			m_OnTooltipShow.Invoke(this);
 
 		// Tick - Used to update the tooltip's position
 		GetGame().GetCallqueue().CallLater(Update, m_Preset.m_fUpdateFrequency, true);
-
+		
 		// Super
 		super.Show(pWorkspace, pToolTipWidget, desiredPosX, desiredPosY);
 	}
@@ -152,7 +150,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	//------------------------------------------------------------------------------------------------
 	protected void Update()
 	{
-		if (!m_wWorkspace || !m_wTooltipProxy || !m_wHoverWidget || !m_Preset || !m_wTooltipContent)
+		if (!m_wWorkspace || !m_wTooltipProxy || !m_wHoverWidget || !m_Preset || !m_Preset.GetContentRoot())
 		{
 			Clear();
 			return;
@@ -170,7 +168,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		Clear();
 
 		if (m_OnTooltipHide)
-			m_OnTooltipHide.Invoke(this, m_wTooltipProxy, m_wHoverWidget, m_Preset, m_Preset.m_sTag);
+			m_OnTooltipHide.Invoke(this);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -180,7 +178,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnTabChange(ChimeraMenuBase menu)
+	protected void OnTabChange(SCR_TabViewComponent tabView, Widget widget)
 	{
 		ForceHidden();
 	}
@@ -197,8 +195,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		if (m_PositionAnimation)
 			m_PositionAnimation.Stop();
 		
-		if (m_wTooltipContent)
-			m_wTooltipContent.RemoveFromHierarchy();
+		if (m_Preset.m_Content)
+			m_Preset.m_Content.Clear();
 	}
 	
 	// Align the content to the correct side of the proxy
@@ -209,19 +207,16 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		if (!positionPreset)
 			return;
 		
+		Widget contentRoot = m_Preset.GetContentRoot();
+		if (!contentRoot)
+			return;
+		
 		float targetX = positionPreset.GetContentAlignmentHorizontal();
 		float targetY = positionPreset.GetContentAlignmentVertical();
 		
-		FrameSlot.SetAlignment(m_wTooltipContent, targetX, targetY);
-		FrameSlot.SetAnchorMin(m_wTooltipContent, targetX, targetY);
-		FrameSlot.SetAnchorMax(m_wTooltipContent, targetX, targetY);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void InitContents()
-	{
-		m_wMessage = RichTextWidget.Cast(m_wTooltipProxy.FindAnyWidget(WIDGET_MESSAGE));
-		SetMessage(m_Preset.m_sMessageText);
+		FrameSlot.SetAlignment(contentRoot, targetX, targetY);
+		FrameSlot.SetAnchorMin(contentRoot, targetX, targetY);
+		FrameSlot.SetAnchorMax(contentRoot, targetX, targetY);
 	}
 	
 	//! ---- PUBLIC ----
@@ -233,7 +228,7 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 
 		vector goalPosition, goalAlignment, goalAlpha;
 		
-		bool shouldUpdate = m_Preset.GetGoalPosition(m_wTooltipContent, m_wHoverWidget, goalPosition, goalAlignment, goalAlpha, (!rendered || force));
+		bool shouldUpdate = m_Preset.GetGoalPosition(m_Preset.GetContentRoot(), m_wHoverWidget, goalPosition, goalAlignment, goalAlpha, (!rendered || force));
 		if (!shouldUpdate)
 			return;
 		
@@ -258,67 +253,15 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		
 		// -- Content --
 		// Move the content to the correct edge of the proxy
-		if (!m_wTooltipContent)
+		Widget contentRoot = m_Preset.GetContentRoot();
+		if (!contentRoot)
 			return;
 		
-		FrameSlot.SetAlignment(m_wTooltipContent, goalAlignment[0], goalAlignment[1]);
-		FrameSlot.SetAnchorMin(m_wTooltipContent, goalAlignment[0], goalAlignment[1]);
-		FrameSlot.SetAnchorMax(m_wTooltipContent, goalAlignment[0], goalAlignment[1]);
+		FrameSlot.SetAlignment(contentRoot, goalAlignment[0], goalAlignment[1]);
+		FrameSlot.SetAnchorMin(contentRoot, goalAlignment[0], goalAlignment[1]);
+		FrameSlot.SetAnchorMax(contentRoot, goalAlignment[0], goalAlignment[1]);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	bool SetMessage(string message)
-	{
-		if (!m_wMessage)
-			return false;
-
-		m_wMessage.SetText(message);
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool ResetMessage()
-	{
-		return SetMessage(GetDefaultMessage());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool SetMessageColor(Color color)
-	{
-		if (!m_wMessage || !color)
-			return false;
-
-		m_wMessage.SetColor(color);
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetMessage()
-	{
-		if (!m_wMessage)
-			return string.Empty;
-		
-		return m_wMessage.GetText();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetDefaultMessage()
-	{
-		return m_Preset.m_sDefaultMessage;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetTag()
-	{
-		return m_Preset.m_sTag;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsVisible()
-	{
-		return m_wTooltipProxy && m_Preset && m_wTooltipProxy.IsVisible();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	void ForceHidden()
 	{
@@ -328,17 +271,48 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 		m_wTooltipProxy.SetVisible(false);
 		OnHide();
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	Widget GetContentWidget()
+	// Check if the tooltip has the right parameters. The most important one is the tag, since it differentiates tooltips
+	bool IsValid(string tag, Widget hoverWidget = null, ResourceName presets = string.Empty)
 	{
-		return m_wTooltipContent;
+		if (!m_wTooltipProxy || !m_Preset || !GetContent() || !m_wHoverWidget)
+			return false;
+		
+		bool valid = tag == GetTag();
+		
+		if (hoverWidget)
+			valid = valid && hoverWidget == m_wHoverWidget;
+		
+		if (!presets.IsEmpty())
+			valid = valid && presets == m_sPresetsConfig;
+		
+		return valid;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	Widget GetTooltipWidget()
+	string GetTag()
 	{
-		return m_wTooltipProxy;
+		return m_Preset.m_sTag;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ScriptedWidgetTooltipContentBase GetContent()
+	{
+		return m_Preset.GetContent();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget GetContentRoot()
+	{
+		return m_Preset.GetContentRoot();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Note: on the frame of creation, the proxy will still be invisible, causing this to return false
+	bool IsVisible()
+	{
+		return m_wTooltipProxy && m_Preset && m_wTooltipProxy.IsVisible();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -398,8 +372,8 @@ class SCR_ScriptedWidgetTooltip : ScriptedWidgetTooltip
 	}
 }
 
-
 //------------------------------------------------------------------------------------------------
+// --- Configuration classes ---
 //------------------------------------------------------------------------------------------------
 //! Configuration for a Tooltip
 [BaseContainerProps(configRoot : true), SCR_BaseContainerCustomTitleField("m_sTag")]
@@ -408,29 +382,26 @@ class SCR_ScriptedWidgetTooltipPreset
 	[Attribute("", UIWidgets.Auto, "Custom tag, used for finding this preset at run time.")]
 	string m_sTag;
 
-	[Attribute("{197FC671D07413E9}UI/layouts/Menus/Tooltips/Tooltip_SimpleMessage.layout", UIWidgets.ResourceNamePicker, ".layout for the content of the Tooltip", params: "layout")]
-	ResourceName m_sContentLayout;
+	[Attribute(desc: "Content handling class")]
+	ref SCR_ScriptedWidgetTooltipContentBase m_Content;
+	
+	[Attribute()]
+	protected ref SCR_TooltipPositionPreset m_MousePositionSettings;
 
 	[Attribute()]
-	ref SCR_TooltipPositionPreset m_MousePositionSettings;
-
-	[Attribute()]
-	ref SCR_TooltipPositionPreset m_GamepadPositionSettings;
+	protected ref SCR_TooltipPositionPreset m_GamepadPositionSettings;
 
 	[Attribute("1", UIWidgets.CheckBox, "Defines if the tooltip should animate to follow mouse cursor or remain at initial position")]
 	bool m_bFollowCursor;
 
 	[Attribute(desc: "Fixed Absolute screen position")]
-	vector m_vFixedPosition;
+	protected vector m_vFixedPosition;
 
-	[Attribute("0", UIWidgets.CheckBox, desc: "Should the proxy adapt to the content: the proxy is used to check for overflowing and contains the actual Content layout. Giving it a fixed size will prevent slide in effect for overflowing tooltips. This will NOT influence the look of the comntent layout, as long as it fits inside the proxy and it's not set to stretch")]
+	[Attribute("0", UIWidgets.CheckBox, desc: "Should the proxy adapt to the content: the proxy is used to check for overflowing and contains the actual Content layout. Giving it a fixed size will prevent slide in effect for overflowing tooltips. This will NOT influence the look of the content layout, as long as it fits inside the proxy and it's not set to stretch")]
 	bool m_bSizeToContent;
 
 	[Attribute(desc: "Fixed proxy layout size. The proxy is used to check for overflowing and contains the actual Content layout.  This will NOT influence the look of the comntent layout, as long as it fits inside the proxy and it's not set to stretch")]
 	vector m_vSize;
-
-	[Attribute("", desc: "Message to display")]
-	string m_sMessageText;
 
 	[Attribute(UIConstants.FADE_RATE_FAST.ToString(), desc: "FadeIn speed. Set to 0 to skip the animation")]
 	float m_fFadeInSpeed;
@@ -443,13 +414,20 @@ class SCR_ScriptedWidgetTooltipPreset
 
 	[Attribute("0", UIWidgets.CheckBox)]
 	bool m_bShowDebugBorder;
-	
-	string m_sDefaultMessage;
 
 	//------------------------------------------------------------------------------------------------
-	void Init()
+	SCR_ScriptedWidgetTooltipContentBase GetContent()
 	{
-		m_sDefaultMessage = m_sMessageText;
+		return m_Content;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	Widget GetContentRoot()
+	{
+		if (!m_Content)
+			return null;
+		
+		return m_Content.GetContentRoot();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -460,7 +438,7 @@ class SCR_ScriptedWidgetTooltipPreset
 		vector tooltipSize = GetTooltipSize(tooltipContent);
 		SCR_TooltipPositionPreset positionSettings = GetInputPositionSettings();
 
-		if (positionSettings.m_eAnchor != SCR_ETooltipAnchor.CURSOR && !force)
+		if (!positionSettings || (positionSettings.m_eAnchor != SCR_ETooltipAnchor.CURSOR && !force))
 			return false;
 
 		positionSettings.GetGoalPosition(tooltipSize, hoverWidget, m_vFixedPosition, goalPosition, goalAlignment, goalAlpha);
@@ -495,7 +473,6 @@ class SCR_ScriptedWidgetTooltipPreset
 	}
 }
 
-
 //------------------------------------------------------------------------------------------------
 //! Class for a .conf file with multiple Tooltip presets.
 [BaseContainerProps(configRoot : true)]
@@ -518,8 +495,6 @@ class SCR_ScriptedWidgetTooltipPresets
 	}
 }
 
-
-//------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------
 [BaseContainerProps(configRoot : true)]
 class SCR_TooltipPositionPreset
@@ -673,7 +648,6 @@ class SCR_TooltipPositionPreset
 			if (desiredPos + offset + (tooltipSize * ALIGNMENT_CENTER) > maxAreaSize)
 				overflowType = SCR_ETooltipOverflowType.CENTER_RIGHT;
 
-			
 			else if (desiredPos + offset - (tooltipSize * ALIGNMENT_CENTER) < 0)
 				overflowType = SCR_ETooltipOverflowType.CENTER_LEFT;
 		}
@@ -737,7 +711,6 @@ class SCR_TooltipPositionPreset
 	}
 }
 
-//------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------
 /*
 LEFT:

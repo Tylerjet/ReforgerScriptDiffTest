@@ -3,9 +3,9 @@
 #endif
 
 [ComponentEditorProps(category: "GameScripted/Editor", description: "Limited camera for in-game editor. Works only with SCR_EditorBaseEntity!", icon: "WBData/ComponentEditorProps/componentEditor.png")]
-class SCR_CameraLimitedEditorComponentClass: SCR_CameraEditorComponentClass
+class SCR_CameraLimitedEditorComponentClass : SCR_CameraEditorComponentClass
 {
-};
+}
 
 /** @ingroup Editor_Components
 */
@@ -18,20 +18,20 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "Prefab of class SCR_ManualCamera", "et", category: "Camera")]
 	private ResourceName m_LimitedCameraPrefab;
-	
+
 #ifdef SHOW_DISCLAIMER
 	private ref DebugTextScreenSpace m_Disclaimer;
 	private float m_fDisclaimerCountdown;
 #endif
-	
+
 	override protected ResourceName GetCameraPrefab()
 	{
 		SCR_EditorManagerEntity manager = SCR_EditorManagerEntity.GetInstance();
-		if (!manager) return ResourceName.Empty;
-		
-		
+		if (!manager) 
+			return ResourceName.Empty;
+
 		bool isLimited = manager.IsLimited() && !DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED);
-		
+
 #ifdef SHOW_DISCLAIMER
 		if (isLimited)
 		{
@@ -49,7 +49,7 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
 		super.EOnFrame(owner, timeSlice);
-		
+
 		if (m_Disclaimer)
 		{
 			m_fDisclaimerCountdown -= timeSlice;
@@ -61,23 +61,25 @@ class SCR_CameraLimitedEditorComponent : SCR_CameraEditorComponent
 	override protected void EOnEditorActivate()
 	{
 		super.EOnEditorActivate();
-		
+
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		if (editorManager) editorManager.GetOnLimitedChange().Insert(ReplaceCamera);
-		
+		if (editorManager) 
+			editorManager.GetOnLimitedChange().Insert(ReplaceCamera);
+
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED, "", "Unlimited Movement", "Manual Camera");
 	}
 	override protected void EOnEditorDeactivate()
 	{
 		super.EOnEditorDeactivate();
-		
+
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		if (editorManager) editorManager.GetOnLimitedChange().Remove(ReplaceCamera);
-		
+		if (editorManager) 
+			editorManager.GetOnLimitedChange().Remove(ReplaceCamera);
+
 		//DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_MANUAL_CAMERA_UNLIMITED);
-		
+
 #ifdef SHOW_DISCLAIMER
 		delete m_Disclaimer;
 #endif
 	}
-};
+}
