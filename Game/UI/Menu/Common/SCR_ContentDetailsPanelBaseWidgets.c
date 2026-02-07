@@ -25,6 +25,12 @@ class SCR_ContentDetailsPanelBaseWidgets
 
 	HorizontalLayoutWidget m_wTypeOverlay;
 	HorizontalLayoutWidget m_wTypeImages;
+
+	FrameWidget m_wMANW;
+	SCR_MANW_RankComponent m_MANWComponent;
+
+	ImageWidget m_wRankIcon;
+	TextWidget m_wCategoryText;
 	FrameWidget m_wMainArea;
 	ImageWidget m_wNameImg;
 	TextWidget m_wNameText;
@@ -56,6 +62,12 @@ class SCR_ContentDetailsPanelBaseWidgets
 
 		m_wTypeOverlay = HorizontalLayoutWidget.Cast(root.FindWidget("m_TopSize.m_BackendImage.m_TypeOverlay"));
 		m_wTypeImages = HorizontalLayoutWidget.Cast(root.FindWidget("m_TopSize.m_BackendImage.m_TypeOverlay.m_TypeImages"));
+
+		m_wMANW = FrameWidget.Cast(root.FindWidget("m_TopSize.m_BackendImage.m_wMANW"));
+		m_MANWComponent = SCR_MANW_RankComponent.Cast(m_wMANW.FindHandler(SCR_MANW_RankComponent));
+
+		m_wRankIcon = ImageWidget.Cast(root.FindWidget("m_TopSize.m_BackendImage.m_wMANW.Overlay0.HorizontalLayout0.m_wRankIcon"));
+		m_wCategoryText = TextWidget.Cast(root.FindWidget("m_TopSize.m_BackendImage.m_wMANW.Overlay0.HorizontalLayout0.m_wCategoryText"));
 		m_wMainArea = FrameWidget.Cast(root.FindWidget("Bottom.m_MainArea"));
 		m_wNameImg = ImageWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.HeaderSize.HeaderHorizontalLayout.m_NameImg"));
 		m_wNameText = TextWidget.Cast(root.FindWidget("Bottom.m_MainArea.Offset.HeaderSize.HeaderHorizontalLayout.m_NameText"));

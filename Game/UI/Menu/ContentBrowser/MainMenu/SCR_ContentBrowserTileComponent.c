@@ -390,6 +390,8 @@ class SCR_ContentBrowserTileComponent : SCR_ScriptedWidgetComponent
 			return;
 		}
 		
+		m_Widgets.m_ManwAwardComponent.UpdateAwards(m_Item);
+		
 		array<WorkshopTag> items = {};
 		m_Item.GetWorkshopItem().GetTags(items);
 		foreach(WorkshopTag item: items)

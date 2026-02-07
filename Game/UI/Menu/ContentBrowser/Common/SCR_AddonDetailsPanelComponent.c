@@ -74,6 +74,8 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 			return;
 		}
 		
+		m_CommonWidgets.m_MANWComponent.UpdateAwards(m_Item);
+		
 		array<WorkshopTag> items = {};
 		m_Item.GetWorkshopItem().GetTags(items);
 		foreach(WorkshopTag item: items)

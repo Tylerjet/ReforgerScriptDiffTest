@@ -15,6 +15,19 @@ class SCR_MANW_ContentBrowser_AddonsSubMenu : SCR_ContentBrowser_AddonsSubMenu
 		array<string> tagsExclude = {};
 
 		// Tags from type filters
+		SCR_FilterCategory manwCategory = filterSet.FindFilterCategory("manw_winners");
+		if (manwCategory.GetAnySelected() && !defaultValues)
+		{
+			array<string> typeTags = {};
+			foreach (SCR_FilterEntry filter : manwCategory.GetFilters())
+			{
+				if (filter.GetSelected(defaultValues))
+					typeTags.Insert(filter.m_sInternalName);
+			}
+			tagArraysInclude.Insert(typeTags);
+		}
+		
+		// Tags from type filters
 		SCR_FilterCategory typeCategory = filterSet.FindFilterCategory("type");
 		if (!defaultValues && typeCategory.GetAnySelected())
 		{

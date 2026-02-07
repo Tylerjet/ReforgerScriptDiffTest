@@ -1316,8 +1316,18 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 
 		// Type tags
 		array<WorkshopTag> selectedWorkshopTags = {};
-		SCR_FilterCategory catType = filterSet.FindFilterCategory("type");
 		SCR_ContentBrowserFilterTag filterEntryTag;
+		SCR_FilterCategory catMANWType = filterSet.FindFilterCategory("manw_winners");
+		if (catMANWType)
+		{
+			foreach (SCR_FilterEntry f : catMANWType.GetFilters())
+			{
+				filterEntryTag = SCR_ContentBrowserFilterTag.Cast(f);
+				if (filterEntryTag && filterEntryTag.GetSelected())
+					selectedWorkshopTags.Insert(filterEntryTag.GetWorkshopTag());
+			}
+		}
+		SCR_FilterCategory catType = filterSet.FindFilterCategory("type");
 		foreach (SCR_FilterEntry f : catType.GetFilters())
 		{
 			filterEntryTag = SCR_ContentBrowserFilterTag.Cast(f);
@@ -1532,6 +1542,19 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 		// Make arrays with tags to include or exclude
 		array<ref array<string>> tagArraysInclude = {};
 		array<string> tagsExclude = {};
+
+		// Tags from type filters
+		SCR_FilterCategory manwCategory = filterSet.FindFilterCategory("manw_winners");
+		if (manwCategory.GetAnySelected() && !defaultValues)
+		{
+			array<string> typeTags = {};
+			foreach (SCR_FilterEntry filter : manwCategory.GetFilters())
+			{
+				if (filter.GetSelected(defaultValues))
+					typeTags.Insert(filter.m_sInternalName);
+			}
+			tagArraysInclude.Insert(typeTags);
+		}
 
 		// Tags from type filters
 		SCR_FilterCategory typeCategory = filterSet.FindFilterCategory("type");

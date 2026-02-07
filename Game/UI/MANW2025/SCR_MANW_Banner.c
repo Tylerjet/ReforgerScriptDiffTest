@@ -1,9 +1,14 @@
 class SCR_MANW_Banner : SCR_ScriptedWidgetComponent
 {
-	protected string NAME_BUTTON 	= "m_wBannerButtonMain";
-	protected string NAME_TEXT 		= "BannerText";
+	protected const string NAME_BUTTON 	= "m_wBannerButtonMain";
+	protected const string NAME_TEXT 	= "BannerText";
+	protected const int IMAGES_COUNT 	= 2;
+	
+	protected int m_iImagesReadyCount;
 	
 	protected Widget m_wBannerButtonMain;
+	
+	protected ref BackendCallback m_Callback;
 
 	//------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -11,7 +16,6 @@ class SCR_MANW_Banner : SCR_ScriptedWidgetComponent
 		super.HandlerAttached(w);
 		
 		m_wRoot.SetVisible(false);
-		Init();
 		
 		SCR_ServicesStatusHelper.RefreshPing();
 		SCR_ServicesStatusHelper.GetOnCommStatusCheckFinished().Insert(OnCommStatusCheckFinished);
@@ -49,6 +53,16 @@ class SCR_MANW_Banner : SCR_ScriptedWidgetComponent
 		SCR_MANW_Dialogs.CreateBannerDialog();
 		
 		return result;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnPopupReady()
+	{
+		m_iImagesReadyCount++;
+		if (m_iImagesReadyCount < IMAGES_COUNT)
+			return;
+		
+		GetGame().GetCallqueue().Call(Init);
 	}
 	
 	//------------------------------------------------------------------------------------------------

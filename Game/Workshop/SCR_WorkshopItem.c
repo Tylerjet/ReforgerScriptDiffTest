@@ -930,7 +930,6 @@ class SCR_WorkshopItem
 		return SCR_AddonManager.SelectItemsBasic(dependencies, EWorkshopItemQuery.UPDATE_AVAILABLE);
 	}
 	
-	
 	//-----------------------------------------------------------------------------------------------
 	int GetTimeSinceLastPlay()
 	{
@@ -939,7 +938,6 @@ class SCR_WorkshopItem
 		
 		return m_Item.GetTimeSinceLastPlay();
 	}
-	
 	
 	//-----------------------------------------------------------------------------------------------
 	int GetTimeSinceFirstDownload()
