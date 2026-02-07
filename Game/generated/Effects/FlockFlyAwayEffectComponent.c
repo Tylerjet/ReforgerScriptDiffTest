@@ -15,8 +15,7 @@ class FlockFlyAwayEffectComponentClass: BaseEffectComponentClass
 
 class FlockFlyAwayEffectComponent: BaseEffectComponent
 {
-	proto external void EmmitParticle(IEntity owner);
-	proto external bool IsPlaying();
+	proto external void PlayParticle();
 }
 
 /*!

@@ -241,37 +241,27 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 		//------------------------------------------------------------------------------------------------
 		// The items must be sorted by size and placed in the following order: Missing, needs download -> Downloaded, needs update -> Downloaded
-		array<float> sizes = {};
-		map<int, SCR_WorkshopItem> itemSizes = new map<int, SCR_WorkshopItem>();
 		array<SCR_WorkshopItem> itemsSorted = {};
 
 		array<SCR_WorkshopItem> itemsToUpdate = {};
 		array<SCR_WorkshopItem> itemsToDownload = {};
 		array<SCR_WorkshopItem> itemsDownloaded = {};
 		array<SCR_WorkshopItem> itemsOrdered = {};
-
-		// Reorder the items based on their size
+		
 		foreach (SCR_WorkshopItem item : m_aItems)
 		{
-			float size = item.GetSizeBytes();
-			sizes.Insert(size);
-			itemSizes.Insert(size, item);
+			itemsSorted.Insert(item);
 		}
-
-		sizes.Sort(true);
-
-		foreach (float f : sizes)
-		{
-			itemsSorted.Insert(itemSizes.Get(f));
-		}
-
+		
+		SCR_Sorting<SCR_WorkshopItem, SCR_CompareWorkshopItemTargetSize>.HeapSort(itemsSorted, true);
+		
 		// Split the items based on their state
 		Revision versionFrom;
 		Revision versionTo;
 		foreach (SCR_WorkshopItem item : itemsSorted)
 		{
 			versionFrom = item.GetCurrentLocalRevision();
-			versionTo = item.GetLatestRevision();
+			versionTo = item.GetItemTargetRevision();
 
 			if (!item.GetOffline()) //Missing, needs download
 				itemsToDownload.Insert(item);
@@ -298,7 +288,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 				AlignableSlot.SetPadding(w, 0, 0, 0, 0);
 
 			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
-			comp.InitForServerBrowser(item, null, true);
+			comp.InitForServerBrowser(item, item.GetItemTargetRevision(), true);
 
 			m_aDownloadLines.Insert(comp);
 		}
@@ -412,16 +402,16 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 			return;
 
 		array<ref SCR_WorkshopItem> toUpdateMods = modsManager.GetRoomItemsToUpdate();
-		string toUpdateSize;
-
-		if (!toUpdateMods.IsEmpty())
-			toUpdateSize = modsManager.GetModListSizeString(toUpdateMods);
-
+		
+		// Display size to update
 		if (m_wModsSizeToDownloadLayout)
 			m_wModsSizeToDownloadLayout.SetVisible(!toUpdateMods.IsEmpty());
 
 		if (m_wModsSizeToDownloadText)
+		{
+			string toUpdateSize = modsManager.GetModListPatchSizeString(toUpdateMods);
 			m_wModsSizeToDownloadText.SetText(toUpdateSize);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

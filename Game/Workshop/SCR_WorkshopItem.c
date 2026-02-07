@@ -34,11 +34,16 @@ class SCR_WorkshopItem
 	ref ScriptInvoker m_OnReportStateChanged = new ref ScriptInvoker();	// (SCR_WorkshopItem, bool newReported) - Called when reported state has changed
 	ref ScriptInvoker m_OnMyReportLoaded = new ref ScriptInvoker();		// (SCR_WorkshopItem item) - called after report loading is done.
 	ref ScriptInvoker m_OnRedownload = new ref ScriptInvoker();
+	ref ScriptInvoker m_OnCanceled = new ref ScriptInvoker();
 	
 	// ---- Protected / Private ----
 	
 	protected ref WorkshopItem m_Item;	// Strong reference!
 	protected ref Dependency m_Dependency;
+	
+	// Revision to download and measure patch size when item is not dependency
+	protected ref Revision m_ItemTargetRevision;
+	protected float m_fTargetRevisionPatchSize; // cached size for target revision
 	
 	protected ref array<MissionWorkshopItem> m_aMissions;
 	protected ref array<ref SCR_WorkshopItem> m_aDependencies;	// Strong references!
@@ -60,6 +65,7 @@ class SCR_WorkshopItem
 	protected ref SCR_WorkshopItemCallback_LoadDependencies m_CallbackLoadDependencies;
 	protected ref SCR_WorkshopItemCallback_LoadScenarios m_CallbackLoadScenarios;
 	protected ref SCR_WorkshopItemCallback_LoadMyReport m_CallbackLoadMyReport;
+	protected ref SCR_BackendCallback m_CancelDownloadCallback = new SCR_BackendCallback();
 	
 	// Various state flags
 	protected bool m_bMyRating;
@@ -99,6 +105,15 @@ class SCR_WorkshopItem
 	bool GetRevisionsLoaded() { return m_aRevisions != null; }			// Revisions were loaded after GetAsset request
 	bool GetDependenciesLoaded() { return m_aDependencies != null; }	// Latest dependencies were loaded after GetAsset request
 	bool GetRequestFailed() { return m_bRequestFailed; }				// True when any request has failed
+	
+	//-----------------------------------------------------------------------------------------------
+	bool IsDownloadRunning()
+	{
+		if (!m_ActionDownload)
+			return false;
+		
+		return m_ActionDownload.IsActive();
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Logs all properties of the object into console
@@ -258,15 +273,6 @@ class SCR_WorkshopItem
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	//! Returns true when offline and latest version matches the current version
-	/*
-	bool GetIsOfflineAndUpToDate()
-	{
-		return GetOffline() && GetLatestVersion() == GetCurrentLocalVersion(); // todo it might not work until actual versions are downloaded
-	}
-	*/
-	
-	//-----------------------------------------------------------------------------------------------
 	//! Returns array of versions
 	array<string> GetVersions()
 	{	
@@ -413,6 +419,15 @@ class SCR_WorkshopItem
 		if (!m_aDependencies)
 			return;
 		
+		// Check for missing dependencies 
+		array<ref SCR_WorkshopItem> missing = SCR_AddonManager.GetInstance().SelectItemsBasic(m_aDependencies, EWorkshopItemQuery.NOT_OFFLINE);
+		if (!missing.IsEmpty())
+		{
+			
+			return;
+		}
+		
+		// Enable all
 		foreach (auto dep : m_aDependencies)
 		{
 			if (dep.GetOffline() && dep.GetEnabled() != enable)
@@ -815,6 +830,42 @@ class SCR_WorkshopItem
 		return m_Item.GetTimeSinceFirstDownload();
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	//! Unified download to target revision 
+	//! There can be different revisions and reasons to setup new download 
+	//! No target revision = latest
+	protected SCR_WorkshopItemActionDownload DownloadRevision(Revision targetRevision, bool isDownloadRunning)
+	{
+		if (!m_Item && !m_Dependency)
+			return null;
+		
+		bool latestRevision = (targetRevision == null);
+		
+		// Create new download 
+		if (!m_ActionDownload)
+		{
+			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestRevision, targetRevision);
+			SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
+			
+			return m_ActionDownload;
+		}
+		
+		// Check if same download is running 
+		if (isDownloadRunning)
+		{
+			// Same kind of download is already running
+			return m_ActionDownload; // TODO if action was canceled or failed, create a new one
+		}
+		
+		// Another download is running, but downloading a different version
+		m_ActionDownload.Cancel();
+		m_ActionDownload.Internal_Detach();
+		m_ActionDownload = null;
+		
+		m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: latestRevision, targetRevision);
+		SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
+		return m_ActionDownload;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Starts download of a specific version.
@@ -828,7 +879,7 @@ class SCR_WorkshopItem
 	//! ! You must call Activate() of the returned action yourself.
 	//! ! This is done this way so that you can subscribe to events before the action is started.
 	//! !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  
-	SCR_WorkshopItemActionDownload Download(Revision targetRevision)
+	SCR_WorkshopItemActionDownload Download(notnull Revision targetRevision)
 	{
 		#ifdef WORKSHOP_DEBUG
 		if (targetRevision)
@@ -837,34 +888,11 @@ class SCR_WorkshopItem
 			_print(string.Format("Download: the latest one"));
 		#endif
 		
-		if (!m_Item && !m_Dependency)
-			return null;
+		bool running = false;
+		if (m_ActionDownload && targetRevision)
+			running = Revision.AreEqual(m_ActionDownload.GetTargetRevision(), targetRevision);
 		
-		if (m_ActionDownload)
-		{
-			if (Revision.AreEqual(m_ActionDownload.GetTargetRevision(), targetRevision))
-			{
-				// Same kind of download is already running
-				return m_ActionDownload; // TODO if action was canceled or failed, create a new one
-			}
-			else
-			{
-				// Another download is running, but downloading a different version
-				m_ActionDownload.Cancel();
-				m_ActionDownload.Internal_Detach();
-				m_ActionDownload = null;
-				
-				m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetRevision);
-				SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
-				return m_ActionDownload;
-			}
-		}
-		else
-		{
-			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetRevision);
-			SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
-			return m_ActionDownload;
-		}
+		return DownloadRevision(targetRevision, running);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -874,36 +902,13 @@ class SCR_WorkshopItem
 		_print("DownloadLatestVersion()");
 		#endif
 		
-		if (!m_Item && !m_Dependency)
-			return null;
-				
-		if (m_ActionDownload)
-		{
-			Revision latestRevision = GetLatestRevision(); // Might return empty string if revs not loaded!
-			if (m_ActionDownload.GetTargetedAtLatestVersion() || Revision.AreEqual(latestRevision, m_ActionDownload.GetTargetRevision()))
-			{
-				// We are either already downloading the latest version,
-				// or a download of latest version was scheduled internally in the action
-				return m_ActionDownload; // TODO if action was canceled or failed, create a new one
-			}
-			else
-			{
-				// Another download is running, but downloading a different version
-				m_ActionDownload.Cancel();
-				m_ActionDownload.Internal_Detach();
-				m_ActionDownload = null;
-				
-				m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: true);
-				SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
-				return m_ActionDownload;
-			}
-		}
-		else
-		{
-			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: true);
-			SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
-			return m_ActionDownload;
-		}
+		Revision latestRevision = GetLatestRevision(); // Might return empty string if revs not loaded!
+		
+		bool running = false;
+		if (m_ActionDownload && latestRevision)
+			running = m_ActionDownload.GetTargetedAtLatestVersion() || Revision.AreEqual(latestRevision, m_ActionDownload.GetTargetRevision());
+		
+		return DownloadRevision(null, running);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -915,12 +920,6 @@ class SCR_WorkshopItem
 		SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
 		
 		m_ActionDownload.Activate();
-		
-		/*
-		ClearLoadDetails();
-		SCR_WorkshopDownloadSequence.TryCreate(this, true, null);
-		m_OnRedownload.Invoke(this);
-		*/
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1410,20 +1409,12 @@ class SCR_WorkshopItem
 		
 		m_aDependencies.Clear();
 		
-		array<SCR_WorkshopItem> registeredDependencies = new array<SCR_WorkshopItem>;
-		
 		foreach (Dependency dep : dependencies)
 		{
 			SCR_WorkshopItem registeredItem = SCR_AddonManager.GetInstance().Register(dep);
 			
-			if (registeredItem)
-				registeredDependencies.Insert(registeredItem);
-		}
-		
-		foreach (SCR_WorkshopItem dep : registeredDependencies)
-		{
-			this.RegisterDependency(dep);
-			dep.RegisterDependent(this);
+			RegisterDependency(registeredItem);
+			registeredItem.RegisterDependent(this);
 		}
 		
 		m_OnDependenciesLoaded.Invoke(this);
@@ -1506,7 +1497,7 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	
 	//-----------------------------------------------------------------------------------------------
-	bool Internal_StartDownload(Revision targetRevision, BackendCallback callback)
+	bool Internal_StartDownload(notnull Revision targetRevision, BackendCallback callback)
 	{
 		#ifdef WORKSHOP_DEBUG
 		_print(string.Format("Internal_StartDownload(): %1, %2", targetRevision.GetVersion(), callback));
@@ -1526,29 +1517,18 @@ class SCR_WorkshopItem
 		_print("Internal_StartDownload(): Calling WorkshopItem.Download ...");
 		#endif
 		
-		m_Item.Download(callback, targetRevision);
-		
-		return true;
-	}
-	
-	
-	//-----------------------------------------------------------------------------------------------
-	bool Internal_PauseDownload()
-	{
-		#ifdef WORKSHOP_DEBUG
-		_print("Internal_PauseDownload()");
-		#endif
-		
 		if (!m_Item)
 			return false;
 		
-		m_Item.PauseDownload(null);
+		m_Item.Download(callback, targetRevision);
+		
 		return true;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	bool Internal_CancelDownload()
 	{
+		// Check
 		#ifdef WORKSHOP_DEBUG
 		_print("Internal_CancelDownload()");
 		#endif
@@ -1556,10 +1536,55 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return false;
 		
-		m_Item.Cancel(null);
+		// Pause
+		m_CancelDownloadCallback.GetEventOnResponse().Insert(OnCancelDownloadResponse);
+		m_Item.Cancel(m_CancelDownloadCallback);
 		return true;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnCancelDownloadResponse(SCR_BackendCallback callback)
+	{
+		m_CancelDownloadCallback.GetEventOnResponse().Remove(OnCancelDownloadResponse);
+		
+		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
+		{
+			m_OnError.Invoke(this);
+		}
+		
+		m_OnCanceled.Invoke(this);
+	}
+	
+	/*
+	protected ref SCR_BackendCallback m_PauseDownloadCallback = new SCR_BackendCallback();
+	protected ref bool m_bRunningRequested;
+	protected ref bool m_bRunningProccessed;
+	
+	//-----------------------------------------------------------------------------------------------
+	bool Internal_PauseDownload()
+	{
+		// Check
+		#ifdef WORKSHOP_DEBUG
+		_print("Internal_PauseDownload()");
+		#endif
+		
+		if (!m_Item)
+			return false;
+		
+		// Pause
+		m_bRunningRequested = false;
+		
+		m_PauseDownloadCallback.GetEventOnResponse().Insert(OnPauseDownloadResponse);
+		m_Item.PauseDownload(m_PauseDownloadCallback);
+		return true;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnPauseDownloadResponse(SCR_BackendCallback callback)
+	{
+		m_PauseDownloadCallback.GetEventOnResponse().Remove(OnPauseDownloadResponse);
+		m_bRunningProccessed = false;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	bool Internal_ResumeDownload(BackendCallback callback)
@@ -1571,10 +1596,13 @@ class SCR_WorkshopItem
 		if (!m_Item)
 			return false;
 		
+		// Resume 
+		m_bRunningRequested = true;
+		
 		m_Item.ResumeDownload(callback);
 		return true;
 	}
-	
+	*/
 	
 	//-----------------------------------------------------------------------------------------------
 	bool Internal_Report(EWorkshopReportType eReport, string sMessage, BackendCallback callback)
@@ -1939,7 +1967,8 @@ class SCR_WorkshopItem
 	{
 		if (!m_Item)
 			return 0;
-		else return m_Item.GetProgress();
+		
+		return m_Item.GetProgress();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -1956,6 +1985,7 @@ class SCR_WorkshopItem
 			m_CallbackAskDetails.m_OnError.Insert(Callback_AskDetails_OnError);
 		}
 		
+		//Restarts waiting for details? - TODO review logic
 		if (!m_bWaitingLoadDetails)
 		{
 			if (m_Item)
@@ -1972,7 +2002,31 @@ class SCR_WorkshopItem
 		}
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	void SetItemTargetRevision(Revision revision)
+	{
+		m_ItemTargetRevision = revision;
+	}
 	
+	//-----------------------------------------------------------------------------------------------
+	Revision GetItemTargetRevision()
+	{
+		return m_ItemTargetRevision;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void SetTargetRevisionPatchSize(float size)
+	{
+		m_fTargetRevisionPatchSize = size;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Get dependency target revision patch size 
+	//! Dependency has to be define and patch has to be computed
+	float GetTargetRevisionPatchSize()
+	{
+		return m_fTargetRevisionPatchSize;
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void SetChanged()
@@ -2019,6 +2073,9 @@ class SCR_WorkshopItem
 			_print(string.Format("NEW for Dependency: ID: %1, Name: %2", m_Dependency.GetID(), m_Dependency.GetName()));
 			#endif
 		}
+		
+		if (!m_Item && !m_Dependency)
+			Print("Can't be set!");
 		
 		m_bOffline = GetOffline();
 		
@@ -2103,7 +2160,6 @@ class SCR_WorkshopItem
 		return wrapper;
 	}
 	
-	
 	//-----------------------------------------------------------------------------------------------
 	void UpdateStateFromWorkshopItem()
 	{	
@@ -2118,7 +2174,6 @@ class SCR_WorkshopItem
 				m_Item.NotifyPlay();
 		}
 		
-		TryLoadRevisions();
 		TryLoadDependencies();
 		TryLoadScenarios();
 	}
@@ -2147,6 +2202,6 @@ class SCR_WorkshopItem
 			addonEnv = m_Item.GetBackendEnv();
 		
 		string CurrentEnv = GetGame().GetBackendApi().GetBackendEnv();
-		Debug.Error(string.Format("Addon: %1 [id: %2, from: %3] - %4 [current env: %5]", GetName(), GetId(), addonEnv, message, CurrentEnv));
+		//Debug.Error(string.Format("Addon: %1 [id: %2, from: %3] - %4 [current env: %5]", GetName(), GetId(), addonEnv, message, CurrentEnv));
 	}
 };

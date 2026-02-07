@@ -123,7 +123,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMapOpen()
+	void OnMapOpen(MapConfiguration config)
 	{
 		m_MapContextualMenu = SCR_MapRadialUI.GetInstance();
 		if (!m_MapContextualMenu)
@@ -134,7 +134,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMapClose()
+	void OnMapClose(MapConfiguration config)
 	{
 		if (!m_MapContextualMenu)
 			return;

@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights", description: "", color: "0 0 255 255")]
 class SCR_2DSightsComponentClass : ScriptedSightsComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 class SCR_2DSightsComponent : SCR_2DOpticsComponent
@@ -24,8 +24,6 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	[Attribute("1", UIWidgets.EditBox, desc: "", params: "1 2000", category: "Behavior")]
 	protected bool m_bAllowRecoil;
 
-	protected bool m_bIsIlluminationOn;
-
 	// sway, taken from binocs
 	protected vector m_vLastCameraDir;
 
@@ -33,11 +31,10 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	protected vector m_vLastPos;
 
 	// recoil
-	protected CharacterAimingComponent m_pCharacterAiming;
-	protected TurretControllerComponent m_pTurretController;
+	protected CharacterAimingComponent m_CharacterAiming;
+	protected TurretControllerComponent m_TurretController;
 
 	protected SCR_SightsZoomFOVInfo m_SightsFovInfo;
-	protected WeaponSoundComponent m_WeaponSoundComp;
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnSightADSActivated()
@@ -67,10 +64,10 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 				}
 			}
 
-			m_pTurretController = TurretControllerComponent.Cast(owner.FindComponent(TurretControllerComponent));
-			if (m_pTurretController)
+			m_TurretController = TurretControllerComponent.Cast(owner.FindComponent(TurretControllerComponent));
+			if (m_TurretController)
 			{
-				BaseCompartmentSlot slot = m_pTurretController.GetCompartmentSlot();
+				BaseCompartmentSlot slot = m_TurretController.GetCompartmentSlot();
 				if (slot)
 				{
 					ChimeraCharacter character = ChimeraCharacter.Cast(slot.GetOccupant());
@@ -89,7 +86,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 					if (character)
 					{
 						m_ParentCharacter = character;
-						m_pCharacterAiming = CharacterAimingComponent.Cast(character.FindComponent(CharacterAimingComponent));
+						m_CharacterAiming = CharacterAimingComponent.Cast(character.FindComponent(CharacterAimingComponent));
 						break;
 					}
 
@@ -98,7 +95,7 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			}
 		}
 
-		if (m_pCharacterAiming)
+		if (m_CharacterAiming)
 		{
 			// due to sway
 			vector m[4];
@@ -106,18 +103,16 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			m_vLastCameraDir = Math3D.MatrixToAngles(m);
 			m_vLastPos = GetSightsRelPosition();
 		}
+
 		// Switching input
 		if (m_SightsFovInfo.GetStepsCount() > 1)
 			GetGame().GetInputManager().AddActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
 
 		// Setup illumination
 		if (m_bHasIllumination)
-		{
 			GetGame().GetInputManager().AddActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
-			EnableReticleIllumination(m_bIsIlluminationOn);
-		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnSightADSDeactivated()
 	{
@@ -143,7 +138,10 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 
 		// Removing switching input
 		GetGame().GetInputManager().RemoveActionListener(ACTION_WHEEL, EActionTrigger.VALUE, SelectNextZoomLevel);
-		GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
+
+		// Removing illumination
+		if (m_bHasIllumination)
+			GetGame().GetInputManager().RemoveActionListener(ACTION_ILLUMINATION, EActionTrigger.DOWN, ToggleIllumination);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -161,16 +159,6 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Destructor
-	void ~SCR_2DSightsComponent()
-	{
-		if (m_wRootWidget)
-		{
-			m_wRootWidget.RemoveFromHierarchy();
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Update vignettes scale based on weapon recoil
 	void UpdateRecoil(float timeSlice)
 	{
@@ -180,13 +168,13 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		if (m_ParentCharacter)
 		{
 			AimingComponent aimingComponent;
-			if (m_ParentCharacter.IsInVehicle() && m_pTurretController)
+			if (m_ParentCharacter.IsInVehicle() && m_TurretController)
 			{
-				aimingComponent = m_pTurretController.GetTurretComponent();
+				aimingComponent = m_TurretController.GetTurretComponent();
 			}
 			else
 			{
-				aimingComponent = m_pCharacterAiming;
+				aimingComponent = m_CharacterAiming;
 			}
 
 			if (aimingComponent)
@@ -195,25 +183,21 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 				float zAmount = aimingTranslation[2];
 				float zMag = Math.AbsFloat(zAmount / m_fRecoilTranslationTarget);
 				// kick back only, TODO@AS: make sure we work both directions
-				zScale = Math.Clamp(1+zMag, 1/m_fRecoilScaleMax, m_fRecoilScaleMax);
+				zScale = Math.Clamp(1 + zMag, 1 / m_fRecoilScaleMax, m_fRecoilScaleMax);
 			}
 		}
-
-		UpdateScale(1, zScale, 1);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void Tick(float timeSlice)
+	override void OnSightADSPostFrame(IEntity owner, float timeSlice)
 	{
+		super.OnSightADSPostFrame(owner, timeSlice);
+
 		if (!m_bZoomed)
 			return;
 
-		super.Tick(timeSlice);
-
 		if (m_bAllowRecoil)
 			UpdateRecoil(timeSlice);
-
-		SetReticleOffset(m_fReticleOffsetX, m_fCurrentReticleOffsetY);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -366,26 +350,6 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Toggle between illumination modes
-	protected void EnableReticleIllumination(bool enable)
-	{
-		if (!m_SightsFovInfo || !m_wImgReticle)
-			return;
-
-		Color reticleTint = Color.Black;
-
-		if (m_bHasIllumination && enable)
-		{
-			reticleTint = m_cReticleTextureIllumination;
-		}
-
-		m_wImgReticle.SetColor(reticleTint);
-
-		if (m_wImgReticleGlow)
-			m_wImgReticleGlow.SetColor(reticleTint);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected override float GetReticleYOffsetTarget()
 	{
 		if (m_eZeroingType == SCR_EPIPZeroingType.EPZ_RETICLE_OFFSET)
@@ -403,4 +367,4 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	{
 		return m_SightsFovInfo;
 	}
-};
+}

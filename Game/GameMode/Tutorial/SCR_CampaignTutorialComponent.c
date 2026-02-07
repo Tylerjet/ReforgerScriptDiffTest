@@ -640,13 +640,13 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMapOpen()
+	void OnMapOpen(MapConfiguration config)
 	{
 		m_bIsMapOpen = true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMapClose()
+	void OnMapClose(MapConfiguration config)
 	{
 		m_bIsMapOpen = false;
 	}

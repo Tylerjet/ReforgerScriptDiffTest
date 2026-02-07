@@ -176,7 +176,7 @@ class SCR_AddonManager : GenericEntity
 		}
 
 		SCR_WorkshopItem newItem = SCR_WorkshopItem.Internal_CreateFromWorkshopItem(item);
-		this.RegisterNewItem(id, newItem);
+		RegisterNewItem(id, newItem);
 
 		#ifdef WORKSHOP_DEBUG
 		newItem.LogState();
@@ -209,7 +209,7 @@ class SCR_AddonManager : GenericEntity
 		}
 
 		SCR_WorkshopItem newItem = SCR_WorkshopItem.Internal_CreateFromDependency(item);
-		this.RegisterNewItem(id, newItem);
+		RegisterNewItem(id, newItem);
 
 		#ifdef WORKSHOP_DEBUG
 		newItem.LogState();
@@ -565,8 +565,11 @@ class SCR_AddonManager : GenericEntity
 
 		itemWrapper.m_OnOfflineStateChanged.Insert(Callback_OnAddonOfflineStateChanged);
 		itemWrapper.m_OnReportStateChanged.Insert(Callback_OnAddonReportStateChanged);
+		itemWrapper.m_OnDownloadComplete.Insert(CountOutdatedAddons);
 
 		m_mItems.Insert(id, itemWrapper);
+		
+		CountOutdatedAddons();
 	}
 
 	//-----------------------------------------------------------------------------------------------
@@ -676,14 +679,6 @@ class SCR_AddonManager : GenericEntity
 
 		_print("Init Finished", LogLevel.NORMAL);
 		_print(string.Format("  User Workshop access:           %1", GetReady()), LogLevel.NORMAL);
-		
-		//OBSOLETE
-		// Request versions from all downloaded addons, otherwise we will not know if they are outdated
-		/*auto offlineAddons = GetOfflineAddons();
-		foreach (SCR_WorkshopItem offlineItem : offlineAddons)
-		{
-			offlineItem.LoadDetails();
-		}*/	
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -703,25 +698,13 @@ class SCR_AddonManager : GenericEntity
 			// Get all offline addons and register them
 			array<WorkshopItem> items = {};
 			api.GetOfflineItems(items);
-
+			
 			// Prepare items to registration
 			foreach (WorkshopItem item : items)
 			{
 				m_aAddonsToRegister.Insert(item);
 			}
 		}
-
-		// If addon enabling is managed externally, disable all other addons
-		/*
-		if (GetAddonsEnabledExternally())
-		{
-			_print("Addons are enabled externally", LogLevel.NORMAL);
-			foreach (SCR_WorkshopItem item : GetOfflineAddons())
-			{
-				item.SetEnabled(GetAddonEnabledExternally(item));
-			}
-		}
-		*/
 
 		// If user's UGC privilege is disabled, disable all addons
 		// If UGC is blocked, disable addons which are already downloaded
@@ -744,6 +727,8 @@ class SCR_AddonManager : GenericEntity
 
 		_print("Callback_CheckAddons_OnSuccess()", LogLevel.NORMAL);
 
+		array<ref SCR_WorkshopItem> pendingDownloads = {};
+		
 		// Update state of items after the check is complete
 		// This will make the addons instantly update list of dependencies and revisions
 		for (int i = 0; i < m_aAddonsToRegister.Count(); i++)
@@ -751,12 +736,16 @@ class SCR_AddonManager : GenericEntity
 			SCR_WorkshopItem scrItem = Register(m_aAddonsToRegister[i]);
 			scrItem.Internal_OnAddonsChecked();
 			array<ref SCR_WorkshopItem> dependencies = scrItem.GetLoadedDependencies();
+			
+			if (scrItem.GetOffline())
+				pendingDownloads.Insert(scrItem);
 		}
 		
 		m_aAddonsToRegister.Clear();
 		
 		FinalizeInitAfterAsyncChecks();
-
+		//SCR_DownloadManager.GetInstance().DownloadAddons(pendingDownloads);
+		
 		m_OnAddonsChecked.Invoke();
 	}
 
@@ -874,12 +863,16 @@ class SCR_AddonManager : GenericEntity
 		
 		// Count and cache amount of outdated addons
 		// This doesn't need to happen often, 1s is enough
+			
+		/*
 		m_fAddonsOutdatedTimer += timeSlice;
 		if (m_fAddonsOutdatedTimer > ADDONS_OUTDATED_UPDATE_INTERVAL_S)
 		{
 			m_iAddonsOutdated = CountItemsBasic(GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
+				
 			m_fAddonsOutdatedTimer = 0;
 		}
+		*/
 	}
 
 
@@ -890,7 +883,19 @@ class SCR_AddonManager : GenericEntity
 		m_OnNewDownload.Invoke(item, action);
 	}
 	
-	
+	//-----------------------------------------------------------------------------------------------
+	//! Go throught all offline addons and count size
+	protected void CountOutdatedAddons()
+	{	
+		m_iAddonsOutdated = 0;
+		array<ref SCR_WorkshopItem> items = GetOfflineAddons();
+		
+		foreach (SCR_WorkshopItem item : items)
+		{
+			if (!item.Internal_GetWorkshopItem().HasLatestVersion())
+				m_iAddonsOutdated++;
+		}
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	// Handling of addon presets

@@ -294,8 +294,10 @@ class SCR_BuildingSetup
 		
 		if (ptcPath != "")
 		{
-			vector pos = fxMat[3];
-			SCR_ParticleEmitter.Create(ptcPath, pos);
+			ParticleEffectEntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = fxMat[3];
+			spawnParams.UseFrameEvent = true;
+			ParticleEffectEntity.SpawnParticleEffect(ptcPath, spawnParams);
 		}
 		
 		// TODO: Implement playing sound

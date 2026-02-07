@@ -390,7 +390,7 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 	/*!
 	Set current budget value
 	*/
-	protected void SetCurrentBudgetValue(EEditableEntityBudget budgetType, int value)
+	void SetCurrentBudgetValue(EEditableEntityBudget budgetType, int value)
 	{
 		int originalBudgetValue, budgetChange, maxBudgetValue;
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
@@ -578,13 +578,35 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 				budgetCosts.Remove(i);
 		}
 	}
-	
+
 	protected EEditableEntityBudget GetFirstAvailableBudget()
 	{
 		if (!m_MaxBudgets || m_MaxBudgets.IsEmpty())
 			return null;
 		else
 			return m_MaxBudgets[0].GetBudgetType();;
+	}
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void DemandBudgetUpdateFromServer()
+	{
+		array<ref SCR_EditableEntityCoreBudgetSetting> outBudgets = {};
+		m_EntityCore.GetBudgets(outBudgets);
+
+		foreach (SCR_EditableEntityCoreBudgetSetting budgetSetting : outBudgets)
+		{
+			Rpc(UpdateBudgetForOwner, budgetSetting.GetBudgetType(), budgetSetting.GetCurrentBudget());
+		}
+	}
+
+	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
+	void UpdateBudgetForOwner(EEditableEntityBudget budgetType, int currentBudget)
+	{
+		SCR_EditableEntityCoreBudgetSetting budget;
+		if (!m_BudgetSettingsMap.Find(budgetType, budget))
+			return;
+
+		budget.SetCurrentBudget(currentBudget);
 	}
 	
 	protected bool IsBudgetCapEnabled()
@@ -633,19 +655,27 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			//m_DestroyedEntityFilter = entitiesManager.GetFilter(EEditableEntityState.DESTROYED);
 			//m_DestroyedEntityFilter.GetOnChanged().Insert(OnDestroyedChanged);		
 		}
-		
+
 		RefreshBudgetSettings();
+
+		if (m_RplComponent && m_RplComponent.Role() != RplRole.Authority)
+			Rpc(DemandBudgetUpdateFromServer);
 	}
 	
 	protected override void EOnEditorInit()
 	{
 		m_EntityCore = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
-		
+
 	#ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_LOG_BUDGET_CHANGES, "", "Log Budget Changes", "Editable Entities");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_BUDGET_CAP, "", "Enable Budget Cap", "Editable Entities");
 		DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_EDITOR_ENTITIES_BUDGET_CAP, 1);
 	#endif
+
+		foreach (SCR_EditableEntityCoreBudgetSetting budgetSetting : m_BudgetSettingsMap)
+		{
+			budgetSetting.SetBudgetComponent(this);
+		}
 	}
 	
 	void ~SCR_BudgetEditorComponent()

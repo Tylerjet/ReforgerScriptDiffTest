@@ -84,46 +84,6 @@ class SCR_WorkshopErrorPresetLoadDialog : SCR_ConfigurableDialogUi
 			scrollMessage.SetVisible(true);
 			scrollMessage.SetText(msg);
 		}
-		
-		/*
-		array<ref Tuple2<SCR_WorkshopItem, string>> notFoundItems = new array<ref Tuple2<SCR_WorkshopItem, string>>;
-		
-		foreach (SCR_WorkshopAddonPresetAddonMeta meta : notFoundAddons)
-		{
-			string itemGuid = meta.GetGuid();
-			Print("itemGuid: " + itemGuid);
-			WorkshopItem item = GetGame().GetBackendApi().GetWorkshop().FindItem(itemGuid);
-			
-			//SCR_WorkshopItem item = SCR_AddonManager.GetInstance().GetItem(itemGuid);
-			if (!item)
-				continue;
-			
-			SCR_WorkshopItem scrItem = SCR_AddonManager.GetInstance().Register(item);
-			if (!scrItem)
-				continue;
-			
-			/*Dependency dependency = scrItem.GetDependency();
-			if (!dependency)
-				continue;
-			
-			Revision revision = scrItem.GetLatestRevision(); 
-			string version = "1.0.0";
-			
-			if (revision)
-				version = revision.GetVersion(); 
-			
-			ref Tuple2<SCR_WorkshopItem, string>> toDownload = new Tuple2<SCR_WorkshopItem, string>>(scrItem, version);
-			notFoundItems.Insert(toDownload);
-		}
-		
-		
-		m_Dialog = SCR_DownloadConfirmationDialog.CreateForAddons(notFoundItems, false);
-		if (!m_Dialog)
-			return;
-		
-		m_Dialog.m_OnDownloadConfirmed.Insert(OnConfirmAddonsDownload);
-		//SetMessage(msg);
-		*/
 	}
 	
 	protected int m_iDownloading;
@@ -150,7 +110,7 @@ class SCR_WorkshopErrorPresetLoadDialog : SCR_ConfigurableDialogUi
 		// Set downloads
 		//m_ModManager.SetDownloadActions(downloads);
 		
-		dialog.m_OnDownloadConfirmed.Remove(OnConfirmAddonsDownload);
+		dialog.GetOnDownloadConfirmed().Remove(OnConfirmAddonsDownload);
 		
 		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
 	}

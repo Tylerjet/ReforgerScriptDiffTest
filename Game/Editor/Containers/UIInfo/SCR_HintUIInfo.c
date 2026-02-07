@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [BaseContainerProps(configRoot: true), SCR_BaseContainerLocalizedTitleField("Name")]
 class SCR_HintUIInfo: SCR_BlockUIInfo
 {
@@ -24,7 +25,11 @@ class SCR_HintUIInfo: SCR_BlockUIInfo
 	
 	protected int m_iSequencePage;
 	protected int m_iSequenceCount;
+	#ifndef AR_HINT_UI_TIMESTAMP
 	protected int m_iTimeHintStarted;
+	#else
+	protected WorldTimestamp m_iTimeHintStarted;
+	#endif
 	
 	/*!
 	Get hint type. When defined, the hint will be persistently saved and not shown again.
@@ -70,7 +75,11 @@ class SCR_HintUIInfo: SCR_BlockUIInfo
 	/*!
 	Get the time of Hint start, needed for proper Map implementation. Returns Replication.Time() of hint creation;
 	*/
+	#ifndef AR_HINT_UI_TIMESTAMP
 	int GetTimeStarted()
+	#else
+	WorldTimestamp GetTimeStarted()
+	#endif
 	{
 		return m_iTimeHintStarted;
 	}
@@ -79,7 +88,12 @@ class SCR_HintUIInfo: SCR_BlockUIInfo
 	*/
 	void SetTimeStamp()
 	{
+		#ifndef AR_HINT_UI_TIMESTAMP
 		m_iTimeHintStarted = Replication.Time();
+		#else
+		ChimeraWorld world = GetGame().GetWorld();
+		m_iTimeHintStarted = world.GetServerTimestamp();
+		#endif
 	}
 	/*!
 	Get names of widgets that should be highlighted.

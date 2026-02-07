@@ -4,6 +4,7 @@ class SCR_MapConstants
 	const int CANVAS_COMMAND_VERTICES_LIMIT = 400; 		// hardcoded in ENF, should be increased on req
 	const float MAX_PIX_PER_METER = 20;					// maximal possible zoom in the form of max allowed PixelPerUnit value
 	
+	const string MAP_FRAME_NAME = "MapFrame";			// name of the map.layout frame within mapmenu layout
 	const string MAP_WIDGET_NAME = "MapWidget";			// name of the MapWidget within map layout
 	const string DRAWING_WIDGET_NAME = "DrawingWidget";	// name of the CanvasWidget for drawing within map layout
 	const string DRAWING_CONTAINER_WIDGET_NAME = "DrawingContainer"; //name of FrameWidget for creating drawn lines on map

@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 class SCR_HintUIComponent: ScriptedWidgetComponent
 {
 	[Attribute()]
@@ -112,6 +113,7 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
 			
 			float startvalue;
 			int duration;
+			#ifndef AR_HINT_UI_TIMESTAMP
 			int timeDifferenceFromStart = Replication.Time() - info.GetTimeStarted();
 			
 			if (info.GetTimeStarted() == -1 || Replication.Time() == info.GetTimeStarted() || info.GetDuration() == -1 || !info.IsTimerVisible())
@@ -124,6 +126,21 @@ class SCR_HintUIComponent: ScriptedWidgetComponent
  				startvalue = 1 - timeDifferenceFromStart / info.GetDuration() / 1000;
 				duration = info.GetDuration() - timeDifferenceFromStart / 1000;
 			}
+			#else
+			ChimeraWorld world = GetGame().GetWorld();
+			WorldTimestamp currentTime = world.GetServerTimestamp();
+			if (info.GetTimeStarted() != 0 || currentTime == info.GetTimeStarted() || info.GetDuration() == -1 || !info.IsTimerVisible())
+			{
+				startvalue = 1;
+				duration = info.GetDuration();
+			}
+			else
+			{
+				int timeDifferenceFromStart = currentTime.DiffMilliseconds(info.GetTimeStarted());
+ 				startvalue = 1 - timeDifferenceFromStart / info.GetDuration() / 1000;
+				duration = info.GetDuration() - timeDifferenceFromStart / 1000;
+			}
+			#endif
 			
 			if (info.IsTimerVisible())
 			{

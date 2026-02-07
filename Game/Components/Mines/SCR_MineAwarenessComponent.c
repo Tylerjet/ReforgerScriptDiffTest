@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
 class SCR_MineAwarenessComponentClass : ScriptComponentClass
 {
@@ -7,7 +8,11 @@ class SCR_MineAwarenessComponentClass : ScriptComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_MineDetectionData
 {
+	#ifndef AR_MINE_DETECTION_TIMESTAMP
 	float m_fLastTime;
+	#else
+	WorldTimestamp m_fLastTime;
+	#endif
 	float m_fTimeElapsed;
 }
 
@@ -41,13 +46,24 @@ class SCR_MineAwarenessComponent : ScriptComponent
 			m_mMineDetection.Insert(id, new SCR_MineDetectionData);
 		
 		// Check if there is some start time
+		#ifndef AR_MINE_DETECTION_TIMESTAMP
 		float currentTime = Replication.Time();
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		WorldTimestamp currentTime = world.GetServerTimestamp();
+		#endif
 		SCR_MineDetectionData data = m_mMineDetection.Get(id);
 		if (data.m_fLastTime == 0)
 			data.m_fLastTime = currentTime;
 		
+		#ifndef AR_MINE_DETECTION_TIMESTAMP
 		if (currentTime - data.m_fLastTime < 1000)
 			data.m_fTimeElapsed += currentTime - data.m_fLastTime;
+		#else
+		float sinceLastTime = currentTime.DiffMilliseconds(data.m_fLastTime);
+		if (sinceLastTime < 1000)
+			data.m_fTimeElapsed += sinceLastTime;
+		#endif
 		
 		data.m_fLastTime = currentTime;
 		

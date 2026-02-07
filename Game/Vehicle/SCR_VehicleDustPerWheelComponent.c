@@ -1,7 +1,7 @@
 // Spawns dust particle effect that drags with the vehicle during ride
 
 [ComponentEditorProps(category: "GameScripted/Test", description:"SCR_VehicleDustPerWheel")]
-class SCR_VehicleDustPerWheelClass : MultiEffectComponentClass
+class SCR_VehicleDustPerWheelClass : ScriptGameComponentClass
 {
 	[Attribute("0", UIWidgets.Auto, "Vehicle index in ParticleEffectInfo")]
 	int m_iVehicleIndex;
@@ -17,70 +17,86 @@ class SCR_VehicleDustPerWheelClass : MultiEffectComponentClass
 
 	[Attribute("250", UIWidgets.Slider, "Maximal distance at which the effect is visible\n[m]", "0 2000 1")]
 	float m_fMaxDistanceVisible;
+	
+	float m_fMaxDistanceVisibleSqr;
 };
 
-class SCR_VehicleDustPerWheel : MultiEffectComponent
+//! Vehicle dust per wheel data;
+class VehicleDust
 {
+	vector m_vLocalDustPos;
+	bool m_bWheelHasContact;
+	int m_iLastSwap;
+	GameMaterial m_Material;
+	ParticleEffectEntity m_pParticleEffectEntity;
+};
+
+class SCR_VehicleDustPerWheel : ScriptGameComponent
+{
+	protected static const float 				UPDATE_TIME = 1.0 / 30.0;
 	static const int							UPDATE_TIMEOUT = 1000; //Minimal delay between two particle swaps.
 
 	protected VehicleWheeledSimulation			m_Simulation;
 	protected VehicleWheeledSimulation_SA		m_Simulation_SA;
 	protected SCR_VehicleDustPerWheelClass		m_ComponentData;
 	protected RplComponent						m_RplComponent;
-	protected ref TVectorArray					m_aLocalDustPos;
-	protected ref TBoolArray 					m_aWheelHasContact;
-	protected ref TIntArray						m_aLastSwap;
-
-#ifdef ENABLE_DIAG
-	ref array<string> m_aGameMatNames;
-#endif
+	protected ref array<ref VehicleDust>		m_aVehicleDusts = {};
+	protected float 							m_fUpdateTime;
+	protected float								m_fTime;
+	protected IEntity							m_pOwner;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
+		m_pOwner = owner;
+		
 		if (System.IsConsoleApp())
 		{
-			Deactivate(owner);
+			Deactivate(m_pOwner);
 			return;
 		}
 
-		m_ComponentData = SCR_VehicleDustPerWheelClass.Cast(GetComponentData(owner));
+		m_ComponentData = SCR_VehicleDustPerWheelClass.Cast(GetComponentData(m_pOwner));
 		if (!m_ComponentData || m_ComponentData.m_fDustStartSpeed > m_ComponentData.m_fDustTopSpeed || m_ComponentData.m_fMaxDistanceVisible <= 0)
 		{
-			Deactivate(owner);
+			Deactivate(m_pOwner);
 			return;
+		}
+		
+		if (!m_ComponentData.m_fMaxDistanceVisibleSqr)
+		{
+			m_ComponentData.m_fMaxDistanceVisibleSqr = m_ComponentData.m_fMaxDistanceVisible * m_ComponentData.m_fMaxDistanceVisible;
 		}
 
 		if(GetGame().GetIsClientAuthority())
 		{
-			m_Simulation = VehicleWheeledSimulation.Cast(owner.FindComponent(VehicleWheeledSimulation));
+			m_Simulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
 			if (!m_Simulation || !m_Simulation.IsValid())
 			{
-				Deactivate(owner);
+				Deactivate(m_pOwner);
 				return;
 			}
 		}
 		else
 		{
-			m_Simulation_SA = VehicleWheeledSimulation_SA.Cast(owner.FindComponent(VehicleWheeledSimulation_SA));
+			m_Simulation_SA = VehicleWheeledSimulation_SA.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation_SA));
 			if (!m_Simulation_SA || !m_Simulation_SA.IsValid())
 			{
-				Deactivate(owner);
+				Deactivate(m_pOwner);
 				return;
 			}
 		}
 
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 
-		m_aWheelHasContact = {};
-		m_aLocalDustPos = {};
-		m_aLastSwap = {};
+		m_fUpdateTime = UPDATE_TIME;
+		m_fTime = 0.0;
 
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FIXEDFRAME);
+		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool OnTicksOnRemoteProxy()
+	override bool OnTicksOnRemoteProxy()
 	{
 		return true;
 	}
@@ -96,81 +112,68 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 		else
 			count = Math.Min(m_Simulation_SA.WheelCount(), m_ComponentData.m_aWheels.Count());
 
-		m_aWheelHasContact.Resize(count);
-		m_aLocalDustPos.Resize(count);
-		m_aLastSwap.Resize(count);
-
-		ReserveEffects(count);
+		m_aVehicleDusts.Resize(count);
+		for (int i = 0; i < count; ++i)
+			m_aVehicleDusts[i] = new VehicleDust();
 
 #ifdef ENABLE_DIAG
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST, "", "Show dust materials", "Vehicles");
-		m_aGameMatNames = {};
-		m_aGameMatNames.Resize(count);
 #endif
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		UpdateBatch(owner, timeSlice);
-
-		if(GetGame().GetIsClientAuthority())
-		{
-			if (m_Simulation.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed && !HasActiveParticles())
-			{
-				ClearEventMask(owner, EntityEvent.FRAME);
-				SetEventMask(owner, EntityEvent.FIXEDFRAME);
-			}
-		}
-		else
-		{
-			if (m_Simulation_SA.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed && !HasActiveParticles())
-			{
-				ClearEventMask(owner, EntityEvent.FRAME);
-				SetEventMask(owner, EntityEvent.FIXEDFRAME);
-			}
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnFixedFrame(IEntity owner, float timeSlice)
-	{
 		if(GetGame().GetIsClientAuthority())
 		{
 			if (m_Simulation.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)
-				return;
+				m_fUpdateTime = UPDATE_TIME;
+			else
+				m_fUpdateTime = -1.0;
 		}
 		else
 		{
 			if (m_Simulation_SA.GetSpeedKmh() < m_ComponentData.m_fDustStartSpeed)
-				return;
+				m_fUpdateTime = UPDATE_TIME;
+			else
+				m_fUpdateTime = -1.0;
 		}
-
-		SetEventMask(owner, EntityEvent.FRAME);
-		ClearEventMask(owner, EntityEvent.FIXEDFRAME);
+		
+		m_fTime += timeSlice;
+		if (m_fUpdateTime < 0.0 || m_fTime >= m_fUpdateTime)
+		{
+			m_fTime = 0.0;
+			
+			UpdateBatch();
+		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	void UpdateCurrent(notnull ParticleEffectHandle effect, float timeSlice, int index, float speed)
+	protected void UpdateBatch()
 	{
-		effect.Continue();
-
-		IEntity effectEntity = effect.GetEntity();
-		if (!effectEntity)
-			return;
-
-		UpdatePosition(effectEntity, index);
-		UpdateVehicleDustEffect(effectEntity, speed, m_ComponentData.m_fDustTopSpeed, index);
-		effect.Update(timeSlice);
+		vector camMat[4];
+		m_pOwner.GetWorld().GetCurrentCamera(camMat);
+		
+		float distanceFromCamera = vector.DistanceSq(m_pOwner.GetOrigin(), camMat[3]);
+		float speed;
+		if(GetGame().GetIsClientAuthority())
+			speed = m_Simulation.GetSpeedKmh();
+		else
+			speed = m_Simulation_SA.GetSpeedKmh();
+		
+		foreach (int index, VehicleDust vehicleDust : m_aVehicleDusts)
+		{
+			UpdateEffect(vehicleDust, index, speed, distanceFromCamera);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	TraceParam TraceWheelContact(notnull IEntity owner, int index, out vector position)
+	protected TraceParam TraceWheelContact(int index, out vector position)
 	{
 		int wheelIdx = m_ComponentData.m_aWheels[index];
 
 		vector worldTransform[4];
-		owner.GetWorldTransform(worldTransform);
+		m_pOwner.GetWorldTransform(worldTransform);
 
 		float radius;
 
@@ -180,7 +183,7 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 		 	radius = m_Simulation_SA.WheelGetRadiusState(wheelIdx);
 
 		// Physics are offset by center of mass
-		Physics physics = owner.GetPhysics();
+		Physics physics = m_pOwner.GetPhysics();
 		vector centerOfMass = physics.GetCenterOfMass();
 
 		TraceParam trace = new TraceParam();
@@ -198,7 +201,7 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 		trace.Flags = TraceFlags.WORLD;
 		trace.LayerMask = EPhysicsLayerDefs.VehicleCast;
 
-		float hit = owner.GetWorld().TraceMove(trace, null);
+		float hit = m_pOwner.GetWorld().TraceMove(trace, null);
 
 		vector remotePosition = trace.Start + (trace.End - trace.Start) * hit;
 		position = remotePosition.InvMultiply4(worldTransform);
@@ -218,170 +221,158 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	// Called when the effects needs to be updated. This happens per frame if the camera is close to it, but much slower if further away fr optimization purposes.
-	override void UpdateEffect(notnull ParticleEffectHandle effect, IEntity owner, float timeSlice, int index)
+	protected void UpdateEffect(VehicleDust vehicleDust, int index, float speed, float distanceFromCamera)
 	{
-		if (!owner)
+		int wheelIdx = m_ComponentData.m_aWheels[index];
+		
+		if (speed < m_ComponentData.m_fDustStartSpeed || distanceFromCamera >= m_ComponentData.m_fMaxDistanceVisibleSqr)
+		{
+			vehicleDust.m_Material = null;
+			if (vehicleDust.m_pParticleEffectEntity)
+			{
+				vehicleDust.m_pParticleEffectEntity.StopEmission();
+				UpdatePosition(vehicleDust, wheelIdx);
+			}
 			return;
-
-		IEntity effectEntity = effect.GetEntity();
-
-		float speed;
-
-		if(GetGame().GetIsClientAuthority())
-			speed = m_Simulation.GetSpeedKmh();
-		else
-			speed = m_Simulation_SA.GetSpeedKmh();
-
-		vector camMat[4];
-		owner.GetWorld().GetCurrentCamera(camMat);
-
-		// Activate particle effect only within the desired speed and distance
-		if (speed >= m_ComponentData.m_fDustStartSpeed && vector.DistanceSq(owner.GetOrigin(), camMat[3]) < m_ComponentData.m_fMaxDistanceVisible * m_ComponentData.m_fMaxDistanceVisible)
-		{
-			int ticks = System.GetTickCount();
-			int dif = Math.AbsInt(ticks - m_aLastSwap[index]);
-
-			if (effectEntity && dif < UPDATE_TIMEOUT)
-			{
-				UpdateCurrent(effect, timeSlice, index, speed);
-				return;
-			}
-
-			GameMaterial newMaterial;
-			bool wheelHasContact;
-			if (m_RplComponent && !m_RplComponent.IsMaster())
-			{
-				vector position;
-				TraceParam trace = TraceWheelContact(owner, index, position);
-				if (trace)
-				{
-					newMaterial = trace.SurfaceProps;
-					wheelHasContact = trace.TraceEnt != null;
-					m_aLocalDustPos[index] = position;
-				}
-			}
-			else
-			{
-				int wheelIdx = m_ComponentData.m_aWheels[index];
-				if(GetGame().GetIsClientAuthority())
-				{
-					newMaterial = m_Simulation.WheelGetContactMaterial(wheelIdx);
-					wheelHasContact = m_Simulation.WheelHasContact(wheelIdx);
-				}
-				else
-				{
-					newMaterial = m_Simulation_SA.WheelGetContactMaterial(wheelIdx);
-					wheelHasContact = m_Simulation_SA.WheelHasContact(wheelIdx);
-				}
-			}
-
-			m_aWheelHasContact[index] = wheelHasContact;
-
-			GameMaterial currentMaterial = effect.GetMaterial();
-			ResourceName newResource;
-
-			if (newMaterial)
-			{
-				if (newMaterial != currentMaterial)	//different materials -> check resource
-				{
-					ParticleEffectInfo effectInfo = newMaterial.GetParticleEffectInfo();
-					if (effectInfo)
-						newResource = effectInfo.GetVehicleDustResource(m_ComponentData.m_iVehicleIndex);
-				}
-			}
-#ifdef ENABLE_DIAG
-			else if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST))
-			{
-				m_aGameMatNames[index] = "";
-			}
-#endif
-
-			//update old effect
-			if (effectEntity && (newMaterial == currentMaterial || effect.GetResource() == newResource))
-			{
-				if (newMaterial != currentMaterial)	//different GameMats, but resources are the same
-				{
-					effect.SetMaterial(newMaterial);
-#ifdef ENABLE_DIAG
-					if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST))
-						m_aGameMatNames[index] = newMaterial.GetName();
-#endif
-				}
-				UpdateCurrent(effect, timeSlice, index, speed);
-				return;
-			}
-			else
-			{
-				if (newResource && newResource.Length() > 0)	//create new effect
-				{
-					if (effectEntity) // stop old effect
-					{
-						effect.StopEmit();
-						effectEntity = null;
-					}
-					effectEntity = effect.CreateEffect(newResource, GenericEntity, owner.GetWorld());
-					owner.AddChild(effectEntity, -1); // Use owner vehicle as velocity source
-#ifdef ENABLE_DIAG
-					if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST))
-						m_aGameMatNames[index] = newMaterial.GetName();
-#endif
-					m_aLastSwap[index] = ticks;
-					effect.SetMaterial(newMaterial);
-				}
-				else if (effectEntity)	//only pause old effect
-				{
-					effect.Pause();
-				}
-
-				if (effectEntity)	//update current effect
-				{
-					UpdatePosition(effectEntity, index);
-					UpdateVehicleDustEffect(effectEntity, speed, m_ComponentData.m_fDustTopSpeed, index);
-					effect.Update(timeSlice);
-				}
-			}
 		}
-		else	//moving too slow to generate more dust
-		{
-			effect.Pause();
-			if (effect.HasActiveParticles())
-			{
-				UpdatePosition(effectEntity, index);
-				effect.Update(timeSlice);
-			}
-		}
-	}
+		
+		int ticks = System.GetTickCount();
+		int dif = Math.AbsInt(ticks - vehicleDust.m_iLastSwap);
 
-	//------------------------------------------------------------------------------------------------
-	void UpdatePosition(notnull IEntity effectEntity, int index)
-	{
-		vector position;
-		if (m_RplComponent && !m_RplComponent.IsMaster())
+		if (vehicleDust.m_pParticleEffectEntity && dif < UPDATE_TIMEOUT)
 		{
-			vector worldTransform[4];
-			GetOwner().GetWorldTransform(worldTransform);
-			position = m_aLocalDustPos[index].Multiply4(worldTransform);
+			UpdateCurrent(vehicleDust, speed, wheelIdx);
+			return;
+		}
+
+		GameMaterial newMaterial;
+		bool wheelHasContact;
+		if (m_RplComponent && m_RplComponent.IsRemoteProxy())
+		{
+			vector position;
+			TraceParam trace = TraceWheelContact(index, position);
+			if (trace)
+			{
+				newMaterial = trace.SurfaceProps;
+				wheelHasContact = trace.TraceEnt != null;
+				vehicleDust.m_vLocalDustPos = position;
+			}
 		}
 		else
 		{
 			if(GetGame().GetIsClientAuthority())
-				position = m_Simulation.WheelGetContactPosition(m_ComponentData.m_aWheels[index]);
+			{
+				if (m_Simulation.WheelGetContactLiquidState(wheelIdx) > 0)
+					newMaterial = m_Simulation.WheelGetContactLiquidMaterial(wheelIdx);
+				else
+					newMaterial = m_Simulation.WheelGetContactMaterial(wheelIdx);
+
+				wheelHasContact = m_Simulation.WheelHasContact(wheelIdx);
+			}
 			else
-				position = m_Simulation_SA.WheelGetContactPosition(m_ComponentData.m_aWheels[index]);
+			{
+				if (m_Simulation_SA.WheelGetContactLiquidState(wheelIdx) > 0)
+					newMaterial = m_Simulation_SA.WheelGetContactLiquidMaterial(wheelIdx);
+				else
+					newMaterial = m_Simulation_SA.WheelGetContactMaterial(wheelIdx);
+
+				wheelHasContact = m_Simulation_SA.WheelHasContact(wheelIdx);
+			}
 		}
 
-		effectEntity.SetOrigin(position);
+		vehicleDust.m_bWheelHasContact = wheelHasContact;
+
+		GameMaterial currentMaterial = vehicleDust.m_Material;
+		ResourceName newResource;
+
+		if (newMaterial && newMaterial != currentMaterial)	//different materials -> check resource
+		{
+			ParticleEffectInfo effectInfo = newMaterial.GetParticleEffectInfo();
+			if (effectInfo)
+				newResource = effectInfo.GetVehicleDustResource(m_ComponentData.m_iVehicleIndex);
+		}
+		
+		//update current effect
+		if (currentMaterial && vehicleDust.m_pParticleEffectEntity && (newMaterial == currentMaterial || (currentMaterial.GetParticleEffectInfo() && currentMaterial.GetParticleEffectInfo().GetResourceName() == newResource)))
+		{
+			if (newMaterial != currentMaterial)	//different GameMats, but resources are the same
+			{
+				vehicleDust.m_Material = newMaterial;
+			}
+			
+			UpdateCurrent(vehicleDust, speed, wheelIdx);
+			return;
+		}
+		
+		vehicleDust.m_Material = newMaterial;
+		if (vehicleDust.m_pParticleEffectEntity) // stop old effect
+		{
+			vehicleDust.m_pParticleEffectEntity.StopEmission();
+			vehicleDust.m_pParticleEffectEntity = null;
+		}
+		
+		//Create new effect
+		if (newResource && newResource.Length() > 0)
+		{
+			ParticleEffectEntitySpawnParams spawnParams();
+			spawnParams.TargetWorld = GetOwner().GetWorld();
+			spawnParams.Parent = GetOwner();
+			vehicleDust.m_pParticleEffectEntity = ParticleEffectEntity.SpawnParticleEffect(newResource, spawnParams);
+			vehicleDust.m_iLastSwap = ticks;
+		}
+
+		UpdateCurrent(vehicleDust, speed, wheelIdx);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateCurrent(VehicleDust vehicleDust, float speed, int wheelIdx)
+	{
+		if (!vehicleDust.m_pParticleEffectEntity)
+			return;
+		
+		UpdatePosition(vehicleDust, wheelIdx);
+		UpdateVehicleDustEffect(vehicleDust, speed, wheelIdx);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void UpdateVehicleDustEffect(notnull IEntity effectEntity, float speed, float endSpeed, int index)
+	protected void UpdatePosition(VehicleDust vehicleDust, int wheelIdx)
 	{
+		vector position;
+		if (m_RplComponent && m_RplComponent.IsRemoteProxy())
+		{
+			vector worldTransform[4];
+			GetOwner().GetWorldTransform(worldTransform);
+			position = vehicleDust.m_vLocalDustPos.Multiply4(worldTransform);
+		}
+		else
+		{
+			if(GetGame().GetIsClientAuthority())
+			{
+				if(!m_Simulation.WheelHasContact(wheelIdx))
+					return;
+
+				position = m_Simulation.WheelGetContactPosition(wheelIdx);
+			}
+			else
+			{
+				if(!m_Simulation_SA.WheelHasContact(wheelIdx))
+					return;
+
+				position = m_Simulation_SA.WheelGetContactPosition(wheelIdx);
+			}
+		}
+
+		vehicleDust.m_pParticleEffectEntity.SetOrigin(position);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateVehicleDustEffect(VehicleDust vehicleDust, float speed, int wheelIdx)
+	{
+		float endSpeed = m_ComponentData.m_fDustTopSpeed;
 		float speedCoef = 0;
 		float birthCoef = 0;
 		float gravityCoef = 0;
 
-		int wheelIdx = m_ComponentData.m_aWheels[index];
 		float longitudinalSlip = 0; 
 		float lateralSlip = 0;
 
@@ -396,17 +387,16 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 			lateralSlip = m_Simulation_SA.WheelGetLateralSlip(wheelIdx);
 		}
 		
-		float slip = Math.AbsFloat(longitudinalSlip) + Math.AbsFloat(lateralSlip);
+		float effectiveSlip = Math.Clamp(longitudinalSlip + lateralSlip, 0, 1);
 
-		bool wheelHasContact = m_aWheelHasContact[index];
-		if (wheelHasContact)
+		if (vehicleDust.m_bWheelHasContact)
 		{
-			speedCoef = Math.AbsFloat(0.2 + speed * 0.8 / endSpeed + slip);
-			birthCoef = Math.AbsFloat(0.8 + speed * 0.2 / endSpeed + slip * 2);
+			speedCoef = Math.AbsFloat(0.5 + speed * 0.5 / endSpeed + effectiveSlip);
+			birthCoef = Math.AbsFloat(0.5 + speed * 0.5 / endSpeed + effectiveSlip * 2);
 			gravityCoef = Math.AbsFloat(0.8 + speed * 0.2 / endSpeed);
 		}
 
-		Particles particles = effectEntity.GetParticles();
+		Particles particles = vehicleDust.m_pParticleEffectEntity.GetParticles();
 		particles.MultParam(-1, EmitterParam.BIRTH_RATE, birthCoef);
 		particles.MultParam(-1, EmitterParam.GRAVITY_SCALE_RND, gravityCoef);
 		particles.MultParam(-1, EmitterParam.VELOCITY, speedCoef);
@@ -416,14 +406,14 @@ class SCR_VehicleDustPerWheel : MultiEffectComponent
 		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_VEHICLE_DUST))
 			return;
 
-		if (!wheelHasContact)
+		if (!vehicleDust.m_bWheelHasContact)
 			return;
 
-		if (m_aGameMatNames[index].IsEmpty())
+		if (!vehicleDust.m_Material)
 			return;
 
-		vector effectPosition = effectEntity.GetWorldTransformAxis(3);
-		DebugTextWorldSpace.Create(GetOwner().GetWorld(), m_aGameMatNames[index] + "\nlongSlip: " + longitudinalSlip.ToString(-1, 3) + " latSlip: " + lateralSlip.ToString(-1, 3), DebugTextFlags.CENTER | DebugTextFlags.ONCE, effectPosition[0], effectPosition[1] - 1, effectPosition[2]);
+		vector effectPosition = vehicleDust.m_pParticleEffectEntity.GetWorldTransformAxis(3);
+		DebugTextWorldSpace.Create(GetOwner().GetWorld(), vehicleDust.m_Material.GetName() + "\nlongSlip: " + longitudinalSlip.ToString(-1, 3) + " latSlip: " + lateralSlip.ToString(-1, 3), DebugTextFlags.CENTER | DebugTextFlags.ONCE, effectPosition[0], effectPosition[1] - 1, effectPosition[2]);
 #endif
 	}
 };

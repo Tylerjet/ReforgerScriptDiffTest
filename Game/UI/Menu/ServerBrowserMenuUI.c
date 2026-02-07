@@ -38,6 +38,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	protected Room m_LastFocusedRoom = null;
 	protected Room m_LastLoadedRoom = null;
+	protected Room m_LastLoadingRoom;
 
 	// Widget handlers
 	protected SCR_TabViewComponent m_TabView;
@@ -71,6 +72,8 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	protected WorkshopApi m_WorkshopApi;
 	protected ClientLobbyApi m_Lobby;
+	protected ref ServerDetailsMenuUI m_DetailsDialog = null;
+	protected SCR_ConfigurableDialogUi m_ModListFailDialog;
 
 	// Search callbacks
 	protected ref array<ref ServerBrowserCallback> m_aSearchCallbacks = {};
@@ -155,10 +158,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		if (m_WorkshopApi.NeedScan())
 			m_WorkshopApi.ScanOfflineItems();
 
-		// Mods manager
-		if (m_ModsManager)
-			m_ModsManager.m_OnModsFail.Insert(OdModListFail);
-
 		// Find widgets
 		m_Widgets.FindAllWidgets(GetRootWidget());
 
@@ -191,6 +190,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		// GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
 		
 		GetGame().GetCallqueue().CallLater(CheckKickError);
+		
+		m_LastLoadingRoom = null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -250,6 +251,8 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		// Save filter
 		m_FilterPanel.Save();
+		
+		super.OnMenuClose();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -551,7 +554,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		{
 			//Fill with last loaded mod list
 			if (!m_ModsManager.GetModsLoaded())
-				m_ModsManager.m_OnGettingAllDependecies.Insert(OnServerDetailModsLoaded);
+				m_ModsManager.GetOnGetAllDependencies().Insert(OnServerDetailModsLoaded);
 			else
 				OnServerDetailModsLoaded();
 		}
@@ -570,13 +573,13 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void OnServerDetailModsLoaded()
 	{
 		m_Dialogs.FillRoomDetailsMods(m_ModsManager.GetRoomItemsScripted(), m_ModsManager);
-		m_ModsManager.m_OnGettingAllDependecies.Remove(OnServerDetailModsLoaded);
+		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnServerDetailsClosed()
 	{
-		m_ModsManager.m_OnGettingAllDependecies.Remove(OnServerDetailModsLoaded);
+		m_ModsManager.GetOnGetAllDependencies().Remove(OnServerDetailModsLoaded);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1007,6 +1010,11 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	protected void ReceiveRoomContent(Room room, bool receiveMods, SCR_ServerBrowserEntryComponent roomEntry)
 	{
+		if (room && m_LastLoadingRoom == room)
+			return;
+		
+		m_LastLoadingRoom = room;
+		
 		// Check room
 		if (!room && roomEntry && roomEntry.GetRoomInfo())
 			room = roomEntry.GetRoomInfo();
@@ -1089,22 +1097,22 @@ class ServerBrowserMenuUI : MenuRootBase
 		}
 
 		// Load scenario
-		m_ModsManager.m_OnGettingScenario.Insert(OnLoadingScenario);
+		m_ModsManager.GetOnGetScenario().Insert(OnLoadingScenario);
 		m_ModsManager.ReceiveRoomScenario(room);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Separeted receive mods data for server
 	//! Call this later to prevent too many request
 	protected void ReceiveRoomContent_Mods(Room room)
 	{
-		if (!m_ModsManager || !room || m_LastFocusedRoom != room)
+		if (!m_ModsManager || !room)
 			return;
 
 		// Check cached dependencies
 		//if (m_ModsManager.AllItemsLoaded)
 
-		m_ModsManager.m_OnGettingAllDependecies.Insert(OnLoadingDependencyList);
+		m_ModsManager.GetOnGetAllDependencies().Insert(OnLoadingDependencyList);
 		m_ModsManager.ReceiveRoomMods(room);
 	}
 
@@ -1578,7 +1586,7 @@ class ServerBrowserMenuUI : MenuRootBase
 		//m_CallbackScroll.m_OnSuccess.Insert(OnScrollSuccess);
 		m_CallbackScroll.GetEventOnResponse().Insert(OnScrollResponse);
 
-		if (!m_bFirstRoomLoad)
+		if (m_bRoomsLoaded)
 		{
 			array<Room> rooms = {};
 			m_Lobby.Rooms(rooms);
@@ -1820,7 +1828,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void OnLoadingDependencyList()
 	{
 		// Remove data receiving actions
-		m_ModsManager.m_OnGettingAllDependecies.Remove(OnLoadingDependencyList);
+		m_ModsManager.GetOnGetAllDependencies().Remove(OnLoadingDependencyList);
 
 		array<ref SCR_WorkshopItem> updated = m_ModsManager.GetRoomItemsUpdated();
 		array<ref SCR_WorkshopItem> outdated = m_ModsManager.GetRoomItemsToUpdate();
@@ -1851,18 +1859,30 @@ class ServerBrowserMenuUI : MenuRootBase
 	//------------------------------------------------------------------------------------------------
 	//! Call this when mods loading got error
 	//! Show mods loading fail message
-	protected void OdModListFail(bool success)
+	protected void OnModListFail(Room room)
 	{
+		if (m_ModListFailDialog)
+			return;
+		
+		m_ModListFailDialog = SCR_CommonDialogs.CreateRequestErrorDialog();
+		m_ModListFailDialog.m_OnClose.Insert(OnModListFailDialogClose);
+		
 		m_OnDependeciesLoad.Invoke();
 	}
-
+	
+	//------------------------------------------------------------------------------------------------\
+	protected void OnModListFailDialogClose(SCR_ConfigurableDialogUi dialog)
+	{
+		m_ModListFailDialog = null;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Setting server details
 	//! Call this when room receive scenrio data
 	protected void OnLoadingScenario(Dependency scenario)
 	{
 		// Remove action
-		m_ModsManager.m_OnGettingScenario.Remove(OnLoadingScenario);
+		m_ModsManager.GetOnGetScenario().Remove(OnLoadingScenario);
 
 		// Set server details
 		Room roomInfo = null;
@@ -2048,9 +2068,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Room to client version check
 		bool versionMatch = ClientRoomVersionMatch(room);
 
-		//TODO@wernerjak - check platform restriction
+		//TODO: check platform restriction
 
-		return versionMatch && room.Joinable();
+		return versionMatch && !m_ModsManager.HasBlockedMods() && room.Joinable();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2541,10 +2561,9 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_CallbackJoin.m_OnTimeOut.Clear();
 
 		// Clear mods manager callbacks
-		m_ModsManager.m_OnGettingAllDependecies.Clear();
-		m_ModsManager.m_OnModsFail.Clear();
-		m_ModsManager.m_OnGettingScenario.Clear();
-		m_ModsManager.m_OnModDownload.Clear();
+		m_ModsManager.GetOnGetAllDependencies().Clear();
+		m_ModsManager.GetOnModsFail().Clear();
+		m_ModsManager.GetOnGetScenario().Clear();
 
 		// Clear dialog
 		m_Dialogs.m_OnConfirm.Clear();
@@ -2707,8 +2726,11 @@ class ServerBrowserMenuUI : MenuRootBase
 			m_Dialogs.DisplayDialog(EJoinDialogState.CHECKING_CONTENT);
 
 		// Set wait for loading
-		m_ModsManager.m_OnGettingAllDependecies.Insert(JoinProcess_CheckModContent);
-		m_ModsManager.m_OnModsFail.Insert(JoinProcess_OnModCheckFailed);
+		m_ModsManager.GetOnGetAllDependencies().Insert(JoinProcess_CheckModContent);
+		m_ModsManager.GetOnModsFail().Insert(JoinProcess_OnModCheckFailed);
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Insert(JoinProcess_OnDependenciesLoadingPrevented);
+		
+		//ReceiveRoomContent(m_RoomToJoin, true, m_ServerEntryFocused);
 		m_ModsManager.ReceiveRoomContentData(m_RoomToJoin);
 	}
 
@@ -2726,18 +2748,35 @@ class ServerBrowserMenuUI : MenuRootBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_OnModCheckFailed()
+	protected void JoinProcess_OnModCheckFailed(Room room)
 	{
-		if (m_Dialogs)
-		{
-			m_Dialogs.CloseCurrentDialog();
-			m_Dialogs.DisplayJoinFail(EApiCode.EACODE_ERROR_UNKNOWN);
-		}
-
-		m_ModsManager.m_OnGettingAllDependecies.Remove(JoinProcess_CheckModContent);
-		m_ModsManager.m_OnModsFail.Remove(JoinProcess_OnModCheckFailed);
+		m_Dialogs.CloseCurrentDialog();
+		OnModListFail(room);
+		
+		m_ModsManager.GetOnGetAllDependencies().Remove(JoinProcess_CheckModContent);
+		m_ModsManager.GetOnModsFail().Remove(JoinProcess_OnModCheckFailed);
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(JoinProcess_OnDependenciesLoadingPrevented);
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void JoinProcess_OnDependenciesLoadingPrevented(Room room, array<ref SCR_WorkshopItem> dependencies)
+	{
+		SCR_AddonListDialog dialog = SCR_AddonListDialog.CreateItemsList(dependencies, "cancel_download_confirmation", SCR_WorkshopUiCommon.DIALOGS_CONFIG);
+		dialog.m_OnConfirm.Insert(OnDependenciesCancelDownloadConfirm);
+		//dialog.m_OnClose.Insert(OnCancelDownloadDialogClose);
+		
+		m_ModsManager.GetOnGetAllDependencies().Remove(JoinProcess_CheckModContent);
+		m_ModsManager.GetOnModsFail().Remove(JoinProcess_OnModCheckFailed);
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(JoinProcess_OnDependenciesLoadingPrevented);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDependenciesCancelDownloadConfirm(SCR_ConfigurableDialogUi dialog)
+	{
+		SCR_DownloadManager.GetInstance().EndAllDownloads();
+		JoinProcess_LoadModContentVisualize();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Check state of room required mods on client
 	//! Show missing mods data to download or move to next step
@@ -2748,8 +2787,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		m_Dialogs.SetJoinRoom(roomToJoin);
 
 		// Remove mods check actions
-		m_ModsManager.m_OnGettingAllDependecies.Remove(JoinProcess_CheckModContent);
-		m_ModsManager.m_OnModsFail.Remove(JoinProcess_OnModCheckFailed);
+		m_ModsManager.GetOnGetAllDependencies().Remove(JoinProcess_CheckModContent);
+		m_ModsManager.GetOnModsFail().Remove(JoinProcess_OnModCheckFailed);
 
 		// Restricted content check
 		array<ref SCR_WorkshopItem> items = m_ModsManager.GetRoomItemsScripted();
@@ -2760,7 +2799,8 @@ class ServerBrowserMenuUI : MenuRootBase
 		// Stop join if there are restricted mods
 		if (restricted)
 		{
-			m_Dialogs.DisplayDialog(EJoinDialogState.MOD_RESTRICTED);
+			SCR_ReportedAddonsDialog dialog = m_ModsManager.DisplayRestrictedAddonsList();
+			dialog.GetOnAllReportsCanceled().Insert(JoinProcess_LoadModContentVisualize);
 			return;
 		}
 
@@ -2774,9 +2814,9 @@ class ServerBrowserMenuUI : MenuRootBase
 			JoinProcess_Join(roomToJoin);
 			return;
 		}
-
+		
 		// Start downloading
-		m_ModsManager.SetDownloadActions(SCR_DownloadManager.GetInstance().DownloadItems(outdated));
+		SCR_DownloadManager.GetInstance().DownloadItems(outdated);
 
 		m_Dialogs.DisplayDialog(EJoinDialogState.MODS_DOWNLOADING);
 	}
@@ -2851,7 +2891,6 @@ class ServerBrowserMenuUI : MenuRootBase
 	//! Connect to the server
 	protected void JoinProcess_OnJoinSuccess(ServerBrowserCallback callback)
 	{
-
 		// Connect - gathers mods needed and calls for a reload
 		if (!GameStateTransitions.RequestConnectViaRoom(m_RoomToJoin))
 		{

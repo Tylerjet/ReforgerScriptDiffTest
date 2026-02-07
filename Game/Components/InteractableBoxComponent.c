@@ -10,7 +10,7 @@ class SCR_InteractableBoxComponent : ScriptComponent
 	private bool m_bIsOnFire = false;
 	private IEntity m_Owner = null;
 	private IEntity m_User = null;
-	private SCR_ParticleEmitter m_Fire = null;
+	private ParticleEffectEntity m_Fire = null;
 	private Physics m_Physics = null;
 	private float m_Lifetime = 10.0; // object can burn for 15 seconds before dying
 	private bool m_bIsDead = false;
@@ -36,7 +36,10 @@ class SCR_InteractableBoxComponent : ScriptComponent
 		{
 			if (!m_Fire)
 			{
-				m_Fire = SCR_ParticleEmitter.CreateAsChild(particle, m_Owner, offset);
+				ParticleEffectEntitySpawnParams spawnParams();
+				spawnParams.Parent = m_Owner;
+				spawnParams.Transform[3] = offset;
+				m_Fire = ParticleEffectEntity.SpawnParticleEffect(particle, spawnParams);
 			}
 		}
 		else

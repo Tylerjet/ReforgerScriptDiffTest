@@ -21,6 +21,8 @@ class BaseSightsComponent: GameComponent
 	//! Disable forced zeroing data
 	proto external void ForceSightsZeroValueEnablel(bool bOnOff);
 	proto external bool IsSightADSActive();
+	proto external float GetADSActivationPercentage();
+	proto external float GetADSDeactivationPercentage();
 	proto external bool AreSightsValid(bool front = true, bool rear = true);
 	/*!
 	Returns additional sights position used for calculating zeroing

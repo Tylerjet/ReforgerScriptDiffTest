@@ -71,15 +71,15 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	protected int						m_iFireStateSignalIdx;
 
 	// Damage particles
-	protected SCR_ParticleEmitter		m_pDmgParticleLight; // Lighter damage particle emitter
-	protected SCR_ParticleEmitter		m_pDmgParticleHeavy; // Darker damage particle emitter
+	protected ParticleEffectEntity		m_pDmgParticleLight; // Lighter damage particle emitter
+	protected ParticleEffectEntity		m_pDmgParticleHeavy; // Darker damage particle emitter
 
 	// Destruction particles
-	protected SCR_ParticleEmitter		m_pDstParticle; // Destruction particle
-	protected SCR_ParticleEmitter		m_pBurningGroundParticle; // Burning fuel on ground particle
+	protected ParticleEffectEntity		m_pDstParticle; // Destruction particle
+	protected ParticleEffectEntity		m_pBurningGroundParticle; // Burning fuel on ground particle
 
 	// Burning particles
-	protected SCR_ParticleEmitter		m_pBurningParticle; // Rapid fire damage particle emitter
+	protected ParticleEffectEntity		m_pBurningParticle; // Rapid fire damage particle emitter
 
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(IEntity pOwnerEntity, GenericComponent pManagerComponent)
@@ -529,7 +529,13 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 			return;
 
 		if (!m_pDstParticle && !m_sDestructionParticle.IsEmpty())
-			m_pDstParticle = SCR_ParticleEmitter.CreateAsChild(m_sDestructionParticle, owner, m_vParticleOffset, vector.Zero);
+		{
+			ParticleEffectEntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = m_vParticleOffset;
+			spawnParams.Parent = owner;
+			spawnParams.UseFrameEvent = true;
+			m_pDstParticle = ParticleEffectEntity.SpawnParticleEffect(m_sDestructionParticle, spawnParams);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -574,12 +580,18 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 
 		// Stop existing effect so that it gets removed and does not have to be tracked again
 		if (m_pBurningGroundParticle)
-			m_pBurningGroundParticle.Pause();
+			m_pBurningGroundParticle.StopEmission();
 
 		position[1] = surfaceY;
 
 		if (!m_sDestructionParticle.IsEmpty())
-			m_pBurningGroundParticle =SCR_ParticleEmitter.Create(m_sBurningGroundParticle, position);
+		{
+			ParticleEffectEntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = position;
+			spawnParams.UseFrameEvent = true;
+			m_pBurningGroundParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningGroundParticle, spawnParams);
+		}
+			
 	}
 
 	// Stops fire on vehicle and on the ground
@@ -592,7 +604,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		queue.Remove(StopDestructionFire);
 
 		if (m_pBurningGroundParticle)
-			m_pBurningGroundParticle.Pause();
+			m_pBurningGroundParticle.StopEmission();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -619,23 +631,26 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		// This part is terrible, it should be refactored
 		if (!m_pDmgParticleLight || !m_pDmgParticleHeavy || !m_pBurningParticle)
 		{
+			ParticleEffectEntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = m_vParticleOffset;
+			spawnParams.Parent = owner;
+			spawnParams.PlayOnSpawn = false;
+			spawnParams.UseFrameEvent = true;
+			
 			// Spawn particles on object
 			if (!m_pDmgParticleLight)
 			{
-				m_pDmgParticleLight = SCR_ParticleEmitter.CreateAsChild(m_sDamagedParticle, owner, m_vParticleOffset, vector.Zero);
-				m_pDmgParticleLight.Pause();
+				m_pDmgParticleLight = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticle, spawnParams);
 			}
 
 			if (!m_pDmgParticleHeavy)
 			{
-				m_pDmgParticleHeavy = SCR_ParticleEmitter.CreateAsChild(m_sDamagedParticleHeavy, owner, m_vParticleOffset, vector.Zero);
-				m_pDmgParticleHeavy.Pause();
+				m_pDmgParticleHeavy = ParticleEffectEntity.SpawnParticleEffect(m_sDamagedParticleHeavy, spawnParams);
 			}
 
 			if (!m_pBurningParticle)
 			{
-				m_pBurningParticle = SCR_ParticleEmitter.CreateAsChild(m_sBurningParticle, owner, m_vParticleOffset, vector.Zero);
-				m_pBurningParticle.Pause();
+				m_pBurningParticle = ParticleEffectEntity.SpawnParticleEffect(m_sBurningParticle, spawnParams);
 			}
 		}
 
@@ -645,13 +660,13 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		{
 			if (!m_bIsBurning)
 			{
-				m_pBurningParticle.GetParticles().Restart();
+				m_pBurningParticle.Stop();
 				m_bIsBurning = true;
 			}
 
-			m_pDmgParticleLight.Pause();
-			m_pDmgParticleHeavy.Pause();
-			m_pBurningParticle.UnPause();
+			m_pDmgParticleLight.StopEmission();
+			m_pDmgParticleHeavy.StopEmission();
+			m_pBurningParticle.Play();
 			FireLightOn();
 		}
 		else
@@ -661,32 +676,32 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 			// igniting smoke
 			if (fireState == EFireState.SMOKING_IGNITING)
 			{
-				m_pDmgParticleLight.Pause();
-				m_pDmgParticleHeavy.UnPause();
-				m_pBurningParticle.Pause();
+				m_pDmgParticleLight.StopEmission();
+				m_pDmgParticleHeavy.Play();
+				m_pBurningParticle.StopEmission();
 				FireLightOff();
 			}
 			// dark smoke
 			else if (fireState == EFireState.SMOKING_HEAVY)
 			{
-				m_pDmgParticleLight.Pause();
-				m_pDmgParticleHeavy.UnPause();
-				m_pBurningParticle.Pause();
+				m_pDmgParticleLight.StopEmission();
+				m_pDmgParticleHeavy.Play();
+				m_pBurningParticle.StopEmission();
 				FireLightOff();
 			}
 			// light smoke
 			else if (fireState == EFireState.SMOKING_LIGHT)
 			{
-				m_pDmgParticleLight.UnPause();
-				m_pDmgParticleHeavy.Pause();
-				m_pBurningParticle.Pause();
+				m_pDmgParticleLight.Play();
+				m_pDmgParticleHeavy.StopEmission();
+				m_pBurningParticle.StopEmission();
 				FireLightOff();
 			}
 			else
 			{
-				m_pDmgParticleLight.Pause();
-				m_pDmgParticleHeavy.Pause();
-				m_pBurningParticle.Pause();
+				m_pDmgParticleLight.StopEmission();
+				m_pDmgParticleHeavy.StopEmission();
+				m_pBurningParticle.StopEmission();
 				FireLightOff();
 			}
 		}

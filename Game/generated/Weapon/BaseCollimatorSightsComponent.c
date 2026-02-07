@@ -53,8 +53,6 @@ class BaseCollimatorSightsComponent: SightsComponent
 	proto external void ReticlePreviousColor();
 	//! Set reticle color by index. Return true if successful
 	proto external bool SetReticleColorByIndex(int iIndex);
-	proto external float GetADSActivationPercentage();
-	proto external float GetADSDeactivationPercentage();
 
 	// callbacks
 

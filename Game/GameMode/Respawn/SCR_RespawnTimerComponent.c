@@ -95,7 +95,7 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 		float time = Replication.Time();
 		return time * 0.001; // ms to s
 		#else
-		ChimeraWorld world = GetOwner().GetWorld();
+		ChimeraWorld world = GetGame().GetWorld();
 		return world.GetServerTimestamp();
 		#endif
 	}
@@ -229,7 +229,9 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 		#ifndef AR_RESPAWN_TIMER_TIMESTAMP
 		respawnTimer.Start(-m_fRespawnTime);
 		#else
-		respawnTimer.Start(((WorldTimestamp)null).PlusSeconds(-m_fRespawnTime));
+		WorldTimestamp startTime;
+		startTime = startTime.PlusSeconds(-m_fRespawnTime);
+		respawnTimer.Start(startTime);
 		#endif
 
 		if (!m_mRespawnTimers.Contains(playerId))

@@ -38,12 +38,16 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 		}
 		
 		// Activate optics 
-		m_Optic.SetOpticsActive(state);
-		
 		if (state)
+		{
+			m_Optic.OnSightADSActivated();
 			m_sZoomed = true;
+		}
 		else
+		{
+			m_Optic.OnSightADSDeactivated();
 			m_sZoomed = false;
+		}
 		
 		// Invoke use
 		if (GetOwner().GetParent() == SCR_PlayerController.GetLocalControlledEntity())
@@ -125,14 +129,6 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 			return;
 		
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Update optics 
-	override void EOnFrame(IEntity owner, float timeSlice)
-	{			
-		if (m_Optic)
-			m_Optic.Tick(timeSlice);
 	}
 	
 	//------------------------------------------------------------------------------------------------

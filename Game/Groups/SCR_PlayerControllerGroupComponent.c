@@ -1008,6 +1008,20 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	int GetActualGroupFrequency()
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return 0;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(m_iGroupID);
+		if (!group)
+			return 0;
+		
+		return group.GetRadioFrequency();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnDiag(IEntity owner, float timeSlice)
 	{		
 		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_GROUPS_ENABLE_DIAG))

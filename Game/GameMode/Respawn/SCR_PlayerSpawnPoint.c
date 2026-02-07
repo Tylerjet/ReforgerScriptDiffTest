@@ -174,6 +174,9 @@ class SCR_PlayerSpawnPoint: SCR_SpawnPoint
 	//------------------------------------------------------------------------------------------------
 	protected Vehicle GetTargetVehicle()
 	{
+		if (!m_TargetPlayer)
+			return null;
+
 		SCR_CompartmentAccessComponent compartmentAccessTarget = SCR_CompartmentAccessComponent.Cast(m_TargetPlayer.FindComponent(SCR_CompartmentAccessComponent));
 		if (!compartmentAccessTarget)
 			return null;

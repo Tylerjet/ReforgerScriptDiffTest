@@ -1,0 +1,56 @@
+/*
+===========================================
+Do not modify, this script is generated
+===========================================
+*/
+
+/*!
+\addtogroup Particles
+\{
+*/
+
+class ParticleEffectEntityClass: GenericEntityClass
+{
+}
+
+/*!
+*IMPORTANT* Due to how replication works for a replicated entity like ParticleEffectEntity. Currently, you need to spawn the ParticleEffectEntity both on the server and the client if the parent entity is replicated.
+*/
+class ParticleEffectEntity: GenericEntity
+{
+	/*!
+	Spawn a particle effect from an effectPath given as parameter.
+	\param effectPath Could be a .ptc path or a prefab path
+	*/
+	static proto ParticleEffectEntity SpawnParticleEffect(ResourceName effectPath, notnull ParticleEffectEntitySpawnParams spawnParams);
+	proto external EParticleEffectState GetState();
+	//! It returns the time since it started playing in seconds.
+	proto external float GetTotalSimulationTime();
+	proto external bool HasActiveParticles();
+	/*!
+	Set if we should use FRAME instead of the VISIBLE event flag to be updated.
+	This means if we should update only when we are rendered, or not.
+	*/
+	proto external void SetUseFrameEvent(bool useFrameEvent);
+	proto external void SetPlayOnHeadlessClient(bool playOnHeadlessClient);
+	proto external void SetEffectPath(ResourceName effectPath);
+	//! Tells if we should be deleted when it is finished or when the emission is stopped.
+	proto external void SetDeleteWhenStopped(bool deleteWhenStopped);
+	//! Play the current particle. If paused, then it resumes it.
+	proto external void Play();
+	//! Stop the current particle.
+	proto external void Stop();
+	//! Pause the current particle.
+	proto external void Pause();
+	//! Stop the emitters' emission, but update ourselves until it hasn't active particles.
+	proto external void StopEmission();
+
+	// callbacks
+
+	event void OnUpdateEffect(float timeSlice);
+	event void OnStateChanged(EParticleEffectState oldState, EParticleEffectState newState);
+}
+
+/*!
+\}
+*/

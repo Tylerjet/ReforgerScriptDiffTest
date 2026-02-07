@@ -128,14 +128,10 @@ class SCR_ServerBrowserDialogManager
 				//DisplayModsToUpdate();
 				break;
 
-			// Restricted mods - banned & reported
-			case EJoinDialogState.MOD_RESTRICTED:
-				DisplayRestricetedModList();
-				break;
-
 			// Download progress
 			case EJoinDialogState.MODS_DOWNLOADING:
-				DisplayModsDownloading();
+				if (!SCR_DownloadManager_Dialog.IsOpened())
+					DisplayModsDownloading();
 				break;
 
 			// Cleint can't access user generated content
@@ -432,20 +428,6 @@ class SCR_ServerBrowserDialogManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Display list of restricted mods
-	protected void DisplayRestricetedModList()
-	{
-		array<ref SCR_WorkshopItem> items = m_ModManager.GetRoomItemsScripted();
-		m_CurrentDialog = SCR_AddonListDialog.CreateRestrictedAddonsJoinServer(items);
-
-		SCR_ReportedAddonsDialog reportedDialog = SCR_ReportedAddonsDialog.Cast(m_CurrentDialog);
-
-		// Handle cancel reports done
-		if (reportedDialog)
-			reportedDialog.GetOnAllReportsCanceled().Insert(OnAllReportsCanceled);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Call this when all reports from dialog are cancled to clear invoker actions and display download dialog
 	protected void OnAllReportsCanceled(SCR_ReportedAddonsDialog dialog)
 	{
@@ -459,7 +441,10 @@ class SCR_ServerBrowserDialogManager
 		DialogUI dialog = SCR_DownloadManager_Dialog.Create();
 
 		SCR_DownloadManager.GetInstance().m_OnDownloadQueueCompleted.Insert(OnDownloadingDone);
-		dialog.m_OnCancel.Insert(OnDownloadingDialogClose);
+		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Insert(OnDownloadActionFailed);
+		
+		if (dialog)
+			dialog.m_OnCancel.Insert(OnDownloadingDialogClose);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -482,19 +467,29 @@ class SCR_ServerBrowserDialogManager
 	//------------------------------------------------------------------------------------------------
 	protected void OnDownloadingDialogClose()
 	{
+		SCR_DownloadManager manager = SCR_DownloadManager.GetInstance();
+		
+		// Cancel joining process
+		manager.m_OnDownloadQueueCompleted.Remove(OnDownloadingDone);
+		
+		// Just close if there are no running downloads (e.g. due to errors)
+		if (!manager.HasRunningDownloads())
+		{
+			manager.EndAllDownloads();
+			return;
+		}
+		
 		// Display download cancel dialog
 		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(CONFIG_DIALOGS, "CANCEL_DOWNLOAD");
 		dialog.m_OnConfirm.Insert(OnCancelDownloadDialogConfirm);
 		dialog.m_OnCancel.Insert(OnCancelDownloadDialogCancel);
-
-		// Cancel joining process
-		SCR_DownloadManager.GetInstance().m_OnDownloadQueueCompleted.Remove(OnDownloadingDone);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancelDownloadDialogConfirm(SCR_ConfigurableDialogUi dialog)
 	{
 		SCR_DownloadManager.GetInstance().EndAllDownloads();
+		SCR_DownloadManager.GetInstance().ClearFailedDownloads();
 
 		// Clear
 		dialog.m_OnConfirm.Remove(OnCancelDownloadDialogConfirm);

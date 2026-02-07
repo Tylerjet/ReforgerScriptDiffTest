@@ -9,7 +9,7 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	protected ref array<IEntity>									m_Items					= new ref array<IEntity>();
 	
 	//TODO: move to inventory manager
-	protected const ResourceName INVENTORY_CONFIG = "{024B56A4DE577000}Configs/Inventory/InventoryUI.conf";
+	protected const ResourceName INVENTORY_CONFIG = "{024B56A4DE577001}Configs/Inventory/InventoryUI.conf";
 	protected ref SCR_InventoryConfig m_pInventoryUIConfig;
 		
 	

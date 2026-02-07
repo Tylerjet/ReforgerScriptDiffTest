@@ -182,19 +182,19 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override float GetADSActivationPercentage()
+	override float GetADSActivationPercentageScript()
 	{
 		if (SCR_Global.IsScope2DEnabled())
-			return super.GetADSActivationPercentage();
+			return super.GetADSActivationPercentageScript();
 
 		return m_fADSActivationPercentagePIP;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override float GetADSDeactivationPercentage()
+	override float GetADSDeactivationPercentageScript()
 	{
 		if (SCR_Global.IsScope2DEnabled())
-			return super.GetADSDeactivationPercentage();
+			return super.GetADSDeactivationPercentageScript();
 
 		return m_fADSDeactivationPercentagePIP;
 	}
@@ -440,16 +440,13 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	{
 		super.EnableReticleIllumination(enable);
 
-		if (m_b2DIsEnabled)
-			return;
-
 		if (enable)
 		{
 			m_cReticleColor = GetReticleTextureIllumination();
 		}
 		else
 		{
-			m_cReticleColor = Color.Black;
+			m_cReticleColor = Color.FromInt(Color.BLACK);
 		}
 	}
 

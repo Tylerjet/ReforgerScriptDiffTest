@@ -3,6 +3,7 @@ class SCR_ParticleEmitterClass: GenericEntityClass
 {
 };
 
+[Obsolete("Use ParticleEffectEntity instead")]
 class SCR_ParticleEmitter : GenericEntity
 {	
 
@@ -45,6 +46,7 @@ class SCR_ParticleEmitter : GenericEntity
 	
 	\return The spawned entity, null if something went wrong.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter Create(
 		ResourceName name, vector pos,
 		vector rot = "0 0 0", IEntity parent = null, int boneID = -1, bool play = true)
@@ -65,6 +67,7 @@ class SCR_ParticleEmitter : GenericEntity
 	
 	\return The spawned entity, null if something went wrong.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateAsChild(
 		ResourceName name, IEntity parent,
 		vector localPos = "0 0 0", vector localRot = "0 0 0", int boneID = -1, bool play = true)
@@ -86,6 +89,7 @@ class SCR_ParticleEmitter : GenericEntity
 	
 	\return The spawned entity, null if something went wrong.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateWithTransform(
 		ResourceName name, vector transform[4],
 		IEntity parent = null, int boneID = -1, bool play = true)
@@ -109,6 +113,7 @@ class SCR_ParticleEmitter : GenericEntity
 	
 	\return The spawned entity, null if something went wrong.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateOriented(
 		ResourceName name, vector pos, vector upVec,
 		IEntity parent = null, int boneID = -1, bool play = true)
@@ -131,6 +136,7 @@ class SCR_ParticleEmitter : GenericEntity
 	
 	\return The spawned entity, null if something went wrong.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateAsChildOriented(
 		ResourceName name, IEntity parent, vector upVec,
 		vector localPos = "0 0 0", int boneID = -1, bool play = true)
@@ -142,11 +148,12 @@ class SCR_ParticleEmitter : GenericEntity
 	The same as Create() but this one can spawn entities of different types.
 	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateEx(
 		typename type, ResourceName name, vector pos,
 		vector rot = "0 0 0", IEntity parent = null, int boneID = -1, bool play = true)
 	{
-		SCR_ParticleEmitter ent =SpawnParticleEmitter(ent, parent, type);
+		SCR_ParticleEmitter ent = SpawnParticleEmitter(ent, parent, type);
 		
 		ent.m_DeleteOnFinish = true;
 		ent.SetPathToPTC(name);
@@ -166,6 +173,7 @@ class SCR_ParticleEmitter : GenericEntity
 	The same as CreateWithTransform() but this one can spawn entities of different types.
 	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateWithTransformEx(
 		typename type, ResourceName name, vector transform[4],
 		IEntity parent = null, int boneID = -1, bool play = true)
@@ -192,6 +200,7 @@ class SCR_ParticleEmitter : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------------
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter SpawnParticleEmitter(SCR_ParticleEmitter ent, IEntity parent, typename type)
 	{
 		if (!parent)
@@ -212,6 +221,7 @@ class SCR_ParticleEmitter : GenericEntity
 	The same as CreateOriented() but this one can spawn entities of different types.
 	\param type Type of the entity to spawn. Must be inherited from SCR_ParticleEmitter.
 	*/
+	[Obsolete("Use ParticleEffectEntity.SpawnParticleEffect() instead")]
 	static SCR_ParticleEmitter CreateOrientedEx(
 		typename type, ResourceName name, vector pos, vector upVec,
 		IEntity parent = null, int boneID = -1, bool play = true)

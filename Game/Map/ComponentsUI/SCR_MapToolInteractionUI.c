@@ -41,8 +41,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	//! Tool action
 	static void ActivateAction()
 	{
-		array<ref Widget> widgets = {};
-		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), GetGame().GetWorkspace(), widgets);
+		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		SCR_MapElementMoveComponent moveComp;
 		
 		if (!CanBeManipulated(widgets))
@@ -67,8 +66,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 		if (s_bIsDragging)
 			return false;
 		
-		array<ref Widget> widgets = {};
-		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), GetGame().GetWorkspace(), widgets);
+		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		SCR_MapElementMoveComponent moveComp;
 		
 		if (!CanBeManipulated(widgets))
@@ -106,8 +104,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	//! \return Returns true if there is a rotatable widget under the cursor
 	static bool StartRotate()
 	{
-		array<ref Widget> widgets = {};
-		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), GetGame().GetWorkspace(), widgets);
+		array<Widget> widgets = SCR_MapCursorModule.GetMapWidgetsUnderCursor();
 		SCR_MapElementMoveComponent moveComp;
 		
 		if (!CanBeManipulated(widgets))
@@ -137,7 +134,7 @@ class SCR_MapToolInteractionUI : SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Check whether the tool isnt currently clicked from top of/under of a button 
-	protected static bool CanBeManipulated(array<ref Widget> tracedWidgets)
+	protected static bool CanBeManipulated(array<Widget> tracedWidgets)
 	{
 		foreach ( Widget widget : tracedWidgets )
 		{

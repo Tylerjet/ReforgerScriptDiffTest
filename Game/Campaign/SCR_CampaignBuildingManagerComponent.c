@@ -128,6 +128,11 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 
 		if (entity.GetOwner().IsLoaded())
 			return;
+			
+		SCR_GameModeCampaign campaign = SCR_GameModeCampaign.GetInstance();
+		
+		if (campaign && campaign.IsSessionLoadInProgress())
+			return;
 		
 		if (entityBudget != m_BudgetType)
 			return;

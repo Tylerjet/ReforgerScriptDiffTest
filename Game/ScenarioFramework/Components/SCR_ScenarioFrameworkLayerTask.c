@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
 class SCR_ScenarioFrameworkLayerTaskClass : SCR_ScenarioFrameworkLayerBaseClass
 {
@@ -137,8 +138,14 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		
 		if (m_fRepeatedSpawnTimer >= 0)
 		{
+			#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 			m_fRepeatSpawnTimeStart = Replication.Time();
 			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart + (m_fRepeatedSpawnTimer * 1000);
+			#else
+			ChimeraWorld world = GetOwner().GetWorld();
+			m_fRepeatSpawnTimeStart = world.GetServerTimestamp();
+			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart.PlusSeconds(m_fRepeatedSpawnTimer);
+			#endif
 			m_bRepeatedSpawningSet = true;
 		}	
 		

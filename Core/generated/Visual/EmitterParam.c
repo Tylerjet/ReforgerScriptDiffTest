@@ -14,70 +14,72 @@ Emitter param enumeration for GetParam and SetParam methods.
 */
 enum EmitterParam
 {
-	//! Vector3	[R/W]
+	//! Vector3
 	CONEANGLE,
-	//! Vector3	[R/W]
+	//! Vector3
 	EMITOFFSET,
-	//! Float		[R/W]
+	//! Float
 	VELOCITY,
-	//! Float		[R/W]
+	//! Float
 	VELOCITY_AFFECT,
-	//! Float		[R/W]
+	//! Float
 	VELOCITY_RND,
-	//! Float		[R/W]
+	//! Float
 	AVELOCITY,
-	//! Float		[R/W]
+	//! Float
 	SIZE,
-	//! Float		[R/W]
+	//! Float
 	STRETCH,
-	//! Bool			[R/W]
+	//! Bool
 	RANDOM_ANGLE,
-	//! Bool			[R/W]
+	//! Bool
 	RANDOM_ROT,
-	//! Bool			[R/W]
+	//! Bool
 	LOCAL_TRANSFORM,
-	//! Float		[R/W]
+	//! Float
 	AIR_RESISTANCE,
-	//! Float		[R/W]
+	//! Float
 	AIR_RESISTANCE_RND,
-	//! Float		[R/W]
+	//! Float
 	GRAVITY_SCALE,
-	//! Float		[R/W]
+	//! Float
 	GRAVITY_SCALE_RND,
-	//! Float		[R/W]
+	//! Float
 	BIRTH_RATE,
-	//! Float		[R/W]
+	//! Float
 	BIRTH_RATE_RND,
-	//! Float		[R/W]
+	//! Float
 	LIFETIME,
-	//! Float		[R/W]
+	//! Float
 	LIFETIME_RND,
-	//! Bool			[R/W]
+	//! Bool
 	LIFETIME_BY_ANIM,
-	//! Bool			[R/W]
+	//! Bool
 	ANIM_ONCE,
-	//! Bool			[R/W]
+	//! Bool
 	RAND_FRAME,
-	//! Float		[R/W]
+	//! Float
 	EMITTING_TIME,
-	//! Bool			[R/W]
+	//! Bool
 	REPEAT,
-	//! Float		[R/W]
+	//! Float, Read only: incompatible with GetParamOrig() and MultParam()
 	CURRENT_TIME,
-	//! Int			[ R ]
+	//! Int, Read only: incompatible with GetParamOrig() and MultParam()
 	ACTIVE_PARTICLES,
-	//! Bool			[R/W]
+	//! Bool
 	WIND,
-	//! Float		[R/W]
+	//! Float
 	SPRING,
-	//! Float		[R/W]
+	//! Float
 	SCALE_X,
-	//! Float		[R/W]
+	//! Float
 	SCALE_Y,
-	//! Float		[R/W]
+	//! Float
 	CENTER_X,
-	//! Float		[R/W]
+	//! Float
 	CENTER_Y,
+	//! Float
+	MAX_LV,
 }
 
 /*!

@@ -1,20 +1,37 @@
 class SCR_ParticleContactComponentClass : ScriptComponentClass
 {	
+		
 	[Attribute("", UIWidgets.Auto, "", category: "Sound")]
 	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
 	
 	[Attribute("true", desc: "Set surface signal", category: "Sound")]
 	bool m_bSurfaceSignal;
-		
+	
+	[Attribute("false", desc: "If to play particle effect", category: "VFX")]
+	bool m_bPlayParticle;
+	
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, desc: "Particle effect", params: "ptc", category: "VFX")]
+	ResourceName m_Particle;
+	
+	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Desired type of Game Material effect", "", ParamEnumArray.FromEnum(EParticleEffectInfoType), category: "VFX")]
+	int m_iGameMaterialEffect;
+	
+	[Attribute("0", desc: "Index of Material Effect type", category: "VFX")]
+	int m_iEffectIndex;
+	
 	[Attribute("true", desc: "Disable OnContact after the first contact")]
 	bool m_bFirstContactOnly;
 	
 	[Attribute("false", desc: "Particle oriented to surface", category: "VFX")]
 	bool m_bParticleOriented;
-	
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, desc: "Particle effect", params: "ptc", category: "VFX")]
-	ResourceName m_Particle;
 }
+
+enum EParticleEffectInfoType
+{
+	NONE = 0,
+	VEHICLE = 1,
+	BLAST = 2,
+};
 
 //------------------------------------------------------------------------------------------------
 class SCR_ParticleContactComponent : ScriptComponent
@@ -62,6 +79,11 @@ class SCR_ParticleContactComponent : ScriptComponent
 			return;
 				
 		SetEventMask(owner, EntityEvent.CONTACT);
+		
+#ifdef ENABLE_DIAG
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_CONTACT_COMPONENT, "", "Show Particle Contacts", "Particles");
+#endif
+		
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -78,13 +100,50 @@ class SCR_ParticleContactComponent : ScriptComponent
 		// Play sound
 		PlaySound(owner, prefabData, contact);
 		
-		// Play VFX
-		if (prefabData.m_Particle != string.Empty)
+		//Play VFX
+		if (prefabData.m_bPlayParticle)
 		{
-			if (prefabData.m_bParticleOriented)	
-				SCR_ParticleEmitter.Create(prefabData.m_Particle, contact.Position, contact.Normal);
-			else
-				SCR_ParticleEmitter.Create(prefabData.m_Particle, contact.Position);
+			
+			//Play game material effect	
+			if (prefabData.m_iGameMaterialEffect == 1)
+			{
+				GameMaterial material = contact.Material2;
+				ParticleEffectInfo effectInfo = material.GetParticleEffectInfo();
+				
+				if (effectInfo)
+				{
+					prefabData.m_Particle = effectInfo.GetVehicleDustResource(prefabData.m_iEffectIndex);	
+				}
+			} 
+			else if (prefabData.m_iGameMaterialEffect == 2)
+			{
+				GameMaterial material = contact.Material2;
+				ParticleEffectInfo effectInfo = material.GetParticleEffectInfo();
+				
+				if (effectInfo)
+				{
+					prefabData.m_Particle = effectInfo.GetBlastResource(prefabData.m_iEffectIndex);	
+				}
+			}
+			
+			if (prefabData.m_Particle != string.Empty)
+			{
+				ParticleEffectEntitySpawnParams spawnParams();
+				spawnParams.UseFrameEvent = true;
+				
+				if (prefabData.m_bParticleOriented)	
+					Math3D.AnglesToMatrix(contact.Normal, spawnParams.Transform);
+
+				spawnParams.Transform[3] = contact.Position;
+				ParticleEffectEntity.SpawnParticleEffect(prefabData.m_Particle, spawnParams);
+				
+#ifdef ENABLE_DIAG
+					if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_PARTICLES_CONTACT_COMPONENT))
+						return;
+				
+					DebugTextWorldSpace.Create(GetOwner().GetWorld(), contact.Material2.GetName(), DebugTextFlags.CENTER, contact.Position[0], contact.Position[1], contact.Position[2]);
+#endif
+			}
 		}
 				
 		// Disable OnContact after the first contact

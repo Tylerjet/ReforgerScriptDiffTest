@@ -6,7 +6,7 @@ class BTRBodyDustTrail : VehicleBodyEffectBase
 {
 	void BTRBodyDustTrail(IEntitySource src, IEntity parent)
 	{
-		SetPathToPTC("{21AB2949F7DAD15A}Particles/Vehicle/Vehicle_dust_car_BTR_wheel_default.ptc");
+		SetEffectPath("{21AB2949F7DAD15A}Particles/Vehicle/Vehicle_dust_car_BTR_wheel_default.ptc");
 	}
 	
 	override void UpdateVehicleDustEffect(float speed, float start_speed, float end_speed)

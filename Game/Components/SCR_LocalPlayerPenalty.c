@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/GameMode", description: "Takes care of player penalties, kicks, bans etc.", color: "0 0 255 255")]
 class SCR_LocalPlayerPenaltyClass: Managed
 {
@@ -170,12 +171,20 @@ class SCR_LocalPlayerPenalty: Managed
 	//------------------------------------------------------------------------------------------------
 	protected void EvaluatePlayerPenalties()
 	{
+		#ifdef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
+		ChimeraWorld world = GetGame().GetWorld();
+		WorldTimestamp currentTime = world.GetServerTimestamp();
+		#endif
 		for (int i = 0, count = m_aPlayerPenaltyData.Count(); i < count; i++)
 		{
 			SCR_LocalPlayerPenaltyData playerPenaltyData = m_aPlayerPenaltyData[i];
 			
 			// Periodically forgive a portion of penalty score, don't go below zero
+			#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
 			if (playerPenaltyData.GetPenaltyScore() > 0 && playerPenaltyData.GetNextPenaltySubtractionTimestamp() < Replication.Time())
+			#else
+			if (playerPenaltyData.GetPenaltyScore() > 0 && playerPenaltyData.GetNextPenaltySubtractionTimestamp().Less(currentTime))
+			#endif
 			{
 				int forgivenScore;
 				
@@ -261,7 +270,11 @@ class SCR_LocalPlayerPenaltyData
 {
 	protected int m_iPlayerId;
 	protected int m_iPenaltyScore;
+	#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
 	protected float m_fNextPenaltySubtractionTimestamp;
+	#else
+	protected WorldTimestamp m_fNextPenaltySubtractionTimestamp;
+	#endif
 	protected SCR_PlayerManagerKickReason m_eKickReason = SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR;
 	
 	//------------------------------------------------------------------------------------------------
@@ -282,8 +295,15 @@ class SCR_LocalPlayerPenaltyData
 		m_iPenaltyScore += points;
 		
 		// Start the timer on penalty substraction when player was penalized while the timer was stopped
+		#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
 		if ((points > 0 && m_fNextPenaltySubtractionTimestamp < Replication.Time()) || (points < 0 && m_iPenaltyScore > 0))
 			m_fNextPenaltySubtractionTimestamp = Replication.Time() + SCR_LocalPlayerPenalty.GetInstance().GetPenaltySubtractionPeriod();
+		#else
+		ChimeraWorld world = GetGame().GetWorld();
+		WorldTimestamp currentTime = world.GetServerTimestamp();
+		if ((points > 0 && m_fNextPenaltySubtractionTimestamp.Less(currentTime)) || (points < 0 && m_iPenaltyScore > 0))
+			m_fNextPenaltySubtractionTimestamp = currentTime.PlusMilliseconds(SCR_LocalPlayerPenalty.GetInstance().GetPenaltySubtractionPeriod());
+		#endif
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -293,13 +313,21 @@ class SCR_LocalPlayerPenaltyData
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
 	void SetNextPenaltySubstractionTimestamp(float timestamp)
+	#else
+	void SetNextPenaltySubstractionTimestamp(WorldTimestamp timestamp)
+	#endif
 	{
 		m_fNextPenaltySubtractionTimestamp = timestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	#ifndef AR_LOCAL_PLAYER_PENALTY_TIMESTAMP
 	float GetNextPenaltySubtractionTimestamp()
+	#else
+	WorldTimestamp GetNextPenaltySubtractionTimestamp()
+	#endif
 	{
 		return m_fNextPenaltySubtractionTimestamp;
 	}

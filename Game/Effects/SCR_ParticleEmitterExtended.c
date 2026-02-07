@@ -7,6 +7,7 @@ class SCR_ParticleEmitterExtendedClass : SCR_ParticleEmitterClass
 void SCR_ParticleEmitterExtended_OnPlayStateChanged(SCR_ParticleEmitterExtended particleEmitter, EParticleEmitterState emitterState);
 typedef func SCR_ParticleEmitterExtended_OnPlayStateChanged;
 
+[Obsolete("Use ParticleEffectEntity instead")]
 class SCR_ParticleEmitterExtended : SCR_ParticleEmitter
 {
 	protected ref protected ref ScriptInvokerBase<SCR_ParticleEmitterExtended_OnPlayStateChanged> m_OnPlayStateChanged; //~ Sends over this SCR_ParticleEmitterExtended and EParticleEmitterState

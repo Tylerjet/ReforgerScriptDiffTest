@@ -3,6 +3,7 @@
 [BaseContainerProps()]
 class SCR_MapModuleBase : Managed
 {
+	protected Widget m_wRootWidget;	
 	protected SCR_MapEntity m_MapEntity;
 	
 	//------------------------------------------------------------------------------------------------
@@ -23,6 +24,8 @@ class SCR_MapModuleBase : Managed
 	{
 		if (active)
 		{
+			m_wRootWidget = m_MapEntity.GetMapConfig().RootWidgetRef; // Needs to be refreshed here
+			
 			m_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 			m_MapEntity.GetOnMapClose().Insert(OnMapClose);
 		}

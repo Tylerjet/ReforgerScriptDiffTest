@@ -42,7 +42,7 @@ class SCR_CampaignMapInfoDisplay : SCR_CampaignInfoDisplay
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMapOpen()
+	void OnMapOpen(MapConfiguration config)
 	{
 		if (m_Campaign.IsTutorial())
 			return;
@@ -61,7 +61,7 @@ class SCR_CampaignMapInfoDisplay : SCR_CampaignInfoDisplay
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnMapClose()
+	void OnMapClose(MapConfiguration config)
 	{
 		if (m_Campaign.IsTutorial())
 			return;

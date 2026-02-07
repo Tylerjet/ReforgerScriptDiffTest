@@ -15,7 +15,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	#ifdef ENABLE_DIAG
 	private static bool s_bDebugRegistered;
 	#endif
-
+	
 	//------------------------------------------------------------------------------------------------
 	void CharacterCameraADS(CameraHandlerComponent pCameraHandler)
 	{
@@ -61,13 +61,12 @@ class CharacterCameraADS extends CharacterCameraBase
 	{
 		if (m_LastWeaponComponent)
 		{
-			SCR_2DOpticsComponent optics = SCR_2DOpticsComponent.Cast(m_LastWeaponComponent.GetSights());
+			// Moved into BaseSightsComponent
+			// TODO@HF Find out how much overhead switching between C++/Script has
+			// Might want to check for ScriptedSightsComponent and use XXScript instead for performance
+			BaseSightsComponent optics = m_LastWeaponComponent.GetSights();
 			if (optics)
 				return optics.GetADSActivationPercentage();
-			// TODO: This could be handled way more generic in BaseSightsComponent. Refactor Idea
-			BaseCollimatorSightsComponent collim = BaseCollimatorSightsComponent.Cast(m_LastWeaponComponent.GetSights());
-			if (collim)
-				return  collim.GetADSActivationPercentage();
 		}
 
 		return 1.0;
@@ -78,13 +77,12 @@ class CharacterCameraADS extends CharacterCameraBase
 	{
 		if (m_LastWeaponComponent)
 		{
-			SCR_2DOpticsComponent optics = SCR_2DOpticsComponent.Cast(m_LastWeaponComponent.GetSights());
+			// Moved into BaseSightsComponent
+			// TODO@HF Find out how much overhead switching between C++/Script has
+			// Might want to check for ScriptedSightsComponent and use XXScript instead for performance
+			BaseSightsComponent optics = m_LastWeaponComponent.GetSights();
 			if (optics)
 				return optics.GetADSDeactivationPercentage();
-			// TODO: This could be handled way more generic in BaseSightsComponent. Refactor Idea
-			BaseCollimatorSightsComponent collim = BaseCollimatorSightsComponent.Cast(m_LastWeaponComponent.GetSights());
-			if (collim)
-				return  collim.GetADSDeactivationPercentage();
 		}
 
 		return 0.0;

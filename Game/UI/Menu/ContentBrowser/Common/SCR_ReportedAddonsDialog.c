@@ -2,22 +2,51 @@
 //! Show list of reported mods and provide option to cancel reports
 class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 {
+	/*
 	protected const ResourceName ADDON_LINE_INTERACTIVE_LAYOUT = "{0C4FAA01F4F56A90}UI/layouts/Menus/ContentBrowser/DownloadManager/DonwloadManager_AddonDownloadLineReport.layout";
+	protected const ResourceName AUTHOR_LINE = "{EF800FBBEA32B027}UI/layouts/Menus/Common/SimpleEntryInteractive.layout";
+	*/
 	
-	protected string WIDGET_DETAIL = "TxtDetailType";
-	protected string WIDGET_MESSAGE = "TxtDetailMessage";
+	protected const ResourceName LINE_LAYOUT = "{6D73127FB096229D}UI/layouts/Menus/ContentBrowser/DownloadManager/ReportedAddonEntry.layout";
+	
+	protected const ResourceName DIALOGS_CONFIG = "{ADEA32EB841E8629}Configs/ContentBrowser/ContentBrowserReportDialogs.conf";
+	protected const string AUTHOR_REPORT_TAG = "report_author";
+	protected const string AUTHOR_UNBLOCK_TAG = "unblock_author_simple";
+	
+	protected const string MSG_REPORTED = "#AR-Workshop_State_Reported";
+	protected const string MSG_BANNED = "#AR-Workshop_State_Banned";
+	protected const string MSG_AUTHOR = "#AR-Workshop_FilterCategory_Author";
+	protected const string STR_FIXED_REPORT = "#AR-Workshop_Dialog_Success";
+	
+	protected const string WIDGET_DETAIL = "TxtDetailType";
+	protected const string WIDGET_MESSAGE = "TxtDetailMessage";
 	
 	protected const string BUTTON_CANCEL_REPORT = "cancelReport";
 	
+	protected const int AUTHOR_MOD_LIMIT = 20;
+	
 	protected ref ScriptInvoker<SCR_ReportedAddonsDialog> Event_OnAllReportsCanceled;
+	protected bool m_bBlocked;
 	
 	// Widgets 
 	protected TextWidget m_wTxtType;
 	protected TextWidget m_wTxtMessage;
 	protected SCR_NavigationButtonComponent m_NavCancelReport;
+	protected Widget m_wList;
+	
+	protected SCR_LoadingOverlayDialog m_LoadingOvelay;
+	protected ref SCR_CancelMyReportDialog m_DialogCancelReport;
 	
 	//protected SCR_WorkshopItem m_ItemFocused;
-	protected SCR_DownloadManager_AddonDownloadLine m_LineFocused;
+	protected SCR_ModularButtonComponent m_LineFocused;
+	
+	//protected ref array<SCR_ModularButtonComponent> m_aButtons = new array<SCR_ModularButtonComponent>();
+	
+	protected ref map<SCR_ModularButtonComponent, SCR_WorkshopItem> m_mButtonsItems;
+	protected ref map<SCR_ModularButtonComponent, WorkshopAuthor> m_mButtonsAuthors;
+	
+	protected WorkshopAuthor m_LoadingAuthor;
+	protected ref SCR_BackendCallback m_ReportCallback = new SCR_BackendCallback();
 	
 	//------------------------------------------------------------------------------------------------
 	// Override API
@@ -26,67 +55,332 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
 	{
-		VerticalLayoutWidget layout = VerticalLayoutWidget.Cast(GetRootWidget().FindAnyWidget("AddonList"));
+		m_mButtonsItems = new map<SCR_ModularButtonComponent, SCR_WorkshopItem>();
+		m_mButtonsAuthors = new map<SCR_ModularButtonComponent, WorkshopAuthor>();
+		
+		m_wList = VerticalLayoutWidget.Cast(GetRootWidget().FindAnyWidget("AddonList"));
 		
 		// Find widgets 
 		m_wTxtType = TextWidget.Cast(GetRootWidget().FindAnyWidget(WIDGET_DETAIL));
 		m_wTxtMessage = TextWidget.Cast(GetRootWidget().FindAnyWidget(WIDGET_MESSAGE));
 		
-		// Create widgets
-		foreach (SCR_WorkshopItem item : m_aItems)
-		{
-			Widget w;
-			Print(ADDON_LINE_INTERACTIVE_LAYOUT);
-			
-			// Interactive line for reported
-			if (item.GetReportedByMe())
-				w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_INTERACTIVE_LAYOUT, layout);
-			else
-				w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_LAYOUT, layout);
-			
-			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
-			comp.InitForWorkshopItem(item, null, false);
-			
-			m_aDownloadLines.Insert(comp);
-			
-			// Find button comp
-			SCR_ModularButtonComponent button = SCR_ModularButtonComponent.Cast(w.FindHandler(SCR_ModularButtonComponent));
-			if (!button)
-				continue;
-			
-			// Invoker actions
-			button.m_OnFocus.Insert(OnAddonLineFocus);
-			button.m_OnDoubleClicked.Insert(OnReportedModDoubleClick);
-			
-			// Load reports
-			item.LoadReport();
-		}
+		SetupReports();
 		
-		// Cancel report action 
-		m_NavCancelReport = FindButton(BUTTON_CANCEL_REPORT);
-		if (m_NavCancelReport)
-			m_NavCancelReport.m_OnActivated.Insert(OnCancelReportActived);
-		
-		// Focus first 
-		if (m_aDownloadLines.IsEmpty())
-			return;
-		
-		Widget line = m_aDownloadLines[0].GetRootWidget();
-		if (line)
-			GetGame().GetWorkspace().SetFocusedWidget(line);
+		FocusTopLine();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void Close()
+	//! Check report state and setup entries data
+	//! Search for reported author
+	protected void SetupReports()
 	{
-		super.Close();
+		ref array<WorkshopAuthor> blockedAuthors = {};
 		
-		if (m_NavCancelReport)
-			m_NavCancelReport.m_OnActivated.Remove(OnCancelReportActived);
-	} 
+		foreach (SCR_WorkshopItem item : m_aItems)
+		{
+			// Are there blocked/banned addons by serice?
+			if (item.GetBlocked())
+			{
+				CreateAddonEntry(item);
+				m_bBlocked = true;
+				continue;
+			}
+			
+			// Author blocks 
+			if (item.GetModAuthorReportedByMe())
+			{
+				// Save reported author
+				WorkshopAuthor author = item.GetWorkshopItem().Author();
+				
+				if (!blockedAuthors.Contains(author))
+				{
+					// Add author entry
+					blockedAuthors.Insert(author);
+					CreateAuthorEntry(author);
+				}
+			}
+			
+			// Report by player 
+			if (item.GetReportedByMe())
+				CreateAddonEntry(item);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void OnConfirm()
+	{
+		OnCancelReportActived();
+		m_OnConfirm.Invoke(this);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// Protected API
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	//! Create entry with specific reported author
+	protected SCR_ModularButtonComponent CreateEntry(string name, string message)
+	{
+		Widget entry = GetGame().GetWorkspace().CreateWidgets(LINE_LAYOUT, m_wList);
+		
+		SCR_SimpleEntryComponent comp = SCR_SimpleEntryComponent.Cast(entry.FindHandler(SCR_SimpleEntryComponent));
+		comp.SetMessages(name, message);
+		
+		// Find button comp
+		SCR_ModularButtonComponent button = SCR_ModularButtonComponent.Cast(entry.FindHandler(SCR_ModularButtonComponent));
+		if (!button)
+			return null;
+		
+		// Callback
+		button.m_OnFocus.Insert(OnAddonLineFocus);
+
+		return button;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Addon report
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	//! Create addon entry with message based on type
+	protected void CreateAddonEntry(notnull SCR_WorkshopItem item)
+	{
+		// Msg
+		string msg = MSG_REPORTED;
+		
+		if (item.GetBlocked())
+			msg = MSG_BANNED;
+		
+		// Line
+		SCR_ModularButtonComponent button = CreateEntry(item.GetName(), msg);
+		m_mButtonsItems.Insert(button, item);
+		
+		// Callbacks
+		button.m_OnDoubleClicked.Insert(OnAddonEntrySelected);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAddonEntrySelected(SCR_ModularButtonComponent button)
+	{
+		SCR_WorkshopItem item;
+		m_mButtonsItems.Find(button, item);
+		
+		if (!item)
+			Print("Item wasn't found or set!");
+		
+		// Load
+		item.m_OnMyReportLoaded.Insert(OnAddonReportLoadSuccess);
+		item.m_OnError.Insert(OnAddonReportLoadError);
+		item.m_OnTimeout.Insert(OnAddonReportLoadError);
+		item.LoadReport();
+		
+		// Show load UI
+		m_LoadingOvelay = SCR_LoadingOverlayDialog.Create();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAddonReportLoadSuccess(SCR_WorkshopItem item)
+	{
+		// Cleanup
+		item.m_OnMyReportLoaded.Remove(OnAddonReportLoadSuccess);
+		item.m_OnError.Remove(OnAddonReportLoadError);
+		item.m_OnTimeout.Remove(OnAddonReportLoadError);
+		
+		m_LoadingOvelay.Close();
+		
+		// Setup dialog and callbacks
+		m_DialogCancelReport = new SCR_CancelMyReportDialog(item);
+			
+		if (m_DialogCancelReport)
+		{
+			m_DialogCancelReport.m_OnConfirm.Insert(OnCancelReportConfirm);
+			m_DialogCancelReport.m_OnClose.Insert(OnCancelReportDialog);
+			m_DialogCancelReport.m_OnClose.Insert(OnReportDialogClose);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAddonReportLoadError(SCR_WorkshopItem item)
+	{
+		// Cleanup
+		item.m_OnMyReportLoaded.Remove(OnAddonReportLoadSuccess);
+		item.m_OnError.Remove(OnAddonReportLoadError);
+		item.m_OnTimeout.Remove(OnAddonReportLoadError);
+		
+		m_LoadingOvelay.Close();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Author report
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	//! Create entry with reported author
+	protected void CreateAuthorEntry(notnull WorkshopAuthor author)
+	{
+		SCR_ModularButtonComponent button = CreateEntry(author.Name(), MSG_AUTHOR);
+		m_mButtonsAuthors.Insert(button, author);
+		
+		// Callbacks
+		button.m_OnDoubleClicked.Insert(OnAuthorEntrySelected);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAuthorEntrySelected(SCR_ModularButtonComponent button)
+	{		
+		m_mButtonsAuthors.Find(button, m_LoadingAuthor);
+			
+		if (!m_LoadingAuthor)
+			Print("Author wasn't found or set!");
+		
+		// Request author addons - TODO: restore when fix is ready
+		/*
+		PageParams params = new PageParams();
+		params.limit = AUTHOR_MOD_LIMIT;
+		params.offset = 0;
+		
+		m_ReportCallback.GetEventOnResponse().Insert(OnAuthorReportLoadResponse);
+		
+		m_LoadingAuthor.RequestPage(m_ReportCallback, params, false);
+		
+		// Show load UI
+		m_LoadingOvelay = SCR_LoadingOverlayDialog.Create();
+		*/
+		
+		// Show confirm list 
+		AuthorBlockCancelDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AuthorBlockCancelDialog()
+	{
+		SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, AUTHOR_UNBLOCK_TAG);
+		dialog.SetMessage(WidgetManager.Translate(dialog.GetMessageStr(), m_LoadingAuthor.Name()));
+		
+		dialog.m_OnConfirm.Insert(OnConfirmRemoveAuthorBlock);
+		dialog.m_OnCancel.Insert(OnCancelRemoveAuthorReport);
+		dialog.m_OnClose.Insert(OnReportDialogClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnAuthorReportLoadResponse(SCR_BackendCallback callback)
+	{
+		m_LoadingOvelay.Close();
+		callback.GetEventOnResponse().Remove(OnAuthorReportLoadResponse);
+		
+		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
+		{
+			OpenAuthorModsDialog(m_LoadingAuthor);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OpenAuthorModsDialog(WorkshopAuthor author)
+	{
+		// Get items
+		array<WorkshopItem> items = {};
+		author.GetPageItems(items);
+		
+		//Set items list 
+		array<ref SCR_WorkshopItem> scrItems;
+		SCR_AddonManager addonManager = SCR_AddonManager.GetInstance();
+		
+		foreach (WorkshopItem item : items)
+		{
+			SCR_WorkshopItem scrItem = addonManager.Register(item);
+			scrItems.Insert(scrItem);
+		}
+		
+		SCR_AddonListDialog dialog = SCR_AddonListDialog.CreateItemsList(scrItems, AUTHOR_REPORT_TAG, DIALOGS_CONFIG);
+		
+		// Set message 
+		dialog.GetMessageWidget().SetTextFormat(
+			"#AR-Workshop_CancelAuthorReport" + "\n\n" + "#AR-Workshop_AffectedMods", m_LoadingAuthor.Name());
+		
+		// Callbacks 
+		dialog.m_OnConfirm.Insert(OnConfirmRemoveAuthorBlock);
+		dialog.m_OnCancel.Insert(OnCancelRemoveAuthorReport);
+		dialog.m_OnClose.Insert(OnReportDialogClose);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnConfirmRemoveAuthorBlock(SCR_ConfigurableDialogUi dialog)
+	{
+		m_ReportCallback.GetEventOnResponse().Insert(OnRemoveAuthorBlockResponse);
+		
+		m_LoadingAuthor.RemoveBlock(m_ReportCallback);
+		
+		OnCancelRemoveAuthorReport(dialog);
+		m_LoadingOvelay = SCR_LoadingOverlayDialog.Create();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnRemoveAuthorBlockResponse(SCR_BackendCallback callback)
+	{
+		m_LoadingOvelay.Close();
+		callback.GetEventOnResponse().Remove(OnRemoveAuthorBlockResponse);
+		
+		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
+		{
+			SCR_ModularButtonComponent button = m_mButtonsAuthors.GetKeyByValue(m_LoadingAuthor);
+			DisplayReportCancelSuccess(button);
+			
+			// Remove item 
+			m_mButtonsAuthors.Remove(button);
+			
+			AllButtonsCanceled();
+		}
+		else
+		{
+			SCR_CommonDialogs.CreateRequestErrorDialog();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this on closing any report dialog to set repot list focus 
+	protected void OnReportDialogClose(SCR_ConfigurableDialogUi dialog)
+	{
+		dialog.m_OnClose.Remove(OnReportDialogClose);
+		GetGame().GetCallqueue().CallLater(FocusTopLine);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DisplayReportCancelSuccess(notnull SCR_ModularButtonComponent button)
+	{
+		// Show success in ui
+		SCR_SimpleEntryComponent entry = SCR_SimpleEntryComponent.Cast(button.GetRootWidget().FindHandler(SCR_SimpleEntryComponent));
+		
+		if (entry)
+		{
+			entry.GetMessage().SetColor(UIColors.CONFIRM);
+			entry.SetMessages(entry.GetLeftText(), STR_FIXED_REPORT);
+		}
+		
+		// Clearup button
+		button.m_OnFocus.Remove(OnAddonLineFocus);
+		button.m_OnDoubleClicked.Remove(OnAddonEntrySelected);
+		button.GetRootWidget().SetFlags(WidgetFlags.NOFOCUS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AllButtonsCanceled()
+	{
+		if (m_mButtonsItems.IsEmpty() && m_mButtonsAuthors.IsEmpty())
+		{
+			Close();
+			InvokeOnAllReportsCanceled();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancelRemoveAuthorReport(SCR_ConfigurableDialogUi dialog)
+	{
+		dialog.m_OnConfirm.Remove(OnConfirmRemoveAuthorBlock);
+		dialog.m_OnCancel.Remove(OnCancelRemoveAuthorReport);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Callbacks
 	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
@@ -94,7 +388,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	protected void OnAddonLineFocus(SCR_ModularButtonComponent button)
 	{
 		Widget w = button.GetRootWidget();
-		SCR_DownloadManager_AddonDownloadLine line = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
+		SCR_ModularButtonComponent line = SCR_ModularButtonComponent.Cast(w.FindHandler(SCR_ModularButtonComponent));
 		
 		if (line)
 			m_LineFocused = line;
@@ -102,60 +396,23 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	
 	//------------------------------------------------------------------------------------------------
 	//! Start to canceling report of currently focused mod
-	protected void OnCancelReportActived(SCR_NavigationButtonComponent button, string action)
+	protected void OnCancelReportActived()
 	{
-		if (m_LineFocused)
+		if (!m_LineFocused)
+			return;
+		
+		if (m_mButtonsAuthors.Contains(m_LineFocused))
 		{
-			LineCancelReport(m_LineFocused);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void OnReportedModDoubleClick(SCR_ModularButtonComponent button)
-	{
-		if (!button)
+			OnAuthorEntrySelected(m_LineFocused);
 			return;
-		
-		Widget w = button.GetRootWidget();
-		if (!w)
-			return;
-		
-		SCR_DownloadManager_AddonDownloadLine line = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
-		if (!line)
-			return;
-		
-		LineCancelReport(line);
-	}
-	
-	protected ref SCR_CancelMyReportDialog m_DialogCancelReport;
-	
-	//------------------------------------------------------------------------------------------------
-	//! Open report of given mod entry 
-	protected SCR_CancelMyReportDialog LineCancelReport(SCR_DownloadManager_AddonDownloadLine line)
-	{
-		m_DialogCancelReport = new SCR_CancelMyReportDialog(line.GetItem());
-		
-		// Invoker actions
-		if (m_DialogCancelReport)
-		{
-			/*cancelReport.GetOnSucces().Insert(OnCancelReportSuccess);
-			cancelReport.GetOnFail().Insert(OnCancelReportFail);*/
-			
-			/*cancelReport.GetWorkshopItemAction().m_OnCompleted.Insert(OnCancelReportSuccess);
-			cancelReport.GetWorkshopItemAction().m_OnFailed.Insert(OnCancelReportFail);*/
-			
-			m_DialogCancelReport.m_OnConfirm.Insert(OnCancelReportConfirm);
-			m_DialogCancelReport.m_OnClose.Insert(OnCancelReportDialog);
 		}
 		
-		return m_DialogCancelReport;
+		OnAddonEntrySelected(m_LineFocused);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancelReportConfirm(SCR_ConfigurableDialogUi dialog)
 	{
-		//SCR_CancelMyReportDialog cancelReport = SCR_CancelMyReportDialog.Cast(dialog);
-		
 		m_DialogCancelReport.GetWorkshopItemAction().m_OnCompleted.Insert(OnCancelReportSuccess);
 		m_DialogCancelReport.GetWorkshopItemAction().m_OnFailed.Insert(OnCancelReportFail);
 		
@@ -165,33 +422,14 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancelReportSuccess(SCR_WorkshopItemActionCancelReport action)
-	{		
-		// Remove item 
-		m_aItems.RemoveItem(action.m_Wrapper);
+	{	
+		SCR_ModularButtonComponent button = m_mButtonsItems.GetKeyByValue(action.GetWorkshopItem());
+		DisplayReportCancelSuccess(button);
 		
-		if (m_aItems.IsEmpty())
-		{
-			Close();
-			InvokeOnAllReportsCanceled();
-		}
-		else
-		{
-			// Mark successful report cancel 
-			if (m_LineFocused)
-			{
-				// TODO: add "report canceled" string
-				m_LineFocused.DisplayError("#AR-Workshop_Dialog_Success", true);
-				
-				// Clear interactions
-				m_LineFocused.GetRootWidget().SetFlags(WidgetFlags.NOFOCUS);
-				SCR_ModularButtonComponent button = SCR_ModularButtonComponent.Cast(m_LineFocused.GetRootWidget().FindHandler(SCR_ModularButtonComponent));
-				if (button)
-				{
-					button.m_OnFocus.Remove(OnAddonLineFocus);
-					button.m_OnDoubleClicked.Remove(OnReportedModDoubleClick);
-				}
-			}	
-		}
+		// Remove item 
+		m_mButtonsItems.Remove(button);
+		
+		AllButtonsCanceled();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -200,23 +438,11 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 		// Remove invoker actions 
 		action.m_OnCompleted.Remove(OnCancelReportSuccess);
 		action.m_OnFailed.Remove(OnCancelReportFail);
-		
-		// Open dialog again with warning
-		SCR_CancelMyReportDialog nextDialog = LineCancelReport(m_LineFocused);
-		
-		nextDialog.SetMessage("#AR-Workshop_ErrorUnknown");
-		if (nextDialog.GetMessageWidget())
-			nextDialog.GetMessageWidget().SetColor(UIColors.WARNING);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancelReportDialog(SCR_ConfigurableDialogUi dialog)
 	{
-		//SCR_CancelMyReportDialog cancelReport = SCR_CancelMyReportDialog.Cast(dialog);
-		
-		// Focus first 
-		GetGame().GetCallqueue().CallLater(FocusTopLine, 1);
-		
 		// Clear invokers 
 		m_DialogCancelReport.m_OnConfirm.Remove(OnCancelReportConfirm);
 		m_DialogCancelReport.m_OnCancel.Remove(OnCancelReportDialog);
@@ -225,14 +451,24 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 	//------------------------------------------------------------------------------------------------
 	protected void FocusTopLine()
 	{
-		// Find first focusable 
-		for (int i = 0, count = m_aDownloadLines.Count(); i < count; i++)
+		// Addons
+		foreach (SCR_ModularButtonComponent button, SCR_WorkshopItem item : m_mButtonsItems)
 		{
-			if (m_aDownloadLines[i].GetRootWidget().IsFocusable())
+			if (button.GetRootWidget().IsFocusable())
 			{
-				GetGame().GetWorkspace().SetFocusedWidget(m_aDownloadLines[i].GetRootWidget());
-				break;
-			}
+				GetGame().GetWorkspace().SetFocusedWidget(button.GetRootWidget());
+				return;
+			}	
+		}
+		
+		// Authors
+		foreach (SCR_ModularButtonComponent button, WorkshopAuthor author : m_mButtonsAuthors)
+		{
+			if (button.GetRootWidget().IsFocusable())
+			{
+				GetGame().GetWorkspace().SetFocusedWidget(button.GetRootWidget());
+				return;
+			}	
 		}
 	}
 	

@@ -1,8 +1,8 @@
-class VehicleBodyEffectBaseClass: SCR_ParticleEmitterClass
+class VehicleBodyEffectBaseClass: ParticleEffectEntityClass
 {
 };
 
-class VehicleBodyEffectBase : SCR_ParticleEmitter
+class VehicleBodyEffectBase : ParticleEffectEntity
 {
 	ScriptComponent m_ComponentOwner;
 	

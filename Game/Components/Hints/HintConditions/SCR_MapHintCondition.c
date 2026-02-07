@@ -6,8 +6,8 @@ class SCR_MapHintCondition: SCR_BaseEditorHintCondition
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (mapEntity)
 		{
-			mapEntity.GetOnMapOpen().Insert(Activate);
-			mapEntity.GetOnMapClose().Insert(Deactivate);
+			mapEntity.GetOnMapOpen().Insert(OnMapOpen);
+			mapEntity.GetOnMapClose().Insert(OnMapClosed);
 		}
 	}
 	override protected void OnExitCondition(Managed owner)
@@ -15,8 +15,20 @@ class SCR_MapHintCondition: SCR_BaseEditorHintCondition
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (mapEntity)
 		{
-			mapEntity.GetOnMapOpen().Remove(Activate);
-			mapEntity.GetOnMapClose().Remove(Deactivate);
+			mapEntity.GetOnMapOpen().Remove(OnMapOpen);
+			mapEntity.GetOnMapClose().Remove(OnMapClosed);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapOpen(MapConfiguration config)
+	{
+		Activate();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapClosed(MapConfiguration config)
+	{
+		Deactivate();
 	}
 };

@@ -358,9 +358,8 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		{	
 			m_aNameTags.Insert(tag);
 			m_aNameTagEntities.Insert(entity, tag);
+			m_aUninitializedTags.Remove(0);
 		}
-		
-		m_aUninitializedTags.Remove(0);
 	}
 	//------------------------------------------------------------------------------------------------
 	//! Create widget for nametag
@@ -407,6 +406,8 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 			m_aUninitializedVehTags.Insert(SCR_VehicleTagData.Cast(data));
 		else 
 			m_aUninitializedTags.Insert(data);
+		
+		data.ResetTag();
 		
 		m_aNameTagEntities.Remove(data.m_Entity);
 		

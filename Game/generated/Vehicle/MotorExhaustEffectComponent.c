@@ -42,11 +42,6 @@ class MotorExhaustEffectComponent: BaseEffectComponent
 	\param owner Entity this component is attached to.
 	*/
 	event void OnInit(IEntity owner);
-	/*!
-	Called during EOnFrame.
-	\param owner Entity this component is attached to.
-	\param timeSlice Delta time since last update.
-	*/
 	event void OnFrame(IEntity owner, float timeSlice);
 }
 

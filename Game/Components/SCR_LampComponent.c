@@ -19,18 +19,20 @@ class SCR_LampComponentClass : SCR_BaseInteractiveLightComponentClass
 
 class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 {
-	
-	private SCR_ParticleEmitter m_pFireParticle;
+	private ParticleEffectEntity m_pFireParticle;
 	protected SCR_BaseInteractiveLightComponentClass m_ComponentData;
 		
 	//------------------------------------------------------------------------------------------------
 	override void ToggleLight(bool turnOn, bool skipTransition = false, bool playSound = true)
 	{	
+		if (m_bIsOn == turnOn)
+			return;
+		
 		super.ToggleLight(turnOn, skipTransition, playSound);
 		
-		// don't continue if DS server is running in console (particles, EOnFrame, decals)
+		// don't continue if DS server is running in console (particles, decals)
 		if (System.IsConsoleApp())
-			return;		
+			return;
 		
 		if (turnOn)
 		{			
@@ -45,23 +47,31 @@ class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 	//------------------------------------------------------------------------------------------------
 	void TurnOn()
 	{
-		if (m_pFireParticle)
-			m_pFireParticle.UnPause();
-		else
+		SCR_LampComponentClass componentData = SCR_LampComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!m_pFireParticle && componentData) 
 		{
-			SCR_LampComponentClass componentData = SCR_LampComponentClass.Cast(GetComponentData(GetOwner()));
-			if (componentData) 
-			{
-				m_pFireParticle = SCR_ParticleEmitter.CreateAsChild(componentData.GetParticle(), GetOwner(), componentData.GetParticleOffset());
-			}
+			ParticleEffectEntitySpawnParams spawnParams = new ParticleEffectEntitySpawnParams();
+			spawnParams.TargetWorld = GetOwner().GetWorld();
+			spawnParams.Parent = GetOwner();
+			Math3D.MatrixIdentity4(spawnParams.Transform);
+			spawnParams.Transform[3] = componentData.GetParticleOffset();
+			
+			m_pFireParticle = ParticleEffectEntity.SpawnParticleEffect(componentData.GetParticle(), spawnParams);
+		}
+		else if (m_pFireParticle)
+		{
+			m_pFireParticle.Play();
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void TurnOff()
 	{
+		//Reset fire particles
 		if (m_pFireParticle)
-			m_pFireParticle.Pause();
+		{
+			m_pFireParticle.Stop();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -76,8 +86,10 @@ class SCR_LampComponent : SCR_BaseInteractiveLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_LampComponent()
+	override void OnDelete(IEntity owner)
 	{
+		super.OnDelete(owner);
+		
 		RemoveLights();
 	}
 };

@@ -381,6 +381,12 @@ class DownloadableItem extends BaseWorkshopItem
 	\brief Returns currently used revision or null if no revision is downloaded
 	*/
 	proto native Revision GetActiveRevision();
+	
+	/**
+	\brief Returns currently downloading revision
+	*/
+	proto native Revision GetDownloadingRevision();
+	
 	/**
 	\brief Cancel upload or download
 	*/

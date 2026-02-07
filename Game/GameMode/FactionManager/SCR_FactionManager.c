@@ -3,6 +3,10 @@ class SCR_FactionManagerClass: FactionManagerClass
 {
 };
 
+//~ Event when player faction changed
+void SCR_FactionManager_PlayerFactionChanged(int playerId, SCR_PlayerFactionAffiliationComponent playerFactionAffiliationComponent, Faction faction);
+typedef func SCR_FactionManager_PlayerFactionChanged;
+
 //------------------------------------------------------------------------------------------------
 class SCR_FactionManager : FactionManager
 {
@@ -37,11 +41,24 @@ class SCR_FactionManager : FactionManager
 	*/
 	protected ref map<int, int> m_PlayerCount = new map<int, int>();
 	
+	//~ Script invokers
 	protected ref ScriptInvoker s_OnPlayerFactionCountChanged = new ref ScriptInvoker();
+	//~ Server only \/
+	protected ref ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged> m_OnPlayerFactionChanged_S;
 	
 	ScriptInvoker GetOnPlayerFactionCountChanged()
 	{
 		return s_OnPlayerFactionCountChanged;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! return Script invoker on player faction changed (Server only)
+	ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged> GetOnPlayerFactionChanged_S()
+	{
+		if (!m_OnPlayerFactionChanged_S)
+			m_OnPlayerFactionChanged_S = new ScriptInvokerBase<SCR_FactionManager_PlayerFactionChanged>();
+		
+		return m_OnPlayerFactionChanged_S;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -113,6 +130,9 @@ class SCR_FactionManager : FactionManager
 	*/
 	protected void OnPlayerFactionSet_S(SCR_PlayerFactionAffiliationComponent playerComponent, Faction faction)
 	{
+		if (m_OnPlayerFactionChanged_S)
+			m_OnPlayerFactionChanged_S.Invoke(playerComponent.GetPlayerId(), playerComponent, faction);
+		
 		#ifdef _ENABLE_RESPAWN_LOGS
 		PrintFormat("%1::OnPlayerFactionSet_S(playerId: %2, faction: %3)", Type().ToString(), playerComponent.GetPlayerId(), faction);
 		#endif

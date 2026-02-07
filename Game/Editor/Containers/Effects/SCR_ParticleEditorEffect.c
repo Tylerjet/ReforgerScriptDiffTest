@@ -26,7 +26,12 @@ class SCR_ParticleEditorEffect: SCR_BaseEditorEffect
 				if (!entities || entities.Count() == 0) return false;
 				vector pos;
 				if (entities[0].GetPos(pos))
-					SCR_ParticleEmitter.Create(m_Particle, pos);
+				{
+					ParticleEffectEntitySpawnParams spawnParams();
+					spawnParams.Transform[3] = pos;
+					spawnParams.UseFrameEvent = true;
+					ParticleEffectEntity.SpawnParticleEffect(m_Particle, spawnParams);
+				}
 				break;
 			}
 			case EEditorEffectTarget.ALL_ENTITIES:
@@ -36,7 +41,12 @@ class SCR_ParticleEditorEffect: SCR_BaseEditorEffect
 				foreach (SCR_EditableEntityComponent entity: entities)
 				{
 					if (entity.GetPos(pos))
-						SCR_ParticleEmitter.Create(m_Particle, pos);
+					{
+						ParticleEffectEntitySpawnParams spawnParams();
+						spawnParams.Transform[3] = pos;
+						spawnParams.UseFrameEvent = true;
+						ParticleEffectEntity.SpawnParticleEffect(m_Particle, spawnParams);
+					}
 				}
 				break;
 			}

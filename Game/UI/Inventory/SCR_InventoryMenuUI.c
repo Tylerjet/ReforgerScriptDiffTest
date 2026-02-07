@@ -1439,7 +1439,9 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 		m_pItemInfo.SetWeight( sWeight );
 		if (uiInfo && uiInfo.IsIconVisible())
 			m_pItemInfo.SetIcon(uiInfo.GetIconPath(), uiInfo.GetIconColor());
-
+		else
+			m_pItemInfo.ShowIcon(false);
+		
 		int iMouseX, iMouseY;
 
 		float x, y;

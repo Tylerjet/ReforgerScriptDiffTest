@@ -1,52 +1,29 @@
 // Mods callback
 //------------------------------------------------------------------------------------------------
-class RoomModsCallback : SCR_OnlineServiceBackendCallbacks
+class SCR_BackendCallbackRoomMods : SCR_BackendCallback
 {
-	SCR_RoomModsManager m_ui;
-	ref ScriptInvoker m_OnFullList = new ref ScriptInvoker;
-
-	override void OnSuccess(int code)
+	protected Room m_Room;
+	
+	//-----------------------------------------------------------------------------------------------
+	Room GetRoom()
 	{
-		super.OnSuccess(code);
-
-		// Invoke full list on getting all server mods 
-		if (code == EBackendRequest.EBREQ_WORKSHOP_GetDownloadList)
-			m_OnFullList.Invoke();
+		return m_Room;
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override void OnError(int code, int restCode, int apiCode)
+	//-----------------------------------------------------------------------------------------------
+	void SCR_BackendCallbackRoomMods(Room room)
 	{
-		#ifdef SB_DEBUG
-		Print("ServerAddonsCallback - Error");
-		#endif
-		
-		if (m_ui)
-			m_ui.OnLoadingModsFail();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnTimeout()
-	{
-		#ifdef SB_DEBUG
-		Print("ServerAddonsCallback - TimeOut");
-		#endif
-		
-		if (m_ui)
-			m_ui.OnLoadingModsFail();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RoomModsCallback(SCR_RoomModsManager ui)
-	{
-		m_ui = ui;
-		
-		#ifdef SB_DEBUG
-		Print("Replacing RoomModsManager with another one!");
-		#endif
+		m_Room = room;
 	}
 };
-// Mods callback
+
+//-----------------------------------------------------------------------------------------------
+void ScriptInvoker_RoomMods(Room room);
+typedef func ScriptInvoker_RoomMods;
+
+//-----------------------------------------------------------------------------------------------
+void ScriptInvoker_RoomModsDependencies(Room room, array<ref SCR_WorkshopItem> dependencies);
+typedef func ScriptInvoker_RoomModsDependencies;
 
 //------------------------------------------------------------------------------------------------
 //! This class will take care of handling all room mods & dependencies
@@ -54,147 +31,86 @@ class RoomModsCallback : SCR_OnlineServiceBackendCallbacks
 class SCR_RoomModsManager
 {
 	protected Room m_Room;
-	protected WorkshopApi m_WorkshopApi;
 	protected Dependency m_ScenarioDependency;
 	
 	// Rooms for caching 
 	protected Room m_RoomLoaded;
+	protected ref SCR_DownloadSequence m_DownloadSequence;
 	
 	protected int m_iLoadedModItems = 0;
 	protected bool m_bModsLoaded = false;
 	protected bool m_bModsMatching = false;
+	protected bool m_bBlockedMods;
+	protected bool m_bFailedModsLoading;
+	protected ref array<ref SCR_WorkshopItem> m_aCollidingDependencies = {};
 	
 	// Arrays 
-	protected ref array<ref Dependency> m_aRoomDependencies = {};
-	
 	protected ref array<ref SCR_WorkshopItem> m_aRoomItemsScripted = {};
 	
 	protected ref array<ref SCR_WorkshopItem> m_aItemsUpdated = {};
 	protected ref array<ref SCR_WorkshopItem> m_aItemsToUpdate = {};
-	protected ref array<ref SCR_WorkshopItemActionDownload> m_aDownloads = {};
-	
-	// Invokers 
-	ref ScriptInvoker m_OnGettingAllDependecies = new ref ScriptInvoker;
-	ref ScriptInvoker m_OnModsFail = new ref ScriptInvoker;
-	
-	ref ScriptInvoker m_OnGettingScenario = new ref ScriptInvoker;
-	
-	ref ScriptInvoker m_OnModDownload = new ref ScriptInvoker;
 	
 	// Callbacks 
-	protected ref RoomModsCallback m_ModsCallback = new RoomModsCallback(this);
-	protected ref WorkshopCallback m_WorkshopCallback = new WorkshopCallback();
+	protected ref SCR_BackendCallbackRoomMods m_ModsCallback;
 	protected ref SCR_OnlineServiceBackendCallbacks m_ScenarioCallback = new SCR_OnlineServiceBackendCallbacks();
 	
-	protected ref array<ModDownloadCallback> m_aDownloadCallbacks = {};
 	protected ref array<ref SCR_OnlineServiceBackendCallbacks> m_aModsCallbacks = {};
 	
-	protected int m_iLoadedModItemsCount = 0;
 	protected float m_fModsSize = 0;
 	
-	// String lenght constants 
-	const int STRING_LENGHT_MOD_SIZE = -1;
-	const int STRING_DEC_LENGHT_MOD_SIZE = 1;
+	//------------------------------------------------------------------------------------------------
+	// Invokers
+	//------------------------------------------------------------------------------------------------
+	
+	protected ref ScriptInvoker m_OnGetAllDependencies = new ScriptInvoker();
+	
+	protected ref ScriptInvoker m_OnGetScenario = new ScriptInvoker();
+	
+	protected ref ScriptInvokerBase<ScriptInvoker_RoomMods> m_OnModsFail;
+	protected ref ScriptInvokerBase<ScriptInvoker_RoomModsDependencies> m_OnDependenciesLoadingPrevented;
 	
 	//------------------------------------------------------------------------------------------------
-	protected void InitialSetup()
+	ScriptInvoker GetOnGetAllDependencies()
 	{
-		m_WorkshopApi = GetGame().GetBackendApi().GetWorkshop(); 
-		
-		// array cleanups
-		ClearModArrays();
-
+		return m_OnGetAllDependencies;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void ClearModArrays()
+	ScriptInvoker GetOnGetScenario()
 	{
-		m_aRoomDependencies.Clear();
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Return only all updated dependecies from dependencies param
-	//! Save all up to date to give out reference array 
-	//! Save all up missing or outdate to out reference array 
-	protected void UpdatedDependencies(array<ref SCR_WorkshopItem> items)
-	{	
-		m_aItemsUpdated.Clear();
-		m_aItemsToUpdate.Clear();
-		
-		m_aItemsUpdated = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.LOCAL_VERSION_MATCH_DEPENDENCY);
-		m_aItemsToUpdate = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
-	} 
-	
-	//------------------------------------------------------------------------------------------------
-	protected void AllItemsLoaded()
-	{
-		if (!m_Room)
-			return;
-		
-		array<Dependency> deps = new array<Dependency>;
-		m_Room.AllItems(deps);
-		m_aRoomItemsScripted.Clear();
-		
-		foreach (Dependency dep : deps)
-		{
-			// Register dependency 
-			SCR_WorkshopItem item = SCR_AddonManager.GetInstance().Register(dep);
-			
-			// Save workshop item
-			WorkshopItem cachedItem = dep.GetCachedItem();
-			
-			if (cachedItem)
-				m_aRoomItemsScripted.Insert(item);
-		}
-		
-		UpdatedDependencies(m_aRoomItemsScripted);
-
-		// Pass list of updated & outdated mods
-		if (m_OnGettingAllDependecies)
-		{
-			m_OnGettingAllDependecies.Invoke();
-			
-			m_bModsLoaded = true;
-			m_bModsMatching = (m_aItemsToUpdate.IsEmpty());
-			
-			// Store room with loaded data 
-			m_RoomLoaded = m_Room;
-		}
+		return m_OnGetScenario;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Call this on mod image data loaded 
-	protected void OnImageDownload()
+	ScriptInvokerBase<ScriptInvoker_RoomMods> GetOnModsFail()
 	{
-		// Is still downloading check 
-		foreach (Dependency dep : m_aRoomDependencies)
-		{
-			// Check item 
-			WorkshopItem item = dep.GetCachedItem();
-			if (!item)
-				return;
-
-			// Don't remove callback until image is loaded 
-			int stateFlags = item.GetStateFlags();
-			
-			//TODO replace obsolete code
-			//if (stateFlags & EWorkshopItemState.EWSTATE_DOWNLOADING_IMAGE)
-			//	return;
-		}
+		if (!m_OnModsFail)
+			m_OnModsFail = new ScriptInvokerBase<ScriptInvoker_RoomMods>();
 		
-		// Remove callback action 
-		m_ModsCallback.m_OnImage.Remove(OnImageDownload);
+		return m_OnModsFail;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvokerBase<ScriptInvoker_RoomModsDependencies> GetOnDependenciesLoadingPrevented()
+	{
+		if (!m_OnDependenciesLoadingPrevented)
+			m_OnDependenciesLoadingPrevented = new ScriptInvokerBase<ScriptInvoker_RoomModsDependencies>();
+		
+		return m_OnDependenciesLoadingPrevented;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Public
+	//------------------------------------------------------------------------------------------------
 	
 	//------------------------------------------------------------------------------------------------
 	void DefaultSetup()
 	{
 		// Default for loading mods
-		m_ModsCallback.m_OnItem.Clear();
-		m_iLoadedModItemsCount = 0;
-		
+
 		m_bModsLoaded = false;
 		m_bModsMatching = false;
+		m_bBlockedMods = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -202,18 +118,14 @@ class SCR_RoomModsManager
 	//! Checkign dependencies and loading workshop items of mods 
 	void ReceiveRoomContentData(Room room)
 	{
-		m_Room = room;
-		if (!m_Room)
+		if (!room)
 			return;
 		
-		// Setup
-		WorkshopApi workshopApi = GetGame().GetBackendApi().GetWorkshop();
-		workshopApi.SetCallback(m_WorkshopCallback);
+		if (room != m_Room)
+			m_Room = room;
 		
-		ReceiveRoomMods(room);
-		
-		// Get room scenario 
-		ReceiveRoomScenario(room);
+		// Get mods and scenario
+		ReceiveRoomMods(room); 
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -225,41 +137,17 @@ class SCR_RoomModsManager
 		if (room != m_Room)
 			m_Room = room;
 		
-		// Skip if room mods data is loaded 
-		if (room == m_RoomLoaded || AllModsLoaded(room))
-		{
-			AddonsFullList();
-			UpdatedDependencies(m_aRoomItemsScripted);
-			
-			m_bModsLoaded = true;
-			m_OnGettingAllDependecies.Invoke();
-			return;
-		}
+		array<Dependency> deps = {};  
+		m_Room.GetItems(deps);
 		
-		// Clear arrays 
-		ClearModArrays();
+		m_bBlockedMods = false;
+		m_bFailedModsLoading = false;
+		m_aCollidingDependencies.Clear();
 		
 		// Load full list 
-		m_ModsCallback.m_OnFullList.Insert(AddonsFullList);
+		m_ModsCallback = new SCR_BackendCallbackRoomMods(room);
+		m_ModsCallback.GetEventOnResponse().Insert(OnRoomCallbackResponse);
 		m_Room.LoadDownloadList(m_ModsCallback);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected bool AllModsLoaded(notnull Room room)
-	{
-		array<Dependency> items = {};
-		room.AllItems(items);
-		
-		if (items.IsEmpty())
-			return false;
-		
-		for (int i = 0, count = items.Count(); i < count; i++)
-		{
-			if (!items[i].GetCachedItem())
-				return false;
-		}
-		
-		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -282,57 +170,111 @@ class SCR_RoomModsManager
 			{
 				// Load uncached online scenario 
 				m_ScenarioCallback.m_OnItem.Clear();
-				m_ScenarioCallback.m_OnItem.Insert(ScenarioModLoaded);
+				m_ScenarioCallback.m_OnItem.Insert(OnScenarioModLoaded);
 				m_ScenarioDependency.LoadItem(m_ScenarioCallback);
 				return;
 			}
 
 			// Pass cached online scenario
-			m_OnGettingScenario.Invoke(m_ScenarioDependency);
+			OnScenarioModLoaded();
 			return;
 		}
 	
 		// Pass local scenario - MissionWorkshopItem
 		MissionWorkshopItem scenarioItem = room.HostScenario();
-		m_OnGettingScenario.Invoke(m_ScenarioDependency);
+		OnScenarioModLoaded();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Call this when mod containing scenario is loaded  
-	protected void ScenarioModLoaded()
+	void SetDownloadActions(notnull array<ref SCR_WorkshopItemActionDownload> downloads) 
+	{ 
+		foreach (SCR_WorkshopItem item : m_aItemsToUpdate)
+		{
+			downloads.Insert(item.GetDownloadAction());
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Invoke mods loading error 
+	protected void OnLoadingModsFail(Room room)
 	{
-		// Remove callback action
-		m_ScenarioCallback.m_OnItem.Remove(ScenarioModLoaded);
-		
-		WorkshopItem itemScenario;
-		
-		// Load if scenario is missing 
-		if (!m_ScenarioDependency)
-		{
-			LoadScenario();
+		// Don't notify fail if failed is not for current
+		if (room != m_Room)
 			return;
+		
+		m_bFailedModsLoading = true;
+		
+		if (m_OnModsFail)
+			m_OnModsFail.Invoke(m_Room);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetFailedModsLoading()
+	{
+		return m_bFailedModsLoading;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Protected
+	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	//! Return only all updated dependecies from dependencies param
+	//! Save all up to date to give out reference array 
+	//! Save all up missing or outdate to out reference array 
+	protected void UpdatedDependencies(notnull array<ref SCR_WorkshopItem> items)
+	{	
+		m_aItemsUpdated.Clear();
+		m_aItemsToUpdate.Clear();
+		
+		m_aItemsUpdated = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.LOCAL_VERSION_MATCH_DEPENDENCY);
+		m_aItemsToUpdate = SCR_AddonManager.SelectItemsBasic(items, EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
+	} 
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AllItemsLoaded()
+	{
+		if (!m_Room)
+			return;
+		
+		UpdatedDependencies(m_aRoomItemsScripted);
+
+		// Pass list of updated & outdated mods
+		if (m_OnGetAllDependencies)
+		{
+			m_OnGetAllDependencies.Invoke();
+			
+			m_bModsLoaded = true;
+			m_bModsMatching = (m_aItemsToUpdate.IsEmpty());
+			
+			// Store room with loaded data 
+			m_RoomLoaded = m_Room;
 		}
 		
-		// Check if scerio item was loaded 
-		if (m_ScenarioDependency.GetCachedItem())
-		{
-			itemScenario = m_ScenarioDependency.GetCachedItem();
-		}
-		else
-			LoadScenario();
+		ReceiveRoomScenario(m_Room);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool AreAllModsLoaded(notnull Room room)
+	{
+		array<Dependency> items = {};
+		room.AllItems(items);
 		
-		if (itemScenario)
+		if (items.IsEmpty())
+			return false;
+		
+		foreach (Dependency item : items)
 		{
-			// Load scenario details  
-			m_ScenarioCallback.m_OnItem.Clear();
-			m_ScenarioCallback.m_OnItem.Insert(LoadScenario);
-			itemScenario.AskDetail(m_ScenarioCallback);
+			if (!item.GetCachedItem())
+				return false;
 		}
+		
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when sceario is loaded 
-	void LoadScenario()
+	protected void LoadScenario()
 	{
 		m_ScenarioCallback.m_OnItem.Clear();
 		
@@ -365,134 +307,249 @@ class SCR_RoomModsManager
 			OnScenarioDetails();
 		}
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Show restricted addons and return true if there are restricted addons in room content
+	SCR_ReportedAddonsDialog DisplayRestrictedAddonsList()
+	{
+		/*
+		if (m_DownloadSequence && m_DownloadSequence.GetRestrictedAddons())
+			return m_DownloadSequence.ShowRestrictedDependenciesDialog();
+		*/
+		
+		array<ref SCR_WorkshopItem> restrictedDependencies = SCR_AddonManager.SelectItemsBasic(m_aRoomItemsScripted, EWorkshopItemQuery.RESTRICTED);
+		SCR_AddonListDialog addonsDialog = SCR_AddonListDialog.CreateRestrictedAddonsJoinServer(restrictedDependencies);
+	
+		// Handle cancel reports done 
+		SCR_ReportedAddonsDialog reportedDialog = SCR_ReportedAddonsDialog.Cast(addonsDialog);
+		if (reportedDialog)
+			reportedDialog.GetOnAllReportsCanceled().Insert(OnAllReportsCanceled);
+		
+		return reportedDialog;
+		
+		// All can be downloaded
+		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call when all reports from dialog are cancled to clear invoker actions and display download dialog 
+	protected void OnAllReportsCanceled(SCR_ReportedAddonsDialog dialog)
+	{
+		dialog.GetOnAllReportsCanceled().Remove(OnAllReportsCanceled);
+		
+		m_DownloadSequence.OnAllReportsCanceled(dialog);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Callbacks
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	//! Call this when mod containing scenario is loaded  
+	protected void OnScenarioModLoaded()
+	{
+		// Remove callback action
+		m_ScenarioCallback.m_OnItem.Remove(OnScenarioModLoaded);
+		
+		WorkshopItem itemScenario;
+		
+		// Load if scenario is missing 
+		if (!m_ScenarioDependency)
+		{
+			LoadScenario();
+			return;
+		}
+		
+		// Check if scerio item was loaded 
+		if (m_ScenarioDependency.GetCachedItem())
+		{
+			itemScenario = m_ScenarioDependency.GetCachedItem();
+		}
+		else
+		{
+			LoadScenario();
+		}
+		
+		if (itemScenario)
+		{
+			// Load scenario details  
+			m_ScenarioCallback.m_OnItem.Clear();
+			m_ScenarioCallback.m_OnItem.Insert(LoadScenario);
+			itemScenario.AskDetail(m_ScenarioCallback);
+		}
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when scenario has got complete info 
 	protected void OnScenarioDetails()
 	{
 		m_ScenarioCallback.m_OnScenarios.Remove(OnScenarioDetails);
-		m_OnGettingScenario.Invoke(m_ScenarioDependency);
+		m_OnGetScenario.Invoke(m_ScenarioDependency);
 	}
 	
-	protected int m_iDebugModCount = 0;
+	//------------------------------------------------------------------------------------------------
+	protected void OnRoomCallbackResponse(SCR_BackendCallbackRoomMods callback)
+	{
+		if (callback.GetResponseType() == EBackendCallbackResponse.SUCCESS)
+		{
+			// Load list success
+			OnRoomFullList();
+		}
+		else
+		{
+			// Fail/timeout
+			OnLoadingModsFail(callback.GetRoom());
+		}
+		
+		callback.GetEventOnResponse().Remove(OnRoomCallbackResponse);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when room receive list of all mod dependencies 
-	protected void AddonsFullList()
+	protected void OnRoomFullList()
 	{
-		m_ModsCallback.m_OnFullList.Remove(AddonsFullList);
-		
-		m_iDebugModCount = 0;
-		
 		if (!m_Room)
 		{
-			OnLoadingModsFail();
+			OnLoadingModsFail(null);
 			return;
 		}
 		
 		if (!m_Room.IsAuthorized())
 		{
-			OnLoadingModsFail();
+			OnLoadingModsFail(m_Room);
 			return;
 		}
 		
 		array<Dependency> deps = new array<Dependency>;
 		m_Room.AllItems(deps);
 		
-		m_iLoadedModItemsCount = 0; 
+		array<Dependency> depsItems = new array<Dependency>;
 		
-		// Save this in to strong ref dependency array and register scripted items 
-		m_aRoomDependencies.Clear();
+		// Clearup
 		m_aRoomItemsScripted.Clear();
+			
+		// Skip loadig of content if none 
+		if (deps.IsEmpty())
+		{
+			AllItemsLoaded();
+			return;
+		}
 		
+		SCR_AddonManager mngr = SCR_AddonManager.GetInstance();
+		
+		// Loaded dependencies as items
 		foreach (Dependency dep : deps)
 		{
-			m_aRoomDependencies.Insert(dep);
+			//ref SCR_WorkshopItem item = SCR_WorkshopItem.Internal_CreateFromDependency(dep);
+			SCR_WorkshopItem item = mngr.Register(dep);
+			item.SetItemTargetRevision(dep.GetRevision());
+			m_aRoomItemsScripted.Insert(item);
 		}
 		
-		// Clear mod callbacks 
-		m_aModsCallbacks.Clear();
-		
-		// Go through mods dependecies if their items were loaded 
-		foreach (Dependency dep : m_aRoomDependencies)
+		// Clear previous download sequence reactions
+		if (m_DownloadSequence)
 		{
-			// Is item loaded 
-			WorkshopItem item = dep.GetCachedItem();
-			
-			if (item)
-			{
-				m_iLoadedModItemsCount++;
-				continue;
-			}
-			
-			// Load item if is not loaded 
-			
-			// Set invoker actions 
-			SCR_OnlineServiceBackendCallbacks modCallback = new SCR_OnlineServiceBackendCallbacks;
-			modCallback.m_OnItem.Insert(OnLoadingModItem);
-			modCallback.m_OnError.Insert(OnLoadingModsFail);
-			modCallback.m_OnTimeout.Insert(OnLoadingModsFail);
-			
-			// Add callbacks 
-			m_aModsCallbacks.Insert(modCallback);
-			
-			// Load ite
-			dep.LoadItem(modCallback);
+			m_DownloadSequence.GetOnReady().Remove(OnDownloadSequenceReady);
+			m_DownloadSequence.GetOnError().Remove(OnDownloadSequenceError);
 		}
 		
-		// Is loading done 
-		if (m_iLoadedModItemsCount >= m_aRoomDependencies.Count())
-			AllItemsLoaded();
-		else 
-		{
-			// Add loading check callback 
-			/*m_ModsCallback.m_OnItem.Clear();
-			m_ModsCallback.m_OnItem.Insert(OnLoadingModItem);
-			m_ModsCallback.m_OnImage.Clear();
-			m_ModsCallback.m_OnImage.Insert(OnImageDownload);*/
-		}
+		// Setup new download sequence
+		InitDownloadSequence();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Call this callback when mod item finished loading
-	protected void OnLoadingModItem()
+	protected void InitDownloadSequence()
 	{
-		m_iDebugModCount++;
+		m_DownloadSequence = SCR_DownloadSequence.Create(m_aRoomItemsScripted, null, true);
+		m_DownloadSequence.GetOnReady().Insert(OnDownloadSequenceReady);
+		m_DownloadSequence.GetOnDependenciesLoadingPrevented().Insert(OnDependenciesLoadingPrevented);
+		m_DownloadSequence.GetOnError().Insert(OnDownloadSequenceError);
+		m_DownloadSequence.GetOnRestrictedDependency().Insert(OnDownloadSequenceRestrictedAddons);
+		
+		m_DownloadSequence.Init();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDownloadSequenceReady(SCR_DownloadSequence sequence)
+	{
+		AllItemsLoaded();
+		
+		// Cleanup
+		sequence.GetOnReady().Remove(OnDownloadSequenceReady);
+		sequence.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
+		sequence.GetOnError().Remove(OnDownloadSequenceError);
+		sequence.GetOnRestrictedDependency().Remove(OnDownloadSequenceRestrictedAddons);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Callback when any of depeendencies are preventing loading or donwloading 
+	//! Show dialog to cancel downloads blocking loading details
+	protected void OnDependenciesLoadingPrevented(SCR_DownloadSequence sequence, array<ref SCR_WorkshopItem> dependencies)
+	{	
+		m_aCollidingDependencies = dependencies;
+		
+		if (m_OnDependenciesLoadingPrevented)
+			m_OnDependenciesLoadingPrevented.Invoke(m_Room, dependencies);
+		
+		// Cleanup
+		sequence.GetOnReady().Remove(OnDownloadSequenceReady);
+		sequence.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
+		sequence.GetOnError().Remove(OnDownloadSequenceError);
+		sequence.GetOnRestrictedDependency().Remove(OnDownloadSequenceRestrictedAddons);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_WorkshopItem> GetCollidingDependencies()
+	{
+		array<ref SCR_WorkshopItem> dependencies = {};
+		
+		foreach (SCR_WorkshopItem item : m_aCollidingDependencies)
+		{
+			dependencies.Insert(item);
+		}
+		
+		return dependencies;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancelDownloadConfirm(SCR_ConfigurableDialogUi dialog)
+	{
+		SCR_DownloadManager.GetInstance().EndAllDownloads();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnCancelDownloadDialogClose(SCR_ConfigurableDialogUi dialog)
+	{
+		InitDownloadSequence();
+		
+		dialog.m_OnConfirm.Remove(OnCancelDownloadConfirm);
+		dialog.m_OnClose.Remove(OnCancelDownloadDialogClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDownloadSequenceError(SCR_DownloadSequence sequence)
+	{
+		// Cleanup
+		sequence.GetOnReady().Remove(OnDownloadSequenceReady);
+		sequence.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
+		sequence.GetOnError().Remove(OnDownloadSequenceError);
+		sequence.GetOnRestrictedDependency().Remove(OnDownloadSequenceRestrictedAddons);
+	}
+	
+	protected void OnDownloadSequenceRestrictedAddons(SCR_DownloadSequence sequence, array<ref SCR_WorkshopItem> items)
+	{
+		m_bBlockedMods = m_DownloadSequence.GetBlockedAddons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Get set
+	//------------------------------------------------------------------------------------------------
+	
+	//------------------------------------------------------------------------------------------------
+	string GetModListSizeString(array<ref SCR_WorkshopItem> items)
+	{
+		float size = SCR_ModHandlerLib.GetModListSize(items); 
 
-		// Empty room dependencies check - safe check, sholdn't be happenning with proper use 
-		if (m_aRoomDependencies.IsEmpty())
-		{
-			#ifdef SB_DEBUG
-			Print("Items loaded was called, but items list is empty! - of: " + m_Room.Name(), LogLevel.ERROR);
-			#endif
-			return;
-		}	
-
-		// Check loaded items 
-		if (m_aRoomDependencies.Count() < m_iLoadedModItemsCount)
-			return;
-		m_iLoadedModItemsCount++;
-		
-		// Is loading done 
-		if (m_iLoadedModItemsCount >= m_aRoomDependencies.Count())
-		{
-			AllItemsLoaded();
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Invoke mods loading error 
-	void OnLoadingModsFail()
-	{
-		m_OnModsFail.Invoke(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	string GetModListSizeString(array<ref SCR_WorkshopItem> item)
-	{
-		float size = SCR_ModHandlerLib.GetModListSize(item); 
-		//float size = SCR_DownloadManager.GetModListSize();
-		
 		// Save size
 		m_fModsSize = size;
 		
@@ -501,180 +558,82 @@ class SCR_RoomModsManager
 		
 		// Size string
 		string str = SCR_ByteFormat.GetReadableSize(size);
-		//str = size.ToString(STRING_LENGHT_MOD_SIZE, STRING_DEC_LENGHT_MOD_SIZE) + str;
 		
 		return str;
 	}
 	
-	// Subscribing and downloading
-	
-	ref ScriptInvoker m_OnDataDownload = new ref ScriptInvoker;
-	protected float m_fDownloadProgress = 0;
-	protected int m_iDownloadedCount = 0;
-	
 	//------------------------------------------------------------------------------------------------
-	//! Subscribe to all outdated and missing mods 
-	void UpdateMods()
+	//! Get size with unit based on pach sizes from addons list
+	string GetModListPatchSizeString(array<ref SCR_WorkshopItem> items)
 	{
-		// Default setup 
-		m_fDownloadProgress = 0; 
-		m_iDownloadedCount = 0;
-		m_aDownloadCallbacks.Clear();
-		m_aDownloads.Clear();
+		float size;
+		for (int i = 0, count = items.Count(); i < count; i++)
+		{
+			size += items[i].GetTargetRevisionPatchSize();
+		}
 
-		// Mods data size - TODO@wernerjak - use download manager for this 
-		m_fModsSize = SCR_ModHandlerLib.GetModListSize(m_aItemsToUpdate);
+		// Save size
+		m_fModsSize = size;
 		
-		// Register mods and start download 
-		foreach (SCR_WorkshopItem mod : m_aItemsToUpdate)
-		{
-			// Get vresion 
-			Dependency dependency = mod.GetDependency();
-			Revision version = dependency.GetRevision();
-			
-			// Start download 
-			SCR_WorkshopItemActionDownload download = mod.Download(version);
-			download.Activate();
-			
-			// Subscribe on download finish 
-			mod.m_OnDownloadComplete.Insert(OnModDownloadComplete);
-			
-			// Add download action 
-			m_aDownloads.Insert(mod.GetDownloadAction());
-		}
+		if (m_fModsSize <= 0)
+			return string.Empty;
+		
+		// Size string
+		return SCR_ByteFormat.GetReadableSize(size);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void StopModDownload()
+	bool HasBlockedMods()
 	{
-		// TODO@wernerjak - proper download canceling 
+		return m_bBlockedMods;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetDownloadActions(array<ref SCR_WorkshopItemActionDownload> downloads) { m_aDownloads = downloads; }
+	array<ref SCR_WorkshopItem> GetRoomItemsScripted() 
+	{ 
+		return m_aRoomItemsScripted; 
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	array<ref SCR_WorkshopItemActionDownload> GetDownloadActions()
-	{
-		array<ref SCR_WorkshopItemActionDownload> actions = {};
-		foreach(SCR_WorkshopItemActionDownload download : m_aDownloads)
+	array<ref SCR_WorkshopItem> GetRoomItemsUpdated()
+	{ 
+		return m_aItemsUpdated; 
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	array<ref SCR_WorkshopItem> GetRoomItemsToUpdate() 
+	{ 
+		array<ref SCR_WorkshopItem> items = {};
+		
+		foreach (SCR_WorkshopItem item : m_aItemsToUpdate)
 		{
-			actions.Insert(download);
+			items.Insert(item);
 		}
 		
-		return actions;
+		return items; 
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Progress of mod to download
-	float ModDownloadProggress()
-	{
-		return SCR_DownloadManager.GetDownloadActionsProgress(m_aDownloads);
+	void SetRoom(Room room) 
+	{ 
+		m_Room = room; 
+	} 
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetModsLoaded() 
+	{ 
+		return m_bModsLoaded; 
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	bool IsDownloadingFinished()
-	{
-		int itemsC = m_aItemsToUpdate.Count();
-		
-		bool finished = (m_iDownloadedCount == itemsC);
-		
-		return finished;
+	bool GetModsMatching() 
+	{ 
+		return m_bModsMatching; 
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Call this when mod download is finished
-	//! Progress download state
-	protected void OnModDownloadComplete(notnull SCR_WorkshopItem item)
-	{
-		for (int i = 0, count = m_aItemsToUpdate.Count(); i < count; i++)
-		{
-			if (item.GetId() == m_aItemsToUpdate[i].GetId())
-			{
-				// Add to finished downlods 
-				item.m_OnDownloadComplete.Remove(OnModDownloadComplete);
-				m_iDownloadedCount++;
-				
-				m_OnModDownload.Invoke(item, m_aItemsToUpdate.Count(), m_iDownloadedCount);
-				
-				break;
-			}
-		}
+	float GetModsSize() 
+	{ 
+		return m_fModsSize; 
 	}
-
-	//------------------------------------------------------------------------------------------------
-	void SCR_RoomModsManager()
-	{
-		InitialSetup();
-	}
-	
-	// API
-	
-	//------------------------------------------------------------------------------------------------
-	array<ref SCR_WorkshopItem> GetRoomItemsScripted() { return m_aRoomItemsScripted; }
-	
-	//------------------------------------------------------------------------------------------------
-	array<ref SCR_WorkshopItem> GetRoomItemsUpdated() { return m_aItemsUpdated; }
-	
-	//------------------------------------------------------------------------------------------------
-	array<ref SCR_WorkshopItem> GetRoomItemsToUpdate() { return m_aItemsToUpdate; }
-	
-	//------------------------------------------------------------------------------------------------
-	void SetRoom(Room room) { m_Room = room; } 
-	
-	//------------------------------------------------------------------------------------------------
-	void SetRoomDependencies(array<ref Dependency> aDependencies) { m_aRoomDependencies = aDependencies; }
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetModsLoaded() { return m_bModsLoaded; }
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetModsMatching() { return m_bModsMatching; }
-	
-	//------------------------------------------------------------------------------------------------
-	float GetModsSize() { return m_fModsSize; }
-	
-	// Mods counts 
-	//------------------------------------------------------------------------------------------------
-	int GetAllModsCount() { return m_aRoomDependencies.Count(); }
-};
-
-//------------------------------------------------------------------------------------------------
-class ModDownloadCallback : SCR_OnlineServiceBackendCallbacks
-{	
-	protected Dependency m_Dependecy;
-	protected float m_fLastProgress = 0;
-	
-	ref ScriptInvoker m_OnDataReceive = new ref ScriptInvoker;
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnSuccess(int code)
-	{
-		super.OnSuccess(code);	
-		
-		// Download 
-		if (code == EBackendRequest.EBREQ_WORKSHOP_DownloadAsset)
-		{
-			int size = m_Dependecy.TotalFileSize();
-			float progress = m_Dependecy.GetCachedItem().GetProgress();
-			 
-			m_OnDataReceive.Invoke(this, size, progress);
-		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ModDownloadCallback(Dependency dependency)
-	{
-		m_Dependecy = dependency;
-		m_fLastProgress = 0;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	Dependency GetDependency() { return m_Dependecy; }
-	
-	//------------------------------------------------------------------------------------------------
-	float GetLastProgress() { return m_fLastProgress; }
-	
-	//------------------------------------------------------------------------------------------------
-	void SetLastProgress(float progress) { m_fLastProgress = progress; }
 };

@@ -2,7 +2,7 @@
 //! We can start a download from many menus. The download process requests dependency list,
 //! then resolves which dependencies must be downloaded and either starts the downloads or 
 //! shows a confirmation dialog.
-
+/*
 class SCR_WorkshopDownloadSequence
 {	
 	protected ref SCR_WorkshopItem m_Item;

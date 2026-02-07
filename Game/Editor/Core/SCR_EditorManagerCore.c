@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 /// @ingroup Editor_Core GameCore
 /*!
 Core component to manage SCR_EditorManagerEntity.
@@ -123,9 +124,17 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		//--- Restore modes player had before disconnecting
 		if (m_DisconnectedModes)
 		{
+			#ifdef AR_EDITOR_DISCONNECT_TIMESTAMP
+			ChimeraWorld world = GetGame().GetWorld();
+			WorldTimestamp currentTime = world.GetServerTimestamp();
+			#endif
 			for (int i = m_DisconnectedModes.Count() - 1; i >= 0; i--)
 			{
+				#ifndef AR_EDITOR_DISCONNECT_TIMESTAMP
 				if (Replication.Time() > m_DisconnectedModes[i].m_Time + m_iRestoreOnReconnectTimeout * 1000)
+				#else
+				if (currentTime.Greater(m_DisconnectedModes[i].m_Time.PlusSeconds(m_iRestoreOnReconnectTimeout)))
+				#endif
 				{
 					//--- Expired, ignore
 					m_DisconnectedModes.Remove(i);
@@ -529,13 +538,22 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 class SCR_EditorManagerDisconnectData
 {
 	int m_iPlayerID;
+	#ifndef AR_EDITOR_DISCONNECT_TIMESTAMP
 	float m_Time;
+	#else
+	WorldTimestamp m_Time;
+	#endif
 	EEditorMode m_Modes;
 	
 	void SCR_EditorManagerDisconnectData(int playerID, EEditorMode modes)
 	{
 		m_iPlayerID = playerID;
 		m_Modes = modes;
+		#ifndef AR_EDITOR_DISCONNECT_TIMESTAMP
 		m_Time = Replication.Time(); //--- Can use absolute value, we don't need precision
+		#else
+		ChimeraWorld world = GetGame().GetWorld();
+		m_Time = world.GetServerTimestamp(); //--- Can use absolute value, we don't need precision
+		#endif
 	}
 };

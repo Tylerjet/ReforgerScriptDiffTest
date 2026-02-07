@@ -98,15 +98,20 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		{
 			if (versionFrom && !Revision.AreEqual(versionFrom, versionTo))
 			{
+				// Need version change
 				m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOAD);
 				m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLORICON_DOWNLOAD);
 				m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, ICON_SIZE_UPDATE);
 			}
 			else
 			{
+				// Version match
 				m_Widgets.m_AddonSizeText.SetColor(TEXT_SIZE_COLOR_DOWNLOADED);
 				m_Widgets.m_AddonSizeIcon.SetColor(ICON_COLOR_UP);
 				m_Widgets.m_AddonSizeIcon.LoadImageFromSet(0, m_IconImageSet, ICON_SIZE_DOWNLOADED);
+				
+				// Display whole size
+				m_Widgets.m_AddonSizeText.SetText(SCR_ByteFormat.GetReadableSize(item.GetSizeBytes()));
 			}
 		}
 	}
@@ -132,7 +137,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 					versionTo = item.GetLatestRevision();
 
 
-				float downloadSize = item.GetSizeBytes();
+				float downloadSize = item.GetTargetRevisionPatchSize();
 
 				bool showVersionFrom = versionFrom && !Revision.AreEqual(versionFrom, versionTo);
 				m_Widgets.m_VersionFromText.SetVisible(showVersionFrom);

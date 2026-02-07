@@ -243,6 +243,8 @@ sealed class BaseWorld: pointer
 	proto external int GetFrameNumber();
 	//! Returns actual time scale of world, can be different from engine time scale
 	proto external float GetTimeScale();
+	//! Returns time slice of the world.
+	proto external float GetTimeSlice();
 	proto external IEntity FindEntityByName(string name);
 	proto external IEntity FindEntityByID(EntityID ID);
 	//! Returns true during edit mode in Workbench and in Ingame editor

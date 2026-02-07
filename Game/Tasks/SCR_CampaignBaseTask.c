@@ -37,8 +37,8 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 	{
 		if (SCR_MapEntity.GetMapInstance())
 		{
-			SCR_MapEntity.GetOnMapZoom().Insert(SetOffset);
-			SCR_MapEntity.GetOnMapOpen().Insert(SetOffset);
+			SCR_MapEntity.GetOnMapZoom().Insert(OnMapZoom);
+			SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpenCallback);
 		}
 			
 		m_TargetBase = targetBase;
@@ -47,6 +47,18 @@ class SCR_CampaignBaseTask : SCR_BaseTask
 		CreateMapUIIcon();
 		UpdateMapInfo();
 		SetHUDIcon();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapOpenCallback(MapConfiguration config)
+	{
+		SetOffset();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapZoom(float pixelPerUnit)
+	{
+		SetOffset();
 	}
 	
 	//------------------------------------------------------------------------------------------------

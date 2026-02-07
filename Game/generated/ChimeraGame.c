@@ -6,8 +6,6 @@ Do not modify, this script is generated
 
 class ChimeraGame: Game
 {
-	//! returns the particles manager
-	proto external ParticlesManager GetParticlesManager();
 	//! Is the game experimental build
 	proto external bool IsExperimentalBuild();
 	//! Returns the world clock

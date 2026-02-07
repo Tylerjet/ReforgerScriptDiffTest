@@ -218,6 +218,9 @@ class SCR_BudgetEditorUIComponent : SCR_BaseEditorUIComponent
 			m_BudgetManager.Event_OnBudgetPreviewUpdated.Insert(OnBudgetPreviewUpdate);
 			m_BudgetManager.Event_OnBudgetPreviewReset.Insert(ResetWidgetPreviewData);
 		}
+
+		if (m_BudgetManager)
+			m_BudgetManager.DemandBudgetUpdateFromServer();
 	}
 	
 	override void HandlerDeattached(Widget w)

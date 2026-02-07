@@ -105,13 +105,13 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected override void DisplayOnSuspended()
 	{
-		m_bDisplaySuspended = false;
+		m_bDisplaySuspended = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void DisplayOnResumed()
 	{
-		m_bDisplaySuspended = true;
+		m_bDisplaySuspended = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -200,8 +200,13 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 		else
 			s_bEnableDOF = false;
 
-		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
-		if (damageMan && damageMan.GetState() == EDamageState.DESTROYED && !m_bDisplaySuspended)
+		bool destroyed = false;
+		if (m_pCharacterEntity)
+		{
+			SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
+			destroyed = damageMan && damageMan.GetState() == EDamageState.DESTROYED;
+		}
+		if (destroyed && !m_bDisplaySuspended)
 			s_fFocalChange = 100 - 100 * (m_wDeath.GetOpacity() - DOF_START_OPACITY) / (DOF_FADEIN_OPACITY_TARGET - DOF_START_OPACITY);
 		else
 			s_fFocalChange = SIMPLEDOF_FOCALCHANGE_MAX;

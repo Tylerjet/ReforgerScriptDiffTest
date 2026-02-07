@@ -47,5 +47,6 @@ class SCR_InfoDisplayLayerHandler : SCR_InfoDisplayHandler
 		hudElement.SetParentWidgetName(m_sLayerName);
 		hudElement.SetParentLayout(owningLayout);
 		owningLayout.AddHudElement(hudElement, false);
+		display.RegisterToHudManager();
 	}
 }

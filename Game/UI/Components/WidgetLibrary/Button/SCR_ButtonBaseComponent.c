@@ -258,6 +258,26 @@ class SCR_ButtonBaseComponent : SCR_WLibComponentBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Alternate way of setting button background colors through script
+	void SetBackgroundColors(Color defColor = null, Color hoverColor = null, Color selectColor = null, Color selectHoverColor = null, Color clickColor = null)
+	{
+		if (defColor)
+			m_BackgroundDefault = defColor;
+		
+		if (hoverColor)
+			m_BackgroundHovered = hoverColor;
+		
+		if (selectColor)
+			m_BackgroundSelected = selectColor;
+		
+		if (selectHoverColor)
+			m_BackgroundSelectedHovered = selectHoverColor;
+		
+		if (clickColor)
+			m_BackgroundClicked = clickColor;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ColorizeBackground(bool animate = true)
 	{
 		if (!m_bUseColorization || !m_wBackground)

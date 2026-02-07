@@ -199,34 +199,31 @@ class SCR_VehicleDust : ScriptComponent
 				// Vehicle is moving fast enough to generate dust
 				if (m_Effect  &&  previousSurfaceID == m_iCurrentSurfaceID)
 				{
-					// Effect exists so update it
-					if (m_Effect.GetIsPaused())
-					{
-						m_Effect.UnPause();
-					}
-					
+					m_Effect.Play();
 					m_Effect.UpdateVehicleDustEffect(speed, m_fDustStartSpeed, m_fDustTopSpeed);
 				}
 				else
 				{
-					
 					if (m_Effect) 
-						m_Effect.Stop(); // Effect exists, so replace it with a new one
+						m_Effect.StopEmission();
 					
 					if (surface_type.Length() > 0)
 					{
-						m_Effect = VehicleBodyEffectBase.Cast(SCR_ParticleEmitter.CreateEx(VehicleBodyEffectBase, surface_type, m_vLocalOffset, m_vLocalOrientation, owner));
+						ParticleEffectEntitySpawnParams spawnParams();
+						spawnParams.Type = VehicleBodyEffectBase;
+						Math3D.AnglesToMatrix(m_vLocalOrientation, spawnParams.Transform);
+						spawnParams.Transform[3] = m_vLocalOffset;
+						spawnParams.Parent = owner;
+						
+						m_Effect = VehicleBodyEffectBase.Cast(ParticleEffectEntity.SpawnParticleEffect(surface_type, spawnParams));
 						m_Effect.UpdateVehicleDustEffect(speed, m_fDustStartSpeed*3.6, m_fDustTopSpeed);
 					}
 				}
 			}
-			else
+			// Vehicle is NOT moving fast enough to generate dust
+			else if (m_Effect)
 			{
-				// Vehicle is NOT moving fast enough to generate dust
-				if (m_Effect  &&  !m_Effect.GetIsPaused())
-				{
-					m_Effect.Pause(); // Stop dust effect
-				}
+				m_Effect.StopEmission(); // Stop dust effect
 			}
 		}
 	}

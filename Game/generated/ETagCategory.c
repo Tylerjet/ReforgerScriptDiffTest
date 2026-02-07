@@ -9,5 +9,7 @@ enum ETagCategory
 	NameTag,
 	Perceivable,
 	Radio,
+	Metal,
+	Insect,
 	All,
 }

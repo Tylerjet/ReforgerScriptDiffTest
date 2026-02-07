@@ -229,7 +229,7 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void HideSpawnPositionHint(float layer)
+	protected void HideSpawnPositionHint(int layer)
 	{
 		SCR_CampaignMapUIPlayerHighlight highlightHandler;
 		foreach (Widget w, SCR_MapUIElement handler: m_mIcons)
@@ -262,6 +262,12 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	}	
 
 	//------------------------------------------------------------------------------------------------
+	void OnMapZoom(float pixelPerUnit)
+	{
+		UpdateIcons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{
 		super.OnMapOpen(config);
@@ -283,8 +289,8 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 		InitBases();
 		CreatePlayerSpawnPositionHint();
 		
-		SCR_MapEntity.GetOnMapPan().Insert(UpdateIcons);
-		SCR_MapEntity.GetOnMapZoom().Insert(UpdateIcons);
+		SCR_MapEntity.GetOnMapPan().Insert(OnMapPan);
+		SCR_MapEntity.GetOnMapZoom().Insert(OnMapZoom);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -292,8 +298,8 @@ class SCR_MapCampaignUI : SCR_MapUIElementContainer
 	{
 		super.OnMapClose(config);
 		
-		SCR_MapEntity.GetOnMapPan().Remove(UpdateIcons);
-		SCR_MapEntity.GetOnMapZoom().Remove(UpdateIcons);
+		SCR_MapEntity.GetOnMapPan().Remove(OnMapPan);
+		SCR_MapEntity.GetOnMapZoom().Remove(OnMapZoom);
 		
 		delete m_wMobileAssembly;
 		

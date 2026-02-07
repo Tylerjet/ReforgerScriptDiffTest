@@ -83,10 +83,6 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 				if (itemId > -1)
 					m_SpawnPointSelector.SetCurrentItem(itemId); // make sure currently selected spawn point stays selected after new point is added
 			}
-			
-			m_SelectedSpawnPointId = GetCurrentRplId();
-			GetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
-			SGetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);			
 		}
 	}
 
@@ -94,17 +90,17 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	{
 		RplId currentSpawnPointId = m_SelectedSpawnPointId;
 		int itemId = m_SpawnPointSelector.GetItemId(spawnPoint.GetRplId());
+		if (itemId == -1)
+			return;
+
 		m_SpawnPointSelector.RemoveItem(itemId);
 		
 		if (spawnPoint.GetRplId() != currentSpawnPointId)
 		{
 			itemId = m_SpawnPointSelector.GetItemId(currentSpawnPointId);
 			m_SpawnPointSelector.SetCurrentItem(itemId);
+			m_SelectedSpawnPointId = GetCurrentRplId();
 		}
-
-		m_SelectedSpawnPointId = GetCurrentRplId();
-		GetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
-		SGetOnSpawnPointSelected().Invoke(m_SelectedSpawnPointId);
 	}
 
 	protected void OnSpawnPointFactionChange(SCR_SpawnPoint spawnPoint)

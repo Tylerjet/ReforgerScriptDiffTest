@@ -26,6 +26,11 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	// State of enabled state when this action was activated
 	protected bool m_bAddonEnabledAtStart;
 	
+	// Pause and resume handling
+	protected ref SCR_BackendCallback m_PauseDownloadCallback = new SCR_BackendCallback();
+	protected bool m_bRunningImmediate;		// Immediate change what is requested
+	protected bool m_bRunningAsync;	// Changes after reponse
+	
 	protected ref ScriptInvokerBase<ScriptInvoker_ActionDownloadProgress> m_OnDownloadProgress;
 	
 	//-----------------------------------------------------------------------------------------------
@@ -43,9 +48,8 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		m_bTargetVersionLatest = latestVersion;
 		m_TargetRevision = revision;
 		m_StartVersion = wrapper.GetCurrentLocalRevision();
-		
-		// todo resolve download size
-		m_fSizeBytes = m_Wrapper.GetSizeBytes();
+
+		m_fSizeBytes = m_Wrapper.GetTargetRevisionPatchSize();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -96,17 +100,11 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected SCR_WorkshopCallbackBase CreateCallback()
-	{
-		SCR_WorkshopCallbackBase callback = new SCR_WorkshopCallbackBase();
-		callback.m_OnError.Insert(Callback_OnError);
-		callback.m_OnTimeout.Insert(Callback_OnTimeout);
-		return callback;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
 	protected override bool OnActivate()
 	{	
+		m_bRunningImmediate = true;
+		m_bRunningAsync = true;
+		
 		m_fDownloadedSize = 0;
 		
 		// Check if addon was enabled, when action is finished it will be restored
@@ -132,38 +130,111 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	bool GetRunningAsync()
+	{
+		return m_bRunningAsync;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool IsRunningAsyncSolved()
+	{
+		return m_bRunningImmediate && m_bRunningAsync;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	bool IsPauseAsyncSolved()
+	{
+		return !m_bRunningImmediate && !m_bRunningAsync;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	protected override bool OnPause()
 	{
-		bool success;
+		// Check
+		WorkshopItem item = m_Wrapper.GetWorkshopItem();
+		if (!item)
+			return false;
 		
+		// Setup result
 		if (m_bDownloadStarted)
-			success = m_Wrapper.Internal_PauseDownload();
-		else
-			success = true;
+		{
+			m_bRunningImmediate = false;
+			
+			m_PauseDownloadCallback.GetEventOnResponse().Insert(OnPauseResponse);
+			item.PauseDownload(m_PauseDownloadCallback);
+		}
 		
-		return success && !IsFailed();
+		// Result
+		return !IsFailed();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnPauseResponse(SCR_BackendCallback callback)
+	{
+		callback.GetEventOnResponse().Remove(OnPauseResponse);
+		
+		// Fail
+		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
+		{
+			// Get back to previsius reqeusted state 
+			m_bRunningImmediate = true;
+			return;
+		}
+		
+		// Success
+		m_bRunningAsync = false;
+		InvokeOnChanged();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected override bool OnResume()
 	{
+		// Check
+		WorkshopItem item = m_Wrapper.GetWorkshopItem();
+		if (!item)
+			return false;
+		
+		// Setup result
 		if (m_bDownloadStarted)
 		{
-			m_Callback = CreateCallback();
-			bool success = m_Wrapper.Internal_ResumeDownload(m_Callback);		
-			return success && !IsFailed();
+			m_bRunningImmediate = true;
+			
+			//m_PauseDownloadCallback.GetEventOnResponse().Insert(OnResumeResponse);
+			
+			m_bRunningAsync = true;
+			item.ResumeDownload(null);
+			InvokeOnChanged();
+			
+			return true;
 		}
-		else
+		
+		// If download didn't actually start, we must not resume but start a download
+		return StartDownloadOrLoadDetails();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnResumeResponse(SCR_BackendCallback callback)
+	{
+		callback.GetEventOnResponse().Remove(OnResumeResponse);
+		
+		// Fail
+		if (callback.GetResponseType() != EBackendCallbackResponse.SUCCESS)
 		{
-			// If download didn't actually start, we must not resume but start a download
-			return StartDownloadOrLoadDetails();
+			// Get back to previsius reqeusted state 
+			m_bRunningImmediate = false;
+			return;
 		}
+		
+		// Success
+		m_bRunningAsync = true;
+		
+		InvokeOnChanged();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected override void OnFail()
 	{
-		m_Wrapper.Internal_CancelDownload();
+		m_Wrapper.DeleteLocally();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -194,7 +265,9 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 			return false;
 		}
 		
-		m_Callback = CreateCallback();
+		m_Callback = new SCR_WorkshopCallbackBase();
+		m_Callback.m_OnError.Insert(Callback_OnError);
+		m_Callback.m_OnTimeout.Insert(Callback_OnTimeout);
 		
 		if (m_bTargetVersionLatest)
 		{
@@ -250,14 +323,15 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 				float progress = m_Wrapper.Internal_GetDownloadProgress();
 				if (progress > m_fProgress)
 				{					
-					int currentDownloadSize = m_Wrapper.GetSizeBytes() * progress;
+					float currentDownloadSize = m_Wrapper.GetTargetRevisionPatchSize() * progress;
 					
-					InvokeOnChanged();
 					if (m_OnDownloadProgress)
 						m_OnDownloadProgress.Invoke(this, currentDownloadSize - m_fDownloadedSize);
 					
 					m_fProgress = progress;
 					m_fDownloadedSize = currentDownloadSize;
+					
+					InvokeOnChanged();
 				}
 				
 				if (offline && Revision.AreEqual(currentVersion, m_TargetRevision))
@@ -273,11 +347,14 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	{
 		//if (code != EBackendError.EBERR_INVALID_STATE) // Ignore this one for now // EApiCode.EACODE_ERROR_OK
 		
+		callback.m_OnError.Remove(Callback_OnError);
+		callback.m_OnTimeout.Remove(Callback_OnTimeout);
+		
 		Fail();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	protected void Callback_OnTimeout()
+	protected void Callback_OnTimeout(SCR_WorkshopCallbackBase callback)
 	{
 		Fail();
 	}

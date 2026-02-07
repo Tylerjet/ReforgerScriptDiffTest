@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
 class SCR_ScenarioFrameworkLayerTaskDefendClass : SCR_ScenarioFrameworkLayerTaskClass
 {
@@ -54,8 +55,13 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	protected float m_fTempTimeSlice;
 	protected bool m_bTaskEvaluated;
 	protected bool m_bEvaluationSet;
+	#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 	protected float m_fEvaluateTimeStart;
 	protected float m_fEvaluateTimeEnd;
+	#else
+	protected WorldTimestamp m_fEvaluateTimeStart;
+	protected WorldTimestamp m_fEvaluateTimeEnd;
+	#endif
 
 	protected Widget m_wRoot;
 	protected Widget m_wInfoOverlay;
@@ -214,8 +220,14 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 	{
 		if (m_fDefendTime > 0)
 		{
+			#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 			m_fEvaluateTimeStart = Replication.Time();
 			m_fEvaluateTimeEnd = m_fEvaluateTimeStart + (m_fDefendTime * 1000);
+			#else
+			ChimeraWorld world = GetOwner().GetWorld();
+			m_fEvaluateTimeStart = world.GetServerTimestamp();
+			m_fEvaluateTimeEnd = m_fEvaluateTimeStart.PlusSeconds(m_fDefendTime);
+			#endif
 			m_bEvaluationSet = true;
 		}
 
@@ -397,7 +409,12 @@ class SCR_ScenarioFrameworkLayerTaskDefend : SCR_ScenarioFrameworkLayerTask
 			CheckAttackerLayers();
 		}
 
+		#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 		if (!m_bTaskEvaluated && m_bEvaluationSet && (Replication.Time() >= m_fEvaluateTimeEnd))
+		#else
+		ChimeraWorld world = owner.GetWorld();
+		if (!m_bTaskEvaluated && m_bEvaluationSet && world.GetServerTimestamp().GreaterEqual(m_fEvaluateTimeEnd))
+		#endif
 		{
 			if (m_bDelayedEvaluation && m_fTempTimeSlice >= 5)
 				CheckAttackerLayers();

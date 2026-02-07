@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 #define ENABLE_BASE_DESTRUCTION
 //------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/Campaign", description: "Handles client > server communication in Campaign. Should be attached to PlayerController.", color: "0 0 255 255")]

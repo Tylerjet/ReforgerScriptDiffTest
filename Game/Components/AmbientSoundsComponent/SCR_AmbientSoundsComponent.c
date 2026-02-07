@@ -51,6 +51,9 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
     const int WINDSPEED_MIN = 2;
     const int WINDSPEED_MAX = 12;
 	private float m_fQueryTimer = QUERY_PROCESSING_INTERVAL;
+	private float m_fUpdateTimer;
+	private const int UPDATE_PROCESSING_INTERVAL = 300;
+	private const int LOOPED_SOUND_MINIMUM_MOVE_DISTANCE_SQ = 2;
 
 	// Misc
 	private BaseWorld m_World;
@@ -58,7 +61,10 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 	private float m_fWorldTime;
 	private vector m_vCameraPosFrame;
 	private vector m_vCameraPosQuery;
+	private vector m_vCameraPosLoopedSound;
 	
+	// Looped sounds pool
+	private ref array<ref SCR_AudioHandleLoop> m_aAudioHandleLoop = {};
 	//! Stores entity counds for all EQueryType
 	private ref array<int> m_aQueryTypeCount = new array<int>;		
 	//! AmbientEntity Signal's manager signals indexes
@@ -152,6 +158,48 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			
 		return ((Ymin * (Xmax - in) + Ymax * (in - Xmin)) / (Xmax - Xmin));		
 	}
+	
+	//------------------------------------------------------------------------------------------------	
+	/*!
+		Use to play sound events that has looped banks
+		\soundEvent Sound event name
+		\transformation Sound position
+	*/
+	
+	SCR_AudioHandleLoop SoundEventLooped(string soundEvent, vector transformation[4])
+	{
+		SCR_AudioHandleLoop audioHandleLoop = new SCR_AudioHandleLoop;
+		
+		audioHandleLoop.m_aMat = transformation;
+		audioHandleLoop.m_sSoundEvent = soundEvent;
+		
+		m_aAudioHandleLoop.Insert(audioHandleLoop);
+				
+		return audioHandleLoop;
+	}
+	
+	//------------------------------------------------------------------------------------------------	
+	/*!
+		Use to terminate looped sounds that were triggered using SoundEventLooped()
+	*/	
+	void TerminateLooped(SCR_AudioHandleLoop audioHandleLoop)
+	{
+		if (!audioHandleLoop)
+			return;
+		
+		Terminate(audioHandleLoop.m_AudioHandle);
+		m_aAudioHandleLoop.RemoveItem(audioHandleLoop);
+	}
+		
+	//------------------------------------------------------------------------------------------------	
+	private void UpdateLoopedSounds()
+	{
+		foreach (SCR_AudioHandleLoop audioHandleLoop : m_aAudioHandleLoop)
+		{
+			if (IsFinishedPlaying(audioHandleLoop.m_AudioHandle))
+				audioHandleLoop.m_AudioHandle = SoundEventTransform(audioHandleLoop.m_sSoundEvent, audioHandleLoop.m_aMat);
+		}
+	}
 				
 	//------------------------------------------------------------------------------------------------	
 	override void UpdateSoundJob(IEntity owner, float timeSlice)
@@ -160,6 +208,19 @@ class SCR_AmbientSoundsComponent : AmbientSoundsComponent
 			
 		m_vCameraPosFrame = GetCameraOrigin();	
 		m_fWorldTime = m_World.GetWorldTime();
+		
+		// Handle looped sounds
+		if (m_fWorldTime > m_fUpdateTimer)
+		{
+			// Handle looped sounds
+			if (vector.DistanceSqXZ(m_vCameraPosLoopedSound, m_vCameraPosFrame) > LOOPED_SOUND_MINIMUM_MOVE_DISTANCE_SQ)
+			{
+				m_vCameraPosLoopedSound = m_vCameraPosFrame;
+				UpdateLoopedSounds()
+			}
+														
+			m_fUpdateTimer = m_fWorldTime + UPDATE_PROCESSING_INTERVAL;
+		}
 		
 		foreach (SCR_AmbientSoundsEffect ambientSoundsEffect : m_aAmbientSoundsEffect)
 			ambientSoundsEffect.Update(m_fWorldTime, m_vCameraPosFrame);

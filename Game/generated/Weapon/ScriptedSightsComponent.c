@@ -30,6 +30,10 @@ class ScriptedSightsComponent: SightsComponent
 	event void OnSightADSPostFrame(IEntity owner, float timeSlice);
 	//! Called every time the sight is deactivated.
 	event void OnSightADSDeactivated();
+	//! Called to get the ADS percentage when the sights go active
+	event float GetADSActivationPercentageScript() { return 1.0; };
+	//! Called to get the ADS percentage when the sights go inactive
+	event float GetADSDeactivationPercentageScript() { return 1.0; };
 }
 
 /*!

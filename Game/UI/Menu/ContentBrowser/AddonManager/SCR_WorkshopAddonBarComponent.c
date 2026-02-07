@@ -164,9 +164,38 @@ class SCR_WorkshopAddonBarComponent : ScriptedWidgetComponent
 		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.AddonsToolsMenu);
 	}
 
+	protected ref SCR_AddonPatchSizeLoader m_Loader = new SCR_AddonPatchSizeLoader();
+	SCR_LoadingOverlayDialog m_LoadingOverlay;
+	
 	//------------------------------------------------------------------------------------------------
 	void Callback_OnUpdateButton()
 	{
+		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
+		array<ref SCR_WorkshopItem> addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);	
+		
+		// Load patch sizes for latest revision
+		m_Loader = new SCR_AddonPatchSizeLoader();
+		
+		foreach (SCR_WorkshopItem item : addonsOutdated)
+		{
+			Revision rev = item.GetLatestRevision();
+			item.SetItemTargetRevision(rev);
+			m_Loader.InsertItem(item);
+		}
+		
+		m_LoadingOverlay = SCR_LoadingOverlayDialog.Create();
+		
+		m_Loader.GetOnAllPatchSizeLoaded().Insert(OnUpdatePatchSizeLoaded);
+		m_Loader.LoadPatchSizes();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void OnUpdatePatchSizeLoaded(SCR_AddonPatchSizeLoader loader, bool allLoaded)
+	{	
+		// Cleanup
+		m_Loader.GetOnAllPatchSizeLoaded().Remove(OnUpdatePatchSizeLoaded);
+		m_LoadingOverlay.Close();
+		
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
 		array<ref SCR_WorkshopItem> addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
 
@@ -174,12 +203,12 @@ class SCR_WorkshopAddonBarComponent : ScriptedWidgetComponent
 		array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions = {};
 		foreach (SCR_WorkshopItem item : addonsOutdated)
 		{
-			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, ref Revision>(item, null));
+			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, ref Revision>(item, item.GetLatestRevision()));
+			
 		}
-
-		SCR_DownloadConfirmationDialog.CreateForAddons(addonsAndVersions, false);
+		
+		SCR_AddonUpdateConfirmationDialog.CreateForUpdates(addonsAndVersions, false);
 	}
-
 
 	//------------------------------------------------------------------------------------------------
 	void OnFrame()

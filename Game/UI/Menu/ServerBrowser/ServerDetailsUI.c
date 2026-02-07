@@ -168,12 +168,11 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 	{
 		if (m_OnOpen && m_Room)
 		{
-			//Print("On menu close - room: " + m_Room);
 			m_OnOpen.Invoke(this, false, m_Room);
 		}
 		
 		if (m_ModsManager)
-			m_ModsManager.m_OnGettingAllDependecies.Remove(SetupRequiredMods);
+			m_ModsManager.GetOnGetAllDependencies().Remove(SetupRequiredMods);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -201,7 +200,7 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 		// Invokers 
 		m_ServerBrowserMenu.m_OnScenarioLoad.Insert(OnScenario);
 		
-		m_ModsManager.m_OnModDownload.Insert(OnModDonwload);
+		//m_ModsManager.m_OnModDownload.Insert(OnModDonwload);
 		
 		// Tab view 
 		Widget wTabView = GetRootWidget().FindAnyWidget(WIDGET_TAB_VIEW);
@@ -219,7 +218,7 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 		if (m_ModsManager.GetModsLoaded())
 			SetupRequiredMods();
 		else
-			m_ModsManager.m_OnGettingAllDependecies.Insert(SetupRequiredMods); 
+			m_ModsManager.GetOnGetAllDependencies().Insert(SetupRequiredMods); 
 			
 	}
 	
@@ -399,9 +398,6 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 			m_TabView.ShowTab(modsTabId);
 			return;
 		}
-		
-		// Download 
-		UpdateMods();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -620,15 +616,9 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 			// Download
 			case EServerConnectingState.MISSING_MODS:
 				//m_iDownloadedModsCout = 0;
-				UpdateMods();
-			
+
 				if (m_BtnModsHandling)
 					m_BtnModsHandling.ChangeState(EServerConnectingState.DOWNLOADING_MODS);
-			break; 
-			
-			// Downloading
-			case EServerConnectingState.DOWNLOADING_MODS:
-				CancelDownload();
 			break; 
 			
 			// Connect
@@ -638,20 +628,6 @@ class ServerDetailsMenuUI: ChimeraMenuBase
 			break; 
 		}
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Subscribe all missing and outdated downloads that are required to server 
-	protected void UpdateMods()
-	{	
-		m_ModsManager.UpdateMods();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Cancel downloading of all mods in download qeueu  
-	protected void CancelDownload()
-	{	
-		// TODO@wernerjak - fix unregistation from donwload manager 
-	} 
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when downloading of mod is finished  

@@ -135,7 +135,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	protected static ref ScriptInvoker s_OnPlayerRemoved = new ScriptInvoker();
 	protected static ref ScriptInvoker<int, int> s_OnPlayerLeaderChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnPrivateGroupChanged = new ScriptInvoker();
-	protected static ref ScriptInvoker s_OnCustomNameChanged = new ScriptInvoker();
+	protected static ref ScriptInvoker<SCR_AIGroup> s_OnCustomNameChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnFrequencyChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnMaxMembersChanged = new ScriptInvoker();
 	protected static ref ScriptInvoker s_OnCustomDescChanged = new ScriptInvoker();
@@ -465,7 +465,7 @@ class SCR_AIGroup : ChimeraAIGroup
 	{
 		m_sCustomName = name;
 		m_iNameAuthorID = authorID;
-		s_OnCustomNameChanged.Invoke();
+		s_OnCustomNameChanged.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

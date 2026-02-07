@@ -305,7 +305,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!junctionData)
 			return;
 
-		ResourceName junctionResourceName = junctionData.m_JunctionPrefab;
+		ResourceName junctionResourceName = junctionData.m_sJunctionPrefab;
 		if (junctionResourceName.IsEmpty())
 			junctionResourceName = m_DefaultJunctionPole;
 
@@ -319,12 +319,9 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!pole)
 			return;
 
-		if (junctionData.m_bRotate180Degrees)
-		{
-			yaw += 180;
-			if (yaw > 360)
-				yaw -= 360;
-		}
+		yaw += junctionData.m_fYawOffset;
+		if (yaw > 360)
+			yaw -= 360;
 
 		s_Api.ModifyEntityKey(pole, "angleY", yaw.ToString());
 
@@ -1085,12 +1082,12 @@ class SCR_Line : Managed
 [BaseContainerProps()]
 class SCR_PowerlineGeneratorJunctionData
 {
-	[Attribute(defvalue: "", desc: "Junction prefab to be used", params: "et")]
-	ResourceName m_JunctionPrefab;
+	[Attribute(desc: "Junction prefab to be used", params: "et")]
+	ResourceName m_sJunctionPrefab;
 
-	[Attribute()]
-	bool m_bRotate180Degrees;
-
+	// not a slider for performance reason (type the value directly)
+	[Attribute(desc: "Set the junction's yaw offset; can be used to setup the prefab properly", /* uiwidget: UIWidgets.Slider, */params: "0 360")]
+	float m_fYawOffset;
 };
 
 //------------------------------------------------------------------------------------------------

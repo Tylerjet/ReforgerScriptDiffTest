@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignMilitaryBaseComponentClass : SCR_MilitaryBaseComponentClass
 {
@@ -158,6 +159,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 	[RplProp()]
 	protected int m_iReconfiguredBy = INVALID_PLAYER_INDEX;
+
+	[RplProp(onRplName: "OnRadioRangeChanged")]
+	protected float m_fRadioRange;
 
 	[RplProp(onRplName: "OnRespawnCooldownChanged")]
 	#ifndef AR_CAMPAIGN_TIMESTAMP
@@ -340,6 +344,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 			return;
 
 		transceiver.SetRange(radioRange);
+		RecalculateRadioRange();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -400,9 +405,11 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 				radio = SCR_ERadioMsg.BUILT_ANTENNA;
 
 				if (!IsProxy())
+				{
 					m_RadioArmory = SCR_ArmoryComponent.Cast(service.GetOwner().FindComponent(SCR_ArmoryComponent));
+					RecalculateRadioRange();
+				}
 
-				OnAntennaPresenceChanged(true);
 				break;
 			}
 
@@ -454,9 +461,10 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (service.GetType() == SCR_EServicePointType.RADIO_ANTENNA)
 		{
 			if (!IsProxy())
+			{
 				m_RadioArmory = null;
-
-			OnAntennaPresenceChanged(false);
+				RecalculateRadioRange();
+			}
 		}
 		else if (service.GetType() == SCR_EServicePointType.SUPPLY_DEPOT)
 		{
@@ -594,32 +602,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	//------------------------------------------------------------------------------------------------
 	float GetRadioRange()
 	{
-		float range;
-
-		if (m_RadioComponent)
-			range = GetRelayRadioRange(m_RadioComponent);
-
-		float thisRange;
-		array<SCR_ServicePointComponent> antennas = {};
-		GetServicesByType(antennas, SCR_EServicePointType.RADIO_ANTENNA);
-		BaseRadioComponent radio;
-
-		// Find antenna services, read max radio range from the radio component on their owners
-		foreach (SCR_ServicePointComponent service : antennas)
-		{
-			SCR_AntennaServicePointComponent antenna = SCR_AntennaServicePointComponent.Cast(service);
-			radio = BaseRadioComponent.Cast(antenna.GetOwner().FindComponent(BaseRadioComponent));
-
-			if (!radio)
-				continue;
-
-			thisRange = GetRelayRadioRange(radio);
-
-			if (thisRange > range)
-				range = thisRange;
-		}
-
-		return range;
+		return m_fRadioRange;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1755,7 +1738,43 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnAntennaPresenceChanged(bool present)
+	void RecalculateRadioRange()
+	{
+		float range;
+
+		if (m_RadioComponent)
+			range = GetRelayRadioRange(m_RadioComponent);
+
+		float thisRange;
+		array<SCR_ServicePointComponent> antennas = {};
+		GetServicesByType(antennas, SCR_EServicePointType.RADIO_ANTENNA);
+		BaseRadioComponent radio;
+
+		// Find antenna services, read max radio range from the radio component on their owners
+		foreach (SCR_ServicePointComponent service : antennas)
+		{
+			SCR_AntennaServicePointComponent antenna = SCR_AntennaServicePointComponent.Cast(service);
+			radio = BaseRadioComponent.Cast(antenna.GetOwner().FindComponent(BaseRadioComponent));
+
+			if (!radio)
+				continue;
+
+			thisRange = GetRelayRadioRange(radio);
+
+			if (thisRange > range)
+				range = thisRange;
+		}
+
+		if (m_fRadioRange == range)
+			return;
+
+		m_fRadioRange = range;
+		Replication.BumpMe();
+		OnRadioRangeChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void OnRadioRangeChanged()
 	{
 		UpdateBasesInRadioRange();
 
@@ -1765,7 +1784,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (IsProxy())
 			return;
 
-		if (GetCampaignFaction())
+		if (GetCampaignFaction() && GetGame().GetWorld().GetWorldTime() > 10000)
 			SCR_GameModeCampaign.GetInstance().GetBaseManager().RecalculateRadioConverage(GetCampaignFaction());
 
 		RefreshTasks();
@@ -2154,6 +2173,9 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 
 		m_RadioComponent = BaseRadioComponent.Cast(GetOwner().FindComponent(BaseRadioComponent));
 		m_SuppliesComponent = SCR_CampaignSuppliesComponent.Cast(owner.FindComponent(SCR_CampaignSuppliesComponent));
+
+		if (m_fRadioRange == 0 && m_RadioComponent)
+			m_fRadioRange = GetRelayRadioRange(m_RadioComponent);
 
 		if (m_SuppliesComponent)
 			m_SuppliesComponent.m_OnSuppliesChanged.Insert(OnSuppliesChanged);

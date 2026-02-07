@@ -41,16 +41,12 @@ class SCR_DestructionCommon
 	
 	//------------------------------------------------------------------------------------------------
 	//! Plays a particle effect to represent destruction of a fraction (shard/splinter) of an object
-	static SCR_ParticleEmitter PlayParticleEffect_FractionDestruction(IEntity entity, ResourceName particlePath, EDamageType type, vector hitPos, vector hitDir)
+	static ParticleEffectEntity PlayParticleEffect_FractionDestruction(IEntity entity, ResourceName particlePath, EDamageType type, vector hitPos, vector hitDir)
 	{
 		if (!entity)
 			return null;
 		
 		if (particlePath == ResourceName.Empty)
-			return null;
-		
-		SCR_ParticleEmitter ptc =SCR_ParticleEmitter.Create(particlePath, hitPos);
-		if (!ptc)
 			return null;
 		
 		vector fw = hitDir * 0.5 + entity.GetWorldTransformAxis(2);
@@ -60,13 +56,16 @@ class SCR_DestructionCommon
 		vector up = fw * rt;
 		up.Normalize();
 		
-		vector ptcMat[4];
-		ptcMat[0] = rt;
-		ptcMat[1] = up;
-		ptcMat[2] = fw;
-		ptcMat[3] = hitPos;
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Transform[0] = rt;
+		spawnParams.Transform[1] = up;
+		spawnParams.Transform[2] = fw;
+		spawnParams.Transform[3] = hitPos;
+		spawnParams.UseFrameEvent = true;
 		
-		ptc.SetTransform(ptcMat);
+		ParticleEffectEntity ptc = ParticleEffectEntity.SpawnParticleEffect(particlePath, spawnParams);
+		if (!ptc)
+			return null;
 		
 		float velocityScale = GetPTCImpulseScale(type);
 		Particles particles = ptc.GetParticles();
@@ -78,7 +77,7 @@ class SCR_DestructionCommon
 	
 	//------------------------------------------------------------------------------------------------
 	//! Plays a particle effect to represent entire object destruction
-	static SCR_ParticleEmitter PlayParticleEffect_CompleteDestruction(IEntity entity, ResourceName particlePath, EDamageType damageType, bool atBoundBoxCenter = true)
+	static ParticleEffectEntity PlayParticleEffect_CompleteDestruction(IEntity entity, ResourceName particlePath, EDamageType damageType, bool atBoundBoxCenter = true)
 	{
 		if (!entity)
 			return null;
@@ -86,16 +85,20 @@ class SCR_DestructionCommon
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		SCR_ParticleEmitter ptc;
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.TransformMode = ETransformMode.WORLD;
+		entity.GetWorldTransform(spawnParams.Transform);
+		spawnParams.UseFrameEvent = true;
+		
 		if (atBoundBoxCenter)
 		{
 			vector mins, maxs;
 			entity.GetBounds(mins, maxs);
 			vector center = (maxs - mins) * 0.5 + mins;
-			ptc = SCR_ParticleEmitter.Create(particlePath, entity.CoordToParent(center), entity.GetAngles());
+			spawnParams.Transform[3] = center.Multiply4(spawnParams.Transform);
 		}
-		else
-			ptc = SCR_ParticleEmitter.Create(particlePath, entity.GetOrigin(), entity.GetAngles());
+		
+		ParticleEffectEntity ptc = ParticleEffectEntity.SpawnParticleEffect(particlePath, spawnParams);
 		if (!ptc)
 			return null;
 		
@@ -109,14 +112,20 @@ class SCR_DestructionCommon
 	
 	//------------------------------------------------------------------------------------------------
 	//! Plays a particle effect as child of entity
-	static SCR_ParticleEmitter PlayParticleEffect_Child(ResourceName particlePath, EDamageType damageType, notnull IEntity parent, vector mat[4])
+	static ParticleEffectEntity PlayParticleEffect_Child(ResourceName particlePath, EDamageType damageType, notnull IEntity parent, vector mat[4])
 	{
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		vector angles = Math3D.MatrixToAngles(mat);
+		vector parentTransform[4];
+		parent.GetWorldTransform(parentTransform);
 		
-		SCR_ParticleEmitter ptc = SCR_ParticleEmitter.CreateAsChild(particlePath, parent, parent.CoordToLocal(mat[3]), angles);
+		ParticleEffectEntitySpawnParams spawnParams();
+		Math3D.MatrixInvMultiply4(parentTransform, mat, spawnParams.Transform);
+		spawnParams.Parent = parent;
+		spawnParams.UseFrameEvent = true;
+		
+		ParticleEffectEntity ptc = ParticleEffectEntity.SpawnParticleEffect(particlePath, spawnParams);
 		if (!ptc)
 			return null;
 		
@@ -130,12 +139,16 @@ class SCR_DestructionCommon
 	
 	//------------------------------------------------------------------------------------------------
 	//! Plays a particle effect at input transformation matrix
-	static SCR_ParticleEmitter PlayParticleEffect_Transform(ResourceName particlePath, EDamageType damageType, vector mat[4])
+	static ParticleEffectEntity PlayParticleEffect_Transform(ResourceName particlePath, EDamageType damageType, vector mat[4])
 	{
 		if (particlePath == ResourceName.Empty)
 			return null;
 		
-		SCR_ParticleEmitter ptc = SCR_ParticleEmitter.CreateWithTransform(particlePath, mat);
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Transform = mat;
+		spawnParams.UseFrameEvent = true;
+		
+		ParticleEffectEntity ptc = ParticleEffectEntity.SpawnParticleEffect(particlePath, spawnParams);
 		if (!ptc)
 			return null;
 		

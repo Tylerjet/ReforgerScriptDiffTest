@@ -6,7 +6,7 @@ enum ENameTagEntityState
 	DEFAULT		 	= 1,	// alive
 	FOCUSED 		= 1<<1,	// focused
 	GROUP_MEMBER	= 1<<2,	// part of the same squad
-	UNCONSCIOUS 	= 1<<3,	// voice over network
+	UNCONSCIOUS 	= 1<<3,	// unconscious
 	VON 			= 1<<4,	// voice over network
 	DEAD 			= 1<<5,	// dead
 	HIDDEN 			= 1<<6	// tag is hidden
@@ -439,7 +439,7 @@ class SCR_NameTagData : Managed
 	protected bool UpdateEntityStateFlags()
 	{
 		m_Flags = ENameTagFlags.DISABLED | ENameTagFlags.NAME_UPDATE;	// this has a default flag because if tag never reaches a visibile state, it needs a disable flag for clean up
-		
+				
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(m_Entity.FindComponent(SCR_CompartmentAccessComponent));	// in vehicle
 		if (compartmentAccess && compartmentAccess.IsInCompartment())
 		{
@@ -465,6 +465,9 @@ class SCR_NameTagData : Managed
 			SCR_AIGroup group = m_GroupManager.GetPlayerGroup(m_iPlayerID);
 			SetGroup(group);
 		}
+		
+		if (m_CharController && m_CharController.IsUnconscious())
+			ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
 			
 		return true;
 	}
@@ -573,9 +576,6 @@ class SCR_NameTagData : Managed
 			if (!m_CharController || m_CharController.IsDead())
 				return false;	
 			
-			if (m_CharController.IsUnconscious())
-				ActivateEntityState(ENameTagEntityState.UNCONSCIOUS);
-			
 			m_CharController.m_OnLifeStateChanged.Insert(OnLifeStateChanged);
 			
 			if (m_bIsCurrentPlayer)		// we only need VON received event for current player to set VON status icons
@@ -596,6 +596,32 @@ class SCR_NameTagData : Managed
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Uninitialize class when its being moved to unsued tags in order to be reused
+	void ResetTag()
+	{
+		if (m_CharController)
+			m_CharController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
+		
+		if (m_bIsCurrentPlayer && m_Entity)
+		{
+			SCR_VoNComponent vonComp = SCR_VoNComponent.Cast( m_Entity.FindComponent(SCR_VoNComponent) );
+			if (vonComp)
+				vonComp.m_OnReceivedVON.Remove(OnReceivedVON);
+		}
+		
+		if (ChimeraCharacter.Cast(m_Entity))
+		{				
+			// Vehicle enter/leave event
+			SCR_CompartmentAccessComponent accessComp = SCR_CompartmentAccessComponent.Cast( m_Entity.FindComponent(SCR_CompartmentAccessComponent) );
+			if (accessComp)
+			{
+				accessComp.GetOnCompartmentEntered().Remove(OnVehicleEntered);
+				accessComp.GetOnCompartmentLeft().Remove(OnVehicleLeft);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SCR_NameTagData(ResourceName layout, Widget rootWidget)
 	{				
 		m_NameTagWidget = GetGame().GetWorkspace().CreateWidgets(layout, rootWidget);
@@ -609,14 +635,6 @@ class SCR_NameTagData : Managed
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_NameTagData()
 	{
-		if (m_CharController)
-			m_CharController.m_OnLifeStateChanged.Remove(OnLifeStateChanged);
-		
-		if (m_bIsCurrentPlayer && m_Entity)
-		{
-			SCR_VoNComponent vonComp = SCR_VoNComponent.Cast( m_Entity.FindComponent(SCR_VoNComponent) );
-			if (vonComp)
-				vonComp.m_OnReceivedVON.Remove(OnReceivedVON);
-		}
+		ResetTag();
 	}
 };

@@ -49,6 +49,8 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	protected float m_fSoundSignalValue;
 	protected bool m_bIsOn;
 	
+	private bool m_bUpdate;
+	
 	protected const static float MATERIAL_EMISSIVITY_STEP = 0.1;
 	protected const static int MATERIAL_EMISSIVITY_ON = 30;
 	protected const static float LIGHT_EMISSIVITY_START = 0.1;
@@ -88,7 +90,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	//------------------------------------------------------------------------------------------------
 	void ToggleLight(bool turnOn, bool skipTransition = false, bool playSound = true)
 	{
-		if (!GetGame().InPlayMode())
+		if (!GetGame().InPlayMode() || m_bIsOn == turnOn)
 			return;	
 		
 		SCR_BaseInteractiveLightComponentClass componentData = SCR_BaseInteractiveLightComponentClass.Cast(GetComponentData(GetOwner()));
@@ -138,11 +140,13 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			if (!light)
 				continue;
 						
+			owner.AddChild(light, -1, EAddChildFlags.AUTO_TRANSFORM | EAddChildFlags.RECALC_LOCAL_TRANSFORM);
+			light.SetFlags(EntityFlags.PROXY);
 			m_aLights.Insert(light);
-			light = null;
 		}
 
 		m_bIsOn = true;
+		m_bUpdate = true;
 
 		// Skip transition phase of the light.		
 		if (skipTransition || !componentData.IsGradualLightningOn())
@@ -167,9 +171,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		m_fSoundSignalStep = 1 / ((MATERIAL_EMISSIVITY_ON - MATERIAL_EMISSIVITY_START) / MATERIAL_EMISSIVITY_STEP);
 		m_fSoundSignalValue = 0;
 		
-		//Clear if there is already a CallLater
-		ClearCallLater();
-		GetGame().GetCallqueue().CallLater(UpdateLight, UPDATE_LIGHT_TIME, true);
+		SetEventMask(GetOwner(), EntityEvent.VISIBLE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -190,13 +192,17 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 				m_EmissiveMaterialComponent.SetEmissiveMultiplier(LIGHT_EMISSIVITY_OFF);
 		}
 			
-		ClearCallLater();
+		ClearEventMask(GetOwner(), EntityEvent.VISIBLE);
 		m_bIsOn = false;
+		m_bUpdate = false;
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	void UpdateLight()
+	override void EOnVisible(IEntity owner, int frameNumber)
 	{
+		if (!m_bUpdate)
+			return;
+		
 		SCR_BaseInteractiveLightComponentClass componentData = SCR_BaseInteractiveLightComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData) 
 			return;		
@@ -207,23 +213,23 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), m_fSoundSignalValue);
 		}
 
-		for (int i = 0, count = componentData.GetLightData().Count(); i < count; i++)
+		if (!m_aLights)
+			return;
+		
+		bool shouldUpdate = true;
+		
+		for (int i = 0, count = Math.Min(componentData.GetLightData().Count(), m_aLights.Count()); i < count; i++)
 		{
-			if (m_fCurLV < componentData.GetLightLV())
+			if (m_fLightEmisivityStep > 0.0 && m_fCurLV < componentData.GetLightLV())
 				UpdateLightEmissivity(componentData.GetLightData()[i], i);
 			
 			if (m_EmissiveMaterialComponent && m_fCurEM < MATERIAL_EMISSIVITY_ON)
 				UpdateMaterialEmissivity();
 			
-			if (m_fCurLV > componentData.GetLightLV() && (!m_EmissiveMaterialComponent || m_fCurEM > MATERIAL_EMISSIVITY_ON))	
-				ClearCallLater();	
+			shouldUpdate &= !(m_fCurLV >= componentData.GetLightLV() && (!m_EmissiveMaterialComponent || m_fCurEM > MATERIAL_EMISSIVITY_ON));
 		}
-	}
 		
-	//------------------------------------------------------------------------------------------------
-	void ClearCallLater()
-	{
-		GetGame().GetCallqueue().Remove(UpdateLight);
+		m_bUpdate = shouldUpdate;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -244,7 +250,9 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	override bool RplSave(ScriptBitWriter writer)
 	{
 		super.RplSave(writer);
+		
 		writer.WriteBool(IsOn());
+		
 		return true;
 	}
 	
@@ -252,10 +260,10 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	override bool RplLoad(ScriptBitReader reader)
 	{
 		super.RplLoad(reader);
+		
 		bool isOn;
 		reader.ReadBool(isOn);
-		if (isOn)
-			ToggleLight(isOn, true, false);
+		ToggleLight(isOn, true, false);
 		
 		return true;
 	}
@@ -263,19 +271,13 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{		
+		super.OnPostInit(owner);
+		
 		m_SoundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
 		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		m_EmissiveMaterialComponent = ParametricMaterialInstanceComponent.Cast(owner.FindComponent(ParametricMaterialInstanceComponent));
-		RplComponent rpl = RplComponent.Cast(owner.FindComponent(RplComponent));
 		
-		if (!rpl || !rpl.IsProxy())
-			ToggleLight(GetInitialState(), true, false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void OnDelete(IEntity owner)
-	{
-		ClearCallLater();
+		ToggleLight(GetInitialState(), true, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -297,8 +299,10 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_BaseInteractiveLightComponent()
+	override void OnDelete(IEntity owner)
 	{
+		super.OnDelete(owner);
+		
 		RemoveLights();
 	}
 };

@@ -243,8 +243,15 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			game.OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		}
 		
-		SCR_MapEntity.GetOnMapOpen().Insert(CancelEditing);
+		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapOpen(MapConfiguration config)
+	{
+		CancelEditing();
+	}
+	
 	override void HandlerDeattached(Widget w)
 	{
 		super.HandlerDeattached(w);
@@ -282,6 +289,6 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 			game.OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		}
 		
-		SCR_MapEntity.GetOnMapOpen().Remove(CancelEditing);
+		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 	}
 };

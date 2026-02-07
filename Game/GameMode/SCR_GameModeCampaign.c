@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_GameModeCampaignClass : SCR_BaseGameModeClass
 {
@@ -80,6 +81,7 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	protected bool m_bMatchOver;
 	protected bool m_bWorldPostProcessDone;
 	protected bool m_bRemnantsStateLoaded;
+	protected bool m_bIsSessionLoadInProgress;
 
 	protected ref SCR_CampaignMilitaryBaseManager m_BaseManager = new SCR_CampaignMilitaryBaseManager(this);
 
@@ -218,6 +220,12 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 	bool WasRemnantsStateLoaded()
 	{
 		return m_bRemnantsStateLoaded;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsSessionLoadInProgress()
+	{
+		return m_bIsSessionLoadInProgress;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -814,7 +822,11 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 		if (basesStructs.IsEmpty())
 			return;
 
+		m_bIsSessionLoadInProgress = true;
 		m_BaseManager.LoadBasesStates(basesStructs);
+		
+		// We need to wait for all services to spawn before switching the progress bool to false so supplies are not deducted from bases
+		GetGame().GetCallqueue().CallLater(EndSessionLoadProgress, DEFAULT_DELAY * 2);
 
 		if (RplSession.Mode() != RplMode.Dedicated)
 		{
@@ -859,6 +871,12 @@ class SCR_GameModeCampaign : SCR_BaseGameMode
 			GetGame().GetCallqueue().CallLater(SpawnMobileHQ, DEFAULT_DELAY, false, factionOPFOR, m_LoadedData.GetMHQLocationOPFOR(), m_LoadedData.GetMHQRotationOPFOR());
 
 		m_LoadedData = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EndSessionLoadProgress()
+	{
+		m_bIsSessionLoadInProgress = false;
 	}
 
 	//------------------------------------------------------------------------------------------------

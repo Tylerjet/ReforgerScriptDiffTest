@@ -3,6 +3,18 @@ class SCR_MapEntityClass: MapEntityClass
 };
 
 //------------------------------------------------------------------------------------------------
+// invoker typedefs
+void MapConfigurationInvoker(MapConfiguration config);
+typedef func MapConfigurationInvoker;
+
+void MapItemInvoker(MapItem mapItem);
+typedef func MapItemInvoker;
+
+void ScriptInvokerFloat2Bool(float f1, float f2, bool b1);
+typedef func ScriptInvokerFloat2Bool;
+
+
+//------------------------------------------------------------------------------------------------
 //! Map entity
 [EntityEditorProps(category: "GameScripted/Map", description: "Map entity, handles displaying of map etc", sizeMin: "-5 -5 -5", sizeMax: "5 5 5", color: "255 255 200 0", dynamicBox: true)]
 class SCR_MapEntity: MapEntity
@@ -52,18 +64,18 @@ class SCR_MapEntity: MapEntity
 	protected ref array<ref SCR_MapUIBaseComponent> m_aLoadedComponents = {};
 	
 	// invokers
-	protected static ref ScriptInvoker<MapConfiguration> s_OnMapInit 	= new ScriptInvoker();	// map init, called straight after opening the map
-	protected static ref ScriptInvoker<MapConfiguration> s_OnMapOpen 	= new ScriptInvoker();	// map open, called after map is properly initialized
-	protected static ref ScriptInvoker<MapConfiguration> s_OnMapClose 	= new ScriptInvoker();	// map close
-	protected static ref ScriptInvoker<float, float, bool> s_OnMapPan 	= new ScriptInvoker();	// map pan, passes UNSCALED x & y
-	protected static ref ScriptInvoker<float, float> s_OnMapPanEnd 		= new ScriptInvoker();	// map pan interpolated end
-	protected static ref ScriptInvoker<float> s_OnMapZoom				= new ScriptInvoker();	// map zoom
-	protected static ref ScriptInvoker<float> s_OnMapZoomEnd			= new ScriptInvoker();	// map zoom interpolated end
-	protected static ref ScriptInvoker<vector> s_OnSelection 			= new ScriptInvoker();	// any click/selection on map
-	protected static ref ScriptInvoker<MapItem> s_OnSelectionChanged 	= new ScriptInvoker();	// map item de/selected
-	protected static ref ScriptInvoker<MapItem> s_OnHoverItem			= new ScriptInvoker();	// map item hovered
-	protected static ref ScriptInvoker<MapItem> s_OnHoverEnd			= new ScriptInvoker();	// map item hover end
-	protected static ref ScriptInvoker<int> s_OnLayerChanged 			= new ScriptInvoker();	// map layer changed
+	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapInit = new ScriptInvokerBase<MapConfigurationInvoker>();	// map init, called straight after opening the map
+	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapOpen = new ScriptInvokerBase<MapConfigurationInvoker>();	// map open, called after map is properly initialized
+	protected static ref ScriptInvokerBase<MapConfigurationInvoker> s_OnMapClose = new ScriptInvokerBase<MapConfigurationInvoker>();// map close
+	protected static ref ScriptInvokerBase<ScriptInvokerFloat2Bool> s_OnMapPan 	= new ScriptInvokerBase<ScriptInvokerFloat2Bool>;	// map pan, passes UNSCALED x & y
+	protected static ref ScriptInvoker<float, float> s_OnMapPanEnd 				= new ScriptInvoker();						// map pan interpolated end
+	protected static ref ScriptInvokerFloat s_OnMapZoom							= new ScriptInvokerFloat();							// map zoom
+	protected static ref ScriptInvokerFloat s_OnMapZoomEnd 						= new ScriptInvokerFloat();							// map zoom interpolated end
+	protected static ref ScriptInvokerVector s_OnSelection 						= new ScriptInvokerVector();						// any click/selection on map
+	protected static ref ScriptInvokerInt s_OnLayerChanged 						= new ScriptInvokerInt();							// map layer changed
+	protected static ref ScriptInvokerBase<MapItemInvoker> s_OnSelectionChanged = new ScriptInvokerBase<MapItemInvoker>();			// map items de/selected
+	protected static ref ScriptInvokerBase<MapItemInvoker> s_OnHoverItem 		= new ScriptInvokerBase<MapItemInvoker>();			// map item hovered
+	protected static ref ScriptInvokerBase<MapItemInvoker> s_OnHoverEnd 		= new ScriptInvokerBase<MapItemInvoker>();			// map item hover end
 	
 	//TEMP & TODOs
 	protected int m_iLayerIndex = 0;	// current layer (switch to getter from gamecode)	
@@ -73,29 +85,29 @@ class SCR_MapEntity: MapEntity
 	// GETTERS / SETTERS
 	//------------------------------------------------------------------------------------------------
 	//! Get on map init invoker, caution: called during the first frame of opening the map when widget related stuff is not initialized yet
-	static ScriptInvoker GetOnMapInit() { return s_OnMapInit; }
+	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapInit() { return s_OnMapInit; }
 	//! Get on map open invoker
-	static ScriptInvoker GetOnMapOpen() { return s_OnMapOpen; }
+	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapOpen() { return s_OnMapOpen; }
 	//! Get on map close invoker
-	static ScriptInvoker GetOnMapClose() { return s_OnMapClose; }
+	static ScriptInvokerBase<MapConfigurationInvoker> GetOnMapClose() { return s_OnMapClose; }
 	//! Get on map pan invoker
-	static ScriptInvoker GetOnMapPan() { return s_OnMapPan; }
+	static ScriptInvokerBase<ScriptInvokerFloat2Bool> GetOnMapPan() { return s_OnMapPan; }
 	//! Get on map pan interpolated end invoker
 	static ScriptInvoker GetOnMapPanEnd() { return s_OnMapPanEnd; }
 	//! Get on map zoom invoker
-	static ScriptInvoker GetOnMapZoom() { return s_OnMapZoom; }
+	static ScriptInvokerFloat GetOnMapZoom() { return s_OnMapZoom; }
 	//! Get on map zoom interpolated end invoker
-	static ScriptInvoker GetOnMapZoomEnd() { return s_OnMapZoomEnd; }
+	static ScriptInvokerFloat GetOnMapZoomEnd() { return s_OnMapZoomEnd; }
 	//! Get on selection changed invoker
-	static ScriptInvoker GetOnSelectionChanged() { return s_OnSelectionChanged; }
+	static ScriptInvokerBase<MapItemInvoker> GetOnSelectionChanged() { return s_OnSelectionChanged; }
 	//! Get on selection invoker
-	static ScriptInvoker GetOnSelection() { return s_OnSelection; }
+	static ScriptInvokerVector GetOnSelection() { return s_OnSelection; }
 	//! Get on hover item invoker
-	static ScriptInvoker GetOnHoverItem() { return s_OnHoverItem; }
+	static ScriptInvokerBase<MapItemInvoker> GetOnHoverItem() { return s_OnHoverItem; }
 	//! Get on hover end invoker
-	static ScriptInvoker GetOnHoverEnd() { return s_OnHoverEnd; }
+	static ScriptInvokerBase<MapItemInvoker> GetOnHoverEnd() { return s_OnHoverEnd; }
 	//! Get on layer changed invoker
-	static ScriptInvoker GetOnLayerChanged() { return s_OnLayerChanged; }
+	static ScriptInvokerInt GetOnLayerChanged() { return s_OnLayerChanged; }
 	//! Get map entity instance
 	static SCR_MapEntity GetMapInstance() { return s_MapInstance; }
 	
@@ -336,6 +348,13 @@ class SCR_MapEntity: MapEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Game event
+	protected void OnWindowResized(int width, int heigth, bool windowed)
+	{
+		OnUserSettingsChanged();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	// MAP SETUP
 	//------------------------------------------------------------------------------------------------
 	//! Prepare MapConfiguration object from provided map config
@@ -499,12 +518,9 @@ class SCR_MapEntity: MapEntity
 	{
 		if (m_iDelayCounter > 0)
 		{
-			Print("SCR_MapEntity: Attempt to call CenterMap before map init is completed", LogLevel.NORMAL);
+			Print("SCR_MapEntity: Attempt to call CenterMap before map init is completed", LogLevel.WARNING);
 			return;
-		}
-		
-		float screenX, screenY;
-		m_MapWidget.GetScreenSize(screenX, screenY);
+		}		
 		
 		//! get current size of map(includes zoom level) in screen space
 		int x, y;
@@ -848,23 +864,7 @@ class SCR_MapEntity: MapEntity
 		worldX = (screenPosX - m_Workspace.DPIScale(m_fPanX)) / m_fZoomPPU;
 		worldY = (screenPosY - m_Workspace.DPIScale(m_fPanY)) / m_fZoomPPU;
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Takes plain screen positions, applies DPI operations, returns results in world coordinates
-	void ScreenToWorldPlain(int screenPosX, int screenPosY, out float worldX, out float worldY)
-	{	
-		// todo: what is this for?
 		
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		screenPosX = workspace.DPIUnscale(screenPosX);
-		screenPosY = workspace.DPIUnscale(screenPosY);
-		
-		screenPosX = workspace.DPIScale(screenPosX);
-		screenPosY = workspace.DPIScale(screenPosY);
-
-		ScreenToWorld(screenPosX, screenPosY, worldX, worldY);
-	}
-	
 	/*!
 	Get grid coordinates for given position.
 	\param pos World position
@@ -926,41 +926,41 @@ class SCR_MapEntity: MapEntity
 		int height 	= size[1] * pixPerUnit;
 		
 		// center of the screen can travel everywhere within map
-		int minX = windowWidth/2 - m_Workspace.DPIUnscale(width);
-		int minY = windowHeight/2 - m_Workspace.DPIUnscale(height);
-		int maxX = windowWidth/2;
-		int maxY = windowHeight/2;
+		int minCoordX = windowWidth/2 - m_Workspace.DPIUnscale(width);
+		int minCoordY = windowHeight/2 - m_Workspace.DPIUnscale(height);
+		int maxCoordX = windowWidth/2;
+		int maxCoordY = windowHeight/2;
 		
 		// cannot pan outside of map bounds 
-		/*int minX = windowWidth - width;
-		int minY = windowHeight - height;
-		int maxX = 0;
-		int maxY = 0;*/
+		/*int minCoordX = windowWidth - width;
+		int minCoordY = windowHeight - height;
+		int maxCoordX = 0;
+		int maxCoordY = 0;*/
 		
 		bool adjusted = false;
 		
 		// stop when over min/max
-		if (panX < minX)
+		if (panX < minCoordX)
 		{
-			panX = minX;
+			panX = minCoordX;
 			adjusted = true;
 		}
 		
-		if (panX > maxX)
+		if (panX > maxCoordX)
 		{ 
-			panX = maxX;
+			panX = maxCoordX;
 			adjusted = true;
 		}
 		
-		if (panY < minY) 
+		if (panY < minCoordY) 
 		{ 
-			panY = minY;
+			panY = minCoordY;
 			adjusted = true;
 		}
 		
-		if (panY > maxY)
+		if (panY > maxCoordY)
 		{
-			panY = maxY;
+			panY = maxCoordY;
 			adjusted = true;
 		}
 		
@@ -1284,32 +1284,12 @@ class SCR_MapEntity: MapEntity
 		float screenWidth, screenHeight;
 		m_MapWidget.GetScreenSize(screenWidth, screenHeight);
 			
-		float vpMinX, vpMinY, vpMaxX, vpMaxY;
-		int sBLX = 0, sBLY = screenHeight, sTRX = screenWidth, sTRY = 0;
+		float minCoordX, minCoordY, maxCoordX, maxCoordY;
 			
-		ScreenToWorldPlain(sBLX, sBLY, vpMinX, vpMinY);
-		ScreenToWorldPlain(sTRX, sTRY, vpMaxX, vpMaxY);
+		ScreenToWorld(screenWidth, 0, maxCoordX, maxCoordY);
+		ScreenToWorld(0, screenHeight, minCoordX, minCoordY);
 			
-		//---------------------------------------------------------------------
-		// For debug purposes
-		// Print("vpMinX:   " + vpMinX + "   vpMinY:   " + vpMinY);
-		// Print("vpMaxX:   " + vpMaxX + "   vpMaxY:   " + vpMaxY);
-		// Print("   ");
-		//---------------------------------------------------------------------
-		
-		SetFrame(Vector(vpMinX, 0, vpMinY), Vector(vpMaxX, 0, vpMaxY));
-			
-		//---------------------------------------------------------------------
-		// For debug purposes
-		// int screenX, screenY;
-		// float worldX, worldY;
-		// screenX = m_CursorInfo.Scale(m_CursorInfo.x);
-		// screenY = m_CursorInfo.Scale(m_CursorInfo.y);
-		// ScreenToWorld(screenX, screenY, worldX, worldY);
-			
-		// Print("CursorWorldX:   " + worldX + "   CursorWorldY:   " + worldY);
-		// Print("   ");
-		//---------------------------------------------------------------------
+		SetFrame(Vector(minCoordX, 0, minCoordY), Vector(maxCoordX, 0, maxCoordY));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1473,7 +1453,7 @@ class SCR_MapEntity: MapEntity
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, "", "Enable map debug menu", "UI");
 		
 		GetGame().OnUserSettingsChangedInvoker().Insert(OnUserSettingsChanged);
-		GetGame().OnWindowResizeInvoker().Insert(OnUserSettingsChanged);
+		GetGame().OnWindowResizeInvoker().Insert(OnWindowResized);
 	}
 
 	//------------------------------------------------------------------------------------------------

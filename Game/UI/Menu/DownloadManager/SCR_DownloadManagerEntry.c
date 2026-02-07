@@ -9,6 +9,8 @@ typedef func ScriptInvoker_DownloadManagerEntry;
 //------------------------------------------------------------------------------------------------
 class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 {
+	const int PAUSE_ENABLE_DELAY_MS = 1000; // delay used to prevent spamming pause/resume request
+	
 	// State messages
 	protected const string STATE_DOWNLOADING_PERCENTAGE = "#AR-ValueUnit_Percentage";
 	protected const string STATE_CANCELED = "#AR-Workshop_Canceled";
@@ -24,6 +26,7 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	protected ref SCR_WorkshopItemActionDownload m_Action;
 	protected ref SCR_WorkshopItem m_Item;
 	
+	protected bool m_bPauseEnabled = true;
 	protected bool m_bShowButtons = false;
 	protected EDownloadManagerActionState m_iState = EDownloadManagerActionState.INACTIVE;
 	
@@ -103,15 +106,51 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void SetupWidgets()
 	{
+		if (!m_Action)
+		{
+			FallbackVisuals();
+			return;
+		}
+		
 		// Image 
-		BackendImage img = m_Action.GetWorkshopItem().GetWorkshopItem().Thumbnail();
-		m_BackendImage.SetImage(img);
+		if (m_Item && m_Item.GetWorkshopItem() && m_Item.GetWorkshopItem().Thumbnail())
+			m_BackendImage.SetImage(m_Item.GetWorkshopItem().Thumbnail());
+		else
+			m_BackendImage.SetImage(null);
 		
 		// Name
 		m_Widgets.m_NameText.SetText(m_Action.GetAddonName());
 		
 		// Versions
 		m_Widgets.m_VersionText.SetText(m_Action.GetTargetRevision().GetVersion());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Display placeholder values if action failed to be loaded
+	protected void FallbackVisuals()
+	{
+		if (!m_Item)
+		{
+			m_Widgets.m_NameText.SetText("...");
+			m_Widgets.m_VersionText.SetText("...");
+			m_BackendImage.SetImage(null);
+			
+			return;
+		}
+		
+		m_Widgets.m_NameText.SetText(m_Item.GetName());
+		
+		// Versions
+		if (m_Item.GetItemTargetRevision())
+			m_Widgets.m_VersionText.SetText(m_Item.GetItemTargetRevision().GetVersion());
+		else
+			m_Widgets.m_VersionText.SetText("...");
+		
+		// Image
+		if (m_Item.GetWorkshopItem() && m_Item.GetWorkshopItem().Thumbnail())
+			m_BackendImage.SetImage(m_Item.GetWorkshopItem().Thumbnail());
+		else
+			m_BackendImage.SetImage(null);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -159,20 +198,20 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		
 		// Progress bar
 		bool running = (m_iState == EDownloadManagerActionState.RUNNING); 
+		bool runningOrFailed = running || m_iState == EDownloadManagerActionState.FAILED;
 		
-		m_Widgets.m_Progress.SetVisible(running || m_iState == EDownloadManagerActionState.FAILED);
-		if (running)
-			m_Widgets.m_ProgressComponent.SetValue(m_Action.GetProgress());
+		m_Widgets.m_Progress.SetVisible(runningOrFailed);
 		
 		// Download size
-		string addonSize = SCR_ByteFormat.GetReadableSize(m_Action.GetSizeBytes());
+		string addonSize = SCR_ByteFormat.ContentDownloadFormat(m_Action.GetSizeBytes());
 		
-		if (running || m_iState == EDownloadManagerActionState.FAILED)
+		if (runningOrFailed)
 		{
 			// Show progress
 			string downloadSize = SCR_ByteFormat.ContentDownloadFormat(m_Action.GetSizeBytes() * m_Action.GetProgress());
 			
 			m_Widgets.m_DownloadedText.SetText(string.Format("%1/%2", downloadSize, addonSize));
+			m_Widgets.m_ProgressComponent.SetValue(m_Action.GetProgress());
 		}
 		else
 		{
@@ -214,10 +253,14 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		bool pause, resume, cancel, retry;
 		CanDoActions(pause, resume, cancel, retry);
 		
+		// Buttons
 		m_Widgets.m_PauseBtn.SetVisible(pause);
 		m_Widgets.m_ResumeBtn.SetVisible(resume);
 		m_Widgets.m_CancelBtn.SetVisible(cancel);
 		m_Widgets.m_RetryBtn.SetVisible(retry);
+		
+		m_Widgets.m_PauseBtn.SetEnabled(m_Action.IsRunningAsyncSolved());
+		m_Widgets.m_ResumeBtn.SetEnabled(m_Action.IsPauseAsyncSolved());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -237,16 +280,29 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 		// Downloading
 		if (m_Action.IsActive() && !m_Action.IsCompleted() && !m_Action.IsPaused())
 		{
-			float progress = m_Action.GetProgress();
-			string progressStr = WidgetManager.Translate(STATE_DOWNLOADING_PERCENTAGE, Math.Round(progress * 100.0));
+			if (m_Action.GetProgress() < 0.99)
+			{
+				// Download running  
+				float progress = m_Action.GetProgress();
+				string progressStr = WidgetManager.Translate(STATE_DOWNLOADING_PERCENTAGE, Math.Round(progress * 100.0));
+				
+				message = progressStr;
+				imageName = "downloading";
+				color = UIColors.CONTRAST_CLICKED_HOVERED;
+				colorText = false;
+			}
+			else
+			{
+				// Files processing 
+				message = "#AR-EditableEntity_AIWaypoint_Wait_Name...";
+				imageName = "systems";
+				color = UIColors.CONTRAST_CLICKED_HOVERED;
+				colorText = false;
+			}
 			
-			message = progressStr;
-			imageName = "downloading";
-			color = UIColors.CONTRAST_CLICKED_HOVERED;
-			colorText = false;
 			return;
 		}
-			
+		
 		// Paused 
 		if (m_Action.IsPaused())
 		{
@@ -313,6 +369,9 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 			m_Action.Pause();
 		
 		UpdateProgressWidgets();
+		
+		// Set disabled
+		//DisablePauserResume(m_Widgets.m_ResumeBtnComponent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -327,6 +386,32 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 			m_Action.Activate();
 		
 		UpdateProgressWidgets();
+		
+		// Set disabled
+		//DisablePauserResume(m_Widgets.m_PauseBtnComponent);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DisablePauserResume(SCR_ModularButtonComponent button)
+	{
+		m_bPauseEnabled = false;
+		button.SetEnabled(false);
+		// Enable pause button later to prevent request spamming
+		GetGame().GetCallqueue().Remove(EnablePauserResume);
+		GetGame().GetCallqueue().CallLater(EnablePauserResume, PAUSE_ENABLE_DELAY_MS, false, button);
+		
+		if (m_OnUpdate)
+			m_OnUpdate.Invoke(this);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EnablePauserResume(SCR_ModularButtonComponent button)
+	{
+		m_bPauseEnabled = true;
+		button.SetEnabled(true);
+		
+		if (m_OnUpdate)
+			m_OnUpdate.Invoke(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -367,5 +452,11 @@ class SCR_DownloadManagerEntry : SCR_ScriptedWidgetComponent
 	EDownloadManagerActionState GetState()
 	{
 		return m_iState;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetPauseEnabled()
+	{
+		return m_bPauseEnabled;
 	}
 }

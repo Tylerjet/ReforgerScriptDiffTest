@@ -17,6 +17,8 @@ typedef func SCR_ArsenalManagerComponent_OnPlayerLoadoutChanged;
 
 class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 {
+	protected static SCR_ArsenalManagerComponent s_Instance;
+	
 	[Attribute("{27F28CF7C6698FF8}Configs/Arsenal/ArsenalSaveTypeInfoHolder.conf", desc: "Holds a list of save types than can be used for arsenals. Any new arsenal save type should be added to the config to allow it to be set by Editor", params: "conf class=SCR_ArsenalSaveTypeInfoHolder")]
 	protected ResourceName m_sArsenalSaveTypeInfoHolder;
 	
@@ -37,11 +39,8 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	static bool GetArsenalManager(out SCR_ArsenalManagerComponent arsenalManager)
 	{
-		if (!GetGame().GetGameMode())
-			return false;
-		
-		arsenalManager = SCR_ArsenalManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_ArsenalManagerComponent));
-		return arsenalManager != null;
+		arsenalManager = s_Instance;
+		return s_Instance != null;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -60,6 +59,18 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	SCR_LoadoutSaveBlackListHolder GetLoadoutSaveBlackListHolder()
 	{
 		return m_LoadoutSaveBlackListHolder;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnPlayerChangedFaction(int playerId, SCR_PlayerFactionAffiliationComponent playerFactionAffiliation, Faction faction)
+	{
+		if (!m_aPlayerLoadouts.Contains(playerId))
+			return;
+		
+		//~ Remove loadout from map on server and inform players
+		m_aPlayerLoadouts.Remove(playerId);
+		DoPlayerClearHasLoadout(playerId);
+		Rpc(DoPlayerClearHasLoadout, playerId);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -347,31 +358,57 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	protected void DoPlayerClearHasLoadout(int playerId)
+	{
+		if (playerId == SCR_PlayerController.GetLocalPlayerId())
+			m_bLocalPlayerLoadoutAvailable = false;
+
+		m_OnPlayerLoadoutUpdated.Invoke(playerId, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		//~ Init item black list (Server only). Call one frame later to make sure catalogs are initalized
 		if (m_LoadoutSaveBlackListHolder)
 			GetGame().GetCallqueue().CallLater(m_LoadoutSaveBlackListHolder.Init);
+		
+		if (!GetGameMode().IsMaster())
+			return; 
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			factionManager.GetOnPlayerFactionChanged_S().Insert(OnPlayerChangedFaction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{	
-		if (SCR_Global.IsEditMode())
+		if (SCR_Global.IsEditMode() || s_Instance)
 			return;
-		
-		 SetEventMask(owner, EntityEvent.INIT);
+
+		s_Instance = SCR_ArsenalManagerComponent.Cast(GetGameMode().FindComponent(SCR_ArsenalManagerComponent));
+		SetEventMask(owner, EntityEvent.INIT);
 		
 		//~ Get config for saveType holder. This is used by arsenals in the world
 		m_ArsenalSaveTypeInfoHolder = SCR_ArsenalSaveTypeInfoHolder.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sArsenalSaveTypeInfoHolder, true));
 		if (!m_ArsenalSaveTypeInfoHolder)
 			Print("'SCR_ArsenalManagerComponent' failed to load Arsenal Save Type Holder config!", LogLevel.ERROR);
 		
-		
+		//~ Get loadout save blacklist config, Can be null (Server Only)
 		if (GetGameMode().IsMaster())
-		{		
-			//~ Get loadout save blacklist config, Can be null (Server Only)
 			m_LoadoutSaveBlackListHolder = SCR_LoadoutSaveBlackListHolder.Cast(SCR_BaseContainerTools.CreateInstanceFromPrefab(m_sLoadoutSaveBlackListHolder, false));		
-		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		if (SCR_Global.IsEditMode() || !GetGameMode() || !GetGameMode().IsMaster())
+			return; 
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			factionManager.GetOnPlayerFactionChanged_S().Remove(OnPlayerChangedFaction);
 	}
 };

@@ -258,6 +258,8 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 		
 		// Pause and resume 
 		m_NavPauseResume.SetVisible(pause || resume, false);
+		m_NavPauseResume.SetEnabled(entry.GetPauseEnabled());
+		
 		if (resume)
 			m_NavPauseResume.SetLabel("#AR-DownloadManager_ButtonResume");
 		else
@@ -327,6 +329,16 @@ class SCR_DownloadManagerListComponent : SCR_SubMenuBase
 			m_NavPauseResumeAll.SetLabel("#AR-DownloadManager_ButtonResumeAll");
 		else
 			m_NavPauseResumeAll.SetLabel("#AR-DownloadManager_ButtonPauseAll");
+		
+		// Disable and enable later to prevent pause/resume request spamming
+		m_NavPauseResumeAll.SetEnabled(false);
+		GetGame().GetCallqueue().CallLater(EnablePauseResumeAll, SCR_DownloadManagerEntry.PAUSE_ENABLE_DELAY_MS);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EnablePauseResumeAll()
+	{
+		m_NavPauseResumeAll.SetEnabled(true);
 	}
 }
 

@@ -1186,7 +1186,7 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 #endif
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ParticleEmitter SpawnAsChild(IEntity owner, SCR_HitInfo hitInfo, bool snapToTerrain = false)
+	ParticleEffectEntity SpawnAsChild(IEntity owner, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (m_Particle == ResourceName.Empty)
 			return null;
@@ -1227,7 +1227,7 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
-	override SCR_ParticleEmitter Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
+	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo || m_Particle == ResourceName.Empty)
 			return null;

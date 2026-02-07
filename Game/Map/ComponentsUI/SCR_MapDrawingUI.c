@@ -21,15 +21,19 @@ class MapLine
 	{
 		m_wRootW = rootW;
 		
+		Widget mapFrame = m_MapEntity.GetMapMenuRoot().FindAnyWidget(SCR_MapConstants.MAP_FRAME_NAME);
+		if (!mapFrame)
+			return;
+		
 		if (drawStart)
 			m_MapEntity.GetMapCursorWorldPosition(m_fStartPointX, m_fStartPointY);
 		else 
 			m_bIsLineDrawn = true;
 		
-		m_wLine = GetGame().GetWorkspace().CreateWidgets("{E8850FCD9219C411}UI/layouts/Map/MapDrawLine.layout", m_wRootW);
+		m_wLine = GetGame().GetWorkspace().CreateWidgets("{E8850FCD9219C411}UI/layouts/Map/MapDrawLine.layout", mapFrame);
 		m_wLineImage = ImageWidget.Cast(m_wLine.FindAnyWidget("DrawLineImage"));
 			
-		m_wDeleteButton = GetGame().GetWorkspace().CreateWidgets("{F486FAEEA00A5218}UI/layouts/Map/MapLineDeleteButton.layout", rootW);
+		m_wDeleteButton = GetGame().GetWorkspace().CreateWidgets("{F486FAEEA00A5218}UI/layouts/Map/MapLineDeleteButton.layout", mapFrame);
 		m_DeleteButtonComp = SCR_ButtonImageComponent.Cast(m_wDeleteButton.FindAnyWidget("DelButton").FindHandler(SCR_ButtonImageComponent));
 		m_DeleteButtonComp.m_OnClicked.Insert(OnButtonClick);
 		m_DeleteButtonComp.m_OnFocus.Insert(OnButtonFocus);

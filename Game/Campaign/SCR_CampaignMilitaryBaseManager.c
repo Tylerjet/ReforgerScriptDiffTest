@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 void OnSignalChangedDelegate(SCR_CampaignMilitaryBaseComponent base);
 void OnAllBasesInitializedDelegate();
 void OnLocalPlayerEnteredBaseDelegate(SCR_CampaignMilitaryBaseComponent base);

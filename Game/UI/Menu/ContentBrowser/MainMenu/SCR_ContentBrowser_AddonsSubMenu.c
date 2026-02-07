@@ -1541,4 +1541,18 @@ class SCR_CompareWorkshopItemTimeSinceFirstDownload : SCR_SortCompare<SCR_Worksh
 		
 		return timeLeft < timeRight;
 	}
+}
+
+
+//------------------------------------------------------------------------------------------------
+// Sort by time since last played
+class SCR_CompareWorkshopItemTargetSize : SCR_SortCompare<SCR_WorkshopItem>
+{
+	override static int Compare(SCR_WorkshopItem left, SCR_WorkshopItem right)
+	{
+		float leftSize = left.GetTargetRevisionPatchSize();
+		float rightSize = right.GetTargetRevisionPatchSize();
+
+		return leftSize < rightSize;
+	}
 };

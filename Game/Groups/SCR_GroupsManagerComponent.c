@@ -1061,7 +1061,38 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			m_aDeletionQueue.Remove(i);
 		}
 		
+		
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+		//------------------------------------------------------------------------------------------------
+	void TunePlayersFrequency(int playerId, IEntity player)
+	{
+		PlayerController controller = GetGame().GetPlayerManager().GetPlayerController(playerId);
+		if (!controller)
+			return;
+		
+		SCR_GadgetManagerComponent gadgetManager = SCR_GadgetManagerComponent.GetGadgetManager(player);
+		if (!gadgetManager)
+			return;
+		
+		IEntity radio = gadgetManager.GetGadgetByType(EGadgetType.RADIO);
+		if (!radio)
+			return;
+		
+		BaseRadioComponent radioComponent = BaseRadioComponent.Cast(radio.FindComponent(BaseRadioComponent));
+		if (!radioComponent)
+			return;
+
+		SCR_PlayerControllerGroupComponent groupComponent = SCR_PlayerControllerGroupComponent.Cast(controller.FindComponent(SCR_PlayerControllerGroupComponent));
+		if (!groupComponent)
+			return;
+		
+		BaseTransceiver transceiver = radioComponent.GetTransceiver(0);
+		if (!transceiver)
+			return;
+		
+		transceiver.SetFrequency(groupComponent.GetActualGroupFrequency());
 	}		
 	
 	//------------------------------------------------------------------------------------------------
@@ -1101,6 +1132,11 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		SCR_AIGroup.GetOnPlayerAdded().Insert(OnGroupPlayerAdded);
 		SCR_AIGroup.GetOnPlayerRemoved().Insert(OnGroupPlayerRemoved);
 		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(ClearRequests);
+		
+		SCR_BaseGameMode gameMode = GetGameMode();
+		gameMode.GetOnPlayerSpawned().Insert(TunePlayersFrequency);
+		
+		
 		m_bConfirmedByPlayer = false;
 		
 		CreatePredefinedGroups();

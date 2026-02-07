@@ -223,4 +223,17 @@ class SCR_WorldTools
 
 		return isUnderwater;
 	}
+	
+	//------------------------------------------------------------------------------------------------		
+	static float GetWaterSurfaceY(BaseWorld world, vector worldPos, out EWaterSurfaceType waterSurfaceType, out float lakeArea)
+	{		
+		vector waterSurfacePos;
+		vector transformWS[4];
+		vector obbExtents;
+
+		ChimeraWorldUtils.TryGetWaterSurface(world, worldPos, waterSurfacePos, waterSurfaceType, transformWS, obbExtents);
+		lakeArea = obbExtents[0] * obbExtents[2];
+		
+		return waterSurfacePos[1];
+	}
 };

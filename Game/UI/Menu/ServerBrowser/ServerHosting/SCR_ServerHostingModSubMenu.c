@@ -512,7 +512,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		SCR_DownloadConfirmationDialog downloadDialog = SCR_DownloadConfirmationDialog.CreateForAddons(
 			addonsAndVersions, true);
 		
-		downloadDialog.m_OnDownloadConfirmed.Insert(OnFixDependeciesDownloadConfirm);
+		downloadDialog.GetOnDownloadConfirmed().Insert(OnFixDependeciesDownloadConfirm);
 	}
 	
 	//----------------------------------------------------------------------------------------------
@@ -524,7 +524,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 			action.m_OnCompleted.Insert(OnFixDependenciesDownloadCompleted);
 		} 
 		
-		dialog.m_OnDownloadConfirmed.Remove(OnFixDependeciesDownloadConfirm);
+		dialog.GetOnDownloadConfirmed().Remove(OnFixDependeciesDownloadConfirm);
 	}
 	
 	//----------------------------------------------------------------------------------------------

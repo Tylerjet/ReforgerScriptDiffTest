@@ -9,6 +9,9 @@ class SCR_BackendImageComponentBase : ScriptedWidgetComponent
 	[Attribute("1.0", UIWidgets.EditBox, "Coefficient which will be used to estimate target widget size. To calculate it, use ration of image width and screen width in Full HD resolution.")]
 	protected float m_iScreenSizeCoefficient;
 	
+	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Image used as fallback for addon image", params: "edds")]
+	protected ResourceName m_sFallbackImage;
+	
 	// Other
 	protected ref BackendImage m_BackendImage;
 	protected ref SCR_WorkshopItemCallback_DownloadImage m_DownloadImageCallback;
@@ -238,7 +241,10 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	protected TextWidget m_wDebugText;
 	
 	//----------------------------------------------------------------------------------
-	Widget GetRootWidget() { return m_wRoot; }
+	Widget GetRootWidget() 
+	{
+		return m_wRoot; 
+	}
 	
 	//----------------------------------------------------------------------------------
 	protected override void ShowLoadingImage(string fallbackImage)
@@ -247,13 +253,9 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 			return;
 		
 		if (fallbackImage.IsEmpty())
-		{
 			m_wImage.SetVisible(false);
-		}
 		else
-		{
 			ShowImage(fallbackImage);
-		}
 		
 		if (m_LoadingOverlay)
 			m_LoadingOverlay.SetShown(true);
@@ -279,6 +281,12 @@ class SCR_BackendImageComponent : SCR_BackendImageComponentBase
 	{
 		if (!m_wImage)
 			return;
+		
+		if (imagePath.IsEmpty())
+		{
+			m_wImage.LoadImageTexture(0, m_sFallbackImage, false, true);
+			return;
+		}
 		
 		m_wImage.LoadImageTexture(0, imagePath, false, true);
 		

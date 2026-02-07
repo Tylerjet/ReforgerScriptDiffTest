@@ -375,7 +375,7 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnMapOpen()
+	protected void OnMapOpen(MapConfiguration config)
 	{
 		m_MapEntity.SetZoom(1);
 

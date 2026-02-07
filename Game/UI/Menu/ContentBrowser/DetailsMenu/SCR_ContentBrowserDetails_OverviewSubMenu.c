@@ -68,7 +68,7 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 
 		// Init the addon details panel
 		widgets.m_AddonDetailsPanelComponent.SetWorkshopItem(m_WorkshopItem);
-
+		
 		// Listen for Actions
 		SCR_MenuActionsComponent actionsComp = SCR_MenuActionsComponent.FindComponent(GetRootWidget());
 		if(actionsComp)
@@ -319,11 +319,13 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 
 			if (specificVersion)
 			{
-				SCR_WorkshopItemActionDownload dlAction = m_WorkshopItem.Download(specificVersion);
-				dlAction.Activate();
+				//SCR_WorkshopItemActionDownload dlAction = m_WorkshopItem.Download(specificVersion);
+				//dlAction.Activate();
+				
+				m_DownloadRequest = SCR_WorkshopDownloadSequence.Create(m_WorkshopItem, specificVersion, m_DownloadRequest);
 			}
 			else
-				m_DownloadRequest = SCR_WorkshopDownloadSequence.TryCreate(m_WorkshopItem, true, m_DownloadRequest);
+				m_DownloadRequest = SCR_WorkshopDownloadSequence.Create(m_WorkshopItem, m_WorkshopItem.GetLatestRevision(), m_DownloadRequest);
 		}
 
 		//! TOOLTIP

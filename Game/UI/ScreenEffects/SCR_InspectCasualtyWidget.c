@@ -118,7 +118,7 @@ class SCR_InspectCasualtyWidget : SCR_InfoDisplayExtended
 			return;
 
 		vector boneVector[4];
-		m_Target.GetBoneMatrix(m_Target.GetBoneIndex(TARGET_BONE), boneVector);
+		m_Target.GetAnimation().GetBoneMatrix(m_Target.GetAnimation().GetBoneIndex(TARGET_BONE), boneVector);
 		
 		vector WPPos = boneVector[3] + m_Target.GetOrigin();
 		vector pos = GetGame().GetWorkspace().ProjWorldToScreen(WPPos, GetGame().GetWorld());

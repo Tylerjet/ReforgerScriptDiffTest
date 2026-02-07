@@ -62,6 +62,11 @@ class SCR_InventoryItemInfoUI : ScriptedWidgetComponent
 			m_wItemIcon.SetColor(color);
 	}
 	
+	void ShowIcon(bool isVisible)
+	{
+		m_wItemIcon.SetVisible(isVisible);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void Hide( float fDelay = 1.0 )
 	{

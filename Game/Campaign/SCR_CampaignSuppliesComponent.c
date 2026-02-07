@@ -193,12 +193,13 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void AddSupplies(int supplies, bool replicate = true)
 	{
+		int oldSupplies = m_iSupplies;
 		m_iSupplies += supplies;
 		
 		if (m_iSupplies > m_iSuppliesMax)
 			m_iSupplies = m_iSuppliesMax;
-		
-		if (replicate)
+
+		if (replicate && m_iSupplies != oldSupplies)
 			Replication.BumpMe();
 		
 		OnSuppliesChanged();

@@ -120,7 +120,7 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		if (m_bShowTasks)
 			InitTaskMarkers(); // todo@danny: why are tasks initialized on 0,0 in conflict?
 		
-		m_MapEntity.GetOnMapPan().Insert(UpdateIcons);
+		m_MapEntity.GetOnMapPan().Insert(OnMapPan);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -135,11 +135,22 @@ class SCR_MapUIElementContainer : SCR_MapUIBaseComponent
 		
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(OnSpawnPointFactionChange);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPoint);
-		m_MapEntity.GetOnMapPan().Remove(UpdateIcons);
+		m_MapEntity.GetOnMapPan().Remove(OnMapPan);
 
+		foreach(Widget w, SCR_MapUIElement e : m_mIcons)
+		{
+			w.RemoveFromHierarchy();
+		}
+		
 		m_mIcons.Clear();
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void OnMapPan(float panX, float panY, bool adjustedPan)
+	{
+		 UpdateIcons();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateIcons()
 	{

@@ -325,11 +325,11 @@ class SCR_TimedParticle : SCR_TimedEffect
 	{
 		super.ExecuteEffect(owner, hitInfo, data);
 		
-		SCR_ParticleEmitter emitter;
+		ParticleEffectEntity emitter;
 		if (m_bAttachToParent)
 			emitter = m_Particle.SpawnAsChild(owner, hitInfo, m_bSnapToTerrain);
 		else
-			emitter = SCR_ParticleEmitter.Cast(m_Particle.Spawn(owner, owner.GetPhysics(), hitInfo, m_bSnapToTerrain));
+			emitter = ParticleEffectEntity.Cast(m_Particle.Spawn(owner, owner.GetPhysics(), hitInfo, m_bSnapToTerrain));
 		
 		if (!emitter)
 		{
@@ -343,7 +343,7 @@ class SCR_TimedParticle : SCR_TimedEffect
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetParticleParams(SCR_ParticleEmitter emitter, inout notnull SCR_BuildingDestructionData data)
+	void SetParticleParams(ParticleEffectEntity emitter, inout notnull SCR_BuildingDestructionData data)
 	{
 		Particles particles = emitter.GetParticles();
 		if (!particles)

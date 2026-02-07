@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/Components", description: "Allows player to spawn entities configured in EntityCatalogs, usually found on factions. Requires SCR_EntitySpawnerSlotComponent in vicinity.", color: "0 0 255 255")]
 class SCR_CatalogEntitySpawnerComponentClass : SCR_SlotServiceComponentClass
 {
@@ -91,8 +92,13 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	protected ref map<AIWaypoint, SCR_AIGroup> m_mGroupWaypoints;
 
 	//arrays used for UI Slot checks
+	#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 	protected ref map<SCR_EntitySpawnerSlotComponent, float> m_mKnownFreeSlots;
 	protected ref map<SCR_EntitySpawnerSlotComponent, float> m_mKnownOccupiedSlots;
+	#else
+	protected ref map<SCR_EntitySpawnerSlotComponent, WorldTimestamp> m_mKnownFreeSlots;
+	protected ref map<SCR_EntitySpawnerSlotComponent, WorldTimestamp> m_mKnownOccupiedSlots;
+	#endif
 
 	//------------------------------------------------------------------------------------------------
 	bool IsProxy()
@@ -260,9 +266,18 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 	void AddKnownOccupiedSlot(notnull SCR_EntitySpawnerSlotComponent slot)
 	{
 		if (!m_mKnownOccupiedSlots)
+			#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 			m_mKnownOccupiedSlots = new map<SCR_EntitySpawnerSlotComponent, float>();
+			#else
+			m_mKnownOccupiedSlots = new map<SCR_EntitySpawnerSlotComponent, WorldTimestamp>();
+			#endif
 
+		#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 		m_mKnownOccupiedSlots.Set(slot, Replication.Time());
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		m_mKnownOccupiedSlots.Set(slot, world.GetServerTimestamp());
+		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -275,9 +290,19 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 		occupiedSlots = {};
 
+		#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 		foreach (SCR_EntitySpawnerSlotComponent slot, float timestamp : m_mKnownOccupiedSlots)
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		WorldTimestamp currentTime = world.GetServerTimestamp();
+		foreach (SCR_EntitySpawnerSlotComponent slot, WorldTimestamp timestamp : m_mKnownOccupiedSlots)
+		#endif
 		{
+			#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 			if (Replication.Time() - timestamp > (SLOT_CHECK_INTERVAL * 100))
+			#else
+			if (currentTime.DiffMilliseconds(timestamp) > (SLOT_CHECK_INTERVAL * 100))
+			#endif
 				m_mKnownOccupiedSlots.Remove(slot);
 			else
 				occupiedSlots.Insert(slot);
@@ -291,9 +316,19 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 		if (!m_mKnownFreeSlots)
 			return null;
 
+		#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 		foreach (SCR_EntitySpawnerSlotComponent slot, float timestamp : m_mKnownFreeSlots)
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		WorldTimestamp currentTime = world.GetServerTimestamp();
+		foreach (SCR_EntitySpawnerSlotComponent slot, WorldTimestamp timestamp : m_mKnownFreeSlots)
+		#endif
 		{
+			#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 			if (Replication.Time() - timestamp > (SLOT_CHECK_INTERVAL * 100))
+			#else
+			if (currentTime.DiffMilliseconds(timestamp) > (SLOT_CHECK_INTERVAL * 100))
+			#endif
 				m_mKnownFreeSlots.Remove(slot);
 			else if (spawnerData.CanSpawnInSlot(slot.GetSlotType()))
 				return slot;
@@ -315,10 +350,18 @@ class SCR_CatalogEntitySpawnerComponent : SCR_SlotServiceComponent
 
 			if (!slot.IsOccupied())
 			{
+				#ifndef AR_CATALOG_SPAWN_TIMESTAMP
 				if (!m_mKnownFreeSlots)
 					m_mKnownFreeSlots = new map<SCR_EntitySpawnerSlotComponent, float>();
 
 				m_mKnownFreeSlots.Insert(slot, Replication.Time());
+				#else
+				if (!m_mKnownFreeSlots)
+					m_mKnownFreeSlots = new map<SCR_EntitySpawnerSlotComponent, WorldTimestamp>();
+
+				ChimeraWorld world = GetOwner().GetWorld();
+				m_mKnownFreeSlots.Insert(slot, world.GetServerTimestamp());
+				#endif
 
 				return slot;
 			}

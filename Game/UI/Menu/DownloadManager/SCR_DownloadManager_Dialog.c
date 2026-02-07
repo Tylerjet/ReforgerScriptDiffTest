@@ -30,11 +30,14 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	protected static bool m_bOpened = false;
 	
 	//-----------------------------------------------------------------------------------------------
+	static bool IsOpened()
+	{
+		return m_bOpened;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	static SCR_DownloadManager_Dialog Create()
-	{	
-		if (m_bOpened)
-			return null;
-		
+	{
 		MenuBase menu = GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
 		
 		return SCR_DownloadManager_Dialog.Cast(menu);
@@ -131,7 +134,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		
 		// Show downlaoding speed 
 		UpdateProgressWidgets();
-		UpdateDownloadingSpeedWidget(m_ActiveDownloads.HasContent());
+		UpdateDownloadingSpeedWidget(m_ActiveDownloads.HasContent(), nCompleted == nTotal);
 
 		if (m_ActiveDownloads.GetShown())
 			m_ActiveDownloads.ShowPauseResumeAllButton(nCompleted != nTotal);
@@ -162,7 +165,8 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		m_Widgets.m_StateText.SetText(downloadStateText);
 		
 		m_Widgets.m_Overlay.SetVisible(m_ActiveDownloads.HasContent());
-		m_Widgets.m_DownloadSummaryText.SetVisible(m_ActiveDownloads.HasContent());
+		m_Widgets.m_DownloadSummaryText.SetVisible(mgr.HasRunningDownloads() || nCompleted > 0);
+		m_Widgets.m_ProgressText.SetVisible(nTotal > 0);
 		
 		// Progress bar, progress text
 		if (nTotal > 0)
@@ -180,12 +184,13 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 			
 			// Display total size 
 			float downloadTotalSize = SCR_DownloadManager.GetInstance().GetDownloadQueueSize();
+			m_Widgets.m_DownloadSummaryText.SetVisible(downloadTotalSize > 0);
 			
 			if (downloadTotalSize > 0)
 			{
 				float downloadDoneSize =  SCR_DownloadManager.GetInstance().GetDownloadedSize();
 
-				string downloadTotalSizeStr = SCR_ByteFormat.GetReadableSize(downloadTotalSize);
+				string downloadTotalSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadTotalSize);
 				string downloadDoneSizeStr = SCR_ByteFormat.ContentDownloadFormat(downloadDoneSize);
 				
 				m_Widgets.m_DownloadSummaryText.SetText(string.Format(DOWNLOAD_SUMMARY_FORMAT, downloadDoneSizeStr, downloadTotalSizeStr));
@@ -199,14 +204,23 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	}
 	
 	//------------------------------------------------------------------------------------------
-	protected void UpdateDownloadingSpeedWidget(bool display)
+	protected void UpdateDownloadingSpeedWidget(bool display, bool showFallback)
 	{
 		m_Widgets.m_DownloadSpeed.SetVisible(display);
 		if (!display)
 			return;
 		
+		if (showFallback)
+		{
+			m_Widgets.m_DownloadSpeed.SetText("0 KB/s");
+			return;
+		}
+		
 		string unit = " KB/s";
-		float speed = GetGame().GetRestApi().GetDownloadTrafficKBPerS();
+		float speed = 0;
+		
+		if (SCR_DownloadManager.GetInstance().HasRunningDownloads())
+			speed = GetGame().GetRestApi().GetDownloadTrafficKBPerS();
 		
 		// Faster speed
 		if (speed > SCR_ByteFormat.BYTE_UNIT_SIZE)
@@ -228,13 +242,17 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	{
 		m_Widgets.Init(GetRootWidget());
 		GetGame().GetInputManager().AddActionListener("MenuDownloadManager", EActionTrigger.DOWN, OnBackButton);
+		
+		m_Widgets.m_Overlay.SetVisible(false);
+		m_Widgets.m_DownloadSummaryText.SetVisible(false);
+		m_Widgets.m_ProgressText.SetVisible(false);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	// Init list of downloads
 	protected void InitList()
 	{
-		array<ref SCR_DownloadManager_Entry> downloads = new array<ref SCR_DownloadManager_Entry>;
+		array<ref SCR_DownloadManager_Entry> downloads = {};
 		SCR_DownloadManager.GetInstance().GetAllDownloads(downloads);
 		
 		array<ref SCR_WorkshopItemActionDownload> failedDownloads = SCR_DownloadManager.GetInstance().GetFailedDownloads();
@@ -333,7 +351,12 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		// Open active and scroll up 
 		m_SuperMenu.GetTabView().ShowTab(0, false);
 		m_ActiveDownloads.ScrollTop();
-		
+	}
+	
+	/*
+	//------------------------------------------------------------------------------------------
+	void ShowFailedDialogMessage(SCR_WorkshopItemActionDownload action)
+	{
 		// Create warnign dialog 	
 		if (!m_DownloadFailDialog)
 		{
@@ -350,6 +373,28 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 		// Add failed downloads to list 
 		if (m_DownloadFailDialogContent)
 			m_DownloadFailDialogContent.SetMessage(m_DownloadFailDialogContent.GetMessage() + string.Format(FAILED_ADDON_FORMAT, action.GetAddonName()));
+	}
+	*/
+	
+	//------------------------------------------------------------------------------------------
+	protected void ShowFailedModsDialog(SCR_WorkshopItemActionDownload action)
+	{
+		if (m_DownloadFailDialog)
+		{
+			if (m_DownloadFailDialogContent)
+				m_DownloadFailDialogContent.SetMessage(m_DownloadFailDialogContent.GetMessage() + string.Format(FAILED_ADDON_FORMAT, action.GetAddonName()));
+			
+			return;
+		}
+		
+		m_DownloadFailDialog = SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, FAILED_ADDON_LIST_DIALOG);
+		m_DownloadFailDialog.m_OnClose.Insert(OnDownloadFailDialogClose);
+		
+		// Setup message 
+		Widget contentWidget = m_DownloadFailDialog.GetContentLayoutRoot(m_DownloadFailDialog.GetRootWidget());
+		m_DownloadFailDialogContent = SCR_MessageDialogContent.Cast(contentWidget.FindHandler(SCR_MessageDialogContent));
+		
+		m_DownloadFailDialogContent.SetMessage("\n");
 	}
 	
 	//------------------------------------------------------------------------------------------
@@ -432,7 +477,7 @@ class SCR_DownloadManager_Dialog : SCR_TabDialog
 	//-----------------------------------------------------------------------------------------------
 	void ~SCR_DownloadManager_Dialog()
 	{
-		m_bOpened = false;
+		
 	}
 };
 

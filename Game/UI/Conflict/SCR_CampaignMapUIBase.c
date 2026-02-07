@@ -353,10 +353,16 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 		m_bIsRespawnMenu = SCR_DeployMenuMain.GetDeployMenu() != null;
 		m_bIsEditor = SCR_EditorManagerEntity.IsOpenedInstance(false);
-		SCR_MapEntity.GetOnMapClose().Insert(RemoveHint);
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapCloseInvoker);
 		m_PlayerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
 	}
 
+	//------------------------------------------------------------------------------------------------
+	void OnMapCloseInvoker(MapConfiguration config)
+	{
+		RemoveHint();
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void RemoveHint()
 	{
@@ -376,7 +382,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			SCR_CampaignMobileAssemblyComponent.s_OnSpawnPointOwnerChanged.Remove(UpdateAssemblyIcon);
 		}
 
-		SCR_MapEntity.GetOnMapClose().Remove(RemoveHint);
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapCloseInvoker);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -718,7 +724,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnMapClose()
+	protected void OnMapClose(MapConfiguration config)
 	{
 		if (m_Base)
 			m_Base.GetMapDescriptor().OnIconHovered(this, false);

@@ -3,6 +3,7 @@
 //! We can start a download from many menus. The download process requests dependency list,
 //! then resolves which dependencies must be downloaded and either starts the downloads or 
 //! shows a confirmation dialog.
+/*
 class SCR_DownloadSequenceUI
 {	
 	protected ref SCR_WorkshopItem m_ScriptedItem;
@@ -99,7 +100,7 @@ class SCR_DownloadSequenceUI
 					//OnAllDependenciesDetailsLoaded();
 				}
 				*/
-				
+			/*	
 				OnDependenciesLoaded();
 				ShowDependencies();
 				

@@ -369,7 +369,7 @@ class SCR_ServerScenarioDetailsPanelComponent : SCR_ScenarioDetailsPanelComponen
 			return;
 		
 		// Change text if needs update
-		string toUpdateSize = m_ModsManager.GetModListSizeString(toUpdateMods);
+		string toUpdateSize = m_ModsManager.GetModListPatchSizeString(toUpdateMods);
 		
 		m_Widgets.m_AddonStateText.SetText(toUpdateSize);
 		m_Widgets.m_AddonStateText.SetColor(m_ColorScheme.m_Download);

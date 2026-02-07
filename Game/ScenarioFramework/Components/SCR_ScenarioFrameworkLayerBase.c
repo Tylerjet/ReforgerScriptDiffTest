@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
 class SCR_ScenarioFrameworkLayerBaseClass : ScriptComponentClass
 {
@@ -50,8 +51,13 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 	protected SCR_ScenarioFrameworkArea						m_Area;
 	protected SCR_ScenarioFrameworkLayerBase				m_ParentLayer;
 	protected float							m_fDebugShapeRadius = 0.25;	
+	#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 	protected float 						m_fRepeatSpawnTimeStart;
 	protected float 						m_fRepeatSpawnTimeEnd;	
+	#else
+	protected WorldTimestamp				m_fRepeatSpawnTimeStart;
+	protected WorldTimestamp				m_fRepeatSpawnTimeEnd;
+	#endif
 	protected int							m_iDebugShapeColor = ARGB(32, 0xFF, 0x00, 0x12);
 	protected bool							m_bInitiated = false;
 	protected bool							m_bIsRegistered = false;
@@ -318,8 +324,14 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		
 		if (m_fRepeatedSpawnTimer >= 0)
 		{
+			#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 			m_fRepeatSpawnTimeStart = Replication.Time();
 			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart + (m_fRepeatedSpawnTimer * 1000);
+			#else
+			ChimeraWorld world = GetOwner().GetWorld();
+			m_fRepeatSpawnTimeStart = world.GetServerTimestamp();
+			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart.PlusSeconds(m_fRepeatedSpawnTimer);
+			#endif
 			m_bRepeatedSpawningSet = true;
 		}	
 		
@@ -507,8 +519,14 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		
 		if (m_fRepeatedSpawnTimer >= 0)
 		{
+			#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 			m_fRepeatSpawnTimeStart = Replication.Time();
 			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart + (m_fRepeatedSpawnTimer * 1000);
+			#else
+			ChimeraWorld world = GetOwner().GetWorld();
+			m_fRepeatSpawnTimeStart = world.GetServerTimestamp();
+			m_fRepeatSpawnTimeEnd = m_fRepeatSpawnTimeStart.PlusSeconds(m_fRepeatedSpawnTimer);
+			#endif
 			m_bRepeatedSpawningSet = true;
 		}	
 	}
@@ -520,7 +538,12 @@ class SCR_ScenarioFrameworkLayerBase : ScriptComponent
 		if (m_bShowDebugShapesDuringRuntime)
 			DrawDebugShape(true);
 		
+		#ifndef AR_SCENARIO_FRAMEWORK_TIMESTAMP
 		if (m_bRepeatedSpawningSet && m_fRepeatedSpawnTimer >= 0 && (Replication.Time() >= m_fRepeatSpawnTimeEnd))
+		#else
+		ChimeraWorld world = owner.GetWorld();
+		if (m_bRepeatedSpawningSet && m_fRepeatedSpawnTimer >= 0 && world.GetServerTimestamp().GreaterEqual(m_fRepeatSpawnTimeEnd))
+		#endif
 			 RepeatedSpawn();
 	}
 	

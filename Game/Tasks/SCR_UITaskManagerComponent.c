@@ -721,7 +721,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnMapClose()
+	void OnMapClose(MapConfiguration config)
 	{
 		m_bTaskContextEnabled = false;
 		Action_HideTasks();

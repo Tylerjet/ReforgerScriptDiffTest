@@ -295,31 +295,6 @@ class SCR_ModReportDialogComponent : SCR_ScriptedWidgetComponent
 		m_CurrentDialog.m_OnCancel.Remove(OnCancelRemoveAuthorReport);
 	}
 	
-	
-	//------------------------------------------------------------------------------------------------
-	//! Dialog for selecting type, typing message and confirming author report
-	/*void OpenReportAuthor()
-	{
-		m_ReportDialog = ReportDialogUI.Cast(GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.ReportItemDialog));
-		if (!m_ReportDialog)
-			return;
-		
-		// Add script 
-		ReportDialogUI reportDialogComp = new ReportDialogUI();
-		m_ReportDialog.GetRootWidget().AddHandler(reportDialogComp);
-		
-		ContentBrowserDetailsMenu detailsMenu = ContentBrowserDetailsMenu.Cast(GetGame().GetMenuManager().GetTopMenu());
-		if (detailsMenu)
-		{
-			//m_ReportDialog.Init(detailsMenu);
-			m_ReportDialog.Init(detailsMenu, true);
-		}
-		
-		m_ReportDialog.SetTitle("#AR-Workshop_ReportAuthor");
-		
-		m_ReportDialog.m_OnCancel.Insert(OnCancelAuthorReport);
-	}*/
-	
 	//------------------------------------------------------------------------------------------------
 	protected void OnCancelAuthorReport()
 	{

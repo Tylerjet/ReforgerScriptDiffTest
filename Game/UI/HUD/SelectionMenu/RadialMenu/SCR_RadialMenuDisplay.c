@@ -23,6 +23,9 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 
 	[Attribute("1", desc: "Adjust base size in callback based on invoker from SCR_RadialMenu")]
 	protected bool m_bForceSize;
+	
+	[Attribute("0", desc: "Skips the slower fade animation on entry perform")]
+	protected bool m_bFastFadeOnPerform;
 
 	[Attribute( desc: "Widget name for storing entry separator widgets")]
 	protected string m_sDividersParent;
@@ -287,7 +290,7 @@ class SCR_RadialMenuDisplay : SCR_SelectionMenuDisplay
 		if (!m_RadialMenu)
 			return;
 		
-		if (m_RadialMenu.GetEntryPerformed())
+		if (m_RadialMenu.GetEntryPerformed() && !m_bFastFadeOnPerform)
 			Show(false, UIConstants.FADE_RATE_SLOW, EAnimationCurve.EASE_IN_EXPO);
 		else
 			Show(false, UIConstants.FADE_RATE_FAST);

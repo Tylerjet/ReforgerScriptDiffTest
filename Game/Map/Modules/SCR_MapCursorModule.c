@@ -73,6 +73,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	
 	protected ref map<EMapCursorState, SCR_CursorVisualState> m_aCursorStatesMap = new map<EMapCursorState, SCR_CursorVisualState>;	// used to quickly fetch a desired cursor state from config
 	
+	//static
+	protected static ref array<Widget> s_aTracedWidgets = {};
+	
 	// const
 	const int CURSOR_CAPTURE_OFFSET = 10;		// hardcoded(code) screen edges in pixels for cursor capture
 	const int GUILDING_LINE_WIDTH = 16;
@@ -104,7 +107,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	// enums
 	EMapCursorSelectType m_eMultiSelType;									// multiselect type
 	protected EMapCursorState m_CursorState = EMapCursorState.CS_DEFAULT;	// keeps current cursor state
-	
+		
 	protected bool m_bIsInit;				// is module initiated
 	protected bool m_bIsDisabled;			// temporary module disable
 	protected bool m_bIsDraggingAvailable;
@@ -145,6 +148,15 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! Get cursor state
 	EMapCursorState GetCursorState() { return m_CursorState; }
 		
+	//------------------------------------------------------------------------------------------------
+	//! Get widgets under cursor
+	static array<Widget> GetMapWidgetsUnderCursor()
+	{	
+		TraceMapWidgets();
+		
+		return s_aTracedWidgets;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Set cursor state
 	//! \param state is the added state
@@ -1100,6 +1112,20 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Trace widgets under cursor
+	protected static void TraceMapWidgets()
+	{
+		array<ref Widget> widgets = {};
+		WidgetManager.TraceWidgets(SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.x), SCR_MapCursorInfo.Scale(SCR_MapCursorInfo.y), SCR_MapEntity.GetMapInstance().GetMapMenuRoot(), widgets);
+		
+		s_aTracedWidgets.Clear();
+		foreach(Widget w: widgets)
+		{
+			s_aTracedWidgets.Insert(w);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Initialize widgets
 	protected void InitWidgets(Widget root)
 	{
@@ -1291,7 +1317,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		
 		// update current pos
 		GetCursorPosition(m_CursorInfo.x, m_CursorInfo.y);
-				
+
 		// frame handlers
 		HandleMove();
 		HandleHover(timeSlice);

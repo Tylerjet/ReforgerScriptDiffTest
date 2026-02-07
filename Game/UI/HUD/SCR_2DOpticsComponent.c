@@ -3,6 +3,9 @@ class SCR_2DOpticsComponentClass : ScriptedSightsComponentClass
 {
 }
 
+void OnSightsADSChanged(bool inADS, float fov);
+typedef func OnSightsADSChanged;
+
 //------------------------------------------------------------------------------------------------
 //! Base class for 2D optics
 //! Unifiying binoculars and optic sight
@@ -11,30 +14,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	// Action names
 	const string ACTION_WHEEL = "WeaponChangeMagnification";
 	const string ACTION_ILLUMINATION = "WeaponToggleSightsIllumination";
-
-	// Default widget names
-	const string WIDGET_LAYOUT_REAR = "HRearEyePiece";
-	const string WIDGET_LAYOUT_FRONT = "HFrontObjective";
-	const string WIDGET_IMAGE_COVER = "ImgCover";
-
-	const string WIDGET_SIZE_REAR = "SizeRear";
-	const string WIDGET_SIZE_OBJECTIVE = "SizeFrontObjective";
-
-	const string WIDGET_IMAGE_PADDING_LEFT = "ImgPaddingLeft";
-	const string WIDGET_IMAGE_PADDING_RIGHT = "ImgPaddingRight";
-	const string WIDGET_IMAGE_PADDING_TOP = "ImgPaddingTop";
-	const string WIDGET_IMAGE_PADDING_BOTTOM = "ImgPaddingBottom";
-
-	const string WIDGET_OVERLAY_RETICLES = "OverlayReticles";
-	const string WIDGET_IMAGE_RETICLE = "ImgReticle";
-	const string WIDGET_IMAGE_RETICLE_GLOW = "ImgReticleGlow";
-	const string WIDGET_IMAGE_VIGNETTE = "ImgVignette";
-	const string WIDGET_IMAGE_SCRATCHES = "ImgScratches";
-	const string WIDGET_BLUR = "Blur";
-	const string WIDGET_IMAGE_FILTER = "ImgFilter";
-
-	const string WIDGET_SIZE_LEFT = "SizePaddingLeft";
-	const string WIDGET_SIZE_TOP = "SizePaddingTop";
 
 	const float REFERENCE_FOV = 38;
 	const float OPACITY_INITIAL = 0.75;
@@ -58,16 +37,19 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0 0 0", UIWidgets.ColorPicker, category: "Resources")]
 	protected ref Color m_cReticleTextureIllumination;
 
+	[Attribute("0.05", UIWidgets.Slider, desc: "Reticle glow texture alpha\n[ % ]", params: "0 1 0.001", category: "Resources", precision: 3)]
+	protected float m_fReticleTextureGlowAlpha;
+
 	[Attribute("", UIWidgets.ResourceNamePicker, desc: "Texture of lens filter\n", params: "edds imageset", category: "Resources")]
 	protected ResourceName m_sFilterTexture;
 
-	[Attribute("10", UIWidgets.EditBox, desc: "Optic magnification\n", params: "0.1 200 0.001", category: "Sights", precision: 3)]
+	[Attribute("10", UIWidgets.EditBox, desc: "Optic magnification\n[ x ]", params: "0.1 200 0.001", category: "Sights", precision: 3)]
 	protected float m_fMagnification;
 
 	[Attribute("0", UIWidgets.Slider, "Angular size of reticle\n[ ° ]", params: "0 60 0.001", category: "Sights", precision: 3)]
 	protected float m_fReticleAngularSize;
 
-	[Attribute("1", UIWidgets.Slider, "Portion of reticle with specified angular size\n", params: "0 10 0.00001", category: "Sights", precision: 5)]
+	[Attribute("1", UIWidgets.Slider, "Portion of reticle with specified angular size\n[ % ]", params: "0 10 0.00001", category: "Sights", precision: 5)]
 	protected float m_fReticlePortion;
 
 	[Attribute("0", UIWidgets.Slider, "POSITIVE:\n Rear focal plane - magnification at which reticle markings are valid\n\nZERO:\n Front focal plane reticle scaling with magnification.\n\nNEGATIVE:\n Enforced base FOV in degrees\n", params: "-60 200 0.001", category: "Sights", precision: 5)]
@@ -85,24 +67,21 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("1.1", UIWidgets.EditBox, desc: "Vignette texture scale\n", params: "0.001 10 0.001", category: "2DSights", precision: 3)]
 	protected float m_fVignetteScale;
 
-	[Attribute("1", UIWidgets.CheckBox, "Should hide parent object when using 2D sights", category: "2DSights")]
-	bool m_bShouldHideParentObject;
+	[Attribute("1", UIWidgets.CheckBox, "Should hide parent object when using 2D sights\n", category: "2DSights")]
+	protected bool m_bShouldHideParentObject;
 
-	[Attribute("0", UIWidgets.CheckBox, "Should hide parent character when using 2D sights", category: "2DSights")]
-	bool m_bShouldHideParentCharacter;
+	[Attribute("0", UIWidgets.CheckBox, "Should hide parent character when using 2D sights\n", category: "2DSights")]
+	protected bool m_bShouldHideParentCharacter;
 
 	// Animation attributes
 	[Attribute("0", UIWidgets.Slider, "Time before entering animation starts", params: "0 2000 1", category: "Animations")]
-	protected int m_iHudActivationDelay;
+	protected int m_iAnimationActivationDelay;
 
-	[Attribute("100", UIWidgets.Slider, "Animation time for canceling optic.", params: "0 2000 1", category: "Animations")]
-	protected int m_iHudDeactivationDelay;
+	[Attribute("0", UIWidgets.Slider, "Animation time for canceling optic.", params: "0 2000 1", category: "Animations")]
+	protected int m_iAnimationDeactivationDelay;
 
-	[Attribute("5", UIWidgets.Slider, "Time before entering animation starts", params: "0 2000 1", category: "Animations")]
-	protected int m_iAnimationEnterDelay;
-
-	[Attribute("0.5", UIWidgets.Slider, "Animation time for using optic", params: "0.01 5 0.01", category: "Animations")]
-	protected float m_fAnimationEnter;
+	[Attribute("0", UIWidgets.Slider, "Animation time for optic animation", params: "0 5 0.01", category: "Animations")]
+	protected float m_fAnimationEnterTime;
 
 	[Attribute("2", UIWidgets.Slider, "Speed of blur fade out on optic entering", params: "0.01 5 0.01", category: "Animations")]
 	protected float m_fAnimationSpeedBlur;
@@ -170,66 +149,158 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	protected float m_fCurrentReticleOffsetY;
 	protected float m_fCurrentCameraPitch;
 
-	float GetADSActivationPercentage()
+	//------------------------------------------------------------------------------------------------
+	override float GetADSActivationPercentageScript()
 	{
 		return m_fADSActivationPercentage;
 	}
 
-	float GetADSDeactivationPercentage()
+	//------------------------------------------------------------------------------------------------
+	override float GetADSDeactivationPercentageScript()
 	{
 		return m_fADSDeactivationPercentage;
 	}
 
+	//------------------------------------------------------------------------------------------------
+	// Getters for attributes
+	float GetReticleOffsetX()
+	{
+		return m_fReticleOffsetX;
+	}
+
+	float GetCurrentReticleOffsetY()
+	{
+		return m_fCurrentReticleOffsetY;
+	}
+
+	void GetReticleTextures(out ResourceName reticleTexture, out ResourceName reticleTextureGlow, out ResourceName filterTexture)
+	{
+		reticleTexture = m_sReticleTexture;
+		reticleTextureGlow = m_sReticleGlowTexture;
+		filterTexture = m_sFilterTexture;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void GetReticleData(out float reticleAngularSize, out float reticlePortion, out float reticleBaseZoom)
+	{
+		reticleAngularSize = m_fReticleAngularSize;
+		reticlePortion = m_fReticlePortion;
+		reticleBaseZoom = m_fReticleBaseZoom;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetObjectiveFov()
+	{
+		return m_fObjectiveFov;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetObjectiveScale()
+	{
+		return m_fObjectiveScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetVignetteScale()
+	{
+		return m_fVignetteScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMisalignmentDampingSpeed()
+	{
+		return m_fMisalignmentDampingSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRotationScale()
+	{
+		return m_fRotationScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRotationDampingSpeed()
+	{
+		return m_fRotationDampingSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMovementScale()
+	{
+		return m_fMovementScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMovementDampingSpeed()
+	{
+		return m_fMovementDampingSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRollScale()
+	{
+		return m_fRollScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetRollDampingSpeed()
+	{
+		return m_fRollDampingSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMisalignmentScale()
+	{
+		return m_fMisalignmentScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetVignetteMoveSpeed()
+	{
+		return m_fVignetteMoveSpeed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMotionBlurScale()
+	{
+		return m_fMotionBlurScale;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetMotionBlurMax()
+	{
+		return m_fMotionBlurMax;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	// Needed for zeroing
 	SCR_EPIPZeroingType GetZeroType()
 	{
 		return m_eZeroingType;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	float GetMagnification()
 	{
 		return m_fMagnification;
 	}
 
-	// Scope widgets
-	protected Widget m_wRootWidget;
+	//------------------------------------------------------------------------------------------------
+	bool GetIsOpticsHidden()
+	{
+		return m_bIsOpticsHidden;
+	}
 
-	protected Widget m_wLayoutRear;
-	protected Widget m_wLayoutFront;
-	protected ImageWidget m_wImgCover;
-	protected ImageWidget m_wImgScratches;
-
-	protected Widget m_wOverlayReticles;
-	protected ImageWidget m_wImgReticle;
-	protected ImageWidget m_wImgReticleGlow;
-	protected BlurWidget m_wBlur;
-	protected ImageWidget m_wImgFilter;
-
-	protected SizeLayoutWidget m_wRearFillLeft;
-	protected SizeLayoutWidget m_wRearFillTop;
-	protected SizeLayoutWidget m_wFrontFillLeft;
-	protected SizeLayoutWidget m_wFrontFillTop;
-
-	protected SizeLayoutWidget m_wSizeLayoutRear;
-	protected SizeLayoutWidget m_wSizeLayoutObjective;
+	//------------------------------------------------------------------------------------------------
+	bool GetIsZoomed()
+	{
+		return m_bZoomed;
+	}
 
 	protected ref array<float> m_aReticleSizes = {};
 	protected int m_iSelectedZoomLevel = 0;
 
 	// Overall movement
-	protected vector m_vObjectiveOffset; // Objective and reticle offset
-	protected vector m_vVignetteOffset; // Vignette offset
-	protected vector m_vMisalignmentOffset;
-
-	protected vector m_vRotation;
-	protected vector m_vRotationSpeed;
-	protected vector m_vRotationOffset;
-
-	protected vector m_vMovement;
-	protected vector m_vMovementSpeed;
-	protected vector m_vMovementOffset;
-
-	protected float m_fRollOffset;
 	protected float m_fScratchesRoll;
 
 	// FOVs
@@ -242,25 +313,122 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	protected bool m_bIsMoving;
 	protected bool m_bIsRotating;
 	protected bool m_bZoomed = false;
-	protected bool m_bInitialBlurOver;
-	bool m_bWasEntityHidden = false;
+	protected bool m_bWasEntityHidden = false;
 	protected int m_iHeadBoneId = -1;
 
 	protected bool m_bIsOpticsHidden;
+	protected bool m_bIsIlluminationOn;
 
 	// Owner and character references
 	protected ChimeraCharacter m_ParentCharacter = null;
 
-	static ref ScriptInvoker<bool, m_fFovZoomed> s_OnSightsADSChanged = new ScriptInvoker();
+	static ref ScriptInvokerBase<OnSightsADSChanged> s_OnSightsADSChanged = new ScriptInvokerBase<OnSightsADSChanged>();
+	static ref ScriptInvokerBase<On2DOpticsADSChange> s_On2DOpticADSChanged = new ScriptInvokerBase<On2DOpticsADSChange>();
+	protected ref ScriptInvoker s_OnSetupOpticImage = new ScriptInvoker();
+	protected ref ScriptInvokerBase<On2DOpticsIlluminationChange> s_OnIlluminationChange = new ScriptInvokerBase<On2DOpticsIlluminationChange>();
 
 	//------------------------------------------------------------------------------------------------
-	float GetFovZoomed() { return m_fFovZoomed; }
+	ScriptInvoker OnSetupOpticImage()
+	{
+		return s_OnSetupOpticImage;
+	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetNearPlane() { return m_fNearPlaneCurrent; }
+	ScriptInvokerBase<On2DOpticsIlluminationChange> OnIlluminationChange()
+	{
+		return s_OnIlluminationChange;
+	}
 
 	//------------------------------------------------------------------------------------------------
-	float GetHudActivationDelay() { return m_iHudActivationDelay; }
+	//! Get base FOV of the optic, used to determine maximum FOV
+	float GetFovZoomed()
+	{
+		// m_fMagnification value may change during gameplay
+		// But player camera may not exist at the moment, so at first we store magnification to compute it from and then compute it on first use
+		if (m_fFovZoomed < 0)
+		 	m_fFovZoomed = CalculateZoomFOV(-m_fFovZoomed);
+
+		return m_fFovZoomed;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set base FOV of the optic. Negative value means magnification to compute new m_fFovZoomed with
+	void SetFovZoomed(float value)
+	{
+		m_fFovZoomed = value;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetNearPlane()
+	{
+		return m_fNearPlaneCurrent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetAnimationActivationDelay()
+	{
+		return m_iAnimationActivationDelay;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	int GetAnimationDeactivationDelay()
+	{
+		return m_iAnimationDeactivationDelay;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetAnimationEnterTime()
+	{
+		return m_fAnimationEnterTime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetAnimationSpeedBlur()
+	{
+		return m_fAnimationSpeedBlur;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetDefaultSize()
+	{
+		return m_fDefaultSize;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetDefaultSize(float value)
+	{
+		m_fDefaultSize = value;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetCurrentReticleSize()
+	{
+		return m_fCurrentReticleSize;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetCurrentReticleSize(float value)
+	{
+		m_fCurrentReticleSize = value;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetIsMoving()
+	{
+		return m_bIsMoving;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetIsRotating()
+	{
+		return m_bIsRotating;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetScratchesRoll()
+	{
+		return m_fScratchesRoll;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -270,80 +438,39 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	override void OnInit(IEntity owner)
 	{
 		m_fScratchesRoll = Math.RandomFloat(0, 360);
+
+		// m_fMagnification value may change during gameplay
+		// But player camera may not exist at the moment, so at first we store magnification to compute it from and then compute it on first use
+		m_fFovZoomed = -m_fMagnification;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnHUDLayoutChanged(SCR_HUDLayout newLayout, SCR_HUDLayout oldLayout, SCR_HUDManagerComponent hudManager)
+	override void OnSightADSActivated()
 	{
-		if (m_bIsOpticsHidden && m_wRootWidget)
-			m_wRootWidget.SetVisible(false);
-		else if (!m_bIsOpticsHidden && m_wRootWidget)
-			m_wRootWidget.SetVisible(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected override void OnSightADSActivated()
-	{
-		// Setup scope widgets
-		if (!m_wRootWidget)
-		{
-			m_ParentCharacter = ChimeraCharacter.Cast(GetOwner().GetParent());
-
-			SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.GetHUDManager();
-			if (hudManager)
-			{
-				SCR_HUDManagerLayoutHandler hudLayoutHandler = SCR_HUDManagerLayoutHandler.Cast(hudManager.FindHandler(SCR_HUDManagerLayoutHandler));
-				if (hudLayoutHandler)
-					hudLayoutHandler.GetOnLayoutChange().Insert(OnHUDLayoutChanged);
-
-				SCR_HUDElement hudElement = hudManager.CreateFreeElement(m_sLayoutResource, "Slot_2DOptics");
-				m_wRootWidget = hudElement.GetWidget();
-			}
-
-			if (m_wRootWidget)
-			{
-				m_fFovZoomed = CalculateZoomFOV(m_fMagnification);
-
-				// HUD and widgets setup
-				m_wRootWidget.SetZOrder(-1);
-				m_wRootWidget.SetVisible(false);
-
-				FindWidgets();
-				SetupOpticImage();
-			}
-		}
+		m_ParentCharacter = ChimeraCharacter.Cast(GetOwner().GetParent());
 
 		super.OnSightADSActivated();
-		s_OnSightsADSChanged.Invoke(true, m_fFovZoomed);
 
-		// Prevent calnceling animation
-		AnimateWidget.StopAnimation(m_wRootWidget, WidgetAnimationOpacity);
-		GetGame().GetCallqueue().Remove(DeactivateHUD);
+		s_On2DOpticADSChanged.Invoke(this, true);
+		s_OnSightsADSChanged.Invoke(true, GetFovZoomed());
 
 		// Play cover fade in animaiton
 		m_fNearPlaneCurrent = NEAR_PLANE_DEFAULT;
-		GetGame().GetCallqueue().CallLater(ActivateHUD, m_iHudActivationDelay, false);
+		GetGame().GetCallqueue().CallLater(HideObjects, m_iAnimationActivationDelay, false);
 
 		m_bZoomed = true;
-		m_bInitialBlurOver = false;
-
-		m_vMisalignmentOffset = vector.Zero;
-
-		GetRotation(m_vRotation, 1);
-		m_vRotationSpeed = vector.Zero;
-		m_vRotationOffset = vector.Zero;
-
-		GetMovement(m_vMovement, 1);
-		m_vMovementSpeed = vector.Zero;
-		m_vMovementOffset = vector.Zero;
 
 		m_bIsOpticsHidden = false;
+
+		// Setup illumination
+		EnableReticleIllumination(m_bIsIlluminationOn);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected override void OnSightADSDeactivated()
+	override void OnSightADSDeactivated()
 	{
 		super.OnSightADSDeactivated();
+		s_On2DOpticADSChanged.Invoke(this, false);
 		s_OnSightsADSChanged.Invoke(false, 0);
 
 		// Initialize to current zero value
@@ -361,21 +488,16 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 			m_bWasEntityHidden = false;
 		}
 
-		GetGame().GetCallqueue().Remove(ActivateHUD); // in case this is called quickly after OnSightADSActivated, ActivateHUD needs to be cleared to prevent conflict
-
-		// Prevent entering animation
-		AnimateWidget.StopAnimation(m_wRootWidget, WidgetAnimationOpacity);
-		GetGame().GetCallqueue().Remove(PlayEntryAnimation);
-
-		if (m_wImgCover)
-			m_wImgCover.SetOpacity(0);
+		GetGame().GetCallqueue().Remove(HideObjects); // in case this is called quickly after OnSightADSActivated, HideObjects needs to be cleared to prevent conflict
 
 		// Leaving animation
 		m_fNearPlaneCurrent = NEAR_PLANE_DEFAULT;
-		GetGame().GetCallqueue().CallLater(DeactivateHUD, m_iHudDeactivationDelay, false);
 
 		m_bZoomed = false;
 		m_bIsOpticsHidden = true;
+
+		// Clean up reticle illumination
+		EnableReticleIllumination(false);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -388,8 +510,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		float pitchTarget = GetCameraPitchTarget();
 		m_fCurrentCameraPitch = Math.Lerp(m_fCurrentCameraPitch, pitchTarget, interp);
 
-		Tick(timeSlice);
-
 #ifdef ENABLE_DIAG
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_OPTICS))
 			DebugOptics();
@@ -397,22 +517,11 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Open optics hud with animation delay
-	protected void ActivateHUD()
+	//! Hides objects to prevent clipping when entering ADS
+	protected void HideObjects()
 	{
-		// Activate and setup hud
-		m_wRootWidget.SetVisible(true);
-		m_wImgCover.SetVisible(false);
-		m_wRootWidget.SetOpacity(0);
-
-		// Blur
-		m_wBlur.SetIntensity(OPACITY_INITIAL);
-		m_wBlur.SetOpacity(1);
-
 		// Near plane
 		m_fNearPlaneCurrent = NEAR_PLANE_ZOOMED;
-
-		GetGame().GetCallqueue().CallLater(PlayEntryAnimation, m_iAnimationEnterDelay, false, m_fAnimationEnter);
 
 		// Hide rendering
 		if (m_bShouldHideParentObject)
@@ -437,141 +546,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Open optics hud with animation delay
-	protected void DeactivateHUD()
-	{
-		if (m_wRootWidget)
-			m_wRootWidget.SetVisible(false);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Start optics entring animation
-	protected void PlayEntryAnimation(float animationSpeed)
-	{
-		m_wRootWidget.SetOpacity(1);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Find widget refences
-	protected void FindWidgets()
-	{
-		// Parts
-		m_wLayoutRear = m_wRootWidget.FindAnyWidget(WIDGET_LAYOUT_REAR);
-		m_wLayoutFront = m_wRootWidget.FindAnyWidget(WIDGET_LAYOUT_FRONT);
-		m_wImgCover = ImageWidget.Cast(m_wRootWidget.FindAnyWidget(WIDGET_IMAGE_COVER));
-		m_wImgScratches = ImageWidget.Cast(m_wRootWidget.FindAnyWidget(WIDGET_IMAGE_SCRATCHES));
-
-		if (!m_wLayoutRear || !m_wLayoutFront)
-		{
-			Print("Scope vignette movement is not possible due to missing widget references!", LogLevel.WARNING);
-			return;
-		}
-
-		// Rear part - eye piece
-		m_wSizeLayoutRear = SizeLayoutWidget.Cast(m_wLayoutRear.FindAnyWidget(WIDGET_SIZE_REAR));
-		m_wRearFillLeft = SizeLayoutWidget.Cast(m_wLayoutRear.FindAnyWidget(WIDGET_SIZE_LEFT));
-		m_wRearFillTop = SizeLayoutWidget.Cast(m_wLayoutRear.FindAnyWidget(WIDGET_SIZE_TOP));
-
-		// Front part - objective
-		m_wSizeLayoutObjective = SizeLayoutWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_SIZE_OBJECTIVE));
-		m_wFrontFillLeft = SizeLayoutWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_SIZE_LEFT));
-		m_wFrontFillTop = SizeLayoutWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_SIZE_TOP));
-
-		m_wOverlayReticles = m_wLayoutFront.FindAnyWidget(WIDGET_OVERLAY_RETICLES);
-		m_wImgReticle = ImageWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_RETICLE));
-		m_wImgReticleGlow = ImageWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_RETICLE_GLOW));
-		m_wBlur = BlurWidget.Cast(m_wRootWidget.FindAnyWidget(WIDGET_BLUR));
-		m_wImgFilter = ImageWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_FILTER));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Setup images and right texture sizing
-	protected void SetupOpticImage()
-	{
-		// Setup reticle
-		if (!m_sReticleTexture.IsEmpty())
-			m_wImgReticle.LoadImageTexture(0, m_sReticleTexture);
-
-		m_wImgReticleGlow.SetVisible(!m_sReticleTexture.IsEmpty());
-
-		if (!m_sReticleGlowTexture.IsEmpty())
-			m_wImgReticleGlow.LoadImageTexture(0, m_sReticleGlowTexture);
-
-		m_wImgReticleGlow.SetVisible(!m_sReticleGlowTexture.IsEmpty());
-
-		// Setup lens filter
-		if (!m_sFilterTexture.IsEmpty())
-			m_wImgFilter.LoadImageTexture(0, m_sFilterTexture);
-
-		m_wImgFilter.SetVisible(!m_sFilterTexture.IsEmpty());
-
-		// Compute reticle base FOV once
-		if (m_fReticleBaseZoom > 0)
-			m_fReticleBaseZoom = -CalculateZoomFOV(m_fReticleBaseZoom);
-
-		float fovReticle;
-		if (m_fReticleBaseZoom == 0)
-			fovReticle = m_fFovZoomed;
-		else if (m_fReticleBaseZoom < 0)
-			fovReticle = -m_fReticleBaseZoom;
-
-		// Account for part that represents the measurable reticle
-		float reticleAngularSize;
-		if (m_fReticlePortion > 0)
-			reticleAngularSize = m_fReticleAngularSize / m_fReticlePortion;
-
-		float reticleSize;
-		if (fovReticle > 0)
-			reticleSize = reticleAngularSize / fovReticle;
-		else if (m_fFovZoomed > 0)
-			reticleSize = reticleAngularSize / m_fFovZoomed;
-
-		// Save basic data
-		m_fDefaultSize = reticleSize;
-		m_fCurrentReticleSize = m_fDefaultSize;
-
-		UpdateScale(1, 1, 1);
-	}
-
-	protected float m_fVignetteSize;
-	protected float m_fObjectiveSize;
-
-	//------------------------------------------------------------------------------------------------
-	// Update widget sizes according to the screen height and DPI scale
-	protected void UpdateScale(float reticleScale, float vignetteScale, float objectiveScale)
-	{
-		float uiScale = 1;
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		if (workspace)
-			uiScale = workspace.DPIUnscale(workspace.GetHeight());
-
-		// Reticle size setup
-		if (m_wOverlayReticles)
-		{
-			float reticleSize = m_fCurrentReticleSize * uiScale * reticleScale;
-			FrameSlot.SetSize(m_wOverlayReticles, reticleSize, reticleSize);
-		}
-
-		// Vignette size setup
-		if (m_wSizeLayoutRear)
-		{
-			m_fVignetteSize = m_fObjectiveFov * m_fVignetteScale * uiScale * vignetteScale / m_fFovZoomed;
-
-			m_wSizeLayoutRear.SetWidthOverride(m_fVignetteSize);
-			m_wSizeLayoutRear.SetHeightOverride(m_fVignetteSize);
-		}
-
-		// Ocular size setup
-		if (m_wSizeLayoutObjective)
-		{
-			m_fObjectiveSize = m_fObjectiveFov * m_fObjectiveScale * uiScale * objectiveScale / m_fFovZoomed;
-
-			m_wSizeLayoutObjective.SetWidthOverride(m_fObjectiveSize);
-			m_wSizeLayoutObjective.SetHeightOverride(m_fObjectiveSize);
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Return camera FOV for given magnification. Focus FOV is used as reference 1x magnification
 	static float CalculateZoomFOV(float magnification)
 	{
@@ -588,20 +562,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		float referenceTan = Math.Tan(Math.DEG2RAD * (referenceFOV * 0.5));
 		return Math.RAD2DEG * 2 * Math.Atan2(referenceTan, magnification);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Activate and deactivate optics HUD
-	void SetOpticsActive(bool activate)
-	{
-		if (activate)
-		{
-			OnSightADSActivated();
-		}
-		else
-		{
-			OnSightADSDeactivated();
-		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -663,150 +623,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Apply result movement to scope widgets
-	protected void MoveScopeWidgets(float timeSlice)
-	{
-		// Update vignette and reticle direction and roll
-		vector sightMat[4];
-		float fov;
-		vector misalignment = GetMisalignment(sightMat, fov);
-
-		// Stabilize roll
-		float roll = misalignment[2] * m_fRollScale;
-		if (m_fRollDampingSpeed > 0)
-		{
-			float rollSmooth = Math.Min(1, timeSlice * m_fRollDampingSpeed);
-			m_fRollOffset = Math.Lerp(m_fRollOffset, roll, rollSmooth);
-			roll -= m_fRollOffset;
-		}
-
-		misalignment[0] = fixAngle_180_180(misalignment[0]);
-		misalignment[1] = fixAngle_180_180(misalignment[1]);
-
-		// Stabilize binocular reticle over time
-		if (m_fMisalignmentDampingSpeed > 0)
-		{
-			float offsetDamping = Math.Min(timeSlice * m_fMisalignmentDampingSpeed, 1);
-			m_vMisalignmentOffset = vector.Lerp(m_vMisalignmentOffset, misalignment, offsetDamping);
-			misalignment = misalignment - m_vMisalignmentOffset;
-		}
-
-		// Stabilize rotation speed over time
-		vector rotation = GetRotation(m_vRotation, timeSlice);
-		if (m_fRotationDampingSpeed > 0)
-		{
-			float rotationDamping = Math.Min(timeSlice * m_fRotationDampingSpeed, 1);
-			m_vRotationOffset = vector.Lerp(m_vRotationOffset, rotation, rotationDamping);
-			rotation = rotation - m_vRotationOffset;
-		}
-
-		// Movement is also stabilizable
-		vector movement = GetMovement(m_vMovement, timeSlice);
-		if (m_fMovementDampingSpeed > 0)
-		{
-			float movementDamping = Math.Min(timeSlice * m_fMovementDampingSpeed, 1);
-			m_vMovementOffset = vector.Lerp(m_vMovementOffset, movement, movementDamping);
-			movement = movement - m_vMovementOffset;
-		}
-
-		// Make sure lerp doesn't go out of bounds
-		float vignetteMove = Math.Min(timeSlice * m_fVignetteMoveSpeed, 1);
-
-		m_vVignetteOffset = vector.Lerp(m_vVignetteOffset, m_fMisalignmentScale * misalignment, vignetteMove);
-
-		// Objective must be set instantly
-		m_vObjectiveOffset = m_fMisalignmentScale * misalignment;
-
-		if (m_fRotationScale > 0)
-			m_vVignetteOffset = m_vVignetteOffset - rotation * m_fRotationScale;
-
-		if (m_fMovementScale > 0)
-			m_vVignetteOffset = m_vVignetteOffset + movement * m_fMovementScale;
-
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-
-		float screenW, screenH;
-		workspace.GetScreenSize(screenW, screenH);
-		screenW = workspace.DPIUnscale(screenW);
-		screenH = workspace.DPIUnscale(screenH);
-
-		float pixelsPerDegree = screenH / fov;
-
-		// Vignette movement
-		float defaultRearLeft = VignetteDefaultPosition(screenW, m_fVignetteSize);
-		float defaultRearTop = VignetteDefaultPosition(screenH, m_fVignetteSize);
-
-		float rearPaddingLeft = defaultRearLeft + pixelsPerDegree * m_vVignetteOffset[0];
-		float rearPaddingTop = defaultRearTop - pixelsPerDegree * m_vVignetteOffset[1];
-
-		m_wRearFillLeft.SetWidthOverride(rearPaddingLeft);
-		m_wRearFillTop.SetHeightOverride(rearPaddingTop);
-
-		// Objective and reticle movement
-		float defaultFrontLeft = VignetteDefaultPosition(screenW, m_fObjectiveSize);
-		float defaultFrontTop = VignetteDefaultPosition(screenH, m_fObjectiveSize);
-
-		float frontPaddingLeft = defaultFrontLeft + pixelsPerDegree * m_vObjectiveOffset[0];
-		float frontPaddingTop = defaultFrontTop - pixelsPerDegree * m_vObjectiveOffset[1];
-
-		m_wFrontFillLeft.SetWidthOverride(frontPaddingLeft);
-		m_wFrontFillTop.SetHeightOverride(frontPaddingTop);
-
-		// Reticle rotation
-		if (m_wImgReticle)
-			m_wImgReticle.SetRotation(roll);
-
-		if (m_wImgReticleGlow)
-			m_wImgReticleGlow.SetRotation(roll);
-
-		if (m_wImgFilter)
-			m_wImgFilter.SetRotation(roll);
-
-		if (m_wImgCover)
-			m_wImgCover.SetRotation(roll);
-
-		if (m_wImgScratches)
-			m_wImgScratches.SetRotation(roll + m_fScratchesRoll);
-
-		// Motion offset blur
-		if (m_bInitialBlurOver)
-			MotionBlur(m_vVignetteOffset[0], m_vVignetteOffset[1]);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected float VignetteDefaultPosition(float screenSize, float vignetteSize)
-	{
-		float defaultPos = (screenSize - vignetteSize) * 0.5;
-		if (defaultPos < 0)
-			defaultPos = 0;
-		return defaultPos;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void MotionBlur(float posX, float posY)
-	{
-		if (!m_wBlur)
-			return;
-
-		// Check movement
-		if (!m_bIsMoving || !m_bIsRotating)
-			return;
-
-		// Pick axis
-		float intensity = Math.AbsFloat(posX);
-		if (intensity > Math.AbsFloat(posY))
-			intensity = Math.AbsFloat(posY);
-
-		// Scale and limit
-		intensity = intensity * m_fMotionBlurScale;
-		if (intensity > m_fMotionBlurMax)
-			intensity = m_fMotionBlurMax;
-
-		m_wBlur.SetIntensity(intensity);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected vector GetRotation(out vector previousDir, float timeSlice)
+	vector GetRotation(out vector previousDir, float timeSlice)
 	{
 		if (timeSlice <= 0)
 			return vector.Zero;
@@ -838,7 +655,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected vector GetMovement(out vector previousPos, float timeSlice)
+	vector GetMovement(out vector previousPos, float timeSlice)
 	{
 		if (timeSlice <= 0)
 			return vector.Zero;
@@ -880,45 +697,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void Tick(float timeSlice)
-	{
-		if (!m_bZoomed)
-			return;
-
-		// Widget check
-		if (!m_wLayoutRear || !m_wLayoutFront)
-			return;
-
-		MoveScopeWidgets(timeSlice);
-		LowerBlurIntensity(timeSlice, m_fAnimationSpeedBlur);
-
-#ifdef ENABLE_DIAG
-		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_WEAPONS_OPTICS))
-			DebugOptics();
-#endif
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Bring down lens blur intensity in steps
-	protected void LowerBlurIntensity(float timeSlice, float speed)
-	{
-		if (!m_wBlur)
-			return;
-
-		float intensity = m_wBlur.GetIntensity();
-		intensity = Math.Lerp(intensity, 0, timeSlice * speed);
-
-		// Clear initial bluer
-		if (intensity < 0.1 && !m_bInitialBlurOver)
-		{
-			m_bInitialBlurOver = true;
-			intensity = 0;
-		}
-
-		m_wBlur.SetIntensity(intensity);
-	}
-
-	//------------------------------------------------------------------------------------------------
 	bool HasIllumination()
 	{
 		return m_bHasIllumination;
@@ -927,49 +705,29 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	//------------------------------------------------------------------------------------------------
 	Color GetReticleTextureIllumination()
 	{
-		return m_cReticleTextureIllumination;
+		return Color.FromInt(m_cReticleTextureIllumination.PackToInt());
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Change reticle texture position with angular offset
-	void SetReticleOffset(float x, float y)
+	//! Toggle between illumination modes
+	protected void EnableReticleIllumination(bool enable)
 	{
-		if (!m_wOverlayReticles)
-			return;
+		Color reticleTint;
+		Color glowTint;
 
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		if (!workspace)
-			return;
-
-		float fov = m_fFovZoomed;
-		CameraManager cameraManager = GetGame().GetCameraManager();
-		if (cameraManager)
+		if (m_bHasIllumination && enable)
 		{
-			CameraBase camera = cameraManager.CurrentCamera();
-			if (camera)
-				fov = camera.GetVerticalFOV();
+			reticleTint = GetReticleTextureIllumination();
+			glowTint = GetReticleTextureIllumination();
+		}
+		else
+		{
+			reticleTint = Color.FromInt(Color.BLACK);
+			glowTint = Color.FromInt(Color.WHITE);
 		}
 
-		float uiHeight = workspace.DPIUnscale(workspace.GetHeight());
-		float offsetX = x * uiHeight / fov;
-		float offsetY = y * uiHeight / fov;
-
-		FrameSlot.SetPos(m_wOverlayReticles, offsetX, offsetY);
-
-		vector size = FrameSlot.GetSize(m_wOverlayReticles);
-		if (m_wImgReticle)
-		{
-			float pivotX = 0.5 - (offsetX / size[0]);
-			float pivotY = 0.5 - (offsetY / size[1]);
-			m_wImgReticle.SetPivot(pivotX, pivotY);
-		}
-
-		if (m_wImgReticleGlow)
-		{
-			float pivotX = 0.5 - (offsetX / size[0]);
-			float pivotY = 0.5 - (offsetY / size[1]);
-			m_wImgReticleGlow.SetPivot(pivotX, pivotY);
-		}
+		glowTint.SetA(m_fReticleTextureGlowAlpha);
+		s_OnIlluminationChange.Invoke(reticleTint, glowTint);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -993,6 +751,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		return 0.0;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	float GetCurrentCameraPitchOffset()
 	{
 		return m_fCurrentCameraPitch;
@@ -1102,7 +861,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void DebugOptics()
+	void DebugOptics()
 	{
 		DbgUI.Begin("Optics");
 		{
@@ -1122,12 +881,13 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 			InputFloatClamped(m_fRollScale, "m_fRollScale", -100, 100);
 			InputFloatClamped(m_fRollDampingSpeed, "m_fRollDampingSpeed", -100, 100);
 			InputFloatClamped(m_fMisalignmentScale, "m_fMisalignmentScale", -100, 100);
+			InputFloatClamped(m_fReticleTextureGlowAlpha, "m_fReticleTextureGlowAlpha", 0, 1);
 		}
 		DbgUI.End();
 
 		SCR_2DPIPSightsComponent pip = SCR_2DPIPSightsComponent.Cast(this);
 		if (!pip || !pip.IsPIPActive())
-			SetupOpticImage();
+			s_OnSetupOpticImage.Invoke();
 
 		float targetSize = 0.5 * Math.Tan(Math.DEG2RAD * m_fDebugAngle * m_fDebugUnit);
 		float range = 1000;
@@ -1168,6 +928,6 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		Shape.CreateLines(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, target, 8);
 		Shape.CreateLines(COLOR_RED, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER, target2, 6);
 		Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE | ShapeFlags.NOZWRITE, targetPos, targetSize * range);
-	}
+		}
 #endif
 }

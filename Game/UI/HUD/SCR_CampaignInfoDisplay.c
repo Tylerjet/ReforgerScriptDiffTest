@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignInfoDisplay : SCR_InfoDisplayExtended
 {

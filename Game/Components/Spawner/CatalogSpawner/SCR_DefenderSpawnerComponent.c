@@ -1,3 +1,4 @@
+#include "scripts/Game/config.c"
 [EntityEditorProps(category: "GameScripted/ScriptWizard", description: "Component to be used with barrack compositions, handing unit spawning.", color: "0 0 255 255")]
 class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 {
@@ -60,7 +61,11 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 
 	protected RplComponent m_RplComponent;
 	protected SCR_CampaignSuppliesComponent m_SupplyComponent; //TODO: Temporary until supply sandbox rework
+	#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
 	protected float m_fNextRespawnTime;
+	#else
+	protected WorldTimestamp m_fNextRespawnTime;
+	#endif
 	protected SCR_EntityCatalogEntry m_GroupEntry;
 	protected SCR_AIGroup m_AIgroup;
 	protected AIWaypoint m_Waypoint;
@@ -142,7 +147,11 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		m_SupplyComponent = supplyComp;
 		
 		//Resets timer, so new soldiers are spawned, if spawning is enabled.
+		#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
 		m_fNextRespawnTime = 0;
+		#else
+		m_fNextRespawnTime = null;
+		#endif
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -546,16 +555,26 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 	//! Manages automatic group spawning
 	protected void HandleGroup()
 	{
+		#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
 		float replicationTime = Replication.Time();
+		#else
+		ChimeraWorld world = GetOwner().GetWorld();
+		WorldTimestamp replicationTime = world.GetServerTimestamp();
+		#endif
 		bool distanceCheck = PlayerDistanceCheck();
 
 		if (m_bEnableSpawning && distanceCheck)
 		{
 			// Reinforce existing or create new defender group. Also handles respawning of despawned defenders
+			#ifndef AR_DEFENDER_SPAWN_TIMESTAMP
 			if (m_iDespawnedGroupMembers > 0 || (replicationTime > m_fNextRespawnTime))
 			{
 				m_fNextRespawnTime = replicationTime + (m_fRespawnDelay * 1000);
-
+			#else
+			if (m_iDespawnedGroupMembers > 0 || replicationTime.Greater(m_fNextRespawnTime))
+			{
+				m_fNextRespawnTime = replicationTime.PlusSeconds(m_fRespawnDelay);
+			#endif
 				if (m_AIgroup && (m_AIgroup.m_aUnitPrefabSlots.Count() != m_AIgroup.GetAgentsCount()))
 					ReinforceGroup();
 

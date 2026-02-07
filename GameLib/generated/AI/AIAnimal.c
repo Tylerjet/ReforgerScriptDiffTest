@@ -16,8 +16,8 @@ class AIAnimalClass: AIAgentClass
 class AIAnimal: AIAgent
 {
 	proto external int GetSoundMapTag();
-	//How the entity should react to danger events. This also calls OnReactToDanger for custom effects
-	proto external void ReactToDanger();
+	//A danger event happened in server, this calls to "ReactDanger" in clients.
+	proto external void CallReactToDanger();
 
 	// callbacks
 

@@ -289,21 +289,20 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 
 		if (m_fTimeSinceUpdate < m_fUpdatePeriod)
 			return;
-
-		for (int i = 0, count = m_mTrackedPlayersInVehicles.Count(); i < count; i++)
+		
+		//Changed from for to foreach to avoid out of bounds exception
+		foreach (int playerId, SCR_DataCollectorDriverModuleContext playerContext: m_mTrackedPlayersInVehicles)
 		{
-			SCR_DataCollectorDriverModuleContext playerContext = m_mTrackedPlayersInVehicles.GetElement(i);
 			if (!playerContext.m_Player || !playerContext.m_Vehicle)
 			{
-				Print("DataCollectorDriverModule:Update: this context's player or vehicle is null. Removing it from the list", LogLevel.WARNING);
-				m_mTrackedPlayersInVehicles.RemoveElement(i);
+				Print("DataCollectorDriverModule:Update: this context's player or vehicle is null. Seems wrong", LogLevel.WARNING);
 				continue;
 			}
 
 			Physics physics = playerContext.m_Vehicle.GetPhysics();
 			if (!physics)
 			{
-				Print("DataCollectorDriverModule:Update: Couldn't find the vehicle's physics. Player ID: " + m_mTrackedPlayersInVehicles.GetKey(i) + ". Player is a pilot: " + playerContext.m_bPilot, LogLevel.WARNING);
+				Print("DataCollectorDriverModule:Update: Couldn't find the vehicle's physics. Player ID: " + playerId + ". Player is a pilot: " + playerContext.m_bPilot, LogLevel.WARNING);
 				continue;
 			}
 
@@ -311,7 +310,7 @@ TODO: REMOVE THIS, REPLACE WITH SENDING THROUGH RPL THE STATS FROM THE SERVER RE
 			if (distanceTraveled < 1)
 				continue;
 
-			SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(m_mTrackedPlayersInVehicles.GetKey(i));
+			SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(playerId);
 
 			//If player is driver we give some points, if not we give others
 			if (playerContext.m_bPilot)

@@ -97,6 +97,28 @@ class SCR_DownloadManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	bool HasRunningDownloads()
+	{
+		return !m_aDownloadQueue.IsEmpty();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Return true if there is addon with given id in download queue
+	SCR_WorkshopItemActionDownload DownloadingActionAddonById(string id, bool runningOnly = true)
+	{
+		foreach (SCR_WorkshopItemActionDownload download : m_aDownloadQueue)
+		{
+			if (download.m_Wrapper.GetId() != id)
+				continue;
+			
+			if (runningOnly && download.IsActive() && !download.IsCompleted() && !download.IsFailed() && !download.IsCanceled())
+				return download;
+		}
+		
+		return null;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	array<ref SCR_WorkshopItemActionDownload> GetDownloadQueue()
 	{
 		array<ref SCR_WorkshopItemActionDownload> downloads = {};
@@ -124,34 +146,45 @@ class SCR_DownloadManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
-	// Paused or resumes all downloads globally.
-	void SetDownloadsPaused(bool pause)
+	//! Paused or resumes all downloads globally
+	//! Pause/resume of all downloads is called recursivelly to prevent freezing  
+	//! Count = -1 setup the intial pause and starts late call
+	void SetDownloadsPaused(bool pause, int count = -1)
 	{
 		if (pause == m_bDownloadsPaused)
 			return;
 		
 		m_bDownloadsPaused = pause;
+
+		// Setup calls count
+		if (count == -1)
+			count = m_aDownloadQueue.Count() - 1;
 		
+		// Paseu/resume
+		PauseAction(m_aDownloadQueue[count], pause);
+		
+		// Late call 
+		if (count > 0)
+			GetGame().GetCallqueue().CallLater(SetDownloadsPaused, 0, false, pause, count - 1);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void PauseAction(SCR_WorkshopItemActionDownload action, bool pause)
+	{
+		// Pause 
 		if (pause)
 		{
-			// Pause all download actions
-			foreach (SCR_WorkshopItemActionDownload action : m_aDownloadQueue)
-			{
-				if (action.IsActive())
-					action.Pause();
-			}
+			if (action.IsActive())
+				action.Pause();
+			
+			return;
 		}
-		else
-		{
-			// Resume or activate all download actions
-			foreach (SCR_WorkshopItemActionDownload action : m_aDownloadQueue)
-			{
-				if (action.IsPaused())
-					action.Resume();
-				else if (action.IsInactive())
-					action.Activate();
-			}
-		}
+		
+		// Resume
+		if (action.IsPaused())
+			action.Resume();
+		else if (action.IsInactive())
+			action.Activate();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -209,10 +242,10 @@ class SCR_DownloadManager : GenericEntity
 	//-----------------------------------------------------------------------------------------------
 	static void SelectAddonsForLatestDownload(array<ref SCR_WorkshopItem> arrayIn, array<ref SCR_WorkshopItem> arrayOut)
 	{
-		foreach (auto i : arrayIn)
+		foreach (SCR_WorkshopItem addon : arrayIn)
 		{
-			if (IsLatestDownloadRequired(i))
-				arrayOut.Insert(i);
+			if (IsLatestDownloadRequired(addon))
+				arrayOut.Insert(addon);
 		}
 	}
 	
@@ -254,6 +287,8 @@ class SCR_DownloadManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	
+	//-----------------------------------------------------------------------------------------------
 	//! Start downloading list of scripted workshop items
 	//! Mainly used for server browser content download
 	array<ref SCR_WorkshopItemActionDownload> DownloadItems(array<ref SCR_WorkshopItem> items)
@@ -262,10 +297,13 @@ class SCR_DownloadManager : GenericEntity
 		
 		for (int i = 0, count = items.Count(); i < count; i++)
 		{
-			Revision target = items[i].GetDependency().GetRevision();
+			Revision target = items[i].GetItemTargetRevision();
+			
+			if (!target)
+				target = items[i].GetDependency().GetRevision();
+			
 			if (!target)
 			{
-				Print("Can't start download due to missing revision - " + items[i].GetName(), LogLevel.WARNING);
 				return null;
 			}
 			
@@ -298,15 +336,15 @@ class SCR_DownloadManager : GenericEntity
 	{
 		float sizeOut = 0;
 		
-		foreach (auto i : arrayIn)
+		foreach (SCR_WorkshopItem addon : arrayIn)
 		{
-			float s = i.GetSizeBytes();
+			float s = addon.GetTargetRevisionPatchSize();
 			sizeOut += s;
 		}
 		
 		if (extraItem)
 		{
-			float s = extraItem.GetSizeBytes();
+			float s = extraItem.GetTargetRevisionPatchSize();
 			sizeOut += s;
 		}
 		
@@ -331,7 +369,8 @@ class SCR_DownloadManager : GenericEntity
 	{
 		float totalSizeBytes = 0;
 		float totalBytesDownloaded = 0;
-		foreach (auto dl : actions)
+		
+		foreach (SCR_WorkshopItemActionDownload dl : actions)
 		{
 			float dlsize = dl.GetSizeBytes();
 			totalSizeBytes += dlsize;
@@ -504,6 +543,8 @@ class SCR_DownloadManager : GenericEntity
 			
 			m_fNoDownloadProgressTimer = 0;
 		}
+		
+		/*
 		else 
 		{
 			// Increase time from last download progress
@@ -511,8 +552,11 @@ class SCR_DownloadManager : GenericEntity
 			
 			// Quit downloads if nothing is progressing
 			if (m_fNoDownloadProgressTimer >= DOWNLOAD_STUCK_DELAY)
-				ForceFailRunningDownloads();
+			{
+				// TODO: Display error if no progress for 1 min istead of force fail
+			}
 		}
+		*/
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -598,7 +642,10 @@ class SCR_DownloadManager : GenericEntity
 	protected void Callback_OnFailed(SCR_WorkshopItemActionDownload action)
 	{	
 		m_aFailedDownloads.Insert(action);
-		SCR_DownloadManager_Dialog.Create();
+		
+		if (!SCR_DownloadManager_Dialog.IsOpened())
+			SCR_DownloadManager_Dialog.Create();
+		
 		m_OnDownloadFailed.Invoke(action);
 	}
 	
@@ -617,6 +664,43 @@ class SCR_DownloadManager : GenericEntity
 		{
 			m_aDownloadQueue[i].ForceFail();
 		}
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Start downloading list of given addons
+	void DownloadAddons(array<ref SCR_WorkshopItem> items)
+	{
+		SCR_DownloadSequence sequence = SCR_DownloadSequence.Create(items, null, true);
+		sequence.GetOnReady().Insert(OnDownloadAddonsReady);
+		sequence.Init();
+		
+		/*
+		array<ref SCR_WorkshopItem> offline = SCR_AddonManager.GetInstance().GetOfflineAddons();
+		array<SCR_WorkshopItem> unfinished = {};
+		
+		// Filter out unfinished 
+		foreach (SCR_WorkshopItem item : offline)
+		{
+			bool inProgress, paused;
+			int progress;
+			Revision targetRevision;
+			
+			item.GetDownloadState(inProgress, paused, progress, targetRevision);
+			Print("item: " + item.GetName());
+			Print("in progress: " + inProgress);
+			Print("----------------------------------");
+			
+			//Print("item: " + item.GetDownloadState());
+			//if (offline.ge)
+		}
+		*/
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void OnDownloadAddonsReady(SCR_DownloadSequence sequence)
+	{
+		sequence.GetOnReady().Remove(OnDownloadAddonsReady);
+		//sequence.
 	}
 	
 	//-----------------------------------------------------------------------------------------------

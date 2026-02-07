@@ -90,7 +90,7 @@ class SCR_CameraParticleEditor
 	[Attribute(params: "ptc", uiwidget: UIWidgets.ResourcePickerThumbnail)]
 	private ResourceName m_Effect;
 	
-	private SCR_ParticleEmitter m_Emitter;
+	private ParticleEffectEntity m_Emitter;
 	
 	string GetDisplayName()
 	{
@@ -101,7 +101,9 @@ class SCR_CameraParticleEditor
 	{
 		if (m_Effect.IsEmpty()) return;
 		
-		m_Emitter =SCR_ParticleEmitter.CreateAsChild(m_Effect, target);
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Parent = target;
+		m_Emitter = ParticleEffectEntity.SpawnParticleEffect(m_Effect, spawnParams);
 	}
 	void Destroy()
 	{

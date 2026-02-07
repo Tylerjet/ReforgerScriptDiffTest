@@ -40,7 +40,7 @@ class SCR_MapLocator : GenericEntity
 		m_iGridSizeY = maxs[2]/3;
 	}
 	
-	protected void ShowMapHint()
+	protected void ShowMapHint(MapConfiguration config)
 	{
 		//--- ToDo: Don't hardcode conditions, let the map config define whether to show location hint or not
 		if (SCR_DeployMenuMain.GetDeployMenu())
@@ -54,7 +54,7 @@ class SCR_MapLocator : GenericEntity
 		GetGame().GetCallqueue().CallLater(CalculateClosestLocation,10000,true);
 	}
 	
-	protected void HideMapHint()
+	protected void HideMapHint(MapConfiguration config)
 	{
 		if (m_wUIHintLayout)
 			m_wUIHintLayout.RemoveFromHierarchy();

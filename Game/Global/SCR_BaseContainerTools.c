@@ -324,6 +324,34 @@ class SCR_BaseContainerTools
 
 		return baseResourceObject.ToBaseContainer();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Gets array of BaseContainers from array of ResourceNames.
+	\param aPrefabData ResourceName array
+	\return BaseContainer array
+	*/
+	static array<BaseContainer> GetBaseContainerArray(notnull array<ResourceName> aPrefabData)
+	{
+		//We need to initialize this array here
+		array<BaseContainer> BaseContainerArray = {};
+
+		BaseContainer prefabContainer;
+		foreach (ResourceName resourceName : aPrefabData)
+		{
+			prefabContainer = GetBaseContainer(resourceName);
+			if (!prefabContainer)
+			{
+				Print("BaseContainer could not be obtained");
+				continue;
+			}
+			
+			if (!BaseContainerArray.Contains(prefabContainer))
+				BaseContainerArray.Insert(prefabContainer);
+		}
+		
+		return BaseContainerArray;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -377,6 +405,27 @@ class SCR_BaseContainerTools
 		}
 
 		return ancestorContainer;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Says if the provided container is of type or inherits from a resourcename
+	//! \param container the container to check
+	//! \param resourceName the supposed ancestor
+	//! \return true if the provided container has resourceName in its ancestry, false if not or if the provided resourceName is empty
+	static bool IsKindOf(notnull BaseContainer container, ResourceName resourceName)
+	{
+		if (resourceName.IsEmpty())
+			return false;
+
+		while (container)
+		{
+			if (container.GetResourceName() == resourceName)
+				return true;
+
+			container = container.GetAncestor();
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

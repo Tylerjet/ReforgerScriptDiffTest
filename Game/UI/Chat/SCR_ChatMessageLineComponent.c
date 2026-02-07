@@ -50,13 +50,12 @@ class SCR_ChatMessageLineComponent : ScriptedWidgetComponent
 		
 		// Background color
 		float bgAlphaOld = m_Widgets.m_BackgroundImage.GetColor().A();
-		Color bgColorNew = Color.Black;
+		Color bgColorNew = new Color(0.0, 0.0, 0.0, 1.0);
 		if (style.m_bColoredBackground)
 			bgColorNew = style.m_Color;
 		bgColorNew.SetA(bgAlphaOld); // Keep the old alpha value
 		m_Widgets.m_BackgroundImage.SetColor(bgColorNew);
 		m_Widgets.m_BackgroundImage.SetVisible(true);
-		
 		
 		
 		//---------------------------------------------------------------------------------

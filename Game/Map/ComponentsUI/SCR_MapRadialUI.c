@@ -5,8 +5,11 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	[Attribute()]
 	protected ref SCR_RadialMenuController m_RadialController;
 	
-	protected SCR_MapCursorModule 	m_CursorModule;
-	protected SCR_RadialMenu m_RadialMenu;
+	[Attribute()]
+	protected ref SCR_RadialMenu m_RadialMenu;
+	
+	protected SCR_MapCursorModule m_CursorModule;
+	protected SCR_MapRadialDisplay m_Display;
 	
 	protected bool m_bRefresh;
 	protected bool m_bEntriesUpdate = false;		// entries updated instead of entry selected
@@ -29,6 +32,12 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	SCR_MapRadialDisplay GetRadialDisplay()
+	{
+		return m_Display;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	static SCR_MapRadialUI GetInstance()
 	{
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -47,14 +56,30 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	//! SCR_RadialMenuController event
-	protected void InputOpenMenu(SCR_RadialMenuController controller)
-	{		
-		if (!m_RadialController.HasControl())	
-			m_RadialController.Control(m_MapEntity);
-		else if (m_RadialMenu.IsOpened())	// TODO proper close here
+	//! Listener callback
+	void OnInputMenuOpen(float value, EActionTrigger reason)
+	{
+		if (m_RadialMenu && m_RadialMenu.IsOpened())
 			return;
 		
+		m_RadialController.OnInputOpen();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_RadialMenuController event
+	protected void InputOpenMenu(SCR_RadialMenuController controller, bool hasControl)
+	{		
+		if (!hasControl)
+		{
+			m_RadialController.Control(m_MapEntity, m_RadialMenu);
+			
+			SCR_HUDManagerComponent hud = GetGame().GetHUDManager();
+			m_Display = SCR_MapRadialDisplay.Cast(hud.FindInfoDisplay(SCR_MapRadialDisplay));
+			m_RadialMenu.SetMenuDisplay(m_Display);
+		}
+		else if (m_RadialMenu.IsOpened())	// TODO proper close here
+			return;
+
 		if (m_RadialMenu.GetEntryCount() == 0 || !m_CursorModule.HandleContextualMenu())		// map side conditions to open
 			m_RadialController.SetEnableControl(false);
 		else 
@@ -135,9 +160,12 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Insert own category into the menu
-	void InsertCustomRadialCategory(SCR_SelectionMenuCategoryEntry entry)
+	void InsertCustomRadialCategory(SCR_SelectionMenuCategoryEntry entry, SCR_SelectionMenuCategoryEntry parent = null)
 	{ 
-		m_RadialMenu.AddCategoryEntry(entry);
+		if (parent)
+			parent.AddEntry(entry);
+		else 
+			m_RadialMenu.AddCategoryEntry(entry);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -157,17 +185,35 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Add simple category
-	SCR_SelectionMenuCategoryEntry AddRadialCategory(string name)
+	SCR_SelectionMenuCategoryEntry AddRadialCategory(string name, SCR_SelectionMenuCategoryEntry parent = null)
 	{
 		SCR_SelectionMenuCategoryEntry entry = new SCR_SelectionMenuCategoryEntry();
 		entry.SetName(name);
-		m_RadialMenu.AddCategoryEntry(entry);
+		
+		if (parent)
+			parent.AddEntry(entry);
+		else
+			m_RadialMenu.AddCategoryEntry(entry);
 		
 		return entry;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Remove entry
+	void RemoveRadialEntry(SCR_SelectionMenuEntry entry)
+	{
+		m_RadialMenu.RemoveEntry(entry);
 	}
 										
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		if (m_RadialMenu)
+			m_RadialMenu.Update(timeSlice);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{
@@ -178,11 +224,15 @@ class SCR_MapRadialUI: SCR_MapUIBaseComponent
 		m_RadialController.GetOnInputOpen().Insert(InputOpenMenu);
 		m_RadialController.GetOnTakeControl().Insert(OnControllerTakeControl);
 		m_RadialController.GetOnControllerChanged().Insert(OnControllerChanged);
+		
+		GetGame().GetInputManager().AddActionListener("MapContextualMenu", EActionTrigger.DOWN, OnInputMenuOpen);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
 	{		
+		GetGame().GetInputManager().RemoveActionListener("MapContextualMenu", EActionTrigger.DOWN, OnInputMenuOpen);
+		
 		m_RadialController.GetOnInputOpen().Remove(InputOpenMenu);
 		m_RadialController.GetOnTakeControl().Remove(OnControllerTakeControl);
 		m_RadialController.GetOnControllerChanged().Remove(OnControllerChanged);

@@ -38,7 +38,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	protected ref map<SCR_CharacterHitZone, ref SCR_ArmoredClothItemData> m_mClothItemDataMap;
 	protected SCR_CharacterBloodHitZone m_pBloodHitZone;
 	protected ref array<HitZone> m_aBleedingHitZones;
-	protected ref map<HitZone, SCR_ParticleEmitter> m_mBleedingParticles;
+	protected ref map<HitZone, ParticleEffectEntity> m_mBleedingParticles;
 	protected SCR_CharacterResilienceHitZone m_pResilienceHitZone;
 	protected SCR_CharacterHeadHitZone m_pHeadHitZone;
 	static protected SCR_GameModeHealthSettings s_HealthSettings;
@@ -672,6 +672,9 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	//! Called to start bleeding effect on a specificied bone
 	void CreateBleedingParticleEffect(notnull HitZone hitZone, float bleedingRate, int colliderDescriptorIndex)
 	{
+		if (System.IsConsoleApp())
+			return;
+		
 		// Play Bleeding particle
 		if (m_sBleedingParticle.IsEmpty())
 			return;
@@ -693,11 +696,14 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!hitZone.TryGetColliderDescription(GetOwner(), colliderDescriptorIndex, transform, boneIndex, boneNode))
 			return;
 
-		SCR_ParticleEmitter particleEmitter = SCR_ParticleEmitter.CreateAsChild(m_sBleedingParticle, GetOwner(), boneID: boneNode);
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Parent = GetOwner();
+		spawnParams.PivotID = boneNode;
+		ParticleEffectEntity particleEmitter = ParticleEffectEntity.SpawnParticleEffect(m_sBleedingParticle, spawnParams);
 		particleEmitter.GetParticles().MultParam(-1, EmitterParam.BIRTH_RATE, bleedingRate * m_fBleedingParticleRateScale);
 
 		if (!m_mBleedingParticles)
-			m_mBleedingParticles = new map<HitZone, SCR_ParticleEmitter>;
+			m_mBleedingParticles = new map<HitZone, ParticleEffectEntity>;
 
 		m_mBleedingParticles.Insert(hitZone, particleEmitter);
 	}
@@ -711,10 +717,10 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		if (!m_mBleedingParticles)
 			return;
 
-		SCR_ParticleEmitter particleEmitter = m_mBleedingParticles.Get(hitZone);
+		ParticleEffectEntity particleEmitter = m_mBleedingParticles.Get(hitZone);
 		if (particleEmitter)
 		{
-			particleEmitter.Pause();
+			particleEmitter.StopEmission();
 			m_mBleedingParticles.Remove(hitZone);
 		}
 

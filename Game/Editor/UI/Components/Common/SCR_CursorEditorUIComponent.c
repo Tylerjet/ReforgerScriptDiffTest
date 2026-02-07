@@ -386,6 +386,13 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		if (currentAlpha != m_fTargetAlpha)
 			currentCursorWidget.SetOpacity(Math.Lerp(currentAlpha, m_fTargetAlpha, m_fTargetAlphaStrength * tDelta));
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapToggled(MapConfiguration config)
+	{
+		UpdateCursor();
+	}
+	
 	override void HandlerAttachedScripted(Widget w)
 	{	
 		super.HandlerAttachedScripted(w);
@@ -409,8 +416,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		
 		GetGame().OnInputDeviceIsGamepadInvoker().Insert(OnInputDeviceIsGamepad);
 		
-		SCR_MapEntity.GetOnMapOpen().Insert(UpdateCursor);
-		SCR_MapEntity.GetOnMapClose().Insert(UpdateCursor);
+		SCR_MapEntity.GetOnMapOpen().Insert(OnMapToggled);
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapToggled);
 		
 		m_EditorManager = SCR_EditorManagerEntity.GetInstance();
 		if (m_EditorManager) m_EditorManager.GetOnModeChangeRequest().Insert(UpdateCursor);
@@ -494,8 +501,8 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 		if (GetGame().OnInputDeviceIsGamepadInvoker())
 			GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 		
-		SCR_MapEntity.GetOnMapOpen().Remove(UpdateCursor);
-		SCR_MapEntity.GetOnMapClose().Remove(UpdateCursor);
+		SCR_MapEntity.GetOnMapOpen().Remove(OnMapToggled);
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapToggled);
 		
 		if (m_EditorManager) m_EditorManager.GetOnModeChangeRequest().Remove(UpdateCursor);
 		if (m_HoverManager) m_HoverManager.GetOnChanged().Remove(OnFilterChange);

@@ -7,12 +7,13 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 {
 	private bool								m_bParticlesInitialized;
 	private bool								m_bIsUnderwater;
-	private SCR_ParticleEmitter					m_pDmgParticleEmitter; //Damage particle emitter
+	private ParticleEffectEntity				m_pDmgParticleEmitter; //Damage particle emitter
 	private VehicleWheeledSimulation			m_pVehicleWheeledSimulation;
 	private VehicleWheeledSimulation_SA			m_pVehicleWheeledSimulation_SA;
 	private SCR_CarControllerComponent			m_pCarController;
 	private SCR_CarControllerComponent_SA		m_pCarController_SA;
 	private SignalsManagerComponent				m_pSignalsManagerComponent;
+	protected RplComponent 						m_RplComponent;
 	private IEntity								m_pOwner;
 	private IEntity								m_pExhaustEffect; // Particles we are working with
 	private float								m_fRPMScaled; // 0 to 1 scale of RPM between current and max RPM
@@ -23,6 +24,7 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 	private float								m_fPreviousLoad = -1; // Previous load state to detect necessary change
 	private float								m_fLifetimeScale; // Lifetime of the exhaust particles
 	private int									m_iIsExhaustUnderWaterSignalIdx; // IsExhaustUnderWater signal index
+	private int									m_iEngineLoadIdx; // engine load singal index
 
 	// There are some heavy calculations with particles going on per frame. The following variables solve the performance impact by calling them less often when they happen far away from the camera.
 	private float								m_fUpdateDelay; // Desired delay between each particle calculations in seconds. 0 means per frame.
@@ -56,11 +58,14 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			m_pVehicleWheeledSimulation = VehicleWheeledSimulation.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation));
 		else
 			m_pVehicleWheeledSimulation_SA = VehicleWheeledSimulation_SA.Cast(m_pOwner.FindComponent(VehicleWheeledSimulation_SA)); 
+		
+		m_RplComponent = RplComponent.Cast(m_pOwner.FindComponent(RplComponent));
 				
 		m_pSignalsManagerComponent = SignalsManagerComponent.Cast(m_pOwner.FindComponent(SignalsManagerComponent));
 		if (m_pSignalsManagerComponent)
 		{
 			m_iIsExhaustUnderWaterSignalIdx = m_pSignalsManagerComponent.AddOrFindSignal("IsExhaustUnderWater");
+			m_iEngineLoadIdx = m_pSignalsManagerComponent.AddOrFindSignal("engineLoad");
 		}
 		
 		BaseVehicleNodeComponent node = BaseVehicleNodeComponent.Cast(m_pOwner.FindComponent(BaseVehicleNodeComponent));
@@ -76,6 +81,9 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		}
 		
 	}
+	
+	override bool OnTicksOnRemoteProxy() { return true; };
+
 	
 	// Parses an emitter name and returns a number of a stage the emitter belongs to.
 	// Returns -1 if the emitter's name does not meet the stage naming WeatherWindPattern
@@ -137,11 +145,18 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		auto effectPosition = GetEffectPosition();
 		if (effectPosition)
 			nodeId = effectPosition.GetNodeId();
-		m_pDmgParticleEmitter = SCR_ParticleEmitter.CreateAsChild(m_DamagedParticle, m_pOwner, vector.Zero, vector.Zero, nodeId);
+		
+		ParticleEffectEntitySpawnParams spawnParams();
+		spawnParams.Parent = m_pOwner;
+		spawnParams.PivotID = nodeId;
+		spawnParams.PlayOnSpawn = true;
+		spawnParams.DeleteWhenStopped = false;
+		
+		m_pDmgParticleEmitter = ParticleEffectEntity.SpawnParticleEffect(m_DamagedParticle, spawnParams);
 		if (m_pDmgParticleEmitter)
 		{
-			m_pDmgParticleEmitter.Pause();
 			m_aDamageStagesEmitters = CreateStageIndex(m_pDmgParticleEmitter.GetParticles());
+			m_pDmgParticleEmitter.Stop();
 		}
 	}
 
@@ -185,32 +200,35 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		{
 			// Prepare values which will be used for particle calculations later in OnUpdateEffect(...)
 			m_fThrust = GetSignalThrust();
-
+			float RPM_acceleration = (m_fRPMScaled - m_fRPMScaledOld) * 1000 * timeSlice;
+			m_fRPMScaledOld = m_fRPMScaled;
+			
 			if(GetGame().GetIsClientAuthority())
 			{
 				if(m_pVehicleWheeledSimulation)
-					m_fCarSpeedKMH = Math.AbsFloat( m_pVehicleWheeledSimulation.GetSpeedKmh() );
+					m_fEngineLoad = (m_fThrust - RPM_acceleration) * (1-m_fRPMScaled) * 2;
+			
+				if (m_fEngineLoad < 0)
+					m_fEngineLoad = 0;
 			}
 			else
 			{
-				if(m_pVehicleWheeledSimulation_SA)
-					m_fCarSpeedKMH = Math.AbsFloat( m_pVehicleWheeledSimulation_SA.GetSpeedKmh() );
+				if (m_RplComponent && m_RplComponent.IsProxy())
+				{
+					if (m_pSignalsManagerComponent)
+					{
+						m_fEngineLoad = m_pSignalsManagerComponent.GetSignalValue(m_iEngineLoadIdx);
+						
+						if (m_fEngineLoad < 0)
+							m_fEngineLoad = 0;
+					}
+				}
+				else
+				{
+					if(m_pVehicleWheeledSimulation_SA)
+						m_fEngineLoad = m_pVehicleWheeledSimulation_SA.EngineGetLoad();
+				}
 			}
-
-			float RPM_acceleration = (m_fRPMScaled - m_fRPMScaledOld) * 1000 * timeSlice;
-			m_fRPMScaledOld = m_fRPMScaled;
-
-			m_fEngineLoad = (m_fThrust - RPM_acceleration) * (1-m_fRPMScaled) * 2;
-			
-			if (m_fEngineLoad < 0)
-				m_fEngineLoad = 0;
-
-			if (m_fCarSpeedKMH < 100)
-				m_fLifetimeScale = (100 - m_fCarSpeedKMH) / 100;
-			else
-				m_fLifetimeScale = 0.01;
-
-			m_fLifetimeScale = m_fLifetimeScale + m_fEngineLoad;
 		}
 
 		OnUpdateEffect(owner, m_fCurrentUpdateDelay);
@@ -230,7 +248,7 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			particles.SetParam(-1, EmitterParam.BIRTH_RATE, 0);
 			particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
 			if (m_pDmgParticleEmitter)
-				m_pDmgParticleEmitter.Pause();
+				m_pDmgParticleEmitter.StopEmission();
 			
 			if (m_pSignalsManagerComponent)
 				m_pSignalsManagerComponent.SetSignalValue(m_iIsExhaustUnderWaterSignalIdx, isUnderwater);
@@ -257,16 +275,16 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			}
 		}
 
-		if (m_pDmgParticleEmitter && m_pDmgParticleEmitter.GetIsPaused() == isDefective)
+		if (m_pDmgParticleEmitter && (m_pDmgParticleEmitter.GetState() == EParticleEffectState.PAUSED || m_pDmgParticleEmitter.GetState() == EParticleEffectState.STOPPED) == isDefective)
 		{
 			// Force update emitter
 			m_fPreviousLoad = -1;
 
 			// Toggle damage effect
 			if (isDefective)
-				m_pDmgParticleEmitter.UnPause();
+				m_pDmgParticleEmitter.Play();
 			else
-				m_pDmgParticleEmitter.Pause();
+				m_pDmgParticleEmitter.StopEmission();
 		}
 
 		// Update only when load changes
@@ -287,7 +305,7 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 		
 		Particles particles = particleEffectEnt.GetParticles();
 		
-		int iMaxStage = stageIndex.Count() - 1;
+		int iMaxStage = stageIndex.Count();
 
 		if (stageIndex && stageIndex.Count()) // Check if the assigned particle effect supports staging (Staging divides effect's emittors into groups which are selectively enabled/disabled according to our needs)
 		{
@@ -296,7 +314,7 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			particles.SetParam(-1, EmitterParam.BIRTH_RATE_RND, 0);
 
 			// ... now enable only the relevant emittors and work with them
-			int current_stage = Math.ClampInt(Math.Round(iMaxStage * m_fEngineLoad), 0, iMaxStage);
+			int current_stage = Math.ClampInt(Math.Ceil(iMaxStage * m_fEngineLoad), 1, iMaxStage) - 1;
 			array<int> relevant_emitters_ids = stageIndex[current_stage];
 
 			// Now we work only with the relevant stage (group) of emitters
@@ -304,8 +322,6 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			{
 				particles.MultParam(relevant_emitters_ids[i], EmitterParam.BIRTH_RATE,         m_fRPMScaled*0.5 + 0.5);
 				particles.MultParam(relevant_emitters_ids[i], EmitterParam.BIRTH_RATE_RND,     m_fRPMScaled*0.5 + 0.5);
-				particles.MultParam(relevant_emitters_ids[i], EmitterParam.LIFETIME,           m_fLifetimeScale);
-				particles.MultParam(relevant_emitters_ids[i], EmitterParam.LIFETIME_RND,       m_fLifetimeScale);
 				particles.MultParam(relevant_emitters_ids[i], EmitterParam.VELOCITY,           ( m_fRPMScaled*3 ));
 				particles.MultParam(relevant_emitters_ids[i], EmitterParam.VELOCITY_RND,       ( m_fRPMScaled*3 ));
 				particles.MultParam(relevant_emitters_ids[i], EmitterParam.AIR_RESISTANCE,     m_fRPMScaled);
@@ -339,13 +355,15 @@ class SCR_MotorExhaustEffectGeneralComponent : MotorExhaustEffectComponent
 			m_fStartupTimeLeft = 0;
 		
 		TurnOn(m_pOwner);
+		SetEventMask(m_pOwner, EntityEvent.FRAME);
 	}
 
 	//! Turn off the effect and pause the damaged exhaust effect
 	void OnEngineStop()
 	{
 		TurnOff();
-		if (m_pDmgParticleEmitter && !m_pDmgParticleEmitter.GetIsPaused())
-			m_pDmgParticleEmitter.Pause();
+		ClearEventMask(m_pOwner, EntityEvent.FRAME);
+		if (m_pDmgParticleEmitter)
+			m_pDmgParticleEmitter.StopEmission();
 	}
 };
