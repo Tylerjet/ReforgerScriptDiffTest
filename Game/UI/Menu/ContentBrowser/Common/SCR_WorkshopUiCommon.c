@@ -187,7 +187,7 @@ class SCR_WorkshopUiCommon
 			ref DSGameConfig game = new DSGameConfig;
 			config.game = game;
 			game.scenarioId = scenario.Id();
-			game.playerCountLimit = scenario.GetPlayerCount();
+			//game.maxPlayers = scenario.GetPlayerCount();
 			game.name = scenario.Name() + System.GetMachineName();
 			WorkshopItem hostedMod = scenario.GetOwner();
 			if (hostedMod)

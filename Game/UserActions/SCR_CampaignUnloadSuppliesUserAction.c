@@ -197,6 +197,17 @@ class SCR_CampaignUnloadSuppliesUserAction : ScriptedUserAction
 		if (!baseSuppliesComponent)	
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
+		IEntity truck = SCR_EntityHelper.GetMainParent(GetOwner(), true);
+		
+		if (truck)
+		{
+			DamageManagerComponent damageManager = DamageManagerComponent.Cast(truck.FindComponent(DamageManagerComponent));
+			
+			// No action if the truck is destroyed
+			if (damageManager.GetState() == EDamageState.DESTROYED)
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+		}
+		
 		if (vector.DistanceSq(m_Box.GetOrigin(), m_Base.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
 		{
 			SCR_CampaignServiceComponent service = m_Base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);

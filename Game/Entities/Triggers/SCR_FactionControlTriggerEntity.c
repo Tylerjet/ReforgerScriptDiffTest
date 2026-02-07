@@ -11,6 +11,8 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 	protected float m_fFriendlyRatioLimit;
 	
 	protected int m_iFriendlyCount, m_iEnemyCount;
+	protected bool m_bResult;
+	protected bool m_bEvaluateResult;
 	
 	/*!
 	Get number of entities inside trigger for each side
@@ -22,39 +24,33 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 		outFriendlyCount = m_iFriendlyCount;
 		outEnemyCount = m_iEnemyCount;
 	}
+	/*
+	Single entity evaluation in ScriptedEntityFilterForQuery cannot produce a result yet.
+	All entities have to be scanned first and counted.
+	At the end of each cycle, evaluation begins.
+	However, because trigger outcome is detemined by returned value of ScriptedEntityFilterForQuery, another cycle the simply returnes the result.
+	
+	Here's how it goes step by step:
+	1) ScriptedEntityFilterForQuery is called on each entity inside and counts them per faction.
+	2) OnQueryFinished is called at the end of the cycle and evaluates the result.
+	3) ScriptedEntityFilterForQuery is called on each entity inside, but instantly returns the result.
+	4) OnQueryFinished is called at the end of the cycle and resets the variables for new calculation.
+	Repeat from step 1)
+	*/
 	override bool ScriptedEntityFilterForQuery(IEntity ent)
 	{
+		//--- Evaluation round, return the result instantly
+		if (m_bEvaluateResult)
+		{
+			return m_bResult;
+		}
+		
 		//--- No faction defined
 		if (!m_OwnerFaction)
 		{
 			m_iFriendlyCount = 0;
 			m_iEnemyCount = 0;
 			return false;
-		}
-		
-		//--- Querying itself - initiate new cycle
-		if (ent == this)
-		{
-			int friendlyCount = m_iFriendlyCount;
-			int enemyCount = m_iEnemyCount;
-			m_iFriendlyCount = 0;
-			m_iEnemyCount = 0;
-			
-			//--- Nobody is in the trigger, skip evaluation
-			if (friendlyCount == 0 && enemyCount == 0)
-				return false;
-			
-			float friendlyRatio = friendlyCount / Math.Max(friendlyCount + enemyCount, 1);
-			//PrintFormat("%1: %2 / %3", m_OwnerFaction.GetFactionKey(), friendlyRatio, m_fFriendlyRatioLimit);
-			switch (m_iRatioMethod)
-			{
-				case 0:
-					return friendlyRatio > m_fFriendlyRatioLimit;
-				case 1:
-					return float.AlmostEqual(friendlyRatio, m_fFriendlyRatioLimit);
-				case 2:
-					return friendlyRatio < m_fFriendlyRatioLimit;
-			}
 		}
 		
 		//--- Evaluate engine-driven conditions, e.g., entity class
@@ -76,5 +72,45 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 		}
 		
 		return false;
+	}
+	override protected void OnQueryFinished(bool bIsEmpty)
+	{
+		//--- Finished evaluation round. Reset variables and start again.
+		if (m_bEvaluateResult)
+		{
+			m_iFriendlyCount = 0;
+			m_iEnemyCount = 0;
+			m_bEvaluateResult = false;
+			return;
+		}
+		
+		m_bResult = false;
+		m_bEvaluateResult = true;
+		
+		//--- Nobody is in the trigger, skip evaluation
+		if (m_iFriendlyCount == 0 && m_iEnemyCount == 0)
+			return;
+		
+		float friendlyRatio = m_iFriendlyCount / Math.Max(m_iFriendlyCount + m_iEnemyCount, 1);
+		switch (m_iRatioMethod)
+		{
+			case 0:
+			{
+				m_bResult = friendlyRatio > m_fFriendlyRatioLimit;
+				break;
+			}
+			case 1:
+			{
+				m_bResult = float.AlmostEqual(friendlyRatio, m_fFriendlyRatioLimit);
+				break;
+			}
+			case 2:
+			{
+				m_bResult = friendlyRatio < m_fFriendlyRatioLimit;
+				break;
+			}
+		}
+		
+		super.OnQueryFinished(bIsEmpty);
 	}
 };

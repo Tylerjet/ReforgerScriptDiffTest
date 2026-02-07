@@ -101,7 +101,7 @@ class SCR_StartScenarioDialog : DialogUI
 		ref DSGameConfig game = new DSGameConfig;
 		config.game = game;
 		game.scenarioId = m_Scenario.Id();
-		game.playerCountLimit = m_Scenario.GetPlayerCount();
+		game.maxPlayers = m_Scenario.GetPlayerCount();
 		game.name = m_Scenario.Name() + " - " + System.GetMachineName();
 		WorkshopItem hostedMod = m_Scenario.GetOwner();
 		if (hostedMod)

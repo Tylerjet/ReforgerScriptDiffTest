@@ -29,18 +29,18 @@ class SCR_DSConfig : DSConfig
 		m_aDSConfigEntries = entries;
 		
 		// Config 
-		gameHostBindAddress = FindValue("gameHostBindAddress");
-		gameHostBindPort = StringToNumber(FindValue("gameHostBindPort"));
-		gameHostRegisterBindAddress = FindValue("gameHostRegisterBindAddress");
-		gameHostRegisterPort = StringToNumber(FindValue("gameHostRegisterPort"));
-		adminPassword = FindValue("adminPassword");
-		crossPlatform = SCR_JsonApiStructHandler.StringToBool(FindValue("crossPlatform"));
+		bindAddress = FindValue("bindAddress");
+		bindPort = StringToNumber(FindValue("bindPort"));
+		publicAddress = FindValue("publicAddress");
+		publicPort = StringToNumber(FindValue("publicPort"));
 		
 		// Game
 		game.name = FindValue("name");
-		game.playerCountLimit = StringToNumber(FindValue("playerCountLimit"));
+		game.maxPlayers = StringToNumber(FindValue("maxPlayers"));
 		game.password = FindValue("password");
+		game.passwordAdmin = FindValue("passwordAdmin");
 		game.visible = SCR_JsonApiStructHandler.StringToBool(FindValue("visible"));
+		game.crossPlatform = SCR_JsonApiStructHandler.StringToBool(FindValue("crossPlatform"));
 		
 		// Game properties 
 		SCR_DSGameProperties gamePropertiesSCr = SCR_DSGameProperties.Cast(game.gameProperties);
@@ -155,7 +155,6 @@ class SCR_DSConfig : DSConfig
 //------------------------------------------------------------------------------------------------
 class SCR_DSGameProperties : DSGameProperties
 {
-	bool fastValidation = true;
 	bool disableThirdPerson = false;
 	bool VONDisableUI = false;
 	bool VONDisableDirectSpeechUI = false;
@@ -166,7 +165,6 @@ class SCR_DSGameProperties : DSGameProperties
 	//------------------------------------------------------------------------------------------------
 	void SCR_DSGameProperties()
 	{
-		RegV("fastValidation");
 		RegV("serverMaxViewDistance");
 		RegV("networkViewDistance");
 		RegV("serverMinGrassDistance");

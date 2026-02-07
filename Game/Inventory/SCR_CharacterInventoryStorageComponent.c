@@ -483,12 +483,18 @@ class SCR_CharacterInventoryStorageComponent : CharacterInventoryStorageComponen
 		
 		EWeaponType type = currentSlot.GetWeaponType();
 		itemEnt = currentSlot.GetWeaponEntity();
-		callback.m_InvMan = storageManager;
+		
+		if (!storageManager.CanMoveItem(itemEnt))
+			return;
+		
+		callback.m_InvMan = storageManager;		
 		
 		if (WEAPON_TYPES_THROWABLE.Contains(type))
 			callback.m_pItem = storageManager.FindNextWeaponOfType(type, itemEnt, true);
 		
+		storageManager.SetInventoryLocked(true);
 		controller.DropWeapon(currentSlot);
+		storageManager.SetInventoryLocked(false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -197,6 +197,22 @@ class SCR_CampaignLoadSuppliesUserAction : ScriptedUserAction
 		if (!m_Base && !m_StandaloneDepot)
 			return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 		
+		IEntity truck = SCR_EntityHelper.GetMainParent(GetOwner(), true);
+		
+		if (truck)
+		{
+			DamageManagerComponent damageManager = DamageManagerComponent.Cast(truck.FindComponent(DamageManagerComponent));
+			
+			// No action if the truck is destroyed
+			if (damageManager.GetState() == EDamageState.DESTROYED)
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+			
+			SCR_FlammableHitZone flammableHitZone = SCR_FlammableHitZone.Cast(damageManager.GetDefaultHitZone());
+			
+			if (flammableHitZone && flammableHitZone.GetFireState() == EFireState.BURNING)
+				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
+		}
+		
 		if (m_Base)
 		{
 			Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();

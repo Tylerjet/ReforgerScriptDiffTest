@@ -79,6 +79,17 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 	{
 		if (!m_ProviderComponent)
 			InitializeSuppliesComponent();
+		
+		Vehicle truck = Vehicle.Cast(SCR_EntityHelper.GetMainParent(GetOwner(), true));
+		
+		if (truck)
+		{
+			DamageManagerComponent damageManager = DamageManagerComponent.Cast(truck.FindComponent(DamageManagerComponent));
+			
+			// No action if the truck is destroyed
+			if (damageManager.GetState() == EDamageState.DESTROYED)
+				return false;
+		}
 				
 		if (m_ProviderComponent.IsPlayerFactionSame(user))
 			return true;

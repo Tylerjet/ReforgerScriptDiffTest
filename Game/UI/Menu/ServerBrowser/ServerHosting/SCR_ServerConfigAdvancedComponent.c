@@ -1,9 +1,9 @@
 class SCR_ServerConfigAdvancedComponent : SCR_ConfigListComponent
 {
-	protected const string BIND_IP = "gameHostBindAddress";
-	protected const string BIND_PORT = "gameHostBindPort";
-	protected const string IP = "gameHostRegisterBindAddress";
-	protected const string PORT = "gameHostRegisterPort";
+	protected const string BIND_IP = "bindAddress";
+	protected const string BIND_PORT = "bindPort";
+	protected const string IP = "publicAddress";
+	protected const string PORT = "publicPort";
 	
 	protected SCR_WidgetListEntryEditBox m_BindPortEdit;
 	protected SCR_WidgetListEntryEditBox m_PortEdit;
@@ -54,18 +54,18 @@ class SCR_ServerConfigAdvancedComponent : SCR_ConfigListComponent
 	//! Fill all entries with values from given DS config 
 	void FillFromDSConfig(notnull SCR_DSConfig config)
 	{
-		FindEntry(BIND_IP).SetValue(config.gameHostBindAddress);
-		FindEntry(BIND_PORT).SetValue(config.gameHostBindPort.ToString());
-		FindEntry(IP).SetValue(config.gameHostRegisterBindAddress);
-		FindEntry(PORT).SetValue(config.gameHostRegisterPort.ToString());
+		FindEntry(BIND_IP).SetValue(config.bindAddress);
+		FindEntry(BIND_PORT).SetValue(config.bindPort.ToString());
+		FindEntry(IP).SetValue(config.publicAddress);
+		FindEntry(PORT).SetValue(config.publicPort.ToString());
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	void SetIPPort(DSConfig config)
 	{
-		FindEntry(BIND_IP).SetValue(config.gameHostBindAddress);
-		FindEntry(BIND_PORT).SetValue(config.gameHostBindPort.ToString());
-		FindEntry(IP).SetValue(config.gameHostRegisterBindAddress);
-		FindEntry(PORT).SetValue(config.gameHostRegisterPort.ToString());
+		FindEntry(BIND_IP).SetValue(config.bindAddress);
+		FindEntry(BIND_PORT).SetValue(config.bindPort.ToString());
+		FindEntry(IP).SetValue(config.publicAddress);
+		FindEntry(PORT).SetValue(config.publicPort.ToString());
 	}
 }

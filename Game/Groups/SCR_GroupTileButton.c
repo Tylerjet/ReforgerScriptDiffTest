@@ -140,9 +140,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		
 		m_BaseTaskManager = GetTaskManager();
 		if (m_BaseTaskManager)
-			m_BaseTaskManager.s_OnTaskUpdate.Insert(RefreshPlayers);		
-		
-		group.GetOnMemberStateChange().Insert(RefreshPlayers);
+			m_BaseTaskManager.s_OnTaskUpdate.Insert(RefreshPlayers);	
 		
 		RichTextWidget squadName = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Callsign"));
 		if (squadName)

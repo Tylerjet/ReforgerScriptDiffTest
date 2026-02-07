@@ -12,7 +12,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected const string FILE_NAME_ENTRY = "fileName";
 	protected const string SCENARIO_SELECTION_ENTRY = "scenarioId";
 	protected const string SCENARIO_MOD_SELECTION_ENTRY = "scenarioModId";
-	protected const string PLAYER_LIMIT_ENTRY = "playerCountLimit";
+	protected const string PLAYER_LIMIT_ENTRY = "maxPlayers";
 	protected const string BATTLEYE = "battlEye";
 	protected const string CROSSPLAY = "crossPlatform";
 	
@@ -325,15 +325,13 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//! Fill all entries with values from given DS config 
 	void FillFromDSConfig(notnull SCR_DSConfig config)
 	{
-		// Config
-		FindEntry("adminPassword").SetValue(config.adminPassword);
-		
 		// Game
 		FindEntry("name").SetValue(config.game.name);
-		FindEntry("playerCountLimit").SetValue(config.game.playerCountLimit.ToString());
+		FindEntry("maxPlayers").SetValue(config.game.maxPlayers.ToString());
 		FindEntry("password").SetValue(config.game.password);
+		FindEntry("passwordAdmin").SetValue(config.game.passwordAdmin);
 		FindEntry("visible").SetValue(SCR_JsonApiStructHandler.BoolToString(config.game.visible));
-		FindEntry("crossPlatform").SetValue(SCR_JsonApiStructHandler.BoolToString(config.crossPlatform));
+		FindEntry("crossPlatform").SetValue(SCR_JsonApiStructHandler.BoolToString(config.game.crossPlatform));
 		
 		// Game properties
 		SCR_DSGameProperties gamePropertiesSCr = SCR_DSGameProperties.Cast(config.game.gameProperties);
@@ -376,7 +374,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		// Scroll to entry
 		float outView = listH - scrollH; // What size can't be seen 
 		float relPos = entryY - listY;
-		 
+
 		float pos = 1 - (outView - relPos) / outView;
 		m_wScrollWidget.SetSliderPos(0, pos);
 	}

@@ -3,9 +3,12 @@ class DSGameConfig: JsonApiStruct
 	string name;
 	string scenarioId;
 	string hostedScenarioModId;
-	int playerCountLimit
+	int maxPlayers
 	string password;
+	string passwordAdmin;
 	bool visible
+
+	bool crossPlatform;
 	
 	ref DSGameProperties gameProperties;
 	ref array<ref DSMod> mods;
@@ -13,10 +16,10 @@ class DSGameConfig: JsonApiStruct
 	void DSGameConfig()
 	{
 		RegV("name");
-		RegV("playerCountLimit");
+		RegV("maxPlayers");
 		RegV("password");
+		RegV("passwordAdmin");
 		RegV("scenarioId");
-		RegV("hostedScenarioModId");	
 		RegV("gameProperties");
 		RegV("mods");
 	}
@@ -25,11 +28,15 @@ class DSGameConfig: JsonApiStruct
 	{
 		UnregV("visible");
 		StoreBoolean("visible", visible);
+
+		UnregV("crossPlatform");
+		StoreBoolean("crossPlatform", crossPlatform);
 	}
 	
 	override void OnExpand()
 	{
 		RegV("visible");
+		RegV("crossPlatform");
 	}
 }
 
@@ -65,35 +72,22 @@ class DSMod: JsonApiStruct
 
 class DSConfig: JsonApiStruct
 {
-	string gameHostBindAddress;
-	int gameHostBindPort;
-	string gameHostRegisterBindAddress;
-	int gameHostRegisterPort;
-	string adminPassword;
-	
+	string bindAddress;
+	int bindPort;
+
+	string publicAddress;
+	int publicPort;
+
 	ref DSGameConfig game;
-	
-	bool crossPlatform;
-	
+
 	void DSConfig()
 	{		
-		RegV("gameHostBindAddress");
-		RegV("gameHostBindPort");
-		RegV("gameHostRegisterBindAddress");
-		RegV("gameHostRegisterPort");
-		RegV("adminPassword");
+		RegV("bindAddress");
+		RegV("bindPort");
+
+		RegV("publicAddress");
+		RegV("publicPort");
 		
 		RegV("game");
-	}
-
-	override void OnPack()
-	{
-		UnregV("crossPlatform");
-		StoreBoolean("crossPlatform", crossPlatform);
-	}
-	
-	override void OnExpand()
-	{
-		RegV("crossPlatform");
 	}
 }

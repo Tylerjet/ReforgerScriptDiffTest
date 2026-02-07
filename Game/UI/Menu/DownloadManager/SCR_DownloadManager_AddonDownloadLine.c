@@ -175,13 +175,12 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		
 		// Version from
 		Revision versionFrom = m_Action.GetStartRevision();
+		
+		m_Widgets.m_VersionFromText.SetVisible(versionFrom != null);
+		m_Widgets.m_VersionArrow.SetVisible(versionFrom != null);
+		
 		if (versionFrom)
-		{
-			m_Widgets.m_VersionArrow.SetVisible(true);
 			m_Widgets.m_VersionFromText.SetText(versionFrom.GetVersion());
-		}
-		else
-			m_Widgets.m_VersionArrow.SetVisible(false);
 		
 		// Version to
 		Revision versionTo = m_Action.GetTargetRevision();
