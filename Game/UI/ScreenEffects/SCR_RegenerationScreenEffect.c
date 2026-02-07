@@ -45,15 +45,22 @@ class SCR_RegenerationScreenEffect : SCR_BaseScreenEffect
 
 	 	m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), CHROM_ABER_PRIORITY, PostProcessEffectType.ChromAber, CHROMATIC_ABERIATION_EMAT);
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
+	override protected void DisplayOnSuspended()
 	{
-		if (playerOutsideCharacter)
-			s_bEnabled = false;
-		else
-			s_bEnabled = true;
-		
+		s_bEnabled = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void DisplayOnResumed()
+	{
+		s_bEnabled = true;
+	}		
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateEffect(float timeSlice)
+	{
 		if (m_bRegenerationEffect)
 			RegenerationEffect(timeSlice);
 	}

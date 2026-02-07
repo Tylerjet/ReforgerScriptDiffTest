@@ -44,9 +44,6 @@ class SCR_SuperMenuBase : MenuRootBase //ChimeraMenuBase
 		m_TabViewComponent.m_OnContentRemove.Insert(OnTabRemove);
 		
 		m_TabViewComponent.Init();
-
-		w.SetOpacity(0);
-		AnimateWidget.Opacity(w, 1, UIConstants.FADE_RATE_SUPER_FAST);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 [EntityEditorProps(category: "GameScripted/Weapon/Sights", description: "", color: "0 0 255 255")]
 class SCR_2DOpticsComponentClass : ScriptedSightsComponentClass
 {
-};
+}
 
 //------------------------------------------------------------------------------------------------
 //! Base class for 2D optics
@@ -33,6 +33,9 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	const string WIDGET_BLUR = "Blur";
 	const string WIDGET_IMAGE_FILTER = "ImgFilter";
 
+	const string WIDGET_SIZE_LEFT = "SizePaddingLeft";
+	const string WIDGET_SIZE_TOP = "SizePaddingTop";
+
 	const float REFERENCE_FOV = 38;
 	const float OPACITY_INITIAL = 0.75;
 
@@ -60,7 +63,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	[Attribute("10", UIWidgets.EditBox, desc: "Optic magnification\n", params: "0.1 200 0.001", category: "Sights", precision: 3)]
 	protected float m_fMagnification;
-	
+
 	[Attribute("0", UIWidgets.Slider, "Angular size of reticle\n[ ° ]", params: "0 60 0.001", category: "Sights", precision: 3)]
 	protected float m_fReticleAngularSize;
 
@@ -72,7 +75,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 	[Attribute("0", UIWidgets.CheckBox, "Check if the optic is attached to a turret\n", category: "Sights")]
 	protected bool m_bIsTurretOptic;
-	
+
 	[Attribute("10", UIWidgets.EditBox, desc: "Field of view of the objective\n[ ° ]", params: "0.001 60 0.001", category: "2DSights", precision: 3)]
 	protected float m_fObjectiveFov;
 
@@ -146,7 +149,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("0", UIWidgets.Slider, "Percentage of camera transition at which sights deactivate.", params: "0.0 1.0 0.01", category: "Sights")]
 	protected float m_fADSDeactivationPercentage;
 
-	[Attribute("0", UIWidgets.ComboBox, "Type of zeroing for this sights.", "", ParamEnumArray.FromEnum(SCR_EPIPZeroingType), category: "Sights" )]
+	[Attribute("0", UIWidgets.ComboBox, "Type of zeroing for this sights.", "", ParamEnumArray.FromEnum(SCR_EPIPZeroingType), category: "Sights")]
 	protected SCR_EPIPZeroingType m_eZeroingType;
 
 	[Attribute("0", UIWidgets.Slider, "Reticle Offset of scope center in X", params: "-1 1 0.0001", precision: 5, category: "Sights")]
@@ -158,10 +161,10 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	[Attribute("25", UIWidgets.Slider, "Interpolation speed for zeroing interpolation", params: "1 100.0 0.1", category: "Sights")]
 	protected float m_fReticleOffsetInterpSpeed;
 
-	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset when looking through scope", category: "Sights", params: "inf inf 0 purpose=coords space=entity anglesVar=m_vCameraPoint")]
+	[Attribute("0 0 0", UIWidgets.EditBox, "Camera offset when looking through scope", category: "Sights", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vCameraPoint")]
 	protected vector m_vCameraOffset;
 
-	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "Sights", params: "inf inf 0 purpose=angles space=entity coordsVar=m_vCameraAngles")]
+	[Attribute("0 0 0", UIWidgets.EditBox, "Camera angles when looking through scope", category: "Sights", params: "inf inf 0 purpose=angles space=entity anglesVar=m_vCameraAngles")]
 	protected vector m_vCameraAngles;
 
 	protected float m_fCurrentReticleOffsetY;
@@ -196,20 +199,16 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	protected ImageWidget m_wImgCover;
 	protected ImageWidget m_wImgScratches;
 
-	protected Widget m_wRearPaddingLeft;
-	protected Widget m_wRearPaddingRight;
-	protected Widget m_wRearPaddingTop;
-	protected Widget m_wRearPaddingBottom;
-
-	protected Widget m_wFrontPaddingLeft;
-	protected Widget m_wFrontPaddingRight;
-	protected Widget m_wFrontPaddingTop;
-	protected Widget m_wFrontPaddingBottom;
 	protected Widget m_wOverlayReticles;
 	protected ImageWidget m_wImgReticle;
 	protected ImageWidget m_wImgReticleGlow;
 	protected BlurWidget m_wBlur;
 	protected ImageWidget m_wImgFilter;
+
+	protected SizeLayoutWidget m_wRearFillLeft;
+	protected SizeLayoutWidget m_wRearFillTop;
+	protected SizeLayoutWidget m_wFrontFillLeft;
+	protected SizeLayoutWidget m_wFrontFillTop;
 
 	protected SizeLayoutWidget m_wSizeLayoutRear;
 	protected SizeLayoutWidget m_wSizeLayoutObjective;
@@ -247,6 +246,8 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	bool m_bWasEntityHidden = false;
 	protected int m_iHeadBoneId = -1;
 
+	protected bool m_bIsOpticsHidden;
+
 	// Owner and character references
 	protected ChimeraCharacter m_ParentCharacter = null;
 
@@ -272,6 +273,15 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void OnHUDLayoutChanged(SCR_HUDLayout newLayout, SCR_HUDLayout oldLayout, SCR_HUDManagerComponent hudManager)
+	{
+		if (m_bIsOpticsHidden && m_wRootWidget)
+			m_wRootWidget.SetVisible(false);
+		else if (!m_bIsOpticsHidden && m_wRootWidget)
+			m_wRootWidget.SetVisible(true);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	protected override void OnSightADSActivated()
 	{
 		// Setup scope widgets
@@ -281,7 +291,14 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 			SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.GetHUDManager();
 			if (hudManager)
-				m_wRootWidget = hudManager.CreateLayout(m_sLayoutResource, EHudLayers.BACKGROUND);
+			{
+				SCR_HUDManagerLayoutHandler hudLayoutHandler = SCR_HUDManagerLayoutHandler.Cast(hudManager.FindHandler(SCR_HUDManagerLayoutHandler));
+				if (hudLayoutHandler)
+					hudLayoutHandler.GetOnLayoutChange().Insert(OnHUDLayoutChanged);
+
+				SCR_HUDElement hudElement = hudManager.CreateFreeElement(m_sLayoutResource, "Slot_2DOptics");
+				m_wRootWidget = hudElement.GetWidget();
+			}
 
 			if (m_wRootWidget)
 			{
@@ -319,6 +336,8 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		GetMovement(m_vMovement, 1);
 		m_vMovementSpeed = vector.Zero;
 		m_vMovementOffset = vector.Zero;
+
+		m_bIsOpticsHidden = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -356,6 +375,7 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		GetGame().GetCallqueue().CallLater(DeactivateHUD, m_iHudDeactivationDelay, false);
 
 		m_bZoomed = false;
+		m_bIsOpticsHidden = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -449,17 +469,13 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		// Rear part - eye piece
 		m_wSizeLayoutRear = SizeLayoutWidget.Cast(m_wLayoutRear.FindAnyWidget(WIDGET_SIZE_REAR));
-		m_wRearPaddingLeft = m_wLayoutRear.FindAnyWidget(WIDGET_IMAGE_PADDING_LEFT);
-		m_wRearPaddingRight = m_wLayoutRear.FindAnyWidget(WIDGET_IMAGE_PADDING_RIGHT);
-		m_wRearPaddingTop = m_wLayoutRear.FindAnyWidget(WIDGET_IMAGE_PADDING_TOP);
-		m_wRearPaddingBottom = m_wLayoutRear.FindAnyWidget(WIDGET_IMAGE_PADDING_BOTTOM);
+		m_wRearFillLeft = SizeLayoutWidget.Cast(m_wLayoutRear.FindAnyWidget(WIDGET_SIZE_LEFT));
+		m_wRearFillTop = SizeLayoutWidget.Cast(m_wLayoutRear.FindAnyWidget(WIDGET_SIZE_TOP));
 
 		// Front part - objective
 		m_wSizeLayoutObjective = SizeLayoutWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_SIZE_OBJECTIVE));
-		m_wFrontPaddingLeft = m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_PADDING_LEFT);
-		m_wFrontPaddingRight = m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_PADDING_RIGHT);
-		m_wFrontPaddingTop = m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_PADDING_TOP);
-		m_wFrontPaddingBottom = m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_PADDING_BOTTOM);
+		m_wFrontFillLeft = SizeLayoutWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_SIZE_LEFT));
+		m_wFrontFillTop = SizeLayoutWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_SIZE_TOP));
 
 		m_wOverlayReticles = m_wLayoutFront.FindAnyWidget(WIDGET_OVERLAY_RETICLES);
 		m_wImgReticle = ImageWidget.Cast(m_wLayoutFront.FindAnyWidget(WIDGET_IMAGE_RETICLE));
@@ -517,6 +533,9 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		UpdateScale(1, 1, 1);
 	}
 
+	protected float m_fVignetteSize;
+	protected float m_fObjectiveSize;
+
 	//------------------------------------------------------------------------------------------------
 	// Update widget sizes according to the screen height and DPI scale
 	protected void UpdateScale(float reticleScale, float vignetteScale, float objectiveScale)
@@ -536,19 +555,19 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		// Vignette size setup
 		if (m_wSizeLayoutRear)
 		{
-			float vignetteSize = m_fObjectiveFov * m_fVignetteScale * uiScale * vignetteScale / m_fFovZoomed;
+			m_fVignetteSize = m_fObjectiveFov * m_fVignetteScale * uiScale * vignetteScale / m_fFovZoomed;
 
-			m_wSizeLayoutRear.SetWidthOverride(vignetteSize);
-			m_wSizeLayoutRear.SetHeightOverride(vignetteSize);
+			m_wSizeLayoutRear.SetWidthOverride(m_fVignetteSize);
+			m_wSizeLayoutRear.SetHeightOverride(m_fVignetteSize);
 		}
 
 		// Ocular size setup
 		if (m_wSizeLayoutObjective)
 		{
-			float objectiveSize = m_fObjectiveFov * m_fObjectiveScale * uiScale * objectiveScale / m_fFovZoomed;
+			m_fObjectiveSize = m_fObjectiveFov * m_fObjectiveScale * uiScale * objectiveScale / m_fFovZoomed;
 
-			m_wSizeLayoutObjective.SetWidthOverride(objectiveSize);
-			m_wSizeLayoutObjective.SetHeightOverride(objectiveSize);
+			m_wSizeLayoutObjective.SetWidthOverride(m_fObjectiveSize);
+			m_wSizeLayoutObjective.SetHeightOverride(m_fObjectiveSize);
 		}
 	}
 
@@ -708,40 +727,30 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 
 		float screenW, screenH;
 		workspace.GetScreenSize(screenW, screenH);
-
-		float rearW, rearH;
-		m_wLayoutRear.GetScreenSize(rearW, rearH);
-		rearW *= 0.5;
-		rearH *= 0.5;
-
-		float frontW, frontH;
-		m_wLayoutFront.GetScreenSize(frontW, frontH);
-		frontW *= 0.5;
-		frontH *= 0.5;
+		screenW = workspace.DPIUnscale(screenW);
+		screenH = workspace.DPIUnscale(screenH);
 
 		float pixelsPerDegree = screenH / fov;
 
 		// Vignette movement
-		float rearPaddingLeft = frontW + pixelsPerDegree * m_vVignetteOffset[0];
-		float rearPaddingRight = frontW - pixelsPerDegree * m_vVignetteOffset[0];
-		float rearPaddingTop = frontH - pixelsPerDegree * m_vVignetteOffset[1];
-		float rearPaddingBottom = frontH + pixelsPerDegree * m_vVignetteOffset[1];
+		float defaultRearLeft = VignetteDefaultPosition(screenW, m_fVignetteSize);
+		float defaultRearTop = VignetteDefaultPosition(screenH, m_fVignetteSize);
 
-		HorizontalLayoutSlot.SetFillWeight(m_wRearPaddingLeft, rearPaddingLeft);
-		HorizontalLayoutSlot.SetFillWeight(m_wRearPaddingRight, rearPaddingRight);
-		VerticalLayoutSlot.SetFillWeight(m_wRearPaddingTop, rearPaddingTop);
-		VerticalLayoutSlot.SetFillWeight(m_wRearPaddingBottom, rearPaddingBottom);
+		float rearPaddingLeft = defaultRearLeft + pixelsPerDegree * m_vVignetteOffset[0];
+		float rearPaddingTop = defaultRearTop - pixelsPerDegree * m_vVignetteOffset[1];
+
+		m_wRearFillLeft.SetWidthOverride(rearPaddingLeft);
+		m_wRearFillTop.SetHeightOverride(rearPaddingTop);
 
 		// Objective and reticle movement
-		float frontPaddingLeft = frontW + pixelsPerDegree * m_vObjectiveOffset[0];
-		float frontPaddingRight = frontW - pixelsPerDegree * m_vObjectiveOffset[0];
-		float frontPaddingTop = frontH - pixelsPerDegree * m_vObjectiveOffset[1];
-		float frontPaddingBottom = frontH + pixelsPerDegree * m_vObjectiveOffset[1];
+		float defaultFrontLeft = VignetteDefaultPosition(screenW, m_fObjectiveSize);
+		float defaultFrontTop = VignetteDefaultPosition(screenH, m_fObjectiveSize);
 
-		HorizontalLayoutSlot.SetFillWeight(m_wFrontPaddingLeft, frontPaddingLeft);
-		HorizontalLayoutSlot.SetFillWeight(m_wFrontPaddingRight, frontPaddingRight);
-		VerticalLayoutSlot.SetFillWeight(m_wFrontPaddingTop, frontPaddingTop);
-		VerticalLayoutSlot.SetFillWeight(m_wFrontPaddingBottom, frontPaddingBottom);
+		float frontPaddingLeft = defaultFrontLeft + pixelsPerDegree * m_vObjectiveOffset[0];
+		float frontPaddingTop = defaultFrontTop - pixelsPerDegree * m_vObjectiveOffset[1];
+
+		m_wFrontFillLeft.SetWidthOverride(frontPaddingLeft);
+		m_wFrontFillTop.SetHeightOverride(frontPaddingTop);
 
 		// Reticle rotation
 		if (m_wImgReticle)
@@ -762,6 +771,15 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		// Motion offset blur
 		if (m_bInitialBlurOver)
 			MotionBlur(m_vVignetteOffset[0], m_vVignetteOffset[1]);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected float VignetteDefaultPosition(float screenSize, float vignetteSize)
+	{
+		float defaultPos = (screenSize - vignetteSize) * 0.5;
+		if (defaultPos < 0)
+			defaultPos = 0;
+		return defaultPos;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1152,4 +1170,4 @@ class SCR_2DOpticsComponent : ScriptedSightsComponent
 		Shape.CreateSphere(COLOR_YELLOW_A, ShapeFlags.ONCE | ShapeFlags.NOZBUFFER | ShapeFlags.TRANSP | ShapeFlags.NOOUTLINE | ShapeFlags.NOZWRITE, targetPos, targetSize * range);
 	}
 #endif
-};
+}

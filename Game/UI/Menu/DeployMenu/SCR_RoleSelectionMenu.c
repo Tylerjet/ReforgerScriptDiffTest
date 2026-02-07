@@ -186,10 +186,7 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 	protected void UpdateElapsedTime()
 	{
 		m_fTimer = 1;
-		string timeElapsed = SCR_Global.GetTimeFormatting(
-			m_GameMode.GetElapsedTime(),
-			ETimeFormatParam.DAYS | ETimeFormatParam.HOURS,
-			ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+		string timeElapsed = SCR_FormatHelper.FormatTime(m_GameMode.GetElapsedTime());
 
 		if (m_wScenarioTimeElapsed)
 			m_wScenarioTimeElapsed.SetText(timeElapsed);

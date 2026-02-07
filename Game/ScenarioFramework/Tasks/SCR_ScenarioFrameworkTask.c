@@ -54,25 +54,30 @@ class SCR_ScenarioFrameworkTask : SCR_BaseTask
 	//! An event called when the state of this task has been changed.
 	override void OnStateChanged(SCR_TaskState previousState, SCR_TaskState newState)
 	{
-		//super.OnStateChanged(previousState, newState);
-
 		SCR_GameModeSFManager gameModeManager = SCR_GameModeSFManager.Cast(GetGame().GetGameMode().FindComponent(SCR_GameModeSFManager));
-		if (!gameModeManager)
+		if (!gameModeManager || !gameModeManager.IsMaster() || !m_Layer)
 			return;
 
+		m_Layer.GetTaskSubject().OnTaskStateChanged(newState);
+		m_Layer.OnTaskStateChanged(previousState, newState);
+		
+		if (SCR_FactionManager.SGetLocalPlayerFaction() != m_TargetFaction)
+			return;
+				
 		if (newState == SCR_TaskState.FINISHED)
 			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFinished-UC");
 
 		if (newState == SCR_TaskState.CANCELLED)
 			gameModeManager.PopUpMessage(GetTitle(), "#AR-Tasks_StatusFailed-UC");
-
-		if (!gameModeManager.IsMaster() || !m_Layer)
-			return;
-
-		m_Layer.GetTaskSubject().OnTaskStateChanged(newState);
-		m_Layer.OnTaskStateChanged(previousState, newState);
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	override void Finish(bool showMsg = true)
+	{
+		showMsg = SCR_FactionManager.SGetLocalPlayerFaction() == m_TargetFaction;
+		super.Finish(showMsg);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	void SetTaskSubject(IEntity object)
 	{

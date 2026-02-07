@@ -3,6 +3,7 @@ class SCR_HUDLayout
 {
 	// This map stores the Group Widgets by their Widget Name
 	protected ref map<string, ref Widget> m_mGroups = new map<string, ref Widget>();
+	protected ref array<ref SCR_HUDElement> m_aElements = {};
 
 	[Attribute()]
 	protected string m_sIdentifier;
@@ -11,6 +12,17 @@ class SCR_HUDLayout
 	protected ResourceName m_sLayout;
 
 	protected Widget m_wRoot;
+
+	//------------------------------------------------------------------------------------------------
+	int GetHUDElements(notnull out array<SCR_HUDElement> hudElements)
+	{
+		foreach (SCR_HUDElement element : m_aElements)
+		{
+			hudElements.Insert(element);
+		}
+
+		return hudElements.Count();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	string GetIdentifier()
@@ -38,19 +50,57 @@ class SCR_HUDLayout
 		Widget iteratedWidget = m_wRoot.GetChildren();
 		while (iteratedWidget)
 		{
-			SCR_HUDGroupUIComponent groupComponent = SCR_HUDGroupUIComponent.Cast(iteratedWidget.FindHandler(SCR_HUDGroupUIComponent));
-			if (!groupComponent)
+			Widget iteratedChildWidget = iteratedWidget.GetChildren();
+			while (iteratedChildWidget)
 			{
-				Print("[SCR_HUDManagerComponent] A Group Widget must have a SCR_HUDGroupUIComponent component attached to it! Check: " + iteratedWidget.GetName(), LogLevel.ERROR);
-				iteratedWidget = iteratedWidget.GetSibling();
-				continue;
+				SCR_HUDGroupUIComponent groupComponent = SCR_HUDGroupUIComponent.Cast(iteratedChildWidget.FindHandler(SCR_HUDGroupUIComponent));
+				if (!groupComponent)
+				{
+					Print("[SCR_HUDManagerComponent] A Group Widget must have a SCR_HUDGroupUIComponent component attached to it! Check: " + iteratedWidget.GetName(), LogLevel.ERROR);
+					iteratedChildWidget = iteratedChildWidget.GetSibling();
+					continue;
+				}
+
+				m_mGroups.Insert(iteratedWidget.GetName(), iteratedChildWidget);
+				iteratedChildWidget = iteratedChildWidget.GetSibling();
 			}
 
-			m_mGroups.Insert(iteratedWidget.GetName(), iteratedWidget);
 			iteratedWidget = iteratedWidget.GetSibling();
 		}
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	void AddHudElement(notnull SCR_HUDElement element, bool replaceParent = false)
+	{
+		Widget slotWidget = element.GetWidget();
+		if (!slotWidget)
+			return;
+
+		Widget parentWidget = m_wRoot.FindAnyWidget(element.GetParentWidgetName());
+		if (!parentWidget)
+			return;
+
+		if (replaceParent)
+			parentWidget.AddChild(slotWidget);
+
+		m_aElements.Insert(element);
+		element.SetParentLayout(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RemoveHudElement(notnull SCR_HUDElement element, bool replaceParent = false)
+	{
+		Widget elementWidget = element.GetWidget();
+		if (!elementWidget)
+			return;
+
+		Widget parentWidget = elementWidget.GetParent();
+		if (replaceParent && parentWidget)
+			parentWidget.RemoveChild(elementWidget);
+		
+		m_aElements.RemoveItem(element);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Searches for and returns a Group Widget with the given name.
@@ -60,7 +110,7 @@ class SCR_HUDLayout
 	{
 		return m_wRoot.FindAnyWidget(groupName);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Searches for and returns the Component responsible for managing and controlling a Group with the given name.
@@ -130,10 +180,10 @@ class SCR_HUDLayout
 
 		return SCR_HUDSlotUIComponent.Cast(slotWidget.FindHandler(SCR_HUDSlotUIComponent));
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	Widget FindSlotWidget(string slotName)
+	Widget FindWidgetByName(string widgetName)
 	{
-		return m_wRoot.FindAnyWidget(slotName);
+		return m_wRoot.FindAnyWidget(widgetName);
 	}
-};
+}

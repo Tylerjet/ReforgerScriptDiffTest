@@ -53,6 +53,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	private static bool s_bNearDofEffect;
 	private static bool s_bEnableDOFBokeh;
 	private static bool s_bEnableDOF;
+	private bool m_bDisplaySuspended;
 	
 	//Character
 	protected ChimeraCharacter 											m_pCharacterEntity;
@@ -102,9 +103,21 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
+	protected override void DisplayOnSuspended()
 	{
-		if (playerOutsideCharacter)
+		m_bDisplaySuspended = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void DisplayOnResumed()
+	{
+		m_bDisplaySuspended = true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void UpdateEffect(float timeSlice)
+	{
+		if (m_bDisplaySuspended)
 			return;
 
 		if (!m_wDeath)
@@ -149,7 +162,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	void AddDOFBokehEffect(bool nearDofAllowed)
 	{
-		if (m_wDeath.GetOpacity() > 0.1)
+		if (m_wDeath.GetOpacity() > 0.1 && !m_bDisplaySuspended)
 			s_fFocalLength = s_fFocalLengthNear + (FOCALLENGTH_MAX * (m_wDeath.GetOpacity() - DOF_START_OPACITY) / (DOF_FADEIN_OPACITY_TARGET - DOF_START_OPACITY));
 		else
 			s_fFocalLength = 0.1; //If no death/unconsciousness blur is desired, set focallength to defaultvalue
@@ -166,6 +179,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 			s_bEnableDOFBokeh = false;
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void AddDOFEffect(float timeslice, bool nearDofAllowed)
 	{
 		s_fFocalDistance = FOCALDISTANCE_INTENSITY;
@@ -187,7 +201,7 @@ class SCR_DepthOfFieldEffect : SCR_BaseScreenEffect
 			s_bEnableDOF = false;
 
 		SCR_CharacterDamageManagerComponent damageMan = SCR_CharacterDamageManagerComponent.Cast(m_pCharacterEntity.GetDamageManager());
-		if (damageMan && damageMan.GetState() == EDamageState.DESTROYED)
+		if (damageMan && damageMan.GetState() == EDamageState.DESTROYED && !m_bDisplaySuspended)
 			s_fFocalChange = 100 - 100 * (m_wDeath.GetOpacity() - DOF_START_OPACITY) / (DOF_FADEIN_OPACITY_TARGET - DOF_START_OPACITY);
 		else
 			s_fFocalChange = SIMPLEDOF_FOCALCHANGE_MAX;

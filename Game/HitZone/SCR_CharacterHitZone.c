@@ -12,7 +12,7 @@ enum ECharacterHealthState: EDamageState
 
 enum ECharacterBloodState: EDamageState
 {
-	WEAKENED = 3,
+	STRONG = 3,
 	FAINTING = 4,
 	UNCONSCIOUS = 5
 };

@@ -1,3 +1,11 @@
+void OnPlayerEnterCompartmentMethod(ChimeraCharacter playerCharacter, IEntity compartmentEntity);
+typedef func OnPlayerEnterCompartmentMethod;
+typedef ScriptInvokerBase<OnPlayerEnterCompartmentMethod> OnPlayerEnterCompartment;
+
+void OnPlayerExitCompartmentMethod(ChimeraCharacter playerCharacter, IEntity compartmentEntity);
+typedef func OnPlayerExitCompartmentMethod;
+typedef ScriptInvokerBase<OnPlayerEnterCompartmentMethod> OnPlayerExitCompartment;
+
 [EntityEditorProps(category: "GameScripted/Vehicle", description: "CompartmentAccessComponent", color: "0 0 255 255")]
 class SCR_CompartmentAccessComponentClass: CompartmentAccessComponentClass
 {
@@ -9,6 +17,10 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	//! Local invokers for a specific vehicle
 	private ref ScriptInvoker m_OnCompartmentEntered;
 	private ref ScriptInvoker m_OnCompartmentLeft;
+	
+	protected ref OnPlayerEnterCompartment m_OnPlayerEnterCompartment;
+	protected ref OnPlayerExitCompartment m_OnPlayerExitCompartment;
+	
 	protected const int WAIT_FOR_VEHICLE_MAX_TRIES = 10;
 	protected static int s_iWaitForVehicleTries = 0;
 	
@@ -27,12 +39,44 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 			m_OnCompartmentLeft = new ScriptInvoker();
 		return m_OnCompartmentLeft;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	OnPlayerEnterCompartment GetOnPlayerCompartmentEnter(bool createNew = true)
+	{
+		if (!m_OnPlayerEnterCompartment && createNew)
+			m_OnPlayerEnterCompartment = new OnPlayerEnterCompartment();
+
+		return m_OnPlayerEnterCompartment;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	OnPlayerExitCompartment GetOnPlayerCompartmentExit(bool createNew = true)
+	{
+		if (!m_OnPlayerExitCompartment && createNew)
+			m_OnPlayerExitCompartment = new OnPlayerExitCompartment();
+
+		return m_OnPlayerExitCompartment;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move)
 	{
 		if (m_OnCompartmentEntered)
 			m_OnCompartmentEntered.Invoke( targetEntity, manager, mgrID, slotID, move );
+		
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+
+		if (!playerManager || !character)
+			return;
+		
+		//--- Check if the character is a player
+		int playerId = playerManager.GetPlayerIdFromControlledEntity(character);
+		if (playerId == 0)
+			return;
+
+		if (m_OnPlayerEnterCompartment)
+			m_OnPlayerEnterCompartment.Invoke(character, targetEntity);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -40,6 +84,20 @@ class SCR_CompartmentAccessComponent : CompartmentAccessComponent
 	{
 		if (m_OnCompartmentLeft)
 		m_OnCompartmentLeft.Invoke( targetEntity, manager, mgrID, slotID, move );
+
+		PlayerManager playerManager = GetGame().GetPlayerManager();
+		ChimeraCharacter character = ChimeraCharacter.Cast(GetOwner());
+
+		if (!playerManager || !character)
+			return;
+
+		//--- Check if the character is a player
+		int playerId = playerManager.GetPlayerIdFromControlledEntity(character);
+		if (playerId == 0)
+			return;
+
+		if (m_OnPlayerExitCompartment)
+			m_OnPlayerExitCompartment.Invoke(character, targetEntity);
 	}
 	
 	/*!

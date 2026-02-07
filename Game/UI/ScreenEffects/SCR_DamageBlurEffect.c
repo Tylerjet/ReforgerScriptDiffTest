@@ -59,15 +59,21 @@ class SCR_DamageBlurEffect : SCR_BaseScreenEffect
 			m_fGaussBlurReduction = Math.Clamp(++m_fGaussBlurReduction, 0, 2);
 	}
 
-	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
+	//------------------------------------------------------------------------------------------------	
+	protected override void DisplayOnSuspended()
 	{
-		if (playerOutsideCharacter)
-		{
-			s_bEnableGaussBlur = false;
-			return;
-		}
-		
+		s_bEnableGaussBlur = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void DisplayOnResumed()
+	{
+		s_bEnableGaussBlur = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateEffect(float timeSlice)
+	{
 		if (m_fGaussBlurReduction > 0)
 			MomentaryDamageEffect(timeSlice);
 		else

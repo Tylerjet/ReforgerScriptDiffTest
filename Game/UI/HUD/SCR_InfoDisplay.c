@@ -427,7 +427,7 @@ class SCR_InfoDisplay : GroupInfoDisplay
 
 		m_OnStart.Invoke(this);
 
-		if (GetHandler(SCR_InfoDisplaySlotHandler) == null)
+		if (GetHandler(SCR_InfoDisplaySlotHandler) == null && GetHandler(SCR_InfoDisplayLayerHandler) == null)
 			CreateDisplayLegacy(owner);
 
 		if (!m_wContent)

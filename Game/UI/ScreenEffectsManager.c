@@ -6,9 +6,6 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 	// Owner data
 	protected ChimeraCharacter 						m_pCharacterEntity;
 
-	// Character
-	protected bool m_bPlayerOutsideCharacter		= true;
-
 	//------------------------------------------------------------------------------------------------
 	//! Static GetScreenEffectsDisplay will return this regardless of whether SCR_ScreenEffectsManager is running
 	static SCR_ScreenEffectsManager GetScreenEffectsDisplay()
@@ -40,7 +37,7 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 				screenEffect.SettingsChanged();
 		}
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
  	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
 	{
@@ -57,15 +54,9 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 		CameraBase currentCamera = GetGame().GetCameraManager().CurrentCamera();
 		PlayerCamera playerCamera = GetGame().GetPlayerController().GetPlayerCamera();
 		if (!playerCamera || currentCamera != playerCamera)
-		{
-			m_bPlayerOutsideCharacter = true;
 			m_wRoot.SetVisible(false);
-		}
 		else
-		{
-			m_bPlayerOutsideCharacter = false;
 			m_wRoot.SetVisible(true);
-		}
 		
 		array<BaseInfoDisplay> infoDisplays = {};
 		GetInfoDisplays(infoDisplays);
@@ -73,7 +64,7 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 		{
 			SCR_BaseScreenEffect screenEffect = SCR_BaseScreenEffect.Cast(baseInfoDisplays);
 			if (screenEffect)
-				screenEffect.UpdateEffect(timeSlice, m_bPlayerOutsideCharacter);
+				screenEffect.UpdateEffect(timeSlice);
 		}
 	}
 
@@ -96,7 +87,7 @@ class SCR_ScreenEffectsManager : SCR_InfoDisplayExtended
 	{
 		ManagerClearEffects();
 		GetGame().OnUserSettingsChangedInvoker().Remove(SettingsChanged);
-		
+
 		s_pScreenEffectsManager = null;
 	}
 };

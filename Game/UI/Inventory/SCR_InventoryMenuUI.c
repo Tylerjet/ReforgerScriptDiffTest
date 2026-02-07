@@ -417,7 +417,8 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 	{
 		SCR_CharacterBloodHitZone charBloodHZ = SCR_CharacterBloodHitZone.Cast(m_CharDamageManager.GetBloodHitZone());
 
-		bool bleedingVisible = (charBloodHZ.GetDamageState() != EDamageState.UNDAMAGED);
+		//TODO@FAC change this strong treshold and make better condition when effects work
+		bool bleedingVisible = (charBloodHZ.GetHealthScaled() <= charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.STRONG));
 		float bleedingAmount = Math.InverseLerp(
 			charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS),
 			charBloodHZ.GetDamageStateThreshold(ECharacterBloodState.UNDAMAGED),

@@ -104,15 +104,21 @@ class SCR_StaminaBlurEffect : SCR_BaseScreenEffect
 			GetGame().GetCallqueue().CallLater(StaminaEffects, STAMINA_CLEAREFFECT_DELAY, false, repeat);
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
+	//------------------------------------------------------------------------------------------------	
+	protected override void DisplayOnSuspended()
 	{
-		if (playerOutsideCharacter)
-		{
-			s_bEnableRadialBlur = false; 
-			return;
-		}
-		
+		s_bEnableRadialBlur = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override void DisplayOnResumed()
+	{
+		s_bEnableRadialBlur = true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void UpdateEffect(float timeSlice)
+	{
 		if (m_pSignalsManager)
 			FindStaminaValues();
 	}

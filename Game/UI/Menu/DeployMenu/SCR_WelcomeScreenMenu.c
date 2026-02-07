@@ -173,7 +173,7 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 	protected void UpdateElapsedTime()
 	{
 		m_fTimeSlice = 0;
-		m_sTimeElapsed = SCR_Global.GetTimeFormatting(m_GameMode.GetElapsedTime(), ETimeFormatParam.DAYS | ETimeFormatParam.HOURS, ETimeFormatParam.DAYS | ETimeFormatParam.HOURS | ETimeFormatParam.MINUTES);
+		m_sTimeElapsed = SCR_FormatHelper.FormatTime(m_GameMode.GetElapsedTime());
 		m_wScenarioTimeElapsed.SetText(m_sTimeElapsed);
 		UpdatePlayerCount(0);
 	}

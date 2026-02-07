@@ -10,15 +10,24 @@ enum EHudLayers
 	HIGH = 8,			// Dialogue-like elements like weapon switching
 	OVERLAY = 16,		// Interactive elements that should always be on top
 	ALWAYS_TOP = 32
-};
+}
 
 [ComponentEditorProps(icon: HYBRID_COMPONENT_ICON)]
 class SCR_HUDManagerComponentClass : HUDManagerComponentClass
 {
-};
+}
 
 class SCR_HUDManagerComponent : HUDManagerComponent
 {
+	[Attribute()]
+	protected ref array<ref SCR_HUDManagerHandler> m_aHandlers;
+	protected ref array<SCR_HUDManagerHandler> m_aUpdatableHandlers = {};
+
+	[Attribute()]
+	string m_sDefaultBackgroundLayer;
+	[Attribute()]
+	string m_sDefaultForegroundLayer;
+
 	private ref map<EHudLayers, Widget> m_aLayerWidgets = new ref map<EHudLayers, Widget>;
 	private Widget m_wRoot;
 	private Widget m_wRootTop;
@@ -39,19 +48,41 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	protected float m_fSceneBrightness = -1;
 	protected float m_fOpacity = -1;
 
-	[Attribute(params: "layout", desc: "Layout for the HUD groups")]
-	protected ResourceName m_sGroupsLayout;
+	protected IEntity m_Owner;
 
-	[Attribute()]
-	protected ref array<ref SCR_HUDLayout> m_aHUDLayouts;
-
-	[Attribute()]
-	protected string m_sMainLayout;
-
-	protected SCR_HUDLayout m_ActiveLayout;
-	bool m_bEditorEventsInitialized;
+	protected ref array<SCR_HUDManagerHandler> m_aHandlersToRemoveFromUpdate = {};
 
 	#ifndef DISABLE_HUD_MANAGER
+
+	//------------------------------------------------------------------------------------------------
+	int GetInfoDisplayCount()
+	{
+		return m_aHUDElements.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	IEntity GetOwner()
+	{
+		return m_Owner;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	SCR_HUDManagerHandler FindHandler(typename handlerType)
+	{
+		foreach (SCR_HUDManagerHandler handler : m_aHandlers)
+		{
+			if (handler.Type() == handlerType)
+				return handler;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void RemoveHandlerFromUpdatableHandlers(notnull SCR_HUDManagerHandler handler)
+	{
+		m_aHandlersToRemoveFromUpdate.Insert(handler);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	Widget GetHUDRootWidget()
@@ -60,228 +91,24 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	/*!
-	Searches for and returns a Group Widget with the given name.
-	\param groupName Name of the group to look for.
-	*/
-	Widget GetGroupByName(string groupName)
-	{
-		if (!m_ActiveLayout)
-			return null;
-
-		return m_ActiveLayout.GetGroupWidgetByName(groupName);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Searches for and returns the Component responsible for managing and controlling a Group with the given name.
-	\param groupName Name of the group to look for.
-	*/
-	SCR_HUDGroupUIComponent GetGroupComponent(string groupName)
-	{
-		if (!m_ActiveLayout)
-			return null;
-
-		return m_ActiveLayout.GetGroupComponent(groupName);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Searches for and returns the Component responsible for managing and controlling a Slot with the given name.
-	\param slotName Name of the slot to look for.
-	*/
-	SCR_HUDSlotUIComponent GetSlotComponentByName(string slotName)
-	{
-		return m_ActiveLayout.FindSlotComponent(slotName);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Searches for and returns the Widget responsible for managing and controlling a Slot with the given name.
-	\param slotName Name of the slot to look for.
-	*/
-	Widget GetSlotWidgetByName(string slotName)
-	{
-		return m_ActiveLayout.FindSlotWidget(slotName);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	SCR_HUDLayout FindHUDLayout(string layoutIdentifier)
-	{
-		foreach (SCR_HUDLayout hudLayout : m_aHUDLayouts)
-		{
-			if (hudLayout.GetIdentifier() == layoutIdentifier)
-				return hudLayout;
-		}
-
-		return null;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Creates the Group Layout and places it under the Workspace Widget.
-	*/
-	protected void CreateGroups()
-	{
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		if (!workspace)
-			return;
-
-		Widget slotRoot = workspace.CreateWidgets(m_sGroupsLayout, null);
-		if (!slotRoot)
-			return;
-
-		Widget iteratedWidget = slotRoot.GetChildren();
-		while (iteratedWidget)
-		{
-			SCR_HUDGroupUIComponent groupComponent = SCR_HUDGroupUIComponent.Cast(iteratedWidget.FindHandler(SCR_HUDGroupUIComponent));
-			if (!groupComponent)
-			{
-				Print("[SCR_HUDManagerComponent] A Group Widget must have a SCR_HUDGroupUIComponent component attached to it! Check: " + iteratedWidget.GetName(), LogLevel.ERROR);
-				iteratedWidget = iteratedWidget.GetSibling();
-				continue;
-			}
-
-			//m_mGroups.Insert(iteratedWidget.GetName(), iteratedWidget);
-			iteratedWidget = iteratedWidget.GetSibling();
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void InitializeHUDLayouts()
-	{
-		WorkspaceWidget workspace = GetGame().GetWorkspace();
-		foreach (SCR_HUDLayout hudLayout : m_aHUDLayouts)
-		{
-			Widget layoutWidget = workspace.CreateWidgets(hudLayout.GetLayout(), null);
-			hudLayout.SetRootWidget(layoutWidget);
-
-			if (hudLayout.GetIdentifier() == m_sMainLayout)
-			{
-				m_ActiveLayout = hudLayout;
-			}
-			else
-			{
-				layoutWidget.SetVisible(false);
-				layoutWidget.SetEnabled(false);
-			}
-		}
-
-		ChangeActiveHUDLayout(m_sMainLayout);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ChangeActiveHUDLayout(string layoutIdentifier)
-	{
-		// Temp disabled
-		return;
-		
-		SCR_HUDLayout newLayout = FindHUDLayout(layoutIdentifier);
-		if (!newLayout || newLayout == m_ActiveLayout)
-			return;
-
-		Widget newLayoutWidget = newLayout.GetRootWidget();
-		if (!newLayoutWidget)
-			return;
-
-		m_ActiveLayout = newLayout;
-		newLayoutWidget.SetVisible(true);
-		newLayoutWidget.SetEnabled(true);
-
-		foreach (SCR_InfoDisplay infoDisplay : m_aHUDElements)
-		{
-			SCR_InfoDisplaySlotHandler slotHandler = SCR_InfoDisplaySlotHandler.Cast(infoDisplay.GetHandler(SCR_InfoDisplaySlotHandler));
-			if (!slotHandler)
-				continue;
-
-			string groupName = slotHandler.GetGroupName();
-			string slotName = slotHandler.GetSlotName();
-
-			SCR_HUDSlotUIComponent currentSlot = slotHandler.GetSlotUIComponent();
-			SCR_HUDGroupUIComponent currentGroup = slotHandler.GetGroupUIComponent();
-			if (!currentSlot || !currentGroup)
-				continue;
-			
-			Widget currentSlotWidget = currentSlot.GetRootWidget();
-
-			Widget contentWidget = currentSlot.GetContentWidget();
-			if (!contentWidget)
-				continue;
-
-			SCR_HUDGroupUIComponent newGroup = newLayout.GetGroupComponent(groupName);
-			SCR_HUDSlotUIComponent newSlot = newLayout.FindSlotComponent(slotName);
-
-			if (!newGroup || !newSlot)
-			{
-				currentSlotWidget.SetVisible(false);
-				currentSlotWidget.SetEnabled(false);
-
-				contentWidget.SetVisible(false);
-				contentWidget.SetEnabled(false);
-
-				slotHandler.SetEnabled(false);
-
-				continue;
-			}
-
-			Widget newSlotWidget = newSlot.GetRootWidget();
-			if (!newSlotWidget)
-				continue;
-
-			currentSlotWidget.RemoveChild(contentWidget);
-			newSlotWidget.AddChild(contentWidget);
-
-			newSlot.SetContentWidget(contentWidget);
-			currentSlot.SetContentWidget(null);
-
-			contentWidget.SetVisible(true);
-			contentWidget.SetEnabled(true);
-
-			newSlotWidget.SetVisible(true);
-			newSlotWidget.SetEnabled(true);
-
-			slotHandler.SetEnabled(true);
-			slotHandler.SetSlotComponent(newSlot);
-			slotHandler.SetGroupComponent(newGroup);
-		}
-	}
-
-	void ChangeHUDLayoutToEditor()
-	{
-		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		if (!editorManager || editorManager.GetCurrentMode() != EEditorMode.EDIT)
-			return;
-
-		ChangeActiveHUDLayout("Editor");
-	}
-	
-	void ChangeHUDLayoutToMain()
-	{
-		ChangeActiveHUDLayout(m_sMainLayout);
-	}
-
-	void InitializeEditorEvents()
-	{
-		if (m_bEditorEventsInitialized)
-			return;
-
-		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
-		if (!editorManager)
-			return;
-
-		editorManager.GetOnOpened().Insert(ChangeHUDLayoutToEditor);
-		editorManager.GetOnClosed().Insert(ChangeHUDLayoutToMain);
-		m_bEditorEventsInitialized = true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected override void OnInit(IEntity owner)
 	{
 		if (!GetGame().GetWorldEntity())
 			return;
+		m_Owner = owner;
 
-		//CreateGroups();
-		InitializeHUDLayouts();
+		foreach (SCR_HUDManagerHandler handler : m_aHandlers)
+		{
+			handler.OnInit(this);
+
+			if (handler.CanUpdate())
+				m_aUpdatableHandlers.Insert(handler);
+		}
+
+		foreach (SCR_HUDManagerHandler handler : m_aHandlers)
+		{
+			handler.OnStart(this);
+		}
 
 		ArmaReforgerScripted game = GetGame();
 		if (game && !game.GetHUDManager())
@@ -298,8 +125,21 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	{
 		if (!m_World)
 			return;
-		if (!m_bEditorEventsInitialized)
-			InitializeEditorEvents();
+
+		if (!m_aHandlersToRemoveFromUpdate.IsEmpty())
+		{
+			foreach (SCR_HUDManagerHandler handler : m_aHandlersToRemoveFromUpdate)
+			{
+				m_aUpdatableHandlers.RemoveItem(handler);
+			}
+
+			m_aHandlersToRemoveFromUpdate.Clear();
+		}
+
+		foreach (SCR_HUDManagerHandler handler : m_aUpdatableHandlers)
+		{
+			handler.OnUpdate(this);
+		}
 
 		float time = m_World.GetWorldTime();
 
@@ -485,6 +325,34 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 		#endif
 
 		return null;
+	}
+
+	SCR_HUDElement CreateFreeElement(ResourceName path, string parentName)
+	{
+		SCR_HUDManagerLayoutHandler layoutHandler = SCR_HUDManagerLayoutHandler.Cast(FindHandler(SCR_HUDManagerLayoutHandler));
+		if (!layoutHandler)
+			return null;
+
+		SCR_HUDLayout owningLayout;
+		Widget parentWidget = layoutHandler.FindWidgetByNameFromAnyLayout(parentName, owningLayout);
+		if (!parentWidget)
+			return null;
+
+		if (parentWidget.FindHandler(SCR_HUDSlotUIComponent))
+		{
+			Print(parentName + " is a HUD Slot! Use InfoDisplay instead!", LogLevel.ERROR);
+			return null;
+		}
+
+		Widget elementWidget = GetGame().GetWorkspace().CreateWidgets(path, parentWidget);
+
+		SCR_HUDElement hudElement = new SCR_HUDElement();
+		hudElement.SetWidget(elementWidget);
+		hudElement.SetParentWidgetName(parentName);
+		hudElement.SetParentLayout(owningLayout);
+		owningLayout.AddHudElement(hudElement);
+
+		return hudElement;
 	}
 
 	/*!
@@ -706,4 +574,4 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 		}
 	}
 	#endif
-};
+}

@@ -45,6 +45,7 @@ class SCR_ChatHud : SCR_InfoDisplayExtended
 		m_iHUDPriorityDefault = m_slotHandler.GetSlotUIComponent().GetPriority();
 		m_ChatPanel.GetOnChatOpen().Insert(OnChatOpen);
 		m_ChatPanel.GetOnChatClosed().Insert(OnChatClose);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------

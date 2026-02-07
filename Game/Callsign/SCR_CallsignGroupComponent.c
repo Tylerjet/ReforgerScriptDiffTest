@@ -387,8 +387,10 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 		//Go over each character to check if role can be reassigned to another character
 		foreach (AIAgent agent: agents)
 		{
-			characterCallsignComponent = SCR_CallsignCharacterComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
+			if (SCR_PossessingManagerComponent.GetPlayerIdFromMainEntity(agent.GetControlledEntity()) > 0)
+				continue;
 			
+			characterCallsignComponent = SCR_CallsignCharacterComponent.Cast(agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
 			if (!characterCallsignComponent)
 				continue;
 			

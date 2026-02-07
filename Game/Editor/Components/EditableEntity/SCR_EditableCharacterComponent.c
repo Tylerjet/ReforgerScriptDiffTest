@@ -26,9 +26,30 @@ class SCR_EditableCharacterComponent : SCR_EditableEntityComponent
 	protected ref ScriptInvoker Event_OnCharacterMovedInVehicle = new ScriptInvoker(); //~ Authority Only, Returns this character and vehicle character is placed in. Is NULL if placing failed
 	protected int m_inDeadPlayerID;
 	
+	[RplProp()]
+	protected bool m_bIsPlayerPending;
+
 	//~ Authority only, Allows character to be forced into a specific vehicle position and will delete it if failed
 	protected ref array<ECompartmentType> m_aForceVehicleCompartments;
 	
+	//------------------------------------------------------------------------------------------------
+	void SetIsPlayerPending(int playerId)
+	{
+		m_bIsPlayerPending = playerId != 0;
+		
+		RplComponent rplComponent = GetRplComponent();
+		if (rplComponent && rplComponent.Role() == RplRole.Authority)
+			Replication.BumpMe();
+	}
+
+	//:| This is a similar approach with SCR_ChimeraAIAgent's IsPlayerPending_S method.
+	//:| The reason the similar behavior is also implemented here is that this approach allows us to extend the behavior within Editor if needed.
+	//------------------------------------------------------------------------------------------------
+	bool GetIsPlayerPending()
+	{
+		return m_bIsPlayerPending;
+	}
+
 	/*!
 	Get AI agent of the character.
 	\return AI agent on server, null on clients

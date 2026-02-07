@@ -50,29 +50,6 @@ class SCR_HUDGroupUIComponent : ScriptedWidgetComponent
 		return null;
 	}
 
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Adds a new slot to this Group
-	\param Slot Component to add to this Group.
-	*/
-	void AddSlotToGroup(notnull SCR_HUDSlotUIComponent slotComponent)
-	{
-		if (m_aSlots.Contains(slotComponent))
-			return;
-
-		m_aSlots.Insert(slotComponent);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
-	Removes a slot from the group
-	\param Slot Component to remove from this Group.
-	*/
-	void RemoveSlotFromGroup(SCR_HUDSlotUIComponent slot)
-	{
-		m_aSlots.RemoveItem(slot);
-	}
-
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
 	override bool OnUpdate(Widget w)

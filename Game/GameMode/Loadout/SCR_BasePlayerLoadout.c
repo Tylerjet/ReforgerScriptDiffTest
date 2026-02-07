@@ -7,7 +7,13 @@ class SCR_BasePlayerLoadout
 	{
 		return ResourceName.Empty;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetLoadoutPreviewResource()
+	{
+		return ResourceName.Empty;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	string GetLoadoutName()
 	{

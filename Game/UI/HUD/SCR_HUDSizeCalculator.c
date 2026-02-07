@@ -22,8 +22,8 @@ class SCR_HUDSizeCalculator
 			slot.SetHeight(0, false);
 			slot.SetWidth(0, false);
 
-			// If the Slot isn't visible, the Resizing algorithm shouldn't take it into calculation.
-			if (slot.GetRootWidget().IsVisible())
+			// If the Slot isn't visible or doesn't have any content, the Resizing algorithm shouldn't take it into calculation.
+			if (slot.GetRootWidget().IsVisible() && slot.GetContentWidget() && slot.GetContentWidget().IsVisible())
 				remainingSlots.Insert(slot);
 		}
 

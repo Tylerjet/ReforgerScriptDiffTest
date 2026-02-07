@@ -27,38 +27,6 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 	{
 		return m_iAliveOccupantCount > 0;
 	}
-	
-	//--------------------------------------------------------------------------------------------------------------------------
-	override protected void OnCompartmentEntering(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move)
-	{
-		if (move) // moving only between compartments
-			return;
-
-		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(occupant);
-		if(!character)
-			return;
-		
-		Faction characterFaction = character.GetFaction();
-		Faction vehicleFaction = GetAffiliatedFaction();
-		
-		// This used to always overwrite the faction, but in case some other character entered
-		// with another faction, we'd overwrite that one, so we check for !vehicleFaction and only
-		// set faction to the new one if the vehicle has no faction or the faction is truly friendly,
-		// and the latter only if no one else is in the vehicle anymore.
-		if (characterFaction && !vehicleFaction) 
-		{
-			// No faction on the vehicle, just set the occupant's faction
-			SetAffiliatedFaction(characterFaction);
-		}
-		else if (characterFaction && !characterFaction.IsFactionFriendly(GetAffiliatedFaction()))
-		{
-			// There is vehicleFaction set. Only overwrite it when there are no further SCR_SpawnOccupantsContextAction
-			if (!IsVehicleOccupied())
-			{
-				SetAffiliatedFaction(characterFaction);
-			}
-		};
-	}	
 
 	//--------------------------------------------------------------------------------------------------------------------------
 	override protected void OnCompartmentEntered(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move)
@@ -71,6 +39,20 @@ class SCR_VehicleFactionAffiliationComponent: SCR_FactionAffiliationComponent
 		// If not, we'll eject the new passenger
 		Faction characterFaction = character.GetFaction();
 		Faction vehicleFaction = GetAffiliatedFaction();
+		
+		if (characterFaction && !vehicleFaction) 
+		{
+			// No faction on the vehicle, just set the occupant's faction
+			SetAffiliatedFaction(characterFaction);
+		}
+		else if (characterFaction && !characterFaction.IsFactionFriendly(GetAffiliatedFaction()))
+		{
+			// There is vehicleFaction set. Only overwrite it when there are no further occupants
+			if (!IsVehicleOccupied())
+			{
+				SetAffiliatedFaction(characterFaction);
+			}
+		};
 		
 		if (vehicleFaction && characterFaction.IsFactionEnemy(vehicleFaction))
 		{

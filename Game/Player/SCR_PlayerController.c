@@ -33,6 +33,7 @@ class SCR_PlayerController : PlayerController
 	protected bool m_bIsPossessing;
 
 	ref ScriptInvoker<IEntity> m_OnDestroyed = new ScriptInvoker();		// main entity is destroyed
+	ref ScriptInvoker<IEntity> m_OnBeforePossess = new ScriptInvoker();		// Before an entity becomes possesed.
 	ref ScriptInvoker<IEntity> m_OnPossessed = new ScriptInvoker();		// when entity becomes possessed or control returns to the main entity
 	ref ScriptInvoker<IEntity, IEntity> m_OnControlledEntityChanged = new ScriptInvoker();
 	
@@ -143,6 +144,7 @@ class SCR_PlayerController : PlayerController
 		{
 			if (entity)
 			{
+				m_OnBeforePossess.Invoke(entity);
 				//--- Start posessing
 				m_bIsPossessing = true;
 

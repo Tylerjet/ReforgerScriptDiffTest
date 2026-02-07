@@ -393,6 +393,12 @@ class SCR_SpawnRequestComponent : ScriptComponent
 		if (agent)
 			agent.SetPlayerPending_S(m_PlayerController.GetPlayerId());
 
+		// Editor needs to be aware of whether the pending character is for a player or not in order to update the Editor Budget during spawning.
+		// TODO: Remove this after the Editor's Respawn Sytem refactor.
+		SCR_EditableCharacterComponent editorCharacter = SCR_EditableCharacterComponent.Cast(spawnedEntity.FindComponent(SCR_EditableCharacterComponent));
+		if (editorCharacter)
+			editorCharacter.SetIsPlayerPending(m_PlayerController.GetPlayerId());
+
 		// Entity was spawned, so we can await finalization.
 		SendFinalizationBegin_S();
 		OnFinalizeBegin_S(handler, data, spawnedEntity);

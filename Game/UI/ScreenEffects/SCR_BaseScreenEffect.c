@@ -25,7 +25,7 @@ class SCR_BaseScreenEffect : SCR_InfoDisplayExtended
 	
 	//------------------------------------------------------------------------------------------------
 	//! Called every frame from SCR_ScreenEffectsManager
-	void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
+	void UpdateEffect(float timeSlice)
 	{
 	}
 	

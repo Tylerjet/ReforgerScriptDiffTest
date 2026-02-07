@@ -86,7 +86,10 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		}
 		
 		Event_OnEntityRegistered.Invoke(entity);
-		UpdateBudgets(entity, true);	
+
+		//:| Player ownership isn't ready if we don't wait for a frame before calling UpdateBudgets.
+		//:| This results in Player ownership related checks to have an undefined behavior.
+		GetGame().GetCallqueue().CallLater(UpdateBudgets, 0, false, entity, true, entity.GetOwnerScripted());
 	}
 	void UnRegisterEntity(SCR_EditableEntityComponent entity, IEntity owner = null)
 	{
@@ -598,15 +601,15 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		if (!owner)
 			owner = entity.GetOwner();
 		
-		if (added && GetEntityCanBeControlled(entityType))
+		if (added)
 		{
 			// Budget update is delayed by one frame since AI-control can not be determined directly on spawn
 			// Update is delayed for these and potentionally other entities
-			GetGame().GetCallqueue().CallLater(UpdateBudgetForEntity, 1, false, entity, added, owner);
+			GetGame().GetCallqueue().CallLater(UpdateBudgetForEntity, 0, false, entity, added, owner);
 		}
 		else
 		{
-			UpdateBudgetForEntity(entity, added, owner);	
+			UpdateBudgetForEntity(entity, added, owner);
 		}
 	}
 	
@@ -616,9 +619,10 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 		// Will be ignored for both delayed Register and Unregister so shouldn't affect total budget
 		if (!entity)
 			return;
-		
-		// Ignore non-ai characters
-		if (entity.GetPlayerID() != 0)
+
+		//:| Preventing players from being counted towards Budget Calculation as the server's player count limit is technically the budget for players.
+		SCR_EditableCharacterComponent character = SCR_EditableCharacterComponent.Cast(entity);
+		if (character && (character.GetIsPlayerPending() || character.GetPlayerID() != 0))
 			return;
 		
 		array<ref SCR_EntityBudgetValue> entityBudgetCosts = {};
@@ -636,7 +640,7 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	}
 	
 	protected void UpdateBudget(EEditableEntityBudget budgetType, bool added, SCR_EditableEntityComponent entity, SCR_EntityBudgetValue budgetCost = null)
-	{
+	{	
 		SCR_EditableEntityCoreBudgetSetting budgetSettings;
 		if (!GetBudget(budgetType, budgetSettings))
 		{

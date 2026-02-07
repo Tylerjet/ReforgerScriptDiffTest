@@ -105,7 +105,7 @@ class TextureUtils
 		string guid = textureInfo[2].Substring(textureInfo[2].IndexOf("{") + 1, textureInfo[2].IndexOf("}") - 1);
 		//Stripping Path and Extesion to get just a name of the file
 		textureInfo[2] = FilePath.StripPath(textureInfo[2]);
-		textureInfo[2] = FilePath.StripExtension(textureInfo[2]) + "_" + guid;
+		textureInfo[2] = FilePath.StripExtension(textureInfo[2]);
 		return textureInfo;
 	}
 	string ArrayToString(array<string> arr)

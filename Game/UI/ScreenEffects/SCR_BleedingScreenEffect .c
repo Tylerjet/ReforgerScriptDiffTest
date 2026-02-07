@@ -27,7 +27,6 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 	// Character
 	protected SCR_CharacterDamageManagerComponent	m_pDamageManager;
 	protected SCR_CharacterBloodHitZone				m_pBloodHZ;
-	private bool m_bLocalPlayerOutsideCharacter;
 	protected ChimeraCharacter						m_pCharacterEntity;
 
 	protected bool m_bBleedingEffect;
@@ -65,12 +64,6 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		// In case player started bleeding before invokers were established, check if already bleeding
 		if (m_pDamageManager.IsDamagedOverTime(EDamageType.BLEEDING))
 			OnDamageOverTimeAdded(EDamageType.BLEEDING, m_pDamageManager.GetDamageOverTime(EDamageType.BLEEDING));
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
-	{
-		m_bLocalPlayerOutsideCharacter = playerOutsideCharacter;
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -145,7 +138,7 @@ class SCR_BleedingScreenEffect : SCR_BaseScreenEffect
 		BlackoutEffect(effectStrength);
 		
 		// Play heartbeat sound
-		if (!m_bLocalPlayerOutsideCharacter && playHeartBeat && m_pDamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
+		if (playHeartBeat && m_pDamageManager.GetDefaultHitZone().GetDamageState() != EDamageState.DESTROYED)
 		{
 			SCR_UISoundEntity.SetSignalValueStr("BloodLoss", 1 - m_pBloodHZ.GetHealthScaled());
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INJURED_PLAYERCHARACTER);

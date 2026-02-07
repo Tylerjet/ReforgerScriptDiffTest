@@ -21,8 +21,7 @@ class SCR_DesaturationEffect : SCR_BaseScreenEffect
 	protected ChimeraCharacter m_pCharacterEntity;
 	protected SCR_CharacterBloodHitZone									m_pBloodHZ;
 	protected SCR_CharacterDamageManagerComponent						m_pDamageManager;
-	
-
+	protected bool m_bLocalPlayerOutsideCharacter;
 	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStartDraw(IEntity owner)
@@ -57,16 +56,22 @@ class SCR_DesaturationEffect : SCR_BaseScreenEffect
 		
 		m_pCharacterEntity.GetWorld().SetCameraPostProcessEffect(m_pCharacterEntity.GetWorld().GetCurrentCameraId(), COLORS_PP_PRIORITY, PostProcessEffectType.Colors, DESATURATION_EMAT);
 	}
+	
+	//------------------------------------------------------------------------------------------------	
+	protected override void DisplayOnSuspended()
+	{
+		s_bEnableSaturation = false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected override void DisplayOnResumed()
+	{
+		s_bEnableSaturation = true;
+	}
 
 	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
+	override void UpdateEffect(float timeSlice)
 	{
-		if (playerOutsideCharacter)
-		{
-			s_bEnableSaturation = false;
-			return;
-		}
-
 		AddDesaturationEffect();
 	}
 	

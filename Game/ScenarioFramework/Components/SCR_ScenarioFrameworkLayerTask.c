@@ -258,6 +258,10 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 		}
 		
 		manager.GetFactionsList(aPlayableFactions);
+		if (m_sFactionKey.IsEmpty())
+			m_sFactionKey = "US";	//set a default US one if none is set by user
+		SCR_Faction testFaction = SCR_Faction.Cast(manager.GetFactionByKey(m_sFactionKey));
+		
 		foreach(Faction faction : aPlayableFactions)
 		{
 			if (!SCR_Faction.Cast(faction))
@@ -265,8 +269,11 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 
 			if (SCR_Faction.Cast(faction).IsPlayable())
 			{
-				factionSelected = SCR_Faction.Cast(faction);
-				break;
+				if (faction == testFaction)
+				{
+					factionSelected = SCR_Faction.Cast(faction);
+					break;
+				}
 			}
 		}
 		

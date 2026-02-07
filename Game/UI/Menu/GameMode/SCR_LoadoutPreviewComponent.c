@@ -38,7 +38,7 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 			}
 		}
 		
-		ResourceName resName = loadout.GetLoadoutResource();
+		ResourceName resName = loadout.GetLoadoutPreviewResource();
 		m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName, attributes);
 
 		return m_PreviewManager.ResolvePreviewEntityForPrefab(resName);

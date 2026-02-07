@@ -1975,6 +1975,11 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		if (isMainTent)
 			m_HQTent = composition;
 
+		SCR_AIWorld aiWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
+
+		if (aiWorld)
+			aiWorld.RequestNavmeshRebuildEntity(composition);
+
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(composition.FindComponent(SCR_EditableEntityComponent));
 		vector transform[4];
 

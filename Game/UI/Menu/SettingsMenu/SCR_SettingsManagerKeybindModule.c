@@ -150,6 +150,8 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		if (!m_Binding || actionName.IsEmpty())
 			return false;
 		
+		confirmedConflicts.Clear();
+		
 		array<int> indices = {};
 		array<string> conflicts = {};
 		array<string> presets = {};
@@ -157,54 +159,29 @@ class SCR_SettingsManagerKeybindModule : SCR_SettingsManagerModuleBase
 		if (conflicts.IsEmpty())
 			return false;
 		
-		array<string> actionBinds = {};
-		m_Binding.GetBindings(actionName, actionBinds, EInputDeviceType.KEYBOARD, preset);
-		
-		//TEMPORARY solution that will be solved as soon as we have updated GetConflicts from enfusion. Right now this prevents nulls because GetBindings do not return mouse binds
-		if (bindIndex > actionBinds.Count() - 1)
-			return false;
-		
-		string searchedBind = actionBinds.Get(bindIndex);
-		
 		array<SCR_KeyBindingEntry> foundActions = {};
 		
 		//compare the actions against those configures in keybinding config, and save only those, to avoid actions for UI etc
-		foreach (string action : conflicts)
+		foreach (int index, string action : conflicts)
 		{
+			if (indices[index] != bindIndex)
+				continue;
+			
 			foreach (SCR_KeyBindingCategory category : m_KeybindConfig.keyBindingCategories)
 			{
 				foreach (SCR_KeyBindingEntry entry : category.keyBindingEntries)
 				{
-						if (entry.actionName == "separator" || entry.actionName != action)
+					if (entry.actionName == "separator" || entry.actionName != action || entry.preset != presets[index]) 
 						continue;
 					
 					foundActions.Insert(entry);
 				}
 			}
 		}
+				
+		confirmedConflicts.Copy(foundActions);
 		
-		//compare the found actions conflict back against the tested action, to eliminate duplicate actions like CharacterForward that have single action for two keybinds
-		conflicts.Clear();
-		foreach (SCR_KeyBindingEntry confirmedEntry : foundActions)
-		{
-			m_Binding.GetConflicts(confirmedEntry.actionName, indices, conflicts, presets, EInputDeviceType.KEYBOARD, confirmedEntry.preset);
-			
-			foreach (string conflictedAction : conflicts)
-			{
-				if (conflictedAction == actionName)
-				{
-					actionBinds.Clear();
-					m_Binding.GetBindings(confirmedEntry.actionName, actionBinds, EInputDeviceType.KEYBOARD, confirmedEntry.preset);
-					
-					//check if the action conflicts on the specific keybind we are checking
-					if (actionBinds.Find(searchedBind) != -1)
-						confirmedConflicts.Insert(confirmedEntry);
-				}
-			}
-			
-		}
-		
-		return !confirmedConflicts.IsEmpty();
+		return !foundActions.IsEmpty();
 	}
 	
 	//------------------------------------------------------------------------------------------------

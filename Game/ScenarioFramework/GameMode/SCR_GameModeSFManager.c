@@ -393,8 +393,10 @@ class SCR_GameModeSFManager : SCR_BaseGameModeComponent
 		SCR_ScenarioFrameworkSlotBase slot;
 		SCR_ScenarioFrameworkSlotAI slotAI;
 		slot = SCR_ScenarioFrameworkSlotBase.Cast(layer.FindComponent(SCR_ScenarioFrameworkSlotBase));
+		if (slot)
 		{
 			slotAI = SCR_ScenarioFrameworkSlotAI.Cast(slot.FindComponent(SCR_ScenarioFrameworkSlotAI));
+			if (slotAI)
 			{
 				if (layerStruct.GetAIPrefabsForRemoval())
 					slotAI.SetAIPrefabsForRemoval(layerStruct.GetAIPrefabsForRemoval());

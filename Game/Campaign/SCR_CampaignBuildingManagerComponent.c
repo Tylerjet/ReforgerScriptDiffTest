@@ -126,6 +126,9 @@ class SCR_CampaignBuildingManagerComponent : SCR_BaseGameModeComponent
 		if (IsProxy())
 			return;
 
+		if (entity.GetOwner().IsLoaded())
+			return;
+		
 		if (entityBudget != m_BudgetType)
 			return;
 

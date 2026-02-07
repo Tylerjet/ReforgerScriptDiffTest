@@ -4,6 +4,7 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 	protected ChimeraCharacter 											m_pCharacterEntity;
 	protected SCR_CharacterDamageManagerComponent 						m_pDamageManager;
 	private bool m_bLocalPlayerOutsideCharacter							= true;
+	bool m_bDisplaySuspended											= false;
 
 	//------------------------------------------------------------------------------------------------
  	override void DisplayControlledEntityChanged(IEntity from, IEntity to)
@@ -29,34 +30,42 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 	// Check whether to apply or unapply the filter effect in case of unconsciousness
 	override void DisplayConsciousnessChanged(bool conscious, bool init = false)
 	{
-		LowPassFilterEffect();
-	}	
-		
-	//------------------------------------------------------------------------------------------------
-	override void UpdateEffect(float timeSlice, bool playerOutsideCharacter)
-	{
-		if (m_bLocalPlayerOutsideCharacter == playerOutsideCharacter)
+		if (m_bDisplaySuspended)
 			return;
 		
-		m_bLocalPlayerOutsideCharacter = playerOutsideCharacter;
-		
-		// Check whether to apply or unapply the filter effect in case of the controlled camera no longer being the player camera
 		LowPassFilterEffect();
+	}	
+
+	//------------------------------------------------------------------------------------------------
+	override protected void DisplayOnSuspended()
+	{
+		m_bDisplaySuspended = true;
+		LowPassFilterEffect(true);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void DisplayOnResumed()
+	{
+		m_bDisplaySuspended = false;
+		LowPassFilterEffect(false);
+	}	
 
 	//------------------------------------------------------------------------------------------------
 	// Check whether to apply or unapply the filter effect in case of death
 	void OnDamageStateChanged()
 	{
+		if (m_bDisplaySuspended)
+			return;
+		
 		LowPassFilterEffect();
 	}	
 	
 	//------------------------------------------------------------------------------------------------
-	private void LowPassFilterEffect()
+	private void LowPassFilterEffect(bool outsideCharacter = false)
 	{
 		ECharacterLifeState state = ECharacterLifeState.ALIVE;
 		
-		if (!m_bLocalPlayerOutsideCharacter && m_pCharacterEntity)
+		if (!outsideCharacter && m_pCharacterEntity)
 		{
 			SCR_CharacterControllerComponent scrCharController = SCR_CharacterControllerComponent.Cast(m_pCharacterEntity.GetCharacterController());
 			state = scrCharController.GetLifeState();
@@ -71,8 +80,6 @@ class SCR_NoiseFilterEffect : SCR_BaseScreenEffect
 	//------------------------------------------------------------------------------------------------
 	protected override void ClearEffects()
 	{
-		//Run when clearing effect to ensure starting signal state is ECharacterLifeState.ALIVE
-		LowPassFilterEffect();
 		
 		if (m_pDamageManager)
 			m_pDamageManager.GetOnDamageStateChanged().Remove(OnDamageStateChanged);

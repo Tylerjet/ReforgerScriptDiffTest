@@ -50,20 +50,57 @@ class SCR_PlayerList : ScriptedWidgetComponent
 			playerName.SetPlayer(pid);
 			// playerName.SetIcon(ResourceName.Empty); // todo@lk: set some icon from somewhere
 			m_aPlayerNames.Insert(playerName);
-		}	
+		}
 	}	
 };
 
 class SCR_FactionPlayerList : SCR_PlayerList
 {
 	protected SCR_Faction m_Faction;
-
+	protected SCR_SpinBoxComponent m_SpinBoxComp;
+	protected int m_iLastPage;
+	
+	[Attribute("10", params: "0 inf", UIWidgets.EditBox, "How much entries should be shown in list.")]
+	protected int m_iEntriesPerPage;
+	
+	[Attribute("SpinBox")]
+	protected string m_sSpinBoxElementName;
+	
+	[Attribute("ButtonLeft")]
+	protected string m_sPagingButtonLeft;
+	
+	[Attribute("ButtonRight")]
+	protected string m_sPagingButtonRight;
+	
+	//------------------------------------------------------------------------------------------------
+	override event void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (!factionManager)
+			return;
+		
+		factionManager.GetOnPlayerFactionCountChanged().Insert(UpdatePagination);
+		
+		Widget spinboxW = m_wRoot.FindAnyWidget(m_sSpinBoxElementName);
+		if (!spinboxW)
+			return;
+		
+		m_SpinBoxComp = SCR_SpinBoxComponent.Cast(spinboxW.FindHandler(SCR_SpinBoxComponent));
+		if (!m_SpinBoxComp)
+			return;
+		
+		m_SpinBoxComp.m_OnChanged.Insert(UpdatePlayerList);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetFaction(Faction faction)
 	{
 		SCR_Faction scrFaction = SCR_Faction.Cast(faction);
 		if (!scrFaction)
 			return;
-
+		
 		m_Faction = scrFaction;
 
 		if (m_wFlag && !scrFaction.GetFactionFlag().IsEmpty())
@@ -71,10 +108,80 @@ class SCR_FactionPlayerList : SCR_PlayerList
 
 		if (m_wName)
 			m_wName.SetText(scrFaction.GetFactionName());
-
+		
+		UpdatePagination(faction);
 		UpdatePlayerList();
+		
+		//Reset last page as faction was changed
+		m_iLastPage = 0;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void UpdatePagination(Faction faction)
+	{
+		if (faction != m_Faction)
+			return;
+		
+		array<int> players = {};
+		m_Faction.GetPlayersInFaction(players);
+		
+		int pageCount = players.Count() / m_iEntriesPerPage;
+		if ((players.Count() % m_iEntriesPerPage) > 0)
+			pageCount++;
 
+		SetLastIndex();
+		m_SpinBoxComp.ClearAll();
+		
+		for (int i = 0; i < pageCount; i++)
+		{
+			m_SpinBoxComp.AddItem("");
+		}
+		
+		m_SpinBoxComp.SetCurrentItem(m_iLastPage);
+		
+		//Show or disable navigation buttons depending on number of visible pagging entries
+		HandleNavigationButtons();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get index of first entry of current page
+	protected int GetStartingIndex()
+	{
+		int page = m_SpinBoxComp.GetCurrentIndex();
+		if (page < 1)
+			return 0;
+		
+		return page * m_iEntriesPerPage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void HandleNavigationButtons()
+	{
+		if (!m_SpinBoxComp)
+			return;
+		
+		bool showButtons = m_SpinBoxComp.GetNumItems() > 1;
+		
+		Widget button = m_wRoot.FindAnyWidget(m_sPagingButtonLeft);
+		if (button)
+			button.SetVisible(showButtons);
+		
+		button = m_wRoot.FindAnyWidget(m_sPagingButtonRight);
+		if (button)
+			button.SetVisible(showButtons);
+		
+		Widget spinboxW = m_wRoot.FindAnyWidget(m_sSpinBoxElementName);
+		if (spinboxW)
+			spinboxW.SetVisible(showButtons);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetLastIndex()
+	{
+		m_iLastPage = m_SpinBoxComp.GetCurrentIndex();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void UpdatePlayerList()
 	{
 		if (!m_Faction || !m_wPlayerList)
@@ -91,18 +198,34 @@ class SCR_FactionPlayerList : SCR_PlayerList
 		}
 
 		array<int> players = {};
-		GetGame().GetPlayerManager().GetPlayers(players);
-
-		foreach (int pid : players)
-		{
-			if (SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(pid)) == m_Faction)
-			{
-				CreatePlayerName(pid);
-			}
-		}
-
+		m_Faction.GetPlayersInFaction(players);
+			
 		if (m_wPlayerCount)
 			m_wPlayerCount.SetText(m_aPlayerNames.Count().ToString());
+		
+		int startIndex = GetStartingIndex();
+		if (players.IsEmpty() || startIndex < 0)
+			return;
+
+		int maxIndex = startIndex + (m_iEntriesPerPage-1);
+		for (int i = startIndex; i <= maxIndex; i++)
+		{	
+			if (i >= players.Count())
+				break;
+			
+			if (m_Faction && (SCR_Faction.Cast(SCR_FactionManager.SGetPlayerFaction(players[i])) == m_Faction))
+				CreatePlayerName(players[i]);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override event void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		
+		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
+		if (factionManager)
+			factionManager.GetOnPlayerFactionCountChanged().Remove(UpdatePagination);
 	}
 };
 
@@ -189,12 +312,13 @@ class SCR_PlayerName : ScriptedWidgetComponent
 		if (m_wIcon)
 			m_wIcon.SetVisible(m_wIcon.LoadImageTexture(0, icon));
 	}
-
+	
 	void SetPlayer(int pid)
 	{
 		m_iPlayerId = pid;
 		if (m_wName)
 			m_wName.SetText(GetGame().GetPlayerManager().GetPlayerName(pid));
+			
 		SetPlatform();
 	}
 

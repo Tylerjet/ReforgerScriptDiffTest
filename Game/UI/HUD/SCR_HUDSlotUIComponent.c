@@ -20,8 +20,6 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 	protected WorkspaceWidget m_wWorkspace;
 	//! The root widget of the Slot
 	protected Widget m_wRoot;
-	//! The content widget of the Slot
-	protected Widget m_wContent;
 	//! The height of the Slot
 	protected int m_iHeight;
 	//! The width of the Slot
@@ -113,11 +111,12 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 			return;
 		}
 #endif
+		Widget contentWidget = GetContentWidget();
 
 		// If the Slot is not set to size to content, set the Height of the content Widget to the new height
-		if (!m_bSizeToContent && m_wContent)
+		if (!m_bSizeToContent && contentWidget)
 		{
-				FrameSlot.SetSizeY(m_wContent, m_iHeight);
+				FrameSlot.SetSizeY(contentWidget, m_iHeight);
 		}
 		// Otherwise, set the height of the Slot to the height of the content Widget
 		else if (m_bSizeToContent)
@@ -125,8 +124,8 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 			float contentWidth = 0;
 			float contentHeight = 0;
 
-			if (m_wContent)
-				m_wContent.GetScreenSize(contentWidth, contentHeight);
+			if (contentWidget)
+				contentWidget.GetScreenSize(contentWidth, contentHeight);
 
 			m_iHeight = m_wWorkspace.DPIUnscale(contentHeight);
 		}
@@ -152,11 +151,12 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 			return;
 		}
 #endif
+		Widget contentWidget = GetContentWidget();
 
 		// If the Slot is not set to size to content, set the Width of the content Widget to the new width
-		if (!m_bSizeToContent && m_wContent)
+		if (!m_bSizeToContent && contentWidget)
 		{
-			FrameSlot.SetSizeX(m_wContent, m_iWidth);
+			FrameSlot.SetSizeX(contentWidget, m_iWidth);
 		}
 		// Otherwise, set the width of the component to the width of the content Widget
 		else if (m_bSizeToContent)
@@ -164,8 +164,8 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 			float contentWidth = 0;
 			float contentHeight = 0;
 
-			if (m_wContent)
-				m_wContent.GetScreenSize(contentWidth, contentHeight);
+			if (contentWidget)
+				contentWidget.GetScreenSize(contentWidth, contentHeight);
 
 			m_iWidth = m_wWorkspace.DPIUnscale(contentWidth);
 		}
@@ -176,20 +176,11 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Sets the Content Widget of the Slot.
-	*/
-	void SetContentWidget(Widget content)
-	{
-		m_wContent = content;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	/*!
 	Gets the Content Widget of the Slot.
 	*/
 	Widget GetContentWidget()
 	{
-		return m_wContent;
+		return m_wRoot.GetChildren();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -213,8 +204,6 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 		Widget child = m_wRoot.GetChildren();
 		if (!child)
 			Print(m_wRoot.GetName() + " Has no Content!", LogLevel.WARNING);
-		else if (!m_wContent)
-			m_wContent = child;
 
 		if (!GetGroupComponent())
 			Debug.Error2("No Group Component", "A Slot's parent must always have a Group Component! Slot: " + m_wRoot.GetName());
@@ -240,8 +229,7 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 	override void HandlerAttached(Widget w)
 	{
 		m_wRoot = w;
-		if (!m_wContent)
-			m_wContent = m_wRoot.GetChildren();
+
 		m_aHeightSteps.Sort();
 		m_aWidthSteps.Sort();
 		GetGroupComponent();
@@ -256,10 +244,12 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 	{
 		if (!m_wDebugHeightText || !SCR_Global.IsEditMode())
 			return;
+		Widget contentWidget = GetContentWidget();
 
-		if (!m_wContent)
-			m_wContent = m_wRoot.GetChildren();
-		FrameSlot.SetSizeY(m_wContent, m_iHeight);
+		if (!contentWidget)
+			contentWidget = m_wRoot.GetChildren();
+
+		FrameSlot.SetSizeY(contentWidget, m_iHeight);
 
 		m_wDebugHeightText.SetText("Height:");
 		foreach (int step : m_aHeightSteps)
@@ -315,4 +305,4 @@ class SCR_HUDSlotUIComponent : ScriptedWidgetComponent
 		}
 	}
 #endif
-};
+}

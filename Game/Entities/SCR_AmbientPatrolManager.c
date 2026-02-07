@@ -185,7 +185,7 @@ class SCR_AmbientPatrolManager : GenericEntity
 			if (maxChars <= 0)
 				isAIOverLimit = true;
 			else
-				isAIOverLimit = (aiWorld.GetCurrentNumOfCharacters() / maxChars) > spawnpoint.GetAILimitThreshold();
+				isAIOverLimit = ((float)aiWorld.GetCurrentNumOfCharacters() / (float)maxChars) > spawnpoint.GetAILimitThreshold();
 		}
 
 		if (!isAIOverLimit && !playersVeryNear)

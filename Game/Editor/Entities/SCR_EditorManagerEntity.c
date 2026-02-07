@@ -1511,7 +1511,10 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			}
 			//////////////////////////////////////////////////////////////////////////////////////////////
 			case EEditorEvent.EXIT_OPERATION:
-			{				
+			{	
+				//--- Set before invokers are called, so using getters in them will not see transition as active anymore
+				m_bIsInTransition = false;
+						
 				//--- Call invokers once all events are processed
 				switch (m_iEventOperation)
 				{
@@ -1543,7 +1546,6 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 				m_aEventComponentsActivate = null;
 				m_aEventComponentsDeactivate = null;
 				m_iEvent = EEditorEvent.NONE;
-				m_bIsInTransition = false;
 				m_ProcessedMode = 0;
 				return;
 			}
