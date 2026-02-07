@@ -149,7 +149,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 					if(turretController && turretController.GetTurretComponent())
 					{
 						isInAds = turretController.IsWeaponADS();
-						return true;
+						
+						if (!turretController.GetUseVehicleCamera() || isInAds)
+						{
+							return true;
+						}
 					}
 				}
 			}

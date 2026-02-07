@@ -187,7 +187,7 @@ class SCR_BaseGameMode : BaseGameMode
 	[Attribute("1", uiwidget: UIWidgets.CheckBox, "When true, allows players to freely swap their faction after initial assignment.", category: WB_GAME_MODE_CATEGORY)]
 	protected bool m_bAllowFactionChange;
 	
-	[Attribute("30", UIWidgets.Slider, params: "0 600 1", desc: "Time in seconds after which the mission is reloaded upon completion or 0 to disable it.", category: WB_GAME_MODE_CATEGORY)]
+	[Attribute("30", UIWidgets.Slider, params: "-1 600 1", desc: "Time in seconds after which the mission is reloaded upon completion or -1 to disable it.", category: WB_GAME_MODE_CATEGORY)]
 	private float m_fAutoReloadTime;
 	
 	//-----------------------------------------
@@ -701,7 +701,11 @@ class SCR_BaseGameMode : BaseGameMode
 		// Automatically restart the session on game mode end if enabled
 		float reloadTime = GetAutoReloadDelay();
 		if (reloadTime > 0)
-			GetGame().GetCallqueue().CallLater(RestartSession, reloadTime * 1000.0, false);	
+			GetGame().GetCallqueue().CallLater(RestartSession, reloadTime * 1000.0, false);
+		else if (reloadTime == 0)
+			RestartSession();
+		else
+			TryShutdownServer();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -722,7 +726,13 @@ class SCR_BaseGameMode : BaseGameMode
 		// Allow the server owner to override it via -autoReload=TIME
 		string autoReloadTimeString;
 		if (System.GetCLIParam("autoreload", autoReloadTimeString))
-			return Math.Clamp(autoReloadTimeString.ToFloat(), 0.0, 600.0);
+		{
+			float val = -1;
+			if (!autoReloadTimeString.IsEmpty() && autoReloadTimeString != "disabled")
+				val = Math.Clamp(autoReloadTimeString.ToFloat(), -1, 600);
+
+			return val;
+		}
 
 		return m_fAutoReloadTime;
 	}
@@ -734,12 +744,33 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		if (!IsMaster())
 			return;
-		
+
+		if (TryShutdownServer())
+			return;
+
 		Print("SCR_BaseGameMode::RequestScenarioRestart()", LogLevel.DEBUG);
 		if (GameStateTransitions.RequestScenarioRestart())
 		{
 			Print("SCR_BaseGameMode::RequestScenarioRestart() successfull server reload requested!", LogLevel.DEBUG);
 		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Attempts to shutdown the server when a CLI parameter is present
+	//! \return true when successfully requested shutdown
+	protected sealed bool TryShutdownServer()
+	{
+		if (!System.IsConsoleApp() || !Replication.IsServer())
+			return false;
+
+		string outValue;
+		if (System.GetCLIParam("autoshutdown", outValue))
+		{
+			GameStateTransitions.RequestGameTerminateTransition();
+			return true;
+		}
+
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------

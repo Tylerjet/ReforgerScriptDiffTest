@@ -36,9 +36,9 @@ class SCR_WelcomeScreenMenu : SCR_DeployMenuBase
 		if (scenarioSubtitle)
 			scenarioSubtitle.SetText(welcomeScreen.GetHeaderSubtitle()); */
 
-		SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
-		if (header)
-			m_iMaxPlayerCount = header.m_iPlayerCount;
+		ServerInfo serverInfo = GetGame().GetServerInfo();
+		if (serverInfo)
+			m_iMaxPlayerCount = serverInfo.GetPlayerLimit();
 
 		m_wPlayerCount = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("PlayerCount"));
 		UpdatePlayerCount(0);

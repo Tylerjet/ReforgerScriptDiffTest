@@ -44,15 +44,17 @@ class SCR_RoleSelectionMenu : SCR_DeployMenuBase
 
 		m_wScenarioTimeElapsed = TextWidget.Cast(GetRootWidget().FindAnyWidget("TimeElapsed"));
 		m_wServerName = TextWidget.Cast(GetRootWidget().FindAnyWidget("ServerName"));
-		SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
-		if (header)
+		if (m_wServerName)
 		{
-			if (m_wServerName)
-				m_wServerName.SetText(header.m_sName);
-
-			m_iMaxPlayerCount = header.m_iPlayerCount;
+			SCR_MissionHeader header = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
+			if (header)
+			m_wServerName.SetText(header.m_sName);
 		}
-
+		
+		ServerInfo serverInfo = GetGame().GetServerInfo();
+		if (serverInfo)
+			m_iMaxPlayerCount = serverInfo.GetPlayerLimit();
+		
 		if (!m_MenuHandler)
 		{
 			Print("SCR_DeployMenuHandler is missing on root widget of " + this, LogLevel.ERROR);

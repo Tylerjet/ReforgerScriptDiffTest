@@ -116,25 +116,8 @@ class SCR_CampaignBuildingTransformingEditorComponent : SCR_TransformingEditorCo
 		super.EOnEditorActivate();
 
 		m_PreviewEntityEditorComponent = SCR_PreviewEntityEditorComponent.Cast(FindEditorComponent(SCR_PreviewEntityEditorComponent, true, true));
-		GetOnTransformationConfirm().Insert(IsInBuildingRadius);
 
 		m_ObstructionComponent = SCR_CampaignBuildingPlacingObstructionEditorComponent.Cast(FindEditorComponent(SCR_CampaignBuildingPlacingObstructionEditorComponent, true, true));
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnEditorDeactivate()
-	{
-		super.EOnEditorDeactivate();
-		GetOnTransformationConfirm().Remove(IsInBuildingRadius);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	bool IsInBuildingRadius(set<SCR_EditableEntityComponent> editedEntities)
-	{
-		if (editedEntities.IsEmpty())
-			return false;
-
-		return (IsInBuildingRadiusVector(editedEntities[0].GetOwner().GetOrigin()));
 	}
 
 	//------------------------------------------------------------------------------------------------

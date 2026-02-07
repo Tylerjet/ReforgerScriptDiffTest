@@ -17,7 +17,6 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	[Attribute()]
 	protected ref array<ref SCR_ArsenalItemCountConfig> m_MaxCountPerItemType;
 	
-	[RplProp()]
 	protected int m_iFactionIndex = -1;
 	
 	protected Faction m_Faction;
@@ -395,7 +394,10 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
-	{	
+	{
+		if (!super.RplSave(writer))
+			return false;
+
 		writer.WriteInt(m_iFactionIndex); 
 		writer.WriteInt(m_iSpawnPointCount); 
 		writer.WriteInt(m_iTaskCount);
@@ -403,27 +405,47 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		
 		SCR_Faction factionRef = SCR_Faction.Cast(m_Faction);
 		if (!factionRef)
+		{
+			writer.WriteInt(0);
 			return true;
+		}
 		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
+		{
+			writer.WriteInt(0);
 			return true;
+		}
 		
 		array<Faction> factions = {};
 		factionManager.GetFactionsList(factions);
 		SCR_Faction scrFaction;
-		
-		//~ Write if faction is hostile or friendly
+
+		// Make sure to write the number of factions so the client doesn't
+		// end up reading beyond its bounds. This shouldn't really be necessary
+		// because the number of factions is set in config. However, we need
+		// this for logging so we actually know where a JIP issue comes from:
+		// https://jira.bistudio.com/browse/ARMA4-63824
+		int factionsCount = 0;
 		foreach (Faction faction : factions)
 		{
 			scrFaction = SCR_Faction.Cast(faction);
 			if (!scrFaction)
 				continue;
-			
-			if (scrFaction.DoCheckIfFactionFriendly(factionRef))
-				writer.WriteBool(true);
-			else
-				writer.WriteBool(false);
+
+			++factionsCount;
+		}
+		writer.WriteInt(factionsCount);
+		
+		// Write if faction is hostile or friendly
+		foreach (Faction faction : factions)
+		{
+			scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				continue;
+
+			bool isFriendly = scrFaction.DoCheckIfFactionFriendly(factionRef);
+			writer.WriteBool(isFriendly);
 		}
 		
 		return true;
@@ -432,6 +454,9 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 	//------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
+		if (!super.RplLoad(reader))
+			return false;
+
 		int spawnPointCount, taskCount;
 		bool isPlayable;
 		
@@ -444,22 +469,76 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		SetFactionIndexBroadcast(m_iFactionIndex);
 		InitSpawnPointCountBroadcast(spawnPointCount);
 		InitTaskCountBroadcast(taskCount);
+
+		int factionsCntServer = 0;
+		reader.ReadInt(factionsCntServer);
+		if (factionsCntServer == 0)
+			return true;
 		
 		SCR_Faction factionRef = SCR_Faction.Cast(m_Faction);
 		if (!factionRef)
-			return true;
+		{
+			// Consume the rest of the bits. The server writes as many bits as there are factions.
+			bool dummy;
+			for (int i=0; i<factionsCntServer; ++i)
+				reader.ReadBool(dummy);
+				
+ 			return true;
+		}
 		
 		SCR_FactionManager factionManager = SCR_FactionManager.Cast(GetGame().GetFactionManager());
 		if (!factionManager)
-			return true;
+		{
+			// Consume the rest of the bits. The server writes as many bits as there are factions.
+			bool dummy;
+			for (int i=0; i<factionsCntServer; ++i)
+				reader.ReadBool(dummy);
+				
+ 			return true;
+		}
 		
 		array<Faction> factions = {};
 		factionManager.GetFactionsList(factions);
+		int factionManagerFactionCnt = factions.Count();
+		if (factionManagerFactionCnt != factionsCntServer)
+		{
+			Print(string.Format("Factions count mismatch. Local:%1, server:%2", factionManagerFactionCnt, factionsCntServer), LogLevel.WARNING);
+
+			// Consume the rest of the bits. The server writes as many bits as there are factions.
+			bool dummy;
+			for (int i=0; i<factionsCntServer; ++i)
+				reader.ReadBool(dummy);
+				
+ 			return true;
+		}
+
 		SCR_Faction scrFaction;
-		
 		bool isFriendly;
-		
-		//~ Read if faction is hostile or friendly and set the faction to hostile or friendly
+
+		// Verify faction validity.
+		int factionsCnt = 0;
+		foreach (Faction faction : factions)
+		{
+			scrFaction = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				continue;
+			
+			++factionsCnt;
+		}
+
+		if (factionsCnt != factionsCntServer)
+		{
+			Print(string.Format("SCR_Faction factions count mismatch. Local:%1, server:%2", factionsCnt, factionsCntServer), LogLevel.WARNING);
+
+			// Consume the rest of the bits. The server writes as many bits as there are factions.
+			bool dummy;
+			for (int i=0; i<factionsCntServer; ++i)
+				reader.ReadBool(dummy);
+				
+ 			return true;
+		}
+				
+		// Read if faction is hostile or friendly and set the faction to hostile or friendly
 		foreach (Faction faction : factions)
 		{
 			scrFaction = SCR_Faction.Cast(faction);

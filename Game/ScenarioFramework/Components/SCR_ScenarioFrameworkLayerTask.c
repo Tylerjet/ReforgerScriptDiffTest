@@ -339,8 +339,16 @@ class SCR_ScenarioFrameworkLayerTask : SCR_ScenarioFrameworkLayerBase
 
 		if (!m_SlotTask)
 		{
-			Print(string.Format("ScenarioFramework: %1 could not init task due to missing m_SlotTask!", GetOwner().GetName()), LogLevel.ERROR);
-			return;
+			if (!m_aRandomlySpawnedChildren.IsEmpty())
+				m_SlotTask = GetSlotTask(m_aRandomlySpawnedChildren);
+			else
+				m_SlotTask = GetSlotTask(m_aChildren);
+			
+			if (!m_SlotTask)
+			{
+				Print(string.Format("ScenarioFramework: %1 could not init task due to missing m_SlotTask!", GetOwner().GetName()), LogLevel.ERROR);
+				return;
+			}
 		}
 
 		if (SetSupportEntity() && SetTaskPrefab() && CreateTask())

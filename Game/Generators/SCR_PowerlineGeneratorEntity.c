@@ -80,6 +80,9 @@ class SCR_PowerlineGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	[Attribute(desc: "Cable types-emat correspondence list", category: "Cables")]
 	protected ref array<ref SCR_PoleCable> m_aCables;
 
+	[Attribute(defvalue: "{613763D114E7CD1C}Prefabs/WEGenerators/Powerline.et", desc: "Cable Prefab", params: "et class=" + POWER_LINE_CLASS, category: "Cables")]
+	protected ResourceName m_sPowerLinePrefab;
+
 	[Attribute(defvalue: "{836210B285A81785}Assets/Structures/Infrastructure/Power/Powerlines/data/default_powerline_wire.emat", desc: "Default cable material if none above match", params: "emat", category: "Cables")]
 	protected ResourceName m_PowerlineMaterial;
 
@@ -89,6 +92,8 @@ class SCR_PowerlineGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 
 	[Attribute(defvalue: "0", category: "Debug")]
 	protected bool m_bDrawDebugShapes;
+
+	protected static const string POWER_LINE_CLASS = "PowerlineEntity";
 
 #ifdef WORKBENCH
 
@@ -107,7 +112,6 @@ class SCR_PowerlineGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 	protected static const float TOLERANCE_SQUARED = 0.01; // 0.1 * 0.1
 	protected static const float MIN_CABLE_LENGTH_SQ = 0.01; // 0.1 * 0.1
 	protected static const float GENERATOR_BBOX_TOLERANCE = 5; // in metres
-	protected static const string POWER_LINE_CLASS = "PowerlineEntity";
 
 	protected static const SCR_EPoleCableType DEFAULT_CABLE_TYPE = SCR_EPoleCableType.POWER_LV;
 
@@ -906,6 +910,12 @@ class SCR_PowerlineGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 			// power line preparation
 			powerLineEntitySource = null;
 
+			string powerLineEntity;
+			if (m_sPowerLinePrefab) // !.IsEmpty()
+				powerLineEntity = m_sPowerLinePrefab;
+			else
+				powerLineEntity = POWER_LINE_CLASS;
+
 			vector startPos, endPos;
 			// Create cables for the entity
 
@@ -956,10 +966,10 @@ class SCR_PowerlineGeneratorEntity : SCR_LineTerrainShaperGeneratorBaseEntity
 
 				if (!powerLineEntitySource)
 				{
-					powerLineEntitySource = worldEditorAPI.CreateEntity(POWER_LINE_CLASS, string.Empty, m_iSourceLayerID, m_Source, referenceEntity.CoordToLocal(existingPoleWorldPos), vector.Zero);
+					powerLineEntitySource = worldEditorAPI.CreateEntity(powerLineEntity, string.Empty, m_iSourceLayerID, m_Source, referenceEntity.CoordToLocal(existingPoleWorldPos), vector.Zero);
 					if (!powerLineEntitySource)
 					{
-						Print("Cannot create " + POWER_LINE_CLASS + " - CreateEntity returned null", LogLevel.ERROR);
+						Print("CreateEntity returned null trying to create " + powerLineEntity, LogLevel.ERROR);
 						return null; // it would fail for the other ones too
 					}
 

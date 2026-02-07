@@ -2409,7 +2409,7 @@ class SCR_InventoryMenuUI : ChimeraMenuBase
 			bool itmToAssign = m_pItemToAssign != null;
 			m_pNavigationBar.SetAllButtonEnabled(false);
 			m_pNavigationBar.SetButtonEnabled("ButtonMove", m_pSelectedSlotUI != null);
-			m_pNavigationBar.SetButtonEnabled("ButtonClose", true);
+			m_pNavigationBar.SetButtonEnabled("ButtonBack", true);
 			if (m_bStorageSwitchMode)
 				m_pNavigationBar.SetButtonEnabled("ButtonSelect", true);
 

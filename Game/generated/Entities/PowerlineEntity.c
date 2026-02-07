@@ -9,14 +9,14 @@ Do not modify, this script is generated
 \{
 */
 
-class PowerlineEntityClass: GenericEntityClass
+class PowerlineEntityClass: DestructibleEntityClass
 {
 }
 
 /*!
 \brief Represents a single segment of power line grid between two power poles.
 */
-class PowerlineEntity: GenericEntity
+class PowerlineEntity: DestructibleEntity
 {
 }
 

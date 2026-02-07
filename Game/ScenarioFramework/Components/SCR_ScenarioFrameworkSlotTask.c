@@ -40,7 +40,6 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 
 	SCR_ScenarioFrameworkLayerTask	m_TaskLayer;		//parent layer where the task is defined
 	bool m_bTaskResolvedBeforeLoad;
-	bool m_bTempIsTerminated;
 	
 	//------------------------------------------------------------------------------------------------
 	//! \param[in] newState Task state change event, triggers actions based on state change.
@@ -248,8 +247,8 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	//! \return true if not terminated, otherwise false.
 	override bool InitNotTerminated()
 	{
-		m_bTempIsTerminated = m_bIsTerminated;
-		m_bIsTerminated = false;
+		if (m_bIsTerminated)
+			StoreTaskSubjectToParentTaskLayer();
 		
 		return super.InitNotTerminated();
 	}
@@ -260,10 +259,7 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	override bool InitEntitySpawnCheck()
 	{
 		if (!m_Entity)
-		{
 			StoreTaskSubjectToParentTaskLayer();
-			m_bIsTerminated = m_bTempIsTerminated;
-		}
 		
 		super.InitEntitySpawnCheck();
 		
@@ -278,8 +274,6 @@ class SCR_ScenarioFrameworkSlotTask : SCR_ScenarioFrameworkSlotBase
 	override void FinishInit()
 	{
 		StoreTaskSubjectToParentTaskLayer();
-		m_bIsTerminated = m_bTempIsTerminated;
-		
 		super.FinishInit();
 	}
 	

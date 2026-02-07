@@ -81,6 +81,7 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto external void SetAimingAngles(float yaw, float pitch);
 	proto external bool GetIsOverridden();
 	proto external string GetUniqueName();
+	proto external bool GetUseVehicleCamera();
 	/*!
 	Used to remotely trigger weapon actions on the turret. Note that the
 	turret must be overridden for this to have any effect

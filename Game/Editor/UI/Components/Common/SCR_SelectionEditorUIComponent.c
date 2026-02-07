@@ -12,7 +12,7 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 	[Attribute(desc: "Only entities of this state can be multi-selected, e.g., using selection frame or by pressing Ctrl+A.", uiwidget: UIWidgets.Flags, enums: ParamEnumArray.FromEnum(EEditableEntityState))]
 	protected EEditableEntityState m_MultiSelectStates;
 	
-	[Attribute(desc: "When true, multi-selection operations are disabled (e.g., selection frame or Ctrl+A).", defvalue: "1")]
+	[Attribute(desc: "When true, multi-selection operations are enabled (e.g., selection frame or Ctrl+A).", defvalue: "1")]
 	protected bool m_bEnableMultiSelection;
 	
 	[Attribute(desc: "Name of a widget representing setting selection with mouse & keyboard.")]
@@ -826,11 +826,11 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_InputManager)
 		{
 			m_InputManager.AddActionListener("EditorSetSelection", EActionTrigger.DOWN, EditorSetSelection);
-			m_InputManager.AddActionListener("EditorToggleSelection", EActionTrigger.DOWN, EditorToggleSelection);
 			m_InputManager.AddActionListener("EditorClearSelection", EActionTrigger.DOWN, EditorClearSelection);
-			m_InputManager.AddActionListener("EditorSelectAll", EActionTrigger.DOWN, EditorSelectAll);
 			if (m_bEnableMultiSelection)
 			{
+				m_InputManager.AddActionListener("EditorToggleSelection", EActionTrigger.DOWN, EditorToggleSelection);
+				m_InputManager.AddActionListener("EditorSelectAll", EActionTrigger.DOWN, EditorSelectAll);
 				m_InputManager.AddActionListener("EditorDrawSetSelection", EActionTrigger.DOWN, EditorDrawSetSelectionDown);
 				m_InputManager.AddActionListener("EditorDrawSetSelection", EActionTrigger.PRESSED, EditorDrawSetSelectionPressed);
 				m_InputManager.AddActionListener("EditorDrawSetSelection", EActionTrigger.UP, EditorDrawSetSelectionUp);
@@ -898,11 +898,12 @@ class SCR_SelectionEditorUIComponent : SCR_BaseEditorUIComponent
 		if (m_InputManager)
 		{
 			m_InputManager.RemoveActionListener("EditorSetSelection", EActionTrigger.DOWN, EditorSetSelection);
-			m_InputManager.RemoveActionListener("EditorToggleSelection", EActionTrigger.DOWN, EditorToggleSelection);
 			m_InputManager.RemoveActionListener("EditorClearSelection", EActionTrigger.DOWN, EditorClearSelection);
-			m_InputManager.RemoveActionListener("EditorSelectAll", EActionTrigger.DOWN, EditorSelectAll);
 			if (m_bEnableMultiSelection)
 			{
+				m_InputManager.RemoveActionListener("EditorToggleSelection", EActionTrigger.DOWN, EditorToggleSelection);
+				m_InputManager.RemoveActionListener("EditorSelectAll", EActionTrigger.DOWN, EditorSelectAll);
+
 				m_InputManager.RemoveActionListener("EditorDrawSetSelection", EActionTrigger.DOWN, EditorDrawSetSelectionDown);
 				m_InputManager.RemoveActionListener("EditorDrawSetSelection", EActionTrigger.PRESSED, EditorDrawSetSelectionPressed);
 				m_InputManager.RemoveActionListener("EditorDrawSetSelection", EActionTrigger.UP, EditorDrawSetSelectionUp);
