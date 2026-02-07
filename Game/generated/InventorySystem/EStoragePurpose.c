@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 enum EStoragePurpose
@@ -18,7 +18,9 @@ enum EStoragePurpose
 	PURPOSE_LOADOUT_PROXY,
 	PURPOSE_ATTACHMENT_PROXY,
 	PURPOSE_EQUIPMENT_ATTACHMENT,
-	PURPOSE_ANY
-};
+	PURPOSE_ANY,
+}
 
-/** @}*/
+/*!
+\}
+*/

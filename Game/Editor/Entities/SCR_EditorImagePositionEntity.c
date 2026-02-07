@@ -510,7 +510,6 @@ class SCR_EditorImagePositionEntity : GenericEntity
 			return;
 		}
 		
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT);
 	}
 	void ~SCR_EditorImagePositionEntity()

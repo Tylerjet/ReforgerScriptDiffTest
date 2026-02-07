@@ -78,7 +78,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 		foreach (SCR_WorkshopItem item : m_aItems)
 		{
 			// Change layout if need to be downloaded 
-			if (!item.GetOffline() || item.GetCurrentLocalVersion() != item.GetDependency().GetVersion())
+			if (!item.GetOffline() || !Revision.AreEqual(item.GetCurrentLocalRevision(), item.GetDependency().GetRevision()))
 			{
 				layout = m_wMissingAddonList;
 				
@@ -92,7 +92,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 			Widget w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_LAYOUT, layout);
 			
 			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
-			comp.InitForWorkshopItem(item, string.Empty, false);
+			comp.InitForWorkshopItem(item, null, false);
 			
 			m_aDownloadLines.Insert(comp);
 		}

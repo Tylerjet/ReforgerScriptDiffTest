@@ -76,8 +76,7 @@ class SCR_BarracksComponent: ScriptComponent
 		params.TransformMode = ETransformMode.WORLD;
 		GetOwner().GetTransform(params.Transform);
 		
-		vector offset = m_vSpawnPosition;
-		
+		vector offset;
 		foreach (SCR_AIBarracksGroup group : m_aAIgroups)
 		{
 			if (group == barrackGrp)
@@ -88,6 +87,10 @@ class SCR_BarracksComponent: ScriptComponent
 		
 		params.Transform[3] = params.Transform[3] + offset;
 		
+		vector spawnposMat[4];
+		spawnposMat[3] = m_vSpawnPosition;
+		
+		Math3D.MatrixMultiply4(params.Transform, spawnposMat, params.Transform);
 		return params;
 	}
 	
@@ -291,6 +294,10 @@ class SCR_BarracksComponent: ScriptComponent
 		else
 			params.Transform[3] = group.CoordToParent(Vector(index, 0, 0));
 		
+		vector angles = Math3D.MatrixToAngles(params.Transform);
+		angles[0] = GetOwner().GetAngles()[1];
+		Math3D.AnglesToMatrix(angles, params.Transform);
+		
 		IEntity ai = GetGame().SpawnEntityPrefab(res, null, params);
 		if (!ai)
 			return;
@@ -347,7 +354,6 @@ class SCR_BarracksComponent: ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

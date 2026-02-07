@@ -9,7 +9,7 @@ class SCR_AIDangerReaction : SCR_AIReactionBase
 	EAIDangerEventType m_eType;
 
 	//eventualy move to some setting in component
-	protected static const float BULLET_IMPACT_DISTANCE_MAX = 3;
+	protected static const float BULLET_IMPACT_DISTANCE_SQ_MAX = 10*10;
 	
 	bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent) {}
 };
@@ -38,7 +38,7 @@ class SCR_AIDangerReaction_DamageTaken : SCR_AIDangerReaction
 
 		if (utility.m_CombatComponent.GetCurrentTarget() == null && dist > LONG_RANGE_FIRE_DISTANCE && shooter)
 		{
-			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, false, null, shooterPos));
+			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, null, shooterPos, shooter));
 		}
 		
 		return true;
@@ -52,7 +52,7 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 	{
 		IEntity shooter = dangerEvent.GetObject();
 		SCR_ChimeraAIAgent agent = SCR_ChimeraAIAgent.Cast(utility.GetOwner());
-		if (!agent || !agent.IsEnemy(shooter))
+		if (!agent || !shooter || !agent.IsEnemy(shooter))
 			return false;
 		
 		vector min, max;
@@ -63,20 +63,43 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 		
 		threatSystem.ThreatShotFired(distance, dangerEvent.GetCount());
 
+		// Look at shooting position. Even though we add an observe behavior, we can't guarantee that
+		// some other behavior doesn't override observe behavior, in which case we might want to look at shooter in parallel.
 		utility.m_LookAction.LookAt(lookPosition, utility.m_LookAction.PRIO_DANGER_EVENT);
 		
-		// Ignore if we must defend a waypoint
+		// Ignore if we have selected a target
+		// Ignore if target is too far
+		if (utility.m_CombatComponent.GetCurrentTarget() != null ||
+			distance > AI_WEAPONFIRED_REACTION_DISTANCE)
+			return false;
+		
+		// Check if we must dismount the turret
+		vector turretDismountCheckPosition = lookPosition;
+		bool mustDismountTurret = utility.m_CombatComponent.DismountTurretCondition(turretDismountCheckPosition, true);
+		if (mustDismountTurret)
+		{
+			utility.m_CombatComponent.TryAddDismountTurretActions(turretDismountCheckPosition);
+		}
+		
+		// Stare at gunshot origin
+		if (!utility.HasActionOfType(SCR_AIObserveUnknownFireBehavior) && utility.IsInvestigationRelevant(lookPosition))
+		{
+			// !!! It's important that priority of this is higher than priority of move and investigate,
+			// !!! So first we look at gunshot origin, then investigate it
+			SCR_AIObservePositionBehavior observeBehavior = new SCR_AIObserveUnknownFireBehavior(utility, null,	posWorld: lookPosition);
+			utility.AddAction(observeBehavior);
+		}
+		
+		// Ignore the rest if we can't investigate something
 		if (!utility.IsInvestigationAllowed(lookPosition))
 			return false;
 		
 		EWeaponType currentWeaponType = utility.m_CombatComponent.GetCurrentWeaponType();
 		
 		if (currentWeaponType != EWeaponType.WT_NONE &&
-			utility.m_CombatComponent.GetCurrentTarget() == null &&
-			distance < AI_WEAPONFIRED_REACTION_DISTANCE &&
 			shooter)
 		{
-			float radius = Math.Max(0.087 * distance, 10); // Roughly +-5 degrees precision
+			float radius = Math.Max(0.087 * distance, 20); // Roughly +-5 degrees precision
 			
 			// Randomize position
 			vector movePos = s_AIRandomGenerator.GenerateRandomPointInRadius(0, radius, lookPosition, true);
@@ -88,7 +111,7 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 				if (y > 0.0)
 					movePos[1] = y;
 				
-				auto behavior = new SCR_AIFindFirePositionBehavior(utility, false, null, movePos,
+				auto behavior = new SCR_AIFindFirePositionBehavior(utility, null, movePos, 
 					minDistance: SCR_AIFindFirePositionBehavior.SNIPER_MIN_DISTANCE, maxDistance: SCR_AIFindFirePositionBehavior.SNIPER_MAX_DISTANCE,
 					targetUnitType: EAIUnitType.UnitType_Infantry, duration: SCR_AIFindFirePositionBehavior.SNIPER_DURATION_S);
 				utility.AddAction(behavior);
@@ -100,8 +123,14 @@ class SCR_AIDangerReaction_WeaponFired : SCR_AIDangerReaction
 				if (y > 0.0)
 					movePos[1] = y;
 				
-				SCR_AIMoveAndInvestigateBehavior investigate = new SCR_AIMoveAndInvestigateBehavior(utility, false, null, pos: movePos, isDangerous: true, radius: radius);
+				SCR_AIMoveAndInvestigateBehavior investigate = new SCR_AIMoveAndInvestigateBehavior(utility, null, pos: movePos, isDangerous: true, radius: radius);
 				utility.AddAction(investigate);
+			}
+			else
+			{
+				SCR_AIMoveAndInvestigateBehavior investigate = SCR_AIMoveAndInvestigateBehavior.Cast(utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior));
+				if (investigate)
+					investigate.OnReceivedIrrelevantInvestigation();
 			}
 		}
 		return true;
@@ -113,8 +142,8 @@ class SCR_AIDangerReaction_ProjectileHit : SCR_AIDangerReaction
 {
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{
-		float distance = vector.Distance(utility.GetOrigin(), dangerEvent.GetPosition());
-		if (distance > BULLET_IMPACT_DISTANCE_MAX)
+		float distanceSq = vector.DistanceSq(utility.GetOrigin(), dangerEvent.GetPosition());
+		if (distanceSq > BULLET_IMPACT_DISTANCE_SQ_MAX)
 			return false;
 		
 		IEntity shooter = dangerEvent.GetObject();
@@ -125,7 +154,7 @@ class SCR_AIDangerReaction_ProjectileHit : SCR_AIDangerReaction
 		
 		if (utility.m_CombatComponent.GetCurrentTarget() == null && distanceToShooter > LONG_RANGE_FIRE_DISTANCE && shooter)
 		{
-			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, false, null, shooterPos));
+			utility.AddAction(new SCR_AIMoveFromUnknownFire(utility, null, shooterPos, shooter));
 			//TODO: change combat type from SILENT
 		}
 
@@ -156,7 +185,7 @@ class SCR_AIDangerReaction_Vehicle : SCR_AIDangerReaction
 		compManager.GetOccupantsOfType(occupants, ECompartmentType.Pilot);
 		if (occupants.Count() > 0 && agent.IsEnemy(occupants[0]))	
 		{
-			SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromIncomingVehicleBehavior(utility, false, null, dangerEntity: vehicleObject);
+			SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromIncomingVehicleBehavior(utility, null, vector.Zero, dangerEntity: vehicleObject);
 			utility.AddAction(behavior);
 			return true;
 		}
@@ -178,7 +207,7 @@ class SCR_AIDangerReaction_GrenadeLanding : SCR_AIDangerReaction
 			float distanceSqToGrenade = vector.DistanceSq(utility.GetOrigin(), grenadePos);
 			if (distanceSqToGrenade < GRENADE_AVOIDANCE_RADIUS_SQ)
 			{
-				SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromGrenadeBehavior(utility, false, null, dangerEntity: grenadeObject);
+				SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromGrenadeBehavior(utility, null, vector.Zero, dangerEntity: grenadeObject);
 				utility.AddAction(behavior);
 				return true;
 			}
@@ -192,25 +221,6 @@ class SCR_AIDangerReaction_StartedBleeding : SCR_AIDangerReaction
 {
 	override bool PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, AIDangerEvent dangerEvent)
 	{
-		if (dangerEvent.GetVictim() != utility.m_OwnerEntity)
-			return false;
-		
-		if (utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
-		{
-			// If we can heal ourselves, add Heal Behavior.
-			SCR_AIHealBehavior behavior = new SCR_AIHealBehavior(utility, false, null, utility.m_OwnerEntity,true);
-			utility.AddActionIfMissing(behavior);
-		}
-		else
-		{
-			// If we immediately know that we can't heal ourselves, report to group
-			AIAgent myAgent = AIAgent.Cast(utility.GetOwner());
-			AIGroup myGroup = myAgent.GetParentGroup();
-			SCR_MailboxComponent myMailbox = SCR_MailboxComponent.Cast(myAgent.FindComponent(SCR_MailboxComponent));
-			SCR_AIMessage_Wounded msg = SCR_AIMessage_Wounded.Create(utility.m_OwnerEntity);
-			myMailbox.RequestBroadcast(msg, myGroup);
-		}
-		
 		return true;
 	}
 };
@@ -261,7 +271,7 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 		IEntity actionStarter = dangerEvent.GetVictim();
 		if (agent.IsEnemy(actionStarter))
 		{
-			utility.AddAction(new SCR_AIMoveIndividuallyBehavior(utility, true, null, agentPos, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, null, AGENT_DEFAULT_RADIUS));
+			utility.AddAction(new SCR_AIMoveIndividuallyBehavior(utility, null, agentPos, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, 0, null, AGENT_DEFAULT_RADIUS));
 			utility.m_LookAction.LookAt(actionStarter.GetOrigin(), utility.m_LookAction.PRIO_DANGER_EVENT);
 			return true;
 		}
@@ -286,7 +296,7 @@ class SCR_AIDangerReaction_DoorMovement : SCR_AIDangerReaction
 			movePos = agentPos - doorNormal * distanceToMove;
 		
 		//Step away and free door space
-		utility.AddAction(new SCR_AIMoveIndividuallyBehavior(utility, true, null, movePos, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, null, AGENT_DEFAULT_RADIUS));
+		utility.AddAction(new SCR_AIMoveIndividuallyBehavior(utility, null, movePos, SCR_AIActionBase.PRIORITY_BEHAVIOR_MOVE_AND_INVESTIGATE, 0, null, AGENT_DEFAULT_RADIUS));
 		return true;
 	}
 };
@@ -332,7 +342,7 @@ class SCR_AIDangerReaction_MeleeDamageTaken : SCR_AIDangerReaction
 		//Call to the BT (in it, it will get a random point, with center at C, and radius R. Then move to it WHILE looking at shooterPos)
 		
 		//Use the behaviour tree
-		SCR_AIRetreatWhileLookAtBehavior behavior = new SCR_AIRetreatWhileLookAtBehavior(utility,true, null);
+		SCR_AIRetreatWhileLookAtBehavior behavior = new SCR_AIRetreatWhileLookAtBehavior(utility, null);
 		behavior.m_Target.m_Value = myPos;
 		behavior.m_LookAt.m_Value = shooterPos;
 		
@@ -382,7 +392,7 @@ class SCR_AIDangerReaction_VehicleHorn : SCR_AIDangerReaction
 			if (distSq <= REACTION_FRIENDLY_DIST_SQ)
 			{
 				//Move away from danger
-				SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromVehicleHornBehavior(utility, false, null, dangerEntity: vehicleObject);
+				SCR_AIMoveFromDangerBehavior behavior = new SCR_AIMoveFromVehicleHornBehavior(utility, null, vector.Zero, dangerEntity: vehicleObject);
 				utility.AddAction(behavior);
 				return true;
 			}

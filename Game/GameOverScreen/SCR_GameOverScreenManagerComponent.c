@@ -68,7 +68,7 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		SCR_BaseGameOverScreenInfo gameOverScreenInfo;
 		if (!m_GameOverScreenConfig.GetGameOverScreenInfo(m_iEndGameType, gameOverScreenInfo))
 		{
-			Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1", typename.EnumToString(EGameOverTypes, m_iEndGameType)), LogLevel.ERROR);
+			Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1, to play audio", typename.EnumToString(EGameOverTypes, m_iEndGameType)), LogLevel.WARNING);
 			return;
 		}
 		
@@ -374,8 +374,30 @@ class SCR_GameOverScreenManagerComponent: SCR_BaseGameModeComponent
 		SCR_BaseGameOverScreenInfo gameOverInfo = m_GameOverScreenConfig.GetGameOverInfo(m_iEditorSetGameOverType);
 		if (!gameOverInfo)
 		{
-			Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1", typename.EnumToString(EGameOverTypes, m_iEditorSetGameOverType)), LogLevel.ERROR);
-			return;
+			gameOverInfo = m_GameOverScreenConfig.GetGameOverInfo(EGameOverTypes.EDITOR_NEUTRAL);
+			//~ Could not find game over so used EDITOR_NEUTRAL
+			if (gameOverInfo)
+			{
+				m_iEditorSetGameOverType = EGameOverTypes.EDITOR_NEUTRAL;
+				Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1, so EDITOR_NEUTRAL is used instead", typename.EnumToString(EGameOverTypes, m_iEditorSetGameOverType)), LogLevel.ERROR);
+			}
+			//~ Could not find EDITOR_NEUTRAL either
+			else 
+			{
+				//~ Try to find NEUTRAL
+				gameOverInfo = m_GameOverScreenConfig.GetGameOverInfo(EGameOverTypes.NEUTRAL);
+				if (gameOverInfo)
+				{
+					m_iEditorSetGameOverType = EGameOverTypes.NEUTRAL;
+					Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1 and EDITOR_NEUTRAL could not be found so NEUTRAL is used instead", typename.EnumToString(EGameOverTypes, m_iEditorSetGameOverType)), LogLevel.ERROR);
+				}
+				//~ Even NEUTRAL could not be found for some reason
+				else 
+				{
+					Print(string.Format("SCR_GameOverScreenManagerComponent could not find end screen: %1 nor EDITOR_NEUTRAL or NEUTRAL. Check if the config is set up correctly!", typename.EnumToString(EGameOverTypes, m_iEditorSetGameOverType)), LogLevel.ERROR);
+					return;
+				}
+			}
 		}
 		
 		

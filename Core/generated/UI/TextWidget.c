@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -30,7 +30,7 @@ sealed class TextWidget: Widget
 	\param xoff Offset from left
 	\param yoff Offset from top
 	*/
-	proto external void SetTextOffset(float left, float top);
+	proto external void SetTextOffset(float xoff, float yoff);
 	//! Sets given spacing between lines
 	proto external void SetLineSpacing(float spacing);
 	//! Sets desired (maximal) font size.
@@ -89,7 +89,7 @@ sealed class TextWidget: Widget
 	proto external bool GetForceFont();
 	/*!
 	Sets font used for text drawing in this widget.
-	\param font Pointer to font. Always use nullptr when you want to set the Default font or work properly with increments and decrements of font reference.
+	\param fontResource Pointer to font. Always use nullptr when you want to set the Default font or work properly with increments and decrements of font reference.
 	*/
 	proto void SetFont(ResourceName fontResource);
 	//! Returns text in this widget. This is NOT a cheap operation - needs to copy the text.
@@ -99,6 +99,8 @@ sealed class TextWidget: Widget
 	//! Returns text size in pixels in reference resolution
 	proto void GetTextSize(out float sx, out float sy);
 	proto void GetShadowOffset(out float sx, out float sy);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

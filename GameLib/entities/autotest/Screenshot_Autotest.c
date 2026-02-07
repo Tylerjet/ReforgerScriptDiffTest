@@ -1,3 +1,8 @@
+/*!
+\defgroup ScreenshotAutotest Screenshot autotest
+\{
+*/
+
 [EntityEditorProps(category: "GameLib/Scripted/Autotest", description:"Screenshot_autotest", dynamicBox: true)]
 class Screenshot_AutotestClass: GenericEntityClass
 {
@@ -9,17 +14,15 @@ class Screenshot_WaypointClass: GenericEntityClass
 }
 
 //----------------------------------------------
-/**
- * \defgroup Screenshot autotest
- * Autotest entity for taking screenshots. It sets specific camera transformation to values of waypoints which needs to be set as a child. The child needs to be Screenshot_Waypoint entity.
- * First it sets camera transform to the waypoint defined as a child, then it waits a step time on order to have everything loaded and stable FPS, then it takes a screenshots and since the screenshot is taken across several frames, it waits for this as well.
- * When the camera is transformed to the position and rotation of the waypoint entity, the EOnEnter method is called on the waypoint entity. Some custom code can be executed here.
- * Screenshots are save into $profile:ENTITY_NAME directory by default. This can be overriden by executable parameter screenshot-autotest-output-dir (DO NOT PLACE ENDING '/' AFTER THE DIR PATH)
- * Besides the screenshot itself, also a metafile is saved with addition information (position, orientation, fps). The name of the metafile is the same as the screenshot with .txt as a suffix and it is saved into the same location
- * Autotest can also store summary information, the it is stored in the summary.txt file.
- * @{
- */
 
+/*!
+Autotest entity for taking screenshots. It sets specific camera transformation to values of waypoints which needs to be set as a child. The child needs to be Screenshot_Waypoint entity.
+First it sets camera transform to the waypoint defined as a child, then it waits a step time on order to have everything loaded and stable FPS, then it takes a screenshots and since the screenshot is taken across several frames, it waits for this as well.
+When the camera is transformed to the position and rotation of the waypoint entity, the EOnEnter method is called on the waypoint entity. Some custom code can be executed here.
+Screenshots are save into $logs:ENTITY_NAME directory by default. This can be overriden by executable parameter screenshot-autotest-output-dir (DO NOT PLACE ENDING '/' AFTER THE DIR PATH)
+Besides the screenshot itself, also a metafile is saved with addition information (position, orientation, fps). The name of the metafile is the same as the screenshot with .txt as a suffix and it is saved into the same location
+Autotest can also store summary information, the it is stored in the summary.txt file.
+*/
 class Screenshot_Autotest: GenericEntity
 {
 	[Attribute("Camera1", UIWidgets.EditBox, "Name of camera entity", "")]
@@ -29,6 +32,8 @@ class Screenshot_Autotest: GenericEntity
 
 	[Attribute("1", UIWidgets.Slider, "Wait time in the waypoint before taking screenshot", "0 20 0.1")]
 	private float m_stepWaitTime; //< this time is waited before taking screenshot
+	[Attribute("2", UIWidgets.Slider, "Wait time in the waypoint after preload", "0 5 0.1")]
+	private float m_WaitTimeAfterPreload; //< this time is waited after preload
 	[Attribute("1", UIWidgets.Slider, "Wait time for the screenshot to be made", "0 20 0.1")]
 	private float m_screenshotWaitTime; //< this time is waited for the screenshot to be captured and saved on disk
 	[Attribute("60", UIWidgets.Slider, "Which FPS is considered as minimal", "0 240 1")]
@@ -38,6 +43,7 @@ class Screenshot_Autotest: GenericEntity
 
 	protected float m_timer;
 	protected float m_timeFromStart;
+	protected float m_timerAfterPreload;
 
 	private IEntity m_camera;
 	private Screenshot_Waypoint m_waypoint;
@@ -46,7 +52,7 @@ class Screenshot_Autotest: GenericEntity
 
 	private TextWidget m_FPSWidget;
 
-  void Screenshot_Autotest(IEntitySource src, IEntity parent)
+	void Screenshot_Autotest(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 		SetFlags(EntityFlags.ACTIVE, true);
@@ -55,9 +61,9 @@ class Screenshot_Autotest: GenericEntity
 
 		if (m_directory.Length() == 0)
 		{
-			m_directory = "$profile:" + GetName();
+			m_directory = "$logs:" + GetName();
 		}
-  }
+	}
 
 	void ~Screenshot_Autotest()
 	{
@@ -98,8 +104,10 @@ class Screenshot_Autotest: GenericEntity
 			Print("No waypoints for next screenshot");
 			if (m_summary)
 			{
-				string summeryFilename = string.Format("%1/%2", m_directory, "summary.txt");
-				MakeSummeryFile(summeryFilename);
+				string summaryFilename = string.Format("%1/%2", m_directory, "summary.txt");
+				MakeSummaryFile(summaryFilename);
+				summaryFilename = string.Format("%1/%2", m_directory, "summary.csv");
+				MakeCSVSummaryFile(summaryFilename);
 			}
 			g_Game.RequestClose();
 		}
@@ -107,8 +115,17 @@ class Screenshot_Autotest: GenericEntity
 		int remaining = g_Game.WaitPreload(100);
 		if (remaining > 0)
 		{
+			m_timerAfterPreload = 0;
 			m_FPSWidget.SetColor(new Color(1.0, 1.0, 1.0, 1.0));
 			m_FPSWidget.SetText("Preload: remainig " + remaining + " resources");
+			return;
+		}
+		
+		if (m_timerAfterPreload < m_WaitTimeAfterPreload)
+		{
+			m_timerAfterPreload += timeSlice;
+			m_FPSWidget.SetColor(new Color(1.0, 1.0, 1.0, 1.0));
+			m_FPSWidget.SetText("Waiting after preload...");
 			return;
 		}
 		
@@ -148,29 +165,60 @@ class Screenshot_Autotest: GenericEntity
 		m_timeFromStart += timeSlice;
 	}
 
-	private void MakeSummeryFile(string filename)
+	private void MakeSummaryFile(string filename)
 	{
 		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
 
-		if(descrFile != 0)
+		if(descrFile)
 		{
 			if (m_description.Length() > 0)
-				descrFile.FPrintln(string.Format("%1", m_description));
+				descrFile.WriteLine(string.Format("%1", m_description));
 			int sizeX = g_Game.GetWorkspace().GetWidth();
 			int sizeY = g_Game.GetWorkspace().GetHeight();
 			
-			descrFile.FPrintln(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
+			descrFile.WriteLine(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
 #ifdef WORKBENCH
-			descrFile.FPrintln(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
 #else
-			descrFile.FPrintln(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
 #endif
-			descrFile.FPrintln(string.Format("Memory: %1 MB", System.MemoryAllocationKB() / 1024));
-			descrFile.FPrintln(string.Format("Allocations: %1", System.MemoryAllocationCount()));
-			descrFile.FPrintln(string.Format("Duration: %1 s", m_timeFromStart));
-			descrFile.CloseFile();
+			descrFile.WriteLine(string.Format("Memory: %1 MB", System.MemoryAllocationKB() / 1024));
+			descrFile.WriteLine(string.Format("Allocations: %1", System.MemoryAllocationCount()));
+			descrFile.WriteLine(string.Format("Duration: %1 s", m_timeFromStart));
+			descrFile.Close();
 			Print("Summary file successfully saved into " + filename);
 		}
+	}
+
+	private void MakeCSVSummaryFile(string filename)
+	{
+		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
+
+		if(descrFile)
+		{
+			int sizeX = g_Game.GetWorkspace().GetWidth();
+			int sizeY = g_Game.GetWorkspace().GetHeight();
+
+			descrFile.WriteLine("Resolution (px),Load time (s),Memory (MB),Allocations,Duration (s),Timestamp");
+			descrFile.WriteLine(string.Format("%1x%2,%3,%4,%5,%6,%7",
+				sizeX, sizeY,
+				g_Game.GetLoadTime() / 1000,
+				System.MemoryAllocationKB() / 1024,
+				System.MemoryAllocationCount(),
+				m_timeFromStart,
+				GetCurrentTimestamp()
+			));
+
+			descrFile.Close();
+			Print("Summary file successfully saved into " + filename);
+		}
+	}
+
+	private string GetCurrentTimestamp()
+	{
+		int year, month, day;
+		System.GetYearMonthDay(year, month, day);
+		return string.Format("%1-%2-%3", year.ToString(4), month.ToString(2), day.ToString(2));
 	}
 
 	private void MakeScreenshotMetafile(string filename)
@@ -181,20 +229,20 @@ class Screenshot_Autotest: GenericEntity
 		vector position = m_camera.GetOrigin();
 		vector orientation = m_camera.GetYawPitchRoll();
 
-		if(descrFile != 0)
+		if(descrFile)
 		{
 			string description = m_waypoint.GetDescription();
 			if (description.Length() > 0)
-				descrFile.FPrintln(string.Format("%1", description));
-			descrFile.FPrintln(string.Format("FPS: %1", System.GetFPS()));
-			descrFile.FPrintln(string.Format("Frame time (ms): %1", 1000.0 * System.GetFrameTimeS()));
-			descrFile.FPrintln(string.Format("Position: [%1, %2, %3]", position[0], position[1], position[2]));
-			descrFile.FPrintln(string.Format("XYZ Rotation: [%1, %2, %3]", orientation[1], orientation[0], orientation[2]));
+				descrFile.WriteLine(string.Format("%1", description));
+			descrFile.WriteLine(string.Format("FPS: %1", System.GetFPS()));
+			descrFile.WriteLine(string.Format("Frame time (ms): %1", 1000.0 * System.GetFrameTimeS()));
+			descrFile.WriteLine(string.Format("Position: [%1, %2, %3]", position[0], position[1], position[2]));
+			descrFile.WriteLine(string.Format("XYZ Rotation: [%1, %2, %3]", orientation[1], orientation[0], orientation[2]));
 			
 			string link = string.Format("enfusion://WorldEditor/%1;%2,%3,%4;%5,%6,%7", g_Game.GetWorldFile(), position[0], position[1], position[2], orientation[1], orientation[0], orientation[2]);
-			descrFile.FPrintln(string.Format("<a href=\"%1\">Link to World Editor</a>", link));
+			descrFile.WriteLine(string.Format("<a href=\"%1\">Link to World Editor</a>", link));
 			
-			descrFile.CloseFile();
+			descrFile.Close();
 			Print("Screenshot metafile successfully saved into " + filename);
 		}
 	}
@@ -246,7 +294,7 @@ class Screenshot_Waypoint: GenericEntity
 
 			parent.AddChild(this, -1);
 		}
-	  }
+	}
 
 	void ~Screenshot_Waypoint()
 	{
@@ -269,4 +317,7 @@ class Screenshot_Waypoint: GenericEntity
 		return m_description;
 	}
 }
-//@}
+
+/*!
+\}
+*/

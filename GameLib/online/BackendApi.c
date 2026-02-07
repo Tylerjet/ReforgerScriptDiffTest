@@ -23,7 +23,8 @@
 		EBERR_CHARACTER_UPDATE,		// character update done
 		EBERR_FILE_NOT_FOUND,		// save point doesn't exist
 		EBERR_UNSUPPORTED_REQUEST,	// non-supported request call performed
-	};
+		EBERR_STORAGE_IS_FULL, 		// unable to store data
+	}
 	
 
 	//! Backend request
@@ -86,7 +87,7 @@
 		
 		EBREQ_WORKSHOP_DownloadAsset,
 		EBREQ_WORKSHOP_DownloadImage,
-	};
+	}
 	
 	//! Credential parameters
 	enum EBackendCredentials
@@ -96,7 +97,7 @@
 		EBCRED_BASEURI,
 		EBCRED_PLATFORMUID,
 		EBCRED_2FA_TOKEN
-	};
+	}
 
 	//! State of Dedicated Server box in cloud (regarding Backend connectivity)
 	enum EDsBoxState
@@ -119,7 +120,7 @@
 		EDSSTATUS_BCKFAILED,				// backup request failed
 		EDSSTATUS_BCKSUCCESS,				// backup request successful - box stored
 		EDSSTATUS_SHUTDOWN,					// box is terminating
-	};
+	}
 
 	//! Session state (game hosted on Dedicated Server)
 	enum EDsSessionState
@@ -131,7 +132,7 @@
 		EDSESSION_CLOSING,					// session is being terminated
 		EDSESSION_PAUSED,					// session is paused (this is state where server was hibernated)
 		EDSESSION_RESTARTING,				// session is being restarted
-	};
+	}
 
 enum EWorkshopItemType
 {
@@ -178,7 +179,7 @@ class DSBox
 	*/
 	proto native void Shutdown();
 
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -222,6 +223,14 @@ class DSSessionCallback : Managed
 	}
 
 	/**
+	\brief Event when timed player saving is about to happen
+	\param iPlayerId - Id of Player which will be saved
+	*/
+	void OnPlayerSaveEvent( int iPlayerId )
+	{
+	}
+
+	/**
 	\brief Load Fail event handling
 	*/
 	void OnLoadFailed( string fileName )
@@ -239,6 +248,26 @@ class DSSessionCallback : Managed
 	\brief Save Success event handling
 	*/
 	void OnSaveSuccess( string filename )
+	{
+	}
+
+	/**
+	\brief Save Success event handling
+	\param iPlayerId - Player ID which was affected by ban event
+	\param triggered - If ban event was triggered
+	\param currentValue - Actual value of ban records
+	\param triggerValue - Ammount of ban records triggering ban
+	*/
+	void OnBanResult( int iPlayerId, bool triggered, int currentValue, int triggerValue )
+	{
+	}
+
+	/**
+	\brief Save Success event handling
+	\param iPlayerId - Player ID which was affected by ban event
+	\param sStatus - result of ban creation
+	*/
+	void OnBanCreateResult( int iPlayerId, string sStatus )
 	{
 	}
 
@@ -263,7 +292,7 @@ class DSSessionCallback : Managed
 	{
 	}
 
-};
+}
 // -------------------------------------------------------------------------
 class RCONCommander: Managed
 {	
@@ -281,6 +310,21 @@ class SessionStorage
 	\brief Return true if storage is initialized - ready to load/ store data
 	*/
 	proto native bool Initialized();
+	/**
+	\brief Clear all scheduled operations
+	*/
+	proto native void ClearScheduler();
+	/**
+	\brief Request scheduler On/ Off without being removed from queue
+	\param fileName - name of file handle
+	\param bEnable - if should run or not (Note: by default it run so you typically pause it first)
+	*/
+	proto native void EnableScheduler( string fileName, bool bEnable );
+	/**
+	\brief Request player save
+	\param iPlayerId Is Player Id used on player identity
+	*/
+	proto native void RequestPlayerSave( int iPlayerId );
 	/**
 	\brief Request periodical processing save of session content
 	\param fileName - name of file handle
@@ -333,8 +377,12 @@ class SessionStorage
 	\brief Check if online storage privileges are granted (if not - all is stored locally with session)
 	*/
 	proto native bool GetOnlineWritePrivilege();
-
-};
+	
+	/**
+	\brief Get a list of all save files that are ready to load
+	*/
+	proto native int AvailableSaves(out notnull array<string> aSaves);
+}
 
 
 // -------------------------------------------------------------------------
@@ -391,8 +439,11 @@ class DSSession
 	*/
 	proto native string ScenarioID();
 	
+	/**
+	\brief Set RCON processing structure
+	*/
 	proto native void SetRCONCommander(RCONCommander commander);
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -425,7 +476,7 @@ class BackendCallback : Managed
 //		Print("[BackendCallback] OnTimeout");
 	}
 
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -450,7 +501,7 @@ class SavePoint : JsonApiStruct
 		Print(msg);
 	}
 
-};
+}
 
 
 class SaveTestCallback : DSSessionCallback
@@ -499,7 +550,7 @@ class ServiceStatusItem
 	*/
 	proto native string Message();
 
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -531,7 +582,7 @@ class NewsFeedItem
 	*/
 	proto native string Date();
 
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -780,7 +831,7 @@ class BackendApi
 	\brief Ask specific request with callback result
 	\param request Is type of request, which is EBackendRequest
 	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
-	\param data Is optional callback when request uses or response return Json data and you want to work with object
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	*/
 	proto native void Request( int request, BackendCallback cb, JsonApiStruct dataObject );
 
@@ -788,7 +839,7 @@ class BackendApi
 	\brief Ask player request with callback result from controller (Lobby)
 	\param request Is type of request, which is EBackendRequest
 	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
-	\param data Is optional callback when request uses or response return Json data and you want to work with object
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param iPlayerId Is Player Id used on player identity
 	*/
 	proto native void PlayerRequest( int request, BackendCallback cb, JsonApiStruct dataObject, int iPlayerId );
@@ -796,15 +847,34 @@ class BackendApi
 	/**
 	\brief Expand player data upon defined structure, this is Server-Side only!
 	\note Data are available only after player was successfully accepted into Room/ Lobby on server
-	\param data Is optional callback when request uses or response return Json data and you want to work with object
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param iPlayerId Is Player Id used on player identity
 	*/
 	proto native void PlayerData( JsonApiStruct dataObject, int iPlayerId );
 
 	/**
+	\brief Record ban event for specific player Server-Side
+	\note For detailed explanation please consult documentation (wiki)
+	\param sKey Is type of violation
+	\param sReason Is Reason of ban event record
+	\param iPenalty Is penalty value - if reason and type combination with server configuration allows penalty
+	\param iPlayerId Is Player Id used on player identity
+	*/
+	proto native void PlayerBanEvent( string sKey, string sReason, int iPenalty, int iPlayerId );
+
+	/**
+	\brief Record ban event for specific player Server-Side
+	\note For detailed explanation please consult documentation (wiki)
+	\param sReason Is Reason of ban
+	\param iBanDuration Is Ban Duration value - how long will ban exist in seconds
+	\param iPlayerId Is Player Id used on player identity
+	*/
+	proto native void PlayerBanCreate( string sReason, int iBanDuration, int iPlayerId );
+
+	/**
 	\brief Send feedback message and/ or script object with whatever data on it (additionally it is possible to handle callback as well)
 	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
-	\param data Is optional callback when request uses or response return Json data and you want to work with object
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param message Is custom
 	*/
 	proto native void FeedbackMessage( BackendCallback cb, JsonApiStruct dataObject, string message );
@@ -812,7 +882,7 @@ class BackendApi
 	/**
 	\brief Send feedback image and/ or script object with whatever data on it (additionally it is possible to handle callback as well)
 	\param cb Is script callback where you will recieve result/ error or even data when request finsihes
-	\param data Is optional callback when request uses or response return Json data and you want to work with object
+	\param dataObject Is optional destination when request uses or response return Json data and you want to work with object
 	\param fileName Is path to image you want to send
 	*/
 	proto native void FeedbackImage( BackendCallback cb, JsonApiStruct dataObject, string fileName );
@@ -852,6 +922,13 @@ class BackendApi
 	proto native int GetAvailableConfigs(out notnull array<string> configs);
 	proto native int GetAvailableConfigPaths(out notnull array<string> configs);
 	proto native ServerConfigApi GetServerConfigApi();
-};
+	
+	
+	/**
+	\brief Called when new server or client game session is started
+	*/
+	proto native void NewSession();
+	
+}
 
 // -------------------------------------------------------------------------

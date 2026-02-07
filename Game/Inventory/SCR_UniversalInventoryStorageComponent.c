@@ -18,7 +18,6 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	#ifndef DISABLE_INVENTORY
 	private SCR_ItemAttributeCollection 							pAttributes;
 	protected float 												m_fWeight;
-	protected float 												m_fVolume;
 	protected SCR_InventoryStorageManagerComponent					pInventoryManager;
 	protected const int												MIN_VOLUME_TO_SHOW_ITEM_IN_SLOT = 200000;	//cm^3
 	
@@ -39,6 +38,7 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		InventoryItemComponent pItemComp = GetItemComponent( item );
 		if( !pItemComp )
 			return null;
+		
 		return SCR_ItemAttributeCollection.Cast( pItemComp.GetAttributes() );
 	}
 	
@@ -52,10 +52,10 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	protected bool IsWeightOk( float fWeight ) 
 	{ 
 		if (!pAttributes)
-		{
 			return false;
-		}
+		
 		fWeight += ( GetTotalWeight() - pAttributes.GetWeight() );
+		
 		return m_fMaxWeight >= fWeight;		
 	}	
 	
@@ -75,13 +75,16 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 			if( pInventoryManager )	
 				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_BIG );
 		}
+		
 		bool bWeightOK = IsWeightOk( pItemComp.GetTotalWeight() );
 		if( !bWeightOK )
 		{
 			if( pInventoryManager )	
 				pInventoryManager.SetReturnCode( EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY );
 		}
-		return bVolumeOK && bWeightOK;
+		
+		bool bDimensionsOK = PerformDimensionValidation(item);
+		return bVolumeOK && bWeightOK && bDimensionsOK;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -90,27 +93,28 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		if (!super.CanReplaceItem(nextItem, slotID))
 			return false;
 		
-		// nextItem  == The item that is being replaced
-		// slotID == slotID is the slot ID for the item that replaces nextItem
-		
 		if (!nextItem)
 			return false;
 		
-		InventoryItemComponent nextItemComp = GetItemComponent(nextItem);
-		if(!nextItemComp)
-			return false;
-				
-		IEntity item = Get(slotID); // item == the item that is should replace nextItem
+		IEntity item = Get(slotID); 
 		
 		if (!item)
 			return false;
+		
+		// item is the item that is getting replaced by nextItem
+		// nextItem is the item that is replacing the item at slotID
+		// slotID is is the slot ID for the item that is getting replaced by nextItem
 		
 		InventoryItemComponent itemComp = GetItemComponent(item);
 		if(!itemComp)
 			return false;
 		
-		float nextItemVolume = nextItemComp.GetTotalVolume();
+		InventoryItemComponent nextItemComp = GetItemComponent(nextItem);
+		if(!nextItemComp)
+			return false;
+		
 		float itemVolume = itemComp.GetTotalVolume();
+		float nextItemVolume = nextItemComp.GetTotalVolume();
 		float occupiedVolumeWithoutItem = GetOccupiedSpace() - itemVolume;
 		
 		bool bVolumeOK = occupiedVolumeWithoutItem + nextItemVolume <= GetMaxVolumeCapacity();
@@ -118,13 +122,14 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		{	
 			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_BIG);
 		}
+		
 		bool bWeightOK = IsWeightOk(nextItemComp.GetTotalWeight() - itemComp.GetTotalWeight());
 		if(!bWeightOK && pInventoryManager)
 		{
 			pInventoryManager.SetReturnCode(EInventoryRetCode.RETCODE_ITEM_TOO_HEAVY);
 		}
-		bool bDimensionsOK = PerformDimensionValidation(item);
 		
+		bool bDimensionsOK = PerformDimensionValidation(nextItem);
 		return bVolumeOK && bWeightOK && bDimensionsOK;
 	}
 	
@@ -139,7 +144,6 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		pItemComponent.EnablePhysics();
 		
 		m_fWeight -= pItemComponent.GetTotalWeight();
-		m_fVolume -= pItemComponent.GetTotalVolume();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -166,8 +170,6 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 		pItemComponent.ActivateOwner(false);
 				
 		m_fWeight += pItemComponent.GetTotalWeight();
-		m_fVolume += fVol;
-		
 	}
 	
 		
@@ -184,15 +186,11 @@ class SCR_UniversalInventoryStorageComponent : UniversalInventoryStorageComponen
 	//------------------------------------------------------------------------------------------------
 	void SCR_UniversalInventoryStorageComponent( IEntityComponentSource src, IEntity ent, IEntity parent )
 	{
-		
 		pAttributes = SCR_ItemAttributeCollection.Cast( GetAttributes() );
 		if( !pAttributes )
 			return;
 
 		m_fWeight = pAttributes.GetWeight();
-		//m_fVolume = pAttributes.GetVolume();
-		m_fVolume = 0; //empty from the start
-		
 	}
 	#else
 	private SCR_ItemAttributeCollection GetAttributeCollection( IEntity item );

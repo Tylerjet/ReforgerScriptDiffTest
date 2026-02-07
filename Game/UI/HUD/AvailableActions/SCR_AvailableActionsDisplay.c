@@ -283,46 +283,52 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected bool CanBeShown(PlayerController owner)
+	{
+		if (SCR_EditorManagerEntity.IsOpenedInstance())
+			return true;
+		
+		IEntity controlledEntity = owner.GetControlledEntity();
+		if (!controlledEntity)
+			return false;
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
+		if (!character)
+			return false;
+		
+		CharacterControllerComponent controller = character.GetCharacterController();
+		if (!controller || controller.IsDead())
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsEnabled()
+	{
+		bool val = true;
+		
+		BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
+		if (gameplaySettings)
+			gameplaySettings.Get("m_bControlHints", val);
+		
+		return val; // In case settings are not found, fallback to enabled - better UX?
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override event void DisplayUpdate(IEntity owner, float timeSlice)
 	{	
-		// See what we own, we expect this display to be inside the hud manager attached to player controller
-		IEntity controlledEntity;
-		PlayerController pc = PlayerController.Cast(owner);
-		if (pc)
-			controlledEntity = pc.GetControlledEntity();
+		if (!m_wRoot)
+			return; // Mandatory
 		
-		// Make sure we do not draw the UI in certain cases
-		if (m_wRoot)
+		PlayerController playerController = PlayerController.Cast(owner);
+		bool isVisible = playerController && IsEnabled() && CanBeShown(playerController);
+		if (isVisible)
+			m_wRoot.SetVisible(true);
+		else
 		{
-			// TODO: Refactor into script invoker
-			bool shouldShow;
-			BaseContainer gameplaySettings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
-			if (gameplaySettings)
-				gameplaySettings.Get("m_bControlHints", shouldShow);
-			
-			// Make sure we control something?
-			if (!controlledEntity)
-				shouldShow = SCR_EditorManagerEntity.IsOpenedInstance();
-			else
-			{
-				// Make sure our character is alive if anything
-				ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
-				if (character)
-				{
-					CharacterControllerComponent controller = CharacterControllerComponent.Cast(character.FindComponent(CharacterControllerComponent));
-					if (!controller || controller.IsUnconscious() || controller.IsDead())
-						shouldShow = false;
-				}
-			}
-			
-			// Turn visibility on or off
-			if (!shouldShow)
-			{
-				m_wRoot.SetVisible(false);
-				return;
-			}
-			else
-				m_wRoot.SetVisible(true);
+			m_wRoot.SetVisible(false);
+			return;
 		}
 		
 		if(!m_data)
@@ -332,12 +338,13 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 			
 		if (m_fDataFetchTimer >= 0.25)
 		{
+			IEntity controlledEntity = playerController.GetControlledEntity();
 		    m_data.FetchData(controlledEntity, m_fDataFetchTimer);
 			DisplayWidgetsUpdate();
 			
 		    m_fDataFetchTimer = 0;
 		}
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	private void DisplayWidgetsUpdate()
@@ -448,6 +455,13 @@ class SCR_AvailableActionsDisplay : SCR_InfoDisplayExtended
 		m_fOffsetY = offset;
 		
 		// Set layout position 
+		ApplyOffsets();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetAdditionalOffsetY(float offset)
+	{
+		m_fAdditionalOffsetY = offset;
 		ApplyOffsets();
 	}
 
@@ -635,6 +649,9 @@ class AvailableActionEditorLayoutBehavior : AvailableActionLayoutBehaviorBase
 	[Attribute("1", UIWidgets.ComboBox, "In which mode should be this behavior applied", "", ParamEnumArray.FromEnum(EEditorMode))]
 	EEditorMode m_eEditorMode;
 	
+	[Attribute("0", desc: "Additional offset applied when editor is no legal in given scenario.")]
+	protected float m_fIllegalEditorOffset;
+	
 	//------------------------------------------------------------------------------------------------
 	override bool ConditionsChecked(SCR_AvailableActionsDisplay display)
 	{
@@ -645,5 +662,22 @@ class AvailableActionEditorLayoutBehavior : AvailableActionLayoutBehaviorBase
 		EEditorMode mode = editorManagerEntity.GetCurrentMode();
 		
 		return (SCR_EditorManagerEntity.IsOpenedInstance() && mode == m_eEditorMode);
+	}
+	override void ApplyBehavior(notnull SCR_AvailableActionsDisplay display)
+	{
+		float offset = m_fOffsetY;
+		
+		if (m_fIllegalEditorOffset != 0)
+		{
+			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
+			if (core)
+			{
+				SCR_EditorSettingsEntity editorSettings = core.GetSettingsEntity();
+				if (editorSettings && !editorSettings.IsUnlimitedEditorLegal())
+					offset += m_fIllegalEditorOffset;
+			}
+		}
+		
+		display.SetOffsetY(offset);
 	}
 };

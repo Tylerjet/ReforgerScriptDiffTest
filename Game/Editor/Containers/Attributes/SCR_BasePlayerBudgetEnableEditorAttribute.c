@@ -71,12 +71,12 @@ class SCR_BasePlayerBudgetEnableEditorAttribute: SCR_BaseEditorAttribute
 				budgetValue = m_iBudgetValueSP;
 			
 			budgetComponent.SetMaxBudgetValue(GetBudgetType(), budgetValue);
-			SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, GetEnableNotification(), playerID, delegate.GetPlayerID());
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayersAndPlayer(playerID, GetEnableNotification(), playerID, delegate.GetPlayerID());
 		}
 		else 
 		{
 			budgetComponent.SetMaxBudgetValue(GetBudgetType(), 0);
-			SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, GetDisableNotification(), playerID, delegate.GetPlayerID());
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayersAndPlayer(playerID, GetDisableNotification(), playerID, delegate.GetPlayerID());
 		}
 	}
 	

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 enum EQueryEntitiesFlags
@@ -15,7 +15,10 @@ enum EQueryEntitiesFlags
 	DYNAMIC,
 	FEATURES,
 	WITH_OBJECT,
-	ALL
-};
+	NO_PROXIES,
+	ALL,
+}
 
-/** @}*/
+/*!
+\}
+*/

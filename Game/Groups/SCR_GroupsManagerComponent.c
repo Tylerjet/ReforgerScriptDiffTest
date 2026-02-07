@@ -20,10 +20,17 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	[Attribute("54000")]
 	protected int m_iPlayableGroupFrequencyMax;
 	
+	[Attribute("Flags", UIWidgets.ResourcePickerThumbnail, "Flag icon of this particular group.", params: "edds")]
+	private ref array<ResourceName> m_aGroupFlags;
+	
 	//this is changed only localy and doesnt replicate
 	protected bool m_bConfirmedByPlayer;
 	
+	protected bool m_bNewGroupsAllowed = true;
+	protected bool m_bCanPlayersChangeAttributes = true;
+	
 	protected static SCR_GroupsManagerComponent s_Instance;
+	
 	
 #ifdef DEBUG_GROUPS
 	static Widget s_wDebugLayout;
@@ -31,6 +38,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	
 	protected ref ScriptInvoker m_OnPlayableGroupCreated = new ScriptInvoker();
 	protected ref ScriptInvoker m_OnPlayableGroupRemoved = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnNewGroupsAllowedChanged = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnCanPlayersChangeAttributeChanged = new ScriptInvoker();
 	protected int m_iLatestGroupID = 0;
 	protected ref map<Faction, ref array<SCR_AIGroup>> m_mPlayableGroups = new map<Faction, ref array<SCR_AIGroup>>();
 	protected ref map<Faction, int> m_mPlayableGroupFrequencies = new map<Faction, int>();
@@ -44,6 +53,11 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		return s_Instance;
 	}
 	
+	//------------------------------------------------------------------------
+	void GetGroupFlags(notnull array<ResourceName> targetArray)
+	{
+		targetArray.Copy(m_aGroupFlags);
+	}
 	//------------------------------------------------------------------------
 	ScriptInvoker GetOnPlayableGroupCreated()
 	{
@@ -103,12 +117,105 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------
+	void CreatePredefinedGroups()
+	{			
+		//if(IsProxy()) // TO DO: Commented out coz of initial replication 
+		//	return;
+			
+		FactionManager factionManager = GetGame().GetFactionManager();		
+		if (!factionManager)
+			return;
+		
+		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupManager)
+			return;
+		
+		array<Faction> factions = new array<Faction>;
+		
+		factionManager.GetFactionsList(factions);	
+		
+		foreach (Faction faction : factions)
+		{	
+			SCR_Faction scrFaction  = SCR_Faction.Cast(faction);
+			if (!scrFaction)
+				return;
+			
+			array<ref SCR_GroupPreset> groups = {};
+			
+			scrFaction.GetPredefinedGroups(groups);
+		
+			foreach (SCR_GroupPreset gr : groups)
+			{
+				SCR_AIGroup newGroup = CreateNewPlayableGroup(faction);
+				if (!newGroup)
+					continue;
+				
+				newGroup.SetCanDeleteIfNoPlayer(false);
+			
+				gr.SetupGroup(newGroup);
+								
+				array<ResourceName> flags = {};
+				
+				groupManager.GetGroupFlags(flags);
+				
+				int index = flags.Find(gr.GetGroupFlag());				
+				newGroup.SetGroupFlag(index);
+			}
+		
+		}
+	}
+	
+	//------------------------------------------------------------------------
 	void SetGroupLeader(int groupID, int playerID)
 	{
 		SCR_AIGroup group = FindGroup(groupID);
 		if (!group)
 			return;
 		group.SetGroupLeader(playerID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! called on server only
+	void SetNewGroupsAllowed(bool isAllowed)
+	{
+		if (isAllowed == m_bNewGroupsAllowed)
+			return;
+		
+		RPC_DoSetNewGroupsAllowed(isAllowed);
+		Rpc(RPC_DoSetNewGroupsAllowed, isAllowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_DoSetNewGroupsAllowed(bool isAllowed)
+	{
+		if (isAllowed == m_bNewGroupsAllowed)
+			return;
+		
+		m_bNewGroupsAllowed = isAllowed;
+		m_OnNewGroupsAllowedChanged.Invoke();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! called on server only
+	void SetCanPlayersChangeAttributes(bool isAllowed)
+	{
+		if (isAllowed == m_bCanPlayersChangeAttributes)
+			return;
+		
+		RPC_SetCanPlayersChangeAttributes(isAllowed);
+		Rpc(RPC_SetCanPlayersChangeAttributes, isAllowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
+	void RPC_SetCanPlayersChangeAttributes(bool isAllowed)
+	{
+		if (isAllowed == m_bCanPlayersChangeAttributes)
+			return;
+		
+		m_bCanPlayersChangeAttributes = isAllowed;
+		m_OnCanPlayersChangeAttributeChanged.Invoke();
 	}
 	
 	//------------------------------------------------------------------------
@@ -137,6 +244,18 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	ScriptInvoker GetOnPlayableGroupRemoved()
 	{
 		return m_OnPlayableGroupRemoved;
+	}
+	
+	//------------------------------------------------------------------------
+	ScriptInvoker GetOnNewGroupsAllowedChanged()
+	{
+		return m_OnNewGroupsAllowedChanged;
+	}
+	
+	//------------------------------------------------------------------------
+	ScriptInvoker GetOnCanPlayersChangeAttributeChanged()
+	{
+		return m_OnCanPlayersChangeAttributeChanged;
 	}
 	
 	//------------------------------------------------------------------------
@@ -251,7 +370,7 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 			return;
 		
 		ClaimFrequency(frequency, groupFaction);
-		group.SetGroupFrequency(frequency);
+		group.SetRadioFrequency(frequency);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -270,6 +389,10 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		// Is empty?
 		if (group.GetPlayerCount() > 0)
+			return;
+		
+		//Can this group exist empty?
+		if (!group.GetDeleteIfNoPlayer())
 			return;
 		
 		// Yes, can we delete it?
@@ -346,8 +469,14 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		
 		BaseRadioComponent radio = GetCommunicationDevice(agentEntity.GetControlledEntity());
 		
-		if (radio)
-			radio.SetFrequency(group.GetGroupFrequency());
+		if (!radio)
+			return;
+
+		BaseTransceiver tsv = radio.GetTransceiver(0);
+		if (!tsv)
+			return;
+
+		tsv.SetFrequency(group.GetRadioFrequency());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -399,7 +528,6 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	void DeleteAndUnregisterGroup(notnull SCR_AIGroup group)
 	{
-		ReleaseFrequency(group.GetGroupFrequency(), group.GetFaction());
 		UnregisterGroup(group);
 		delete group;
 	}
@@ -414,6 +542,24 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		array<SCR_AIGroup> groups = GetPlayableGroupsByFaction(faction);
 		if (!groups)
 			return;
+		
+		int frequency = group.GetRadioFrequency();
+		int foundGroupsWithFrequency = 0;
+		array<SCR_AIGroup> existingGroups = {};
+		
+		existingGroups = GetPlayableGroupsByFaction(faction);
+		if (existingGroups)
+		{
+			foreach (SCR_AIGroup checkedGroup: existingGroups)
+			{
+				if (checkedGroup.GetRadioFrequency() == frequency)
+					foundGroupsWithFrequency++;
+			}
+		}
+		
+		//if there is only our group with this frequency or none, release it before changing our frequency
+		if (foundGroupsWithFrequency <= 1)
+			ReleaseFrequency(frequency, faction);
 		
 		if (groups.Find(group) >= 0)
 			groups.RemoveItem(group);
@@ -506,20 +652,50 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		RplComponent rplComp = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		if (!rplComp)
 			return null;
-		
-		if (!rplComp.IsMaster())
-			return null;
+		// TO DO: Commented out coz of initial replication 
+				
+		//bool isMaster = rplComp.IsMaster();
+		//if (!rplComp.IsMaster()) // TO DO: Commented out coz of initial replication 
+		// 	return null;
 		
 		Resource groupResource = Resource.Load(m_sDefaultGroupPrefab);
 		if (!groupResource.IsValid())
 			return null;
 		
 		SCR_AIGroup group = SCR_AIGroup.Cast(GetGame().SpawnEntityPrefab(groupResource, GetOwner().GetWorld()));
+		if (!group)
+			return null;
 		
 		group.SetFaction(faction);
 		RegisterGroup(group);
 		AssignGroupFrequency(group);
 		AssignGroupID(group);
+		
+		
+		//if there is commanding present, we create the slave group for AIs at the creation of the group
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (commandingManager)
+		{
+			IEntity groupEntity = GetGame().SpawnEntityPrefab(Resource.Load(commandingManager.GetGroupPrefab()));
+			if (!groupEntity)
+				return null;
+			
+			SCR_AIGroup slaveGroup = SCR_AIGroup.Cast(groupEntity);
+			if (!slaveGroup)
+				return null;
+			
+			RplComponent RplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
+			if (!RplComp)
+				return null;
+			
+			RplId slaveGroupRplID = RplComp.Id();
+			
+			RplComp = RplComponent.Cast(group.FindComponent(RplComponent));
+			if (!RplComp)
+				return null;
+			
+			RequestSetGroupSlave(RplComp.Id(), slaveGroupRplID);
+		}
 		
 		m_OnPlayableGroupCreated.Invoke(group);
 		
@@ -553,6 +729,9 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	bool CanCreateNewGroup(notnull Faction newGroupFaction)
 	{
+		if (!m_bNewGroupsAllowed)
+			return false;
+		
 		FactionHolder factions = new FactionHolder();
 		if (GetFreeFrequency(newGroupFaction) == -1)
 			return false;
@@ -564,12 +743,18 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool CanPlayersChangeAttributes()
+	{
+		return m_bCanPlayersChangeAttributes;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	int GetFreeFrequency(Faction frequencyFaction)
 	{
 		FactionHolder usedForFactions = new FactionHolder();
 		
 		int factionHQFrequency; // Don't assign this frequency to any of the groups
-		SCR_MilitaryFaction militaryFaction = SCR_MilitaryFaction.Cast(frequencyFaction);
+		SCR_Faction militaryFaction = SCR_Faction.Cast(frequencyFaction);
 		if (militaryFaction)
 			factionHQFrequency = militaryFaction.GetFactionRadioFrequency();
 		
@@ -619,10 +804,24 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool IsFrequencyClaimed(int frequency, Faction faction)
+	{
+		FactionHolder usedForFactions = new FactionHolder();
+		if (!m_mUsedFrequenciesMap.Find(frequency, usedForFactions))
+			return false;
+		
+		if (usedForFactions.Find(faction))
+			return true;
+		
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ReleaseFrequency(int frequency, Faction faction)
 	{
 		if (!faction || !frequency)
 			return;
+		
 		FactionHolder factions = new FactionHolder();
 		if (m_mUsedFrequenciesMap.Find(frequency, factions))
 		{
@@ -770,6 +969,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool GetNewGroupsAllowed()
+	{
+		return m_bNewGroupsAllowed;
+	} 
+	
+	//------------------------------------------------------------------------------------------------
 	void SetConfirmedByPlayer(bool isConfirmed)
 	{
 		m_bConfirmedByPlayer = isConfirmed;
@@ -791,13 +996,12 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		}
 		
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
-	}
+	}		
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -810,6 +1014,8 @@ class SCR_GroupsManagerComponent : SCR_BaseGameModeComponent
 		if (respawnSystem)
 			respawnSystem.GetOnPlayerFactionChanged().Insert(OnPlayerFactionChanged);
 		m_bConfirmedByPlayer = false;
+		
+		CreatePredefinedGroups();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -22,7 +22,7 @@ class SCR_DateTimeHelper
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-	Returns month in translated striing formating.
+	Returns month in translated string formating.
 	\param int month, nr of month (Jan being 1, Dec being 12, etc.)
 	\return month in translated string
 	*/
@@ -45,6 +45,35 @@ class SCR_DateTimeHelper
 			"#AR-Date_October",
 			"#AR-Date_November",
 			"#AR-Date_December",
+		};
+
+		return months[month -1];
+	}
+	
+	/*!
+	Returns Abbriviated month in translated string formating.
+	\param int month, nr of month (Jan being 1, Dec being 12, etc.)
+	\return month in translated string
+	*/
+	static string GetAbbreviatedMonthString(int month)
+	{
+		if (month < 1 || month > 12)
+			return string.Empty;
+
+		// if it gets called often, cache it as a static array
+		array<string> months = {
+			"#AR-Date_January_Short",
+			"#AR-Date_February_Short",
+			"#AR-Date_March_Short",
+			"#AR-Date_April_Short",
+			"#AR-Date_May_Short",
+			"#AR-Date_June_Short",
+			"#AR-Date_July_Short",
+			"#AR-Date_August_Short",
+			"#AR-Date_September_Short",
+			"#AR-Date_October_Short",
+			"#AR-Date_November_Short",
+			"#AR-Date_December_Short",
 		};
 
 		return months[month -1];
@@ -139,5 +168,44 @@ class SCR_DateTimeHelper
 	static int GetSecondsFromHourMinuteSecond(int hour = 0, int minute = 0, int second = 0)
 	{
 		return hour * 3600 + minute * 60 + second;
+	}
+	
+	/*!
+	Grabs all given values and convert it to minutes.
+	\param[out] year Years to convert into minutes. Note that max years is around 4000
+	\param[out] month Months to convert into minutes.
+	\param[out] day Days to convert into minutes.
+	\param[out] hour Hours to convert into minutes.
+	\param[out] minutes To add to the total minutes
+	*/
+	static int ConvertDateIntoMinutes(int year = 0, int month = 0, int day = 0, int hour = 0, int minutes = 0)
+	{
+		return (year * 525600) + (month * 43800) + (day * 1440) + (hour * 60) + minutes;
+	}
+	
+	/*!
+	Grabs the given total minutes and converts it into years, months, days, hours and minutes
+	\param totalDateMinutes total minutes to be converted - absolute value will be used
+	\param[out] year Returns amount of years 0..x 
+	\param[out] month Returns amount of months 0..12
+	\param[out] day Returns amount of days 0..31
+	\param[out] hour Returns amount of Hours 0..23
+	\param[out] minutes Returns amount of Minutes 0..59
+	*/
+	static void ConvertMinutesIntoDate(int totalDateMinutes, out int year, out int month, out int day, out int hour, out int minutes)
+	{
+		year = totalDateMinutes / 525600;
+		totalDateMinutes -= year * 525600;
+		
+		month = totalDateMinutes / 43800;
+		totalDateMinutes -= month * 43800;
+		
+		day = totalDateMinutes / 1440;
+		totalDateMinutes -= day * 1440;
+		
+		hour = totalDateMinutes / 60;
+		totalDateMinutes -= hour * 60;
+		
+		minutes = totalDateMinutes;
 	}
 };

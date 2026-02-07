@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class SCR_SaveArsenalLoadout : ScriptedUserAction
+class SCR_SaveArsenalLoadout : SCR_BaseFactionCheckUserAction
 {
 	//------------------------------------------------------------------------------------------------
 	override protected bool CanBeShownScript(IEntity user)

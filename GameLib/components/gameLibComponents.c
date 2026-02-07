@@ -16,7 +16,7 @@ class SignalInput
 	{
 		m_value = 0;
 	}
-};	
+}
 
 enum EItemInsertionResult
 {
@@ -24,11 +24,11 @@ enum EItemInsertionResult
 	ErrorNullItem,
 	ErrorLateInsertion,
 	ErrorItemHasNoLayout
-};
+}
 
 class RplSchedulerInsertionCtx
 {
-	ERplStateOverride StateOverride;
+	RplStateOverride StateOverride;
 }
 
 

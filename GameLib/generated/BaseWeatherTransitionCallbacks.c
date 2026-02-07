@@ -9,7 +9,7 @@ class BaseWeatherTransitionCallbacks
 	/*!
 	Called ONLY after weather is computed (Mainly probes & cloud shadowmap) after a call to
 	RequestStateTransitionImmediately.
-	
+
 	This callback will NOT be called if state is transitioning smoothly.
 	*/
 	event protected void OnStateSetImmediately() { };
@@ -29,4 +29,4 @@ class BaseWeatherTransitionCallbacks
 	Does not get called if state is transitioned immediately through RequestStateTransitionImmediately.
 	*/
 	event protected void OnTransitionEnded(WeatherStateTransitionNode transition) { };
-};
+}

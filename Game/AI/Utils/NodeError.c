@@ -9,3 +9,10 @@ ENodeResult NodeError(Node node, AIAgent owner, string msg)
 	Debug.Error(sOwner + " : " + nodeStack + "\n" + msg);
 	return ENodeResult.FAIL;
 };
+
+// used for BT nodes to ensure they runs on AIGroup
+//------------------------------------------------------------------------------------------------
+void SCR_AgentMustBeAIGroup(Node node, AIAgent owner)
+{
+	NodeError(node,owner, node.Type().ToString() + " must be run on group AIAgent!");
+};

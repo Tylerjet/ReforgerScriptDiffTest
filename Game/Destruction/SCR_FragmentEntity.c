@@ -63,7 +63,7 @@ class SCR_FragmentEntity : BaseBuilding
 			Update();
 			Physics phys = Physics.CreateStatic(this, -1);
 			if (phys)
-				SCR_Physics.RemapInteractionLayer(phys, EPhysicsLayerDefs.Dynamic, EPhysicsLayerDefs.Static);
+				SCR_PhysicsHelper.RemapInteractionLayer(phys, EPhysicsLayerDefs.Dynamic, EPhysicsLayerDefs.Static);
 		}
 		
 		//------------------------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ class SCR_FragmentEntity : BaseBuilding
 				return;
 			
 			// Set collision layer to none to avoid further contacts
-			physics.SetInteractionLayer(EPhysicsLayerDefs.None);
+			physics.SetInteractionLayer(EPhysicsLayerDefs.VehicleCast);
 			
 			// Static physics, so add previous velocity to impactor as it otherwise "bounces"
 			if (!physics.IsDynamic())
@@ -193,7 +193,6 @@ class SCR_FragmentEntity : BaseBuilding
 			
 			m_DestructibleParent.GetOwner().RemoveChild(this);
 			SetEventMask(EntityEvent.FRAME); // We will delete on the next frame
-			SetFlags(EntityFlags.ACTIVE, false);
 		}
 		
 		//------------------------------------------------------------------------------------------------

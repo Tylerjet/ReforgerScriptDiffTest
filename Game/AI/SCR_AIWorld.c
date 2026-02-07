@@ -81,6 +81,7 @@ class SCR_AIWorld : AIWorld
 			//this add AI categories inside to DiagMenu
 			RegisterDbgCategory();
 			
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SET_BT_BREAKPOINT, "", "Set BT Breakpoint", "AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_DEBUG,"","Print debug from BTs","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_GROUP_INFO,"","Print init of groups","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_SHOT_STATISTICS,"","Print stats for aiming","AIScript");
@@ -90,6 +91,7 @@ class SCR_AIWorld : AIWorld
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_LASTSEEN,"","Show target last seen","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SELECT_FIXED_AGENT,"","Select fixed AIAgent","AIScript");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_DEBUG_COVERS,"","Debug cover search","AIScript");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_PERCEPTION_PANEL,"","Show perception panel","AIScript");
 
 #ifdef AI_DEBUG
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_AI_SEND_MESSAGE, "", "Show Send Message Menu","AIScript");

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -30,6 +30,8 @@ sealed class GridLayoutWidget: Widget
 	proto external void SetRowFillWeight(int rowIndex, float weight);
 	//! \see SetRowFillWeight
 	proto external void SetColumnFillWeight(int columnIndex, float weight);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

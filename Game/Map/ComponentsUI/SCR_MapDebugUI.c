@@ -4,6 +4,9 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 	[Attribute("0", UIWidgets.EditBox, desc: "Adjust rotation for debug unit icons", params: "-180 180")]
 	protected float m_fUnitIconRotation;
 	
+	[Attribute("{BCD5479864D1A79A}UI/Textures/Map/topographicIcons/icons_topographic_map.imageset", UIWidgets.ResourceNamePicker, "Imageset source for display icon" )]
+	protected ResourceName m_sIconImageset;
+	
 	protected bool m_bIsUnitVisible;				// units debug visible					
 	protected ref array<MapItem> m_aMapItems = {};	// cached map items 
 	
@@ -113,7 +116,7 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 			{
 				CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(ent.FindComponent(CharacterIdentityComponent));
 				if (charIdentity)
-					name = charIdentity.GetCharacterFullName();
+					name = charIdentity.GetIdentity().GetName();
 				else 
 					name = "No identity";
 			}
@@ -197,6 +200,47 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void OnRadialMenuOpen()
+	{
+		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
+		
+		bool isDebugOn = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, false);
+		if (isDebugOn)
+		{
+			SCR_MapMenuCategory category = ctxMenu.AddRadialCategory("Debug Options");
+			category.SetIcon(m_sIconImageset, "view-point");
+			
+			SCR_MapMenuEntry entry = ctxMenu.AddRadialEntry("Map variables dbg", "Debug Options");
+			entry.m_OnClick.Insert(m_MapEntity.ShowScriptDebug);
+			entry.SetIcon(m_sIconImageset, "culvet");
+			
+			entry = ctxMenu.AddRadialEntry("Zoom to 1px == 1m", "Debug Options");
+			entry.m_OnClick.Insert(ZoomToPPU1);
+			entry.SetIcon(m_sIconImageset, "single-tree");
+			
+			entry = ctxMenu.AddRadialEntry("Zoom up a layer", "Debug Options"); 
+			entry.m_OnClick.Insert(ZoomLayerUp);
+			entry.SetIcon(m_sIconImageset, "ancient-fortification");
+			
+			entry = ctxMenu.AddRadialEntry("Zoom down a layer", "Debug Options");
+			entry.m_OnClick.Insert(ZoomLayerDown);
+			entry.SetIcon(m_sIconImageset, "hospital");
+			
+			entry = ctxMenu.AddRadialEntry("Pan to player", "Debug Options");
+			entry.m_OnClick.Insert(PanToPlayer);
+			entry.SetIcon(m_sIconImageset, "hill-marker");
+			
+			entry = ctxMenu.AddRadialEntry("Show units", "Debug Options");
+			entry.m_OnClick.Insert(ShowUnits);
+			entry.SetIcon(m_sIconImageset, "crane");
+			
+			entry = ctxMenu.AddRadialEntry("Toggle Light", "Debug Options");
+			entry.m_OnClick.Insert(ToggleLight);
+			entry.SetIcon(m_sIconImageset, "smoke-stack");
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void Update(float timeSlice)
 	{		
 		if (m_bIsUnitVisible)
@@ -215,22 +259,16 @@ class SCR_MapDebugUI : SCR_MapUIBaseComponent
 			ShowUnits();
 		}
 		
-		// Add ctx menu entry
 		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
 		if (ctxMenu)
-		{
-			
-			bool isDebugOn = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_UI_MAP_DEBUG_OPTIONS, false);
-			if (isDebugOn)
-			{
-				ctxMenu.ContextRegisterDynamic("Map variables dbg", true).m_OnClick.Insert(m_MapEntity.ShowScriptDebug);
-				ctxMenu.ContextRegisterDynamic("Zoom to 1px == 1m", true).m_OnClick.Insert(ZoomToPPU1);
-				ctxMenu.ContextRegisterDynamic("Zoom up a layer", true).m_OnClick.Insert(ZoomLayerUp);
-				ctxMenu.ContextRegisterDynamic("Zoom down a layer", true).m_OnClick.Insert(ZoomLayerDown);
-				ctxMenu.ContextRegisterDynamic("Pan to player", true).m_OnClick.Insert(PanToPlayer);
-				ctxMenu.ContextRegisterDynamic("Show units", true).m_OnClick.Insert(ShowUnits);
-				ctxMenu.ContextRegisterDynamic("Toggle Light", true).m_OnClick.Insert(ToggleLight);
-			}
-		}
+			ctxMenu.GetOnMenuOpenInvoker().Insert(OnRadialMenuOpen);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMapClose(MapConfiguration config)
+	{
+		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI));
+		if (ctxMenu)
+			ctxMenu.GetOnMenuOpenInvoker().Remove(OnRadialMenuOpen);
 	}
 };

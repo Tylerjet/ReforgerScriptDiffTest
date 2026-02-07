@@ -4,15 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class Widget: Managed
 {
 	private void Widget();
-	
+
 	proto external void Update();
 	//!Returns parent in hierarchy, or NULL
 	proto external Widget GetParent();
@@ -86,7 +86,7 @@ sealed class Widget: Managed
 	Changes z-order value. Widget will be moved into appropriate order. Higher values put the widget more to the in front.
 	\param zOrder ZOrder value
 	*/
-	proto external void SetZOrder(int sort);
+	proto external void SetZOrder(int zOrder);
 	/*!
 	Higher values mean more in front.
 	\return Current ZOrder value.
@@ -122,7 +122,7 @@ sealed class Widget: Managed
 	/*!
 	Sets navigation rule for given direction
 	\param explicitTarget Used only when rule is set to EXPLICIT
-	*/
+	 */
 	proto external void SetNavigation(WidgetNavigationDirection direction, WidgetNavigationRuleType rule, string explicitTarget = string.Empty);
 	proto external string GetTypeName();
 	/*!
@@ -146,6 +146,8 @@ sealed class Widget: Managed
 	proto void GetScreenSize(out float width, out float height);
 	//! Add callback for given event id and returns callback id
 	proto int AddCallback(int eventId, WidgetEventCallback fn);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

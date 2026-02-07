@@ -7,15 +7,9 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 	[Attribute("10", "How long the user action will be shown as inactive after starting arming.")]
 	protected float m_fArmingProtectionTime;
 	
-	protected bool m_bCanArm = true;
+	protected InventoryItemComponent m_Item;
 	
-	//------------------------------------------------------------------------------------------------
-	void ActivationWrapper()
-	{
-		SCR_PressureTriggerComponent pressureTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
-		if (pressureTriggerComponent)
-			pressureTriggerComponent.Activate();
-	}
+	protected bool m_bCanArm = true;
 	
 	//------------------------------------------------------------------------------------------------
 	void OrientToForward(vector forward, vector mat[4])
@@ -35,6 +29,38 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	vector GetGroundNormal(notnull IEntity owner)
+	{
+		vector pos = owner.GetOrigin();
+		vector normal = SCR_TerrainHelper.GetTerrainNormal(pos, owner.GetWorld());
+		if (normal != vector.Zero)
+			return normal;
+		else
+			return vector.Up;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool CheckAngle(vector up)
+	{
+		if (vector.Dot(up, vector.Up) < 0.5) // Rject based on the angle of placement (the maximum should be dictated by item settings)
+			return false;
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SnapToGround(IEntity user, out vector normal)
+	{
+		IEntity owner = GetOwner();
+		vector mat[4];
+		owner.GetTransform(mat);
+		
+		SCR_PlaceableInventoryItemComponent item = SCR_PlaceableInventoryItemComponent.Cast(owner.FindComponent(SCR_PlaceableInventoryItemComponent));
+		if (item)
+			item.SnapToGround(normal, {user}, startOffset: mat[1] * 0.1, direction: -mat[1]);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override event void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
 		m_bCanArm = false;
@@ -42,12 +68,30 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 		
 		vector matUser[4], mat[4];
 		pUserEntity.GetTransform(matUser);
-		pOwnerEntity.GetTransform(mat);
 		
+		vector normal = vector.Zero;
+		SnapToGround(pUserEntity, normal);
+		
+		pOwnerEntity.GetTransform(mat);
+		SCR_EntityHelper.OrientUpToVector(normal, mat);
 		OrientToForward(matUser[2], mat);
 		pOwnerEntity.SetTransform(mat);
 		
-		CharacterControllerComponent charController = CharacterControllerComponent.Cast(pUserEntity.FindComponent(CharacterControllerComponent));
+		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
+		
+		if (!character)
+		{
+			Print("Non-ChimeraCharacter user tried using SCR_ActivateMineUserAction!", LogLevel.WARNING);
+			return;
+		}
+		
+		SCR_PressureTriggerComponent pressureTrigger = SCR_PressureTriggerComponent.Cast(pOwnerEntity.FindComponent(SCR_PressureTriggerComponent));
+		if (!pressureTrigger)
+			return;
+		
+		pressureTrigger.SetUser(pUserEntity);
+		
+		CharacterControllerComponent charController = character.GetCharacterController();
 		if (charController)
 		{
 			CharacterAnimationComponent pAnimationComponent = charController.GetAnimationComponent();
@@ -59,17 +103,43 @@ class SCR_ActivateMineUserAction : ScriptedUserAction
 			ptWS.Set(null, "", charWorldMat);
 			charController.TryUseItemOverrideParams(pOwnerEntity, false, itemActionId, 3, 0, 15.0, 0, 0, false, ptWS);
 		}
+		
+		pOwnerEntity.GetTransform(mat);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected bool IsUnderWater()
+	{
+		return SCR_WorldTools.IsObjectUnderwater(GetOwner());
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
+		vector mat[4];
+		GetOwner().GetTransform(mat);
+		
+		if (IsUnderWater() || !CheckAngle(mat[1]))
+			return false;
+		
+		if (Math.AbsFloat(mat[3][1] - user.GetOrigin()[1]) > 0.4)
+			return false;
+		
 		return m_bCanArm;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)
+	{
+		m_Item = InventoryItemComponent.Cast(pOwnerEntity.FindComponent(InventoryItemComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		if (m_Item == null || m_Item.GetParentSlot() != null || m_Item.IsLocked())
+			return false;
+		
 		SCR_PressureTriggerComponent mineTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
 		if (!mineTriggerComponent)
 			return false;

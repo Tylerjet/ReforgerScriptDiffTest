@@ -83,7 +83,6 @@ class SCR_RadialMenuComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

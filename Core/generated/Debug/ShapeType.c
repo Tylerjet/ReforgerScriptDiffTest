@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Debug
-* @{
+/*!
+\addtogroup Debug
+\{
 */
 
 enum ShapeType
@@ -40,7 +40,9 @@ enum ShapeType
 	//! Arrow pointing down
 	ARROW,
 	//! list of multiple lines
-	LINE_LIST
-};
+	LINE_LIST,
+}
 
-/** @}*/
+/*!
+\}
+*/

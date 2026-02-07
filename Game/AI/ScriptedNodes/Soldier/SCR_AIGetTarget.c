@@ -1,22 +1,18 @@
 class SCR_AIGetTarget: AITaskScripted
-{
-	[Attribute("100", UIWidgets.EditBox, "Filter target by distance", "")]
-	float m_maxDistance;
-	
+{	
 	[Attribute("1", UIWidgets.EditBox, "Filter target by how long ago it was seen", "")]
-	float m_lastSeenMax;
+	float m_fTimeSinceSeenMax;
 	
-	[Attribute("3", UIWidgets.ComboBox, "Wanted target type", "", ParamEnumArray.FromEnum(ETargetCategory) )]
-	int m_targetType;
+	[Attribute("0", UIWidgets.ComboBox, "Wanted target type", "", ParamEnumArray.FromEnum(ETargetCategory) )]
+	ETargetCategory m_eTargetType;
+	
+	protected static const string PORT_BASE_TARGET = "BaseTarget";
 
-	private float m_lastSeenMaxMillis;
-	private ref Shape m_Shape;
-	private PerceptionComponent perceptComp;
-	private SCR_AIConfigComponent confComp;
-	private SCR_AICombatComponent m_CombatComponent;
-	
-	private ref SCR_AITargetInfo m_targetInfo;
-	private ref SCR_AITargetInfo m_targetOut;
+	protected PerceptionComponent m_PerceptionComp;
+	protected SCR_AIConfigComponent m_ConfigComp;
+	#ifdef WORKBENCH
+	protected ref Shape m_Shape;
+	#endif
 
 	override bool VisibleInPalette()
     {
@@ -25,17 +21,8 @@ class SCR_AIGetTarget: AITaskScripted
 	
 	protected override string GetNodeMiddleText()
 	{
-		string enumToString;
-		switch (m_targetType)
-		{
-			case ETargetCategory.UNKNOWN : {enumToString = "Unknown"; break;}
-			case ETargetCategory.DETECTED : {enumToString = "Detected"; break;}
-			case ETargetCategory.FRIENDLY : {enumToString = "Friendly"; break;}
-			case ETargetCategory.ENEMY : {enumToString = "Enemy"; break;}
-			case ETargetCategory.FACTIONLESS : {enumToString = "Factionless"; break;}
-			case ETargetCategory.STATIC : {enumToString = "Static"; break;}
-		}
-		return "MaxDistance:" + m_maxDistance.ToString() + "\n" + "LastSeenMax: " + m_lastSeenMax.ToString() + "\n" + "TargetCategory: " + enumToString;
+		return	"LastSeenMax: " + m_fTimeSinceSeenMax.ToString() + "\n" +
+				"TargetCategory: " + typename.EnumToString(ETargetCategory, m_eTargetType);
 	}
 	
 	override void OnInit(AIAgent owner)
@@ -44,74 +31,40 @@ class SCR_AIGetTarget: AITaskScripted
 		if (!ent)
 			return;
 		
-		perceptComp = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
-		
-		m_CombatComponent = SCR_AICombatComponent.Cast(owner.GetControlledEntity().FindComponent(SCR_AICombatComponent));
-		
-		confComp = SCR_AIConfigComponent.Cast(owner.FindComponent(SCR_AIConfigComponent));	
-		
-		m_targetInfo = new ref SCR_AITargetInfo();
+		m_PerceptionComp = PerceptionComponent.Cast(ent.FindComponent(PerceptionComponent));
+		m_ConfigComp = SCR_AIConfigComponent.Cast(owner.FindComponent(SCR_AIConfigComponent));	
 	}
 		
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!confComp)
+		if (!m_ConfigComp || !m_PerceptionComp)
 			return ENodeResult.FAIL;
 		
-		if (perceptComp && confComp.m_EnablePerception)
+		if (m_PerceptionComp && m_ConfigComp.m_EnablePerception)
 		{
-			if (!owner.GetControlledEntity())
-				return ENodeResult.FAIL;
+			BaseTarget baseTarget = m_PerceptionComp.GetClosestTarget(m_eTargetType, m_fTimeSinceSeenMax);
 			
-			vector ownerLocation = owner.GetControlledEntity().GetOrigin();
+			SetVariableOut(PORT_BASE_TARGET, baseTarget);
 			
-			//m_CombatComponent.m_Enemies.Clear();
-			BaseTarget target = perceptComp.GetClosestTarget(m_targetType, m_lastSeenMax);
-			if (target)
-			{
-				m_targetInfo.m_TargetEntity = target.GetTargetEntity();
-				m_targetInfo.m_vLastSeenPosition = target.GetLastSeenPosition();
-				m_targetInfo.m_fLastSeenTime = target.GetTimeSinceSeen();
-			}
-			else
-			{
-				m_targetInfo.m_TargetEntity = null;
-			}
-			
-			if ( m_targetInfo.m_TargetEntity )
+			if (baseTarget)
 			{
 #ifdef WORKBENCH
 				if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_SHOW_TARGET_LASTSEEN))
-					m_Shape = Shape.CreateSphere(COLOR_BLUE_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, m_targetInfo.m_vLastSeenPosition, 0.1);
-#endif		
-				if(!m_targetOut || m_targetOut.m_TargetEntity != m_targetInfo.m_TargetEntity)
-					m_targetOut = new SCR_AITargetInfo(m_targetInfo.m_TargetEntity, m_targetInfo.m_vLastSeenPosition, m_targetInfo.m_fLastSeenTime);
-				SetVariableOut("EntityOut",m_targetOut.m_TargetEntity);
-				SetVariableOut("EntityPos",m_targetOut.m_vLastSeenPosition);
-				SetVariableOut("TargetInfo",m_targetOut);
+					m_Shape = Shape.CreateSphere(COLOR_BLUE_A, ShapeFlags.NOOUTLINE|ShapeFlags.NOZBUFFER|ShapeFlags.TRANSP, baseTarget.GetLastSeenPosition(), 0.1);
+#endif
 				return ENodeResult.SUCCESS;
 			}
 			else
 			{
-				ClearVariable("EntityOut");
-				ClearVariable("EntityPos");
-				ClearVariable("TargetInfo");
 				return ENodeResult.FAIL;
 			}
 		}
-		else if (!confComp.m_EnablePerception)
-		{
-			ClearVariable("EntityOut");
-			ClearVariable("EntityPos");
-			ClearVariable("TargetInfo");
-		}
+
 		return ENodeResult.FAIL;
 	}
 	
 	protected static ref TStringArray s_aVarsOut = {
-		"EntityOut",
-		"EntityPos",
-		"TargetInfo"
+		PORT_BASE_TARGET
 	};
 	override TStringArray GetVariablesOut()
     {

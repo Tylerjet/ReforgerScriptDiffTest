@@ -70,4 +70,4 @@ class ResaveMetaPlugin: WorkbenchPlugin
 	{
 		return false;
 	}
-};
+}

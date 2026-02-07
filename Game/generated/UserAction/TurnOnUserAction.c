@@ -4,14 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
 class TurnOnUserAction: ScriptedUserAction
 {
 	proto external RadioBroadcastComponent GetRadioBCComponent();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

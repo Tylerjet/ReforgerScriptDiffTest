@@ -68,7 +68,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//! Radio on/off toggle
 	void RadioToggle()
 	{
-		m_BaseRadioComp.TogglePower( !m_BaseRadioComp.IsPowered() );
+		m_BaseRadioComp.SetPower( !m_BaseRadioComp.IsPowered() );
 		m_bIsPowered = m_BaseRadioComp.IsPowered();
 
 		if (m_bIsPowered)
@@ -89,27 +89,41 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	//! \param direction decides whether the frequency is increased (true) / decreased (false)
 	bool ChangeFrequencyStep(bool direction)
 	{
-		if (!m_BaseRadioComp.IsPowered())
+		if (!m_BaseRadioComp.IsPowered() || m_bAnimInProgress)
 			return false;
 
 		string strUp = "UP";
 		string strDown = "DOWN";
-		int freq = m_BaseRadioComp.GetFrequency();
-		int freqMax = m_BaseRadioComp.GetMaxFrequency();
-		int freqMin = m_BaseRadioComp.GetMinFrequency();
-
-		if ( ( freq + m_BaseRadioComp.GetFrequencyResolution() ) > freqMax && direction)
+		
+		BaseTransceiver tsv = m_BaseRadioComp.GetTransceiver(0);
+		if (!tsv)
 			return false;
-		else if ( ( freq - m_BaseRadioComp.GetFrequencyResolution() ) < freqMin && !direction)
+
+		int freq = tsv.GetFrequency();
+		int freqMax = tsv.GetMaxFrequency();
+		int freqMin = tsv.GetMinFrequency();
+
+		if ( ( freq + tsv.GetFrequencyResolution() ) > freqMax && direction)
+			return false;
+		else if ( ( freq - tsv.GetFrequencyResolution() ) < freqMin && !direction)
 			return false;
 		else
 		{
 			if (direction)
-				freq += m_BaseRadioComp.GetFrequencyResolution();
+				freq += tsv.GetFrequencyResolution();
 			else
-				freq -= m_BaseRadioComp.GetFrequencyResolution();
-
-			m_BaseRadioComp.SetFrequency(freq);
+				freq -= tsv.GetFrequencyResolution();
+			
+			//FIXME: Do not even try to change frequency without PlayerController
+			PlayerController pc = GetGame().GetPlayerController();
+			if (pc)
+			{
+				RadioHandlerComponent rhc = RadioHandlerComponent.Cast(pc.FindComponent(RadioHandlerComponent));
+				if (rhc)
+				{
+					rhc.SetFrequency(tsv, freq);
+				}
+			}
 
 			float targetAngle;
 
@@ -136,13 +150,17 @@ class SCR_RadioComponent : SCR_GadgetComponent
 		int currentStep = 0;
 
 		stepsCount = GetKnobAnimStepCount(freqUnit);
-		step = ( m_BaseRadioComp.GetMinFrequency() - m_BaseRadioComp.GetFrequency() ) * -1;
+		BaseTransceiver tsv = m_BaseRadioComp.GetTransceiver(0);
+		if (!tsv)
+			return 0.0;
+
+		step = (tsv.GetMinFrequency() - tsv.GetFrequency()) * -1;
 
 		// Special case of preset number of channels
-		if ( m_iRadioType == ERadioType.ANPRC68 )
+		if (m_iRadioType == ERadioType.ANPRC68)
 		{
 			if (step > 0)
-				currentStep = step/m_BaseRadioComp.GetFrequencyResolution();
+				currentStep = step/tsv.GetFrequencyResolution();
 		}
 		// MHz, looking for the first two digits of a 5 digits frequency, steps are based on models dial
 		else if (freqUnit == EFreqUnit.MHZ)
@@ -162,7 +180,7 @@ class SCR_RadioComponent : SCR_GadgetComponent
 			}
 
 			// half steps 050, 150 etc
-			if ( (step/50) % 2 == 0)
+			if ((step/50) % 2 == 0)
 				currentStep = 0;
 			else
 				currentStep = 1;
@@ -356,6 +374,28 @@ class SCR_RadioComponent : SCR_GadgetComponent
 	{
 		return m_BaseRadioComp;
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetFlag()
+	{
+		super.ActivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetFlag()
+	{
+		super.DeactivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+		
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)

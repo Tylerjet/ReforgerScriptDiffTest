@@ -4,16 +4,18 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Economy
-* @{
+/*!
+\addtogroup Economy
+\{
 */
 
-/**
+/*!
 Economy event profile
 */
 class CEEconomyEvent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

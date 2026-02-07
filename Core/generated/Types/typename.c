@@ -4,56 +4,58 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Types
-* @{
+/*!
+\addtogroup Types
+\{
 */
 
 sealed class typename
 {
 	private void typename();
 	private void ~typename();
-	
+
 	const static typename Empty;
-	
+
 	//!Returns type name of variable as string
 	proto external string ToString();
-	/**
-	\brief Returns true when type is the same as 'baseType', or inherited one.
+	/*!
+	Returns true when type is the same as 'baseType', or inherited one.
 	\param baseType typename
 	\returns \p bool true when type is the same as 'baseType', or inherited one.
-	@code
-	???
-	@endcode
+	\code
+		???
+	\endcode
 	*/
 	proto external bool IsInherited(typename baseType);
-	/**
-	\brief Dynamic variant to 'new' keyword. It creates new instance of class
+	/*!
+	Dynamic variant to `new` keyword. It creates new instance of class.
 	\returns \p volatile instance of class
-	@code
-	???
-	@endcode
+	\code
+		???
+	\endcode
 	*/
 	proto external volatile Class Spawn();
 	proto external int GetVariableCount();
 	proto external owned string GetVariableName(int vIdx);
 	proto external typename GetVariableType(int vIdx);
 	proto external bool GetVariableValue(Class var, int vIdx, out void val);
-	/**
-	\brief Return string name of enum value
-	@code
-	DialogPriority prio = DialogPriority.WARNING;
-	Print( typename.EnumToString(DialogPriority, prio) );
-	@endcode
+	/*!
+	Return string name of enum value.
+	\code
+		DialogPriority prio = DialogPriority.WARNING;
+		Print( typename.EnumToString(DialogPriority, prio) );
+	\endcode
 	*/
 	static proto string EnumToString(typename e, int enumValue);
-	/**
-	\brief Return enum value from string name
-	@code
-	Print( typename.StringToEnum(DialogPriority, "WARNING") );
-	@endcode
+	/*!
+	Return enum value from string name.
+	\code
+		Print( typename.StringToEnum(DialogPriority, "WARNING") );
+	\endcode
 	*/
 	static proto int StringToEnum(typename e, string enumName);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -33,7 +33,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		
 		//In the future we will use Weapon.GetWeaponType() and Weapon.GetWeaponSubtype() to determine the weapon shot and add it to the player's profile
 		//For now, simply count a shot
-		playerData.AddShot();
+		playerData.AddStat(SCR_EDataStats.SHOTS, 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		if (weapon.GetWeaponType() == EWeaponType.WT_SMOKEGRENADE)
 			return;
 		
-		playerData.AddGrenadeThrown();
+		playerData.AddStat(SCR_EDataStats.GRENADES_THROWN, 1);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -127,6 +127,25 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		m_mTrackedPossibleShooters.Insert(playerID, controlledEntity);
 	}
 	
+#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	override void OnControlledEntityChanged(IEntity from, IEntity to)
+	{
+		super.OnControlledEntityChanged(from, to);
+		
+		if (to)
+		{
+			int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(to);
+			m_mTrackedPossibleShooters.Insert(playerID, to);
+		}
+		else if (from)
+		{
+			int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(from);
+			m_mTrackedPossibleShooters.Remove(playerID);
+		}
+	}
+#endif
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerKilled(int playerID, IEntity player, IEntity killer)
 	{
@@ -137,8 +156,11 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		if (playerID != 0)
 		{
 			SCR_PlayerData playerData = GetGame().GetDataCollector().GetPlayerData(playerID);
-			playerData.AddDeath();
+			playerData.AddStat(SCR_EDataStats.DEATHS);
 		}
+		
+		if (!player || !killer)
+			return;
 		
 		int killerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(killer);
 		if (killerID == 0) 
@@ -162,9 +184,19 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		if (killerFaction && victimFaction)
 		{
 			if (playerID != 0)
-				killerData.AddKill(killerFaction.IsFactionFriendly(victimFaction));
+			{
+				if (killerFaction.IsFactionFriendly(victimFaction))
+					killerData.AddStat(SCR_EDataStats.FRIENDLY_KILLS);
+				else
+					killerData.AddStat(SCR_EDataStats.KILLS);
+			}
 			else
-				killerData.AddAIKill(killerFaction.IsFactionFriendly(victimFaction));
+			{
+				if (killerFaction.IsFactionFriendly(victimFaction))
+					killerData.AddStat(SCR_EDataStats.FRIENDLY_AI_KILLS);
+				else
+					killerData.AddStat(SCR_EDataStats.AI_KILLS);
+			}
 		}
 	}
 	
@@ -177,7 +209,7 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		
 		m_fTimeSinceUpdate += timeTick;
 		
-		if (m_fTimeSinceUpdate<m_fTimeToUpdate)
+		if (m_fTimeSinceUpdate<TIME_TO_UPDATE)
 			return;
 		
 		SCR_PlayerData playerData;
@@ -190,20 +222,23 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 			playerData = GetGame().GetDataCollector().GetPlayerData(playerId);
 			
 			//DEBUG display
+#ifdef ENABLE_DIAG
 			if (m_StatsVisualization)
 			{
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.DEATHS).SetText(playerData.GetDeaths().ToString());
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.PLAYERKILLS).SetText(playerData.GetPlayerKills().ToString());
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.AIKILLS).SetText(playerData.GetAIKills().ToString());
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.FRIENDLYPLAYERKILLS).SetText(playerData.GetFriendlyPlayerKills().ToString());
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.FRIENDLYAIKILLS).SetText(playerData.GetFriendlyAIKills().ToString());
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.BULLETSSHOT).SetText(playerData.GetBulletsShot().ToString());
-				m_StatsVisualization.Get(SCR_EShootingModuleStats.GRENADESTHROWN).SetText(playerData.GetGrenadesThrown().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.DEATHS).SetText(playerData.GetCurrentDeaths().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.PLAYERKILLS).SetText(playerData.GetCurrentPlayerKills().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.AIKILLS).SetText(playerData.GetCurrentAIKills().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.FRIENDLYPLAYERKILLS).SetText(playerData.GetCurrentFriendlyPlayerKills().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.FRIENDLYAIKILLS).SetText(playerData.GetCurrentFriendlyAIKills().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.BULLETSSHOT).SetText(playerData.GetCurrentBulletsShot().ToString());
+				m_StatsVisualization.Get(SCR_EShootingModuleStats.GRENADESTHROWN).SetText(playerData.GetCurrentGrenadesThrown().ToString());
 			}
+#endif
 		}
 		m_fTimeSinceUpdate = 0;
 	}
 	
+#ifdef ENABLE_DIAG
 	//------------------------------------------------------------------------------------------------
 	override void CreateVisualization()
 	{
@@ -219,8 +254,10 @@ class SCR_DataCollectorShootingModule : SCR_DataCollectorModule
 		CreateEntry("Bullets Shot: ", 0, SCR_EShootingModuleStats.BULLETSSHOT);
 		CreateEntry("Grenades Thrown: ", 0, SCR_EShootingModuleStats.GRENADESTHROWN);
 	}
+#endif
 };
 
+#ifdef ENABLE_DIAG
 enum SCR_EShootingModuleStats
 {
 	DEATHS,
@@ -231,3 +268,4 @@ enum SCR_EShootingModuleStats
 	BULLETSSHOT,
 	GRENADESTHROWN
 };
+#endif

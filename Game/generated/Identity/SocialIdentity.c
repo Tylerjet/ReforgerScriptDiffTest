@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Identity
-* @{
+/*!
+\addtogroup Identity
+\{
 */
 
 class SocialIdentity: ScriptAndConfig
@@ -17,6 +17,8 @@ class SocialIdentity: ScriptAndConfig
 	proto external string GetName(int id);
 	proto external string GetAlias(int id);
 	proto external string GetSurname(int id);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

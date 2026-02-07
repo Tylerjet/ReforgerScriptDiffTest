@@ -30,18 +30,15 @@ class SCR_OverrideCharacterMedicalEditorAttribute : SCR_BaseEditorAttribute
 	}
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-		
+	{		
 		if (isInit)
 		{
 			manager.SetAttributeAsSubAttribute(SCR_CharRegenEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_CharBleedingEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_CharUnconsciousnessEditorAttribute);
 		}	
-				
-		bool isOverriden = var.GetBool();
+		
+		bool isOverriden = (var && var.GetBool());
 		
 		manager.SetAttributeEnabled(SCR_CharRegenEditorAttribute, isOverriden);
 		manager.SetAttributeEnabled(SCR_CharBleedingEditorAttribute, isOverriden);

@@ -1,7 +1,7 @@
 /*!
 	This object allows advancing and simulating individual camera shake(s).
 */
-class SCR_RecoilCameraShakeProgress : SCR_CameraShakeProgress
+class SCR_RecoilCameraShakeProgress : SCR_GenericCameraShakeProgress
 {
 	protected float m_fProgress;
 	protected float m_fVelocity;

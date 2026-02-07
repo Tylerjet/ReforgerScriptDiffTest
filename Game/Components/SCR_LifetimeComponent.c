@@ -24,6 +24,5 @@ class SCR_LifetimeComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 };

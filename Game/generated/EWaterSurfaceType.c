@@ -9,5 +9,5 @@ enum EWaterSurfaceType
 	WST_NONE,
 	WST_OCEAN,
 	WST_POND,
-	WST_RIVER
-};
+	WST_RIVER,
+}

@@ -6,10 +6,10 @@ class SCR_SpawnProtectionComponentClass: SCR_BaseGameModeComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_SpawnProtectionComponent: SCR_BaseGameModeComponent
 {
-	[Attribute(defvalue: "0.5", desc: "How long should be player protected?")]
+	[Attribute(defvalue: "0.1", desc: "How long should be player protected?")]
 	protected float m_fProtectionTime;
 	
-	[Attribute(defvalue: "2", desc: "How long can be player protected in maximum (failsafe value, to be used if player loading takes too long)?")]
+	[Attribute(defvalue: "10", desc: "How long can be player protected in maximum (failsafe value, to be used if player loading takes too long)?")]
 	protected float m_fProtectionTimeMaximum;
 	
 	[Attribute(defvalue: "1", desc: "Should be protection disabled if player shoots?")]

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 enum EWeaponType
@@ -20,7 +20,9 @@ enum EWeaponType
 	WT_HANDGUN,
 	WT_FRAGGRENADE,
 	WT_SMOKEGRENADE,
-	WT_COUNT
-};
+	WT_COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

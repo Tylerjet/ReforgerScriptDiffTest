@@ -14,7 +14,15 @@ class SCR_CampaignTutorialStage85 : SCR_BaseCampaignTutorialStage
 	//------------------------------------------------------------------------------------------------
 	override protected bool GetIsFinished()
 	{
-		return (m_TutorialComponent.GetPlayerRadio().GetFrequency() == DESIRED_FREQUENCY);
+		BaseRadioComponent radioComp = m_TutorialComponent.GetPlayerRadio();
+		if (!radioComp)
+			return false;
+
+		BaseTransceiver tsv = radioComp.GetTransceiver(0);
+		if (!tsv)
+			return false;
+
+		return tsv.GetFrequency() == DESIRED_FREQUENCY;
 	}
 	
 	//------------------------------------------------------------------------------------------------

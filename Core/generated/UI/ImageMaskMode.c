@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 enum ImageMaskMode
@@ -14,7 +14,9 @@ enum ImageMaskMode
 	REGULAR,
 	INVERTED,
 	RANGE,
-	RANGE_INVERTED
-};
+	RANGE_INVERTED,
+}
 
-/** @}*/
+/*!
+\}
+*/

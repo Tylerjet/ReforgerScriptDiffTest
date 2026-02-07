@@ -1,22 +1,8 @@
 class SCR_HealingUserAction : ScriptedUserAction
 {
-	[Attribute("0", UIWidgets.ComboBox, "Which hitzone group will be checked for conditions", "Healing useraction", ParamEnumArray.FromEnum(ECharacterHitZoneGroup) )]
+	[Attribute("0", UIWidgets.ComboBox, "Which hitzone group will be checked for conditions", enums:ParamEnumArray.FromEnum(ECharacterHitZoneGroup) )]
 	protected ECharacterHitZoneGroup m_eHitZoneGroup;
 
-	//------------------------------------------------------------------------------------------------
-	//! Method called from scripted interaction handler when an action is started (progress bar appeared)
-	//! \param pUserEntity The entity that started performing this action
-	override void OnActionStart(IEntity pUserEntity)
-	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
-		if (!character)
-			return;
-		
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(character);
-		if (consumableComponent)
-			consumableComponent.SetAlternativeModel(true);
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	protected SCR_ConsumableItemComponent GetConsumableComponent(notnull ChimeraCharacter userChar)
 	{

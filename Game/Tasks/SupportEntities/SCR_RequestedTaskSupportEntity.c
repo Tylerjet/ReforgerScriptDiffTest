@@ -89,14 +89,14 @@ class SCR_RequestedTaskSupportEntity : SCR_BaseTaskSupportEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnContextualEntryShow(SCR_MapContextualMenuEntry entry, Widget button)
+	/*void OnContextualEntryShow(SCR_MapContextualMenuEntry entry, Widget button)
 	{
 		TextWidget textWidget = TextWidget.Cast(button.FindAnyWidget("Text"));
 		if (!textWidget)
 			return;
 		
 		SetRequestButtonText(textWidget);
-	}
+	}*/
 	
 	//------------------------------------------------------------------------------------------------
 	void Request()
@@ -112,16 +112,16 @@ class SCR_RequestedTaskSupportEntity : SCR_BaseTaskSupportEntity
 		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapContextualMenuUI));
 		if (!ctxMenu)
 			return;
-		
-		SCR_MapContextualMenuRequestedTaskEntry entry = new SCR_MapContextualMenuRequestedTaskEntry(m_sRequestButtonText);
+				
+		SCR_MapMenuRequestedTaskEntry entry = new SCR_MapMenuRequestedTaskEntry(m_sRequestButtonText);
 		if (!entry)
 			return;
 		
-		ctxMenu.ContextInsertDynamic(entry);
+		ctxMenu.InsertCustomRadialEntry(entry);
 		
 		entry.SetSupportClass(this);
 		entry.m_OnClick.Insert(Request);
-		entry.m_OnShow.Insert(OnContextualEntryShow);
+		//entry.m_OnShow.Insert(OnContextualEntryShow);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -5,24 +5,30 @@ class SCR_AIAgentDebugPanel : Managed
 {
 	AIAgent m_Agent;
 	SCR_AIGroup m_Group;
-	IEntity m_ControlledEnt;
+	IEntity m_Entity;
 	protected bool m_bRequestClose = false;
 	
 	protected string m_sWindowTitle;
 	
 	protected bool m_bShowPerception;
 	
-	void SCR_AIAgentDebugPanel(AIAgent agent)
+	// The debug panel can be created for non-AI as well, for instance for vehicles.
+	void SCR_AIAgentDebugPanel(AIAgent agent, IEntity entity)
 	{
 		m_Agent = agent;
 		m_Group = SCR_AIGroup.Cast(agent);
-		m_ControlledEnt = agent.GetControlledEntity();
+		m_Entity = entity;
 	}
 	
 	bool Update(float timeSlice)
 	{
+		Class objForTitle;
+		if (m_Agent)
+			objForTitle = m_Agent;
+		else if (m_Entity)
+			objForTitle = m_Entity;
 		if (m_sWindowTitle.IsEmpty())
-			m_sWindowTitle = string.Format("DbgPnl %1", m_Agent);
+			m_sWindowTitle = string.Format("DbgPnl %1", objForTitle);
 		
 		DbgUI.Begin(m_sWindowTitle);
 		
@@ -31,10 +37,14 @@ class SCR_AIAgentDebugPanel : Managed
 		SCR_AIGroupInfoComponent groupInfoComp;	// For groups
 		SCR_MailboxComponent mailboxComp;
 		PerceptionComponent perception;
+		PerceivableComponent perceivable;
+		SCR_AIBaseUtilityComponent utilityComp;
+		SCR_AIUtilityComponent unitUtilityComp;
+		SCR_AICombatComponent combatComp;
 		
-		if (!m_Agent && !m_Group)
+		if (!m_Agent && !m_Group && !m_Entity)
 		{
-			DbgUI.Text("Agent is null!");
+			DbgUI.Text("The target doesn't exist!");
 		}
 		else
 		{
@@ -43,23 +53,29 @@ class SCR_AIAgentDebugPanel : Managed
 			DbgUI.Text(agentName);
 			
 			
-			baseInfoComp = SCR_AIInfoBaseComponent.Cast(m_Agent.FindComponent(SCR_AIInfoBaseComponent));
-			infoComp = SCR_AIInfoComponent.Cast(baseInfoComp);
-			groupInfoComp = SCR_AIGroupInfoComponent.Cast(baseInfoComp);
-			mailboxComp = SCR_MailboxComponent.Cast(m_Agent.FindComponent(SCR_MailboxComponent));
-			
-			SCR_AIBaseUtilityComponent utilityComp = SCR_AIBaseUtilityComponent.Cast(m_Agent.FindComponent(SCR_AIBaseUtilityComponent));
-			SCR_AIUtilityComponent unitUtilityComp = SCR_AIUtilityComponent.Cast(utilityComp);
-			
-			SCR_AICombatComponent combatComp;
-			
-			if (m_ControlledEnt)
+			if (m_Agent)
 			{
-				combatComp = SCR_AICombatComponent.Cast(m_ControlledEnt.FindComponent(SCR_AICombatComponent));
-				perception = PerceptionComponent.Cast(m_ControlledEnt.FindComponent(PerceptionComponent));
+				baseInfoComp = SCR_AIInfoBaseComponent.Cast(m_Agent.FindComponent(SCR_AIInfoBaseComponent));
+				infoComp = SCR_AIInfoComponent.Cast(baseInfoComp);
+				groupInfoComp = SCR_AIGroupInfoComponent.Cast(baseInfoComp);
+				mailboxComp = SCR_MailboxComponent.Cast(m_Agent.FindComponent(SCR_MailboxComponent));
+				utilityComp = SCR_AIBaseUtilityComponent.Cast(m_Agent.FindComponent(SCR_AIBaseUtilityComponent));
+				if (utilityComp)
+				{
+					unitUtilityComp = SCR_AIUtilityComponent.Cast(utilityComp);
+				}
+			}
+				
+			
+			if (m_Entity)
+			{
+				combatComp = SCR_AICombatComponent.Cast(m_Entity.FindComponent(SCR_AICombatComponent));
+				perception = PerceptionComponent.Cast(m_Entity.FindComponent(PerceptionComponent));
+				perceivable = PerceivableComponent.Cast(m_Entity.FindComponent(PerceivableComponent));
 			}
 			
-			DbgUI.Text(string.Format("LOD: %1", m_Agent.GetLOD()));
+			if (m_Agent)
+				DbgUI.Text(string.Format("LOD: %1", m_Agent.GetLOD()));
 			
 			if (infoComp)
 			{
@@ -107,73 +123,90 @@ class SCR_AIAgentDebugPanel : Managed
 				else
 				{
 					DbgUI.Text("Current Action:");
-					float actionPriority = currentAction.Evaluate();
-					string currentActionStr = string.Format("  > %1 %2", actionPriority.ToString(3, 1), typename.EnumToString(EAIActionType, currentAction.m_eType));
+					float actionPriority = currentAction.Evaluate() + currentAction.EvaluatePriorityLevel();
+					string currentActionStr = string.Format("  > %1 %2", actionPriority.ToString(5, 1), currentAction.Type().ToString());
 					DbgUI.Text(currentActionStr);
 				}
 				
 				DbgUI.Text("Actions:");
 				foreach (int i, SCR_AIActionBase action : utilityComp.m_aActions)
 				{
-					float actionPriority = action.Evaluate();
+					float actionPriority = action.Evaluate() + action.EvaluatePriorityLevel();
 					string strSuspended = string.Empty;
 					if (action.m_bSuspended)
 						strSuspended = "(S) ";
-					string actionStr = string.Format("    %1 %2%3 %4", i, strSuspended, actionPriority.ToString(3, 1), typename.EnumToString(EAIActionType, action.m_eType));
+					string actionStr = string.Format("    %1 %2%3 %4", i, strSuspended, actionPriority.ToString(5, 1), action.Type().ToString());
 					DbgUI.Text(actionStr);
 				}
 			}
 			
 			// Dump debug messages button
-			int dumpDbgMsgsDuration;
-			EAIDebugMsgType dbgMsgType;
-			DbgUI.Text("Dump Debug Messages:");
-			
-			DbgUI.Combo("Age", dumpDbgMsgsDuration, {"All", "120 sec", "30 sec", "5 sec"});
-			
-			int dbgMsgTypeSelection;
-			array<string> dbgMsgTypeNames = {};
-			dbgMsgTypeNames.Copy(SCR_AIDebugMessage.s_aAiDebugMsgTypeLabels);
-			dbgMsgTypeNames.InsertAt("All", 0);
-			DbgUI.SameLine();
-			DbgUI.Combo("Type", dbgMsgTypeSelection, dbgMsgTypeNames);
-			dbgMsgType = dbgMsgTypeSelection - 1;
-			bool useDbgMsgTypeFilter = dbgMsgTypeSelection != 0;
-			
-			DbgUI.SameLine();
-			bool dumpMsgs = DbgUI.Button("Dump");
-			
-			if (dumpMsgs)
+			if (baseInfoComp)
 			{
-				int msgAgeThresholdMs;
-				switch (dumpDbgMsgsDuration)
+				int dumpDbgMsgsDuration;
+				EAIDebugMsgType dbgMsgType;
+				DbgUI.Text("Dump Debug Messages:");
+				
+				DbgUI.Combo("Age", dumpDbgMsgsDuration, {"All", "120 sec", "30 sec", "5 sec"});
+				
+				int dbgMsgTypeSelection;
+				array<string> dbgMsgTypeNames = {};
+				dbgMsgTypeNames.Copy(SCR_AIDebugMessage.s_aAiDebugMsgTypeLabels);
+				dbgMsgTypeNames.InsertAt("All", 0);
+				DbgUI.SameLine();
+				DbgUI.Combo("Type", dbgMsgTypeSelection, dbgMsgTypeNames);
+				dbgMsgType = dbgMsgTypeSelection - 1;
+				bool useDbgMsgTypeFilter = dbgMsgTypeSelection != 0;
+				
+				DbgUI.SameLine();
+				bool dumpMsgs = DbgUI.Button("Dump");
+				
+				if (dumpMsgs)
 				{
-					case 0: msgAgeThresholdMs = -1; break;
-					case 1: msgAgeThresholdMs = 120*1000; break;
-					case 2: msgAgeThresholdMs = 30*1000; break;
-					case 3: msgAgeThresholdMs = 5*1000; break;
+					int msgAgeThresholdMs;
+					switch (dumpDbgMsgsDuration)
+					{
+						case 0: msgAgeThresholdMs = -1; break;
+						case 1: msgAgeThresholdMs = 120*1000; break;
+						case 2: msgAgeThresholdMs = 30*1000; break;
+						case 3: msgAgeThresholdMs = 5*1000; break;
+					}
+					#ifdef AI_DEBUG
+					baseInfoComp.DumpDebugMessages(useTypeFilter: useDbgMsgTypeFilter, msgTypeFilter: dbgMsgType, ageThresholdMs: msgAgeThresholdMs);
+					#endif
 				}
-				#ifdef AI_DEBUG
-				baseInfoComp.DumpDebugMessages(useTypeFilter: useDbgMsgTypeFilter, msgTypeFilter: dbgMsgType, ageThresholdMs: msgAgeThresholdMs);
-				#endif
 			}
 			
 			// Request breakpoint button
-			DbgUI.Text("Breakpoint At:");
-			DbgUI.SameLine();
-			bool rqBreak = DbgUI.Button("Utility Comp.");
-			if (rqBreak && utilityComp)
+			if (utilityComp)
 			{
-				utilityComp.SetEvaluationBreakpoint();
+				DbgUI.Text("Breakpoint At:");
+				DbgUI.SameLine();
+				bool rqBreak = DbgUI.Button("Utility Comp.");
+				if (rqBreak && utilityComp)
+				{
+					utilityComp.SetEvaluationBreakpoint();
+				}
 			}
 			
+			// Show perceivable component
+			if (perceivable)
+			{
+				bool showPerceivable;
+				DbgUI.Check("Show Perceivable", showPerceivable);
+				if (showPerceivable)
+				{
+					ShowPerceivableComponent(perceivable);
+				}
+			}
+			
+			// Show perception
 			if (perception && combatComp)
 			{
-				if (DbgUI.Button(string.Format("Show Targets: %1", m_bShowPerception)))
-					m_bShowPerception = !m_bShowPerception;
+				DbgUI.Check("Show Targets", m_bShowPerception);
 				if (m_bShowPerception)
 				{
-					ShowPerceptionEnemies(m_ControlledEnt, perception, combatComp);
+					ShowPerceptionEnemies(m_Entity, perception, combatComp);
 				}
 			}
 		}
@@ -182,20 +215,19 @@ class SCR_AIAgentDebugPanel : Managed
 		m_bRequestClose = DbgUI.Button("Close");
 		
 		// Locate button
-		if (m_Agent && !m_Group)
+		DbgUI.SameLine();
+		bool locate = DbgUI.Button("Locate");
+		if (locate)
 		{
-			DbgUI.SameLine();
-			bool locate = DbgUI.Button("Locate");
-			if (locate)
-			{
-				array<string> locateTexts = {"I am here!", "Look at me!", "Hey! Look here!", "Here I am!"};
-				IEntity ent;
-				if (m_Agent)
-					ent = m_Agent.GetControlledEntity();
-				else
-					ent = m_Group;
-				SCR_AIDebugVisualization.VisualizeMessage(ent, locateTexts.GetRandomElement(), EAIDebugCategory.NONE, 0.75, Color.Red, fontSize: 20, ignoreCategory: true);
-			}
+			array<string> locateTexts = {"I am here!", "Look at me!", "Hey! Look here!", "Here I am!"};
+			IEntity ent;
+			if (m_Agent)
+				ent = m_Agent.GetControlledEntity();
+			else if (m_Group)
+				ent = m_Group;
+			else
+				ent = m_Entity;
+			SCR_AIDebugVisualization.VisualizeMessage(ent, locateTexts.GetRandomElement(), EAIDebugCategory.NONE, 0.75, Color.Red, fontSize: 20, ignoreCategory: true);
 		}
 		
 		// Kill button
@@ -205,7 +237,7 @@ class SCR_AIAgentDebugPanel : Managed
 			bool forceDeath = DbgUI.Button("Kill");
 			if (forceDeath)
 			{
-				CharacterControllerComponent cntrlComp = CharacterControllerComponent.Cast(m_ControlledEnt.FindComponent(CharacterControllerComponent));
+				CharacterControllerComponent cntrlComp = CharacterControllerComponent.Cast(m_Entity.FindComponent(CharacterControllerComponent));
 				if (cntrlComp)
 					cntrlComp.ForceDeath();
 			}
@@ -222,6 +254,7 @@ class SCR_AIAgentDebugPanel : Managed
 		vector myPos = myEntity.GetOrigin();
 		
 		array<ETargetCategory> targetCategories = {
+			ETargetCategory.UNKNOWN,
 			ETargetCategory.ENEMY,
 			ETargetCategory.DETECTED,
 			//ETargetCategory.FRIENDLY,
@@ -229,18 +262,32 @@ class SCR_AIAgentDebugPanel : Managed
 			ETargetCategory.STATIC,
 		};
 		
+		FactionAffiliationComponent myFactionComp = FactionAffiliationComponent.Cast(myEntity.FindComponent(FactionAffiliationComponent));
+		Faction myFaction = myFactionComp.GetAffiliatedFaction();
+		
 		BaseTarget selectedTarget = combatComponent.GetCurrentTarget();
 		
+		DbgUI.Text("[ID Category TimeSinceSeen Dngr Type Exp Detect Ident]");
+		
 		array<BaseTarget> targets = {};
+		int targetId = 0;
 		foreach (ETargetCategory targetCategory : targetCategories)
 		{
 			targets.Clear();
 			perception.GetTargetsList(targets, targetCategory);
-			foreach (BaseTarget baseTarget : targets)
+			foreach (int i, BaseTarget baseTarget : targets)
 			{
 				IEntity targetEntity = baseTarget.GetTargetEntity();
 				if (!targetEntity)
 					continue;
+				
+				// Don't list target if it has same faction as we do
+				FactionAffiliationComponent targetFactionComp = FactionAffiliationComponent.Cast(targetEntity.FindComponent(FactionAffiliationComponent));
+				if (targetFactionComp)
+				{
+					if (targetFactionComp.GetAffiliatedFaction() == myFaction)
+						continue;
+				}
 				
 				EntityPrefabData prefabData = targetEntity.GetPrefabData();
 				ResourceName prefabName = prefabData.GetPrefabName();
@@ -290,11 +337,46 @@ class SCR_AIAgentDebugPanel : Managed
 				
 				string strType = typename.EnumToString(EAIUnitType, baseTarget.GetUnitType());
 				
-				string str = string.Format("%1 %2 %3s %4 %5 %6 %7",
-					strSelected, typename.EnumToString(ETargetCategory, targetCategory), strTimeSinceSeen, strEndangering, strType, targetEntity, strPrefabName);
+				float recognitionDetect;
+				float recognitionIdentify;
+				baseTarget.GetAccumulatedRecognition(recognitionDetect, recognitionIdentify);
+				
+				string str = string.Format("%1 %2 %3 %4s %5 %6 %7 %8 %9",
+					targetId, strSelected, typename.EnumToString(ETargetCategory, targetCategory), strTimeSinceSeen, strEndangering, strType,
+					baseTarget.GetExposure().ToString(3,2),
+					recognitionDetect.ToString(3, 2),
+					recognitionIdentify.ToString(3, 2));
 				DbgUI.Text(str);
+				
+				DbgUI.Text(string.Format("%1   %2 %3", targetId, targetEntity, strPrefabName));
+				
+				bool showRecognition = false;
+				DbgUI.Check(string.Format("%1 Recognition", targetId), showRecognition); 
+				if (showRecognition)
+				{
+					
+					DbgUI.Text(string.Format("%1   Exp: %2, Rec: Detect: %3 Identify: %4",
+						targetId, baseTarget.GetExposure().ToString(3, 2), recognitionDetect.ToString(3, 2), recognitionIdentify.ToString(3, 2)));
+					
+					const int plotWidth = 200;
+					const int plotHeight = 150;
+					const int plotHistory = 800;
+					DbgUI.PlotLive(string.Format("%1 Detection", targetId), plotWidth, plotHeight, recognitionDetect, 300);
+					DbgUI.PlotLive(string.Format("%1 Identification", targetId), plotWidth, plotHeight, recognitionIdentify, 300);
+				}
+				
+				targetId++;
 			}
 		}
+	}
+	
+	void ShowPerceivableComponent(PerceivableComponent p)
+	{
+		DbgUI.Text("Recognition Factors:");
+		DbgUI.Text(string.Format("  Visual:   %1", p.GetVisualRecognitionFactor()));
+		DbgUI.Text(string.Format("    Illumination: %1", p.GetIlluminationFactor()));
+		DbgUI.Text(string.Format("  Acoustic: %1", p.GetAcousticRecognitionFactor()));
+		DbgUI.Text(string.Format("Est. visual size: %1", p.GetEstimatedVisualSize()));
 	}
 	
 	//! Returns agent name based on faction and callsign
@@ -309,7 +391,7 @@ class SCR_AIAgentDebugPanel : Managed
 			return returnString;
 			
 		}
-		else
+		else if (m_Agent)
 		{
 			// Unit
 			SCR_CallsignCharacterComponent callsignComp = SCR_CallsignCharacterComponent.Cast(m_Agent.GetControlledEntity().FindComponent(SCR_CallsignCharacterComponent));
@@ -335,6 +417,10 @@ class SCR_AIAgentDebugPanel : Managed
 				}
 			}
 			return str;
+		}
+		else
+		{
+			return string.Empty;
 		}
 	}
 	

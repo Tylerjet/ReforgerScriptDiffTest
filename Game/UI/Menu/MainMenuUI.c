@@ -3,6 +3,8 @@ class MainMenuUI : ChimeraMenuBase
 	protected const string EXPERIMENTAL_LABEL = "#AR-Experimental_WelcomeLabel";
 	protected const string EXPERIMENTAL_MESSAGE = "#AR-Experimental_WelcomeMessage";
 	
+	protected const string WIDGET_GRID = "Grid";
+	
 	protected SCR_MenuTileComponent m_FocusedTile;
 	protected SCR_AccountWidgetComponent m_AccountComponent;
 	protected DialogUI m_BannedDetectionDialog;
@@ -11,12 +13,49 @@ class MainMenuUI : ChimeraMenuBase
 	protected ref array<string> m_aBannedItems = {};
 	protected static ref array<ref SCR_NewsEntry> m_aNews = {};
 	protected static ref array<ref SCR_NewsEntry> m_aNotifications = {};
+	protected ref array<ref Widget> m_aTiles = {};
 
 	protected static bool s_bDidCheckNetwork;
 	protected static const int SERVICES_STATUS_CHECK_DELAY = 2000; // needed for backend API to prepare
+	protected bool m_bFirstLoad;
 
-
-
+	//------------------------------------------------------------------------------------------------
+	protected override void OnMenuInit()
+	{
+		super.OnMenuInit();
+		
+		// Diable buttons interactivity to prevent cliking during fadein anim, eneble afterwhile
+		if (!SplashScreenSequence.s_Sequence)
+			return;
+		
+		EanbleButtonsInGrid(false);
+		SplashScreenSequence.s_Sequence.GetEventOnClose().Insert(OnSplashScreenClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnSplashScreenClose()
+	{
+		EanbleButtonsInGrid(true);
+		SplashScreenSequence.s_Sequence.GetEventOnClose().Remove(OnSplashScreenClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EanbleButtonsInGrid(bool enable)
+	{
+		Widget grid = GetRootWidget().FindAnyWidget(WIDGET_GRID);
+		if (!grid)
+			return;
+		
+		if (m_aTiles.IsEmpty())
+			SCR_WidgetHelper.GetAllChildren(grid, m_aTiles);
+	
+		// Setup buttons 
+		for (int i = 0, count = m_aTiles.Count(); i < count; i++)
+		{
+			m_aTiles[i].SetEnabled(enable)	
+		}
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpen()
 	{
@@ -94,14 +133,12 @@ class MainMenuUI : ChimeraMenuBase
 		GetGame().GetBackendApi().GetClientLobby().MeasureLatency(null);
 	}
 	
-	protected bool m_bFirstLoad;
-
 	//------------------------------------------------------------------------------------------------
 	protected override void OnMenuOpened()
 	{
 		// Opening Last menu
 		SCR_MenuLoadingComponent.LoadLastMenu();
-		//SCR_MenuLoadingComponent.ClearLastMenu();
+		SCR_MenuLoadingComponent.ClearLastMenu();
 
 		// Show experimental dialog 
 		bool exp = GetGame().IsExperimentalBuild();
@@ -117,8 +154,8 @@ class MainMenuUI : ChimeraMenuBase
 		GameSessionStorage.s_Data["m_bMenuFirstOpening"] = "false";
 		
 		// Check playing for the first time, do not show to devs
-		if (Game.IsDev())
-			return;
+		/*if (Game.IsDev())
+			return;*/
 		
 		//bool firstLoad;
 		BaseContainer cont = GetGame().GetGameUserSettings().GetModule("SCR_RecentGames");

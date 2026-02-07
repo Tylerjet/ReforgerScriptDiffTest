@@ -35,10 +35,14 @@ class SCR_CampaignTutorialStage86 : SCR_BaseCampaignTutorialStage
 		if (!radio)
 			return false;
 		
-		if (radio.GetFrequency() != DESIRED_FREQUENCY)
+		BaseTransceiver tsv = radio.GetTransceiver(0);
+		if (!tsv)
+			return false;
+		
+		if (tsv.GetFrequency() != DESIRED_FREQUENCY)
 			m_fSavedTime = 0;
 		
-		bool done = (radio.GetFrequency() == DESIRED_FREQUENCY && m_fSavedTime != 0 && m_fSavedTime + 6000 <= GetGame().GetWorld().GetWorldTime());
+		bool done = tsv.GetFrequency() == DESIRED_FREQUENCY && m_fSavedTime != 0 && m_fSavedTime + 6000 <= GetGame().GetWorld().GetWorldTime();
 		
 		if (done)
 		{
@@ -83,9 +87,13 @@ class SCR_CampaignTutorialStage86 : SCR_BaseCampaignTutorialStage
 		if (!radio)
 			return;
 		
+		BaseTransceiver tsv = radio.GetTransceiver(0);
+		if (!tsv)
+			return;
+		
 		IEntity unit = radio.GetOwner().GetParent();
 		
-		if (unit == m_Player && radio.GetFrequency() == DESIRED_FREQUENCY && radio.IsPowered())
+		if (unit == m_Player && tsv.GetFrequency() == DESIRED_FREQUENCY && radio.IsPowered())
 		{
 			m_fSavedTime = GetGame().GetWorld().GetWorldTime();
 			PlayRadioMsg();

@@ -1089,8 +1089,6 @@ class SCR_BaseTask : GenericEntity
 		
 		RegisterTaskUpdate(SCR_ETaskEventMask.TASK_CREATED);
 		
-		ClearFlags(EntityFlags.ACTIVE, false);
-		
 		m_MapDescriptor = SCR_MapDescriptorComponent.Cast(FindComponent(SCR_MapDescriptorComponent));
 		
 		if (m_MapDescriptor)
@@ -1107,7 +1105,6 @@ class SCR_BaseTask : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_BaseTask(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT);
 		
 		CreateMapUIIcon();

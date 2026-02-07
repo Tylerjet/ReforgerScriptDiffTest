@@ -71,6 +71,11 @@ class SCR_SuperMenuComponent : ScriptedWidgetComponent
 			m_TabView.m_OnContentRemove.Insert(OnTabRemove);
 			
 			m_TabView.Init();
+			
+			// Init opened content 
+			int selected = m_TabView.m_iSelectedTab;
+			Widget content =  m_TabView.GetEntryContent(selected).m_wTab;
+			OnTabShow(m_TabView, content);
 		}
 
 		// Footers 

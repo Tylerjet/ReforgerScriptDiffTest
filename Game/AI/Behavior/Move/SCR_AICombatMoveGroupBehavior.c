@@ -20,29 +20,33 @@ class SCR_AICombatMoveGroupBehavior : SCR_AIMoveBehaviorBase
 			return;
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
 	}
+	
+	//--------------------------------------------------------------------------------------------------------------
+	void InitParameters(vector nextCoverPosition, BaseTarget target)
+	{
+		m_Target.Init(this, target);
+		m_vNextCoverPos.Init(this, nextCoverPosition);
+	}
 
 	//--------------------------------------------------------------------------------------------------------------
-	void SCR_AICombatMoveGroupBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector pos = vector.Zero, float priority = PRIORITY_BEHAVIOR_COMBAT_MOVE_GROUP, IEntity target = null)
+	void SCR_AICombatMoveGroupBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priority = PRIORITY_BEHAVIOR_COMBAT_MOVE_GROUP, float priorityLevel = PRIORITY_LEVEL_NORMAL, IEntity target = null)
 	{
+		BaseTarget _tgt;
 		if (!utility)
 		{
-			BaseTarget _tgt; 
-			m_Target.Init(this, _tgt);
-			m_vNextCoverPos.Init(this, vector.Zero);
+			InitParameters(vector.Zero, _tgt);
 			return;
 		}
-		
-		SCR_AIUtilityComponent util = SCR_AIUtilityComponent.Cast(m_Utility);
-		if (target && util)
+		else if (target)
 		{
-			util.m_CombatComponent.FindTargetByEntity(target);
-			m_Target.Init(this, util.m_CombatComponent.FindTargetByEntity(target));
+			_tgt = utility.m_CombatComponent.FindTargetByEntity(target);
 		}
-		m_vNextCoverPos.Init(this, vector.Zero);
+		
+		InitParameters(vector.Zero, _tgt);
 		
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/CombatMove.bt";
-       	m_fPriority = priority;
-		m_eType = EAIActionType.MOVE_COMBAT_GROUP;
+		m_fPriority = priority;
+		m_fPriorityLevel.m_Value = priorityLevel;
 		m_bUniqueInActionQueue = false;
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.BUSY);
 	}

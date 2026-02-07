@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class ScriptedRadioComponentClass: BaseRadioComponentClass
 {
-};
+}
 
 class ScriptedRadioComponent: BaseRadioComponent
 {
@@ -31,6 +31,8 @@ class ScriptedRadioComponent: BaseRadioComponent
 	\param timeSlice Delta time since last update.
 	*/
 	event void OnFrame(IEntity owner, float timeSlice);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

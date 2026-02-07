@@ -21,7 +21,6 @@ class SCR_VotingKick: SCR_VotingReferendum
 	
 	override bool IsAvailable(int value, bool isOngoing)
 	{
-		return true;
 		//--- Cannot kick yourself
 		if (value == SCR_PlayerController.GetLocalPlayerId())
 			return false;

@@ -28,6 +28,12 @@ class SCR_ArmoryComponent: ScriptComponent
 		}
 	}
 	
+	protected void OnLinkedEntitiesSpawned(SCR_EditorLinkComponent link)
+	{
+		FindFactionComponentsInHiearchy(GetOwner());
+		link.GetOnLinkedEntitiesSpawned().Remove(OnLinkedEntitiesSpawned);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Goes though entity children (recursively) and finds all faction control components
 	protected void FindFactionComponentsInHiearchy(IEntity entity)
@@ -61,7 +67,11 @@ class SCR_ArmoryComponent: ScriptComponent
 		if (IsProxy())
 			return;
 		
-		FindFactionComponentsInHiearchy(GetOwner());
+		SCR_EditorLinkComponent link = SCR_EditorLinkComponent.Cast(owner.FindComponent(SCR_EditorLinkComponent));
+		if (link)
+			link.GetOnLinkedEntitiesSpawned().Insert(OnLinkedEntitiesSpawned);
+		else
+			FindFactionComponentsInHiearchy(owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -70,7 +80,6 @@ class SCR_ArmoryComponent: ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 }
 

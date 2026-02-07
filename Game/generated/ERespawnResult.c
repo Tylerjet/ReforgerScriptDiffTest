@@ -16,5 +16,5 @@ enum ERespawnResult
 	//! Respawn failed: Unknown error occured.
 	UNKNOWN,
 	//! Respawn failed: No response received, client time out.
-	TIMEOUT
-};
+	TIMEOUT,
+}

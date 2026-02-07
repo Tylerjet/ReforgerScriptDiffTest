@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 enum EWeaponFiremodeType
@@ -14,7 +14,9 @@ enum EWeaponFiremodeType
 	Safety,
 	Semiauto,
 	Auto,
-	Burst
-};
+	Burst,
+}
 
-/** @}*/
+/*!
+\}
+*/

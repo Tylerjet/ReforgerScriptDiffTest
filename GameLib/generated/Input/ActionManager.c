@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Input
-* @{
+/*!
+\addtogroup Input
+\{
 */
 
 //! ActionManager holds information about states of registered Contexts and Actions
@@ -14,7 +14,7 @@ sealed class ActionManager
 {
 	private void ActionManager();
 	private void ~ActionManager();
-	
+
 	//! Show debug info via DbgUI
 	proto external void SetDebug(int debugMode);
 	proto external bool ActivateContext(string contextName, int duration = 0);
@@ -33,6 +33,8 @@ sealed class ActionManager
 	proto external string GetActionName(int actionIndex);
 	proto external void AddActionListener(string actionName, EActionTrigger trigger,  ActionListenerCallback callback);
 	proto external bool RemoveActionListener(string actionName, EActionTrigger trigger,  ActionListenerCallback callback);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

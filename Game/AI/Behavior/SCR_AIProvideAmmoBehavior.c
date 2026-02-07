@@ -14,12 +14,12 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 	ref SCR_AIMoveIndividuallyBehavior m_MoveBehavior;
 	
 	//------------------------------------------------------------------------------------------------------------------------------------
-	void SCR_AIProvideAmmoBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity,
-		IEntity ammoConsumer, typename magazineWellType)
+	void SCR_AIProvideAmmoBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity,
+		IEntity ammoConsumer, typename magazineWellType, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		m_fPriority = SCR_AIActionBase.PRIORITY_BEHAVIOR_PROVIDE_AMMO;
+		m_fPriorityLevel.m_Value = priorityLevel;
 		m_sBehaviorTree = "{ADA6E7C5BC3C8C8D}AI/BehaviorTrees/Chimera/Soldier/ProvideAmmo.bt";
-		m_eType = EAIActionType.PROVIDE_AMMO;
 		
 		m_AmmoConsumer.Init(this, ammoConsumer);
 		m_MagazineWellType.Init(this, magazineWellType);
@@ -28,7 +28,7 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 			return;
 		
 		float movePriority = m_fPriority + 0.1;
-		m_MoveBehavior = new SCR_AIMoveIndividuallyBehavior(utility, prioritize, groupActivity, ent: ammoConsumer, priority : movePriority, radius: 30.0);
+		m_MoveBehavior = new SCR_AIMoveIndividuallyBehavior(utility, groupActivity, vector.Zero, priority : movePriority, priorityLevel: priorityLevel, ent: ammoConsumer, radius: 30.0);
 		utility.AddAction(m_MoveBehavior);
 	}
 	
@@ -36,7 +36,7 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 	override float Evaluate()
 	{
 		// Fail is our ammo consumer is not alive any more
-		if(!SCR_AIIsAlive.IsAlive(m_AmmoConsumer.m_Value))
+		if(!SCR_AIDamageHandling.IsAlive(m_AmmoConsumer.m_Value))
 		{
 			Fail();
 			if (m_MoveBehavior)
@@ -66,7 +66,7 @@ class SCR_AIProvideAmmoBehavior : SCR_AIBehaviorBase
 
 class SCR_AIGetProvideAmmoBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIProvideAmmoBehavior(null, false, null, null, BaseMagazineWell)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIProvideAmmoBehavior(null, null, null, BaseMagazineWell)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }

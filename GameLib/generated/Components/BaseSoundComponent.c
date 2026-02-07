@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseSoundComponentClass: GenericComponentClass
 {
-};
+}
 
 class BaseSoundComponent: GenericComponent
 {
@@ -53,6 +53,8 @@ class BaseSoundComponent: GenericComponent
 	proto external void SetMute(bool value);
 	/* Returns the overall gain of the sound associated with the given handle */
 	proto external float GetGain(AudioHandle handle);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

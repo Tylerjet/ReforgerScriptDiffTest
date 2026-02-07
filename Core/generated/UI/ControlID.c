@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 enum ControlID
@@ -27,7 +27,9 @@ enum ControlID
 	TABLEFT,
 	TABRIGHT,
 	RADIALMENU,
-	COUNT
-};
+	COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -77,7 +77,7 @@ class SCR_DestructibleTreeV2 : Tree
 	void SetToDestroy(bool sentRPC = false)
 	{
 		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, false);
+		SetFlags(EntityFlags.ACTIVE);
 		
 		if (RplSession.Mode() == RplMode.Client)
 			return;
@@ -607,7 +607,7 @@ class SCR_DestructibleTreeV2 : Tree
 		{
 			treeData.m_fTimeSinceLastSoundEvent = 0;
 			ClearEventMask(EntityEvent.FRAME);
-			ClearFlags(EntityFlags.ACTIVE, false);
+			ClearFlags(EntityFlags.ACTIVE);
 		}
 	}
 	

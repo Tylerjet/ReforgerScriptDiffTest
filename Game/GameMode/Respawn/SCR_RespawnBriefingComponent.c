@@ -17,7 +17,9 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	[Attribute()]
 	protected ref array<ref SCR_BriefingVictoryCondition> m_aWinConditions;
 
-	protected ref ScriptInvoker m_OnBriefingChanged = new ScriptInvoker();
+	protected ref ScriptInvoker m_OnBriefingChanged = new ScriptInvoker(); 
+	
+	protected bool m_bWasShown = false;
 	
 	/*!
 	\return Local instance of the briefing component.
@@ -68,6 +70,18 @@ class SCR_RespawnBriefingComponent : SCR_BaseGameModeComponent
 	ScriptInvoker GetOnBriefingChanged()
 	{
 		return m_OnBriefingChanged;
+	}
+
+	//------------------------------------------------------------------------------------------------	
+	void SetBriefingShown(bool shown = true)
+	{
+		m_bWasShown = shown;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool GetWasBriefingShown()
+	{
+		return m_bWasShown;
 	}
 };
 

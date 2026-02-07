@@ -4,15 +4,17 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 class TraceSphere: TraceParam
 {
 	float	Radius;
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

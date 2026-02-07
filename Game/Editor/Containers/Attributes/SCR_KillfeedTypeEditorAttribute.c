@@ -59,13 +59,10 @@ class SCR_KillfeedTypeEditorAttribute : SCR_BaseFloatValueHolderEditorAttribute
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
 	{
-		if (!var)
-			return;
-		
 		if (isInit)
 			manager.SetAttributeAsSubAttribute(SCR_KillfeedReceiveTypeEditorAttribute);
 				
-		manager.SetAttributeEnabled(SCR_KillfeedReceiveTypeEditorAttribute, var.GetInt() != 0);
+		manager.SetAttributeEnabled(SCR_KillfeedReceiveTypeEditorAttribute, var && var.GetInt() != 0);
 	}
 
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

@@ -258,6 +258,8 @@ class SCR_BasePreviewEntity: GenericEntity
 					GetParent().GetWorldTransform(transform);
 					Math3D.MatrixMultiply4(transform, m_vLocalTransform, transform);
 					
+					float scale = transform[0].Length();
+					
 					//--- Get surface basis
 					if (!SCR_TerrainHelper.GetTerrainBasis(transform[3], surfaceBasis, GetWorld(), !isUnderwater))
 						return;
@@ -286,7 +288,11 @@ class SCR_BasePreviewEntity: GenericEntity
 					//--- Apply height
 					transform[3][1] = surfaceBasis[3][1] + m_fHeightTerrain + heightTerrain;
 					
-					//--- Apply
+					//--- Preserve scale
+					if (scale != 1)
+						SCR_Math3D.ScaleMatrix(transform, scale);
+					
+					//--- Apply					
 					SetWorldTransform(transform);
 					
 					m_bIsOnOrigTransform = false;
@@ -369,7 +375,6 @@ class SCR_BasePreviewEntity: GenericEntity
 	}
 	void SCR_BasePreviewEntity(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, false);
 	}
 	void ~SCR_BasePreviewEntity()
 	{

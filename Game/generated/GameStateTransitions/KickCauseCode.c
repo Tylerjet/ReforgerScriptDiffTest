@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup GameStateTransitions
-* @{
+/*!
+\addtogroup GameStateTransitions
+\{
 */
 
 /*!
@@ -22,7 +22,9 @@ enum KickCauseCode
 	Predefined value used when gameplay ends as a result of user action and
 	does not need to be explained.
 	*/
-	NONE
-};
+	NONE,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -31,6 +31,9 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 	[Attribute("4", "How fast each button appears")]
 	protected float m_fButtonFadeSpeed;
 	
+	[Attribute("-1", desc: "How much will the list of controls hints be offset vertically.\nKeep -1 to leave it unaffected.")]
+	protected int m_iAvailableActionsOffsetY;
+	
 	//Refs
 	protected Widget m_Root;
 	protected Widget m_ItemHolder;
@@ -181,6 +184,13 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		if (m_ArrowWidget)
 			m_ArrowWidget.SetRotation(90);
 		
+		if (m_iAvailableActionsOffsetY != -1)
+		{
+			SCR_AvailableActionsDisplay availableActionsDisplay = SCR_AvailableActionsDisplay.Cast(GetGame().GetHUDManager().FindInfoDisplay(SCR_AvailableActionsDisplay));
+			if (availableActionsDisplay)
+				availableActionsDisplay.SetAdditionalOffsetY(m_iAvailableActionsOffsetY);
+		}
+		
 		//Rotate arrow
 		
 		m_bIsOpened = true;
@@ -207,6 +217,13 @@ class SCR_CustomDropdownEditorUIComponent: ScriptedWidgetComponent
 		// Set arrow image angle
 		if (m_ArrowWidget)
 			m_ArrowWidget.SetRotation(270);
+		
+		if (m_iAvailableActionsOffsetY != -1)
+		{
+			SCR_AvailableActionsDisplay availableActionsDisplay = SCR_AvailableActionsDisplay.Cast(GetGame().GetHUDManager().FindInfoDisplay(SCR_AvailableActionsDisplay));
+			if (availableActionsDisplay)
+				availableActionsDisplay.SetAdditionalOffsetY(0);
+		}
 		
 		m_bIsOpened = false;
 		Event_OnDropdownClosed.Invoke(this);

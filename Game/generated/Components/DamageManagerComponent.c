@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class DamageManagerComponent: SCR_HitZoneContainerComponent
@@ -60,9 +60,9 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	Removes DOT of provided damageType from all currently affected HitZones.
 	*/
 	proto external void RemoveDamageOverTime(EDamageType dType);
-	
+
 	// callbacks
-	
+
 	/*!
 	Invoked every time the DoT is added to certain hitzone.
 	*/
@@ -75,6 +75,8 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	Called when the damagestate changes.
 	*/
 	event protected void OnDamageStateChanged(EDamageState state);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

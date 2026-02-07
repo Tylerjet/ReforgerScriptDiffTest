@@ -5,6 +5,16 @@ class BaseCompartmentSlot : ExtBaseCompartmentSlot
 	
 	private bool m_bCompartmentAccessible = true;
 
+	override void DebugDrawPosition()
+	{
+		Color c = Color.White;
+		if (!m_bCompartmentAccessible)
+			c = Color.Black;
+		vector pos = GetPosition();
+		if (pos != vector.Zero)
+			Shape.CreateCylinder(c.PackToInt(), ShapeFlags.ONCE, GetPosition(), 0.05, 5);
+	}
+	
 	bool IsCompartmentAccessible() 
 	{
 		return m_bCompartmentAccessible;

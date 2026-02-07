@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class CharacterModifierAttributes: BaseItemAttributeData
@@ -47,6 +47,8 @@ class CharacterModifierAttributes: BaseItemAttributeData
 	Returns true if character can jump when item is equipped
 	*/
 	proto external bool IsJumpingAllowed();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

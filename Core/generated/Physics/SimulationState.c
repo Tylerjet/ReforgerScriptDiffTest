@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -22,7 +22,9 @@ enum SimulationState
 	//! body is in collision world, but it's not simulated
 	COLLISION,
 	//! dynamic bodies are colliding and are simulated
-	SIMULATION
-};
+	SIMULATION,
+}
 
-/** @}*/
+/*!
+\}
+*/

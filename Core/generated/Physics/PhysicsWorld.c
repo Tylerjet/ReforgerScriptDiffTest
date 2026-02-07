@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -16,7 +16,7 @@ sealed class PhysicsWorld
 {
 	private void PhysicsWorld();
 	private void ~PhysicsWorld();
-	
+
 	/*!
 	Modifies interaction matrix of interaction layers
 	\param worldEntity Entity used to obtain world in which entities exist
@@ -63,6 +63,8 @@ sealed class PhysicsWorld
 	\param index Index of a dynamic body. Must be within bounds (GetNumDynamicBodies)
 	*/
 	static proto IEntity GetDynamicBody(notnull IEntity worldEntity, int index);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

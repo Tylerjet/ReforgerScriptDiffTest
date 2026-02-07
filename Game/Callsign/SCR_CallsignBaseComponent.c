@@ -142,7 +142,6 @@ class SCR_CallsignBaseComponent : ScriptComponent
 	//---------------------------------------- Post Init ----------------------------------------\\
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 };

@@ -49,6 +49,12 @@ class SCR_WheelHitZone : SCR_DestructibleHitzone
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	int GetWheelIndex()
+	{
+		return m_iWheelId;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void SetWheelIndex(int index)
 	{
 		m_iWheelId = index;

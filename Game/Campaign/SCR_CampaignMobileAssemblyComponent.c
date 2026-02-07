@@ -51,8 +51,8 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
+		
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 		
 		m_RplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		GetGame().GetCallqueue().CallLater(UpdateRadioCoverage, 1000, true);
@@ -79,6 +79,9 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 	override void OnDelete(IEntity owner)
 	{
 		super.OnDelete(owner);
+		
+		GetGame().GetCallqueue().Remove(UpdateRadioCoverage);
+		GetGame().GetCallqueue().Remove(UpdateRespawnCooldown);		
 		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Remove(OnParentFactionIDSet);
 		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Remove(OnDeployChanged);
 	}
@@ -94,6 +97,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 			{
 				m_SpawnPoint = SCR_SpawnPoint.Cast(child);
 				GetGame().GetCallqueue().Remove(AssignSpawnpoint);
+				m_SpawnPoint.SetOrigin(m_SpawnPoint.GetOrigin() + vector.Up)
 			}
 				
 			child = child.GetSibling();
@@ -286,7 +290,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 				Replication.BumpMe();
 				
 				if (radioComponent)
-					radioComponent.TogglePower(true);
+					radioComponent.SetPower(true);
 			}
 			
 			if (RplSession.Mode() != RplMode.Dedicated)
@@ -306,7 +310,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 				Replication.BumpMe();
 				
 				if (radioComponent)
-					radioComponent.TogglePower(false);
+					radioComponent.SetPower(false);
 			}
 			
 			if (m_MapItem && RplSession.Mode() != RplMode.Dedicated)
@@ -442,7 +446,7 @@ class SCR_CampaignMobileAssemblyComponent : ScriptComponent
 					BaseRadioComponent radioComponent = BaseRadioComponent.Cast(vehicle.FindComponent(BaseRadioComponent));
 					
 					if (radioComponent)
-						radioComponent.TogglePower(false);
+						radioComponent.SetPower(false);
 				}
 			}
 		}

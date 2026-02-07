@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
-/**
+/*!
 Type of descriptor
 */
 enum EMapDescriptorType
@@ -110,7 +110,9 @@ enum EMapDescriptorType
 	//! remaining types are not colorized by faction
 	MDT_COLORIZE_COUNT,
 	MDT_DEBUG_POINTS,
-	MDT_COUNT
-};
+	MDT_COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

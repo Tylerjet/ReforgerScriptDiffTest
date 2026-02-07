@@ -4,22 +4,22 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class GarbageManagerClass: GenericEntityClass
 {
-};
+}
 
 /*!
 Allows semi-automatic management and disposal of 'garbage'.
 
 Following types support being marked as garbage:
-ChimeraCharacter
-Vehicle
-InventoryItemComponent
+	ChimeraCharacter
+	Vehicle
+	InventoryItemComponent
 
 Instances of such types can be inserted and removed from automatic collection.
 Default life time of individual categories can be set in entity attributes.
@@ -69,9 +69,9 @@ class GarbageManager: GenericEntity
 	Forcefully disposes of all enqueued garbage instances in a single pass.
 	*/
 	proto external void Flush();
-	
+
 	// callbacks
-	
+
 	/*
 	Returns whether provided instance can be collected by the system.
 	Override and implement custom logic in derived classes.
@@ -81,6 +81,8 @@ class GarbageManager: GenericEntity
 	\return Returns true if item can be inserted, false otherwise.
 	*/
 	event protected bool CanInsert(IEntity ent) { return true; };
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -15,9 +15,6 @@ class SCR_ListAddonsSubMenuWidgets
 	ButtonWidget m_ToolsButton;
 	SCR_ModularButtonComponent m_ToolsButtonComponent;
 
-	ButtonWidget m_ToolsExport;
-	SCR_ModularButtonComponent m_ToolsExportComponent;
-
 	SizeLayoutWidget m_DisabledAddonsPanel;
 	
 	ScrollLayoutWidget m_DisabledAddonsScroll;
@@ -43,9 +40,6 @@ class SCR_ListAddonsSubMenuWidgets
 		
 		m_ToolsButton = ButtonWidget.Cast(root.FindWidget("Size.PanelsHorizontal.VerticalAddons.TopBar.Content.HorizontalContent.m_ToolsButton"));
 		m_ToolsButtonComponent = SCR_ModularButtonComponent.Cast(m_ToolsButton.FindHandler(SCR_ModularButtonComponent));
-
-		m_ToolsExport = ButtonWidget.Cast(root.FindWidget("Size.PanelsHorizontal.VerticalAddons.TopBar.Content.HorizontalContent.m_ToolsExport"));
-		m_ToolsExportComponent = SCR_ModularButtonComponent.Cast(m_ToolsExport.FindHandler(SCR_ModularButtonComponent));
 
 		m_DisabledAddonsPanel = SizeLayoutWidget.Cast(root.FindWidget("Size.PanelsHorizontal.VerticalAddons.HorizontalAddons.m_DisabledAddonsPanel"));
 

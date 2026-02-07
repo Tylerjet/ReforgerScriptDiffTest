@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Buildings
-* @{
+/*!
+\addtogroup Buildings
+\{
 */
 
 class LadderComponentClass: GameComponentClass
 {
-};
+}
 
 class LadderComponent: GameComponent
 {
@@ -26,6 +26,8 @@ class LadderComponent: GameComponent
 	\param frontTop Desired state of entry.
 	*/
 	proto external void SetEnabledEntry(bool frontTop);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

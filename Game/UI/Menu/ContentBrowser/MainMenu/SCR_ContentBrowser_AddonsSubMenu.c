@@ -213,9 +213,6 @@ class SCR_ContentBrowser_AddonsSubMenu : SCR_SubMenuBase
 	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
 	{
 		// Check and show backend down 
-		if (GetShown())
-			GetGame().GetCallqueue().CallLater(CheckBackendDown);
-		
 		super.OnMenuShow(parentMenu);
 		
 		// Init workshop API

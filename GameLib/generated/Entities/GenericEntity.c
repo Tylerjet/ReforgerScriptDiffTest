@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
-/**
+/*!
 * Base entity class.
 */
 class GenericEntity: IEntity
@@ -24,13 +24,15 @@ class GenericEntity: IEntity
 	*/
 	event protected bool RplSave(ScriptBitWriter writer);
 	static event bool Preload(IEntitySource src);
-	
-	/**
-	* Activate entity.
+
+	/*!
+	* Activate entity events.
+	* Will also activate all components of the entity.
 	*/
 	proto external void Activate();
-	/**
-	* Deactivate entity.
+	/*!
+	* Deactivate entity events.
+	* Will also deactivate all components of the entity.
 	*/
 	proto external void Deactivate();
 	proto external void Show(bool show);
@@ -44,40 +46,48 @@ class GenericEntity: IEntity
 	static proto void GetMatrixFromSource(BaseWorld world, IEntitySource src, bool withScale, out vector mat[4]);
 	/*!
 	Native implementation of OnTransformReset.
-	
+
 	The default implementation handles particles (if present on the entity)
 	and calls OnTransformReset on all of the entity's GenericComponent instances and child
 	GenericEntity instances with auto-transform enabled
 	(i.e. it handles the whole entity and component hierarchy by recursion).
-	
+
 	Can be overridden in the native code to alter the default behavior
 	(usually the override should also call the base implementation to preserve the recursion).
 	There's a script version of OnTransformResetImpl to override.
-	
+
 	\param params See the TransformResetParams documentation.
 	*/
 	proto external private void OnTransformResetImplNative(TransformResetParams params);
 	/*!
 	Notifies the entity that its transformation has been discontinuously changed.
-	
+
 	Should be called after any transformation discontinuity (right after updating the transform)
 	e.g. by teleportation or desync-correction code so the entity can react appropriately.
-	
+
 	The default implementation handles Particles (if present on the entity)
 	and calls OnTransformReset on all of the entity's GenericComponent instances and child
 	GenericEntity instances with auto-transform enabled
 	(i.e. it handles the whole entity and component hierarchy by recursion).
-	
+
 	The default behavior may be changed in inherited entities by overriding OnTransformResetImpl.
-	
+
 	\param isCorrection [optional] Hint that the transform was reset due to its correction (e.g. by net-code),
-	i.e. not a placement/teleport
+	                    i.e. not a placement/teleport
 	\param newVelocity  [optional] Initial velocity of the entity after the transform reset
 	*/
 	proto external void OnTransformReset(bool isCorrection = false, vector newVelocity = vector.Zero);
-	
+
 	// callbacks
-	
+
+	/*!
+	* Event when entity is activated.
+	*/
+	event protected void EOnActivate(IEntity owner);
+	/*!
+	* Event when entity is deactivated.
+	*/
+	event protected void EOnDeactivate(IEntity owner);
 	//! Editor needs to know if there is any entity which manages this one and is editable
 	event IEntity _WB_GetEditableOwner();
 	//! Editor needs to have entity visible or not. Do not call editor API here!
@@ -100,7 +110,7 @@ class GenericEntity: IEntity
 	event void _WB_GetAnchor(inout vector position, IEntitySource src, int index);
 	/*!
 	Called when two entities are snapped together
-	\param isReciever True if another entity snapped to this one, false otherwise.
+	\param isReceiver True if another entity snapped to this one, false otherwise.
 	*/
 	event void _WB_OnAnchorSnapped(IEntitySource thisSrc, int thisAnchor, IEntitySource otherSrc, int otherAnchor, bool isReceiver);
 	/*!
@@ -138,17 +148,19 @@ class GenericEntity: IEntity
 	event void _WB_OnRename(IEntitySource src, string oldName);
 	/*!
 	Script-side implementation of OnTransformReset.
-	
+
 	The default implementation handles Particles (if present on the entity)
 	and calls OnTransformReset on all of the entity's GenericComponent instances and child
 	GenericEntity instances (i.e. it handles the whole entity and component hierarchy by recursion).
-	
+
 	Can be overridden to alter the default behavior.
 	Usually, you'll want to call the base implementation somewhere in the override to preserve the recursion.
-	
+
 	\param params See the TransformResetParams documentation.
 	*/
 	event protected void OnTransformResetImpl(TransformResetParams params){ OnTransformResetImplNative(params); };
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

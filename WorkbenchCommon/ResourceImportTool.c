@@ -193,7 +193,7 @@ class ResourceImportPlugin: ResourceManagerPlugin
 	//--------------------------------------------------------------------
 	override string OnGetMaterialGenerateDir(string absModelPath)
 	{
-		return absModelPath + "/data";
+		return absModelPath + "/Data";
 	}
 	
 	//--------------------------------------------------------------------

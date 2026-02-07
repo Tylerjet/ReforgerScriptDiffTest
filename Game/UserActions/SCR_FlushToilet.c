@@ -1,18 +1,34 @@
 //------------------------------------------------------------------------------------------------
 class SCR_FlushToilet : ScriptedUserAction
 {	
-	protected AudioHandle m_AudioHandle = AudioHandle.Invalid;
+	[Attribute("", UIWidgets.Auto)]
+	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
+	
+	[Attribute("", UIWidgets.Coords)]
+	private vector m_vSoundOffset;
+	
+	private AudioHandle m_AudioHandle = AudioHandle.Invalid;
 	
 	//------------------------------------------------------------------------------------------------
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity) 
 	{						
-		SoundComponent soundComponent = SoundComponent.Cast(pOwnerEntity.FindComponent(SoundComponent));
-		
-		if (!soundComponent)
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (!soundManagerEntity)
+			return;
+				
+		if (!m_AudioSourceConfiguration || !m_AudioSourceConfiguration.IsValid())
 			return;
 		
-		// Play sound
-		m_AudioHandle = soundComponent.SoundEvent(SCR_SoundEvent.SOUND_TOILET);
+		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(pOwnerEntity, m_AudioSourceConfiguration);
+		if (!audioSource)
+			return;
+		
+		vector mat[4];
+		mat[3] = pOwnerEntity.CoordToParent(m_vSoundOffset);
+		
+		soundManagerEntity.PlayAudioSource(audioSource, mat);
+	
+		m_AudioHandle = audioSource.m_AudioHandle;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -24,17 +40,13 @@ class SCR_FlushToilet : ScriptedUserAction
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
-	{
-		if (!AudioSystem.IsSoundPlayed(m_AudioHandle))
-			return false;
-		
-		return true;
+	{		
+		return AudioSystem.IsSoundPlayed(m_AudioHandle);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_FlushToilet()
 	{
-		// Tesminate sound
 		AudioSystem.TerminateSound(m_AudioHandle);
 	}
 };

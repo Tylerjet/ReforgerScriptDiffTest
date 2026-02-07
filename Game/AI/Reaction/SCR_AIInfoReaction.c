@@ -26,12 +26,12 @@ class SCR_AIInfoReaction_Contact : SCR_AIInfoReaction
 		if (!msg)
 			return;
 		
-		if (!SCR_AIIsAlive.IsAlive(msg.m_TargetInfo.m_TargetEntity))
+		if (!SCR_AIDamageHandling.IsAlive(msg.m_TargetInfo.m_TargetEntity))
 			return;
 		
 		if (utility.AddOrUpdateTarget(msg.m_TargetInfo))
 		{
-			auto activity = new SCR_AIAttackActivity(utility, false, false, msg.m_TargetInfo, msg.GetSender());
+			auto activity = new SCR_AIAttackActivity(utility, false, msg.m_TargetInfo, msg.GetSender());
 			utility.AddAction(activity);
 		}	
 	}
@@ -50,7 +50,7 @@ class SCR_AIInfoReaction_TargetLost : SCR_AIInfoReaction_Contact
 		utility.RemoveTarget(msg.m_TargetInfo.m_TargetEntity);
 		if (!utility.IsSomeEnemyKnown())
 		{
-			utility.SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.FAILED);
+			utility.SetStateAllActionsOfType(SCR_AIAttackActivity,EAIActionState.FAILED, true);
 			//SetStateAllActionsOfType(EAIActionType.MOVE_COMBAT,EAIActionState.COMPLETED);
 		}		
 	}
@@ -69,7 +69,7 @@ class SCR_AIInfoReaction_TargetLost : SCR_AIInfoReaction_Contact
 		
 		if (utility.m_CombatComponent.HasWeaponOfType(EWeaponType.WT_SNIPERRIFLE))
 		{
-			auto behavior = new SCR_AIFindFirePositionBehavior(utility, false, null, targetPos,
+			auto behavior = new SCR_AIFindFirePositionBehavior(utility, null, targetPos,
 				minDistance: SCR_AIFindFirePositionBehavior.SNIPER_MIN_DISTANCE, maxDistance: SCR_AIFindFirePositionBehavior.SNIPER_MAX_DISTANCE,
 				targetUnitType: EAIUnitType.UnitType_Infantry, duration: SCR_AIFindFirePositionBehavior.SNIPER_DURATION_S);
 			utility.AddAction(behavior);
@@ -78,9 +78,9 @@ class SCR_AIInfoReaction_TargetLost : SCR_AIInfoReaction_Contact
 		{
 			if (utility.IsInvestigationRelevant(targetPos))
 			{
-				auto behavior = new SCR_AIMoveAndInvestigateBehavior(utility, false, null, targetPos,
+				auto behavior = new SCR_AIMoveAndInvestigateBehavior(utility, null, targetPos,
 					isDangerous: true, targetUnitType: EAIUnitType.UnitType_Infantry);
-		
+			
 				utility.AddAction(behavior);
 			}
 		}
@@ -98,7 +98,7 @@ class SCR_AIInfoReaction_TargetEliminated : SCR_AIInfoReaction_Contact
 		utility.RemoveTarget(msg.m_TargetInfo.m_TargetEntity);
 		if (!utility.IsSomeEnemyKnown())
 		{
-			utility.SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.COMPLETED);
+			utility.SetStateAllActionsOfType(SCR_AIAttackActivity, EAIActionState.COMPLETED, true);
 			//SetStateAllActionsOfType(EAIActionType.MOVE_COMBAT,EAIActionState.COMPLETED);
 		}
 	}
@@ -113,7 +113,7 @@ class SCR_AIInfoReaction_NoAmmo : SCR_AIInfoReaction
 		if(!msg)
 			return;
 		
-		auto activity = new SCR_AIResupplyActivity(utility, false, false, msg.m_entityToSupply, msg.m_MagazineWell);
+		auto activity = new SCR_AIResupplyActivity(utility, false, msg.m_entityToSupply, msg.m_MagazineWell, priorityLevel: utility.GetCurrentPriorityLevel());
 		utility.AddAction(activity);
 	}
 };
@@ -133,6 +133,8 @@ class SCR_AIInfoReaction_Wounded : SCR_AIInfoReaction
 		if(!msg)
 			return;
 		AIAgent aiAgent = msg.GetSender();
+		AIGroup aiGroup = utility.m_Owner;
+		float priorityLevel = utility.GetCurrentPriorityLevel();
 		if (aiAgent)
 		{
 			IEntity woundedEntity = aiAgent.GetControlledEntity();
@@ -147,12 +149,15 @@ class SCR_AIInfoReaction_Wounded : SCR_AIInfoReaction
 				
 				// Return if we are already healing this soldier
 				if (healActivity.m_EntityToHeal.m_Value == woundedEntity)
+				{
+					healActivity.SetPriorityLevel(priorityLevel);
 					return;
+				}
 			}
 			
-			auto activity = new SCR_AIHealActivity(utility, false, false, aiAgent.GetControlledEntity());
+			auto activity = new SCR_AIHealActivity(utility, false, aiAgent.GetControlledEntity(), priorityLevel: priorityLevel);
 			utility.AddAction(activity);
-		}		
+		}
 	}
 };
 

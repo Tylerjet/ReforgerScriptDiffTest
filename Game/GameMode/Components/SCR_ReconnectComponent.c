@@ -14,6 +14,15 @@ class SCR_ReconnectData
 };
 
 //------------------------------------------------------------------------------------------------
+//! State of a reconnecting player
+enum SCR_EReconnectState
+{
+	NOT_RECONNECT,
+	ENTITY_AVAILABLE,
+	ENTITY_DISCARDED
+};
+
+//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameScripted/GameMode", description: "")]
 class SCR_ReconnectComponentClass : SCR_BaseGameModeComponentClass
 {
@@ -63,6 +72,13 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Is reconnect list empty
+	bool IsReconnectListEmpty()
+	{
+		return m_ReconnectPlayerList.IsEmpty();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Is reconnect functionality enabled
 	bool IsReconnectEnabled() 
 	{ 
@@ -72,23 +88,17 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Is subject playerID currently present in list of possible reconnects
 	//! \param playerId is the subject
-	bool IsInReconnectList(int playerId)
+	//! \return state of the reconnecting subject
+	SCR_EReconnectState IsInReconnectList(int playerId)
 	{
 		if (!m_bIsInit)
 		{
-			m_bIsInit = true;
-			
-			BackendApi backendApi = GetGame().GetBackendApi();
-			if (!backendApi || !backendApi.IsActive() || (!backendApi.IsInitializing() && !backendApi.IsRunning()))
-			{
-				m_bIsReconEnabled = false;	// not connected to backend
-				Deactivate(GetOwner());
-				return false;
-			}
+			if (!Init())
+				return SCR_EReconnectState.NOT_RECONNECT;
 		}
 		
 		if (m_ReconnectPlayerList.IsEmpty())
-			return false;
+			return SCR_EReconnectState.NOT_RECONNECT;
 		
 		int count = m_ReconnectPlayerList.Count();
 		for (int i; i < count; i++)
@@ -97,13 +107,44 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 			{
 				ChimeraCharacter char = ChimeraCharacter.Cast(m_ReconnectPlayerList[i].m_ReservedEntity);
 				if (!char || char.GetCharacterController().IsDead())	// entity could have died meanwhile
-					return false;
+					return SCR_EReconnectState.ENTITY_DISCARDED;
 				
-				return true;
+				return SCR_EReconnectState.ENTITY_AVAILABLE;
 			}
 		}
 		
-		return false;
+		return SCR_EReconnectState.NOT_RECONNECT;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Is subject entity is currently present in list of possible reconnects
+	//! \param IEntity is the subject
+	//! \return state of the reconnecting subject
+	SCR_EReconnectState IsEntityReconnectList(IEntity entity)
+	{
+		if (!m_bIsInit)
+		{
+			if (!Init())
+				return SCR_EReconnectState.NOT_RECONNECT;
+		}
+		
+		if (m_ReconnectPlayerList.IsEmpty())
+			return SCR_EReconnectState.NOT_RECONNECT;
+		
+		int count = m_ReconnectPlayerList.Count();
+		for (int i; i < count; i++)
+		{
+			if (m_ReconnectPlayerList[i].m_ReservedEntity == entity)
+			{
+				ChimeraCharacter char = ChimeraCharacter.Cast(m_ReconnectPlayerList[i].m_ReservedEntity);
+				if (!char || char.GetCharacterController().IsDead())	// entity could have died meanwhile
+					return SCR_EReconnectState.ENTITY_DISCARDED;
+				
+				return SCR_EReconnectState.ENTITY_AVAILABLE;
+			}
+		}
+		
+		return SCR_EReconnectState.NOT_RECONNECT;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -174,8 +215,25 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Check whether theere is a proper connection to backend
+	bool Init()
+	{
+		m_bIsInit = true;
+			
+		BackendApi backendApi = GetGame().GetBackendApi();
+		if (!backendApi || !backendApi.IsActive() || (!backendApi.IsInitializing() && !backendApi.IsRunning()))
+		{
+			m_bIsReconEnabled = false;	// not connected to backend
+			Deactivate(GetOwner());
+			return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! SCR_BaseGameMode event
-	protected void OnPlayerAuditTimeouted(int playerID)
+	override protected void OnPlayerAuditTimeouted(int playerId)
 	{
 		if (m_ReconnectPlayerList.IsEmpty())
 			return;
@@ -183,7 +241,7 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 		int count = m_ReconnectPlayerList.Count();
 		for (int i; i < count; i++)
 		{
-			if (m_ReconnectPlayerList[i].m_iPlayerId == playerID)
+			if (m_ReconnectPlayerList[i].m_iPlayerId == playerId)
 			{
 				RplComponent.DeleteRplEntity(m_ReconnectPlayerList[i].m_ReservedEntity, false);
 				m_ReconnectPlayerList.Remove(i);
@@ -208,7 +266,11 @@ class SCR_ReconnectComponent : SCR_BaseGameModeComponent
 		s_Instance = this;
 		m_bIsReconEnabled = true;
 		
-		SCR_BaseGameMode.Cast(GetGame().GetGameMode()).GetOnPlayerAuditTimeouted().Insert(OnPlayerAuditTimeouted);
+		auto game = GetGame();
+		if (game && !game.InPlayMode())
+			return;
+		
+		SCR_BaseGameMode.Cast(game.GetGameMode()).GetOnPlayerAuditTimeouted().Insert(OnPlayerAuditTimeouted);
 	}
 
 	//------------------------------------------------------------------------------------------------

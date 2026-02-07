@@ -1,3 +1,8 @@
+/*!
+\addtogroup Replication
+\{
+*/
+
 class RplSessionCallbacks
 {
 	void EOnBegan();
@@ -6,3 +11,15 @@ class RplSessionCallbacks
 	void EOnConnected(RplIdentity identity);
 	void EOnDisconnected(RplIdentity identity);
 }
+
+//! \deprecated Use RplStateOverride instead.
+enum ERplStateOverride
+{
+	None = RplStateOverride.None,
+	Static = RplStateOverride.None,
+	Dynamic = RplStateOverride.Runtime,
+}
+
+/*!
+\}
+*/

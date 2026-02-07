@@ -975,7 +975,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			if (playerID > 0)
 			{
 				if (!modeEntity.SendNotificationLocalOnly())
-					SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, modeEntity.GetOnAddNotification(), playerID);
+					SCR_NotificationsComponent.SendToUnlimitedEditorPlayersAndPlayer(playerID, modeEntity.GetOnAddNotification(), playerID);
 				else if (SCR_PlayerController.GetLocalPlayerId() == playerID)
 					SCR_NotificationsComponent.SendLocal(modeEntity.GetOnAddNotification(), playerID);
 			}	
@@ -1009,7 +1009,7 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			if (playerID > 0)
 			{
 				if (!modeEntity.SendNotificationLocalOnly())
-					SCR_NotificationsComponent.SendToGameMastersAndPlayer(playerID, modeEntity.GetOnRemoveNotification(), playerID);
+					SCR_NotificationsComponent.SendToUnlimitedEditorPlayersAndPlayer(playerID, modeEntity.GetOnRemoveNotification(), playerID);
 				else if (SCR_PlayerController.GetLocalPlayerId() == playerID)
 					SCR_NotificationsComponent.SendLocal(modeEntity.GetOnRemoveNotification(), playerID);
 			}
@@ -1759,7 +1759,6 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 		core.Event_OnEditorManagerInitOwner.Invoke(this); //--- External init
 
 		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
 
 		InputManager inputManager = GetGame().GetInputManager();
 		if (inputManager)
@@ -1808,6 +1807,12 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	override void EOnInit(IEntity owner)
 	{
 		super.EOnInit(owner);
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+		{
+			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
+		}
 	}
 	override void EOnFrame(IEntity owner, float timeSlice) //--- Active only when the entity is local (see InitOwner())
 	{
@@ -1820,6 +1825,8 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 	{
 		m_CanOpenSum = GetEnumSum(EEditorCanOpen);
 		m_CanCloseSum = GetEnumSum(EEditorCanClose);
+		
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 	}
 	void ~SCR_EditorManagerEntity()
 	{
@@ -1850,6 +1857,12 @@ class SCR_EditorManagerEntity : SCR_EditorBaseEntity
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_MODE);
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_ASYNC_LOAD_DEBUG);
 			DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_EDITOR_NETWORK_DELAY);
+		}
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+		{
+			world.UnregisterEntityToBeUpdatedWhileGameIsPaused(this);
 		}
 	}
 };

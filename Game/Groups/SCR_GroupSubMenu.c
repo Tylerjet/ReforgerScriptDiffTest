@@ -72,14 +72,16 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 	override void OnMenuShow(SCR_SuperMenuBase parentMenu)
 	{
 		super.OnMenuShow(parentMenu);
-		
+			
 		UpdateGroupsMenu();
+						
 		if (m_ChatPanelComponent)
 		{
 			m_ChatPanelComponent.GetOnChatOpen().Insert(OnChatOpen);
 			m_ChatPanelComponent.GetOnChatClosed().Insert(OnChatClosed);
 			if (m_ChatPanelComponent.IsOpen())
 				OnChatOpen();
+			
 			if (m_ChatPanelComponent.GetFadeOut() == false)
 			{
 				Widget chatContent = m_ParentMenu.GetRootWidget().FindAnyWidget("ChatContent");
@@ -90,14 +92,18 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 					chatAnimator.GetOnStateChanged().Insert(OnAnimatorStateChanged);
 			}
 		}
+		
 		m_GroupManager.GetOnPlayableGroupRemoved().Insert(UpdateGroupsMenu);
 		m_GroupManager.GetOnPlayableGroupCreated().Insert(UpdateGroupsMenu);
+		m_GroupManager.GetOnNewGroupsAllowedChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnPlayerAdded().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnPlayerRemoved().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnPrivateGroupChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomNameChanged().Insert(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Insert(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnFlagSelected().Insert(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnFrequencyChanged().Insert(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Insert(UpdateGroupsMenu);
 		SetAcceptButtonStatus();
 	}
@@ -108,6 +114,7 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 		m_wGridWidget = m_ParentMenu.GetRootWidget().FindAnyWidget("GroupList");
 		if (!m_wGridWidget || !m_AddGroupButton || !m_ButtonLayout || !m_GroupSettingsButton)
 			return;
+		
 		InitGroups(m_wGridWidget, m_AddGroupButton, m_JoinGroupButton, m_GroupSettingsButton, m_ButtonLayout);
 	}
 	
@@ -131,6 +138,7 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 		{
 			m_GroupManager.GetOnPlayableGroupRemoved().Remove(UpdateGroupsMenu);
 			m_GroupManager.GetOnPlayableGroupCreated().Remove(UpdateGroupsMenu);
+			m_GroupManager.GetOnNewGroupsAllowedChanged().Remove(UpdateGroupsMenu);
 		}
 		
 		if (m_ChatPanelComponent)
@@ -145,9 +153,13 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 		SCR_AIGroup.GetOnPrivateGroupChanged().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomNameChanged().Remove(UpdateGroupsMenu);
 		SCR_AIGroup.GetOnCustomDescriptionChanged().Remove(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnFlagSelected().Remove(UpdateGroupsMenu);
+		SCR_AIGroup.GetOnFrequencyChanged().Remove(UpdateGroupsMenu);
 		SCR_GroupTileButton.GetOnGroupTileClicked().Remove(UpdateGroupsMenu);
 		if (s_PlayerGroupController)
-			s_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);
+			s_PlayerGroupController.GetOnInviteReceived().Remove(SetAcceptButtonStatus);	
+		
+		GetGame().GetCallqueue().CallLater(m_GroupSettingsButton.SetVisible, 100, false, false, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -169,7 +181,7 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 			gridWidget.RemoveChild(children);
 			children = gridWidget.GetChildren();
 		}
-		
+				
 		SetGroupSettingsButton(groupSettingsButton);
 		
 		array<SCR_AIGroup> playableGroups = groupManager.GetPlayableGroupsByFaction(playerFaction);
@@ -365,7 +377,15 @@ class SCR_GroupSubMenu : SCR_RespawnSubMenuBase
 	//------------------------------------------------------------------------------------------------
 	protected static void SetGroupSettingsButton(notnull SCR_NavigationButtonComponent button)
 	{
-		button.SetVisible(s_PlayerGroupController.IsPlayerLeaderOwnGroup());
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();		
+		if (!groupsManager)
+			return;
+		
+		SCR_RespawnSuperMenu supMenu  = SCR_RespawnSuperMenu.GetInstance();
+		if (!supMenu)
+			return;
+		
+		button.SetVisible(s_PlayerGroupController.IsPlayerLeaderOwnGroup() && groupsManager.CanPlayersChangeAttributes() && supMenu.GetCurrentTab() == EDeployScreenType.GROUP);
 	}
 	
 	//------------------------------------------------------------------------------------------------

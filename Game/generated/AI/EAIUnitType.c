@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 enum EAIUnitType
@@ -17,7 +17,9 @@ enum EAIUnitType
 	UnitType_VehicleHeavy,
 	UnitType_Aircraft,
 	UnitType_Fortification,
-	UnitType_Count
-};
+	UnitType_Count,
+}
 
-/** @}*/
+/*!
+\}
+*/

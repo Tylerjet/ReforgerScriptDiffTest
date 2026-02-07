@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup RadioBroadcast
-* @{
+/*!
+\addtogroup RadioBroadcast
+\{
 */
 
 class RadioBroadcastManagerClass: GenericEntityClass
 {
-};
+}
 
 class RadioBroadcastManager: GenericEntity
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

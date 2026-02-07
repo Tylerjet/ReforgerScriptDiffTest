@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class BaseFireMode: ScriptAndConfig
@@ -17,6 +17,8 @@ class BaseFireMode: ScriptAndConfig
 	proto external float GetShotSpan();
 	proto external owned string GetUIName();
 	proto external EWeaponFiremodeType GetFiremodeType();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

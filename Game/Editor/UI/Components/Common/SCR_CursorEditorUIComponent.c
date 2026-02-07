@@ -273,6 +273,10 @@ class SCR_CursorEditorUIComponent: SCR_BaseEditorUIComponent
 				else
 					SetCursorType(EEditorCursor.TRANSFORM_SNAP);
 				break;
+			
+			case (isEditing && !m_PreviewManager.CanMoveInRoot()):
+				SetCursorType(EEditorCursor.TRANSFORM_DISABLED);
+				break;
 
 			case (editorState == EEditorState.TRANSFORMING):
 				SetCursorType(EEditorCursor.TRANSFORM);

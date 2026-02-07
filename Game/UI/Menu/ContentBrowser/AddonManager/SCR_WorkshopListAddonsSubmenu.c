@@ -63,9 +63,6 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		CreateListLines(m_Widgets.m_DisabledAddonsList, m_Widgets.m_DisabledAddonsScroll, disabledItems, m_aEntriesDisabled);
 	
 		FocusLastWidget();
-		
-		// Enable export tools 
-		m_Widgets.m_ToolsExportComponent.SetEnabled(!enabledItems.IsEmpty());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -144,8 +141,6 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		m_NavDelete.m_OnActivated.Insert(OnNavDeleteActivated);
 		m_NavOpenDetails.m_OnActivated.Insert(OnNavOpenDetailsActivated);
 		m_NavUpdate.m_OnActivated.Insert(OnNavUpdateActivate);
-		//m_NavOpenPresets.m_OnActivated.Insert(OnToolsButton);
-		//m_NavOpenTools.m_OnActivated.Insert(OnToolsExportButton);
 		
 		//m_NavDeleteAll.m_OnActivated.Insert(OnNavDeleteAllActivated);
 		m_NavEnableAll.m_OnActivated.Insert(OnNavEnableAllActivated);
@@ -351,8 +346,7 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		
 		// Tools 
 		m_Widgets.m_ToolsButtonComponent.m_OnClicked.Insert(OnToolsButton);
-		m_Widgets.m_ToolsExportComponent.m_OnClicked.Insert(OnToolsExportButton);
-		
+			
 		// Move all mods 
 		m_Widgets.m_ButtonEnableAllComponent.m_OnClicked.Insert(OnButtonEnableAll);
 		m_Widgets.m_ButtonDisableAllComponent.m_OnClicked.Insert(OnButtonDisableAll);
@@ -545,12 +539,6 @@ class SCR_WorkshopListAddonsSubmenu : SCR_SubMenuBase
 		//new SCR_WorkshopToolsDialog();
 		
 		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.AddonPresetDialog);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void OnToolsExportButton()
-	{
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.AddonExportDialog);
 	}
 	
 	//------------------------------------------------------------------------------------------------

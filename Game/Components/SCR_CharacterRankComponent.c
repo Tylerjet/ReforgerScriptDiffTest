@@ -7,17 +7,17 @@ class SCR_CharacterRankComponentClass: ScriptComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_CharacterRankComponent : ScriptComponent
 {	
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank", enums: ParamEnumArray.FromEnum(ECharacterRank))]
-	protected ECharacterRank m_iRank;
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_iRank;
 	
 	protected IEntity m_Owner;
 	static ref ScriptInvoker s_OnRankChanged = new ref ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RpcDoSetCharacterRank(ECharacterRank newRank, ECharacterRank prevRank)
+	void RpcDoSetCharacterRank(SCR_ECharacterRank newRank, SCR_ECharacterRank prevRank)
 	{
-		ECharacterRank oldRank = m_iRank;
+		SCR_ECharacterRank oldRank = m_iRank;
 		m_iRank = newRank;
 		OnRankChanged(oldRank, newRank);
 	}
@@ -29,7 +29,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetCharacterRank(ECharacterRank rank)
+	void SetCharacterRank(SCR_ECharacterRank rank)
 	{
 		if (rank != m_iRank)
 		{
@@ -39,28 +39,28 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnRankChanged(ECharacterRank prevRank, ECharacterRank newRank)
+	void OnRankChanged(SCR_ECharacterRank prevRank, SCR_ECharacterRank newRank)
 	{
 		s_OnRankChanged.Invoke(prevRank, newRank, m_Owner);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	// !Helper method to easily read a character's rank by providing just the character parameter
-	static ECharacterRank GetCharacterRank(IEntity unit)
+	static SCR_ECharacterRank GetCharacterRank(IEntity unit)
 	{
 		if (!unit)
-			return ECharacterRank.INVALID;
+			return SCR_ECharacterRank.INVALID;
 		
 		SCR_CharacterRankComponent comp = GetCharacterRankComponent(unit);
 		
 		if (!comp)
-			return ECharacterRank.INVALID;
+			return SCR_ECharacterRank.INVALID;
 		
 		return comp.GetCharacterRank();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected SCR_MilitaryFaction GetCharacterFaction(IEntity unit)
+	protected SCR_Faction GetCharacterFaction(IEntity unit)
 	{
 		if (!unit)
 			return null;
@@ -73,7 +73,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!faction)
 			return null;
 
-		return SCR_MilitaryFaction.Cast(faction);
+		return SCR_Faction.Cast(faction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -87,8 +87,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!comp)
 			return "";
 		
-		ECharacterRank rank = comp.GetCharacterRank();
-		SCR_MilitaryFaction faction = comp.GetCharacterFaction(unit);
+		SCR_ECharacterRank rank = comp.GetCharacterRank();
+		SCR_Faction faction = comp.GetCharacterFaction(unit);
 		
 		if (!faction)
 			return "";
@@ -107,8 +107,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!comp)
 			return "";
 		
-		ECharacterRank rank = comp.GetCharacterRank();
-		SCR_MilitaryFaction faction = comp.GetCharacterFaction(unit);
+		SCR_ECharacterRank rank = comp.GetCharacterRank();
+		SCR_Faction faction = comp.GetCharacterFaction(unit);
 		
 		if (!faction)
 			return "";
@@ -127,8 +127,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!comp)
 			return "";
 		
-		ECharacterRank rank = comp.GetCharacterRank();
-		SCR_MilitaryFaction faction = comp.GetCharacterFaction(unit);
+		SCR_ECharacterRank rank = comp.GetCharacterRank();
+		SCR_Faction faction = comp.GetCharacterFaction(unit);
 		
 		if (!faction)
 			return "";
@@ -147,8 +147,8 @@ class SCR_CharacterRankComponent : ScriptComponent
 		if (!comp)
 			return "";
 		
-		ECharacterRank rank = comp.GetCharacterRank();
-		SCR_MilitaryFaction faction = comp.GetCharacterFaction(unit);
+		SCR_ECharacterRank rank = comp.GetCharacterRank();
+		SCR_Faction faction = comp.GetCharacterFaction(unit);
 		
 		if (!faction)
 			return "";
@@ -157,7 +157,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected ECharacterRank GetCharacterRank()
+	protected SCR_ECharacterRank GetCharacterRank()
 	{
 		return m_iRank;
 	}
@@ -165,7 +165,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override bool RplSave(ScriptBitWriter writer)
 	{
-		writer.WriteIntRange(m_iRank, 0, ECharacterRank.INVALID-1);
+		writer.WriteIntRange(m_iRank, 0, SCR_ECharacterRank.INVALID-1);
 		
 		return true;
 	}
@@ -173,7 +173,7 @@ class SCR_CharacterRankComponent : ScriptComponent
 	//-----------------------------------------------------------------------------------------------------------------------
 	override bool RplLoad(ScriptBitReader reader)
 	{
-		reader.ReadIntRange(m_iRank, 0, ECharacterRank.INVALID-1);
+		reader.ReadIntRange(m_iRank, 0, SCR_ECharacterRank.INVALID-1);
 
 		return true;
 	}
@@ -190,9 +190,102 @@ class SCR_CharacterRankComponent : ScriptComponent
 	{
 		m_Owner = ent;
 	}
+};
 
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_CharacterRank
+{
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank ID set in FactionManager", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_iRank;
+	
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name")]
+	protected string m_sRankName;
+	
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name (upper case)")]
+	protected string m_sRankNameUpper;
+	
+	[Attribute(defvalue: "", uiwidget: UIWidgets.EditBox, desc: "Rank name (short)")]
+	protected string m_sRankNameShort;
+	
+	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Rank insignia", params: "edds")]
+	protected ResourceName m_sInsignia;
+	
 	//------------------------------------------------------------------------------------------------
-	void ~SCR_CharacterRankComponent()
+	SCR_ECharacterRank GetRankID()
 	{
+		return m_iRank;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetRankName()
+	{
+		return m_sRankName;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetRankNameUpperCase()
+	{
+		return m_sRankNameUpper;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	string GetRankNameShort()
+	{
+		return m_sRankNameShort;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetRankInsignia()
+	{
+		return m_sInsignia;
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_RankID
+{
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Rank ID", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_iRank;
+	
+	[Attribute("0", UIWidgets.CheckBox, "Renegade", "Is this rank considered hostile by friendlies?")]
+	protected bool m_bIsRenegade;
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_ECharacterRank GetRankID()
+	{
+		return m_iRank;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool IsRankRenegade()
+	{
+		return m_bIsRenegade;
+	}
+};
+
+//------------------------------------------------------------------------------------------------
+enum SCR_ECharacterRank
+{
+	RENEGADE,
+	PRIVATE,
+	CORPORAL,
+	SERGEANT,
+	LIEUTENANT,
+	CAPTAIN,
+	MAJOR,
+	COLONEL,
+	GENERAL,
+	CUSTOM1,
+	CUSTOM2,
+	CUSTOM3,
+	CUSTOM4,
+	CUSTOM5,
+	CUSTOM6,
+	CUSTOM7,
+	CUSTOM8,
+	CUSTOM9,
+	CUSTOM10,
+	INVALID
 };

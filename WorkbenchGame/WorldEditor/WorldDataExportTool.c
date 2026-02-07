@@ -55,7 +55,7 @@ class WorldMapExportTool: WorldEditorTool
 
 	[Attribute("1.0 1.0 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Land color", category: "Rasterization")]
 	ref Color landColor;
-	[Attribute("0.737 0.945 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Ocean color", category: "Rasterization")]
+	[Attribute("0.863 0.980 1.0 1.0", UIWidgets.ColorPicker, "Rasterization: Ocean color", category: "Rasterization")]
 	ref Color oceanColor;
 	[Attribute("3.0", UIWidgets.Slider, "Rasterization: Land scale factor", "0 10 0.1", category: "Rasterization")]
 	float scaleLand;
@@ -73,11 +73,11 @@ class WorldMapExportTool: WorldEditorTool
 	float heightIntensity;
 	[Attribute("1", UIWidgets.CheckBox, "Rasterization: Include Areas defined by Generators into Rasterization", category: "Rasterization")]
 	bool includeGeneratorAreas;
-	[Attribute("0.333 0.564 0.231 1.0", UIWidgets.ColorPicker, "Rasterization: Forest area color", category: "Rasterization")]
+	[Attribute("0.608 0.784 0.529 1.0", UIWidgets.ColorPicker, "Rasterization: Forest area color", category: "Rasterization")]
 	ref Color forestAreaColor;
 	[Attribute("1.25", UIWidgets.Slider, "Rasterization: Forest area intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float forestAreaIntensity;
-	[Attribute("0.5 0.5 0.5 1.0", UIWidgets.ColorPicker, "Rasterization: Other area color", category: "Rasterization")]
+	[Attribute("0.745 0.745 0.745 1.0", UIWidgets.ColorPicker, "Rasterization: Other area color", category: "Rasterization")]
 	ref Color otherAreaColor;
 	[Attribute("1.0", UIWidgets.Slider, "Rasterization: Other area intensity factor", "0.5 15 0.01", category: "Rasterization")]
 	float otherAreaIntensity;
@@ -103,6 +103,7 @@ class WorldMapExportTool: WorldEditorTool
 
 		if (type == EMapDataExportType.Geometry2D)
 		{
+			Print("Exporting map 2D map data...");
 			ExcludeGenerateFlags generateFlags = ExcludeGenerateFlags.ExcludeGenerateNone;
 			if(!generateRoads) generateFlags = generateFlags | ExcludeGenerateFlags.ExcludeGenerateRoads;
 			if(!generatePowerlines) generateFlags = generateFlags | ExcludeGenerateFlags.ExcludeGeneratePowerlines;
@@ -138,6 +139,7 @@ class WorldMapExportTool: WorldEditorTool
 		}
 		else if (type == EMapDataExportType.Soundmap)
 		{
+			Print("Exporting Soundmap...");
 			DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Soundmap, exportPath, worldPath);
 			if(result != DataExportErrorType.DataExportErrorNone)
 			{
@@ -160,6 +162,7 @@ class WorldMapExportTool: WorldEditorTool
 		}
 		else if (type == EMapDataExportType.Rasterization)
 		{
+			Print("Exporting map rasterization...");
 			DataExportErrorType result = MapDataExporter.ExportRasterization(exportPath, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity, includeGeneratorAreas, forestAreaColor, forestAreaIntensity, otherAreaColor, otherAreaIntensity);
 			if(result != DataExportErrorType.DataExportErrorNone)
 			{
@@ -243,6 +246,7 @@ class WorldDataExport: WorkbenchPlugin
 			success = true;
 			if (exportMap)
 			{
+				Print("Exporting map 2D map data...");
 				DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Geometry2D, dir, worldPath, 50, true, ExcludeGenerateFlags.ExcludeGenerateNone, ExcludeSaveFlags.ExcludeSaveNone);
 				if(result != DataExportErrorType.DataExportErrorNone)
 				{
@@ -263,6 +267,7 @@ class WorldDataExport: WorkbenchPlugin
 			}
 			if (exportSound)
 			{
+				Print("Exporting Soundmap...");
 				DataExportErrorType result = MapDataExporter.ExportData(EMapDataType.Soundmap, dir, worldPath);
 				if(result != DataExportErrorType.DataExportErrorNone)
 				{
@@ -285,9 +290,10 @@ class WorldDataExport: WorkbenchPlugin
 			}
 			if (exportRasterization)
 			{
+				Print("Exporting map rasterization...");
 				//TODO: change to user defined values (along with WorldMapExportTool)
 				Color landColor = new Color(1.0, 1.0, 1.0, 1.0);
-				Color oceanColor = new Color(0.737, 0.945, 1.0, 1.0);
+				Color oceanColor = new Color(0.863, 0.980, 1.0, 1.0);
 				float scaleLand = 3.0;
 				float scaleOcean = 1.0;
 				float heightScale = 400.0;
@@ -296,9 +302,9 @@ class WorldDataExport: WorkbenchPlugin
 				float shadeIntensity = 0.5;
 				float heightIntensity = 2.0;
 				bool includeGeneratorAreas = true;
-				Color forestAreaColor = new Color(0.333, 0.564, 0.231, 1.0);
+				Color forestAreaColor = new Color(0.608, 0.784, 0.529, 1.0);
 				float forestAreaIntensity = 1.25;
-				Color otherAreaColor = new Color(0.5, 0.5, 0.5, 1.0);
+				Color otherAreaColor = new Color(0.745, 0.745, 0.745, 1.0);
 				float otherAreaIntensity = 1.0;
 
 				DataExportErrorType result = MapDataExporter.ExportRasterization(dir, worldPath, landColor, oceanColor, scaleLand, scaleOcean, heightScale, depthScale, depthLerpMeters, shadeIntensity, heightIntensity, includeGeneratorAreas, forestAreaColor, forestAreaIntensity, otherAreaColor, otherAreaIntensity);

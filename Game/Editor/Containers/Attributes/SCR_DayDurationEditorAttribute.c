@@ -28,7 +28,7 @@ class SCR_DayDurationEditorAttribute: SCR_BaseValueListEditorAttribute
 		if (item)
 		{
 			int notificationInt = var.GetFloat() * 10;
-			SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_DAY_DURATION_CHANGED, playerID, notificationInt * 100);
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_DAY_DURATION_CHANGED, playerID, notificationInt * 100);
 		}
 	}
 };

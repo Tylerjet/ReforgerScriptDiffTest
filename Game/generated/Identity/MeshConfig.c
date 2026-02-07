@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Identity
-* @{
+/*!
+\addtogroup Identity
+\{
 */
 
 class MeshConfig: ScriptAndConfig
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

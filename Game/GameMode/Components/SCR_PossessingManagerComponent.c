@@ -322,7 +322,7 @@ class SCR_PossessingManagerComponent: SCR_BaseGameModeComponent
 		
 		return true;
 	}
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		m_MainEntities.Remove(playerId);
 	}

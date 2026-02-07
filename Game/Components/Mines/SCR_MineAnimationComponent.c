@@ -57,7 +57,7 @@ class SCR_MineAnimationComponent : WeaponAnimationComponent
 			if (!pressureTriggerComponent)
 				return;
 			
-			pressureTriggerComponent.Activate();
+			pressureTriggerComponent.ActivateTrigger();
 		}
 	}
 }

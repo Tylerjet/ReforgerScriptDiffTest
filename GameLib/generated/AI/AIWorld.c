@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 class AIWorldClass: GenericEntityClass
 {
-};
+}
 
 class AIWorld: GenericEntity
 {
@@ -24,14 +24,16 @@ class AIWorld: GenericEntity
 	proto external void RequestBroadcastDangerEvent(AIDangerEvent pEvent);
 	// get formation definitions
 	proto external AIFormationDefinition GetFormation(string pName);
-	// navmesh
+	proto external NavmeshWorldComponent GetNavmeshWorldComponent(string name);
 	proto external void RequestNavmeshRebuild(vector min, vector max);
-	
+
 	// callbacks
-	
+
 	event void OnDebugAgentTeleport(AIAgent agent);
 	event void AddedAIAgent(AIAgent agent);
 	event void RemovingAIAgent(AIAgent agent);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

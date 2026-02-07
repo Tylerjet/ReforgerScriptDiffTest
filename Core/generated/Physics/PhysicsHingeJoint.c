@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -42,6 +42,8 @@ sealed class PhysicsHingeJoint: PhysicsJoint
 	\param axis New joint axis in reference frame of ent1
 	*/
 	proto external void SetAxis(vector axis);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

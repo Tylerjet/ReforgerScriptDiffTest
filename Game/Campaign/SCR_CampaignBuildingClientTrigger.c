@@ -20,22 +20,7 @@ class SCR_CampaignBuildingClientTrigger : SCR_CampaignBuildingTrigger
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{		
-		QueryEntitiesInside();		
-		GetEntitiesInside(m_aInside);
-		
-		for (int i = m_aInside.Count() - 1; i >= 0; i--)
-		{			
-			if (IsEntityBlocker(m_aInside[i]))
-			{
-				SetToBeBuilt(true);
-				m_BuildingBlocker = m_aInside[i];
-			}
-				
-			if (CanBlockPreview(m_aInside[i]))
-				continue;
-			
-			m_aInside.Remove(i);
-		}
+		QueryEntitiesInside();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -123,6 +108,28 @@ class SCR_CampaignBuildingClientTrigger : SCR_CampaignBuildingTrigger
 			ClearEventMask(EntityEvent.FRAME);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnQueryFinished(bool bIsEmpty)
+	{
+		super.OnQueryFinished(bIsEmpty);
+
+		GetEntitiesInside(m_aInside);
+
+		for (int i = m_aInside.Count() - 1; i >= 0; i--)
+		{
+			if (IsEntityBlocker(m_aInside[i]))
+			{
+				SetToBeBuilt(true);
+				m_BuildingBlocker = m_aInside[i];
+			}
+
+			if (CanBlockPreview(m_aInside[i]))
+				continue;
+
+			m_aInside.Remove(i);
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanBlockPreview(notnull IEntity element)
 	{	

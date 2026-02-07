@@ -66,4 +66,4 @@ class CheckLocalizationPlugin: LocalizationEditorPlugin
 		
 		Workbench.Dialog("Check localization in UI", desc, report);
 	}
-};
+}

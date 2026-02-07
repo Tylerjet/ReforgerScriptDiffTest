@@ -46,7 +46,7 @@ class SCR_JointDummyHolderEntity: GenericEntity
 		SetEventMask(EntityEvent.INIT|EntityEvent.SIMULATE);
 		
 		ref PhysicsGeomDef geoms[1];
-		autoptr PhysicsGeomDef geom =  new PhysicsGeomDef("", PhysicsGeom.CreateSphere(0.1), "material/default", EPhysicsLayerDefs.None);
+		autoptr PhysicsGeomDef geom =  new PhysicsGeomDef("", PhysicsGeom.CreateSphere(0.1), "material/default", EPhysicsLayerDefs.VehicleCast);
 		geoms[0] = geom;
 		
 		// Note: If using static geometry, the joint gets reoriented!

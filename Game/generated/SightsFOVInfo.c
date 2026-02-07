@@ -15,4 +15,4 @@ class SightsFOVInfo: ScriptAndConfig
 	\return Returns field of view in degrees.
 	*/
 	proto external float GetFOV();
-};
+}

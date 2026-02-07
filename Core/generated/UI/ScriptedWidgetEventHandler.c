@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 class ScriptedWidgetEventHandler: Managed
@@ -38,7 +38,9 @@ class ScriptedWidgetEventHandler: Managed
 	event bool OnModalClickOut(Widget modalRoot, int x, int y, int button);
 	event void HandlerAttached(Widget w);
 	event void HandlerDeattached(Widget w);
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

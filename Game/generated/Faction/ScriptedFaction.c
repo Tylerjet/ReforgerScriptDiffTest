@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Faction
-* @{
+/*!
+\addtogroup Faction
+\{
 */
 
 class ScriptedFaction: Faction
@@ -19,6 +19,8 @@ class ScriptedFaction: Faction
 	Queries should be ideally cached and made as fast as possible, so performance is not hindered much.
 	*/
 	event bool DoCheckIfFactionFriendly(Faction faction);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

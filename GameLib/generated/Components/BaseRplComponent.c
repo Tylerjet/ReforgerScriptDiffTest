@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseRplComponentClass: GenericComponentClass
 {
-};
+}
 
 /*!
 * BaseRplComponent
@@ -113,7 +113,7 @@ class BaseRplComponent: GenericComponent
 	Registers additional item into the set that will be inserted into replication
 	when InsertToReplication is called.
 	This can be used if you need to insert some custom items into your replicated node.
-	
+
 	\warning Can be used only before the RplNode is inserted into the replication
 	*/
 	proto external EItemInsertionResult InsertItem(Managed instance);
@@ -131,7 +131,7 @@ class BaseRplComponent: GenericComponent
 	Marks the item as released from replication.
 	Items marked this way won't be physically deleted once removed from replication.
 	When released, proxies will have to delete their entities manually after they're removed from replication.
-	
+
 	\warning Only has effect if called by the authority
 	*/
 	proto external void ReleaseFromRpl();
@@ -143,6 +143,8 @@ class BaseRplComponent: GenericComponent
 	Returns true if the node is self-inserting (it inserts itself to replication in BaseRplComponent's EOnInit)
 	*/
 	proto external bool IsSelfInserted();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

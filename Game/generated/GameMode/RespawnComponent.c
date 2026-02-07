@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup GameMode
-* @{
+/*!
+\addtogroup GameMode
+\{
 */
 
 class RespawnComponentClass: GameComponentClass
 {
-};
+}
 
 /*!
 Respawn component is a component attached to PlayerController serving as
@@ -24,9 +24,9 @@ class RespawnComponent: GameComponent
 	Returns the player controller this respawn component is attached to.
 	*/
 	proto external PlayerController GetPlayerController();
-	
+
 	// callbacks
-	
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -62,6 +62,8 @@ class RespawnComponent: GameComponent
 	\param response The response from the server why the lock was lifted.
 	*/
 	event protected void OnRequestLockDisengaged(ERespawnResult result);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

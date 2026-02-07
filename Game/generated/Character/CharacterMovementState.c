@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
-/**
+/*!
 HumanMovementState - movement state, command, stance, movement, human.GetMovementState(movementState)
 */
 class CharacterMovementState
@@ -20,7 +20,9 @@ class CharacterMovementState
 	float m_fLeaning; //! leaning state (not all commands need to have all movements)
 	float m_fDynamicStance;	//! current adjusted stance 0.f - 1.f, only if the command has a adjusted stance
 	ECharacterDataState	m_DataState; //! simulation state flags
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

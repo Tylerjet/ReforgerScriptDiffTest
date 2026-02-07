@@ -4,21 +4,21 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class GenericTerrainEntityClass: GenericEntityClass
 {
-};
+}
 
 class GenericTerrainEntity: GenericEntity
 {
 	/*!
 	create sphere
-	\param worldX		world X of touch with ground
-	\param worldZ		world X of touch with ground
+	\param x		world X of touch with ground
+	\param z		world X of touch with ground
 	\param radius		radius
 	\param centerLerp01	lerp of values inside rasterization
 	\param timeDown01	relative speed of going down, 1 is usually 0.5secs
@@ -27,10 +27,10 @@ class GenericTerrainEntity: GenericEntity
 	proto external void FlattenGrassSphere(float x, float z, float radius, float centerLerp01, float timeDown01, float maxHeight01);
 	/*!
 	create ellipse
-	\param worldX		world X of touch with ground
-	\param worldZ		world X of touch with ground
-	\param radiusX		radius in X coord before rotate
-	\param radiusZ		radius in Z coord before rotate
+	\param x		world X of touch with ground
+	\param z		world X of touch with ground
+	\param sideX		radius in X coord before rotate
+	\param sideZ		radius in Z coord before rotate
 	\param offset		offset, 0 = default center, <-1, 1>
 	\param angleRAD		rotation
 	\param centerLerp01	lerp of values inside rasterization
@@ -40,9 +40,9 @@ class GenericTerrainEntity: GenericEntity
 	proto external void FlattenGrassEllipse(float x, float z, float sideX, float sideZ, float offset, float angleRAD, float centerLerp01, float timeDown01, float maxHeight01);
 	/*!
 	create box
-	\param worldX		world X of touch with ground
-	\param worldZ		world X of touch with ground
-	\param sideSize		size of side
+	\param x		world X of touch with ground
+	\param z		world X of touch with ground
+	\param side		size of side
 	\param angleRAD		rotation
 	\param centerLerp01	lerp of values inside rasterization
 	\param timeDown01	relative speed of going down, 1 is usually 0.5secs
@@ -51,10 +51,10 @@ class GenericTerrainEntity: GenericEntity
 	proto external void FlattenGrassBox(float x, float z, float side, float angleRAD, float centerLerp01, float timeDown01, float maxHeight01);
 	/*!
 	create rectangle
-	\param worldX		world X of touch with ground
-	\param worldZ		world X of touch with ground
-	\param sideXSize	size of side in X
-	\param sideZSize	size of side in Z
+	\param x		world X of touch with ground
+	\param z		world X of touch with ground
+	\param sideX	size of side in X
+	\param sideZ	size of side in Z
 	\param offset		offset, 0 = default center, <-1, 1>
 	\param angleRAD		rotation
 	\param centerLerp01	lerp of values inside rasterization
@@ -77,9 +77,18 @@ class GenericTerrainEntity: GenericEntity
 	*/
 	proto external vector WorldToTerrCoord(vector worldpos);
 	/*!
+	convert point from terr to worldpos coords
+	\param terrpos	terrpos
+	\return worldpos
+	*/
+	proto external vector TerrToWorldCoord(vector terrpos);
+	proto bool TryGetHeightTC(float x, float z, out float y);
+	/*!
 	number of vertices in tile
 	*/
 	proto external int GetTileVerticesCount();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

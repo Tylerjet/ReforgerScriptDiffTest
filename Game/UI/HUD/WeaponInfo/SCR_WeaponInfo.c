@@ -154,10 +154,10 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		// Check if weapon is a grenade
 		IEntity e = weapon.GetOwner();
 		
-		if (e && e.FindComponent(GrenadeMoveComponent))
-			m_WeaponState.m_bIsGrenade = true;
+		if ((e && e.FindComponent(GrenadeMoveComponent)) || SCR_MineWeaponComponent.Cast(weapon))		
+			m_WeaponState.m_bIsExplosive = true;
 		else
-			m_WeaponState.m_bIsGrenade = false;
+			m_WeaponState.m_bIsExplosive = false;
 
 		// Check if weapon has scope sights component
 		m_WeaponState.m_Sights = GetSights();
@@ -351,13 +351,13 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			magazineCount = sameWeapons.Count();
 		}		
 		
-		bool isGrenade = m_WeaponState.m_bIsGrenade;
+		bool isGrenade = m_WeaponState.m_bIsExplosive;
 		
 		OnMagazineCountChanged(weapon, magazineCount, isGrenade);
 	}
 	void OnMagazineCountChanged(BaseWeaponComponent weapon, int magazineCount, bool isGrenade)
 	{
-		if (!m_WeaponState)
+		if (!m_WeaponState || !weapon)
 			return;
 		
 		#ifdef WEAPON_INFO_DEBUG
@@ -374,7 +374,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		m_eWeaponStateEvent |= EWeaponFeature.MAGAZINE_COUNT;
 		
 		m_WeaponState.m_iMagCount = magazineCount;
-		m_WeaponState.m_bIsGrenade = isGrenade;
+		m_WeaponState.m_bIsExplosive = isGrenade;
 
 		// Update magazine textures for rocket and grenade launchers
 		// Magazine for rocket and grenade launchers gets deleted after firing
@@ -729,7 +729,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		
 		// Get some shared states / conditions for fading
 		//bool inspectingWeapon = m_CharacterController && m_CharacterController.GetIsInspectionMode();
-		bool isGrenade = m_WeaponState && m_WeaponState.m_bIsGrenade;
+		bool isGrenade = m_WeaponState && m_WeaponState.m_bIsExplosive;
 		bool inADS = m_WeaponState && m_WeaponState.m_bInADS;
 		bool inInspection = m_WeaponState && m_WeaponState.m_bInInspectionMode;
 					
@@ -865,7 +865,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 			}
 			else
 			{
-				if (!state.m_bIsGrenade)
+				if (!state.m_bIsExplosive)
 					m_Widgets.m_MagazineOutline.SetOpacity(FADED_OPACITY);
 			}
 			
@@ -893,13 +893,13 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 		int count = state.m_iMagCount;
 		
 		// Add +1 if weapon is a grenade, so it shows the total # of grenades in possession
-		if (state.m_bIsGrenade)
+		if (state.m_bIsExplosive)
 			count++;
 
 		string countText = count.ToString();
 		
 		/*
-		if (!state.m_bIsGrenade)
+		if (!state.m_bIsExplosive)
 			countText = "+" + countText;
 		*/
 		
@@ -1053,7 +1053,7 @@ class SCR_WeaponInfo : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateWeaponNameAndCaliber(SCR_WeaponState state)
 	{
-		if (!state || !m_Widgets)
+		if (!state || !m_Widgets || !state.m_WeaponUI)
 			return;
 		
 		// Update weapon name indicator

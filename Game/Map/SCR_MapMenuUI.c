@@ -9,8 +9,16 @@ class SCR_MapMenuUI: ChimeraMenuBase
 	override void OnMenuOpen()
 	{	
 		if (m_MapEntity)
-		{			
-			MapConfiguration mapConfigFullscreen = m_MapEntity.SetupMapConfig(EMapEntityMode.FULLSCREEN, SCR_MapConstants.MAP_DEFAULT_CFG, GetRootWidget() );
+		{	
+			BaseGameMode gameMode = GetGame().GetGameMode();
+			if (!gameMode)
+				return;
+		
+			SCR_MapConfigComponent configComp = SCR_MapConfigComponent.Cast(gameMode.FindComponent(SCR_MapConfigComponent));
+			if (!configComp)
+				return;
+		
+			MapConfiguration mapConfigFullscreen = m_MapEntity.SetupMapConfig(EMapEntityMode.FULLSCREEN, configComp.GetGadgetMapConfig(), GetRootWidget());
 			m_MapEntity.OpenMap(mapConfigFullscreen);
 		}
 		
@@ -18,7 +26,7 @@ class SCR_MapMenuUI: ChimeraMenuBase
 		if (wChatPanel)
 			m_ChatPanel = SCR_ChatPanel.Cast(wChatPanel.FindHandler(SCR_ChatPanel));
 		
-		GetGame().GetInputManager().AddActionListener("MapChatToggle", EActionTrigger.DOWN, Callback_OnChatToggleAction);
+		GetGame().GetInputManager().AddActionListener("ChatToggle", EActionTrigger.DOWN, Callback_OnChatToggleAction);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -27,7 +35,7 @@ class SCR_MapMenuUI: ChimeraMenuBase
 		if (m_MapEntity)
 			m_MapEntity.CloseMap();
 		
-		GetGame().GetInputManager().RemoveActionListener("MapChatToggle", EActionTrigger.DOWN, Callback_OnChatToggleAction);
+		GetGame().GetInputManager().RemoveActionListener("ChatToggle", EActionTrigger.DOWN, Callback_OnChatToggleAction);
 	}
 		
 	//------------------------------------------------------------------------------------------------

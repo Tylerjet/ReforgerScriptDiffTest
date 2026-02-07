@@ -4,13 +4,13 @@ class SCR_AISendInfoMessage: SCR_AISendMessageGeneric
 	private EMessageType_Info m_messageType;
 
 	// Make scripted node visible or hidden in nodes palette
-    override bool VisibleInPalette()
-    {
-        return true;
-    }
+	override bool VisibleInPalette()
+	{
+		return true;
+	}
 
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-    {
+	{
 		if (!InitSendMessageInputs(owner))
 			return ENodeResult.FAIL;
 
@@ -39,8 +39,8 @@ class SCR_AISendInfoMessage: SCR_AISendMessageGeneric
 
 class SCR_AISendMessage_ActionFailed : SCR_AISendMessageBase
 {
-	[Attribute("0", UIWidgets.ComboBox, "Related action type", "", ParamEnumArray.FromEnum(EAIActionType) )]
-	EAIActionType m_eActionType;
+	[Attribute("", UIWidgets.EditBox, "Related action type name")]
+	string m_sActionTypename;
 
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
@@ -49,8 +49,10 @@ class SCR_AISendMessage_ActionFailed : SCR_AISendMessageBase
 
 		SCR_AIMessage_ActionFailed msg = new SCR_AIMessage_ActionFailed();
 		msg.SetMessageParameters(this);
-		msg.m_eActionType = m_eActionType;
-
+		msg.m_ActionTypename = m_sActionTypename.ToType();
+		if (!msg.m_ActionTypename)		
+			return NodeError(this, owner, "Invalid type provided!");
+				
 		return SendMessage(owner, msg);
 	}
 

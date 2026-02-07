@@ -4,14 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Debug
-* @{
+/*!
+\addtogroup Debug
+\{
 */
 
-/**@enum	LogLevel
-* @brief	enum with severity of the logging message
-**/
+//! Enum with severity of the logging message.
 enum LogLevel
 {
 	SPAM,
@@ -20,7 +18,9 @@ enum LogLevel
 	NORMAL,
 	WARNING,
 	ERROR,
-	FATAL
-};
+	FATAL,
+}
 
-/** @}*/
+/*!
+\}
+*/

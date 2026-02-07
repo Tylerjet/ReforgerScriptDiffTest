@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseLightManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseLightManagerComponent: GameComponent
 {
@@ -27,9 +27,9 @@ class BaseLightManagerComponent: GameComponent
 	proto external int GetLights(out notnull array<BaseLightSlot> outLights);
 	//! Changes functional state of light surface and all linked lights for provided surface id, return true on success
 	proto external bool TrySetSurfaceFunctional(int surfaceID, bool functiona);
-	
+
 	// callbacks
-	
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -41,6 +41,8 @@ class BaseLightManagerComponent: GameComponent
 	\param timeSlice Delta time since last update.
 	*/
 	event protected void OnFrame(IEntity owner, float timeSlice);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

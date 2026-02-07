@@ -199,7 +199,7 @@ class SCR_CampaignUnloadSuppliesUserAction : ScriptedUserAction
 		
 		if (vector.DistanceSq(m_Box.GetOrigin(), m_Base.GetOrigin()) > Math.Pow(baseSuppliesComponent.GetOperationalRadius(), 2))
 		{
-			SCR_CampaignServiceComponent service = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent service = m_Base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);
 			if (!service)
 				return SCR_CampaignSuppliesInteractionFeedback.DO_NOT_SHOW;
 			

@@ -58,7 +58,7 @@ class SCR_Global
 	{
 		string name;
 
-		if( GetGame().GetBackendApi().IsLocalPlatformAssigned() )
+		if (GetGame().GetBackendApi().IsLocalPlatformAssigned())
 		{
 			Print("Profile - Using Local Platform Name!");
 			name = GetGame().GetBackendApi().GetCredentialsItem(EBackendCredentials.EBCRED_PLATFORMUID);
@@ -84,7 +84,7 @@ class SCR_Global
 		return name;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Fixes the angles in the input vector to be be between -180 and 180
 	// unused (and to fix!)
 	static vector FixVector180(vector vec)
@@ -102,7 +102,7 @@ class SCR_Global
 		return vec;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Clamps input vector to within world bounds
 	//! \param pos Position to clamp to world bounds
 	// unused
@@ -128,7 +128,7 @@ class SCR_Global
 		return pos;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns the intersect point between 2 points and a height
 	//! \param start Start position to check intersect from
 	//! \param end End position to check intersect to
@@ -170,7 +170,7 @@ class SCR_Global
 		return true;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Fills the 2 out strings with distance in the appropriate unit and unit of measurement
 	//! \param dist Input distance
 	//! \param imperial Whether to use imperial system of units (else uses metric system)
@@ -238,7 +238,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores all but for the objects in the g_TraceFilterList list
 	static bool FilterCallback_IgnoreNotInList(notnull IEntity target)
 	{
@@ -248,7 +248,7 @@ class SCR_Global
 		return false;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores characters and their children
 	// unused
 	static bool FilterCallback_IgnoreCharactersWithChildren(notnull IEntity target)
@@ -264,7 +264,7 @@ class SCR_Global
 		return true;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores characters
 	// unused
 	static bool FilterCallback_IgnoreCharacters(notnull IEntity target)
@@ -275,7 +275,7 @@ class SCR_Global
 		return true;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores g_TraceFilterEnt and its children
 	// unused
 	static bool FilterCallback_IgnoreEntityWithChildren(notnull IEntity target, vector rayorigin, vector raydirection)
@@ -294,7 +294,7 @@ class SCR_Global
 		return true;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores all BUT g_TraceFilterEnt and its children
 	static bool FilterCallback_IgnoreAllButEntityWithChildren(notnull IEntity target, vector rayorigin, vector raydirection)
 	{
@@ -312,7 +312,7 @@ class SCR_Global
 		return false;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores all BUT g_TraceFilterEnt
 	static bool FilterCallback_IgnoreAllButEntity(notnull IEntity target, vector rayorigin, vector raydirection)
 	{
@@ -325,7 +325,7 @@ class SCR_Global
 		return false;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores all BUT Characters/Trees
 	//! TODO:
 	//!   - add small object destruction
@@ -349,7 +349,7 @@ class SCR_Global
 		return false;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Trace filter callback function - ignores all but building regions type
 	// unused
 	static bool FilterCallback_IgnoreAllButBuildingRegions(notnull IEntity target, vector rayorigin, vector raydirection)
@@ -383,7 +383,7 @@ class SCR_Global
 		return damage * dmgScale;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns child index for the input child entity, returns -1 if not found
 	// unused
 	static int GetChildIndex(IEntity ent)
@@ -406,7 +406,7 @@ class SCR_Global
 		return -1;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Creates array of ParamEnums filled with pairs of bones names and their indexes in the EntityTagsComponent
 	static array<ref ParamEnum> GetBonesAsParamEnums(IEntity entity)
 	{
@@ -424,7 +424,7 @@ class SCR_Global
 		return retEnums;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Sets the input child entity as a child of the input parent entity, handling adjustments of transformations
 	// unused
 	static void SetEntityAsChildToParent(IEntity parent, IEntity child)
@@ -442,7 +442,7 @@ class SCR_Global
 		parent.AddChild(child, -1);
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns a scaled vector by scaling each axis separately
 	// unused
 	static vector ScaleVectorByVector(vector inputVec, vector scaleVec)
@@ -456,7 +456,7 @@ class SCR_Global
 		return result;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns global yaw orientation for input matrix
 	// unused
 	static float GetGlobalYawForMat(vector mat[4])
@@ -468,7 +468,7 @@ class SCR_Global
 		return angs[0];
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	// Lerps between 2 matrices
 	// unused
 	static void LerpMatrix(vector mat1[4], vector mat2[4], out vector matOut[4], float pct)
@@ -498,7 +498,7 @@ class SCR_Global
 		matOut[3] = (mat2[3] - mat1[3]) * pct + mat1[3];
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns local matrix of input matrices
 	// unused
 	static void GetLocalMatrix(vector parentMat[4], vector childMat[4])
@@ -508,7 +508,7 @@ class SCR_Global
 		Math3D.MatrixInvMultiply4(parentMat, childOrigMat, childMat);
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns world bounds from input matrix and bounds
 	// unused
 	static void GetWorldBoundsForEntity(vector mat[4], out vector mins, out vector maxs)
@@ -571,7 +571,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether object 1 is at the desired position in object 2
 	// unused
 	static bool GetObjectAtOffsetFromObject(IEntity parent, IEntity child, vector localPos, vector localAng, float tolerancePos, float toleranceAng)
@@ -617,7 +617,7 @@ class SCR_Global
 		return true;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether input point is within bounds
 	static bool IntersectBoxPoint(vector pos, vector mins, vector maxs)
 	{
@@ -632,7 +632,7 @@ class SCR_Global
 		return true;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether input sphere intersects with bounds with optional intersection distance output (negative values are within the box)
 	// unused
 	static bool IntersectBoxSphere(vector center, float radius, vector mins, vector maxs, out float intersectDist = 0)
@@ -663,7 +663,7 @@ class SCR_Global
 			return false;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Limit float between -1 and 1
 	static float FractionOf(float input, float fracOf)
 	{
@@ -677,7 +677,7 @@ class SCR_Global
 		return result;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Clamp value to a grid size
 	// local usage, can be protected
 	static float ClampToGrid(float input, float grid)
@@ -692,7 +692,7 @@ class SCR_Global
 		return input;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns relative yaw/pitch/roll to position from input view matrix
 	// unused
 	static vector GetDirectionAngles(vector viewMat[4], vector posTo)
@@ -706,18 +706,17 @@ class SCR_Global
 		return dirAng;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Takes two floats and returns the remainder after division
-	// move to SCR_Math?
+	[Obsolete("Use SCR_Math.fmod or Math.Repeat instead")]
 	static float fmod(float dividend, float divisor)
 	{
-		if (divisor != 0)
-			return dividend - Math.Floor(dividend/divisor) * divisor;
-		return 0;
-
+		if (divisor == 0)
+			return 0;
+		return dividend - Math.Floor(dividend/divisor) * divisor;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Takes input matrix and keeps it within the input bounds
 	// unused
 	static void WorldClampMatrixWithinBounds(vector mat[4], vector mins, vector maxs)
@@ -733,7 +732,7 @@ class SCR_Global
 		mat[3] = pos;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Return full color using input vector for color and input alpha (0 - 255)
 	// unused
 	static int VectorToRGBA255(vector colorVec, float alpha)
@@ -753,7 +752,7 @@ class SCR_Global
 		return r | g | b | a;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Takes input object and matrix and keeps it within the input bounds and optional gridsnap
 	// unused
 	static void WorldClampObjectAndMatrixWithinBounds(GenericEntity ent, vector mat[4], vector mins, vector maxs, vector gridSize)
@@ -803,7 +802,7 @@ class SCR_Global
 		mat[3] = pos;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Takes input object and matrix and keeps it within the input bounds and optional gridsnap
 	// unused
 	static void LocalClampObjectAndMatrixWithinBounds(vector localMat[4], GenericEntity ent, vector origMat[4], vector localMins, vector localMaxs, vector gridSize)
@@ -858,7 +857,7 @@ class SCR_Global
 		Math3D.MatrixMultiply4(localMat, mat, origMat);
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Take the input matrix and snaps the rotation to 90 degree, world-oriented angles. Also snaps the position to the input grid size
 	// unused
 	static void WorldSnapMatrix(vector mat[4], vector gridSize)
@@ -969,7 +968,7 @@ class SCR_Global
 		mat[bestAxisNum2] = bestAxis2;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Take the input matrix and snaps the rotation to 90 degree, local-oriented angles. Also snaps the position to the input grid size
 	// unused
 	static void LocalSnapMatrix(vector localMat[4], vector origMat[4], vector gridSize)
@@ -1085,7 +1084,7 @@ class SCR_Global
 		Math3D.MatrixMultiply4(localMat, mat, origMat);
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns 2D surface area (in m^2) for the input bound box and matrix
 	// can be protected
 	static float GetMatAndBoundsSurfaceAreaInDir(IEntity ent, vector dir, vector mat[4], vector mins, vector maxs)
@@ -1114,7 +1113,7 @@ class SCR_Global
 		return result;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns 2D surface area (in m^2) of the object's bounding box exposed in the input direction
 	static float GetSurfaceAreaInDir(IEntity ent, vector dir)
 	{
@@ -1127,7 +1126,7 @@ class SCR_Global
 		return GetMatAndBoundsSurfaceAreaInDir(ent, dir, matObj, mins, maxs);
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns the center of the entity from its bounding box in local coordinates
 	// unused
 	static vector GetEntityCenterLocal(IEntity ent)
@@ -1138,7 +1137,7 @@ class SCR_Global
 		return (entMaxs + entMins) * 0.5;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns whether the input string contains invalid characters (for file names)
 	// unused
 	static bool GetStringContainsInvalidCharacters(string s)
@@ -1168,7 +1167,7 @@ class SCR_Global
 		return false;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Show the name of the entity above it using the input camera index for direction etc
 	// unused
 	static void DisplayEntityNameText(IEntity ent, int color, int camIndex)
@@ -1189,7 +1188,7 @@ class SCR_Global
 		CreateSimpleText(ent.GetName(), textMat, 0.2 * distScale, color, ShapeFlags.NOZBUFFER | ShapeFlags.ONCE, null);
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Called from SetHierarchyVelocity
 	protected static void SetHierarchyChildVelocity(notnull IEntity ent, vector newVelocity, bool recursive = true)
 	{
@@ -1208,7 +1207,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Set linear velocity for whole hierarchy
 	// unused
 	static void SetHierarchyVelocity(notnull IEntity ent, vector newVelocity)
@@ -1228,7 +1227,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Called from SetHierarchyAngularVelocity
 	protected static void SetHierarchyChildAngularVelocity(notnull IEntity ent, vector newAngularVelocity, IEntity entFrom, bool recursive = true)
 	{
@@ -1256,7 +1255,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Set angular velocity for whole hierarchy
 	// unused
 	static void SetHierarchyAngularVelocity(notnull IEntity ent, vector newAngularVelocity)
@@ -1273,7 +1272,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Called from SetHierarchyBodyActive
 	protected static void SetHierarchyChildBodyActive(notnull IEntity ent, ActiveState activeState, bool recursive = true, bool resetVelocity = false)
 	{
@@ -1300,7 +1299,7 @@ class SCR_Global
 		}
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Sets physics active state for whole hierarchy
 	// unused
 	static void SetHierarchyBodyActive(notnull IEntity ent, ActiveState activeState, bool resetVelocity = false)
@@ -1335,7 +1334,7 @@ class SCR_Global
 	static bool IsAnyInherited(notnull IEntity entity, array<typename> typenames)
 	{
 		bool ret;
-		for( int i = 0; i < typenames.Count(); i++ )
+		for (int i = 0; i < typenames.Count(); i++)
 		{
 			ret = ret || entity.IsInherited( typenames.Get(i) );
 		}
@@ -1437,7 +1436,7 @@ class SCR_Global
 	//! \param entity The entity to find the actions manager component on.
 	//! \return True when actions manager is present, false otherwise.
 	// unused
-	static SCR_EditorActionsManagerComponent FindEditorActionsManagerComponent( IEntity entity )
+	static SCR_EditorActionsManagerComponent FindEditorActionsManagerComponent( IEntity entity)
 	{
 		auto genericEntity = GenericEntity.Cast(entity);
 		if (!genericEntity)
@@ -1621,10 +1620,12 @@ class SCR_Global
 	\return True if the operation was performed successfully
 	*/
 	static bool TeleportPlayer(vector worldPosition)
-	{
+	{		
 		IEntity player = SCR_PlayerController.GetLocalControlledEntity();
 		if (!player)
 			return false;
+		
+		vector startingPosition = player.GetOrigin();
 
 		//--- When in a vehcile, teleport the vehicle instead
 		SCR_CompartmentAccessComponent compartmentAccess = SCR_CompartmentAccessComponent.Cast(player.FindComponent(SCR_CompartmentAccessComponent));
@@ -1653,6 +1654,14 @@ class SCR_Global
 			phys.SetVelocity(vector.Zero);
 			phys.SetAngularVelocity(vector.Zero);
 		}
+		
+#ifdef ENABLE_DIAG
+	#ifndef WORKBENCH
+		//~ Send notification to all players if player teleported and Diag is enabled
+		if (Replication.IsRunning())
+			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_TELEPORTED_SELF, SCR_PlayerController.GetLocalPlayerId(), vector.Distance(startingPosition, player.GetOrigin()) * 100);	
+	#endif
+#endif
 
 		return true;
 
@@ -1693,7 +1702,7 @@ class SCR_Global
 		return true;
 		*/
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Draw lines representing transformation matrix.
@@ -1956,11 +1965,17 @@ class SCR_Global
 		BaseRadioComponent radioComponent;
 		array<SCR_GadgetComponent> gadgets = gadgetManager.GetGadgetsByType(EGadgetType.RADIO);
 		gadgets.InsertAll(gadgetManager.GetGadgetsByType(EGadgetType.RADIO_BACKPACK));
-		foreach (SCR_GadgetComponent gadget: gadgets)
+		foreach (SCR_GadgetComponent gadget : gadgets)
 		{
 			radioComponent = BaseRadioComponent.Cast(gadget.GetOwner().FindComponent(BaseRadioComponent));
-			if (radioComponent && radioComponent.IsPowered())
-				outFrequencies.Insert(radioComponent.GetFrequency());
+
+			if (!radioComponent || !radioComponent.IsPowered() || radioComponent.TransceiversCount() == 0)
+				continue;
+
+			for (int i = radioComponent.TransceiversCount() - 1; i >= 0; --i)
+			{
+				outFrequencies.Insert(radioComponent.GetTransceiver(i).GetFrequency());
+			}
 		}
 		return outFrequencies.Count();
 	}

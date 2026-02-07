@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum ECharacterDataState
@@ -16,7 +16,9 @@ enum ECharacterDataState
 	Unconscious,
 	Jumping,
 	Rolling,
-	VisualRagdoll
-};
+	VisualRagdoll,
+}
 
-/** @}*/
+/*!
+\}
+*/

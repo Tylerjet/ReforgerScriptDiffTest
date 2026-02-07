@@ -745,6 +745,15 @@ class SCR_WidgetListEntrySelection : SCR_WidgetListEntry
 	{
 		return m_Selection;
 	}
+	
+	//-------------------------------------------------------------------------------------------
+	void GetOptions(out array<ref SCR_LocalizedProperty> options)
+	{
+		for (int i = 0, count = m_aOptions.Count(); i < count; i++)
+		{
+			options.Insert(m_aOptions[i]);
+		}
+	}
 };
 
 //-------------------------------------------------------------------------------------------
@@ -774,6 +783,68 @@ class SCR_WidgetListEntrySpinBox : SCR_WidgetListEntrySelection
 	{
 		if (m_SpinBox)
 			m_SpinBox.SetCurrentItem(str.ToInt());
+	}
+}
+
+//-------------------------------------------------------------------------------------------
+[BaseContainerProps(configRoot: true), SCR_WidgetListEntryCustomTitle()]
+class SCR_WidgetListEntryBoolSpinBox : SCR_WidgetListEntrySpinBox
+{
+	[Attribute("0", desc: "Revert item reading order*")]
+	protected bool m_bReversed;
+	
+	//-------------------------------------------------------------------------------------------
+	override protected void SetupHandlers()
+	{
+		if (m_ChangeableComponent)
+			m_Selection = SCR_SelectionWidgetComponent.Cast(m_ChangeableComponent);
+		
+		if (!m_Selection)
+			return;
+		
+		// Fill values
+		if (m_bReversed)
+		{
+			for (int i = m_aOptions.Count() - 1; i >= 0; i--)
+			{
+				m_Selection.AddItem(m_aOptions[i].m_sLabel);
+			}
+		}
+		else 
+		{
+			for (int i = 0, count = m_aOptions.Count(); i < count; i++)
+			{
+				m_Selection.AddItem(m_aOptions[i].m_sLabel);
+			}
+		}
+		
+		// Select default value 
+		if (!m_sDefaultValue.IsEmpty())
+			SelectOption(m_sDefaultValue.ToInt());
+		
+		// Spinbox 
+		m_SpinBox = SCR_SpinBoxComponent.Cast(m_Selection);
+		
+		if (!m_SpinBox)
+			return;
+		
+		m_SpinBox.SetCycleMode(m_bCycle);
+	}
+	
+	//-------------------------------------------------------------------------------------------
+	override void SetValue(string str)
+	{
+		int value = str.ToInt();
+		if (m_bReversed)
+		{
+			if (value == 0)
+				value = 1;
+			else if (value == 1)
+				value = 0;
+		}
+		
+		if (m_SpinBox)
+			m_SpinBox.SetCurrentItem(value);
 	}
 }
 

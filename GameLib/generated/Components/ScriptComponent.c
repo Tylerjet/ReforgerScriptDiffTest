@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
-/**
+/*!
 * Parent class for all components created in script.
 * Every ScriptComponent is being created in Entity's constructor and may receive following events
 * 1. OnComponentInsert is being called when component is created. This is last event Workbench sends in World Editor edit mode.
@@ -31,19 +31,19 @@ class ScriptComponent: GenericComponent
 	delivered to Slave using RplInit method.
 	*/
 	event protected bool RplSave(ScriptBitWriter writer);
-	
+
 	//! Get owner entity
 	proto external GenericEntity GetOwner();
-	
+
 	// callbacks
-	
+
 	/*!
-	Event when touched by other entity
-	\note You need to have TouchComponent in entity to receive this event
-	
+	Event when touched by other entity.
+	\note You need to have TouchComponent in entity to receive this event.
+
 	\param owner The owner entity
 	\param other Entity who touched us
-	\param extra Bitmask of touch types TouchEvent
+	\param touchTypesMask Bitmask of touch types TouchEvent
 	*/
 	event protected void EOnTouch(IEntity owner, IEntity other, int touchTypesMask);
 	/*!
@@ -64,9 +64,9 @@ class ScriptComponent: GenericComponent
 	*/
 	event protected void EOnFrame(IEntity owner, float timeSlice);
 	/*!
-	Event after physics update
+	Event after physics update.
 	\param owner The owner entity
-	\param frameNumber Time passed since last frame
+	\param timeSlice Time passed since last frame
 	*/
 	event protected void EOnPostFrame(IEntity owner, float timeSlice);
 	/*!
@@ -118,29 +118,28 @@ class ScriptComponent: GenericComponent
 	*/
 	event protected void EOnDiag(IEntity owner, float timeSlice);
 	/*!
-	Event every fixed frame
+	Event every fixed frame.
 	\param owner The owner entity
 	\param timeSlice Fixed time step
 	*/
 	event protected void EOnFixedFrame(IEntity owner, float timeSlice);
 	/*!
-	Event after physics update on every fixed frame
+	Event after physics update on every fixed frame.
 	\param owner The owner entity
-	\param frameNumber Fixed time step
+	\param timeSlice Fixed time step
 	*/
 	event protected void EOnPostFixedFrame(IEntity owner, float timeSlice);
-	/**
+	/*!
 	* Event when component is activated.
 	*/
 	event protected void EOnActivate(IEntity owner);
-	/**
+	/*!
 	* Event when component is deactivated.
 	*/
 	event protected void EOnDeactivate(IEntity owner);
 	/*!
 	Event called after init when all components are initialized.
 	\param owner Entity into which component is added
-	\param other Component which is being added into Entity
 	*/
 	event protected void OnPostInit(IEntity owner);
 	/*!
@@ -148,6 +147,16 @@ class ScriptComponent: GenericComponent
 	\param owner Entity which owns the component
 	*/
 	event protected void OnDelete(IEntity owner);
-};
+	//!Called on child entity when it is added into hierarchy
+	event protected void OnAddedToParent(IEntity child, IEntity parent);
+	//!Called on child entity when it is removed from hierarchy
+	event protected void OnRemovedFromParent(IEntity child, IEntity parent);
+	//!Called on parent entity when child entity is added into hierarchy
+	event protected void OnChildAdded(IEntity parent, IEntity child);
+	//!Called on parent entity when child entity is removed from hierarchy
+	event protected void OnChildRemoved(IEntity parent, IEntity child);
+}
 
-/** @}*/
+/*!
+\}
+*/

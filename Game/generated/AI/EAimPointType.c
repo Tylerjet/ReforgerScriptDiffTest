@@ -4,16 +4,18 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 enum EAimPointType
 {
 	NORMAL,
 	WEAK,
-	INCAPACITATE
-};
+	INCAPACITATE,
+}
 
-/** @}*/
+/*!
+\}
+*/

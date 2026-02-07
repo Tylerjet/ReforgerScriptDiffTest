@@ -1,5 +1,8 @@
 class SCR_MultiTextTooltipUIComponent: ScriptedWidgetComponent
 {
+	[Attribute(defvalue: "1 1 1 1", desc: "Color of Text.")]
+	protected ref Color m_cTextColor;
+	
 	[Attribute("")]
 	protected ResourceName m_TextPrefab;
 	
@@ -21,18 +24,27 @@ class SCR_MultiTextTooltipUIComponent: ScriptedWidgetComponent
 		}
 	}
 	
-	void AddText(string text, string param1 = string.Empty)
+	void SetInitTextColor(Color color)
+	{
+		m_cTextColor = color;
+	}
+	
+	TextWidget AddText(string text, string param1 = string.Empty, string param2 = string.Empty, string param3 = string.Empty, string param4 = string.Empty)
 	{
 		if (!m_wRoot)
-			return;
+			return null;
 		
 		Widget newWidget = GetGame().GetWorkspace().CreateWidgets(m_TextPrefab, m_wRoot);
 		if (!newWidget)
-			return;
+			return null;
 		
 		TextWidget textWidget = TextWidget.Cast(newWidget);
-		if (textWidget)
-			textWidget.SetTextFormat(text, param1);
+		if (!textWidget)
+			return null;
+		
+		textWidget.SetColor(m_cTextColor);
+		textWidget.SetTextFormat(text, param1, param2, param3, param4);
+		return textWidget;
 	}
 	
 	

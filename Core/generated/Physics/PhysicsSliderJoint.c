@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -84,6 +84,8 @@ sealed class PhysicsSliderJoint: PhysicsJoint
 	\param force Maximum angular force motor can overcome. 0 to turn motor off.
 	*/
 	proto external void SetAngularMotor(float velocity, float force);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

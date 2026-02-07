@@ -68,7 +68,7 @@ class SCR_RefuelTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!ctxMenu)
 			return;
 		
-		vector position = ctxMenu.GetContextMenuWorldPosition();
+		vector position = ctxMenu.GetMenuWorldPosition();
 		
 		// Find task network component to send RPC to server
 		SCR_CampaignTaskNetworkComponent taskNetworkComponent = SCR_CampaignTaskNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignTaskNetworkComponent));

@@ -55,7 +55,7 @@ class SCR_DateEditorAttribute : SCR_BaseEditorAttribute
 		
 		if (item)
 		{
-			SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_DATE_CHANGED, playerID, day, month, year);
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_DATE_CHANGED, playerID, day, month, year);
 		}
 		
 		timeManager.SetDate(year, month, day);

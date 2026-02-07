@@ -4,14 +4,21 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
-//!Shared object with constant data for prefab-ed components (i.e. material remapping for visual objects, physics geometries for physics controller etc)
+/*!
+Shared object with constant data for components from prefab. For example:
+- material remapping for visual objects
+- physics geometries for physics controller
+- etc.
+*/
 class EntityComponentPrefabData
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,16 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup GameStateTransitions
-* @{
+/*!
+\addtogroup GameStateTransitions
+\{
 */
 
 sealed class GameStateTransitions
 {
 	private void GameStateTransitions();
 	private void ~GameStateTransitions();
-	
+
 	//! Check whether transition to different game state has been requested this frame and will start next frame.
 	static proto bool IsTransitionRequested();
 	//! Check whether transition to different game state is currently happening.
@@ -35,6 +35,8 @@ sealed class GameStateTransitions
 	static proto void RequestGameplayEndTransition(KickCauseCode code = KickCauseCode.NONE);
 	//! Request graceful shut down of the game from whatever is current game state (eg. online vs. offline).
 	static proto void RequestGameTerminateTransition();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

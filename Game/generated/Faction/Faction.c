@@ -4,13 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Faction
-* @{
+/*!
+\addtogroup Faction
+\{
 */
 
 class Faction: ScriptAndConfig
 {
+	proto external FactionIdentity GetFactionIdentity();
 	//! Returns true if this faction and other faction are friendly.
 	proto external bool IsFactionFriendly(Faction otherFaction);
 	//! Returns true if this faction and other faction are hostile.
@@ -23,6 +24,8 @@ class Faction: ScriptAndConfig
 	proto ref Color GetFactionColor();
 	//! Returns the UI info of this faction.
 	proto external UIInfo GetUIInfo();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

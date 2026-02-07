@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Perception
-* @{
+/*!
+\addtogroup Perception
+\{
 */
 
 class BaseTarget: ScriptAndConfig
 {
-	/**
+	/*!
 	Returns target entity
 	*/
 	proto external IEntity GetTargetEntity();
@@ -36,10 +36,14 @@ class BaseTarget: ScriptAndConfig
 	proto external bool IsEndangering();
 	// Returns unit type, same as in PerceivableComponent of that target
 	proto external EAIUnitType GetUnitType();
+	proto external float GetExposure();
 	// Returns perceivable component of target
 	proto external PerceivableComponent GetPerceivableComponent();
+	proto void GetAccumulatedRecognition(out float outRecognitionDetect, out float outRecognitionIdentify);
 	// Sets the last seen position to provided value if the timestamp is newer than existing last seen time
 	proto external void UpdateLastSeenPosition(vector pos, float perceptionMgrTimestamp);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -53,10 +53,6 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 	*/
 	static void GetPreviewEntries(IEntity entity, out notnull array<ref SCR_BasePreviewEntry> outEntries, out vector rootTransform[4], int parentID = -1, EPreviewEntityFlag flags = 0)
 	{
-		//--- Ignore vehicle crew, wouldn't have correct animations
-		if (parentID != -1 && entity.IsInherited(ChimeraCharacter))
-			return;
-		
 		vector transform[4];
 		if (parentID == -1)
 		{
@@ -65,6 +61,14 @@ class SCR_GenericPreviewEntity: SCR_BasePreviewEntity
 		}
 		else
 		{
+			//--- Ignore vehicle crew, wouldn't have correct animations
+			if (entity.IsInherited(ChimeraCharacter))
+				return;
+			
+			//--- Skip entities with mesh that are not visible, as well as entities not intended for play mode
+			if ((entity.GetVObject() && !(entity.GetFlags() & EntityFlags.VISIBLE)) || (entity.GetFlags() & EntityFlags.EDITOR_ONLY))
+				return;
+			
 			entity.GetLocalTransform(transform);
 		}
 		

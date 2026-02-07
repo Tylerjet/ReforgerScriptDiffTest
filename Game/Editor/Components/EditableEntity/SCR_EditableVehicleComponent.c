@@ -136,7 +136,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 	\param checkForFreeCompartments If true will check if there are compartments free for the given compartments types. Function will return false if there are no free compartments of given type
 	\return Will return true if a character can be spawned in at least one compartment
 	*/
-	bool CanOccupyVehicleWithCharacters(array<ECompartmentType> compartmentTypes, bool checkHasDefaultOccupantsData, bool checkEditorBudget = true, bool checkOccupyingFaction = true, bool checkForFreeCompartments = true)
+	bool CanOccupyVehicleWithCharacters(array<ECompartmentType> compartmentTypes, bool checkHasDefaultOccupantsData, bool checkEditorBudget = true, bool checkOccupyingFaction = true, bool checkForFreeCompartments = true, bool checkForFreeDefaultCompartments = false)
 	{
 		FactionKey factionKey = string.Empty;
 		
@@ -150,15 +150,26 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 				factionKey = uiInfo.GetFactionKey();
 		}
 		
-		if (checkEditorBudget && !HasEnoughBudgetForDefaultOccupants(compartmentTypes))
+		bool hasEnoughBudgetForDefaultCompartments;
+		bool hasFreeDefaultCompartments;
+
+		if (checkEditorBudget || checkForFreeDefaultCompartments)
+			hasEnoughBudgetForDefaultCompartments = HasEnoughBudgetForDefaultOccupants(compartmentTypes, hasFreeDefaultCompartments);
+		
+		if (checkEditorBudget && !hasEnoughBudgetForDefaultCompartments)
+			return false;
+		
+		if (checkForFreeDefaultCompartments && !hasFreeDefaultCompartments)
 			return false;
 		
 		return m_ComparmentManager.CanOccupy(compartmentTypes, checkHasDefaultOccupantsData, factionKey, checkOccupyingFaction, checkForFreeCompartments);
 	}
 	
 	//~ Check if there is enough budget to spawn default occupants
-	protected bool HasEnoughBudgetForDefaultOccupants(array<ECompartmentType> compartmentTypes)
+	protected bool HasEnoughBudgetForDefaultOccupants(array<ECompartmentType> compartmentTypes, out bool noFreeDefaultCompartments)
 	{
+		noFreeDefaultCompartments = true;
+		
 		array<BaseCompartmentSlot> compartments = new array<BaseCompartmentSlot>;
 		
 		//~ Get all free compartments of given types
@@ -175,10 +186,12 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 				occupantsToSpawn.Insert(occupant);
 		}
 		
-		//~ Is empty so simply return true. Will not show notification that there is not enough budget
+		//~ Is empty so it has enough budget but will also return that there are no free seats
 		if (occupantsToSpawn.IsEmpty())
+		{
+			noFreeDefaultCompartments = false;
 			return true;
-		
+		}
 		
 		SCR_ContentBrowserEditorComponent contentBrowser = SCR_ContentBrowserEditorComponent.Cast(SCR_ContentBrowserEditorComponent.GetInstance(SCR_ContentBrowserEditorComponent, true));
 		return contentBrowser && contentBrowser.CanPlace(occupantsToSpawn, EEditableEntityType.CHARACTER);
@@ -214,8 +227,10 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(GetInfo());		
 		array<ECompartmentType> compartmentsToFill = new array<ECompartmentType>;
 		
+		bool hasFreeSeats;
+		
 		//~ Check crew budget
-		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_CREWED) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES))
+		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_CREWED) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.CREW_COMPARTMENT_TYPES, hasFreeSeats))
 		{
 			//~ Occupy with Crew
 			if (!uiInfo || !uiInfo.GetEditorPlaceAsOneGroup())
@@ -225,7 +240,7 @@ class SCR_EditableVehicleComponent : SCR_EditableEntityComponent
 		}	
 		
 		//~ Check passenger budget
-		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_PASSENGER) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES))
+		if (SCR_Enum.HasFlag(flags, EEditorPlacingFlags.VEHICLE_PASSENGER) && HasEnoughBudgetForDefaultOccupants(SCR_BaseCompartmentManagerComponent.PASSENGER_COMPARTMENT_TYPES, hasFreeSeats))
 		{
 			//~ Occupy with Passengers
 			if (!uiInfo || !uiInfo.GetEditorPlaceAsOneGroup())

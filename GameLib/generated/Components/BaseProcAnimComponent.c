@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseProcAnimComponentClass: GenericComponentClass
 {
-};
+}
 
 class BaseProcAnimComponent: GenericComponent
 {
@@ -21,6 +21,8 @@ class BaseProcAnimComponent: GenericComponent
 	proto external int GetBoneSlotIndex(int ctrlIdx, string name);
 	proto external void GetSignals(int ctrlIdx, out array<string> signals);
 	proto external int GetSignalIndex(int ctrlIdx, string name);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

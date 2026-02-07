@@ -7,7 +7,7 @@ class SCR_EquipClothAction: SCR_InventoryAction
 	protected bool m_bIsSwappingItems = false;
 	protected string m_sItemToSwapName = "";
 	
-	protected BaseLoadoutManagerComponent m_LoadoutManager;
+	protected EquipedLoadoutStorageComponent m_LoadoutStorage;
 	protected BaseLoadoutClothComponent m_LoadoutCloth;
 	
 	[Attribute( "#AR-Inventory_Equip", desc: "What text should be displayed when the Equip action is available." )]
@@ -29,31 +29,36 @@ class SCR_EquipClothAction: SCR_InventoryAction
 		if ( !super.CanBePerformedScript( user ) )
 			return false;
 		
-		if ( !m_LoadoutManager )
-			m_LoadoutManager = BaseLoadoutManagerComponent.Cast( user.FindComponent( BaseLoadoutManagerComponent ) );
+		if ( !m_LoadoutStorage )
+			m_LoadoutStorage = EquipedLoadoutStorageComponent.Cast( user.FindComponent( EquipedLoadoutStorageComponent ) );
 		
 		if ( !m_LoadoutCloth )
 			return false;	
 	
 		LoadoutAreaType targetArea = m_LoadoutCloth.GetAreaType();
+		if (!targetArea)
+			return false;
 		
 		// Checks if the desired area is occupied. If it's occupied it will save the UI info related to the replaced item is saved.
-		if ( m_LoadoutManager && !m_LoadoutManager.IsAreaAvailable( targetArea.Type() ) )
+		if ( m_LoadoutStorage)
 		{
-			IEntity itemToSwap = m_LoadoutManager.GetClothByArea( targetArea.Type() );
-			InventoryItemComponent itemComp = InventoryItemComponent.Cast( itemToSwap.FindComponent( InventoryItemComponent ) );
-			
-			// If the component is missing configuration we can fall back on the target area name.
-			if ( !itemComp || !itemComp.GetAttributes().GetUIInfo().GetName() )
+			IEntity itemToSwap = m_LoadoutStorage.GetClothFromArea( targetArea.Type() );
+			if (itemToSwap)
 			{
-				m_sItemToSwapName =	targetArea.ToString();
-				m_bIsSwappingItems = false;
-				
-				return true;
-			}
+				InventoryItemComponent itemComp = InventoryItemComponent.Cast( itemToSwap.FindComponent( InventoryItemComponent ) );
 			
-			m_sItemToSwapName = itemComp.GetAttributes().GetUIInfo().GetName();
-			m_bIsSwappingItems = true;
+				// If the component is missing configuration we can fall back on the target area name.
+				if ( !itemComp || !itemComp.GetAttributes().GetUIInfo().GetName() )
+				{
+					m_sItemToSwapName =	targetArea.ToString();
+					m_bIsSwappingItems = false;
+					
+					return true;
+				}
+				
+				m_sItemToSwapName = itemComp.GetAttributes().GetUIInfo().GetName();
+				m_bIsSwappingItems = true;
+			}
 		}
 		else
 		{
@@ -89,6 +94,12 @@ class SCR_EquipClothAction: SCR_InventoryAction
 		if (!item)
 			return;
 		m_LoadoutCloth = BaseLoadoutClothComponent.Cast( item.FindComponent( BaseLoadoutClothComponent ) );
+		
+		if (!m_LoadoutCloth)
+		{
+			Print("Missing BaseLoadoutClothComponent", LogLevel.ERROR);
+			return;
+		}
 	}
 	
 	#endif

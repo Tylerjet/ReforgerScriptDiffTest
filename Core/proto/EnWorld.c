@@ -1,11 +1,17 @@
-/**																																											 /**
- * \defgroup World World
- * @{
- */
+/*!
+\defgroup World World
+\{
+*/
 
-/*! 
-\brief Post-process effect type.
-\attention Keep enum names in synch with post-process effect material class names. Postfix "Effect" is added automatically.
+typedef func QueryEntitiesCallback;
+bool QueryEntitiesCallback(IEntity e);
+
+typedef func TraceEntitiesCallback;
+bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0");
+
+/*!
+Post-process effect type.
+\attention Keep enum names in sync with post-process effect material class names. Postfix "Effect" is added automatically.
 */
 enum PostProcessEffectType
 {
@@ -32,18 +38,12 @@ enum PostProcessEffectType
 	GaussFilter,
 	SSR,
 	DepthOfFieldBokeh
-};
+}
 
 class SharedItem: pointer
 {
 
-};
-
-typedef func QueryEntitiesCallback;
-bool QueryEntitiesCallback(IEntity e);
-
-typedef func TraceEntitiesCallback;
-bool TraceEntitiesCallback(notnull IEntity e, vector start = "0 0 0", vector dir = "0 0 0");
+}
 
 TraceParam MakeTraceParam(vector start, vector end, TraceFlags flags)
 {
@@ -54,5 +54,6 @@ TraceParam MakeTraceParam(vector start, vector end, TraceFlags flags)
 	return param;
 }
 
-//@}
- 
+/*!
+\}
+*/

@@ -29,8 +29,8 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	[Attribute("#AR-DeployMenu_NoSpawnPoints_Text", uiwidget: UIWidgets.EditBox, "Message shown when no spawn points are available", category: "Respawn Handler")]
 	protected LocalizedString m_sRespawnUnavailable;
 
-	[Attribute("", uiwidget: UIWidgets.EditBox, "Optional message shown in faction selection screen", category: "Respawn Handler")]
-	protected LocalizedString m_sFactionMenuMessage;
+	[Attribute("#AR-UI_RespawnInfo_PermanentFaction", uiwidget: UIWidgets.EditBox, "Message shown when players can't change their faction", category: "Respawn Handler")]
+	protected LocalizedString m_sPermanentFactionMessage;
 
 	protected ref SimplePreload m_Preload;
 
@@ -198,7 +198,10 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 		}
 
 		if (!m_bAllowSpawnPointSelection)
+		{
 			RandomizePlayerSpawnPoint(playerID);
+			RequestRespawn(playerID);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -229,9 +232,9 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 
 		SCR_SelectFactionSubMenu menu = SCR_SelectFactionSubMenu.GetInstance();
 		if (menu)
@@ -370,9 +373,9 @@ class SCR_RespawnMenuHandlerComponent : SCR_RespawnHandlerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	LocalizedString GetFactionMenuMessage()
+	LocalizedString GetPermanentFactionMessage()
 	{
-		return m_sFactionMenuMessage;
+		return m_sPermanentFactionMessage;
 	}
 
 	//------------------------------------------------------------------------------------------------

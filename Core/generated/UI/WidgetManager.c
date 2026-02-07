@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -16,11 +16,11 @@ sealed class WidgetManager
 {
 	private void WidgetManager();
 	private void ~WidgetManager();
-	
+
 	/*!
 	Gets all widgets at given position returning them in array from the closest to the farthest
 	Widgets with DISABLED or IGNORE_CURSOR or without VISIBLE flags are ignored.
-	
+
 	\param x X coordinate on screen in NATIVE resolution
 	\param y Y coordinate on screen in NATIVE resolution
 	\param rootWidget Where in the hierarchy should the tracing start. Is included in tracing.
@@ -47,6 +47,8 @@ sealed class WidgetManager
 	static proto string Translate(string text, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
 	//! Return indices of IDs which contains searched text. Search is case insensitive.
 	static proto int SearchLocalized(string text, notnull array<string> IDs, notnull out array<int> outIndices);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,15 +4,17 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class GenericComponent
 {
 	static bool Preload(IEntityComponentSource src);
-	
+	private void GenericComponent(IEntityComponentSource src, IEntity ent, IEntity parent);
+	private void ~GenericComponent();
+
 	//!Gets GenericComponentClass descendant instance with the prefab data
 	proto external EntityComponentPrefabData GetComponentData(notnull IEntity ent);
 	//!Gets config container with the prefab data
@@ -22,12 +24,12 @@ class GenericComponent
 	\param method member function pointer
 	*/
 	proto void Rpc(func method, void p0 = NULL, void p1 = NULL, void p2 = NULL, void p3 = NULL, void p4 = NULL, void p5 = NULL, void p6 = NULL, void p7 = NULL);
-	/**
+	/*!
 	* Gets current eventmask of the component.
 	* \return Returns bitmask of events the component accepts
 	*/
 	proto external int GetEventMask();
-	/**
+	/*!
 	* Sets eventmask. Component accepts only events which has set bits in eventmask.
 	* Bits are or'ed with existing bitmask. See enf::EntityEvents.
 	* When this method is called in the constructor of the component, it will not properly set the eventmask to the parent entity. You may consider OnComponentInsert event.
@@ -35,7 +37,7 @@ class GenericComponent
 	* \return Returns bitmask of events the component accepts (result of mask|GetEventMask())
 	*/
 	proto external int SetEventMask(notnull IEntity owner, int mask);
-	/**
+	/*!
 	* Clears bitmask. Component accepts only events which has set bits in eventmask.
 	* Only bits set in the mask are cleared. See enf::EntityEvents
 	* \param mask Mask of those bits, which will be cleared.
@@ -53,50 +55,50 @@ class GenericComponent
 	\param outComponents array to fill with selected components
 	*/
 	proto external int FindComponents(typename typeName, notnull array<GenericComponent> outComponents);
-	/**
+	/*!
 	* Activate component and calls EOnActivate().
 	*/
 	proto external void Activate(IEntity owner);
-	/**
+	/*!
 	* Deactivate component and calls EOnDectivate().
 	*/
 	proto external void Deactivate(IEntity owner);
-	/**
+	/*!
 	* Returns activity state.
 	* \return Returns true, if component is active.
 	*/
 	proto external bool IsActive();
 	/*!
 	Native implementation of OnTransformReset.
-	
+
 	The default implementation does nothing except calling OnTransformReset on the child components.
-	
+
 	Can be overridden in the native code to alter the default behavior
 	(usually the override should also call the base implementation to preserve the recursion).
 	There's a script version of OnTransformResetImpl to override too.
-	
+
 	\param params See the TransformResetParams documentation.
 	*/
 	proto external private void OnTransformResetImplNative(TransformResetParams params);
 	/*!
 	Notifies the component that a transformation of the owner entity has been discontinuously changed.
-	
+
 	Should be called after any transformation discontinuity (right after updating the transform)
 	e.g. by teleportation or desync-correction code so the component can react appropriately.
 	By default, this is called automatically from GenericEntity::OnTransformReset.
-	
+
 	The default implementation does nothing except calling OnTransformReset on the child components.
-	
+
 	The default behavior may be changed in inherited components by overriding OnTransformResetImpl.
-	
+
 	\param isCorrection [optional] Hint that the transform was reset due to its correction (e.g. by net-code),
-	i.e. not a placement/teleport
+											i.e. not a placement/teleport
 	\param newVelocity  [optional] Initial velocity of the owner entity after the transform reset
 	*/
 	proto external void OnTransformReset(bool isCorrection = false, vector newVelocity = vector.Zero);
-	
+
 	// callbacks
-	
+
 	//! Editor changed entity transformation matrix source. Do not call editor API here!
 	event void _WB_SetTransform(IEntity owner, inout vector mat[4], IEntitySource src);
 	//! Called always after entity creation. It's purpose is to prepare entity for editing. Do not edit anything through editor API here because it's too early for undoable actions! Use plain BaseContainer API for changes through src parameter if needed!
@@ -137,15 +139,17 @@ class GenericComponent
 	event array<ref ParamEnum> _WB_GetUserEnums(string varName, IEntity owner, IEntityComponentSource src);
 	/*!
 	Script-side implementation of OnTransformReset.
-	
+
 	The default implementation does nothing except calling OnTransformReset on the child components.
-	
+
 	Can be overridden to alter the default behavior.
 	Usually, you'll want to call the base implementation somewhere in the override to preserve the recursion.
-	
+
 	\param params See the TransformResetParams documentation.
 	*/
 	event protected void OnTransformResetImpl(TransformResetParams params){ OnTransformResetImplNative(params); };
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -68,7 +68,7 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 		
 		//Notification
 		if (item)
-			SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_TIME_CHANGED, playerID,  time[0].ToInt(), time[1].ToInt(), time[3].ToInt(), time[4].ToInt());
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_TIME_CHANGED, playerID,  time[0].ToInt(), time[1].ToInt(), time[3].ToInt(), time[4].ToInt());
 	}
 	
 	override void PreviewVariable(bool setPreview, SCR_AttributesManagerEditorComponent manager)

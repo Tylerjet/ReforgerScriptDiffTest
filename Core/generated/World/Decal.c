@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 sealed class Decal: pointer
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

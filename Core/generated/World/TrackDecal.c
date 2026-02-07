@@ -4,23 +4,23 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 sealed class TrackDecal: Decal
 {
 	/*!
-	is it possible to add new point to Track decal?
+	Checks whether adding new point to Track decal is possible.
 	\param entity		entity to add new Track point
-	\param mat			material of decal
-	\param newpoint 	new point to add
+	\param materialName			material of decal
+	\param newPoint 	new point to add
 	\return
-	LMD_ERROR 	= error when adding new point (invalid decal)
-	LMD_VALID 	= can add new point
-	LMD_DIFF_ENT 	= new point is on different entity
-	LMD_TOO_FAR	= new point is too far from previous point
+		LMD_ERROR 	= error when adding new point (invalid decal)
+		LMD_VALID 	= can add new point
+		LMD_DIFF_ENT 	= new point is on different entity
+		LMD_TOO_FAR	= new point is too far from previous point
 	*/
 	proto external int CanAddToTrackDecal(IEntity entity, ResourceName materialName, vector newPoint);
 	/*!
@@ -39,15 +39,9 @@ sealed class TrackDecal: Decal
 	\param alphaDist	distance to add last point
 	*/
 	proto external void FinalizeTrackDecal(bool addAlpha, float alphaDist);
-	/*!
-	return last Track point or -65535.0 in all components
-	\param lmDecal		decal to test
-	*/
+	//! Returns last Track point or -65535.0 in all components.
 	proto external vector GetLastTrackPoint();
-	/*!
-	return if Track was finalized
-	\param lmDecal		decal to test
-	*/
+	//! Returns whether Track was finalized.
 	proto external bool IsTrackFinalized();
 	/*!
 	set global parameters for Track generation
@@ -56,6 +50,8 @@ sealed class TrackDecal: Decal
 	\param degAngle				angle in degrees, when is more, the path is finished
 	*/
 	static proto void SetGlobalTrackParams(float minSegmentLength, float maxSegmentLength, float degAngle);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

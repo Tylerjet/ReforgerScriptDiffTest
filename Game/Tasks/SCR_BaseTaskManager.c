@@ -811,7 +811,7 @@ class SCR_BaseTaskManager : GenericEntity
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SHOW_ALL_TASKS, "", "Print all tasks", "Tasks", false);
 #endif
 		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE, false);
 		SetFlags(EntityFlags.NO_LINK, false);
 		
 		//Register to Script Invokers

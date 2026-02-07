@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 sealed class LightHandle: pointer
@@ -73,10 +73,8 @@ sealed class LightHandle: pointer
 	* spot lights, 2D texture -> the texture serves as projector texture
 	* spot light, 1D texture of <someWidth, 1> size -> texture serves is angle lookup texture (parametrized by cos^2 angle
 	from spot direction and pixel world pos, IES profile, but not supported fully now as we don't have IES converter)
-	\param light Handle of light
-	\param name Name of texture
 	*/
-	proto external void SetTexture(notnull BaseWorld world, ResourceName matName);
+	proto external void SetTexture(notnull BaseWorld world, ResourceName textureName);
 	/*!
 	Sets near plane of a light. It's meaningful for shadow casting LT_SPOT/LT_POINT lights only!
 	\param nearPlane	near plane when casting shadows
@@ -124,6 +122,8 @@ sealed class LightHandle: pointer
 	\param transform Transform matrix of light
 	*/
 	proto external void SetTransform(notnull BaseWorld world, vector[] transform);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

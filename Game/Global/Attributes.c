@@ -10,20 +10,20 @@
 class SCR_BaseContainerStaticTitleField : BaseContainerCustomTitle
 {
 	private string m_sCustomTitle;
-	
+
 	void SCR_BaseContainerStaticTitleField(string customTitle = "")
 	{
 		customTitle.Trim();
 		m_sCustomTitle = customTitle;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		// if (!m_sCustomTitle)
 		// {
 		// 	return false;
 		// }
-		
+
 		title = m_sCustomTitle;
 		return true;
 	}
@@ -44,7 +44,7 @@ class SCR_BaseContainerCustomTitleField : BaseContainerCustomTitle
 {
 	protected string m_sPropertyName;
 	protected string m_sFormat;
-	
+
 	void SCR_BaseContainerCustomTitleField(string propertyName, string format = "%1")
 	{
 		m_sPropertyName = propertyName;
@@ -76,7 +76,7 @@ class SCR_BaseContainerLocalizedTitleField : BaseContainerCustomTitle
 {
 	protected string m_sPropertyName;
 	protected string m_sFormat;
-	
+
 	void SCR_BaseContainerLocalizedTitleField(string propertyName, string format = "%1")
 	{
 		m_sPropertyName = propertyName;
@@ -111,14 +111,14 @@ class SCR_BaseContainerCustomTitleEnum : BaseContainerCustomTitle
 	private typename m_EnumType;
 	private string m_PropertyName;
 	private string m_sFormat;
-	
+
 	void SCR_BaseContainerCustomTitleEnum(typename enumType, string propertyName, string format = "%1")
 	{
 		m_EnumType = enumType;
 		m_PropertyName = propertyName;
 		m_sFormat = format;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		int enumValue;
@@ -126,7 +126,7 @@ class SCR_BaseContainerCustomTitleEnum : BaseContainerCustomTitle
 		{
 			return false;
 		}
-		
+
 		title = string.Format(m_sFormat, typename.EnumToString(m_EnumType, enumValue));
 		return true;
 	}
@@ -147,14 +147,14 @@ class SCR_BaseContainerCustomTitleFlags : BaseContainerCustomTitle
 	private typename m_EnumType;
 	private string m_PropertyName;
 	private string m_sFormat;
-	
+
 	void SCR_BaseContainerCustomTitleFlags(typename enumType, string propertyName, string format = "%1")
 	{
 		m_EnumType = enumType;
 		m_PropertyName = propertyName;
 		m_sFormat = format;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		int enumValue;
@@ -162,7 +162,7 @@ class SCR_BaseContainerCustomTitleFlags : BaseContainerCustomTitle
 		{
 			return false;
 		}
-		
+
 		array<int> values = {};
 		for (int i = 0, count = SCR_Enum.BitToIntArray(enumValue, values); i < count; i++)
 		{
@@ -170,7 +170,7 @@ class SCR_BaseContainerCustomTitleFlags : BaseContainerCustomTitle
 			{
 				title += " | ";
 			}
-			
+
 			title += typename.EnumToString(m_EnumType, values[i]);
 		}
 		title = string.Format(m_sFormat, title);
@@ -193,23 +193,24 @@ class SCR_BaseContainerCustomTitleResourceName : BaseContainerCustomTitle
 	private string m_sPropertyName;
 	private bool m_bFileNameOnly;
 	private string m_sFormat;
-	
+
 	void SCR_BaseContainerCustomTitleResourceName(string propertyName, bool fileNameOnly = false, string format = "%1")
 	{
 		m_sPropertyName = propertyName;
 		m_bFileNameOnly = fileNameOnly;
 		m_sFormat = format;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		ResourceName path;
 		if (!source.Get(m_sPropertyName, path))
-		{
 			return false;
-		}
+
 		title = path.GetPath();
-		if (m_bFileNameOnly) title = string.Format(m_sFormat, FilePath.StripPath(title));
+		if (m_bFileNameOnly)
+			title = string.Format(m_sFormat, FilePath.StripPath(title));
+
 		return true;
 	}
 };
@@ -229,19 +230,19 @@ class SCR_BaseContainerCustomTitleObject : BaseContainerCustomTitle
 {
 	private string m_sPropertyName;
 	private string m_sFormat;
-	
+
 	void SCR_BaseContainerCustomTitleObject(string propertyName, string format = "%1")
 	{
 		m_sPropertyName = propertyName;
 		m_sFormat = format;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		BaseContainer object = source.GetObject(m_sPropertyName);
 		if (!object)
 			return false;
-		
+
 		title = string.Format(m_sFormat, object.GetClassName());
 		return true;
 	}
@@ -253,32 +254,249 @@ class SCR_BaseContainerCustomTitleObject : BaseContainerCustomTitle
 	[BaseContainerProps(), BaseContainerCustomStringTitleField("Title")]
 	class TestConfigClass
 	{
-
 	}
 	@endcode
 */
 class BaseContainerCustomStringTitleField : BaseContainerCustomTitle
 {
 	string m_Title;
-	
+
 	void BaseContainerCustomStringTitleField(string title)
 	{
 		m_Title = title;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		title = m_Title;
-		
-		if (!m_Title.IsEmpty())		
-			return true;
-		else
-			return false;
+		return !title.IsEmpty();
 	}
 };
 
 /**
-	\brief Attribute for setting UIInfo's name property as custom title.
+	\brief Attribute for setting two string property as custom title.
+	@code
+	[BaseContainerProps(), SCR_BaseContainerCustomTitleField("m_sDisplayName1", m_sDisplayName2, "Title is %1")]
+	class TestConfigClass
+	{
+		[Attribute()]
+		private string m_sDisplayName;
+	}
+	@endcode
+*/
+class BaseContainerCustomDoubleTitleField : BaseContainerCustomTitle
+{
+	protected string m_sPropertyName1;
+	protected string m_sPropertyName2;
+	protected string m_sFormat;
+	
+	void BaseContainerCustomDoubleTitleField(string propertyName1, string propertyName2, string format = "%1: %2")
+	{
+		m_sPropertyName1 = propertyName1;
+		m_sPropertyName2 = propertyName2;
+		m_sFormat = format;
+	}
+
+
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		string title1, title2;
+		
+		if (!source.Get(m_sPropertyName1, title1))
+		{
+			return false;
+		}
+		
+		if (!source.Get(m_sPropertyName2, title2))
+		{
+			return false;
+		}
+
+		title = string.Format(m_sFormat, title1, title2);
+		return true;
+	}
+};
+
+/**
+	\brief Attribute for setting a custom format if the given checkVar is equal to checkVarEqual. If true sets propertyName as title with format else just shows propertyName as title
+	@code
+	[BaseContainerProps(), BaseContainerCustomDoubleCheckTitleField("m_bEnabled", "m_sDisplayName", "Test", "%1", "(Disabled) %1")]
+	class TestConfigClass
+	{
+		[Attribute()]
+		private bool m_bEnabled;
+
+		[Attribute()]
+		private string m_sDisplayName;
+
+	}
+	@endcode
+*/
+class BaseContainerCustomDoubleCheckTitleField : BaseContainerCustomTitle
+{
+	protected string m_sCheckVar;
+	protected string m_sPropertyName;
+	protected string m_sFormatTrue;
+	protected string m_sFormatFalse;
+	protected string m_sCheckVarEqual;
+	
+	void BaseContainerCustomDoubleCheckTitleField(string checkVar, string propertyName, string checkVarEqual = "1", string formatTrue = "%1", string formatFalse = "EXAMPLE FORMAT - %1")
+	{
+		m_sCheckVar = checkVar;
+		m_sPropertyName = propertyName;
+		m_sFormatTrue = formatTrue;
+		m_sFormatFalse = formatFalse;
+		m_sCheckVarEqual = checkVarEqual;
+	}
+
+
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		string checkVar, titleName;
+		
+		if (!source.Get(m_sCheckVar, checkVar))
+		{
+			return false;
+		}
+		
+		if (!source.Get(m_sPropertyName, titleName))
+		{
+			return false;
+		}
+			
+		if (checkVar == m_sCheckVarEqual)
+			title = string.Format(m_sFormatTrue, titleName);
+		else 
+			title = string.Format(m_sFormatFalse, titleName);
+		
+		return true;
+	}
+};
+
+/**
+	\brief Attribute for setting a custom format if the given checkVar is equal to checkVarEqual. If true sets propertyName ResourceName as title with format else just shows ResourceName as title
+	@code
+	[BaseContainerProps(), BaseContainerCustomDoubleCheckResourceNameTitleField("m_bEnabled", "m_sPrefabResourceName", 0, "%1", "(Disabled) %1", true)]
+	class TestConfigClass
+	{
+		[Attribute()]
+		private bool m_bEnabled;
+
+		[Attribute()]
+		private ResourceName m_sPrefabResourceName;
+
+	}
+	@endcode
+*/
+class BaseContainerCustomDoubleCheckIntResourceNameTitleField : BaseContainerCustomTitle
+{
+	protected string m_sCheckVar;
+	protected string m_sPropertyName;
+	protected string m_sFormatTrue;
+	protected string m_sFormatFalse;
+	protected float m_iCheckVarEqual;
+	protected bool m_bFileNameOnly;
+	
+	void BaseContainerCustomDoubleCheckIntResourceNameTitleField(string checkVar, string propertyName, int checkVarEqual, string formatTrue = "%1", string formatFalse = "EXAMPLE FORMAT - %1", bool fileNameOnly = true)
+	{
+		m_sCheckVar = checkVar;
+		m_sPropertyName = propertyName;
+		m_sFormatTrue = formatTrue;
+		m_sFormatFalse = formatFalse;
+		m_iCheckVarEqual = checkVarEqual;
+		m_bFileNameOnly = fileNameOnly;
+	}
+
+
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		int checkVar;
+		string pathString;
+		
+		if (!source.Get(m_sCheckVar, checkVar))
+		{
+			return false;
+		}
+		
+		ResourceName path;
+		if (!source.Get(m_sPropertyName, path))
+			return false;
+
+		if (!path.IsEmpty())
+		{
+			pathString = path.GetPath();
+		}
+		else 
+		{
+			pathString = "NO PREFAB"
+		}
+		
+		if (checkVar == m_iCheckVarEqual)
+		{
+			if (!m_bFileNameOnly || path.IsEmpty())
+				title = string.Format(m_sFormatTrue, pathString);
+			else 
+				title = string.Format(m_sFormatTrue, FilePath.StripPath(pathString));
+		}
+		else 
+		{
+			if (!m_bFileNameOnly || path.IsEmpty())
+				title = string.Format(m_sFormatFalse, pathString);
+			else 
+				title = string.Format(m_sFormatFalse, FilePath.StripPath(pathString));
+		}
+		
+		return true;
+	}
+};
+
+/**
+	\brief Attribute for setting a custom format if the given checkVar is equal to checkVarEqual. If condition met just shows default TitleField, if false it show default within given format
+	@code
+	[BaseContainerProps(), BaseContainerCustomCheckIntTitleField("m_bEnabled", "Enabled test", "disabled test", 1)]
+	class TestConfigClass
+	{
+		[Attribute()]
+		private bool m_bEnabled;
+	}
+	@endcode
+*/
+class BaseContainerCustomCheckIntTitleField : BaseContainerCustomTitle
+{
+	protected string m_sCheckVar;
+	protected string m_sConditionTrueText;
+	protected string m_sConditionFalseText;
+	protected int m_iCheckVarEqual;
+	
+	void BaseContainerCustomCheckIntTitleField(string checkVar, string conditionTrueText, string conditionFalseText, int checkVarEqual)
+	{
+		m_sCheckVar = checkVar;
+		m_sConditionTrueText = conditionTrueText;
+		m_sConditionFalseText = conditionFalseText;
+		m_iCheckVarEqual = checkVarEqual;
+	}
+
+
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{
+		int checkVar;
+		
+		if (!source.Get(m_sCheckVar, checkVar))
+		{
+			return false;
+		}
+			
+		if (checkVar != m_iCheckVarEqual)
+			title = m_sConditionFalseText;
+		else 
+			title = m_sConditionTrueText;
+		
+		return true;
+	}
+};
+
+/**
+	\brief Attribute for setting UIInfo's name property as (Localized) custom title.
 	@code
 	[BaseContainerProps(), SCR_BaseContainerCustomTitleUIInfo("m_Info")]
 	class TestConfigClass
@@ -292,13 +510,13 @@ class SCR_BaseContainerCustomTitleUIInfo : BaseContainerCustomTitle
 {
 	private string m_sPropertyName;
 	private string m_sFormat;
-	
+
 	void SCR_BaseContainerCustomTitleUIInfo(string propertyName, string format = "%1")
 	{
 		m_sPropertyName = propertyName;
 		m_sFormat = format;
 	}
-	
+
 	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
 	{
 		BaseContainer info = source.GetObject(m_sPropertyName);
@@ -307,7 +525,7 @@ class SCR_BaseContainerCustomTitleUIInfo : BaseContainerCustomTitle
 			return false;
 		}
 
-		title = string.Format(m_sFormat, title);
+		title = string.Format(m_sFormat, WidgetManager.Translate(title));
 		return true;
 	}
 };

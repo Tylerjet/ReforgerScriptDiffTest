@@ -4,25 +4,27 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Debug
-* @{
+/*!
+\addtogroup Debug
+\{
 */
 
 class DebugTextWorldSpace: DebugText
 {
-	//! Instantiate using the Create method
+	// Instantiate using the Create method
 	private void DebugTextWorldSpace();
 	void ~DebugTextWorldSpace();
-	
+
 	proto external vector GetPosition();
 	proto external void SetPosition(float x, float y, float z);
-	//! Sets the transformation matrix of the text, useful only for texts created with `CreateInWorld`
+	//! Sets the transformation matrix of the text. Useful only for texts created with CreateInWorld().
 	proto external void SetTransform(vector mat[4]);
-	//! Returns the transformation matrix of the text, useful only for texts created with `CreateInWorld`
+	//! Returns the transformation matrix of the text. Useful only for texts created with CreateInWorld().
 	proto void GetTransform(out vector mat[4]);
 	/*!
-	\brief Creates a text instance, should be saved to ref, otherwise is impossible to remove from screen (if not ONCE see flags)
+	Creates a text instance.
+	\warning Returned instance should be saved to `ref`, otherwise it is impossible
+	to remove from screen (unless DebugTextFlags.ONCE is used).
 	\param world In which world should be the text drawn
 	\param text Text to draw on screen
 	\param flags DebugTextFlags
@@ -31,7 +33,7 @@ class DebugTextWorldSpace: DebugText
 	\param z Z coordinate of the top left corner of the text in world space
 	\param size Size of the font in pixels
 	\param color Color of the text
-	\param drawBg Flag which determines whether a background will be drawn behind the text
+	\param bgColor Color of the back background behind the text
 	\param priority Z order priority. Note: texts with background are always rendered under texts without background.
 	\return DebugText Instance of debug text with given properties set, if flags contains DebugTextFlags.ONCE null is returned
 	*/
@@ -42,6 +44,8 @@ class DebugTextWorldSpace: DebugText
 	\see DebugTextWorldSpace.Create
 	*/
 	static proto DebugTextWorldSpace CreateInWorld(BaseWorld world, string text, DebugTextFlags flags, vector transform[4], float size = 20.0, int color = 0xFFFFFFFF, int bgColor = 0x00000000, int priority = 1000);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

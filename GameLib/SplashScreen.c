@@ -71,10 +71,29 @@ class SplashScreenSequence
 	protected const float m_fPhase3Time = 4;
 	protected const float m_fMapWidth = 3840;
 	protected const float m_fMapHeight = 2160;
+	protected const float m_fInvokeCloseOpacity = 0.5;
 	
 	Widget m_wRoot;
 	protected SCR_LoadingSpinner m_Spinner;
 	protected ref AnimateWidget m_Animator;
+	
+	protected ref ScriptInvoker Event_OnClose;
+	
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeEventOnClose()
+	{
+		if (Event_OnClose)
+			Event_OnClose.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnClose()
+	{
+		if (!Event_OnClose)
+			Event_OnClose = new ScriptInvoker();
+
+		return Event_OnClose;
+	}
 	
 	//---------------------------------------------------------------------------------------------
 	void SplashScreenSequence(Widget root)
@@ -154,8 +173,14 @@ class SplashScreenSequence
 				}
 			break;
 			case 2:
+			
+				// Invoke close during closing fadout before closing anim is fully done 
+				if (m_wRoot.GetOpacity() <= m_fInvokeCloseOpacity)
+					InvokeEventOnClose();
+			
 				if (m_fTime > m_fPhase3Time)
 				{
+					InvokeEventOnClose();
 					DeleteSequence();
 					return true;
 				}

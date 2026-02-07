@@ -33,7 +33,7 @@ class ImageSetGenerator: WorkbenchPlugin
 	}
 	void AddLine(string text)
 	{
-		file.FPrintln(tabs + text);
+		file.WriteLine(tabs + text);
 	}
 	void Generate()
 	{
@@ -120,7 +120,7 @@ class ImageSetGenerator: WorkbenchPlugin
 		SetTabs(-1);
 		AddLine("}");
 		
-		file.CloseFile();
+		file.Close();
 		
 		Print(string.Format("Image set generated at %1", fullPath), LogLevel.DEBUG);
 	}

@@ -63,13 +63,13 @@ class SCR_PlayerEntitySpawnerRequestComponent : ScriptComponent
 		string msg2;
 		switch (msgID)
 		{
-			case SCR_EntityRequestDeniedReason.NOT_ENOUGH_SPACE:
+			case SCR_EEntityRequestStatus.NOT_ENOUGH_SPACE:
 			{
 				msg = "#AR-Campaign_DeliveryPointObstructed-UC";
 				break;
 			}
 			
-			case SCR_EntityRequestDeniedReason.CAN_SPAWN:
+			case SCR_EEntityRequestStatus.CAN_SPAWN:
 			{
 				SCR_PlayerController player = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 				if (!player)
@@ -111,6 +111,5 @@ class SCR_PlayerEntitySpawnerRequestComponent : ScriptComponent
 			return;
 		
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 }

@@ -21,12 +21,13 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	
 	protected bool m_bIsMenuOpen;
 	protected bool m_bIsModifierActive;
+	protected bool m_bIsUnconscious;	//Character is unconscious --> Display control is disabled
 	protected int m_iSelected; 			// selected entry index
 	protected float m_fInputTimer;		// selection timeout counter
 	protected float m_AdjustCooldown;	// cooldown before you can cycle up/down by holding a button
 
-	protected InputManager m_InputManager;
 	protected SCR_VONController m_VONController;
+	protected InputManager m_InputManager;
 	protected SCR_VONEntry m_pEntrySelected;					// menu entry that is currently selected
 	protected SCR_QuickMenu_DisplayElement m_pElementSelected;	// element connected to selected menu entry
 	
@@ -263,7 +264,7 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_pElementSelected = m_aElements[m_iSelected];
 		m_pElementSelected.Update(true);
 		m_pEntrySelected = m_aEntries[m_iSelected];
-		m_VONController.SetEntryActive(m_pEntrySelected);
+		m_VONController.SetEntryActive(m_pEntrySelected, true);
 
 		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.ITEM_SELECTED);
 		
@@ -297,6 +298,7 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 			OnMenuClose(0,0);
 		
 		Cleanup();
+		m_bIsUnconscious = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -364,6 +366,9 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 	//! Open menu callback
 	protected void OnMenuOpen(float value, EActionTrigger reason) 
 	{	
+		if (m_bIsUnconscious)
+			return;
+		
 		m_fInputTimer = 0;
 		
 		// TODO this check can be removed, leaving this here so it doesnt spawn some input conflict in GM
@@ -399,11 +404,29 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_fInputTimer = 0;
 		OnToggle();
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnConsciousnessChanged(bool conscious)
+	{
+		m_bIsUnconscious = !conscious;
+		
+		if (!conscious)
+			OnClose();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_MapEntity event
+	protected void OnMapOpen(MapConfiguration mapCfg)
+	{
+		OnClose();
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	protected void AddActionListeners()
 	{		
 		m_InputManager = GetGame().GetInputManager();
+		if (!m_InputManager)
+			return;
 		
 		// QuickMenuContext (exlusive)
 		m_InputManager.AddActionListener("QuickMenuNext", EActionTrigger.DOWN, OnMenuCycle);				
@@ -423,11 +446,15 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		
 		m_VONController = SCR_VONController.Cast(m_PlayerController.FindComponent(SCR_VONController));
 		m_VONController.m_OnEntriesChanged.Insert(OnVONEntriesChanged);
+		
+		if (SCR_MapEntity.GetMapInstance())
+			SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void RemoveActionListeners()
 	{		
+		m_InputManager = GetGame().GetInputManager();
 		if (!m_InputManager)
 			return;
 		
@@ -441,7 +468,6 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		m_InputManager.RemoveActionListener("QuickMenuUp", EActionTrigger.PRESSED, OnMenuAdjust);
 		m_InputManager.RemoveActionListener("QuickMenuDown", EActionTrigger.PRESSED, OnMenuAdjust);
 		m_InputManager.RemoveActionListener("QuickMenuAction", EActionTrigger.DOWN, OnMenuToggle);
-					
 		m_InputManager.RemoveActionListener("QuickMenuClose", EActionTrigger.DOWN, OnMenuClose);	// QuickMenuContext (non-exclusive)
 		m_InputManager.RemoveActionListener("VONMenu", EActionTrigger.DOWN, OnMenuOpen);			// VONContext
 		
@@ -451,6 +477,9 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		
 		if (m_VONController)
 			m_VONController.m_OnEntriesChanged.Remove(OnVONEntriesChanged);
+		
+		if (SCR_MapEntity.GetMapInstance())
+			SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
@@ -503,12 +532,36 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 			OnMenuClose(0,0);
 		
 		Cleanup();
+		
+		if (m_EventHandlerManager)
+		{
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+			m_EventHandlerManager = null;
+		}
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(to);
+		if (!character)
+			return;
+		
+		CharacterControllerComponent characterController = character.GetCharacterController();
+		if (!characterController)
+			return;
+		
+		m_bIsUnconscious = characterController.IsUnconscious();
+		
+		m_EventHandlerManager = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
+		if (m_EventHandlerManager)
+			m_EventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 	}	
 	
 	//------------------------------------------------------------------------------------------------
 	override void DisplayStopDraw(IEntity owner)
 	{
 		RemoveActionListeners();
+		
+		if (m_EventHandlerManager)
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+		
 		Cleanup();
 
 		if (m_aElements)
@@ -522,17 +575,24 @@ class SCR_QuickMenu_BaseDisplay: SCR_InfoDisplayExtended
 		if (!respawnComponent)
 			return;
 		string playerEncryption, radioEncryption;
-		SCR_MilitaryFaction playerFaction = SCR_MilitaryFaction.Cast(respawnComponent.GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId()));
+		
+		// When transitioning from play to WB, PlayerController is no longer available
+		PlayerController pc = GetGame().GetPlayerController();
+		if (!pc)
+			return;
+
+		SCR_Faction playerFaction = SCR_Faction.Cast(respawnComponent.GetPlayerFaction(pc.GetPlayerId()));
 		if (!playerFaction)
 			return;
 		playerEncryption = playerFaction.GetFactionRadioEncryptionKey();
-		radioEncryption = m_pEntrySelected.m_RadioComp.GetEncryptionKey();
+		radioEncryption = m_pEntrySelected.m_RadioTransceiver.GetRadio().GetEncryptionKey();
 				
 		Widget groupList = m_wRoot.FindAnyWidget("GroupListLayout");
 		SCR_GroupVONList listComponent = SCR_GroupVONList.Cast(groupList.FindHandler(SCR_GroupVONList));
 		listComponent.ClearList();
 		if (playerEncryption != radioEncryption)
 			return;
-		listComponent.InitiateList(m_pEntrySelected.m_RadioComp);
+
+		listComponent.InitiateList(m_pEntrySelected.m_RadioTransceiver);
 	}
 };

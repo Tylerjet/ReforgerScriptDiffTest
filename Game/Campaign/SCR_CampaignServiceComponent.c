@@ -1,14 +1,9 @@
-class SCR_CampaignServiceComponentClass : ScriptComponentClass
+class SCR_CampaignServiceComponentClass : SCR_ServicePointComponentClass
 {
 };
 
-class SCR_CampaignServiceComponent : ScriptComponent
+class SCR_CampaignServiceComponent : SCR_ServicePointComponent
 {
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Type", enums: ParamEnumArray.FromEnum(ECampaignServicePointType))]
-	protected ECampaignServicePointType m_eType;
-	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Type", enums: ParamEnumArray.FromEnum(EEditableEntityLabel))]
-	protected EEditableEntityLabel m_eBuildingLabel;
 	
 	protected SCR_CampaignBase m_Base;
 	// This var will later represent a service status - functional, broken or any other...
@@ -19,18 +14,6 @@ class SCR_CampaignServiceComponent : ScriptComponent
 	
 	[RplProp(onRplName: "OnParentBaseIDSet")]
 	protected bool m_bAdd;
-	
-	//------------------------------------------------------------------------------------------------
-	ECampaignServicePointType GetType()
-	{
-		return m_eType;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	EEditableEntityLabel GetLabel()
-	{
-		return m_eBuildingLabel;
-	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetParentBaseID(int id, bool add)
@@ -66,7 +49,6 @@ class SCR_CampaignServiceComponent : ScriptComponent
 			return;
 		
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -100,18 +82,6 @@ class SCR_CampaignServiceComponent : ScriptComponent
 	{
 		return m_eServiceStatus;
 	}
-};
-
-enum ECampaignServicePointType
-{
-	SUPPLY_DEPOT,
-	ARMORY,
-	LIGHT_VEHICLE_DEPOT,
-	HEAVY_VEHICLE_DEPOT,
-	FIELD_HOSPITAL,
-	BARRACKS,
-	RADIO_ANTENNA
-	//FUEL_DEPOT
 };
 
 enum ECampaignServiceStatus

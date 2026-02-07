@@ -13,11 +13,11 @@ class SCR_ServicesStatusDialogUI : DialogUI
 
 	protected SCR_ServicesStatusDialogComponent m_ServicesStatusDialogComponent;
 
-	protected static const int REFRESH_TIMEOUT = 5000;
-	protected static const int LAST_UPDATED_REFRESH_RATE = 5000;
-	protected static const int PING_REFRESH_RATE = 100;
-	protected static const int PING_EXPIRE_DATE = 60000;
-	protected static const int BACKEND_READY_REFRESH_RATE = 1000;
+	protected static const int REFRESH_TIMEOUT = 5000;				// ping age limit (minimum ping age to allow for another one)
+	protected static const int LAST_UPDATED_REFRESH_RATE = 500;	// ping age check frequency (is the ping old enough to enable the "Refresh" button?)
+	protected static const int PING_REFRESH_RATE = 100;			// backend ping status check frequency (is the ping finished? can I get the result?)
+	protected static const int PING_EXPIRE_DATE = 60000;			// ping age limit on Dialog opening (opened multiple times in 1 minute = 1 query only)
+	protected static const int BACKEND_READY_REFRESH_RATE = 1000;	// backend status check frequency (is the backend ready so I can ping?)
 
 	protected static const string OK_STATUS = "ok";
 	protected static const string ERROR_STATUS = "error";
@@ -158,9 +158,6 @@ class SCR_ServicesStatusDialogUI : DialogUI
 		}
 
 		m_ServicesStatusDialogComponent.SetMOTD(motd);
-
-		if (m_wImgTopLine)
-			m_ServicesStatusDialogComponent.SetStatusImageColor(m_wImgTopLine, generalStatus);
 
 		if (m_wImgTitleIcon)
 			m_ServicesStatusDialogComponent.SetStatusImageAndColor(m_wImgTitleIcon, generalStatus);

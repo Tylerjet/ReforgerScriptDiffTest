@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Projectile
-* @{
+/*!
+\addtogroup Projectile
+\{
 */
 
 class BaseProjectileEffect: ScriptAndConfig
@@ -18,9 +18,13 @@ class BaseProjectileEffect: ScriptAndConfig
 	proto external bool HasFinished();
 	//! Set if the effect is finished or not.
 	proto external void SetHasFinished(bool value);
-	
+	//! Ask if the effect is enabled or not.
+	proto external bool IsEnabled();
+	//! Set if the effect is finished or not.
+	proto external void SetIsEnabled(bool value);
+
 	// callbacks
-	
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -48,6 +52,8 @@ class BaseProjectileEffect: ScriptAndConfig
 	\return Returns true if OnFrame function should be called.
 	*/
 	event bool ShouldTick();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

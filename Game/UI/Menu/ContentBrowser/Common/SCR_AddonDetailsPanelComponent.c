@@ -111,26 +111,26 @@ class SCR_AddonDetailsPanelComponent : SCR_ContentDetailsPanelBase
 		m_Widgets.m_AddonSizeText.SetText(sizeStr);
 		
 		// Version
-		string versionCurrent = m_Item.GetCurrentLocalVersion();
-		string versionLatest = m_Item.GetLatestVersion();
+		Revision revisionCurrent = m_Item.GetCurrentLocalRevision();
+		Revision revisionLatest = m_Item.GetLatestRevision();
 		string versionText;
 		bool showVersion0, showVersion1;
 		bool showVersion = m_bForceShowVersion || m_Item.GetOffline();
-		if (!versionCurrent.IsEmpty() && !versionLatest.IsEmpty() && versionCurrent != versionLatest)
+		if (revisionCurrent && revisionLatest && !Revision.AreEqual(revisionCurrent, revisionLatest))
 		{
-			m_Widgets.m_VersionText0.SetText(SCR_WorkshopUiCommon.FormatVersion(versionCurrent));
-			m_Widgets.m_VersionText1.SetText(SCR_WorkshopUiCommon.FormatVersion(versionLatest));
+			m_Widgets.m_VersionText0.SetText(SCR_WorkshopUiCommon.FormatVersion(revisionCurrent.GetVersion()));
+			m_Widgets.m_VersionText1.SetText(SCR_WorkshopUiCommon.FormatVersion(revisionLatest.GetVersion()));
 			showVersion0 = true;
 			showVersion1 = true;
 		}
-		else if (!versionCurrent.IsEmpty())
+		else if (revisionCurrent)
 		{
-			m_Widgets.m_VersionText0.SetText(SCR_WorkshopUiCommon.FormatVersion(versionCurrent));
+			m_Widgets.m_VersionText0.SetText(SCR_WorkshopUiCommon.FormatVersion(revisionCurrent.GetVersion()));
 			showVersion0 = true;
 		}
-		else if (!versionLatest.IsEmpty())
+		else if (revisionLatest)
 		{
-			m_Widgets.m_VersionText1.SetText(SCR_WorkshopUiCommon.FormatVersion(versionLatest));
+			m_Widgets.m_VersionText1.SetText(SCR_WorkshopUiCommon.FormatVersion(revisionLatest.GetVersion()));
 			showVersion1 = true;
 		}
 			

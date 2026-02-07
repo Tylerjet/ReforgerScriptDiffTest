@@ -33,6 +33,7 @@ class SCR_CallsignCompanyData
 	*/ 
 	void GetRandomCallsign(out int platoon, out int squad)
 	{	
+		Math.Randomize(-1);
 		int random = Math.RandomInt(0, m_mPlatoonCallsigns.Count());
 		platoon = m_mPlatoonCallsigns.GetKey(random);
 		SCR_CallsignPlatoonData randomPlatoon = m_mPlatoonCallsigns.GetElement(random);

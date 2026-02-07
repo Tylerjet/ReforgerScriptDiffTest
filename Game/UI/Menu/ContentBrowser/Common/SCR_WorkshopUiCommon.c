@@ -85,8 +85,6 @@ class SCR_WorkshopUiCommon
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, presetName);
 	}
 	
-	
-	
 	//---------------------------------------------------------------------------------------------
 	//! Returns image associated with given Workshop tag
 	static void GetTagImage(string tag, out ResourceName imageSet, out string image)
@@ -737,6 +735,9 @@ class SCR_WorkshopUiCommon_DownloadSequence
 		m_bSubscribeToAddons = subscribe;
 		m_Item = item;
 		m_Item.m_OnDependenciesLoaded.Insert(Callback_OnDependenciesLoaded);
+		
+		m_Item.m_OnGetAsset.Insert(Callback_OnAddonGetAsset);
+		m_Item.m_OnError.Insert(Callback_OnError);
 		m_Item.m_OnTimeout.Insert(Callback_OnTimeout);
 		m_Item.LoadDetails();
 	}
@@ -791,6 +792,33 @@ class SCR_WorkshopUiCommon_DownloadSequence
 		}
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnAddonGetAsset(SCR_WorkshopItem item)
+	{
+		if (!item.GetRequestFailed())
+			return;
+
+		GetGame().GetCallqueue().Remove(CreateLoadingOverlay);
+		if (m_LoadingOverlay)
+			m_LoadingOverlay.Close();
+		
+		SCR_CommonDialogs.CreateRequestErrorDialog();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Callback_OnError(SCR_WorkshopItem item)
+	{
+		if (m_bWaitingResponse || !m_bFailed)
+		{
+			if (m_LoadingOverlay)
+				m_LoadingOverlay.CloseAnimated();
+			
+			SCR_CommonDialogs.CreateRequestErrorDialog();
+		}
+			
+		m_bWaitingResponse = false;
+		m_bFailed = true;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void Callback_OnTimeout(SCR_WorkshopItem item)
@@ -943,7 +971,7 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	protected ref SCR_WorkshopItem m_Item;
 	protected bool m_bDownloadMainItem;
 	protected ref array<ref SCR_WorkshopItem> m_aDependencies;
-	protected ref array<string> m_aDependencyVersions;	// Array with specific versions of dependencies
+	protected ref array<ref Revision> m_aDependencyVersions;	// Array with specific versions of dependencies
 	protected bool m_bSubscribeToAddons; // When true, if user confirms the download, addons will be subscribed
 	protected ref SCR_DownloadConfirmationDialogWidgets m_Widgets = new SCR_DownloadConfirmationDialogWidgets();
 	protected ref array<ref SCR_WorkshopItemAction> m_aCreatedActions = {};		// Actions which were created when the user confirmed the action
@@ -973,21 +1001,27 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	
 	
 	//------------------------------------------------------------------------------------------------
+	protected static void SetupDownloadDialogAddons(notnull out SCR_DownloadConfirmationDialog dialog, notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
+	{
+		dialog.m_bDownloadMainItem = false;
+		dialog.m_bSubscribeToAddons = subscribeToAddons;
+		dialog.m_aDependencies = new array<ref SCR_WorkshopItem>;
+		dialog.m_aDependencyVersions = new array<ref Revision>;
+		
+		foreach (Tuple2<SCR_WorkshopItem, ref Revision> i : addonsAndVersions)
+		{
+			dialog.m_aDependencies.Insert(i.param1);
+			dialog.m_aDependencyVersions.Insert(i.param2);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Download addons with specific versions
-	static SCR_DownloadConfirmationDialog CreateForAddons(notnull array<ref Tuple2<SCR_WorkshopItem, string>> addonsAndVersions, bool subscribeToAddons)
+	static SCR_DownloadConfirmationDialog CreateForAddons(notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
 	{
 		SCR_DownloadConfirmationDialog dlg = new SCR_DownloadConfirmationDialog();
 	
-		dlg.m_bDownloadMainItem = false;
-		dlg.m_bSubscribeToAddons = subscribeToAddons;
-		dlg.m_aDependencies = new array<ref SCR_WorkshopItem>;
-		dlg.m_aDependencyVersions = new array<string>;
-		
-		foreach (Tuple2<SCR_WorkshopItem, string> i : addonsAndVersions)
-		{
-			dlg.m_aDependencies.Insert(i.param1);
-			dlg.m_aDependencyVersions.Insert(i.param2);
-		}
+		SetupDownloadDialogAddons(dlg, addonsAndVersions, subscribeToAddons);
 		
 		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "download_confirmation", dlg);
 		
@@ -996,6 +1030,19 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		return dlg;
 	}
 	
+	/*
+	//------------------------------------------------------------------------------------------------
+	static SCR_DownloadConfirmationDialog CreateFailedAddonsDialog(notnull array<ref Tuple2<SCR_WorkshopItem, string>> addonsAndVersions, bool subscribeToAddons)
+	{
+		SCR_DownloadConfirmationDialog dlg = new SCR_DownloadConfirmationDialog();
+	
+		SetupDownloadDialogAddons(dlg, addonsAndVersions, subscribeToAddons);
+		
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "download_failed", dlg);
+		
+		return dlg;
+	}
+	*/
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
@@ -1050,18 +1097,23 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		// Buttons
 		SCR_NavigationButtonComponent confirmButton  = FindButton("confirm");
 		SCR_NavigationButtonComponent confirm2Button  = FindButton("confirm2");
-		confirm2Button.m_OnActivated.Insert(OnConfirm2);
+		
+		if (confirm2Button)
+			confirm2Button.m_OnActivated.Insert(OnConfirm2);
 		
 		if (m_aDependencies.IsEmpty())
 		{
 			// When we are downloading only one addon, 'download all' button becomes 'download'
-			confirm2Button.SetVisible(false);
+			if (confirm2Button)
+				confirm2Button.SetVisible(false);
+			
 			confirmButton.SetLabel("#AR-Workshop_Dialog_ConfirmDownload_ButtonDownload");
 		}
 		else if (!m_bDownloadMainItem)
 		{
 			// When we are not downloading the main addon, 'download one' button is hidden
-			confirm2Button.SetVisible(false);
+			if (confirm2Button)
+				confirm2Button.SetVisible(false);
 		}
 		
 		// Total download size - only visible if we have any dependencies
@@ -1087,7 +1139,7 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 		//Find version id - TODO: needs cleaner solution
 		int depId = m_aDependencies.Find(dep);
 		
-		string targetVersionOverride = string.Empty;
+		Revision targetVersionOverride;
 		if (m_aDependencyVersions != null)
 			targetVersionOverride = m_aDependencyVersions[depId];	// Shows this specific target version
 
@@ -1134,13 +1186,13 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 			for (int i = 0; i < m_aDependencies.Count(); i++)
 			{
 				SCR_WorkshopItem dep = m_aDependencies[i];
-				string targetVersion = string.Empty;
+				Revision targetVersion;
 				if (m_aDependencyVersions != null)
 					targetVersion = m_aDependencyVersions[i];
 				
 				SCR_WorkshopItemActionDownload action;
 				
-				if (!targetVersion.IsEmpty())
+				if (targetVersion) //why? it's never true
 					action = dep.Download(targetVersion);
 				else
 					action = dep.DownloadLatestVersion();
@@ -1152,7 +1204,8 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 				}
 			}
 		}
-			
+		
+		// Subscription behavior	
 		if (m_bSubscribeToAddons)
 		{
 			if (m_Item)
@@ -1205,7 +1258,43 @@ class SCR_DownloadConfirmationDialog : SCR_ConfigurableDialogUi
 	}
 };
 
-
+//------------------------------------------------------------------------------------------------
+class SCR_DownloadFailDialog : SCR_DownloadConfirmationDialog
+{
+	//------------------------------------------------------------------------------------------------
+	static SCR_DownloadFailDialog CreateFailedAddonsDialog(notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
+	{
+		SCR_DownloadFailDialog dlg = new SCR_DownloadFailDialog();
+	
+		SetupAddons(dlg, addonsAndVersions, subscribeToAddons);
+		
+		SCR_ConfigurableDialogUi.CreateFromPreset(SCR_WorkshopUiCommon.DIALOGS_CONFIG, "download_failed", dlg);
+		
+		return dlg;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected static void SetupAddons(notnull out SCR_DownloadFailDialog dialog, notnull array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions, bool subscribeToAddons)
+	{
+		dialog.m_bDownloadMainItem = false;
+		dialog.m_bSubscribeToAddons = subscribeToAddons;
+		dialog.m_aDependencies = new array<ref SCR_WorkshopItem>;
+		dialog.m_aDependencyVersions = new array<ref Revision>;
+		
+		foreach (Tuple2<SCR_WorkshopItem, ref Revision> i : addonsAndVersions)
+		{
+			dialog.m_aDependencies.Insert(i.param1);
+			dialog.m_aDependencyVersions.Insert(i.param2);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnMenuOpen(SCR_ConfigurableDialogUiPreset preset)
+	{
+		super.OnMenuOpen(preset);
+		m_Widgets.m_UpdateSpacer.SetVisible(false);
+	}
+};
 
 //------------------------------------------------------------------------------------------------
 //! Dialog to cancel downloads
@@ -1315,7 +1404,7 @@ class SCR_AddonListDialog : SCR_ConfigurableDialogUi
 			Widget w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_LAYOUT, layout);
 			
 			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
-			comp.InitForWorkshopItem(item, string.Empty, false);
+			comp.InitForWorkshopItem(item, null, false);
 			
 			m_aDownloadLines.Insert(comp);
 		}
@@ -1511,7 +1600,7 @@ class SCR_CancelMyReportDialog : SCR_ConfigurableDialogUi
 	{
 		m_LoadingOverlayDlg.CloseAnimated();
 		Close();
-		SCR_CommonDialogs.CreateTimeoutOkDialog();
+		SCR_CommonDialogs.CreateRequestErrorDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------

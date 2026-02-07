@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem\InventoryTask
-* @{
+/*!
+\addtogroup InventorySystem\InventoryTask
+\{
 */
 
 class BaseInventorySearchPredicate: Managed
@@ -20,7 +20,9 @@ class BaseInventorySearchPredicate: Managed
 	which means you can be sure that YourComponent.Cast(queriedComponents[0]) will always return a valid object
 	same is applied to attributes from item's AttributeCollection
 	*/
-	event protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes);
-};
+	event protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes) { return true; };
+}
 
-/** @}*/
+/*!
+\}
+*/

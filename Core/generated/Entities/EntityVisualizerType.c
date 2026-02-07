@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
-//! game editor entity visualiser type
+//! Game editor entity visualiser type.
 enum EntityVisualizerType
 {
 	//! no visualizer
@@ -21,7 +21,9 @@ enum EntityVisualizerType
 	//! selected as main entity visualiser
 	EVT_SELECTED_AS_MAIN,
 	//! under cursor entity visualiser
-	EVT_UNDER_CURSOR
-};
+	EVT_UNDER_CURSOR,
+}
 
-/** @}*/
+/*!
+\}
+*/

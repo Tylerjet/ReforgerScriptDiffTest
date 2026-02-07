@@ -42,11 +42,14 @@ To edit attributes, follow these steps:
    
 */
 class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
-{		
+{
 	const int SNAPSHOT_SIZE = 96;
 		
 	[Attribute(desc: "Dialog created when attributes are edited.", defvalue: "-1", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ChimeraMenuPreset))]
 	private ChimeraMenuPreset m_MenuPreset;
+	
+	[Attribute(desc: "Displayed description and icon when hovering over an locked attribute. All attributes need access to this.", category: "Attributes")]
+	protected ref SCR_EditorAttributeUIInfo m_ConflictingAttributeUIInfo;
 	
 	private SCR_AttributesManagerEditorComponentClass m_PrefabData;
 	private SCR_StatesEditorComponent m_StatesManager;
@@ -855,6 +858,17 @@ class SCR_AttributesManagerEditorComponent: SCR_BaseEditorComponent
 	{
 		return Event_OnAttributeCategoryChanged;
 	}
+	
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/*!
+	Info displayed when attribute is locked if it is a conflicting attribute
+	\return The conflicting attribute UI info
+	*/
+	SCR_EditorAttributeUIInfo GetConflictingAttributeUIInfo()
+	{
+		return m_ConflictingAttributeUIInfo;
+	}
+	
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/*!

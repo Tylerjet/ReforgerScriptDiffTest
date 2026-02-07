@@ -2,7 +2,8 @@ enum EWeaponAttachmentActionType
 {
 	ScopeDetach,
 	Magazine,
-	UGL
+	UGL,
+	Muzzle
 }
 
 class SCR_AttachementAction : SCR_InventoryAction
@@ -51,33 +52,9 @@ class SCR_AttachementAction : SCR_InventoryAction
 		if(!weaponComp || weaponComp.GetOwner() != m_InventoryItemComp.GetParentSlot().GetOwner())
 			return false;	
 		
-		if(m_WeaponAttachmentActionType == EWeaponAttachmentActionType.ScopeDetach)
-		{
-			BaseSightsComponent sight = weaponComp.GetAttachedSights();
-			if(!sight)
-				return false;
-			
-			attachment = sight.GetOwner();
-			
-			return (attachment != null);
-		}
-		else if (m_WeaponAttachmentActionType == EWeaponAttachmentActionType.Magazine)
-		{
-			attachment = weaponComp.GetCurrentMagazine().GetOwner();
-
-			return (attachment != null);
-		}
-		else if (m_WeaponAttachmentActionType == EWeaponAttachmentActionType.UGL)
-		{
-			array<AttachmentSlotComponent> attachments = {};
-			weaponComp.GetAttachments(attachments);
-			if (!attachments.IsEmpty())
-				attachment = attachments[0].GetAttachedEntity();
-
-			return (attachment != null);
-		}
-	
-		return false;
+		attachment = m_InventoryItemComp.GetOwner();
+		
+		return (attachment != null);
     }
 
 	//------------------------------------------------------------------------------------------------

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 //! Type of the light lens flare
@@ -17,7 +17,9 @@ enum LightLensFlareType
 	//! Lens flare is determined manually by lens flare index
 	Manual,
 	//! Lens flare is disabled
-	Disabled
-};
+	Disabled,
+}
 
-/** @}*/
+/*!
+\}
+*/

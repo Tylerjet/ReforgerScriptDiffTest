@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 //! Describes failure types of engine startup routine.
@@ -18,8 +18,10 @@ enum EVehicleEngineStartFailedReason
 	DESTROYED,
 	//! engine is drowned
 	DROWNED,
-	//! maximum attemps were made
-	MAX_ATTEMPTS
-};
+	//! maximum attempts were made
+	MAX_ATTEMPTS,
+}
 
-/** @}*/
+/*!
+\}
+*/

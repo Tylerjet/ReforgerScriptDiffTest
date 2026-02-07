@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Player
-* @{
+/*!
+\addtogroup Player
+\{
 */
 
 class PlayerControllerClass: GenericControllerClass
 {
-};
+}
 
 class PlayerController: GenericController
 {
@@ -25,7 +25,7 @@ class PlayerController: GenericController
 	/*!
 	When a PlayerController.RequestRespawn() is issued, the controller engages an internal lock
 	that waits for response from the authority or timeout and drops any additional requests.
-	
+
 	This method returns whether we can currently issue a request respawn or not.
 	\return True in case that we have no internal lock engaged and we can request, false otherwise.
 	*/
@@ -73,9 +73,9 @@ class PlayerController: GenericController
 	Determine if this PC can view content created by specified player.
 	*/
 	proto external bool CanViewContentCreatedBy(int playerId);
-	
+
 	// callbacks
-	
+
 	//! Runs every time the controlled entity has been changed.
 	event protected void OnControlledEntityChanged(IEntity from, IEntity to);
 	//! Runs every time the controlled entity die.
@@ -83,6 +83,8 @@ class PlayerController: GenericController
 	//! Runs at the beggining of each frame
 	//! Character entity might be null
 	event void OnPrepareTestCase(ActionManager am, float dt, IEntity characterEntity);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

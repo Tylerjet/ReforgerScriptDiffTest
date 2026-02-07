@@ -41,6 +41,6 @@ class SCR_ModeOverrideEditorAttribute : SCR_BaseEditorAttribute
 		if (isInit)
 			manager.SetAttributeAsSubAttribute(SCR_ModesEditorAttribute);
 		
-		manager.SetAttributeEnabled(SCR_ModesEditorAttribute, var.GetBool());
+		manager.SetAttributeEnabled(SCR_ModesEditorAttribute, var && var.GetBool());
 	}
 };

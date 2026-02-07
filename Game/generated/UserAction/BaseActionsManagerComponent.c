@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
 class BaseActionsManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseActionsManagerComponent: GameComponent
 {
@@ -40,6 +40,12 @@ class BaseActionsManagerComponent: GameComponent
 	\return Returns true when active, false otherwise.
 	*/
 	proto external bool IsEnabled();
-};
 
-/** @}*/
+	// callbacks
+
+	event protected string NicifyGeneratedContextName(string name) { return name; };
+}
+
+/*!
+\}
+*/

@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class BaseMagazineComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseMagazineComponent: GameComponent
 {
@@ -28,6 +28,8 @@ class BaseMagazineComponent: GameComponent
 	proto external int GetMaxAmmoCount();
 	proto external BaseMagazineWell GetMagazineWell();
 	proto external UIInfo GetUIInfo();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

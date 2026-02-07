@@ -6,12 +6,14 @@ class SCR_CampaignSeizingComponentClass : SCR_SeizingComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 {
-	protected bool m_bRefreshUI;
 	protected SCR_CampaignBase m_Base;
 	
 	//------------------------------------------------------------------------------------------------
 	protected override SCR_Faction EvaluateEntityFaction(IEntity ent)
 	{
+		if (!m_Base || m_Base.GetIsHQ())
+			return null;
+		
 		SCR_Faction faction = super.EvaluateEntityFaction(ent);
 		
 		if (!faction)
@@ -27,54 +29,6 @@ class SCR_CampaignSeizingComponent : SCR_SeizingComponent
 			return null;
 		
 		return faction;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void OnPrevailingFactionChanged()
-	{
-		super.OnPrevailingFactionChanged();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void OnCaptureStart()
-	{
-		SCR_CampaignFaction factionC = SCR_CampaignFaction.Cast(m_PrevailingFaction);
-		
-		if (!factionC)
-			return;
-		
-		m_Base.BeginCapture(factionC);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void OnCaptureInterrupt()
-	{
-		m_Base.EndCapture();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void OnCaptureFinish()
-	{
-		m_Base.FinishCapture();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override void OnSeizingEndTimestampChanged()
-	{
-		if (!System.IsConsoleApp())
-			SetRefreshUI(true);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SetRefreshUI(bool refresh)
-	{
-		m_bRefreshUI = refresh;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool GetRefreshUI()
-	{
-		return m_bRefreshUI;
 	}
 	
 	//------------------------------------------------------------------------------------------------

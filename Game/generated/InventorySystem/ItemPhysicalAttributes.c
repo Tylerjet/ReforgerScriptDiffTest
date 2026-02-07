@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class ItemPhysicalAttributes: BaseItemAttributeData
@@ -26,6 +26,8 @@ class ItemPhysicalAttributes: BaseItemAttributeData
 	\return Returns the dimension in cm.
 	*/
 	proto external vector GetDimensions();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

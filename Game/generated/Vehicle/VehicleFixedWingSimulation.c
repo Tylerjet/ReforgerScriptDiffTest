@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class VehicleFixedWingSimulationClass: VehicleBaseSimulationClass
 {
-};
+}
 
 class VehicleFixedWingSimulation: VehicleBaseSimulation
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

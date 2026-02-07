@@ -151,7 +151,7 @@ class SCR_CareerSpecializationsUI: ScriptedWidgetComponent
 		m_SpecializationBar = SCR_ProgressBarWithSegments.Cast(SCR_WLibProgressBarComponent.GetProgressBar("SpecializationBar", specializationsPanelWidget, true));
 		
 		m_SpecializationBar.SetMin(0);
-		m_SpecializationBar.SetMax(SCR_PlayerDataConfigs.SPECIALIZATIONMAX);
+		m_SpecializationBar.SetMax(SCR_PlayerDataConfigs.SPECIALIZATION_MAX);
 		
 		//Specializations Progress Summary
 		Widget progressLeft = specializationProgressWidget.FindAnyWidget("LeftSpecializations");
@@ -217,7 +217,7 @@ class SCR_CareerSpecializationsUI: ScriptedWidgetComponent
 			if (!m_PlayerData.IsDataProgressionReady())
 				return;
 			EarntPoints = m_PlayerData.GetArrayEarntPoints();
-			warCrimes = m_PlayerData.GetWarCrimes() *  (SCR_PlayerDataConfigs.WARCRIMESPUNISHMENT);
+			warCrimes = m_PlayerData.GetWarCrimes() *  (SCR_PlayerDataConfigs.WARCRIMES_PUNISHMENT);
 			int spEnumId;
 			switch (n)
 			{

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class DoorComponent: GameComponent
@@ -33,6 +33,8 @@ class DoorComponent: GameComponent
 	proto external float GetDoorState();
 	//! Returns the normal of the door in it's current state
 	proto external vector GetDoorNormal();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

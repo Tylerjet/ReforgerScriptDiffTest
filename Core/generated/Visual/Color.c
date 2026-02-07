@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 class Color: Managed
@@ -35,7 +35,7 @@ class Color: Managed
 	static const int DODGER_BLUE = 0xff0080ff; // dodger blue
 	static const int VIOLET = 0xff8000ff; // electric indigo
 	static const int PINK = 0xffff0080; // deep pink
-	
+
 	//! color constants - color objects
 	static const ref Color Black = new Color(0.0, 0.0, 0.0, 1.0); // black
 	static const ref Color Gray25 = new Color(0.25, 0.25, 0.25, 1.0); // charcoal
@@ -62,7 +62,7 @@ class Color: Managed
 	static const ref Color Pink = new Color(1.0, 0.0, 0.5, 1.0); // deep pink
 	// --------------------------------------------------------------------
 	void Color(float red = 0.0, float green = 0.0, float blue = 0.0, float alpha = 0.0);
-	
+
 	//! Creates a new color instance from ARGB color packed in int
 	static proto ref Color FromInt(int color);
 	//! Creates a new color instance from RGB vector
@@ -116,8 +116,8 @@ class Color: Managed
 	//! Clamps each component to [min, max] range
 	proto external void Clamp(float min, float max);
 	/*!
-	Linear interpolation with `other` based on t
-	\return this + (other - this) * t
+	Linear interpolation with `other` based on `t`.
+	Returns `this + (other - this) * t`.
 	*/
 	proto external void Lerp(Color other, float t);
 	/*!
@@ -144,6 +144,8 @@ class Color: Managed
 	proto external bool IsZero();
 	//! Returns true if the colors differ by at most `epsilon` in each component
 	proto external bool IsEqual(Color other, float epsilon = 0.0);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

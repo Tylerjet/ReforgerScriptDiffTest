@@ -128,7 +128,7 @@ class SCR_CareerUI: Managed
 		statName.SetText(name);
 		
 		if (progressionMinus != 0)
-			statProgressionMinus.SetText("-"+progressionMinus+" | ");
+			statProgressionMinus.SetText(" | -"+progressionMinus);
 		else
 			statProgressionMinus.SetText("");
 		

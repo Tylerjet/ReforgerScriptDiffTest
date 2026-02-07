@@ -10,8 +10,6 @@ class SCR_MapConstants
 	const string CFG_PROPS_DEFAULT = "{AF65563F653FED68}Configs/Map/MapPropsDefault.conf";
 	const string CFG_DESCTYPES_DEFAULT = "{FF6B20825D4A566C}Configs/Map/MapDescriptorDefaults.conf";
 	const string CFG_DESCVIEW_DEFAULT = "{4FFDB559B60FC7BC}Configs/Map/MapDescriptorVisibilityDefault.conf";
-	
-	const string MAP_DEFAULT_CFG = "{1B8AC767E06A0ACD}Configs/Map/MapFullscreen.conf";
 };
 
 //------------------------------------------------------------------------------------------------

@@ -120,8 +120,6 @@ class SCR_CustomMaterialAnimatorEntity: GenericEntity
 		m_fMaterialAnimationFrameCalculator = m_iStartingFrame;
 		m_iMaterialAnimationFrame = m_iStartingFrame;
 
-		
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 	}
 };

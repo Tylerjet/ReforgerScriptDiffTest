@@ -29,6 +29,8 @@ class SCR_AddonLineBaseComponent : ScriptedWidgetComponent
 	ref ScriptInvoker m_OnMouseLeave = new ScriptInvoker();
 	ref ScriptInvoker m_OnFocus = new ScriptInvoker();
 	ref ScriptInvoker m_OnFocusLost = new ScriptInvoker();
+	ref ScriptInvoker m_OnFixButton = new ScriptInvoker();
+	
 	
 	protected SCR_MultiActionButtonComponent m_ActionButtons;
 	
@@ -131,14 +133,6 @@ class SCR_AddonLineBaseComponent : ScriptedWidgetComponent
 		// Update name
 		m_Widgets.m_NameText.SetText(m_Item.GetName());
 		
-		//bool enabled = m_Item.GetEnabled();
-		
-		/*m_Widgets.m_SizeMoveRight.SetVisible(!enabled);
-		m_Widgets.m_MoveRightButton.SetVisible(!enabled && m_bMouseOver || m_bFocused);
-		
-		m_Widgets.m_SizeMoveLeft.SetVisible(enabled);
-		*/
-		
 		m_Widgets.m_MoveRightButton.SetVisible(m_bMouseOver || m_bFocused);
 		m_Widgets.m_MoveLeftButton.SetVisible(m_bMouseOver || m_bFocused);
 		
@@ -166,12 +160,7 @@ class SCR_AddonLineBaseComponent : ScriptedWidgetComponent
 
 		EWorkshopItemProblem problem = m_Item.GetHighestPriorityProblem();
 		
-		
-		m_Widgets.m_FixButton.SetVisible(
-			problem == EWorkshopItemProblem.BROKEN ||
-			problem == EWorkshopItemProblem.DEPENDENCY_MISSING ||
-			problem == EWorkshopItemProblem.DEPENDENCY_OUTDATED
-		);
+		m_Widgets.m_FixButton.SetVisible(HasItemAnyIssue());
 		
 		m_Widgets.m_UpdateButton.SetVisible(problem == EWorkshopItemProblem.UPDATE_AVAILABLE);
 		
@@ -179,6 +168,26 @@ class SCR_AddonLineBaseComponent : ScriptedWidgetComponent
 		if (m_ActionButtons) 
 			m_ActionButtons.ShowAllButtons(m_bMouseOver);
 	}	
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateFixButton()
+	{
+		m_Widgets.m_FixButton.SetVisible(HasItemAnyIssue());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool HasItemAnyIssue()
+	{
+		EWorkshopItemProblem problem = m_Item.GetHighestPriorityProblem();
+		
+		bool hasIssue = (
+			problem == EWorkshopItemProblem.BROKEN ||
+			problem == EWorkshopItemProblem.DEPENDENCY_MISSING ||
+			problem == EWorkshopItemProblem.DEPENDENCY_OUTDATED
+		);
+		
+		return hasIssue;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected void PlaySound(string sound)
@@ -261,62 +270,7 @@ class SCR_AddonLineBaseComponent : ScriptedWidgetComponent
 	//! Call on fix button click, will provide solution to missing mods
 	void OnFixButton()
 	{
-		if (!m_Item)
-			return;
-		
-		// All dependencies
-		array<ref SCR_WorkshopItem> dependencies = m_Item.GetLatestDependencies();
-		if (dependencies.IsEmpty())
-			return;
-		
-		// Reported and blocked dependencies 
-		array<ref SCR_WorkshopItem> issues = SCR_AddonManager.SelectItemsOr(dependencies,
-		EWorkshopItemQuery.BLOCKED | EWorkshopItemQuery.AUTHOR_BLOCKED | EWorkshopItemQuery.REPORTED_BY_ME);
-		
-		if (!issues.IsEmpty())
-		{
-			// Show dialog of issues 
-			SCR_AddonListDialog.CreateRestrictedAddonsDownload(issues);
-			return;
-		}
-		
-		// Missing dependencies
-		dependencies = SCR_AddonManager.SelectItemsOr(dependencies, EWorkshopItemQuery.NOT_OFFLINE | EWorkshopItemQuery.UPDATE_AVAILABLE);
-		if (dependencies.IsEmpty())
-			return;
-		
-		array<ref SCR_DownloadManager_Entry> downloads = new array<ref SCR_DownloadManager_Entry>;
-		SCR_DownloadManager.GetInstance().GetAllDownloads(downloads);
-		
-		// Remove mods in downloading 
-		for (int i = dependencies.Count() - 1; i >= 0; i--)
-		{
-			foreach (SCR_DownloadManager_Entry download : downloads)
-			{
-				if (download.m_Item.GetId() == dependencies[i].GetId())
-				{
-					if (download.m_Action.IsActive())
-					{
-						dependencies.RemoveItem(dependencies[i]);
-						break;
-					}
-				}
-			}
-		}
-		
-		// Open download dialog if all are being downloaded
-		if (dependencies.IsEmpty())
-		{
-			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
-			return;
-		}
-		
-		// Create addon list and dialog 
-		array<ref Tuple2<SCR_WorkshopItem, string>> addonsAndVersions = {};		
-		foreach (SCR_WorkshopItem item : dependencies)
-			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, string>(item, string.Empty));
-		
-		SCR_DownloadConfirmationDialog.CreateForAddons(addonsAndVersions, true);
+		m_OnFixButton.Invoke(this);
 	}
 	
 	//----------------------------------------------------------------------------------------------

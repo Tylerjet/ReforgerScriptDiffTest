@@ -6,13 +6,27 @@ class SCR_DestructionBaseData
 	protected float m_fPreviousHealth;
 	protected ref SCR_DestructionHitInfo m_HitInfo;
 	protected ref ScriptInvoker m_OnDamage;
+	protected bool m_bDestructionQueued = false;
 	
 	//------------------------------------------------------------------------------------------------
 	void Reset()
 	{
 		m_fPreviousHealth = 0;
+		m_bDestructionQueued = false;
 		delete m_HitInfo;
 		delete m_OnDamage;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetDestructionQueued(bool destructionQueued)
+	{
+		m_bDestructionQueued = destructionQueued;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetDestructionQueued()
+	{
+		return m_bDestructionQueued;
 	}
 	
 	//------------------------------------------------------------------------------------------------

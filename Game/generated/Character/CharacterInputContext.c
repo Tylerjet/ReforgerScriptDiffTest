@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class CharacterInputContext
@@ -105,6 +105,12 @@ class CharacterInputContext
 	proto external void SetPlayingGesture(bool val);
 	proto external int GetGestureID();
 	proto external void SetGestureID(int gestureID);
-};
+	// Returns the entity only if the gadget is in the hand - not when it is hidden by another action.
+	proto external IEntity GetLeftHandGadgetEntity();
+	// Returns the entity both when the gadget is in hand and when hidden by another action.
+	proto external IEntity GetWantedLefHandGadgetEntity();
+}
 
-/** @}*/
+/*!
+\}
+*/

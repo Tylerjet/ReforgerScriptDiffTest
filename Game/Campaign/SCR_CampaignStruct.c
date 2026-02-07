@@ -86,6 +86,10 @@ class SCR_CampaignStruct : SCR_JsonApiStruct
 	//------------------------------------------------------------------------------------------------
 	override bool Deserialize()
 	{
+		// No bases data available for load, something is wrong - terminate
+		if (m_aBasesStructs.IsEmpty())
+			return false;
+		
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 		
@@ -232,54 +236,54 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	string GetServicePrefab(ECampaignServicePointType type)
+	string GetServicePrefab(SCR_EServicePointType type)
 	{
 		switch (type)
 		{
-			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_sVehicleDepotPrefab;};
-			case ECampaignServicePointType.ARMORY: {return m_sArmoryPrefab;};
-			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_sHeavyVehicleDepotPrefab;};
-			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_sSupplyDepotPrefab;};
-			case ECampaignServicePointType.RADIO_ANTENNA: {return m_sAntennaPrefab;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_sFieldHospitalPrefab;};
-			case ECampaignServicePointType.BARRACKS: {return m_sBarracksPrefab;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_sHospitalPrefab;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_sVehicleDepotPrefab;};
+			case SCR_EServicePointType.ARMORY: {return m_sArmoryPrefab;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_sHeavyVehicleDepotPrefab;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_sSupplyDepotPrefab;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_sAntennaPrefab;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_sFieldHospitalPrefab;};
+			case SCR_EServicePointType.BARRACKS: {return m_sBarracksPrefab;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_sHospitalPrefab;};
 		}
 		
 		return string.Empty;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	vector GetServicePosition(ECampaignServicePointType type)
+	vector GetServicePosition(SCR_EServicePointType type)
 	{
 		switch (type)
 		{
-			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotPosition;};
-			case ECampaignServicePointType.ARMORY: {return m_vArmoryPosition;};
-			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotPosition;};
-			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotPosition;};
-			case ECampaignServicePointType.RADIO_ANTENNA: {return m_vAntennaPosition;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalPosition;};
-			case ECampaignServicePointType.BARRACKS: {return m_vBarracksPosition;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vHospitalPosition;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotPosition;};
+			case SCR_EServicePointType.ARMORY: {return m_vArmoryPosition;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotPosition;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotPosition;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_vAntennaPosition;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalPosition;};
+			case SCR_EServicePointType.BARRACKS: {return m_vBarracksPosition;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vHospitalPosition;};
 		}
 		
 		return vector.Zero;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	vector GetServiceRotation(ECampaignServicePointType type)
+	vector GetServiceRotation(SCR_EServicePointType type)
 	{
 		switch (type)
 		{
-			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotRotation;};
-			case ECampaignServicePointType.ARMORY: {return m_vArmoryRotation;};
-			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotRotation;};
-			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotRotation;};
-			case ECampaignServicePointType.RADIO_ANTENNA: {return m_vAntennaRotation;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalRotation;};
-			case ECampaignServicePointType.BARRACKS: {return m_vBarracksRotation;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_vHospitalRotation;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_vVehicleDepotRotation;};
+			case SCR_EServicePointType.ARMORY: {return m_vArmoryRotation;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_vHeavyVehicleDepotRotation;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_vSupplyDepotRotation;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_vAntennaRotation;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vFieldHospitalRotation;};
+			case SCR_EServicePointType.BARRACKS: {return m_vBarracksRotation;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_vHospitalRotation;};
 		}
 		
 		return vector.Zero;
@@ -349,7 +353,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 			
 			switch (service.GetType())
 			{
-				case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
+				case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT:
 				{
 					m_sVehicleDepotPrefab = prefab;
 					m_vVehicleDepotPosition = composition.GetOrigin();
@@ -357,7 +361,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.ARMORY:
+				case SCR_EServicePointType.ARMORY:
 				{
 					m_sArmoryPrefab = prefab;
 					m_vArmoryPosition = composition.GetOrigin();
@@ -365,7 +369,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
+				case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT:
 				{
 					m_sHeavyVehicleDepotPrefab = prefab;
 					m_vHeavyVehicleDepotPosition = composition.GetOrigin();
@@ -373,7 +377,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.SUPPLY_DEPOT:
+				case SCR_EServicePointType.SUPPLY_DEPOT:
 				{
 					m_sSupplyDepotPrefab = prefab;
 					m_vSupplyDepotPosition = composition.GetOrigin();
@@ -381,7 +385,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.RADIO_ANTENNA:
+				case SCR_EServicePointType.RADIO_ANTENNA:
 				{
 					m_sAntennaPrefab = prefab;
 					m_vAntennaPosition = composition.GetOrigin();
@@ -389,7 +393,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.FIELD_HOSPITAL:
+				case SCR_EServicePointType.FIELD_HOSPITAL:
 				{
 					m_sFieldHospitalPrefab = prefab;
 					m_vFieldHospitalPosition = composition.GetOrigin();
@@ -397,7 +401,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.BARRACKS:
+				case SCR_EServicePointType.BARRACKS:
 				{
 					m_sBarracksPrefab = prefab;
 					m_vBarracksPosition = composition.GetOrigin();
@@ -405,7 +409,7 @@ class SCR_CampaignBaseStruct : SCR_JsonApiStruct
 					break;
 				}
 				
-				case ECampaignServicePointType.FIELD_HOSPITAL:
+				case SCR_EServicePointType.FIELD_HOSPITAL:
 				{
 					m_sHospitalPrefab = prefab;
 					m_vHospitalPosition = composition.GetOrigin();

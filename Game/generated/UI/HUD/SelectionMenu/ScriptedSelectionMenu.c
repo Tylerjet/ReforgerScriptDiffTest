@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI\HUD\SelectionMenu
-* @{
+/*!
+\addtogroup UI\HUD\SelectionMenu
+\{
 */
 
 class ScriptedSelectionMenu: BaseSelectionMenu
@@ -18,6 +18,8 @@ class ScriptedSelectionMenu: BaseSelectionMenu
 	//! Callback when menu update is requested
 	//! Note that it is up to user to call Update to receive this event
 	event protected void OnUpdate(IEntity owner, float timeSlice);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

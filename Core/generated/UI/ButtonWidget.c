@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -18,6 +18,8 @@ sealed class ButtonWidget: UIWidget
 	proto external bool GetState();
 	//!Sets current pressed/released state.
 	proto external bool SetState(bool state);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,15 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Generators
-* @{
+/*!
+\addtogroup Generators
+\{
 */
 
 class ForestGeneratorGrid: Managed
 {
 	void ForestGeneratorGrid(float gridSize);
-	
+
 	proto external void Clear();
 	proto external bool IsInBounds(int x, int y);
 	proto external void Resize(float x, float y);
@@ -24,6 +24,8 @@ class ForestGeneratorGrid: Managed
 	proto external void AddEntry(SCR_ForestGeneratorTreeBase tree, vector position);
 	proto external void RemoveEntry(ForestGeneratorTreeBase tree);
 	proto external void RemoveEntryByIndex(int index);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

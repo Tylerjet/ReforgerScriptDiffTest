@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -52,6 +52,8 @@ sealed class SizeLayoutWidget: Widget
 	Note: the child widget must not be set to Stretch otherwise it's desired size is ignored
 	*/
 	proto external bool IsChildDesiredHeightClamped();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

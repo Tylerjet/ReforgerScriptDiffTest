@@ -145,7 +145,6 @@ class SCR_FiringRangeScoringComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, true);	
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	

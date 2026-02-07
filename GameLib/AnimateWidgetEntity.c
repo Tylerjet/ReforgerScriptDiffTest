@@ -41,7 +41,6 @@ class AnimateWidgetEntity : GenericEntity
 			return;
 
 		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
 
 		m_Animatator = AnimateWidget.GetInstance();
 		if (!m_Animatator)

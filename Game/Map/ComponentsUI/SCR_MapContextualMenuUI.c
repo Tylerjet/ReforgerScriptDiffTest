@@ -1,94 +1,30 @@
 //------------------------------------------------------------------------------------------------
-class SCR_MapContextualMenuRequestedTaskEntry : SCR_MapContextualMenuEntry
-{
-	SCR_RequestedTaskSupportEntity m_SupportClass;
-	
-	//------------------------------------------------------------------------------------------------
-	void SetSupportClass(SCR_RequestedTaskSupportEntity supportClass)
-	{
-		m_SupportClass = supportClass;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool CanBeShown()
-	{
-		return m_SupportClass.CanRequest();
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-//! Entry for map contextual menu
-class SCR_MapContextualMenuEntry
-{
-	bool m_bDebugEntry = false;		// wont appear in the list of options unless debug entries are enabled
-	int m_iHash;
-	string m_sName;
-	ref ScriptInvoker m_OnClick = new ScriptInvoker();	// entry callbacks
-	ref ScriptInvoker m_OnShow = new ScriptInvoker();
-	
-	//------------------------------------------------------------------------------------------------
-	bool CanBeShown()
-	{
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void Open(notnull Widget button)
-	{
-		//! get the widget handler component & set data
-		SCR_ButtonTextComponent buttonComp = SCR_ButtonTextComponent.Cast(button.FindHandler(SCR_ButtonTextComponent));
-		if (buttonComp)
-		{
-			// TODO some of the settings here like colors should be moved to own button layout prefab once the requirements are settled
-			buttonComp.SetText(m_sName);
-			buttonComp.m_OnClicked = m_OnClick;
-			if (!m_bDebugEntry)
-				buttonComp.m_BackgroundDefault = Color.FromSRGBA(0, 0, 0, 190);
-			else 
-				buttonComp.m_BackgroundDefault = Color.FromSRGBA(150, 0, 0, 190);
-			
-			buttonComp.m_BackgroundHovered = Color.FromSRGBA(0, 0, 0, 220);
-			buttonComp.m_bShowBorderOnHover = true;
-			buttonComp.m_bUseColorization = true;
-			buttonComp.ColorizeBackground(false);
-		}
-		
-		m_OnShow.Invoke(this, button);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void SCR_MapContextualMenuEntry(string name = "")
-	{
-		if (name == string.Empty) return;
-
-		m_sName = name;
-		m_iHash = name.Hash();
-	}
-};
-
-//------------------------------------------------------------------------------------------------
-//! Fulscreen map contextual menu UI
+//! Fulscreen map radial menu UI
 class SCR_MapContextualMenuUI: SCR_MapUIBaseComponent
 {
-	// TODO visual overhaul
-	// TODO SCR_UIRequestEvacTaskComponent & SCR_TransportTaskSupportClass should have simplified button registration through this, ideally one liner without the need to handle button creation etc
+	// TODO rename class & rewrite ctx based entries into radial menu ones
 	
-	const string WIDGET_NAME = "MapContextualMenu";
-	const string ENTRY_LAYOUT_NAME = "VLayout";
-	const string BUTTON_RESOURCE = "{75C912A1C89BE6C2}UI/layouts/WidgetLibrary/Buttons/WLib_ButtonText.layout";
-	
-	protected WorkspaceWidget 		m_Workspace;
-	protected Widget 				m_CtxMenuWidget;
+	protected Widget 				m_wRadialMenuRoot;
+	protected SCR_MapCursorModule 	m_CursorModule;
+	protected ref SCR_RadialMenuMap m_RadialMenuMap;
+	protected ref SCR_RadialHandlerMap m_RadialHandler;
 	
 	protected bool m_bRefresh;
 	protected bool m_bEntriesUpdate = false;		// entries updated instead of entry selected
+
+	protected ref map<int, ref SCR_MapMenuEntry>	m_aRadialEntries = new map<int, ref SCR_MapMenuEntry>;			// lookup of entries to avoid duplicates
+	protected ref map<int, ref SCR_MapMenuCategory>	m_aRadialCategories = new map<int, ref SCR_MapMenuCategory>;	// lookup of entries to avoid duplicates
+
+	protected vector m_vMenuWorldPos;
 	
-	protected ref array<ref Widget> m_aMenuEntriesWidgets = {};						// entry widgets
-	protected ref array<ref SCR_MapContextualMenuEntry>		m_aCtxMenuEntries = {};	// entries to be built												
-	protected ref map<int, ref SCR_MapContextualMenuEntry>	m_aCtxMenuEntriesDynamic = new map<int, ref SCR_MapContextualMenuEntry>;	// lookup of entries to avoid duplicates
+	protected ref ScriptInvoker<> m_OnMenuOpen = new ScriptInvoker();
+	protected ref ScriptInvoker<BaseSelectionMenuEntry, float[]> m_OnEntryPerformed = new ScriptInvoker();
 	
-	protected int m_iPosX;
-	protected int m_iPosY;
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnMenuOpenInvoker() { return m_OnMenuOpen; }
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnEntryPerformedInvoker() { return m_OnEntryPerformed; }
 	
 	//------------------------------------------------------------------------------------------------
 	static SCR_MapContextualMenuUI GetInstance()
@@ -101,208 +37,220 @@ class SCR_MapContextualMenuUI: SCR_MapUIBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	vector GetContextMenuWorldPosition()
-	{		
-		float worldX, worldY, worldZ;
-		
-		int x = GetGame().GetWorkspace().DPIScale(GetPosX());
-		int y = GetGame().GetWorkspace().DPIScale(GetPosY());
-		
-		m_MapEntity.ScreenToWorld(x, y, worldX, worldZ);
-		
-		worldY = GetGame().GetWorld().GetSurfaceY(worldX, worldZ);
-		
-		return Vector(worldX, worldY, worldZ);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetPosY()
+	int GetEntryCount()
 	{
-		return m_iPosY;
+		return m_aRadialEntries.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetPosX()
+	vector GetMenuWorldPosition()
+	{				
+		m_vMenuWorldPos[1] = GetGame().GetWorld().GetSurfaceY(m_vMenuWorldPos[0], m_vMenuWorldPos[2]);
+		
+		return m_vMenuWorldPos;
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	//! Toggles menu 
+	void ToggleMenu(IEntity owner, bool isOpen)
 	{
-		return m_iPosX;
+		if (isOpen)
+			OpenMenu();
+		else 
+			CloseMenu();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetPosY(int y)
+	protected void FillMenuEntries()
 	{
-		m_iPosY = y;
+		m_OnMenuOpen.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetPosX(int x)
-	{
-		m_iPosX = x;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! opens modal window and shows the menu widget
+	//! Opens radial menu
 	//! \return false if cannot open due to not having any entries
-	bool OpenMenu(int posX, int posY)
-	{
-		if(!BuildContextualEntries())
-			return false;	// no entries
-
-		m_Workspace.RemoveModal(m_Workspace.GetModal());
-		m_Workspace.AddModal(m_CtxMenuWidget, m_CtxMenuWidget);
-		m_Workspace.SetFocusedWidget(m_CtxMenuWidget);
-		FrameSlot.SetPos(m_CtxMenuWidget, posX, posY);
+	bool OpenMenu()
+	{		
+		float wX, wY, sX, sY;
+		m_MapEntity.GetMapCursorWorldPosition(wX, wY);
+		m_MapEntity.WorldToScreen(wX, wY, sX, sY);
+		m_MapEntity.PanSmooth(sX, sY);
 		
-		SetPosX(posX);
-		SetPosY(posY);
-
-		m_CtxMenuWidget.SetVisible(true);
+		m_vMenuWorldPos[0] = wX;
+		m_vMenuWorldPos[2] = wY;
 		
+		m_CursorModule.HandleContextualMenu();
+		m_RadialMenuMap.DisplayStartDraw(GetGame().GetPlayerController());
+
 		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Close modal window and hide the widget
+	//! Close radial menu
 	void CloseMenu()
 	{
-		if (m_CtxMenuWidget)
-			m_CtxMenuWidget.SetVisible(false);	
-		
-		m_Workspace.RemoveModal(m_CtxMenuWidget);
-		m_Workspace.SetFocusedWidget(null);
-		
-		RemoveWidgets();
+		m_RadialHandler.ClearEntries(0);
+		m_aRadialEntries.Clear();
+		m_aRadialCategories.Clear();
+				
+		m_RadialMenuMap.DisplayStopDraw(GetGame().GetPlayerController());
+		m_CursorModule.HandleContextualMenu(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_MapContextualMenuEntry ContextInsertDynamic(SCR_MapContextualMenuEntry entry)
+	//! Insert own entry into the menu
+	void InsertCustomRadialEntry(SCR_MapMenuEntry entry, string category = "")
 	{
-		if (m_aCtxMenuEntriesDynamic.Contains(entry.m_iHash))
-			return new SCR_MapContextualMenuEntry();
+		if (m_aRadialEntries.Contains(entry.m_iHash))
+			return;
 		
-		m_aCtxMenuEntriesDynamic.Set(entry.m_iHash, entry);
+		m_aRadialEntries.Set(entry.m_iHash, entry);
+		
+		int categoryHash;
+		if (!category.IsEmpty())
+		{
+			categoryHash = category.Hash();
+			if (!m_aRadialCategories.Contains(categoryHash))
+				AddRadialCategory(category);
+		}
+		
+		if (!category.IsEmpty() && m_aRadialCategories.Contains(categoryHash))
+			m_RadialHandler.AddElementToMenuMap(entry, m_aRadialCategories.Get(categoryHash));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Insert own category into the menu
+	void InsertCustomRadialCategory(SCR_MapMenuCategory entry, string category = "")
+	{
+		if (m_aRadialCategories.Contains(entry.m_iHash))
+			return;
+		
+		m_aRadialCategories.Set(entry.m_iHash, entry);
+		
+		int categoryHash;
+		if (!category.IsEmpty())
+		{
+			categoryHash = category.Hash();
+			if (!m_aRadialCategories.Contains(categoryHash))
+				AddRadialCategory(category);
+		}
+		
+		if (category)
+			m_RadialHandler.AddElementToMenuMap(entry, m_aRadialCategories.Get(categoryHash));
+		else 
+			m_RadialHandler.AddElementToMenuMap(entry);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Add simple entry
+	SCR_MapMenuEntry AddRadialEntry(string name, string category = "")
+	{
+		SCR_MapMenuEntry entry = new SCR_MapMenuEntry(name, category);
+
+		if (m_aRadialEntries.Contains(entry.m_iHash))
+			return m_aRadialEntries.Get(entry.m_iHash);
+		
+		m_aRadialEntries.Set(entry.m_iHash, entry);
+		
+		int categoryHash;
+		if (!category.IsEmpty())
+		{
+			categoryHash = category.Hash();
+			if (!m_aRadialCategories.Contains(categoryHash))
+				AddRadialCategory(category);
+		}
+		
+		if (!category.IsEmpty() && m_aRadialCategories.Contains(categoryHash))
+			m_RadialHandler.AddElementToMenuMap(entry, m_aRadialCategories.Get(categoryHash));
 		
 		return entry;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Register dynamic ctx menu entry
-	SCR_MapContextualMenuEntry ContextRegisterDynamic(string entryName, bool debugEntry = false)
+	//! Add simple category
+	SCR_MapMenuCategory AddRadialCategory(string name, string category = "")
 	{
-		SCR_MapContextualMenuEntry entry = new SCR_MapContextualMenuEntry(entryName);
+		SCR_MapMenuCategory entry = new SCR_MapMenuCategory(name);
 		
-		if (debugEntry)
-			entry.m_bDebugEntry = true;
+		if (m_aRadialCategories.Contains(entry.m_iHash))
+			return m_aRadialCategories.Get(entry.m_iHash);
 		
-		return ContextInsertDynamic(entry);
-	}
+		m_aRadialCategories.Set(entry.m_iHash, entry);
 		
-	//------------------------------------------------------------------------------------------------
-	//! Create context menu entry widgets
-	protected bool BuildContextualEntries()
-	{
-		m_aCtxMenuEntries.Clear();
+		int categoryHash;
+		if (!category.IsEmpty())
+		{
+			categoryHash = category.Hash();
+			if (!m_aRadialCategories.Contains(categoryHash))
+				AddRadialCategory(category);
+		}
+				
+		if (category)
+			m_RadialHandler.AddElementToMenuMap(entry, m_aRadialCategories.Get(categoryHash));
+		else 
+			m_RadialHandler.AddElementToMenuMap(entry);
 
-		for (int i = 0, count = m_aCtxMenuEntriesDynamic.Count(); i < count; i++)
-		{
-			m_aCtxMenuEntries.Insert(m_aCtxMenuEntriesDynamic.GetElement(i));
-		}
-		
-		if (m_aCtxMenuEntries.IsEmpty())
-			return false;
-		
-		Widget vLayout = m_RootWidget.FindAnyWidget(ENTRY_LAYOUT_NAME);
-		
-		WorkspaceWidget workspace = m_CtxMenuWidget.GetWorkspace();
-		bool focused = false;
-		Widget button;
-		
-		for (int i = 0, count = m_aCtxMenuEntries.Count(); i < count; i++)
-		{			
-			button = workspace.CreateWidgets(BUTTON_RESOURCE, vLayout);
-			m_aCtxMenuEntries[i].Open(button);
-			
-			if (!focused)
-			{
-				workspace.SetFocusedWidget(button);
-				focused = true;
-			}
-			
-			m_aMenuEntriesWidgets.Insert(button);
-		}
-		
-		return true;
+		return entry;
 	}
-	
+								
 	//------------------------------------------------------------------------------------------------
-	//! Clear all registered callbacks
-	protected void ContextUnregisterDynamic()
+	//! Entry performed event
+	void OnEntryPerformed(BaseSelectionMenuEntry entry, int index)
 	{
-		int count = m_aCtxMenuEntriesDynamic.Count();
+		float wX, wY;
+		float worldPos[2];
+		m_MapEntity.GetMapCenterWorldPosition(wX, wY);
+		worldPos[0] = wX;
+		worldPos[1] = wY;
 		
-		for (int i = 0; i < count; i++)
-		{
-			m_aCtxMenuEntries.RemoveItem(m_aCtxMenuEntriesDynamic.GetElement(i));
-		}
+		m_OnEntryPerformed.Invoke(entry, worldPos);
+	}
 		
-		m_aCtxMenuEntriesDynamic.Clear();
-		m_aCtxMenuEntries.Clear();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Clear the context entry widgets
-	protected void RemoveWidgets()
-	{
-		if (m_aMenuEntriesWidgets)
-		{
-			int cnt = m_aMenuEntriesWidgets.Count();
-			for (int i = cnt-1; i >= 0; i--)
-			{
-				m_aMenuEntriesWidgets[i].RemoveFromHierarchy();
-				m_aMenuEntriesWidgets[i] = null;
-			}
-			
-			m_aMenuEntriesWidgets.Clear();
-		}
-	}
-			
 	//------------------------------------------------------------------------------------------------
 	// OVERRIDES
-	//------------------------------------------------------------------------------------------------
-	override bool OnModalClickOut(Widget modalRoot, int x, int y, int button)
-	{
-		CloseMenu();
-		
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	override bool OnClick(Widget w, int x, int y, int button)
-	{
-		// Close the menu after button click or expand options
-		if (m_bEntriesUpdate)
-			m_bEntriesUpdate = false;
-		else 
-			GetGame().GetCallqueue().CallLater(CloseMenu);	// delayed by frame because its possible for this to trigger before buttons onClick events which would close the menu and not perform them
-		
-		return true;
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	override void OnMapOpen(MapConfiguration config)
 	{
 		super.OnMapOpen(config);
 		
-		m_Workspace = GetGame().GetWorkspace();
-		m_CtxMenuWidget = m_RootWidget.FindAnyWidget(WIDGET_NAME);
+		m_wRadialMenuRoot = m_RootWidget.FindAnyWidget("RadialMenuMap");
+		
+		m_RadialHandler = new SCR_RadialHandlerMap();
+		m_RadialHandler.InitMapHandler();
+		m_RadialHandler.onMenuToggleInvoker.Insert(ToggleMenu);
+		m_RadialHandler.m_OnActionPerformed.Insert(OnEntryPerformed);
+		m_RadialHandler.GetRadialMenuInteraction().onAttemptMenuOpenInvoker.Insert(FillMenuEntries);
+
+		
+		m_RadialMenuMap = new SCR_RadialMenuMap(GetGame().GetPlayerController());
+		m_RadialMenuMap.InitMenuVisuals(m_RadialHandler, m_wRadialMenuRoot);
+				
+		m_CursorModule = SCR_MapCursorModule.Cast(m_MapEntity.GetMapModule(SCR_MapCursorModule));
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMapClose(MapConfiguration config)
-	{
-		ContextUnregisterDynamic();
-		CloseMenu();
+	{		
+		m_RadialHandler.onMenuToggleInvoker.Remove(ToggleMenu);
+		m_RadialHandler.m_OnActionPerformed.Remove(OnEntryPerformed);
+		m_RadialHandler.GetRadialMenuInteraction().onAttemptMenuOpenInvoker.Remove(FillMenuEntries);
 		
+		if (m_RadialHandler && m_RadialHandler.IsOpen())
+			CloseMenu();
+
 		super.OnMapClose(config);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		if (m_RadialHandler && m_RadialHandler.IsOpen())
+		{				
+			m_RadialHandler.Update(GetGame().GetPlayerController(), timeSlice);
+			
+			if (m_RadialMenuMap)
+				m_RadialMenuMap.DisplayUpdate(GetGame().GetPlayerController(), timeSlice);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

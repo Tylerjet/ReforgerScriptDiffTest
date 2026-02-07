@@ -21,10 +21,10 @@ class SCR_AnalogGaugeNonLinear : SCR_BaseAnalogGauge
 	
 	// Attributes: custom data
 	[Attribute("", UIWidgets.EditBox, "Gauge overlay texture.")]
-	ResourceName m_sOverlay;	
+	protected string m_sOverlay;	
 
 	[Attribute("", UIWidgets.EditBox, "Gauge custom needle texture. If not selected, default is used.")]
-	ResourceName m_sCustomNeedle;	
+	protected string m_sCustomNeedle;	
 	
 	protected SignalsManagerComponent m_SignalsManagerComponent;
 	protected int m_iSignalIndex = -1;
@@ -85,6 +85,14 @@ class SCR_AnalogGaugeNonLinear : SCR_BaseAnalogGauge
 			bSuccess = false;
 			return;
 		}	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DestroyGauge()
+	{
+		m_aValues.Clear();
+		
+		super.DestroyGauge();
 	}		
 		
 	//------------------------------------------------------------------------------------------------

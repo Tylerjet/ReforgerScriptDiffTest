@@ -3,9 +3,12 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 {
 	protected SCR_AICombatComponent m_CombatComponent;
 	
-	protected static const string ENEMY_ENTITY_PORT = "EntityOut";
-	protected static const string ENEMY_LAST_SEEN_POS_PORT = "EntityLastSeenPos";
+	protected static const string ENEMY_ENTITY_PORT 		= "EntityOut";
+	protected static const string ENEMY_LAST_SEEN_POS_PORT 	= "EntityLastSeenPos";
 	protected static const string ENEMY_LAST_SEEN_TIME_PORT = "EntityLastSeenTime";
+	protected static const string ENEMY_TARGET_INFO_PORT 	= "TargetInfoOut";
+	
+	ref SCR_AITargetInfo m_TargetInfo;
 	
 	//-------------------------------------------------------------------------------------------
 	protected override void OnInit(AIAgent owner)
@@ -34,21 +37,23 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 		if (!entEnemy)
 			return Fail();
 		
-		vector lastSeenPos = targetEnemy.GetLastSeenPosition();
-		float lastSeenTime = targetEnemy.GetTimeLastSeen();
+		m_TargetInfo = new SCR_AITargetInfo(entEnemy, targetEnemy.GetLastSeenPosition(), targetEnemy.GetTimeLastSeen());
 		
 		SetVariableOut(ENEMY_ENTITY_PORT, entEnemy);
-		SetVariableOut(ENEMY_LAST_SEEN_POS_PORT, lastSeenPos);
-		SetVariableOut(ENEMY_LAST_SEEN_TIME_PORT, lastSeenTime);
+		SetVariableOut(ENEMY_LAST_SEEN_POS_PORT, m_TargetInfo.m_vLastSeenPosition);
+		SetVariableOut(ENEMY_LAST_SEEN_TIME_PORT, m_TargetInfo.m_fLastSeenTime);
+		SetVariableOut(ENEMY_TARGET_INFO_PORT, m_TargetInfo);
 		return ENodeResult.SUCCESS;
 	}
 	
 	//-------------------------------------------------------------------------------------------
 	protected ENodeResult Fail()
 	{
-		ClearVariable(ENEMY_ENTITY_PORT);
+		IEntity _enemy;
+		SetVariableOut(ENEMY_ENTITY_PORT, _enemy); // must be null to make deco test NotNull work <- unassigned variable does not 
 		ClearVariable(ENEMY_LAST_SEEN_POS_PORT);
 		ClearVariable(ENEMY_LAST_SEEN_TIME_PORT);
+		ClearVariable(ENEMY_TARGET_INFO_PORT);
 		return ENodeResult.FAIL;
 	}
 	
@@ -57,7 +62,8 @@ class SCR_AICombatTargetGetterTask : AITaskScripted
 	{
 		ENEMY_ENTITY_PORT,
 		ENEMY_LAST_SEEN_POS_PORT,
-		ENEMY_LAST_SEEN_TIME_PORT
+		ENEMY_LAST_SEEN_TIME_PORT,
+		ENEMY_TARGET_INFO_PORT
 	};
 	protected override TStringArray GetVariablesOut()
 	{

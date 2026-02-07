@@ -4,16 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapDrawingProps
 {
 	private void MapDrawingProps() { }
 	private void ~MapDrawingProps() { }
-	
+
 	proto external void SetVisible(bool visibility);
 	proto external bool IsVisible();
 	proto external void SetHollow(bool hollow);
@@ -28,6 +28,8 @@ class MapDrawingProps
 	proto external void SetOutlineColor( notnull Color outsideColor );
 	proto ref Color GetInteriorColor();
 	proto external void SetInteriorColor( notnull Color interiorColor );
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

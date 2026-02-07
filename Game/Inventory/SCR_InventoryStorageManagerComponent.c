@@ -120,6 +120,23 @@ class SCR_CompatibleAttachmentPredicate: InventorySearchPredicate
 	}
 };
 
+class SCR_SalinePredicate : InventorySearchPredicate
+{
+	void SCR_SalinePredicate()
+	{
+		QueryComponentTypes.Insert(SCR_ConsumableItemComponent);
+	}
+	
+	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+	{
+		if (storage.Type().IsInherited(EquipmentStorageComponent))
+			return true;
+		
+		return false;
+	}
+		
+}
+
 // Searches for magazines with certain mag well
 class SCR_MagazinePredicate: InventorySearchPredicate
 {
@@ -410,8 +427,14 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	//------------------------------------------------------------------------------------------------
 	override protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item)
 	{
+		//in case of health items, permit medics to donate healing items to targets
+		SCR_ConsumableItemComponent consumableItemComp = SCR_ConsumableItemComponent.Cast(item.FindComponent(SCR_ConsumableItemComponent));
+		if (consumableItemComp)
+			return false;
+		
 		if (m_pCharacterController && !m_pCharacterController.IsUnconscious())
 			return true;
+		
 		return false;
 	}
 	
@@ -427,10 +450,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		else
 		{
 			SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
-			if (!soundComp)
-				return;
+			if (soundComp)
+			{
+				soundComp.SoundEvent(soundEvent);
+			}
+			else
+			{
+				SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+				if (!soundManagerEntity)
+					return;
 			
-			soundComp.SoundEvent(soundEvent);
+				soundManagerEntity.CreateAndPlayAudioSource(entity, soundEvent);	
+			}
 		}
 	}
 	
@@ -455,10 +486,18 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 			return;
 		
 		SoundComponent soundComp = SoundComponent.Cast(entity.FindComponent(SoundComponent));
-		if (!soundComp)
-			return;
-		
-		soundComp.SoundEvent(soundAction);
+		if (soundComp)
+		{
+			soundComp.SoundEvent(soundAction);
+		}
+		else
+		{
+			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+			if (!soundManagerEntity)
+				return;
+			
+			soundManagerEntity.CreateAndPlayAudioSource(entity, soundAction);	
+		}
 	}
 	
 #ifndef DISABLE_INVENTORY
@@ -606,6 +645,17 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		if (!CanMoveItem(pItem))
 			return false;
 
+		if (!storage)
+		{
+			InventoryItemComponent itemComp = InventoryItemComponent.Cast(pItem.FindComponent(InventoryItemComponent));
+			if (!itemComp)
+				return false;
+			
+			InventoryStorageSlot parentSlot = itemComp.GetParentSlot();
+			if (parentSlot)
+				storage = parentSlot.GetStorage();
+		}
+		
 		SetInventoryLocked(true);
 		bool result = TryRemoveItemFromStorage(pItem, storage, cb);
 		SetInventoryLocked(false);
@@ -953,42 +1003,38 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	*/
 	void ResupplyMagazines(int maxMagazineCount = 4)
 	{
-		Rpc(ResupplyMagazinesOwner, maxMagazineCount);
-	}
-	[RplRpc(RplChannel.Reliable, RplRcver.Owner)]
-	protected void ResupplyMagazinesOwner(int maxMagazineCount)
-	{
 		BaseWeaponManagerComponent weaponsManager = BaseWeaponManagerComponent.Cast(GetOwner().FindComponent(BaseWeaponManagerComponent));
-		
+
 		array<IEntity> weaponList = {};
 		weaponsManager.GetWeaponsList(weaponList);
-		
+
 		if (!m_ResupplyMagazineCallback)
 			m_ResupplyMagazineCallback = new SCR_ResupplyMagazinesCallback(this);
-		
+
 		foreach (IEntity weapon: weaponList)
 		{
 			BaseWeaponComponent comp = BaseWeaponComponent.Cast(weapon.FindComponent(BaseWeaponComponent));
 			string weaponSlotType = comp.GetWeaponSlotType();
-			
+
 			// Only refill primary and secondary weapons
 			if (!(weaponSlotType == "primary" || weaponSlotType == "secondary"))
 				continue;
-			
+
 			int resupplyCount = maxMagazineCount - GetMagazineCountByWeapon(comp);
 			if (resupplyCount <= 0)
 				continue;
-			
+
 			MuzzleComponent muzzleComponent = MuzzleComponent.Cast(comp.GetCurrentMuzzle());
 			if (!muzzleComponent)
 				continue;
-			
+
 			ResourceName magazinePrefab = muzzleComponent.GetDefaultMagazinePrefab().GetResourceName();
 			m_ResupplyMagazineCallback.Insert(magazinePrefab, resupplyCount);
 		}
-		
+
 		m_ResupplyMagazineCallback.Start();
 	}
+
 	void EndResupplyMagazines()
 	{
 		delete m_ResupplyMagazineCallback;
@@ -1238,7 +1284,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 	
 	//------------------------------------------------------------------------------------------------	
 	//! Find next weapon of specified types, excluding currentItem, but including it in sorting
-	IEntity FindNextWeaponOfType(EWeaponType weaponType, IEntity currentItem = null)
+	IEntity FindNextWeaponOfType(EWeaponType weaponType, IEntity currentItem = null, bool allowCurrentPrefab = false)
 	{
 		array<EntityPrefabData> prefabs = {};
 		
@@ -1276,7 +1322,7 @@ class SCR_InventoryStorageManagerComponent : ScriptedInventoryStorageManagerComp
 		EntityPrefabData nextPrefab = prefabs[nextPrefabID];
 		
 		// Return nothing if prefab is unchanged
-		if (nextPrefab == currentPrefab)
+		if (!allowCurrentPrefab && nextPrefab == currentPrefab)
 			return null;
 		
 		// Select the weapon that matches the type to be selected

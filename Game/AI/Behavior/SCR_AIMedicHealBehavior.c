@@ -8,12 +8,12 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 	
 	ref SCR_AIMoveIndividuallyBehavior m_HealMove;
 	
-	void SCR_AIMedicHealBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, IEntity entityToHeal, bool allowHealMove, float priority = PRIORITY_BEHAVIOR_MEDIC_HEAL)
+	void SCR_AIMedicHealBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, IEntity entityToHeal, bool allowHealMove, float priority = PRIORITY_BEHAVIOR_MEDIC_HEAL, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
-       	m_EntityToHeal.Init(this, entityToHeal);
-        m_eType = EAIActionType.MEDIC_HEAL;
+		m_EntityToHeal.Init(this, entityToHeal);
 		m_sBehaviorTree = "{990FE3889BBA5839}AI/BehaviorTrees/Chimera/Soldier/MedicHeal.bt";
 		m_fPriority = priority;
+		m_fPriorityLevel.m_Value = priorityLevel;
 		m_bAllowLook = false;
 	}
 	
@@ -27,16 +27,16 @@ class SCR_AIMedicHealBehavior : SCR_AIBehaviorBase
 		super.OnActionCompleted();
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
 #ifdef WORKBENCH
-		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Unit repaired", EAIDebugCategory.INFO, 5);
+		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Unit healed", EAIDebugCategory.INFO, 5);
 #endif
-	}	
+	}
 	
 	override void OnActionFailed()
 	{
 		super.OnActionFailed();
 		m_Utility.m_AIInfo.SetAIState(EUnitAIState.AVAILABLE);
 #ifdef WORKBENCH
-		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Failed repair", EAIDebugCategory.INFO, 5);
+		SCR_AIDebugVisualization.VisualizeMessage(m_Utility.m_OwnerEntity, "Failed heal", EAIDebugCategory.INFO, 5);
 #endif
 	}
 };

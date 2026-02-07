@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Mission
-* @{
+/*!
+\addtogroup Mission
+\{
 */
 
-/**
+/*!
 Base class for interaction with mission headers.
 It is done this way so c++ can add its own parameters along with scripted ones as easily as possible
 
@@ -38,6 +38,8 @@ class MissionHeader: ScriptAndConfig
 	proto ResourceName GetHeaderResourceName();
 	//! Reads mission header object from given file
 	static proto ref MissionHeader ReadMissionHeader(string path);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

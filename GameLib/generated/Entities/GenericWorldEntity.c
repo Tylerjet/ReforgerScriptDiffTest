@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class GenericWorldEntityClass: GenericEntityClass
 {
-};
+}
 
 class GenericWorldEntity: GenericEntity
 {
@@ -20,6 +20,8 @@ class GenericWorldEntity: GenericEntity
 	*/
 	proto external GenericTerrainEntity GetTerrain(float x, float z);
 	proto external Material GetSkyMaterial();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

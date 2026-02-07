@@ -279,7 +279,7 @@ class SCR_GridSpawnerEntity: GenericEntity
 						VObject obj = resource.GetResource().ToVObject();
 						spawnedObject = GetGame().SpawnEntity(GenericEntity, baseWorld, spawnParams);
 						spawnedObject.SetObject(obj, "");
-						spawnedObject.SetFlags(EntityFlags.VISIBLE | EntityFlags.ACTIVE, true);
+						spawnedObject.SetFlags(EntityFlags.VISIBLE, true);
 					break;
 				}
 				
@@ -340,13 +340,13 @@ class SCR_GridSpawnerEntity: GenericEntity
 				// Make some room, read data
 				m_aObjects.Clear();
 				string line = string.Empty;
-				while (file.FGets(line) > 0)
+				while (file.ReadLine(line) > 0)
 				{
 					if (line != string.Empty)
 						m_aObjects.Insert(line);
 				}
 				
-				file.CloseFile();
+				file.Close();
 			}
 		}
 	}
@@ -354,7 +354,6 @@ class SCR_GridSpawnerEntity: GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_GridSpawnerEntity(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, true);
 		SetEventMask(EntityEvent.POSTFRAME | EntityEvent.FRAME | EntityEvent.INIT);
 	}
 	

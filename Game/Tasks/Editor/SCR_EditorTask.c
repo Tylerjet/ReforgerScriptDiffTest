@@ -164,11 +164,11 @@ class SCR_EditorTask : SCR_BaseTask
 			if (taskNotification == ENotification.EDITOR_TASK_PLACED)
 				GetGame().GetCallqueue().CallLater(DelayedPlacedNotification, 1, false, position, taskID, factionIndex);
 			else
-				SCR_NotificationsComponent.SendLocalGameMaster(taskNotification, position, taskID, factionIndex);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(taskNotification, position, taskID, factionIndex);
 		}
 		else 
 		{
-			SCR_NotificationsComponent.SendToGameMasters(taskNotification, position, taskID, factionIndex);
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(taskNotification, position, taskID, factionIndex);
 		}
 	}
 	
@@ -179,7 +179,7 @@ class SCR_EditorTask : SCR_BaseTask
 	
 	protected void DelayedPlacedNotification(vector position, int taskID, int factionIndex)
 	{
-		SCR_NotificationsComponent.SendLocalGameMaster(ENotification.EDITOR_TASK_PLACED, position, taskID, factionIndex);
+		SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_TASK_PLACED, position, taskID, factionIndex);
 	}
 	
 	

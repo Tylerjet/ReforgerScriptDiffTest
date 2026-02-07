@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Input
-* @{
+/*!
+\addtogroup Input
+\{
 */
 
 enum KeyCode
@@ -22,7 +22,7 @@ enum KeyCode
 	KC_8,
 	KC_9,
 	KC_0,
-	//! - on main keyboard
+	//! `-` on main keyboard
 	KC_MINUS,
 	KC_EQUALS,
 	//! backspace
@@ -66,12 +66,12 @@ enum KeyCode
 	KC_N,
 	KC_M,
 	KC_COMMA,
-	//! . on main keyboard
+	//! `.` on main keyboard
 	KC_PERIOD,
-	//! / on main keyboard
+	//! `/` on main keyboard
 	KC_SLASH,
 	KC_RSHIFT,
-	//! * on numeric keypad
+	//! `*` on numeric keypad
 	KC_MULTIPLY,
 	//! left Alt
 	KC_LMENU,
@@ -93,24 +93,24 @@ enum KeyCode
 	KC_NUMPAD7,
 	KC_NUMPAD8,
 	KC_NUMPAD9,
-	//! - on numeric keypad
+	//! `-` on numeric keypad
 	KC_SUBTRACT,
 	KC_NUMPAD4,
 	KC_NUMPAD5,
 	KC_NUMPAD6,
-	//! + on numeric keypad
+	//! `+` on numeric keypad
 	KC_ADD,
 	KC_NUMPAD1,
 	KC_NUMPAD2,
 	KC_NUMPAD3,
 	KC_NUMPAD0,
-	//! . on numeric keypad
+	//! `.` on numeric keypad
 	KC_DECIMAL,
-	//! < > | on UK/Germany keyboards
+	//! `<`, `>`, `|` on UK/Germany keyboards
 	KC_OEM_102,
 	KC_F11,
 	KC_F12,
-	//! = on numeric keypad (NEC PC98)
+	//! `=` on numeric keypad (NEC PC98)
 	KC_NUMPADEQUALS,
 	//! Previous Track (DIKC_CIRCUMFLEX on Japanese keyboard)
 	KC_PREVTRACK,
@@ -145,9 +145,9 @@ enum KeyCode
 	KC_VOLUMEUP,
 	//! Web home
 	KC_WEBHOME,
-	//! , on numeric keypad (NEC PC98)
+	//! `,` on numeric keypad (NEC PC98)
 	KC_NUMPADCOMMA,
-	//! / on numeric keypad
+	//! `/` on numeric keypad
 	KC_DIVIDE,
 	KC_SYSRQ,
 	//! right Alt
@@ -187,7 +187,9 @@ enum KeyCode
 	//! System Wake
 	KC_WAKE,
 	//! Media Select
-	KC_MEDIASELECT
-};
+	KC_MEDIASELECT,
+}
 
-/** @}*/
+/*!
+\}
+*/

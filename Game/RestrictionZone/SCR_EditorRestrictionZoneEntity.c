@@ -104,7 +104,6 @@ class SCR_EditorRestrictionZoneEntity: GenericEntity
 		if (!Replication.IsServer() || SCR_Global.IsEditMode(this))
 			return;
 		
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT);
 	}
 	

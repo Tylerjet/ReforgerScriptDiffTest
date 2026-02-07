@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 /*!
@@ -21,6 +21,9 @@ class TraceParam: Managed
 	//use either Exclude or ExcludeArray. Never both, it has some performance penalty
 	IEntity Exclude;
 	array<IEntity> ExcludeArray;
+	//use either Include or IncludeArray. Never both, it has some performance penalty
+	IEntity Include;
+	array<IEntity> IncludeArray;
 	IEntity TraceEnt; ///<[out] traced entity
 	vector TraceNorm; ///<[out] traced polygon normal (X,Y,Z)
 	float TraceDist; ///<[out] traced polygon plane distace
@@ -29,7 +32,9 @@ class TraceParam: Managed
 	SurfaceProperties SurfaceProps; ///<[out] traced surface properties
 	owned string TraceMaterial; ///<[out] traced surface material (usualy only on terrain)
 	owned string ColliderName; ///<[out] traced collider name
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

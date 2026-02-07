@@ -45,7 +45,7 @@ class SCR_ReportedAddonsDialog : SCR_AddonListDialog
 				w = GetGame().GetWorkspace().CreateWidgets(ADDON_LINE_LAYOUT, layout);
 			
 			SCR_DownloadManager_AddonDownloadLine comp = SCR_DownloadManager_AddonDownloadLine.Cast(w.FindHandler(SCR_DownloadManager_AddonDownloadLine));
-			comp.InitForWorkshopItem(item, string.Empty, false);
+			comp.InitForWorkshopItem(item, null, false);
 			
 			m_aDownloadLines.Insert(comp);
 			

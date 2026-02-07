@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup HitZone
-* @{
+/*!
+\addtogroup HitZone
+\{
 */
 
 class HitZone: ScriptAndConfig
@@ -44,7 +44,7 @@ class HitZone: ScriptAndConfig
 	//Returns number of collider decriptors
 	proto external int GetNumColliderDescriptors();
 	//script method wrappers
-	proto external SCR_HitZoneContainerComponent GetHitZoneContainer();
+	proto external HitZoneContainerComponent GetHitZoneContainer();
 	//Sets the health of this hitzone. Only works when called from server.
 	proto external void SetHealth(float health);
 	//Sets the scaled health of this hitzone [0, 1]. Only works when called from server.
@@ -75,6 +75,8 @@ class HitZone: ScriptAndConfig
 	proto bool TryGetColliderDescription(IEntity owner, int descIndex, out vector transformLS[4], out int boneIndex, out int nodeID);
 	//Gets collider description from name
 	proto bool TryGetColliderDescriptionFromName(IEntity owner, string colliderName, out vector transformLS[4], out int boneIndex, out int nodeID);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -180,6 +180,16 @@ class SCR_CommandingManagerComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	bool CanShowOnMap(string commandName)
+	{
+		SCR_BaseGroupCommand command = FindCommand(commandName);
+		if (!command)
+			return false;
+		
+		return command.CanShowOnMap();
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	SCR_PlayerCommandsConfig GetCommandsConfig()
 	{
 		if (m_CommandsConfig)

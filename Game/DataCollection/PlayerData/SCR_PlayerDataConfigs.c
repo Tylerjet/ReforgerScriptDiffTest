@@ -1,99 +1,107 @@
 //------------------------------------------------------------------------------------------------
 class SCR_PlayerDataConfigs : Managed
-{		
-	
+{
+
 	protected static ref SCR_PlayerDataConfigs instance;
-	
+
 	/****************/
 	//RANK AND LEVEL//
 	/****************/
-	
-	float MODIFIERSPECIALIZATIONS = 0.2;
-	const int XP_NEEDED_FOR_LEVEL = 10000;
-	const int MAXEXP = 1000000;
-		
+
+	static const float MODIFIER_SPECIALIZATIONS = 0.2;
+	static const int XP_NEEDED_FOR_LEVEL = 10000;
+	static const int XP_NEEDED_FOR_LEVEL_DIVIDER = 0.0001;
+	static const int XP_NEEDED_FOR_RANK = 100000;
+	static const int XP_NEEDED_FOR_RANK_DIVIDER = 0.00001;
+	static const int MAX_EXP = 1000000;
+
 	/*****************/
 	//SPECIALIZATIONS//
 	/*****************/
-	
+
 	int SPECIALIZATIONS_COUNT;
-	
+
 	string SPECIALIZATION_0_NAME = "#AR-CareerProfile_Specialization1";
 	string SPECIALIZATION_1_NAME = "#AR-CareerProfile_Specialization2";
 	string SPECIALIZATION_2_NAME = "#AR-CareerProfile_Specialization3";
-	
+
 	int SPECIALIZATION_0_COUNT;
 	int SPECIALIZATION_1_COUNT;
 	int SPECIALIZATION_2_COUNT;
-	
+
 	ref array<ref SCR_PlayerDataSpecializationDisplay> m_aSpecialization0 = {};
 	ref array<ref SCR_PlayerDataSpecializationDisplay> m_aSpecialization1 = {};
 	ref array<ref SCR_PlayerDataSpecializationDisplay> m_aSpecialization2 = {};
-	
-	const int SPECIALIZATIONMAX = 1000000;
-	
+
+	const int SPECIALIZATION_MAX = 1000000;
+
 	//0 - Infantry
-	const float MODIFIERMETERSWALKED = 1;
-	const float MODIFIERKILLS = 250;
-	const float MODIFIERAIKILLS = 125;
-	const float MODIFIERPRECISION = 300;
-	
+	static const float MODIFIER_METERS_WALKED = 1;
+	static const float MODIFIER_KILLS = 250;
+	static const float MODIFIER_AI_KILLS = 125;
+	static const float MODIFIER_PRECISION = 300;
+
 	//1 - Logistics
-	const float MODIFIERMETERSDRIVEN = 1;
-	const float MODIFIERDRIVEROFPLAYERS = 0.7;
-	const float MODIFIERTRAVELTIMESUPPLYVEHICLE = 1;
-	const float MODIFIERTRAVELEDDISTANCESUPPLYVEHICLE = 5;
-	const int MODIFIERPLAYERSDIEDINVEHICLE = 500;
-	
+	static const float MODIFIER_METERS_DRIVEN = 1;
+	static const float MODIFIER_DRIVER_OF_PLAYERS = 0.7;
+	static const float MODIFIER_TRAVEL_TIME_SUPPLY_VEHICLE = 1;
+	static const float MODIFIER_TRAVELED_DISTANCE_SUPPLY_VEHICLE = 5;
+	static const int MODIFIER_PLAYERS_DIED_IN_VEHICLE = 500;
+	static const int MAX_PLAYERS_DIED_IN_VEHICLE_PENALTY = MODIFIER_PLAYERS_DIED_IN_VEHICLE * 5;
+
 	//2 - Medical Support
-	const float MODIFIERBANDAGESELF = 150;
-	const float MODIFIERBANDAGEFRIENDLIES = 300;
-	const float MODIFIERTOURNIQUETSELF = 150;
-	const float MODIFIERTOURNIQUETFRIENDLIES = 300;
-	const float MODIFIERSELINESELF = 150;
-	const float MODIFIERSELINEFRIENDLIES = 300;
-	const float MODIFIERMORPHINESELF = 150;
-	const float MODIFIERMORPHINEFRIENDLIES = 300;
-	
-	
+	static const float MODIFIER_BANDAGE_SELF = 150;
+	static const float MODIFIER_BANDAGE_FRIENDLIES = 300;
+	static const float MODIFIER_TOURNIQUET_SELF = 150;
+	static const float MODIFIER_TOURNIQUET_FRIENDLIES = 300;
+	static const float MODIFIER_SALINE_SELF = 150;
+	static const float MODIFIER_SALINE_FRIENDLIES = 300;
+	static const float MODIFIER_MORPHINE_SELF = 150;
+	static const float MODIFIER_MORPHINE_FRIENDLIES = 300;
+
 	//Config of Ranges
-	const int INTERVALS_COUNT = 5;
-	ref const array<int> INTERVALS_ORIGIN = {0, 160000, 600000, 750000, 900000};
-	ref const array<int> INTERVALS_END = {160000, 600000, 750000, 900000, 1000000};
-	ref const array<float> INTERVALS_C1 = {1.9449, 0.71, 8.1682, 6, 18};
-	ref const array<float> INTERVALS_C2 = {0.9254, 0.9908, 0.9517, 0.9559, 0.9425};
-	
+	static const int INTERVALS_COUNT = 5;
+	static ref const array<int> INTERVALS_ORIGIN = {0, 160000, 600000, 750000, 900000};
+	static ref const array<int> INTERVALS_END = {160000, 600000, 750000, 900000, 1000000};
+	static ref const array<float> INTERVALS_C1 = {1.9449, 0.71, 8.1682, 6, 18};
+	static ref const array<float> INTERVALS_C2 = {0.9254, 0.9908, 0.9517, 0.9559, 0.9425};
+
 	/************/
 	//WAR CRIMES//
 	/************/
-	
-	const float WARCRIMESPUNISHMENT = 0.25;
-	
-	const int MAXWARCRIMESVALUE = 250000;
-	const int WARCRIMESDECREASEPERHOUR = 25000;
-	const int WARCRIMEDIVIDERTOPERCENTAGE = 1000000;
-	
-	const float MODIFIERFRIENDLYKILLS = 7500;
-	const float MODIFIERFRIENDLYAIKILLS = 5000;
-	
-	const float m_fSTDPointsQualityTime = 10000;
-	
-	
+
+	static const float WARCRIMES_PUNISHMENT = 0.25;
+
+	static const int MAX_WARCRIMES_VALUE = 250000;
+	static const int WARCRIMES_DECREASE_PER_HOUR = 25000;
+	static const int WARCRIME_DIVIDER_TO_PERCENTAGE = 1000000;
+
+	static const float MODIFIER_FRIENDLY_KILLS = 7500;
+	static const float MODIFIER_FRIENDLY_AI_KILLS = 5000;
+
+	static const float s_fSTDPointsQualityTime = 10000;
+
 	/**********/
 	//UI STUFF//
 	/**********/
-	
-	const float SPPOINTS_CONVERSIONPERCENTAGE =	0.0001;
-	
+
+	static const float SPPOINTS_CONVERSIONPERCENTAGE =	0.0001;
+
+	/********/
+	//BASICS//
+	/********/
+
+	static const float MetersToKilometersConversion = 0.001;
+
 	//------------------------------------------------------------------------------------------------
 	static SCR_PlayerDataConfigs GetInstance()
 	{
 		if (!instance)
 			instance = new SCR_PlayerDataConfigs();
-		
+
 		return instance;
 	}
-	
+
 	string GetSpecializationName(int n)
 	{
 		switch (n)
@@ -102,10 +110,10 @@ class SCR_PlayerDataConfigs : Managed
 			case 1: return SPECIALIZATION_1_NAME;
 			case 2: return SPECIALIZATION_2_NAME;
 		}
-		
+
 		return "UNDEFINED_NAME";
 	}
-	
+
 	int GetSpecializationStatsCount(int n)
 	{
 		switch (n)
@@ -114,10 +122,10 @@ class SCR_PlayerDataConfigs : Managed
 			case 1: return SPECIALIZATION_1_COUNT;
 			case 2: return SPECIALIZATION_2_COUNT;
 		}
-		
+
 		return -1;
 	}
-	
+
 	array<ref SCR_PlayerDataSpecializationDisplay> GetSpecializationArray(int n)
 	{
 		switch (n)
@@ -126,49 +134,49 @@ class SCR_PlayerDataConfigs : Managed
 			case 1: return m_aSpecialization1;
 			case 2: return m_aSpecialization2;
 		}
-		
+
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SCR_PlayerDataConfigs()
 	{
-		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.METERSWALKED, SCR_EDataStats.METERSWALKED, "#AR-CareerProfile_DistanceTravelled_ByFoot", "#AR-CareerProfile_KMs"));
-		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.PLAYERKILLS, SCR_EDataStats.KILLS, "#AR-CareerProfile_PlayersKilled", "#AR-CareerProfile_Enemies"));
-		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.AIKILLS, SCR_EDataStats.AIKILLS, "#AR-CareerProfile_AIKilled", "#AR-CareerProfile_Enemies"));
+		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.METERS_WALKED, SCR_EDataStats.METERS_WALKED, "#AR-CareerProfile_DistanceTravelled_ByFoot", "#AR-CareerProfile_KMs"));
+		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.PLAYER_KILLS, SCR_EDataStats.KILLS, "#AR-CareerProfile_PlayersKilled", "#AR-CareerProfile_Enemies"));
+		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.AI_KILLS, SCR_EDataStats.AI_KILLS, "#AR-CareerProfile_AIKilled", "#AR-CareerProfile_Enemies"));
 		m_aSpecialization0.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization0Display.SHOTS, SCR_EDataStats.SHOTS, "#AR-CareerProfile_BulletsShot", "#AR-CareerProfile_Rounds"));
-		
-		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.METERSDRIVEN, SCR_EDataStats.METERSDRIVEN, "#AR-CareerProfile_DistanceTravelled_AsDriver", "#AR-CareerProfile_KMs"));
-		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.POINTSDRIVINGPEOPLE, SCR_EDataStats.METERSASOCCUPANT, "#AR-CareerProfile_DistanceTravelled_AsPassenger", "#AR-CareerProfile_KMs"));
-		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.POINTSDRIVINGPEOPLE, SCR_EDataStats.POINTSASDRIVEROFPLAYERS, "#AR-CareerProfile_PointsDriverAllies", "#AR-CareerProfile_Points"));
-		
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.BANDAGESELF, SCR_EDataStats.BANDAGESELF, "#AR-CareerProfile_BandagesSelf", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.BANDAGEFRIENDLIES, SCR_EDataStats.BANDAGEFRIENDLIES, "#AR-CareerProfile_BandagesAllies", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.TOURNIQUETSELF, SCR_EDataStats.TOURNIQUETSELF, "#AR-CareerProfile_TourniquetsSelf", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.TOURNIQUETFRIENDLIES, SCR_EDataStats.TOURNIQUETFRIENDLIES, "#AR-CareerProfile_TourniquetsAllies", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.SELINESELF, SCR_EDataStats.SELINESELF, "#AR-CareerProfile_SelinesSelf", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.SELINEFRIENDLIES, SCR_EDataStats.SELINEFRIENDLIES, "#AR-CareerProfile_SelinesAllies", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.MORPHINESELF, SCR_EDataStats.MORPHINESELF, "#AR-CareerProfile_MorphinesSelf", "#AR-CareerProfile_Times"));
-		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.MORPHINEFRIENDLIES, SCR_EDataStats.MORPHINEFRIENDLIES, "#AR-CareerProfile_MorphinesAllies", "#AR-CareerProfile_Times"));
-		
+
+		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.METERS_DRIVEN, SCR_EDataStats.METERS_DRIVEN, "#AR-CareerProfile_DistanceTravelled_AsDriver", "#AR-CareerProfile_KMs"));
+		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE, SCR_EDataStats.METERS_AS_OCCUPANT, "#AR-CareerProfile_DistanceTravelled_AsPassenger", "#AR-CareerProfile_KMs"));
+		m_aSpecialization1.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization1Display.POINTS_DRIVING_PEOPLE, SCR_EDataStats.POINTS_AS_DRIVER_OF_PLAYERS, "#AR-CareerProfile_PointsDriverAllies", "#AR-CareerProfile_Points"));
+
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.BANDAGE_SELF, SCR_EDataStats.BANDAGE_SELF, "#AR-CareerProfile_BandagesSelf", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.BANDAGE_FRIENDLIES, SCR_EDataStats.BANDAGE_FRIENDLIES, "#AR-CareerProfile_BandagesAllies", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.TOURNIQUET_SELF, SCR_EDataStats.TOURNIQUET_SELF, "#AR-CareerProfile_TourniquetsSelf", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.TOURNIQUET_FRIENDLIES, SCR_EDataStats.TOURNIQUET_FRIENDLIES, "#AR-CareerProfile_TourniquetsAllies", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.SALINE_SELF, SCR_EDataStats.SALINE_SELF, "#AR-CareerProfile_SelinesSelf", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.SALINE_FRIENDLIES, SCR_EDataStats.SALINE_FRIENDLIES, "#AR-CareerProfile_SelinesAllies", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.MORPHINE_SELF, SCR_EDataStats.MORPHINE_SELF, "#AR-CareerProfile_MorphinesSelf", "#AR-CareerProfile_Times"));
+		m_aSpecialization2.Insert(new SCR_PlayerDataSpecializationDisplay(SCR_ESpecialization2Display.MORPHINE_FRIENDLIES, SCR_EDataStats.MORPHINE_FRIENDLIES, "#AR-CareerProfile_MorphinesAllies", "#AR-CareerProfile_Times"));
+
 		typename tEnum = SCR_ECareerSp;
 		SPECIALIZATIONS_COUNT = tEnum.GetVariableCount();
-		
-		tEnum = SCR_ESpecialization0Display;		
+
+		tEnum = SCR_ESpecialization0Display;
 		SPECIALIZATION_0_COUNT = tEnum.GetVariableCount();
-		
+
 		tEnum = SCR_ESpecialization1Display;
 		SPECIALIZATION_1_COUNT = tEnum.GetVariableCount();
-		
+
 		tEnum = SCR_ESpecialization2Display;
 		SPECIALIZATION_2_COUNT = tEnum.GetVariableCount();
-		
+
 		if (m_aSpecialization0.Count() != SPECIALIZATION_0_COUNT)
 			Print("Error in PlayerDataConfigs: Weird size on specialization0 array", LogLevel.ERROR);
-		
+
 		if (m_aSpecialization1.Count() != SPECIALIZATION_1_COUNT)
 			Print("Error in PlayerDataConfigs: Weird size on specialization1 array", LogLevel.ERROR);
-		
+
 		if (m_aSpecialization2.Count() != SPECIALIZATION_2_COUNT)
 			Print("Error in PlayerDataConfigs: Weird size on specialization2 array", LogLevel.ERROR);
 	}
@@ -186,29 +194,29 @@ enum SCR_ECareerSp
 //------------------------------------------------------------------------------------------------
 enum SCR_ESpecialization0Display
 {
-	METERSWALKED,
-	PLAYERKILLS,
-	AIKILLS,
+	METERS_WALKED,
+	PLAYER_KILLS,
+	AI_KILLS,
 	SHOTS
 };
 
 //------------------------------------------------------------------------------------------------
 enum SCR_ESpecialization1Display
 {
-	METERSDRIVEN,
-	METERSASOCCUPANT,
-	POINTSDRIVINGPEOPLE
+	METERS_DRIVEN,
+	METERS_AS_OCCUPANT,
+	POINTS_DRIVING_PEOPLE
 };
 
 //------------------------------------------------------------------------------------------------
 enum SCR_ESpecialization2Display
 {
-	BANDAGESELF,
-	BANDAGEFRIENDLIES,
-	TOURNIQUETSELF,
-	TOURNIQUETFRIENDLIES,
-	SELINESELF,
-	SELINEFRIENDLIES,
-	MORPHINESELF,
-	MORPHINEFRIENDLIES
+	BANDAGE_SELF,
+	BANDAGE_FRIENDLIES,
+	TOURNIQUET_SELF,
+	TOURNIQUET_FRIENDLIES,
+	SALINE_SELF,
+	SALINE_FRIENDLIES,
+	MORPHINE_SELF,
+	MORPHINE_FRIENDLIES
 };

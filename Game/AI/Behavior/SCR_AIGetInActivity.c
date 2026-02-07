@@ -1,22 +1,24 @@
-typedef array<BaseCompartmentSlot> SCR_AITCompartmentsArray;
-
 class SCR_AIGetInActivity : SCR_AIActivityBase
 {
-	ref SCR_BTParam<IEntity> m_Vehicle = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);		
-	ref SCR_BTParam<ECompartmentType> m_eRoleInVehicle = new SCR_BTParam<ECompartmentType>(SCR_AIActionTask.ROLEINVEHICLE_PORT);
+	ref SCR_BTParam<IEntity> m_Vehicle = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
+	ref SCR_BTParam<ECompartmentType> m_eRoleInVehicle = new SCR_BTParam<ECompartmentType>(SCR_AIActionTask.ROLEINVEHICLE_PORT);	
+	protected SCR_AIGroup m_OwnerGroup;
 	
-	 ref SCR_AITCompartmentsArray m_AllocatedCompartments;
+	void InitParameters(IEntity vehicle, ECompartmentType role, float priorityLevel)
+	{
+		m_Vehicle.Init(this, vehicle);
+		m_eRoleInVehicle.Init(this, role);
+		m_fPriorityLevel.Init(this, priorityLevel);
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_AIGetInActivity(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, IEntity vehicle = null, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_ACTIVITY_GET_IN)
+	void SCR_AIGetInActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity vehicle, ECompartmentType role = ECompartmentType.Cargo, float priority = PRIORITY_ACTIVITY_GET_IN, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
-		m_Vehicle.Init(this, vehicle);	
-		m_eRoleInVehicle.Init(this, role);
-		
+		InitParameters(vehicle, role, priorityLevel);
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityGetIn.bt";
-		m_eType = EAIActionType.GET_IN_VEHICLE;	
 		m_fPriority = priority;
-		m_AllocatedCompartments = new SCR_AITCompartmentsArray();
+		if (utility)
+			m_OwnerGroup = SCR_AIGroup.Cast(utility.m_OwnerAgent);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -26,46 +28,24 @@ class SCR_AIGetInActivity : SCR_AIActivityBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void AllocateCompartment(BaseCompartmentSlot compartment)
-	{
-		m_AllocatedCompartments.Insert(compartment);
-		compartment.SetCompartmentAccessible(false);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void ReleaseCompartments()
-	{
-		foreach (BaseCompartmentSlot comp : m_AllocatedCompartments)
-		{
-			comp.SetCompartmentAccessible(true);
-		}
-		m_AllocatedCompartments.Clear();
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
 		super.OnActionDeselected();
-		ReleaseCompartments();
-	}	
+		m_OwnerGroup.ReleaseCompartments();
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionCompleted()
 	{
 		super.OnActionCompleted();
-		ReleaseCompartments();
+		m_OwnerGroup.ReleaseCompartments();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
 		super.OnActionFailed();
-		ReleaseCompartments();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_AIGetInActivity()
-	{
-		ReleaseCompartments();
+		m_OwnerGroup.ReleaseCompartments();
+		m_OwnerGroup.RemoveUsableVehicle(m_Vehicle.m_Value);
 	}
 };

@@ -50,6 +50,7 @@ class SCR_FactionCallsignData
 		//Default companies still availible
 		if (!m_mCompanyCallsigns.IsEmpty())
 		{
+			Math.Randomize(-1);
 			random = Math.RandomInt(0, m_mCompanyCallsigns.Count());
 			company = m_mCompanyCallsigns.GetKey(random);
 			randomCompany = m_mCompanyCallsigns.GetElement(random);
@@ -58,6 +59,7 @@ class SCR_FactionCallsignData
 		//Use overflow companies
 		else if (!m_mCompanyOverflowCallsigns.IsEmpty())
 		{
+			Math.Randomize(-1);
 			random = Math.RandomInt(0, m_mCompanyOverflowCallsigns.Count());
 			company = m_mCompanyOverflowCallsigns.GetKey(random);
 			randomCompany = m_mCompanyOverflowCallsigns.GetElement(random);

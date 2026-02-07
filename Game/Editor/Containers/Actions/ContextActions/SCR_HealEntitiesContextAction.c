@@ -29,10 +29,6 @@ class SCR_HealEntitiesContextAction : SCR_SelectedEntitiesContextAction
 		if (!damageComponent)
 			return;
 		
-		damageComponent.FullHeal();	
-		
-		SCR_CharacterDamageManagerComponent characterDamageComponent = SCR_CharacterDamageManagerComponent.Cast(damageComponent);
-		if (characterDamageComponent)
-			characterDamageComponent.RemoveAllBleedings();
+		damageComponent.FullHeal();
 	}
 };

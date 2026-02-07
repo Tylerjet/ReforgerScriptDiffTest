@@ -17,12 +17,11 @@ class SCR_RadioOperatorRoleCallsign: SCR_BaseRoleCallsign
 	
 	protected bool HasRadio(AIAgent character)
 	{
-		BaseLoadoutManagerComponent loadout = BaseLoadoutManagerComponent.Cast(character.GetControlledEntity().FindComponent(BaseLoadoutManagerComponent));
-		
-		if (!loadout)
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(character.GetControlledEntity().FindComponent(EquipedLoadoutStorageComponent));
+		if (!loadoutStorage)
 			return false;
 		
-		IEntity backpack = loadout.GetClothByArea(LoadoutBackpackArea);
+		IEntity backpack = loadoutStorage.GetClothFromArea(LoadoutBackpackArea);
 		return (backpack && backpack.FindComponent(SCR_RadioComponent));
 	}
 	

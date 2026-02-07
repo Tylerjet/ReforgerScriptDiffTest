@@ -33,11 +33,12 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 		if (radioComponent)
 		{
 			SCR_CampaignFaction f = m_Base.GetOwningFaction();
+			BaseTransceiver tsv = radioComponent.GetTransceiver(0);
 		
-			if (f)
+			if (f && tsv)
 			{
-				radioComponent.TogglePower(false);
-				radioComponent.SetFrequency(f.GetFactionRadioFrequency());
+				radioComponent.SetPower(false);
+				tsv.SetFrequency(f.GetFactionRadioFrequency());
 				radioComponent.SetEncryptionKey(f.GetFactionRadioEncryptionKey());
 			}
 		}
@@ -111,7 +112,7 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 		if (!factionManager)
 			return false;
 		
-		ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
+		SCR_ECharacterRank rank = SCR_CharacterRankComponent.GetCharacterRank(user);
 		float timeout = networkComponent.GetLastRequestTimestamp() + (float)factionManager.GetRankRequestCooldown(rank);
 		
 		if (timeout < Replication.Time())
@@ -126,24 +127,24 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 	{
 		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(user);
 		if (!player)
-			return SCR_EntityRequestDeniedReason.NOT_AVAILABLE;
+			return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 		
 		SCR_CampaignFaction faction = SCR_CampaignFaction.Cast(player.GetFaction());
 		if (!faction)
-			return SCR_EntityRequestDeniedReason.NOT_AVAILABLE;
+			return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 		
 		if (m_Base.GetOwningFaction() != faction)
-			return SCR_EntityRequestDeniedReason.NOT_AVAILABLE; 
+			return SCR_EEntityRequestStatus.NOT_AVAILABLE; 
 		
 		int status = super.CanSpawn(entityIndex, user);
-		if (status == SCR_EntityRequestDeniedReason.CAN_SPAWN || status == SCR_EntityRequestDeniedReason.CAN_SPAWN_TRIGGER)
+		if (status == SCR_EEntityRequestStatus.CAN_SPAWN || status == SCR_EEntityRequestStatus.CAN_SPAWN_TRIGGER)
 		{
 			if (!RankCheck(entityIndex, user))
-				status = SCR_EntityRequestDeniedReason.RANK_LOW;
+				status = SCR_EEntityRequestStatus.RANK_LOW;
 		}
 
 		if (!CooldownCheck(user))
-			status = SCR_EntityRequestDeniedReason.COOLDOWN;
+			status = SCR_EEntityRequestStatus.COOLDOWN;
 		
 		return status;
 	}
@@ -201,7 +202,7 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 		if (!campaignNetworkComponent)
 			return false;
 		
-		ECharacterRank rank;
+		SCR_ECharacterRank rank;
 		
 		if (IsProxy())
 			rank = SCR_CharacterRankComponent.GetCharacterRank(user);
@@ -255,13 +256,6 @@ class SCR_CampaignEntitySpawnerComponent : SCR_EntitySpawnerComponent
 			return;
 		
 		gManager.Bump(vehicle, SCR_CampaignGarbageManager.PARKED_SUPPLY_TRUCK_LIFETIME - curLifetime);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void AssignBase(notnull SCR_CampaignBase base)
-	{
-		m_Base = base;
-		m_Base.RegisterVehicleSpawner(this);
 	}
 	
 	//------------------------------------------------------------------------------------------------

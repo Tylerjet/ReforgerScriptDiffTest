@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Network
-* @{
+/*!
+\addtogroup Network
+\{
 */
 
 class PlayerManager
@@ -63,6 +63,8 @@ class PlayerManager
 	Returns true if completed successfully.
 	*/
 	proto external bool ClearPlayerRole(int iPlayerId, EPlayerRole role);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

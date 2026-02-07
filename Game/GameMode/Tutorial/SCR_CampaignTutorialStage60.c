@@ -22,8 +22,8 @@ class SCR_CampaignTutorialStage60 : SCR_BaseCampaignTutorialStage
 	override protected bool GetIsFinished()
 	{
 		SCR_CampaignBase chotainBase = SCR_CampaignBase.Cast(GetGame().GetWorld().FindEntityByName("TownBaseChotain"));
-		SCR_CampaignServiceComponent service = chotainBase.GetBaseService(ECampaignServicePointType.LIGHT_VEHICLE_DEPOT);
-		SCR_CampaignServiceComponent serviceHeavy = chotainBase.GetBaseService(ECampaignServicePointType.HEAVY_VEHICLE_DEPOT);
+		SCR_CampaignServiceComponent service = chotainBase.GetBaseService(SCR_EServicePointType.LIGHT_VEHICLE_DEPOT);
+		SCR_CampaignServiceComponent serviceHeavy = chotainBase.GetBaseService(SCR_EServicePointType.HEAVY_VEHICLE_DEPOT);
 		
 		return (service != null || serviceHeavy != null);
 	}

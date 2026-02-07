@@ -25,9 +25,6 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 	protected static SCR_SelectSpawnPointSubMenu s_Instance;
 	static ref ScriptInvoker Event_OnSpawnPointChanged = new ScriptInvoker();
 
-	[Attribute("{418989FA279F1257}Configs/Map/MapSpawnMenu.conf")]
-	protected ResourceName m_sMapConfigPath;
-
 	[Attribute("SelectionSpinBox")]
 	protected string m_sSelectionSpinBox;
 
@@ -94,7 +91,11 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 	{
 		if (m_MapEntity)
 		{
-			m_MapConfigSpawn = m_MapEntity.SetupMapConfig(EMapEntityMode.SPAWNSCREEN, m_sMapConfigPath, GetRootWidget());
+			SCR_MapConfigComponent configComp = SCR_MapConfigComponent.Cast(m_GameMode.FindComponent(SCR_MapConfigComponent));
+			if (!configComp)
+				return;
+			
+			m_MapConfigSpawn = m_MapEntity.SetupMapConfig(EMapEntityMode.SPAWNSCREEN, configComp.GetSpawnMapConfig(), GetRootWidget());
 			m_MapEntity.OpenMap(m_MapConfigSpawn);
 		}
 	}
@@ -122,9 +123,12 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		m_PrevSpawnPoint = CreateNavigationButton("SpawnPointPrev", "#AR-DeployMenu_PreviousSpawnPoint");
 		m_PrevSpawnPoint.GetRootWidget().SetZOrder(-1);
 		AlignableSlot.SetPadding(m_PrevSpawnPoint.GetRootWidget(), 10, 0, 0, 0);
+		m_PrevSpawnPoint.SetClickedSound(SCR_SoundEvent.SOUND_MAP_CLICK_POINT_ON);
+		
 		m_NextSpawnPoint = CreateNavigationButton("SpawnPointNext", "#AR-DeployMenu_NextSpawnPoint");
 		m_NextSpawnPoint.GetRootWidget().SetZOrder(-1);
 		AlignableSlot.SetPadding(m_NextSpawnPoint.GetRootWidget(), 10, 0, 0, 0);
+		m_NextSpawnPoint.SetClickedSound(SCR_SoundEvent.SOUND_MAP_CLICK_POINT_ON);
 
 		if (m_PrevSpawnPoint)
 			m_PrevSpawnPoint.m_OnActivated.Insert(SelectPrevSpawnPoint);
@@ -330,40 +334,19 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void OnSelectedFromMap(MapItem item)
+	protected void OnSelectedFromMap(SCR_SpawnPoint sp)
 	{
-		if (!m_RespawnSystemComponent || !item)
+		if (!sp)
 			return;
 
-		SCR_SpawnPoint sp = SCR_SpawnPoint.Cast(item.Entity());
-		if (!sp)
+		RplId id = SCR_SpawnPoint.GetSpawnPointRplId(sp);
+		string spName = m_mSpawnPoints.Get(id);
+		int nameId = m_SelectionSpinBox.m_aElementNames.Find(spName);
+		if (nameId > -1)
 		{
-			IEntity child = item.Entity().GetChildren();
-			while (child)
-			{
-				if (SCR_SpawnPoint.Cast(child))
-				{
-					sp = SCR_SpawnPoint.Cast(child);
-					break;
-				}
-				child = child.GetSibling();
-			}
-
-			if (!sp)
-				return;
-		}
-
-		if (sp.GetFactionKey() == m_RespawnSystemComponent.GetPlayerFaction(m_iPlayerId).GetFactionKey())
-		{
-			RplId id = SCR_SpawnPoint.GetSpawnPointRplId(sp);
-
-			string spName = m_mSpawnPoints.Get(id);
 			m_SelectedSpawnPointId = id;
-
+			m_SelectionSpinBox.SetCurrentItem(nameId);
 			FocusOnSelectedSpawnPoint();
-			int nameId = m_SelectionSpinBox.m_aElementNames.Find(spName);
-			if (nameId != -1)
-				m_SelectionSpinBox.SetCurrentItem(nameId);
 		}
 	}
 
@@ -405,7 +388,12 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		UpdateTimedSpawnPoint();
 		UntoggleConfirm();
 	}
-
+	
+	protected void UpdateAndShowSelectionDelayed()
+	{
+		GetGame().GetCallqueue().CallLater(UpdateAndShowSelection); // hotfix for spawn point appearing on 0,0,0 for one frame after spawning
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	protected void UpdateAndShowSelection()
 	{
@@ -433,30 +421,41 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 				continue;
 
 			string spName = m_sDefaultRespawnPointName;
+
 			// todo: bases and mobile hqs also could have ui info?
-			if ((sp.GetParent() != null ) && sp.GetParent().Type() == SCR_CampaignBase)
+			IEntity spParent = sp.GetParent();
+			if (spParent && spParent.Type() == SCR_CampaignBase)
 			{
-				SCR_CampaignBase base = SCR_CampaignBase.Cast(sp.GetParent());
+				SCR_CampaignBase base = SCR_CampaignBase.Cast(spParent);
 				spName = base.GetBaseName();
 
-				if (base.GetType() == CampaignBaseType.MAIN)
+				if (base.GetIsHQ())
 					m_DefaultSpawnPointId = id;
 
 			}
-			else if ((sp.GetParent() != null ) && sp.GetParent().Type() == GenericEntity)
+			else if (spParent && SCR_CampaignMobileAssemblyComponent.Cast(spParent.FindComponent(SCR_CampaignMobileAssemblyComponent)))
 			{
 				spName = m_sMobileAssembly;
 			}
 			else
 			{
-				SCR_UIInfo info = sp.GetInfo();
-				if (info)
-					spName = info.GetName();
-
-				if (m_SelectionSpinBox.m_aElementNames.Find(spName) > -1)
+				SCR_CampaignContestedSpawnPoint spContested = SCR_CampaignContestedSpawnPoint.Cast(sp);
+				
+				if (spContested && spContested.GetDisplayName() != string.Empty)
 				{
-					int spId = i+1;
-					spName = string.Format("%1 %2", spName, spId);
+					spName = spContested.GetDisplayName();
+				}
+				else
+				{
+					SCR_UIInfo info = sp.GetInfo();
+					if (info)
+						spName = info.GetName();
+	
+					if (m_SelectionSpinBox.m_aElementNames.Find(spName) > -1)
+					{
+						int spId = i+1;
+						spName = string.Format("%1 %2", spName, spId);
+					}
 				}
 
 				if (id == 0)
@@ -558,6 +557,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 			m_ConfirmButton = SCR_NavigationButtonComponent.Cast(btn.FindHandler(SCR_NavigationButtonComponent));
 			m_ConfirmButton.m_OnActivated.Insert(HandleOnConfirm);
 			m_ConfirmButton.SetToggleable(true);
+			m_ConfirmButton.SetClickedSound("");
 		}
 	}
 
@@ -595,8 +595,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(SetConfirmButtonToggled);
-		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Insert(UpdateAndShowSelection);
-		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(UpdateAndShowSelection);
+		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(UpdateAndShowSelectionDelayed);
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Insert(UpdateTimedSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Insert(RemoveSpawnPointFromList);
 
@@ -617,8 +616,7 @@ class SCR_SelectSpawnPointSubMenu : SCR_RespawnSubMenuBase
 		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(SetConfirmButtonToggled);
-		SCR_SpawnPoint.Event_OnSpawnPointCountChanged.Remove(UpdateAndShowSelection);
-		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(UpdateAndShowSelection);
+		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(UpdateAndShowSelectionDelayed);
 		SCR_SpawnPoint.Event_SpawnPointFactionAssigned.Remove(UpdateTimedSpawnPoint);
 		SCR_SpawnPoint.Event_SpawnPointRemoved.Remove(RemoveSpawnPointFromList);
 

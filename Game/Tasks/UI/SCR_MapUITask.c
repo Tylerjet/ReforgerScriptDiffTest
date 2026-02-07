@@ -68,7 +68,10 @@ class SCR_MapUITask : SCR_MapUIElement
 
 		if (m_wMapTask)
 			m_wMapTask.SetZOrder(2);
-
+		
+		if (w.Type() == SizeLayoutWidget)
+			PlayHoverSound(m_sSoundHover);
+		
 		return false;
 	}
 
@@ -209,6 +212,12 @@ class SCR_MapUITask : SCR_MapUIElement
 class SCR_TaskIconNavigationButton : SCR_NavigationButtonComponent
 {
 	protected bool m_bIsHovering;
+	
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		w.SetEnabled(false);
+	}
 
 	//------------------------------------------------------------------------------
 	bool IsHovering()

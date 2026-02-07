@@ -12,7 +12,7 @@ enum ELeaningType
 class SCR_AISmartActionSentinelComponent : SCR_AISmartActionComponent
 {	
 	
-	[Attribute("0 1 0", UIWidgets.EditBox, desc: "Position where AI will look from action offset (in local coords of the object entity)", params: "inf inf 0 purpose=coords space=entity")]
+	[Attribute("0 0 0", UIWidgets.EditBox, desc: "Position where AI will look from action offset (in local coords of the object entity)", params: "inf inf 0 purpose=coords space=entity")]
 	protected vector m_vLookPosition;
 	
 	[Attribute("180", UIWidgets.Coords, desc: "Range of rotation within which AI will restrict their observing")]

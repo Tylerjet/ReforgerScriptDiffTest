@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class XComboBoxWidget: UIWidget
@@ -22,6 +22,8 @@ sealed class XComboBoxWidget: UIWidget
 	proto external void ClearAll();
 	//!Remove item by index
 	proto external void RemoveItem(int item);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

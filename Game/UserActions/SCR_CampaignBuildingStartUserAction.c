@@ -46,31 +46,30 @@ class SCR_CampaignBuildingStartUserAction : ScriptedUserAction
 		if (!factionAffiliationComp)
 			return false;
 		
-		//HOTFIX on stable because Revision: 79642 is not merged
-		//string rankName;
-		//SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
-		//if (faction)
-		//	rankName = faction.GetRankName(m_ProviderComponent.GetAccessRank());
+		string rankName;
+		SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
+		if (faction)
+			rankName = faction.GetRankName(m_ProviderComponent.GetAccessRank());
 			
-		SetCannotPerformReason("Too low rank");
+		SetCannotPerformReason(rankName);
 		return false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ECharacterRank GetUserRank(notnull IEntity user)
+	SCR_ECharacterRank GetUserRank(notnull IEntity user)
 	{		
 		int playerId = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(user);
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerId);
 		if (!playerController)
-			return ECharacterRank.INVALID;
+			return SCR_ECharacterRank.INVALID;
 		
 		SCR_CampaignFactionManager factionManager = SCR_CampaignFactionManager.GetInstance();
 		if (!factionManager)
-			return ECharacterRank.INVALID;
+			return SCR_ECharacterRank.INVALID;
 		
 		SCR_CampaignNetworkComponent campaignNetworkComponent = SCR_CampaignNetworkComponent.Cast(playerController.FindComponent(SCR_CampaignNetworkComponent));
 		if (!campaignNetworkComponent)
-			return ECharacterRank.INVALID;
+			return SCR_ECharacterRank.INVALID;
 		
 		return SCR_CharacterRankComponent.GetCharacterRank(playerController.GetControlledEntity());
 	}

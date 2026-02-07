@@ -75,13 +75,19 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		   return;
 		
 		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+		if (!radioComp)
+			return;
+
+		BaseTransceiver transmitter = radioComp.GetTransceiver(0);
+		if (!transmitter)
+			return;
 		
 		// send message with requester faction and his ID
 		SCR_RequestReinforcementsMessage msg();
 		msg.SetTargetFaction(requesterFaction);
 		msg.SetTargetBase(base);
 		//msg.SetRequesterID(requesterID);
-		radioComp.Transmit(msg);
+		transmitter.BeginTransmission(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -106,6 +112,12 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		   return;
 
 		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+		if (!radioComp)
+			return;
+
+		BaseTransceiver transmitter = radioComp.GetTransceiver(0);
+		if (!transmitter)
+			return;
 
 		// send message with requester faction and his ID
 		SCR_RequestTransportMessage msg();
@@ -113,7 +125,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		msg.SetRequesterID(requesterID);
 		msg.SetPosition(positionFrom);
 		msg.SetTargetPosition(positionTo);
-		radioComp.Transmit(msg);
+		transmitter.BeginTransmission(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -150,6 +162,12 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		   return;
 
 		BaseRadioComponent radioComp = GetRadioComponent(m_PlayerController, character);
+		if (!radioComp)
+			return;
+
+		BaseTransceiver transmitter = radioComp.GetTransceiver(0);
+		if (!transmitter)
+			return;
 
 		// send message with requester faction and his ID
 		SCR_RequestRefuelMessage msg();
@@ -157,7 +175,7 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		msg.SetRequesterID(requesterID);
 		msg.SetPosition(position);
 		msg.SetRequesterVehicle(vehicle);
-		radioComp.Transmit(msg);
+		transmitter.BeginTransmission(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -188,12 +206,16 @@ class SCR_CampaignTaskNetworkComponent : SCR_TaskNetworkComponent
 		if (!radioComp)
 			return;
 		
+		BaseTransceiver transmitter = radioComp.GetTransceiver(0);
+		if (!transmitter)
+			return;
+		
 		// send message with requester faction and his ID
 		SCR_RequestEvacuationMessage msg();
 		msg.SetRequesterMainBase(requesterFaction);
 		msg.SetRequesterID(requesterID);
 		msg.SetPosition(position);
-		radioComp.Transmit(msg);
+		transmitter.BeginTransmission(msg);
 	}
 	//------------------------------------------------------------------------------------------------
 	BaseRadioComponent GetRadioComponent(PlayerController playerController, ChimeraCharacter character)

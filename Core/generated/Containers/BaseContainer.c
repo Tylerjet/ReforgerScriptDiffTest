@@ -4,15 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Containers
-* @{
+/*!
+\addtogroup Containers
+\{
 */
 
 sealed class BaseContainer: BaseResourceObject
 {
 	proto static BaseContainer Cast(BaseContainer from);
-	
+
 	//! This function is for internal script usage
 	static proto bool SafeCastType(out typename type, out BaseContainer to, BaseContainer from);
 	proto external string GetClassName();
@@ -37,26 +37,26 @@ sealed class BaseContainer: BaseResourceObject
 	proto external bool GetDefaultAsString(string varName, out string val);
 	proto external BaseContainer GetObject(string varName);
 	proto external bool SetObject(string varName, BaseContainer val);
-	/**
-	\brief Get wrapper for array of objects (the list is read only)
-	@code
-	BaseContainerList points = src.GetObjectArray("Points");
-	
-	for (int i = 0; i < points.Count(); i++)
-	{
-	...
-	}
-	@endcode
+	/*!
+	Get wrapper for array of objects (the list is read only).
+	\code
+		BaseContainerList points = src.GetObjectArray("Points");
+
+		for (int i = 0; i < points.Count(); i++)
+		{
+			...
+		}
+	\endcode
 	*/
 	proto external ref BaseContainerList GetObjectArray(string varName);
-	/**
-	\brief Set array of objects. Return wrapper for object array where objects can be added/removed.
-	@code
-	BaseContainerList points = src.SetObjectArray("Points");
-	points.Insert(...);
-	points.Insert(...);
-	points.Insert(...);
-	@endcode
+	/*!
+	Set array of objects. Return wrapper for object array where objects can be added/removed.
+	\code
+		BaseContainerList points = src.SetObjectArray("Points");
+		points.Insert(...);
+		points.Insert(...);
+		points.Insert(...);
+	\endcode
 	*/
 	proto external ref BaseContainerList SetObjectArray(string varName);
 	proto external bool Set(string varName, void val);
@@ -65,6 +65,8 @@ sealed class BaseContainer: BaseResourceObject
 	proto external BaseContainer GetChild(int n);
 	proto external int GetNumChildren();
 	proto external BaseContainer GetParent();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

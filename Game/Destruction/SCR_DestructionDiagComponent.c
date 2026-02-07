@@ -8,13 +8,17 @@ class SCR_DestructionDiagComponentClass : ScriptComponentClass
 class SCR_DestructionDiagComponent : ScriptComponent
 {
 #ifdef ENABLE_DIAG
+	protected const string DAMAGE_TYPE_NAMES[10] = {"TRUE", "COLLISION", "MELEE", "KINETIC", "FRAGMENTATION", "EXPLOSIVE", "INCENDIARY", "FIRE", "REGENERATION", "BLEEDING"};
 	protected ref array<IEntity> m_aToDamage = {};
 	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	override void EOnDiag(IEntity owner, float timeSlice)
 	{
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_DESTRUCTION_ENABLE_DIAG))
 		{
+			TraceParam params = new TraceParam();
+			TraceEntity(params);
+			
 			DbgUI.Begin("Destruction");
 			
 			float damageToDeal = 1000, range = 20;
@@ -41,18 +45,99 @@ class SCR_DestructionDiagComponent : ScriptComponent
 			
 			DbgUI.Spacer(8);
 			
+			if (params.TraceEnt)
+			{
+				DbgUI.Text("Damage threshold: " + GetDamageThreshold(params));
+				DbgUI.Text("Damage reduction: " + GetDamageReduction(params));
+				ShowDamageTypeMultipliers(params);
+			}
+			
 			if (DbgUI.Button("Deal damage in range"))
 				DealDamageRange(damageToDeal, range, damageType);
 			
-			DbgUI.SameLine();
 			if (DbgUI.Button("Deal damage under cursor"))
-				DealDamageUnderCursor(damageToDeal, damageType);
+				DealDamageUnderCursor(damageToDeal, damageType, params);
 			
-			DbgUI.SameLine();
 			if (DbgUI.Button("Set 1 HP in range"))
 				SetOneHitPoint(range);
 			DbgUI.End();
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ShowDamageTypeMultipliers(TraceParam params)
+	{
+		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(params.TraceEnt);
+		if (destructibleEntity)
+		{
+			for (int i = 0; i < 10; i++)
+			{
+				DbgUI.Text(DAMAGE_TYPE_NAMES[i] + ": " + destructibleEntity.GetDamageMultiplier(i));
+			}
+		}
+		
+		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionBaseComponent));
+		if (destructionComponent)
+		{
+			HitZone hitzone = destructionComponent.GetHitZone(params.ColliderName);
+			
+			if (!hitzone)
+				hitzone = destructionComponent.GetDefaultHitZone();
+			
+			if (!hitzone)
+				return; // No hitzone found
+			
+			for (int i = 0; i < 10; i++)
+			{
+				DbgUI.Text(DAMAGE_TYPE_NAMES[i] + ": " + hitzone.GetDamageMultiplier(i));
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDamageReduction(TraceParam params)
+	{
+		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(params.TraceEnt);
+		if (destructibleEntity)
+			return destructibleEntity.GetDamageReduction();
+		
+		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionBaseComponent));
+		if (destructionComponent)
+		{
+			HitZone hitZone = destructionComponent.GetHitZone(params.ColliderName);
+			if (!hitZone)
+				hitZone = destructionComponent.GetDefaultHitZone();
+			
+			if (!hitZone)
+				return -1; // No hitzone found!
+			
+			return hitZone.GetDamageReduction();
+		}
+		
+		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDamageThreshold(TraceParam params)
+	{
+		SCR_DestructibleEntity destructibleEntity = SCR_DestructibleEntity.Cast(params.TraceEnt);
+		if (destructibleEntity)
+			return destructibleEntity.GetDamageThreshold();
+		
+		SCR_DestructionBaseComponent destructionComponent = SCR_DestructionBaseComponent.Cast(params.TraceEnt.FindComponent(SCR_DestructionBaseComponent));
+		if (destructionComponent)
+		{
+			HitZone hitZone = destructionComponent.GetHitZone(params.ColliderName);
+			if (!hitZone)
+				hitZone = destructionComponent.GetDefaultHitZone();
+			
+			if (!hitZone)
+				return -1; // No hitzone found!
+			
+			return hitZone.GetDamageThreshold();
+		}
+		
+		return 0;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -70,12 +155,10 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void DealDamageUnderCursor(float damageToDeal, EDamageType damageType)
+	void TraceEntity(TraceParam params)
 	{
 		vector cameraMat[4];
 		GetCameraMat(cameraMat);
-		
-		TraceParam params = new TraceParam();
 		
 		params.Start = cameraMat[3];
 		params.End = params.Start + cameraMat[2] * 10; // 10m trace
@@ -84,7 +167,11 @@ class SCR_DestructionDiagComponent : ScriptComponent
 		params.Flags = TraceFlags.ENTS;
 		
 		GetOwner().GetWorld().TraceMove(params, null);
-		
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void DealDamageUnderCursor(float damageToDeal, EDamageType damageType, notnull TraceParam params)
+	{
 		if (!params.TraceEnt)
 			return;
 		
@@ -173,8 +260,8 @@ class SCR_DestructionDiagComponent : ScriptComponent
 	{
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_DESTRUCTION_ENABLE_DIAG, "", "Enable destruction diag", "Destruction");
 		
-		owner.SetFlags(EntityFlags.ACTIVE, false);
-		SetEventMask(owner, EntityEvent.FRAME);
+		//FRAME event is needed for DIAG to be fired
+		SetEventMask(owner, EntityEvent.FRAME | EntityEvent.DIAG);
 	}
 #endif
 }

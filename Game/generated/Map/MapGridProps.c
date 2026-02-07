@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapGridProps
@@ -46,6 +46,8 @@ class MapGridProps
 	proto external void SetTextBold();
 	proto external void SetTextItalic();
 	proto void SetFont(ResourceName fontPath);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

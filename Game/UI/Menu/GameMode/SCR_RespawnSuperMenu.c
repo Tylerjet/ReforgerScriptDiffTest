@@ -135,7 +135,7 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 		}
 
 		UpdateCurrentTab();
-	}
+	}		
 	
 	//------------------------------------------------------------------------------------------------
 	void MuteSounds(bool mute = true)
@@ -182,6 +182,11 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 		if (!s_bIsShown)
 			Event_OnMenuShow.Invoke();
 		s_bIsShown = true;
+		
+		// TODO - the update part can be split and moved somewhere earlier as it only requires the check to go through once instead of on each open
+		SCR_ReconnectSynchronizationComponent reconComp = SCR_ReconnectSynchronizationComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_ReconnectSynchronizationComponent));
+		if (reconComp)
+			reconComp.UpdateReconnectStatus();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -230,10 +235,8 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 		int selectedTab = m_TabViewComponent.GetShownTab();
 		SCR_RespawnBriefingComponent briefingComponent = SCR_RespawnBriefingComponent.GetInstance();
 		SCR_Faction playerFaction = SCR_Faction.Cast(m_RespawnSystemComponent.GetPlayerFaction(SCR_PlayerController.GetLocalPlayerId()));
-		bool isFactionAssigned = (
-			playerFaction != null
-			&& playerFaction.IsPlayable()
-		);
+		bool isFactionAssigned = (playerFaction != null);
+
 		bool isLoadoutAssigned = (m_RespawnSystemComponent.GetPlayerLoadout(SCR_PlayerController.GetLocalPlayerId()) != null);
 		bool isSpawnPointAssigned = (m_RespawnSystemComponent.GetPlayerSpawnPoint(SCR_PlayerController.GetLocalPlayerId()) != null);
 		bool isGroupConfirmed = true;
@@ -247,7 +250,7 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 	 		(m_RespawnMenuHandler.GetAllowFactionSelection()
 	 		&& (m_RespawnMenuHandler.GetAllowFactionChange() || !isFactionAssigned))
 	 	);
-
+		
 		m_TabViewComponent.EnableTab(EDeployScreenType.GROUP, isFactionAssigned && groupsManager);
 
 		m_TabViewComponent.EnableTab(EDeployScreenType.LOADOUT,
@@ -268,15 +271,24 @@ class SCR_RespawnSuperMenu : SCR_SuperMenuBase
 		int nextTab = m_TabViewComponent.GetNextValidItem(false);
 		if (m_TabViewComponent.IsTabEnabled(nextTab))
 			selectedTab = nextTab;
-
+					
 		// switch to the first enabled tab
-		if (showMap)
+		bool firstShow = true;
+		if (briefingComponent)
+			firstShow = briefingComponent.GetWasBriefingShown();
+		if (showMap && firstShow)
 			selectedTab = EDeployScreenType.MAP;
 		else if (!m_TabViewComponent.IsTabEnabled(selectedTab))
 			selectedTab = m_TabViewComponent.GetNextValidItem(false);
 
 		if (selectedTab > -1) // todo(hajekmar): should this be handled in ShowTab() instead?
 			m_TabViewComponent.ShowTab(selectedTab, true, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	int GetCurrentTab()
+	{
+		return m_TabViewComponent.GetShownTab();
 	}
 
 	//------------------------------------------------------------------------------------------------

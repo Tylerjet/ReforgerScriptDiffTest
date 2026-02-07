@@ -24,6 +24,10 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	protected string m_sFileName;
 	protected float m_fTimer;
 	
+	protected ref SCR_SaveLoadComponent_BackendCallback m_DownloadCallback;
+	protected ref PageParams m_DownloadPageParams;
+	protected ref SCR_MissionHeader m_DebugMissionHeader;
+	
 	protected static const string GAME_SESSION_STORAGE_NAME = "SCR_SaveLoadComponent_FileNameToLoad";
 	protected static const int MINIMUM_AUTOSAVE_PERIOD = 60;
 	
@@ -78,11 +82,8 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	{
 		if (missionHeader)
 			return missionHeader.GetSaveFileName();
-		
-#ifdef WORKBENCH
-		return "WB_" + FilePath.StripPath(FilePath.StripExtension(GetGame().GetWorldFile()));
-#endif
-		return string.Empty;
+		else
+			return string.Empty;
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
@@ -108,21 +109,16 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 		if (m_Callback != null)
 			m_Callback.SaveSession(m_sFileName);
 	}
-	protected void Load()
-	{
-		if (m_Callback != null)
-			m_Callback.LoadSession(m_sFileName);
-	}
 	/*!
 	Restart the world and load saved state afterwards.
 	*/
 	void RestartAndLoad()
 	{
-		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
+		SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetMissionHeader());
 		if (missionHeader)
 		{
 			LoadOnStart(missionHeader);
-			GetGame().PlayMission(missionHeader);
+			GameStateTransitions.RequestServerReload();
 		}
 		else
 		{
@@ -136,17 +132,46 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	{
 		return m_SaveOnExit;
 	}	
+	
+	//--- For testing only
 	void UploadToWorkshop()
 	{
 		Print(m_sFileName);
 		
 		WorldSaveManifest manifest = new WorldSaveManifest();
-		manifest.m_sName = "Test";
+		manifest.m_sName = m_sFileName;
 		manifest.m_sSummary = "Test save";
-		manifest.m_sPreview = "pattern_900x900.jpg";
-		manifest.m_aFiles = {m_sFileName, "UI/Textures/ScalingTest/Sources/pattern_900x900.jpg"};
+		manifest.m_sPreview = "UI/Textures/ScalingTest/Sources/pattern_900x900.jpg";
+		manifest.m_aFiles = {m_Struct};
+		manifest.m_aFileNames = {m_sFileName};
 		
 		GetGame().GetBackendApi().GetWorldSaveApi().UploadWorldSave(manifest, null, null);
+	}
+	//--- For testing only
+	void DownloadFromWorkshop()
+	{
+		m_DownloadCallback = new SCR_SaveLoadComponent_BackendCallback();
+		m_DownloadCallback.m_SaveLoadComponent = this;
+		
+		m_DownloadPageParams = new PageParams();
+		m_DownloadPageParams.limit = 42;
+		
+		GetGame().GetBackendApi().GetWorldSaveApi().RequestPage(m_DownloadCallback, m_DownloadPageParams, false);
+		
+	}
+	//--- For testing only
+	void OnDownloadFromWorkshop()
+	{
+		Print(m_DownloadPageParams);
+		Print(GetGame().GetBackendApi().GetWorldSaveApi().GetPageCount());
+		Print(GetGame().GetBackendApi().GetWorldSaveApi().GetPageItemCount());
+		
+		array<WorldSaveItem> items = {};
+		GetGame().GetBackendApi().GetWorldSaveApi().GetPageItems(items);
+		foreach (int i, WorldSaveItem item: items)
+		{
+			PrintFormat("%1: %2", i, item.Id());
+		}
 	}
 	/*!
 	Log the most recently saved structs.
@@ -155,6 +180,22 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	{
 		if (m_Callback != null)
 			m_Callback.LogSession();
+	}
+	
+	/////////////////////////////////////////////////////////////////////////////
+	// Protected
+	/////////////////////////////////////////////////////////////////////////////
+	protected void Load()
+	{
+		if (m_Callback != null)
+			m_Callback.LoadSession(m_sFileName);
+	}
+	protected MissionHeader GetMissionHeader()
+	{
+		if (m_DebugMissionHeader)
+			return m_DebugMissionHeader;
+		else
+			return GetGame().GetMissionHeader();
 	}
 	
 	/////////////////////////////////////////////////////////////////////////////
@@ -183,6 +224,11 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 			{
 				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_UPLOAD, false);
 				UploadToWorkshop();
+			}
+			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_DOWNLOAD))
+			{
+				DiagMenu.SetValue(SCR_DebugMenuID.DEBUGUI_SAVELOAD_DOWNLOAD, false);
+				DownloadFromWorkshop();
 			}
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG))
 			{
@@ -215,11 +261,21 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 		if (Replication.IsServer())
 		{
 			SCR_MissionHeader missionHeader = SCR_MissionHeader.Cast(GetGame().GetMissionHeader());
-			if (missionHeader && !missionHeader.IsSavingEnabled())
+			
+#ifdef WORKBENCH
+			if (!missionHeader)
+			{
+				m_DebugMissionHeader = new SCR_MissionHeader();
+				m_DebugMissionHeader.m_sSaveFileName = "WB_" + FilePath.StripPath(FilePath.StripExtension(GetGame().GetWorldFile()));
+				m_DebugMissionHeader.m_bIsSavingEnabled = true;
+				missionHeader = m_DebugMissionHeader;
+			}	
+#endif
+			if (missionHeader && !missionHeader.m_bIsSavingEnabled)
 				return;
 			
 			m_sFileName = GetSaveFileName(missionHeader);
-			if (m_sFileName)
+			if (m_sFileName && m_Struct)
 			{			
 				m_Callback = new SCR_DSSessionCallback(m_Struct);
 				
@@ -235,7 +291,6 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 	{
 		if (Replication.IsServer())
 		{
-			owner.SetFlags(EntityFlags.ACTIVE, false);
 			SetEventMask(owner, EntityEvent.FRAME);
 			
 			if (m_iAutosavePeriod > 0 && m_iAutosavePeriod < MINIMUM_AUTOSAVE_PERIOD)
@@ -251,8 +306,27 @@ class SCR_SaveLoadComponent: SCR_BaseGameModeComponent
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_SAVE, "", "Save Session", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOAD, "", "Load Session", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_RESTART_AND_LOAD, "", "Restart and Load Session", "Save/Load");
-			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_UPLOAD, "", "Upload Save", "Save/Load");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_UPLOAD, "", "Upload Saves", "Save/Load");
+			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_DOWNLOAD, "", "Download Saves", "Save/Load");
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SAVELOAD_LOG, "", "Log Session Save", "Save/Load");
 		}
+	}
+};
+class SCR_SaveLoadComponent_BackendCallback: BackendCallback
+{
+	SCR_SaveLoadComponent m_SaveLoadComponent;
+	
+	override void OnError( int code, int restCode, int apiCode )
+	{
+		PrintFormat("[BackendCallback] OnError: code=%1 ('%4'), restCode=%2, apiCode=%3", code, restCode, apiCode, GetGame().GetBackendApi().GetErrorCode(code));
+	}
+	override void OnSuccess( int code )
+	{
+		Print("[BackendCallback] OnSuccess()");
+		m_SaveLoadComponent.OnDownloadFromWorkshop();
+	}
+	override void OnTimeout()
+	{
+		Print("[BackendCallback] OnTimeout");
 	}
 };

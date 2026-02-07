@@ -29,7 +29,7 @@ class SCR_WindOverrideEditorAttribute : SCR_BaseEditorAttribute
 			manager.SetAttributeAsSubAttribute(SCR_WindDirectionEditorAttribute);
 		}	
 				
-		bool overrideWeather = var.GetBool();
+		bool overrideWeather = var && var.GetBool();
 		
 		manager.SetAttributeEnabled(SCR_WindSpeedEditorAttribute, overrideWeather);
 		manager.SetAttributeEnabled(SCR_WindDirectionEditorAttribute, overrideWeather);

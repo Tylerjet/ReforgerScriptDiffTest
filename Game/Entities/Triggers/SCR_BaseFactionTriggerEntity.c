@@ -20,7 +20,7 @@ class SCR_BaseFactionTriggerEntity: SCR_BaseTriggerEntity
 	
 	override bool ScriptedEntityFilterForQuery(IEntity ent)
 	{
-		if (!m_OwnerFaction || !DefaultEntityFilterForQuery(ent) || !IsAlive(ent))
+		if (!m_OwnerFaction || !IsAlive(ent))
 			return false;
 		
 		FactionAffiliationComponent factionAffiliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
@@ -34,7 +34,6 @@ class SCR_BaseFactionTriggerEntity: SCR_BaseTriggerEntity
 	}
 	void SCR_BaseFactionTriggerEntity(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT);
 	}
 };

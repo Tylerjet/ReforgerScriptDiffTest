@@ -705,7 +705,7 @@ class SCR_AvailableActionsConditionData
 		if (!von)
 			return;
 		
-		m_bCharacterIsUsingRadio = von.IsTransmiting();
+		m_bCharacterIsUsingRadio = von.IsTransmitingRadio();
 	}
 	
 	//------------------------------------------------------------------------------------------------

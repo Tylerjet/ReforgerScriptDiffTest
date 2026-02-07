@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseScriptedDamageManagerComponentClass: SCR_DamageManagerComponentClass
 {
-};
+}
 
 class BaseScriptedDamageManagerComponent: SCR_DamageManagerComponent
 {
@@ -34,6 +34,8 @@ class BaseScriptedDamageManagerComponent: SCR_DamageManagerComponent
 	//! Must be first enabled with event mask
 	event protected bool OnContact(IEntity owner, IEntity other, Contact contact);
 	event protected void OnDamage(EDamageType type, float damage, HitZone pHitZone, IEntity instigator, inout vector hitTransform[3], float speed, int colliderID, int nodeID);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

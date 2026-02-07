@@ -73,7 +73,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------------------------------
 	//! Initializes the line in passive mode. It will just show basic information once
-	void InitForWorkshopItem(SCR_WorkshopItem item, string overrideTargetVersion = string.Empty, bool showVersionAndSize = true)
+	void InitForWorkshopItem(SCR_WorkshopItem item, Revision overrideTargetVersion = null, bool showVersionAndSize = true)
 	{
 		m_Item = item;
 		
@@ -86,18 +86,19 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 			
 			if (showVersionAndSize)
 			{
-				string versionFrom = item.GetCurrentLocalVersion();
-				string versionTo = overrideTargetVersion;
-				if (overrideTargetVersion.IsEmpty())
-					versionTo = item.GetLatestVersion();
+				Revision versionFrom = item.GetCurrentLocalRevision();
+				Revision versionTo = overrideTargetVersion;
+				if (versionTo == null)
+					versionTo = item.GetLatestRevision();
 				float downloadSize = item.GetSizeBytes();
 				
-				bool showVersionFrom = !versionFrom.IsEmpty() && versionFrom != versionTo;
+				bool showVersionFrom = versionFrom && !Revision.AreEqual(versionFrom, versionTo);
 				m_Widgets.m_VersionFromText.SetVisible(showVersionFrom);
 				m_Widgets.m_VersionArrow.SetVisible(showVersionFrom);
-				m_Widgets.m_VersionFromText.SetText(versionFrom);
+				if (showVersionFrom)
+					m_Widgets.m_VersionFromText.SetText(versionFrom.GetVersion());
 				
-				m_Widgets.m_VersionToText.SetText(versionTo);
+				m_Widgets.m_VersionToText.SetText(versionTo.GetVersion());
 				
 				string sizeStr = SCR_ByteFormat.GetReadableSize(downloadSize);
 				m_Widgets.m_AddonSizeText.SetText(sizeStr);
@@ -106,7 +107,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 				DisplayActionIcon(versionFrom, versionTo);
 				
 				// Check version change 
-				if (!versionFrom.IsEmpty() && versionFrom != versionTo)
+				if (versionFrom && !Revision.AreEqual(versionFrom, versionTo))
 					m_bVersionChange = true;
 			}
 		}
@@ -173,14 +174,18 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		m_Widgets.m_AddonNameText.SetText(m_Action.GetAddonName());
 		
 		// Version from
-		string versionFrom = m_Action.GetStartVersion();
-		m_Widgets.m_VersionArrow.SetVisible(!versionFrom.IsEmpty());
-		m_Widgets.m_VersionFromText.SetText(versionFrom);
-
+		Revision versionFrom = m_Action.GetStartRevision();
+		if (versionFrom)
+		{
+			m_Widgets.m_VersionArrow.SetVisible(true);
+			m_Widgets.m_VersionFromText.SetText(versionFrom.GetVersion());
+		}
+		else
+			m_Widgets.m_VersionArrow.SetVisible(false);
 		
 		// Version to
-		string versionTo = m_Action.GetTargetVersion();
-		m_Widgets.m_VersionToText.SetText(versionTo);
+		Revision versionTo = m_Action.GetTargetRevision();
+		m_Widgets.m_VersionToText.SetText(versionTo.GetVersion());
 		
 		// Progress text
 		if (m_Action.IsCompleted() || m_Action.IsFailed() || m_Action.IsCanceled())
@@ -277,7 +282,7 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 	
 	//------------------------------------------------------------------------------------------------------------------------
 	//! Display icon with action that need to done - download, update, downgrade
-	protected void DisplayActionIcon(string vFrom, string vTo)
+	protected void DisplayActionIcon(Revision vFrom, Revision vTo)
 	{
 		ImageWidget wIcon = m_Widgets.m_AddonActionIcon;
 		if (!wIcon)
@@ -288,16 +293,16 @@ class SCR_DownloadManager_AddonDownloadLine : ScriptedWidgetComponent
 		Color color = ICON_COLORICON_DOWNLOAD;
 		
 		// Is there current verion?
-		if (!vFrom.IsEmpty())
+		if (vFrom)
 		{
-			SCR_ComparerOperator result = SCR_AddonManager.DifferenceBetweenVersions(vFrom, vTo);
+			int result = vFrom.CompareTo(vTo);
 			
-			if (result == SCR_ComparerOperator.LESS_THAN)
+			if (result < 0)
 			{
 				imageName = ICON_UP;
 				color = ICON_COLOR_UP;
 			}
-			else if (result == SCR_ComparerOperator.GREATER_THAN)
+			else if (result > 0)
 			{
 				imageName = ICON_DOWN;
 				color = ICON_COLOR_DOWN;

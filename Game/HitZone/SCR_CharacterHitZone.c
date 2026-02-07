@@ -177,15 +177,15 @@ class SCR_CharacterHitZone : SCR_RegeneratingHitZone
 	//-----------------------------------------------------------------------------------------------------------
 	void AddBloodToClothes(float immediateBloodEffect = 0)
 	{
-		BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(GetOwner().FindComponent(BaseLoadoutManagerComponent));
-		if (!loadoutManager)
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(GetOwner().FindComponent(EquipedLoadoutStorageComponent));
+		if (!loadoutStorage)
 			return;
 		
 		IEntity clothEntity;
 		ParametricMaterialInstanceComponent materialComponent;
 		for (int i = m_aBleedingAreas.Count() - 1; i >= 0; i--)
 		{
-			clothEntity = loadoutManager.GetClothByArea(m_aBleedingAreas[i].Type());
+			clothEntity = loadoutStorage.GetClothFromArea(m_aBleedingAreas[i].Type());
 			if (!clothEntity)
 				continue;
 			

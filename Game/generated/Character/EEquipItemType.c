@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum EEquipItemType
@@ -16,7 +16,9 @@ enum EEquipItemType
 	EEquipTypeWeapon,
 	EEquipTypeUnarmed,
 	EEquipTypeSlinged,
-	Max
-};
+	Max,
+}
 
-/** @}*/
+/*!
+\}
+*/

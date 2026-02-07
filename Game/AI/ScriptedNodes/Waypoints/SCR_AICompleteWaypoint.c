@@ -10,18 +10,23 @@ class SCR_AICompleteWaypoint : AITaskScripted
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if ( owner )
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
 		{
-			AIWaypoint wp;
-			GetVariableIn("WaypointIn",wp);
-			if ( !wp )
-				wp = owner.GetCurrentWaypoint();
-			if ( wp )
-			{
-				owner.CompleteWaypoint(wp);
-				return ENodeResult.SUCCESS;
-			}				
+			SCR_AgentMustBeAIGroup(this, owner);
+			return ENodeResult.FAIL;
 		}
+		
+		AIWaypoint wp;
+		GetVariableIn("WaypointIn",wp);
+		if ( !wp )
+			wp = group.GetCurrentWaypoint();
+		if ( wp )
+		{
+			group.CompleteWaypoint(wp);
+			return ENodeResult.SUCCESS;
+		}				
+		
 		return ENodeResult.FAIL;
 	}
 

@@ -227,54 +227,17 @@ class SCR_EditableEntityCore: SCR_GameCoreBase
 	}
 	
 	/*!
-	Check if entity of given type can be moved inside parent entity.
-	\param type Type of edited entity
-	\param parentEntity Desired parent
-	\params interactionFlags Flags defining details about the interaction (all are enabled if undefined)
-	\return True if it can be moved inside
+	Get interaction class for given entity type.
+	\param type Entity type
+	\return Interaction rules
 	*/
-	bool CanSetParent(EEditableEntityType type, SCR_EditableEntityComponent parentEntity, EEditableEntityInteractionFlag interactionFlags = int.MAX)
-	{		
-		SCR_EditableEntityCoreTypeSetting setting;
-		if (m_TypeSettingsMap.Find(type, setting) && setting.GetInteraction())
-			return setting.GetInteraction().CanSetParent(parentEntity, interactionFlags);
-		else
-			return false;
-	}	
-	/*!
-	Check if entity of given type can be moved inside parent entity type.
-	\param type Type of edited entity
-	\param EEditableEntityType entity type of parent
-	\param EEditableEntityFlag entity flags of parent
-	\params interactionFlags Flags defining details about the interaction (all are enabled if undefined)
-	\return True if it can be moved inside
-	*/
-	bool CanSetParentOfType(EEditableEntityType type, EEditableEntityType parentType, EEditableEntityFlag parentFlags, EEditableEntityInteractionFlag interactionFlags = int.MAX)
+	SCR_EditableEntityInteraction GetEntityInteraction(EEditableEntityType type)
 	{
 		SCR_EditableEntityCoreTypeSetting setting;
-	
-		if (m_TypeSettingsMap.Find(type, setting) && setting.GetInteraction())
-			return setting.GetInteraction().CanSetParentOfType(parentType, parentFlags, interactionFlags);
+		if (m_TypeSettingsMap.Find(type, setting))
+			return setting.GetInteraction();
 		else
-			return false;
-	}
-	/*!
-	Check if new layer can be created for entity
-	\param EEditableEntityType type of the entity to wrap in the new layer
-	\param EEditableEntityType new layer type
-	\param newLayerFlags new layer m_Flags
-	\param parentEntity parent entity
-	\param CheckParentEntity if should check if new layer can be added to parent
-	\return bool if the given layer can be created for the entity
-	*/
-	bool CanCreateParentFor(EEditableEntityType type, EEditableEntityType newLayerType, EEditableEntityFlag newLayerFlags, SCR_EditableEntityComponent parentEntity, bool checkParentEntity = true)
-	{
-		SCR_EditableEntityCoreTypeSetting setting;
-	
-		if (m_TypeSettingsMap.Find(type, setting) && setting.GetInteraction())
-			return setting.GetInteraction().CanCreateParentFor(newLayerType, newLayerFlags, parentEntity, checkParentEntity);
-		else
-			return false;
+			return null;
 	}
 	/*!
 	Check if entity can be controlled by player, used for delaying budget update/AI check

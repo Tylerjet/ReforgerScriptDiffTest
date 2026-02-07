@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 //! Base class for all messages related to AI
@@ -25,11 +25,13 @@ class AIMessage: ScriptAndConfig
 	proto external AIAgent GetReceiver();
 	proto external IEntity GetObject();
 	proto external void SetObject(IEntity obj);
-	
+
 	// callbacks
-	
+
 	event void OnBroadcast(AIAgent pOwner);
 	event void OnReceived(AIAgent pReceiver);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

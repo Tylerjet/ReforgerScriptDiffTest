@@ -28,7 +28,7 @@ class SCR_WeaponState
 	bool m_bBarrelCanBeChambered;
 	bool m_bInADS;
 	bool m_bInInspectionMode;
-	bool m_bIsGrenade;
+	bool m_bIsExplosive;
 	bool m_bHasSpecialAmmo;
 	bool m_bReloading;
 	
@@ -56,7 +56,7 @@ class SCR_WeaponState
 		m_fZoom = 0;
 		m_bInADS = false;
 		m_bInInspectionMode = false;
-		m_bIsGrenade = false;
+		m_bIsExplosive = false;
 		m_bShowFiremode = false;
 		m_FireModeType = EWeaponFiremodeType.Semiauto;
 		m_eAmmoTypeFlags = EAmmoType.FMJ;

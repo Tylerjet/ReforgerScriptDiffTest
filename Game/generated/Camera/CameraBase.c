@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Camera
-* @{
+/*!
+\addtogroup Camera
+\{
 */
 
 class CameraBaseClass: GenericEntityClass
 {
-};
+}
 
 class CameraBase: GenericEntity
 {
@@ -76,17 +76,15 @@ class CameraBase: GenericEntity
 	\param userSetName user name of the lens flare set (used only when type is set to User)
 	*/
 	proto external void SetLensFlareSet(CameraLensFlareSetType type, string userName);
-	
+
 	// callbacks
-	
-	//! Called the moment this camera entity is activated.
-	event protected void EOnActivate();
-	//! Called the moment this camera entity is deactivated.
-	event protected void EOnDeactivate();
+
 	//! Called the moment this camera is activated by CameraManager.
 	event protected void CameraActivate();
 	//! Called the moment this camera is deactivated by CameraManager.
 	event protected void CameraDeactivate();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

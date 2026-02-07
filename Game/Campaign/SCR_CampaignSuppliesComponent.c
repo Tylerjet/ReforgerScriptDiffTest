@@ -29,7 +29,7 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	protected int m_iSupplies;
 	
 	// Synced variables
-	[Attribute("0", desc: "Maximum supplies this component can hold."), RplProp()]
+	[Attribute("0", desc: "Maximum supplies this component can hold."), RplProp(onRplName: "OnSuppliesChanged")]
 	protected int m_iSuppliesMax;
 	
 	[Attribute("0", desc: "Maximum distance from a supply depot a player can still (un)load their truck")]
@@ -204,11 +204,24 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	{
 		return m_bIsStandaloneDepot;
 	}
+	//------------------------------------------------------------------------------------------------
+	override void EOnInit(IEntity owner)
+	{
+		SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gamemode)
+			return;
+		
+		gamemode.GetOnPlayerDisconnected().Insert(DeleteSupplyLoadingPlayer);
+		gamemode.GetOnPlayerDisconnected().Insert(DeleteSupplyUnloadingPlayer);
+		gamemode.GetOnPlayerKilled().Insert(DeleteSupplyLoadingPlayer);
+		gamemode.GetOnPlayerKilled().Insert(DeleteSupplyUnloadingPlayer);
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
+		SetEventMask(owner, EntityEvent.INIT);
 		
 		if (m_iSupplies > m_iSuppliesMax)
 		{
@@ -273,5 +286,14 @@ class SCR_CampaignSuppliesComponent : ScriptComponent
 	{
 		if (m_OnSuppliesTruckDeleted)
 			m_OnSuppliesTruckDeleted.Invoke(GetOwner());
+		
+		SCR_BaseGameMode gamemode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gamemode)
+			return;
+		
+		gamemode.GetOnPlayerDisconnected().Remove(DeleteSupplyLoadingPlayer);
+		gamemode.GetOnPlayerDisconnected().Remove(DeleteSupplyUnloadingPlayer);
+		gamemode.GetOnPlayerKilled().Remove(DeleteSupplyLoadingPlayer);
+		gamemode.GetOnPlayerKilled().Remove(DeleteSupplyUnloadingPlayer);
 	}
 };

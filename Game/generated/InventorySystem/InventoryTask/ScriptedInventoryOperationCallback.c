@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem\InventoryTask
-* @{
+/*!
+\addtogroup InventorySystem\InventoryTask
+\{
 */
 
 class ScriptedInventoryOperationCallback: InventoryOperationCallback
@@ -15,6 +15,8 @@ class ScriptedInventoryOperationCallback: InventoryOperationCallback
 	event protected void OnComplete();
 	// Override this method to implement callback logic for failed operation
 	event protected void OnFailed();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

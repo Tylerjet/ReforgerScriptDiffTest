@@ -19,5 +19,5 @@ enum DataExportErrorType
 	DataExportErrorInvalidSoundmap,
 	DataExportErrorNoLandOrOcean,
 	DataExportErrorNoTerrain,
-	DataExportErrorUnknown
-};
+	DataExportErrorUnknown,
+}

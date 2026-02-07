@@ -44,9 +44,11 @@ class SCR_CreateLayerWithSelectionContextAction : SCR_BaseContextAction
 		newLayerFlags |= EEditableEntityFlag.LAYER;
 		int count = selectedEntities.Count();
 		
-		for(int i = 0; i < count; i++)
-		{			
-			if (m_Core.CanCreateParentFor(selectedEntities[i].GetEntityType(), EEditableEntityType.GENERIC, newLayerFlags, parent, i == 0))
+		SCR_EditableEntityInteraction interaction;
+		for (int i = 0; i < count; i++)
+		{
+			interaction = selectedEntities[i].GetEntityInteraction();
+			if (interaction && interaction.CanCreateParentFor(EEditableEntityType.GENERIC, newLayerFlags, parent, i == 0))
 			{
 				hasValidEntities = true;
 				break;
@@ -81,9 +83,11 @@ class SCR_CreateLayerWithSelectionContextAction : SCR_BaseContextAction
 		m_EntitiesToMove.Clear();
 		int count = selectedEntities.Count();
 		
-		for(int i = 0; i < count; i++)
-		{			
-			if (m_Core.CanCreateParentFor(selectedEntities[i].GetEntityType(), EEditableEntityType.GENERIC, newLayerFlags, parent, i == 0))
+		SCR_EditableEntityInteraction interaction;
+		for (int i = 0; i < count; i++)
+		{		
+			interaction = selectedEntities[i].GetEntityInteraction();	
+			if (interaction && interaction.CanCreateParentFor(EEditableEntityType.GENERIC, newLayerFlags, parent, i == 0))
 			{
 				m_EntitiesToMove.Insert(selectedEntities[i]);
 			}

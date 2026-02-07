@@ -12,4 +12,4 @@ sealed class AnimExporterAcc: Managed
 	proto external int AddBone(int parent, string name);
 	proto external void AddTrackKey(int boneID, float pKey[16], int takeID);
 	proto external void ExportTake(AnimExportProfileCtx pProfile, string pExportPath);
-};
+}

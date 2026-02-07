@@ -1,6 +1,27 @@
 
 /** @file */
 
+
+// -------------------------------------------------------------------------
+// error codes for handle processing
+// defined in C++
+enum EJsonApiError
+{
+	ETJSON_UNKNOWN,			// invalid code
+
+	ETJSON_OK,				// all fine
+	ETJSON_COMMSEND,		// error during send
+	ETJSON_COMMRECV,		// error during receive
+	ETJSON_PARSERERROR,		// error during parsing
+	ETJSON_PACKNOSTART,		// error - cannot start packing (invalid state)
+	ETJSON_TIMEOUT,			// failed to send/ store handle due to timeout
+	ETJSON_NOBUFFERS,		// not enough buffers available
+	ETJSON_FAILFILELOAD,	// failed to load file
+	ETJSON_FAILFILESAVE,	// failed to save file
+	ETJSON_NOTARRAY,		// object is not array (ie. attempt to provide different or none object as array)
+}
+
+
 // -------------------------------------------------------------------------
 // object which allow to parse upon generic JSON structure and format it back
 //
@@ -59,46 +80,6 @@ class JsonApiStruct : Managed
 	void OnObject( string name )
 	{
 	}
-	/**
-	\brief Called when parsing boolean
-	*/
-	void OnBoolean( string name, bool value )
-	{
-	}
-	///**
-	//\brief Called when parsing integer value
-	//*/
-	//void OnInteger( string name, int value )
-	//{
-	//}
-
-	///**
-	//\brief Called when parsing float value
-	//*/
-	//void OnFloat( string name, float value )
-	//{
-	//}
-
-	///**
-	//\brief Called when parsing boolean value
-	//*/
-	//void OnBoolean( string name, bool value )
-	//{
-	//}
-
-	///**
-	//\brief Called when parsing string value
-	//*/
-	//void OnString( string name, string value )
-	//{
-	//}
-	//
-	///**
-	//\brief Called when parsing vector value
-	//*/
-	//void OnVector( string name, vector value )
-	//{
-	//}
 
 	/**
 	\brief Called when parsing array
@@ -121,41 +102,6 @@ class JsonApiStruct : Managed
 	{
 	}
 
-	///**
-	//\brief Called when parsing integer value
-	//*/
-	//void OnItemInteger( int index, int value )
-	//{
-	//}
-
-	///**
-	//\brief Called when parsing float value
-	//*/
-	//void OnItemFloat( int index, float value )
-	//{
-	//}
-
-	///**
-	//\brief Called when parsing boolean value
-	//*/
-	//void OnItemBoolean( int index, bool value )
-	//{
-	//}
-
-	///**
-	//\brief Called when parsing string value from array
-	//*/
-	//void OnItemString( int index, string value )
-	//{
-	//}
-	//
-	///**
-	//\brief Called when parsing vector value from array
-	//*/
-	//void OnItemVector( int index, vector value )
-	//{
-	//}
-	
 	/**
 	\brief Register script variable for auto-feature
 	*/
@@ -266,14 +212,9 @@ class JsonApiStruct : Managed
 	proto native void SetFail();
 	
 	/**
-	\brief Start object packing - when it can be done (when sending remote etc.)
-	*/
-	proto native void Pack();
-
-	/**
 	\brief Start object packing now - for use at main thread only!
 	*/
-	proto native void InstantPack();
+	proto native void Pack();
 
 	/**
 	\brief Start object unpacking from RAW string data
@@ -298,5 +239,5 @@ class JsonApiStruct : Managed
 	*/
 	proto native bool LoadFromFile( string FileName );
 
-};
+}
 

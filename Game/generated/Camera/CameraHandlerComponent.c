@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Camera
-* @{
+/*!
+\addtogroup Camera
+\{
 */
 
 class CameraHandlerComponentClass: ScriptComponentClass
 {
-};
+}
 
 class CameraHandlerComponent: ScriptComponent
 {
@@ -35,9 +35,9 @@ class CameraHandlerComponent: ScriptComponent
 	\param userSetName user name of the lens flare set (used only when type is set to User)
 	*/
 	proto external void SetLensFlareSet(CameraLensFlareSetType type, string lensFlareSetUserName);
-	
+
 	// callbacks
-	
+
 	/*!
 	Calculate and return desired fov scalar. 1.0 = normal
 	\param mainCamera Main camera used, usually player camera
@@ -67,6 +67,8 @@ class CameraHandlerComponent: ScriptComponent
 	modulated if an overlay camera is active. (0 = main camera, 1 = overlay camera).
 	*/
 	event float GetOverlayCameraFOVScalarWeight();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

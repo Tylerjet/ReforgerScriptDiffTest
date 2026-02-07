@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -51,10 +51,10 @@ sealed class PhysicsRagdoll: pointer
 	\param mass Ragdoll mass
 	\param layerMask Bit mask of layers
 	@code
-	IEntity rdEntity = GetWorld().FindEntityByName("rd_test");
-	string rdName = "{CE761502CE2E1990}Prefabs/Characters/character.ragdoll";
-	int rdLayer = 1 << 10;
-	PhysicsRagdoll rd = PhysicsRagdoll.CreateRagdoll(rdEntity, rdName, 1, rdLayer);
+		IEntity rdEntity = GetWorld().FindEntityByName("rd_test");
+		string rdName = "{CE761502CE2E1990}Prefabs/Characters/character.ragdoll";
+		int rdLayer = 1 << 10;
+		PhysicsRagdoll rd = PhysicsRagdoll.CreateRagdoll(rdEntity, rdName, 1, rdLayer);
 	@endcode
 	*/
 	static proto PhysicsRagdoll CreateRagdoll(notnull IEntity owner, string ragdollDefName, float mass, int layerMask);
@@ -63,6 +63,8 @@ sealed class PhysicsRagdoll: pointer
 	\param owner Entity checked for ragdoll
 	*/
 	static proto PhysicsRagdoll GetRagdoll(notnull IEntity owner);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

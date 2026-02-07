@@ -16,19 +16,24 @@ class SCR_AIFindFirePositionBehavior : SCR_AIBehaviorBase
 	EAIUnitType m_eTargetUnitType;
 	
 	//----------------------------------------------------------------------------------------------------------------
-	void SCR_AIFindFirePositionBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector targetPos,
-		float minDistance, float maxDistance, EAIUnitType targetUnitType, float duration)
+	void InitParameters(vector targetPos, float minDistance, float maxDistance, float duration)
 	{
 		m_vTargetPosition.Init(this, targetPos);
 		m_fMinDistance.Init(this, minDistance);
 		m_fMaxDistance.Init(this, maxDistance);
 		m_fDuration_s.Init(this, duration);
+	}
+	//----------------------------------------------------------------------------------------------------------------
+	void SCR_AIFindFirePositionBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector targetPos,
+		float minDistance, float maxDistance, EAIUnitType targetUnitType, float duration, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		InitParameters(targetPos, minDistance, maxDistance, duration);
 		
 		m_eTargetUnitType = targetUnitType;
 		
-		m_eType = EAIActionType.FIND_FIRE_POSITION;
-		m_sBehaviorTree = "{905124EEBF36D180}AI/BehaviorTrees/Chimera/Soldier/FindFirePositioin.bt";
+		m_sBehaviorTree = "{905124EEBF36D180}AI/BehaviorTrees/Chimera/Soldier/FindFirePosition.bt";
 		m_fPriority = PRIORITY_BEHAVIOR_FIND_FIRE_POSITION;
+		m_fPriorityLevel.m_Value = priorityLevel;
 		m_bAllowLook = true;
 	}
 	
@@ -124,7 +129,7 @@ class SCR_AIGetFindFirePositionNextPos : SCR_AIActionTask
 
 class SCR_AIGetFirePositionBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIFindFirePositionBehavior(null, false, null, vector.Zero, 0, 0, 0, 0)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIFindFirePositionBehavior(null, null, vector.Zero, 0, 0, 0, 0)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }

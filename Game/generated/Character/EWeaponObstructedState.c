@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum EWeaponObstructedState
@@ -20,7 +20,9 @@ enum EWeaponObstructedState
 	//! Obstruction between breaking threshold and alpha threshold - shooting not possible anymore.
 	SIGNIFICANTLY_OBSTRUCTED_CANT_FIRE,
 	//! Obstruction higher than alpha threshold - weapon fully obstructed.
-	FULLY_OBSTRUCTED_CANT_FIRE
-};
+	FULLY_OBSTRUCTED_CANT_FIRE,
+}
 
-/** @}*/
+/*!
+\}
+*/

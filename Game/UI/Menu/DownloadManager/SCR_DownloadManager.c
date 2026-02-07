@@ -31,6 +31,27 @@ class SCR_DownloadManager : GenericEntity
 	// Bool to pause all downloads
 	protected bool m_bDownloadsPaused;
 	
+	protected const int FAIL_TIME = 500;
+	protected ref array<ref SCR_WorkshopItemActionDownload> m_aFailedDownloads = {};
+	
+	protected ref ScriptInvoker<> Event_OnDownloadFail;
+
+	//------------------------------------------------------------------------------------------------
+	void InvokeEventOnDownloadFail()
+	{
+		if (Event_OnDownloadFail)
+			Event_OnDownloadFail.Invoke();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetEventOnDownloadFail()
+	{
+		if (!Event_OnDownloadFail)
+			Event_OnDownloadFail = new ScriptInvoker();
+
+		return Event_OnDownloadFail;
+	}
+	
 	//-----------------------------------------------------------------------------------------------
 	// 				P U B L I C   A P I 
 	//-----------------------------------------------------------------------------------------------
@@ -150,22 +171,20 @@ class SCR_DownloadManager : GenericEntity
 		if (!item.GetOffline())
 			return true;
 		
-		string latestVersion = item.GetLatestVersion();
-		
+		Revision latestRevision = item.GetLatestRevision();
+		Revision targetRevision;
 		bool downloading, paused;
-		string targetVersion;
 		float progress;
-		item.GetDownloadState(downloading, paused, progress, targetVersion);
+		item.GetDownloadState(downloading, paused, progress, targetRevision);
 		
 		if (!downloading)
 		{
-			string currentVersion = item.GetCurrentLocalVersion();
-			return currentVersion != latestVersion;
+			return !Revision.AreEqual(item.GetCurrentLocalRevision(), latestRevision);
 		}
 		else
 		{
 			// We are already downloading this, but what versoin?
-			if (latestVersion == targetVersion)
+			if (Revision.AreEqual(item.GetLatestRevision(), targetRevision))
 				return false; // Already downloading this version, no need to start a new download
 			else
 				return true;	// Downloading a different version, we must download another one
@@ -362,7 +381,11 @@ class SCR_DownloadManager : GenericEntity
 	protected void Callback_OnNewDownload(SCR_WorkshopItem item, SCR_WorkshopItemActionDownload action)
 	{
 		#ifdef WORKSHOP_DEBUG
-		_print(string.Format("Callback_OnNewDownloadStarted: %1, %2", item.GetName(), action.GetTargetVersion()));
+		Revision rev = action.GetTargetRevision();
+		if (rev)
+			_print(string.Format("Callback_OnNewDownloadStarted: %1, %2", item.GetName(), action.GetTargetRevision().GetVersion()));
+		else
+			_print(string.Format("Callback_OnNewDownloadStarted: %1", item.GetName()));
 		#endif
 		
 		// Create a new entry
@@ -375,6 +398,7 @@ class SCR_DownloadManager : GenericEntity
 		m_OnNewDownload.Invoke(item, action);
 		
 		action.m_OnCompleted.Insert(Callback_OnDownloadCompleted);
+		action.m_OnFailed.Insert(Callback_OnFailed);
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -396,10 +420,42 @@ class SCR_DownloadManager : GenericEntity
 	}
 	
 	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnFailed(SCR_WorkshopItemActionDownload action)
+	{
+		if (m_aFailedDownloads.IsEmpty())
+		{
+			// Call later to acumulate other actions failed at beginning
+			// Using call latter since fail suppose to be happening at very beginning
+			// but some repose might come later
+			GetGame().GetCallqueue().CallLater(InvokeEventOnDownloadFail, FAIL_TIME);
+		}
+		
+		m_aFailedDownloads.Insert(action)
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	array<ref SCR_WorkshopItemActionDownload> GetFailedDownloads()
+	{
+		array<ref SCR_WorkshopItemActionDownload> actions = {};
+		for (int i = 0, count = m_aFailedDownloads.Count(); i < count; i++)
+		{
+			actions.Insert(m_aFailedDownloads[i]);	
+		}
+		
+		return actions;
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	void ClearFailedDownloads()
+	{
+		m_aFailedDownloads.Clear();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
 	private void SCR_DownloadManager(IEntitySource src, IEntity parent)
 	{
 		SetEventMask( EntityEvent.FRAME | EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 		
 		s_Instance = this;
 	}

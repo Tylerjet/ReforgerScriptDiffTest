@@ -4,7 +4,7 @@ Action to spawn entities using the ActionsManagerComponent
 class SCR_SpawnEntityUserAction : ScriptedUserAction
 {
 	protected SCR_EntitySpawnerComponent m_EntitySpawner; 
-	protected int m_iCanRequestResult = SCR_EntityRequestDeniedReason.CAN_SPAWN;
+	protected int m_iCanRequestResult = SCR_EEntityRequestStatus.CAN_SPAWN;
 	
 	static const int INIT_DELAY = 1000;
 	
@@ -79,20 +79,20 @@ class SCR_SpawnEntityUserAction : ScriptedUserAction
 		
 		switch (m_iCanRequestResult)
 		{
-			case SCR_EntityRequestDeniedReason.NOT_ENOUGH_SUPPLIES:
+			case SCR_EEntityRequestStatus.NOT_ENOUGH_SUPPLIES:
 			{
 				SetCannotPerformReason("");
 				break;
 			}
 				
-			case SCR_EntityRequestDeniedReason.RANK_LOW:
+			case SCR_EEntityRequestStatus.RANK_LOW:
 			{
 				string rankName;
 				FactionAffiliationComponent factionAffiliationComp = FactionAffiliationComponent.Cast(user.FindComponent(FactionAffiliationComponent));
 				if (!factionAffiliationComp)
 					break;
 				
-				SCR_MilitaryFaction faction = SCR_MilitaryFaction.Cast(factionAffiliationComp.GetAffiliatedFaction());
+				SCR_Faction faction = SCR_Faction.Cast(factionAffiliationComp.GetAffiliatedFaction());
 				if (faction)
 					rankName = faction.GetRankName(entityInfo.GetMinimumRankID());
 					
@@ -100,14 +100,14 @@ class SCR_SpawnEntityUserAction : ScriptedUserAction
 				break;
 			}
 			
-			case SCR_EntityRequestDeniedReason.COOLDOWN:
+			case SCR_EEntityRequestStatus.COOLDOWN:
 			{
 				SetCannotPerformReason("#AR-Campaign_Action_Cooldown-UC");
 				break;
 			}
 			
-			case SCR_EntityRequestDeniedReason.CAN_SPAWN:
-			case SCR_EntityRequestDeniedReason.CAN_SPAWN_TRIGGER:
+			case SCR_EEntityRequestStatus.CAN_SPAWN:
+			case SCR_EEntityRequestStatus.CAN_SPAWN_TRIGGER:
 			{
 				return true;
 			}
@@ -132,7 +132,7 @@ class SCR_SpawnEntityUserAction : ScriptedUserAction
 			
 		m_iCanRequestResult = m_EntitySpawner.CanSpawn(GetActionIndex(), user);
 			
-		if (m_iCanRequestResult != SCR_EntityRequestDeniedReason.NOT_AVAILABLE)
+		if (m_iCanRequestResult != SCR_EEntityRequestStatus.NOT_AVAILABLE)
 			return true;
 		
 		return false;

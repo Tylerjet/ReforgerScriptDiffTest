@@ -5,6 +5,7 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 	protected Widget m_wRootWidget;
 	protected Widget m_wFirstColumnWidget;
 	protected Widget m_wCareerSpecializationsWidget;
+	protected Widget m_wProfileNotFound;
 	
 	protected Widget m_wHud;
 	protected SCR_CareerProfileHUD m_HudHandler;
@@ -35,8 +36,9 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 		
 		m_wFirstColumnWidget = m_wRootWidget.FindAnyWidget("FirstColumn");
 		m_wCareerSpecializationsWidget = m_wRootWidget.FindAnyWidget("CareerSpecializations0");
+		m_wProfileNotFound = m_wRootWidget.FindAnyWidget("ProfileNotFound");
 		
-		if (!m_wFirstColumnWidget || !m_wCareerSpecializationsWidget)
+		if (!m_wFirstColumnWidget || !m_wCareerSpecializationsWidget || !m_wProfileNotFound)
 			return;
 		
 		m_wHud = m_wFirstColumnWidget.FindAnyWidget("CareerProfileHUD0");
@@ -73,6 +75,8 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 		GetGame().GetInputManager().ActivateContext("CareerProfileContext");
 	}
 	
+	
+	
 	//------------------------------------------------------------------------------------------------
 	protected void FillFields()
 	{
@@ -86,8 +90,26 @@ class SCR_CareerProfileOverviewUI: SCR_SubMenuBase
 			m_PlayerData.DebugCalculateStats();
 		#endif
 		
-		FillHudAndStats();
-		FillSpecializationsFrame();
+		FillScreen(!m_PlayerData.IsEmptyProfile());	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void FillScreen(bool profileDataFound)
+	{
+		if (profileDataFound)
+		{
+			m_wFirstColumnWidget.SetVisible(true);
+			m_wCareerSpecializationsWidget.SetVisible(true);
+			m_wProfileNotFound.SetVisible(false);
+			FillHudAndStats();
+			FillSpecializationsFrame();
+		}
+		else
+		{
+			m_wFirstColumnWidget.SetVisible(false);
+			m_wCareerSpecializationsWidget.SetVisible(false);
+			m_wProfileNotFound.SetVisible(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

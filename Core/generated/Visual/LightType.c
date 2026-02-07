@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 enum LightType
@@ -16,7 +16,9 @@ enum LightType
 	POINT,
 	SPOT,
 	DIRECTIONAL,
-	PROBE
-};
+	PROBE,
+}
 
-/** @}*/
+/*!
+\}
+*/

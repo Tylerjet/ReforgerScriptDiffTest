@@ -14,7 +14,14 @@ class SCR_AIGetEntityFromWaypoint : AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		SCR_EntityWaypoint wp = SCR_EntityWaypoint.Cast(owner.GetCurrentWaypoint());
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
+			return ENodeResult.FAIL;
+		}
+		
+		SCR_EntityWaypoint wp = SCR_EntityWaypoint.Cast(group.GetCurrentWaypoint());
 		if (!wp)
 		{
 			return ENodeResult.FAIL;

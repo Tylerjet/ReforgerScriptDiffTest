@@ -474,7 +474,7 @@ class SCR_EditorManagerCore: SCR_GameCoreBase
 		{
 			//--- Add game mode event handlers
 			gameMode.GetOnPlayerRegistered().Insert(OnPlayerRegistered);
-			gameMode.GetOnPlayerDisconnected().Insert(OnPlayerDisconnected);
+			gameMode.GetOnPostCompPlayerDisconnected().Insert(OnPlayerDisconnected);
 			gameMode.GetOnPlayerSpawned().Insert(OnPlayerSpawn);
 			gameMode.GetOnPlayerKilled().Insert(OnPlayerKilled);
 			gameMode.GetOnPlayerDeleted().Insert(OnPlayerKilled);

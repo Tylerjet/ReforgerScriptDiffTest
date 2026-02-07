@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class InventoryStorageSlot: EntitySlotInfo
@@ -22,6 +22,8 @@ class InventoryStorageSlot: EntitySlotInfo
 	proto external GenericComponent GetParentContainer();
 	//! storage that our slot belongs to
 	proto external BaseInventoryStorageComponent GetStorage();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

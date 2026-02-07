@@ -121,7 +121,10 @@ class SCR_AIGetMemberByGoal: AITaskScripted
 			}
 		}
 		
-		m_GroupUtilityComponent.m_iGetMemberByGoalNextIndex = (selectedIndex + 1) % length; // If we don't do +1, next time we start checking same member
+		if (length != 0)
+			m_GroupUtilityComponent.m_iGetMemberByGoalNextIndex = (selectedIndex + 1) % length; // If we don't do +1, next time we start checking same member
+		else
+			m_GroupUtilityComponent.m_iGetMemberByGoalNextIndex = 0;			
 		
 		if (!isRolePresent)
 		{

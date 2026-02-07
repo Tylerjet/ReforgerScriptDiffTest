@@ -15,6 +15,14 @@ class SCR_PIPCamera : CameraBase
 		ClearEventMask(EntityEvent.INIT);
 	}
 	
+	override void EOnActivate(IEntity owner)
+	{
+		super.EOnActivate(owner);
+		
+		// CameraBase have POSTFRAME event, we don't want that here because UpdatePIPCamera is called from sight POSTFRAME event
+		ClearEventMask(EntityEvent.POSTFRAME);
+	}
+	
 	/// Apply camera base props to camera in world
 	void ApplyProps(int index)
 	{

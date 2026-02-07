@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class RiverPartEntityClass: GenericEntityClass
 {
-};
+}
 
 /*!
 River part entity.
@@ -22,6 +22,8 @@ Each river (RiverEntity) is made of one or more river part entities.
 */
 class RiverPartEntity: GenericEntity
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

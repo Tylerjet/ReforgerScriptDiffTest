@@ -108,17 +108,27 @@ class SCR_TransformingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 	}
 	protected void ConfirmEditing()
 	{
-		if (!m_TransformingManager.IsEditing() && !m_bClicked) return;
+		if (!m_TransformingManager.IsEditing() && !m_bClicked)
+			return;
+		
+		//--- Cannot move attachable entity when target is not set
+		if (!m_PreviewEntityManager.CanMoveInRoot() && !m_PreviewEntityManager.GetTarget())
+		{
+			if (m_InputManager.IsUsingMouseAndKeyboard())
+				CancelEditing();
+			
+			return;
+		}
+		
 		Clean();
 		
-		if (!m_StatesManager || m_StatesManager.GetState() != EEditorState.TRANSFORMING) return;
-		if (m_TransformingManager)
+		if (!m_StatesManager || m_StatesManager.GetState() != EEditorState.TRANSFORMING)
+			return;
+		
+		if (!m_TransformingManager.ConfirmEditing())
 		{
-			if (!m_TransformingManager.ConfirmEditing())
-			{
-				if (m_InputManager.IsUsingMouseAndKeyboard()) //--- ToDo: Audio feedback
-					m_TransformingManager.CancelEditing();
-			}
+			if (m_InputManager.IsUsingMouseAndKeyboard()) //--- ToDo: Audio feedback
+				m_TransformingManager.CancelEditing();
 		}
 	}
 	protected void CancelEditing()

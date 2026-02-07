@@ -374,7 +374,6 @@ class SCR_CallsignManagerComponent: ScriptComponent
 		if (SCR_Global.IsEditMode(owner) || Replication.IsClient())
 			return;
 
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	

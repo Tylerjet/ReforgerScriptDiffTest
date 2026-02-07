@@ -92,31 +92,7 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//--- Override functions
-	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
-	{
-		//~ Hot fix. EditorManager of disconnected player is deleted before SCR_NotificationSenderComponent can catch it thus it never knows if the player that left was a GM
-		if (IsMaster())
-		{
-			SCR_EditorManagerEntity editorManager;
-		
-			SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
-			if (core)
-			{
-				 editorManager = core.GetEditorManager(playerId);
-			}
-	
-			//Leave Notification GM
-			if (editorManager && !editorManager.IsLimited())
-				SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_GM_LEFT, playerId);
-			//Leave notification Player
-			else
-				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_LEFT, playerId);
-		}
-		
-		super.OnPlayerDisconnected(playerId, cause, timeout);
-	}
-	
+	//--- Override functions	
 	override void OnPlayerKilled(int playerId, IEntity player, IEntity killer)
 	{
 		OnPlayerTerminated(playerId);

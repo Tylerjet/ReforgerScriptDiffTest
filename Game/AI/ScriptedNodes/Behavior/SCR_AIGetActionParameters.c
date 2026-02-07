@@ -43,7 +43,7 @@ class SCR_AIGetActionParameters : SCR_AIActionTask
 //------------------------------------------------------------------------------------------------
 class SCR_AIGetGetInVehicleBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIGetInVehicle(null, false, null, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIGetInVehicle(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	protected override bool VisibleInPalette() { return true; }
@@ -51,7 +51,7 @@ class SCR_AIGetGetInVehicleBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetOutVehicleBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIGetOutVehicle(null, false, null, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIGetOutVehicle(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	protected override bool VisibleInPalette() { return true; }
@@ -59,7 +59,7 @@ class SCR_AIGetOutVehicleBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetGetInActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIGetInActivity(null, false, false)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIGetInActivity(null, false, null)).GetPortNames();
 	override TStringArray GetVariablesOut()
 	{
 		return s_aVarsOut;
@@ -70,7 +70,7 @@ class SCR_AIGetGetInActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetGetOutActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIGetOutActivity(null, false, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIGetOutActivity(null, false, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	protected override bool VisibleInPalette() { return true; }
@@ -79,7 +79,7 @@ class SCR_AIGetGetOutActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetAttackActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIAttackActivity(null, false, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIAttackActivity(null, false, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -99,7 +99,7 @@ class SCR_AIGetAttackActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetMoveActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIMoveActivity(null, false, false, vector.Zero)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIMoveActivity(null, false, vector.Zero, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -108,7 +108,7 @@ class SCR_AIGetMoveActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetFollowActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIFollowActivity(null, false, false, vector.Zero)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIFollowActivity(null, false, vector.Zero, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -116,7 +116,15 @@ class SCR_AIGetFollowActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetDefendActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIDefendActivity(null, false, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIDefendActivity(null, false, null, vector.Zero)).GetPortNames();
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	
+	override bool VisibleInPalette() { return true; }
+};
+
+class SCR_AIGetDefendBehaviorParameters : SCR_AIGetActionParameters
+{
+	static ref TStringArray s_aVarsOut = (new SCR_AIDefendBehavior(null, null, null, vector.Zero, 0)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -124,7 +132,7 @@ class SCR_AIGetDefendActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetCombatMoveGroupBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AICombatMoveGroupBehavior(null, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AICombatMoveGroupBehavior(null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -132,15 +140,23 @@ class SCR_AIGetCombatMoveGroupBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetAttackBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIAttackBehavior(null, false, null, null, vector.Zero)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIAttackBehavior(null, null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
 };
 
-class SCR_AIGetPerformActionParameters : SCR_AIGetActionParameters
+class SCR_AIGetPerformActionBehaviorParameters : SCR_AIGetActionParameters
 {	
-	static ref TStringArray s_aVarsOut = (new SCR_AIPerformActionBehavior(null, false, null, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIPerformActionBehavior(null, null, null)).GetPortNames();
+	override TStringArray GetVariablesOut() { return s_aVarsOut; }
+	
+	override bool VisibleInPalette() { return true; }
+};
+
+class SCR_AIGetPerformActionActivityParameters : SCR_AIGetActionParameters
+{	
+	static ref TStringArray s_aVarsOut = (new SCR_AIPerformActionActivity(null, false, null, string.Empty)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -148,7 +164,7 @@ class SCR_AIGetPerformActionParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetResupplyActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (SCR_AIResupplyActivity(null, false, false, null, Class)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (SCR_AIResupplyActivity(null, false, null, Class)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -156,7 +172,7 @@ class SCR_AIGetResupplyActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetInvestigateBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIMoveAndInvestigateBehavior(null, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIMoveAndInvestigateBehavior(null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -164,7 +180,7 @@ class SCR_AIGetInvestigateBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetHealWaitBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIHealWaitBehavior(null, false, null, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIHealWaitBehavior(null, null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -172,7 +188,7 @@ class SCR_AIGetHealWaitBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetMedicHealBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIMedicHealBehavior(null, false, null, null, false)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIMedicHealBehavior(null, null, null, false)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -180,7 +196,7 @@ class SCR_AIGetMedicHealBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetMoveFromDangerBehaviorParameters  : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIMoveFromDangerBehavior(null, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIMoveFromDangerBehavior(null, null, vector.Zero, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -188,7 +204,7 @@ class SCR_AIGetMoveFromDangerBehaviorParameters  : SCR_AIGetActionParameters
 
 class SCR_AIGetMoveIndividuallyBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIMoveIndividuallyBehavior(null, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIMoveIndividuallyBehavior(null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -215,14 +231,14 @@ class SCR_AIGetMoveIndividuallyBehaviorParameters : SCR_AIGetActionParameters
 
 class SCR_AIGetRetreatWhileLookAtBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIRetreatWhileLookAtBehavior(null, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIRetreatWhileLookAtBehavior(null, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
 };
 class SCR_AIGetThrowGrenadeBehaviorParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIThrowGrenadeToBehavior(null, false, null, vector.Zero)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIThrowGrenadeToBehavior(null, null, vector.Zero)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }

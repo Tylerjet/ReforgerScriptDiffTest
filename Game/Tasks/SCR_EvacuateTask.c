@@ -7,7 +7,7 @@ class SCR_EvacuateTaskClass: SCR_RequestedTaskClass
 class SCR_EvacuateTask : SCR_RequestedTask
 {
 	static const string SUPPORT_TASK_DESCRIPTION_TEXT = "#AR-CampaignTasks_TitleEvac";
-	static const CampaignBaseType BASES_FILTER = CampaignBaseType.MAJOR | CampaignBaseType.MAIN;
+	static const CampaignBaseType BASES_FILTER = CampaignBaseType.BASE;
 	
 	protected vector m_vStartOrigin;
 	
@@ -170,7 +170,7 @@ class SCR_EvacuateTask : SCR_RequestedTask
 		if (SCR_Global.IsEditMode(this))
 			return;
 		
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 		SetIndividual(true);
 		

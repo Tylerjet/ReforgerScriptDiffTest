@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Camera
-* @{
+/*!
+\addtogroup Camera
+\{
 */
 
 class BaseScriptedCameraItem
@@ -18,6 +18,8 @@ class BaseScriptedCameraItem
 	//!	virtual callback - called each frame
 	event void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult);
 	event void SetBaseAngles(vector angles);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

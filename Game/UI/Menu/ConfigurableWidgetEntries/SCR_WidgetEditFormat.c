@@ -13,6 +13,7 @@ class SCR_WidgetEditFormat
 	protected EditBoxFilterComponent m_EditBoxFilter;
 	
 	//------------------------------------------------------------------------------------------------
+	//! Method ready for overr to verifying that format is correct
 	bool IsFormatValid(string str)
 	{
 		
@@ -186,9 +187,11 @@ class SCR_WidgetEditFormatIP : SCR_WidgetEditFormat
 				return false;
 		}
 		
+		/*
 		m_bIsPrivate = IsPrivate(str);
 		if (m_bIsPrivate)
 			m_sFormatMessage = HINT_PRIVATE;
+		*/
 		
 		m_bIsValidated = true;
 		return true;

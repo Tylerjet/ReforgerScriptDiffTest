@@ -1,6 +1,18 @@
 [ComponentEditorProps(category: "GameScripted/Editor (Editables)", description: "", icon: "WBData/ComponentEditorProps/componentEditor.png")]
 class SCR_EditableTaskComponentClass: SCR_EditableEntityComponentClass
 {
+	[Attribute("#AR-Tasks_Objective", desc: "Name of objective type eg: Attack objective. Used among in, among other things, in notifications", category: "Visualization")]
+	protected  LocalizedString m_sObjectiveTypeName;
+	
+	/*!
+	Get objective type name. The name is the same for each prefab objective type
+	\return Objective type name
+	*/
+	LocalizedString GetObjectiveTypeName()
+	{
+		return m_sObjectiveTypeName;
+	}
+	
 };
 
 /** @ingroup Editable_Entities
@@ -10,7 +22,7 @@ class SCR_EditableTaskComponentClass: SCR_EditableEntityComponentClass
 Editable SCR_BaseTask.
 */
 class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
-{
+{	
 	protected SCR_EditorTask m_Task;
 	protected Faction m_TargetFaction;
 	protected int m_iTextIndex;
@@ -103,7 +115,7 @@ class SCR_EditableTaskComponent: SCR_EditableDescriptorComponent
 		m_Task.SetTextIndex(m_iTextIndex);
 		m_Task.SetLocationName(m_UIInfoDescriptor.GetLocationName());
 	}
-	override protected void GetOnLocationChange(SCR_EditableCommentComponent nearestLocation)
+	override protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
 	{
 		UpdateText();
 	}

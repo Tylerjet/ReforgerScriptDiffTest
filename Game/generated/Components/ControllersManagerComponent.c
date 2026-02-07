@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class ControllersManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class ControllersManagerComponent: GameComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

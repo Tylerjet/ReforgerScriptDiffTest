@@ -18,7 +18,6 @@ class SCR_ClockHandComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

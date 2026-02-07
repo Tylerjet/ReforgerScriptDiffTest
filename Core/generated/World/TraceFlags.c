@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 enum TraceFlags
@@ -24,7 +24,9 @@ enum TraceFlags
 	//! Do not stop on any contact, report them all through callback
 	ALL_CONTACTS,
 	//! Most common flag set.
-	DEFAULT
-};
+	DEFAULT,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -178,7 +178,7 @@ class SCR_ServicesStatusHelper
 		if (!IsBackendReady())
 			return -1;
 
-		return Math.Round((float)(System.GetTickCount() - s_iLastStatusUpdate) / 1000);
+		return Math.Round((System.GetTickCount() - s_iLastStatusUpdate) * 0.001);
 	}
 
 	//------------------------------------------------------------------------------------------------

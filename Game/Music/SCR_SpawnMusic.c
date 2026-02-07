@@ -5,10 +5,6 @@ class SCR_SpawnMusic : ScriptedMusic
 	//~ On Spawn
 	protected void OnPlayerSpawned()
 	{	
-		//~ Never play spawn music if player Main entity is dead/deleted
-		if (SCR_PlayerController.GetLocalMainEntity() == null)
-			return;
-		
 		m_MusicManager.Play(SCR_SoundEvent.SOUND_ONSPAWN);	
 	}
 	

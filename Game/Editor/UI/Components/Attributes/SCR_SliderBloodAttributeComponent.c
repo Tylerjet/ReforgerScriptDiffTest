@@ -1,4 +1,4 @@
-class SCR_SliderBloodAttributeComponent : SCR_SliderWithWarningEditorAttributeUIComponent
+class SCR_SliderBloodAttributeComponent : SCR_SliderEditorAttributeUIComponent
 {
 	[Attribute("BloodUnconsciousBar", desc: "Image that shows when Character becomes conscious")]
 	protected string m_sUnconsciousBarName;
@@ -11,6 +11,9 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderWithWarningEditorAttributeUI
 	
 	[Attribute("1", desc: "Size of the BarTop")]
 	protected float m_iUnconsciousBarTopSize;
+	
+	[Attribute()]
+	protected LocalizedString m_sWarningNote;
 	
 	protected SCR_GameModeHealthSettings m_GameModeHealthSettings;
 	
@@ -78,7 +81,9 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderWithWarningEditorAttributeUI
 	
 	protected void UpdateBloodSlider()
 	{
-		if (m_SliderWidgetComponent.GetValue() >= m_fUnconsciousLevel)
+		float value = m_SliderWidgetComponent.GetValue();
+		
+		if (value >= m_fUnconsciousLevel)
 		{
 			m_UnconsciousBarTop.SetVisible(true);
 			LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(m_fUnconsciousLevel - m_iUnconsciousBarTopSize, 0, 100));
@@ -86,18 +91,20 @@ class SCR_SliderBloodAttributeComponent : SCR_SliderWithWarningEditorAttributeUI
 		}
 		else 
 		{
-			if (m_SliderWidgetComponent.GetValue() >= m_iUnconsciousBarTopSize)
+			if (value >= m_iUnconsciousBarTopSize)
 			{
 				m_UnconsciousBarTop.SetVisible(true);
-				LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(m_SliderWidgetComponent.GetValue() - m_iUnconsciousBarTopSize, 0 , 100));
-				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - m_SliderWidgetComponent.GetValue(), 0, 100));
+				LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(value - m_iUnconsciousBarTopSize, 0 , 100));
+				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - value, 0, 100));
 			}
 			else 
 			{
 				m_UnconsciousBarTop.SetVisible(false);
-				LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(m_SliderWidgetComponent.GetValue(), 0 , 100));
-				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - m_SliderWidgetComponent.GetValue(), 0, 100));
+				LayoutSlot.SetFillWeight(m_UnconsciousBar, Math.Clamp(value, 0 , 100));
+				LayoutSlot.SetFillWeight(m_UnconsciousFillerRight, Math.Clamp(100 - value, 0, 100));
 			}
 		}
+		
+		OverrideDescription(value < m_fUnconsciousLevel, m_sWarningNote);
 	}
 };

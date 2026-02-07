@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Core
-* @{
+/*!
+\addtogroup Core
+\{
 */
 
 class ParticlesManager
@@ -27,6 +27,8 @@ class ParticlesManager
 	proto external void RegisterParticleEntitiesByResource(ResourceName resource, ResourceName effect, int reservedCount, bool resizable);
 	proto external void RegisterParticleEntitiesByClass(string resource, ResourceName effect, int reservedCount, bool resizable);
 	proto external void Clear();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

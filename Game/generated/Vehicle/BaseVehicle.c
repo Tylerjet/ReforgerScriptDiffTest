@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class BaseVehicleClass: GameEntityClass
 {
-};
+}
 
 class BaseVehicle: GameEntity
 {
@@ -22,6 +22,8 @@ class BaseVehicle: GameEntity
 	proto external void SetWreckModel(VObject newModel);
 	//! Returns true if the vehicle is not upside down
 	proto external bool IsAccessible();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

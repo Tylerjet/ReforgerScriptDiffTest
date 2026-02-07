@@ -4,7 +4,7 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
+/*!
 \brief Base class for NetApi handlers.
 Inherit to create custom NetApi handler. Inherited class name is than used as NetApi function name.
 1) NetApi call is received
@@ -20,5 +20,5 @@ class NetApiHandler
 	JsonApiStruct GetRequest();
 	//! override to create custom respond data
 	JsonApiStruct GetResponse(JsonApiStruct request);
-	
-};
+
+}

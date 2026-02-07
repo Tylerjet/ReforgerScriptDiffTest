@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components\InventorySystem
-* @{
+/*!
+\addtogroup Components\InventorySystem
+\{
 */
 
 class InventoryItemComponent: GameComponent
@@ -19,7 +19,7 @@ class InventoryItemComponent: GameComponent
 			m_OnLockedStateChangedInvoker.Invoke(nowLocked);
 		}
 	}
-	
+
 	ref ScriptInvoker<InventoryStorageSlot, InventoryStorageSlot> m_OnParentSlotChangedInvoker = new ScriptInvoker<InventoryStorageSlot, InventoryStorageSlot>();
 	private void OnParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
@@ -28,7 +28,7 @@ class InventoryItemComponent: GameComponent
 			m_OnParentSlotChangedInvoker.Invoke(oldSlot, newSlot);
 		}
 	}
-	
+
 	//! Returns Entity owner of current component instance
 	proto external IEntity GetOwner();
 	//! Returns locked state of item (for both user and system locks)
@@ -83,13 +83,15 @@ class InventoryItemComponent: GameComponent
 	proto external BaseItemAttributeData FindAttribute(typename typeName);
 	//! Creates preview entity in the provided world
 	proto external IEntity CreatePreviewEntity(BaseWorld world, int camera);
-	
+
 	// callbacks
-	
+
 	//! implement custom visibility behavior in vicinity
 	event protected bool ShouldHideInVicinity();
 	//! Override final transformation of dropped item, return true in case transformation should be applied
 	event protected bool OverridePlacementTransform(IEntity caller, out vector computedTransform[4]);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

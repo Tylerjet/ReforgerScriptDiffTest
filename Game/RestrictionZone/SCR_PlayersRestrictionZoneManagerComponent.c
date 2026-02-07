@@ -389,7 +389,6 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 	override void EOnInit(IEntity owner)
 	{
 		GetGame().GetCallqueue().CallLater(DelayedInit, 1);
-		
 	}
 	
 	//Delayed init so SCR_PlayersManagerEditorComponent can be found
@@ -420,7 +419,6 @@ class SCR_PlayersRestrictionZoneManagerComponent: ScriptComponent
 		if (!Replication.IsServer())
 			return;
 		
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 	

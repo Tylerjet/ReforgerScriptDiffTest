@@ -1,4 +1,4 @@
-[EntityEditorProps(category: "GameScripted/ScriptWizard", description: "ScriptWizard generated script file.")]
+[EntityEditorProps(category: "GameScripted/Mines", description: "Mine flag component")]
 class SCR_MineFlagComponentClass : ScriptComponentClass
 {
 };

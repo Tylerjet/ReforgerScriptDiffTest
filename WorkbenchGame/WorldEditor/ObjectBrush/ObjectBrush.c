@@ -1,88 +1,27 @@
-[BaseContainerProps()]
-class ObjectBrushObjectBase : SCR_ForestGeneratorTreeBase
-{
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "Maximum random Yaw angle", "0 180 1")]
-	float m_fRandomYawAngle;
-
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.Slider, desc: "Sets the prefabs Y position offset", "-1000 1000 0.5")]
-	float m_fPrefabOffsetY;
-
-	[Attribute(defvalue: "0", params: "-1000 0 inf", precision: 2, uiwidget: UIWidgets.Slider, desc: "Minimum random vertical offset, considers Prefab Offset Y")]
-	float m_fMinRandomVerticalOffset;
-
-	[Attribute(defvalue: "0", params: "0 1000 inf", precision: 2, uiwidget: UIWidgets.Slider, desc: "Maximum random vertical offset, considers Prefab Offset Y")]
-	float m_fMaxRandomVerticalOffset;
-
-	[Attribute(defvalue: "0", desc: "Override the default prefab randomization")]
-	bool m_bOverrideRandomization;
-
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.Slider, desc: "Sets the probability of this object being selected", "0 100000 1")]
-	int m_fWeight;
-
-	[Attribute(defvalue: "0", desc: "Should the prefab align to the terrain?")]
-	bool m_bAlignToNormal;
-
-	[Attribute(defvalue: "0", desc: "Should this prefab be affected by the scale falloff?")]
-	bool m_bScaleFalloff;
-
-	[Attribute(defvalue: "0.8", uiwidget: UIWidgets.Slider, desc: "Min scale after fall off of this object", "0 1000 0.1")]
-	float m_fLowestScaleFalloffValue;
-
-	int m_iSubareaIndex;
-
-	//------------------------------------------------------------------------------------------------
-	override ObjectBrushObjectBase Copy()
-	{
-		ObjectBrushObjectBase newObject = new ObjectBrushObjectBase();
-
-		newObject.m_fMinScale = m_fMinScale;
-		newObject.m_fMaxScale = m_fMaxScale;
-		newObject.m_iGroupIndex = m_iGroupIndex;
-		newObject.m_Prefab = m_Prefab;
-		newObject.m_fBotDistance = m_fBotDistance;
-		newObject.m_fScale = m_fScale;
-		newObject.m_Type = m_Type;
-		newObject.m_fPrefabOffsetY = m_fPrefabOffsetY;
-		newObject.m_fMinRandomVerticalOffset = m_fMinRandomVerticalOffset;
-		newObject.m_fMaxRandomVerticalOffset = m_fMaxRandomVerticalOffset;
-		newObject.m_bOverrideRandomization = m_bOverrideRandomization;
-		newObject.m_fWeight = m_fWeight;
-		newObject.m_bAlignToNormal = m_bAlignToNormal;
-		newObject.m_bScaleFalloff = m_bScaleFalloff;
-		newObject.m_fLowestScaleFalloffValue = m_fLowestScaleFalloffValue;
-		newObject.m_iSubareaIndex = m_iSubareaIndex;
-
-		newObject.m_fRandomPitchAngle = m_fRandomPitchAngle;
-		newObject.m_fRandomYawAngle = m_fRandomYawAngle;
-		newObject.m_fRandomRollAngle = m_fRandomRollAngle;
-
-		return newObject;
-	}
-};
-
+#ifdef WORKBENCH
 [WorkbenchToolAttribute(name: "Object Brush", description: "Generate randomized compositions using a brush", shortcut: "B", wbModules: { "WorldEditor" }, awesomeFontCode: 0xF1FC)]
 class ObjectBrushTool : WorldEditorTool
 {
-	protected const static float HECTARE = 10000;
-	protected const static float MAX_SCALE_THRESHOLD = 1000;
+	protected static const float HECTARE_CONVERSION_FACTOR = 0.0001; // x/10000 (hectare is 100×100m)
+	protected static const float MAX_SCALE_THRESHOLD = 1000;
 
-	protected const static float RADIUS_STEP = 1;
-	protected const static float RADIUS_MAX = 100;
-	protected const static float RADIUS_MIN = 0;
+	protected static const float RADIUS_STEP = 1;
+	protected static const float RADIUS_MAX = 100;
+	protected static const float RADIUS_MIN = 0.1;
 
-	protected const static float STRENGTH_STEP = 1;
-	protected const static float STRENGTH_MAX = 500;
-	protected const static float STRENGTH_MIN = 0;
+	protected static const float STRENGTH_STEP = 1;
+	protected static const float STRENGTH_MAX = 500;
+	protected static const float STRENGTH_MIN = 0;
 
-	protected const static float STRENGTH_RELATIVE_RADIUS_DISTANCE_TO_CREATE = 1 / 3;
+	protected static const float STRENGTH_RELATIVE_RADIUS_DISTANCE_TO_CREATE = 1 / 3;
 
-	protected static string s_radiusParams = RADIUS_MIN.ToString() + " " + RADIUS_MAX.ToString() + " " + RADIUS_STEP.ToString();
-	protected static string s_strengthParams = STRENGTH_MIN.ToString() + " " + STRENGTH_MAX.ToString() + " " + STRENGTH_STEP.ToString();
-
-	[Attribute("10", UIWidgets.Slider, "Radius of the brush", s_radiusParams, category: "Object Brush")]
+	/*
+		Category: OBJECT BRUSH
+	*/
+	[Attribute("10", UIWidgets.Slider, "Radius of the brush", params: string.Format("%1 %2 %3", RADIUS_MIN, RADIUS_MAX, RADIUS_STEP), category: "Object Brush")]
 	protected float m_fRadius;
 
-	[Attribute("10", UIWidgets.Slider, "Strength of the brush (Objects per Ha)", s_strengthParams, category: "Object Brush")]
+	[Attribute("10", UIWidgets.Slider, "Strength of the brush (objects per hectare (100×100m))", params: string.Format("%1 %2 %3", STRENGTH_MIN, STRENGTH_MAX, STRENGTH_STEP), category: "Object Brush")]
 	protected float m_fStrength;
 
 	[Attribute("", UIWidgets.ResourceNamePicker, "Used to set the file path to a config file", "conf", category: "Object Brush")]
@@ -97,34 +36,59 @@ class ObjectBrushTool : WorldEditorTool
 	[Attribute("10", UIWidgets.SpinBox, "Sets how many sub areas will be made. Higher amount of subareas will result in a more fluid density fall off.", "1 100 1", category: "Object Brush")]
 	protected int m_iDensityFallOffSubareaCount;
 
-	[Attribute("", UIWidgets.CheckBox, "If enabled density fall off will be aplied to the brush", category: "Object Brush")]
+	[Attribute("", "Apply Density fall off to the brush", category: "Object Brush")]
 	protected bool m_bDensityFallOffEnabled;
 
-	[Attribute("", UIWidgets.CheckBox, "If enabled objects generated by the brush will avoid static objects", category: "Object Brush")]
-	protected bool m_bAvoidObjects;
-
-	[Attribute("", UIWidgets.CheckBox, "If enabled objects generated by the brush will avoid roads", category: "Object Brush")]
-	protected bool m_bAvoidRoads;
-
-	[Attribute("", UIWidgets.CheckBox, "If enabled objects generated by the brush will avoid rivers", category: "Object Brush")]
-	protected bool m_bAvoidRivers;
-
-	[Attribute("", UIWidgets.CheckBox, "If enabled objects generated by the brush will avoid power lines", category: "Object Brush")]
-	protected bool m_bAvoidPowerLines;
-
-	[Attribute("", UIWidgets.CheckBox, "If enabled the brush will overwrite older brush strokes", category: "Object Brush")]
+	[Attribute("", "Overwrite older brush strokes", category: "Object Brush")]
 	protected bool m_bOverrideBrush;
 
 	[Attribute(category: "Object Brush")]
 	protected ref SCR_ObjectBrushArrayConfig m_ObjectsConfig;
 
+	/*
+		Category: Obstacles
+	*/
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid static objects", category: "Obstacles")]
+	protected bool m_bAvoidObjects;
+
+	[Attribute(defvalue: "0.1", uiwidget: UIWidgets.Slider, desc: "Object avoidance detection cylinder radius", params: "0 100 0.1", category: "Obstacles")]
+	protected float m_fAvoidObjectsDetectionRadius;
+
+	[Attribute(defvalue: "100", uiwidget: UIWidgets.Slider, desc: "Object avoidance detection cylinder height", params: "0 1000 100", category: "Obstacles")]
+	protected float m_fAvoidObjectsDetectionHeight;
+
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid roads", category: "Obstacles")]
+	protected bool m_bAvoidRoads;
+
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid rivers", category: "Obstacles")]
+	protected bool m_bAvoidRivers;
+
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid power lines", category: "Obstacles")]
+	protected bool m_bAvoidPowerLines;
+
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid land", category: "Obstacles")]
+	protected bool m_bAvoidLand;
+
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid ocean", category: "Obstacles")]
+	protected bool m_bAvoidOcean;
+
+	/*
+		Category: Obstacles - Area
+	*/
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid forests. Depends on Area Detection Radius", category: "Obstacles - Area")]
+	protected bool m_bAvoidForests;
+
+	[Attribute(defvalue: "0", desc: "Objects generated by the brush will avoid lakes. Depends on Area Detection Radius", category: "Obstacles - Area")]
+	protected bool m_bAvoidLakes;
+
+	[Attribute(defvalue: "100", uiwidget: UIWidgets.Slider, "Radius to detect areas (forests and lakes) around the brush's starting point for avoidance - performance setting. Zero is world-wide detection", "0 1000 100", category: "Obstacles - Area")]
+	protected int m_iAreaDetectionRadius;
+
 	#ifdef DEBUG
 	protected ref array<ref Shape> m_aDebugShapes = {};
 	#endif
 
-	protected static ObjectBrushTool s_ObjectBrushInstance = null;
-	protected static ref map<IEntitySource, ref array<vector>> s_mSplinePoints = new map<IEntitySource, ref array<vector>>();
-	protected static ref array<IEntitySource> s_aQueriedSphereSources = {};
+	protected ref SCR_ObstacleDetector s_ObstacleDetector;
 
 	protected ref array<ref ObjectBrushObjectBase> m_aObjToCreateArray = {};
 	protected ref map<ref ObjectBrushObjectBase, ref EntityID> m_mCreatedObjMap = new map<ref ObjectBrushObjectBase, ref EntityID>();
@@ -151,63 +115,30 @@ class ObjectBrushTool : WorldEditorTool
 	protected vector m_vFirstLinePoint;
 	protected vector m_vSecondLinePoint;
 
-	protected vector m_vLastMousePosition = vector.Zero;
-	protected vector m_vLastObjectCreationCentrePosition = vector.Zero;
+	protected vector m_vLastMousePosition;
+	protected vector m_vLastObjectCreationCentrePosition;
 
 	protected int m_iBrushShapeColor = ARGB(255, 0, 255, 0);
-
-	protected BaseWorld m_World;
-
-	void ObjectBrushTool()
-	{
-		s_ObjectBrushInstance = this;
-	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void CreateObjects(float mouseX, float mouseY, vector traceEnd)
 	{
+		if (!m_API)
+		{
+			Print("m_API is null.", LogLevel.ERROR);
+			return;
+		}
+
 		if (!m_API.IsDoingEditAction())
 		{
 			Print("Workbench isn't performing edit action!", LogLevel.WARNING);
 			return;
 		}
 
-		m_aObjToCreateArray.Clear();
-
-		QuerySplinesOnPosition(m_API, traceEnd);
-
-		// road & river avoidance
-		array<vector> splineOrigins = {};
-		array<IEntitySource> splineSources = {};
-		array<float> splineClearances = {};
-		vector splineOrigin;
-		IEntitySource splineSource;
-		float clearance;
-		if (m_bAvoidRoads || m_bAvoidRivers || m_bAvoidPowerLines)
-		{
-			for (int i = 0, count = s_mSplinePoints.Count(); i < count; i++)
-			{
-				splineSource = s_mSplinePoints.GetKey(i);
-				splineSource.Get("pos", splineOrigin);
-
-				int childNum = splineSource.GetNumChildren();
-				for (int z = 0; z < childNum; z++)
-				{
-					if (m_bAvoidRoads && splineSource.GetChild(z).Get("RoadClearance", clearance))
-							break;
-
-					if ((m_bAvoidRivers || m_bAvoidPowerLines) && splineSource.GetChild(z).Get("Clearance", clearance))
-							break;
-				}
-
-				splineSources.Insert(splineSource);
-				splineOrigins.Insert(splineOrigin);
-				splineClearances.Insert(clearance);
-			}
-		}
-
 		if (!m_ObjectsConfig)
 			return;
+
+		m_aObjToCreateArray.Clear();
 
 		if (m_bDensityFallOffEnabled)
 		{
@@ -217,15 +148,14 @@ class ObjectBrushTool : WorldEditorTool
 			int objectGenerationAttemptCurrentAmount = 0;
 			int objectGenerationAttemptMaximumAmount = 0;
 			float curvePoint = 0;
-			float totalArea = (Math.PI * Math.Pow(m_fRadius, 2)) / HECTARE;
+			float totalArea = (Math.PI * Math.Pow(m_fRadius, 2)) * HECTARE_CONVERSION_FACTOR;
 			objectGenerationAttemptMaximumAmount = Math.Ceil(totalArea * m_fStrength);
 
 			float densityFallOffMultiplier;
 			ObjectBrushObjectBase obj;
-
 			for (int i = 0; i < m_iDensityFallOffSubareaCount; ++i)
 			{
-				m_fArea = (Math.PI * Math.Pow(subareaRadius, 2)) / HECTARE;
+				m_fArea = (Math.PI * Math.Pow(subareaRadius, 2)) * HECTARE_CONVERSION_FACTOR;
 				m_fArea -= previousArea;
 				previousArea += m_fArea;
 				subareaRadius += m_fRadius / m_iDensityFallOffSubareaCount;
@@ -250,12 +180,13 @@ class ObjectBrushTool : WorldEditorTool
 		}
 		else
 		{
-			m_fArea = (Math.PI * Math.Pow(m_fRadius, 2)) / HECTARE;
+			m_fArea = (Math.PI * Math.Pow(m_fRadius, 2)) * HECTARE_CONVERSION_FACTOR;
 			int objectGenerationAttempts = Math.Ceil(m_fArea * m_fStrength);
 
+			ObjectBrushObjectBase obj;
 			for (int x = 0; x < objectGenerationAttempts; ++x;)
 			{
-				ObjectBrushObjectBase obj = SelectObjectToCreate(m_ObjectsConfig.m_aObjectArray);
+				obj = SelectObjectToCreate(m_ObjectsConfig.m_aObjectArray);
 				if (obj)
 					obj.m_iSubareaIndex = 1;
 			}
@@ -287,11 +218,18 @@ class ObjectBrushTool : WorldEditorTool
 
 		m_vLastObjectCreationCentrePosition = traceEndManual;
 
+		// area splines detected in OnMousePressEvent
+		// non-area splines sphere detection here
+		CreateAndInitialiseObstacleDetector();
+		s_ObstacleDetector.RefreshRoadObstaclesBySphere(traceEndManual, m_fRadius);
+		if (m_iAreaDetectionRadius > 0)
+			s_ObstacleDetector.RefreshAreaObstaclesBySphere(traceEndManual, m_iAreaDetectionRadius);
+
+		BaseWorld world = m_API.GetWorld();
+
 		float distanceFromCenter;
 		float distanceFromCenterInPercent;
 		float scaleFallOffMultiplier;
-		ShapeEntity splineEntity;
-
 		foreach (ObjectBrushObjectBase obj : m_aObjToCreateArray)
 		{
 			if (!obj.m_Prefab)
@@ -320,28 +258,11 @@ class ObjectBrushTool : WorldEditorTool
 				continue;
 
 			transformTemp[3] = point;
-			SCR_TerrainHelper.SnapToTerrain(transformTemp, m_World);
+			SCR_TerrainHelper.SnapToTerrain(transformTemp, world);
 			point = transformTemp[3];
 
-			if (m_bAvoidObjects && QueryEntityOnPosition(point, m_API.GetWorld(), obj.m_fBotDistance))
+			if (s_ObstacleDetector.HasObstacle(point))
 				continue;
-
-			if (m_bAvoidRoads || m_bAvoidRivers || m_bAvoidPowerLines)
-			{
-				bool skipObject = false;
-				for (int x = 0, splinesCount = s_mSplinePoints.Count(); x < splinesCount; x++)
-				{
-					splineEntity = ShapeEntity.Cast(m_API.SourceToEntity(s_mSplinePoints.GetKey(x)));
-					if (SCR_Math3D.GetDistanceFromSpline(s_mSplinePoints.GetElement(x), splineOrigins[x], splineEntity, point) < splineClearances[x])
-					{
-						skipObject = true;
-						break;
-					}
-				}
-
-				if (skipObject)
-					continue;
-			}
 
 			if (!obj.m_bOverrideRandomization)
 			{
@@ -350,7 +271,7 @@ class ObjectBrushTool : WorldEditorTool
 
 				if (!entity)
 				{
-					Print("Failed to create enitity from prefab.", LogLevel.WARNING);
+					Print("Failed to create entity from prefab.", LogLevel.WARNING);
 					continue;
 				}
 
@@ -363,7 +284,7 @@ class ObjectBrushTool : WorldEditorTool
 
 				if (!entity)
 				{
-					Print("Failed to create enitity from prefab.", LogLevel.WARNING);
+					Print("Failed to create entity from prefab.", LogLevel.WARNING);
 					continue;
 				}
 
@@ -382,10 +303,10 @@ class ObjectBrushTool : WorldEditorTool
 				}
 
 				distanceFromCenter = vector.DistanceXZ(traceEndManual, point);
-				distanceFromCenterInPercent = distanceFromCenter / (m_fRadius / 100);
-				scaleFallOffMultiplier = Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(distanceFromCenterInPercent / 100, 0, 1), m_ScaleFallOffCurve)[1];
+				distanceFromCenterInPercent = distanceFromCenter / (m_fRadius * 0.01);
+				scaleFallOffMultiplier = Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp(distanceFromCenterInPercent * 0.01, 0, 1), m_ScaleFallOffCurve)[1];
 
-				scale = scale * scaleFallOffMultiplier;
+				scale *= scaleFallOffMultiplier;
 
 				if (obj.m_bScaleFalloff && obj.m_fLowestScaleFalloffValue > obj.m_fMaxScale)
 					Print("Lowest scale fall off value for " + obj.m_Prefab + " is higher than max scale value! Check parameters!", LogLevel.WARNING);
@@ -417,7 +338,7 @@ class ObjectBrushTool : WorldEditorTool
 
 				vector mat[4];
 				entity.GetWorldTransform(mat);
-				SCR_TerrainHelper.OrientToTerrain(mat, m_World);
+				SCR_TerrainHelper.OrientToTerrain(mat, world);
 				angles = Math3D.MatrixToAngles(mat);
 			}
 			else if (obj.m_bOverrideRandomization)
@@ -455,16 +376,16 @@ class ObjectBrushTool : WorldEditorTool
 		if (m_mCreatedObjMap.IsEmpty() || vTraceEnd == vector.Zero)
 			return;
 
-		map<ObjectBrushObjectBase, EntityID> ObjMapToDelete = new map<ObjectBrushObjectBase, EntityID>;
+		map<ObjectBrushObjectBase, EntityID> ObjMapToDelete = new map<ObjectBrushObjectBase, EntityID>();
+		BaseWorld world = m_API.GetWorld();
 
 		IEntity ent;
 		EntityID temp;
 		vector entOrigin;
 		float diff;
-
 		foreach (ObjectBrushObjectBase obj, EntityID entID : m_mCreatedObjMap)
 		{
-			ent = m_World.FindEntityByID(entID);
+			ent = world.FindEntityByID(entID);
 
 			if (!ent)
 			{
@@ -494,7 +415,7 @@ class ObjectBrushTool : WorldEditorTool
 
 		foreach (ObjectBrushObjectBase obj, EntityID entID : ObjMapToDelete)
 		{
-			ent = m_World.FindEntityByID(entID);
+			ent = world.FindEntityByID(entID);
 
 			if (!m_API.IsDoingEditAction())
 			{
@@ -532,12 +453,13 @@ class ObjectBrushTool : WorldEditorTool
 		}
 		else
 		{
+			BaseWorld world = m_API.GetWorld();
 			foreach (ObjectBrushObjectBase obj, EntityID entID : m_mCreatedObjMap)
 			{
-				if (!m_World.FindEntityByID(entID))
+				if (!world.FindEntityByID(entID))
 					continue;
 
-				m_API.DeleteEntity(m_World.FindEntityByID(entID));
+				m_API.DeleteEntity(world.FindEntityByID(entID));
 			}
 		}
 
@@ -622,9 +544,10 @@ class ObjectBrushTool : WorldEditorTool
 		m_bIsMouseHeldDown = true;
 		m_RandomGenerator = new RandomGenerator();
 
+		BaseWorld world = m_API.GetWorld();
 		foreach (ObjectBrushObjectBase objBase, EntityID entID : m_mCreatedObjMap)
 		{
-			if (m_World.FindEntityByID(entID))
+			if (world.FindEntityByID(entID))
 				continue;
 
 			m_Grid.RemoveEntry(objBase);
@@ -633,6 +556,14 @@ class ObjectBrushTool : WorldEditorTool
 
 		if (buttons != WETMouseButtonFlag.LEFT)
 			return;
+
+		// non-area splines sphere detected in CreateObjects
+		// area splines detected here
+		if ((m_bAvoidForests || m_bAvoidLakes) && m_iAreaDetectionRadius == 0)
+		{
+			CreateAndInitialiseObstacleDetector();
+			s_ObstacleDetector.RefreshAreaObstaclesByWorld();
+		}
 
 		if (!GetModifierKeyState(ModifierKey.ALT))
 		{
@@ -755,13 +686,13 @@ class ObjectBrushTool : WorldEditorTool
 			m_aLineShapes.Insert(CreateCircle(m_vFirstLinePoint, vector.Up, m_fRadius, m_iBrushShapeColor, 50, ShapeFlags.NOZBUFFER));
 		}
 
-		if (m_bIsMouseHeldDown)
-		{
-			if (m_bDelete)
-				DeleteObjects(traceEnd);
-			else if (vector.DistanceXZ(m_vLastMousePosition, m_vLastObjectCreationCentrePosition) >= STRENGTH_RELATIVE_RADIUS_DISTANCE_TO_CREATE * m_fRadius)
-				CreateObjects(x, y, traceEnd);
-		}
+		if (!m_bIsMouseHeldDown)
+			return;
+
+		if (m_bDelete)
+			DeleteObjects(traceEnd);
+		else if (vector.DistanceXZ(m_vLastMousePosition, m_vLastObjectCreationCentrePosition) >= STRENGTH_RELATIVE_RADIUS_DISTANCE_TO_CREATE * m_fRadius)
+			CreateObjects(x, y, traceEnd);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -816,12 +747,10 @@ class ObjectBrushTool : WorldEditorTool
 	{
 		m_Grid.Clear();
 
-		m_World = m_API.GetWorld();
-
-		if (!m_World)
+		if (!m_API.GetWorld())
 			return;
 
-		m_World.GetBoundBox(m_vTerrainMin, m_vTerrainMax);
+		m_API.GetWorld().GetBoundBox(m_vTerrainMin, m_vTerrainMax);
 
 		float x, z;
 		x = m_vTerrainMax[0] - m_vTerrainMin[0];
@@ -838,9 +767,7 @@ class ObjectBrushTool : WorldEditorTool
 
 		ObjectBrushObjectBase selectedObject = null;
 		int objTypeIdx = -1;
-		float objProba = 0;
-		float probaSum = 0;
-		float weightTotal = 0;
+		float objProba, probaSum, weightTotal;
 
 		foreach (ObjectBrushObjectBase obj : objects)
 		{
@@ -852,7 +779,6 @@ class ObjectBrushTool : WorldEditorTool
 			return null;
 
 		objProba = m_RandomGenerator.RandFloatXY(0, weightTotal);
-		int count = objects.Count();
 
 		foreach (ObjectBrushObjectBase obj : objects)
 		{
@@ -894,125 +820,33 @@ class ObjectBrushTool : WorldEditorTool
 	}
 
 	//------------------------------------------------------------------------------------------------
-	bool QueryEntityOnPosition(vector position, notnull BaseWorld world, float radius)
-	{
-		m_QueriedEntity = null;
-
-		vector start = position + "0 100 0";
-		vector end = position;
-
-		#ifdef DEBUG
-		vector p[2];
-		p[0] = start;
-		p[1] = end;
-		m_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, p, 2));
-		#endif
-
-		TraceSphere sphere = new TraceSphere;
-		sphere.Radius = radius;
-		sphere.Start = start;
-		sphere.End = end;
-		sphere.LayerMask = EPhysicsLayerPresets.Main;
-		sphere.Flags = TraceFlags.ENTS;
-
-		float done = world.TraceMove(sphere, null);
-		m_QueriedEntity = sphere.TraceEnt;
-
-		if (m_QueriedEntity && !GenericTerrainEntity.Cast(m_QueriedEntity))
-			return true;
-
-		return false;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	static bool QueryFilter(IEntity entity)
-	{
-		ShapeEntity shape = ShapeEntity.Cast(entity);
-		if (!shape)
-			return true;
-
-		IEntitySource shapeSource = shape._WB_GetEditorAPI().EntityToSource(shape);
-		if (!shapeSource)
-			return true;
-
-		RoadGeneratorEntity roadGenerator;
-		SCR_PowerlineGeneratorEntity powerlineGenerator;
-		RiverEntity riverEntity;
-		int childrenCount = shapeSource.GetNumChildren();
-		if (childrenCount <= 0)
-			return true;
-
-		for (int i = childrenCount - 1; i >= 0; i--)
-		{
-			if (s_ObjectBrushInstance.m_bAvoidRoads)
-			{
-				roadGenerator = RoadGeneratorEntity.Cast(shape._WB_GetEditorAPI().SourceToEntity(shapeSource.GetChild(i)));
-				if (roadGenerator)
-					break;
-			}
-			if (s_ObjectBrushInstance.m_bAvoidRivers)
-			{
-				riverEntity = RiverEntity.Cast(shape._WB_GetEditorAPI().SourceToEntity(shapeSource.GetChild(i)));
-				if (riverEntity)
-					break;
-			}
-			if (s_ObjectBrushInstance.m_bAvoidPowerLines)
-			{
-				powerlineGenerator = SCR_PowerlineGeneratorEntity.Cast(shape._WB_GetEditorAPI().SourceToEntity(shapeSource.GetChild(i)));
-				if (powerlineGenerator)
-					break;
-			}
-		}
-
-		if (roadGenerator || riverEntity || powerlineGenerator)
-			s_aQueriedSphereSources.Insert(shapeSource);
-
-		return true;
-	}
-
-	//------------------------------------------------------------------------------------------------
 	protected float AdjustValueUsingScrollwheel(float delta, float attributeToEdit, float step, float max, float min)
 	{
 		// delta returns multiples of 120 I am converting into a more useable value of multiples of 1
 		if ((attributeToEdit + (delta / 120) * step) > max || (attributeToEdit + (delta / 120) * step) < min)
 			return attributeToEdit;
 
-		attributeToEdit += (delta / 120) * step;
-
-		return attributeToEdit;
+		return attributeToEdit + (delta / 120) * step;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void QuerySplinesOnPosition(notnull WorldEditorAPI api, vector position)
+	protected void CreateAndInitialiseObstacleDetector()
 	{
-		s_aQueriedSphereSources.Clear();
-		m_World.QueryEntitiesBySphere(position, m_fRadius, QueryFilter);
-		s_mSplinePoints.Clear();
+		if (s_ObstacleDetector && s_ObstacleDetector.IsValid())
+			return;
 
-		ShapeEntity otherShapeEntity;
-		for (int i = s_aQueriedSphereSources.Count() - 1; i >= 0; i--)
-		{
-			otherShapeEntity = ShapeEntity.Cast(api.SourceToEntity(s_aQueriedSphereSources[i]));
+		s_ObstacleDetector = new SCR_ObstacleDetector(m_API);
 
-			array<vector> pts = {};
-			otherShapeEntity.GenerateTesselatedShape(pts);
-
-			#ifdef DEBUG
-			array<vector> ptsPos = {};
-			otherShapeEntity.GetPointsPositions(ptsPos);
-			int count = ptsPos.Count();
-			vector p[2];
-
-			for (int x = 1; x < count; ++x)
-			{
-				p[0] = otherShapeEntity.GetOrigin() + ptsPos.Get(x-1);
-				p[1] = otherShapeEntity.GetOrigin() + ptsPos.Get(x);
-
-				m_aDebugShapes.Insert(Shape.CreateLines(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, p, 2));
-			}
-			#endif
-
-			s_mSplinePoints.Insert(s_aQueriedSphereSources[i], pts);
-		}
+		s_ObstacleDetector.SetAvoidObjects(m_bAvoidObjects);
+		s_ObstacleDetector.SetAvoidObjectsDetectionHeight(m_fAvoidObjectsDetectionHeight);
+		s_ObstacleDetector.SetAvoidObjectsDetectionRadius(m_fAvoidObjectsDetectionRadius);
+		s_ObstacleDetector.SetAvoidRoads(m_bAvoidRoads);
+		s_ObstacleDetector.SetAvoidRivers(m_bAvoidRivers);
+		s_ObstacleDetector.SetAvoidPowerLines(m_bAvoidPowerLines);
+		s_ObstacleDetector.SetAvoidForests(m_bAvoidForests);
+		s_ObstacleDetector.SetAvoidLakes(m_bAvoidLakes);
+		s_ObstacleDetector.SetAvoidLand(m_bAvoidLand);
+		s_ObstacleDetector.SetAvoidOcean(m_bAvoidOcean);
 	}
 };
+#endif

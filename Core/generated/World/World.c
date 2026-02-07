@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 /*!
@@ -45,6 +45,8 @@ sealed class World: BaseWorld
 	\return Decal pointer for static decals or null if the decal is dynamic or wasn't created for some reason (invalid material, NoDecal flag, ...)
 	*/
 	proto external Decal CreateDecal2(notnull IEntity entity, vector matrix[4], float nearclip, float farclip, float size, float stretch, string materialName, float lifetime, int color);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

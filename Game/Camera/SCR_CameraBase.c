@@ -80,12 +80,16 @@ class SCR_CameraBase: CameraBase
 		return Event_CameraDeactivate;
 	}
 	
-	override void EOnActivate()
+	override void EOnActivate(IEntity owner)
 	{
+		super.EOnActivate(owner);
+		
 		Event_EOnActivate.Invoke();
 	}
-	override void EOnDeactivate()
+	override void EOnDeactivate(IEntity owner)
 	{
+		super.EOnDeactivate(owner);
+		
 		if (Event_EOnDeactivate) //--- Invoker may be null when the entity is being deleted
 			Event_EOnDeactivate.Invoke();
 	}

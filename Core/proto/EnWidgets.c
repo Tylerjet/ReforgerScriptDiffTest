@@ -1,10 +1,13 @@
-/**
- * \defgroup WidgetAPI Widget UI system
- * @{
- */
+/*!
+\defgroup WidgetAPI Widget UI system
+\{
+*/
 
 typedef TypeID WidgetType;
 typedef TypeID EventType;
+
+typedef func WidgetEventCallback;
+bool WidgetEventCallback(Widget w = null);
 
 class WidgetType
 {
@@ -40,7 +43,7 @@ class WidgetType
 	static const WidgetType UniformGridLayoutWidgetTypeID;
 	static const WidgetType BlurWidgetTypeID;
 	static const WidgetType ScaleWidgetTypeID;
-};
+}
 
 //-----------------------------------------------------------------------
 enum WidgetNavigationDirection
@@ -51,19 +54,12 @@ enum WidgetNavigationDirection
 	DOWN
 }
 
-typedef func WidgetEventCallback;
-bool WidgetEventCallback(Widget w = null);
-
-
-
 enum HorizontalFillOrigin
 {
 	LEFT,
 	CENTER,
 	RIGHT,
 }
-
-
 
 enum VerticalFillOrigin
 {
@@ -136,4 +132,6 @@ class CompositeDrawCommand : CanvasWidgetCommand
 	ref array<ref CanvasWidgetCommand> m_Commands;
 }
 
-//@}
+/*!
+\}
+*/

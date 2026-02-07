@@ -153,7 +153,7 @@ class SCR_MeleeComponent : ScriptComponent
 	//! Handles playing of sound & setting of signals (AUDIO)
 	private void HandleMeleeSound()
 	{		
-		BaseSoundComponent soundComp = BaseSoundComponent.Cast(m_MeleeHitData.m_Weapon.FindComponent(BaseSoundComponent));
+		SoundComponent soundComp = SoundComponent.Cast(m_MeleeHitData.m_Weapon.FindComponent(SoundComponent));
 		if (!soundComp)
 			return;
 	
@@ -179,8 +179,7 @@ class SCR_MeleeComponent : ScriptComponent
 		vector mat[4];
 		Math3D.MatrixIdentity3(mat);
 		mat[3] = m_MeleeHitData.m_vHitPosition;
-		soundComp.SetTransformation(mat);
-		soundComp.PlayStr(SCR_SoundEvent.SOUND_MELEE_IMPACT);
+		soundComp.SoundEventTransform(SCR_SoundEvent.SOUND_MELEE_IMPACT, mat);
 	}
 	
 	

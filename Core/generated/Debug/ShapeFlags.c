@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Debug
-* @{
+/*!
+\addtogroup Debug
+\{
 */
 
 enum ShapeFlags
@@ -46,7 +46,9 @@ enum ShapeFlags
 	FLAT,
 	// Vertex format flags
 	SVF_NORMAL,
-	SVF_COLOR
-};
+	SVF_COLOR,
+}
 
-/** @}*/
+/*!
+\}
+*/

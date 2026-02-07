@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class BaseCompartmentManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseCompartmentManagerComponent: GameComponent
 {
@@ -19,6 +19,8 @@ class BaseCompartmentManagerComponent: GameComponent
 	proto external BaseCompartmentSlot FindCompartment(int compartmentID, int mgrId = -1);
 	//! Returns a list and count of all compartments
 	proto external int GetCompartments(out notnull array<BaseCompartmentSlot> outCompartments);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

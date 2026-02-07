@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseChatComponentClass: GameComponentClass
 {
-};
+}
 
 //! This component takes care of sending chat messages
 class BaseChatComponent: GameComponent
@@ -41,9 +41,9 @@ class BaseChatComponent: GameComponent
 	\param receiverId Receiver PlayerID
 	*/
 	proto external void SendPrivateMessage(string msgStr, int receiverId);
-	
+
 	// callbacks
-	
+
 	/*!
 	Event triggered on every message delivered to BaseChatComponent
 	\param msg Payload
@@ -59,6 +59,8 @@ class BaseChatComponent: GameComponent
 	*/
 	event protected void OnNewPrivateMessage(string msg, int senderId, int receiverId);
 	event protected void ShowMessage(string msg);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

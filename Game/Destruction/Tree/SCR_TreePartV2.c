@@ -242,7 +242,7 @@ class SCR_TreePartV2 : Tree
 		
 		synchManager.SynchronizeSetToBreak(treePartIdx, positionVector, impulseVector, damageType, m_ParentTree.GetID());
 		
-		m_ParentTree.SetFlags(EntityFlags.ACTIVE, false);
+		m_ParentTree.SetFlags(EntityFlags.ACTIVE);
 		
 		SetEventMask(EntityEvent.FRAME);
 		m_vImpulseVector = impulseVector * 50;
@@ -1573,7 +1573,6 @@ class SCR_TreePartV2 : Tree
 			m_fTargetSynchTime = 1 / TARGET_RPC_COUNT;
 		}
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

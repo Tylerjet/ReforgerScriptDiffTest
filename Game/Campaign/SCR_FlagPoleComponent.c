@@ -4,7 +4,7 @@ class SCR_FlagComponentClass: ScriptComponentClass
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_FlagComponent: ScriptComponent
+class SCR_FlagComponent: SCR_MilitaryBaseLogicComponent
 {
 	[Attribute("1", UIWidgets.CheckBox, "Is Owner entity Flag Pole?", "")]
 	protected bool m_bIsFlagPole;
@@ -103,6 +103,5 @@ class SCR_FlagComponent: ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 };

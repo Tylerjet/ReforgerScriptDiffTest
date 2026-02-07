@@ -4,16 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapLinkProps
 {
 	private void MapLinkProps() { }
 	private void ~MapLinkProps() { }
-	
+
 	proto external void SetLineType(EMapLineType type );
 	proto external float GetLineWidth();
 	proto external void SetLineWidth( float lineWidth );
@@ -25,6 +25,8 @@ class MapLinkProps
 	proto external void SetOutlineColor( notnull Color outsideColor );
 	proto external void SetVisible(bool visibility);
 	proto external bool IsVisible();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

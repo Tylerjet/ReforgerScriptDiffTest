@@ -43,6 +43,7 @@ class SCR_RadialMenuInteractions
 	protected IEntity m_Owner;
 	
 	//! Script invokers
+	ref ScriptInvoker<IEntity> onAttemptMenuOpenInvoker = new ScriptInvoker();
 	ref ScriptInvoker<IEntity, bool> onMenuToggleInvoker;
 	ref ScriptInvoker<IEntity> onPerformInputCallInvoker;
 	ref ScriptInvoker<IEntity> onMenuOpenFailed = new ScriptInvoker();
@@ -55,7 +56,9 @@ class SCR_RadialMenuInteractions
 		if (m_bIsMenuOpen)
 			return;
 		
-		if (!m_bCanOpenMenu)
+		onAttemptMenuOpenInvoker.Invoke(m_Owner);
+		
+		if (!m_bCanOpenMenu || !CanBeOpened())
 		{
 			onMenuOpenFailed.Invoke(m_Owner);
 			return;
@@ -73,6 +76,13 @@ class SCR_RadialMenuInteractions
 		
 		m_bIsMenuOpen = false;
 		onMenuToggleInvoker.Invoke(m_Owner, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Additional conditions for opening the menu
+	protected bool CanBeOpened()
+	{
+		return true;
 	}
 	
 	//------------------------------------------------------------------------------------------------

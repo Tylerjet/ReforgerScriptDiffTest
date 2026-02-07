@@ -379,9 +379,11 @@ class SCR_BaseCompartmentManagerComponent : BaseCompartmentManagerComponent
 	protected void FinishedSpawningDefaultOccupants(bool wasCanceled)
 	{
 		m_bIsSpawningDefaultOccupants = false;
+		SCR_CompartmentAccessComponent compartmentAccess;
 		
 		if (Event_OnDoneSpawningDefaultOccupants)
 			Event_OnDoneSpawningDefaultOccupants.Invoke(this, m_aSpawnedDefaultOccupants, wasCanceled);
+		
 		m_aSpawnedDefaultOccupants = null;
 		m_aCompartmentsToSpawnDefaultOccupant = null;
 		GetGame().GetCallqueue().Remove(SpawnDefaultOccupantEachFrame);

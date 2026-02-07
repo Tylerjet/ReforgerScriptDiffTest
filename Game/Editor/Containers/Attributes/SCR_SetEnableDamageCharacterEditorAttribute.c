@@ -15,10 +15,7 @@ class SCR_SetEnableDamageCharacterEditorAttribute : SCR_SetEnableDamageEditorAtt
 	}
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-		
+	{		
 		if (isInit)
 		{
 			manager.SetAttributeAsSubAttribute(SCR_HealthCharacterEditorAttribute);
@@ -26,7 +23,7 @@ class SCR_SetEnableDamageCharacterEditorAttribute : SCR_SetEnableDamageEditorAtt
 		}
 			
 		
-		bool enabledDamage =  var.GetBool();
+		bool enabledDamage =  var && var.GetBool();
 		
 		manager.SetAttributeEnabled(SCR_HealthCharacterEditorAttribute, enabledDamage);
 		manager.SetAttributeEnabled(SCR_BloodEditorAttribute, enabledDamage);

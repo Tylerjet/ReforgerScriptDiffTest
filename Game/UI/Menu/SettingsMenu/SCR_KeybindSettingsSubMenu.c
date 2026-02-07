@@ -103,7 +103,8 @@ class SCR_KeybindSetting : SCR_SettingsSubMenuBase
 						gamepadTitle.SetVisible(true);
 					firstSeparator = false;
 #ifdef PLATFORM_CONSOLE
-					keybindTitle.SetOpacity(0);
+					if (!GetGame().GetHasKeyboard())
+						keybindTitle.SetOpacity(0);
 #endif
 				}
 			}

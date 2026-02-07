@@ -18,7 +18,17 @@ class SCR_UICore: SCR_GameCoreBase
 			s_Instance = this;
 		
 		if (!AnimateWidgetEntity.GetInstance())
-			GetGame().SpawnEntity(AnimateWidgetEntity);
+		{
+			IEntity animateWidgetEntity = GetGame().SpawnEntity(AnimateWidgetEntity);
+			if (animateWidgetEntity)
+			{
+				ChimeraWorld world = GetGame().GetWorld();
+				if (world)
+				{
+					world.RegisterEntityToBeUpdatedWhileGameIsPaused(animateWidgetEntity);
+				}
+			}
+		}
 
 		if (!SCR_UISoundEntity.GetInstance())
 			GetGame().SpawnEntityPrefab(Resource.Load(m_UISoundEntityPrefab));

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 //! Event which gets broadcasted from danger-causing places to AI
@@ -17,6 +17,8 @@ class AIDangerEvent: AIMessage
 	proto external void SetVictim(IEntity victim);
 	proto external void SetDangerType(EAIDangerEventType type);
 	proto external int GetCount();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

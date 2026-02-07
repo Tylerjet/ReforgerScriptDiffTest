@@ -28,13 +28,12 @@ class SCR_BuildingSoundComponent : SoundComponent
 	{	
 		vector mat[4];
 		mat[3] = GetSoundPosition(owner);
-		SetTransformation(mat);
 	
 		//Set Interior signal
 		SetInteriorSignal(owner);
 
 		// Play sound
-		SoundEvent(SCR_SoundEvent.SOUND_CREAK);
+		SoundEventTransform(SCR_SoundEvent.SOUND_CREAK, mat);
 		
 		// Get remetition time
 		GetTimeInterval();
@@ -123,17 +122,6 @@ class SCR_BuildingSoundComponent : SoundComponent
 		GetTimeInterval();
 	}
 	
-	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
-	{
-		super.OnPostInit(owner);
-			
-		// Disable parameter
-		#ifdef DISABLE_SCRIPTAMBIENTSOUNDS
-			return;
-		#endif
-	}
-
 	//------------------------------------------------------------------------------------------------
 	void SCR_BuildingSoundComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{

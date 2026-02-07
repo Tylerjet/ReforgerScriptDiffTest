@@ -31,12 +31,6 @@ class AutoSpawnerTool : WorldEditorTool
 	[Attribute("0", UIWidgets.EditBox)]
 	private float m_fCommentYOffset;
 
-	[Attribute("ent", UIWidgets.EditBox, "Name of spawned entity")]
-	private string m_sNameOfEntity;
-
-	[Attribute("xob", UIWidgets.EditBox, "Name of spawned object")]
-	private string m_sNameOfXOB;
-
 	[Attribute("10", UIWidgets.Slider, "Number of objects in a row.", "1 100 1")]
 	private int m_iObjectsPerRow;
 
@@ -54,6 +48,12 @@ class AutoSpawnerTool : WorldEditorTool
 
 	[Attribute("0", UIWidgets.Slider, "Y axis offset", "-50 50 1")]
 	private float m_fYOffset;
+
+	[Attribute("0", UIWidgets.Slider, "Cumulative object rotation.", "0 180 1")]
+	private float m_fCumulativeRotation;
+
+	[Attribute("", UIWidgets.FileNamePicker, "Select *.txt file with resource names to spawn")]
+	private string m_PrefabList;
 
 	private ref array <ResourceName> m_aSelection = {};
 	private ref array <ResourceName> m_aSelectedEntities = {};
@@ -75,6 +75,29 @@ class AutoSpawnerTool : WorldEditorTool
 	private float m_fLargestBBoxZ;
 
 	WorldEditor we = Workbench.GetModule(WorldEditor);
+
+	[ButtonAttribute("Spawn prefab list")]
+	void SpawnFromPrefabList()
+	{
+		if (!FileIO.FileExist(m_PrefabList))
+			return;
+
+		FileHandle file = FileIO.OpenFile(m_PrefabList, FileMode.READ);
+		if (!file)
+			return;
+
+		ClearSelection();
+
+		string temp;
+		while (file.ReadLine(temp) > -1)
+		{
+			m_aSelectedEntities.Insert(temp);
+		}
+
+		file.Close();
+
+		Preload();
+	}
 
 	[ButtonAttribute("Undo")]
 	private void Undo()
@@ -174,13 +197,12 @@ class AutoSpawnerTool : WorldEditorTool
 		m_API.BeginEntityAction();
 		foreach (ResourceName xob_path : m_aSelectedXOBs)
 		{
-			string name = m_sNameOfXOB + "_" + FormatEntityIndex();
-			IEntity ent = m_API.CreateEntity("GenericEntity", name, m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+			IEntity ent = m_API.CreateEntity("GenericEntity", string.Empty, m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
 			IEntitySource src = m_API.EntityToSource(ent);
 
 			m_API.CreateComponent(src, "MeshObject");
 			m_API.ModifyComponentKey(ent, "MeshObject", "Object", xob_path);
-			GenerateComment(name, ent, xob_path);
+			GenerateComment(ent, xob_path);
 
 			m_aSpawnedEntities.Insert(ent);
 			m_iEntityId++;
@@ -193,9 +215,8 @@ class AutoSpawnerTool : WorldEditorTool
 		m_API.BeginEntityAction();
 		foreach (ResourceName entity_path : m_aSelectedEntities)
 		{
-			string name = m_sNameOfEntity + "_" + FormatEntityIndex();
-			IEntity ent = m_API.CreateEntity(entity_path, name, m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
-			GenerateComment(name, ent, entity_path);
+			IEntity ent = m_API.CreateEntity(entity_path, string.Empty, m_API.GetCurrentEntityLayerId(), null, vector.Zero, vector.Zero);
+			GenerateComment(ent, entity_path);
 
 			m_aSpawnedEntities.Insert(ent);
 			m_iEntityId++;
@@ -203,13 +224,12 @@ class AutoSpawnerTool : WorldEditorTool
 		m_API.EndEntityAction();
 	}
 
-	private void GenerateComment(string ent_name, IEntity ent, ResourceName res_name)
+	private void GenerateComment(IEntity ent, ResourceName res_name)
 	{
 		if (!m_bGenerateComment)
 			return;
-
 		IEntitySource src = m_API.EntityToSource(ent);
-		IEntity comment = m_API.CreateEntity("CommentEntity", ent_name + "_comment", m_API.GetCurrentEntityLayerId(), src, vector.Zero, vector.Zero);
+		IEntity comment = m_API.CreateEntity("CommentEntity", string.Empty, m_API.GetCurrentEntityLayerId(), src, vector.Zero, vector.Zero);
 
 		vector min, max;
 		ent.GetBounds(min, max);
@@ -219,7 +239,7 @@ class AutoSpawnerTool : WorldEditorTool
 
 		m_API.ModifyEntityKey(comment, "coords", pos.ToString(false));
 		m_API.ModifyEntityKey(comment, "m_Comment", res_name.GetPath());
-		m_API.ModifyEntityKey(comment, "m_FaceCamera", "1");
+		// m_API.ModifyEntityKey(comment, "m_FaceCamera", "1");
 	}
 
 	private void PlaceSelection(vector trace_end)
@@ -260,7 +280,7 @@ class AutoSpawnerTool : WorldEditorTool
 				}
 
 				m_API.ModifyEntityKey(ent, "coords", pos.ToString(false));
-
+				m_API.ModifyEntityKey(ent, "angleY", (m_fCumulativeRotation*(m_iRowSizeX*(k-1) + j)).ToString(false));
 				j++;
 			}
 		}

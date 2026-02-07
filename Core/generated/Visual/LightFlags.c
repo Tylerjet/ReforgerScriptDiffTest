@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 enum LightFlags
@@ -24,7 +24,9 @@ enum LightFlags
 	//! Light has a linear falloff instead of quadratic
 	LINEAR_FALLOFF,
 	//! Is it dynamic light
-	DYNAMIC
-};
+	DYNAMIC,
+}
 
-/** @}*/
+/*!
+\}
+*/

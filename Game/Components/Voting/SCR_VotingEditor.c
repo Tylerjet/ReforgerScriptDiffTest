@@ -137,7 +137,13 @@ class SCR_VotingEditorWithdraw: SCR_VotingEditorIn
 		if (!votingManager || votingManager.GetHostPlayerID() == value || GetGame().GetPlayerManager().HasPlayerRole(value, EPlayerRole.ADMINISTRATOR))
 			return false;
 		
-		return true;
+		//--- Cannot vote for players who are not GMs
+		SCR_PlayerDelegateEditorComponent editorDelegateManager = SCR_PlayerDelegateEditorComponent.Cast(SCR_PlayerDelegateEditorComponent.GetInstance(SCR_PlayerDelegateEditorComponent));
+		if (!editorDelegateManager)
+			return false;
+		
+		SCR_EditablePlayerDelegateComponent playerEditorDelegate = editorDelegateManager.GetDelegate(value);
+		return playerEditorDelegate && !playerEditorDelegate.HasLimitedEditor();
 	}
 	override void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE)
 	{

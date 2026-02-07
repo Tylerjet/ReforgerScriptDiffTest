@@ -449,8 +449,14 @@ class SCR_ActionMenuInteractionDisplay : SCR_BaseInteractionDisplay
 		else
 			m_wHoldText.SetVisible(false);
 		
-		// Toggle selection widgets
-		if (iActionsCount <= 1)
+		// Toggle selection / adjustment widgets
+		bool isInProgress = pSelectedAction && pSelectedAction.IsInProgress();
+		if (isInProgress && SCR_AdjustSignalAction.Cast(pSelectedAction))
+		{
+			UpdateArrow(m_wArrowUp, EActionMenuScroll.ENABLED);
+			UpdateArrow(m_wArrowDown, EActionMenuScroll.ENABLED);
+		}
+		else if (isInProgress || iActionsCount <= 1)
 		{
 			UpdateArrow(m_wArrowUp, EActionMenuScroll.HIDDEN);
 			UpdateArrow(m_wArrowDown, EActionMenuScroll.HIDDEN);

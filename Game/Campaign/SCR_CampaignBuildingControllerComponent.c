@@ -184,7 +184,7 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		m_Base = SCR_CampaignBase.Cast(suppliesProvider);
 		if (m_Base)
 		{
-			SCR_CampaignServiceComponent supplyDepotService = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent supplyDepotService = m_Base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);
 			
 			if (!supplyDepotService)
 				return;
@@ -422,7 +422,7 @@ class SCR_CampaignBuildingControllerComponent : ScriptComponent
 		// Remove EH to change color
 		if (m_Base)
 		{
-			SCR_CampaignServiceComponent supplyDepotService = m_Base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent supplyDepotService = m_Base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);
 			
 			if (supplyDepotService)
 			{

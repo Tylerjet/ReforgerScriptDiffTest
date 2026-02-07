@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class CargoCompartmentSlot: BaseCompartmentSlot
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

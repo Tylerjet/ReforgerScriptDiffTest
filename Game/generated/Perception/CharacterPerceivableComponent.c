@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Perception
-* @{
+/*!
+\addtogroup Perception
+\{
 */
 
 class CharacterPerceivableComponentClass: PerceivableComponentClass
 {
-};
+}
 
 class CharacterPerceivableComponent: PerceivableComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

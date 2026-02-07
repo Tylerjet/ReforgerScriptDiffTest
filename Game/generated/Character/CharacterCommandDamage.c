@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class CharacterCommandDamage: CharacterCommand
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

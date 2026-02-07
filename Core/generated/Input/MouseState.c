@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Input
-* @{
+/*!
+\addtogroup Input
+\{
 */
 
 enum MouseState
@@ -16,7 +16,9 @@ enum MouseState
 	MIDDLE,
 	X,
 	Y,
-	WHEEL
-};
+	WHEEL,
+}
 
-/** @}*/
+/*!
+\}
+*/

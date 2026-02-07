@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
-class CarProcAnimComponentClass: ProcAnimComponentClass
+class CarProcAnimComponentClass: VehicleProcAnimComponentClass
 {
-};
+}
 
-class CarProcAnimComponent: ProcAnimComponent
+class CarProcAnimComponent: VehicleProcAnimComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

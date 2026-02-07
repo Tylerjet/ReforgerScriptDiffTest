@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -17,7 +17,9 @@ enum WidgetNavigationRuleType
 	ESCAPE,
 	STOP,
 	WRAP,
-	EXPLICIT
-};
+	EXPLICIT,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -3,7 +3,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 {
 	protected SCR_CampaignMapUIBase m_Parent;
 
-	protected ECampaignServicePointType m_eServiceType;
+	protected SCR_EServicePointType m_eServiceType;
 
 	protected bool m_bEnabled;
 	protected string m_sServiceName;
@@ -68,7 +68,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 		if (m_Parent)
 		{
 			SCR_CampaignBase base = m_Parent.GetBase();
-			if (m_eServiceType == ECampaignServicePointType.SUPPLY_DEPOT && base)
+			if (m_eServiceType == SCR_EServicePointType.SUPPLY_DEPOT && base)
 			{
 				Faction playerFaction = SCR_RespawnSystemComponent.GetLocalPlayerFaction();
 				if (base.GetOwningFaction() == playerFaction)
@@ -77,17 +77,17 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 					int suppliesMax = base.GetSuppliesMax();
 
 					m_sServiceText = "#AR-Campaign_BaseSuppliesHintAmount";
-					m_Parent.ShowServiceHint(m_sServiceName, m_sServiceIcon, m_sServiceText, show, supplies, suppliesMax);
+					m_Parent.ShowServiceHint(m_sServiceName, m_sServiceText, show, supplies, suppliesMax);
 				}
 				else
 				{
 					m_sServiceText = "#AR-Campaign_BaseSuppliesHintUnknown";
-					m_Parent.ShowServiceHint(m_sServiceName, m_sServiceIcon, m_sServiceText, show);
+					m_Parent.ShowServiceHint(m_sServiceName, m_sServiceText, show);
 				}
 			}
 			else
 			{
-				m_Parent.ShowServiceHint(m_sServiceName, m_sServiceIcon, m_sServiceText, show);
+				m_Parent.ShowServiceHint(m_sServiceName, m_sServiceText, show);
 			}
 		}
 	}
@@ -97,55 +97,55 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	{
 		switch (m_eServiceType)
 		{
-			case ECampaignServicePointType.BARRACKS:
+			case SCR_EServicePointType.BARRACKS:
 			{
 				SetImage(m_sBarracks);
 				m_sServiceName = "#AR-Campaign_Building_Barracks";
 			} break;
 
-			case ECampaignServicePointType.FIELD_HOSPITAL:
+			case SCR_EServicePointType.FIELD_HOSPITAL:
 			{
 				SetImage(m_sFieldHospital);
 				m_sServiceName = "#AR-Campaign_Building_FieldHospital";
 			} break;
 
-			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT:
 			{
 				SetImage(m_sLightVehicleDepot);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_LightVehicleDepot";
 			} break;
 			
-			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT:
 			{
 				SetImage(m_sHeavyVehicleDepot);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_HeavyVehicleDepot";
 			} break;
 			
-			case ECampaignServicePointType.RADIO_ANTENNA:
+			case SCR_EServicePointType.RADIO_ANTENNA:
 			{
 				SetImage(m_sRadioAntenna);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_RadioAntenna";
 			} break;
 
-			case ECampaignServicePointType.SUPPLY_DEPOT:
+			case SCR_EServicePointType.SUPPLY_DEPOT:
 			{
 				SetImage(m_sSupplyDepot);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Supplydepot_US";
 			} break;
 
-			case ECampaignServicePointType.ARMORY:
+			case SCR_EServicePointType.ARMORY:
 			{
 				SetImage(m_sArmory);
 				m_sServiceName = "#AR-Campaign_Building_Armory";
 			} break;
 
-			/*case ECampaignServicePointType.FUEL_DEPOT:
+			/*case SCR_EServicePointType.FUEL_DEPOT:
 			{
 				SetImage(m_sFuelDepot);
 				m_sServiceName = "#AR-Comm_Variable_Miscellaneous_Fueldepot_US";
 			} break;*/
 
-			/*case ECampaignServicePointType.VEHICLE_DEPOT:
+			/*case SCR_EServicePointType.VEHICLE_DEPOT:
 			{
 				SetImage(m_sVehicleDepot);
 				m_sServiceName = "#AR-Campaign_Building_MotorPool";
@@ -160,7 +160,7 @@ class SCR_CampaignMapUIService : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	void SetService(ECampaignServicePointType type, SCR_CampaignServiceComponent service)
+	void SetService(SCR_EServicePointType type, SCR_CampaignServiceComponent service)
 	{
 		m_bEnabled = service != null;
 		m_eServiceType = type;

@@ -56,6 +56,7 @@ class SCR_WidgetHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Return the provided widget (if the name matches) or one of its children (if the name matches) or null
+	//! Case-sensitive
 	static Widget GetWidgetOrChild(notnull Widget widget, string widgetName)
 	{
 		if (widget.GetName() == widgetName)

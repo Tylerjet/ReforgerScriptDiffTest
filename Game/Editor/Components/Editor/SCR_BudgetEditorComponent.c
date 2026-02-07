@@ -210,6 +210,11 @@ class SCR_BudgetEditorComponent : SCR_BaseEditorComponent
 			return false;
 		
 		SCR_EditableVehicleUIInfo editableUIInfo = SCR_EditableVehicleUIInfo.Cast(SCR_EditableEntityComponentClass.GetInfo(editableEntitySource));
+		return GetVehicleOccupiedBudgetCosts(editableUIInfo, placingFlags, budgetCosts);
+	}
+	
+	bool GetVehicleOccupiedBudgetCosts(SCR_EditableVehicleUIInfo editableUIInfo, EEditorPlacingFlags placingFlags, out notnull array<ref SCR_EntityBudgetValue> budgetCosts)
+	{
 		if (!editableUIInfo)
 			return false;
 		

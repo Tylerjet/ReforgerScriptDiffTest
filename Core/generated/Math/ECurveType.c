@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Math
-* @{
+/*!
+\addtogroup Math
+\{
 */
 
 enum ECurveType
@@ -14,7 +14,9 @@ enum ECurveType
 	CatmullRom,
 	NaturalCubic,
 	UniformCubic,
-	CurveProperty2D
-};
+	CurveProperty2D,
+}
 
-/** @}*/
+/*!
+\}
+*/

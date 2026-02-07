@@ -28,9 +28,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	//! Activate the area so it could be updated every frame
 	void ActivateEveryFrame()
 	{
-		IEntity owner = GetOwner();
-		owner.SetFlags(EntityFlags.ACTIVE, false);
-		SetEventMask(owner, EntityEvent.FRAME);
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
 	//! Deactivate the area
@@ -46,6 +44,12 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	*/
 	float GetRadius()
 	{
+	}
+	
+	//~ Get the position of the AreaMesh. Can be overwritten to set custom position
+	protected vector GetPosition(IEntity owner)
+	{
+		return owner.GetOrigin();
 	}
 	
 	/*!
@@ -65,7 +69,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		//--- Reset orientation, as the mesh is created in local space
 		vector transform[4];
 		Math3D.MatrixIdentity3(transform);
-		transform[3] = owner.GetOrigin();
+		transform[3] = GetPosition(owner);
 		owner.SetWorldTransform(transform);
 		
 		float dirStep = Math.PI2 / m_vResolution;
@@ -97,7 +101,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 		{
 			owner.SetObject(meshObject, "");
 			
-			m_vLastPos = owner.GetOrigin();
+			m_vLastPos = GetPosition(owner);
 			m_vLastDir = owner.GetAngles();
 		}
 		
@@ -105,7 +109,7 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 	
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{
-		if (vector.DistanceSq(m_vLastPos, owner.GetOrigin()) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
+		if (vector.DistanceSq(m_vLastPos, GetPosition(owner)) > 0.1 || vector.DistanceSq(m_vLastDir, owner.GetAngles()) > 0.1)
 			GenerateAreaMesh();
 	}
 	
@@ -118,4 +122,12 @@ class SCR_BaseAreaMeshComponent: ScriptComponent
 			ActivateEveryFrame();
 		}
 	}
+	
+	#ifdef WORKBENCH
+	//~ Makes sure mesh area is generated at the correct position in workbench
+	override void _WB_SetTransform(IEntity owner, inout vector mat[4], IEntitySource src)
+	{
+		GenerateAreaMesh();
+	}
+	#endif
 };

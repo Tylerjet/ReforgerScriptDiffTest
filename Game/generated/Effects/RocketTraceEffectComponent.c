@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Effects
-* @{
+/*!
+\addtogroup Effects
+\{
 */
 
 class RocketTraceEffectComponentClass: BaseEffectComponentClass
 {
-};
+}
 
 class RocketTraceEffectComponent: BaseEffectComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

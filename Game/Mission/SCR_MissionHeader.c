@@ -37,10 +37,10 @@ class SCR_MissionHeader : MissionHeader
 	EGameFlags m_eDefaultGameFlags;
 
 	[Attribute(desc: "When true, saving mission state is enabled.")]
-	protected bool m_bIsSavingEnabled;
+	bool m_bIsSavingEnabled;
 
 	[Attribute("", UIWidgets.EditBox, "Name of save file for this mission.\nWhen undefined, the name of associated world file will be used.")]
-	protected string m_sSaveFileName;
+	string m_sSaveFileName;
 	
 	[Attribute("", UIWidgets.ResourceNamePicker, "Configuration file for briefing screen.", "conf")]
 	ResourceName m_sBriefingConfig;
@@ -66,7 +66,7 @@ class SCR_MissionHeader : MissionHeader
 	[Attribute("0")]
 	bool m_bRandomStartingWeather;
 
-	protected bool m_bLoadOnStart;
+	bool m_bLoadOnStart;
 	string m_sOwner;
 
 	//------------------------------------------------------------------------------------------------
@@ -77,15 +77,7 @@ class SCR_MissionHeader : MissionHeader
 	}
 
 	/*!
-	\return True if saving is enabled in this mission.
-	*/
-	bool IsSavingEnabled()
-	{
-		return m_bIsSavingEnabled;
-	}
-
-	/*!
-	Get name of athesave file for this mission.
+	Get name of the save file for this mission.
 	\return File name
 	*/
 	string GetSaveFileName()
@@ -95,4 +87,18 @@ class SCR_MissionHeader : MissionHeader
 		else
 			return FilePath.StripPath(FilePath.StripExtension(GetWorldPath()));
 	}
+	
+	/*!
+	Get mission header from a MissionWorkshopItem.
+	\return File name
+	*/
+	static SCR_MissionHeader GetMissionHeader(notnull MissionWorkshopItem item, bool blockFromAddons = false)
+	{
+		// Terminate if scenario is from addon and scenarios from addons are marked to be blocked.
+		// Make use in situations like MainMenu, where MissionHeaders in addons are not accessible.
+		if (blockFromAddons && item.GetOwner())
+			return null;
+		
+		return SCR_MissionHeader.Cast(MissionHeader.ReadMissionHeader(item.Id()));
+	}	
 };

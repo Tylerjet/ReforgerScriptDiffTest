@@ -1,7 +1,7 @@
 class SCR_AISetDefendWaypointPreset : AITaskScripted
 {
 	static const string PRESET_INDEX_PORT = "PresetIndexIn";
-	static const string WAYPOINT_PORT = "WaypointEntityIn";
+	static const string WAYPOINT_PORT = "WaypointIn";
 		
 	[Attribute("0", UIWidgets.EditBox, "Set current preset index of defend waypoint")];
 	private int m_iNewPresetIndex;
@@ -19,20 +19,26 @@ class SCR_AISetDefendWaypointPreset : AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		IEntity waypointEntity;
+		AIWaypoint waypoint;
 		SCR_DefendWaypoint wp;
 		int newIndex;
 		
-		if (!GetVariableIn(WAYPOINT_PORT, waypointEntity))
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
 		{
-			waypointEntity = owner.GetCurrentWaypoint();			
+			SCR_AgentMustBeAIGroup(this, owner);
+			return ENodeResult.FAIL;
 		}
 		
-		wp = SCR_DefendWaypoint.Cast(waypointEntity);
+		if (!GetVariableIn(WAYPOINT_PORT, waypoint))
+		{
+			waypoint = group.GetCurrentWaypoint();
+		}
+		
+		wp = SCR_DefendWaypoint.Cast(waypoint);
 		if (!wp)
 		{
-			NodeError(this, owner, "Did not provide defend waypoint to set!");
-			return ENodeResult.FAIL;
+			return NodeError(this, owner, "Did not provide defend waypoint to set!");
 		}
 		
 		if (!GetVariableIn(PRESET_INDEX_PORT, newIndex))
@@ -40,8 +46,7 @@ class SCR_AISetDefendWaypointPreset : AITaskScripted
 		
 		if (!wp.SetCurrentDefendPreset(newIndex))	
 		{
-			NodeError(this, owner, "Wrong index of preset provided");
-			return ENodeResult.FAIL;
+			return NodeError(this, owner, "Wrong index of preset provided");
 		}
 		return ENodeResult.SUCCESS;		
 	}

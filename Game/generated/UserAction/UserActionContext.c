@@ -4,19 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
-/**
+/*!
 Object that can be placed in ActionsManagerComponent to define a contextual collection of BaseUserActions.
 */
 class UserActionContext: ScriptAndConfig
 {
 	//! Returns the identifier of this context or string.Empty if none.
 	proto external owned string GetContextName();
-	/**
+	/*!
 	Returns the name of this context or string.Empty if none, as defined in UI Info.
 	*/
 	proto external owned string GetName();
@@ -45,6 +45,8 @@ class UserActionContext: ScriptAndConfig
 	proto external bool IsInVisibilityAngle(vector position);
 	//! Returns the UIInfo set for this context or null if none.
 	proto external UIInfo GetUIInfo();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class PreviewAnimationComponentClass: AnimationControllerComponentClass
 {
-};
+}
 
 class PreviewAnimationComponent: AnimationControllerComponent
 {
@@ -25,6 +25,8 @@ class PreviewAnimationComponent: AnimationControllerComponent
 	proto external void SetHandsIKPose(IEntity owner, ResourceName ikPoseResource);
 	//! Changes IK state for weapon IKVariable (usually state set once upon creation)
 	proto external void SetIkState(bool leftHand, bool rightHand);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

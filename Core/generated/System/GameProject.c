@@ -4,16 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup System
-* @{
+/*!
+\addtogroup System
+\{
 */
 
 sealed class GameProject
 {
 	private void GameProject();
 	private void ~GameProject();
-	
+
 	//! Return array of GUIDs of loaded addons
 	static proto void GetAvailableAddons(notnull out array<string> addonGUIDs);
 	//! Return array of GUIDs of loaded addons
@@ -24,6 +24,8 @@ sealed class GameProject
 	static proto string GetAddonTitle(string GUID);
 	//! Return true if addon with given GUID is part of vanilla addons
 	static proto bool IsVanillaAddon(string GUID);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

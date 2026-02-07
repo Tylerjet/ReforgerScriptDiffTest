@@ -107,6 +107,28 @@ class SCR_BinocularsComponent : SCR_GadgetComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetFlag()
+	{
+		super.ActivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetFlag()
+	{
+		super.DeactivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+		
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{			
 		// Update optics 

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics\Vehicles
-* @{
+/*!
+\addtogroup Physics\Vehicles
+\{
 */
 
 //! surface properties that influence wheel traction etc.
@@ -19,6 +19,8 @@ sealed class ContactSurface: BaseContainer
 	proto external float GetFrictionTread();
 	proto external float GetRollingResistance();
 	proto external float GetRollingDrag();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

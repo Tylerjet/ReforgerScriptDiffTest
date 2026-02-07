@@ -7,7 +7,7 @@ Do not modify, this script is generated
 class WeatherStateTransitionNode
 {
 	private void WeatherStateTransitionNode();
-	
+
 	proto external void SetLooping(bool looping);
 	proto external bool IsLooping();
 	/*!
@@ -33,7 +33,7 @@ class WeatherStateTransitionNode
 	/*!
 	Checks whether this state transition node points to a valid destination state.
 	Invalid state transition nodes cannot be enqueued or triggered to transition.
-	
+
 	\return True if valid, False if state transition is pointing to an invalid (not found) destination state.
 	*/
 	proto external bool IsValid();
@@ -48,4 +48,4 @@ class WeatherStateTransitionNode
 	\return True if transitioning, false if not transitioned yet or if transitioned completely
 	*/
 	proto external bool IsTransitioning();
-};
+}

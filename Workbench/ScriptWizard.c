@@ -182,7 +182,7 @@ class ScriptWizard : WorkbenchPlugin
 		{
 			// [EditorAttribute("box"....
 			string attribute = string.Format(SCRIPT_ATTRIBUTE, classCategory, classDescription);
-			file.FPrintln(attribute);
+			file.WriteLine(attribute);
 
 			// class MyClass : MyClassClass
 			string classClassLine;
@@ -191,23 +191,23 @@ class ScriptWizard : WorkbenchPlugin
 			else
 				classClassLine = string.Format(SCRIPT_CLASSCLASS_NOINH, className);
 
-			file.FPrintln(classClassLine);
+			file.WriteLine(classClassLine);
 			// {}
-			file.FPrintln("{");
-			file.FPrintln(TAB + "// prefab properties here");
-			file.FPrintln("};");
+			file.WriteLine("{");
+			file.WriteLine(TAB + "// prefab properties here");
+			file.WriteLine("};");
 
 			// Empty line
-			file.FPrintln("");
+			file.WriteLine("");
 		}
 
 		// Splitter
-		file.FPrintln(SPLITTER);
+		file.WriteLine(SPLITTER);
 
 		// Brief description
-		file.FPrintln(DOXY_BEGIN);
-		file.FPrintln("\tClass generated via ScriptWizard.");
-		file.FPrintln(DOXY_END);
+		file.WriteLine(DOXY_BEGIN);
+		file.WriteLine("\tClass generated via ScriptWizard.");
+		file.WriteLine(DOXY_END);
 
 		// SCR_MyEntity : GenericEntity
 		string classInheritance = "";
@@ -215,60 +215,60 @@ class ScriptWizard : WorkbenchPlugin
 			classInheritance = string.Format(SCRIPT_CLASSINH, className, classParent);
 		else
 			classInheritance = string.Format(SCRIPT_CLASS_NOINH, className);
-		file.FPrintln(classInheritance);
+		file.WriteLine(classInheritance);
 
 		// {}
-		file.FPrintln("{");
+		file.WriteLine("{");
 
 		// Constructor, destructor, init, frame
 		if (GenerateFunctions)
 		{
 			// empty line
-			file.FPrintln("");
+			file.WriteLine("");
 
 			if (type != WizardScriptType.Object)
 			{
-				file.FPrintln(TAB + SPLITTER);
+				file.WriteLine(TAB + SPLITTER);
 				// frame function
 				string frame = TAB + FUNCTION_FRAME;
-				file.FPrintln(frame);
+				file.WriteLine(frame);
 
 				// {}
-				file.FPrintln(TAB + "{");
-				file.FPrintln(TAB + "}");
+				file.WriteLine(TAB + "{");
+				file.WriteLine(TAB + "}");
 
 				// postInit function in components
 				if (ScriptType == WizardScriptType.Component)
 				{
 					// empty line
-					file.FPrintln("");
-					file.FPrintln(TAB + SPLITTER);
+					file.WriteLine("");
+					file.WriteLine(TAB + SPLITTER);
 
 					// method header
 					string postInit = TAB + FUNCTION_POSTINIT;
-					file.FPrintln(postInit);
+					file.WriteLine(postInit);
 					//{
-					file.FPrintln(TAB + "{");
+					file.WriteLine(TAB + "{");
 
 					// SetEventMask and SetFlags
-					file.FPrintln(TAB + TAB + FUNCTION_COMPONENT_EVENTMASK);
+					file.WriteLine(TAB + TAB + FUNCTION_COMPONENT_EVENTMASK);
 					if (GenerateActiveFlag)
-						file.FPrintln(TAB + TAB + FUNCTION_COMPONENT_EVENTFLAGS);
+						file.WriteLine(TAB + TAB + FUNCTION_COMPONENT_EVENTFLAGS);
 
 					//}
-					file.FPrintln(TAB + "}");
+					file.WriteLine(TAB + "}");
 				}
 
 				// empty line
-				file.FPrintln("");
-				file.FPrintln(TAB + SPLITTER);
+				file.WriteLine("");
+				file.WriteLine(TAB + SPLITTER);
 				// init function
 				string init = TAB + FUNCTION_INIT;
-				file.FPrintln(init);
+				file.WriteLine(init);
 
 				// {}
-				file.FPrintln(TAB + "{");
-				file.FPrintln(TAB + "}");
+				file.WriteLine(TAB + "{");
+				file.WriteLine(TAB + "}");
 
 			}
 
@@ -278,21 +278,21 @@ class ScriptWizard : WorkbenchPlugin
 				case WizardScriptType.Entity:
 
 					// empty line
-					file.FPrintln("");
-					file.FPrintln(TAB + SPLITTER);
+					file.WriteLine("");
+					file.WriteLine(TAB + SPLITTER);
 					// constructor
 					string constructor = string.Format(TAB + FUNCTION_ENTITY_CONSTRUCTOR, className);
-					file.FPrintln(constructor);
+					file.WriteLine(constructor);
 
 					// {}
-					file.FPrintln(TAB + "{");
+					file.WriteLine(TAB + "{");
 
 					// SetEventMask and SetFlags
-					file.FPrintln(TAB + TAB + FUNCTION_ENTITY_EVENTMASK);
+					file.WriteLine(TAB + TAB + FUNCTION_ENTITY_EVENTMASK);
 					if (GenerateActiveFlag)
-						file.FPrintln(TAB + TAB + FUNCTION_ENTITY_EVENTFLAGS);
+						file.WriteLine(TAB + TAB + FUNCTION_ENTITY_EVENTFLAGS);
 
-					file.FPrintln(TAB + "}");
+					file.WriteLine(TAB + "}");
 
 					break;
 
@@ -300,29 +300,29 @@ class ScriptWizard : WorkbenchPlugin
 				case WizardScriptType.Component:
 
 					// empty line
-					file.FPrintln("");
-					file.FPrintln(TAB + SPLITTER);
+					file.WriteLine("");
+					file.WriteLine(TAB + SPLITTER);
 					// constructor
 					string constructor = string.Format(TAB + FUNCTION_COMPONENT_CONSTRUCTOR, className);
-					file.FPrintln(constructor);
+					file.WriteLine(constructor);
 
 					// {}
-					file.FPrintln(TAB + "{");
-					file.FPrintln(TAB + "}");
+					file.WriteLine(TAB + "{");
+					file.WriteLine(TAB + "}");
 
 					break;
 
 				case WizardScriptType.Object:
 
 					// empty line
-					file.FPrintln(TAB + SPLITTER);
+					file.WriteLine(TAB + SPLITTER);
 					// constructor
 					string constructor = string.Format(TAB + FUNCTION_OBJECT_CONSTRUCTOR, className);
-					file.FPrintln(constructor);
+					file.WriteLine(constructor);
 
 					// {}
-					file.FPrintln(TAB + "{");
-					file.FPrintln(TAB + "}");
+					file.WriteLine(TAB + "{");
+					file.WriteLine(TAB + "}");
 
 					break;
 
@@ -331,23 +331,23 @@ class ScriptWizard : WorkbenchPlugin
 			}
 
 			// empty line
-			file.FPrintln("");
-			file.FPrintln(TAB + SPLITTER);
+			file.WriteLine("");
+			file.WriteLine(TAB + SPLITTER);
 			// destructor
 			string destructor = string.Format(TAB + FUNCTION_DESTRUCTOR, className);
-			file.FPrintln(destructor);
+			file.WriteLine(destructor);
 
 			// {}
-			file.FPrintln(TAB + "{");
-			file.FPrintln(TAB + "}");
+			file.WriteLine(TAB + "{");
+			file.WriteLine(TAB + "}");
 		}
 
 		// Empty line
-		file.FPrintln("");
+		file.WriteLine("");
 
-		file.FPrintln("};");
+		file.WriteLine("};");
 
-		file.CloseFile();
+		file.Close();
 
 		return 0;
 	}

@@ -76,9 +76,9 @@ class ChimeraGame: Game
 	Spawns a prefab which will exist only on local machine.
 	*/
 	proto external IEntity SpawnEntityPrefabLocal(notnull Resource templateResource, BaseWorld world = null, EntitySpawnParams params = null);
-	
+
 	// callbacks
-	
+
 	/*!
 	\brief Called when a mission header is set (to both a valid one or to null as well)
 	\param mission can be passed in as null when mission is cleared, make sure to nullptr check!
@@ -88,8 +88,10 @@ class ChimeraGame: Game
 	event protected void OnKickedFromGame(KickCauseCode kickCode);
 	//! Shows dialog with a provided string.
 	event protected void ShowErrorMessage(string msg);
+	//! Called when the player data is requested
+	event protected ref Managed GetPlayerDataStats(int playerID);
 	/*!
 	\brief Called when DS downloads required addons and is ready to run a world
 	*/
 	event protected string GetMissionName();
-};
+}

@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup GameMode
-* @{
+/*!
+\addtogroup GameMode
+\{
 */
 
 class RespawnSystemComponentClass: GameComponentClass
 {
-};
+}
 
 //! RespawnSystemComponent should be attached to a gamemode to handle player spawning and respawning.
 class RespawnSystemComponent: GameComponent
@@ -20,9 +20,9 @@ class RespawnSystemComponent: GameComponent
 	//! \param position XYZ position in world space
 	//! \param rotation XYZ rotation (pitch, yaw, roll) in world space degrees
 	proto external GenericEntity DoSpawn(string prefab, vector position, vector rotation = "0 0 0");
-	
+
 	// callbacks
-	
+
 	/*!
 	Serialize server network data for JIP clients.
 	\param w Bit writer instance
@@ -40,6 +40,8 @@ class RespawnSystemComponent: GameComponent
 	event void OnInit(IEntity owner);
 	//! Called when some player controller requests respawn
 	event GenericEntity RequestSpawn(int playerId) { return null; };
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

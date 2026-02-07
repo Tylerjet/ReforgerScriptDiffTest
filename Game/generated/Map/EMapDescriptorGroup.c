@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
-/**
+/*!
 Type of group
 */
 enum EMapDescriptorGroup
@@ -18,7 +18,9 @@ enum EMapDescriptorGroup
 	MDG_SEPARATE,
 	MDG_AGGREGATE,
 	MDG_FADE,
-	MDG_COUNT
-};
+	MDG_COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

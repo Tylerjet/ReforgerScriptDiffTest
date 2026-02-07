@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class ItemAttributeCollection: ScriptAndConfig
@@ -16,10 +16,12 @@ class ItemAttributeCollection: ScriptAndConfig
 	//! Finds first occurance of the coresponding attribute data object.
 	proto external BaseItemAttributeData FindAttribute(typename typeName);
 	proto external ECommonItemType GetCommonType();
-	
-	// callbacks
-	
-	event protected void OnInitCollection(IEntityComponentSource src);
-};
 
-/** @}*/
+	// callbacks
+
+	event protected void OnInitCollection(IEntityComponentSource src);
+}
+
+/*!
+\}
+*/

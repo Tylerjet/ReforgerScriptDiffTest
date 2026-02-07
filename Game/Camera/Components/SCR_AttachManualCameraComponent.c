@@ -192,7 +192,7 @@ class SCR_AttachEntity: GenericEntity
 	{
 		m_Target = target;
 		SetEventMask(EntityEvent.POSTFRAME);
-		SetFlags(EntityFlags.ACTIVE, false);
+		SetFlags(EntityFlags.ACTIVE);
 	}
 	override void EOnPostFrame(IEntity owner, float timeSlice)
 	{

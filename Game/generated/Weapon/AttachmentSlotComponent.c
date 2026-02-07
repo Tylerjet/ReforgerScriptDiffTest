@@ -4,20 +4,22 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class AttachmentSlotComponentClass: BaseAttachmentSlotComponentClass
 {
-};
+}
 
 class AttachmentSlotComponent: BaseAttachmentSlotComponent
 {
 	proto external void SetAttachment(IEntity attachmentEntity);
 	proto external IEntity GetAttachedEntity();
 	proto external BaseAttachmentType GetAttachmentSlotType();
+	//! Is entity compatible to be attached to this slot?
+	proto external bool CanSetAttachment(IEntity attachmentEntity);
 	/*!
 	Does this slot obstruct others? This is for example relevant if an optic slot obstructs the weapons
 	iron sights (either built-in or attached). Example: PSO-1 scope on AK pattern rifles, or the P90 tri-rail
@@ -26,6 +28,8 @@ class AttachmentSlotComponent: BaseAttachmentSlotComponent
 	proto external bool IsObstructing();
 	//! Is this slot should show during inspection
 	proto external bool ShouldShowInInspection();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

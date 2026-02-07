@@ -23,39 +23,39 @@ class SCR_TourniquetUserAction : SCR_HealingUserAction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Method called from scripted interaction handler when an action is started (progress bar appeared)
-	//! \param pUserEntity The entity that started performing this action
-	override void OnActionStart(IEntity pUserEntity)
-	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
-		if (!character)
-			return;
-		
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(character);
-		if (consumableComponent)
-			consumableComponent.SetAlternativeModel(true);
-	}
-			
-	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
 	{
 		if (!super.CanBePerformedScript(user))
 			return false;
 		
+		ChimeraCharacter userCharacter = ChimeraCharacter.Cast(user);
+		if (!userCharacter)
+			return false;
+			
+		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
+		if (!consumableComponent || consumableComponent.GetConsumableType() != EConsumableType.Tourniquet)
+			return false;
+		
+		ChimeraCharacter ownerCharacter = ChimeraCharacter.Cast(GetOwner());
+		if (!ownerCharacter)
+			return false;
+		
+		//Only bleeding HZs can be TQ'd
+		SCR_CharacterDamageManagerComponent charDamMan = SCR_CharacterDamageManagerComponent.Cast(ownerCharacter.GetDamageManager());
+		if (!charDamMan || charDamMan.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING) == 0)
+			return false;
+		
+		//Only extremities can be TQ'd
 		array<ECharacterHitZoneGroup> tqGroups = {};
 		SCR_CharacterDamageManagerComponent.GetAllExtremities(tqGroups);
 		
 		if (!tqGroups.Contains(m_eHitZoneGroup))
 			return false;
 		
-		ChimeraCharacter character = ChimeraCharacter.Cast(user);
-		if (!character)
+		//No TQ'ing groups that are already TQ'd
+		if (charDamMan.GetGroupTourniquetted(m_eHitZoneGroup))
 			return false;
 		
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(character);
-		if (!consumableComponent)
-			return false;
-		
-		return consumableComponent.GetConsumableType() == EConsumableType.Tourniquet;
+		return true;
 	}
 };

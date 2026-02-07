@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class CompartmentAccessComponentClass: GameComponentClass
 {
-};
+}
 
 class CompartmentAccessComponent: GameComponent
 {
@@ -19,6 +19,7 @@ class CompartmentAccessComponent: GameComponent
 	proto external BaseCompartmentSlot GetCompartment();
 	//! Returns the first free compartment of a given type on \param targetEntity
 	proto external BaseCompartmentSlot FindFreeCompartment(IEntity targetEntity, ECompartmentType compartmentType, bool useReserved = true);
+	proto external BaseCompartmentSlot FindCompartmentReservedBy(IEntity targetEntity, IEntity reservedBy);
 	//! Returns true if we're inside a compartment
 	proto external bool IsInCompartment();
 	//! Returns true if we're inside a compartment with enabled ADS
@@ -47,7 +48,7 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool GetOutVehicle(int doorInfoIndex);
 	//! Move out of (teleport from) current vehicle via the door with index \param doorInfoIndex
 	proto external bool MoveOutVehicle(int doorInfoIndex, vector targetTransform[4]);
-	//! Teleport out of the vehicle
+	//! Teleport out of the vehicle normally - when exiting is not possible.
 	proto external bool EjectOutOfVehicle();
 	//! Returns true if current compartment can be jumped from
 	proto external bool CanJumpOutVehicle();
@@ -55,11 +56,13 @@ class CompartmentAccessComponent: GameComponent
 	proto external bool JumpOutVehicle();
 	//! Returns the vehicle entity is in (root entity of whole hierarchy)
 	static proto IEntity GetVehicleIn(IEntity entity);
-	
+
 	// callbacks
-	
+
 	event protected void OnCompartmentEntered(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move);
 	event protected void OnCompartmentLeft(IEntity targetEntity, BaseCompartmentManagerComponent manager, int mgrID, int slotID, bool move);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

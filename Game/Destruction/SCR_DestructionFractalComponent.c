@@ -249,7 +249,7 @@ class SCR_DestructionFractalComponent: SCR_DestructionBaseComponent
 				else if (mod == 5) fragVis.m_Color = ARGB(255, intensity, intensity, intensityOther);
 				
 				fragVis.SetObject(asset, remap);
-				fragVis.SetFlags(EntityFlags.ACTIVE, false);
+				fragVis.SetFlags(EntityFlags.ACTIVE);
 				m_Owner.AddChild(fragVis, -1);
 				fragVis.Update();
 				

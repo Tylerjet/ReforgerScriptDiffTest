@@ -238,8 +238,8 @@ class SCR_NameTagData : Managed
 			else
 			{
 				CharacterIdentityComponent charIdentity = CharacterIdentityComponent.Cast(m_Entity.FindComponent(CharacterIdentityComponent));
-				if (charIdentity)
-					m_sName = charIdentity.GetCharacterFullName();
+				if (charIdentity && charIdentity.GetIdentity())
+					m_sName = charIdentity.GetIdentity().GetName();
 				else 
 					m_sName = "No character identity!";
 			}
@@ -351,7 +351,7 @@ class SCR_NameTagData : Managed
 	
 	//------------------------------------------------------------------------------------------------
 	//! VoNComponent event, only used for "Current player" tag
-	void OnReceivedVON(int playerId, BaseRadioComponent radio, int frequency, float quality, int transceiverIdx)
+	void OnReceivedVON(int playerId, BaseTransceiver receiver, int frequency, float quality)
 	{				
 		IEntity character = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId);
 		if (!character)

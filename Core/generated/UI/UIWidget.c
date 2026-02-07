@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class UIWidget: Widget
@@ -50,6 +50,8 @@ sealed class UIWidget: Widget
 	Gets current bold style.
 	*/
 	proto external bool GetTextBold();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

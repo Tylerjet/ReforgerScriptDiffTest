@@ -360,13 +360,13 @@ class SCR_PingEditorComponent : SCR_BaseEditorComponent
 		{
 			//No target
 			if (!target || target.HasEntityFlag(EEditableEntityFlag.LOCAL))
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.EDITOR_GM_ONLY_PING, position, reporterID);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_GM_ONLY_PING, position, reporterID);
 			//Player target
 			else if (targetPlayerID > 0)
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.EDITOR_GM_ONLY_PING_TARGET_PLAYER, reporterID, targetPlayerID);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_GM_ONLY_PING_TARGET_PLAYER, reporterID, targetPlayerID);
 			//EditableEntity target
 			else 
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.EDITOR_GM_ONLY_PING_TARGET_ENTITY, reporterID, targetID);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.EDITOR_GM_ONLY_PING_TARGET_ENTITY, reporterID, targetID);
 		}
 	}
 	

@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class ScriptedSightsComponentClass: SightsComponentClass
 {
-};
+}
 
 class ScriptedSightsComponent: SightsComponent
 {
@@ -30,6 +30,8 @@ class ScriptedSightsComponent: SightsComponent
 	event void OnSightADSPostFrame(IEntity owner, float timeSlice);
 	//! Called every time the sight is deactivated.
 	event void OnSightADSDeactivated();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

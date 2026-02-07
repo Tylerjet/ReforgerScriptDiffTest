@@ -26,7 +26,15 @@ class SCR_RespawnBriefingSubMenu : SCR_RespawnSubMenuBase
 	
 	protected static const string FACTION_LAYOUT = "{2E728ED4D2D7875D}UI/layouts/Menus/RoleSelection/BriefingFaction.layout";
 	protected static const string VICTORY_CONDITION_LAYOUT = "{B8E6EEFD3EDEEC1C}UI/layouts/Menus/RoleSelection/BriefingVictoryCondition.layout";
+	protected static SCR_RespawnBriefingSubMenu s_Instance;
+	
 	protected SCR_RespawnBriefingComponent m_BriefingComponent;
+	
+	//------------------------------------------------------------------------------------------------
+	static SCR_RespawnBriefingSubMenu GetInstance()
+	{
+		return s_Instance;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override void GetWidgets()
@@ -229,8 +237,11 @@ class SCR_RespawnBriefingSubMenu : SCR_RespawnSubMenuBase
 		super.OnMenuHide(parentMenu);
 
 		if (m_BriefingComponent)
+		{
 			m_BriefingComponent.GetOnBriefingChanged().Remove(RefreshBriefing);
-
+			m_BriefingComponent.SetBriefingShown();
+		}
+		
 		GetGame().OnInputDeviceIsGamepadInvoker().Remove(OnInputDeviceIsGamepad);
 	}
 	
@@ -273,5 +284,18 @@ class SCR_RespawnBriefingSubMenu : SCR_RespawnSubMenuBase
 			factionFlag.SetSize(x, y);
 			
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_RespawnBriefingSubMenu()
+	{
+		s_Instance = this;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_RespawnBriefingSubMenu()
+	{
+		if (s_Instance == this) 
+			s_Instance = null;
 	}
 };

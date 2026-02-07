@@ -25,7 +25,6 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
@@ -72,7 +71,7 @@ class SCR_CampaignServiceEntityComponent : ScriptComponent
 		if (!m_DestMultiComp || !m_ServiceCompositionComp)
 			return;
 		
-		m_DestMultiComp.GoToDamagePhase(INITIAL_STATE);
+		m_DestMultiComp.GoToDamagePhase(INITIAL_STATE, false);
 		m_DestMultiComp.ReplicateDestructibleState(true);
 		m_ServiceCompositionComp.ChangeOperability(-m_iEntityOperabilityPart);
 		SetHitEvaluation(true);

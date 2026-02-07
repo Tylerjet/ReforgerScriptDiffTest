@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Effects
-* @{
+/*!
+\addtogroup Effects
+\{
 */
 
 class MuzzleEffectComponentClass: BaseEffectComponentClass
 {
-};
+}
 
 class MuzzleEffectComponent: BaseEffectComponent
 {
@@ -27,9 +27,9 @@ class MuzzleEffectComponent: BaseEffectComponent
 	Stop the particle effect
 	*/
 	proto external void Stop();
-	
+
 	// callbacks
-	
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -44,6 +44,8 @@ class MuzzleEffectComponent: BaseEffectComponent
 	*/
 	event void OnFrame(IEntity owner, float timeSlice);
 	event void OnFired(IEntity effectEntity, BaseMuzzleComponent muzzle, IEntity projectileEntity);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -77,6 +77,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private bool m_bIsUnderwater;
 	private int m_iHeightIndicatorColor;
 	private bool m_bPreviewDisabled;
+	protected bool m_bCanMoveInRoot;
 	
 	protected SCR_LayersEditorComponent m_LayerManager;
 	protected SCR_StatesEditorComponent m_StateManager;
@@ -85,6 +86,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 	private vector m_vLocalOffset;
 	private SCR_EditableEntityComponent m_Entity;
 	private EEditableEntityType m_EntityType;
+	protected ref SCR_EditableEntityInteraction m_Interaction;
 	
 	// OnPreviewCreate(SCR_BasePreviewEntity previewEntity)
 	private ref ScriptInvoker Event_OnPreviewCreate = new ScriptInvoker;
@@ -388,6 +390,13 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		return false;
 	}
 	/*!
+	\return True if the preview entity can be moved to root
+	*/
+	bool CanMoveInRoot()
+	{
+		return m_bCanMoveInRoot;
+	}
+	/*!
 	Show preview entity as disabled.
 	\param disable True to show as disabled, false to show in normal state
 	*/
@@ -504,6 +513,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 				//--- At least one entity must be compatible
 				foreach (SCR_BasePreviewEntity child: m_PreviewEntity.GetPreviewChildren())
 				{
+					if (!m_Interaction)
+						continue;
+					
 					EEditableEntityInteractionFlag interactionFlags = defaultInteractionFlags;
 					
 					editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetSourceEntity());
@@ -519,7 +531,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					if (m_StateManager && m_StateManager.GetState() == EEditorState.PLACING)
 						interactionFlags |= EEditableEntityInteractionFlag.PLACING;
 					
-					if (core.CanSetParent(m_EntityType, target, interactionFlags))
+					if (m_Interaction.CanSetParent(target, interactionFlags))
 					{
 						interaction = EEditableEntityInteraction.LAYER;
 						return true;
@@ -531,6 +543,9 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 				//--- All entities must be compatible
 				foreach (SCR_BasePreviewEntity child: m_PreviewEntity.GetPreviewChildren())
 				{
+					if (!m_Interaction)
+						return false;
+					
 					EEditableEntityInteractionFlag interactionFlags = defaultInteractionFlags;
 					
 					editableChild = SCR_EditableEntityComponent.GetEditableEntity(child.GetSourceEntity());
@@ -546,7 +561,7 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 					if (m_StateManager && m_StateManager.GetState() == EEditorState.PLACING)
 						interactionFlags |= EEditableEntityInteractionFlag.PLACING;
 					
-					if (!core.CanSetParent(m_EntityType, target, interactionFlags))
+					if (!m_Interaction.CanSetParent(target, interactionFlags))
 						return false;
 				}
 				interaction = EEditableEntityInteraction.LAYER;
@@ -751,6 +766,8 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 		m_bInstantTransformation = true;
 		m_Entity = pivot;
 		m_EntityType = pivot.GetEntityType();
+		m_Interaction = pivot.GetEntityInteraction();
+		m_bCanMoveInRoot = !m_Interaction || m_Interaction.CanSetParent(SCR_EditableEntityInteraction.ROOT, 0);
 		
 		SCR_EditableEntityUIInfo info = SCR_EditableEntityUIInfo.Cast(pivot.GetInfo());
 		if (info)
@@ -793,8 +810,10 @@ class SCR_PreviewEntityEditorComponent : SCR_BaseEditorComponent
 			IEntitySource entitySource = SCR_BaseContainerTools.FindEntitySource(prefabResource);
 			IEntityComponentSource entityComponent = SCR_BaseContainerTools.FindComponentSource(entitySource, SCR_EditableEntityComponent);
 			m_EntityType = SCR_EditableEntityComponentClass.GetEntityType(entityComponent);
+			m_Interaction = SCR_EditableEntityComponentClass.GetEntityInteraction(entityComponent);
 			m_SlotPrefab = SCR_EditableEntityComponentClass.GetSlotPrefab(entityComponent);
 			m_bIsFixedPosition = SCR_EditableEntityComponentClass.HasFlag(entityComponent, EEditableEntityFlag.STATIC_POSITION);
+			m_bCanMoveInRoot = !m_Interaction || m_Interaction.CanSetParent(SCR_EditableEntityInteraction.ROOT, 0);
 			
 			if (m_bIsFixedPosition)
 			{

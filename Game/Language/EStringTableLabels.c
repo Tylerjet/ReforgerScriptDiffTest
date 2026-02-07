@@ -68,6 +68,7 @@ enum EStringTableLabels
 	VALUE_UNIT_SHORT = 1404, ///< Units for Values short (Eg: s (Seconds), m/s (Meters per second))
 	TIME_OF_DAY = 1405, ///< Dawn, Dusk, Midnight SetCursor
 	WEATHER = 1406, ///< Clear, Cloudy, Rainy etc
+	BLOODTYPE = 1407, ///<Blood type A+ AB- ect
 
 	//Map
 	MAP_SETTLEMENTS = 2000, // Settlement names on map (Cities, town, villages)

@@ -31,7 +31,8 @@ enum EAICombatType
 	NONE,
 	NORMAL,
 	SUPPRESSIVE,
-	RETREAT
+	RETREAT,
+	SINGLE_SHOT
 };
 
 //------------------------------------------------------------------------------------------------
@@ -58,16 +59,33 @@ class SCR_AICombatComponent : ScriptComponent
 	
 	protected static ref array<EWeaponType> s_aWeaponBlacklistFragGrenades = {EWeaponType.WT_FRAGGRENADE};
 	
+	// Perception factors
+	protected const float PERCEPTION_FACTOR_SAFE = 1.0;			// We are safe and are good at recognizing enemies
+	protected const float PERCEPTION_FACTOR_VIGILANT = 2.5;		// When vigilant and alert we are very good at recognizing enemies
+	protected const float PERCEPTION_FACTOR_ALERTED = 2.5;
+	protected const float PERCEPTION_FACTOR_THREATENED = 0.4;	// We are suppressed and are bad at recognizing enemies
+	
+	protected const float PERCEPTION_FACTOR_EQUIPMENT_BINOCULARS = 3.0;	// Looking through binoculars
+	protected const float PERCEPTION_FACTOR_EQUIPMENT_NONE = 1.0;		// Not using any special equipment, same recognition ability as usual
+	
+	
 	protected SCR_ChimeraAIAgent m_Agent;
+	protected SCR_CharacterControllerComponent		m_CharacterController;
 	protected SCR_InventoryStorageManagerComponent	m_InventoryManager;
 	protected EventHandlerManagerComponent			m_EventHandlerManagerComponent;
 	protected BaseWeaponManagerComponent			m_WpnManager;
-	protected BaseWeaponComponent					m_CurrentWeapon;
 	protected SCR_CompartmentAccessComponent		m_CompartmentAccess;
+	protected ScriptedDamageManagerComponent		m_DamageManager;
 	protected PerceptionComponent 					m_Perception;
 	protected SCR_AIInfoComponent					m_AIInfo;
-	private PerceivableComponent 					m_TargetPerceivable;
+	protected SCR_AIUtilityComponent				m_Utility;
 	
+	// Cached data about current vehicle and compartment
+	protected IEntity m_CurrentVehicle;								// Current vehicle. It's not always same as compartment owner!
+	protected SCR_BaseCompartmentManagerComponent m_CurrentVehicleCompartmentManager;	// Vehicle's compartment manager
+	protected BaseCompartmentSlot m_CurrentCompartmentSlot;			// Current compartment slot
+	protected TurretControllerComponent m_CurrentTurretController;	// Current turret controller (if we are in a turret)
+
 	protected EAICombatActions	m_iAllowedActions; //will be initialized with default combat type
 	protected EAICombatType		m_eCombatType = EAICombatType.NORMAL;
 	protected EAICombatType		m_eDefaultCombatType = EAICombatType.NORMAL;
@@ -98,7 +116,6 @@ class SCR_AICombatComponent : ScriptComponent
 	protected ref BaseTarget m_SelectedRetreatTarget;				// Target we should retreat from
 	protected ref array<IEntity> m_aAssignedTargets = {};			// Array with assigned targets. Their score is increased.
 	protected EAIUnitType m_eExpectedEnemyType = EAIUnitType.UnitType_Infantry;	// Enemy type we expect to fight
-	bool m_bMustRetreat;											// True when combat component perceives that we must retreat
 	protected ResourceName m_SelectedWeaponResource;				// selected weapon handle tree read from config
 
 	// Weapon selection against a specific target and its properties
@@ -123,6 +140,21 @@ class SCR_AICombatComponent : ScriptComponent
 	protected const float WEAPON_TARGET_UPDATE_PERIOD_MS = 500;
 	
 	protected SCR_AIConfigComponent m_ConfigComponent;
+	
+	
+	// Turret dismounting
+	protected float m_fDismountTurretTimer;
+	protected static const float DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S = 100;
+	protected static const float TURRET_TARGET_EXCESS_ANGLE_THRESHOLD_DEG = 3.0; // We will dismount turret when target's angle exceeds turret limits by this value
+	protected const float DISMOUNT_TURRET_TIMER_MS = 1200; // How much time must pass till we decide to dismount a turret if enemy is out of turret limits.
+	static ref array<EVehicleType> s_aForbidDismountTurretsOfVehicleTypes = {EVehicleType.APC}; // Array of vehicle types we should not dismount when turret can't shoot the target
+	
+	// Perception
+	protected float m_fEquipmentPerceptionFactor = 1.0; // How good we can spot targets based on our current equipment. Updated by RecalculateEquipmentPerceptionFactor().
+	
+	// Gadget state. Used for detection when we use binoculars.
+	EGadgetType m_eCurrentGadgetType = -1;
+	bool m_bGadgetFocus = false; // True when we are in gadget focus mode (like looking through binoculars)
 	
 	//------------------------------------------------------------------------------------------------
 	EAISkill GetAISkill()
@@ -155,9 +187,24 @@ class SCR_AICombatComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	EWeaponType GetCurrentWeaponType()
 	{
-		if (m_CurrentWeapon)
-			return m_CurrentWeapon.GetWeaponType();
-		else return EWeaponType.WT_NONE;
+		BaseWeaponComponent currentWeapon = null;
+		if (m_CurrentTurretController)
+		{
+			// If we are in turret, find turret weapon
+			BaseWeaponManagerComponent turretWpnMgr = m_CurrentTurretController.GetWeaponManager();
+			if (turretWpnMgr)
+				currentWeapon = turretWpnMgr.GetCurrentWeapon();
+		}
+		else if (m_WpnManager)
+		{
+			// If not in turret, use character's weapon
+			currentWeapon = m_WpnManager.GetCurrentWeapon();
+		}
+		
+		if (currentWeapon)
+			return currentWeapon.GetWeaponType();
+		
+		return EWeaponType.WT_NONE;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -207,7 +254,8 @@ class SCR_AICombatComponent : ScriptComponent
 	//! selectedTargetChanged - when true, selected target has changed
 	//! outRetreatTargetChanged - when true, the most dangerous target we should retreat from has changed since last evaluation
 	//! outCompartmentChanged - when true, compartment has changed since last evaluation
-	void EvaluateWeaponAndTarget(out bool outWeaponEvent, out bool outSelectedTargetChanged, out bool outRetreatTargetChanged, out bool outCompartmentChanged)
+	void EvaluateWeaponAndTarget(out bool outWeaponEvent, out bool outSelectedTargetChanged,
+		out bool outRetreatTargetChanged, out bool outCompartmentChanged)
 	{
 		float worldTime = GetGame().GetWorld().GetWorldTime();
 		if (worldTime < m_fNextWeaponTargetEvaluation_ms)
@@ -333,11 +381,6 @@ class SCR_AICombatComponent : ScriptComponent
 		
 		m_SelectedTarget = newTarget;
 		
-		if (newTarget && newTarget.GetTargetEntity())
-			m_TargetPerceivable = PerceivableComponent.Cast(newTarget.GetTargetEntity().FindComponent(PerceivableComponent));
-		else
-			m_TargetPerceivable = null;
-		
 		// suppressive regime is cleared when target is changed
 		if (GetCombatType() == EAICombatType.SUPPRESSIVE)
 			ResetCombatType();
@@ -419,6 +462,150 @@ class SCR_AICombatComponent : ScriptComponent
 		return magCount < lowMagThreshold;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	void Update(float timeSliceMs)
+	{
+		// Evaluate if we must dismount turret - only if we are already in turret
+		if (m_CurrentTurretController)
+			EvaluateDismountTurret(timeSliceMs);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Condition to dismount turret
+	//! Returns true when we should dismount it immediately
+	bool DismountTurretCondition(inout vector targetPos, bool targetPosProvided)
+	{
+		// False if not in turret
+		if (!m_CurrentTurretController)
+			return false;
+		TurretComponent turretComp = m_CurrentTurretController.GetTurretComponent();
+		if (!turretComp)
+			return false;
+		
+		// False if we have a valid target to attack
+		if (m_SelectedTarget)
+			return false;
+		
+		// False if we have a driver in the vehicle
+		array<BaseCompartmentSlot> compartments = {};
+		m_CurrentVehicleCompartmentManager.GetCompartments(compartments);
+		foreach (BaseCompartmentSlot slot : compartments)
+		{
+			if (PilotCompartmentSlot.Cast(slot) && slot.GetOccupant())
+				return false;
+		}
+		
+		// False if we are in a vehicle and we should not leave turret of this vehicle type
+		// Note that static turrets are not of Vehicle class.
+		Vehicle vehicle = Vehicle.Cast(m_CurrentVehicle);
+		if (vehicle && s_aForbidDismountTurretsOfVehicleTypes.Find(vehicle.m_eVehicleType) != -1)
+			return false;
+		
+		// If target pos is not provided, find a target which we are going to check against
+		if (!targetPosProvided)
+		{
+			BaseTarget target = m_Perception.GetClosestTarget(ETargetCategory.DETECTED, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
+			if (target)
+				targetPos = target.GetLastDetectedPosition();
+			else
+			{
+				target = m_Perception.GetClosestTarget(ETargetCategory.ENEMY, DISMOUNT_TURRET_TARGET_LAST_SEEN_MAX_S);
+				if (target)
+					targetPos = target.GetLastSeenPosition();
+			}
+			
+			// False if there is no target which would cause us to dismount
+			if (!target)
+				return false;
+			else
+			{
+				IEntity targetEntity = target.GetTargetEntity();
+				if (!targetEntity)
+					return false;
+				else
+				{
+					vector bmin, bmax;
+					targetEntity.GetBounds(bmin, bmax);
+					targetPos = targetPos + 0.5 * (bmin + bmax);
+				}
+			}
+		}
+			
+		// Check angle excess of the target's position
+		vector angleExcess = turretComp.GetAimingAngleExcess(targetPos);
+		
+		//PrintFormat("Excess angle: %1", angleExcess);
+		
+		return angleExcess.Length() > TURRET_TARGET_EXCESS_ANGLE_THRESHOLD_DEG;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void EvaluateDismountTurret(float timeSliceMs)
+	{
+		vector targetPos;
+		bool mustDismount = DismountTurretCondition(targetPos, false);
+		
+		if (!mustDismount)
+		{
+			m_fDismountTurretTimer = 0;
+		}
+		else
+		{
+			// Do nothing if already requested to dismount
+			if (m_fDismountTurretTimer == -1.0)
+				return;
+			
+			m_fDismountTurretTimer += timeSliceMs;
+			
+			if (m_fDismountTurretTimer > DISMOUNT_TURRET_TIMER_MS)
+			{
+				m_fDismountTurretTimer = -1.0;
+				
+				TryAddDismountTurretActions(targetPos);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Adds action to dismount turret, investigate, and go back
+	void TryAddDismountTurretActions(vector targetPos, bool addGetOut = true, bool addInvestigate = true, bool addGetIn = true)
+	{
+		BaseCompartmentSlot compartmentSlot = m_CurrentCompartmentSlot;
+		if (!compartmentSlot)
+			return;
+		
+		if (addGetOut)
+		{
+			SCR_AIActionBase prevGetOutAction = m_Utility.FindActionOfType(SCR_AIGetOutVehicle);
+			if (prevGetOutAction)
+				return;
+			
+			SCR_AIGetOutVehicle getOutAction = new SCR_AIGetOutVehicle(m_Utility, null, compartmentSlot.GetOwner(), SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET);
+			m_Utility.AddAction(getOutAction);
+		}
+		
+		if (addInvestigate)
+		{
+			SCR_AIActionBase prevInvestigate = m_Utility.FindActionOfType(SCR_AIMoveAndInvestigateBehavior);
+			if (!prevInvestigate)
+			{
+				SCR_AIMoveAndInvestigateBehavior moveAndInvestigateAction = new SCR_AIMoveAndInvestigateBehavior(m_Utility, null, targetPos, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_INVESTIGATE, true);
+				m_Utility.AddAction(moveAndInvestigateAction);
+			}
+		}
+		
+		if (addGetIn)
+		{	
+			SCR_AIActionBase prevGetInAction = m_Utility.FindActionOfType(SCR_AIGetInVehicle);
+			if (!prevGetInAction)
+			{
+				SCR_AIGetInVehicle getInAction = new SCR_AIGetInVehicle(m_Utility, null, compartmentSlot.GetVehicle(), ECompartmentType.Turret, SCR_AIActionBase.PRIORITY_BEHAVIOR_DISMOUNT_TURRET_GET_IN);
+				m_Utility.AddAction(getInAction);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	protected static const float DISTANCE_MAX = 22; 
 	protected static const float DISTANCE_MIN = 6; // Minimal distance when movement is allowed
 	private static const float NEAR_PROXIMITY = 2;
@@ -506,12 +693,6 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void Event_OnWeaponChanged(BaseWeaponComponent weapon, BaseWeaponComponent prevWeapon)
-	{
-		m_CurrentWeapon = weapon;
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	protected void Event_OnInventoryChanged(IEntity item, BaseInventoryStorageComponent storageOwner)
 	{
 		// This event spams so much, especially at start, we want to process it only once
@@ -522,6 +703,76 @@ class SCR_AICombatComponent : ScriptComponent
 	protected void Event_OnTimerAfterInventoryChanged()
 	{
 		//EvaluateAndReportOutOfAmmo();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Event_OnCompartmentEntered( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	{
+		m_CurrentCompartmentSlot = manager.FindCompartment(slotID, mgrID);
+		IEntity compartmentEntity = m_CurrentCompartmentSlot.GetOwner();
+		m_CurrentTurretController = TurretControllerComponent.Cast(compartmentEntity.FindComponent(TurretControllerComponent));
+		m_CurrentVehicle = m_CurrentCompartmentSlot.GetVehicle();
+		m_CurrentVehicleCompartmentManager = SCR_BaseCompartmentManagerComponent.Cast(m_CurrentVehicle.FindComponent(SCR_BaseCompartmentManagerComponent));
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void Event_OnCompartmentLeft( IEntity vehicle, BaseCompartmentManagerComponent manager, int mgrID, int slotID )
+	{
+		m_CurrentVehicle = null;
+		m_CurrentCompartmentSlot = null;
+		m_CurrentTurretController = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Event_OnGadgetStateChanged(IEntity gadget, bool isInHand, bool isOnGround)
+	{
+		if (isInHand)
+		{
+			SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(gadget.FindComponent(SCR_GadgetComponent));
+			if (gadgetComp)
+				m_eCurrentGadgetType = gadgetComp.GetType();
+			else
+				m_eCurrentGadgetType = -1;
+		}
+		else
+			m_eCurrentGadgetType = -1;
+		
+		RecalculateEquipmentPerceptionFactor();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Event_OnGadgetFocusStateChanged(IEntity gadget, bool isFocused)
+	{
+		m_bGadgetFocus = isFocused;
+		RecalculateEquipmentPerceptionFactor();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void Event_OnDamageOverTimeAdded(EDamageType dType, float dps, HitZone hz)
+	{
+		if (dType != EDamageType.BLEEDING || !m_Utility || !m_Utility.m_AIInfo)
+			return;
+		
+		if (m_Utility.m_AIInfo.HasRole(EUnitRole.MEDIC))
+		{
+			if (!m_Utility.HasActionOfType(SCR_AIHealBehavior))
+			{
+				// If we can heal ourselves, add Heal Behavior.
+				SCR_AIHealBehavior behavior = new SCR_AIHealBehavior(m_Utility, null, m_Utility.m_OwnerEntity,true);
+				m_Utility.AddAction(behavior);
+			}
+		}
+		else if (m_Agent)
+		{
+			// If we immediately know that we can't heal ourselves, report to group
+			AIGroup myGroup = m_Agent.GetParentGroup();
+			if (myGroup)
+			{
+				SCR_MailboxComponent myMailbox = SCR_MailboxComponent.Cast(m_Agent.FindComponent(SCR_MailboxComponent));
+				SCR_AIMessage_Wounded msg = SCR_AIMessage_Wounded.Create(m_Utility.m_OwnerEntity);
+				myMailbox.RequestBroadcast(msg, myGroup);
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -563,7 +814,7 @@ class SCR_AICombatComponent : ScriptComponent
 		else
 		{
 			SetCombatType(m_eCombatType);
-		}	
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -611,6 +862,14 @@ class SCR_AICombatComponent : ScriptComponent
 			{
 				SetActionAllowed(EAICombatActions.HOLD_FIRE,false);
 				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,true);
+				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
+				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,false);
+				break;
+			}
+			case EAICombatType.SINGLE_SHOT:
+			{
+				SetActionAllowed(EAICombatActions.HOLD_FIRE,false);
+				SetActionAllowed(EAICombatActions.MOVEMENT_WHEN_FIRE,false);
 				SetActionAllowed(EAICombatActions.SUPPRESSIVE_FIRE,false);
 				SetActionAllowed(EAICombatActions.MOVEMENT_TO_LAST_SEEN,false);
 				break;
@@ -707,7 +966,7 @@ class SCR_AICombatComponent : ScriptComponent
 			if (SCR_AIIsCharacterInCone(friendlyCharacterEnt, muzzleMatrix[3], muzzleMatrix[2], FRIENDLY_AIM_SAFE_DISTANCE))
 			{
 				return friendlyEntity;
-			}					
+			}
 		}
 		
 		return null;
@@ -811,13 +1070,23 @@ class SCR_AICombatComponent : ScriptComponent
 	override void EOnInit(IEntity owner)
 	{
 		m_EventHandlerManagerComponent = EventHandlerManagerComponent.Cast(owner.FindComponent(EventHandlerManagerComponent));
-		if (m_EventHandlerManagerComponent)
-			m_EventHandlerManagerComponent.RegisterScriptHandler("OnWeaponChanged", this, this.Event_OnWeaponChanged, true);
 		m_eAISkill = m_eAISkillDefault;
+		
+		m_CharacterController = SCR_CharacterControllerComponent.Cast(owner.FindComponent(SCR_CharacterControllerComponent));
+		if (m_CharacterController)
+		{
+			m_CharacterController.m_OnGadgetStateChangedInvoker.Insert(Event_OnGadgetStateChanged);
+			m_CharacterController.m_OnGadgetFocusStateChangedInvoker.Insert(Event_OnGadgetFocusStateChanged);
+		}
 		
 		m_WpnManager = BaseWeaponManagerComponent.Cast(owner.FindComponent(BaseWeaponManagerComponent));
 		m_InventoryManager = SCR_InventoryStorageManagerComponent.Cast(owner.FindComponent(SCR_InventoryStorageManagerComponent));
 		m_CompartmentAccess = SCR_CompartmentAccessComponent.Cast(owner.FindComponent(SCR_CompartmentAccessComponent));
+		if (m_CompartmentAccess)
+		{
+			m_CompartmentAccess.GetOnCompartmentEntered().Insert(Event_OnCompartmentEntered);
+			m_CompartmentAccess.GetOnCompartmentLeft().Insert(Event_OnCompartmentLeft);
+		}
 		m_Perception = PerceptionComponent.Cast(owner.FindComponent(PerceptionComponent));
 		
 		auto world = GetGame().GetWorld();
@@ -838,6 +1107,12 @@ class SCR_AICombatComponent : ScriptComponent
 		{
 			InitWeaponTargetSelector(owner);
 		}
+
+		m_DamageManager = ScriptedDamageManagerComponent.Cast(owner.FindComponent(ScriptedDamageManagerComponent));
+		if (m_DamageManager)
+		{
+			m_DamageManager.GetOnDamageOverTimeAdded().Insert(Event_OnDamageOverTimeAdded);
+		}
 		
 		AIControlComponent ctrl = AIControlComponent.Cast(owner.FindComponent(AIControlComponent));
 		if (ctrl)
@@ -847,8 +1122,30 @@ class SCR_AICombatComponent : ScriptComponent
 			{
 				m_AIInfo = SCR_AIInfoComponent.Cast(agent.FindComponent(SCR_AIInfoComponent));
 				m_ConfigComponent = SCR_AIConfigComponent.Cast(agent.FindComponent(SCR_AIConfigComponent));
+				m_Utility = SCR_AIUtilityComponent.Cast(agent.FindComponent(SCR_AIUtilityComponent));
 			}
-		}	
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		if (m_CompartmentAccess)
+		{
+			m_CompartmentAccess.GetOnCompartmentEntered().Remove(Event_OnCompartmentEntered);
+			m_CompartmentAccess.GetOnCompartmentLeft().Remove(Event_OnCompartmentLeft);
+		}
+		
+		if (m_CharacterController)
+		{
+			m_CharacterController.m_OnGadgetStateChangedInvoker.Remove(Event_OnGadgetStateChanged);
+			m_CharacterController.m_OnGadgetFocusStateChangedInvoker.Remove(Event_OnGadgetFocusStateChanged);
+		}
+		
+		if (m_DamageManager)
+		{
+			m_DamageManager.GetOnDamageOverTimeAdded().Remove(Event_OnDamageOverTimeAdded);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -867,11 +1164,39 @@ class SCR_AICombatComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void UpdatePerceptionFactor(PerceptionComponent perceptionComp, SCR_AIThreatSystem threatSystem)
+	{
+		EAIThreatState threatState = threatSystem.GetState();
+		float perceptionFactor;
+		switch (threatState)
+		{
+			case EAIThreatState.SAFE:
+				perceptionFactor = PERCEPTION_FACTOR_SAFE; break; 
+			case EAIThreatState.VIGILANT:
+				perceptionFactor = PERCEPTION_FACTOR_VIGILANT; break;
+			case EAIThreatState.ALERTED:
+				perceptionFactor = PERCEPTION_FACTOR_ALERTED; break; 
+			case EAIThreatState.THREATENED:
+				perceptionFactor = PERCEPTION_FACTOR_THREATENED; break; 
+		}
+		
+		perceptionFactor *= m_fEquipmentPerceptionFactor;
+		
+		perceptionComp.SetPerceptionFactor(perceptionFactor);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RecalculateEquipmentPerceptionFactor()
+	{
+		if (m_eCurrentGadgetType == EGadgetType.BINOCULARS && m_bGadgetFocus)
+			m_fEquipmentPerceptionFactor = PERCEPTION_FACTOR_EQUIPMENT_BINOCULARS;
+		else
+			m_fEquipmentPerceptionFactor = PERCEPTION_FACTOR_EQUIPMENT_NONE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_AICombatComponent()
 	{
-		if (m_EventHandlerManagerComponent)
-			m_EventHandlerManagerComponent.RemoveScriptHandler("OnWeaponChanged", this, this.Event_OnWeaponChanged, true);
-		
 		GetGame().GetCallqueue().Remove(Event_OnTimerAfterInventoryChanged);
 	}
 	
@@ -989,7 +1314,7 @@ class SCR_AICombatComponent : ScriptComponent
 		}
 		
 		// End if we have no weapons to attack this target
-		if (enemyTarget.GetUnitType() & m_eUnitTypesCanAttack == 0)
+		if ((enemyTarget.GetUnitType() & m_eUnitTypesCanAttack) == 0)
 		{
 #ifdef AI_DEBUG
 			AddDebugMessage(string.Format("Ending attack for target: %1. No weapons to attack this target.", enemyTarget));
@@ -998,7 +1323,7 @@ class SCR_AICombatComponent : ScriptComponent
 			shouldInvestigateFurther = false;
 			return true;
 		}
-				
+		
 		return false;
-	}	
+	}
 };

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Road
-* @{
+/*!
+\addtogroup Road
+\{
 */
 
 /*!
@@ -23,7 +23,9 @@ enum RoadType
 	ROADT_BRIDGE,
 	//! TODO: this is temporary
 	ROADT_NOT_A_ROAD,
-	ROADT_COUNT
-};
+	ROADT_COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

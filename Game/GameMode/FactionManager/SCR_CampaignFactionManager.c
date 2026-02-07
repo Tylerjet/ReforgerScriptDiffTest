@@ -31,12 +31,12 @@ class SCR_RankIDCampaign: SCR_RankID
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_CampaignFactionManagerClass: SCR_MilitaryFactionManagerClass
+class SCR_CampaignFactionManagerClass: SCR_FactionManagerClass
 {
 };
 
 //------------------------------------------------------------------------------------------------
-class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
+class SCR_CampaignFactionManager : SCR_FactionManager
 {
 	protected static SCR_CampaignFactionManager s_Instance;
 	
@@ -131,7 +131,7 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRankXP(ECharacterRank rankID)
+	int GetRankXP(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
 		
@@ -142,7 +142,7 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRankRequestCooldown(ECharacterRank rankID)
+	int GetRankRequestCooldown(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
 		
@@ -153,7 +153,7 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	int GetRankRadioRespawnCooldown(ECharacterRank rankID)
+	int GetRankRadioRespawnCooldown(SCR_ECharacterRank rankID)
 	{
 		SCR_RankIDCampaign rank = SCR_RankIDCampaign.Cast(GetRankByID(rankID));
 		
@@ -164,13 +164,13 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ECharacterRank GetRankByXP(int XP)
+	SCR_ECharacterRank GetRankByXP(int XP)
 	{
 		if (!m_aRanks)
-			return ECharacterRank.INVALID;
+			return SCR_ECharacterRank.INVALID;
 		
 		int maxFoundXP = -100000;
-		ECharacterRank rankFound = GetRenegadeRank();
+		SCR_ECharacterRank rankFound = GetRenegadeRank();
 		
 		foreach (SCR_RankID rank: m_aRanks)
 		{
@@ -188,18 +188,18 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns the next higher rank
-	ECharacterRank GetRankNext(ECharacterRank rank)
+	SCR_ECharacterRank GetRankNext(SCR_ECharacterRank rank)
 	{
 		int rankXP = GetRankXP(rank);
 		int higherXP = 99999;
-		ECharacterRank foundID = ECharacterRank.INVALID;
+		SCR_ECharacterRank foundID = SCR_ECharacterRank.INVALID;
 		
 		foreach (SCR_RankID r: m_aRanks)
 		{
 			if (!r)
 				continue;
 			
-			ECharacterRank ID = r.GetRankID();
+			SCR_ECharacterRank ID = r.GetRankID();
 			int thisXP = GetRankXP(ID);
 			
 			if (thisXP > rankXP && thisXP < higherXP)
@@ -214,18 +214,18 @@ class SCR_CampaignFactionManager : SCR_MilitaryFactionManager
 	
 	//------------------------------------------------------------------------------------------------
 	//! Returns the next lower rank
-	ECharacterRank GetRankPrev(ECharacterRank rank)
+	SCR_ECharacterRank GetRankPrev(SCR_ECharacterRank rank)
 	{
 		int rankXP = GetRankXP(rank);
 		int lowerXP = -99999;
-		ECharacterRank foundID = ECharacterRank.INVALID;
+		SCR_ECharacterRank foundID = SCR_ECharacterRank.INVALID;
 		
 		foreach (SCR_RankID r: m_aRanks)
 		{
 			if (!r)
 				continue;
 			
-			ECharacterRank ID = r.GetRankID();
+			SCR_ECharacterRank ID = r.GetRankID();
 			int thisXP = GetRankXP(ID);
 			
 			if (thisXP < rankXP && thisXP > lowerXP)

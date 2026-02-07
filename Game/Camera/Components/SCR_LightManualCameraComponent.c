@@ -52,15 +52,19 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 	[Attribute("200", desc: "Pointing light will be max light intensity fi this distance from light or higher")]
 	protected float m_fPointingLightIntensityMaxDistance;
 	
-	[Attribute("14", desc: "Max intensity of camera light. This uses m_fCameraLightIntensityMaxHeight from ground (alpha 1) to calculate the alpha to use in m_cCameraLightIntensityCurve", params: "-8 21")]
-	protected float m_fCameraLightIntesityMax;
-	[Attribute("14", desc: "Max intensity of pointer light. This uses the m_fPointingLightIntensityMaxDistance (alpha 1) to calculate alpha to use in m_cPointingLightIntensityCurve", params: "-8 21")]
-	protected float m_fPointingLightIntesityMax;	
-	
-	[Attribute("10", desc: "Min intensity of camera light. This uses the ground level (alpha 0) to calculate the alpha to use in m_cCameraLightIntensityCurve", params: "-8 21")]
+
+	[Attribute("17", desc: "Min intensity of camera light. This uses the ground level (alpha 0) to calculate the alpha to use in m_cCameraLightIntensityCurve", params: "-8 21")]
 	protected float m_fCameraLightIntesityMin;
-	[Attribute("13", desc: "Min intensity of pointer light. This uses the m_fPointingLightIntensityMaxDistance (alpha 0) to calculate the alpha to use in m_cPointingLightIntensityCurve", params: "-8 21")]
+	
+	[Attribute("17", desc: "Max intensity of camera light. This uses m_fCameraLightIntensityMaxHeight from ground (alpha 1) to calculate the alpha to use in m_cCameraLightIntensityCurve", params: "-8 21")]
+	protected float m_fCameraLightIntesityMax;
+	
+
+	[Attribute("17", desc: "Min intensity of pointer light. This uses the m_fPointingLightIntensityMaxDistance (alpha 0) to calculate the alpha to use in m_cPointingLightIntensityCurve", params: "-8 21")]
 	protected float m_fPointingLightIntesityMin;
+	
+	[Attribute("17", desc: "Max intensity of pointer light. This uses the m_fPointingLightIntensityMaxDistance (alpha 1) to calculate alpha to use in m_cPointingLightIntensityCurve", params: "-8 21")]
+	protected float m_fPointingLightIntesityMax;	
 	
 	protected bool m_bIsUsingKeyboardAndMouse = true;
 	
@@ -248,6 +252,7 @@ class SCR_LightManualCameraComponent : SCR_BaseManualCameraComponent
 			
 			//~ Set light intensity depending on distance
 			float lightIntensity =  Math.Lerp(m_fPointingLightIntesityMin, m_fPointingLightIntesityMax, Math3D.Curve(ECurveType.CurveProperty2D, Math.Clamp((distanceSq - lightDetachDistanceSq) / (m_fPointingLightIntensityMaxDistance - lightDetachDistanceSq), 0, 1), m_cPointingLightIntensityCurve)[1]);
+			Print(lightIntensity);
 			m_PointingLight.SetColor(m_cPointingLightColor, Math.Clamp(lightIntensity, m_fLightMinLV, m_fLightMaxLV));						
 		}
 		//~ Delete the light if there is any

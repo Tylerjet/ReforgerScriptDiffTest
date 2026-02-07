@@ -1,127 +1,78 @@
-//-----------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 [EntityEditorProps(category: "GameLib/Scripted/Generator", description: "PowerlineGeneratorEntity", dynamicBox: true, visible: false)]
-class SCR_PowerlineGeneratorEntityClass: SCR_GeneratorBaseEntityClass
+class SCR_PowerlineGeneratorEntityClass : SCR_GeneratorBaseEntityClass
 {
 };
 
-//-----------------------------------------------------------------------
-enum SCR_PowerlineGeneratorType
-{
-	SMALL,
-	MIDDLE
-};
-
-//-----------------------------------------------------------------------
-class SCR_Line : Managed
-{
-	vector m_vPoint1;
-	vector m_vPoint2;
-};
-
-//-----------------------------------------------------------------------
-[BaseContainerProps()]
-class SCR_PowerlineGeneratorJunctionData
-{
-	[Attribute()]
-	protected ResourceName m_JunctionPrefab;
-
-	[Attribute()]
-	protected bool m_bRotate180Degrees;
-
-	bool GetRotate180Degrees()
-	{
-		return m_bRotate180Degrees;
-	}
-
-	ResourceName GetJunctionResourceName()
-	{
-		return m_JunctionPrefab;
-	}
-};
-
-//-----------------------------------------------------------------------
-class SCR_PowerlineGeneratorPointData : ShapePointDataScriptBase
-{
-	[Attribute()]
-	float m_fPoleOffset;
-
-	[Attribute("0", "Starts generating poles on points, until a point with this attribute unchecked is reached.")]
-	bool m_bGeneratePerPoint;
-
-	[Attribute()]
-	ref SCR_PowerlineGeneratorJunctionData m_JunctionData;
-};
-
-//-----------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------
 class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 {
-	[Attribute(defvalue: "1", desc: "How far should the poles be from each other.", category: "Pole setup")]
-	float m_fDistance;
+	[Attribute(defvalue: "1", desc: "How far should the poles be from each other.", category: "Pole Setup")]
+	protected float m_fDistance;
 
-	[Attribute(params: "et", category: "Pole setup")]
-	ResourceName m_DefaultPole;
+	[Attribute(params: "et", category: "Pole Setup")]
+	protected ResourceName m_DefaultPole;
 
-	[Attribute(params: "et", category: "Pole setup")]
-	ResourceName m_StartPole;
+	[Attribute(params: "et", category: "Pole Setup")]
+	protected ResourceName m_StartPole;
 
-	[Attribute(params: "et", category: "Pole setup")]
-	ResourceName m_EndPole;
+	[Attribute(params: "et", category: "Pole Setup")]
+	protected ResourceName m_EndPole;
 
-	[Attribute(params: "et", category: "Pole setup")]
-	ResourceName m_DefaultJunctionPole;
+	[Attribute(params: "et", category: "Pole Setup")]
+	protected ResourceName m_DefaultJunctionPole;
 
-	[Attribute(defvalue: "false", category: "Pole setup")]
-	bool m_bRotate180DegreeYawStartPole;
+	[Attribute(defvalue: "false", category: "Pole Setup")]
+	protected bool m_bRotate180DegreeYawStartPole;
 
-	[Attribute(defvalue: "false", category: "Pole setup")]
-	bool m_bRotate180DegreeYawEndPole;
-
-	[Attribute(defvalue: "0", category: "Randomisation", desc: "Maximum random pitch angle (from Y-axis)", params: "0 180 1")]
-	float m_fRandomPitchAngle;
-
-	[Attribute(defvalue: "true", category: "Randomisation", desc: "Make the random pitch possible on both sides (-180..+180°) or, if disabled, one side only (0..180°)")]
-	bool m_bRandomPitchOnBothSides;
-
-	[Attribute(defvalue: "0", category: "Randomisation", desc: "Maximum random roll angle (from Y-axis)", params: "0 180 1")]
-	float m_fRandomRollAngle;
-
-	[Attribute(defvalue: "true", category: "Randomisation", desc: "Make the random roll possible on both sides (-180..+180°) or, if disabled, one side only (0..180°)")]
-	bool m_bRandomRollOnBothSides;
-
-	[Attribute(defvalue: "false", category: "Randomisation", desc: "Apply randomisation to default poles")]
-	bool m_bApplyPitchAndRollDefault;
-
-	[Attribute(defvalue: "false", category: "Randomisation", desc: "Apply randomisation to start pole")]
-	bool m_bApplyPitchAndRollStart;
-
-	[Attribute(defvalue: "false", category: "Randomisation", desc: "Apply randomisation to end pole")]
-	bool m_bApplyPitchAndRollEnd;
-
-	[Attribute(category: "Powerlines", params: "emat", uiwidget: UIWidgets.ResourceNamePicker)]
-	ResourceName m_PowerlineMaterial;
-
-	[Attribute(defvalue: "false", category: "Debug")]
-	bool m_bDrawDebugShapes;
+	[Attribute(defvalue: "false", category: "Pole Setup")]
+	protected bool m_bRotate180DegreeYawEndPole;
 
 	// Using Clearance not m_fClearance for consistency with other generators (c++)
-	// REQUIRED, do not remove even if apparently unused in code
-	[Attribute(defvalue: "0", category: "Pole setup", desc: "Expected empty space around the poles line by other generators", params: "0 100 1")]
-	float Clearance;
+	[Attribute(defvalue: "0", desc: "Expected empty space around the poles line by other generators", params: "0 100 1", category: "Pole Setup")]
+	protected float Clearance; //!< Used by ForestGeneratorEntity
 
-	static ref array<vector> s_aJunctionPoints = {};
-	static ref map<int, IEntity> s_mJuctionPointsToEntitiesMap = new ref map<int, IEntity>();
+	[Attribute(defvalue: "0", desc: "Maximum random pitch angle (from Y-axis)", params: "0 180 1", category: "Randomisation")]
+	protected float m_fRandomPitchAngle;
 
-	ref array<IEntity> m_aMyJunctionPoles = {};
-	ref array<IEntity> m_aOtherJunctionPoles = {};
+	[Attribute(defvalue: "true", desc: "Make the random pitch possible on both sides (-180..+180°) or, if disabled, one side only (0..180°)", category: "Randomisation")]
+	protected bool m_bRandomPitchOnBothSides;
 
-	ShapeEntity m_ParentShape;
+	[Attribute(defvalue: "0", desc: "Maximum random roll angle (from Y-axis)", params: "0 180 1", category: "Randomisation")]
+	protected float m_fRandomRollAngle;
 
-	ref array<ref Shape> m_aDebugShapes = {};
-	IEntity m_PreviousPowerPole;
+	[Attribute(defvalue: "true", desc: "Make the random roll possible on both sides (-180..+180°) or, if disabled, one side only (0..180°)", category: "Randomisation")]
+	protected bool m_bRandomRollOnBothSides;
 
-	//QUERY DATA
-	static ref array<IEntitySource> s_aGenerators = {};
-	static IEntitySource s_CurrentQueryGenerator;
+	[Attribute(defvalue: "false", desc: "Apply randomisation to default poles", category: "Randomisation")]
+	protected bool m_bApplyPitchAndRollDefault;
+
+	[Attribute(defvalue: "false", desc: "Apply randomisation to start pole", category: "Randomisation")]
+	protected bool m_bApplyPitchAndRollStart;
+
+	[Attribute(defvalue: "false", desc: "Apply randomisation to end pole", category: "Randomisation")]
+	protected bool m_bApplyPitchAndRollEnd;
+
+	[Attribute(uiwidget: UIWidgets.ResourceNamePicker, params: "emat", category: "Power Lines")]
+	protected ResourceName m_PowerlineMaterial;
+
+	[Attribute(defvalue: "0", category: "Debug")]
+	protected bool m_bDrawDebugShapes;
+
+	protected static ref array<vector> s_aJunctionPoints = {};
+	protected static ref map<int, IEntity> s_mJuctionPointsToEntitiesMap = new map<int, IEntity>();
+
+	protected ref array<IEntity> m_aMyJunctionPoles = {};
+	protected ref array<IEntity> m_aOtherJunctionPoles = {};
+
+	protected ShapeEntity m_ParentShape;
+
+	protected ref array<ref Shape> m_aDebugShapes = {};
+	protected IEntity m_PreviousPowerPole;
+
+	// QUERY DATA
+	protected static ref array<IEntitySource> s_aGenerators = {};
+	protected static IEntitySource s_CurrentQueryGenerator;
 
 	protected bool m_bColorSwitch = 0;
 	protected bool m_bLastJunctionWasSameLine = true;
@@ -129,15 +80,17 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 	protected IEntity m_StartPoleEntity;
 
 #ifdef WORKBENCH
-	static WorldEditorAPI s_Api;
+	protected static WorldEditorAPI s_Api;
 #endif
 
 #ifdef WORKBENCH
-	private IEntitySource m_ShapeSource;
-	private IEntitySource m_PowerlineGeneratorSource;
+	protected IEntitySource m_ShapeSource;
+	protected IEntitySource m_PowerlineGeneratorSource;
 
-	//-----------------------------------------------------------------------
-	static void GenerateJunctions(notnull IEntitySource generator, bool newQuery)
+	protected static const float TOLERANCE_SQUARED = 0.01; // 0.1 * 0.1
+
+	//------------------------------------------------------------------------------------------------
+	protected static void GenerateJunctions(notnull IEntitySource generator, bool newQuery)
 	{
 		if (!s_Api || s_Api.UndoOrRedoIsRestoring())
 			return;
@@ -162,10 +115,11 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		s_aGenerators.Insert(generator);
 		QueryGenerators(generator);
 
+		SCR_PowerlineGeneratorEntity queriedGenerator;
 		int generatorsCount = s_aGenerators.Count();
 		for (int i = 0; i < generatorsCount; i++)
 		{
-			SCR_PowerlineGeneratorEntity queriedGenerator = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_aGenerators[i]));
+			queriedGenerator = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_aGenerators[i]));
 			if (!queriedGenerator)
 				continue;
 
@@ -173,10 +127,10 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 			queriedGenerator.GenerateJunctions();
 		}
 
+		SCR_PowerlineGeneratorEntity otherQueriedGenerator;
 		for (int i = 0; i < generatorsCount; i++)
 		{
-			Print(s_aGenerators[i]);
-			SCR_PowerlineGeneratorEntity queriedGenerator = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_aGenerators[i]));
+			queriedGenerator = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_aGenerators[i]));
 			if (!queriedGenerator)
 				continue;
 
@@ -185,7 +139,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 				if (i == j)
 					continue;
 
-				SCR_PowerlineGeneratorEntity otherQueriedGenerator = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_aGenerators[j]));
+				otherQueriedGenerator = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_aGenerators[j]));
 				if (!otherQueriedGenerator)
 					continue;
 
@@ -196,22 +150,20 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
-	bool IsJunctionPoint(vector point)
+	//------------------------------------------------------------------------------------------------
+	protected bool IsJunctionPoint(vector point)
 	{
-		const float tolerance = 0.1 * 0.1;
-
 		for (int i = m_aMyJunctionPoles.Count() - 1; i >= 0; i--)
 		{
-			if (vector.DistanceSq(point, CoordToLocal(m_aMyJunctionPoles[i].GetOrigin())) < tolerance)
+			if (vector.DistanceSq(point, CoordToLocal(m_aMyJunctionPoles[i].GetOrigin())) < TOLERANCE_SQUARED)
 				return true;
 		}
 
 		return false;
 	}
 
-	//-----------------------------------------------------------------------
-	bool HasCommonPoint(SCR_PowerlineGeneratorEntity other)
+	//------------------------------------------------------------------------------------------------
+	protected bool HasCommonPoint(SCR_PowerlineGeneratorEntity other)
 	{
 		IEntitySource sourceOther;
 		sourceOther = s_Api.EntityToSource(other);
@@ -229,15 +181,14 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!pointsThis || !pointsOther)
 			return false;
 
-		const float tolerance = 0.1 * 0.1;
-
+		vector coordThis, coordOther;
 		for (int i = pointsThis.Count() - 1; i >= 0; i--)
 		{
 			for (int j = pointsOther.Count() - 1; j >= 0; j--)
 			{
-				vector coordThis = CoordToParent(pointsThis[i]);
-				vector coordOther = other.CoordToParent(pointsOther[j]);
-				if (vector.DistanceSq(coordThis, coordOther) < tolerance)
+				coordThis = CoordToParent(pointsThis[i]);
+				coordOther = other.CoordToParent(pointsOther[j]);
+				if (vector.DistanceSq(coordThis, coordOther) < TOLERANCE_SQUARED)
 					return true;
 			}
 		}
@@ -245,20 +196,18 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		return false;
 	}
 
-	//-----------------------------------------------------------------------
-	void FindCommonJunctionsPoints(array<IEntity> otherJunctionPoles)
+	//------------------------------------------------------------------------------------------------
+	protected void FindCommonJunctionsPoints(array<IEntity> otherJunctionPoles)
 	{
 		array<vector> points = GetPoints(m_Source.GetParent());
 		if (!points)
 			return;
 
-		const float tolerance = 0.1 * 0.1;
-
 		for (int i = otherJunctionPoles.Count() - 1; i >= 0; i--)
 		{
 			for (int j = points.Count() - 1; j >= 0; j--)
 			{
-				if (vector.DistanceSq(CoordToParent(points[j]), otherJunctionPoles[i].GetOrigin()) < tolerance)
+				if (vector.DistanceSq(CoordToParent(points[j]), otherJunctionPoles[i].GetOrigin()) < TOLERANCE_SQUARED)
 				{
 					// Isn't in the array yet
 					if (m_aOtherJunctionPoles.Find(otherJunctionPoles[i]) == -1)
@@ -271,8 +220,8 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
-	void GenerateJunctions()
+	//------------------------------------------------------------------------------------------------
+	protected void GenerateJunctions()
 	{
 		m_aMyJunctionPoles.Clear();
 
@@ -290,13 +239,16 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 		vector parentPositionXZ = shapeEntity.GetOrigin();
 		float parentY = parentPositionXZ[1];
+		BaseContainer point;
 		vector lastPointPosition;
 		vector currentPointPosition;
+		vector nextPointPosition;
 		float yaw;
 
-		for (int i = 0, count = points.Count(); i < count; i++)
+		int count = points.Count();
+		for (int i = 0; i < count; i++)
 		{
-			BaseContainer point = points.Get(i);
+			point = points.Get(i);
 
 			lastPointPosition = currentPointPosition;
 			point.Get("Position", currentPointPosition);
@@ -305,11 +257,9 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 				yaw = (currentPointPosition - lastPointPosition).Normalized().ToYaw();
 			else
 			{
-				if (points.Count() > 1)
+				if (count > 1)
 				{
-					BaseContainer nextPoint = points.Get(i + 1);
-					vector nextPointPosition;
-					nextPoint.Get("Position", nextPointPosition);
+					points.Get(i + 1).Get("Position", nextPointPosition);
 					yaw = (nextPointPosition - currentPointPosition).Normalized().ToYaw();
 				}
 			}
@@ -318,7 +268,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override bool _WB_OnKeyChanged(BaseContainer src, string key, BaseContainerList ownerContainers, IEntity parent)
 	{
 		super._WB_OnKeyChanged(src, key, ownerContainers, parent);
@@ -343,16 +293,16 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		return true;
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void GenerateJunctionOnPoint(notnull BaseContainer point, vector parentPositionXZ, float parentY, float yaw)
 	{
 		SCR_PowerlineGeneratorJunctionData junctionData;
 
 		BaseContainerList dataArr = point.GetObjectArray("Data");
-		int dataCount = dataArr.Count();
-		for (int j = 0; j < dataCount; ++j)
+		BaseContainer data;
+		for (int j = 0, dataCount = dataArr.Count(); j < dataCount; ++j)
 		{
-			BaseContainer data = dataArr.Get(j);
+			data = dataArr.Get(j);
 			if (data.GetClassName() == "SCR_PowerlineGeneratorPointData")
 			{
 				data.Get("m_JunctionData", junctionData);
@@ -363,7 +313,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!junctionData)
 			return;
 
-		ResourceName junctionResourceName = junctionData.GetJunctionResourceName();
+		ResourceName junctionResourceName = junctionData.m_JunctionPrefab;
 		if (junctionResourceName.IsEmpty())
 			junctionResourceName = m_DefaultJunctionPole;
 
@@ -377,7 +327,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!pole)
 			return;
 
-		if (junctionData.GetRotate180Degrees())
+		if (junctionData.m_bRotate180Degrees)
 		{
 			yaw += 180;
 			if (yaw > 360)
@@ -386,26 +336,23 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 		s_Api.ModifyEntityKey(pole, "angleY", yaw.ToString());
 
-		SCR_PowerPole powerPole = SCR_PowerPole.Cast(pole);
+		SCR_PowerPole powerPole = GetPowerPoleFromEntity(pole);
 		if (!powerPole)
 			return;
 
 		m_aMyJunctionPoles.Insert(powerPole);
 	}
 
-	//-----------------------------------------------------------------------
-	void DeletePoles()
+	//------------------------------------------------------------------------------------------------
+	protected void DeletePoles()
 	{
 		if (s_Api.IsDoingEditAction())
 		{
 			// Delete old poles
 			IEntitySource entSrc = s_Api.EntityToSource(this);
-			int childCount = entSrc.GetNumChildren();
-			for (int i = childCount - 1; i >= 0; --i)
+			for (int i = entSrc.GetNumChildren() - 1; i >= 0; --i)
 			{
-				IEntitySource childSrc = entSrc.GetChild(i);
-				IEntity child = s_Api.SourceToEntity(childSrc);
-				s_Api.DeleteEntity(child);
+				s_Api.DeleteEntity(s_Api.SourceToEntity(entSrc.GetChild(i)));
 			}
 		}
 		else
@@ -418,7 +365,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		m_aMyJunctionPoles.Clear();
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void GeneratePoles(BaseContainerList points)
 	{
 		if (!m_bDrawDebugShapes && m_aDebugShapes)
@@ -455,32 +402,38 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!m_ParentShape)
 			return;
 
+		float pointDistance;
+		float poleOffset;
 		float currentDistance = 0;
 		vector currentPoint, lastPoint;
 		bool spawnPerPoint = false, previousWasPerPoint = false;
+		BaseContainerList dataArr;
+		BaseContainer data;
+		vector direction;
+		float yaw;
+		float nextPoleDistance;
+		vector lastPolePosition, nextPolePosition;
 		vector parentPositionXZ = m_ParentShape.GetOrigin();
 		float parentY = parentPositionXZ[1];
 		parentPositionXZ[1] = 0;
 		for (int i = 0, count = points.Count(); i < count; i++)
 		{
-			float pointDistance;
-			float poleOffset = 0;
+			pointDistance = 0;
+			poleOffset = 0;
 
 			AttachJunctionOnPoint(currentPoint);
 
-			BaseContainer point = points.Get(i);
 			lastPoint = currentPoint;
 			previousWasPerPoint = spawnPerPoint;
-			point.Get("Position", currentPoint);
+			points.Get(i).Get("Position", currentPoint);
 
 			//Get data of previous point
 			if (i > 0)
 			{
-				BaseContainerList dataArr = points.Get(i - 1).GetObjectArray("Data");
-				int dataCount = dataArr.Count();
-				for (int j = 0; j < dataCount; ++j)
+				dataArr = points.Get(i - 1).GetObjectArray("Data");
+				for (int j = 0, dataCount = dataArr.Count(); j < dataCount; ++j)
 				{
-					BaseContainer data = dataArr.Get(j);
+					data = dataArr.Get(j);
 					if (data.GetClassName() == "SCR_PowerlineGeneratorPointData")
 					{
 						data.Get("m_fPoleOffset", poleOffset);
@@ -495,8 +448,8 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 				}
 			}
 
-			vector direction = (currentPoint - lastPoint).Normalized();
-			float yaw = direction.ToYaw();
+			direction = (currentPoint - lastPoint).Normalized();
+			yaw = direction.ToYaw();
 
 			if (i == 1) //Generate start pole
 				GenerateStartPole(lastPoint, parentY, parentPositionXZ, yaw);
@@ -522,16 +475,17 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 				if (lastPoint)
 					pointDistance = vector.Distance(currentPoint, lastPoint);
-				else continue;
+				else
+					continue;
 
-				vector lastPolePosition = lastPoint;
+				lastPolePosition = lastPoint;
 
 				if (currentDistance + pointDistance > m_fDistance + poleOffset)
 				{
-					float nextPoleDistance = (m_fDistance + poleOffset - currentDistance);
+					nextPoleDistance = (m_fDistance + poleOffset - currentDistance);
 					pointDistance -= nextPoleDistance;
 
-					vector nextPolePosition = lastPoint + direction * nextPoleDistance;
+					nextPolePosition = lastPoint + direction * nextPoleDistance;
 
 					lastPolePosition = nextPolePosition;
 					GeneratePole(lastPolePosition, parentPositionXZ, parentY, yaw);
@@ -553,7 +507,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 						break;
 					}
 
-					vector nextPolePosition = lastPolePosition + direction * (poleOffset + m_fDistance);
+					nextPolePosition = lastPolePosition + direction * (poleOffset + m_fDistance);
 
 					lastPolePosition = nextPolePosition;
 					GeneratePole(lastPolePosition, parentPositionXZ, parentY, yaw);
@@ -572,14 +526,12 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
-	IEntity FindJunctionOnPoint(vector point, out bool sameLine)
+	//------------------------------------------------------------------------------------------------
+	protected IEntity FindJunctionOnPoint(vector point, out bool sameLine)
 	{
-		float tolerance = 0.1 * 0.1;
-
 		for (int i = m_aMyJunctionPoles.Count() - 1; i >= 0; i--)
 		{
-			if (m_aMyJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aMyJunctionPoles[i].GetOrigin())) < tolerance)
+			if (m_aMyJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aMyJunctionPoles[i].GetOrigin())) < TOLERANCE_SQUARED)
 			{
 				sameLine = true;
 				return m_aMyJunctionPoles[i];
@@ -588,7 +540,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 		for (int i = m_aOtherJunctionPoles.Count() - 1; i >= 0; i--)
 		{
-			if (m_aOtherJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aOtherJunctionPoles[i].GetOrigin())) < tolerance)
+			if (m_aOtherJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aOtherJunctionPoles[i].GetOrigin())) < TOLERANCE_SQUARED)
 			{
 				sameLine = false;
 				return m_aOtherJunctionPoles[i];
@@ -598,32 +550,26 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		return null;
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void AttachJunctionOnPoint(vector point)
 	{
-		float tolerance = 0.1 * 0.1;
-
 		for (int i = m_aMyJunctionPoles.Count() - 1; i >= 0; i--)
 		{
-			if (m_aMyJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aMyJunctionPoles[i].GetOrigin())) < tolerance)
-			{
+			if (m_aMyJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aMyJunctionPoles[i].GetOrigin())) < TOLERANCE_SQUARED)
 				AttachJunction(m_aMyJunctionPoles[i], true);
-			}
 		}
 
 		for (int i = m_aOtherJunctionPoles.Count() - 1; i >= 0; i--)
 		{
-			if (m_aOtherJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aOtherJunctionPoles[i].GetOrigin())) < tolerance)
-			{
+			if (m_aOtherJunctionPoles[i] && vector.DistanceSq(point, CoordToLocal(m_aOtherJunctionPoles[i].GetOrigin())) < TOLERANCE_SQUARED)
 				AttachJunction(m_aOtherJunctionPoles[i], false);
-			}
 		}
 	}
 
-	//-----------------------------------------------------------------------
-	void AttachJunction(IEntity junction, bool sameLine)
+	//------------------------------------------------------------------------------------------------
+	protected void AttachJunction(IEntity junction, bool sameLine)
 	{
-		SCR_PowerPole junctionPole = SCR_PowerPole.Cast(junction);
+		SCR_PowerPole junctionPole = GetPowerPoleFromEntity(junction);
 		if (!junctionPole)
 			return;
 
@@ -632,49 +578,47 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (m_PreviousPowerPole)
 		{
 			junctionPole.AttachTo(m_PreviousPowerPole);
-			CreatePowerLine(junctionPole, SCR_PowerPole.Cast(m_PreviousPowerPole), sameLine);
+			CreatePowerLine(junctionPole, GetPowerPoleFromEntity(m_PreviousPowerPole), sameLine);
 		}
 
 		m_PreviousPowerPole = junctionPole;
 	}
 
-	//-----------------------------------------------------------------------
-	protected vector FindIntersection(float p0_x, float p0_y, float p1_x, float p1_y,
-    float p2_x, float p2_y, float p3_x, float p3_y)
+	//------------------------------------------------------------------------------------------------
+	protected vector FindIntersection(
+		float p0_x, float p0_y,
+		float p1_x, float p1_y,
+		float p2_x, float p2_y,
+		float p3_x, float p3_y)
 	{
-	    float s1_x, s1_y, s2_x, s2_y;
-	    s1_x = p1_x - p0_x;
+		float s1_x, s1_y, s2_x, s2_y;
+		s1_x = p1_x - p0_x;
 		s1_y = p1_y - p0_y;
-	    s2_x = p3_x - p2_x;
+		s2_x = p3_x - p2_x;
 		s2_y = p3_y - p2_y;
 
-	    float s, t;
-	    s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
-	    t = ( s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
+		float s, t;
+		s = (-s1_y * (p0_x - p2_x) + s1_x * (p0_y - p2_y)) / (-s2_x * s1_y + s1_x * s2_y);
+		t = ( s2_x * (p0_y - p2_y) - s2_y * (p0_x - p2_x)) / (-s2_x * s1_y + s1_x * s2_y);
 
-	    if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
-	    {
-	        // Collision detected
-			vector intersect = vector.Zero;
-	        intersect[0] = p0_x + (t * s1_x);
-	        intersect[2] = p0_y + (t * s1_y);
-	        return intersect;
-	    }
+		if (s >= 0 && s <= 1 && t >= 0 && t <= 1)
+			return Vector(p0_x + (t * s1_x), 0, p0_y + (t * s1_y)); // collision detected
 
-	    return vector.Zero; // No collision
+		return vector.Zero; // no collision
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void LoadLines(BaseContainerList points, array<ref SCR_Line> lines)
 	{
 		vector currentPoint, lastPoint;
+		SCR_Line line;
 		for (int i = 0, count = points.Count(); i < count; i++)
 		{
 			points.Get(i).Get("Position", currentPoint);
 
 			if (lastPoint)
 			{
-				SCR_Line line = new SCR_Line();
+				line = new SCR_Line();
 				line.m_vPoint1 = lastPoint;
 				line.m_vPoint2 = currentPoint;
 				lines.Insert(line);
@@ -684,55 +628,54 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void GenerateEndPole(vector currentPoint, float parentY, vector parentPositionXZ, float yaw)
 	{
-		if (m_EndPole.GetPath() != "")
+		if (m_EndPole.IsEmpty())
+			return;
+
+		vector endPolePos = currentPoint;
+		bool sameLine;
+		IEntity pole = FindJunctionOnPoint(currentPoint, sameLine);
+
+		if (pole)
 		{
-			vector endPolePos = currentPoint;
-			bool sameLine;
-			IEntity pole = FindJunctionOnPoint(currentPoint, sameLine);
+			m_bLastJunctionWasSameLine = sameLine;
+		}
+		else
+		{
+			pole = GeneratePoleAt(endPolePos, parentPositionXZ, parentY, m_EndPole);
 
-			if (pole)
+			if (SCR_JunctionPowerPole.Cast(GetPowerPoleFromEntity(pole)))
+				Print("End pole is of type SCR_JunctionPowerPole, make sure to do this using junction data on the last point instead.", LogLevel.WARNING);
+
+			if (m_bRotate180DegreeYawEndPole)
 			{
-				m_bLastJunctionWasSameLine = sameLine;
-			}
-			else
-			{
-				pole = GeneratePoleAt(endPolePos, parentPositionXZ, parentY, m_EndPole);
-
-				if (SCR_JunctionPowerPole.Cast(pole))
-					Print("End pole is of type SCR_JunctionPowerPole, make sure to do this using junction data on the last point instead.", LogLevel.WARNING);
-
-				if (m_bRotate180DegreeYawEndPole)
-				{
-					yaw += 180;
-					if (yaw > 360)
-						yaw -= 360;
-				}
-
-				s_Api.ModifyEntityKey(pole, "angleY", yaw.ToString());
-				if (m_bApplyPitchAndRollEnd)
-					ApplyRandomPitchAndRoll(pole);
+				yaw += 180;
+				if (yaw > 360)
+					yaw -= 360;
 			}
 
-			SCR_PowerPole endPole = SCR_PowerPole.Cast(pole);
-			if (endPole)
-			{
-				endPole.AttachTo(m_PreviousPowerPole);
-				CreatePowerLine(SCR_PowerPole.Cast(m_PreviousPowerPole), endPole, sameLine, m_bRotate180DegreeYawEndPole);
-			}
+			s_Api.ModifyEntityKey(pole, "angleY", yaw.ToString());
+			if (m_bApplyPitchAndRollEnd)
+				ApplyRandomPitchAndRoll(pole);
+		}
 
-			if (m_bDrawDebugShapes)
-			{
-				return;
-				Shape shape = Shape.CreateSphere(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, endPolePos + parentPositionXZ, 1);
-				m_aDebugShapes.Insert(shape);
-			}
+		SCR_PowerPole endPole = GetPowerPoleFromEntity(pole);
+		if (endPole)
+		{
+			endPole.AttachTo(m_PreviousPowerPole);
+			CreatePowerLine(GetPowerPoleFromEntity(m_PreviousPowerPole), endPole, sameLine, m_bRotate180DegreeYawEndPole);
+		}
+
+		if (m_bDrawDebugShapes)
+		{
+			Shape shape = Shape.CreateSphere(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, endPolePos + parentPositionXZ, 1);
+			m_aDebugShapes.Insert(shape);
 		}
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void GenerateStartPole(vector lastPoint, float parentY, vector parentPositionXZ, float yaw)
 	{
 		if (!s_Api)
@@ -741,67 +684,65 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 			return;
 		}
 
-		if (m_StartPole.GetPath() != "")
+		if (m_StartPole.IsEmpty())
+			return;
+
+		vector startPolePos = lastPoint;
+		bool sameLine;
+		IEntity pole = FindJunctionOnPoint(lastPoint, sameLine);
+
+		if (pole)
 		{
-			vector startPolePos = lastPoint;
-			bool sameLine;
-			IEntity pole = FindJunctionOnPoint(lastPoint, sameLine);
-
-			if (pole)
+			m_bLastJunctionWasSameLine = sameLine;
+		}
+		else
+		{
+			pole = GeneratePoleAt(startPolePos, parentPositionXZ, parentY, m_StartPole);
+			if (!pole)
 			{
-				m_bLastJunctionWasSameLine = sameLine;
-			}
-			else
-			{
-				pole = GeneratePoleAt(startPolePos, parentPositionXZ, parentY, m_StartPole);
-				if (!pole)
-				{
-					Print("Pole entity not created. In SCR_PowerlineGeneratorEntity.", LogLevel.WARNING);
-					return;
-				}
-
-				if (SCR_JunctionPowerPole.Cast(pole))
-				{
-					Print("Start pole is of type SCR_JunctionPowerPole, make sure to do this using junction data on the first point instead.", LogLevel.WARNING);
-					m_bLastJunctionWasSameLine = true;
-				}
-
-				if (m_bRotate180DegreeYawStartPole)
-				{
-					yaw += 180;
-					if (yaw > 360)
-						yaw -= 360;
-				}
-
-				s_Api.ModifyEntityKey(pole, "angleY", yaw.ToString());
-				if (m_bApplyPitchAndRollStart)
-					ApplyRandomPitchAndRoll(pole);
-			}
-
-			m_PreviousPowerPole = pole;
-			m_StartPoleEntity = pole;
-
-			if (m_bDrawDebugShapes)
-			{
+				Print("Pole entity not created. In SCR_PowerlineGeneratorEntity.", LogLevel.WARNING);
 				return;
-				Shape shape = Shape.CreateSphere(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, startPolePos + parentPositionXZ, 1);
-				m_aDebugShapes.Insert(shape);
 			}
+
+			if (SCR_JunctionPowerPole.Cast(pole))
+			{
+				Print("Start pole is of type SCR_JunctionPowerPole, make sure to do this using junction data on the first point instead.", LogLevel.WARNING);
+				m_bLastJunctionWasSameLine = true;
+			}
+
+			if (m_bRotate180DegreeYawStartPole)
+			{
+				yaw += 180;
+				if (yaw > 360)
+					yaw -= 360;
+			}
+
+			s_Api.ModifyEntityKey(pole, "angleY", yaw.ToString());
+			if (m_bApplyPitchAndRollStart)
+				ApplyRandomPitchAndRoll(pole);
+		}
+
+		m_PreviousPowerPole = pole;
+		m_StartPoleEntity = pole;
+
+		if (m_bDrawDebugShapes)
+		{
+			Shape shape = Shape.CreateSphere(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, startPolePos + parentPositionXZ, 1);
+			m_aDebugShapes.Insert(shape);
 		}
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected IEntity GeneratePoleAt(vector localPos, vector parentPositionXZ, float parentY, ResourceName poleResourceName)
 	{
 		float y;
 		if (s_Api.TryGetTerrainSurfaceY(localPos[0] + parentPositionXZ[0], localPos[2] + parentPositionXZ[2], y))
 			localPos[1] = y - parentY;
-		IEntity pole = s_Api.CreateEntity(poleResourceName, "", s_Api.GetCurrentEntityLayerId(), s_Api.EntityToSource(this), localPos, "0 0 0");
 
-		return pole;
+		return s_Api.CreateEntity(poleResourceName, "", s_Api.GetCurrentEntityLayerId(), s_Api.EntityToSource(this), localPos, "0 0 0");
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void ApplyRandomPitchAndRoll(IEntity powerPole)
 	{
 		float pitch = 0, roll = 0;
@@ -819,7 +760,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		s_Api.ModifyEntityKey(powerPole, "angleZ", roll.ToString());
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected IEntity GeneratePole(vector lastPolePosition, vector parentPositionXZ, float parentY, float yaw, ResourceName customPoleResourceName = string.Empty)
 	{
 		float y;
@@ -843,27 +784,27 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 		if (m_PreviousPowerPole && pole)
 		{
-			auto thisPowerPole = SCR_PowerPole.Cast(pole);
+			SCR_PowerPole thisPowerPole = GetPowerPoleFromEntity(pole);
 
 			if (thisPowerPole)
 			{
 				thisPowerPole.AttachTo(m_PreviousPowerPole);
 				bool inverse = m_StartPoleEntity == m_PreviousPowerPole && m_bRotate180DegreeYawStartPole;
-				CreatePowerLine(thisPowerPole, SCR_PowerPole.Cast(m_PreviousPowerPole), inverse: inverse);
+				CreatePowerLine(thisPowerPole, GetPowerPoleFromEntity(m_PreviousPowerPole), inverse: inverse);
 			}
 		}
 		m_PreviousPowerPole = pole;
-
-		return pole;
 
 		if (m_bDrawDebugShapes)
 		{
 			Shape shape = Shape.CreateSphere(ARGB(255, 255, 0, 0), ShapeFlags.NOZBUFFER, lastPolePosition + parentPositionXZ, 1);
 			m_aDebugShapes.Insert(shape);
 		}
+
+		return pole;
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnShapeChangedInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity, array<vector> mins, array<vector> maxes)
 	{
 		// TODO handle this case better if needed, use the bbox arrays
@@ -872,14 +813,14 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		OnShapeInit(shapeEntitySrc, shapeEntity);
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected IEntity CreatePowerLine(SCR_PowerPole startPole, SCR_PowerPole endPole, bool sameLine = true, bool inverse = false)
 	{
-		if (!endPole || startPole == endPole)
+		if (!startPole || !endPole || startPole == endPole)
 			return null;
 
-		ref array<vector> startPoints = new array<vector>();
-		ref array<vector> endPoints = new array<vector>();
+		array<vector> startPoints = {};
+		array<vector> endPoints = {};
 
 		if (SCR_JunctionPowerPole.Cast(startPole) || SCR_JunctionPowerPole.Cast(endPole))
 			sameLine = m_bLastJunctionWasSameLine;
@@ -892,9 +833,10 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 
 		// Gather slot positions for both poles in world coordinates
+		vector startSlotPos;
 		for (int i = 0; i < numCables; ++i)
 		{
-			vector startSlotPos = startPole.CoordToParent(startPole.GetSlot(i, sameLine));
+			startSlotPos = startPole.CoordToParent(startPole.GetSlot(i, sameLine));
 			startPoints.Insert(startSlotPos);
 			endPoints.Insert(endPole.TryGetSlot(i, startSlotPos, sameLine));
 		}
@@ -905,6 +847,8 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 
 		s_Api.SetVariableValue(powerlineSrc, null, "Material", m_PowerlineMaterial);
 
+		array<ref ContainerIdPathEntry> containerPath;
+		vector startPos, endPos;
 		// Create cables for the entity
 		for (int i = 0; i < numCables; ++i)
 		{
@@ -913,17 +857,17 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 			//Refresh powerline pointer
 			powerline = s_Api.SourceToEntity(powerlineSrc);
 
-			auto containerPath = new array<ref ContainerIdPathEntry>();
+			containerPath = {};
 			containerPath.Insert(new ContainerIdPathEntry("Cables", i));
 
 			// Add cable between each slot, convert to local coordinate space
-			vector startPos = powerline.CoordToLocal(startPoints[i]);
+			startPos = powerline.CoordToLocal(startPoints[i]);
 			s_Api.SetVariableValue(powerlineSrc, containerPath, "StartPoint", startPos.ToString(false));
 
 			//Refresh powerline pointer
 			powerline = s_Api.SourceToEntity(powerlineSrc);
 
-			vector endPos = powerline.CoordToLocal(endPoints[i]);
+			endPos = powerline.CoordToLocal(endPoints[i]);
 			if (inverse)
 				endPos = powerline.CoordToLocal(endPoints[numCables - i - 1]);
 			s_Api.SetVariableValue(powerlineSrc, containerPath, "EndPoint", endPos.ToString(false));
@@ -932,8 +876,29 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		return powerline;
 	}
 
-	//-----------------------------------------------------------------------
-	static void QueryGenerators(notnull IEntitySource generator, array<IEntitySource> checkedGenerators = null)
+	//------------------------------------------------------------------------------------------------
+	protected SCR_PowerPole GetPowerPoleFromEntity(notnull IEntity powerPoleEntity)
+	{
+		SCR_PowerPole result = SCR_PowerPole.Cast(powerPoleEntity);
+		if (result)
+			return result;
+
+		IEntitySource entitySource = s_Api.EntityToSource(powerPoleEntity);
+		if (!entitySource)
+			return null;
+
+		for (int i = 0, childrenCount = entitySource.GetNumChildren(); i < childrenCount; i++)
+		{
+			result = SCR_PowerPole.Cast(s_Api.SourceToEntity(entitySource.GetChild(i)));
+			if (result)
+				return result;
+		}
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected static void QueryGenerators(notnull IEntitySource generator, array<IEntitySource> checkedGenerators = null)
 	{
 		if (!s_Api || !s_aGenerators)
 			return;
@@ -985,8 +950,8 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
-	static bool QueryFilter(IEntity entity)
+	//------------------------------------------------------------------------------------------------
+	protected static bool QueryFilter(IEntity entity)
 	{
 		ShapeEntity shape = ShapeEntity.Cast(entity);
 		if (!shape)
@@ -996,16 +961,18 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		if (!shapeSource)
 			return true;
 
-		int childCount = shapeSource.GetNumChildren();
-		for (int i = childCount - 1; i >= 0; --i)
+		IEntitySource otherGeneratorSource;
+		SCR_PowerlineGeneratorEntity otherGeneratorEntity;
+		SCR_PowerlineGeneratorEntity currentGeneratorEntity;
+		for (int i = shapeSource.GetNumChildren() - 1; i >= 0; --i)
 		{
-			IEntitySource otherGeneratorSource = shapeSource.GetChild(i);
-			SCR_PowerlineGeneratorEntity otherGeneratorEntity = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_CurrentQueryGenerator));
+			otherGeneratorSource = shapeSource.GetChild(i);
+			otherGeneratorEntity = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_CurrentQueryGenerator));
 			if (!otherGeneratorEntity)
 				continue;
 
 			//Has to be refreshed here
-			SCR_PowerlineGeneratorEntity currentGeneratorEntity = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_CurrentQueryGenerator));
+			currentGeneratorEntity = SCR_PowerlineGeneratorEntity.Cast(s_Api.SourceToEntity(s_CurrentQueryGenerator));
 			if (!currentGeneratorEntity)
 				continue;
 
@@ -1019,17 +986,21 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		return true;
 	}
 
-	//-----------------------------------------------------------------------
-	void AddPointData(BaseContainerList points)
+	//------------------------------------------------------------------------------------------------
+	protected void AddPointData(BaseContainerList points)
 	{
+		BaseContainerList dataArr;
+		BaseContainer data;
+		int dataCount;
+		bool hasPointData;
 		for (int i = points.Count() - 1; i >= 0; i--)
 		{
-			BaseContainerList dataArr = points[i].GetObjectArray("Data");
-			int dataCount = dataArr.Count();
-			bool hasPointData = false;
+			dataArr = points[i].GetObjectArray("Data");
+			dataCount = dataArr.Count();
+			hasPointData = false;
 			for (int j = 0; j < dataCount; ++j)
 			{
-				BaseContainer data = dataArr.Get(j);
+				data = dataArr.Get(j);
 				if (data.GetClassName() == "SCR_PowerlineGeneratorPointData")
 				{
 					hasPointData = true;
@@ -1042,7 +1013,7 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		}
 	}
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	override void OnShapeInitInternal(IEntitySource shapeEntitySrc, ShapeEntity shapeEntity)
 	{
 		super.OnShapeInitInternal(shapeEntitySrc, shapeEntity);
@@ -1054,14 +1025,14 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		BaseContainerList points = shapeEntitySrc.GetObjectArray("Points");
 		if (!points)
 			return;
-		
+
 		AddPointData(points);
 
 		GenerateJunctions(m_PowerlineGeneratorSource, true);
 	}
 #endif
 
-	//-----------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	void SCR_PowerlineGeneratorEntity(IEntitySource src, IEntity parent)
 	{
 #ifdef WORKBENCH
@@ -1080,12 +1051,43 @@ class SCR_PowerlineGeneratorEntity : SCR_GeneratorBaseEntity
 		SetEventMask(EntityEvent.INIT);
 #endif
 	}
+};
 
-	//-----------------------------------------------------------------------
-	void ~SCR_PowerlineGeneratorEntity()
-	{
-		if (m_aDebugShapes)
-			m_aDebugShapes.Clear();
-		m_aDebugShapes = null;
-	}
+//------------------------------------------------------------------------------------------------
+enum SCR_PowerlineGeneratorType
+{
+	SMALL,
+	MIDDLE,
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_Line : Managed
+{
+	vector m_vPoint1;
+	vector m_vPoint2;
+};
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps()]
+class SCR_PowerlineGeneratorJunctionData
+{
+	[Attribute(defvalue: "", desc: "Junction prefab to be used", params: "et")]
+	ResourceName m_JunctionPrefab;
+
+	[Attribute()]
+	bool m_bRotate180Degrees;
+
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_PowerlineGeneratorPointData : ShapePointDataScriptBase
+{
+	[Attribute()]
+	float m_fPoleOffset;
+
+	[Attribute("0", "Starts generating poles on points, until a point with this attribute unchecked is reached.")]
+	bool m_bGeneratePerPoint;
+
+	[Attribute()]
+	ref SCR_PowerlineGeneratorJunctionData m_JunctionData;
 };

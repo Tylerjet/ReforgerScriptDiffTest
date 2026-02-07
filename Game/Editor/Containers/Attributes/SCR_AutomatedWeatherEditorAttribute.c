@@ -29,15 +29,12 @@ class SCR_AutomatedWeatherEditorAttribute : SCR_BaseEditorAttribute
 	}
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-		
+	{		
 		//Set sub labels
 		if (isInit)
 			manager.SetAttributeAsSubAttribute(SCR_WeatherInstantEditorAttribute);
 		
-		manager.SetAttributeEnabled(SCR_WeatherInstantEditorAttribute, !var.GetBool());
+		manager.SetAttributeEnabled(SCR_WeatherInstantEditorAttribute, var && !var.GetBool());
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

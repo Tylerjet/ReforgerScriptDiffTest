@@ -94,6 +94,27 @@ class SCR_DataCollectorSupplyTruckDriverModule : SCR_DataCollectorModule
 		m_mTrackedDrivers.Remove(playerID);
 	}
 	
+#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	override void OnControlledEntityChanged(IEntity from, IEntity to)
+	{
+		super.OnControlledEntityChanged(from, to);
+		
+		int playerID;
+		if (from)
+		{
+			playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(from);
+			m_mTrackedDrivers.Remove(playerID);
+		}
+			
+		if (to)
+		{
+			playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(to);
+			m_mTrackedDrivers.Insert(playerID, to);
+		}
+	}
+#endif
+	
 	//------------------------------------------------------------------------------------------------
 	override void Update(IEntity owner, float timeTick)
 	{
@@ -134,8 +155,8 @@ class SCR_DataCollectorSupplyTruckDriverModule : SCR_DataCollectorModule
 			//DEBUG display
 			if (m_StatsVisualization)
 			{
-				m_StatsVisualization.Get(SCR_ESupplyTruckDriverModuleStats.METERSDRIVENSUPPLYVEHICLE).SetText(playerData.GetTraveledDistanceSupplyVehicle().ToString());
-				m_StatsVisualization.Get(SCR_ESupplyTruckDriverModuleStats.TIMEDRIVENSUPPLYVEHICLE).SetText(playerData.GetTraveledTimeSupplyVehicle().ToString());
+				m_StatsVisualization.Get(SCR_ESupplyTruckDriverModuleStats.METERSDRIVENSUPPLYVEHICLE).SetText(playerData.GetCurrentTraveledDistanceSupplyVehicle().ToString());
+				m_StatsVisualization.Get(SCR_ESupplyTruckDriverModuleStats.TIMEDRIVENSUPPLYVEHICLE).SetText(playerData.GetCurrentTraveledTimeSupplyVehicle().ToString());
 			}
 		}
 		m_fTimeSinceUpdate = 0;

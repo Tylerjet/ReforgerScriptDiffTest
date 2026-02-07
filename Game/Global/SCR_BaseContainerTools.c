@@ -1,5 +1,6 @@
 class SCR_BaseContainerTools
 {
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get class name of the prefab.
 	Use to check if prefab class is matching requirements before you spawn it.
@@ -9,10 +10,13 @@ class SCR_BaseContainerTools
 	static string GetContainerClassName(ResourceName prefab)
 	{
 		Resource prefabResource = Resource.Load(prefab);
-		if (!prefabResource.IsValid()) return string.Empty;
-		
+		if (!prefabResource.IsValid())
+			return string.Empty;
+
 		return GetContainerClassName(prefabResource);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get class name of prefab resource.
 	Use to check if prefab class is matching requirements before you spawn it.
@@ -21,17 +25,21 @@ class SCR_BaseContainerTools
 	*/
 	static string GetContainerClassName(Resource prefabResource)
 	{
-		if (!prefabResource.IsValid()) return string.Empty;
-		
+		if (!prefabResource.IsValid())
+			return string.Empty;
+
 		BaseResourceObject prefabContainer = prefabResource.GetResource();
-		if (!prefabContainer) return string.Empty;
-		
+		if (!prefabContainer)
+			return string.Empty;
+
 		BaseContainer prefabBase = prefabContainer.ToBaseContainer();
-		if (!prefabBase) return string.Empty;
-		
+		if (!prefabBase)
+			return string.Empty;
+
 		return prefabBase.GetClassName();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get enntity source from prefab resource.
 	\param prefabResource Loaded entity prefab, use Resource.Load(prefab) to retrieve it from ResourceName
@@ -39,14 +47,17 @@ class SCR_BaseContainerTools
 	*/
 	static IEntitySource FindEntitySource(Resource prefabResource)
 	{
-		if (!prefabResource.IsValid()) return null;
-		
+		if (!prefabResource.IsValid())
+			return null;
+
 		BaseResourceObject prefabBase = prefabResource.GetResource();
-		if (!prefabBase) return null;
-			
+		if (!prefabBase)
+			return null;
+
 		return prefabBase.ToEntitySource();
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get component source of given class from prefab resource.
 	\param prefabResource Loaded entity prefab, use Resource.Load(prefab) to retrieve it from ResourceName
@@ -55,13 +66,17 @@ class SCR_BaseContainerTools
 	*/
 	static IEntityComponentSource FindComponentSource(Resource prefabResource, string componentClassName)
 	{
-		if (!prefabResource.IsValid()) return null;
-		
+		if (!prefabResource.IsValid())
+			return null;
+
 		IEntitySource prefabEntity = FindEntitySource(prefabResource);
-		if (!prefabEntity) return null;
-		
+		if (!prefabEntity)
+			return null;
+
 		return FindComponentSource(prefabEntity, componentClassName);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get component source inherited from given class from prefab resource.
 	\param prefabResource Loaded entity prefab, use Resource.Load(prefab) to retrieve it from ResourceName
@@ -70,13 +85,17 @@ class SCR_BaseContainerTools
 	*/
 	static IEntityComponentSource FindComponentSource(Resource prefabResource, typename componentClass)
 	{
-		if (!prefabResource.IsValid()) return null;
-		
+		if (!prefabResource.IsValid())
+			return null;
+
 		IEntitySource prefabEntity = FindEntitySource(prefabResource);
-		if (!prefabEntity) return null;
-		
+		if (!prefabEntity)
+			return null;
+
 		return FindComponentSource(prefabEntity, componentClass);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get component source of given class from entity source.
 	\param prefabEntity Entity source
@@ -85,8 +104,9 @@ class SCR_BaseContainerTools
 	*/
 	static IEntityComponentSource FindComponentSource(IEntitySource prefabEntity, string componentClassName)
 	{
-		if (!prefabEntity) return null;
-		
+		if (!prefabEntity)
+			return null;
+
 		int componentsCount = prefabEntity.GetComponentCount();
 		for (int i = 0; i < componentsCount; i++)
 		{
@@ -96,6 +116,8 @@ class SCR_BaseContainerTools
 		}
 		return null;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get component source inherited from given class from entity source.
 	\param prefabEntity Entity source
@@ -104,8 +126,9 @@ class SCR_BaseContainerTools
 	*/
 	static IEntityComponentSource FindComponentSource(IEntitySource prefabEntity, typename componentClass)
 	{
-		if (!prefabEntity) return null;
-		
+		if (!prefabEntity)
+			return null;
+
 		int componentsCount = prefabEntity.GetComponentCount();
 		for (int i = 0; i < componentsCount; i++)
 		{
@@ -115,7 +138,8 @@ class SCR_BaseContainerTools
 		}
 		return null;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get component sources of given classes from prefab resource.
 	\param prefabResource Loaded entity prefab, use Resource.Load(prefab) to retrieve it from ResourceName
@@ -128,14 +152,18 @@ class SCR_BaseContainerTools
 		int classNamesCount = componentClassNames.Count();
 		componentSources.Clear();
 		componentSources.Resize(classNamesCount);
-		
-		if (!prefabResource.IsValid()) return classNamesCount;
-			
+
+		if (!prefabResource.IsValid())
+			return classNamesCount;
+
 		IEntitySource prefabEntity = FindEntitySource(prefabResource);
-		if (!prefabEntity) return classNamesCount;
-		
+		if (!prefabEntity)
+			return classNamesCount;
+
 		return FindComponentSources(prefabEntity, componentClassNames, componentSources);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get component sources of given classes from entity source.
 	\param prefabEntity Entity source
@@ -148,17 +176,18 @@ class SCR_BaseContainerTools
 		int classNamesCount = componentClassNames.Count();
 		componentSources.Clear();
 		componentSources.Resize(classNamesCount);
-		
-		if (!prefabEntity) return classNamesCount;
-		
+
+		if (!prefabEntity)
+			return classNamesCount;
+
 		int componentsCount = prefabEntity.GetComponentCount();
 		for (int i = 0; i < componentsCount; i++)
 		{
 			IEntityComponentSource componentSource = prefabEntity.GetComponent(i);
-			string comonentClassName = componentSource.GetClassName();
+			string componentClassName = componentSource.GetClassName();
 			for (int j = 0; j < classNamesCount; j++)
 			{
-				if (comonentClassName == componentClassNames[j])
+				if (componentClassName == componentClassNames[j])
 				{
 					array<IEntityComponentSource> components = componentSources[j];
 					if (!components)
@@ -173,7 +202,8 @@ class SCR_BaseContainerTools
 		}
 		return classNamesCount;
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Check of the comtainer contains any changes as opposed to its ancestor
 	\param container Queried container
@@ -182,31 +212,36 @@ class SCR_BaseContainerTools
 	static bool IsChanged(BaseContainer container)
 	{
 		string varName;
+		BaseContainerList objectArray;
 		for (int i = 0, varsCount = container.GetNumVars(); i < varsCount; i++)
 		{
 			varName = container.GetVarName(i);
 			if (container.GetObject(varName))
 			{
-				if (IsChanged(container.GetObject(varName))) return true;
+				if (IsChanged(container.GetObject(varName)))
+					return true;
 			}
 			else if (container.GetObjectArray(varName))
 			{
-				BaseContainerList objectArray = container.GetObjectArray(varName);
+				objectArray = container.GetObjectArray(varName);
 				for (int a = 0, arrayCount = objectArray.Count(); a < arrayCount; a++)
 				{
-					if (IsChanged(objectArray.Get(a))) return true;
+					if (IsChanged(objectArray.Get(a)))
+						return true;
 				}
 			}
 			else
 			{
 				//PrintFormat("%1: %2: %3", container.GetClassName(), varName, container.IsVariableSetDirectly(varName));
-				if (container.IsVariableSetDirectly(varName)) return true;
+				if (container.IsVariableSetDirectly(varName))
+					return true;
 			}
 		}
 		return false;
 	}
 	*/
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get first container in hierarchy that comes from a prefab.
 	\param container Evaluated container
@@ -219,11 +254,12 @@ class SCR_BaseContainerTools
 		{
 			if (container.GetResourceName().Contains("/"))
 				return ancestor;
-			else
-				ancestor = ancestor.GetAncestor();
+			ancestor = ancestor.GetAncestor();
 		}
 		return container;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get resource name of the first container in hierarchy that comes from a prefab.
 	\param container Evaluated container
@@ -235,11 +271,31 @@ class SCR_BaseContainerTools
 		{
 			if (container.GetResourceName().Contains("/"))
 				return container.GetResourceName();
-			else
-				container = container.GetAncestor();
+			container = container.GetAncestor();
 		}
 		return ResourceName.Empty;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Get the topmost BaseContainer parent
+	//! If it is the topmost, returns the provided baseContainer
+	//! \param baseContainer
+	//! \return topmost ancestor (e.g tree base)
+	static BaseContainer GetTopMostAncestor(notnull BaseContainer baseContainer)
+	{
+		BaseContainer ancestorContainer = baseContainer.GetAncestor();
+		if (!ancestorContainer)
+			return baseContainer;
+
+		while (ancestorContainer.GetAncestor())
+		{
+			ancestorContainer = ancestorContainer.GetAncestor();
+		}
+
+		return ancestorContainer;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get world coordinates of position local to given entity source.
 	\param entitySource Entity source
@@ -257,6 +313,8 @@ class SCR_BaseContainerTools
 		}
 		return coords;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get coordinates local to given entity source.
 	\param entitySource Entity source
@@ -274,6 +332,8 @@ class SCR_BaseContainerTools
 		}
 		return coords;
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Convert integer array to string in format acceptable by WorldEditorAPI.SetVariableValue
 	\param values Input array

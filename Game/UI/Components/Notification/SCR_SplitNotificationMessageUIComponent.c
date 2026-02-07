@@ -42,9 +42,9 @@ class SCR_SplitNotificationMessageUIComponent : SCR_NotificationMessageUICompone
 		
 		
 		string rightNotificationMessage = splitUiInfo.GetSplitRightMessageText();
-		string param1, param2, param3, param4, param5;
-		data.GetNotificationTextEntries(param1, param2, param3, param4, param5);
+		string param1, param2, param3, param4, param5, param6;
+		data.GetNotificationTextEntries(param1, param2, param3, param4, param5, param6);
 		
-		rightMessage.SetTextFormat(rightNotificationMessage, param1, param2, param3, param4, param5);
+		rightMessage.SetTextFormat(rightNotificationMessage, param1, param2, param3, param4, param5, param6);
 	}
 };

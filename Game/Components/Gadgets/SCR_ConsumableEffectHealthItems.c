@@ -36,6 +36,14 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	{
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+ 	 	if (itemComp)
+ 	 		itemComp.RequestUserLock(user, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override bool UpdateAnimationCommands(IEntity user)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(user);

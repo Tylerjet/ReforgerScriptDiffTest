@@ -19,10 +19,7 @@ class SCR_RespawnEnabledEditorAttribute : SCR_BaseEditorAttribute
 	
 	//Disable respawn time if respawning is disabled
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-		
+	{		
 		//Set sub labels
 		if (isInit)
 		{
@@ -30,8 +27,8 @@ class SCR_RespawnEnabledEditorAttribute : SCR_BaseEditorAttribute
 			manager.SetAttributeAsSubAttribute(SCR_SpawnAtPlayersEditorAttribute);
 		}
 			
-		manager.SetAttributeEnabled(SCR_RespawnTimeEditorAttribute, var.GetBool());
-		manager.SetAttributeEnabled(SCR_SpawnAtPlayersEditorAttribute, var.GetBool());
+		manager.SetAttributeEnabled(SCR_RespawnTimeEditorAttribute, var && var.GetBool());
+		manager.SetAttributeEnabled(SCR_SpawnAtPlayersEditorAttribute, var && var.GetBool());
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

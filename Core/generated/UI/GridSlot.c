@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class GridSlot: AlignableSlot
@@ -19,6 +19,8 @@ sealed class GridSlot: AlignableSlot
 	static proto void SetColumn(notnull Widget widget, int column);
 	static proto void SetRowSpan(notnull Widget widget, int rowSpan);
 	static proto void SetColumnSpan(notnull Widget widget, int columnSpan);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

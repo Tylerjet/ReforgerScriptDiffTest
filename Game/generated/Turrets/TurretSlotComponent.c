@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Turrets
-* @{
+/*!
+\addtogroup Turrets
+\{
 */
 
 class TurretSlotComponentClass: BaseAimingComponentClass
 {
-};
+}
 
 class TurretSlotComponent: BaseAimingComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -59,7 +59,10 @@ class SCR_InventoryGearInspectionPointUI : SCR_InventoryAttachmentPointUI
 		if (type.IsInherited(BaseMuzzleComponent))
 		{
 			name = "#AR-Magazine_Name";
-			return BaseMuzzleComponent.Cast(slot.GetParentContainer()).GetMagazineWell().Type();
+			BaseMagazineWell magwell = BaseMuzzleComponent.Cast(slot.GetParentContainer()).GetMagazineWell();
+			
+			if (magwell)
+				return magwell.Type();
 		}
 		else if (type == AttachmentSlotComponent)
 		{

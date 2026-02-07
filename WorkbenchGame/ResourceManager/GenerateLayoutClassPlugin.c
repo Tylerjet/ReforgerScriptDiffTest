@@ -203,8 +203,8 @@ class GenerateLayoutClassPlugin : WorkbenchPlugin
 			return;
 		}
 
-		f.FPrint(gc);
-		f.CloseFile();
+		f.Write(gc);
+		f.Close();
 		_print("Export finished!");
 
 		ScriptEditor scriptEditor = Workbench.GetModule(ScriptEditor);

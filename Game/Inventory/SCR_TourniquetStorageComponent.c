@@ -2,12 +2,25 @@ class SCR_TourniquetStorageComponentClass : SCR_EquipmentStorageComponentClass
 {
 };
 
+class SCR_TourniquetMovedCallback : ScriptedInventoryOperationCallback
+{
+	SCR_CharacterInventoryStorageComponent m_CharInventoryStorageComp;
+	IEntity m_Tourniquet;
+	
+	override protected void OnComplete()
+	{
+		m_CharInventoryStorageComp.RemoveItemFromQuickSlot(m_Tourniquet);
+	}
+};
+
 class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 {
+	ref SCR_TourniquetMovedCallback m_TourniquetMovedCallback = new SCR_TourniquetMovedCallback();
+	
 	//------------------------------------------------------------------------------------------------
-	void AddTourniquetToSlot(ECharacterHitZoneGroup eHitZoneGroup, IEntity tourniquet)
+	void AddTourniquetToSlot(IEntity target, ECharacterHitZoneGroup eHitZoneGroup, IEntity tourniquet)
 	{
-		SCR_TourniquetStorageComponent tourniquetStorageComp = SCR_TourniquetStorageComponent.Cast(GetOwner().FindComponent(SCR_TourniquetStorageComponent));
+		SCR_TourniquetStorageComponent tourniquetStorageComp = SCR_TourniquetStorageComponent.Cast(target.FindComponent(SCR_TourniquetStorageComponent));
 		if (!tourniquetStorageComp)
 			return;		
 		
@@ -24,8 +37,7 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 			tqTargetSlot = SCR_TourniquetStorageSlot.Cast(tourniquetStorageComp.GetSlot(i));
 			if (!tqTargetSlot)
 				continue;
-				
-			
+
 			if (tqTargetSlot.GetAssociatedHZGroup() != eHitZoneGroup)
 				continue;
 			
@@ -42,7 +54,10 @@ class SCR_TourniquetStorageComponent : SCR_EquipmentStorageComponent
 		if (!charInventoryStorageComp)
 			return;
 
-		storageMan.TryMoveItemToStorage(tourniquet, tourniquetStorageComp, tqTargetSlot.GetID());
+		m_TourniquetMovedCallback.m_Tourniquet = tourniquet;
+		m_TourniquetMovedCallback.m_CharInventoryStorageComp = charInventoryStorageComp;
+		
+		storageMan.TryMoveItemToStorage(tourniquet, tourniquetStorageComp, tqTargetSlot.GetID(), m_TourniquetMovedCallback);
 	}
 	
 	//------------------------------------------------------------------------------------------------

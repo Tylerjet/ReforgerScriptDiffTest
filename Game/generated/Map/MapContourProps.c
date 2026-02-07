@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapContourProps
@@ -34,26 +34,28 @@ class MapContourProps
 	// World scale
 	proto external float GetWorldScale();
 	proto external void SetWorldScale(float scale);
-	/**
+	/*!
 	Major color
 	*/
 	proto ref Color GetMajorColor();
 	proto external void SetMajorColor(notnull Color color);
-	/**
+	/*!
 	Coast color
 	*/
 	proto ref Color GetCoastColor();
 	proto external void SetCoastColor(notnull Color color);
-	/**
+	/*!
 	Ocean color
 	*/
 	proto ref Color GetOceanColor();
 	proto external void SetOceanColor(notnull Color color);
-	/**
+	/*!
 	Land color
 	*/
 	proto ref Color GetLandColor();
 	proto external void SetLandColor(notnull Color color);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

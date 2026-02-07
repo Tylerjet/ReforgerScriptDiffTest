@@ -32,7 +32,6 @@ class SCR_CampaignBaseManager : GenericEntity
 	
 	protected ref array<SCR_CampaignBase> m_aControlPoints = {};
 	
-	protected ref SCR_CampaignStruct m_CampaignInfo;
 	protected bool m_bShowLinks = true;
 	protected MapItem m_MobileMapItemBlufor;
 	protected MapItem m_MobileMapItemOpfor;
@@ -97,7 +96,7 @@ class SCR_CampaignBaseManager : GenericEntity
 			basesRange = editBoxWidget.GetText().ToFloat();
 		
 		array<SCR_CampaignBase> bases;
-		int count = GetFilteredBases(CampaignBaseType.SMALL | CampaignBaseType.MAJOR | CampaignBaseType.MAIN, bases);
+		int count = GetFilteredBases(CampaignBaseType.base, bases);
 		
 		for (int i = 0; i < count; i++)
 		{
@@ -134,9 +133,14 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		int closestBaseIndex = -1;
 		float closestBaseDistance = float.MAX;
+		
 		for (int i = s_aBases.Count() - 1; i >= 0; i--)
 		{
+			if (!s_aBases[i].GetIsEnabled())
+				continue;
+			
 			float distance = vector.DistanceSq(s_aBases[i].GetOrigin(), position);
+			
 			if (distance < closestBaseDistance)
 			{
 				closestBaseDistance = distance;
@@ -146,6 +150,7 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		if (closestBaseIndex != -1)
 			return s_aBases[closestBaseIndex];
+		
 		return null;
 	}
 	
@@ -299,14 +304,13 @@ class SCR_CampaignBaseManager : GenericEntity
 				if (HQComp && HQComp.IsInRadioRange())
 				{
 					IEntity truck = mobileHQ.GetParent();
-					
 					if (truck)
 					{
 						BaseRadioComponent comp = BaseRadioComponent.Cast(truck.FindComponent(BaseRadioComponent));
-						
-						if (comp)
+						if (comp && comp.TransceiversCount() > 0)
 						{
-							if (vector.DistanceSq(entity.GetOrigin(), mobileHQ.GetOrigin()) < Math.Pow(comp.GetRange(), 2))
+							BaseTransceiver tsv = comp.GetTransceiver(0);
+							if (vector.DistanceSq(entity.GetOrigin(), mobileHQ.GetOrigin()) < Math.Pow(tsv.GetRange(), 2))
 								return true;
 						}
 					}
@@ -383,6 +387,12 @@ class SCR_CampaignBaseManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SelectHQs()
 	{
+		// Allow permanent starting HQ for debugging purposes
+#ifdef TDM_CLI_SELECTION
+		if (m_WestHQ && m_EastHQ)
+			return;
+#endif
+		
 		m_WestHQ = null;
 		m_EastHQ = null;
 		
@@ -407,6 +417,12 @@ class SCR_CampaignBaseManager : GenericEntity
 		
 		if (candidatesCount < 2)
 			return;
+		
+#ifdef TDM_CLI_SELECTION
+		m_WestHQ = candidatesForHQ[0];
+		m_EastHQ = candidatesForHQ[1];
+		return;
+#endif
 		
 		// If only two HQs are set up, don't waste time with processing
 		if (candidatesCount == 2)
@@ -528,9 +544,9 @@ class SCR_CampaignBaseManager : GenericEntity
 			
 			foreach (SCR_CampaignBase base : s_aBases)
 			{
-				if (base.GetStartingBaseOwnerEnum() == SCR_ECampaignBaseOwner.BLUFOR)
+				if (base.GetStartingBaseOwnerEnum() == SCR_ECampaignBaseOwner.BLUFOR && base.GetCanBeHQ())
 					westHQ = base;
-				else if (base.GetStartingBaseOwnerEnum() == SCR_ECampaignBaseOwner.OPFOR)
+				else if (base.GetStartingBaseOwnerEnum() == SCR_ECampaignBaseOwner.OPFOR && base.GetCanBeHQ())
 					eastHQ = base;
 				
 				if (westHQ && eastHQ)
@@ -897,11 +913,11 @@ class SCR_CampaignBaseManager : GenericEntity
 			
 			if (m_WestHQ && m_EastHQ)
 			{
+				m_WestHQ.SetAsHQ(SCR_ECampaignBaseOwner.BLUFOR);
+				m_EastHQ.SetAsHQ(SCR_ECampaignBaseOwner.OPFOR);
 				break;
 			}
 		}
-		
-		SetHQs();
 		
 		for (int i = 0; i < infoCnt; i++)
 		{
@@ -1016,7 +1032,7 @@ class SCR_CampaignBaseManager : GenericEntity
 			s_Instance = this;
 		
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 		
 		//DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_DETECT_RELAYS, "", "Detect relays", "Conflict");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_CAPTURE_RELAYS, "", "Capture relays", "Conflict");
@@ -1030,8 +1046,5 @@ class SCR_CampaignBaseManager : GenericEntity
 	{
 		if (s_Instance == this)
 			s_Instance = null;
-		
-		m_CampaignInfo = null;
 	}
-
 };

@@ -122,7 +122,7 @@ class SCR_BuildingRegionEntity : BaseBuilding
 		phys.SetInteractionLayer(EPhysicsLayerPresets.BuildingFireView);
 		
 		//Update();
-		SetFlags(EntityFlags.ACTIVE, false);
+		SetFlags(EntityFlags.ACTIVE);
 		
 		return true;
 	}

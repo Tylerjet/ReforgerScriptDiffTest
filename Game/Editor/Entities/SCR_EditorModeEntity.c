@@ -126,7 +126,7 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 		if (!m_EditorManager.IsOpened() && !m_EditorManager.IsInTransition())
 			return;
 		
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE);
 		Event_OnActivate.Invoke();
 	}
 	void PostActivateMode()
@@ -142,7 +142,7 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 			return;
 		
 		Event_OnDeactivate.Invoke();
-		ClearFlags(EntityFlags.ACTIVE, true);
+		ClearFlags(EntityFlags.ACTIVE);
 	}
 	void ActivateModeServer()
 	{
@@ -283,7 +283,7 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 	void InitOwner()
 	{
 		//--- Activate to allow events in components
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE);
 		
 		m_EditorManager = SCR_EditorManagerEntity.GetInstance();
 		if (!m_EditorManager)
@@ -295,9 +295,25 @@ class SCR_EditorModeEntity : SCR_EditorBaseEntity
 		InitComponents(false);
 		Event_OnInit.Invoke();
 	}
+	void SCR_EditorModeEntity(IEntitySource src, IEntity parent)
+	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+		{
+			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
+		}
+		
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
+	}
 	void ~SCR_EditorModeEntity()
 	{
 		if (m_EditorManager) m_EditorManager.RemoveMode(this, false);
 		Event_OnDeactivate.Invoke();
+		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+		{
+			world.UnregisterEntityToBeUpdatedWhileGameIsPaused(this);
+		}
 	}
 };

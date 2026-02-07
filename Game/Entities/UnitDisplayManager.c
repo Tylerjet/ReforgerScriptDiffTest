@@ -98,7 +98,6 @@ class SCR_UnitDisplayManager : GenericEntity
 	void SCR_UnitDisplayManager(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

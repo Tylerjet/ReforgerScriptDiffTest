@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapWaterBodyProps
@@ -15,6 +15,8 @@ class MapWaterBodyProps
 	proto external void SetWaterColor(notnull Color color);
 	proto external void SetVisible(bool visibility);
 	proto external bool IsVisible();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

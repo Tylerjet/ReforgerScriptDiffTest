@@ -173,6 +173,7 @@ class SCR_FactionCallsignInfo
 			return false;
 		
 		//TODO: Make sure the same callsigns are never assigned twice
+		Math.Randomize(-1);
 		company = Math.RandomInt(0, m_aCompanyNames.Count());
 		platoon = Math.RandomInt(0, m_aPlatoonNames.Count());
 		squad = Math.RandomInt(0, m_aSquadNames.Count());

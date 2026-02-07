@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class MusicManagerClass: GenericEntityClass
 {
-};
+}
 
 class MusicManager: GenericEntity
 {
@@ -33,6 +33,8 @@ class MusicManager: GenericEntity
 	proto external void SetSignalValue(int index, float value);
 	//! Set signal value by signal name.
 	proto external void SetSignalValueStr(string signal, float value);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

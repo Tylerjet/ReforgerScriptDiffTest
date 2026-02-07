@@ -15,7 +15,13 @@ class SCR_EngineAction : SCR_VehicleActionBase
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void PerformScriptedContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice)
+	override bool CanBroadcastScript()
+	{
+		return false;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void PerformContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice)
 	{
 		if (m_pCarController)
 			m_pCarController.TryStartEngine();
@@ -36,14 +42,14 @@ class SCR_EngineAction : SCR_VehicleActionBase
 		if (!m_bIsToggle && !m_bTargetState)
 			return;
 		
-		if (m_pCarController)
+		if (m_pCarController && !m_pCarController.IsEngineOn())
 			m_pCarController.CancelStart();
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
-		return CanBePerformedScript(user) && super.CanBeShownScript(user);
+		return m_pCarController && super.CanBeShownScript(user) && CanBePerformedScript(user);
 	}
 	
 	//------------------------------------------------------------------------------------------------

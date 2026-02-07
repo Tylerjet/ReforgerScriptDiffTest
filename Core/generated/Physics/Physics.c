@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -22,7 +22,7 @@ sealed class Physics: NativeComponent
 {
 	static const float STANDARD_GRAVITY = 9.81;
 	static const vector VGravity = "0 -9.81 0";
-	
+
 	//! Destroys the physics body
 	proto external void Destroy();
 	/*!
@@ -61,6 +61,8 @@ sealed class Physics: NativeComponent
 	proto external bool IsActive();
 	//! Returns whether the physics body is dynamic (a rigid body).
 	proto external bool IsDynamic();
+	//! Returns whether the physics body is kinematic (animated)
+	proto external bool IsKinematic();
 	//! Enables gravity on the physics body.
 	proto external bool EnableGravity(bool enable);
 	//! Changes damping parameters of the physics body.
@@ -123,12 +125,12 @@ sealed class Physics: NativeComponent
 	\param material Material resource name
 	\param interactionLayer Bit mask of layers geometry belongs to
 	@code
-	PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
-	vector frame[4];
-	Math3D.MatrixIdentity4(frame);
-	frame[3] = vector.Up;
-	string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
-	GetPhysics().AddGeom("Box", geom, frame, material, 0xffffffff);
+		PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
+		vector frame[4];
+		Math3D.MatrixIdentity4(frame);
+		frame[3] = vector.Up;
+		string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
+		GetPhysics().AddGeom("Box", geom, frame, material, 0xffffffff);
 	@endcode
 	*/
 	proto external int AddGeom(string name, PhysicsGeom geom, vector frame[4], string material, int interactionLayer);
@@ -136,6 +138,8 @@ sealed class Physics: NativeComponent
 	proto external int GetGeom(string name);
 	//! Returns number of geometries of the entity
 	proto external int GetNumGeoms();
+	//! Returns world space transformation of a geometry element
+	proto external bool UpdateGeometries(int interactionLayerAnd = 0xffffffff, int interactionLayerOr = 0);
 	//! Returns world space transformation of a geometry element
 	proto external void GetGeomWorldTransform(int index, out vector mat[4]);
 	//! Returns entity space transformation of a geometry element
@@ -165,10 +169,10 @@ sealed class Physics: NativeComponent
 	\param ent Entity that will be associated with the physics body
 	\param geoms Array of custom made geometries
 	@code
-	PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
-	string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
-	PhysicsGeomDef geoms[] = { PhysisGeomDef("Box", geom, material, 0xffffffff) };
-	Physics.CreateStaticEx(this, geoms);
+		PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
+		string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
+		PhysicsGeomDef geoms[] = { PhysisGeomDef("Box", geom, material, 0xffffffff) };
+		Physics.CreateStaticEx(this, geoms);
 	@endcode
 	*/
 	static proto Physics CreateStaticEx(notnull IEntity ent, PhysicsGeomDef geoms[]);
@@ -186,11 +190,11 @@ sealed class Physics: NativeComponent
 	\param mass Body mass
 	\param geoms Array of custom made geometries
 	@code
-	PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
-	string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
-	PhysicsGeomDef geoms[] = { PhysicsGeomDef("", geom, material, 0xffffffff) };
-	vector center = 2 * vector.Up;
-	Physics.CreateDynamicEx(this, center, 1.0, geoms);
+		PhysicsGeom geom = PhysicsGeom.CreateBox(Vector(1, 1, 1));
+		string material = "{D745FD8FC67DB26A}Common/Materials/Game/stone.gamemat";
+		PhysicsGeomDef geoms[] = { PhysicsGeomDef("", geom, material, 0xffffffff) };
+		vector center = 2 * vector.Up;
+		Physics.CreateDynamicEx(this, center, 1.0, geoms);
 	@endcode
 	*/
 	static proto Physics CreateDynamicEx(notnull IEntity ent, vector centerOfMass, float mass, PhysicsGeomDef geoms[]);
@@ -200,6 +204,8 @@ sealed class Physics: NativeComponent
 	\param geoms Array of custom made geometries
 	*/
 	static proto Physics CreateGhostEx(notnull IEntity ent, PhysicsGeomDef geoms[]);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

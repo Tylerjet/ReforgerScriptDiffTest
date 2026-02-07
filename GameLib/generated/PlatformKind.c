@@ -9,5 +9,5 @@ enum PlatformKind
 	NONE,
 	XBOX,
 	PSN,
-	STEAM
-};
+	STEAM,
+}

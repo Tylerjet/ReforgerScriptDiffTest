@@ -77,11 +77,11 @@ class SCR_SelectFactionSubMenu : SCR_RespawnSubMenuBase
 		CreateConfirmButton();
 		CreateQuickDeployButton();
 
-		if (m_wOptionalMessage && rsMenuHandler.GetFactionMenuMessage() != string.Empty)
+		if (m_wOptionalMessage && !rsMenuHandler.GetAllowFactionChange() && rsMenuHandler.GetPermanentFactionMessage() != string.Empty)
 		{
 			m_wOptionalMessage.SetVisible(true);
 			TextWidget w = TextWidget.Cast(m_wOptionalMessage.FindAnyWidget("Message"));
-			w.SetText(rsMenuHandler.GetFactionMenuMessage());
+			w.SetText(rsMenuHandler.GetPermanentFactionMessage());
 		}
 	}
 

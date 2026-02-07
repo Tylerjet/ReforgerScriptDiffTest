@@ -96,9 +96,16 @@ class RoadGeneratorEntity : GeneratorBaseEntity
 		WorldEditorAPI api = _WB_GetEditorAPI();
 		if (!api.AreGeneratorEventsEnabled())
 			return false;
-
+		
 		BaseContainerTools.WriteToInstance(this, src);
 
+		// if there is no legit spline entity
+		if( !m_ShapeEntity )
+		{
+			Print("RoadGeneratorEntity requires a SplineShapeEntity!", LogLevel.ERROR);
+			return false;
+		}
+		
 		array<vector> updateMins = new array<vector>();
 		array<vector> updateMaxes = new array<vector>();
 		

@@ -346,31 +346,6 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	{
 		m_WeaponSoundComp = WeaponSoundComponent.Cast(m_Owner.GetParent().FindComponent(WeaponSoundComponent));
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Using RPC here because it is only for sound, so we don't care when weapon is streamed in.
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_SetNewZoomLevel_BC(int zoomLevel, bool increased)
-	{
-		UpdateWeaponSoundComponent();
-		
-		// Play toggle sound
-		if (m_WeaponSoundComp)
-		{
-			if (increased)
-				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_IN");
-			else 
-				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ZOOM_OUT");
-		}
-	}
-	
-	
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RPC_SetNewZoomLevel_S(int zoomLevel, bool increased)
-	{
-		//Broadcast to everybody
-		Rpc(RPC_SetNewZoomLevel_BC, zoomLevel, increased);
-	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Switch betweem zoom levels from sights 
@@ -402,6 +377,28 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 	{
 		if (!m_SightsFovInfo || value == 0)
 			return;
+		
+		// TEMPORARY SOLUTION
+		// There is a 'mistake' in inheritance, m_pParentCharacter is never set because ADS changes are not propagated (super is not called in SCR_2DPIPSightsComponent)
+		SCR_ChimeraCharacter pParentCharacter = null;
+		IEntity parent = null;
+		if (m_Owner)
+		{
+			parent = m_Owner.GetParent();
+		
+			IEntity parentParent = parent;
+			while (parentParent)
+			{
+				SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(parentParent);
+				if (character)
+				{
+					pParentCharacter = character;
+					break;
+				}
+				
+				parentParent = parentParent.GetParent();
+			}	
+		}
 
 		// Down
 		if (value > 0 && m_iSelectedZoomLevel < m_SightsFovInfo.GetStepsCount())
@@ -409,8 +406,8 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			m_iSelectedZoomLevel++;
 			SelectZoomLevel(m_iSelectedZoomLevel);
 			
-			//Ask the server to broadcast to everybody.
-			Rpc(RPC_SetNewZoomLevel_S, m_iSelectedZoomLevel, true);
+			if(parent && pParentCharacter)
+				pParentCharacter.SetNewZoomLevel(m_iSelectedZoomLevel, true, Replication.FindId(parent.FindComponent(WeaponComponent)));
 		}
 		
 		// Up 
@@ -419,34 +416,9 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 			m_iSelectedZoomLevel--;
 			SelectZoomLevel(m_iSelectedZoomLevel);
 			
-			//Ask the server to broadcast to everybody.
-			Rpc(RPC_SetNewZoomLevel_S, m_iSelectedZoomLevel, false);
+			if(parent && pParentCharacter)
+				pParentCharacter.SetNewZoomLevel(m_iSelectedZoomLevel, false, Replication.FindId(parent.FindComponent(WeaponComponent)));
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Using RPC here because it is only for sound, so we don't care when weapon is streamed in.
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void RPC_SetIllumination_BC(bool state)
-	{
-		UpdateWeaponSoundComponent();
-		
-		// Play toggle sound
-		if (m_WeaponSoundComp)
-		{
-			if (state)
-				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_ON");
-			else 
-				m_WeaponSoundComp.SoundEvent("SOUND_SCOPE_ILLUM_OFF");
-		}
-	}
-	
-	
-	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
-	protected void RPC_SetIllumination_S(bool state)
-	{
-		//Broadcast to everybody
-		Rpc(RPC_SetIllumination_BC, state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -456,8 +428,31 @@ class SCR_2DSightsComponent : SCR_2DOpticsComponent
 		m_bIsIlluminationOn = !m_bIsIlluminationOn;
 		EnableReticleIllumination(m_bIsIlluminationOn);
 		
-		//Ask the server to broadcast to everybody.
-		Rpc(RPC_SetIllumination_S, m_bIsIlluminationOn);
+		
+		// TEMPORARY SOLUTION
+		// There is a 'mistake' in inheritance, m_pParentCharacter is never set because ADS changes are not propagated (super is not called in SCR_2DPIPSightsComponent)
+		if (m_Owner)
+		{
+			IEntity parent = m_Owner.GetParent();
+			SCR_ChimeraCharacter pParentCharacter = null;
+			IEntity parentParent = parent;
+			while (parentParent)
+			{
+				SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(parentParent);
+				if (character)
+				{
+					pParentCharacter = character;
+					break;
+				}
+				
+				parentParent = parentParent.GetParent();
+			}
+			
+			if (pParentCharacter)
+			{
+				pParentCharacter.SetIllumination(m_bIsIlluminationOn, Replication.FindId(WeaponComponent.Cast(parent.FindComponent(WeaponComponent))));
+			}
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

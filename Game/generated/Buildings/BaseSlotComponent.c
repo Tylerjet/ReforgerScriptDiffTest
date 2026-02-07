@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Buildings
-* @{
+/*!
+\addtogroup Buildings
+\{
 */
 
 class BaseSlotComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseSlotComponent: GameComponent
 {
@@ -19,13 +19,15 @@ class BaseSlotComponent: GameComponent
 	proto external EntitySlotInfo GetSlotInfo();
 	//! Returns the current attached entity.
 	proto external IEntity GetAttachedEntity();
-	
+
 	// callbacks
-	
+
 	//! Runs every time an entity is attached to the slot.
 	event void OnAttachedEntity(IEntity ent);
 	//! Runs every time an entity is detached from the slot.
 	event void OnDetachedEntity(IEntity ent);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

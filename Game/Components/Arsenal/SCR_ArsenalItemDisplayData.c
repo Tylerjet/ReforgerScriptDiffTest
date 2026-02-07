@@ -1,32 +1,36 @@
-[BaseContainerProps(), SCR_BaseContainerCustomTitleResourceName("m_ItemResourceName", true)]
+[BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EArsenalItemDisplayType, "m_eArsenalItemDisplayType")]
 class SCR_ArsenalItemDisplayData
-{
-	[Attribute(params: "et")]
-	protected ResourceName m_ItemResourceName;
+{	
+	[Attribute("0", desc: "Type of display that the SCR_ArsenalDisplayComponent allows", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(EArsenalItemDisplayType),  category: "Display settings")]
+	protected EArsenalItemDisplayType m_eArsenalItemDisplayType;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "...", category: "Physics settings")]
+	[Attribute("0 0 0", desc: "Offset of item when displaye", uiwidget: UIWidgets.EditBox, category: "Display settings")]
 	protected vector m_vItemOffset;
 	
-	[Attribute("0 0 0", UIWidgets.EditBox, "...", category: "Physics settings")]
+	[Attribute("0 0 0", desc: "Rotation of item when displayed", uiwidget: UIWidgets.EditBox, category: "Display settings")]
 	protected vector m_vItemRotation;
-	
-	ResourceName GetItemResourceName()
-	{
-		return m_ItemResourceName;
-	}
-	
+
+	//----------------------------------------------------------------------------
 	vector GetItemOffset()
 	{
 		return m_vItemOffset;
 	}
 	
+	//----------------------------------------------------------------------------
 	vector GetItemRotation()
 	{
 		return m_vItemRotation;
 	}
 	
-	void SCR_ArsenalItemDisplayData()
+	//----------------------------------------------------------------------------
+	EArsenalItemDisplayType GetDisplayType()
 	{
-		
+		return m_eArsenalItemDisplayType;
 	}
+};
+
+//----------------------------------------------------------------------------
+enum EArsenalItemDisplayType
+{
+	WEAPON_RACK,
 };

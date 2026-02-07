@@ -4,16 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 class FrameSlot
 {
 	private void FrameSlot();
 	private void ~FrameSlot();
-	
+
 	static proto void GetOffsets(notnull Widget widget, out float left, out float top, out float right, out float bottom);
 	static proto float GetPosX(notnull Widget widget);
 	static proto vector GetPos(notnull Widget widget);
@@ -45,6 +45,8 @@ class FrameSlot
 	\param yOffset Offset added to widget's current y coordinate
 	*/
 	static proto void Move(notnull Widget widget, float xOffset, float yOffset);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

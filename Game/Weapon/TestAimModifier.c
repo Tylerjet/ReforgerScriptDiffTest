@@ -107,10 +107,33 @@ class TestAimModifier: ScriptedWeaponAimModifier
 		translation = GetLinear();
 		rotation = GetAngular();
 		turnOffset = GetTurn();
+		
+		if (m_weaponManagerComponent)
+		{
+			BaseWeaponComponent weaponComponent = m_weaponManagerComponent.GetCurrentWeapon();
+			if (weaponComponent)
+			{
+				BaseSightsComponent bsc = weaponComponent.GetSights();
+				if (bsc)
+				{
+					bsc.ForceSightsZeroValue(translation, rotation, turnOffset);
+				}
+			}
+		}
 	}
 	//------------------------------------------------------------------------------------------------
 	// called when weapon is fired
 	protected override void OnWeaponFired() 
 	{
 	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	// called when weapon is activated
+	protected override void OnActivated(IEntity weaponOwner)
+	{
+		m_weaponManagerComponent = BaseWeaponManagerComponent.Cast(weaponOwner.FindComponent(BaseWeaponManagerComponent));	
+	}
+	
+	protected BaseWeaponManagerComponent m_weaponManagerComponent;
 };

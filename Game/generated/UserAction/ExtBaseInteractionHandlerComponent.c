@@ -4,27 +4,32 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
 class ExtBaseInteractionHandlerComponentClass: BaseInteractionHandlerComponentClass
 {
-};
+}
 
-/**
+/*!
 Collects interactions by performing a sphere cast initially and then a sphere query at the end.
 Iterates through hit entities and tries to find closest entity with ActionsManagerComponent that
 has a valid context.
 */
 class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 {
+	/*!
+	Sets currently select action. Only relevant to the owner of this component,
+	ie. for the local player. Accepts null for when action is to be cleared.
+	*/
+	proto external protected void SetSelectedAction(BaseUserAction action);
 	//! Returns currently gathered (active-preferred) context or null if none.
 	proto external UserActionContext GetCurrentContext();
 	//! Returns the controlled entity or null if none.
 	proto external IEntity GetControlledEntity();
-	/**
+	/*!
 	After collection is done, this method can be used for retrieving already checked user actions from current context.
 	\param outActions Array that will be filled with user actions that can be shown
 	\param outCanBePerformed Array that complements the outActions with result of CanBePerformed check
@@ -67,9 +72,9 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	\return Returns the count of output contexts or 0 if none.
 	*/
 	proto external int GetNearbyUnavailableContextList(out notnull array<UserActionContext> outContexts);
-	
+
 	// callbacks
-	
+
 	/*!
 	Event called when InteractionHandlerComponent finds new target UserActionContext and a change occurs.
 	Both previous and new context might be 'null' if no context is caught in collection.
@@ -114,6 +119,8 @@ class ExtBaseInteractionHandlerComponent: BaseInteractionHandlerComponent
 	\param referencePoint Point in world space used to calculate distance and sort contexts by
 	*/
 	event protected array<IEntity> GetManualOverrideList(IEntity owner, out vector referencePoint);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

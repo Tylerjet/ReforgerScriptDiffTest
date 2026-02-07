@@ -152,8 +152,8 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 		
 		if (m_wBehavior && m_UtilityComponent.m_CurrentBehavior)
 		{
-			EAIActionType type = m_UtilityComponent.m_CurrentBehavior.m_eType;
-			m_wBehavior.SetText(typename.EnumToString(EAIActionType, type));
+			typename type = m_UtilityComponent.m_CurrentBehavior.Type();
+			m_wBehavior.SetText(type.ToString());
 		}
 		
 		if (m_wOrder)
@@ -229,7 +229,7 @@ class SCR_AIDebugInfoComponent : ScriptedWidgetComponent
 				}
 			}
 			
-			resultString = typename.EnumToString(EAIActionType, actions[highIndex].m_eType) + "   " + Math.Round(highScore);
+			resultString = actions[highIndex].Type().ToString() + "   " + Math.Round(highScore);
 			results.Insert(resultString);
 			
 			actions.RemoveOrdered(highIndex);

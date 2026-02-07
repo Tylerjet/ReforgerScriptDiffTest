@@ -46,8 +46,8 @@ class CharacterCamera3rdPersonCrouch extends CharacterCamera3rdPersonBase
 	}
 
 	//-----------------------------------------------------------------------------
-	static const float 	CONST_CAMERAMOVEMENTHEIGH = 0.4;
-	static const float 	CONST_CAMERA_STANCE_ADJ_BY_MOVEMENT = 0.2;
+	static const float 	CONST_CAMERAMOVEMENTHEIGH = 0.1;
+	static const float 	CONST_CAMERA_STANCE_ADJ_BY_MOVEMENT = 0.1;
 
 	protected CharacterCommandMove m_CommandMove;
 	

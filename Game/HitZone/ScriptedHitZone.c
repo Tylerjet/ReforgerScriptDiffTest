@@ -121,7 +121,7 @@ class ScriptedHitZone : HitZone
 	\param int nodeID, bone index in mesh obj
 	\param bool isDOT, true if this is a calculation for DamageOverTime 
 	*/
-	float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, const inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
+	float ComputeEffectiveDamage(EDamageType damageType, float rawDamage, IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, IEntity damageSourceGunner, IEntity damageSourceParent, const GameMaterial hitMaterial, int colliderID, inout vector hitTransform[3], const vector impactVelocity, int nodeID, bool isDOT)
 	{
 		if (rawDamage == 0)
 			return 0;
@@ -133,7 +133,7 @@ class ScriptedHitZone : HitZone
 		float effectiveDamage = rawDamage * GetBaseDamageMultiplier();
 		//apply damage multiplier for this specific damage type
 		effectiveDamage *= GetDamageMultiplier(damageType);
-
+		
 		//DOT doesn't get affected by damage reduction/thresholds, and neither does healing.
 		if (isDOT || effectiveDamage < 0)
 			return effectiveDamage;
@@ -171,13 +171,17 @@ class ScriptedHitZone : HitZone
 			return;
 		}
 		
-		float currentRegen = GetDamageOverTime(EDamageType.FIRE);
-		SetDamageOverTime(EDamageType.FIRE, currentRegen + itemRegenerationSpeed * -1);
+		float currentRegen = GetDamageOverTime(EDamageType.HEALING);
+		SetDamageOverTime(EDamageType.HEALING, currentRegen + itemRegenerationSpeed * -1);
 	}
 	
 	//-----------------------------------------------------------------------------------------------------------
 	void RemoveCustomRegeneration(IEntity target, float itemRegenerationSpeed)
 	{
-		SetDamageOverTime(EDamageType.FIRE, (GetDamageOverTime(EDamageType.FIRE) + itemRegenerationSpeed) );
+		// if healing was removed somehow before the regeneration was finished, don't remove again
+		if (GetDamageOverTime(EDamageType.HEALING) + itemRegenerationSpeed > 0)
+			SetDamageOverTime(EDamageType.HEALING, 0);
+		else
+			SetDamageOverTime(EDamageType.HEALING, (GetDamageOverTime(EDamageType.HEALING) + itemRegenerationSpeed));
 	}
 };

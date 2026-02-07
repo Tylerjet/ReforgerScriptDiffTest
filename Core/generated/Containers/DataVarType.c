@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Containers
-* @{
+/*!
+\addtogroup Containers
+\{
 */
 
 /*!
@@ -63,7 +63,9 @@ enum DataVarType
 	POINTER_ARRAY,
 	FLAGS_ARRAY,
 	OBJECT_ARRAY,
-	RESOURCE_NAME_ARRAY
-};
+	RESOURCE_NAME_ARRAY,
+}
 
-/** @}*/
+/*!
+\}
+*/

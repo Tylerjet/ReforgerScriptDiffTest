@@ -133,7 +133,6 @@ class SCR_DummyTargetEntity : SCR_GenericBoxEntity
 	void SCR_DummyTargetEntity(IEntitySource src, IEntity parent)
 	{
 		m_Source = src;
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
 	}
 };

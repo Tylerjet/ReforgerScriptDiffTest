@@ -1,6 +1,74 @@
 [ComponentEditorProps(category: "GameScripted/Network", description: "")]
 class SCR_NotificationsComponentClass: ScriptComponentClass
-{
+{	
+	[Attribute("{7134157CA6B1FA8E}Configs/Notifications/Notifications.conf", desc: "Link to config that holds all notification data", params: "conf class=SCR_NotificationConfig")]
+	protected ResourceName m_sNotificationConfig;
+	
+	//Notification Display Data Map
+	protected ref map<ENotification, ref SCR_NotificationDisplayData> m_mNotificationDisplayDataMap = new map<ENotification, ref SCR_NotificationDisplayData>;
+	
+	/*!
+	Get notification display data from notification ID
+	\param notificationID ID of notification
+	\return DisplayData of notification
+	*/
+	SCR_NotificationDisplayData GetNotificationDisplayData(ENotification notificationID)
+	{
+		SCR_NotificationDisplayData notificationData;
+		
+		if (m_mNotificationDisplayDataMap.Find(notificationID, notificationData))
+			return notificationData;
+		
+		Print("Notification data not found  in 'SCR_NotificationsComponent' for key: '" + typename.EnumToString(ENotification, notificationID) + "'.", LogLevel.WARNING);
+		m_mNotificationDisplayDataMap.Find(ENotification.UNKNOWN, notificationData);
+		
+		return notificationData;
+	}
+	
+	//~ Constructor creates notification map for the system to get the notification data for each ENotification
+	void SCR_NotificationsComponentClass(BaseContainer prefab)
+	{
+		//~ Notification map already filled
+		if (!m_mNotificationDisplayDataMap.IsEmpty())
+			return;
+		
+		//~ Load resource
+		Resource configResource = Resource.Load(m_sNotificationConfig);
+		if (!configResource)
+		{
+			Print(string.Format("'SCR_NotificationsComponentClass' failed to load notifications config: '%1' at the Resource.Load step!", m_sNotificationConfig), LogLevel.ERROR);
+			return;
+		}
+		
+		//~ Get base container
+		BaseContainer configBaseContainer = configResource.GetResource().ToBaseContainer();
+		if (!configBaseContainer)
+		{
+			Print(string.Format("'SCR_NotificationsComponentClass' failed to load notifications config: '%1' at the BaseContainer step!", m_sNotificationConfig), LogLevel.ERROR);
+			return;
+		}
+		
+		//~ Get config
+		SCR_NotificationConfig notificationConfig = SCR_NotificationConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(configBaseContainer));
+		if (!notificationConfig)
+		{
+			Print(string.Format("'SCR_NotificationsComponentClass' failed to load notifications config: '%1' at the create instance step!", m_sNotificationConfig), LogLevel.ERROR);
+			return;
+		}
+		
+		//~ Get data
+		array<ref SCR_NotificationDisplayData> data = {};
+		int count = notificationConfig.GetNotificationData(data);
+		
+		//~ Gegenerate
+		for(int i = 0; i < count; i++)
+        {
+			if (!m_mNotificationDisplayDataMap.Contains(data[i].m_NotificationKey))
+            	m_mNotificationDisplayDataMap.Set(data[i].m_NotificationKey, data[i]);
+			else
+				Print("Notification data in 'SCR_NotificationsLogComponent' has duplicate notification info key: '" + typename.EnumToString(ENotification, data[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
+        }
+	}		
 };
 
 /*!
@@ -8,17 +76,10 @@ Framework for sending notifications to players.
 */
 class SCR_NotificationsComponent : ScriptComponent
 {
-	[Attribute("{7134157CA6B1FA8E}Configs/Notifications/Notifications.conf", desc: "Link to config that holds all notification data")]
-	protected ref SCR_NotificationConfig m_NotificationConfig;
-	
 	protected ref array<ref SCR_NotificationData> m_aHistory = new array<ref SCR_NotificationData>;
 	protected ref ScriptInvoker Event_OnNotification = new ScriptInvoker;
 	
 	protected SCR_NotificationData m_LastNotificationWithLocation;
-	
-	//Notification Display Data Map
-	ref map<ENotification, SCR_NotificationDisplayData> m_NotificationDisplayDataMap = new map<ENotification, SCR_NotificationDisplayData>;
-	
 	protected bool m_bIsUpdatingNotificationData;
 	
 	//How long each notification exists before it gets deleted, Time in seconds
@@ -127,11 +188,12 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToEveryone(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToEveryone(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendToEveryone(notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendToEveryone(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -143,21 +205,51 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToEveryone(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToEveryone(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
+		//~ Send from client to server to broadcast
+		if (!Replication.IsServer())
+		{ 
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(SCR_PlayerController.GetLocalPlayerId()));
+			if (!playerController)
+				return false;
+			
+			SCR_NotificationsComponent notificationsComponent = SCR_NotificationsComponent.Cast(playerController.FindComponent(SCR_NotificationsComponent));
+			if (!notificationsComponent)
+				return false;
+			
+			array<int> paramArray = {};
+			CreateParamArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+			notificationsComponent.Rpc(notificationsComponent.Rpc_SendToEveryone, notificationID, position, paramArray);
+			return true;
+		}
+		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.EVERYONE, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.EVERYONE, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position);
 		return SendToEveryoneData(notificationID, newNotificationData);
+	}
+	
+	//~ Allows client to broadcast notification to everyone
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_SendToEveryone(ENotification notificationID, vector position, notnull array<int> paramArray)
+	{	
+		int param1, param2, param3, param4, param5, param6;
+		GetParamsFromArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+		SendToEveryone(notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
 	//Set the actual data to players
 	protected static bool SendToEveryoneData(ENotification notificationID, SCR_NotificationData data)
 	{
 		//--- Only server can broadcast messages
-		if (!Replication.IsServer()) return false;
+		if (!Replication.IsServer()) 
+			return false;
 		
 		array<int> players = new array<int>;
 		for (int i = 0, count = GetGame().GetPlayerManager().GetPlayers(players); i < count; i++)
@@ -176,11 +268,12 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToPlayer(int playerID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToPlayer(int playerID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendToPlayer(playerID, notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendToPlayer(playerID, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -193,19 +286,52 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToPlayer(int playerID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToPlayer(int playerID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
+		//~ Send from client to server
+		if (!Replication.IsServer())
+		{ 
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(SCR_PlayerController.GetLocalPlayerId()));
+			if (!playerController)
+				return false;
+			
+			SCR_NotificationsComponent notificationsComponent = SCR_NotificationsComponent.Cast(playerController.FindComponent(SCR_NotificationsComponent));
+			if (!notificationsComponent)
+				return false;
+			
+			array<int> paramArray = {};
+			CreateParamArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+			notificationsComponent.Rpc(notificationsComponent.Rpc_SendToPlayer, playerID, notificationID, position, paramArray);
+			return true;
+		}
+		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.SPECIFIC_PLAYER, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.SPECIFIC_PLAYER, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position); 
 		return SendToPlayerData(playerID, notificationID, newNotificationData);
+	}
+	
+	//~ Allows client to broadcast notification to specific player
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_SendToPlayer(int playerID, ENotification notificationID, vector position, notnull array<int> paramArray)
+	{	
+		int param1, param2, param3, param4, param5, param6;
+		GetParamsFromArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+		SendToPlayer(playerID, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
 	//Set the actual data to player
 	protected static bool SendToPlayerData(int playerID, ENotification notificationID, SCR_NotificationData data)
 	{
+		//~ Only server can broadcast messages
+		if (!Replication.IsServer()) 
+			return false;
+		
 		PlayerController playerController = GetGame().GetPlayerManager().GetPlayerController(playerID);
 		if (!playerController)
 			return false;
@@ -219,22 +345,27 @@ class SCR_NotificationsComponent : ScriptComponent
 	}
 	
 	/*!
-	Send notification to all players that have GM rights
-	\param notificationID ID of the notification MessageBox
-  	\param param1
+	Send notification to player with given ID
+	\param faction Faction of players to send notification to
+	\param includeFriendlyFactions If true it will also send the notification to factions friendly to the given faction
+	\param notificationID ID of the notification message
+	\param param1
 	\param param2
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToGameMasters(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToFaction(notnull SCR_Faction faction, bool includeFriendlyFactions, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendToGameMasters(notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendToFaction(faction, includeFriendlyFactions, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
-	Send notification to all players that have GM rights
+	Send notification to player with given ID
+	\param faction Faction of players to send notification to
+	\param includeFriendlyFactions If true it will also send the notification to factions friendly to the given faction
 	\param notificationID ID of the notification message
 	\param position notification position
 	\param param1
@@ -242,21 +373,178 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToGameMasters(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToFaction(notnull SCR_Faction faction, bool includeFriendlyFactions, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
+		//~ Send from client to server
+		if (!Replication.IsServer())
+		{ 
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(SCR_PlayerController.GetLocalPlayerId()));
+			if (!playerController)
+				return false;
+			
+			SCR_NotificationsComponent notificationsComponent = SCR_NotificationsComponent.Cast(playerController.FindComponent(SCR_NotificationsComponent));
+			if (!notificationsComponent)
+				return false;
+			
+			FactionManager factionManager = GetGame().GetFactionManager();
+			if (!factionManager)
+				return false;
+			
+			array<int> paramArray = {};
+			CreateParamArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+			notificationsComponent.Rpc(notificationsComponent.Rpc_SendToFaction, factionManager.GetFactionIndex(faction), includeFriendlyFactions, notificationID, position, paramArray);
+			return true;
+		}
+		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.GM_ONLY, param1, param2, param3, param4, param5);
-		newNotificationData.SetPosition(position);
-		return SendToGameMastersData(notificationID, newNotificationData);
+		newNotificationData.SetParameters(ENotificationReceiver.SPECIFIC_PLAYER, param1, param2, param3, param4, param5, param6);
+		newNotificationData.SetPosition(position); 
+		return SendToFactionData(faction, includeFriendlyFactions, notificationID, newNotificationData);
 	}
 	
-	//Set the actual data to players that are GM
-	protected static bool SendToGameMastersData(ENotification notificationID, SCR_NotificationData data, int playerID = -1)
+	//~ Allows client to broadcast notification to faction
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_SendToFaction(int factionIndex, bool includeFriendlyFactions, ENotification notificationID, vector position, notnull array<int> paramArray)
+	{	
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return;
+		
+		SCR_Faction faction = SCR_Faction.Cast(factionManager.GetFactionByIndex(factionIndex));
+		if (!faction)
+			return;
+		
+		int param1, param2, param3, param4, param5, param6;
+		GetParamsFromArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+		SendToFaction(faction, includeFriendlyFactions, notificationID, position, param1, param2, param3, param4, param5, param6);
+	}
+	
+	//Set the actual data to players in faction
+	protected static bool SendToFactionData(notnull SCR_Faction faction, bool includeFriendlyFactions, ENotification notificationID, SCR_NotificationData data)
+	{		
+		//--- Only server can broadcast messages
+		if (!Replication.IsServer()) 
+			return false;
+		
+		array<int> players = {};
+		faction.GetPlayersInFaction(players);
+		
+		foreach(int playerID : players)
+		{
+			SendToPlayerData(playerID, notificationID, data);
+		}
+		
+		if (!includeFriendlyFactions)
+			return true;
+
+		//~ If also include friendly factions send it to those factions as well
+		FactionManager factionManager = GetGame().GetFactionManager();
+		
+		if (factionManager)
+		{
+			array<Faction> allFactions = {};
+			SCR_Faction scrFaction;
+			factionManager.GetFactionsList(allFactions);
+			
+			foreach(Faction otherFaction : allFactions)
+			{
+				if (otherFaction == faction)
+					continue;
+				
+				scrFaction = SCR_Faction.Cast(otherFaction);
+				if (!scrFaction)
+					continue;
+				
+				if (!faction.IsFactionFriendly(scrFaction))
+					continue;
+				
+				//~ Send to all players
+				scrFaction.GetPlayersInFaction(players);
+				foreach(int playerID : players)
+				{
+					SendToPlayerData(playerID, notificationID, data);
+				}
+			}
+		}
+		
+		return true;
+	}
+	
+	/*!
+	Send notification to all players that have an unlimited editor
+	\param notificationID ID of the notification MessageBox
+  	\param param1
+	\param param2
+	\param param3
+	\param param4
+	\param param5
+	\param param6
+	\return True if the notification was sent successfully
+	*/
+	static bool SendToUnlimitedEditorPlayers(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
+	{
+		return SendToUnlimitedEditorPlayers(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
+	}
+	
+	/*!
+	Send notification to all players that have an unlimited editor
+	\param notificationID ID of the notification message
+	\param position notification position
+	\param param1
+	\param param2
+	\param param3
+	\param param4
+	\param param5
+	\param param6
+	\return True if the notification was sent successfully
+	*/
+	static bool SendToUnlimitedEditorPlayers(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
+	{
+		//~ Send from client to server to broadcast
+		if (!Replication.IsServer())
+		{ 
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(SCR_PlayerController.GetLocalPlayerId()));
+			if (!playerController)
+				return false;
+			
+			SCR_NotificationsComponent notificationsComponent = SCR_NotificationsComponent.Cast(playerController.FindComponent(SCR_NotificationsComponent));
+			if (!notificationsComponent)
+				return false;
+			
+			array<int> paramArray = {};
+			CreateParamArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+			notificationsComponent.Rpc(notificationsComponent.Rpc_SendToUnlimitedEditorPlayers, notificationID, position, paramArray);
+			return true;
+		}
+		
+		SCR_NotificationData newNotificationData = SCR_NotificationData();
+		newNotificationData.SetParameters(ENotificationReceiver.GM_ONLY, param1, param2, param3, param4, param5, param6);
+		newNotificationData.SetPosition(position);
+		return SendToUnlimitedEditorPlayersData(notificationID, newNotificationData);
+	}
+	
+	//~ Allows client to broadcast notification to players with unlimited editors
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_SendToUnlimitedEditorPlayers(ENotification notificationID, vector position, notnull array<int> paramArray)
+	{	
+		int param1, param2, param3, param4, param5, param6;
+		GetParamsFromArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+		SendToUnlimitedEditorPlayers(notificationID, position, param1, param2, param3, param4, param5, param6);
+	}
+	
+	//Set the actual data to players that have an unlimited editor
+	protected static bool SendToUnlimitedEditorPlayersData(ENotification notificationID, SCR_NotificationData data, int playerID = -1)
 	{
 		//--- Only server can broadcast messages
-		if (!Replication.IsServer()) return false;
+		if (!Replication.IsServer()) 
+			return false;
 		
 		array<int> players = new array<int>;
 		for (int i = 0, count = GetGame().GetPlayerManager().GetPlayers(players); i < count; i++)
@@ -282,22 +570,25 @@ class SCR_NotificationsComponent : ScriptComponent
 	}
 	
 	/*!
-	Send notification to all players that have GM rights
+	Send notification to all players that have an unlimited editor including the given player
+	\param playerID notification is also send to this player, regardless if they have an unlimited editor or not
 	\param notificationID ID of the notification MessageBox
   	\param param1
 	\param param2
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToGameMastersAndPlayer(int playerID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToUnlimitedEditorPlayersAndPlayer(int playerID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendToGameMastersAndPlayer(playerID, notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendToUnlimitedEditorPlayersAndPlayer(playerID, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
-	Send notification to all players that have GM rights
+	Send notification to all players that have an unlimited editor including the given player
+	\param playerID notification is also send to this player, regardless if they have an unlimited editor or not
 	\param notificationID ID of the notification message
 	\param position notification position
 	\param param1
@@ -305,14 +596,43 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToGameMastersAndPlayer(int playerID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToUnlimitedEditorPlayersAndPlayer(int playerID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
+		//~ Send from client to server to broadcast
+		if (!Replication.IsServer())
+		{ 
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(SCR_PlayerController.GetLocalPlayerId()));
+			if (!playerController)
+				return false;
+			
+			SCR_NotificationsComponent notificationsComponent = SCR_NotificationsComponent.Cast(playerController.FindComponent(SCR_NotificationsComponent));
+			if (!notificationsComponent)
+				return false;
+			
+			array<int> paramArray = {};
+			CreateParamArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+			notificationsComponent.Rpc(notificationsComponent.Rpc_SendToUnlimitedEditorPlayersAndPlayer, playerID, notificationID, position, paramArray);
+			return true;
+		}
+		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.GM_OR_AFFECTED_PLAYER_ONLY, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.GM_OR_AFFECTED_PLAYER_ONLY, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position);
-		return SendToGameMastersData(notificationID, newNotificationData, playerID);
+		return SendToUnlimitedEditorPlayersData(notificationID, newNotificationData, playerID);
+	}
+	
+	//~ Allows client to broadcast notification to all players with unlimited editors and an the given specific player
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_SendToUnlimitedEditorPlayersAndPlayer(int playerID, ENotification notificationID, vector position, notnull array<int> paramArray)
+	{	
+		int param1, param2, param3, param4, param5, param6;
+		GetParamsFromArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+		SendToUnlimitedEditorPlayersAndPlayer(playerID, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -324,11 +644,12 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToGroup(int groupID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToGroup(int groupID, ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendToGroup(groupID, notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendToGroup(groupID, notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -341,21 +662,51 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendToGroup(int groupID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendToGroup(int groupID, ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
+		//~ Send from client to server to broadcast
+		if (!Replication.IsServer())
+		{ 
+			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(SCR_PlayerController.GetLocalPlayerId()));
+			if (!playerController)
+				return false;
+			
+			SCR_NotificationsComponent notificationsComponent = SCR_NotificationsComponent.Cast(playerController.FindComponent(SCR_NotificationsComponent));
+			if (!notificationsComponent)
+				return false;
+			
+			array<int> paramArray = {};
+			CreateParamArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+			notificationsComponent.Rpc(notificationsComponent.Rpc_SendToGroup, groupID, notificationID, position, paramArray);
+			return true;
+		}
+		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.PLAYER_GROUP, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.PLAYER_GROUP, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position);
 		return SendToGroupData(notificationID, newNotificationData, groupID);
+	}
+	
+	//~ Allows client to broadcast notification to all players within the given group
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	protected void Rpc_SendToGroup(int groupID, ENotification notificationID, vector position, notnull array<int> paramArray)
+	{	
+		int param1, param2, param3, param4, param5, param6;
+		GetParamsFromArray(paramArray, param1, param2, param3, param4, param5, param6);
+		
+		SendToGroup(groupID, notificationID, position, param1, param2, param3, param4, param5, param6);
 	}
 	
 	//Set the actual data to players in the given group
 	protected static bool SendToGroupData(ENotification notificationID, SCR_NotificationData data, int groupID)
 	{
 		//--- Only server can broadcast messages
-		if (!Replication.IsServer()) return false;
+		if (!Replication.IsServer()) 
+			return false;
 		
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
 		if (!groupManager)
@@ -377,7 +728,7 @@ class SCR_NotificationsComponent : ScriptComponent
 		
 		return true;
 	}
-
+	
 	/*!
 	Send notification to the player on this machine.
 	\param notificationID ID of the notification message
@@ -386,11 +737,12 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendLocal(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendLocal(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendLocal(notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendLocal(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -402,12 +754,13 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendLocal(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendLocal(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.LOCAL_ONLY, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.LOCAL_ONLY, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position); 
 		return SendLocalData(notificationID, newNotificationData);
 	}
@@ -420,11 +773,12 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendLocalGameMaster(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendLocalUnlimitedEditor(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendLocalGameMaster(notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendLocalUnlimitedEditor(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -436,21 +790,22 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendLocalGameMaster(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendLocalUnlimitedEditor(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (!editorManager || editorManager.IsLimited())
 			return false;
 		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.LOCAL_GM_ONLY, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.LOCAL_GM_ONLY, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position); 
 		return SendLocalData(notificationID, newNotificationData);
 	}
 	
-		/*!
+	/*!
 	Send notification to the player on this machine (if has Game master rights).
 	\param notificationID ID of the notification message
 	\param param1
@@ -458,11 +813,12 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendLocalNonGameMaster(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendLocalLimitedEditor(ENotification notificationID, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
-		return SendLocalNonGameMaster(notificationID, vector.Zero, param1, param2, param3, param4, param5);
+		return SendLocalLimitedEditor(notificationID, vector.Zero, param1, param2, param3, param4, param5, param6);
 	}
 	
 	/*!
@@ -474,16 +830,17 @@ class SCR_NotificationsComponent : ScriptComponent
 	\param param3
 	\param param4
 	\param param5
+	\param param6
 	\return True if the notification was sent successfully
 	*/
-	static bool SendLocalNonGameMaster(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	static bool SendLocalLimitedEditor(ENotification notificationID, vector position, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		SCR_EditorManagerEntity editorManager = SCR_EditorManagerEntity.GetInstance();
 		if (!editorManager || !editorManager.IsLimited())
 			return false;
 		
 		SCR_NotificationData newNotificationData = SCR_NotificationData();
-		newNotificationData.SetParameters(ENotificationReceiver.LOCAL_NON_GM_ONLY, param1, param2, param3, param4, param5);
+		newNotificationData.SetParameters(ENotificationReceiver.LOCAL_NON_GM_ONLY, param1, param2, param3, param4, param5, param6);
 		newNotificationData.SetPosition(position); 
 		return SendLocalData(notificationID, newNotificationData);
 	}
@@ -499,6 +856,68 @@ class SCR_NotificationsComponent : ScriptComponent
 		return true;
 	}
 	
+	//~ Create array of params
+	protected static void CreateParamArray(notnull out array<int> paramArray, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
+	{
+		if (param1 != 0)
+			paramArray.Insert(param1);
+		if (param2 != 0)
+			paramArray.Insert(param2);
+		if (param3 != 0)
+			paramArray.Insert(param3);
+		if (param4 != 0)
+			paramArray.Insert(param4);
+		if (param5 != 0)
+			paramArray.Insert(param5);
+		if (param6 != 0)
+			paramArray.Insert(param6);
+	}
+	
+	//~ Get all params from array of params
+	protected static void GetParamsFromArray(notnull array<int> paramArray, out int param1 = 0, out int param2 = 0, out int param3 = 0, out int param4 = 0, out int param5 = 0, out int param6 = 0)
+	{
+		int count = paramArray.Count();
+		
+		if (count == 1)
+		{
+			param1 = paramArray[0];
+		}
+		else if (count == 2)
+		{
+			param1 = paramArray[0];
+			param2 = paramArray[1];
+		}
+		else if (count == 3)
+		{
+			param1 = paramArray[0];
+			param2 = paramArray[1];
+			param3 = paramArray[2];
+		}
+		else if (count == 4)
+		{
+			param1 = paramArray[0];
+			param2 = paramArray[1];
+			param3 = paramArray[2];
+			param4 = paramArray[3];
+		}
+		else if (count == 5)
+		{
+			param1 = paramArray[0];
+			param2 = paramArray[1];
+			param3 = paramArray[2];
+			param4 = paramArray[3];
+			param5 = paramArray[4];
+		}
+		else if (count == 6)
+		{
+			param1 = paramArray[0];
+			param2 = paramArray[1];
+			param3 = paramArray[2];
+			param4 = paramArray[3];
+			param5 = paramArray[4];
+			param6 = paramArray[5];
+		}
+	}
 	
 	/*!
 	Send notification to player who owns this player controller.
@@ -551,39 +970,11 @@ class SCR_NotificationsComponent : ScriptComponent
 	//======================== GET NOTIFICATION DISPLAY DATA ========================\\
 	protected SCR_NotificationDisplayData GetNotificationDisplayData(ENotification notificationID)
 	{		
-		if (m_NotificationDisplayDataMap.Contains(notificationID))
-		{
-			return m_NotificationDisplayDataMap.Get(notificationID);
-		}
-		else 
-		{
-			Print("Notification data not found  in 'SCR_NotificationsComponent' for key: '" + typename.EnumToString(ENotification, notificationID) + "'.", LogLevel.WARNING);
-			return m_NotificationDisplayDataMap.Get(ENotification.UNKNOWN);
-		}
-	}
-	
-	//======================== BUILD NOTIFICATION INFO MAP ========================\\
-	/*!
-	Generate new notifications map
-	\param notificationConfig SCR_NotificationConfig Config which contains all notification display data
-	*/
-	void GenerateNotificationDisplayDataMap(notnull SCR_NotificationConfig notificationConfig)
-	{
-		//~ Clear current map
-		m_NotificationDisplayDataMap.Clear();
-		
-		//~ Get data
-		array<ref SCR_NotificationDisplayData> data = {};
-		int count = notificationConfig.GetNotificationData(data);
-		
-		//~ Gegenerate
-		for(int i = 0; i < count; i++)
-        {
-			if (!m_NotificationDisplayDataMap.Contains(data[i].m_NotificationKey))
-            	m_NotificationDisplayDataMap.Set(data[i].m_NotificationKey, data[i]);
-			else
-				Print("Notification data in 'SCR_NotificationsLogComponent' has duplicate notification info key: '" + typename.EnumToString(ENotification, data[i].m_NotificationKey) + "'. There should only be one of each key!", LogLevel.WARNING);
-        }
+		SCR_NotificationsComponentClass notificationClass = SCR_NotificationsComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!notificationClass)
+			return null;
+
+		return notificationClass.GetNotificationDisplayData(notificationID);
 	}
 	
 	//======================== PLAYER NAME HOTFIX ========================\\
@@ -652,15 +1043,7 @@ class SCR_NotificationsComponent : ScriptComponent
 	{
 		PlayerController playerController = PlayerController.Cast(owner);
 		if (!playerController)
-		{
 			return;
-		}
-		
-		//~ Generate notification map
-		if (m_NotificationConfig)
-			GenerateNotificationDisplayDataMap(m_NotificationConfig);
-		else 
-			Print("'SCR_NotificationsComponent' No Notification config was assigned which means no notification can ever be displayed!", LogLevel.ERROR);
 		
 		if (!m_aHistory.IsEmpty())
 			UpdateNotificationData(true, owner);

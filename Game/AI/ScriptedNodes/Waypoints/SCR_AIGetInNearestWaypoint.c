@@ -1,12 +1,12 @@
-class SCR_AIGetInNearestWaypoint : SCR_AIGetCompletionRadius
+class SCR_AIGetInNearestWaypoint : SCR_AIGetWaypoint
 {
 	static const string PORT_WAYPOINT_PARAMS = "WaypointParams";	
 	static const string PORT_ORIGIN 	= "Origin";
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut2 = {
+		RADIUS_PORT,
 		PORT_ORIGIN,
-		PORT_RADIUS,
 		PORT_WAYPOINT_PARAMS
 	};
 	override TStringArray GetVariablesOut()
@@ -20,10 +20,10 @@ class SCR_AIGetInNearestWaypoint : SCR_AIGetCompletionRadius
 		if (ENodeResult.FAIL == super.EOnTaskSimulate(owner, dt))
 			return ENodeResult.FAIL;
 		
-		SCR_BoardingWaypoint wp = SCR_BoardingWaypoint.Cast(owner.GetCurrentWaypoint());
+		SCR_BoardingWaypoint wp = SCR_BoardingWaypoint.Cast(m_Waypoint);
 		if (!wp)
 		{
-			return ENodeResult.FAIL;
+			return NodeError(this, owner, "Wrong class of provided Waypoint!");
 		}
 		
 		SetVariableOut(PORT_WAYPOINT_PARAMS,wp.GetAllowance());

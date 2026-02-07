@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class SliderWidget: UIWidget
@@ -21,6 +21,8 @@ sealed class SliderWidget: UIWidget
 	proto external float GetStep();
 	proto external float GetCurrent();
 	proto external void SetCurrent(float curr);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -20,6 +20,9 @@ class SCR_ServerHostingSettingsSubMenu : SCR_SubMenuBase
 		// Tempory disabled saving
 		if (!GetGame().IsPlatformGameConsole())
 			m_NavSave = CreateNavigationButton("MenuFilter", "#AR-PauseMenu_Save", true);
+		
+		// Hide 
+		ShowNavigationButtons(m_bShown);
 	}
 	
 	//-------------------------------------------------------------------------------------------

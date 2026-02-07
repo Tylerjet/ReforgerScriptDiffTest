@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 enum ENodeResult
@@ -15,7 +15,9 @@ enum ENodeResult
 	FAIL,
 	SUCCESS,
 	RUNNING,
-	BREAKPOINT
-};
+	BREAKPOINT,
+}
 
-/** @}*/
+/*!
+\}
+*/

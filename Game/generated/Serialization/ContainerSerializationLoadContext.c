@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Serialization
-* @{
+/*!
+\addtogroup Serialization
+\{
 */
 
 /*!
@@ -19,7 +19,7 @@ class ContainerSerializationLoadContext: BaseSerializationLoadContext
 	//!		If this feature is enabled, the context won't fail on StartObject method if it's not present in the data. Only
 	//!		when caller attempts to read key from this missing object it ends with error.
 	void ContainerSerializationLoadContext(bool skipEmptyObjects = true) {}
-	
+
 	//! Returns the assigned container
 	proto external BaseSerializationLoadContainer GetContainer();
 	/*!
@@ -27,6 +27,8 @@ class ContainerSerializationLoadContext: BaseSerializationLoadContext
 	\param container The new container.
 	*/
 	proto external void SetContainer(BaseSerializationLoadContainer container);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

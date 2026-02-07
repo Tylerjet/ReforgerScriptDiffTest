@@ -51,9 +51,13 @@ class SCR_WLibComponentBase : SCR_ScriptedWidgetComponent
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		if (m_bMouseOverToFocus && GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.MOUSE)
+		{
+			GetGame().GetWorkspace().SetFocusedWidget(null);
 			GetGame().GetWorkspace().SetFocusedWidget(w);
+		}
 		else
 			PlaySound(m_sSoundHovered);
+		
 		return false;
 	}
 

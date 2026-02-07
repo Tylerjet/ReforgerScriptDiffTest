@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class WeaponSlotComponent: BaseWeaponComponent
@@ -14,6 +14,8 @@ class WeaponSlotComponent: BaseWeaponComponent
 	proto external void SetWeapon(IEntity weaponEntity);
 	proto external IEntity GetWeaponEntity();
 	proto external int GetWeaponSlotIndex();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

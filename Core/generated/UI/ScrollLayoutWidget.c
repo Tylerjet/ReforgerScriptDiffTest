@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -33,6 +33,8 @@ sealed class ScrollLayoutWidget: UIWidget
 	Set slider position in screen space pixels. For more info see SetSliderPos
 	*/
 	proto external void SetSliderPosPixels(float x, float y, bool noEvent = false);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

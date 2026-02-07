@@ -13,5 +13,5 @@ enum FlightMode
 	//! over flies target
 	FM_OVERFLY,
 	//! follow terrain
-	FM_CRUISE
-};
+	FM_CRUISE,
+}

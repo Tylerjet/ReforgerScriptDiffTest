@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI\HUD\SelectionMenu
-* @{
+/*!
+\addtogroup UI\HUD\SelectionMenu
+\{
 */
 
 class BaseScriptedSelectionMenuEntry: BaseSelectionMenuEntry
@@ -28,6 +28,8 @@ class BaseScriptedSelectionMenuEntry: BaseSelectionMenuEntry
 	event bool GetEntryIconPathScript(out string outIconPath);
 	//! Can be overriden to return desired UIInfo in GetUIInfo method
 	event UIInfo GetUIInfoScript();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

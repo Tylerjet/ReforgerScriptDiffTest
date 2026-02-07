@@ -8,11 +8,24 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	// Be careful, here we want to store a ref to BaseTarget
 	ref SCR_BTParamRef<BaseTarget> m_Target = new SCR_BTParamRef<BaseTarget>(SCR_AIActionTask.TARGET_PORT);
 	
+	// Wait time before we start shooting
+	ref SCR_BTParam<float> m_fWaitTime = new SCR_BTParam<float>("WaitTime");
+	
     SCR_AIWorld m_AIWorld;
 	
 	bool m_bHasGrenades = true;
-
 	bool m_bSelected = false;
+
+	// This delay is executed before shooting starts
+	protected static const float WAIT_TIME_UNEXPECTED = 0.5;
+	protected static const float WAIT_TIME_OVERTHREATENED = 0.8;
+	
+	//----------------------------------------------------------------------------------
+	void InitParameters(BaseTarget target, float waitTime)
+	{
+		m_Target.Init(this, target);
+		m_fWaitTime.Init(this, waitTime);
+	}
 	
 	//----------------------------------------------------------------------------------
 	override void OnActionSelected()
@@ -44,22 +57,21 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 	}
 	
 	//----------------------------------------------------------------------------------	
-	void SCR_AIAttackBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, BaseTarget target, vector pos)
-    {
-		m_Target.Init(this, target);
-		
+	void SCR_AIAttackBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, BaseTarget target, vector pos, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		InitParameters(target, 4);
 		if (!utility)
 			return;
 		
+		m_fPriorityLevel.m_Value = priorityLevel;
 		m_fPriority = PRIORITY_BEHAVIOR_ATTACK_NOT_SELECTED;
-			
+		m_fThreat = 1.01 * SCR_AIThreatSystem.VIGILANT_THRESHOLD;
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Attack.bt";
 		m_bAllowLook = false;
 		m_bResetLook = true;
-		m_eType = EAIActionType.ATTACK;
-        m_bUniqueInActionQueue = false;
+		m_bUniqueInActionQueue = false;
 		m_AIWorld = SCR_AIWorld.Cast(GetGame().GetAIWorld());
-    }
+	}
 	
 	//----------------------------------------------------------------------------------
 	override float Evaluate()
@@ -115,5 +127,31 @@ class SCR_AIAttackBehavior : SCR_AIBehaviorBase
 		msg.m_vTargetPosition = position;
 		msg.SetReceiver(agent);
 		mailbox.RequestBroadcast(msg, agent);
+	}
+	
+	// Sets the delay until shooting starts.
+	void InitWaitTime(SCR_AIUtilityComponent utility)
+	{
+		float threatMeasure = utility.m_ThreatSystem.GetThreatMeasure();
+		
+		// Delay depending on threat
+		float threatDelay;
+		if (threatMeasure < SCR_AIThreatSystem.ATTACK_DELAYED_THRESHOLD)
+			threatDelay = WAIT_TIME_UNEXPECTED;
+		else if (threatMeasure < SCR_AIThreatSystem.THREATENED_THRESHOLD)
+			threatDelay = 0;
+		else
+			threatDelay = WAIT_TIME_OVERTHREATENED;
+		
+		// Delay depending on distance
+		// 0m - 0ms
+		// 100m - 340ms
+		// 300m - 700ms
+		// 500m - 870ms
+		// 800m - 1018ms
+		float distance = vector.Distance(m_Utility.m_OwnerEntity.GetOrigin(), m_Target.m_Value.GetLastSeenPosition());
+		float distanceDelay = (1.4 * distance) / (300 + distance);
+		
+		m_fWaitTime.m_Value = threatDelay + distanceDelay;
 	}
 };

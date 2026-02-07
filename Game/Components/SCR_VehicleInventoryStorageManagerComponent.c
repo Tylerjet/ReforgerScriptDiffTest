@@ -47,10 +47,6 @@ class SCR_VehicleInventoryStorageManagerComponent : ScriptedInventoryStorageMana
 		{
 			garbageManager.Withdraw(item);
 		}
-		
-		SCR_GadgetComponent gadgetComp = SCR_GadgetComponent.Cast(item.FindComponent(SCR_GadgetComponent));
-		if (gadgetComp)
-			SCR_GadgetManagerComponent.SetGadgetModeStashed(gadgetComp, EGadgetMode.IN_STORAGE);	
 	}
 
 	//------------------------------------------------------------------------------------------------

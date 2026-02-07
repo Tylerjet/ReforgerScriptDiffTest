@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 enum EMapDrawingShapeType
@@ -16,7 +16,9 @@ enum EMapDrawingShapeType
 	ST_TRIANGLE,
 	ST_HEXAGON,
 	ST_CROSS,
-	ST_COUNT
-};
+	ST_COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

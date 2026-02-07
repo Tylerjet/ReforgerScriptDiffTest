@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 /*! Simple solver for assignment problem. Optimizing selection of jobs for set of workers
@@ -16,12 +16,14 @@ sealed class AssignmentSolver
 {
 	private void AssignmentSolver();
 	private void ~AssignmentSolver();
-	
-	/*! Solves basic asigment problem by branch and bound defined by
-	array of cost per worker in \param arr result is list of workers ids \param res
-	Result doesn't guarante optimal solution since B&B is used.
+
+	/*! Solves basic assignment problem by branch and bound defined by
+	array of cost per worker in costs. Result is list of workers ids res
+	Result doesn't guarantee optimal solution since B&B is used.
 	*/
 	static proto void Solve(array<ref array<int>> costs, out array<int> res);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

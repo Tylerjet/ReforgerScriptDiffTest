@@ -71,7 +71,6 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 		if (componentData)
 			m_fCompDataLV = componentData.GetLightLV();
 
-		
 		SetEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
@@ -84,7 +83,7 @@ class SCR_FireplaceComponent : SCR_BaseInteractiveLightComponent
 		// Hide decals
 		if (m_DecalEntity)
 			m_DecalEntity.ClearFlags(EntityFlags.VISIBLE, false);
-				
+		
 		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	

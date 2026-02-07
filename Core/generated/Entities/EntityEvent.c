@@ -4,14 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
-/*!
-Various Entity events
-*/
+//! Various entity events.
 enum EntityEvent
 {
 	TOUCH,
@@ -19,11 +17,11 @@ enum EntityEvent
 	VISIBLE,
 	FRAME,
 	POSTFRAME,
-	//!Animation system event
+	//! Animation system event
 	ANIMEVENT,
 	SIMULATE,
 	POSTSIMULATE,
-	//TODO: too specific. Make a universal physics system event
+	// TODO: too specific. Make a universal physics system event
 	JOINTBREAK,
 	PHYSICSMOVE,
 	CONTACT,
@@ -34,10 +32,12 @@ enum EntityEvent
 	USER3,
 	USER4,
 	USER5,
-	//!General event switch
+	//! General event switch
 	DISABLED,
-	//!Everything except general switch
-	ALL
-};
+	//! Everything except general switch
+	ALL,
+}
 
-/** @}*/
+/*!
+\}
+*/

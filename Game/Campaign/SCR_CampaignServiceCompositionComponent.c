@@ -29,7 +29,6 @@ class SCR_CampaignServiceCompositionComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 		m_Owner = owner;
 		
 		GetGame().GetCallqueue().CallLater(MapMarkerInit, 1000);

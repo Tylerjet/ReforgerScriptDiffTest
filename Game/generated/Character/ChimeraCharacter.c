@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class ChimeraCharacterClass: GameEntityClass
 {
-};
+}
 
 class ChimeraCharacter: GameEntity
 {
@@ -39,12 +39,16 @@ class ChimeraCharacter: GameEntity
 	proto external AimingComponent GetHeadAimingComponent();
 	//! Returns component which controls weapon aiming
 	proto external AimingComponent GetWeaponAimingComponent();
+	//! Start performing action by the current character
+	proto external void DoStartObjectAction(BaseUserAction pAction);
 	//! Perform action by current character
 	proto external void DoPerformObjectAction(BaseUserAction pAction);
 	//! Perform continuous action by current character
 	proto external void DoPerformContinuousObjectAction(BaseUserAction pAction, float timeSlice);
 	//! Cancel action performed by the current character
 	proto external void DoCancelObjectAction(BaseUserAction pAction);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

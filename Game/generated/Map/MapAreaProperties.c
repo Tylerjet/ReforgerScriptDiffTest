@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapAreaProperties
@@ -15,6 +15,8 @@ class MapAreaProperties
 	proto external void SetVisualizationType(EMapAreaType areaType, EMapAreaVisualizationType visualizationType);
 	proto external void SetAreaColor(EMapAreaType type, notnull Color color);
 	proto external void SetIndividualColor(EMapAreaType type, notnull Color color);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

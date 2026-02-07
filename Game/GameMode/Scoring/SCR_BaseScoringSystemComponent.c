@@ -533,9 +533,9 @@ class SCR_BaseScoringSystemComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 		
 		m_OnPlayerRemoved.Invoke(playerId);
 	}

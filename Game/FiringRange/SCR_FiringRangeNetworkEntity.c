@@ -155,6 +155,6 @@ class SCR_FiringRangeNetworkEntity : GenericEntity
 	void SCR_FiringRangeNetworkEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 	}
 };

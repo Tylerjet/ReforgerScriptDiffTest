@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
-/**
+/*!
 command itself
 */
 class CharacterCommandClimb: CharacterCommand
@@ -25,6 +25,8 @@ class CharacterCommandClimb: CharacterCommand
 	pDebugDrawLevel viz DebugDrawClimb
 	*/
 	static proto bool DoClimbTest(ChimeraCharacter pHuman, CharacterCommandClimbSettings pSettings, CharacterCommandClimbResult pResult);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

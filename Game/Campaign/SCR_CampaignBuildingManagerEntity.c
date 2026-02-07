@@ -96,7 +96,6 @@ class SCR_CampaignBuildingManagerEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignBuildingManagerEntity(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, true);
 		s_BuildingManagerEnt = this;
 	}
 

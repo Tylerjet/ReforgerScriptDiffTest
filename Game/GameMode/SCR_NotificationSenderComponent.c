@@ -6,7 +6,7 @@ class SCR_NotificationSenderComponentClass: SCR_BaseGameModeComponentClass
 
 class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 {		
-	[Attribute("1", desc: "Show player left notification if player left. Hotfix for editor as this system does not know if player had editor rights or not!")]
+	[Attribute("1", desc: "Show player left notification if player left.")]
 	protected bool m_bShowPlayerLeftNotification;
 	
 	[Attribute("10", desc: "Is killfeed enabled and what info will be displayed (Full killfeed is always displayed in open unlimited Editor)", uiwidget: UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EKillFeedType))]
@@ -20,6 +20,9 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	
 	[Attribute("0", desc: "Array of Killfeed receive names")]
 	protected ref array<ref SCR_NotificationKillfeedreceiveTypeName> m_aKillfeedReceiveTypeNames;
+	
+	[Attribute("{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf", desc: "If disconnect reason has a preset set to it then it will send a kick/ban notification", params: "conf")]
+	protected ref SCR_ConfigurableDialogUiPresets m_PlayerKickReasonsConfig;
 	
 	protected Faction m_FactionOnSpawn;
 	
@@ -101,16 +104,14 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		if (playerId <= 0)
 			return;
 		
-		//~ Check if killed player message can be seen if Limited editor
+		//~ Check if killed player message can be seen if Limited editor (or editor not open)
 		if (!isUnlimitedEditorOpened && m_iReceiveKillFeedType != EKillFeedReceiveType.ALL)
 		{
 			Faction localPlayerFaction = m_RespawnSystemComponent.GetLocalPlayerFaction();
 
 			//~ No local faction so don't show killfeed
 			if (!localPlayerFaction)
-			{
 				return;
-			}
 			
 			int localPlayerID = SCR_PlayerController.GetLocalPlayerId();
 			Faction killedPlayerFaction = m_RespawnSystemComponent.GetPlayerFaction(playerId);
@@ -150,6 +151,10 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 						//~ If no local faction or if not the same faction do not show killfeed
 						if (!localPlayerFaction || localPlayerFaction != killedPlayerFaction)
 							return;
+						
+						//~ If Faction is hostile towards itself still do not show killfeed (DM)
+						if (!localPlayerFaction.IsFactionFriendly(localPlayerFaction))
+							return;
 					}
 					
 					break;
@@ -161,7 +166,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 					if (localPlayerID != playerId)
 					{
 						//~ Factions not friendly so don't show killfeed
-						if (!localPlayerFaction.IsFactionFriendly(killedPlayerFaction))
+						if (!localPlayerFaction || !localPlayerFaction.IsFactionFriendly(killedPlayerFaction))
 							return;
 					}
 					
@@ -232,7 +237,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, playerId);
 			//Possessed Suicide
 			else 
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.POSSESSED_AI_DIED, playerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, playerId);
 		}
 		//If killed by other player
 		else if (killerId > 0)
@@ -245,18 +250,18 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			//Possesed player killed by other player (Show player killed by NPC and for GM: possesed GM killed player)
 			else if (!playerIsPossessed && killerIsPossessed)
 			{		
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.POSSESSED_AI_KILLED_PLAYER, killerId, playerId);
-				SCR_NotificationsComponent.SendLocalNonGameMaster(ENotification.AI_KILLED_PLAYER, killerId, playerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_PLAYER, killerId, playerId);
+				SCR_NotificationsComponent.SendLocalLimitedEditor(ENotification.AI_KILLED_PLAYER, killerId, playerId);
 			}
 			//Player killed possessed player (Show to GM only)
 			else if (playerIsPossessed && !killerIsPossessed)
 			{
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.PLAYER_KILLED_POSSESSED_AI, killerId, playerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.PLAYER_KILLED_POSSESSED_AI, killerId, playerId);
 			}
 			//Possessed AI Killed Possessed AI (GM Only)
 			else
 			{
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.POSSESSED_AI_KILLED_POSSESSED_AI, killerId, playerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_KILLED_POSSESSED_AI, killerId, playerId);
 			}
 		}
 		//Killed by NPC
@@ -267,7 +272,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			if (!playerIsPossessed)
 				SCR_NotificationsComponent.SendLocal(ENotification.AI_KILLED_PLAYER, killerRplId, playerId);
 			else 
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.AI_KILLED_POSSESSED_AI, killerRplId, playerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.AI_KILLED_POSSESSED_AI, killerRplId, playerId);
 		}
 		//Unknown killer
 		else 
@@ -275,7 +280,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			if (!playerIsPossessed)
 				SCR_NotificationsComponent.SendLocal(ENotification.PLAYER_DIED, playerId);
 			else 
-				SCR_NotificationsComponent.SendLocalGameMaster(ENotification.POSSESSED_AI_DIED, playerId);
+				SCR_NotificationsComponent.SendLocalUnlimitedEditor(ENotification.POSSESSED_AI_DIED, playerId);
 		}
 	}
 	
@@ -332,26 +337,67 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId) 
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout) 
 	{
 		//~ Should never be called for clients but just in case
-		if (!m_bShowPlayerLeftNotification || !GetGameMode().IsMaster())
+		if (!GetGameMode().IsMaster())
 			return;
 		
 		SCR_EditorManagerEntity editorManager;
 		
+		//~ Get editorManager if has any
 		SCR_EditorManagerCore core = SCR_EditorManagerCore.Cast(SCR_EditorManagerCore.GetInstance(SCR_EditorManagerCore));
 		if (core)
 		{
 			 editorManager = core.GetEditorManager(playerId);
 		}
 
-		//Leave Notification GM
-		if (editorManager && !editorManager.IsLimited())
-			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_GM_LEFT, playerId);
-		//Leave notification Player
-		else
+		bool hasUnlimitedEditor = editorManager && !editorManager.IsLimited();
+		
+		//~ Is GM, Always show GM left notification even if kicked/banned to notify players that the GM has left
+		if (hasUnlimitedEditor)
+			SCR_NotificationsComponent.SendToEveryone(ENotification.EDITOR_GM_LEFT, playerId);		
+		
+		bool isKickedOrBanned = false;
+		
+		//~ Check if disconnect cause has message attached to it. If true: show kick/ban reason. If false: only show gm/player left
+		if (m_PlayerKickReasonsConfig)
+		{
+			string groupId, reasonId;
+			KickCauseGroup2 groupInt;
+			int reasonInt;
+			
+			//~ Get disconnect message preset
+			GetGame().GetFullKickReason(cause, groupInt, reasonInt, groupId, reasonId);
+			SCR_ConfigurableDialogUiPreset preset = m_PlayerKickReasonsConfig.FindPreset(groupId + "_" + reasonId);
+			
+			//~ If has kick/Ban message it will send out a notification
+			isKickedOrBanned = preset != null && !preset.m_sMessage.IsEmpty();
+		}
+		//~ No config
+		else 
+		{
+			Print("'SCR_NotificationSenderComponent' has no 'm_PlayerKickReasonsConfig'! Make sure it is added else it will never know if a player was kicked!", LogLevel.ERROR);
+		}
+		
+		//~ Is kicked/banned. Will also send ban notification if for some reason there is a timeout attached even if there is no specific kick message
+		if (isKickedOrBanned || timeout != 0)
+		{
+			//~ Player kicked 
+			if (timeout == 0)
+				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerId, cause, timeout);	
+			//~ Player banned
+			else if (timeout < 0)
+				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerId, cause, timeout);
+			//~ More then 0 so player has temp banned
+			else
+				SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerId, cause, timeout);
+		}		
+		//~ Is Not kicked/banned, is player and should send on leave notification. 
+		else if (m_bShowPlayerLeftNotification && !hasUnlimitedEditor)
+		{
 			SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_LEFT, playerId);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -367,7 +413,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 			if (m_FactionOnSpawn != playerFaction)
 			{
 				//Send player joined faction notification
-				SCR_NotificationsComponent.SendToGameMasters(ENotification.PLAYER_JOINED_FACTION, playerId);
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.PLAYER_JOINED_FACTION, playerId);
 				m_FactionOnSpawn = playerFaction;
 			}
 		}
@@ -406,7 +452,7 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 		if (!currentState)
 			return;
 		
-		SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_WEATHER_CHANGED, playerID, currentState.GetStateID());
+		SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WEATHER_CHANGED, playerID, currentState.GetStateID());
 	}
 	
 	
@@ -540,7 +586,6 @@ class SCR_NotificationSenderComponent : SCR_BaseGameModeComponent
 	
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 		
 		super.OnPostInit(owner);

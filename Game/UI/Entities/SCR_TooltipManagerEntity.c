@@ -96,14 +96,14 @@ class SCR_TooltipManagerEntity : GenericEntity
 		if (WidgetManager.GetWidgetUnderCursor() != m_wHoverWidget || !m_wHoverWidget)
 		{
 			Internal_DeleteTooltip();
-			SetFlags(EntityFlags.ACTIVE, false);			
+			ClearEventMask(EntityEvent.FRAME);
 			return;
 		}
 		
 		// Bail, deactivate if there is no tooltip any more (smth else deleted it or we deleted it)
 		if (!m_wTooltip)
 		{
-			SetFlags(EntityFlags.ACTIVE, false);
+			ClearEventMask(EntityEvent.FRAME);
 			return;
 		}
 			
@@ -129,7 +129,7 @@ class SCR_TooltipManagerEntity : GenericEntity
 	protected Widget Internal_CreateTooltip(ResourceName rsc, Widget hoverWidget, bool followCursor, vector offset)
 	{
 		// Activate lazily - only when creating some tooltip
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetEventMask(EntityEvent.FRAME);
 				
 		m_bFollowCursor = followCursor;
 		m_vOffset = offset;
@@ -163,8 +163,7 @@ class SCR_TooltipManagerEntity : GenericEntity
 	void SCR_TooltipManagerEntity(IEntitySource src, IEntity parent)
 	{
 		s_Instance = this;
-		
-		SetEventMask(EntityEvent.FRAME);
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 	}
 	
 	

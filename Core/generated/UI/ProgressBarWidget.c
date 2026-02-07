@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class ProgressBarWidget: UIWidget
@@ -19,6 +19,8 @@ sealed class ProgressBarWidget: UIWidget
 	proto external void SetMax(float max);
 	proto external void SetCurrent(float curr);
 	proto external void SetDrawBackground(bool drawBackground);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

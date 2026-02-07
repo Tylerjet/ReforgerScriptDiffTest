@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class AnimationControllerComponentClass: GenericComponentClass
 {
-};
+}
 
 class AnimationControllerComponent: GenericComponent
 {
@@ -30,6 +30,8 @@ class AnimationControllerComponent: GenericComponent
 	//! Binds bool variable and returns it's ID
 	proto external int BindBoolVariable(string varName);
 	proto external void SetBoolVariable(int varId, bool value);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

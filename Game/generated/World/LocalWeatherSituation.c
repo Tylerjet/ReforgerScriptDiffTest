@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 class LocalWeatherSituation: ScriptAndConfig
@@ -19,6 +19,8 @@ class LocalWeatherSituation: ScriptAndConfig
 	proto external float GetWaterAccumulation();
 	proto external float GetOvercast();
 	proto external float GetFog();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -1,6 +1,16 @@
 class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 {
 	static const string WAYPOINT_PORT = "WaypointIn";
+	static const string LOCATION_PORT = "LocationOut";
+	
+	//---------------------------------------------------------------------------------------------------
+	protected static ref TStringArray s_aVarsOut = {
+		LOCATION_PORT
+	};
+	override TStringArray GetVariablesOut()
+	{
+		return s_aVarsOut;
+	}
 	
 	//---------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
@@ -17,12 +27,13 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 		ChimeraCharacter character;
 		DamageManagerComponent damageManager;
 		float waypointRadiusSq = waypoint.GetCompletionRadius() * waypoint.GetCompletionRadius();
+		vector positionInWaypoint;
 		
-		foreach (IEntity enemy : groupUtility.m_aTargetEntities)
+		foreach (int index, IEntity enemy  : groupUtility.m_aTargetEntities)
 		{
 			if (!enemy)
 				continue;
-		
+			
 			character = ChimeraCharacter.Cast(enemy);
 			if (character)
 				damageManager = character.GetDamageManager();
@@ -32,20 +43,28 @@ class SCR_AIDecoIsEnemyWithinRadius : DecoratorScripted
 			if (damageManager && damageManager.GetState() == EDamageState.DESTROYED)
 				continue;
 			
-			if (vector.DistanceSq(enemy.GetOrigin(),waypoint.GetOrigin()) < waypointRadiusSq)
+			positionInWaypoint = groupUtility.m_aTargetInfos[index].m_vLastSeenPosition;
+			if (vector.DistanceSq(positionInWaypoint,waypoint.GetOrigin()) < waypointRadiusSq)
+			{
+				SetVariableOut(LOCATION_PORT, positionInWaypoint);
 				return true;
+			}
 		}
 		return false;
-	}	
-
+	}
+	
 	//---------------------------------------------------------------------------------------------------	
 	protected override bool TestFunction(AIAgent owner)
 	{
 		AIWaypoint waypoint;
 		SCR_AIGroupUtilityComponent guc;
 		
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+			return false;
+		
 		if ( !GetVariableIn(WAYPOINT_PORT,waypoint) )
-			waypoint = owner.GetCurrentWaypoint();
+			waypoint = group.GetCurrentWaypoint();
 		if (! waypoint )
 		{
 			Print("Node IsEnemyWithinRadius executed without valid waypoint!");

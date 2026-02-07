@@ -1,6 +1,9 @@
 //------------------------------------------------------------------------------------------------
 class SCR_ButtonTextComponent : SCR_ButtonBaseComponent 
 {
+	[Attribute("Text", desc: "Text widget name within the button")]
+	protected LocalizedString m_sTextWidgetName;
+	
 	[Attribute()]
 	protected LocalizedString m_sText;
 	
@@ -10,7 +13,7 @@ class SCR_ButtonTextComponent : SCR_ButtonBaseComponent
 	override void HandlerAttached(Widget w)
 	{
 		super.HandlerAttached(w);
-		m_wText = TextWidget.Cast(w.FindAnyWidget("Text"));
+		m_wText = TextWidget.Cast(w.FindAnyWidget(m_sTextWidgetName));
 		if (m_wText)
 			m_wText.SetText(m_sText);
 	}

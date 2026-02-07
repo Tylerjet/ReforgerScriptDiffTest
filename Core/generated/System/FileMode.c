@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup System
-* @{
+/*!
+\addtogroup System
+\{
 */
 
 //!Mode for opening file. See FileSystem::Open
@@ -21,7 +21,9 @@ enum FileMode
 	//!File pointer is set to end of file
 	APPEND,
 	MASK,
-	FILEFLAGS_NO_PREREAD
-};
+	FILEFLAGS_NO_PREREAD,
+}
 
-/** @}*/
+/*!
+\}
+*/

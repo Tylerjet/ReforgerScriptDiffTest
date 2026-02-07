@@ -4,8 +4,9 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	static const string PORT_RADIUS					= "RadiusIn";
 	static const string PORT_VEHICLE_OUT			= "VehicleOut";
 	static const string PORT_ROLE_OUT				= "RoleOut";
+	static const string PORT_COMPARTMENT_OUT		= "CompartmentOut";
 	static const string PORT_SEARCH_PARAMS			= "SearchParams";
-		
+	
 	[Attribute("0", UIWidgets.CheckBox, "If found, add to list of usable vehicles?")]
 	bool m_bAddToList;
 	
@@ -13,17 +14,19 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	bool m_bReserveCompartment;
 	
 	private BaseWorld m_world;
-	private IEntity m_VehicleEntity;
-	private SCR_AIBoardingWaypointParameters m_WaypointParameter;
-	private ref array<ref BaseCompartmentSlot> m_PilotCompartments;
-	private ref array<ref BaseCompartmentSlot> m_TurretCompartments;
-	private ref array<ref BaseCompartmentSlot> m_CargoCompartments;
-	private ECompartmentType m_CompartmentType;
+	private ref array<BaseCompartmentSlot> m_CompartmentSlots = {};
+	protected IEntity m_VehicleEntity;
+	protected BaseCompartmentSlot m_Compartment;
+	protected ECompartmentType m_CompartmentType;
+	protected SCR_AIBoardingWaypointParameters m_WaypointParameter;
+	protected SCR_AIGroupUtilityComponent m_groupUtilityCompoment;
+	
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
 	{
 		m_world = owner.GetWorld();
+		m_groupUtilityCompoment = SCR_AIGroupUtilityComponent.Cast(owner.FindComponent(SCR_AIGroupUtilityComponent));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -34,7 +37,7 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		
 		if (m_VehicleEntity && !HasNoAvailableCompartment(m_VehicleEntity)) // the vehicle was found already and it has available compartment
 		{
-			SetVariablesOut(owner, m_VehicleEntity, m_CompartmentType);
+			SetVariablesOut(owner, m_VehicleEntity, m_CompartmentType, m_Compartment);
 			return ENodeResult.SUCCESS;
 		}
 		else
@@ -49,7 +52,16 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 			m_world.QueryEntitiesBySphere(center, radius, HasNoAvailableCompartment, FilterEntities, EQueryEntitiesFlags.DYNAMIC);
 			if (m_VehicleEntity)
 			{
-				SetVariablesOut(owner, m_VehicleEntity, m_CompartmentType);
+				if (m_bReserveCompartment)
+				{
+					SCR_AIGroup group = SCR_AIGroup.Cast(owner);
+					if (!group)
+					{
+						return NodeError(this, owner, "GetEmptyCompartment not run on SCR_AIGroup agent!");
+					}
+					group.AllocateCompartment(m_Compartment);
+				};
+				SetVariablesOut(owner, m_VehicleEntity, m_CompartmentType, m_Compartment);
 				return ENodeResult.SUCCESS;
 			}
 			ClearVariable(PORT_VEHICLE_OUT);
@@ -65,48 +77,45 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 		if (!compComp)
 			return true;
 		
-		array<BaseCompartmentSlot> compartmentSlots = {};
-		compComp.GetCompartments(compartmentSlots);
-		m_CargoCompartments = {};
-		m_PilotCompartments = {};
-		m_TurretCompartments = {};
-			
-		foreach (BaseCompartmentSlot slot : compartmentSlots)
+		compComp.GetCompartments(m_CompartmentSlots);
+		if (m_CompartmentSlots.IsEmpty())
+			return true;
+		
+		BaseCompartmentSlot pilotCompartment, turretCompartment, cargoCompartment;
+		
+		foreach (BaseCompartmentSlot slot : m_CompartmentSlots)
 		{
-			if (slot.AttachedOccupant() || !slot.IsCompartmentAccessible())
+			if (slot.GetOccupant() || !slot.IsCompartmentAccessible())
 				continue;
 			if (m_WaypointParameter.m_bIsDriverAllowed && PilotCompartmentSlot.Cast(slot))
-				m_PilotCompartments.Insert(slot);
+				pilotCompartment = slot;
 			else if (m_WaypointParameter.m_bIsGunnerAllowed && TurretCompartmentSlot.Cast(slot))
-				m_TurretCompartments.Insert(slot);
+				turretCompartment = slot;
 			else if (m_WaypointParameter.m_bIsCargoAllowed && CargoCompartmentSlot.Cast(slot))
-				m_CargoCompartments.Insert(slot);
+				cargoCompartment = slot;
 		}
 		// going through priorities: pilot > turret > cargo
-		if (m_PilotCompartments.Count() > 0)
+		if (pilotCompartment)
 		{
 			m_CompartmentType = ECompartmentType.Pilot;
 			m_VehicleEntity = ent;
-			if (m_bReserveCompartment)
-				m_PilotCompartments[0].SetCompartmentAccessible(false);
+			m_Compartment = pilotCompartment;
 			return false;
 		}
 		
-		if (m_TurretCompartments.Count() > 0)
+		if (turretCompartment)
 		{
 			m_CompartmentType = ECompartmentType.Turret;
 			m_VehicleEntity = ent;
-			if (m_bReserveCompartment)
-				m_TurretCompartments[0].SetCompartmentAccessible(false);
+			m_Compartment = turretCompartment;
 			return false;
 		}
 		
-		if (m_CargoCompartments.Count() > 0)
+		if (cargoCompartment)
 		{
 			m_CompartmentType = ECompartmentType.Cargo;
 			m_VehicleEntity = ent;
-			if (m_bReserveCompartment)
-				m_CargoCompartments[0].SetCompartmentAccessible(false);
+			m_Compartment = cargoCompartment;
 			return false;
 		}
 		return true; //continue search
@@ -123,22 +132,24 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetVariablesOut(AIAgent owner, IEntity vehicleOut, ECompartmentType compartmentTypeOut)
+	void SetVariablesOut(AIAgent owner, IEntity vehicleOut, ECompartmentType compartmentTypeOut, BaseCompartmentSlot compartment)
 	{
-		SetVariableOut(PORT_VEHICLE_OUT, m_VehicleEntity);
-		SetVariableOut(PORT_ROLE_OUT, m_CompartmentType);
+		SetVariableOut(PORT_VEHICLE_OUT, vehicleOut);
+		SetVariableOut(PORT_ROLE_OUT, compartmentTypeOut);
+		SetVariableOut(PORT_COMPARTMENT_OUT, compartment);
 		if (m_bAddToList)
 		{
 			SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 			if (group)
-			group.AddUsableVehicle(m_VehicleEntity);
+				group.AddUsableVehicle(vehicleOut);
 		}
 	}	
 		
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
 		PORT_VEHICLE_OUT,
-		PORT_ROLE_OUT
+		PORT_ROLE_OUT,
+		PORT_COMPARTMENT_OUT
 	};
 	override TStringArray GetVariablesOut()
     {
@@ -160,5 +171,11 @@ class SCR_AIFindAvailableVehicle: AITaskScripted
 	override bool VisibleInPalette()
 	{
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override string GetOnHoverDescription()
+	{
+		return "SCR_AIFindAvailableVehicle: finds within radius of origin available compartments of vehicles with priority pilot>turret>cargo";
 	}
 };

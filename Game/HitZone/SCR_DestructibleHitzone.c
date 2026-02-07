@@ -90,7 +90,7 @@ class SCR_DestructibleHitzone : ScriptedHitZone
 		if (GetPreviousDamageState() == EDamageState.DESTROYED)
 		{
 			if (m_pDestructionHandler)
-				m_pDestructionHandler.OnRepair();
+				GetGame().GetCallqueue().CallLater(m_pDestructionHandler.OnRepair); // Must not change model outside frame
 
 			return;
 		}

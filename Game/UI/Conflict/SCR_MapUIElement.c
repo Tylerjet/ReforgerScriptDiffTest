@@ -49,7 +49,9 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
 	protected string m_sSoundTask;	
 	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
-	protected string m_sSoundService;	
+	protected string m_sSoundService;
+	[Attribute(SCR_SoundEvent.SOUND_FE_BUTTON_HOVER)]
+	protected string m_sSoundHover;	
 	[Attribute()]
 	ref Color m_UnknownFactionColor;
 	protected string m_sName;
@@ -151,22 +153,8 @@ class SCR_MapUIElement : ScriptedWidgetComponent
 	}
 
 	// ------------------------------------------------------------------------------
-	sealed void SelectIcon()
+	void SelectIcon()
 	{
-		if (!m_wSelectImg)
-			return;
-
-		if (s_SelectedElement && s_SelectedElement != this)
-			s_SelectedElement.Select(false);
-
-		Select();
-
-		m_wSelectImg.SetVisible(true);
-		if (m_wGradient)
-			m_wGradient.SetVisible(true);
-
-		if (m_bIsSelected)
-			Event_OnPointSelected.Invoke(m_MapItem);
 	}
 
 	// ------------------------------------------------------------------------------

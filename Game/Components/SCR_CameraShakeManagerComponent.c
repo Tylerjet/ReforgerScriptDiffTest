@@ -14,9 +14,12 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	protected vector m_mShakeMatrix[4];
 	protected float m_fFovScale;
 
-	//! Array of additional camera shake progresses
+	//! Array of pre-cached generic shakes
 	const int CAMERA_SHAKE_INSTANCES = 16;
-	ref SCR_CameraShakeProgress m_aShakeInstances[CAMERA_SHAKE_INSTANCES];
+	ref SCR_NoisyCameraShakeProgress m_aShakeInstances[CAMERA_SHAKE_INSTANCES];
+	
+	//! Array of custom shakes
+	ref array<ref SCR_BaseCameraShakeProgress> m_aAdditionalInstances = {};
 
 	// Current instance of manager or null if none
 	private static SCR_CameraShakeManagerComponent s_Instance;
@@ -49,13 +52,40 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
 		{
 			// Find first free instance that can be used
-			SCR_CameraShakeProgress shake = m_aShakeInstances[i];
+			SCR_NoisyCameraShakeProgress shake = m_aShakeInstances[i];
 			if (shake.IsFinished())
 			{
-				shake.Start(linearMagnitude, angularMagnitude, inTime, sustainTime, outTime);
+				shake.SetParams(linearMagnitude, angularMagnitude, inTime, sustainTime, outTime);
+				shake.Start();
 				return;
 			}
 		}
+	}
+	
+	/*!
+		Adds custom scripted camera shake that will be progressed, applied and then withdrawn from the manager.
+		\param instance The shake to add
+	*/
+	static void AddCameraShake(SCR_BaseCameraShakeProgress instance)
+	{
+		if (s_Instance)
+			s_Instance.DoAddCameraShake(instance);
+	}
+	
+	/*!
+		Adds custom scripted camera shake that will be progressed, applied and then withdrawn from the manager.
+		\param instance The shake to add
+	*/
+	void DoAddCameraShake(SCR_BaseCameraShakeProgress instance)
+	{
+		if (!instance)
+		{
+			Print("Invalid camera shake instance passed to manager!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_aAdditionalInstances.Insert(instance);
+		instance.Start();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -101,10 +131,12 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 	{
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
 		{
-			SCR_CameraShakeProgress shake = m_aShakeInstances[i];
+			SCR_BaseCameraShakeProgress shake = m_aShakeInstances[i];
 			if (!shake.IsFinished())
 				shake.Clear();
 		}
+		
+		m_aAdditionalInstances.Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -123,7 +155,7 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 		
 		// Pre-cache instances
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
-			m_aShakeInstances[i] = new ref SCR_CustomCameraShakeProgress();
+			m_aShakeInstances[i] = new ref SCR_NoisyCameraShakeProgress();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -133,16 +165,32 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 		Math3D.MatrixIdentity4(m_mShakeMatrix);
 		m_fFovScale = 1.0;
 
-		// Update additional custom shakes
+		// Update generic shakes
 		for (int i = 0; i < CAMERA_SHAKE_INSTANCES; i++)
 		{
-			SCR_CameraShakeProgress shake = m_aShakeInstances[i];
+			SCR_BaseCameraShakeProgress shake = m_aShakeInstances[i];
 			if (!shake.IsFinished())
 			{
 				shake.Update(owner, timeSlice);
 				shake.Apply(m_mShakeMatrix, m_fFovScale);
 			}
 		}
+		
+		// Update custom instances
+		for (int i = 0; i < m_aAdditionalInstances.Count();)
+		{
+			SCR_BaseCameraShakeProgress shake = m_aAdditionalInstances[i];
+			if (!shake || shake.IsFinished())
+			{
+				m_aAdditionalInstances.Remove(i);
+				continue;
+			}
+			
+			++i;
+			
+			shake.Update(owner, timeSlice);
+			shake.Apply(m_mShakeMatrix, m_fFovScale);
+		} 
 
 		super.EOnFrame(owner, timeSlice);
 
@@ -164,6 +212,16 @@ class SCR_CameraShakeManagerComponent : ScriptComponent
 				{
 					AddCameraShake(linear, angular, inTime, sustainTime, outTime);
 				}
+				
+				if (DbgUI.Button("Add custom shake"))
+				{
+					// Just for testing purposes
+					ref SCR_NoisyCameraShakeProgress progress = new SCR_NoisyCameraShakeProgress();
+					progress.SetParams(linear, angular, inTime, sustainTime, outTime);
+					
+					AddCameraShake(progress);
+				}
+
 
 				DbgUI.Spacer(16);
 

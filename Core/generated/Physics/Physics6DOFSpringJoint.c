@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -22,6 +22,8 @@ sealed class Physics6DOFSpringJoint: Physics6DOFJoint
 	\param damping Value of the spring damping. Between 0 and 1 (1 == no damping)
 	*/
 	proto external void SetSpring(int axis, float stiffness, float damping);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -26,4 +26,4 @@ class ScriptedSightsFOVInfo: SightsFOVInfo
 	\return Returns field of view in degrees.
 	*/
 	event protected float GetCurrentFOV() { return 0.0; };
-};
+}

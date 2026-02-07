@@ -36,7 +36,8 @@ class SCR_AIGetCoverIdleDuration : AITaskScripted
 		float duration = 0;
 		switch (threat)
 		{
-			case EAIThreatState.SAFE:		duration = Math.RandomFloat(2.0, 4.0); break;
+			case EAIThreatState.SAFE:
+			case EAIThreatState.VIGILANT:		duration = Math.RandomFloat(2.0, 4.0); break;
 			case EAIThreatState.ALERTED:	duration = Math.RandomFloat(7.0, 11.0); break;
 			case EAIThreatState.THREATENED:	duration = Math.RandomFloat(11.0, 16.0); break;
 		}

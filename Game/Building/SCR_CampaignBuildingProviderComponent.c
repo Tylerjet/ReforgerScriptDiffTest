@@ -13,8 +13,8 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	[Attribute("50", UIWidgets.EditBox, "Building radius")]
 	protected float m_fBuildingRadius;
 	
-	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Minimal rank that allows player to use the provider to build structures.", enums: ParamEnumArray.FromEnum(ECharacterRank))]
-	protected ECharacterRank m_iRank;
+	[Attribute(defvalue: "1", uiwidget: UIWidgets.ComboBox, desc: "Minimal rank that allows player to use the provider to build structures.", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_iRank;
 
 	protected vector m_vProviderOrigin;
 	protected vector m_vNewProviderOrigin;
@@ -32,7 +32,7 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	protected const int STOPPING_CHECK_PERIOD = 2000;
 
 	//------------------------------------------------------------------------------------------------
-	ECharacterRank GetAccessRank()
+	SCR_ECharacterRank GetAccessRank()
 	{
 		return m_iRank;
 	}
@@ -129,10 +129,49 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 		if (!editorManager)
 			return;
 
+		SetOnPlayerConsciousnessChanged(playerID);
 		editorManager.GetOnOpened().Insert(BuildingModeCreated);
 		networkComponent.RequestEnterBuildingMode(GetOwner(), playerID, m_bUserActionActivationOnly, UserActionUsed);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetOnPlayerConsciousnessChanged(int playerID)
+	{
+		IEntity player = GetGame().GetPlayerManager().GetPlayerControlledEntity(playerID);
+		if (!player)
+			return;
+		
+		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(player.FindComponent(EventHandlerManagerComponent));
+		if (eventHandlerManager)
+			eventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged, false, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnConsciousnessChanged(bool conscious)
+	{
+		if (conscious)
+			return;
+		
+		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
+		if (!networkComponent)
+			return;
 
+		networkComponent.RemoveEditorMode(SCR_PlayerController.GetLocalPlayerId(), GetOwner());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveOnConsciousnessChanged()
+	{
+		IEntity ent = SCR_PlayerController.GetLocalControlledEntity();
+		if (!ent)
+			return;
+		
+		EventHandlerManagerComponent eventHandlerManager = EventHandlerManagerComponent.Cast(ent.FindComponent(EventHandlerManagerComponent));
+		if (eventHandlerManager)
+			eventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged, false);
+	}
+	
+	
 	//------------------------------------------------------------------------------------------------
 	// Insert a method called when the provider faction is changed. For an example base is taken by an enemy.
 	void SetOnProviderFactionChangedEvent()
@@ -195,7 +234,8 @@ class SCR_CampaignBuildingProviderComponent : ScriptComponent
 	void OnModeClosed()
 	{
 		RemoveOnModeClosed();
-
+		RemoveOnConsciousnessChanged();
+		
 		SCR_CampaignBuildingNetworkComponent networkComponent = GetNetworkManager();
 		if (!networkComponent)
 			return;

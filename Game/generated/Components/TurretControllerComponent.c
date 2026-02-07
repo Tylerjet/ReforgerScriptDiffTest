@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class TurretControllerComponent: CompartmentControllerComponent
@@ -50,6 +50,15 @@ class TurretControllerComponent: CompartmentControllerComponent
 	proto external float GetReloadTime();
 	// Instantly reloads weapon with magazine
 	proto external bool DoReloadWeaponWith(IEntity ammunitionEntity);
-};
+	//! Set if turret is firing or not
+	proto external void SetFireWeaponWanted(bool val);
+	/*!
+	Set aiming angles in radians.
+	*IMPORTANT* Only works locally. Used mainly for cinematic
+	*/
+	proto external void SetAimingAngles(float yaw, float pitch);
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapRoadProps
@@ -27,6 +27,8 @@ class MapRoadProps
 	proto external void SetBorderColor(RoadType type, notnull Color color);
 	proto external void SetVisible(bool visibility);
 	proto external bool IsVisible();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

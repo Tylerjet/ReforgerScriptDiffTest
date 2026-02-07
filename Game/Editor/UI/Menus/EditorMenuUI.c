@@ -22,7 +22,7 @@ class EditorMenuUI: EditorMenuBase
 			inputManager.AddActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
 			inputManager.AddActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 			inputManager.AddActionListener("MenuOpen", EActionTrigger.DOWN, OpenPauseMenu);
-			inputManager.AddActionListener("EditorChatToggle", EActionTrigger.DOWN, ChatToggle);
+			inputManager.AddActionListener("ChatToggle", EActionTrigger.DOWN, ChatToggle);
 #ifdef WORKBENCH
 			inputManager.AddActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
 #endif
@@ -39,7 +39,7 @@ class EditorMenuUI: EditorMenuBase
 			inputManager.RemoveActionListener("ShowScoreboard", EActionTrigger.DOWN, OnShowPlayerList);
 			inputManager.RemoveActionListener("InstantVote", EActionTrigger.DOWN, GetGame().OnInstantVote);
 			inputManager.RemoveActionListener("MenuOpen", EActionTrigger.DOWN, OpenPauseMenu);
-			inputManager.RemoveActionListener("EditorChatToggle", EActionTrigger.DOWN, ChatToggle);
+			inputManager.RemoveActionListener("ChatToggle", EActionTrigger.DOWN, ChatToggle);
 #ifdef WORKBENCH
 			inputManager.RemoveActionListener("MenuOpenWB", EActionTrigger.DOWN, OpenPauseMenu);
 #endif

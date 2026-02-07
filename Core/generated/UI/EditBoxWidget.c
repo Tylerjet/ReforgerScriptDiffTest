@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class EditBoxWidget: UIWidget
@@ -26,6 +26,8 @@ sealed class EditBoxWidget: UIWidget
 	proto void SetObfuscationChar(string obfuscationChar);
 	proto string GetText();
 	proto string GetPlaceholderText();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

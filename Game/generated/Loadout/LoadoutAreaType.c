@@ -4,14 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Loadout
-* @{
+/*!
+\addtogroup Loadout
+\{
 */
 
 class LoadoutAreaType: BaseAttachmentType
 {
 	event string GetLoadoutSoundInfo();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -38,12 +38,14 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		RichTextWidget textBox = RichTextWidget.Cast(m_ParentWidget.FindAnyWidget("Name"));
 		textBox.SetText(actionDisplayName);
 		textBox.ElideText(1, 1.0, "...");
-
+	
 		SetRichTextAction("PCBind", EInputDeviceType.KEYBOARD, true, actionName, preset);
 		SetRichTextAction("ControllerBind", EInputDeviceType.GAMEPAD, false, actionName, preset);
 #ifdef PLATFORM_CONSOLE
 		ButtonWidget PCKeybind = ButtonWidget.Cast(parentWidget.FindAnyWidget("PCBind"));
 		if (PCKeybind)
+			PCKeybind.SetEnabled(false);
+		if (!GetGame().GetHasKeyboard())
 			PCKeybind.SetOpacity(0);
 #endif
 	}
@@ -54,7 +56,7 @@ class SCR_KeybindRowComponent : ScriptedWidgetComponent
 		string finalPreset;
 		
 		//in case of gamepad just do nothing, because we do not support keybind changes on gamepad
-		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.GAMEPAD)
+		if (GetGame().GetInputManager().GetLastUsedInputDevice() == EInputDeviceType.GAMEPAD && !GetGame().GetHasKeyboard())
 			return;
 		
 		if (!m_sActionPreset.IsEmpty())

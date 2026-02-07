@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Player
-* @{
+/*!
+\addtogroup Player
+\{
 */
 
 enum PermissionState
@@ -16,7 +16,9 @@ enum PermissionState
 	//! NOT allowed
 	DISALLOWED,
 	//! Disallowed by Platform - state could not be changed from the game
-	DISABLED
-};
+	DISABLED,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -5,21 +5,23 @@ class SCR_FuelTankInfo: SCR_BaseVehicleInfo
 	
 	//------------------------------------------------------------------------------------------------
 	//! Can be overridden to get state of actual system or linked to an event
-	override bool GetState()
+	override EVehicleInfoState GetState()
 	{
 		if (!m_pFuelManager)
-			return false;
+			return EVehicleInfoState.DISABLED;
 		
 		// BLINKING: currently leaking
 		// register to an event. If leaking, return blinking
 		
-		// DESTROYED: < reserve fuel
+		// ERROR: < reserve fuel
+		// WARNING: < low fuel - should be configured in fuel manager
 		float totalFuel = m_pFuelManager.GetTotalFuel();
-		if (totalFuel < 0.15)
-			return true;
+		if (totalFuel <= 0.05)
+			return EVehicleInfoState.ERROR;
+		else if (totalFuel <= 0.15)
+			return EVehicleInfoState.WARNING;
 		
-		// WARNING: < low fuel
-		return totalFuel < 0.05;
+		return EVehicleInfoState.DISABLED;
 	}
 	
 	//------------------------------------------------------------------------------------------------

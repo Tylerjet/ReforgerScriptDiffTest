@@ -9,13 +9,29 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	[Attribute("{ECC45EC468D76CF4}Configs/Commanding/CommandingMenu.conf")]
 	protected ResourceName m_sCommandingMenuConfigPath;
 	
+	[Attribute("{2FFBD92174DDF3E0}Configs/Commanding/CommandingMapMenu.conf")]
+	protected ResourceName m_sCommandingMapMenuConfigPath;
+	
 	protected ref SCR_PlayerCommandingMenuConfig m_CommandingMenuConfig;
 	
 	protected IEntity m_SelectedEntity;
 	protected SCR_RadialMenuHandler m_RadialMenu;
 	
 	protected SCR_CommandingManagerComponent m_CommandingManager;
-		
+	protected SCR_MapContextualMenuUI m_MapContextualMenu;
+	
+	protected string m_sExecutedCommandName;
+	
+	protected bool m_bIsCommandExecuting = false;
+	protected bool m_bSlaveGroupRequested = false;
+	protected ref SCR_PhysicsHelper m_PhysicsHelper;
+
+	
+	//used to offset the position to spawn waypoint so it is not spawned in terrain
+	const float ABOVE_TERRAIN_OFFSET = 0.5;
+	//maximal range for command in meters
+	const float COMMANDING_VISUAL_RANGE = 10000;
+	
 	//------------------------------------------------------------------------------------------------
 	static SCR_PlayerControllerCommandingComponent GetPlayerControllerCommandingComponent(int playerID)
 	{
@@ -54,7 +70,31 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		BaseContainer container = holder.GetResource().ToBaseContainer();
 		m_CommandingMenuConfig = SCR_PlayerCommandingMenuConfig.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
 		
-		SetupRadialMenu();
+		SetupPlayerRadialMenu();
+		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
+		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
+		
+		m_PhysicsHelper.InitPhysicsHelper();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetupMapListener()
+	{
+		SCR_MapContextualMenuUI mapMenu = SCR_MapContextualMenuUI.GetInstance();
+		if (!mapMenu)
+			return;
+		
+		mapMenu.GetOnEntryPerformedInvoker().Insert(OnMapCommandPerformed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RemoveMapListener()
+	{
+		SCR_MapContextualMenuUI mapMenu = SCR_MapContextualMenuUI.GetInstance();
+		if (!mapMenu)
+			return;
+		
+		mapMenu.GetOnEntryPerformedInvoker().Remove(OnMapCommandPerformed);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -77,12 +117,13 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetupRadialMenu()
+	void SetupPlayerRadialMenu()
 	{
 		m_RadialMenu = GetRadialMenuHandler();
 		if (!m_RadialMenu)
 		{
-			GetGame().GetCallqueue().CallLater(SetupRadialMenu, 100);
+			//When menu isnt created quick enough try it again
+			GetGame().GetCallqueue().CallLater(SetupPlayerRadialMenu, 100);
 			return;
 		}
 		
@@ -92,11 +133,69 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		SCR_RadialMenuInteractions interactions = m_RadialMenu.GetRadialMenuInteraction();
 		if (!interactions)
 			return;
+
 		interactions.GetOnMenuOpenFailed().Insert(OnRadialMenuFailed);
 		
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		
+		playerGroupController.GetOnGroupChanged().Insert(OnGroupChanged);
 		SCR_AIGroup.GetOnPlayerLeaderChanged().Insert(OnGroupLeaderChanged);
 		
 		EnableRadialMenu(false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapOpen()
+	{
+		m_MapContextualMenu = SCR_MapContextualMenuUI.GetInstance();
+		if (!m_MapContextualMenu)
+			return;
+		
+		m_MapContextualMenu.GetOnMenuOpenInvoker().Insert(SetupMapRadialMenu);
+		m_MapContextualMenu.GetOnEntryPerformedInvoker().Insert(OnMapCommandPerformed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapClose()
+	{
+		if (!m_MapContextualMenu)
+			return;
+		
+		m_MapContextualMenu.GetOnMenuOpenInvoker().Remove(SetupMapRadialMenu);
+		m_MapContextualMenu.GetOnEntryPerformedInvoker().Remove(OnMapCommandPerformed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetupMapRadialMenu()
+	{
+		if (!m_CommandingMenuConfig || !m_MapContextualMenu)
+			return;
+		
+		SCR_PlayerCommandingMenuCategoryElement rootCategory = m_CommandingMenuConfig.GetRootCategory();
+		if (!rootCategory)
+			return;
+		
+		m_MapContextualMenu.AddRadialCategory(rootCategory.GetCategoryDisplayText());
+		
+		AddElementsFromCategoryToMap(rootCategory);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnMapCommandPerformed(BaseSelectionMenuEntry element, float[] worldPos)
+	{
+		SCR_MapMenuEntry mapEntry = SCR_MapMenuEntry.Cast(element);
+		if (!mapEntry)
+			return;
+		
+		float height = GetGame().GetWorld().GetSurfaceY(worldPos[0], worldPos[1]);
+		
+		vector position;
+		position[0] = worldPos[0];
+		position[1] = height + ABOVE_TERRAIN_OFFSET;
+		position[2] = worldPos[1];
+		
+		PrepareExecuteCommand(mapEntry.GetEntryIdentifier(), position);
+		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -110,11 +209,30 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (playerGroupController.GetGroupID() != groupID)
 			return;
 		
-		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.GetInstance();
-		
 		bool enabled = playerID == GetGame().GetPlayerController().GetPlayerId();
 
-		EnableRadialMenu(true);
+		EnableRadialMenu(enabled);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnGroupChanged(int groupID)
+	{
+		//check if player is the new leader of the group
+		SCR_PlayerControllerGroupComponent playerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!playerGroupController)
+			return;
+		
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup playersGroup = groupsManager.FindGroup(groupID);
+		if (!playersGroup)
+			return;
+		
+		bool enabled = playerGroupController.IsPlayerLeader(GetGame().GetPlayerController().GetPlayerId(), playersGroup);
+		
+		EnableRadialMenu(enabled);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -124,8 +242,7 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		if (!element)
 			return;
 		
-		ExecuteCommand(element.GetCommandName());
-		//UpdateRadialMenu(null, false);
+		PrepareExecuteCommand(element.GetCommandName());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -135,17 +252,54 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ExecuteCommand(string commandName, bool slaveGroupRequested = false)
+	void PrepareExecuteCommand(string commandName, vector targetPosition = "0 0 0")
 	{
-		if (commandName.IsEmpty())
+		//if another command is waiting for trace, do nothing
+		if (commandName.IsEmpty() || m_bIsCommandExecuting)
 			return;
+	
+		m_sExecutedCommandName = commandName;
+		
+		if (targetPosition != vector.Zero)
+		{
+			ExecuteCommand(targetPosition, null);
+			return;
+		}
+		
+		PlayerController controller = GetGame().GetPlayerController();
+		PlayerCamera camera = controller.GetPlayerCamera();
+		if (!camera)
+			return;
+		
+		IEntity controlledEntity = controller.GetControlledEntity();
+		
+		vector mat[4];
+		camera.GetTransform(mat);
+		vector end = mat[3] + mat[2] * COMMANDING_VISUAL_RANGE;
+		
+		m_PhysicsHelper = new SCR_PhysicsHelper();
+		m_PhysicsHelper.GetOnTraceFinished().Insert(ExecuteCommand);
+		
+		//prevent other commands being executed while this one is waiting for trace
+		//todo:kuceramar: after radialmenurework, make radial menu elements disabled when this is true
+		m_bIsCommandExecuting = true;
+		m_PhysicsHelper.TraceSegmented(mat[3], end, TraceFlags.ENTS | TraceFlags.WORLD | TraceFlags.ANY_CONTACT, EPhysicsLayerDefs.Projectile, controlledEntity);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void ExecuteCommand(vector targetPosition, IEntity tracedEntity)	
+	{
+		m_bIsCommandExecuting = false;
+		if (m_PhysicsHelper)
+		{
+			m_PhysicsHelper.GetOnTraceFinished().Remove(ExecuteCommand);
+			m_PhysicsHelper = null;
+		}
 		
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
 		if (!commandingManager)
 			return;
 		
-		vector targetPosition;
-		GetGame().GetPlayerController().GetPlayerCamera().GetCursorTargetWithPosition(targetPosition);
 		int playerID = SCR_PlayerController.GetLocalPlayerId();
 		
 		SCR_PlayerControllerGroupComponent groupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
@@ -158,25 +312,27 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 			return;
 		
 		RplComponent rplComp;
-		if (!playersGroup.GetSlave() && !slaveGroupRequested)
+		if (!playersGroup.GetSlave() && !m_bSlaveGroupRequested)
 		{
 			rplComp = RplComponent.Cast(playersGroup.FindComponent(RplComponent));
 			groupController.RequestCreateSlaveGroup(rplComp.Id());
-			slaveGroupRequested = true;
+			m_bSlaveGroupRequested = true;
 		}
 		SCR_AIGroup slaveGroup = playersGroup.GetSlave();
 		
 		if (!slaveGroup)
 		{
-			GetGame().GetCallqueue().CallLater(ExecuteCommand, 100, false, commandName, slaveGroupRequested);
+			//if there is not slaveGroup, we try to execute the command later because newly created group takes a bit of time to replicate
+			GetGame().GetCallqueue().CallLater(ExecuteCommand, 100, false, targetPosition, tracedEntity);
 			return;
 		}
 	
+		m_bSlaveGroupRequested = false;
 		rplComp = RplComponent.Cast(slaveGroup.FindComponent(RplComponent));
 		RplId groupRplID = rplComp.Id();
 		RplId cursorTargetRplID;
 	
-  		int commandIndex = commandingManager.FindCommandIndex(commandName);
+  		int commandIndex = commandingManager.FindCommandIndex(m_sExecutedCommandName);
 		
 		if (m_SelectedEntity)
 		{
@@ -185,7 +341,8 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 				cursorTargetRplID = rplComp.Id();
 		}
 		Rpc(RPC_RequestExecuteCommand, commandIndex, cursorTargetRplID, groupRplID, targetPosition, playerID);
-	}	
+	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
@@ -215,6 +372,12 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	void PlayCommandGesture(int commandIndex)
 	{
 		if (commandIndex <= 0)
+			return;
+		
+		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
+		
+		//skip the commanding gesture if player has map open
+		if (mapEntity && mapEntity.IsOpen())
 			return;
 		
 		SCR_BaseGroupCommand command = m_CommandingManager.FindCommand(m_CommandingManager.FindCommandNameFromIndex(commandIndex)); 
@@ -280,10 +443,74 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void AddElementsFromCategoryToMap(notnull SCR_PlayerCommandingMenuCategoryElement category)
+	{
+		array<ref SCR_PlayerCommandingMenuBaseElement> elements = category.GetCategoryElements();
+		
+		SCR_PlayerCommandingMenuCategoryElement elementCategory;
+		
+		foreach (SCR_PlayerCommandingMenuBaseElement element : elements)
+		{
+			elementCategory = SCR_PlayerCommandingMenuCategoryElement.Cast(element);
+			if (elementCategory)
+			{
+				//TODO@kuceramar: map menu doesnt support subcategories right now
+				InsertElementToMapRadial(element, category, true);
+			} 
+			else 
+			{
+				InsertElementToMapRadial(element, category);
+			}
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void InsertElementToMapRadial(SCR_PlayerCommandingMenuBaseElement element, notnull SCR_PlayerCommandingMenuCategoryElement category, bool isCategory = false)
+	{
+		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
+		if (!commandingManager)
+			return;
+		
+		SCR_PlayerCommandingMenuCommand commandElement = SCR_PlayerCommandingMenuCommand.Cast(element);
+				
+		if (!commandingManager.CanShowOnMap(commandElement.GetCommandName()))
+			return;
+		
+		SCR_MapMenuEntry mapEntry;
+		SCR_MapMenuCategory mapCategory;
+		
+		if (isCategory)
+		{
+			mapCategory = new SCR_MapMenuCategory(commandElement.GetCommandDisplayText());
+			if (!mapCategory)
+				return;
+		}
+		else 
+		{
+			mapEntry = new SCR_MapMenuEntry(commandElement.GetCommandDisplayText(), category.GetCategoryDisplayText(), commandElement.GetCommandName());
+			if (!mapEntry)
+				return;
+		}
+			
+		SCR_BaseGroupCommand command = commandingManager.FindCommand(commandElement.GetCommandName());
+		if (command)	
+			mapEntry.SetIcon(command.GetIconImageset(), command.GetIconName());
+		
+		if (isCategory)
+			m_MapContextualMenu.InsertCustomRadialCategory(mapCategory, category.GetCategoryDisplayText());
+		else
+			m_MapContextualMenu.InsertCustomRadialEntry(mapEntry, category.GetCategoryDisplayText());
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void EnableRadialMenu(bool enable)
 	{
-		if (!m_RadialMenu) 
+		if (!m_RadialMenu)
+		{
+			//When menu isnt created quick enough try it again
+			GetGame().GetCallqueue().CallLater(SetupPlayerRadialMenu, 100);
 			return;
+		}
 		
 		SCR_RadialMenuInteractions interactions = m_RadialMenu.GetRadialMenuInteraction();
 		if (!interactions)

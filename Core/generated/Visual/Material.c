@@ -4,17 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 sealed class Material: pointer
 {
 	/*!
-	get material, must exist in internal cache
+	Get material, must exist in internal cache.
 	\param matName	material resource
-	\param flags		material creation flags, use 0
 	*/
 	static proto Material GetMaterial(ResourceName matName);
 	/*!
@@ -41,11 +40,7 @@ sealed class Material: pointer
 	\return parameter index
 	*/
 	proto external int GetParamIndex(string paramName);
-	/*!
-	set parametr of material by index
-	\param paramName	name of parameter
-	\param value		value
-	*/
+	//! Set parameter of material by index.
 	proto external void SetParamByIndex(int paramIndex, void value);
 	/*!
 	release material (created be CreateMaterial)
@@ -55,6 +50,8 @@ sealed class Material: pointer
 	material name
 	*/
 	proto external void GetName(out string name);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

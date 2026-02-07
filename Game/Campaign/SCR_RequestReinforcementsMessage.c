@@ -6,9 +6,9 @@ class SCR_RequestReinforcementsMessage : ScriptedRadioMessage
 	protected SCR_CampaignFaction m_TargetFaction;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnDelivery(BaseRadioComponent radio, int freq, float quality, int transcvIdx)
+	override void OnDelivery(BaseTransceiver receiver, int freq, float quality)
 	{
-		if (m_TargetBase && m_TargetFaction && radio && radio.GetOwner() == m_TargetFaction.GetMainBase() && GetTaskManager())
+		if (m_TargetBase && m_TargetFaction && receiver.GetRadio() && receiver.GetRadio().GetOwner() == m_TargetFaction.GetMainBase() && GetTaskManager())
 		{
 			SCR_CampaignDefendTaskSupportEntity supportEntity = SCR_CampaignDefendTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_CampaignDefendTaskSupportEntity));
 			if (supportEntity)

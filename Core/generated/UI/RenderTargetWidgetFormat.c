@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 enum RenderTargetWidgetFormat
@@ -22,7 +22,9 @@ enum RenderTargetWidgetFormat
 	//! HDR format, lower precision (R11G11B10)
 	HDR_LOW,
 	//! HDR format, higher precision (R16G16B16A16)
-	HDR_HIGH
-};
+	HDR_HIGH,
+}
 
-/** @}*/
+/*!
+\}
+*/

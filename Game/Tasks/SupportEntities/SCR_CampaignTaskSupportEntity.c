@@ -61,7 +61,7 @@ class SCR_CampaignTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 			if (!capturedBase.IsBaseInFactionRadioSignal(faction))
 				return;
 			
-			capturedBase.GetBasesInRange(CampaignBaseType.SMALL | CampaignBaseType.MAJOR | CampaignBaseType.MAIN | CampaignBaseType.RELAY, bases);
+			capturedBase.GetBasesInRange(CampaignBaseType.BASE | CampaignBaseType.RELAY, bases);
 			
 			foreach (SCR_CampaignBase base: bases)
 			{

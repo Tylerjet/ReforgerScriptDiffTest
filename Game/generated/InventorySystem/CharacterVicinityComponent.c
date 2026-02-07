@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class CharacterVicinityComponentClass: GameComponentClass
 {
-};
+}
 
 class CharacterVicinityComponent: GameComponent
 {
@@ -25,6 +25,12 @@ class CharacterVicinityComponent: GameComponent
 	proto external void ManipulationComplete();
 	proto external IEntity GetItemOfInterest();
 	proto external float GetDiscoveryRadius();
-};
 
-/** @}*/
+	// callbacks
+
+	event protected void OnUpdate();
+}
+
+/*!
+\}
+*/

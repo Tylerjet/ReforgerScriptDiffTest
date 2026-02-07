@@ -20,19 +20,18 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
 	{
-		if (!var)
-			return;
-		
 		if (isInit)
 		{
 			manager.SetAttributeAsSubAttribute(SCR_WindSpeedEditorAttribute);
 			manager.SetAttributeAsSubAttribute(SCR_WindDirectionEditorAttribute);
 		}	
-				
-		bool isAutomatic = var.GetBool();
+			
+		bool isAutomatic = false;
+		if (var)
+			isAutomatic = var.GetBool();
 		
-		manager.SetAttributeEnabled(SCR_WindSpeedEditorAttribute, !isAutomatic);
-		manager.SetAttributeEnabled(SCR_WindDirectionEditorAttribute, !isAutomatic);
+		manager.SetAttributeEnabled(SCR_WindSpeedEditorAttribute, var && !isAutomatic);
+		manager.SetAttributeEnabled(SCR_WindDirectionEditorAttribute, var && !isAutomatic);
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

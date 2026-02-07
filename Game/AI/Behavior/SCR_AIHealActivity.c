@@ -5,7 +5,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 	
 	const int TIMEOUT_FAILED = 5*60*1000;
 	
-  	ref SCR_BTParam<IEntity> m_EntityToHeal = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
+	ref SCR_BTParam<IEntity> m_EntityToHeal = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	
 	// Selected medic. Assigned from behavior tree.
 	ref SCR_BTParam<IEntity> m_MedicEntity = new SCR_BTParam<IEntity>(MEDIC_PORT);
@@ -25,7 +25,7 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 		if (worldTime - m_fTimeCheckConditions_world > 2500)
 		{
 			// Fail if target is null or destroyed
-			if (!SCR_AIIsAlive.IsAlive(m_EntityToHeal.m_Value))
+			if (!SCR_AIDamageHandling.IsAlive(m_EntityToHeal.m_Value))
 			{
 				#ifdef AI_DEBUG
 				AddDebugMessage("Target entity is null or destroyed, action failed.");
@@ -34,10 +34,16 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 				Fail();
 				return 0;
 			}
-				
+			
+			// Complete if entity is not wounded any more
+			if (!SCR_AIDamageHandling.IsCharacterWounded(m_EntityToHeal.m_Value))
+			{
+				Complete();
+				return 0;
+			}
 			
 			// Replan if medic is null or destroyed
-			if (!SCR_AIIsAlive.IsAlive(m_MedicEntity.m_Value))
+			if (!SCR_AIDamageHandling.IsAlive(m_MedicEntity.m_Value))
 			{
 				SetSuspended(false);
 			}
@@ -59,24 +65,30 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 		
 		
 		return m_fPriority;
-    }
-
-    void SCR_AIHealActivity(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, IEntity ent, float priority = PRIORITY_ACTIVITY_HEAL)
-    {
-        m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityHeal.bt";
-		m_eType = EAIActionType.HEAL;
-		m_fPriority = priority;
-		m_EntityToHeal.Init(this, ent);
-		m_aMedicsExcludeParam.Init(this, m_aMedicsExclude);
+	}
+	
+	void InitParameters(IEntity entity, array<AIAgent> medicsToExclude, float priorityLevel)
+	{
 		IEntity medic = null;
+		m_EntityToHeal.Init(this, entity);
+		m_aMedicsExcludeParam.Init(this, medicsToExclude);
+		m_fPriorityLevel.Init(this,priorityLevel);
 		m_MedicEntity.Init(this, medic); // Must use a variable, otherwise null directly doesn't work with templates.
-		
+	}	
+	
+	//-------------------------------------------------------------------------------------------------------
+	void SCR_AIHealActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity ent, float priority = PRIORITY_ACTIVITY_HEAL, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityHeal.bt";
+		m_fPriority = priority;
+		InitParameters(ent, m_aMedicsExclude, priorityLevel);
+			
 		auto game = GetGame();
 		if (game)
 		{
 			m_fTimeCreated_world = game.GetWorld().GetWorldTime();
 		}
-    }
+	}
 	
 	override string GetActionDebugInfo()
 	{
@@ -105,60 +117,13 @@ class SCR_AIHealActivity : SCR_AIActivityBase
 			return true;
 		}
 		
-		SCR_AIMessage_IWasHealed wasHealed = SCR_AIMessage_IWasHealed.Cast(msg);
-		if (wasHealed)
-		{
-			AIAgent senderAgent = wasHealed.GetSender();
-			if (!senderAgent)
-				return false;
-			
-			IEntity senderEntity = senderAgent.GetControlledEntity();
-			if (!senderEntity)
-				return false;
-			
-			if (senderEntity == m_EntityToHeal.m_Value)
-			{
-				#ifdef AI_DEBUG
-				AddDebugMessage("Target is healed, activity complete.");
-				#endif
-				
-				// Send message to medic, in case the wounded unit was healed by smb else
-				if (m_MedicEntity.m_Value)
-				{
-					AIControlComponent controlComp = AIControlComponent.Cast(m_MedicEntity.m_Value.FindComponent(AIControlComponent));
-					
-					if (controlComp)
-					{
-						AIAgent medicAgent = controlComp.GetAIAgent();
-						if (medicAgent)
-						{
-							SCR_AIMessage_Cancel msgCancel = new SCR_AIMessage_Cancel();
-							msgCancel.m_RelatedGroupActivity = this;
-							m_UtilityBase.SendMessage(msgCancel, medicAgent);
-						}
-					}
-				}
-					
-				// The target has been healed, we are done
-				Complete();
-				return true;
-			}
-		}
-		
-		SCR_AIMessage_NeedMoreHeal msgNeedMoreHeal = SCR_AIMessage_NeedMoreHeal.Cast(msg);
-		if (msgNeedMoreHeal)
-		{
-			// The wounded soldier needs more bandage, run again
-			SetSuspended(false);
-		}
-		
 		return false;
 	}
 };
 
 class SCR_AIGetHealActivityParameters : SCR_AIGetActionParameters
 {
-	static ref TStringArray s_aVarsOut = (new SCR_AIHealActivity(null, false, false, null)).GetPortNames();
+	static ref TStringArray s_aVarsOut = (new SCR_AIHealActivity(null, false, null)).GetPortNames();
 	override TStringArray GetVariablesOut() { return s_aVarsOut; }
 	
 	override bool VisibleInPalette() { return true; }
@@ -166,7 +131,7 @@ class SCR_AIGetHealActivityParameters : SCR_AIGetActionParameters
 
 class SCR_AISetHealActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIHealActivity(null, false, false, null)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIHealActivity(null, false, null)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };

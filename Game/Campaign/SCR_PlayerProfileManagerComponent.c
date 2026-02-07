@@ -118,7 +118,7 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	//! What happens when a player disconnects.
 	//! Method is called from SCR_DeathmatchLobbyEntity
 	//! \param playerID is a unique player identifier that defines which player has disconnected.
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		StoreProfile(playerId, true);
 	}
@@ -218,7 +218,7 @@ class SCR_PlayerProfileManagerComponent : SCR_BaseGameModeComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
+		owner.SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 	}
 
 	//------------------------------------------------------------------------------------------------

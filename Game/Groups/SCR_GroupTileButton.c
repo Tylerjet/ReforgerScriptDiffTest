@@ -98,6 +98,8 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 	protected const string PRIVATE_GROUP = "#AR-Player_Groups_Private";
 	protected const string PUBLIC_GROUP = "#AR-Player_Groups_Public";
 	
+	protected const ResourceName  GROUP_FLAG_SELECTION = "{7340FE3C6872C6D3}UI/layouts/Menus/GroupSlection/GroupFlagSelection.layout";
+	
 	protected ref array<SCR_PlayerTileButtonComponent> m_aPlayerComponentsList = {};
 	protected SCR_PlayerTileButtonComponent m_PlayerTileComponent;
 	protected static ref ScriptInvoker s_OnGroupButtonClicked = new ScriptInvoker();
@@ -114,7 +116,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		s_OnGroupButtonClicked.Invoke();
 		
 		return true;
-	}
+	}	
 	
 	//------------------------------------------------------------------------------------------------
 	void InitiateGroupTile()
@@ -162,7 +164,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		
 		RichTextWidget frequency = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("Frequency"));
 		if (frequency)
-			frequency.SetText(""+group.GetGroupFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");
+			frequency.SetText(""+group.GetRadioFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");
 		
 		RichTextWidget playerCount = RichTextWidget.Cast(GetRootWidget().FindAnyWidget("PlayerCount"));
 		if(playerCount)
@@ -184,7 +186,68 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			privateIcon.SetVisible(group.IsPrivate());
 		
 		if (!m_ParentSubMenu)
-			FindParentMenu();		
+			FindParentMenu();	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetupSelectGroupFlagButton(SCR_AIGroup group)
+	{
+		if (!m_ParentSubMenu)
+		return;
+			
+		ButtonWidget groupImage = ButtonWidget.Cast(m_ParentSubMenu.GetRootWidget().FindAnyWidget("GroupImage"));
+		if (!groupImage)
+		return;		
+		
+		
+		
+		SCR_ButtonImageComponent imageButton = SCR_ButtonImageComponent.Cast(groupImage.FindHandler(SCR_ButtonImageComponent));
+		if (!imageButton)
+		return;
+		
+		imageButton.m_OnClicked.Insert(OnSeletGroupFlagButtonClicked);							
+		
+		SCR_Faction scrFaction = SCR_Faction.Cast(m_GroupFaction);
+		if (!scrFaction)
+			return;
+		
+		ResourceName flag = group.GetGroupFlag();
+		
+		if (flag.IsEmpty())
+		{				
+			imageButton.SetImage(scrFaction.GetFactionFlag());	
+		}
+		else
+		{
+			imageButton.SetImage(flag);			
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnSeletGroupFlagButtonClicked()
+	{		
+		SCR_PlayerControllerGroupComponent playerComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
+		if (!playerComponent)
+			return;
+		
+		SCR_AIGroup group = m_GroupManager.FindGroup(m_iGroupID);
+		if (!group)
+			return;	
+		
+		if (!group.IsPlayerLeader(playerComponent.GetPlayerID()))
+		{
+			SCR_NotificationsComponent.SendLocal(ENotification.GROUPS_PLAYER_IS_NOT_LEADER);
+			return;
+		}
+		
+		array<ResourceName> flags = {};
+		
+		m_GroupManager.GetGroupFlags(flags);
+		
+	    if (flags.Count() > 0)
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.GroupFlagDialog, DialogPriority.CRITICAL, 0, true);
+		else
+			SCR_NotificationsComponent.SendLocal(ENotification.GROUPS_NO_FLAGS);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -197,6 +260,12 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 		if (!playerController)
 			return;
+		
+		SCR_AIGroup group = m_GroupManager.FindGroup(m_iGroupID);
+		if (!group)
+			return;	
+		
+		SetupSelectGroupFlagButton(group);
 		
 		if (m_ParentSubMenu == null)
 			FindParentMenu();
@@ -223,18 +292,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (!frequency)
 			return;
 		
-		SCR_AIGroup group = m_GroupManager.FindGroup(m_iGroupID);
-		if (!group)
-			return;
-		
-		ImageWidget groupImage = ImageWidget.Cast(m_ParentSubMenu.GetRootWidget().FindAnyWidget("GroupImage"));
-		if (!groupImage)
-			return;	
-		
-		SCR_PlayerControllerGroupComponent groupMenuComponent = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
-		if (!groupMenuComponent)
-			return;
-		
+						
 		SCR_PlayerControllerGroupComponent s_PlayerGroupController = SCR_PlayerControllerGroupComponent.GetLocalPlayerControllerGroupComponent();
 		if (!s_PlayerGroupController)
 			return;
@@ -265,15 +323,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		
 		CheckLeaderOptions();
 		
-		frequency.SetText(""+group.GetGroupFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");
-		
-		int x, y;
-		SCR_Faction scrFaction = SCR_Faction.Cast(m_GroupFaction);
-		if (!scrFaction)
-			return;
-		groupImage.LoadImageTexture(0, scrFaction.GetFactionFlag());
-		groupImage.GetImageSize(0, x, y);
-		groupImage.SetSize(x, y);
+		frequency.SetText(""+group.GetRadioFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");		
 		
 		Widget children = playerList.GetChildren();
 		while (children)
@@ -291,7 +341,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 
 		array<int> playerIDs = group.GetPlayerIDs();
 		Widget playerTile;
-		
+				
 		int leaderID = group.GetLeaderID();
 		if (leaderID >= 0)
 		{
@@ -408,7 +458,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			respawnSystem = SCR_RespawnSystemComponent.GetInstance();
 			playerLoadout = respawnSystem.GetPlayerLoadout(playerID);
 			if (playerLoadout)
-			{
+			{ 
 				res = Resource.Load(playerLoadout.GetLoadoutResource());
 				source = SCR_BaseContainerTools.FindComponentSource(res, "SCR_EditableCharacterComponent");
 				if (source)
@@ -433,7 +483,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 				Color badgeColor = m_GroupFaction.GetFactionColor();
 				if (group.IsPlayerLeader(playerID))
 					badgeColor = (m_PlayerNameSelfColor);
-				
+								
 				SetBadgeColor(badge, badgeColor);
 			}
 			
@@ -523,13 +573,14 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			
 		int playerID = GetGame().GetPlayerController().GetPlayerId();
 		SCR_AIGroup group = m_GroupManager.GetPlayerGroup(playerID);
-		
+				
 		if (group && m_iGroupID != group.GetGroupID() && m_PlayerTileComponent.GetTilePlayerID() != -1)
 			m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_INVITE);
 		
 		group = m_GroupManager.FindGroup(m_iGroupID);
 		if (!group)
 			return;
+		
 		if (group.IsPlayerLeader(playerID) && playerID != m_PlayerTileComponent.GetTilePlayerID() && m_PlayerTileComponent.GetTilePlayerID() != -1)
 		{
 			m_PlayerTileComponent.GetOptionsComboComponent().AddItem(OPTIONS_COMBO_KICK);
@@ -542,7 +593,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		m_PlayerTileComponent.GetOptionsComboComponent().m_OnOpened.Insert(DisableConfirmButton);
 		m_PlayerTileComponent.GetOptionsComboComponent().m_OnClosed.Insert(EnableConfirmButton);
 		
-		m_PlayerTileComponent.GetOptionsComboComponent().m_OnChanged.Insert(OnComboBoxConfirm);
+		m_PlayerTileComponent.GetOptionsComboComponent().m_OnChanged.Insert(OnComboBoxConfirm);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -618,9 +669,10 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		if (!nameChangeButton)
 			return;
 		
-		if (!group.IsPlayerLeader(GetGame().GetPlayerController().GetPlayerId()))
+		if (!group.IsPlayerLeader(GetGame().GetPlayerController().GetPlayerId()) || !m_GroupManager.CanPlayersChangeAttributes())
 		{
 			privateChecker.SetOpacity(0);
+			privateChecker.SetEnabled(false);
 			nameChangeButton.SetOpacity(0);
 			nameChangeButton.SetEnabled(false);
 			return;
@@ -685,7 +737,7 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 		
 		badgeTop.SetColor(color);
 		badgeMiddle.SetColor(color);
-		badgeBottom.SetColor(color);
+		badgeBottom.SetColor(color);		
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -708,27 +760,38 @@ class SCR_GroupTileButton : SCR_ButtonBaseComponent
 			return;
 		
 		array<SCR_ChimeraCharacter> aiMembers = slaveGroup.GetAIMembers();
-		CharacterIdentityComponent identityComponent;
+		SCR_CharacterIdentityComponent identityComponent;				
 		
 		foreach(SCR_ChimeraCharacter AIcharacter : aiMembers)
 		{
 			playerTile = Widget.Cast(GetGame().GetWorkspace().CreateWidgets(m_textLayout, playerList));
 			playerName = TextWidget.Cast(playerTile.FindAnyWidget("PlayerName"));
 			
-			identityComponent = CharacterIdentityComponent.Cast(AIcharacter.FindComponent(CharacterIdentityComponent));
+			identityComponent = SCR_CharacterIdentityComponent .Cast(AIcharacter.FindComponent(SCR_CharacterIdentityComponent ));
 			if (!identityComponent)
 				return;
-			
-			playerName.SetText(identityComponent.GetCharacterFullName());
+			string name;
+			array<string> nameParams;
+			identityComponent.GetFormattedFullName(name, nameParams);
+			playerName.SetText(name);
 			
 			playerButton = ButtonWidget.Cast(playerTile.FindAnyWidget("PlayerButton"));
 			if (!playerButton)
 				return; 
 			
-			SCR_PlayerTileButtonComponent playerTileComponent = SCR_PlayerTileButtonComponent.Cast(playerButton.FindHandler(SCR_PlayerTileButtonComponent));
-			playerTileComponent.SetTilePlayerID(-1);
+			m_PlayerTileComponent = SCR_PlayerTileButtonComponent.Cast(playerButton.FindHandler(SCR_PlayerTileButtonComponent));
+			if (!m_PlayerTileComponent)
+				return;
 			
-			playerTileComponent.SetCharacter(AIcharacter);
+			m_PlayerTileComponent.SetTilePlayerID(-1);
+			
+			m_PlayerTileComponent.SetCharacter(AIcharacter);
+			
+			//set badge color
+			Widget badge = playerTile.FindAnyWidget("PlayerBadge");
+			
+			if (badge)							
+				SetBadgeColor(badge, m_GroupFaction.GetFactionColor());			
 			
 			SetupOptionsCombo(playerTile);
 		}

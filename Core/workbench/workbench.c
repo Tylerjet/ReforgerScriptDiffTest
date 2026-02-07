@@ -35,7 +35,7 @@ class DateTimeUtcAsInt
 	{
 		return ((value >> 26) & 0x3f) + 2000;
 	}
-};
+}
 
 class Workbench
 {
@@ -46,7 +46,7 @@ class Workbench
 	static proto native bool CloseModule(typename type);
 	static proto native void Dialog(string caption, string text, string detailedText = "");
 	static proto int ScriptDialog(string caption, string text, Class data);
-	//! Search for all resoruces by filer and call callback method for each.
+	//! Search for all resources by filer and call callback method for each. `rootPath` must be in "exact path" format e.g. `"$addonName:Prefabs"`.
 	static proto bool SearchResources(WorkbenchSearchResourcesCallback callback, array<string> fileExtensions = null, array<string> searchStrArray = null, string rootPath = "", bool recursive = true);
 	static proto native int RunCmd(string command, bool wait = false);
 	static proto native ProcessHandle RunProcess(string command);
@@ -54,16 +54,16 @@ class Workbench
 	static proto void GetCwd(out string currentDir);
 	static proto void GetUserName(out string userName);
 	static proto bool GetAbsolutePath(string relativePath, out string absPath, bool mustExist = true);
-	//! Return absolute path to game project settings
+	//! Returns absolute path to game project settings.
 	static proto native string GetCurrentGameProjectFile();
-	//! Return game project settings
+	//! Returns game project settings.
 	static proto native BaseContainer GetGameProjectSettings();
 	static proto string GenerateGloballyUniqueID64();
 	static proto native void Exit(int exitCode);
 	static proto native DateTimeUtcAsInt GetPackedUtcTime();
 	static proto ResourceName GetResourceName(string path);
 	static proto native bool OpenResource(string filename);
-};
+}
 
 class WBModuleDef: pointer
 {
@@ -75,12 +75,13 @@ class WBModuleDef: pointer
 	proto external bool GetCmdLine(string name, out string value);
 	proto native external bool Save();
 	proto native external bool Close();
-};
+}
 
-/**
-* \addtogroup Workbench Editors
-* @{
+/*!
+\addtogroup WorkbenchEditors Workbench Editors
+\{
 */
+
 class ParticleEditor: WBModuleDef
 {
 }
@@ -110,54 +111,57 @@ class ScriptEditor: WBModuleDef
 	proto external bool GetCurrentFile(out string filename);
 	proto native external int GetCurrentLine();
 	proto native external int GetLinesCount();
-	//! Gets line text (if line is -1, current line is used)
+	//! Gets line text (if line is -1, current line is used).
 	proto external bool GetLineText(out string text, int line = -1);
-	//! Sets line text (if line is -1, current line is used)
+	//! Sets line text (if line is -1, current line is used).
 	proto native external void SetLineText(string text, int line = -1);
-	//! Insert line before line (if line is -1, current line is used)
+	//! Insert line before line (if line is -1, current line is used).
 	proto native external void InsertLine(string text, int line = -1);
-	//! Removes line (if line is -1, current line is used)
+	//! Removes line (if line is -1, current line is used).
 	proto native external void RemoveLine(int line = -1);
-};
+}
 
 class ResourceManager: WBModuleDef
 {
 	proto native external MetaFile GetMetaFile(string absFilePath);
-	/**
-	\brief Register register resource (create meta file)
-	\n usage :
-	@code
-	// register resource
-	ResourceManager rm = Workbench.GetModule(ResourceManager);
-	MetaFile meta = rm.RegisterResourceFile("c:\\DATA\\UI\\Imagesets\\Test\\Test.tga");
-	meta.Save();
 
-	// build resource
-	rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
-	@endcode
+	/*!
+	Register register resource (create meta file).
+	Usage:
+	\code
+		// register resource
+		ResourceManager rm = Workbench.GetModule(ResourceManager);
+		MetaFile meta = rm.RegisterResourceFile("c:\\DATA\\UI\\Imagesets\\Test\\Test.tga");
+		meta.Save();
+
+		// build resource
+		rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
+	\endcode
 	*/
 	proto native external MetaFile RegisterResourceFile(string absFilePath);
-	/**
-	\brief Rebuild already registered resoruce
-	\n usage :
-	@code
-	rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
-	@endcode
+
+	/*!
+	Rebuild already registered resource.
+	Usage:
+	\code
+		rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
+	\endcode
 	*/
 	proto native external void RebuildResourceFile(string filePath, string configuration, bool selectFiles);
-	/**
-	\brief Rebuild already registered resorucees
-	\n usage :
-	@code
-	rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
-	@endcode
+
+	/*!
+	Rebuild already registered resources.
+	Usage:
+	\code
+		rm.RebuildResourceFiles({"UI\\Imagesets\\Test\\Test.tga"}, "PC");
+	\endcode
 	*/
 	proto native external void RebuildResourceFiles(notnull array<string> filePaths, string configuration);
 	proto native external void WaitForFile(string filePath, int maxTimeMs = 1000);
 
-	//! Return exact paths of selected items from ResourceBrowser panel in ResourceManager
+	//! Return exact paths of selected items from ResourceBrowser panel in ResourceManager.
 	proto void GetResourceBrowserSelection(WorkbenchSearchResourcesCallback callback, bool recursive = false);
-};
+}
 
 class WorldEditor: WBModuleDef
 {
@@ -166,13 +170,10 @@ class WorldEditor: WBModuleDef
 	proto native void SwitchToGameMode(bool debugMode = false, bool fullScreen = false);
 	proto native void SwitchToEditMode();
 
-	//! Return true if editor is being in a prefab edit mode (dedicated mode for editing prefabs)
+	//! Return `true` if editor is in prefab edit mode (dedicated mode for editing prefabs).
 	proto native bool IsPrefabEditMode();
 
-	//! Switches between "prefab edit mode" and "normal" editor mode
-	proto native void SetPrefabEditMode(bool enabled);
-
-	//! Return exact paths of selected items from ResourceBrowser panel in WorldEditor
+	//! Return exact paths of selected items from ResourceBrowser panel in WorldEditor.
 	proto void GetResourceBrowserSelection(WorkbenchSearchResourcesCallback callback, bool recursive = false);
 
 	bool WaitForGameMode(int timeout = 120000 /*msec*/)
@@ -189,43 +190,45 @@ class WorldEditor: WBModuleDef
 			return false;
 		return true;
 	}
-};
+}
 
 class LocalizationEditor: WBModuleDef
 {
-	//! Begins group of undo actions (for user will whole group behave like one action)
+	//! Begins group of undo actions (for user will whole group behave like one action).
 	proto native external void BeginModify(string text);
-	//! Modify single StringTableItem property
+	//! Modifies single StringTableItem property.
 	proto native external void ModifyProperty(BaseContainer container, int variable, string value);
-	//! Ends group of undo actions
+	//! Ends group of undo actions.
 	proto native external void EndModify();
-	//! Refresh UI
+	//! Refreshes UI.
 	proto native external void RefreshUI();
-	//! Return string table container
+	//! Returns string table container.
 	proto native external BaseContainer GetTable();
-	//! Return indexes of rows which are filtered at the moment
+	//! Returns indexes of rows which are filtered at the moment.
 	proto native external void GetFilteredRows(notnull out array<int> rowsIdx);
-	//! Return indexes of rows which are selected at the moment
+	//! Returns indexes of rows which are selected at the moment.
 	proto native external void GetSelectedRows(notnull out array<int> rowsIdx);
-	//! Filters just rows given in rowsIdx array
+	//! Filters just rows given in `rowsIdx` array.
 	proto native external void AddUserFilter(notnull array<int> rowsIdx, string caption);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/
 
 enum WETMouseButtonFlag
 {
 	LEFT = 1,
 	RIGHT = 2,
 	MIDDLE = 4
-};
+}
 
 enum ModifierKey
 {
 	SHIFT = 0x02000000,
 	CONTROL = 0x04000000,
 	ALT = 0x08000000
-};
+}
 
 class WorldEditorTool
 {
@@ -251,7 +254,7 @@ class WorldEditorTool
 
 	private void WorldEditorTool() {}
 	private void ~WorldEditorTool() {}
-};
+}
 
 class GeneratedResources
 {
@@ -265,7 +268,7 @@ class WBProgressDialog: Managed
 {
 	void WBProgressDialog(string title, WBModuleDef parentWindow);
 	proto native external void SetProgress(float progress);
-};
+}
 
 class WorkbenchPlugin: Managed
 {
@@ -275,7 +278,7 @@ class WorkbenchPlugin: Managed
 
 	private void WorkbenchPlugin();
 	private void ~WorkbenchPlugin();
-};
+}
 
 class ResourceManagerPlugin: WorkbenchPlugin
 {
@@ -283,13 +286,13 @@ class ResourceManagerPlugin: WorkbenchPlugin
 	void OnBuildResource(string absFileName, BaseContainer metaFile, GeneratedResources generatedResources);
 	void OnRenameResource(string absFileNameOld, string absFileNameNew, BaseContainer metaFile);
 
-	//! Returns a directory where new default materials may be generated for given mesh object model (absModelPath)
+	//! Returns a directory where new default materials may be generated for given mesh object model (`absModelPath`).
 	string OnGetMaterialGenerateDir(string absModelPath);
 
-	//! Returns suggested MaterialClass name for given material path
+	//! Returns suggested MaterialClass name for given material path.
 	string OnGetMaterialClassName(string absMaterialPath, GeneratedResources generatedResources);
 	void OnMaterialCreated(string absMaterialPath, BaseContainer materialSrc, GeneratedResources generatedResources);
-};
+}
 
 class WorldEditorPlugin: WorkbenchPlugin
 {
@@ -305,9 +308,9 @@ class LocalizationEditorPlugin: WorkbenchPlugin
 	void OnExport(BaseContainer item);
 	void OnSelectionChanged();
 	bool IsReadOnly(BaseContainer item, bool isImporting);
-	//! Called for each item during building runtime table, expected column name to export for given language
+	//! Called for each item during building runtime table, expected column name to export for given language.
 	string GetExportColumn(BaseContainer item, string languageCode);
-};
+}
 
 class ButtonAttribute
 {
@@ -319,15 +322,15 @@ class ButtonAttribute
 		m_Label = label;
 		m_Focused = focused;
 	}
-};
+}
 
 /*!
 Attribute for Workbench plugin definition:
-	name - ui name in Script Tools menu
-	description - tooltip
-	shortcut - shortcut in simple text form e.g. "ctrl+g"
-	icon - relative path to icon file (32x32 png)
-	wbModules - list of strings representing Workbench modules where this tool should be avalaible (e.g. {"ResourceManager", "ScriptEditor"}). Leave null or empty array for any module.
+- `name` - ui name in Script Tools menu
+- `description` - tooltip
+- `shortcut` - shortcut in simple text form e.g. "ctrl+g"
+- `icon` - relative path to icon file (32x32 png)
+- `wbModules` - list of strings representing Workbench modules where this tool should be avalaible (e.g. {"ResourceManager", "ScriptEditor"}). Leave null or empty array for any module.
 */
 class WorkbenchPluginAttribute
 {
@@ -350,11 +353,9 @@ class WorkbenchPluginAttribute
 		m_Category = category;
 		m_AwesomeFontCode = awesomeFontCode;
 	}
-};
+}
 
-/*!
-Attribute for Workbench tool definition
-*/
+//! Attribute for Workbench tool definition.
 class WorkbenchToolAttribute: WorkbenchPluginAttribute
 {
 }
@@ -370,36 +371,38 @@ class TexTools
 	private void TexTools();
 	private void ~TexTools();
 
-	/**
-	\brief Save raw pixels (ARGB stored in int) to dds file
-		\n usage :
-		@code
-			string filePath = "c:\\textures\\test.dds";
-			int data[256];
+	/*!
+	Save raw pixels (ARGB stored in int) to dds file.
+	Usage:
+	\code
+		string filePath = "c:\\textures\\test.dds";
+		int data[256];
 
-			// generate same gradient
-			for (int x = 0; x < 16; x++) for (int y = 0; y < 16; y++)
-			{
-				int clr = y * 16 + 15;
-				data[x * 16 + y] = ARGB(255, clr, clr, clr);
-			}
+		// generate same gradient
+		for (int x = 0; x < 16; x++)
+		for (int y = 0; y < 16; y++)
+		{
+			int clr = y * 16 + 15;
+			data[x * 16 + y] = ARGB(255, clr, clr, clr);
+		}
 
-			// save dds to file
-			if (TexTools.SaveImageData(filePath, 16, 16, data) == false)
-			{
-				Print("Can't save image", LogLevel.ERROR);
-				return;
-			}
-	@endcode
+		// save dds to file
+		if (TexTools.SaveImageData(filePath, 16, 16, data) == false)
+		{
+			Print("Can't save image", LogLevel.ERROR);
+			return;
+		}
+	\endcode
 	*/
 	static proto native bool SaveImageData(string filePath, int width, int height, notnull array<int> data);
 
 	/*!
-	repair borders, the real data pictures are from 3,3 to sizeX-3, sizey - 3, the
-	rest of image must be copied due to DXT compression from the border lines ->
-	in 4x4 DXT block must be just four colors, the other reason is the mipmaping!
+	Repair borders. Real data pictures are from `3,3` to `sizeX-3,sizeY-3`.
+	Rest of the image must be copied due to DXT compression from the border
+	lines -> in 4x4 DXT block must be just four colors, the other reason is
+	the mip-mapping!
 	*/
 	static proto native void RepairTerrainTextureBorders(int width, int height, notnull inout array<int> data);
-};
+}
 
 #endif

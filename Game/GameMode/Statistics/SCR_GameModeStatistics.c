@@ -360,7 +360,7 @@ class SCR_GameModeStatistics
 			if (entry.IsEmpty()) // Keep the file tidy
 				continue;
 
-			s_pFileHandle.FPrintln(entry);
+			s_pFileHandle.WriteLine(entry);
 		}
 
 		// Clear the buffer
@@ -380,7 +380,7 @@ class SCR_GameModeStatistics
 		if (CanFlush())
 			Flush();
 
-		s_pFileHandle.CloseFile();
+		s_pFileHandle.Close();
 		s_pFileHandle = null;
 	}
 
@@ -439,7 +439,7 @@ class SCR_GameModeStatistics
 
 		int count = 0;
 		string temp = "";
-		while (fileHnd.FGets(temp) > 0)
+		while (fileHnd.ReadLine(temp) > 0)
 		{
 			ref SCR_IGameModeRecord record = SCR_IGameModeRecord.LoadFromString(temp);
 			if (record != null)
@@ -450,7 +450,7 @@ class SCR_GameModeStatistics
 		}
 
 		// Finally dispose of handle
-		fileHnd.CloseFile();
+		fileHnd.Close();
 		return count;
 	}
 

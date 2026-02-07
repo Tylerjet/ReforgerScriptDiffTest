@@ -330,6 +330,15 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		// Reseting free selection delay 
 		m_bFreeDelayRelease = false;
 		m_fFreeDelayTimer = 0;
+		
+		PauseMenuUI.m_OnPauseMenuOpened.Insert(OnPauseMenuOpen);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Handler for pause menu being opened
+	void OnPauseMenuOpen()
+	{
+		Close(m_pOwner);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -433,6 +442,8 @@ class SCR_RadialMenuHandler : ScriptedSelectionMenu
 		
 		if (!m_sBackAction.IsEmpty())
 			GetGame().GetInputManager().RemoveActionListener(m_sBackAction, EActionTrigger.DOWN, OnBack);
+		
+		PauseMenuUI.m_OnPauseMenuOpened.Remove(OnPauseMenuOpen);
 		
 		super.OnClose(owner);
 	}

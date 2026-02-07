@@ -10,6 +10,9 @@ class SCR_EditableEntityComponentClass: ScriptComponentClass
 	[Attribute("", UIWidgets.Auto, category: "Visualization", desc: "Bone to which the icon is attached to")]
 	protected string m_sIconBoneName;
 	
+	[Attribute(category: "Editable Entity")]
+	protected ref SCR_EditableEntityInteraction m_EntityInteraction;
+	
 	/*!
 	Get entity type.
 	\return Type
@@ -33,6 +36,21 @@ class SCR_EditableEntityComponentClass: ScriptComponentClass
 	string GetIconBoneName()
 	{
 		return m_sIconBoneName;
+	}
+	/*!
+	Get entity interaction rules of this entity. If it doesn't contain any custom rules, those for its type will be used.
+	\return Interaction rules
+	*/
+	SCR_EditableEntityInteraction GetEntityInteraction()
+	{
+		if (m_EntityInteraction)
+			return m_EntityInteraction;
+		
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (core)
+			return core.GetEntityInteraction(GetEntityType());
+		else
+			return null;
 	}
 	
 	/*!
@@ -94,6 +112,23 @@ class SCR_EditableEntityComponentClass: ScriptComponentClass
 		EEditableEntityType type;
 		componentSource.Get("m_EntityType", type);
 		return type;
+	}
+	/*!
+	Get entity interaction rules of this entity prefab. If it doesn't contain any custom rules, those for its type will be used.
+	\param componentSource Component source
+	\return Interaction rules
+	*/
+	static SCR_EditableEntityInteraction GetEntityInteraction(IEntityComponentSource componentSource)
+	{
+		BaseContainer container = componentSource.GetObject("m_EntityInteraction");
+		if (container)
+			return SCR_EditableEntityInteraction.Cast(BaseContainerTools.CreateInstanceFromContainer(container));
+		
+		SCR_EditableEntityCore core = SCR_EditableEntityCore.Cast(SCR_EditableEntityCore.GetInstance(SCR_EditableEntityCore));
+		if (core)
+			return core.GetEntityInteraction(GetEntityType(componentSource));
+		else
+			return null;
 	}
 	/*!
 	Get slot prefab from SCR_EditableEntityComponent source

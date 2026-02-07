@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class BaseChatEntityClass: GenericEntityClass
 {
-};
+}
 
 class BaseChatEntity: GenericEntity
 {
@@ -41,6 +41,8 @@ class BaseChatEntity: GenericEntity
 	\return Base channel style object.
 	*/
 	proto external BaseChatChannelStyle GetStyle();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

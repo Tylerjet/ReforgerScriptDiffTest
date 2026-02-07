@@ -8,8 +8,15 @@ class SCR_AIGetCompletionRadius : AITaskScripted
 		IEntity waypointEntity;
 		AIWaypoint m_Waypoint;
 		
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
+			return ENodeResult.FAIL;
+		}
+		
 		if (!GetVariableIn(PORT_WAYPOINT, waypointEntity))
-			m_Waypoint = owner.GetCurrentWaypoint();
+			m_Waypoint = group.GetCurrentWaypoint();
 		else
 			m_Waypoint = AIWaypoint.Cast(waypointEntity);
 				

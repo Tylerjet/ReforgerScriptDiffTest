@@ -19,11 +19,10 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	protected int m_iServicesPadding = 0;
 	protected float m_fNameOffset = 2;
 
-	protected ref map<ECampaignServicePointType, SCR_CampaignServiceComponent> m_mServices = new map<ECampaignServicePointType, SCR_CampaignServiceComponent>(); // true if built
+	protected ref map<SCR_EServicePointType, SCR_CampaignServiceComponent> m_mServices = new map<SCR_EServicePointType, SCR_CampaignServiceComponent>(); // true if built
 	protected ref map<Widget, SCR_MapUITask> m_mTasks = new map<Widget, SCR_MapUITask>();
 
 	protected SCR_CampaignBase m_Base;
-	protected CampaignBaseType m_eBaseType;
 	protected string m_sFactionKey;
 	protected SCR_CampaignFaction m_PlayerFaction;
 	protected SCR_CampaignMobileAssemblyComponent m_MobileAssembly;
@@ -97,6 +96,25 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
+	override void SelectIcon()
+	{
+		if (!m_wSelectImg)
+			return;
+
+		if (s_SelectedElement && s_SelectedElement != this)
+			s_SelectedElement.Select(false);
+
+		Select();
+
+		m_wSelectImg.SetVisible(true);
+		if (m_wGradient)
+			m_wGradient.SetVisible(true);
+
+		if (m_bIsSelected)
+			Event_OnPointSelected.Invoke(m_SpawnPoint);
+	}
+
+	//------------------------------------------------------------------------------
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		if (m_wImageOverlay && w == m_wImageOverlay && !m_wBaseOverlay.IsEnabled())
@@ -113,7 +131,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 		super.OnMouseEnter(w, x, y);
 		
-		AnimExpand();
+		if (w.Type() == ButtonWidget)
+			AnimExpand();
 
 		if (m_wServices && m_Base && m_Base.IsBaseInFactionRadioSignal(SCR_CampaignFaction.Cast(SCR_RespawnSystemComponent.GetLocalPlayerFaction())))
 		{
@@ -251,10 +270,11 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	}
 
 	//------------------------------------------------------------------------------
-	void ShowServiceHint(string name, string icon, string text, bool show, int suppliesAmount = -1, int suppliesMax = -1)
+	void ShowServiceHint(string name, string text, bool show, int suppliesAmount = -1, int suppliesMax = -1)
 	{
 		int mx;
 		int my;
+	
 		WidgetManager.GetMousePos(mx, my);
 
 		mx = GetGame().GetWorkspace().DPIUnscale(mx);
@@ -262,18 +282,17 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 
 		if (!m_wServiceHint)
 		{
-			m_wServiceHint = GetGame().GetWorkspace().CreateWidgets(m_sServiceHint, null);
-			m_wServiceHint = m_wServiceHint.FindAnyWidget("Overlay");
-			m_wServiceHint.SetZOrder(10);
+			SCR_MapEntity entity = SCR_MapEntity.GetMapInstance();
+			m_wServiceHint = entity.GetMapMenuRoot().FindAnyWidget("ServiceHintRoot");
 		}
 
 		if (show)
 		{
 			FrameSlot.SetPos(m_wServiceHint, mx, my);
 			TextWidget.Cast(m_wServiceHint.FindAnyWidget("ServiceName")).SetTextFormat(name);
-			Widget ressuplyText = m_wServiceHint.FindAnyWidget("RessuplyText");
-			if (ressuplyText)
-				ressuplyText.SetVisible(false);
+			Widget resupplyText = m_wServiceHint.FindAnyWidget("ResupplyText");
+			if (resupplyText)
+				resupplyText.SetVisible(false);
 
 			if (suppliesAmount > -1 && suppliesMax > -1)
 			{
@@ -281,8 +300,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				if (serviceText)
 					serviceText.SetTextFormat(text, suppliesAmount, suppliesMax);
 
-				if (ressuplyText)
-					ressuplyText.SetVisible(suppliesAmount < suppliesMax);
+				if (resupplyText)
+					resupplyText.SetVisible(suppliesAmount < suppliesMax);
 			}
 			else
 			{
@@ -290,8 +309,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 				if (serviceText)
 					serviceText.SetTextFormat(text);
 			}
-
-			ImageWidget.Cast(m_wServiceHint.FindAnyWidget("ServiceIcon")).LoadImageFromSet(0, m_sImageSet, icon);
 		}
 
 		m_wServiceHint.SetVisible(show)
@@ -461,7 +478,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			return;
 
 		SCR_Faction f;
-		if (m_bIsEditor || m_Base.GetType() == CampaignBaseType.MAIN || (m_PlayerFaction && m_Base.IsBaseInFactionRadioSignal(m_PlayerFaction)))
+		if (m_bIsEditor || m_Base.GetIsHQ() || (m_PlayerFaction && m_Base.IsBaseInFactionRadioSignal(m_PlayerFaction)))
 		{
 			f = m_Base.GetOwningFaction();
 		}
@@ -519,24 +536,24 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	{
 		string img;
 
-		if (m_eBaseType == CampaignBaseType.RELAY)
+		if (m_Base.GetType() == CampaignBaseType.RELAY)
 		{
 			img = string.Format("%1_%2", m_sFactionKey, m_sRelay);
 			m_fNameOffset = 0.9;
 		}
-		else if (m_eBaseType == CampaignBaseType.MAIN)
+		else if (m_Base.GetIsHQ())
 		{
 			img = string.Format("%1_%2_%3", m_sFactionKey, m_sBase, "Main");
 			m_iServicesPadding = -10;
 			m_fNameOffset = 0.8;
 		}
-		else if (m_eBaseType == CampaignBaseType.MAJOR)
+		else if (m_Base.GetIsControlPoint())
 		{
 			img = string.Format("%1_%2_%3", m_sFactionKey, m_sBase, "Major");
 			m_iServicesPadding = -5;
 			m_fNameOffset = 0.8;
 		}
-		else if (m_eBaseType == CampaignBaseType.SMALL)
+		else
 		{
 			img = string.Format("%1_%2_%3", m_sFactionKey, m_sBase, "Small");
 			m_fNameOffset = 0.3;
@@ -557,7 +574,8 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		InitBaseIcon();
 		InitServices();
 		SetIconInfoText();
-		if(m_eBaseType == CampaignBaseType.SMALL)
+		
+		if(m_Base.GetType() != CampaignBaseType.RELAY && !m_Base.GetIsHQ() && !m_Base.GetIsControlPoint())
 			m_wCallsignName.SetExactFontSize(18);
 
 		SCR_MapDescriptorComponent descr = SCR_MapDescriptorComponent.Cast(m_Base.FindComponent(SCR_MapDescriptorComponent));
@@ -622,14 +640,13 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		
 		if(m_Base)
 			spawnPoint = m_Base.GetBaseSpawnPoint();
-		
 		if(m_MobileAssembly)
 			spawnPoint = m_MobileAssembly.GetSpawnPoint();
 		
 		if(!spawnPoint)
 			return;
 		
-		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && SCR_SelectSpawnPointSubMenu.GetInstance() != null && m_Base.GetIsLinkedToHQ());
+		m_bCanRespawn = (m_PlayerFaction && m_PlayerFaction.GetFactionKey() == spawnPoint.GetFactionKey() && SCR_SelectSpawnPointSubMenu.GetInstance() != null);
 	}
 
 	//------------------------------------------------------------------------------	
@@ -652,8 +669,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 			else
 				m_eIconType = EIconType.BASE;
 		}
-
-		m_eBaseType = type;
 	}
 
 	//------------------------------------------------------------------------------
@@ -663,12 +678,12 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		array<SCR_CampaignServiceComponent> built = {};
 		array<int> allServices = {};
 		
-		SCR_Enum.GetEnumValues(ECampaignServicePointType, allServices);
+		SCR_Enum.GetEnumValues(SCR_EServicePointType, allServices);
 
 		if (base)
 			base.GetAllBaseServices(built);
 
-		foreach (ECampaignServicePointType type : allServices)
+		foreach (SCR_EServicePointType type : allServices)
 		{
 			m_mServices.Set(type, null);
 		}
@@ -702,7 +717,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		
 		if(visible){
 			m_wCallsignName.SetExactFontSize(24);
-			if(m_eBaseType == CampaignBaseType.SMALL)
+			if(m_Base.GetType() != CampaignBaseType.RELAY && !m_Base.GetIsHQ() && !m_Base.GetIsControlPoint())
 			{
 				m_fNameOffset = 0.3;
 				m_wBaseName.SetVisible(true);
@@ -713,7 +728,7 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 		else
 		{
 			m_wCallsignName.SetExactFontSize(18);
-			if(m_eBaseType == CampaignBaseType.SMALL)
+			if(m_Base.GetType() != CampaignBaseType.RELAY && !m_Base.GetIsHQ() && !m_Base.GetIsControlPoint())
 			{
 				m_fNameOffset = 0.7;
 				m_wBaseName.SetVisible(false);
@@ -739,11 +754,6 @@ class SCR_CampaignMapUIBase : SCR_CampaignMapUIElement
 	Color GetFactionColor()
 	{
 		return GetColorForFaction(m_sFactionKey);
-	}
-	//------------------------------------------------------------------------------
-	CampaignBaseType GetBaseSize()
-	{
-		return m_eBaseType;
 	}
 	//------------------------------------------------------------------------------
 	SCR_CampaignBase GetBase()

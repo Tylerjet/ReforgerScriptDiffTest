@@ -771,12 +771,12 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		
 		// Store information about being in contact - so we don't delete physics objects
 		m_bIsInContact = true;
-		if (!super.OnContact(owner, other, contact))
-		{
-			m_bIsInContact = false;
-			return false;
-		}
 		
+#ifndef VEHICLE_COLLISION_DAMAGE
+		m_bIsInContact = false;
+		return false;
+#endif
+
 		//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
 		float momentumVehicleThreshold = ownerMass * GetVehicleDamageSpeedThreshold() * KM_PER_H_TO_M_PER_S;
 		float momentumVehicleDestroy = ownerMass * GetVehicleSpeedDestroy() * KM_PER_H_TO_M_PER_S;

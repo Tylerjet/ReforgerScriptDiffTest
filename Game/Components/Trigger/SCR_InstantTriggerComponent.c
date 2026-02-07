@@ -26,7 +26,6 @@ class SCR_InstantTriggerComponent: ScriptComponent
 	}
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 

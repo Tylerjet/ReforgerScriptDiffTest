@@ -28,7 +28,7 @@ class SCR_MoveToRootContextAction : SCR_BaseContextAction
 		
 		foreach	(SCR_EditableEntityComponent entity : selectedEntities)
 		{
-			if (core.CanSetParent(entity.GetEntityType(), null) && entity.GetEntityType() != EEditableEntityType.CHARACTER)
+			if (entity.CanSetParent(null) && entity.GetEntityType() != EEditableEntityType.CHARACTER)
 				return true;
 		}
 		
@@ -65,7 +65,7 @@ class SCR_MoveToRootContextAction : SCR_BaseContextAction
 		
 		foreach (SCR_EditableEntityComponent entity: selectedEntities)
 		{
-			if (!core.CanSetParent(entity.GetEntityType(), null) && entity.GetEntityType() != EEditableEntityType.CHARACTER)
+			if (!entity.CanSetParent(null) && entity.GetEntityType() != EEditableEntityType.CHARACTER)
 				continue;
 			
 			entitiesToMove.Insert(entity);

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class BallisticTable: ScriptAndConfig
@@ -21,6 +21,8 @@ class BallisticTable: ScriptAndConfig
 	If the distance is further than the max bullet range, it returns negative time and aim height of the projectile max range.
 	*/
 	static proto float GetHeightFromProjectile(float distance, out float time, IEntity projectile, float initSpeedCoef = 1.0);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

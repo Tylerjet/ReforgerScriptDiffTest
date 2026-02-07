@@ -122,16 +122,16 @@ class SCR_TransportTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		SCR_MapContextualMenuUI ctxMenu = SCR_MapContextualMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapContextualMenuUI));
 		if (!ctxMenu)
 			return;
-		
-		SCR_MapContextualMenuRequestedTaskEntry entry = new SCR_MapContextualMenuRequestedTaskEntry(m_sRequestButtonText);
+			
+		SCR_MapMenuRequestedTaskEntry entry = new SCR_MapMenuRequestedTaskEntry(m_sRequestButtonText);
 		if (!entry)
 			return;
 		
-		ctxMenu.ContextInsertDynamic(entry);
+		ctxMenu.InsertCustomRadialEntry(entry);
 		
 		entry.SetSupportClass(this);
 		entry.m_OnClick.Insert(Request);
-		entry.m_OnShow.Insert(OnContextualEntryShow);
+		//entry.m_OnShow.Insert(OnContextualEntryShow);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -141,7 +141,7 @@ class SCR_TransportTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!ctxMenu)
 			return;
 		
-		m_vToPosition = ctxMenu.GetContextMenuWorldPosition();
+		m_vToPosition = ctxMenu.GetMenuWorldPosition();
 		m_bSetFromPosition = false;
 	}
 	
@@ -152,7 +152,7 @@ class SCR_TransportTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!ctxMenu)
 			return;
 		
-		m_vFromPosition = ctxMenu.GetContextMenuWorldPosition();
+		m_vFromPosition = ctxMenu.GetMenuWorldPosition();
 		m_bSetFromPosition = true;
 	}
 	

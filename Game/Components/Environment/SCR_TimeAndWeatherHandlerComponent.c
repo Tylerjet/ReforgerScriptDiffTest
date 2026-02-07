@@ -173,6 +173,11 @@ class SCR_TimeAndWeatherHandlerComponent : SCR_BaseGameModeComponent
 		if (s_Instance || !GetGame().InPlayMode())
 			return;
 		
+		// Allow permanent startign daytime & weather for debugging purposes
+#ifdef TDM_CLI_SELECTION
+		return;
+#endif
+		
 		s_Instance = this;
 		
 		if (!Replication.IsServer())

@@ -212,7 +212,7 @@ class SCR_RequestedTask : SCR_BaseTask
 	void SetRequesterID(int requesterID)
 	{
 		m_iRequesterID = requesterID;
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 	}
 	
@@ -315,7 +315,7 @@ class SCR_RequestedTask : SCR_BaseTask
 	{
 		super.EOnInit(owner);
 		
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -324,7 +324,7 @@ class SCR_RequestedTask : SCR_BaseTask
 		if (SCR_Global.IsEditMode(this))
 			return;
 		
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 	}
 

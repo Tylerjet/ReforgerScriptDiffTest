@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class CharacterStaminaComponentClass: BaseStaminaComponentClass
 {
-};
+}
 
 class CharacterStaminaComponent: BaseStaminaComponent
 {
@@ -24,7 +24,7 @@ class CharacterStaminaComponent: BaseStaminaComponent
 		}
 	}
 	*/
-	
+
 	/*!
 	Returns breath progress as <0,1>.
 	Progress goes from 0 to 1 then back to 0.
@@ -41,9 +41,14 @@ class CharacterStaminaComponent: BaseStaminaComponent
 	\return Returns the current magnitude of breath.
 	*/
 	proto external float GetBreathMagnitude();
-	
+	/*!
+	Adds stamina, in range 0-1. Can accept negative values. Has to be run on owner
+	\param pStamina How much stamina should be changed.
+	*/
+	proto external void AddStamina(float pStamina);
+
 	// callbacks
-	
+
 	/*!
 	Runs every time stamina value has changed.
 	\param pDrain How much stamina has recovered/drained.
@@ -55,6 +60,8 @@ class CharacterStaminaComponent: BaseStaminaComponent
 	\param breathValue Value that breath progress has reached.
 	*/
 	event protected void OnBreathStateChanged(float breathValue);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

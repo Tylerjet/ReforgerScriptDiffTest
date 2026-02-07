@@ -4,27 +4,30 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class CharacterCommandHandlerComponentClass: BaseCommandHandlerComponentClass
 {
-};
+}
 
 class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 {
 	// ---------------------------------------------------------------------------
 	void OnCommandActivate(int pCmdId);
 	void OnCommandDeactivate(int pCmdId);
-	
+
 	//! Returns the current character controller component.
 	proto external CharacterControllerComponent GetControllerComponent();
 	//! gets some basic info about movement
 	proto external void GetMovementState(out notnull CharacterMovementState pMovementState);
 	proto external void AlignNewTurns();
 	proto external bool IsWeaponADSAllowed(bool allowSprint);
+	proto external bool IsItemInspectionAllowed();
+	proto external bool IsWeaponInspectionAllowed();
+	proto external bool IsWeaponDeploymentAllowed();
 	proto external bool IsProneStanceTransition();
 	proto external vector GetRelativeWaterLevel();
 	proto external bool WasMovement();
@@ -94,6 +97,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external bool HandleWeaponObstructionDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleWeaponReloadingDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleWeaponADSDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
+	proto external bool HandleWeaponDeploymentDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleWeaponFireDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleLeftHandGadgetDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	proto external bool HandleDynamicStanceDefault(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
@@ -102,12 +106,12 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	proto external bool TransitionMove_SwimmingDefault(CharacterInputContext pInputCtx);
 	proto external bool TransitionMove_LadderDefault(CharacterInputContext pInputCtx);
 	proto external void CancelThrowDefault();
-	
+
 	// callbacks
-	
+
 	/*
 	----------------------------------------------------------------------------
-	full body handlers
+	 full body handlers
 	----------------------------------------------------------------------------
 	*/
 	event bool HandleFinishedCommands(bool pCurrentCommandFinished);
@@ -121,7 +125,7 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	event bool HandleDamageHit(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	/*
 	----------------------------------------------------------------------------
-	additive handlers
+	 additive handlers
 	----------------------------------------------------------------------------
 	*/
 	event bool HandleWeapons(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
@@ -151,6 +155,8 @@ class CharacterCommandHandlerComponent: BaseCommandHandlerComponent
 	event bool SubhandlerStatesBegin(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool SubhandlerStatesEnd(CharacterInputContext pInputCtx, float pDt, int pCurrentCommandID);
 	event bool SubhandlerTransitionsMove(CharacterInputContext InputCtx);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

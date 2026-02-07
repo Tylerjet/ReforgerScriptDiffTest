@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 /*!
@@ -77,7 +77,9 @@ enum EmitterParam
 	//! Float		[R/W]
 	CENTER_X,
 	//! Float		[R/W]
-	CENTER_Y
-};
+	CENTER_Y,
+}
 
-/** @}*/
+/*!
+\}
+*/

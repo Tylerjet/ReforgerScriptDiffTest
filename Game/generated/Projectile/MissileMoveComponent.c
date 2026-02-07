@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Projectile
-* @{
+/*!
+\addtogroup Projectile
+\{
 */
 
 class MissileMoveComponent: BaseMoveComponent
@@ -15,6 +15,8 @@ class MissileMoveComponent: BaseMoveComponent
 	proto external FlightMode GetCurrentFlightMode();
 	proto external float GetCurrentThrustTime();
 	proto external float GetCurrentThrustForce();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

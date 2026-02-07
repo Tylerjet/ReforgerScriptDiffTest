@@ -58,7 +58,7 @@ class SCR_FactionControlTriggerEntity: SCR_BaseFactionTriggerEntity
 		}
 		
 		//--- Evaluate engine-driven conditions, e.g., entity class
-		if (!DefaultEntityFilterForQuery(ent) || !IsAlive(ent))
+		if (!IsAlive(ent))
 			return false;
 		
 		//--- Increase faction counters

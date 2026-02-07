@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Serialization
-* @{
+/*!
+\addtogroup Serialization
+\{
 */
 
 /*!
@@ -16,6 +16,8 @@ Implementation of BaseLoadContainer to read data from json format.
 class BinLoadContainer: BaseSerializationLoadContainer
 {
 	proto external bool LoadFromFile(string fileName);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

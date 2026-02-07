@@ -1,285 +1,629 @@
 //------------------------------------------------------------------------------------------------
-class SCR_RadialMenu : SCR_BaseSelectionMenu
+/*!
+Radial menu class specifing behavior and interaction for circular interface
+Can distrubute and select entries in set angle in distace
+Can be interacted with mouse or gamepad thumbsticks
+*/
+[BaseContainerProps(configRoot: true)]
+class SCR_RadialMenu : SCR_SelectionMenu
 {
-	#ifdef ENABLE_DIAG
-	protected Widget m_wDiagRoot;
-	protected Widget m_wDiagGizmo;
-	#endif
+	protected static SCR_RadialMenu m_GlobalRadialMenu;
 	
-	//! The minimum input magnitude for selection to be valid
-	protected float m_fMinInputMagnitude = 0.25;
+	const float SIZE_LARGE = 580;
+	protected const float SIZE_SMALL = 400;
+
+	protected vector m_vMenuCenterPos;
+
+	protected float m_fEntriesAngleDistance;
+	protected float m_fEntryAngleOffset;
+
+	protected float m_fPointingAngle;
+	protected bool m_bIsPointingToCenter;
+	protected float m_fDynamicMouseSelectionTreshold;
+
+	protected bool m_bActivateContext;
+	protected bool m_bPreventSelectionContext;
+
+	protected SCR_RadialMenuInputs m_RadialInputs;
+	protected SCR_RadialMenuControllerInputs m_RadialControllerInputs;
 	
-	//! Last selected element or null if none
-	protected BaseSelectionMenuEntry m_pLastSelection;
-	
-	//! Filter used for filtering active/inactive actions
-	protected ref SCR_RadialMenuFilter m_pFilter = new SCR_RadialMenuFilter();
-	
-	//! Thumbstick selection switch
-	[Attribute("", UIWidgets.CheckBox, "Whick thumbstick is used for item selection \n false - Left stick \n true - Right stick")]
-	protected bool m_bSelectionThumbstick;
+	protected string m_sActionHint;
+
+	// Events
+	protected ref ScriptInvoker<SCR_RadialMenu, float> m_OnDisplaySizeChange;
+	protected ref ScriptInvoker<SCR_RadialMenu, string> m_OnSetActionHint;
+
+	//------------------------------------------------------------------------------------------------
+	protected void InvokeOnDisplaySizeChange(float size)
+	{
+		if (m_OnDisplaySizeChange)
+			m_OnDisplaySizeChange.Invoke(this, size);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnDisplaySizeChange()
+	{
+		if (!m_OnDisplaySizeChange)
+			m_OnDisplaySizeChange = new ScriptInvoker();
+
+		return m_OnDisplaySizeChange;
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	// -1 for back, 0 for 1.st, elementCount for last
-	// TODO: Move to global func
+	protected void InvokeOnSetActionHint(string action)
+	{
+		if (m_OnSetActionHint)
+			m_OnSetActionHint.Invoke(this, action);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnSetActionHint()
+	{
+		if (!m_OnSetActionHint)
+			m_OnSetActionHint = new ScriptInvoker();
+
+		return m_OnSetActionHint;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Getting global menu
+	//------------------------------------------------------------------------------------------------
+	
+	
+	//------------------------------------------------------------------------------------------------
+	//! Find and get reference to global redial menu
+	static SCR_RadialMenu GlobalRadialMenu()
+	{
+		if (!m_GlobalRadialMenu)
+		{
+			SCR_RadialMenuGameModeComponent gm = SCR_RadialMenuGameModeComponent.Cast(
+			GetGame().GetGameMode().FindComponent(SCR_RadialMenuGameModeComponent));
+		
+			if (!gm)
+			{
+				#ifdef RADMENU_DEBUG
+				Print("[SCR_RadialMenuController] - Can't setup radial menu due to missing RM game mode!");
+				#endif 
+				return null;
+			}
+			
+			m_GlobalRadialMenu = SCR_RadialMenu.Cast(gm.GetMenu());
+		}
+		
+		return m_GlobalRadialMenu;
+	}
+	
+
+	//------------------------------------------------------------------------------------------------
+	// Override
+	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	override void Open()
+	{
+		super.Open();
+
+		// Setup mouse cursor
+		GetGame().GetInputManager().SetCursorPosition(m_vMenuCenterPos[0], m_vMenuCenterPos[1]);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override event void OnOpen()
+	{
+		super.OnOpen(owner);
+
+		m_Inputs.Init();
+		AddActionListeners();
+
+		GetGame().GetCallqueue().Remove(ReleaseContext);
+		m_bActivateContext = true;
+
+		DeselectEntry();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected override event void OnClose()
+	{
+		super.OnClose(owner);
+		RemoveActionListeners();
+
+		// Allow to stop using context after split of a second to prevent unwanted input
+		GetGame().GetCallqueue().CallLater(ReleaseContext, m_RadialInputs.m_iContextDeactivationTime);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void ReleaseContext()
+	{
+		m_bActivateContext = false;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void Update(float timeSlice)
+	{
+		// Context
+		if (m_bActivateContext && !m_bPreventSelectionContext)
+			GetGame().GetInputManager().ActivateContext(m_Inputs.m_sContext);
+
+		// Controller inputs
+		if (m_bActivateContext && m_ControllerInputs)
+			GetGame().GetInputManager().ActivateContext(m_ControllerInputs.m_sControllerContext);
+
+		OnUpdate(timeSlice);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Empty method called on update ready for override
+	override protected void OnUpdate(float timeSlice)
+	{
+		if (m_bOpened && !m_bPreventSelectionContext)
+			SelectEntry();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! For gamepad - based on direction of stick
+	override protected void SelectEntry()
+	{
+		SCR_SelectionMenuEntry entry;
+		int id = -1;
+
+		entry = HandleSelection(id);
+		
+		if (!GetGame().GetInputManager().IsUsingMouseAndKeyboard())
+		{
+			if (m_bIsPointingToCenter && m_RadialControllerInputs.m_bDeselectInCenter)
+			{
+				// Call deselection after split of a second to prevent deselection happening during closing
+				if (GetGame().GetCallqueue().GetRemainingTime(DeselectEntry) == -1)
+					GetGame().GetCallqueue().CallLater(DeselectEntry, m_RadialInputs.m_iGamepadDeselectionDelay);
+
+				return;
+			}
+		}
+
+		GetGame().GetCallqueue().Remove(DeselectEntry);
+
+		// Update selection
+		if (m_SelectedEntry != entry)
+		{
+			m_SelectedEntry = entry;
+			InvokeEventOnSelect(entry, id);
+			
+			PlaySound(m_sSelectionSound);
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void InvokeEventOnUpdateEntries(array<ref SCR_SelectionMenuEntry> entries)
+	{
+		if (!m_aEntries.IsEmpty())
+			m_fEntriesAngleDistance = 360 / m_aEntries.Count();
+
+		super.InvokeEventOnUpdateEntries(entries);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void SetController(IEntity owner, SCR_SelectionMenuControllerInputs controls)
+	{
+		super.SetController(owner, controls);
+
+		m_RadialControllerInputs = SCR_RadialMenuControllerInputs.Cast(controls);
+		m_RadialInputs = SCR_RadialMenuInputs.Cast(m_Inputs);
+
+		if (m_RadialControllerInputs)
+			ChangeDisplaySize(m_RadialControllerInputs.m_bUseLargeSize, m_RadialControllerInputs.m_fCustomSize);
+
+		#ifdef RADMENU_DEBUG
+		// Set controller configuration from diag menu
+		DebugSetupControllerInputs(m_RadialControllerInputs);
+		DebugFillWithEntries();
+		#endif
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override protected void OnPerformInput()
+	{
+		super.OnPerformInput();
+
+		if (!m_SelectedEntry)
+		{
+			if (m_ControllerInputs.m_bCloseOnPerform)
+				Close();
+		}
+	}
+
+	//------------------------------------------------------------------------------------------------
+	// Custom
+	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	protected int GetSelectedElementIndex(float angle, int elementCount)
 	{
 		if (elementCount == 0)
 			return -1;
 
-		float step = (2 * Math.PI) / elementCount;
-		int idx = (int)Math.Round(angle/step);
-		if (idx < 0)
-			idx = elementCount - Math.AbsInt(idx);
+		float angleDeg = Math.Repeat(angle * Math.RAD2DEG, 360) - m_fEntryAngleOffset;
+		float overflow = m_fEntriesAngleDistance * 0.5;
 
-		return (int)Math.Clamp(idx, 0, elementCount);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! TODO: Move to global func
-	protected float GetClampedAngle(vector v1, vector v2, int elementCount)
-	{
-		if (elementCount == 0)
-			return 0.0;
-
-		float angle = GetAngle(v1, v2);
-		float step = (2 * Math.PI) / (float)elementCount;
-		float as = angle/step;
-		float reg = Math.Round(as);
-
-		return reg * step;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected float GetClampedAngle(float x, float y, int elementCount)
-	{
-		if (elementCount == 0)
-			return 0.0;
-
-		float angle = Math.Atan2(x,y);
-		float step = (2 * Math.PI) / (float)elementCount;
-		float as = angle/step;
-		float reg = Math.Round(as);
-
-		return reg * step;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! TODO: Move to global func
-	static float GetAngle(vector v1, vector v2)
-	{
-		vector vec1 = v1.Normalized();
-		vector vec2 = v2.Normalized();
-		float angle = Math.Atan2(vec2[1], vec2[0]) - Math.Atan2(vec1[1], vec1[0]);
-
-		return angle;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Callback when open is requested
-	protected override event void OnOpen(IEntity owner)
-	{
-		// Check if we have valid display and if not,
-		// try to create a default one
-		if (m_pDisplay == null)
+		// compensate overflowing offset
+		if (angleDeg < 0)
 		{
-			m_pDisplay = new SCR_RadialMenuDisplay(owner);
-			if (m_pDisplay)
-				m_pDisplay.SetDefault();
+			angleDeg = Math.Repeat(angleDeg, 360);
 		}
-		
-		if (m_pDisplay)
-			m_pDisplay.SetOpen(owner, true);
-		
-		super.OnOpen(owner);
+
+		if (m_fEntriesAngleDistance == 0)
+		{
+			#ifdef RADMENU_DEBUG
+			DebugPrint("GetSelectedElementIndex", "No distance between entries!");
+			#endif
+			return -1;
+		}
+
+		// Find entry index withing circle
+		int idx = Math.Round(angleDeg / m_fEntriesAngleDistance);
+
+		if (idx < 0 || idx >= elementCount)
+		{
+			idx = -1;
+		}
+
+		// Count with overflow
+		if (idx == -1)
+		{
+			if (angleDeg > (360 - overflow + m_fEntryAngleOffset))
+				return 0;
+			else
+				return -1;
+		}
+
+		return idx;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Callback when close is requested
-	protected override event void OnClose(IEntity owner)
+	//! Multiply selection distance from center with ratio of reference resolution to current resoluution
+	//! Should fix distance being calculated same for various resolutions
+	protected float AdjustDistanceWithResolution(float distance)
 	{
-		if (m_pDisplay)
-			m_pDisplay.SetOpen(owner, false);
-		
-		// See if we have something to perform and we can perform it
-		if (m_pLastSelection && m_pLastSelection.CanBePerformed(owner, this))
-		{
-			m_pLastSelection.Perform(owner, this);
-		}
-		
-		super.OnClose(owner);
-	}
+		// Current
+		float curW, curH;
+		GetGame().GetWorkspace().GetScreenSize(curW, curH);
 
+		if (curW == 0 || curH == 0)
+			return distance;
+
+		// Reference 1920x1080
+		int refW, refH;
+		WidgetManager.GetReferenceScreenSize(refW, refH);
+		
+		float ratioX = curW / refW;
+		float ratioY = curH / refH;
+		
+		float ratioDist = vector.Distance(
+			Vector(m_vMenuCenterPos[0] / refW, m_vMenuCenterPos[1] / refH, 0),
+			Vector(curW / refW, curH / refH,
+			0));
+
+		return distance / ratioDist;
+	}
+	
 	//------------------------------------------------------------------------------------------------
-	//! Callback when menu update is requested
-	protected override event void OnUpdate(IEntity owner, float timeSlice)
+	protected SCR_SelectionMenuEntry HandleSelection(out int id)
 	{
-		#ifdef ENABLE_DIAG
-		if (IsRadialMenuDiagEnabled())
+		// Check m_Inputs
+		if (!m_RadialInputs || !m_RadialControllerInputs)
+			return null;
+		
+		float dist;
+		vector dir;
+		
+		// Handle used input 
+		if (GetGame().GetInputManager().IsUsingMouseAndKeyboard())
 		{
-			if (IsOpen())
-			{			
-				if (m_wDiagRoot == null)
-				{
-					m_wDiagRoot = GetGame().GetWorkspace().CreateWidgets("{908058418A98008E}UI/layouts/Debug/RadialDebugElement.layout");
-					if (m_wDiagRoot)
-					{
-						m_wDiagGizmo = m_wDiagRoot.FindAnyWidget("Foreground");
-						if (m_wDiagGizmo) 
-						{
-							m_wDiagGizmo.SetColorInt(ARGB(128,32,255,32));
-							FrameSlot.SetAnchorMin(m_wDiagGizmo, 0.5, 0.5);
-							FrameSlot.SetAnchorMax(m_wDiagGizmo, 0.5, 0.5);
-							FrameSlot.SetAlignment(m_wDiagGizmo, 0.5, 0.5);
-						}
-					}
-				}	
-			}
-			else if (m_wDiagRoot)
-			{
-				m_wDiagRoot.RemoveFromHierarchy();
-				m_wDiagRoot = null;
-			}
-		}
-		#endif
-		
-		
-		// Do not update if menu is closed
-		if (!IsOpen())
-			return;
-		
-		// Activate input context and fetch input data
-		InputManager inputManager = GetGame().GetInputManager();
-		inputManager.ActivateContext("RadialMenuContext");
-		float radialX, radialY;
-		
-		// thumbstick selection
-		if (!m_bSelectionThumbstick)
-		{
-			radialX = inputManager.GetActionValue("RadialX");
-			radialY = inputManager.GetActionValue("RadialY");
+			// Mouse 
+			int mouseX, mouseY;
+			WidgetManager.GetMousePos(mouseX, mouseY);
+			dir = Vector(mouseX, mouseY, 0);
+			
+			dist = vector.Distance(m_vMenuCenterPos, dir);
+			dist = AdjustDistanceWithResolution(dist);
+			
+			// Center the direction
+			dir[0] = mouseX - m_vMenuCenterPos[0];
+			dir[1] = (mouseY - m_vMenuCenterPos[1]) * -1;
+			dir.Normalize();
+			
+			// Deselect if in center
+			m_bIsPointingToCenter = (
+				m_RadialControllerInputs.m_bDeselectInCenter && dist < m_fDynamicMouseSelectionTreshold);
+			
+			if (m_bIsPointingToCenter)
+				return null;
 		}
 		else
 		{
-			radialX = inputManager.GetActionValue("RadialX2");
-			radialY = inputManager.GetActionValue("RadialY2");
-		}
-		
-		#ifdef ENABLE_DIAG
-		if (IsRadialMenuDiagEnabled())
-		{
-			if (m_wDiagRoot && m_wDiagGizmo)
-			{
-				const float gizmoScale = 300.0;
-				vector input = Vector(radialX, -radialY, 0.0) * gizmoScale;
-				
-				FrameSlot.SetPos(m_wDiagGizmo, input[0], input[1]);
-			}
-		}
-		#endif
-		
-		
-		// Filter out entries based on their shown/disabled state
-		if (m_pFilter)
-			m_pFilter.DoFilter(owner, this);
-		
-		// Update input selection
-		auto elementsCount = m_pFilter.m_aAllEntries.Count();
-		float inputAngle = GetClampedAngle(radialX, radialY, elementsCount);
-		
-		int selection = -1;
-		if ( Math.AbsFloat(radialX)+Math.AbsFloat(radialY) >= m_fMinInputMagnitude )
-		{		
-			selection = GetSelectedElementIndex(inputAngle, elementsCount);
-		}			
-		
-		// Based on input select an element
-		BaseSelectionMenuEntry selectedElement;		
-		
-		// If we have a valid selection, check it
-		if (selection == -1)
-			selectedElement = null;
-		else if (selection < elementsCount)
-			selectedElement = m_pFilter.m_aAllEntries[selection];
-		
-		// Entry we selected is disabled, clear selection
-		if (m_pFilter.m_aDisabledEntries.Find(selectedElement) != -1)
-			selectedElement = null;		
-		
-		// Update selection
-		m_pLastSelection = selectedElement;
+			// Gamepad 
+			float x, y;
+			m_RadialInputs.GetRadialXYInput(x, y);
 			
-		// Pass in data to the radial menu
-		if (m_pDisplay)
-		{
-			// Send in selected element
-			m_pDisplay.SetSelection(m_pLastSelection, Vector(radialX, radialY, 0.0), inputAngle, m_fMinInputMagnitude);
+			dir[0] = x;
+			dir[1] = y;
+			dist = vector.Distance(vector.Zero, Vector(x, y, 0));
 			
-			// Pass in data for display
-			m_pDisplay.SetContent(m_pFilter.m_aAllEntries, m_pFilter.m_aDisabledEntries);
+			// Deselect if in center
+			m_bIsPointingToCenter = (
+				m_RadialControllerInputs.m_bDeselectInCenter && dist < m_RadialInputs.m_fGamepadSelectionTreshhold);
+			
+			if (m_bIsPointingToCenter)
+				return null;
 		}
 		
-		// TODO: Handle update of widgets
-		// TODO: Handle input, selection and performing of the action
-		super.OnUpdate(owner, timeSlice);
+		// Selected pointed
+		float angle = Math.Atan2(dir[0], dir[1]);
+		id = GetSelectedElementIndex(angle, m_aEntries.Count());
+		
+		m_fPointingAngle = angle * Math.RAD2DEG;
+		
+		if (m_aEntries.IsIndexValid(id))
+			return m_aEntries[id];
+		
+		id = -1;
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DeselectEntry()
+	{
+		m_SelectedEntry = null;
+		InvokeEventOnSelect(null, -1);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Call to influence size of radial menu display layout
+	//! useLarge = true will use predefined size for large menu radius (SIZE_LARGE)
+	//! Custom size will ignore useLarge
+	void ChangeDisplaySize(bool useLarge = true, float customSize = -1)
+	{
+		float size = SIZE_LARGE;
+		if (!useLarge)
+			size = SIZE_SMALL;
+
+		if (customSize > 0)
+			size = customSize;
+
+		// Change seletion treshold
+		m_fDynamicMouseSelectionTreshold = m_RadialInputs.m_fMouseSelectionTreshold;
+
+		if (m_RadialInputs.m_bDynamicMouseTreshold)
+			m_fDynamicMouseSelectionTreshold *= size / SIZE_LARGE; // Mutliply with large size based ratio
+
+		// Invoke
+		InvokeOnDisplaySizeChange(size);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Set current hint to display and send invoke it so radial menu display will show the hint
+	void SetActionHint(string action)
+	{
+		m_sActionHint = action;
+		InvokeOnSetActionHint(m_sActionHint);
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//1 Invoke emtpy action to hide in radial menu display
+	void HideActionHint()
+	{
+		InvokeOnSetActionHint("");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Get set
+	//------------------------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
+	void SetMenuCenterPos(vector centerPos)
+	{
+		m_vMenuCenterPos = centerPos;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetEntriesAngleDistance()
+	{
+		return m_fEntriesAngleDistance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	float GetPointingAngle()
+	{
+		return m_fPointingAngle;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	bool IsPointingToCenter()
+	{
+		return m_bIsPointingToCenter;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Debug
+	//------------------------------------------------------------------------------------------------
+
+	#ifdef RADMENU_DEBUG
+	
+	//------------------------------------------------------------------------------------------------
+	override protected void DebugPrint(string method, string msg)
+	{
+		Print(string.Format("[SCR_RadialMenu] - %1() - '%2'", method, msg));
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void DebugSetupDiagMenu()
+	{
+		string rmDiagName = "Radial menu (refactored)";
+
+		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_RADIALMENU_MENU, rmDiagName, "UI");
+
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CONFIG_DEBUG, "", "Override config", rmDiagName);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CLOSE_ON_RELEASE_OPEN, "", "Close on open", rmDiagName);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_PERFORM_ON_CLOSE, "", "Perform on close", rmDiagName);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CLOSE_ON_PERFORM, "", "Close on perform", rmDiagName);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_DESELECT_IN_CENTER, "", "Delect in center", rmDiagName);
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_USE_LARGE_SIZE, "", "Large size", rmDiagName);
+
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CUSTOM_SIZE_ENABLE, "", "Override size", rmDiagName);
+		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CUSTOM_SIZE, "", "Sustom size", rmDiagName, "100, 1000, 100, 1");
+
+		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_ENTRY_COUNT_ENABLE, "", "Entries setup", rmDiagName);
+		DiagMenu.RegisterRange(SCR_DebugMenuID.DEBUGUI_RADIALMENU_ENTRY_COUNT, "", "Entries", rmDiagName, "2, 32, 2, 1");
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DebugCleanup()
+	{	
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CONFIG_DEBUG);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CLOSE_ON_RELEASE_OPEN);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_PERFORM_ON_CLOSE);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CLOSE_ON_PERFORM);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_DESELECT_IN_CENTER);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_USE_LARGE_SIZE);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CUSTOM_SIZE_ENABLE);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CUSTOM_SIZE);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_ENTRY_COUNT_ENABLE);
+		DiagMenu.Unregister(SCR_DebugMenuID.DEBUGUI_RADIALMENU_ENTRY_COUNT);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Override controller inputs by radial menu diag menu
+	protected void DebugSetupControllerInputs(out notnull SCR_RadialMenuControllerInputs inputs)
+	{
+		// Check if debug is enabled
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CONFIG_DEBUG))
+			return;
+		
+		inputs.m_bCloseOnReleaseOpen = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CLOSE_ON_RELEASE_OPEN);
+		inputs.m_bPerformOnClose = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_PERFORM_ON_CLOSE);
+		inputs.m_bCloseOnPerform = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CLOSE_ON_PERFORM);
+		inputs.m_bDeselectInCenter = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_DESELECT_IN_CENTER);
+		inputs.m_bUseLargeSize = DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_USE_LARGE_SIZE);
+		
+		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CUSTOM_SIZE_ENABLE))
+			inputs.m_fCustomSize = DiagMenu.GetRangeValue(SCR_DebugMenuID.DEBUGUI_RADIALMENU_CUSTOM_SIZE);
+		else
+			inputs.m_fCustomSize = -1;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void DebugFillWithEntries()
+	{
+		if (!DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_RADIALMENU_ENTRY_COUNT_ENABLE))
+			return;
+		
+		m_aEntries.Clear();
+		
+		int count = DiagMenu.GetRangeValue(SCR_DebugMenuID.DEBUGUI_RADIALMENU_ENTRY_COUNT);
+		for (int i = 0; i < count; i++)
+		{
+			SCR_SelectionMenuEntry entry = new SCR_SelectionMenuEntry();
+			entry.SetName("Debug entry " + i);
+			entry.Enable(true);
+			
+			AddEntry(entry);
+		}
+	}
+	
+	#endif
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_RadialMenu()
+	{
+		#ifdef RADMENU_DEBUG
+		DebugSetupDiagMenu();
+		#endif
+	} 
+		
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_RadialMenu()
 	{
-		#ifdef ENABLE_DIAG
-		if (m_wDiagRoot != null)
-		{
-			m_wDiagRoot.RemoveFromHierarchy();
-			m_wDiagRoot = null;
-			m_wDiagGizmo = null;
-		}
+		#ifdef RADMENU_DEBUG
+		DebugCleanup();
 		#endif
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SetPreventSelectionContext(bool enable)
+	{
+		m_bPreventSelectionContext = enable;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetPreventSelectionContext()
+	{
+		return m_bPreventSelectionContext;
 	}
 };
 
 //------------------------------------------------------------------------------------------------
-//! Utility class for passing around lists of entries
-/*class SCR_RadialMenuFilter
-{	
-	//! Contains all entries in order they were received
-	//! Can contain items which are disabled too
-	ref array<BaseSelectionMenuEntry> m_aAllEntries;
+/*!
+Configurable radial menu inputs extending controls specifically for radial interface
+*/
+[BaseContainerProps(configRoot: true)]
+class SCR_RadialMenuInputs : SCR_SelectionMenuInputs
+{
+	protected const string DEFAULT_RADIAL_LEFT_X = "RadialX";
+	protected const string DEFAULT_RADIAL_LEFT_Y = "RadialY";
+	protected const string DEFAULT_RADIAL_RIGHT_X = "RadialX2";
+	protected const string DEFAULT_RADIAL_RIGHT_Y = "RadialY2";
 	
-	//! Contains entries which cannot be performed (but can be shown)
-	ref array<BaseSelectionMenuEntry> m_aDisabledEntries;
+	protected string m_sRadialX = DEFAULT_RADIAL_RIGHT_X;
+	protected string m_sRadialY = DEFAULT_RADIAL_RIGHT_Y;
+	
+	[Attribute("1", desc: "True = right thumbstick used for menu navigation, otherwise use left thumbstick")]
+	bool m_bUseRightStick;
+	
+	[Attribute("100", desc: "How far from center needs to be to select entry. Use when controller m_bDeselectInCenter = true")]
+	float m_fMouseSelectionTreshold;
+	
+	[Attribute("250", UIWidgets.Slider, desc: "Delay in ms for how long should context be active - prevents character rotation and other unwanted input", "0 1000 1")]
+	int m_iContextDeactivationTime;
+	
+	[Attribute("1", desc: "Allow dynamically setup inner mouse selection treshold base on menu size from SIZE_LARGE")]
+	bool m_bDynamicMouseTreshold;
+	
+	[Attribute("0.5", "0 1 0.01", desc: "How far from center needs to be to select entry. Use when controller m_bDeselectInCenter = true")]
+	float m_fGamepadSelectionTreshhold;
+	
+	[Attribute("500", UIWidgets.Slider, desc: "How long in milisecond should selection stay when moving to center.", "0 1000 1")]
+	int m_iGamepadDeselectionDelay;
 	
 	//------------------------------------------------------------------------------------------------
-	void DoFilter(IEntity owner, BaseSelectionMenu menu)
+	//! Set default setting on initialization
+	//! Set X and Y action names into given parameters 
+	override void Init()
 	{
-		m_aAllEntries.Clear();
-		m_aDisabledEntries.Clear();
-		
-		if (!owner || !menu)
-			return;
-		
-		auto entries = new array<BaseSelectionMenuEntry>();
-		auto entriesCount = menu.GetEntryList(entries);
-		for (int i = 0; i < entriesCount; i++)
+		// Change thumb stick actions
+		if (!m_bUseRightStick)
 		{
-			auto currentEntry = entries[i];
-			if (!currentEntry)
-				continue;			
-			
-			if (!currentEntry.CanBeShown(owner, menu))
-				continue;
-			
-			m_aAllEntries.Insert(currentEntry);
-			
-			if (!currentEntry.CanBePerformed(owner, menu))
-				m_aDisabledEntries.Insert(currentEntry);
+			m_sRadialX = DEFAULT_RADIAL_LEFT_X;
+			m_sRadialY = DEFAULT_RADIAL_LEFT_Y;
 		}
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SCR_RadialMenuFilter()
+	void GetRadialXYInput(out float x, out float y)
 	{
-		m_aAllEntries = new ref array<BaseSelectionMenuEntry>();
-		m_aDisabledEntries = new ref array<BaseSelectionMenuEntry>();	
+		x = GetGame().GetInputManager().GetActionValue(m_sRadialX);
+		y = GetGame().GetInputManager().GetActionValue(m_sRadialY);
 	}
-}*/
+};
+
+//------------------------------------------------------------------------------------------------
+[BaseContainerProps(configRoot: true)]
+class SCR_RadialMenuControllerInputs : SCR_SelectionMenuControllerInputs
+{
+	[Attribute("1", desc: "Select no entry if selection is pointing into menu center")]
+	bool m_bDeselectInCenter;
+	
+	[Attribute("1", desc: "Use large or small size for radial menu visuals")]
+	bool m_bUseLargeSize;
+	
+	[Attribute("-1", UIWidgets.Slider, desc: "Base radial menu size. Will ignore m_bUseLargeSize and use custom size instead of presets if it's more than 0", "-1 1000 1")]
+	float m_fCustomSize;
+}

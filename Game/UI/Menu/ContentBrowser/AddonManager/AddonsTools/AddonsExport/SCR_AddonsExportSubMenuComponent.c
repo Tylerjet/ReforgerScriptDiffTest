@@ -78,7 +78,7 @@ class SCR_AddonsExportSubMenuComponent : SCR_SubMenuBase
 			"\t{\n\t\t\%1: %2,\n\t\t%3: %4,\n\t\t%5: %6\n\t}",
 			qstr("modId"), qstr(item.GetId()),
 			qstr("name"), qstr(item.GetName()),
-			qstr("version"), qstr(item.GetCurrentLocalVersion()) );
+			qstr("version"), qstr(item.GetCurrentLocalRevision().GetVersion()) );
 	}
 	
 	// puts quotes around a string

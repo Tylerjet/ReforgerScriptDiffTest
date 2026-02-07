@@ -16,7 +16,7 @@ class TransmissionData
 	float m_fFrequency;		// current frequency
 	IEntity m_Entity;		// transmitting character
 	Faction m_Faction;
-	BaseRadioComponent m_RadioComp;
+	BaseTransceiver m_RadioTransceiver;
 	
 	//------------------------------------------------------------------------------------------------
 	// Hide transmission, skip animation 
@@ -83,20 +83,40 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	protected SCR_VONController m_VONController;
 	
 	//------------------------------------------------------------------------------------------------
+	//! Count of active incoming transmissions
+	int GetActiveTransmissionsCount()
+	{
+		return m_aTransmissions.Count();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Whether outgoing transmission is currently active
+	bool IsCapturingTransmisionActive()
+	{
+		return m_OutTransmission != null && m_OutTransmission.m_bIsActive;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! VONComponent event
-	event void OnCapture(BaseRadioComponent radio)
+	event void OnCapture(BaseTransceiver transmitter)
 	{
 		if (!m_wRoot)
 			return;
-		
+
 		int frequency;
 		
-		if (radio)
-			frequency = radio.GetFrequency();
+		if (transmitter)	// can be null when using direct speech
+			frequency = transmitter.GetFrequency();
 		
 		// update only when first activation / device changed / frequency changed
-		if ( m_OutTransmission.m_bForceUpdate == true || m_OutTransmission.m_bIsActive == false || m_OutTransmission.m_RadioComp != radio || (radio && m_OutTransmission.m_fFrequency != radio.GetFrequency()) )
-			UpdateTransmission(m_OutTransmission, radio, frequency, false);
+		if (m_OutTransmission.m_bForceUpdate == true
+			|| m_OutTransmission.m_bIsActive == false
+			|| m_OutTransmission.m_RadioTransceiver != transmitter
+			|| (transmitter && m_OutTransmission.m_fFrequency != transmitter.GetFrequency())
+		)
+		{
+			UpdateTransmission(m_OutTransmission, transmitter, frequency, false);
+		}
 		
 		m_OutTransmission.m_bIsActive = true;
 		m_OutTransmission.m_fActiveTimeout = 0;
@@ -104,7 +124,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 
 	//------------------------------------------------------------------------------------------------
 	//! VONComponent event
-	event void OnReceive(int playerId, BaseRadioComponent radio, int frequency, float quality, int transceiverIdx)
+	event void OnReceive(int playerId, BaseTransceiver receiver, int frequency, float quality)
 	{
 		if (!m_wRoot || m_bIsVONUIDisabled) // ignore receiving transmissions if VON UI is off
 			return;
@@ -115,7 +135,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		// Active transmission from the player not found, create it
 		if (!pTransmission)
 		{
-			if (!radio && m_bIsVONDirectDisabled)	// direct UI off
+			if (!receiver && m_bIsVONDirectDisabled)	// direct UI off
 				return;
 			
 			Widget baseWidget;
@@ -143,9 +163,13 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			m_aTransmissionMap.Insert(playerId, pTransmission);
 		}
 		
-		if ( pTransmission.m_bIsActive == false || pTransmission.m_RadioComp != radio || (radio && m_OutTransmission.m_fFrequency != frequency) )	// update only when first activation / device changed / frequency changed
+		// update only when first activation / device changed / frequency changed
+		if ( pTransmission.m_bIsActive == false
+			|| pTransmission.m_RadioTransceiver != receiver
+			|| (receiver && m_OutTransmission.m_fFrequency != frequency)
+		)
 		{	
-			bool filtered = UpdateTransmission(pTransmission, radio, frequency, true);	
+			bool filtered = UpdateTransmission(pTransmission, receiver, frequency, true);	
 			if (!filtered)
 			{
 				pTransmission.HideTransmission();
@@ -160,15 +184,15 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 	//------------------------------------------------------------------------------------------------
 	//! Update transmission data
 	//! \param TransmissionData is the subject
-	//! \param BaseRadioComponent is the transmission entity radio component
+	//! \param radioTransceiver is the used transceiver for the transmission
 	//! \param IsReceiving is true when receiving transmission, false when transmitting
 	//! \return false if the transimission is filtered out to not be visible
-	protected bool UpdateTransmission(TransmissionData data, BaseRadioComponent radioComp, int frequency, bool IsReceiving)
-	{			
-		data.m_RadioComp = radioComp;
+	protected bool UpdateTransmission(TransmissionData data, BaseTransceiver radioTransceiver, int frequency, bool IsReceiving)
+	{				
+		data.m_RadioTransceiver = radioTransceiver;
 		data.m_bForceUpdate = false;
 		
-		if (!radioComp && m_bIsVONDirectDisabled && IsReceiving)	// can happen when existing RADIO transmission switches to direct
+		if (!radioTransceiver && m_bIsVONDirectDisabled && IsReceiving)	// can happen when existing RADIO transmission switches to direct
 			return false;
 						
 		// faction
@@ -184,7 +208,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		bool enemyTransmission;
 		if (IsReceiving && playerFaction && playerFaction.IsFactionEnemy(data.m_Faction))	// enemy transmission case
 		{
-			if (!radioComp)
+			if (!radioTransceiver)
 				return false;		// if direct ignore
 			
 			enemyTransmission = true;
@@ -200,7 +224,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		data.m_Widgets.m_wSeparator.SetVisible(false);
 		
 		// radio
-		if (radioComp)
+		if (radioTransceiver)
 		{			
 			sDeviceIcon = ICON_RADIO;
 			
@@ -234,7 +258,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			
 			data.m_Widgets.m_wName.SetVisible(true);
 			
-			if (radioComp)
+			if (radioTransceiver)
 				data.m_Widgets.m_wSeparator.SetVisible(false);
 		}
 		else	// outgoing 
@@ -243,13 +267,13 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 			data.m_Widgets.m_wName.SetText(string.Empty);
 			data.m_Widgets.m_wName.SetVisible(false);
 						
-			if (radioComp)	// direct vs radio
+			if (radioTransceiver)	// direct vs radio
 			{
 				data.m_Widgets.m_wMicFrame.SetVisible(m_bIsChannelToggled);
 				
-				if (SCR_MilitaryFaction.Cast(playerFaction))	// show platoon
+				if (SCR_Faction.Cast(playerFaction))	// show platoon
 				{
-					int factionHQFrequency = SCR_MilitaryFaction.Cast(playerFaction).GetFactionRadioFrequency();
+					int factionHQFrequency = SCR_Faction.Cast(playerFaction).GetFactionRadioFrequency();
 					if (factionHQFrequency == frequency)
 					{
 						data.m_Widgets.m_wChannelText.SetText(LABEL_CHANNEL_PLATOON);
@@ -307,7 +331,7 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		if (m_OutTransmission)
 		{
 			m_OutTransmission.m_bForceUpdate = true;
-			OnCapture(m_OutTransmission.m_RadioComp);
+			OnCapture(m_OutTransmission.m_RadioTransceiver);
 		}
 	}
 	
@@ -323,18 +347,6 @@ class SCR_VonDisplay : SCR_InfoDisplayExtended
 		{
 			m_aTransmissions[i].HideTransmission();
 		}
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	bool IsCapturingTransmisionActive()
-	{
-		return m_OutTransmission != null && m_OutTransmission.m_bIsActive;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetActiveTransmissionsCount()
-	{
-		return m_aTransmissions.Count();
 	}
 	
 	//------------------------------------------------------------------------------------------------

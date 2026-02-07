@@ -108,6 +108,27 @@ class SCR_DestructionCommon
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Plays a particle effect as child of entity
+	static SCR_ParticleEmitter PlayParticleEffect_Child(ResourceName particlePath, EDamageType damageType, notnull IEntity parent, vector mat[4])
+	{
+		if (particlePath == ResourceName.Empty)
+			return null;
+		
+		vector angles = Math3D.MatrixToAngles(mat);
+		
+		SCR_ParticleEmitter ptc = SCR_ParticleEmitter.CreateAsChild(particlePath, parent, parent.CoordToLocal(mat[3]), angles);
+		if (!ptc)
+			return null;
+		
+		float velocityScale = GetPTCImpulseScale(damageType);
+		Particles particles = ptc.GetParticles();
+		particles.MultParam(-1, EmitterParam.VELOCITY,     velocityScale);
+		particles.MultParam(-1, EmitterParam.VELOCITY_RND, velocityScale);
+		
+		return ptc;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Plays a particle effect at input transformation matrix
 	static SCR_ParticleEmitter PlayParticleEffect_Transform(ResourceName particlePath, EDamageType damageType, vector mat[4])
 	{
@@ -120,8 +141,11 @@ class SCR_DestructionCommon
 		
 		float velocityScale = GetPTCImpulseScale(damageType);
 		Particles particles = ptc.GetParticles();
-		particles.MultParam(-1, EmitterParam.VELOCITY,     velocityScale);
-		particles.MultParam(-1, EmitterParam.VELOCITY_RND, velocityScale);
+		if (particles)
+		{
+			particles.MultParam(-1, EmitterParam.VELOCITY,     velocityScale);
+			particles.MultParam(-1, EmitterParam.VELOCITY_RND, velocityScale);
+		}
 		
 		return ptc;
 	}

@@ -57,16 +57,21 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 		if (m_bBlockedByRadialMenu)
 			return;
 		
+		//--- Make sure that horizontal input is not bigger than 1 (happens on gamepad when moving diagonally)
+		vector newDir = Vector(lateral, 0, longitudinal);
+		if (newDir.LengthSq() > 1)
+			newDir.Normalize();
+		
 		//--- Get horizontal vector
-		vector dir = param.transform[2];
-		dir[1] = 0;
-		dir.Normalize();
+		vector currentDir = param.transform[2];
+		currentDir[1] = 0;
+		currentDir.Normalize();
 		
 		float horizontalSpeedCoef = param.multiplier[0] * m_fSpeed;
 		param.transform[3] = param.transform[3] + Vector(
-			(dir[0] * longitudinal + dir[2] * lateral) * horizontalSpeedCoef,
+			(currentDir[0] * newDir[2] + currentDir[2] * newDir[0]) * horizontalSpeedCoef,
 			vertical * param.multiplier[1] * m_fSpeed,
-			(dir[2] * longitudinal - dir[0] * lateral) * horizontalSpeedCoef,
+			(currentDir[2] * newDir[2] - currentDir[0] * newDir[0]) * horizontalSpeedCoef,
 		);
 		param.isManualInput = true;
 		param.isDirty = true;
@@ -76,25 +81,3 @@ class SCR_MoveManualCameraComponent : SCR_BaseManualCameraComponent
 		return true;
 	}
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

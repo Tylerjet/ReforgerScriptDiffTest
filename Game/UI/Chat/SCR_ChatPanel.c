@@ -928,19 +928,19 @@ class SCR_ChatPanel : ScriptedWidgetComponent
 	
 	
 	//------------------------------------------------------------------------------------------------
-	//! Mapped only to Gamepad.A. When chat is opened while using gamepad, we don't set focus on edit box.
-	//! Instead focus is set when user presses A button.
+	//! When chat is opened while using gamepad, we don't set focus on edit box, so that player can change channel.
+	//! Instead focus is set when player uses the ChatConfirm action. Should be mapped only to gamepad.
 	protected void Callback_OnGamepadConfirmAction()
 	{
 		if (!m_bOpen)
 			return;
-		
+
 		Widget wFocused = GetGame().GetWorkspace().GetFocusedWidget();
 		if (wFocused != m_Widgets.m_MessageEditBox)
-		{
 			GetGame().GetWorkspace().SetFocusedWidget(m_Widgets.m_MessageEditBox);
+
+		if (!m_Widgets.m_MessageEditBox.IsInWriteMode())
 			m_Widgets.m_MessageEditBox.ActivateWriteMode();
-		}		
 	}
 	
 	

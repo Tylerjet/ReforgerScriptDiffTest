@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Perception
-* @{
+/*!
+\addtogroup Perception
+\{
 */
 
 enum ETargetCategory
@@ -17,7 +17,9 @@ enum ETargetCategory
 	ENEMY,
 	FACTIONLESS,
 	STATIC,
-	COUNT
-};
+	COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

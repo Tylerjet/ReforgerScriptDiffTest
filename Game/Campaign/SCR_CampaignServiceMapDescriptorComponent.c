@@ -13,7 +13,21 @@ class SCR_CampaignServiceMapDescriptorComponent : SCR_MapDescriptorComponent
 	[Attribute("", desc: "Name of marker (service is inctive).")]
 	protected string m_sMarkerInactive;
 	
+	[Attribute("Default Name", desc: "Name of service to be shown on hover.")]
+	protected string m_sMarkerName;
+	
+	[Attribute("Default Description", desc: "Description of service to be shown on hover.")]
+	protected string m_sMarkerDesc;
+	
+	[Attribute("{94F1E2223D7E0588}UI/layouts/Campaign/ServiceHint.layout")]
+	protected ResourceName m_sDescriptorServiceHint;
+	
+	[Attribute("{F7E8D4834A3AFF2F}UI/Imagesets/Conflict/conflict-icons-bw.imageset")]
+	protected ResourceName m_sImageSet;
+	
 	protected string m_sMarkerSmall = "Slot_Small";
+	
+	protected Widget m_wDescriptorServiceHint;
 	
 	protected SCR_CampaignBase m_Base;
 	
@@ -118,17 +132,77 @@ class SCR_CampaignServiceMapDescriptorComponent : SCR_MapDescriptorComponent
 		if (m_Base.IsBaseInFactionRadioSignal(f))
 			Item().GetProps().SetVisible(layer < 3);
 	}
+	
+	//------------------------------------------------------------------------------
+	void ShowServiceHint(MapItem show)
+	{	
+		MapItem item = Item();
+		if (show != item)
+			return;
+		
+		int mx;
+		int my;
+		WidgetManager.GetMousePos(mx, my);
+
+		mx = GetGame().GetWorkspace().DPIUnscale(mx);
+		my = GetGame().GetWorkspace().DPIUnscale(my);
+
+		if (!m_wDescriptorServiceHint)
+		{
+			SCR_MapEntity entity = SCR_MapEntity.GetMapInstance();
+			m_wDescriptorServiceHint = entity.GetMapMenuRoot().FindAnyWidget("ServiceHintRoot");
+		}
+
+		if (show)
+		{
+			FrameSlot.SetPos(m_wDescriptorServiceHint, mx, my);
+			TextWidget.Cast(m_wDescriptorServiceHint.FindAnyWidget("ServiceName")).SetTextFormat(m_sMarkerName);
+			Widget resupplyText = m_wDescriptorServiceHint.FindAnyWidget("ResupplyText");
+			if (resupplyText)
+				resupplyText.SetVisible(false);
+			
+			TextWidget serviceText = TextWidget.Cast(m_wDescriptorServiceHint.FindAnyWidget("ServiceText"));
+			if (serviceText)
+			{
+				if (m_sMarkerDesc != "Default Description")
+				{
+					serviceText.SetTextFormat(m_sMarkerDesc);
+					serviceText.SetVisible(true);
+				}
+				else
+				{
+					serviceText.SetVisible(false);
+				}
+			}
+		}
+		m_wDescriptorServiceHint.SetVisible(true)
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void HideServiceHint(MapItem show)
+	{
+		MapItem item = Item();
+		if (show != item)
+			return;
+		
+		if (m_wDescriptorServiceHint)
+			m_wDescriptorServiceHint.SetVisible(false);
+	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_CampaignServiceMapDescriptorComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
 		SCR_MapEntity.GetOnLayerChanged().Insert(SetVisible);
+		SCR_MapEntity.GetOnHoverItem().Insert(ShowServiceHint);
+		SCR_MapEntity.GetOnHoverEnd().Insert(HideServiceHint);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignServiceMapDescriptorComponent()
 	{
 		SCR_MapEntity.GetOnLayerChanged().Remove(SetVisible);
+		SCR_MapEntity.GetOnHoverItem().Remove(ShowServiceHint);
+		SCR_MapEntity.GetOnHoverEnd().Remove(HideServiceHint);
 	}
 
 };

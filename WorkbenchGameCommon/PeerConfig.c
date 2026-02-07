@@ -1,6 +1,9 @@
-[BaseContainerProps()]
+[BaseContainerProps(), PeerConfigViewTitle()]
 class PeerConfig
 {
+	[Attribute("Peer Config", UIWidgets.EditBox, "Title string for the peer config.")]
+	string Title;
+	
 	[Attribute("true", UIWidgets.CheckBox)]
 	bool Enabled;
 	
@@ -43,3 +46,18 @@ class PeerConfig
 
 	ProcessHandle	Handle = null;
 }
+
+//------------------------------------------------------------------------------------------------
+//! Custom names for defined zones to make config setup easier
+class PeerConfigViewTitle: BaseContainerCustomTitle
+{
+	//------------------------------------------------------------------------------------------------
+	override bool _WB_GetCustomTitle(BaseContainer source, out string title)
+	{		
+		string titleVar;
+		source.Get("Title", titleVar);
+		title = titleVar;
+				
+		return true;
+	}
+};

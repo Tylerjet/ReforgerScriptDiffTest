@@ -55,7 +55,7 @@ class SCR_NotificationsLogComponent: MenuRootSubComponent
 	//======================== ON NOTIFICATION ========================\\
 	protected bool OnNotification(SCR_NotificationData data)
 	{	
-		if (!data)
+		if (!data || SCR_StringHelper.IsEmptyOrWhiteSpace(data.GetText()))
 			return false;
 		
 		float displayTimeLeft;

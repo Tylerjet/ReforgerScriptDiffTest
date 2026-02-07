@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapBuildingProps
@@ -18,6 +18,8 @@ class MapBuildingProps
 	proto external void SetOutlineColor(EMapBuildingType type, notnull Color color);
 	proto external void SetVisible(bool visibility);
 	proto external bool IsVisible();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

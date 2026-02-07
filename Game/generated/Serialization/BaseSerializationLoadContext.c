@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Serialization
-* @{
+/*!
+\addtogroup Serialization
+\{
 */
 
 /*!
@@ -17,12 +17,14 @@ It works as an adapter between the game logic and serialized data.
 class BaseSerializationLoadContext: BaseSerializationContext
 {
 	proto bool ReadValue(string name, out void value);
-	/**
+	/*!
 	helpers to serialize whole classes
 	*/
 	proto external bool ReadGameEntity(string name, GameEntity entity);
 	proto external bool ReadGameComponent(string name, GameComponent component);
 	proto external bool ReadEntitySlot(string name, EntitySlotInfo slot);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

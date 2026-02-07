@@ -21,6 +21,8 @@ enum ENotification
 	AI_KILLED_POSSESSED_AI = 113, ///> Shown to GM only when player killed a possessed NPC 
 	POSSESSED_AI_KILLED_POSSESSED_AI = 114, ///> Shown to GM only when possessed NPC killed a player
 	PLAYER_BANNED_NO_DURATION = 115, ///< A player was banned for the session - (Param1 = PlayerID)
+	PLAYER_TELEPORTED_SELF = 117, ///< Player teleported to new location (param1 = PlayerID, param2 = distance)
+	
 	
 	//RIGHTS
 	EDITOR_EDITOR_RIGHTS_ASSIGNED = 200, ///< Player got rights assigned - (Param1 = GameMasterID, Param2 = TargetPlayerID))
@@ -76,11 +78,15 @@ enum ENotification
 	EDITOR_TASK_DELETED = 519, ///< Objective was Deleted by GM (Param1 = Task Replication ID, FactionIndex)
 	EDITOR_TASK_CANCELED = 520, ///< Objective was Canceled (Param1 = Task Replication ID, FactionIndex)
 	EDITOR_GM_TELEPORTED_PLAYER = 521, ///< When the player gets teleported a notification will be send to that player (Param1 = GM teleported the player, player that was teleported (for GM to go to position))
-	EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS = 522,///< Max budget reached when trying to place occupants in vehicle
-	EDITOR_PLACING_OUT_OF_CAMPAIGN_BUILDING_ZONE = 523,///< Trying to place a composition outside of building perimeter
-	EDITOR_PLACING_NO_MORE_INSTANCES = 524,///< Trying to place a composition (service) which already exists in target base.
-	EDITOR_PLACING_NO_ENOUGH_SUPPLIES = 525,///< Not enough supplies to build a composition.
-	EDITOR_PLACING_BLOCKED = 526,///< Area is blocked by another entity.
+	EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS = 522, ///< Max budget reached when trying to place occupants in vehicle
+	EDITOR_PLACING_OUT_OF_CAMPAIGN_BUILDING_ZONE = 523, ///< Trying to place a composition outside of building perimeter
+	EDITOR_PLACING_NO_MORE_INSTANCES = 524, ///< Trying to place a composition (service) which already exists in target base.
+	EDITOR_PLACING_NO_ENOUGH_SUPPLIES = 525, ///< Not enough supplies to build a composition.
+	EDITOR_PLACING_BLOCKED = 526, ///< Area is blocked by another entity.
+	EDITOR_PLACING_RANK_CORPORAL_NEEDED = 527, ///< Rank corporal is needed to place this composition.
+	EDITOR_PLACING_RANK_SERGEANT_NEEDED = 528, ///< Rank sergeant is needed to place this composition.
+	EDITOR_SERVICE_BUILD = 529, ///< Shows the name of the player, type of service and base where the service was built.
+	EDITOR_SERVICE_DISASSEMBLED = 530, ///< Shows the name of the player, type of service and base where the service was disassembled.
 	
 	//AI
 	//EDITOR_AI_GROUP_ELIMINATED = 600, ///< An AI group was eliminated - (Param1 = EditableEntityID)
@@ -106,8 +112,6 @@ enum ENotification
 	EDITOR_ATTRIBUTES_FACTION_CHANGED_NO_GM = 721, //Called when GM places a spawnpoint but the faction was not enabled
 	EDITOR_ATTRIBUTES_ENABLED_AMBIENT_MUSIC = 724, ///< When the GM enables server wide ambient music (Param1 = GM that enables it)
 	EDITOR_ATTRIBUTES_DISABLED_AMBIENT_MUSIC = 725, ///< When the GM disables server wide ambient music (Param1 = GM that disables it)	EDITOR_GM_ENABLED_AMBIENT_MUSIC = 522, ///< When the GM enables server wide ambient music (Param1 = GM that enables it)
-	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_ENABLED = 731, ///< GM enabled unconsciousness - (Param1 = GameMasterID)
-	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_DISABLED = 732, ///< GM disabled unconsciousness - (Param1 = GameMasterID)
 	//NOT IN GAME \/
 	EDITOR_ATTRIBUTES_SERVER_NAME_CHANGED = 716, ///< GM change the server name
 	EDITOR_ATTRIBUTES_SERVER_PASSWORD_CHANGED = 717, ///< GM change the server password
@@ -117,6 +121,12 @@ enum ENotification
 	//NOT IN GAME /\
 	EDITOR_CHANGED_KILLFEED_TYPE = 728, ///< Changed the killfeed type (Param1 = GM who changed setting, Param2 = The new KillfeedType, Param3 = bool isReciveType)
 	EDITOR_CHANGED_KILLFEED_RECEIVE_TYPE = 729, ///< Changed killfeed receive type Param1 = GM who changed setting, Param2 = The new KillfeedReceiveType, Param3 = bool isReciveType))
+	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_ENABLED = 730, ///< GM enabled unconsciousness - (Param1 = GameMasterID)
+	EDITOR_ATTRIBUTES_UNCONSCIOUSNESS_DISABLED = 731, ///< GM disabled unconsciousness - (Param1 = GameMasterID)
+	EDITOR_FACTION_SET_FRIENDLY_TO = 735, ///< GM set faction relations to friendly - (Param1 = GameMasterID, Param2 = FactionA, Param3 = FactionB)
+	EDITOR_FACTION_SET_HOSTILE_TO = 736, ///< GM set faction relations to hostile - (Param1 = GameMasterID, Param2 = FactionA, Param3 = FactionB)
+	EDITOR_FACTION_SET_FRIENDLY_TO_SELF = 737, ///< GM set faction relations to friendly to itself - (Param1 = GameMasterID, Param2 = Faction)
+	EDITOR_FACTION_SET_HOSTILE_TO_SELF = 738, ///< GM set faction relations to hostile to itself - (Param1 = GameMasterID, Param2 = Faction)
 	
 	//GM
 	EDITOR_PLAYER_BECAME_GM = 800, ///<Player become GM - (Param1 = PlayerID)
@@ -150,9 +160,15 @@ enum ENotification
 	GROUPS_PLAYER_PROMOTED_LEADER = 1103, ///< Player has been promoted to group leader (Param1 = player id)
 	GROUPS_AI_JOINED = 1104, ///< AI joined the group (Param1 = entityID)
 	GROUPS_AI_LEFT = 1105, ///< AI has left the group (Param1 = entityID)
+	GROUPS_PLAYER_IS_NOT_LEADER = 1106, ///< Player cant choose group flag, if he is not the leader
+	GROUPS_NO_FLAGS = 1107, ///< There are no groupflags in groups manager
 	
 	//OTHERS
 	ACTION_ON_COOLDOWN = 1200, ///< Action is on cooldown and cannot be executed
+	AREA_SEIZING_DONE_FRIENDLIES = 1201, ///< Area captured by friendlies
+	AREA_SEIZING_DONE_ENEMIES = 1202, ///< Area captured by enemies
+	BASE_SEIZING_DONE_FRIENDLIES = 1203, ///< Base captured by friendlies
+	BASE_SEIZING_DONE_ENEMIES = 1204, ///< Base captured by enemies
 	
 	//COMMANDING
 	COMMANDING_NO_RIGHTS = 1300,

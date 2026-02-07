@@ -115,10 +115,7 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 	*/
 	static void GetPreviewEntries(SCR_EditableEntityComponent entity, out notnull array<ref SCR_BasePreviewEntry> outEntries, out vector rootTransform[4], int parentID = -1, EPreviewEntityFlag flags = 0)
 	{
-		//--- Skip entities flagged by IGNORE_LAYERS when their patrent is edited as well (e.g., don't move waypoints when moving a group)
-		if (entity.HasEntityFlag(EEditableEntityFlag.IGNORE_LAYERS) && parentID != -1)
-			return;
-		
+		IEntity owner = entity.GetOwner();
 		vector transform[4];
 		if (parentID == -1)
 		{
@@ -127,6 +124,14 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		}
 		else
 		{
+			//--- Skip entities flagged by IGNORE_LAYERS when their patrent is edited as well (e.g., don't move waypoints when moving a group)
+			if (entity.HasEntityFlag(EEditableEntityFlag.IGNORE_LAYERS))
+				return;
+			
+			//--- Skip entities with mesh that are not visible, as well as entities not intended for play mode
+			if ((owner.GetVObject() && !(owner.GetFlags() & EntityFlags.VISIBLE)) || (owner.GetFlags() & EntityFlags.EDITOR_ONLY))
+				return;
+			
 			entity.GetLocalTransform(transform);
 		}
 
@@ -135,7 +140,7 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		entry.m_iParentID = parentID;
 		parentID = outEntries.Insert(entry);
 		
-		entry.m_Entity = entity.GetOwner();
+		entry.m_Entity = owner;
 		entry.SaveTransform(transform);
 		entry.m_fScale = GetLocalScale(entry.m_Entity);
 		entry.m_iPivotID = GetPivotName(entry.m_Entity);
@@ -153,6 +158,12 @@ class SCR_EditablePreviewEntity: SCR_GenericPreviewEntity
 		{
 			bool isUnderwater = SCR_Enum.HasFlag(flags, EPreviewEntityFlag.UNDERWATER);
 			SaveTerrainTransform(entry.m_Entity, entry, isUnderwater);
+		}
+		else
+		{
+			//--- Don't calculate terrain under entity, but use default values. Without it, entities with modified pitch or bank would have them reset.
+			entry.m_vAnglesTerrain = Vector(0, entry.m_vAngles[1], entry.m_vAngles[2]);
+			entry.m_vHeightTerrain = entry.m_vPosition[1];
 		}
 		
 		if (entry.m_Shape != EPreviewEntityShape.PREFAB)

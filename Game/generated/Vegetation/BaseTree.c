@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vegetation
-* @{
+/*!
+\addtogroup Vegetation
+\{
 */
 
 class BaseTreeClass: StaticModelEntityClass
 {
-};
+}
 
 class BaseTree: StaticModelEntity
 {
@@ -27,6 +27,8 @@ class BaseTree: StaticModelEntity
 	\param speed Projectile velocity in m/s.
 	*/
 	event void OnDamage(float damage, EDamageType type, IEntity pHitEntity, inout vector outMat[3], IEntity damageSource, IEntity damageSourceParent, int colliderID, float speed);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

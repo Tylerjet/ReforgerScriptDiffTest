@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup System
-* @{
+/*!
+\addtogroup System
+\{
 */
 
 enum EPlatform
@@ -19,7 +19,9 @@ enum EPlatform
 	XBOX_SERIES_S,
 	XBOX_SERIES_X,
 	PS4,
-	UNKNOWN
-};
+	UNKNOWN,
+}
 
-/** @}*/
+/*!
+\}
+*/

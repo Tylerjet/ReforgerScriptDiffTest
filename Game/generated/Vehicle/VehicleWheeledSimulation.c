@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class VehicleWheeledSimulationClass: VehicleBaseSimulationClass
 {
-};
+}
 
 class VehicleWheeledSimulation: VehicleBaseSimulation
 {
@@ -163,6 +163,8 @@ class VehicleWheeledSimulation: VehicleBaseSimulation
 	//! Sets sensitivity on roughness value of surface
 	//! \param newValue should be in range < 0, 1 >
 	proto external void SetRoughnessSensitivity(float newValue);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

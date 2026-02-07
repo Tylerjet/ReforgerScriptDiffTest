@@ -10,4 +10,4 @@ class WeatherLightningPattern: ScriptAndConfig
 	proto external float GetPerturbationRangeSeconds();
 	proto external float GetMinDurationHours();
 	proto external float GetMaxDurationHours();
-};
+}

@@ -167,6 +167,8 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		m_fSoundSignalStep = 1 / ((MATERIAL_EMISSIVITY_ON - MATERIAL_EMISSIVITY_START) / MATERIAL_EMISSIVITY_STEP);
 		m_fSoundSignalValue = 0;
 		
+		//Clear if there is already a CallLater
+		ClearCallLater();
 		GetGame().GetCallqueue().CallLater(UpdateLight, UPDATE_LIGHT_TIME, true);
 	}
 	
@@ -213,7 +215,7 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 			if (m_EmissiveMaterialComponent && m_fCurEM < MATERIAL_EMISSIVITY_ON)
 				UpdateMaterialEmissivity();
 			
-			if (m_fCurLV > componentData.GetLightLV() && m_fCurEM > MATERIAL_EMISSIVITY_ON)	
+			if (m_fCurLV > componentData.GetLightLV() && (!m_EmissiveMaterialComponent || m_fCurEM > MATERIAL_EMISSIVITY_ON))	
 				ClearCallLater();	
 		}
 	}
@@ -222,9 +224,6 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	void ClearCallLater()
 	{
 		GetGame().GetCallqueue().Remove(UpdateLight);
-					
-		if (!System.IsConsoleApp())
-			GetOwner().ClearEventMask(EntityFlags.ACTIVE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -271,9 +270,12 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		
 		if (!rpl || !rpl.IsProxy())
 			ToggleLight(GetInitialState(), true, false);
-
-		if (!System.IsConsoleApp())
-			owner.SetFlags(EntityFlags.ACTIVE, true);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnDelete(IEntity owner)
+	{
+		ClearCallLater();
 	}
 	
 	//------------------------------------------------------------------------------------------------

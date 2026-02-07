@@ -6,8 +6,9 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 	protected ref array<ECompartmentType> m_aCompartmentsTypes;
 	
 	//~ Store vehicles to spawn occupants in
-	protected ref array<SCR_EditableVehicleComponent> m_aVehiclesToOccupyQueue = {};
-	protected bool m_bHasSendNotEnoughBudgetNotification= false;
+	protected ref map<SCR_BaseCompartmentManagerComponent, SCR_EditableVehicleComponent> m_VehiclesToOccupyQueue = new map<SCR_BaseCompartmentManagerComponent, SCR_EditableVehicleComponent>();
+	
+	protected bool m_bHasSendNotEnoughBudgetNotification = false;
 	protected bool m_bIsSpawningOccupants = false;
 	
 	override bool CanBeShown(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition, int flags)
@@ -16,7 +17,7 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		return false;
 		
 		SCR_EditableVehicleUIInfo uiInfo = SCR_EditableVehicleUIInfo.Cast(selectedEntity.GetInfo());
-		if (uiInfo && !uiInfo.CanFillWithGivenTypes(m_aCompartmentsTypes))
+		if (!uiInfo || (uiInfo && !uiInfo.CanFillWithGivenTypes(m_aCompartmentsTypes)))
 			return false;
 		
 		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(selectedEntity.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
@@ -30,7 +31,16 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		return false;
 		
 		SCR_EditableVehicleComponent vehicle = SCR_EditableVehicleComponent.Cast(selectedEntity);
-		return vehicle && vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, false);
+		return vehicle && vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, true, true, true, true);
+	}
+	
+	//~ Makes sure CanBePerformed is not executed twice
+	override void Perform(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition,int flags, int param = -1)
+	{
+		if (!InitPerform()) return;
+		
+		foreach	(SCR_EditableEntityComponent entity : selectedEntities)
+			Perform(entity, cursorWorldPosition);
 	}
 	
 	override void Perform(SCR_EditableEntityComponent selectedEntity, vector cursorWorldPosition)
@@ -39,124 +49,99 @@ class SCR_SpawnOccupantsContextAction : SCR_SelectedEntitiesContextAction
 		return;
 		
 		SCR_EditableVehicleComponent vehicle = SCR_EditableVehicleComponent.Cast(selectedEntity);
+		if (!vehicle)
+			return;
+	
+		SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(vehicle.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
+		if (!compartmentManager)
+			return;
 		
-		//~ Spawn occupants in vehicle and check when spawning was completed
+		//~ Already being spawned
+		if (m_VehiclesToOccupyQueue.Contains(compartmentManager))
+			return;
+		
+		//~ Add to spawn que
+		m_VehiclesToOccupyQueue.Insert(compartmentManager, vehicle);
+		
+		//~ If not yet spawning start spawn logic
 		if (!m_bIsSpawningOccupants)
-		{		
-			//~ Check if spawn still valid
-			if (vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, false))
-			{
-				//~ Check if enough budget
-				if (vehicle.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, true, false, false))
-				{
-					m_bIsSpawningOccupants = true;
-					
-					SCR_BaseCompartmentManagerComponent compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(vehicle.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
-					compartmentManager.GetOnDoneSpawningDefaultOccupants().Insert(DoneSpawningOccupantsInEntity);
-					vehicle.OccupyVehicleWithDefaultCharacters(m_aCompartmentsTypes);
-				}
-				else 
-				{
-					if (!m_bHasSendNotEnoughBudgetNotification)
-					{
-						//~ Todo: Send notification to client if max budget is reached
-						m_bHasSendNotEnoughBudgetNotification = true;
-						//SCR_NotificationsComponent.SendToPlayer(m_ActionsManager.GetManager().GetPlayerID(), ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);
-						//SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);
-					}
-				}
-			}
-			
-			//~ Executes CheckDone after one frame to check if all selected vehicles are done spawning all characters.
-			if (!m_bIsSpawningOccupants)
-				GetGame().GetCallqueue().CallLater(DelayedCheckDone);
-		}
-		//~ Already occupying another vehicle so add it to the queue
-		else 
 		{
-			m_aVehiclesToOccupyQueue.Insert(vehicle);
-		}		
+			m_bIsSpawningOccupants = true;
+			
+			//~ Start spawning by calling spawn next
+			SpawnNextOccupantsInEntity();
+		}
 	}
 	
 	//~ When done spawning characters in entity
-	protected void DoneSpawningOccupantsInEntity(SCR_BaseCompartmentManagerComponent compartmentManager, array<IEntity> spawnedCharacters, bool wasCanceled)
+	protected void SpawnNextOccupantsInEntity(SCR_BaseCompartmentManagerComponent compartmentManager = null, array<IEntity> spawnedCharacters = null, bool wasCanceled = false)
 	{
+		//~ Remove listener
 		if (compartmentManager)
-			compartmentManager.GetOnDoneSpawningDefaultOccupants().Remove(DoneSpawningOccupantsInEntity);
-		
-		if (m_aVehiclesToOccupyQueue.IsEmpty())
 		{
-			m_bIsSpawningOccupants = false;
-			m_bHasSendNotEnoughBudgetNotification = false;
+			compartmentManager.GetOnDoneSpawningDefaultOccupants().Remove(SpawnNextOccupantsInEntity);
+			m_VehiclesToOccupyQueue.Remove(compartmentManager);
+		}
+
+		//~ Nothing more to spawn so set spawning done
+		if (m_VehiclesToOccupyQueue.IsEmpty())
+		{
+			SetSpawningDone();
+			return;
+		}
+			
+		SCR_EditableVehicleComponent vehicleToOccupy = m_VehiclesToOccupyQueue.GetElement(0); 
+		
+		//~ Entry is empty meaning that it was deleted so call the next in entry
+		if (!vehicleToOccupy)
+		{
+			m_VehiclesToOccupyQueue.RemoveElement(0);
+			SpawnNextOccupantsInEntity(null, null, false);
 			return;
 		}
 		
-		SCR_EditableVehicleComponent vehicleToOccupy;
+		//~ Grab the new compartment
+		compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(vehicleToOccupy.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
 		
-		for(int i = 0; i < m_aVehiclesToOccupyQueue.Count(); i++)
-        {
-			//~ Invalid compartment (deleted) or can no longer fill the vehicle so remove it from the list
-           	if (!m_aVehiclesToOccupyQueue[i] || !m_aVehiclesToOccupyQueue[i].CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, false))
-			{
-				m_aVehiclesToOccupyQueue.RemoveOrdered(i);
-				i--;
-				continue;
-			}
-			
-			//~ Check if spawn is still valid
-			if (!m_aVehiclesToOccupyQueue[i].CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, false, true, true))
-			{
-				m_aVehiclesToOccupyQueue.RemoveOrdered(i);
-				i--;
-				
-				continue;
-			}
-			
-			//~ No longer has enough budget to fill vehicle
-			if (!m_aVehiclesToOccupyQueue[i].CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, true, false, false))
-			{
-				m_aVehiclesToOccupyQueue.RemoveOrdered(i);
-				i--;
-				
-				//~ Send not enough budget notification once
-				if (!m_bHasSendNotEnoughBudgetNotification)
-				{
-					m_bHasSendNotEnoughBudgetNotification = true;
-					
-					
-					
-					SCR_NotificationsComponent.SendLocal(ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);
-				}
-				
-				continue;
-			}
-			
-			//~ Found a new vehicle to fill
-			vehicleToOccupy = m_aVehiclesToOccupyQueue[i];
-			m_aVehiclesToOccupyQueue.RemoveOrdered(i);
-			break;
-        }
-		
-		//~ No longer found a valid vehicle to fill
-		if (!vehicleToOccupy)
+		//~ Check if compartment exists (which should always be the cause). But try spawn next if it does not
+		if (!compartmentManager)
 		{
-			m_bIsSpawningOccupants = false;
-			m_bHasSendNotEnoughBudgetNotification = false;
-			m_aVehiclesToOccupyQueue.Clear();
+			m_VehiclesToOccupyQueue.RemoveElement(0);
+			SpawnNextOccupantsInEntity(null, null, false);
+			return;
+		}
+		
+		//~ No longer valid to spawn
+		if (!vehicleToOccupy.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, true, checkEditorBudget: false, checkForFreeDefaultCompartments: true))
+		{
+			m_VehiclesToOccupyQueue.RemoveElement(0);
+			SpawnNextOccupantsInEntity(null, null, false);
+			return;
+		}
+		
+		//~ No longer valid budget
+		if (!vehicleToOccupy.CanOccupyVehicleWithCharacters(m_aCompartmentsTypes, false, true, false, false, true))
+		{
+			//~ Todo get player ID to send notification
+			/*if (!m_bHasSendNotEnoughBudgetNotification)
+			{
+				m_bHasSendNotEnoughBudgetNotification = true;
+				SCR_NotificationsComponent.SendToPlayer(playerID, ENotification.EDITOR_PLACING_BUDGET_MAX_FOR_VEHICLE_OCCUPANTS);
+			}*/
+			
+			m_VehiclesToOccupyQueue.RemoveElement(0);
+			SpawnNextOccupantsInEntity(null, null, false);
 			return;
 		}
 		
 		//~ Fill next vehicle in queue
-		compartmentManager = SCR_BaseCompartmentManagerComponent.Cast(vehicleToOccupy.GetOwner().FindComponent(SCR_BaseCompartmentManagerComponent));
-		compartmentManager.GetOnDoneSpawningDefaultOccupants().Insert(DoneSpawningOccupantsInEntity);
+		compartmentManager.GetOnDoneSpawningDefaultOccupants().Insert(SpawnNextOccupantsInEntity);
 		vehicleToOccupy.OccupyVehicleWithDefaultCharacters(m_aCompartmentsTypes);
 	}
 	
-	protected void DelayedCheckDone()
+	protected void SetSpawningDone()
 	{
-		if (!m_aVehiclesToOccupyQueue.IsEmpty())
-			return;
-
+		m_VehiclesToOccupyQueue.Clear();
 		m_bIsSpawningOccupants = false;
 		m_bHasSendNotEnoughBudgetNotification = false;
 	}

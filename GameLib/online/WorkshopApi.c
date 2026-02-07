@@ -71,13 +71,13 @@
 		//file errors
 		EACODE_ERROR_FILE_LOAD_FAILED,
 		EACODE_ERROR_FILE_SAVE_FAILED
-	};
+	}
 
 	//! Workshop item stats (values are bit flags!)
 	enum EWorkshopItemState
 	{
 		EWSTATE_ONLINE,				// 2
-		EWSTATE_OFFLINE,			// 4
+		EWSTATE_OFFLINE,			// 4   	[Obsolete("Use Revision.IsDownloaded")]
 
 		EWSTATE_UPLOADING,			// 8
 		EWSTATE_DOWNLOADING,		// 16
@@ -90,7 +90,7 @@
 		EWSTATE_HIGHLIGHTED,
 		EWSTATE_MYCREATION,			// 4096
 		EWSTATE_BANNED	
-	};	
+	}
 
 	//! Workshop report type
 	enum EWorkshopReportType
@@ -99,7 +99,7 @@
 		EWREPORT_OFFENSIVE_LANGUAGE,
 		EWREPORT_MISLEADING,
 		EWREPORT_OTHER
-	};
+	}
 
 	enum EWorkshopOrderTypes
 	{
@@ -114,13 +114,13 @@
 		EWORDER_TYPE_ITEM_NAME,
 		EWORDER_TYPE_FAVORITE,
 		EWORDER_TYPE_RECENTLY_PLAYED
-	};
+	}
 
 	enum EWorkshopOrderDirections
 	{
 		EWORDER_DIR_ASC,
 		EWORDER_DIR_DESC
-	};
+	}
 	
 	enum EWorkshopFilterTypes
 	{
@@ -132,14 +132,14 @@
 		EWFILTER_TYPE_TYPE,				//16
 		EWFILTER_TYPE_MULTIPLAYER,		//32
 		EWFILTER_TYPE_SINGLEPLAYER		//64
-	};
+	}
 
 	enum EWorkshopItemResource
 	{
 		EWIRESOURCE_ONLINE,
 		EWIRESOURCE_OFFLINE,
 		EWIRESOURCE_SCENARIOS
-	};
+	}
 
 	enum EWorkshopItemAccessState
 	{
@@ -147,7 +147,7 @@
 		EWASTATE_REPORTED,	//1
 		EWASTATE_PRIVATE,		//2
 		EWASTATE_BLOCKED,		//4
-	};
+	}
 
 
 // -------------------------------------------------------------------------
@@ -155,7 +155,7 @@ class PageParams extends JsonApiStruct
 {	
 	int limit;
 	int offset;		
-};
+}
 
 // -------------------------------------------------------------------------
 class ImageScale
@@ -206,14 +206,40 @@ class WorkshopTag
 	proto native string Id();
 }
 
+enum EPendingLoadState
+{
+	ELS_NONE,
+	ELS_SCENARIOS,
+	ELS_DEPENDENCIES
+}
+
 class Revision
 {
+	static const int INVALID_MAJOR_VERSION = -1;
 	proto native string GetVersion();
+	proto native string GetGameVersion();
+	proto native void GetVersionArray(out notnull array<int> versionArray);
+	proto native void GetGameVersionArray(out notnull array<int> versionArray);
 	proto native int GetDependencies(out notnull array<Dependency> dependencies);
 	proto native bool IsDownloaded();
 	proto native int GetScenarios(out notnull array<MissionWorkshopItem> scenarios);
 	proto bool GetPatchSize(out float size);
 	proto native void ComputePatchSize(BackendCallback callback);
+	proto native int CompareTo(Revision rev);
+	/**
+	\brief Describes which data are not loaded yet. 
+	A bitmask which should be compared with EPendingLoadState.
+	*/
+	proto native int GetLoadFlags();
+
+	static bool AreEqual(Revision a, Revision b)
+	{
+	 	return (a && b && a.CompareTo(b) == 0);
+	}
+	
+	private void Revision(){};
+	
+	proto native int GetFiles(out notnull array<string> aFiles);
 }
 
 class WorkshopCatalogue
@@ -256,6 +282,8 @@ class DownloadableCatalogue extends WorkshopCatalogue
 	proto native void Cleanup();
 	
 	proto native int GetBannedItems(out notnull array<string> items);
+	
+	proto native int GetDownloads(out notnull array<DownloadableItem> items);
 }
 
 class Dependency
@@ -302,9 +330,10 @@ class WorkshopAuthor extends WorkshopCatalogue
 	proto native void AddBlock(BackendCallback callback);
 	proto native void RemoveBlock(BackendCallback callback);
 	
-	/**
-	\brief Get page content, returns current count of items on active page
-	\param item items Array of Workshop Items
+	/*!
+	Get page content.
+	\param items Array of Workshop Items
+	\return Current count of items on active page
 	*/
 	proto native int GetPageItems( out array<WorkshopItem> items );
 }
@@ -322,7 +351,7 @@ class DownloadableItem extends BaseWorkshopItem
 	/**
 	\brief Request download of this item
 	*/
-	proto native void Download(BackendCallback callback, notnull Revision revision);
+	proto native void Download(BackendCallback callback, Revision revision);
 	
 	/**
 	\brief Request detail info
@@ -362,6 +391,31 @@ class DownloadableItem extends BaseWorkshopItem
 	proto native void DeleteLocally();
 	
 	proto native Revision GetPendingDownload();
+	
+	/**
+	\brief Set script-defined persistent flags.
+	*/
+	proto native void SetScriptFlag(int iFlag);
+	/**
+	\brief Clear script-defined persistent flags.
+	*/
+	proto native void ClearScriptFlag(int iFlag); 
+	/**
+	\brief Get script-defined persistent flags.
+	*/
+	proto native int GetScriptFlag(); 
+	
+	proto native Revision GetLatestRevision();
+	
+	/**
+	\brief Load revision's dependency list
+	*/
+	proto native void LoadDependencies(BackendCallback callback, notnull Revision revision);
+	
+	/**
+	\brief Get local (non-workshop) revision
+	*/
+	proto native Revision GetLocalRevision();
 }
 
 
@@ -369,6 +423,9 @@ class DownloadableItem extends BaseWorkshopItem
 class MissionWorkshopItem extends BaseWorkshopItem
 {
 	proto native WorkshopItem GetOwner();
+	
+	proto native string GetOwnerId();
+	
 	proto native Class GetHeader();
 	
 	proto native BackendImage Thumbnail();
@@ -418,11 +475,6 @@ class WorkshopItem extends DownloadableItem
 	*/
 	proto native bool IsSubscribed();
 
-
-	/**
-	\brief Load revision's dependency list
-	*/
-	proto native void LoadDependencies(BackendCallback callback, notnull Revision revision);
 	/**
 	\brief Load revision's scenarios
 	*/
@@ -491,9 +543,9 @@ class WorkshopItem extends DownloadableItem
 	\brief Get rating count
 	*/
 	proto native int RatingCount();	
-	/**
+	/*!
 	\brief Get 
-	\param item items Array of Workshop Items
+	\param items Array of Workshop Items
 	*/
 	proto native int GetTags( out notnull array<WorkshopTag> items );
 
@@ -563,7 +615,7 @@ class WorkshopItem extends DownloadableItem
 	
 	proto native string GetPath();
 	
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -637,7 +689,7 @@ class WorkshopCallback : Managed
 	}
 	
 
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -681,11 +733,6 @@ class WorkshopApi extends DownloadableCatalogue
 	proto native WorkshopItem GetByName( string name );
 
 	/**
-	\brief Discard existing item
-	*/
-	proto native bool Discard( WorkshopItem item );
-
-	/**
 	\brief Get workshop quota (local storage) size in bytes
 	*/
 	proto native int GetQuotaLocal();
@@ -707,13 +754,6 @@ class WorkshopApi extends DownloadableCatalogue
 	
 	proto native MissionWorkshopItem GetInGameScenario(ResourceName sResource);
 	
-	proto native bool ReloadWithAddons();
-	
-	/**
-	\brief True is list of loaded items doesn't match list of enabled items
-	*/
-	proto native bool IsReloadNeeded();
-	
 	proto native WorkshopItem FindItem(string id);
 	
 	proto native int GetPageScenarios(out array<MissionWorkshopItem> items, int page, int pageSize);
@@ -727,20 +767,14 @@ class WorkshopApi extends DownloadableCatalogue
 	proto native int GetOfflineItems(out notnull array<WorkshopItem> items);
 	
 	proto native bool NeedScan();
-	/**
-	\brief Get page content, returns current count of items on active page
-	\param item items Array of Workshop Items
+	/*!
+	Get page content.
+	\param items Array of Workshop Items
+	\return Current count of items on active page
 	*/
 	proto native int GetPageItems( out array<WorkshopItem> items );
 	
-	/**
-	\brief Searches for a WorkshopItem
-	\param item output object - user is responsible for the ownership -> should hold it by a strong ref
-	\param id WorkshopItem id to SearchFunctor
-	\param callback callback for backend requests
-	\return true if all data are ready, false if data are being loaded from the backend -> wait for the callback
-	*/
-	proto bool FindItemOnline(out WorkshopItem item, string id, BackendCallback callback);
-};
+	proto native MissionWorkshopItem GetCurrentMission();
+}
 
 // -------------------------------------------------------------------------

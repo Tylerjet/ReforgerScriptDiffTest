@@ -16,5 +16,5 @@ enum ELightType
 	Dashboard,
 	Hazard,
 	HiBeam,
-	SearchLight
-};
+	SearchLight,
+}

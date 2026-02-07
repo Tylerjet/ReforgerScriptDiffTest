@@ -10,4 +10,4 @@ class WeatherTransition: ScriptAndConfig
 	proto external float GetProbability();
 	proto external float GetDurationMin();
 	proto external float GetDurationMax();
-};
+}

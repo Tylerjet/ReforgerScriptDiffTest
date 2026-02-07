@@ -210,8 +210,6 @@ class SCR_PowerPole : GenericEntity
 			if (foundEntity)
 				AttachTo(foundEntity);
 		}
-		
-		ClearFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -224,7 +222,6 @@ class SCR_PowerPole : GenericEntity
 		DrawDebugShapes();
 		//RegisterSelf(src);
 		m_Source = src;
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT);
 	}
 

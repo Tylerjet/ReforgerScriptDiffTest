@@ -1,4 +1,4 @@
-void SCR_BaseGameMode_OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE);
+void SCR_BaseGameMode_OnPlayerDisconnected(int playerId, KickCauseCode cause = KickCauseCode.NONE, int timeout = -1);
 typedef func SCR_BaseGameMode_OnPlayerDisconnected;
 
 /**
@@ -121,6 +121,7 @@ class SCR_BaseGameMode : BaseGameMode
 	protected ref ScriptInvoker Event_OnPlayerConnected = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerRegistered = new ScriptInvoker();
 	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> Event_OnPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>();
+	protected ref ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> Event_OnPostCompPlayerDisconnected = new ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected>(); //~ Called after the GameMode Components are notified that a player was disconnected
 	protected ref ScriptInvoker Event_OnPlayerSpawned = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerKilled = new ScriptInvoker();
 	protected ref ScriptInvoker Event_OnPlayerDeleted = new ScriptInvoker();
@@ -274,23 +275,33 @@ class SCR_BaseGameMode : BaseGameMode
 		SCR_EGameModeState newState = GetState();
 		Print("SCR_BaseGameMode::OnGameStateChanged = " + SCR_Enum.GetEnumName(SCR_EGameModeState, newState));
 
+		//We handle the OnGameModeEnd and OnGameModeStart events here
+		//Because this is the only replicated call.
+		//And we propagate it to the components here for robusty in case of overriding those methods
 		switch (newState)
 		{
 			case SCR_EGameModeState.POSTGAME:
 				OnGameModeEnd(m_pGameEndData);
 				foreach (SCR_BaseGameModeComponent component : m_aAdditionalGamemodeComponents)
+				{
 					component.OnGameModeEnd(m_pGameEndData);
-
+				}
 				break;
-
+			
 			case SCR_EGameModeState.GAME:
 				OnGameModeStart();
+				foreach (SCR_BaseGameModeComponent component : m_aAdditionalGamemodeComponents)
+				{
+					component.OnGameModeStart();
+				}
 				break;
 		}
 
 		// Dispatch events
 		foreach (SCR_BaseGameModeComponent component : m_aAdditionalGamemodeComponents)
+		{
 			component.OnGameStateChanged(newState);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -459,6 +470,14 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		return Event_OnPlayerDisconnected;
 	}
+	/*!
+	Called on player disconnect and after Gamemode components are notified
+	\return Script invoker
+	*/
+	ScriptInvokerBase<SCR_BaseGameMode_OnPlayerDisconnected> GetOnPostCompPlayerDisconnected()
+	{
+		return Event_OnPostCompPlayerDisconnected;
+	}
 	ScriptInvoker GetOnPlayerSpawned()
 	{
 		return Event_OnPlayerSpawned;
@@ -502,7 +521,7 @@ class SCR_BaseGameMode : BaseGameMode
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-		Called on every machine when game mode starts.
+		Called on every machine when game mode starts by OnGameStateChanged.
 		This can be immediate (if no pre-game period is set) or can happen after
 		a certain delay, as deemed appropriate by the authority.
 	*/
@@ -519,7 +538,7 @@ class SCR_BaseGameMode : BaseGameMode
 
 	//------------------------------------------------------------------------------------------------
 	/*!
-		Called on every machine when game mode ends.
+		Called on every machine when game mode ends by OnGameStateChanged.
 		This can be based on time limit or as deemed appropriate by the authority,
 		e.g. after reaching certain score threshold and similar.
 		\param SCR_GameModeEndData optional game mode end data received from the server.
@@ -585,16 +604,21 @@ class SCR_BaseGameMode : BaseGameMode
 		if (!IsMaster())
 			return;
 		
-		Print("SCR_BaseGameMode::RestartSession()");
+		Print("SCR_BaseGameMode::RestartSession()", LogLevel.DEBUG);
 		if (GameStateTransitions.RequestServerReload())
 		{
-			Print("SCR_BaseGameMode::RestartSession() successfull server reload requested!");
+			Print("SCR_BaseGameMode::RestartSession() successfull server reload requested!", LogLevel.DEBUG);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected override void OnGameStart()
 	{
+		BackendApi backendApi = GetGame().GetBackendApi();
+		
+		if (IsMaster())
+			backendApi.NewSession();
+
 		super.OnGameStart();
 		Event_OnGameStart.Invoke();
 	}
@@ -605,14 +629,16 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnGameEnd.Invoke();
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnGameEnd();
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerAuditSuccess(int iPlayerID)
 	{
 	#ifdef RESPAWN_COMPONENT_VERBOSE
-			Print("SCR_BaseGameMode::OnPlayerAuditSuccess - playerId: " + iPlayerID);
+			Print("SCR_BaseGameMode::OnPlayerAuditSuccess - playerId: " + iPlayerID, LogLevel.DEBUG);
 	#endif
 
 		super.OnPlayerAuditSuccess(iPlayerID);
@@ -620,13 +646,19 @@ class SCR_BaseGameMode : BaseGameMode
 
 		if (m_pRespawnSystemComponent)
 			m_pRespawnSystemComponent.OnPlayerConnected(iPlayerID);
+		
+		// Dispatch event to child components
+		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
+			comp.OnPlayerAuditSuccess(iPlayerID);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnPlayerAuditFail(int iPlayerID)
 	{
 	#ifdef RESPAWN_COMPONENT_VERBOSE
-		Print("SCR_BaseGameMode::OnPlayerAuditFail - playerId: " + iPlayerID);
+		Print("SCR_BaseGameMode::OnPlayerAuditFail - playerId: " + iPlayerID, LogLevel.DEBUG);
 	#endif
 
 		super.OnPlayerAuditFail(iPlayerID);
@@ -634,7 +666,12 @@ class SCR_BaseGameMode : BaseGameMode
 
 		if (m_pRespawnSystemComponent)
 			m_pRespawnSystemComponent.OnPlayerConnected(iPlayerID);
-
+		
+		// Dispatch event to child components
+		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
+			comp.OnPlayerAuditFail(iPlayerID);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -642,6 +679,12 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		super.OnPlayerAuditTimeouted(iPlayerID);
 		Event_OnPlayerAuditTimeouted.Invoke(iPlayerID);
+		
+		// Dispatch event to child components
+		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
+			comp.OnPlayerAuditTimeouted(iPlayerID);
+		}
 	};
 
 	//------------------------------------------------------------------------------------------------
@@ -649,6 +692,12 @@ class SCR_BaseGameMode : BaseGameMode
 	{
 		super.OnPlayerAuditRevived(iPlayerID);
 		Event_OnPlayerAuditRevived.Invoke(iPlayerID);
+		
+		// Dispatch event to child components
+		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
+			comp.OnPlayerAuditRevived(iPlayerID);
+		}
 	};
 
 	//------------------------------------------------------------------------------------------------
@@ -666,7 +715,7 @@ class SCR_BaseGameMode : BaseGameMode
 		if (m_pRespawnSystemComponent && (RplSession.Mode() != RplMode.Dedicated || System.IsCLIParam("nobackend")))
 		{
 		#ifdef RESPAWN_COMPONENT_VERBOSE
-			Print("SCR_BaseGameMode::OnPlayerConnected - playerId: " + playerId);
+			Print("SCR_BaseGameMode::OnPlayerConnected - playerId: " + playerId, LogLevel.DEBUG);
 		#endif
 
 			m_pRespawnSystemComponent.OnPlayerConnected(playerId);
@@ -674,7 +723,9 @@ class SCR_BaseGameMode : BaseGameMode
 
 		// Dispatch event to child components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnPlayerConnected(playerId);
+		}
 
 		// DON'T! Leave that up to game mode respawning
 		// SetPlayerRandomLoadout(playerId);
@@ -696,13 +747,17 @@ class SCR_BaseGameMode : BaseGameMode
 	protected override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		super.OnPlayerDisconnected(playerId, cause, timeout);
-		Event_OnPlayerDisconnected.Invoke(playerId, cause);
+		Event_OnPlayerDisconnected.Invoke(playerId, cause, timeout);
 
 		if (m_pRespawnSystemComponent)
 			m_pRespawnSystemComponent.OnPlayerDisconnected(playerId);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-			comp.OnPlayerDisconnected(playerId);
+		{
+			comp.OnPlayerDisconnected(playerId, cause, timeout);
+		}
+		
+		Event_OnPostCompPlayerDisconnected.Invoke(playerId, cause, timeout);
 
 		if (IsMaster())
 		{
@@ -754,7 +809,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnPlayerRegistered.Invoke(playerId);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnPlayerRegistered(playerId);
+		}
 
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
@@ -774,7 +831,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnPlayerSpawned.Invoke(playerId, controlledEntity);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnPlayerSpawned(playerId, controlledEntity);
+		}
 
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
@@ -810,7 +869,9 @@ class SCR_BaseGameMode : BaseGameMode
 
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnPlayerKilled(playerId, player, killer);
+		}
 
 		#ifdef GMSTATS
 		if (IsGameModeStatisticsEnabled())
@@ -831,7 +892,9 @@ class SCR_BaseGameMode : BaseGameMode
 
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnPlayerDeleted(playerId, player);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -847,7 +910,9 @@ class SCR_BaseGameMode : BaseGameMode
 
 		// Dispatch events to children components
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnPlayerRoleChange(playerId, roleFlags);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -861,7 +926,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnWorldPostProcess.Invoke(world);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnWorldPostProcess(world);
+		}
 	};
 
 	//------------------------------------------------------------------------------------------------
@@ -875,7 +942,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnControllableSpawned.Invoke(entity);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnControllableSpawned(entity);
+		}
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
 		if (character)
@@ -894,7 +963,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnControllableDestroyed.Invoke(entity, instigator);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
-			comp.OnControllableDestroyed(entity, instigator);
+		{
+			comp.OnControllableDestroyed(entity, instigator);	
+		}
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
 		if (character)
@@ -929,7 +1000,9 @@ class SCR_BaseGameMode : BaseGameMode
 		Event_OnControllableDeleted.Invoke(entity);
 
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.OnControllableDeleted(entity);
+		}
 
 		//--- If the entity is player, call OnPlayerDeleted
 		int playerID = GetGame().GetPlayerManager().GetPlayerIdFromControlledEntity(entity);
@@ -951,7 +1024,9 @@ class SCR_BaseGameMode : BaseGameMode
 	void HandleOnLoadoutAssigned(int playerID, SCR_BasePlayerLoadout assignedLoadout)
 	{
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.HandleOnLoadoutAssigned(playerID, assignedLoadout);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -962,7 +1037,9 @@ class SCR_BaseGameMode : BaseGameMode
 	void HandleOnFactionAssigned(int playerID, Faction assignedFaction)
 	{
 		foreach (SCR_BaseGameModeComponent comp : m_aAdditionalGamemodeComponents)
+		{
 			comp.HandleOnFactionAssigned(playerID, assignedFaction);
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------

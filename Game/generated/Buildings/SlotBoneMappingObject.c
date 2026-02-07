@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Buildings
-* @{
+/*!
+\addtogroup Buildings
+\{
 */
 
 class SlotBoneMappingObject: ScriptAndConfig
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

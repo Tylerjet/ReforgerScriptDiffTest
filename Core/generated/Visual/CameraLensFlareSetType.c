@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 //! Type of the camera lens flare set
@@ -20,7 +20,9 @@ enum CameraLensFlareSetType
 	FirstPerson,
 	//! Use third person lens flare set
 	ThirdPerson,
-	COUNT
-};
+	COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

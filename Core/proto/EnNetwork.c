@@ -23,34 +23,38 @@ class CustomClass
 	static bool Inject(SSnapSerializerBase snapshot, ScriptCtx ctx, CustomClass instance);
 }
 */
+
+/*!
+\addtogroup Replication
+\{
+*/
+
 typedef int RplIdentity;
 typedef int RplId;
 
-/*! Replication connection identity. */
+//! Replication connection identity.
 class RplIdentity
 {
 	proto native static RplIdentity Local();
 	proto native static RplIdentity Invalid();
 
 	proto native bool IsValid();
-};
+}
 
-/*! Replication item identifier */
+//! Replication item identifier.
 class RplId
 {
 	proto native static RplId Invalid();
 
 	proto native bool IsValid();
-};
+}
 
-/*!
-Communication channel. Reliable is guaranteed to be delivered. Unreliable not.
-*/
+//! Communication channel. Reliable is guaranteed to be delivered. Unreliable not.
 enum RplChannel
 {
 	Reliable,
 	Unreliable
-};
+}
 
 
 /*!
@@ -74,23 +78,17 @@ enum RplRcver
 	Server,
 	Owner,
 	Broadcast
-};
+}
 
-/*!
-Entity networking role.
-Proxy = receive props only
-Authority = send props and send RPCS
-*/
+//! Entity networking role.
 enum RplRole
 {
-	Authority,
-	Proxy
-};
+	Authority, //!< send props and send RPCS
+	Proxy //!< receive props only
+}
 
 
-/*!
-Property groups that allow for replication of only part of the object.
-*/
+//! Property groups that allow for replication of only part of the object.
 enum RplGroup
 {
 	Mandatory,
@@ -100,41 +98,36 @@ enum RplGroup
 	Group_4,
 	Group_5,
 	Group_6
-};
+}
 
-/*!
-Conditional replication rule.
-*/
+//! Conditional replication rule.
 enum RplCondition
 {
 	None,
 	OwnerOnly,
 	NoOwner,
 	Custom
-};
+}
 
 class ScriptCtx : Managed
 {
-};
+}
 
-/*!
-Networking base class.
-*/
+//! Main replication API.
 class Replication
 {
-	/*! Common invalid id. Used for invalid RplIds, ConnectionIds... */
 	const RplId INVALID_ID = 0xFFFFFFFF;
 	const RplIdentity INVALID_IDENTITY = 0xFFFFFFFF;
 
 	/*!
 	Looks for RplId assigned by the Replication layer.
-	Warning: It is a lookup! Don't use in tight loops!
+	\warning It is a lookup! Don't use in tight loops!
 	\returns id or INVALID_ID if entity is not part of the replication process.
 	*/
 	proto native static RplId FindId(Managed entity);
 
 	/*!
-	Lookds for Item of the provided id.
+	Looks for Item of the provided id.
 	\returns Item or null when no item with provided id exists.
 	*/
 	proto native static Managed FindItem(RplId id);
@@ -145,61 +138,78 @@ class Replication
 	*/
 	proto native static int FindOwner(RplId id);
 
-	/*! Should be called before Run() to setup the mode of replication. */
-	//proto native static void SetMode(int mode);
-
 	/*!
 	Master time for all reaplication instances.
 	(Exponentialy smoothed, is dependent on connection quality)
 	*/
 	proto native static float Time();
 
-	/*! Tells whenever the replication is active. */
+	//! Tells whenever the replication is active.
 	proto native static bool IsRunning();
 
-	/*! The replication is currently in runtime mode. The inserted nodes will
-	 * receive a dynamic IDs they will be automatically replicated to relevant
-	 * clients. */
+	/*!
+	The replication is currently in runtime mode. The inserted nodes will
+	receive a runtime IDs they will be automatically replicated to relevant
+	clients.
+	*/
 	proto native static bool Runtime();
 
-	/*! The replication is currently in state of world loading. The inserted nodes
-	 * will receive a static IDs and have to be spawned/present on both (Server
-	 * and Client). */
+	/*!
+	The replication is currently in state of world loading. The inserted nodes
+	will receive a loadtime IDs and have to be spawned/present on both (Server
+	and Client).
+	*/
 	proto native static bool Loadtime();
 
 	/*!
-	Removes the Entity from replication process immediately. (crash prevention)
-	Usage of this method should be the last resort for preventing crashes and
-	should be omitted when possible.
-	#ToBeRemoved
-	*/
-	proto native static void RemoveEntity(IEntity entity);
-
-	/*!
-	Notifies replication systems about changes in your object and queues him for replication in near future.
+	Notifies replication systems about changes in your object and queues him
+	for replication in near future.
 	*/
 	proto native static void BumpMe();
 
 	/*!
-	WARNING! INTERNAL PROFILING FEATURE ONLY!
 	Sets the number of virtual connections which are just generating load for the master.
+	\warning INTERNAL PROFILING FEATURE ONLY!
 	*/
 	proto native static void SetNumVirtualConnections(int num);
 
 	/*!
-	WARNING! Using the hardcoded IsServer will result in code thats not modular
+	\warning Using the hardcoded IsServer will result in code thats not modular
 	and won't adapt when running in different environment consider using the
 	replication roles and ownership instead.
 	*/
 	proto native static bool IsServer();
 
 	/*!
-	WARNING! Using the hardcoded IsClient will result in code thats not modular
+	\warning Using the hardcoded IsClient will result in code thats not modular
 	and won't adapt when running in different environment consider using the
 	replication roles and ownership instead.
 	*/
 	proto native static bool IsClient();
-};
+
+	/*!
+	Retrieve snapshot of connection statistics for given `identity` at current moment in time. This
+	snapshot is not updated over time. To always get up-to-date statistics, call this function
+	repeatedly. Rate of updates of internal statistics is not well defined, but it can be expected
+	to happen about once every two seconds (usually more often). Note that only server is able to
+	access connection information of all clients connected to it.
+
+	When `identity` is identifier of a real connection (such as from client to server),
+	these will be statistics for that connection.
+
+	When `identity` is RplIdentity.Local(), returned statistics are for local player. Local player on
+	server does not suffer from any connection quality issues and statistics will report
+	perfect values (such as zero round-trip time). Local player on client reports statistics
+	from its real connection to the server (as if `identity` was identifier of that connection).
+
+	When `identity` is RplIdentity.Invalid() or it refers to non-existent connection,
+	`null` is returned.
+
+	\param[in]  identity  Identifier of queried connection.
+	\return     Statistics of a given connection, or `null` when `identity` is wrong.
+	*/
+	proto static ref RplConnectionStats GetConnectionStats(RplIdentity identity);
+}
 
 
 /*!
@@ -225,7 +235,7 @@ class RplProp
 		m_Condition = condition;
 		m_CustomCondName = customConditionName;
 	}
-};
+}
 
 
 /*!
@@ -249,7 +259,7 @@ class RplRpc
 		m_Condition = condition;
 		m_CustomCondName = customConditionName;
 	}
-};
+}
 
 
 /*!
@@ -260,21 +270,19 @@ void OnInjected(int mask) {}
 */
 class OnRpl
 {
-};
+}
 
 class RplBeforeInjected
 {
-};
+}
 
 class RplBeforeExtracted
 {
-};
+}
 
 class ScriptBitWriter : Managed
 {
-	/*!
-	Writes sizeInBits bits of data to internal storage.
-	*/
+	//! Writes `sizeInBits` bits of data to internal storage.
 	proto void Write(void src, int sizeInBits);
 	/*!
 	Compresses a RplId and writes it to internal storage.
@@ -290,34 +298,25 @@ class ScriptBitWriter : Managed
 	Compresses an integer and writes it to internal storage.
 	Compression goes down to the byte level. Therefore, the resulting data is
 	about 1 to 4 bytes in size.
-	
-	Warning:
-	If you know the range is constant use WriteCompressed_IntRange instead
+	\warning If you know the range is constant use WriteIntRange() instead.
 	*/
 	proto void WriteInt(int val);
 	/*!
 	Compresses an integer and writes it to internal storage.
 	Compression uses only as many bits as necessary taking the range defined by {min..max}
 	into account.
-	
-	Warning:
-	Use this only when you know the range is constant!
+	\warning Use this only when you know the range is constant!
 	*/
 	proto void WriteIntRange(int val, int min, int max);
 	/*!
 	Compresses a float into a half and writes it to internal storage.
 	The resulting data is 2 bytes in size.
-	
-	Warning:
-	Half only gives you about 64k +/- or range for the decimal part.
+	\warning Half only gives you about 64k +/- of range for the decimal part.
 	*/
 	proto void WriteHalf(float val);
 	/*!
 	Compresses a float into <0;1> range and writes it to internal storage.
 	The resulting data is 1 byte in size.
-	
-	Warning:
-	Half only gives you about 64k +/- or range for the decimal part.
 	*/
 	proto void WriteFloat01(float val);
 	/*!
@@ -335,20 +334,16 @@ class ScriptBitWriter : Managed
 	The resulting data is 8 byte in size.
 	*/
 	proto void WriteResourceName(ResourceName val);
-	/*!
-	Writes a string to internal storage.
-	*/
+	//! Writes a string to internal storage.
 	proto void WriteString(string val);
-	/*!
-	Returns the current position in internal storage in bits.
-	*/
+	//! Returns the current position in internal storage in bits.
 	proto native int Tell();
 
 	//----------------------------------------------------------------------------
 	// Helper functions for built-in types.
 	// They are safe defaults but they might use more bits than necessary.
 
-	void WriteBool(bool val) { Write(val, 1); }	
+	void WriteBool(bool val) { Write(val, 1); }
 	void WriteFloat(float val) { Write(val, 32); }
 	void WriteVector(vector val)
 	{
@@ -359,53 +354,29 @@ class ScriptBitWriter : Managed
 
 class ScriptBitReader : Managed
 {
-	/*!
-	Reads sizeInBits bits of data from internal storage.
-	*/
+	//! Reads `sizeInBits` bits of data from internal storage.
 	proto bool Read(out void dst, int sizeInBits);
-	/*!
-	Decompresses and returns a RplId from internal storage.
-	*/
+	//! Decompresses and returns a RplId from internal storage.
 	proto bool ReadRplId(out RplId val);
-	/*!
-	Decompresses and returns a EntityID from internal storage.
-	*/
+	//! Decompresses and returns a EntityID from internal storage.
 	proto bool ReadEntityId(out EntityID val);
-	/*!
-	Decompresses and returns an integer from internal storage.
-	*/
+	//! Decompresses and returns an integer from internal storage.
 	proto bool ReadInt(out int val);
-	/*!
-	Decompresses and returns an integer from internal storage.
-	*/
+	//! Decompresses and returns an integer from internal storage.
 	proto bool ReadIntRange(out int val, int min, int max);
-	/*!
-	Decompresses and returns a float from internal storage.
-	*/
+	//! Decompresses and returns a float from internal storage.
 	proto bool ReadHalf(out float val);
-	/*!
-	Decompresses and returns a float from internal storage.
-	*/
+	//! Decompresses and returns a float from internal storage.
 	proto bool ReadFloat01(out float val);
-	/*!
-	Decompresses and returns a float from internal storage.
-	*/
+	//! Decompresses and returns a float from internal storage.
 	proto bool ReadRadian(out float val);
-	/*!
-	Decompresses and returns a quaternion from internal storage.
-	*/
+	//! Decompresses and returns a quaternion from internal storage.
 	proto bool ReadQuaternion(out float val[4]);
-	/*!
-	Reads and returns a ResourceName from internal storage.
-	*/
+	//! Reads and returns a ResourceName from internal storage.
 	proto bool ReadResourceName(out ResourceName val);
-	/*!
-	Reads a string from internal storage.
-	*/
+	//! Reads a string from internal storage.
 	proto bool ReadString(out string val);
-	/*!
-	Returns the current position in internal storage in bits.
-	*/
+	//! Returns the current position in internal storage in bits.
 	proto native int Tell();
 
 	//----------------------------------------------------------------------------
@@ -513,23 +484,29 @@ class SSnapSerializerBase: Managed
 		this.SerializeBytes(val, 12);
 	}
 
-	//! Serialization of the BitSerializer type. The size is the amount of bytes
-	//! written/read from the bit serializer.
+	/*!
+	Serialization of the BitSerializer type. The size is the amount of bytes
+	written/read from the bit serializer.
+	*/
 	proto native bool Serialize(ScriptBitSerializer serializer, int sizeInBytes);
 
 	//! Returns the current position within the buffer with byte precision.
 	proto native int Tell();
 
-	//! Compares the insides of the buffer with provided pointer (bitwise). Size
-	//! is the amount of read bytes from the data.
+	/*!
+	Compares the insides of the buffer with provided pointer (bitwise). Size
+	is the amount of read bytes from the data.
+	*/
 	proto bool Compare(void data, int sizeInBytes);
 	bool CompareBool(bool val) { return Compare(val, 4); }
 	bool CompareInt(int val) { return Compare(val, 4); }
 	bool CompareFloat(float val) { return Compare(val, 4); }
 	bool CompareVector(vector val) { return Compare(val, 12); }
 
-	//! Compares the contents of two SnapSerialiers. The size is amount of bytes
-	//! used.
+	/*!
+	Compares the contents of two SnapSerialiers. The size is amount of bytes
+	used.
+	*/
 	proto native bool CompareSnapshots(SSnapSerializerBase snapshot, int sizeInBytes);
 
 	private void SSnapSerializerBase();
@@ -545,11 +522,14 @@ class SSnapshot : Managed
 //! Snapshot serializer utility.
 class SSnapSerializer : SSnapSerializerBase
 {
-	//! Creates a writer only serializer for given snapshot.
+	//! Creates a write-only serializer for given snapshot.
 	proto static ref SSnapSerializer MakeWriter(SSnapshot snap);
-	//! Creates a read only serializer for given snapshot.
+	//! Creates a read-only serializer for given snapshot.
 	proto static ref SSnapSerializer MakeReader(SSnapshot snap);
-
 	//! Sets current position within the buffer with byte precision.
 	proto native int Seek(int posInBytes);
 }
+
+/*!
+\}
+*/

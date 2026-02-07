@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 class BaseTimeAndWeatherManagerEntityClass: BaseWeatherManagerEntityClass
 {
-};
+}
 
 /*!
 Manager entity responsible for managing in-game time and weather,
@@ -20,11 +20,13 @@ providing the script and gamecode with usable in-game API.
 class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 {
 	proto external ref WeatherState GetCurrentWeatherState();
-	
+
 	//Returns true if the hour is inside the nighttime.
 	proto external bool IsNightHour(float hour24);
 	//Returns true if the hour is inside the daytime.
 	proto external bool IsDayHour(float hour24);
+	// Defines a callback that should be invoked at the specified time (format should be "HHMMSS" and TimeAndWeatherManager periodicity should be set accordingly)
+	proto void SetTimeEvent(string time, Managed inst, func callback, bool delayed = true, bool singleUse = false);
 	/*!
 	Gets moon phase for supplied time of the day.
 	\return phase in <0...1> range. 0 = new moon, 1 = full moon
@@ -32,14 +34,14 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	proto external float GetMoonPhase(float timeOfTheDay24);
 	/*!
 	Gets moon phase for supplied date, geo location is not needed but timezone yes in order to calculate UTC correctly.
-	
+
 	\param year Year.
 	\param month Month in range <1, 12>
 	\param day Day in range <1, 31>
 	\param timeOfTheDay24 Time of the day in 24 hour floating point format.
 	\param timezone TimeZone Offset in hours ranging <-12, +14>
 	\param dstOffset DST (daylight savings time) offset, must be 0.0 or positive value.
-	
+
 	\return phase in <0...1> range. 0 = new moon, 1 = full moon
 	*/
 	proto float GetMoonPhaseForDate(int year, int month, int day, float timeOfTheDay24, float timezone, float dstOffset);
@@ -48,7 +50,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	Only issuable by the authority.
 	Automatically broadcast to all clients.
 	You may check date validity prior to this call with CheckValidDate method.
-	
+
 	\param year Year
 	\param month Month (in 1-12 range)
 	\param day Day (in 1-31 range)
@@ -56,6 +58,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	\return Returns true when command is issued successfully and date is VALID, false otherwise.
 	*/
 	proto external bool SetDate(int year, int month, int day, bool immediateChange = false);
+	proto external void UpdateWeather(float timeSlice);
 	/*!
 	Sets the current time of the day.
 	Only issuable by the authority.
@@ -65,28 +68,36 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	\return Returns true when command is issued successfully, false otherwise.
 	Example:
 	@code
-	SetTimeOfTheDay(16.5);
-	int h, m, s;
-	GetHoursMinutesSeconds(h, m, s);
-	Print(h);
-	Print(m);
-	Print(s);
-	
-	>> int h = 16
-	>> int m = 30
-	>> int s = 00
+		SetTimeOfTheDay(16.5);
+		int h, m, s;
+		GetHoursMinutesSeconds(h, m, s);
+		Print(h);
+		Print(m);
+		Print(s);
+
+		>> int h = 16
+		>> int m = 30
+		>> int s = 00
 	@endcode
 	*/
 	proto external bool SetTimeOfTheDay(float hours24, bool immediateChange = false);
 	/*!
 	Checks if date is valid (checks for leap years and correct day of the month)
-	
+
 	\param year Year
 	\param month Month (in 1-12 range)
 	\param day Day (in 1-31 range)
 	\return Returns true when date is valid, false otherwise.
 	*/
 	proto external bool CheckValidDate(int year, int month, int day);
+	/*!
+	Retrieve current sun direction, moon direction and moon phase.
+
+	\param outSunDir Current sun direction
+	\param outMoonDir Current moon direction
+	\param outMoonPhase01 Moon phase (0 = new moon, 1 = full moon)
+	*/
+	proto void GetCurrentSunMoonDirAndPhase(out vector outSunDir, out vector outMoonDir, out float outMoonPhase01);
 	/*!
 	Retrieves the current time of the day.
 	\return Time fraction in hours <0.0, 24.0>
@@ -95,7 +106,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	SetTimeOfTheDay(16.5);
 	float totd = GetTimeOfTheDay();
 	Print(totd);
-	
+
 	>> float totd = 16.5
 	@endcode
 	*/
@@ -125,7 +136,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	/*!
 	Returns week day in range [0-6], starts at Monday=0, for the supplied date.
 	\return positive integer 0-6 representing each day of the week, starting at Monday.  -1 if supplied date is invalid.
-	
+
 	\param year Year.
 	\param month Month in range <1, 12>
 	\param day Day in range <1, 31>
@@ -170,7 +181,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	/*!
 	Gets sunrise hour in 24 hour format e.g. 12.50 is 12:30 A.M.
 	For specific date, geolocation, timezone and DST.
-	
+
 	\param year Year.
 	\param month Month in range <1, 12>
 	\param day Day in range <1, 31>
@@ -178,7 +189,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	\param longitude Longitude in range <-180.0, 180.0> where 0 equals (almost) greenwich meridian.
 	\param timezone TimeZone Offset in hours ranging <-12, +14>
 	\param dstOffset DST (daylight savings time) offset, must be 0.0 or positive value.
-	
+
 	\return True if there is a valid sunrise with current latitude/longitude/date configuration, false otherwise
 	*/
 	proto bool GetSunriseHourForDate(int year, int month, int day, float latitude, float longitude, float timezone, float dstOffset, out float hour24);
@@ -253,16 +264,16 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	\return Returns true when command is issued successfully, false otherwise.
 	Example:
 	@code
-	SetHoursMinutesSeconds(16, 30, 00);
-	int h, m, s;
-	GetHoursMinutesSeconds(h, m, s);
-	Print(h);
-	Print(m);
-	Print(s);
-	
-	>> int h = 16
-	>> int m = 30
-	>> int s = 00
+		SetHoursMinutesSeconds(16, 30, 00);
+		int h, m, s;
+		GetHoursMinutesSeconds(h, m, s);
+		Print(h);
+		Print(m);
+		Print(s);
+
+		>> int h = 16
+		>> int m = 30
+		>> int s = 00
 	@endcode
 	*/
 	proto external bool SetHoursMinutesSeconds(int hours, int minutes, int seconds, bool immediateChange = false);
@@ -282,7 +293,7 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	Print(h);
 	Print(m);
 	Print(s);
-	
+
 	>> int h = 16
 	>> int m = 30
 	>> int s = 00
@@ -371,6 +382,8 @@ class BaseTimeAndWeatherManagerEntity: BaseWeatherManagerEntity
 	*/
 	proto external float GetCurrentWaterAccumulationPuddles();
 	proto external void AddLightning(WeatherLightning lightning);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

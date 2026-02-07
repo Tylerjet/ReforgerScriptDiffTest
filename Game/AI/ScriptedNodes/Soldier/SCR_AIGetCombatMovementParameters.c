@@ -44,6 +44,7 @@ class SCR_AIGetCombatMovementParameters : AITaskScripted
 		
 		switch (threat)
 		{
+			case EAIThreatState.VIGILANT:
 			case EAIThreatState.SAFE:
 			{
 				stance = ECharacterStance.STAND;

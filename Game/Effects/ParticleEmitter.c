@@ -154,13 +154,7 @@ class SCR_ParticleEmitter : GenericEntity
 		typename type, ResourceName name, vector pos,
 		vector rot = "0 0 0", IEntity parent = null, int boneID = -1, bool play = true)
 	{
-		SCR_ParticleEmitter ent = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity(type));
-		
-		if (!ent)
-		{
-			Debug.Error("Unable to spawn a particle effect. " + type + " does not inherit SCR_ParticleEmitter.");
-			return null;
-		}
+		SCR_ParticleEmitter ent =SpawnParticleEmitter(ent, parent, type);
 		
 		ent.m_DeleteOnFinish = true;
 		ent.SetPathToPTC(name);
@@ -184,7 +178,7 @@ class SCR_ParticleEmitter : GenericEntity
 		typename type, ResourceName name, vector transform[4],
 		IEntity parent = null, int boneID = -1, bool play = true)
 	{
-		SCR_ParticleEmitter ent = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity(type));
+		SCR_ParticleEmitter ent =SpawnParticleEmitter(ent, parent, type);
 		
 		if (!ent)
 		{
@@ -201,6 +195,23 @@ class SCR_ParticleEmitter : GenericEntity
 		
 		if (play)
 			ent.Play();
+		
+		return ent;
+	}
+	
+	//-----------------------------------------------------------------------------------------------------------------
+	static SCR_ParticleEmitter SpawnParticleEmitter(SCR_ParticleEmitter ent, IEntity parent, typename type)
+	{
+		if (!parent)
+			ent = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity(type));
+		else
+		{
+			EntitySpawnParams spawnParams = new EntitySpawnParams;
+			spawnParams.TransformMode = ETransformMode.WORLD;
+			parent.GetWorldTransform(spawnParams.Transform);
+			
+			ent = SCR_ParticleEmitter.Cast(GetGame().SpawnEntity(type, parent.GetWorld(), spawnParams));
+		}
 		
 		return ent;
 	}
@@ -343,7 +354,7 @@ class SCR_ParticleEmitter : GenericEntity
 	{
 		bool finished = false;
 		if (m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PLAYING  ||  m_PlayState == SCR_ParticleEmitterClass.PLAYSTATE_PAUSED)
-			finished = Animate(timeSlice, 0);
+			finished = GetParticles().Simulate(timeSlice);
 		
 		if (finished)
 		{
@@ -401,7 +412,7 @@ class SCR_ParticleEmitter : GenericEntity
 	//----------------------------------------------------------------------------------------------------------------
 	void SCR_ParticleEmitter(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE | EntityFlags.VISIBLE, false);
+		SetFlags(EntityFlags.VISIBLE);
 		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
 	}
 	

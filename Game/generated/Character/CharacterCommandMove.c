@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 //! CharacterCommandMove
@@ -27,6 +27,8 @@ class CharacterCommandMove: CharacterCommand
 	proto external float GetMovementSlopeAngle();
 	proto external bool IsRolling();
 	proto external bool IsBlendingOutRoll();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

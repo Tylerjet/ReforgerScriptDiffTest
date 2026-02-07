@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class RiverEntityClass: GeneratorBaseEntityClass
 {
-};
+}
 
 /*!
 Entity for a single river.
@@ -25,6 +25,8 @@ places them to the world and manages them.
 */
 class RiverEntity: GeneratorBaseEntity
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

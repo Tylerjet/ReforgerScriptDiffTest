@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 sealed class BaseWorld: pointer
@@ -153,10 +153,10 @@ sealed class BaseWorld: pointer
 	\param entity		entity where the Track should be created (only terrain is supported ATM)
 	\param origin		first point of the decal, nothing is done now
 	\param normal		normal of surface
-	\param edgesize	Edge size of decal
-	\param lifetime	Lifetime in seconds
+	\param edgeSize	Edge size of decal
+	\param lifeTime	Lifetime in seconds
 	\param materialName Material used for decal
-	\param prev			Previous decal, we are connecting to
+	\param prevDecal	Previous decal, we are connecting to
 	\param alpha		translucency of point
 	\return TrackDecal pointer or null
 	*/
@@ -247,6 +247,8 @@ sealed class BaseWorld: pointer
 	proto external void UpdateEntities();
 	//! Create new empty BaseWorld
 	static proto SharedItemRef CreateWorld(string type, string name);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

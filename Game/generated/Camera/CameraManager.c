@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Camera
-* @{
+/*!
+\addtogroup Camera
+\{
 */
 
 class CameraManagerClass: GenericEntityClass
 {
-};
+}
 
 class CameraManager: GenericEntity
 {
@@ -78,13 +78,15 @@ class CameraManager: GenericEntity
 	Returns maximum allowed field of view value.
 	*/
 	proto external float GetMaxFOV();
-	
+
 	// callbacks
-	
+
 	/*!
 	Called on initialization.
 	*/
 	event protected void OnInit();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

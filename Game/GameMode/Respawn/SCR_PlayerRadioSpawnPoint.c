@@ -28,10 +28,10 @@ class SCR_PlayerRadioSpawnPoint: SCR_PlayerSpawnPoint
 		}
 		
 		//--- If the player currently has a radio backpack, activate the spawn point instantly
-		BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(m_TargetPlayer.FindComponent(BaseLoadoutManagerComponent));
-		if (loadoutManager)
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(m_TargetPlayer.FindComponent(EquipedLoadoutStorageComponent));
+		if (loadoutStorage)
 		{
-			IEntity backpack = loadoutManager.GetClothByArea(LoadoutBackpackArea);
+			IEntity backpack = loadoutStorage.GetClothFromArea(LoadoutBackpackArea);
 			if (backpack)
 				OnItemAdded(backpack, null);
 		}

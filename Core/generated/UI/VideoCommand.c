@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 enum VideoCommand
@@ -16,7 +16,9 @@ enum VideoCommand
 	REWIND,
 	POSITION,
 	REPEAT,
-	ISPLAYING
-};
+	ISPLAYING,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -360,6 +360,7 @@ class SCR_CallsignGroupComponent : SCR_CallsignBaseComponent
 			/*{
 				if (m_CallsignInfo.GetIsAssignedRandomly())
 				{
+					Math.Randomize(-1);
 					int randomIndex = Math.RandomInt(0, availibleRandomCallsigns.Count());
 					int randomCharacterCallsign = availibleRandomCallsigns[randomIndex];
 					availibleRandomCallsigns.Remove(randomIndex);

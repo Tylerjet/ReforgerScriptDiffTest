@@ -44,15 +44,21 @@ class SCR_VehicleTagData : SCR_NameTagData
 	override void GetName(out string name, out notnull array<string> nameParams)
 	{
 		int count = m_aPassengers.Count();
-		if (count > 1)
-			m_sName = m_aPassengers[0].m_sName + "  (+" + (count - 1).ToString() + ")";
-		else if (count == 1)
-			m_sName = m_aPassengers[0].m_sName;
-		else 
+		if (count <= 0)
+		{
 			m_sName = string.Empty;
+			nameParams.Copy(m_aNameParams);
+			return;
+		}
+		else 
+		{
+			m_aPassengers[0].GetName(m_sName, nameParams);
+
+			if (count > 1)
+				m_sName = m_sName + "  (+" + (count - 1).ToString() + ")";
+		}
 		
 		name = m_sName;
-		nameParams.Copy(m_aNameParams);
 	}
 	
 	//------------------------------------------------------------------------------------------------

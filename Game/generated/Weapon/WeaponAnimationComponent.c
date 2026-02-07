@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class WeaponAnimationComponentClass: BaseItemAnimationComponentClass
 {
-};
+}
 
 class WeaponAnimationComponent: BaseItemAnimationComponent
 {
@@ -21,6 +21,8 @@ class WeaponAnimationComponent: BaseItemAnimationComponent
 	proto external void FoldWeapon(bool fastForwardAnimations = false);
 	proto external void UnfoldWeapon(bool fastForwardAnimations = false);
 	proto external bool IsFolded();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

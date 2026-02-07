@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup GameMode
-* @{
+/*!
+\addtogroup GameMode
+\{
 */
 
 class BaseGameModeClass: GenericEntityClass
 {
-};
+}
 
 class BaseGameMode: GenericEntity
 {
@@ -105,6 +105,8 @@ class BaseGameMode: GenericEntity
 	event protected void OnPlayerRoleChange(int playerId, EPlayerRole roleFlags) {};
 	//! Event called once loading of all entities of the world have been finished. (still within the loading)
 	event void OnWorldPostProcess(World world) {};
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

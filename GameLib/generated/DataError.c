@@ -15,5 +15,5 @@ enum DataError
 	//! World could not be loaded.
 	WORLD_LOAD_ERROR,
 	//! Replicated parts of world do not match between client and server.
-	WORLD_LOAD_INCONSISTENCY
-};
+	WORLD_LOAD_INCONSISTENCY,
+}

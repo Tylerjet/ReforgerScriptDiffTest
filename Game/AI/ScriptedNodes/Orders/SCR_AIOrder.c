@@ -11,7 +11,7 @@ enum EOrderType_Character
 	COMBAT_TYPE,
 };
 
-class SCR_AIOrderBase : AIOrder
+class SCR_AIOrderBase : AIOrder // MESSAGE_CLASS()
 {
 	[Attribute("0", UIWidgets.ComboBox, "Type of event generating the order", "", ParamEnumArray.FromEnum(EOrderType_Character) )]
 	EOrderType_Character m_eUIType;
@@ -28,9 +28,9 @@ class SCR_AIOrderBase : AIOrder
 	}
 };
 
-class SCR_AIOrder_Stance : SCR_AIOrderBase
+class SCR_AIOrder_Stance : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_Stance)
 {
-	ECharacterStance m_eStance;
+	ECharacterStance m_eStance; // VARIABLE(NodePort, Stance, NodePropertyEnum, m_eStance)
 	
 	void SCR_AIOrder_Stance()
 	{
@@ -61,9 +61,9 @@ class SCR_AIOrder_Stance : SCR_AIOrderBase
 	}
 };
 
-class SCR_AIOrder_WeaponRaised : SCR_AIOrderBase
+class SCR_AIOrder_WeaponRaised : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_WeaponRaised)
 {
-	int m_bWeaponRaised;
+	bool m_bWeaponRaised; // VARIABLE(NodePort, WeaponRaised, NodeProperty, m_bWeaponRaised)
 	
 	void SCR_AIOrder_WeaponRaised()
 	{
@@ -72,9 +72,10 @@ class SCR_AIOrder_WeaponRaised : SCR_AIOrderBase
 	
 	override void GetOrderParameters(SCR_AIProcessOrder node)
 	{
+		int iWeaponRaised = m_bWeaponRaised;
 		node.SetVariableOut(node.ORDER_TYPE, EOrderType_Character.WEAPON_RAISED);
 		node.SetVariableOut(node.SCRIPTED_ORDER, true);
-		node.SetVariableOut(node.ORDER_VALUE, m_bWeaponRaised);
+		node.SetVariableOut(node.ORDER_VALUE, iWeaponRaised);
 		if (node.m_bDebugMe) 
 			node.m_sDebugString = "Weapon raised "+ m_bWeaponRaised.ToString() + " by " + node.m_Order.GetText();
 	}
@@ -87,9 +88,9 @@ class SCR_AIOrder_WeaponRaised : SCR_AIOrderBase
 	}
 };
 
-class SCR_AIOrder_MovementType : SCR_AIOrderBase
+class SCR_AIOrder_MovementType : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_MovementType)
 {
-	EMovementType m_eMovementType;
+	EMovementType m_eMovementType; // VARIABLE(NodePort, MovementType, NodePropertyEnum, m_eMovementType)
 	
 	void SCR_AIOrder_MovementType()
 	{
@@ -113,7 +114,7 @@ class SCR_AIOrder_MovementType : SCR_AIOrderBase
 	}
 };
 
-class SCR_AIOrder_ReturnToDefault : SCR_AIOrderBase
+class SCR_AIOrder_ReturnToDefault : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_ReturnToDefault)
 {
 	void SCR_AIOrder_ReturnToDefault()
 	{
@@ -129,9 +130,9 @@ class SCR_AIOrder_ReturnToDefault : SCR_AIOrderBase
 	}	
 };
 
-class SCR_AIOrder_WeaponType : SCR_AIOrderBase
+class SCR_AIOrder_WeaponType : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_WeaponType)
 {
-	EWeaponType m_eWeaponType;
+	EWeaponType m_eWeaponType; // VARIABLE(NodePort, WeaponType, NodePropertyEnum, m_eWeaponType)
 	
 	void SCR_AIOrder_WeaponType()
 	{
@@ -155,9 +156,9 @@ class SCR_AIOrder_WeaponType : SCR_AIOrderBase
 	}
 };
 
-class SCR_AIOrder_AIState : SCR_AIOrderBase
+class SCR_AIOrder_AIState : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_AIState)
 {
-	EUnitAIState m_eAIState;
+	EUnitAIState m_eAIState; // VARIABLE(NodePort, AIState, NodePropertyEnum, m_eAIState)
 	
 	void SCR_AIOrder_AIState()
 	{
@@ -181,9 +182,9 @@ class SCR_AIOrder_AIState : SCR_AIOrderBase
 	}
 };
 
-class SCR_AIOrder_Unit_State : SCR_AIOrderBase
+class SCR_AIOrder_Unit_State : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_UnitState)
 {
-	EUnitState m_eUnitState;
+	EUnitState m_eUnitState; // VARIABLE(NodePort, UnitState, NodePropertyEnum, m_eUnitState)
 	
 	void SCR_AIOrder_State()
 	{
@@ -207,9 +208,9 @@ class SCR_AIOrder_Unit_State : SCR_AIOrderBase
 	}
 };
 
-class SCR_AIOrder_CombatType : SCR_AIOrderBase
+class SCR_AIOrder_CombatType : SCR_AIOrderBase // MESSAGE_CLASS(GenerateSendOrder, SCR_AISendOrder_CombatType)
 {
-	EAICombatType m_eCombatType;
+	EAICombatType m_eCombatType; // VARIABLE(NodePort, CombatType, NodePropertyEnum, m_eCombatType)
 	
 	void SCR_AIOrder_CombatType()
 	{

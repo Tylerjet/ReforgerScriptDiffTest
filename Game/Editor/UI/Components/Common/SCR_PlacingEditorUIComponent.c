@@ -53,6 +53,9 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		if (!CanClick() || !m_bCanPlace || (m_StatesManager && m_StatesManager.GetState() != EEditorState.PLACING))
 			return;
 		
+		if (!m_PreviewEntityManager.CanMoveInRoot() && !m_PreviewEntityManager.GetTarget())
+			return;
+		
 		//--- Map is opened, placing not possible
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
 		if (mapEntity && mapEntity.IsOpen())
@@ -171,6 +174,14 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 
 		ProcessInput(tDelta);
 	}
+	protected void OnMenuFocusGained()
+	{
+		GetMenu().GetOnMenuUpdate().Insert(OnMenuUpdate);
+	}
+	protected void OnMenuFocusLost()
+	{
+		GetMenu().GetOnMenuUpdate().Remove(OnMenuUpdate);
+	}
 	override protected bool CanShowAsDisabled()
 	{
 		return !m_PlacingManager.CanCreateEntity();
@@ -203,6 +214,8 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		if (menu)
 		{
 			menu.GetOnMenuUpdate().Insert(OnMenuUpdate);
+			menu.GetOnMenuFocusGained().Insert(OnMenuFocusGained);
+			menu.GetOnMenuFocusLost().Insert(OnMenuFocusLost);
 		}
 		
 		ArmaReforgerScripted game = GetGame();
@@ -230,6 +243,8 @@ class SCR_PlacingEditorUIComponent: SCR_PreviewEntityEditorUIComponent
 		if (menu)
 		{
 			menu.GetOnMenuUpdate().Remove(OnMenuUpdate);
+			menu.GetOnMenuFocusGained().Remove(OnMenuFocusGained);
+			menu.GetOnMenuFocusLost().Remove(OnMenuFocusLost);
 		}
 		
 		ArmaReforgerScripted game = GetGame();

@@ -49,6 +49,21 @@ class SCR_DestructibleBuildingEntity : Building
 	[Attribute("", UIWidgets.ResourceNamePicker, "The building configuration object to use for this building", "conf", category: "Destruction Building")]
 	protected ResourceName m_BuildingConfig;
 	
+	[Attribute(uiwidget: UIWidgets.Hidden)]
+	protected int m_iId;
+	
+	//-----------------------------------------------------------------------
+	int GetBuildingId()
+	{
+		return m_iId;
+	}
+	
+	//-----------------------------------------------------------------------
+	void SetBuildingId(int id)
+	{
+		m_iId = id;
+	}
+	
 	#ifdef ENABLE_BUILDING_DESTRUCTION
 		#ifdef WORKBENCH
 			[Attribute("0", UIWidgets.CheckBox, "Check to update various data in the config (must be defined)", category: "EDITOR: Destruction Building")]
@@ -482,8 +497,7 @@ class SCR_DestructibleBuildingEntity : Building
 				
 				m_SoundComponent.SetSignalValueStr("partSoundID", region);
 				m_SoundComponent.SetSignalValueStr("Distance", vector.Distance(camMat[3], SCR_EntityHelper.GetEntityCenterWorld(regionEnt)));
-				m_SoundComponent.SetTransformation(regionMat);
-				m_SoundComponent.PlayStr(SCR_SoundEvent.SOUND_BUILDING_CRACK);
+				m_SoundComponent.SoundEventTransform(SCR_SoundEvent.SOUND_BUILDING_CRACK, regionMat)
 			}
 		}
 		
@@ -1450,7 +1464,6 @@ class SCR_DestructibleBuildingEntity : Building
 			//SetFlags(EntityFlags.ACTIVE, false);
 			#ifdef BUILDING_DESTRUCTION_DEBUG
 				SetEventMask(EntityEvent.FRAME);
-				SetFlags(EntityFlags.ACTIVE, false);
 			#endif
 			SetEventMask(EntityEvent.INIT);
 			

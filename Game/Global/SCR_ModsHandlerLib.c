@@ -135,12 +135,8 @@ class SCR_ModHandlerLib
 		if (!dependency)
 			return false;
 			
-		// Does active version match required?
-		string ActiveV = item.GetCurrentLocalVersion();
-		string RequiredV = dependency.GetVersion();
-		
-		return (ActiveV == RequiredV);
-	
+		// Does active version match required?		
+		return Revision.AreEqual(item.GetCurrentLocalRevision(), dependency.GetRevision());
 	}
 };
 

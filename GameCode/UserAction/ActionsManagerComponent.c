@@ -16,7 +16,7 @@ class ActionsManagerComponent : BaseActionsManagerComponent
 	//! to modify ("nicify") the name of a context
 	//! \param name Original name that is used for the context point info (bone source)
 	//! \param return Modified (nicified) version of string
-	protected string NicifyGeneratedContextName(string name)
+	override protected string NicifyGeneratedContextName(string name)
 	{
 		
 		// Check collider prefixes and cut them

@@ -2,6 +2,8 @@ class SCR_RadialMenuVisualsCommands : SCR_RadialMenuVisuals
 {
 	protected const int METERS_TO_KM_THRESHOLD = 1000;
 	
+	protected ref SCR_PhysicsHelper m_PhysicsHelper;
+	
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnOpen(IEntity owner)
 	{
@@ -36,31 +38,48 @@ class SCR_RadialMenuVisualsCommands : SCR_RadialMenuVisuals
 	
 	//------------------------------------------------------------------------------------------------
 	void UpdateTargetDistance()
+	{		
+		m_PhysicsHelper = new SCR_PhysicsHelper();
+		m_PhysicsHelper.GetOnTraceFinished().Insert(UpdateTargetDistanceCallback);
+		
+		PlayerController controller = GetGame().GetPlayerController();
+		PlayerCamera camera = controller.GetPlayerCamera();
+		if (!camera)
+			return;
+		
+		IEntity controlledEntity = controller.GetControlledEntity();
+		
+		vector mat[4];
+		camera.GetTransform(mat);
+		vector end = mat[3] + mat[2] * 20000;
+	
+		m_PhysicsHelper.TraceSegmented(mat[3], end, TraceFlags.ENTS | TraceFlags.WORLD | TraceFlags.ANY_CONTACT, EPhysicsLayerDefs.Projectile, controlledEntity);
+	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void UpdateTargetDistanceCallback(vector position, IEntity entity)
 	{
 		TextWidget distanceText = TextWidget.Cast(m_wRoot.FindAnyWidget("RichTxtDistance"));
 		if (!distanceText)
 			return;
 		
 		PlayerController playerControl = GetGame().GetPlayerController();
+		if (!playerControl)
+			return;
 		
-		
-		vector targetPosition, playerPosition;
-		int distance;
-		playerControl.GetPlayerCamera().GetCursorTargetWithPosition(targetPosition);
-		if (targetPosition == vector.Zero)
+		if (position == vector.Zero)
 		{
 			distanceText.SetText("#AR-Commanding_Distance_Empty_Meters");
 			return;
 		}
 		
-		playerPosition = playerControl.GetControlledEntity().GetOrigin();
-		
-		
-		distance = vector.Distance(targetPosition, playerPosition);
+		vector playerPosition = playerControl.GetControlledEntity().GetOrigin();
+		float distance = vector.Distance(position, playerPosition);
 		
 		if (distance < METERS_TO_KM_THRESHOLD)
 		{
-			distanceText.SetTextFormat("#AR-ValueUnit_Short_Meters", distance);
+			distanceText.SetTextFormat("#AR-ValueUnit_Short_Meters", Math.Round(distance));
 			return;
 		}
 		

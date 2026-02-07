@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class ImageWidget: Widget
@@ -114,6 +114,8 @@ sealed class ImageWidget: Widget
 	proto external vector GetSize();
 	//! Sets user defined size used in "Size to content" scenarios
 	proto external void SetSize(float width, float height);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

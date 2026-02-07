@@ -32,13 +32,6 @@ class SCR_CampaignTriggerEntity : ScriptedGameTriggerEntity
 	//****************//
 	
 	//------------------------------------------------------------------------------------------------
-	//! Override this method in inherited class to define a new filter.
-	override bool ScriptedEntityFilterForQuery(IEntity ent)
-	{
-		return DefaultEntityFilterForQuery(ent);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! callback - activation - occurs when and entity which fulfills the filter definitions enters the Trigger
 	override void OnActivate(IEntity ent);
 	
@@ -68,8 +61,6 @@ class SCR_CampaignTriggerEntity : ScriptedGameTriggerEntity
 			if (base)
 				base.RegisterTrigger(this);
 		}
-		
-		ClearFlags(EntityFlags.ACTIVE, false);
 	}
 	
 	//************************//
@@ -80,7 +71,6 @@ class SCR_CampaignTriggerEntity : ScriptedGameTriggerEntity
 	void SCR_CampaignTriggerEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

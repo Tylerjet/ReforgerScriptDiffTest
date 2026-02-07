@@ -79,7 +79,7 @@ class SCR_AISendMessageGeneric: SCR_AISendMessageBase
 	static const string PORT_FLOAT = "FloatIn";	
 	static const string PORT_TYPENAME = "TypenameIn";
 	static const string PORT_SMARTACTION = "SmartActionComponent";
-	static const string PORT_PRIORITIZE = "Prioritize";	
+	static const string PORT_PRIORITY_LEVEL = "PriorityLevel";
 	
 	
 	[Attribute("0", UIWidgets.EditBox, "Integer value", "")]
@@ -103,15 +103,15 @@ class SCR_AISendMessageGeneric: SCR_AISendMessageBase
 		PORT_BOOL,
 		PORT_FLOAT,
 		PORT_TYPENAME,
-		PORT_PRIORITIZE
+		PORT_PRIORITY_LEVEL
 	};
-    override TStringArray GetVariablesIn()
-    {
-        return s_aVarsIn;
-    }
+	override TStringArray GetVariablesIn()
+	{
+		return s_aVarsIn;
+	}
 	
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-    {
+	{
 		if (InitSendMessageInputs(owner))
 			return ENodeResult.SUCCESS;
 		
@@ -142,7 +142,3 @@ class SCR_AISendMessageGeneric: SCR_AISendMessageBase
 		return false;
 	}
 };
-
-
-
-

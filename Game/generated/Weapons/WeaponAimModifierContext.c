@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapons
-* @{
+/*!
+\addtogroup Weapons
+\{
 */
 
 /*!
@@ -15,6 +15,8 @@ their behavior by providing situational context.
 */
 class WeaponAimModifierContext: Managed
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

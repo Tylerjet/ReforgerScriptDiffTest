@@ -5,7 +5,7 @@ class SCR_ScriptedSignalUserActionIncrease : ScriptedSignalUserAction
 	[Attribute( defvalue: "0.5", uiwidget: UIWidgets.EditBox, desc: "How fast the signal will change." )]
 	private float m_fSpeed;
 	
-	override void PerformScriptedContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice)
+	override void PerformContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice)
 	{
 		SetSignalValue(GetCurrentValue() + timeSlice * m_fSpeed);
 	}

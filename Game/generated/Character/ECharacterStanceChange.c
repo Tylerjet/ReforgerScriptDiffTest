@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum ECharacterStanceChange
@@ -14,7 +14,9 @@ enum ECharacterStanceChange
 	STANCECHANGE_NONE,
 	STANCECHANGE_TOERECTED,
 	STANCECHANGE_TOCROUCH,
-	STANCECHANGE_TOPRONE
-};
+	STANCECHANGE_TOPRONE,
+}
 
-/** @}*/
+/*!
+\}
+*/

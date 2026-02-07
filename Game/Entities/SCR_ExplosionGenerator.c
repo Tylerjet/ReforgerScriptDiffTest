@@ -33,7 +33,6 @@ class SCR_ExplosionGenerator: GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_ExplosionGenerator(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 
 		for(int i = 0; i < m_ProjectilesToTrigger.Count(); i++)
@@ -53,7 +52,6 @@ class SCR_ExplosionGenerator: GenericEntity
 		//end conditions, no need to keep updating the object
 		if (m_NumExplosions == 0 && m_RemainingDuration < 0 || m_NumExplosions != 0 && m_RemainingExplosions <= 0)
 		{
-			ClearFlags(EntityFlags.ACTIVE, false);
 			ClearEventMask(EntityEvent.FRAME);
 			return;
 		}

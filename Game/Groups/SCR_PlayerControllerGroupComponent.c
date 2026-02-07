@@ -10,8 +10,9 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	// Map with playerID and list of groups the player was invited to
 	protected ref map<int, ref array<int>> m_mPlayerInvitesToGroups;
 	protected ref ScriptInvoker<int, int> m_OnInviteReceived = new ScriptInvoker<int, int>();
-	protected ref ScriptInvoker<int> m_OnInviteAccepted = new ScriptInvoker<int>();
-	protected ref ScriptInvoker<int> m_OnInviteCancelled = new ScriptInvoker<int>();
+	protected ref ScriptInvoker<int> m_OnInviteAccepted;
+	protected ref ScriptInvoker<int> m_OnInviteCancelled;
+	protected ref ScriptInvoker<int> m_OnGroupChanged;
 
 	protected int m_iUISelectedGroupID = -1;
 	protected int m_iGroupInviteID = -1;
@@ -217,7 +218,8 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		{
 			RequestJoinGroup(m_iGroupInviteID);
 			m_iGroupInviteID = -1;
-			m_OnInviteAccepted.Invoke();
+			if (m_OnInviteAccepted)
+				m_OnInviteAccepted.Invoke();
 		}
 	}
 	
@@ -348,9 +350,6 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		if (!InitiateComponents(playerID, groupsManager, playerGroupController, group))
 			return;
 		
-		if (!group.IsPlayerLeader(GetPlayerID()))
-			return;
-		
 		groupsManager.SetPrivateGroup(group.GetGroupID(), isPrivate);
 	}
 	
@@ -369,8 +368,11 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 		{
 			//reset the invite if player manually joined the group he is invited into
 			m_iGroupInviteID = -1;
-			m_OnInviteCancelled.Invoke();
+			if (m_OnInviteCancelled)
+				m_OnInviteCancelled.Invoke();
 		}
+		if (m_OnGroupChanged)
+			m_OnGroupChanged.Invoke(groupID);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -423,12 +425,24 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnInviteAccepted()
 	{
+		if (!m_OnInviteAccepted)
+			m_OnInviteAccepted =  new ScriptInvoker<int>();
 		return m_OnInviteAccepted;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	ScriptInvoker GetOnGroupChanged()
+	{
+		if (!m_OnGroupChanged)
+			m_OnGroupChanged =  new ScriptInvoker<int>();
+		return m_OnGroupChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnInviteCancelled()
 	{
+		if (!m_OnInviteCancelled)
+			m_OnInviteCancelled =  new ScriptInvoker<int>();
 		return m_OnInviteCancelled;
 	}
 	
@@ -479,6 +493,81 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void RequestSetGroupMaxMembers(int groupID, int maxMembers)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+		
+		if (group.GetMaxMembers() == maxMembers || maxMembers < 0)
+			return;
+		
+		Rpc(RPC_AskSetGroupMaxMembers, groupID, maxMembers);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskSetGroupMaxMembers(int groupID, int maxMembers)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+		
+		if (group.GetMaxMembers() == maxMembers || maxMembers < 0)
+			return;
+		
+		group.SetMaxMembers(maxMembers);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! sets custom frequency (KHz) for a group. Can set frequency that is already claimed. 
+	//! Claims set frequency if not already claimed.
+	//! Frequency set by this method will not be used by automatically created groups.
+	void RequestSetCustomFrequency(int groupID, int frequency)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+		
+		if (group.GetRadioFrequency() == frequency || frequency < 0)
+			return;
+		
+		Rpc(RPC_AskSetFrequency, groupID, frequency);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestSetNewGroupsAllowed(bool isAllowed)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
+			return;
+		
+		Rpc(RPC_AskSetNewGroupsAllowed, isAllowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestSetCanPlayersChangeAttributes(bool isAllowed)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
+			return;
+		
+		Rpc(RPC_AskSetCanPlayersChangeAttributes, isAllowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void RequestSetCustomGroupName(int groupID, string name)
 	{
 		Rpc(RPC_AskSetCustomName, groupID, name, SCR_PlayerController.GetLocalPlayerId());
@@ -497,6 +586,91 @@ class SCR_PlayerControllerGroupComponent : ScriptComponent
 			return;
 		
 		group.SetCustomName(name, authorID);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskSetNewGroupsAllowed(bool isAllowed)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
+			return;
+		
+		groupsManager.SetNewGroupsAllowed(isAllowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskSetCanPlayersChangeAttributes(bool isAllowed)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager || isAllowed == groupsManager.GetNewGroupsAllowed())
+			return;
+		
+		groupsManager.SetCanPlayersChangeAttributes(isAllowed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskSetFrequency(int groupID, int frequency)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+		
+		if (group.GetRadioFrequency() == frequency || frequency < 0)
+			return;
+		
+		SCR_Faction groupFaction = SCR_Faction.Cast(group.GetFaction());
+		if (!groupFaction)
+			return;
+		
+		int formerFrequency = group.GetRadioFrequency();
+		int foundGroupsWithFrequency = 0;
+		
+		//no null check here because the array will always at least contain the group that was passed as parameter into this method
+		array<SCR_AIGroup> existingGroups = groupsManager.GetPlayableGroupsByFaction(groupFaction);
+		
+		foreach (SCR_AIGroup checkedGroup: existingGroups)
+		{
+			if (checkedGroup.GetRadioFrequency() == formerFrequency)
+				foundGroupsWithFrequency++;
+		}
+		
+		//if there is only our group with this frequency or none, release it before changing our frequency
+		if (foundGroupsWithFrequency <= 1)
+			groupsManager.ReleaseFrequency(formerFrequency, groupFaction);
+		
+		//if the new frequency is unclaimed, claime it so newly created groups do not get it by default
+		if (!groupsManager.IsFrequencyClaimed(frequency, groupFaction))
+			groupsManager.ClaimFrequency(frequency, groupFaction);
+		
+		group.SetRadioFrequency(frequency);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RequestSetGroupFlag(int groupID, int flagIndex)
+	{
+		Rpc(RPC_AskSetGroupFlag, groupID, flagIndex);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	[RplRpc(RplChannel.Reliable, RplRcver.Server)]
+	void RPC_AskSetGroupFlag(int groupID, int flagIndex)
+	{
+		SCR_GroupsManagerComponent groupsManager = SCR_GroupsManagerComponent.GetInstance();
+		if (!groupsManager)
+			return;
+		
+		SCR_AIGroup group = groupsManager.FindGroup(groupID);
+		if (!group)
+			return;
+		
+		group.SetGroupFlag(flagIndex);		
 	}
 	
 		//------------------------------------------------------------------------------------------------

@@ -30,12 +30,16 @@ class SCR_AIGetSAWaypointAttributes : AITaskScripted
 	//------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if (!owner)
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
 			return ENodeResult.FAIL;
+		}
 		
 		AIWaypoint wp;
 		if(!GetVariableIn(WAYPOINT_PORT,wp))
-			wp = owner.GetCurrentWaypoint();
+			wp = group.GetCurrentWaypoint();
 		if (!wp)
 			return ENodeResult.FAIL;
 		

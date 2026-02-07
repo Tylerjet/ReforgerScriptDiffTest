@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class CharacterControllerComponentClass: PrimaryControllerComponentClass
 {
-};
+}
 
 class CharacterControllerComponent: PrimaryControllerComponent
 {
@@ -104,21 +104,24 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	*/
 	proto external IEntity GetInspectEntity();
 	/*!
-	Sets inspection state if inspection state is enabled.
-	\param state Desired state.
+	Sets inspection state if inspection is enabled.
+	\param state Target state, 0 = default, 1 = alternate.
 	*/
-	proto external void SetInspectState(float state);
+	proto external void SetInspectState(int state);
 	/*!
-	Returns inspection state if inspection state is enabled.
-	\return Returns desired state.
+	Returns inspection state if inspection is enabled.
+	\return Returns desired state, see SetInspectState.
 	*/
-	proto external float GetInspectState();
+	proto external int GetInspectState();
 	/*!
 	Returns true if weapon is deployed and stabilized.
-	
-	This can for example occur when a character is prone using a weapon that has deployed bipod.
 	*/
 	proto external bool GetIsWeaponDeployed();
+	/*!
+	Returns true if weapon is deployed and stabilized using a bipod.
+	*/
+	proto external bool GetIsWeaponDeployedBipod();
+	proto external IEntity GetCurrentItemInHands();
 	//! CharacterStanceChange STANCECHANGE_NONE = 0, STANCECHANGE_TOERECTED = 1, STANCECHANGE_TOCROUCH = 2, STANCECHANGE_TOPRONE = 3
 	proto external void SetStanceChange(int stance);
 	//! CharacterStanceChange STANCECHANGE_NONE = 0, STANCECHANGE_TOERECTED = 1, STANCECHANGE_TOCROUCH = 2, STANCECHANGE_TOPRONE = 3
@@ -165,7 +168,6 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool IsUsingItem();
 	proto external bool IsMeleeAttack();
 	proto external bool CanEngageChangeItem();
-	proto external bool TryDeployWeapon();
 	//! Set weapon on character with switching animations. If true, the request was successful
 	proto external bool SelectWeapon(BaseWeaponComponent newWeapon);
 	proto external bool SetMuzzle(int index);
@@ -191,7 +193,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external bool CanReviveCharacter();
 	proto external void EnableReviveCharacter(bool enabled);
 	//! Dying
-	proto external void Ragdoll();
+	proto external void Ragdoll(bool broadcast = true);
 	//! Kills the character. Skips invincibility checks.
 	proto external void ForceDeath();
 	/* @NOTE(Leo): Temp solution, eventually will be solved by setting respective gadget graph attachments,
@@ -272,10 +274,15 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external void DropWeapon(WeaponSlotComponent weaponSlot);
 	//! Makes character drop item from left hand.
 	proto external void DropItemFromLeftHand();
+	proto external void StopDeployment();
 	// Script
 	proto external void RequestActionByID(int actionID, float value);
 	//! Returns true if the character is partially lowered.
 	proto external bool IsPartiallyLowered();
+	//! Returns true if the character can partially lower (weapon).
+	proto external bool CanPartialLower();
+	//! Sets desired partial lower state, if allowed.
+	proto external void SetPartialLower(bool state);
 	//! Returns the aiming angles in radians
 	proto external vector GetAimingAngles();
 	//! Returns the weapon angles in degrees
@@ -357,9 +364,9 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	proto external CharacterStaminaComponent GetStaminaComponent();
 	// Check if character is not moving and not any other locomotion related action is being performed
 	proto external bool IsCharacterStationary();
-	
+
 	// callbacks
-	
+
 	event void OnInspectionModeChanged(bool newState);
 	/*!
 	Called during EOnInit.
@@ -405,6 +412,8 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	event protected void OnItemDroppedFromLeftHand(IEntity pItemEntity);
 	//! Called when a player has been assigned to this controller
 	event protected void OnControlledByPlayer(IEntity owner, bool controlled);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

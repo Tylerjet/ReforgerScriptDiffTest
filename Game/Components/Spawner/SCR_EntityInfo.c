@@ -16,8 +16,8 @@ class SCR_EntityInfo
 	[Attribute("-1", desc: "Cost of entity to spawn. Set -1 to ignore cost.", category: "Entity Info", params: "-1 inf 0.0000000001")]
 	protected float m_fCost;
 	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Lowest rank that can request this vehicle.", enums: ParamEnumArray.FromEnum(ECharacterRank))]
-	protected ECharacterRank m_eRankID;
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Lowest rank that can request this vehicle.", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_eRankID;
 	
 	[Attribute(defvalue: "", uiwidget: UIWidgets.Auto, desc: "Custom name for entity to be shown in selection.")]
 	protected string m_sEntityName;
@@ -137,7 +137,7 @@ class SCR_EntityInfo
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ECharacterRank GetMinimumRankID()
+	SCR_ECharacterRank GetMinimumRankID()
 	{
 		return m_eRankID;
 	}

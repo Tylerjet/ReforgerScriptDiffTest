@@ -38,7 +38,7 @@ class SCR_AIGetLookParameters : AITaskScripted
 	protected override bool VisibleInPalette() {return true;}
 	protected override string GetOnHoverDescription() {return "Gets parameters of a lookAction";}
 	
-	override void OnEnter(AIAgent owner)
+	override void OnInit(AIAgent owner)
 	{
 		SCR_AIUtilityComponent utility = SCR_AIUtilityComponent.Cast(owner.FindComponent(SCR_AIUtilityComponent));
 		if (utility)
@@ -51,7 +51,7 @@ class SCR_AIGetLookParameters : AITaskScripted
 		PORT_LOOK_POSITION
 	};
 	override TStringArray GetVariablesOut()
-    {
-        return s_aVarsOut;
-    }
+	{
+		return s_aVarsOut;
+	}
 };

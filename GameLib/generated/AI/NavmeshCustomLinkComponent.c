@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 class NavmeshCustomLinkComponentClass: GenericComponentClass
 {
-};
+}
 
 class NavmeshCustomLinkComponent: GenericComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

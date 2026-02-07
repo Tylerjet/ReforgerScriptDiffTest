@@ -29,5 +29,5 @@ enum BattlEyeKickReason
 	//! "Admin Ban #REASON" - the player has been banned by server administrator
 	ADMIN_BAN,
 	//! "Admin Kick (REASON)" - the player has been kicked by server administrator
-	ADMIN_KICK
-};
+	ADMIN_KICK,
+}

@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------------------------
-class SCR_CampaignFaction : SCR_MilitaryFaction
+class SCR_CampaignFaction : SCR_Faction
 {
 	[Attribute("", UIWidgets.ResourceNamePicker, "AI group prefab", "et")]
 	private ResourceName m_AIGroupPrefab;
@@ -97,9 +97,6 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	[Attribute("", UIWidgets.ResourceNamePicker, "Radio antenna composition. NO SLOT variant.", "et")]
 	private ResourceName m_BaseBuildingRadioAntennaNoSlot;
 	
-	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Faction flag material, used on flag poles.", params: "emat")]
-	private ResourceName m_FactionFlagMaterial;
-	
 	[Attribute("", UIWidgets.ResourcePickerThumbnail, "Faction flag sign material, used on flag signs.", params: "emat")]
 	private ResourceName m_FactionSignMaterial;
 	
@@ -134,7 +131,12 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 		
 		BaseRadioComponent radio = BaseRadioComponent.Cast(HQ.FindComponent(BaseRadioComponent));
 		
-		if (!radio)
+		if (!radio || !radio.IsPowered())
+			return;
+		
+		BaseTransceiver transmitter = radio.GetTransceiver(0);
+		
+		if (!transmitter)
 			return;
 		
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
@@ -161,7 +163,7 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 		msg.SetParam(param);
 		msg.SetPlayerID(calledID);
 		
-		radio.Transmit(msg);
+		transmitter.BeginTransmission(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -268,7 +270,7 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetBuildingPrefab(ECampaignCompositionType type, CampaignBaseType baseType = CampaignBaseType.SMALL)
+	ResourceName GetBuildingPrefab(ECampaignCompositionType type)
 	{
 		switch (type)
 		{
@@ -295,7 +297,7 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	ResourceName GetBuildingPrefabNoSlot(ECampaignCompositionType type, CampaignBaseType baseType = CampaignBaseType.SMALL)
+	ResourceName GetBuildingPrefabNoSlot(ECampaignCompositionType type)
 	{
 		switch (type)
 		{
@@ -345,23 +347,6 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 	//------------------------------------------------------------------------------------------------
 	SCR_CampaignBase GetMainBase()
 	{
-		if (m_MainBase)
-			return m_MainBase;
-		
-		SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
-		
-		array<SCR_CampaignBase> bases = new array<SCR_CampaignBase>();
-		baseManager.GetFilteredBases(CampaignBaseType.MAIN, bases);
-		
-		for (int i = 0; i < bases.Count(); i++)
-		{
-			if (bases[i].GetOwningFaction() == this)
-			{
-				m_MainBase = bases[i];
-				break;
-			}
-		}
-		
 		return m_MainBase;
 	}
 	
@@ -402,12 +387,6 @@ class SCR_CampaignFaction : SCR_MilitaryFaction
 		}
 		
 		return ResourceName.Empty;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	ResourceName GetFactionFlagResource()
-	{
-		return m_FactionFlagMaterial;
 	}
 	
 	//------------------------------------------------------------------------------------------------

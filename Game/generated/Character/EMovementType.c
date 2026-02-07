@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum EMovementType
@@ -14,7 +14,9 @@ enum EMovementType
 	IDLE,
 	WALK,
 	RUN,
-	SPRINT
-};
+	SPRINT,
+}
 
-/** @}*/
+/*!
+\}
+*/

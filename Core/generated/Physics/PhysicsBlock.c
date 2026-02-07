@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -26,6 +26,8 @@ sealed class PhysicsBlock: pointer
 	\param worldEntity Entity used to obtain world in which entities exist
 	*/
 	proto external void Remove(notnull IEntity worldEntity);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

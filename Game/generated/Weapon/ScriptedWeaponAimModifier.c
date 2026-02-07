@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class ScriptedWeaponAimModifier: BaseWeaponAimModifier
@@ -35,6 +35,8 @@ class ScriptedWeaponAimModifier: BaseWeaponAimModifier
 	event protected void OnCalculate(IEntity owner, WeaponAimModifierContext context, float timeSlice, out vector translation, out vector rotation, out vector turnOffset);
 	// called when weapon is fired
 	event protected void OnWeaponFired();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

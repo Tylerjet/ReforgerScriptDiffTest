@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class BaseWeaponComponent: GameComponent
@@ -51,6 +51,12 @@ class BaseWeaponComponent: GameComponent
 	Returns true if weapon has bipod deployed.
 	*/
 	proto external bool GetBipod();
-};
+	/*!
+	Changes state of bipod to deployed/undeployed depending on parameter.
+	*/
+	proto external void SetBipod(bool deploy);
+}
 
-/** @}*/
+/*!
+\}
+*/

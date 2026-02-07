@@ -1,34 +1,41 @@
 class SCR_AIGetPriorityFromWaypoint : AITaskScripted
 {
-	static const string PORT_PRIORITY = "IsPriority";
+	static const string PORT_PRIORITY_LEVEL = "PriorityLevel";
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
-		PORT_PRIORITY
+		PORT_PRIORITY_LEVEL
 	};
 	override TStringArray GetVariablesOut()
-    {
-        return s_aVarsOut;
-    }
+	{
+		return s_aVarsOut;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		SCR_AIWaypoint wp = SCR_AIWaypoint.Cast(owner.GetCurrentWaypoint());
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
+			return ENodeResult.FAIL;
+		}
+		
+		SCR_AIWaypoint wp = SCR_AIWaypoint.Cast(group.GetCurrentWaypoint());
 		if (!wp)
 		{
 			return ENodeResult.FAIL;
 		}
 		
-		SetVariableOut(PORT_PRIORITY, wp.IsPriority());
+		SetVariableOut(PORT_PRIORITY_LEVEL, wp.GetPriorityLevel());
 		return ENodeResult.SUCCESS;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	protected override bool VisibleInPalette()
 	{
 		return true;
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected override string GetOnHoverDescription()

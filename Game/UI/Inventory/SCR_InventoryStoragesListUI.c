@@ -55,7 +55,8 @@ class SCR_InventoryStoragesListUI : SCR_InventoryStorageBaseUI
 	// ! creates the slot
 	protected SCR_InventorySlotUI CreateStorageSlotUI( InventoryItemComponent pItemComponent )
 	{
-		if (pItemComponent.GetParentSlot().Type() == SCR_TourniquetStorageSlot)
+		//Salinebags and tourniquets must not be visible in inventory when applied
+		if (pItemComponent.GetParentSlot().Type() == SCR_TourniquetStorageSlot || pItemComponent.GetParentSlot().Type() == SCR_SalineBagStorageSlot)
 			return null;
 
 		if ( pItemComponent.Type() == ClothNodeStorageComponent )

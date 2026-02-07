@@ -27,6 +27,7 @@ class SCR_WorkshopItem
 	ref ScriptInvoker m_OnGetAsset = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on failure to load details too.
 	ref ScriptInvoker m_OnDependenciesLoaded = new ref ScriptInvoker;	// (SCR_WorkshopItem item)
 	ref ScriptInvoker m_OnScenariosLoaded = new ref ScriptInvoker;		// (SCR_WorkshopItem item)
+	ref ScriptInvoker m_OnError = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on any error event
 	ref ScriptInvoker m_OnTimeout = new ref ScriptInvoker;				// (SCR_WorkshopItem item) - Called on any timeout event
 	ref ScriptInvoker m_OnDownloadComplete = new ref ScriptInvoker;		// (SCR_WorkshopItem item) - Called when any download has been completed (including an update)
 	ref ScriptInvoker m_OnOfflineStateChanged = new ref ScriptInvoker;	// (SCR_WorkshopItem item, bool newState) - Called when the addon was downloaded first time or deleted (OFFLINE flag changed its value)
@@ -134,7 +135,8 @@ class SCR_WorkshopItem
 		_print(string.Format("   Offline:             %1", GetOffline()));
 		_print(string.Format("   Blocked:             %1", GetBlocked()));
 		_print(string.Format("   ReportedByMe:        %1", GetReportedByMe()));
-		_print(string.Format("   CurrentLocalVersion: %1", GetCurrentLocalVersion()));
+		if (GetCurrentLocalRevision())
+			_print(string.Format("   CurrentLocalVersion: %1", GetCurrentLocalRevision().GetVersion()));
 		_print(string.Format("   LatestVersion:       %1", GetLatestVersion()));
 		_print(string.Format("   ItemDataLoaded:      %1", GetItemDataLoaded()));
 		_print(string.Format("   DetailsLoaded:       %1", GetDetailsLoaded()));
@@ -559,26 +561,11 @@ class SCR_WorkshopItem
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Returns the revision which we currently have on the local storage
-	string GetCurrentLocalVersion()
+	Revision GetCurrentLocalRevision()
 	{
-		if (m_Item)
-		{
-			if (!GetOffline())
-			{
-				return string.Empty;
-			}
-			else
-			{
-				Revision rev = m_Item.GetActiveRevision();
-				
-				if (!rev)
-					return string.Empty;
-				
-				return rev.GetVersion();
-			}
-		}
-		else
-			return string.Empty;
+		if (m_Item && GetOffline())
+			return m_Item.GetActiveRevision();
+		return null;
 	}
 	
 	
@@ -590,10 +577,10 @@ class SCR_WorkshopItem
 			return false;
 			
 		// Does active version match required?
-		string ActiveV = GetCurrentLocalVersion();
-		string RequiredV = m_Dependency.GetVersion();
+		Revision ActiveV = GetCurrentLocalRevision();
+		Revision RequiredV = m_Dependency.GetRevision();
 		
-		return (ActiveV == RequiredV);
+		return Revision.AreEqual(ActiveV, RequiredV);
 	}
 	
 	
@@ -678,21 +665,21 @@ class SCR_WorkshopItem
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Returns state of the download process
-	void GetDownloadState(out bool inProgress, out bool paused, out float progress, out string targetVersion)
+	void GetDownloadState(out bool inProgress, out bool paused, out float progress, out Revision targetRevision)
 	{
 		if (!m_ActionDownload || !m_Item)
 		{
 			inProgress = false;
 			paused = false;
 			progress = 0;
-			targetVersion = string.Empty;
+			targetRevision = null;
 			return;
 		}
 		
 		inProgress = m_ActionDownload.IsActive() || m_ActionDownload.IsPaused();
 		paused = m_ActionDownload.IsPaused();
 		progress = m_Item.GetProgress();
-		targetVersion = m_ActionDownload.GetTargetVersion();
+		targetRevision = m_ActionDownload.GetTargetRevision();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -831,10 +818,13 @@ class SCR_WorkshopItem
 	//! ! You must call Activate() of the returned action yourself.
 	//! ! This is done this way so that you can subscribe to events before the action is started.
 	//! !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  !  
-	SCR_WorkshopItemActionDownload Download(string targetVersion)
+	SCR_WorkshopItemActionDownload Download(Revision targetRevision)
 	{
 		#ifdef WORKSHOP_DEBUG
-		_print(string.Format("Download: %1", targetVersion));
+		if (targetRevision)
+			_print(string.Format("Download: %1", targetRevision.GetVersion()));
+		else
+			_print(string.Format("Download: the latest one"));
 		#endif
 		
 		if (!m_Item && !m_Dependency)
@@ -842,7 +832,7 @@ class SCR_WorkshopItem
 		
 		if (m_ActionDownload)
 		{
-			if (m_ActionDownload.GetTargetVersion() == targetVersion)
+			if (Revision.AreEqual(m_ActionDownload.GetTargetRevision(), targetRevision))
 			{
 				// Same kind of download is already running
 				return m_ActionDownload; // TODO if action was canceled or failed, create a new one
@@ -854,14 +844,14 @@ class SCR_WorkshopItem
 				m_ActionDownload.Internal_Detach();
 				m_ActionDownload = null;
 				
-				m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetVersion);
+				m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetRevision);
 				SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
 				return m_ActionDownload;
 			}
 		}
 		else
 		{
-			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetVersion);
+			m_ActionDownload = new SCR_WorkshopItemActionDownload(this, latestVersion: false, targetRevision);
 			SCR_AddonManager.GetInstance().Internal_OnNewDownload(this, m_ActionDownload);
 			return m_ActionDownload;
 		}
@@ -876,11 +866,11 @@ class SCR_WorkshopItem
 		
 		if (!m_Item && !m_Dependency)
 			return null;
-		
+				
 		if (m_ActionDownload)
 		{
-			string latestVersion = this.GetLatestVersion(); // Might return empty string if revs not loaded!
-			if (m_ActionDownload.GetTargetedAtLatestVersion() || m_ActionDownload.GetTargetVersion() == latestVersion)
+			Revision latestRevision = GetLatestRevision(); // Might return empty string if revs not loaded!
+			if (m_ActionDownload.GetTargetedAtLatestVersion() || Revision.AreEqual(latestRevision, m_ActionDownload.GetTargetRevision()))
 			{
 				// We are either already downloading the latest version,
 				// or a download of latest version was scheduled internally in the action
@@ -1100,15 +1090,9 @@ class SCR_WorkshopItem
 		return m_ActionRemoveAuthorBlock;
 	}
 	
-	
-	
-	//-----------------------------------------------------------------------------------------------
-	// 					P R O T E C T E D   /   P R I V A T E
-	//-----------------------------------------------------------------------------------------------
-	
 	//-----------------------------------------------------------------------------------------------
 	//! Finds revision object by string version
-	protected Revision FindRevision(string version)
+	Revision FindRevision(string version)
 	{
 		if (!m_aRevisions)
 			return null;
@@ -1122,17 +1106,18 @@ class SCR_WorkshopItem
 		return null;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	// 					P R O T E C T E D   /   P R I V A T E
+	//-----------------------------------------------------------------------------------------------
+		
 	
 	//-----------------------------------------------------------------------------------------------
 	Revision GetLatestRevision()
 	{
-		if (!m_aRevisions)
+		if (!m_Item)
 			return null;
 		
-		if (m_aRevisions.Count() == 0)
-			return null;
-		
-		return m_aRevisions[m_aRevisions.Count() - 1];
+		return m_Item.GetLatestRevision();
 	}
 	
 	
@@ -1175,6 +1160,7 @@ class SCR_WorkshopItem
 			{
 				m_CallbackLoadDependencies = new SCR_WorkshopItemCallback_LoadDependencies;
 				m_CallbackLoadDependencies.m_OnSuccess.Insert(Callback_LoadDependencies_OnSuccess);
+				m_CallbackLoadDependencies.m_OnError.Insert(Callback_LoadDependencies_OnError);
 				m_CallbackLoadDependencies.m_OnTimeout.Insert(Callback_LoadDependencies_OnTimeout);
 			}
 			
@@ -1241,6 +1227,15 @@ class SCR_WorkshopItem
 		TryLoadDependencies(); // For now we support only dependencies of latest version
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_LoadDependencies_OnError()
+	{
+		#ifdef WORKSHOP_DEBUG
+		_print("Callback_LoadDependencies_OnError()");
+		#endif
+		
+		m_OnError.Invoke(this);
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_LoadDependencies_OnTimeout()
@@ -1263,6 +1258,15 @@ class SCR_WorkshopItem
 		TryLoadScenarios();
 	}
 	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_LoadScenarios_OnError()
+	{
+		#ifdef WORKSHOP_DEBUG
+		_print("Callback_LoadScenarios_OnError()");
+		#endif
+		
+		m_OnError.Invoke(this);
+	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_LoadScenarios_OnTimeout()
@@ -1327,6 +1331,9 @@ class SCR_WorkshopItem
 		array<Revision> revisionsTemp = new array<Revision>;
 		m_Item.GetRevisions(revisionsTemp);
 		
+		if (revisionsTemp.IsEmpty() && m_Dependency)
+			revisionsTemp.Insert(m_Dependency.GetRevision());
+		
 		if (revisionsTemp.IsEmpty())
 		{
 			#ifdef WORKSHOP_DEBUG
@@ -1356,19 +1363,8 @@ class SCR_WorkshopItem
 			_print("TryLoadDependencies()");
 		#endif
 		
-		if (!m_aRevisions)
-		{
-			#ifdef WORKSHOP_DEBUG
-			if (log)
-				_print("TryLoadDependencies(): m_aRevisions is null");
-			#endif
-			
-			return;
-		}
-			
-		// Get array of dependencies
-		// Register every dependency in the addon manager
-		auto latestRevision = m_aRevisions[m_aRevisions.Count() - 1];
+		// Get array of dependencies - TODO: differentiate between dependencies version to load
+		Revision latestRevision = GetLatestRevision();
 		array<Dependency> dependencies = new array<Dependency>;
 		latestRevision.GetDependencies(dependencies);
 		
@@ -1404,20 +1400,10 @@ class SCR_WorkshopItem
 		#ifdef WORKSHOP_DEBUG
 		if (log)
 			_print("TryLoadScenarios()");
-		#endif
-		
-		if (!m_aRevisions)
-		{
-			#ifdef WORKSHOP_DEBUG
-			if (log)
-				_print("TryLoadScenarios(): m_aRevisions is null");
-			#endif
-			return;
-		}
-			
+		#endif			
 		
 		// Load scenarios of latest revision
-		Revision latestRevision = m_aRevisions[m_aRevisions.Count() - 1];
+		Revision latestRevision = GetLatestRevision();
 		
 		m_aMissions = new array<MissionWorkshopItem>;
 		latestRevision.GetScenarios(m_aMissions);
@@ -1483,31 +1469,11 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	
 	//-----------------------------------------------------------------------------------------------
-	bool Internal_StartDownload(string targetVersion, BackendCallback callback)
+	bool Internal_StartDownload(Revision targetRevision, BackendCallback callback)
 	{
 		#ifdef WORKSHOP_DEBUG
-		_print(string.Format("Internal_StartDownload(): %1, %2", targetVersion, callback));
+		_print(string.Format("Internal_StartDownload(): %1, %2", targetRevision.GetVersion(), callback));
 		#endif
-		
-		// Check item
-		if (!m_Item)
-		{
-			#ifdef WORKSHOP_DEBUG
-			_print("Internal_StartDownload(): m_Item is null!");
-			#endif
-			return false;
-		}
-		
-		// Check revisions
-		Revision rev = this.FindRevision(targetVersion);
-		if (!rev)
-		{
-			#ifdef WORKSHOP_DEBUG
-			_print("Internal_StartDownload(): Revision was not found!");
-			#endif
-			return false;
-		}
-			
 		
 		// Check privileges
 		if (!SCR_AddonManager.GetInstance().GetUgcPrivilege())
@@ -1523,7 +1489,7 @@ class SCR_WorkshopItem
 		_print("Internal_StartDownload(): Calling WorkshopItem.Download ...");
 		#endif
 		
-		m_Item.Download(callback, rev);
+		m_Item.Download(callback, targetRevision);
 		
 		return true;
 	}
@@ -1671,8 +1637,10 @@ class SCR_WorkshopItem
 	void Internal_Update(float timeSlice)
 	{	
 		// Check if we are waiting for dependencies or revisions
+		/*
 		if (!GetRevisionsLoaded())
 			TryLoadRevisions(false);
+		*/
 		//if (!GetDependenciesLoaded())
 		//	TryLoadDependencies(false);		
 		
@@ -1953,7 +1921,8 @@ class SCR_WorkshopItem
 		{
 			if (m_Item)
 			{
-				m_Item.AskDetail(m_CallbackAskDetails);			// Internally both methods perform the same request
+				if (m_Item.GetBackendEnv() == GetGame().GetBackendApi().GetBackendEnv())
+					m_Item.AskDetail(m_CallbackAskDetails);			// Internally both methods perform the same request
 				m_bWaitingLoadDetails = true;
 			}
 			else if (m_Dependency)
@@ -2070,23 +2039,10 @@ class SCR_WorkshopItem
 	//-----------------------------------------------------------------------------------------------
 	protected bool Internal_GetUpdateAvailable()
 	{
-		string currentLocalVersion = GetCurrentLocalVersion();
-		array<string> versions = GetVersions(); // Latest version is always last in the array
-		
-		if (currentLocalVersion.IsEmpty() || versions.IsEmpty())
+		if (GetCurrentLocalRevision())
+			return GetCurrentLocalRevision().CompareTo(GetLatestRevision()) < 0;
+		else 
 			return false;
-		
-		int id = versions.Find(currentLocalVersion);
-		
-		if (id == -1)	// Our local version was not found in the array - why??
-			return false;
-		
-		int versionCount = versions.Count();
-		
-		if (id == versionCount - 1) // We are at latest version
-			return false;
-		else
-			return true; // Our version is not latest
 	}
 	
 	//-----------------------------------------------------------------------------------------------

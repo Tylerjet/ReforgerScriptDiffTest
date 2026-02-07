@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class CanvasWidget: CanvasWidgetBase
@@ -24,6 +24,8 @@ sealed class CanvasWidget: CanvasWidgetBase
 	proto external void SetDrawCommands(array<ref CanvasWidgetCommand> drawCommands);
 	//! Loads a texture which can be then used in draw commands
 	static proto SharedItemRef LoadTexture(ResourceName resource);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

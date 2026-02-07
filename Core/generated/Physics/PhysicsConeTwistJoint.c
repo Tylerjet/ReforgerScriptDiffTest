@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -30,6 +30,8 @@ sealed class PhysicsConeTwistJoint: PhysicsJoint
 	\param relaxationFactor Relaxation factor of the joint. See \ref jointParameters "details"
 	*/
 	proto external void SetLimits(float swingSpan1, float swingSpan2, float twistSpan, float softness, float biasFactor, float relaxationFactor);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

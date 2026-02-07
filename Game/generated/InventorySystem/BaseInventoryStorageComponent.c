@@ -4,25 +4,25 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class BaseInventoryStorageComponentClass: InventoryItemComponentClass
 {
-};
+}
 
 class BaseInventoryStorageComponent: InventoryItemComponent
 {
 	/*!
 	*IMPORTANT* Should be called upon initialization of slot instance
-	provide newly created slot and desired slot ID
-	*/
+	 provide newly created slot and desired slot ID
+	 */
 	proto external sealed protected void SetupSlotHooks(InventoryStorageSlot ownedSlot, int slotID);
 	/*!
 	*IMPORTANT* Should be called before transfering ownership of holded slot instance
-	In majority of cases should be unnecessary (when storage manages creation and destruction of slots on its own)
+	 In majority of cases should be unnecessary (when storage manages creation and destruction of slots on its own)
 	*/
 	proto external sealed protected void ReleaseSlotHooks(InventoryStorageSlot ownedSlot);
 	/*!
@@ -81,24 +81,24 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	proto external float GetMaxVolumeCapacity();
 	// return dimension limits for storage
 	proto external vector GetMaxDimensionCapacity();
-	
+
 	// callbacks
-	
+
 	/*!
 	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
 	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
 	*/
-	event bool OnOverrideCanStoreItem();
+	event bool OnOverrideCanStoreItem() { return false; };
 	/*!
 	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
 	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
 	*/
-	event bool OnOverrideCanRemoveItem();
+	event bool OnOverrideCanRemoveItem() { return false; };
 	/*!
 	It should return true or false depending if the scripter wants to override the behavior of the C++ function or not.
 	*IMPORTANT* This should contains one line with return true/false; The result is cached, so this function can't be made dynamic
 	*/
-	event bool OnOverrideCanReplaceItem();
+	event bool OnOverrideCanReplaceItem() { return false; };
 	/*!
 	Will be called when item is added to slot.
 	*IMPORTANT* This is called after the C++ event.
@@ -112,11 +112,11 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	//! Usually any slot that item can be inserted to
 	event protected InventoryStorageSlot GetEmptySlotForItem(IEntity item);
 	//! Implemented logics for can insert here, Manager will provide slotID of -1 in case slot is irrelevant.
-	event bool CanStoreItem(IEntity item, int slotID);
+	event bool CanStoreItem(IEntity item, int slotID) { return true; };
 	//! Implemented logics for can remove here,
-	event bool CanRemoveItem(IEntity item);
+	event bool CanRemoveItem(IEntity item) { return true; };
 	//! Implemented logics for can replace to nextItem at slotID,
-	event bool CanReplaceItem(IEntity nextItem, int slotID);
+	event bool CanReplaceItem(IEntity nextItem, int slotID) { return true; };
 	//! Should Return slots count
 	event protected int GetSlotsCountScr();
 	//! Should Return slot for specified id
@@ -132,6 +132,8 @@ class BaseInventoryStorageComponent: InventoryItemComponent
 	*IMPORTANT* This is called after the C++ event.
 	*/
 	event protected void OnManagerChanged(InventoryStorageManagerComponent manager);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

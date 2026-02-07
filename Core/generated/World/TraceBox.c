@@ -4,16 +4,18 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup World
-* @{
+/*!
+\addtogroup World
+\{
 */
 
 class TraceBox: TraceParam
 {
 	vector	Mins;
 	vector	Maxs;
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

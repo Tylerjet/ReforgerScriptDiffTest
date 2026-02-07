@@ -271,13 +271,14 @@ class SCR_ContentBrowserDetails_OverviewSubMenu : SCR_ContentBrowserDetails_SubM
 		}
 		else
 		{
-			string specificVersion;
+			Revision specificVersion;
 			
 			#ifdef WORKSHOP_DEBUG
-			specificVersion = widgets.m_VersionComboBoxComponent.GetCurrentItem();
+			string strSpecificVersion = widgets.m_VersionComboBoxComponent.GetCurrentItem();
+			specificVersion = m_WorkshopItem.FindRevision(strSpecificVersion);
 			#endif
 			
-			if (!specificVersion.IsEmpty())
+			if (specificVersion)
 			{
 				auto dlAction = m_WorkshopItem.Download(specificVersion);
 				dlAction.Activate();

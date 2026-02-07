@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Turrets
-* @{
+/*!
+\addtogroup Turrets
+\{
 */
 
 enum ETurretReloadState
@@ -17,7 +17,9 @@ enum ETurretReloadState
 	//Reloading
 	RELOADING,
 	//If needed, move back to old position
-	AFTER_RELOADING
-};
+	AFTER_RELOADING,
+}
 
-/** @}*/
+/*!
+\}
+*/

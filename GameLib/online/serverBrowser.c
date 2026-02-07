@@ -1,3 +1,5 @@
+typedef array<ref SBServerInfo> SBServerInfoList;
+
 enum OnlineError
 {
 	NONE,
@@ -5,7 +7,7 @@ enum OnlineError
 	CONNECTION,
 	SERVER,
 	INTERNAL,
-};
+}
 
 enum SBPlatform
 {
@@ -13,7 +15,7 @@ enum SBPlatform
 	PC,
 	XBL,
 	PSN,
-};
+}
 
 enum SBRegion
 {
@@ -21,7 +23,7 @@ enum SBRegion
 	AMERICAS,
 	EUROPE,
 	ASIA,
-};
+}
 	
 //flags can be combined
 enum SBServerFlag
@@ -33,7 +35,7 @@ enum SBServerFlag
 	PASSWORD = 0x10,
 	TEST = 0x20,
 	INVISIBLE = 0x40,
-};
+}
 
 enum SBSortBy
 {
@@ -53,13 +55,13 @@ enum SBSortBy
 	MAX_PLAYERS,
 	FREE_SLOTS,
 	NAME,
-};
+}
 
 enum SBSortOrder
 {
 	ASCENDING,
 	DESCENDING,
-};
+}
 
 //flags can be combined, filters enable specific SBServerFlag values or filters
 enum SBServerFilter
@@ -79,7 +81,7 @@ enum SBServerFilter
 	PASSWORD = 0x1000,
 	TEST = 0x2000,
 	INVISIBLE = 0x4000,
-};
+}
 
 class SBGetServersParams
 {
@@ -99,7 +101,7 @@ class SBGetServersParams
 	string				FilterClientVersion;
 	int					FilterMaxPlayers;
 	int					FilterMinFreeSlots;
-};
+}
 
 class SBServerInfo
 {
@@ -119,10 +121,7 @@ class SBServerInfo
 	int				FreeSlots;
 	int				NumPlayers;
 	string			JsonMetadata;
-};
-
-
-typedef array<ref SBServerInfo> SBServerInfoList;
+}
 
 //callback interface, must be kept alive for the duration of the request
 class SBServerListCallback
@@ -226,7 +225,7 @@ class Room: Managed
 	proto native void RemoteCommand(string message, RCONCallback callback);
 	
 	proto native void VerifyPassword(string password, BackendCallback callback);
-};
+}
 
 class ClientLobbyApi
 {
@@ -310,5 +309,5 @@ class ClientLobbyApi
 	
 	proto native void MeasureLatency(BackendCallback callback);
 	proto native bool IsPingAvailable();
-};
+}
 

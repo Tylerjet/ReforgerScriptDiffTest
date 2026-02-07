@@ -34,10 +34,7 @@ class SCR_PlayerModesEditorAttribute: SCR_BaseMultiSelectPresetsEditorAttribute
 	}
 	
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-		
+	{		
 		if (isInit)
 		{
 			manager.SetAttributeAsSubAttribute(SCR_PlayerBudgetPropEnableEditorAttribute);
@@ -46,13 +43,23 @@ class SCR_PlayerModesEditorAttribute: SCR_BaseMultiSelectPresetsEditorAttribute
 			manager.SetAttributeAsSubAttribute(SCR_PlayerBudgetSystemEnableEditorAttribute);
 		}
 		
-		int flags = var.GetVector()[0];
-		bool enableBudget = flags & EEditorMode.EDIT;
-		
-		manager.SetAttributeEnabled(SCR_PlayerBudgetPropEnableEditorAttribute, enableBudget);
-		manager.SetAttributeEnabled(SCR_PlayerBudgetVehicleEnableEditorAttribute, enableBudget);
-		manager.SetAttributeEnabled(SCR_PlayerBudgetAIEnableEditorAttribute, enableBudget);
-		manager.SetAttributeEnabled(SCR_PlayerBudgetSystemEnableEditorAttribute, enableBudget);
+		if (!var)
+		{
+			manager.SetAttributeEnabled(SCR_PlayerBudgetPropEnableEditorAttribute, false);
+			manager.SetAttributeEnabled(SCR_PlayerBudgetVehicleEnableEditorAttribute, false);
+			manager.SetAttributeEnabled(SCR_PlayerBudgetAIEnableEditorAttribute, false);
+			manager.SetAttributeEnabled(SCR_PlayerBudgetSystemEnableEditorAttribute, false);
+		}
+		else 
+		{
+			int flags = var.GetVector()[0];
+			bool enableBudget = flags & EEditorMode.EDIT;
+			
+			manager.SetAttributeEnabled(SCR_PlayerBudgetPropEnableEditorAttribute, enableBudget);
+			manager.SetAttributeEnabled(SCR_PlayerBudgetVehicleEnableEditorAttribute, enableBudget);
+			manager.SetAttributeEnabled(SCR_PlayerBudgetAIEnableEditorAttribute, enableBudget);
+			manager.SetAttributeEnabled(SCR_PlayerBudgetSystemEnableEditorAttribute, enableBudget);
+		}
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

@@ -11,6 +11,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	const string TAG_DETAILS_FALLBACK_SEACHING = "Searching";
 	const string TAG_DETAILS_FALLBACK_EMPTY = "Empty";
 	const string TAG_MESSAGE_SEARCHING = "SEARCHING";
+	protected const string JOIN_WHILE_DOWNLOADING = "JOIN_WHILE_DOWNLOADING";
 	
 	const int SERVER_LIST_VIEW_SIZE = 32;
 	const int ROOM_CONTENT_LOAD_DELAY = 500;
@@ -58,6 +59,7 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected static string m_sErrorMessageDetail = "";
 	
 	// Lobby Rooms handling
+	protected Room m_RoomToJoin;
 	protected Room m_JoiningRoom = null;
 	protected ref array<Room> m_aRooms = {};
 	protected ref array<Room> m_aDirectFoundRooms = {};
@@ -119,6 +121,9 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected string m_sLastRoomId = string.Empty;
 	protected Room m_RejoinRoom = null;
 	
+	protected ref array<ref SCR_FilterEntry> m_aFiltersToSelect = new array<ref SCR_FilterEntry>;
+	protected bool m_bIsCheckingSpecificfilter = false;
+	
 	// Script invokers 
 	ref ScriptInvoker m_OnAutoRefresh = new ScriptInvoker;
 	ref ScriptInvoker m_OnDependeciesLoad = new ScriptInvoker;
@@ -174,7 +179,7 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Setup debug menu 
 		
 		// Setup connection attempt timeout 
-		//GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
+		// GetGame().GetCallqueue().CallLater(ConnectionTimeout, BACKEND_CHECK_TIMEOUT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1040,7 +1045,8 @@ class ServerBrowserMenuUI: MenuRootBase
 	protected void OnServerEntryDoubleClick(SCR_ServerBrowserEntryComponent entry)
 	{
 		// Join 
-		JoinActions_Join();
+		if (entry && entry.GetRoomInfo().Joinable())
+			JoinActions_Join();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1436,8 +1442,6 @@ class ServerBrowserMenuUI: MenuRootBase
 			GetGame().GetWorkspace().SetFocusedWidget(first);
 	}
 	
-	protected bool m_bWasFilterChanged = false;
-	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when any of filter in filter panel is changed
 	//! Get last updated filter and set it up for next search
@@ -1446,8 +1450,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		// Set filter and refresh		
 		m_ParamsFilter.SetFilters(m_FilterPanel.GetFilter());
 		OnActionRefresh(); 
-		
-		m_bWasFilterChanged = true;
 		
 		// Prevent using cross play filter 
 		bool hasCrossplay = GetGame().GetPlatformService().GetPrivilege(UserPrivilege.CROSS_PLAY);
@@ -1575,10 +1577,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		if (loadedRoomFocused)
 			ReceiveRoomContent(m_LastFocusedRoom, true, m_ServerEntryFocused);
 	}
-	
-	protected ref array<ref SCR_FilterEntry> m_aFiltersToSelect = new array<ref SCR_FilterEntry>;
-	
-	protected bool m_bIsCheckingSpecificfilter = false;
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when search is sucessful with favorite filter active 
@@ -2282,15 +2280,11 @@ class ServerBrowserMenuUI: MenuRootBase
 		JoinProcess_FindRoomById(lastId, m_CallbackSearchPreviousRoom);
 	}
 	
-	protected Room m_RoomToJoin;
-	protected EDirectJoinFormats m_eLastJoinFormat = -1;
-	
 	//------------------------------------------------------------------------------------------------
 	//! Initialize joining process to specific room 
 	void JoinProcess_FindRoom(string params, EDirectJoinFormats format, bool publicNetwork)
 	{		
 		m_DirectJoinParams = new FilteredServerParams;
-		m_eLastJoinFormat = format;
 		
 		// Format 
 		switch (format)
@@ -2536,8 +2530,6 @@ class ServerBrowserMenuUI: MenuRootBase
 		{
 			if (result == UserPrivilegeResult.ALLOWED)
 				JoinProcess_CheckVersion(m_RoomToJoin);
-			else
-				m_Dialogs.DisplayJoinFail(EApiCode.EACODE_ERROR_UNKNOWN);
 		}
 		
 		m_CallbackGetPrivilege.m_OnResult.Remove(OnCrossPlayPrivilegeResultJoin);
@@ -2805,13 +2797,26 @@ class ServerBrowserMenuUI: MenuRootBase
 		
 		// Setup dialog with list of mods to update
 		m_Dialogs.DisplayDialog(EJoinDialogState.MODS_TO_UPDATE);
-		
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call join if all clint pass through all check to join server 
 	protected void JoinProcess_Join(Room roomToJoin)
 	{
+		int nCompleted, nTotal;
+		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
+		
+		if (mgr)
+			mgr.GetDownloadQueueState(nCompleted, nTotal);
+		
+		if (nTotal > 0)
+		{
+			SCR_ConfigurableDialogUi dialog = SCR_ConfigurableDialogUi.CreateFromPreset(m_Dialogs.CONFIG_DIALOGS, JOIN_WHILE_DOWNLOADING);
+			dialog.m_OnConfirm.Insert(OnInteruptDownloadConfirm);
+			dialog.m_OnClose.Insert(OnInteruptDownloadClose);
+			return;
+		}
+		
 		// Join server 
 		SetJoiningRoom(roomToJoin);
 		roomToJoin.Join(m_CallbackJoin, m_passwordStruct);
@@ -2823,6 +2828,40 @@ class ServerBrowserMenuUI: MenuRootBase
 
 		if (m_Dialogs)
 			m_Dialogs.DisplayDialog(EJoinDialogState.JOIN);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInteruptDownloadConfirm()
+	{
+		if (!m_RoomToJoin)
+		{
+			PrintDebug("Missing m_RoomToJoin!", "OnInteruptDownloadConfirm");
+			return;
+		}
+		
+		// Cancel downloading
+		SCR_DownloadManager mgr = SCR_DownloadManager.GetInstance();
+		if (mgr)
+			mgr.EndAllDownloads();
+		
+		// Join server 
+		SetJoiningRoom(m_RoomToJoin);
+		m_RoomToJoin.Join(m_CallbackJoin, m_passwordStruct);
+		
+		// Add join callbacks 
+		m_CallbackJoin.m_OnSuccess.Insert(JoinProcess_OnJoinSuccess);
+		m_CallbackJoin.m_OnFail.Insert(JoinProcess_OnJoinFail);
+		m_CallbackJoin.m_OnTimeOut.Insert(JoinProcess_OnJoinTimeout);
+
+		if (m_Dialogs)
+			m_Dialogs.DisplayDialog(EJoinDialogState.JOIN);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnInteruptDownloadClose()
+	{
+		if (m_Dialogs)
+			m_Dialogs.CloseCurrentDialog();
 	}
 	
 	//------------------------------------------------------------------------------------------------

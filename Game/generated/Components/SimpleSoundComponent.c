@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class SimpleSoundComponentClass: BaseSoundComponentClass
 {
-};
+}
 
 class SimpleSoundComponent: BaseSoundComponent
 {
@@ -22,9 +22,9 @@ class SimpleSoundComponent: BaseSoundComponent
 	//! TRUE when flag for script callbacks is set.
 	proto external bool IsScriptedMethodsCallEnabled();
 	proto external IEntity GetOwner();
-	
+
 	// callbacks
-	
+
 	/*!
 	Called after all components are initialized.
 	\param owner Entity this component is attached to.
@@ -47,6 +47,8 @@ class SimpleSoundComponent: BaseSoundComponent
 	event protected void OnUpdateSoundJobBegin(IEntity owner);
 	//! Called when dynamic simulation is stopped.
 	event protected void OnUpdateSoundJobEnd(IEntity owner);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

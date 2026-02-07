@@ -42,7 +42,6 @@ class SCR_BaseMultiSelectPresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 		
 		if (m_iCurrentFlagsPerIndex >= m_iFlagsPerIndex)
 			ResetLoopValues(true);
-		
 	}
 	
 	//Gets the next entity state
@@ -64,6 +63,11 @@ class SCR_BaseMultiSelectPresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 			ResetLoopValues(true);
 		
 		return returnState;
+	}
+	
+	protected int GetStateVectorIndex()
+	{
+		return m_iStateVectorIndex;
 	}
 	
 	//Add flag in specific vector index. Returns false if invalid index

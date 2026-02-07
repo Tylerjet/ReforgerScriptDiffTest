@@ -99,7 +99,7 @@ class SCR_RespawnHandlerComponent : SCR_BaseGameModeComponent
 
 		\param PlayerId of dequeued player.
 	*/
-	protected bool DequeuePlayer(int playerId)
+	protected bool DequeuePlayer(int playerId, bool acknowledgeLocalPlayer = true)
 	{
 		// Server only
 		if (!m_pGameMode.IsMaster())
@@ -111,10 +111,13 @@ class SCR_RespawnHandlerComponent : SCR_BaseGameModeComponent
 
 		m_sEnqueuedPlayers.Remove(index);
 		OnPlayerDequeued(playerId);
-
-		SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerId));
-		respawnComponent.AcknowledgePlayerDequeued();
-
+		
+		if (acknowledgeLocalPlayer)
+		{
+			SCR_RespawnComponent respawnComponent = SCR_RespawnComponent.Cast(GetGame().GetPlayerManager().GetPlayerRespawnComponent(playerId));
+			respawnComponent.AcknowledgePlayerDequeued();
+		}
+		
 		return true;
 	}
 
@@ -187,12 +190,12 @@ class SCR_RespawnHandlerComponent : SCR_BaseGameModeComponent
 		Called after a player is disconnected.
 		\param playerId PlayerId of disconnected player.
 	*/
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 
 		// This player is no longer eligible for spawn, as they are inactive.
-		DequeuePlayer(playerId);
+		DequeuePlayer(playerId, false);
 	}
 
 	/*!

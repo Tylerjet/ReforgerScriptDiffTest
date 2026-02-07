@@ -29,7 +29,7 @@ class SCR_AIWaitReaction : SCR_AIReactionBase
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility) 
 	{
-		auto behavior = new SCR_AIWaitBehavior(utility, false, null);
+		auto behavior = new SCR_AIWaitBehavior(utility, null);
 		//if (behavior.m_sBehaviorTree != string.Empty)
 			//behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 		utility.AddAction(behavior);
@@ -41,7 +41,7 @@ class SCR_AIIdleReaction : SCR_AIReactionBase
 {
 	override void PerformReaction(notnull SCR_AIUtilityComponent utility) 
 	{
-		auto behavior = new SCR_AIIdleBehavior(utility, false, null);
+		auto behavior = new SCR_AIIdleBehavior(utility, null);
 		//if (behavior.m_sBehaviorTree != string.Empty)
 			//behavior.m_sBehaviorTree = m_OverrideBehaviorTree;
 		utility.AddAction(behavior);
@@ -49,7 +49,7 @@ class SCR_AIIdleReaction : SCR_AIReactionBase
 	
 	override void PerformReaction(notnull SCR_AIGroupUtilityComponent utility) 
 	{
-		auto activity = new SCR_AIIdleActivity(utility, false, false);
+		auto activity = new SCR_AIIdleActivity(utility, false);
 		utility.AddAction(activity);
 	}
 };

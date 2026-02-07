@@ -186,7 +186,6 @@ class SCR_BaseCampaignTutorialStage : GenericEntity
 		
 		m_Player = m_TutorialComponent.GetPlayer();
 		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
 		Setup();
 	}
 };

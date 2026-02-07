@@ -1,25 +1,25 @@
 class SCR_AIThrowGrenadeToBehavior : SCR_AIBehaviorBase
 {
 	//Target Position of the behavior
-   	ref SCR_BTParam<vector> m_vPosition = new SCR_BTParam<vector>(SCR_AIActionTask.TARGETPOSITION_PORT);
+	ref SCR_BTParam<vector> m_vPosition = new SCR_BTParam<vector>(SCR_AIActionTask.TARGETPOSITION_PORT);
 #ifdef AI_DEBUG
 	//Diagnostic visualization
 	static ref array<ref Shape> m_aDbgShapes;
 #endif
 	private static vector CHARACTER_HEIGHT_OFFSET = {0, 1.6, 0};
 	
-	void SCR_AIThrowGrenadeToBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector pos)
+	void SCR_AIThrowGrenadeToBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector pos, float priorityLevel = PRIORITY_LEVEL_NORMAL)
 	{
 		//m_Target.Init(this, target);
-		m_vPosition.Init(this, pos);	
+		m_vPosition.Init(this, pos);
 	
 		if (!utility)
 			return;
 		
 		m_bAllowLook = false;
 		m_fPriority = PRIORITY_BEHAVIOR_THROW_GRENADE;
+		m_fPriorityLevel.m_Value = priorityLevel;
 		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Soldier/Throw_Grenade.bt";
-		m_eType = EAIActionType.THROW_GRENADE;
 #ifdef AI_DEBUG 
 		m_aDbgShapes = new array<ref Shape>;
 #endif

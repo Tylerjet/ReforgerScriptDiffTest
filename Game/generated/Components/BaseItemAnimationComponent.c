@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class BaseItemAnimationComponentClass: AnimationControllerComponentClass
 {
-};
+}
 
 class BaseItemAnimationComponent: AnimationControllerComponent
 {
@@ -21,9 +21,9 @@ class BaseItemAnimationComponent: AnimationControllerComponent
 	//! Removes previously synced character reference
 	proto external bool RemoveSyncReference(ChimeraCharacter pCharacter);
 	proto external bool IsAnimationTag(AnimationTagID tagID);
-	
+
 	// callbacks
-	
+
 	event protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd);
 	//! Called every frame right before animation controller will be updated
 	//! return true to stop default animation behavior of an item, return false otherwise (default)
@@ -37,6 +37,8 @@ class BaseItemAnimationComponent: AnimationControllerComponent
 	event protected void OnCharacterBoolVariable(int variableID, bool value);
 	//! Called when animation command was called in synced character's animation logic
 	event protected void OnCharacterCommand(int commandID, int intValue, float floatValue);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

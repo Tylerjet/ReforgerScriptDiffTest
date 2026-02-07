@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup GameStateTransitions
-* @{
+/*!
+\addtogroup GameStateTransitions
+\{
 */
 
 enum PlatformKickReason
@@ -16,7 +16,9 @@ enum PlatformKickReason
 	//! User is not allowed to play multiplayer games.
 	NO_MP_PRIVILEGE,
 	//! User is not allowed to play cross-platform multiplayer.
-	NO_CROSSPLAY_PRIVILEGE
-};
+	NO_CROSSPLAY_PRIVILEGE,
+}
 
-/** @}*/
+/*!
+\}
+*/

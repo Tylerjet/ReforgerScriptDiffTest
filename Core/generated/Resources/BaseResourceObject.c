@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Resources
-* @{
+/*!
+\addtogroup Resources
+\{
 */
 
 sealed class BaseResourceObject: pointer
@@ -23,6 +23,8 @@ sealed class BaseResourceObject: pointer
 	proto external void Release(bool flush = false);
 	//! Returns name of visual object
 	proto external ResourceName GetResourceName();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

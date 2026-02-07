@@ -400,6 +400,7 @@ class SCR_AddonManager : GenericEntity
 
 	//-----------------------------------------------------------------------------------------------
 	//! Return difference type between current version from current to target
+	//OBSOLETE => use Revision.CompareTo
 	static SCR_ComparerOperator DifferenceBetweenVersions(string vFrom, string vTo)
 	{
 		// Get versions numbers
@@ -650,7 +651,7 @@ class SCR_AddonManager : GenericEntity
 	private void SCR_AddonManager(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.FRAME | EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 
 		s_Instance = this;
 	}
@@ -676,12 +677,13 @@ class SCR_AddonManager : GenericEntity
 		_print("Init Finished", LogLevel.NORMAL);
 		_print(string.Format("  User Workshop access:           %1", GetReady()), LogLevel.NORMAL);
 		
+		//OBSOLETE
 		// Request versions from all downloaded addons, otherwise we will not know if they are outdated
-		auto offlineAddons = GetOfflineAddons();
+		/*auto offlineAddons = GetOfflineAddons();
 		foreach (SCR_WorkshopItem offlineItem : offlineAddons)
 		{
 			offlineItem.LoadDetails();
-		}
+		}*/	
 	}
 	
 	//-----------------------------------------------------------------------------------------------

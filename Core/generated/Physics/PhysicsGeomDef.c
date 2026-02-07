@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -20,7 +20,7 @@ class PhysicsGeomDef: Managed
 	int			ParentNode = -1; //!< Bone the element can be attached to
 	string		MaterialName; //!< Material resource name
 	int			LayerMask; //!< Bit mask of layers geometry belongs to
-	
+
 	void PhysicsGeomDef(string name, PhysicsGeom geom, string materialName, int layerMask)
 	{
 		Name = name;
@@ -28,7 +28,9 @@ class PhysicsGeomDef: Managed
 		MaterialName = materialName;
 		LayerMask = layerMask;
 	}
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

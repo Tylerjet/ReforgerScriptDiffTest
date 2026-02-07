@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -19,7 +19,9 @@ enum ActiveState
 	//! body is simulated
 	ACTIVE,
 	//! body is simulated and cannot sleep
-	ALWAYS_ACTIVE
-};
+	ALWAYS_ACTIVE,
+}
 
-/** @}*/
+/*!
+\}
+*/

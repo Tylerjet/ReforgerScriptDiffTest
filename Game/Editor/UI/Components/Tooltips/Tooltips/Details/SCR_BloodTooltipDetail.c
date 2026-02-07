@@ -55,7 +55,7 @@ class SCR_BloodTooltipDetail: SCR_DpsConditionBarBaseTooltipDetail
 		float bloodLevel = Math.InverseLerp(bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.DESTROYED), 1, bloodHitzone.GetHealthScaled());
 		
 		//~ Update blood visual
-		Math.Clamp(bloodLevel, 0, 1);
+		bloodLevel = Math.Clamp(bloodLevel, 0, 1);
 		UpdateBloodBar(bloodLevel, bloodHitzone.GetDamageStateThreshold(ECharacterBloodState.UNCONSCIOUS));
 		SetBarAndPercentageValue(bloodLevel);
 	}

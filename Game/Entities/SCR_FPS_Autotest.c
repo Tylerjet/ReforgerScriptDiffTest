@@ -338,7 +338,7 @@ class SCR_HeatMap_Autotest: GenericEntity
 		}
 
 		ReverseArray(image);
-		TexTools.SaveImageData("$profile:heatmap.dds", image_size, image_size, image);
+		TexTools.SaveImageData("$logs:heatmap.dds", image_size, image_size, image);
 #endif
 	}
 
@@ -366,12 +366,12 @@ class SCR_HeatMap_Autotest: GenericEntity
 		
 		Print("Creating a geojson file");
 		
-		FileIO.MakeDirectory("$profile:/" + mapName);
+		FileIO.MakeDirectory("$logs:/" + mapName);
 		string filename = FormatTimestamp() + ".geojson";
-		file = FileIO.OpenFile("$profile:/" + mapName + "/" + filename, FileMode.WRITE);
+		file = FileIO.OpenFile("$logs:/" + mapName + "/" + filename, FileMode.WRITE);
 
 		WriteDataGJSON(file);
-		file.CloseFile();
+		file.Close();
 		
 		Print("Creating a geojson done");
 	}
@@ -382,12 +382,12 @@ class SCR_HeatMap_Autotest: GenericEntity
 		
 		Print("Creating a CSV file");
 		
-		FileIO.MakeDirectory("$profile:/" + mapName);
+		FileIO.MakeDirectory("$logs:/" + mapName);
 		string filename = FormatTimestamp() + ".csv";
-		file = FileIO.OpenFile("$profile:/" + mapName + "/" + filename, FileMode.WRITE);
+		file = FileIO.OpenFile("$logs:/" + mapName + "/" + filename, FileMode.WRITE);
 
 		WriteDataCSV(file);
-		file.CloseFile();
+		file.Close();
 		
 		Print("Creating a geojson done");
 	}
@@ -396,14 +396,14 @@ class SCR_HeatMap_Autotest: GenericEntity
 	{
 		Print("Adding data to geojson");
 		
-		file.FPrintln("{");
-		file.FPrintln("\"type\": \"FeatureCollection\",");
-		file.FPrintln("\"name\": \"fps\",");
-		file.FPrintln(string.Format("\"minfps\": \"%1\",", Math.Floor(min_fps)));
-		file.FPrintln(string.Format("\"maxfps\": \"%1\",", Math.Floor(max_fps)));
-		file.FPrintln(string.Format("\"avgfps\": \"%1\",", Math.Floor(avg_fps)));
-		file.FPrintln("\"crs\": { \"type\": \"name\", \"properties\": { \"name\": \"urn:ogc:def:crs:EPSG::32632\" } },");
-		file.FPrintln("\"features\": [");
+		file.WriteLine("{");
+		file.WriteLine("\"type\": \"FeatureCollection\",");
+		file.WriteLine("\"name\": \"fps\",");
+		file.WriteLine(string.Format("\"minfps\": \"%1\",", Math.Floor(min_fps)));
+		file.WriteLine(string.Format("\"maxfps\": \"%1\",", Math.Floor(max_fps)));
+		file.WriteLine(string.Format("\"avgfps\": \"%1\",", Math.Floor(avg_fps)));
+		file.WriteLine("\"crs\": { \"type\": \"name\", \"properties\": { \"name\": \"urn:ogc:def:crs:EPSG::32632\" } },");
+		file.WriteLine("\"features\": [");
 
 		for (int i = 0; i < m_geojson_data.Count(); ++i)
 		{
@@ -411,20 +411,20 @@ class SCR_HeatMap_Autotest: GenericEntity
 			if (i == m_geojson_data.Count()-1)
 				line_end = string.Empty;
 
-			file.FPrintln(GetGeoJSONLine(m_geojson_data[i]) + line_end);
+			file.WriteLine(GetGeoJSONLine(m_geojson_data[i]) + line_end);
 		}
 
-		file.FPrintln("]\n}");
+		file.WriteLine("]\n}");
 	}
 
 	private void WriteDataCSV(FileHandle file)
 	{
 		Print("Adding data to CSV");
 		
-		file.FPrintln("x,z,fps");
+		file.WriteLine("x,z,fps");
 
 		for (int i = 0; i < m_geojson_data.Count(); ++i)
-			file.FPrintln(GetCSVLine(m_geojson_data[i]));
+			file.WriteLine(GetCSVLine(m_geojson_data[i]));
 
 	}
 	private string FormatTimestamp()

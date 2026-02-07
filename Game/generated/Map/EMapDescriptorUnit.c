@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
-/**
+/*!
 Type of unit
 */
 enum EMapDescriptorUnit
@@ -18,7 +18,9 @@ enum EMapDescriptorUnit
 	MDU_INFANTRY,
 	MDU_VEHICLE,
 	MDU_AIRCRAFT,
-	MDU_NAVAL
-};
+	MDU_NAVAL,
+}
 
-/** @}*/
+/*!
+\}
+*/

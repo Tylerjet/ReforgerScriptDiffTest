@@ -169,8 +169,7 @@ class SCR_UnitDisplayComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		super.OnPostInit(owner);
-		SetEventMask(owner, EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);		
+		SetEventMask(owner, EntityEvent.FRAME);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

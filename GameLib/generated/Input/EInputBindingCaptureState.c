@@ -4,15 +4,17 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Input
-* @{
+/*!
+\addtogroup Input
+\{
 */
 
 enum EInputBindingCaptureState
 {
 	IDLE,
-	CAPTURING
-};
+	CAPTURING,
+}
 
-/** @}*/
+/*!
+\}
+*/

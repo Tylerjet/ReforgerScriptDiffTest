@@ -49,8 +49,6 @@ class SCR_WeaponRackEntity : GenericEntity
 		if (SCR_Global.IsEditMode())
 			return;
 		
-		ClearFlags(EntityFlags.ACTIVE, false);
-		
 		m_ArsenalDisplayComponent = SCR_ArsenalDisplayComponent.Cast(owner.FindComponent(SCR_ArsenalDisplayComponent));
 		
 		if (!m_ArsenalDisplayComponent)
@@ -64,7 +62,6 @@ class SCR_WeaponRackEntity : GenericEntity
 	void SCR_WeaponRackEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, false);
 	}
 
 	//------------------------------------------------------------------------------------------------

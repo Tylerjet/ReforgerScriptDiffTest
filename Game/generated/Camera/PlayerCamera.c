@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Camera
-* @{
+/*!
+\addtogroup Camera
+\{
 */
 
 class PlayerCameraClass: CameraBaseClass
 {
-};
+}
 
 class PlayerCamera: CameraBase
 {
@@ -21,6 +21,8 @@ class PlayerCamera: CameraBase
 	proto external float GetFocusFOV();
 	//! Returns interpolated value from baseFOV to focusFOV based on the input scalar value.
 	proto external float GetFocusFOVScale(float baseFOV, float scalar);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

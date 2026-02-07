@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class VehicleControllerComponentClass: CompartmentControllerComponentClass
 {
-};
+}
 
 class VehicleControllerComponent: CompartmentControllerComponent
 {
@@ -47,6 +47,8 @@ class VehicleControllerComponent: CompartmentControllerComponent
 	\param drowned True to set the engine drowned, false otherwise.
 	*/
 	proto external void SetEngineDrowned(bool drowned);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

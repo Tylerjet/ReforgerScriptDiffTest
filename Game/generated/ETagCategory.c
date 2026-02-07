@@ -9,5 +9,5 @@ enum ETagCategory
 	NameTag,
 	Perceivable,
 	Radio,
-	All
-};
+	All,
+}

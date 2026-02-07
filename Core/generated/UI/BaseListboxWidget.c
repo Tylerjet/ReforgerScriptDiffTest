@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class BaseListboxWidget: UIWidget
@@ -16,6 +16,8 @@ sealed class BaseListboxWidget: UIWidget
 	proto external void EnsureVisible(int row);
 	proto external int GetSelectedRow();
 	proto external void SelectRow(int row);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

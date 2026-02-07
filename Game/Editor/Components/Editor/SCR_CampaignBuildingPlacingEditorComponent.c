@@ -20,7 +20,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	protected ResourceName m_sSoundFile;
 
 	protected bool m_bCanBeCreated = true;
-	protected bool m_bPreviewOutOfArea = false;
 	protected SCR_CampaignBuildingEditorComponent m_CampaignBuildingComponent;
 	protected SCR_FreeRoamBuildingClientTriggerEntity m_AreaTrigger;
 	protected IEntity m_Provider;
@@ -63,38 +62,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Composition preview enters the building area
-	protected void PreviewInAreaEvent(IEntity ent)
-	{
-		SCR_BasePreviewEntity prevEnt = SCR_BasePreviewEntity.Cast(ent);
-		if (prevEnt)
-		{
-			// it's not a root of preview
-			if (prevEnt.GetParent())
-				return;
-
-			m_bPreviewOutOfArea = false;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Composition preview left the building area
-	protected void PreviewOutOfAreaEvent(IEntity ent)
-	{
-		SCR_BasePreviewEntity prevEnt = SCR_BasePreviewEntity.Cast(ent);
-		if (prevEnt)
-		{
-			// it's not a root of preview
-			if (prevEnt.GetParent())
-				return;
-
-			m_bPreviewOutOfArea = true;
-			m_bCanBeCreated = false;
-			m_eBlockingReason = ECantBuildNotificationType.OUT_OF_AREA;
-		}
-	}
-
-	//------------------------------------------------------------------------------------------------
 	//! Method called when the preview of prefab to build is created.
 	protected void OnPreviewCreated(SCR_EditablePreviewEntity previewEnt)
 	{
@@ -119,7 +86,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			m_bCanBeCreated = true;
 
 		m_bCanBeCreated = false;
-		m_bPreviewOutOfArea = true;
 		m_eBlockingReason = ECantBuildNotificationType.OUT_OF_AREA;
 		return;
 	}
@@ -153,19 +119,26 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 			SCR_CampaignBuildingCompositionComponent compositionComponent = SCR_CampaignBuildingCompositionComponent.Cast(entityOwner.FindComponent(SCR_CampaignBuildingCompositionComponent));
 			if (!compositionComponent)
 				continue;
-
-			SetProvider(compositionComponent);
+			
+			SetProviderAndBuilder(compositionComponent);
 		}
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Set the provider entity to composition. Provider is the entity to which a composition belong to. For example a base, supply truck...
-	protected void SetProvider(notnull SCR_CampaignBuildingCompositionComponent compositionComponent)
+	//! Set the provider and builder entity to composition. Provider is the entity to which a composition belong to. For example a base, supply truck... Builder is a player who build it.
+	protected void SetProviderAndBuilder(notnull SCR_CampaignBuildingCompositionComponent compositionComponent)
 	{
 		IEntity provider = m_CampaignBuildingComponent.GetProviderEntity();
 		if (!provider)
 			return;
+		
+		SCR_EditorManagerEntity managerEnt = GetManager();
+			if (!managerEnt)
+				return;
+			
+		int id = managerEnt.GetPlayerID();
 
+		compositionComponent.SetBuilderId(id);
 		compositionComponent.SetProviderEntity(provider);
 
 		// Don't set up this hook if the provider is a base. We don't want to change the ownership here
@@ -181,42 +154,21 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	protected void OnPlaceEntityServer(int prefabID, SCR_EditableEntityComponent entity)
 	{
 		NotifyCampaign(prefabID, entity, true);
-		
+
 		vector position = entity.GetOwner().GetOrigin();
 		Rpc(PlaySoundEvent, position, m_sSoundFile);
 		PlaySoundEvent(position, m_sSoundFile);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
 	protected void PlaySoundEvent(vector pos, string soundEvent)
 	{
 		vector transform[4];
 		transform[3] = pos;
-		
+
 		if (soundEvent && pos)
-			AudioSystem.PlayEvent(soundEvent, SCR_SoundEvent.SOUND_BUILD, transform, new array<string>, new array<float>); 
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// Add events when the preview of the composition enters or leaves the building area
-	protected void SetTriggerEvents()
-	{
-		if (!m_AreaTrigger)
-			return;
-
-		m_AreaTrigger.GetOnEntityEnterTrigger().Insert(PreviewInAreaEvent);
-		m_AreaTrigger.GetOnEntityLeaveTrigger().Insert(PreviewOutOfAreaEvent);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	protected void RemoveAreaTriggerEvents()
-	{
-		if (!m_AreaTrigger)
-			return;
-
-		m_AreaTrigger.GetOnEntityEnterTrigger().Remove(PreviewInAreaEvent);
-		m_AreaTrigger.GetOnEntityLeaveTrigger().Remove(PreviewOutOfAreaEvent);
+			AudioSystem.PlayEvent(soundEvent, SCR_SoundEvent.SOUND_BUILD, transform, new array<string>, new array<float>);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -257,12 +209,24 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 
 		return false;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Check if the preview is outisde of the building radius. if preview doesn't exist return false - preview doesn't exist on server and the same CanCreateEntity is used on server too.
+	bool IsPreviewOutOfRange()
+	{
+		if (!m_AreaTrigger || !m_PreviewEnt)
+			return false;
+
+		return (vector.DistanceSqXZ(m_AreaTrigger.GetOrigin(), m_PreviewEnt.GetOrigin()) >= m_AreaTrigger.GetSphereRadius() * m_AreaTrigger.GetSphereRadius());
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool CanCreateEntity(out ENotification outNotification = -1)
 	{
-		if (!m_bPreviewOutOfArea)
-			CheckPosition();
+		if (IsPreviewOutOfRange())
+			return false;
+
+		CheckPosition();
 
 		SCR_CampaignBuildingPlacingEditorComponentClass componentData = SCR_CampaignBuildingPlacingEditorComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData)
@@ -285,7 +249,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 	{
 		super.EOnEditorActivate();
 		InitVariables();
-		SetTriggerEvents();
 		SetInitialEvent();
 	}
 
@@ -329,12 +292,6 @@ class SCR_CampaignBuildingPlacingEditorComponent : SCR_PlacingEditorComponent
 
 		m_Provider = m_CampaignBuildingComponent.GetProviderEntity();
 		m_AreaTrigger = SCR_FreeRoamBuildingClientTriggerEntity.Cast(m_CampaignBuildingComponent.GetTrigger());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void EOnEditorDeactivate()
-	{
-		RemoveAreaTriggerEvents();
 	}
 
 	//------------------------------------------------------------------------------------------------

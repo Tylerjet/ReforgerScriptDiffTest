@@ -14,7 +14,7 @@ class SCR_AIDecideBehavior: AITaskScripted
 		if (!m_UtilityComponent)
 			return ENodeResult.FAIL;
 		
-		SCR_AITargetInfo enemyTarget, unknownTarget;		
+		BaseTarget unknownTarget;		
 		SCR_AIMessageBase commandMessage, infoMessage;
 		GetVariableIn("InfoMessage", infoMessage);
 		GetVariableIn("CommandMessage", commandMessage);

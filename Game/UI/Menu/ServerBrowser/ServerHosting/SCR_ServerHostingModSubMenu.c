@@ -9,6 +9,11 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 	protected const string NAV_ENABLE_ALL = "#AR-ServerHosting_EnableAll";
 	protected const string NAV_DISABLE_ALL = "#AR-Workshop_DisableAll";
 	
+	protected const string SORT_BTN_SORT_LABEL = "#AR-Editor_TooltipDetail_WaypointIndex_Name";
+	protected const string SORT_BTN_SORT_ACTION = "MenuSelectHold";
+	protected const string SORT_BTN_PLACE_LABEL = "#AR-Button_Confirm-UC";
+	protected const string SORT_BTN_PLACE_ACTION = "MenuSelect";
+	
 	// Attributes 
 	[Attribute("", UIWidgets.ResourceNamePicker, "Used layout for mod enabling", "layout")]
 	protected ResourceName m_EntryLayout;
@@ -94,6 +99,15 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		m_Widgets.m_ButtonDisableAllComponent.m_OnClicked.Insert(OnDisableAllClicked);
 		
 		CreateAddonList();
+		
+		SetupDownloadingCallbacks();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		super.HandlerDeattached(w);
+		ClearDownloadingCallbacks();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -176,27 +190,36 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		for (int i = 0, count = addons.Count(); i < count; i++)
 		{
-			// Line setup
-			Widget w = GetGame().GetWorkspace().CreateWidgets(m_EntryLayout, m_Widgets.m_DisabledAddonsList);
-			SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(w.FindHandler(SCR_AddonLineDSConfigComponent));
-			if (!line)
-				continue; 
-			
-			// Callbacks 
-			line.m_OnEnableButton.Insert(OnAddonEnabled);
-			line.m_OnDisableButton.Insert(OnAddonDisabled);
-			line.GetEventOnButtonUp().Insert(OnLineButtonUp);
-			line.GetEventOnButtonDown().Insert(OnLineButtonDown);
-			line.m_OnFocus.Insert(OnLineFocus);
-			line.m_OnFocusLost.Insert(OnLineFocusLost);
-			
-			line.Init(addons[i]);
-			m_aDisabled.Insert(w);
-			w.SetZOrder(i);
-			
-			// Enable map 
-			m_aEnabledMods.Insert(addons[i], line);
+			AddLineEntry(addons[i], i);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AddLineEntry(SCR_WorkshopItem item, int id)
+	{
+		// Line setup
+		Widget w = GetGame().GetWorkspace().CreateWidgets(m_EntryLayout, m_Widgets.m_DisabledAddonsList);
+		SCR_AddonLineDSConfigComponent line = SCR_AddonLineDSConfigComponent.Cast(
+			w.FindHandler(SCR_AddonLineDSConfigComponent));
+		
+		if (!line)
+			return; 
+		
+		// Callbacks 
+		line.m_OnEnableButton.Insert(OnAddonEnabled);
+		line.m_OnDisableButton.Insert(OnAddonDisabled);
+		line.GetEventOnButtonUp().Insert(OnLineButtonUp);
+		line.GetEventOnButtonDown().Insert(OnLineButtonDown);
+		line.m_OnFocus.Insert(OnLineFocus);
+		line.m_OnFocusLost.Insert(OnLineFocusLost);
+		line.m_OnFixButton.Insert(OnLineFixButton);
+		
+		line.Init(item);
+		m_aDisabled.Insert(w);
+		w.SetZOrder(id);
+		
+		// Enable map 
+		m_aEnabledMods.Insert(item, line);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -271,7 +294,13 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		{
 			SCR_AddonLineDSConfigComponent line = FindLineByModId(mods[i].modId);
 			if (line)
+			{
+				// Do not restore corrupted mod
+				if (line.HasItemAnyIssue())
+					continue;
+				
 				items.Insert(line.GetWorkshopItem());
+			}
 		}
 		
 		EnableItems(true, items);
@@ -295,6 +324,34 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		}
 		
 		return null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Setup callbacks for all running downloads 
+	protected void SetupDownloadingCallbacks()
+	{
+		array<ref SCR_WorkshopItemActionDownload> actions = SCR_DownloadManager.GetInstance().GetDownloadQueue();
+		
+		for (int i = 0, count = actions.Count(); i < count; i++)
+		{
+			actions[i].m_OnCompleted.Insert(OnDownloadComplete);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void ClearDownloadingCallbacks()
+	{
+		array<ref SCR_WorkshopItemActionDownload> actions = {};
+		
+		if (!SCR_DownloadManager.GetInstance() || !SCR_DownloadManager.GetInstance().GetDownloadQueue())
+			return;
+		
+		actions = SCR_DownloadManager.GetInstance().GetDownloadQueue();
+		
+		for (int i = 0, count = actions.Count(); i < count; i++)
+		{
+			actions[i].m_OnCompleted.Remove(OnDownloadComplete);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -330,11 +387,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		// Unselect dependent mods
 		array<ref SCR_WorkshopItem> dependent = item.GetDependentAddons();
-		
-		
-		// Show disabled dependencies - TODO: Apply only for emabled
-		/*if (!dependent.IsEmpty())
-			SCR_DisableDependentAddonsDialog.CreateDisableDependentAddons(dependent, item);*/
 		
 		// Add item 
 		dependent.Insert(item);
@@ -398,6 +450,107 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		{
 			GetGame().GetCallqueue().CallLater(FocusLine, 0, false, m_OrderedLine);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnLineFixButton(notnull SCR_AddonLineBaseComponent line)
+	{
+		// All dependencies
+		array<ref SCR_WorkshopItem> dependencies = line.GetWorkshopItem().GetLatestDependencies();
+		if (dependencies.IsEmpty())
+			return;
+		
+		// Reported and blocked dependencies 
+		array<ref SCR_WorkshopItem> issues = SCR_AddonManager.SelectItemsOr(dependencies,
+			EWorkshopItemQuery.BLOCKED | EWorkshopItemQuery.AUTHOR_BLOCKED | EWorkshopItemQuery.REPORTED_BY_ME);
+		
+		if (!issues.IsEmpty())
+		{
+			// Show dialog of issues 
+			SCR_AddonListDialog.CreateRestrictedAddonsDownload(issues);
+			return;
+		}
+		
+		// Missing dependencies
+		dependencies = SCR_AddonManager.SelectItemsOr(dependencies, EWorkshopItemQuery.NOT_OFFLINE | EWorkshopItemQuery.UPDATE_AVAILABLE);
+		if (dependencies.IsEmpty())
+			return;
+		
+		array<ref SCR_DownloadManager_Entry> downloads = {};
+		SCR_DownloadManager.GetInstance().GetAllDownloads(downloads);
+		
+		// Remove mods in downloading 
+		for (int i = dependencies.Count() - 1; i >= 0; i--)
+		{
+			for (int x = 0, count = downloads.Count(); x < count; x++)
+			{
+				if (downloads[x].m_Item.GetId() != dependencies[i].GetId())
+					continue;
+					
+				if (downloads[x].m_Action.IsActive())
+				{
+					dependencies.RemoveItem(dependencies[i]);
+					break;
+				}
+			}
+		}
+		
+		// Open download dialog if all are being downloaded
+		if (dependencies.IsEmpty())
+		{
+			GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.DownloadManagerDialog);
+			return;
+		}
+		
+		// Create addon list and dialog 
+		array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions = {};		
+		foreach (SCR_WorkshopItem item : dependencies)
+		{
+			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, ref Revision>(item, null));
+		}
+		
+		SCR_DownloadConfirmationDialog downloadDialog = SCR_DownloadConfirmationDialog.CreateForAddons(
+			addonsAndVersions, true);
+		
+		downloadDialog.m_OnDownloadConfirmed.Insert(OnFixDependeciesDownloadConfirm);
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	protected void OnFixDependeciesDownloadConfirm(SCR_DownloadConfirmationDialog dialog)
+	{
+		// Listen to download done
+		foreach (SCR_WorkshopItemAction action : dialog.GetActions())
+		{
+			action.m_OnCompleted.Insert(OnFixDependenciesDownloadCompleted);
+		} 
+		
+		dialog.m_OnDownloadConfirmed.Remove(OnFixDependeciesDownloadConfirm);
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	protected void OnFixDependenciesDownloadCompleted(SCR_WorkshopItemAction action)
+	{
+		OnDownloadComplete(action);
+		
+		// Reset all entries state 
+		for (int i = 0, count = m_aDisabled.Count(); i < count; i++)
+		{
+			SCR_AddonLineBaseComponent line = SCR_AddonLineBaseComponent.Cast(
+				m_aDisabled[i].FindHandler(SCR_AddonLineBaseComponent));
+			
+			if (line)
+				line.UpdateFixButton();
+		}
+		
+		action.m_OnCompleted.Remove(OnFixDependenciesDownloadCompleted);
+	}
+	
+	//----------------------------------------------------------------------------------------------
+	protected void OnDownloadComplete(SCR_WorkshopItemAction action)
+	{
+		// Add mod to mod list 
+		AddLineEntry(action.GetWorkshopItem(), m_aDisabled.Count());
+		action.m_OnCompleted.Remove(OnDownloadComplete);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -541,9 +694,11 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		for (int i = 0, count = m_aEnabledMods.Count(); i < count; i++)
 		{
 			SCR_WorkshopItem item = m_aEnabledMods.GetKey(i);
+			SCR_AddonLineDSConfigComponent line = m_aEnabledMods.GetElement(i);
+			if (!line)
+				continue;
 			
-			// Enable mods without issues 
-			if (!item.GetRestricted() && !item.GetAnyDependencyMissing())
+			if (!line.HasItemAnyIssue())
 				enable.Insert(item);
 		}
 		
@@ -583,10 +738,6 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 		
 		// Store last focused position
 		int focusedId = LastFocusedId(m_FocusedLine.GetRootWidget(), !enabled);
-		
-		// Enable
-		//EnableItems(!enabled, {item});
-		//OnAddonEnabled(m_FocusedLine);
 		
 		if (enabled)
 			m_FocusedLine.OnDisableButton();
@@ -630,13 +781,20 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				m_NavChangeSortOrder.SetVisible(false, false);
 			
 			if (m_NavSelectSort)
-				m_NavSelectSort.SetLabel("#AR-Editor_TooltipDetail_WaypointIndex_Name");
+			{
+				// Start ordering
+				m_NavSelectSort.SetLabel(SORT_BTN_SORT_LABEL);
+				m_NavSelectSort.SetAction(SORT_BTN_SORT_ACTION);
+			}
 			
 			if (m_NavEnable)
 				m_NavEnable.SetVisible(true, false);
 			
 			if (m_NavEnableAll)
 				m_NavEnableAll.SetVisible(true, false);
+			
+			// Refocus 
+			OnLineFocus(m_FocusedLine);
 			
 			return;
 		}
@@ -659,7 +817,11 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				m_NavChangeSortOrder.SetVisible(true);
 			
 			if (m_NavSelectSort)
-				m_NavSelectSort.SetLabel("#AR-ControlsHint_Editor_EditorPlaceAndCancel");
+			{
+				// Place and stop ordering
+				m_NavSelectSort.SetLabel(SORT_BTN_PLACE_LABEL);
+				m_NavSelectSort.SetAction(SORT_BTN_PLACE_ACTION);
+			}
 			
 			if (m_NavEnable)
 				m_NavEnable.SetVisible(false, false);
@@ -668,6 +830,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				m_NavEnableAll.SetVisible(false, false);
 		}
 	}
+	
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnDownSort()
@@ -724,7 +887,7 @@ class SCR_ServerHostingModSubMenu : SCR_SubMenuBase
 				
 				mod.modId = item.GetId();
 				mod.name = item.GetName();
-				mod.version = item.GetCurrentLocalVersion();
+				mod.version = item.GetCurrentLocalRevision().GetVersion();
 				
 				mods.Insert(mod);
 			}

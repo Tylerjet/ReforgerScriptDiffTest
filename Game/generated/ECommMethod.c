@@ -17,5 +17,5 @@ enum ECommMethod
 	/*!
 	Radio protocol
 	*/
-	DIRECT_AI
-};
+	DIRECT_AI,
+}

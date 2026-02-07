@@ -23,18 +23,30 @@ class SCR_AISetActionParameters : SCR_AIActionTask
 };
 
 
-
-class SCR_AISetSeekDestroyActivityParameters : SCR_AISetActionParameters
+class SCR_AISetMoveActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AISeekAndDestroyActivity(null, false, false, vector.Zero)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIMoveActivity(null, false, vector.Zero, null)).GetPortNames();	
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };
 
-class SCR_AISetDefendActivityParameters : SCR_AIActionTask
+class SCR_AISetGetInActivityParameters : SCR_AISetActionParameters
 {
-	protected static ref TStringArray s_aVarsIn = (new SCR_AIDefendActivity(null, false, false, null)).GetPortNames();
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIGetInActivity(null, false, null)).GetPortNames();
 	override TStringArray GetVariablesIn() { return s_aVarsIn; }
 	override bool VisibleInPalette() { return true; }
 };
 
+class SCR_AISetDefendActivityParameters : SCR_AISetActionParameters
+{
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIDefendActivity(null, false, null, vector.Zero)).GetPortNames();
+	override TStringArray GetVariablesIn() { return s_aVarsIn; }
+	override bool VisibleInPalette() { return true; }
+};
+
+class SCR_AISetAttackBehaviorParameters : SCR_AISetActionParameters
+{
+	protected static ref TStringArray s_aVarsIn = (new SCR_AIAttackBehavior(null, null, null, vector.Zero)).GetPortNames();
+	override TStringArray GetVariablesIn() { return s_aVarsIn; }
+	override bool VisibleInPalette() { return true; }
+};

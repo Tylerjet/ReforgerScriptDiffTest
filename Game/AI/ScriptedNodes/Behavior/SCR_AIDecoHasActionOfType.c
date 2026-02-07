@@ -1,7 +1,7 @@
  class SCR_AIDecoHasActionOfType : DecoratorScripted
 {
-	[Attribute("0", UIWidgets.ComboBox, enums: ParamEnumArray.FromEnum(EAIActionType))]
-	protected EAIActionType m_eActionType;
+	[Attribute("", UIWidgets.EditBox, "Write type name of the action class")]
+	protected string m_sActionType;
 	
 	protected SCR_AIBaseUtilityComponent m_Utility;
 	
@@ -15,7 +15,7 @@
 				return false;
 		}	
 		
-		return m_Utility.HasActionOfType(m_eActionType);
+		return m_Utility.HasActionOfType(m_sActionType.ToType());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -33,6 +33,6 @@
 	//------------------------------------------------------------------------------------------------
 	protected override string GetNodeMiddleText()
 	{
-		return string.Format("Action type: %1", typename.EnumToString(EAIActionType, m_eActionType));
+		return string.Format("Action type: %1", m_sActionType);
 	}
 };

@@ -11,10 +11,17 @@ class SCR_AIDecoIsWithinRadius : DecoratorScripted
 	protected override bool TestFunction(AIAgent owner)
 	{
 		AIWaypoint waypoint;
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
+			return false;
+		}
+				
 		if (!GetVariableIn("WaypointIn",waypoint))
-			waypoint = owner.GetCurrentWaypoint();		
+			waypoint = group.GetCurrentWaypoint();		
 		if (waypoint)
-			return waypoint.IsWithinCompletionRadius(owner);
+			return waypoint.IsWithinCompletionRadius(group);
 		return false;
 	}	
 

@@ -215,11 +215,13 @@ class SCR_WorkshopItemCallback_AskDetails : SCR_WorkshopCallbackBase
 	ref ScriptInvoker m_OnDownloadImage = new ref ScriptInvoker;
 	ref ScriptInvoker m_OnGetAssetScenarios = new ref ScriptInvoker; // outdated
 	
+	//-----------------------------------------------------------------------------------------------
 	void SCR_WorkshopItemCallback_AskDetails(WorkshopItem item)
 	{
 		m_Item = item;
 	}
 	
+	//-----------------------------------------------------------------------------------------------
 	override void OnSuccess(int code)
 	{
 		super.OnSuccess(code);

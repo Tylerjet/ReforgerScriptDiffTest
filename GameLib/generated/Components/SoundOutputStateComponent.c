@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class SoundOutputStateComponentClass: GenericComponentClass
 {
-};
+}
 
 class SoundOutputStateComponent: GenericComponent
 {
@@ -25,6 +25,8 @@ class SoundOutputStateComponent: GenericComponent
 	proto external void SetSignalValue(int index, float value);
 	/* Enable debug mode. */
 	proto external void SetDebug(bool value);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

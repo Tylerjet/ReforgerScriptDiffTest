@@ -130,10 +130,10 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 		
 		BaseRadioComponent radioComponent = BaseRadioComponent.Cast(mHQ.FindComponent(BaseRadioComponent));
 		
-		if (radioComponent)
+		if (radioComponent && radioComponent.TransceiversCount() > 0)
 		{
-			radioComponent.TogglePower(false);
-			radioComponent.SetFrequency(f.GetFactionRadioFrequency());
+			radioComponent.SetPower(false);
+			radioComponent.GetTransceiver(0).SetFrequency(f.GetFactionRadioFrequency());
 			radioComponent.SetEncryptionKey(f.GetFactionRadioEncryptionKey());
 		}
 		
@@ -280,7 +280,10 @@ class SCR_CampaignTutorialComponent : SCR_BaseGameModeComponent
 	void StageReset_DeployMHQ()
 	{
 		if (m_MobileAssemblyComponent && !m_MobileAssemblyComponent.IsDeployed())
+		{
+			m_MobileAssemblyComponent.UpdateRadioCoverage();
 			m_MobileAssemblyComponent.Deploy(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------

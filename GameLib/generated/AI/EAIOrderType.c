@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 enum EAIOrderType
@@ -19,7 +19,9 @@ enum EAIOrderType
 	AIOrder_Defend,
 	AIOrder_GetIn,
 	AIOrder_Attack,
-	AIOrder_Custom
-};
+	AIOrder_Custom,
+}
 
-/** @}*/
+/*!
+\}
+*/

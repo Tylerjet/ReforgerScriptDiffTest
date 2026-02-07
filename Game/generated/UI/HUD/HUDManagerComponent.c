@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI\HUD
-* @{
+/*!
+\addtogroup UI\HUD
+\{
 */
 
 class HUDManagerComponentClass: SCR_BaseHUDComponentClass
 {
-};
+}
 
 class HUDManagerComponent: SCR_BaseHUDComponent
 {
@@ -22,6 +22,8 @@ class HUDManagerComponent: SCR_BaseHUDComponent
 	event protected void OnInit(IEntity owner);
 	event protected void OnUpdate(IEntity owner);
 	event protected void OnControlledEntityChanged(IEntity from, IEntity to);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

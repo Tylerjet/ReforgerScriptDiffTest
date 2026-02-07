@@ -8,8 +8,8 @@ class SCR_DestructibleEntityClass: DestructibleEntityClass
 	[Attribute("", UIWidgets.Object, "List of objects (particles, debris, etc) to spawn on destruction of the object", category: "Destruction FX")]
 	ref array<ref SCR_BaseSpawnable> m_aDestroySpawnObjects;
 	
-	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for destruction sound", "", ParamEnumArray.FromEnum(EMaterialSoundType))]
-	EMaterialSoundType m_eMaterialSoundType;
+	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for destruction sound", "", ParamEnumArray.FromEnum(SCR_EMaterialSoundTypeBreak))]
+	SCR_EMaterialSoundTypeBreak m_eMaterialSoundType;
 };
 
 //------------------------------------------------------------------------------------------------
@@ -89,9 +89,39 @@ class SCR_DestructibleEntity: DestructibleEntity
 	static const int TOTAL_DESTRUCTION_MAX_HEALTH_MULTIPLIER = 10;
 	
 	//------------------------------------------------------------------------------------------------
-	float GetMaxHealth()
+	float GetDamageMultiplier(EDamageType type)
 	{
 		SCR_DestructibleEntityClass prefabData = SCR_DestructibleEntityClass.Cast(GetPrefabData());
+		if (prefabData)
+			return prefabData.GetDamageMultiplier(type);
+		
+		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDamageReduction()
+	{
+		SCR_DestructibleEntityClass prefabData = SCR_DestructibleEntityClass.Cast(GetPrefabData());
+		if (prefabData)
+			return prefabData.GetDamageReduction();
+		
+		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDamageThreshold()
+	{
+		DestructibleEntityClass prefabData = DestructibleEntityClass.Cast(GetPrefabData());
+		if (prefabData)
+			return prefabData.GetDamageThreshold();
+		
+		return 0;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetMaxHealth()
+	{
+		DestructibleEntityClass prefabData = DestructibleEntityClass.Cast(GetPrefabData());
 		if (!prefabData)
 			return 0;
 		
@@ -261,29 +291,44 @@ class SCR_DestructibleEntity: DestructibleEntity
 	//------------------------------------------------------------------------------------------------
 	void PlaySound(int damagePhaseIndex)
 	{
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (!soundManagerEntity)
+			return;
+		
 		SCR_DestructibleEntityClass prefabData = SCR_DestructibleEntityClass.Cast(GetPrefabData());
-		if (prefabData.m_eMaterialSoundType == 0)
+		if (!prefabData || prefabData.m_eMaterialSoundType == 0)
 			return;
 		
 		SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
 		if (!destructionManager)
 			return;
 		
-		SimpleSoundComponent soundComponent = destructionManager.GetSoundComponent();
-		if (!soundComponent)
+		SCR_AudioSourceConfiguration audioSourceConfiguration = destructionManager.GetAudioSourceConfiguration();
+		if (!audioSourceConfiguration)
+			return;
+		
+		// Get AudioSource
+		audioSourceConfiguration.m_sSoundEventName = SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(SCR_EMaterialSoundTypeBreak, prefabData.m_eMaterialSoundType);
+		
+		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(this, audioSourceConfiguration);
+		if (!audioSource)
 			return;
 		
 		// Set signals
-	    soundComponent.SetSignalValue(destructionManager.GetEntitySizeSignalID(), GetDestructibleSize());
-		soundComponent.SetSignalValue(destructionManager.GetPhasesToDestroyedSignalID(), prefabData.GetNumDestructionPhases() - damagePhaseIndex - 1);
-
+		audioSource.SetSignalValue(SCR_AudioSource.PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME, prefabData.GetNumDestructionPhases() - damagePhaseIndex - 1);
+		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, GetDestructibleSize());
+		
 		// Set position
 		vector mat[4];
-		mat[3] = GetOrigin();
-		soundComponent.SetTransformation(mat);
 		
+		// Get center of bounding box
+		vector mins;
+		vector maxs;
+		GetWorldBounds(mins, maxs);
+		mat[3] = vector.Lerp(mins, maxs, 0.5);
+			
 		// Play sound
-		soundComponent.PlayStr("SOUND_MPD_" + typename.EnumToString(EMaterialSoundType, prefabData.m_eMaterialSoundType));
+		soundManagerEntity.PlayAudioSource(audioSource, mat);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -370,7 +415,8 @@ class SCR_DestructibleEntity: DestructibleEntity
 			return;
 		
 		// Get the physics of the dynamic object (if owner is static, then we use the other object instead)
-		Physics physics = owner.GetPhysics();
+		Physics physics = contact.Physics1;
+		
 		int responseIndex = physics.GetResponseIndex();
 		float ownerMass = physics.GetMass();
 		float otherMass;
@@ -378,7 +424,7 @@ class SCR_DestructibleEntity: DestructibleEntity
 		int otherResponseIndex;
 		if (!physics.IsDynamic())
 		{
-			physics = other.GetPhysics();
+			physics = contact.Physics2;
 			if (!physics)
 				return; // This only happens with ragdolls, other objects do have physics here, as collision only happens between physical objects
 			

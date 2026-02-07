@@ -84,25 +84,26 @@ class SCR_AIConfigComponent : ScriptComponent
 		m_EnableLeaderStop = settings.m_EnableLeaderStop;
 		m_EnableAimingError = settings.m_EnableAimError;
 		
-		typename type_EAIActionType = EAIActionType;
+		typename type_EMessageType_Goal = EMessageType_Goal;
+		typename type_EMessageType_Info = EMessageType_Info;
 		
 		foreach (SCR_AIDangerReaction reaction : m_aDangerReactions)
 		{
 			m_mDangerReactions[reaction.m_eType] = reaction;
 		}
 		
-		m_aGoalReactionsPacked.Resize(type_EAIActionType.GetVariableCount());
+		m_aGoalReactionsPacked.Resize(type_EMessageType_Goal.GetVariableCount());
 		foreach (SCR_AIGoalReaction reaction : m_aGoalReactions)
 		{
-			if(reaction.m_eType != EAIActionType.NONE)
+			if(reaction.m_eType != EMessageType_Goal.NONE)
 				m_aGoalReactionsPacked[reaction.m_eType] = reaction;
 		}
 		
-		m_aInfoReactionsPacked.Resize(type_EAIActionType.GetVariableCount());
+		m_aInfoReactionsPacked.Resize(type_EMessageType_Info.GetVariableCount());
 		foreach (SCR_AIInfoReaction reaction : m_aInfoReactions)
 		{
-			if(reaction.m_eType != EAIActionType.NONE)
-				m_aInfoReactionsPacked[reaction.m_eType] = reaction;			
+			if(reaction.m_eType != EMessageType_Info.NONE)
+				m_aInfoReactionsPacked[reaction.m_eType] = reaction;
 		}
 	}
 	

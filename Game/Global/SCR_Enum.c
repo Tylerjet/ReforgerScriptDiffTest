@@ -23,6 +23,32 @@ class SCR_Enum
 	{
 		return (condition & ~flags) != condition;
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Adds the given flag to Flags
+	\param flags List of flags
+	\param flagToSet Flag to add
+	\return New flags value
+	*/
+	static int SetFlag(int flags, int flagToSet)
+	{
+		flags |= flagToSet;
+		return flags;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Removes the given flag to Flags
+	\param flags List of flags
+	\param flagToRemove Flag to remove
+	\return New flags value
+	*/
+	static int RemoveFlag(int flags, int flagToRemove)
+	{
+		flags &= ~flagToRemove;
+		return flags;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Convert bit array to integer array

@@ -32,7 +32,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//! The physics attached to this debris.
 	private Physics m_RigidBody = null;
 	//! Material type of item for sound
-	private EMaterialSoundType m_eMaterialSoundType
+	private SCR_EMaterialSoundTypeDebris m_eMaterialSoundType
 	//! Position of last played sound
 	private vector m_vSoundPositionLast;
 	//! Minimal distance from last played sound
@@ -152,30 +152,39 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	private void PlaySound(vector pos, float dVelocity)
 	{		
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (!soundManagerEntity)
+			return;
+		
 		SCR_MPDestructionManager destructionManager = SCR_MPDestructionManager.GetInstance();
 		if (!destructionManager)
 			return;
 		
-		SimpleSoundComponent soundComponent = destructionManager.GetSoundComponent();
-		if (!soundComponent)
+		SCR_AudioSourceConfiguration audioSourceConfiguration = destructionManager.GetAudioSourceConfiguration();
+		if (!audioSourceConfiguration)
 			return;
 		
-	    if (soundComponent.IsFinishedPlaying(m_AudioHandle))
-		{
-			soundComponent.Terminate(m_AudioHandle);
-			m_AudioHandle = AudioHandle.Invalid;
-		}
+		audioSourceConfiguration.m_sSoundEventName = SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(SCR_EMaterialSoundTypeDebris, m_eMaterialSoundType);					
+		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(this, audioSourceConfiguration);
+		if (!audioSource)
+			return;
+		
+		// Stop previous sound
+		AudioSystem.TerminateSound(m_AudioHandle);
 		
 		// Set signals
-		soundComponent.SetSignalValue(destructionManager.GetCollisionDVSignalID(), dVelocity - m_fSoundThreshold);
-		soundComponent.SetSignalValue(destructionManager.GetEntitySizeSignalID(), m_RigidBody.GetMass()); 
-		
-		// Set sound position
+		audioSource.SetSignalValue(SCR_AudioSource.COLLISION_D_V_SIGNAL_NAME, dVelocity - m_fSoundThreshold);
+		audioSource.SetSignalValue(SCR_AudioSource.ENTITY_SIZE_SIGNAL_NAME, m_RigidBody.GetMass());
+				
+		// Get sound position
 		vector mat[4];		
 		mat[3] = pos;		
-		soundComponent.SetTransformation(mat);
-		m_AudioHandle = soundComponent.PlayStr(SCR_SoundEvent.SOUND_MPD_ + typename.EnumToString(EMaterialSoundType, m_eMaterialSoundType));
 		
+		// Play sound
+		soundManagerEntity.PlayAudioSource(audioSource, mat);		
+		m_AudioHandle = audioSource.m_AudioHandle;	
+		
+		// Store position of the last played sound
 		m_vSoundPositionLast = pos;
 		
 		// Sound Debug
@@ -255,7 +264,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 	//! \param linearVelocity Linear velocity of the debris (in m/s)
 	//! \param angularVelocity Angular velocity of the debris (in deg/s)
 	//! \param remap The materials to be remapped to, see SetObject() for more info
-	static SCR_DebrisSmallEntity SpawnDebris(BaseWorld world, vector mat[4], ResourceName model, float mass = 10, float lifeTime = 10.0, float maxDistance = 256.0, int priority = 1, vector linearVelocity = "0 0 0", vector angularVelocity = "0 0 0", string remap = "", bool isStatic = false, EMaterialSoundType materialSoundType = 0)
+	static SCR_DebrisSmallEntity SpawnDebris(BaseWorld world, vector mat[4], ResourceName model, float mass = 10, float lifeTime = 10.0, float maxDistance = 256.0, int priority = 1, vector linearVelocity = "0 0 0", vector angularVelocity = "0 0 0", string remap = "", bool isStatic = false, SCR_EMaterialSoundTypeDebris materialSoundType = 0)
 	{
 		if (m_iSpawnedThisFrame >= m_iDebrisPerFrameLimit)
 			return null;
@@ -339,12 +348,7 @@ class SCR_DebrisSmallEntity : GenericEntity
 		vector mins;
 		vector maxs;
 		entity.GetWorldBounds(mins, maxs);			
-		vector center;
-		for (int i = 0; i < 3; i++)
-		{
-			center[i] = mins[i] + Math.AbsFloat(((maxs[i] - mins[i]) * 0.5));
-		}
-		entity.m_vSoundPositionLast = center;
+		entity.m_vSoundPositionLast = vector.Lerp(mins, maxs, 0.5);
 		
 		// Set physics
 		if (!entity.m_RigidBody)

@@ -291,7 +291,7 @@ class SCR_AIInfoComponent : SCR_AIInfoBaseComponent
 		if (m_ThreatSystem)
 			return m_ThreatSystem.GetState();
 		else 
-			return EAIThreatState.NONE;
+			return EAIThreatState.SAFE;
 	}
 	
 	

@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapEntityClass: GenericEntityClass
 {
-};
+}
 
 class MapEntity: GenericEntity
 {
@@ -42,7 +42,7 @@ class MapEntity: GenericEntity
 	proto external float ElevationAt( vector pos );
 	//! Show/ Hide diag
 	proto external void ShowDiag( bool bEnable );
-	/**
+	/*!
 	\brief Create custom representation from script
 	This representation has no entity and you have to support position and orientation yourself (watch MapItem Api)
 	*/
@@ -95,6 +95,8 @@ class MapEntity: GenericEntity
 	proto external int GetLayerIndex();
 	//! Sets corresponding multiple imageset indices for MapDescriptors usage
 	proto external void SetImagesetMapping(notnull array<int> values);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Perception
-* @{
+/*!
+\addtogroup Perception
+\{
 */
 
 class BaseSensor: ScriptAndConfig
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

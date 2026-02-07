@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class FactionAffiliationComponentClass: GameComponentClass
 {
-};
+}
 
 class FactionAffiliationComponent: GameComponent
 {
@@ -32,9 +32,9 @@ class FactionAffiliationComponent: GameComponent
 	\param factionKey The identifier of the faction
 	*/
 	proto external void SetAffiliatedFactionByKey(FactionKey factionKey);
-	
+
 	// callbacks
-	
+
 	/*!
 	Called after all components are initialized.
 	\param owner Entity this component is attached to.
@@ -43,6 +43,8 @@ class FactionAffiliationComponent: GameComponent
 	event protected void OnCompartmentEntered(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move);
 	event protected void OnCompartmentLeft(IEntity vehicle, IEntity occupant, BaseCompartmentSlot compartment, bool move);
 	event protected void OnFactionChanged();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

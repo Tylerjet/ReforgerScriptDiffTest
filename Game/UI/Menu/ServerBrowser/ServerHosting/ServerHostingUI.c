@@ -23,7 +23,11 @@ class ServerHostingUI : SCR_TabDialog
 	// Config widget wrapper components 
 	protected ref SCR_ServerConfigListComponent m_ConfigList;
 	protected ref SCR_ServerHostingSettingsSubMenu m_ConfigListSubMenu;
+	
 	protected ref SCR_ServerHostingModSubMenu m_ConfigMods;
+	
+	protected ref SCR_ServerConfigAdvancedComponent m_AdvancedSettings;
+	protected ref SCR_ServerHostingSettingsSubMenu m_AdvancedSubMenu;
 	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen()
@@ -36,16 +40,12 @@ class ServerHostingUI : SCR_TabDialog
 		m_ConfigList = SCR_ServerConfigListComponent.Cast(
 			m_SuperMenu.GetTabView().GetEntryContent(0).m_wTab.FindHandler(SCR_ServerConfigListComponent)
 		);
-
+		
 		m_ConfigListSubMenu = SCR_ServerHostingSettingsSubMenu.Cast(
 			m_SuperMenu.GetTabView().GetEntryContent(0).m_wTab.FindHandler(SCR_ServerHostingSettingsSubMenu)
 		);
 		
 		m_ConfigListSubMenu.Init(m_SuperMenuComponent);
-		
-		// Default IP and port
-		GetGame().GetBackendApi().SetDefaultIpPort(m_DSConfig);
-		m_ConfigList.SetIPPort(m_DSConfig);
 		
 		// Mods 
 		m_ConfigMods = SCR_ServerHostingModSubMenu.Cast(
@@ -54,16 +54,38 @@ class ServerHostingUI : SCR_TabDialog
 		
  		m_ConfigMods.GetEventOnWorkshopButtonActivate().Insert(OnWorkshopOpenActivate);
 		
+		
+		// Advanced settings 
+		m_AdvancedSettings =  SCR_ServerConfigAdvancedComponent.Cast(
+			m_SuperMenu.GetTabView().GetEntryContent(2).m_wTab.FindHandler(SCR_ServerConfigAdvancedComponent)
+		);
+		
+		m_AdvancedSubMenu = SCR_ServerHostingSettingsSubMenu.Cast(
+			m_SuperMenu.GetTabView().GetEntryContent(2).m_wTab.FindHandler(SCR_ServerHostingSettingsSubMenu)
+		);
+		
+		m_AdvancedSubMenu.Init(m_SuperMenuComponent);
+		
+		// Default IP and port
+		GetGame().GetBackendApi().SetDefaultIpPort(m_DSConfig);
+		m_AdvancedSettings.SetIPPort(m_DSConfig);
+		
 		// Setup buttons
 		m_ConfigListSubMenu.GetNavHostButton().m_OnActivated.Insert(OnHostServerClick);
 		
 		if (m_ConfigListSubMenu.GetNavSaveButton())
 			m_ConfigListSubMenu.GetNavSaveButton().m_OnActivated.Insert(OnSaveTemplateClick);
 		
+		m_AdvancedSubMenu.GetNavHostButton().m_OnActivated.Insert(OnHostServerClick);
+		
+		if (m_AdvancedSubMenu.GetNavSaveButton())
+			m_AdvancedSubMenu.GetNavSaveButton().m_OnActivated.Insert(OnSaveTemplateClick);
+		
 		// Restore config 
 		if (m_TemporaryConfig)
 		{
 			m_ConfigList.FillFromDSConfig(m_TemporaryConfig);
+			m_AdvancedSettings.FillFromDSConfig(m_TemporaryConfig);
 			m_ConfigMods.EnableModsFromDSConfig(m_TemporaryConfig);
 			m_TemporaryConfig = null;
 		}
@@ -126,6 +148,12 @@ class ServerHostingUI : SCR_TabDialog
 		
 		// Store
 		array<ref SCR_WidgetListEntry> properties = m_ConfigList.GetInitialEntryList();
+		array<ref SCR_WidgetListEntry> advanced = m_AdvancedSettings.GetInitialEntryList();
+		for (int i = 0, count = advanced.Count(); i < count; i++)
+		{
+			properties.Insert(advanced[i]);
+		}
+		
 		array<ref DSMod> mods = m_ConfigMods.SelectedModsList();
 		WorkshopItem scenarioMod = m_ConfigList.GetScenarioOwnerMod();
 		
@@ -290,6 +318,10 @@ class ServerHostingUI : SCR_TabDialog
 		
 		// Store and close
 		array<ref SCR_WidgetListEntry> properties = m_ConfigList.GetInitialEntryList();
+		array<ref SCR_WidgetListEntry> advanced = m_AdvancedSettings.GetInitialEntryList();
+		for (int i = 0, count = advanced.Count(); i < count; i++)
+			properties.Insert(advanced[i]);
+		
 		array<ref DSMod> mods = m_ConfigMods.SelectedModsList();
 		WorkshopItem scenarioMod = m_ConfigList.GetScenarioOwnerMod();
 		

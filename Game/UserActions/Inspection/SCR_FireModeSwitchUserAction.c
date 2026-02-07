@@ -2,14 +2,22 @@ class SCR_FireModeSwitchUserAction : SCR_InspectionUserAction
 {
 	override bool CanBeShownScript(IEntity user)
 	{
-		return (super.CanBeShownScript(user) && m_WeaponComponent.GetCurrentMuzzle().GetFireModesCount() > 2);
+		if (!super.CanBeShownScript(user))
+			return false;
+		
+		BaseMuzzleComponent muzzle = m_WeaponComponent.GetCurrentMuzzle();
+		return muzzle && muzzle.GetFireModesCount() > 2;
 	}
 
 	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		CharacterControllerComponent charComp = CharacterControllerComponent.Cast(pUserEntity.FindComponent(CharacterControllerComponent));
+		if (!m_WeaponComponent)
+			return;
 		BaseMuzzleComponent muzzle = m_WeaponComponent.GetCurrentMuzzle();
-
+		if (!muzzle)
+			return;
+		
+		CharacterControllerComponent charComp = CharacterControllerComponent.Cast(pUserEntity.FindComponent(CharacterControllerComponent));
 		charComp.SetFireMode(muzzle.GetNextFireModeIndex());
 	}
 };

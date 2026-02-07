@@ -10,15 +10,20 @@ class SCR_AIGetHoldingTime : AITaskScripted
     }
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		if ( owner )
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
 		{
-			SCR_TimedWaypoint wp = SCR_TimedWaypoint.Cast(owner.GetCurrentWaypoint());
-			if ( wp )
-			{
-				SetVariableOut("HoldingTimeOut",wp.GetHoldingTime());
-				return ENodeResult.SUCCESS;
-			}				
+			SCR_AgentMustBeAIGroup(this, owner);
+			return ENodeResult.FAIL;
 		}
+
+		SCR_TimedWaypoint wp = SCR_TimedWaypoint.Cast(group.GetCurrentWaypoint());
+		if ( wp )
+		{
+			SetVariableOut("HoldingTimeOut",wp.GetHoldingTime());
+			return ENodeResult.SUCCESS;
+		}				
+		
 		return ENodeResult.FAIL;
 	}
 

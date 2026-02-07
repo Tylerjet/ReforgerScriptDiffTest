@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 //! CharacterCommandSwim - swimming implementation
@@ -19,6 +19,8 @@ class CharacterCommandSwim: CharacterCommand
 	returns Vector3(totalWaterDepth, currentCharacteDepth, 0);
 	*/
 	static proto vector WaterLevelCheck(ChimeraCharacter pCharacter, vector pPosition);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

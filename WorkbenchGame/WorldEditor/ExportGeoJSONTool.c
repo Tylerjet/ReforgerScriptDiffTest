@@ -73,7 +73,7 @@ class GeoExporter
 	{
 		if (file)
 		{
-			file.CloseFile();
+			file.Close();
 		}
 	}
 	
@@ -84,7 +84,7 @@ class GeoExporter
 	
 	void Export(string line)
 	{
-		file.FPrintln(line);
+		file.WriteLine(line);
 	}
 	
 	void BeginExport() {}

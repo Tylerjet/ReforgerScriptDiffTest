@@ -57,7 +57,6 @@ class SCR_PlayerRestrictionZoneWarningComponent: ScriptComponent
 	}
 	override void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 };

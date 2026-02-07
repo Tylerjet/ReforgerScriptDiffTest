@@ -393,6 +393,12 @@ class SCR_ManualCamera: SCR_CameraBase
 			return;
 		}
 		
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+		{
+			world.RegisterEntityToBeUpdatedWhileGameIsPaused(this);
+		}
+		
 		m_Owner = owner;
 		if (m_CameraManager) m_CameraManager.SetCamera(this);
 
@@ -437,7 +443,7 @@ class SCR_ManualCamera: SCR_CameraBase
 		
 		RegisterComponents();
 		
-		SetFlags(EntityFlags.ACTIVE, false);
+		SetFlags(EntityFlags.ACTIVE);
 		SetEventMask(EntityEvent.INIT | EntityEvent.POSTFRAME);
 		
 		// TODO@AS: Due to one of the storages in CameraManager being name-based,
@@ -448,6 +454,12 @@ class SCR_ManualCamera: SCR_CameraBase
 	}
 	void ~SCR_ManualCamera()
 	{
+		ChimeraWorld world = GetGame().GetWorld();
+		if (world)
+		{
+			world.UnregisterEntityToBeUpdatedWhileGameIsPaused(this);
+		}
+		
 		Terminate();
 		SwitchToPreviousCamera();
 	}

@@ -114,7 +114,7 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		m_fNeedleVelocity += (acceleration - drag) * cappedTimeSlice;
 		m_fNeedleAngle += m_fNeedleVelocity * cappedTimeSlice;
 
-		m_fNeedleAngle = SCR_Global.fmod(m_fNeedleAngle, 360);
+		m_fNeedleAngle = SCR_Math.fmod(m_fNeedleAngle, 360);
 		if (m_fNeedleAngle > 180) m_fNeedleAngle -= 360;
 
 		m_SignalManager.SetSignalValue(m_PrefabData.m_iSignalNeedle, m_fNeedleAngle);
@@ -198,9 +198,9 @@ class SCR_CompassComponent : SCR_GadgetComponent
 	protected void UpdateCompassState()
 	{		
 		if (m_bActivated)
-			ActivateGadget();
+			ActivateGadgetFlag();
 		else 
-			DeactivateGadget();
+			DeactivateGadgetFlag();
 				
 		if (!m_PrefabData.m_bSignalInit)
 			m_PrefabData.InitSignals(GetOwner());
@@ -327,6 +327,28 @@ class SCR_CompassComponent : SCR_GadgetComponent
 		UpdateCompassState();
 		
 		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetFlag()
+	{
+		super.ActivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetFlag()
+	{
+		super.DeactivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+		
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 						
 	//------------------------------------------------------------------------------------------------

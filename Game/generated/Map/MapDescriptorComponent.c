@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapDescriptorComponentClass: GameComponentClass
 {
-};
+}
 
 class MapDescriptorComponent: GameComponent
 {
@@ -27,10 +27,12 @@ class MapDescriptorComponent: GameComponent
 	\brief Determine group type of descriptor
 	*/
 	proto external int GetGroupType();
-	/**
+	/*!
 	\brief raist todo: this is temporary - before we fix script
 	*/
 	proto external MapItem Item();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -2,7 +2,7 @@ class SCR_CompareGroupRadioFreq : SCR_SortCompare<SCR_AIGroup>
 {
 	override static int Compare(SCR_AIGroup left, SCR_AIGroup right)
 	{
-		return left.GetGroupFrequency() < right.GetGroupFrequency();
+		return left.GetRadioFrequency() < right.GetRadioFrequency();
 	}
 };
 
@@ -17,8 +17,11 @@ class SCR_GroupVONList: ScriptedWidgetComponent
 	protected ref Color m_ActiveGroupByFrequency;
 
 	//------------------------------------------------------------------------------------------------
-	void InitiateList(BaseRadioComponent radioComp)
+	void InitiateList(BaseTransceiver radioTransceiver)
 	{
+		if (!radioTransceiver)
+			return;
+
 		if (!m_wParentWidget)
 			return;
 
@@ -35,9 +38,7 @@ class SCR_GroupVONList: ScriptedWidgetComponent
 
 		playableGroups.Copy(groupManager.GetPlayableGroupsByFaction(playerFaction));
 
-
-
-		SCR_MilitaryFaction milFaction = SCR_MilitaryFaction.Cast(playerFaction);
+		SCR_Faction milFaction = SCR_Faction.Cast(playerFaction);
 		Widget groupEntry;
 		RichTextWidget callsign, frequency;
 		ImageWidget talkingImage;
@@ -53,14 +54,13 @@ class SCR_GroupVONList: ScriptedWidgetComponent
 		frequency = RichTextWidget.Cast(groupEntry.FindAnyWidget("Frequency"));
 		if (frequency)
 			frequency.SetText(""+ milFaction.GetFactionRadioFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");
-		if (milFaction.GetFactionRadioFrequency() == radioComp.GetFrequency())
+		
+		if (radioTransceiver && milFaction.GetFactionRadioFrequency() == radioTransceiver.GetFrequency())
 		{
 			talkingImage = ImageWidget.Cast(groupEntry.FindAnyWidget("TalkingImage"));
 			talkingImage.SetVisible(true);
 			callsign.SetColor(m_ActiveGroupByFrequency);
-
 		}
-
 
 		SCR_Sorting<SCR_AIGroup, SCR_CompareGroupRadioFreq >.HeapSort(playableGroups);
 
@@ -76,13 +76,12 @@ class SCR_GroupVONList: ScriptedWidgetComponent
 
 			frequency = RichTextWidget.Cast(groupEntry.FindAnyWidget("Frequency"));
 			if (frequency)
-				frequency.SetText(""+group.GetGroupFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");
-			if (group.GetGroupFrequency() == radioComp.GetFrequency())
+				frequency.SetText(""+group.GetRadioFrequency()*0.001 + " #AR-VON_FrequencyUnits_MHz");
+			if (radioTransceiver && group.GetRadioFrequency() == radioTransceiver.GetFrequency())
 			{
 				talkingImage = ImageWidget.Cast(groupEntry.FindAnyWidget("TalkingImage"));
 				talkingImage.SetVisible(true);
 				callsign.SetColor(m_ActiveGroupByFrequency);
-
 			}
 		}
 	}

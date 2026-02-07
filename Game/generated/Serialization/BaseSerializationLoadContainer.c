@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Serialization
-* @{
+/*!
+\addtogroup Serialization
+\{
 */
 
 /*!
@@ -15,6 +15,8 @@ Child classes should implement different ways of storing data (different formats
 */
 class BaseSerializationLoadContainer: BaseSerializationContainer
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

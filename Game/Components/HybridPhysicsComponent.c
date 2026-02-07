@@ -135,7 +135,7 @@ class SCR_HybridPhysicsComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
+		owner.SetFlags(EntityFlags.ACTIVE);
 	}
 	
 	//------------------------------------------------------------------------------------------------

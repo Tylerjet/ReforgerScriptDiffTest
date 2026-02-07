@@ -77,21 +77,21 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	const int CURSOR_CAPTURE_OFFSET = 10;		// hardcoded(code) screen edges in pixels for cursor capture
 	const int GUILDING_LINE_WIDTH = 16;
 	const float PAN_DEFAULT_COUNTDOWN = 0.1;
-	const float SINGLE_SELECTION_RANGE = 200.0;	// range in world pos
+	const float SINGLE_SELECTION_RANGE = 50.0;	// range in world pos
 	const float CIRCLE_SELECTION_RANGE = 500.0;	// range in world pos
 	const float FREE_CURSOR_RESET = 3.0;		// seconds, time before free cursor resets to locked mode on controller
 	
 	const EMapCursorState CUSTOM_CURSOR_LOCKED = EMapCursorState.CS_ROTATE;
 	const EMapCursorState STATE_PAN_RESTRICTED	= EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_ZOOM_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_MODIFIER | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_MOVE | EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
+	const EMapCursorState STATE_HOVER_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_MULTI_SELECTION 
 												 | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_SELECT_RESTRICTED = EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
 	const EMapCursorState STATE_MULTISELECT_RESTRICTED = EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW | EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MODIFIER;
 	const EMapCursorState STATE_DRAG_RESTRICTED	= EMapCursorState.CS_CONTEXTUAL_MENU | EMapCursorState.CS_MULTI_SELECTION | EMapCursorState.CS_ROTATE;
 	const EMapCursorState STATE_ROTATE_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
 	const EMapCursorState STATE_DRAW_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_CONTEXTUAL_MENU;
-	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
+	const EMapCursorState STATE_CTXMENU_RESTRICTED = EMapCursorState.CS_PAN | EMapCursorState.CS_ZOOM | EMapCursorState.CS_DRAG | EMapCursorState.CS_DRAW;
 	
 	// timers
 	protected float m_fPanCountdown;		// used to stop panning cursor state and refresh start position for next drag panning
@@ -105,6 +105,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	EMapCursorSelectType m_eMultiSelType;									// multiselect type
 	protected EMapCursorState m_CursorState = EMapCursorState.CS_DEFAULT;	// keeps current cursor state
 	
+	protected bool m_bIsInit;				// is module initiated
 	protected bool m_bIsDisabled;			// temporary module disable
 	protected bool m_bIsDraggingAvailable;
 	protected bool m_bIsSelectionAvailable;
@@ -149,6 +150,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//! \param state is the added state
 	protected void SetCursorState(EMapCursorState state) 
 	{ 
+		if (!m_bIsInit)		// some map components may call this when the module already disabled map cursor
+			return;
+		
 		m_CursorState |= state; 
 		SetCursorType(m_CursorState);
 	}
@@ -299,7 +303,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//------------------------------------------------------------------------------------------------
 	//! Handle hover state displaying details over target
 	protected void HandleHover(float timeSlice)
-	{								
+	{			
 		// begin hover
 		if (m_CursorState == EMapCursorState.CS_DEFAULT)
 		{
@@ -307,15 +311,16 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			
 			if (m_fHoverTime >= 0.25)
 			{
-				SetCursorState(EMapCursorState.CS_HOVER);
-				
 				float worldX, worldY;
 				m_MapEntity.ScreenToWorldNoFlip(m_CursorInfo.Scale(m_CursorInfo.x), m_CursorInfo.Scale(m_CursorInfo.y), worldX, worldY);
 				vector curPos = Vector(worldX, 0, worldY);
 				
 				MapItem closeItem = m_MapEntity.GetClose(curPos, SINGLE_SELECTION_RANGE / m_MapEntity.GetCurrentZoom());
 				if (closeItem)
+				{
+					SetCursorState(EMapCursorState.CS_HOVER);
 					m_MapEntity.HoverItem(closeItem);
+				}
 
 				return;
 			}
@@ -323,7 +328,15 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		// end hover
 		else if (m_CursorState & EMapCursorState.CS_HOVER)
 		{
-			if (m_CursorState & STATE_HOVER_RESTRICTED)
+			float worldX, worldY;
+			m_MapEntity.ScreenToWorldNoFlip(m_CursorInfo.Scale(m_CursorInfo.x), m_CursorInfo.Scale(m_CursorInfo.y), worldX, worldY);
+			vector curPos = Vector(worldX, 0, worldY);
+			MapItem closeItem = m_MapEntity.GetClose(curPos, SINGLE_SELECTION_RANGE / m_MapEntity.GetCurrentZoom());
+			
+			if ( (m_CursorState & STATE_HOVER_RESTRICTED) 
+				|| !closeItem
+				|| (closeItem && closeItem != m_MapEntity.GetHoveredItem())
+				)
 			{
 				m_MapEntity.ClearHover();
 				m_fHoverTime = 0; 
@@ -509,7 +522,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	//------------------------------------------------------------------------------------------------
 	//! Handle contextual menu
 	//! /param doClose determines whether the context menu should close
-	protected void HandleContextualMenu(bool doClose = false)
+	void HandleContextualMenu(bool doClose = false)
 	{
 		//! context menu disabled
 		if (m_CursorState & STATE_CTXMENU_RESTRICTED)
@@ -525,24 +538,15 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)
 			{
 				UnsetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
+				ForceCenterCursor();
 				return;
 			}
 		}
 		
-		bool canOpen;
 		if (m_CursorState & EMapCursorState.CS_CONTEXTUAL_MENU)	// open/reopen menu
-		{
-			ctxMenu.CloseMenu();
-			canOpen = ctxMenu.OpenMenu(m_CursorInfo.x, m_CursorInfo.y);
-		}
+			UnsetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
 		else 
-		{
 			SetCursorState(EMapCursorState.CS_CONTEXTUAL_MENU);
-			canOpen = ctxMenu.OpenMenu(m_CursorInfo.x, m_CursorInfo.y);
-		}
-		
-		if (!canOpen)
-			HandleContextualMenu(true);
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -1028,14 +1032,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 			HandleMultiSelect(false);
 		
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Digital multiselect gamepad
-	protected void OnInputContextMenu( float value, EActionTrigger reason )
-	{
-		HandleContextualMenu();
-	}
-	
+		
 	//------------------------------------------------------------------------------------------------
 	//! PauseMenuUI event
 	protected void OnPauseMenuOpened()
@@ -1186,13 +1183,7 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.AddActionListener("MapWheelUp", EActionTrigger.PRESSED, OnInputZoomWheelUp);
 		m_InputManager.AddActionListener("MapWheelDown", EActionTrigger.PRESSED, OnInputZoomWheelDown);
 		m_InputManager.AddActionListener("MapSelect", EActionTrigger.UP, HandleSelect);
-		
-		// ctx menu
-		if ( SCR_MapContextualMenuUI.Cast(m_MapEntity.GetMapUIComponent(SCR_MapContextualMenuUI)) )
-		{
-			m_InputManager.AddActionListener("MapContextualMenu", EActionTrigger.UP, OnInputContextMenu);
-		}
-		
+				
 		// multi selection
 		m_SelectionModule = SCR_MapSelectionModule.Cast(m_MapEntity.GetMapModule(SCR_MapSelectionModule));
 		if ( m_SelectionModule )
@@ -1265,7 +1256,6 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_InputManager.RemoveActionListener("MapMultiSelect", EActionTrigger.UP, OnInputMultiSel);
 		m_InputManager.RemoveActionListener("MapMultiSelectGamepad", EActionTrigger.PRESSED, OnInputMultiSelGamepad);
 		m_InputManager.RemoveActionListener("MapMultiSelectGamepad", EActionTrigger.UP, OnInputMultiSelGamepad);
-		m_InputManager.RemoveActionListener("MapContextualMenu", EActionTrigger.UP, OnInputContextMenu);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1279,7 +1269,8 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 		m_bIsDisabled = false;
 		InitWidgets(config.RootWidgetRef);
 		InitInputs();
-
+		m_bIsInit = true;
+			
 		SetCursorType(m_CursorState);
 		
 		if (m_bIsCursorCenteredOnOpen || m_CursorInfo.isGamepad)
@@ -1291,8 +1282,9 @@ class SCR_MapCursorModule: SCR_MapModuleBase
 	{
 		m_CursorState = EMapCursorState.CS_DEFAULT;
 		SetCursorType(EMapCursorState.CS_DISABLE);
-		
 		CleanupInputs();
+		
+		m_bIsInit = false;
 	}
 
 	//------------------------------------------------------------------------------------------------

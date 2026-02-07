@@ -16,14 +16,13 @@ class SnapAndOrientToTerrainPlugin : WorkbenchPlugin
 			return;
 
 		api.BeginEntityAction();
-		int selectedCount = api.GetSelectedEntitiesCount();
 		IEntity entity;
 		IEntity parent;
 		vector transform[4], parentTransform[4];
 		vector angles, pos;
 		IEntitySource entitySource;
 		EntityFlags flags;
-		for (int i; i < selectedCount; i++)
+		for (int i, count = api.GetSelectedEntitiesCount(); i < count; i++)
 		{
 			entity = api.GetSelectedEntity(i);
 			entity.GetWorldTransform(transform);

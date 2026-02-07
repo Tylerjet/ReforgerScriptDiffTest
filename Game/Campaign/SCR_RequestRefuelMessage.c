@@ -4,9 +4,9 @@ class SCR_RequestRefuelMessage : SCR_RequestMessage
 	private Vehicle m_RequesterVehicle;
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnDelivery(BaseRadioComponent radio, int freq, float quality, int transcvIdx)
+	override void OnDelivery(BaseTransceiver receiver, int freq, float quality)
 	{
-		if (m_RequesterMainBase && radio && radio.GetOwner() == m_RequesterMainBase && GetTaskManager())
+		if (m_RequesterMainBase && receiver.GetRadio() && receiver.GetRadio().GetOwner() == m_RequesterMainBase && GetTaskManager())
 		{
 			SCR_RefuelTaskSupportEntity supportClass = SCR_RefuelTaskSupportEntity.Cast(GetTaskManager().FindSupportEntity(SCR_RefuelTaskSupportEntity));
 			if (supportClass)

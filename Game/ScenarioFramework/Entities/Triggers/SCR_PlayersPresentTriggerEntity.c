@@ -16,8 +16,8 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	[Attribute(desc: "Faction which is used for area control calculation. Leave empty for any faction.", category: "Trigger")]
 	protected FactionKey 		m_sOwnerFactionKey;
 	
-	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger") ]
-	protected TA_EActivationPresence	m_EActivationPresence;
+	[Attribute("0", UIWidgets.ComboBox, "By whom the trigger is activated", "", ParamEnumArray.FromEnum(TA_EActivationPresence), category: "Trigger")]
+	protected TA_EActivationPresence	m_eActivationPresence;
 	
 	/*
 	[Attribute(desc: "Trigger activation - all connected players of the given faction or just one?", category: "Trigger")]
@@ -45,14 +45,15 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	{
 		int iCnt = 0;
 		array<int> aPlayerIDs = {};
-		SCR_PlayerController pPlayerCtrl;
+		SCR_PlayerController playerController;
 		GetGame().GetPlayerManager().GetPlayers(aPlayerIDs);
 		foreach (int iPlayerID: aPlayerIDs)
 		{
-			pPlayerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
-			if (!pPlayerCtrl)
+			playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
+			if (!playerController)
 				continue;
-			if (pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction)
+
+			if (playerController.GetLocalControlledEntityFaction() == m_OwnerFaction)
 				iCnt++;
 		}
 		return iCnt;
@@ -62,15 +63,16 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	protected void GetPlayersByFaction(notnull out array<IEntity> aOut)
 	{
 		array<int> aPlayerIDs = {};
-		SCR_PlayerController pPlayerCtrl;
+		SCR_PlayerController playerController;
 		GetGame().GetPlayerManager().GetPlayers(aPlayerIDs);
 		foreach (int iPlayerID: aPlayerIDs)
 		{
-			pPlayerCtrl = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
-			if (!pPlayerCtrl)
+			playerController = SCR_PlayerController.Cast(GetGame().GetPlayerManager().GetPlayerController(iPlayerID));
+			if (!playerController)
 				continue;
-			if (pPlayerCtrl.GetLocalControlledEntityFaction() == m_OwnerFaction)
-				aOut.Insert(pPlayerCtrl.GetLocalMainEntity());
+
+			if (playerController.GetLocalControlledEntityFaction() == m_OwnerFaction)
+				aOut.Insert(playerController.GetLocalMainEntity());
 		}
 	}
 	
@@ -80,28 +82,31 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	{
 		if (!ChimeraCharacter.Cast(ent))
 			return false;
+
 		// take only players
-		if (m_EActivationPresence == TA_EActivationPresence.PLAYER)
+		if (m_eActivationPresence == TA_EActivationPresence.PLAYER)
 		{
 			if (!EntityUtils.IsPlayer(ent))
 				return false;
 		}
 		if (m_sOwnerFactionKey.IsEmpty())
 			return true;	//if faction is not specified, any faction can (de)activate the trigger
+
 		FactionAffiliationComponent pFaciliation = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
 		if (!pFaciliation)
 			return false;
+
 		return pFaciliation.GetAffiliatedFaction() == m_OwnerFaction;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnActivate(IEntity ent)
 	{
-		Print("CP: entered");
 		if (!IsMaster())
 			return;
+			
 		m_iEntitiesInside++;
-		if (m_EActivationPresence == TA_EActivationPresence.PLAYER || m_EActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
+		if (m_eActivationPresence == TA_EActivationPresence.PLAYER || m_eActivationPresence == TA_EActivationPresence.ANY_CHARACTER)
 		{
 			m_OnActivate.Invoke(ent);
 		}
@@ -110,7 +115,6 @@ class SCR_PlayersPresentTriggerEntity: SCR_BaseTriggerEntity
 	//------------------------------------------------------------------------------------------------
 	override protected event void OnDeactivate(IEntity ent)
 	{
-		Print("CP: left");
 		m_iEntitiesInside--;
 		m_OnDeactivate.Invoke();
 	}

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Input
-* @{
+/*!
+\addtogroup Input
+\{
 */
 
 enum EActionTrigger
@@ -18,7 +18,9 @@ enum EActionTrigger
 	//! call listener in each tick when button/key is pressed
 	PRESSED,
 	//! call listener in each tick with current value
-	VALUE
-};
+	VALUE,
+}
 
-/** @}*/
+/*!
+\}
+*/

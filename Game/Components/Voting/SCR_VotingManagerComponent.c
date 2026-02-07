@@ -616,7 +616,7 @@ class SCR_VotingManagerComponent: SCR_BaseGameModeComponent
 		//--- Force instant refresh in EOnFrame
 		m_fUpdateLength = m_fUpdateStep;
 	}
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		for (int i = m_aVotingInstances.Count() - 1; i >= 0; i--)
 		{

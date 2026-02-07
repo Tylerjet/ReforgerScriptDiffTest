@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class CarControllerComponentClass: VehicleControllerComponentClass
 {
-};
+}
 
 class CarControllerComponent: VehicleControllerComponent
 {
@@ -30,9 +30,9 @@ class CarControllerComponent: VehicleControllerComponent
 	proto external int GetCurrentGear();
 	//! returns simulation component of this controllers
 	proto external VehicleWheeledSimulation GetSimulation();
-	
+
 	// callbacks
-	
+
 	//! Gets called when the engine start routine begins (animation event).
 	event void OnEngineStartBegin();
 	//! Get called while engine starter is active.
@@ -45,7 +45,7 @@ class CarControllerComponent: VehicleControllerComponent
 	event void OnEngineStartFail(EVehicleEngineStartFailedReason reason);
 	/*!
 	Is called every time the controller wants to start the engine.
-	
+
 	\return true if the engine can start, false otherwise.
 	*/
 	event bool OnBeforeEngineStart();
@@ -55,6 +55,8 @@ class CarControllerComponent: VehicleControllerComponent
 	event void OnEngineStop();
 	event void OnPostInit(IEntity owner);
 	event void OnDelete(IEntity owner);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

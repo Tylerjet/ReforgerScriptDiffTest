@@ -1,46 +1,70 @@
 /*!
-Notification Player kicked
+Notification Player kicked or banned
+SCR_NotificationData: m_iParam1 = PlayerID, m_iParam2 = kick reason, m_iParam3 = duration
+
+if Kicked: 
 Displays a notification: %1 = PlayerID name, %2 = kick reason
-SCR_NotificationData: m_iParam1 = PlayerID, m_iParam2 = kick reason
+
+If Temp banned:
+Displays a notification: %1 = PlayerID name, %2 = days, %3 = hours, %4 = minutes, %5 = seconds, %6 = ban reason
+
+if banned:
+Displays a notification: %1 = PlayerID name, %2 = ban reason
+
+if Banned: 
 */
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationPlayerKicked : SCR_NotificationPlayer
 {	
-	[Attribute()]
+	[Attribute("{D3BFEE28E7D5B6A1}Configs/ServerBrowser/KickDialogs.conf", params: "conf")]
 	protected ref SCR_ConfigurableDialogUiPresets m_PlayerKickReasonsConfig;
 	
-	[Attribute(desc: "In order to get the correct kick reason from SCR_ConfigurableDialogUiPresets it will need to have the group from which it gets the reason (Make sure to add the final '_' if it has any)")]
-	protected ref array<string> m_sKickReasonGroups;
+	[Attribute("#AR-ServerBrowser_SessionError", desc: "If kick reason is unknown use this string", uiwidget: UIWidgets.LocaleEditBox)]
+	protected LocalizedString m_sUnknownKickReason;
 	
 	override string GetText(SCR_NotificationData data)
 	{	
-		int playerID, reason;
-		data.GetParams(playerID, reason);
+		int playerID, duration;
+		KickCauseCode kickCode;
+		data.GetParams(playerID, kickCode, duration);
 		
-		string kickReasonText = "UNKNOWN";
+		string kickReasonText = m_sUnknownKickReason;
 		SCR_ConfigurableDialogUiPreset preset;
 		
+		string groupId, reasonId;
+		
+		//~ Using the config display the kick reason (Same as displayed to players in MainMenu on kick/Ban). If it could not find the message it will send the m_sUnknownKickReason instead
 		if (m_PlayerKickReasonsConfig)
 		{
-			foreach (string group: m_sKickReasonGroups)
+			KickCauseGroup2 groupInt;
+			int reasonInt;
+			
+			if (GetGame().GetFullKickReason(kickCode, groupInt, reasonInt, groupId, reasonId))
 			{
-				//~ Combines the m_sKickReasonGroups and the kick reason converted to string
-				preset = m_PlayerKickReasonsConfig.FindPreset(group + typename.EnumToString(SCR_PlayerManagerKickReason, reason));
-				
-				if (preset)
-				{
+				preset = m_PlayerKickReasonsConfig.FindPreset(groupId + "_" + reasonId);
+				if (preset && !preset.m_sMessage.IsEmpty())
 					kickReasonText = preset.m_sMessage;
-					break;
-				}
 			}
 		}
+		else
+		{
+			Print("SCR_NotificationPlayerKicked (kick or ban) does not have the m_PlayerKickReasonsConfig assigned with a SCR_ConfigurableDialogUiPresets config prefab!", LogLevel.ERROR);
+		}	
 		
-		if (!m_PlayerKickReasonsConfig)
-			Print("SCR_NotificationPlayerKicked does not have the m_PlayerKickReasonsConfig assigned with a SCR_ConfigurableDialogUiPresets config prefab!", LogLevel.ERROR);
-		else if (!preset)
-			Print(string.Format("SCR_NotificationPlayerKicked could not find preset for kick reason %1!", typename.EnumToString(PlayerManagerKickReason, reason)), LogLevel.ERROR);
+		//~ Player was kicked (0 duration) or banned (-1 duration)
+		if (duration <= 0)
+		{
+			data.SetNotificationTextEntries(GetPlayerName(playerID), kickReasonText);
+		}
+		//~ Higher then 0 so Player was temp banned
+		else
+		{
+			int days, hours, minutes, seconds;
+			SCR_DateTimeHelper.GetDayHourMinuteSecondFromSeconds(duration, days, hours, minutes, seconds);
+			
+			data.SetNotificationTextEntries(GetPlayerName(playerID), days.ToString(),  hours.ToString(),  minutes.ToString(),  seconds.ToString(), kickReasonText);
+		}
 
-		data.SetNotificationTextEntries(GetPlayerName(playerID), kickReasonText);
 		return super.GetText(data);
 	}	
 };

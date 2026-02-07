@@ -10,5 +10,5 @@ enum RplMode
 	None,
 	Client,
 	Listen,
-	Dedicated
-};
+	Dedicated,
+}

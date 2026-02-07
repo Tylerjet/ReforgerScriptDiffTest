@@ -34,14 +34,24 @@ class CharacterCamera1stPerson extends CharacterCameraBase
 		pOutResult.m_vBaseAngles 		= m_CharacterHeadAimingComponent.GetLookAngles();
 		pOutResult.m_fUseHeading 		= 1.0;
 		pOutResult.m_iDirectBoneMode 	= EDirectBoneMode.RelativePosition;
+		pOutResult.m_iDirectBone 		= GetCameraBoneIndex();
 		//! update fov
 		m_fFOV = GetBaseFOV();
 		if (m_bCameraTransition)
 		{
 			pOutResult.m_fUseHeading = 0.0;
 			pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativeTransform;
+			
+			// Currently the 1pv camera bone in getin/getout needs to be investigated,
+			// so as a workaround, we use head bone directly with position only
+			if (sm_iHeadBoneIndex != -1)
+			{
+				pOutResult.m_iDirectBone = sm_iHeadBoneIndex;
+				pOutResult.m_fUseHeading = 0.0;
+				pOutResult.m_iDirectBoneMode = EDirectBoneMode.RelativePosition;
+			}
 		}
-		pOutResult.m_iDirectBone 			= GetCameraBoneIndex();
+		
 		vector additiveRotation = "0 0 0";
 		m_CharacterHeadAimingComponent.GetLookTransformationLS(pOutResult.m_iDirectBone, pOutResult.m_iDirectBoneMode, m_OffsetLS, additiveRotation, pOutResult.m_CameraTM);
 		if( m_ApplyHeadBob )

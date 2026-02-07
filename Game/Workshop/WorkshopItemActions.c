@@ -6,8 +6,8 @@ Specific workshop item actions, inherited from base action class.
 //! Action for downloading a specific revision of a mod
 class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 {	
-	protected string m_sStartVersion;		// Version which was when the download was started
-	protected string m_sTargetVersion;
+	protected ref Revision m_StartVersion;		// Version which was when the download was started
+	protected ref Revision m_TargetRevision;
 	
 	protected bool m_bTargetVersionLatest;	// When true, means we want to download latest version
 	
@@ -27,11 +27,11 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	protected bool m_bAddonEnabledAtStart;
 	
 	//-----------------------------------------------------------------------------------------------
-	void SCR_WorkshopItemActionDownload(SCR_WorkshopItem wrapper, bool latestVersion, string version = string.Empty)
+	void SCR_WorkshopItemActionDownload(SCR_WorkshopItem wrapper, bool latestVersion, Revision revision = null)
 	{
 		m_bTargetVersionLatest = latestVersion;
-		m_sTargetVersion = version;
-		m_sStartVersion = wrapper.GetCurrentLocalVersion();
+		m_TargetRevision = revision;
+		m_StartVersion = wrapper.GetCurrentLocalRevision();
 		
 		// todo resolve download size
 		m_fSizeBytes = m_Wrapper.GetSizeBytes();
@@ -42,17 +42,17 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	//! !! If you were targeting latest version, but the actual download has not started because it
 	//! is waiting for more data from backend, then this will return an empty string until the
 	//! data is fetched from backend.
-	string GetTargetVersion()
+	Revision GetTargetRevision()
 	{
-		return m_sTargetVersion;
+		return m_TargetRevision;
 	}
 	
 	
 	//-----------------------------------------------------------------------------------------------
 	//! Returns the version which was at the moment when the download was started
-	string GetStartVersion()
+	Revision GetStartRevision()
 	{
-		return m_sStartVersion;
+		return m_StartVersion;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -65,7 +65,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	//! Returns true when this is an update, false when regular download.
 	bool GetUpdate()
 	{
-		return !m_sStartVersion.IsEmpty();
+		return m_StartVersion;
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -150,7 +150,6 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	//-----------------------------------------------------------------------------------------------
 	protected override void OnFail()
 	{
-		// Try to cancel the download at least
 		m_Wrapper.Internal_CancelDownload();
 	}
 	
@@ -170,52 +169,38 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 		_print("StartDownloadOrLoadDetails()");
 		#endif
 		
-		if (m_Wrapper.GetRevisionsLoaded())
+		#ifdef WORKSHOP_DEBUG
+		_print("StartDownloadOrLoadDetails(): Revisions are loaded, starting the download");
+		#endif
+		
+		// Instant fail if mod is restricted
+		// We know that it's restricted only after we have loaded the details
+		if (m_Wrapper.GetRestricted())
 		{
-			#ifdef WORKSHOP_DEBUG
-			_print("StartDownloadOrLoadDetails(): Revisions are loaded, starting the download");
-			#endif
-			
-			// Instant fail if mod is restricted
-			// We know that it's restricted only after we have loaded the details
-			if (m_Wrapper.GetRestricted())
-			{
-				this.Fail();
-				return false;
-			}
-			
-			m_Callback = this.CreateCallback();
-			
-			if (m_bTargetVersionLatest)
-			{
-				m_sTargetVersion = m_Wrapper.GetLatestVersion();
-				#ifdef WORKSHOP_DEBUG
-				_print("StartDownloadOrLoadDetails(): Download of latest version was requested");
-				#endif
-			}
-			
-			#ifdef WORKSHOP_DEBUG
-			_print(string.Format("StartDownloadOrLoadDetails(): Target version: %1", m_sTargetVersion));
-			#endif
-				
-			bool success = m_Wrapper.Internal_StartDownload(m_sTargetVersion, m_Callback);
-			
-			m_bWaitingForRevisions = false;
-			m_bDownloadStarted = true;
-			
-			return success && !IsFailed(); // The workshop API might have called the Error handler by now
+			this.Fail();
+			return false;
 		}
-		else
+		
+		m_Callback = this.CreateCallback();
+		
+		if (m_bTargetVersionLatest)
 		{
+			m_TargetRevision = m_Wrapper.GetLatestRevision();
 			#ifdef WORKSHOP_DEBUG
-			_print("StartDownloadOrLoadDetails(): Revisions are not loaded, waiting");
+			_print("StartDownloadOrLoadDetails(): Download of latest version was requested");
 			#endif
-			
-			m_bWaitingForRevisions = true;
-			m_Wrapper.LoadDetails();
-			
-			return true;
 		}
+		
+		#ifdef WORKSHOP_DEBUG
+		_print(string.Format("StartDownloadOrLoadDetails(): Target version: %1", m_TargetRevision.GetVersion()));
+		#endif
+			
+		bool success = m_Wrapper.Internal_StartDownload(m_TargetRevision, m_Callback);
+		
+		m_bWaitingForRevisions = false;
+		m_bDownloadStarted = true;
+		
+		return success && !IsFailed(); // The workshop API might have called the Error handler by now
 	}
 	
 	//-----------------------------------------------------------------------------------------------
@@ -243,7 +228,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 			else
 			{
 				bool offline = m_Wrapper.GetOffline();
-				string currentVersion = m_Wrapper.GetCurrentLocalVersion();
+				Revision currentVersion = m_Wrapper.GetCurrentLocalRevision();
 				
 				//#ifdef WORKSHOP_DEBUG
 				//_print(string.Format("Internal_Update: Offline: %1, CurrentVersion: '%2', TargetVersion: '%3'", offline, currentVersion, m_sTargetVersion));
@@ -256,7 +241,7 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 					m_fProgress = progress;
 				}
 				
-				if (offline && currentVersion == m_sTargetVersion)
+				if (offline && Revision.AreEqual(currentVersion, m_TargetRevision))
 				{
 					this.Complete();
 				}
@@ -267,14 +252,25 @@ class SCR_WorkshopItemActionDownload : SCR_WorkshopItemAction
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_OnError(SCR_WorkshopCallbackBase callback, int code, int restCode, int apiCode)
 	{
-		if (code != EBackendError.EBERR_INVALID_STATE) // Ignore this one for now // EApiCode.EACODE_ERROR_OK
-			this.Fail();
+		//if (code != EBackendError.EBERR_INVALID_STATE) // Ignore this one for now // EApiCode.EACODE_ERROR_OK
+		
+		Fail();
 	}
 	
 	//-----------------------------------------------------------------------------------------------
 	protected void Callback_OnTimeout()
 	{
-		this.Fail();
+		Fail();
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	//! Try redownload failed addon
+	protected void TryRedownload()
+	{
+		if (m_Wrapper.GetOffline())
+			m_Wrapper.DeleteLocally();
+		
+		OnReactivate();
 	}
 };
 
@@ -366,12 +362,6 @@ class SCR_WorkshopItemActionDownloadDependenciesLatest : SCR_WorkshopItemActionC
 	{
 		ResumeAll();
 		return true;
-	}
-	
-	//-----------------------------------------------------------------------------------------------
-	protected override void OnFail()
-	{
-		// Can't do anything
 	}
 	
 	//-----------------------------------------------------------------------------------------------

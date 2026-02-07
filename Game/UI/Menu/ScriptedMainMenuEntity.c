@@ -19,7 +19,7 @@ class SCR_MainMenuEntity : GenericEntity
 	{
 		// Enable
 		SetEventMask(EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -43,8 +43,7 @@ class SCR_MainMenuEntity : GenericEntity
 			ShowSplashScreen();
 		
 		// Disable all events
-		SetEventMask(~EntityEvent.ALL);
-		ClearFlags(EntityFlags.ACTIVE, true);
+		ClearEventMask(EntityEvent.ALL);
 	}
 	
 	//------------------------------------------------------------------------------------------------

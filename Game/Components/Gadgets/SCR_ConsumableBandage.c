@@ -6,6 +6,8 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 	//------------------------------------------------------------------------------------------------
 	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
 	{
+		super.ApplyEffect(target, user, item, animParams);
+
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
 			return;
@@ -39,7 +41,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		
 		damageMgr.RemoveGroupBleeding(hzGroup);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanApplyEffect(notnull IEntity target, notnull IEntity user)
 	{
@@ -53,7 +55,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 
 		return damageMgr.IsDamagedOverTime(EDamageType.BLEEDING);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanApplyEffectToHZ(notnull IEntity target, notnull IEntity user, ECharacterHitZoneGroup group)
 	{
@@ -85,8 +87,13 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		}
 		else
 		{
-			HitZone hz = damageMgr.GetMostDOTHitZone(EDamageType.BLEEDING);
-			SCR_CharacterHitZone hitzone = SCR_CharacterHitZone.Cast(hz);
+			ECharacterHitZoneGroup hzGroup = damageMgr.GetMostDOTHitzoneGroup(EDamageType.BLEEDING);
+			array<HitZone> hitzones = {};
+			damageMgr.GetGroupHitZones(hzGroup, hitzones);
+			if (!hitzones || hitzones.IsEmpty())
+				return null;
+				
+			SCR_CharacterHitZone hitzone = SCR_CharacterHitZone.Cast(hitzones[0]);
 			if (!hitzone)
 				return null;
 	

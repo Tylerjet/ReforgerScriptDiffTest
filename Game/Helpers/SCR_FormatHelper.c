@@ -8,7 +8,7 @@ class SCR_FormatHelper
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! \param year can be < 100, if so 2000 will be added (86 = 2015)
+	//! \param year can be < 100, if so 2000 will be added (86 = 2086, NOT 1986)
 	//! \return date in format "yyyy-mm-dd"
 	static string FormatDate(int year, int month, int day)
 	{
@@ -32,6 +32,7 @@ class SCR_FormatHelper
 	{
 		return string.Format("%1:%2:%3", hour.ToString(2), minute.ToString(2), second.ToString(2));
 	}
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Depending on the flags given it will return a variation on dd:hh:mm:ss and d:h:m:s.
@@ -193,7 +194,7 @@ class SCR_FormatHelper
 
 		string text;
 		float accurateFrequency;
-		foreach (int i, int frequency: frequencies)
+		foreach (int i, int frequency : frequencies)
 		{
 			if (i > 0)
 				text += ", ";

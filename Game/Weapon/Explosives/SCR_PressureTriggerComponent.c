@@ -21,6 +21,8 @@ class SCR_PressureTriggerComponent : ScriptComponent
 	[Attribute("", desc: "Name of the fuze mesh that should unhide when mine is activated")]
 	protected string m_sFuzeMeshName;
 	
+	protected IEntity m_User;
+	
 	//------------------------------------------------------------------------------------------------
 	override void EOnContact(IEntity owner, IEntity other, Contact contact)
 	{
@@ -56,10 +58,16 @@ class SCR_PressureTriggerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	// Only call this on the server
-	void Activate()
+	void SetUser(notnull IEntity user)
 	{
-		IEntity owner = GetOwner();
+		m_User = user;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	// Only call this on the server
+	void ActivateTrigger()
+	{
+		GenericEntity owner = GenericEntity.Cast(GetOwner());
 		RplComponent rplComponent = RplComponent.Cast(owner.FindComponent(RplComponent));
 		if (!rplComponent || rplComponent.IsProxy())
 			return;
@@ -72,11 +80,12 @@ class SCR_PressureTriggerComponent : ScriptComponent
 		if (garbageManager)
 			garbageManager.Withdraw(owner); //withdraw from garbage manager to avoid unwanted deletion
 		
-		baseTriggerComponent.SetLive(owner);
+		baseTriggerComponent.SetLive();
 		m_bActivated = true;
+		ShowFuse();
 		Replication.BumpMe();
 		
-		owner.SetFlags(EntityFlags.ACTIVE, false);
+		owner.Activate();
 		SetEventMask(owner, EntityEvent.CONTACT);
 	}
 	
@@ -92,6 +101,7 @@ class SCR_PressureTriggerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	// Method called on the clients, the item should be outside inventory already
 	void OnActivatedChanged()
 	{
 		if (m_bActivated)
@@ -106,20 +116,19 @@ class SCR_PressureTriggerComponent : ScriptComponent
 		if (!baseTriggerComponent)
 			return;
 		
-		baseTriggerComponent.OnUserTrigger(GetOwner());
+		baseTriggerComponent.OnUserTriggerOverrideInstigator(GetOwner(), m_User);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override event protected void EOnInit(IEntity owner)
 	{
 		if (m_bLive)
-			Activate();
+			ActivateTrigger(); // Using call later to avoid accessing uninitialized components
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	override event protected void OnPostInit(IEntity owner)
 	{
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 };

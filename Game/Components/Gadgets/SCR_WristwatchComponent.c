@@ -81,9 +81,9 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 	protected void UpdateWristwatchState()
 	{
 		if (m_bActivated)
-			ActivateGadget();
+			ActivateGadgetFlag();
 		else 
-			DeactivateGadget();
+			DeactivateGadgetFlag();
 		
 		if (!m_PrefabData.m_bSignalInit)
 			m_PrefabData.InitSignals(GetOwner());
@@ -149,6 +149,30 @@ class SCR_WristwatchComponent : SCR_GadgetComponent
 		
 		m_PrefabData = SCR_WristwatchComponentClass.Cast( GetComponentData(owner) );
 		m_SignalManager = SignalsManagerComponent.Cast( owner.FindComponent( SignalsManagerComponent ) );
+		
+		UpdateWristwatchState();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetFlag()
+	{
+		super.ActivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetFlag()
+	{
+		super.DeactivateGadgetFlag();
+		
+		if (System.IsConsoleApp())
+			return;
+		
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 	}
 	
 	//------------------------------------------------------------------------------------------------

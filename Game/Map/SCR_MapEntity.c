@@ -68,7 +68,6 @@ class SCR_MapEntity: MapEntity
 	//TEMP & TODOs
 	protected int m_iLayerIndex = 0;	// current layer (switch to getter from gamecode)	
 	ref array<int> imagesetIndices = new array<int>();
-	protected Widget m_wFadeInOut;		// merge into screen effects when possible 
 	
 	//------------------------------------------------------------------------------------------------
 	// GETTERS / SETTERS
@@ -125,6 +124,8 @@ class SCR_MapEntity: MapEntity
 	Widget GetMapMenuRoot() { return m_wMapRoot; }
 	//! Set map widget
 	void SetMapWidget(Widget mapW) { m_MapWidget = CanvasWidget.Cast(mapW); }
+	//! Get hovered item
+	MapItem GetHoveredItem() { return m_HoveredMapItem; }
 		
 	//------------------------------------------------------------------------------------------------
 	//! Get how much pixels per unit(meter) are currently visible on screen. If this value is 1 and resolution is 1920x1080, then 1920 units(meters) of map will be visible
@@ -212,10 +213,7 @@ class SCR_MapEntity: MapEntity
 		SetMapWidget(config.RootWidgetRef.FindAnyWidget(SCR_MapConstants.MAP_WIDGET_NAME));		
 		
 		if (config.MapEntityMode == EMapEntityMode.FULLSCREEN)
-		{
-			m_wFadeInOut = ImageWidget.Cast(m_wMapRoot.FindAnyWidget("FadeOut"));
-			FadeOut(false);
-			
+		{			
 			ChimeraCharacter char = ChimeraCharacter.Cast(GetGame().GetPlayerController().GetControlledEntity());
 			if (char)
 				SCR_CharacterControllerComponent.Cast(char.GetCharacterController()).m_OnPlayerDeathWithParam.Insert(OnPlayerDeath);
@@ -279,26 +277,6 @@ class SCR_MapEntity: MapEntity
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_MAP_OPEN);
 		
 		EnableVisualisation(true);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Fade the screen in/out TODO move this to screen effects when ZOrder supports it
-	//! \param fadeDirection fades out if true, in if false 
-	void FadeOut(bool fadeDirection, float seconds = 0.35)
-	{
-		if (!m_wFadeInOut || seconds == 0)
-			return;
-		
-		float targetVal;
-		if (fadeDirection)
-		{
-			m_wFadeInOut.SetOpacity(0);
-			targetVal = 1;
-		}
-		else 
-			m_wFadeInOut.SetOpacity(1);
-		
-		AnimateWidget.Opacity(m_wFadeInOut, targetVal, 1/seconds, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -635,8 +613,8 @@ class SCR_MapEntity: MapEntity
 		if (zoomTime <= 0)
 			zoomTime = 0.1;
 
-		if (targetPixPerUnit > targetPixPerUnit)
-			targetPixPerUnit = targetPixPerUnit;
+		if (targetPixPerUnit > m_fMaxZoom)
+			targetPixPerUnit = m_fMaxZoom;
 		else if (targetPixPerUnit < m_fMinZoom)
 			targetPixPerUnit = m_fMinZoom;
 
@@ -1481,8 +1459,7 @@ class SCR_MapEntity: MapEntity
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_MapEntity(IEntitySource src, IEntity parent)
-	{	
-		SetFlags(EntityFlags.ACTIVE, false);
+	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
 
 		s_MapInstance = this;

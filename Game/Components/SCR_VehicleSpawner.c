@@ -78,7 +78,6 @@ class SCR_VehicleSpawner : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void SCR_VehicleSpawner(IEntityComponentSource src, IEntity ent, IEntity parent)
 	{
-		ent.SetFlags(EntityFlags.ACTIVE, false);
 	}
 
 	//------------------------------------------------------------------------------------------------

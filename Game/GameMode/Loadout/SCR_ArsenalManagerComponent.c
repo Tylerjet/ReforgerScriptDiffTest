@@ -45,6 +45,10 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 	//=== Authority
 	void SetPlayerArsenalLoadout(int playerId, GameEntity characterEntity)
 	{
+		//~ If Not Authority return
+		if (!GetGameMode().IsMaster())
+			return;
+		
 		if (playerId == 0)
 		{
 			return;

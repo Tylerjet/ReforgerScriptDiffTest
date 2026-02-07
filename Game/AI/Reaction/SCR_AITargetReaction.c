@@ -4,8 +4,7 @@
 [BaseContainerProps()]
 class SCR_AITargetReactionBase : SCR_AIReactionBase
 {
-	void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, IEntity target, vector lastSeenPosition) {}
-
+	void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, BaseTarget baseTarget, vector lastSeenPosition) {}
 };
 
 //------------------------------------------------------------------------------------------------
@@ -17,28 +16,28 @@ class SCR_AITargetReactionBase : SCR_AIReactionBase
 class SCR_AITargetReaction_Unknown : SCR_AITargetReactionBase
 {
 	// @TODO: Is it possible to send enemy target and unknown target as Target class, somehow? Can I overload danger event to gimme target?
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, IEntity target, vector lastSeenPosition)
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, BaseTarget baseTarget, vector lastSeenPosition)
 	{
-		utility.m_LookAction.LookAt(target, SCR_AILookAction.PRIO_UNKNOWN_TARGET);
+		IEntity targetEntity = baseTarget.GetTargetEntity();
+		if (targetEntity)
+			utility.m_LookAction.LookAt(targetEntity, SCR_AILookAction.PRIO_UNKNOWN_TARGET);
 	}
 };
 
 [BaseContainerProps()]
 class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 {
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, IEntity target, vector lastSeenPosition)
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, BaseTarget baseTarget, vector lastSeenPosition)
 	{		
-		if (!target)
+		if (!baseTarget)
 			return;
-		if (!SCR_AIIsAlive.IsAlive(target))
+		IEntity target = baseTarget.GetTargetEntity();
+		if (!SCR_AIDamageHandling.IsAlive(target))
 		{
 			SCR_AISendLostMsg(utility, target);
 			return;
 		}
-		
-		// Resolve BaseTarget in our perception
-		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(target);
-		if (!baseTarget)
+		if (!target)
 			return;
 		
 		// Terminate retreat action if we had one
@@ -53,7 +52,9 @@ class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 		//this shouldn't be dependent on Info component since Info component should provide state of agent to outside
 		if (!utility.m_AIInfo.HasUnitState(EUnitState.IN_TURRET))
 		{
-			auto behavior = new SCR_AIAttackBehavior(utility, false, null, baseTarget, lastSeenPosition);
+			auto behavior = new SCR_AIAttackBehavior(utility, null, baseTarget, lastSeenPosition);
+			behavior.InitWaitTime(utility);
+			
 			// AddAction must be used here, not AddActionIfMissing!
 			// When target switches, we must delete the old behavior.
 			utility.AddAction(behavior);
@@ -62,8 +63,10 @@ class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 		}
 		else
 		{
-			auto behavior = new SCR_AIAttackStaticBehavior(utility, false, null, baseTarget, lastSeenPosition);
-			utility.AddActionIfMissing(behavior);
+			auto behavior = new SCR_AIAttackStaticBehavior(utility, null, baseTarget, lastSeenPosition);
+			behavior.InitWaitTime(utility);
+			
+			utility.AddAction(behavior);
 			utility.m_LookAction.LookAt(target, SCR_AILookAction.PRIO_ENEMY_TARGET);
 		}
 	}
@@ -72,10 +75,8 @@ class SCR_AITargetReaction_Enemy : SCR_AITargetReactionBase
 [BaseContainerProps()]
 class SCR_AITargetReaction_RetreatFromEnemy : SCR_AITargetReactionBase
 {
-	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, IEntity target, vector lastSeenPosition)
+	override void PerformReaction(notnull SCR_AIUtilityComponent utility, notnull SCR_AIThreatSystem threatSystem, BaseTarget baseTarget, vector lastSeenPosition)
 	{
-		// Resolve BaseTarget in our perception
-		BaseTarget baseTarget = utility.m_CombatComponent.FindTargetByEntity(target);
 		if (!baseTarget)
 			return;
 		
@@ -89,7 +90,7 @@ class SCR_AITargetReaction_RetreatFromEnemy : SCR_AITargetReactionBase
 				prevRetreatBehavior.Complete();
 		}
 		
-		SCR_AIRetreatFromTargetBehavior behavior = new SCR_AIRetreatFromTargetBehavior(utility, false, null, baseTarget);
+		SCR_AIRetreatFromTargetBehavior behavior = new SCR_AIRetreatFromTargetBehavior(utility, null, baseTarget);
 		utility.AddAction(behavior);
 	}
 }

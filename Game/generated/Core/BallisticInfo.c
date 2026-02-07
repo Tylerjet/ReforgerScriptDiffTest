@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Core
-* @{
+/*!
+\addtogroup Core
+\{
 */
 
 sealed class BallisticInfo: BaseContainer
@@ -16,6 +16,8 @@ sealed class BallisticInfo: BaseContainer
 	proto external float GetThickness();
 	proto external float GetThicknessMax();
 	proto external bool IsWaterSurface();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

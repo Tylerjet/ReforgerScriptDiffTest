@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI\HUD\SelectionMenu
-* @{
+/*!
+\addtogroup UI\HUD\SelectionMenu
+\{
 */
 
 class BaseSelectionMenu: ScriptAndConfig
@@ -32,6 +32,8 @@ class BaseSelectionMenu: ScriptAndConfig
 	//! Fills the provided array with weak references to entries from this menu
 	//! Returns the number of output elements.
 	proto external int GetEntryList(out notnull array<BaseSelectionMenuEntry> outActions);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

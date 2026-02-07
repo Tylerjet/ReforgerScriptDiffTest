@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 enum EAIDangerEventType
@@ -24,7 +24,10 @@ enum EAIDangerEventType
 	Danger_StartedBleeding,
 	Danger_DoorMovement,
 	Danger_VehicleHorn,
-	Danger_Count
-};
+	Danger_Explosion,
+	Danger_Count,
+}
 
-/** @}*/
+/*!
+\}
+*/

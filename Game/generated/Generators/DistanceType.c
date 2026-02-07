@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Generators
-* @{
+/*!
+\addtogroup Generators
+\{
 */
 
 enum DistanceType
@@ -14,7 +14,9 @@ enum DistanceType
 	TOP,
 	MID,
 	BOTTOM,
-	COUNT
-};
+	COUNT,
+}
 
-/** @}*/
+/*!
+\}
+*/

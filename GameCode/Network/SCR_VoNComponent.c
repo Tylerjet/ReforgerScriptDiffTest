@@ -5,8 +5,9 @@ class SCR_VoNComponentClass : VoNComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_VoNComponent : VoNComponent 
 {
-	const float TRANSMISSION_TIMEOUT_MS = 500;
+	private const float TRANSMISSION_TIMEOUT_MS = 500;
 	private float m_fTransmitingTimeout;
+	private float m_fTransmitRadioTimeout;
 	private SCR_VonDisplay m_VONDisplay;
 	
 	ref ScriptInvoker m_OnReceivedVON = new ref ScriptInvoker();
@@ -31,7 +32,8 @@ class SCR_VoNComponent : VoNComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Simple getter for when transmission was recently active, we assume that player's avatar should not produce various sounds while he's talking.
+	//! Simple getter for when transmission was recently active, we assume that player's avatar
+	//! should not produce various sounds while he's talking.
 	//! \return true if recently active
 	bool IsTransmiting()
 	{
@@ -39,26 +41,37 @@ class SCR_VoNComponent : VoNComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected event void OnCapture(BaseRadioComponent radio)
+	//! Radio transmission was recently active
+	//! \return true if recently active
+	bool IsTransmitingRadio()
 	{
-		SCR_VonDisplay display = GetDisplay();
-		
-		if (display)
-			display.OnCapture(radio);
-		
-		m_OnCaptureVON.Invoke(radio);
-		
-		m_fTransmitingTimeout = GetGame().GetWorld().GetWorldTime() + TRANSMISSION_TIMEOUT_MS;
+		return m_fTransmitRadioTimeout > GetGame().GetWorld().GetWorldTime();
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected event void OnReceive(int playerId, BaseRadioComponent radio, int frequency, float quality, int transceiverIdx)
+	override protected event void OnCapture(BaseTransceiver transmitter)
 	{
 		SCR_VonDisplay display = GetDisplay();
 		
 		if (display)
-			display.OnReceive(playerId, radio, frequency, quality, transceiverIdx);
+			display.OnCapture(transmitter);
 		
-		m_OnReceivedVON.Invoke(playerId, radio, frequency, quality, transceiverIdx);
+		m_OnCaptureVON.Invoke(transmitter);
+		
+		m_fTransmitingTimeout = GetGame().GetWorld().GetWorldTime() + TRANSMISSION_TIMEOUT_MS;
+		
+		if (transmitter)
+			m_fTransmitRadioTimeout = GetGame().GetWorld().GetWorldTime() + TRANSMISSION_TIMEOUT_MS;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override protected event void OnReceive(int playerId, BaseTransceiver receiver, int frequency, float quality)
+	{
+		SCR_VonDisplay display = GetDisplay();
+		
+		if (display)
+			display.OnReceive(playerId, receiver, frequency, quality);
+
+		m_OnReceivedVON.Invoke(playerId, receiver, frequency, quality);
 	}
 };

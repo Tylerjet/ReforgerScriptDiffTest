@@ -109,7 +109,7 @@ class SCR_CommunitySubMenu : SCR_SubMenuBase
 		if (!m_Feedback || !m_FeedbackType || !m_FeedbackCategory)
 			return;
 
-		string content = content + m_Feedback.GetValue();
+		string content = m_Feedback.GetValue();
 
 		// Clear feedback window
 		m_Feedback.SetValue(string.Empty);

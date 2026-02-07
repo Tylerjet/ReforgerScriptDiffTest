@@ -1,7 +1,7 @@
 class SCR_RadioTuningUserAction : SCR_InventoryAction
 {
 	protected SCR_RadioComponent m_RadioComp;
-	
+
 	//------------------------------------------------------------------------------------------------
 	[Attribute("0")]
 	protected bool m_bTuneUp;
@@ -15,16 +15,26 @@ class SCR_RadioTuningUserAction : SCR_InventoryAction
 		return charComp.GetInspect();
 	}
 
-	protected override void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
+	override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		if (!m_RadioComp.ChangeFrequencyStep(m_bTuneUp))
-			manager.PlayItemSound(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_ERROR);
+		bool changeFreq;
+		if (CanBePerformed(pUserEntity))
+			changeFreq = m_RadioComp.ChangeFrequencyStep(m_bTuneUp);
+
+		SCR_SoundManagerEntity soundMan = GetGame().GetSoundManagerEntity();
+		if (!soundMan)
+			return;
+
+		if (!changeFreq)
+		{
+			soundMan.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_ERROR);
+		}
 		else
 		{
 			if (m_bTuneUp)
-				manager.PlayItemSound(pOwnerEntity,SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_UP);
+				soundMan.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_UP);
 			else
-				manager.PlayItemSound(pOwnerEntity,SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_DOWN);
+				soundMan.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_ITEM_RADIO_TUNE_DOWN);
 		}
 	}
 
@@ -37,12 +47,21 @@ class SCR_RadioTuningUserAction : SCR_InventoryAction
 	{
 		m_RadioComp = SCR_RadioComponent.Cast(pOwnerEntity.FindComponent(SCR_RadioComponent));
 	}
-	
+
 	override bool GetActionNameScript(out string outName)
 	{
-		float targetFreq = m_RadioComp.GetRadioComponent().GetFrequency() + m_RadioComp.GetRadioComponent().GetFrequencyResolution();
+		BaseRadioComponent radioComp = m_RadioComp.GetRadioComponent();
+		if (!radioComp)
+			return false;
+
+		// Get the first transceiver, but may become problematic for manipulation of multiple channels of the radio
+		BaseTransceiver transceiver = radioComp.GetTransceiver(0);
+		if (!transceiver)
+			return false;
+
+		float targetFreq = transceiver.GetFrequency() + transceiver.GetFrequencyResolution();
 		if (!m_bTuneUp)
-			targetFreq = m_RadioComp.GetRadioComponent().GetFrequency() - m_RadioComp.GetRadioComponent().GetFrequencyResolution();
+			targetFreq = transceiver.GetFrequency() - transceiver.GetFrequencyResolution();
 
 		outName = WidgetManager.Translate("#AR-UserAction_TuneRadioToFrequency", targetFreq / 1000);
 		return true;

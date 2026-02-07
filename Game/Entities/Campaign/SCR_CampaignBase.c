@@ -8,6 +8,7 @@ class SCR_CampaignBase : GenericEntity
 {
 	static const string VARNAME_BASE_ID = "m_iBaseID";
 	static const float RADIO_RECONFIGURATION_DURATION = 20.0;
+	static const float BARRACKS_REDUCED_DEPLOY_COST = 0.5;
 	static const int UNDER_ATTACK_WARNING_PERIOD = 60;
 	protected static const ResourceName GARAGE_BOARD_US = "{92442E76D55E8F36}Assets/Props/Civilian/NoticeBoardCork_01/Data/NoticeBoardCork_01_US.emat";
 	protected static const ResourceName GARAGE_BOARD_USSR = "{D396E8B04E0CC347}Assets/Props/Civilian/NoticeBoardCork_01/Data/NoticeBoardCork_01_USSR.emat";
@@ -16,6 +17,10 @@ class SCR_CampaignBase : GenericEntity
 	protected static const float HQ_VEHICLE_SPAWN_RADIUS = 32;
 	protected static const float HQ_VEHICLE_QUERY_SPACE = 4.5;
 	protected static const int REINFORCEMENTS_PERIOD = 5;	//s: how ofter reinforcements arrive at Main bases
+	protected static const int CONTESTED_RESPAWN_DISTANCE = 300;
+	protected static const int CONTESTED_RESPAWN_DURATION = 60;
+	protected static const string RADIO_CHATTER_SIGNAL_NAME = "RadioChatter";
+	protected static const string ESTABLISH_ACTION_SIGNAL_NAME = "EstablishAction";
 	
 	//This script invoker is called on clients both for JIP and already playing players
 	static ref ScriptInvoker s_OnBaseOwnerChanged = new ScriptInvoker();
@@ -115,6 +120,8 @@ class SCR_CampaignBase : GenericEntity
 	protected MapItem m_MapItem;
 	protected ref array<SCR_CampaignBase> m_aInRangeOf = new ref array<SCR_CampaignBase>();
 	protected ref array<SCR_CampaignBase> m_aInMyRange = new ref array<SCR_CampaignBase>();
+	protected ref array<SCR_CampaignContestedSpawnPoint> m_aContestedSpawnpointsGroupA = {};
+	protected ref array<SCR_CampaignContestedSpawnPoint> m_aContestedSpawnpointsGroupB = {};
 	protected ref array<ref SCR_CampaignRemnantsPresence> m_aRemnants = new array<ref SCR_CampaignRemnantsPresence>;
 	protected SCR_SpawnPoint m_SpawnPoint;
 	protected SCR_CampaignFaction m_CapturingFaction;
@@ -124,7 +131,7 @@ class SCR_CampaignBase : GenericEntity
 	protected bool m_bLocalPlayerPresent = false;
 	protected AIWaypointCycle m_CycleWaypoint;
 	protected float m_fReinforcementsArrivalTime = int.MAX;
-	protected ref map<ECampaignServicePointType, SCR_CampaignServiceComponent> m_aServices = new map<ECampaignServicePointType, SCR_CampaignServiceComponent>();
+	protected ref map<SCR_EServicePointType, SCR_CampaignServiceComponent> m_mServices = new map<SCR_EServicePointType, SCR_CampaignServiceComponent>();
 	protected SCR_SiteSlotEntity m_SlotHQ;
 	protected SCR_SiteSlotEntity m_SlotSupplies;
 	protected SCR_SiteSlotEntity m_SlotFuel;
@@ -165,9 +172,14 @@ class SCR_CampaignBase : GenericEntity
 	protected SCR_CampaignSuppliesComponent m_SuppliesComponent;
 	protected SCR_CampaignBarracksComponent m_BarrackComponent;
 	protected SCR_ArmoryComponent m_ArmoryComponent;
-	protected ref array <SCR_CampaignEntitySpawnerComponent> m_aVehicleSpawners = new array <SCR_CampaignEntitySpawnerComponent>();
+	protected SCR_ArmoryComponent m_RadioArmory;
+	protected ref array <SCR_CatalogEntitySpawnerComponent> m_aSpawners = new array <SCR_CatalogEntitySpawnerComponent>();
 	protected SCR_AIGroup m_DefendersGroup;
 	protected bool m_bCanAnswerHQ;
+	protected bool m_bIsContestedByWest;
+	protected float m_fContestedByWestEndTimestamp;
+	protected bool m_bIsContestedByEast;
+	protected float m_fContestedByEastEndTimestamp;
 	
 	//Set only on server
 	//The faction that last sent reinforcements to this base (SendReinforcements())
@@ -186,8 +198,6 @@ class SCR_CampaignBase : GenericEntity
 	//********************************//
 	[RplProp(onRplName: "OnCapturingFactionChanged")]
 	protected int m_iCapturingFaction = INVALID_FACTION_INDEX;
-	[RplProp()]
-	protected float m_fCaptureStartTimestamp;
 	[RplProp(onRplName: "OnHasSignalChanged")]
 	protected bool m_bIsLinkedToMainWest = false;
 	[RplProp(onRplName: "OnHasSignalChanged")]
@@ -327,8 +337,8 @@ class SCR_CampaignBase : GenericEntity
 			return -1;
 		
 		//reduce spawning cost if barracks are built
-		if (m_aServices.Get(ECampaignServicePointType.BARRACKS))
-			return campaign.GetSpawnCost() / 2;
+		if (m_mServices.Get(SCR_EServicePointType.BARRACKS))
+			return campaign.GetSpawnCost() * BARRACKS_REDUCED_DEPLOY_COST;
 		else 
 			return campaign.GetSpawnCost();
 	}
@@ -340,8 +350,14 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnBaseCaptured(SCR_CampaignBase base)
+	protected void OnCaptureStart(SCR_Faction faction)
 	{
+		SCR_CampaignFaction factionC = SCR_CampaignFaction.Cast(faction);
+		
+		if (!factionC)
+			return;
+		
+		BeginCapture(factionC);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -632,24 +648,29 @@ class SCR_CampaignBase : GenericEntity
 		
 		// Reconfigure RadioComponent used for communication.		
 		BaseRadioComponent radio = BaseRadioComponent.Cast(FindComponent(BaseRadioComponent));
+		BaseTransceiver tsv = radio.GetTransceiver(0);
 		
-		if (!radio)
+		if (!radio || !tsv)
 			return;
 		
 		if (retakenByRemnants)
 		{
-			radio.TogglePower(false);
+			radio.SetPower(false);
 		}
 		else
 		{
-			radio.TogglePower(true);
-			radio.SetFrequency(newOwningFaction.GetFactionRadioFrequency());
+			radio.SetPower(true);
+			tsv.SetFrequency(newOwningFaction.GetFactionRadioFrequency());
 			radio.SetEncryptionKey(newOwningFaction.GetFactionRadioEncryptionKey());
 		}
 		
 		// Change owner of assigned armory 
 		if (m_ArmoryComponent)
 			m_ArmoryComponent.ChangeOwningFaction(GetOwningFaction());
+		
+		// Change owner of assigned armory 
+		if (m_RadioArmory)
+			m_RadioArmory.ChangeOwningFaction(GetOwningFaction());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -672,17 +693,17 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_SiteSlotEntity GetAssignedSlotByService(ECampaignServicePointType type)
+	SCR_SiteSlotEntity GetAssignedSlotByService(SCR_EServicePointType type)
 	{
 		switch (type)
 		{
-			case ECampaignServicePointType.SUPPLY_DEPOT: {return m_SlotSupplies;};
-			case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT: {return m_SlotLightVehicleDepot;};
-			case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT: {return m_SlotHeavyVehicleDepot;};
-			case ECampaignServicePointType.ARMORY: {return m_SlotArmory;};
-			case ECampaignServicePointType.FIELD_HOSPITAL: {return m_SlotHospital;};
-			case ECampaignServicePointType.BARRACKS: {return m_SlotBarracks;};
-			case ECampaignServicePointType.RADIO_ANTENNA: {return m_SlotRadioAntenna;};
+			case SCR_EServicePointType.SUPPLY_DEPOT: {return m_SlotSupplies;};
+			case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT: {return m_SlotLightVehicleDepot;};
+			case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT: {return m_SlotHeavyVehicleDepot;};
+			case SCR_EServicePointType.ARMORY: {return m_SlotArmory;};
+			case SCR_EServicePointType.FIELD_HOSPITAL: {return m_SlotHospital;};
+			case SCR_EServicePointType.BARRACKS: {return m_SlotBarracks;};
+			case SCR_EServicePointType.RADIO_ANTENNA: {return m_SlotRadioAntenna;};
 		}
 		
 		return null;
@@ -899,9 +920,6 @@ class SCR_CampaignBase : GenericEntity
 		if (faction == GetOwningFaction())
 			return false;
 		
-		// Reset the capture timer
-		m_fCaptureStartTimestamp = Replication.Time();
-		
 		// Change the capturing faction
 		m_CapturingFaction = faction;
 		
@@ -1003,6 +1021,9 @@ class SCR_CampaignBase : GenericEntity
 		if (GetSupplies() < GetBaseSpawnCost() && !m_bIsHQ)
 			finalKey = FactionKey.Empty;
 		
+		if (m_bIsContestedByWest || m_bIsContestedByEast)
+			finalKey = FactionKey.Empty;
+		
 		if (finalKey == currentKey)
 			return;
 		
@@ -1033,21 +1054,14 @@ class SCR_CampaignBase : GenericEntity
 	{
 		// Need to find faction manager to find the faction object by it's name
 		SCR_CampaignFaction faction = SCR_CampaignFactionManager.GetInstance().GetCampaignFactionByKey(m_sStartingBaseOwner);
-		bool change = true;
 		
-		if (GetType() == CampaignBaseType.MAIN)
-		{
-			if (m_bIsHQ)
-			{
-				if (faction)
-					faction.SetMainBase(this);
-			}
-			else
-				change = false;
-		}
+		if (!faction)
+			return;
 		
-		if (faction && change)
-			ChangeOwner(faction, true);
+		if (m_bIsHQ)
+			faction.SetMainBase(this);
+		
+		ChangeOwner(faction, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1056,7 +1070,6 @@ class SCR_CampaignBase : GenericEntity
 		if (IsProxy())
 			return;
 		
-		m_eType = CampaignBaseType.MAIN;
 		m_eStartingBaseOwner = owner;
 		m_bIsHQ = true;
 		Replication.BumpMe();
@@ -1098,23 +1111,15 @@ class SCR_CampaignBase : GenericEntity
 		
 		// Play or stop radio tuning SFX
 		if (m_HQRadio)
-		{
-			SoundComponent comp = SoundComponent.Cast(m_HQRadio.FindComponent(SoundComponent));
+		{			
+			SignalsManagerComponent comp = SignalsManagerComponent.Cast(m_HQRadio.FindComponent(SignalsManagerComponent));
 			
 			if (comp)
 			{
 				if (m_CapturingFaction)
-				{
-					ToggleRadioChatter(false);
-					m_PlayedRadio = comp.SoundEvent(SCR_SoundEvent.SOUND_RADIO_ESTABLISH_ACTION);
-				}
+					comp.SetSignalValue(comp.AddOrFindSignal(ESTABLISH_ACTION_SIGNAL_NAME), 1);
 				else
-				{
-					if (m_PlayedRadio != AudioHandle.Invalid)
-						comp.TerminateAll();
-					
-					ToggleRadioChatter(true);
-				}
+					comp.SetSignalValue(comp.AddOrFindSignal(ESTABLISH_ACTION_SIGNAL_NAME), 0);
 			}
 		}
 		
@@ -1126,7 +1131,7 @@ class SCR_CampaignBase : GenericEntity
 				campaign.EvaluateGame();
 		}
 		
-		if (m_CapturingFaction && GetOwningFaction() == SCR_RespawnSystemComponent.GetLocalPlayerFaction())
+		if (m_CapturingFaction && GetOwningFaction() && GetOwningFaction() == SCR_RespawnSystemComponent.GetLocalPlayerFaction())
 			FlashBaseIcon(faction: m_CapturingFaction, infiniteTimer: true);
 		else
 			FlashBaseIcon(changeToDefault: true);
@@ -1195,8 +1200,7 @@ class SCR_CampaignBase : GenericEntity
 		
 		GetGame().GetCallqueue().CallLater(UpdatePreviousFaction, 1000, false);
 		
-		RefreshVehicleSpawners();
-		
+			
 		if (!IsProxy())
 		{
 			// Update signal coverage only if the base was seized during normal play, not at the start
@@ -1209,7 +1213,7 @@ class SCR_CampaignBase : GenericEntity
 			}
 			
 			// Reset timer for reinforcements
-			if (GetType() == CampaignBaseType.MAIN)
+			if (GetIsHQ())
 			{
 				ReinforcementsTimer(true);
 				Replication.BumpMe();
@@ -1280,10 +1284,9 @@ class SCR_CampaignBase : GenericEntity
 					if (playerFaction == m_OwningFactionPrevious)
 						campaign.ShowHint(SCR_ECampaignHints.BASE_LOST);
 				}
-				
-				if (campaign.GetBasePlayerPresence() == this)
-					ToggleRadioChatter(true);
 			}
+			
+			RefreshSpawnerFactions();
 			
 			m_OnFactionChanged.Invoke();
 		}
@@ -1545,7 +1548,7 @@ class SCR_CampaignBase : GenericEntity
 		if (!GetOwningFaction() && isInRange)
 			factionMapID = EFactionMapID.FIA;
 		else
-			if (GetOwningFaction() && (GetType() == CampaignBaseType.MAIN || isInRange))
+			if (GetOwningFaction() && (GetIsHQ() || isInRange))
 				switch (GetOwningFaction().GetFactionKey())
 				{
 					case SCR_GameModeCampaignMP.FACTION_OPFOR: {factionMapID = EFactionMapID.EAST; break;};
@@ -1656,7 +1659,7 @@ class SCR_CampaignBase : GenericEntity
 			{
 				suppliesString = "#AR-Campaign_BaseSuppliesUnknown";
 				
-				if (GetType() == CampaignBaseType.SMALL)
+				if (!GetIsHQ())
 					respawnString = "#AR-Campaign_BaseRespawnsUnknown";
 			}
 		}
@@ -2053,14 +2056,54 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected void RefreshSpawnerFactions()
+	{
+		SCR_FactionAffiliationComponent factionComp;
+		foreach (SCR_CatalogEntitySpawnerComponent spawner : m_aSpawners)
+		{
+			if (!spawner)
+				continue;
+			
+			factionComp = SCR_FactionAffiliationComponent.Cast(spawner.GetOwner().FindComponent(SCR_FactionAffiliationComponent));
+			if (factionComp)
+				factionComp.SetAffiliatedFaction(m_FactionControl.GetAffiliatedFaction());
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool SpawnerSearchCallback(IEntity ent)
+	{
+		SCR_CatalogEntitySpawnerComponent spawnerComp = SCR_CatalogEntitySpawnerComponent.Cast(ent.FindComponent(SCR_CatalogEntitySpawnerComponent));
+		if (spawnerComp)
+		{
+			if (!m_aSpawners.Contains(spawnerComp))
+			{
+				m_aSpawners.Insert(spawnerComp);
+				spawnerComp.AssignSupplyComponent(m_SuppliesComponent);
+				
+			}
+			
+			return false;
+		}
+		
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterNearbyEntitySpawner(IEntity serviceOwner)
+	{
+		GetGame().GetWorld().QueryEntitiesBySphere(serviceOwner.GetOrigin(), 5, SpawnerSearchCallback);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	void OnServiceBuilt(notnull SCR_CampaignServiceComponent service, bool add)
 	{
-		ECampaignServicePointType serviceType = service.GetType();
+		SCR_EServicePointType serviceType = service.GetType();
 		
 		if (add)
-			m_aServices.Insert(serviceType, service);
+			m_mServices.Insert(serviceType, service);
 		else
-			m_aServices.Remove(serviceType);
+			m_mServices.Remove(serviceType);
 		
 		IEntity structure = service.GetOwner();
 		
@@ -2077,18 +2120,19 @@ class SCR_CampaignBase : GenericEntity
 		}
 		
 		//Has to be done also on clients
-		if (serviceType == ECampaignServicePointType.LIGHT_VEHICLE_DEPOT || serviceType == ECampaignServicePointType.HEAVY_VEHICLE_DEPOT)
+		//Temporary solution, will be removed as soon as refactor is done
+		if (serviceType == SCR_EServicePointType.LIGHT_VEHICLE_DEPOT || serviceType == SCR_EServicePointType.HEAVY_VEHICLE_DEPOT)
 		{
-			SCR_CampaignEntitySpawnerComponent spawnerComponent = SCR_CampaignEntitySpawnerComponent.Cast(service.GetOwner().FindComponent(SCR_CampaignEntitySpawnerComponent)); //AssignBase
-			if (!spawnerComponent)
-				return;
-				
 			if (add)
-				spawnerComponent.AssignBase(this);
+				GetGame().GetCallqueue().CallLater(RegisterNearbyEntitySpawner, 1000, false, service.GetOwner());
 			else
-				m_aVehicleSpawners.RemoveItem(spawnerComponent);
-				
-			RefreshVehicleSpawners();
+			{
+				for (int i = m_aSpawners.Count()-1; i >= 0; i--)
+				{
+					if (!m_aSpawners[i])
+						m_aSpawners.Remove(i);
+				}
+			}
 		}
 		
 		if (IsProxy())
@@ -2098,7 +2142,7 @@ class SCR_CampaignBase : GenericEntity
 		
 		switch (serviceType)
 		{
-			case ECampaignServicePointType.SUPPLY_DEPOT:
+			case SCR_EServicePointType.SUPPLY_DEPOT:
 			{
 				if (add)
 					SetSuppliesMax(GetSuppliesMax() + SCR_GameModeCampaignMP.SUPPLY_DEPOT_CAPACITY);
@@ -2108,7 +2152,7 @@ class SCR_CampaignBase : GenericEntity
 				
 			}
 			
-			case ECampaignServicePointType.ARMORY:
+			case SCR_EServicePointType.ARMORY:
 			{
 				if (add)
 					m_ArmoryComponent = SCR_ArmoryComponent.Cast(service.GetOwner().FindComponent(SCR_ArmoryComponent));
@@ -2117,22 +2161,24 @@ class SCR_CampaignBase : GenericEntity
 				break;
 			}
 			
-			case ECampaignServicePointType.RADIO_ANTENNA:
+			case SCR_EServicePointType.RADIO_ANTENNA:
 			{
 				if (add)
 				{
 					m_bAntennaBuilt = true;
+					m_RadioArmory = SCR_ArmoryComponent.Cast(service.GetOwner().FindComponent(SCR_ArmoryComponent));
 					OnAntennaBuilt();
 				}
 				else
 				{
 					m_bAntennaBuilt = false;
+					m_RadioArmory = null;
 					OnAntennaBuilt();
 				}
 				break;
 			}
 			
-			case ECampaignServicePointType.BARRACKS:
+			case SCR_EServicePointType.BARRACKS:
 			{
 				SCR_CampaignBarracksComponent barrackComp = SCR_CampaignBarracksComponent.Cast(service.GetOwner().FindComponent(SCR_CampaignBarracksComponent));
 					if (!barrackComp)
@@ -2150,56 +2196,56 @@ class SCR_CampaignBase : GenericEntity
 		{
 			switch (serviceType)
 			{
-				case ECampaignServicePointType.SUPPLY_DEPOT:
+				case SCR_EServicePointType.SUPPLY_DEPOT:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_SUPPLY, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
-				/*case ECampaignServicePointType.FUEL_DEPOT:
+				/*case SCR_EServicePointType.FUEL_DEPOT:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_FUEL, m_iCallsign, param: m_iBaseID);
 					break;
 				}*/
 				
-				case ECampaignServicePointType.ARMORY:
+				case SCR_EServicePointType.ARMORY:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_ARMORY, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
-				case ECampaignServicePointType.LIGHT_VEHICLE_DEPOT:
+				case SCR_EServicePointType.LIGHT_VEHICLE_DEPOT:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_VEHICLES_LIGHT, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
-				case ECampaignServicePointType.HEAVY_VEHICLE_DEPOT:
+				case SCR_EServicePointType.HEAVY_VEHICLE_DEPOT:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_VEHICLES_HEAVY, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
-				case ECampaignServicePointType.RADIO_ANTENNA:
+				case SCR_EServicePointType.RADIO_ANTENNA:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_ANTENNA, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
-				case ECampaignServicePointType.BARRACKS:
+				case SCR_EServicePointType.BARRACKS:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_BARRACKS, m_iCallsign, param: m_iBaseID);
 					break;
 				}
 				
-				case ECampaignServicePointType.FIELD_HOSPITAL:
+				case SCR_EServicePointType.FIELD_HOSPITAL:
 				{
 					if (add)
 						owner.SendHQMessage(SCR_ERadioMsg.BUILT_FIELD_HOSPITAL, m_iCallsign, param: m_iBaseID);
@@ -2238,7 +2284,212 @@ class SCR_CampaignBase : GenericEntity
 		m_SuppliesFaction = GetOwningFaction();
 		AddSupplies(Math.Min(SCR_GameModeCampaignMP.REINFORCEMENTS_SUPPLIES, GetSuppliesMax() - GetSupplies()));
 		//GetOwningFaction().SendHQMessage(SCR_ERadioMsg.REINFORCEMENTS, m_iCallsign, param: GetBaseID())
-	};
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! EXPERIMENTAL FEATURE - DISABLED FOR NOW UNTIL TEST IS SCHEDULED AND WRONG HIERARCHY MANIPULATION IS SOLVED
+	/*void SetupContestedSpawnPoints()
+	{
+		IEntity child = GetChildren();
+		int indexA;
+		int indexB;
+		array<string> letters = {"A", "B", "C"};
+		
+		while (child)
+		{
+			SCR_CampaignContestedSpawnPoint spawnpoint = SCR_CampaignContestedSpawnPoint.Cast(child);
+			child = child.GetSibling();
+			
+			if (!spawnpoint)
+				continue;
+			
+			if (spawnpoint.GetIsOppositeGroup())
+			{
+				m_aContestedSpawnpointsGroupB.Insert(spawnpoint);
+				spawnpoint.SetDisplayName(GetBaseName() + " " + letters[indexA]);
+				indexA++;
+			}
+			else
+			{
+				m_aContestedSpawnpointsGroupA.Insert(spawnpoint);
+				spawnpoint.SetDisplayName(GetBaseName() + " " + letters[indexB]);
+				indexB++;
+			}
+			
+			RemoveChild(spawnpoint, true);
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void CheckContested()
+	{
+		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
+		
+		if (!campaign)
+			return;
+		
+		SCR_RespawnSystemComponent respawnSystem = campaign.GetRespawnSystemComponent();
+		
+		if (!respawnSystem)
+			return;
+		
+		FactionManager fManager = GetGame().GetFactionManager();
+		
+		if (!fManager)
+			return;
+		
+		SCR_CampaignFaction factionWest = SCR_CampaignFaction.Cast(fManager.GetFactionByKey(campaign.FACTION_BLUFOR));
+		SCR_CampaignFaction factionEast = SCR_CampaignFaction.Cast(fManager.GetFactionByKey(campaign.FACTION_OPFOR));
+		
+		if (!factionWest || !factionEast)
+			return;
+		
+		bool linkedWest = IsBaseInFactionRadioSignal(factionWest);
+		bool linkedEast = IsBaseInFactionRadioSignal(factionEast);
+		
+		if (!linkedWest && !linkedEast)
+		{
+			if (m_bIsContestedByWest || m_bIsContestedByEast)
+			{
+				m_bIsContestedByWest = false;
+				m_bIsContestedByEast = false;
+				OnContestedChanged();
+			}
+			
+			return;
+		}
+		
+		if (m_bIsContestedByWest && GetOwningFaction() == factionWest)
+		{
+			m_bIsContestedByWest = false;
+			OnContestedChanged();
+			return;
+		}
+		
+		if (m_bIsContestedByEast && GetOwningFaction() == factionEast)
+		{
+			m_bIsContestedByEast = false;
+			OnContestedChanged();
+			return;
+		}
+		
+		bool contestedWest;
+		bool contestedEast;
+		array<int> players = {};
+		int playersCount = GetGame().GetPlayerManager().GetPlayers(players);
+		int distanceLimit = Math.Pow(CONTESTED_RESPAWN_DISTANCE, 2);
+		
+		for (int i = 0; i < playersCount; i++)
+		{
+			IEntity playerEntity = GetGame().GetPlayerManager().GetPlayerControlledEntity(players[i]);
+			
+			if (!playerEntity)
+				continue;
+			
+			SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(respawnSystem.GetPlayerFaction(players[i]));
+			
+			if (!playerFaction)
+				continue;
+			
+			if (playerFaction != factionWest && playerFaction != factionEast)
+				continue;
+			
+			if (playerFaction == GetOwningFaction())
+				continue;
+			
+			if (playerFaction == factionWest && contestedWest)
+				continue;
+			
+			if (playerFaction == factionEast && contestedEast)
+				continue;
+			
+			if (!IsBaseInFactionRadioSignal(playerFaction))
+				continue;
+
+			float dist = vector.DistanceSqXZ(playerEntity.GetOrigin(), GetOrigin());
+			
+			if (dist < distanceLimit)
+			{
+				if (playerFaction == factionWest)
+					contestedWest = true;
+				else
+					contestedEast = true;
+				
+				break;
+			}
+		}
+		
+		float curTime = Replication.Time();
+		float respawnEnd = curTime + (CONTESTED_RESPAWN_DURATION * 1000);
+		
+		if (contestedWest)
+		{
+			m_fContestedByWestEndTimestamp = float.MAX;
+		}
+		else
+		{
+			if (m_fContestedByWestEndTimestamp == float.MAX)
+				m_fContestedByWestEndTimestamp = respawnEnd;
+		}
+		
+		if (contestedEast)
+		{
+			m_fContestedByEastEndTimestamp = float.MAX;
+		}
+		else
+		{
+			if (m_fContestedByEastEndTimestamp == float.MAX)
+				m_fContestedByEastEndTimestamp = respawnEnd;
+		}
+		
+		contestedWest = m_bIsContestedByWest;
+		contestedEast = m_bIsContestedByEast;
+		
+		if (m_fContestedByWestEndTimestamp >= curTime)
+			contestedWest = true;
+		else
+			contestedWest = false;
+		
+		if (m_fContestedByEastEndTimestamp >= curTime)
+			contestedEast = true;
+		else
+			contestedEast = false;
+		
+		if (m_bIsContestedByWest != contestedWest || m_bIsContestedByEast != contestedEast)
+		{
+			m_bIsContestedByWest = contestedWest;
+			m_bIsContestedByEast = contestedEast;
+			OnContestedChanged();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void OnContestedChanged()
+	{
+		HandleSpawnPointFaction();
+		
+		if (m_bIsContestedByWest)
+		{
+			foreach (SCR_CampaignContestedSpawnPoint spawnpoint : m_aContestedSpawnpointsGroupA)
+				spawnpoint.SetFactionKey(SCR_GameModeCampaignMP.FACTION_BLUFOR);
+		}
+		else
+		{
+			foreach (SCR_CampaignContestedSpawnPoint spawnpoint : m_aContestedSpawnpointsGroupA)
+				spawnpoint.SetFactionKey(string.Empty);
+		}
+		
+		if (m_bIsContestedByEast)
+		{
+			foreach (SCR_CampaignContestedSpawnPoint spawnpoint : m_aContestedSpawnpointsGroupB)
+				spawnpoint.SetFactionKey(SCR_GameModeCampaignMP.FACTION_OPFOR);
+		}
+		else
+		{
+			foreach (SCR_CampaignContestedSpawnPoint spawnpoint : m_aContestedSpawnpointsGroupB)
+				spawnpoint.SetFactionKey(string.Empty);
+		}
+	}*/
 	
 	//------------------------------------------------------------------------------------------------
 	void SpawnComposition(ECampaignCompositionType slotType, bool noSlotOnly = false)
@@ -2252,7 +2503,7 @@ class SCR_CampaignBase : GenericEntity
 		// Spawn no-slot HQ composition if required
 		if (slotType == ECampaignCompositionType.HQ && !slot)
 		{
-			ResourceName compType = buildingsFaction.GetBuildingPrefabNoSlot(slotType, GetType());
+			ResourceName compType = buildingsFaction.GetBuildingPrefabNoSlot(slotType);
 			Resource compositionRes = Resource.Load(compType);
 			
 			if (!compositionRes.IsValid())
@@ -2277,7 +2528,7 @@ class SCR_CampaignBase : GenericEntity
 		if (slot.GetOccupant())
 			return;
 		
-		ResourceName compType = buildingsFaction.GetBuildingPrefab(slotType, GetType());
+		ResourceName compType = buildingsFaction.GetBuildingPrefab(slotType);
 		Resource composition = Resource.Load(compType);
 		
 		if (!composition)
@@ -2369,8 +2620,8 @@ class SCR_CampaignBase : GenericEntity
 		
 		if (loadedData)
 		{
-			array<ECampaignServicePointType> types = {};
-			SCR_Enum.GetEnumValues(ECampaignServicePointType, types);
+			array<SCR_EServicePointType> types = {};
+			SCR_Enum.GetEnumValues(SCR_EServicePointType, types);
 			
 			ResourceName prefab;
 			vector position;
@@ -2379,7 +2630,7 @@ class SCR_CampaignBase : GenericEntity
 			SCR_CampaignServiceComponent serviceComponent;
 			EntitySpawnParams params;
 			
-			foreach (ECampaignServicePointType type : types)
+			foreach (SCR_EServicePointType type : types)
 			{
 				if (GetBaseService(type))
 					continue;
@@ -2446,6 +2697,8 @@ class SCR_CampaignBase : GenericEntity
 	void RegisterHQRadio(notnull IEntity radio)
 	{
 		m_HQRadio = radio;
+		
+		SetRadioChatterSignal(GetOwningFaction());
 	}
 	
 	void RegisterGarageBoard(notnull IEntity board)
@@ -2454,30 +2707,30 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void ToggleRadioChatter(bool play)
+	void SetRadioChatterSignal(SCR_CampaignFaction faction)
 	{
 		if (!m_HQRadio)
 			return;
 		
-		SoundComponent comp = SoundComponent.Cast(m_HQRadio.FindComponent(SoundComponent));
+		SignalsManagerComponent comp = SignalsManagerComponent.Cast(m_HQRadio.FindComponent(SignalsManagerComponent));
 		
 		if (!comp)
 			return;
-		
-		if (m_PlayedRadio != AudioHandle.Invalid)
-				comp.TerminateAll();
-		
-		if (!play)
-			return;
-		
-		if (!GetOwningFaction())
-			m_PlayedRadio = comp.SoundEvent(SCR_SoundEvent.SOUND_RADIO_CHATTER_EV);
+						
+		if (!faction)
+		{
+			comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 0);
+		}
 		else
 		{
-			if (GetOwningFaction().GetFactionKey() == SCR_GameModeCampaignMP.FACTION_BLUFOR)
-				m_PlayedRadio = comp.SoundEvent(SCR_SoundEvent.SOUND_RADIO_CHATTER_US);
+			if (faction.GetFactionKey() == SCR_GameModeCampaignMP.FACTION_BLUFOR)
+			{
+				comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 1);
+			}
 			else
-				m_PlayedRadio = comp.SoundEvent(SCR_SoundEvent.SOUND_RADIO_CHATTER_RU);
+			{
+				comp.SetSignalValue(comp.AddOrFindSignal(RADIO_CHATTER_SIGNAL_NAME), 2);
+			}
 		}
 	}
 	
@@ -2536,9 +2789,9 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_CampaignServiceComponent GetBaseService(ECampaignServicePointType type)
+	SCR_CampaignServiceComponent GetBaseService(SCR_EServicePointType type)
 	{
-		return m_aServices.Get(type);
+		return m_mServices.Get(type);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2546,11 +2799,11 @@ class SCR_CampaignBase : GenericEntity
 	{
 		int cnt;
 		SCR_CampaignServiceComponent service;
-		array<ECampaignServicePointType> types = {};
+		array<SCR_EServicePointType> types = {};
 		
-		SCR_Enum.GetEnumValues(ECampaignServicePointType, types);
+		SCR_Enum.GetEnumValues(SCR_EServicePointType, types);
 		
-		foreach (ECampaignServicePointType type : types)
+		foreach (SCR_EServicePointType type : types)
 		{
 			service = GetBaseService(type);
 			
@@ -2738,6 +2991,8 @@ class SCR_CampaignBase : GenericEntity
 	{
 		if (m_FactionControl)
 			m_FactionControl.SetAffiliatedFaction(faction);
+		
+		SetRadioChatterSignal(faction);	
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -2754,13 +3009,6 @@ class SCR_CampaignBase : GenericEntity
 	SCR_CampaignTriggerEntity GetTrigger()
 	{
 		return m_Trigger;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Returns remaining time before the base is captured
-	float GetCaptureStartTimestamp()
-	{
-		return m_fCaptureStartTimestamp;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -2832,7 +3080,7 @@ class SCR_CampaignBase : GenericEntity
 		
 		SCR_GameModeCampaignMP campaign = SCR_GameModeCampaignMP.GetInstance();
 		
-		if (campaign && campaign.GetLastPlayerFaction() == GetOwningFaction())
+		if (campaign && GetOwningFaction() && campaign.GetLastPlayerFaction() == GetOwningFaction())
 			FlashBaseIcon(faction: enemyFaction);
 	}
 	
@@ -2916,6 +3164,9 @@ class SCR_CampaignBase : GenericEntity
 	//! Find out if local player is inside this base
 	void CheckIsPlayerInside()
 	{
+		if (!m_bEnabled)
+			return;
+		
 		if (!m_Trigger)
 			return;
 		
@@ -2962,10 +3213,14 @@ class SCR_CampaignBase : GenericEntity
 		if (!m_RadioComponent)
 			return;
 		
+		BaseTransceiver tsv = m_RadioComponent.GetTransceiver(0);
+		if (!tsv)
+			return;
+		
 		if (newRange == 0)
 			newRange = GetSignalRange();
 		
-		m_RadioComponent.SetRange(newRange);
+		tsv.SetRange(newRange);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -3006,10 +3261,14 @@ class SCR_CampaignBase : GenericEntity
 		if (!m_RadioComponent)
 			m_RadioComponent = BaseRadioComponent.Cast(FindComponent(BaseRadioComponent));
 
-		if (m_RadioComponent)
-			return m_RadioComponent.GetRange();
-		else
+		if (!m_RadioComponent)
 			return 0;
+		
+		BaseTransceiver tsv = m_RadioComponent.GetTransceiver(0);
+		if (!tsv)
+			return 0;
+		
+		return tsv.GetRange();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -3048,48 +3307,12 @@ class SCR_CampaignBase : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Register Vehicle Spawner 
-	void RegisterVehicleSpawner(notnull SCR_CampaignEntitySpawnerComponent comp)
-	{
-		if (!m_SuppliesComponent)
-			return;
-		
-		comp.SetSpawnerSupplies(m_SuppliesComponent.GetSupplies());
-		
-		if (GetOwningFaction())
-			comp.ChangeAssetList(GetOwningFaction().GetVehicleList());
-		
-		if (GetIsHQ())
-			comp.EnableRadiusUsage(true);
-		
-		m_aVehicleSpawners.Insert(comp);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void RefreshVehicleSpawners()
-	{
-		if (m_aVehicleSpawners.IsEmpty())
-			return;
-		
-		if (!GetOwningFaction())
-			return;
-		
-		SCR_EntityAssetList assetList = GetOwningFaction().GetVehicleList();
-		
-		foreach (SCR_CampaignEntitySpawnerComponent spawner : m_aVehicleSpawners)
-		{
-			if (spawner)
-				spawner.ChangeAssetList(assetList);
-		}
-	}
-	//------------------------------------------------------------------------------------------------
 	//! In case this base is blacklisted in server config, disable all its functionality
 	void DisableBase()
 	{
 		m_bEnabled = false;
 		SCR_CampaignBaseManager.DisableBase(this);
 		ClearEventMask(EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.DIAG);
-		ClearFlags(EntityFlags.ACTIVE, true);
 		
 		if (!IsProxy())
 		{
@@ -3124,7 +3347,6 @@ class SCR_CampaignBase : GenericEntity
 		m_bEnabled = true;
 		SCR_CampaignBaseManager.EnableBase(this);
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.DIAG);
-		SetFlags(EntityFlags.ACTIVE, true);
 		
 		IEntity ent = this;
 		
@@ -3155,13 +3377,6 @@ class SCR_CampaignBase : GenericEntity
 		{
 			m_MapItem = mapDescriptorComponent.Item();
 		}
-		
-		// HQ overriden from header, update base type
-		if (GetType() == CampaignBaseType.MAIN && !m_bIsHQ)
-			m_eType = CampaignBaseType.MAJOR;
-		
-		if (GetType() == CampaignBaseType.MAJOR && m_bIsHQ)
-			m_eType = CampaignBaseType.MAIN;
 		
 		// Register Slots
 		BaseWorld world = GetWorld();
@@ -3275,9 +3490,12 @@ class SCR_CampaignBase : GenericEntity
 			}
 		}
 		
+		/*if (GetType() != CampaignBaseType.RELAY && !m_bIsHQ)
+			SetupContestedSpawnPoints();*/
+		
 		if (!IsProxy())
 		{
-			if (!m_sStartingBaseOwner.IsEmpty() && (campaign.GetApplyPresetOwners() || GetType() == CampaignBaseType.MAIN))
+			if (!m_sStartingBaseOwner.IsEmpty() && (campaign.GetApplyPresetOwners() || m_bIsHQ))
 			{
 				SetStartingBaseOwner();
 				
@@ -3295,11 +3513,18 @@ class SCR_CampaignBase : GenericEntity
 				}
 			}
 		
-			if (GetType() == CampaignBaseType.MAIN)
+			if (GetIsHQ())
 			{
 				GetGame().GetCallqueue().Remove(ReinforcementsTimer);
 				GetGame().GetCallqueue().CallLater(ReinforcementsTimer, SCR_GameModeCampaignMP.REINFORCEMENTS_CHECK_PERIOD, true, false);
 			}
+			
+			/*if (GetType() != CampaignBaseType.RELAY && !m_bIsHQ)
+			{
+				Math.Randomize(-1);
+				GetGame().GetCallqueue().Remove(CheckContested);
+				GetGame().GetCallqueue().CallLater(CheckContested, 1000 + Math.RandomIntInclusive(0, 500), true);
+			}*/
 		}
 		else if (m_bIsHQ)
 		{
@@ -3397,26 +3622,12 @@ class SCR_CampaignBase : GenericEntity
 		}
 		else
 		{
-			switch (GetType())
-			{
-				case CampaignBaseType.MAIN:
-				{
-					newOwner.SendHQMessage(SCR_ERadioMsg.SEIZED_MAIN, m_iCallsign);
-					break;
-				}
-				
-				case CampaignBaseType.MAJOR:
-				{
-					newOwner.SendHQMessage(SCR_ERadioMsg.SEIZED_MAJOR, m_iCallsign);					
-					break;
-				}
-				
-				case CampaignBaseType.SMALL:
-				{
-					newOwner.SendHQMessage(SCR_ERadioMsg.SEIZED_SMALL, m_iCallsign);
-					break;
-				}
-			}
+			if (GetIsHQ())
+				newOwner.SendHQMessage(SCR_ERadioMsg.SEIZED_MAIN, m_iCallsign);
+			else if (GetIsControlPoint())
+				newOwner.SendHQMessage(SCR_ERadioMsg.SEIZED_MAJOR, m_iCallsign);
+			else if (GetType() == CampaignBaseType.BASE)
+				newOwner.SendHQMessage(SCR_ERadioMsg.SEIZED_SMALL, m_iCallsign);
 			
 			if (m_OwningFactionPrevious)
 				m_OwningFactionPrevious.SendHQMessage(SCR_ERadioMsg.BASE_LOST, m_iCallsign);
@@ -3439,13 +3650,24 @@ class SCR_CampaignBase : GenericEntity
 		
 		EntitySpawnParams params = new EntitySpawnParams();
 		params.TransformMode = ETransformMode.WORLD;
-		vector pos;
+		vector pos, oldPos;
 		
-		for (int i = 0; i<=count-1; i++)
+		for (int i; i<count; i++)
 		{
+			oldPos = pos;
 			SCR_WorldTools.FindEmptyTerrainPosition(pos, GetOrigin(), HQ_VEHICLE_SPAWN_RADIUS, HQ_VEHICLE_QUERY_SPACE);
+			
+			//Should found empty terrain position be too close to last one, do another search with previous position as areaCenter.
+			if (vector.DistanceSqXZ(pos, oldPos) < 1)
+				 SCR_WorldTools.FindEmptyTerrainPosition(pos, oldPos, HQ_VEHICLE_SPAWN_RADIUS, HQ_VEHICLE_QUERY_SPACE);
+			
 			params.Transform[3] = pos;
+			
 			Resource veh = Resource.Load(GetOwningFaction().GetDefaultTransportPrefab());
+			
+			if (!veh || !veh.IsValid())
+				return;
+			
 			GetGame().SpawnEntityPrefab(veh, GetWorld(), params);
 		}
 	}
@@ -3479,7 +3701,7 @@ class SCR_CampaignBase : GenericEntity
 		SCR_CampaignFaction faction = GetOwningFaction();
 		m_BuildingsFaction = SCR_CampaignFactionManager.GetInstance().GetCampaignFactionByIndex(baseStruct.GetBuildingsFaction());
 		
-		if (faction && GetType() == CampaignBaseType.MAIN)
+		if (faction && GetIsHQ())
 			faction.SetMainBase(this);
 		
 		if (!baseStruct.GetIsHQ())
@@ -3567,7 +3789,7 @@ class SCR_CampaignBase : GenericEntity
 		while (child)
 		{
 			spawnpoint = SCR_SpawnPoint.Cast(child);
-			if (spawnpoint)
+			if (spawnpoint && !SCR_CampaignContestedSpawnPoint.Cast(spawnpoint))
 			{
 				m_SpawnPoint = spawnpoint;
 				m_OnSpawnPointAssigned.Invoke();
@@ -3596,6 +3818,15 @@ class SCR_CampaignBase : GenericEntity
 		
 		if (!IsProxy())
 		{
+			SCR_CampaignSeizingComponent seizingComponent = SCR_CampaignSeizingComponent.Cast(FindComponent(SCR_CampaignSeizingComponent));
+			
+			if (seizingComponent)
+			{
+				seizingComponent.GetOnCaptureStart().Insert(OnCaptureStart);
+				seizingComponent.GetOnCaptureInterrupt().Insert(EndCapture);
+				seizingComponent.GetOnCaptureFinish().Insert(FinishCapture);
+			}
+			
 			SCR_CampaignBaseManager baseManager = SCR_CampaignBaseManager.GetInstance();
 			
 			if (!baseManager.GetIsHQSetupDone())
@@ -3759,7 +3990,6 @@ class SCR_CampaignBase : GenericEntity
 		SCR_CampaignBaseManager.s_OnAllBasesInitialized.Insert(AfterAllBasesInitialized);
 		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Insert(OnLocalPlayerFactionAssigned);
 		SCR_GameModeCampaignMP.s_OnFactionAssignedLocalPlayer.Insert(HandleMapInfo);
-		SCR_GameModeCampaignMP.s_OnBaseCaptured.Insert(OnBaseCaptured);
 		
 #ifdef ENABLE_DIAG
 		DiagMenu.RegisterMenu(SCR_DebugMenuID.DEBUGUI_CAMPAIGN_MENU, "Conflict", "");
@@ -3773,13 +4003,11 @@ class SCR_CampaignBase : GenericEntity
 			return;
 		
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME | EntityEvent.DIAG);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void ~SCR_CampaignBase()
 	{
-		SCR_GameModeCampaignMP.s_OnBaseCaptured.Remove(OnBaseCaptured);
 		SCR_MapCampaignUI.Event_OnIconsInit.Remove(HandleMapInfo);
 		SCR_MapEntity.GetOnMapOpen().Remove(HandleMapInfo_NoParam);
 		
@@ -3847,10 +4075,8 @@ enum SCR_ECampaignPresentFactionsFlags
 
 enum CampaignBaseType
 {
-	RELAY = 1,
-	SMALL = 2,
-	MAJOR = 4,
-	MAIN = 8
+	BASE,
+	RELAY
 };
 
 enum ECampaignCompositionType

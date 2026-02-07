@@ -13,6 +13,12 @@ class SCR_CommonDialogs
 	}
 	
 	//---------------------------------------------------------------------------------------------
+	static SCR_ConfigurableDialogUi CreateRequestErrorDialog()
+	{
+		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "request_error");
+	}
+	
+	//---------------------------------------------------------------------------------------------
 	static SCR_ConfigurableDialogUi CreateTimeoutOkDialog()
 	{
 		return SCR_ConfigurableDialogUi.CreateFromPreset(DIALOGS_CONFIG, "timeout_ok");

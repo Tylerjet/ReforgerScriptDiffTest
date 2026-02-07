@@ -14,7 +14,6 @@ class PreviewWorldExample: GenericEntity
 	void PreviewWorldExample(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, false);
 	}
 	
 	void ~PreviewWorldExample()

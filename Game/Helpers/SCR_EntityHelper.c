@@ -1,8 +1,11 @@
 class SCR_EntityHelper
 {
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns number of children the input entity has
-	static int CountChildren(IEntity parent)
+	//! \param parent
+	//! \param recursive checks children's children if set to true, the number of direct children otherwise
+	//! \return 0 if the provided entity is null
+	static int GetChildrenCount(IEntity parent, bool recursive = false)
 	{
 		if (!parent)
 			return 0;
@@ -12,6 +15,8 @@ class SCR_EntityHelper
 		while (child)
 		{
 			num++;
+			if (recursive)
+				num += GetChildrenCount(child);
 			child = child.GetSibling();
 		}
 
@@ -39,44 +44,43 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Deletes input parent entity and all children
-	static void DeleteEntityAndChildren(IEntity ent)
+	static void DeleteEntityAndChildren(IEntity entity)
 	{
-		if (ent)
-			RplComponent.DeleteRplEntity(ent, false);
+		if (entity)
+			RplComponent.DeleteRplEntity(entity, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the size of an entity from its bounding box
-	static vector GetEntitySize(IEntity ent)
+	static vector GetEntitySize(notnull IEntity entity)
 	{
 		vector entMins, entMaxs;
-		ent.GetBounds(entMins, entMaxs);
+		entity.GetBounds(entMins, entMaxs);
 
 		return entMaxs - entMins;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the center of the entity from its bounding box in world coordinates
-	static vector GetEntityCenterWorld(IEntity ent)
+	static vector GetEntityCenterWorld(notnull IEntity entity)
 	{
 		vector entMins, entMaxs;
-		ent.GetBounds(entMins, entMaxs);
-		vector result = (entMaxs + entMins) * 0.5;
-		return ent.CoordToParent(result);
+		entity.GetBounds(entMins, entMaxs);
+		return entity.CoordToParent((entMaxs + entMins) * 0.5);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Returns the radius of the entity based on the length of its bounding box
-	static float GetEntityRadius(IEntity ent)
+	static float GetEntityRadius(notnull IEntity entity)
 	{
-		return GetEntitySize(ent).Length() * 0.5;
+		return GetEntitySize(entity).Length() * 0.5;
 	}
 
-	//-----------------------------------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	//! Returns a list of all entities in the hierarchy
-	static void GetHierarchyEntityList(IEntity ent, inout array<IEntity> output)
+	static void GetHierarchyEntityList(notnull IEntity entity, notnull inout array<IEntity> output)
 	{
-		IEntity child = ent.GetChildren();
+		IEntity child = entity.GetChildren();
 		while (child)
 		{
 			GetHierarchyEntityList(child, output);
@@ -84,27 +88,86 @@ class SCR_EntityHelper
 			child = child.GetSibling();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void SnapToGround(notnull IEntity entity, array<IEntity> excludeArray = null, float maxLength = 10, vector startOffset = "0 0 0", bool onlyStatic = false)
+	{
+		vector origin = entity.GetOrigin();
+		
+		// Trace against terrain and entities to detect nearest ground
+		TraceParam param = new TraceParam();
+		param.Start = origin + startOffset;
+		param.End = origin - vector.Up * maxLength;
+		param.Flags = TraceFlags.WORLD | TraceFlags.ENTS;
+		
+		if (excludeArray)
+		{
+			excludeArray.Insert(entity);
+			param.ExcludeArray = excludeArray;
+		}
+		else
+			param.Exclude = entity;
+		
+		param.LayerMask = EPhysicsLayerPresets.Projectile;
+		BaseWorld world = entity.GetWorld();
+		float traceDistance;
+		
+		if (onlyStatic)
+			traceDistance = world.TraceMove(param, OnlyStaticCallback);
+		else
+			traceDistance = world.TraceMove(param, null);
+		
+		if (float.AlmostEqual(traceDistance, 1.0))
+			return;
+		
+		entity.SetOrigin(traceDistance * (param.End - param.Start) + param.Start);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	static void OrientUpToVector(vector newUp, inout vector mat[4])
+	{
+		vector origin = mat[3];
+		vector perpend = newUp.Perpend();
+		Math3D.DirectionAndUpMatrix(perpend, newUp, mat);
+		
+		vector basis[4];
+		Math3D.AnglesToMatrix(Vector(-perpend.VectorToAngles()[0], 0, 0), basis);
+		Math3D.MatrixMultiply3(mat, basis, mat);
+		mat[3] = origin;
+	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Returns the main parent of the input entity
-	//! \param ent Entity to get the main parent from
-	//! \param self Return itself if there is no parent, default = false
-	static IEntity GetMainParent(IEntity ent, bool self = false)
+	static bool OnlyStaticCallback(notnull IEntity e)
 	{
-		if (!ent)
-			return ent;
+		Physics physics = e.GetPhysics();
+		if (physics && physics.IsDynamic())
+			return false;
 		
-		IEntity parent = ent.GetParent();
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Returns the main parent of the input entity
+	//! \param entity Entity to get the main parent from
+	//! \param self Return itself if there is no parent, default = false
+	static IEntity GetMainParent(IEntity entity, bool self = false)
+	{
+		if (!entity)
+			return null;
+
+		IEntity parent = entity.GetParent();
 		if (!parent)
 		{
 			if (self)
-				return ent;
+				return entity;
 			else
 				return null;
 		}
 
 		while (parent.GetParent())
+		{
 			parent = parent.GetParent();
+		}
 
 		return parent;
 	}
@@ -118,24 +181,24 @@ class SCR_EntityHelper
 	//------------------------------------------------------------------------------------------------
 	static bool IsPlayer(IEntity entity)
 	{
-		return entity == EntityUtils.GetPlayer();
+		return entity && entity == EntityUtils.GetPlayer();
 	}
 
 	//------------------------------------------------------------------------------------------------
 	static bool IsAPlayer(IEntity entity)
 	{
-		return EntityUtils.IsPlayer(entity);
+		return entity && EntityUtils.IsPlayer(entity);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Set transform for whole hierarchy
-	static void SetHierarchyTransform(notnull IEntity ent, vector newTransform[4])
+	static void SetHierarchyTransform(notnull IEntity entity, vector newTransform[4])
 	{
 		vector oldTransform[4];
-		ent.GetTransform(oldTransform);
-		ent.SetTransform(newTransform);
+		entity.GetTransform(oldTransform);
+		entity.SetTransform(newTransform);
 
-		IEntity child = ent.GetChildren();
+		IEntity child = entity.GetChildren();
 		while (child)
 		{
 			SetHierarchyChildTransform(child, oldTransform, newTransform, true);
@@ -145,37 +208,52 @@ class SCR_EntityHelper
 
 	//------------------------------------------------------------------------------------------------
 	//! Called from SetHierarchyTransform
-	protected static void SetHierarchyChildTransform(notnull IEntity ent, vector oldTransform[4], vector newTransform[4], bool recursive = true)
+	protected static void SetHierarchyChildTransform(notnull IEntity entity, vector oldTransform[4], vector newTransform[4], bool recursive = true)
 	{
-		Physics entPhys = ent.GetPhysics();
+		Physics entPhys = entity.GetPhysics();
 		if (entPhys)
 		{
 			if (entPhys.IsDynamic())
 			{
 				vector mat[4];
-				ent.GetTransform(mat);
+				entity.GetTransform(mat);
 
 				vector diffMat[4];
 				Math3D.MatrixInvMultiply4(oldTransform, mat, diffMat);
 				Math3D.MatrixMultiply4(newTransform, diffMat, mat);
 
-				ent.SetTransform(mat);
+				entity.SetTransform(mat);
 			}
 		}
 
-		IEntity child = ent.GetChildren();
+		IEntity child = entity.GetChildren();
 		while (child)
 		{
 			SetHierarchyChildTransform(child, oldTransform, newTransform, recursive);
 			child = child.GetSibling();
 		}
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get Faction of given entity
+	static Faction GetEntityFaction(notnull IEntity ent)
+	{
+		FactionAffiliationComponent factionComp = FactionAffiliationComponent.Cast(ent.FindComponent(FactionAffiliationComponent));
+		if (!factionComp)
+			return null;
+
+		Faction faction = factionComp.GetAffiliatedFaction();
+		if (!faction)
+			faction = factionComp.GetDefaultAffiliatedFaction();
+
+		return faction;
+	}
 };
 
 class SCR_EntityHelperT<Class T>
 {
 	//------------------------------------------------------------------------------------------------
-	//! Search for an entity of given type in hierarchy of provided parent 
+	//! Search for an entity of given type in hierarchy of provided parent
 	static T GetEntityInHierarchy(notnull IEntity parent)
 	{
 		IEntity child = parent.GetChildren();
@@ -183,10 +261,10 @@ class SCR_EntityHelperT<Class T>
 		{
 			if (T.Cast(child))
 				return T.Cast(child);
-			
+
 			child = child.GetSibling();
 		}
-		
+
 		return null;
 	}
 };

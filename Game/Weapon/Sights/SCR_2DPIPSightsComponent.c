@@ -101,7 +101,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 	protected vector m_vScreenScopeCenter;
 	protected float m_fScreenScopeRadiusSq;
 	
-	protected IEntity m_eCurrentPlayable;
+	protected IEntity m_CurrentPlayable;
 	
 	//! Current PIP reticle color
 	protected ref Color m_cReticleColor = Color.Black;
@@ -261,14 +261,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			return false;
 		
 		// Check up in hierarchy?
-		m_eCurrentPlayable = pEntity.GetParent();
+		m_CurrentPlayable = pEntity.GetParent();
 
-		while (m_eCurrentPlayable)
+		while (m_CurrentPlayable)
 		{
-			if (pControlledEntity == m_eCurrentPlayable)
+			if (pControlledEntity == m_CurrentPlayable)
 				return true;
 			
-			m_eCurrentPlayable = m_eCurrentPlayable.GetParent();
+			m_CurrentPlayable = m_CurrentPlayable.GetParent();
 		}
 		
 		return false;
@@ -583,7 +583,7 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 		if (!m_Owner)
 			return;
 		
-		if (!m_eCurrentPlayable)
+		if (!m_CurrentPlayable)
 		{
 			if (IsPIPEnabled())
 			{
@@ -651,9 +651,14 @@ class SCR_2DPIPSightsComponent : SCR_2DSightsComponent
 			fov = fovInfo.GetFOV();
 			SCR_CharacterCameraHandlerComponent.SetOverlayCameraFOV(fov);
 		}
+		else
+		{
+			fov = mainCamera.GetVerticalFOV();
+		}
 		
 		// Account for distance of camera to scope and its diameter
-		float uvScale = 2 * Math.Atan2(m_fScopeRadius * 2, distance);
+		float scopeSize = Math.Atan2(m_fScopeRadius * 2, distance) * Math.RAD2DEG;
+		float uvScale = scopeSize / mainCamera.GetVerticalFOV();
 		float currentFOV = m_PIPCamera.GetVerticalFOV();
 		bool fovChanged = !float.AlmostEqual(fov * uvScale, currentFOV, currentFOV * 0.01);
 		if (fovChanged)

@@ -35,12 +35,9 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	[Attribute("0.1", UIWidgets.EditBox, desc: "In meters, light ignores objects up to set distance to avoid unwanted shadows", params: "0.1 5", category: "Light near plane")]
 	protected float m_fLightNearPlaneVehicle;
 	
-	[Attribute(SCR_SoundEvent.SOUND_FLASHLIGHT_ON, UIWidgets.EditBox, desc: "Activation sound", category: "Sound")]
-	protected string m_sSoundActivation;
-	
-	[Attribute(SCR_SoundEvent.SOUND_FLASHLIGHT_OFF, UIWidgets.EditBox, desc: "Deactivation sound", category: "Sound")]
-	protected string m_sSoundDeactivation;
-	
+	[Attribute("0 0 -0.03", UIWidgets.EditBox, desc: "When strapped light entity is being aligned with weapon to adjust light angle, this entity is offset to avoid it visibly floating", category: "Flashlight")]
+	protected vector m_vFlashlightAdjustOffset;
+		
 	protected bool m_bLastLightState;	// remember the last light state for cases where you put your flashlight into storage but there is no slot available -> true = active
 	protected bool m_bIsSlottedVehicle;	// char owner is in vehicle while flashlight is slotted
 	protected int m_iCurrentLenseColor;	
@@ -48,7 +45,6 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	protected vector m_vAnglesTarget;	// target local angles used to align flashlight with aiming angles while strapped
 	protected vector m_ItemMat[4];		// owner transformation matrix
 	protected LightEntity m_Light;
-	protected SoundComponent m_SoundComp;
 	protected ParametricMaterialInstanceComponent m_EmissiveMaterial;
 	protected SCR_CompartmentAccessComponent m_CompartmentComp;
 	protected CharacterControllerComponent m_CharController;
@@ -58,12 +54,14 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	{		
 		m_bActivated = state;
 
-		if (m_SoundComp)
+		// Play sound
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();		
+		if (soundManagerEntity)
 		{
 			if (m_bActivated)
-				m_SoundComp.SoundEvent(m_sSoundActivation);
-			else 
-				m_SoundComp.SoundEvent(m_sSoundDeactivation);
+				soundManagerEntity.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_FLASHLIGHT_ON);
+			else
+				soundManagerEntity.CreateAndPlayAudioSource(GetOwner(), SCR_SoundEvent.SOUND_FLASHLIGHT_OFF);
 		}
 				
 		UpdateLightState();
@@ -116,7 +114,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		if (m_EmissiveMaterial)
 			m_EmissiveMaterial.SetEmissiveMultiplier(0);
 		
-		DeactivateGadget();
+		DeactivateGadgetFlag();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -133,22 +131,43 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 			nearPlane = m_fLightNearPlaneStrapped;
 			if (m_CompartmentComp && m_CompartmentComp.IsInCompartment() && !isLeavingVehicle)
 			{
-				if (m_CompartmentComp.IsInCompartment())
-				{
 					nearPlane = m_fLightNearPlaneVehicle;
 					m_bIsSlottedVehicle = true;
+				DeactivateGadgetFlag();
 				}
-			}
-			
-			if (m_bActivated)
-				ActivateGadget();
+			else if (m_bActivated)
+			{
+				ActivateGadgetFlag();
+				AdjustTransform(m_vFlashlightAdjustOffset);
+		}
 		}
 		else		// in hand mode
+		{
 			nearPlane = m_fLightNearPlaneHand;
+		}
 		
 		if (m_Light)
 		{
 			m_Light.SetNearPlane(nearPlane);
+		}
+	}
+		
+	//------------------------------------------------------------------------------------------------
+	protected void AdjustTransform(vector offset = vector.Zero)
+	{
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (itemComponent)
+		{
+		
+			InventoryStorageSlot slot = itemComponent.GetParentSlot();
+			ItemAnimationAttributes animAttr = ItemAnimationAttributes.Cast(itemComponent.FindAttribute(ItemAnimationAttributes));
+			if (slot && animAttr)
+			{
+				vector matLS[4];
+				animAttr.GetAdditiveTransformLS(matLS);
+				matLS[3] = matLS[3] + m_vEquipmentSlotOffset + offset;
+				slot.SetAdditiveTransformLS(matLS); 
+			}
 		}
 	}
 		
@@ -162,7 +181,12 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		BaseCompartmentSlot compSlot = manager.FindCompartment(slotID, mgrID);
 		IEntity occupant = compSlot.GetOccupant();
 		if (occupant == m_CharacterOwner)
+		{
 			SetShadowNearPlane(true);
+			
+			if (PilotCompartmentSlot.Cast(compSlot))
+				ToggleActive(false);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -230,7 +254,7 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 				m_CompartmentComp.GetOnCompartmentLeft().Remove(OnCompartmentLeft);
 			}
 			
-			SetShadowNearPlane(true);
+			SetShadowNearPlane(false);
 		}
 		
 		super.ModeClear(mode);
@@ -242,11 +266,34 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 		if (m_iMode == EGadgetMode.IN_STORAGE && !m_bActivated)	// trying to activate flashlight hidden in inventory
 			return;	
 		
+		// trying to activate flashlight while driving
+		if (!m_bActivated && m_CompartmentComp && PilotCompartmentSlot.Cast(m_CompartmentComp.GetCompartment()))
+			return;
+		
 		super.ToggleActive(state);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override protected void ActivateAction()
+	override void ActivateGadgetFlag()
+	{
+		super.ActivateGadgetFlag();
+
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void DeactivateGadgetFlag()
+	{
+		super.DeactivateGadgetFlag();
+		
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
+		
+		if (m_iMode == EGadgetMode.IN_SLOT )	// reset slot position of the gadget back to its default
+			AdjustTransform();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateAction()
 	{
 		ToggleActive(!m_bActivated);
 	}
@@ -302,22 +349,13 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	//------------------------------------------------------------------------------------------------
 	override void EOnFrame(IEntity owner, float timeSlice)
 	{		
-		if (m_iMode != EGadgetMode.IN_SLOT)
-			return;
-		
-		if (m_bIsSlottedVehicle || !m_CharController)
+		if (m_iMode != EGadgetMode.IN_SLOT || !m_CharController || m_CharController.IsDead())	// deactivate frame on death without turning the light off
 		{
-			GetOwner().SetYawPitchRoll(vector.Zero); // vehicle aim angles are inconsistent, leave the local angles in default state
-			return;
-		}
-		
-		if (m_CharController.IsDead())	// deactivate frame on death without turning the light off
-		{
-			DeactivateGadget();
+			DeactivateGadgetFlag();
 			return;
 		}
 				
-		// ajdust angle of the flashlight to provide usable angle within various poses
+		// adjust angle of the flashlight to provide usable angle within various poses
 		GetOwner().GetTransform(m_ItemMat);
 		m_vAnglesCurrent = GetOwner().GetLocalYawPitchRoll();
 		m_vAnglesTarget = ( m_CharController.GetAimingAngles() - Math3D.MatrixToAngles(m_ItemMat) ) + m_vAnglesCurrent;	 // diff between WS aiming and item angles, add local to the result
@@ -334,7 +372,6 @@ class SCR_FlashlightComponent : SCR_GadgetComponent
 	override void EOnInit(IEntity owner)
 	{		
 		m_Light =  LightEntity.Cast( owner.GetChildren() );
-		m_SoundComp = SoundComponent.Cast(owner.FindComponent(SoundComponent));
 		m_EmissiveMaterial = ParametricMaterialInstanceComponent.Cast(owner.FindComponent(ParametricMaterialInstanceComponent));
 
 		// Insert default entry if none are set

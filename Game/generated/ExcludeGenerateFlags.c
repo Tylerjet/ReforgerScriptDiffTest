@@ -12,5 +12,5 @@ enum ExcludeGenerateFlags
 	ExcludeGenerateBuildings,
 	ExcludeGenerateAreas,
 	ExcludeGenerateWaterBodies,
-	ExcludeGenerateHills
-};
+	ExcludeGenerateHills,
+}

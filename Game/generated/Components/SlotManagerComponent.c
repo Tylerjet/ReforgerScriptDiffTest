@@ -4,18 +4,20 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class SlotManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class SlotManagerComponent: GameComponent
 {
 	proto external int GetSlotInfos(out notnull array<EntitySlotInfo> outSlotInfos);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

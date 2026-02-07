@@ -7,15 +7,14 @@ class SCR_ConsumableItemComponentClass : SCR_GadgetComponentClass
 // Consumable gadget component
 class SCR_ConsumableItemComponent : SCR_GadgetComponent
 {
-
 	[Attribute("", UIWidgets.Object, category: "Consumable" )]
 	protected ref SCR_ConsumableEffectBase m_ConsumableEffect;
 
 	[Attribute("0", UIWidgets.CheckBox, "Switch model on use, f.e. from packaged version", category: "Consumable")]
 	protected bool m_bAlternativeModelOnAction;	
 	
-	[Attribute("0", UIWidgets.CheckBox, "Item has dedicated SCR_EquipmentStorageSlot configured on prefab", category: "Consumable")]
-	protected bool m_bMoveToEquipmentStorage;
+	[Attribute("0", UIWidgets.CheckBox, "Show the model of the item on the character after using", category: "Consumable")]
+	protected bool m_bVisibleEquipped;
 
 	protected SCR_CharacterControllerComponent m_CharController;
 	
@@ -123,6 +122,14 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		}
 	}
 
+	//-----------------------------------------------------------------------------
+	//! Set visibility of item
+	//! \Sets item visible on the outside of the physical character
+	override bool IsVisibleEquipped()
+	{
+		return m_bVisibleEquipped;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void ModeSwitch(EGadgetMode mode, IEntity charOwner)
 	{

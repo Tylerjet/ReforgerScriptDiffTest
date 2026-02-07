@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
-/**
+/*!
 climb test settings
 */
 class CharacterCommandClimbSettings
@@ -31,7 +31,9 @@ class CharacterCommandClimbSettings
 	float		m_fStepMinWidth;
 	float		m_fClimbOverMaxWidth;
 	float		m_fClimbOverMinHeight;
-	
-};
 
-/** @}*/
+}
+
+/*!
+\}
+*/

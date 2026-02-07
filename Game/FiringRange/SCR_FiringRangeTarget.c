@@ -56,10 +56,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 	
 	// Proc anim component
 	private ProcAnimComponent m_ProcAnimComponent;
-	
-	// Sound component
-	private SoundComponent m_SoundComponent;
-	
+		
 	// RPL component
 	private RplComponent m_RplComponent;
 	
@@ -153,8 +150,7 @@ class SCR_FiringRangeTarget : BaseBuilding
 		SetState(ETargetState.TARGET_DOWN);
 		
 		// activate entity EOnFrame
-		SetEventMask(EntityEvent.FRAME);	
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetEventMask(EntityEvent.FRAME);
 		
 		// get lobby
 		// get ID of the player who hits the target	
@@ -193,35 +189,39 @@ class SCR_FiringRangeTarget : BaseBuilding
 		m_iDesiredState = state;
 		Event_TargetChangeState.Invoke(state, this);
 		if (m_iDesiredState == ETargetState.TARGET_DOWN)
-				{
-					// Reset time for how long the target should lie down.
-					m_fFallenTargetTimer = 0;
-					// Start timer which will erect target.
-					m_bWaitInPosition = true;
-					// Animate target
-					m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_DOWN);
-					// Play sound
-					if (m_SoundComponent)
-						m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TARGET_DOWN);
-			
-					// Count the targets 
-					if (m_LineController)
-						m_LineController.CountPopUpTargets();	
-					Replication.BumpMe();
-				}
-				else
-				{
-					m_fFallenTargetTimer = 0;
-					m_bTargetHit = false;
-					m_bWaitInPosition = false;
-			
-					m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_UP);
-					// Play sound
-					if (m_SoundComponent)
-						m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TARGET_UP);
-					
-					Replication.BumpMe();
-				}
+		{
+			// Reset time for how long the target should lie down.
+			m_fFallenTargetTimer = 0;
+			// Start timer which will erect target.
+			m_bWaitInPosition = true;
+			// Animate target
+			m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_DOWN);
+			// Play sound
+			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+			if (soundManagerEntity)
+			{
+				soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_TARGET_DOWN); 
+			}			
+			// Count the targets 
+			if (m_LineController)
+				m_LineController.CountPopUpTargets();	
+			Replication.BumpMe();
+		}
+		else
+		{
+			m_fFallenTargetTimer = 0;
+			m_bTargetHit = false;
+			m_bWaitInPosition = false;
+			// Animate target
+			m_SignalManager.SetSignalValue(m_iTargetHitSignal, ETargetState.TARGET_UP);
+			// Play sound
+			SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+			if (soundManagerEntity)
+			{
+				soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_TARGET_UP); 
+			}			
+			Replication.BumpMe();
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -353,7 +353,6 @@ class SCR_FiringRangeTarget : BaseBuilding
 				// Flip target back to standing position	
 				SetState(ETargetState.TARGET_UP);				
 				// deactivate entity EOnFrame
-				SetFlags(EntityFlags.ACTIVE, false);
 				ClearEventMask(EntityEvent.FRAME);
 			}	
 		}
@@ -382,9 +381,9 @@ class SCR_FiringRangeTarget : BaseBuilding
 	{
 		m_SignalManager = SignalsManagerComponent.Cast(FindComponent(SignalsManagerComponent));
 		m_ProcAnimComponent = ProcAnimComponent.Cast(FindComponent(ProcAnimComponent));
-		m_SoundComponent = SoundComponent.Cast(FindComponent(SoundComponent));
 				
-		if (!m_SignalManager) return;
+		if (!m_SignalManager)
+			return;
 		
 		// Get the signal index
 		m_iTargetHitSignal = m_SignalManager.FindSignal("target_hit");

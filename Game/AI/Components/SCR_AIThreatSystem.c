@@ -4,14 +4,15 @@
 
 enum EAIThreatState
 {
-	NONE,
 	SAFE,
+	VIGILANT,
 	ALERTED,
 	THREATENED
 };
 
-typedef func SCR_AIThreatStateTransition;
-typedef ScriptInvokerBase<SCR_AIThreatStateTransition> SCR_AIThreatStateTransitionInvoker;
+typedef func SCR_AIThreatStateChangedCallback;
+void SCR_AIThreatStateChangedCallback(EAIThreatState prevState, EAIThreatState newState);
+typedef ScriptInvokerBase<SCR_AIThreatStateChangedCallback> SCR_AIThreatStateChangedInvoker;
 
 class SCR_AIThreatSystem
 {	
@@ -25,8 +26,12 @@ class SCR_AIThreatSystem
 	private static const float DISTANT_SHOT_INCREMENT = 0.002;
 	private static const float ENDANGERED_INCREMENT = 0.2;
 	
-	private static const float ALERTED_THRESHOLD = 0.33;
-	private static const float THREATENED_THRESHOLD = 0.66;
+	static const float VIGILANT_THRESHOLD = 0.05;
+	static const float ALERTED_THRESHOLD = 0.33;
+	static const float THREATENED_THRESHOLD = 0.66;
+	
+	// When threat is below this level, our attack against enemy is delayed
+	static const float ATTACK_DELAYED_THRESHOLD = 0.001; // ~36 seconds until m_fThreatIsEndangered drops to this value
 
 	//range between <0,1>
 	private float m_fThreatTotal;
@@ -44,10 +49,8 @@ class SCR_AIThreatSystem
 	
 	private EAIThreatState m_State;
 		
-	private ref SCR_AIThreatStateTransitionInvoker m_SafeToAlerted = new SCR_AIThreatStateTransitionInvoker;
-	private ref SCR_AIThreatStateTransitionInvoker m_AlertedToThreatened = new SCR_AIThreatStateTransitionInvoker;
-	private ref SCR_AIThreatStateTransitionInvoker m_ThreatenedToAlerted = new SCR_AIThreatStateTransitionInvoker;
-	private ref SCR_AIThreatStateTransitionInvoker m_AlertedToSafe = new SCR_AIThreatStateTransitionInvoker;
+	
+	private ref SCR_AIThreatStateChangedInvoker m_OnThreatStateChanged = new SCR_AIThreatStateChangedInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	void SCR_AIThreatSystem(SCR_AIUtilityComponent utility)
@@ -72,27 +75,9 @@ class SCR_AIThreatSystem
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_AIThreatStateTransitionInvoker GetOnSafeToAlerted()
+	SCR_AIThreatStateChangedInvoker GetOnThreatStateChanged()
 	{
-		return m_SafeToAlerted;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_AIThreatStateTransitionInvoker GetOnAlertedToThreatened()
-	{
-		return m_AlertedToThreatened;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_AIThreatStateTransitionInvoker GetOnThreatenedToAlerted()
-	{
-		return m_ThreatenedToAlerted;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	SCR_AIThreatStateTransitionInvoker GetOnAlertedToSafe()
-	{
-		return m_AlertedToSafe;
+		return m_OnThreatStateChanged;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -122,6 +107,11 @@ class SCR_AIThreatSystem
 				color = Color.Green;
 				break;
 			}
+			case EAIThreatState.VIGILANT:
+			{
+				color = Color.DarkGreen;
+				break;
+			}
 			case EAIThreatState.ALERTED :
 			{
 				color = Color.DarkYellow;
@@ -145,27 +135,7 @@ class SCR_AIThreatSystem
 		if (newState == m_State)
 			return;
 		
-		switch (m_State)
-		{
-			case EAIThreatState.SAFE : 
-			{
-				m_SafeToAlerted.Invoke();
-				break;
-			}
-			case EAIThreatState.ALERTED : 
-			{
-				if (newState == EAIThreatState.THREATENED)
-					m_AlertedToThreatened.Invoke();	
-				else
-					m_AlertedToSafe.Invoke();
-				break;
-			}
-			case EAIThreatState.THREATENED : 
-			{
-				m_ThreatenedToAlerted.Invoke();
-				break;
-			}
-		}		
+		m_OnThreatStateChanged.Invoke(m_State, newState);
 		
 		m_State = newState;
 	}
@@ -173,22 +143,21 @@ class SCR_AIThreatSystem
 	//------------------------------------------------------------------------------------------------
 	private void UpdateState()
 	{
+		EAIThreatState newState = EAIThreatState.SAFE;
+		
 		if (m_fThreatTotal > THREATENED_THRESHOLD)
-		{
-			StateTransition(EAIThreatState.THREATENED);
-			return;
-		}
-		if (m_fThreatTotal > ALERTED_THRESHOLD)
-		{
-			StateTransition(EAIThreatState.ALERTED);
-			return;
-		}
-		StateTransition(EAIThreatState.SAFE);
+			newState = EAIThreatState.THREATENED;
+		else if (m_fThreatTotal > ALERTED_THRESHOLD)
+			newState = EAIThreatState.ALERTED;
+		else if (m_fThreatTotal > VIGILANT_THRESHOLD)
+			newState = EAIThreatState.VIGILANT;
+		
+		StateTransition(newState);
 	}
 
 	// Called by utilityComponent each EvaluateBehavior call
 	//------------------------------------------------------------------------------------------------
-	void Update(float timeSlice)
+	void Update(SCR_AIUtilityComponent utility, float timeSlice)
 	{
 		// Threat falloff
 		m_fThreatSuppression -= m_fThreatSuppression * THREAT_SUPPRESSION_DROP_RATE * timeSlice;
@@ -230,7 +199,12 @@ class SCR_AIThreatSystem
 			m_Agent.ClearDangerEvents(i+1);
 		}		
 
-		m_fThreatTotal = Math.Clamp(m_fThreatSuppression + m_fThreatInjury + m_fThreatShotsFired + m_fThreatIsEndangered, 0, 1);
+		// Add threat value from current behavior
+		float threatFromBehavior = 0;
+		if (utility.m_CurrentBehavior)
+			threatFromBehavior = utility.m_CurrentBehavior.m_fThreat;
+		
+		m_fThreatTotal = Math.Clamp(threatFromBehavior + m_fThreatSuppression + m_fThreatInjury + m_fThreatShotsFired + m_fThreatIsEndangered, 0, 1);
 		
 		UpdateState();
 #ifdef WORKBENCH

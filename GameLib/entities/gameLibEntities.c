@@ -12,12 +12,12 @@ class WB_UIMenuItem: Managed
 		m_id = id;
 		m_enabled = enabled;
 	}
-};
+}
 
 class GenericEntityClass: EntityPrefabData
 {
 	void GenericEntityClass(BaseContainer prefab) {}
-};
+}
 
 /*!
 Indices of SkyMaterial properties
@@ -47,7 +47,7 @@ enum ESkyMaterialParams
 	SOLAR_IRRADIANCE_TINT, // color - float[3]/float[4]
 	RAYLEIGH_SCATTERING_TINT, // color - float[3]/float[4]
 	MIE_SCATTERING_TINT // color - float[3]/float[4]
-};
+}
 
 class WorldEntityClass : GenericWorldEntityClass
 {
@@ -63,7 +63,7 @@ enum CharacterMovement
 	MOVEMENTTYPE_WALK,
 	MOVEMENTTYPE_RUN,
 	MOVEMENTTYPE_SPRINT
-};
+}
 
 enum CharacterStance
 {
@@ -73,5 +73,5 @@ enum CharacterStance
 	STANCE_ERECT_RAISED,
 	STANCE_CROUCH_RAISED,
 	STANCE_PRONE_RAISED
-};
+}
 

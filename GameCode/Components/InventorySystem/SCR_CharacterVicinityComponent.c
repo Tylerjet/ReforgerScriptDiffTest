@@ -7,7 +7,7 @@ class SCR_CharacterVicinityComponent: CharacterVicinityComponent
 {
 
 	ref ScriptInvoker OnVicinityUpdateInvoker = new ref ScriptInvoker();
-	private void OnUpdate()
+	override protected void OnUpdate()
 	{
 		OnVicinityUpdateInvoker.Invoke();
 	}

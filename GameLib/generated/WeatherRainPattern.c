@@ -10,4 +10,4 @@ class WeatherRainPattern: ScriptAndConfig
 	proto external float GetMaxIntensity();
 	proto external float GetMinDurationHours();
 	proto external float GetMaxDurationHours();
-};
+}

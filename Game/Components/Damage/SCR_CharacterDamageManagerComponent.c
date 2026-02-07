@@ -164,7 +164,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			return;
 
 		// Cancel regeneration when bleeding starts
-		if (dType == EDamageType.REGENERATION)
+		if (dType == EDamageType.REGENERATION || dType == EDamageType.HEALING)
 			return;
 
 		SCR_RegeneratingHitZone regenHZ = SCR_RegeneratingHitZone.Cast(hz);
@@ -408,17 +408,17 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		
 		CreateBleedingParticleEffect(hitZone, bleedingRate, colliderDescriptorIndex);
 
-		// The rest of the code is handled on authority only
-		if (hitZone.IsProxy())
-			return;
-
 		if (m_pBloodHitZone)
 		{
 			SCR_BleedingHitZoneParameters localBleedingHZParams = new SCR_BleedingHitZoneParameters(hitZone, bleedingRate);
 			m_pBloodHitZone.AddBleedingHZToMap(hitZone, localBleedingHZParams);
 			UpdateBleedingHitZones();
 		}
-		
+
+		// The rest of the code is handled on authority only
+		if (hitZone.IsProxy())
+			return;
+
 		array<HitZone> hitZones = {};
 		GetAllHitZones(hitZones);
 
@@ -1107,13 +1107,13 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	{
 		super.OnDamage(type, damage, pHitZone, instigator, hitTransform, speed, colliderID, nodeID);
 #ifdef ENABLE_DIAG
-			
+
 		if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_CHARACTER_LOG_PLAYER_DAMAGE))
 		{
 			ScriptedHitZone scriptedHz = ScriptedHitZone.Cast(pHitZone);
 			if (!scriptedHz)
 				return;
-			
+
 			IEntity hzOwner = scriptedHz.GetOwner();
 			if (!hzOwner)
 				return;

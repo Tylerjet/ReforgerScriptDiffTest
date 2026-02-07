@@ -342,7 +342,7 @@ class EditablePrefabsConfig
 		int n = 0;
 		int index, length;
 		bool canReplace;
-		while (file.FGets(line) > 0)
+		while (file.ReadLine(line) > 0)
 		{
 			if (line.Contains(".et\" {"))
 			{
@@ -392,11 +392,11 @@ class EditablePrefabsConfig
 			text += line;
 			n++;
 		}
-		file.CloseFile();
+		file.Close();
 		
 		file = FileIO.OpenFile(prefabPath, FileMode.WRITE);
 		FPrint(file, text);
-		file.CloseFile();
+		file.Close();
 	}
 	/*!
 	Move a file and its meta file from one path to another
@@ -589,11 +589,11 @@ class EditablePrefabsConfig
 	{
 		FileHandle file = FileIO.OpenFile(filePath, FileMode.READ);
 		string line;
-		while (file.FGets(line) > 0)
+		while (file.ReadLine(line) > 0)
 		{
 			backup.Insert(line);
 		}
-		file.CloseFile();
+		file.Close();
 	}
 	protected void CompareBackup(string filePath, notnull array<string> backup)
 	{
@@ -602,7 +602,7 @@ class EditablePrefabsConfig
 		int i = 0;
 		int backupCount = backup.Count();
 		bool apply = false;
-		while (file.FGets(line) > 0)
+		while (file.ReadLine(line) > 0)
 		{
 			if (i >= backupCount)
 			{
@@ -629,13 +629,13 @@ class EditablePrefabsConfig
 			text += line;
 			i++;
 		}
-		file.CloseFile();
+		file.Close();
 		
 		if (apply)
 		{
 			file = FileIO.OpenFile(filePath, FileMode.WRITE);
-			file.FPrint(text);
-			file.CloseFile();
+			file.Write(text);
+			file.Close();
 		}
 	}
 	protected ResourceName GetResourceNameLink(BaseContainer container)
@@ -811,10 +811,10 @@ class EditablePrefabsConfig
 		{
 			FileIO.MakeDirectory("$profile:.worlds");
 			FileHandle file = FileIO.OpenFile(worldPath, FileMode.WRITE);
-			file.FPrintln("Layer default {");
-			file.FPrintln(" Index 0");
-			file.FPrintln("}");
-			file.CloseFile();
+			file.WriteLine("Layer default {");
+			file.WriteLine(" Index 0");
+			file.WriteLine("}");
+			file.Close();
 		}
 		
 		//--- Layer file
@@ -822,16 +822,16 @@ class EditablePrefabsConfig
 		//{
 			FileIO.MakeDirectory("$profile:.worlds");
 			FileHandle file = FileIO.OpenFile(layerPath, FileMode.WRITE);
-			file.FPrintln("GenericWorldEntity world {");
-			file.FPrintln("}");
+			file.WriteLine("GenericWorldEntity world {");
+			file.WriteLine("}");
 		
 			foreach (ResourceName prefab: m_SupportEntities)
 			{
-				file.FPrintln(string.Format("%1 : \"%2\" {", SCR_BaseContainerTools.GetContainerClassName(prefab), prefab));
-				file.FPrintln("}");
+				file.WriteLine(string.Format("%1 : \"%2\" {", SCR_BaseContainerTools.GetContainerClassName(prefab), prefab));
+				file.WriteLine("}");
 			}
 		
-			file.CloseFile();
+			file.Close();
 		//}
 			
 		return Workbench.GetModule(WorldEditor).SetOpenedResource(worldPath);

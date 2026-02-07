@@ -8,15 +8,13 @@ Manager of editable entities which players control (i.e., their avatars).
 */
 class SCR_MapEditorComponent : SCR_BaseEditorComponent
 {	
-	[Attribute("{19C76194B21EC3E1}Configs/Map/MapEditor.conf")]
-	protected ResourceName m_MapConfigEditorPrefab;
-	
 	[Attribute(SCR_SoundEvent.SOUND_HUD_MAP_OPEN, UIWidgets.EditBox)]
 	protected string m_sOpeningEditorMapSfx;
 	
 	[Attribute(SCR_SoundEvent.SOUND_HUD_MAP_CLOSE, UIWidgets.EditBox)]
 	protected string m_sClosingEditorMapSfx;
 	
+	protected ResourceName m_sMapConfigEditorPrefab;
 	protected SCR_MapEntity m_MapEntity;
 	protected SCR_EditorManagerEntity m_EditorManager;
 	protected MapItem m_CameraIcon;
@@ -39,7 +37,7 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 	
 	ResourceName GetMapConfigPrefab()
 	{
-		return m_MapConfigEditorPrefab;
+		return m_sMapConfigEditorPrefab;
 	}
 	
 	void ToggleMap()
@@ -71,7 +69,7 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 		else
 			SCR_UISoundEntity.SoundEvent(m_sClosingEditorMapSfx, true);
 		
-		m_MapHandler.ToggleMap(show, m_MapConfigEditorPrefab);
+		m_MapHandler.ToggleMap(show, m_sMapConfigEditorPrefab);
 		m_bWasMapOpened = show;
 	}
 	
@@ -137,6 +135,14 @@ class SCR_MapEditorComponent : SCR_BaseEditorComponent
 		m_MapEntity = SCR_MapEntity.GetMapInstance();
 		if (!m_MapEntity)
 			return;
+		
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+		
+		SCR_MapConfigComponent configComp = SCR_MapConfigComponent.Cast(gameMode.FindComponent(SCR_MapConfigComponent));
+		if (configComp)
+			m_sMapConfigEditorPrefab = configComp.GetEditorMapConfig();
 		
 		m_EditorManager = SCR_EditorManagerEntity.Cast(owner);
 		if (!m_EditorManager)

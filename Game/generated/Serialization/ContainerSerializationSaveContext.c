@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Serialization
-* @{
+/*!
+\addtogroup Serialization
+\{
 */
 
 /*!
@@ -17,7 +17,7 @@ class ContainerSerializationSaveContext: BaseSerializationSaveContext
 {
 	//! skipEmptyObjects : This feature is for writing only sub-objects to container which have some data and not creating hierarchy of empty sub-objects.
 	void ContainerSerializationSaveContext(bool skipEmptyObjects = true) {}
-	
+
 	//! Returns the assigned container
 	proto external BaseSerializationSaveContainer GetContainer();
 	/*!
@@ -25,6 +25,8 @@ class ContainerSerializationSaveContext: BaseSerializationSaveContext
 	\param container The new container.
 	*/
 	proto external void SetContainer(BaseSerializationSaveContainer container);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

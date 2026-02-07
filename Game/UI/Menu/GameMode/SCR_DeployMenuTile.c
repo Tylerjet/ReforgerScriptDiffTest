@@ -184,6 +184,7 @@ class SCR_FactionMenuTile : SCR_DeployMenuTile
 		handler.SetParent(parent);
 		handler.SetImage(flag);
 		handler.SetText(faction.GetFactionName());
+		handler.SetSpawnPointsAvailable(faction.GetFactionKey());
 		handler.SetFactionBackgroundColor(faction.GetFactionColor());
 		gallery_handler.AddItem(tile);
 
@@ -287,13 +288,6 @@ class SCR_FactionMenuTile : SCR_DeployMenuTile
 	{
 		if (sp)
 			SetSpawnPointsAvailable(sp.GetFactionKey());
-	}
-
-	//------------------------------------------------------------------------------------------------
-	override void SetText(string text)
-	{
-		super.SetText(text);
-		SetSpawnPointsAvailable(text);
 	}
 
 	//------------------------------------------------------------------------------------------------

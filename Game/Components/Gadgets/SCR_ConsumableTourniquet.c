@@ -9,6 +9,8 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 	//------------------------------------------------------------------------------------------------
 	override void ApplyEffect(notnull IEntity target, notnull IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
 	{
+		super.ApplyEffect(target, user, item, animParams);
+		
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
 			return;
@@ -26,7 +28,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 			return;
 		}
 		
-		tqStorageComp.AddTourniquetToSlot(m_eTargetHZGroup, item);
+		tqStorageComp.AddTourniquetToSlot(target, m_eTargetHZGroup, item);
 	}
 	
 	//------------------------------------------------------------------------------------------------

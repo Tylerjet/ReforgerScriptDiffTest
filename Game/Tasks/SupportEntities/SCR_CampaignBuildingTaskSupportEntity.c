@@ -16,7 +16,7 @@ class SCR_CampaignBuildingTaskSupportEntity : SCR_CampaignBaseTaskSupportEntity
 			return;
 #endif
 		
-		if (capturedBase.GetType() != CampaignBaseType.SMALL)
+		if (capturedBase.GetType() != CampaignBaseType.BASE)
 			return;
 		
 		if (capturedBase.GetAllBaseServices() == 0) 

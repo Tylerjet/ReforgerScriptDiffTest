@@ -109,7 +109,7 @@ class SCR_RplTestComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.FRAME | EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
+		owner.SetFlags(EntityFlags.ACTIVE, false);
 	}
 	
 	//------------------------------------------------------------------------------------------------

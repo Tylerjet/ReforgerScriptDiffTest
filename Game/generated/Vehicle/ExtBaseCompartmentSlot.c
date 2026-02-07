@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class ExtBaseCompartmentSlot: ScriptAndConfig
@@ -18,9 +18,14 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external IEntity AttachedOccupant();
 	proto external IEntity GetOccupant();
 	proto external UIInfo GetUIInfo();
+	proto external bool IsReserved();
+	proto external bool IsReservedBy(IEntity ent);
+	proto external void SetReserved(IEntity ent);
 	proto external EntitySlotInfo GetPassengerPointInfo();
 	proto external bool GetForceFreeLook();
+	//! Returns the manager ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID
 	proto external int GetCompartmentMgrID();
+	//! Returns the slot ID of the compartment. To uniquely identify the compartment, use both GetCompartmentMgrID and GetCompartmentSlotID
 	proto external int GetCompartmentSlotID();
 	proto external CompartmentDoorInfo GetDoorInfo(int doorIndex);
 	/*!
@@ -39,6 +44,14 @@ class ExtBaseCompartmentSlot: ScriptAndConfig
 	proto external CompartmentUserAction GetGetInAction();
 	proto external CompartmentUserAction GetGetOutAction();
 	proto external CompartmentUserAction GetSwitchSeatAction();
-};
+	proto external vector GetPosition();
 
-/** @}*/
+	// callbacks
+
+	// Called on DiagDebugDrawPosition
+	event protected void DebugDrawPosition();
+}
+
+/*!
+\}
+*/

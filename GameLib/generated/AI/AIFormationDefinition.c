@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 class AIFormationDefinition: ScriptAndConfig
@@ -16,6 +16,8 @@ class AIFormationDefinition: ScriptAndConfig
 	proto external vector GetCenterOfFormation(int groupSize);
 	proto external vector GetScaledCenterOfFormation(int groupSize, float fScale);
 	proto external string GetName();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

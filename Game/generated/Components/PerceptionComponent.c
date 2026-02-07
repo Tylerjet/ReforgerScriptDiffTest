@@ -4,19 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class PerceptionComponentClass: AIComponentEntityClass
 {
-};
+}
 
 class PerceptionComponent: AIComponentEntity
 {
 	proto external int GetTargetsList(out notnull array<BaseTarget> outTargets, ETargetCategory category);
-	/**
+	/*!
 	Returns count of targets of given category
 	*/
 	proto external int GetTargetCount(ETargetCategory category);
@@ -25,6 +25,12 @@ class PerceptionComponent: AIComponentEntity
 	//! Same as GetTargetPerceptionObject, but searches in all categories
 	proto external BaseTarget FindTargetPerceptionObject(IEntity entityToFind);
 	proto external BaseTarget GetClosestTarget(ETargetCategory category, float timeSinceSeenMax);
-};
+	//! Sets perception factor - how good this AI can recognize enemy, independent of enemy state. 1.0 is standard value. Bigger value means faster recognition.
+	proto external void SetPerceptionFactor(float value);
+	// Returns the desired update interval of Perception Component. It depends on LOD level.
+	proto external float GetUpdateInterval();
+}
 
-/** @}*/
+/*!
+\}
+*/

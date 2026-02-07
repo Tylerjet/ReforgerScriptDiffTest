@@ -37,6 +37,16 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	void OnGameStateChanged(SCR_EGameModeState state)
 	{
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Called on every machine when game mode starts.
+		This can be immediate (if no pre-game period is set) or can happen after
+		a certain delay, as deemed appropriate by the authority.
+	*/
+	void OnGameModeStart()
+	{
+	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -55,6 +65,52 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	void OnPlayerConnected(int playerId)
 	{
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Event is called when player connecting Session hosting current Game Mode where is required authentication verification via. platform services
+		AuditSuccess() call specifically mean this verification was successful
+		Basically audited player has access to persistency/ etc. related functionality provided by online services.
+		\param playerId is index of player in game, equal to the one assigned at PlayerController
+	*/
+	void OnPlayerAuditSuccess(int playerId)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*
+		Event is called when player connecting Session hosting current Game Mode
+		AuditFail() call may be called under two occassion:
+		1) verification is required but failed (account is not valid, player is banned, internet issues)
+		2) player cannot be verified as authentication is not required or possible - where it may be valid behavior (server online connectivity turned off for example)
+		Basically non-audited player cannot access persistency/ etc. related functionality provided by online services.
+		\param iPlayerID is index of player in game, equal to the one assigned at PlayerController
+	*/
+	void OnPlayerAuditFail(int playerId)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Event is called when player connected to Session was kicked and did not reconnected in time
+		This mean that slot reservation can be canceled.
+		\param iPlayerID is index of player in game, equal to the one assigned at PlayerController
+		\param playerId is index of player in game, equal to the one assigned at PlayerController
+	*/
+	void OnPlayerAuditTimeouted(int playerId)
+	{
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+		Event is called when player reconnected successfully back to Session after kick
+		This mean that slot reservation need to be finished (closed).
+		\param iPlayerID is index of player in game, equal to the one assigned at PlayerController
+		\param playerId is index of player in game, equal to the one assigned at PlayerController
+	*/
+	void OnPlayerAuditRevived(int playerId)
+	{
+	}
 
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -69,8 +125,10 @@ class SCR_BaseGameModeComponent : ScriptComponent
 	/*!
 		Called after a player is disconnected.
 		\param playerId PlayerId of disconnected player.
+		\param cause Reason player disconnected
+		\param timeout Timeout for when players are allowed to connect again. -1 means Ban without an assigned timeout
 	*/
-	void OnPlayerDisconnected(int playerId)
+	void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 	}
 

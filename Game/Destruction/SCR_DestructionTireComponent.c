@@ -193,12 +193,12 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		if (GetTargetDamagePhase() != 0)
 			SetTargetDamagePhase(0);
 	
-		ApplyDamagePhaseData(pData)
+		ApplyDamagePhaseData(pData, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Switches to the input damage phase (or deletes if past last phase)
-	override void GoToDamagePhase(int damagePhase)
+	override void GoToDamagePhase(int damagePhase, bool delayMeshChange)
 	{
 		if (damagePhase == 0)
 		{
@@ -206,12 +206,12 @@ class SCR_DestructionTireComponent : SCR_DestructionMultiPhaseComponent
 		}
 		else
 		{
-			super.GoToDamagePhase(damagePhase);
+			super.GoToDamagePhase(damagePhase, delayMeshChange);
 		}
 		
 		EnableTireDeformation(GetShouldHandleDeformation(GetDamagePhase()));
-		if (m_bHandleDeformation)
-			EnableOnFrame(true);
+//		if (m_bHandleDeformation)
+//			EnableOnFrame(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

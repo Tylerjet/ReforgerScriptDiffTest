@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class ParametricMaterialInstanceComponent: GameComponent
@@ -79,6 +79,8 @@ class ParametricMaterialInstanceComponent: GameComponent
 	proto external bool GetSlidingDropsEnabled();
 	proto external bool SaveState(ScriptBitWriter writer);
 	proto external bool LoadState(ScriptBitReader sreader);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

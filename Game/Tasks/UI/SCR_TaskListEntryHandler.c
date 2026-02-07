@@ -21,7 +21,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	protected string m_sAssignees = "AssigneesLayout";
 	protected Widget m_wAssignees;
 	protected Widget m_wRootWidget;
-	
+
 	[Attribute("0.761 0.386 0.08 1")]
 	protected ref Color m_AssignedTaskColor;
 
@@ -30,13 +30,13 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	{
 		return m_Task;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetTask(SCR_BaseTask task)
 	{
 		m_Task = task;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetAssigneeCount(int count)
 	{
@@ -56,7 +56,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		else
 			textWidget.SetColor(Color.White);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetTaskIconColor()
 	{
@@ -64,19 +64,19 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		ImageWidget outline = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Outline"));
 		ImageWidget symbol = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Symbol"));
 		ImageWidget background = ImageWidget.Cast(m_wRoot.FindAnyWidget("Icon_Background"));
-		
+
 		if (!outline || !symbol || !background || !m_Task)
 			return;
-		
+
 		SCR_Faction faction = SCR_Faction.Cast(m_Task.GetTargetFaction());
 		if (!faction)
 			return;
-		
+
 		if (m_Task == localTask)
 			background.SetColor(faction.GetFactionColor());
 		else
 			background.SetColor(Color.White);
-		
+
 		symbol.LoadImageFromSet(0, m_Task.GetIconImageset(), m_Task.GetTaskListIconName() + m_Task.GetIconSuffix());
 		outline.SetColor(faction.GetOutlineFactionColor());
 		symbol.SetColor(faction.GetOutlineFactionColor());
@@ -94,11 +94,11 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 			UpdateAssignButtonText(task);
 			SetTaskTextColor();
 			SetTaskIconColor();
-			
+
 			TextWidget textWidget = TextWidget.Cast(m_wRoot.FindAnyWidget("TaskTitle"));
 			if (textWidget)
 				task.SetTitleWidgetText(textWidget, task.GetTaskListTaskTitle());
-			
+
 			textWidget = TextWidget.Cast(m_wRoot.FindAnyWidget("TaskDescription"));
 			if (textWidget)
 				task.SetTitleWidgetText(textWidget, task.GetTaskListTaskText());
@@ -132,6 +132,12 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 				{
 					m_AssignButton.SetLabel(CANCEL_TASK);
 				} break;
+
+				// Another task is already assigned to a local executor, so CanBeAssigned returns false. However in this case the task can be assigned by clicking on assign button.
+				case SCR_ECannotAssignReasons.LOCAL_EXECUTOR_IS_ASSIGNED:
+				{
+					m_AssignButton.SetLabel(ACCEPT_TASK);
+				} break;
 			}
 		}
 	}
@@ -150,7 +156,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		Widget mapBtn = m_wRoot.FindAnyWidget("MapButton");
 		AnimateWidget.Opacity(mapBtn, targetOpacity, ANIM_SPEED);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnClick(Widget w, int x, int y, int button)
 	{
@@ -173,7 +179,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 
 		SCR_UITaskManagerComponent uiTaskManager = SCR_UITaskManagerComponent.GetInstance();
 		if (!uiTaskManager)
-		 	return;
+			return;
 
 		foreach (Widget task : uiTaskManager.GetWidgetsArray())
 		{
@@ -182,7 +188,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 				collapse.SetCollapsed(true);
 		}
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocusLost(Widget w, int x, int y)
 	{
@@ -195,22 +201,20 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		tm.SelectTask(null);
 		tm.SetSelectedWidget(w);
 		Expand(false);
-
 		return false;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	override bool OnFocus(Widget w, int x, int y)
 	{
 		super.OnFocus(w, x, y);
-
 		SCR_UITaskManagerComponent tm = SCR_UITaskManagerComponent.GetInstance();
 		if (!tm)
 			return false;
 
 		tm.SelectTask(m_Task);
 		Expand(true);
-		
+
 		return false;
 	}
 
@@ -223,7 +227,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 		{
 			assignBtns.SetOpacity(collapse);
 			assignBtns.SetEnabled(collapse);
-			
+
 			Widget mapBtn = m_wRoot.FindAnyWidget("MapButton");
 			if (mapBtn)
 			{
@@ -245,19 +249,16 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 	{
 		return m_CollapseHandler.IsCollapsed();
 	}
-	
-	//------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	protected void AcceptTask()
-	{		
-		if (GetGame().GetWorkspace().GetFocusedWidget() != m_wRootWidget)
-			return;
-		
+	{
 		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
 		if (utm)
-			utm.Action_AssignTask();
+			utm.Action_AssignTask(m_Task);
 	}
-	
-	//------------------------------------------------------------------------------
+
+	//------------------------------------------------------------------------------------------------
 	protected void PickAssignee()
 	{
 		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
@@ -265,7 +266,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 			utm.Action_PickAssignee();
 	}
 
-	//------------------------------------------------------------------------------
+	//------------------------------------------------------------------------------------------------
 	protected void ShowOnMap()
 	{
 		SCR_UITaskManagerComponent utm = SCR_UITaskManagerComponent.GetInstance();
@@ -296,7 +297,7 @@ class SCR_TaskListEntryHandler : SCR_ButtonBaseComponent
 			m_CollapseHandler = SCR_CollapseWidgetComponent.Cast(collapse.FindHandler(SCR_CollapseWidgetComponent));
 			//GetGame().GetCallqueue().CallLater(SetCollapsed, 10, false, true, false);
 		}
-		
+
 		m_wRootWidget = w;
 	}
 

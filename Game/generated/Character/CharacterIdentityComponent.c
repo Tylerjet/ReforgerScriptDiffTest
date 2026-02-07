@@ -4,16 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class CharacterIdentityComponentClass: GameComponentClass
 {
-};
+}
 
-/**
+/*!
 * Component that takes care of identity of characters
 */
 class CharacterIdentityComponent: GameComponent
@@ -23,26 +23,6 @@ class CharacterIdentityComponent: GameComponent
 	\param a target Aplha between 0-255
 	*/
 	proto external void SetHeadAlpha(int a);
-	/*
-	Gets character name
-	\return Cstr name of the character
-	*/
-	proto external string GetCharacterName();
-	/*
-	Gets character alias
-	\return Cstr alias of the character
-	*/
-	proto external string GetCharacterAlias();
-	/*
-	Gets character surname
-	\return Cstr surname of the character
-	*/
-	proto external string GetCharacterSurname();
-	/*
-	Gets character name "alias" surname
-	\return Cstr name "alias" surname of the character
-	*/
-	proto external string GetCharacterFullName();
 	/*
 	Sets the visibility of all submeshes.
 	\param visible Whether all submeshes should be drawn or not.
@@ -71,10 +51,16 @@ class CharacterIdentityComponent: GameComponent
 	*/
 	proto external bool IsCovered(string bodyPart);
 	/*
-	Get Voice ID for character
-	\return Returns int of the voice, -1 if identity is not present
+	Reuse currently stored Identity
+	As an example
+		CharacterIdentityComponent identityComponent = CharacterIdentityComponent.Cast( soldierEntity.FindComponent(CharacterIdentityComponent));
+			if (!identityComponent)
+				return;
+		VisualIdentity visId = identityComponent.GetIdentity().GetVisualIdentity();
+		visId.SetHead("{24D28E910BF9F648}Prefabs/Characters/Heads/Head_Asian_02.et");
+		identityComponent.CommitChanges();
 	*/
-	proto external int GetVoiceID();
+	proto external void CommitChanges();
 	//! Get identity of this character
 	proto external Identity GetIdentity();
 	/*!
@@ -88,10 +74,12 @@ class CharacterIdentityComponent: GameComponent
 	*/
 	proto external bool SetIdentityFromIDs(int alias, int name, int surname, int soundIdentity, int visualIdentity);
 	proto external void SetIdentity(Identity cfg);
-	
-	// callbacks
-	
-	event void OnBodyPartStateChanged(string bodyPart, bool visible, bool wounded);
-};
 
-/** @}*/
+	// callbacks
+
+	event void OnBodyPartStateChanged(string bodyPart, bool visible, bool wounded);
+}
+
+/*!
+\}
+*/

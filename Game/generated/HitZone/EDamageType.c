@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup HitZone
-* @{
+/*!
+\addtogroup HitZone
+\{
 */
 
 enum EDamageType
@@ -22,7 +22,9 @@ enum EDamageType
 	FIRE,
 	REGENERATION,
 	BLEEDING,
-	HEALING
-};
+	HEALING,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,7 +4,7 @@ class SCR_InventoryUIInfo : UIInfo
 	[Attribute("0", desc: "Set the icon visible in inventory hint.")]
 	protected bool m_bShowIconInInventory;
 
-	[Attribute("")]
+	[Attribute("0 0 0 1")]
 	protected ref Color m_IconColor;
 
 	bool IsIconVisible()

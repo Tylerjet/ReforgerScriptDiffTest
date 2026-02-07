@@ -28,7 +28,10 @@ class SCR_SetFireVehicleContextAction : SCR_SelectedEntitiesContextAction
 		if (!flammableHitZone)
 			return false;
 		
-		return flammableHitZone.GetFireState() != m_eTargetFireState;
+		if (m_eTargetFireState == EFireState.NONE)
+			return flammableHitZone.GetFireState() != EFireState.NONE;
+		else 
+			return flammableHitZone.GetFireState() == EFireState.NONE;
 	}
 	
 	//------------------------------------------------------------------------------------------------

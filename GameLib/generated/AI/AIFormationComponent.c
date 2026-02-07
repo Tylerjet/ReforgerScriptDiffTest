@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 class AIFormationComponentClass: AIComponentClass
 {
-};
+}
 
 class AIFormationComponent: AIComponent
 {
@@ -19,6 +19,8 @@ class AIFormationComponent: AIComponent
 	proto external vector GetFormationCenterPosition();
 	proto external bool SetFormation(string pFormation);
 	proto external AIFormationDefinition GetFormation();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

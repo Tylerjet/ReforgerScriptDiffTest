@@ -1,13 +1,13 @@
 /*!
 Notification nr
 Displays a notification: %1 = given int converted to float devided by 
-SCR_NotificationData: m_iParam1 = PlayerID
-Can be used for: GM set respawn time to (m_iParam2)
+SCR_NotificationData: m_iParam1 to m_iParam2 number to show in notification
+The m_iNumberDivider allows for floats as this system only works with ints. So Giving the param float value * x and dividing x here again
 */
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(ENotification, "m_NotificationKey")]
 class SCR_NotificationNumber : SCR_NotificationDisplayData
 {
-	[Attribute(defvalue: "1", params: "1 1000")]
+	[Attribute(defvalue: "1", params: "1 1000", desc: "The m_iNumberDivider allows for floats as this system only works with ints. So Giving the param float value * x and dividing x here again")]
 	protected int m_iNumberDivider;
 
 	override string GetText(SCR_NotificationData data)

@@ -1,0 +1,47 @@
+//------------------------------------------------------------------------------------------------
+[EntityEditorProps(category: "GameScripted/Tasks", description: "Transport task support entity.", color: "0 0 255 255")]
+class SCR_ScenarioFrameworkTaskSupportEntityClass: SCR_BaseTaskSupportEntityClass
+{
+};
+
+//------------------------------------------------------------------------------------------------
+class SCR_ScenarioFrameworkTaskSupportEntity : SCR_BaseTaskSupportEntity
+{
+	protected IEntity 	m_Entity;
+	
+	//------------------------------------------------------------------------------------------------
+	override void FinishTask(notnull SCR_BaseTask task)
+	{
+		super.FinishTask(task);
+	}
+	
+	
+	//------------------------------------------------------------------------------------------------
+	IEntity GetTaskEntity()
+	{
+		return m_Entity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_BaseTask CreateTask(SCR_ScenarioFrameworkLayerTask layer)
+	{
+		m_Entity = layer.GetSpawnedEntity();
+		return super.CreateTask();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetTaskPrefab(ResourceName sTaskPrefab)
+	{
+		m_sTaskPrefab = sTaskPrefab;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_Faction GetCharacterFaction(IEntity unit)
+	{
+		SCR_ChimeraCharacter character = SCR_ChimeraCharacter.Cast(unit);
+		if (!character)
+			return null;
+
+		return SCR_Faction.Cast(character.GetFaction());
+	}
+}

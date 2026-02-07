@@ -243,7 +243,7 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 		//~ Todo: Fix first tab being broken
 		//~ Hotfix for first tab being broken
 		m_ContentBrowserManager.SetStateTabVisible(0, false);
-
+		
 		//~ Hide services in base show if outside base. Make sure given index is 0 if above hotfix is removed
 		m_ContentBrowserManager.SetStateTabVisible(1, SCR_CampaignBase.Cast(GetProviderEntity()) != null);
 	}
@@ -338,7 +338,11 @@ class SCR_CampaignBuildingEditorComponent : SCR_BaseEditorComponent
 	// Return the entity which belongs to currently active provider componenet.
 	IEntity GetProviderEntity()
 	{
-		return GetProviderComponent().GetOwner();
+		SCR_CampaignBuildingProviderComponent providerComponent = GetProviderComponent();
+		if (!providerComponent)
+			return null;
+		
+		return providerComponent.GetOwner();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -11,6 +11,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//! Progress of recoil based camera shake
 	ref SCR_RecoilCameraShakeProgress m_pRecoilShake = new SCR_RecoilCameraShakeProgress();
 	
+	protected bool m_bCameraActivated = false;
+	
 	protected ref ScriptInvoker m_OnThirdPersonSwitch = new ScriptInvoker();
 	static protected float s_fOverlayCameraFOV;
 	
@@ -35,15 +37,29 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		super.EOnFrame(owner, timeSlice);
 	}
 	
+	override void EOnActivate(IEntity owner)
+	{
+		super.EOnActivate(owner);
+		
+		if (m_bCameraActivated)
+			SetEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
+	override void EOnDeactivate(IEntity owner)
+	{
+		super.EOnDeactivate(owner);
+		
+		if (m_bCameraActivated)
+			ClearEventMask(GetOwner(), EntityEvent.FRAME);
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override void Init()
 	{
-		SetEventMask(GetOwner(), EntityEvent.FRAME);
-		
 		m_OwnerCharacter = SCR_ChimeraCharacter.Cast(GetOwner());
 		m_ControllerComponent = SCR_CharacterControllerComponent.Cast(m_OwnerCharacter.FindComponent(SCR_CharacterControllerComponent));
 		m_AnimationComponent = CharacterAnimationComponent.Cast(m_OwnerCharacter.FindComponent(CharacterAnimationComponent));
-		m_LoadoutManager = BaseLoadoutManagerComponent.Cast(m_OwnerCharacter.FindComponent(BaseLoadoutManagerComponent));
+		m_LoadoutStorage = EquipedLoadoutStorageComponent.Cast(m_OwnerCharacter.FindComponent(EquipedLoadoutStorageComponent));
 		m_InputManager = GetGame().GetInputManager();
 		m_IdentityComponent = CharacterIdentityComponent.Cast(m_OwnerCharacter.FindComponent(CharacterIdentityComponent));
 		m_CmdHandler = CharacterCommandHandlerComponent.Cast(m_OwnerCharacter.FindComponent(CharacterCommandHandlerComponent));
@@ -54,6 +70,10 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	override void OnCameraActivate()
 	{
 		OnCameraDeactivate();
+		
+		m_bCameraActivated = true;
+		SetEventMask(GetOwner(), EntityEvent.FRAME);
+		
 		if (m_OwnerCharacter && m_AnimationComponent)
 		{
 			OnThirdPersonSwitch(IsInThirdPerson());
@@ -82,9 +102,9 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			m_IdentityComponent.SetHeadAlpha(a);
 		}
 		
-		if (m_LoadoutManager)
+		if (m_LoadoutStorage)
 		{
-			auto ent = m_LoadoutManager.GetClothByArea(LoadoutHeadCoverArea);
+			auto ent = m_LoadoutStorage.GetClothFromArea(LoadoutHeadCoverArea);
 			if (ent)
 			{
 				auto cloth = BaseLoadoutClothComponent.Cast(ent.FindComponent(BaseLoadoutClothComponent));
@@ -97,8 +117,12 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	//------------------------------------------------------------------------------------------------
 	override void OnCameraDeactivate()
 	{
+		m_bCameraActivated = false;
+		
 		if (m_OwnerCharacter)
 			OnAlphatestChange(0);
+		
+		ClearEventMask(GetOwner(), EntityEvent.FRAME);
 		
 		m_fFocusTargetValue = 0.0;
 		m_fFocusValue = 0.0;
@@ -181,7 +205,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 
 		CompartmentAccessComponent compartmentAccess = m_OwnerCharacter.GetCompartmentAccessComponent();
 		
-		if (m_ControllerComponent.GetInspect())
+		if (m_ControllerComponent.GetInspect() && !m_OwnerCharacter.IsInVehicle())
 		{
 			return CharacterCameraSet.CHARACTERCAMERA_1ST;
 		}
@@ -208,6 +232,11 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 						return CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE;
 					}
 					return CharacterCameraSet.CHARACTERCAMERA_3RD_TURRET;
+				}
+				
+				if (m_ControllerComponent.GetInspect())
+				{
+					return CharacterCameraSet.CHARACTERCAMERA_1ST_VEHICLE;
 				}
 
 				return CharacterCameraSet.CHARACTERCAMERA_3RD_VEHICLE;
@@ -296,21 +325,21 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 			{
 				m_fADSTime = m_ControllerComponent.GetADSTime();
 				if (m_fADSProgress > 0)
-					transTime = m_fADSTime - m_fADSProgress;
+					transTime = m_fADSTime * (1 - m_fADSProgress);
 				else
 					transTime = m_fADSTime;
 			}
 		}
 		else if (pFrom == CharacterCameraSet.CHARACTERCAMERA_ADS)
 		{
-			transTime = m_fADSProgress;
+			transTime = m_fADSTime * m_fADSProgress;
 		}
 		else if (pTo == CharacterCameraSet.CHARACTERCAMERA_ADS_VEHICLE)
 		{
-			auto compAcc = CompartmentAccessComponent.Cast(GetOwner().FindComponent(CompartmentAccessComponent));
+			CompartmentAccessComponent compAcc = m_OwnerCharacter.GetCompartmentAccessComponent();
 			if (compAcc && compAcc.IsInCompartment())
 			{
-				auto compartment = compAcc.GetCompartment();
+				BaseCompartmentSlot compartment = compAcc.GetCompartment();
 				if (compartment)
 				{
 					BaseControllerComponent controller = compartment.GetController();
@@ -321,7 +350,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 						{
 							m_fADSTime = turretController.GetADSTime();
 							if (m_fADSProgress > 0)
-								transTime = m_fADSTime - m_fADSProgress;
+								transTime = m_fADSTime * (1 - m_fADSProgress);
 							else
 								transTime = m_fADSTime;
 						}
@@ -363,7 +392,8 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	}
 	
 	// Empirical multiplier for focus deceleration
-	private const float FOCUS_DECELERATION_RATIO = 4.5;
+	protected const float FOCUS_DECELERATION_RATIO = 4.5;
+	protected const float FOCUS_DEFAULT_ADS_TIME = 0.35;
 	
 	[Attribute("0.5", UIWidgets.Slider, "Focus interpolation time", "0 10 0.05")]
 	protected float m_fFocusTime;
@@ -381,33 +411,40 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 		if (!pIsKeyframe)
 		{
 			m_InputManager.ActivateContext("PlayerCameraContext");
-			float cameraFocus;
 			
 			bool isADSAllowed = m_CmdHandler && m_CmdHandler.IsWeaponADSAllowed(false);
-			bool isWeaponADS = isADSAllowed && m_ControllerComponent.IsWeaponADS() && m_ControllerComponent.GetWeaponADSInput();
+			bool isWeaponADS = isADSAllowed && m_ControllerComponent.GetWeaponADSInput() && !m_ControllerComponent.IsReloading();
 			if (!isWeaponADS)
 				CheckIsInTurret(isWeaponADS);
 			
 			SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
 			
+			if (!isWeaponADS && playerController)
+				isWeaponADS = playerController.GetGadgetFocus();
+			
+			// Gadgets do not have ADS time defined
+			float adsTime = m_fADSTime;
+			if (adsTime <= 0)
+				adsTime = FOCUS_DEFAULT_ADS_TIME;
+			
+			if (isWeaponADS)
+			{
+				if (m_fADSProgress < 1)
+					m_fADSProgress = Math.Min(1, m_fADSProgress + pDt / adsTime);
+			}
+			else if (m_fADSProgress > 0)
+			{
+				m_fADSProgress = Math.Max(0, m_fADSProgress - pDt / adsTime);
+			}
+			
+			float cameraFocus;
 			if (playerController && !m_ControllerComponent.GetDisableViewControls())
-				cameraFocus = playerController.GetFocusValue(isWeaponADS, pDt);
+				cameraFocus = playerController.GetFocusValue(m_fADSProgress, pDt);
 			
 			if (!float.AlmostEqual(m_fFocusTargetValue, cameraFocus))
 			{
 				m_fFocusTargetValue = cameraFocus;
 				m_bDoInterpolateFocus = true;
-			}
-			
-			// Update ADS transition offset so that camera transform is faster when ADS stance is ready
-			if (isWeaponADS)
-			{
-				if (m_fADSProgress < m_fADSTime)
-					m_fADSProgress = Math.Min(m_fADSProgress + pDt, m_fADSTime);
-			}
-			else if (m_fADSProgress > 0)
-			{
-				m_fADSProgress = Math.Max(0, m_fADSProgress - pDt);
 			}
 		}
 		else
@@ -847,7 +884,7 @@ class SCR_CharacterCameraHandlerComponent : CameraHandlerComponent
 	private SCR_CharacterControllerComponent m_ControllerComponent;
 	private CharacterAnimationComponent m_AnimationComponent;
 	private InputManager m_InputManager;
-	private BaseLoadoutManagerComponent m_LoadoutManager;	
+	private EquipedLoadoutStorageComponent m_LoadoutStorage;	
 	private CharacterIdentityComponent m_IdentityComponent;
 	private CharacterCommandHandlerComponent m_CmdHandler;
 	

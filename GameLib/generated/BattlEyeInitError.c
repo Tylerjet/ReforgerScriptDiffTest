@@ -8,5 +8,5 @@ enum BattlEyeInitError
 {
 	LOAD_ERROR,
 	UNSUPPORTED_VERSION,
-	OTHER_ERROR
-};
+	OTHER_ERROR,
+}

@@ -18,13 +18,10 @@ class CharacterCamera3rdPersonProne extends CharacterCamera3rdPersonBase
 	{
 		pOutResult.m_fFOV = m_fFOV;
 		float nextMSOffset = 0.2;
-		nextMSOffset = 0.2;
 		bool sprinting = m_ControllerComponent.IsSprinting();
 		if( sprinting )
-		{
 			pOutResult.m_fFOV = m_fFOV + 2 * m_fBobScale;
-			nextMSOffset = 0.5;
-		}
+		
 		m_CameraOffsetMS[1] =  Math.SmoothCD(m_CameraOffsetMS[1], nextMSOffset, m_fCameraOffsetChangeVel, 0.2, 1000, pDt);
 		super.OnUpdate(pDt, pOutResult);
 	

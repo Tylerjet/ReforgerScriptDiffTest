@@ -9,7 +9,8 @@ class SCR_TeleportPlayerManualCameraComponent : SCR_BaseManualCameraComponent
 {
 	protected void TeleportPlayer()
 	{
-		if (!IsEnabled()) return;
+		if (!IsEnabled() || !GetCameraEntity().GetCameraParam().isManualInputEnabled)
+			return;
 		
 		ArmaReforgerScripted game = GetGame();
 		if (!game) return;

@@ -13,7 +13,7 @@ class SCR_SectorSpawn: GenericEntity
 	
 	void SCR_SectorSpawn(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, false);
+		SetFlags(EntityFlags.ACTIVE);
 		SetEventMask(EntityEvent.INIT | EntityEvent.TOUCH | EntityEvent.CONTACT);					
 	}
 	

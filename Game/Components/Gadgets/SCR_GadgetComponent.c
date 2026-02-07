@@ -58,7 +58,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	protected vector m_vEquipmentSlotOffset;
 	
 	bool m_bFocused;
-	protected bool m_bActivated = false;
+	protected bool m_bActivated = false;					// current state if the gadget can be toggled on	
 	protected EGadgetMode m_iMode = EGadgetMode.ON_GROUND;	// curent gadget mode
 	protected IEntity m_CharacterOwner;						// current entity in posession of this gadget
 				
@@ -77,10 +77,59 @@ class SCR_GadgetComponent : ScriptGameComponent
 	}
 		
 	//------------------------------------------------------------------------------------------------
-	//! Event called from manager through RPC request
+	//! Event called from SCR_GadgetManagerComponent through RPC request
 	//! \param state is gadget state: true - active / false - inactive
 	void OnToggleActive(bool state)
 	{}
+	
+	//------------------------------------------------------------------------------------------------
+	//! InventoryItemComponent event
+	void OnParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
+	{
+		if (newSlot == null)	// ground
+		{
+			IEntity parentOwner, owner;
+			
+			BaseInventoryStorageComponent storageComp = oldSlot.GetStorage();
+			if (storageComp)
+				parentOwner = storageComp.GetOwner();
+			else 
+				parentOwner = oldSlot.GetOwner();	// LoadoutSlotInfo wont return storage comp 
+			
+			owner = parentOwner;
+			
+			while (owner != null)
+			{
+				parentOwner = owner;
+				owner = owner.GetParent();
+			}
+			
+			if ( !SCR_ChimeraCharacter.Cast(parentOwner) )	// remove from char is currently handled by gadget manager
+				SCR_GadgetManagerComponent.SetGadgetModeStashed(this, EGadgetMode.ON_GROUND);
+		}
+		else if (oldSlot == null)
+		{
+			IEntity parentOwner, owner;
+			
+			BaseInventoryStorageComponent storageComp = newSlot.GetStorage();
+			if (storageComp)
+				parentOwner = storageComp.GetOwner();
+			else 
+				parentOwner = newSlot.GetOwner();	// LoadoutSlotInfo wont return storage comp
+			
+			owner = parentOwner;
+			
+			while (owner != null)
+			{
+				parentOwner = owner;
+				owner = owner.GetParent();
+			}
+			
+			
+			if ( !SCR_ChimeraCharacter.Cast(parentOwner) ) // add to char is currently handled by gadget manager
+				SCR_GadgetManagerComponent.SetGadgetModeStashed(this, EGadgetMode.IN_STORAGE);
+		}
+	}
 		
 	//------------------------------------------------------------------------------------------------
 	//! Gadget mode change event
@@ -112,8 +161,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 				
 		if (mode == EGadgetMode.IN_HAND)
 		{
-			ActivateGadget();		// TODO not needed for everything? could leave this to individual gadget decision
-			SetActionListeners();
+			ActivateGadgetFlag();		// TODO not needed for everything? could leave this to individual gadget decision
 		}
 	}
 	
@@ -124,38 +172,13 @@ class SCR_GadgetComponent : ScriptGameComponent
 	{
 		if (mode == EGadgetMode.IN_HAND)
 		{	
-			DeactivateGadget();
-			RemoveActionListeners();
+			DeactivateGadgetFlag();
 		}
 	}
-			
+						
 	//------------------------------------------------------------------------------------------------
-	//! Register action listeners
-	protected void SetActionListeners()
-	{	
-		// Dont set these when called from other chars
-		if (!m_CharacterOwner || m_CharacterOwner != SCR_PlayerController.GetLocalControlledEntity())
-			return;
-
-		if (CanBeToggled())
-			GetGame().GetInputManager().AddActionListener("GadgetActivate", EActionTrigger.DOWN, ActivateAction); // TODO if not type restricted, move to gadget manager
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Remove action listeners 
-	protected void RemoveActionListeners()
-	{		
-		// Dont remove these when called from other chars
-		if (!m_CharacterOwner || m_CharacterOwner != SCR_PlayerController.GetLocalControlledEntity())
-			return;
-		
-		if (CanBeToggled())
-			GetGame().GetInputManager().RemoveActionListener("GadgetActivate", EActionTrigger.DOWN, ActivateAction);		
-	}
-		
-	//------------------------------------------------------------------------------------------------
-	//! Set gadget active flag & frame mask 
-	void ActivateGadget()
+	//! Set gadget active flag
+	void ActivateGadgetFlag()
 	{
 		IEntity owner = GetOwner();
 		if (!owner)
@@ -164,13 +187,11 @@ class SCR_GadgetComponent : ScriptGameComponent
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
 		if (itemComponent)
 			itemComponent.ActivateOwner(true);
-
-		SetEventMask(owner, EntityEvent.FRAME);
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Unset gadget active flag & frame mask
-	void DeactivateGadget()
+	//! Unset gadget active flag
+	void DeactivateGadgetFlag()
 	{
 		IEntity owner = GetOwner();
 		if (!owner)
@@ -179,8 +200,6 @@ class SCR_GadgetComponent : ScriptGameComponent
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(owner.FindComponent(InventoryItemComponent));
 		if (itemComponent)
 			itemComponent.ActivateOwner(false);
-		
-		ClearEventMask(owner, EntityEvent.FRAME);
 	}
 	
 
@@ -254,7 +273,7 @@ class SCR_GadgetComponent : ScriptGameComponent
 	
 	//------------------------------------------------------------------------------------------------
 	//! Action listener callback
-	protected void ActivateAction()
+	void ActivateAction()
 	{}
 	
 	//------------------------------------------------------------------------------------------------
@@ -366,5 +385,9 @@ class SCR_GadgetComponent : ScriptGameComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask( owner, EntityEvent.INIT);
+		
+		InventoryItemComponent invComp = InventoryItemComponent.Cast(GetOwner().FindComponent(InventoryItemComponent));
+		if (invComp)
+			invComp.m_OnParentSlotChangedInvoker.Insert(OnParentSlotChanged);
 	}
 };

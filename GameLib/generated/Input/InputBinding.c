@@ -4,15 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Input
-* @{
+/*!
+\addtogroup Input
+\{
 */
 
 class InputBinding
 {
 	private void InputBinding();
-	
+
 	proto external void ResetDefault(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);
 	proto external bool IsDefault(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);
 	proto external void StartCapture(string actionName, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty, bool bAppend = false);
@@ -28,6 +28,8 @@ class InputBinding
 	proto external bool GetBindings(string actionName, out notnull array<string> bindings, EInputDeviceType deviceType = EInputDeviceType.KEYBOARD, string preset = string.Empty);
 	proto external void GetContexts(out array<string> contextNames);
 	proto external void GetPresets(string actionName, out array<string> presetNames);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

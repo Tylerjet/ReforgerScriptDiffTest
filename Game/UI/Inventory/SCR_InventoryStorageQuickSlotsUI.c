@@ -310,9 +310,15 @@ class SCR_InventoryStorageQuickSlotsUI: SCR_InventoryStorageBaseUI
 		}
 
 		if (useItem)
+		{
 			m_pSelectedSlot.UseItem(m_Player);
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
+		}
+		else
+		{
+			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CLOSE);
+		}
 
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CONFIRM);
 		return true;
 	}
 	

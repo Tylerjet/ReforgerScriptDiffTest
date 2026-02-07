@@ -150,9 +150,39 @@ class SCR_NotificationDisplayData
 		SCR_EditableEntityComponent entity = SCR_EditableEntityComponent.Cast(Replication.FindItem(enditableEntityID));
 		
 		if (entity)
-    		return entity.GetDisplayName();
+		{
+			if (entity.GetEntityType() != EEditableEntityType.TASK)
+			{
+				return entity.GetDisplayName();
+			}
+			//~ Get objective type name
+			else 
+			{
+				SCR_EditableTaskComponentClass taskPrefabData = SCR_EditableTaskComponentClass.Cast(entity.GetComponentData(entity.GetOwner()));
+				if (taskPrefabData)
+					return taskPrefabData.GetObjectiveTypeName();
+				else 
+					return entity.GetDisplayName();
+			}
+		}
 		else
-   			return string.Empty;
+		{
+			return string.Empty;
+		}	
+	}
+	
+	//~ Returns faction name by index
+	protected string GetFactionName(int factionIndex)
+	{
+		FactionManager factionManager = GetGame().GetFactionManager();
+		if (!factionManager)
+			return string.Empty;
+		
+		Faction faction = factionManager.GetFactionByIndex(factionIndex);
+		if (!faction)
+			return string.Empty;
+		
+		return faction.GetFactionName();
 	}
 	
 	protected bool GetCharacterName(int enditableEntityID, out string format, out string firstname, out string alias, out string surname)

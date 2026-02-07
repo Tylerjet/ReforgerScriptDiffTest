@@ -101,14 +101,11 @@ class SCR_RespawnSystemComponent : RespawnSystemComponent
 	{
 		PlayerManager pm = GetGame().GetPlayerManager();
 		SCR_ReconnectComponent reconComp = SCR_ReconnectComponent.GetInstance();
-		if (!reconComp || !reconComp.IsReconnectEnabled() || !reconComp.IsInReconnectList(playerId) )
-		{
-		}
-		else 
+		if (reconComp && reconComp.IsReconnectEnabled() && reconComp.IsInReconnectList(playerId) == SCR_EReconnectState.ENTITY_AVAILABLE)
 		{
 			IEntity ent = reconComp.ReturnControlledEntity(playerId);
 			if (ent)
-				return GenericEntity.Cast(ent);
+				return GenericEntity.Cast(ent);	// if entity reconnect is available, skip the spawn request an return it
 		}
 
 		// Catch illicit requests,

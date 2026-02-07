@@ -15,7 +15,7 @@ class ResourceTestPlugin: WorkbenchPlugin
 	override void Run() 
 	{
 		string ids = "{7297BDBDE223627F},{B90A1D47FB5036FA},{7C37800102FAC817}";
-		string directory = "$profile:ResourceTestTool";
+		string directory = "$logs:ResourceTestTool";
 
 		array<string> resources = new array<string>;
 		ids.Split(",", resources, true);
@@ -44,7 +44,7 @@ class ResourceTestPlugin: WorkbenchPlugin
 		rb.GetCmdLine("-screenshot-autotest-output-dir", directory);
 		if (directory.Length() == 0)
 		{
-			directory = "$profile:ResourceTestTool";
+			directory = "$logs:ResourceTestTool";
 		}
 		
 		array<string> resources = new array<string>;
@@ -105,11 +105,11 @@ class ResourceTestPlugin: WorkbenchPlugin
 	{
 		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
 		
-		if(descrFile != 0)
+		if(descrFile)
 		{
-			descrFile.FPrintln("Autotest: Resource opening in Workbench");
+			descrFile.WriteLine("Autotest: Resource opening in Workbench");
 			// TODO: would be nice to have a resolution here, but widget workspace needs game
-			descrFile.CloseFile();
+			descrFile.Close();
 			Print("Summary file successfully saved into " + filename);
 		}
 	}
@@ -119,15 +119,15 @@ class ResourceTestPlugin: WorkbenchPlugin
 		string content;
 		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
 		
-		if(descrFile != 0)
+		if(descrFile)
 		{
-			descrFile.FPrintln(string.Format("<p>FPS: %1</p>", System.GetFPS()));
-			descrFile.FPrintln(string.Format("<p>ResourceID: %1%2</p>" ,resourceName, resourceName.GetPath()));
+			descrFile.WriteLine(string.Format("<p>FPS: %1</p>", System.GetFPS()));
+			descrFile.WriteLine(string.Format("<p>ResourceID: %1%2</p>" ,resourceName, resourceName.GetPath()));
 
 			string link = string.Format("enfusion://ResourceManager/%1", resourceName.GetPath());
-			descrFile.FPrintln(string.Format("<a href=\"%1\">Link to Resource Manager</a>", link));
+			descrFile.WriteLine(string.Format("<a href=\"%1\">Link to Resource Manager</a>", link));
 			
-			descrFile.CloseFile();
+			descrFile.Close();
 			Print("Screenshot metafile successfully saved into " + filename);
 		}
 	}

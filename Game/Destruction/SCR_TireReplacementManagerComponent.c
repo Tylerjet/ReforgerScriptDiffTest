@@ -35,7 +35,6 @@ class SCR_TireReplacementManagerComponent : ScriptComponent
 		super.OnPostInit(owner);
 		
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	override void EOnInit(IEntity owner) 

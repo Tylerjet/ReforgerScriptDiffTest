@@ -1,6 +1,6 @@
-/**
-* \addtogroup Audio
-* @{
+/*!
+\addtogroup Audio
+\{
 */
 
 typedef int AudioHandle;
@@ -8,6 +8,8 @@ typedef int AudioHandle;
 class AudioHandle
 {
 	static const AudioHandle Invalid = -1;
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -9,7 +9,10 @@ class SCR_PlayerLoadingDetectionComponent : ScriptComponent
 	[RplProp(onRplName: "OnLoadingStateChanged")]
 	protected bool m_bIsLoading;
 	
+	protected int m_iLoadingScreensActive;
 	protected ref ScriptInvoker m_OnLoadingFinished = new ScriptInvoker();
+	
+	protected static const int LOADING_STOPPED_CHECK_DELAY = 500;
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnLoadingFinished()
@@ -26,9 +29,35 @@ class SCR_PlayerLoadingDetectionComponent : ScriptComponent
 	
 	//------------------------------------------------------------------------------------------------
 	protected void OnLoadingStateChanged()
-	{
+	{	
 		if (!m_bIsLoading)
 			m_OnLoadingFinished.Invoke(GetOwner());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void AddLoadingScreen()
+	{
+		if (m_iLoadingScreensActive < 1)
+			SetIsLoading();
+		
+		m_iLoadingScreensActive++;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RemoveLoadingScreen()
+	{
+		m_iLoadingScreensActive--;
+		
+		//Delayed call, as another loading screen might appear. Delay between them is usually lot shorter.
+		if (m_iLoadingScreensActive < 1)
+			GetGame().GetCallqueue().CallLater(SetLoadingCheckDelayed, LOADING_STOPPED_CHECK_DELAY, false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void SetLoadingCheckDelayed()
+	{
+		if (m_iLoadingScreensActive < 1)
+			SetIsLoading();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -57,8 +86,8 @@ class SCR_PlayerLoadingDetectionComponent : ScriptComponent
 		if (RplSession.Mode() == RplMode.Dedicated)
 			return;
 		
-		ArmaReforgerLoadingAnim.s_OnEnterLoadingScreen.Insert(SetIsLoading);
-		ArmaReforgerLoadingAnim.m_onExitLoadingScreen.Insert(SetIsLoading);
+		ArmaReforgerLoadingAnim.s_OnEnterLoadingScreen.Insert(AddLoadingScreen);
+		ArmaReforgerLoadingAnim.m_onExitLoadingScreen.Insert(RemoveLoadingScreen);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -67,8 +96,9 @@ class SCR_PlayerLoadingDetectionComponent : ScriptComponent
 		if (!GetGame().InPlayMode())
 			return;
 		
+		m_iLoadingScreensActive = 0;
+		
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 class AISpawnerGroupClass: AIGroupClass
 {
-};
+}
 
 class AISpawnerGroup: AIGroup
 {
@@ -20,10 +20,12 @@ class AISpawnerGroup: AIGroup
 	proto external bool IsSpawningFinished();
 	proto external void SetMaxAgentsToSpawn(int pCount);
 	proto external int GetMaxAgentsToSpawn();
-	
-	// callbacks
-	
-	event void OnSpawn(IEntity spawned);
-};
 
-/** @}*/
+	// callbacks
+
+	event void OnSpawn(IEntity spawned);
+}
+
+/*!
+\}
+*/

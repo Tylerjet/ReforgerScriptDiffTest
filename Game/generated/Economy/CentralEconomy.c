@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Economy
-* @{
+/*!
+\addtogroup Economy
+\{
 */
 
 class CentralEconomyClass: GenericEntityClass
 {
-};
+}
 
 class CentralEconomy: GenericEntity
 {
@@ -23,15 +23,15 @@ class CentralEconomy: GenericEntity
 	proto external void SimRestart();
 	//! Invoke Cleanup - delete all content and
 	proto external void SimCleanup();
-	/**
+	/*!
 	//! TEST: Add zone to spawner
 	*/
 	proto external void AddType( string sName, string sUID );
-	/**
+	/*!
 	//! TEST: Add event
 	*/
 	proto external void AddEvent( string sName );
-	/**
+	/*!
 	//! TEST: Add zone to spawner
 	*/
 	proto external void AddZone( vector pos );
@@ -41,13 +41,15 @@ class CentralEconomy: GenericEntity
 	proto external int SpawnEvent( string name, vector pos, float angle, int flags );
 	//! Show diag
 	proto external void ShowDiag( bool bEnable );
-	
+
 	// callbacks
-	
+
 	//! When something get spawned
 	event void EOnSpawn( IEntity entity );
 	//! When something get removed
 	event void EOnRemove();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -21,20 +21,6 @@ class SCR_BandageUserAction : SCR_HealingUserAction
 		if (consumableComponent)
 			consumableComponent.SetAlternativeModel(false);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Method called from scripted interaction handler when an action is started (progress bar appeared)
-	//! \param pUserEntity The entity that started performing this action
-	override void OnActionStart(IEntity pUserEntity)
-	{
-		ChimeraCharacter character = ChimeraCharacter.Cast(pUserEntity);
-		if (!character)
-			return;
-		
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(character);
-		if (consumableComponent)
-			consumableComponent.SetAlternativeModel(true);
-	}
 			
 	//------------------------------------------------------------------------------------------------
 	override bool CanBePerformedScript(IEntity user)
@@ -49,6 +35,10 @@ class SCR_BandageUserAction : SCR_HealingUserAction
 		if (!userCharacter)
 			return false;
 			
+		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
+		if (!consumableComponent || consumableComponent.GetConsumableType() != EConsumableType.Bandage)
+			return false;
+		
 		ChimeraCharacter ownerCharacter = ChimeraCharacter.Cast(GetOwner());
 		if (!ownerCharacter)
 			return false;
@@ -57,10 +47,6 @@ class SCR_BandageUserAction : SCR_HealingUserAction
 		if (!charDamMan || charDamMan.GetGroupDamageOverTime(m_eHitZoneGroup, EDamageType.BLEEDING) == 0)
 			return false;
 		
-		SCR_ConsumableItemComponent consumableComponent = GetConsumableComponent(userCharacter);
-		if (!consumableComponent)
-			return false;
-		
-		return consumableComponent.GetConsumableType() == EConsumableType.Bandage;
+		return true;
 	}
 };

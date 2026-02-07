@@ -36,7 +36,7 @@ class SCR_EvacuateTaskSupportEntity : SCR_RequestedTaskSupportEntity
 		if (!ctxMenu)
 			return;
 		
-		vector position = ctxMenu.GetContextMenuWorldPosition();
+		vector position = ctxMenu.GetMenuWorldPosition();
 		
 		IEntity requesterEntity = playerController.GetMainEntity();
 		if (!requesterEntity)

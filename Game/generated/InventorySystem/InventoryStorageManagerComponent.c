@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class InventoryStorageManagerComponent: GameComponent
@@ -50,57 +50,57 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Fast access to item count in inventory (returns only items that are stored in DEPOSIT storages)
 	proto external int GetDepositItemCountByResource(ResourceName resourceName);
 	/*! Find Item by providing InventorySearchPredicate object
-	
-	class SCR_SomeCrazyPredicate: InventorySearchPredicate
-	{
-	void SCR_SomeCrazyPredicate()
-	{
-	QueryComponentTypes.Insert(SCR_ConsumableComponent);
-	QueryComponentTypes.Insert(SCR_SomeOptionalComponent);
-	QueryAttributeTypes.Insert(SCR_SomeOptionalAttribute);
-	}
-	
-	override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
-	{
-	// at this point respective components and attributes are guaranteed to exist at respective type index
-	SCR_ConsumableComponent optionalConsumable = SCR_ConsumableComponent.Cast(queriedComponents[0]);
-	SCR_SomeOptionalComponent optionalComponent = SCR_SomeOtherComponent.Cast(queriedComponents[1]);
-	SCR_SomeOptionalAttribute optionalAttribute = SCR_SomeOptionalAttribute.Cast(queriedAttributes[0]);
-	return optionalConsumable.IsHealthType() && optionalComponent.ReadyToBeUsed() && optionalAttribute.m_bMyProperty;
-	}
-	}
-	Somewhere down the road...
-	IEntity FindCrazyItem()
-	{
-	// If you plan on constantly using this predicate, consider storing it as member variable to save on additional allocations
-	SCR_SomeCrazyPredicate predicate = new SCR_SomeCrazyPredicate();
-	IEntity crazyThing = inventoryStorageManagerComponent.FindItem(predicate, EStoragePurpose.PURPOSE_DEPOSIT);
-	Print(crazyThing);
-	return crazyThing;
-	}
-	*/
+
+				class SCR_SomeCrazyPredicate: InventorySearchPredicate
+				{
+					void SCR_SomeCrazyPredicate()
+					{
+						QueryComponentTypes.Insert(SCR_ConsumableComponent);
+						QueryComponentTypes.Insert(SCR_SomeOptionalComponent);
+						QueryAttributeTypes.Insert(SCR_SomeOptionalAttribute);
+					}
+
+					override protected bool IsMatch(BaseInventoryStorageComponent storage, IEntity item, array<GenericComponent> queriedComponents, array<BaseItemAttributeData> queriedAttributes)
+					{
+						// at this point respective components and attributes are guaranteed to exist at respective type index
+						SCR_ConsumableComponent optionalConsumable = SCR_ConsumableComponent.Cast(queriedComponents[0]);
+						SCR_SomeOptionalComponent optionalComponent = SCR_SomeOtherComponent.Cast(queriedComponents[1]);
+						SCR_SomeOptionalAttribute optionalAttribute = SCR_SomeOptionalAttribute.Cast(queriedAttributes[0]);
+						return optionalConsumable.IsHealthType() && optionalComponent.ReadyToBeUsed() && optionalAttribute.m_bMyProperty;
+					}
+				}
+				Somewhere down the road...
+				IEntity FindCrazyItem()
+				{
+					// If you plan on constantly using this predicate, consider storing it as member variable to save on additional allocations
+					SCR_SomeCrazyPredicate predicate = new SCR_SomeCrazyPredicate();
+					IEntity crazyThing = inventoryStorageManagerComponent.FindItem(predicate, EStoragePurpose.PURPOSE_DEPOSIT);
+					Print(crazyThing);
+					return crazyThing;
+				}
+			*/
 	proto external IEntity FindItem(InventorySearchPredicate predicate, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
-	proto external int FindItems(out array<IEntity> foundItems, InventorySearchPredicate predicate, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
+	proto external int FindItems(out notnull array<IEntity> foundItems, InventorySearchPredicate predicate, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	/*! Find Item by specifying necessary component types (eg returns first Entity that contains all of the provided components)
 	IEntity FindGrenadeInDeposit()
 	{
-	array<typename> components = {};
-	components.Insert(WeaponComponent);
-	components.Insert(GrenadeMoveComponent);
-	IEntity grenade = inventoryStorageManagerComponent.FindItemWithComponents(components, EStoragePurpose.PURPOSE_DEPOSIT);
-	Print(grenade);
-	return grenade;
+		array<typename> components = {};
+		components.Insert(WeaponComponent);
+		components.Insert(GrenadeMoveComponent);
+		IEntity grenade = inventoryStorageManagerComponent.FindItemWithComponents(components, EStoragePurpose.PURPOSE_DEPOSIT);
+		Print(grenade);
+		return grenade;
 	}
 	*/
 	proto external IEntity FindItemWithComponents(array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
-	proto external int FindItemsWithComponents(out array<IEntity> foundItems, array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
+	proto external int FindItemsWithComponents(out notnull array<IEntity> foundItems, array<typename> componentsQuery, EStoragePurpose purpose = EStoragePurpose.PURPOSE_DEPOSIT);
 	//! Find Items by specifying necessary component types (eg all Entities that contain all of the provided components), returns count of found items
 	proto external int GetMagazineCountByWeapon(BaseWeaponComponent weapon);
 	proto external int GetGrenadesCount();
-	
+
 	// callbacks
-	
+
 	//! Callback when item is added (will be performed locally after server completed the Insert/Move operation)
 	event protected void OnItemAdded(BaseInventoryStorageComponent storageOwner, IEntity item);
 	//! Callback when item is removed (will be performed locally after server completed the Remove/Move operation)
@@ -114,7 +114,9 @@ class InventoryStorageManagerComponent: GameComponent
 	//! Override this method and fill in prefabsToSpawn array if you have some items you'd like to store in inventory at initialization time
 	event protected void FillInitialPrefabsToStore(out array<ResourceName> prefabsToSpawn);
 	//! Virtual method that allows verification of item removal as a result of move operation on inventory level
-	event protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item);
-};
+	event protected bool ShouldForbidRemoveByInstigator(InventoryStorageManagerComponent instigatorManager, BaseInventoryStorageComponent fromStorage, IEntity item) { return false; };
+}
 
-/** @}*/
+/*!
+\}
+*/

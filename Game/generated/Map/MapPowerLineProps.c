@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Map
-* @{
+/*!
+\addtogroup Map
+\{
 */
 
 class MapPowerLineProps
@@ -20,6 +20,8 @@ class MapPowerLineProps
 	proto external void SetLineColor(EMapPowerlineType type, notnull Color color);
 	proto external void SetVisible(bool visibility);
 	proto external bool IsVisible();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

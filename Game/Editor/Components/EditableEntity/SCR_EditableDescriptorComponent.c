@@ -20,7 +20,7 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 	
 	protected LocalizedString m_sLocationName;
 	protected EntityID m_NearestLocationID;
-	protected SCR_EditableCommentComponent m_NearestLocation;
+	protected SCR_EditableEntityComponent m_NearestLocation;
 	protected ref SCR_EditableDescriptorUIInfo m_UIInfoDescriptor;
 	protected ref ScriptInvoker_EditableDescriptorLocationChange m_OnChange = new ScriptInvoker_EditableDescriptorLocationChange();
 	
@@ -70,12 +70,12 @@ class SCR_EditableDescriptorComponent: SCR_EditableSystemComponent
 		m_NearestLocationID = nearestLocationID;
 		
 		IEntity nearestLocationEntity = GetGame().GetWorld().FindEntityByID(m_NearestLocationID);
-		m_NearestLocation = SCR_EditableCommentComponent.Cast(SCR_EditableEntityComponent.GetEditableEntity(nearestLocationEntity));
+		m_NearestLocation = SCR_EditableEntityComponent.GetEditableEntity(nearestLocationEntity);
 		
 		GetOnLocationChange(m_NearestLocation);
 		m_OnChange.Invoke(m_NearestLocation);
 	}
-	protected void GetOnLocationChange(SCR_EditableCommentComponent nearestLocation)
+	protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
 	{
 	}
 	

@@ -35,7 +35,7 @@ class SCR_MineDamageManager : SCR_DamageManagerComponent
 		if (!triggerComponent)
 			return;
 		
-		triggerComponent.SetLive(owner);
-		triggerComponent.OnUserTrigger(owner);
+		triggerComponent.SetLive();
+		triggerComponent.OnUserTriggerOverrideInstigator(owner, GetInstigator());
 	}
 }

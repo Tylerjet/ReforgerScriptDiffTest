@@ -1,10 +1,11 @@
 class SCR_AIGetEnemyToFireteam: AITaskScripted
 {
 	static const string PORT_TARGET_OUT		= "TargetOut";
-	static const string PORT_POSITION_OUT	= "PositionOut";
+	static const string PORT_TARGET_INFO	= "TargetInfoOut";
 	static const string PORT_FIRETEAM_IN	= "FireteamIn";
 	
 	SCR_AIGroupUtilityComponent m_GroupUtilityComponent;
+	ref SCR_AITargetInfo m_TargetInfo;
 	
 	//------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette() {return true;}
@@ -23,16 +24,6 @@ class SCR_AIGetEnemyToFireteam: AITaskScripted
 		AIGroup group = AIGroup.Cast(owner);
 		if (group)
 			m_GroupUtilityComponent = SCR_AIGroupUtilityComponent.Cast(group.FindComponent(SCR_AIGroupUtilityComponent));
-		
-		if (GetVariableType(false, PORT_POSITION_OUT) != vector)
-		{
-			NodeError(this, owner, PORT_POSITION_OUT + " has to be vector");
-		}
-		
-		if (GetVariableType(false, PORT_TARGET_OUT) != IEntity)
-		{
-			NodeError(this, owner, PORT_TARGET_OUT + " has to be entity");
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -48,10 +39,12 @@ class SCR_AIGetEnemyToFireteam: AITaskScripted
 		{
 			if (m_GroupUtilityComponent.m_aTargetInfos[i].m_eFireTeamAssigned == teamSelection)
 			{
-				if (SCR_AIIsAlive.IsAlive(m_GroupUtilityComponent.m_aTargetInfos[i].m_TargetEntity))
+				if (SCR_AIDamageHandling.IsAlive(m_GroupUtilityComponent.m_aTargetInfos[i].m_TargetEntity))
 				{
-					SetVariableOut(PORT_TARGET_OUT, m_GroupUtilityComponent.m_aTargetInfos[i].m_TargetEntity);
-					SetVariableOut(PORT_POSITION_OUT, m_GroupUtilityComponent.m_aTargetInfos[i].m_vLastSeenPosition);
+					m_TargetInfo = new SCR_AITargetInfo(); 								// use strong reference if your node uses it!
+					m_TargetInfo.CopyFrom(m_GroupUtilityComponent.m_aTargetInfos[i]); 	// copy in case someone in GroupUtilityComp changes the object it is reffering to
+					SetVariableOut(PORT_TARGET_OUT, m_TargetInfo.m_TargetEntity);
+					SetVariableOut(PORT_TARGET_INFO, m_TargetInfo);
 					return ENodeResult.SUCCESS;
 				}
 			}
@@ -64,17 +57,17 @@ class SCR_AIGetEnemyToFireteam: AITaskScripted
 		PORT_FIRETEAM_IN
 	};
 	override TStringArray GetVariablesIn()
-    {
-        return s_aVarsIn;
-    }
+	{
+		return s_aVarsIn;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
 		PORT_TARGET_OUT,
-		PORT_POSITION_OUT
+		PORT_TARGET_INFO
 	};
 	override TStringArray GetVariablesOut()
-    {
-        return s_aVarsOut;
-    }
+	{
+		return s_aVarsOut;
+	}
 };

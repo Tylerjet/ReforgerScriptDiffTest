@@ -4,17 +4,19 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class MuzzleInMagComponentClass: BaseMuzzleComponentClass
 {
-};
+}
 
 class MuzzleInMagComponent: BaseMuzzleComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

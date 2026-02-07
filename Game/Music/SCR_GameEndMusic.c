@@ -5,7 +5,6 @@ class SCR_GameEndMusic : ScriptedMusic
 	//~ Delay to make sure the OnSpawn music is played correctly after the respawn menu music
 	protected void OnGameEnd(string audioString)
 	{	
-		Print(audioString);
 		SetName(audioString);
 		m_MusicManager.Play(audioString);	
 	}

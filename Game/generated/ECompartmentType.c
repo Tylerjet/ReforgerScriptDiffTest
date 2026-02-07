@@ -8,5 +8,5 @@ enum ECompartmentType
 {
 	Pilot,
 	Turret,
-	Cargo
-};
+	Cargo,
+}

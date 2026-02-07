@@ -233,9 +233,12 @@ class AnimateWidget
 	//------------------------------------------------------------------------------------------------
 	protected static bool PrepareAnimation(Widget w, float speed, typename typeName)
 	{
+		if (!g_Game || !g_Game.InPlayMode())
+			return false;
+		
 		if (!s_Instance)
 		{
-			Print("[AnimateWidget.PrepareAnimation] AnimateWidget entity instance is missing" + w.GetName(), LogLevel.WARNING);
+			Print("[AnimateWidget.PrepareAnimation] AnimateWidget entity instance is missing " + w + "." + w.GetName(), LogLevel.WARNING);
 			return false;
 		}
 		
@@ -247,7 +250,7 @@ class AnimateWidget
 		
 		if (speed <= 0)
 		{
-			Print("[AnimateWidget.PrepareAnimation] Animation speed must be > 0" + w.GetName(), LogLevel.WARNING);
+			Print("[AnimateWidget.PrepareAnimation] Animation speed must be > 0 " + w + "." + w.GetName(), LogLevel.WARNING);
 			return false;
 		}
 

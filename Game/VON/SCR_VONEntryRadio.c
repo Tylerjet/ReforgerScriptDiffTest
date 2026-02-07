@@ -11,7 +11,7 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	//------------------------------------------------------------------------------------------------
 	override void InitEntry()
 	{
-		m_bIsEnabled = m_RadioComp.IsPowered();
+		m_bIsEnabled = m_RadioTransceiver.GetRadio().IsPowered();
 		
 		if (m_bIsEnabled)
 			AdjustEntry(0);
@@ -24,9 +24,13 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	
 	//------------------------------------------------------------------------------------------------ 
 	override void ActivateEntry()
-	{		
+	{
+		// This check shouldn't be necessary if entries are assured to be notnull
+		if (!m_VONComp)
+			return;
+
 		m_VONComp.SetCommMethod(ECommMethod.SQUAD_RADIO);
-		m_VONComp.SetTransmitRadio(m_RadioComp);
+		m_VONComp.SetTransmitRadio(m_RadioTransceiver);
 		m_VONController.SetEntryActive(this);
 	}
 	
@@ -36,10 +40,13 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		if (!m_bIsEnabled)
 			return;
 		
+		if (!m_RadioTransceiver)
+			return;
+		
 		// Get & adjust frequency
-		m_iFrequency = m_RadioComp.GetFrequency();
-		int minFreq = m_RadioComp.GetMinFrequency();
-		int maxFreq = m_RadioComp.GetMaxFrequency();
+		m_iFrequency = m_RadioTransceiver.GetFrequency();
+		int minFreq = m_RadioTransceiver.GetMinFrequency();
+		int maxFreq = m_RadioTransceiver.GetMaxFrequency();
 		
 		// TODO sound temp here until moved to radio level
 		if ( (modifier > 0  && m_iFrequency == maxFreq) || (modifier < 0 && m_iFrequency == minFreq) )
@@ -47,10 +54,19 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		else if (modifier != 0)
 			SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_RADIO_CHANGEFREQUENCY);
 		
-		m_iFrequency = m_iFrequency + (modifier * m_RadioComp.GetFrequencyResolution());
+		m_iFrequency = m_iFrequency + (modifier * m_RadioTransceiver.GetFrequencyResolution());
 		m_iFrequency = Math.ClampInt(m_iFrequency, minFreq, maxFreq);
 		
-		m_RadioComp.SetFrequency(m_iFrequency); // Set new frequency
+		//FIXME: Do not even try to change frequency without PlayerController
+		PlayerController pc = GetGame().GetPlayerController();
+		if (pc)
+		{
+			RadioHandlerComponent rhc = RadioHandlerComponent.Cast(pc.FindComponent(RadioHandlerComponent));
+			if (rhc)
+			{
+				rhc.SetFrequency(m_RadioTransceiver, m_iFrequency); // Set new frequency
+			}
+		}
 
 		float fFrequency = Math.Round(m_iFrequency / 10); // Format the frequency text
 		fFrequency = fFrequency / 100;			
@@ -61,13 +77,16 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	override void AdjustEntryModif(int modifier)
 	{
 		SCR_GroupsManagerComponent groupManager = SCR_GroupsManagerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_GroupsManagerComponent));
-		SCR_MilitaryFaction playerFaction = SCR_MilitaryFaction.Cast(SCR_RespawnSystemComponent.GetInstance().GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId()));
+		SCR_Faction playerFaction = SCR_Faction.Cast(SCR_RespawnSystemComponent.GetInstance().GetPlayerFaction(GetGame().GetPlayerController().GetPlayerId()));
 		
 		if (!groupManager || !playerFaction)
 			return;
-		
+
+		if (!m_RadioTransceiver)
+			return;
+
 		int factionFreq = playerFaction.GetFactionRadioFrequency();
-		int currentFreq = m_RadioComp.GetFrequency();
+		int currentFreq = m_RadioTransceiver.GetFrequency();
 		
 		array<SCR_AIGroup> groups = groupManager.GetPlayableGroupsByFaction(playerFaction);
 
@@ -76,16 +95,16 @@ class SCR_VONEntryRadio : SCR_VONEntry
 		if (currentFreq == factionFreq)		// if platoon frequency
 		{
 			if (modifier == -1)
-				newFreq = groups[0].GetGroupFrequency();	// go to first squad freq
+				newFreq = groups[0].GetRadioFrequency();	// go to first squad freq
 			else 
-				newFreq = groups[groups.Count() - 1].GetGroupFrequency();	// go to last squad freq
+				newFreq = groups[groups.Count() - 1].GetRadioFrequency();	// go to last squad freq
 		}
 		else 
 		{
 			int count = groups.Count();
-			if (modifier == 1 && currentFreq == groups[0].GetGroupFrequency())
+			if (modifier == 1 && currentFreq == groups[0].GetRadioFrequency())
 				newFreq = factionFreq;
-			else if (modifier == -1 && currentFreq == groups[groups.Count() - 1].GetGroupFrequency())
+			else if (modifier == -1 && currentFreq == groups[groups.Count() - 1].GetRadioFrequency())
 				newFreq = factionFreq;
 			else 
 			{
@@ -93,12 +112,12 @@ class SCR_VONEntryRadio : SCR_VONEntry
 				
 				for (int i = 0; i < count; i++)
 				{
-					if (currentFreq == groups[i].GetGroupFrequency())
+					if (currentFreq == groups[i].GetRadioFrequency())
 					{
 						if (modifier == 1)
-							newFreq = groups[i-1].GetGroupFrequency();
+							newFreq = groups[i-1].GetRadioFrequency();
 						else 
-							newFreq = groups[i+1].GetGroupFrequency();
+							newFreq = groups[i+1].GetRadioFrequency();
 						
 						isMatched = true;
 						break;
@@ -106,12 +125,12 @@ class SCR_VONEntryRadio : SCR_VONEntry
 				}	
 				
 				if (!isMatched)
-					newFreq = groups[0].GetGroupFrequency();
+					newFreq = groups[0].GetRadioFrequency();
 			}
 		}
 		
 		m_iFrequency = newFreq;
-		m_RadioComp.SetFrequency(m_iFrequency);
+		m_RadioTransceiver.SetFrequency(m_iFrequency);
 		
 		float fFrequency = Math.Round(m_iFrequency / 10); // Format the frequency text
 		fFrequency = fFrequency / 100;			
@@ -122,9 +141,15 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	//------------------------------------------------------------------------------------------------ 
 	override void ToggleEntry()
 	{
-		m_bIsEnabled = !m_RadioComp.IsPowered();
+		// Constructor allows the entry to not have m_RadioTransceiver assigned
+		if (!m_RadioTransceiver)
+			return;
 		
-		m_RadioComp.TogglePower(m_bIsEnabled);
+		BaseRadioComponent radio = m_RadioTransceiver.GetRadio();
+
+		m_bIsEnabled = !radio.IsPowered();
+		
+		radio.SetPower(m_bIsEnabled);
 		
 		if (!m_bIsEnabled)
 			m_sText = LABEL_DEACTIVATED;
@@ -147,11 +172,14 @@ class SCR_VONEntryRadio : SCR_VONEntry
 	//------------------------------------------------------------------------------------------------
 	override string GetIconResource()
 	{
-		IEntity item = m_RadioComp.GetOwner();
-		if (!item)
+		if (!m_RadioTransceiver)
 			return string.Empty;
 		
-		InventoryItemComponent pInvItemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+
+		IEntity entity = m_RadioTransceiver.GetRadio().GetOwner();
+		// Item will be available, since Transceiver should not exist without RadioComponent
+		
+		InventoryItemComponent pInvItemComponent = InventoryItemComponent.Cast(entity.FindComponent(InventoryItemComponent));
 		if (!pInvItemComponent)
 			return string.Empty;			
 

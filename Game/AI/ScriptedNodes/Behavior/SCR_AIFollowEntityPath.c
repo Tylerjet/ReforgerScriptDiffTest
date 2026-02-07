@@ -29,7 +29,7 @@ class SCR_AIFollowEntityPath : SCR_AIActionTask
 		if (!m_pMyMovementComponent)
 			return;
 
-		setupResult = m_pMyMovementComponent.ForceFollowPathOfEntity(m_pFollowedEntity);
+		setupResult = m_pMyMovementComponent.RequestFollowPathOfEntity(m_pFollowedEntity);
 	}
 
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)

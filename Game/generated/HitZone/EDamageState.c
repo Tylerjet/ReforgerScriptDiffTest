@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup HitZone
-* @{
+/*!
+\addtogroup HitZone
+\{
 */
 
 enum EDamageState
@@ -16,7 +16,9 @@ enum EDamageState
 	DESTROYED,
 	STATE1,
 	STATE2,
-	STATE3
-};
+	STATE3,
+}
 
-/** @}*/
+/*!
+\}
+*/

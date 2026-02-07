@@ -9,7 +9,7 @@ class SCR_NotificationData
 	protected ENotification m_iID;
 	protected float m_fNotificationTimeLeft = -1;
 	protected int m_iPrevPositionUpdated = -1;
-	protected string notificationEntry1, notificationEntry2, notificationEntry3, notificationEntry4, notificationEntry5;
+	protected string notificationEntry1, notificationEntry2, notificationEntry3, notificationEntry4, notificationEntry5, notificationEntry6;
 	protected bool m_bIsSplitNotification;
 	protected ENotificationColor m_FactionRelatedColor = ENotificationColor.NEUTRAL;
 	protected ENotificationColor m_FactionRelatedTextColor = ENotificationColor.NEUTRAL;
@@ -23,6 +23,7 @@ class SCR_NotificationData
 	protected int m_iParam3;
 	protected int m_iParam4;
 	protected int m_iParam5;
+	protected int m_iParam6;
 	protected vector m_vPosition = vector.Zero;
 	protected ENotificationReceiver m_iNotificationReceiverType;
 	
@@ -129,8 +130,9 @@ class SCR_NotificationData
 	\param entry3
 	\param entry4
 	\param entry5
+	\param entry6
 	*/
-	void SetNotificationTextEntries(string entry1 = string.Empty, string entry2 = string.Empty, string entry3 = string.Empty, string entry4 = string.Empty, string entry5 = string.Empty)
+	void SetNotificationTextEntries(string entry1 = string.Empty, string entry2 = string.Empty, string entry3 = string.Empty, string entry4 = string.Empty, string entry5 = string.Empty, string entry6 = string.Empty)
 	{
 		if (entry1 != string.Empty)
 			notificationEntry1 = entry1;
@@ -142,6 +144,8 @@ class SCR_NotificationData
 			notificationEntry4 = entry4;
 		if (entry5 != string.Empty)
 			notificationEntry5 = entry5;
+		if (entry6 != string.Empty)
+			notificationEntry6 = entry6;
 	}
 	
 	/*!
@@ -151,14 +155,16 @@ class SCR_NotificationData
 	\param out entry3
 	\param out entry4
 	\param out entry5
+	\param out entry6
 	*/
-	void GetNotificationTextEntries(out string entry1, out string entry2, out string entry3, out string entry4, out string entry5)
+	void GetNotificationTextEntries(out string entry1, out string entry2, out string entry3, out string entry4, out string entry5, out string entry6)
 	{
 		entry1 = notificationEntry1;
 		entry2 = notificationEntry2;
 		entry3 = notificationEntry3;
 		entry4 = notificationEntry4;
 		entry5 = notificationEntry5;
+		entry6 = notificationEntry6;
 	}
 	
 
@@ -257,14 +263,17 @@ class SCR_NotificationData
 	\param[out] param3
 	\param[out] param4
 	\param[out] param5
+	\param[out] param5
+	\param[out] param6
 	*/
-	void GetParams(out int param1, out int param2 = 0, out int param3 = 0, out int param4 = 0, out int param5 = 0)
+	void GetParams(out int param1, out int param2 = 0, out int param3 = 0, out int param4 = 0, out int param5 = 0, out int param6 = 0)
 	{
 		param1 = m_iParam1;
 		param2 = m_iParam2;
 		param3 = m_iParam3;
 		param4 = m_iParam4;
 		param5 = m_iParam5;
+		param6 = m_iParam6;
 	}
 	
 	/*!
@@ -272,20 +281,20 @@ class SCR_NotificationData
 	*/
 	void Log()
 	{
-		PrintFormat("%1\nID: %2\nParams: %3, %4, %5, %6, %7", this, typename.EnumToString(ENotification, m_iID), m_iParam1, m_iParam2, m_iParam3, m_iParam4, m_iParam5);
+		PrintFormat("%1\nID: %2\nParams: %3, %4, %5, %6, %7, %8", this, typename.EnumToString(ENotification, m_iID), m_iParam1, m_iParam2, m_iParam3, m_iParam4, m_iParam5, m_iParam6);
 	}
 	
 	static void Encode(SSnapSerializerBase snapshot, ScriptCtx hint, ScriptBitSerializer packet) 
 	{
-		snapshot.Serialize(packet, 36);
+		snapshot.Serialize(packet, 40);
 	}
 	static bool Decode(ScriptBitSerializer packet, ScriptCtx hint, SSnapSerializerBase snapshot) 
 	{
-		return snapshot.Serialize(packet, 36);
+		return snapshot.Serialize(packet, 40);
 	}
 	static bool SnapCompare(SSnapSerializerBase lhs, SSnapSerializerBase rhs, ScriptCtx hint) 
 	{
-		return lhs.CompareSnapshots(rhs, 36);
+		return lhs.CompareSnapshots(rhs, 40);
 	}
 	static bool PropCompare(SCR_NotificationData prop, SSnapSerializerBase snapshot, ScriptCtx hint) 
 	{
@@ -294,6 +303,7 @@ class SCR_NotificationData
 			&& snapshot.Compare(prop.m_iParam3, 4) 
 			&& snapshot.Compare(prop.m_iParam4, 4) 
 			&& snapshot.Compare(prop.m_iParam5, 4)
+			&& snapshot.Compare(prop.m_iParam6, 4)
 			&& snapshot.Compare(prop.m_vPosition, 12)
 			&& snapshot.Compare(prop.m_iNotificationReceiverType, 4);
 	}
@@ -304,6 +314,7 @@ class SCR_NotificationData
 		snapshot.SerializeBytes(prop.m_iParam3, 4);
 		snapshot.SerializeBytes(prop.m_iParam4, 4);
 		snapshot.SerializeBytes(prop.m_iParam5, 4);
+		snapshot.SerializeBytes(prop.m_iParam6, 4);
 		snapshot.SerializeBytes(prop.m_vPosition, 12);
 		snapshot.SerializeBytes(prop.m_iNotificationReceiverType, 4);
 		return true;
@@ -315,6 +326,7 @@ class SCR_NotificationData
 		snapshot.SerializeBytes(prop.m_iParam3, 4);
 		snapshot.SerializeBytes(prop.m_iParam4, 4);
 		snapshot.SerializeBytes(prop.m_iParam5, 4);
+		snapshot.SerializeBytes(prop.m_iParam6, 4);
 		snapshot.SerializeBytes(prop.m_vPosition, 12);
 		snapshot.SerializeBytes(prop.m_iNotificationReceiverType, 4);
 		return true;
@@ -337,8 +349,10 @@ class SCR_NotificationData
 	\param param3
 	\param param4
 	\param param5
+	\param param5
+	\param param6
 	*/
-	void SetParameters(ENotificationReceiver receiverType, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0)
+	void SetParameters(ENotificationReceiver receiverType, int param1 = 0, int param2 = 0, int param3 = 0, int param4 = 0, int param5 = 0, int param6 = 0)
 	{
 		m_iNotificationReceiverType = receiverType;
 		m_iParam1 = param1;
@@ -346,6 +360,7 @@ class SCR_NotificationData
 		m_iParam3 = param3;
 		m_iParam4 = param4;
 		m_iParam5 = param5;
+		m_iParam6 = param6;
 	}
 	
 };

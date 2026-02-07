@@ -301,7 +301,6 @@ class SCR_PopUpNotification: GenericEntity
 		if (m_aQueue.IsEmpty())
 		{
 			ClearEventMask(EntityEvent.FRAME);
-			ClearFlags(EntityFlags.ACTIVE, true);
 		}
 		else if (m_wPopupMsg)
 		{
@@ -309,7 +308,6 @@ class SCR_PopUpNotification: GenericEntity
 				ShowMsg(m_aQueue[0]);
 			
 			SetEventMask(EntityEvent.FRAME);
-			SetFlags(EntityFlags.ACTIVE, true);
 		}
 	}
 	
@@ -344,6 +342,8 @@ class SCR_PopUpNotification: GenericEntity
 				msg.m_fProgressEnd = msg.m_fProgressEnd - timeDiff;
 			}
 			
+			m_wStatusProgress.SetMin(msg.m_fProgressStart);
+			m_wStatusProgress.SetMax(msg.m_fProgressEnd);
 			m_wStatusProgress.SetVisible(false);
 			FadeWidget(m_wStatusProgress);
 		}
@@ -422,6 +422,8 @@ class SCR_PopUpNotification: GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_PopUpNotification(IEntitySource src, IEntity parent)
 	{
+		SetFlags(EntityFlags.NO_TREE | EntityFlags.NO_LINK);
+		
 		// Don't show UI on headless
 		if (System.IsConsoleApp())
 			return;

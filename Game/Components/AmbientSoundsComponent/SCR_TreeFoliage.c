@@ -12,4 +12,11 @@ class SCR_TreeFoliage
 	float m_fMaxY;
 	// Foliage sound audio handle
 	AudioHandle m_AudioHandle;
+	
+	//------------------------------------------------------------------------------------------------
+	void ~SCR_TreeFoliage()
+	{
+		AudioSystem.TerminateSound(m_AudioHandle);
+	}
 };
+

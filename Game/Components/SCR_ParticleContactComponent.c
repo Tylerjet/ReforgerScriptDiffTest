@@ -1,11 +1,14 @@
 class SCR_ParticleContactComponentClass : ScriptComponentClass
 {	
-	[Attribute("", UIWidgets.EditBox, desc: "Sound event name", category: "Sound")]
-	string m_sSoundEventName;
+	[Attribute("", UIWidgets.Auto, "", category: "Sound")]
+	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
 	
+	[Attribute("true", desc: "Set surface signal", category: "Sound")]
+	bool m_bSurfaceSignal;
+		
 	[Attribute("true", desc: "Disable OnContact after the first contact")]
 	bool m_bFirstContactOnly;
-		
+	
 	[Attribute("false", desc: "Particle oriented to surface", category: "VFX")]
 	bool m_bParticleOriented;
 	
@@ -13,10 +16,45 @@ class SCR_ParticleContactComponentClass : ScriptComponentClass
 	ResourceName m_Particle;
 }
 
+//------------------------------------------------------------------------------------------------
 class SCR_ParticleContactComponent : ScriptComponent
-{	
-	private static const string SURFACE_SIGNAL_NAME = "Surface";
+{
+	//------------------------------------------------------------------------------------------------
+	private void PlaySound(IEntity owner, SCR_ParticleContactComponentClass prefabData, Contact contact)
+	{
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (!soundManagerEntity)
+			return;
+				
+		if (!prefabData.m_AudioSourceConfiguration || !prefabData.m_AudioSourceConfiguration.IsValid())
+			return;
+				
+		// Create audio source
+		SCR_AudioSource audioSource = soundManagerEntity.CreateAudioSource(owner, prefabData.m_AudioSourceConfiguration);	
+		if (!audioSource)
+			return;
+
+		// Set surface signal
+		if (prefabData.m_bSurfaceSignal)
+		{
+			GameMaterial material = contact.Material2;
+			if (material)
+				audioSource.SetSignalValue(SCR_AudioSource.SURFACE_SIGNAL_NAME, material.GetSoundInfo().GetSignalValue());
+		}
 		
+		// Play sound
+		if (SCR_Enum.HasFlag(prefabData.m_AudioSourceConfiguration.m_eFlags, EAudioSourceConfigurationFlag.Static))
+		{
+			vector mat[4];
+			mat[3] = contact.Position;
+			
+			soundManagerEntity.PlayAudioSource(audioSource, mat);
+		}
+		else		
+			soundManagerEntity.PlayAudioSource(audioSource);		
+	}
+	
+	//------------------------------------------------------------------------------------------------			
 	override void OnPostInit(IEntity owner)
 	{
 		SCR_ParticleContactComponentClass prefabData = SCR_ParticleContactComponentClass.Cast(GetComponentData(owner));
@@ -26,6 +64,7 @@ class SCR_ParticleContactComponent : ScriptComponent
 		SetEventMask(owner, EntityEvent.CONTACT);
 	}
 
+	//------------------------------------------------------------------------------------------------
 	override void EOnContact(IEntity owner, IEntity other, Contact contact)
 	{
 		// Get prefab data
@@ -35,41 +74,17 @@ class SCR_ParticleContactComponent : ScriptComponent
 			ClearEventMask(owner, EntityEvent.CONTACT);
 			return;
 		}
-		
-		// Set Surface signal
-		SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
-		if (signalsManagerComponent)
-		{
-			GameMaterial material = contact.Material2;
-			if (material)
-				signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal(SURFACE_SIGNAL_NAME), material.GetSoundInfo().GetSignalValue());
-		}
-		
+				
 		// Play sound
-		SoundComponent soundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
-		if (soundComponent)
-		{		
-			// Get sound position
-			vector mat[4];		
-			mat[3] = owner.GetOrigin();
-			
-			soundComponent.SetTransformation(mat);
-			
-			// Play sound		
-			soundComponent.SoundEvent(prefabData.m_sSoundEventName);
-		}
+		PlaySound(owner, prefabData, contact);
 		
 		// Play VFX
 		if (prefabData.m_Particle != string.Empty)
 		{
 			if (prefabData.m_bParticleOriented)	
-			{
-				SCR_ParticleEmitter.CreateOriented(prefabData.m_Particle, contact.Position, contact.Normal);
-			}
-			else {
-				
+				SCR_ParticleEmitter.Create(prefabData.m_Particle, contact.Position, contact.Normal);
+			else
 				SCR_ParticleEmitter.Create(prefabData.m_Particle, contact.Position);
-			}
 		}
 				
 		// Disable OnContact after the first contact

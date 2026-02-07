@@ -48,6 +48,10 @@ class SCR_ServerBrowserDialogManager
 	const string WIDGET_PROGRESS_BAR = "ProgressBar";
 	
 	const string WIDGET_BUTTON_ADDITIONAL = "Additional";
+	const string ERROR_TAG_DEFAULT = "JOIN_FAILED";
+	
+	protected int m_iDownloadedCount = 0;
+	protected ref array<ref SCR_WorkshopItemAction> m_JoinDownloadActions = {};
 	
 	// Invokers 
 	ref ScriptInvoker m_OnConfirm = new ref ScriptInvoker;
@@ -56,6 +60,8 @@ class SCR_ServerBrowserDialogManager
 	
 	ref ScriptInvoker m_OnDownloadComplete = new ref ScriptInvoker;
 	ref ScriptInvoker<Room> m_OnJoinRoomDemand = new ref ScriptInvoker;
+	protected ref ScriptInvoker<> Event_OnRejoinTimerOver;
+	protected ref ScriptInvoker Event_OnCloseAll = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	// Public functions 
@@ -273,8 +279,6 @@ class SCR_ServerBrowserDialogManager
 			dialog.m_OnClose.Insert(OnDialogClose);
 		}
 	}
-	
-	protected ref ScriptInvoker<> Event_OnRejoinTimerOver;
 
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeEventOnRejoinTimerOver()
@@ -332,8 +336,6 @@ class SCR_ServerBrowserDialogManager
 			m_CurrentDialog.Close();
 	}
 	
-	protected string m_sLastTag = "emptyTag";
-	
 	//------------------------------------------------------------------------------------------------
 	//! Quick short code to open dialog by tag and cache it 
 	protected void SetDialogByTag(string tag, SCR_ConfigurableDialogUi dialog = null)
@@ -353,8 +355,6 @@ class SCR_ServerBrowserDialogManager
 		m_iOpenDialogCount++;
 		m_bIsOpen = true;
 		
-		m_sLastTag = tag;
-		
 		// Add invoker actions to current dialog
 		m_CurrentDialog.m_OnConfirm.Insert(OnDialogConfirm);
 		m_CurrentDialog.m_OnCancel.Insert(OnDialogCancel);
@@ -372,8 +372,6 @@ class SCR_ServerBrowserDialogManager
 	{
 		m_OnCancel.Invoke();
 	}
-	
-	protected ref ScriptInvoker Event_OnCloseAll = new ScriptInvoker();
 	
 	//------------------------------------------------------------------------------------------------
 	protected void InvokeOnCloseAll()
@@ -405,9 +403,6 @@ class SCR_ServerBrowserDialogManager
 	//------------------------------------------------------------------------------------------------
 	// Spefic dialog handling 
 	//------------------------------------------------------------------------------------------------
-	
-	protected int m_iDownloadedCount = 0;
-	const string ERROR_TAG_DEFAULT = "JOIN_FAILED";
 	
 	//------------------------------------------------------------------------------------------------
 	//! Show join fail message in dialog 
@@ -457,7 +452,7 @@ class SCR_ServerBrowserDialogManager
 		// Setup downloadable content 
 		m_iDownloadedCount = 0;
 		
-		array<ref Tuple2<SCR_WorkshopItem, string>> toUpdateMods = new array<ref Tuple2<SCR_WorkshopItem, string>>;
+		array<ref Tuple2<SCR_WorkshopItem, ref Revision>> toUpdateMods = new array<ref Tuple2<SCR_WorkshopItem, ref Revision>>;
 		
 		array<ref SCR_WorkshopItem> aToUpdate = SCR_AddonManager.SelectItemsOr(m_ModManager.GetRoomItemsScripted(), EWorkshopItemQuery.NOT_LOCAL_VERSION_MATCH_DEPENDENCY);
 		//array<ref SCR_WorkshopItem> aToUpdate = m_ModManager.GetRoomItemsToUpdate();
@@ -474,9 +469,9 @@ class SCR_ServerBrowserDialogManager
 				return;
 			}
 			
-			string version = dependency.GetVersion();
+			Revision version = dependency.GetRevision();
 			
-			ref Tuple2<SCR_WorkshopItem, string>> downloadable = new Tuple2<SCR_WorkshopItem, string>>(item, version);
+			ref Tuple2<SCR_WorkshopItem, ref Revision>> downloadable = new Tuple2<SCR_WorkshopItem, ref Revision>>(item, version);
 			toUpdateMods.Insert(downloadable);
 		}
 		
@@ -486,6 +481,8 @@ class SCR_ServerBrowserDialogManager
 		
 		// Setup buttons 
 		dialog.m_OnDownloadConfirmed.Insert(OnConfirmModsToUpdate);
+		
+		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Insert(OnDownloadActionFailed);
 	}
 	
 	//------------------------------------------------------------------------------------------------	
@@ -511,7 +508,7 @@ class SCR_ServerBrowserDialogManager
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	protected void OnConfirmModsToUpdate(SCR_DownloadConfirmationDialog dialog) 
+	protected void OnConfirmModsToUpdate(notnull SCR_DownloadConfirmationDialog dialog) 
 	{
 		// Listen to downalod actinos 
 		array<ref SCR_WorkshopItemAction> actions = dialog.GetActions();
@@ -519,6 +516,12 @@ class SCR_ServerBrowserDialogManager
 		
 		foreach (ref SCR_WorkshopItemAction act : actions)
 		{
+			m_JoinDownloadActions.Insert(act);
+			
+			// Check dowload failed - if at least one, don't create the dialog and show error
+			if (act.IsFailed())
+				return;
+			
 			act.m_OnChanged.Insert(OnDownloadActionChange);
 			act.m_OnCompleted.Insert(OnModDownloaded);
 			
@@ -567,22 +570,60 @@ class SCR_ServerBrowserDialogManager
 		// Set progress 
 		float progress = m_ModManager.ModDownloadProggress();
 		progressDialog.SetProgress(progress);
+		
+		m_OnCancel.Insert(OnDownloadingDialogClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDownloadingDialogClose(SCR_ConfigurableDialogUi dialog)
+	{
+		// Clear actions
+		foreach (ref SCR_WorkshopItemAction act : m_JoinDownloadActions)
+		{
+			act.m_OnChanged.Remove(OnDownloadActionChange);
+			act.m_OnCompleted.Remove(OnModDownloaded);
+		}
+		
+		m_JoinDownloadActions.Clear();
+		
+		// Clear dialog callbacks
+		m_OnCancel.Remove(OnDownloadingDialogClose);
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call this when mod in room mods manager queue finishied download 
-	protected void OnModDownloaded(SCR_WorkshopItemAction action)
+	protected void OnModDownloaded(notnull SCR_WorkshopItemAction action)
 	{
 		array<ref SCR_WorkshopItem> items = m_ModManager.GetRoomItemsToUpdate();
 		m_iDownloadedCount++;
 		
 		// Invoke on all downloaded
 		if (m_iDownloadedCount == items.Count())
-			m_OnDownloadComplete.Invoke(m_JoinRoom);
+		{
+			// Called later to make sure that successful downloads are properly checked at download manager
+			// TODO: implent proper solution on download manager
+			GetGame().GetCallqueue().Call(DownloadingDone, 500);
+		}
 		
 		// Stop listening when completed 
 		action.m_OnChanged.Remove(OnDownloadActionChange);
 		action.m_OnCompleted.Remove(OnDownloadActionChange);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! TODO: Method for later call, should be removed and proper solution should be implemented
+	protected void DownloadingDone()
+	{
+		m_OnDownloadComplete.Invoke(m_JoinRoom);
+		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(OnDownloadActionFailed);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void OnDownloadActionFailed(notnull SCR_WorkshopItemAction action)
+	{
+		CloseCurrentDialog();
+		
+		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(OnDownloadActionFailed);
 	}
 	
 	//------------------------------------------------------------------------------------------------

@@ -229,7 +229,6 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 			if (m_iPrefabIndex >= m_iSelectedPrefabsCount)
 			{
 				GetGame().GetCallqueue().CallLater(RequestClose, false, 1);
-				ClearFlags(EntityFlags.ACTIVE, false);
 				return;
 			}
 			
@@ -285,7 +284,6 @@ class SCR_EditorImageGeneratorEntity : GenericEntity
 	void SCR_EditorImageGeneratorEntity(IEntitySource src, IEntity parent)
 	{
 		SetName("SCR_EditorImageGeneratorEntity");
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.FRAME);
 		
 		if (SCR_Global.IsEditMode(this))

@@ -13,10 +13,19 @@ Link which creates replicated entity. To be use in composition prefabs which can
 */
 class SCR_EditorLinkComponent : ScriptComponent
 {
-	protected bool m_bCanDeactivate;
-	
 	protected static bool s_bIgnoreSpawning;
+	protected ref ScriptInvoker m_OnLinkedEntitiesSpawned;
 	
+	/*!
+	\return Event called after all linked entities were spawned
+	*/
+	ScriptInvoker GetOnLinkedEntitiesSpawned()
+	{
+		if (!m_OnLinkedEntitiesSpawned)
+			m_OnLinkedEntitiesSpawned = new ScriptInvoker();
+		
+		return m_OnLinkedEntitiesSpawned;
+	}
 	/*!
 	Ignore spawning entity links in the next spawned prefab with this component.
 	Used when some other system handles spawning independently.
@@ -56,9 +65,8 @@ class SCR_EditorLinkComponent : ScriptComponent
 				Print(string.Format("Unable to spawn linked entity @\"%1\"!", entry.m_Prefab.GetPath()), LogLevel.WARNING);
 		}
 		
-		//--- Deactivate after initialization to save resources
-		if (m_bCanDeactivate)
-			owner.ClearFlags(EntityFlags.ACTIVE, false);
+		if (m_OnLinkedEntitiesSpawned)
+			m_OnLinkedEntitiesSpawned.Invoke(this);
 	}
 	override void OnPostInit(IEntity owner)
 	{
@@ -69,8 +77,6 @@ class SCR_EditorLinkComponent : ScriptComponent
 		if (!parent)
 			return;
 		
-		m_bCanDeactivate = (owner.GetFlags() & EntityFlags.ACTIVE) == 0;
-		owner.SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(owner, EntityEvent.INIT);
 	}
 };

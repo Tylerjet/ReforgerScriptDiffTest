@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class SignalsComponentClass: GameComponentClass
 {
-};
+}
 
 class SignalsComponent: GameComponent
 {
@@ -27,8 +27,10 @@ class SignalsComponent: GameComponent
 	proto external float GetSignalInValue(int index);
 	//! Returns the value of a signal output.
 	proto external float GetSignalOutValue(int index);
-	proto external int GetSignalIns(out array<string> ins);
-	proto external int GetSignalOuts(out array<string> outs);
-};
+	proto external int GetSignalIns(out notnull array<string> ins);
+	proto external int GetSignalOuts(out notnull array<string> outs);
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 class LayoutSlot: AlignableSlot
@@ -15,6 +15,8 @@ class LayoutSlot: AlignableSlot
 	static proto LayoutSizeMode GetSizeMode(notnull Widget widget);
 	static proto void SetFillWeight(notnull Widget widget, float weight);
 	static proto void SetSizeMode(notnull Widget widget, LayoutSizeMode mode);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

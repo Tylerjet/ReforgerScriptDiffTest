@@ -71,7 +71,7 @@ class ScriptCallQueue
 	proto int GetRemainingTimeByName(Managed obj, string fnName);
 	//! remove all calls from queue
 	proto native void Clear();
-};
+}
 
 /**
  \brief ScriptInvoker Class provide list of callbacks
@@ -122,7 +122,7 @@ class ScriptInvokerBase<Class T>: Managed
 	proto void Remove(T fn);
 	//! remove all calls from list
 	proto native void Clear();
-};
+}
 
 typedef ScriptInvokerBase<func> ScriptInvoker;
 
@@ -132,4 +132,4 @@ class AutotestBase
 	static proto native bool IsLastProcessingTime_Signal();
 	static proto native void ResetLastProcessingTime_Signal();
 	static proto native void SetLastProcessingTime_Treshold(float seconds);
-};
+}

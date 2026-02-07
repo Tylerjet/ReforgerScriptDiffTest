@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class BaseGameEntityClass: GenericEntityClass
 {
-};
+}
 
 class BaseGameEntity: GenericEntity
 {
@@ -22,6 +22,8 @@ class BaseGameEntity: GenericEntity
 	proto external void Teleport(vector mat[4]);
 	//! Returns the replication component associated to this entity
 	proto external RplComponent GetRplComponent();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

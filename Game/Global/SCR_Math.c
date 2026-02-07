@@ -1,5 +1,16 @@
 class SCR_Math
 {
+	//------------------------------------------------------------------------------------------------
+	//! Takes two floats and returns the remainder after division
+	static float fmod(float dividend, float divisor)
+	{
+		if (divisor == 0)
+			return 0;
+
+		return dividend - Math.Floor(dividend / divisor) * divisor;
+	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Shortest linear interpolation between two angles.
 	\param a Start angle in degrees
@@ -9,12 +20,14 @@ class SCR_Math
 	*/
 	static float LerpAngle(float a, float b, float t)
 	{
-		float dt = SCR_Global.fmod(b - a, 360);
+		float dt = SCR_Math.fmod(b - a, 360);
 		if (dt > 180)
 			dt -= 360;
-		
-		return SCR_Global.fmod(Math.Lerp(a, a + dt, t), 360);
+
+		return SCR_Math.fmod(Math.Lerp(a, a + dt, t), 360);
 	}
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Get shortest angle between two angles.
 	\param a Start angle in degrees
@@ -23,9 +36,10 @@ class SCR_Math
 	*/
 	static float DeltaAngle(float a, float b)
 	{
-		return 180 - Math.AbsFloat(SCR_Global.fmod(Math.AbsFloat(b - a), 360) - 180);
+		return 180 - Math.AbsFloat(SCR_Math.fmod(Math.AbsFloat(b - a), 360) - 180);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
 	/*!
 	Minimum mask that can cover a provided number
 	\param x Positive integer value
@@ -40,7 +54,7 @@ class SCR_Math
 		x |= (x >> 16);
 		return x;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Get distance to stop with given deceleration.
 	static float GetDistanceToStop(float speed, float deceleration)

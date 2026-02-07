@@ -17,5 +17,5 @@ enum SignalCompressionFunc
 	//! Value is in range <-1;1>
 	Range11,
 	//! Value is 1 or 0
-	Bool
-};
+	Bool,
+}

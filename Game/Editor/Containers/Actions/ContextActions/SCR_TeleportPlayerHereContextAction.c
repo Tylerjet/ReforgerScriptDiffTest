@@ -18,6 +18,10 @@ class SCR_TeleportPlayerHereContextAction : SCR_BaseContextAction
 	}
 	override bool CanBePerformed(SCR_EditableEntityComponent hoveredEntity, notnull set<SCR_EditableEntityComponent> selectedEntities, vector cursorWorldPosition, int flags)
 	{
+		//~ Do not teleport if hovering over own player as this will cotnrol the player and teleporting player to the same location as it is doesn't really do anything
+		if (hoveredEntity && hoveredEntity.GetPlayerID() == SCR_PlayerController.GetLocalPlayerId())
+			return false;
+		
 		return CanBeShown(hoveredEntity, selectedEntities, cursorWorldPosition, flags);
 	}
 	

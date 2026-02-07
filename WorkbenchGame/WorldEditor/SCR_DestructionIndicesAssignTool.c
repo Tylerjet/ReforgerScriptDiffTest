@@ -226,7 +226,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 	[ButtonAttribute("Print all destructible resource names")]
 	protected void PrintAllDestructibleResourceNames()
 	{
-		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "Prefabs");
+		Workbench.SearchResources(m_Handler.Callback, EXTENSIONS, rootPath: "$ArmaReforger:Prefabs");
 		array<ResourceName> resourceNames = m_Handler.GetResourceNames();
 		
 		Resource resource;
@@ -782,7 +782,7 @@ class SCR_DestructionIndicesAssignTool : WorldEditorTool
 		BaseContainer defaultHitZone;
 		array<ref ContainerIdPathEntry> path = {};
 		bool deleteAfterFinalPhase = false;
-		EMaterialSoundType materialSoundType;
+		SCR_EMaterialSoundTypeBreak materialSoundType;
 		float momentumToDamage;
 		for (int i = outResourceNames.Count() - 1; i >= 0; i--)
 		{

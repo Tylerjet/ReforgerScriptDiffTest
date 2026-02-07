@@ -4,5 +4,5 @@ class SCR_MissionHeaderCombatOps : SCR_MissionHeader
 	int m_iMaxNumberOfTasks;
 	
 	[Attribute()]
-	ref array<ref CP_TaskType> m_aTaskTypesAvailable;
+	ref array<ref SCR_ScenarioFrameworkTaskType> m_aTaskTypesAvailable;
 };

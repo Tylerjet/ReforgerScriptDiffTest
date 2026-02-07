@@ -34,13 +34,13 @@ class SCR_AIBaseUtilityComponent : ScriptComponent
 			SCR_AIActionBase action = m_aActions[i];
 			
 			// Evaluate anyway even though might be suspended
-			currentScore = action.Evaluate();
+			currentScore = action.Evaluate() + action.EvaluatePriorityLevel();
 			
 			#ifdef AI_DEBUG
 			string _strSuspended = string.Empty;
 			if (action.m_bSuspended)
 				_strSuspended = "(S) ";
-			AddDebugMessage(string.Format("    %1%2 %3 %4", _strSuspended, currentScore.ToString(3, 1), typename.EnumToString(EAIActionType, action.m_eType), action.GetActionDebugInfo()));
+			AddDebugMessage(string.Format("    %1%2 %3 %4", _strSuspended, currentScore.ToString(5, 1), action.Type().ToString(), action.GetActionDebugInfo()));
 			#endif
 			
 			// Ignore if suspended
@@ -87,27 +87,6 @@ class SCR_AIBaseUtilityComponent : ScriptComponent
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	//! Return true when action was added
-	bool AddActionIfMissing(SCR_AIActionBase action)
-	{
-		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("AddActionIfMissing: %1", action.GetActionDebugInfo()));
-		#endif
-		
-		if (!action)
-			return false;
-	
-		typename type = action.Type();
-		foreach (SCR_AIActionBase a : m_aActions)
-		{
-			if (a.Type() == type)
-				return false;
-		}
-		m_aActions.Insert(action);
-		return true;
-	}
-	
-	//--------------------------------------------------------------------------------------------
 	bool RemoveObsoleteActions()
 	{		
 		bool result = false;
@@ -128,34 +107,57 @@ class SCR_AIBaseUtilityComponent : ScriptComponent
 	}
 	
 	//--------------------------------------------------------------------------------------------
-	void SetStateAllActionsOfType(EAIActionType actionType,EAIActionState actionState)
+	void SetStateAllActionsOfType(typename actionType, EAIActionState actionState, bool includeInherited = false)
 	{
 		#ifdef AI_DEBUG
-		AddDebugMessage(string.Format("SetStateAllActionsOfType: %1 %2", typename.EnumToString(EAIActionType, actionType), typename.EnumToString(EAIActionState, actionState)));
+		AddDebugMessage(string.Format("SetStateAllActionsOfType: %1 %2", actionType, typename.EnumToString(EAIActionState, actionState)));
 		#endif
 		
-		for (int i = 0, len = m_aActions.Count(); i < len; i++)
+		if (includeInherited)
 		{
-			if (m_aActions[i].m_eType == actionType)
+			foreach (SCR_AIActionBase action : m_aActions)
 			{
-				switch (actionState)
+				if (action.IsInherited(actionType))
 				{
-					case EAIActionState.COMPLETED :
+					switch (actionState)
 					{
-						m_aActions[i].Complete();
-						break;
+						case EAIActionState.COMPLETED :
+						{
+							action.Complete();
+							break;
+						}
+						case EAIActionState.FAILED :
+						{
+							action.Fail();
+							break;
+						}
 					}
-					case EAIActionState.FAILED :
-					{
-						m_aActions[i].Fail();
-						break;
-					}
-				}	
-				if (m_aActions[i].m_bUniqueInActionQueue)
-					break;
+				}
 			}
-		}		
-	}	
+		}
+		else
+		{
+			foreach (SCR_AIActionBase action : m_aActions)
+			{
+				if (action.Type() == actionType)
+				{
+					switch (actionState)
+					{
+						case EAIActionState.COMPLETED :
+						{
+							action.Complete();
+							break;
+						}
+						case EAIActionState.FAILED :
+						{
+							action.Fail();
+							break;
+						}
+					}
+				}
+			}
+		}
+	}
 	
 	//--------------------------------------------------------------------------------------------
 	void SetCurrentAction(SCR_AIActionBase actionToSet)
@@ -201,18 +203,6 @@ class SCR_AIBaseUtilityComponent : ScriptComponent
 		foreach (SCR_AIActionBase a : m_aActions)
 		{
 			if (a.Type() == actionType)
-				return true;
-		}
-		
-		return false;
-	}
-	
-	//--------------------------------------------------------------------------------------------
-	bool HasActionOfType(EAIActionType actionType)
-	{
-		foreach (SCR_AIActionBase a : m_aActions)
-		{
-			if (a.m_eType == actionType)
 				return true;
 		}
 		
@@ -279,4 +269,18 @@ class SCR_AIBaseUtilityComponent : ScriptComponent
 		infoComp.AddDebugMessage(str, msgType: messageType);
 	}
 	#endif
+	
+	override void EOnDeactivate(IEntity owner)
+	{
+		super.EOnDeactivate(owner);
+		
+		ClearEventMask(m_OwnerAgent, EntityEvent.FRAME);
+	}
+	
+	override void EOnActivate(IEntity owner)
+	{
+		super.EOnActivate(owner);
+		
+		SetEventMask(m_OwnerAgent, EntityEvent.FRAME);
+	}
 };

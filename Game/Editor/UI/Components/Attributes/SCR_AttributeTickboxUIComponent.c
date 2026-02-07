@@ -26,6 +26,7 @@ class SCR_AttributeTickboxUIComponent: ScriptedWidgetComponent
 	
 	//States
 	protected bool m_bToggled;
+	protected bool m_bEnabled = true;
 	
 	//Events
 	protected ref ScriptInvoker Event_OnToggleChanged = new ScriptInvoker;
@@ -37,6 +38,9 @@ class SCR_AttributeTickboxUIComponent: ScriptedWidgetComponent
 	*/
 	void ToggleTickbox(bool toggled)
 	{		
+		if (!m_bEnabled)
+			return;
+		
 		m_bToggled = toggled;
 		
 		Event_OnToggleChanged.Invoke(toggled);
@@ -62,6 +66,15 @@ class SCR_AttributeTickboxUIComponent: ScriptedWidgetComponent
 			overideValue.SetBool(toggled);
 			attributesManager.SetAttributeVariable(m_LinkedOverrideAttributeType, overideValue);
 		}
+	}
+	
+	/*!
+	If subAttribute toggles the tickbox if the 'parent' attribute disabled the attribute
+	\param enabled, If true sets itself as enabled. Else disables it
+	*/
+	void ToggleEnableByAttribute(bool enabled)
+	{
+		SetEnabled(enabled);
 	}
 	
 	protected void OnButtonToggle()
@@ -102,6 +115,8 @@ class SCR_AttributeTickboxUIComponent: ScriptedWidgetComponent
 	
 	protected void SetEnabled(bool enabled)
 	{		
+		m_bEnabled = enabled;
+		
 		//m_TickBoxImage.LoadImageTexture(0, m_sNonConfictingTickBoxImage);
 		Color color = m_TickBoxImage.GetColor();
 		if (!enabled)
@@ -112,6 +127,15 @@ class SCR_AttributeTickboxUIComponent: ScriptedWidgetComponent
 		m_TickBoxImage.SetColor(color);
 		
 		m_TickBoxButton.SetEnabled(enabled);
+	}
+	
+	/*!
+	Get if tickbox is enabled or not. 
+	\return Tickbox is enabled true or false
+	*/
+	bool GetEnabled()
+	{
+		return m_bEnabled;
 	}
 	
 	/*!

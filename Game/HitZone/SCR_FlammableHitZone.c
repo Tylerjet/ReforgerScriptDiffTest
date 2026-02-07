@@ -11,7 +11,7 @@ enum EFireState
 class SCR_FlammableHitZone: SCR_DestructibleHitzone
 {
 	private static const float			FIRE_TERRAIN_HEIGHT_TOLERANCE = 2.2; // Prevents spawning of ground fire effect if the vehicle is too high (in meters)
-	protected static const float 		LIGHT_EMISSIVITY_START = 1;
+	protected static const float 		LIGHT_EMISSIVITY_START = 5;
 	
 	private int							m_iFireInstigatorID;
 	private EFireState					m_eFireState;
@@ -312,7 +312,11 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		
 		// Send update to remote clients
 		array<HitZone> hitZones = {};
-		SCR_HitZoneContainerComponent hitZoneContainer = GetHitZoneContainer();
+		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		
+		if(!hitZoneContainer)
+			return;
+		
 		hitZoneContainer.GetAllHitZones(hitZones);
 		int hitZoneIndex = hitZones.Find(this);
 		if (hitZoneIndex >= 0)
@@ -495,7 +499,12 @@ class SCR_FlammableHitZone: SCR_DestructibleHitzone
 		if (!owner)
 			return;
 		
-		if (IsProxy() && !GetHitZoneContainer().IsRplReady())
+		SCR_HitZoneContainerComponent hitZoneContainer = SCR_HitZoneContainerComponent.Cast(GetHitZoneContainer());
+		
+		if(!hitZoneContainer)
+			return;		
+		
+		if (IsProxy() && !hitZoneContainer.IsRplReady())
 			return;
 		
 		float depth;

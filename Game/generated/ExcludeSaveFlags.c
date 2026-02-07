@@ -12,5 +12,5 @@ enum ExcludeSaveFlags
 	ExcludeSaveBuildings,
 	ExcludeSaveAreas,
 	ExcludeSaveWaterBodies,
-	ExcludeSaveHills
-};
+	ExcludeSaveHills,
+}

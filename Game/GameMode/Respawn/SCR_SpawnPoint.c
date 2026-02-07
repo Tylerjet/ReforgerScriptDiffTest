@@ -474,7 +474,7 @@ class SCR_SpawnPoint : SCR_Position
 				m_aChildren.Insert(SCR_Position.Cast(child));
 			child = child.GetSibling();
 		}
-		
+
 		m_FactionAffiliationComponent = SCR_FactionAffiliationComponent.Cast(owner.FindComponent(SCR_FactionAffiliationComponent));
 		if (m_FactionAffiliationComponent)
 		{
@@ -486,7 +486,10 @@ class SCR_SpawnPoint : SCR_Position
 			}
 		}		
 
-		ClearFlags(EntityFlags.ACTIVE, false);
+		OnSetFactionKey();
+		Event_OnSpawnPointCountChanged.Invoke(m_sFaction);		
+
+		ClearFlags(EntityFlags.ACTIVE);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -498,7 +501,6 @@ class SCR_SpawnPoint : SCR_Position
 		if (GetGame().GetWorldEntity())
 		{
 			m_aSpawnPoints.Insert(this);
-			Event_OnSpawnPointCountChanged.Invoke(m_sFaction);
 		}
 	}
 

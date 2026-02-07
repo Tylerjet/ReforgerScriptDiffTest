@@ -24,15 +24,7 @@ class SCR_AISwitchWeapon : SCR_AIWeaponHandlingBase
 		if (!weaponMgr)
 			return ENodeResult.FAIL;
 		
-		// Return success if done
 		BaseWeaponComponent currentWeaponComp = weaponMgr.GetCurrentWeapon();
-		if (currentWeaponComp == newWeaponComp)
-		{
-			#ifdef AI_DEBUG
-			AddDebugMessage("Weapon switch completed");
-			#endif
-			return ENodeResult.SUCCESS;
-		}
 		
 		if (compartmentSlot)
 		{
@@ -48,6 +40,13 @@ class SCR_AISwitchWeapon : SCR_AIWeaponHandlingBase
 				AddDebugMessage("Weapon switch failed: no turret controller on turret", LogLevel.WARNING);
 				#endif
 				return ENodeResult.FAIL;
+			}
+			else if (currentWeaponComp == newWeaponComp) // Return success if done
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage("Weapon switch completed");
+				#endif
+				return ENodeResult.SUCCESS;
 			}
 			else
 			{
@@ -66,6 +65,13 @@ class SCR_AISwitchWeapon : SCR_AIWeaponHandlingBase
 			if (m_ControlComp.IsChangingItem())
 			{
 				return ENodeResult.RUNNING;
+			}
+			else if (currentWeaponComp == newWeaponComp) // Return success if done
+			{
+				#ifdef AI_DEBUG
+				AddDebugMessage("Weapon switch completed");
+				#endif
+				return ENodeResult.SUCCESS;
 			}
 			else if (!m_InventoryMgr.Contains(newWeaponComp.GetOwner()))
 			{

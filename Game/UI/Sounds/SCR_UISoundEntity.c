@@ -63,7 +63,6 @@ class SCR_UISoundEntity : GenericEntity
 	void SCR_UISoundEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 		m_Instance = this;
 	}
 	

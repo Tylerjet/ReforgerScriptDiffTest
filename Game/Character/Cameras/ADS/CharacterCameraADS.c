@@ -243,7 +243,10 @@ class CharacterCameraADS extends CharacterCameraBase
 		
 		// Take look angles directly and correct those for character pitch
 		vector aimingAnglesMS = cameraData.m_vLookAngles;
-		aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		// ! Note that for during weapon deployment this correction is undesirable.
+		if (!m_ControllerComponent.GetIsWeaponDeployed())
+			aimingAnglesMS[1] = aimingAnglesMS[1] + m_OwnerCharacter.GetLocalYawPitchRoll()[1];
+		
 		// Use as intended
 		Math3D.AnglesToMatrix( aimingAnglesMS, sightsMS );
 		
@@ -515,7 +518,7 @@ class CharacterCameraADS extends CharacterCameraBase
 		pOutResult.m_fNearPlane				= 0.025;
 		pOutResult.m_bBlendFOV 				= true; // otherwise FOV blend transitions awkwardly
 	}
-	ref ADSCameraData cameraData = new ADSCameraData();
+	
 	//-----------------------------------------------------------------------------
 	override void OnUpdate(float pDt, out ScriptedCameraItemResult pOutResult)
 	{
@@ -545,24 +548,24 @@ class CharacterCameraADS extends CharacterCameraBase
 		}
 		//! Prepare data
 		
-		cameraData.m_fDeltaTime = pDt;
-		cameraData.m_vLookAngles = lookAngles;
-		cameraData.m_fFOV = GetBaseFOV();
+		m_pCameraData.m_fDeltaTime = pDt;
+		m_pCameraData.m_vLookAngles = lookAngles;
+		m_pCameraData.m_fFOV = GetBaseFOV();
 		
 		//! Fetch sights transformation
 		if (sights)
 		{
-			m_WeaponManager.GetCurrentSightsCameraTransform(cameraData.m_mSightsLocalMat, cameraData.m_fFOV);
-			cameraData.m_vSightsOffset = sights.GetSightsOffset();
-			cameraData.m_fCamRecoilAmount = sights.GetCameraRecoilAmount();
+			m_WeaponManager.GetCurrentSightsCameraTransform(m_pCameraData.m_mSightsLocalMat, m_pCameraData.m_fFOV);
+			m_pCameraData.m_vSightsOffset = sights.GetSightsOffset();
+			m_pCameraData.m_fCamRecoilAmount = sights.GetCameraRecoilAmount();
 		}
 		else
 		{
-			Math3D.MatrixIdentity4(cameraData.m_mSightsLocalMat);
+			Math3D.MatrixIdentity4(m_pCameraData.m_mSightsLocalMat);
 		}
 		
 		//! Recalculate FOV
-		cameraData.m_fFOV = Math.Min(GetBaseFOV(), cameraData.m_fFOV);
+		m_pCameraData.m_fFOV = Math.Min(GetBaseFOV(), m_pCameraData.m_fFOV);
 		
 		//! Fetch zeroing data
 		// Apparently in rare cases like bandaging, weapon can be missing
@@ -574,7 +577,7 @@ class CharacterCameraADS extends CharacterCameraBase
 			{
 				// add zeroing to our initial local sights
 				zeroingMatrix[3] = -zeroingMatrix[3];
-				Math3D.MatrixMultiply4(cameraData.m_mSightsLocalMat, zeroingMatrix, cameraData.m_mSightsLocalMat);
+				Math3D.MatrixMultiply4(m_pCameraData.m_mSightsLocalMat, zeroingMatrix, m_pCameraData.m_mSightsLocalMat);
 			}
 		}
 
@@ -592,24 +595,24 @@ class CharacterCameraADS extends CharacterCameraBase
 			// 2D sights
 			if (!pip || SCR_Global.IsScope2DEnabled())
 			{
-				SolveCamera2DSight(cameraData, pOutResult);
+				SolveCamera2DSight(m_pCameraData, pOutResult);
 				pOutResult.m_pOwner 				= m_OwnerCharacter;
 				pOutResult.m_pWSAttachmentReference = null;
 				return;
 			}
 			
 			// Camera FOV to be used is different from the sights FOV
-			cameraData.m_fFOV = pip.GetMainCameraFOV();
+			m_pCameraData.m_fFOV = pip.GetMainCameraFOV();
 			overlayCamera  = pip.GetPIPCamera();
 		}
 		
 		if (!canFreelook)
 		{
-			cameraData.m_vLookAngles[0] = 0.0;
+			m_pCameraData.m_vLookAngles[0] = 0.0;
 		}
 		
 		// Store freelook state
-		cameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook);
+		m_pCameraData.m_bFreeLook = canFreelook && (m_ControllerComponent.IsFreeLookEnabled() || m_bForceFreeLook);
 	
 		int solveMethod = 0;
 		#ifdef ENABLE_DIAG
@@ -617,19 +620,19 @@ class CharacterCameraADS extends CharacterCameraBase
 		#endif		
 		
 		if (solveMethod == 1)
-			SolveCameraHandAttach(cameraData, pOutResult, pDt, false);
+			SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, false);
 		else if (solveMethod == 2)
-			SolveCameraHeadAttach(cameraData, pOutResult);
+			SolveCameraHeadAttach(m_pCameraData, pOutResult);
 		else if (solveMethod == 3)
-			SolveCameraHandAttach(cameraData, pOutResult, pDt, true);
+			SolveCameraHandAttach(m_pCameraData, pOutResult, pDt, true);
 		else // :-)
-			SolveNewMethod(cameraData, pOutResult, pDt, true);
+			SolveNewMethod(m_pCameraData, pOutResult, pDt, true);
 		
 		CameraManager cameraMgr = GetGame().GetCameraManager();
 		if (cameraMgr != null)
 		{
 			// Update overlay camera
-			if (cameraData.m_bFreeLook)
+			if (m_pCameraData.m_bFreeLook)
 			{
 				// Supress overlay cam				
 				cameraMgr.SetOverlayCamera(null);
@@ -655,6 +658,7 @@ class CharacterCameraADS extends CharacterCameraBase
 	protected CharacterAimingComponent m_AimingComponent;
 	protected SCR_GadgetManagerComponent m_GadgetManager;
 	protected BaseSightsComponent m_BinocularSight;
+	ref ADSCameraData m_pCameraData = new ADSCameraData();
 	
 	protected	bool	m_bIsFullyBlend = false;
 	protected	int 	m_iHandBoneIndex;	//!< hand bone

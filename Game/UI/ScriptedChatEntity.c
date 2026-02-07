@@ -12,7 +12,6 @@ class ScriptedChatEntity : BaseChatEntity
 	void ScriptedChatEntity(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}	
 
 	

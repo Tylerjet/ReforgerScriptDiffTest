@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
 class ScriptedUserAction: BaseUserAction
@@ -15,8 +15,8 @@ class ScriptedUserAction: BaseUserAction
 	event void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent);
 	//! Called when someone tries to perform the action, user entity is typically character
 	event void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity);
-	//! Called when someone tries to cancel the action, user entity is typically character
-	event void CancelAction(IEntity pUserEntity);
+	//! Called when someone tries to perform the continuous action, user entity is typically character
+	event void PerformContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice);
 	//! If action passed as callback OnConfirmed will be called when reached execution, user entity is typically character
 	event void OnConfirmed(IEntity pUserEntity);
 	//! If action passed as callback OnRejected will be called when execution was rejected, user entity is typically character
@@ -41,6 +41,8 @@ class ScriptedUserAction: BaseUserAction
 	event bool HasLocalEffectOnlyScript() { return false; };
 	//! If HasLocalEffectOnly() is true this method tells if the server is supposed to broadcast this action to clients.
 	event bool CanBroadcastScript() { return true; };
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

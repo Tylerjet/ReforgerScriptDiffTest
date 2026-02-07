@@ -83,7 +83,6 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 			return;		
 		
     	GetGame().GetInputManager().AddActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
-    	GetGame().GetInputManager().AddActionListener("CharacterDropItem", EActionTrigger.DOWN, Action_DropItem );
     	m_bOpened = true;
     	GetGame().GetCallqueue().Remove( ShowQuickSlots );		// if there's a delayed Show method from the previous quick bar usage, purge it
 		if ( !m_wRoot )
@@ -118,7 +117,6 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
     void Action_CloseQuickSelectionBar()
     {
     	GetGame().GetInputManager().RemoveActionListener("CharacterSwitchWeapon", EActionTrigger.VALUE, Action_SelectSlot );
-    	GetGame().GetInputManager().RemoveActionListener("CharacterDropItem", EActionTrigger.DOWN, Action_DropItem);
     	m_bOpened = false;
 		if ( !m_wRoot )
 			return;	
@@ -134,8 +132,6 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 		SCR_InventoryStorageManagerComponent invMan = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
 		if (invMan)
 			invMan.m_OnQuickBarOpenInvoker.Invoke(false);
-		
-		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_INV_HOTKEY_CLOSE);
     }
 
 	//------------------------------------------------------------------------------------------------
@@ -180,18 +176,6 @@ class SCR_WeaponSwitchingBaseUI: SCR_InfoDisplay
 			s_pQuickSlotStorage.SelectSlot( inputManager.GetActionValue("CharacterSwitchWeapon") );
 		else
 			s_pQuickSlotStorage.SelectSlot( targetSlot );
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void Action_DropItem()
-	{
-		SCR_InventoryStorageManagerComponent storageManager = SCR_InventoryStorageManagerComponent.Cast(m_pInventoryManager);
-		if (!storageManager)
-			return;
-		
-		SCR_CharacterInventoryStorageComponent storage = storageManager.GetCharacterStorage();
-		if (storage)
-			storage.DropCurrentItem();
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -557,7 +557,9 @@ class SCR_PlacingEditorComponent : SCR_BaseEditorComponent
 				SCR_RespawnSystemComponent respawnSystem = SCR_RespawnSystemComponent.GetInstance();
 				if (respawnSystem)
 				{
-					owner = respawnSystem.CustomRespawn(playerID, prefabResource.GetResource().GetResourceName(), params.m_vTransform[3]/*, Math3D.MatrixToAngles(params.m_vTransform)*/);
+					vector yawPitchRoll = Math3D.MatrixToAngles(params.m_vTransform);
+					vector pitchYawRoll = Vector(yawPitchRoll[1], yawPitchRoll[0], yawPitchRoll[2]);
+					owner = respawnSystem.CustomRespawn(playerID, prefabResource.GetResource().GetResourceName(), params.m_vTransform[3], pitchYawRoll);
 				}
 			}
 		}

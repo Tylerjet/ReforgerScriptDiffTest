@@ -1,126 +1,105 @@
-class SCR_ItemSelectionMenuEntry : SCR_BaseGroupEntry
+class SCR_ItemSelectionMenuEntry : SCR_SelectionMenuEntry
 {
-	protected SCR_CharacterInventoryStorageComponent m_pStorage;
+	protected const ResourceName LAYOUT_ITEM = "{93472DECDA62C46F}UI/layouts/Common/RadialMenu/SelectionMenuEntryPreview.layout";
+	protected SCR_CharacterInventoryStorageComponent m_Storage;
 	protected int m_iQuickSlotID = -1;
-	
+
 	//------------------------------------------------------------------------------------------------
-	override void UpdateVisuals()
-	{	
-		SCR_SelectionEntryWidgetComponent entryWidget = SCR_SelectionEntryWidgetComponent.Cast(GetEntryComponent());
-		if (!entryWidget)
+	override void Update()
+	{
+		SCR_SelectionMenuEntryComponent entry = GetEntryComponent();
+		if (!entry)
 			return;
-		
-		entryWidget.SetIconFaded(true);
-		
-		// Weapon and info
+
+		bool enabled;
+		string name;
+		string description;
+
 		IEntity item = GetItem();
-		if (!item)
-			return;
-		
-		// Widget setup 
-		entryWidget.SetLabelText(string.Empty);
-		entryWidget.SetPreviewItem(item);
-		entryWidget.SetIcon(string.Empty);
-		entryWidget.SetIconVisible(false);
+		if (item)
+		{
+			enabled = true;
+
+			UIInfo uiInfo = GetUIInfo(item);
+			if (uiInfo)
+			{
+				name = uiInfo.GetName();
+				description = uiInfo.GetDescription();
+			}
+		}
+
+		// Widget setup
+		SetName(name);
+		SetDescription(description);
+
+		if (entry)
+			entry.SetEnabled(enabled);
+
+		SCR_SelectionMenuEntryPreviewComponent entryPreview = SCR_SelectionMenuEntryPreviewComponent.Cast(entry);
+		if (entryPreview)
+			entryPreview.SetPreviewItem(item);
+
+		return;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	int GetQuickSlotID()
 	{
 		return m_iQuickSlotID;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void SetQuickSlotID(int id)
 	{
 		m_iQuickSlotID = id;
-		UpdateVisuals();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	protected IEntity GetItem()
-	{	
+	{
 		if (m_iQuickSlotID < 0)
 			return null;
-		
-		if (!m_pStorage)
+
+		if (!m_Storage)
 			return null;
-		
-		array<IEntity> quickSlotItems = m_pStorage.GetQuickSlotItems();
+
+		array<IEntity> quickSlotItems = m_Storage.GetQuickSlotItems();
 		if (quickSlotItems && m_iQuickSlotID < quickSlotItems.Count())
 			return quickSlotItems[m_iQuickSlotID];
-		
+
 		return null;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Callback for when this entry is supposed to be performed
-	protected override event void OnPerform(IEntity user, BaseSelectionMenu sourceMenu)
+	override void OnPerform()
 	{
-		if (!user)
-			return;
-		
-		if (m_pStorage)
-			m_pStorage.UseItem(GetItem());
-		
-		super.OnPerform(user, sourceMenu);
+		super.OnPerform();
+
+		IEntity item = GetItem();
+		if (item && m_Storage && m_Storage.CanUseItem(item))
+			m_Storage.UseItem(item);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Can this entry be shown?
-	protected override bool CanBeShownScript(IEntity user, BaseSelectionMenu sourceMenu)
+	protected UIInfo GetUIInfo(IEntity item)
 	{
-		return m_pStorage;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Can this entry be performed?
-	protected override bool CanBePerformedScript(IEntity user, BaseSelectionMenu sourceMenu)
-	{
-		IEntity item = GetItem();
-		return item && m_pStorage.CanUseItem(item);;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override bool GetEntryNameScript(out string outName)
-	{
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override bool GetEntryDescriptionScript(out string outDescription)
-	{
-		return false;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override bool GetEntryIconPathScript(out string outIconPath)
-	{
-		return true;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected override UIInfo GetUIInfoScript()
-	{
-		IEntity item = GetItem();
-		if (!item)	
+		if (!item)
 			return null;
-		
+
 		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
 		if (!itemComponent)
 			return null;
-		
+
 		return itemComponent.GetUIInfo();
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
-	void SCR_ItemSelectionMenuEntry(IEntity owner, int quickSlotID)
+	void SCR_ItemSelectionMenuEntry(notnull SCR_CharacterInventoryStorageComponent storage, int quickSlotID)
 	{
-		if (!owner)
-			return;
-		
+		m_Storage = storage;
 		m_iQuickSlotID = quickSlotID;
-		
-		m_pStorage = SCR_CharacterInventoryStorageComponent.Cast(owner.FindComponent(SCR_CharacterInventoryStorageComponent));
+
+		SetCustomLayout(LAYOUT_ITEM);
 	}
 };

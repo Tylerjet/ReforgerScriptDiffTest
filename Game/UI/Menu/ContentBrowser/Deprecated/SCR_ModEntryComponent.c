@@ -11,7 +11,7 @@ class SCR_ModEntryComponent : SCR_ContentEntryComponent
 	// Mod handling 
 	protected ref SCR_WorkshopItem m_Item; // Strong ref!
 	ref ScriptInvoker m_OnModDonwloaded = new ref ScriptInvoker();
-	string m_sVersion;
+	ref Revision m_Version;
 	
 	// Handling button 
 	protected SCR_MultipleStatesButtonComponent m_BtnDownload; 
@@ -148,11 +148,11 @@ class SCR_ModEntryComponent : SCR_ContentEntryComponent
 		bool downloading = false;
 		bool paused = false;
 		bool downloaded = false;
-		string targetVersion;
+		Revision targetRevision;
 		float progress = -1.0;
 		int newState = -1;
 		
-		item.GetDownloadState(downloading, paused, progress, targetVersion);
+		item.GetDownloadState(downloading, paused, progress, targetRevision);
 		downloaded = item.GetOffline();
 		
 		// Set state of the button
@@ -281,7 +281,7 @@ class SCR_ModEntryComponent : SCR_ContentEntryComponent
 		 
 		// Dowload
 		SCR_WorkshopItemActionDownload action;
-		if (m_sVersion.IsEmpty())
+		if (m_Version == null)
 		{
 			// No speficic version, just get the latest one
 			action = m_Item.DownloadLatestVersion();
@@ -289,7 +289,7 @@ class SCR_ModEntryComponent : SCR_ContentEntryComponent
 		else
 		{
 			// Download a specific version
-			action = m_Item.Download(m_sVersion);
+			action = m_Item.Download(m_Version);
 		}
 		action.Activate();
 	}

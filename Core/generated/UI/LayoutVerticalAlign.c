@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 enum LayoutVerticalAlign
@@ -14,7 +14,9 @@ enum LayoutVerticalAlign
 	Top,
 	Center,
 	Bottom,
-	Stretch
-};
+	Stretch,
+}
 
-/** @}*/
+/*!
+\}
+*/

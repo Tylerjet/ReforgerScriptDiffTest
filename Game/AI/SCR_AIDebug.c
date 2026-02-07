@@ -31,7 +31,7 @@ class SCR_AIDebug : SCR_GameCoreBase
 	{
 		if (m_FileHandle)
 		{
-			m_FileHandle.CloseFile();
+			m_FileHandle.Close();
 			m_FileHandle = null;
 		}
 		
@@ -88,8 +88,8 @@ class SCR_AIDebug : SCR_GameCoreBase
 			str
 		);
 		
-		inst.m_FileHandle.FPrint(formattedStr);
-		inst.m_FileHandle.FPrint("\n");
+		inst.m_FileHandle.Write(formattedStr);
+		inst.m_FileHandle.Write("\n");
 		
 		if (copyToStdLog)
 			Print(str, logLevel);

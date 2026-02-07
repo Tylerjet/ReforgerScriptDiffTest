@@ -27,4 +27,4 @@ class PlatformService
 	Returns \see PlatformKind for this particular executable.
 	*/
 	proto native PlatformKind GetLocalPlatformKind();
-};
+}

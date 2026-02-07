@@ -116,12 +116,11 @@ class SCR_CampaignGrabRadioUserAction : ScriptedUserAction
 			return false;
 		}
 		
-		BaseLoadoutManagerComponent loadoutManager = BaseLoadoutManagerComponent.Cast(user.FindComponent(BaseLoadoutManagerComponent));
-		
-		if (!loadoutManager)
+		EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(user.FindComponent(EquipedLoadoutStorageComponent));
+		if (!loadoutStorage)
 			return false;
 		
-		IEntity backpack = loadoutManager.GetClothByArea(LoadoutBackpackArea);
+		IEntity backpack = loadoutStorage.GetClothFromArea(LoadoutBackpackArea);
 		
 		if (backpack)
 		{

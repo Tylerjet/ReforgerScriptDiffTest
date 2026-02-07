@@ -50,6 +50,12 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	protected void GetWidgets()
 	{
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_NavigationButtonComponent GetQuickDeployButton()
+	{
+		return m_QuickDeployButton;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuOpen(SCR_SuperMenuBase parentMenu)
@@ -80,6 +86,8 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 
 		SetDeployAvailable();
 		SetQuickDeployAvailable();
+
+		s_bPlayableFactionsAvailable = m_RespawnSystemComponent.GetPlayerFaction(m_iPlayerId) != null;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -254,7 +262,7 @@ class SCR_RespawnSubMenuBase : SCR_SubMenuBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void CreateQuickDeployButton()
+	void CreateQuickDeployButton()
 	{
 		SCR_RespawnMenuHandlerComponent rmh = SCR_RespawnSuperMenu.Cast(m_ParentMenu).GetRespawnMenuHandler();
 		if (!rmh.GetAllowQuickDeploy())

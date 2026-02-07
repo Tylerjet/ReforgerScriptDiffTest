@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Physics
-* @{
+/*!
+\addtogroup Physics
+\{
 */
 
 /*!
@@ -47,6 +47,8 @@ sealed class Physics6DOFJoint: PhysicsJoint
 	\param limitUpper Value of the upper limit
 	*/
 	proto external void SetLimit(int axis, float limitLower, float limitUpper);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

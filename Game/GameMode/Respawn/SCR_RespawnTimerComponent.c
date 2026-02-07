@@ -226,9 +226,9 @@ class SCR_RespawnTimerComponent : SCR_BaseGameModeComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
-		super.OnPlayerDisconnected(playerId);
+		super.OnPlayerDisconnected(playerId, cause, timeout);
 
 		// Do nothing for now,
 		// TODO@AS: If needed, remove unused respawn timers?

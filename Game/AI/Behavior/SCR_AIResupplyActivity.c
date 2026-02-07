@@ -1,22 +1,29 @@
 class SCR_AIResupplyActivity : SCR_AIActivityBase
 {
-  	ref SCR_BTParam<IEntity> m_EntityToResupply = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);  
+	ref SCR_BTParam<IEntity> m_EntityToResupply = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
 	ref SCR_BTParam<typename> m_MagazineWell = new SCR_BTParam<typename>(SCR_AIActionTask.MAGAZINE_WELL_PORT);
-		
+	
+	//-------------------------------------------------------------------------------------------------------------
 	override float Evaluate()
-    {
+	{
 		return m_fPriority;
-    }
-
-    void SCR_AIResupplyActivity(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, IEntity ent, typename magazineWell, float priority = PRIORITY_ACTIVITY_RESUPPLY)
-    {
-		m_EntityToResupply.Init(this, ent);
+	}
+	
+	//-------------------------------------------------------------------------------------------------------------
+	void InitParameters(IEntity entityToResupply, typename magazineWell, float priorityLevel)
+	{
+		m_EntityToResupply.Init(this, entityToResupply);
 		m_MagazineWell.Init(this, magazineWell);
-		
-        m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityResupply.bt";
-		m_eType = EAIActionType.ACTIVITY_RESUPPLY;
-		m_fPriority = priority;		
-    }
+		m_fPriorityLevel.Init(this, priorityLevel);
+	}
+	
+	//-------------------------------------------------------------------------------------------------------------
+	void SCR_AIResupplyActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, IEntity ent, typename magazineWell, float priority = PRIORITY_ACTIVITY_RESUPPLY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		InitParameters(ent, magazineWell, priorityLevel);
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityResupply.bt";
+		m_fPriority = priority;
+	}
 	
 	override string GetActionDebugInfo()
 	{

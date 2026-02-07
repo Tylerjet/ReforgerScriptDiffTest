@@ -9,5 +9,5 @@ enum TouchEvent
 {
 	ON_ENTER,
 	ON_STAY,
-	ON_EXIT
-};
+	ON_EXIT,
+}

@@ -61,6 +61,19 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		return false;
 	}
 
+	override bool OnMouseEnter(Widget w, int x, int y)
+	{
+		SCR_InventorySpinBoxComponent spinbox = m_pInventoryMenu.GetAttachmentSpinBoxComponent();
+		if (spinbox)
+		{
+			int id = spinbox.FindItem(GetHitZoneName());
+			if (id > -1)
+				spinbox.SetCurrentItem(id);
+		}
+
+		return false;
+	}
+
 	protected void Highlight(bool highlight)
 	{
 		m_pBleedingHandler.Highlight(highlight);
@@ -225,6 +238,9 @@ class SCR_InventoryHitZonePointContainerUI : ScriptedWidgetComponent
 		float health = m_pCharDmgManager.GetGroupHealthScaled(m_eHitZoneGroup);
 		m_pDamageHandler.UpdateDamageHitZoneState(health);
 
+		m_pBleedingHandler.GetRootWidget().SetVisible(bleeding > 0 || tourniquetted);
+		m_pDamageHandler.GetRootWidget().SetVisible(health < 1 && bleeding == 0);
+		
 		if (m_bSelected)
 			ShowApplicableItems();
 
@@ -481,17 +497,18 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 			groupDamageIntensity = 2;
 		else if (groupHealth >= m_fMediumThreshold)
 			groupDamageIntensity = 1;
-		
+
 		bleedingRate = damageMan.GetGroupDamageOverTime(group, EDamageType.BLEEDING);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	protected void ShowArrows(int count = -1)
 	{
-		m_wRoot.SetVisible(count > -1);
-		m_wArrows.SetVisible(m_bAllowHoverOver);
-		if (count == -1)
+		if (!m_bBleedingHitZone)
 			return;
+
+		m_wRoot.SetVisible(count > 0);
+		m_wArrows.SetVisible(m_bAllowHoverOver);
 
 		for (int i = 0; i < m_aArrows.Count(); ++i)
 		{
@@ -538,12 +555,13 @@ class SCR_InventoryHitZonePointUI : ScriptedWidgetComponent
 		ShowArrows(arrowCount);
 	}
 
-	void UpdateDamageHitZoneState(int health)
+	void UpdateDamageHitZoneState(float health)
 	{
 		if (m_bBleedingHitZone)
 			return;
 
 		int arrowCount = -1;
+
 		if (health < 1)
 		{
 			arrowCount = health / (1 - health);

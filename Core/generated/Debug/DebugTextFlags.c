@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Debug
-* @{
+/*!
+\addtogroup Debug
+\{
 */
 
 enum DebugTextFlags
@@ -15,7 +15,9 @@ enum DebugTextFlags
 	CENTER,
 	FACE_CAMERA,
 	ONCE,
-	IN_WORLD
-};
+	IN_WORLD,
+}
 
-/** @}*/
+/*!
+\}
+*/

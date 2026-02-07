@@ -11,20 +11,27 @@ enum EPhysicsLayerPresets
 	Character,
 	Projectile,
 	Vehicle,
+	VehicleCast,
 	VehicleFire,
 	BasicVehicleObstacles,
 	VehicleFireView,
+	Building,
+	BuildingNoNavmesh,
+	BuildingView,
+	BuildingViewNoNavmesh,
+	BuildingFire,
+	BuildingFireNoNavmesh,
 	BuildingFireView,
+	BuildingFireViewNoNavmesh,
 	ItemFireView,
 	DoorFireView,
 	Weapon,
+	WeaponFire,
 	Terrain,
 	PropFireView,
 	TreeFireView,
 	CharNoCollide,
 	FireGeo,
-	BuildingFire,
-	Building,
 	RockFireView,
 	Debris,
 	Tree,
@@ -40,13 +47,13 @@ enum EPhysicsLayerPresets
 	CharacterAI,
 	Glass,
 	GlassFire,
-	BuildingView,
 	FireView,
 	ViewGeo,
 	VehicleComplex,
 	VehicleSimple,
-	BarbedWire
-};
+	CharacterFireGeoRagdoll,
+	InteractionFireGeo
+}
 
 /**
 	\brief Enum is filled by C++ by data in project config PhysicsSettings.Layers
@@ -55,7 +62,7 @@ enum EPhysicsLayerDefs
 {
 	Default,
 	Static,
-	None,
+	VehicleCast,
 	Cover,
 	Character,
 	Projectile,
@@ -80,15 +87,16 @@ enum EPhysicsLayerDefs
 	VehicleSimple,
 	VehicleComplex,
 	Perception,
-	Buoyancy
-};
+	Buoyancy,
+	Weapon
+}
 
 enum ETransformMode
 {
 	WORLD, ///< Set world transformation
 	LOCAL, ///< Set local transformation
 	OFFSET ///< Offset actual transformation
-};
+}
 
 /**
 	\brief Additional parameters for entity spawning
@@ -106,7 +114,7 @@ class EntitySpawnParams
 		Math3D.MatrixIdentity4(Transform);
 		Scale = 1;
 	}
-};
+}
 
 /*!
 Interface for classes implementing animation or progress bar of the loading
@@ -180,7 +188,7 @@ class LoadingAnim
 	void Hide()
 	{
 	}
-};
+}
 
 class BaseLoadingAnim: LoadingAnim
 {
@@ -258,7 +266,7 @@ class StringTableItem
 class ScriptStringTableItem: StringTableItem
 {
 	static string GetTargetPrefix();
-};
+}
 
 //------------------------------------------------------------------------------------------------
 /*!

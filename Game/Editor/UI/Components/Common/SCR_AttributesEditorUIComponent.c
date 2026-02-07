@@ -306,7 +306,7 @@ class SCR_AttributesEditorUIComponent: MenuRootSubComponent
 	protected void SetGamepadAttributeFocus(SCR_BaseEditorAttributeUIComponent attributeUI)
 	{
 		m_GamepadFocusAttribute = attributeUI;
-		m_GamepadToggleEnableButton.SetEnabled(m_GamepadFocusAttribute != null);
+		m_GamepadToggleEnableButton.SetEnabled(m_GamepadFocusAttribute != null && m_GamepadFocusAttribute.GetTickboxEnabled());
 	}
 	
 	protected void SetHasConflictingAttribute(bool hasConflicting)

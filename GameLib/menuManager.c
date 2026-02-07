@@ -1,9 +1,12 @@
+typedef func MenuItemCallback;
+void MenuItemCallback(MenuBase menu = null, string menuItem = "", bool changed = false, bool finished = false); 
+
 enum DialogPriority
 {
 	INFORMATIVE,
 	WARNING,
 	CRITICAL	
-};
+}
 
 enum DialogResult
 {
@@ -12,12 +15,12 @@ enum DialogResult
 	YES,
 	NO,
 	CANCEL,
-};
+}
 
 enum ScriptMenuPresetEnum
 {
 	
-};
+}
 
 enum GameLibMenusEnum : ScriptMenuPresetEnum
 {
@@ -43,7 +46,7 @@ class MenuManager
 	
 	protected void MenuManager();
 	protected void ~MenuManager();
-};
+}
 
 class MenuBindAttribute
 {
@@ -54,9 +57,6 @@ class MenuBindAttribute
 		m_MenuItemName = menuItemName;
 	}
 }
-
-typedef func MenuItemCallback;
-void MenuItemCallback(MenuBase menu = null, string menuItem = "", bool changed = false, bool finished = false); 
 
 /*! 
 Base class for menus in menu manager
@@ -110,7 +110,7 @@ class MenuBase: ScriptedWidgetEventHandler
 	
 	protected void MenuBase();
 	protected void ~MenuBase();
-};
+}
 
 class MessageBox: MenuBase
 {

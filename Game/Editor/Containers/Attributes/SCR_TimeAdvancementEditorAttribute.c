@@ -19,14 +19,11 @@ class SCR_TimeAdvancementEditorAttribute : SCR_BaseEditorAttribute
 	
 	//Disable respawn time if respawning is disabled
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-				
+	{	
 		if (isInit)
 			manager.SetAttributeAsSubAttribute(SCR_DayDurationEditorAttribute);
 		
-		manager.SetAttributeEnabled(SCR_DayDurationEditorAttribute, var.GetBool());
+		manager.SetAttributeEnabled(SCR_DayDurationEditorAttribute, var && var.GetBool());
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
@@ -41,9 +38,9 @@ class SCR_TimeAdvancementEditorAttribute : SCR_BaseEditorAttribute
 		if (item)
 		{
 			if (value)
-				SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_DAY_ADVANCE_ENABLED, playerID);
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_DAY_ADVANCE_ENABLED, playerID);
 			else 
-				SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_DAY_ADVANCE_DISABLED, playerID);
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_DAY_ADVANCE_DISABLED, playerID);
 		}
 	}
 };

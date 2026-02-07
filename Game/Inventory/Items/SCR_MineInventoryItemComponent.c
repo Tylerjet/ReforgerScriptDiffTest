@@ -8,6 +8,18 @@ class SCR_MineInventoryItemComponentClass : SCR_PlaceableInventoryItemComponentC
 class SCR_MineInventoryItemComponent : SCR_PlaceableInventoryItemComponent
 {
 	//------------------------------------------------------------------------------------------------
+	override void PlacementDone(notnull IEntity user)
+	{
+		super.PlacementDone(user);
+		
+		SCR_PressureTriggerComponent pressureTrigger = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
+		if (!pressureTrigger)
+			return;
+		
+		pressureTrigger.SetUser(user);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override bool ShouldHideInVicinity()
 	{
 		SCR_PressureTriggerComponent triggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));

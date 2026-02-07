@@ -25,14 +25,6 @@ class SCR_KickPlayerContextAction: SCR_SelectedEntitiesContextAction
 			if (playerDelegate)
 			{
 				GetGame().GetPlayerManager().KickPlayer(playerDelegate.GetPlayerID(), m_KickReason, m_iKickTimeout);
-				
-				//~ Todo: Move kick and ban notifications to Notification sender and make sure Player leaved notification is not shown
-				if (m_iKickTimeout < 0)
-					SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED_NO_DURATION, playerDelegate.GetPlayerID());
-				else if (m_iKickTimeout > 0)
-					SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_BANNED, playerDelegate.GetPlayerID(), m_iKickTimeout);
-				else 
-					SCR_NotificationsComponent.SendToEveryone(ENotification.PLAYER_KICKED, playerDelegate.GetPlayerID(), SCR_PlayerManagerKickReason.KICKED_BY_GM);	
 			}			
 		}
 	}

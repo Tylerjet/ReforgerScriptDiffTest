@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class AimingComponentClass: BaseAimingComponentClass
 {
-};
+}
 
 class AimingComponent: BaseAimingComponent
 {
@@ -44,7 +44,7 @@ class AimingComponent: BaseAimingComponent
 	proto void GetAimingLimits(out vector limitsHoriz, out vector limitsVert);
 	/*!
 	Returns the aiming translation prior to any transformations in weapon model space (1 = 1 m).
-	
+
 	x: +right, -left
 	y: +up, -down
 	z: +front, -back
@@ -52,12 +52,14 @@ class AimingComponent: BaseAimingComponent
 	proto external vector GetRawAimingTranslation();
 	/*!
 	Returns the aiming rotation in weapon model space. (1 = 1 rad).
-	
+
 	x: +yaw, -yaw
 	y: +pitch, -pitch
 	z: +roll, -roll
 	*/
 	proto external vector GetRawAimingRotation();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

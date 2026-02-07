@@ -2,35 +2,66 @@ class SCR_AIMoveActivity : SCR_AIActivityBase
 {
 	ref SCR_BTParamAssignable<vector> m_vPosition = new SCR_BTParamAssignable<vector>(SCR_AIActionTask.POSITION_PORT);
 	ref SCR_BTParam<IEntity> m_Entity = new SCR_BTParam<IEntity>(SCR_AIActionTask.ENTITY_PORT);
-	ref SCR_BTParam<bool> m_bNoVehicles = new SCR_BTParam<bool>(SCR_AIActionTask.NOVEHICLES_PORT);
-		
-	void SCR_AIMoveActivity(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_MOVE, IEntity ent = null, bool noVehicles = false)
-    {
-		m_vPosition.Init(this, pos);
-		m_vPosition.m_AssignedOut = (m_vPosition.m_Value != vector.Zero);
-		m_Entity.Init(this, ent);
-		m_bNoVehicles.Init(this, noVehicles);
-		
-        m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityMove.bt";
-		m_eType = EAIActionType.MOVE_IN_FORMATION;
-		m_fPriority = priority;
-    }
+	ref SCR_BTParam<bool> m_bUseVehicles = new SCR_BTParam<bool>(SCR_AIActionTask.USE_VEHICLES_PORT);
 	
+	//------------------------------------------------------------------------------------------------
+	void InitParameters(vector position, IEntity entity, bool useVehicles, float priorityLevel)
+	{
+		m_vPosition.Init(this, position);
+		m_vPosition.m_AssignedOut = (position != vector.Zero);
+		m_Entity.Init(this, entity);
+		m_bUseVehicles.Init(this, useVehicles);
+		m_fPriorityLevel.Init(this, priorityLevel);	
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void SCR_AIMoveActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, vector pos, IEntity ent, bool useVehicles = true, float priority = PRIORITY_ACTIVITY_MOVE, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
+		InitParameters(pos, ent, useVehicles, priorityLevel);
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityMove.bt";
+		m_fPriority = priority;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override string GetActionDebugInfo()
 	{
 		return this.ToString() + " moving to " + m_vPosition.ValueToString();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActionCompleted()
+	{
+		super.OnActionCompleted();
+		if (m_bUseVehicles.m_Value)
+		{
+			SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.m_OwnerAgent);
+			if (!group)
+				return;
+			group.ReleaseCompartments();
+		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void OnActionFailed()
+	{
+		super.OnActionFailed();
+		if (m_bUseVehicles.m_Value)
+		{
+			SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.m_OwnerAgent);
+			if (!group)
+				return;
+			group.ReleaseCompartments();
+		}
 	}
 };
 
 class SCR_AISeekAndDestroyActivity : SCR_AIMoveActivity
 {
-	void SCR_AISeekAndDestroyActivity(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_SEEK_AND_DESTROY, IEntity ent = null, bool noVehicles = false)
-    {
+	void SCR_AISeekAndDestroyActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, vector pos, IEntity ent, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_SEEK_AND_DESTROY, float priorityLevel = PRIORITY_LEVEL_NORMAL)
+	{
 		//m_bRemoveOnCompletion = false; removed: after S&D move was not realized, completed S&D was not removed
-       	m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivitySeekDestroy.bt";
-		m_eType = EAIActionType.SEEK_DESTROY;
-		m_vPosition.Init(this, vector.Zero);		
-    }
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivitySeekDestroy.bt";
+	}
 	
 	override string GetActionDebugInfo()
 	{
@@ -40,16 +71,14 @@ class SCR_AISeekAndDestroyActivity : SCR_AIMoveActivity
 
 class SCR_AIFollowActivity : SCR_AIMoveActivity
 {
-   	ref SCR_BTParam<float> m_fCompletionDistance = new SCR_BTParam<float>(SCR_AIActionTask.DESIREDDISTANCE_PORT);
+	ref SCR_BTParam<float> m_fCompletionDistance = new SCR_BTParam<float>(SCR_AIActionTask.DESIREDDISTANCE_PORT);
 	
-	// SCR_AIBaseUtilityComponent utility, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_MOVE, IEntity ent = null, bool noVehicles = false
-	void SCR_AIFollowActivity(SCR_AIBaseUtilityComponent utility, bool prioritize, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_FOLLOW, IEntity ent = null, bool noVehicles = false, float distance = 1.0)
-    {
+	// SCR_AIBaseUtilityComponent utility, bool isWaypointRelated, vector pos, float priority = PRIORITY_ACTIVITY_MOVE, IEntity ent = null, bool useVehicles = true
+	void SCR_AIFollowActivity(SCR_AIGroupUtilityComponent utility, bool isWaypointRelated, vector pos, IEntity ent, bool useVehicles = false, float priority = PRIORITY_ACTIVITY_FOLLOW, float priorityLevel = PRIORITY_LEVEL_NORMAL, float distance = 1.0)
+	{
+		m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityFollow.bt";
 		m_fCompletionDistance.Init(this, distance);
-		
-        m_sBehaviorTree = "AI/BehaviorTrees/Chimera/Group/ActivityFollow.bt";
-		m_eType = EAIActionType.FOLLOW;
-    }
+	}
 	
 	override string GetActionDebugInfo()
 	{

@@ -12,9 +12,9 @@ class SCR_AILookAction // : SCR_AIActionBase
 	
 	protected float m_fPriority;
 	
-	void SCR_AILookAction(SCR_AIBaseUtilityComponent utility, bool prioritize)
+	void SCR_AILookAction(SCR_AIUtilityComponent utility, bool prioritize)
 	{
-		m_Utility = SCR_AIUtilityComponent.Cast(utility);
+		m_Utility = utility;
 	}
 	
 	void LookAt(vector pos, float priority)
@@ -29,7 +29,7 @@ class SCR_AILookAction // : SCR_AIActionBase
 	
 	void LookAt(IEntity ent, float priority)
 	{
-		if (priority <= m_fPriority && ent)
+		if (priority < m_fPriority && ent)
 			return;
 
 		vector min, max;

@@ -7,20 +7,20 @@ class SCR_MapGadgetComponentClass: SCR_GadgetComponentClass
 //! Map gadget component
 class SCR_MapGadgetComponent : SCR_GadgetComponent
 {
-	[Attribute("0.35", UIWidgets.EditBox, desc: "seconds, delay before map gets activated giving time for the animation to be visible", params: "1 1000", category: "Map")]
+	[Attribute("0.3", UIWidgets.EditBox, desc: "seconds, delay before map gets activated giving time for the animation to be visible", params: "1 1000", category: "Map")]
 	protected float m_fActivationDelay;
 				
 	protected bool m_bIsMapOpen;
 	protected bool m_bIsFirstTimeOpened = true;		// whether the map has bene opened since put into a lot
 	protected SCR_MapEntity m_MapEntity;			// map instance
-	protected SCR_ScreenEffects m_ScreenEffects;	
+	protected SCR_FadeInOutEffect m_FadeInOutEffect;	
 	
 	//------------------------------------------------------------------------------------------------
 	//! Switch between map view
 	//! \param state is desired state: true = open, false = close
 	void SetMapMode(bool state)
 	{		
-		if (!m_MapEntity || !m_CharacterOwner)
+		if (!m_MapEntity || !m_CharacterOwner || !GetGame().GetGameMode())
 			return;
 				
 		// no delay/fade for forced cancel
@@ -37,15 +37,20 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 		{
 			GetGame().GetCallqueue().CallLater(ToggleMapGadget, delay, false, true);
 			
-			if (m_ScreenEffects)
-				m_ScreenEffects.FadeOutEffect(true, m_fActivationDelay); // fade out after map placed in hand
+			if (m_FadeInOutEffect)
+				m_FadeInOutEffect.FadeOutEffect(true, m_fActivationDelay); // fade out after map open
 		}
 		else		
 		{
 			GetGame().GetCallqueue().CallLater(ToggleMapGadget, delay, false, false);
 			
-			if (!controller.IsDead()) 
-				m_MapEntity.FadeOut(true, m_fActivationDelay); // fade out on map close
+			if (!controller.IsDead() && m_FadeInOutEffect) 
+			{
+				if (m_MapEntity.IsOpen())
+					m_FadeInOutEffect.FadeOutEffect(true, m_fActivationDelay); // fade out on map close
+				else 
+					m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // in case map is closed fast before it opens, fade in from close map wont trigger, so it has to happen here
+			}
 		}
 	}
 	
@@ -53,13 +58,11 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	//! Open/close map
 	//! \param state is desired state: true = open, false = close
 	protected void ToggleMapGadget(bool state)
-	{
-		if (!m_MapEntity)
-			return;
-								
+	{			
 		if (state)
 		{
 			SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
+			SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
 			
 			MenuManager menuManager = g_Game.GetMenuManager();
 			menuManager.OpenMenu(ChimeraMenuPreset.MapMenu);
@@ -70,11 +73,6 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 			MenuManager menuManager = g_Game.GetMenuManager();
 			menuManager.CloseMenuByPreset(ChimeraMenuPreset.MapMenu);
 			m_bIsMapOpen = false;
-			
-			if (m_ScreenEffects)
-				m_ScreenEffects.FadeOutEffect(false, m_fActivationDelay); // fade in after map close 
-			
-			SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
 		}		
 	}
 				
@@ -82,12 +80,40 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 	//! SCR_MapEntity event
 	protected void OnMapOpen(MapConfiguration config)
 	{
+		if (m_FadeInOutEffect)
+			m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // fade in after map open
+		
 		// first open
-		if (m_bIsFirstTimeOpened)
-		{
-			m_bIsFirstTimeOpened = false;
-			m_MapEntity.ZoomOut();
-		}
+		if (!m_bIsFirstTimeOpened)
+			return;
+		
+		m_bIsFirstTimeOpened = false;
+		m_MapEntity.ZoomOut();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_MapEntity event
+	protected void OnMapClose(MapConfiguration config)
+	{
+		if (m_FadeInOutEffect)
+			m_FadeInOutEffect.FadeOutEffect(false, m_fActivationDelay); // fade in after map close 
+		
+		SCR_MapEntity.GetOnMapOpen().Remove(OnMapOpen);
+		SCR_MapEntity.GetOnMapClose().Remove(OnMapClose);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	override void ActivateGadgetFlag()
+	{
+		SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+		if (!playerController)
+			return;
+		
+		SCR_HUDManagerComponent hudManager = SCR_HUDManagerComponent.Cast(playerController.GetHUDManagerComponent());
+		if (!hudManager)
+			return;
+		
+		m_FadeInOutEffect = SCR_FadeInOutEffect.Cast(hudManager.FindInfoDisplay(SCR_FadeInOutEffect));
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -103,11 +129,10 @@ class SCR_MapGadgetComponent : SCR_GadgetComponent
 		if ( !controlledEnt || controlledEnt != m_CharacterOwner)
 			return;
 		
-		if (mode == EGadgetMode.IN_HAND)
-		{
-			m_ScreenEffects = SCR_ScreenEffects.GetScreenEffectsDisplay();
-			ToggleFocused(true);
-		}
+ 		if (mode != EGadgetMode.IN_HAND)
+			return;
+
+		ToggleFocused(true);
 	}
 	
 	//------------------------------------------------------------------------------------------------

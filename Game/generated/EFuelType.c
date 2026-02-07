@@ -11,5 +11,5 @@ enum EFuelType
 	Kerosene,
 	Electricity,
 	Hydrogen,
-	Other
-};
+	Other,
+}

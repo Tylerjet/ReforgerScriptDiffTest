@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 enum Alignment
@@ -15,7 +15,9 @@ enum Alignment
 	LEFT,
 	RIGHT,
 	TOP,
-	BOTTOM
-};
+	BOTTOM,
+}
 
-/** @}*/
+/*!
+\}
+*/

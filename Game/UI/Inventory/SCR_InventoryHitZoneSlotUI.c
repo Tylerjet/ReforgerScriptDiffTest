@@ -25,6 +25,12 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
 		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (charCtrl.GetRightHandItem() == item || charCtrl.GetAttachedGadgetAtLeftHandSlot() == item)
+		{
+			ApplyLater(item);
+			return true;
+		}
+		
 		charCtrl.m_OnGadgetStateChangedInvoker.Insert(OnApplyEffect);
 
 		return true;
@@ -32,6 +38,9 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 
 	protected void OnApplyEffect(IEntity gadget, bool isInHand, bool isOnGround)
 	{
+		if (!m_pParentContainer)
+			return;
+
 		if (isInHand)
 			GetGame().GetCallqueue().CallLater(ApplyLater, 100, false, gadget); // hotfix because m_OnGadgetStateChangedInvoker doesn't wait for anim to be complete
 	}
@@ -39,15 +48,16 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 	protected void ApplyLater(IEntity gadget)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(m_Player);
-		// todo: unlock item when complete!
 		InventoryItemComponent itemComp = InventoryItemComponent.Cast(gadget.FindComponent(InventoryItemComponent));
-		itemComp.RequestUserLock(character, true);
 
 		SCR_CharacterControllerComponent charCtrl = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
 		SCR_ConsumableItemComponent comp = SCR_ConsumableItemComponent.Cast(gadget.FindComponent(SCR_ConsumableItemComponent));
 		SCR_ConsumableEffectHealthItems effect = SCR_ConsumableEffectHealthItems.Cast(comp.GetConsumableEffect());
 		if (effect)
 			effect.ActivateEffect(character, character, gadget, effect.GetAnimationParameters(character, m_pParentContainer.GetHitZoneGroup()));
+
+		itemComp.RequestUserLock(character, true);
+		charCtrl.m_OnGadgetStateChangedInvoker.Remove(OnApplyEffect);
 	}
 
 	//------------------------------------------------------------------------------------------------

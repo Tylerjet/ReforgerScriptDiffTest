@@ -4,28 +4,28 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Resources
-* @{
+/*!
+\addtogroup Resources
+\{
 */
 
-/**
+/*!
 \brief MeshObject
 @code
 void GenerateModel(IEntity obj)
 {
-vector verts[3] = {Vector(0, 0, 0), Vector(0, 0, 1000), Vector(1000, 0, 0)};
-float uvs[6] = {0.0,0.0, 1.0,0.0, 0.0,1.0};
-int indices[3] = {0,1,2};
-int numVertices[] = {3};
-int numIndices[] = {3};
-string materials[] = {"{726C1969B0B78245}defMat.emat"};
+	vector verts[3] = {Vector(0, 0, 0), Vector(0, 0, 1000), Vector(1000, 0, 0)};
+	float uvs[6] = {0.0,0.0, 1.0,0.0, 0.0,1.0};
+	int indices[3] = {0,1,2};
+	int numVertices[] = {3};
+	int numIndices[] = {3};
+	string materials[] = {"{726C1969B0B78245}defMat.emat"};
 
-MeshObject meshObject = MeshObject.Create(1, numVertices, numIndices, materials, 0);
-meshObject.UpdateVerts(0, verts, uvs);
-meshObject.UpdateIndices(0, indices);
+	MeshObject meshObject = MeshObject.Create(1, numVertices, numIndices, materials, 0);
+	meshObject.UpdateVerts(0, verts, uvs);
+	meshObject.UpdateIndices(0, indices);
 
-obj.SetObject(meshObject,"");
+	obj.SetObject(meshObject,"");
 }
 @endcode
 */
@@ -37,6 +37,8 @@ sealed class MeshObject: VObject
 	proto external int GetNumGeoms();
 	proto external bool HasValidMask();
 	proto external bool HasLayerMask(int layerMask, int layerFilter);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

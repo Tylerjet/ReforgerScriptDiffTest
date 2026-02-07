@@ -128,7 +128,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 		{
 			if (!setLooping)
 			{
-				SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_WEATHER_AUTO, playerThatChangedWeather);
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WEATHER_AUTO, playerThatChangedWeather);
 			}
 			else 
 			{
@@ -528,7 +528,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 			
 			//Notification wind default
 			if (m_iDelayedPlayerChangingWind > -1)
-				SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_WIND_DEFAULT, m_iDelayedPlayerChangingWind);
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WIND_DEFAULT, m_iDelayedPlayerChangingWind);
 		}
 		//Override wind
 		else 
@@ -549,7 +549,7 @@ class TimeAndWeatherManagerEntity : BaseTimeAndWeatherManagerEntity
 				SCR_WindDirectionInfo windDirectionInfo;
 				int windDirectionIndex;
 				GetWindDirectionInfoFromFloat(m_fDelayedWindDirectionOverride, windDirectionIndex, windDirectionInfo);
-				SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_ATTRIBUTES_WIND_CHANGED, m_iDelayedPlayerChangingWind, m_fDelayedWindSpeedOverride * 1000, windDirectionIndex);
+				SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_ATTRIBUTES_WIND_CHANGED, m_iDelayedPlayerChangingWind, m_fDelayedWindSpeedOverride * 1000, windDirectionIndex);
 			}
 		}
 		

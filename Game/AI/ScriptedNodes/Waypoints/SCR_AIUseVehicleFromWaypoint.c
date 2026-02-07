@@ -14,7 +14,11 @@ class SCR_AIUseVehicleFromWaypoint : AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
-		SCR_EntityWaypoint wp = SCR_EntityWaypoint.Cast(owner.GetCurrentWaypoint());
+		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
+		if (!group)
+			return NodeError(this,owner,"SCR_AIUseVehicleFromWaypoint must be run on SCR_AIGroup!");
+		
+		SCR_EntityWaypoint wp = SCR_EntityWaypoint.Cast(group.GetCurrentWaypoint());
 		if (!wp)
 		{
 			return ENodeResult.FAIL;
@@ -27,11 +31,8 @@ class SCR_AIUseVehicleFromWaypoint : AITaskScripted
 		}
 		
 		SetVariableOut(PORT_VEHICLE, vehicle);
-		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
-		if (group)
-		{
-			group.AddUsableVehicle(vehicle);
-		}
+		group.AddUsableVehicle(vehicle);
+
 		return ENodeResult.SUCCESS;
 	}
 

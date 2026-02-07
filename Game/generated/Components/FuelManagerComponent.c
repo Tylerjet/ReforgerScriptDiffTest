@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class FuelManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class FuelManagerComponent: GameComponent
 {
@@ -24,10 +24,12 @@ class FuelManagerComponent: GameComponent
 	proto external float GetTotalFuel();
 	//! Get the current sum of the max amount of fuel in all nodes
 	proto external float GetTotalMaxFuel();
-	
-	// callbacks
-	
-	event void OnInit(IEntity owner);
-};
 
-/** @}*/
+	// callbacks
+
+	event void OnInit(IEntity owner);
+}
+
+/*!
+\}
+*/

@@ -11,10 +11,20 @@ class SCR_RadioToggleUserAction : SCR_InventoryAction
 		CharacterControllerComponent charComp = CharacterControllerComponent.Cast(user.FindComponent(CharacterControllerComponent));
 		return charComp.GetInspect();
 	}
-	
-	protected override void PerformActionInternal(SCR_InventoryStorageManagerComponent manager, IEntity pOwnerEntity, IEntity pUserEntity)
+
+	protected override void PerformAction(IEntity pOwnerEntity, IEntity pUserEntity)
 	{
-		m_RadioComp.RadioToggle();
+		if (CanBePerformed(pUserEntity))
+			m_RadioComp.RadioToggle();
+
+		SCR_SoundManagerEntity soundMan = GetGame().GetSoundManagerEntity();
+		if (!soundMan)
+			return;
+
+		if (!m_RadioComp.GetRadioComponent().IsPowered())
+			soundMan.CreateAndPlayAudioSource(pOwnerEntity,SCR_SoundEvent.SOUND_ITEM_RADIO_TOGGLE_ON);
+		else
+			soundMan.CreateAndPlayAudioSource(pOwnerEntity,SCR_SoundEvent.SOUND_ITEM_RADIO_TOGGLE_OFF);
 	}
 
 	override void Init(IEntity pOwnerEntity, GenericComponent pManagerComponent)

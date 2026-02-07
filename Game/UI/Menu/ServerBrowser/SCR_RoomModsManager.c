@@ -37,6 +37,10 @@ class RoomModsCallback : SCR_OnlineServiceBackendCallbacks
 	void RoomModsCallback(SCR_RoomModsManager ui)
 	{
 		m_ui = ui;
+		
+		#ifdef SB_DEBUG
+		Print("Replacing RoomModsManager with another one!");
+		#endif
 	}
 };
 // Mods callback
@@ -52,25 +56,19 @@ class SCR_RoomModsManager
 	
 	// Rooms for caching 
 	protected Room m_RoomLoaded;
-	protected Room m_RoomOnDonwload;
 	
 	protected int m_iLoadedModItems = 0;
 	protected bool m_bModsLoaded = false;
 	protected bool m_bModsMatching = false;
 	
 	// Arrays 
-	protected ref array<ref Dependency> m_aRoomDependecies = {};
+	protected ref array<ref Dependency> m_aRoomDependencies = {};
 	
 	protected ref array<ref SCR_WorkshopItem> m_aRoomItemsScripted = {};
 	
 	protected ref array<ref SCR_WorkshopItem> m_aItemsUpdated = {};
 	protected ref array<ref SCR_WorkshopItem> m_aItemsToUpdate = {};
 	protected ref array<ref SCR_WorkshopItemActionDownload> m_aDownloads = {};
-	
-	// Missions folder for in game scenarios 
-	protected ref array<string> m_aMissionFolderPaths = {};
-	protected ref array<ref SCR_MissionHeader> m_aMissionHeaders = {};
-	protected string m_sWorldHeadersPattern = ".conf";
 	
 	// Invokers 
 	ref ScriptInvoker m_OnGettingAllDependecies = new ref ScriptInvoker;
@@ -96,7 +94,7 @@ class SCR_RoomModsManager
 	const int STRING_DEC_LENGHT_MOD_SIZE = 1;
 	
 	//------------------------------------------------------------------------------------------------
-	protected void InialSetup()
+	protected void InitialSetup()
 	{
 		m_WorkshopApi = GetGame().GetBackendApi().GetWorkshop(); 
 		
@@ -108,7 +106,7 @@ class SCR_RoomModsManager
 	//------------------------------------------------------------------------------------------------
 	protected void ClearModArrays()
 	{
-		m_aRoomDependecies.Clear();
+		m_aRoomDependencies.Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -166,7 +164,7 @@ class SCR_RoomModsManager
 	protected void OnImageDownload()
 	{
 		// Is still downloading check 
-		foreach (Dependency dep : m_aRoomDependecies)
+		foreach (Dependency dep : m_aRoomDependencies)
 		{
 			// Check item 
 			WorkshopItem item = dep.GetCachedItem();
@@ -392,12 +390,12 @@ class SCR_RoomModsManager
 		m_iLoadedModItemsCount = 0; 
 		
 		// Save this in to strong ref dependency array and register scripted items 
-		m_aRoomDependecies.Clear();
+		m_aRoomDependencies.Clear();
 		m_aRoomItemsScripted.Clear();
 		
 		foreach (Dependency dep : deps)
 		{
-			m_aRoomDependecies.Insert(dep);
+			m_aRoomDependencies.Insert(dep);
 		}
 		
 		// Clear mod callbacks 
@@ -406,7 +404,7 @@ class SCR_RoomModsManager
 		//Print("[SCR_RoomModsManager.AddonsFullList] dependencies for: " + m_Room.Name());
 		
 		// Go through mods dependecies if their items were loaded 
-		foreach (Dependency dep : m_aRoomDependecies)
+		foreach (Dependency dep : m_aRoomDependencies)
 		{
 			// Is item loaded 
 			WorkshopItem item = dep.GetCachedItem();
@@ -432,7 +430,7 @@ class SCR_RoomModsManager
 		}
 		
 		// Is loading done 
-		if (m_iLoadedModItemsCount >= m_aRoomDependecies.Count())
+		if (m_iLoadedModItemsCount >= m_aRoomDependencies.Count())
 			AllItemsLoaded();
 		else 
 		{
@@ -452,7 +450,7 @@ class SCR_RoomModsManager
 		//Print("Loading mod success: " + m_iDebugModCount);
 		
 		// Empty room dependencies check - safe check, sholdn't be happenning with proper use 
-		if (m_aRoomDependecies.IsEmpty())
+		if (m_aRoomDependencies.IsEmpty())
 		{
 			#ifdef SB_DEBUG
 			Print("Items loaded was called, but items list is empty! - of: " + m_Room.Name(), LogLevel.ERROR);
@@ -461,10 +459,10 @@ class SCR_RoomModsManager
 		}	
 
 		// Check loaded items 
-		if (m_aRoomDependecies.Count() < m_iLoadedModItemsCount)
+		if (m_aRoomDependencies.Count() < m_iLoadedModItemsCount)
 			return;
 		
-		/*Dependency dep = m_aRoomDependecies[m_iLoadedModItemsCount];
+		/*Dependency dep = m_aRoomDependencies[m_iLoadedModItemsCount];
 		
 		if (!dep)
 			return;
@@ -478,19 +476,19 @@ class SCR_RoomModsManager
 		else 
 		{
 			// Add to list for items to be loaded 
-			m_aRoomDependecies[m_iLoadedModItemsCount].LoadItem(m_ModsCallback);
+			m_aRoomDependencies[m_iLoadedModItemsCount].LoadItem(m_ModsCallback);
 		}*/
 		
 		m_iLoadedModItemsCount++;
 		
 		// TODO: remove when done with debug 
-		if (m_iDebugModCount == m_aRoomDependecies.Count() && m_iLoadedModItemsCount < m_aRoomDependecies.Count())
+		if (m_iDebugModCount == m_aRoomDependencies.Count() && m_iLoadedModItemsCount < m_aRoomDependencies.Count())
 		{
 			//Print("Not all mods loaded");
 		}
 		
 		// Is loading done 
-		if (m_iLoadedModItemsCount >= m_aRoomDependecies.Count())
+		if (m_iLoadedModItemsCount >= m_aRoomDependencies.Count())
 		{
 			AllItemsLoaded();
 		}
@@ -546,21 +544,18 @@ class SCR_RoomModsManager
 		{
 			// Get vresion 
 			Dependency dependency = mod.GetDependency();
-			string version = dependency.GetVersion();
+			Revision version = dependency.GetRevision();
 			
 			// Start download 
 			SCR_WorkshopItemActionDownload download = mod.Download(version);
 			download.Activate();
 			
 			// Subscribe on download finish 
-			mod.m_OnDownloadComplete.Insert(OnModDonwloadComplete);
+			mod.m_OnDownloadComplete.Insert(OnModDownloadComplete);
 			
 			// Add download action 
 			m_aDownloads.Insert(mod.GetDownloadAction());
 		}
-		
-		// Store server where mods are downloaded 
-		m_RoomOnDonwload = m_Room;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -592,24 +587,27 @@ class SCR_RoomModsManager
 	//------------------------------------------------------------------------------------------------
 	//! Call this when mod download is finished
 	//! Progress download state
-	protected void OnModDonwloadComplete(SCR_WorkshopItem item)
+	protected void OnModDownloadComplete(notnull SCR_WorkshopItem item)
 	{
-		item.m_OnDownloadComplete.Remove(OnModDonwloadComplete);
-		m_iDownloadedCount++;
-		
-		m_OnModDownload.Invoke(item, m_aItemsToUpdate.Count(), m_iDownloadedCount);
+		for (int i = 0, count = m_aItemsToUpdate.Count(); i < count; i++)
+		{
+			if (item.GetId() == m_aItemsToUpdate[i].GetId())
+			{
+				// Add to finished downlods 
+				item.m_OnDownloadComplete.Remove(OnModDownloadComplete);
+				m_iDownloadedCount++;
+				
+				m_OnModDownload.Invoke(item, m_aItemsToUpdate.Count(), m_iDownloadedCount);
+				
+				break;
+			}
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
 	void SCR_RoomModsManager()
 	{
-		InialSetup();
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_RoomModsManager()
-	{
-		ClearModArrays();
+		InitialSetup();
 	}
 	
 	// API
@@ -627,7 +625,7 @@ class SCR_RoomModsManager
 	void SetRoom(Room room) { m_Room = room; } 
 	
 	//------------------------------------------------------------------------------------------------
-	void SetRoomDependencies(array<ref Dependency> aDependencies) { m_aRoomDependecies = aDependencies; }
+	void SetRoomDependencies(array<ref Dependency> aDependencies) { m_aRoomDependencies = aDependencies; }
 	
 	//------------------------------------------------------------------------------------------------
 	bool GetModsLoaded() { return m_bModsLoaded; }
@@ -640,7 +638,7 @@ class SCR_RoomModsManager
 	
 	// Mods counts 
 	//------------------------------------------------------------------------------------------------
-	int GetAllModsCount() { return m_aRoomDependecies.Count(); }
+	int GetAllModsCount() { return m_aRoomDependencies.Count(); }
 };
 
 //------------------------------------------------------------------------------------------------

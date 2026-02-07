@@ -39,17 +39,17 @@ class PrefabEditingPlugin: PrefabEditingPluginBase
 		
 		//--- World file
 		FileHandle file = FileIO.OpenFile(targetPath + ".ent", FileMode.WRITE);
-		file.FPrintln("SubScene {");
-		file.FPrintln(string.Format(" Parent \"%1\"", worldPrefab));
-		file.FPrintln("}");
-		file.FPrintln("Layer default {");
-		file.FPrintln(" Index 0");
-		file.FPrintln("}");
-		file.CloseFile();
+		file.WriteLine("SubScene {");
+		file.WriteLine(string.Format(" Parent \"%1\"", worldPrefab));
+		file.WriteLine("}");
+		file.WriteLine("Layer default {");
+		file.WriteLine(" Index 0");
+		file.WriteLine("}");
+		file.Close();
 		
 		//--- Layer file
 		file = FileIO.OpenFile(targetPath + "_default.layer", FileMode.WRITE);
-		file.CloseFile();
+		file.Close();
 		
 		return true;
 	}

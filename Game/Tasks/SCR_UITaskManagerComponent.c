@@ -21,6 +21,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	protected Widget m_wExpandButton = null;
 
 	static SCR_UITaskManagerComponent s_Instance;
+	protected EventHandlerManagerComponent m_EventHandlerManager;
 
 	ref array<Widget> m_aWidgets = {};
 	ref map<SCR_BaseTask, TextWidget> m_mTasksTimers = new map<SCR_BaseTask, TextWidget>();
@@ -30,6 +31,7 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	protected bool m_bPickAssigneeVisible;
 	protected bool m_bCurrentTaskVisible;
 	protected bool m_bTaskContextEnabled;
+	protected bool m_bIsUnconscious;	//Character is unconscious --> Task menu control is disabled
 	protected float m_fCurrentTaskTime;
 	protected SCR_BaseTask m_SelectedTask;
 	protected SCR_BaseTask m_LastSelectedTask;
@@ -546,6 +548,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void Action_TasksOpen()
 	{
+		if (m_bIsUnconscious)
+			return;
+		
 		if (!m_bVisible)
 			Action_ShowTasks();
 		else
@@ -555,6 +560,9 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	void Action_ShowHint()
 	{
+		if (m_bIsUnconscious)
+			return;
+		
 		if (m_bVisible)
 			return;
 		SCR_MapEntity mapEntity = SCR_MapEntity.GetMapInstance();
@@ -748,6 +756,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		if (m_wUI)
 			m_wUI.SetVisible(false);
 		s_OnTaskListVisible.Invoke(false);
+		
+		SCR_UISoundEntity.SoundEvent(SCR_SoundEvent.SOUND_HUD_TASK_MENU_CLOSE);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -830,7 +840,16 @@ class SCR_UITaskManagerComponent : ScriptComponent
 	override void OnPostInit(IEntity owner)
 	{
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
+		owner.SetFlags(EntityFlags.ACTIVE);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_PlayerController Event
+	//! Listeners are added back because they are previously removed on
+	//! unconsciousness and if character dies, they need to added back.
+	protected void OnDestroyed(IEntity killer)
+	{		
+		m_bIsUnconscious = false;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -850,17 +869,74 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		GetGame().GetInputManager().RemoveActionListener("TasksShowHint", EActionTrigger.DOWN, Action_ShowHint);
 		GetGame().GetInputManager().RemoveActionListener("TasksExpand", EActionTrigger.DOWN, Action_Expand);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! SCR_PlayerController Event
+	//! Used to reinit Task manager Component when new entity is controlled
+	protected void OnControlledEntityChanged(IEntity from, IEntity to)
+	{		
+		Action_TasksClose();
+		
+		if (m_EventHandlerManager)
+		{
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+			m_EventHandlerManager = null;
+		}
+		
+		ChimeraCharacter character = ChimeraCharacter.Cast(to);
+		if (!character)
+			return;
+		
+		CharacterControllerComponent characterController = character.GetCharacterController();
+		if (!characterController)
+			return;
+		
+		m_bIsUnconscious = characterController.IsUnconscious();
+		
+        m_EventHandlerManager = EventHandlerManagerComponent.Cast(character.FindComponent(EventHandlerManagerComponent));
+        if (m_EventHandlerManager)
+            m_EventHandlerManager.RegisterScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
+	}
+	
+	void OnConsciousnessChanged(bool conscious)
+	{
+		m_bIsUnconscious = !conscious;
+		
+		if (!conscious)
+			Action_TasksClose();
+	}
 
 	//------------------------------------------------------------------------------------------------
 	override void EOnInit(IEntity owner)
 	{
 		CreateTaskList();
 		AddActionListeners();
-		
+
 		SCR_MapEntity.GetOnMapOpen().Insert(OnMapOpen);
 		SCR_MapEntity.GetOnMapClose().Insert(OnMapClose);
 		SCR_RespawnSuperMenu.Event_OnMenuOpen.Insert(OnMapClose);
+		
+		SCR_BaseGameMode gameMode = SCR_BaseGameMode.Cast(GetGame().GetGameMode());
+		if (!gameMode)
+			return;
+        
+		gameMode.GetOnPlayerConnected().Insert(OnPlayerConnected);
 	}
+	
+	//------------------------------------------------------------------------------------------------
+    void OnPlayerConnected(int playerID)
+    {
+        SCR_PlayerController playerController = SCR_PlayerController.Cast(GetGame().GetPlayerController());
+        if (!playerController)
+            return;
+		
+        playerController.m_OnDestroyed.Insert(OnDestroyed);
+        int localPlayerID = playerController.GetLocalPlayerId();
+        if (playerID != localPlayerID)
+            return;
+        
+		playerController.m_OnControlledEntityChanged.Insert(OnControlledEntityChanged);
+    }
 	
 	//------------------------------------------------------------------------------------------------
 	Widget CreateTaskList(Widget w = null)
@@ -911,5 +987,8 @@ class SCR_UITaskManagerComponent : ScriptComponent
 		m_aWidgets = null;
 		if (m_wUI)
 			m_wUI.RemoveFromHierarchy();
+		
+		if (m_EventHandlerManager)
+			m_EventHandlerManager.RemoveScriptHandler("OnConsciousnessChanged", this, OnConsciousnessChanged);
 	}
 };

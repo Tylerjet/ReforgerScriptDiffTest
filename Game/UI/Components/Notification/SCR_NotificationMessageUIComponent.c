@@ -72,21 +72,21 @@ class SCR_NotificationMessageUIComponent: ScriptedWidgetComponent
 			return;
 		
 		string notificationMessage = data.GetText();
-		string param1, param2, param3, param4, param5;
+		string param1, param2, param3, param4, param5, param6;
 		
 		if (notificationMessage != string.Empty)
-			data.GetNotificationTextEntries(param1, param2, param3, param4, param5);
+			data.GetNotificationTextEntries(param1, param2, param3, param4, param5, param6);
 		else 
 			notificationMessage = typename.EnumToString(ENotification, data.GetID());
 		
 		if (!displayData.MergeParam1With2())
 		{
-			notificationText.SetTextFormat(notificationMessage, param1, param2, param3, param4, param5);
+			notificationText.SetTextFormat(notificationMessage, param1, param2, param3, param4, param5, param6);
 		}
 		else 
 		{
 			string mergeParams = WidgetManager.Translate(param2, param1);
-			notificationText.SetTextFormat(notificationMessage, param1, mergeParams, param3, param4, param5);
+			notificationText.SetTextFormat(notificationMessage, param1, mergeParams, param3, param4, param5, param6);
 		}
 		
 		SCR_UINotificationInfo uiInfo;

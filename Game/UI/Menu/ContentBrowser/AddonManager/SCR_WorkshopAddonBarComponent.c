@@ -17,6 +17,7 @@ class SCR_WorkshopAddonBarComponent : ScriptedWidgetComponent
 	protected Widget m_wLeaveWidget;
 	
 	protected ref array<Widget> m_aButtons = {};
+	protected static SCR_ConfigurableDialogUi m_FailDialog;
 	
 	//---------------------------------------------------------------------------------------------------
 	override void HandlerAttached(Widget w)
@@ -57,6 +58,10 @@ class SCR_WorkshopAddonBarComponent : ScriptedWidgetComponent
 		GetGame().GetInputManager().AddActionListener("MenuDown", EActionTrigger.PRESSED, CheckDownMove);
 		
 		GetGame().GetCallqueue().CallLater(InitialFocus);
+		
+		// Listen to download manager 
+		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Remove(DisplayFailDialog);
+		SCR_DownloadManager.GetInstance().GetEventOnDownloadFail().Insert(DisplayFailDialog);
 	}
 	
 	
@@ -116,21 +121,15 @@ class SCR_WorkshopAddonBarComponent : ScriptedWidgetComponent
 	}
 	
 	//---------------------------------------------------------------------------------------------------
-	void Callback_OnExportButton()
-	{
-		GetGame().GetMenuManager().OpenDialog(ChimeraMenuPreset.AddonExportDialog);
-	}
-	
-	//---------------------------------------------------------------------------------------------------
 	void Callback_OnUpdateButton()
 	{
 		SCR_AddonManager mgr = SCR_AddonManager.GetInstance();
 		array<ref SCR_WorkshopItem> addonsOutdated = SCR_AddonManager.SelectItemsBasic(mgr.GetOfflineAddons(), EWorkshopItemQuery.UPDATE_AVAILABLE);
 		
 		// Open download confirmation dialog
-		array<ref Tuple2<SCR_WorkshopItem, string>> addonsAndVersions = {};		
+		array<ref Tuple2<SCR_WorkshopItem, ref Revision>> addonsAndVersions = {};
 		foreach (SCR_WorkshopItem item : addonsOutdated)
-			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, string>(item, string.Empty));
+			addonsAndVersions.Insert(new Tuple2<SCR_WorkshopItem, ref Revision>(item, null));
 		
 		SCR_DownloadConfirmationDialog.CreateForAddons(addonsAndVersions, false);
 	}
@@ -208,5 +207,42 @@ class SCR_WorkshopAddonBarComponent : ScriptedWidgetComponent
 	protected void InitialFocus()
 	{
 		FocusDown(GetGame().GetWorkspace().GetFocusedWidget());
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void DisplayFailDialog()
+	{
+		// Check if dialog is not already opened
+		if (m_FailDialog)
+			return;
+		
+		array<ref Tuple2<SCR_WorkshopItem, ref Revision>> failed = {};
+		array<ref SCR_WorkshopItemActionDownload> failedActions = SCR_DownloadManager.GetInstance().GetFailedDownloads();
+		
+		foreach (SCR_WorkshopItemActionDownload action : failedActions)
+		{
+			SCR_WorkshopItem item = action.m_Wrapper;
+			Revision version = item.GetDependency().GetRevision();
+			
+			failed.Insert(new Tuple2<SCR_WorkshopItem, ref Revision>>(item, version));
+		}
+		
+		// Setup dialog
+		SCR_DownloadFailDialog dialog = SCR_DownloadFailDialog.CreateFailedAddonsDialog(failed, false);
+		if (!dialog)
+			return;
+		
+		m_FailDialog = dialog;
+		m_FailDialog.m_OnConfirm.Insert(Callback_OnFailDialogConfirm);
+	}
+	
+	//-----------------------------------------------------------------------------------------------
+	protected void Callback_OnFailDialogConfirm(SCR_ConfigurableDialogUi dialog)
+	{
+		// Clear dialog
+		m_FailDialog.m_OnConfirm.Clear();
+		m_FailDialog.Close();
+		m_FailDialog = null;
+		SCR_DownloadManager.GetInstance().ClearFailedDownloads();
 	}
 }

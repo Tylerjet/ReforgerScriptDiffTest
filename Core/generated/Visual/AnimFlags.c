@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 enum AnimFlags
@@ -45,7 +45,9 @@ enum AnimFlags
 	/*!
 	EV_ANIMEND won't be called, when set.
 	*/
-	NOANIMEND
-};
+	NOANIMEND,
+}
 
-/** @}*/
+/*!
+\}
+*/

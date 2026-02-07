@@ -114,10 +114,8 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				if (display)
 					display.OnActionStart(user, action);
 				
-				// Start callback
-				ScriptedUserAction scriptedAction = ScriptedUserAction.Cast(action);
-				if (scriptedAction)	
-					scriptedAction.OnActionStart(user);
+				// Start the action. Calls action.OnActionStart
+				user.DoStartObjectAction(action);
 				
 				// Set state
 				m_bIsPerforming = true;
@@ -132,14 +130,20 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 					user.DoPerformContinuousObjectAction(action, timeSlice);
 				
 				// Update elapsed time
-				m_fCurrentProgress += timeSlice;
+				ScriptedSignalUserAction signalUserAction = ScriptedSignalUserAction.Cast(action);
+				if (signalUserAction)
+					m_fCurrentProgress = signalUserAction.GetActionProgress();
+				else
+					m_fCurrentProgress += timeSlice;
 				
 				// Get action duration
 				float duration = action.GetActionDuration();
-			
+				if (duration == 0 && signalUserAction)
+					duration = signalUserAction.GetMaximumValue() - signalUserAction.GetMinimumValue();
+				
 				// Update UI
 				if (display)
-					display.OnActionProgress(user, action, m_fCurrentProgress, duration);
+					display.OnActionProgress(user, action, m_fCurrentProgress, Math.AbsFloat(duration));
 				
 				// We are finished, dispatch events and reset state
 				if (m_fCurrentProgress >= duration && duration >= 0)
@@ -167,7 +171,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				if (display)
 					display.OnActionFinish(user, action, ActionFinishReason.INTERRUPTED);
 				
-				// Cancel the action. Calls action.OnCanceledAction
+				// Cancel the action. Calls action.OnActionCanceled
 				user.DoCancelObjectAction(action);
 				
 				// Reset state
@@ -192,23 +196,18 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 	
 	//------------------------------------------------------------------------------------------------
 	protected override bool GetCanInteractScript(IEntity controlledEntity)
-	{		
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(controlledEntity);
+		if (!character)
+			return false;
+		
 		// No interactions when menu is open
-		MenuManager pMenuManager = GetGame().GetMenuManager();
-		if (pMenuManager && pMenuManager.IsAnyMenuOpen())
+		MenuManager menuManager = GetGame().GetMenuManager();
+		if (menuManager && menuManager.IsAnyMenuOpen())
 			return false;
 		
-		// No interactions when character is dead or in ADS
-		ChimeraCharacter pCharacter = ChimeraCharacter.Cast(controlledEntity);
-		if (pCharacter && pCharacter.IsInVehicleADS())
-			return false;
-		
-		CharacterControllerComponent pController = CharacterControllerComponent.Cast(pCharacter.FindComponent(CharacterControllerComponent));
-		if (pController && (pController.IsUnconscious() || pController.IsDead() || pController.IsClimbing()))
-			return false;
-		
-		// Disable in vehicle 3pp
-		if (pCharacter.IsInVehicle() && pController.IsInThirdPersonView())
+		SCR_CharacterControllerComponent characterController = SCR_CharacterControllerComponent.Cast(character.GetCharacterController());
+		if (characterController && !characterController.CanInteract())
 			return false;
 		
 		return true;
@@ -590,6 +589,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 			// Process interaction
 			DoProcessInteraction(character, currentContext, selectedAction, canPerformSelectedAction, bPerform, timeSlice, m_pDisplay);			
 			m_pLastUserAction = selectedAction;
+			SetSelectedAction(selectedAction);
 
 			// Pass data to display
 			if (m_pDisplay)
@@ -627,6 +627,7 @@ class SCR_InteractionHandlerComponent : InteractionHandlerComponent
 				
 				// Reset state
 				m_pLastUserAction = null;
+				SetSelectedAction(m_pLastUserAction);
 			}
 		}
 		

@@ -1,6 +1,9 @@
 //------------------------------------------------------------------------------------------------
 class SCR_RadialMenuEditorBase: SCR_RadialMenuHandler
 {
+	[Attribute(desc: "When enabled, radial menu will be openable even with mouse and keyboard active.")]
+	protected bool m_bAllowWithMouseAndKeyboard;
+	
 	protected SCR_MenuLayoutEditorComponent m_MenuLayoutComponent;
 	
 	protected InputManager m_InputManager;
@@ -52,10 +55,8 @@ class SCR_RadialMenuEditorBase: SCR_RadialMenuHandler
 	//------------------------------------------------------------------------------------------------
 	override protected void OpenMenu(IEntity owner, bool isOpen)
 	{
-		if (m_InputManager.IsUsingMouseAndKeyboard() ||  (isOpen && m_MenuManager.IsAnyDialogOpen()))
-		{
+		if ((!m_bAllowWithMouseAndKeyboard && m_InputManager.IsUsingMouseAndKeyboard()) || (isOpen && m_MenuManager.IsAnyDialogOpen()))
 			return;
-		}
 		
 		m_ActionFlags = ValidateSelection();
 		

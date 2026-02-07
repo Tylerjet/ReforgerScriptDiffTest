@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum EVehicleAction
@@ -20,7 +20,9 @@ enum EVehicleAction
 	VEHICLE_SWITCHSEAT_START,
 	VEHICLE_SWITCHSEAT,
 	VEHICLE_MOVESEAT_START,
-	VEHICLE_MOVESEAT
-};
+	VEHICLE_MOVESEAT,
+}
 
-/** @}*/
+/*!
+\}
+*/

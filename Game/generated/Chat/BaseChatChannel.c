@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Chat
-* @{
+/*!
+\addtogroup Chat
+\{
 */
 
 class BaseChatChannel: ScriptAndConfig
@@ -17,9 +17,9 @@ class BaseChatChannel: ScriptAndConfig
 	Returns channel style object.
 	*/
 	proto external BaseChatChannelStyle GetStyle();
-	
+
 	// callbacks
-	
+
 	event protected void OnInit (IEntity owner);
 	//! Determine, if the message will be delivered to the receiver
 	event bool IsDelivering(BaseChatComponent sender, BaseChatComponent receiver) { return true; };
@@ -34,6 +34,8 @@ class BaseChatChannel: ScriptAndConfig
 	\return Return if the message should be send further through the chat pipeline (send to the server or to the other clients)
 	*/
 	event bool ProcessMessage(BaseChatComponent sender, string message, bool isAuthority) { return true; };
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

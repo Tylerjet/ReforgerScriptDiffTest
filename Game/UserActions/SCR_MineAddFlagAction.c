@@ -46,12 +46,16 @@ class SCR_MineAddFlagAction : ScriptedUserAction
 			itemComponent.PlaceItem(mat[0], mat[1], mat[2], mat[3] + m_vFlagOffset);
 		}
 		
-		SoundComponent soundComponent = SoundComponent.Cast(flag.FindComponent(SoundComponent));
-		if (soundComponent)
-			soundComponent.SoundEvent("SOUND_MINEFLAG_PLACE");
-		
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (soundManagerEntity)
+			soundManagerEntity.CreateAndPlayAudioSource(flag, "SOUND_MINEFLAG_PLACE");
+				
 		if (userRplComponent.IsOwner())
 			storageManager.TryRemoveItemFromStorage(flag, itemComponent.GetParentSlot().GetStorage());
+		
+		SCR_MineWeaponComponent mine = SCR_MineWeaponComponent.Cast(owner.FindComponent(SCR_MineWeaponComponent));
+		if (mine)
+			mine.SetFlag(flag);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -63,6 +67,10 @@ class SCR_MineAddFlagAction : ScriptedUserAction
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
 	{
+		SCR_MineWeaponComponent mine = SCR_MineWeaponComponent.Cast(GetOwner().FindComponent(SCR_MineWeaponComponent));
+		if (!mine || mine.IsFlagged())
+			return false;
+		
 		SCR_PressureTriggerComponent mineTriggerComponent = SCR_PressureTriggerComponent.Cast(GetOwner().FindComponent(SCR_PressureTriggerComponent));
 		if (!mineTriggerComponent || !mineTriggerComponent.IsActivated())
 			return false;

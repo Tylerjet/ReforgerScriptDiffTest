@@ -444,9 +444,7 @@ class SCR_NameTagRulesetBase : Managed
 					return;
 			}
 						
-			//int camID = m_PIPSightsComp.GetPIPCamera().GetCameraIndex(); // returns 0 for now (buge), TODO
 			int camID = m_PIPSightsComp.GetPIPCameraIndex();
-			//camID = 8;
 			data.m_vTagScreenPos = m_Workspace.ProjWorldToScreen( data.m_vTagWorldPos, m_World, camID);
 			
 			if (!m_PIPSightsComp.IsScreenPositionInSights(data.m_vTagScreenPos))

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class PreviewRenderAttributes: BaseItemAttributeData
@@ -29,6 +29,8 @@ class PreviewRenderAttributes: BaseItemAttributeData
 	\param maxFOV Maximum FOV
 	*/
 	proto external void ZoomCamera(float zoomIncrement, float minFOV = 25.0, float maxFOV = 120.0);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

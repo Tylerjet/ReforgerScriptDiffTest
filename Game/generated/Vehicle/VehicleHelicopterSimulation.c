@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class VehicleHelicopterSimulationClass: VehicleBaseSimulationClass
 {
-};
+}
 
 class VehicleHelicopterSimulation: VehicleBaseSimulation
 {
@@ -24,6 +24,8 @@ class VehicleHelicopterSimulation: VehicleBaseSimulation
 	proto external void EngineStop();
 	//! Returns true if engine is running
 	proto external bool EngineIsOn();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -4,6 +4,7 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 	protected Widget m_wRootWidget;
 	protected Widget m_wFirstColumnWidget;
 	protected Widget m_wCareerSpecializationsWidget;
+	protected Widget m_wProfileNotFound;
 	
 	protected Widget m_wHud;
 	protected SCR_CareerProfileHUD m_HudHandler;
@@ -31,8 +32,9 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 		
 		m_wFirstColumnWidget = m_wRootWidget.FindAnyWidget("FirstColumn");
 		m_wCareerSpecializationsWidget = m_wRootWidget.FindAnyWidget("CareerSpecializations0");
+		m_wProfileNotFound = m_wRootWidget.FindAnyWidget("ProfileNotFound");
 		
-		if (!m_wFirstColumnWidget || !m_wCareerSpecializationsWidget)
+		if (!m_wFirstColumnWidget || !m_wCareerSpecializationsWidget || !m_wProfileNotFound)
 			return;
 		
 		m_wHud = m_wFirstColumnWidget.FindAnyWidget("CareerProfileHUD0");
@@ -68,10 +70,8 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 				SCR_DataCollectorCommunicationComponent communicationComponent = SCR_DataCollectorCommunicationComponent.Cast(GetGame().GetPlayerController().FindComponent(SCR_DataCollectorCommunicationComponent));
 				if (communicationComponent)
 					communicationComponent.GetOnDataReceived().Insert(OnDataReceived);
-				
-				return;
 			}
-			if (!m_PlayerData.IsDataProgressionReady())
+			else if (!m_PlayerData.IsDataProgressionReady())
 				m_PlayerData.CalculateStatsChange();
 		}
 		
@@ -90,11 +90,37 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void FillFields()
 	{
-		if (!m_PlayerData || !m_PlayerData.IsDataProgressionReady())
+		if (!m_PlayerData)
+		{
+			FillScreen(false);
 			return;
+		}
+		if (!m_PlayerData.IsDataProgressionReady())
+		{
+			Print("SCR_CareerEndScreenUI: Array of EarntPoints from player's PlayerData object is empty.", LogLevel.ERROR);
+			return;
+		}
 		
-		FillHudAndStats();
-		FillSpecializationsFrame();
+		FillScreen(!m_PlayerData.IsEmptyProfile());
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void FillScreen(bool profileDataFound)
+	{
+		if (profileDataFound)
+		{
+			m_wFirstColumnWidget.SetVisible(true);
+			m_wCareerSpecializationsWidget.SetVisible(true);
+			m_wProfileNotFound.SetVisible(false);
+			FillHudAndStats();
+			FillSpecializationsFrame();
+		}
+		else
+		{
+			m_wFirstColumnWidget.SetVisible(false);
+			m_wCareerSpecializationsWidget.SetVisible(false);
+			m_wProfileNotFound.SetVisible(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -109,16 +135,16 @@ class SCR_CareerEndScreenUI: ScriptedWidgetComponent
 		
 		array<float> EarntPoints = m_PlayerData.GetArrayEarntPoints();
 		
-		m_HudHandler.SetLevelProgressGain(EarntPoints[SCR_EDataStats.LEVELEXPERIENCE]);
+		m_HudHandler.SetLevelProgressGain(EarntPoints[SCR_EDataStats.LEVEL_EXPERIENCE]);
 		
 		Widget GeneralStatsWidget = m_wFirstColumnWidget.FindAnyWidget("GeneralStatEntries");
 		if (!GeneralStatsWidget)
 			return;
 		
-		float warCrimes = (m_PlayerData.GetWarCrimes()) *  (SCR_PlayerDataConfigs.WARCRIMESPUNISHMENT);
+		float warCrimes = (m_PlayerData.GetWarCrimes()) *  (SCR_PlayerDataConfigs.WARCRIMES_PUNISHMENT);
 		int minutes = (m_PlayerData.GetSessionDuration() - m_PlayerData.GetSessionDuration(false)) / 60;
 		
-		SCR_CareerUI.CreateProgressionStatEntry(GeneralStatsWidget, m_ProgressionStatsLayout, "#AR-CareerProfile_TimePlayed", EarntPoints[SCR_EDataStats.SESSIONDURATION] * warCrimes, EarntPoints[SCR_EDataStats.SESSIONDURATION], "#AR-CareerProfile_Minutes", ""+minutes);	
+		SCR_CareerUI.CreateProgressionStatEntry(GeneralStatsWidget, m_ProgressionStatsLayout, "#AR-CareerProfile_TimePlayed", EarntPoints[SCR_EDataStats.SESSION_DURATION] * warCrimes, EarntPoints[SCR_EDataStats.SESSION_DURATION], "#AR-CareerProfile_Minutes", ""+minutes);	
 	}
 	
 	//------------------------------------------------------------------------------------------------

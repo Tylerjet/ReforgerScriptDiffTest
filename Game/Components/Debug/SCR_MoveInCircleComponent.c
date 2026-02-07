@@ -39,7 +39,7 @@ class SCR_MoveInCircleComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
+		owner.SetFlags(EntityFlags.ACTIVE);
 	}
 
 	//------------------------------------------------------------------------------------------------

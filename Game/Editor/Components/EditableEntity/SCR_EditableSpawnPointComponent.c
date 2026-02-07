@@ -21,7 +21,7 @@ class SCR_EditableSpawnPointComponent: SCR_EditableDescriptorComponent
 		m_UIInfoSpawnPoint = SCR_UIInfo.CreateInfo(m_UIInfoDescriptor.GetLocationName()); //--- Simplified UI info containing only location name
 		m_SpawnPoint.LinkInfo(m_UIInfoSpawnPoint);
 	}
-	override protected void GetOnLocationChange(SCR_EditableCommentComponent nearestLocation)
+	override protected void GetOnLocationChange(SCR_EditableEntityComponent nearestLocation)
 	{
 		UpdateText();
 	}

@@ -4,14 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
 class BaseLightUserAction: ScriptedUserAction
 {
 	proto external BaseLightManagerComponent GetLightManager();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

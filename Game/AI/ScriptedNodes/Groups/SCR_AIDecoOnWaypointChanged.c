@@ -15,7 +15,14 @@ class SCR_AIDecoOnWaypointChanged : DecoratorScripted
 	
 	protected override bool TestFunction(AIAgent owner)
 	{
-		AIWaypoint newWaypoint = owner.GetCurrentWaypoint();
+		AIGroup group = AIGroup.Cast(owner);
+		if (!group)
+		{
+			SCR_AgentMustBeAIGroup(this, owner);
+			return false;
+		}
+		
+		AIWaypoint newWaypoint = group.GetCurrentWaypoint();
 		bool result = true;
 		
 		if (!newWaypoint)

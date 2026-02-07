@@ -6,20 +6,21 @@ class SCR_MineWeaponComponentClass : WeaponComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_MineWeaponComponent : WeaponComponent
 {
-	protected ResourceName m_sFlagPrefab;
 	protected IEntity m_FlagEntity;
-/*
+	
 	//------------------------------------------------------------------------------------------------
-	override void EOnFrame(IEntity owner, float timeSlice)
+	bool IsFlagged()
 	{
+		return m_FlagEntity != null;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
-	override void OnPostInit(IEntity owner)
+	void OnFlagRemoved(SCR_MineFlagPickUpAction action)
 	{
-		SetEventMask(owner, EntityEvent.INIT | EntityEvent.FRAME);
+		m_FlagEntity = null;
+		action.GetOnItemPickUp().Remove(OnFlagRemoved);
 	}
-*/
+	
 	//------------------------------------------------------------------------------------------------
 	event protected bool RplLoad(ScriptBitReader reader)
 	{
@@ -33,52 +34,55 @@ class SCR_MineWeaponComponent : WeaponComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	void RPC_AddFlag(ResourceName prefabName)
+	protected void OnFlagParentSlotChanged(InventoryStorageSlot oldSlot, InventoryStorageSlot newSlot)
 	{
-		m_sFlagPrefab = prefabName;
-		UpdateFlag();
+		if (newSlot != null) // slot is null when removed from inventory
+			m_FlagEntity = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected void RegisterToFlag(IEntity flag)
+	{
+		SCR_MineFlagPickUpAction action = FindAction(flag);
+		if (action)
+			action.GetOnItemPickUp().Insert(OnFlagRemoved);
+		
+		InventoryItemComponent itemComponent = InventoryItemComponent.Cast(flag.FindComponent(InventoryItemComponent));
+		if (itemComponent)
+			itemComponent.m_OnParentSlotChangedInvoker.Insert(OnFlagParentSlotChanged);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected SCR_MineFlagPickUpAction FindAction(IEntity flag)
+	{
+		BaseActionsManagerComponent actionManager = BaseActionsManagerComponent.Cast(flag.FindComponent(BaseActionsManagerComponent));
+		if (!actionManager)
+			return null;
+		
+		array<BaseUserAction> actions = {};
+		int count = actionManager.GetActionsList(actions);
+		SCR_MineFlagPickUpAction action;
+		
+		for (int i = 0; i < count; i++)
+		{
+			action = SCR_MineFlagPickUpAction.Cast(actions[i]);
+			if (action)
+				break;
+		}
+		
+		return action;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Call only on server!
-	void AddFlag(ResourceName prefabName)
-	{
-		RPC_AddFlag(prefabName);
-		Rpc(RPC_AddFlag, prefabName);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	protected void UpdateFlag()
+	void SetFlag(IEntity flag)
 	{
 		if (m_FlagEntity)
-			delete m_FlagEntity; //Local only
+			return; // This should never happen!
 		
-		Resource resource = Resource.Load(m_sFlagPrefab);
-		if (!resource.IsValid())
-			return;
+		m_FlagEntity = flag;
 		
-		IEntity owner = GetOwner();
-		
-		EntitySpawnParams params = new EntitySpawnParams();
-		params.Transform[3] = owner.GetOrigin() + "0 0.1 0";
-		
-		m_FlagEntity = GetGame().SpawnEntityPrefabLocal(resource, owner.GetWorld(), params);
+		if (flag)
+			RegisterToFlag(flag);
 	}
-	
-	//------------------------------------------------------------------------------------------------
-	/*override void EOnInit(IEntity owner)
-	{
-	}*/
-	
-	//------------------------------------------------------------------------------------------------
-	void SCR_MineWeaponComponent(IEntityComponentSource src, IEntity ent, IEntity parent)
-	{
-	}
-
-	//------------------------------------------------------------------------------------------------
-	void ~SCR_MineWeaponComponent()
-	{
-	}
-
 };

@@ -14,8 +14,8 @@ class SCR_CampaignVehicleAssetInfo
 	[Attribute("VEHICLE", desc: "Display name to be shown in UI (upper case).")]
 	protected string m_sDisplayNameUC;
 	
-	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Lowest rank that can request this vehicle.", enums: ParamEnumArray.FromEnum(ECharacterRank))]
-	protected ECharacterRank m_eRankID;
+	[Attribute(defvalue: "0", uiwidget: UIWidgets.ComboBox, desc: "Lowest rank that can request this vehicle.", enums: ParamEnumArray.FromEnum(SCR_ECharacterRank))]
+	protected SCR_ECharacterRank m_eRankID;
 	
 	[Attribute("20", desc: "Maximum amount of these assets a base can hold.")]
 	protected int m_iMax;
@@ -52,7 +52,7 @@ class SCR_CampaignVehicleAssetInfo
 		return m_sDisplayNameUC;
 	}
 	
-	ECharacterRank GetMinimumRankID()
+	SCR_ECharacterRank GetMinimumRankID()
 	{
 		return m_eRankID;
 	}

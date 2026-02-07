@@ -50,7 +50,10 @@ class SCR_AIGetSmartActionSentinelParams : AITaskScripted
 		vector mat[4];
 		smartAction.m_Owner.GetWorldTransform(mat);
 		worldPosition = smartObjectPos + worldPosition.Multiply3(mat);
-		worldPositionToLook = smartObjectPos + worldPositionToLook.Multiply3(mat);
+		if (worldPositionToLook == vector.Zero)
+			worldPositionToLook = smartObjectPos + (10 * vector.Forward).Multiply3(mat);
+		else 
+			worldPositionToLook = smartObjectPos + worldPositionToLook.Multiply3(mat);
 		
 		SetVariableOut(POSITION_PORT, worldPosition);
 		SetVariableOut(LOOK_DIRECTION_PORT, worldPositionToLook);

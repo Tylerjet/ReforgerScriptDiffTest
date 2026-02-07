@@ -1,121 +1,80 @@
 class SCR_AIGetUsableVehicle : AITaskScripted
 {
-	static const string PORT_COMPARTMENT = "CompartmentIn";
+	static const string PORT_COMPARTMENT_TYPE = "CompartmentTypeIn";
 	static const string PORT_VEHICLE = "VehicleOut";
+	static const string PORT_COMPARTMENT = "CompartmentOut";
 	
 	[Attribute("0", UIWidgets.ComboBox, "Find vehicle for:", "", ParamEnumArray.FromEnum(ECompartmentType) )]
-	private int m_compartmentType;
+	protected ECompartmentType m_eCompartmentType;
 	
-	[Attribute("0", UIWidgets.CheckBox, "Occupy the vehicle?")]
-	private bool m_bOccupyVehicle;
+	[Attribute("0", UIWidgets.CheckBox, "Reserve compartment?" )]
+	protected bool m_bReserveCompartment;
 	
-	private ref array<BaseCompartmentSlot> m_aOutCompartments;
-	private ref BaseCompartmentSlot compartmentUsed;
-	private ECompartmentType m_compType;
-	
-	override void OnInit(AIAgent owner)
-	{
-		m_aOutCompartments = new ref array<BaseCompartmentSlot>;		
-	}
-	
+	protected ref array<BaseCompartmentSlot> m_aOutCompartments = {};
+		
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
-    {
-		Vehicle vehicle;
+	{
+		BaseCompartmentSlot compartmentOut;
+		ECompartmentType compType;
 		SCR_AIGroup group = SCR_AIGroup.Cast(owner);
 		if (!group) 
 			group = SCR_AIGroup.Cast(owner.GetParentGroup());
 		if (!group)
 			return ENodeResult.FAIL;
 		
-		if (!GetVariableIn(PORT_COMPARTMENT,m_compType))
-			m_compType = m_compartmentType;
+		if (!GetVariableIn(PORT_COMPARTMENT_TYPE,compType))
+			compType = m_eCompartmentType;
 		
 		array<IEntity> vehicles = {};
 		group.GetUsableVehicles(vehicles);
 		if (!vehicles)
 		 return ENodeResult.FAIL;
+		IEntity vehicle;
 		
-		for(int i = 0, lenght = vehicles.Count(); i < lenght; i++)
+		if (SCR_AICompartmentHandling.FindAvailableCompartmentInVehicles(vehicles, compType, compartmentOut, vehicle))
 		{
-			vehicle = Vehicle.Cast(vehicles[i]);
-			if (vehicle)
-			{
-				BaseCompartmentManagerComponent compartmentMan = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
-				if (!compartmentMan)
-					break;
-				int numOfComp = compartmentMan.GetCompartments(m_aOutCompartments);				
-				for (int j = 0; j< numOfComp; j++ )
-				{
-					if (CompartmentClassToType(m_aOutCompartments[j].Type()) == m_compType)
-						if (!m_aOutCompartments[j].AttachedOccupant() && m_aOutCompartments[j].IsCompartmentAccessible())
-						{
-							SetVariableOut("VehicleOut",vehicle);
-							if (m_bOccupyVehicle)
-							{
-								compartmentUsed = m_aOutCompartments[j];	
-								compartmentUsed.SetCompartmentAccessible(false);
-							};
-							return ENodeResult.SUCCESS;									
-						};										
-				}			
-			}			
+			if (m_bReserveCompartment)
+				group.AllocateCompartment(compartmentOut);
+			SetVariableOut(PORT_COMPARTMENT, compartmentOut);
+			SetVariableOut(PORT_VEHICLE, vehicle);
+			return ENodeResult.SUCCESS;
 		}
-		ClearVariable("VehicleOut");
+		ClearVariable(PORT_VEHICLE);
 		return ENodeResult.FAIL;
-	}	
-	
-	override void OnAbort(AIAgent owner, Node nodeCausingAbort)
-	{
-		if (compartmentUsed)
-		{
-			compartmentUsed.SetCompartmentAccessible(true);
-			compartmentUsed = null;
-		}	
 	}
 	
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsIn = {
-		PORT_COMPARTMENT
+		PORT_COMPARTMENT_TYPE
 	};
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	override TStringArray GetVariablesIn()
     {
         return s_aVarsIn;
     }
 	
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	protected static ref TStringArray s_aVarsOut = {
-		PORT_VEHICLE
+		PORT_VEHICLE,PORT_COMPARTMENT
 	};
+	
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	override TStringArray GetVariablesOut()
     {
         return s_aVarsOut;
     }
 	
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	override bool VisibleInPalette()
     {
         return true;
     }
 	
+	//----------------------------------------------------------------------------------------------------------------------------------------
 	override string GetOnHoverDescription()
 	{
-		return "GetUsableVehicle: takes vehicles from the list of known vehicles of group and checks if the slot of m_compartmentType is available";
-	}
-	
-	static ECompartmentType CompartmentClassToType(typename type)
-	{
-		switch (type)
-		{
-			case PilotCompartmentSlot:	return ECompartmentType.Pilot;
-			case CargoCompartmentSlot: 	return ECompartmentType.Cargo;
-			case TurretCompartmentSlot:	return ECompartmentType.Turret;
-		}
-		return 0;			
-	}
-	
-	void ~SCR_AIGetUsableVehicle()
-	{
-		if (m_aOutCompartments)
-		{
-			m_aOutCompartments.Clear();
-			m_aOutCompartments = null;
-		}	
+		return "GetUsableVehicle: takes vehicles from the list of known vehicles of group and checks if the slot of m_compartmentType is available.\n It does not relaese reservation the found compartment!";
 	}
 };

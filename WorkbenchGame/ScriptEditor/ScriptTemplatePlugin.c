@@ -53,12 +53,12 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 			}
 
 			//--- Get template
-			string fullPath, defaultParentName;
+			string template, defaultParentName;
 			foreach (ScriptTemplateConfigEntry entry: config.m_Entries)
 			{
 				if (entry.m_Type == m_ClassType)
 				{
-					fullPath = entry.m_TemplateFile.GetPath();
+					template = entry.m_Template;
 					defaultParentName = entry.m_sDefaultParentName;
 					break;
 				}
@@ -88,23 +88,9 @@ class ScriptTemplatePlugin: WorkbenchPlugin
 			if (parentName)
 				parentName = " : " + parentName;
 
-			//--- Open template file
-			FileHandle file = FileIO.OpenFile(fullPath, FileMode.READ);
-			if (!file)
-			{
-				Print(string.Format("Cannot open file '%1'!", fullPath), LogLevel.ERROR);
-				return;
-			}
-
 			//--- Copy template into the script
-			string line;
 			int lineNumber = scriptEditor.GetCurrentLine();
-			while (file.FGets(line ) > 0)
-			{
-				scriptEditor.InsertLine(string.Format(line, className, parentName), lineNumber);
-				lineNumber++;
-			}
-			file.CloseFile();
+			scriptEditor.InsertLine(string.Format(template, className, parentName), lineNumber);
 		}
 	}
 	
@@ -131,12 +117,12 @@ class ScriptTemplateConfig
 [BaseContainerProps(), SCR_BaseContainerCustomTitleEnum(EScriptTemplateType, "m_Type")]
 class ScriptTemplateConfigEntry
 {
-	[Attribute(defvalue: "", uiwidget: UIWidgets.ComboBox, desc: "", enums: ParamEnumArray.FromEnum(EScriptTemplateType))]
+	[Attribute(defvalue: "", uiwidget: UIWidgets.ComboBox, desc: "Template type", enums: ParamEnumArray.FromEnum(EScriptTemplateType))]
 	EScriptTemplateType m_Type;
+	
+	[Attribute(uiwidget: UIWidgets.EditBoxMultiline, desc: "Template text that will be added to the file. Variables are:\n%1 - class name\n%2 - parent class name")]
+	string m_Template;
 
-	[Attribute("", uiwidget: UIWidgets.ResourceNamePicker, params: "txt")]
-	ResourceName m_TemplateFile;
-
-	[Attribute()]
+	[Attribute(desc: "When defined, this parent class name will be used when user does not set any in the plugin.")]
 	string m_sDefaultParentName;
 };

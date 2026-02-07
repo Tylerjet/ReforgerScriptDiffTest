@@ -4,14 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
 class DoorUserAction: ScriptedUserAction
 {
 	proto external DoorComponent GetDoorComponent();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

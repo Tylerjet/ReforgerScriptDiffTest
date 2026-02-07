@@ -48,6 +48,12 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	
 	static const vector m_vHeightOffset = "0 0.03 0";
 	
+	protected int m_iOngoingQueries = 0;
+	protected bool m_bQueryFinished = true;
+	protected BaseGameTriggerEntity m_pCurrentTrigger = null;
+	protected int m_iCurrentIndex = -1;
+	protected IEntity m_pCurrentUser = null;
+
 	//------------------------------------------------------------------------------------------------
 	bool IsProxy()
 	{
@@ -100,7 +106,7 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 		if (!user)
 			return;
 		
-		if (CanSpawn(index, user) == SCR_EntityRequestDeniedReason.CAN_SPAWN)
+		if (CanSpawn(index, user) == SCR_EEntityRequestStatus.CAN_SPAWN)
 			PerformSpawn(index, user);
 	}
 	
@@ -128,17 +134,17 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	int CanSpawn(int entityIndex = -1, IEntity user = null)
 	{
 		if (!m_EntityAssetList)
-			return SCR_EntityRequestDeniedReason.NOT_AVAILABLE;
+			return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 		
 		SCR_EntityInfo spawnInfo = m_EntityAssetList.GetEntryAtIndex(entityIndex);
 		
 		if (!GetIsEntityAllowed(spawnInfo))
-			return SCR_EntityRequestDeniedReason.NOT_AVAILABLE;
+			return SCR_EEntityRequestStatus.NOT_AVAILABLE;
 		
 		if (spawnInfo && spawnInfo.GetCost() > GetSpawnerSupplies())
-			return SCR_EntityRequestDeniedReason.NOT_ENOUGH_SUPPLIES;
+			return SCR_EEntityRequestStatus.NOT_ENOUGH_SUPPLIES;
 		
-		return SCR_EntityRequestDeniedReason.CAN_SPAWN;
+		return SCR_EEntityRequestStatus.CAN_SPAWN;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -219,9 +225,27 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 		{			
 			if (m_bUseTriggers)
 			{
-				IEntity trigger = GetEmptyTrigger();
-				if (trigger)
-					trigger.GetTransform(params.Transform);
+				if (!m_bQueryFinished)
+				{
+					// Is the Notify needed?
+					SendNotification(SCR_EEntityRequestStatus.COOLDOWN, user);
+    				return;
+				}
+
+				if (!m_pCurrentTrigger)
+				{
+					m_iCurrentIndex = index;
+					m_pCurrentUser = user;
+					QueryTriggers();
+					return;
+				}
+				else
+				{
+					m_pCurrentTrigger.GetTransform(params.Transform);
+					m_pCurrentTrigger = null;
+					m_iCurrentIndex = -1;
+					m_pCurrentUser = null;
+				}
 			}
 			
 			if (m_bUseRadius && params.Transform[3] == vector.Zero)
@@ -233,7 +257,7 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 			
 			if (params.Transform[3] == vector.Zero)
 			{
-				SendNotification(SCR_EntityRequestDeniedReason.NOT_ENOUGH_SPACE, user);
+				SendNotification(SCR_EEntityRequestStatus.NOT_ENOUGH_SPACE, user);
     			return;
 			}
 		}
@@ -250,7 +274,7 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 		Event_OnEntitySpawned.Invoke(m_SpawnedEntity);
 		
 		//Send notification to player, whom requested the vehicle
-		SendNotification(SCR_EntityRequestDeniedReason.CAN_SPAWN, user, index);
+		SendNotification(SCR_EEntityRequestStatus.CAN_SPAWN, user, index);
 		
 		Physics physicsComponent = m_SpawnedEntity.GetPhysics();
 		if (!physicsComponent)
@@ -360,52 +384,76 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Returns empty trigger in hierarchy
-	BaseGameTriggerEntity GetEmptyTrigger()
+	//! Queries children triggers in hierarchy
+	protected void QueryTriggers()
 	{
 		IEntity child = GetOwner().GetChildren();
 		BaseGameTriggerEntity trigger;
+		m_iOngoingQueries = 0;
 		while (child)
 		{
 			if (child.Type() == BaseGameTriggerEntity)
 			{
+				m_bQueryFinished = false;
+				m_iOngoingQueries++;
+
 				trigger = BaseGameTriggerEntity.Cast(child);
+				trigger.GetOnQueryFinished().Insert(OnQueryFinished);
 				trigger.QueryEntitiesInside();
-				array<IEntity> inside = new array<IEntity>();
-				int cntInside = trigger.GetEntitiesInside(inside);
-				
-				if (cntInside != 0 && m_bDeleteWrecks)
-				{
-					GarbageManager garbageMan = GetGame().GetGarbageManager();
-					foreach (IEntity ent : inside)
-					{
-						if (!ent)
-							continue;
-						
-						DamageManagerComponent comp = DamageManagerComponent.Cast(ent.FindComponent(DamageManagerComponent));
-							
-						if (!comp || !comp.IsDestroyed())
-							continue;
-							
-						if (garbageMan && garbageMan.IsInserted(ent))
-							garbageMan.Withdraw(ent);
-							
-						SCR_EntityHelper.DeleteEntityAndChildren(ent);
-					}
-					
-					cntInside = trigger.GetEntitiesInside(inside);
-				}
-				
-				if (cntInside == 0)
-					return trigger;
 			}
-			
+
 			child = child.GetSibling();
 		}
-		
-		return null;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! Check for an empty trigger
+	protected void OnQueryFinished(BaseGameTriggerEntity trigger)
+	{
+		m_iOngoingQueries--;
+		if(m_bQueryFinished)
+			return;
+
+		array<IEntity> inside = new array<IEntity>();
+		int cntInside = trigger.GetEntitiesInside(inside);
+
+		if (cntInside != 0 && m_bDeleteWrecks)
+		{
+			GarbageManager garbageMan = GetGame().GetGarbageManager();
+			foreach (IEntity ent : inside)
+			{
+				if (!ent)
+					continue;
+
+				DamageManagerComponent comp = DamageManagerComponent.Cast(ent.FindComponent(DamageManagerComponent));
+
+				if (!comp || !comp.IsDestroyed())
+					continue;
+
+				if (garbageMan && garbageMan.IsInserted(ent))
+					garbageMan.Withdraw(ent);
+
+				SCR_EntityHelper.DeleteEntityAndChildren(ent);
+			}
+
+			cntInside = trigger.GetEntitiesInside(inside);
+		}
+
+		if (cntInside == 0)
+		{
+			m_bQueryFinished = true;
+			m_pCurrentTrigger = trigger;
+			PerformSpawn(m_iCurrentIndex, m_pCurrentUser);
+		}
+		else if (m_iOngoingQueries <= 0)
+		{
+			SendNotification(SCR_EEntityRequestStatus.NOT_ENOUGH_SPACE, m_pCurrentUser);
+			m_bQueryFinished = true;
+			m_iCurrentIndex = -1;
+			m_pCurrentUser = null;
+		}
+	}
+
 	//------------------------------------------------------------------------------------------------
 	/*!
 	Get supplies left for spawner
@@ -468,14 +516,3 @@ class SCR_EntitySpawnerComponent : ScriptComponent
 			return;
 	}
 }
-
-enum SCR_EntityRequestDeniedReason
-	{
-		CAN_SPAWN = 0,
-		CAN_SPAWN_TRIGGER = 1,
-		NOT_ENOUGH_SUPPLIES = 2,
-		NOT_ENOUGH_SPACE = 3,
-		NOT_AVAILABLE = 4,
-		RANK_LOW = 5,
-		COOLDOWN = 6
-	};

@@ -55,7 +55,7 @@ class SCR_GameOverScreenConfig
 		EGameOverTypes id;
 		int count = m_aGameOverScreens.Count();
 		
-		for(int i = 1; i <count; i++)
+		for(int i = 0; i <count; i++)
 		{
 			id = m_aGameOverScreens[i].GetInfoId();
 			

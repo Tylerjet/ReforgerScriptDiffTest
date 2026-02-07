@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Serialization
-* @{
+/*!
+\addtogroup Serialization
+\{
 */
 
 /*!
@@ -17,6 +17,8 @@ class BaseSerializationContext: Managed
 	proto external bool IsValid();
 	proto external bool StartObject(string name);
 	proto external bool EndObject();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

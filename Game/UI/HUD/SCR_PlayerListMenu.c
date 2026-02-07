@@ -77,6 +77,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 	protected const string FILTER_MUTE = "Mute";
 	protected const string FILTER_BLOCK = "Block";
 	
+	protected static const ResourceName FACTION_COUNTER_LAYOUT = "{5AD2CE85825EDA11}UI/layouts/Menus/PlayerList/FactionPlayerCounter.layout";
+	
 	protected const int DEFAULT_SORT_INDEX = 1;
 	
 	protected string m_sGameMasterIndicatorName = "GameMasterIndicator";
@@ -1169,6 +1171,8 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			
 			string name = faction.GetFactionName();
 			tabView.AddTab(ResourceName.Empty,name);
+			
+			AddFactionPlayerCounter(faction);
 		}
 		
 		//handle groups tab
@@ -1414,5 +1418,36 @@ class SCR_PlayerListMenu : SCR_SuperMenuBase
 			m_aEntries[i].m_wRow.RemoveFromHierarchy();
 			m_aEntries.RemoveItem(m_aEntries[i]);
 		}
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void AddFactionPlayerCounter(Faction faction)
+	{
+		SCR_Faction scriptedFaction = SCR_Faction.Cast(faction);
+		if (!scriptedFaction)
+			return;
+		
+		Widget contentLayout = m_wRoot.FindAnyWidget("FactionPlayerNumbersLayout");
+		if (!contentLayout)
+			return;
+		
+		Widget factionTile = GetGame().GetWorkspace().CreateWidgets(FACTION_COUNTER_LAYOUT, contentLayout);
+		if (!factionTile)
+			return;
+		
+		RichTextWidget playerCount = RichTextWidget.Cast(factionTile.FindAnyWidget("PlayerCount"));
+		if (!playerCount)
+			return;
+		
+		ImageWidget factionFlag = ImageWidget.Cast(factionTile.FindAnyWidget("FactionFlag"));
+		if (!factionFlag)
+			return;
+
+		int x, y;
+		factionFlag.LoadImageTexture(0, scriptedFaction.GetFactionFlag());	
+		factionFlag.GetImageSize(0, x, y);
+		factionFlag.SetSize(x, y);
+		
+		playerCount.SetText(scriptedFaction.GetPlayerCount().ToString());
 	}
 };

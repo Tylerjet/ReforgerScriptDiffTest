@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 /*!
@@ -40,17 +40,17 @@ sealed class WorkspaceWidget: RTTextureWidget
 	proto external int GetHeight();
 	/*!
 	Projects world position to screen position in reference resolution
-	
+
 	\param cam Which camera to use for projection. If '-1', current camera from current world is used.
 	\return Screen coordinates in reference resolution(x, y axes) and depth in world units(z axis)
 	*/
 	proto external vector ProjWorldToScreen(vector pos, BaseWorld world, int cam = -1);
 	/*!
-	Projects screen position in reference resolution to world position and direction
-	
+	Projects screen position in reference resolution to world position and direction.
+
 	\param x Coordinate on screen in reference resolution
 	\param y Coordinate on screen in reference resolution
-	\param ourDir Returned direction vector
+	\param outDir Returned direction vector
 	\param cam Which camera to use for projection. If '-1', current camera from current world is used.
 	\return World coordinates
 	*/
@@ -69,6 +69,8 @@ sealed class WorkspaceWidget: RTTextureWidget
 	proto external Widget CreateWidgetInWorkspace(WidgetType type, int left, int top, int width, int height, WidgetFlags flags, Color color, int sort);
 	//!Create widgets from *.layout file
 	proto Widget CreateWidgets(ResourceName layoutResourceName, Widget parentWidget = NULL);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

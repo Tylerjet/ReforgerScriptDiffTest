@@ -1,17 +1,17 @@
-/**
- * \defgroup EntityAPI Entity system
- * @{
- */
+/*!
+\defgroup EntityAPI Entity system
+\{
+*/
 
 class EntityID: pointer
 {
 	static EntityID INVALID;
 	static proto native EntityID FromInt(int hiBits, int loBits);
-};
+}
 
 class NativeComponent: pointer
 {
-};
+}
 
 //! BoneMask == NULL means that all bits are set
 class BoneMask: Managed
@@ -22,4 +22,6 @@ class BoneMask: Managed
 //! Node global id is a hash of name of the node.
 typedef int TNodeId;
 
-//@}
+/*!
+\}
+*/

@@ -12,6 +12,9 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 	[Attribute("0", UIWidgets.Flags, "", enums: ParamEnumArray.FromEnum(SCR_EArsenalItemMode))]
 	protected SCR_EArsenalItemMode m_eSupportedItemModes;
 	
+	protected SCR_EArsenalItemType m_eCurrentItemType;
+	protected SCR_EArsenalItemMode m_eCurrentItemMode;
+	
 	//------------------------------------------------------------------------------------------------
 	SCR_EArsenalItemType GetSlotSupportedItemTypes()
 	{
@@ -22,6 +25,18 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 	SCR_EArsenalItemMode GetSlotSupportedItemModes()
 	{
 		return m_eSupportedItemModes;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EArsenalItemMode GetCurrentOccupiedItemType()
+	{
+		return m_eCurrentItemType;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_EArsenalItemMode GetCurrentOccupiedItemMode()
+	{
+		return m_eCurrentItemMode;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -44,7 +59,7 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SpawnNewItem(Resource itemResource, SCR_ArsenalItemDisplayData itemDisplayData = null, bool deleteExisting = false)
+	void SpawnNewItem(Resource itemResource, SCR_ArsenalItem arsenalData, SCR_ArsenalItemDisplayData itemDisplayData = null, bool deleteExisting = false)
 	{
 		IEntity child = GetChildren();
 		if (child)
@@ -60,34 +75,42 @@ class SCR_WeaponRackSlotEntity : GenericEntity
 		params.TransformMode = ETransformMode.WORLD;
 		
 		IEntity item = GetGame().SpawnEntityPrefab(itemResource, GetWorld(), params);
+		if (!item)
+			return;
 		
-		if (item)
+		// Since item is in hierarchy in which parent (slotEntity) is not traceable (also has no volume), we'll have
+		// to clear its proxy flag so we can trace the item safely. Proxy flag is reset on pickup via item slots
+		item.ClearFlags(EntityFlags.PROXY);
+		
+		vector positionOffset, rotationOffset = vector.Zero;
+		if (itemDisplayData)
 		{
-			// Since item is in hierarchy in which parent (slotEntity) is not traceable (also has no volume), we'll have
-			// to clear its proxy flag so we can trace the item safely. Proxy flag is reset on pickup via item slots
-			item.ClearFlags(EntityFlags.PROXY, false);
-			
-			vector positionOffset, rotationOffset = vector.Zero;
-			if (itemDisplayData)
-			{
-				positionOffset = itemDisplayData.GetItemOffset();
-				rotationOffset = itemDisplayData.GetItemRotation();
-			}
-			
-			// set weapon rotation
-			item.SetAngles(rotationOffset);
-			
-			// offset the item locally
-			vector mat[4];
-			item.GetLocalTransform(mat);
-			mat[3] = mat[3] + positionOffset;
-			item.SetLocalTransform(mat);
-			
-			if (item.FindComponent(MagazineComponent))
-				item.SetFlags(EntityFlags.PROXY, false);
-			
-			item.ClearFlags(EntityFlags.ACTIVE, false);
+			positionOffset = itemDisplayData.GetItemOffset();
+			rotationOffset = itemDisplayData.GetItemRotation();
 		}
+		
+		// set weapon rotation
+		item.SetAngles(rotationOffset);
+		
+		// offset the item locally
+		vector mat[4];
+		item.GetLocalTransform(mat);
+		mat[3] = mat[3] + positionOffset;
+		item.SetLocalTransform(mat);
+		
+		if (item.FindComponent(MagazineComponent))
+			item.SetFlags(EntityFlags.PROXY);
+		
+		item.ClearFlags(EntityFlags.ACTIVE);
+		
+		InventoryItemComponent itemComp = InventoryItemComponent.Cast(item.FindComponent(InventoryItemComponent));
+		if (itemComp)
+		{
+			itemComp.DisablePhysics();
+		}
+		
+		m_eCurrentItemType = arsenalData.GetItemType();
+		m_eCurrentItemMode = arsenalData.GetItemMode();
 	}
 	
 	//------------------------------------------------------------------------------------------------

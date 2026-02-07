@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Music
-* @{
+/*!
+\addtogroup Music
+\{
 */
 
 enum MusicCategory
@@ -17,7 +17,9 @@ enum MusicCategory
 	USER1,
 	USER2,
 	USER3,
-	NOCATEGORY
-};
+	NOCATEGORY,
+}
 
-/** @}*/
+/*!
+\}
+*/

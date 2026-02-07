@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Events
-* @{
+/*!
+\addtogroup Events
+\{
 */
 
 class EventHandlerManagerComponentClass: GameComponentClass
 {
-};
+}
 
 class EventHandlerManagerComponent: GameComponent
 {
@@ -31,10 +31,12 @@ class EventHandlerManagerComponent: GameComponent
 	*	- vector and arrays have only their pointers copied, so they behave the same as instance.
 	*/
 	proto void RaiseEvent(string eventName, int argsCount, void param1 = NULL, void param2 = NULL, void param3 = NULL, void param4 = NULL, void param5 = NULL, void param6 = NULL, void param7 = NULL, void param8 = NULL, void param9 = NULL);
-	proto void RegisterScriptHandler(string eventName, Managed inst, func callback, bool delayed = true);
+	proto void RegisterScriptHandler(string eventName, Managed inst, func callback, bool delayed = true, bool singleUse = false);
 	proto void RemoveScriptHandler(string eventName, Managed inst, func callback, bool delayed = true);
 	//! Returns a list and count of all event handlers
 	proto external int GetEventHandlers(out notnull array<BaseEventHandler> outEventHandlers);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

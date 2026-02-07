@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI\HUD\SelectionMenu
-* @{
+/*!
+\addtogroup UI\HUD\SelectionMenu
+\{
 */
 
 class AIMessageSelectionMenuEntry: ScriptedSelectionMenuEntry
@@ -16,11 +16,13 @@ class AIMessageSelectionMenuEntry: ScriptedSelectionMenuEntry
 	{
 		this.SetAIMessage(pAIMessage);
 	}
-	
+
 	//! Set the message for this menu entry
 	proto external void SetAIMessage(AIMessage pAIMessage);
 	//! Retrieve the message from this menu entry. Can be null.
 	proto external AIMessage GetAIMessage();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

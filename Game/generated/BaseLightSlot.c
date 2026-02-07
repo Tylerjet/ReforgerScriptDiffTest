@@ -18,9 +18,9 @@ class BaseLightSlot: ScriptAndConfig
 	proto external int GetLightID();
 	//! Set whether the light works or is broken
 	proto external void SetLightFunctional(bool state);
-	
+
 	// callbacks
-	
+
 	event protected void OnInit(IEntity owner);
 	event protected void OnLightStateChanged(bool newState);
-};
+}

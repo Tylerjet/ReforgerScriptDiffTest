@@ -10,6 +10,10 @@ class SCR_ArsenalFactionEditorAttribute : SCR_BaseFactionEditableAttribute
 		if (!arsenalComponent)
 			return false;
 		
+		//~ Not allowed to change faction if arsenal items are being overwritten as this would not do anything
+		if (arsenalComponent.GetOverwriteArsenalConfig() != null)
+			return false;
+		
 		SCR_FactionAffiliationComponent factionComponent = SCR_FactionAffiliationComponent.Cast(entity.FindComponent(SCR_FactionAffiliationComponent));
 		if (!factionComponent)
 			return false;

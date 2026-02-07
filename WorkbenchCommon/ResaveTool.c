@@ -1,6 +1,9 @@
 [WorkbenchPluginAttribute("Re-Save Tool", "Saves all files with given extension", "", "", {"ResourceManager"},"",0xf0c7)]
 class ResavePlugin: WorkbenchPlugin
 {
+	[Attribute(uiwidget: UIWidgets.FileNamePicker, desc: "Root directory to search", params:"unregFolders" )]
+	string RootPath;
+	
 	[Attribute(uiwidget: UIWidgets.EditBox, desc: "File extensions" )]
 	ref array<string> Extensions;
 	
@@ -14,6 +17,7 @@ class ResavePlugin: WorkbenchPlugin
 	void Resave()
 	{
 		WBProgressDialog progress = new WBProgressDialog("Resaving...", null);
+		ResourceManager rm = Workbench.GetModule(ResourceManager);
 		int cnt = m_files.Count();	
 		
 		foreach (int i, ResourceName file: m_files)
@@ -25,6 +29,10 @@ class ResavePlugin: WorkbenchPlugin
 				BaseContainer cont = res.GetResource().ToBaseContainer();
 				BaseContainerTools.SaveContainer(cont, file);
 			}
+			else
+			{
+				rm.RebuildResourceFile(file.GetPath(), "PC", false);
+			}
 			
 			progress.SetProgress(i / cnt);
 		}
@@ -35,7 +43,7 @@ class ResavePlugin: WorkbenchPlugin
 	{
 		if (Workbench.ScriptDialog("Resave", "Which files you want to resave?", this))
 		{
-			Workbench.SearchResources(Find, Extensions);
+			Workbench.SearchResources(Find, Extensions, null, RootPath);
 			Resave();			
 		}
 	}
@@ -69,4 +77,4 @@ class ResavePlugin: WorkbenchPlugin
 	{
 		return false;
 	}
-};
+}

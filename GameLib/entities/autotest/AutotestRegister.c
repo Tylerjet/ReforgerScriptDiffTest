@@ -9,7 +9,7 @@ enum MeasurementType
 	HTML,
 	File,
 	Gallery
-};
+}
 
 //! Implementation of single measurement result file (dont forget to delete it after you are done or use strong ref)
 class MeasurementFile
@@ -18,7 +18,7 @@ class MeasurementFile
 	// VARIABLES
 	private AutotestRegister m_parent;	//< Register this file is made from
 	private string m_filePath;			//< Path to physical file of this measurement
-	private FileHandle m_handle;		//< Handle to physical file
+	private ref FileHandle m_handle;		//< Handle to physical file
 	private MeasurementType m_type;		//< What type of measurement visualization this file will generate
 	private string m_graphHeader;		//< Table header for graph type measurements
 	private bool m_containsNoData;		//< Does this file contain any data or is it plain autotest header only (first line only)
@@ -42,14 +42,14 @@ class MeasurementFile
 			int lineCount = 0;
 			
 			string line;
-			while(m_handle.FGets(line) > 0)
+			while(m_handle.ReadLine(line) > 0)
 			{
 				lineCount++;
 				if(lineCount > 1)
 					break;
 			}
 			m_containsNoData = lineCount < 2;
-			m_handle.CloseFile();
+			m_handle.Close();
 		}
 		else
 			m_containsNoData = true;
@@ -61,14 +61,14 @@ class MeasurementFile
 	void ~MeasurementFile()
 	{
 		if(IsChart() && m_containsNoData && m_graphHeader.Length() > 0)
-			m_handle.FPrintln(m_graphHeader);	
-		m_handle.CloseFile();
+			m_handle.WriteLine(m_graphHeader);	
+		m_handle.Close();
 	}
 	
 	//! Was file open valid, can we write inside?
 	bool IsValid()
 	{
-		return m_handle != 0;
+		return m_handle;
 	}
 	
 	//! Returns full path to this measurement file
@@ -93,7 +93,7 @@ class MeasurementFile
 		if(IsChart() && m_containsNoData)
 		{
 			if(m_graphHeader.Length() > 0)
-				m_handle.FPrintln(m_graphHeader);	
+				m_handle.WriteLine(m_graphHeader);	
 			else
 			{
 				array<string> arr = new array<string>();
@@ -107,12 +107,12 @@ class MeasurementFile
 					else
 						artificialHeader = string.Format("%1", i);
 				}
-				m_handle.FPrintln(artificialHeader);
+				m_handle.WriteLine(artificialHeader);
 			}
 		}
 		
 		m_containsNoData = false;
-		m_handle.FPrintln(line);
+		m_handle.WriteLine(line);
 	}
 	
 	//! Returns true when type of this file is some type of graph (not heatmap)
@@ -135,19 +135,19 @@ class MeasurementFile
 		
 		if(m_type == MeasurementType.HeatMap)
 		{
-			m_handle.FPrintln(string.Format("%1;%2;heatmap", m_parent.GetAutotestPageName(), measurementTitle));
-			m_handle.FPrintln("x,y,FPS");
+			m_handle.WriteLine(string.Format("%1;%2;heatmap", m_parent.GetAutotestPageName(), measurementTitle));
+			m_handle.WriteLine("x,y,FPS");
 		}
 		else if(m_type == MeasurementType.GraphLine)
-			m_handle.FPrintln(string.Format("%1;%2;chart;line", m_parent.GetAutotestPageName(), measurementTitle));
+			m_handle.WriteLine(string.Format("%1;%2;chart;line", m_parent.GetAutotestPageName(), measurementTitle));
 		else if(m_type == MeasurementType.GraphBar)
-			m_handle.FPrintln(string.Format("%1;%2+chart;bar", m_parent.GetAutotestPageName(), measurementTitle));
+			m_handle.WriteLine(string.Format("%1;%2+chart;bar", m_parent.GetAutotestPageName(), measurementTitle));
 		else if(m_type == MeasurementType.HTML)
-			m_handle.FPrintln(string.Format("%1;%2;html", m_parent.GetAutotestPageName(), measurementTitle));
+			m_handle.WriteLine(string.Format("%1;%2;html", m_parent.GetAutotestPageName(), measurementTitle));
 		else if(m_type == MeasurementType.File)
-			m_handle.FPrintln(string.Format("%1;%2;file", m_parent.GetAutotestPageName(), measurementTitle));
+			m_handle.WriteLine(string.Format("%1;%2;file", m_parent.GetAutotestPageName(), measurementTitle));
 		else if(m_type == MeasurementType.Gallery)
-			m_handle.FPrintln(string.Format("%1;%2;gallery", m_parent.GetAutotestPageName(), measurementTitle));
+			m_handle.WriteLine(string.Format("%1;%2;gallery", m_parent.GetAutotestPageName(), measurementTitle));
 	}
 }
 
@@ -173,7 +173,7 @@ class AutotestRegister
 	{
 		m_autotestPageName = pageName;
 		
-		m_worldFileFolder = "$profile:"; 
+		m_worldFileFolder = "$logs:"; 
 		
 		string mutliTestFile = string.Format("%1/%2", m_worldFileFolder, "last_test_index.log");
 		FileHandle tmp;
@@ -181,16 +181,16 @@ class AutotestRegister
 		{
 			tmp = FileIO.OpenFile(mutliTestFile, FileMode.READ);
 			string line;
-			tmp.FGets(line);
+			tmp.ReadLine(line);
 			m_testIndex = line.ToInt() + 1;
-			tmp.CloseFile();
+			tmp.Close();
 		}
 		
 		tmp = FileIO.OpenFile(mutliTestFile, FileMode.WRITE);
 		if (tmp)
 		{
-			tmp.FPrintln(string.Format("%1", m_testIndex));
-			tmp.CloseFile();
+			tmp.WriteLine(string.Format("%1", m_testIndex));
+			tmp.Close();
 		}
 	}
 	
@@ -246,8 +246,8 @@ class AutotestRegister
 		if(!FileIO.FileExist(logFilePath))
 		{
 			FileHandle logFileHandle = FileIO.OpenFile(logFilePath, FileMode.WRITE);
-			logFileHandle.FPrintln("Missing log file");
-			logFileHandle.CloseFile();
+			logFileHandle.WriteLine("Missing log file");
+			logFileHandle.Close();
 		}
 		
 		ref MeasurementFile logFileUploader = OpenMeasurementFile("zzz_console_log_upload", "Console log", MeasurementType.File);
@@ -258,8 +258,8 @@ class AutotestRegister
 	void SavePersistentData(string name, string data)
 	{
 		FileHandle tmp = FileIO.OpenFile(CreatePersistentFilePath(name), FileMode.WRITE);
-		tmp.FPrintln(data);
-		tmp.CloseFile();
+		tmp.WriteLine(data);
+		tmp.Close();
 	}
 	//! Returns previously stored data (by calling SavePersistentData) under given name (works even between exe runs)
 	string LoadPersistentData(string name)
@@ -267,9 +267,9 @@ class AutotestRegister
 		FileHandle tmp = FileIO.OpenFile(CreatePersistentFilePath(name), FileMode.READ);
 		
 		string data;
-		tmp.FGets(data);
+		tmp.ReadLine(data);
 		
-		tmp.CloseFile();
+		tmp.Close();
 		return data;
 	}
 	
@@ -282,10 +282,10 @@ class AutotestRegister
 		int count = -1;
 		
 		string lineContent;
-		while(tmp.FGets(lineContent) > 0)
+		while(tmp.ReadLine(lineContent) > 0)
 			count++;
 		
-		tmp.CloseFile();
+		tmp.Close();
 		return count;
 	}
 	

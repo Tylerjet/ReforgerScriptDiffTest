@@ -10,8 +10,6 @@ class SCR_DestructionBaseComponentClass: ScriptedDamageManagerComponentClass
 	float m_fMomentumToDamageScale;
 	[Attribute("0.5", UIWidgets.Slider, "Minimum relative contact force (impulse / mass) threshold below which contacts are ignored", "0 50000 0.01", category: "Destruction Setup")]
 	float m_fRelativeContactForceThresholdMinimum;
-	[Attribute("1", UIWidgets.Slider, "Minimum damage threshold below which damage is ignored", "0 50000 0.01", category: "Destruction Setup")]
-	float m_fDamageThresholdMinimum;
 	[Attribute("3000", UIWidgets.Slider, "Maximum damage threshold above which the object is completely destroyed and no effects are played (eg: nuclear bomb damage)", "0.01 50000 0.01", category: "Destruction Setup")]
 	float m_fDamageThresholdMaximum;
 	[Attribute("0", desc: "Should children destructible objects also receive the damage dealt to this one?", category: "Destruction Setup")]
@@ -25,8 +23,6 @@ class SCR_DestructionBaseComponentClass: ScriptedDamageManagerComponentClass
 //! Base destruction component, destruction types extend from this
 class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 {
-	const float SIMULATION_IMPRECISION_MULTIPLIER = 1.1;
-	
 #ifdef ENABLE_BASE_DESTRUCTION
 	protected static ref ScriptInvoker s_OnDestructibleDestroyed = new ScriptInvoker();
 	protected static bool s_bReadingInit = false; //Used to determine whether we are in gameplay or synchronization state
@@ -130,6 +126,14 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	//! Used in cases where we don't care about effects or anything, e. g. building destruction
+	void DeleteDestructible()
+	{
+		RegenerateNavmeshDelayed();
+		RplComponent.DeleteRplEntity(GetOwner(), false);
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	//! Sets the base health value of the hit zone (does not trigger destruction)
 	void SetHitZoneHealth(float baseHealth, bool clearDamage = true)
 	{
@@ -150,22 +154,6 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			return;
 		
 		hitZone.SetHealth(hitZone.GetMaxHealth() - damage);
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Enables/disables on frame tick (for handling destruction outside of physics step)
-	void EnableOnFrame(bool enable)
-	{
-		if (enable)
-		{
-			SetEventMask(GetOwner(), EntityEvent.FRAME);
-			GetOwner().SetFlags(EntityFlags.ACTIVE, false);
-		}
-		else
-		{
-			ClearEventMask(GetOwner(), EntityEvent.FRAME);
-			GetOwner().ClearFlags(EntityFlags.ACTIVE, false);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -194,14 +182,6 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	//! Called when the object should be destroyed and various effects or other things need to be performed (actual destruction handled HandleDestruction())
 	void QueueDestroy()
 	{
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	//! Deletes self
-	void DeleteSelf()
-	{
-		RegenerateNavmeshDelayed();
-		RplComponent.DeleteRplEntity(GetOwner(), false);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -242,7 +222,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	//! Handle destruction
 	void HandleDestruction()
 	{
-		DeleteSelf();
+		SpawnDestroyObjects();
+		PlaySound();
+		DeleteDestructible();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -336,7 +318,8 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		SetHitZoneDamage(GetMaxHealth());
 		CreateDestructionHitInfo(totalDestruction, lastHealth, hitDamage, damageType, hitPosition, hitDirection, hitNormal);
 		QueueDestroy();
-		EnableOnFrame(true);
+		
+		HandleDestruction();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -366,9 +349,9 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 				continue;
 			}
 			
-			destructionComponent.HandleDamage(type, damage, outMat, child, null, damageSource, null, colliderID, -1);
-			
+			IEntity currentChild = child;
 			child = child.GetSibling();
+			destructionComponent.HandleDamage(type, damage, outMat, currentChild, null, damageSource, null, colliderID, -1);
 		}
 	}
 	
@@ -378,21 +361,6 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 	{
 		RplComponent rplComponent = RplComponent.Cast(GetOwner().FindComponent(RplComponent));
 		return (rplComponent && rplComponent.IsProxy());
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	float CalculateMomentum(Contact contact, float ownerMass, float otherMass)
-	{
-		float DotMultiplier = vector.Dot(contact.VelocityAfter1.Normalized(), contact.VelocityBefore1.Normalized());
-		float MomentumBefore = ownerMass * contact.VelocityBefore1.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
-		float MomentumAfter = ownerMass * contact.VelocityAfter1.Length() * DotMultiplier;
-		float momentumA = Math.AbsFloat(MomentumBefore - MomentumAfter);
-		
-		DotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
-		MomentumBefore = otherMass * contact.VelocityBefore2.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
-		MomentumAfter = otherMass * contact.VelocityAfter2.Length() * DotMultiplier;
-		float momentumB = Math.AbsFloat(MomentumBefore - MomentumAfter);
-		return momentumA + momentumB;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -430,7 +398,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			return false;
 		
 		// Get the physics of the dynamic object (if owner is static, then we use the other object instead)
-		Physics physics = owner.GetPhysics();
+		Physics physics = contact.Physics1;
 		int responseIndex = physics.GetResponseIndex();
 		float ownerMass = physics.GetMass();
 		float otherMass;
@@ -438,7 +406,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		int otherResponseIndex;
 		if (!physics.IsDynamic())
 		{
-			physics = other.GetPhysics();
+			physics = contact.Physics2;
 			if (!physics)
 				return false; // This only happens with ragdolls, other objects do have physics here, as collision only happens between physical objects
 			
@@ -541,7 +509,7 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 			
 			// Should disable physics on destroy
 			if (GetDisablePhysicsOnDestroy())
-				physics.SetInteractionLayer(EPhysicsLayerDefs.None);
+				physics.SetInteractionLayer(EPhysicsLayerDefs.VehicleCast);
 		}
 		
 		float previousHealth;
@@ -551,26 +519,29 @@ class SCR_DestructionBaseComponent : ScriptedDamageManagerComponent
 		CreateDestructionHitInfo(damage >= componentData.m_fDamageThresholdMaximum, previousHealth, damage, type, hitTransform[0], hitTransform[1], hitTransform[2]);
 		
 		QueueDestroy();
-		EnableOnFrame(true); // Enable frame, will delete next frame
 		
 		SCR_DestructionHitInfo destructionHitInfo = GetDestructionHitInfo();
 		if (!destructionHitInfo)
 			return;
 		
 		Rpc(RPC_QueueDestroy, destructionHitInfo.m_TotalDestruction, destructionHitInfo.m_LastHealth, destructionHitInfo.m_HitDamage, destructionHitInfo.m_DamageType, destructionHitInfo.m_HitPosition, destructionHitInfo.m_HitDirection, destructionHitInfo.m_HitNormal);
+		
+		SCR_DestructionBaseData data = GetDestructionBaseData();
+		if (!data.GetDestructionQueued())
+		{
+			GetGame().GetCallqueue().CallLater(HandleDestruction); // Replaces OnFrame call, prevents crash when damage is dealt async/from physics step
+			data.SetDestructionQueued(true);
+		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	//! Frame
-	override void OnFrame(IEntity owner, float timeSlice)
+	float GetTotalDestructionThreshold()
 	{
-		if (!GetDestroyed())
-			return;
+		SCR_DestructionBaseComponentClass componentData = SCR_DestructionBaseComponentClass.Cast(GetComponentData(GetOwner()));
+		if (!componentData)
+			return 3000;
 		
-		EnableOnFrame(false);
-		SpawnDestroyObjects();
-		PlaySound();
-		HandleDestruction();
+		return componentData.m_fDamageThresholdMaximum;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -690,7 +661,7 @@ class SCR_BaseSpawnable
 {
 	[Attribute("0 0 0", UIWidgets.Coords, desc: "Positional offset (in local space to the destructible)")]
 	protected vector m_vOffsetPosition;
-	[Attribute("0 0 0", UIWidgets.Coords, desc: "Rotational offset (in local space to the destructible)")]
+	[Attribute("0 0 0", UIWidgets.Coords, desc: "Yaw, pitch & roll offset (in local space to the destructible)")]
 	protected vector m_vOffsetRotation;
 	
 #ifdef WORKBENCH
@@ -756,9 +727,6 @@ class SCR_BaseSpawnable
 	//------------------------------------------------------------------------------------------------
 	void CopyToSource(WorldEditorAPI api, IEntitySource source, array<ref ContainerIdPathEntry> path, int index, string currentObjectName)
 	{
-		if (source.GetResourceName().Contains("BrickWall_01/BrickWall_01_white_2m.et"))
-			Print("testing");
-		
 		if (!CreateObject(api, source, path, index))
 			return;
 		
@@ -797,8 +765,9 @@ class SCR_BaseSpawnable
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
-	void Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo)
+	IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
+		return null;
 	}
 };
 
@@ -826,8 +795,8 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 	float m_fRandomVelocityLinear;
 	[Attribute("180", UIWidgets.Slider, "Random angular velocity multiplier (deg/s)", "0 3600 0.1")]
 	float m_fRandomVelocityAngular;
-	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for debris sound", "", ParamEnumArray.FromEnum(EMaterialSoundType))]
-	EMaterialSoundType m_eMaterialSoundType;
+	[Attribute("0", uiwidget: UIWidgets.ComboBox, "Type of material for debris sound", "", ParamEnumArray.FromEnum(SCR_EMaterialSoundTypeDebris))]
+	SCR_EMaterialSoundTypeDebris m_eMaterialSoundType;
 	
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
@@ -917,10 +886,10 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
-	override void Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo)
+	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo)
-			return;
+			return null;
 		
 		int numModelPrefabs = 0;
 		if (m_ModelPrefabs)
@@ -959,6 +928,8 @@ class SCR_DebrisSpawnable : SCR_BaseSpawnable
 			SCR_DebrisSmallEntity.SpawnDebris(owner.GetWorld(), spawnMat, modelPath, m_fMass, Math.RandomFloat(m_fLifetimeMin, m_fLifetimeMax), m_fDistanceMax, m_fPriority, linearVelocity, angularVelocity, remap, false, m_eMaterialSoundType);
 #endif
 		}
+		
+		return null;
 	}
 };
 
@@ -1051,10 +1022,10 @@ class SCR_PrefabSpawnable : SCR_BaseSpawnable
 	
 	//------------------------------------------------------------------------------------------------
 	//! Spawns the object
-	override void Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo)
+	override IEntity Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
 		if (!hitInfo)
-			return;
+			return null;
 		
 		int numModelPrefabs = 0;
 		if (m_Prefabs)
@@ -1107,6 +1078,8 @@ class SCR_PrefabSpawnable : SCR_BaseSpawnable
 			prefabPhysics.SetVelocity(linearVelocity);
 			prefabPhysics.SetAngularVelocity(angularVelocity * Math.DEG2RAD);
 		}
+		
+		return null; // We spawned multiple entities
 	}
 };
 
@@ -1169,11 +1142,10 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 #endif
 	
 	//------------------------------------------------------------------------------------------------
-	//! Spawns the object
-	override void Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo)
+	SCR_ParticleEmitter SpawnAsChild(IEntity owner, SCR_HitInfo hitInfo, bool snapToTerrain = false)
 	{
-		if (!hitInfo || m_Particle == ResourceName.Empty)
-			return;
+		if (m_Particle == ResourceName.Empty)
+			return null;
 		
 		vector spawnMat[4];
 		GetSpawnTransform(owner, spawnMat);
@@ -1184,6 +1156,13 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 			owner.GetBounds(mins, maxs);
 			vector center = (maxs - mins) * 0.5 + mins;
 			spawnMat[3] = center.Multiply4(spawnMat);
+		}
+		
+		vector position = spawnMat[3];
+		if (snapToTerrain)
+		{
+			position[1] = SCR_TerrainHelper.GetTerrainY(position, owner.GetWorld());
+			spawnMat[3] = position;
 		}
 		
 		if (m_bDirectional)
@@ -1199,6 +1178,47 @@ class SCR_ParticleSpawnable : SCR_BaseSpawnable
 			spawnMat[2] = newForward;
 		}
 		
-		SCR_DestructionCommon.PlayParticleEffect_Transform(m_Particle, hitInfo.m_DamageType, spawnMat);
+		return SCR_DestructionCommon.PlayParticleEffect_Child(m_Particle, hitInfo.m_DamageType, owner, spawnMat);
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Spawns the object
+	override SCR_ParticleEmitter Spawn(IEntity owner, Physics parentPhysics, SCR_HitInfo hitInfo, bool snapToTerrain = false)
+	{
+		if (!hitInfo || m_Particle == ResourceName.Empty)
+			return null;
+		
+		vector spawnMat[4];
+		GetSpawnTransform(owner, spawnMat);
+		
+		if (m_bAtCenter)
+		{
+			vector mins, maxs;
+			owner.GetBounds(mins, maxs);
+			vector center = (maxs - mins) * 0.5 + mins;
+			spawnMat[3] = center.Multiply4(spawnMat);
+		}
+		
+		vector position = spawnMat[3];
+		if (snapToTerrain)
+		{
+			position[1] = SCR_TerrainHelper.GetTerrainY(position, owner.GetWorld());
+			spawnMat[3] = position;
+		}
+		
+		if (m_bDirectional)
+		{
+			vector newRight, newUp, newForward;
+			
+			newUp = -hitInfo.m_HitDirection;
+			newRight = newUp * spawnMat[2];
+			newForward = newUp * newRight;
+			
+			spawnMat[0] = newRight;
+			spawnMat[1] = newUp;
+			spawnMat[2] = newForward;
+		}
+		
+		return SCR_DestructionCommon.PlayParticleEffect_Transform(m_Particle, hitInfo.m_DamageType, spawnMat);
 	}
 };

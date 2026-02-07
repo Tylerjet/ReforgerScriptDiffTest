@@ -29,18 +29,6 @@ class SCR_CampaignBuildingServerTrigger : SCR_CampaignBuildingTrigger
 	override void EOnInit(IEntity owner)
 	{		
 		QueryEntitiesInside();
-		GetEntitiesInside(m_aInside);
-
-		for (int i = m_aInside.Count() - 1; i >= 0; i--)
-		{
-			if (CanBlockPreview(m_aInside[i]))
-				continue;
-			
-			m_aInside.Remove(i);
-		}
-
-		SetEventMask(EntityEvent.FRAME);
-		m_BlockingEntity = SpawnBlockingEntity();
 	}
 		
 	//------------------------------------------------------------------------------------------------
@@ -82,6 +70,25 @@ class SCR_CampaignBuildingServerTrigger : SCR_CampaignBuildingTrigger
 			charControllerComp.m_OnPlayerDeathWithParam.Remove(OnDeath);
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	override void OnQueryFinished(bool bIsEmpty)
+	{
+		super.OnQueryFinished(bIsEmpty);
+
+		GetEntitiesInside(m_aInside);
+
+		for (int i = m_aInside.Count() - 1; i >= 0; i--)
+		{
+			if (CanBlockPreview(m_aInside[i]))
+				continue;
+			
+			m_aInside.Remove(i);
+		}
+
+		SetEventMask(EntityEvent.FRAME);
+		m_BlockingEntity = SpawnBlockingEntity();
+	}
+
 	//------------------------------------------------------------------------------------------------
 	override bool CanBlockPreview(notnull IEntity element)
 	{	

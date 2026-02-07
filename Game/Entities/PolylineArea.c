@@ -202,7 +202,7 @@ class PolylineArea: GenericEntity
 		if(!GetGame().GetWorldEntity())
 			return;
 
-		SetFlags(EntityFlags.ACTIVE | EntityFlags.TRACEABLE, false);
+		SetFlags(EntityFlags.TRACEABLE, false);
 		SetEventMask(EntityEvent.INIT);
 		#ifdef WORKBENCH
 		SetEventMask(EntityEvent.FRAME);

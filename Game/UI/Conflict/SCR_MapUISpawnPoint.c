@@ -154,6 +154,25 @@ class SCR_MapUISpawnPoint : SCR_MapUIElement
 	}
 
 	//------------------------------------------------------------------------------
+	override void SelectIcon()
+	{
+		if (!m_wSelectImg)
+			return;
+
+		if (s_SelectedElement && s_SelectedElement != this)
+			s_SelectedElement.Select(false);
+
+		Select();
+
+		m_wSelectImg.SetVisible(true);
+		if (m_wGradient)
+			m_wGradient.SetVisible(true);
+
+		if (m_bIsSelected)
+			Event_OnPointSelected.Invoke(m_SpawnPoint);
+	}
+
+	//------------------------------------------------------------------------------
 	protected void OnSelected(SCR_SpawnPoint sp)
 	{
 		if (!sp)

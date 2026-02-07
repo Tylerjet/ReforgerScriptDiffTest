@@ -103,6 +103,9 @@ class SCR_DestructibleIdentificator
 class SCR_MPDestructionManager : GenericEntity
 {
 #ifdef ENABLE_BASE_DESTRUCTION
+	[Attribute("", UIWidgets.Auto, desc: "AudioSourceConfiguration shared by all MPDDestruction sounds")]
+	ref SCR_AudioSourceConfiguration m_AudioSourceConfiguration;
+	
 	static const string ENTITY_SIZE_SIGNAL_NAME = "EntitySize";
 	static const string PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME = "PhasesToDestroyed";
 	static const string COLLISIONDV_SIGNAL_NAME = "CollisionDV";
@@ -116,10 +119,6 @@ class SCR_MPDestructionManager : GenericEntity
 	protected ref map<RplId, ref array<int>> m_mChangedDynamicallySpawnedDestructibles = new map<RplId, ref array<int>>();
 	protected ref map<RplId, ref array<int>> m_mDeletedDynamicallySpawnedDestructibles = new map<RplId, ref array<int>>();
 	protected ref map<SCR_DestructionBaseHandler, bool> m_mDestroyInFrame = new ref map<SCR_DestructionBaseHandler, bool>();
-	private SimpleSoundComponent m_SoundComponent;
-	private int m_iEntitySizeSignalID;
-	private int m_iPhasesToDestroyedSignalID;
-	private int m_iCollisionDVSignalID;
 	protected RplComponent m_RplComponent;
 	
 	//------------------------------------------------------------------------------------------------
@@ -201,7 +200,7 @@ class SCR_MPDestructionManager : GenericEntity
 			if (!destructible)
 				continue;
 			
-			destructible.DeleteSelf();
+			destructible.DeleteDestructible();
 		}
 		
 		// Now pass data from server destructibles to local ones
@@ -261,30 +260,11 @@ class SCR_MPDestructionManager : GenericEntity
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	SimpleSoundComponent GetSoundComponent()
+	SCR_AudioSourceConfiguration GetAudioSourceConfiguration()
 	{
-		return m_SoundComponent;
+		return m_AudioSourceConfiguration;
 	}
-
-	//------------------------------------------------------------------------------------------------
-	int GetEntitySizeSignalID()
-	{
-		return m_iEntitySizeSignalID;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	// TODO Common?
-	int GetPhasesToDestroyedSignalID()
-	{
-		return m_iPhasesToDestroyedSignalID;
-	}
-	
-	//------------------------------------------------------------------------------------------------
-	int GetCollisionDVSignalID()
-	{
-		return m_iCollisionDVSignalID;
-	}
-		
+			
 	//------------------------------------------------------------------------------------------------
 	protected override void EOnFrame(IEntity owner, float timeSlice)
 	{
@@ -296,14 +276,6 @@ class SCR_MPDestructionManager : GenericEntity
 	override void EOnInit(IEntity owner)
 	{
 		m_RplComponent = RplComponent.Cast(FindComponent(RplComponent));
-		m_SoundComponent = SimpleSoundComponent.Cast(FindComponent(SimpleSoundComponent));
-		
-		if (m_SoundComponent)
-		{
-			m_iEntitySizeSignalID = m_SoundComponent.GetSignalIndex(ENTITY_SIZE_SIGNAL_NAME);
-			m_iPhasesToDestroyedSignalID = m_SoundComponent.GetSignalIndex(PHASES_TO_DESTROYED_PHASE_SIGNAL_NAME);
-			m_iCollisionDVSignalID = m_SoundComponent.GetSignalIndex(COLLISIONDV_SIGNAL_NAME);
-		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -382,7 +354,6 @@ class SCR_MPDestructionManager : GenericEntity
 		s_Instance = this;
 		
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 		
 		#ifdef ENABLE_DIAG 
 			DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_SOUNDS_MPDESTRUCTION_SHOW_IMPULSEVALUES, "", "Show MPD Impulse Values", "Sounds"); 

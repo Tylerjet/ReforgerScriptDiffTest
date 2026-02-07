@@ -1,12 +1,11 @@
-/**
- * \defgroup System
- * \desc Enforce script system methods
- * @{
- */
+/*!
+\defgroup System System
+Enforce script system methods
+\{
+*/
 
 typedef func FindFilesCallback;
 void FindFilesCallback(string fileName, FileAttribute attributes = 0, string filesystem = string.Empty);
-
 
 class MemoryStatsSnapshot: Managed
 {
@@ -15,15 +14,11 @@ class MemoryStatsSnapshot: Managed
 	proto native int GetStatValue(int idx);
 }
 
-//----------------------------------------------
-/**
- * \defgroup File FileIO API
- * @{
- */
-
 //! Handle to a running process.
 class ProcessHandle: pointer
 {
-};
+}
 
- //@}
+/*!
+\}
+*/

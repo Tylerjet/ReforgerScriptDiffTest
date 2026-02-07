@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class CharacterEntityClass: GenericEntityClass
 {
-};
+}
 
 class CharacterEntity: GenericEntity
 {
@@ -19,6 +19,8 @@ class CharacterEntity: GenericEntity
 	proto external CharacterMovement GetCurrentMovement();
 	proto external CharacterStance GetCurrentStance();
 	proto external ActionManager GetActionManager();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

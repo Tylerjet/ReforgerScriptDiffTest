@@ -4,19 +4,20 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UserAction
-* @{
+/*!
+\addtogroup UserAction
+\{
 */
 
+//! This action will take care of the synchronization of the signal value
 class ScriptedSignalUserAction: ScriptedUserAction
 {
-	void PerformScriptedContinuousAction(IEntity pOwnerEntity, IEntity pUserEntity, float timeSlice);
-	
 	proto external float GetMinimumValue();
 	proto external float GetMaximumValue();
 	proto external float GetCurrentValue();
 	proto external void SetSignalValue(float newValue);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

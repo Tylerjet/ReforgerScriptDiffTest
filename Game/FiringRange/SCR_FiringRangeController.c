@@ -103,7 +103,6 @@ class SCR_FiringRangeController : GenericEntity
 	// components
 	private RplComponent m_RplComponent;
 	private SignalsManagerComponent m_SignalManager;
-	private SoundComponent m_SoundComponent;
 	
 	private SCR_FiringRangeManager m_FiringRangeManager;
 	
@@ -111,7 +110,6 @@ class SCR_FiringRangeController : GenericEntity
 	override void EOnInit(IEntity owner)
 	{
 		m_SignalManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
-		m_SoundComponent = SoundComponent.Cast(FindComponent(SoundComponent));
 				
 		array<EntitySlotInfo> slots = {}; EntitySlotInfo.GetSlotInfos(owner, slots);
 		IEntity slotEntity;
@@ -154,8 +152,9 @@ class SCR_FiringRangeController : GenericEntity
 			return;
 		#endif
 		
-		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_STARTBUTTON);
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (soundManagerEntity)
+			soundManagerEntity.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_RANGECP_STARTBUTTON);
 		
 		// Gets all child targets in the fire line
 		if (!pOwnerEntity)
@@ -197,8 +196,8 @@ class SCR_FiringRangeController : GenericEntity
 		};
 		
 		// Sound of starting round
-		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_ROUNDSTART);
+		if (soundManagerEntity)
+			soundManagerEntity.CreateAndPlayAudioSource(pOwnerEntity, SCR_SoundEvent.SOUND_RANGECP_ROUNDSTART);
 		
 		GetGame().GetCallqueue().CallLater(ResetCountPopUpTargets, RESET_COUNTER_TIME, false); 
 		GetGame().GetCallqueue().CallLater(ErectRandomTarget, m_iErectTargetTime * 1000, true, targetArray, m_aAllTargetsArray); 
@@ -313,8 +312,9 @@ class SCR_FiringRangeController : GenericEntity
 		}
 		
 		// Sound of presed button
-		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_ROUNDABORT);
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (soundManagerEntity)
+			soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_RANGECP_ROUNDABORT);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -416,11 +416,11 @@ class SCR_FiringRangeController : GenericEntity
 			m_FiringRangeManager.SetControllerCounter(this, EControlerSection.DISTANCE, m_iTargetSetDistance);
 		
 		// Sound of presed button
-		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_CHANGEDISTANCE);
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (soundManagerEntity)
+			soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_RANGECP_CHANGEDISTANCE);
 
-		return m_iTargetSetDistance;
-		
+		return m_iTargetSetDistance;	
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -438,12 +438,12 @@ class SCR_FiringRangeController : GenericEntity
 			
 		// Entity has a signal manager, try to set up the value on counter
 		if (m_SignalManager)
-			m_FiringRangeManager.SetControllerCounter(this, EControlerSection.NUMBER_OF_TARGETS ,m_iTargetsInRound);
+			m_FiringRangeManager.SetControllerCounter(this, EControlerSection.NUMBER_OF_TARGETS, m_iTargetsInRound);
 		
 		// Sound of presed button
-		if (m_SoundComponent)
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_RANGECP_CHANGETARGET);
-			
+		SCR_SoundManagerEntity soundManagerEntity = GetGame().GetSoundManagerEntity();
+		if (soundManagerEntity)
+			soundManagerEntity.CreateAndPlayAudioSource(this, SCR_SoundEvent.SOUND_RANGECP_CHANGETARGET);			
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -723,7 +723,6 @@ class SCR_FiringRangeController : GenericEntity
 	void SCR_FiringRangeController(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 		
 		if (s_aInstances)
 			s_aInstances.Insert(this);

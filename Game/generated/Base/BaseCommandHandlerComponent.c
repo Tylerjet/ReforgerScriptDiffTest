@@ -4,22 +4,25 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Base
-* @{
+/*!
+\addtogroup Base
+\{
 */
 
 class BaseCommandHandlerComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseCommandHandlerComponent: GameComponent
 {
-	//! sets the flag for disabling animation update
+	/*!
+	Sets the flag for disabling animation update. This function is ignored in MP.
+	\param simulationDisabled If true simulation is disabled
+	*/
 	proto external void SetSimulationDisabled(bool pSimulationDisabled);
-	
+
 	// callbacks
-	
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -32,6 +35,8 @@ class BaseCommandHandlerComponent: GameComponent
 	\param pCurrentCommandFinished True if current command is finished.
 	*/
 	event protected void Update(float pDt, int pCurrentCommandID, bool pCurrentCommandFinished);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

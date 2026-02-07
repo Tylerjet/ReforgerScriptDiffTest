@@ -48,4 +48,4 @@ class WeatherState: ScriptAndConfig
 	*/
 	proto external ResourceName GetIconPath();
 	proto external int GetNumTransitions();
-};
+}

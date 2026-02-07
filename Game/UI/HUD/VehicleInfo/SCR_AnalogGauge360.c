@@ -2,7 +2,7 @@
 class SCR_AnalogGauge360 : SCR_AnalogGauge
 {	
 	[Attribute("", UIWidgets.EditBox, "Gauge custom needle texture. If not selected, default is used.")]
-	ResourceName m_sCustomNeedle2;
+	protected string m_sCustomNeedle2;
 
 	protected ImageWidget m_wNeedle2;
 	protected ImageWidget m_wNeedle2Shadow;	

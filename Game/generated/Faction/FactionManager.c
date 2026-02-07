@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Faction
-* @{
+/*!
+\addtogroup Faction
+\{
 */
 
 class FactionManagerClass: GenericEntityClass
 {
-};
+}
 
 class FactionManager: GenericEntity
 {
@@ -23,7 +23,7 @@ class FactionManager: GenericEntity
 	/*
 	\brief Tries to find a faction stored in the manager by index.
 	\return Returns a faction or null if faction with provided index does not exist.
-	
+
 	Note: Keep in mind that due to internal storage of factions the index might not
 	correspond to the originally defined order! Use GetFactionByKey instead, if neccessary.
 	*/
@@ -31,7 +31,7 @@ class FactionManager: GenericEntity
 	/*
 	\brief Finds provided faction and returns its index.
 	\return Returns faction index or -1 if action does not exist or is null.
-	
+
 	Note: Keep in mind that due to internal storage of factions the index might not
 	correspond to the originally defined order! Use GetFactionByKey instead, if neccessary.
 	*/
@@ -47,6 +47,8 @@ class FactionManager: GenericEntity
 	\return Returns the number of factions that were added to the provided list
 	*/
 	proto external int GetFactionsList(out notnull array<Faction> outFactions);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

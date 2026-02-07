@@ -298,7 +298,9 @@ class SCR_BaseEditorAttribute
 	*/
 	sealed SCR_BaseEditorAttributeVar GetVariable(bool createWhenNull = false)
 	{
-		if (!m_Var && createWhenNull) m_Var = CreateDefaultVariable();
+		if (!m_Var && createWhenNull) 
+			m_Var = CreateDefaultVariable();
+		
 		return m_Var;
 	}
 	/*!
@@ -397,7 +399,7 @@ class SCR_BaseEditorAttribute
 	
 	protected SCR_BaseEditorAttributeVar CreateDefaultVariable()
 	{
-		return null;
+		return SCR_BaseEditorAttributeVar.CreateBool(false);
 	}
 	
 	/*!

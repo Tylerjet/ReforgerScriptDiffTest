@@ -24,42 +24,51 @@ static bool SCR_AIIsCharacterInCone(ChimeraCharacter character, vector coneTip, 
 //------------------------------------------------------------------------------------------------
 static string SCR_AIGetStringFromPort(Node node, string port)
 {
+	const string UNASSIGNED_VARIABLE = "Unassigned";
 	if ( node.GetVariableType(true, port) == string )
 	{
 		string value;
-		node.GetVariableIn(port, value);
+		if(!node.GetVariableIn(port, value))
+			value = UNASSIGNED_VARIABLE;
 		return value;		
 	}
 	else if ( node.GetVariableType(true, port) == int )
 	{
 		int value;
-		node.GetVariableIn(port, value);
+		if(!node.GetVariableIn(port, value))
+			return UNASSIGNED_VARIABLE;
 		return value.ToString();
 	}
 	else if ( node.GetVariableType(true, port) == float )
 	{
 		float value;
-		node.GetVariableIn(port, value);
+		if(!node.GetVariableIn(port, value))
+			return UNASSIGNED_VARIABLE;
 		return value.ToString();
 	}
 	else if ( node.GetVariableType(true, port) == bool )
 	{
 		bool value;
-		node.GetVariableIn(port, value);
+		if(!node.GetVariableIn(port, value))
+			return UNASSIGNED_VARIABLE;
 		return value.ToString();
 	}
 	else if ( node.GetVariableType(true, port) == vector )
 	{
 		vector value;
-		node.GetVariableIn(port, value);
+		if(!node.GetVariableIn(port, value))
+			return UNASSIGNED_VARIABLE;
 		return value.ToString();
 	}
 	else if ( node.GetVariableType(true, port).IsInherited(Managed) )
 	{
 		Managed value;
-		node.GetVariableIn(port, value);
+		if(!node.GetVariableIn(port, value))
+			return UNASSIGNED_VARIABLE;
 		if (value)
 			return value.ToString();
+		else 
+			return "NULL";
 	}
 	return "";
 };
@@ -76,11 +85,55 @@ static ECharacterStance GetStanceFromThreat(EAIThreatState threatState)
 	{
 		case EAIThreatState.THREATENED: return ECharacterStance.PRONE;
 		case EAIThreatState.ALERTED: return ECharacterStance.CROUCH;
+		case EAIThreatState.VIGILANT: return ECharacterStance.STAND;
 		case EAIThreatState.SAFE: return ECharacterStance.STAND;
 		default: return ECharacterStance.STAND;
 	}
 	return ECharacterStance.STAND;
 };
+
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+// Compartments on vehicles
+class SCR_AICompartmentHandling
+{
+	//--------------------------------------------------------------------------------------------
+	static ECompartmentType CompartmentClassToType(typename type)
+	{
+		switch (type)
+		{
+			case PilotCompartmentSlot:	return ECompartmentType.Pilot;
+			case CargoCompartmentSlot: 	return ECompartmentType.Cargo;
+			case TurretCompartmentSlot:	return ECompartmentType.Turret;
+		}
+		return -1;
+	}
+	
+	//--------------------------------------------------------------------------------------------
+	static bool FindAvailableCompartmentInVehicles (array<IEntity> vehicles, ECompartmentType roleInVehicle, out BaseCompartmentSlot compartmentOut, out IEntity vehicleOut)
+	{
+		foreach (IEntity vehicle: vehicles)
+		{
+			BaseCompartmentManagerComponent compartmentMan = BaseCompartmentManagerComponent.Cast(vehicle.FindComponent(BaseCompartmentManagerComponent));
+			if (!Vehicle.Cast(vehicle) || !compartmentMan)
+				return false;
+			ref array<BaseCompartmentSlot> compartments = {};
+			compartmentMan.GetCompartments(compartments);
+			foreach (BaseCompartmentSlot compartment: compartments)
+			{
+				if (SCR_AICompartmentHandling.CompartmentClassToType(compartment.Type()) == roleInVehicle)
+				{
+					if (!compartment.GetOccupant() && compartment.IsCompartmentAccessible())
+					{
+						compartmentOut = compartment;
+						vehicleOut = vehicle;
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+}
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------
 // Weapon Handling
@@ -177,5 +230,40 @@ class SCR_AIWeaponHandling
 		}
 		
 		controller.SelectWeapon(turretOperator, newWeaponSlot);
+	}
+}
+
+class SCR_AIDamageHandling
+{
+	static bool IsAlive(IEntity entity)
+	{
+		if (!entity)
+			return false;
+		
+		DamageManagerComponent damageManager;
+		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
+		if (character)
+			damageManager = character.GetDamageManager();
+		else
+			damageManager = DamageManagerComponent.Cast(entity.FindComponent(DamageManagerComponent));
+		
+		if (!damageManager)
+			return true;
+		
+		return damageManager.GetState() != EDamageState.DESTROYED;
+	}
+	
+	// This method abstracts away the internals of damage system for usage in various AI behaviors.
+	static bool IsCharacterWounded(IEntity entity)
+	{
+		ChimeraCharacter character = ChimeraCharacter.Cast(entity);
+		if (!character)
+			return false;
+		
+		DamageManagerComponent damageManager = character.GetDamageManager();
+		if (!damageManager)
+			return false;
+		
+		return damageManager.IsDamagedOverTime(EDamageType.BLEEDING);
 	}
 }

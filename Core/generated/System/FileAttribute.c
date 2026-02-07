@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup System
-* @{
+/*!
+\addtogroup System
+\{
 */
 
 //!File attributes. See FileDescription
@@ -27,7 +27,9 @@ enum FileAttribute
 	ENCRYPTED,
 	//!For consoles, it indicates, that the file is created by current user
 	ISCREATOR,
-	INVALID
-};
+	INVALID,
+}
 
-/** @}*/
+/*!
+\}
+*/

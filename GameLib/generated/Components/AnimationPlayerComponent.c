@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Components
-* @{
+/*!
+\addtogroup Components
+\{
 */
 
 class AnimationPlayerComponentClass: GenericComponentClass
 {
-};
+}
 
 class AnimationPlayerComponent: GenericComponent
 {
@@ -23,6 +23,8 @@ class AnimationPlayerComponent: GenericComponent
 	proto external void Play(IEntity owner);
 	//! Stop the animation.
 	proto external void Stop(IEntity owner);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -192,6 +192,12 @@ class SCR_RecentGames : ModuleGameSettings
 
 	[Attribute("true")]
 	bool m_bFirstTimePlay;
+	
+	[Attribute("0")]
+	int m_iPlayTutorialShowCount;
+	
+	[Attribute("3")]
+	int m_iPlayTutorialShowMax;	
 };
 
 class SCR_LoadingHints : ModuleGameSettings

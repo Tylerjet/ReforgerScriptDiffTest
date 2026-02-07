@@ -139,25 +139,25 @@ class GenerateControlsSchemePlugin : WorkbenchPlugin
 			}
 		}
 		
-		file.FPrintln(string.Format("<g font-family='Roboto' font-size='%1' fill='#ccc'>", 20 * fontSize));
-		file.FPrintln(textsDisabled);
-		file.FPrintln("</g>");
+		file.WriteLine(string.Format("<g font-family='Roboto' font-size='%1' fill='#ccc'>", 20 * fontSize));
+		file.WriteLine(textsDisabled);
+		file.WriteLine("</g>");
 		
-		file.FPrintln(string.Format("<g font-family='Roboto' font-size='%1' fill='black'>", 20 * fontSize));
-		file.FPrintln(texts);
-		file.FPrintln("</g>");
+		file.WriteLine(string.Format("<g font-family='Roboto' font-size='%1' fill='black'>", 20 * fontSize));
+		file.WriteLine(texts);
+		file.WriteLine("</g>");
 		
-		file.FPrintln("<g stroke='black' stroke-width='2' opacity='0.1' transform='translate(0.5,0.5)'>");
-		file.FPrintln(linesDisabled);
-		file.FPrintln("</g>");
+		file.WriteLine("<g stroke='black' stroke-width='2' opacity='0.1' transform='translate(0.5,0.5)'>");
+		file.WriteLine(linesDisabled);
+		file.WriteLine("</g>");
 		
-		file.FPrintln("<g stroke='black' stroke-width='2' opacity='1' transform='translate(0.5,0.5)'>");
-		file.FPrintln(lines);
-		file.FPrintln("</g>");
+		file.WriteLine("<g stroke='black' stroke-width='2' opacity='1' transform='translate(0.5,0.5)'>");
+		file.WriteLine(lines);
+		file.WriteLine("</g>");
 		
-		file.FPrintln("</svg>");
+		file.WriteLine("</svg>");
 		
-		file.CloseFile();
+		file.Close();
 		
 		return true;
 	}

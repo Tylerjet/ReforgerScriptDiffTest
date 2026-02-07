@@ -14,7 +14,7 @@ class SCR_StressTestGroupActivation : GenericEntity
 	void SCR_StressTestGroupActivation(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT | EntityEvent.FRAME);
-		SetFlags(EntityFlags.ACTIVE, true);
+		SetFlags(EntityFlags.ACTIVE, false);
 	}
 	
 	override void EOnInit(IEntity owner)

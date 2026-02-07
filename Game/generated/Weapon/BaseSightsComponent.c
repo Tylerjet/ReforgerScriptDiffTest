@@ -4,18 +4,22 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class BaseSightsComponentClass: GameComponentClass
 {
-};
+}
 
 class BaseSightsComponent: GameComponent
 {
 	proto external IEntity GetOwner();
+	//! Allow to override Zeroing via aim modifier (only works in Workbench)
+	proto external void ForceSightsZeroValue(vector offset, vector angles, vector turnOffset);
+	//! Disable forced zeroing data
+	proto external void ForceSightsZeroValueEnablel(bool bOnOff);
 	proto external bool IsSightADSActive();
 	proto external bool AreSightsValid(bool front = true, bool rear = true);
 	/*!
@@ -53,9 +57,9 @@ class BaseSightsComponent: GameComponent
 	proto external float GetFOV();
 	/*!
 	Returns current range info value where
-	x: animation value
-	y: distance
-	z: unused
+		x: animation value
+		y: distance
+		z: unused
 	\return Returns sights info values or empty vector if none.
 	*/
 	proto external vector GetCurrentSightsRange();
@@ -70,13 +74,15 @@ class BaseSightsComponent: GameComponent
 	proto external bool GetSightsPriority();
 	//! Return true if the sights can be switched to.
 	proto external bool GetSightsSkipSwitch();
-	
+
 	// callbacks
-	
+
 	//! Positive weapon angle tilts weapon upwards (muzzle goes up, stock goes down)
 	//! Negative weapon angle tilts weapon downwards (muzzle goes down, stock goes up)
 	//! Called from GameCode, do not remove!
 	event protected bool WB_GetZeroingData(IEntity owner, BaseSightsComponent sights, float weaponAngle, out vector offset, out vector angles);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

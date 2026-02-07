@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Identity
-* @{
+/*!
+\addtogroup Identity
+\{
 */
 
 class IdentityBodyMesh: ScriptAndConfig
@@ -17,6 +17,8 @@ class IdentityBodyMesh: ScriptAndConfig
 	proto external string GetWounded();
 	//! Get name of submesh of healthy version
 	proto external string GetHealthy();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

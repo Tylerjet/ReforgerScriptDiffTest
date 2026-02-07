@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Vehicle
-* @{
+/*!
+\addtogroup Vehicle
+\{
 */
 
 class MotorExhaustEffectComponentClass: BaseEffectComponentClass
 {
-};
+}
 
 class MotorExhaustEffectComponent: BaseEffectComponent
 {
@@ -34,9 +34,9 @@ class MotorExhaustEffectComponent: BaseEffectComponent
 	\return RPM value in <0, 1>
 	*/
 	proto external float GetRpmScaled();
-	
+
 	// callbacks
-	
+
 	/*!
 	Called during EOnInit.
 	\param owner Entity this component is attached to.
@@ -48,6 +48,8 @@ class MotorExhaustEffectComponent: BaseEffectComponent
 	\param timeSlice Delta time since last update.
 	*/
 	event void OnFrame(IEntity owner, float timeSlice);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

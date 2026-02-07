@@ -74,6 +74,8 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 		}
 		entryLocal.m_EntitySource = entitySource;
 		entryLocal.m_iParentID = parentID;
+		entryLocal.m_vAnglesTerrain = Vector(0, entryLocal.m_vAngles[0], entryLocal.m_vAngles[2]);
+		entryLocal.m_vHeightTerrain = entryLocal.m_vPosition[1];
 		parentID = outEntries.Insert(entryLocal);
 		
 		//--- Find relevant components
@@ -125,8 +127,10 @@ class SCR_PrefabPreviewEntity: SCR_BasePreviewEntity
 						}
 						else
 						{
-							listEntry.m_iParentID += parentID;
 							outEntries.Insert(listEntry);
+							listEntry.m_iParentID += parentID;
+							listEntry.m_vAnglesTerrain = Vector(0, listEntry.m_vAngles[0], listEntry.m_vAngles[2]);
+							listEntry.m_vHeightTerrain = listEntry.m_vPosition[1];
 						}
 					}
 					if (entryCount > 0)

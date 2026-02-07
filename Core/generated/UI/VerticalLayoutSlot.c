@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class VerticalLayoutSlot: LayoutSlot
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

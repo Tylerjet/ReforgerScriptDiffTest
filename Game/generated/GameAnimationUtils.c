@@ -8,7 +8,7 @@ sealed class GameAnimationUtils
 {
 	private void GameAnimationUtils();
 	private void ~GameAnimationUtils();
-	
+
 	//! return -1 if operation was unsuccessful
 	static proto AnimationEventID RegisterAnimationEvent(string animationEventString);
 	//! Find or add AnimationTagID from provided string
@@ -24,4 +24,4 @@ sealed class GameAnimationUtils
 	static proto int FindMeshIndex(IEntity ent, string meshName);
 	//! Set visibility of sub mesh at specified index
 	static proto void ShowMesh(IEntity ent, int meshIndex, bool visible);
-};
+}

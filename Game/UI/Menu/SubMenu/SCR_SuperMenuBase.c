@@ -12,7 +12,8 @@ class SCR_SuperMenuBase: ChimeraMenuBase
 	protected SCR_TabViewComponent m_TabViewComponent;
 	protected SCR_SubMenuBase m_OpenedSubmenu;
 	protected ref array<SCR_SubMenuBase> m_aSubMenus = new ref array<SCR_SubMenuBase>;
-
+	
+	
 	//------------------------------------------------------------------------------------------------
 	override void OnMenuUpdate(float tDelta)
 	{

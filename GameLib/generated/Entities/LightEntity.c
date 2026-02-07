@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class LightEntityClass: GenericEntityClass
 {
-};
+}
 
 /*!
 Use LightEntity::CreateLight instead of spawning LightEntity via Game::SpawnEntity for the creation of light in a script.
@@ -56,11 +56,6 @@ class LightEntity: GenericEntity
 	proto external bool IsLightFlagsSet(LightFlags flags);
 	//! Returns true if the light is dynamic, false otherwise
 	proto external bool IsDynamic();
-	/*!
-	Set light flags
-	\param 	flags new flags combined internally with older flags
-	\return currently set flags
-	*/
 	proto external void SetCastShadow(bool enable);
 	//! Returns true if the light is casting shadows.
 	proto external bool IsCastShadow();
@@ -100,9 +95,9 @@ class LightEntity: GenericEntity
 	* spot lights, 2D texture -> the texture serves as projector texture
 	* spot light, 1D texture of <someWidth, 1> size -> texture serves is angle lookup texture (parametrized by cos^2 angle
 	from spot direction and pixel world pos, IES profile, but not supported fully now as we don't have IES converter)
-	\param name Name of texture
+	\param textureName Name of texture
 	*/
-	proto external void SetTexture(ResourceName matName);
+	proto external void SetTexture(ResourceName textureName);
 	/*!
 	Sets near plane of a light. It's meaningful for shadow casting LT_SPOT/LT_POINT lights only!
 	\param nearPlane	near plane when casting shadows in meters
@@ -142,6 +137,8 @@ class LightEntity: GenericEntity
 	\param direction Direction of light
 	*/
 	proto external void SetLightDirection(vector direction);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

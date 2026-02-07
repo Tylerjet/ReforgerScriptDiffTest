@@ -12,7 +12,7 @@ sealed class TransformResetParams: pointer
 {
 	/*!
 	Gets initial velocity of the owner entity after the transform reset.
-	
+
 	Useful e.g. when velocity is computed using previous position which is invalid after transform reset.
 	*/
 	proto external vector GetNewVelocity();
@@ -21,4 +21,4 @@ sealed class TransformResetParams: pointer
 	i.e. not a placement / teleport.
 	*/
 	proto external bool IsCorrection();
-};
+}

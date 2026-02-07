@@ -69,9 +69,9 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override void OnDelivery(BaseRadioComponent radio, int freq, float quality, int transcvIdx)
+	override void OnDelivery(BaseTransceiver receiver, int freq, float quality)
 	{
-		IEntity owner = radio.GetOwner();
+		IEntity owner = receiver.GetRadio().GetOwner();
 		
 		ChimeraCharacter player;
 		SCR_CampaignBase base;
@@ -106,7 +106,7 @@ class SCR_CampaignRadioMsg : ScriptedRadioMessage
 		else
 		{
 			// Received by HQ, ping player that the message has been received
-			if (base.GetType() != CampaignBaseType.MAIN)
+			if (!base.GetIsHQ())
 				return;
 			
 			PlayerController controller = GetGame().GetPlayerManager().GetPlayerController(m_iPlayerID);

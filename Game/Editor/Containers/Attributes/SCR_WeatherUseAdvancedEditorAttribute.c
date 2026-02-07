@@ -23,14 +23,14 @@ class SCR_WeatherUseAdvancedEditorAttribute : SCR_BaseEditorAttribute
 	
 	//Disable respawn time if respawning is disabled
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
-	{
-		if (!var)
-			return;
-			
-		bool useAdvanced = var.GetBool();
+	{			
+		bool useAdvanced = false;
+	
+		if (var)
+	 		useAdvanced = var.GetBool();
 		
-		manager.SetAttributeEnabled(SCR_WeatherInstantTransitionTimeEditorAttribute, !useAdvanced);
-		manager.SetAttributeEnabled(SCR_WeatherInstantEditorAttribute, !useAdvanced);
+		manager.SetAttributeEnabled(SCR_WeatherInstantTransitionTimeEditorAttribute, var && !useAdvanced);
+		manager.SetAttributeEnabled(SCR_WeatherInstantEditorAttribute, var && !useAdvanced);
 	}
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)

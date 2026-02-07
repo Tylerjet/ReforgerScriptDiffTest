@@ -12,4 +12,4 @@ class WeatherWindPattern: ScriptAndConfig
 	proto external float GetMaxAngleRadians();
 	proto external float GetMinDurationHours();
 	proto external float GetMaxDurationHours();
-};
+}

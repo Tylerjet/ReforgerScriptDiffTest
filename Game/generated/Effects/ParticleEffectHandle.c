@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Effects
-* @{
+/*!
+\addtogroup Effects
+\{
 */
 
 class ParticleEffectHandle
@@ -21,6 +21,8 @@ class ParticleEffectHandle
 	proto external bool HasActiveParticles();
 	proto external void SetMaterial(GameMaterial mat);
 	proto external GameMaterial GetMaterial();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

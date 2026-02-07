@@ -121,13 +121,13 @@ class SCR_DestructionBaseHandler
 			HitZoneContainerComponent parentContainer = HitZoneContainerComponent.Cast(m_pOwner.GetParent().FindComponent(HitZoneContainerComponent));
 			if (parentContainer && parentContainer.GetDefaultHitZone() && parentContainer.GetDefaultHitZone().GetDamageState() == EDamageState.DESTROYED)
 			{
-				DeleteSelf();
+				GetGame().GetCallqueue().CallLater(DeleteSelf); // Must not delete entities outside of frame
 				return;
 			}
 		}
 		
 		if (m_bAllowHideWreck || !m_sWreckModel.IsEmpty())
-			SetModelResource(m_sWreckModel, m_bAllowHideWreck);
+			GetGame().GetCallqueue().CallLater(SetModelResource, param1: m_sWreckModel, param2: m_bAllowHideWreck); // Must not change model outside frame
 		
 		if (m_bDetachAfterDestroyed)
 			DetachFromParent(true);
@@ -231,26 +231,9 @@ class SCR_DestructionBaseHandler
 		if (mass == 0)
 			mass = m_fDefaultWreckMass;
 		
-		//int layerMask = physics.GetInteractionLayer();
-		if (physics.IsDynamic())
-		{
-			vector velocity = physics.GetVelocity();
-			vector angularVelocity = physics.GetAngularVelocity();
-			physics.Destroy();
-			
-			physics = Physics.CreateDynamic(m_pOwner, mass, 0xffffffff);
-			if (physics && !m_pOwner.GetParent())
-			{
-				physics.SetVelocity(velocity);
-				physics.SetAngularVelocity(angularVelocity);
-			}
-		}
-		else
-		{
-			physics = Physics.CreateStatic(m_pOwner, 0xffffffff);
-			if (physics)
-				physics.SetMass(mass);
-		}
+		physics.UpdateGeometries();
+		physics.SetActive(ActiveState.ACTIVE);
+		physics.EnableGravity(true);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -4,16 +4,18 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 enum ECharacterStance
 {
 	STAND,
 	CROUCH,
-	PRONE
-};
+	PRONE,
+}
 
-/** @}*/
+/*!
+\}
+*/

@@ -20,7 +20,7 @@ enum ERestResult
 	EREST_ERROR_TIMEOUT,
 	EREST_ERROR_NOTIMPLEMENTED,
 	EREST_ERROR_UNKNOWN,
-};
+}
 
 
 // -------------------------------------------------------------------------
@@ -74,6 +74,6 @@ class RestCallback : Managed
 		//Print(" !!! OnFileCreated() file=" + fileName + " size=" + dataSize );
 	};
 
-};
+}
 
 

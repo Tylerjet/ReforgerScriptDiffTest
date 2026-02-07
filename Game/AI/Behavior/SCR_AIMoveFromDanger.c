@@ -9,27 +9,31 @@ class SCR_AIMoveFromDangerBehavior : SCR_AIBehaviorBase
 	ref SCR_BTParam<EMovementType> m_MovementType = new SCR_BTParam<EMovementType>("MovementType");
 	
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromDangerBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector dangerPos = vector.Zero, IEntity dangerEntity = null)
-    {
-        m_eType = EAIActionType.MOVE_FROM_DANGER;
-		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
-		
+	void InitParameters(IEntity dangerEntity, vector dangerPos)
+	{
 		m_DangerEntity.Init(this, dangerEntity);
 		m_DangerPosition.Init(this, dangerPos);
 		m_Stance.Init(this, ECharacterStance.STAND);
 		m_MovementType.Init(this, EMovementType.RUN); // Don't use sprint! Character can't reload during sprint, it makes it broken.
-		
+	}
+	
+	//-----------------------------------------------------------------------------------------------------
+	void SCR_AIMoveFromDangerBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
+	{
+		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
+		InitParameters(dangerEntity, dangerPos);
+				
 		if (dangerEntity)
 		{
 			m_DangerPosition.m_Value = dangerEntity.GetOrigin();
 		}
 		
 		m_sBehaviorTree = "{D12937CF422B639B}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_Position.bt"
-    }
+	}
 	
 	//-----------------------------------------------------------------------------------------------------
 	//! Returns true if there exists a SCR_AIMoveFromDangerBehavior with m_DangerEntity assigned to 'ent'
-	static bool ExistsBehaviorForEntity(SCR_AIBaseUtilityComponent utility, IEntity ent)
+	static bool ExistsBehaviorForEntity(SCR_AIUtilityComponent utility, IEntity ent)
 	{
 		SCR_AIMoveFromDangerBehavior behavior = SCR_AIMoveFromDangerBehavior.Cast(utility.FindActionOfInheritedType(SCR_AIMoveFromDangerBehavior));
 		if (behavior && behavior.m_DangerEntity.m_Value == ent)
@@ -42,13 +46,14 @@ class SCR_AIMoveFromDangerBehavior : SCR_AIBehaviorBase
 class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 {
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromUnknownFire(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector dangerPos = vector.Zero, IEntity dangerEntity = null)
+	void SCR_AIMoveFromUnknownFire(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
-		m_eType = EAIActionType.MOVE_FROM_UNKNOWN_FIRE;
 		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_UNKNOWN_FIRE;
+		m_Stance.m_Value = ECharacterStance.STAND;
+		m_MovementType.m_Value = EMovementType.SPRINT;
+		m_bIsInterruptable = false;
 		
-		m_Stance.m_Value = ECharacterStance.CROUCH;
-		m_MovementType.m_Value = EMovementType.RUN;
+		m_bAllowLook = false;
 	}
 	
 	//-----------------------------------------------------------------------------------------------------
@@ -69,25 +74,29 @@ class SCR_AIMoveFromUnknownFire : SCR_AIMoveFromDangerBehavior
 class SCR_AIMoveFromGrenadeBehavior : SCR_AIMoveFromDangerBehavior
 {
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromGrenadeBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector dangerPos = vector.Zero, IEntity dangerEntity = null)
+	void SCR_AIMoveFromGrenadeBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
 		m_sBehaviorTree = "{478811D2295EAF3E}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_Grenade.bt";
+		m_MovementType.m_Value = EMovementType.SPRINT;
+		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
 	}
 }
 
 class SCR_AIMoveFromIncomingVehicleBehavior : SCR_AIMoveFromDangerBehavior
 {
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromIncomingVehicleBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector dangerPos = vector.Zero, IEntity dangerEntity = null)
+	void SCR_AIMoveFromIncomingVehicleBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
 		m_sBehaviorTree = "{2488649728730886}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_Vehicle.bt";
+		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_DANGER;
+		m_MovementType.m_Value = EMovementType.SPRINT;
 	}
 }
 
 class SCR_AIMoveFromVehicleHornBehavior : SCR_AIMoveFromDangerBehavior
 {
 	//-----------------------------------------------------------------------------------------------------
-	void SCR_AIMoveFromVehicleHornBehavior(SCR_AIBaseUtilityComponent utility, bool prioritize, SCR_AIActivityBase groupActivity, vector dangerPos = vector.Zero, IEntity dangerEntity = null)
+	void SCR_AIMoveFromVehicleHornBehavior(SCR_AIUtilityComponent utility, SCR_AIActivityBase groupActivity, vector dangerPos, IEntity dangerEntity)
 	{
 		m_sBehaviorTree = "{10A3DFFBC3629A79}AI/BehaviorTrees/Chimera/Soldier/MoveFromDanger_VehicleHorn.bt";
 		m_fPriority = PRIORITY_BEHAVIOR_MOVE_FROM_VEHICLE_HORN;

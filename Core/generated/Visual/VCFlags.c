@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 //!VObjectComponent flags
@@ -35,7 +35,9 @@ enum VCFlags
 	//! This instance should occlude clutter
 	CLUTTER_MASK,
 	//! This instance should add wetness
-	WETNESS_ADDER
-};
+	WETNESS_ADDER,
+}
 
-/** @}*/
+/*!
+\}
+*/

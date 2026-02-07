@@ -93,7 +93,7 @@ class SCR_ActionBlockUIName: SCR_DeviceBlockUIName
 		int colorB = sRGBA.B() * 255;
 		int colorA = sRGBA.A() * 255;
 		
-		return string.Format("<color rgba='%2,%3,%4,%5'><action name='%1' scale='1.25'/></color>", m_sActionName, colorR, colorG, colorB, colorA) + m_sDelimiter + super.GetName();
+		return string.Format("<color rgba='%2,%3,%4,%5'><action name='%1' scale='1'/></color>", m_sActionName, colorR, colorG, colorB, colorA) + m_sDelimiter + super.GetName();
 	}
 };
 [BaseContainerProps(), SCR_BaseContainerLocalizedTitleField("Name")]

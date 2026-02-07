@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class RenderTargetWidget: Widget
@@ -18,6 +18,8 @@ sealed class RenderTargetWidget: Widget
 	proto external void SetBlendMode(RenderTargetWidgetBlendMode blendMode);
 	proto external void SetFormat(RenderTargetWidgetFormat format);
 	proto external void SetWorld(BaseWorld world, int camera);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

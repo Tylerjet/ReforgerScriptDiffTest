@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Visual
-* @{
+/*!
+\addtogroup Visual
+\{
 */
 
 enum MeshObjectFlags
@@ -17,7 +17,9 @@ enum MeshObjectFlags
 	DYNAMIC_VERTEXES,
 	DUMMY_TANGENTS,
 	//!Geometry has changed. Bound-box is dirty
-	UPDATE_BOUNDBOX
-};
+	UPDATE_BOUNDBOX,
+}
 
-/** @}*/
+/*!
+\}
+*/

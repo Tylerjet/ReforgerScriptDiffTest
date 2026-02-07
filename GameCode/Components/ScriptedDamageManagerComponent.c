@@ -9,12 +9,28 @@ class ScriptedDamageManagerComponent : BaseScriptedDamageManagerComponent
 	protected static const int MIN_MOMENTUM_RESPONSE_INDEX = 1;
 	protected static const int MAX_MOMENTUM_RESPONSE_INDEX = 5;
 	protected static const int MIN_DESTRUCTION_RESPONSE_INDEX = 6;
+	protected const float SIMULATION_IMPRECISION_MULTIPLIER = 1.1;
 	static const int MAX_DESTRUCTION_RESPONSE_INDEX = 10;
 	static const string MAX_DESTRUCTION_RESPONSE_INDEX_NAME = "HugeDestructible";
 	private static int s_iFirstFreeDamageManagerData = -1;
 	private static ref array<ref SCR_ScriptedDamageManagerData> s_aScriptedDamageManagerData = {};
 	
 	private int m_iDamageManagerDataIndex = -1;
+	
+	//------------------------------------------------------------------------------------------------
+	float CalculateMomentum(Contact contact, float ownerMass, float otherMass)
+	{
+		float dotMultiplier = vector.Dot(contact.VelocityAfter1.Normalized(), contact.VelocityBefore1.Normalized());
+		float momentumBefore = ownerMass * contact.VelocityBefore1.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
+		float momentumAfter = ownerMass * contact.VelocityAfter1.Length() * dotMultiplier;
+		float momentumA = Math.AbsFloat(momentumBefore - momentumAfter);
+		
+		dotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
+		momentumBefore = otherMass * contact.VelocityBefore2.Length() * SIMULATION_IMPRECISION_MULTIPLIER;
+		momentumAfter = otherMass * contact.VelocityAfter2.Length() * dotMultiplier;
+		float momentumB = Math.AbsFloat(momentumBefore - momentumAfter);
+		return momentumA + momentumB;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	// This method uses similar logic to the logic of DamageSurroundingHitzones, but not the same.

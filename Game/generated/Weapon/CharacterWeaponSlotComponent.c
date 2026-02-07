@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Weapon
-* @{
+/*!
+\addtogroup Weapon
+\{
 */
 
 class CharacterWeaponSlotComponent: WeaponSlotComponent
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

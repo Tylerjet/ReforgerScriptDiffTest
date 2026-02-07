@@ -1,5 +1,5 @@
 /*!
-Notification Player and Faction
+Notification Player and Faction of that player
 Displays a notification: %1 = PlayerID name, %2 = Faction Name of assigned faction
 SCR_NotificationData: m_iParam1 = PlayerID
 Can be used for: Player (m_iParam1) joined faction 'factionName'

@@ -4,19 +4,19 @@ class SCR_AIWaypointClass: AIWaypointClass
 
 class SCR_AIWaypoint : AIWaypoint
 {
-	[Attribute("0", UIWidgets.CheckBox, "Waypoint overrides autonomous behavior")]
-    private bool m_bIsPriority;
+	[Attribute("0", UIWidgets.SpinBox, "Waypoint priority level", "0 2000 1000")]
+    private float m_fPriorityLevel;
 	
 	//------------------------------------------------------------------------------------------------
-	bool IsPriority()
+	float GetPriorityLevel()
 	{
-		return m_bIsPriority;
+		return m_fPriorityLevel;
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetPriority(bool isPriority)
+	void SetPriorityLevel(float priority)
 	{
-		m_bIsPriority = isPriority;
+		m_fPriorityLevel = priority;
 	}
 	
 	//------------------------------------------------------------------------------------------------

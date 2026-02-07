@@ -7,11 +7,15 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	
 	[Attribute("TickboxHolder")]
 	protected string m_sTickBoxAttributeName;
+	
 	[Attribute("GamePadLockedSelector")]
 	protected string m_sGamePadLockedSelectorName;
 	
-	[Attribute()]
-	protected ref SCR_EditorAttributeUIInfo m_ConflictingAttributeUIInfo;
+	[Attribute("SubAttributeIndicator", desc: "Shown when attribute is a subattribute")]
+	protected string m_sSubAttributeIndicatorName;
+	
+	[Attribute("0.25", desc: "Subattribute indicator disabled alpha")]
+	protected float m_fSubAttributeDisabledAlphaColor;
 	
 	protected ref SCR_EditorAttributeUIInfo m_ButtonDescriptionUIInfo = new ref SCR_EditorAttributeUIInfo;
 	protected SCR_AttributeButtonUIComponent m_ActiveButtonDescription;
@@ -20,11 +24,11 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	private SCR_BaseEditorAttribute m_Attribute;
 	protected float m_fBottomPadding = 1;
 	protected bool m_bIsSubAttribute;
-	protected float m_fSubLabelOffset = 30;
 	protected SCR_AttributeTickboxUIComponent m_TickBoxAttribute;
 	protected Widget m_GamePadLockedSelector;
 	protected SCR_AttributesManagerEditorComponent m_AttributeManager;
 	protected InputManager m_InputManager;
+	protected Widget m_SubAttributeIndicator;
 	
 	protected bool m_bEnabledByAttribute;
 	protected bool m_bEnabledByTickbox;
@@ -104,6 +108,8 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		m_Attribute.GetOnToggleButtonSelected().Insert(ToggleButtonSelected);
 		m_Attribute.GetOnSetAsSubAttribute().Insert(SetAsSubAttribute);
 		
+		m_SubAttributeIndicator = w.FindAnyWidget(m_sSubAttributeIndicatorName);
+		
 		m_InputManager = GetGame().GetInputManager();
 		
 		Widget tickbox = w.FindAnyWidget(m_sTickBoxAttributeName);
@@ -112,9 +118,6 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 			Print(string.Format("SCR_BaseEditorAttributeUIComponent could not find tickbox: %1!", m_sTickBoxAttributeName), LogLevel.ERROR);
 			return;
 		}
-		
-		if (!m_ConflictingAttributeUIInfo || !m_ConflictingAttributeUIInfo.HasIcon() || m_ConflictingAttributeUIInfo.GetDescription().IsEmpty())
-			Print(string.Format("SCR_BaseEditorAttributeUIComponent: %1 is missing or has an incomplete m_ConflictingAttributeUIInfo", this), LogLevel.WARNING);
 			
 		m_TickBoxAttribute = SCR_AttributeTickboxUIComponent.Cast(tickbox.FindHandler(SCR_AttributeTickboxUIComponent));
 		
@@ -227,17 +230,16 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		m_bIsSubAttribute = true;
 		m_Attribute.GetOnSetAsSubAttribute().Remove(SetAsSubAttribute);
 		
-		Widget labelWidget = m_UIComponent.GetLabelWidget();
-		
-		if (!labelWidget) 
+		if (!m_SubAttributeIndicator) 
+		{
+			Print("SCR_BaseEditorAttributeUIComponent is lacking subattribute indicator and can never be shown as a subattribute", LogLevel.WARNING);
 			return;
+		}
 		
-		TextWidget tw = TextWidget.Cast(labelWidget.FindAnyWidget("Text"));
+		m_SubAttributeIndicator.SetVisible(true);
 		
-		if (!tw) 
-			return;
-		
-		tw.SetTextOffset(m_fSubLabelOffset, 0);
+		if (GetAttribute().GetHasConflictingValues())
+			m_TickBoxAttribute.ToggleEnableByAttribute(false);
 	}
 
 	//============================ Varriable changed ============================\\
@@ -259,11 +261,14 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	//============================ Set tooltip ============================\\
 	protected void ShowAttributeDescription()
 	{
+		if (!m_AttributeManager)
+			return;
+		
 		m_bIsShowingDescription = true;
 		
 		//If conflicting attribute and not toggled show the conflicting attribute description
 		if (!m_TickBoxAttribute.GetToggled() && m_TickBoxAttribute.IsVisibleAndEnabled())
-			m_AttributeManager.SetAttributeDescription(m_ConflictingAttributeUIInfo, m_ConflictingAttributeUIInfo.GetDescription());
+			m_AttributeManager.SetAttributeDescription(m_AttributeManager.GetConflictingAttributeUIInfo(), m_AttributeManager.GetConflictingAttributeUIInfo().GetDescription());
 		else if (m_bIsOverridingDescription)
 			m_AttributeManager.SetAttributeDescription(GetAttribute().GetUIInfo(), m_sOverrideDescriptionCustomDescription, m_sOverrideDescriptionParam1, m_sOverrideDescriptionParam2, m_sOverrideDescriptionParam3);
 		else if (m_bShowButtonDescription)
@@ -274,6 +279,9 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	
 	protected void HideAttributeDescription()
 	{
+		if (!m_AttributeManager)
+			return;
+		
 		m_bIsShowingDescription = false;
 		m_AttributeManager.SetAttributeDescription(null);
 	}	
@@ -381,6 +389,9 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		m_bEnabledByAttribute = enabled;
 		ToggleEnable(m_bEnabledByAttribute);
 		Event_OnEnabledByAttribute.Invoke(m_bEnabledByAttribute);
+		
+		if (GetAttribute().GetHasConflictingValues())
+			m_TickBoxAttribute.ToggleEnableByAttribute(enabled);
 	}
 	
 	
@@ -389,21 +400,40 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 	/param bool enable true or false
 	*/
 	protected void ToggleEnable(bool enabled)
-	{				
+	{		
+		if (m_SubAttributeIndicator)
+		{
+			Color color = m_SubAttributeIndicator.GetColor();
+			if (!enabled)
+				color.SetA(m_fSubAttributeDisabledAlphaColor);
+			else 
+				color.SetA(1);
+		
+			m_SubAttributeIndicator.SetColor(color);
+		}
+		
 		//If Multiselect
 		if (GetAttribute().GetHasConflictingValues())
 		{
-			//Create var from copy var if enabled
+			//~ Create var from copy var if enabled
 			if (enabled)
 			{
-				GetAttribute().SetVariable(m_Attribute.GetCopyVariable());
-				GetAttribute().ClearCopyVar();
+				//~ Only do this if copy existis
+				if (m_Attribute.GetCopyVariable())
+				{
+					GetAttribute().SetVariable(m_Attribute.GetCopyVariable());
+					GetAttribute().ClearCopyVar();
+				}
 			}
-			//Create copy var and Delete var if disabled
+			//~ Create copy var and Delete var if disabled
 			else 
 			{
-				GetAttribute().CreateCopyVariable();
-				GetAttribute().ClearVar();
+				//~ Only do this if var existis
+				if (GetAttribute().GetVariable(false))
+				{
+					GetAttribute().CreateCopyVariable();
+					GetAttribute().ClearVar();
+				}
 			}
 		}
 		
@@ -412,6 +442,15 @@ class SCR_BaseEditorAttributeUIComponent: ScriptedWidgetComponent
 		else
 			m_UIComponent.SetEnabled(false);
 
+	}
+	
+	/*!
+	Get if tickbox is enabled or not. 
+	\return Tickbox is enabled true or false
+	*/
+	bool GetTickboxEnabled()
+	{
+		return m_TickBoxAttribute && m_TickBoxAttribute.GetEnabled();
 	}
 	
 	/*!

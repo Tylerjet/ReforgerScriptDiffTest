@@ -128,7 +128,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 			
 		if (anyEnemyRemoved && m_aTargetEntities.Count() == 0)
 		{
-			SetStateAllActionsOfType(EAIActionType.ATTACK,EAIActionState.COMPLETED);
+			SetStateAllActionsOfType(SCR_AIAttackBehavior, EAIActionState.COMPLETED, true);
 		}
 	}
 	
@@ -261,7 +261,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		bool removed = false;
 		for (int index = m_aTargetEntities.Count() - 1; index >=0; index--)
 		{
-			if (!m_aTargetEntities[index] || (includeDeadBodies && !SCR_AIIsAlive.IsAlive(m_aTargetEntities[index])))
+			if (!m_aTargetEntities[index] || (includeDeadBodies && !SCR_AIDamageHandling.IsAlive(m_aTargetEntities[index])))
 			{
 				RemoveTarget(null,index);
 				removed = true;
@@ -307,11 +307,17 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		{
 			if (currentActivity.m_bIsWaypointRelated.m_Value)
 				m_GroupInfo.SetGroupControlMode(EGroupControlMode.FOLLOWING_WAYPOINT);
-			else if (currentActivity.m_eType == EAIActionType.IDLE)
+			else if (currentActivity.Type() == SCR_AIIdleActivity)
 				m_GroupInfo.SetGroupControlMode(EGroupControlMode.IDLE);
 			else
 				m_GroupInfo.SetGroupControlMode(EGroupControlMode.AUTONOMOUS);
 		}
+	}
+	
+	//---------------------------------------------------------------------------------------------------
+	int GetCurrentPriorityLevel()
+	{
+		return m_CurrentActivity.EvaluatePriorityLevel();
 	}
 	
 	//---------------------------------------------------------------------------------------------------

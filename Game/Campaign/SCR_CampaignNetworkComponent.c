@@ -29,7 +29,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 
 	// Member variables 
 	protected SCR_PlayerController m_PlayerController;
-	protected ECharacterRank m_ePlayerRank = ECharacterRank.PRIVATE;
+	protected SCR_ECharacterRank m_ePlayerRank = SCR_ECharacterRank.PRIVATE;
 	protected RplComponent m_RplComponent;
 	protected bool m_bXPInfoOnKillsHintShown = false;
 	protected ref map<SCR_SiteSlotEntity, ref SCR_CompositionBuildingQueue> m_mCurrentBuilding = new map<SCR_SiteSlotEntity, ref SCR_CompositionBuildingQueue>;
@@ -91,8 +91,8 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		if (!comp)
 			return;
 		
-		ECharacterRank curRank = comp.GetCharacterRank(player);
-		ECharacterRank newRank = SCR_CampaignFactionManager.GetInstance().GetRankByXP(m_iPlayerXP);
+		SCR_ECharacterRank curRank = comp.GetCharacterRank(player);
+		SCR_ECharacterRank newRank = SCR_CampaignFactionManager.GetInstance().GetRankByXP(m_iPlayerXP);
 		
 		if (newRank == curRank)
 			return;
@@ -119,17 +119,17 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		{
 			switch (newRank)
 			{
-				case ECharacterRank.PRIVATE: {radio = SCR_ERadioMsg.PROMOTION_PRIVATE; break;};
-				case ECharacterRank.CORPORAL: {radio = SCR_ERadioMsg.PROMOTION_CORPORAL; break;};
-				case ECharacterRank.SERGEANT: {radio = SCR_ERadioMsg.PROMOTION_SERGEANT; break;};
-				case ECharacterRank.LIEUTENANT: {radio = SCR_ERadioMsg.PROMOTION_LIEUTENANT; break;};
-				case ECharacterRank.CAPTAIN: {radio = SCR_ERadioMsg.PROMOTION_CAPTAIN; break;};
-				case ECharacterRank.MAJOR: {radio = SCR_ERadioMsg.PROMOTION_MAJOR; break;};
+				case SCR_ECharacterRank.PRIVATE: {radio = SCR_ERadioMsg.PROMOTION_PRIVATE; break;};
+				case SCR_ECharacterRank.CORPORAL: {radio = SCR_ERadioMsg.PROMOTION_CORPORAL; break;};
+				case SCR_ECharacterRank.SERGEANT: {radio = SCR_ERadioMsg.PROMOTION_SERGEANT; break;};
+				case SCR_ECharacterRank.LIEUTENANT: {radio = SCR_ERadioMsg.PROMOTION_LIEUTENANT; break;};
+				case SCR_ECharacterRank.CAPTAIN: {radio = SCR_ERadioMsg.PROMOTION_CAPTAIN; break;};
+				case SCR_ECharacterRank.MAJOR: {radio = SCR_ERadioMsg.PROMOTION_MAJOR; break;};
 			}
 		} else {				
 			switch (newRank)
 			{
-				case ECharacterRank.RENEGADE: {radio = SCR_ERadioMsg.DEMOTION_RENEGADE; break;};
+				case SCR_ECharacterRank.RENEGADE: {radio = SCR_ERadioMsg.DEMOTION_RENEGADE; break;};
 				default: {radio = SCR_ERadioMsg.DEMOTION; break;}
 			}
 		}
@@ -541,23 +541,23 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		SCR_CampaignFactionManager campaignFactionManager = SCR_CampaignFactionManager.GetInstance();
 		
-		ECharacterRank rank = campaignFactionManager.GetRankByXP(m_iPlayerXP);
+		SCR_ECharacterRank rank = campaignFactionManager.GetRankByXP(m_iPlayerXP);
 		int reqXP;
 		
 		if (demote)
 		{
-			ECharacterRank newRank = campaignFactionManager.GetRankPrev(rank);
+			SCR_ECharacterRank newRank = campaignFactionManager.GetRankPrev(rank);
 			
-			if (newRank == ECharacterRank.INVALID)
+			if (newRank == SCR_ECharacterRank.INVALID)
 				return;
 			
 			reqXP = campaignFactionManager.GetRankXP(newRank) - m_iPlayerXP;
 		}
 		else
 		{
-			ECharacterRank newRank = campaignFactionManager.GetRankNext(rank);
+			SCR_ECharacterRank newRank = campaignFactionManager.GetRankNext(rank);
 			
-			if (newRank == ECharacterRank.INVALID)
+			if (newRank == SCR_ECharacterRank.INVALID)
 				return;
 			
 			reqXP = campaignFactionManager.GetRankXP(newRank) - m_iPlayerXP;
@@ -985,7 +985,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if (vector.DistanceSq(vehPos, base.GetOrigin()) > distSq)
 		{
-			SCR_CampaignServiceComponent service = base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent service = base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);
 			if (!service)
 				return;
 			
@@ -1097,7 +1097,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		if (vector.DistanceSq(vehPos, base.GetOrigin()) > distSq)
 		{
-			SCR_CampaignServiceComponent service = base.GetBaseService(ECampaignServicePointType.SUPPLY_DEPOT);
+			SCR_CampaignServiceComponent service = base.GetBaseService(SCR_EServicePointType.SUPPLY_DEPOT);
 			if (!service)
 				return;
 			
@@ -1199,7 +1199,12 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		BaseRadioComponent radio = BaseRadioComponent.Cast(radioEnt.FindComponent(BaseRadioComponent));
 		
-		if (!radio)
+		if (!radio || !radio.IsPowered())
+			return;
+		
+		BaseTransceiver transmitter = radio.GetTransceiver(0);
+		
+		if (!transmitter)
 			return;
 		
 		IEntity called = GetGame().GetPlayerManager().GetPlayerControlledEntity(calledID);
@@ -1219,7 +1224,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		Rpc(RpcDo_PlayRadioMsg, msgType, baseCallsign, CompressCallsign(companyCallsignIndexCaller, platoonCallsignIndexCaller, squadCallsignIndexCaller), CompressCallsign(companyCallsignIndexCalled, platoonCallsignIndexCalled, squadCallsignIndexCalled), param, msg.GetSeed(), 1, checkHQReached);
 		
-		radio.Transmit(msg);
+		transmitter.BeginTransmission(msg);
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -1433,7 +1438,7 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 		
 		campaign.ShowXPInfo(currentXP, rewardID, XPToAdd, volunteer, profileUsed, skillLevel);
 
-		if (!m_bXPInfoOnKillsHintShown)
+		if (!m_bXPInfoOnKillsHintShown && (rewardID == CampaignXPRewards.ENEMY_KILL || rewardID == CampaignXPRewards.ENEMY_KILL_VEH))
 		{
 			m_bXPInfoOnKillsHintShown = true;
 			GetGame().GetCallqueue().CallLater(XPInfoOnKillsHint, 30000 + Math.RandomIntInclusive(0, 30000));
@@ -1579,7 +1584,6 @@ class SCR_CampaignNetworkComponent : ScriptComponent
 	{
 		super.OnPostInit(owner);
 		SetEventMask(owner, EntityEvent.INIT);
-		owner.SetFlags(EntityFlags.ACTIVE, true);
 	}
 		
 	//------------------------------------------------------------------------------------------------

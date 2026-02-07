@@ -32,26 +32,26 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	protected bool m_bNameEdited;
 	protected bool m_bFileNameEdited;
 	
-	// Scenario, sources array
-	protected ref map<ref SCR_LocalizedProperty, ref array<ref SCR_LocalizedProperty>> m_aScenarioSources;
-	
+	// Mod + scenarios that mod is overriding
+	protected ref array<ref SCR_ScenarioSources> m_aScenarioSources = {};
+
 	// Invokers
-	protected ref ScriptInvoker<string> Event_OnScenarioSelected;
+	protected ref ScriptInvoker<string> m_OnScenarioSelected;
 
 	//------------------------------------------------------------------------------------------------
-	protected void InvokeEventOnScenarioSelected(string itemId)
+	protected void InvokeOnScenarioSelected(string itemId)
 	{
-		if (Event_OnScenarioSelected)
-			Event_OnScenarioSelected.Invoke(itemId);
+		if (m_OnScenarioSelected)
+			m_OnScenarioSelected.Invoke(itemId);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	ScriptInvoker GetEventOnScenarioSelected()
+	ScriptInvoker GetOnScenarioSelected()
 	{
-		if (!Event_OnScenarioSelected)
-			Event_OnScenarioSelected = new ScriptInvoker();
+		if (!m_OnScenarioSelected)
+			m_OnScenarioSelected = new ScriptInvoker();
 
-		return Event_OnScenarioSelected;
+		return m_OnScenarioSelected;
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -114,7 +114,12 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		
 		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
 		{
-			options.Insert(m_aScenarioSources.GetKey(i));
+			MissionWorkshopItem scenario = m_aScenarioSources[i].m_Scenario;
+			if (!scenario)
+				return;
+			
+			SCR_LocalizedProperty scenarioOption = new SCR_LocalizedProperty(scenario.Name(), scenario.Id());
+			options.Insert(scenarioOption);
 		}
 		
 		m_ScenarioSelect.SetOptions(options);
@@ -123,9 +128,6 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 		m_ScenarioSelect.GetSelectionComponent().m_OnChanged.Insert(OnSelectScenario);
 		
 		// Select default scenario
-		array<MissionWorkshopItem> missionItemsAll = new array<MissionWorkshopItem>;
-		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, 4096);
-		
 		int defaultId = SetSelectedScenarioById(DEFAULT_SCENARIO);
 		m_ScenarioSelect.SelectOption(defaultId);
 		OnSelectScenario(null, defaultId);
@@ -137,62 +139,74 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//-------------------------------------------------------------------------------------------
 	protected void FillScenarioSources()
 	{
-		// Get scenarios 
-		array<MissionWorkshopItem> missionItemsAll = new array<MissionWorkshopItem>;
-		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(missionItemsAll, 0, 4096);
+		// Get all scenarios 
+		array<MissionWorkshopItem> allMissions = {};
+		GetGame().GetBackendApi().GetWorkshop().GetPageScenarios(allMissions, 0, 4096);
 		
-		m_aScenarioSources = new map<ref SCR_LocalizedProperty, ref array<ref SCR_LocalizedProperty>>();
+		// Filter scenarios 
+		array<MissionWorkshopItem> missions = {};
 		
-		// Fill
-		for (int i = 0, count = missionItemsAll.Count(); i < count; i++)
+		for (int i = 0, count = allMissions.Count(); i < count; i++)
 		{
-			SCR_LocalizedProperty scenario = new SCR_LocalizedProperty(missionItemsAll[i].Name(), missionItemsAll[i].Id());
-			SCR_LocalizedProperty sourceMod;
+			// Exclude single player 
+			if (allMissions[i].GetPlayerCount() == 1)
+				continue;
 			
-			WorkshopItem owner = missionItemsAll[i].GetOwner();
-			if (owner)
+			// Exclude broken mod scenarios
+			if (allMissions[i].GetOwner())
 			{
-				sourceMod = new SCR_LocalizedProperty(owner.Name(), owner.Id());
+				SCR_WorkshopItem item = SCR_AddonManager.GetInstance().Register(allMissions[i].GetOwner());
+				 
+				if (item && item.GetAnyDependencyMissing() || item.GetCorrupted())
+					continue;
 			}
 			
-			// Add only MP scenario 
-			if (missionItemsAll[i].GetPlayerCount() > 1)
-				InsertScenarioToMap(scenario, sourceMod);
+			missions.Insert(allMissions[i]);
+		}
+		
+		// Order scenarios 
+		SCR_Sorting<MissionWorkshopItem, SCR_CompareMissionName>.HeapSort(missions);
+		
+		// Add scenarios and sorces to map 
+		for (int i = 0, count = missions.Count(); i < count; i++)
+		{
+			InsertScenarioToMap(missions[i], missions[i].GetOwner());
 		}
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	//! Insert scenario and sorces to scenario sources mod map 
 	//! If scenario name is reapeate, insert source mod in to existing scenario 
-	protected void InsertScenarioToMap(SCR_LocalizedProperty scenario, SCR_LocalizedProperty sourceMod)
+	protected void InsertScenarioToMap(MissionWorkshopItem scenario, WorkshopItem modOwner)
 	{
 		// Scenario map structure  - key: scenario (SCR_LocalizedProperty), value: sources (array SCR_LocalizedProperty)
 		
 		// Scenario id is in map - there stil could be repeating names 
-		bool exists = false;
+		int scenarioIndex = -1;
 		
 		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
 		{		
+			MissionWorkshopItem mission = m_aScenarioSources[i].m_Scenario;
+				
 			// Scenario structure - label: name, propertyName: id	
-			if (scenario.m_sPropertyName == m_aScenarioSources.GetKey(i).m_sPropertyName)
+			if (mission && scenario.Id() == mission.Id())
 			{
-				scenario = m_aScenarioSources.GetKey(i);
-				exists = true;
+				//scenario = m_aScenarioSources[i].m_Scenario;
+				scenarioIndex = i;
 				break;
 			}
 		}
 		
 		// Scenario is in map 
-		if (exists)
+		if (scenarioIndex != -1)
 		{
 			// Add source to existing scenario
-			array<ref SCR_LocalizedProperty> sources = m_aScenarioSources.Get(scenario);
-			sources.Insert(sourceMod);
+			m_aScenarioSources[scenarioIndex].m_aMods.Insert(modOwner);
 		}
 		else
 		{
 			// Add new 
-			m_aScenarioSources.Insert(scenario, {sourceMod});
+			m_aScenarioSources.Insert(new SCR_ScenarioSources(scenario, {modOwner}));
 		}
 	}
 	
@@ -200,10 +214,13 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//! Return default scenario id
 	protected int SetSelectedScenarioById(string scenarioId)
 	{
+		array<ref SCR_LocalizedProperty> scenarios = {};
+		m_ScenarioSelect.GetOptions(scenarios);
+		
 		for (int i = 0, count = m_aScenarioSources.Count(); i < count; i++)
 		{
 			// Property name = scenario id
-			if (m_aScenarioSources.GetKey(i).m_sPropertyName == scenarioId)
+			if (scenarios[i].m_sPropertyName == scenarioId)
 			{
 				return i;
 			}
@@ -308,11 +325,7 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	//! Fill all entries with values from given DS config 
 	void FillFromDSConfig(notnull SCR_DSConfig config)
 	{
-		// Config 
-		FindEntry("gameHostBindAddress").SetValue(config.gameHostBindAddress);
-		FindEntry("gameHostBindPort").SetValue(config.gameHostBindPort.ToString());
-		FindEntry("gameHostRegisterBindAddress").SetValue(config.gameHostRegisterBindAddress);
-		FindEntry("gameHostRegisterPort").SetValue(config.gameHostRegisterPort.ToString());
+		// Config
 		FindEntry("adminPassword").SetValue(config.adminPassword);
 		
 		// Game
@@ -392,7 +405,24 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			return;
 		
 		int selecteScenario = m_ScenarioSelect.GetSelectedOption();
-		array<ref SCR_LocalizedProperty> ownerMods = m_aScenarioSources.GetElement(selected);
+		array<ref SCR_LocalizedProperty> ownerMods = {};
+		
+		int count = 0;
+		
+		if (m_aScenarioSources[selected].m_aMods)
+			count = m_aScenarioSources[selected].m_aMods.Count();
+		
+		for (int i = 0; i < count; i++)
+		{
+			WorkshopItem mod = m_aScenarioSources[selected].m_aMods[i];
+			if (!mod)
+				continue;
+			
+			string name = m_aScenarioSources[selected].m_aMods[i].Name();
+			string id = m_aScenarioSources[selected].m_aMods[i].Id();
+			
+			ownerMods.Insert(new SCR_LocalizedProperty(name, id));
+		}
 		
 		// Is vanilla?
 		if (!ownerMods || ownerMods.IsEmpty() || ownerMods[0] == null)
@@ -418,6 +448,8 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 			GenerateFileName(scenario);
 		
 		SetupPlayerLimit(scenario.GetPlayerCount());
+		
+		InvokeOnScenarioSelected(scenario.Id());
 	}
 	
 	//-------------------------------------------------------------------------------------------
@@ -476,13 +508,20 @@ class SCR_ServerConfigListComponent : SCR_ConfigListComponent
 	{
 		return m_sDialogs;
 	}
-	
-	//-------------------------------------------------------------------------------------------
-	void SetIPPort(DSConfig config)
-	{
-		FindEntry("gameHostBindAddress").SetValue(config.gameHostBindAddress);
-		FindEntry("gameHostBindPort").SetValue(config.gameHostBindPort.ToString());
-		FindEntry("gameHostRegisterBindAddress").SetValue(config.gameHostRegisterBindAddress);
-		FindEntry("gameHostRegisterPort").SetValue(config.gameHostRegisterPort.ToString());
-	}
 };
+
+//! Stores scenario with scenario source
+//-------------------------------------------------------------------------------------------
+class SCR_ScenarioSources
+{
+	MissionWorkshopItem m_Scenario;
+	
+	ref array<WorkshopItem> m_aMods;
+	
+	void SCR_ScenarioSources(MissionWorkshopItem scenario, array<WorkshopItem> mods)
+	{
+		m_Scenario = scenario;
+		m_aMods = mods;
+	}
+}
+

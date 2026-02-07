@@ -4,13 +4,15 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup AI
-* @{
+/*!
+\addtogroup AI
+\{
 */
 
 class AITaskSetMovementSpeed: AITask
 {
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

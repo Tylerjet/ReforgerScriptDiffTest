@@ -4,12 +4,12 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
-/**
+/*!
 All methods working with vector work only with its x and y components, the z is always ignored
 */
 sealed class CanvasWidgetBase: Widget
@@ -38,6 +38,8 @@ sealed class CanvasWidgetBase: Widget
 	proto external void SetOffsetPx(vector offsetPx);
 	proto external vector GetSizeInUnits();
 	proto external void SetSizeInUnits(vector newSize);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

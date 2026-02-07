@@ -106,22 +106,22 @@ class SCR_HUDManagerComponent : HUDManagerComponent
 	//------------------------------------------------------------------------------------------------
 	float GetAdaptiveOpacity()
 	{
-			return m_fOpacity;
+		return m_fOpacity;
 	}
 	
 	//------------------------------------------------------------------------------------------------
 	float GetSceneBrightness()
 	{
-			return m_fSceneBrightness;
+		return m_fSceneBrightness;
 	}	
 
 	//------------------------------------------------------------------------------------------------
 	float GetSceneBrightnessRaw()
 	{
-			return m_fSceneBrightnessRaw;
+		return m_fSceneBrightnessRaw;
 	}	
 		
-	//------------------------------------------------------------------------------------------------\
+	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetSceneBrightnessChangedInvoker()
 	{
 		return m_OnSceneBrightnessChanged;

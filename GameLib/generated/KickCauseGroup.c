@@ -11,5 +11,5 @@ enum KickCauseGroup
 	//! Player has been kicked because of BattlEye and reason is unknown.
 	BATTLEYE,
 	//! Kick reason comes from DataError.
-	DATA
-};
+	DATA,
+}

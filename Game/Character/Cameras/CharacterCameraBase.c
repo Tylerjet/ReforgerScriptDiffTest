@@ -254,7 +254,7 @@ class CharacterCameraBase extends ScriptedCameraItem
 	protected CharacterCommandHandlerComponent m_CmdHandler;
 	protected float 								m_fShakeProgress;
 	protected float									m_fShakeVelocity;
-	private static TNodeId sm_iCameraBoneIndex = -1;
-	private static TNodeId sm_iHeadBoneIndex = -1;
-	private static AnimationTagID sm_TagFPCamera = -1;
+	protected static TNodeId sm_iCameraBoneIndex = -1;
+	protected static TNodeId sm_iHeadBoneIndex = -1;
+	protected static AnimationTagID sm_TagFPCamera = -1;
 };

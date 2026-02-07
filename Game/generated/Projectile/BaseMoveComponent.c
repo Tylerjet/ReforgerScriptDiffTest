@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Projectile
-* @{
+/*!
+\addtogroup Projectile
+\{
 */
 
 class BaseMoveComponent: BaseProjectileComponent
@@ -25,6 +25,8 @@ class BaseMoveComponent: BaseProjectileComponent
 	* \warning This has to be performed on authority, and must be done after the shell is launched.
 	*/
 	proto external void SetRewindDuration(float duration);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

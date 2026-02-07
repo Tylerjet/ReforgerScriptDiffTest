@@ -84,7 +84,7 @@ class SCR_PlayerSpawnPointManagerComponent: SCR_BaseGameModeComponent
 	{
 		AddSpawnPoint(playerId);
 	}
-	override void OnPlayerDisconnected(int playerId)
+	override void OnPlayerDisconnected(int playerId, KickCauseCode cause, int timeout)
 	{
 		RemoveSpawnPoint(playerId);
 	}

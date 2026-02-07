@@ -71,7 +71,6 @@ class SCR_PrefabsSpawnerManager : GenericEntity
 	//------------------------------------------------------------------------------------------------
 	void SCR_PrefabsSpawnerManager(IEntitySource src, IEntity parent)
 	{
-		SetFlags(EntityFlags.ACTIVE, true);
 		SetEventMask(EntityEvent.FRAME);
 	}
 

@@ -7,6 +7,15 @@ class MagazineWellStanag556 : BaseMagazineWell
 {
 };
 
+// Stanag - 5.56x45mm Small (for weapons which don't support large magazines like drum ones)
+class MagazineWellStanag556SmallClass {}
+MagazineWellStanag556SmallClass MagazineWellStanag556SmallSource;
+
+class MagazineWellStanag556Small : MagazineWellStanag556
+{
+};
+
+
 //M60 - 7.62x51mm
 class MagazineWellM60Class {}
 MagazineWellM60Class MagazineWellM60Source;
@@ -72,6 +81,14 @@ class MagazineWellAK545Class {}
 MagazineWellAK545Class MagazineWellAK545Source;
 
 class MagazineWellAK545 : BaseMagazineWell
+{
+};
+
+// AK74 - 5.45x39mm Small (for weapons which don't support large magazines like drum ones)
+class MagazineWellAK545SmallClass {}
+MagazineWellAK545SmallClass MagazineWellAK545SmallSource;
+
+class MagazineWellAK545Small : MagazineWellAK545
 {
 };
 

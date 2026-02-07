@@ -6,7 +6,7 @@ class SCR_CampaignFlagComponentClass: SCR_FlagComponentClass
 //------------------------------------------------------------------------------------------------
 class SCR_CampaignFlagComponent: SCR_FlagComponent
 {
-	[Attribute("10", UIWidgets.Range, "Search for base in this range")]
+	[Attribute("15", UIWidgets.Range, "Search for base in this range")]
 	protected int m_iBaseSearchRange;
 	
 	[Attribute("", desc: "Search for specific base by name. If no base is found, range search will be used as fallback")]
@@ -42,7 +42,7 @@ class SCR_CampaignFlagComponent: SCR_FlagComponent
 		if (!m_Base.GetOwningFaction())
 			ChangeMaterial(GetDefaultMaterial());
 		else
-			ChangeMaterial(m_Base.GetOwningFaction().GetFactionFlagResource());
+			ChangeMaterial(m_Base.GetOwningFaction().GetFactionFlagMaterial());
 	}
 	
 	//------------------------------------------------------------------------------------------------

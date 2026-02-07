@@ -4,7 +4,7 @@ enum EActionValueType
 	ANALOG,
 	ANALOG_RELATIVE,
 	ANALOG_MOTION,
-};
+}
 
 enum EInputDeviceType
 {
@@ -13,7 +13,7 @@ enum EInputDeviceType
 	GAMEPAD,
 	JOYSTICK,
 	TRACK_IR
-};
+}
 
 typedef func ActionListenerCallback;
 void ActionListenerCallback(float value = 0.0, EActionTrigger reason = 0); 

@@ -4,14 +4,16 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup InventorySystem
-* @{
+/*!
+\addtogroup InventorySystem
+\{
 */
 
 class WeaponAttachmentAttributes: BaseItemAttributeData
 {
 	proto external BaseAttachmentType GetAttachmentType();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

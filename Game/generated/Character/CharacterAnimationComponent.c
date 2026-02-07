@@ -4,14 +4,14 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Character
-* @{
+/*!
+\addtogroup Character
+\{
 */
 
 class CharacterAnimationComponentClass: BaseAnimPhysComponentClass
 {
-};
+}
 
 class CharacterAnimationComponent: BaseAnimPhysComponent
 {
@@ -44,6 +44,8 @@ class CharacterAnimationComponent: BaseAnimPhysComponent
 	//! Adds damage effectors that will be applied to ragdoll once it is enabled
 	//! Position and Direction in character's local space, force is in m/kg3, maxLifeTime is time in seconds as for how long this damage will be applicable (scales with decrease)
 	proto external void AddRagdollEffectorDamage(vector posLS, vector dirLS, float force, float radius, float maxLifeTime);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

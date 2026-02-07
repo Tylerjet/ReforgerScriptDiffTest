@@ -149,7 +149,7 @@ class SCR_EditableFactionComponent : SCR_EditableEntityComponent
 		if (spawnPointCount == 0)
 		{
 			int thisRplId = (int)Replication.FindId(this);
-			SCR_NotificationsComponent.SendToGameMasters(ENotification.EDITOR_FACTION_NO_SPAWNS, thisRplId);
+			SCR_NotificationsComponent.SendToUnlimitedEditorPlayers(ENotification.EDITOR_FACTION_NO_SPAWNS, thisRplId);
 		}
 		else if (spawnPointCount == 1 && !m_ScrFaction.IsPlayable())
 		{

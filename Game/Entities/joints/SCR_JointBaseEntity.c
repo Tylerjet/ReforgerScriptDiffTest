@@ -307,7 +307,6 @@ class SCR_JointBaseEntity: GenericEntity
 	{
 		m_JointParent = parent;
 		
-		SetFlags(EntityFlags.ACTIVE, false);
 		SetEventMask(EntityEvent.INIT);
 	}
 	

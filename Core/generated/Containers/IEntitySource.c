@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Containers
-* @{
+/*!
+\addtogroup Containers
+\{
 */
 
 sealed class IEntitySource: BaseContainer
@@ -16,6 +16,8 @@ sealed class IEntitySource: BaseContainer
 	proto external int GetComponentCount();
 	proto external IEntityComponentSource GetComponent(int index);
 	proto external EntityID GetID();
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

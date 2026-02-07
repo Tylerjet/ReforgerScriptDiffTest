@@ -3,12 +3,21 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 	// this tests SCR_BoardingWaypoint waypoint completion condition: either characters are in vehicles or group usable vehicles are fully occupied
 	protected override bool TestFunction(AIAgent agent, IEntity controlled)
 	{
-		SCR_BoardingWaypoint waypoint = SCR_BoardingWaypoint.Cast(controlled);
-		if (!waypoint)
-		{
-			Debug.Error("Entity input must be SCR_BoardingWaypoint AIWaypoint!");
+		SCR_AIBoardingWaypointParameters allowance = new SCR_AIBoardingWaypointParameters();
+		EAIWaypointCompletionType completionType;
+		AIWaypoint wp = AIWaypoint.Cast(controlled);
+		if (!wp)
 			return false;
-		}	
+		completionType = wp.GetCompletionType();
+		SCR_BoardingWaypoint bwp = SCR_BoardingWaypoint.Cast(controlled);
+		if (bwp)
+			allowance = bwp.GetAllowance();
+		else
+		{
+			allowance.m_bIsCargoAllowed = true;
+			allowance.m_bIsGunnerAllowed = true;
+			allowance.m_bIsDriverAllowed = true;
+		}
 		
 		SCR_AIGroup group = SCR_AIGroup.Cast(agent);
 		if (!group)
@@ -17,10 +26,7 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 			return false;
 		}
 		
-		array<AIAgent> agents = {};		
-						
-		EAIWaypointCompletionType completionType = waypoint.GetCompletionType();
-		SCR_AIBoardingWaypointParameters allowance = waypoint.GetAllowance();
+		array<AIAgent> agents = {};
 		
 		ref array<IEntity> vehicles = {};
 		group.GetUsableVehicles(vehicles);
@@ -107,7 +113,7 @@ class SCR_AIDecoTestIsInVehicleCondition : DecoratorTestScripted
 				continue;
 			
 			if (!slot.AttachedOccupant())
-			{	
+			{
 				// PrintFormat("Found empty compartment %1 of type %2", slot, compartmentType);
 				return true;
 			}

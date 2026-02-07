@@ -44,6 +44,8 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ref SCR_GameCoresManager		m_CoresManager;
 	protected Widget 						m_wWatermark;
 	protected ref SCR_SettingsManager		m_SettingsManager;
+	protected SCR_BuildingDestructionManagerComponent m_BuildingDestructionManager;
+	protected bool							m_bHasKeyboard;
 
 
 	//! Object responsible for managing and providing game modes with list of available loadouts.
@@ -51,6 +53,9 @@ class ArmaReforgerScripted : ChimeraGame
 	
 	//! Object responsible for tracking and connecting to the database for Career Profile
 	protected SCR_DataCollectorComponent m_DataCollectorComponent;
+	
+	//! Object responsible for managing sounds trigged in script
+	protected SCR_SoundManagerEntity m_SoundManagerEntity;
 
 	ref ScriptInvoker m_OnMissionSetInvoker = new ScriptInvoker();
 	ref RplSessionErrorHandler m_SessionErrorHandler;
@@ -68,6 +73,8 @@ class ArmaReforgerScripted : ChimeraGame
 	protected ref ScriptInvoker m_OnWorldSimulatePhysicsInvoker = new ScriptInvoker();
 	protected ref ScriptCallQueue m_Callqueue = new ScriptCallQueue();
 
+	//ref SCR_RCONCommander m_dsCommander;
+	
 	//------------------------------------------------------------------------------------------------
 	void ~ArmaReforgerScripted()
 	{
@@ -91,6 +98,32 @@ class ArmaReforgerScripted : ChimeraGame
 		
 		m_DataCollectorComponent = instance;
 	}
+
+	//------------------------------------------------------------------------------------------------
+	void UnregisterBuildingDestructionManager(notnull SCR_BuildingDestructionManagerComponent manager)
+	{
+		// Only set to null if it's the passed one
+		if (m_BuildingDestructionManager == manager)
+			m_BuildingDestructionManager = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	void RegisterBuildingDestructionManager(notnull SCR_BuildingDestructionManagerComponent manager)
+	{
+		if (m_BuildingDestructionManager)
+		{
+			Print("Trying to register a SCR_BuildingDestructionManagerComponent, but one is already registered!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_BuildingDestructionManager = manager;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	SCR_BuildingDestructionManagerComponent GetBuildingDestructionManager()
+	{
+		return m_BuildingDestructionManager;
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	/*!
@@ -103,12 +136,39 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	void RegisterSoundManagerEntity(SCR_SoundManagerEntity instance)
+	{
+		if (m_SoundManagerEntity)
+		{
+			Print("Trying to register a SCR_SoundManagerEntity, but one is already registered!", LogLevel.ERROR);
+			return;
+		}
+		
+		m_SoundManagerEntity = instance;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Returs registered SCR_SoundManagerEntity
+	*/
+	SCR_SoundManagerEntity GetSoundManagerEntity()
+	{
+		return m_SoundManagerEntity;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	SCR_SettingsManager GetSettingsManager()
 	{
 		if (!m_SettingsManager)
 			m_SettingsManager = new SCR_SettingsManager();
 		
 		return m_SettingsManager;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	bool GetHasKeyboard()
+	{
+		return m_bHasKeyboard;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -157,95 +217,12 @@ class ArmaReforgerScripted : ChimeraGame
 	//------------------------------------------------------------------------------------------------
 	override protected void OnKickedFromGame(KickCauseCode kickCode)
 	{
-		KickCauseGroup2 groupInt = KickCauseCodeAPI.GetGroup(kickCode);
-		int reasonInt = KickCauseCodeAPI.GetReason(kickCode);
-		string group = "<unknown>";
-		string reason = "<unknown>";
-		switch(groupInt)
-		{
-			case RplKickCauseGroup.REPLICATION:
-				group = "REPLICATION";
-				switch(reasonInt)
-				{
-					case RplError.SYSTEM_FAILURE: reason = "SYSTEM_FAILURE"; break;
-					case RplError.DISCONNECTION: reason = "DISCONNECTION"; break;
-					case RplError.CONNECTION_FAILURE: reason = "CONNECTION_FAILURE"; break;
-					case RplError.TIMEOUT: reason = "TIMEOUT"; break;
-					case RplError.FLOODED: reason = "FLOODED"; break;
-					case RplError.STALLED: reason = "STALLED"; break;
-					case RplError.SERVICE_FAILURE: reason = "SERVICE_FAILURE"; break;
-					case RplError.JIP_ERROR: reason = "JIP_ERROR"; break;
-					case RplError.SHUTDOWN: reason = "SHUTDOWN"; break;
-					case RplError.CREATION_FAILURE: reason = "CREATION_FAILURE"; break;
-				}
-			break;
-
-			case KickCauseGroup.BATTLEYE_INIT:
-				group = "BATTLEYE_INIT";
-				switch(reasonInt)
-				{
-					case BattlEyeInitError.LOAD_ERROR: reason = "LOAD_ERROR"; break;
-					case BattlEyeInitError.UNSUPPORTED_VERSION: reason = "UNSUPPORTED_VERSION"; break;
-					case BattlEyeInitError.OTHER_ERROR: reason = "OTHER_ERROR"; break;
-				}
-			break;
-
-			case KickCauseGroup.BATTLEYE:
-				group = "BATTLEYE";
-				switch(reasonInt)
-				{
-					case BattlEyeKickReason.CLIENT_NOT_RESPONDING: reason = "CLIENT_NOT_RESPONDING"; break;
-					case BattlEyeKickReason.QUERY_TIMEOUT: reason = "QUERY_TIMEOUT"; break;
-					case BattlEyeKickReason.GAME_RESTART_REQUIRED: reason = "GAME_RESTART_REQUIRED"; break;
-					case BattlEyeKickReason.BAD_SERVICE_VERSION: reason = "BAD_SERVICE_VERSION"; break;
-					case BattlEyeKickReason.DISALLOWED_PROGRAM: reason = "DISALLOWED_PROGRAM"; break;
-					case BattlEyeKickReason.CORRUPTED_MEMORY: reason = "CORRUPTED_MEMORY"; break;
-					case BattlEyeKickReason.CORRUPTED_DATA: reason = "CORRUPTED_DATA"; break;
-					case BattlEyeKickReason.WINAPI_FAILURE: reason = "WINAPI_FAILURE"; break;
-					case BattlEyeKickReason.GLOBAL_BAN: reason = "GLOBAL_BAN"; break;
-					case BattlEyeKickReason.ADMIN_BAN: reason = "ADMIN_BAN"; break;
-					case BattlEyeKickReason.ADMIN_KICK: reason = "ADMIN_KICK"; break;
-				}
-			break;
-
-			case KickCauseGroup.DATA:
-				group = "DATA";
-				switch(reasonInt)
-				{
-					case DataError.VERSION_MISMATCH: reason = "VERSION_MISMATCH"; break;
-					case DataError.RDB_MISMATCH: reason = "RDB_MISMATCH"; break;
-					case DataError.SCRIPT_MISMATCH: reason = "SCRIPT_MISMATCH"; break;
-					case DataError.WORLD_LOAD_ERROR: reason = "WORLD_LOAD_ERROR"; break;
-					case DataError.WORLD_LOAD_INCONSISTENCY: reason = "WORLD_LOAD_INCONSISTENCY"; break;
-				}
-			break;
-
-			case KickCauseGroup2.PLATFORM:
-				group = "PLATFORM";
-				switch(reasonInt)
-				{
-					case PlatformKickReason.ACTIVE_USER_LOST: reason = "ACTIVE_USER_LOST"; break;
-					case PlatformKickReason.NO_MP_PRIVILEGE: reason = "NO_MP_PRIVILEGE"; break;
-					case PlatformKickReason.NO_CROSSPLAY_PRIVILEGE: reason = "NO_CROSSPLAY_PRIVILEGE"; break;
-				}
-			break;
-
-			case KickCauseGroup2.PLAYER_MANAGER:
-				group = "PLAYER_MANAGER";
-				switch (reasonInt)
-				{
-					case PlayerManagerKickReason.KICK: reason = "KICK"; break;
-					case PlayerManagerKickReason.KICK_VOTED: reason = "KICK_VOTED"; break;
-					case PlayerManagerKickReason.DUPLICATE_PLAYER_IDENTITY: reason = "DUPLICATE_PLAYER_IDENTITY"; break;
-					case PlayerManagerKickReason.BAN: reason = "BAN"; break;
-					case PlayerManagerKickReason.TEMP_BAN: reason = "TEMP_BAN"; break;
-					case SCR_PlayerManagerKickReason.KICKED_BY_GM: reason = "KICKED_BY_GM"; break;
-					case SCR_PlayerManagerKickReason.BANNED_BY_GM: reason = "BANNED_BY_GM"; break;
-					case SCR_PlayerManagerKickReason.FRIENDLY_FIRE: reason = "FRIENDLY_FIRE"; break;
-					case SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR: reason = "DISRUPTIVE_BEHAVIOUR"; break;
-				}
-			break;
-		}
+		KickCauseGroup2 groupInt;
+		int reasonInt;
+		string group, reason;
+		
+		//~ Get the kick reason ID
+		GetFullKickReason(kickCode, groupInt, reasonInt, group, reason);
 
 		// Detail
 		string format = "Kick cause code: group=%1 '%2', reason=%3 '%4'";
@@ -272,6 +249,112 @@ class ArmaReforgerScripted : ChimeraGame
 		
 		// Add rejoin attempt
 		AddRejoinAttempt();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	/*!
+	Convert KickCauseCode into proper kick reason variables
+	\param kickCode Kick code to convert
+	\param[out] groupInt group int
+	\param[out] reasonInt reason int
+	\param[out] group group string
+	\param[out] reason reason string
+	\return Will return true if proper kick reason found
+	*/
+	bool GetFullKickReason(KickCauseCode kickCode, out KickCauseGroup2 groupInt, out int reasonInt, out string group, out string reason)
+	{
+		groupInt = KickCauseCodeAPI.GetGroup(kickCode);
+		reasonInt = KickCauseCodeAPI.GetReason(kickCode);
+		
+		group = "<unknown>";
+		reason = "<unknown>";
+		switch(groupInt)
+		{
+			case RplKickCauseGroup.REPLICATION:
+				group = "REPLICATION";
+				switch(reasonInt)
+				{
+					case RplError.SYSTEM_FAILURE: reason = "SYSTEM_FAILURE"; return true;
+					case RplError.DISCONNECTION: reason = "DISCONNECTION"; return true;
+					case RplError.CONNECTION_FAILURE: reason = "CONNECTION_FAILURE"; return true;
+					case RplError.TIMEOUT: reason = "TIMEOUT"; return true;
+					case RplError.FLOODED: reason = "FLOODED"; return true;
+					case RplError.STALLED: reason = "STALLED"; return true;
+					case RplError.SERVICE_FAILURE: reason = "SERVICE_FAILURE"; return true;
+					case RplError.JIP_ERROR: reason = "JIP_ERROR"; return true;
+					case RplError.SHUTDOWN: reason = "SHUTDOWN"; return true;
+					case RplError.CREATION_FAILURE: reason = "CREATION_FAILURE"; return true;
+				}
+			break;
+
+			case KickCauseGroup.BATTLEYE_INIT:
+				group = "BATTLEYE_INIT";
+				switch(reasonInt)
+				{
+					case BattlEyeInitError.LOAD_ERROR: reason = "LOAD_ERROR"; return true;
+					case BattlEyeInitError.UNSUPPORTED_VERSION: reason = "UNSUPPORTED_VERSION"; return true;
+					case BattlEyeInitError.OTHER_ERROR: reason = "OTHER_ERROR"; return true;
+				}
+			break;
+
+			case KickCauseGroup.BATTLEYE:
+				group = "BATTLEYE";
+				switch(reasonInt)
+				{
+					case BattlEyeKickReason.CLIENT_NOT_RESPONDING: reason = "CLIENT_NOT_RESPONDING"; return true;
+					case BattlEyeKickReason.QUERY_TIMEOUT: reason = "QUERY_TIMEOUT"; return true;
+					case BattlEyeKickReason.GAME_RESTART_REQUIRED: reason = "GAME_RESTART_REQUIRED"; return true;
+					case BattlEyeKickReason.BAD_SERVICE_VERSION: reason = "BAD_SERVICE_VERSION"; return true;
+					case BattlEyeKickReason.DISALLOWED_PROGRAM: reason = "DISALLOWED_PROGRAM"; return true;
+					case BattlEyeKickReason.CORRUPTED_MEMORY: reason = "CORRUPTED_MEMORY"; return true;
+					case BattlEyeKickReason.CORRUPTED_DATA: reason = "CORRUPTED_DATA"; return true;
+					case BattlEyeKickReason.WINAPI_FAILURE: reason = "WINAPI_FAILURE"; return true;
+					case BattlEyeKickReason.GLOBAL_BAN: reason = "GLOBAL_BAN"; return true;
+					case BattlEyeKickReason.ADMIN_BAN: reason = "ADMIN_BAN"; return true;
+					case BattlEyeKickReason.ADMIN_KICK: reason = "ADMIN_KICK"; return true;
+				}
+			break;
+
+			case KickCauseGroup.DATA:
+				group = "DATA";
+				switch(reasonInt)
+				{
+					case DataError.VERSION_MISMATCH: reason = "VERSION_MISMATCH"; return true;
+					case DataError.RDB_MISMATCH: reason = "RDB_MISMATCH"; return true;
+					case DataError.SCRIPT_MISMATCH: reason = "SCRIPT_MISMATCH"; return true;
+					case DataError.WORLD_LOAD_ERROR: reason = "WORLD_LOAD_ERROR"; return true;
+					case DataError.WORLD_LOAD_INCONSISTENCY: reason = "WORLD_LOAD_INCONSISTENCY"; return true;
+				}
+			break;
+
+			case KickCauseGroup2.PLATFORM:
+				group = "PLATFORM";
+				switch(reasonInt)
+				{
+					case PlatformKickReason.ACTIVE_USER_LOST: reason = "ACTIVE_USER_LOST"; return true;
+					case PlatformKickReason.NO_MP_PRIVILEGE: reason = "NO_MP_PRIVILEGE"; return true;
+					case PlatformKickReason.NO_CROSSPLAY_PRIVILEGE: reason = "NO_CROSSPLAY_PRIVILEGE"; return true;
+				}
+			break;
+
+			case KickCauseGroup2.PLAYER_MANAGER:
+				group = "PLAYER_MANAGER";
+				switch (reasonInt)
+				{
+					case PlayerManagerKickReason.KICK: reason = "KICK"; return true;
+					case PlayerManagerKickReason.KICK_VOTED: reason = "KICK_VOTED"; return true;
+					case PlayerManagerKickReason.DUPLICATE_PLAYER_IDENTITY: reason = "DUPLICATE_PLAYER_IDENTITY"; return true;
+					case PlayerManagerKickReason.BAN: reason = "BAN"; return true;
+					case PlayerManagerKickReason.TEMP_BAN: reason = "TEMP_BAN"; return true;
+					case SCR_PlayerManagerKickReason.KICKED_BY_GM: reason = "KICKED_BY_GM"; return true;
+					case SCR_PlayerManagerKickReason.BANNED_BY_GM: reason = "BANNED_BY_GM"; return true;
+					case SCR_PlayerManagerKickReason.FRIENDLY_FIRE: reason = "FRIENDLY_FIRE"; return true;
+					case SCR_PlayerManagerKickReason.DISRUPTIVE_BEHAVIOUR: reason = "DISRUPTIVE_BEHAVIOUR"; return true;
+				}
+			break;
+		}
+		
+		return false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -407,24 +490,33 @@ class ArmaReforgerScripted : ChimeraGame
 	//------------------------------------------------------------------------------------------------
 	override void OnAfterInit(BaseWorld world)
 	{
-		m_CoresManager = SCR_GameCoresManager.CreateCoresManager();
-		WidgetManager.SetCursor(0);
 
 		//required for DS registration with -dserver param
 		if (System.IsConsoleApp())
 		{
-			string sProfileName = SCR_Global.GetProfileName();
+			
+			DSSession session = GetGame().GetBackendApi().GetDSSession();
+			if (session)
+			{
+				/*m_dsCommander = new SCR_RCONCommander();
+				session.SetRCONCommander(m_dsCommander);*/
+			}
 		}
+		m_CoresManager = SCR_GameCoresManager.CreateCoresManager();
+		WidgetManager.SetCursor(0);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	override bool OnGameStart()
 	{
 		m_bGameStarted = true;
-		
+
+
 		#ifdef ENABLE_DIAG
-		// Game
 		DiagMenu.RegisterItem(SCR_DebugMenuID.DEBUGUI_INPUT_MANAGER, "", "Show input manager", "GameCode", "disabled,active,all");
+
+
+		// Game
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_COPY_ENF_VIEW_LINK, "lctrl+lshift+l", "Copy view link", "Game");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_CURSOR_TARGET_PREFAB_DIAG, "", "Show cursor target info", "Game");
 		DiagMenu.RegisterBool(SCR_DebugMenuID.DEBUGUI_BOUNDS_OVERLAP_PREFAB_DIAG, "", "Show bounds overlap target info", "Game");
@@ -460,11 +552,19 @@ class ArmaReforgerScripted : ChimeraGame
 #ifndef PLATFORM_CONSOLE
 		if (System.IsCLIParam("listScenarios"))
 			SCR_GameLogHelper.LogScenariosConfPaths();
+		
+		m_bHasKeyboard = true;
 #endif
 		
 #ifdef PLATFORM_CONSOLE
-		//setup default quality settings for series S and series X xbox
 		SCR_SettingsManager settingsManager = GetSettingsManager();
+		
+		//by default we do not expect console to have keyboard
+		m_bHasKeyboard = false;
+		
+		
+		
+		//setup default quality settings for series S and series X xbox
 		if (settingsManager)
 		{
 			int lastUsedPresetID = -1;
@@ -560,7 +660,6 @@ class ArmaReforgerScripted : ChimeraGame
 	//------------------------------------------------------------------------------------------------
 	override void OnUserSettingsChangedEvent()
 	{
-		//Print("OnUserSettingsChangedEvent");
 		m_OnChangeUserSettingsInvoker.Invoke();
 	}
 
@@ -574,6 +673,8 @@ class ArmaReforgerScripted : ChimeraGame
 	override void OnInputDeviceIsGamepadEvent(bool isGamepad)
 	{
 		m_OnInputDeviceIsGamepadInvoker.Invoke(isGamepad);
+		if (!isGamepad && !m_bHasKeyboard)
+			m_bHasKeyboard = true;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -894,6 +995,18 @@ class ArmaReforgerScripted : ChimeraGame
 	}
 	#endif
 
+	//------------------------------------------------------------------------------------------------
+
+	override protected ref Managed GetPlayerDataStats(int playerID)
+	{
+		if (m_DataCollectorComponent)
+			return m_DataCollectorComponent.GetPlayerDataStats(playerID);
+
+		return null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+
 	override string GetMissionName()
 	{
 		SCR_MissionHeader header = SCR_MissionHeader.Cast(GetMissionHeader());
@@ -1043,6 +1156,7 @@ class ArmaReforgerScripted : ChimeraGame
 
 		return sightsComponent.IsScreenPositionInSights(screenPosition);
 	}
+	
 	//-------------------------------------------------------------------------------------------
 	//! Return true if current client platform is console
 	bool IsPlatformGameConsole()
@@ -1054,6 +1168,7 @@ class ArmaReforgerScripted : ChimeraGame
 		#endif
 	}
 };
+
 //------------------------------------------------------------------------------------------------
 ArmaReforgerScripted g_ARGame;
 

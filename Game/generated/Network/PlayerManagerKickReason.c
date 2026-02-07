@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Network
-* @{
+/*!
+\addtogroup Network
+\{
 */
 
 enum PlayerManagerKickReason
@@ -20,7 +20,9 @@ enum PlayerManagerKickReason
 	//! Banned by admin/GM.
 	BAN,
 	//! Temporary banned AKA kick with timeout.
-	TEMP_BAN
-};
+	TEMP_BAN,
+}
 
-/** @}*/
+/*!
+\}
+*/

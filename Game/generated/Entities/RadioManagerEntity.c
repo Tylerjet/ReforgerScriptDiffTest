@@ -4,23 +4,26 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup Entities
-* @{
+/*!
+\addtogroup Entities
+\{
 */
 
 class RadioManagerEntityClass: GenericEntityClass
 {
-};
+}
 
 class RadioManagerEntity: GenericEntity
 {
 	/*!
-	Query all other radio components in the range. Doesn't involve frequency, encryption or power of the radio.
-	\param[in] radio            Source radio component.
-	\param[out] radiosInRange   List of other RadioComponents in range.
+	Gets all transceivers in given range that are in power ON state.
+	\param[in] range Range in meters
+	\param[out] tsvList Fresh list of BaseTransceivers in range
+	\return Number of BaseTransceivers returned
 	*/
-	proto external int GetRadiosInRange(BaseRadioComponent radio, out notnull array<BaseRadioComponent> radiosInRange);
-};
+	proto external int GetTransceiversInRange(vector position, float range, out notnull array<BaseTransceiver> tsvList);
+}
 
-/** @}*/
+/*!
+\}
+*/

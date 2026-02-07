@@ -24,9 +24,9 @@ class SCR_ButtonImageComponent : SCR_ButtonBaseComponent
 	override bool OnMouseEnter(Widget w, int x, int y)
 	{
 		super.OnMouseEnter(w, x, y);
-		
+
 		m_OnMouseEnter.Invoke(w);
-				
+	
 		return false;
 	}
 	
@@ -47,7 +47,7 @@ class SCR_ButtonImageComponent : SCR_ButtonBaseComponent
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void SetImage(ResourceName texture)
+	void SetImage(ResourceName texture, bool fromLocalStorage = false)
 	{
 		if (!m_wImage)
 			return;
@@ -57,10 +57,12 @@ class SCR_ButtonImageComponent : SCR_ButtonBaseComponent
 		if (show)
 		{
 			int x, y;
-			m_wImage.LoadImageTexture(0, texture);
+			m_wImage.LoadImageTexture(0, texture, false, fromLocalStorage);
 			m_wImage.GetImageSize(0, x, y);
 			m_wImage.SetSize(x, y);
 		}
+		
+		m_sTexture = texture;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -84,6 +86,9 @@ class SCR_ButtonImageComponent : SCR_ButtonBaseComponent
 		int x, y;
 		m_wImage.GetImageSize(0, x, y);
 		m_wImage.SetSize(x, y);
+		
+		m_sTexture = imageSet;
+		m_sImageName = imageName;
 	}
 	
 	//------------------------------------------------------------------------------------------------

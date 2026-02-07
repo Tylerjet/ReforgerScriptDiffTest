@@ -25,5 +25,5 @@ enum WeatherTransitionRequestResponse
 	/*!
 	Transition state or variant not found within transition list.
 	*/
-	E_NOT_FOUND
-};
+	E_NOT_FOUND,
+}

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 sealed class BlurWidget: Widget
@@ -23,6 +23,8 @@ sealed class BlurWidget: Widget
 	proto external void SetMask(ResourceName maskResource);
 	//! Sets smooth border width in pixels in reference resolution
 	proto external void SetSmoothBorder(float left, float top, float right, float bottom);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

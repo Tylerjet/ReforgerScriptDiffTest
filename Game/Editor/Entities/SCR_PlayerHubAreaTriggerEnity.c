@@ -32,13 +32,6 @@ class SCR_PlayerHubAreaTriggerEntity : ScriptedGameTriggerEntity
 	//****************//
 	
 	//------------------------------------------------------------------------------------------------
-	//! Override this method in inherited class to define a new filter.
-	override bool ScriptedEntityFilterForQuery(IEntity ent)
-	{
-		return DefaultEntityFilterForQuery(ent);
-	}
-	
-	//------------------------------------------------------------------------------------------------
 	//! callback - activation - occurs when and entity which fulfills the filter definitions enters the Trigger
 	override void OnActivate(IEntity ent)
 	{

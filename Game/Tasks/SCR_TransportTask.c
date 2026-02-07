@@ -130,7 +130,6 @@ class SCR_TransportTask : SCR_RequestedTask
 	void SCR_TransportTask(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.INIT);
-		SetFlags(EntityFlags.ACTIVE, true);
 	}
 
 	//------------------------------------------------------------------------------------------------

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 class BaseFuelNode: ScriptAndConfig
@@ -28,13 +28,15 @@ class BaseFuelNode: ScriptAndConfig
 	\return PointInfo instance or null if none.
 	*/
 	proto external PointInfo GetFuelCapPointInfo();
-	
+
 	// callbacks
-	
+
 	//! Init call in script
 	event protected void OnInit(IEntity owner);
 	//! Fixed Frame Call in script
 	event protected void OnFixedFrame(IEntity owner, float timeSlice);
-};
+}
 
-/** @}*/
+/*!
+\}
+*/

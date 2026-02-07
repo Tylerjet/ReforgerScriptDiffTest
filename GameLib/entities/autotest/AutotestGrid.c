@@ -128,7 +128,7 @@ class AutotestGrid: GenericEntity
 
 		if (m_directory.Length() == 0)
 		{
-			m_directory = "$profile:" + GetName();
+			m_directory = "$logs:" + GetName();
 		}
 		
 		m_AutotestBase = new AutotestBase();
@@ -214,33 +214,33 @@ class AutotestGrid: GenericEntity
 	{
 		FileHandle descrFile = FileIO.OpenFile(filename, FileMode.WRITE);
 
-		if(descrFile != 0)
+		if(descrFile)
 		{
 			int sizeX = g_Game.GetWorkspace().GetWidth();
 			int sizeY = g_Game.GetWorkspace().GetHeight();
-			descrFile.FPrintln(string.Format("GRID AUTO TEST"));
-			descrFile.FPrintln(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
+			descrFile.WriteLine(string.Format("GRID AUTO TEST"));
+			descrFile.WriteLine(string.Format("Resolution: %1 x %2 px", sizeX, sizeY));
 #ifdef WORKBENCH
-			descrFile.FPrintln(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Entering playmode time: %1 s", g_Game.GetLoadTime() / 1000));
 #else
-			descrFile.FPrintln(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
+			descrFile.WriteLine(string.Format("Load time: %1 s", g_Game.GetLoadTime() / 1000));
 #endif
-			descrFile.FPrintln(string.Format("Duration: %1 s", m_timeFromStart));
+			descrFile.WriteLine(string.Format("Duration: %1 s", m_timeFromStart));
 			
-			descrFile.FPrintln(string.Format("FPS average (s): %1", m_MeasureFPS.ComputeAverage()));
-			descrFile.FPrintln(string.Format("FPS min (s): %1", m_MeasureFPS.m_Min));
-			descrFile.FPrintln(string.Format("FPS max (s): %1", m_MeasureFPS.m_Max));
+			descrFile.WriteLine(string.Format("FPS average (s): %1", m_MeasureFPS.ComputeAverage()));
+			descrFile.WriteLine(string.Format("FPS min (s): %1", m_MeasureFPS.m_Min));
+			descrFile.WriteLine(string.Format("FPS max (s): %1", m_MeasureFPS.m_Max));
 			
 			int count = MemoryStatsSnapshot.GetStatsCount();
 			for (int i = 0; i < count; i++)
 			{
 				string name = MemoryStatsSnapshot.GetStatName(i);
-				descrFile.FPrintln(string.Format("Measurement '%1' average: %2", name, (int)m_MeasurementMemory[i].ComputeAverage()));
-				descrFile.FPrintln(string.Format("Measurement '%1' min: %2", name, (int)m_MeasurementMemory[i].m_Min));
-				descrFile.FPrintln(string.Format("Measurement '%1' max: %2", name, (int)m_MeasurementMemory[i].m_Max));
+				descrFile.WriteLine(string.Format("Measurement '%1' average: %2", name, (int)m_MeasurementMemory[i].ComputeAverage()));
+				descrFile.WriteLine(string.Format("Measurement '%1' min: %2", name, (int)m_MeasurementMemory[i].m_Min));
+				descrFile.WriteLine(string.Format("Measurement '%1' max: %2", name, (int)m_MeasurementMemory[i].m_Max));
 			}
 			
-			descrFile.CloseFile();
+			descrFile.Close();
 			Print("Summary file successfully saved into " + filename);
 		}
 	}

@@ -4,9 +4,9 @@ Do not modify, this script is generated
 ===========================================
 */
 
-/**
-* \addtogroup UI
-* @{
+/*!
+\addtogroup UI
+\{
 */
 
 //!Widget flags. See enf::Widget::SetFlags()
@@ -59,7 +59,9 @@ enum WidgetFlags
 	//!Text will be wrapped on horizontal overflow
 	WRAP_TEXT,
 	//!Text will not be parsed for string IDs
-	NO_LOCALIZATION
-};
+	NO_LOCALIZATION,
+}
 
-/** @}*/
+/*!
+\}
+*/
