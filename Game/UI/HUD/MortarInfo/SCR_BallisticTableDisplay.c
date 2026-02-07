@@ -156,7 +156,7 @@ class SCR_BallisticTableDisplay : SCR_InfoDisplayExtended
 			return;
 
 		if (m_wShellNameTextWidget)
-			m_wShellNameTextWidget.SetText(SCR_StringHelper.Translate(config.GetDisplayedText()));
+			m_wShellNameTextWidget.SetText(config.GetDisplayedText());
 
 		if (m_wAmmoTypeIcon)
 		{
@@ -267,12 +267,12 @@ class SCR_BallisticTableDisplay : SCR_InfoDisplayExtended
 		return textArray;
 	}
 	//------------------------------------------------------------------------------------------------
-	protected void UpdateBallisticInfo(vector aimRotation)
+	protected void UpdateBallisticInfo(vector aimRotation, bool forceRefresh = false)
 	{
 		if (m_aRangeListWidgets.IsEmpty())
 			return;
 
-		if (m_fBottomElevationThreshold > -1 && m_fTopElevationThreshold > -1 && aimRotation[1] < m_fTopElevationThreshold && aimRotation[1] > m_fBottomElevationThreshold)
+		if (!forceRefresh && m_fBottomElevationThreshold > -1 && m_fTopElevationThreshold > -1 && aimRotation[1] < m_fTopElevationThreshold && aimRotation[1] > m_fBottomElevationThreshold)
 			return;
 
 		array<string> balisticInfo = GetBallisticInfo(aimRotation[1]);
@@ -390,6 +390,7 @@ class SCR_BallisticTableDisplay : SCR_InfoDisplayExtended
 			return;
 
 		RemoveActionListeners();
+		SCR_MenuHelper.GetOnMenuClose().Remove(OnSettingsMenuClosed);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -453,5 +454,16 @@ class SCR_BallisticTableDisplay : SCR_InfoDisplayExtended
 			if (m_bHasDifferentChargeRingConfigs)
 				break;
 		}
+
+		SCR_MenuHelper.GetOnMenuClose().Insert(OnSettingsMenuClosed);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method used to force refresh of the data after player leaves settings menu (f.e. after he changed the language)
+	//! \param[in] menu which was just closed
+	protected void OnSettingsMenuClosed(ChimeraMenuBase menu)
+	{
+		if (SCR_SettingsSuperMenu.Cast(menu))
+			UpdateBallisticInfo(GetMuzzleDirection().VectorToAngles(), true);
 	}
 }

@@ -81,7 +81,7 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		SCR_VotingBase voting = FindVoting(type, value);
 		if (!voting)
 		{
-			if (!StartVoting(type, value))
+			if (!StartVoting(type, playerID, value))
 				return;
 			
 			voting = FindVoting(type, value);
@@ -142,15 +142,16 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	//------------------------------------------------------------------------------------------------
 	//! Start voting.
 	//! \param[in] type Type of the vote
+	//! \param[in] startingPlayerID id of a player who started the vote
 	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
 	//! \return True if the voting started
-	bool StartVoting(EVotingType type, int value = SCR_VotingBase.DEFAULT_VALUE)
+	bool StartVoting(EVotingType type, int startingPlayerID, int value = SCR_VotingBase.DEFAULT_VALUE)
 	{
 		if (FindVoting(type, value))
 			return false;
 		
-		StartVotingBroadcast(type, value);
-		Rpc(StartVotingBroadcast, type, value);
+		StartVotingBroadcast(type, value, startingPlayerID);
+		Rpc(StartVotingBroadcast, type, value, startingPlayerID);
 		
 		//-- Find the voting; cannot use returned value, StartVotingBroadcast is replicated and such functions cannot return anything
 		SCR_VotingBase voting = FindVoting(type, value);
@@ -203,6 +204,20 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		votesRequired = voting.GetVoteCountRequired();
 		
 		return votesRequired > 0;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Returns the id of the player who started the vote
+	//! \param[in] type Type of the vote
+	//! \param[in] value Value of the vote
+	//! return playerId of the author
+	int GetVoteAuthorId(EVotingType type, int value)
+	{
+		SCR_VotingBase voting = FindVoting(type, value);
+		if (!voting)
+			return 0;
+
+		return voting.GetAuthorId();
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -746,7 +761,13 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 	//--- Protected, anywhere
 
 	//------------------------------------------------------------------------------------------------
-	protected SCR_VotingBase CreateVotingInstance(EVotingType type, int value, float remainingDuration = -1, int currentVoteCount = -1)
+	//! \param[in] type Type of the vote
+	//! \param[in] startingPlayerID id of a player who started the vote
+	//! \param[in] value Target value, depends on the type (e.g., for KICK it's player ID)
+	//! \param[in] remainingDuration
+	//! \param[in] currentVoteCount
+	//! \return instance of a created vote, null otherwise
+	protected SCR_VotingBase CreateVotingInstance(EVotingType type, int startingPlayerID, int value, float remainingDuration = -1, int currentVoteCount = -1)
 	{
 		if (FindVoting(type, value))
 			return null;
@@ -768,7 +789,7 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		
 		//--- Start new voting
 		SCR_VotingBase voting = SCR_VotingBase.Cast(template.Type().Spawn());
-		voting.InitFromTemplate(template, value, remainingDuration);
+		voting.InitFromTemplate(template, startingPlayerID, value, remainingDuration);
 		
 		if (currentVoteCount > 0)
 			voting.SetCurrentVoteCount(currentVoteCount);
@@ -783,7 +804,7 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		{
 			if (template.GetInfo() && template.GetInfo().GetVotingStartNotification() != ENotification.UNKNOWN)
 			{
-				SCR_NotificationsComponent.SendLocal(template.GetInfo().GetVotingStartNotification(), value);
+				SCR_NotificationsComponent.SendLocal(template.GetInfo().GetVotingStartNotification(), value, startingPlayerID);
 			}
 		}
 		
@@ -831,9 +852,9 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 
 	//------------------------------------------------------------------------------------------------
 	[RplRpc(RplChannel.Reliable, RplRcver.Broadcast)]
-	protected void StartVotingBroadcast(EVotingType type, int value)
+	protected void StartVotingBroadcast(EVotingType type, int value, int startingPlayerID)
 	{
-		SCR_VotingBase voting = CreateVotingInstance(type, value);
+		SCR_VotingBase voting = CreateVotingInstance(type, startingPlayerID, value);
 		
 		//--- Restore local vote from cache
 		foreach (int index, Tuple2<int, int> record: m_LocalVoteRecords)
@@ -932,7 +953,8 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 			writer.WriteIntRange(m_aVotingInstances[i].GetType(), votingTypeMin, votingTypeMax);
 			writer.WriteInt(m_aVotingInstances[i].GetValue());
 			writer.WriteFloat(m_aVotingInstances[i].GetRemainingDuration());
-			writer.WriteFloat(m_aVotingInstances[i].GetCurrentVoteCount());
+			writer.WriteInt(m_aVotingInstances[i].GetCurrentVoteCount());
+			writer.WriteInt(m_aVotingInstances[i].GetAuthorId());
 		}
 		
 		return true;
@@ -950,7 +972,7 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 		reader.ReadInt(count);
 		
 		EVotingType type;
-		int value, currentVoteCount;
+		int value, currentVoteCount, authorId;
 		float remainingDuration;
 		for (int i; i < count; i++)
 		{
@@ -958,7 +980,8 @@ class SCR_VotingManagerComponent : SCR_BaseGameModeComponent
 			reader.ReadInt(value);
 			reader.ReadFloat(remainingDuration);
 			reader.ReadInt(currentVoteCount);
-			CreateVotingInstance(type, value, remainingDuration, currentVoteCount);
+			reader.ReadInt(authorId);
+			CreateVotingInstance(type, authorId, value, remainingDuration, currentVoteCount);
 		}
 		
 		return true;

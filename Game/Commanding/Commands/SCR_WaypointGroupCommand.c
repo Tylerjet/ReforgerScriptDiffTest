@@ -23,6 +23,9 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 	[Attribute(typename.EnumToString(EAIGroupCombatMode, EAIGroupCombatMode.FIRE_AT_WILL), UIWidgets.ComboBox, desc: "New combat mode value", enums: ParamEnumArray.FromEnum(EAIGroupCombatMode))]
 	protected EAIGroupCombatMode m_eCombatMode;
 	
+	[Attribute(desc: "Handler which is going to be called to manipualte the waypoint when it is created as well as when it is assigned to the group.")]
+	protected ref SCR_BaseWaypointCommandHandler m_WaypointCommandHandler;
+
 	//------------------------------------------------------------------------------------------------
 	override bool Execute(IEntity cursorTarget, IEntity target, vector targetPosition, int playerID, bool isClient)
 	{
@@ -85,12 +88,18 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		SCR_AIWaypoint wp = SCR_AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(waypointPrefab, null, params));
 		if (!wp)
 			return false;
-		
+
+		if (m_WaypointCommandHandler)
+			m_WaypointCommandHandler.OnWaypointCreated(wp);
+
 		if (m_bForceCommand)
 			wp.SetPriorityLevel(SCR_AIActionBase.PRIORITY_LEVEL_PLAYER);
 		
 		wp.SetCompletionRadius(m_fCompletionRadius);
 		slaveGroup.AddWaypoint(wp);
+		if (m_WaypointCommandHandler)
+			m_WaypointCommandHandler.OnWaypointIssued(wp, slaveGroup);
+
 		return true;
 	}
 	
@@ -162,6 +171,12 @@ class SCR_WaypointGroupCommand : SCR_BaseGroupCommand
 		AIGroupMovementComponent slaveGroupMovementComp = AIGroupMovementComponent.Cast(slaveGroup.FindComponent(AIGroupMovementComponent));
 		if (slaveGroupMovementComp)
 			slaveGroupMovementComp.SetFormationDisplacement(0);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool CanShowOnMap()
+	{
+		return CanBeShown();
 	}
 	
 	//------------------------------------------------------------------------------------------------

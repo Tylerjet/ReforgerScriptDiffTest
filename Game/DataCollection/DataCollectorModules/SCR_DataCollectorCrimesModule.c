@@ -450,15 +450,15 @@ class SCR_DataCollectorCrimesModule : SCR_DataCollectorModule
 		{
 			case SCR_PlayerManagerKickReason.KICK:
 			case SCR_PlayerManagerKickReason.KICK_VOTED:
-				if (!votingManager.StartVoting(EVotingType.AUTO_KICK, playerId))
+				if (!votingManager.StartVoting(EVotingType.AUTO_KICK, 0, playerId))
 					KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
 				return;
 			case SCR_PlayerManagerKickReason.TEMP_BAN:
-				if (!votingManager.StartVoting(EVotingType.AUTO_LIGHTBAN, playerId))
+				if (!votingManager.StartVoting(EVotingType.AUTO_LIGHTBAN, 0, playerId))
 					KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
 				return;
 			case SCR_PlayerManagerKickReason.BAN:
-				if (!votingManager.StartVoting(EVotingType.AUTO_HEAVYBAN, playerId))
+				if (!votingManager.StartVoting(EVotingType.AUTO_HEAVYBAN, 0, playerId))
 					KickOrBanPlayer(playerId, reason, minimmumDurationBackup);
 				return;
 		}

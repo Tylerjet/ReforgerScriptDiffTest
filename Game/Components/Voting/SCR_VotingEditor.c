@@ -72,9 +72,9 @@ class SCR_VotingEditorIn : SCR_VotingReferendum
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
+	override void InitFromTemplate(SCR_VotingBase template, int startingPlayerID, int value, float remainingDuration)
 	{
-		super.InitFromTemplate(template, value, remainingDuration);
+		super.InitFromTemplate(template, startingPlayerID, value, remainingDuration);
 		
 		SCR_VotingEditorIn templateEditor = SCR_VotingEditorIn.Cast(template);
 		m_EditorModes = templateEditor.m_EditorModes;

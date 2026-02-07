@@ -295,7 +295,7 @@ class SCR_RotorDamageManagerComponent : SCR_DamageManagerComponent
 
 		ChimeraCharacter character = ChimeraCharacter.Cast(other);
 		if (!character && m_RootDamageManager && contact.Impulse >= m_RootDamageManager.GetMinImpulse())
-			m_RootDamageManager.CollisionDamage(other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, contact.Position, contact.Normal);
+			m_RootDamageManager.ProcessCollision(new SCR_CollisionDamageContainer(GetOwner(), other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, contact.Position, contact.Normal));
 		
 		if (m_RotorHitZone.IsSpinning())
 		{

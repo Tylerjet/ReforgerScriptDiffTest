@@ -181,6 +181,9 @@ class UIConstants
 	// Common icons
 	static const ResourceName ICONS_IMAGE_SET = 		"{3262679C50EF4F01}UI/Textures/Icons/icons_wrapperUI.imageset";
 	static const ResourceName ICONS_GLOW_IMAGE_SET = 	"{00FE3DBDFD15227B}UI/Textures/Icons/icons_wrapperUI-glow.imageset";
+
+	//! Rich text format used to add an icon to the rich text widget
+	static const string NAME_WITH_PLATFORM_ICON_FORMAT = "<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>%5";
 	
 	// Platform Icons
 	static const string PLATFROM_PC_ICON_NAME = "platform-windows";

@@ -202,13 +202,13 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	// This method uses similar logic to the logic of DamageSurroundingHitzones, but not the same.
 	int GetSurroundingHitzones(vector origin, Physics physics, float maxDistance, out array<HitZone> outHitzones)
 	{
-		array<HitZone> hitzones = {};
+		array<HitZone> hitZones = {};
 		outHitzones = {};
-		int hitzonesCount;
+		int hitZonesCount;
 
-		int count = GetAllHitZonesInHierarchy(hitzones);
+		int count = GetAllHitZonesInHierarchy(hitZones);
 		float maxDistanceSq = maxDistance * maxDistance; //SQUARE it for faster calculations of distance
-		array<string> hitzoneColliderNames = {};
+		array<string> hitZoneColliderNames = {};
 
 		float minDistance, currentDistance;
 		int colliderCount, geomIndex;
@@ -216,14 +216,14 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		for (int i = count - 1; i >= 0; i--)
 		{
 			minDistance = float.MAX;
-			colliderCount = hitzones[i].GetAllColliderNames(hitzoneColliderNames); //The array is cleared inside the GetAllColliderNames method
+			colliderCount = hitZones[i].GetAllColliderNames(hitZoneColliderNames); //The array is cleared inside the GetAllColliderNames method
 
 			if (colliderCount == 0)
 				continue;
 
 			for (int y = colliderCount - 1; y >= 0; y--)
 			{
-				geomIndex = physics.GetGeom(hitzoneColliderNames[y]);
+				geomIndex = physics.GetGeom(hitZoneColliderNames[y]);
 				if (geomIndex == -1)
 					continue;
 
@@ -239,11 +239,11 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 
 			minDistance = Math.Sqrt(minDistance);
 
-			hitzonesCount++;
-			outHitzones.Insert(hitzones[i]);
+			hitZonesCount++;
+			outHitzones.Insert(hitZones[i]);
 		}
 
-		return hitzonesCount;
+		return hitZonesCount;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -251,7 +251,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 	\ param damageType determinese which damage multipliers are taken into account
 	//! Made specifically for cases where hitzones are not parented
 	*/
-	float GetMinDestroyDamage(EDamageType damageType, array<HitZone> hitzones, int count)
+	float GetMinDestroyDamage(EDamageType damageType, array<HitZone> hitzones)
 	{
 		float damage;
 		float damageMultiplier;
@@ -259,11 +259,16 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (!IsDamageHandlingEnabled() || defaultHitzone.GetDamageMultiplier(damageType) * defaultHitzone.GetBaseDamageMultiplier() == 0)
 			return -1; // invalid damage value, because this vehicle cannot be destroyed
 
-		for (int i = 0; i < count; i++)
+		foreach (HitZone hitZone : hitzones)
 		{
-			damageMultiplier = hitzones[i].GetDamageMultiplier(damageType) * hitzones[i].GetBaseDamageMultiplier();
-			if (damageMultiplier != 0)
-				damage += (hitzones[i].GetMaxHealth() + hitzones[i].GetDamageReduction()) / damageMultiplier;
+			damageMultiplier = hitZone.GetBaseDamageMultiplier() * hitZone.GetDamageMultiplier(damageType);
+			if (damageMultiplier == 0)
+				continue;
+
+			damage += (hitZone.GetMaxHealth() + hitZone.GetDamageReduction()) / damageMultiplier;
+
+			if (damage < hitZone.GetDamageThreshold())
+				damage += hitZone.GetDamageThreshold();
 		}
 
 		return damage;

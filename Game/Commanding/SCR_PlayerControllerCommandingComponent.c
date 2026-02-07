@@ -665,13 +665,16 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	//!
 	//! \param[in] category cannot be null
 	//! \param[in] rootCategory
-	void AddElementsFromCategory(SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry rootCategory = null)
+	//! \return true if this element is meant to be visible, otherwise false
+	bool AddElementsFromCategory(SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry rootCategory = null)
 	{
 		array<ref SCR_PlayerCommandingMenuBaseElement> elements = category.GetCategoryElements();
 
 		SCR_PlayerCommandingMenuCategoryElement elementCategory;
 		SCR_SelectionMenuCategoryEntry createdCategory;
 
+		bool canBeShown;
+		bool canThisCategoryBeShown;
 		foreach (SCR_PlayerCommandingMenuBaseElement element : elements)
 		{
 			elementCategory = SCR_PlayerCommandingMenuCategoryElement.Cast(element);
@@ -681,37 +684,67 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 				if (!createdCategory)
 					continue;
 
-				AddElementsFromCategory(elementCategory, createdCategory);
+				canThisCategoryBeShown = AddElementsFromCategory(elementCategory, createdCategory);
+				if (!canThisCategoryBeShown)
+				{
+					if (rootCategory)
+						rootCategory.RemoveEntry(createdCategory);
+					else
+						m_RadialMenu.RemoveEntry(createdCategory);
+				}
+
+				canBeShown = canThisCategoryBeShown || canBeShown;
 			}
 			else
 			{
-				AddRadialMenuElement(element, rootCategory);
+				canBeShown = AddRadialMenuElement(element, rootCategory) || canBeShown;
 			}
 		}
+
+		return canBeShown;
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//!
 	//! \param[in] category cannot be null
-	void AddElementsFromCategoryToMap(notnull SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry rootCategory = null)
+	//! \param[in] parentCategory
+	bool AddElementsFromCategoryToMap(notnull SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry parentCategory = null)
 	{
-		array<ref SCR_PlayerCommandingMenuBaseElement> elements = category.GetCategoryElements();
-		SCR_SelectionMenuCategoryEntry mapEntryCategory = m_MapContextualMenu.AddRadialCategory(category.GetCategoryDisplayText()); // add map category entry
+		SCR_SelectionMenuCategoryEntry mapEntryCategory = m_MapContextualMenu.AddRadialCategory(category.GetCategoryDisplayText(), parentCategory); // add map category entry
 
+		array<ref SCR_PlayerCommandingMenuBaseElement> elements = category.GetCategoryElements();
 		SCR_PlayerCommandingMenuCategoryElement elementCategory;
+		bool canBeShown;
 		foreach (SCR_PlayerCommandingMenuBaseElement element : elements)
 		{
 			elementCategory = SCR_PlayerCommandingMenuCategoryElement.Cast(element);
 			if (elementCategory)
 			{
 				if (elementCategory.GetCanShowOnMap())
-					AddElementsFromCategoryToMap(elementCategory, mapEntryCategory);
+					canBeShown = AddElementsFromCategoryToMap(elementCategory, mapEntryCategory) || canBeShown;
 			}
 			else
 			{
-				InsertElementToMapRadial(element, category, mapEntryCategory);
+				canBeShown = InsertElementToMapRadial(element, category, mapEntryCategory) || canBeShown;
 			}
 		}
+
+		if (!canBeShown)
+		{
+			if (parentCategory)
+				parentCategory.RemoveEntry(mapEntryCategory);
+			else
+				m_MapContextualMenu.RemoveRadialEntry(mapEntryCategory);
+
+			return canBeShown;
+		}
+
+		ResourceName imagesetName = category.GetIconImageset();
+		string iconName = category.GetIconName();
+		if (mapEntryCategory && !imagesetName.IsEmpty() && !iconName.IsEmpty())
+			mapEntryCategory.SetIcon(imagesetName, iconName);
+
+		return canBeShown;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -719,25 +752,35 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 	//! \param[in] element cannot be null
 	//! \param[in] category
 	//! \param[in] mapCategory
-	void InsertElementToMapRadial(SCR_PlayerCommandingMenuBaseElement element, notnull SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry mapCategory)
+	SCR_MapMenuCommandingEntry InsertElementToMapRadial(SCR_PlayerCommandingMenuBaseElement element, notnull SCR_PlayerCommandingMenuCategoryElement category, SCR_SelectionMenuCategoryEntry mapCategory)
 	{
 		SCR_CommandingManagerComponent commandingManager = SCR_CommandingManagerComponent.GetInstance();
 		if (!commandingManager)
-			return;
+			return null;
+
+		SCR_ChimeraCharacter user = SCR_ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
+		if (!user)
+			return null;
 
 		SCR_PlayerCommandingMenuCommand commandElement = SCR_PlayerCommandingMenuCommand.Cast(element);
 		if (!commandingManager.CanShowOnMap(commandElement.GetCommandName()))
-			return;
+			return null;
 
 		SCR_BaseRadialCommand command = commandingManager.FindCommand(commandElement.GetCommandName());
+		if (!command)
+			return null;
 
 		SCR_MapMenuCommandingEntry mapEntry = new SCR_MapMenuCommandingEntry(commandElement.GetCommandName());
 		mapEntry.SetName(commandingManager.GetCommandDisplayTextByName(commandElement.GetCommandName()));
-		if (command)
-			mapEntry.SetIcon(command.GetIconImageset(), command.GetIconName());
+		mapEntry.SetIcon(command.GetIconImageset(), command.GetIconName());
+
+		bool canPerform = command.CanBePerformed(user);
+		mapEntry.Enable(canPerform);
+		if (!canPerform)
+			mapEntry.SetDescription(command.GetCannotPerformReason());
 
 		m_MapContextualMenu.InsertCustomRadialEntry(mapEntry, mapCategory);
-
+		return mapEntry;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -768,6 +811,10 @@ class SCR_PlayerControllerCommandingComponent : ScriptComponent
 		SCR_SelectionMenuCategoryEntry newCategory = new SCR_SelectionMenuCategoryEntry();
 
 		newCategory.SetName(category.GetCategoryDisplayText());
+		ResourceName imagesetName = category.GetIconImageset();
+		string iconName = category.GetIconName();
+		if (!imagesetName.IsEmpty() && !iconName.IsEmpty())
+			newCategory.SetIcon(imagesetName, iconName);
 
 		if (!parentCategory)
 		{

@@ -16,6 +16,9 @@ class SCR_VotingUIInfo : SCR_UIInfo
 	[Attribute(desc: "Text shown consistently when the vote is active. %1 is player that is voted for")]
 	protected LocalizedString m_sStickyNotificationText;
 	
+	[Attribute(desc: "Text shown with the name of the author of the vote")]
+	protected LocalizedString m_sVoteAuthorText;
+	
 	[Attribute(ENotification.UNKNOWN.ToString(), desc: "The Start notification id to which the voting type is linked. Leave UNKNOWN to not have a notification", uiwidget: UIWidgets.SearchComboBox, enums: ParamEnumArray.FromEnum(ENotification))]
 	protected ENotification m_iStartNotificationId;
 	
@@ -79,6 +82,14 @@ class SCR_VotingUIInfo : SCR_UIInfo
 		return m_sStickyNotificationText;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//!
+	//! \return text that is meant to filled with the name of the author after translation
+	LocalizedString GetAuthorText()
+	{
+		return m_sVoteAuthorText;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Get Start notification ID which is send to the Notification Component to show the specific notification when the voting starts
 	//! \return ENotification Notification ID of Start voting

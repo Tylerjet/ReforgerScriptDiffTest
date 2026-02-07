@@ -45,6 +45,7 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 		
 		int votingCount = validActiveVotingTypes.Count();
 		
+		ScriptInvokerMenu menuInvoker = SCR_MenuHelper.GetOnMenuClose();
 		//If no votes active
 		if (votingCount <= 0)
 		{
@@ -53,6 +54,7 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 			
 			EnableVotingTimerUI(false);
 			EnableContextAction(false);
+			menuInvoker.Remove(OnSettingsMenuClosed);
 			return;
 		}
 		//Multiple votes active
@@ -67,6 +69,7 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 			
 			EnableVotingTimerUI(false);
 			EnableContextAction(false);
+			menuInvoker.Remove(OnSettingsMenuClosed);
 		}
 		//One vote active
 		else 
@@ -76,18 +79,14 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 			
 			if (m_eActiveSingularVoteValue != SCR_VotingBase.DEFAULT_VALUE)
 			{
-				string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(votingValues[0]);
+				string playerName = GetPlayerName(m_eActiveSingularVoteValue);
+				string voteAuthorName = GetPlayerName(m_VotingManagerComponent.GetVoteAuthorId(m_eActiveSingularVoteType, m_eActiveSingularVoteValue));
+
+				SCR_VotingUIInfo voteUIInfo = m_VotingManagerComponent.GetVotingInfo(m_eActiveSingularVoteType);
+				if (!voteAuthorName.IsEmpty())
+					voteAuthorName = WidgetManager.Translate(voteUIInfo.GetAuthorText(), voteAuthorName);
 				
-				//PlayerManager playermanager = GetGame().GetPlayerManager();
-				
-				if (GetGame().GetPlatformService().GetLocalPlatformKind() == PlatformKind.PSN){
-					if (GetGame().GetPlayerManager().GetPlatformKind(votingValues[0]) == PlatformKind.PSN)
-						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_PLAYSTATION_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
-					else
-						playerName = string.Format("<color rgba=%1><image set='%2' name='%3' scale='%4'/></color>", UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, UIConstants.PLATFROM_GENERIC_ICON_NAME, PLATFORM_ICON_SIZE) + playerName;
-				}
-				
-				string text = WidgetManager.Translate(m_VotingManagerComponent.GetVotingInfo(m_eActiveSingularVoteType).GetStickyNotificationText(), playerName);
+				string text = WidgetManager.Translate(voteUIInfo.GetStickyNotificationText(), playerName, voteAuthorName);
 				
 				int currentVotes, VotesRequired;
 				if (m_VotingManagerComponent.GetVoteCounts(m_eActiveSingularVoteType, m_eActiveSingularVoteValue, currentVotes, VotesRequired))
@@ -104,12 +103,73 @@ class SCR_VotingStickyNotificationUIComponent : SCR_StickyNotificationUIComponen
 			
 			EnableVotingTimerUI(true);
 			EnableContextAction(true);
+
+			menuInvoker.Insert(OnSettingsMenuClosed);
 		}		
 		
 		//Show Notification
 		SetStickyActive(true, !isInit);
 	}
-	
+
+	//------------------------------------------------------------------------------------------------
+	//! Callback method used to force refresh notification content (f.e. after player changed the language)
+	//! \param[in] menu which was just closed
+	protected void OnSettingsMenuClosed(ChimeraMenuBase menu)
+	{
+		if (SCR_SettingsSuperMenu.Cast(menu))
+			OnVotingChanged();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Finds filtered player display name and adds platform icon if such is desired
+	//! \param[in] playerId
+	//! \return player name with optional rich text format that contains a platform icon image
+	protected string GetPlayerName(int playerId)
+	{
+		string playerName = SCR_PlayerNamesFilterCache.GetInstance().GetPlayerDisplayName(playerId);
+		if (SCR_StringHelper.IsEmptyOrWhiteSpace(playerName))
+			return string.Empty;
+
+		BaseContainer settings = GetGame().GetGameUserSettings().GetModule("SCR_GameplaySettings");
+		bool showIconNametag;
+		if (settings)
+			settings.Get("m_bPlatformIconNametag", showIconNametag);
+
+		PlatformKind localPlatform = GetGame().GetPlatformService().GetLocalPlatformKind();
+		if (!showIconNametag && localPlatform != PlatformKind.PSN)
+			return playerName;
+
+		PlatformKind playerPlatform = GetGame().GetPlayerManager().GetPlatformKind(playerId);
+		string iconName;
+		if (localPlatform == PlatformKind.PSN)
+		{
+			if (playerPlatform == PlatformKind.PSN)
+				iconName = UIConstants.PLATFROM_PLAYSTATION_ICON_NAME;
+			else
+				iconName = UIConstants.PLATFROM_GENERIC_ICON_NAME;
+		}
+		else
+		{
+			switch (playerPlatform)
+			{
+				case PlatformKind.STEAM:
+					iconName = UIConstants.PLATFROM_PC_ICON_NAME;
+				break;
+				case PlatformKind.XBOX:
+					iconName = UIConstants.PLATFROM_XBOX_ICON_NAME;
+				break;
+				case PlatformKind.PSN:
+					iconName = UIConstants.PLATFROM_PLAYSTATION_ICON_NAME;
+				break;
+				case PlatformKind.NONE:
+					iconName = UIConstants.PLATFROM_PC_ICON_NAME;
+				break;
+			}
+		}
+
+		return string.Format(UIConstants.NAME_WITH_PLATFORM_ICON_FORMAT, UIColors.FormatColor(GUIColors.ENABLED), UIConstants.ICONS_IMAGE_SET, iconName, PLATFORM_ICON_SIZE, playerName);
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! When the UI is visible the player can use the instant vote actions (If there is only one vote active)
 	//! \param[in] enable

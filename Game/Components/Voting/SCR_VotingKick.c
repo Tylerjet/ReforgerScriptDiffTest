@@ -8,12 +8,17 @@ class SCR_VotingKick : SCR_VotingReferendum
 	protected static const int PLAYER_VOTE_KICK_DURATION = 300;
 	
 	//------------------------------------------------------------------------------------------------
-	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
+	override void InitFromTemplate(SCR_VotingBase template, int startingPlayerID, int value, float remainingDuration)
 	{
-		super.InitFromTemplate(template, value, remainingDuration);
+		super.InitFromTemplate(template, startingPlayerID, value, remainingDuration);
 		
 		SCR_VotingKick votingKickTemplate = SCR_VotingKick.Cast(template);		
 		m_bFactionSpecific = votingKickTemplate.isFactionSpecific();
+
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		string cliVal;
+		if (playerMgr && System.GetCLIParam("logVoting", cliVal))
+			Print("VOTING SYSTEM - Player '" + playerMgr.GetPlayerName(startingPlayerID) + "' (with player id = " + startingPlayerID + ") started a vote to kick player '" + playerMgr.GetPlayerName(value) + "' (with player id = " + value + ")", LogLevel.NORMAL);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -109,6 +114,16 @@ class SCR_VotingKick : SCR_VotingReferendum
 	//------------------------------------------------------------------------------------------------
 	override void OnVotingEnd(int value = DEFAULT_VALUE, int winner = DEFAULT_VALUE)
 	{
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		string cliVal;
+		if (playerMgr && System.GetCLIParam("logVoting", cliVal))
+		{
+			if (winner == DEFAULT_VALUE)
+				Print("VOTING SYSTEM - Vote to kick player '" + playerMgr.GetPlayerName(m_iValue) + "' (with player id = " + m_iValue + ") failed", LogLevel.NORMAL);
+			else
+				Print("VOTING SYSTEM - Vote to kick player '" + playerMgr.GetPlayerName(m_iValue) + "' (with player id = " + m_iValue + ") succeeded", LogLevel.NORMAL);
+		}
+
 		//~ Vote failed
 		if (winner == DEFAULT_VALUE)
 			return;

@@ -39,6 +39,7 @@ class SCR_VotingBase
 	
 	static const int DEFAULT_VALUE = -1;
 	
+	protected int m_iVoteAuthorId;
 	protected int m_iLocalValue = DEFAULT_VALUE;
 	
 	//~ How many players have voted in favour
@@ -60,7 +61,7 @@ class SCR_VotingBase
 		SetCurrentVoteCount(m_aPlayersVoted_Server.Count());
 		
 		//~ Vote debug
-		Print("Player '" + playerID + "' approved vote | Vote Type: '" + typename.EnumToString(EVotingType, m_Type) + "' | Vote value: '" + m_iLocalValue + "' | Count (" + GetCurrentVoteCount() + "/" + GetVoteCountRequired() + ")");
+		Print("VOTING SYSTEM - Player '" + playerID + "' approved vote | Vote Type: '" + typename.EnumToString(EVotingType, m_Type) + "' | Vote value: '" + m_iLocalValue + "' | Count (" + GetCurrentVoteCount() + "/" + GetVoteCountRequired() + ")", LogLevel.DEBUG);
 		
 		return true;
 	}
@@ -78,7 +79,7 @@ class SCR_VotingBase
 		SetCurrentVoteCount(m_aPlayersVoted_Server.Count());
 		
 		//~ Vote debug
-		Print("Player '" + playerID + "' removed vote | Vote Type: '" + typename.EnumToString(EVotingType, m_Type) + "' | Vote value: '" + m_iLocalValue + "' | Count (" + GetCurrentVoteCount() + "/" + GetVoteCountRequired() + ")");
+		Print("VOTING SYSTEM - Player '" + playerID + "' removed vote | Vote Type: '" + typename.EnumToString(EVotingType, m_Type) + "' | Vote value: '" + m_iLocalValue + "' | Count (" + GetCurrentVoteCount() + "/" + GetVoteCountRequired() + ")", LogLevel.DEBUG);
 		
 		return true;
 	}
@@ -117,6 +118,13 @@ class SCR_VotingBase
 	int GetVoteCooldownTime()
 	{
 		return m_iVoteCooldownTime;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return playerId of the player who started the vote
+	int GetAuthorId()
+	{
+		return m_iVoteAuthorId;
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -332,15 +340,17 @@ class SCR_VotingBase
 	//------------------------------------------------------------------------------------------------
 	//! Initialise voting from given template.
 	//! \param[in] template Source template
+	//! \param[in] startingPlayerID id of a player who started the vote
 	//! \param[in] value Target value
 	//! \param[in] remainingDuration Remaining time until the voting ends in seconds (-1 to use default)
-	void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
+	void InitFromTemplate(SCR_VotingBase template, int startingPlayerID, int value, float remainingDuration)
 	{
 		m_Type = template.m_Type;
 		m_fThreshold = template.m_fThreshold;
 		m_bIsValuePlayerID = template.m_bIsValuePlayerID;
 		m_iMinParticipation = Math.Min(template.m_iMinParticipation, template.m_fThreshold); //--- Min participation cannot be stricter than threshold
 		m_iMinVotes = template.m_iMinVotes;
+		m_iVoteAuthorId = startingPlayerID;
 		
 		if (remainingDuration == -1)
 			m_fDuration = template.m_fDuration;
@@ -426,6 +436,50 @@ class SCR_VotingReferendum : SCR_VotingBase
 	}
 
 	//------------------------------------------------------------------------------------------------
+	override bool AddPlayerVotedServer(int playerID)
+	{
+		if (!super.AddPlayerVotedServer(playerID))
+			return false;
+
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		string cliVal;
+		if (playerMgr && System.GetCLIParam("logVoting", cliVal))
+		{
+			string serverLogMessage;
+			if (m_bIsValuePlayerID)
+				serverLogMessage += ", where the vote subject is player '" + playerMgr.GetPlayerName(m_iValue) + "' (with player id = " + m_iValue + ")";
+			else
+				serverLogMessage += ", with vote value = " + m_iValue;
+
+			Print("VOTING SYSTEM - Player '" + playerMgr.GetPlayerName(playerID) + "' (with player id = " + playerID + ") voted in favor of the vote type = " + typename.EnumToString(EVotingType, m_Type) + serverLogMessage, LogLevel.NORMAL);
+		}
+
+		return true;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override bool RemovePlayerVotedServer(int playerID)
+	{
+		if (!super.RemovePlayerVotedServer(playerID))
+			return false;
+
+		PlayerManager playerMgr = GetGame().GetPlayerManager();
+		string cliVal;
+		if (playerMgr && System.GetCLIParam("logVoting", cliVal))
+		{
+			string serverLogMessage;
+			if (m_bIsValuePlayerID)
+				serverLogMessage += ", where the vote subject is player '" + playerMgr.GetPlayerName(m_iValue) + "' (with player id = " + m_iValue + ")";
+			else
+				serverLogMessage += ", with vote value = " + m_iValue;
+
+			Print("VOTING SYSTEM - Player '" + playerMgr.GetPlayerName(playerID) + "' (with player id = " + playerID + ") voted against or retracted his vote for the vote type = " + typename.EnumToString(EVotingType, m_Type) + serverLogMessage, LogLevel.NORMAL);
+		}
+
+		return true;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override void SetVote(int playerID, int value = DEFAULT_VALUE)
 	{
 		m_aPlayerIDs.Insert(playerID);
@@ -499,10 +553,10 @@ class SCR_VotingReferendum : SCR_VotingBase
 	}
 
 	//------------------------------------------------------------------------------------------------
-	override void InitFromTemplate(SCR_VotingBase template, int value, float remainingDuration)
+	override void InitFromTemplate(SCR_VotingBase template, int startingPlayerID, int value, float remainingDuration)
 	{
 		m_iValue = value;
-		super.InitFromTemplate(template, value, remainingDuration);
+		super.InitFromTemplate(template, startingPlayerID, value, remainingDuration);
 	}
 }
 

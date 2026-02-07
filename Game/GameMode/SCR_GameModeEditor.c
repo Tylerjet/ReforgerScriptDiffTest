@@ -36,7 +36,7 @@ class SCR_GameModeEditor : SCR_BaseGameMode
 			SCR_VotingManagerComponent votingManager = SCR_VotingManagerComponent.GetInstance();
 			if (votingManager)
 			{
-				votingManager.StartVoting(EVotingType.EDITOR_IN, editorManager.GetPlayerID());
+				votingManager.StartVoting(EVotingType.EDITOR_IN, 0, editorManager.GetPlayerID());
 				votingManager.EndVoting(EVotingType.EDITOR_IN, editorManager.GetPlayerID(), EVotingOutcome.FORCE_WIN);
 			}
 			return;

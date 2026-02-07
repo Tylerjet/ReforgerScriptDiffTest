@@ -24,7 +24,7 @@ enum EVehicleHitZoneGroup : EHitZoneGroup
 //#define VEHICLE_DEBUG_OTHER
 class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 {
-	[Attribute("1.5", desc: "Max distance of hitzone, which should receive damage, from contact point.", category: "Collision Damage")]
+	[Attribute("3.5", desc: "Max distance of hitzone, which should receive damage, from contact point.", category: "Collision Damage")]
 	protected float m_fMaxSharedDamageDistance;
 
 	[Attribute("0.7", desc: "Damage multiplier for collisions from this side", params: "0.01 1000 0.01", category: "Collision Damage")]
@@ -53,6 +53,15 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 
 	[Attribute("0 0 0", desc: "Position for frontal impact calculation", category: "Collision Damage", params: "inf inf 0 purpose=coords space=entity coordsVar=m_vFrontalImpact")]
 	protected vector m_vFrontalImpact;
+
+	[Attribute("0", desc: "Frontal impact damage needed to destroy this vehicle\nTakes into account current damage multipliers\nUse context menu on Damage Manager component to compute this value.\n[hp]", category: "Collision Damage")]
+	protected float m_fVehicleDestroyDamage;
+
+	[Attribute("15", desc: "Speed of collision that damages the vehicle\n[km/h]", category: "Collision Damage")]
+	protected float m_fVehicleDamageSpeedThreshold;
+
+	[Attribute("120", desc: "Speed of collision that destroys the vehicle\n[km/h]", category: "Collision Damage")]
+	protected float m_fVehicleSpeedDestroy;
 	
 	[Attribute("200", desc: "Explosion damage value which, if exceeded, may cause passengers to be ejected from the vehicle", category: "Passenger Ejection")]
 	protected int m_iMinExplosionEjectionDamageThreshold;
@@ -66,11 +75,94 @@ class SCR_VehicleDamageManagerComponentClass : SCR_DamageManagerComponentClass
 	[Attribute("0.5", desc: "Chance victim is ejected when collisiondamage is sufficient to pass the m_iMinCollisionEjectionDamageThreshold \nLess than 0 = fully random \n1 = always", params: "-1 1 0.01", category: "Passenger Ejection")]
 	protected float m_iCollisionDamageEjectionChance;
 
+	protected float m_fDamageScaleToVehicle = float.MAX;
+	protected float m_fMomentumVehicleThreshold = float.MAX;
+	protected float m_fDamageScaleToCharacter = float.MAX;
+	protected float m_fMomentumOccupantsThreshold = float.MAX;
+
+	protected static const float APPROXIMATE_CHARACTER_LETHAL_DAMAGE = 150;
+
 	//------------------------------------------------------------------------------------------------
 	//! \return
 	float GetMaxSharedDamageDistance()
 	{
 		return m_fMaxSharedDamageDistance;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetVehicleMomentumThreshold(float ownerMass)
+	{
+		if (m_fMomentumVehicleThreshold != float.MAX)
+			return m_fMomentumVehicleThreshold;
+
+		m_fMomentumVehicleThreshold = ownerMass * m_fVehicleDamageSpeedThreshold * Physics.KMH2MS;
+
+		return m_fMomentumVehicleThreshold;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetVehicleDamageScale(float ownerMass)
+	{
+		if (m_fDamageScaleToVehicle != float.MAX)
+			return m_fDamageScaleToVehicle;
+
+		float momentumVehicleDestroy = ownerMass * m_fVehicleSpeedDestroy * Physics.KMH2MS - GetVehicleMomentumThreshold(ownerMass);
+		if (momentumVehicleDestroy == 0)
+		{
+			m_fDamageScaleToVehicle = 0;
+			return m_fDamageScaleToVehicle;
+		}
+
+		m_fDamageScaleToVehicle = m_fVehicleDestroyDamage / momentumVehicleDestroy;
+
+		return m_fDamageScaleToVehicle;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetCharacterDamageScale(float ownerMass)
+	{
+		if (m_fDamageScaleToCharacter != float.MAX)
+			return m_fDamageScaleToCharacter;
+
+		float momentumOccupantsDeath = ownerMass * m_fOccupantsSpeedDeath * Physics.KMH2MS - GetOccupantsMomentumThreshold(ownerMass);
+		if (momentumOccupantsDeath == 0)
+		{
+			m_fDamageScaleToCharacter = 0;
+			return m_fDamageScaleToCharacter;
+		}
+
+		m_fDamageScaleToCharacter = APPROXIMATE_CHARACTER_LETHAL_DAMAGE / momentumOccupantsDeath;
+
+		return m_fDamageScaleToCharacter;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetOccupantsMomentumThreshold(float ownerMass)
+	{
+		if (m_fMomentumOccupantsThreshold != float.MAX)
+			return m_fMomentumOccupantsThreshold;
+
+		m_fMomentumOccupantsThreshold = ownerMass * m_fOccupantsDamageSpeedThreshold * Physics.KMH2MS;
+		
+		return m_fMomentumOccupantsThreshold;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetVehicleDestructionSpeed()
+	{
+		return m_fVehicleSpeedDestroy;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! \return
+	float GetVehicleDamageSpeedThreshold()
+	{
+		return m_fVehicleDamageSpeedThreshold;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -184,25 +276,15 @@ enum SCR_EPhysicsResponseIndex
 class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 {
 	protected const float MIN_IMPULSE_THRESHOLD = 5;
+	protected const float HITZONE_DAMAGE_VALUE_THRESHOLD = 0.01;
 	protected const int MIN_RESPONSE_INDEX = SCR_EPhysicsResponseIndex.TINY_MOMENTUM;
 	protected const int MAX_RESPONSE_INDEX = SCR_EPhysicsResponseIndex.HUGE_MOMENTUM;
+	protected const int CACHED_COLLISION_PROCESSING_DELAY = 50;
 	
 	protected float m_fVelocityMultiplierOnWaterEnter = 0.5;
 	protected int m_fMinWaterFallDamageVelocity = 5;
 
 	static ref map<SCR_EPhysicsResponseIndex, float> s_mResponseIndexMomentumMap = new map<SCR_EPhysicsResponseIndex, float>();
-
-	[Attribute("0", desc: "Print relative force in collisions of this vehicle? Can be used to determine ideal Collision Damage Force Threshold.", category: "Debug")]
-	protected bool m_bPrintRelativeForce;
-
-	[Attribute("0", "Frontal impact damage needed to destroy this vehicle\nTakes into account current damage multipliers\nUse context menu on Damage Manager component to compute this value.\n[hp]", category: "Collision Damage")]
-	protected float m_fVehicleDestroyDamage;
-
-	[Attribute("15", "Speed of collision that damages the vehicle\n[km/h]", category: "Collision Damage")]
-	protected float m_fVehicleDamageSpeedThreshold;
-
-	[Attribute("120", "Speed of collision that destroys the vehicle\n[km/h]", category: "Collision Damage")]
-	protected float m_fVehicleSpeedDestroy;
 
 	[Attribute(defvalue: "0.7", desc: "Engine efficiency at which it is considered to be malfunctioning\n[x * 100%]", category: "Vehicle Damage")]
 	protected float m_fEngineMalfunctioningThreshold;
@@ -225,8 +307,6 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	[Attribute(defvalue: "1", desc: "Delay between secondary fire damage\n[s]", params: "0 10000 0.1", category: "Secondary damage")]
 	protected float m_fSecondaryFireDamageDelay;
 
-	protected bool m_bIsInContact;
-	protected float m_fMaxRelativeForce;
 	protected float m_fMinImpulse;
 	protected SCR_BaseCompartmentManagerComponent m_CompartmentManager;
 
@@ -244,7 +324,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	protected float m_fGearboxEfficiency = 1;
 	protected bool m_bGearboxFunctional = true;
 
-	// The vehicle damage manager needs to know about all the burning hitzones that it consists of
+	// The vehicle damage manager needs to know about all the burning hitZones that it consists of
 	protected ref array<SCR_FlammableHitZone>			m_aFlammableHitZones;
 	protected SignalsManagerComponent					m_SignalsManager;
 
@@ -286,14 +366,26 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	[RplProp()]
 	protected vector								m_vSuppliesFireOrigin;
 
-	// Sound
-	protected static const float APPROXIMATE_CHARACTER_LETHAL_DAMAGE = 150;
-
 #ifdef VEHICLE_DAMAGE_DEBUG
 	protected ref array<ref Shape> m_aDebugShapes = {};
 #endif
 #ifdef VEHICLE_DEBUG_OTHER
 	protected ref array<ref Shape> m_aDebugShapes = {};
+#endif
+
+	protected ref array<ref SCR_CollisionDamageContainer> m_LastFrameCollisions;
+	protected ref array<ref SCR_CollisionDamageContainer> m_CurrentCollisions;
+#ifdef ENABLE_DIAG
+	protected ref SCR_DebugShapeManager m_DebugShape = new SCR_DebugShapeManager();
+	protected ref array<ref Tuple2<vector, bool>> m_aLocalCollisions = {};
+#endif
+
+#ifdef WORKBENCH
+	//! The reason for this magic number is that the collision position can be slightly unpredictable.
+	//! Because of that, what may end up happening is that the distribution of the damage won't have enough hit zone health to absorb the impact,
+	//! which in turn means that more damage will be passed to the hull hit zone, resulting in a vehicle explosion at a lower speed.
+	//! Thus, the precomputed damage is reduced by 10% to accommodate this bit of randomness.
+	protected const float HACK_DAMAGE_CALCULATION_REDUCTION = 0.9;
 #endif
 
 	//------------------------------------------------------------------------------------------------
@@ -480,13 +572,6 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		}
 
 		return 1;
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! \return
-	bool IsInContact()
-	{
-		return m_bIsInContact;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -715,76 +800,67 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//!
-	//! \param[in] position
-	//! \param[in] damage
-	//! \param[in] damageType
-	//! \return
-	float DamageSurroundingHitzones(vector position, float damage, EDamageType damageType)
+	//! Finds compatible hit zones
+	//! \param[in] position in world space
+	//! \param[in] physics
+	//! \param[in] maxDistance distance form the provided position up to which hit zones searched for
+	//! \param[in] damageType fitler that ensures that hit zones can accept provided damage type
+	//! \param[out] outHitZones
+	//! \param[out] outHitZoneDistanceProcentageMap map of hit zones and how far they are from the provided position
+	//! \param[out] hitZonesDistancePercentSum
+	//! \return number of found hit zones
+	int GetSurroundingHitzones(vector position, notnull Physics physics, float maxDistance, EDamageType damageType, out notnull array<HitZone> outHitZones, out float hitZonesDistancePercentSum = 0, out map<HitZone, float> outHitZoneDistanceProcentageMap = null)
 	{
-		Physics physics = GetOwner().GetPhysics();
-		if (!physics)
-			return damage;
+		outHitZones.Clear();
+		array<HitZone> allHitZones = {};
+		int count = GetAllHitZonesInHierarchy(allHitZones);
+		if (count <= 0)
+			return 0;
 
-		array<HitZone> hitzones = {};
-
-		int count = GetAllHitZonesInHierarchy(hitzones);
-		float maxSharedDamageDistance = GetMaxSharedDamageDistance();
-		float maxDistanceSq = maxSharedDamageDistance * maxSharedDamageDistance; //SQUARE it for faster calculations of distance
-
-		array<string> hitzoneColliderNames = {};
-		vector closestPosition;
-		int colliderCount;
+		outHitZoneDistanceProcentageMap = new map<HitZone, float>();
+		array<int> hitZoneColliderIDs = {};
 		float distancePercent;
 		float currentDistance;
+		float maxDistanceSq = maxDistance * maxDistance;
 		float minDistance;
 		int geomIndex;
-		vector mat[4];
-		HitZone hitzone;
-		int hitzonesInRangeCount;
-		float hitzonesDistancePercentSum;
-		HitZoneContainerComponent hitzoneContainer;
-		IEntity hitzoneParentEntity;
+		HitZoneContainerComponent hitZoneContainer;
+		IEntity hitZoneParentEntity;
 		vector mins, maxs;
 		vector center;
-
-		map<HitZone, float> hitzoneDistancePercentMap = new map<HitZone, float>();
-		for (int i = count - 1; i >= 0; i--)
+		// Find hit zones that qualify for this damage
+		foreach (HitZone hitZone : allHitZones)
 		{
-			hitzone = hitzones[i];
 			minDistance = float.MAX;
-			colliderCount = hitzone.GetAllColliderNames(hitzoneColliderNames); //The array is cleared inside the GetAllColliderNames method
+			if (hitZone.GetDamageState() == EDamageState.DESTROYED)
+				continue;
 
-			if (colliderCount == 0)
+			if (hitZone.GetBaseDamageMultiplier() == 0)
+				continue;
+
+			if (hitZone.GetDamageMultiplier(damageType) == 0)
+				continue;
+
+			if (hitZone.GetColliderIDs(hitZoneColliderIDs) == 0)
 			{
-				hitzoneContainer = hitzone.GetHitZoneContainer();
-				if (!hitzoneContainer || hitzoneContainer == this)
+				hitZoneContainer = hitZone.GetHitZoneContainer();
+				if (!hitZoneContainer || hitZoneContainer == this)
 					continue;
 
-				hitzoneParentEntity = hitzoneContainer.GetOwner();
-				hitzoneParentEntity.GetBounds(mins, maxs);
+				hitZoneParentEntity = hitZoneContainer.GetOwner();
+				hitZoneParentEntity.GetBounds(mins, maxs);
 
-				for (int j = 0; j < 3; j++)
-					center[j] = mins[j] + Math.AbsFloat(((maxs[j] - mins[j]) * 0.5));
-
-				minDistance = vector.DistanceSq(position, hitzoneParentEntity.CoordToParent(center));
+				center = mins + (maxs - mins) * 0.5;
+				minDistance = vector.DistanceSq(position, hitZoneParentEntity.CoordToParent(center));
 			}
 			else
 			{
-				for (int y = colliderCount - 1; y >= 0; y--)
+				foreach (int id : hitZoneColliderIDs)
 				{
-					geomIndex = physics.GetGeom(hitzoneColliderNames[y]);
-					if (geomIndex == -1)
-						continue;
-
-					physics.GetGeomWorldTransform(geomIndex, mat);
-					currentDistance = vector.DistanceSq(position, mat[3]);
+					currentDistance = vector.DistanceSq(position, physics.GetGeomWorldPosition(id));
 
 					if (currentDistance < minDistance)
-					{
 						minDistance = currentDistance;
-						closestPosition = mat[3];
-					}
 				}
 			}
 
@@ -792,56 +868,118 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 				continue;
 
 			minDistance = Math.Sqrt(minDistance);
-			distancePercent = 1 - minDistance / GetMaxSharedDamageDistance();
+			distancePercent = 1 - minDistance / maxDistance;
 
-			hitzonesInRangeCount++;
-			hitzonesDistancePercentSum += distancePercent;
-			hitzoneDistancePercentMap.Insert(hitzone, distancePercent);
+			hitZonesDistancePercentSum += distancePercent;
+			outHitZoneDistanceProcentageMap.Insert(hitZone, distancePercent);
+			outHitZones.Insert(hitZone);
 		}
 
+		return outHitZones.Count();
+	}
+
+	//------------------------------------------------------------------------------------------------
+	//! Distributes provided damage amongst compatible hit zones
+	//! \param[in] position
+	//! \param[in] damage
+	//! \param[in] damageType
+	//! \param[in] dontApply used for debugging the damage handling without actually passing the damage
+	//! \return leftover damage that wasnt absorbed by compatible hit zones
+	float DamageSurroundingHitzones(vector position, float damage, EDamageType damageType, bool dontApply = false)
+	{
+		Physics physics = GetOwner().GetPhysics();
+		if (!physics)
+			return damage;
+
+		array<HitZone> hitZones = {};
+		map<HitZone, float> hitZoneDistancePercentMap;
+		float hitZonesDistancePercentSum;
+		int hitZonesCount = GetSurroundingHitzones(position, physics, GetMaxSharedDamageDistance(), damageType, hitZones, hitZonesDistancePercentSum, hitZoneDistancePercentMap);
+		if (hitZonesCount <= 0)
+			return damage;
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) > 0)
+			Print("		Damage to absorb = " + damage + " of type = " + SCR_Enum.GetEnumName(EDamageType, damageType), LogLevel.NORMAL);
+
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) > 1)
+			Print("		Number of hit zones to which damage will be passed: " + hitZonesCount, LogLevel.NORMAL);
+#endif
 		float leftoverDamage = damage;
 		float currentDamage;
 		float currentDamagePercent;
-		float hitzoneHealth;
+		float hitZoneHealth;
 		float damageMultiplier;
 
 		DamageManagerComponent damageManager;
-
 		vector empty[3];
 		empty[0] = vector.Zero;
 		empty[1] = vector.Zero;
 		empty[2] = vector.Zero;
-
-		for (int i = hitzonesInRangeCount - 1; i >= 0; i--)
+		foreach (HitZone hitZone, float distancePercent : hitZoneDistancePercentMap)
 		{
-			hitzone = hitzoneDistancePercentMap.GetKey(i);
-			distancePercent = hitzoneDistancePercentMap.Get(hitzone);
-			currentDamagePercent = distancePercent / hitzonesDistancePercentSum;
+			currentDamagePercent = distancePercent / hitZonesDistancePercentSum;
+			currentDamage = damage * currentDamagePercent;
 
-			currentDamage = currentDamagePercent * damage;
+			hitZoneHealth = hitZone.GetHealth();
 
-			//TODO @Vojta LEVEL2: This currentDamage calculation that is being done here is automatically done by the HandleDamage.
-			//This means that we are applying damage reduction twice.
-			//Also you are dividing with the damage multiplier, making it the opposite effect.
+#ifdef ENABLE_DIAG
+			if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) > 1)
+				Print("			hit zone name = " + hitZone.GetName(), LogLevel.NORMAL);
 
-			hitzoneHealth = hitzone.GetHealth();
+			if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) > 2)
+			{
+				Print("			hit zone health = " + hitZoneHealth, LogLevel.NORMAL);
+				Print("			distance percent from the impact point = " + distancePercent, LogLevel.NORMAL);
+				Print("			percentage of the vehicle damage that can be transfered to this hit zone = " + currentDamagePercent + " = " + distancePercent + " / " + hitZonesDistancePercentSum, LogLevel.NORMAL);
+				Print("			damage that can be done to this hit zone = " + currentDamage + " = " + damage + " * " + currentDamagePercent, LogLevel.NORMAL);
+			}
+#endif
 
-			damageMultiplier = hitzone.GetDamageMultiplier(damageType) * hitzone.GetBaseDamageMultiplier();
+			damageMultiplier = hitZone.GetDamageMultiplier(damageType) * hitZone.GetBaseDamageMultiplier();
 			if (damageMultiplier != 0)
-				currentDamage = Math.Clamp(currentDamage, 0, (hitzoneHealth + hitzone.GetDamageReduction()) / damageMultiplier);
+			{
+#ifdef ENABLE_DIAG
+				if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) > 2)
+					Print("				clamped damage = " + (Math.Clamp(currentDamage, 0, (hitZoneHealth + hitZone.GetDamageReduction()) / damageMultiplier)) + " = Clamp(" + currentDamage + ", 0, (" + hitZoneHealth + " + " + hitZone.GetDamageReduction() + ") / " + damageMultiplier + ")", LogLevel.NORMAL);
+#endif
+				currentDamage = Math.Clamp(currentDamage, 0, (hitZoneHealth + hitZone.GetDamageReduction()) / damageMultiplier);
+			}
 
-			damageManager = DamageManagerComponent.Cast(hitzone.GetHitZoneContainer());
+			if (float.AlmostEqual(currentDamage, 0, HITZONE_DAMAGE_VALUE_THRESHOLD))
+				continue;
+
+			damageManager = DamageManagerComponent.Cast(hitZone.GetHitZoneContainer());
 			if (!damageManager)
 				continue;
 
-			SCR_DamageContext damageContext = new SCR_DamageContext(damageType, currentDamage, empty, GetOwner(), hitzone, null, null, -1, -1);
-			damageManager.HandleDamage(damageContext);
+			SCR_DamageContext damageContext = new SCR_DamageContext(damageType, currentDamage, empty, GetOwner(), hitZone, null, null, -1, -1);
+			if (!dontApply)
+				damageManager.HandleDamage(damageContext);
 
 			leftoverDamage -= currentDamage;
+#ifdef ENABLE_DIAG
+			if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) > 1)
+			{
+				Print("			damage done to the hit zone = " + currentDamage, LogLevel.NORMAL);
+				Print("			-----------------------------", LogLevel.NORMAL);
+			}
+#endif
 		}
 
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+			Print("		damage absorbed by hit zones = " + (damage - leftoverDamage), LogLevel.NORMAL);
+#endif
 		leftoverDamage = Math.Clamp(leftoverDamage, 0, float.MAX);
-
+		
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+		{
+			Print("		leftoverDamage returned to the hull = " + leftoverDamage, LogLevel.NORMAL);
+			Print("	=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=", LogLevel.NORMAL);
+		}
+#endif
 		return leftoverDamage;
 	}
 
@@ -1077,60 +1215,76 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 
 #ifdef WORKBENCH
 	//------------------------------------------------------------------------------------------------
-	override array<ref WB_UIMenuItem> _WB_GetContextMenuItems(IEntity owner)
+	//! Determines the amount of damage required to destroy the vehicle in case of a frontal collision
+	float CalculateCriticalCollisionDamage()
 	{
-		array<ref WB_UIMenuItem> items = { new WB_UIMenuItem("Compute collision damage", 0) };
+		IEntity owner = GetOwner();
+		array<HitZone> hitZones = {};
+		vector pointOfImpact = owner.CoordToParent(GetFrontalImpact());
+		EDamageType damageType = EDamageType.COLLISION;
+		float procentageSum;
+		int count = GetSurroundingHitzones(pointOfImpact, owner.GetPhysics(), GetMaxSharedDamageDistance(), damageType, hitZones, procentageSum);
+		if (count == 0)
+			return 0;
 
-		return items;
-	}
+		float damage;
+		HitZone defaultHitZone = GetDefaultHitZone();
 
-	//------------------------------------------------------------------------------------------------
-	override void _WB_OnContextMenu(IEntity owner, int id)
-	{
-		switch (id)
+		// Find the total amount of damage required to destroy hit zones that will be damaged in case of a frontal collision
+		damage = GetMinDestroyDamage(damageType, hitZones);
+		damage = damage * procentageSum / count;
+
+		float defaultHitZoneDamageMultipliers = defaultHitZone.GetBaseDamageMultiplier() * defaultHitZone.GetDamageMultiplier(damageType);
+		if (defaultHitZoneDamageMultipliers == 0)
+			return 0;
+
+		float defaultHitZoneMaxDamage = (defaultHitZone.GetMaxHealth() + defaultHitZone.GetDamageReduction()) / defaultHitZoneDamageMultipliers;
+		if (defaultHitZoneMaxDamage < defaultHitZone.GetDamageThreshold())
+			defaultHitZoneMaxDamage += defaultHitZone.GetDamageThreshold();
+
+		if (defaultHitZoneMaxDamage == 0)
+			return 0;
+
+		// Find how much of excessive damage will be returned to the deafult hit zone in case of an actuall collision
+		float excessDamage = DamageSurroundingHitzones(pointOfImpact, damage, damageType, true);
+
+		int securityCounter = 20;//prevent infinite loop at all cost to ensure that it wont cause a loss of someones unsaved data
+		float prc;
+		while (damage > 0 && !float.AlmostEqual(excessDamage, defaultHitZoneMaxDamage, 0.1))
 		{
-			case 0:
-			{
-				GenericEntity entity = GenericEntity.Cast(owner);
-				if (!entity)
-					return;
+			if (excessDamage == 0)
+				return 0;
 
-				WorldEditorAPI api = entity._WB_GetEditorAPI();
-				if (!api)
-					return;
+			if (excessDamage < defaultHitZoneMaxDamage)
+				prc = -defaultHitZoneMaxDamage / excessDamage;
+			else
+				prc = 1 - defaultHitZoneMaxDamage / excessDamage;
+					
+			damage = damage - excessDamage * prc;
+			excessDamage = DamageSurroundingHitzones(pointOfImpact, damage, damageType, true);
 
-				array<HitZone> hitzones;
-				int count = GetSurroundingHitzones(GetOwner().CoordToParent(GetFrontalImpact()), GetOwner().GetPhysics(), GetMaxSharedDamageDistance(), hitzones);
-				hitzones.Insert(GetDefaultHitZone());
-				count++;
-				float damage = GetMinDestroyDamage(EDamageType.COLLISION, hitzones, count);
-
-				// Damage is not valid - warn the user!
-				if (damage < 0)
-				{
-					Print("Cannot destroy selected vehicle on collision", LogLevel.WARNING);
-					return;
-				}
-
-				float newFrontMultiplier = GetFrontMultiplier();
-				float targetFrontalDamage = Math.Ceil(damage / newFrontMultiplier);
-
-				api.BeginEntityAction();
-
-				IEntitySource ownerSource = api.EntityToSource(owner);
-				IEntityComponentSource componentSource = SCR_BaseContainerTools.FindComponentSource(ownerSource, Type().ToString());
-
-				if (componentSource && componentSource.Set("m_fVehicleDestroyDamage", targetFrontalDamage.ToString()))
-					Print("Entity instance's m_fVehicleDestroyDamage set to " + targetFrontalDamage.ToString(), LogLevel.WARNING);
-				else
-					Print("Error setting m_fVehicleDestroyDamage set to " + targetFrontalDamage.ToString(), LogLevel.ERROR);
-
-				api.EndEntityAction();
-			}
+			securityCounter--;
+			if (securityCounter < 0)
+				return 0;
 		}
+
+		damage = damage / GetFrontMultiplier() * HACK_DAMAGE_CALCULATION_REDUCTION;//magic number ;_;
+		// The reason for this magic number is that the collision position can be slightly unpredictable.
+		// Because of that, what may end up happening is that the distribution of the damage won't have enough hit zone health to absorb the impact,
+		// which in turn means that more damage will be passed to the hull hit zone, resulting in a vehicle explosion at a lower speed.
+		// Thus, the precomputed damage is reduced by 10% to accommodate this bit of randomness.
+
+		// Damage is not valid - warn the user!
+		if (damage < 0)
+		{
+			Print("Cannot destroy selected vehicle on collision", LogLevel.WARNING);
+			return 0;
+		}
+
+		return Math.Ceil(damage);
 	}
 #endif
-	
+
 	//------------------------------------------------------------------------------------------------
 	//! Determine whether collision into water is severe enough to apply damage, then get velocities an manually call CollisionDamage
 	protected void OnWaterEnter()
@@ -1147,9 +1301,32 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 		vector ownerTransform = GetOwner().GetOrigin();
 		vector velocityBefore = Vector(0, GetOwner().GetPhysics().GetVelocity()[1], 0);
 		vector velocityAfter = velocityBefore * m_fVelocityMultiplierOnWaterEnter;
-		CollisionDamage(GetGame().GetWorldEntity().GetTerrain(0, 0), 0, velocityBefore, velocityAfter, vector.Zero, vector.Zero, ownerTransform, vector.Zero);
+		ProcessCollision(new SCR_CollisionDamageContainer(GetOwner(), GetGame().GetWorldEntity().GetTerrain(0, 0), 0, velocityBefore, velocityAfter, vector.Zero, vector.Zero, ownerTransform, vector.Zero));
 	}
-	
+
+#ifdef ENABLE_DIAG
+	//------------------------------------------------------------------------------------------------
+	protected void DebugSphereUpdate()
+	{
+		m_DebugShape.Clear();
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) == 0)
+		{
+			m_aLocalCollisions.Clear();
+			GetGame().GetCallqueue().Remove(DebugSphereUpdate);
+			return;
+		}
+
+		IEntity owner = GetOwner();
+		foreach (Tuple2<vector, bool> entry : m_aLocalCollisions)
+		{
+			if (entry.param2)
+				m_DebugShape.AddSphere(owner.CoordToParent(entry.param1), 0.25, Color.GREEN, ShapeFlags.WIREFRAME | ShapeFlags.ONCE);
+			else
+				m_DebugShape.AddSphere(owner.CoordToParent(entry.param1), 0.3, Color.RED, ShapeFlags.WIREFRAME | ShapeFlags.ONCE);
+		}
+	}
+#endif
+
 	//------------------------------------------------------------------------------------------------
 	//! Filter out any contacts under a reasonable speed for damage
 	override bool FilterContact(IEntity owner, IEntity other, Contact contact)
@@ -1164,131 +1341,233 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	//------------------------------------------------------------------------------------------------
 	//! Handle damage and collision effects of contact
 	//! Contact must NEVER be passed as variable to external functions
-	override void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
+	override protected void OnFilteredContact(IEntity owner, IEntity other, Contact contact)
 	{
 		if (m_ImpactEffectComponent && other)
 			m_ImpactEffectComponent.OnImpact(other, contact.Impulse, contact.Position, contact.Normal, contact.Material2, contact.VelocityBefore1, contact.VelocityAfter1);
-		
-		if (contact.Impulse > m_fMinImpulse)
-			CollisionDamage(other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, contact.Position, contact.Normal);
+
+		RplComponent rplComp = SCR_EntityHelper.GetEntityRplComponent(owner);
+		if (rplComp.IsProxy()) // skip null check as damage manager cannot exist without rpl component
+			return;// Server will deal the damage thus there is no point for proxy to process this data
+
+		if (contact.Impulse < m_fMinImpulse)
+			return;
+
+		// Since data will be processed after some time then position has to be held in local space
+		// This needs to be done in order to grab hit zones relevant to the impact position
+		vector localPosition = owner.CoordToLocal(contact.Position);
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+		{
+			m_DebugShape.AddSphere(contact.Position, 0.3, Color.RED, ShapeFlags.WIREFRAME);
+			if (m_aLocalCollisions.IsEmpty())
+				GetGame().GetCallqueue().CallLater(DebugSphereUpdate, 0, true);
+
+			m_aLocalCollisions.Insert(new Tuple2<vector, bool>(localPosition, false));
+			Print("	Collision detected between owner = " + owner.GetID() + " and other = " + other.GetID() + " at position = " + contact.Position, LogLevel.NORMAL);
+			Print("		Owner Colliding surfaces = " + contact.Material1 + " | other = " +  contact.Material2, LogLevel.NORMAL);
+			Print("		Owner shape indencies = " + contact.ShapeIndex1 + " | other = " + contact.ShapeIndex2, LogLevel.NORMAL);
+			Print("		Impuls = " + contact.Impulse);
+			float dotMultiplier = vector.Dot(contact.VelocityAfter1.Normalized(), contact.VelocityBefore1.Normalized());
+			vector velocityDiff = contact.VelocityBefore1 - contact.VelocityAfter1 * dotMultiplier;
+			float impactSpeedDiff = Math.AbsFloat(velocityDiff.Length());
+			Print("		Owner impact speed diff = " + impactSpeedDiff + "m/s (" + impactSpeedDiff * Physics.MS2KMH + "kph)", LogLevel.NORMAL);
+			dotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
+			velocityDiff = contact.VelocityBefore2 - contact.VelocityAfter2 * dotMultiplier;
+			impactSpeedDiff = Math.AbsFloat(velocityDiff.Length());
+			Print("		Other impact speed diff = " + impactSpeedDiff + "m/s (" + impactSpeedDiff * Physics.MS2KMH + "kph)", LogLevel.NORMAL);
+		}
+#endif
+
+		if (!m_CurrentCollisions)
+		{
+			m_CurrentCollisions = new array<ref SCR_CollisionDamageContainer>();
+			GetGame().GetCallqueue().CallLater(Activate, param1: owner);
+		}
+
+		SCR_CollisionDamageContainer existingCollisionInstance;
+		foreach (SCR_CollisionDamageContainer collision : m_CurrentCollisions)
+		{
+			if (collision.m_Other != other)
+				continue;
+
+			existingCollisionInstance = collision;
+			break;
+		}
+
+		if (!existingCollisionInstance)
+		{
+#ifdef ENABLE_DIAG
+			if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+				Print("	No previous collisions cached for contact between " + owner.GetID() + " and " + other.GetID() + ". Caching this collision data!", LogLevel.NORMAL);
+#endif
+			m_CurrentCollisions.Insert(new SCR_CollisionDamageContainer(owner, other, contact.Impulse, contact.VelocityBefore1, contact.VelocityAfter1, contact.VelocityBefore2, contact.VelocityAfter2, localPosition, contact.Normal));
+			return;
+		}
+
+		existingCollisionInstance.UpdateImpactPosition(localPosition);
+		if (contact.Impulse < existingCollisionInstance.m_fImpulse)
+		{
+#ifdef ENABLE_DIAG
+			if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+				Print("	Detected collision has smaller impuls - discarding!", LogLevel.NORMAL);
+#endif
+			return;
+		}
+
+		float mass;
+		if (contact.Physics1)
+			mass = contact.Physics1.GetMass();
+
+		float dotMultiplier = vector.Dot(contact.VelocityAfter1.Normalized(), contact.VelocityBefore1.Normalized());
+		float momentumB = contact.VelocityBefore1.Length() * mass;
+		float momentumA = contact.VelocityAfter1.Length() * mass * dotMultiplier;
+		float totalMomentumOwner = Math.AbsFloat(momentumB - momentumA * dotMultiplier);
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+		{
+			Print("		owner momentum before = " + momentumB + " | momentum after = " + momentumA, LogLevel.NORMAL);
+			Print("		owner dotMultiplier = " + dotMultiplier, LogLevel.NORMAL);
+		}
+#endif
+
+		if (totalMomentumOwner > existingCollisionInstance.m_fTotalMomentumOwner)
+			existingCollisionInstance.m_fTotalMomentumOwner = totalMomentumOwner;
+
+		if (contact.Physics2)
+			mass = contact.Physics2.GetMass();
+		else
+			mass = 0;
+
+		dotMultiplier = vector.Dot(contact.VelocityAfter2.Normalized(), contact.VelocityBefore2.Normalized());
+		momentumB = contact.VelocityBefore2.Length() * mass;
+		momentumA = contact.VelocityAfter2.Length() * mass * dotMultiplier;
+		float totalMomentumOther = Math.AbsFloat(momentumB - momentumA);
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+		{
+			Print("		total owner momentum = " + totalMomentumOwner + " while previous was = " + existingCollisionInstance.m_fTotalMomentumOwner, LogLevel.NORMAL);
+			Print("		other momentum before = " + momentumB + " | momentum after = " + momentumA, LogLevel.NORMAL);
+			Print("		other dotMultiplier = " + dotMultiplier, LogLevel.NORMAL);
+			Print("		total other momentum= " + totalMomentumOther + " while previous was = " + existingCollisionInstance.m_fTotalMomentumOther, LogLevel.NORMAL);
+			Print("	Detected collision has larger impuls!", LogLevel.NORMAL);
+		}
+#endif
+
+		if (totalMomentumOther > existingCollisionInstance.m_fTotalMomentumOther)
+			existingCollisionInstance.m_fTotalMomentumOther = totalMomentumOther;
+
+		existingCollisionInstance.m_fImpulse = contact.Impulse;
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Collisiondamage is exposed to be used by other scripts as well.
-	//! \param other Other is other entity involved in collision with GetOwner()
-	//! \param impulse Impulse applied to resolve the collision
-	//! \param velocityBefore1 Velocity of Object1 before collision (world space)
-	//! \param velocityAfter1 Velocity of Object1 after collision (world space)
-	//! \param velocityBefore2 Velocity of Object2 before collision (world space)
-	//! \param velocityAfter2 Velocity of Object2 after collision (world space)
-	//! \param impactNormal Collision axis at the contact point
-	//! \param impactPosition Position of the contact point (world space)
-	void CollisionDamage(notnull IEntity other, float impulse, vector velocityBefore1, vector velocityAfter1, vector velocityBefore2, vector velocityAfter2, vector impactPosition, vector impactNormal)
+	override void OnFrame(IEntity owner, float timeSlice)
 	{
+		super.OnFrame(owner, timeSlice);
+
+		if (!m_CurrentCollisions || m_CurrentCollisions.IsEmpty())
+		{
+			if (m_LastFrameCollisions && !m_LastFrameCollisions.IsEmpty())
+				m_LastFrameCollisions.Clear();
+
+			Deactivate(owner);
+			return;
+		}
+
+		bool continuedCollision;
+		foreach (SCR_CollisionDamageContainer collision : m_CurrentCollisions)
+		{
+			if (!m_LastFrameCollisions)
+			{
+				ProcessCollision(collision);
+				continue;
+			}
+
+			continuedCollision = false;
+			foreach (SCR_CollisionDamageContainer oldCollision : m_LastFrameCollisions)
+			{
+				if (collision.m_Other == oldCollision.m_Other)
+				{
+					continuedCollision = true;
+					break;
+				}
+			}
+
+			if (continuedCollision)
+				continue;
+
+			ProcessCollision(collision);
+		}
+
+		m_LastFrameCollisions = m_CurrentCollisions;
+		m_CurrentCollisions = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Processing of cached collision data in order to deal damage to the vhehicle and its passengers
+	void ProcessCollision(notnull SCR_CollisionDamageContainer collision)
+	{
+		IEntity owner = GetOwner();
 		// This data can be moved back to component
 		SCR_VehicleDamageManagerComponentClass prefabData = GetPrefabData();
 		if (!prefabData)
 			return;
 
 		// Get the physics of the dynamic object (if owner is static we ignore the collision)
-		Physics ownerPhysics = GetOwner().GetPhysics();
+		Physics ownerPhysics = owner.GetPhysics();
 		if (!ownerPhysics.IsDynamic())
+			return;
+
+		vector impactPosition = owner.CoordToParent(collision.GetAverageImpactPosition());
+
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
 		{
-			m_bIsInContact = false;
-			return;
+			m_DebugShape.AddSphere(impactPosition, 0.2, Color.GREEN, ShapeFlags.WIREFRAME);
+			m_aLocalCollisions.Insert(new Tuple2<vector, bool>(collision.GetAverageImpactPosition(), true));
+			Print("		Processing collision damage at the position = " + impactPosition + " - " + GetOwner().GetID(), LogLevel.NORMAL);
+			Print("		Cached owner speed before collision = " + collision.GetOwnerVelocityBefore().Length() * Physics.MS2KMH + "kph)", LogLevel.NORMAL);
+			Print("		Cached other speed before collision = " + collision.GetOtherVelocityBefore().Length() * Physics.MS2KMH + "kph)", LogLevel.NORMAL);
 		}
-
-		Physics otherPhysics = other.GetPhysics();
-		if (!otherPhysics)
-			return;
-
-		// Now get the relative force, which is the impulse divided by the mass of the dynamic object
-		float relativeForce = impulse / ownerPhysics.GetMass();
-		// We keep relative force temporarily, until we re-calculate it to momentum
-
-		// We hit a destructible that will break, static object -> deal no damage to vehicle or occupants
+#endif
 		int ownerResponseIndex = ownerPhysics.GetResponseIndex();
-		int otherResponseIndex = otherPhysics.GetResponseIndex();
-		if (!otherPhysics.IsDynamic() && other.FindComponent(SCR_DestructionDamageManagerComponent) && otherResponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX <= ownerResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX)
+		// We hit a destructible that will break, static object -> deal no damage to vehicle or occupants
+		if (!collision.m_bOtherIsDynamic && collision.m_bOtherIsDestructible && collision.m_iOtherResponseIndex - MIN_DESTRUCTION_RESPONSE_INDEX <= ownerResponseIndex - MIN_MOMENTUM_RESPONSE_INDEX)
 			return;
-
-		float ownerMass = GetOwner().GetPhysics().GetMass();
-		float otherMass = otherPhysics.GetMass();
-
-		// Store information about being in contact - so we don't delete physics objects
-		m_bIsInContact = true;
 
 #ifdef DISABLE_VEHICLE_COLLISION_DAMAGE
-		m_bIsInContact = false;
 		return;
 #endif
 
-		//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
-		float momentumVehicleThreshold = ownerMass * m_fVehicleDamageSpeedThreshold * Physics.KMH2MS;
-		float momentumVehicleDestroy = ownerMass * m_fVehicleSpeedDestroy * Physics.KMH2MS;
-		float damageScaleToVehicle = m_fVehicleDestroyDamage / (momentumVehicleDestroy - momentumVehicleThreshold);
-		//TODO^
-
-		// Debug stuff
-		if (m_bPrintRelativeForce && relativeForce > m_fMaxRelativeForce)
-		{
-			m_fMaxRelativeForce = relativeForce;
-			Print(impulse, LogLevel.DEBUG);
-			Print(velocityBefore1, LogLevel.DEBUG);
-			Print(m_fMaxRelativeForce, LogLevel.DEBUG);
-		}
-
-		float damageShare = 1;
-		if (otherMass > 0) // mass == 0 is probably a static object
-			damageShare -= ownerMass / (ownerMass + otherMass);
-
-		float DotMultiplier = vector.Dot(velocityAfter1.Normalized(), velocityBefore1.Normalized());
-		float MomentumBefore = ownerMass * velocityBefore1.Length();
-		float MomentumAfter = ownerMass * velocityAfter1.Length() * DotMultiplier;
-		float momentumA = Math.AbsFloat(MomentumBefore - MomentumAfter);
-
-		DotMultiplier = vector.Dot(velocityAfter2.Normalized(), velocityBefore2.Normalized());
-		MomentumBefore = otherMass * velocityBefore2.Length();
-		MomentumAfter = otherMass * velocityAfter2.Length() * DotMultiplier;
-		float momentumB = Math.AbsFloat(MomentumBefore - MomentumAfter);
-
-		float collisionDamage = damageScaleToVehicle * (momentumA + momentumB - momentumVehicleThreshold);
+		float ownerMass = ownerPhysics.GetMass();
+		float totalMomentum = collision.m_fTotalMomentumOwner + collision.m_fTotalMomentumOther;
 		IEntity instigatorEntity;
-
 		// Find compartment manager to damage occupants
 		if (m_CompartmentManager)
 		{
-			//TODOv Pre-calculate these values into prefab data, when callback of prefab data cretion is added.
-			float momentumOccupantsThreshold = ownerMass * GetOccupantsDamageSpeedThreshold() * Physics.KMH2MS;
-			float momentumOccupantsDeath = ownerMass * GetOccupantsSpeedDeath() * Physics.KMH2MS;
-			float damageScaleToCharacter = APPROXIMATE_CHARACTER_LETHAL_DAMAGE / (momentumOccupantsDeath - momentumOccupantsThreshold);
-			//TODO^
-
 			// This is the momentum, which will be transferred to damage
-			float momentumOverOccupantsThreshold = (momentumA + momentumB) * damageShare - momentumOccupantsThreshold;
+			float momentumOverOccupantsThreshold = totalMomentum * collision.m_fDamageShare - prefabData.GetOccupantsMomentumThreshold(ownerMass);
 
 			// Deal damage if it's more that 0
 			if (momentumOverOccupantsThreshold > 0)
 			{
 				//If the entity is dynamic, we need to look if the entity has a driver or not.
 				//If the vehicle's speed is bigger than m_fVehicleDamageSpeedThreshold
-				if (otherPhysics.IsDynamic() && velocityBefore1.LengthSq() > m_fVehicleDamageSpeedThreshold * m_fVehicleDamageSpeedThreshold)
+				if (collision.m_bOtherIsDynamic && collision.GetOwnerVelocityBefore().LengthSq() > prefabData.GetVehicleDamageSpeedThreshold() * prefabData.GetVehicleDamageSpeedThreshold())
 				{
-					IEntity otherPilot;
-					Vehicle otherVehicle = Vehicle.Cast(other);
-					if (otherVehicle)
-						otherPilot = otherVehicle.GetPilot();
-
 					//If the entity has a driver:
-					if (otherPilot)
+					if (collision.m_OtherPilot)
 					{
 						//If their speed is bigger than GetVehicleDamageSpeedThreshold and they are not running away from the vehicle
 						//(their dot product indicates that they are within 60° cone):
 						//their driver is the instigator of the damage the occupants of this vehicle's compartments receive.
 						//If not, the driver of this vehicle is the instigator.
-						vector directionToOther = (other.GetOrigin() - GetOwner().GetOrigin()).Normalized();
-						if (vector.Dot(velocityBefore1.Normalized(), directionToOther) < 0.5)
-							instigatorEntity = otherPilot;
+						vector directionToOther = (collision.m_vOtherOriginAtThePointOfImpact - collision.m_vOwnerOriginAtThePointOfImpact).Normalized();
+						if (vector.Dot(collision.GetOwnerVelocityBefore().Normalized(), directionToOther) < 0.5)
+							instigatorEntity = collision.m_OtherPilot;
 					}
 				}
 
@@ -1296,7 +1575,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 				if (!instigatorEntity)
 				{
 					instigatorEntity = GetInstigator().GetInstigatorEntity();
-					Vehicle thisVehicle = Vehicle.Cast(GetOwner());
+					Vehicle thisVehicle = Vehicle.Cast(owner);
 					if (!instigatorEntity && thisVehicle)
 					{
 						ChimeraCharacter pilot = ChimeraCharacter.Cast(thisVehicle.GetPilot());
@@ -1318,17 +1597,26 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 				}
 
 				// Apply damage to passengers in vehicle
-				HandlePassengerDamage(EDamageType.COLLISION, momentumOverOccupantsThreshold * damageScaleToCharacter, Instigator.CreateInstigator(instigatorEntity));
+				HandlePassengerDamage(EDamageType.COLLISION, momentumOverOccupantsThreshold * prefabData.GetCharacterDamageScale(ownerMass), Instigator.CreateInstigator(instigatorEntity));
 			}
 		}
 
+		float collisionDamage = prefabData.GetVehicleDamageScale(ownerMass) * (totalMomentum - prefabData.GetVehicleMomentumThreshold(ownerMass));
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+			Print("		Collision damage = " + collisionDamage + " = " + prefabData.GetVehicleDamageScale(ownerMass) + " * ((" + collision.m_fTotalMomentumOwner + " + " + collision.m_fTotalMomentumOther + ") - " + prefabData.GetVehicleMomentumThreshold(ownerMass) + ")", LogLevel.NORMAL);
+#endif
 		// Deal damage if collision damage is over threshold
 		if (collisionDamage > 0)
 		{
 			// Get hit side multiplier (e. g. front is stronger than the left/right side)
 			float damageSideMultiplier = GetSideDamageMultiplier(GetHitDirection(impactPosition));
 
-			collisionDamage *= damageSideMultiplier * damageShare;
+#ifdef ENABLE_DIAG
+		if (DiagMenu.GetValue(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS) != 0)
+			Print("		Collision damage = " + (collisionDamage*damageSideMultiplier*collision.m_fDamageShare) + " = " + collisionDamage + " * " + damageSideMultiplier + " * " + collision.m_fDamageShare, LogLevel.NORMAL);
+#endif
+			collisionDamage *= damageSideMultiplier * collision.m_fDamageShare;
 			// Handle damage requires a matrix, so we create an empty one
 			vector empty[3];
 			empty[0] = vector.Zero;
@@ -1340,9 +1628,6 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 			// finally we deal damage
 			HandleDamage(damageContext);
 		}
-
-		// Reset is in contact
-		m_bIsInContact = false;
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1584,7 +1869,7 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 	//---- REFACTOR NOTE END ----
 
 	//---- REFACTOR NOTE START: This code will need to be refactored as current implementation is not conforming to the standards ----
-	// TODO: It should be possible to work without explicit flammable hitzones, perhaps supply crates could have this ability though simplified
+	// TODO: It should be possible to work without explicit flammable hitZones, perhaps supply crates could have this ability though simplified
 	//------------------------------------------------------------------------------------------------
 	override void UpdateFireDamage(float timeSlice)
 	{
@@ -1890,8 +2175,14 @@ class SCR_VehicleDamageManagerComponent : SCR_DamageManagerComponent
 
 		if (!s_mResponseIndexMomentumMap.Find(SCR_EPhysicsResponseIndex.TINY_MOMENTUM, null))
 			InitStaticMapForIndices();
+
+#ifdef ENABLE_DIAG
+		if (Replication.IsServer()) //collision data is only processed on the server so there is no reason to have this debug on client and RplComponent will probably not exist at this point
+			DiagMenu.RegisterItem(SCR_DebugMenuID.DEBUGUI_VEHICLES_COLLISIONS, "", "Collisions debug prints", "Vehicles", "disabled,base,extended,all");
+#endif
 	}
 
+	//------------------------------------------------------------------------------------------------
 	void ~SCR_VehicleDamageManagerComponent()
 	{
 		if (m_FuelTankFireParticle)

@@ -19,6 +19,9 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 	[Attribute("1", desc: "If true it will show additional information in form of ui element that shows ballistic data (f.e. in mortars).", category: "Entity Refund"), RplProp(onRplName: "OnAdditionalSettingsChanged")]
 	protected bool m_bProjectileBallisticInfoVisibility;
 
+	[Attribute(desc: "If true artillery ai command will get position offset based on the distance from the player to the position at which player ordered the artillery")]
+	protected bool m_bAdditionalArtilleryOrderDistancePenalty;
+
 	protected ref ScriptInvokerVoid m_OnChangeAdditionalSettingsInvoker;
 
 	//------------------------------------------------------------------------------------------------
@@ -51,6 +54,14 @@ class SCR_AdditionalGameModeSettingsComponent : SCR_BaseGameModeComponent
 		return s_Instance;
 	}
 	
+	//------------------------------------------------------------------------------------------------
+	//! State of the scenario setting that dictates if game should add an additional offset to the position of the artillery command issued by the player
+	//! \return true if position of the artillery command issued by the player should be spoofed with random offset
+	bool IsAdditionalArtileryOrderDistancePenaltyEnabled()
+	{
+		return m_bAdditionalArtilleryOrderDistancePenalty;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	//! Sets team kill punishment is enabled or disabled and notifies players if playerID is provided. (Server only)
 	//! \param[in] enablePunishment Enable punishment setting for team kills, toggles team kill punishment on or off for all players

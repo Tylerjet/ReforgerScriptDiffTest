@@ -105,6 +105,12 @@ class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElem
 	[Attribute("", UIWidgets.Object, "Elements in the given category")]
 	protected ref array<ref SCR_PlayerCommandingMenuBaseElement> m_aElements;
 	
+	[Attribute("", UIWidgets.ResourceNamePicker, "Imageset source from which icon will be selected. If this field is left empty then default icon will be used.")]
+	protected ResourceName m_sImageset;
+
+	[Attribute("", UIWidgets.EditBox, "Name of the icon associated to the category, taken from appropriate imageset set in the radial menu.\nIf this field is left empty then default icon will be used")]
+	protected string m_sIconName;
+
 	[Attribute()]
 	protected bool m_bShowOnMap;
 	
@@ -126,6 +132,18 @@ class SCR_PlayerCommandingMenuCategoryElement : SCR_PlayerCommandingMenuBaseElem
 		return m_aElements;
 	}	
 	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetIconImageset()
+	{
+		return m_sImageset;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	string GetIconName()
+	{
+		return m_sIconName;
+	}
+
 	//------------------------------------------------------------------------------------------------
 	bool GetCanShowOnMap()
 	{

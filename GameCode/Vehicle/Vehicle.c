@@ -134,6 +134,55 @@ class Vehicle : BaseVehicle
 		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(this);
 	}
 
+#ifdef WORKBENCH
+	//------------------------------------------------------------------------------------------------
+	override array<ref WB_UIMenuItem> _WB_GetContextMenuItems()
+	{
+		array<ref WB_UIMenuItem> items = { new WB_UIMenuItem("Compute collision damage", 0) };
+
+		return items;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void _WB_OnContextMenu(int id)
+	{
+		switch (id)
+		{
+			case 0:
+			{
+				WorldEditorAPI api = _WB_GetEditorAPI();
+				if (!api)
+					return;
+
+				SCR_VehicleDamageManagerComponent dmgManagerComp = SCR_VehicleDamageManagerComponent.Cast(FindComponent(SCR_VehicleDamageManagerComponent));
+				if (!dmgManagerComp)
+					return;
+
+				float criticalFrontalDamage = dmgManagerComp.CalculateCriticalCollisionDamage();
+				if (criticalFrontalDamage <= 0)
+				{
+					Print("Error during critical collision damage callculation (returned value = " + criticalFrontalDamage + "). Check damage manager setup!", LogLevel.ERROR);
+					return;
+				}
+
+				api.BeginEntityAction();
+
+				IEntitySource ownerSource = api.EntityToSource(this);
+
+				int componentIndex = SCR_BaseContainerTools.FindComponentIndex(ownerSource, dmgManagerComp.Type());
+				array<ref ContainerIdPathEntry> path = {new ContainerIdPathEntry("components", componentIndex)};
+
+				if (api.SetVariableValue(ownerSource, path, "m_fVehicleDestroyDamage", criticalFrontalDamage.ToString()))
+					Print("Entity instance's m_fVehicleDestroyDamage set to " + criticalFrontalDamage + ". Apply this change to the prefab!", LogLevel.WARNING);
+				else
+					Print("Error setting m_fVehicleDestroyDamage set to " + criticalFrontalDamage, LogLevel.ERROR);
+
+				api.EndEntityAction();
+			}
+		}
+	}
+#endif
+
 	//------------------------------------------------------------------------------------------------
 	// constructor
 	//! \param[in] src
