@@ -246,7 +246,7 @@ class SCR_MeleeComponent : ScriptComponent
 			hitPosDirNorm,
 			m_MeleeHitData.m_Entity, 
 			hitzone,
-			GetOwner().GetChildren(), // This is a workaround, to make the character the damage instigator, just pass any child of the character as damageSource
+			GetOwner(), // This is a workaround, to make the character the damage instigator, just pass any child of the character as damageSource
 			m_MeleeHitData.m_SurfaceProps,
 			m_MeleeHitData.m_iColliderIndex, 
 			m_MeleeHitData.m_iNodeIndex);

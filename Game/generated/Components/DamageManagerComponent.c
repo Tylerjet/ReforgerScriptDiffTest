@@ -42,12 +42,12 @@ class DamageManagerComponent: SCR_HitZoneContainerComponent
 	\param hitPosDirNorm [hitPosition, hitDirection, hitNormal]
 	\param hitEntity Entity to be damaged
 	\param struckHitZone HitZone to be damaged
-	\param damageSource Damage source instigator
+	\param instigator instigator of the damage
 	\param surface Properties of the surface struck
 	\param colliderID ID of the collider receiving damage
 	\param externNodeIndex External node index
 	*/
-	proto external void HandleDamage(EDamageType dType, float damage, out vector hitPosDirNorm[3],	IEntity hitEntity, HitZone struckHitZone, IEntity damageSource, SurfaceProperties surface, int colliderID, int externNodeIndex);
+	proto external void HandleDamage(EDamageType dType, float damage, out vector hitPosDirNorm[3],	IEntity hitEntity, HitZone struckHitZone, IEntity instigator, SurfaceProperties surface, int colliderID, int externNodeIndex);
 	/*!
 	\return true if there is active DOT of specified type.
 	*/
