@@ -76,7 +76,7 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -86,15 +86,16 @@ class SCR_ConsumableTourniquet: SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return null;
 
-		EBandagingAnimationBodyParts bodyPartToBandage;
+		EBandagingAnimationBodyParts bodyPartToBandage = EBandagingAnimationBodyParts.Invalid;
 		
 		if (group != ECharacterHitZoneGroup.VIRTUAL)
 		{
-			bodyPartToBandage = damageMgr.FindAssociatedBandagingBodyPart(group);
+			if (!damageMgr.GetGroupIsBeingHealed(group))
+				bodyPartToBandage = damageMgr.FindAssociatedBandagingBodyPart(group);
 		}
 		else
 		{
-			group = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true);
+			group = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, true, true, true);
 			if (!group)
 				return null;
 			

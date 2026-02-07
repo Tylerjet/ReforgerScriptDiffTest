@@ -16,6 +16,7 @@ class SCR_BaseCampaignTutorialArlandStage : GenericEntity
 	protected float m_fWaypointHeightOffset = 0;
 	protected bool m_bShowWaypoint = true;
 	protected bool m_bCheckWaypoint = true;
+	protected bool m_bConditionPassCheck = false;
 	
 	protected ChimeraCharacter m_Player;
 	protected ref array<IEntity> m_WaypointEntities = {};
@@ -217,7 +218,10 @@ class SCR_BaseCampaignTutorialArlandStage : GenericEntity
 		if (m_fDuration != 0)	
 		{
 			if (m_fTimer > m_fDuration)
-				conditionComplete = true;
+				if (m_bConditionPassCheck)
+					conditionComplete = GetIsFinished();
+				else
+					conditionComplete = true;
 		}
 		else if (m_fTimer > m_fConditionCheckPeriod)
 		{

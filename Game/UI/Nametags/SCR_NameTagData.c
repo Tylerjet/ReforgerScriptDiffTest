@@ -431,6 +431,10 @@ class SCR_NameTagData : Managed
 		
 		if (m_NTDisplay)
 			m_NTDisplay.CleanupTag(this, removeFromArray);
+		
+		ScriptCallQueue queue = GetGame().GetCallqueue();	// in case this was already set for timed cleanup
+		if (queue)
+			queue.Remove(Cleanup);
 	}
 	
 	//------------------------------------------------------------------------------------------------

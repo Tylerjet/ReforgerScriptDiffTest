@@ -328,14 +328,14 @@ class SCR_DeployMenuMain : SCR_DeployMenuBase
 	//! Select next available spawn point.
 	protected void NextSpawn()
 	{
-		if (!m_bRespawnRequested)
+		if (!m_bRespawnRequested && !m_LoadoutRequestUIHandler.IsSelectorFocused() && !m_SpawnPointRequestUIHandler.IsSelectorFocused())
 			m_SpawnPointRequestUIHandler.CycleSpawnPoints();
 	}
 
 	//! Select previous available spawn point.
 	protected void PrevSpawn()
 	{
-		if (!m_bRespawnRequested)
+		if (!m_bRespawnRequested && !m_LoadoutRequestUIHandler.IsSelectorFocused() && !m_SpawnPointRequestUIHandler.IsSelectorFocused())
 			m_SpawnPointRequestUIHandler.CycleSpawnPoints(false);
 	}
 

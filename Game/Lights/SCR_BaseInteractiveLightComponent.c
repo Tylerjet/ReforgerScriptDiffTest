@@ -39,14 +39,10 @@ enum ELightState
 class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 {	
 	protected ref array<LightEntity> m_aLights;
-	protected SoundComponent m_SoundComponent;
-	protected SignalsManagerComponent m_SignalsManagerComponent;
 	protected ParametricMaterialInstanceComponent m_EmissiveMaterialComponent;
 	protected float m_fCurLV;
 	protected float m_fCurEM;
 	protected float m_fLightEmisivityStep;
-	protected float m_fSoundSignalStep;
-	protected float m_fSoundSignalValue;
 	protected bool m_bIsOn;
 	
 	private bool m_bUpdate;
@@ -110,16 +106,26 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	//------------------------------------------------------------------------------------------------
 	protected void TurnOn(notnull SCR_BaseInteractiveLightComponentClass componentData, bool skipTransition, bool playSound)
 	{
-		if (!System.IsConsoleApp() && playSound && m_SoundComponent)
-		{
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_ON);
-		}
-
 		LightEntity light;
 		IEntity owner = GetOwner();
 		vector lightOffset;
 		vector lightDirection;
 		vector pos;
+		
+		// Play sound
+		if (!System.IsConsoleApp())
+		{		
+			if (playSound)
+			{
+				SoundComponent soundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
+				if (soundComponent)
+					soundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_ON);
+			}	
+			
+			SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));	
+			if (signalsManagerComponent)
+				signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("Trigger"), 1);
+		}
 		
 		if (!m_aLights)
 			m_aLights = {};
@@ -159,17 +165,12 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 				m_aLights[i].SetColor(Color.FromVector(componentData.GetLightData()[i].GetLightColor()), componentData.GetLightLV());
 			}
 
-			if (m_SignalsManagerComponent)
-				m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), 1);
-
 			return;
 		}
 		
 		m_fCurLV = LIGHT_EMISSIVITY_START;
 		m_fCurEM = MATERIAL_EMISSIVITY_START;
 		m_fLightEmisivityStep = componentData.GetLightLV() / ((MATERIAL_EMISSIVITY_ON - MATERIAL_EMISSIVITY_START) / MATERIAL_EMISSIVITY_STEP);
-		m_fSoundSignalStep = 1 / ((MATERIAL_EMISSIVITY_ON - MATERIAL_EMISSIVITY_START) / MATERIAL_EMISSIVITY_STEP);
-		m_fSoundSignalValue = 0;
 		
 		SetEventMask(GetOwner(), EntityEvent.VISIBLE);
 	}
@@ -177,11 +178,21 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	//------------------------------------------------------------------------------------------------
 	protected void TurnOff(notnull SCR_BaseInteractiveLightComponentClass componentData, bool playSound)
 	{
-		if (!System.IsConsoleApp() && playSound && m_SoundComponent)
+		// Play sound
+		if (!System.IsConsoleApp())
 		{
-			m_SoundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_OFF);
-			if (m_SignalsManagerComponent)
-				m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), 0);
+			IEntity owner = GetOwner();						
+			SignalsManagerComponent signalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
+						
+			if (playSound)
+			{
+				SoundComponent soundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
+				if (soundComponent)
+					soundComponent.SoundEvent(SCR_SoundEvent.SOUND_TURN_OFF);
+			}
+				
+			if (signalsManagerComponent)
+				signalsManagerComponent.SetSignalValue(signalsManagerComponent.AddOrFindSignal("Trigger"), 0);
 		}
 		
 		if (!componentData.GetLightData().IsEmpty())
@@ -206,14 +217,8 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 		SCR_BaseInteractiveLightComponentClass componentData = SCR_BaseInteractiveLightComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!componentData) 
 			return;		
-		
-		if (m_SignalsManagerComponent)
-		{
-			m_fSoundSignalValue += m_fSoundSignalStep;
-			m_SignalsManagerComponent.SetSignalValue(m_SignalsManagerComponent.AddOrFindSignal("Trigger"), m_fSoundSignalValue);
-		}
-
-		if (!m_aLights)
+				
+		if (!m_aLights)	
 			return;
 		
 		bool shouldUpdate = true;
@@ -273,8 +278,6 @@ class SCR_BaseInteractiveLightComponent : SCR_BaseLightComponent
 	{		
 		super.OnPostInit(owner);
 		
-		m_SoundComponent = SoundComponent.Cast(owner.FindComponent(SoundComponent));
-		m_SignalsManagerComponent = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 		m_EmissiveMaterialComponent = ParametricMaterialInstanceComponent.Cast(owner.FindComponent(ParametricMaterialInstanceComponent));
 		
 		ToggleLight(GetInitialState(), true, false);

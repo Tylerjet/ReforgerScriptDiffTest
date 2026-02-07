@@ -1,8 +1,7 @@
 class SCR_AIDefendActivity : SCR_AIActivityBase
 {
 	ref SCR_BTParam<AIWaypoint> m_Waypoint = new ref SCR_BTParam<AIWaypoint>(SCR_AIActionTask.WAYPOINT_PORT);
-	ref SCR_BTParam<vector> m_vAttackLocation = new ref SCR_BTParam<vector>(SCR_AIActionTask.ATTACK_LOCATION_PORT);
-	ref SCR_BTParam<bool> m_bReinit = new ref SCR_BTParam<bool>(SCR_AIActionTask.REINIT_PORT);
+	ref SCR_BTParam<vector> m_vAttackLocation = new ref SCR_BTParam<vector>(SCR_AIActionTask.ATTACK_LOCATION_PORT);	
 	
 	protected ref array<AIAgent> m_aRadialCoverAgents = {};
 	//-------------------------------------------------------------------------------------------------
@@ -10,7 +9,6 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	{
 		m_Waypoint.Init(this, waypoint);
 		m_vAttackLocation.Init(this, vector.Zero);
-		m_bReinit.Init(this, true);
 		m_fPriorityLevel.Init(this, priorityLevel);
 	}
 	
@@ -79,12 +77,18 @@ class SCR_AIDefendActivity : SCR_AIActivityBase
 	//-------------------------------------------------------------------------------------------------
 	override void OnActionDeselected()
 	{
+		SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.GetAIAgent());
+		if (group)
+			group.ReleaseCompartments();
 		SendCancelMessagesToAllAgents();
 	}
 	
 	//-------------------------------------------------------------------------------------------------
 	override void OnActionFailed()
 	{
+		SCR_AIGroup group = SCR_AIGroup.Cast(m_Utility.GetAIAgent());
+		if (group)
+			group.ReleaseCompartments();
 		SendCancelMessagesToAllAgents();
 	}
 	

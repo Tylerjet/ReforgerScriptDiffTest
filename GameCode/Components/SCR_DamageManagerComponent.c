@@ -553,6 +553,7 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 		if (trigger)
 			trigger.GetInstigator().SetInstigatorByPlayerID(instigator.GetInstigatorPlayerID());
 	}
+
 	//------------------------------------------------------------------------------------------------
 	SCR_ResourceEncapsulator GetResourceEncapsulator(EResourceType suppliesType = EResourceType.SUPPLIES)
 	{
@@ -660,15 +661,19 @@ class SCR_DamageManagerComponent : DamageManagerComponent
 			if (!destructibleHitZone || !destructibleHitZone.Type().IsInherited(hitZoneType))
 				continue;
 
-			explosionPoint = destructibleHitZone.GetSecondaryExplosionPoint();
-			if (!explosionPoint)
-				continue;
-
 			weight = destructibleHitZone.GetSecondaryExplosionScale();
-			if (weight <= 0)
+			if (weight < 0 || float.AlmostEqual(weight, 0))
 				continue;
 
-			position = owner.CoordToLocal(explosionPoint.GetWorldTransformAxis(3));
+			explosionPoint = destructibleHitZone.GetSecondaryExplosionPoint();
+			if (!explosionPoint && destructibleHitZone != GetDefaultHitZone())
+				continue;
+
+			if (explosionPoint)
+				position = owner.CoordToLocal(explosionPoint.GetWorldTransformAxis(3));
+			else if (owner.GetPhysics())
+				position = owner.GetPhysics().GetCenterOfMass();
+
 			weighedAveragePosition += position * weight;
 			totalWeight += weight;
 		}

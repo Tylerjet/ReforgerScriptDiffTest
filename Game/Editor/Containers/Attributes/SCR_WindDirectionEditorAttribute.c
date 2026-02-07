@@ -71,13 +71,13 @@ class SCR_WindDirectionEditorAttribute: SCR_BaseFloatValueHolderEditorAttribute
 		}
 	}
 	
-	//Call PreviewVariable of SCR_WindOverrideEditorAttribute
+	//Call PreviewVariable of SCR_WindAutomaticEditorAttribute
 	override void PreviewVariable(bool setPreview, SCR_AttributesManagerEditorComponent manager)
 	{
 		if (!setPreview)
 			return;
 		
-		SCR_BaseEditorAttribute overrideAttribute = manager.GetAttributeRef(SCR_WindOverrideEditorAttribute);
+		SCR_BaseEditorAttribute overrideAttribute = manager.GetAttributeRef(SCR_WindAutomaticEditorAttribute);
 		if (!overrideAttribute)
 			return;
 		

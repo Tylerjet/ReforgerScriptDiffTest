@@ -401,7 +401,7 @@ class CharacterControllerComponent: PrimaryControllerComponent
 	//! Will be called when gadget fully transitioned to or canceled focus mode
 	event protected void OnGadgetFocusStateChanged(IEntity gadget, bool isFocused);
 	//! Will be called when item use action is started
-	event protected void OnItemUseBegan(IEntity item);
+	event protected void OnItemUseBegan(IEntity item, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam);
 	//! Will be called when item use action is complete
 	event protected void OnItemUseEnded(IEntity item, bool successful, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam);
 	event protected void OnAnimationEvent(AnimationEventID animEventType, AnimationEventID animUserString, int intParam, float timeFromStart, float timeToEnd);

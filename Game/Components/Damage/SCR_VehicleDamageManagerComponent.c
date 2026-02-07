@@ -190,6 +190,9 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	protected ref array<SCR_FlammableHitZone>			m_aFlammableHitZones;
 	protected SignalsManagerComponent					m_SignalsManager;
 
+	// Vehicle fire
+	protected float									m_fVehicleFireDamageTimeout;
+
 	// Fuel tanks fire
 	protected ParticleEffectEntity					m_FuelTankFireParticle; // Burning fuel particle
 	protected FuelManagerComponent					m_FuelManager;
@@ -197,7 +200,6 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 
 	// Supplies fire
 	protected ParticleEffectEntity					m_SuppliesFireParticle; // Burning supplies particle
-	protected SCR_ResourceComponent					m_ResourceComponent;
 	protected float									m_fSuppliesFireDamageTimeout;
 
 	// Audio features
@@ -382,7 +384,6 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		m_Controller = CompartmentControllerComponent.Cast(owner.FindComponent(CompartmentControllerComponent));
 		m_Simulation = VehicleBaseSimulation.Cast(owner.FindComponent(VehicleBaseSimulation));
 		m_FuelManager = FuelManagerComponent.Cast(owner.FindComponent(FuelManagerComponent));
-		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(owner);
 		m_SignalsManager = SignalsManagerComponent.Cast(owner.FindComponent(SignalsManagerComponent));
 
 		if (m_SignalsManager)
@@ -1314,28 +1315,20 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 			return;
 
 		float fireRate;
-		float vehicleFireRate;
-		float fuelTankFireRate;
-		float suppliesFireRate;
-		foreach (SCR_FlammableHitZone hitZone : m_aFlammableHitZones)
-		{
-			if (hitZone.GetFireState() == EFireState.BURNING)
-				vehicleFireRate += hitZone.GetFireRate();
-		}
-
-		UpdateFuelTankFireState(vehicleFireRate, timeSlice);
-		UpdateSuppliesFireState(vehicleFireRate, timeSlice);
+		UpdateVehicleFireState(fireRate, timeSlice);
+		UpdateFuelTankFireState(fireRate, timeSlice);
+		UpdateSuppliesFireState(fireRate, timeSlice);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnVehicleFireStateChanged()
+	protected void OnVehicleFireStateChanged()
 	{
 		if (m_SignalsManager)
 			m_SignalsManager.SetSignalValue(m_iVehicleFireStateSignalIdx, m_eVehicleFireState);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetVehicleFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
+	protected void SetVehicleFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
 	{
 		if (m_eVehicleFireState == state)
 			return;
@@ -1348,7 +1341,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnFuelTankFireStateChanged()
+	protected void OnFuelTankFireStateChanged()
 	{
 		if (m_SignalsManager)
 			m_SignalsManager.SetSignalValue(m_iFuelTankFireStateSignalIdx, m_eFuelTankFireState);
@@ -1357,7 +1350,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetFuelTankFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
+	protected void SetFuelTankFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
 	{
 		if (m_eFuelTankFireState == state)
 			return;
@@ -1370,7 +1363,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnSuppliesFireStateChanged()
+	protected void OnSuppliesFireStateChanged()
 	{
 		if (m_SignalsManager)
 			m_SignalsManager.SetSignalValue(m_iSuppliesFireStateSignalIdx, m_eSuppliesFireState);
@@ -1379,7 +1372,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void SetSuppliesFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
+	protected void SetSuppliesFireState(SCR_ESecondaryExplosionScale state, vector origin = vector.Zero)
 	{
 		if (m_eSuppliesFireState == state)
 			return;
@@ -1392,7 +1385,29 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void UpdateFuelTankFireState(float fireRate, float timeSlice)
+	protected void UpdateVehicleFireState(out float fireRate, float timeSlice)
+	{
+		vector averagePosition = GetSecondaryExplosionPosition(SCR_FlammableHitZone, fireRate);
+
+		// Fire area damage
+		m_fVehicleFireDamageTimeout -= timeSlice;
+		if (m_fVehicleFireDamageTimeout < 0)
+		{
+			EntitySpawnParams spawnParams();
+			spawnParams.Transform[3] = averagePosition;
+			ResourceName fireDamage = GetSecondaryExplosion(fireRate, SCR_ESecondaryExplosionType.FUEL, fire: true);
+			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);
+
+			// Constant intervals for secondary damage
+			m_fVehicleFireDamageTimeout = m_fSecondaryFireDamageDelay;
+		}
+
+		SCR_ESecondaryExplosionScale vehicleFireState = GetSecondaryExplosionScale(fireRate, SCR_ESecondaryExplosionType.FUEL);
+		SetVehicleFireState(vehicleFireState, averagePosition);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	protected void UpdateFuelTankFireState(float fireRate, float timeSlice)
 	{
 		if (!m_FuelManager)
 		{
@@ -1412,40 +1427,46 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 			return;
 		}
 
-		float totalFuel = m_FuelManager.GetTotalFuel();
-		if (totalFuel <= 0)
+		float burningFuel;
+		vector averagePosition = GetSecondaryExplosionPosition(SCR_FuelHitZone, burningFuel);
+		if (float.AlmostEqual(burningFuel, 0))
 		{
 			SetFuelTankFireState(SCR_ESecondaryExplosionScale.NONE);
 			return;
 		}
 
-		vector averagePosition = GetSecondaryExplosionPosition(SCR_FuelHitZone);
-
 		// Fire area damage
-		float fuelTankDamage;
+		float fuelBurnRate;
 		m_fFuelTankFireDamageTimeout -= timeSlice;
 		if (m_fFuelTankFireDamageTimeout < 0)
 		{
 			EntitySpawnParams spawnParams();
 			spawnParams.Transform[3] = averagePosition;
-			ResourceName fireDamage = GetSecondaryExplosion(totalFuel / fireRate, SCR_ESecondaryExplosionType.FUEL, fire: true);
+			ResourceName fireDamage = GetSecondaryExplosion(burningFuel / fireRate, SCR_ESecondaryExplosionType.FUEL, fire: true);
 			SecondaryExplosion(fireDamage, GetInstigator(), spawnParams);
 
 			// Constant intervals for secondary damage
 			m_fFuelTankFireDamageTimeout = m_fSecondaryFireDamageDelay;
-			fuelTankDamage = fireRate * m_fSecondaryFireDamageDelay * m_fFuelTankFireDamageRate;
+			fuelBurnRate = fireRate * m_fSecondaryFireDamageDelay * m_fFuelTankFireDamageRate;
 		}
 
 		// Consume fuel
-		if (fuelTankDamage > 0)
+		if (fuelBurnRate > 0)
 		{
-			float totalCapacity = m_FuelManager.GetTotalMaxFuel();
-
+			SCR_FuelNode fuelTank;
+			float fuelLoss;
 			array<BaseFuelNode> fuelTanks = {};
 			m_FuelManager.GetFuelNodesList(fuelTanks);
-			foreach (BaseFuelNode fuelTank : fuelTanks)
+			foreach (BaseFuelNode fuelNode : fuelTanks)
 			{
-				fuelTank.SetFuel(fuelTank.GetFuel() - fuelTankDamage * (fuelTank.GetMaxFuel() / totalCapacity));
+				fuelTank = SCR_FuelNode.Cast(fuelNode);
+				if (!fuelTank)
+					continue;
+
+				// Burn fuel based on fuel tank health and amount of fuel vs burning fuel amount
+				fuelLoss = fuelBurnRate * (1 - fuelTank.GetHealth()) * fuelNode.GetFuel() / burningFuel;
+				if (fuelLoss > 0)
+					fuelTank.SetFuel(fuelTank.GetFuel() - fuelLoss);
 			}
 		}
 
@@ -1454,7 +1475,7 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void UpdateSuppliesFireState(float fireRate, float timeSlice)
+	protected void UpdateSuppliesFireState(float fireRate, float timeSlice)
 	{
 		if (fireRate <= 0)
 		{
@@ -1537,19 +1558,6 @@ class SCR_VehicleDamageManagerComponent : ScriptedDamageManagerComponent
 		}
 	}
 
-	//------------------------------------------------------------------------------------------------
-	override SCR_ResourceEncapsulator GetResourceEncapsulator(EResourceType suppliesType = EResourceType.SUPPLIES)
-	{
-		if (!m_ResourceComponent)
-			return null;
-
-		SCR_ResourceContainer container = m_ResourceComponent.GetContainer(suppliesType);
-		if (!container)
-			return null;
-
-		return container.GetResourceEncapsulator();
-	}
-	
 	//------------------------------------------------------------------------------------------------
 	float GetMinImpulse()
 	{

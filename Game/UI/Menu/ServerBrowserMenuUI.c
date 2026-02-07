@@ -61,7 +61,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 	protected WorkshopApi m_WorkshopApi;
 	protected ClientLobbyApi m_Lobby;
-	protected ref ServerDetailsMenuUI m_DetailsDialog = null;
+	protected ref ServerDetailsMenuUI m_DetailsDialog;
 	protected SCR_ConfigurableDialogUi m_ModListFailDialog;
 
 	// Privileges
@@ -109,17 +109,16 @@ class ServerBrowserMenuUI : MenuRootBase
 	// Reconnecting to last played server
 	protected ref ServerBrowserCallback m_CallbackSearchPreviousRoom = new ServerBrowserCallback();
 	protected ref SCR_GetRoomsIds m_SearchIds = new SCR_GetRoomsIds();
-	protected Room m_RejoinRoom = null;
+	protected Room m_RejoinRoom;
 
 	protected ref array<ref SCR_FilterEntry> m_aFiltersToSelect = {};
-	protected bool m_bIsCheckingSpecificfilter = false;
+	protected bool m_bIsCheckingSpecificfilter;
 
 	// Script invokers
 	ref ScriptInvoker m_OnAutoRefresh = new ScriptInvoker();
-	ref ScriptInvoker m_OnDependeciesLoad = new ScriptInvoker();
 	ref ScriptInvoker m_OnScenarioLoad = new ScriptInvoker();
-	ref ScriptInvoker m_OnEntryFocus = new ScriptInvoker();
-	ref ScriptInvoker m_OnFavoritesResponse = new ScriptInvoker();
+	
+	protected ref ScriptInvokerVoid m_OnFavoritesResponse = new ScriptInvokerVoid();
 	
 	protected static ref ScriptInvoker<> m_OnErrorMessageSet = new ScriptInvoker<>();
 
@@ -975,33 +974,26 @@ class ServerBrowserMenuUI : MenuRootBase
 			return;
 
 		Room room = serverEntry.GetRoomInfo();
-		if (room)
-		{
-			if (m_ServerEntry == serverEntry)
-				return;
-			m_ServerEntry = serverEntry;
-			m_RoomToJoin = room;
-		}
-		else
+		if (!room)
 		{
 			m_ServerEntry = null;
 			return;
 		}
+		
+		DisplayFavoriteAction(room.IsFavorite());
+		UpdateNavigationButtons();
+		serverEntry.m_OnClick.Insert(OnEntryMouseClick);
+		
+		if (m_ServerEntry == serverEntry)
+			return;
+		
+		m_ServerEntry = serverEntry;
+		m_RoomToJoin = room;
+
 		m_ModsManager.Clear();
 		m_ServerEntry.SetModsManager(m_ModsManager);
 
-		// Check restriction
-		bool canJoin = CanJoinRoom(m_RoomToJoin);
-
-		m_OnEntryFocus.Invoke(true, canJoin, true);
-
-		DisplayFavoriteAction(m_RoomToJoin.IsFavorite());
-
 		ReceiveRoomContent(m_RoomToJoin, true);
-
-		UpdateNavigationButtons();
-
-		m_ServerEntry.m_OnClick.Insert(OnEntryMouseClick);
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1009,13 +1001,11 @@ class ServerBrowserMenuUI : MenuRootBase
 	{
 		SCR_ServerBrowserEntryComponent serverEntry = SCR_ServerBrowserEntryComponent.Cast(entry);
 
-		// Invoke focus leave
-		m_OnEntryFocus.Invoke(false, false, false);
 		serverEntry.m_OnClick.Remove(OnEntryMouseClick);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void OnEntryMouseClick(SCR_ScriptedWidgetComponent button)
+	protected void OnEntryMouseClick(SCR_ScriptedWidgetComponent button)
 	{
 		m_ClickedEntry = SCR_ServerBrowserEntryComponent.Cast(button);
 	}
@@ -1032,11 +1022,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.DisplayRoomData(room, receiveMods);
-
-		// Check restriction
-		bool canJoin = CanJoinRoom(room);
-
-		m_OnEntryFocus.Invoke(true, canJoin, true);
 
 		// Allow check only if client is authorized to join server
 		if (!room.IsAuthorized())
@@ -1738,9 +1723,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		// setup of server detail
 		bool modsUpdated = outdated.IsEmpty();
 
-		// Invoke getting dependencies
-		m_OnDependeciesLoad.Invoke();
-
 		if (m_ServerScenarioDetails)
 			m_ServerScenarioDetails.DisplayMods();
 		
@@ -1757,8 +1739,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		
 		m_ModListFailDialog = SCR_CommonDialogs.CreateRequestErrorDialog();
 		m_ModListFailDialog.m_OnClose.Insert(OnModListFailDialogClose);
-		
-		m_OnDependeciesLoad.Invoke();
 	}
 	
 	//------------------------------------------------------------------------------------------------\
@@ -2268,29 +2248,6 @@ class ServerBrowserMenuUI : MenuRootBase
 		//Single click Join: Next step check password
 		else
 			JoinProcess_CheckRoomPasswordProtected(m_RoomToJoin);
-
-		m_Dialogs.GetOnCancel().Insert(OnJoinDialogsClose);
-	}
-
-	//------------------------------------------------------------------------------------------------
-	//! Call this to kill joining process at any stage
-	protected void OnJoinDialogsClose()
-	{
-		m_CallbackJoin = null;
-
-		// Clear mods manager callbacks
-		m_ModsManager.GetOnGetAllDependencies().Clear();
-		m_ModsManager.GetOnModsFail().Clear();
-		m_ModsManager.GetOnDependenciesLoadingPrevented().Remove(OnDependenciesLoadingPrevented);
-		m_ModsManager.GetOnGetScenario().Clear();
-
-		// Clear dialog
-		m_Dialogs.GetOnConfirm().Clear();
-		m_Dialogs.GetOnCancel().Clear();
-		m_Dialogs.GetOnDialogClose().Clear();
-		m_Dialogs.GetOnDownloadComplete().Clear();
-		m_Dialogs.GetOnDownloadCancelDialogClose().Clear();
-		m_Dialogs.GetOnJoinRoomDemand().Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -2356,7 +2313,7 @@ class ServerBrowserMenuUI : MenuRootBase
 	protected void JoinProcess_CheckRoomPasswordProtected(Room roomToJoin)
 	{
 		// Skip password if using direct join code or is invited
-		bool skipPassword = false;
+		bool skipPassword;
 
 		if (m_Lobby.GetInviteRoom() == m_RoomToJoin || m_RejoinRoom)
 			skipPassword = m_RoomToJoin.IsAuthorized();
@@ -2786,75 +2743,71 @@ class ServerBrowserMenuUI : MenuRootBase
 		GetGame().GetMenuManager().CloseAllMenus();
 		GetGame().GetBackendApi().GetWorkshop().Cleanup();
 
-		JoinProcess_CleanJoinCallback();
+		JoinProcess_Clear();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! Call this if joining to room was successful
-	//! Connect to the server
 	protected void JoinProcess_OnJoinFail(ServerBrowserCallback callback, int code, int restCode, int apiCode)
 	{
+		JoinProcess_Clear();
+		
+		if (!m_Dialogs)
+			return;
+		
 		// Server is full
 		if (apiCode == EApiCode.EACODE_ERROR_MP_ROOM_IS_FULL)
 		{
-			// Clear
-			JoinProcess_CleanJoinCallback();
-			
-			if (m_Dialogs)
-			{
-				m_Dialogs.SetJoinRoom(m_RoomToJoin);
-				m_Dialogs.GetOnJoinRoomDemand().Insert(JoinProcess_OnJoinRoomDemand);
+			m_Dialogs.SetJoinRoom(m_RoomToJoin);
+			m_Dialogs.GetOnJoinRoomDemand().Insert(JoinProcess_OnJoinRoomDemand);
 				
-				m_Dialogs.DisplayDialog(EJoinDialogState.QUEUE_WAITING);
-				GetGame().GetBackendApi().GetClientLobby().SetRefreshCallback(m_CallbackAutoRefresh);
-			}
+			m_Dialogs.DisplayDialog(EJoinDialogState.QUEUE_WAITING);
+			GetGame().GetBackendApi().GetClientLobby().SetRefreshCallback(m_CallbackAutoRefresh);
+			
 			return;
 		}
 		
-		// Fail dialog
-		if (m_Dialogs)
-		{
-			m_Dialogs.CloseCurrentDialog();
-			
-			// Banned
-			if (!m_JoinData.scope.IsEmpty())
-				m_Dialogs.DisplayJoinBan(m_JoinData);
-			else
-				m_Dialogs.DisplayJoinFail(apiCode);
-		}
-
-		// Try password again
-		if (m_RoomToJoin.PasswordProtected())
-			JoinProcess_PasswordDialogOpen();
-
-		JoinProcess_CleanJoinCallback();
+		// Banned
+		if (!m_JoinData.scope.IsEmpty())
+			m_Dialogs.DisplayJoinBan(m_JoinData);
+		// Generic
+		else
+			m_Dialogs.DisplayJoinFail(apiCode);
 	}
 
 	//------------------------------------------------------------------------------------------------
 	//! Call this if joining to room has timeout
 	protected void JoinProcess_OnJoinTimeout(ServerBrowserCallback callback)
 	{
-		// TODO@wernerjak - add proper time out feedback dialog
-		PrintDebug("join timeout in ServerBrowserMenuUI", "JoinProcess_OnJoinTimeout");
-
-		JoinProcess_CleanJoinCallback();
+		JoinProcess_Clear();
+		SCR_CommonDialogs.CreateTimeoutOkDialog();
 	}
 
 	//------------------------------------------------------------------------------------------------
-	protected void JoinProcess_CleanJoinCallback()
+	//! Call this to kill joining process at any stage
+	protected void JoinProcess_Clear()
 	{
 		m_CallbackJoin = null;
-
-		// Dialogs
-		m_Dialogs.GetOnJoinRoomDemand().Remove(JoinProcess_OnJoinRoomDemand);
-		m_Dialogs.GetOnCancel().Remove(JoinProcess_CleanJoinCallback);
-
-		m_Dialogs.GetOnCancel().Remove(OnJoinDialogsClose);
 		
 		ClientLobbyApi lobby = GetGame().GetBackendApi().GetClientLobby();
 		lobby.ClearInviteRoom();
-	}
 
+		// Clear mods manager callbacks
+		m_ModsManager.GetOnGetAllDependencies().Clear();
+		m_ModsManager.GetOnModsFail().Clear();
+		m_ModsManager.GetOnDependenciesLoadingPrevented().Clear();
+		m_ModsManager.GetOnGetScenario().Clear();
+
+		// Clear dialog
+		m_Dialogs.GetOnConfirm().Clear();
+		m_Dialogs.GetOnCancel().Clear();
+		m_Dialogs.GetOnDialogClose().Clear();
+		m_Dialogs.GetOnDownloadComplete().Clear();
+		m_Dialogs.GetOnDownloadCancelDialogClose().Clear();
+		m_Dialogs.GetOnJoinRoomDemand().Clear();
+		
+		// TODO: remove specific subscriptions instead of clearing!
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	//! Open joining dialog in default state
 	protected void SetupJoinDialogs()
@@ -2869,7 +2822,7 @@ class ServerBrowserMenuUI : MenuRootBase
 
 		// Invokers
 		m_Dialogs.GetOnDownloadComplete().Clear();
-		m_Dialogs.GetOnCancel().Insert(JoinProcess_CleanJoinCallback);
+		m_Dialogs.GetOnCancel().Insert(JoinProcess_Clear);
 
 		m_CallbackLastSearch = null;
 	}

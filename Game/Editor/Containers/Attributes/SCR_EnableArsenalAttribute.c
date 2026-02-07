@@ -1,26 +1,6 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
-{
-	//------------------------------------------------------------------------------------------------
-	//~ Get first arsenal component on child
-	protected SCR_ArsenalComponent GetArsenalFromChildren(IEntity parent)
-	{
-		IEntity child = parent.GetChildren();
-		SCR_ArsenalComponent arsenalComponent;
-		
-		while (child)
-		{
-			arsenalComponent = SCR_ArsenalComponent.Cast(child.FindComponent(SCR_ArsenalComponent));
-			if (arsenalComponent)
-				return arsenalComponent;
-			
-			child = child.GetSibling();
-		}
-		
-		//~ Not found
-		return null;
-	}
-	
+{	
 	//------------------------------------------------------------------------------------------------
 	override void UpdateInterlinkedVariables(SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, bool isInit = false)
 	{		
@@ -57,7 +37,7 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		{
 			//~ If vehicle check if arsenal is on children
 			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = GetArsenalFromChildren(editableEntity.GetOwner());
+				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
 			
 			if (!arsenalComponent)
 				return null;
@@ -81,7 +61,7 @@ class SCR_EnableArsenalAttribute : SCR_BaseEditorAttribute
 		{
 			//~ If vehicle check if arsenal is on children
 			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = GetArsenalFromChildren(editableEntity.GetOwner());
+				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
 				
 			if (!arsenalComponent)
 				return;

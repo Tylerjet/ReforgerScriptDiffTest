@@ -450,7 +450,7 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 	*/
 	protected void ApplyFireDamage(float fireRate, float deltaTime)
 	{
-		if (fireRate < m_fFireDamageRateMin || GetDamageState() == EDamageState.DESTROYED)
+		if (fireRate < m_fFireDamageRateMin)
 		{
 			SetDamageOverTime(EDamageType.FIRE, 0);
 			return;
@@ -769,5 +769,11 @@ class SCR_FlammableHitZone : SCR_DestructibleHitzone
 		}
 
 		m_aLightEntities = null;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override float GetSecondaryExplosionScale()
+	{
+		return GetDamageOverTime(EDamageType.FIRE);
 	}
 }

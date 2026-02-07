@@ -201,7 +201,7 @@ class SCR_CampaignFastTravelComponent : SCR_FastTravelComponent
 		SCR_CampaignFeedbackComponent feedbackComp = SCR_CampaignFeedbackComponent.GetInstance();
 
 		if (feedbackComp)
-			feedbackComp.ShowHint(EHint.CONFLICT_TRANSPORT_PICKUP, true);
+			feedbackComp.ShowHint(EHint.CONFLICT_TRANSPORT_PICKUP, true, true);
 
 		ToggleDestinationSelection(true);
 

@@ -68,6 +68,9 @@ class SCR_HealingUserAction : ScriptedUserAction
 		if (!damageMan || damageMan.GetState() == EDamageState.DESTROYED)
 			return false;
 		
+		if (damageMan.GetGroupIsBeingHealed(m_eHitZoneGroup))
+			return false;
+		
 		return true;
 	}
 	
@@ -114,8 +117,10 @@ class SCR_HealingUserAction : ScriptedUserAction
 		SCR_CharacterDamageManagerComponent targetDamageMan = SCR_CharacterDamageManagerComponent.Cast(targetCharacter.GetDamageManager());
 		if (!targetDamageMan)
 			return;
+		
 		SCR_ConsumableEffectAnimationParameters animationParameters = new SCR_ConsumableEffectAnimationParameters(desiredCmd, 1, 0.0, 
 			consumableEffect.GetApplyToOtherDuraction(), targetDamageMan.FindAssociatedBandagingBodyPart(m_eHitZoneGroup), 0.0, false);
+		
 		consumableEffect.ActivateEffect(pOwnerEntity, pUserEntity, item, animationParameters);
 	}
 	

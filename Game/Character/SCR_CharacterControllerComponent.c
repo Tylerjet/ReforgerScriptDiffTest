@@ -26,7 +26,7 @@ typedef func OnLifeStateChanged;
 typedef ScriptInvokerBase<OnLifeStateChanged> OnLifeStateChangedInvoker;
 
 //------------------------------------------------------------------------------------------------
-void OnItemUseBegan(IEntity item);
+void OnItemUseBegan(IEntity item, SCR_ConsumableEffectAnimationParameters animParams);
 typedef func OnItemUseBegan;
 typedef ScriptInvokerBase<OnItemUseBegan> OnItemUseBeganInvoker;
 
@@ -146,7 +146,12 @@ class SCR_CharacterControllerComponent : CharacterControllerComponent
 
 	//------------------------------------------------------------------------------------------------
 	//! Will be called when item use action is started
-	override void OnItemUseBegan(IEntity item) { m_OnItemUseBeganInvoker.Invoke(item); };
+	override void OnItemUseBegan(IEntity item, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam) 
+	{
+		// Animation duration is not returned.
+		SCR_ConsumableEffectAnimationParameters animParams = new SCR_ConsumableEffectAnimationParameters(cmdID, cmdIntArg, cmdFloatArg, -1.0, intParam, floatParam, boolParam);
+		m_OnItemUseBeganInvoker.Invoke(item, animParams);
+	};
 	//! Will be called when item use action is complete
 	override void OnItemUseEnded(IEntity item, bool successful, int cmdID, int cmdIntArg, float cmdFloatArg, int intParam, float floatParam, bool boolParam)
 	{

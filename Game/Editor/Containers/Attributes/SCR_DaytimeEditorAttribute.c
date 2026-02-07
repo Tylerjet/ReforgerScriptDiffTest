@@ -29,13 +29,17 @@ class SCR_DaytimeEditorAttribute: SCR_BaseValueListEditorAttribute
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
-		if (!var || !item) return;
-
-		GenericEntity ent = GenericEntity.Cast(item);
-		if (!ent)
+		if (!var) 
 			return;
-
-		ChimeraWorld world = ent.GetWorld();
+		
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+		
+		ChimeraWorld world = ChimeraWorld.CastFrom(gameMode.GetWorld());
+		if (!world)
+			return;
+		
 		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager)
 			return;

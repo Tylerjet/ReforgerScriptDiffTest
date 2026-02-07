@@ -25,6 +25,7 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 	protected Widget m_wDpadActionWidgetRightMenu;
 	protected Widget m_wDpadActionWidgetToolMenu;
 	protected Widget m_wMapToolWidget;
+	protected Widget m_wLoadoutSelector;
 	protected SCR_MapToolMenuUI m_MapToolMenuUI;
 	protected SCR_DeployMenuMain m_DeployMenu;
 	
@@ -99,16 +100,25 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 	//------------------------------------------------------------------------------------------------
 	protected void OnInputDeviceIsGamepad(bool isGamepad)
 	{
+		SCR_LoadoutGallery gallery = SCR_LoadoutGallery.Cast(m_wLoadoutSelector.FindHandler(SCR_LoadoutGallery));
+		if (!gallery)
+			return;
+		
 		//Disable all widgets and have them enabled through DPAD interactions, if on gamepad.
 		if (isGamepad)
 		{
-			EnableWidget(m_wOwner, !isGamepad);
+			gallery.EnablePagingInputListeners(false);
+			gallery.SetGalleryFocused(false);
+			gallery.GetOnFocusChange().Insert(gallery.EnablePagingInputListeners);
+			
 			EnableWidget(m_wMapToolWidget, !isGamepad);
 			return;
 		}
-
+		
+		gallery.GetOnFocusChange().Remove(gallery.EnablePagingInputListeners);
+		gallery.EnablePagingInputListeners(true);
+		
 		GetGame().GetWorkspace().SetFocusedWidget(null);
-		EnableWidget(m_wOwner, true);
 		EnableWidget(m_wMapToolWidget, true);
 		ShowControlHints(m_wOwner, false);
 		ShowControlHints(m_wMapToolWidget, false);
@@ -126,6 +136,12 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		m_wMapToolWidget = m_wRoot.FindAnyWidget(m_sMapToolMenu);
 		if (!m_wMapToolWidget)
 			return;
+		
+		Widget widget = m_wRoot.FindAnyWidget("LoadoutSelector");
+		if (!widget)
+			return;
+		
+		m_wLoadoutSelector = widget.FindAnyWidget("Selector");
 		
 		m_wDpadActionWidgetToolMenu = m_wMapToolWidget.FindAnyWidget("Action");
 		m_MapToolMenuUI = SCR_MapToolMenuUI.Cast(SCR_MapEntity.GetMapInstance().GetMapUIComponent(SCR_MapToolMenuUI));
@@ -182,7 +198,6 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		if (!m_wDefaultFocusWidget)
 			return;
 
-		EnableWidget(m_wOwner, true);
 		ShowDpadWidgets(false);
 		ShowControlHints(m_wOwner, true);
 		
@@ -231,7 +246,6 @@ class SCR_RespawnMenuWidgetHandler : ScriptedWidgetComponent
 		
 		ShowDpadWidgets(true);
 		ShowControlHints(m_wOwner, false);
-		EnableWidget(m_wOwner, false);
 		
 		if (m_DeployMenu)
 			m_DeployMenu.AllowMapContext(true);

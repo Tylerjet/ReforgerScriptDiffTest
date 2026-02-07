@@ -1,25 +1,6 @@
 [BaseContainerProps(), SCR_BaseEditorAttributeCustomTitle()]
 class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribute
-{
-	//~ Get first arsenal component on child
-	protected SCR_ArsenalComponent GetArsenalFromChildren(IEntity parent)
-	{
-		IEntity child = parent.GetChildren();
-		SCR_ArsenalComponent arsenalComponent;
-		
-		while (child)
-		{
-			arsenalComponent = SCR_ArsenalComponent.Cast(child.FindComponent(SCR_ArsenalComponent));
-			if (arsenalComponent)
-				return arsenalComponent;
-			
-			child = child.GetSibling();
-		}
-		
-		//~ Not found
-		return null;
-	}
-	
+{	
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
@@ -31,7 +12,7 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		{
 			//~ If vehicle check if arsenal is on children
 			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = GetArsenalFromChildren(editableEntity.GetOwner());
+				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
 			
 			if (!arsenalComponent)
 				return null;
@@ -69,7 +50,7 @@ class SCR_ArsenalAmmunitionModeAttribute : SCR_BaseFloatValueHolderEditorAttribu
 		{
 			//~ If vehicle check if arsenal is on children
 			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-				arsenalComponent = GetArsenalFromChildren(editableEntity.GetOwner());
+				arsenalComponent = SCR_ArsenalComponent.GetArsenalComponentFromChildren(editableEntity.GetOwner());
 				
 			if (!arsenalComponent)
 				return;

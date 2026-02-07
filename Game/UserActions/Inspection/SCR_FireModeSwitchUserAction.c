@@ -6,6 +6,9 @@ class SCR_FireModeSwitchUserAction : SCR_InspectionUserAction
 			return false;
 		
 		BaseMuzzleComponent muzzle = m_WeaponComponent.GetCurrentMuzzle();
+		// Only show fire mode selection for current muzzle
+		if (GetOwner() != muzzle.GetOwner())
+			return false;
 		return muzzle && muzzle.GetFireModesCount() > 2;
 	}
 
@@ -18,6 +21,7 @@ class SCR_FireModeSwitchUserAction : SCR_InspectionUserAction
 			return;
 		
 		CharacterControllerComponent charComp = CharacterControllerComponent.Cast(pUserEntity.FindComponent(CharacterControllerComponent));
+		charComp.SetSafety(false, false);
 		charComp.SetFireMode(muzzle.GetNextFireModeIndex());
 	}
 };

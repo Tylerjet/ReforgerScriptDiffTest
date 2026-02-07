@@ -742,13 +742,13 @@ class SCR_RadialMenuInputs : SCR_SelectionMenuInputs
 		InputManager inputManager = GetGame().GetInputManager();
 		if (m_bUseRightStick)
 		{
-			inputManager.ActivateContext(RADIAL_RIGHT_CONTEXT);
+			inputManager.ActivateContext(RADIAL_RIGHT_CONTEXT, m_iGamepadDeselectionDelay);
 			x = inputManager.GetActionValue(DEFAULT_RADIAL_RIGHT_X);
 			y = inputManager.GetActionValue(DEFAULT_RADIAL_RIGHT_Y);
 		}
 		else
 		{
-			inputManager.ActivateContext(RADIAL_LEFT_CONTEXT);
+			inputManager.ActivateContext(RADIAL_LEFT_CONTEXT, m_iGamepadDeselectionDelay);
 			x = inputManager.GetActionValue(DEFAULT_RADIAL_LEFT_X);
 			y = inputManager.GetActionValue(DEFAULT_RADIAL_LEFT_Y);
 		}

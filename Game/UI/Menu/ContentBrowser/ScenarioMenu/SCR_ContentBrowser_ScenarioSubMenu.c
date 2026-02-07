@@ -178,7 +178,7 @@ class SCR_ContentBrowser_ScenarioSubMenu : SCR_ContentBrowser_ScenarioSubMenuBas
 
 			SCR_WorkshopItem scriptedItem = SCR_AddonManager.GetInstance().GetItem(addon.Id());
 
-			if (!addon.IsEnabled() || !scriptedItem || scriptedItem.GetAnyDependencyMissing())
+			if (scriptedItem && scriptedItem.GetAnyDependencyMissing())
 				missionItemsAll.Remove(i);
 		}
 

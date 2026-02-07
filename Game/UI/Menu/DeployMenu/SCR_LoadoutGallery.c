@@ -6,7 +6,63 @@ class SCR_LoadoutGallery : SCR_GalleryComponent
 
 	protected ref ScriptInvoker<SCR_LoadoutButton> m_OnLoadoutClicked;
 	protected ref ScriptInvoker<SCR_BasePlayerLoadout> m_OnLoadoutHovered;
-
+	protected ref ScriptInvokerBool m_OnFocusChange = new ScriptInvokerBool();
+	protected bool m_bFocused;
+	
+	override void HandlerAttached(Widget w)
+	{
+		super.HandlerAttached(w);
+		EnablePagingInputListeners(false);
+	}
+	
+	ScriptInvokerBool GetOnFocusChange()
+	{
+		return m_OnFocusChange;
+	}
+	
+	void SetGalleryFocused(bool focused)
+	{
+		Widget focusedWidget = GetGame().GetWorkspace().GetFocusedWidget();
+		if (m_bFocused && (focusedWidget && focusedWidget.IsInherited(SCR_LoadoutButton)))
+			return;
+		
+		m_bFocused = focused;
+		m_OnFocusChange.Invoke(m_bFocused);
+	}
+	
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		super.OnFocus(w, x, y);
+		SetGalleryFocused(true);
+		
+		return false;
+	}
+	
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		super.OnFocusLost(w, x, y);
+		SetGalleryFocused(false);
+		
+		return false;
+	}
+	
+	bool GetFocused()
+	{
+		return m_bFocused;
+	}
+	
+	void EnablePagingInputListeners(bool enable)
+	{	
+		GetGame().GetInputManager().RemoveActionListener(m_sActionLeft, EActionTrigger.DOWN, OnCustomLeft);
+		GetGame().GetInputManager().RemoveActionListener(m_sActionRight, EActionTrigger.DOWN, OnCustomRight);
+		
+		if (!enable)
+			return;
+		
+		GetGame().GetInputManager().AddActionListener(m_sActionLeft, EActionTrigger.DOWN, OnCustomLeft);
+		GetGame().GetInputManager().AddActionListener(m_sActionRight, EActionTrigger.DOWN, OnCustomRight);
+	}
+	
 	int AddItem(SCR_BasePlayerLoadout loadout, bool enabled = true)
 	{
 		Widget loadoutEntry = GetGame().GetWorkspace().CreateWidgets(m_sLoadoutButton);

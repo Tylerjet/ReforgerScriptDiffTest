@@ -28,6 +28,7 @@ class Vehicle : BaseVehicle
 	SCR_VehicleFactionAffiliationComponent m_pFactionComponent;
 	protected SCR_WaterPhysicsComponent m_WaterPhysics;
 	protected BaseControllerComponent m_VehicleController;
+	protected SCR_ResourceComponent m_ResourceComponent;
 	
 	//------------------------------------------------------------------------------------------------
 	ScriptInvoker GetOnPhysicsActive()
@@ -123,6 +124,18 @@ class Vehicle : BaseVehicle
 	}
 
 	//------------------------------------------------------------------------------------------------
+	SCR_ResourceComponent GetResourceComponent()
+	{
+		return m_ResourceComponent;
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void UpdateResourceComponent()
+	{
+		m_ResourceComponent = SCR_ResourceComponent.FindResourceComponent(this);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void Vehicle(IEntitySource src, IEntity parent)
 	{
 		SetEventMask(EntityEvent.PHYSICSACTIVE);
@@ -138,5 +151,6 @@ class Vehicle : BaseVehicle
 
 		m_pFactionComponent = SCR_VehicleFactionAffiliationComponent.Cast(FindComponent(SCR_VehicleFactionAffiliationComponent));
 		m_WaterPhysics = SCR_WaterPhysicsComponent.Cast(FindComponent(SCR_WaterPhysicsComponent));
+		UpdateResourceComponent();
 	}
 };

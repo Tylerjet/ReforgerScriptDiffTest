@@ -17,7 +17,6 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	// Update interval of group perception and target clusters and their processing
 	protected const float PERCEPTION_UPDATE_TIMER_MS = 2000.0;
 	
-	protected bool m_bRestartActivity;
 	protected bool m_bNewGroupMemberAdded;
 	protected ref SCR_AIActionBase m_CurrentActivity;
 	
@@ -39,6 +38,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 	SCR_AIActionBase EvaluateActivity(out bool restartActivity)
 	{
 		ref SCR_AIActionBase activity;
+		restartActivity = false;
 		
 		if (!m_ConfigComponent)
 			return null;
@@ -109,30 +109,21 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		#endif
 		
 		if (activity && (!m_CurrentActivity || (m_CurrentActivity != activity && m_CurrentActivity.IsActionInterruptable())))
+			restartActivity = true;
+		else if (m_bNewGroupMemberAdded && activity)
+			restartActivity = true;
+			
+		if (restartActivity)
 		{
 			SetCurrentAction(activity);
 			UpdateGroupControlMode(activity);
 			m_CurrentActivity = activity;
-			m_bRestartActivity = true;
-			if (m_bNewGroupMemberAdded)
-				m_bNewGroupMemberAdded = false;
 			
 #ifdef WORKBENCH
 			if (DiagMenu.GetBool(SCR_DebugMenuID.DEBUGUI_AI_PRINT_ACTIVITY))
 				PrintFormat("Agent %1 activity %2",m_Owner,m_CurrentActivity.GetActionDebugInfo());
-#endif				
+#endif
 		}
-		else
-		{
-			if (m_bNewGroupMemberAdded)
-			{
-				m_bRestartActivity = true;
-				m_bNewGroupMemberAdded = false;
-			}
-			else
-				m_bRestartActivity = false;
-		}
-		restartActivity = m_bRestartActivity;
 		
 		#ifdef AI_DEBUG
 		AddDebugMessage("EvaluateActivity END\n");
@@ -159,6 +150,7 @@ class SCR_AIGroupUtilityComponent : SCR_AIBaseUtilityComponent
 		}
 			
 		m_fLastUpdateTime = currentTime;
+		m_bNewGroupMemberAdded = false; // resetting reaction on group member added
 		
 		return m_CurrentActivity;
 	}

@@ -425,6 +425,7 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		}
 		
 		m_aNameTags.Clear();
+		m_aNameTagEntities.Clear();
 	} 
 		
 	//------------------------------------------------------------------------------------------------
@@ -490,6 +491,13 @@ class SCR_NameTagDisplay : SCR_InfoDisplayExtended
 		{
 			DbgUI.Text("groupID: " + m_CurrentPlayerTag.m_iGroupID.ToString());
 		}
+		
+		string line =  "name: %1 | distance: %2 | opacity base: %3 | opacity fade: %4 | %5";
+		foreach ( SCR_NameTagData tag : m_aNameTags )
+		{
+			DbgUI.Text( string.Format( line, tag.m_sName, (int)tag.m_fDistance, tag.m_fVisibleOpacity, tag.m_fOpacityFade, tag.m_NameTagWidget.GetOpacity() ));
+		}
+		
 		DbgUI.End();
 	}
 	

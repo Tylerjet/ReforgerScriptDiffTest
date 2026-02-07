@@ -178,7 +178,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 	//------------------------------------------------------------------------------------------------
 
 	//------------------------------------------------------------------------------------------------
-	static SCR_ServerDetailsDialog CreateServerDetailsDialog(Room room, array<ref SCR_WorkshopItem> items, string preset, ResourceName dialogsConfig = "", ScriptInvoker onFavoritesResponse = null)
+	static SCR_ServerDetailsDialog CreateServerDetailsDialog(Room room, array<ref SCR_WorkshopItem> items, string preset, ResourceName dialogsConfig = "", ScriptInvokerVoid onFavoritesResponse = null)
 	{
 		if (dialogsConfig == "")
 			dialogsConfig = SCR_WorkshopUiCommon.DIALOGS_CONFIG;
@@ -194,9 +194,7 @@ class SCR_ServerDetailsDialog : SCR_AddonListDialog
 
 		//! Favorites button
 		if (onFavoritesResponse)
-		{
 			onFavoritesResponse.Insert(dialog.OnRoomSetFavoriteResponseDialog);
-		}
 
 		dialog.DisplayFavoriteAction(s_Room.IsFavorite());
 		dialog.UpdateDetailIcons();

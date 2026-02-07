@@ -12,6 +12,7 @@ class SCR_BuildingTutorialStage12: SCR_BaseCampaignTutorialArlandStage
 	{
 		m_fDuration = 10;
 		m_bCheckWaypoint = false;
+		m_bConditionPassCheck = true;
 		m_PlayerInventory = SCR_CharacterInventoryStorageComponent.Cast(m_Player.FindComponent(SCR_CharacterInventoryStorageComponent));
 		
 		SCR_HintManagerComponent.ShowHint(m_TutorialHintList.GetHint(m_TutorialComponent.GetStage()));

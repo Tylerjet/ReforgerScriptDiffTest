@@ -10,6 +10,39 @@ class SCR_BaseSupportStationEnableEditorAttribute : SCR_BaseEditorAttribute
 	}
 	
 	//------------------------------------------------------------------------------------------------
+	protected SCR_BaseSupportStationComponent GetSupportStationFromSlottedVehicleEntities(IEntity parent)
+	{
+		SlotManagerComponent slotManager = SlotManagerComponent.Cast(parent.FindComponent(SlotManagerComponent));
+		if (!slotManager)
+			return null;
+		
+		array<EntitySlotInfo> slotInfos = {};
+		slotManager.GetSlotInfos(slotInfos);
+		IEntity slotEntity;
+		
+		SCR_BaseSupportStationComponent supportStation;
+		
+		foreach (EntitySlotInfo slotInfo : slotInfos)
+		{
+			slotEntity = slotInfo.GetAttachedEntity();
+			if (!slotEntity)
+				continue;
+			
+			supportStation = SCR_BaseSupportStationComponent.Cast(slotEntity.FindComponent(SCR_BaseSupportStationComponent));
+			if (supportStation)
+			{
+				if (IsValidSupportStation(supportStation.GetSupportStationType()))
+					return supportStation;
+				else 
+					supportStation = null;
+			}
+		}
+		
+		//~ Not found
+		return supportStation;
+	}
+	
+	//------------------------------------------------------------------------------------------------
 	override SCR_BaseEditorAttributeVar ReadVariable(Managed item, SCR_AttributesManagerEditorComponent manager)
 	{					
 		SCR_EditableEntityComponent editableEntity = SCR_EditableEntityComponent.Cast(item);
@@ -20,28 +53,9 @@ class SCR_BaseSupportStationEnableEditorAttribute : SCR_BaseEditorAttribute
 		if (supportStation && !IsValidSupportStation(supportStation.GetSupportStationType()))
 			supportStation = null;
 		
-		if (!supportStation)
-		{
-			//~ If vehicle check if supportStation is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-			{
-				IEntity child = editableEntity.GetOwner().GetChildren();
-				
-				while (child)
-				{
-					supportStation = SCR_BaseSupportStationComponent.Cast(child.FindComponent(SCR_BaseSupportStationComponent));
-					if (supportStation)
-					{
-						if (IsValidSupportStation(supportStation.GetSupportStationType()))
-							break;
-						else 
-							supportStation = null;
-					}
-
-					child = child.GetSibling();
-				}
-			}
-		}
+		//~ If vehicle check if supportStation is on slotted entities
+		if (!supportStation && editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
+			supportStation = GetSupportStationFromSlottedVehicleEntities(editableEntity.GetOwner());
 		
 		if (!supportStation)
 			return null;
@@ -62,28 +76,9 @@ class SCR_BaseSupportStationEnableEditorAttribute : SCR_BaseEditorAttribute
 		if (supportStation && !IsValidSupportStation(supportStation.GetSupportStationType()))
 			supportStation = null;
 		
-		if (!supportStation)
-		{
-			//~ If vehicle check if supportStation is on children
-			if (editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
-			{
-				IEntity child = editableEntity.GetOwner().GetChildren();
-				
-				while (child)
-				{
-					supportStation = SCR_BaseSupportStationComponent.Cast(child.FindComponent(SCR_BaseSupportStationComponent));
-					if (supportStation)
-					{
-						if (IsValidSupportStation(supportStation.GetSupportStationType()))
-							break;
-						else 
-							supportStation = null;
-					}
-					
-					child = child.GetSibling();
-				}
-			}
-		}
+		//~ If vehicle check if supportStation is on slotted entities
+		if (!supportStation && editableEntity.GetEntityType() == EEditableEntityType.VEHICLE)
+			supportStation = GetSupportStationFromSlottedVehicleEntities(editableEntity.GetOwner());
 		
 		if (!supportStation)
 			return;

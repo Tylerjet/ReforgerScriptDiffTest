@@ -76,6 +76,7 @@ class SCR_ConsumableEffectBase : Managed
 
 	SCR_EConsumableType m_eConsumableType;
 	
+	//------------------------------------------------------------------------------------------------
 	bool ActivateEffect(IEntity target, IEntity user, IEntity item, SCR_ConsumableEffectAnimationParameters animParams = null)
 	{
 		ChimeraCharacter character = ChimeraCharacter.Cast(user);
@@ -118,7 +119,7 @@ class SCR_ConsumableEffectBase : Managed
 	{}
 	
 	//------------------------------------------------------------------------------------------------
-	SCR_ConsumableEffectAnimationParameters GetAnimationParameters(IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	SCR_ConsumableEffectAnimationParameters GetAnimationParameters(notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
 		return new SCR_ConsumableEffectAnimationParameters(GetApplyToSelfAnimCmnd(target), 1, 0, m_fApplyToSelfDuration, 0, 0, false);
 	}

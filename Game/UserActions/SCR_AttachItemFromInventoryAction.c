@@ -57,7 +57,7 @@ class SCR_AttachItemFromInventoryAction : SCR_InventoryAction
 	
 	//------------------------------------------------------------------------------------------------
 	override bool CanBeShownScript(IEntity user)
-	{		
+	{	
 		if (!m_ItemComponent)
 			return false;
 
@@ -100,6 +100,27 @@ class SCR_AttachItemFromInventoryAction : SCR_InventoryAction
 				result = m_InventoryManager.CanSwapItemStorages(GetOwner(), existingAttachment);
 		}
 
+		if (!result)
+		{
+			// When we get here, it can still be a grenade to be inserted into an attached muzzle
+			BaseMuzzleComponent muzzleComp = m_WeaponComponent.GetCurrentMuzzle();
+			auto xstorage = WeaponAttachmentsStorageComponent.Cast(muzzleComp.GetOwner().FindComponent(WeaponAttachmentsStorageComponent));
+			if (!xstorage)
+				return false;
+			result = m_InventoryManager.CanMoveItemToStorage(GetOwner(), xstorage, -1);
+			if (!result)
+			{
+				IEntity existingAttachment = xstorage.Get(0);
+				if (existingAttachment)
+				{
+					if (existingAttachment == GetOwner())
+						result = false;
+					else
+						result = m_InventoryManager.CanSwapItemStorages(GetOwner(), existingAttachment);
+				}
+			}
+		}
+		
 		return result;
 	}	
 	

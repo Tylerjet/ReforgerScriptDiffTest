@@ -236,6 +236,9 @@ class SCR_ScenarioFrameworkSlotBase : SCR_ScenarioFrameworkLayerBase
 		if (m_bIsTerminated)
 			return;
 		
+		if (m_OnAllChildrenSpawned)
+			m_OnAllChildrenSpawned.Remove(DynamicDespawn);
+		
 		if (!m_ParentLayer)
 		{
 			IEntity entity = GetOwner().GetParent();

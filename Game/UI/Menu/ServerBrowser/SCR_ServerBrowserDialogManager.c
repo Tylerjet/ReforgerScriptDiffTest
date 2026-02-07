@@ -396,6 +396,8 @@ class SCR_ServerBrowserDialogManager
 	//! Show join fail message in dialog
 	void DisplayJoinFail(EApiCode apiError)
 	{
+		CloseCurrentDialog();
+		
 		string errorTag = ERROR_TAG_DEFAULT;
 
 		// TODO@wernerjak - setup dialogs
@@ -409,12 +411,6 @@ class SCR_ServerBrowserDialogManager
 			//case EApiCode.EACODE_ERROR_MAINTENANCE_IN_PROGRESS: errorTag = "JOIN_FAILED_MAITANANCE"; break;
 			//case EApiCode.EACODE_ERROR_MP_ROOM_IS_NOT_JOINABLE: errorTag = "JOIN_FAILED_NOT_JOINABLE"; break;
 		}
-
-		/*
-		Player banned from session
-
-
-		*/
 
 		SetDialogByTag(errorTag);		
 		
@@ -433,6 +429,8 @@ class SCR_ServerBrowserDialogManager
 	//------------------------------------------------------------------------------------------------
 	void DisplayJoinBan(RoomJoinData data)
 	{	
+		CloseCurrentDialog();
+		
 		SetDialogByTag(TAG_BANNED);
 		
 		if (!m_CurrentDialog)
@@ -622,7 +620,7 @@ class SCR_ServerBrowserDialogManager
 	}
 
 	//------------------------------------------------------------------------------------------------
-	SCR_ServerDetailsDialog CreateServerDetailsDialog(Room room, array<ref SCR_WorkshopItem> items, ScriptInvoker onFavoritesResponse = null)
+	SCR_ServerDetailsDialog CreateServerDetailsDialog(Room room, array<ref SCR_WorkshopItem> items, ScriptInvokerVoid onFavoritesResponse = null)
 	{
 		SCR_ServerDetailsDialog dialog = SCR_ServerDetailsDialog.CreateServerDetailsDialog(room, items, "SERVER_DETAILS", CONFIG_DIALOGS, onFavoritesResponse);
 		m_CurrentDialog = dialog;

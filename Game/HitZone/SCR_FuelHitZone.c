@@ -83,7 +83,14 @@ class SCR_FuelHitZone : SCR_DestructibleHitzone
 	//! Get secondary explosion desired scale. It will determine the prefab retrieved from secondary explosion config.
 	override float GetSecondaryExplosionScale()
 	{
+		// Truck addon fuel cargo that does not have its own health
+		float damage;
+		if (GetBaseDamageMultiplier() == 0 && GetHitZoneContainer().GetDefaultHitZone() == this)
+			damage = 1;
+		else
+		 	damage = 1 - GetDamageStateThreshold(GetDamageState());
+
 		// TODO: Curve based on fuel to air ratio
-		return m_FuelTank.GetFuel();
+		return m_FuelTank.GetFuel() * damage;
 	}
 }

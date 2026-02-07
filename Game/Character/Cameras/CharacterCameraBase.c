@@ -203,14 +203,19 @@ class CharacterCameraBase extends ScriptedCameraItem
 		if (!vehicle)
 			return;
 		
+		vector vehMat[4];
+		vehicle.GetTransform(vehMat);
+
 		// Compensate for roll after camera is updated
-		vector yawPitchRoll = vehicle.GetYawPitchRoll();
+		vector yawPitchRoll = Math3D.MatrixToAngles(vehMat);
 		m_fPitchSmooth = Math.SmoothCD(m_fPitchSmooth, -yawPitchRoll[1], m_fPitchSmoothVel, 0.14, 1000, pDt);
 		m_fRollSmooth = Math.SmoothCD(m_fRollSmooth, -yawPitchRoll[2], m_fRollSmoothVel, 0.14, 1000, pDt);
 		yawPitchRoll[0] = 0;
 		yawPitchRoll[1] = m_fPitchSmooth;
 		yawPitchRoll[2] = m_fRollSmooth;
-		AddPitchRoll(yawPitchRoll, m_fPitchFactor, m_fRollFactor, transformMS);
+
+		float rollMask = Math.Max(0, vehMat[1][1]); // Do not apply roll factor when the vehicle is upside-down.
+		AddPitchRoll(yawPitchRoll, m_fPitchFactor, rollMask * m_fRollFactor, transformMS);
 	}
 	
 	//! runtime values 

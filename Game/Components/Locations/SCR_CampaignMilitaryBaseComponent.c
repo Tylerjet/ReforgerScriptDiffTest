@@ -80,6 +80,7 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 	static const int INVALID_FACTION_INDEX = -1;
 	static const int INVALID_FREQUENCY = -1;
 	static const int RESPAWN_DELAY_AFTER_CAPTURE = 180000;
+	static const int RELAY_BASE_RADIUS = 100;
 
 	static const int SUPPLY_DEPOT_CAPACITY = 4500;
 	static const int DEFENDERS_CHECK_PERIOD = 30000;
@@ -2231,10 +2232,15 @@ class SCR_CampaignMilitaryBaseComponent : SCR_MilitaryBaseComponent
 		array<int> playerIds = {};
 		array<int> playerIdsPresent = {};
 		playerManager.GetPlayers(playerIds);
-		int radiusSq = m_iRadius * m_iRadius;
+		int radiusSq;
 		vector basePos = GetOwner().GetOrigin();
 		SCR_XPHandlerComponent compXP = SCR_XPHandlerComponent.Cast(GetGame().GetGameMode().FindComponent(SCR_XPHandlerComponent));
 		bool enemiesPresent;
+		
+		if (m_eType == SCR_ECampaignBaseType.BASE)
+			radiusSq = m_iRadius * m_iRadius;
+		else
+			radiusSq = RELAY_BASE_RADIUS * RELAY_BASE_RADIUS;
 
 		foreach (int playerId : playerIds)
 		{

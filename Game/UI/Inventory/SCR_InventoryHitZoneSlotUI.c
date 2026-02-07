@@ -47,8 +47,9 @@ class SCR_InventoryHitZoneUI : SCR_InventoryAttachmentPointUI
 		if (!effect)
 			return;
 		
-		effect.ActivateEffect(character, character, gadget, effect.GetAnimationParameters(character, m_pParentContainer.GetHitZoneGroup()));
-		itemComp.RequestUserLock(character, true);
+		if (effect.ActivateEffect(character, character, gadget, effect.GetAnimationParameters(character, m_pParentContainer.GetHitZoneGroup())))
+			itemComp.RequestUserLock(character, true);
+		
 		charCtrl.m_OnGadgetStateChangedInvoker.Remove(ApplyItem);
 	}
 

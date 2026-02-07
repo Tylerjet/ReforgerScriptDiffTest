@@ -3,7 +3,7 @@
 class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 {
 	[Attribute(defvalue: "{93291E72AC23930F}Prefabs/AI/Waypoints/AIWaypoint_Defend.et", UIWidgets.ResourceNamePicker, desc: "Default waypoint prefab", "et", category: "Defender Spawner")]
-	ResourceName m_sDefaultWaypointPrefab;
+	protected ResourceName m_sDefaultWaypointPrefab;
 
 	[Attribute(defvalue :"{000CD338713F2B5A}Prefabs/AI/Groups/Group_Base.et", UIWidgets.ResourceNamePicker, desc: "Default group to be initially assigned to created units", "et", category: "Defender Spawner")]
 	protected ResourceName m_sDefaultGroupPrefab;
@@ -13,13 +13,22 @@ class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 	
 	[Attribute(defvalue: "2.5", params: "0 inf", desc: "Completion radius of initial move waypoint", "et", category: "Defender Spawner")]
 	protected float m_fMoveWaypointCompletionRadius;
+	
+	[Attribute(defvalue: "75", params: "0 inf", desc: "Radius of default waypoint", "et", category: "Defender Spawner")]
+	protected float m_fDefaultWaypointCompletionRadius;
 
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetMoveWaypointPrefab()
 	{
 		return m_sMoveWaypointPrefab;
 	}
-
+	
+	//------------------------------------------------------------------------------------------------
+	ResourceName GetDefaultWaypointPrefab()
+	{
+		return m_sDefaultWaypointPrefab;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	ResourceName GetDefaultGroupPrefab()
 	{
@@ -30,6 +39,12 @@ class SCR_DefenderSpawnerComponentClass : SCR_SlotServiceComponentClass
 	float GetMoveWaypointCompletionRadius()
 	{
 		return m_fMoveWaypointCompletionRadius;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	float GetDefaultWaypointCompletionRadius()
+	{
+		return m_fDefaultWaypointCompletionRadius;
 	}
 };
 
@@ -301,6 +316,10 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		if (!agent)
 			return;
 		
+		//Remove group waypoint to reduce performance impact due to new members being added to it.
+		if (m_Waypoint)
+			m_AIgroup.RemoveWaypoint(m_Waypoint);
+		
 		SCR_EntityLabelPointComponent rallyPointEntity = slot.GetRallyPoint();
 		if (rallyPointEntity)
 		{
@@ -375,14 +394,20 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		array<AIAgent> agents = {};
 		group.GetAgents(agents);
 
+		if (!m_AIgroup)
+			return;
+		
 		foreach (AIAgent agent : agents)
-		{
+		{	
 			m_AIgroup.AddAgent(agent);
 		}
 
 		m_aGroupWaypoints.Remove(groupIndex);
 		if (m_aGroupWaypoints.IsEmpty())
 			m_aGroupWaypoints = null;
+		
+		if ((m_AIgroup.GetAgentsCount() == m_AIgroup.m_aUnitPrefabSlots.Count()) || (!m_aGroupWaypoints))
+			m_AIgroup.AddWaypoint(GetWaypoint());
 	}
 	
 	//------------------------------------------------------------------------------------------------
@@ -533,38 +558,47 @@ class SCR_DefenderSpawnerComponent : SCR_SlotServiceComponent
 		
 		if (m_OnDefenderGroupSpawned)
 			m_OnDefenderGroupSpawned.Invoke(this, group);
-
-		//waypoint handling
+		
+		ReinforceGroup();
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	protected AIWaypoint GetWaypoint()
+	{
 		if (m_Waypoint)
-		{
-			group.AddWaypoint(m_Waypoint);
-			return;
-		}
-
-		vector spawnposMat[4];
-		Resource wpRes;
-		SCR_AIWaypoint wp;
-
+			return m_Waypoint;
+		
+		SCR_EntitySpawnerSlotComponent slot = GetFreeSlot();
+		if (!slot)
+			return null;
+		
+		EntitySpawnParams params = new EntitySpawnParams();
+		params.TransformMode = ETransformMode.WORLD;
+		
 		SCR_EntityLabelPointComponent rallyPoint = slot.GetRallyPoint();
+		//If rally point is available, create waypoint on it, otherwise use slot position
 		if (rallyPoint)
 			rallyPoint.GetOwner().GetTransform(params.Transform);
+		else
+			slot.GetOwner().GetTransform(params.Transform);
 
 		SCR_DefenderSpawnerComponentClass prefabData = SCR_DefenderSpawnerComponentClass.Cast(GetComponentData(GetOwner()));
 		if (!prefabData)
-			return;
+			return null;
 
-		wpRes = Resource.Load(prefabData.m_sDefaultWaypointPrefab);
+		Resource wpRes = Resource.Load(prefabData.GetDefaultWaypointPrefab());
 		if (!wpRes.IsValid())
-			return;
+			return null;
 
-		wp = SCR_AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(wpRes, null, params));
-		if (!wp)
-			return;
-
-		group.AddWaypoint(wp);
-		ReinforceGroup();
+		m_Waypoint = SCR_AIWaypoint.Cast(GetGame().SpawnEntityPrefabLocal(wpRes, null, params));
+		if (!m_Waypoint)
+			return null;
+		
+		m_Waypoint.SetCompletionRadius(prefabData.GetDefaultWaypointCompletionRadius());
+		
+		return m_Waypoint;
 	}
-
+	
 	//------------------------------------------------------------------------------------------------
 	//! Returns true, if there is player around barracks
 	protected bool PlayerDistanceCheck()

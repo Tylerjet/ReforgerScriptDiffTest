@@ -6,6 +6,9 @@ Do not modify, this script is generated
 
 class ScriptWorldClock
 {
+	private void ScriptWorldClock();
+	private void ~ScriptWorldClock();
+
 	/*!
 	Sets current time of the day as <0.0, 24.0> hours.
 	Can only be set by the authority (server, singleplayer...).

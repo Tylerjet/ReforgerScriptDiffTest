@@ -12,6 +12,9 @@ Do not modify, this script is generated
 //! Script accessible REST context
 class RestContext
 {
+	private void RestContext();
+	private void ~RestContext();
+
 	proto external int GET(RestCallback cb, string request);
 	proto external string GET_now(string request);
 	proto external int FILE(RestCallback cb, string request, string filename);

@@ -20,9 +20,6 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	// 1000 ms timer for bloody clothes update
 	static const int BLOOD_CLOTHES_UPDATE_PERIOD = 1000;
 	
-	// a waterlevel of deeper than faceUnderwaterDepth meters will kill the character upon unconsciousness
-	const float FACE_UNDERWATER_DEPTH = 0.3;
-	
 	// bleeding rate multiplier after death - used to stop particles sooner
 	const float DEATH_BLEEDOUT_SCALE = 4;
 
@@ -33,6 +30,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	//replicated arrays for clients
 	protected ref array<ECharacterHitZoneGroup> m_aTourniquettedGroups;
 	protected ref array<ECharacterHitZoneGroup> m_aSalineBaggedGroups;
+	protected ref array<int> m_aBeingHealedGroup;
 	protected ref array<float> m_aGroupBleedingRates;
 	
 	protected ref map<SCR_CharacterHitZone, ref SCR_ArmoredClothItemData> m_mClothItemDataMap;
@@ -1083,7 +1081,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	bool GetGroupTourniquetted(ECharacterHitZoneGroup hitZoneGroup)
 	{
 		return m_aTourniquettedGroups && m_aTourniquettedGroups.Contains(hitZoneGroup);
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	void SetTourniquettedGroup(ECharacterHitZoneGroup hitZoneGroup, bool setTourniquetted)
@@ -1110,6 +1108,36 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 		
 		UpdateBleedingHitZones();
 		UpdateCharacterGroupDamage(hitZoneGroup);
+	}
+
+	//-----------------------------------------------------------------------------------------------------------
+	bool GetGroupIsBeingHealed(ECharacterHitZoneGroup hitZoneGroup)
+	{
+		return m_aBeingHealedGroup && m_aBeingHealedGroup.Contains(hitZoneGroup);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	void SetGroupIsBeingHealed(ECharacterHitZoneGroup hitZoneGroup, bool setIsBeingHealed)
+	{
+		if (setIsBeingHealed)
+		{
+			if (!m_aBeingHealedGroup)
+				m_aBeingHealedGroup = {};
+			else if (m_aBeingHealedGroup.Contains(hitZoneGroup))
+				return;
+
+			m_aBeingHealedGroup.Insert(hitZoneGroup);
+		}
+		else
+		{
+			if (!m_aBeingHealedGroup || !m_aBeingHealedGroup.Contains(hitZoneGroup))
+				return;
+			else
+				m_aBeingHealedGroup.RemoveItem(hitZoneGroup);
+
+			if (m_aBeingHealedGroup.IsEmpty())
+				m_aBeingHealedGroup = null;
+		}
 	}
 
 	//------------------------------------------------------------------------------------------------
@@ -1239,7 +1267,7 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 	\param onlyExtremities Only compare the 4 extremities (both arms, both legs)
 	\param ignoreTQdHitZones Ignore tourniquetted limbs when looking for the one most bleeding one
 	*/
-	ECharacterHitZoneGroup GetCharMostDOTHitzoneGroup(EDamageType damageType, bool onlyExtremities = false, bool ignoreTQdHitZones = false)
+	ECharacterHitZoneGroup GetCharMostDOTHitzoneGroup(EDamageType damageType, bool onlyExtremities = false, bool ignoreTQdHitZones = false, bool ignoreIfBeingTreated = false)
 	{
 		if (!m_aBleedingHitZones)
 			return null;
@@ -1283,6 +1311,16 @@ class SCR_CharacterDamageManagerComponent : ScriptedDamageManagerComponent
 			{
 				DOT *= m_fTourniquetStrengthMultiplier;
 				if (ignoreTQdHitZones)
+				{
+					DOTValues[LIMB_GROUPS.Find(group)] = 0;
+					continue;
+				}
+			}
+			
+			// if desired, bleedingHitzones that are being treated are skipped so another hitzone will be healed by this inquiry
+			if (GetGroupIsBeingHealed(group))
+			{
+				if (ignoreIfBeingTreated)
 				{
 					DOTValues[LIMB_GROUPS.Find(group)] = 0;
 					continue;

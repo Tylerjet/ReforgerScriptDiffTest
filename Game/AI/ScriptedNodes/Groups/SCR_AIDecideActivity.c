@@ -6,7 +6,6 @@ class SCR_AIDecideActivity: AITaskScripted
 	SCR_AIGroupUtilityComponent m_UtilityComponent;
 	SCR_AIMessageGoal m_GoalMessage;
 	SCR_AIMessageInfo m_InfoMessage;
-	private bool restartActivity;
 
 	//------------------------------------------------------------------------------------------------
 	override void OnInit(AIAgent owner)
@@ -18,6 +17,7 @@ class SCR_AIDecideActivity: AITaskScripted
 	//------------------------------------------------------------------------------------------------
 	override ENodeResult EOnTaskSimulate(AIAgent owner, float dt)
 	{
+		bool restartActivity;
 		if (!m_UtilityComponent)
 		{
 			return NodeError(this, owner, "Group utility component is missing.");

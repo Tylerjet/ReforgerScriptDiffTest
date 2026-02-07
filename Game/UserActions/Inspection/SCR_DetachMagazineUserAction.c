@@ -19,6 +19,10 @@ class SCR_DetachMagazineUserAction : SCR_InspectionUserAction
 		if(!m_InventoryManager || !m_WeaponComponent.GetCurrentMagazine())
 			return false;
 		
+		BaseMuzzleComponent muzzleComp = m_WeaponComponent.GetCurrentMuzzle();
+		if (GetOwner() != muzzleComp.GetOwner())
+			return false;
+		
 		IEntity currentMag = m_WeaponComponent.GetCurrentMagazine().GetOwner();
 		InventoryItemComponent magInventory = InventoryItemComponent.Cast(currentMag.FindComponent(InventoryItemComponent));
 		BaseInventoryStorageComponent magStorage = magInventory.GetParentSlot().GetStorage();

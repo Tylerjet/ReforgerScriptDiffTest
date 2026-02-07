@@ -352,14 +352,51 @@ class SCR_ArsenalManagerComponent : SCR_BaseGameModeComponent
 				BaseContainer prefab = attachedEntity.GetPrefabData().GetPrefab();
 				while (prefabName.IsEmpty() && prefab)
 				{
-					prefabName = prefab.GetName();
+					prefabName = prefab.GetResourceName();
 					prefab = prefab.GetAncestor();
 				}
 				
 				if (prefabName.IsEmpty())
 					continue;
 				
-				loadoutData.Clothings.Insert(prefabName);
+				SCR_ClothingLoadoutData clothingData();
+				clothingData.SlotIdx = i;
+				clothingData.ClothingPrefab = prefabName;
+				
+				loadoutData.Clothings.Insert(clothingData);
+			}
+		}
+		
+		EquipedWeaponStorageComponent weaponStorage = EquipedWeaponStorageComponent.Cast(characterEntity.FindComponent(EquipedWeaponStorageComponent));
+		if (weaponStorage)
+		{
+			int slotsCount = weaponStorage.GetSlotsCount();
+			for (int i = 0; i < slotsCount; ++i)
+			{
+				InventoryStorageSlot slot = weaponStorage.GetSlot(i);
+				if (!slot)
+					continue;
+				
+				IEntity attachedEntity = slot.GetAttachedEntity();
+				if (!attachedEntity)
+					continue;
+				
+				ResourceName prefabName;
+				BaseContainer prefab = attachedEntity.GetPrefabData().GetPrefab();
+				while (prefabName.IsEmpty() && prefab)
+				{
+					prefabName = prefab.GetResourceName();
+					prefab = prefab.GetAncestor();
+				}
+				
+				if (prefabName.IsEmpty())
+					continue;
+				
+				SCR_WeaponLoadoutData weaponData();
+				weaponData.SlotIdx = i;
+				weaponData.WeaponPrefab = prefabName;
+				
+				loadoutData.Weapons.Insert(weaponData);
 			}
 		}
 		

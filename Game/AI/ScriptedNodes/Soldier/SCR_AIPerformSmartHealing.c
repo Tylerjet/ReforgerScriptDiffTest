@@ -140,7 +140,7 @@ class SCR_AIPerformSmartHealing : AITaskScripted
 	}
 	
 	//------------------------------------------------------------------------------------------------
-	void OnItemUseBegan(IEntity item)
+	void OnItemUseBegan(IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
 	{
 		if (item != m_item)
 			return;

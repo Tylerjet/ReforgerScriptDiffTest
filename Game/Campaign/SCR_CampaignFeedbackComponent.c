@@ -251,6 +251,69 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	protected void TransportRequestHint()
+	{
+		if (m_BaseWithPlayer)
+			return;
+
+		SCR_ChimeraCharacter player = SCR_ChimeraCharacter.Cast(m_PlayerController.GetControlledEntity());
+
+		if (!player || player.IsInVehicle())
+			return;
+
+		SCR_MilitaryBaseManager baseManager = SCR_MilitaryBaseManager.GetInstance(false);
+
+		if (!baseManager)
+			return;
+
+		array<SCR_MilitaryBaseComponent> bases = {};
+		baseManager.GetBases(bases);
+		int minDistanceSq = 500 * 500;
+		vector playerPos = player.GetOrigin();
+		SCR_CampaignMilitaryBaseComponent campaignBase;
+
+		// Show this hint only if player is far enough from any base
+		foreach (SCR_MilitaryBaseComponent base : bases)
+		{
+			campaignBase = SCR_CampaignMilitaryBaseComponent.Cast(base);
+
+			if (!campaignBase)
+				continue;
+
+			if (vector.DistanceSqXZ(playerPos, campaignBase.GetOwner().GetOrigin()) < minDistanceSq)
+				return;
+		}
+
+		minDistanceSq = 300 * 300;
+		array<int> playerIds = {};
+		int localPlayerId = m_PlayerController.GetPlayerId();
+		GetGame().GetPlayerManager().GetPlayers(playerIds);
+
+		// Show this hint only if player is far enough from any other living player
+		foreach (int playerId : playerIds)
+		{
+			if (playerId == localPlayerId)
+				continue;
+
+			SCR_ChimeraCharacter otherPlayer = SCR_ChimeraCharacter.Cast(GetGame().GetPlayerManager().GetPlayerControlledEntity(playerId));
+
+			if (!otherPlayer)
+				continue;
+
+			CharacterControllerComponent charControl = otherPlayer.GetCharacterController();
+
+			if (!charControl || charControl.IsDead())
+				continue;
+
+			if (vector.DistanceSqXZ(playerPos, otherPlayer.GetOrigin()) < minDistanceSq)
+				return;
+		}
+
+		GetGame().GetCallqueue().Remove(TransportRequestHint);
+		ShowHint(EHint.CONFLICT_TRANSPORT_REQUEST, showMultipleTimes: true);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	void BaseOutOfRangeHint(SCR_CampaignMilitaryBaseComponent base)
 	{
 		SCR_CampaignFaction playerFaction = SCR_CampaignFaction.Cast(SCR_FactionManager.SGetLocalPlayerFaction());
@@ -347,22 +410,22 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		GetGame().GetCallqueue().CallLater(ProcessHintQueue, SCR_GameModeCampaign.UI_UPDATE_DELAY);	// Delay so we show the hint after the deploy menu has closed
 
 		if (!m_aShownHints.Contains(EHint.CONFLICT_TRANSPORT_REQUEST))
-			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_TRANSPORT_REQUEST, false);
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_TRANSPORT_REQUEST, false, false);
 
-		 if (!m_aShownHints.Contains(EHint.CONFLICT_SERVICE_DEPOTS))
-			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_SERVICE_DEPOTS, false);
+		if (!m_aShownHints.Contains(EHint.CONFLICT_SERVICE_DEPOTS))
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_SERVICE_DEPOTS, false, false);
 		else if (!m_aShownHints.Contains(EHint.CONFLICT_RESPAWN))
-			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_RESPAWN, false);
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_RESPAWN, false, false);
 		else if (!m_aShownHints.Contains(EHint.CONFLICT_VETERANCY))
-			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_VETERANCY, false);
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.CONFLICT_VETERANCY, false, false);
 		else if (!m_aShownHints.Contains(EHint.GAMEPLAY_WEAPON_INSPECTION))
-			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.GAMEPLAY_WEAPON_INSPECTION, false);
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.GAMEPLAY_WEAPON_INSPECTION, false, false);
 		else if (!m_aShownHints.Contains(EHint.GAMEPLAY_VEHICLE_INVENTORY))
-			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.GAMEPLAY_VEHICLE_INVENTORY, false);
+			GetGame().GetCallqueue().CallLater(ShowHint, AFTER_RESPAWN_HINT_DELAY_MS, false, EHint.GAMEPLAY_VEHICLE_INVENTORY, false, false);
 	}
 
 	//------------------------------------------------------------------------------------------------
-	void ShowHint(EHint hintID, bool showImmediately = false)
+	void ShowHint(EHint hintID, bool showImmediately = false, bool showMultipleTimes = false)
 	{
 		if (m_Campaign.IsTutorial())
 			return;
@@ -375,13 +438,14 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		if (!info)
 			return;
 
-		bool showAlways = false;
+		// Currently we want no limit on the amount of times these hints can be displayed (in multiple matches)
+		bool showAlways = true;
 
 #ifdef WORKBENCH
 		showAlways = true;
 #endif
 
-		if (m_aShownHints.Contains(hintID) || m_aHintQueue.Contains(hintID))
+		if (!showMultipleTimes && (m_aShownHints.Contains(hintID) || m_aHintQueue.Contains(hintID)))
 			return;
 
 		float currentTime = GetGame().GetWorld().GetWorldTime();
@@ -412,9 +476,9 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		int hintId = m_aHintQueue[0];
 		m_aHintQueue.RemoveOrdered(0);
 
-		ShowHint(hintId);
+		ShowHint(hintId, showMultipleTimes: true);
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	void PauseHintQueue()
 	{
@@ -427,7 +491,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	{
 		m_bIsConscious = conscious;
 	}
-	
+
 	//------------------------------------------------------------------------------------------------
 	bool IsConscious()
 	{
@@ -507,8 +571,27 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 
 		if (m_BaseWithPlayer.GetFaction() != playerFaction)
 		{
+			// Entering an enemy base
 			if (m_BaseWithPlayer.IsHQRadioTrafficPossible(playerFaction))
 			{
+				SCR_BaseTaskExecutor executor = SCR_BaseTaskExecutor.FindTaskExecutorByID(m_PlayerController.GetPlayerId());
+
+				if (executor)
+				{
+					SCR_CampaignBaseTask task = SCR_CampaignBaseTask.Cast(executor.GetAssignedTask());
+					SCR_CampaignMilitaryBaseComponent taskBase;
+
+					if (task)
+						taskBase = task.GetTargetBase();
+
+					if (taskBase != m_BaseWithPlayer)
+					{
+						// Entering an enemy base within radio signal reach while not having its seize task assigned
+						ShowHint(EHint.CONFLICT_VOLUNTEERING);
+					}
+				}
+
+				// Entering an enemy base within radio signal reach
 				if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.RELAY)
 					ShowHint(EHint.CONFLICT_TOWER_SEIZING);
 				else
@@ -517,11 +600,12 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 		}
 		else
 		{
-			// Entering a friendly base in a vehicle
+			// Entering a friendly base
 			ChimeraCharacter player = ChimeraCharacter.Cast(SCR_PlayerController.GetLocalControlledEntity());
 
 			if (player && player.IsInVehicle())
 			{
+				// Entering a friendly base in a vehicle
 				if (m_BaseWithPlayer.GetType() == SCR_ECampaignBaseType.BASE && !m_BaseWithPlayer.IsHQ())
 					ShowHint(EHint.CONFLICT_SUPPLY_RUNS);
 			}
@@ -1115,7 +1199,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	{
 		if (rewardID == SCR_EXPRewards.ENEMY_KILL || rewardID == SCR_EXPRewards.ENEMY_KILL_VEH)
 		{
-			GetGame().GetCallqueue().CallLater(ShowHint, 30000 + Math.RandomIntInclusive(0, 30000), false, EHint.CONFLICT_ELIMINATING_ENEMIES, false);
+			GetGame().GetCallqueue().CallLater(ShowHint, 30000 + Math.RandomIntInclusive(0, 30000), false, EHint.CONFLICT_ELIMINATING_ENEMIES, false, false);
 		}
 
 		if (XP > 0)
@@ -1165,10 +1249,14 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 	//------------------------------------------------------------------------------------------------
 	protected void ProcessEvents(bool activate)
 	{
+		if (RplSession.Mode() == RplMode.Dedicated)
+			return;
+
 		GetGame().GetCallqueue().Remove(CheckPlayerInsideRadioRange);
 		GetGame().GetCallqueue().Remove(RefreshCurrentPopupMessage);
 		GetGame().GetCallqueue().Remove(GroupLeaderHint);
 		GetGame().GetCallqueue().Remove(LoneDriverHint);
+		GetGame().GetCallqueue().Remove(TransportRequestHint);
 
 		if (activate)
 		{
@@ -1176,6 +1264,7 @@ class SCR_CampaignFeedbackComponent : ScriptComponent
 			GetGame().GetCallqueue().CallLater(RefreshCurrentPopupMessage, 500, true);
 			GetGame().GetCallqueue().CallLater(GroupLeaderHint, FEATURE_HINT_DELAY, true);
 			GetGame().GetCallqueue().CallLater(LoneDriverHint, FEATURE_HINT_DELAY, true);
+			GetGame().GetCallqueue().CallLater(TransportRequestHint, FEATURE_HINT_DELAY, true);
 
 			GetGame().GetInputManager().AddActionListener("TasksOpen", EActionTrigger.DOWN, RegisterTasksShown);
 			SCR_UITaskManagerComponent.s_OnTaskListVisible.Insert(ShowVolunteerHint);

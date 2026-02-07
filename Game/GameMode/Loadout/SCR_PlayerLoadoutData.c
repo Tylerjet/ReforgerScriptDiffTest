@@ -4,9 +4,15 @@ class SCR_WeaponLoadoutData
 	ResourceName WeaponPrefab;
 }
 
+class SCR_ClothingLoadoutData
+{
+	int SlotIdx;
+	ResourceName ClothingPrefab;
+}
+
 class SCR_PlayerLoadoutData
 {
-    ref array<ResourceName> Clothings = {};
+    ref array<ref SCR_ClothingLoadoutData> Clothings = {};
 	ref array<ref SCR_WeaponLoadoutData> Weapons = {};
  
     static bool Extract(SCR_PlayerLoadoutData instance, ScriptCtx ctx, SSnapSerializerBase snapshot)
@@ -18,7 +24,9 @@ class SCR_PlayerLoadoutData
 		
 		for (int i = 0; i < clothingCount; ++i)
 		{
-			string resourceName = instance.Clothings[i];
+			snapshot.SerializeInt(instance.Clothings[i].SlotIdx);
+			
+			string resourceName = instance.Clothings[i].ClothingPrefab;
 			snapshot.SerializeString(resourceName);
 		}
 		
@@ -45,10 +53,15 @@ class SCR_PlayerLoadoutData
 		
 		for (int i = 0; i < clothingCount; ++i)
 		{
+			SCR_ClothingLoadoutData clothingData();
+			
+			snapshot.SerializeInt(clothingData.SlotIdx);
+			
 			string resourceName;
 			snapshot.SerializeString(resourceName);
+			clothingData.ClothingPrefab = resourceName;
 			
-			instance.Clothings.Insert(resourceName);
+			instance.Clothings.Insert(clothingData);
 		}
 		
 		int weaponCount;
@@ -79,6 +92,7 @@ class SCR_PlayerLoadoutData
 		
 		for (int i = 0; i < clothingCount; ++i)
 		{
+			snapshot.EncodeInt(packet);
 			snapshot.EncodeString(packet);
 		}
 		
@@ -101,6 +115,7 @@ class SCR_PlayerLoadoutData
 		
 		for (int i = 0; i < clothingCount; ++i)
 		{
+			snapshot.DecodeInt(packet);
 			snapshot.DecodeString(packet);
 		}
 		

@@ -20,26 +20,9 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	
 	//Target character is the target set when it's not m_CharacterOwner
 	protected IEntity m_TargetCharacter;
-
-	//------------------------------------------------------------------------------------------------
-	//! Get consumable type
-	//! \return consumable type
-	SCR_EConsumableType GetConsumableType()
-	{
-		if (m_ConsumableEffect)
-			return m_ConsumableEffect.m_eConsumableType;
-
-		return SCR_EConsumableType.NONE;
-	}
 	
-	//------------------------------------------------------------------------------------------------
-	//! Get consumable effect
-	//! \return consumable effect
-	SCR_ConsumableEffectBase GetConsumableEffect()
-	{
-		return m_ConsumableEffect;
-	}
-
+	protected int m_iStoredHealedGroup;
+	
 	//------------------------------------------------------------------------------------------------
 	//! Apply consumable effect
 	//! \param target is the target entity
@@ -57,17 +40,41 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
+	//! OnItemUseBegan event from SCR_CharacterControllerComponent
+	protected void OnUseBegan(IEntity item, SCR_ConsumableEffectAnimationParameters animParams)
+	{
+		if (m_bAlternativeModelOnAction)
+			SetAlternativeModel(true);
+
+		if (!m_CharacterOwner || !animParams)
+			return;
+		
+		SetHealedGroup(animParams.m_intParam, true);
+	}
+
+	//------------------------------------------------------------------------------------------------
 	//! OnItemUseComplete event from SCR_CharacterControllerComponent
 	protected void OnApplyToCharacter(IEntity item, bool successful, SCR_ConsumableEffectAnimationParameters animParams)
 	{
-		if (!successful)
-			return;
+		ClearInvokers(animParams.m_intParam);
 		
+		if (!successful)
+		{
+			if (animParams.m_itemUseCommandId == -1)
+			{
+				Print("Consumable item OnItemUseComplete event called with empty SCR_ConsumableEffectAnimationParameters", LogLevel.ERROR);
+				return;
+			}
+
+			if (m_bAlternativeModelOnAction)
+				SetAlternativeModel(false);
+
+			return;	
+		}
+
 		bool deleteItem = true;
 		if (GetConsumableEffect())
-		{
 			deleteItem = GetConsumableEffect().GetDeleteOnUse();
-		}
 		
 		IEntity target = GetTargetCharacter();
 		if (!target)
@@ -79,13 +86,31 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	}
 
 	//------------------------------------------------------------------------------------------------
-	//! OnItemUseBegan event from SCR_CharacterControllerComponent
-	protected void OnUseBegan(IEntity item)
+	protected void SetHealedGroup(EBandagingAnimationBodyParts group, bool healed)
 	{
-		if (m_bAlternativeModelOnAction)
-			SetAlternativeModel(true);
-	}
+		m_iStoredHealedGroup = group * healed;
+		
+		ChimeraCharacter ownerChar = ChimeraCharacter.Cast(m_CharacterOwner);
+		if (!ownerChar)
+			return;
 
+		SCR_CharacterDamageManagerComponent targetDamageMan;
+		IEntity target = GetTargetCharacter();
+		ChimeraCharacter targetChar;
+		if (target)
+			targetChar = ChimeraCharacter.Cast(target);
+		else
+			targetChar = ChimeraCharacter.Cast(m_CharacterOwner);
+
+		if (targetChar)
+			targetDamageMan = SCR_CharacterDamageManagerComponent.Cast(targetChar.GetDamageManager());
+		
+		if (!targetDamageMan)
+			return;
+
+		targetDamageMan.SetGroupIsBeingHealed(targetDamageMan.FindAssociatedHitZoneGroup(group), healed);
+	}
+	
 	//-----------------------------------------------------------------------------
 	//! Switch item model
 	//! \param useAlternative determines whether alternative or base model is used
@@ -106,7 +131,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 		ResourceName consumableModel;
 		if (useAlternative)
 			consumableModel = additionalModels.GetAlternativeModel();
-		else
+		else if (GetOwner())
 			consumableModel = SCR_Global.GetPrefabAttributeResource(GetOwner(), "MeshObject", "Object");
 
 		Resource resource = Resource.Load(consumableModel);
@@ -137,7 +162,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 
 		if (mode == EGadgetMode.IN_HAND)
 		{
-			m_CharController = SCR_CharacterControllerComponent.Cast(m_CharacterOwner.FindComponent(SCR_CharacterControllerComponent));
+			m_CharController = SCR_CharacterControllerComponent.Cast(charOwner.FindComponent(SCR_CharacterControllerComponent));
 			m_CharController.m_OnItemUseFinishedInvoker.Insert(OnApplyToCharacter);
 			m_CharController.m_OnItemUseBeganInvoker.Insert(OnUseBegan);
 		}
@@ -148,12 +173,9 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	{
 		if (mode == EGadgetMode.IN_HAND)
 		{
+			// CallLater to ensure the invokers are removed after the m_OnItemUseFinishedInvoker is called. This is ensured because m_OnItemUseFinishedInvoker is called on end of fixedFrame
 			if (m_CharController)
-			{
-				m_CharController.m_OnItemUseFinishedInvoker.Remove(OnApplyToCharacter);
-				m_CharController.m_OnItemUseBeganInvoker.Remove(OnUseBegan);
-				m_CharController = null;
-			}
+				GetGame().GetCallqueue().CallLater(ClearInvokers, param1: -1);
 		}
 
 		super.ModeClear(mode);
@@ -164,10 +186,46 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	{
 		if (!m_ConsumableEffect || !m_ConsumableEffect.CanApplyEffect(m_CharacterOwner, GetOwner()))
 			return;
-		
+
 		m_ConsumableEffect.ActivateEffect(m_CharacterOwner, m_CharacterOwner, GetOwner());
 	}
 
+	//------------------------------------------------------------------------------------------------
+	protected void ClearInvokers(int targetGroup = -1)
+	{
+		if (targetGroup == -1 && m_iStoredHealedGroup != 0)
+			SetHealedGroup(m_iStoredHealedGroup, false);
+		else
+			SetHealedGroup(targetGroup, false);
+	
+		if (!m_CharController)
+			return;
+		
+		m_CharController.m_OnItemUseFinishedInvoker.Remove(OnApplyToCharacter);
+		m_CharController.m_OnItemUseBeganInvoker.Remove(OnUseBegan);
+		
+		m_CharController = null;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get consumable type
+	//! \return consumable type
+	SCR_EConsumableType GetConsumableType()
+	{
+		if (m_ConsumableEffect)
+			return m_ConsumableEffect.m_eConsumableType;
+
+		return SCR_EConsumableType.NONE;
+	}
+	
+	//------------------------------------------------------------------------------------------------
+	//! Get consumable effect
+	//! \return consumable effect
+	SCR_ConsumableEffectBase GetConsumableEffect()
+	{
+		return m_ConsumableEffect;
+	}
+	
 	//------------------------------------------------------------------------------------------------
 	override EGadgetType GetType()
 	{
@@ -184,7 +242,7 @@ class SCR_ConsumableItemComponent : SCR_GadgetComponent
 	void SetTargetCharacter(IEntity target)
 	{
 		m_TargetCharacter = target;
-	}	
+	}
 	
 	//------------------------------------------------------------------------------------------------
 	IEntity GetTargetCharacter()

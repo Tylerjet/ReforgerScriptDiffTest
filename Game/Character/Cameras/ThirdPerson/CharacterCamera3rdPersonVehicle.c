@@ -219,10 +219,12 @@ class CharacterCamera3rdPersonVehicle extends CharacterCameraBase
 			//! Dot product
 			float angle = yawPitchRoll[2] * m_fRollFactor * Math.DEG2RAD * pOutResult.m_CameraTM[2][2];
 			//! Apply roll factor
-			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, vector.Zero, pOutResult.m_CameraTM[2], -angle, pOutResult.m_CameraTM);
+			float rollMask = Math.Max(0, vehMat[1][1]); // Do not apply roll factor when the vehicle is upside-down.
+			SCR_Math3D.RotateAround(pOutResult.m_CameraTM, vector.Zero, pOutResult.m_CameraTM[2], -angle * rollMask, pOutResult.m_CameraTM);
 		}
 		// Camera offset
-		pOutResult.m_CameraTM[3] = m_vCenter + characterOffset + Vector(0, m_fHeight, 0);
+		float heightSign = vehMat[1][1]; // Adjust the sign of the height direction as the vehicle rolls.
+		pOutResult.m_CameraTM[3] = m_vCenter + characterOffset + Vector(0, heightSign * m_fHeight, 0);
 		
 		// viewbob update
 		UpdateViewBob(pDt, localVelocity, localAngVelocity);

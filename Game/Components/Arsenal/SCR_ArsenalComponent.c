@@ -168,9 +168,35 @@ class SCR_ArsenalComponent : ScriptComponent
 	*/
 	static SCR_ArsenalComponent GetArsenalComponentFromChildren(notnull IEntity parent)
 	{
-		IEntity child = parent.GetChildren();
-		SCR_ArsenalComponent arsenalComponent;		
+		SCR_ArsenalComponent arsenalComponent;
+
+		//~ Get arsenal component from slotted entities (if vehicle)
+		if (Vehicle.Cast(parent))
+		{
+			SlotManagerComponent slotManager = SlotManagerComponent.Cast(parent.FindComponent(SlotManagerComponent));
+			if (!slotManager)
+				return null;
+			
+			array<EntitySlotInfo> slotInfos = {};
+			slotManager.GetSlotInfos(slotInfos);
+			IEntity slotEntity;
+			
+			foreach (EntitySlotInfo slotInfo : slotInfos)
+			{
+				slotEntity = slotInfo.GetAttachedEntity();
+				if (!slotEntity)
+					continue;
+				
+				arsenalComponent = SCR_ArsenalComponent.Cast(slotEntity.FindComponent(SCR_ArsenalComponent));
+				if (arsenalComponent)
+					return arsenalComponent;
+			}
+			
+			return arsenalComponent;
+		}
 		
+		//~ Get arsenal component from children
+		IEntity child = parent.GetChildren();
 		while (child)
 		{
 			arsenalComponent = SCR_ArsenalComponent.Cast(child.FindComponent(SCR_ArsenalComponent));

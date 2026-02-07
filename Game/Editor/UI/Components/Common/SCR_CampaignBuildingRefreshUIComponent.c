@@ -1,10 +1,9 @@
 class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 {
-	SCR_ExternalPaginationUIComponent m_PagUIComp;
 	override void HandlerAttached(Widget w)
 	{
-		m_PagUIComp = SCR_ExternalPaginationUIComponent.Cast(w.FindHandler(SCR_ExternalPaginationUIComponent));
-		if (!m_PagUIComp)
+		SCR_ExternalPaginationUIComponent pagUIComp = SCR_ExternalPaginationUIComponent.Cast(w.FindHandler(SCR_ExternalPaginationUIComponent));
+		if (!pagUIComp)
 			return;
 
 		SCR_CampaignBuildingEditorComponent buildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
@@ -15,9 +14,15 @@ class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 		if (!provider)
 			return;
 
-		SCR_CampaignSuppliesComponent supplyComponent = SCR_CampaignSuppliesComponent.Cast(provider.FindComponent(SCR_CampaignSuppliesComponent));
-		if (supplyComponent)
-			supplyComponent.m_OnSuppliesChanged.Insert(m_PagUIComp.RefreshPage);
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(provider.FindComponent(SCR_ResourceComponent));
+		if (!resourceComponent)
+			return;
+
+		resourceComponent.TEMP_GetOnInteractorReplicated().Insert(pagUIComp.RefreshPage);
+
+		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		if (consumer)
+			consumer.GetOnResourcesChanged().Insert(pagUIComp.RefreshPage);
 
 		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
 		if (!providerComponent)
@@ -27,6 +32,42 @@ class SCR_CampaignBuildingRefreshUIComponent : ScriptedWidgetComponent
 		if (!base)
 			return;
 
-		base.GetOnServiceRegistered().Insert(m_PagUIComp.RefreshPage);
+		base.GetOnServiceRegistered().Insert(pagUIComp.RefreshPage);
+	}
+
+	//------------------------------------------------------------------------------------------------
+	override void HandlerDeattached(Widget w)
+	{
+		SCR_ExternalPaginationUIComponent pagUIComp = SCR_ExternalPaginationUIComponent.Cast(w.FindHandler(SCR_ExternalPaginationUIComponent));
+		if (!pagUIComp)
+			return;
+
+		SCR_CampaignBuildingEditorComponent buildingEditorComponent = SCR_CampaignBuildingEditorComponent.Cast(SCR_CampaignBuildingEditorComponent.GetInstance(SCR_CampaignBuildingEditorComponent));
+		if (!buildingEditorComponent)
+			return;
+
+		IEntity provider = buildingEditorComponent.GetProviderEntity();
+		if (!provider)
+			return;
+
+		SCR_ResourceComponent resourceComponent = SCR_ResourceComponent.Cast(provider.FindComponent(SCR_ResourceComponent));
+		if (!resourceComponent)
+			return;
+
+		resourceComponent.TEMP_GetOnInteractorReplicated().Remove(pagUIComp.RefreshPage);
+
+		SCR_ResourceConsumer consumer = resourceComponent.GetConsumer(EResourceGeneratorID.DEFAULT, EResourceType.SUPPLIES);
+		if (consumer)
+			consumer.GetOnResourcesChanged().Remove(pagUIComp.RefreshPage);
+
+		SCR_CampaignBuildingProviderComponent providerComponent = SCR_CampaignBuildingProviderComponent.Cast(provider.FindComponent(SCR_CampaignBuildingProviderComponent));
+		if (!providerComponent)
+			return;
+
+		SCR_MilitaryBaseComponent base = providerComponent.GetMilitaryBaseComponent();
+		if (!base)
+			return;
+
+		base.GetOnServiceRegistered().Remove(pagUIComp.RefreshPage);
 	}
 }

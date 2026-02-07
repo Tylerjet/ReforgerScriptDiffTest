@@ -12,6 +12,9 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 			localAnimParams = GetAnimationParameters(target);
 		}
 		
+		if (!localAnimParams)
+			return false;
+		
 		if (!super.ActivateEffect(target, user, item, localAnimParams))
 			return false;		
 
@@ -22,9 +25,6 @@ class SCR_ConsumableEffectHealthItems : SCR_ConsumableEffectBase
 		CharacterControllerComponent controller = character.GetCharacterController();
 		if (!controller)
 			return false;
-		
-		if (!localAnimParams)
-			return true;
 			
 		if (localAnimParams.m_intParam == EBandagingAnimationBodyParts.LeftLeg || localAnimParams.m_intParam == EBandagingAnimationBodyParts.RightLeg)
 		{

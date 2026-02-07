@@ -69,7 +69,7 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 
 	//------------------------------------------------------------------------------------------------
 	//! Optional param for specific hitzone, still will ensure external users don't have to create their own local animParams
-	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
+	override SCR_ConsumableEffectAnimationParameters GetAnimationParameters(notnull IEntity target, ECharacterHitZoneGroup group = ECharacterHitZoneGroup.VIRTUAL)
 	{
 		ChimeraCharacter char = ChimeraCharacter.Cast(target);
 		if (!char)
@@ -79,17 +79,18 @@ class SCR_ConsumableBandage : SCR_ConsumableEffectHealthItems
 		if (!damageMgr)
 			return null;
 
-		EBandagingAnimationBodyParts bodyPartToBandage;
+		EBandagingAnimationBodyParts bodyPartToBandage = EBandagingAnimationBodyParts.Invalid;
 		
 		if (group != ECharacterHitZoneGroup.VIRTUAL)
 		{
-			bodyPartToBandage = damageMgr.FindAssociatedBandagingBodyPart(group);
+			if (!damageMgr.GetGroupIsBeingHealed(group))
+				bodyPartToBandage = damageMgr.FindAssociatedBandagingBodyPart(group);
 		}
 		else
 		{
-			ECharacterHitZoneGroup hzGroup = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING);
+			group = damageMgr.GetCharMostDOTHitzoneGroup(EDamageType.BLEEDING, ignoreIfBeingTreated: true);
 			array<HitZone> hitzones = {};
-			damageMgr.GetHitZonesOfGroup(hzGroup, hitzones);
+			damageMgr.GetHitZonesOfGroup(group, hitzones);
 			if (!hitzones || hitzones.IsEmpty())
 				return null;
 				

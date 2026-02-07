@@ -563,7 +563,7 @@ class SCR_PlayerController : PlayerController
 					m_bFocusToggle = false;
 
 				// Cancel toggle focus when in vehicle and not in forced freelook
-				if (!m_CharacterController.IsFreeLookEnforced())
+				if (!m_CharacterController.IsFreeLookEnabled() && !m_CharacterController.GetFreeLookInput())
 					m_bFocusToggle = false;
 			}
 			else
@@ -654,7 +654,7 @@ class SCR_PlayerController : PlayerController
 			return;
 
 		// Cancel toggle focus when in vehicle and not in forced freelook
-		if (!m_CharacterController.IsFreeLookEnforced())
+		if (!m_CharacterController.IsFreeLookEnabled() && !m_CharacterController.GetFreeLookInput())
 			return;
 
 		m_bFocusToggle = !m_bFocusToggle;

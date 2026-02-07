@@ -41,8 +41,14 @@ class SCR_WindAutomaticEditorAttribute : SCR_BaseEditorAttribute
 		if (!var)
 			return;
 		
-		GenericEntity ent = GenericEntity.Cast(item);
-		ChimeraWorld world = ent.GetWorld();
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return;
+		
+		ChimeraWorld world = ChimeraWorld.CastFrom(gameMode.GetWorld());
+		if (!world)
+			return;
+		
 		TimeAndWeatherManagerEntity weatherManager = world.GetTimeAndWeatherManager();
 		if (!weatherManager) 
 			return;

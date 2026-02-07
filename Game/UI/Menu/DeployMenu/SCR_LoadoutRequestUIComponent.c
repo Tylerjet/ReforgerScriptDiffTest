@@ -149,31 +149,7 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		if (m_wSupplies)
 			m_wSuppliesText = RichTextWidget.Cast(m_wSupplies.FindAnyWidget("SuppliesText"));
 	}
-
-	override void HandlerDeattached(Widget w)
-	{
-		super.HandlerDeattached(w);
-
-		if (m_PreviewedEntity)
-			DeleteEntity(m_PreviewedEntity);
-	}
 	
-	protected void DeleteEntity(IEntity entity)
-	{
-		if (!entity)
-			return;
-
-		IEntity child = entity.GetChildren();
-		while (child)
-		{
-			IEntity sibling = child.GetSibling();
-			DeleteEntity(child);
-			child = sibling;
-		}
-
-		delete entity;
-	}
-
 	protected override void ToggleCollapsed()
 	{
 		if (m_wExpandButton && m_wExpandButton.IsVisible())
@@ -421,9 +397,6 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 		if (m_PreviewComp && loadout)
 		{
-			if (m_PreviewedEntity)
-				DeleteEntity(m_PreviewedEntity);
-
 			if (m_wLoadoutName)
 				m_wLoadoutName.SetText(loadout.GetLoadoutName());			
 
@@ -439,39 +412,6 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 
 			m_PreviewedEntity = m_PreviewComp.SetPreviewedLoadout(loadout, attributes);
 			m_wLoadoutPreview.SetVisible(true);
-		}
-		
-		//If it is arsenal loadout
-		if (loadout && m_PreviewedEntity && SCR_PlayerArsenalLoadout.Cast(loadout))
-		{
-			SCR_ArsenalManagerComponent arsenalManager;
-			if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
-				return;
-			
-			SCR_PlayerLoadoutData loadoutData = arsenalManager.m_bLocalPlayerLoadoutData;
-			if (!loadoutData)
-				return;
-			
-			EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(m_PreviewedEntity.FindComponent(EquipedLoadoutStorageComponent));
-			if (!loadoutStorage)
-				return;
-			
-			for (int i = 0; i < loadoutData.Clothings.Count(); ++i)
-			{
-				InventoryStorageSlot slot = loadoutStorage.GetSlot(i);
-				if (!slot)
-					continue;
-				
-				Resource resource = Resource.Load(loadoutData.Clothings[i]);
-				if (!resource)
-					continue;
-				
-				IEntity cloth = GetGame().SpawnEntityPrefabLocal(resource, m_PreviewedEntity.GetWorld());
-				if (!cloth)
-					continue;
-				
-				slot.AttachEntity(cloth);
-			}
 		}
 	}
 
@@ -560,6 +500,11 @@ class SCR_LoadoutRequestUIComponent : SCR_DeployRequestUIBaseComponent
 		}
 		
 		m_wLoadoutList = GridLayoutWidget.Cast(list);
+	}
+
+	bool IsSelectorFocused()
+	{
+		return m_LoadoutSelector && m_LoadoutSelector.GetFocused();
 	}
 };
 

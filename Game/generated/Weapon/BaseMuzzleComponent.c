@@ -36,6 +36,7 @@ class BaseMuzzleComponent: GameComponent
 	proto external ResourceName GetDefaultMagazineOrProjectileName();
 	// UI Info
 	proto external UIInfo GetUIInfo();
+	proto external IEntity GetOwner();
 }
 
 /*!

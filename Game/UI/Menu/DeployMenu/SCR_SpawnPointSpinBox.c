@@ -1,7 +1,24 @@
 class SCR_SpawnPointSpinBox : SCR_SpinBoxComponent
 {
 	protected ref array<RplId> m_aSpawnPointIds = {};
+	protected bool m_bFocused;
 
+	override bool OnFocus(Widget w, int x, int y)
+	{
+		super.OnFocus(w, x, y);
+		m_bFocused = true;
+		
+		return false;
+	}	
+	
+	override bool OnFocusLost(Widget w, int x, int y)
+	{
+		super.OnFocusLost(w, x, y);
+		m_bFocused = false;
+		
+		return false;
+	}
+	
 	int AddItem(string item, RplId id)
 	{
 		if (!id.IsValid() || m_aSpawnPointIds.Find(id) > -1)
@@ -55,5 +72,10 @@ class SCR_SpawnPointSpinBox : SCR_SpinBoxComponent
 		}
 
 		return result;
+	}
+	
+	bool IsFocused()
+	{
+		return m_bFocused && GetGame().GetInputManager().IsUsingMouseAndKeyboard();
 	}
 };

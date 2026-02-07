@@ -199,4 +199,9 @@ class SCR_SpawnPointRequestUIComponent : SCR_DeployRequestUIBaseComponent
 	{
 		return m_SpawnPointSelector.GetSpawnPointId(m_SpawnPointSelector.GetCurrentIndex());
 	}
+
+	bool IsSelectorFocused()
+	{
+		return m_SpawnPointSelector && m_SpawnPointSelector.IsFocused();
+	}
 };

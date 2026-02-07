@@ -10,8 +10,14 @@ class SCR_TimePresetsEditorAttribute: SCR_BasePresetsEditorAttribute
 		if (!IsGameMode(item)) 
 			return null;
 		
-		GenericEntity ent = GenericEntity.Cast(item);
-		ChimeraWorld world = ent.GetWorld();
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
+			return null;
+		
+		ChimeraWorld world = ChimeraWorld.CastFrom(gameMode.GetWorld());
+		if (!world)
+			return null;
+		
 		TimeAndWeatherManagerEntity timeManager = world.GetTimeAndWeatherManager();
 		if (!timeManager) 
 			return null;

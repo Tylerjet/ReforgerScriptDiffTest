@@ -17,6 +17,23 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 		m_wPreview = ItemPreviewWidget.Cast(w.FindAnyWidget(m_sPreviewWidgetName));
 		m_bReloadLoadout = true;
 	}
+	
+	protected void DeleteChildrens(IEntity entity, bool deleteRoot = true)
+	{
+		if (!entity || !entity.FindComponent(InventoryItemComponent))
+			return;
+
+		IEntity child = entity.GetChildren();
+		while (child)
+		{
+			IEntity sibling = child.GetSibling();
+			DeleteChildrens(child);
+			child = sibling;
+		}
+
+		if (!entity.IsDeleted() && deleteRoot)
+			delete entity;
+	}
 
 	//------------------------------------------------------------------------------------------------
 	IEntity SetPreviewedLoadout(notnull SCR_BasePlayerLoadout loadout, PreviewRenderAttributes attributes = null)
@@ -40,24 +57,90 @@ class SCR_LoadoutPreviewComponent : ScriptedWidgetComponent
 			}
 		}
 		
+		ResourceName resName = loadout.GetLoadoutResource();
 		if (SCR_PlayerArsenalLoadout.Cast(loadout))
 		{
-			Resource resource = Resource.Load(loadout.GetLoadoutResource());
-			if (!resource)
-				return null;
+			IEntity previewedEntity = m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
+			if (!previewedEntity)
+				return previewedEntity;
 			
-			IEntity char = GetGame().SpawnEntityPrefabLocal(resource);
-			if (!char)
-				return null;
+			SCR_ArsenalManagerComponent arsenalManager;
+			if (!SCR_ArsenalManagerComponent.GetArsenalManager(arsenalManager))
+				return previewedEntity;
 			
-			m_PreviewManager.SetPreviewItem(m_wPreview, char, attributes);
-			return char;
+			SCR_PlayerLoadoutData loadoutData = arsenalManager.m_bLocalPlayerLoadoutData;
+			if (!loadoutData)
+				return previewedEntity;
+			
+			DeleteChildrens(previewedEntity, false);
+			
+			EquipedLoadoutStorageComponent loadoutStorage = EquipedLoadoutStorageComponent.Cast(previewedEntity.FindComponent(EquipedLoadoutStorageComponent));
+			if (loadoutStorage)
+			{
+				for (int i = 0; i < loadoutData.Clothings.Count(); ++i)
+				{
+					InventoryStorageSlot slot = loadoutStorage.GetSlot(loadoutData.Clothings[i].SlotIdx);
+					if (!slot)
+						continue;
+					
+					Resource resource = Resource.Load(loadoutData.Clothings[i].ClothingPrefab);
+					if (!resource)
+						continue;
+					
+					IEntity cloth = GetGame().SpawnEntityPrefabLocal(resource, previewedEntity.GetWorld());
+					if (!cloth)
+						continue;
+					
+					slot.AttachEntity(cloth);
+				}
+			}
+			
+			EquipedWeaponStorageComponent weaponStorage = EquipedWeaponStorageComponent.Cast(previewedEntity.FindComponent(EquipedWeaponStorageComponent));
+			if (weaponStorage)
+			{
+				for (int i = 0; i < loadoutData.Weapons.Count(); ++i)
+				{
+					InventoryStorageSlot slot = weaponStorage.GetSlot(loadoutData.Weapons[i].SlotIdx);
+					if (!slot)
+						continue;
+					
+					Resource resource = Resource.Load(loadoutData.Weapons[i].WeaponPrefab);
+					if (!resource)
+						continue;
+					
+					IEntity weapon = GetGame().SpawnEntityPrefabLocal(resource, previewedEntity.GetWorld());
+					if (!weapon)
+						continue;
+					
+					slot.AttachEntity(weapon);
+				}
+			}
+			
+			BaseWeaponManagerComponent weaponManager = BaseWeaponManagerComponent.Cast(previewedEntity.FindComponent(BaseWeaponManagerComponent));
+			if (weaponManager)
+			{
+				int weaponDefaultIndex = weaponManager.GetDefaultWeaponIndex();
+				if (weaponDefaultIndex > -1)
+				{
+					array<WeaponSlotComponent> outSlots = {};
+					weaponManager.GetWeaponsSlots(outSlots);
+					foreach (WeaponSlotComponent weaponSlot: outSlots)
+					{
+						if (weaponSlot.GetWeaponSlotIndex() == weaponDefaultIndex)
+						{
+							weaponManager.SelectWeapon(weaponSlot);
+							break;
+						}
+					}
+				}
+			}
+			
+			m_PreviewManager.SetPreviewItem(m_wPreview, previewedEntity, attributes, true);
+			return previewedEntity;
 		}
 		else
 		{
-			ResourceName resName = loadout.GetLoadoutResource();
 			m_PreviewManager.SetPreviewItemFromPrefab(m_wPreview, resName, attributes);
-
 			return m_PreviewManager.ResolvePreviewEntityForPrefab(resName);
 		}
 	}

@@ -39,15 +39,14 @@ class SCR_WeatherInstantEditorAttribute: SCR_BasePresetsEditorAttribute
 	
 	override void WriteVariable(Managed item, SCR_BaseEditorAttributeVar var, SCR_AttributesManagerEditorComponent manager, int playerID)
 	{
-		if (!var || !item) 
+		if (!var) 
 			return;
 		
-		GenericEntity ent = GenericEntity.Cast(item);
-		if (!ent)
+		BaseGameMode gameMode = GetGame().GetGameMode();
+		if (!gameMode)
 			return;
-
-		ChimeraWorld world = ent.GetWorld();
 		
+		ChimeraWorld world = ChimeraWorld.CastFrom(gameMode.GetWorld());
 		if (!world)
 			return;
 
